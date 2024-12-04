@@ -19,9 +19,10 @@ LL | pub trait Foo<RHS: ?Sized=Self> {
    |                  ++++++++
 
 error[E0038]: the trait `Bar` cannot be made into an object
-  --> $DIR/issue-28576.rs:9:12
+  --> $DIR/issue-28576.rs:9:16
    |
-LL | /            dyn Bar
+LL |              dyn Bar
+   |  ________________^
 LL | |               <Assoc=()>
    | |________________________^ `Bar` cannot be made into an object
    |

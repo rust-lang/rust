@@ -437,7 +437,8 @@ pub fn report_dyn_incompatibility<'tcx>(
         tcx.dcx(),
         span,
         E0038,
-        "the trait `{}` cannot be made into an object",
+        "the {} `{}` cannot be made into an object",
+        tcx.def_descr(trait_def_id),
         trait_str
     );
     err.span_label(span, format!("`{trait_str}` cannot be made into an object"));

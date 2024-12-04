@@ -11,7 +11,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::ty::print::{PrintPolyTraitRefExt as _, PrintTraitRefExt as _};
 use rustc_middle::ty::{
-    self, AdtDef, Binder, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeVisitableExt,
+    self, AdtDef, GenericParamDefKind, Ty, TyCtxt, TypeVisitableExt,
     suggest_constraining_type_param,
 };
 use rustc_session::parse::feature_err;
@@ -19,8 +19,9 @@ use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_trait_selection::error_reporting::traits::report_dyn_incompatibility;
 use rustc_trait_selection::traits::{
-    FulfillmentError, TraitAliasExpansionInfo, dyn_compatibility_violations_for_assoc_item,
+    FulfillmentError, dyn_compatibility_violations_for_assoc_item,
 };
+use smallvec::SmallVec;
 
 use crate::errors::{
     self, AssocItemConstraintsNotAllowedHere, ManualImplementation, MissingTypeParams,
@@ -720,7 +721,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// emit a generic note suggesting using a `where` clause to constraint instead.
     pub(crate) fn check_for_required_assoc_tys(
         &self,
-        principal_span: Span,
+        spans: SmallVec<[Span; 1]>,
         missing_assoc_types: FxIndexSet<(DefId, ty::PolyTraitRef<'tcx>)>,
         potential_assoc_types: Vec<usize>,
         trait_bounds: &[hir::PolyTraitRef<'_>],
@@ -728,6 +729,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         if missing_assoc_types.is_empty() {
             return Ok(());
         }
+
+        let principal_span = *spans.first().unwrap();
 
         let tcx = self.tcx();
         // FIXME: This logic needs some more care w.r.t handling of conflicts
@@ -1124,29 +1127,36 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
     pub fn report_trait_object_addition_traits_error(
         &self,
-        regular_traits: &Vec<TraitAliasExpansionInfo<'_>>,
+        regular_traits: &Vec<(ty::PolyTraitPredicate<'tcx>, SmallVec<[Span; 1]>)>,
     ) -> ErrorGuaranteed {
-        let first_trait = &regular_traits[0];
-        let additional_trait = &regular_traits[1];
+        // we use the last span to point at the traits themselves,
+        // and all other preceding spans are trait alias expansions.
+        let (&first_span, first_alias_spans) = regular_traits[0].1.split_last().unwrap();
+        let (&second_span, second_alias_spans) = regular_traits[1].1.split_last().unwrap();
         let mut err = struct_span_code_err!(
             self.dcx(),
-            additional_trait.bottom().1,
+            *regular_traits[1].1.first().unwrap(),
             E0225,
             "only auto traits can be used as additional traits in a trait object"
         );
-        additional_trait.label_with_exp_info(
-            &mut err,
-            "additional non-auto trait",
-            "additional use",
-        );
-        first_trait.label_with_exp_info(&mut err, "first non-auto trait", "first use");
+        err.span_label(first_span, "first non-auto trait");
+        for &alias_span in first_alias_spans {
+            err.span_label(alias_span, "first non-auto trait comes from this alias");
+        }
+        err.span_label(second_span, "additional non-auto trait");
+        for &alias_span in second_alias_spans {
+            err.span_label(alias_span, "second non-auto trait comes from this alias");
+        }
         err.help(format!(
             "consider creating a new trait with all of these as supertraits and using that \
              trait here instead: `trait NewTrait: {} {{}}`",
             regular_traits
                 .iter()
                 // FIXME: This should `print_sugared`, but also needs to integrate projection bounds...
-                .map(|t| t.trait_ref().print_only_trait_path().to_string())
+                .map(|(pred, _)| pred
+                    .map_bound(|pred| pred.trait_ref)
+                    .print_only_trait_path()
+                    .to_string())
                 .collect::<Vec<_>>()
                 .join(" + "),
         ));
@@ -1161,14 +1171,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     pub fn report_trait_object_with_no_traits_error(
         &self,
         span: Span,
-        trait_bounds: &Vec<(Binder<'tcx, TraitRef<'tcx>>, Span)>,
+        user_written_clauses: impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>,
     ) -> ErrorGuaranteed {
         let tcx = self.tcx();
-        let trait_alias_span = trait_bounds
-            .iter()
-            .map(|&(trait_ref, _)| trait_ref.def_id())
-            .find(|&trait_ref| tcx.is_trait_alias(trait_ref))
-            .map(|trait_ref| tcx.def_span(trait_ref));
+        let trait_alias_span = user_written_clauses
+            .into_iter()
+            .filter_map(|(clause, _)| clause.as_trait_clause())
+            .find(|trait_ref| tcx.is_trait_alias(trait_ref.def_id()))
+            .map(|trait_ref| tcx.def_span(trait_ref.def_id()));
 
         self.dcx().emit_err(TraitObjectDeclaredWithNoTraits { span, trait_alias_span })
     }

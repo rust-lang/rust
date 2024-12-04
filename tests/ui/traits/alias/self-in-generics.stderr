@@ -2,9 +2,21 @@ error[E0038]: the trait alias `SelfInput` cannot be made into an object
   --> $DIR/self-in-generics.rs:8:19
    |
 LL | pub fn f(_f: &dyn SelfInput) {}
-   |                   ^^^^^^^^^
+   |                   ^^^^^^^^^ `SelfInput` cannot be made into an object
    |
-   = note: it cannot use `Self` as a type parameter in a supertrait or `where`-clause
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/self-in-generics.rs:6:23
+   |
+LL | pub trait SelfInput = Fn(&mut Self);
+   |           ---------   ^^^^^^^^^^^^^
+   |           |           |
+   |           |           ...because it uses `Self` as a type parameter
+   |           |           ...because it uses `Self` as a type parameter
+   |           this trait cannot be made into an object...
+help: consider using an opaque type instead
+   |
+LL | pub fn f(_f: &impl SelfInput) {}
+   |               ~~~~
 
 error: aborting due to 1 previous error
 

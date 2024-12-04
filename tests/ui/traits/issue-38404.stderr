@@ -1,8 +1,8 @@
 error[E0038]: the trait `B` cannot be made into an object
-  --> $DIR/issue-38404.rs:3:15
+  --> $DIR/issue-38404.rs:3:19
    |
 LL | trait C<T>: A<dyn B<T, Output = usize>> {}
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^ `B` cannot be made into an object
+   |                   ^^^^^^^^^^^^^^^^^^^^ `B` cannot be made into an object
    |
 note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/issue-38404.rs:1:13
@@ -13,10 +13,10 @@ LL | trait B<T>: A<T> {}
    |       - this trait cannot be made into an object...
 
 error[E0038]: the trait `B` cannot be made into an object
-  --> $DIR/issue-38404.rs:3:15
+  --> $DIR/issue-38404.rs:3:19
    |
 LL | trait C<T>: A<dyn B<T, Output = usize>> {}
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^ `B` cannot be made into an object
+   |                   ^^^^^^^^^^^^^^^^^^^^ `B` cannot be made into an object
    |
 note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/issue-38404.rs:1:13
@@ -28,10 +28,10 @@ LL | trait B<T>: A<T> {}
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0038]: the trait `B` cannot be made into an object
-  --> $DIR/issue-38404.rs:3:15
+  --> $DIR/issue-38404.rs:3:19
    |
 LL | trait C<T>: A<dyn B<T, Output = usize>> {}
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^ `B` cannot be made into an object
+   |                   ^^^^^^^^^^^^^^^^^^^^ `B` cannot be made into an object
    |
 note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
   --> $DIR/issue-38404.rs:1:13

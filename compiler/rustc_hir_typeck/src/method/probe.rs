@@ -1,6 +1,5 @@
 use std::cell::{Cell, RefCell};
 use std::cmp::max;
-use std::iter;
 use std::ops::Deref;
 
 use rustc_data_structures::fx::FxHashSet;
@@ -1009,11 +1008,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         if self.tcx.is_trait_alias(trait_def_id) {
             // For trait aliases, recursively assume all explicitly named traits are relevant
-            for expansion in traits::expand_trait_aliases(
-                self.tcx,
-                iter::once((ty::Binder::dummy(trait_ref), self.span)),
-            ) {
-                let bound_trait_ref = expansion.trait_ref();
+            for (bound_trait_pred, _) in
+                traits::expand_trait_aliases(self.tcx, [(trait_ref.upcast(self.tcx), self.span)]).0
+            {
+                assert_eq!(bound_trait_pred.polarity(), ty::PredicatePolarity::Positive);
+                let bound_trait_ref = bound_trait_pred.map_bound(|pred| pred.trait_ref);
                 for item in self.impl_or_trait_item(bound_trait_ref.def_id()) {
                     if !self.has_applicable_self(&item) {
                         self.record_static_candidate(CandidateSource::Trait(
