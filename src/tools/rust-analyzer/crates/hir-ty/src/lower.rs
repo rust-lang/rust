@@ -5,6 +5,8 @@
 //!  - Building the type for an item: This happens through the `ty` query.
 //!
 //! This usually involves resolving names, collecting generic arguments etc.
+pub(crate) mod diagnostics;
+
 use std::{
     cell::OnceCell,
     iter, mem,
@@ -59,6 +61,7 @@ use crate::{
     db::HirDatabase,
     error_lifetime,
     generics::{generics, trait_self_param_idx, Generics},
+    lower::diagnostics::*,
     make_binders,
     mapping::{from_chalk_trait_id, lt_to_placeholder_idx, ToChalk},
     static_lifetime, to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
@@ -100,31 +103,6 @@ impl ImplTraitLoweringState {
             param_and_variable_counter: counter,
         }
     }
-}
-
-type TypeSource = Either<TypeRefId, hir_def::type_ref::TypeSource>;
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct TyLoweringDiagnostic {
-    pub source: TypeSource,
-    pub kind: TyLoweringDiagnosticKind,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum TyLoweringDiagnosticKind {
-    GenericArgsProhibited { segment: u32, reason: GenericArgsProhibitedReason },
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum GenericArgsProhibitedReason {
-    Module,
-    TyParam,
-    SelfTy,
-    PrimitiveTy,
-    /// When there is a generic enum, within the expression `Enum::Variant`,
-    /// either `Enum` or `Variant` are allowed to have generic arguments, but not both.
-    // FIXME: This is not used now but it should be.
-    EnumVariant,
 }
 
 #[derive(Debug)]

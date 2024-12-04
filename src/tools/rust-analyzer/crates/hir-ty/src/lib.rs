@@ -88,10 +88,10 @@ pub use infer::{
     PointerCast,
 };
 pub use interner::Interner;
+pub use lower::diagnostics::*;
 pub use lower::{
-    associated_type_shorthand_candidates, GenericArgsProhibitedReason, ImplTraitLoweringMode,
-    ParamLoweringMode, TyDefId, TyLoweringContext, TyLoweringDiagnostic, TyLoweringDiagnosticKind,
-    ValueTyDefId,
+    associated_type_shorthand_candidates, ImplTraitLoweringMode, ParamLoweringMode, TyDefId,
+    TyLoweringContext, ValueTyDefId,
 };
 pub use mapping::{
     from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id, from_placeholder_idx,

@@ -58,7 +58,7 @@ use crate::{
     fold_tys,
     generics::Generics,
     infer::{coerce::CoerceMany, expr::ExprIsRead, unify::InferenceTable},
-    lower::{ImplTraitLoweringMode, TyLoweringDiagnostic},
+    lower::{diagnostics::TyLoweringDiagnostic, ImplTraitLoweringMode},
     mir::MirSpan,
     to_assoc_type_id,
     traits::FnTrait,
