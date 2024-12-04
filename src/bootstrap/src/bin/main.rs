@@ -99,7 +99,7 @@ fn main() {
     // HACK: Since the commit script uses hard links, we can't actually tell if it was installed by x.py setup or not.
     // We could see if it's identical to src/etc/pre-push.sh, but pre-push may have been modified in the meantime.
     // Instead, look for this comment, which is almost certainly not in any custom hook.
-    if fs::read_to_string(pre_commit).map_or(false, |contents| {
+    if fs::read_to_string(pre_commit).is_ok_and(|contents| {
         contents.contains("https://github.com/rust-lang/rust/issues/77620#issuecomment-705144570")
     }) {
         println!(

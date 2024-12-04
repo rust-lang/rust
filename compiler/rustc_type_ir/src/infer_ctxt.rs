@@ -63,6 +63,12 @@ pub enum TypingMode<I: Interner> {
     /// }
     /// ```
     Analysis { defining_opaque_types: I::DefiningOpaqueTypes },
+    /// Any analysis after borrowck for a given body should be able to use all the
+    /// hidden types defined by borrowck, without being able to define any new ones.
+    ///
+    /// This is currently only used by the new solver, but should be implemented in
+    /// the old solver as well.
+    PostBorrowckAnalysis { defined_opaque_types: I::DefiningOpaqueTypes },
     /// After analysis, mostly during codegen and MIR optimizations, we're able to
     /// reveal all opaque types. As the concrete type should *never* be observable
     /// directly by the user, this should not be used by checks which may expose
@@ -84,6 +90,12 @@ impl<I: Interner> TypingMode<I> {
     /// types defined by that body.
     pub fn analysis_in_body(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {
         TypingMode::Analysis { defining_opaque_types: cx.opaque_types_defined_by(body_def_id) }
+    }
+
+    pub fn post_borrowck_analysis(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {
+        TypingMode::PostBorrowckAnalysis {
+            defined_opaque_types: cx.opaque_types_defined_by(body_def_id),
+        }
     }
 }
 
@@ -126,6 +138,7 @@ pub trait InferCtxtLike: Sized {
         vid: ty::RegionVid,
     ) -> <Self::Interner as Interner>::Region;
 
+    fn next_region_infer(&self) -> <Self::Interner as Interner>::Region;
     fn next_ty_infer(&self) -> <Self::Interner as Interner>::Ty;
     fn next_const_infer(&self) -> <Self::Interner as Interner>::Const;
     fn fresh_args_for_item(

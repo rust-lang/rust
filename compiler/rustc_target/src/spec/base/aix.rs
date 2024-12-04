@@ -4,7 +4,7 @@ use crate::spec::{Cc, CodeModel, LinkOutputKind, LinkerFlavor, TargetOptions, cr
 pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
         abi: "vec-extabi".into(),
-        code_model: Some(CodeModel::Small),
+        code_model: Some(CodeModel::Large),
         cpu: "pwr7".into(),
         os: "aix".into(),
         vendor: "ibm".into(),

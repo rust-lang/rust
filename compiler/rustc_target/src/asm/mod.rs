@@ -928,7 +928,9 @@ pub enum InlineAsmClobberAbi {
     AArch64,
     AArch64NoX18,
     Arm64EC,
+    Avr,
     RiscV,
+    RiscVE,
     LoongArch,
     PowerPC,
     S390x,
@@ -941,6 +943,7 @@ impl InlineAsmClobberAbi {
     pub fn parse(
         arch: InlineAsmArch,
         target: &Target,
+        target_features: &FxIndexSet<Symbol>,
         name: Symbol,
     ) -> Result<Self, &'static [&'static str]> {
         let name = name.as_str();
@@ -963,11 +966,13 @@ impl InlineAsmClobberAbi {
                 _ => Err(&["C", "system", "efiapi", "aapcs"]),
             },
             InlineAsmArch::AArch64 => match name {
-                "C" | "system" | "efiapi" => Ok(if aarch64::target_reserves_x18(target) {
-                    InlineAsmClobberAbi::AArch64NoX18
-                } else {
-                    InlineAsmClobberAbi::AArch64
-                }),
+                "C" | "system" | "efiapi" => {
+                    Ok(if aarch64::target_reserves_x18(target, target_features) {
+                        InlineAsmClobberAbi::AArch64NoX18
+                    } else {
+                        InlineAsmClobberAbi::AArch64
+                    })
+                }
                 _ => Err(&["C", "system", "efiapi"]),
             },
             InlineAsmArch::Arm64EC => match name {
@@ -975,8 +980,16 @@ impl InlineAsmClobberAbi {
                 _ => Err(&["C", "system"]),
             },
             InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => match name {
-                "C" | "system" | "efiapi" => Ok(InlineAsmClobberAbi::RiscV),
+                "C" | "system" | "efiapi" => Ok(if riscv::is_e(target_features) {
+                    InlineAsmClobberAbi::RiscVE
+                } else {
+                    InlineAsmClobberAbi::RiscV
+                }),
                 _ => Err(&["C", "system", "efiapi"]),
+            },
+            InlineAsmArch::Avr => match name {
+                "C" | "system" => Ok(InlineAsmClobberAbi::Avr),
+                _ => Err(&["C", "system"]),
             },
             InlineAsmArch::LoongArch64 => match name {
                 "C" | "system" => Ok(InlineAsmClobberAbi::LoongArch),
@@ -1125,6 +1138,23 @@ impl InlineAsmClobberAbi {
                     d24, d25, d26, d27, d28, d29, d30, d31,
                 }
             },
+            InlineAsmClobberAbi::Avr => clobbered_regs! {
+                Avr AvrInlineAsmReg {
+                    // The list of "Call-Used Registers" according to
+                    // https://gcc.gnu.org/wiki/avr-gcc#Call-Used_Registers
+
+                    // Clobbered registers available in inline assembly
+                    r18, r19, r20, r21, r22, r23, r24, r25, r26, r27, r30, r31,
+                    // As per the AVR-GCC-ABI documentation linked above, the R0
+                    // register is a clobbered register as well. Since we don't
+                    // allow the usage of R0 in inline assembly, nothing has to
+                    // be done here.
+                    // Likewise, the T-flag in the SREG should be clobbered, but
+                    // this is not necessary to be listed here, since the SREG
+                    // is considered clobbered anyways unless `preserve_flags`
+                    // is used.
+                }
+            },
             InlineAsmClobberAbi::RiscV => clobbered_regs! {
                 RiscV RiscVInlineAsmReg {
                     // ra
@@ -1135,6 +1165,31 @@ impl InlineAsmClobberAbi {
                     x10, x11, x12, x13, x14, x15, x16, x17,
                     // t3-t6
                     x28, x29, x30, x31,
+                    // ft0-ft7
+                    f0, f1, f2, f3, f4, f5, f6, f7,
+                    // fa0-fa7
+                    f10, f11, f12, f13, f14, f15, f16, f17,
+                    // ft8-ft11
+                    f28, f29, f30, f31,
+
+                    v0, v1, v2, v3, v4, v5, v6, v7,
+                    v8, v9, v10, v11, v12, v13, v14, v15,
+                    v16, v17, v18, v19, v20, v21, v22, v23,
+                    v24, v25, v26, v27, v28, v29, v30, v31,
+                }
+            },
+            InlineAsmClobberAbi::RiscVE => clobbered_regs! {
+                RiscV RiscVInlineAsmReg {
+                    // Refs:
+                    // - ILP32E https://github.com/riscv-non-isa/riscv-elf-psabi-doc/blob/draft-20240829-13bfa9f54634cb60d86b9b333e109f077805b4b3/riscv-cc.adoc#ilp32e-calling-convention
+                    // - LP64E https://github.com/riscv-non-isa/riscv-elf-psabi-doc/pull/299
+
+                    // ra
+                    x1,
+                    // t0-t2
+                    x5, x6, x7,
+                    // a0-a5
+                    x10, x11, x12, x13, x14, x15,
                     // ft0-ft7
                     f0, f1, f2, f3, f4, f5, f6, f7,
                     // fa0-fa7

@@ -107,28 +107,9 @@
 //
 // Library features:
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(const_exact_div))]
-#![cfg_attr(bootstrap, feature(const_fmt_arguments_new))]
-#![cfg_attr(bootstrap, feature(const_ub_checks))]
 #![feature(array_ptr_get)]
 #![feature(asm_experimental_arch)]
-#![feature(const_align_of_val)]
-#![feature(const_align_of_val_raw)]
-#![feature(const_alloc_layout)]
-#![feature(const_black_box)]
-#![feature(const_eq_ignore_ascii_case)]
 #![feature(const_eval_select)]
-#![feature(const_heap)]
-#![feature(const_nonnull_new)]
-#![feature(const_ptr_sub_ptr)]
-#![feature(const_raw_ptr_comparison)]
-#![feature(const_size_of_val)]
-#![feature(const_size_of_val_raw)]
-#![feature(const_sockaddr_setters)]
-#![feature(const_swap)]
-#![feature(const_try)]
-#![feature(const_type_id)]
-#![feature(const_type_name)]
 #![feature(const_typed_swap)]
 #![feature(core_intrinsics)]
 #![feature(coverage_attribute)]
@@ -144,6 +125,7 @@
 #![feature(ptr_alignment_type)]
 #![feature(ptr_metadata)]
 #![feature(set_ptr_value)]
+#![feature(slice_as_array)]
 #![feature(slice_as_chunks)]
 #![feature(slice_ptr_get)]
 #![feature(str_internals)]
@@ -158,8 +140,6 @@
 //
 // Language features:
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(strict_provenance))]
-#![cfg_attr(not(bootstrap), feature(strict_provenance_lints))]
 #![feature(abi_unadjusted)]
 #![feature(adt_const_params)]
 #![feature(allow_internal_unsafe)]
@@ -169,10 +149,7 @@
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_has_atomic_equal_alignment)]
 #![feature(cfg_ub_checks)]
-#![feature(const_for)]
-#![feature(const_is_char_boundary)]
 #![feature(const_precise_live_drops)]
-#![feature(const_str_split_at)]
 #![feature(const_trait_impl)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]
@@ -209,6 +186,7 @@
 #![feature(simd_ffi)]
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]
+#![feature(strict_provenance_lints)]
 #![feature(target_feature_11)]
 #![feature(trait_alias)]
 #![feature(transparent_unions)]
@@ -258,7 +236,6 @@ pub mod assert_matches {
 }
 
 // We don't export this through #[macro_export] for now, to avoid breakage.
-#[cfg(not(bootstrap))]
 #[unstable(feature = "autodiff", issue = "124509")]
 /// Unstable module containing the unstable `autodiff` macro.
 pub mod autodiff {

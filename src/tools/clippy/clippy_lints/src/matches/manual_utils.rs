@@ -7,7 +7,7 @@ use clippy_utils::{
     CaptureKind, can_move_expr_to_closure, is_else_clause, is_lint_allowed, is_res_lang_ctor, path_res,
     path_to_local_id, peel_blocks, peel_hir_expr_refs, peel_hir_expr_while,
 };
-use rustc_ast::util::parser::PREC_UNAMBIGUOUS;
+use rustc_ast::util::parser::ExprPrecedence;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::def::Res;
@@ -117,7 +117,7 @@ where
     // it's being passed by value.
     let scrutinee = peel_hir_expr_refs(scrutinee).0;
     let (scrutinee_str, _) = snippet_with_context(cx, scrutinee.span, expr_ctxt, "..", &mut app);
-    let scrutinee_str = if scrutinee.span.eq_ctxt(expr.span) && scrutinee.precedence() < PREC_UNAMBIGUOUS {
+    let scrutinee_str = if scrutinee.span.eq_ctxt(expr.span) && scrutinee.precedence() < ExprPrecedence::Unambiguous {
         format!("({scrutinee_str})")
     } else {
         scrutinee_str.into()

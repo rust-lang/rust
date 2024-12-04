@@ -1,4 +1,4 @@
-//@ aux-build:multispan.rs
+//@ proc-macro: multispan.rs
 
 extern crate multispan;
 

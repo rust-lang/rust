@@ -263,12 +263,16 @@ pub struct Cargo {
     host: TargetSelection,
 }
 
+impl Cargo {
+    const CRATE_PATH: &str = "src/tools/cargo";
+}
+
 impl Step for Cargo {
     type Output = ();
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/cargo")
+        run.path(Self::CRATE_PATH)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -286,7 +290,7 @@ impl Step for Cargo {
             Mode::ToolRustc,
             self.host,
             Kind::Test,
-            "src/tools/cargo",
+            Self::CRATE_PATH,
             SourceType::Submodule,
             &[],
         );
@@ -301,6 +305,10 @@ impl Step for Cargo {
         // those features won't be able to land.
         cargo.env("CARGO_TEST_DISABLE_NIGHTLY", "1");
         cargo.env("PATH", path_for_cargo(builder, compiler));
+        // Cargo's test suite uses `CARGO_RUSTC_CURRENT_DIR` to determine the path that `file!` is
+        // relative to. Cargo no longer sets this env var, so we have to do that. This has to be the
+        // same value as `-Zroot-dir`.
+        cargo.env("CARGO_RUSTC_CURRENT_DIR", builder.src.display().to_string());
 
         #[cfg(feature = "build-metrics")]
         builder.metrics.begin_test_suite(
@@ -1064,7 +1072,7 @@ impl Step for Tidy {
         if builder.config.channel == "dev" || builder.config.channel == "nightly" {
             builder.info("fmt check");
             if builder.initial_rustfmt().is_none() {
-                let inferred_rustfmt_dir = builder.initial_rustc.parent().unwrap();
+                let inferred_rustfmt_dir = builder.initial_sysroot.join("bin");
                 eprintln!(
                     "\
 ERROR: no `rustfmt` binary found in {PATH}
@@ -2748,6 +2756,10 @@ impl Step for Crate {
             // `lib.rs` file, and a `lib.miri.rs` file exists in the same folder, we build that
             // instead. But crucially we only do that for the library, not the test builds.
             cargo.env("MIRI_REPLACE_LIBRS_IF_NOT_TEST", "1");
+            // std needs to be built with `-Zforce-unstable-if-unmarked`. For some reason the builder
+            // does not set this directly, but relies on the rustc wrapper to set it, and we are not using
+            // the wrapper -- hence we have to set it ourselves.
+            cargo.rustflag("-Zforce-unstable-if-unmarked");
             cargo
         } else {
             // Also prepare a sysroot for the target.

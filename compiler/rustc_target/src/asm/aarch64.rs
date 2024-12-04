@@ -1,7 +1,7 @@
 use std::fmt;
 
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_span::Symbol;
+use rustc_span::{Symbol, sym};
 
 use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
 use crate::spec::{RelocModel, Target};
@@ -71,18 +71,26 @@ impl AArch64InlineAsmRegClass {
     }
 }
 
-pub(crate) fn target_reserves_x18(target: &Target) -> bool {
-    target.os == "android" || target.os == "fuchsia" || target.is_like_osx || target.is_like_windows
+pub(crate) fn target_reserves_x18(target: &Target, target_features: &FxIndexSet<Symbol>) -> bool {
+    // See isX18ReservedByDefault in LLVM for targets reserve x18 by default:
+    // https://github.com/llvm/llvm-project/blob/llvmorg-19.1.0/llvm/lib/TargetParser/AArch64TargetParser.cpp#L102-L105
+    // Note that +reserve-x18 is currently not set for the above targets.
+    target.os == "android"
+        || target.os == "fuchsia"
+        || target.env == "ohos"
+        || target.is_like_osx
+        || target.is_like_windows
+        || target_features.contains(&sym::reserve_x18)
 }
 
 fn reserved_x18(
     _arch: InlineAsmArch,
     _reloc_model: RelocModel,
-    _target_features: &FxIndexSet<Symbol>,
+    target_features: &FxIndexSet<Symbol>,
     target: &Target,
     _is_clobber: bool,
 ) -> Result<(), &'static str> {
-    if target_reserves_x18(target) {
+    if target_reserves_x18(target, target_features) {
         Err("x18 is a reserved register on this target")
     } else {
         Ok(())

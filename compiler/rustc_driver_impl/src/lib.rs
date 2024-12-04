@@ -418,7 +418,9 @@ fn run_compiler(
                 return early_exit();
             }
 
-            if sess.opts.unstable_opts.parse_only || sess.opts.unstable_opts.show_span.is_some() {
+            if sess.opts.unstable_opts.parse_crate_root_only
+                || sess.opts.unstable_opts.show_span.is_some()
+            {
                 return early_exit();
             }
 
@@ -865,8 +867,9 @@ fn print_crate_info(
             DeploymentTarget => {
                 if sess.target.is_like_osx {
                     println_info!(
-                        "deployment_target={}",
-                        apple::pretty_version(apple::deployment_target(sess))
+                        "{}={}",
+                        apple::deployment_target_env_var(&sess.target.os),
+                        apple::pretty_version(apple::deployment_target(sess)),
                     )
                 } else {
                     #[allow(rustc::diagnostic_outside_of_impl)]

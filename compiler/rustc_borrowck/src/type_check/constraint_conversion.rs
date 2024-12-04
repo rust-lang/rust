@@ -8,6 +8,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, ConstraintCategory};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::query::NoSolution;
+use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::{self, GenericArgKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_span::Span;
 use rustc_trait_selection::traits::ScrubbedTraitError;
@@ -216,7 +217,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
     /// are dealt with during trait solving.
     fn replace_placeholders_with_nll<T: TypeFoldable<TyCtxt<'tcx>>>(&mut self, value: T) -> T {
         if value.has_placeholders() {
-            self.tcx.fold_regions(value, |r, _| match *r {
+            fold_regions(self.tcx, value, |r, _| match *r {
                 ty::RePlaceholder(placeholder) => {
                     self.constraints.placeholder_region(self.infcx, placeholder)
                 }

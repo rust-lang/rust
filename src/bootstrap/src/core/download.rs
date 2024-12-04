@@ -427,9 +427,8 @@ impl Config {
         let version = &self.stage0_metadata.compiler.version;
         let host = self.build;
 
-        let bin_root = self.out.join(host).join("stage0");
-        let clippy_stamp = bin_root.join(".clippy-stamp");
-        let cargo_clippy = bin_root.join("bin").join(exe("cargo-clippy", host));
+        let clippy_stamp = self.initial_sysroot.join(".clippy-stamp");
+        let cargo_clippy = self.initial_sysroot.join("bin").join(exe("cargo-clippy", host));
         if cargo_clippy.exists() && !program_out_of_date(&clippy_stamp, date) {
             return cargo_clippy;
         }
@@ -830,7 +829,7 @@ download-rustc = false
 
 fn path_is_dylib(path: &Path) -> bool {
     // The .so is not necessarily the extension, it might be libLLVM.so.18.1
-    path.to_str().map_or(false, |path| path.contains(".so"))
+    path.to_str().is_some_and(|path| path.contains(".so"))
 }
 
 /// Checks whether the CI rustc is available for the given target triple.

@@ -40,7 +40,7 @@
 
 use std::iter;
 
-use rustc_index::bit_set::{BitSet, ChunkedBitSet, HybridBitSet};
+use rustc_index::bit_set::{BitSet, ChunkedBitSet};
 use rustc_index::{Idx, IndexVec};
 
 use crate::framework::BitSetExt;
@@ -226,20 +226,6 @@ impl<S> MaybeReachable<S> {
 impl<T, S: BitSetExt<T>> BitSetExt<T> for MaybeReachable<S> {
     fn contains(&self, elem: T) -> bool {
         self.contains(elem)
-    }
-
-    fn union(&mut self, other: &HybridBitSet<T>) {
-        match self {
-            MaybeReachable::Unreachable => {}
-            MaybeReachable::Reachable(set) => set.union(other),
-        }
-    }
-
-    fn subtract(&mut self, other: &HybridBitSet<T>) {
-        match self {
-            MaybeReachable::Unreachable => {}
-            MaybeReachable::Reachable(set) => set.subtract(other),
-        }
     }
 }
 

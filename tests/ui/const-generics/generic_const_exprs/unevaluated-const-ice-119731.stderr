@@ -72,6 +72,20 @@ help: add `#![feature(adt_const_params)]` to the crate attributes to enable more
 LL + #![feature(adt_const_params)]
    |
 
+note: erroneous constant encountered
+  --> $DIR/unevaluated-const-ice-119731.rs:22:19
+   |
+LL |     impl v17<512, v0> {
+   |                   ^^
+
+note: erroneous constant encountered
+  --> $DIR/unevaluated-const-ice-119731.rs:22:19
+   |
+LL |     impl v17<512, v0> {
+   |                   ^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error: maximum number of nodes exceeded in constant v20::v17::<v10, v2>::{constant#0}
   --> $DIR/unevaluated-const-ice-119731.rs:28:37
    |

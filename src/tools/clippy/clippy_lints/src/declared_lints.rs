@@ -135,6 +135,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::disallowed_names::DISALLOWED_NAMES_INFO,
     crate::disallowed_script_idents::DISALLOWED_SCRIPT_IDENTS_INFO,
     crate::disallowed_types::DISALLOWED_TYPES_INFO,
+    crate::doc::DOC_INCLUDE_WITHOUT_CFG_INFO,
     crate::doc::DOC_LAZY_CONTINUATION_INFO,
     crate::doc::DOC_LINK_WITH_QUOTES_INFO,
     crate::doc::DOC_MARKDOWN_INFO,

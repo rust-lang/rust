@@ -1386,7 +1386,7 @@ fn link_sanitizer_runtime(
         let filename = format!("rustc{channel}_rt.{name}");
         let path = find_sanitizer_runtime(sess, &filename);
         let rpath = path.to_str().expect("non-utf8 component in path");
-        linker.cc_args(&["-Wl,-rpath", "-Xlinker", rpath]);
+        linker.link_args(&["-rpath", rpath]);
         linker.link_dylib_by_name(&filename, false, true);
     } else if sess.target.is_like_msvc && flavor == LinkerFlavor::Msvc(Lld::No) && name == "asan" {
         // MSVC provides the `/INFERASANLIBS` argument to automatically find the
@@ -2210,7 +2210,7 @@ fn add_rpath_args(
             is_like_osx: sess.target.is_like_osx,
             linker_is_gnu: sess.target.linker_flavor.is_gnu(),
         };
-        cmd.cc_args(&rpath::get_rpath_flags(&rpath_config));
+        cmd.link_args(&rpath::get_rpath_linker_args(&rpath_config));
     }
 }
 

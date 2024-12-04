@@ -178,7 +178,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
 
         // Check that the type implements Copy. The only case where this can
         // possibly fail is for SIMD types which don't #[derive(Copy)].
-        if !ty.is_copy_modulo_regions(self.tcx, self.typing_env) {
+        if !self.tcx.type_is_copy_modulo_regions(self.typing_env, ty) {
             let msg = "arguments for inline assembly must be copyable";
             self.tcx
                 .dcx()

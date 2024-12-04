@@ -1,4 +1,5 @@
 //@ run-pass
+//@ edition: 2021
 // Ignore this test on Android, because it segfaults there.
 
 //@ ignore-android
@@ -32,10 +33,9 @@ fn main() {
                                        .unwrap()
                                        .as_os_str()
                                        .as_bytes()).unwrap();
-    let new_env_var = CString::new("FOOBAR").unwrap();
     let filename: *const c_char = current_exe.as_ptr();
     let argv: &[*const c_char] = &[filename, filename, ptr::null()];
-    let envp: &[*const c_char] = &[new_env_var.as_ptr(), ptr::null()];
+    let envp: &[*const c_char] = &[c"FOOBAR".as_ptr(), ptr::null()];
     unsafe {
         execve(filename, &argv[0], &envp[0]);
     }

@@ -4,7 +4,7 @@
 //@[edition2015]compile-flags:--test --test-args=--test-threads=1
 //@[edition2024]edition:2015
 //@[edition2024]aux-build:extern_macros.rs
-//@[edition2024]compile-flags:--test --test-args=--test-threads=1 -Z unstable-options
+//@[edition2024]compile-flags:--test --test-args=--test-threads=1
 //@ normalize-stdout-test: "tests/rustdoc-ui/doctest" -> "$$DIR"
 //@ normalize-stdout-test: "finished in \d+\.\d+s" -> "finished in $$TIME"
 //@ check-pass

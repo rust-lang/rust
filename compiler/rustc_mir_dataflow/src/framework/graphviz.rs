@@ -47,7 +47,7 @@ where
 {
     pub(crate) fn new(
         body: &'mir Body<'tcx>,
-        results: &'mir Results<'tcx, A>,
+        results: &'mir mut Results<'tcx, A>,
         style: OutputStyle,
     ) -> Self {
         let reachable = mir::traversal::reachable_as_bitset(body);

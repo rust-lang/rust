@@ -25,6 +25,7 @@ use rustc_middle::dep_graph::{DepNodeIndex, dep_kinds};
 pub use rustc_middle::traits::select::*;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::TypeErrorToStringExt;
+use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{
     self, GenericArgsRef, PolyProjectionPredicate, Ty, TyCtxt, TypeFoldable, TypeVisitableExt,
@@ -1470,7 +1471,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let obligation = &stack.obligation;
         match self.infcx.typing_mode() {
             TypingMode::Coherence => {}
-            TypingMode::Analysis { .. } | TypingMode::PostAnalysis => return Ok(()),
+            TypingMode::Analysis { .. }
+            | TypingMode::PostBorrowckAnalysis { .. }
+            | TypingMode::PostAnalysis => return Ok(()),
         }
 
         debug!("is_knowable()");
@@ -1517,6 +1520,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             TypingMode::Analysis { defining_opaque_types } => {
                 defining_opaque_types.is_empty() || !pred.has_opaque_types()
             }
+            // The hidden types of `defined_opaque_types` is not local to the current
+            // inference context, so we can freely move this to the global cache.
+            TypingMode::PostBorrowckAnalysis { .. } => true,
             // The global cache is only used if there are no opaque types in
             // the defining scope or we're outside of analysis.
             //
@@ -1537,14 +1543,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         if self.can_use_global_caches(param_env, cache_fresh_trait_pred) {
             if let Some(res) = tcx.selection_cache.get(&(infcx.typing_env(param_env), pred), tcx) {
-                Some(res)
-            } else {
-                debug_assert_eq!(infcx.selection_cache.get(&(param_env, pred), tcx), None);
-                None
+                return Some(res);
+            } else if cfg!(debug_assertions) {
+                match infcx.selection_cache.get(&(param_env, pred), tcx) {
+                    None | Some(Err(Overflow(OverflowError::Canonical))) => {}
+                    res => bug!("unexpected local cache result: {res:?}"),
+                }
             }
-        } else {
-            infcx.selection_cache.get(&(param_env, pred), tcx)
         }
+
+        // Subtle: we need to check the local cache even if we're able to use the
+        // global cache as we don't cache overflow in the global cache but need to
+        // cache it as otherwise rustdoc hangs when compiling diesel.
+        infcx.selection_cache.get(&(param_env, pred), tcx)
     }
 
     /// Determines whether can we safely cache the result
@@ -3209,7 +3220,7 @@ fn bind_coroutine_hidden_types_above<'tcx>(
             // Only remap erased regions if we use them.
             if considering_regions {
                 bty = bty.map_bound(|ty| {
-                    tcx.fold_regions(ty, |r, current_depth| match r.kind() {
+                    fold_regions(tcx, ty, |r, current_depth| match r.kind() {
                         ty::ReErased => {
                             let br = ty::BoundRegion {
                                 var: ty::BoundVar::from_u32(counter),

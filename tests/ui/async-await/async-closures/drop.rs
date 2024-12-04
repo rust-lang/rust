@@ -16,7 +16,7 @@ impl Drop for DropMe {
     }
 }
 
-async fn call_once(f: impl async FnOnce()) {
+async fn call_once(f: impl AsyncFnOnce()) {
     println!("before call");
     let fut = Box::pin(f());
     println!("after call");

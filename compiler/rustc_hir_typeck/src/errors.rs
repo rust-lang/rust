@@ -789,11 +789,20 @@ pub(crate) struct PassToVariadicFunction<'a, 'tcx> {
     pub span: Span,
     pub ty: Ty<'tcx>,
     pub cast_ty: &'a str,
-    #[suggestion(code = "{replace}", applicability = "machine-applicable")]
-    pub sugg_span: Option<Span>,
-    pub replace: String,
-    #[help]
-    pub help: bool,
+    #[suggestion(code = " as {cast_ty}", applicability = "machine-applicable", style = "verbose")]
+    pub sugg_span: Span,
     #[note(hir_typeck_teach_help)]
     pub(crate) teach: bool,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_typeck_fn_item_to_variadic_function, code = E0617)]
+#[help]
+#[note]
+pub(crate) struct PassFnItemToVariadicFunction {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(code = " as {replace}", applicability = "machine-applicable", style = "verbose")]
+    pub sugg_span: Span,
+    pub replace: String,
 }

@@ -51,7 +51,11 @@ impl PowerPCInlineAsmRegClass {
                 }
             }
             Self::freg => types! { _: F32, F64; },
-            Self::vreg => &[],
+            // FIXME: vsx also supports integers?: https://github.com/rust-lang/rust/pull/131551#discussion_r1862535963
+            Self::vreg => types! {
+                altivec: VecI8(16), VecI16(8), VecI32(4), VecF32(4);
+                vsx: F32, F64, VecI64(2), VecF64(2);
+            },
             Self::cr | Self::xer => &[],
         }
     }

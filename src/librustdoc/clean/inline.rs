@@ -367,7 +367,7 @@ pub(crate) fn build_impls(
     let tcx = cx.tcx;
 
     // for each implementation of an item represented by `did`, build the clean::Item for that impl
-    for &did in tcx.inherent_impls(did).into_iter() {
+    for &did in tcx.inherent_impls(did).iter() {
         cx.with_param_env(did, |cx| {
             build_impl(cx, did, attrs, ret);
         });
@@ -382,7 +382,7 @@ pub(crate) fn build_impls(
     if tcx.has_attr(did, sym::rustc_has_incoherent_inherent_impls) {
         let type_ =
             if tcx.is_trait(did) { SimplifiedType::Trait(did) } else { SimplifiedType::Adt(did) };
-        for &did in tcx.incoherent_impls(type_).into_iter() {
+        for &did in tcx.incoherent_impls(type_).iter() {
             cx.with_param_env(did, |cx| {
                 build_impl(cx, did, attrs, ret);
             });

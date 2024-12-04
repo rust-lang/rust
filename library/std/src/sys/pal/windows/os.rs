@@ -377,8 +377,8 @@ fn home_dir_crt() -> Option<PathBuf> {
 }
 
 pub fn home_dir() -> Option<PathBuf> {
-    crate::env::var_os("HOME")
-        .or_else(|| crate::env::var_os("USERPROFILE"))
+    crate::env::var_os("USERPROFILE")
+        .filter(|s| !s.is_empty())
         .map(PathBuf::from)
         .or_else(home_dir_crt)
 }

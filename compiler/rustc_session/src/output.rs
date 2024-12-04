@@ -87,7 +87,7 @@ pub fn find_crate_name(sess: &Session, attrs: &[ast::Attribute]) -> Symbol {
         }
     }
 
-    Symbol::intern("rust_out")
+    sym::rust_out
 }
 
 pub fn validate_crate_name(sess: &Session, s: Symbol, sp: Option<Span>) {

@@ -139,12 +139,14 @@ where
     match error {
         // Don't emit a new diagnostic for these errors, they are already reported elsewhere or
         // should remain silent.
+        err_inval!(AlreadyReported(info)) => ErrorHandled::Reported(info, span),
         err_inval!(Layout(LayoutError::Unknown(_))) | err_inval!(TooGeneric) => {
             ErrorHandled::TooGeneric(span)
         }
-        err_inval!(AlreadyReported(guar)) => ErrorHandled::Reported(guar, span),
         err_inval!(Layout(LayoutError::ReferencesError(guar))) => {
-            ErrorHandled::Reported(ReportedErrorInfo::tainted_by_errors(guar), span)
+            // This can occur in infallible promoteds e.g. when a non-existent type or field is
+            // encountered.
+            ErrorHandled::Reported(ReportedErrorInfo::allowed_in_infallible(guar), span)
         }
         // Report remaining errors.
         _ => {
@@ -152,7 +154,12 @@ where
             let span = span.substitute_dummy(our_span);
             let err = mk(span, frames);
             let mut err = tcx.dcx().create_err(err);
-            let can_be_spurious = matches!(error, InterpErrorKind::ResourceExhaustion(_));
+            // We allow invalid programs in infallible promoteds since invalid layouts can occur
+            // anyway (e.g. due to size overflow). And we allow OOM as that can happen any time.
+            let allowed_in_infallible = matches!(
+                error,
+                InterpErrorKind::ResourceExhaustion(_) | InterpErrorKind::InvalidProgram(_)
+            );
 
             let msg = error.diagnostic_message();
             error.add_args(&mut err);
@@ -160,8 +167,8 @@ where
             // Use *our* span to label the interp error
             err.span_label(our_span, msg);
             let g = err.emit();
-            let reported = if can_be_spurious {
-                ReportedErrorInfo::spurious(g)
+            let reported = if allowed_in_infallible {
+                ReportedErrorInfo::allowed_in_infallible(g)
             } else {
                 ReportedErrorInfo::from(g)
             };

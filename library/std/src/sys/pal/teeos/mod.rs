@@ -27,6 +27,14 @@ pub mod thread;
 #[path = "../unix/time.rs"]
 pub mod time;
 
+#[path = "../unix/sync"]
+pub mod sync {
+    mod condvar;
+    mod mutex;
+    pub use condvar::Condvar;
+    pub use mutex::Mutex;
+}
+
 use crate::io::ErrorKind;
 
 pub fn abort_internal() -> ! {

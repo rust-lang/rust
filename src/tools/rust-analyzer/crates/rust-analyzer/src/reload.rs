@@ -316,9 +316,7 @@ impl GlobalState {
                         LinkedProject::InlineJsonProject(it) => {
                             let workspace = project_model::ProjectWorkspace::load_inline(
                                 it.clone(),
-                                cargo_config.target.as_deref(),
-                                &cargo_config.extra_env,
-                                &cargo_config.cfg_overrides,
+                                &cargo_config,
                             );
                             Ok(workspace)
                         }

@@ -319,38 +319,35 @@ pub(crate) mod rustc {
         ) -> Result<Self, Err> {
             assert!(def.is_enum());
 
-            // Computes the variant of a given index.
-            let layout_of_variant = |index, encoding: Option<TagEncoding<VariantIdx>>| {
-                let tag = cx.tcx().tag_for_variant((cx.tcx().erase_regions(ty), index));
-                let variant_def = Def::Variant(def.variant(index));
-                let variant_layout = ty_variant(cx, (ty, layout), index);
-                Self::from_variant(
-                    variant_def,
-                    tag.map(|tag| (tag, index, encoding.unwrap())),
-                    (ty, variant_layout),
-                    layout.size,
-                    cx,
-                )
-            };
+            // Computes the layout of a variant.
+            let layout_of_variant =
+                |index, encoding: Option<TagEncoding<VariantIdx>>| -> Result<Self, Err> {
+                    let variant_layout = ty_variant(cx, (ty, layout), index);
+                    if variant_layout.is_uninhabited() {
+                        return Ok(Self::uninhabited());
+                    }
+                    let tag = cx.tcx().tag_for_variant((cx.tcx().erase_regions(ty), index));
+                    let variant_def = Def::Variant(def.variant(index));
+                    Self::from_variant(
+                        variant_def,
+                        tag.map(|tag| (tag, index, encoding.unwrap())),
+                        (ty, variant_layout),
+                        layout.size,
+                        cx,
+                    )
+                };
 
-            // We consider three kinds of enums, each demanding a different
-            // treatment of their layout computation:
-            // 1. enums that are uninhabited ZSTs
-            // 2. enums that delegate their layout to a variant
-            // 3. enums with multiple variants
             match layout.variants() {
-                Variants::Single { .. } if layout.is_uninhabited() && layout.size == Size::ZERO => {
-                    // The layout representation of uninhabited, ZST enums is
-                    // defined to be like that of the `!` type, as opposed of a
-                    // typical enum. Consequently, they cannot be descended into
-                    // as if they typical enums. We therefore special-case this
-                    // scenario and simply return an uninhabited `Tree`.
-                    Ok(Self::uninhabited())
-                }
                 Variants::Single { index } => {
-                    // `Variants::Single` on enums with variants denotes that
-                    // the enum delegates its layout to the variant at `index`.
-                    layout_of_variant(*index, None)
+                    // Hilariously, `Single` is used even for 0-variant enums;
+                    // `index` is just junk in that case.
+                    if ty.ty_adt_def().unwrap().variants().is_empty() {
+                        Ok(Self::uninhabited())
+                    } else {
+                        // `Variants::Single` on enums with variants denotes that
+                        // the enum delegates its layout to the variant at `index`.
+                        layout_of_variant(*index, None)
+                    }
                 }
                 Variants::Multiple { tag, tag_encoding, tag_field, .. } => {
                     // `Variants::Multiple` denotes an enum with multiple
@@ -369,7 +366,7 @@ pub(crate) mod rustc {
                         },
                     )?;
 
-                    return Ok(Self::def(Def::Adt(def)).then(variants));
+                    Ok(Self::def(Def::Adt(def)).then(variants))
                 }
             }
         }

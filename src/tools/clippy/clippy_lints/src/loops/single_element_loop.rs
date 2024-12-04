@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{indent_of, snippet, snippet_with_applicability};
 use clippy_utils::visitors::contains_break_or_continue;
 use rustc_ast::Mutability;
-use rustc_ast::util::parser::PREC_PREFIX;
+use rustc_ast::util::parser::ExprPrecedence;
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Pat, PatKind, is_range_literal};
 use rustc_lint::LateContext;
@@ -84,7 +84,7 @@ pub(super) fn check<'tcx>(
         if !prefix.is_empty()
             && (
                 // Precedence of internal expression is less than or equal to precedence of `&expr`.
-                arg_expression.precedence() <= PREC_PREFIX || is_range_literal(arg_expression)
+                arg_expression.precedence() <= ExprPrecedence::Prefix || is_range_literal(arg_expression)
             )
         {
             arg_snip = format!("({arg_snip})").into();

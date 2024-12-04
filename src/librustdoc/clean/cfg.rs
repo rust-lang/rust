@@ -391,7 +391,7 @@ fn write_with_opt_paren<T: fmt::Display>(
     Ok(())
 }
 
-impl<'a> fmt::Display for Display<'a> {
+impl fmt::Display for Display<'_> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self.0 {
             Cfg::Not(ref child) => match **child {

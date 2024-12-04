@@ -1,5 +1,5 @@
 use clippy_config::Conf;
-use clippy_utils::create_disallowed_map;
+use clippy_config::types::create_disallowed_map;
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefIdMap;

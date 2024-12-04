@@ -1,7 +1,7 @@
 use std::iter;
 use std::path::PathBuf;
 
-use rustc_ast::{AttrArgs, AttrArgsEq, AttrKind, Attribute, MetaItemInner};
+use rustc_ast::{AttrArgs, AttrKind, Attribute, MetaItemInner};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::codes::*;
 use rustc_errors::{ErrorGuaranteed, struct_span_code_err};
@@ -639,8 +639,7 @@ impl<'tcx> OnUnimplementedDirective {
                 let report_span = match &item.args {
                     AttrArgs::Empty => item.path.span,
                     AttrArgs::Delimited(args) => args.dspan.entire(),
-                    AttrArgs::Eq(eq_span, AttrArgsEq::Ast(expr)) => eq_span.to(expr.span),
-                    AttrArgs::Eq(span, AttrArgsEq::Hir(expr)) => span.to(expr.span),
+                    AttrArgs::Eq { eq_span, value } => eq_span.to(value.span()),
                 };
 
                 if let Some(item_def_id) = item_def_id.as_local() {

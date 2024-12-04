@@ -53,7 +53,8 @@ function isLinux {
 }
 
 function isKnownToBeMingwBuild {
-    isGitHubActions && [[ "${CI_JOB_NAME}" == *mingw ]]
+    # CI_JOB_NAME must end with "mingw" and optionally `-N` to be considered a MinGW build.
+    isGitHubActions && [[ "${CI_JOB_NAME}" =~ mingw(-[0-9]+)?$ ]]
 }
 
 function isCiBranch {

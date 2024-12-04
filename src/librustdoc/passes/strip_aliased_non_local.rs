@@ -21,7 +21,7 @@ struct AliasedNonLocalStripper<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl<'tcx> DocFolder for AliasedNonLocalStripper<'tcx> {
+impl DocFolder for AliasedNonLocalStripper<'_> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         Some(match i.kind {
             clean::TypeAliasItem(..) => {
@@ -39,7 +39,7 @@ struct NonLocalStripper<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl<'tcx> DocFolder for NonLocalStripper<'tcx> {
+impl DocFolder for NonLocalStripper<'_> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         // If not local, we want to respect the original visibility of
         // the field and not the one given by the user for the currrent crate.
@@ -50,7 +50,7 @@ impl<'tcx> DocFolder for NonLocalStripper<'tcx> {
         {
             if i.is_doc_hidden()
                 // Default to *not* stripping items with inherited visibility.
-                || i.visibility(self.tcx).map_or(false, |viz| viz != Visibility::Public)
+                || i.visibility(self.tcx).is_some_and(|viz| viz != Visibility::Public)
             {
                 return Some(strip_item(i));
             }

@@ -73,7 +73,7 @@ impl<'tcx> JsonRenderer<'tcx> {
                     .map(|i| {
                         let item = &i.impl_item;
                         self.item(item.clone()).unwrap();
-                        self.id_from_item(&item)
+                        self.id_from_item(item)
                     })
                     .collect()
             })
@@ -104,7 +104,7 @@ impl<'tcx> JsonRenderer<'tcx> {
 
                         if item.item_id.is_local() || is_primitive_impl {
                             self.item(item.clone()).unwrap();
-                            Some(self.id_from_item(&item))
+                            Some(self.id_from_item(item))
                         } else {
                             None
                         }
@@ -137,6 +137,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
     }
 
     const RUN_ON_MODULE: bool = false;
+    type ModuleData = ();
 
     fn init(
         krate: clean::Crate,
@@ -161,8 +162,12 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         ))
     }
 
-    fn make_child_renderer(&self) -> Self {
-        self.clone()
+    fn save_module_data(&mut self) -> Self::ModuleData {
+        unreachable!("RUN_ON_MODULE = false should never call save_module_data")
+    }
+
+    fn set_back_info(&mut self, _info: Self::ModuleData) {
+        unreachable!("RUN_ON_MODULE = false should never call set_back_info")
     }
 
     /// Inserts an item into the index. This should be used rather than directly calling insert on
@@ -223,7 +228,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 | types::ItemEnum::Macro(_)
                 | types::ItemEnum::ProcMacro(_) => false,
             };
-            let removed = self.index.borrow_mut().insert(new_item.id.clone(), new_item.clone());
+            let removed = self.index.borrow_mut().insert(new_item.id, new_item.clone());
 
             // FIXME(adotinthevoid): Currently, the index is duplicated. This is a sanity check
             // to make sure the items are unique. The main place this happens is when an item, is
@@ -289,7 +294,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
             format_version: types::FORMAT_VERSION,
         };
         if let Some(ref out_dir) = self.out_dir {
-            try_err!(create_dir_all(&out_dir), out_dir);
+            try_err!(create_dir_all(out_dir), out_dir);
 
             let mut p = out_dir.clone();
             p.push(output_crate.index.get(&output_crate.root).unwrap().name.clone().unwrap());

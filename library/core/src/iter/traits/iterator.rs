@@ -1553,7 +1553,7 @@ pub trait Iterator {
     ///
     /// # Panics
     ///
-    /// Panics if `N` is 0. This check will most probably get changed to a
+    /// Panics if `N` is zero. This check will most probably get changed to a
     /// compile time error before this method gets stabilized.
     ///
     /// ```should_panic
@@ -3454,7 +3454,7 @@ pub trait Iterator {
     ///
     /// # Panics
     ///
-    /// Panics if `N` is 0.
+    /// Panics if `N` is zero.
     ///
     /// # Examples
     ///

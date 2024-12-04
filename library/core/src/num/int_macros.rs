@@ -1152,7 +1152,6 @@ macro_rules! int_impl {
         )]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[cfg_attr(bootstrap, rustc_const_unstable(feature = "unchecked_neg", issue = "85122"))]
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_neg(self) -> Self {
@@ -1217,7 +1216,6 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
-        #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(unchecked_shifts))]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1282,7 +1280,6 @@ macro_rules! int_impl {
         )]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[cfg_attr(bootstrap, rustc_const_unstable(feature = "unchecked_shifts", issue = "85122"))]
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_shl(self, rhs: u32) -> Self {
@@ -1340,7 +1337,6 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
-        #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(unchecked_shifts))]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1405,7 +1401,6 @@ macro_rules! int_impl {
         )]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[cfg_attr(bootstrap, rustc_const_unstable(feature = "unchecked_shifts", issue = "85122"))]
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_shr(self, rhs: u32) -> Self {
@@ -1613,8 +1608,8 @@ macro_rules! int_impl {
         /// ```
         #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".checked_isqrt(), Some(3));")]
         /// ```
-        #[stable(feature = "isqrt", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "isqrt", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "isqrt", since = "1.84.0")]
+        #[rustc_const_stable(feature = "isqrt", since = "1.84.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1828,7 +1823,7 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0.
+        /// This function will panic if `rhs` is zero.
         ///
         /// # Examples
         ///
@@ -1986,7 +1981,7 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0.
+        /// This function will panic if `rhs` is zero.
         ///
         /// # Examples
         ///
@@ -2014,7 +2009,7 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0.
+        /// This function will panic if `rhs` is zero.
         ///
         /// # Examples
         ///
@@ -2042,7 +2037,7 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0.
+        /// This function will panic if `rhs` is zero.
         ///
         /// # Examples
         ///
@@ -2069,7 +2064,7 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0.
+        /// This function will panic if `rhs` is zero.
         ///
         /// # Examples
         ///
@@ -2134,7 +2129,6 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
-        #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(unchecked_shifts))]
         pub const fn wrapping_shl(self, rhs: u32) -> Self {
             // SAFETY: the masking by the bitsize of the type ensures that we do not shift
             // out of bounds
@@ -2164,7 +2158,6 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
-        #[cfg_attr(bootstrap, rustc_allow_const_fn_unstable(unchecked_shifts))]
         pub const fn wrapping_shr(self, rhs: u32) -> Self {
             // SAFETY: the masking by the bitsize of the type ensures that we do not shift
             // out of bounds
@@ -2526,7 +2519,7 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0.
+        /// This function will panic if `rhs` is zero.
         ///
         /// # Examples
         ///
@@ -2557,7 +2550,7 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0.
+        /// This function will panic if `rhs` is zero.
         ///
         /// # Examples
         ///
@@ -2588,7 +2581,7 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0.
+        /// This function will panic if `rhs` is zero.
         ///
         /// # Examples
         ///
@@ -2619,7 +2612,7 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0.
+        /// This function will panic if `rhs` is zero.
         ///
         /// # Examples
         ///
@@ -2860,8 +2853,8 @@ macro_rules! int_impl {
         /// ```
         #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".isqrt(), 3);")]
         /// ```
-        #[stable(feature = "isqrt", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "isqrt", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "isqrt", since = "1.84.0")]
+        #[rustc_const_stable(feature = "isqrt", since = "1.84.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -2887,7 +2880,7 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0 or if `self` is `Self::MIN`
+        /// This function will panic if `rhs` is zero or if `self` is `Self::MIN`
         /// and `rhs` is -1. This behavior is not affected by the `overflow-checks` flag.
         ///
         /// # Examples
@@ -2926,7 +2919,7 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0 or if `self` is `Self::MIN` and
+        /// This function will panic if `rhs` is zero or if `self` is `Self::MIN` and
         /// `rhs` is -1. This behavior is not affected by the `overflow-checks` flag.
         ///
         /// # Examples
@@ -2975,7 +2968,7 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0 or if `self` is `Self::MIN`
+        /// This function will panic if `rhs` is zero or if `self` is `Self::MIN`
         /// and `rhs` is -1. This behavior is not affected by the `overflow-checks` flag.
         ///
         /// # Examples
@@ -3019,7 +3012,7 @@ macro_rules! int_impl {
         ///
         /// # Panics
         ///
-        /// This function will panic if `rhs` is 0 or if `self` is `Self::MIN`
+        /// This function will panic if `rhs` is zero or if `self` is `Self::MIN`
         /// and `rhs` is -1. This behavior is not affected by the `overflow-checks` flag.
         ///
         /// # Examples

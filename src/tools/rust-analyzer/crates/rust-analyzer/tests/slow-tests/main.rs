@@ -1085,6 +1085,7 @@ fn resolve_proc_macro() {
     let sysroot = project_model::Sysroot::discover(
         &AbsPathBuf::assert_utf8(std::env::current_dir().unwrap()),
         &Default::default(),
+        project_model::SysrootQueryMetadata::CargoMetadata,
     );
 
     let proc_macro_server_path = sysroot.discover_proc_macro_srv().unwrap();

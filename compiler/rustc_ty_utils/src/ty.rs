@@ -5,6 +5,7 @@ use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
+use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::{
     self, EarlyBinder, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, Upcast,
 };
@@ -197,7 +198,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
             // We have entered some binders as we've walked into the
             // bounds of the RPITIT. Shift these binders back out when
             // constructing the top-level projection predicate.
-            let shifted_alias_ty = self.tcx.fold_regions(unshifted_alias_ty, |re, depth| {
+            let shifted_alias_ty = fold_regions(self.tcx, unshifted_alias_ty, |re, depth| {
                 if let ty::ReBound(index, bv) = re.kind() {
                     if depth != ty::INNERMOST {
                         return ty::Region::new_error_with_message(

@@ -645,6 +645,7 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
             | Arm(ArmInlineAsmRegClass::qreg_low4) => "x",
             Arm(ArmInlineAsmRegClass::dreg) | Arm(ArmInlineAsmRegClass::qreg) => "w",
             Hexagon(HexagonInlineAsmRegClass::reg) => "r",
+            Hexagon(HexagonInlineAsmRegClass::preg) => unreachable!("clobber-only"),
             LoongArch(LoongArchInlineAsmRegClass::reg) => "r",
             LoongArch(LoongArchInlineAsmRegClass::freg) => "f",
             Mips(MipsInlineAsmRegClass::reg) => "r",
@@ -655,9 +656,8 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
             PowerPC(PowerPCInlineAsmRegClass::reg) => "r",
             PowerPC(PowerPCInlineAsmRegClass::reg_nonzero) => "b",
             PowerPC(PowerPCInlineAsmRegClass::freg) => "f",
-            PowerPC(PowerPCInlineAsmRegClass::cr)
-            | PowerPC(PowerPCInlineAsmRegClass::xer)
-            | PowerPC(PowerPCInlineAsmRegClass::vreg) => {
+            PowerPC(PowerPCInlineAsmRegClass::vreg) => "v",
+            PowerPC(PowerPCInlineAsmRegClass::cr) | PowerPC(PowerPCInlineAsmRegClass::xer) => {
                 unreachable!("clobber-only")
             }
             RiscV(RiscVInlineAsmRegClass::reg) => "r",
@@ -813,6 +813,7 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
         | Arm(ArmInlineAsmRegClass::qreg_low8)
         | Arm(ArmInlineAsmRegClass::qreg_low4) => cx.type_vector(cx.type_i64(), 2),
         Hexagon(HexagonInlineAsmRegClass::reg) => cx.type_i32(),
+        Hexagon(HexagonInlineAsmRegClass::preg) => unreachable!("clobber-only"),
         LoongArch(LoongArchInlineAsmRegClass::reg) => cx.type_i32(),
         LoongArch(LoongArchInlineAsmRegClass::freg) => cx.type_f32(),
         Mips(MipsInlineAsmRegClass::reg) => cx.type_i32(),
@@ -823,9 +824,8 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
         PowerPC(PowerPCInlineAsmRegClass::reg) => cx.type_i32(),
         PowerPC(PowerPCInlineAsmRegClass::reg_nonzero) => cx.type_i32(),
         PowerPC(PowerPCInlineAsmRegClass::freg) => cx.type_f64(),
-        PowerPC(PowerPCInlineAsmRegClass::cr)
-        | PowerPC(PowerPCInlineAsmRegClass::xer)
-        | PowerPC(PowerPCInlineAsmRegClass::vreg) => {
+        PowerPC(PowerPCInlineAsmRegClass::vreg) => cx.type_vector(cx.type_i32(), 4),
+        PowerPC(PowerPCInlineAsmRegClass::cr) | PowerPC(PowerPCInlineAsmRegClass::xer) => {
             unreachable!("clobber-only")
         }
         RiscV(RiscVInlineAsmRegClass::reg) => cx.type_i32(),
@@ -1040,6 +1040,26 @@ fn llvm_fixup_input<'ll, 'tcx>(
             let value = bx.or(value, bx.const_u32(0xFFFF_0000));
             bx.bitcast(value, bx.type_f32())
         }
+        (PowerPC(PowerPCInlineAsmRegClass::vreg), BackendRepr::Scalar(s))
+            if s.primitive() == Primitive::Float(Float::F32) =>
+        {
+            let value = bx.insert_element(
+                bx.const_undef(bx.type_vector(bx.type_f32(), 4)),
+                value,
+                bx.const_usize(0),
+            );
+            bx.bitcast(value, bx.type_vector(bx.type_f32(), 4))
+        }
+        (PowerPC(PowerPCInlineAsmRegClass::vreg), BackendRepr::Scalar(s))
+            if s.primitive() == Primitive::Float(Float::F64) =>
+        {
+            let value = bx.insert_element(
+                bx.const_undef(bx.type_vector(bx.type_f64(), 2)),
+                value,
+                bx.const_usize(0),
+            );
+            bx.bitcast(value, bx.type_vector(bx.type_f64(), 2))
+        }
         _ => value,
     }
 }
@@ -1175,6 +1195,18 @@ fn llvm_fixup_output<'ll, 'tcx>(
             let value = bx.trunc(value, bx.type_i16());
             bx.bitcast(value, bx.type_f16())
         }
+        (PowerPC(PowerPCInlineAsmRegClass::vreg), BackendRepr::Scalar(s))
+            if s.primitive() == Primitive::Float(Float::F32) =>
+        {
+            let value = bx.bitcast(value, bx.type_vector(bx.type_f32(), 4));
+            bx.extract_element(value, bx.const_usize(0))
+        }
+        (PowerPC(PowerPCInlineAsmRegClass::vreg), BackendRepr::Scalar(s))
+            if s.primitive() == Primitive::Float(Float::F64) =>
+        {
+            let value = bx.bitcast(value, bx.type_vector(bx.type_f64(), 2));
+            bx.extract_element(value, bx.const_usize(0))
+        }
         _ => value,
     }
 }
@@ -1298,6 +1330,16 @@ fn llvm_fixup_output_type<'ll, 'tcx>(
                 && !any_target_feature_enabled(cx, instance, &[sym::zfhmin, sym::zfh]) =>
         {
             cx.type_f32()
+        }
+        (PowerPC(PowerPCInlineAsmRegClass::vreg), BackendRepr::Scalar(s))
+            if s.primitive() == Primitive::Float(Float::F32) =>
+        {
+            cx.type_vector(cx.type_f32(), 4)
+        }
+        (PowerPC(PowerPCInlineAsmRegClass::vreg), BackendRepr::Scalar(s))
+            if s.primitive() == Primitive::Float(Float::F64) =>
+        {
+            cx.type_vector(cx.type_f64(), 2)
         }
         _ => layout.llvm_type(cx),
     }

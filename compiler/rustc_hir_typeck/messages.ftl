@@ -79,6 +79,11 @@ hir_typeck_field_multiply_specified_in_initializer =
     .label = used more than once
     .previous_use_label = first use of `{$ident}`
 
+hir_typeck_fn_item_to_variadic_function = can't pass a function item to a variadic function
+    .suggestion = use a function pointer instead
+    .help = a function item is zero-sized and needs to be cast into a function pointer to be used in FFI
+    .note = for more information on function items, visit https://doc.rust-lang.org/reference/types/function-item.html
+
 hir_typeck_fru_expr = this expression does not end in a comma...
 hir_typeck_fru_expr2 = ... so this is interpreted as a `..` range expression, instead of functional record update syntax
 hir_typeck_fru_note = this expression may have been misinterpreted as a `..` range expression
@@ -141,7 +146,6 @@ hir_typeck_option_result_copied = use `{$def_path}::copied` to copy the value in
 
 hir_typeck_pass_to_variadic_function = can't pass `{$ty}` to variadic function
     .suggestion = cast the value to `{$cast_ty}`
-    .help = cast the value to `{$cast_ty}`
     .teach_help = certain types, like `{$ty}`, must be casted before passing them to a variadic function, because of arcane ABI rules dictated by the C standard
 
 hir_typeck_ptr_cast_add_auto_to_object = adding {$traits_len ->

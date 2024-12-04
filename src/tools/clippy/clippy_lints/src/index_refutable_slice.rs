@@ -1,8 +1,8 @@
 use clippy_config::Conf;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::IfLet;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::ty::is_copy;
 use clippy_utils::{is_expn_of, is_lint_allowed, path_to_local};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};

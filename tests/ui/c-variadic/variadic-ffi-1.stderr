@@ -1,4 +1,4 @@
-error[E0045]: C-variadic function must have a compatible calling convention, like `C` or `cdecl`
+error[E0045]: C-variadic function must have a compatible calling convention, like `C`, `cdecl`, `system`, `aapcs`, `win64`, `sysv64` or `efiapi`
   --> $DIR/variadic-ffi-1.rs:9:5
    |
 LL |     fn printf(_: *const u8, ...);
@@ -62,37 +62,67 @@ error[E0617]: can't pass `f32` to variadic function
   --> $DIR/variadic-ffi-1.rs:28:19
    |
 LL |         foo(1, 2, 3f32);
-   |                   ^^^^ help: cast the value to `c_double`: `3f32 as c_double`
+   |                   ^^^^
+   |
+help: cast the value to `c_double`
+   |
+LL |         foo(1, 2, 3f32 as c_double);
+   |                        +++++++++++
 
 error[E0617]: can't pass `bool` to variadic function
   --> $DIR/variadic-ffi-1.rs:29:19
    |
 LL |         foo(1, 2, true);
-   |                   ^^^^ help: cast the value to `c_int`: `true as c_int`
+   |                   ^^^^
+   |
+help: cast the value to `c_int`
+   |
+LL |         foo(1, 2, true as c_int);
+   |                        ++++++++
 
 error[E0617]: can't pass `i8` to variadic function
   --> $DIR/variadic-ffi-1.rs:30:19
    |
 LL |         foo(1, 2, 1i8);
-   |                   ^^^ help: cast the value to `c_int`: `1i8 as c_int`
+   |                   ^^^
+   |
+help: cast the value to `c_int`
+   |
+LL |         foo(1, 2, 1i8 as c_int);
+   |                       ++++++++
 
 error[E0617]: can't pass `u8` to variadic function
   --> $DIR/variadic-ffi-1.rs:31:19
    |
 LL |         foo(1, 2, 1u8);
-   |                   ^^^ help: cast the value to `c_uint`: `1u8 as c_uint`
+   |                   ^^^
+   |
+help: cast the value to `c_uint`
+   |
+LL |         foo(1, 2, 1u8 as c_uint);
+   |                       +++++++++
 
 error[E0617]: can't pass `i16` to variadic function
   --> $DIR/variadic-ffi-1.rs:32:19
    |
 LL |         foo(1, 2, 1i16);
-   |                   ^^^^ help: cast the value to `c_int`: `1i16 as c_int`
+   |                   ^^^^
+   |
+help: cast the value to `c_int`
+   |
+LL |         foo(1, 2, 1i16 as c_int);
+   |                        ++++++++
 
 error[E0617]: can't pass `u16` to variadic function
   --> $DIR/variadic-ffi-1.rs:33:19
    |
 LL |         foo(1, 2, 1u16);
-   |                   ^^^^ help: cast the value to `c_uint`: `1u16 as c_uint`
+   |                   ^^^^
+   |
+help: cast the value to `c_uint`
+   |
+LL |         foo(1, 2, 1u16 as c_uint);
+   |                        +++++++++
 
 error: aborting due to 11 previous errors
 

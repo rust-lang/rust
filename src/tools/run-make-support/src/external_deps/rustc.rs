@@ -227,6 +227,12 @@ impl Rustc {
         self
     }
 
+    /// Normalize the line number in the stderr output
+    pub fn ui_testing(&mut self) -> &mut Self {
+        self.cmd.arg(format!("-Zui-testing"));
+        self
+    }
+
     /// Specify the target triple, or a path to a custom target json spec file.
     pub fn target<S: AsRef<str>>(&mut self, target: S) -> &mut Self {
         let target = target.as_ref();

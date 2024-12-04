@@ -144,7 +144,7 @@ struct TokenHandler<'a, 'tcx, F: Write> {
     href_context: Option<HrefContext<'a, 'tcx>>,
 }
 
-impl<'a, 'tcx, F: Write> TokenHandler<'a, 'tcx, F> {
+impl<F: Write> TokenHandler<'_, '_, F> {
     fn handle_exit_span(&mut self) {
         // We can't get the last `closing_tags` element using `pop()` because `closing_tags` is
         // being used in `write_pending_elems`.
@@ -207,7 +207,7 @@ impl<'a, 'tcx, F: Write> TokenHandler<'a, 'tcx, F> {
     }
 }
 
-impl<'a, 'tcx, F: Write> Drop for TokenHandler<'a, 'tcx, F> {
+impl<F: Write> Drop for TokenHandler<'_, '_, F> {
     /// When leaving, we need to flush all pending data to not have missing content.
     fn drop(&mut self) {
         if self.pending_exit_span.is_some() {
@@ -1017,7 +1017,7 @@ fn string_without_closing_tag<T: Display>(
                     .ok()
                     .map(|(url, _, _)| url),
                     LinkFromSrc::Doc(def_id) => {
-                        format::href_with_root_path(*def_id, context, Some(&href_context.root_path))
+                        format::href_with_root_path(*def_id, context, Some(href_context.root_path))
                             .ok()
                             .map(|(doc_link, _, _)| doc_link)
                     }

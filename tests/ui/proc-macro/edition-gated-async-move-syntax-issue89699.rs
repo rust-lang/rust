@@ -1,4 +1,4 @@
-//@ aux-build:edition-gated-async-move-syntax.rs
+//@ proc-macro: edition-gated-async-move-syntax.rs
 //@ edition: 2015
 
 // Non-regression test for issue #89699, where a proc-macro emitting syntax only available in

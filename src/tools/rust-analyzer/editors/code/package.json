@@ -819,6 +819,24 @@
             {
                 "title": "cargo",
                 "properties": {
+                    "rust-analyzer.cargo.sysrootQueryMetadata": {
+                        "markdownDescription": "How to query metadata for the sysroot crate. Using cargo metadata allows rust-analyzer\nto analyze third-party dependencies of the standard libraries.",
+                        "default": "cargo_metadata",
+                        "type": "string",
+                        "enum": [
+                            "none",
+                            "cargo_metadata"
+                        ],
+                        "enumDescriptions": [
+                            "Do not query sysroot metadata, always use stitched sysroot.",
+                            "Use `cargo metadata` to query sysroot metadata."
+                        ]
+                    }
+                }
+            },
+            {
+                "title": "cargo",
+                "properties": {
                     "rust-analyzer.cargo.sysrootSrc": {
                         "markdownDescription": "Relative path to the sysroot library sources. If left unset, this will default to\n`{cargo.sysroot}/lib/rustlib/src/rust/library`.\n\nThis option does not take effect until rust-analyzer is restarted.",
                         "default": null,

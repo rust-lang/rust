@@ -16,7 +16,7 @@ BE8 architecture is the default big-endian architecture for Arm since [Armv6](ht
 The target is cross-compiled. This target supports `std` in the normal way (indeed only nominal changes are required from the standard Arm configuration).
 
 ## Target definition
-The target definition can be seen [here](https://github.com/rust-lang/rust/tree/master/compiler/rustc_target/src/spec/armeb_unknown_linux_gnueabi.rs). In particular, it should be noted that the `features` specify that this target is built for the Armv8 core. Though this can likely be modified as required.
+The target definition can be seen [here](https://github.com/rust-lang/rust/blob/master/compiler/rustc_target/src/spec/targets/armeb_unknown_linux_gnueabi.rs). In particular, it should be noted that the `features` specify that this target is built for the Armv8 core. Though this can likely be modified as required.
 
 ## Building the target
 Because it is Tier 3, rust does not yet ship pre-compiled artifacts for this target.

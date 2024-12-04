@@ -1,6 +1,6 @@
 // Same as rustc's `tests/ui/async-await/async-closures/captures.rs`, keep in sync
 
-#![feature(async_closure, noop_waker)]
+#![feature(async_closure, noop_waker, async_trait_bounds)]
 
 use std::future::Future;
 use std::pin::pin;

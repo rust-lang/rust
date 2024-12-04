@@ -440,20 +440,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty: Ty<'tcx>,
                     cast_ty: &str,
                 ) {
-                    let (sugg_span, replace, help) =
-                        if let Ok(snippet) = sess.source_map().span_to_snippet(span) {
-                            (Some(span), format!("{snippet} as {cast_ty}"), false)
-                        } else {
-                            (None, "".to_string(), true)
-                        };
-
                     sess.dcx().emit_err(errors::PassToVariadicFunction {
                         span,
                         ty,
                         cast_ty,
-                        help,
-                        replace,
-                        sugg_span,
+                        sugg_span: span.shrink_to_hi(),
                         teach: sess.teach(E0617),
                     });
                 }
@@ -472,9 +463,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         variadic_error(tcx.sess, arg.span, arg_ty, "c_uint");
                     }
                     ty::FnDef(..) => {
-                        let ptr_ty = Ty::new_fn_ptr(self.tcx, arg_ty.fn_sig(self.tcx));
-                        let ptr_ty = self.resolve_vars_if_possible(ptr_ty);
-                        variadic_error(tcx.sess, arg.span, arg_ty, &ptr_ty.to_string());
+                        let fn_ptr = Ty::new_fn_ptr(self.tcx, arg_ty.fn_sig(self.tcx));
+                        let fn_ptr = self.resolve_vars_if_possible(fn_ptr).to_string();
+
+                        let fn_item_spa = arg.span;
+                        tcx.sess.dcx().emit_err(errors::PassFnItemToVariadicFunction {
+                            span: fn_item_spa,
+                            sugg_span: fn_item_spa.shrink_to_hi(),
+                            replace: fn_ptr,
+                        });
                     }
                     _ => {}
                 }

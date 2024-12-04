@@ -908,6 +908,11 @@ pub(crate) struct QueryUntracked {
 pub(crate) struct SpanUseEqCtxtDiag;
 
 #[derive(LintDiagnostic)]
+#[diag(lint_symbol_intern_string_literal)]
+#[help]
+pub(crate) struct SymbolInternStringLiteralDiag;
+
+#[derive(LintDiagnostic)]
 #[diag(lint_tykind_kind)]
 pub(crate) struct TykindKind {
     #[suggestion(code = "ty", applicability = "maybe-incorrect")]
@@ -3056,6 +3061,13 @@ pub(crate) struct UnqualifiedLocalImportsDiag {}
 #[derive(LintDiagnostic)]
 #[diag(lint_reserved_string)]
 pub(crate) struct ReservedString {
+    #[suggestion(code = " ", applicability = "machine-applicable")]
+    pub suggestion: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_reserved_multihash)]
+pub(crate) struct ReservedMultihash {
     #[suggestion(code = " ", applicability = "machine-applicable")]
     pub suggestion: Span,
 }

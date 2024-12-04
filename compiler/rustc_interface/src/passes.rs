@@ -830,7 +830,6 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                     tcx.ensure().check_mod_attrs(module);
                     tcx.ensure().check_mod_naked_functions(module);
                     tcx.ensure().check_mod_unstable_api_usage(module);
-                    tcx.ensure().check_mod_const_bodies(module);
                 });
             },
             {

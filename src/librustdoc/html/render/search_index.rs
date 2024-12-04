@@ -55,10 +55,10 @@ pub(crate) struct SerializedSearchIndex {
 const DESC_INDEX_SHARD_LEN: usize = 128 * 1024;
 
 /// Builds the search index from the collected metadata
-pub(crate) fn build_index<'tcx>(
+pub(crate) fn build_index(
     krate: &clean::Crate,
     cache: &mut Cache,
-    tcx: TyCtxt<'tcx>,
+    tcx: TyCtxt<'_>,
 ) -> SerializedSearchIndex {
     // Maps from ID to position in the `crate_paths` array.
     let mut itemid_to_pathid = FxHashMap::default();
@@ -126,7 +126,7 @@ pub(crate) fn build_index<'tcx>(
     let mut lastpathid = 0isize;
 
     // First, on function signatures
-    let mut search_index = std::mem::replace(&mut cache.search_index, Vec::new());
+    let mut search_index = std::mem::take(&mut cache.search_index);
     for item in search_index.iter_mut() {
         fn insert_into_map<F: std::hash::Hash + Eq>(
             map: &mut FxHashMap<F, isize>,
@@ -194,7 +194,7 @@ pub(crate) fn build_index<'tcx>(
                     {
                         let exact_fqp = exact_paths
                             .get(&defid)
-                            .or_else(|| external_paths.get(&defid).map(|&(ref fqp, _)| fqp))
+                            .or_else(|| external_paths.get(&defid).map(|(fqp, _)| fqp))
                             // Re-exports only count if the name is exactly the same.
                             // This is a size optimization, since it means we only need
                             // to store the name once (and the path is re-used for everything
@@ -298,7 +298,7 @@ pub(crate) fn build_index<'tcx>(
                     true
                 });
             }
-            let Some(id) = ty.id.clone() else {
+            let Some(id) = ty.id else {
                 assert!(ty.generics.is_some());
                 return;
             };
@@ -372,7 +372,7 @@ pub(crate) fn build_index<'tcx>(
                         if let Some(&(ref fqp, short)) = paths.get(&defid) {
                             let exact_fqp = exact_paths
                                 .get(&defid)
-                                .or_else(|| external_paths.get(&defid).map(|&(ref fqp, _)| fqp))
+                                .or_else(|| external_paths.get(&defid).map(|(fqp, _)| fqp))
                                 .filter(|exact_fqp| {
                                     exact_fqp.last() == Some(&item.name) && *exact_fqp != fqp
                                 });
@@ -397,7 +397,7 @@ pub(crate) fn build_index<'tcx>(
                 // Their parent carries the exact fqp instead.
                 let exact_fqp = exact_paths
                     .get(&defid)
-                    .or_else(|| external_paths.get(&defid).map(|&(ref fqp, _)| fqp));
+                    .or_else(|| external_paths.get(&defid).map(|(fqp, _)| fqp));
                 item.exact_path = exact_fqp.and_then(|fqp| {
                     // Re-exports only count if the name is exactly the same.
                     // This is a size optimization, since it means we only need
@@ -426,7 +426,7 @@ pub(crate) fn build_index<'tcx>(
             }
 
             // Omit the parent path if it is same to that of the prior item.
-            if lastpath == &item.path {
+            if lastpath == item.path {
                 item.path.clear();
             } else {
                 lastpath = &item.path;
@@ -512,7 +512,7 @@ pub(crate) fn build_index<'tcx>(
         }
     }
 
-    impl<'a> Serialize for CrateData<'a> {
+    impl Serialize for CrateData<'_> {
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where
             S: Serializer,
@@ -640,7 +640,7 @@ pub(crate) fn build_index<'tcx>(
             let mut last_name = None;
             for (index, item) in self.items.iter().enumerate() {
                 let n = item.ty as u8;
-                let c = char::try_from(n + b'A').expect("item types must fit in ASCII");
+                let c = char::from(n + b'A');
                 assert!(c <= 'z', "item types must fit within ASCII printables");
                 types.push(c);
 
@@ -741,22 +741,22 @@ pub(crate) fn build_index<'tcx>(
         let mut len: usize = 0;
         let mut item_index: u32 = 0;
         for desc in std::iter::once(&crate_doc).chain(crate_items.iter().map(|item| &item.desc)) {
-            if desc == "" {
+            if desc.is_empty() {
                 empty_desc.push(item_index);
                 item_index += 1;
                 continue;
             }
             if set.len() >= DESC_INDEX_SHARD_LEN {
-                result.push((len, std::mem::replace(&mut set, String::new())));
+                result.push((len, std::mem::take(&mut set)));
                 len = 0;
             } else if len != 0 {
                 set.push('\n');
             }
-            set.push_str(&desc);
+            set.push_str(desc);
             len += 1;
             item_index += 1;
         }
-        result.push((len, std::mem::replace(&mut set, String::new())));
+        result.push((len, std::mem::take(&mut set)));
         (empty_desc, result)
     };
 
@@ -792,9 +792,9 @@ pub(crate) fn build_index<'tcx>(
     SerializedSearchIndex { index, desc }
 }
 
-pub(crate) fn get_function_type_for_search<'tcx>(
+pub(crate) fn get_function_type_for_search(
     item: &clean::Item,
-    tcx: TyCtxt<'tcx>,
+    tcx: TyCtxt<'_>,
     impl_generics: Option<&(clean::Type, clean::Generics)>,
     parent: Option<DefId>,
     cache: &Cache,
@@ -861,7 +861,7 @@ fn get_index_type_id(
     match *clean_type {
         clean::Type::Path { ref path, .. } => Some(RenderTypeId::DefId(path.def_id())),
         clean::DynTrait(ref bounds, _) => {
-            bounds.get(0).map(|b| RenderTypeId::DefId(b.trait_.def_id()))
+            bounds.first().map(|b| RenderTypeId::DefId(b.trait_.def_id()))
         }
         clean::Primitive(p) => Some(RenderTypeId::Primitive(p)),
         clean::BorrowedRef { .. } => Some(RenderTypeId::Primitive(clean::PrimitiveType::Reference)),
@@ -953,7 +953,7 @@ fn simplify_fn_type<'a, 'tcx>(
                 WherePredicate::BoundPredicate { ty, .. } => *ty == *arg,
                 _ => false,
             }) {
-                let bounds = where_pred.get_bounds().unwrap_or_else(|| &[]);
+                let bounds = where_pred.get_bounds().unwrap_or(&[]);
                 for bound in bounds.iter() {
                     if let Some(path) = bound.get_trait_path() {
                         let ty = Type::Path { path };
@@ -1043,7 +1043,7 @@ fn simplify_fn_type<'a, 'tcx>(
             simplify_fn_type(
                 self_,
                 generics,
-                &ty,
+                ty,
                 tcx,
                 recurse + 1,
                 &mut ty_generics,
@@ -1058,7 +1058,7 @@ fn simplify_fn_type<'a, 'tcx>(
             simplify_fn_type(
                 self_,
                 generics,
-                &ty,
+                ty,
                 tcx,
                 recurse + 1,
                 &mut ty_generics,
@@ -1074,7 +1074,7 @@ fn simplify_fn_type<'a, 'tcx>(
                 simplify_fn_type(
                     self_,
                     generics,
-                    &ty,
+                    ty,
                     tcx,
                     recurse + 1,
                     &mut ty_generics,
@@ -1117,7 +1117,7 @@ fn simplify_fn_type<'a, 'tcx>(
             );
             let ty_bindings = vec![(RenderTypeId::AssociatedType(sym::Output), ty_output)];
             res.push(RenderType {
-                id: get_index_type_id(&arg, rgen),
+                id: get_index_type_id(arg, rgen),
                 bindings: Some(ty_bindings),
                 generics: Some(ty_generics),
             });
@@ -1134,7 +1134,7 @@ fn simplify_fn_type<'a, 'tcx>(
             simplify_fn_type(
                 self_,
                 generics,
-                &type_,
+                type_,
                 tcx,
                 recurse + 1,
                 &mut ty_generics,
@@ -1249,7 +1249,7 @@ fn simplify_fn_type<'a, 'tcx>(
                     }
                 }
             }
-            let id = get_index_type_id(&arg, rgen);
+            let id = get_index_type_id(arg, rgen);
             if id.is_some() || !ty_generics.is_empty() {
                 res.push(RenderType {
                     id,
@@ -1261,11 +1261,11 @@ fn simplify_fn_type<'a, 'tcx>(
     }
 }
 
-fn simplify_fn_constraint<'a, 'tcx>(
+fn simplify_fn_constraint<'a>(
     self_: Option<&'a Type>,
     generics: &Generics,
     constraint: &'a clean::AssocItemConstraint,
-    tcx: TyCtxt<'tcx>,
+    tcx: TyCtxt<'_>,
     recurse: usize,
     res: &mut Vec<(RenderTypeId, Vec<RenderType>)>,
     rgen: &mut FxIndexMap<SimplifiedParam, (isize, Vec<RenderType>)>,
@@ -1347,9 +1347,9 @@ fn simplify_fn_constraint<'a, 'tcx>(
 ///
 /// i.e. `fn foo<A: Display, B: Option<A>>(x: u32, y: B)` will return
 /// `[u32, Display, Option]`.
-fn get_fn_inputs_and_outputs<'tcx>(
+fn get_fn_inputs_and_outputs(
     func: &Function,
-    tcx: TyCtxt<'tcx>,
+    tcx: TyCtxt<'_>,
     impl_or_trait_generics: Option<&(clean::Type, clean::Generics)>,
     cache: &Cache,
 ) -> (Vec<RenderType>, Vec<RenderType>, Vec<Symbol>, Vec<Vec<RenderType>>) {
