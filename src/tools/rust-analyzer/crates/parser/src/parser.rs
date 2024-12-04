@@ -258,22 +258,25 @@ impl<'t> Parser<'t> {
         self.err_recover(message, TokenSet::EMPTY);
     }
 
-    /// Create an error node and consume the next token.
-    pub(crate) fn err_recover(&mut self, message: &str, recovery: TokenSet) {
+    /// Create an error node and consume the next token unless it is in the recovery set.
+    ///
+    /// Returns true if recovery kicked in.
+    pub(crate) fn err_recover(&mut self, message: &str, recovery: TokenSet) -> bool {
         if matches!(self.current(), T!['{'] | T!['}']) {
             self.error(message);
-            return;
+            return true;
         }
 
         if self.at_ts(recovery) {
             self.error(message);
-            return;
+            return true;
         }
 
         let m = self.start();
         self.error(message);
         self.bump_any();
         m.complete(self, ERROR);
+        false
     }
 
     fn do_bump(&mut self, kind: SyntaxKind, n_raw_tokens: u8) {

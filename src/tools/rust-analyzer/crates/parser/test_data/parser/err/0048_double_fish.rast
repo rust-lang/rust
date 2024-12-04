@@ -39,8 +39,9 @@ SOURCE_FILE
                                         IDENT "lol"
                               R_ANGLE ">"
                         COLON2 "::"
-                        ERROR
-                          L_ANGLE "<"
+                        PATH_SEGMENT
+                          ERROR
+                            L_ANGLE "<"
                   TYPE_ARG
                     PATH_TYPE
                       PATH
@@ -91,8 +92,9 @@ SOURCE_FILE
                               IDENT "lol"
                     R_ANGLE ">"
               COLON2 "::"
-              ERROR
-                L_ANGLE "<"
+              PATH_SEGMENT
+                ERROR
+                  L_ANGLE "<"
         EXPR_STMT
           BIN_EXPR
             PATH_EXPR

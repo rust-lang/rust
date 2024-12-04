@@ -772,6 +772,8 @@ mod err {
         run_and_expect_errors("test_data/parser/inline/err/match_arms_recovery.rs");
     }
     #[test]
+    fn meta_recovery() { run_and_expect_errors("test_data/parser/inline/err/meta_recovery.rs"); }
+    #[test]
     fn method_call_missing_argument_list() {
         run_and_expect_errors("test_data/parser/inline/err/method_call_missing_argument_list.rs");
     }
