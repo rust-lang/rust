@@ -451,3 +451,42 @@ mod glob_target {
         "#]],
     );
 }
+
+#[test]
+fn regression_18580() {
+    check(
+        r#"
+pub mod libs {
+    pub struct Placeholder;
+}
+
+pub mod reexport_2 {
+    use reexport_1::*;
+    pub use reexport_1::*;
+
+    pub mod reexport_1 {
+        pub use crate::libs::*;
+    }
+}
+
+use reexport_2::*;
+"#,
+        expect![[r#"
+            crate
+            Placeholder: t v
+            libs: t
+            reexport_1: t
+            reexport_2: t
+
+            crate::libs
+            Placeholder: t v
+
+            crate::reexport_2
+            Placeholder: t v
+            reexport_1: t
+
+            crate::reexport_2::reexport_1
+            Placeholder: t v
+        "#]],
+    );
+}
