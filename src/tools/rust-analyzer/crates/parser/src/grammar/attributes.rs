@@ -36,6 +36,14 @@ fn attr(p: &mut Parser<'_>, inner: bool) {
     attr.complete(p, ATTR);
 }
 
+// test_err meta_recovery
+// #![]
+// #![p = ]
+// #![p::]
+// #![p:: =]
+// #![unsafe]
+// #![unsafe =]
+
 // test metas
 // #![simple_ident]
 // #![simple::path]
@@ -63,7 +71,7 @@ pub(super) fn meta(p: &mut Parser<'_>) {
     if is_unsafe {
         p.expect(T!['(']);
     }
-    paths::use_path(p);
+    paths::attr_path(p);
 
     match p.current() {
         T![=] => {

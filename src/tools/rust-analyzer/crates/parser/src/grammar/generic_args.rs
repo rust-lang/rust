@@ -168,10 +168,10 @@ pub(super) fn const_arg_expr(p: &mut Parser<'_>) {
             expressions::literal(p);
             lm.complete(p, PREFIX_EXPR);
         }
-        _ if paths::is_use_path_start(p) => {
+        _ if paths::is_path_start(p) => {
             // This shouldn't be hit by `const_arg`
             let lm = p.start();
-            paths::use_path(p);
+            paths::expr_path(p);
             lm.complete(p, PATH_EXPR);
         }
         _ => {
