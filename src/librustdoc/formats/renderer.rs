@@ -17,17 +17,18 @@ pub(crate) trait FormatRenderer<'tcx>: Sized {
     ///
     /// This is true for html, and false for json. See #80664
     const RUN_ON_MODULE: bool;
+
     /// This associated type is the type where the current module information is stored.
     ///
     /// For each module, we go through their items by calling for each item:
     ///
-    /// 1. save_module_data
-    /// 2. item
-    /// 3. set_back_info
+    /// 1. `save_module_data`
+    /// 2. `item`
+    /// 3. `restore_module_data`
     ///
-    /// However,the `item` method might update information in `self` (for example if the child is
-    /// a module). To prevent it to impact the other children of the current module, we need to
-    /// reset the information between each call to `item` by using `set_back_info`.
+    /// This is because the `item` method might update information in `self` (for example if the child
+    /// is a module). To prevent it from impacting the other children of the current module, we need to
+    /// reset the information between each call to `item` by using `restore_module_data`.
     type ModuleData;
 
     /// Sets up any state required for the renderer. When this is called the cache has already been
@@ -41,18 +42,18 @@ pub(crate) trait FormatRenderer<'tcx>: Sized {
 
     /// This method is called right before call [`Self::item`]. This method returns a type
     /// containing information that needs to be reset after the [`Self::item`] method has been
-    /// called with the [`Self::set_back_info`] method.
+    /// called with the [`Self::restore_module_data`] method.
     ///
     /// In short it goes like this:
     ///
     /// ```ignore (not valid code)
-    /// let reset_data = type.save_module_data();
-    /// type.item(item)?;
-    /// type.set_back_info(reset_data);
+    /// let reset_data = renderer.save_module_data();
+    /// renderer.item(item)?;
+    /// renderer.restore_module_data(reset_data);
     /// ```
     fn save_module_data(&mut self) -> Self::ModuleData;
     /// Used to reset current module's information.
-    fn set_back_info(&mut self, info: Self::ModuleData);
+    fn restore_module_data(&mut self, info: Self::ModuleData);
 
     /// Renders a single non-module item. This means no recursive sub-item rendering is required.
     fn item(&mut self, item: clean::Item) -> Result<(), Error>;
@@ -91,7 +92,7 @@ fn run_format_inner<'tcx, T: FormatRenderer<'tcx>>(
         for it in module.items {
             let info = cx.save_module_data();
             run_format_inner(cx, it, prof)?;
-            cx.set_back_info(info);
+            cx.restore_module_data(info);
         }
 
         cx.mod_item_out()?;
