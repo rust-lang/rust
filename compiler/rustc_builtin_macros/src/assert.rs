@@ -7,6 +7,7 @@ use rustc_ast::{DelimArgs, Expr, ExprKind, MacCall, Path, PathSegment, UnOp, tok
 use rustc_ast_pretty::pprust;
 use rustc_errors::PResult;
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
+use rustc_parse::exp;
 use rustc_parse::parser::Parser;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
 use thin_vec::thin_vec;
@@ -143,7 +144,7 @@ fn parse_assert<'a>(cx: &ExtCtxt<'a>, sp: Span, stream: TokenStream) -> PResult<
             cx.dcx().emit_err(errors::AssertMissingComma { span: parser.token.span, comma });
 
             parse_custom_message(&mut parser)
-        } else if parser.eat(&token::Comma) {
+        } else if parser.eat(exp!(Comma)) {
             parse_custom_message(&mut parser)
         } else {
             None
