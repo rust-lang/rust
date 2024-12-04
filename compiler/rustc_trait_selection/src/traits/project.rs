@@ -51,6 +51,17 @@ pub enum ProjectionError<'tcx> {
     TraitSelectionError(SelectionError<'tcx>),
 }
 
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
+enum FromSupertrait {
+    // Supertrait implied object bound, like `trait IterUnit: Iterator<Item = ()>`.
+    // These will need normalization since they're coming from a query and are thus
+    // not inherently normalized.
+    Yes,
+    // User-written object bound, like: `dyn Iterator<Item = ()>`. These will be
+    // normalized.
+    No,
+}
+
 #[derive(PartialEq, Eq, Debug)]
 enum ProjectionCandidate<'tcx> {
     /// From a where-clause in the env or object type
@@ -61,7 +72,7 @@ enum ProjectionCandidate<'tcx> {
     TraitDef(ty::PolyProjectionPredicate<'tcx>),
 
     /// Bounds specified on an object type
-    Object(ty::PolyProjectionPredicate<'tcx>),
+    Object(ty::PolyProjectionPredicate<'tcx>, FromSupertrait),
 
     /// Built-in bound for a dyn async fn in trait
     ObjectRpitit,
@@ -663,7 +674,7 @@ fn project<'cx, 'tcx>(
 
     assemble_candidates_from_object_ty(selcx, obligation, &mut candidates);
 
-    if let ProjectionCandidateSet::Single(ProjectionCandidate::Object(_)) = candidates {
+    if let ProjectionCandidateSet::Single(ProjectionCandidate::Object(..)) = candidates {
         // Avoid normalization cycle from selection (see
         // `assemble_candidates_from_object_ty`).
         // FIXME(lazy_normalization): Lazy normalization should save us from
@@ -819,19 +830,34 @@ fn assemble_candidates_from_object_ty<'cx, 'tcx>(
         }
         _ => return,
     };
+
     let env_predicates = data
         .projection_bounds()
         .filter(|bound| bound.item_def_id() == obligation.predicate.def_id)
         .map(|p| p.with_self_ty(tcx, object_ty).upcast(tcx));
 
+    // Imply projections that come from the object type itself.
     assemble_candidates_from_predicates(
         selcx,
         obligation,
         candidate_set,
-        ProjectionCandidate::Object,
+        |c| ProjectionCandidate::Object(c, FromSupertrait::No),
         env_predicates,
         false,
     );
+
+    // Finally, imply any projections that come from supertrait bounds.
+    if let Some(principal) = data.principal() {
+        assemble_candidates_from_predicates(
+            selcx,
+            obligation,
+            candidate_set,
+            |c| ProjectionCandidate::Object(c, FromSupertrait::Yes),
+            elaborate::implied_supertrait_projections(tcx, principal)
+                .map(|pred| pred.with_self_ty(tcx, object_ty).upcast(tcx)),
+            true,
+        );
+    }
 
     // `dyn Trait` automagically project their AFITs to `dyn* Future`.
     if tcx.is_impl_trait_in_trait(obligation.predicate.def_id)
@@ -1262,9 +1288,14 @@ fn confirm_candidate<'cx, 'tcx>(
 ) -> Progress<'tcx> {
     debug!(?obligation, ?candidate, "confirm_candidate");
     let mut progress = match candidate {
-        ProjectionCandidate::ParamEnv(poly_projection)
-        | ProjectionCandidate::Object(poly_projection) => {
+        ProjectionCandidate::ParamEnv(poly_projection) => {
             confirm_param_env_candidate(selcx, obligation, poly_projection, false)
+        }
+        ProjectionCandidate::Object(poly_projection, from_super) => {
+            confirm_param_env_candidate(selcx, obligation, poly_projection, match from_super {
+                FromSupertrait::Yes => true,
+                FromSupertrait::No => false,
+            })
         }
 
         ProjectionCandidate::TraitDef(poly_projection) => {

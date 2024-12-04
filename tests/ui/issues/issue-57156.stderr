@@ -1,0 +1,21 @@
+warning: associated type bound for `Output` in `dyn Bar` is redundant
+  --> $DIR/issue-57156.rs:8:40
+   |
+LL | trait Bar<'a, T>: for<'s> Foo<&'s T, Output=bool> {
+   |                                      ----------- redundant due to this supertrait bound
+LL |     fn cb(&self) -> Box<dyn Bar<'a, T, Output=bool>>;
+   |                                        ^^^^^^^^^^^
+   |
+   = note: `#[warn(dyn_assoc_redundant)]` on by default
+
+warning: associated type bound for `Output` in `dyn Bar` is redundant
+  --> $DIR/issue-57156.rs:17:41
+   |
+LL | trait Bar<'a, T>: for<'s> Foo<&'s T, Output=bool> {
+   |                                      ----------- redundant due to this supertrait bound
+...
+LL |     fn cb(&self) -> Box<dyn Bar<'a, (), Output=bool>> {
+   |                                         ^^^^^^^^^^^
+
+warning: 2 warnings emitted
+

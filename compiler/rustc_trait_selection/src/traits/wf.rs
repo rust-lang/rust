@@ -10,6 +10,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_span::{DUMMY_SP, Span};
+use rustc_type_ir::elaborate;
 use tracing::{debug, instrument, trace};
 
 use crate::infer::InferCtxt;
@@ -854,6 +855,17 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                             self.param_env,
                             ty::Binder::dummy(ty::PredicateKind::DynCompatible(principal)),
                         ));
+                    }
+                }
+
+                // Finally, for backwards compatibility reasons, we imply the outlives bounds
+                // that come from supertrait projections since we used to elaborate them into
+                // the dyn trait itself.
+                //
+                // See <https://github.com/rust-lang/rust/pull/133397> when this was changed.
+                if let Some(principal) = data.principal() {
+                    for projection in elaborate::implied_supertrait_projections(tcx, principal) {
+                        projection.visit_with(self);
                     }
                 }
             }

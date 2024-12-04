@@ -48,4 +48,5 @@ fn main() {
     // being specified.
     let _x: Box<dyn NormalizingHelper<Target=i32>> = Box::new(2u32);
     let _y: Box<dyn NormalizingHelper<Target=i32, Output=i32>> = Box::new(2u32);
+    //~^ WARN associated type bound for `Output` in `dyn NormalizingHelper` is redundant
 }

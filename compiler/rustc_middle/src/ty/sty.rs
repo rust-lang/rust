@@ -1025,6 +1025,10 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
     fn has_unsafe_fields(self) -> bool {
         Ty::has_unsafe_fields(self)
     }
+
+    fn is_self_param(self) -> bool {
+        self.is_param(0)
+    }
 }
 
 /// Type utilities

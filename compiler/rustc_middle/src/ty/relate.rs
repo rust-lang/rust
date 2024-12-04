@@ -80,19 +80,12 @@ impl<'tcx> Relate<TyCtxt<'tcx>> for &'tcx ty::List<ty::PolyExistentialPredicate<
     ) -> RelateResult<'tcx, Self> {
         let tcx = relation.cx();
 
-        // FIXME: this is wasteful, but want to do a perf run to see how slow it is.
-        // We need to perform this deduplication as we sometimes generate duplicate projections
-        // in `a`.
-        let mut a_v: Vec<_> = a.into_iter().collect();
-        let mut b_v: Vec<_> = b.into_iter().collect();
-        a_v.dedup();
-        b_v.dedup();
-        if a_v.len() != b_v.len() {
+        if a.len() != b.len() {
             return Err(TypeError::ExistentialMismatch(ExpectedFound::new(a, b)));
         }
 
-        let v = iter::zip(a_v, b_v).map(|(ep_a, ep_b)| {
-            match (ep_a.skip_binder(), ep_b.skip_binder()) {
+        let v =
+            iter::zip(a, b).map(|(ep_a, ep_b)| match (ep_a.skip_binder(), ep_b.skip_binder()) {
                 (ty::ExistentialPredicate::Trait(a), ty::ExistentialPredicate::Trait(b)) => {
                     Ok(ep_a.rebind(ty::ExistentialPredicate::Trait(
                         relation.relate(ep_a.rebind(a), ep_b.rebind(b))?.skip_binder(),
@@ -109,8 +102,7 @@ impl<'tcx> Relate<TyCtxt<'tcx>> for &'tcx ty::List<ty::PolyExistentialPredicate<
                     ty::ExistentialPredicate::AutoTrait(b),
                 ) if a == b => Ok(ep_a.rebind(ty::ExistentialPredicate::AutoTrait(a))),
                 _ => Err(TypeError::ExistentialMismatch(ExpectedFound::new(a, b))),
-            }
-        });
+            });
         tcx.mk_poly_existential_predicates_from_iter(v)
     }
 }
