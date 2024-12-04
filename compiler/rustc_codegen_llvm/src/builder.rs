@@ -505,7 +505,47 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
             match scalar.primitive() {
                 abi::Primitive::Int(..) => {
-                    if !scalar.is_always_valid(bx) {
+                    if let Some(adt) = layout.ty.ty_adt_def()
+                        && adt.is_enum()
+                    {
+                        let mut discr_vals: Vec<_> =
+                            adt.discriminants(bx.tcx).map(|(_, d)| d.val).collect();
+                        discr_vals.sort();
+                        let mut ranges =
+                            vec![WrappingRange { start: discr_vals[0], end: discr_vals[0] }];
+                        for &discr in &discr_vals[1..] {
+                            let last = ranges.last_mut().unwrap();
+                            if discr == last.end + 1 {
+                                last.end = discr;
+                            } else if !last.contains(discr) {
+                                ranges.push(WrappingRange { start: discr, end: discr });
+                            }
+                        }
+
+                        if bx.cx.sess().opts.optimize != OptLevel::No {
+                            unsafe {
+                                let llty = bx.cx.val_ty(load);
+                                let md =
+                                    ranges
+                                        .iter()
+                                        .flat_map(|range| {
+                                            [
+                                                llvm::LLVMValueAsMetadata(
+                                                    bx.cx.const_uint_big(llty, range.start),
+                                                ),
+                                                llvm::LLVMValueAsMetadata(bx.cx.const_uint_big(
+                                                    llty,
+                                                    range.end.wrapping_add(1),
+                                                )),
+                                            ]
+                                        })
+                                        .collect::<Vec<_>>();
+                                let md =
+                                    llvm::LLVMMDNodeInContext2(bx.cx.llcx, md.as_ptr(), md.len());
+                                bx.set_metadata(load, llvm::MD_range, md);
+                            }
+                        }
+                    } else if !scalar.is_always_valid(bx) {
                         bx.range_metadata(load, scalar.valid_range(bx));
                     }
                 }
