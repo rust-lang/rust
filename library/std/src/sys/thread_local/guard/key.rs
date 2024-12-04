@@ -27,7 +27,7 @@ pub fn enable() {
         use crate::sys::thread_local::key::at_process_exit;
 
         static REGISTERED: AtomicBool = AtomicBool::new(false);
-        if !REGISTERED.swap(true, Ordering::AcqRel) {
+        if !REGISTERED.swap(true, Ordering::Relaxed) {
             unsafe { at_process_exit(run_process) };
         }
 
