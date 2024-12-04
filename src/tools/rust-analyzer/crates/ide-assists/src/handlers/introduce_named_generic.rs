@@ -50,11 +50,10 @@ pub(crate) fn introduce_named_generic(acc: &mut Assists, ctx: &AssistContext<'_>
             let new_ty = make.ty(&type_param_name);
 
             editor.replace(impl_trait_type.syntax(), new_ty.syntax());
-            let generic_param = syntax::ast::GenericParam::from(type_param);
-            editor.syntax_editor_add_generic_param(fn_, generic_param.clone());
+            editor.syntax_editor_add_generic_param(fn_, type_param.clone().into());
 
             if let Some(cap) = ctx.config.snippet_cap {
-                editor.add_annotation(generic_param.syntax(), builder.make_tabstop_before(cap));
+                editor.add_annotation(type_param.syntax(), builder.make_tabstop_before(cap));
             }
 
             editor.add_mappings(make.finish_with_mappings());
