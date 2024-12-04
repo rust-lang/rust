@@ -110,7 +110,7 @@ fn path_segment(p: &mut Parser<'_>, mode: Mode, first: bool) -> Option<Completed
         match p.current() {
             IDENT => {
                 name_ref(p);
-                opt_path_type_args(p, mode);
+                opt_path_args(p, mode);
             }
             // test crate_path
             // use crate::foo;
@@ -142,38 +142,74 @@ fn path_segment(p: &mut Parser<'_>, mode: Mode, first: bool) -> Option<Completed
     Some(m.complete(p, PATH_SEGMENT))
 }
 
-fn opt_path_type_args(p: &mut Parser<'_>, mode: Mode) {
+pub(crate) fn opt_path_type_args(p: &mut Parser<'_>) {
+    // test typepathfn_with_coloncolon
+    // type F = Start::(Middle) -> (Middle)::End;
+    // type GenericArg = S<Start(Middle)::End>;
+    let m;
+    if p.at(T![::]) && matches!(p.nth(2), T![<] | T!['(']) {
+        m = p.start();
+        p.bump(T![::]);
+    } else if (p.current() == T![<] && p.nth(1) != T![=]) || p.current() == T!['('] {
+        m = p.start();
+    } else {
+        return;
+    }
+    let current = p.current();
+    if current == T![<] {
+        // test_err generic_arg_list_recover
+        // type T = T<0, ,T>;
+        // type T = T::<0, ,T>;
+        delimited(
+            p,
+            T![<],
+            T![>],
+            T![,],
+            || "expected generic argument".into(),
+            generic_args::GENERIC_ARG_FIRST,
+            generic_args::generic_arg,
+        );
+        m.complete(p, GENERIC_ARG_LIST);
+    } else if p.nth_at(1, T![..]) {
+        // test return_type_syntax_in_path
+        // fn foo<T>()
+        // where
+        //     T::method(..): Send,
+        //     method(..): Send,
+        //     method::(..): Send,
+        // {}
+        p.bump(T!['(']);
+        p.bump(T![..]);
+        p.expect(T![')']);
+        m.complete(p, RETURN_TYPE_SYNTAX);
+    } else {
+        // test path_fn_trait_args
+        // type F = Box<Fn(i32) -> ()>;
+        // type F = Box<::Fn(i32) -> ()>;
+        // type F = Box<Fn::(i32) -> ()>;
+        // type F = Box<::Fn::(i32) -> ()>;
+        delimited(
+            p,
+            T!['('],
+            T![')'],
+            T![,],
+            || "expected type".into(),
+            types::TYPE_FIRST,
+            |p| {
+                let progress = types::TYPE_FIRST.contains(p.current());
+                generic_args::type_arg(p);
+                progress
+            },
+        );
+        m.complete(p, PARENTHESIZED_ARG_LIST);
+        opt_ret_type(p);
+    }
+}
+
+fn opt_path_args(p: &mut Parser<'_>, mode: Mode) {
     match mode {
         Mode::Use | Mode::Attr | Mode::Vis => {}
-        Mode::Type => {
-            // test typepathfn_with_coloncolon
-            // type F = Start::(Middle) -> (Middle)::End;
-            // type GenericArg = S<Start(Middle)::End>;
-            if p.at(T![::]) && p.nth_at(2, T!['(']) {
-                p.bump(T![::]);
-            }
-            if p.at(T!['(']) {
-                if p.nth_at(1, T![..]) {
-                    // test return_type_syntax_in_path
-                    // fn foo<T>()
-                    // where
-                    //     T::method(..): Send,
-                    // {}
-                    let rtn = p.start();
-                    p.bump(T!['(']);
-                    p.bump(T![..]);
-                    p.expect(T![')']);
-                    rtn.complete(p, RETURN_TYPE_SYNTAX);
-                } else {
-                    // test path_fn_trait_args
-                    // type F = Box<Fn(i32) -> ()>;
-                    params::param_list_fn_trait(p);
-                    opt_ret_type(p);
-                }
-            } else {
-                generic_args::opt_generic_arg_list(p, false);
-            }
-        }
-        Mode::Expr => generic_args::opt_generic_arg_list(p, true),
+        Mode::Type => opt_path_type_args(p),
+        Mode::Expr => generic_args::opt_generic_arg_list_expr(p),
     }
 }

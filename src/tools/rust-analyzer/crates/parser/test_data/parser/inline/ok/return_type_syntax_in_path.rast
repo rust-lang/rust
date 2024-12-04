@@ -42,6 +42,49 @@ SOURCE_FILE
                   NAME_REF
                     IDENT "Send"
       COMMA ","
+      WHITESPACE "\n    "
+      WHERE_PRED
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "method"
+              RETURN_TYPE_SYNTAX
+                L_PAREN "("
+                DOT2 ".."
+                R_PAREN ")"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Send"
+      COMMA ","
+      WHITESPACE "\n    "
+      WHERE_PRED
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "method"
+              RETURN_TYPE_SYNTAX
+                COLON2 "::"
+                L_PAREN "("
+                DOT2 ".."
+                R_PAREN ")"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Send"
+      COMMA ","
     WHITESPACE "\n"
     BLOCK_EXPR
       STMT_LIST

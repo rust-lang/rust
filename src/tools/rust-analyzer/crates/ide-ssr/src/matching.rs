@@ -359,8 +359,8 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                 )?;
                 self.attempt_match_opt(
                     phase,
-                    pattern_segment.param_list(),
-                    code_segment.param_list(),
+                    pattern_segment.parenthesized_arg_list(),
+                    code_segment.parenthesized_arg_list(),
                 )?;
             }
             if matches!(phase, Phase::Second(_)) {

@@ -286,7 +286,8 @@ impl Ctx<'_> {
             return None;
         }
         if path.segment().map_or(false, |s| {
-            s.param_list().is_some() || (s.self_token().is_some() && path.parent_path().is_none())
+            s.parenthesized_arg_list().is_some()
+                || (s.self_token().is_some() && path.parent_path().is_none())
         }) {
             // don't try to qualify `Fn(Foo) -> Bar` paths, they are in prelude anyway
             // don't try to qualify sole `self` either, they are usually locals, but are returned as modules due to namespace clashing

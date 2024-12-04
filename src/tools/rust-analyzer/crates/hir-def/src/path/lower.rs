@@ -48,7 +48,7 @@ pub(super) fn lower_path(ctx: &mut LowerCtx<'_>, mut path: ast::Path) -> Option<
                     .or_else(|| {
                         lower_generic_args_from_fn_path(
                             ctx,
-                            segment.param_list(),
+                            segment.parenthesized_arg_list(),
                             segment.ret_type(),
                         )
                     });
@@ -247,12 +247,12 @@ pub(super) fn lower_generic_args(
 /// -> Z` (which desugars to `Fn<(X, Y), Output=Z>`).
 fn lower_generic_args_from_fn_path(
     ctx: &mut LowerCtx<'_>,
-    params: Option<ast::ParamList>,
+    args: Option<ast::ParenthesizedArgList>,
     ret_type: Option<ast::RetType>,
 ) -> Option<GenericArgs> {
-    let params = params?;
+    let params = args?;
     let mut param_types = Vec::new();
-    for param in params.params() {
+    for param in params.type_args() {
         let type_ref = TypeRef::from_ast_opt(ctx, param.ty());
         param_types.push(type_ref);
     }

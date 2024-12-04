@@ -1,14 +1,13 @@
 use super::*;
 
-// test_err generic_arg_list_recover
-// type T = T<0, ,T>;
-pub(super) fn opt_generic_arg_list(p: &mut Parser<'_>, colon_colon_required: bool) {
+// test_err generic_arg_list_recover_expr
+// const _: () = T::<0, ,T>;
+// const _: () = T::<0, ,T>();
+pub(super) fn opt_generic_arg_list_expr(p: &mut Parser<'_>) {
     let m;
     if p.at(T![::]) && p.nth(2) == T![<] {
         m = p.start();
         p.bump(T![::]);
-    } else if !colon_colon_required && p.at(T![<]) && p.nth(1) != T![=] {
-        m = p.start();
     } else {
         return;
     }
@@ -25,7 +24,7 @@ pub(super) fn opt_generic_arg_list(p: &mut Parser<'_>, colon_colon_required: boo
     m.complete(p, GENERIC_ARG_LIST);
 }
 
-const GENERIC_ARG_FIRST: TokenSet = TokenSet::new(&[
+pub(crate) const GENERIC_ARG_FIRST: TokenSet = TokenSet::new(&[
     LIFETIME_IDENT,
     IDENT,
     T!['{'],
@@ -47,20 +46,23 @@ const GENERIC_ARG_RECOVERY_SET: TokenSet = TokenSet::new(&[T![>], T![,]]);
 
 // test generic_arg
 // type T = S<i32>;
-fn generic_arg(p: &mut Parser<'_>) -> bool {
+pub(crate) fn generic_arg(p: &mut Parser<'_>) -> bool {
     match p.current() {
         LIFETIME_IDENT if !p.nth_at(1, T![+]) => lifetime_arg(p),
         T!['{'] | T![true] | T![false] | T![-] => const_arg(p),
         k if k.is_literal() => const_arg(p),
-        // test associated_type_bounds
-        // fn print_all<T: Iterator<Item, Item::Item, Item::<true>, Item: Display, Item<'a> = Item>>(printables: T) {}
+        // test generic_arg_bounds
+        // type Plain = Foo<Item, Item::Item, Item: Bound, Item = Item>;
+        // type GenericArgs = Foo<Item<T>, Item::<T>, Item<T>: Bound, Item::<T>: Bound, Item<T> = Item, Item::<T> = Item>;
+        // type ParenthesizedArgs = Foo<Item(T), Item::(T), Item(T): Bound, Item::(T): Bound, Item(T) = Item, Item::(T) = Item>;
+        // type RTN = Foo<Item(..), Item(..), Item(..): Bound, Item(..): Bound, Item(..) = Item, Item(..) = Item>;
 
         // test macro_inside_generic_arg
         // type A = Foo<syn::Token![_]>;
-        IDENT if [T![<], T![=], T![:]].contains(&p.nth(1)) && !p.nth_at(1, T![::]) => {
+        IDENT => {
             let m = p.start();
             name_ref(p);
-            opt_generic_arg_list(p, false);
+            paths::opt_path_type_args(p);
             match p.current() {
                 T![=] => {
                     p.bump_any();
@@ -88,43 +90,24 @@ fn generic_arg(p: &mut Parser<'_>) -> bool {
                 }
                 // test assoc_type_bound
                 // type T = StreamingIterator<Item<'a>: Clone>;
+                // type T = StreamingIterator<Item(T): Clone>;
                 T![:] if !p.at(T![::]) => {
                     generic_params::bounds(p);
                     m.complete(p, ASSOC_TYPE_ARG);
                 }
+                // Turned out to be just a normal path type (mirror `path_or_macro_type`)
                 _ => {
                     let m = m.complete(p, PATH_SEGMENT).precede(p).complete(p, PATH);
                     let m = paths::type_path_for_qualifier(p, m);
-                    m.precede(p).complete(p, PATH_TYPE).precede(p).complete(p, TYPE_ARG);
+                    let m = if p.at(T![!]) && !p.at(T![!=]) {
+                        let m = m.precede(p);
+                        items::macro_call_after_excl(p);
+                        m.complete(p, MACRO_CALL).precede(p).complete(p, MACRO_TYPE)
+                    } else {
+                        m.precede(p).complete(p, PATH_TYPE)
+                    };
+                    types::opt_type_bounds_as_dyn_trait_type(p, m).precede(p).complete(p, TYPE_ARG);
                 }
-            }
-        }
-        IDENT if p.nth_at(1, T!['(']) => {
-            let m = p.start();
-            name_ref(p);
-            if p.nth_at(1, T![..]) {
-                let rtn = p.start();
-                p.bump(T!['(']);
-                p.bump(T![..]);
-                p.expect(T![')']);
-                rtn.complete(p, RETURN_TYPE_SYNTAX);
-                // test return_type_syntax_assoc_type_bound
-                // fn foo<T: Trait<method(..): Send>>() {}
-                generic_params::bounds(p);
-                m.complete(p, ASSOC_TYPE_ARG);
-            } else {
-                params::param_list_fn_trait(p);
-                // test bare_dyn_types_with_paren_as_generic_args
-                // type A = S<Fn(i32)>;
-                // type A = S<Fn(i32) + Send>;
-                // type B = S<Fn(i32) -> i32>;
-                // type C = S<Fn(i32) -> i32 + Send>;
-                opt_ret_type(p);
-                let m = m.complete(p, PATH_SEGMENT).precede(p).complete(p, PATH);
-                let m = paths::type_path_for_qualifier(p, m);
-                let m = m.precede(p).complete(p, PATH_TYPE);
-                let m = types::opt_type_bounds_as_dyn_trait_type(p, m);
-                m.precede(p).complete(p, TYPE_ARG);
             }
         }
         _ if p.at_ts(types::TYPE_FIRST) => type_arg(p),
@@ -190,7 +173,7 @@ pub(super) fn const_arg(p: &mut Parser<'_>) {
     m.complete(p, CONST_ARG);
 }
 
-fn type_arg(p: &mut Parser<'_>) {
+pub(crate) fn type_arg(p: &mut Parser<'_>) {
     let m = p.start();
     types::type_(p);
     m.complete(p, TYPE_ARG);

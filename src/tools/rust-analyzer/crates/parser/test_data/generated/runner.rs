@@ -39,10 +39,6 @@ mod ok {
     #[test]
     fn assoc_type_eq() { run_and_expect_no_errors("test_data/parser/inline/ok/assoc_type_eq.rs"); }
     #[test]
-    fn associated_type_bounds() {
-        run_and_expect_no_errors("test_data/parser/inline/ok/associated_type_bounds.rs");
-    }
-    #[test]
     fn async_trait_bound() {
         run_and_expect_no_errors("test_data/parser/inline/ok/async_trait_bound.rs");
     }
@@ -56,12 +52,6 @@ mod ok {
     fn bare_dyn_types_with_leading_lifetime() {
         run_and_expect_no_errors(
             "test_data/parser/inline/ok/bare_dyn_types_with_leading_lifetime.rs",
-        );
-    }
-    #[test]
-    fn bare_dyn_types_with_paren_as_generic_args() {
-        run_and_expect_no_errors(
-            "test_data/parser/inline/ok/bare_dyn_types_with_paren_as_generic_args.rs",
         );
     }
     #[test]
@@ -281,6 +271,10 @@ mod ok {
     #[test]
     fn generic_arg() { run_and_expect_no_errors("test_data/parser/inline/ok/generic_arg.rs"); }
     #[test]
+    fn generic_arg_bounds() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/generic_arg_bounds.rs");
+    }
+    #[test]
     fn generic_param_attribute() {
         run_and_expect_no_errors("test_data/parser/inline/ok/generic_param_attribute.rs");
     }
@@ -423,10 +417,6 @@ mod ok {
     #[test]
     fn param_list() { run_and_expect_no_errors("test_data/parser/inline/ok/param_list.rs"); }
     #[test]
-    fn param_list_opt_patterns() {
-        run_and_expect_no_errors("test_data/parser/inline/ok/param_list_opt_patterns.rs");
-    }
-    #[test]
     fn param_list_vararg() {
         run_and_expect_no_errors("test_data/parser/inline/ok/param_list_vararg.rs");
     }
@@ -520,12 +510,6 @@ mod ok {
     }
     #[test]
     fn return_expr() { run_and_expect_no_errors("test_data/parser/inline/ok/return_expr.rs"); }
-    #[test]
-    fn return_type_syntax_assoc_type_bound() {
-        run_and_expect_no_errors(
-            "test_data/parser/inline/ok/return_type_syntax_assoc_type_bound.rs",
-        );
-    }
     #[test]
     fn return_type_syntax_in_path() {
         run_and_expect_no_errors("test_data/parser/inline/ok/return_type_syntax_in_path.rs");
@@ -685,10 +669,6 @@ mod ok {
     #[test]
     fn use_tree_star() { run_and_expect_no_errors("test_data/parser/inline/ok/use_tree_star.rs"); }
     #[test]
-    fn value_parameters_no_patterns() {
-        run_and_expect_no_errors("test_data/parser/inline/ok/value_parameters_no_patterns.rs");
-    }
-    #[test]
     fn variant_discriminant() {
         run_and_expect_no_errors("test_data/parser/inline/ok/variant_discriminant.rs");
     }
@@ -752,6 +732,10 @@ mod err {
     #[test]
     fn generic_arg_list_recover() {
         run_and_expect_errors("test_data/parser/inline/err/generic_arg_list_recover.rs");
+    }
+    #[test]
+    fn generic_arg_list_recover_expr() {
+        run_and_expect_errors("test_data/parser/inline/err/generic_arg_list_recover_expr.rs");
     }
     #[test]
     fn generic_param_list_recover() {
