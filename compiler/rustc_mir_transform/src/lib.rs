@@ -686,13 +686,14 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             // optimizations.
             &instsimplify::InstSimplify::AfterSimplifyCfg,
             &simplify::SimplifyLocals::BeforeConstProp,
+            // It's important that JumpThreading is before dominance-aware passes like GVN
+            &jump_threading::JumpThreading,
             &dead_store_elimination::DeadStoreElimination::Initial,
             &gvn::GVN,
             &simplify::SimplifyLocals::AfterGVN,
             &dataflow_const_prop::DataflowConstProp,
             &single_use_consts::SingleUseConsts,
             &o1(simplify_branches::SimplifyConstCondition::AfterConstProp),
-            &jump_threading::JumpThreading,
             &early_otherwise_branch::EarlyOtherwiseBranch,
             &simplify_comparison_integral::SimplifyComparisonIntegral,
             &dest_prop::DestinationPropagation,

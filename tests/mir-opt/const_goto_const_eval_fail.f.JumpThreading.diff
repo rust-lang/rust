@@ -4,10 +4,13 @@
   fn f() -> u64 {
       let mut _0: u64;
       let mut _1: bool;
+      let mut _2: i32;
   
       bb0: {
           StorageLive(_1);
-          switchInt(const A) -> [1: bb2, 2: bb2, 3: bb2, otherwise: bb1];
+          StorageLive(_2);
+          _2 = const A;
+          switchInt(copy _2) -> [1: bb2, 2: bb2, 3: bb2, otherwise: bb1];
       }
   
       bb1: {
@@ -40,6 +43,7 @@
   
 -     bb6: {
 +     bb5: {
+          StorageDead(_2);
           StorageDead(_1);
           return;
       }

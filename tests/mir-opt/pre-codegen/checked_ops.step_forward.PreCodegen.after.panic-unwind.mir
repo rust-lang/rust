@@ -51,6 +51,7 @@ fn step_forward(_1: u16, _2: usize) -> u16 {
     bb2: {
         StorageDead(_5);
         StorageDead(_6);
+        StorageDead(_4);
         goto -> bb7;
     }
 
@@ -61,11 +62,13 @@ fn step_forward(_1: u16, _2: usize) -> u16 {
     bb4: {
         StorageDead(_5);
         StorageDead(_6);
+        StorageDead(_4);
         goto -> bb6;
     }
 
     bb5: {
         StorageDead(_3);
+        StorageDead(_4);
         goto -> bb6;
     }
 
@@ -78,7 +81,6 @@ fn step_forward(_1: u16, _2: usize) -> u16 {
         _8 = copy _2 as u16 (IntToInt);
         _0 = Add(copy _1, copy _8);
         StorageDead(_8);
-        StorageDead(_4);
         return;
     }
 }
