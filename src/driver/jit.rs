@@ -11,7 +11,7 @@ use cranelift_jit::{JITBuilder, JITModule};
 use rustc_codegen_ssa::CrateInfo;
 use rustc_middle::mir::mono::MonoItem;
 use rustc_session::Session;
-use rustc_span::Symbol;
+use rustc_span::sym;
 
 use crate::debuginfo::TypeDebugContext;
 use crate::prelude::*;
