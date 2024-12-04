@@ -1,6 +1,5 @@
 #![feature(pattern_types, rustc_attrs)]
-#![feature(core_pattern_type)]
-#![feature(core_pattern_types)]
+#![feature(pattern_type_macro)]
 #![allow(incomplete_features)]
 
 //@ normalize-stderr-test: "pref: Align\([1-8] bytes\)" -> "pref: $$SOME_ALIGN"
