@@ -5,18 +5,18 @@ LL |     *m = 42;
    |     ^^^^^^^ write access through <TAG> at ALLOC[0x0] is forbidden
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
-   = help: the accessed tag <TAG> has state Reserved (conflicted) which forbids this child write access
-help: the accessed tag <TAG> was created here, in the initial state Reserved
+   = help: the accessed tag <TAG> is a child of the conflicting tag <TAG>
+   = help: the conflicting tag <TAG> has state Frozen which forbids this child write access
+help: the accessed tag <TAG> was created here
   --> tests/fail/tree_borrows/subtree_traversal_skipping_diagnostics.rs:LL:CC
    |
 LL | fn write_to_mut(m: &mut u8, other_ptr: *const u8) {
    |                 ^
-help: the accessed tag <TAG> later transitioned to Reserved (conflicted) due to a foreign read access at offsets [0x0..0x1]
+help: the conflicting tag <TAG> was created here, in the initial state Frozen
   --> tests/fail/tree_borrows/subtree_traversal_skipping_diagnostics.rs:LL:CC
    |
-LL |         std::hint::black_box(*other_ptr);
-   |                              ^^^^^^^^^^
-   = help: this transition corresponds to a temporary loss of write permissions until function exit
+LL |         let intermediary = &root;
+   |                            ^^^^^
    = note: BACKTRACE (of the first span):
    = note: inside `write_to_mut` at tests/fail/tree_borrows/subtree_traversal_skipping_diagnostics.rs:LL:CC
 note: inside `main`
