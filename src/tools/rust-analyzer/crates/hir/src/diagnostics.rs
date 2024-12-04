@@ -3,22 +3,34 @@
 //!
 //! This probably isn't the best way to do this -- ideally, diagnostics should
 //! be expressed in terms of hir types themselves.
-pub use hir_ty::diagnostics::{CaseType, IncorrectCase};
+use cfg::{CfgExpr, CfgOptions};
+use either::Either;
+use hir_def::{
+    hir::ExprOrPatId,
+    path::{hir_segment_to_ast_segment, ModPath},
+    type_ref::TypesSourceMap,
+    AssocItemId, DefWithBodyId, SyntheticSyntax,
+};
+use hir_expand::{name::Name, HirFileId, InFile};
 use hir_ty::{
     db::HirDatabase,
     diagnostics::{BodyValidationDiagnostic, UnsafetyReason},
-    CastError, InferenceDiagnostic,
+    CastError, InferenceDiagnostic, InferenceTyDiagnosticSource, TyLoweringDiagnostic,
+    TyLoweringDiagnosticKind,
 };
-
-use cfg::{CfgExpr, CfgOptions};
-use either::Either;
-pub use hir_def::VariantId;
-use hir_def::{body::SyntheticSyntax, hir::ExprOrPatId, path::ModPath, AssocItemId, DefWithBodyId};
-use hir_expand::{name::Name, HirFileId, InFile};
-use syntax::{ast, AstPtr, SyntaxError, SyntaxNodePtr, TextRange};
+use syntax::{
+    ast::{self, HasGenericArgs},
+    AstPtr, SyntaxError, SyntaxNodePtr, TextRange,
+};
 use triomphe::Arc;
 
 use crate::{AssocItem, Field, Local, Trait, Type};
+
+pub use hir_def::VariantId;
+pub use hir_ty::{
+    diagnostics::{CaseType, IncorrectCase},
+    GenericArgsProhibitedReason,
+};
 
 macro_rules! diagnostics {
     ($($diag:ident,)*) => {
@@ -98,6 +110,7 @@ diagnostics![
     UnresolvedIdent,
     UnusedMut,
     UnusedVariable,
+    GenericArgsProhibited,
 ];
 
 #[derive(Debug)]
@@ -388,6 +401,12 @@ pub struct InvalidCast {
     pub cast_ty: Type,
 }
 
+#[derive(Debug)]
+pub struct GenericArgsProhibited {
+    pub args: InFile<AstPtr<Either<ast::GenericArgList, ast::ParenthesizedArgList>>>,
+    pub reason: GenericArgsProhibitedReason,
+}
+
 impl AnyDiagnostic {
     pub(crate) fn body_validation_diagnostic(
         db: &dyn HirDatabase,
@@ -527,6 +546,7 @@ impl AnyDiagnostic {
         db: &dyn HirDatabase,
         def: DefWithBodyId,
         d: &InferenceDiagnostic,
+        outer_types_source_map: &TypesSourceMap,
         source_map: &hir_def::body::BodySourceMap,
     ) -> Option<AnyDiagnostic> {
         let expr_syntax = |expr| {
@@ -639,6 +659,44 @@ impl AnyDiagnostic {
                 let expr_ty = Type::new(db, def, expr_ty.clone());
                 let cast_ty = Type::new(db, def, cast_ty.clone());
                 InvalidCast { expr, error: *error, expr_ty, cast_ty }.into()
+            }
+            InferenceDiagnostic::TyDiagnostic { source, diag } => {
+                let source_map = match source {
+                    InferenceTyDiagnosticSource::Body => &source_map.types,
+                    InferenceTyDiagnosticSource::Signature => outer_types_source_map,
+                };
+                Self::ty_diagnostic(diag, source_map, db)?
+            }
+        })
+    }
+
+    pub(crate) fn ty_diagnostic(
+        diag: &TyLoweringDiagnostic,
+        source_map: &TypesSourceMap,
+        db: &dyn HirDatabase,
+    ) -> Option<AnyDiagnostic> {
+        let source = match diag.source {
+            Either::Left(type_ref_id) => {
+                let Ok(source) = source_map.type_syntax(type_ref_id) else {
+                    stdx::never!("error on synthetic type syntax");
+                    return None;
+                };
+                source
+            }
+            Either::Right(source) => source,
+        };
+        let syntax = || source.value.to_node(&db.parse_or_expand(source.file_id));
+        Some(match diag.kind {
+            TyLoweringDiagnosticKind::GenericArgsProhibited { segment, reason } => {
+                let ast::Type::PathType(syntax) = syntax() else { return None };
+                let segment = hir_segment_to_ast_segment(&syntax.path()?, segment)?;
+                let args = if let Some(generics) = segment.generic_arg_list() {
+                    AstPtr::new(&generics).wrap_left()
+                } else {
+                    AstPtr::new(&segment.parenthesized_arg_list()?).wrap_right()
+                };
+                let args = source.with_value(args);
+                GenericArgsProhibited { args, reason }.into()
             }
         })
     }

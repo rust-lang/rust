@@ -2062,12 +2062,12 @@ impl HirDisplayWithTypesMap for TypeBound {
         types_map: &TypesMap,
     ) -> Result<(), HirDisplayError> {
         match self {
-            TypeBound::Path(path, modifier) => {
+            &TypeBound::Path(path, modifier) => {
                 match modifier {
                     TraitBoundModifier::None => (),
                     TraitBoundModifier::Maybe => write!(f, "?")?,
                 }
-                path.hir_fmt(f, types_map)
+                types_map[path].hir_fmt(f, types_map)
             }
             TypeBound::Lifetime(lifetime) => {
                 write!(f, "{}", lifetime.name.display(f.db.upcast(), f.edition()))
@@ -2079,7 +2079,7 @@ impl HirDisplayWithTypesMap for TypeBound {
                     "for<{}> ",
                     lifetimes.iter().map(|it| it.display(f.db.upcast(), edition)).format(", ")
                 )?;
-                path.hir_fmt(f, types_map)
+                types_map[*path].hir_fmt(f, types_map)
             }
             TypeBound::Use(args) => {
                 let edition = f.edition();

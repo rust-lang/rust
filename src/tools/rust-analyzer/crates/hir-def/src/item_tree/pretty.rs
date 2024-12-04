@@ -484,7 +484,7 @@ impl Printer<'_> {
                     w!(self, "!");
                 }
                 if let Some(tr) = target_trait {
-                    self.print_path(&tr.path, types_map);
+                    self.print_path(&types_map[tr.path], types_map);
                     w!(self, " for ");
                 }
                 self.print_type_ref(*self_ty, types_map);

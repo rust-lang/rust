@@ -2155,7 +2155,7 @@ impl InferenceContext<'_> {
                                 DebruijnIndex::INNERMOST,
                             )
                         },
-                        |this, lt_ref| this.make_lifetime(lt_ref),
+                        |this, lt_ref| this.make_body_lifetime(lt_ref),
                     ),
                 };
 

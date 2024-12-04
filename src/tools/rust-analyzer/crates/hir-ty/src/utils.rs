@@ -185,7 +185,7 @@ fn direct_super_traits_cb(db: &dyn DefDatabase, trait_: TraitId, cb: impl FnMut(
                     }
                 };
                 match is_trait {
-                    true => bound.as_path(),
+                    true => bound.as_path(&generic_params.types_map),
                     false => None,
                 }
             }

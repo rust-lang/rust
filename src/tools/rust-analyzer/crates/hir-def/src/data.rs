@@ -369,7 +369,7 @@ impl ImplData {
 
         let item_tree = tree_id.item_tree(db);
         let impl_def = &item_tree[tree_id.value];
-        let target_trait = impl_def.target_trait.clone();
+        let target_trait = impl_def.target_trait;
         let self_ty = impl_def.self_ty;
         let is_negative = impl_def.is_negative;
         let is_unsafe = impl_def.is_unsafe;

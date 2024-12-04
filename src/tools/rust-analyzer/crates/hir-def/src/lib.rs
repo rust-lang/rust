@@ -1535,3 +1535,6 @@ fn macro_call_as_call_id_with_eager(
 pub struct UnresolvedMacro {
     pub path: hir_expand::mod_path::ModPath,
 }
+
+#[derive(Default, Debug, Eq, PartialEq, Clone, Copy)]
+pub struct SyntheticSyntax;
