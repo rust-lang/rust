@@ -1,9 +1,6 @@
 use ide_db::syntax_helpers::suggest_name;
 use itertools::Itertools;
-use syntax::{
-    ast::{self, syntax_factory::SyntaxFactory, AstNode, HasGenericParams, HasName},
-    SyntaxElement,
-};
+use syntax::ast::{self, syntax_factory::SyntaxFactory, AstNode, HasGenericParams, HasName};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -25,20 +22,14 @@ pub(crate) fn introduce_named_generic(acc: &mut Assists, ctx: &AssistContext<'_>
 
     let type_bound_list = impl_trait_type.type_bound_list()?;
 
-    // FIXME: Is this node appropriate to use for SyntaxEditor in this case?
-    let parent_node = match ctx.covering_element() {
-        SyntaxElement::Node(n) => n,
-        SyntaxElement::Token(t) => t.parent()?,
-    };
     let make = SyntaxFactory::new();
-
     let target = fn_.syntax().text_range();
     acc.add(
         AssistId("introduce_named_generic", AssistKind::RefactorRewrite),
         "Replace impl trait with generic",
         target,
-        |edit| {
-            let mut editor = edit.make_editor(&parent_node);
+        |builder| {
+            let mut editor = builder.make_editor(fn_.syntax());
 
             let existing_names = match fn_.generic_param_list() {
                 Some(generic_param_list) => generic_param_list
@@ -63,11 +54,11 @@ pub(crate) fn introduce_named_generic(acc: &mut Assists, ctx: &AssistContext<'_>
             fn_.syntax_editor_add_generic_param(&mut editor, generic_param.clone());
 
             if let Some(cap) = ctx.config.snippet_cap {
-                editor.add_annotation(generic_param.syntax(), edit.make_tabstop_before(cap));
+                editor.add_annotation(generic_param.syntax(), builder.make_tabstop_before(cap));
             }
 
             editor.add_mappings(make.finish_with_mappings());
-            edit.add_file_edits(ctx.file_id(), editor);
+            builder.add_file_edits(ctx.file_id(), editor);
         },
     )
 }

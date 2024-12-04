@@ -64,40 +64,38 @@ impl ast::Fn {
     ) {
         match self.generic_param_list() {
             Some(generic_param_list) => match generic_param_list.generic_params().last() {
-                Some(_last_param) => {
+                Some(last_param) => {
                     // There exists a generic param list and it's not empty
                     let position = generic_param_list.r_angle_token().map_or_else(
                         || crate::syntax_editor::Position::last_child_of(self.syntax()),
                         crate::syntax_editor::Position::before,
                     );
 
-                    if let Some(last_param) = generic_param_list.generic_params().last() {
-                        if last_param
-                            .syntax()
-                            .next_sibling_or_token()
-                            .map_or(false, |it| it.kind() == SyntaxKind::COMMA)
-                        {
-                            editor.insert(
-                                crate::syntax_editor::Position::after(last_param.syntax()),
-                                new_param.syntax().clone(),
-                            );
-                            editor.insert(
-                                crate::syntax_editor::Position::after(last_param.syntax()),
-                                make::token(SyntaxKind::WHITESPACE),
-                            );
-                            editor.insert(
-                                crate::syntax_editor::Position::after(last_param.syntax()),
-                                make::token(SyntaxKind::COMMA),
-                            );
-                        } else {
-                            let elements = vec![
-                                make::token(SyntaxKind::COMMA).into(),
-                                make::token(SyntaxKind::WHITESPACE).into(),
-                                new_param.syntax().clone().into(),
-                            ];
-                            editor.insert_all(position, elements);
-                        }
-                    };
+                    if last_param
+                        .syntax()
+                        .next_sibling_or_token()
+                        .map_or(false, |it| it.kind() == SyntaxKind::COMMA)
+                    {
+                        editor.insert(
+                            crate::syntax_editor::Position::after(last_param.syntax()),
+                            new_param.syntax().clone(),
+                        );
+                        editor.insert(
+                            crate::syntax_editor::Position::after(last_param.syntax()),
+                            make::token(SyntaxKind::WHITESPACE),
+                        );
+                        editor.insert(
+                            crate::syntax_editor::Position::after(last_param.syntax()),
+                            make::token(SyntaxKind::COMMA),
+                        );
+                    } else {
+                        let elements = vec![
+                            make::token(SyntaxKind::COMMA).into(),
+                            make::token(SyntaxKind::WHITESPACE).into(),
+                            new_param.syntax().clone().into(),
+                        ];
+                        editor.insert_all(position, elements);
+                    }
                 }
                 None => {
                     // There exists a generic param list but it's empty
