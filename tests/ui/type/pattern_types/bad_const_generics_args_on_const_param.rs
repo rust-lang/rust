@@ -1,4 +1,4 @@
-#![feature(pattern_types, core_pattern_type)]
+#![feature(pattern_types, pattern_type_macro)]
 #![allow(internal_features)]
 
 type Pat<const START: u32, const END: u32> =
