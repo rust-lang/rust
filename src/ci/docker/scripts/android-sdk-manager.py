@@ -35,6 +35,7 @@ MIRROR_BUCKET = "rust-lang-ci-mirrors"
 MIRROR_BUCKET_REGION = "us-west-1"
 MIRROR_BASE_DIR = "rustc/android/"
 
+
 class Package:
     def __init__(self, path, url, sha1, deps=None):
         if deps is None:
@@ -53,17 +54,24 @@ class Package:
             sha1 = hashlib.sha1(f.read()).hexdigest()
             if sha1 != self.sha1:
                 raise RuntimeError(
-                    "hash mismatch for package " + self.path + ": " +
-                    sha1 + " vs " + self.sha1 + " (known good)"
+                    "hash mismatch for package "
+                    + self.path
+                    + ": "
+                    + sha1
+                    + " vs "
+                    + self.sha1
+                    + " (known good)"
                 )
         return file
 
     def __repr__(self):
-        return "<Package "+self.path+" at "+self.url+" (sha1="+self.sha1+")"
+        return "<Package " + self.path + " at " + self.url + " (sha1=" + self.sha1 + ")"
+
 
 def fetch_url(url):
     page = urllib.request.urlopen(url)
     return page.read()
+
 
 def fetch_repository(base, repo_url):
     packages = {}
@@ -92,11 +100,13 @@ def fetch_repository(base, repo_url):
 
     return packages
 
+
 def fetch_repositories():
     packages = {}
     for repo in REPOSITORIES:
         packages.update(fetch_repository(BASE_REPOSITORY, repo))
     return packages
+
 
 class Lockfile:
     def __init__(self, path):
@@ -123,6 +133,7 @@ class Lockfile:
             for package in packages:
                 f.write(package.path + " " + package.url + " " + package.sha1 + "\n")
 
+
 def cli_add_to_lockfile(args):
     lockfile = Lockfile(args.lockfile)
     packages = fetch_repositories()
@@ -130,28 +141,49 @@ def cli_add_to_lockfile(args):
         lockfile.add(packages, package)
     lockfile.save()
 
+
 def cli_update_mirror(args):
     lockfile = Lockfile(args.lockfile)
     for package in lockfile.packages.values():
         path = package.download(BASE_REPOSITORY)
-        subprocess.run([
-            "aws", "s3", "mv", path,
-            "s3://" + MIRROR_BUCKET + "/" + MIRROR_BASE_DIR + package.url,
-            "--profile=" + args.awscli_profile,
-        ], check=True)
+        subprocess.run(
+            [
+                "aws",
+                "s3",
+                "mv",
+                path,
+                "s3://" + MIRROR_BUCKET + "/" + MIRROR_BASE_DIR + package.url,
+                "--profile=" + args.awscli_profile,
+            ],
+            check=True,
+        )
+
 
 def cli_install(args):
     lockfile = Lockfile(args.lockfile)
     for package in lockfile.packages.values():
         # Download the file from the mirror into a temp file
-        url = "https://" + MIRROR_BUCKET + ".s3-" + MIRROR_BUCKET_REGION + \
-              ".amazonaws.com/" + MIRROR_BASE_DIR
+        url = (
+            "https://"
+            + MIRROR_BUCKET
+            + ".s3-"
+            + MIRROR_BUCKET_REGION
+            + ".amazonaws.com/"
+            + MIRROR_BASE_DIR
+        )
         downloaded = package.download(url)
         # Extract the file in a temporary directory
         extract_dir = tempfile.mkdtemp()
-        subprocess.run([
-            "unzip", "-q", downloaded, "-d", extract_dir,
-        ], check=True)
+        subprocess.run(
+            [
+                "unzip",
+                "-q",
+                downloaded,
+                "-d",
+                extract_dir,
+            ],
+            check=True,
+        )
         # Figure out the prefix used in the zip
         subdirs = [d for d in os.listdir(extract_dir) if not d.startswith(".")]
         if len(subdirs) != 1:
@@ -161,6 +193,7 @@ def cli_install(args):
         os.makedirs("/".join(dest.split("/")[:-1]), exist_ok=True)
         os.rename(os.path.join(extract_dir, subdirs[0]), dest)
         os.unlink(downloaded)
+
 
 def cli():
     parser = argparse.ArgumentParser()
@@ -186,6 +219,7 @@ def cli():
         print("error: a subcommand is required (see --help)")
         exit(1)
     args.func(args)
+
 
 if __name__ == "__main__":
     cli()
