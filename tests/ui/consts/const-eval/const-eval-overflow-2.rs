@@ -12,8 +12,7 @@ const NEG_NEG_128: i8 = -NEG_128; //~ ERROR constant
 
 fn main() {
     match -128i8 {
-        NEG_NEG_128 => println!("A"),
-        //~^ ERROR could not evaluate constant pattern
+        NEG_NEG_128 => println!("A"), // ok, `const` error already emitted
         _ => println!("B"),
     }
 }
