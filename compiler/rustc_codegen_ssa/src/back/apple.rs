@@ -26,6 +26,82 @@ pub(super) fn macho_platform(target: &Target) -> u32 {
     }
 }
 
+/// Add relocation and section data needed for a symbol to be considered
+/// undefined by ld64.
+///
+/// Inherently very architecture-specific (unfortunately).
+///
+/// # New architectures
+///
+/// The values here can be found by compiling the following program:
+///
+/// ```c
+/// void foo(void);
+///
+/// void use_foo() {
+///     foo();
+/// }
+/// ```
+///
+/// With:
+///
+/// ```console
+/// $ clang -c foo.c -O2 -g0 -fno-exceptions -target $CLANG_TARGET
+/// ```
+///
+/// And then inspecting with `objdump -d foo.o` and/or:
+///
+/// ```no_run
+/// use object::read::macho::{MachHeader, MachOFile};
+/// use object::{File, Object, ObjectSection};
+///
+/// fn read(file: MachOFile<'_, impl MachHeader>) {
+///     for section in file.sections() {
+///         dbg!(section.name().unwrap(), section.data().unwrap(), section.align());
+///         for reloc in section.relocations() {
+///             dbg!(reloc);
+///         }
+///     }
+/// }
+///
+/// fn main() {
+///     match File::parse(&*std::fs::read("foo.o").unwrap()).unwrap() {
+///         File::MachO32(file) => read(file),
+///         File::MachO64(file) => read(file),
+///         _ => unimplemented!(),
+///     }
+/// }
+/// ```
+pub(super) fn add_data_and_relocation(
+    file: &mut object::write::Object<'_>,
+    section: object::write::SectionId,
+    symbol: object::write::SymbolId,
+    target: &Target,
+) -> object::write::Result<()> {
+    let (data, align, addend, r_type): (&[u8], _, _, _) = match &*target.arch {
+        "arm" => (&[0xff, 0xf7, 0xfe, 0xbf], 2, 0, object::macho::ARM_THUMB_RELOC_BR22),
+        "aarch64" => (&[0, 0, 0, 0x14], 4, 0, object::macho::ARM64_RELOC_BRANCH26),
+        "x86_64" => (
+            &[0x55, 0x48, 0x89, 0xe5, 0x5d, 0xe9, 0, 0, 0, 0],
+            16,
+            -4,
+            object::macho::X86_64_RELOC_BRANCH,
+        ),
+        "x86" => (&[0x55, 0x89, 0xe5, 0x5d, 0xe9, 0xf7, 0xff, 0xff, 0xff], 16, -4, 0),
+        arch => unimplemented!("unsupported Apple architecture {arch:?}"),
+    };
+
+    let offset = file.section_mut(section).append_data(data, align);
+    file.add_relocation(section, object::write::Relocation {
+        offset,
+        addend,
+        symbol,
+        flags: object::write::RelocationFlags::MachO { r_type, r_pcrel: true, r_length: 2 },
+    })?;
+
+    Ok(())
+}
+
 /// Deployment target or SDK version.
 ///
 /// The size of the numbers in here are limited by Mach-O's `LC_BUILD_VERSION`.
