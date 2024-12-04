@@ -36,12 +36,11 @@ extern crate rustc_errors;
 extern crate rustc_parse;
 extern crate rustc_session;
 extern crate rustc_span;
-extern crate smallvec;
 
 use std::mem;
 use std::process::ExitCode;
 
-use rustc_ast::ast::{DUMMY_NODE_ID, Expr, ExprKind, Stmt};
+use rustc_ast::ast::{DUMMY_NODE_ID, Expr, ExprKind};
 use rustc_ast::mut_visit::{self, DummyAstNode as _, MutVisitor};
 use rustc_ast::node_id::NodeId;
 use rustc_ast::ptr::P;
@@ -50,7 +49,6 @@ use rustc_errors::Diag;
 use rustc_parse::parser::Recovery;
 use rustc_session::parse::ParseSess;
 use rustc_span::{DUMMY_SP, FileName, Span};
-use smallvec::SmallVec;
 
 // Every parenthesis in the following expressions is re-inserted by the
 // pretty-printer.
@@ -163,18 +161,6 @@ impl MutVisitor for Normalize {
 
     fn visit_span(&mut self, span: &mut Span) {
         *span = DUMMY_SP;
-    }
-
-    fn visit_expr(&mut self, expr: &mut P<Expr>) {
-        if let ExprKind::Binary(binop, _left, _right) = &mut expr.kind {
-            self.visit_span(&mut binop.span);
-        }
-        mut_visit::walk_expr(self, expr);
-    }
-
-    fn flat_map_stmt(&mut self, mut stmt: Stmt) -> SmallVec<[Stmt; 1]> {
-        self.visit_span(&mut stmt.span);
-        mut_visit::walk_flat_map_stmt(self, stmt)
     }
 }
 

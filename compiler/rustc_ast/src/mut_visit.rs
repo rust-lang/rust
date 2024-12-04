@@ -1625,9 +1625,10 @@ pub fn walk_expr<T: MutVisitor>(vis: &mut T, Expr { kind, id, span, attrs, token
             visit_thin_exprs(vis, call_args);
             vis.visit_span(span);
         }
-        ExprKind::Binary(_binop, lhs, rhs) => {
+        ExprKind::Binary(binop, lhs, rhs) => {
             vis.visit_expr(lhs);
             vis.visit_expr(rhs);
+            vis.visit_span(&mut binop.span);
         }
         ExprKind::Unary(_unop, ohs) => vis.visit_expr(ohs),
         ExprKind::Cast(expr, ty) => {
@@ -1785,20 +1786,21 @@ pub fn noop_filter_map_expr<T: MutVisitor>(vis: &mut T, mut e: P<Expr>) -> Optio
 
 pub fn walk_flat_map_stmt<T: MutVisitor>(
     vis: &mut T,
-    Stmt { kind, mut span, mut id }: Stmt,
+    Stmt { kind, span, mut id }: Stmt,
 ) -> SmallVec<[Stmt; 1]> {
     vis.visit_id(&mut id);
-    let stmts: SmallVec<_> = walk_flat_map_stmt_kind(vis, kind)
+    let mut stmts: SmallVec<[Stmt; 1]> = walk_flat_map_stmt_kind(vis, kind)
         .into_iter()
         .map(|kind| Stmt { id, kind, span })
         .collect();
-    if stmts.len() > 1 {
-        panic!(
+    match stmts.len() {
+        0 => {}
+        1 => vis.visit_span(&mut stmts[0].span),
+        2.. => panic!(
             "cloning statement `NodeId`s is prohibited by default, \
              the visitor should implement custom statement visiting"
-        );
+        ),
     }
-    vis.visit_span(&mut span);
     stmts
 }
 
