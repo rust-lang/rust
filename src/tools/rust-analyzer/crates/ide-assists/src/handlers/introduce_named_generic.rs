@@ -51,7 +51,7 @@ pub(crate) fn introduce_named_generic(acc: &mut Assists, ctx: &AssistContext<'_>
 
             editor.replace(impl_trait_type.syntax(), new_ty.syntax());
             let generic_param = syntax::ast::GenericParam::from(type_param);
-            fn_.syntax_editor_add_generic_param(&mut editor, generic_param.clone());
+            editor.syntax_editor_add_generic_param(fn_, generic_param.clone());
 
             if let Some(cap) = ctx.config.snippet_cap {
                 editor.add_annotation(generic_param.syntax(), builder.make_tabstop_before(cap));
