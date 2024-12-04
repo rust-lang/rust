@@ -39,7 +39,7 @@ impl<'a, 'tcx> Expectation<'tcx> {
     // an expected type. Otherwise, we might write parts of the type
     // when checking the 'then' block which are incompatible with the
     // 'else' branch.
-    pub(super) fn adjust_for_branches(
+    pub(super) fn try_structurally_resolve_and_adjust_for_branches(
         &self,
         fcx: &FnCtxt<'a, 'tcx>,
         span: Span,
