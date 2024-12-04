@@ -2,7 +2,7 @@
 
 //@ only-apple
 
-use run_make_support::{Rustc, run, rustc};
+use run_make_support::{Rustc, diff, run, rustc};
 
 fn compile(cfg: &str) -> Rustc {
     let mut rustc = rustc();
@@ -16,11 +16,15 @@ fn main() {
         run("main");
     }
 
-    let errs = compile("omit").run_fail();
+    let errs = compile("omit").verbose().run_fail();
     // The linker's exact error output changes between Xcode versions, depends on
     // linker invocation details, and the linker sometimes outputs more warnings.
     errs.assert_stderr_contains_regex(r"error: linking with `.*` failed");
     errs.assert_stderr_contains_regex(r"(Undefined symbols|ld: symbol[^\s]* not found)");
     errs.assert_stderr_contains_regex(r".?_CFRunLoopGetTypeID.?, referenced from:");
     errs.assert_stderr_contains("clang: error: linker command failed with exit code 1");
+    // Ensure we don't show the full linker command by default.
+    let errs = compile("omit").run_fail().assert_stderr_contains(
+        "to see the full command that was run, rerun with `--verbose` flag",
+    );
 }

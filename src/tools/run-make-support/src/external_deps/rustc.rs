@@ -221,6 +221,11 @@ impl Rustc {
         self
     }
 
+    pub fn verbose(&mut self) -> &mut Self {
+        self.cmd.arg("--verbose");
+        self
+    }
+
     /// Specify json messages printed by the compiler
     pub fn json(&mut self, items: &str) -> &mut Self {
         self.cmd.arg(format!("--json={items}"));

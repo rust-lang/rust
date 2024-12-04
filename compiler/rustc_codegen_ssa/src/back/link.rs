@@ -1004,6 +1004,7 @@ fn link_natively(
                     exit_status: prog.status,
                     command: &cmd,
                     escaped_output,
+                    verbose: sess.opts.verbose,
                 };
                 sess.dcx().emit_err(err);
                 // If MSVC's `link.exe` was expected but the return code
