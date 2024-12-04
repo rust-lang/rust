@@ -97,7 +97,8 @@ mod c_char_definition {
         // in clang/lib/Driver/ToolChains/Clang.cpp):
         // - PowerPC uses unsigned char for all targets except Darwin
         // - Arm/AArch64 uses unsigned char except for Darwin and Windows
-        // - L4RE builds with -funsigned-char on all targets
+        // Note: the L4RE kernel builds with -funsigned-char on all targets, but
+        //  we only have a target for userspace apps so it follows the architectures.
         if #[cfg(all(
             not(windows),
             not(target_vendor = "apple"),
@@ -113,7 +114,6 @@ mod c_char_definition {
                 target_arch = "riscv32",
                 target_arch = "s390x",
                 target_arch = "xtensa",
-                target_os = "l4re",
             )
         ))] {
             pub type c_char = u8;
