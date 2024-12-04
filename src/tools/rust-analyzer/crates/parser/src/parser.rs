@@ -327,10 +327,10 @@ impl Marker {
         self.bomb.defuse();
         let idx = self.pos as usize;
         if idx == p.events.len() - 1 {
-            match p.events.pop() {
-                Some(Event::Start { kind: TOMBSTONE, forward_parent: None }) => (),
-                _ => unreachable!(),
-            }
+            assert!(matches!(
+                p.events.pop(),
+                Some(Event::Start { kind: TOMBSTONE, forward_parent: None })
+            ));
         }
     }
 }

@@ -3,10 +3,7 @@ SOURCE_FILE
     VISIBILITY
       PUB_KW "pub"
       L_PAREN "("
-      PATH
-        PATH_SEGMENT
-          ERROR
-            R_PAREN ")"
+      R_PAREN ")"
     WHITESPACE " "
     STRUCT_KW "struct"
     WHITESPACE " "
@@ -15,4 +12,3 @@ SOURCE_FILE
     SEMICOLON ";"
   WHITESPACE "\n"
 error 4: expected identifier
-error 5: expected R_PAREN

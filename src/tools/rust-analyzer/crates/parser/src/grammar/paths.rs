@@ -19,6 +19,10 @@ pub(super) fn use_path(p: &mut Parser<'_>) {
     path(p, Mode::Use);
 }
 
+pub(super) fn vis_path(p: &mut Parser<'_>) {
+    path(p, Mode::Vis);
+}
+
 pub(super) fn attr_path(p: &mut Parser<'_>) {
     path(p, Mode::Attr);
 }
@@ -44,13 +48,17 @@ enum Mode {
     Attr,
     Type,
     Expr,
+    Vis,
 }
 
-fn path(p: &mut Parser<'_>, mode: Mode) {
+fn path(p: &mut Parser<'_>, mode: Mode) -> Option<CompletedMarker> {
     let path = p.start();
-    path_segment(p, mode, true);
+    if path_segment(p, mode, true).is_none() {
+        path.abandon(p);
+        return None;
+    }
     let qual = path.complete(p, PATH);
-    path_for_qualifier(p, mode, qual);
+    Some(path_for_qualifier(p, mode, qual))
 }
 
 fn path_for_qualifier(
@@ -76,7 +84,7 @@ const EXPR_PATH_SEGMENT_RECOVERY_SET: TokenSet =
     items::ITEM_RECOVERY_SET.union(TokenSet::new(&[T![')'], T![,], T![let]]));
 const TYPE_PATH_SEGMENT_RECOVERY_SET: TokenSet = types::TYPE_RECOVERY_SET;
 
-fn path_segment(p: &mut Parser<'_>, mode: Mode, first: bool) {
+fn path_segment(p: &mut Parser<'_>, mode: Mode, first: bool) -> Option<CompletedMarker> {
     let m = p.start();
     // test qual_paths
     // type X = <A as B>::Output;
@@ -117,6 +125,7 @@ fn path_segment(p: &mut Parser<'_>, mode: Mode, first: bool) {
                     Mode::Attr => {
                         items::ITEM_RECOVERY_SET.union(TokenSet::new(&[T![']'], T![=], T![#]]))
                     }
+                    Mode::Vis => items::ITEM_RECOVERY_SET.union(TokenSet::new(&[T![')']])),
                     Mode::Type => TYPE_PATH_SEGMENT_RECOVERY_SET,
                     Mode::Expr => EXPR_PATH_SEGMENT_RECOVERY_SET,
                 };
@@ -125,17 +134,17 @@ fn path_segment(p: &mut Parser<'_>, mode: Mode, first: bool) {
                     // test_err empty_segment
                     // use crate::;
                     m.abandon(p);
-                    return;
+                    return None;
                 }
             }
         };
     }
-    m.complete(p, PATH_SEGMENT);
+    Some(m.complete(p, PATH_SEGMENT))
 }
 
 fn opt_path_type_args(p: &mut Parser<'_>, mode: Mode) {
     match mode {
-        Mode::Use | Mode::Attr => {}
+        Mode::Use | Mode::Attr | Mode::Vis => {}
         Mode::Type => {
             // test typepathfn_with_coloncolon
             // type F = Start::(Middle) -> (Middle)::End;

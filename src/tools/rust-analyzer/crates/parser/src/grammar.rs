@@ -242,7 +242,7 @@ fn opt_visibility(p: &mut Parser<'_>, in_tuple_field: bool) -> bool {
                 // struct MyStruct(pub ());
                 if !(in_tuple_field && matches!(p.nth(1), T![ident] | T![')'])) {
                     p.bump(T!['(']);
-                    paths::use_path(p);
+                    paths::vis_path(p);
                     p.expect(T![')']);
                 }
             }
@@ -252,7 +252,7 @@ fn opt_visibility(p: &mut Parser<'_>, in_tuple_field: bool) -> bool {
             T![in] => {
                 p.bump(T!['(']);
                 p.bump(T![in]);
-                paths::use_path(p);
+                paths::vis_path(p);
                 p.expect(T![')']);
             }
             _ => {}

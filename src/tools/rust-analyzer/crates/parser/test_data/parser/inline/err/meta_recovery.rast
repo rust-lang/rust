@@ -4,7 +4,6 @@ SOURCE_FILE
     BANG "!"
     L_BRACK "["
     META
-      PATH
     R_BRACK "]"
   WHITESPACE "\n"
   ATTR
@@ -55,7 +54,6 @@ SOURCE_FILE
     L_BRACK "["
     META
       UNSAFE_KW "unsafe"
-      PATH
     R_BRACK "]"
   WHITESPACE "\n"
   ATTR
@@ -65,7 +63,6 @@ SOURCE_FILE
     META
       UNSAFE_KW "unsafe"
       WHITESPACE " "
-      PATH
       EQ "="
     R_BRACK "]"
   WHITESPACE "\n"
@@ -80,7 +77,7 @@ error 41: expected L_PAREN
 error 41: expected identifier
 error 41: expected R_PAREN
 error 52: expected L_PAREN
-error 53: expected identifier
+error 52: expected identifier
 error 54: expected expression
 error 54: expected expression
 error 54: expected R_PAREN
