@@ -328,10 +328,7 @@ pub fn dyn_compatibility_violations_for_assoc_item(
             .collect(),
         // Associated types can only be dyn-compatible if they have `Self: Sized` bounds.
         ty::AssocKind::Type => {
-            if !tcx.features().generic_associated_types_extended()
-                && !tcx.generics_of(item.def_id).is_own_empty()
-                && !item.is_impl_trait_in_trait()
-            {
+            if !tcx.generics_of(item.def_id).is_own_empty() && !item.is_impl_trait_in_trait() {
                 vec![DynCompatibilityViolation::GAT(item.name, item.ident(tcx).span)]
             } else {
                 // We will permit associated types if they are explicitly mentioned in the trait object.
