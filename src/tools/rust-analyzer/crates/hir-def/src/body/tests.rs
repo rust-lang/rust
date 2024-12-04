@@ -404,3 +404,26 @@ fn foo() {
         }"#]]
     .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
 }
+
+#[test]
+fn shadowing_record_variant() {
+    let (_, body, _) = lower(
+        r#"
+enum A {
+    B { field: i32 },
+}
+fn f() {
+    use A::*;
+    match () {
+        B => {}
+    };
+}
+    "#,
+    );
+    assert_eq!(body.bindings.len(), 1, "should have a binding for `B`");
+    assert_eq!(
+        body.bindings[BindingId::from_raw(RawIdx::from_u32(0))].name.as_str(),
+        "B",
+        "should have a binding for `B`",
+    );
+}
