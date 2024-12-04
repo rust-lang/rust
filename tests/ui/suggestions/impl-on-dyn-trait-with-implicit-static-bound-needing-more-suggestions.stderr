@@ -25,6 +25,20 @@ LL |         val.use_self()
    |         returns a value referencing data owned by the current function
    |         `val` is borrowed here
 
+error[E0597]: `val` does not live long enough
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:66:9
+   |
+LL |     fn use_it<'a>(val: Box<dyn ObjectTrait<Assoc = i32> + 'a>) -> &'a () {
+   |                   --- binding `val` declared here
+LL |         val.use_self()
+   |         ^^^-----------
+   |         |
+   |         borrowed value does not live long enough
+   |         argument requires that `val` is borrowed for `'static`
+...
+LL |     }
+   |     - `val` dropped here while still borrowed
+
 error[E0521]: borrowed data escapes outside of function
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:66:9
    |
@@ -51,15 +65,6 @@ LL |     impl MyTrait for Box<dyn ObjectTrait<Assoc = i32> + '_> {
    |                                                       ++++
 
 error[E0515]: cannot return value referencing function parameter `val`
-  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:66:9
-   |
-LL |         val.use_self()
-   |         ---^^^^^^^^^^^
-   |         |
-   |         returns a value referencing data owned by the current function
-   |         `val` is borrowed here
-
-error[E0515]: cannot return value referencing function parameter `val`
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:90:9
    |
 LL |         val.use_self()
@@ -70,5 +75,5 @@ LL |         val.use_self()
 
 error: aborting due to 6 previous errors
 
-Some errors have detailed explanations: E0515, E0521.
+Some errors have detailed explanations: E0515, E0521, E0597.
 For more information about an error, try `rustc --explain E0515`.

@@ -15,10 +15,10 @@ LL |     async {
 LL |         let not_static = 0;
    |             ---------- binding `not_static` declared here
 LL |         force_send(async_load(&not_static));
-   |                    -----------^^^^^^^^^^^-
-   |                    |          |
-   |                    |          borrowed value does not live long enough
-   |                    argument requires that `not_static` is borrowed for `'1`
+   |         ----------------------^^^^^^^^^^^--
+   |         |                     |
+   |         |                     borrowed value does not live long enough
+   |         argument requires that `not_static` is borrowed for `'1`
 ...
 LL |     }
    |     - `not_static` dropped here while still borrowed

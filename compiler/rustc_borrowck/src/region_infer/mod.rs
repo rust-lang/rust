@@ -1945,7 +1945,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         target_test: impl Fn(RegionVid) -> bool,
     ) -> (BlameConstraint<'tcx>, Vec<OutlivesConstraint<'tcx>>) {
         // Find all paths
-        let (path, target_region) = self
+        let (path, _) = self
             .find_constraint_paths_between_regions(from_region, target_test)
             .or_else(|| {
                 self.find_constraint_paths_between_regions(from_region, |r| {
@@ -1983,29 +1983,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             })
             .unwrap_or_else(|| ObligationCauseCode::Misc);
 
-        // To find the best span to cite, we first try to look for the
-        // final constraint that is interesting and where the `sup` is
-        // not unified with the ultimate target region. The reason
-        // for this is that we have a chain of constraints that lead
-        // from the source to the target region, something like:
-        //
-        //    '0: '1 ('0 is the source)
-        //    '1: '2
-        //    '2: '3
-        //    '3: '4
-        //    '4: '5
-        //    '5: '6 ('6 is the target)
-        //
-        // Some of those regions are unified with `'6` (in the same
-        // SCC). We want to screen those out. After that point, the
-        // "closest" constraint we have to the end is going to be the
-        // most likely to be the point where the value escapes -- but
-        // we still want to screen for an "interesting" point to
-        // highlight (e.g., a call site or something).
-        let target_scc = self.constraint_sccs.scc(target_region);
-
-        // As noted above, when reporting an error, there is typically a chain of constraints
-        // leading from some "source" region which must outlive some "target" region.
+        // When reporting an error, there is typically a chain of constraints leading from some
+        // "source" region which must outlive some "target" region.
         // In most cases, we prefer to "blame" the constraints closer to the target --
         // but there is one exception. When constraints arise from higher-ranked subtyping,
         // we generally prefer to blame the source value,
@@ -2047,30 +2026,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         };
 
         let interesting_to_blame = |constraint: &OutlivesConstraint<'tcx>| {
-            let constraint_sup_scc = self.constraint_sccs.scc(constraint.sup);
-
-            if blame_source {
-                match constraint.category {
-                    ConstraintCategory::OpaqueType
+            !matches!(
+                constraint.category,
+                ConstraintCategory::OpaqueType
                     | ConstraintCategory::Boring
                     | ConstraintCategory::BoringNoLocation
                     | ConstraintCategory::Internal
-                    | ConstraintCategory::Predicate(_) => false,
-                    ConstraintCategory::TypeAnnotation
-                    | ConstraintCategory::Return(_)
-                    | ConstraintCategory::Yield => true,
-                    _ => constraint_sup_scc != target_scc,
-                }
-            } else {
-                !matches!(
-                    constraint.category,
-                    ConstraintCategory::OpaqueType
-                        | ConstraintCategory::Boring
-                        | ConstraintCategory::BoringNoLocation
-                        | ConstraintCategory::Internal
-                        | ConstraintCategory::Predicate(_)
-                )
-            }
+                    | ConstraintCategory::Predicate(_)
+            )
         };
 
         let best_choice = if blame_source {
@@ -2111,10 +2074,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             Some(i) => path[i],
 
             None => {
-                // If that search fails, that is.. unusual. Maybe everything
-                // is in the same SCC or something. In that case, find what
-                // appears to be the most interesting point to report to the
-                // user via an even more ad-hoc guess.
+                // If that search fails, the only constraints on the path are those that we try not
+                // to blame. In that case, find what appears to be the most interesting point to
+                // report to the user via an even more ad-hoc guess.
                 *path.iter().min_by_key(|p| p.category).unwrap()
             }
         };
