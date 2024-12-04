@@ -118,16 +118,16 @@ pub fn check(path: &Path, features: CollectedFeatures, bad: &mut bool) {
     // List unstable features that don't have Unstable Book sections.
     // Remove the comment marker if you want the list printed.
     /*
-    println!("Lib features without unstable book sections:");
+    eprintln!("Lib features without unstable book sections:");
     for feature_name in &unstable_lang_feature_names -
                         &unstable_book_lang_features_section_file_names {
-        println!("    * {} {:?}", feature_name, lib_features[&feature_name].tracking_issue);
+        eprintln!("    * {} {:?}", feature_name, lib_features[&feature_name].tracking_issue);
     }
 
-    println!("Lang features without unstable book sections:");
+    eprintln!("Lang features without unstable book sections:");
     for feature_name in &unstable_lib_feature_names-
                         &unstable_book_lib_features_section_file_names {
-        println!("    * {} {:?}", feature_name, lang_features[&feature_name].tracking_issue);
+        eprintln!("    * {} {:?}", feature_name, lang_features[&feature_name].tracking_issue);
     }
     // */
 }

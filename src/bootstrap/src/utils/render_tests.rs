@@ -56,7 +56,7 @@ fn run_tests(builder: &Builder<'_>, cmd: &mut BootstrapCommand, stream: bool) ->
     let cmd = cmd.as_command_mut();
     cmd.stdout(Stdio::piped());
 
-    builder.verbose(|| println!("running: {cmd:?}"));
+    builder.verbose(|| eprintln!("running: {cmd:?}"));
 
     let mut process = cmd.spawn().unwrap();
 
@@ -71,7 +71,7 @@ fn run_tests(builder: &Builder<'_>, cmd: &mut BootstrapCommand, stream: bool) ->
 
     let result = process.wait_with_output().unwrap();
     if !result.status.success() && builder.is_verbose() {
-        println!(
+        eprintln!(
             "\n\ncommand did not execute successfully: {cmd:?}\n\
              expected success, got: {}",
             result.status
@@ -135,7 +135,9 @@ impl<'a> Renderer<'a> {
         if self.up_to_date_tests > 0 {
             let n = self.up_to_date_tests;
             let s = if n > 1 { "s" } else { "" };
-            println!("help: ignored {n} up-to-date test{s}; use `--force-rerun` to prevent this\n");
+            eprintln!(
+                "help: ignored {n} up-to-date test{s}; use `--force-rerun` to prevent this\n"
+            );
         }
     }
 
@@ -190,7 +192,7 @@ impl<'a> Renderer<'a> {
         if let Some(exec_time) = test.exec_time {
             print!(" ({exec_time:.2?})");
         }
-        println!();
+        eprintln!();
     }
 
     fn render_test_outcome_terse(&mut self, outcome: Outcome<'_>, test: &TestOutcome) {
@@ -200,7 +202,7 @@ impl<'a> Renderer<'a> {
                 let executed = format!("{:>width$}", self.executed_tests - 1, width = total.len());
                 print!(" {executed}/{total}");
             }
-            println!();
+            eprintln!();
             self.terse_tests_in_line = 0;
         }
 
@@ -212,31 +214,31 @@ impl<'a> Renderer<'a> {
     fn render_suite_outcome(&self, outcome: Outcome<'_>, suite: &SuiteOutcome) {
         // The terse output doesn't end with a newline, so we need to add it ourselves.
         if !self.builder.config.verbose_tests {
-            println!();
+            eprintln!();
         }
 
         if !self.failures.is_empty() {
-            println!("\nfailures:\n");
+            eprintln!("\nfailures:\n");
             for failure in &self.failures {
                 if failure.stdout.is_some() || failure.message.is_some() {
-                    println!("---- {} stdout ----", failure.name);
+                    eprintln!("---- {} stdout ----", failure.name);
                     if let Some(stdout) = &failure.stdout {
-                        println!("{stdout}");
+                        eprintln!("{stdout}");
                     }
                     if let Some(message) = &failure.message {
-                        println!("NOTE: {message}");
+                        eprintln!("NOTE: {message}");
                     }
                 }
             }
 
-            println!("\nfailures:");
+            eprintln!("\nfailures:");
             for failure in &self.failures {
-                println!("    {}", failure.name);
+                eprintln!("    {}", failure.name);
             }
         }
 
         if !self.benches.is_empty() {
-            println!("\nbenchmarks:");
+            eprintln!("\nbenchmarks:");
 
             let mut rows = Vec::new();
             for bench in &self.benches {
@@ -251,13 +253,13 @@ impl<'a> Renderer<'a> {
             let max_1 = rows.iter().map(|r| r.1.len()).max().unwrap_or(0);
             let max_2 = rows.iter().map(|r| r.2.len()).max().unwrap_or(0);
             for row in &rows {
-                println!("    {:<max_0$} {:>max_1$} {:>max_2$}", row.0, row.1, row.2);
+                eprintln!("    {:<max_0$} {:>max_1$} {:>max_2$}", row.0, row.1, row.2);
             }
         }
 
         print!("\ntest result: ");
         self.builder.colored_stdout(|stdout| outcome.write_long(stdout)).unwrap();
-        println!(
+        eprintln!(
             ". {} passed; {} failed; {} ignored; {} measured; {} filtered out{time}\n",
             suite.passed,
             suite.failed,
@@ -274,7 +276,7 @@ impl<'a> Renderer<'a> {
     fn render_message(&mut self, message: Message) {
         match message {
             Message::Suite(SuiteMessage::Started { test_count }) => {
-                println!("\nrunning {test_count} tests");
+                eprintln!("\nrunning {test_count} tests");
                 self.executed_tests = 0;
                 self.terse_tests_in_line = 0;
                 self.tests_count = Some(test_count);
@@ -314,7 +316,7 @@ impl<'a> Renderer<'a> {
                 self.failures.push(outcome);
             }
             Message::Test(TestMessage::Timeout { name }) => {
-                println!("test {name} has been running for a long time");
+                eprintln!("test {name} has been running for a long time");
             }
             Message::Test(TestMessage::Started) => {} // Not useful
         }

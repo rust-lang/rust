@@ -144,7 +144,7 @@ where
     }
 
     if !wrote_data {
-        println!("note: diff is identical to nightly rustdoc");
+        eprintln!("note: diff is identical to nightly rustdoc");
         assert!(diff_output.metadata().unwrap().len() == 0);
         return false;
     } else if verbose {

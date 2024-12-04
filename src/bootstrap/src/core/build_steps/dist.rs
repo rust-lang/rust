@@ -2080,7 +2080,7 @@ fn maybe_install_llvm(
     {
         let mut cmd = command(llvm_config);
         cmd.arg("--libfiles");
-        builder.verbose(|| println!("running {cmd:?}"));
+        builder.verbose(|| eprintln!("running {cmd:?}"));
         let files = cmd.run_capture_stdout(builder).stdout();
         let build_llvm_out = &builder.llvm_out(builder.config.build);
         let target_llvm_out = &builder.llvm_out(target);
