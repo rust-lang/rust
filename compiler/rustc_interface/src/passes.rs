@@ -54,10 +54,6 @@ pub(crate) fn parse<'a>(sess: &'a Session) -> Result<ast::Crate> {
         })
         .map_err(|parse_error| parse_error.emit())?;
 
-    if let Some(ref s) = sess.opts.unstable_opts.show_span {
-        rustc_ast_passes::show_span::run(sess.dcx(), s, &krate);
-    }
-
     if sess.opts.unstable_opts.input_stats {
         input_stats::print_ast_stats(&krate, "PRE EXPANSION AST STATS", "ast-stats-1");
     }
