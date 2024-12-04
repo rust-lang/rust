@@ -99,7 +99,6 @@ define_symbols! {
     cdecl_dash_unwind = "cdecl-unwind",
     fastcall_dash_unwind = "fastcall-unwind",
     msp430_dash_interrupt = "msp430-interrupt",
-    platform_dash_intrinsic = "platform-intrinsic",
     ptx_dash_kernel = "ptx-kernel",
     riscv_dash_interrupt_dash_m = "riscv-interrupt-m",
     riscv_dash_interrupt_dash_s = "riscv-interrupt-s",
