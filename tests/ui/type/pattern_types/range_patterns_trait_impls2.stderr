@@ -1,5 +1,5 @@
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/range_patterns_trait_impls2.rs:13:1
+  --> $DIR/range_patterns_trait_impls2.rs:12:1
    |
 LL | impl Eq for Y {}
    | ^^^^^^^^^^^^-
