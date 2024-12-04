@@ -55,14 +55,14 @@ check-aux:
 		$(BOOTSTRAP_ARGS)
 	# Run standard library tests in Miri.
 	$(Q)$(BOOTSTRAP) miri --stage 2 \
-		library/core \
+		library/coretests \
 		library/alloc \
 		$(BOOTSTRAP_ARGS) \
 		--no-doc
 	# Some doctests use file system operations to demonstrate dealing with `Result`.
 	$(Q)MIRIFLAGS="-Zmiri-disable-isolation" \
 		$(BOOTSTRAP) miri --stage 2 \
-		library/core \
+		library/coretests \
 		library/alloc \
 		$(BOOTSTRAP_ARGS) \
 		--doc
