@@ -780,14 +780,6 @@ pub(crate) struct IncompatibleFeatures {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_show_span)]
-pub(crate) struct ShowSpan {
-    #[primary_span]
-    pub span: Span,
-    pub msg: &'static str,
-}
-
-#[derive(Diagnostic)]
 #[diag(ast_passes_negative_bound_not_supported)]
 pub(crate) struct NegativeBoundUnsupported {
     #[primary_span]
