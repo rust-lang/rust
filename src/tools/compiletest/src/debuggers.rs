@@ -20,7 +20,7 @@ pub(crate) fn configure_gdb(config: &Config) -> Option<Arc<Config>> {
     }
 
     if config.remote_test_client.is_some() && !config.target.contains("android") {
-        println!(
+        eprintln!(
             "WARNING: debuginfo tests are not available when \
              testing with remote"
         );
@@ -28,7 +28,7 @@ pub(crate) fn configure_gdb(config: &Config) -> Option<Arc<Config>> {
     }
 
     if config.target.contains("android") {
-        println!(
+        eprintln!(
             "{} debug-info test uses tcp 5039 port.\
              please reserve it",
             config.target
@@ -50,7 +50,7 @@ pub(crate) fn configure_lldb(config: &Config) -> Option<Arc<Config>> {
     config.lldb_python_dir.as_ref()?;
 
     if let Some(350) = config.lldb_version {
-        println!(
+        eprintln!(
             "WARNING: The used version of LLDB (350) has a \
              known issue that breaks debuginfo tests. See \
              issue #32520 for more information. Skipping all \

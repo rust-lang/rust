@@ -306,7 +306,7 @@ fn main() {
         // should run on success, after this block.
     }
     if verbose > 0 {
-        println!("\nDid not run successfully: {status}\n{cmd:?}\n-------------");
+        eprintln!("\nDid not run successfully: {status}\n{cmd:?}\n-------------");
     }
 
     if let Some(mut on_fail) = on_fail {

@@ -158,14 +158,14 @@ pub fn check(
         .collect::<Vec<_>>();
 
     for &(name, _) in gate_untested.iter() {
-        println!("Expected a gate test for the feature '{name}'.");
-        println!(
+        eprintln!("Expected a gate test for the feature '{name}'.");
+        eprintln!(
             "Hint: create a failing test file named 'tests/ui/feature-gates/feature-gate-{}.rs',\
                 \n      with its failures due to missing usage of `#![feature({})]`.",
             name.replace("_", "-"),
             name
         );
-        println!(
+        eprintln!(
             "Hint: If you already have such a test and don't want to rename it,\
                 \n      you can also add a // gate-test-{} line to the test file.",
             name
@@ -218,7 +218,7 @@ pub fn check(
 
         lines.sort();
         for line in lines {
-            println!("* {line}");
+            eprintln!("* {line}");
         }
     }
 

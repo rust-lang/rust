@@ -42,7 +42,7 @@ pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
 
         if let Some(expected) = get_x_wrapper_version(root, cargo) {
             if installed < expected {
-                return println!(
+                return eprintln!(
                     "Current version of x is {installed}, but the latest version is {expected}\nConsider updating to the newer version of x by running `cargo install --path src/tools/x`"
                 );
             }
