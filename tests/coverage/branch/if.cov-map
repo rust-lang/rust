@@ -1,12 +1,14 @@
 Function name: if::branch_and
-Raw bytes (56): 0x[01, 01, 04, 05, 09, 0d, 02, 11, 0f, 0d, 02, 08, 01, 2b, 01, 01, 10, 05, 03, 08, 00, 09, 20, 09, 02, 00, 08, 00, 09, 09, 00, 0d, 00, 0e, 20, 11, 0d, 00, 0d, 00, 0e, 11, 00, 0f, 02, 06, 0f, 02, 0c, 02, 06, 0b, 03, 01, 00, 02]
+Raw bytes (60): 0x[01, 01, 06, 05, 09, 0b, 09, 05, 11, 13, 09, 17, 11, 05, 0d, 08, 01, 2b, 01, 01, 10, 05, 03, 08, 00, 09, 20, 09, 02, 00, 08, 00, 09, 09, 00, 0d, 00, 0e, 20, 0d, 11, 00, 0d, 00, 0e, 0d, 00, 0f, 02, 06, 06, 02, 0c, 02, 06, 0e, 03, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
-Number of expressions: 4
+Number of expressions: 6
 - expression 0 operands: lhs = Counter(1), rhs = Counter(2)
-- expression 1 operands: lhs = Counter(3), rhs = Expression(0, Sub)
-- expression 2 operands: lhs = Counter(4), rhs = Expression(3, Add)
-- expression 3 operands: lhs = Counter(3), rhs = Expression(0, Sub)
+- expression 1 operands: lhs = Expression(2, Add), rhs = Counter(2)
+- expression 2 operands: lhs = Counter(1), rhs = Counter(4)
+- expression 3 operands: lhs = Expression(4, Add), rhs = Counter(2)
+- expression 4 operands: lhs = Expression(5, Add), rhs = Counter(4)
+- expression 5 operands: lhs = Counter(1), rhs = Counter(3)
 Number of file 0 mappings: 8
 - Code(Counter(0)) at (prev + 43, 1) to (start + 1, 16)
 - Code(Counter(1)) at (prev + 3, 8) to (start + 0, 9)
@@ -14,14 +16,14 @@ Number of file 0 mappings: 8
     true  = c2
     false = (c1 - c2)
 - Code(Counter(2)) at (prev + 0, 13) to (start + 0, 14)
-- Branch { true: Counter(4), false: Counter(3) } at (prev + 0, 13) to (start + 0, 14)
-    true  = c4
-    false = c3
-- Code(Counter(4)) at (prev + 0, 15) to (start + 2, 6)
-- Code(Expression(3, Add)) at (prev + 2, 12) to (start + 2, 6)
-    = (c3 + (c1 - c2))
-- Code(Expression(2, Add)) at (prev + 3, 1) to (start + 0, 2)
-    = (c4 + (c3 + (c1 - c2)))
+- Branch { true: Counter(3), false: Counter(4) } at (prev + 0, 13) to (start + 0, 14)
+    true  = c3
+    false = c4
+- Code(Counter(3)) at (prev + 0, 15) to (start + 2, 6)
+- Code(Expression(1, Sub)) at (prev + 2, 12) to (start + 2, 6)
+    = ((c1 + c4) - c2)
+- Code(Expression(3, Sub)) at (prev + 3, 1) to (start + 0, 2)
+    = (((c1 + c3) + c4) - c2)
 Highest counter ID seen: c4
 
 Function name: if::branch_not
