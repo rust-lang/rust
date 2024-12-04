@@ -16,6 +16,7 @@
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::marker::PhantomData;
 use std::ops::{ControlFlow, Deref};
@@ -24,6 +25,7 @@ use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_hir as hir;
+use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::{BitSet, MixedBitSet};
 use rustc_index::{IndexSlice, IndexVec};
@@ -43,7 +45,7 @@ use rustc_mir_dataflow::move_paths::{
     InitIndex, InitLocation, LookupResult, MoveData, MovePathIndex,
 };
 use rustc_mir_dataflow::{Analysis, EntryStates, Results, ResultsVisitor, visit_results};
-use rustc_session::lint::builtin::UNUSED_MUT;
+use rustc_session::lint::builtin::{TAIL_EXPR_DROP_ORDER, UNUSED_MUT};
 use rustc_span::{Span, Symbol};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
@@ -636,9 +638,11 @@ impl<'a, 'tcx> ResultsVisitor<'a, 'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<
             | StatementKind::Coverage(..)
             // These do not actually affect borrowck
             | StatementKind::ConstEvalCounter
-            // This do not affect borrowck
-            | StatementKind::BackwardIncompatibleDropHint { .. }
             | StatementKind::StorageLive(..) => {}
+            // This does not affect borrowck
+            StatementKind::BackwardIncompatibleDropHint { place, reason: BackwardIncompatibleDropReason::Edition2024 } => {
+                self.check_backward_incompatible_drop(location, (**place, span), state);
+            }
             StatementKind::StorageDead(local) => {
                 self.access_place(
                     location,
@@ -1007,6 +1011,23 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         }
     }
 
+    fn maybe_polonius_borrows_in_scope<'s>(
+        &self,
+        location: Location,
+        state: &'s BorrowckDomain,
+    ) -> Cow<'s, BitSet<BorrowIndex>> {
+        if let Some(polonius) = &self.polonius_output {
+            let location = self.location_table.start_index(location);
+            let mut polonius_output = BitSet::new_empty(self.borrow_set.len());
+            for &idx in polonius.errors_at(location) {
+                polonius_output.insert(idx);
+            }
+            Cow::Owned(polonius_output)
+        } else {
+            Cow::Borrowed(&state.borrows)
+        }
+    }
+
     #[instrument(level = "debug", skip(self, state))]
     fn check_access_for_conflict(
         &mut self,
@@ -1019,17 +1040,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         let mut error_reported = false;
 
         // Use polonius output if it has been enabled.
-        let mut polonius_output;
-        let borrows_in_scope = if let Some(polonius) = &self.polonius_output {
-            let location = self.location_table.start_index(location);
-            polonius_output = BitSet::new_empty(self.borrow_set.len());
-            for &idx in polonius.errors_at(location) {
-                polonius_output.insert(idx);
-            }
-            &polonius_output
-        } else {
-            &state.borrows
-        };
+        let borrows_in_scope = self.maybe_polonius_borrows_in_scope(location, state);
 
         each_borrow_involving_path(
             self,
@@ -1147,6 +1158,46 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         );
 
         error_reported
+    }
+
+    /// Through #123739, backward incompatible drops (BIDs) are introduced.
+    /// We would like to emit lints whether borrow checking fails at these future drop locations.
+    #[instrument(level = "debug", skip(self, state))]
+    fn check_backward_incompatible_drop(
+        &mut self,
+        location: Location,
+        place_span: (Place<'tcx>, Span),
+        state: &BorrowckDomain,
+    ) {
+        let sd = AccessDepth::Drop;
+
+        // Use polonius output if it has been enabled.
+        let borrows_in_scope = self.maybe_polonius_borrows_in_scope(location, state);
+
+        // This is a very simplified version of `Self::check_access_for_conflict`.
+        // We are here checking on BIDs and specifically still-live borrows of data involving the BIDs.
+        each_borrow_involving_path(
+            self,
+            self.infcx.tcx,
+            self.body,
+            (sd, place_span.0),
+            self.borrow_set,
+            |borrow_index| borrows_in_scope.contains(borrow_index),
+            |this, _borrow_index, borrow| {
+                if matches!(borrow.kind, BorrowKind::Fake(_)) {
+                    return Control::Continue;
+                }
+                let borrowed = this.retrieve_borrow_spans(borrow).var_or_use_path_span();
+                this.infcx.tcx.emit_node_span_lint(
+                    TAIL_EXPR_DROP_ORDER,
+                    CRATE_HIR_ID,
+                    place_span.1,
+                    session_diagnostics::TailExprDropOrder { borrowed },
+                );
+                // We may stop at the first case
+                Control::Break
+            },
+        );
     }
 
     fn mutate_place(

@@ -1,0 +1,40 @@
+error: a temporary value will be dropped here before the execution exits the block in Edition 2024, which will raise borrow checking error
+  --> $DIR/lint-tail-expr-drop-order-borrowck.rs:9:36
+   |
+LL |     let _ = { String::new().as_str() }.len();
+   |               -------------        ^
+   |               |
+   |               consider using a `let` binding to create a longer lived value; or replacing the `{ .. }` block with curly brackets `( .. )`; or folding the rest of the expression into the surrounding `unsafe { .. }`
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-tail-expr-scope.html>
+note: the lint level is defined here
+  --> $DIR/lint-tail-expr-drop-order-borrowck.rs:6:9
+   |
+LL | #![deny(tail_expr_drop_order)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: a temporary value will be dropped here before the execution exits the block in Edition 2024, which will raise borrow checking error
+  --> $DIR/lint-tail-expr-drop-order-borrowck.rs:18:37
+   |
+LL |     f(unsafe { String::new().as_str() }.len());
+   |                -------------        ^
+   |                |
+   |                consider using a `let` binding to create a longer lived value; or replacing the `{ .. }` block with curly brackets `( .. )`; or folding the rest of the expression into the surrounding `unsafe { .. }`
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-tail-expr-scope.html>
+
+error: a temporary value will be dropped here before the execution exits the block in Edition 2024, which will raise borrow checking error
+  --> $DIR/lint-tail-expr-drop-order-borrowck.rs:29:17
+   |
+LL |         &mut || 0
+   |         --------^
+   |         |
+   |         consider using a `let` binding to create a longer lived value; or replacing the `{ .. }` block with curly brackets `( .. )`; or folding the rest of the expression into the surrounding `unsafe { .. }`
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-tail-expr-scope.html>
+
+error: aborting due to 3 previous errors
+
