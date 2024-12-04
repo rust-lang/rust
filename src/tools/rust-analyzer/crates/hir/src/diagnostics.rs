@@ -5,7 +5,9 @@
 //! be expressed in terms of hir types themselves.
 pub use hir_ty::diagnostics::{CaseType, IncorrectCase};
 use hir_ty::{
-    db::HirDatabase, diagnostics::BodyValidationDiagnostic, CastError, InferenceDiagnostic,
+    db::HirDatabase,
+    diagnostics::{BodyValidationDiagnostic, UnsafetyReason},
+    CastError, InferenceDiagnostic,
 };
 
 use cfg::{CfgExpr, CfgOptions};
@@ -258,9 +260,10 @@ pub struct PrivateField {
 
 #[derive(Debug)]
 pub struct MissingUnsafe {
-    pub expr: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
+    pub node: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
     /// If true, the diagnostics is an `unsafe_op_in_unsafe_fn` lint instead of a hard error.
     pub only_lint: bool,
+    pub reason: UnsafetyReason,
 }
 
 #[derive(Debug)]

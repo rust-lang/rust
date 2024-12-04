@@ -147,6 +147,7 @@ pub use {
     },
     hir_ty::{
         consteval::ConstEvalError,
+        diagnostics::UnsafetyReason,
         display::{ClosureStyle, HirDisplay, HirDisplayError, HirWrite},
         dyn_compatibility::{DynCompatibilityViolation, MethodViolationCode},
         layout::LayoutError,
@@ -1890,10 +1891,10 @@ impl DefWithBody {
             );
         }
 
-        let (unafe_exprs, only_lint) = hir_ty::diagnostics::missing_unsafe(db, self.into());
-        for expr in unafe_exprs {
-            match source_map.expr_or_pat_syntax(expr) {
-                Ok(expr) => acc.push(MissingUnsafe { expr, only_lint }.into()),
+        let (unsafe_exprs, only_lint) = hir_ty::diagnostics::missing_unsafe(db, self.into());
+        for (node, reason) in unsafe_exprs {
+            match source_map.expr_or_pat_syntax(node) {
+                Ok(node) => acc.push(MissingUnsafe { node, only_lint, reason }.into()),
                 Err(SyntheticSyntax) => {
                     // FIXME: Here and elsewhere in this file, the `expr` was
                     // desugared, report or assert that this doesn't happen.

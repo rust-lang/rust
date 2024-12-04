@@ -36,7 +36,7 @@ use hir_expand::{
 use hir_ty::{
     diagnostics::{
         record_literal_missing_fields, record_pattern_missing_fields, unsafe_expressions,
-        UnsafeExpr,
+        InsideUnsafeBlock,
     },
     lang_items::lang_items_for_bin_op,
     method_resolution, Adjustment, InferenceResult, Interner, Substitution, Ty, TyExt, TyKind,
@@ -939,8 +939,8 @@ impl SourceAnalyzer {
                         *def,
                         body,
                         expr_id,
-                        &mut |UnsafeExpr { inside_unsafe_block, .. }| {
-                            is_unsafe |= !inside_unsafe_block
+                        &mut |_, inside_unsafe_block, _| {
+                            is_unsafe |= inside_unsafe_block == InsideUnsafeBlock::No
                         },
                     )
                 };
