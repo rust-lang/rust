@@ -1011,7 +1011,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // For each region outlived by lower_bound find a non-local,
         // universal region (it may be the same region) and add it to
         // `ClosureOutlivesRequirement`.
+        let mut found_outlived_universal_region = false;
         for ur in self.scc_values.universal_regions_outlived_by(r_scc) {
+            found_outlived_universal_region = true;
             debug!("universal_region_outlived_by ur={:?}", ur);
             let non_local_ub = self.universal_region_relations.non_local_upper_bounds(ur);
             debug!(?non_local_ub);
@@ -1034,6 +1036,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 propagated_outlives_requirements.push(requirement);
             }
         }
+        // If we succeed to promote the subject, i.e. it only contains non-local regions,
+        // and fail to prove the type test inside of the closure, the `lower_bound` has to
+        // also be at least as large as some universal region, as the type test is otherwise
+        // trivial.
+        assert!(found_outlived_universal_region);
         true
     }
 
