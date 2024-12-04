@@ -6,7 +6,7 @@
 
 #![feature(async_closure)]
 
-fn constrain<T: async FnOnce()>(t: T) -> T {
+fn constrain<T: AsyncFnOnce()>(t: T) -> T {
     t
 }
 
@@ -14,7 +14,7 @@ fn call_once<T>(f: impl FnOnce() -> T) -> T {
     f()
 }
 
-async fn async_call_once<T>(f: impl async FnOnce() -> T) -> T {
+async fn async_call_once<T>(f: impl AsyncFnOnce() -> T) -> T {
     f().await
 }
 

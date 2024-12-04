@@ -7,7 +7,7 @@
 
 extern crate block_on;
 
-async fn call_once(f: impl async FnOnce()) {
+async fn call_once(f: impl AsyncFnOnce()) {
     f().await;
 }
 

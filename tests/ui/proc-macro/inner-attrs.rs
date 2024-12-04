@@ -1,7 +1,7 @@
 // gate-test-custom_inner_attributes
 //@ compile-flags: -Z span-debug --error-format human
 //@ error-pattern:expected non-macro inner attribute
-//@ aux-build:test-macros.rs
+//@ proc-macro: test-macros.rs
 //@ edition:2018
 
 #![feature(custom_inner_attributes)]

@@ -307,7 +307,7 @@ fn rc_inner_layout_for_value_layout(layout: Layout) -> Layout {
 /// `value.get_mut()`. This avoids conflicts with methods of the inner type `T`.
 ///
 /// [get_mut]: Rc::get_mut
-#[cfg_attr(not(bootstrap), doc(search_unbox))]
+#[doc(search_unbox)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Rc")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_insignificant_dtor]
@@ -2659,7 +2659,7 @@ impl<T: Clone> From<&[T]> for Rc<[T]> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "shared_from_mut_slice", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "shared_from_mut_slice", since = "1.84.0")]
 impl<T: Clone> From<&mut [T]> for Rc<[T]> {
     /// Allocates a reference-counted slice and fills it by cloning `v`'s items.
     ///
@@ -2698,7 +2698,7 @@ impl From<&str> for Rc<str> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "shared_from_mut_slice", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "shared_from_mut_slice", since = "1.84.0")]
 impl From<&mut str> for Rc<str> {
     /// Allocates a reference-counted string slice and copies `v` into it.
     ///

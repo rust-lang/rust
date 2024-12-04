@@ -312,7 +312,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             Node::Item(_) if is_bang_macro && !please_inline && renamed.is_some() && is_hidden => {
                 return false;
             }
-            Node::Item(&hir::Item { kind: hir::ItemKind::Mod(ref m), .. }) if glob => {
+            Node::Item(&hir::Item { kind: hir::ItemKind::Mod(m), .. }) if glob => {
                 let prev = mem::replace(&mut self.inlining, true);
                 for &i in m.item_ids {
                     let i = tcx.hir().item(i);
@@ -476,7 +476,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     self.add_to_current_mod(item, renamed, import_id);
                 }
             }
-            hir::ItemKind::Macro(ref macro_def, _) => {
+            hir::ItemKind::Macro(macro_def, _) => {
                 // `#[macro_export] macro_rules!` items are handled separately in `visit()`,
                 // above, since they need to be documented at the module top level. Accordingly,
                 // we only want to handle macros if one of three conditions holds:
@@ -496,7 +496,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     self.add_to_current_mod(item, renamed, import_id);
                 }
             }
-            hir::ItemKind::Mod(ref m) => {
+            hir::ItemKind::Mod(m) => {
                 self.enter_mod(item.owner_id.def_id, m, name, renamed, import_id);
             }
             hir::ItemKind::Fn(..)
@@ -560,7 +560,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
 // We need to implement this visitor so it'll go everywhere and retrieve items we're interested in
 // such as impl blocks in const blocks.
-impl<'a, 'tcx> Visitor<'tcx> for RustdocVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for RustdocVisitor<'_, 'tcx> {
     type NestedFilter = nested_filter::All;
 
     fn nested_visit_map(&mut self) -> Self::Map {

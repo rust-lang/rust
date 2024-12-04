@@ -703,6 +703,9 @@ impl Builder<'_> {
 
         cargo.arg("-j").arg(self.jobs().to_string());
 
+        // Make cargo emit diagnostics relative to the rustc src dir.
+        cargo.arg(format!("-Zroot-dir={}", self.src.display()));
+
         // FIXME: Temporary fix for https://github.com/rust-lang/cargo/issues/3005
         // Force cargo to output binaries with disambiguating hashes in the name
         let mut metadata = if compiler.stage == 0 {
@@ -1030,6 +1033,15 @@ impl Builder<'_> {
 
         if mode == Mode::Rustc {
             rustflags.arg("-Wrustc::internal");
+            // cfg(bootstrap) - remove this check when lint is in bootstrap compiler
+            if stage != 0 {
+                // Lint is allow by default so downstream tools don't get a lit
+                // they can do nothing about
+                // We shouldn't be preinterning symbols used by tests
+                if cmd_kind != Kind::Test {
+                    rustflags.arg("-Drustc::symbol_intern_string_literal");
+                }
+            }
             // FIXME(edition_2024): Change this to `-Wrust_2024_idioms` when all
             // of the individual lints are satisfied.
             rustflags.arg("-Wkeyword_idents_2024");

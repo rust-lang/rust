@@ -591,8 +591,8 @@ pub const fn null_mut<T: ?Sized + Thin>() -> *mut T {
 /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
 #[inline(always)]
 #[must_use]
-#[stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
-#[rustc_const_stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "strict_provenance", since = "1.84.0")]
+#[rustc_const_stable(feature = "strict_provenance", since = "1.84.0")]
 pub const fn without_provenance<T>(addr: usize) -> *const T {
     // An int-to-pointer transmute currently has exactly the intended semantics: it creates a
     // pointer without provenance. Note that this is *not* a stable guarantee about transmute
@@ -613,8 +613,8 @@ pub const fn without_provenance<T>(addr: usize) -> *const T {
 /// some other means.
 #[inline(always)]
 #[must_use]
-#[stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
-#[rustc_const_stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "strict_provenance", since = "1.84.0")]
+#[rustc_const_stable(feature = "strict_provenance", since = "1.84.0")]
 pub const fn dangling<T>() -> *const T {
     without_provenance(mem::align_of::<T>())
 }
@@ -634,8 +634,8 @@ pub const fn dangling<T>() -> *const T {
 /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
 #[inline(always)]
 #[must_use]
-#[stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
-#[rustc_const_stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "strict_provenance", since = "1.84.0")]
+#[rustc_const_stable(feature = "strict_provenance", since = "1.84.0")]
 pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
     // An int-to-pointer transmute currently has exactly the intended semantics: it creates a
     // pointer without provenance. Note that this is *not* a stable guarantee about transmute
@@ -656,8 +656,8 @@ pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
 /// some other means.
 #[inline(always)]
 #[must_use]
-#[stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
-#[rustc_const_stable(feature = "strict_provenance", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "strict_provenance", since = "1.84.0")]
+#[rustc_const_stable(feature = "strict_provenance", since = "1.84.0")]
 pub const fn dangling_mut<T>() -> *mut T {
     without_provenance_mut(mem::align_of::<T>())
 }
@@ -695,7 +695,7 @@ pub const fn dangling_mut<T>() -> *mut T {
 /// This is an [Exposed Provenance][crate::ptr#exposed-provenance] API.
 #[must_use]
 #[inline(always)]
-#[stable(feature = "exposed_provenance", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "exposed_provenance", since = "1.84.0")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[allow(fuzzy_provenance_casts)] // this *is* the explicit provenance API one should use instead
 pub fn with_exposed_provenance<T>(addr: usize) -> *const T {
@@ -735,7 +735,7 @@ pub fn with_exposed_provenance<T>(addr: usize) -> *const T {
 /// This is an [Exposed Provenance][crate::ptr#exposed-provenance] API.
 #[must_use]
 #[inline(always)]
-#[stable(feature = "exposed_provenance", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "exposed_provenance", since = "1.84.0")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[allow(fuzzy_provenance_casts)] // this *is* the explicit provenance API one should use instead
 pub fn with_exposed_provenance_mut<T>(addr: usize) -> *mut T {
@@ -1009,6 +1009,7 @@ pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
 #[rustc_diagnostic_item = "ptr_swap"]
+#[rustc_const_stable_indirect]
 pub const unsafe fn swap<T>(x: *mut T, y: *mut T) {
     // Give ourselves some scratch space to work with.
     // We do not have to worry about drops: `MaybeUninit` does nothing when dropped.
@@ -1069,7 +1070,7 @@ pub const unsafe fn swap<T>(x: *mut T, y: *mut T) {
 /// ```
 #[inline]
 #[stable(feature = "swap_nonoverlapping", since = "1.27.0")]
-#[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+#[rustc_const_unstable(feature = "const_swap_nonoverlapping", issue = "133668")]
 #[rustc_diagnostic_item = "ptr_swap_nonoverlapping"]
 pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
     #[allow(unused)]
@@ -1129,7 +1130,6 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
 /// LLVM can vectorize this (at least it can for the power-of-two-sized types
 /// `swap_nonoverlapping` tries to use) so no need to manually SIMD it.
 #[inline]
-#[rustc_const_unstable(feature = "const_swap", issue = "83163")]
 const unsafe fn swap_nonoverlapping_simple_untyped<T>(x: *mut T, y: *mut T, count: usize) {
     let x = x.cast::<MaybeUninit<T>>();
     let y = y.cast::<MaybeUninit<T>>();
@@ -2111,7 +2111,6 @@ pub fn addr_eq<T: ?Sized, U: ?Sized>(p: *const T, q: *const U) -> bool {
 ///   when compiled with optimization:
 ///
 ///   ```
-///   # #![feature(ptr_fn_addr_eq)]
 ///   let f: fn(i32) -> i32 = |x| x;
 ///   let g: fn(i32) -> i32 = |x| x + 0;  // different closure, different body
 ///   let h: fn(u32) -> u32 = |x| x + 0;  // different signature too
@@ -2136,7 +2135,6 @@ pub fn addr_eq<T: ?Sized, U: ?Sized>(p: *const T, q: *const U) -> bool {
 /// # Examples
 ///
 /// ```
-/// #![feature(ptr_fn_addr_eq)]
 /// use std::ptr;
 ///
 /// fn a() { println!("a"); }
@@ -2145,7 +2143,7 @@ pub fn addr_eq<T: ?Sized, U: ?Sized>(p: *const T, q: *const U) -> bool {
 /// ```
 ///
 /// [subtype]: https://doc.rust-lang.org/reference/subtyping.html
-#[unstable(feature = "ptr_fn_addr_eq", issue = "129322")]
+#[stable(feature = "ptr_fn_addr_eq", since = "CURRENT_RUSTC_VERSION")]
 #[inline(always)]
 #[must_use = "function pointer comparison produces a value"]
 pub fn fn_addr_eq<T: FnPtr, U: FnPtr>(f: T, g: U) -> bool {

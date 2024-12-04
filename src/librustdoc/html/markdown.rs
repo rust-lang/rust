@@ -32,7 +32,6 @@ use std::iter::Peekable;
 use std::ops::{ControlFlow, Range};
 use std::path::PathBuf;
 use std::str::{self, CharIndices};
-use std::sync::OnceLock;
 
 use pulldown_cmark::{
     BrokenLink, CodeBlockKind, CowStr, Event, LinkType, Options, Parser, Tag, TagEnd, html,
@@ -499,7 +498,7 @@ struct HeadingLinks<'a, 'b, 'ids, I> {
     heading_offset: HeadingOffset,
 }
 
-impl<'a, 'b, 'ids, I> HeadingLinks<'a, 'b, 'ids, I> {
+impl<'b, 'ids, I> HeadingLinks<'_, 'b, 'ids, I> {
     fn new(
         iter: I,
         toc: Option<&'b mut TocBuilder>,
@@ -510,9 +509,7 @@ impl<'a, 'b, 'ids, I> HeadingLinks<'a, 'b, 'ids, I> {
     }
 }
 
-impl<'a, 'b, 'ids, I: Iterator<Item = SpannedEvent<'a>>> Iterator
-    for HeadingLinks<'a, 'b, 'ids, I>
-{
+impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Iterator for HeadingLinks<'a, '_, '_, I> {
     type Item = SpannedEvent<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -908,7 +905,7 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
     }
 
     fn parse_string(&mut self, start: usize) -> Option<Indices> {
-        while let Some((pos, c)) = self.inner.next() {
+        for (pos, c) in self.inner.by_ref() {
             if c == '"' {
                 return Some(Indices { start: start + 1, end: pos });
             }
@@ -1032,7 +1029,7 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
 
     /// Returns `false` if an error was emitted.
     fn skip_paren_block(&mut self) -> bool {
-        while let Some((_, c)) = self.inner.next() {
+        for (_, c) in self.inner.by_ref() {
             if c == ')' {
                 return true;
             }
@@ -1074,9 +1071,8 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
                     return Some(LangStringToken::LangToken(&self.data[start..pos]));
                 }
                 return self.next();
-            } else if pos == start && is_leading_char(c) {
-                continue;
-            } else if pos != start && is_bareword_char(c) {
+            } else if (pos == start && is_leading_char(c)) || (pos != start && is_bareword_char(c))
+            {
                 continue;
             } else {
                 self.emit_error(format!("unexpected character `{c}`"));
@@ -1088,7 +1084,7 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Iterator for TagIterator<'a, 'tcx> {
+impl<'a> Iterator for TagIterator<'a, '_> {
     type Item = LangStringToken<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -1324,7 +1320,7 @@ impl Markdown<'_> {
         let mut replacer = |broken_link: BrokenLink<'_>| {
             links
                 .iter()
-                .find(|link| &*link.original_text == &*broken_link.reference)
+                .find(|link| *link.original_text == *broken_link.reference)
                 .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
         };
 
@@ -1358,7 +1354,7 @@ impl MarkdownWithToc<'_> {
         let mut replacer = |broken_link: BrokenLink<'_>| {
             links
                 .iter()
-                .find(|link| &*link.original_text == &*broken_link.reference)
+                .find(|link| *link.original_text == *broken_link.reference)
                 .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
         };
 
@@ -1428,7 +1424,7 @@ impl MarkdownSummaryLine<'_> {
         let mut replacer = |broken_link: BrokenLink<'_>| {
             links
                 .iter()
-                .find(|link| &*link.original_text == &*broken_link.reference)
+                .find(|link| *link.original_text == *broken_link.reference)
                 .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
         };
 
@@ -1475,7 +1471,7 @@ fn markdown_summary_with_limit(
     let mut replacer = |broken_link: BrokenLink<'_>| {
         link_names
             .iter()
-            .find(|link| &*link.original_text == &*broken_link.reference)
+            .find(|link| *link.original_text == *broken_link.reference)
             .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
     };
 
@@ -1556,7 +1552,7 @@ pub(crate) fn plain_text_summary(md: &str, link_names: &[RenderedLink]) -> Strin
     let mut replacer = |broken_link: BrokenLink<'_>| {
         link_names
             .iter()
-            .find(|link| &*link.original_text == &*broken_link.reference)
+            .find(|link| *link.original_text == *broken_link.reference)
             .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
     };
 
@@ -1751,7 +1747,7 @@ pub(crate) fn markdown_links<'md, R>(
     };
 
     let mut broken_link_callback = |link: BrokenLink<'md>| Some((link.reference, "".into()));
-    let mut event_iter = Parser::new_with_broken_link_callback(
+    let event_iter = Parser::new_with_broken_link_callback(
         md,
         main_body_opts(),
         Some(&mut broken_link_callback),
@@ -1759,7 +1755,7 @@ pub(crate) fn markdown_links<'md, R>(
     .into_offset_iter();
     let mut links = Vec::new();
 
-    while let Some((event, span)) = event_iter.next() {
+    for (event, span) in event_iter {
         match event {
             Event::Start(Tag::Link { link_type, dest_url, .. }) if may_be_doc_link(link_type) => {
                 let range = match link_type {
@@ -1821,7 +1817,7 @@ pub(crate) fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<Rust
                     let lang_string = if syntax.is_empty() {
                         Default::default()
                     } else {
-                        LangString::parse(&*syntax, ErrorCodes::Yes, false, Some(extra_info))
+                        LangString::parse(syntax, ErrorCodes::Yes, false, Some(extra_info))
                     };
                     if !lang_string.rust {
                         continue;
@@ -1885,75 +1881,82 @@ pub(crate) fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<Rust
 
 #[derive(Clone, Default, Debug)]
 pub struct IdMap {
-    map: FxHashMap<Cow<'static, str>, usize>,
+    map: FxHashMap<String, usize>,
     existing_footnotes: usize,
 }
 
-// The map is pre-initialized and cloned each time to avoid reinitializing it repeatedly.
-static DEFAULT_ID_MAP: OnceLock<FxHashMap<Cow<'static, str>, usize>> = OnceLock::new();
-
-fn init_id_map() -> FxHashMap<Cow<'static, str>, usize> {
-    let mut map = FxHashMap::default();
-    // This is the list of IDs used in JavaScript.
-    map.insert("help".into(), 1);
-    map.insert("settings".into(), 1);
-    map.insert("not-displayed".into(), 1);
-    map.insert("alternative-display".into(), 1);
-    map.insert("search".into(), 1);
-    map.insert("crate-search".into(), 1);
-    map.insert("crate-search-div".into(), 1);
-    // This is the list of IDs used in HTML generated in Rust (including the ones
-    // used in tera template files).
-    map.insert("themeStyle".into(), 1);
-    map.insert("settings-menu".into(), 1);
-    map.insert("help-button".into(), 1);
-    map.insert("sidebar-button".into(), 1);
-    map.insert("main-content".into(), 1);
-    map.insert("toggle-all-docs".into(), 1);
-    map.insert("all-types".into(), 1);
-    map.insert("default-settings".into(), 1);
-    map.insert("sidebar-vars".into(), 1);
-    map.insert("copy-path".into(), 1);
-    map.insert("rustdoc-toc".into(), 1);
-    map.insert("rustdoc-modnav".into(), 1);
-    // This is the list of IDs used by rustdoc sections (but still generated by
-    // rustdoc).
-    map.insert("fields".into(), 1);
-    map.insert("variants".into(), 1);
-    map.insert("implementors-list".into(), 1);
-    map.insert("synthetic-implementors-list".into(), 1);
-    map.insert("foreign-impls".into(), 1);
-    map.insert("implementations".into(), 1);
-    map.insert("trait-implementations".into(), 1);
-    map.insert("synthetic-implementations".into(), 1);
-    map.insert("blanket-implementations".into(), 1);
-    map.insert("required-associated-types".into(), 1);
-    map.insert("provided-associated-types".into(), 1);
-    map.insert("provided-associated-consts".into(), 1);
-    map.insert("required-associated-consts".into(), 1);
-    map.insert("required-methods".into(), 1);
-    map.insert("provided-methods".into(), 1);
-    map.insert("dyn-compatibility".into(), 1);
-    map.insert("implementors".into(), 1);
-    map.insert("synthetic-implementors".into(), 1);
-    map.insert("implementations-list".into(), 1);
-    map.insert("trait-implementations-list".into(), 1);
-    map.insert("synthetic-implementations-list".into(), 1);
-    map.insert("blanket-implementations-list".into(), 1);
-    map.insert("deref-methods".into(), 1);
-    map.insert("layout".into(), 1);
-    map.insert("aliased-type".into(), 1);
-    map
+fn is_default_id(id: &str) -> bool {
+    matches!(
+        id,
+        // This is the list of IDs used in JavaScript.
+        "help"
+        | "settings"
+        | "not-displayed"
+        | "alternative-display"
+        | "search"
+        | "crate-search"
+        | "crate-search-div"
+        // This is the list of IDs used in HTML generated in Rust (including the ones
+        // used in tera template files).
+        | "themeStyle"
+        | "settings-menu"
+        | "help-button"
+        | "sidebar-button"
+        | "main-content"
+        | "toggle-all-docs"
+        | "all-types"
+        | "default-settings"
+        | "sidebar-vars"
+        | "copy-path"
+        | "rustdoc-toc"
+        | "rustdoc-modnav"
+        // This is the list of IDs used by rustdoc sections (but still generated by
+        // rustdoc).
+        | "fields"
+        | "variants"
+        | "implementors-list"
+        | "synthetic-implementors-list"
+        | "foreign-impls"
+        | "implementations"
+        | "trait-implementations"
+        | "synthetic-implementations"
+        | "blanket-implementations"
+        | "required-associated-types"
+        | "provided-associated-types"
+        | "provided-associated-consts"
+        | "required-associated-consts"
+        | "required-methods"
+        | "provided-methods"
+        | "dyn-compatibility"
+        | "implementors"
+        | "synthetic-implementors"
+        | "implementations-list"
+        | "trait-implementations-list"
+        | "synthetic-implementations-list"
+        | "blanket-implementations-list"
+        | "deref-methods"
+        | "layout"
+        | "aliased-type"
+    )
 }
 
 impl IdMap {
     pub fn new() -> Self {
-        IdMap { map: DEFAULT_ID_MAP.get_or_init(init_id_map).clone(), existing_footnotes: 0 }
+        IdMap { map: FxHashMap::default(), existing_footnotes: 0 }
     }
 
     pub(crate) fn derive<S: AsRef<str> + ToString>(&mut self, candidate: S) -> String {
         let id = match self.map.get_mut(candidate.as_ref()) {
-            None => candidate.to_string(),
+            None => {
+                let candidate = candidate.to_string();
+                if is_default_id(&candidate) {
+                    let id = format!("{}-{}", candidate, 1);
+                    self.map.insert(candidate.into(), 2);
+                    id
+                } else {
+                    candidate
+                }
+            }
             Some(a) => {
                 let id = format!("{}-{}", candidate.as_ref(), *a);
                 *a += 1;
@@ -1972,5 +1975,10 @@ impl IdMap {
 
         closure(self, &mut existing_footnotes);
         self.existing_footnotes = existing_footnotes;
+    }
+
+    pub(crate) fn clear(&mut self) {
+        self.map.clear();
+        self.existing_footnotes = 0;
     }
 }

@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -486,6 +486,9 @@ impl Config {
     }
 }
 
+/// Known widths of `target_has_atomic`.
+pub const KNOWN_TARGET_HAS_ATOMIC_WIDTHS: &[&str] = &["8", "16", "32", "64", "128", "ptr"];
+
 #[derive(Debug, Clone)]
 pub struct TargetCfgs {
     pub current: TargetCfg,
@@ -611,6 +614,17 @@ impl TargetCfgs {
                 ("panic", Some("abort")) => cfg.panic = PanicStrategy::Abort,
                 ("panic", Some("unwind")) => cfg.panic = PanicStrategy::Unwind,
                 ("panic", other) => panic!("unexpected value for panic cfg: {other:?}"),
+
+                ("target_has_atomic", Some(width))
+                    if KNOWN_TARGET_HAS_ATOMIC_WIDTHS.contains(&width) =>
+                {
+                    cfg.target_has_atomic.insert(width.to_string());
+                }
+                ("target_has_atomic", Some(other)) => {
+                    panic!("unexpected value for `target_has_atomic` cfg: {other:?}")
+                }
+                // Nightly-only std-internal impl detail.
+                ("target_has_atomic", None) => {}
                 _ => {}
             }
         }
@@ -645,6 +659,12 @@ pub struct TargetCfg {
     pub(crate) xray: bool,
     #[serde(default = "default_reloc_model")]
     pub(crate) relocation_model: String,
+
+    // Not present in target cfg json output, additional derived information.
+    #[serde(skip)]
+    /// Supported target atomic widths: e.g. `8` to `128` or `ptr`. This is derived from the builtin
+    /// `target_has_atomic` `cfg`s e.g. `target_has_atomic="8"`.
+    pub(crate) target_has_atomic: BTreeSet<String>,
 }
 
 impl TargetCfg {

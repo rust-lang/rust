@@ -46,7 +46,7 @@ impl ErrorHandled {
     pub fn emit_note(&self, tcx: TyCtxt<'_>) {
         match self {
             &ErrorHandled::Reported(err, span) => {
-                if !err.is_tainted_by_errors && !span.is_dummy() {
+                if !err.allowed_in_infallible && !span.is_dummy() {
                     tcx.dcx().emit_note(error::ErroneousConstant { span });
                 }
             }
@@ -58,34 +58,26 @@ impl ErrorHandled {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
 pub struct ReportedErrorInfo {
     error: ErrorGuaranteed,
-    is_tainted_by_errors: bool,
-    /// Whether this is the kind of error that can sometimes occur, and sometimes not.
-    /// Used for resource exhaustion errors.
-    can_be_spurious: bool,
+    /// Whether this error is allowed to show up even in otherwise "infallible" promoteds.
+    /// This is for things like overflows during size computation or resource exhaustion.
+    allowed_in_infallible: bool,
 }
 
 impl ReportedErrorInfo {
     #[inline]
-    pub fn tainted_by_errors(error: ErrorGuaranteed) -> ReportedErrorInfo {
-        ReportedErrorInfo { is_tainted_by_errors: true, can_be_spurious: false, error }
-    }
-    #[inline]
-    pub fn spurious(error: ErrorGuaranteed) -> ReportedErrorInfo {
-        ReportedErrorInfo { can_be_spurious: true, is_tainted_by_errors: false, error }
+    pub fn allowed_in_infallible(error: ErrorGuaranteed) -> ReportedErrorInfo {
+        ReportedErrorInfo { allowed_in_infallible: true, error }
     }
 
-    pub fn is_tainted_by_errors(&self) -> bool {
-        self.is_tainted_by_errors
-    }
-    pub fn can_be_spurious(&self) -> bool {
-        self.can_be_spurious
+    pub fn is_allowed_in_infallible(&self) -> bool {
+        self.allowed_in_infallible
     }
 }
 
 impl From<ErrorGuaranteed> for ReportedErrorInfo {
     #[inline]
     fn from(error: ErrorGuaranteed) -> ReportedErrorInfo {
-        ReportedErrorInfo { is_tainted_by_errors: false, can_be_spurious: false, error }
+        ReportedErrorInfo { allowed_in_infallible: false, error }
     }
 }
 

@@ -1,7 +1,5 @@
-use std::cell::{RefCell, RefMut};
 use std::cmp::Ordering;
 use std::fmt;
-use std::rc::Rc;
 
 use itertools::Itertools;
 use rinja::Template;
@@ -61,7 +59,7 @@ macro_rules! item_template {
     (
         $(#[$meta:meta])*
         struct $name:ident<'a, 'cx> {
-            cx: RefCell<&'a mut Context<'cx>>,
+            cx: &'a Context<'cx>,
             it: &'a clean::Item,
             $($field_name:ident: $field_ty:ty),*,
         },
@@ -70,14 +68,14 @@ macro_rules! item_template {
         #[derive(Template)]
         $(#[$meta])*
         struct $name<'a, 'cx> {
-            cx: RefCell<&'a mut Context<'cx>>,
+            cx: &'a Context<'cx>,
             it: &'a clean::Item,
             $($field_name: $field_ty),*
         }
 
         impl<'a, 'cx: 'a> ItemTemplate<'a, 'cx> for $name<'a, 'cx> {
-            fn item_and_mut_cx(&self) -> (&'a clean::Item, RefMut<'_, &'a mut Context<'cx>>) {
-                (&self.it, self.cx.borrow_mut())
+            fn item_and_cx(&self) -> (&'a clean::Item, &'a Context<'cx>) {
+                (&self.it, &self.cx)
             }
         }
 
@@ -95,8 +93,8 @@ macro_rules! item_template_methods {
     (document $($rest:tt)*) => {
         fn document<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
             display_fn(move |f| {
-                let (item, mut cx) = self.item_and_mut_cx();
-                let v = document(*cx, item, None, HeadingOffset::H2);
+                let (item, cx) = self.item_and_cx();
+                let v = document(cx, item, None, HeadingOffset::H2);
                 write!(f, "{v}")
             })
         }
@@ -105,9 +103,9 @@ macro_rules! item_template_methods {
     (document_type_layout $($rest:tt)*) => {
         fn document_type_layout<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
             display_fn(move |f| {
-                let (item, cx) = self.item_and_mut_cx();
+                let (item, cx) = self.item_and_cx();
                 let def_id = item.item_id.expect_def_id();
-                let v = document_type_layout(*cx, def_id);
+                let v = document_type_layout(cx, def_id);
                 write!(f, "{v}")
             })
         }
@@ -116,8 +114,8 @@ macro_rules! item_template_methods {
     (render_attributes_in_pre $($rest:tt)*) => {
         fn render_attributes_in_pre<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
             display_fn(move |f| {
-                let (item, cx) = self.item_and_mut_cx();
-                let v = render_attributes_in_pre(item, "", &cx);
+                let (item, cx) = self.item_and_cx();
+                let v = render_attributes_in_pre(item, "", cx);
                 write!(f, "{v}")
             })
         }
@@ -126,9 +124,9 @@ macro_rules! item_template_methods {
     (render_assoc_items $($rest:tt)*) => {
         fn render_assoc_items<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
             display_fn(move |f| {
-                let (item, mut cx) = self.item_and_mut_cx();
+                let (item, cx) = self.item_and_cx();
                 let def_id = item.item_id.expect_def_id();
-                let v = render_assoc_items(*cx, item, def_id, AssocItemRender::All);
+                let v = render_assoc_items(cx, item, def_id, AssocItemRender::All);
                 write!(f, "{v}")
             })
         }
@@ -175,7 +173,7 @@ fn print_where_clause_and_check<'a, 'tcx: 'a>(
     len_before != buffer.len()
 }
 
-pub(super) fn print_item(cx: &mut Context<'_>, item: &clean::Item, buf: &mut Buffer) {
+pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer) {
     debug_assert!(!item.is_stripped());
     let typ = match item.kind {
         clean::ModuleItem(_) => {
@@ -223,7 +221,7 @@ pub(super) fn print_item(cx: &mut Context<'_>, item: &clean::Item, buf: &mut Buf
     // this page, and this link will be auto-clicked. The `id` attribute is
     // used to find the link to auto-click.
     let src_href =
-        if cx.include_sources && !item.is_primitive() { cx.src_href(item) } else { None };
+        if cx.info.include_sources && !item.is_primitive() { cx.src_href(item) } else { None };
 
     let path_components = if item.is_primitive() || item.is_keyword() {
         vec![]
@@ -277,13 +275,14 @@ pub(super) fn print_item(cx: &mut Context<'_>, item: &clean::Item, buf: &mut Buf
     }
 
     // Render notable-traits.js used for all methods in this module.
-    if !cx.types_with_notable_traits.is_empty() {
+    let mut types_with_notable_traits = cx.types_with_notable_traits.borrow_mut();
+    if !types_with_notable_traits.is_empty() {
         write!(
             buf,
             r#"<script type="text/json" id="notable-traits-data">{}</script>"#,
-            notable_traits_json(cx.types_with_notable_traits.iter(), cx)
+            notable_traits_json(types_with_notable_traits.iter(), cx)
         );
-        cx.types_with_notable_traits.clear();
+        types_with_notable_traits.clear();
     }
 }
 
@@ -308,10 +307,10 @@ fn toggle_close(mut w: impl fmt::Write) {
 }
 
 trait ItemTemplate<'a, 'cx: 'a>: rinja::Template + fmt::Display {
-    fn item_and_mut_cx(&self) -> (&'a clean::Item, RefMut<'_, &'a mut Context<'cx>>);
+    fn item_and_cx(&self) -> (&'a clean::Item, &'a Context<'cx>);
 }
 
-fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: &[clean::Item]) {
+fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) {
     write!(w, "{}", document(cx, item, None, HeadingOffset::H2));
 
     let mut not_stripped_items =
@@ -594,7 +593,7 @@ fn extra_info_tags<'a, 'tcx: 'a>(
     })
 }
 
-fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &clean::Function) {
+fn item_function(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, f: &clean::Function) {
     let tcx = cx.tcx();
     let header = it.fn_header(tcx).expect("printing a function which isn't a function");
     debug!(
@@ -649,7 +648,7 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
 }
 
-fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::Trait) {
+fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) {
     let tcx = cx.tcx();
     let bounds = bounds(&t.bounds, false, cx);
     let required_types = t.items.iter().filter(|m| m.is_ty_associated_type()).collect::<Vec<_>>();
@@ -751,7 +750,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             }
 
             if !required_methods.is_empty() {
-                write!(w, "    // Required method{}\n", pluralize(required_methods.len()));
+                writeln!(w, "    // Required method{}", pluralize(required_methods.len()));
             }
             for (pos, m) in required_methods.iter().enumerate() {
                 render_assoc_item(
@@ -773,7 +772,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             }
 
             if !provided_methods.is_empty() {
-                write!(w, "    // Provided method{}\n", pluralize(provided_methods.len()));
+                writeln!(w, "    // Provided method{}", pluralize(provided_methods.len()));
             }
             for (pos, m) in provided_methods.iter().enumerate() {
                 render_assoc_item(
@@ -801,7 +800,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     // Trait documentation
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2));
 
-    fn trait_item(w: &mut Buffer, cx: &mut Context<'_>, m: &clean::Item, t: &clean::Item) {
+    fn trait_item(w: &mut Buffer, cx: &Context<'_>, m: &clean::Item, t: &clean::Item) {
         let name = m.name.unwrap();
         info!("Documenting {name} on {ty_name:?}", ty_name = t.name);
         let item_type = m.type_();
@@ -929,8 +928,6 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     // If there are methods directly on this trait object, render them here.
     write!(w, "{}", render_assoc_items(cx, it, it.item_id.expect_def_id(), AssocItemRender::All));
 
-    let cloned_shared = Rc::clone(&cx.shared);
-    let cache = &cloned_shared.cache;
     let mut extern_crates = FxIndexSet::default();
 
     if !t.is_dyn_compatible(cx.tcx()) {
@@ -940,7 +937,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             "Dyn Compatibility",
             "dyn-compatibility",
             None,
-            &format!(
+            format!(
                 "<div class=\"dyn-compatibility-info\"><p>This trait is <b>not</b> \
                 <a href=\"{base}/reference/items/traits.html#object-safety\">dyn compatible</a>.</p>\
                 <p><i>In older versions of Rust, dyn compatibility was called \"object safety\", \
@@ -950,12 +947,13 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         );
     }
 
-    if let Some(implementors) = cache.implementors.get(&it.item_id.expect_def_id()) {
+    if let Some(implementors) = cx.shared.cache.implementors.get(&it.item_id.expect_def_id()) {
         // The DefId is for the first Type found with that name. The bool is
         // if any Types with the same name but different DefId have been found.
         let mut implementor_dups: FxHashMap<Symbol, (DefId, bool)> = FxHashMap::default();
         for implementor in implementors {
-            if let Some(did) = implementor.inner_impl().for_.without_borrowed_ref().def_id(cache)
+            if let Some(did) =
+                implementor.inner_impl().for_.without_borrowed_ref().def_id(&cx.shared.cache)
                 && !did.is_local()
             {
                 extern_crates.insert(did.krate);
@@ -1036,7 +1034,10 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
                     it,
                     w,
                     &implementor_dups,
-                    &collect_paths_for_type(implementor.inner_impl().for_.clone(), cache),
+                    &collect_paths_for_type(
+                        implementor.inner_impl().for_.clone(),
+                        &cx.shared.cache,
+                    ),
                 );
             }
             w.write_str("</div>");
@@ -1139,8 +1140,8 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         .chain(std::iter::once("trait.impl"))
         .collect();
     if let Some(did) = it.item_id.as_def_id()
-        && let get_extern = { || cache.external_paths.get(&did).map(|s| &s.0) }
-        && let Some(fqp) = cache.exact_paths.get(&did).or_else(get_extern)
+        && let get_extern = { || cx.shared.cache.external_paths.get(&did).map(|s| &s.0) }
+        && let Some(fqp) = cx.shared.cache.exact_paths.get(&did).or_else(get_extern)
     {
         js_src_path.extend(fqp[..fqp.len() - 1].iter().copied());
         js_src_path.push_fmt(format_args!("{}.{}.js", it.type_(), fqp.last().unwrap()));
@@ -1164,7 +1165,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
 
 fn item_trait_alias(
     w: &mut impl fmt::Write,
-    cx: &mut Context<'_>,
+    cx: &Context<'_>,
     it: &clean::Item,
     t: &clean::TraitAlias,
 ) {
@@ -1190,7 +1191,7 @@ fn item_trait_alias(
         .unwrap();
 }
 
-fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::TypeAlias) {
+fn item_type_alias(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::TypeAlias) {
     wrap_item(w, |w| {
         write!(
             w,
@@ -1225,14 +1226,14 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
                         w,
                         cx,
                         Some(&t.generics),
-                        &variants,
+                        variants,
                         variants_count,
                         has_stripped_entries,
                         *is_non_exhaustive,
                         enum_def_id,
                     )
                 });
-                item_variants(w, cx, it, &variants, enum_def_id);
+                item_variants(w, cx, it, variants, enum_def_id);
             }
             clean::TypeAliasInnerType::Union { fields } => {
                 wrap_item(w, |w| {
@@ -1355,8 +1356,7 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
     //
     // [JSONP]: https://en.wikipedia.org/wiki/JSONP
     // [^115718]: https://github.com/rust-lang/rust/issues/115718
-    let cloned_shared = Rc::clone(&cx.shared);
-    let cache = &cloned_shared.cache;
+    let cache = &cx.shared.cache;
     if let Some(target_did) = t.type_.def_id(cache) &&
         let get_extern = { || cache.external_paths.get(&target_did) } &&
         let Some(&(ref target_fqp, target_type)) = cache.paths.get(&target_did).or_else(get_extern) &&
@@ -1380,11 +1380,11 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
     }
 }
 
-fn item_union(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Union) {
+fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Union) {
     item_template!(
         #[template(path = "item_union.html")]
         struct ItemUnion<'a, 'cx> {
-            cx: RefCell<&'a mut Context<'cx>>,
+            cx: &'a Context<'cx>,
             it: &'a clean::Item,
             s: &'a clean::Union,
         },
@@ -1394,8 +1394,7 @@ fn item_union(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean:
     impl<'a, 'cx: 'a> ItemUnion<'a, 'cx> {
         fn render_union<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
             display_fn(move |f| {
-                let cx = self.cx.borrow_mut();
-                let v = render_union(self.it, Some(&self.s.generics), &self.s.fields, *cx);
+                let v = render_union(self.it, Some(&self.s.generics), &self.s.fields, self.cx);
                 write!(f, "{v}")
             })
         }
@@ -1405,15 +1404,13 @@ fn item_union(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean:
             field: &'a clean::Item,
         ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
             display_fn(move |f| {
-                let mut cx = self.cx.borrow_mut();
-                let v = document(*cx, field, Some(self.it), HeadingOffset::H3);
+                let v = document(self.cx, field, Some(self.it), HeadingOffset::H3);
                 write!(f, "{v}")
             })
         }
 
         fn stability_field(&self, field: &clean::Item) -> Option<String> {
-            let cx = self.cx.borrow();
-            field.stability_class(cx.tcx())
+            field.stability_class(self.cx.tcx())
         }
 
         fn print_ty<'b>(
@@ -1421,8 +1418,7 @@ fn item_union(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean:
             ty: &'a clean::Type,
         ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
             display_fn(move |f| {
-                let cx = self.cx.borrow();
-                let v = ty.print(*cx);
+                let v = ty.print(&self.cx);
                 write!(f, "{v}")
             })
         }
@@ -1441,7 +1437,7 @@ fn item_union(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean:
         }
     }
 
-    ItemUnion { cx: RefCell::new(cx), it, s }.render_into(w).unwrap();
+    ItemUnion { cx, it, s }.render_into(w).unwrap();
 }
 
 fn print_tuple_struct_fields<'a, 'cx: 'a>(
@@ -1471,7 +1467,7 @@ fn print_tuple_struct_fields<'a, 'cx: 'a>(
     })
 }
 
-fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::Enum) {
+fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum) {
     let count_variants = e.variants().count();
     wrap_item(w, |w| {
         render_attributes_in_code(w, it, cx);
@@ -1532,7 +1528,7 @@ fn should_show_enum_discriminant(
 
 fn display_c_like_variant(
     w: &mut Buffer,
-    cx: &mut Context<'_>,
+    cx: &Context<'_>,
     item: &clean::Item,
     variant: &clean::Variant,
     index: VariantIdx,
@@ -1557,7 +1553,7 @@ fn display_c_like_variant(
 
 fn render_enum_fields(
     mut w: &mut Buffer,
-    cx: &mut Context<'_>,
+    cx: &Context<'_>,
     g: Option<&clean::Generics>,
     variants: &IndexVec<VariantIdx, clean::Item>,
     count_variants: usize,
@@ -1621,7 +1617,7 @@ fn render_enum_fields(
 
 fn item_variants(
     w: &mut Buffer,
-    cx: &mut Context<'_>,
+    cx: &Context<'_>,
     it: &clean::Item,
     variants: &IndexVec<VariantIdx, clean::Item>,
     enum_def_id: DefId,
@@ -1743,7 +1739,7 @@ fn item_variants(
     write!(w, "</div>");
 }
 
-fn item_macro(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean::Macro) {
+fn item_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Macro) {
     wrap_item(w, |w| {
         // FIXME: Also print `#[doc(hidden)]` for `macro_rules!` if it `is_doc_hidden`.
         if !t.macro_rules {
@@ -1756,7 +1752,7 @@ fn item_macro(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
 
 fn item_proc_macro(
     w: &mut impl fmt::Write,
-    cx: &mut Context<'_>,
+    cx: &Context<'_>,
     it: &clean::Item,
     m: &clean::ProcMacro,
 ) {
@@ -1790,7 +1786,7 @@ fn item_proc_macro(
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2)).unwrap();
 }
 
-fn item_primitive(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Item) {
+fn item_primitive(w: &mut impl fmt::Write, cx: &Context<'_>, it: &clean::Item) {
     let def_id = it.item_id.expect_def_id();
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2)).unwrap();
     if it.name.map(|n| n.as_str() != "reference").unwrap_or(false) {
@@ -1798,8 +1794,7 @@ fn item_primitive(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Ite
     } else {
         // We handle the "reference" primitive type on its own because we only want to list
         // implementations on generic types.
-        let shared = Rc::clone(&cx.shared);
-        let (concrete, synthetic, blanket_impl) = get_filtered_impls_for_reference(&shared, it);
+        let (concrete, synthetic, blanket_impl) = get_filtered_impls_for_reference(&cx.shared, it);
 
         render_all_impls(w, cx, it, &concrete, &synthetic, &blanket_impl);
     }
@@ -1807,7 +1802,7 @@ fn item_primitive(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Ite
 
 fn item_constant(
     w: &mut Buffer,
-    cx: &mut Context<'_>,
+    cx: &Context<'_>,
     it: &clean::Item,
     generics: &clean::Generics,
     ty: &clean::Type,
@@ -1824,7 +1819,7 @@ fn item_constant(
             name = it.name.unwrap(),
             generics = generics.print(cx),
             typ = ty.print(cx),
-            where_clause = print_where_clause(&generics, cx, 0, Ending::NoNewline),
+            where_clause = print_where_clause(generics, cx, 0, Ending::NoNewline),
         );
 
         // FIXME: The code below now prints
@@ -1862,7 +1857,7 @@ fn item_constant(
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2))
 }
 
-fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Struct) {
+fn item_struct(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Struct) {
     wrap_item(w, |w| {
         render_attributes_in_code(w, it, cx);
         render_struct(w, it, Some(&s.generics), s.ctor_kind, &s.fields, "", true, cx);
@@ -1879,7 +1874,7 @@ fn item_struct(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean
 
 fn item_fields(
     w: &mut Buffer,
-    cx: &mut Context<'_>,
+    cx: &Context<'_>,
     it: &clean::Item,
     fields: &[clean::Item],
     ctor_kind: Option<CtorKind>,
@@ -1920,7 +1915,7 @@ fn item_fields(
 
 fn item_static(
     w: &mut impl fmt::Write,
-    cx: &mut Context<'_>,
+    cx: &Context<'_>,
     it: &clean::Item,
     s: &clean::Static,
     safety: Option<hir::Safety>,
@@ -1944,7 +1939,7 @@ fn item_static(
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2)).unwrap();
 }
 
-fn item_foreign_type(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Item) {
+fn item_foreign_type(w: &mut impl fmt::Write, cx: &Context<'_>, it: &clean::Item) {
     wrap_item(w, |buffer| {
         buffer.write_str("extern {\n").unwrap();
         render_attributes_in_code(buffer, it, cx);
@@ -1962,7 +1957,7 @@ fn item_foreign_type(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::
         .unwrap();
 }
 
-fn item_keyword(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item) {
+fn item_keyword(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item) {
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2))
 }
 
@@ -2134,7 +2129,7 @@ impl Ord for ImplString {
 }
 
 fn render_implementor(
-    cx: &mut Context<'_>,
+    cx: &Context<'_>,
     implementor: &Impl,
     trait_: &clean::Item,
     w: &mut Buffer,
@@ -2194,7 +2189,7 @@ fn render_union<'a, 'cx: 'a>(
             f.write_str(" ")?;
         }
 
-        write!(f, "{{\n")?;
+        writeln!(f, "{{")?;
         let count_fields =
             fields.iter().filter(|field| matches!(field.kind, clean::StructFieldItem(..))).count();
         let toggle = should_hide_fields(count_fields);
@@ -2204,9 +2199,9 @@ fn render_union<'a, 'cx: 'a>(
 
         for field in fields {
             if let clean::StructFieldItem(ref ty) = field.kind {
-                write!(
+                writeln!(
                     f,
-                    "    {}{}: {},\n",
+                    "    {}{}: {},",
                     visibility_print_with_space(field, cx),
                     field.name.unwrap(),
                     ty.print(cx)
@@ -2215,7 +2210,7 @@ fn render_union<'a, 'cx: 'a>(
         }
 
         if it.has_stripped_entries().unwrap() {
-            write!(f, "    <span class=\"comment\">/* private fields */</span>\n")?;
+            writeln!(f, "    <span class=\"comment\">/* private fields */</span>")?;
         }
         if toggle {
             toggle_close(&mut f);
@@ -2355,7 +2350,7 @@ fn document_non_exhaustive_header(item: &clean::Item) -> &str {
     if item.is_non_exhaustive() { " (Non-exhaustive)" } else { "" }
 }
 
-fn document_non_exhaustive<'a>(item: &'a clean::Item) -> impl fmt::Display + 'a {
+fn document_non_exhaustive(item: &clean::Item) -> impl fmt::Display + '_ {
     display_fn(|f| {
         if item.is_non_exhaustive() {
             write!(

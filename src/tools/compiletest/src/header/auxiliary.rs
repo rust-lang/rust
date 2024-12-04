@@ -4,7 +4,7 @@
 use std::iter;
 
 use crate::common::Config;
-use crate::header::directives::{AUX_BIN, AUX_BUILD, AUX_CODEGEN_BACKEND, AUX_CRATE};
+use crate::header::directives::{AUX_BIN, AUX_BUILD, AUX_CODEGEN_BACKEND, AUX_CRATE, PROC_MACRO};
 
 /// Properties parsed from `aux-*` test directives.
 #[derive(Clone, Debug, Default)]
@@ -17,6 +17,8 @@ pub(crate) struct AuxProps {
     /// Similar to `builds`, but a list of NAME=somelib.rs of dependencies
     /// to build and pass with the `--extern` flag.
     pub(crate) crates: Vec<(String, String)>,
+    /// Same as `builds`, but for proc-macros.
+    pub(crate) proc_macros: Vec<String>,
     /// Similar to `builds`, but also uses the resulting dylib as a
     /// `-Zcodegen-backend` when compiling the test file.
     pub(crate) codegen_backend: Option<String>,
@@ -26,12 +28,13 @@ impl AuxProps {
     /// Yields all of the paths (relative to `./auxiliary/`) that have been
     /// specified in `aux-*` directives for this test.
     pub(crate) fn all_aux_path_strings(&self) -> impl Iterator<Item = &str> {
-        let Self { builds, bins, crates, codegen_backend } = self;
+        let Self { builds, bins, crates, proc_macros, codegen_backend } = self;
 
         iter::empty()
             .chain(builds.iter().map(String::as_str))
             .chain(bins.iter().map(String::as_str))
             .chain(crates.iter().map(|(_, path)| path.as_str()))
+            .chain(proc_macros.iter().map(String::as_str))
             .chain(codegen_backend.iter().map(String::as_str))
     }
 }
@@ -39,13 +42,15 @@ impl AuxProps {
 /// If the given test directive line contains an `aux-*` directive, parse it
 /// and update [`AuxProps`] accordingly.
 pub(super) fn parse_and_update_aux(config: &Config, ln: &str, aux: &mut AuxProps) {
-    if !ln.starts_with("aux-") {
+    if !(ln.starts_with("aux-") || ln.starts_with("proc-macro")) {
         return;
     }
 
     config.push_name_value_directive(ln, AUX_BUILD, &mut aux.builds, |r| r.trim().to_string());
     config.push_name_value_directive(ln, AUX_BIN, &mut aux.bins, |r| r.trim().to_string());
     config.push_name_value_directive(ln, AUX_CRATE, &mut aux.crates, parse_aux_crate);
+    config
+        .push_name_value_directive(ln, PROC_MACRO, &mut aux.proc_macros, |r| r.trim().to_string());
     if let Some(r) = config.parse_name_value_directive(ln, AUX_CODEGEN_BACKEND) {
         aux.codegen_backend = Some(r.trim().to_owned());
     }

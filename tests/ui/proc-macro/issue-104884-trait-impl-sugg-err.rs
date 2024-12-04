@@ -1,4 +1,4 @@
-//@ aux-build:issue-104884.rs
+//@ proc-macro: issue-104884.rs
 
 use std::collections::BinaryHeap;
 

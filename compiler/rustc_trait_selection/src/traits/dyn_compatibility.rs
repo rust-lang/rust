@@ -18,7 +18,6 @@ use rustc_middle::ty::{
     TypeVisitableExt, TypeVisitor, TypingMode, Upcast,
 };
 use rustc_span::Span;
-use rustc_span::symbol::Symbol;
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
@@ -329,10 +328,7 @@ pub fn dyn_compatibility_violations_for_assoc_item(
             .collect(),
         // Associated types can only be dyn-compatible if they have `Self: Sized` bounds.
         ty::AssocKind::Type => {
-            if !tcx.features().generic_associated_types_extended()
-                && !tcx.generics_of(item.def_id).is_own_empty()
-                && !item.is_impl_trait_in_trait()
-            {
+            if !tcx.generics_of(item.def_id).is_own_empty() && !item.is_impl_trait_in_trait() {
                 vec![DynCompatibilityViolation::GAT(item.name, item.ident(tcx).span)]
             } else {
                 // We will permit associated types if they are explicitly mentioned in the trait object.
@@ -679,7 +675,7 @@ fn receiver_is_dispatchable<'tcx>(
     // FIXME(mikeyhew) this is a total hack. Once dyn_compatible_for_dispatch is stabilized, we can
     // replace this with `dyn Trait`
     let unsized_self_ty: Ty<'tcx> =
-        Ty::new_param(tcx, u32::MAX, Symbol::intern("RustaceansAreAwesome"));
+        Ty::new_param(tcx, u32::MAX, rustc_span::sym::RustaceansAreAwesome);
 
     // `Receiver[Self => U]`
     let unsized_receiver_ty =

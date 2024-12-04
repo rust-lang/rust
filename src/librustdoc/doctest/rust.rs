@@ -88,7 +88,7 @@ impl<'tcx> HirCollector<'tcx> {
     }
 }
 
-impl<'tcx> HirCollector<'tcx> {
+impl HirCollector<'_> {
     fn visit_testable<F: FnOnce(&mut Self)>(
         &mut self,
         name: String,

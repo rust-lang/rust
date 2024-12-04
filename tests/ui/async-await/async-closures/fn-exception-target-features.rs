@@ -10,7 +10,7 @@ use std::future::Future;
 #[target_feature(enable = "sse2")]
 fn target_feature()  -> Pin<Box<dyn Future<Output = ()> + 'static>> { todo!() }
 
-fn test(f: impl async Fn()) {}
+fn test(f: impl AsyncFn()) {}
 
 fn main() {
     test(target_feature); //~ ERROR the trait bound

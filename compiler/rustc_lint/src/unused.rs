@@ -1563,7 +1563,7 @@ impl UnusedImportBraces {
                     }
                     rename.unwrap_or(orig_ident).name
                 }
-                ast::UseTreeKind::Glob => Symbol::intern("*"),
+                ast::UseTreeKind::Glob => sym::asterisk,
                 ast::UseTreeKind::Nested { .. } => return,
             };
 

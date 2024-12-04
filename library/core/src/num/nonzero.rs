@@ -139,9 +139,9 @@ impl_nonzero_fmt! {
     LowerHex
     #[stable(feature = "nonzero", since = "1.28.0")]
     UpperHex
-    #[stable(feature = "nonzero_fmt_exp", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "nonzero_fmt_exp", since = "1.84.0")]
     LowerExp
-    #[stable(feature = "nonzero_fmt_exp", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "nonzero_fmt_exp", since = "1.84.0")]
     UpperExp
 }
 
@@ -614,7 +614,6 @@ macro_rules! nonzero_integer {
             /// ```
             ///
             #[unstable(feature = "non_zero_count_ones", issue = "120287")]
-            #[rustc_const_unstable(feature = "non_zero_count_ones", issue = "120287")]
             #[doc(alias = "popcount")]
             #[doc(alias = "popcnt")]
             #[must_use = "this returns the result of the operation, \
@@ -1509,8 +1508,6 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # Examples
         ///
         /// ```
-        /// #![feature(num_midpoint)]
-        ///
         /// # use std::num::NonZero;
         /// #
         /// # fn main() { test().unwrap(); }
@@ -1524,7 +1521,8 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # Some(())
         /// # }
         /// ```
-        #[unstable(feature = "num_midpoint", issue = "110840")]
+        #[stable(feature = "num_midpoint", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "num_midpoint", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1587,8 +1585,8 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # Some(())
         /// # }
         /// ```
-        #[stable(feature = "isqrt", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "isqrt", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "isqrt", since = "1.84.0")]
+        #[rustc_const_stable(feature = "isqrt", since = "1.84.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]

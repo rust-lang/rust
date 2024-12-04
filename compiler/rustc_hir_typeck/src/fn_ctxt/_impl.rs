@@ -185,7 +185,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         method: MethodCallee<'tcx>,
     ) {
-        self.enforce_context_effects(span, method.def_id, method.args);
+        self.enforce_context_effects(Some(hir_id), span, method.def_id, method.args);
         self.write_resolution(hir_id, Ok((DefKind::AssocFn, method.def_id)));
         self.write_args(hir_id, method.args);
     }
@@ -263,6 +263,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 Adjust::Deref(Some(overloaded_deref)) => {
                     self.enforce_context_effects(
+                        None,
                         expr.span,
                         overloaded_deref.method_call(self.tcx),
                         self.tcx.mk_args(&[a.target.into()]),
@@ -486,24 +487,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub(crate) fn lower_array_length(&self, length: &hir::ArrayLen<'tcx>) -> ty::Const<'tcx> {
-        match length {
-            hir::ArrayLen::Infer(inf) => self.ct_infer(None, inf.span),
-            hir::ArrayLen::Body(const_arg) => {
-                let span = const_arg.span();
-                let c = self.lowerer().lower_const_arg(const_arg, FeedConstTy::No);
-                self.register_wf_obligation(c.into(), span, ObligationCauseCode::WellFormed(None));
-                self.normalize(span, c)
-            }
-        }
-    }
-
     pub(crate) fn lower_const_arg(
         &self,
         const_arg: &'tcx hir::ConstArg<'tcx>,
-        param_def_id: DefId,
+        feed: FeedConstTy,
     ) -> ty::Const<'tcx> {
-        let ct = self.lowerer().lower_const_arg(const_arg, FeedConstTy::Param(param_def_id));
+        let ct = self.lowerer().lower_const_arg(const_arg, feed);
         self.register_wf_obligation(
             ct.into(),
             self.tcx.hir().span(const_arg.hir_id),
@@ -1278,7 +1267,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.fcx.lower_ty(ty).raw.into()
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
-                        self.fcx.lower_const_arg(ct, param.def_id).into()
+                        self.fcx.lower_const_arg(ct, FeedConstTy::Param(param.def_id)).into()
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Infer(inf)) => {
                         self.fcx.ty_infer(Some(param), inf.span).into()

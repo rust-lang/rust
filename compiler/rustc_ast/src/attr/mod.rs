@@ -250,7 +250,7 @@ impl AttrItem {
             AttrArgs::Delimited(args) if args.delim == Delimiter::Parenthesis => {
                 MetaItemKind::list_from_tokens(args.tokens.clone())
             }
-            AttrArgs::Delimited(_) | AttrArgs::Eq(..) | AttrArgs::Empty => None,
+            AttrArgs::Delimited(_) | AttrArgs::Eq { .. } | AttrArgs::Empty => None,
         }
     }
 
@@ -268,7 +268,7 @@ impl AttrItem {
     /// ```
     fn value_str(&self) -> Option<Symbol> {
         match &self.args {
-            AttrArgs::Eq(_, args) => args.value_str(),
+            AttrArgs::Eq { value, .. } => value.value_str(),
             AttrArgs::Delimited(_) | AttrArgs::Empty => None,
         }
     }
@@ -492,7 +492,7 @@ impl MetaItemKind {
                 MetaItemKind::list_from_tokens(tokens.clone()).map(MetaItemKind::List)
             }
             AttrArgs::Delimited(..) => None,
-            AttrArgs::Eq(_, AttrArgsEq::Ast(expr)) => match expr.kind {
+            AttrArgs::Eq { value: AttrArgsEq::Ast(expr), .. } => match expr.kind {
                 ExprKind::Lit(token_lit) => {
                     // Turn failures to `None`, we'll get parse errors elsewhere.
                     MetaItemLit::from_token_lit(token_lit, expr.span)
@@ -501,7 +501,9 @@ impl MetaItemKind {
                 }
                 _ => None,
             },
-            AttrArgs::Eq(_, AttrArgsEq::Hir(lit)) => Some(MetaItemKind::NameValue(lit.clone())),
+            AttrArgs::Eq { value: AttrArgsEq::Hir(lit), .. } => {
+                Some(MetaItemKind::NameValue(lit.clone()))
+            }
         }
     }
 }
@@ -702,7 +704,7 @@ pub fn mk_attr_name_value_str(
         tokens: None,
     });
     let path = Path::from_ident(Ident::new(name, span));
-    let args = AttrArgs::Eq(span, AttrArgsEq::Ast(expr));
+    let args = AttrArgs::Eq { eq_span: span, value: AttrArgsEq::Ast(expr) };
     mk_attr(g, style, unsafety, path, args, span)
 }
 

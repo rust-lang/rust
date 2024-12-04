@@ -558,6 +558,9 @@ config_data! {
         ///
         /// This option does not take effect until rust-analyzer is restarted.
         cargo_sysroot: Option<String>    = Some("discover".to_owned()),
+        /// How to query metadata for the sysroot crate. Using cargo metadata allows rust-analyzer
+        /// to analyze third-party dependencies of the standard libraries.
+        cargo_sysrootQueryMetadata: SysrootQueryMetadata = SysrootQueryMetadata::CargoMetadata,
         /// Relative path to the sysroot library sources. If left unset, this will default to
         /// `{cargo.sysroot}/lib/rustlib/src/rust/library`.
         ///
@@ -1868,6 +1871,12 @@ impl Config {
             },
             target: self.cargo_target(source_root).clone(),
             sysroot,
+            sysroot_query_metadata: match self.cargo_sysrootQueryMetadata(None) {
+                SysrootQueryMetadata::CargoMetadata => {
+                    project_model::SysrootQueryMetadata::CargoMetadata
+                }
+                SysrootQueryMetadata::None => project_model::SysrootQueryMetadata::None,
+            },
             sysroot_src,
             rustc_source,
             cfg_overrides: project_model::CfgOverrides {
@@ -2557,6 +2566,13 @@ pub enum NumThreads {
     Logical,
     #[serde(untagged)]
     Concrete(usize),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum SysrootQueryMetadata {
+    CargoMetadata,
+    None,
 }
 
 macro_rules! _default_val {
@@ -3409,6 +3425,14 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                     }
                 }
             ]
+        },
+        "SysrootQueryMetadata" => set! {
+            "type": "string",
+            "enum": ["none", "cargo_metadata"],
+            "enumDescriptions": [
+                "Do not query sysroot metadata, always use stitched sysroot.",
+                "Use `cargo metadata` to query sysroot metadata."
+            ],
         },
         _ => panic!("missing entry for {ty}: {default} (field {field})"),
     }

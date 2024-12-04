@@ -203,7 +203,8 @@ fn is_is_empty_sig(cx: &LateContext<'_>, call_id: HirId) -> bool {
 fn iterates_same_ty<'tcx>(cx: &LateContext<'tcx>, iter_ty: Ty<'tcx>, collect_ty: Ty<'tcx>) -> bool {
     if let Some(iter_trait) = cx.tcx.get_diagnostic_item(sym::Iterator)
         && let Some(into_iter_trait) = cx.tcx.get_diagnostic_item(sym::IntoIterator)
-        && let Some(iter_item_ty) = make_normalized_projection(cx.tcx, cx.typing_env(), iter_trait, sym::Item, [iter_ty])
+        && let Some(iter_item_ty) =
+            make_normalized_projection(cx.tcx, cx.typing_env(), iter_trait, sym::Item, [iter_ty])
         && let Some(into_iter_item_proj) = make_projection(cx.tcx, into_iter_trait, sym::Item, [collect_ty])
         && let Ok(into_iter_item_ty) = cx.tcx.try_normalize_erasing_regions(
             cx.typing_env(),

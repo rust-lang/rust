@@ -128,21 +128,21 @@ impl AssocOp {
     }
 
     /// Gets the precedence of this operator
-    pub fn precedence(&self) -> usize {
+    pub fn precedence(&self) -> ExprPrecedence {
         use AssocOp::*;
         match *self {
-            As => 14,
-            Multiply | Divide | Modulus => 13,
-            Add | Subtract => 12,
-            ShiftLeft | ShiftRight => 11,
-            BitAnd => 10,
-            BitXor => 9,
-            BitOr => 8,
-            Less | Greater | LessEqual | GreaterEqual | Equal | NotEqual => 7,
-            LAnd => 6,
-            LOr => 5,
-            DotDot | DotDotEq => 4,
-            Assign | AssignOp(_) => 2,
+            As => ExprPrecedence::Cast,
+            Multiply | Divide | Modulus => ExprPrecedence::Product,
+            Add | Subtract => ExprPrecedence::Sum,
+            ShiftLeft | ShiftRight => ExprPrecedence::Shift,
+            BitAnd => ExprPrecedence::BitAnd,
+            BitXor => ExprPrecedence::BitXor,
+            BitOr => ExprPrecedence::BitOr,
+            Less | Greater | LessEqual | GreaterEqual | Equal | NotEqual => ExprPrecedence::Compare,
+            LAnd => ExprPrecedence::LAnd,
+            LOr => ExprPrecedence::LOr,
+            DotDot | DotDotEq => ExprPrecedence::Range,
+            Assign | AssignOp(_) => ExprPrecedence::Assign,
         }
     }
 
@@ -229,17 +229,44 @@ impl AssocOp {
     }
 }
 
-pub const PREC_CLOSURE: i8 = -40;
-pub const PREC_JUMP: i8 = -30;
-pub const PREC_RANGE: i8 = -10;
-// The range 2..=14 is reserved for AssocOp binary operator precedences.
-pub const PREC_PREFIX: i8 = 50;
-pub const PREC_UNAMBIGUOUS: i8 = 60;
-pub const PREC_FORCE_PAREN: i8 = 100;
+#[derive(Clone, Copy, PartialEq, PartialOrd)]
+pub enum ExprPrecedence {
+    Closure,
+    // return, break, yield
+    Jump,
+    // = += -= *= /= %= &= |= ^= <<= >>=
+    Assign,
+    // .. ..=
+    Range,
+    // ||
+    LOr,
+    // &&
+    LAnd,
+    // == != < > <= >=
+    Compare,
+    // |
+    BitOr,
+    // ^
+    BitXor,
+    // &
+    BitAnd,
+    // << >>
+    Shift,
+    // + -
+    Sum,
+    // * / %
+    Product,
+    // as
+    Cast,
+    // unary - * ! & &mut
+    Prefix,
+    // paths, loops, function calls, array indexing, field expressions, method calls
+    Unambiguous,
+}
 
 /// In `let p = e`, operators with precedence `<=` this one requires parentheses in `e`.
-pub fn prec_let_scrutinee_needs_par() -> usize {
-    AssocOp::LAnd.precedence()
+pub fn prec_let_scrutinee_needs_par() -> ExprPrecedence {
+    ExprPrecedence::LAnd
 }
 
 /// Suppose we have `let _ = e` and the `order` of `e`.
@@ -247,8 +274,8 @@ pub fn prec_let_scrutinee_needs_par() -> usize {
 ///
 /// Conversely, suppose that we have `(let _ = a) OP b` and `order` is that of `OP`.
 /// Can we print this as `let _ = a OP b`?
-pub fn needs_par_as_let_scrutinee(order: i8) -> bool {
-    order <= prec_let_scrutinee_needs_par() as i8
+pub fn needs_par_as_let_scrutinee(order: ExprPrecedence) -> bool {
+    order <= prec_let_scrutinee_needs_par()
 }
 
 /// Expressions that syntactically contain an "exterior" struct literal i.e., not surrounded by any

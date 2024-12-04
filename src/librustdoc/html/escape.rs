@@ -11,7 +11,7 @@ use unicode_segmentation::UnicodeSegmentation;
 /// string when passed to a format string.
 pub(crate) struct Escape<'a>(pub &'a str);
 
-impl<'a> fmt::Display for Escape<'a> {
+impl fmt::Display for Escape<'_> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Because the internet is always right, turns out there's not that many
         // characters to escape: http://stackoverflow.com/questions/7381974
@@ -49,7 +49,7 @@ impl<'a> fmt::Display for Escape<'a> {
 /// difference, use [`Escape`].
 pub(crate) struct EscapeBodyText<'a>(pub &'a str);
 
-impl<'a> fmt::Display for EscapeBodyText<'a> {
+impl fmt::Display for EscapeBodyText<'_> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Because the internet is always right, turns out there's not that many
         // characters to escape: http://stackoverflow.com/questions/7381974
@@ -86,7 +86,7 @@ impl<'a> fmt::Display for EscapeBodyText<'a> {
 /// difference, use [`Escape`].
 pub(crate) struct EscapeBodyTextWithWbr<'a>(pub &'a str);
 
-impl<'a> fmt::Display for EscapeBodyTextWithWbr<'a> {
+impl fmt::Display for EscapeBodyTextWithWbr<'_> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let EscapeBodyTextWithWbr(text) = *self;
         if text.len() < 8 {

@@ -710,6 +710,10 @@ impl<'tcx> LateContext<'tcx> {
         TypingEnv { typing_mode: self.typing_mode(), param_env: self.param_env }
     }
 
+    pub fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>) -> bool {
+        self.tcx.type_is_copy_modulo_regions(self.typing_env(), ty)
+    }
+
     /// Gets the type-checking results for the current body,
     /// or `None` if outside a body.
     pub fn maybe_typeck_results(&self) -> Option<&'tcx ty::TypeckResults<'tcx>> {

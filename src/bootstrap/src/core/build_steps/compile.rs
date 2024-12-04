@@ -330,7 +330,7 @@ fn copy_third_party_objects(
 
     if target == "x86_64-fortanix-unknown-sgx"
         || builder.config.llvm_libunwind(target) == LlvmLibunwind::InTree
-            && (target.contains("linux") || target.contains("fuchsia"))
+            && (target.contains("linux") || target.contains("fuchsia") || target.contains("aix"))
     {
         let libunwind_path =
             copy_llvm_libunwind(builder, target, &builder.sysroot_target_libdir(*compiler, target));
@@ -1655,7 +1655,7 @@ impl Step for Sysroot {
             let mut add_filtered_files = |suffix, contents| {
                 for path in contents {
                     let path = Path::new(&path);
-                    if path.parent().map_or(false, |parent| parent.ends_with(suffix)) {
+                    if path.parent().is_some_and(|parent| parent.ends_with(suffix)) {
                         filtered_files.push(path.file_name().unwrap().to_owned());
                     }
                 }

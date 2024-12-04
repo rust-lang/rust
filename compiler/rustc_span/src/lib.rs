@@ -22,6 +22,7 @@
 #![feature(array_windows)]
 #![feature(cfg_match)]
 #![feature(core_io_borrowed_buf)]
+#![feature(hash_set_entry)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(min_specialization)]

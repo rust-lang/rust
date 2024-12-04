@@ -109,7 +109,16 @@ pub enum DefKind {
     Use,
     /// An `extern` block.
     ForeignMod,
-    /// Anonymous constant, e.g. the `1 + 2` in `[u8; 1 + 2]`
+    /// Anonymous constant, e.g. the `1 + 2` in `[u8; 1 + 2]`.
+    ///
+    /// Not all anon-consts are actually still relevant in the HIR. We lower
+    /// trivial const-arguments directly to `hir::ConstArgKind::Path`, at which
+    /// point the definition for the anon-const ends up unused and incomplete.
+    ///
+    /// We do not provide any a `Span` for the definition and pretty much all other
+    /// queries also ICE when using this `DefId`. Given that the `DefId` of such
+    /// constants should only be reachable by iterating all definitions of a
+    /// given crate, you should not have to worry about this.
     AnonConst,
     /// An inline constant, e.g. `const { 1 + 2 }`
     InlineConst,

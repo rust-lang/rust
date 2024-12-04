@@ -1,4 +1,4 @@
-#![feature(naked_functions, asm_const, linkage)]
+#![feature(naked_functions, linkage)]
 #![crate_type = "dylib"]
 
 use std::arch::naked_asm;
@@ -38,7 +38,7 @@ pub extern "C" fn public_vanilla() -> u32 {
 
 #[naked]
 #[no_mangle]
-pub extern "C" fn public_naked() -> u32 {
+pub extern "C" fn public_naked_nongeneric() -> u32 {
     unsafe { naked_asm!("mov rax, 42", "ret") }
 }
 

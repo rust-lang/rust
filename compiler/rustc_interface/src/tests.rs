@@ -712,7 +712,7 @@ fn test_unstable_options_tracking_hash() {
     untracked!(no_analysis, true);
     untracked!(no_leak_check, true);
     untracked!(no_parallel_backend, true);
-    untracked!(parse_only, true);
+    untracked!(parse_crate_root_only, true);
     // `pre_link_arg` is omitted because it just forwards to `pre_link_args`.
     untracked!(pre_link_args, vec![String::from("abc"), String::from("def")]);
     untracked!(print_codegen_stats, true);
@@ -771,6 +771,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(crate_attr, vec!["abc".to_string()]);
     tracked!(cross_crate_inline_threshold, InliningThreshold::Always);
     tracked!(debug_info_for_profiling, true);
+    tracked!(debug_info_type_line_numbers, true);
     tracked!(default_visibility, Some(rustc_target::spec::SymbolVisibility::Hidden));
     tracked!(dep_info_omit_d_target, true);
     tracked!(direct_access_external_data, Some(true));

@@ -9,7 +9,7 @@
 
 #![feature(async_closure)]
 
-fn async_closure_test(upvar: &str) -> impl async Fn() + '_ {
+fn async_closure_test(upvar: &str) -> impl AsyncFn() + '_ {
     async move || {
         let hello = String::from("hello");
         println!("{hello}, {upvar}");

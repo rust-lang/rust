@@ -9,7 +9,7 @@
 
 extern crate block_on;
 
-async fn call_once(f: impl async FnOnce()) { f().await; }
+async fn call_once(f: impl AsyncFnOnce()) { f().await; }
 
 pub async fn async_closure(x: &mut i32) {
     let c = async move || {

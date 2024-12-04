@@ -26,15 +26,15 @@ use rustc_hir::lang_items::LangItem;
 use rustc_index::IndexVec;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_macros::extension;
-use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::fold::{TypeFoldable, fold_regions};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, InlineConstArgs, InlineConstArgsParts, RegionVid, Ty,
     TyCtxt, TypeVisitableExt,
 };
 use rustc_middle::{bug, span_bug};
+use rustc_span::ErrorGuaranteed;
 use rustc_span::symbol::{kw, sym};
-use rustc_span::{ErrorGuaranteed, Symbol};
 use tracing::{debug, instrument};
 
 use crate::BorrowckInferCtxt;
@@ -524,7 +524,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
                 let reg_vid = self
                     .infcx
-                    .next_nll_region_var(FR, || RegionCtxt::Free(Symbol::intern("c-variadic")))
+                    .next_nll_region_var(FR, || RegionCtxt::Free(sym::c_dash_variadic))
                     .as_var();
 
                 let region = ty::Region::new_var(self.infcx.tcx, reg_vid);
@@ -540,10 +540,8 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             }
         }
 
-        let fr_fn_body = self
-            .infcx
-            .next_nll_region_var(FR, || RegionCtxt::Free(Symbol::intern("fn_body")))
-            .as_var();
+        let fr_fn_body =
+            self.infcx.next_nll_region_var(FR, || RegionCtxt::Free(sym::fn_body)).as_var();
 
         let num_universals = self.infcx.num_region_vars();
 
@@ -824,7 +822,7 @@ impl<'tcx> BorrowckInferCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.infcx.tcx.fold_regions(value, |region, _depth| {
+        fold_regions(self.infcx.tcx, value, |region, _depth| {
             let name = region.get_name_or_anon();
             debug!(?region, ?name);
 
@@ -906,7 +904,7 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        tcx.fold_regions(value, |region, _| ty::Region::new_var(tcx, self.to_region_vid(region)))
+        fold_regions(tcx, value, |region, _| ty::Region::new_var(tcx, self.to_region_vid(region)))
     }
 }
 

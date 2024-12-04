@@ -54,7 +54,7 @@ fn skip_comment(iter: &mut Peekable<Chars<'_>>) {
 
 /// Skips a line comment (`//`).
 fn skip_line_comment(iter: &mut Peekable<Chars<'_>>) {
-    while let Some(c) = iter.next() {
+    for c in iter.by_ref() {
         if c == '\n' {
             break;
         }

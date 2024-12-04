@@ -102,7 +102,7 @@ fn get_lib_name(name: &str, aux_type: AuxType) -> Option<String> {
         // In this case, the only path we can pass
         // with '--extern-meta' is the '.rlib' file
         AuxType::Lib => Some(format!("lib{name}.rlib")),
-        AuxType::Dylib => Some(dylib_name(name)),
+        AuxType::Dylib | AuxType::ProcMacro => Some(dylib_name(name)),
     }
 }
 
@@ -350,10 +350,13 @@ impl<'test> TestCx<'test> {
             }
         } else {
             if proc_res.status.success() {
-                self.fatal_proc_rec(
-                    &format!("{} test compiled successfully!", self.config.mode)[..],
-                    proc_res,
-                );
+                {
+                    self.error(&format!("{} test did not emit an error", self.config.mode));
+                    if self.config.mode == crate::common::Mode::Ui {
+                        println!("note: by default, ui tests are expected not to compile");
+                    }
+                    proc_res.fatal(None, || ());
+                };
             }
 
             if !self.props.dont_check_failure_status {
@@ -1097,7 +1100,9 @@ impl<'test> TestCx<'test> {
     }
 
     fn has_aux_dir(&self) -> bool {
-        !self.props.aux.builds.is_empty() || !self.props.aux.crates.is_empty()
+        !self.props.aux.builds.is_empty()
+            || !self.props.aux.crates.is_empty()
+            || !self.props.aux.proc_macros.is_empty()
     }
 
     fn aux_output_dir(&self) -> PathBuf {
@@ -1118,31 +1123,48 @@ impl<'test> TestCx<'test> {
 
     fn build_all_auxiliary(&self, of: &TestPaths, aux_dir: &Path, rustc: &mut Command) {
         for rel_ab in &self.props.aux.builds {
-            self.build_auxiliary(of, rel_ab, &aux_dir, false /* is_bin */);
+            self.build_auxiliary(of, rel_ab, &aux_dir, None);
         }
 
         for rel_ab in &self.props.aux.bins {
-            self.build_auxiliary(of, rel_ab, &aux_dir, true /* is_bin */);
+            self.build_auxiliary(of, rel_ab, &aux_dir, Some(AuxType::Bin));
         }
 
+        let path_to_crate_name = |path: &str| -> String {
+            path.rsplit_once('/')
+                .map_or(path, |(_, tail)| tail)
+                .trim_end_matches(".rs")
+                .replace('-', "_")
+        };
+
+        let add_extern =
+            |rustc: &mut Command, aux_name: &str, aux_path: &str, aux_type: AuxType| {
+                let lib_name = get_lib_name(&path_to_crate_name(aux_path), aux_type);
+                if let Some(lib_name) = lib_name {
+                    rustc.arg("--extern").arg(format!(
+                        "{}={}/{}",
+                        aux_name,
+                        aux_dir.display(),
+                        lib_name
+                    ));
+                }
+            };
+
         for (aux_name, aux_path) in &self.props.aux.crates {
-            let aux_type = self.build_auxiliary(of, &aux_path, &aux_dir, false /* is_bin */);
-            let lib_name =
-                get_lib_name(&aux_path.trim_end_matches(".rs").replace('-', "_"), aux_type);
-            if let Some(lib_name) = lib_name {
-                rustc.arg("--extern").arg(format!(
-                    "{}={}/{}",
-                    aux_name,
-                    aux_dir.display(),
-                    lib_name
-                ));
-            }
+            let aux_type = self.build_auxiliary(of, &aux_path, &aux_dir, None);
+            add_extern(rustc, aux_name, aux_path, aux_type);
+        }
+
+        for proc_macro in &self.props.aux.proc_macros {
+            self.build_auxiliary(of, proc_macro, &aux_dir, Some(AuxType::ProcMacro));
+            let crate_name = path_to_crate_name(proc_macro);
+            add_extern(rustc, &crate_name, proc_macro, AuxType::ProcMacro);
         }
 
         // Build any `//@ aux-codegen-backend`, and pass the resulting library
         // to `-Zcodegen-backend` when compiling the test file.
         if let Some(aux_file) = &self.props.aux.codegen_backend {
-            let aux_type = self.build_auxiliary(of, aux_file, aux_dir, false);
+            let aux_type = self.build_auxiliary(of, aux_file, aux_dir, None);
             if let Some(lib_name) = get_lib_name(aux_file.trim_end_matches(".rs"), aux_type) {
                 let lib_path = aux_dir.join(&lib_name);
                 rustc.arg(format!("-Zcodegen-backend={}", lib_path.display()));
@@ -1209,17 +1231,23 @@ impl<'test> TestCx<'test> {
     }
 
     /// Builds an aux dependency.
+    ///
+    /// If `aux_type` is `None`, then this will determine the aux-type automatically.
     fn build_auxiliary(
         &self,
         of: &TestPaths,
         source_path: &str,
         aux_dir: &Path,
-        is_bin: bool,
+        aux_type: Option<AuxType>,
     ) -> AuxType {
         let aux_testpaths = self.compute_aux_test_paths(of, source_path);
-        let aux_props = self.props.from_aux_file(&aux_testpaths.file, self.revision, self.config);
+        let mut aux_props =
+            self.props.from_aux_file(&aux_testpaths.file, self.revision, self.config);
+        if aux_type == Some(AuxType::ProcMacro) {
+            aux_props.force_host = true;
+        }
         let mut aux_dir = aux_dir.to_path_buf();
-        if is_bin {
+        if aux_type == Some(AuxType::Bin) {
             // On unix, the binary of `auxiliary/foo.rs` will be named
             // `auxiliary/foo` which clashes with the _dir_ `auxiliary/foo`, so
             // put bins in a `bin` subfolder.
@@ -1250,8 +1278,12 @@ impl<'test> TestCx<'test> {
             aux_rustc.env_remove(key);
         }
 
-        let (aux_type, crate_type) = if is_bin {
+        let (aux_type, crate_type) = if aux_type == Some(AuxType::Bin) {
             (AuxType::Bin, Some("bin"))
+        } else if aux_type == Some(AuxType::ProcMacro) {
+            (AuxType::ProcMacro, Some("proc-macro"))
+        } else if aux_type.is_some() {
+            panic!("aux_type {aux_type:?} not expected");
         } else if aux_props.no_prefer_dynamic {
             (AuxType::Dylib, None)
         } else if self.config.target.contains("emscripten")
@@ -1285,6 +1317,11 @@ impl<'test> TestCx<'test> {
 
         if let Some(crate_type) = crate_type {
             aux_rustc.args(&["--crate-type", crate_type]);
+        }
+
+        if aux_type == AuxType::ProcMacro {
+            // For convenience, but this only works on 2018.
+            aux_rustc.args(&["--extern", "proc_macro"]);
         }
 
         aux_rustc.arg("-L").arg(&aux_dir);
@@ -2507,13 +2544,10 @@ impl<'test> TestCx<'test> {
             return 0;
         }
 
-        // If `compare-output-lines-by-subset` is not explicitly enabled then
-        // auto-enable it when a `runner` is in use since wrapper tools might
-        // provide extra output on failure, for example a WebAssembly runtime
-        // might print the stack trace of an `unreachable` instruction by
-        // default.
-        let compare_output_by_lines =
-            self.props.compare_output_lines_by_subset || self.config.runner.is_some();
+        // Wrapper tools set by `runner` might provide extra output on failure,
+        // for example a WebAssembly runtime might print the stack trace of an
+        // `unreachable` instruction by default.
+        let compare_output_by_lines = self.config.runner.is_some();
 
         let tmp;
         let (expected, actual): (&str, &str) = if compare_output_by_lines {
@@ -2768,8 +2802,10 @@ enum LinkToAux {
     No,
 }
 
+#[derive(Debug, PartialEq)]
 enum AuxType {
     Bin,
     Lib,
     Dylib,
+    ProcMacro,
 }

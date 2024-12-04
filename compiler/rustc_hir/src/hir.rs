@@ -1,7 +1,7 @@
 use std::fmt;
 
 use rustc_abi::ExternAbi;
-use rustc_ast::util::parser::{AssocOp, PREC_CLOSURE, PREC_JUMP, PREC_PREFIX, PREC_UNAMBIGUOUS};
+use rustc_ast::util::parser::{AssocOp, ExprPrecedence};
 use rustc_ast::{
     self as ast, Attribute, FloatTy, InlineAsmOptions, InlineAsmTemplatePiece, IntTy, Label,
     LitKind, TraitObjectSyntax, UintTy,
@@ -275,6 +275,7 @@ impl<'hir> ConstArg<'hir> {
         match self.kind {
             ConstArgKind::Path(path) => path.span(),
             ConstArgKind::Anon(anon) => anon.span,
+            ConstArgKind::Infer(span) => span,
         }
     }
 }
@@ -289,6 +290,11 @@ pub enum ConstArgKind<'hir> {
     /// However, in the future, we'll be using it for all of those.
     Path(QPath<'hir>),
     Anon(&'hir AnonConst),
+    /// **Note:** Not all inferred consts are represented as
+    /// `ConstArgKind::Infer`. In cases where it is ambiguous whether
+    /// a generic arg is a type or a const, inference variables are
+    /// represented as `GenericArg::Infer` instead.
+    Infer(Span),
 }
 
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
@@ -308,6 +314,10 @@ pub enum GenericArg<'hir> {
     Lifetime(&'hir Lifetime),
     Type(&'hir Ty<'hir>),
     Const(&'hir ConstArg<'hir>),
+    /// **Note:** Inference variables are only represented as
+    /// `GenericArg::Infer` in cases where it is ambiguous whether
+    /// a generic arg is a type or a const. Otherwise, inference variables
+    /// are represented as `TyKind::Infer` or `ConstArgKind::Infer`.
     Infer(InferArg),
 }
 
@@ -1645,29 +1655,6 @@ impl fmt::Display for ConstContext {
 /// A literal.
 pub type Lit = Spanned<LitKind>;
 
-#[derive(Copy, Clone, Debug, HashStable_Generic)]
-pub enum ArrayLen<'hir> {
-    Infer(InferArg),
-    Body(&'hir ConstArg<'hir>),
-}
-
-impl ArrayLen<'_> {
-    pub fn span(self) -> Span {
-        match self {
-            ArrayLen::Infer(arg) => arg.span,
-            ArrayLen::Body(body) => body.span(),
-        }
-    }
-
-    pub fn hir_id(self) -> HirId {
-        match self {
-            ArrayLen::Infer(InferArg { hir_id, .. }) | ArrayLen::Body(&ConstArg { hir_id, .. }) => {
-                hir_id
-            }
-        }
-    }
-}
-
 /// A constant (expression) that's not an item or associated item,
 /// but needs its own `DefId` for type-checking, const-eval, etc.
 /// These are usually found nested inside types (e.g., array lengths)
@@ -1708,22 +1695,22 @@ pub struct Expr<'hir> {
 }
 
 impl Expr<'_> {
-    pub fn precedence(&self) -> i8 {
+    pub fn precedence(&self) -> ExprPrecedence {
         match self.kind {
-            ExprKind::Closure { .. } => PREC_CLOSURE,
+            ExprKind::Closure { .. } => ExprPrecedence::Closure,
 
             ExprKind::Break(..)
             | ExprKind::Continue(..)
             | ExprKind::Ret(..)
             | ExprKind::Yield(..)
-            | ExprKind::Become(..) => PREC_JUMP,
+            | ExprKind::Become(..) => ExprPrecedence::Jump,
 
             // Binop-like expr kinds, handled by `AssocOp`.
-            ExprKind::Binary(op, ..) => AssocOp::from_ast_binop(op.node).precedence() as i8,
-            ExprKind::Cast(..) => AssocOp::As.precedence() as i8,
+            ExprKind::Binary(op, ..) => AssocOp::from_ast_binop(op.node).precedence(),
+            ExprKind::Cast(..) => ExprPrecedence::Cast,
 
             ExprKind::Assign(..) |
-            ExprKind::AssignOp(..) => AssocOp::Assign.precedence() as i8,
+            ExprKind::AssignOp(..) => ExprPrecedence::Assign,
 
             // Unary, prefix
             ExprKind::AddrOf(..)
@@ -1732,7 +1719,7 @@ impl Expr<'_> {
             // need parens sometimes. E.g. we can print `(let _ = a) && b` as `let _ = a && b`
             // but we need to print `(let _ = a) < b` as-is with parens.
             | ExprKind::Let(..)
-            | ExprKind::Unary(..) => PREC_PREFIX,
+            | ExprKind::Unary(..) => ExprPrecedence::Prefix,
 
             // Never need parens
             ExprKind::Array(_)
@@ -1753,7 +1740,7 @@ impl Expr<'_> {
             | ExprKind::Struct(..)
             | ExprKind::Tup(_)
             | ExprKind::Type(..)
-            | ExprKind::Err(_) => PREC_UNAMBIGUOUS,
+            | ExprKind::Err(_) => ExprPrecedence::Unambiguous,
 
             ExprKind::DropTemps(ref expr, ..) => expr.precedence(),
         }
@@ -2115,7 +2102,7 @@ pub enum ExprKind<'hir> {
     ///
     /// E.g., `[1; 5]`. The first expression is the element
     /// to be repeated; the second is the number of times to repeat it.
-    Repeat(&'hir Expr<'hir>, ArrayLen<'hir>),
+    Repeat(&'hir Expr<'hir>, &'hir ConstArg<'hir>),
 
     /// A suspension point for coroutines (i.e., `yield <expr>`).
     Yield(&'hir Expr<'hir>, YieldSource),
@@ -2625,7 +2612,7 @@ impl<'hir> Ty<'hir> {
             TyKind::Infer => true,
             TyKind::Slice(ty) => ty.is_suggestable_infer_ty(),
             TyKind::Array(ty, length) => {
-                ty.is_suggestable_infer_ty() || matches!(length, ArrayLen::Infer(..))
+                ty.is_suggestable_infer_ty() || matches!(length.kind, ConstArgKind::Infer(..))
             }
             TyKind::Tup(tys) => tys.iter().any(Self::is_suggestable_infer_ty),
             TyKind::Ptr(mut_ty) | TyKind::Ref(_, mut_ty) => mut_ty.ty.is_suggestable_infer_ty(),
@@ -2834,7 +2821,7 @@ pub enum TyKind<'hir> {
     /// A variable length slice (i.e., `[T]`).
     Slice(&'hir Ty<'hir>),
     /// A fixed length array (i.e., `[T; n]`).
-    Array(&'hir Ty<'hir>, ArrayLen<'hir>),
+    Array(&'hir Ty<'hir>, &'hir ConstArg<'hir>),
     /// A raw pointer (i.e., `*const T` or `*mut T`).
     Ptr(MutTy<'hir>),
     /// A reference (i.e., `&'a T` or `&'a mut T`).
@@ -2861,6 +2848,11 @@ pub enum TyKind<'hir> {
     Typeof(&'hir AnonConst),
     /// `TyKind::Infer` means the type should be inferred instead of it having been
     /// specified. This can appear anywhere in a type.
+    ///
+    /// **Note:** Not all inferred types are represented as
+    /// `TyKind::Infer`. In cases where it is ambiguous whether
+    /// a generic arg is a type or a const, inference variables are
+    /// represented as `GenericArg::Infer` instead.
     Infer,
     /// Placeholder for a type that has failed to be defined.
     Err(rustc_span::ErrorGuaranteed),
@@ -3801,8 +3793,6 @@ pub enum Node<'hir> {
     Crate(&'hir Mod<'hir>),
     Infer(&'hir InferArg),
     WherePredicate(&'hir WherePredicate<'hir>),
-    // FIXME: Merge into `Node::Infer`.
-    ArrayLenInfer(&'hir InferArg),
     PreciseCapturingNonLifetimeArg(&'hir PreciseCapturingNonLifetimeArg),
     // Created by query feeding
     Synthetic,
@@ -3856,7 +3846,6 @@ impl<'hir> Node<'hir> {
             | Node::OpaqueTy(..)
             | Node::Infer(..)
             | Node::WherePredicate(..)
-            | Node::ArrayLenInfer(..)
             | Node::Synthetic
             | Node::Err(..) => None,
         }

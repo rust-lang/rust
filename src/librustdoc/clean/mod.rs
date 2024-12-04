@@ -290,6 +290,7 @@ pub(crate) fn clean_const<'tcx>(
             ConstantKind::Path { path: qpath_to_string(qpath).into() }
         }
         hir::ConstArgKind::Anon(anon) => ConstantKind::Anonymous { body: anon.body },
+        hir::ConstArgKind::Infer(..) => ConstantKind::Infer,
     }
 }
 
@@ -1803,30 +1804,27 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
         }
         TyKind::Slice(ty) => Slice(Box::new(clean_ty(ty, cx))),
         TyKind::Pat(ty, pat) => Type::Pat(Box::new(clean_ty(ty, cx)), format!("{pat:?}").into()),
-        TyKind::Array(ty, ref length) => {
-            let length = match length {
-                hir::ArrayLen::Infer(..) => "_".to_string(),
-                hir::ArrayLen::Body(const_arg) => {
-                    // NOTE(min_const_generics): We can't use `const_eval_poly` for constants
-                    // as we currently do not supply the parent generics to anonymous constants
-                    // but do allow `ConstKind::Param`.
-                    //
-                    // `const_eval_poly` tries to first substitute generic parameters which
-                    // results in an ICE while manually constructing the constant and using `eval`
-                    // does nothing for `ConstKind::Param`.
+        TyKind::Array(ty, ref const_arg) => {
+            // NOTE(min_const_generics): We can't use `const_eval_poly` for constants
+            // as we currently do not supply the parent generics to anonymous constants
+            // but do allow `ConstKind::Param`.
+            //
+            // `const_eval_poly` tries to first substitute generic parameters which
+            // results in an ICE while manually constructing the constant and using `eval`
+            // does nothing for `ConstKind::Param`.
+            let length = match const_arg.kind {
+                hir::ConstArgKind::Infer(..) => "_".to_string(),
+                hir::ConstArgKind::Anon(hir::AnonConst { def_id, .. }) => {
                     let ct = lower_const_arg_for_rustdoc(cx.tcx, const_arg, FeedConstTy::No);
-                    let ct = if let hir::ConstArgKind::Anon(hir::AnonConst { def_id, .. }) =
-                        const_arg.kind
-                    {
-                        let typing_env = ty::TypingEnv::post_analysis(cx.tcx, *def_id);
-                        cx.tcx.normalize_erasing_regions(typing_env, ct)
-                    } else {
-                        ct
-                    };
+                    let typing_env = ty::TypingEnv::post_analysis(cx.tcx, *def_id);
+                    let ct = cx.tcx.normalize_erasing_regions(typing_env, ct);
+                    print_const(cx, ct)
+                }
+                hir::ConstArgKind::Path(..) => {
+                    let ct = lower_const_arg_for_rustdoc(cx.tcx, const_arg, FeedConstTy::No);
                     print_const(cx, ct)
                 }
             };
-
             Array(Box::new(clean_ty(ty, cx)), length.into())
         }
         TyKind::Tup(tys) => Tuple(tys.iter().map(|ty| clean_ty(ty, cx)).collect()),
@@ -2509,16 +2507,14 @@ fn clean_generic_args<'tcx>(
         let args = generic_args
             .args
             .iter()
-            .filter_map(|arg| {
-                Some(match arg {
-                    hir::GenericArg::Lifetime(lt) if !lt.is_anonymous() => {
-                        GenericArg::Lifetime(clean_lifetime(lt, cx))
-                    }
-                    hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
-                    hir::GenericArg::Type(ty) => GenericArg::Type(clean_ty(ty, cx)),
-                    hir::GenericArg::Const(ct) => GenericArg::Const(Box::new(clean_const(ct, cx))),
-                    hir::GenericArg::Infer(_inf) => GenericArg::Infer,
-                })
+            .map(|arg| match arg {
+                hir::GenericArg::Lifetime(lt) if !lt.is_anonymous() => {
+                    GenericArg::Lifetime(clean_lifetime(lt, cx))
+                }
+                hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
+                hir::GenericArg::Type(ty) => GenericArg::Type(clean_ty(ty, cx)),
+                hir::GenericArg::Const(ct) => GenericArg::Const(Box::new(clean_const(ct, cx))),
+                hir::GenericArg::Infer(_inf) => GenericArg::Infer,
             })
             .collect::<Vec<_>>()
             .into();
@@ -2651,7 +2647,7 @@ fn filter_doc_attr(normal: &mut ast::NormalAttr, is_inline: bool) {
             });
             args.tokens = TokenStream::new(tokens);
         }
-        ast::AttrArgs::Empty | ast::AttrArgs::Eq(..) => {}
+        ast::AttrArgs::Empty | ast::AttrArgs::Eq { .. } => {}
     }
 }
 

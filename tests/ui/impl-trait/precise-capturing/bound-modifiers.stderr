@@ -46,16 +46,16 @@ error[E0405]: cannot find trait `r#use` in this scope
 LL | fn binder() -> impl Sized + for<'a> use<> {}
    |                                     ^^^ not found in this scope
 
-error[E0658]: async closures are unstable
+error[E0658]: `async` trait bounds are unstable
   --> $DIR/bound-modifiers.rs:7:32
    |
 LL | fn asyncness() -> impl Sized + async use<> {}
    |                                ^^^^^
    |
    = note: see issue #62290 <https://github.com/rust-lang/rust/issues/62290> for more information
-   = help: add `#![feature(async_closure)]` to the crate attributes to enable
+   = help: add `#![feature(async_trait_bounds)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = help: to use an async block, remove the `||`: `async {`
+   = help: use the desugared name of the async trait, such as `AsyncFn`
 
 error[E0658]: const trait impls are experimental
   --> $DIR/bound-modifiers.rs:12:32

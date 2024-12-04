@@ -1,7 +1,7 @@
 //@ build-pass
 //@ edition: 2021
 
-// Demonstrates that an async closure may implement `FnMut` (not just `async FnMut`!)
+// Demonstrates that an async closure may implement `FnMut` (not just `AsyncFnMut`!)
 // if it has no self-borrows. In this case, `&Ty` is not borrowed from the closure env,
 // since it's fine to reborrow it with its original lifetime. See the doc comment on
 // `should_reborrow_from_env_of_parent_coroutine_closure` for more detail for when we

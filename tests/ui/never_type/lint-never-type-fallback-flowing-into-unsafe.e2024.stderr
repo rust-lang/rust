@@ -1,5 +1,5 @@
 error: never type fallback affects this call to an `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:13:18
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:12:18
    |
 LL |         unsafe { mem::zeroed() }
    |                  ^^^^^^^^^^^^^
@@ -14,7 +14,7 @@ LL |         unsafe { mem::zeroed::<()>() }
    |                             ++++++
 
 error: never type fallback affects this call to an `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:30:13
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:29:13
    |
 LL |             core::mem::transmute(Zst)
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -28,7 +28,7 @@ LL |             core::mem::transmute::<_, ()>(Zst)
    |                                 +++++++++
 
 error: never type fallback affects this union access
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:47:18
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:46:18
    |
 LL |         unsafe { Union { a: () }.b }
    |                  ^^^^^^^^^^^^^^^^^
@@ -38,7 +38,7 @@ LL |         unsafe { Union { a: () }.b }
    = help: specify the type explicitly
 
 error: never type fallback affects this raw pointer dereference
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:58:18
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:57:18
    |
 LL |         unsafe { *ptr::from_ref(&()).cast() }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -52,7 +52,7 @@ LL |         unsafe { *ptr::from_ref(&()).cast::<()>() }
    |                                          ++++++
 
 error: never type fallback affects this call to an `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:79:18
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:78:18
    |
 LL |         unsafe { internally_create(x) }
    |                  ^^^^^^^^^^^^^^^^^^^^
@@ -66,7 +66,7 @@ LL |         unsafe { internally_create::<()>(x) }
    |                                   ++++++
 
 error: never type fallback affects this call to an `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:97:18
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:96:18
    |
 LL |         unsafe { zeroed() }
    |                  ^^^^^^^^
@@ -80,7 +80,7 @@ LL |         let zeroed = mem::zeroed::<()>;
    |                                 ++++++
 
 error: never type fallback affects this `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:92:22
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:91:22
    |
 LL |         let zeroed = mem::zeroed;
    |                      ^^^^^^^^^^^
@@ -94,7 +94,7 @@ LL |         let zeroed = mem::zeroed::<()>;
    |                                 ++++++
 
 error: never type fallback affects this `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:115:17
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:114:17
    |
 LL |         let f = internally_create;
    |                 ^^^^^^^^^^^^^^^^^
@@ -108,7 +108,7 @@ LL |         let f = internally_create::<()>;
    |                                  ++++++
 
 error: never type fallback affects this call to an `unsafe` method
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:140:13
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:139:13
    |
 LL |             S(marker::PhantomData).create_out_of_thin_air()
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -118,7 +118,7 @@ LL |             S(marker::PhantomData).create_out_of_thin_air()
    = help: specify the type explicitly
 
 error: never type fallback affects this call to an `unsafe` function
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:158:19
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:157:19
    |
 LL |             match send_message::<_ /* ?0 */>() {
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -136,7 +136,7 @@ LL |             match send_message::<() /* ?0 */>() {
    |                                  ~~
 
 warning: the type `!` does not permit zero-initialization
-  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:13:18
+  --> $DIR/lint-never-type-fallback-flowing-into-unsafe.rs:12:18
    |
 LL |         unsafe { mem::zeroed() }
    |                  ^^^^^^^^^^^^^ this code causes undefined behavior when executed

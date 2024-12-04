@@ -449,6 +449,11 @@ impl<'a, K: Ord, V, A: Allocator + Clone> OccupiedEntry<'a, K, V, A> {
         self.handle.reborrow().into_kv().0
     }
 
+    /// Converts the entry into a reference to its key.
+    pub(crate) fn into_key(self) -> &'a K {
+        self.handle.into_kv_mut().0
+    }
+
     /// Take ownership of the key and value from the map.
     ///
     /// # Examples

@@ -1,4 +1,4 @@
-//@ aux-build:issue-50493.rs
+//@ proc-macro: issue-50493.rs
 
 #[macro_use]
 extern crate issue_50493;

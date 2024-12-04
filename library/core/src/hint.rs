@@ -506,7 +506,6 @@ pub const fn black_box<T>(dummy: T) -> T {
 ///   # }
 ///   ```
 #[unstable(feature = "hint_must_use", issue = "94745")]
-#[cfg_attr(bootstrap, rustc_const_unstable(feature = "hint_must_use", issue = "94745"))]
 #[must_use] // <-- :)
 #[inline(always)]
 pub const fn must_use<T>(value: T) -> T {

@@ -1,0 +1,127 @@
+error[E0277]: the trait bound `dep_2_reexport::Type: Trait` is not satisfied
+  --> replaced
+   |
+LL |     do_something(Type);
+   |     ------------ ^^^^ the trait `Trait` is not implemented for `dep_2_reexport::Type`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: there are multiple different versions of crate `dependency` in the dependency graph
+  --> replaced
+   |
+LL | pub struct Type(pub i32);
+   | --------------- this type implements the required trait
+LL | pub trait Trait {
+   | ^^^^^^^^^^^^^^^ this is the required trait
+   |
+  ::: replaced
+   |
+LL | extern crate dep_2_reexport;
+   | ---------------------------- one version of crate `dependency` is used here, as a dependency of crate `foo`
+LL | extern crate dependency;
+   | ------------------------ one version of crate `dependency` is used here, as a direct dependency of the current crate
+   |
+  ::: replaced
+   |
+LL | pub struct Type;
+   | --------------- this type doesn't implement the required trait
+LL | pub trait Trait {
+   | --------------- this is the found trait
+   = note: two types coming from two different versions of the same crate are different types even if they look the same
+   = help: you can use `cargo tree` to explore your dependency tree
+note: required by a bound in `do_something`
+  --> replaced
+   |
+LL | pub fn do_something<X: Trait>(_: X) {}
+   |                        ^^^^^ required by this bound in `do_something`
+
+error[E0599]: no method named `foo` found for struct `dep_2_reexport::Type` in the current scope
+  --> replaced
+   |
+LL |     Type.foo();
+   |          ^^^ method not found in `Type`
+   |
+note: there are multiple different versions of crate `dependency` in the dependency graph
+  --> replaced
+   |
+LL | pub trait Trait {
+   | ^^^^^^^^^^^^^^^ this is the trait that is needed
+LL |     fn foo(&self);
+   |     -------------- the method is available for `dep_2_reexport::Type` here
+   |
+  ::: replaced
+   |
+LL | use dependency::{Trait, do_something};
+   |                  ----- `Trait` imported here doesn't correspond to the right version of crate `dependency`
+   |
+  ::: replaced
+   |
+LL | pub trait Trait {
+   | --------------- this is the trait that was imported
+
+error[E0599]: no function or associated item named `bar` found for struct `dep_2_reexport::Type` in the current scope
+  --> replaced
+   |
+LL |     Type::bar();
+   |           ^^^ function or associated item not found in `Type`
+   |
+note: there are multiple different versions of crate `dependency` in the dependency graph
+  --> replaced
+   |
+LL | pub trait Trait {
+   | ^^^^^^^^^^^^^^^ this is the trait that is needed
+LL |     fn foo(&self);
+LL |     fn bar();
+   |     --------- the associated function is available for `dep_2_reexport::Type` here
+   |
+  ::: replaced
+   |
+LL | use dependency::{Trait, do_something};
+   |                  ----- `Trait` imported here doesn't correspond to the right version of crate `dependency`
+   |
+  ::: replaced
+   |
+LL | pub trait Trait {
+   | --------------- this is the trait that was imported
+
+error[E0277]: the trait bound `OtherType: Trait` is not satisfied
+  --> replaced
+   |
+LL |     do_something(OtherType);
+   |     ------------ ^^^^^^^^^ the trait `Trait` is not implemented for `OtherType`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: there are multiple different versions of crate `dependency` in the dependency graph
+  --> replaced
+   |
+LL | pub trait Trait {
+   | ^^^^^^^^^^^^^^^ this is the required trait
+   |
+  ::: replaced
+   |
+LL | extern crate dep_2_reexport;
+   | ---------------------------- one version of crate `dependency` is used here, as a dependency of crate `foo`
+LL | extern crate dependency;
+   | ------------------------ one version of crate `dependency` is used here, as a direct dependency of the current crate
+   |
+  ::: replaced
+   |
+LL | pub struct OtherType;
+   | -------------------- this type doesn't implement the required trait
+   |
+  ::: replaced
+   |
+LL | pub trait Trait {
+   | --------------- this is the found trait
+   = help: you can use `cargo tree` to explore your dependency tree
+note: required by a bound in `do_something`
+  --> replaced
+   |
+LL | pub fn do_something<X: Trait>(_: X) {}
+   |                        ^^^^^ required by this bound in `do_something`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0277, E0599.
+For more information about an error, try `rustc --explain E0277`.

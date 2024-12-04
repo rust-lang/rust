@@ -215,7 +215,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
         }
 
-        // Examine the supertype and consider auto-borrowing.
+        // Examine the supertype and consider type-specific coercions, such
+        // as auto-borrowing, coercing pointer mutability, a `dyn*` coercion,
+        // or pin-ergonomics.
         match *b.kind() {
             ty::RawPtr(_, b_mutbl) => {
                 return self.coerce_unsafe_ptr(a, b, b_mutbl);
@@ -230,7 +232,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 if self.tcx.features().pin_ergonomics()
                     && self.tcx.is_lang_item(pin.did(), hir::LangItem::Pin) =>
             {
-                return self.coerce_pin(a, b);
+                let pin_coerce = self.commit_if_ok(|_| self.coerce_pin_ref(a, b));
+                if pin_coerce.is_ok() {
+                    return pin_coerce;
+                }
             }
             _ => {}
         }
@@ -797,7 +802,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     /// - `Pin<Box<T>>` as `Pin<&T>`
     /// - `Pin<Box<T>>` as `Pin<&mut T>`
     #[instrument(skip(self), level = "trace")]
-    fn coerce_pin(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
+    fn coerce_pin_ref(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
         // We need to make sure the two types are compatible for coercion.
         // Then we will build a ReborrowPin adjustment and return that as an InferOk.
 

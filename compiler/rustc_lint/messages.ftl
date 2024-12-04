@@ -450,15 +450,15 @@ lint_invalid_nan_comparisons_eq_ne = incorrect NaN comparison, NaN cannot be dir
 lint_invalid_nan_comparisons_lt_le_gt_ge = incorrect NaN comparison, NaN is not orderable
 
 lint_invalid_reference_casting_assign_to_ref = assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-    .label = casting happend here
+    .label = casting happened here
 
 lint_invalid_reference_casting_bigger_layout = casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
-    .label = casting happend here
+    .label = casting happened here
     .alloc = backing allocation comes from here
     .layout = casting from `{$from_ty}` ({$from_size} bytes) to `{$to_ty}` ({$to_size} bytes)
 
 lint_invalid_reference_casting_borrow_as_mut = casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-    .label = casting happend here
+    .label = casting happened here
 
 lint_invalid_reference_casting_note_book = for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
@@ -733,6 +733,9 @@ lint_renamed_lint = lint `{$name}` has been renamed to `{$replace}`
 
 lint_requested_level = requested on the command line with `{$level} {$lint_name}`
 
+lint_reserved_multihash = reserved token in Rust 2024
+    .suggestion = insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
+
 lint_reserved_prefix = prefix `{$prefix}` is unknown
     .label = unknown prefix
     .suggestion = insert whitespace here to avoid this being parsed as a prefix in Rust 2021
@@ -771,6 +774,9 @@ lint_suspicious_double_ref_clone =
 
 lint_suspicious_double_ref_deref =
     using `.deref()` on a double reference, which returns `{$ty}` instead of dereferencing the inner type
+
+lint_symbol_intern_string_literal = using `Symbol::intern` on a string literal
+    .help = consider adding the symbol to `compiler/rustc_span/src/symbol.rs`
 
 lint_trailing_semi_macro = trailing semicolon in macro used in expression position
     .note1 = macro invocations at the end of a block are treated as expressions

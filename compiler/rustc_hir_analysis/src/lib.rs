@@ -62,7 +62,9 @@ This API is completely unstable and subject to change.
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
+#![feature(coroutines)]
 #![feature(if_let_guard)]
+#![feature(iter_from_coroutine)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(never_type)]
@@ -98,9 +100,7 @@ use rustc_middle::middle;
 use rustc_middle::mir::interpret::GlobalId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
-use rustc_session::parse::feature_err;
 use rustc_span::Span;
-use rustc_span::symbol::sym;
 use rustc_trait_selection::traits;
 
 use self::hir_ty_lowering::{FeedConstTy, HirTyLowerer};
@@ -113,34 +113,9 @@ fn require_c_abi_if_c_variadic(
     abi: ExternAbi,
     span: Span,
 ) {
-    const CONVENTIONS_UNSTABLE: &str =
-        "`C`, `cdecl`, `system`, `aapcs`, `win64`, `sysv64` or `efiapi`";
-    const CONVENTIONS_STABLE: &str = "`C` or `cdecl`";
-    const UNSTABLE_EXPLAIN: &str =
-        "using calling conventions other than `C` or `cdecl` for varargs functions is unstable";
-
-    if !decl.c_variadic || matches!(abi, ExternAbi::C { .. } | ExternAbi::Cdecl { .. }) {
-        return;
+    if decl.c_variadic && !abi.supports_varargs() {
+        tcx.dcx().emit_err(errors::VariadicFunctionCompatibleConvention { span });
     }
-
-    let extended_abi_support = tcx.features().extended_varargs_abi_support();
-    let conventions = match (extended_abi_support, abi.supports_varargs()) {
-        // User enabled additional ABI support for varargs and function ABI matches those ones.
-        (true, true) => return,
-
-        // Using this ABI would be ok, if the feature for additional ABI support was enabled.
-        // Return CONVENTIONS_STABLE, because we want the other error to look the same.
-        (false, true) => {
-            feature_err(&tcx.sess, sym::extended_varargs_abi_support, span, UNSTABLE_EXPLAIN)
-                .emit();
-            CONVENTIONS_STABLE
-        }
-
-        (false, false) => CONVENTIONS_STABLE,
-        (true, false) => CONVENTIONS_UNSTABLE,
-    };
-
-    tcx.dcx().emit_err(errors::VariadicFunctionCompatibleConvention { span, conventions });
 }
 
 pub fn provide(providers: &mut Providers) {

@@ -59,12 +59,16 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     ty: Ty<'tcx>,
 ) -> Result<Vec<OutlivesBound<'tcx>>, NoSolution> {
-    let normalize_op = |ty| {
-        let ty = ocx.normalize(&ObligationCause::dummy(), param_env, ty);
+    let normalize_op = |ty| -> Result<_, NoSolution> {
+        // We must normalize the type so we can compute the right outlives components.
+        // for example, if we have some constrained param type like `T: Trait<Out = U>`,
+        // and we know that `&'a T::Out` is WF, then we want to imply `U: 'a`.
+        let ty = ocx
+            .deeply_normalize(&ObligationCause::dummy(), param_env, ty)
+            .map_err(|_| NoSolution)?;
         if !ocx.select_all_or_error().is_empty() {
             return Err(NoSolution);
         }
-        let ty = ocx.infcx.resolve_vars_if_possible(ty);
         let ty = OpportunisticRegionResolver::new(&ocx.infcx).fold_ty(ty);
         Ok(ty)
     };

@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::return_ty;
 use rustc_hir::intravisit::FnKind;
@@ -5,7 +7,9 @@ use rustc_hir::{Body, FnDecl};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::print::PrintTraitRefExt;
-use rustc_middle::ty::{self, AliasTy, ClauseKind, PredicateKind};
+use rustc_middle::ty::{
+    self, AliasTy, Binder, ClauseKind, PredicateKind, Ty, TyCtxt, TypeVisitable, TypeVisitableExt, TypeVisitor,
+};
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, sym};
@@ -15,9 +19,16 @@ use rustc_trait_selection::traits::{self, FulfillmentError, ObligationCtxt};
 declare_clippy_lint! {
     /// ### What it does
     /// This lint requires Future implementations returned from
-    /// functions and methods to implement the `Send` marker trait. It is mostly
-    /// used by library authors (public and internal) that target an audience where
-    /// multithreaded executors are likely to be used for running these Futures.
+    /// functions and methods to implement the `Send` marker trait,
+    /// ignoring type parameters.
+    ///
+    /// If a function is generic and its Future conditionally implements `Send`
+    /// based on a generic parameter then it is considered `Send` and no warning is emitted.
+    ///
+    /// This can be used by library authors (public and internal) to ensure
+    /// their functions are compatible with both multi-threaded runtimes that require `Send` futures,
+    /// as well as single-threaded runtimes where callers may choose `!Send` types
+    /// for generic parameters.
     ///
     /// ### Why is this bad?
     /// A Future implementation captures some state that it
@@ -64,22 +75,46 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
             return;
         }
         let ret_ty = return_ty(cx, cx.tcx.local_def_id_to_hir_id(fn_def_id).expect_owner());
-        if let ty::Alias(ty::Opaque, AliasTy { def_id, args, .. }) = *ret_ty.kind() {
+        if let ty::Alias(ty::Opaque, AliasTy { def_id, args, .. }) = *ret_ty.kind()
+            && let Some(future_trait) = cx.tcx.lang_items().future_trait()
+            && let Some(send_trait) = cx.tcx.get_diagnostic_item(sym::Send)
+        {
             let preds = cx.tcx.explicit_item_super_predicates(def_id);
             let is_future = preds.iter_instantiated_copied(cx.tcx, args).any(|(p, _)| {
-                p.as_trait_clause().is_some_and(|trait_pred| {
-                    Some(trait_pred.skip_binder().trait_ref.def_id) == cx.tcx.lang_items().future_trait()
-                })
+                p.as_trait_clause()
+                    .is_some_and(|trait_pred| trait_pred.skip_binder().trait_ref.def_id == future_trait)
             });
             if is_future {
-                let send_trait = cx.tcx.get_diagnostic_item(sym::Send).unwrap();
                 let span = decl.output.span();
                 let infcx = cx.tcx.infer_ctxt().build(cx.typing_mode());
                 let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
                 let cause = traits::ObligationCause::misc(span, fn_def_id);
                 ocx.register_bound(cause, cx.param_env, ret_ty, send_trait);
                 let send_errors = ocx.select_all_or_error();
-                if !send_errors.is_empty() {
+
+                // Allow errors that try to prove `Send` for types that "mention" a generic parameter at the "top
+                // level".
+                // For example, allow errors that `T: Send` can't be proven, but reject `Rc<T>: Send` errors,
+                // which is always unconditionally `!Send` for any possible type `T`.
+                //
+                // We also allow associated type projections if the self type is either itself a projection or a
+                // type parameter.
+                // This is to prevent emitting warnings for e.g. holding a `<Fut as Future>::Output` across await
+                // points, where `Fut` is a type parameter.
+
+                let is_send = send_errors.iter().all(|err| {
+                    err.obligation
+                        .predicate
+                        .as_trait_clause()
+                        .map(Binder::skip_binder)
+                        .is_some_and(|pred| {
+                            pred.def_id() == send_trait
+                                && pred.self_ty().has_param()
+                                && TyParamAtTopLevelVisitor.visit_ty(pred.self_ty()) == ControlFlow::Break(true)
+                        })
+                });
+
+                if !is_send {
                     span_lint_and_then(
                         cx,
                         FUTURE_NOT_SEND,
@@ -104,6 +139,18 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
                     );
                 }
             }
+        }
+    }
+}
+
+struct TyParamAtTopLevelVisitor;
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for TyParamAtTopLevelVisitor {
+    type Result = ControlFlow<bool>;
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
+        match ty.kind() {
+            ty::Param(_) => ControlFlow::Break(true),
+            ty::Alias(ty::AliasTyKind::Projection, ty) => ty.visit_with(self),
+            _ => ControlFlow::Break(false),
         }
     }
 }

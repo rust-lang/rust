@@ -1,4 +1,4 @@
-//@ aux-build:first-second.rs
+//@ proc-macro: first-second.rs
 
 extern crate first_second;
 use first_second::*;

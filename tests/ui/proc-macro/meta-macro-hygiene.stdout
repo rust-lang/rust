@@ -3,7 +3,7 @@ Input: TokenStream [Ident { ident: "$crate", span: $DIR/meta-macro-hygiene.rs:26
 Respanned: TokenStream [Ident { ident: "$crate", span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }, Punct { ch: ':', spacing: Joint, span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }, Punct { ch: ':', spacing: Alone, span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }, Ident { ident: "dummy", span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }, Punct { ch: '!', spacing: Alone, span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }]
 #![feature /* 0#0 */(prelude_import)]
 //@ aux-build:make-macro.rs
-//@ aux-build:meta-macro.rs
+//@ proc-macro: meta-macro.rs
 //@ edition:2018
 //@ compile-flags: -Z span-debug -Z macro-backtrace -Z unpretty=expanded,hygiene -Z trim-diagnostic-paths=no
 //@ check-pass

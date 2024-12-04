@@ -794,7 +794,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     closure_def_id,
                     found_kind,
                     expected_kind,
-                    "async ",
+                    "Async",
                 );
                 self.note_obligation_cause(&mut err, &obligation);
                 self.point_at_returns_when_relevant(&mut err, &obligation);
@@ -1731,6 +1731,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             span.push_span_label(self.tcx.def_span(trait_def_id), "this is the required trait");
             for (sp, label) in [trait_def_id, other_trait_def_id]
                 .iter()
+                // The current crate-version might depend on another version of the same crate
+                // (Think "semver-trick"). Do not call `extern_crate` in that case for the local
+                // crate as that doesn't make sense and ICEs (#133563).
+                .filter(|def_id| !def_id.is_local())
                 .filter_map(|def_id| self.tcx.extern_crate(def_id.krate))
                 .map(|data| {
                     let dependency = if data.dependency_of == LOCAL_CRATE {

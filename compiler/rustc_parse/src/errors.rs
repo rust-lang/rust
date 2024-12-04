@@ -3,6 +3,7 @@
 use std::borrow::Cow;
 
 use rustc_ast::token::Token;
+use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::{Path, Visibility};
 use rustc_errors::codes::*;
 use rustc_errors::{
@@ -2152,6 +2153,15 @@ pub(crate) enum UnknownPrefixSugg {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_reserved_multihash)]
+#[note]
+pub(crate) struct ReservedMultihash {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: Option<GuardedStringSugg>,
+}
+#[derive(Diagnostic)]
 #[diag(parse_reserved_string)]
 #[note]
 pub(crate) struct ReservedString {
@@ -2611,8 +2621,9 @@ pub(crate) enum InvalidMutInPattern {
 #[diag(parse_repeated_mut_in_pattern)]
 pub(crate) struct RepeatedMutInPattern {
     #[primary_span]
-    #[suggestion(code = "", applicability = "machine-applicable", style = "verbose")]
     pub span: Span,
+    #[suggestion(code = "", applicability = "machine-applicable", style = "verbose")]
+    pub suggestion: Span,
 }
 
 #[derive(Diagnostic)]
@@ -2676,7 +2687,7 @@ pub(crate) struct UnexpectedExpressionInPattern {
     /// Was a `RangePatternBound` expected?
     pub is_bound: bool,
     /// The unexpected expr's precedence (used in match arm guard suggestions).
-    pub expr_precedence: i8,
+    pub expr_precedence: ExprPrecedence,
 }
 
 #[derive(Subdiagnostic)]

@@ -9,7 +9,7 @@ use rustc_ast::{
 };
 use rustc_errors::{Applicability, PResult};
 use rustc_span::symbol::{Ident, kw, sym};
-use rustc_span::{ErrorGuaranteed, Span, Symbol};
+use rustc_span::{ErrorGuaranteed, Span};
 use thin_vec::{ThinVec, thin_vec};
 
 use super::{Parser, PathStyle, SeqSep, TokenType, Trailing};
@@ -274,7 +274,6 @@ impl<'a> Parser<'a> {
             // Function pointer type
             self.parse_ty_bare_fn(lo, ThinVec::new(), None, recover_return_sign)?
         } else if self.check_keyword(kw::For) {
-            let for_span = self.token.span;
             // Function pointer type or bound list (trait object type) starting with a poly-trait.
             //   `for<'lt> [unsafe] [extern "ABI"] fn (&'lt S) -> T`
             //   `for<'lt> Trait1<'lt> + Trait2 + 'a`
@@ -302,7 +301,7 @@ impl<'a> Parser<'a> {
                         kw: kw.name.as_str(),
                         sugg: errors::TransposeDynOrImplSugg {
                             removal_span,
-                            insertion_span: for_span.shrink_to_lo(),
+                            insertion_span: lo.shrink_to_lo(),
                             kw: kw.name.as_str(),
                         },
                     });
@@ -345,16 +344,14 @@ impl<'a> Parser<'a> {
                     // FIXME(c_variadic): Should we just allow `...` syntactically
                     // anywhere in a type and use semantic restrictions instead?
                     // NOTE: This may regress certain MBE calls if done incorrectly.
-                    let guar = self
-                        .dcx()
-                        .emit_err(NestedCVariadicType { span: lo.to(self.prev_token.span) });
+                    let guar = self.dcx().emit_err(NestedCVariadicType { span: lo });
                     TyKind::Err(guar)
                 }
             }
         } else {
             let msg = format!("expected type, found {}", super::token_descr(&self.token));
-            let mut err = self.dcx().struct_span_err(self.token.span, msg);
-            err.span_label(self.token.span, "expected type");
+            let mut err = self.dcx().struct_span_err(lo, msg);
+            err.span_label(lo, "expected type");
             return Err(err);
         };
 
@@ -943,7 +940,7 @@ impl<'a> Parser<'a> {
         let asyncness = if self.token.uninterpolated_span().at_least_rust_2018()
             && self.eat_keyword(kw::Async)
         {
-            self.psess.gated_spans.gate(sym::async_closure, self.prev_token.span);
+            self.psess.gated_spans.gate(sym::async_trait_bounds, self.prev_token.span);
             BoundAsyncness::Async(self.prev_token.span)
         } else if self.may_recover()
             && self.token.uninterpolated_span().is_rust_2015()
@@ -954,7 +951,7 @@ impl<'a> Parser<'a> {
                 span: self.prev_token.span,
                 help: HelpUseLatestEdition::new(),
             });
-            self.psess.gated_spans.gate(sym::async_closure, self.prev_token.span);
+            self.psess.gated_spans.gate(sym::async_trait_bounds, self.prev_token.span);
             BoundAsyncness::Async(self.prev_token.span)
         } else {
             BoundAsyncness::Normal
@@ -1139,7 +1136,7 @@ impl<'a> Parser<'a> {
                 Some(ast::Path {
                     span: fn_token_span.to(self.prev_token.span),
                     segments: thin_vec![ast::PathSegment {
-                        ident: Ident::new(Symbol::intern("Fn"), fn_token_span),
+                        ident: Ident::new(sym::Fn, fn_token_span),
                         id: DUMMY_NODE_ID,
                         args: Some(P(ast::GenericArgs::Parenthesized(ast::ParenthesizedArgs {
                             span: args_lo.to(self.prev_token.span),

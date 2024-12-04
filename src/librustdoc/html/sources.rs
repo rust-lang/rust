@@ -2,7 +2,6 @@ use std::cell::RefCell;
 use std::ffi::OsStr;
 use std::ops::RangeInclusive;
 use std::path::{Component, Path, PathBuf};
-use std::rc::Rc;
 use std::{fmt, fs};
 
 use rinja::Template;
@@ -35,8 +34,8 @@ pub(crate) fn render(cx: &mut Context<'_>, krate: &clean::Crate) -> Result<(), E
     Ok(())
 }
 
-pub(crate) fn collect_local_sources<'tcx>(
-    tcx: TyCtxt<'tcx>,
+pub(crate) fn collect_local_sources(
+    tcx: TyCtxt<'_>,
     src_root: &Path,
     krate: &clean::Crate,
 ) -> FxIndexMap<PathBuf, String> {
@@ -80,7 +79,7 @@ impl LocalSourcesCollector<'_, '_> {
 
         let href = RefCell::new(PathBuf::new());
         clean_path(
-            &self.src_root,
+            self.src_root,
             &p,
             |component| {
                 href.borrow_mut().push(component);
@@ -124,7 +123,7 @@ struct SourceCollector<'a, 'tcx> {
 
 impl DocVisitor<'_> for SourceCollector<'_, '_> {
     fn visit_item(&mut self, item: &clean::Item) {
-        if !self.cx.include_sources {
+        if !self.cx.info.include_sources {
             return;
         }
 
@@ -146,7 +145,7 @@ impl DocVisitor<'_> for SourceCollector<'_, '_> {
             // something like that), so just don't include sources for the
             // entire crate. The other option is maintaining this mapping on a
             // per-file basis, but that's probably not worth it...
-            self.cx.include_sources = match self.emit_source(&filename, file_span) {
+            self.cx.info.include_sources = match self.emit_source(&filename, file_span) {
                 Ok(()) => true,
                 Err(e) => {
                     self.cx.shared.tcx.dcx().span_err(
@@ -197,7 +196,7 @@ impl SourceCollector<'_, '_> {
         // Remove the utf-8 BOM if any
         let contents = contents.strip_prefix('\u{feff}').unwrap_or(&contents);
 
-        let shared = Rc::clone(&self.cx.shared);
+        let shared = &self.cx.shared;
         // Create the intermediate directories
         let cur = RefCell::new(PathBuf::new());
         let root_path = RefCell::new(PathBuf::new());
@@ -250,12 +249,11 @@ impl SourceCollector<'_, '_> {
             &page,
             "",
             |buf: &mut _| {
-                let cx = &mut self.cx;
                 print_src(
                     buf,
                     contents,
                     file_span,
-                    cx,
+                    self.cx,
                     &root_path,
                     highlight::DecorationInfo::default(),
                     SourceContext::Standalone { file_path },

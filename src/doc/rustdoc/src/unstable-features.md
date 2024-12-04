@@ -47,6 +47,10 @@ It can be enabled using:
 #![deny(rustdoc::missing_doc_code_examples)]
 ```
 
+It is not emitted for items that cannot be instantiated/called such as fields, variants, modules,
+associated trait/impl items, impl blocks, statics and constants.
+It is also not emitted for foreign items, aliases, extern crates and imports.
+
 ## Extensions to the `#[doc]` attribute
 
 These features operate by extending the `#[doc]` attribute, and thus can be caught by the compiler

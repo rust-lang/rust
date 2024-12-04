@@ -1,5 +1,5 @@
 error: missing fragment specifier
-  --> $DIR/macro-missing-fragment.rs:9:20
+  --> $DIR/macro-missing-fragment.rs:8:20
    |
 LL |     ( $( any_token $field_rust_type )* ) => {};
    |                    ^^^^^^^^^^^^^^^^
@@ -12,7 +12,7 @@ LL |     ( $( any_token $field_rust_type:spec )* ) => {};
    |                                    +++++
 
 error: missing fragment specifier
-  --> $DIR/macro-missing-fragment.rs:19:7
+  --> $DIR/macro-missing-fragment.rs:18:7
    |
 LL |     ( $name ) => {};
    |       ^^^^^
@@ -25,7 +25,7 @@ LL |     ( $name:spec ) => {};
    |            +++++
 
 error: missing fragment specifier
-  --> $DIR/macro-missing-fragment.rs:26:7
+  --> $DIR/macro-missing-fragment.rs:25:7
    |
 LL |     ( $name ) => {};
    |       ^^^^^
@@ -38,7 +38,7 @@ LL |     ( $name:spec ) => {};
    |            +++++
 
 error: missing fragment specifier
-  --> $DIR/macro-missing-fragment.rs:9:20
+  --> $DIR/macro-missing-fragment.rs:8:20
    |
 LL |     ( $( any_token $field_rust_type )* ) => {};
    |                    ^^^^^^^^^^^^^^^^

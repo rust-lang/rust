@@ -300,6 +300,26 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                     let prefix_span = self.mk_sp(start, ident_start);
 
                     if prefix_span.at_least_rust_2021() {
+                        // If the raw lifetime is followed by \' then treat it a normal
+                        // lifetime followed by a \', which is to interpret it as a character
+                        // literal. In this case, it's always an invalid character literal
+                        // since the literal must necessarily have >3 characters (r#...) inside
+                        // of it, which is invalid.
+                        if self.cursor.as_str().starts_with('\'') {
+                            let lit_span = self.mk_sp(start, self.pos + BytePos(1));
+                            let contents = self.str_from_to(start + BytePos(1), self.pos);
+                            emit_unescape_error(
+                                self.dcx(),
+                                contents,
+                                lit_span,
+                                lit_span,
+                                Mode::Char,
+                                0..contents.len(),
+                                EscapeError::MoreThanOneChar,
+                            )
+                            .expect("expected error");
+                        }
+
                         let span = self.mk_sp(start, self.pos);
 
                         let lifetime_name_without_tick =
@@ -371,8 +391,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 rustc_lexer::TokenKind::Caret => token::BinOp(token::Caret),
                 rustc_lexer::TokenKind::Percent => token::BinOp(token::Percent),
 
-                rustc_lexer::TokenKind::Unknown
-                | rustc_lexer::TokenKind::InvalidIdent => {
+                rustc_lexer::TokenKind::Unknown | rustc_lexer::TokenKind::InvalidIdent => {
                     // Don't emit diagnostics for sequences of the same invalid token
                     if swallow_next_invalid > 0 {
                         swallow_next_invalid -= 1;
@@ -816,7 +835,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
 
         let mut cursor = Cursor::new(str_before);
 
-        let (span, unterminated) = match cursor.guarded_double_quoted_string() {
+        let (is_string, span, unterminated) = match cursor.guarded_double_quoted_string() {
             Some(rustc_lexer::GuardedStr { n_hashes, terminated, token_len }) => {
                 let end = start + BytePos(token_len);
                 let span = self.mk_sp(start, end);
@@ -829,13 +848,13 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
 
                 let unterminated = if terminated { None } else { Some(str_start) };
 
-                (span, unterminated)
+                (true, span, unterminated)
             }
-            _ => {
+            None => {
                 // We should only get here in the `##+` case.
                 debug_assert_eq!(self.str_from_to(start, start + BytePos(2)), "##");
 
-                (span, None)
+                (false, span, None)
             }
         };
         if edition2024 {
@@ -857,7 +876,11 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
             };
 
             // In Edition 2024 and later, emit a hard error.
-            let err = self.dcx().emit_err(errors::ReservedString { span, sugg });
+            let err = if is_string {
+                self.dcx().emit_err(errors::ReservedString { span, sugg })
+            } else {
+                self.dcx().emit_err(errors::ReservedMultihash { span, sugg })
+            };
 
             token::Literal(token::Lit {
                 kind: token::Err(err),
@@ -870,7 +893,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 RUST_2024_GUARDED_STRING_INCOMPATIBLE_SYNTAX,
                 span,
                 ast::CRATE_NODE_ID,
-                BuiltinLintDiag::ReservedString(space_span),
+                BuiltinLintDiag::ReservedString { is_string, suggestion: space_span },
             );
 
             // For backwards compatibility, roll back to after just the first `#`

@@ -1,29 +1,29 @@
-error[E0525]: expected a closure that implements the `async Fn` trait, but this closure only implements `async FnOnce`
+error[E0525]: expected a closure that implements the `AsyncFn` trait, but this closure only implements `AsyncFnOnce`
   --> $DIR/wrong-fn-kind.rs:17:20
    |
 LL |       needs_async_fn(move || async move {
    |       -------------- -^^^^^^
    |       |              |
-   |  _____|______________this closure implements `async FnOnce`, not `async Fn`
+   |  _____|______________this closure implements `AsyncFnOnce`, not `AsyncFn`
    | |     |
    | |     required by a bound introduced by this call
 LL | |
 LL | |         println!("{x}");
-   | |                    - closure is `async FnOnce` because it moves the variable `x` out of its environment
+   | |                    - closure is `AsyncFnOnce` because it moves the variable `x` out of its environment
 LL | |     });
-   | |_____- the requirement to implement `async Fn` derives from here
+   | |_____- the requirement to implement `AsyncFn` derives from here
    |
 note: required by a bound in `needs_async_fn`
   --> $DIR/wrong-fn-kind.rs:5:27
    |
-LL | fn needs_async_fn(_: impl async Fn()) {}
-   |                           ^^^^^^^^^^ required by this bound in `needs_async_fn`
+LL | fn needs_async_fn(_: impl AsyncFn()) {}
+   |                           ^^^^^^^^^ required by this bound in `needs_async_fn`
 
 error[E0596]: cannot borrow `x` as mutable, as it is a captured variable in a `Fn` closure
   --> $DIR/wrong-fn-kind.rs:9:20
    |
-LL | fn needs_async_fn(_: impl async Fn()) {}
-   |                      --------------- change this to accept `FnMut` instead of `Fn`
+LL | fn needs_async_fn(_: impl AsyncFn()) {}
+   |                      -------------- change this to accept `FnMut` instead of `Fn`
 ...
 LL |     needs_async_fn(async || {
    |     -------------- ^^^^^^^^

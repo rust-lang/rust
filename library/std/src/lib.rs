@@ -262,7 +262,6 @@
 #![allow(unused_features)]
 //
 // Features:
-#![cfg_attr(not(bootstrap), feature(autodiff))]
 #![cfg_attr(test, feature(internal_output_capture, print_internals, update_panic_count, rt))]
 #![cfg_attr(
     all(target_vendor = "fortanix", target_env = "sgx"),
@@ -274,13 +273,12 @@
 //
 // Language features:
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(strict_provenance))]
-#![cfg_attr(not(bootstrap), feature(strict_provenance_lints))]
 #![feature(alloc_error_handler)]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
 #![feature(asm_experimental_arch)]
+#![feature(autodiff)]
 #![feature(cfg_sanitizer_cfi)]
 #![feature(cfg_target_thread_local)]
 #![feature(cfi_encoding)]
@@ -292,7 +290,6 @@
 #![feature(doc_masked)]
 #![feature(doc_notable_trait)]
 #![feature(dropck_eyepatch)]
-#![feature(extended_varargs_abi_support)]
 #![feature(f128)]
 #![feature(f16)]
 #![feature(if_let_guard)]
@@ -314,6 +311,7 @@
 #![feature(rustdoc_internals)]
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]
+#![feature(strict_provenance_lints)]
 #![feature(thread_local)]
 #![feature(try_blocks)]
 #![feature(type_alias_impl_trait)]
@@ -322,7 +320,6 @@
 // Library features (core):
 // tidy-alphabetical-start
 #![feature(array_chunks)]
-#![feature(build_hasher_default_const_new)]
 #![feature(c_str_module)]
 #![feature(char_internals)]
 #![feature(clone_to_uninit)]
@@ -362,6 +359,7 @@
 #![feature(strict_provenance_atomic_ptr)]
 #![feature(sync_unsafe_cell)]
 #![feature(ub_checks)]
+#![feature(used_with_arg)]
 // tidy-alphabetical-end
 //
 // Library features (alloc):
@@ -410,9 +408,7 @@
 //
 // Only for const-ness:
 // tidy-alphabetical-start
-#![feature(const_collections_with_hasher)]
 #![feature(io_const_error)]
-#![feature(thread_local_internals)]
 // tidy-alphabetical-end
 //
 #![default_lib_allocator]
@@ -622,7 +618,6 @@ pub mod simd {
     #[doc(inline)]
     pub use crate::std_float::StdFloat;
 }
-#[cfg(not(bootstrap))]
 #[unstable(feature = "autodiff", issue = "124509")]
 /// This module provides support for automatic differentiation.
 pub mod autodiff {

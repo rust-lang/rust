@@ -219,11 +219,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             def_ids.retain(|def_id| !tcx.generics_require_sized_self(def_id));
         }
 
-        self.complain_about_missing_assoc_tys(
+        if let Err(guar) = self.check_for_required_assoc_tys(
             associated_types,
             potential_assoc_types,
             hir_trait_bounds,
-        );
+        ) {
+            return Ty::new_error(tcx, guar);
+        }
 
         // De-duplicate auto traits so that, e.g., `dyn Trait + Send + Send` is the same as
         // `dyn Trait + Send`.

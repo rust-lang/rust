@@ -7,11 +7,16 @@ use core::iter::{FusedIterator, Peekable};
 use core::mem::ManuallyDrop;
 use core::ops::{BitAnd, BitOr, BitXor, Bound, RangeBounds, Sub};
 
-use super::map::{BTreeMap, Keys};
+use super::map::{self, BTreeMap, Keys};
 use super::merge_iter::MergeIterInner;
 use super::set_val::SetValZST;
 use crate::alloc::{Allocator, Global};
 use crate::vec::Vec;
+
+mod entry;
+
+#[unstable(feature = "btree_set_entry", issue = "133549")]
+pub use self::entry::{Entry, OccupiedEntry, VacantEntry};
 
 /// An ordered set based on a B-Tree.
 ///
@@ -926,6 +931,109 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
         T: Ord,
     {
         self.map.replace(value)
+    }
+
+    /// Inserts the given `value` into the set if it is not present, then
+    /// returns a reference to the value in the set.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(btree_set_entry)]
+    ///
+    /// use std::collections::BTreeSet;
+    ///
+    /// let mut set = BTreeSet::from([1, 2, 3]);
+    /// assert_eq!(set.len(), 3);
+    /// assert_eq!(set.get_or_insert(2), &2);
+    /// assert_eq!(set.get_or_insert(100), &100);
+    /// assert_eq!(set.len(), 4); // 100 was inserted
+    /// ```
+    #[inline]
+    #[unstable(feature = "btree_set_entry", issue = "133549")]
+    pub fn get_or_insert(&mut self, value: T) -> &T
+    where
+        T: Ord,
+    {
+        self.map.entry(value).insert_entry(SetValZST).into_key()
+    }
+
+    /// Inserts a value computed from `f` into the set if the given `value` is
+    /// not present, then returns a reference to the value in the set.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(btree_set_entry)]
+    ///
+    /// use std::collections::BTreeSet;
+    ///
+    /// let mut set: BTreeSet<String> = ["cat", "dog", "horse"]
+    ///     .iter().map(|&pet| pet.to_owned()).collect();
+    ///
+    /// assert_eq!(set.len(), 3);
+    /// for &pet in &["cat", "dog", "fish"] {
+    ///     let value = set.get_or_insert_with(pet, str::to_owned);
+    ///     assert_eq!(value, pet);
+    /// }
+    /// assert_eq!(set.len(), 4); // a new "fish" was inserted
+    /// ```
+    #[inline]
+    #[unstable(feature = "btree_set_entry", issue = "133549")]
+    pub fn get_or_insert_with<Q: ?Sized, F>(&mut self, value: &Q, f: F) -> &T
+    where
+        T: Borrow<Q> + Ord,
+        Q: Ord,
+        F: FnOnce(&Q) -> T,
+    {
+        self.map.get_or_insert_with(value, f)
+    }
+
+    /// Gets the given value's corresponding entry in the set for in-place manipulation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(btree_set_entry)]
+    ///
+    /// use std::collections::BTreeSet;
+    /// use std::collections::btree_set::Entry::*;
+    ///
+    /// let mut singles = BTreeSet::new();
+    /// let mut dupes = BTreeSet::new();
+    ///
+    /// for ch in "a short treatise on fungi".chars() {
+    ///     if let Vacant(dupe_entry) = dupes.entry(ch) {
+    ///         // We haven't already seen a duplicate, so
+    ///         // check if we've at least seen it once.
+    ///         match singles.entry(ch) {
+    ///             Vacant(single_entry) => {
+    ///                 // We found a new character for the first time.
+    ///                 single_entry.insert()
+    ///             }
+    ///             Occupied(single_entry) => {
+    ///                 // We've already seen this once, "move" it to dupes.
+    ///                 single_entry.remove();
+    ///                 dupe_entry.insert();
+    ///             }
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// assert!(!singles.contains(&'t') && dupes.contains(&'t'));
+    /// assert!(singles.contains(&'u') && !dupes.contains(&'u'));
+    /// assert!(!singles.contains(&'v') && !dupes.contains(&'v'));
+    /// ```
+    #[inline]
+    #[unstable(feature = "btree_set_entry", issue = "133549")]
+    pub fn entry(&mut self, value: T) -> Entry<'_, T, A>
+    where
+        T: Ord,
+    {
+        match self.map.entry(value) {
+            map::Entry::Occupied(entry) => Entry::Occupied(OccupiedEntry { inner: entry }),
+            map::Entry::Vacant(entry) => Entry::Vacant(VacantEntry { inner: entry }),
+        }
     }
 
     /// If the set contains an element equal to the value, removes it from the

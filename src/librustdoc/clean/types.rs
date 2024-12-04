@@ -264,17 +264,19 @@ impl ExternalCrate {
         // rendering by delegating everything to a hash map.
         let as_primitive = |res: Res<!>| {
             let Res::Def(DefKind::Mod, def_id) = res else { return None };
-            tcx.get_attrs(def_id, sym::rustc_doc_primitive).find_map(|attr| {
-                let attr_value = attr.value_str().expect("syntax should already be validated");
-                let Some(prim) = PrimitiveType::from_symbol(attr_value) else {
-                    span_bug!(
-                        attr.span,
-                        "primitive `{attr_value}` is not a member of `PrimitiveType`"
-                    );
-                };
+            tcx.get_attrs(def_id, sym::rustc_doc_primitive)
+                .map(|attr| {
+                    let attr_value = attr.value_str().expect("syntax should already be validated");
+                    let Some(prim) = PrimitiveType::from_symbol(attr_value) else {
+                        span_bug!(
+                            attr.span,
+                            "primitive `{attr_value}` is not a member of `PrimitiveType`"
+                        );
+                    };
 
-                Some((def_id, prim))
-            })
+                    (def_id, prim)
+                })
+                .next()
         };
 
         if root.is_local() {
@@ -339,7 +341,7 @@ pub(crate) struct ItemInner {
 impl std::ops::Deref for Item {
     type Target = ItemInner;
     fn deref(&self) -> &ItemInner {
-        &*self.inner
+        &self.inner
     }
 }
 
@@ -412,7 +414,7 @@ impl Item {
 
     pub(crate) fn span(&self, tcx: TyCtxt<'_>) -> Option<Span> {
         let kind = match &self.kind {
-            ItemKind::StrippedItem(k) => &*k,
+            ItemKind::StrippedItem(k) => k,
             _ => &self.kind,
         };
         match kind {
@@ -1870,7 +1872,7 @@ impl PrimitiveType {
             .get(self)
             .into_iter()
             .flatten()
-            .flat_map(move |&simp| tcx.incoherent_impls(simp).into_iter())
+            .flat_map(move |&simp| tcx.incoherent_impls(simp).iter())
             .copied()
     }
 
@@ -1878,7 +1880,7 @@ impl PrimitiveType {
         Self::simplified_types()
             .values()
             .flatten()
-            .flat_map(move |&simp| tcx.incoherent_impls(simp).into_iter())
+            .flat_map(move |&simp| tcx.incoherent_impls(simp).iter())
             .copied()
     }
 
@@ -2397,6 +2399,8 @@ pub(crate) enum ConstantKind {
     Extern { def_id: DefId },
     /// `const FOO: u32 = ...;`
     Local { def_id: DefId, body: BodyId },
+    /// An inferred constant as in `[10u8; _]`.
+    Infer,
 }
 
 impl Constant {
@@ -2422,6 +2426,7 @@ impl ConstantKind {
             ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {
                 rendered_const(tcx, tcx.hir().body(body), tcx.hir().body_owner_def_id(body))
             }
+            ConstantKind::Infer { .. } => "_".to_string(),
         }
     }
 
@@ -2429,7 +2434,8 @@ impl ConstantKind {
         match *self {
             ConstantKind::TyConst { .. }
             | ConstantKind::Path { .. }
-            | ConstantKind::Anonymous { .. } => None,
+            | ConstantKind::Anonymous { .. }
+            | ConstantKind::Infer => None,
             ConstantKind::Extern { def_id } | ConstantKind::Local { def_id, .. } => {
                 print_evaluated_const(tcx, def_id, true, true)
             }
@@ -2440,7 +2446,8 @@ impl ConstantKind {
         match *self {
             ConstantKind::TyConst { .. }
             | ConstantKind::Extern { .. }
-            | ConstantKind::Path { .. } => false,
+            | ConstantKind::Path { .. }
+            | ConstantKind::Infer => false,
             ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {
                 is_literal_expr(tcx, body.hir_id)
             }

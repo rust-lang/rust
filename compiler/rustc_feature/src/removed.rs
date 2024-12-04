@@ -101,7 +101,7 @@ declare_features! (
     /// Allows using `#[unsafe_destructor_blind_to_params]` (RFC 1238).
     (removed, dropck_parametricity, "1.38.0", Some(28498), None),
     /// Uses generic effect parameters for ~const bounds
-    (removed, effects, "CURRENT_RUSTC_VERSION", Some(102090),
+    (removed, effects, "1.84.0", Some(102090),
      Some("removed, redundant with `#![feature(const_trait_impl)]`")),
     /// Allows defining `existential type`s.
     (removed, existential_type, "1.38.0", Some(63063),
@@ -119,6 +119,13 @@ declare_features! (
     (removed, generator_clone, "1.65.0", Some(95360), Some("renamed to `coroutine_clone`")),
     /// Allows defining generators.
     (removed, generators, "1.21.0", Some(43122), Some("renamed to `coroutines`")),
+    /// An extension to the `generic_associated_types` feature, allowing incomplete features.
+    (removed, generic_associated_types_extended, "CURRENT_RUSTC_VERSION", Some(95451),
+        Some(
+            "feature needs overhaul and reimplementation pending \
+            better implied higher-ranked implied bounds support"
+        )
+    ),
     /// Allows `impl Trait` in bindings (`let`, `const`, `static`).
     (removed, impl_trait_in_bindings, "1.55.0", Some(63065),
      Some("the implementation was not maintainable, the feature may get reintroduced once the current refactorings are done")),

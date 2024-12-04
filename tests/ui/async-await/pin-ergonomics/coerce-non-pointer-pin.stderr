@@ -1,0 +1,11 @@
+warning: the feature `pin_ergonomics` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/coerce-non-pointer-pin.rs:3:12
+   |
+LL | #![feature(pin_ergonomics)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: see issue #130494 <https://github.com/rust-lang/rust/issues/130494> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+warning: 1 warning emitted
+

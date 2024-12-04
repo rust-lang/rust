@@ -208,8 +208,8 @@ where
     // available to downstream crates. This depends on whether we are in
     // share-generics mode and whether the current crate can even have
     // downstream crates.
-    let export_generics =
-        cx.tcx.sess.opts.share_generics() && cx.tcx.local_crate_exports_generics();
+    let can_export_generics = cx.tcx.local_crate_exports_generics();
+    let always_export_generics = can_export_generics && cx.tcx.sess.opts.share_generics();
 
     let cgu_name_builder = &mut CodegenUnitNameBuilder::new(cx.tcx);
     let cgu_name_cache = &mut UnordMap::default();
@@ -249,7 +249,8 @@ where
             cx.tcx,
             &mono_item,
             &mut can_be_internalized,
-            export_generics,
+            can_export_generics,
+            always_export_generics,
         );
         if visibility == Visibility::Hidden && can_be_internalized {
             internalization_candidates.insert(mono_item);
@@ -739,12 +740,19 @@ fn mono_item_linkage_and_visibility<'tcx>(
     tcx: TyCtxt<'tcx>,
     mono_item: &MonoItem<'tcx>,
     can_be_internalized: &mut bool,
-    export_generics: bool,
+    can_export_generics: bool,
+    always_export_generics: bool,
 ) -> (Linkage, Visibility) {
     if let Some(explicit_linkage) = mono_item.explicit_linkage(tcx) {
         return (explicit_linkage, Visibility::Default);
     }
-    let vis = mono_item_visibility(tcx, mono_item, can_be_internalized, export_generics);
+    let vis = mono_item_visibility(
+        tcx,
+        mono_item,
+        can_be_internalized,
+        can_export_generics,
+        always_export_generics,
+    );
     (Linkage::External, vis)
 }
 
@@ -767,7 +775,8 @@ fn mono_item_visibility<'tcx>(
     tcx: TyCtxt<'tcx>,
     mono_item: &MonoItem<'tcx>,
     can_be_internalized: &mut bool,
-    export_generics: bool,
+    can_export_generics: bool,
+    always_export_generics: bool,
 ) -> Visibility {
     let instance = match mono_item {
         // This is pretty complicated; see below.
@@ -826,7 +835,11 @@ fn mono_item_visibility<'tcx>(
 
     // Upstream `DefId` instances get different handling than local ones.
     let Some(def_id) = def_id.as_local() else {
-        return if export_generics && is_generic {
+        return if is_generic
+            && (always_export_generics
+                || (can_export_generics
+                    && tcx.codegen_fn_attrs(def_id).inline == rustc_attr::InlineAttr::Never))
+        {
             // If it is an upstream monomorphization and we export generics, we must make
             // it available to downstream crates.
             *can_be_internalized = false;
@@ -837,7 +850,10 @@ fn mono_item_visibility<'tcx>(
     };
 
     if is_generic {
-        if export_generics {
+        if always_export_generics
+            || (can_export_generics
+                && tcx.codegen_fn_attrs(def_id).inline == rustc_attr::InlineAttr::Never)
+        {
             if tcx.is_unreachable_local_definition(def_id) {
                 // This instance cannot be used from another crate.
                 Visibility::Hidden

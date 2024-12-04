@@ -664,7 +664,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let is_write = sugg_span.ctxt().outer_expn_data().macro_def_id.is_some_and(|def_id| {
             tcx.is_diagnostic_item(sym::write_macro, def_id)
                 || tcx.is_diagnostic_item(sym::writeln_macro, def_id)
-        }) && item_name.name == Symbol::intern("write_fmt");
+        }) && item_name.name == sym::write_fmt;
         let mut err = if is_write && let SelfSource::MethodCall(rcvr_expr) = source {
             self.suggest_missing_writer(rcvr_ty, rcvr_expr)
         } else {

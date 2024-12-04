@@ -33,7 +33,7 @@ LL | impl const Try for TryMe {
    = help: implement the missing item: `fn from_output(_: <Self as Try>::Output) -> Self { todo!() }`
    = help: implement the missing item: `fn branch(self) -> ControlFlow<<Self as Try>::Residual, <Self as Try>::Output> { todo!() }`
 
-error[E0015]: `?` cannot determine the branch of `TryMe` in constant functions
+error[E0015]: `?` is not allowed on `TryMe` in constant functions
   --> $DIR/ice-126148-failed-to-normalize.rs:20:5
    |
 LL |     TryMe?;
@@ -41,7 +41,7 @@ LL |     TryMe?;
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
-error[E0015]: `?` cannot convert from residual of `TryMe` in constant functions
+error[E0015]: `?` is not allowed on `TryMe` in constant functions
   --> $DIR/ice-126148-failed-to-normalize.rs:20:5
    |
 LL |     TryMe?;

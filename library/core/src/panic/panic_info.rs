@@ -165,7 +165,7 @@ impl<'a> PanicMessage<'a> {
     ///
     /// See [`fmt::Arguments::as_str`] for details.
     #[stable(feature = "panic_info_message", since = "1.81.0")]
-    #[rustc_const_stable(feature = "const_arguments_as_str", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_arguments_as_str", since = "1.84.0")]
     #[must_use]
     #[inline]
     pub const fn as_str(&self) -> Option<&'static str> {

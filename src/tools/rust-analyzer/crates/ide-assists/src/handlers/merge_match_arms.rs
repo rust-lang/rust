@@ -34,7 +34,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists, TextRange};
 // }
 // ```
 pub(crate) fn merge_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
-    let current_arm = ctx.find_node_at_offset::<ast::MatchArm>()?;
+    let current_arm = ctx.find_node_at_trimmed_offset::<ast::MatchArm>()?;
     // Don't try to handle arms with guards for now - can add support for this later
     if current_arm.guard().is_some() {
         return None;
@@ -42,12 +42,21 @@ pub(crate) fn merge_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
     let current_expr = current_arm.expr()?;
     let current_text_range = current_arm.syntax().text_range();
     let current_arm_types = get_arm_types(ctx, &current_arm);
+    let multi_arm_selection = !ctx.has_empty_selection()
+        && ctx.selection_trimmed().end() > current_arm.syntax().text_range().end();
 
     // We check if the following match arms match this one. We could, but don't,
     // compare to the previous match arm as well.
     let arms_to_merge = successors(Some(current_arm), |it| neighbor(it, Direction::Next))
         .take_while(|arm| match arm.expr() {
             Some(expr) if arm.guard().is_none() => {
+                // don't include match arms that start after our selection
+                if multi_arm_selection
+                    && arm.syntax().text_range().start() >= ctx.selection_trimmed().end()
+                {
+                    return false;
+                }
+
                 let same_text = expr.syntax().text() == current_expr.syntax().text();
                 if !same_text {
                     return false;
@@ -296,6 +305,96 @@ fn main() {
 }
 "#,
         )
+    }
+
+    #[test]
+    fn merge_match_arms_selection_has_leading_whitespace() {
+        check_assist(
+            merge_match_arms,
+            r#"
+#[derive(Debug)]
+enum X { A, B, C }
+
+fn main() {
+    match X::A {
+    $0    X::A => 0,
+        X::B => 0,$0
+        X::C => 1,
+    }
+}
+"#,
+            r#"
+#[derive(Debug)]
+enum X { A, B, C }
+
+fn main() {
+    match X::A {
+        X::A | X::B => 0,
+        X::C => 1,
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn merge_match_arms_stops_at_end_of_selection() {
+        check_assist(
+            merge_match_arms,
+            r#"
+#[derive(Debug)]
+enum X { A, B, C }
+
+fn main() {
+    match X::A {
+    $0    X::A => 0,
+        X::B => 0,
+        $0X::C => 0,
+    }
+}
+"#,
+            r#"
+#[derive(Debug)]
+enum X { A, B, C }
+
+fn main() {
+    match X::A {
+        X::A | X::B => 0,
+        X::C => 0,
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn merge_match_arms_works_despite_accidental_selection() {
+        check_assist(
+            merge_match_arms,
+            r#"
+#[derive(Debug)]
+enum X { A, B, C }
+
+fn main() {
+    match X::A {
+        X::$0A$0 => 0,
+        X::B => 0,
+        X::C => 1,
+    }
+}
+"#,
+            r#"
+#[derive(Debug)]
+enum X { A, B, C }
+
+fn main() {
+    match X::A {
+        X::A | X::B => 0,
+        X::C => 1,
+    }
+}
+"#,
+        );
     }
 
     #[test]

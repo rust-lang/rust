@@ -37,18 +37,9 @@ impl<'tcx, A> Results<'tcx, A>
 where
     A: Analysis<'tcx>,
 {
-    /// Creates a `ResultsCursor` that can inspect these `Results`. Immutably borrows the `Results`,
-    /// which is appropriate when the `Results` is used outside the cursor.
+    /// Creates a `ResultsCursor` that mutably borrows the `Results`, which is appropriate when the
+    /// `Results` is also used outside the cursor.
     pub fn as_results_cursor<'mir>(
-        &'mir self,
-        body: &'mir mir::Body<'tcx>,
-    ) -> ResultsCursor<'mir, 'tcx, A> {
-        ResultsCursor::new(body, ResultsHandle::Borrowed(self))
-    }
-
-    /// Creates a `ResultsCursor` that can mutate these `Results`. Mutably borrows the `Results`,
-    /// which is appropriate when the `Results` is used outside the cursor.
-    pub fn as_results_cursor_mut<'mir>(
         &'mir mut self,
         body: &'mir mir::Body<'tcx>,
     ) -> ResultsCursor<'mir, 'tcx, A> {
@@ -95,7 +86,7 @@ where
 pub(super) fn write_graphviz_results<'tcx, A>(
     tcx: TyCtxt<'tcx>,
     body: &mir::Body<'tcx>,
-    results: &Results<'tcx, A>,
+    results: &mut Results<'tcx, A>,
     pass_name: Option<&'static str>,
 ) -> std::io::Result<()>
 where

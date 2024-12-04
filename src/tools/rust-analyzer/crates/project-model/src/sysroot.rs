@@ -14,7 +14,7 @@ use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::FxHashMap;
 use toolchain::{probe_for_binary, Tool};
 
-use crate::{utf8_stdout, CargoConfig, CargoWorkspace, ManifestPath};
+use crate::{utf8_stdout, CargoConfig, CargoWorkspace, ManifestPath, SysrootQueryMetadata};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Sysroot {
@@ -123,27 +123,43 @@ impl Sysroot {
 // FIXME: Expose a builder api as loading the sysroot got way too modular and complicated.
 impl Sysroot {
     /// Attempts to discover the toolchain's sysroot from the given `dir`.
-    pub fn discover(dir: &AbsPath, extra_env: &FxHashMap<String, String>) -> Sysroot {
+    pub fn discover(
+        dir: &AbsPath,
+        extra_env: &FxHashMap<String, String>,
+        sysroot_query_metadata: SysrootQueryMetadata,
+    ) -> Sysroot {
         let sysroot_dir = discover_sysroot_dir(dir, extra_env);
         let sysroot_src_dir = sysroot_dir.as_ref().ok().map(|sysroot_dir| {
             discover_sysroot_src_dir_or_add_component(sysroot_dir, dir, extra_env)
         });
-        Sysroot::load_core_check(Some(sysroot_dir), sysroot_src_dir)
+        Sysroot::load_core_check(Some(sysroot_dir), sysroot_src_dir, sysroot_query_metadata)
     }
 
     pub fn discover_with_src_override(
         current_dir: &AbsPath,
         extra_env: &FxHashMap<String, String>,
         sysroot_src_dir: AbsPathBuf,
+        sysroot_query_metadata: SysrootQueryMetadata,
     ) -> Sysroot {
         let sysroot_dir = discover_sysroot_dir(current_dir, extra_env);
-        Sysroot::load_core_check(Some(sysroot_dir), Some(Ok(sysroot_src_dir)))
+        Sysroot::load_core_check(
+            Some(sysroot_dir),
+            Some(Ok(sysroot_src_dir)),
+            sysroot_query_metadata,
+        )
     }
 
-    pub fn discover_sysroot_src_dir(sysroot_dir: AbsPathBuf) -> Sysroot {
+    pub fn discover_sysroot_src_dir(
+        sysroot_dir: AbsPathBuf,
+        sysroot_query_metadata: SysrootQueryMetadata,
+    ) -> Sysroot {
         let sysroot_src_dir = discover_sysroot_src_dir(&sysroot_dir)
             .ok_or_else(|| format_err!("can't find standard library sources in {sysroot_dir}"));
-        Sysroot::load_core_check(Some(Ok(sysroot_dir)), Some(sysroot_src_dir))
+        Sysroot::load_core_check(
+            Some(Ok(sysroot_dir)),
+            Some(sysroot_src_dir),
+            sysroot_query_metadata,
+        )
     }
 
     pub fn discover_rustc_src(&self) -> Option<ManifestPath> {
@@ -186,15 +202,20 @@ impl Sysroot {
             })
     }
 
-    pub fn load(sysroot_dir: Option<AbsPathBuf>, sysroot_src_dir: Option<AbsPathBuf>) -> Sysroot {
-        Self::load_core_check(sysroot_dir.map(Ok), sysroot_src_dir.map(Ok))
+    pub fn load(
+        sysroot_dir: Option<AbsPathBuf>,
+        sysroot_src_dir: Option<AbsPathBuf>,
+        sysroot_query_metadata: SysrootQueryMetadata,
+    ) -> Sysroot {
+        Self::load_core_check(sysroot_dir.map(Ok), sysroot_src_dir.map(Ok), sysroot_query_metadata)
     }
 
     fn load_core_check(
         sysroot_dir: Option<Result<AbsPathBuf, anyhow::Error>>,
         sysroot_src_dir: Option<Result<AbsPathBuf, anyhow::Error>>,
+        sysroot_query_metadata: SysrootQueryMetadata,
     ) -> Sysroot {
-        let mut sysroot = Self::load_(sysroot_dir, sysroot_src_dir);
+        let mut sysroot = Self::load_(sysroot_dir, sysroot_src_dir, sysroot_query_metadata);
         if sysroot.error.is_none() {
             if let Some(src_root) = &sysroot.src_root {
                 let has_core = match &sysroot.mode {
@@ -220,6 +241,7 @@ impl Sysroot {
     fn load_(
         sysroot_dir: Option<Result<AbsPathBuf, anyhow::Error>>,
         sysroot_src_dir: Option<Result<AbsPathBuf, anyhow::Error>>,
+        sysroot_query_metadata: SysrootQueryMetadata,
     ) -> Sysroot {
         let sysroot_dir = match sysroot_dir {
             Some(Ok(sysroot_dir)) => Some(sysroot_dir),
@@ -252,12 +274,15 @@ impl Sysroot {
                 }
             }
         };
-        let library_manifest = ManifestPath::try_from(sysroot_src_dir.join("Cargo.toml")).unwrap();
-        if fs::metadata(&library_manifest).is_ok() {
-            if let Some(sysroot) =
-                Self::load_library_via_cargo(library_manifest, &sysroot_dir, &sysroot_src_dir)
-            {
-                return sysroot;
+        if sysroot_query_metadata == SysrootQueryMetadata::CargoMetadata {
+            let library_manifest =
+                ManifestPath::try_from(sysroot_src_dir.join("Cargo.toml")).unwrap();
+            if fs::metadata(&library_manifest).is_ok() {
+                if let Some(sysroot) =
+                    Self::load_library_via_cargo(library_manifest, &sysroot_dir, &sysroot_src_dir)
+                {
+                    return sysroot;
+                }
             }
         }
         tracing::debug!("Stitching sysroot library: {sysroot_src_dir}");
@@ -444,13 +469,14 @@ fn discover_sysroot_src_dir_or_add_component(
             get_rust_src(sysroot_path)
         })
         .ok_or_else(|| {
-            let error = "\
+            tracing::error!(%sysroot_path, "can't load standard library, try installing `rust-src`");
+            format_err!(
+                "\
 can't load standard library from sysroot
 {sysroot_path}
 (discovered via `rustc --print sysroot`)
-try installing the Rust source the same way you installed rustc";
-            tracing::error!(error);
-            format_err!(error)
+try installing `rust-src` the same way you installed `rustc`"
+            )
         })
 }
 
