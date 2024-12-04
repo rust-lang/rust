@@ -90,7 +90,7 @@ mir_build_const_param_in_pattern = constant parameters cannot be referenced in p
     .label = can't be used in patterns
 mir_build_const_param_in_pattern_def = constant defined here
 
-mir_build_const_pattern_depends_on_generic_parameter = constant pattern depends on a generic parameter, which is not allowed
+mir_build_const_pattern_depends_on_generic_parameter = constant pattern cannot depend on generic parameters
     .label = `const` depends on a generic parameter
 
 mir_build_could_not_eval_const_pattern = could not evaluate constant pattern

@@ -1,7 +1,7 @@
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_apfloat::Float;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Diag, PResult};
+use rustc_errors::Diag;
 use rustc_hir as hir;
 use rustc_index::Idx;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -42,10 +42,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         match c.kind() {
             ty::ConstKind::Unevaluated(uv) => convert.unevaluated_to_pat(uv, ty),
-            ty::ConstKind::Value(_, val) => match convert.valtree_to_pat(val, ty) {
-                Ok(pat) => pat,
-                Err(err) => convert.mk_err(err, ty),
-            },
+            ty::ConstKind::Value(_, val) => convert.valtree_to_pat(val, ty),
             _ => span_bug!(span, "Invalid `ConstKind` for `const_to_pat`: {:?}", c),
         }
     }
@@ -151,7 +148,7 @@ impl<'tcx> ConstToPat<'tcx> {
                         let generics = self.tcx.generics_of(def_id);
                         let param = generics.type_param(*param_ty, self.tcx);
                         let span = self.tcx.def_span(param.def_id);
-                        e.span_label(span, "constant depends on this generic param");
+                        e.span_label(span, "constant depends on this generic parameter");
                         if let Some(ident) = self.tcx.def_ident_span(def_id)
                             && self.tcx.sess.source_map().is_multiline(ident.between(span))
                         {
@@ -184,10 +181,7 @@ impl<'tcx> ConstToPat<'tcx> {
         };
 
         // Convert the valtree to a const.
-        let inlined_const_as_pat = match self.valtree_to_pat(valtree, ty) {
-            Ok(pat) => pat,
-            Err(err) => self.mk_err(err, ty),
-        };
+        let inlined_const_as_pat = self.valtree_to_pat(valtree, ty);
 
         if !inlined_const_as_pat.references_error() {
             // Always check for `PartialEq` if we had no other errors yet.
@@ -210,20 +204,14 @@ impl<'tcx> ConstToPat<'tcx> {
                 let field = FieldIdx::new(idx);
                 // Patterns can only use monomorphic types.
                 let ty = self.tcx.normalize_erasing_regions(self.typing_env, ty);
-                FieldPat {
-                    field,
-                    pattern: match self.valtree_to_pat(val, ty) {
-                        Ok(pat) => pat,
-                        Err(err) => self.mk_err(err, ty),
-                    },
-                }
+                FieldPat { field, pattern: self.valtree_to_pat(val, ty) }
             })
             .collect()
     }
 
     // Recursive helper for `to_pat`; invoke that (instead of calling this directly).
     #[instrument(skip(self), level = "debug")]
-    fn valtree_to_pat(&self, cv: ValTree<'tcx>, ty: Ty<'tcx>) -> PResult<'_, Box<Pat<'tcx>>> {
+    fn valtree_to_pat(&self, cv: ValTree<'tcx>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
         let span = self.span;
         let tcx = self.tcx;
         let kind = match ty.kind() {
@@ -231,12 +219,12 @@ impl<'tcx> ConstToPat<'tcx> {
                 // Extremely important check for all ADTs! Make sure they opted-in to be used in
                 // patterns.
                 debug!("adt_def {:?} has !type_marked_structural for cv.ty: {:?}", adt_def, ty);
-                let (impls_partial_eq, derived, structural, impl_def_id) =
+                let (_impls_partial_eq, derived, structural, impl_def_id) =
                     type_has_partial_eq_impl(self.tcx, self.typing_env, ty);
                 let (manual_partialeq_impl_span, manual_partialeq_impl_note) =
-                    match (impls_partial_eq, derived, structural, impl_def_id) {
-                        (_, _, true, _) => (None, false),
-                        (_, false, _, Some(def_id)) if def_id.is_local() => {
+                    match (structural, impl_def_id) {
+                        (true, _) => (None, false),
+                        (_, Some(def_id)) if def_id.is_local() && !derived => {
                             (Some(tcx.def_span(def_id)), false)
                         }
                         _ => (None, true),
@@ -249,7 +237,7 @@ impl<'tcx> ConstToPat<'tcx> {
                     manual_partialeq_impl_span,
                     manual_partialeq_impl_note,
                 };
-                return Err(tcx.dcx().create_err(err));
+                return self.mk_err(tcx.dcx().create_err(err), ty);
             }
             ty::Adt(adt_def, args) if adt_def.is_enum() => {
                 let (&variant_index, fields) = cv.unwrap_branch().split_first().unwrap();
@@ -283,10 +271,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 prefix: cv
                     .unwrap_branch()
                     .iter()
-                    .map(|val| match self.valtree_to_pat(*val, *elem_ty) {
-                        Ok(pat) => pat,
-                        Err(err) => self.mk_err(err, ty),
-                    })
+                    .map(|val| self.valtree_to_pat(*val, *elem_ty))
                     .collect(),
                 slice: None,
                 suffix: Box::new([]),
@@ -295,10 +280,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 prefix: cv
                     .unwrap_branch()
                     .iter()
-                    .map(|val| match self.valtree_to_pat(*val, *elem_ty) {
-                        Ok(pat) => pat,
-                        Err(err) => self.mk_err(err, ty),
-                    })
+                    .map(|val| self.valtree_to_pat(*val, *elem_ty))
                     .collect(),
                 slice: None,
                 suffix: Box::new([]),
@@ -314,9 +296,10 @@ impl<'tcx> ConstToPat<'tcx> {
                 // deref pattern.
                 _ => {
                     if !pointee_ty.is_sized(tcx, self.typing_env) && !pointee_ty.is_slice() {
-                        return Err(tcx
-                            .dcx()
-                            .create_err(UnsizedPattern { span, non_sm_ty: *pointee_ty }));
+                        return self.mk_err(
+                            tcx.dcx().create_err(UnsizedPattern { span, non_sm_ty: *pointee_ty }),
+                            ty,
+                        );
                     } else {
                         // `b"foo"` produces a `&[u8; 3]`, but you can't use constants of array type when
                         // matching against references, you can only use byte string literals.
@@ -331,10 +314,7 @@ impl<'tcx> ConstToPat<'tcx> {
                             _ => *pointee_ty,
                         };
                         // References have the same valtree representation as their pointee.
-                        let subpattern = match self.valtree_to_pat(cv, pointee_ty) {
-                            Ok(pat) => pat,
-                            Err(err) => self.mk_err(err, ty),
-                        };
+                        let subpattern = self.valtree_to_pat(cv, pointee_ty);
                         PatKind::Deref { subpattern }
                     }
                 }
@@ -350,7 +330,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 if is_nan {
                     // NaNs are not ever equal to anything so they make no sense as patterns.
                     // Also see <https://github.com/rust-lang/rfcs/pull/3535>.
-                    return Err(tcx.dcx().create_err(NaNPattern { span }));
+                    return self.mk_err(tcx.dcx().create_err(NaNPattern { span }), ty);
                 } else {
                     PatKind::Constant {
                         value: mir::Const::Ty(ty, ty::Const::new_value(tcx, cv, ty)),
@@ -373,16 +353,16 @@ impl<'tcx> ConstToPat<'tcx> {
                     non_sm_ty: ty,
                     prefix: ty.prefix_string(tcx).to_string(),
                 };
-                return Err(tcx.dcx().create_err(err));
+                return self.mk_err(tcx.dcx().create_err(err), ty);
             }
         };
 
-        Ok(Box::new(Pat { span, ty, kind }))
+        Box::new(Pat { span, ty, kind })
     }
 }
 
 /// Given a type with type parameters, visit every ADT looking for types that need to
-/// `#[derive(PartialEq)]` to be a structural type.
+/// `#[derive(PartialEq)]` for it to be a structural type.
 fn extend_type_not_partial_eq<'tcx>(
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
