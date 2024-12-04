@@ -16,41 +16,46 @@
           StorageLive(_2);
           _2 = const true;
 -         switchInt(move _2) -> [0: bb2, otherwise: bb1];
-+         goto -> bb1;
-      }
-  
-      bb1: {
+-     }
+- 
+-     bb1: {
           _1 = const -0f64;
-          goto -> bb3;
-      }
-  
-      bb2: {
-          _1 = const 1f64;
-          goto -> bb3;
-      }
-  
-      bb3: {
+-         goto -> bb3;
+-     }
+- 
+-     bb2: {
+-         _1 = const 1f64;
+-         goto -> bb3;
+-     }
+- 
+-     bb3: {
           StorageDead(_2);
           StorageLive(_3);
           StorageLive(_4);
           _4 = copy _1;
           _3 = Eq(move _4, const 0f64);
-          switchInt(move _3) -> [0: bb5, otherwise: bb4];
+-         switchInt(move _3) -> [0: bb5, otherwise: bb4];
++         switchInt(move _3) -> [0: bb2, otherwise: bb1];
       }
   
-      bb4: {
+-     bb4: {
++     bb1: {
           StorageDead(_4);
           _0 = const 0_u32;
-          goto -> bb6;
+-         goto -> bb6;
++         goto -> bb3;
       }
   
-      bb5: {
+-     bb5: {
++     bb2: {
           StorageDead(_4);
           _0 = const 1_u32;
-          goto -> bb6;
+-         goto -> bb6;
++         goto -> bb3;
       }
   
-      bb6: {
+-     bb6: {
++     bb3: {
           StorageDead(_3);
           StorageDead(_1);
           return;

@@ -27,22 +27,21 @@
           _6 = copy _2;
           _5 = Eq(move _6, const 7_u8);
 -         switchInt(move _5) -> [0: bb2, otherwise: bb1];
-+         goto -> bb2;
-      }
-  
-      bb1: {
+-     }
+- 
+-     bb1: {
           StorageDead(_6);
-          _0 = copy _3;
-          goto -> bb3;
-      }
-  
-      bb2: {
-          StorageDead(_6);
+-         _0 = copy _3;
+-         goto -> bb3;
+-     }
+- 
+-     bb2: {
+-         StorageDead(_6);
           _0 = copy _2;
-          goto -> bb3;
-      }
-  
-      bb3: {
+-         goto -> bb3;
+-     }
+- 
+-     bb3: {
           StorageDead(_5);
           StorageDead(_3);
           StorageDead(_2);

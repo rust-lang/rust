@@ -13,40 +13,42 @@
       bb1: {
           _2 = copy _1;
 -         switchInt(copy _2) -> [3: bb3, otherwise: bb4];
-+         goto -> bb3;
++         _0 = const 5_u8;
++         return;
       }
   
       bb2: {
           _3 = copy _1;
 -         switchInt(copy _3) -> [3: bb5, otherwise: bb6];
-+         goto -> bb6;
++         switchInt(copy _3) -> [1: bb3, otherwise: bb4];
       }
   
       bb3: {
-          _0 = const 5_u8;
-          return;
-      }
-  
-      bb4: {
-          _0 = const 7_u8;
-          return;
-      }
-  
-      bb5: {
+-         _0 = const 5_u8;
+-         return;
+-     }
+- 
+-     bb4: {
+-         _0 = const 7_u8;
+-         return;
+-     }
+- 
+-     bb5: {
           _0 = const 9_u8;
           return;
       }
   
-      bb6: {
-          switchInt(copy _3) -> [1: bb7, otherwise: bb8];
-      }
-  
-      bb7: {
-          _0 = const 9_u8;
-          return;
-      }
-  
-      bb8: {
+-     bb6: {
+-         switchInt(copy _3) -> [1: bb7, otherwise: bb8];
+-     }
+- 
+-     bb7: {
+-         _0 = const 9_u8;
+-         return;
+-     }
+- 
+-     bb8: {
++     bb4: {
           _0 = const 11_u8;
           return;
       }

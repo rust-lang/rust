@@ -54,6 +54,7 @@ use rustc_span::DUMMY_SP;
 use tracing::{debug, instrument, trace};
 
 use crate::cost_checker::CostChecker;
+use crate::simplify::simplify_cfg;
 
 pub(super) struct JumpThreading;
 
@@ -105,6 +106,8 @@ impl<'tcx> crate::MirPass<'tcx> for JumpThreading {
             assert!(to.chain.iter().all(|&block| !finder.loop_headers.contains(block)));
         }
         OpportunitySet::new(body, opportunities).apply(body);
+
+        simplify_cfg(body);
     }
 }
 
