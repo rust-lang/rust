@@ -247,6 +247,7 @@ fn build_clif_sysroot_for_triple(
     let mut build_cmd = STANDARD_LIBRARY.build(&compiler, dirs);
     build_cmd.arg("--release");
     build_cmd.arg("--features").arg("backtrace panic-unwind compiler-builtins-no-f16-f128");
+    build_cmd.arg(format!("-Zroot-dir={}", STDLIB_SRC.to_path(dirs).display()));
     build_cmd.env("CARGO_PROFILE_RELEASE_DEBUG", "true");
     build_cmd.env("__CARGO_DEFAULT_LIB_METADATA", "cg_clif");
     if compiler.triple.contains("apple") {
