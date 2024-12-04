@@ -2,7 +2,7 @@ use rustc_abi::Primitive::{Int, Pointer};
 use rustc_abi::{Align, BackendRepr, FieldsShape, Size, TagEncoding, VariantIdx, Variants};
 use rustc_middle::mir::PlaceTy;
 use rustc_middle::mir::interpret::Scalar;
-use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
 use rustc_middle::{bug, mir};
 use tracing::{debug, instrument};
@@ -168,7 +168,11 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             };
             let val = PlaceValue {
                 llval,
-                llextra: if bx.cx().type_has_metadata(field.ty) { self.val.llextra } else { None },
+                llextra: if bx.cx().tcx().type_has_metadata(field.ty, bx.cx().typing_env()) {
+                    self.val.llextra
+                } else {
+                    None
+                },
                 align: effective_field_align,
             };
             val.with_type(field)
