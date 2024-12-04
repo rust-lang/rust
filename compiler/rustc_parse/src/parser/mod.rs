@@ -666,19 +666,20 @@ impl<'a> Parser<'a> {
     #[inline]
     #[must_use]
     fn check_keyword(&mut self, kw: Symbol) -> bool {
-        self.expected_token_types.push(TokenType::Keyword(kw));
-        self.token.is_keyword(kw)
+        let is_keyword = self.token.is_keyword(kw);
+        if !is_keyword {
+            self.expected_token_types.push(TokenType::Keyword(kw));
+        }
+        is_keyword
     }
 
     #[inline]
     #[must_use]
     fn check_keyword_case(&mut self, kw: Symbol, case: Case) -> bool {
         if self.check_keyword(kw) {
-            return true;
-        }
-
+            true
         // Do an ASCII case-insensitive match, because all keywords are ASCII.
-        if case == Case::Insensitive
+        } else if case == Case::Insensitive
             && let Some((ident, IdentIsRaw::No)) = self.token.ident()
             && ident.as_str().eq_ignore_ascii_case(kw.as_str())
         {
@@ -694,12 +695,11 @@ impl<'a> Parser<'a> {
     #[inline]
     #[must_use]
     pub fn eat_keyword(&mut self, kw: Symbol) -> bool {
-        if self.check_keyword(kw) {
+        let is_keyword = self.check_keyword(kw);
+        if is_keyword {
             self.bump();
-            true
-        } else {
-            false
         }
+        is_keyword
     }
 
     /// Eats a keyword, optionally ignoring the case.
@@ -709,19 +709,17 @@ impl<'a> Parser<'a> {
     #[must_use]
     fn eat_keyword_case(&mut self, kw: Symbol, case: Case) -> bool {
         if self.eat_keyword(kw) {
-            return true;
-        }
-
-        if case == Case::Insensitive
+            true
+        } else if case == Case::Insensitive
             && let Some((ident, IdentIsRaw::No)) = self.token.ident()
             && ident.as_str().to_lowercase() == kw.as_str().to_lowercase()
         {
             self.dcx().emit_err(errors::KwBadCase { span: ident.span, kw: kw.as_str() });
             self.bump();
-            return true;
+            true
+        } else {
+            false
         }
-
-        false
     }
 
     /// If the next token is the given keyword, eats it and returns `true`.
@@ -730,12 +728,11 @@ impl<'a> Parser<'a> {
     #[inline]
     #[must_use]
     pub fn eat_keyword_noexpect(&mut self, kw: Symbol) -> bool {
-        if self.token.is_keyword(kw) {
+        let is_keyword = self.token.is_keyword(kw);
+        if is_keyword {
             self.bump();
-            true
-        } else {
-            false
         }
+        is_keyword
     }
 
     /// If the given word is not a keyword, signals an error.
@@ -752,12 +749,10 @@ impl<'a> Parser<'a> {
 
     #[inline]
     fn check_or_expected(&mut self, ok: bool, typ: TokenType) -> bool {
-        if ok {
-            true
-        } else {
+        if !ok {
             self.expected_token_types.push(typ);
-            false
         }
+        ok
     }
 
     fn check_ident(&mut self) -> bool {
