@@ -528,11 +528,17 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             | Res::SelfCtor(..) => PatKind::Leaf { subpatterns },
             _ => {
                 let e = match res {
-                    Res::Def(DefKind::ConstParam, _) => {
-                        self.tcx.dcx().emit_err(ConstParamInPattern { span })
+                    Res::Def(DefKind::ConstParam, def_id) => {
+                        self.tcx.dcx().emit_err(ConstParamInPattern {
+                            span,
+                            const_span: self.tcx().def_span(def_id),
+                        })
                     }
-                    Res::Def(DefKind::Static { .. }, _) => {
-                        self.tcx.dcx().emit_err(StaticInPattern { span })
+                    Res::Def(DefKind::Static { .. }, def_id) => {
+                        self.tcx.dcx().emit_err(StaticInPattern {
+                            span,
+                            static_span: self.tcx().def_span(def_id),
+                        })
                     }
                     _ => self.tcx.dcx().emit_err(NonConstPath { span }),
                 };
