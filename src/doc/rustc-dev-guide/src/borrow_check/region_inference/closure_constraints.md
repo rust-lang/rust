@@ -8,3 +8,24 @@ all the constraints we can't prove yet and return them. Later, when we
 are borrow check the MIR node that created the closure, we can also
 check that these constraints hold. At that time, if we can't prove
 they hold, we report an error.
+
+## How this is implemented
+
+While borrow-checking a closure inside of `RegionInferenceContext::solve` we call `check_type_tests` with a list of `outlives_requirements` to propagate to the caller. This happens after computing the outlives graph, which is now immutable.
+
+For all type tests we fail to prove via `fn eval_verify_bound` inside of the closure we call `try_promote_type_test`. A `TypeTest` represents a type-outlives bound `generic_kind: lower_bound` together with a `verify_bound`. If the `VerifyBound` holds for the `lower_bound`, the constraint is satisfied. `try_promote_type_test`  does not care about the ` verify_bound`.
+
+It starts by calling `fn try_promote_type_test_subject`. This function takes the `GenericKind` and tries to transform it to a `ClosureOutlivesSubject`  which is no longer references anything local to the closure. This is done by replacing all free regions in that type with either `'static`  or region parameters which are equal to that free region. This operation fails if the `generic_kind` contains a region which cannot be replaced.
+
+We then promote the `lower_bound` into the context of the caller. If the lower bound is equal to a placeholder, we replace it with `'static`
+
+We then look at all universal regions `uv` which are required to outlive `lower_bound`, i.e. for which borrow checking adding region constraints. For each of these we then emit a `ClosureOutlivesRequirement` for non-local universal regions which are known to outlive `uv`.
+
+As we've already built the region graph of the closure at this point and emitted errors if that one is inconsistent, we are also able to assume that the outlive constraints `uv: lower_bound` hold.
+
+So if we have a type-outlives bounds we can't prove, e.g. `T: 'local_infer`, we use the region graph to go to universal variables `'a` with `'a: local_infer`. In case `'a` are local, we then use the assumed outlived constraints to go to non-local ones.
+
+We then store the list of promoted type tests in the `BorrowCheckResults`.
+We then apply them in while borrow-checking its parent in `TypeChecker::prove_closure_bounds`.
+
+TODO: explain how exactly that works :3
