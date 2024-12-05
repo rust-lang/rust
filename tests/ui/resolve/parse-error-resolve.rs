@@ -1,5 +1,5 @@
 mod parse_error;
-use parse_error::Canonical; //~ ERROR E0432
+use parse_error::Canonical; // ok, `parse_error.rs` had parse errors
 
 fn main() {
     let _ = "" + 1; //~ ERROR E0369
