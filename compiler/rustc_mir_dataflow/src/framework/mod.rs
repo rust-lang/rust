@@ -35,7 +35,7 @@
 use std::cmp::Ordering;
 
 use rustc_data_structures::work_queue::WorkQueue;
-use rustc_index::bit_set::{BitSet, ChunkedBitSet, MixedBitSet};
+use rustc_index::bit_set::{BitSet, MixedBitSet};
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::bug;
 use rustc_middle::mir::{self, BasicBlock, CallReturnPlaces, Location, TerminatorEdges, traversal};
@@ -66,12 +66,6 @@ pub trait BitSetExt<T> {
 }
 
 impl<T: Idx> BitSetExt<T> for BitSet<T> {
-    fn contains(&self, elem: T) -> bool {
-        self.contains(elem)
-    }
-}
-
-impl<T: Idx> BitSetExt<T> for ChunkedBitSet<T> {
     fn contains(&self, elem: T) -> bool {
         self.contains(elem)
     }
@@ -324,16 +318,6 @@ pub trait GenKill<T> {
 }
 
 impl<T: Idx> GenKill<T> for BitSet<T> {
-    fn gen_(&mut self, elem: T) {
-        self.insert(elem);
-    }
-
-    fn kill(&mut self, elem: T) {
-        self.remove(elem);
-    }
-}
-
-impl<T: Idx> GenKill<T> for ChunkedBitSet<T> {
     fn gen_(&mut self, elem: T) {
         self.insert(elem);
     }

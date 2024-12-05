@@ -40,7 +40,7 @@
 
 use std::iter;
 
-use rustc_index::bit_set::{BitSet, ChunkedBitSet, MixedBitSet};
+use rustc_index::bit_set::{BitSet, MixedBitSet};
 use rustc_index::{Idx, IndexVec};
 
 use crate::framework::BitSetExt;
@@ -121,12 +121,6 @@ impl<I: Idx, T: JoinSemiLattice> JoinSemiLattice for IndexVec<I, T> {
 /// the index type `T` ordered by inclusion. Equivalently, it is a tuple of "two-point" lattices,
 /// one for each possible value of `T`.
 impl<T: Idx> JoinSemiLattice for BitSet<T> {
-    fn join(&mut self, other: &Self) -> bool {
-        self.union(other)
-    }
-}
-
-impl<T: Idx> JoinSemiLattice for ChunkedBitSet<T> {
     fn join(&mut self, other: &Self) -> bool {
         self.union(other)
     }
