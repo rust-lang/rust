@@ -3,7 +3,6 @@ use rustc_span::hygiene::Transparency;
 use rustc_span::sym;
 
 use super::SingleAttributeGroup;
-use crate::attribute_filter;
 use crate::parser::{ArgParser, NameValueParser};
 
 pub(crate) struct TransparencyGroup;
@@ -21,7 +20,7 @@ impl SingleAttributeGroup for TransparencyGroup {
     fn convert(
         cx: &crate::context::AttributeAcceptContext<'_>,
         args: &crate::parser::GenericArgParser<'_, rustc_ast::Expr>,
-    ) -> Option<(AttributeKind, super::AttributeFilter)> {
+    ) -> Option<AttributeKind> {
         match args.name_value().and_then(|nv| nv.value_as_str()) {
             Some(sym::transparent) => Some(Transparency::Transparent),
             Some(sym::semitransparent) => Some(Transparency::SemiTransparent),
@@ -32,6 +31,6 @@ impl SingleAttributeGroup for TransparencyGroup {
             }
             None => None,
         }
-        .map(|t| (AttributeKind::MacroTransparency(t), attribute_filter!(allow all)))
+        .map(AttributeKind::MacroTransparency)
     }
 }

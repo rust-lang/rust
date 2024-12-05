@@ -19,7 +19,7 @@ use crate::attributes::stability::{
     BodyStabilityGroup, ConstStabilityGroup, ConstStabilityIndirectGroup, StabilityGroup,
 };
 use crate::attributes::transparency::TransparencyGroup;
-use crate::attributes::{AttributeFilter, AttributeGroup, Combine, Single};
+use crate::attributes::{AttributeGroup, Combine, Single};
 use crate::parser::{GenericArgParser, GenericMetaItemParser, MetaItemParser};
 
 macro_rules! attribute_groups {
@@ -28,10 +28,10 @@ macro_rules! attribute_groups {
     ) => {
         pub(crate) static $name: LazyLock<(
             BTreeMap<&'static [Symbol], Vec<Box<dyn Fn(&AttributeAcceptContext<'_>, &GenericArgParser<'_, ast::Expr>) + Send + Sync>>>,
-            Vec<Box<dyn Send + Sync + Fn(&AttributeGroupContext<'_>) -> Option<(AttributeKind, AttributeFilter)>>>
+            Vec<Box<dyn Send + Sync + Fn(&AttributeGroupContext<'_>) -> Option<AttributeKind>>>
         )> = LazyLock::new(|| {
             let mut accepts = BTreeMap::<_, Vec<Box<dyn Fn(&AttributeAcceptContext<'_>, &GenericArgParser<'_, ast::Expr>) + Send + Sync>>>::new();
-            let mut finalizes = Vec::<Box<dyn Send + Sync + Fn(&AttributeGroupContext<'_>) -> Option<(AttributeKind, AttributeFilter)>>>::new();
+            let mut finalizes = Vec::<Box<dyn Send + Sync + Fn(&AttributeGroupContext<'_>) -> Option<AttributeKind>>>::new();
 
             $(
                 {
@@ -278,14 +278,9 @@ impl<'sess> AttributeParseContext<'sess> {
 
         let mut parsed_attributes = Vec::new();
         for f in &ATTRIBUTE_GROUP_MAPPING.1 {
-            let Some((attr, _filter)) = f(&group_cx) else {
-                continue;
-            };
-
-            // TODO: ignore filters?
-            // todo!("evaluate filters");
-
-            parsed_attributes.push(Attribute::Parsed(attr));
+            if let Some(attr) = f(&group_cx) {
+                parsed_attributes.push(Attribute::Parsed(attr));
+            }
         }
 
         attributes.extend(parsed_attributes);

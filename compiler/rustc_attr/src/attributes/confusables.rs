@@ -2,10 +2,10 @@ use rustc_hir::AttributeKind;
 use rustc_span::{Span, Symbol, sym};
 use thin_vec::ThinVec;
 
-use super::{AttributeFilter, AttributeGroup, AttributeMapping};
+use super::{AttributeGroup, AttributeMapping};
 use crate::context::AttributeGroupContext;
 use crate::parser::ArgParser;
-use crate::{attribute_filter, session_diagnostics};
+use crate::session_diagnostics;
 
 // TODO: turn into CombineGroup?
 #[derive(Default)]
@@ -47,17 +47,14 @@ impl AttributeGroup for ConfusablesGroup {
         this.first_span.get_or_insert(cx.attr_span);
     })];
 
-    fn finalize(self, _cx: &AttributeGroupContext<'_>) -> Option<(AttributeKind, AttributeFilter)> {
+    fn finalize(self, _cx: &AttributeGroupContext<'_>) -> Option<AttributeKind> {
         if self.confusables.is_empty() {
             return None;
         }
 
-        Some((
-            AttributeKind::Confusables {
-                symbols: self.confusables,
-                first_span: self.first_span.unwrap(),
-            },
-            attribute_filter!(allow all),
-        ))
+        Some(AttributeKind::Confusables {
+            symbols: self.confusables,
+            first_span: self.first_span.unwrap(),
+        })
     }
 }

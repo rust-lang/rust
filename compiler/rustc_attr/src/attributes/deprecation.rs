@@ -2,12 +2,12 @@ use rustc_hir::{AttributeKind, DeprecatedSince, Deprecation};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, Symbol, sym};
 
+use super::SingleAttributeGroup;
 use super::util::parse_version;
-use super::{AttributeFilter, SingleAttributeGroup};
 use crate::context::AttributeAcceptContext;
 use crate::parser::{ArgParser, GenericArgParser, MetaItemParser, NameValueParser};
+use crate::session_diagnostics;
 use crate::session_diagnostics::UnsupportedLiteralReason;
-use crate::{attribute_filter, session_diagnostics};
 
 pub(crate) struct DeprecationGroup;
 
@@ -64,7 +64,7 @@ impl SingleAttributeGroup for DeprecationGroup {
     fn convert(
         cx: &AttributeAcceptContext<'_>,
         args: &GenericArgParser<'_, rustc_ast::Expr>,
-    ) -> Option<(AttributeKind, AttributeFilter)> {
+    ) -> Option<AttributeKind> {
         let features = cx.features();
 
         let mut since = None;
@@ -155,12 +155,9 @@ impl SingleAttributeGroup for DeprecationGroup {
             return None;
         }
 
-        Some((
-            AttributeKind::Deprecation {
-                deprecation: Deprecation { since, note, suggestion },
-                span: cx.attr_span,
-            },
-            attribute_filter!(allow all),
-        ))
+        Some(AttributeKind::Deprecation {
+            deprecation: Deprecation { since, note, suggestion },
+            span: cx.attr_span,
+        })
     }
 }

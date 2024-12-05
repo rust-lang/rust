@@ -19,7 +19,7 @@ use std::marker::PhantomData;
 
 use rustc_ast::Expr;
 use rustc_hir::AttributeKind;
-use rustc_span::{ErrorGuaranteed, Span};
+use rustc_span::Span;
 use thin_vec::ThinVec;
 
 use crate::context::{AttributeAcceptContext, AttributeGroupContext};
@@ -56,13 +56,8 @@ pub(crate) trait AttributeGroup: Default + 'static {
 
     /// The extractor has gotten a chance to accept the attributes on an item,
     /// now produce an attribute.
-    fn finalize(self, cx: &AttributeGroupContext<'_>) -> Option<(AttributeKind, AttributeFilter)>;
+    fn finalize(self, cx: &AttributeGroupContext<'_>) -> Option<AttributeKind>;
 }
-
-/// Create an AttributeFilter using [`attribute_filter`].
-///
-/// Tells the parsing system what other attributes this attribute can be used with together.
-pub(crate) struct AttributeFilter(Box<dyn Fn(&AttributeKind) -> Result<(), ErrorGuaranteed>>);
 
 /// A slightly simpler and more restricted way to convert attributes which you can implement for
 /// unit types. Assumes that a single attribute can only appear a single time on an item
@@ -83,13 +78,10 @@ pub(crate) trait SingleAttributeGroup: 'static {
     fn convert(
         cx: &AttributeAcceptContext<'_>,
         args: &GenericArgParser<'_, Expr>,
-    ) -> Option<(AttributeKind, AttributeFilter)>;
+    ) -> Option<AttributeKind>;
 }
 
-pub(crate) struct Single<T: SingleAttributeGroup>(
-    PhantomData<T>,
-    Option<(AttributeKind, AttributeFilter, Span)>,
-);
+pub(crate) struct Single<T: SingleAttributeGroup>(PhantomData<T>, Option<(AttributeKind, Span)>);
 
 impl<T: SingleAttributeGroup> Default for Single<T> {
     fn default() -> Self {
@@ -99,19 +91,18 @@ impl<T: SingleAttributeGroup> Default for Single<T> {
 
 impl<T: SingleAttributeGroup> AttributeGroup for Single<T> {
     const ATTRIBUTES: AttributeMapping<Self> = &[(T::PATH, |group: &mut Single<T>, cx, args| {
-        if let Some((_, _, s)) = group.1 {
+        if let Some((_, s)) = group.1 {
             T::on_duplicate(cx, s);
             return;
         }
 
-        if let Some((pa, f)) = T::convert(cx, args) {
-            group.1 = Some((pa, f, cx.attr_span));
+        if let Some(pa) = T::convert(cx, args) {
+            group.1 = Some((pa, cx.attr_span));
         }
     })];
 
-    fn finalize(self, _cx: &AttributeGroupContext<'_>) -> Option<(AttributeKind, AttributeFilter)> {
-        let (pa, f, _) = self.1?;
-        Some((pa, f))
+    fn finalize(self, _cx: &AttributeGroupContext<'_>) -> Option<AttributeKind> {
+        Some(self.1?.0)
     }
 }
 
@@ -153,53 +144,12 @@ impl<T: CombineAttributeGroup> AttributeGroup for Combine<T> {
     const ATTRIBUTES: AttributeMapping<Self> =
         &[(T::PATH, |group: &mut Combine<T>, cx, args| group.1.extend(T::extend(cx, args)))];
 
-    fn finalize(self, _cx: &AttributeGroupContext<'_>) -> Option<(AttributeKind, AttributeFilter)> {
+    fn finalize(self, _cx: &AttributeGroupContext<'_>) -> Option<AttributeKind> {
         if self.1.is_empty() {
             None
         } else {
             // TODO: what filter here?
-            Some((T::CONVERT(self.1), crate::attribute_filter!(allow all)))
+            Some(T::CONVERT(self.1))
         }
     }
-}
-
-#[macro_export]
-macro_rules! attribute_filter {
-    (deny all: $b: block) => {
-        $crate::attribute_filter!(allow: else $b)
-    };
-
-    (allow all) => {
-        $crate::attribute_filter!(deny: )
-    };
-
-    (
-        allow:
-        $(
-            [$pat: pat $(if $expr: expr)?]
-        ),*
-        else $b: block
-    ) => {
-        $crate::attributes::AttributeFilter(Box::new(|attr: &rustc_hir::AttributeKind| -> Result<(), rustc_span::ErrorGuaranteed> {
-            match attr {
-                $(
-                    $pat $(if $expr)? => Ok(()),
-                )*
-                _ => Err($b: block),
-            }
-        }))
-    };
-
-    (deny: $(
-        [$pat: pat $(if $expr: expr)? $(=> $b: block)?]
-    ),*) => {
-        $crate::attributes::AttributeFilter(Box::new(|attr: &rustc_hir::AttributeKind| -> Result<(), rustc_span::ErrorGuaranteed> {
-            match attr {
-                $(
-                    $pat $(if $expr)? => Err($b),
-                )*
-                _ => Ok(()),
-            }
-        }))
-    };
 }

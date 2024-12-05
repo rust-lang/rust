@@ -7,8 +7,7 @@ use rustc_hir::{
 use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 
 use super::util::parse_version;
-use super::{AttributeFilter, AttributeGroup, AttributeMapping, SingleAttributeGroup};
-use crate::attribute_filter;
+use super::{AttributeGroup, AttributeMapping, SingleAttributeGroup};
 use crate::context::{AttributeAcceptContext, AttributeGroupContext};
 use crate::parser::{ArgParser, MetaItemParser, NameValueParser};
 use crate::session_diagnostics::{self, UnsupportedLiteralReason};
@@ -52,7 +51,7 @@ impl AttributeGroup for StabilityGroup {
         }),
     ];
 
-    fn finalize(self, cx: &AttributeGroupContext<'_>) -> Option<(AttributeKind, AttributeFilter)> {
+    fn finalize(self, cx: &AttributeGroupContext<'_>) -> Option<AttributeKind> {
         let (mut stability, span) = self.stability?;
 
         if self.allowed_through_unstable_modules {
@@ -72,7 +71,7 @@ impl AttributeGroup for StabilityGroup {
             cx.dcx().emit_err(session_diagnostics::StabilityOutsideStd { span });
         }
 
-        Some((AttributeKind::Stability { stability, span }, attribute_filter!(allow all)))
+        Some(AttributeKind::Stability { stability, span })
     }
 }
 
@@ -93,7 +92,7 @@ impl AttributeGroup for BodyStabilityGroup {
             }
         })];
 
-    fn finalize(self, cx: &AttributeGroupContext<'_>) -> Option<(AttributeKind, AttributeFilter)> {
+    fn finalize(self, cx: &AttributeGroupContext<'_>) -> Option<AttributeKind> {
         let (stability, span) = self.stability?;
 
         // Emit errors for non-staged-api crates.
@@ -101,7 +100,7 @@ impl AttributeGroup for BodyStabilityGroup {
             cx.dcx().emit_err(session_diagnostics::StabilityOutsideStd { span });
         }
 
-        Some((AttributeKind::BodyStability { stability, span }, attribute_filter!(allow all)))
+        Some(AttributeKind::BodyStability { stability, span })
     }
 }
 
@@ -116,8 +115,8 @@ impl SingleAttributeGroup for ConstStabilityIndirectGroup {
     fn convert(
         _cx: &AttributeAcceptContext<'_>,
         _args: &super::GenericArgParser<'_, rustc_ast::Expr>,
-    ) -> Option<(AttributeKind, AttributeFilter)> {
-        Some((AttributeKind::ConstStabilityIndirect, attribute_filter!(allow all)))
+    ) -> Option<AttributeKind> {
+        Some(AttributeKind::ConstStabilityIndirect)
     }
 }
 
@@ -166,10 +165,7 @@ impl AttributeGroup for ConstStabilityGroup {
         }),
     ];
 
-    fn finalize(
-        mut self,
-        cx: &AttributeGroupContext<'_>,
-    ) -> Option<(AttributeKind, AttributeFilter)> {
+    fn finalize(mut self, cx: &AttributeGroupContext<'_>) -> Option<AttributeKind> {
         if self.promotable {
             if let Some((ref mut stab, _)) = self.stability {
                 stab.promotable = true;
@@ -186,7 +182,7 @@ impl AttributeGroup for ConstStabilityGroup {
             cx.dcx().emit_err(session_diagnostics::StabilityOutsideStd { span });
         }
 
-        Some((AttributeKind::ConstStability { stability, span }, attribute_filter!(allow all)))
+        Some(AttributeKind::ConstStability { stability, span })
     }
 }
 

@@ -1,5 +1,4 @@
 use std::num::NonZero;
-use std::ops::Deref;
 
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::{Symbol, sym};
