@@ -415,8 +415,16 @@ impl Cursor<'_> {
             }
 
             // Guarded string literal prefix: `#"` or `##`
-            '#' if matches!(self.first(), '"' | '#') => {
+            '#' if matches!(
+                (self.first(), self.second()),
+                //  #"         ##"          ###
+                ('"', _) | ('#', '"') | ('#', '#')
+            ) =>
+            {
                 self.bump();
+                if self.first() != '"' {
+                    self.bump();
+                }
                 TokenKind::GuardedStrPrefix
             }
 
@@ -804,8 +812,6 @@ impl Cursor<'_> {
     /// guarded string is not found. It is the caller's
     /// responsibility to do so.
     pub fn guarded_double_quoted_string(&mut self) -> Option<GuardedStr> {
-        debug_assert!(self.prev() != '#');
-
         let mut n_start_hashes: u32 = 0;
         while self.first() == '#' {
             n_start_hashes += 1;

@@ -1,8 +1,8 @@
 warning: reserved token in Rust 2024
   --> $DIR/reserved-guarded-strings-migration.rs:40:12
    |
-LL |     demo3!(## "foo");
-   |            ^^
+LL |     demo4!(### "foo");
+   |            ^^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
    = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
@@ -13,53 +13,53 @@ LL | #![warn(rust_2024_guarded_string_incompatible_syntax)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
    |
-LL |     demo3!(# # "foo");
+LL |     demo4!(# ## "foo");
    |             +
 
 warning: reserved token in Rust 2024
   --> $DIR/reserved-guarded-strings-migration.rs:43:12
    |
-LL |     demo4!(### "foo");
-   |            ^^
+LL |     demo5!(#### "foo");
+   |            ^^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
    = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
 help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
    |
-LL |     demo4!(# ## "foo");
+LL |     demo5!(# ### "foo");
    |             +
 
 warning: reserved token in Rust 2024
   --> $DIR/reserved-guarded-strings-migration.rs:43:13
    |
-LL |     demo4!(### "foo");
-   |             ^^
+LL |     demo5!(#### "foo");
+   |             ^^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
    = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
 help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
    |
-LL |     demo4!(## # "foo");
+LL |     demo5!(## ## "foo");
    |              +
 
 warning: reserved token in Rust 2024
   --> $DIR/reserved-guarded-strings-migration.rs:48:12
    |
-LL |     demo4!(## "foo"#);
-   |            ^^
+LL |     demo5!(### "foo"#);
+   |            ^^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
    = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
 help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
    |
-LL |     demo4!(# # "foo"#);
+LL |     demo5!(# ## "foo"#);
    |             +
 
 warning: reserved token in Rust 2024
   --> $DIR/reserved-guarded-strings-migration.rs:51:12
    |
 LL |     demo6!(### "foo"##);
-   |            ^^
+   |            ^^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
    = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
@@ -69,36 +69,49 @@ LL |     demo6!(# ## "foo"##);
    |             +
 
 warning: reserved token in Rust 2024
-  --> $DIR/reserved-guarded-strings-migration.rs:51:13
+  --> $DIR/reserved-guarded-strings-migration.rs:54:12
    |
-LL |     demo6!(### "foo"##);
-   |             ^^
+LL |     demo8!(#### "foo"###);
+   |            ^^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
    = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
 help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
    |
-LL |     demo6!(## # "foo"##);
+LL |     demo8!(# ### "foo"###);
+   |             +
+
+warning: reserved token in Rust 2024
+  --> $DIR/reserved-guarded-strings-migration.rs:54:13
+   |
+LL |     demo8!(#### "foo"###);
+   |             ^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
+   = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
+help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
+   |
+LL |     demo8!(## ## "foo"###);
    |              +
 
 warning: reserved token in Rust 2024
-  --> $DIR/reserved-guarded-strings-migration.rs:51:21
+  --> $DIR/reserved-guarded-strings-migration.rs:54:22
    |
-LL |     demo6!(### "foo"##);
-   |                     ^^
+LL |     demo8!(#### "foo"###);
+   |                      ^^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
    = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
 help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
    |
-LL |     demo6!(### "foo"# #);
-   |                      +
+LL |     demo8!(#### "foo"# ##);
+   |                       +
 
 warning: reserved token in Rust 2024
-  --> $DIR/reserved-guarded-strings-migration.rs:59:17
+  --> $DIR/reserved-guarded-strings-migration.rs:62:17
    |
 LL |     demo4!("foo"###);
-   |                 ^^
+   |                 ^^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
    = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
@@ -108,20 +121,33 @@ LL |     demo4!("foo"# ##);
    |                  +
 
 warning: reserved token in Rust 2024
-  --> $DIR/reserved-guarded-strings-migration.rs:59:18
+  --> $DIR/reserved-guarded-strings-migration.rs:65:17
    |
-LL |     demo4!("foo"###);
-   |                  ^^
+LL |     demo5!("foo"####);
+   |                 ^^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
    = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
 help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
    |
-LL |     demo4!("foo"## #);
+LL |     demo5!("foo"# ###);
+   |                  +
+
+warning: reserved token in Rust 2024
+  --> $DIR/reserved-guarded-strings-migration.rs:65:18
+   |
+LL |     demo5!("foo"####);
+   |                  ^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
+   = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
+help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
+   |
+LL |     demo5!("foo"## ##);
    |                   +
 
 warning: will be parsed as a guarded string in Rust 2024
-  --> $DIR/reserved-guarded-strings-migration.rs:65:12
+  --> $DIR/reserved-guarded-strings-migration.rs:71:12
    |
 LL |     demo2!(#"");
    |            ^^^
@@ -134,7 +160,7 @@ LL |     demo2!(# "");
    |             +
 
 warning: will be parsed as a guarded string in Rust 2024
-  --> $DIR/reserved-guarded-strings-migration.rs:68:12
+  --> $DIR/reserved-guarded-strings-migration.rs:74:12
    |
 LL |     demo3!(#""#);
    |            ^^^^
@@ -147,7 +173,7 @@ LL |     demo3!(# ""#);
    |             +
 
 warning: will be parsed as a guarded string in Rust 2024
-  --> $DIR/reserved-guarded-strings-migration.rs:71:12
+  --> $DIR/reserved-guarded-strings-migration.rs:77:12
    |
 LL |     demo3!(##"");
    |            ^^^^
@@ -160,7 +186,7 @@ LL |     demo3!(# #"");
    |             +
 
 warning: will be parsed as a guarded string in Rust 2024
-  --> $DIR/reserved-guarded-strings-migration.rs:71:13
+  --> $DIR/reserved-guarded-strings-migration.rs:77:13
    |
 LL |     demo3!(##"");
    |             ^^^
@@ -173,7 +199,7 @@ LL |     demo3!(## "");
    |              +
 
 warning: will be parsed as a guarded string in Rust 2024
-  --> $DIR/reserved-guarded-strings-migration.rs:76:12
+  --> $DIR/reserved-guarded-strings-migration.rs:82:12
    |
 LL |     demo2!(#"foo");
    |            ^^^^^^
@@ -186,7 +212,7 @@ LL |     demo2!(# "foo");
    |             +
 
 warning: will be parsed as a guarded string in Rust 2024
-  --> $DIR/reserved-guarded-strings-migration.rs:79:12
+  --> $DIR/reserved-guarded-strings-migration.rs:85:12
    |
 LL |     demo3!(##"foo");
    |            ^^^^^^^
@@ -199,7 +225,7 @@ LL |     demo3!(# #"foo");
    |             +
 
 warning: will be parsed as a guarded string in Rust 2024
-  --> $DIR/reserved-guarded-strings-migration.rs:79:13
+  --> $DIR/reserved-guarded-strings-migration.rs:85:13
    |
 LL |     demo3!(##"foo");
    |             ^^^^^^
@@ -212,7 +238,7 @@ LL |     demo3!(## "foo");
    |              +
 
 warning: will be parsed as a guarded string in Rust 2024
-  --> $DIR/reserved-guarded-strings-migration.rs:84:12
+  --> $DIR/reserved-guarded-strings-migration.rs:90:12
    |
 LL |     demo3!(#"foo"#);
    |            ^^^^^^^
@@ -225,7 +251,7 @@ LL |     demo3!(# "foo"#);
    |             +
 
 warning: will be parsed as a guarded string in Rust 2024
-  --> $DIR/reserved-guarded-strings-migration.rs:87:12
+  --> $DIR/reserved-guarded-strings-migration.rs:93:12
    |
 LL |     demo4!(##"foo"#);
    |            ^^^^^^^^
@@ -238,7 +264,7 @@ LL |     demo4!(# #"foo"#);
    |             +
 
 warning: will be parsed as a guarded string in Rust 2024
-  --> $DIR/reserved-guarded-strings-migration.rs:87:13
+  --> $DIR/reserved-guarded-strings-migration.rs:93:13
    |
 LL |     demo4!(##"foo"#);
    |             ^^^^^^^
@@ -251,7 +277,7 @@ LL |     demo4!(## "foo"#);
    |              +
 
 warning: will be parsed as a guarded string in Rust 2024
-  --> $DIR/reserved-guarded-strings-migration.rs:92:12
+  --> $DIR/reserved-guarded-strings-migration.rs:98:12
    |
 LL |     demo5!(##"foo"##);
    |            ^^^^^^^^^
@@ -264,7 +290,7 @@ LL |     demo5!(# #"foo"##);
    |             +
 
 warning: will be parsed as a guarded string in Rust 2024
-  --> $DIR/reserved-guarded-strings-migration.rs:92:13
+  --> $DIR/reserved-guarded-strings-migration.rs:98:13
    |
 LL |     demo5!(##"foo"##);
    |             ^^^^^^^
@@ -276,18 +302,44 @@ help: insert whitespace here to avoid this being parsed as a guarded string in R
 LL |     demo5!(## "foo"##);
    |              +
 
-warning: reserved token in Rust 2024
-  --> $DIR/reserved-guarded-strings-migration.rs:92:19
+warning: will be parsed as a guarded string in Rust 2024
+  --> $DIR/reserved-guarded-strings-migration.rs:103:12
    |
-LL |     demo5!(##"foo"##);
-   |                   ^^
+LL |     demo6!(##"foo"###);
+   |            ^^^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
+   = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
+help: insert whitespace here to avoid this being parsed as a guarded string in Rust 2024
+   |
+LL |     demo6!(# #"foo"###);
+   |             +
+
+warning: will be parsed as a guarded string in Rust 2024
+  --> $DIR/reserved-guarded-strings-migration.rs:103:13
+   |
+LL |     demo6!(##"foo"###);
+   |             ^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
+   = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
+help: insert whitespace here to avoid this being parsed as a guarded string in Rust 2024
+   |
+LL |     demo6!(## "foo"###);
+   |              +
+
+warning: reserved token in Rust 2024
+  --> $DIR/reserved-guarded-strings-migration.rs:103:19
+   |
+LL |     demo6!(##"foo"###);
+   |                   ^^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
    = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
 help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
    |
-LL |     demo5!(##"foo"# #);
+LL |     demo6!(##"foo"# ##);
    |                    +
 
-warning: 22 warnings emitted
+warning: 26 warnings emitted
 

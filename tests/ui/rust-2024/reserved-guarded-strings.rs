@@ -40,17 +40,24 @@ fn main() {
     demo2!(# "foo");
     demo3!(# "foo"#);
     demo2!("foo"#);
+    demo3!(## "foo");
+    demo4!(## "foo"#);
+    demo5!(## "foo"##);
 
     demo2!(blah"xx"); //~ ERROR prefix `blah` is unknown
     demo2!(blah#"xx"#);
     //~^ ERROR prefix `blah` is unknown
     //~| ERROR invalid string literal
 
-    demo2!(## "foo"); //~ reserved multi-hash token is forbidden
-    demo3!("foo"###); //~ reserved multi-hash token is forbidden
-    demo3!(### "foo"); //~ reserved multi-hash token is forbidden
-    demo3!(## "foo"#); //~ reserved multi-hash token is forbidden
-    demo5!(### "foo"###);
+    demo2!("foo"###); //~ reserved multi-hash token is forbidden
+    demo2!(### "foo"); //~ reserved multi-hash token is forbidden
+    demo3!("foo"####); //~ reserved multi-hash token is forbidden
+    demo3!(#### "foo"); //~ reserved multi-hash token is forbidden
+    demo3!(### "foo"#); //~ reserved multi-hash token is forbidden
+    demo3!(### "foo"###);
+    //~^ reserved multi-hash token is forbidden
+    //~| reserved multi-hash token is forbidden
+    demo5!(#### "foo"####);
     //~^ reserved multi-hash token is forbidden
     //~| reserved multi-hash token is forbidden
 
@@ -63,7 +70,8 @@ fn main() {
     demo1!(###"foo"#); //~ ERROR invalid string literal
     demo1!(###"foo"##); //~ ERROR invalid string literal
     demo1!(###"foo"###); //~ ERROR invalid string literal
-    demo2!(#"foo"###);
+    demo3!(#"foo"###); //~ ERROR invalid string literal
+    demo2!(#"foo"####);
     //~^ ERROR invalid string literal
     //~| ERROR reserved multi-hash token is forbidden
 

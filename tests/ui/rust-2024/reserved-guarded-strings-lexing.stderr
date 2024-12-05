@@ -1,5 +1,5 @@
 error: prefix `Ñ` is unknown
-  --> $DIR/reserved-guarded-strings-lexing.rs:70:12
+  --> $DIR/reserved-guarded-strings-lexing.rs:88:12
    |
 LL |     demo2!(Ñ"foo");
    |            ^ unknown prefix
@@ -11,7 +11,7 @@ LL |     demo2!(Ñ "foo");
    |             +
 
 error: prefix `Ñ` is unknown
-  --> $DIR/reserved-guarded-strings-lexing.rs:72:12
+  --> $DIR/reserved-guarded-strings-lexing.rs:90:12
    |
 LL |     demo4!(Ñ#""#);
    |            ^ unknown prefix
@@ -23,16 +23,16 @@ LL |     demo4!(Ñ #""#);
    |             +
 
 error: identifiers cannot contain emoji: `🙃`
-  --> $DIR/reserved-guarded-strings-lexing.rs:76:12
+  --> $DIR/reserved-guarded-strings-lexing.rs:94:12
    |
 LL |     demo3!(🙃#"");
    |            ^^
 
 warning: reserved token in Rust 2024
-  --> $DIR/reserved-guarded-strings-lexing.rs:28:12
+  --> $DIR/reserved-guarded-strings-lexing.rs:33:12
    |
-LL |     demo3!(## "foo");
-   |            ^^
+LL |     demo4!(### "foo");
+   |            ^^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
    = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
@@ -43,53 +43,53 @@ LL | #![warn(rust_2024_guarded_string_incompatible_syntax)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
    |
-LL |     demo3!(# # "foo");
-   |             +
-
-warning: reserved token in Rust 2024
-  --> $DIR/reserved-guarded-strings-lexing.rs:31:12
-   |
-LL |     demo4!(### "foo");
-   |            ^^
-   |
-   = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
-   = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
-help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
-   |
 LL |     demo4!(# ## "foo");
    |             +
 
 warning: reserved token in Rust 2024
-  --> $DIR/reserved-guarded-strings-lexing.rs:31:13
-   |
-LL |     demo4!(### "foo");
-   |             ^^
-   |
-   = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
-   = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
-help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
-   |
-LL |     demo4!(## # "foo");
-   |              +
-
-warning: reserved token in Rust 2024
   --> $DIR/reserved-guarded-strings-lexing.rs:36:12
    |
-LL |     demo4!(## "foo"#);
-   |            ^^
+LL |     demo5!(#### "foo");
+   |            ^^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
    = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
 help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
    |
-LL |     demo4!(# # "foo"#);
+LL |     demo5!(# ### "foo");
    |             +
 
 warning: reserved token in Rust 2024
-  --> $DIR/reserved-guarded-strings-lexing.rs:39:12
+  --> $DIR/reserved-guarded-strings-lexing.rs:36:13
+   |
+LL |     demo5!(#### "foo");
+   |             ^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
+   = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
+help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
+   |
+LL |     demo5!(## ## "foo");
+   |              +
+
+warning: reserved token in Rust 2024
+  --> $DIR/reserved-guarded-strings-lexing.rs:41:12
+   |
+LL |     demo5!(### "foo"#);
+   |            ^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
+   = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
+help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
+   |
+LL |     demo5!(# ## "foo"#);
+   |             +
+
+warning: reserved token in Rust 2024
+  --> $DIR/reserved-guarded-strings-lexing.rs:44:12
    |
 LL |     demo7!(### "foo"###);
-   |            ^^
+   |            ^^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
    = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
@@ -99,23 +99,10 @@ LL |     demo7!(# ## "foo"###);
    |             +
 
 warning: reserved token in Rust 2024
-  --> $DIR/reserved-guarded-strings-lexing.rs:39:13
+  --> $DIR/reserved-guarded-strings-lexing.rs:44:21
    |
 LL |     demo7!(### "foo"###);
-   |             ^^
-   |
-   = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
-   = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
-help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
-   |
-LL |     demo7!(## # "foo"###);
-   |              +
-
-warning: reserved token in Rust 2024
-  --> $DIR/reserved-guarded-strings-lexing.rs:39:21
-   |
-LL |     demo7!(### "foo"###);
-   |                     ^^
+   |                     ^^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
    = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
@@ -125,20 +112,59 @@ LL |     demo7!(### "foo"# ##);
    |                      +
 
 warning: reserved token in Rust 2024
-  --> $DIR/reserved-guarded-strings-lexing.rs:39:22
+  --> $DIR/reserved-guarded-strings-lexing.rs:49:12
    |
-LL |     demo7!(### "foo"###);
-   |                      ^^
+LL |     demo9!(#### "foo"####);
+   |            ^^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
    = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
 help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
    |
-LL |     demo7!(### "foo"## #);
+LL |     demo9!(# ### "foo"####);
+   |             +
+
+warning: reserved token in Rust 2024
+  --> $DIR/reserved-guarded-strings-lexing.rs:49:13
+   |
+LL |     demo9!(#### "foo"####);
+   |             ^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
+   = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
+help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
+   |
+LL |     demo9!(## ## "foo"####);
+   |              +
+
+warning: reserved token in Rust 2024
+  --> $DIR/reserved-guarded-strings-lexing.rs:49:22
+   |
+LL |     demo9!(#### "foo"####);
+   |                      ^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
+   = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
+help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
+   |
+LL |     demo9!(#### "foo"# ###);
    |                       +
 
+warning: reserved token in Rust 2024
+  --> $DIR/reserved-guarded-strings-lexing.rs:49:23
+   |
+LL |     demo9!(#### "foo"####);
+   |                       ^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
+   = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
+help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
+   |
+LL |     demo9!(#### "foo"## ##);
+   |                        +
+
 warning: will be parsed as a guarded string in Rust 2024
-  --> $DIR/reserved-guarded-strings-lexing.rs:49:12
+  --> $DIR/reserved-guarded-strings-lexing.rs:59:12
    |
 LL |     demo5!(###"foo"#);
    |            ^^^^^^^^^
@@ -151,7 +177,7 @@ LL |     demo5!(# ##"foo"#);
    |             +
 
 warning: will be parsed as a guarded string in Rust 2024
-  --> $DIR/reserved-guarded-strings-lexing.rs:49:13
+  --> $DIR/reserved-guarded-strings-lexing.rs:59:13
    |
 LL |     demo5!(###"foo"#);
    |             ^^^^^^^^
@@ -164,7 +190,7 @@ LL |     demo5!(## #"foo"#);
    |              +
 
 warning: will be parsed as a guarded string in Rust 2024
-  --> $DIR/reserved-guarded-strings-lexing.rs:49:14
+  --> $DIR/reserved-guarded-strings-lexing.rs:59:14
    |
 LL |     demo5!(###"foo"#);
    |              ^^^^^^^
@@ -177,7 +203,7 @@ LL |     demo5!(### "foo"#);
    |               +
 
 warning: will be parsed as a guarded string in Rust 2024
-  --> $DIR/reserved-guarded-strings-lexing.rs:56:12
+  --> $DIR/reserved-guarded-strings-lexing.rs:66:12
    |
 LL |     demo5!(#"foo"###);
    |            ^^^^^^^
@@ -190,10 +216,10 @@ LL |     demo5!(# "foo"###);
    |             +
 
 warning: reserved token in Rust 2024
-  --> $DIR/reserved-guarded-strings-lexing.rs:56:18
+  --> $DIR/reserved-guarded-strings-lexing.rs:66:18
    |
 LL |     demo5!(#"foo"###);
-   |                  ^^
+   |                  ^^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
    = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
@@ -203,23 +229,10 @@ LL |     demo5!(#"foo"# ##);
    |                   +
 
 warning: reserved token in Rust 2024
-  --> $DIR/reserved-guarded-strings-lexing.rs:56:19
-   |
-LL |     demo5!(#"foo"###);
-   |                   ^^
-   |
-   = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
-   = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
-help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
-   |
-LL |     demo5!(#"foo"## #);
-   |                    +
-
-warning: reserved token in Rust 2024
-  --> $DIR/reserved-guarded-strings-lexing.rs:63:17
+  --> $DIR/reserved-guarded-strings-lexing.rs:71:17
    |
 LL |     demo4!("foo"###);
-   |                 ^^
+   |                 ^^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
    = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
@@ -228,21 +241,73 @@ help: insert whitespace here to avoid this being parsed as a forbidden token in 
 LL |     demo4!("foo"# ##);
    |                  +
 
-warning: reserved token in Rust 2024
-  --> $DIR/reserved-guarded-strings-lexing.rs:63:18
+warning: will be parsed as a guarded string in Rust 2024
+  --> $DIR/reserved-guarded-strings-lexing.rs:74:12
    |
-LL |     demo4!("foo"###);
-   |                  ^^
+LL |     demo6!(#"foo"####);
+   |            ^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
+   = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
+help: insert whitespace here to avoid this being parsed as a guarded string in Rust 2024
+   |
+LL |     demo6!(# "foo"####);
+   |             +
+
+warning: reserved token in Rust 2024
+  --> $DIR/reserved-guarded-strings-lexing.rs:74:18
+   |
+LL |     demo6!(#"foo"####);
+   |                  ^^^
    |
    = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
    = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
 help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
    |
-LL |     demo4!("foo"## #);
+LL |     demo6!(#"foo"# ###);
+   |                   +
+
+warning: reserved token in Rust 2024
+  --> $DIR/reserved-guarded-strings-lexing.rs:74:19
+   |
+LL |     demo6!(#"foo"####);
+   |                   ^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
+   = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
+help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
+   |
+LL |     demo6!(#"foo"## ##);
+   |                    +
+
+warning: reserved token in Rust 2024
+  --> $DIR/reserved-guarded-strings-lexing.rs:81:17
+   |
+LL |     demo5!("foo"####);
+   |                 ^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
+   = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
+help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
+   |
+LL |     demo5!("foo"# ###);
+   |                  +
+
+warning: reserved token in Rust 2024
+  --> $DIR/reserved-guarded-strings-lexing.rs:81:18
+   |
+LL |     demo5!("foo"####);
+   |                  ^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2021) but is a hard error in Rust 2024!
+   = note: for more information, see issue #123735 <https://github.com/rust-lang/rust/issues/123735>
+help: insert whitespace here to avoid this being parsed as a forbidden token in Rust 2024
+   |
+LL |     demo5!("foo"## ##);
    |                   +
 
 warning: will be parsed as a guarded string in Rust 2024
-  --> $DIR/reserved-guarded-strings-lexing.rs:72:13
+  --> $DIR/reserved-guarded-strings-lexing.rs:90:13
    |
 LL |     demo4!(Ñ#""#);
    |             ^^^^
@@ -255,7 +320,7 @@ LL |     demo4!(Ñ# ""#);
    |              +
 
 warning: will be parsed as a guarded string in Rust 2024
-  --> $DIR/reserved-guarded-strings-lexing.rs:76:13
+  --> $DIR/reserved-guarded-strings-lexing.rs:94:13
    |
 LL |     demo3!(🙃#"");
    |              ^^^
@@ -267,5 +332,5 @@ help: insert whitespace here to avoid this being parsed as a guarded string in R
 LL |     demo3!(🙃# "");
    |               +
 
-error: aborting due to 3 previous errors; 18 warnings emitted
+error: aborting due to 3 previous errors; 23 warnings emitted
 

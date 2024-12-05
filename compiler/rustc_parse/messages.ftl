@@ -720,7 +720,7 @@ parse_require_colon_after_labeled_expression = labeled expression must be follow
     .suggestion = add `:` after the label
 
 parse_reserved_multihash = reserved multi-hash token is forbidden
-    .note = sequences of two or more # are reserved for future use since Rust 2024
+    .note = sequences of three or more # are reserved for future use since Rust 2024
     .suggestion_whitespace = consider inserting whitespace here
 
 parse_reserved_string = invalid string literal
