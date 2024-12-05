@@ -87,15 +87,7 @@ mod for_windows {
         );
         assert!(r.is_ok(), "{}", io::Error::last_os_error());
 
-        // Assign our process to this job object. Note that if this fails, one very
-        // likely reason is that we are ourselves already in a job object! This can
-        // happen on the build bots that we've got for Windows, or if just anyone
-        // else is instrumenting the build. In this case we just bail out
-        // immediately and assume that they take care of it.
-        //
-        // Also note that nested jobs (why this might fail) are supported in recent
-        // versions of Windows, but the version of Windows that our bots are running
-        // at least don't support nested job objects.
+        // Assign our process to this job object.
         let r = AssignProcessToJobObject(job, GetCurrentProcess());
         if r.is_err() {
             CloseHandle(job).ok();
