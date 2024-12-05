@@ -141,6 +141,9 @@ fn do_mir_borrowck<'tcx>(
 ) -> (BorrowCheckResult<'tcx>, Option<Box<BodyWithBorrowckFacts<'tcx>>>) {
     let def = input_body.source.def_id().expect_local();
     let infcx = BorrowckInferCtxt::new(tcx, def);
+    if let Some(e) = input_body.tainted_by_errors {
+        infcx.set_tainted_by_errors(e);
+    }
 
     let mut local_names = IndexVec::from_elem(None, &input_body.local_decls);
     for var_debug_info in &input_body.var_debug_info {
@@ -160,13 +163,6 @@ fn do_mir_borrowck<'tcx>(
                 local_names[local] = Some(var_debug_info.name);
             }
         }
-    }
-
-    let diags = &mut diags::BorrowckDiags::new();
-
-    // Gather the upvars of a closure, if any.
-    if let Some(e) = input_body.tainted_by_errors {
-        infcx.set_tainted_by_errors(e);
     }
 
     // Replace all regions with fresh inference variables. This
@@ -224,6 +220,7 @@ fn do_mir_borrowck<'tcx>(
 
     // We also have a `#[rustc_regions]` annotation that causes us to dump
     // information.
+    let diags = &mut diags::BorrowckDiags::new();
     nll::dump_annotation(&infcx, body, &regioncx, &opt_closure_req, &opaque_type_values, diags);
 
     let movable_coroutine =
