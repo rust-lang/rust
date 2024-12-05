@@ -58,7 +58,7 @@ fn type_with_bounds_cond(p: &mut Parser<'_>, allow_bounds: bool) {
     }
 }
 
-fn is_dyn_weak(p: &Parser<'_>) -> bool {
+pub(crate) fn is_dyn_weak(p: &Parser<'_>) -> bool {
     const WEAK_DYN_PATH_FIRST: TokenSet = TokenSet::new(&[
         IDENT,
         T![self],

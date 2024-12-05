@@ -190,6 +190,13 @@ mod ok {
         );
     }
     #[test]
+    fn edition_2015_dyn_prefix_inside_generic_arg() {
+        run_and_expect_no_errors_with_edition(
+            "test_data/parser/inline/ok/edition_2015_dyn_prefix_inside_generic_arg.rs",
+            crate::Edition::Edition2015,
+        );
+    }
+    #[test]
     fn effect_blocks() { run_and_expect_no_errors("test_data/parser/inline/ok/effect_blocks.rs"); }
     #[test]
     fn exclusive_range_pat() {
