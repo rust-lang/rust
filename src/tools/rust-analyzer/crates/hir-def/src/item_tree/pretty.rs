@@ -648,9 +648,9 @@ impl Printer<'_> {
                 let (target, bound) = match pred {
                     WherePredicate::TypeBound { target, bound } => (target, bound),
                     WherePredicate::Lifetime { target, bound } => {
-                        wln!(
+                        w!(
                             this,
-                            "{}: {},",
+                            "{}: {}",
                             target.name.display(self.db.upcast(), edition),
                             bound.name.display(self.db.upcast(), edition)
                         );

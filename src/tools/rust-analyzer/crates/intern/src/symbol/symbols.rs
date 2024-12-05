@@ -80,6 +80,7 @@ define_symbols! {
     self_ = "self",
     Self_ = "Self",
     tick_static = "'static",
+    tick_underscore = "'_",
     dollar_crate = "$crate",
     MISSING_NAME = "[missing name]",
     fn_ = "fn",

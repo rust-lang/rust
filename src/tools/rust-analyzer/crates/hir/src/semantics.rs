@@ -2026,6 +2026,10 @@ impl SemanticsScope<'_> {
         )
     }
 
+    pub fn generic_def(&self) -> Option<crate::GenericDef> {
+        self.resolver.generic_def().map(|id| id.into())
+    }
+
     pub fn extern_crates(&self) -> impl Iterator<Item = (Name, Module)> + '_ {
         self.resolver.extern_crates_in_scope().map(|(name, id)| (name, Module { id }))
     }
