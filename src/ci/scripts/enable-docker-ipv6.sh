@@ -9,6 +9,9 @@ source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
 # Print docker version
 docker --version
+lsb_release -a
+echo "is docker active"
+systemctl is-active docker
 
 if isLinux; then
     sudo mkdir -p /etc/docker
