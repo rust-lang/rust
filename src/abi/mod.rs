@@ -156,7 +156,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         self.lib_call_unadjusted(name, params, returns, args)
     }
 
-    pub(crate) fn lib_call_unadjusted(
+    fn lib_call_unadjusted(
         &mut self,
         name: &str,
         params: Vec<AbiParam>,
