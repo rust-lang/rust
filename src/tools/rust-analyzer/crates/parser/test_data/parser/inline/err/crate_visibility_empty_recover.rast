@@ -11,4 +11,4 @@ SOURCE_FILE
       IDENT "S"
     SEMICOLON ";"
   WHITESPACE "\n"
-error 4: expected identifier
+error 4: expected identifier, `self`, `super`, `crate`, or `Self`

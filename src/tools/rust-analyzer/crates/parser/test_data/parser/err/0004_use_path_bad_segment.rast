@@ -13,4 +13,4 @@ SOURCE_FILE
           ERROR
             INT_NUMBER "92"
     SEMICOLON ";"
-error 9: expected identifier
+error 9: expected identifier, `self`, `super`, `crate`, or `Self`

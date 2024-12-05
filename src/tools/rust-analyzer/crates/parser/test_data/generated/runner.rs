@@ -210,10 +210,6 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/extern_crate_rename.rs");
     }
     #[test]
-    fn extern_crate_self() {
-        run_and_expect_no_errors("test_data/parser/inline/ok/extern_crate_self.rs");
-    }
-    #[test]
     fn field_expr() { run_and_expect_no_errors("test_data/parser/inline/ok/field_expr.rs"); }
     #[test]
     fn fn_() { run_and_expect_no_errors("test_data/parser/inline/ok/fn_.rs"); }
@@ -772,6 +768,10 @@ mod err {
     #[test]
     fn pointer_type_no_mutability() {
         run_and_expect_errors("test_data/parser/inline/err/pointer_type_no_mutability.rs");
+    }
+    #[test]
+    fn precise_capturing_invalid() {
+        run_and_expect_errors("test_data/parser/inline/err/precise_capturing_invalid.rs");
     }
     #[test]
     fn pub_expr() { run_and_expect_errors("test_data/parser/inline/err/pub_expr.rs"); }

@@ -11,4 +11,4 @@ SOURCE_FILE
         COLON2 "::"
     SEMICOLON ";"
   WHITESPACE "\n"
-error 11: expected identifier
+error 11: expected identifier, `self`, `super`, `crate`, or `Self`
