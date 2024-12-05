@@ -146,7 +146,8 @@ jobs:
         run: src/ci/scripts/install-awscli.sh
 
       - if: contains(matrix.os, 'codebuild-ubuntu')
-        run: src/ci/scripts/ubuntu-codebuild.sh
+        name: Install sotftware for codebuild
+        run: chmod +x src/ci/scripts/ubuntu-codebuild.sh && ./src/ci/scripts/ubuntu-codebuild.sh
 
       - name: install sccache
         run: src/ci/scripts/install-sccache.sh
