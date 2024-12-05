@@ -11,7 +11,7 @@ fn invalid() {
 
     // This must be rejected here (or earlier), since it's not a valid `&bool`.
     match &true {
-        C => {} //~ERROR: could not evaluate constant pattern
+        C => {} // ok, `const` already emitted an error
         _ => {}
     }
 }
@@ -27,7 +27,7 @@ fn extern_() {
 
     // This must be rejected here (or earlier), since the pattern cannot be read.
     match &0 {
-        C => {} //~ERROR: could not evaluate constant pattern
+        C => {} // ok, `const` already emitted an error
         _ => {}
     }
 }
@@ -42,7 +42,7 @@ fn mutable() {
     // This *must not build*, the constant we are matching against
     // could change its value!
     match &42 {
-        C => {} //~ERROR: could not evaluate constant pattern
+        C => {} // ok, `const` already emitted an error
         _ => {}
     }
 }

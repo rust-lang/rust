@@ -18,17 +18,17 @@ impl Foo for Def {
 pub fn test<A: Foo, B: Foo>(arg: EFoo) {
     match arg {
         A::X => println!("A::X"),
-        //~^ error: constant pattern depends on a generic parameter
+        //~^ ERROR constant pattern cannot depend on generic parameters
         B::X => println!("B::X"),
-        //~^ error: constant pattern depends on a generic parameter
+        //~^ ERROR constant pattern cannot depend on generic parameters
         _ => (),
     }
 }
 
 pub fn test_let_pat<A: Foo, B: Foo>(arg: EFoo, A::X: EFoo) {
-    //~^ ERROR constant pattern depends on a generic parameter
+    //~^ ERROR constant pattern cannot depend on generic parameters
     let A::X = arg;
-    //~^ ERROR constant pattern depends on a generic parameter
+    //~^ ERROR constant pattern cannot depend on generic parameters
 }
 
 fn main() {
