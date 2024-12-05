@@ -7,7 +7,7 @@ use crate::{
 
 impl SyntaxEditor {
     /// Adds a new generic param to the function using `SyntaxEditor`
-    pub fn syntax_editor_add_generic_param(&mut self, function: Fn, new_param: GenericParam) {
+    pub fn add_generic_param(&mut self, function: &Fn, new_param: GenericParam) {
         match function.generic_param_list() {
             Some(generic_param_list) => match generic_param_list.generic_params().last() {
                 Some(last_param) => {
