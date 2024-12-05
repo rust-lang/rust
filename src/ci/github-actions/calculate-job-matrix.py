@@ -176,6 +176,21 @@ def format_run_type(run_type: WorkflowRunType) -> str:
         raise AssertionError()
 
 
+# Add new function before main:
+def substitute_github_vars(jobs: list) -> list:
+    """Replace GitHub context variables with environment variables in job configs."""
+    for job in jobs:
+        if "os" in job:
+            job["os"] = job["os"].replace(
+                "${{ github.run_id }}",
+                os.environ["GITHUB_RUN_ID"]
+            ).replace(
+                "${{ github.run_attempt }}",
+                os.environ["GITHUB_RUN_ATTEMPT"]
+            )
+    return jobs
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
@@ -194,6 +209,7 @@ if __name__ == "__main__":
     if run_type is not None:
         jobs = calculate_jobs(run_type, data)
     jobs = skip_jobs(jobs, channel)
+
 
     if not jobs:
         raise Exception("Scheduled job list is empty, this is an error")
