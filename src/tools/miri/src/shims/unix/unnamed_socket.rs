@@ -90,11 +90,9 @@ impl FileDescription for AnonSocket {
         dest: &MPlaceTy<'tcx>,
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx> {
-        let mut bytes = vec![0; len];
-
         // Always succeed on read size 0.
         if len == 0 {
-            return ecx.return_read_success(ptr, &bytes, 0, dest);
+            return ecx.return_read_success(ptr, &[], 0, dest);
         }
 
         let Some(readbuf) = &self.readbuf else {
@@ -106,7 +104,7 @@ impl FileDescription for AnonSocket {
             if self.peer_fd().upgrade().is_none() {
                 // Socketpair with no peer and empty buffer.
                 // 0 bytes successfully read indicates end-of-file.
-                return ecx.return_read_success(ptr, &bytes, 0, dest);
+                return ecx.return_read_success(ptr, &[], 0, dest);
             } else {
                 if self.is_nonblock {
                     // Non-blocking socketpair with writer and empty buffer.
@@ -123,7 +121,7 @@ impl FileDescription for AnonSocket {
             }
         }
         // TODO: We might need to decide what to do if peer_fd is closed when read is blocked.
-        anonsocket_read(self, self.peer_fd().upgrade(), &mut bytes, ptr, dest, ecx)
+        anonsocket_read(self, self.peer_fd().upgrade(), len, ptr, dest, ecx)
     }
 
     fn write<'tcx>(
@@ -211,11 +209,13 @@ fn anonsocket_write<'tcx>(
 fn anonsocket_read<'tcx>(
     anonsocket: &AnonSocket,
     peer_fd: Option<FileDescriptionRef>,
-    bytes: &mut [u8],
+    len: usize,
     ptr: Pointer,
     dest: &MPlaceTy<'tcx>,
     ecx: &mut MiriInterpCx<'tcx>,
 ) -> InterpResult<'tcx> {
+    let mut bytes = vec![0; len];
+
     let Some(readbuf) = &anonsocket.readbuf else {
         // FIXME: This should return EBADF, but there's no nice way to do that as there's no
         // corresponding ErrorKind variant.
@@ -230,7 +230,7 @@ fn anonsocket_read<'tcx>(
 
     // Do full read / partial read based on the space available.
     // Conveniently, `read` exists on `VecDeque` and has exactly the desired behavior.
-    let actual_read_size = readbuf.buf.read(bytes).unwrap();
+    let actual_read_size = readbuf.buf.read(&mut bytes[..]).unwrap();
 
     // Need to drop before others can access the readbuf again.
     drop(readbuf);
@@ -246,7 +246,7 @@ fn anonsocket_read<'tcx>(
         ecx.check_and_update_readiness(&peer_fd)?;
     }
 
-    ecx.return_read_success(ptr, bytes, actual_read_size, dest)
+    ecx.return_read_success(ptr, &bytes, actual_read_size, dest)
 }
 
 impl UnixFileDescription for AnonSocket {
