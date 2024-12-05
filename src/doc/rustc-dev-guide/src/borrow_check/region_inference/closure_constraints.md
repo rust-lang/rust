@@ -11,7 +11,15 @@ they hold, we report an error.
 
 ## How this is implemented
 
-While borrow-checking a closure inside of `RegionInferenceContext::solve` we call `check_type_tests` with a list of `outlives_requirements` to propagate to the caller. This happens after computing the outlives graph, which is now immutable.
+While borrow-checking a closure inside of `RegionInferenceContext::solve` we separately try to propagate type-outlives and region-outlives constraints to the parent if we're unable to prove them locally.
+
+### Region-outlive constraints
+
+If we fail to prove a region-outlives constraint, we try to propagate it in `fn try_propagate_universal_region_error`.
+
+### Type-outlive constraints
+
+Type-outlives constraints are proven in `check_type_tests`. This happens after computing the outlives graph, which is now immutable.
 
 For all type tests we fail to prove via `fn eval_verify_bound` inside of the closure we call `try_promote_type_test`. A `TypeTest` represents a type-outlives bound `generic_kind: lower_bound` together with a `verify_bound`. If the `VerifyBound` holds for the `lower_bound`, the constraint is satisfied. `try_promote_type_test`  does not care about the ` verify_bound`.
 
