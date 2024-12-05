@@ -673,8 +673,7 @@ fn codegen_stmt<'tcx>(
                                     def_id,
                                     args,
                                 )
-                                .unwrap()
-                                .polymorphize(fx.tcx),
+                                .unwrap(),
                             );
                             let func_addr = fx.bcx.ins().func_addr(fx.pointer_type, func_ref);
                             lval.write_cvalue(fx, CValue::by_val(func_addr, to_layout));
@@ -760,8 +759,7 @@ fn codegen_stmt<'tcx>(
                                 def_id,
                                 args,
                                 ty::ClosureKind::FnOnce,
-                            )
-                            .polymorphize(fx.tcx);
+                            );
                             let func_ref = fx.get_function_ref(instance);
                             let func_addr = fx.bcx.ins().func_addr(fx.pointer_type, func_ref);
                             lval.write_cvalue(fx, CValue::by_val(func_addr, lval.layout()));
@@ -1087,7 +1085,7 @@ fn codegen_panic_inner<'tcx>(
 
     let def_id = fx.tcx.require_lang_item(lang_item, span);
 
-    let instance = Instance::mono(fx.tcx, def_id).polymorphize(fx.tcx);
+    let instance = Instance::mono(fx.tcx, def_id);
 
     if is_call_from_compiler_builtins_to_upstream_monomorphization(fx.tcx, instance) {
         fx.bcx.ins().trap(TrapCode::user(2).unwrap());
