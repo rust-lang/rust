@@ -7,48 +7,36 @@ fn vec_deref_to_slice(_1: &Vec<u8>) -> &[u8] {
         debug self => _1;
         scope 2 (inlined Vec::<u8>::as_slice) {
             debug self => _1;
-            let mut _9: *const u8;
-            let mut _10: usize;
+            let mut _7: *const u8;
+            let mut _8: usize;
             scope 3 (inlined Vec::<u8>::as_ptr) {
                 debug self => _1;
-                let mut _2: &alloc::raw_vec::RawVec<u8>;
-                let mut _8: *mut u8;
+                let mut _6: *mut u8;
                 scope 4 (inlined alloc::raw_vec::RawVec::<u8>::ptr) {
-                    debug self => _2;
-                    let mut _3: &alloc::raw_vec::RawVecInner;
                     scope 5 (inlined alloc::raw_vec::RawVecInner::ptr::<u8>) {
-                        debug self => _3;
-                        let mut _7: std::ptr::NonNull<u8>;
+                        let mut _5: std::ptr::NonNull<u8>;
                         scope 6 (inlined alloc::raw_vec::RawVecInner::non_null::<u8>) {
-                            debug self => _3;
-                            let mut _4: std::ptr::NonNull<u8>;
+                            let mut _2: std::ptr::NonNull<u8>;
                             scope 7 (inlined Unique::<u8>::cast::<u8>) {
-                                debug ((self: Unique<u8>).0: std::ptr::NonNull<u8>) => _4;
-                                debug ((self: Unique<u8>).1: std::marker::PhantomData<u8>) => const PhantomData::<u8>;
                                 scope 8 (inlined NonNull::<u8>::cast::<u8>) {
-                                    debug self => _4;
-                                    let mut _5: *mut u8;
-                                    let mut _6: *const u8;
+                                    let mut _3: *mut u8;
+                                    let mut _4: *const u8;
                                     scope 9 (inlined NonNull::<u8>::as_ptr) {
-                                        debug self => _4;
                                     }
                                 }
                             }
                             scope 10 (inlined Unique::<u8>::as_non_null_ptr) {
-                                debug ((self: Unique<u8>).0: std::ptr::NonNull<u8>) => _7;
-                                debug ((self: Unique<u8>).1: std::marker::PhantomData<u8>) => const PhantomData::<u8>;
                             }
                         }
                         scope 11 (inlined NonNull::<u8>::as_ptr) {
-                            debug self => _7;
                         }
                     }
                 }
             }
             scope 12 (inlined std::slice::from_raw_parts::<'_, u8>) {
-                debug data => _9;
-                debug len => _10;
-                let _11: *const [u8];
+                debug data => _7;
+                debug len => _8;
+                let _9: *const [u8];
                 scope 13 (inlined core::ub_checks::check_language_ub) {
                     scope 14 (inlined core::ub_checks::check_language_ub::runtime) {
                     }
@@ -58,11 +46,10 @@ fn vec_deref_to_slice(_1: &Vec<u8>) -> &[u8] {
                 scope 16 (inlined align_of::<u8>) {
                 }
                 scope 17 (inlined slice_from_raw_parts::<u8>) {
-                    debug data => _9;
-                    debug len => _10;
+                    debug data => _7;
+                    debug len => _8;
                     scope 18 (inlined std::ptr::from_raw_parts::<[u8], u8>) {
-                        debug data_pointer => _9;
-                        debug metadata => _10;
+                        debug data_pointer => _7;
                     }
                 }
             }
@@ -70,37 +57,31 @@ fn vec_deref_to_slice(_1: &Vec<u8>) -> &[u8] {
     }
 
     bb0: {
-        StorageLive(_8);
-        StorageLive(_9);
-        StorageLive(_2);
-        _2 = &((*_1).0: alloc::raw_vec::RawVec<u8>);
-        StorageLive(_3);
-        _3 = &(((*_1).0: alloc::raw_vec::RawVec<u8>).0: alloc::raw_vec::RawVecInner);
-        StorageLive(_7);
-        StorageLive(_4);
-        _4 = copy (((((*_1).0: alloc::raw_vec::RawVec<u8>).0: alloc::raw_vec::RawVecInner).0: std::ptr::Unique<u8>).0: std::ptr::NonNull<u8>);
-        StorageLive(_5);
         StorageLive(_6);
-        _5 = copy _4 as *mut u8 (Transmute);
-        _6 = copy _5 as *const u8 (PtrToPtr);
-        _7 = NonNull::<u8> { pointer: move _6 };
-        StorageDead(_6);
-        StorageDead(_5);
+        StorageLive(_7);
+        StorageLive(_5);
+        StorageLive(_2);
+        _2 = copy (((((*_1).0: alloc::raw_vec::RawVec<u8>).0: alloc::raw_vec::RawVecInner).0: std::ptr::Unique<u8>).0: std::ptr::NonNull<u8>);
+        StorageLive(_3);
+        StorageLive(_4);
+        _3 = copy _2 as *mut u8 (Transmute);
+        _4 = copy _3 as *const u8 (PtrToPtr);
+        _5 = NonNull::<u8> { pointer: move _4 };
         StorageDead(_4);
-        _8 = copy _7 as *mut u8 (Transmute);
-        StorageDead(_7);
         StorageDead(_3);
-        _9 = copy _8 as *const u8 (PtrToPtr);
         StorageDead(_2);
-        StorageLive(_10);
-        _10 = copy ((*_1).1: usize);
-        StorageLive(_11);
-        _11 = *const [u8] from (copy _9, copy _10);
-        _0 = &(*_11);
-        StorageDead(_11);
-        StorageDead(_10);
+        _6 = copy _5 as *mut u8 (Transmute);
+        StorageDead(_5);
+        _7 = copy _6 as *const u8 (PtrToPtr);
+        StorageLive(_8);
+        _8 = copy ((*_1).1: usize);
+        StorageLive(_9);
+        _9 = *const [u8] from (copy _7, copy _8);
+        _0 = &(*_9);
         StorageDead(_9);
         StorageDead(_8);
+        StorageDead(_7);
+        StorageDead(_6);
         return;
     }
 }
