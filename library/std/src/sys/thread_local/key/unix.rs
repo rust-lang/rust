@@ -1,7 +1,7 @@
 use crate::mem;
 
 // For WASI add a few symbols not in upstream `libc` just yet.
-#[cfg(target_os = "wasi")]
+#[cfg(all(target_os = "wasi", target_env = "p1", target_feature = "atomics"))]
 mod libc {
     use crate::ffi;
 
