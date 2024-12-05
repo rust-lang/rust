@@ -689,7 +689,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// Require that the region `r` be equal to one of the regions in
     /// the set `regions`.
     #[instrument(skip(self), level = "debug")]
-    pub fn member_constraint(
+    pub fn add_member_constraint(
         &self,
         key: ty::OpaqueTypeKey<'tcx>,
         definition_span: Span,
@@ -697,7 +697,9 @@ impl<'tcx> InferCtxt<'tcx> {
         region: ty::Region<'tcx>,
         in_regions: Lrc<Vec<ty::Region<'tcx>>>,
     ) {
-        self.inner.borrow_mut().unwrap_region_constraints().member_constraint(
+        // We do not support adding member constraints while in snapshots.
+        assert!(!self.in_snapshot());
+        self.inner.borrow_mut().unwrap_region_constraints().add_member_constraint(
             key,
             definition_span,
             hidden_ty,

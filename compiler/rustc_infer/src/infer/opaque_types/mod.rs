@@ -364,7 +364,7 @@ impl<'tcx> InferCtxt<'tcx> {
         concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
             tcx: self.tcx,
             op: |r| {
-                self.member_constraint(
+                self.add_member_constraint(
                     opaque_type_key,
                     span,
                     concrete_ty,
