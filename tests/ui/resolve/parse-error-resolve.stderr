@@ -1,0 +1,35 @@
+error: expected one of `+`, `,`, `::`, `=`, or `>`, found `From`
+  --> $DIR/parse_error.rs:2:46
+   |
+LL | impl<S: Into<std::borrow::Cow<'static, str>> From<S> for Canonical {
+   |                                              ^^^^ expected one of `+`, `,`, `::`, `=`, or `>`
+   |
+help: you might have meant to end the type parameters here
+   |
+LL | impl<S: Into<std::borrow::Cow<'static, str>>> From<S> for Canonical {
+   |                                             +
+
+error[E0432]: unresolved import `parse_error::Canonical`
+  --> $DIR/parse-error-resolve.rs:2:5
+   |
+LL | use parse_error::Canonical;
+   |     ^^^^^^^^^^^^^^^^^^^^^^ no `Canonical` in `parse_error`
+
+error[E0425]: cannot find value `Canonical` in module `parse_error`
+  --> $DIR/parse-error-resolve.rs:6:18
+   |
+LL |     parse_error::Canonical.foo();
+   |                  ^^^^^^^^^ not found in `parse_error`
+
+error[E0369]: cannot add `{integer}` to `&str`
+  --> $DIR/parse-error-resolve.rs:5:16
+   |
+LL |     let _ = "" + 1;
+   |             -- ^ - {integer}
+   |             |
+   |             &str
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0369, E0425, E0432.
+For more information about an error, try `rustc --explain E0369`.
