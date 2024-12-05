@@ -1611,7 +1611,7 @@ impl Step for Sysroot {
         let sysroot = sysroot_dir(compiler.stage);
 
         builder
-            .verbose(|| eprintln!("Removing sysroot {} to avoid caching bugs", sysroot.display()));
+            .verbose(|| println!("Removing sysroot {} to avoid caching bugs", sysroot.display()));
         let _ = fs::remove_dir_all(&sysroot);
         t!(fs::create_dir_all(&sysroot));
 
@@ -1681,7 +1681,7 @@ impl Step for Sysroot {
                     return true;
                 }
                 if !filtered_files.iter().all(|f| f != path.file_name().unwrap()) {
-                    builder.verbose_than(1, || eprintln!("ignoring {}", path.display()));
+                    builder.verbose_than(1, || println!("ignoring {}", path.display()));
                     false
                 } else {
                     true
@@ -2240,7 +2240,7 @@ pub fn stream_cargo(
         cargo.arg(arg);
     }
 
-    builder.verbose(|| eprintln!("running: {cargo:?}"));
+    builder.verbose(|| println!("running: {cargo:?}"));
 
     if builder.config.dry_run() {
         return true;
@@ -2261,12 +2261,12 @@ pub fn stream_cargo(
             Ok(msg) => {
                 if builder.config.json_output {
                     // Forward JSON to stdout.
-                    eprintln!("{line}");
+                    println!("{line}");
                 }
                 cb(msg)
             }
             // If this was informational, just print it out and continue
-            Err(_) => eprintln!("{line}"),
+            Err(_) => println!("{line}"),
         }
     }
 

@@ -185,7 +185,7 @@ impl BuildMetrics {
                 if version.format_version == CURRENT_FORMAT_VERSION {
                     t!(serde_json::from_slice::<JsonRoot>(&contents)).invocations
                 } else {
-                    eprintln!(
+                    println!(
                         "WARNING: overriding existing build/metrics.json, as it's not \
                          compatible with build metrics format version {CURRENT_FORMAT_VERSION}."
                     );

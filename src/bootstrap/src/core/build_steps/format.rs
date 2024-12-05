@@ -107,10 +107,10 @@ fn print_paths(verb: &str, adjective: Option<&str>, paths: &[String]) {
         if let Some(adjective) = adjective { format!("{adjective} ") } else { String::new() };
     if len <= 10 {
         for path in paths {
-            eprintln!("fmt: {verb} {adjective}file {path}");
+            println!("fmt: {verb} {adjective}file {path}");
         }
     } else {
-        eprintln!("fmt: {verb} {len} {adjective}files");
+        println!("fmt: {verb} {len} {adjective}files");
     }
 }
 
@@ -199,7 +199,7 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
                 match get_modified_rs_files(build) {
                     Ok(Some(files)) => {
                         if files.is_empty() {
-                            eprintln!("fmt info: No modified files detected for formatting.");
+                            println!("fmt info: No modified files detected for formatting.");
                             return;
                         }
 
