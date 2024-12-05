@@ -1,7 +1,6 @@
-//
 //@ compile-flags:-Zprint-mono-items=eager
-//@ compile-flags:-Zinline-in-all-cgus
 //@ compile-flags:-Zinline-mir=no
+//@ compile-flags: -O
 
 #![crate_type = "lib"]
 

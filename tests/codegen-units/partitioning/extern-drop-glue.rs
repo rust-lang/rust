@@ -1,14 +1,13 @@
-// We specify incremental here because we want to test the partitioning for incremental compilation
-// We specify opt-level=0 because `drop_in_place` is `Internal` when optimizing
 //@ incremental
-//@ compile-flags:-Zprint-mono-items=lazy
-//@ compile-flags:-Zinline-in-all-cgus -Copt-level=0
+//@ compile-flags: -Zprint-mono-items=lazy -Copt-level=0
 
-#![allow(dead_code)]
 #![crate_type = "rlib"]
 
 //@ aux-build:cgu_extern_drop_glue.rs
 extern crate cgu_extern_drop_glue;
+
+// This test checks that drop glue is generated, even for types not defined in this crate, and all
+// drop glue is put in the fallback CGU.
 
 //~ MONO_ITEM fn std::ptr::drop_in_place::<cgu_extern_drop_glue::Struct> - shim(Some(cgu_extern_drop_glue::Struct)) @@ extern_drop_glue-fallback.cgu[External]
 

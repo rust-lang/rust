@@ -1,5 +1,4 @@
-//
-//@ compile-flags:-Zprint-mono-items=eager -Zinline-in-all-cgus -Zmir-opt-level=0
+//@ compile-flags:-Zprint-mono-items=eager -Zmir-opt-level=0
 
 #![deny(dead_code)]
 #![crate_type = "lib"]
