@@ -511,7 +511,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
 
         // This is for global caching, so we properly track query dependencies.
         // Everything that affects the `result` should be performed within this
-        // `with_anon_task` closure. If computing this goal depends on something
+        // `with_cached_task` closure. If computing this goal depends on something
         // not tracked by the cache key and from outside of this anon task, it
         // must not be added to the global cache. Notably, this is the case for
         // trait solver cycles participants.
