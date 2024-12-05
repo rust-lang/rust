@@ -59,9 +59,9 @@ pub(crate) fn generic_arg(p: &mut Parser<'_>) -> bool {
 
         // test macro_inside_generic_arg
         // type A = Foo<syn::Token![_]>;
-        IDENT => {
+        k if PATH_NAME_REF_KINDS.contains(k) => {
             let m = p.start();
-            name_ref(p);
+            name_ref_mod_path(p);
             paths::opt_path_type_args(p);
             match p.current() {
                 T![=] => {

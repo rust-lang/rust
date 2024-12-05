@@ -107,37 +107,32 @@ fn path_segment(p: &mut Parser<'_>, mode: Mode, first: bool) -> Option<Completed
         }
     } else {
         let mut empty = if first { !p.eat(T![::]) } else { true };
-        match p.current() {
-            IDENT => {
-                name_ref(p);
-                opt_path_args(p, mode);
-            }
+        if p.at_ts(PATH_NAME_REF_KINDS) {
             // test crate_path
             // use crate::foo;
-            T![self] | T![super] | T![crate] | T![Self] => {
-                let m = p.start();
-                p.bump_any();
-                m.complete(p, NAME_REF);
-            }
-            _ => {
-                let recover_set = match mode {
-                    Mode::Use => items::ITEM_RECOVERY_SET,
-                    Mode::Attr => {
-                        items::ITEM_RECOVERY_SET.union(TokenSet::new(&[T![']'], T![=], T![#]]))
-                    }
-                    Mode::Vis => items::ITEM_RECOVERY_SET.union(TokenSet::new(&[T![')']])),
-                    Mode::Type => TYPE_PATH_SEGMENT_RECOVERY_SET,
-                    Mode::Expr => EXPR_PATH_SEGMENT_RECOVERY_SET,
-                };
-                empty &= p.err_recover("expected identifier", recover_set);
-                if empty {
-                    // test_err empty_segment
-                    // use crate::;
-                    m.abandon(p);
-                    return None;
+            name_ref_mod_path(p);
+            opt_path_args(p, mode);
+        } else {
+            let recover_set = match mode {
+                Mode::Use => items::ITEM_RECOVERY_SET,
+                Mode::Attr => {
+                    items::ITEM_RECOVERY_SET.union(TokenSet::new(&[T![']'], T![=], T![#]]))
                 }
+                Mode::Vis => items::ITEM_RECOVERY_SET.union(TokenSet::new(&[T![')']])),
+                Mode::Type => TYPE_PATH_SEGMENT_RECOVERY_SET,
+                Mode::Expr => EXPR_PATH_SEGMENT_RECOVERY_SET,
+            };
+            empty &= p.err_recover(
+                "expected identifier, `self`, `super`, `crate`, or `Self`",
+                recover_set,
+            );
+            if empty {
+                // test_err empty_segment
+                // use crate::;
+                m.abandon(p);
+                return None;
             }
-        };
+        }
     }
     Some(m.complete(p, PATH_SEGMENT))
 }

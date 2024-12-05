@@ -259,13 +259,7 @@ fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
         type_(p);
         p.expect(T![,]);
         while !p.at(EOF) && !p.at(T![')']) {
-            if p.at(IDENT) || p.at(INT_NUMBER) {
-                name_ref_or_index(p);
-            // } else if p.at(FLOAT_NUMBER) {
-            // FIXME: needs float hack
-            } else {
-                p.err_and_bump("expected field name or number");
-            }
+            name_ref_mod_path_or_index(p);
             if !p.at(T![')']) {
                 p.expect(T![.]);
             }
@@ -465,9 +459,9 @@ fn parse_clobber_abi(p: &mut Parser<'_>) {
 
 fn parse_reg(p: &mut Parser<'_>) {
     p.expect(T!['(']);
-    if p.at(T![ident]) {
+    if p.at_ts(PATH_NAME_REF_KINDS) {
         let m = p.start();
-        name_ref(p);
+        name_ref_mod_path(p);
         m.complete(p, ASM_REG_SPEC);
     } else if p.at(T![string]) {
         let m = p.start();

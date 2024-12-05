@@ -307,13 +307,49 @@ fn name(p: &mut Parser<'_>) {
     name_r(p, TokenSet::EMPTY);
 }
 
-fn name_ref(p: &mut Parser<'_>) {
-    if p.at(IDENT) {
+fn name_ref_or_self(p: &mut Parser<'_>) {
+    if matches!(p.current(), T![ident] | T![self]) {
         let m = p.start();
-        p.bump(IDENT);
+        p.bump_any();
         m.complete(p, NAME_REF);
     } else {
-        p.err_and_bump("expected identifier");
+        p.err_and_bump("expected identifier or `self`");
+    }
+}
+
+fn name_ref_or_upper_self(p: &mut Parser<'_>) {
+    if matches!(p.current(), T![ident] | T![Self]) {
+        let m = p.start();
+        p.bump_any();
+        m.complete(p, NAME_REF);
+    } else {
+        p.err_and_bump("expected identifier or `Self`");
+    }
+}
+
+const PATH_NAME_REF_KINDS: TokenSet =
+    TokenSet::new(&[IDENT, T![self], T![super], T![crate], T![Self]]);
+
+fn name_ref_mod_path(p: &mut Parser<'_>) {
+    if p.at_ts(PATH_NAME_REF_KINDS) {
+        let m = p.start();
+        p.bump_any();
+        m.complete(p, NAME_REF);
+    } else {
+        p.err_and_bump("expected identifier, `self`, `super`, `crate`, or `Self`");
+    }
+}
+
+const PATH_NAME_REF_OR_INDEX_KINDS: TokenSet =
+    PATH_NAME_REF_KINDS.union(TokenSet::new(&[INT_NUMBER]));
+
+fn name_ref_mod_path_or_index(p: &mut Parser<'_>) {
+    if p.at_ts(PATH_NAME_REF_OR_INDEX_KINDS) {
+        let m = p.start();
+        p.bump_any();
+        m.complete(p, NAME_REF);
+    } else {
+        p.err_and_bump("expected integer, identifier, `self`, `super`, `crate`, or `Self`");
     }
 }
 

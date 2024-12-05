@@ -145,6 +145,9 @@ fn type_bound(p: &mut Parser<'_>) -> bool {
         T![for] => types::for_type(p, false),
         // test precise_capturing
         // fn captures<'a: 'a, 'b: 'b, T>() -> impl Sized + use<'b, T, Self> {}
+
+        // test_err precise_capturing_invalid
+        // type T = impl use<self, 1>;
         T![use] if p.nth_at(1, T![<]) => {
             p.bump_any();
             let m = p.start();
@@ -156,14 +159,10 @@ fn type_bound(p: &mut Parser<'_>) -> bool {
                 || "expected identifier or lifetime".into(),
                 TokenSet::new(&[T![Self], IDENT, LIFETIME_IDENT]),
                 |p| {
-                    if p.at(T![Self]) {
-                        let m = p.start();
-                        p.bump(T![Self]);
-                        m.complete(p, NAME_REF);
-                    } else if p.at(LIFETIME_IDENT) {
+                    if p.at(LIFETIME_IDENT) {
                         lifetime(p);
                     } else {
-                        name_ref(p);
+                        name_ref_or_upper_self(p);
                     }
                     true
                 },

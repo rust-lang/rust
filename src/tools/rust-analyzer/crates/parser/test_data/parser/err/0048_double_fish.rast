@@ -115,10 +115,10 @@ SOURCE_FILE
         WHITESPACE "\n"
         R_CURLY "}"
   WHITESPACE "\n"
-error 30: expected identifier
+error 30: expected identifier, `self`, `super`, `crate`, or `Self`
 error 31: expected COMMA
 error 37: expected expression
-error 75: expected identifier
+error 75: expected identifier, `self`, `super`, `crate`, or `Self`
 error 76: expected SEMICOLON
 error 82: expected expression
 error 83: expected SEMICOLON

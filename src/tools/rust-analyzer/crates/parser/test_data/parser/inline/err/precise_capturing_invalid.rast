@@ -1,0 +1,28 @@
+SOURCE_FILE
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "T"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    IMPL_TRAIT_TYPE
+      IMPL_KW "impl"
+      WHITESPACE " "
+      TYPE_BOUND_LIST
+        TYPE_BOUND
+          USE_KW "use"
+          USE_BOUND_GENERIC_ARGS
+            L_ANGLE "<"
+            ERROR
+              SELF_KW "self"
+            COMMA ","
+            WHITESPACE " "
+            ERROR
+              INT_NUMBER "1"
+            R_ANGLE ">"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+error 18: expected identifier or `Self`
+error 24: expected identifier or `Self`
