@@ -1631,6 +1631,29 @@ fn test<'lifetime>(
 }
 
 #[test]
+fn lifetime_bounds() {
+    check_infer(
+        r#"
+//- minicore: sized, coerce_unsized
+trait Trait<'a>: Sized {
+    fn f(&'a self) {}
+}
+fn test<'a, 'b: 'a>(it: impl Trait<'a>){
+    it.f();
+}
+"#,
+        expect![[r#"
+            38..42 'self': &'a Self
+            44..46 '{}': ()
+            69..71 'it': impl Trait<'a>
+            88..103 '{     it.f(); }': ()
+            94..96 'it': impl Trait<'a>
+            94..100 'it.f()': ()
+        "#]],
+    );
+}
+
+#[test]
 fn error_bound_chalk() {
     check_types(
         r#"

@@ -772,16 +772,6 @@ impl NameRefClass {
                 .map(GenericParam::LifetimeParam)
                 .map(Definition::GenericParam)
                 .map(NameRefClass::Definition),
-            // lifetime bounds, as in the 'b in 'a: 'b aren't wrapped in TypeBound nodes so we gotta check
-            // if our lifetime is in a LifetimeParam without being the constrained lifetime
-            _ if ast::LifetimeParam::cast(parent).and_then(|param| param.lifetime()).as_ref()
-                != Some(lifetime) =>
-            {
-                sema.resolve_lifetime_param(lifetime)
-                    .map(GenericParam::LifetimeParam)
-                    .map(Definition::GenericParam)
-                    .map(NameRefClass::Definition)
-            }
             _ => None,
         }
     }

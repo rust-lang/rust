@@ -56,7 +56,7 @@ fn generic_param(p: &mut Parser<'_>, m: Marker) -> bool {
 fn lifetime_param(p: &mut Parser<'_>, m: Marker) {
     assert!(p.at(LIFETIME_IDENT));
     lifetime(p);
-    if p.at(T![:]) {
+    if p.eat(T![:]) {
         lifetime_bounds(p);
     }
     m.complete(p, LIFETIME_PARAM);
@@ -106,14 +106,19 @@ fn const_param(p: &mut Parser<'_>, m: Marker) {
 }
 
 fn lifetime_bounds(p: &mut Parser<'_>) {
-    assert!(p.at(T![:]));
-    p.bump(T![:]);
-    while p.at(LIFETIME_IDENT) {
-        lifetime(p);
+    let marker = p.start();
+    while {
+        if !matches!(p.current(), LIFETIME_IDENT | T![>] | T![,]) {
+            p.error("expected lifetime");
+        }
+
+        type_bound(p)
+    } {
         if !p.eat(T![+]) {
             break;
         }
     }
+    marker.complete(p, TYPE_BOUND_LIST);
 }
 
 // test type_param_bounds

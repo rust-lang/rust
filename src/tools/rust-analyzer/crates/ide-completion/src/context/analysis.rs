@@ -562,7 +562,7 @@ fn expected_type_and_name(
 }
 
 fn classify_lifetime(
-    _sema: &Semantics<'_, RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     original_file: &SyntaxNode,
     lifetime: ast::Lifetime,
 ) -> Option<LifetimeContext> {
@@ -571,21 +571,22 @@ fn classify_lifetime(
         return None;
     }
 
+    let lifetime =
+        find_node_at_offset::<ast::Lifetime>(original_file, lifetime.syntax().text_range().start());
     let kind = match_ast! {
         match parent {
-            ast::LifetimeParam(param) => LifetimeKind::LifetimeParam {
-                is_decl: param.lifetime().as_ref() == Some(&lifetime),
-                param
-            },
+            ast::LifetimeParam(_) => LifetimeKind::LifetimeParam,
             ast::BreakExpr(_) => LifetimeKind::LabelRef,
             ast::ContinueExpr(_) => LifetimeKind::LabelRef,
             ast::Label(_) => LifetimeKind::LabelDef,
-            _ => LifetimeKind::Lifetime,
+            _ => {
+                let def = lifetime.as_ref().and_then(|lt| sema.scope(lt.syntax())?.generic_def());
+                LifetimeKind::Lifetime { in_lifetime_param_bound: ast::TypeBound::can_cast(parent.kind()), def }
+            },
         }
     };
-    let lifetime = find_node_at_offset(original_file, lifetime.syntax().text_range().start());
 
-    Some(LifetimeContext { lifetime, kind })
+    Some(LifetimeContext { kind })
 }
 
 fn classify_name(
