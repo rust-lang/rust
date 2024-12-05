@@ -143,7 +143,7 @@ auto:
     <<: *job-linux-4c
 
   - image: dist-arm-linux
-    <<: *job-linux-8c
+    <<: *job-aarch64-linux
 
   - image: dist-armhf-linux
     <<: *job-linux-4c
