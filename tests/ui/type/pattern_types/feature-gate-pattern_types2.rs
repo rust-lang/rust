@@ -1,7 +1,7 @@
 //@ compile-flags: -Zno-analysis
 //@ check-pass
 
-#![feature(core_pattern_type)]
+#![feature(pattern_type_macro)]
 
 use std::pat::pattern_type;
 

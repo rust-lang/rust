@@ -3936,17 +3936,8 @@ The tracking issue for this feature is: [#117693]
 "##,
     },
     Lint {
-        label: "core_pattern_type",
-        description: r##"# `core_pattern_type`
-
-This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
-
-------------------------
-"##,
-    },
-    Lint {
-        label: "core_pattern_types",
-        description: r##"# `core_pattern_types`
+        label: "pattern_type_macro",
+        description: r##"# `pattern_type_macro`
 
 This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
 
