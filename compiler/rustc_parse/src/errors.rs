@@ -3409,3 +3409,22 @@ pub(crate) struct PolarityAndModifiers {
     pub polarity: &'static str,
     pub modifiers_concatenated: String,
 }
+
+#[derive(Diagnostic)]
+#[diag(parse_incorrect_type_on_self)]
+pub(crate) struct IncorrectTypeOnSelf {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub move_self_modifier: MoveSelfModifier,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
+pub(crate) struct MoveSelfModifier {
+    #[suggestion_part(code = "")]
+    pub removal_span: Span,
+    #[suggestion_part(code = "{modifier}")]
+    pub insertion_span: Span,
+    pub modifier: String,
+}
