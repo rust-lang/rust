@@ -2634,6 +2634,11 @@ fn prepare_cargo_test(
     if builder.kind == Kind::Test && !builder.fail_fast {
         cargo.arg("--no-fail-fast");
     }
+
+    if builder.config.json_output {
+        cargo.arg("--message-format=json");
+    }
+
     match builder.doc_tests {
         DocTests::Only => {
             cargo.arg("--doc");
