@@ -58,6 +58,22 @@ envs:
     NO_DEBUG_ASSERTIONS: 1
     NO_OVERFLOW_CHECKS: 1
 
+  # Different set of tests to run tests in parallel in multiple jobs.
+  stage_2_test_set1: &stage_2_test_set1
+    DOCKER_SCRIPT: >-
+      python3 ../x.py --stage 2 test
+      --skip compiler
+      --skip src
+
+  stage_2_test_set2: &stage_2_test_set2
+    DOCKER_SCRIPT: >-
+      python3 ../x.py --stage 2 test
+      --skip tests
+      --skip coverage-map
+      --skip coverage-run
+      --skip library
+      --skip tidyselftest
+
   production:
     &production
     DEPLOY_BUCKET: rust-lang-ci2
@@ -212,11 +228,42 @@ auto:
   - image: dist-x86_64-netbsd
     <<: *job-linux-4c
 
-  - image: i686-gnu
-    <<: *job-linux-8c
+  # The i686-gnu job is split into multiple jobs to run tests in parallel.
+  # i686-gnu-1 skips tests that run in i686-gnu-2.
+  - image: i686-gnu-1
+    env:
+      IMAGE: i686-gnu
+      <<: *stage_2_test_set1
+    <<: *job-linux-4c
 
-  - image: i686-gnu-nopt
-    <<: *job-linux-8c
+  # Skip tests that run in i686-gnu-1
+  - image: i686-gnu-2
+    env:
+      IMAGE: i686-gnu
+      <<: *stage_2_test_set2
+    <<: *job-linux-4c
+
+  # The i686-gnu-nopt job is split into multiple jobs to run tests in parallel.
+  # i686-gnu-nopt-1 skips tests that run in i686-gnu-nopt-2
+  - image: i686-gnu-nopt-1
+    env:
+      IMAGE: i686-gnu-nopt
+      <<: *stage_2_test_set1
+    <<: *job-linux-4c
+
+  # Skip tests that run in i686-gnu-nopt-1
+  - image: i686-gnu-nopt-2
+    env:
+      IMAGE: i686-gnu-nopt
+      DOCKER_SCRIPT: >-
+        python3 ../x.py test --stage 0 --config /config/nopt-std-config.toml library/std &&
+        python3 ../x.py --stage 2 test
+        --skip tests
+        --skip coverage-map
+        --skip coverage-run
+        --skip library
+        --skip tidyselftest
+    <<: *job-linux-4c
 
   - image: mingw-check
     <<: *job-linux-4c
