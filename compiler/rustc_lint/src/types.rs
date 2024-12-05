@@ -1593,19 +1593,16 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }]);
             }
             ffir @ FfiResult::FfiUnsafeWrapper { .. } => {
-                let mut last_ty = None;
-                let mut ffiresult_recursor = Some(&ffir);
+                let mut ffiresult_recursor = ControlFlow::Continue(&ffir);
                 let mut cimproper_layers: Vec<ImproperCTypesLayer<'tcx>> = vec![];
 
                 // this whole while block converts the arbitrarily-deep
-                // FfiResult stack to a ImproperCTypesLayer Vec
-                while let Some(ref ffir_rec) = ffiresult_recursor {
+                // FfiResult stack to an ImproperCTypesLayer Vec
+                while let ControlFlow::Continue(ref ffir_rec) = ffiresult_recursor {
                     match ffir_rec {
                         FfiResult::FfiPhantom(ty) => {
-                            last_ty = Some(ty.clone());
-                            let len = cimproper_layers.len();
-                            if len > 0 {
-                                cimproper_layers[len - 1].inner_ty = last_ty.clone();
+                            if let Some(layer) = cimproper_layers.last_mut() {
+                                layer.inner_ty = Some(ty.clone());
                             }
                             cimproper_layers.push(ImproperCTypesLayer {
                                 ty: ty.clone(),
@@ -1614,14 +1611,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                                 note: fluent::lint_improper_ctypes_only_phantomdata,
                                 span_note: None, // filled later
                             });
-                            ffiresult_recursor = None;
+                            ffiresult_recursor = ControlFlow::Break(());
                         }
                         FfiResult::FfiUnsafe { ty, reason, help }
                         | FfiResult::FfiUnsafeWrapper { ty, reason, help, .. } => {
-                            last_ty = Some(ty.clone());
-                            let len = cimproper_layers.len();
-                            if len > 0 {
-                                cimproper_layers[len - 1].inner_ty = last_ty.clone();
+                            if let Some(layer) = cimproper_layers.last_mut() {
+                                layer.inner_ty = Some(ty.clone());
                             }
                             cimproper_layers.push(ImproperCTypesLayer {
                                 ty: ty.clone(),
@@ -1632,9 +1627,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             });
 
                             if let FfiResult::FfiUnsafeWrapper { wrapped, .. } = ffir_rec {
-                                ffiresult_recursor = Some(wrapped.as_ref());
+                                ffiresult_recursor = ControlFlow::Continue(wrapped.as_ref());
                             } else {
-                                ffiresult_recursor = None;
+                                ffiresult_recursor = ControlFlow::Break(());
                             }
                         }
                         FfiResult::FfiSafe => {
@@ -1642,12 +1637,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         }
                     };
                 }
-                let last_ty = match last_ty {
-                    Some(last_ty) => last_ty,
-                    None => bug!(
-                        "This option should definitely have been filled by the loop that just finished"
-                    ),
-                };
+                // should always have at least one type
+                let last_ty = cimproper_layers.last().unwrap().ty.clone();
                 self.emit_ffi_unsafe_type_lint(last_ty, sp, cimproper_layers);
             }
         }
