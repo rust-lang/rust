@@ -14,7 +14,7 @@ pub(crate) fn target() -> Target {
             description: Some("64-bit PowerPC Linux with musl 1.2.3".into()),
             tier: Some(3),
             host_tools: Some(false),
-            std: None, // ?
+            std: Some(true),
         },
         pointer_width: 64,
         data_layout: "E-m:e-Fn32-i64:64-n32:64-S128-v256:256:256-v512:512:512".into(),
