@@ -733,6 +733,12 @@ impl NameRefClass {
                     }
                     None
                 },
+                ast::UseBoundGenericArgs(_) => {
+                    sema.resolve_use_type_arg(name_ref)
+                        .map(GenericParam::TypeParam)
+                        .map(Definition::GenericParam)
+                        .map(NameRefClass::Definition)
+                },
                 ast::ExternCrate(extern_crate_ast) => {
                     let extern_crate = sema.to_def(&extern_crate_ast)?;
                     let krate = extern_crate.resolved_crate(sema.db)?;
@@ -764,6 +770,7 @@ impl NameRefClass {
                 sema.resolve_label(lifetime).map(Definition::Label).map(NameRefClass::Definition)
             }
             SyntaxKind::LIFETIME_ARG
+            | SyntaxKind::USE_BOUND_GENERIC_ARGS
             | SyntaxKind::SELF_PARAM
             | SyntaxKind::TYPE_BOUND
             | SyntaxKind::WHERE_PRED

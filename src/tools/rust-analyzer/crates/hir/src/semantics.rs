@@ -1517,6 +1517,10 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(path.syntax())?.resolve_path(self.db, path)
     }
 
+    pub fn resolve_use_type_arg(&self, name: &ast::NameRef) -> Option<TypeParam> {
+        self.analyze(name.syntax())?.resolve_use_type_arg(name)
+    }
+
     pub fn resolve_mod_path(
         &self,
         scope: &SyntaxNode,

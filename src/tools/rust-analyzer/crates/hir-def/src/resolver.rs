@@ -642,9 +642,9 @@ impl Resolver {
         })
     }
 
-    pub fn generic_params(&self) -> Option<&Arc<GenericParams>> {
+    pub fn generic_params(&self) -> Option<&GenericParams> {
         self.scopes().find_map(|scope| match scope {
-            Scope::GenericParams { params, .. } => Some(params),
+            Scope::GenericParams { params, .. } => Some(&**params),
             _ => None,
         })
     }

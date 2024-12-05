@@ -642,6 +642,14 @@ impl SourceAnalyzer {
         }
     }
 
+    pub(crate) fn resolve_use_type_arg(&self, name: &ast::NameRef) -> Option<crate::TypeParam> {
+        let name = name.as_name();
+        self.resolver
+            .all_generic_params()
+            .find_map(|(params, parent)| params.find_type_by_name(&name, *parent))
+            .map(crate::TypeParam::from)
+    }
+
     pub(crate) fn resolve_path(
         &self,
         db: &dyn HirDatabase,
