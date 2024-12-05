@@ -85,8 +85,8 @@ where
         let size = self.domain_size();
         assert_eq!(size, old.domain_size());
 
-        let mut set_in_self = ChunkedBitSet::new_empty(size);
-        let mut cleared_in_self = ChunkedBitSet::new_empty(size);
+        let mut set_in_self = MixedBitSet::new_empty(size);
+        let mut cleared_in_self = MixedBitSet::new_empty(size);
 
         for i in (0..size).map(T::new) {
             match (self.contains(i), old.contains(i)) {
@@ -112,8 +112,8 @@ where
         let size = self.domain_size();
         assert_eq!(size, old.domain_size());
 
-        let mut set_in_self = ChunkedBitSet::new_empty(size);
-        let mut cleared_in_self = ChunkedBitSet::new_empty(size);
+        let mut set_in_self = MixedBitSet::new_empty(size);
+        let mut cleared_in_self = MixedBitSet::new_empty(size);
 
         for i in (0..size).map(T::new) {
             match (self.contains(i), old.contains(i)) {
@@ -179,8 +179,8 @@ where
 }
 
 fn fmt_diff<T, C>(
-    inserted: &ChunkedBitSet<T>,
-    removed: &ChunkedBitSet<T>,
+    inserted: &MixedBitSet<T>,
+    removed: &MixedBitSet<T>,
     ctxt: &C,
     f: &mut fmt::Formatter<'_>,
 ) -> fmt::Result
