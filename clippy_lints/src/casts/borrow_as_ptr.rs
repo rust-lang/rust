@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::std_or_core;
+use clippy_utils::{is_lint_allowed, std_or_core};
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, Ty, TyKind};
 use rustc_lint::LateContext;
@@ -13,10 +13,11 @@ pub(super) fn check<'tcx>(
     expr: &'tcx Expr<'_>,
     cast_expr: &'tcx Expr<'_>,
     cast_to: &'tcx Ty<'_>,
-) {
+) -> bool {
     if matches!(cast_to.kind, TyKind::Ptr(_))
         && let ExprKind::AddrOf(BorrowKind::Ref, mutability, e) = cast_expr.kind
         && let Some(std_or_core) = std_or_core(cx)
+        && !is_lint_allowed(cx, BORROW_AS_PTR, expr.hir_id)
     {
         let macro_name = match mutability {
             Mutability::Not => "addr_of",
@@ -31,7 +32,7 @@ pub(super) fn check<'tcx>(
                 .get(base.hir_id)
                 .is_some_and(|x| x.iter().any(|adj| matches!(adj.kind, Adjust::Deref(_))))
         }) {
-            return;
+            return false;
         }
 
         span_lint_and_sugg(
@@ -43,5 +44,7 @@ pub(super) fn check<'tcx>(
             format!("{std_or_core}::ptr::{macro_name}!({snip})"),
             Applicability::MachineApplicable,
         );
+        return true;
     }
+    false
 }
