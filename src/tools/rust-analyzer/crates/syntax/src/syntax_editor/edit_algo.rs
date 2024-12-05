@@ -102,6 +102,7 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
     let mut changed_ancestors: VecDeque<ChangedAncestor> = VecDeque::new();
     let mut dependent_changes = vec![];
     let mut independent_changes = vec![];
+    let mut outdated_changes = vec![];
 
     for (change_index, change) in changes.iter().enumerate() {
         // Check if this change is dependent on another change (i.e. it's contained within another range)
@@ -116,10 +117,14 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
             // FIXME: Resolve changes that depend on a range of elements
             let ancestor = &changed_ancestors[index];
 
-            dependent_changes.push(DependentChange {
-                parent: ancestor.change_index as u32,
-                child: change_index as u32,
-            });
+            if let Change::Replace(_, None) = changes[ancestor.change_index] {
+                outdated_changes.push(change_index as u32);
+            } else {
+                dependent_changes.push(DependentChange {
+                    parent: ancestor.change_index as u32,
+                    child: change_index as u32,
+                });
+            }
         } else {
             // This change is independent of any other change
 
@@ -195,8 +200,9 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
             Change::Replace(target, Some(new_target)) => {
                 (to_owning_node(target), to_owning_node(new_target))
             }
-            // Silently drop outdated change
-            Change::Replace(_, None) => continue,
+            Change::Replace(_, None) => {
+                unreachable!("deletions should not generate dependent changes")
+            }
             Change::ReplaceAll(_, _) | Change::ReplaceWithMany(_, _) => {
                 unimplemented!("cannot resolve changes that depend on replacing many elements")
             }
@@ -232,6 +238,12 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
                 *range = upmap_target(range.start())..=upmap_target(range.end());
             }
         }
+    }
+
+    // We reverse here since we pushed to this in ascending order,
+    // and we want to remove elements in descending order
+    for idx in outdated_changes.into_iter().rev() {
+        changes.remove(idx as usize);
     }
 
     // Apply changes
