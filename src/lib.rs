@@ -42,7 +42,6 @@ use cranelift_codegen::settings::{self, Configurable};
 use rustc_codegen_ssa::CodegenResults;
 use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_session::Session;
@@ -123,7 +122,6 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
 /// The codegen context holds any information shared between the codegen of individual functions
 /// inside a single codegen unit with the exception of the Cranelift [`Module`](cranelift_module::Module).
 struct CodegenCx {
-    profiler: SelfProfilerRef,
     output_filenames: Arc<OutputFilenames>,
     should_write_ir: bool,
     global_asm: String,
@@ -142,7 +140,6 @@ impl CodegenCx {
             None
         };
         CodegenCx {
-            profiler: tcx.prof.clone(),
             output_filenames: tcx.output_filenames(()).clone(),
             should_write_ir: crate::pretty_clif::should_write_ir(tcx),
             global_asm: String::new(),

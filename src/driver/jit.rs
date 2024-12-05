@@ -204,7 +204,7 @@ pub(crate) fn codegen_and_compile_fn<'tcx>(
     instance: Instance<'tcx>,
 ) {
     cranelift_codegen::timing::set_thread_profiler(Box::new(super::MeasuremeProfiler(
-        cx.profiler.clone(),
+        tcx.prof.clone(),
     )));
 
     tcx.prof.generic_activity("codegen and compile fn").run(|| {
@@ -220,7 +220,7 @@ pub(crate) fn codegen_and_compile_fn<'tcx>(
             module,
             instance,
         ) {
-            crate::base::compile_fn(cx, cached_context, module, codegened_func);
+            crate::base::compile_fn(cx, &tcx.prof, cached_context, module, codegened_func);
         }
     });
 }

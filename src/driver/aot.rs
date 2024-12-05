@@ -548,28 +548,36 @@ fn module_codegen(
 
     let producer = crate::debuginfo::producer(tcx.sess);
 
+    let profiler = tcx.prof.clone();
+
     OngoingModuleCodegen::Async(std::thread::spawn(move || {
-        cx.profiler.clone().generic_activity_with_arg("compile functions", &*cgu_name).run(|| {
+        profiler.clone().generic_activity_with_arg("compile functions", &*cgu_name).run(|| {
             cranelift_codegen::timing::set_thread_profiler(Box::new(super::MeasuremeProfiler(
-                cx.profiler.clone(),
+                profiler.clone(),
             )));
 
             let mut cached_context = Context::new();
             for codegened_func in codegened_functions {
-                crate::base::compile_fn(&mut cx, &mut cached_context, &mut module, codegened_func);
+                crate::base::compile_fn(
+                    &mut cx,
+                    &profiler,
+                    &mut cached_context,
+                    &mut module,
+                    codegened_func,
+                );
             }
         });
 
         let global_asm_object_file =
-            cx.profiler.generic_activity_with_arg("compile assembly", &*cgu_name).run(|| {
+            profiler.generic_activity_with_arg("compile assembly", &*cgu_name).run(|| {
                 crate::global_asm::compile_global_asm(&global_asm_config, &cgu_name, &cx.global_asm)
             })?;
 
         let codegen_result =
-            cx.profiler.generic_activity_with_arg("write object file", &*cgu_name).run(|| {
+            profiler.generic_activity_with_arg("write object file", &*cgu_name).run(|| {
                 emit_cgu(
                     &global_asm_config.output_filenames,
-                    &cx.profiler,
+                    &profiler,
                     cgu_name,
                     module,
                     cx.debug_context,
