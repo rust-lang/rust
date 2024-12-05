@@ -15,11 +15,12 @@ pub unsafe fn setup(build: &mut crate::Build) {
 ///
 /// Most of the time when you're running a build system (e.g., make) you expect
 /// Ctrl-C or abnormal termination to actually terminate the entire tree of
-/// process in play, not just the one at the top. This currently works "by
+/// processes in play. This currently works "by
 /// default" on Unix platforms because Ctrl-C actually sends a signal to the
-/// *process group* rather than the parent process, so everything will get torn
-/// down. On Windows, however, this does not happen and Ctrl-C just kills the
-/// parent process.
+/// *process group* so everything will get torn
+/// down. On Windows, however, Ctrl-C is only sent to processes in the same console.
+/// If a process is detached or attached to another console, it won't receive the
+/// signal.
 ///
 /// To achieve the same semantics on Windows we use Job Objects to ensure that
 /// all processes die at the same time. Job objects have a mode of operation
