@@ -1104,10 +1104,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(
-        TEST, rustc_polymorphize_error, Normal, template!(Word),
-        WarnFollowing, EncodeCrossCrate::Yes
-    ),
-    rustc_attr!(
         TEST, rustc_def_path, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::No
     ),

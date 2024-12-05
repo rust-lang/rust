@@ -82,7 +82,7 @@ use crate::ty::print::{PrintTraitRefExt, describe_as_module};
 use crate::ty::util::AlwaysRequiresDrop;
 use crate::ty::{
     self, CrateInherentImpls, GenericArg, GenericArgsRef, PseudoCanonicalInput, Ty, TyCtxt,
-    TyCtxtFeed, UnusedGenericParams,
+    TyCtxtFeed,
 };
 use crate::{dep_graph, mir, thir};
 
@@ -2046,15 +2046,6 @@ rustc_queries! {
 
     query codegen_unit(sym: Symbol) -> &'tcx CodegenUnit<'tcx> {
         desc { "getting codegen unit `{sym}`" }
-    }
-
-    query unused_generic_params(key: ty::InstanceKind<'tcx>) -> UnusedGenericParams {
-        cache_on_disk_if { key.def_id().is_local() }
-        desc {
-            |tcx| "determining which generic parameters are unused by `{}`",
-                tcx.def_path_str(key.def_id())
-        }
-        separate_provide_extern
     }
 
     query backend_optimization_level(_: ()) -> OptLevel {

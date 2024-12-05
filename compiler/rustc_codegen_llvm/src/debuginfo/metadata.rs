@@ -471,8 +471,6 @@ pub(crate) fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) ->
             AdtKind::Enum => enums::build_enum_type_di_node(cx, unique_type_id),
         },
         ty::Tuple(_) => build_tuple_type_di_node(cx, unique_type_id),
-        // Type parameters from polymorphized functions.
-        ty::Param(_) => build_param_type_di_node(cx, t),
         _ => bug!("debuginfo: unexpected type in type_di_node(): {:?}", t),
     };
 
@@ -869,26 +867,6 @@ fn build_foreign_type_di_node<'ll, 'tcx>(
         |_, _| smallvec![],
         NO_GENERICS,
     )
-}
-
-fn build_param_type_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
-    t: Ty<'tcx>,
-) -> DINodeCreationResult<'ll> {
-    debug!("build_param_type_di_node: {:?}", t);
-    let name = format!("{t:?}");
-    DINodeCreationResult {
-        di_node: unsafe {
-            llvm::LLVMRustDIBuilderCreateBasicType(
-                DIB(cx),
-                name.as_c_char_ptr(),
-                name.len(),
-                Size::ZERO.bits(),
-                DW_ATE_unsigned,
-            )
-        },
-        already_stored_in_typemap: false,
-    }
 }
 
 pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
