@@ -245,6 +245,7 @@ use self::Ordering::*;
     append_const_msg
 )]
 #[rustc_diagnostic_item = "PartialEq"]
+#[cfg_attr(not(bootstrap), const_trait)]
 pub trait PartialEq<Rhs: ?Sized = Self> {
     /// Tests for `self` and `other` values to be equal, and is used by `==`.
     #[must_use]
@@ -1630,6 +1631,16 @@ mod impls {
 
     macro_rules! partial_eq_impl {
         ($($t:ty)*) => ($(
+            #[cfg(not(bootstrap))]
+            #[stable(feature = "rust1", since = "1.0.0")]
+            impl const PartialEq for $t {
+                #[inline]
+                fn eq(&self, other: &$t) -> bool { (*self) == (*other) }
+                #[inline]
+                fn ne(&self, other: &$t) -> bool { (*self) != (*other) }
+            }
+
+            #[cfg(bootstrap)]
             #[stable(feature = "rust1", since = "1.0.0")]
             impl PartialEq for $t {
                 #[inline]
@@ -1640,6 +1651,20 @@ mod impls {
         )*)
     }
 
+    #[cfg(not(bootstrap))]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl const PartialEq for () {
+        #[inline]
+        fn eq(&self, _other: &()) -> bool {
+            true
+        }
+        #[inline]
+        fn ne(&self, _other: &()) -> bool {
+            false
+        }
+    }
+
+    #[cfg(bootstrap)]
     #[stable(feature = "rust1", since = "1.0.0")]
     impl PartialEq for () {
         #[inline]
@@ -1808,6 +1833,24 @@ mod impls {
 
     // & pointers
 
+    #[cfg(not(bootstrap))]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+    impl<A: ?Sized, B: ?Sized> const PartialEq<&B> for &A
+    where
+        A: ~const PartialEq<B>,
+    {
+        #[inline]
+        fn eq(&self, other: &&B) -> bool {
+            PartialEq::eq(*self, *other)
+        }
+        #[inline]
+        fn ne(&self, other: &&B) -> bool {
+            PartialEq::ne(*self, *other)
+        }
+    }
+
+    #[cfg(bootstrap)]
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<A: ?Sized, B: ?Sized> PartialEq<&B> for &A
     where
@@ -1822,6 +1865,7 @@ mod impls {
             PartialEq::ne(*self, *other)
         }
     }
+
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<A: ?Sized, B: ?Sized> PartialOrd<&B> for &A
     where
@@ -1863,6 +1907,24 @@ mod impls {
 
     // &mut pointers
 
+    #[cfg(not(bootstrap))]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+    impl<A: ?Sized, B: ?Sized> const PartialEq<&mut B> for &mut A
+    where
+        A: ~const PartialEq<B>,
+    {
+        #[inline]
+        fn eq(&self, other: &&mut B) -> bool {
+            PartialEq::eq(*self, *other)
+        }
+        #[inline]
+        fn ne(&self, other: &&mut B) -> bool {
+            PartialEq::ne(*self, *other)
+        }
+    }
+
+    #[cfg(bootstrap)]
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<A: ?Sized, B: ?Sized> PartialEq<&mut B> for &mut A
     where
@@ -1877,6 +1939,7 @@ mod impls {
             PartialEq::ne(*self, *other)
         }
     }
+
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<A: ?Sized, B: ?Sized> PartialOrd<&mut B> for &mut A
     where
@@ -1916,6 +1979,41 @@ mod impls {
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<A: ?Sized> Eq for &mut A where A: Eq {}
 
+    #[cfg(not(bootstrap))]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+    impl<A: ?Sized, B: ?Sized> const PartialEq<&mut B> for &A
+    where
+        A: ~const PartialEq<B>,
+    {
+        #[inline]
+        fn eq(&self, other: &&mut B) -> bool {
+            PartialEq::eq(*self, *other)
+        }
+        #[inline]
+        fn ne(&self, other: &&mut B) -> bool {
+            PartialEq::ne(*self, *other)
+        }
+    }
+
+    #[cfg(not(bootstrap))]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+    impl<A: ?Sized, B: ?Sized> const PartialEq<&B> for &mut A
+    where
+        A: ~const PartialEq<B>,
+    {
+        #[inline]
+        fn eq(&self, other: &&B) -> bool {
+            PartialEq::eq(*self, *other)
+        }
+        #[inline]
+        fn ne(&self, other: &&B) -> bool {
+            PartialEq::ne(*self, *other)
+        }
+    }
+
+    #[cfg(bootstrap)]
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<A: ?Sized, B: ?Sized> PartialEq<&mut B> for &A
     where
@@ -1931,6 +2029,7 @@ mod impls {
         }
     }
 
+    #[cfg(bootstrap)]
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<A: ?Sized, B: ?Sized> PartialEq<&B> for &mut A
     where

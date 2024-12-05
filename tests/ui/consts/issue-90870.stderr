@@ -1,39 +1,33 @@
-error[E0015]: cannot call non-const operator in constant functions
+error[E0658]: cannot call conditionally-const method `<&u8 as PartialEq>::eq` in constant functions
   --> $DIR/issue-90870.rs:6:5
    |
 LL |     a == b
    |     ^^^^^^
    |
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-help: consider dereferencing here
-   |
-LL |     *a == *b
-   |     +     +
+   = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0015]: cannot call non-const operator in constant functions
-  --> $DIR/issue-90870.rs:12:5
+error[E0658]: cannot call conditionally-const method `<&&&&i64 as PartialEq>::eq` in constant functions
+  --> $DIR/issue-90870.rs:11:5
    |
 LL |     a == b
    |     ^^^^^^
    |
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-help: consider dereferencing here
-   |
-LL |     ****a == ****b
-   |     ++++     ++++
+   = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0015]: cannot call non-const operator in constant functions
-  --> $DIR/issue-90870.rs:19:12
+error[E0658]: cannot call conditionally-const method `<&u8 as PartialEq>::eq` in constant functions
+  --> $DIR/issue-90870.rs:17:12
    |
 LL |         if l == r {
    |            ^^^^^^
    |
-   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-help: consider dereferencing here
-   |
-LL |         if *l == *r {
-   |            +     +
+   = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
+   = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0015`.
+For more information about this error, try `rustc --explain E0658`.
