@@ -1,5 +1,5 @@
 use super::{ArgAttribute, ArgAttributes, ArgExtension, CastTarget};
-use crate::abi::call::{ArgAbi, FnAbi, PassMode, Reg, Size, Uniform};
+use crate::abi::call::{ArgAbi, FnAbi, Reg, Size, Uniform};
 use crate::abi::{HasDataLayout, TyAbiInterface};
 
 fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
@@ -53,22 +53,29 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
-    if matches!(arg.mode, PassMode::Pair(..)) && (arg.layout.is_adt() || arg.layout.is_tuple()) {
-        let align_bytes = arg.layout.align.abi.bytes();
-
-        let unit = match align_bytes {
-            1 => Reg::i8(),
-            2 => Reg::i16(),
-            4 => Reg::i32(),
-            8 => Reg::i64(),
-            16 => Reg::i128(),
-            _ => unreachable!("Align is given as power of 2 no larger than 16 bytes"),
-        };
-        arg.cast_to(Uniform::new(unit, Size::from_bytes(2 * align_bytes)));
-    } else {
-        // FIXME: find a better way to do this. See https://github.com/rust-lang/rust/issues/117271.
-        arg.make_direct_deprecated();
+    match arg.mode {
+        super::PassMode::Ignore | super::PassMode::Direct(_) => return,
+        super::PassMode::Pair(_, _) => {}
+        super::PassMode::Cast { .. } => unreachable!(),
+        super::PassMode::Indirect { .. } => {}
     }
+
+    // FIXME only allow structs and wide pointers here
+    // panic!(
+    //     "`extern \"ptx-kernel\"` doesn't allow passing types other than primitives and structs"
+    // );
+
+    let align_bytes = arg.layout.align.abi.bytes();
+
+    let unit = match align_bytes {
+        1 => Reg::i8(),
+        2 => Reg::i16(),
+        4 => Reg::i32(),
+        8 => Reg::i64(),
+        16 => Reg::i128(),
+        _ => unreachable!("Align is given as power of 2 no larger than 16 bytes"),
+    };
+    arg.cast_to(Uniform::new(unit, arg.layout.size));
 }
 
 pub(crate) fn compute_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {
