@@ -410,6 +410,9 @@ impl<'a, T: Idx> Iterator for BitIter<'a, T> {
 /// some stretches with lots of 0s and 1s mixed in a way that causes trouble
 /// for `IntervalSet`.
 ///
+/// Best used via `MixedBitSet`, rather than directly, because `MixedBitSet`
+/// has better performance for small bitsets.
+///
 /// `T` is an index type, typically a newtyped `usize` wrapper, but it can also
 /// just be `usize`.
 ///
@@ -1104,6 +1107,158 @@ where
         }
     }
     false
+}
+
+/// A bitset with a mixed representation, using `BitSet` for small and medium
+/// bitsets, and `ChunkedBitSet` for large bitsets, i.e. those with enough bits
+/// for at least two chunks. This is a good choice for many bitsets that can
+/// have large domain sizes (e.g. 5000+).
+///
+/// `T` is an index type, typically a newtyped `usize` wrapper, but it can also
+/// just be `usize`.
+///
+/// All operations that involve an element will panic if the element is equal
+/// to or greater than the domain size. All operations that involve two bitsets
+/// will panic if the bitsets have differing domain sizes.
+#[derive(PartialEq, Eq)]
+pub enum MixedBitSet<T> {
+    Small(BitSet<T>),
+    Large(ChunkedBitSet<T>),
+}
+
+impl<T> MixedBitSet<T> {
+    pub fn domain_size(&self) -> usize {
+        match self {
+            MixedBitSet::Small(set) => set.domain_size(),
+            MixedBitSet::Large(set) => set.domain_size(),
+        }
+    }
+}
+
+impl<T: Idx> MixedBitSet<T> {
+    #[inline]
+    pub fn new_empty(domain_size: usize) -> MixedBitSet<T> {
+        if domain_size <= CHUNK_BITS {
+            MixedBitSet::Small(BitSet::new_empty(domain_size))
+        } else {
+            MixedBitSet::Large(ChunkedBitSet::new_empty(domain_size))
+        }
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        match self {
+            MixedBitSet::Small(set) => set.is_empty(),
+            MixedBitSet::Large(set) => set.is_empty(),
+        }
+    }
+
+    #[inline]
+    pub fn contains(&self, elem: T) -> bool {
+        match self {
+            MixedBitSet::Small(set) => set.contains(elem),
+            MixedBitSet::Large(set) => set.contains(elem),
+        }
+    }
+
+    #[inline]
+    pub fn insert(&mut self, elem: T) -> bool {
+        match self {
+            MixedBitSet::Small(set) => set.insert(elem),
+            MixedBitSet::Large(set) => set.insert(elem),
+        }
+    }
+
+    pub fn insert_all(&mut self) {
+        match self {
+            MixedBitSet::Small(set) => set.insert_all(),
+            MixedBitSet::Large(set) => set.insert_all(),
+        }
+    }
+
+    #[inline]
+    pub fn remove(&mut self, elem: T) -> bool {
+        match self {
+            MixedBitSet::Small(set) => set.remove(elem),
+            MixedBitSet::Large(set) => set.remove(elem),
+        }
+    }
+
+    pub fn iter(&self) -> MixedBitIter<'_, T> {
+        match self {
+            MixedBitSet::Small(set) => MixedBitIter::Small(set.iter()),
+            MixedBitSet::Large(set) => MixedBitIter::Large(set.iter()),
+        }
+    }
+
+    bit_relations_inherent_impls! {}
+}
+
+impl<T> Clone for MixedBitSet<T> {
+    fn clone(&self) -> Self {
+        match self {
+            MixedBitSet::Small(set) => MixedBitSet::Small(set.clone()),
+            MixedBitSet::Large(set) => MixedBitSet::Large(set.clone()),
+        }
+    }
+
+    /// WARNING: this implementation of clone_from may panic if the two
+    /// bitsets have different domain sizes. This constraint is not inherent to
+    /// `clone_from`, but it works with the existing call sites and allows a
+    /// faster implementation, which is important because this function is hot.
+    fn clone_from(&mut self, from: &Self) {
+        match (self, from) {
+            (MixedBitSet::Small(set), MixedBitSet::Small(from)) => set.clone_from(from),
+            (MixedBitSet::Large(set), MixedBitSet::Large(from)) => set.clone_from(from),
+            _ => panic!("MixedBitSet size mismatch"),
+        }
+    }
+}
+
+impl<T: Idx> BitRelations<MixedBitSet<T>> for MixedBitSet<T> {
+    fn union(&mut self, other: &MixedBitSet<T>) -> bool {
+        match (self, other) {
+            (MixedBitSet::Small(set), MixedBitSet::Small(other)) => set.union(other),
+            (MixedBitSet::Large(set), MixedBitSet::Large(other)) => set.union(other),
+            _ => panic!("MixedBitSet size mismatch"),
+        }
+    }
+
+    fn subtract(&mut self, other: &MixedBitSet<T>) -> bool {
+        match (self, other) {
+            (MixedBitSet::Small(set), MixedBitSet::Small(other)) => set.subtract(other),
+            (MixedBitSet::Large(set), MixedBitSet::Large(other)) => set.subtract(other),
+            _ => panic!("MixedBitSet size mismatch"),
+        }
+    }
+
+    fn intersect(&mut self, _other: &MixedBitSet<T>) -> bool {
+        unimplemented!("implement if/when necessary");
+    }
+}
+
+impl<T: Idx> fmt::Debug for MixedBitSet<T> {
+    fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            MixedBitSet::Small(set) => set.fmt(w),
+            MixedBitSet::Large(set) => set.fmt(w),
+        }
+    }
+}
+
+pub enum MixedBitIter<'a, T: Idx> {
+    Small(BitIter<'a, T>),
+    Large(ChunkedBitIter<'a, T>),
+}
+
+impl<'a, T: Idx> Iterator for MixedBitIter<'a, T> {
+    type Item = T;
+    fn next(&mut self) -> Option<T> {
+        match self {
+            MixedBitIter::Small(iter) => iter.next(),
+            MixedBitIter::Large(iter) => iter.next(),
+        }
+    }
 }
 
 /// A resizable bitset type with a dense representation.
