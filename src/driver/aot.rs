@@ -411,7 +411,13 @@ fn emit_module(
         Err(err) => return Err(format!("error writing object file: {}", err)),
     };
 
-    prof.artifact_size("object_file", &*name, file.metadata().unwrap().len());
+    if prof.enabled() {
+        prof.artifact_size(
+            "object_file",
+            tmp_file.file_name().unwrap().to_string_lossy(),
+            file.metadata().unwrap().len(),
+        );
+    }
 
     Ok(CompiledModule {
         name,
