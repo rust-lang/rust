@@ -2974,7 +2974,7 @@ impl Walrus {
 
 
 ### `remove_parentheses`
-**Source:**  [remove_parentheses.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/remove_parentheses.rs#L5) 
+**Source:**  [remove_parentheses.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/remove_parentheses.rs#L9) 
 
 Removes redundant parentheses.
 
