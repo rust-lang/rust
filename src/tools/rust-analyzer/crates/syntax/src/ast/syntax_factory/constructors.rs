@@ -2,7 +2,7 @@
 use itertools::Itertools;
 
 use crate::{
-    ast::{self, make, HasName},
+    ast::{self, make, HasName, HasTypeBounds},
     syntax_editor::SyntaxMappingBuilder,
     AstNode,
 };
@@ -12,6 +12,32 @@ use super::SyntaxFactory;
 impl SyntaxFactory {
     pub fn name(&self, name: &str) -> ast::Name {
         make::name(name).clone_for_update()
+    }
+
+    pub fn ty(&self, text: &str) -> ast::Type {
+        make::ty(text).clone_for_update()
+    }
+
+    pub fn type_param(
+        &self,
+        name: ast::Name,
+        bounds: Option<ast::TypeBoundList>,
+    ) -> ast::TypeParam {
+        let ast = make::type_param(name.clone(), bounds.clone()).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(name.syntax().clone(), ast.name().unwrap().syntax().clone());
+            if let Some(input) = bounds {
+                builder.map_node(
+                    input.syntax().clone(),
+                    ast.type_bound_list().unwrap().syntax().clone(),
+                );
+            }
+            builder.finish(&mut mapping);
+        }
+
+        ast
     }
 
     pub fn ident_pat(&self, ref_: bool, mut_: bool, name: ast::Name) -> ast::IdentPat {
