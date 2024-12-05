@@ -81,26 +81,6 @@ pub(crate) fn maybe_codegen_checked<'tcx>(
     match bin_op {
         BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor => unreachable!(),
         BinOp::Add | BinOp::Sub => None,
-        BinOp::Mul if is_signed => {
-            let out_ty = Ty::new_tup(fx.tcx, &[lhs.layout().ty, fx.tcx.types.bool]);
-            let oflow = CPlace::new_stack_slot(fx, fx.layout_of(fx.tcx.types.i32));
-            let lhs = lhs.load_scalar(fx);
-            let rhs = rhs.load_scalar(fx);
-            let oflow_ptr = oflow.to_ptr().get_addr(fx);
-            let res = fx.lib_call_unadjusted(
-                "__muloti4",
-                vec![
-                    AbiParam::new(types::I128),
-                    AbiParam::new(types::I128),
-                    AbiParam::new(fx.pointer_type),
-                ],
-                vec![AbiParam::new(types::I128)],
-                &[lhs, rhs, oflow_ptr],
-            )[0];
-            let oflow = oflow.to_cvalue(fx).load_scalar(fx);
-            let oflow = fx.bcx.ins().ireduce(types::I8, oflow);
-            Some(CValue::by_val_pair(res, oflow, fx.layout_of(out_ty)))
-        }
         BinOp::Mul => {
             let out_ty = Ty::new_tup(fx.tcx, &[lhs.layout().ty, fx.tcx.types.bool]);
             let out_place = CPlace::new_stack_slot(fx, fx.layout_of(out_ty));
@@ -110,7 +90,12 @@ pub(crate) fn maybe_codegen_checked<'tcx>(
                 AbiParam::new(types::I128),
             ];
             let args = [out_place.to_ptr().get_addr(fx), lhs.load_scalar(fx), rhs.load_scalar(fx)];
-            fx.lib_call("__rust_u128_mulo", param_types, vec![], &args);
+            fx.lib_call(
+                if is_signed { "__rust_i128_mulo" } else { "__rust_u128_mulo" },
+                param_types,
+                vec![],
+                &args,
+            );
             Some(out_place.to_cvalue(fx))
         }
         BinOp::AddUnchecked | BinOp::SubUnchecked | BinOp::MulUnchecked => unreachable!(),
