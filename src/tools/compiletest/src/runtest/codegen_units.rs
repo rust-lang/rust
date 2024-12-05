@@ -64,13 +64,13 @@ impl TestCx<'_> {
         if !missing.is_empty() {
             missing.sort();
 
-            eprintln!("\nThese items should have been contained but were not:\n");
+            println!("\nThese items should have been contained but were not:\n");
 
             for item in &missing {
-                eprintln!("{}", item);
+                println!("{}", item);
             }
 
-            eprintln!("\n");
+            println!("\n");
         }
 
         if !unexpected.is_empty() {
@@ -80,24 +80,24 @@ impl TestCx<'_> {
                 sorted
             };
 
-            eprintln!("\nThese items were contained but should not have been:\n");
+            println!("\nThese items were contained but should not have been:\n");
 
             for item in sorted {
-                eprintln!("{}", item);
+                println!("{}", item);
             }
 
-            eprintln!("\n");
+            println!("\n");
         }
 
         if !wrong_cgus.is_empty() {
             wrong_cgus.sort_by_key(|pair| pair.0.name.clone());
-            eprintln!("\nThe following items were assigned to wrong codegen units:\n");
+            println!("\nThe following items were assigned to wrong codegen units:\n");
 
             for &(ref expected_item, ref actual_item) in &wrong_cgus {
-                eprintln!("{}", expected_item.name);
-                eprintln!("  expected: {}", codegen_units_to_str(&expected_item.codegen_units));
-                eprintln!("  actual:   {}", codegen_units_to_str(&actual_item.codegen_units));
-                eprintln!();
+                println!("{}", expected_item.name);
+                println!("  expected: {}", codegen_units_to_str(&expected_item.codegen_units));
+                println!("  actual:   {}", codegen_units_to_str(&actual_item.codegen_units));
+                println!();
             }
         }
 

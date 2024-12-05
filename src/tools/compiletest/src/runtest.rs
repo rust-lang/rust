@@ -774,20 +774,20 @@ impl<'test> TestCx<'test> {
                 unexpected.len(),
                 not_found.len()
             ));
-            eprintln!("status: {}\ncommand: {}\n", proc_res.status, proc_res.cmdline);
+            println!("status: {}\ncommand: {}\n", proc_res.status, proc_res.cmdline);
             if !unexpected.is_empty() {
-                eprintln!("{}", "--- unexpected errors (from JSON output) ---".green());
+                println!("{}", "--- unexpected errors (from JSON output) ---".green());
                 for error in &unexpected {
-                    eprintln!("{}", error.render_for_expected());
+                    println!("{}", error.render_for_expected());
                 }
-                eprintln!("{}", "---".green());
+                println!("{}", "---".green());
             }
             if !not_found.is_empty() {
-                eprintln!("{}", "--- not found errors (from test file) ---".red());
+                println!("{}", "--- not found errors (from test file) ---".red());
                 for error in &not_found {
-                    eprintln!("{}", error.render_for_expected());
+                    println!("{}", error.render_for_expected());
                 }
-                eprintln!("{}", "---\n".red());
+                println!("{}", "---\n".red());
             }
             panic!("errors differ from expected");
         }
@@ -1876,18 +1876,18 @@ impl<'test> TestCx<'test> {
 
     fn maybe_dump_to_stdout(&self, out: &str, err: &str) {
         if self.config.verbose {
-            eprintln!("------stdout------------------------------");
-            eprintln!("{}", out);
-            eprintln!("------stderr------------------------------");
-            eprintln!("{}", err);
-            eprintln!("------------------------------------------");
+            println!("------stdout------------------------------");
+            println!("{}", out);
+            println!("------stderr------------------------------");
+            println!("{}", err);
+            println!("------------------------------------------");
         }
     }
 
     fn error(&self, err: &str) {
         match self.revision {
-            Some(rev) => eprintln!("\nerror in revision `{}`: {}", rev, err),
-            None => eprintln!("\nerror: {}", err),
+            Some(rev) => println!("\nerror in revision `{}`: {}", rev, err),
+            None => println!("\nerror: {}", err),
         }
     }
 
@@ -1972,7 +1972,7 @@ impl<'test> TestCx<'test> {
         if !self.config.has_html_tidy {
             return;
         }
-        eprintln!("info: generating a diff against nightly rustdoc");
+        println!("info: generating a diff against nightly rustdoc");
 
         let suffix =
             self.safe_revision().map_or("nightly".into(), |path| path.to_owned() + "-nightly");
@@ -2082,7 +2082,7 @@ impl<'test> TestCx<'test> {
                 .output()
                 .unwrap();
             assert!(output.status.success());
-            eprintln!("{}", String::from_utf8_lossy(&output.stdout));
+            println!("{}", String::from_utf8_lossy(&output.stdout));
             eprintln!("{}", String::from_utf8_lossy(&output.stderr));
         } else {
             use colored::Colorize;
@@ -2482,7 +2482,7 @@ impl<'test> TestCx<'test> {
                 )"#
             )
             .replace_all(&output, |caps: &Captures<'_>| {
-                eprintln!("{}", &caps[0]);
+                println!("{}", &caps[0]);
                 caps[0].replace(r"\", "/")
             })
             .replace("\r\n", "\n")
@@ -2581,16 +2581,16 @@ impl<'test> TestCx<'test> {
         if let Err(err) = fs::write(&actual_path, &actual) {
             self.fatal(&format!("failed to write {stream} to `{actual_path:?}`: {err}",));
         }
-        eprintln!("Saved the actual {stream} to {actual_path:?}");
+        println!("Saved the actual {stream} to {actual_path:?}");
 
         let expected_path =
             expected_output_path(self.testpaths, self.revision, &self.config.compare_mode, stream);
 
         if !self.config.bless {
             if expected.is_empty() {
-                eprintln!("normalized {}:\n{}\n", stream, actual);
+                println!("normalized {}:\n{}\n", stream, actual);
             } else {
-                eprintln!("diff of {stream}:\n");
+                println!("diff of {stream}:\n");
                 if let Some(diff_command) = self.config.diff_command.as_deref() {
                     let mut args = diff_command.split_whitespace();
                     let name = args.next().unwrap();
@@ -2625,10 +2625,10 @@ impl<'test> TestCx<'test> {
             if let Err(err) = fs::write(&expected_path, &actual) {
                 self.fatal(&format!("failed to write {stream} to `{expected_path:?}`: {err}"));
             }
-            eprintln!("Blessing the {stream} of {test_name} in {expected_path:?}");
+            println!("Blessing the {stream} of {test_name} in {expected_path:?}");
         }
 
-        eprintln!("\nThe actual {0} differed from the expected {0}.", stream);
+        println!("\nThe actual {0} differed from the expected {0}.", stream);
 
         if self.config.bless { 0 } else { 1 }
     }
@@ -2707,7 +2707,7 @@ impl<'test> TestCx<'test> {
         fs::create_dir_all(&incremental_dir).unwrap();
 
         if self.config.verbose {
-            eprintln!("init_incremental_test: incremental_dir={}", incremental_dir.display());
+            println!("init_incremental_test: incremental_dir={}", incremental_dir.display());
         }
     }
 
@@ -2765,7 +2765,7 @@ impl ProcRes {
             }
         }
 
-        eprintln!(
+        println!(
             "status: {}\ncommand: {}\n{}\n{}\n",
             self.status,
             self.cmdline,
@@ -2776,7 +2776,7 @@ impl ProcRes {
 
     pub fn fatal(&self, err: Option<&str>, on_failure: impl FnOnce()) -> ! {
         if let Some(e) = err {
-            eprintln!("\nerror: {}", e);
+            println!("\nerror: {}", e);
         }
         self.print_info();
         on_failure();
