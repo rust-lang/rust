@@ -950,6 +950,15 @@ pub(super) fn const_conditions<'tcx>(
         bug!("const_conditions invoked for item that is not conditionally const: {def_id:?}");
     }
 
+    match tcx.opt_rpitit_info(def_id.to_def_id()) {
+        // RPITITs inherit const conditions of their parent fn
+        Some(
+            ty::ImplTraitInTraitData::Impl { fn_def_id }
+            | ty::ImplTraitInTraitData::Trait { fn_def_id, .. },
+        ) => return tcx.const_conditions(fn_def_id),
+        None => {}
+    }
+
     let (generics, trait_def_id_and_supertraits, has_parent) = match tcx.hir_node_by_def_id(def_id)
     {
         Node::Item(item) => match item.kind {
@@ -1053,19 +1062,29 @@ pub(super) fn explicit_implied_const_bounds<'tcx>(
         bug!("const_conditions invoked for item that is not conditionally const: {def_id:?}");
     }
 
-    let bounds = match tcx.hir_node_by_def_id(def_id) {
-        Node::Item(hir::Item { kind: hir::ItemKind::Trait(..), .. }) => {
-            implied_predicates_with_filter(
-                tcx,
-                def_id.to_def_id(),
-                PredicateFilter::SelfConstIfConst,
-            )
-        }
-        Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Type(..), .. })
-        | Node::OpaqueTy(_) => {
+    let bounds = match tcx.opt_rpitit_info(def_id.to_def_id()) {
+        // RPITIT's bounds are the same as opaque type bounds, but with
+        // a projection self type.
+        Some(ty::ImplTraitInTraitData::Trait { .. }) => {
             explicit_item_bounds_with_filter(tcx, def_id, PredicateFilter::ConstIfConst)
         }
-        _ => bug!("explicit_implied_const_bounds called on wrong item: {def_id:?}"),
+        Some(ty::ImplTraitInTraitData::Impl { .. }) => {
+            span_bug!(tcx.def_span(def_id), "RPITIT in impl should not have item bounds")
+        }
+        None => match tcx.hir_node_by_def_id(def_id) {
+            Node::Item(hir::Item { kind: hir::ItemKind::Trait(..), .. }) => {
+                implied_predicates_with_filter(
+                    tcx,
+                    def_id.to_def_id(),
+                    PredicateFilter::SelfConstIfConst,
+                )
+            }
+            Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Type(..), .. })
+            | Node::OpaqueTy(_) => {
+                explicit_item_bounds_with_filter(tcx, def_id, PredicateFilter::ConstIfConst)
+            }
+            _ => bug!("explicit_implied_const_bounds called on wrong item: {def_id:?}"),
+        },
     };
 
     bounds.map_bound(|bounds| {
