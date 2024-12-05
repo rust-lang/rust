@@ -296,6 +296,111 @@ impl<T: Idx> From<GrowableBitSet<T>> for BitSet<T> {
     }
 }
 
+impl<T> Clone for BitSet<T> {
+    fn clone(&self) -> Self {
+        BitSet { domain_size: self.domain_size, words: self.words.clone(), marker: PhantomData }
+    }
+
+    fn clone_from(&mut self, from: &Self) {
+        self.domain_size = from.domain_size;
+        self.words.clone_from(&from.words);
+    }
+}
+
+impl<T: Idx> fmt::Debug for BitSet<T> {
+    fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
+        w.debug_list().entries(self.iter()).finish()
+    }
+}
+
+impl<T: Idx> ToString for BitSet<T> {
+    fn to_string(&self) -> String {
+        let mut result = String::new();
+        let mut sep = '[';
+
+        // Note: this is a little endian printout of bytes.
+
+        // i tracks how many bits we have printed so far.
+        let mut i = 0;
+        for word in &self.words {
+            let mut word = *word;
+            for _ in 0..WORD_BYTES {
+                // for each byte in `word`:
+                let remain = self.domain_size - i;
+                // If less than a byte remains, then mask just that many bits.
+                let mask = if remain <= 8 { (1 << remain) - 1 } else { 0xFF };
+                assert!(mask <= 0xFF);
+                let byte = word & mask;
+
+                result.push_str(&format!("{sep}{byte:02x}"));
+
+                if remain <= 8 {
+                    break;
+                }
+                word >>= 8;
+                i += 8;
+                sep = '-';
+            }
+            sep = '|';
+        }
+        result.push(']');
+
+        result
+    }
+}
+
+pub struct BitIter<'a, T: Idx> {
+    /// A copy of the current word, but with any already-visited bits cleared.
+    /// (This lets us use `trailing_zeros()` to find the next set bit.) When it
+    /// is reduced to 0, we move onto the next word.
+    word: Word,
+
+    /// The offset (measured in bits) of the current word.
+    offset: usize,
+
+    /// Underlying iterator over the words.
+    iter: slice::Iter<'a, Word>,
+
+    marker: PhantomData<T>,
+}
+
+impl<'a, T: Idx> BitIter<'a, T> {
+    #[inline]
+    fn new(words: &'a [Word]) -> BitIter<'a, T> {
+        // We initialize `word` and `offset` to degenerate values. On the first
+        // call to `next()` we will fall through to getting the first word from
+        // `iter`, which sets `word` to the first word (if there is one) and
+        // `offset` to 0. Doing it this way saves us from having to maintain
+        // additional state about whether we have started.
+        BitIter {
+            word: 0,
+            offset: usize::MAX - (WORD_BITS - 1),
+            iter: words.iter(),
+            marker: PhantomData,
+        }
+    }
+}
+
+impl<'a, T: Idx> Iterator for BitIter<'a, T> {
+    type Item = T;
+    fn next(&mut self) -> Option<T> {
+        loop {
+            if self.word != 0 {
+                // Get the position of the next set bit in the current word,
+                // then clear the bit.
+                let bit_pos = self.word.trailing_zeros() as usize;
+                self.word ^= 1 << bit_pos;
+                return Some(T::new(bit_pos + self.offset));
+            }
+
+            // Move onto the next word. `wrapping_add()` is needed to handle
+            // the degenerate initial value given to `offset` in `new()`.
+            self.word = *self.iter.next()?;
+            self.offset = self.offset.wrapping_add(WORD_BITS);
+        }
+    }
+}
+
 /// A fixed-size bitset type with a partially dense, partially sparse
 /// representation. The bitset is broken into chunks, and chunks that are all
 /// zeros or all ones are represented and handled very efficiently.
@@ -958,114 +1063,9 @@ fn sequential_update<T: Idx>(
     it.fold(false, |changed, elem| self_update(elem) | changed)
 }
 
-impl<T> Clone for BitSet<T> {
-    fn clone(&self) -> Self {
-        BitSet { domain_size: self.domain_size, words: self.words.clone(), marker: PhantomData }
-    }
-
-    fn clone_from(&mut self, from: &Self) {
-        self.domain_size = from.domain_size;
-        self.words.clone_from(&from.words);
-    }
-}
-
-impl<T: Idx> fmt::Debug for BitSet<T> {
-    fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
-        w.debug_list().entries(self.iter()).finish()
-    }
-}
-
 impl<T: Idx> fmt::Debug for ChunkedBitSet<T> {
     fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
         w.debug_list().entries(self.iter()).finish()
-    }
-}
-
-impl<T: Idx> ToString for BitSet<T> {
-    fn to_string(&self) -> String {
-        let mut result = String::new();
-        let mut sep = '[';
-
-        // Note: this is a little endian printout of bytes.
-
-        // i tracks how many bits we have printed so far.
-        let mut i = 0;
-        for word in &self.words {
-            let mut word = *word;
-            for _ in 0..WORD_BYTES {
-                // for each byte in `word`:
-                let remain = self.domain_size - i;
-                // If less than a byte remains, then mask just that many bits.
-                let mask = if remain <= 8 { (1 << remain) - 1 } else { 0xFF };
-                assert!(mask <= 0xFF);
-                let byte = word & mask;
-
-                result.push_str(&format!("{sep}{byte:02x}"));
-
-                if remain <= 8 {
-                    break;
-                }
-                word >>= 8;
-                i += 8;
-                sep = '-';
-            }
-            sep = '|';
-        }
-        result.push(']');
-
-        result
-    }
-}
-
-pub struct BitIter<'a, T: Idx> {
-    /// A copy of the current word, but with any already-visited bits cleared.
-    /// (This lets us use `trailing_zeros()` to find the next set bit.) When it
-    /// is reduced to 0, we move onto the next word.
-    word: Word,
-
-    /// The offset (measured in bits) of the current word.
-    offset: usize,
-
-    /// Underlying iterator over the words.
-    iter: slice::Iter<'a, Word>,
-
-    marker: PhantomData<T>,
-}
-
-impl<'a, T: Idx> BitIter<'a, T> {
-    #[inline]
-    fn new(words: &'a [Word]) -> BitIter<'a, T> {
-        // We initialize `word` and `offset` to degenerate values. On the first
-        // call to `next()` we will fall through to getting the first word from
-        // `iter`, which sets `word` to the first word (if there is one) and
-        // `offset` to 0. Doing it this way saves us from having to maintain
-        // additional state about whether we have started.
-        BitIter {
-            word: 0,
-            offset: usize::MAX - (WORD_BITS - 1),
-            iter: words.iter(),
-            marker: PhantomData,
-        }
-    }
-}
-
-impl<'a, T: Idx> Iterator for BitIter<'a, T> {
-    type Item = T;
-    fn next(&mut self) -> Option<T> {
-        loop {
-            if self.word != 0 {
-                // Get the position of the next set bit in the current word,
-                // then clear the bit.
-                let bit_pos = self.word.trailing_zeros() as usize;
-                self.word ^= 1 << bit_pos;
-                return Some(T::new(bit_pos + self.offset));
-            }
-
-            // Move onto the next word. `wrapping_add()` is needed to handle
-            // the degenerate initial value given to `offset` in `new()`.
-            self.word = *self.iter.next()?;
-            self.offset = self.offset.wrapping_add(WORD_BITS);
-        }
     }
 }
 
