@@ -1791,6 +1791,34 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         let mut is_simd = false;
         let mut is_transparent = false;
 
+        // catch `repr()` with no arguments, applied to an item (i.e. not `#![repr()]`)
+        if hints.is_empty() && item.is_some() {
+            for attr in attrs.iter().filter(|attr| attr.has_name(sym::repr)) {
+                match target {
+                    Target::Struct | Target::Union | Target::Enum => {}
+                    Target::Fn | Target::Method(_) => {
+                        feature_err(
+                            &self.tcx.sess,
+                            sym::fn_align,
+                            attr.span,
+                            fluent::passes_repr_align_function,
+                        )
+                        .emit();
+                    }
+                    _ => {
+                        self.dcx().emit_err(
+                            errors::AttrApplication::StructEnumFunctionMethodUnion {
+                                hint_span: attr.span,
+                                span,
+                            },
+                        );
+                    }
+                }
+            }
+
+            return;
+        }
+
         for hint in &hints {
             if !hint.is_meta_item() {
                 self.dcx().emit_err(errors::ReprIdent { span: hint.span() });
@@ -1823,24 +1851,19 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     }
                 }
                 sym::align => {
-                    if let (Target::Fn | Target::Method(MethodKind::Inherent), false) =
-                        (target, self.tcx.features().fn_align())
-                    {
-                        feature_err(
-                            &self.tcx.sess,
-                            sym::fn_align,
-                            hint.span(),
-                            fluent::passes_repr_align_function,
-                        )
-                        .emit();
-                    }
-
                     match target {
-                        Target::Struct
-                        | Target::Union
-                        | Target::Enum
-                        | Target::Fn
-                        | Target::Method(_) => {}
+                        Target::Struct | Target::Union | Target::Enum => {}
+                        Target::Fn | Target::Method(_) => {
+                            if !self.tcx.features().fn_align() {
+                                feature_err(
+                                    &self.tcx.sess,
+                                    sym::fn_align,
+                                    hint.span(),
+                                    fluent::passes_repr_align_function,
+                                )
+                                .emit();
+                            }
+                        }
                         _ => {
                             self.dcx().emit_err(
                                 errors::AttrApplication::StructEnumFunctionMethodUnion {
