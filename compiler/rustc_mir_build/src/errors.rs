@@ -631,20 +631,27 @@ pub(crate) struct NonExhaustiveMatchAllArmsGuarded;
 #[diag(mir_build_static_in_pattern, code = E0158)]
 pub(crate) struct StaticInPattern {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
+    #[label(mir_build_static_in_pattern_def)]
+    pub(crate) static_span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(mir_build_const_param_in_pattern, code = E0158)]
 pub(crate) struct ConstParamInPattern {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
+    #[label(mir_build_const_param_in_pattern_def)]
+    pub(crate) const_span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(mir_build_non_const_path, code = E0080)]
 pub(crate) struct NonConstPath {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
 }
 
@@ -695,6 +702,7 @@ pub(crate) struct WantedConstant {
 #[diag(mir_build_const_pattern_depends_on_generic_parameter, code = E0158)]
 pub(crate) struct ConstPatternDependsOnGenericParameter {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
 }
 
@@ -702,6 +710,7 @@ pub(crate) struct ConstPatternDependsOnGenericParameter {
 #[diag(mir_build_could_not_eval_const_pattern)]
 pub(crate) struct CouldNotEvalConstPattern {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
 }
 
@@ -867,33 +876,43 @@ pub(crate) enum Conflict {
 #[diag(mir_build_union_pattern)]
 pub(crate) struct UnionPattern {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(mir_build_type_not_structural)]
-#[note(mir_build_type_not_structural_tip)]
-#[note(mir_build_type_not_structural_more_info)]
 pub(crate) struct TypeNotStructural<'tcx> {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
-    pub(crate) non_sm_ty: Ty<'tcx>,
+    #[label(mir_build_type_not_structural_def)]
+    pub(crate) ty_def_span: Span,
+    pub(crate) ty: Ty<'tcx>,
+    #[note(mir_build_type_not_structural_tip)]
+    pub(crate) manual_partialeq_impl_span: Option<Span>,
+    #[note(mir_build_type_not_structural_more_info)]
+    pub(crate) manual_partialeq_impl_note: bool,
 }
 
 #[derive(Diagnostic)]
 #[diag(mir_build_non_partial_eq_match)]
+#[note(mir_build_type_not_structural_more_info)]
 pub(crate) struct TypeNotPartialEq<'tcx> {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
-    pub(crate) non_peq_ty: Ty<'tcx>,
+    pub(crate) ty: Ty<'tcx>,
 }
 
 #[derive(Diagnostic)]
 #[diag(mir_build_invalid_pattern)]
 pub(crate) struct InvalidPattern<'tcx> {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
     pub(crate) non_sm_ty: Ty<'tcx>,
+    pub(crate) prefix: String,
 }
 
 #[derive(Diagnostic)]
@@ -910,13 +929,16 @@ pub(crate) struct UnsizedPattern<'tcx> {
 #[help]
 pub(crate) struct NaNPattern {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(mir_build_pointer_pattern)]
+#[note]
 pub(crate) struct PointerPattern {
     #[primary_span]
+    #[label]
     pub(crate) span: Span,
 }
 

@@ -11,7 +11,7 @@ const C: &[O<B>] = &[O::None];
 fn main() {
     let x = O::None;
     match &[x][..] {
-        C => (), //~ERROR: the type must implement `PartialEq`
+        C => (), //~ ERROR constant of non-structural type `&[O<B>]` in a pattern
         _ => (),
     }
 }

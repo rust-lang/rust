@@ -16,9 +16,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::{DefineOpaqueTypes, HigherRankedType, InferOk};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::traits::{BuiltinImplSource, SignatureMismatchData};
-use rustc_middle::ty::{
-    self, GenericArgs, GenericArgsRef, GenericParamDefKind, ToPolyTraitRef, Ty, TyCtxt, Upcast,
-};
+use rustc_middle::ty::{self, GenericArgsRef, ToPolyTraitRef, Ty, TyCtxt, Upcast};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 use tracing::{debug, instrument};
@@ -638,60 +636,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // higher-ranked things.
             // Prevent, e.g., `dyn Iterator<Item = str>`.
             for bound in self.tcx().item_bounds(assoc_type).transpose_iter() {
-                let arg_bound = if defs.is_empty() {
-                    bound.instantiate(tcx, trait_predicate.trait_ref.args)
-                } else {
-                    let mut args = smallvec::SmallVec::with_capacity(defs.count());
-                    args.extend(trait_predicate.trait_ref.args.iter());
-                    let mut bound_vars: smallvec::SmallVec<[ty::BoundVariableKind; 8]> =
-                        smallvec::SmallVec::with_capacity(
-                            bound.skip_binder().kind().bound_vars().len() + defs.count(),
-                        );
-                    bound_vars.extend(bound.skip_binder().kind().bound_vars().into_iter());
-                    GenericArgs::fill_single(&mut args, defs, &mut |param, _| match param.kind {
-                        GenericParamDefKind::Type { .. } => {
-                            let kind = ty::BoundTyKind::Param(param.def_id, param.name);
-                            let bound_var = ty::BoundVariableKind::Ty(kind);
-                            bound_vars.push(bound_var);
-                            Ty::new_bound(tcx, ty::INNERMOST, ty::BoundTy {
-                                var: ty::BoundVar::from_usize(bound_vars.len() - 1),
-                                kind,
-                            })
-                            .into()
-                        }
-                        GenericParamDefKind::Lifetime => {
-                            let kind = ty::BoundRegionKind::Named(param.def_id, param.name);
-                            let bound_var = ty::BoundVariableKind::Region(kind);
-                            bound_vars.push(bound_var);
-                            ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
-                                var: ty::BoundVar::from_usize(bound_vars.len() - 1),
-                                kind,
-                            })
-                            .into()
-                        }
-                        GenericParamDefKind::Const { .. } => {
-                            let bound_var = ty::BoundVariableKind::Const;
-                            bound_vars.push(bound_var);
-                            ty::Const::new_bound(
-                                tcx,
-                                ty::INNERMOST,
-                                ty::BoundVar::from_usize(bound_vars.len() - 1),
-                            )
-                            .into()
-                        }
-                    });
-                    let bound_vars = tcx.mk_bound_variable_kinds(&bound_vars);
-                    let assoc_ty_args = tcx.mk_args(&args);
-                    let bound =
-                        bound.map_bound(|b| b.kind().skip_binder()).instantiate(tcx, assoc_ty_args);
-                    ty::Binder::bind_with_vars(bound, bound_vars).upcast(tcx)
-                };
                 let normalized_bound = normalize_with_depth_to(
                     self,
                     obligation.param_env,
                     obligation.cause.clone(),
                     obligation.recursion_depth + 1,
-                    arg_bound,
+                    bound.instantiate(tcx, trait_predicate.trait_ref.args),
                     &mut nested,
                 );
                 nested.push(obligation.with(tcx, normalized_bound));

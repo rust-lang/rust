@@ -260,7 +260,7 @@ impl TestCx<'_> {
                 cmdline,
             };
             if adb.kill().is_err() {
-                eprintln!("Adb process is already finished.");
+                println!("Adb process is already finished.");
             }
         } else {
             let rust_src_root =
@@ -275,7 +275,7 @@ impl TestCx<'_> {
 
             match self.config.gdb_version {
                 Some(version) => {
-                    eprintln!("NOTE: compiletest thinks it is using GDB version {}", version);
+                    println!("NOTE: compiletest thinks it is using GDB version {}", version);
 
                     if version > extract_gdb_version("7.4").unwrap() {
                         // Add the directory containing the pretty printers to
@@ -297,7 +297,7 @@ impl TestCx<'_> {
                     }
                 }
                 _ => {
-                    eprintln!(
+                    println!(
                         "NOTE: compiletest does not know which version of \
                          GDB it is using"
                     );
@@ -392,10 +392,10 @@ impl TestCx<'_> {
 
         match self.config.lldb_version {
             Some(ref version) => {
-                eprintln!("NOTE: compiletest thinks it is using LLDB version {}", version);
+                println!("NOTE: compiletest thinks it is using LLDB version {}", version);
             }
             _ => {
-                eprintln!(
+                println!(
                     "NOTE: compiletest does not know which version of \
                      LLDB it is using"
                 );

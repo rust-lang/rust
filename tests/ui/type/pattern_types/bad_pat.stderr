@@ -1,5 +1,5 @@
 error[E0586]: inclusive range with no end
-  --> $DIR/bad_pat.rs:7:43
+  --> $DIR/bad_pat.rs:6:43
    |
 LL | type NonNullU32_2 = pattern_type!(u32 is 1..=);
    |                                           ^^^
@@ -12,7 +12,7 @@ LL + type NonNullU32_2 = pattern_type!(u32 is 1..);
    |
 
 error[E0586]: inclusive range with no end
-  --> $DIR/bad_pat.rs:9:40
+  --> $DIR/bad_pat.rs:8:40
    |
 LL | type Positive2 = pattern_type!(i32 is 0..=);
    |                                        ^^^
@@ -25,7 +25,7 @@ LL + type Positive2 = pattern_type!(i32 is 0..);
    |
 
 error: wildcard patterns are not permitted for pattern types
-  --> $DIR/bad_pat.rs:11:33
+  --> $DIR/bad_pat.rs:10:33
    |
 LL | type Wild = pattern_type!(() is _);
    |                                 ^
