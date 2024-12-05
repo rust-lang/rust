@@ -7,6 +7,9 @@ IFS=$'\n\t'
 
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
+# Print docker version
+docker --version
+
 if isLinux; then
     sudo mkdir -p /etc/docker
     echo '{"ipv6":true,"fixed-cidr-v6":"fd9a:8454:6789:13f7::/64"}' \
