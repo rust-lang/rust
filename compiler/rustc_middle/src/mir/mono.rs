@@ -91,13 +91,8 @@ impl<'tcx> MonoItem<'tcx> {
     }
 
     pub fn instantiation_mode(&self, tcx: TyCtxt<'tcx>) -> InstantiationMode {
-        let generate_cgu_internal_copies = tcx
-            .sess
-            .opts
-            .unstable_opts
-            .inline_in_all_cgus
-            .unwrap_or_else(|| tcx.sess.opts.optimize != OptLevel::No)
-            && !tcx.sess.link_dead_code();
+        let generate_cgu_internal_copies =
+            (tcx.sess.opts.optimize != OptLevel::No) && !tcx.sess.link_dead_code();
 
         match *self {
             MonoItem::Fn(ref instance) => {
@@ -121,8 +116,8 @@ impl<'tcx> MonoItem<'tcx> {
                 }
 
                 // At this point we don't have explicit linkage and we're an
-                // inlined function. If we're inlining into all CGUs then we'll
-                // be creating a local copy per CGU.
+                // inlined function. If this crate's build settings permit,
+                // we'll be creating a local copy per CGU.
                 if generate_cgu_internal_copies {
                     return InstantiationMode::LocalCopy;
                 }
