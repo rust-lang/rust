@@ -1428,6 +1428,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ignore_import: Option<Import<'ra>>,
     ) -> PathResult<'ra> {
         let mut module = None;
+        let mut module_had_parse_errors = false;
         let mut allow_super = true;
         let mut second_binding = None;
 
@@ -1471,9 +1472,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             continue;
                         }
                     }
-                    return PathResult::failed(ident, false, finalize.is_some(), module, || {
-                        ("there are too many leading `super` keywords".to_string(), None)
-                    });
+                    return PathResult::failed(
+                        ident,
+                        false,
+                        finalize.is_some(),
+                        module_had_parse_errors,
+                        module,
+                        || ("there are too many leading `super` keywords".to_string(), None),
+                    );
                 }
                 if segment_idx == 0 {
                     if name == kw::SelfLower {
@@ -1511,19 +1517,26 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             // Report special messages for path segment keywords in wrong positions.
             if ident.is_path_segment_keyword() && segment_idx != 0 {
-                return PathResult::failed(ident, false, finalize.is_some(), module, || {
-                    let name_str = if name == kw::PathRoot {
-                        "crate root".to_string()
-                    } else {
-                        format!("`{name}`")
-                    };
-                    let label = if segment_idx == 1 && path[0].ident.name == kw::PathRoot {
-                        format!("global paths cannot start with {name_str}")
-                    } else {
-                        format!("{name_str} in paths can only be used in start position")
-                    };
-                    (label, None)
-                });
+                return PathResult::failed(
+                    ident,
+                    false,
+                    finalize.is_some(),
+                    module_had_parse_errors,
+                    module,
+                    || {
+                        let name_str = if name == kw::PathRoot {
+                            "crate root".to_string()
+                        } else {
+                            format!("`{name}`")
+                        };
+                        let label = if segment_idx == 1 && path[0].ident.name == kw::PathRoot {
+                            format!("global paths cannot start with {name_str}")
+                        } else {
+                            format!("{name_str} in paths can only be used in start position")
+                        };
+                        (label, None)
+                    },
+                );
             }
 
             let binding = if let Some(module) = module {
@@ -1589,6 +1602,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                     let maybe_assoc = opt_ns != Some(MacroNS) && PathSource::Type.is_expected(res);
                     if let Some(next_module) = binding.module() {
+                        if self.mods_with_parse_errors.contains(&next_module.def_id()) {
+                            module_had_parse_errors = true;
+                        }
                         module = Some(ModuleOrUniformRoot::Module(next_module));
                         record_segment_res(self, res);
                     } else if res == Res::ToolMod && !is_last && opt_ns.is_some() {
@@ -1614,6 +1630,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             ident,
                             is_last,
                             finalize.is_some(),
+                            module_had_parse_errors,
                             module,
                             || {
                                 let label = format!(
@@ -1637,19 +1654,26 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
                     }
 
-                    return PathResult::failed(ident, is_last, finalize.is_some(), module, || {
-                        self.report_path_resolution_error(
-                            path,
-                            opt_ns,
-                            parent_scope,
-                            ribs,
-                            ignore_binding,
-                            ignore_import,
-                            module,
-                            segment_idx,
-                            ident,
-                        )
-                    });
+                    return PathResult::failed(
+                        ident,
+                        is_last,
+                        finalize.is_some(),
+                        module_had_parse_errors,
+                        module,
+                        || {
+                            self.report_path_resolution_error(
+                                path,
+                                opt_ns,
+                                parent_scope,
+                                ribs,
+                                ignore_binding,
+                                ignore_import,
+                                module,
+                                segment_idx,
+                                ident,
+                            )
+                        },
+                    );
                 }
             }
         }

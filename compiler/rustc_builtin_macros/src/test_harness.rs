@@ -141,8 +141,10 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
 
         // We don't want to recurse into anything other than mods, since
         // mods or tests inside of functions will break things
-        if let ast::ItemKind::Mod(_, ModKind::Loaded(.., ast::ModSpans { inner_span: span, .. })) =
-            item.kind
+        if let ast::ItemKind::Mod(
+            _,
+            ModKind::Loaded(.., ast::ModSpans { inner_span: span, .. }, _),
+        ) = item.kind
         {
             let prev_tests = mem::take(&mut self.tests);
             walk_item_kind(

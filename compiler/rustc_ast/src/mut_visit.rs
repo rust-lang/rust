@@ -1212,7 +1212,12 @@ impl WalkItemKind for ItemKind {
             ItemKind::Mod(safety, mod_kind) => {
                 visit_safety(vis, safety);
                 match mod_kind {
-                    ModKind::Loaded(items, _inline, ModSpans { inner_span, inject_use_span }) => {
+                    ModKind::Loaded(
+                        items,
+                        _inline,
+                        ModSpans { inner_span, inject_use_span },
+                        _,
+                    ) => {
                         items.flat_map_in_place(|item| vis.flat_map_item(item));
                         vis.visit_span(inner_span);
                         vis.visit_span(inject_use_span);

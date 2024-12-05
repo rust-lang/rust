@@ -770,7 +770,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 );
             }
 
-            ItemKind::Mod(..) => {
+            ItemKind::Mod(.., ref mod_kind) => {
                 let module = self.r.new_module(
                     Some(parent),
                     ModuleKind::Def(def_kind, def_id, ident.name),
@@ -780,6 +780,10 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                         || attr::contains_name(&item.attrs, sym::no_implicit_prelude),
                 );
                 self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion));
+
+                if let ast::ModKind::Loaded(_, _, _, Err(_)) = mod_kind {
+                    self.r.mods_with_parse_errors.insert(def_id);
+                }
 
                 // Descend into the module.
                 self.parent_scope.module = module;

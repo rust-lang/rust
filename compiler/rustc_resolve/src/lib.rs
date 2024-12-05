@@ -450,6 +450,7 @@ enum PathResult<'ra> {
         module: Option<ModuleOrUniformRoot<'ra>>,
         /// The segment name of target
         segment_name: Symbol,
+        error_implied_by_parse_error: bool,
     },
 }
 
@@ -458,6 +459,7 @@ impl<'ra> PathResult<'ra> {
         ident: Ident,
         is_error_from_last_segment: bool,
         finalize: bool,
+        error_implied_by_parse_error: bool,
         module: Option<ModuleOrUniformRoot<'ra>>,
         label_and_suggestion: impl FnOnce() -> (String, Option<Suggestion>),
     ) -> PathResult<'ra> {
@@ -470,6 +472,7 @@ impl<'ra> PathResult<'ra> {
             suggestion,
             is_error_from_last_segment,
             module,
+            error_implied_by_parse_error,
         }
     }
 }
@@ -1198,6 +1201,8 @@ pub struct Resolver<'ra, 'tcx> {
     /// This is the `Span` where an `extern crate foo;` suggestion would be inserted, if `foo`
     /// could be a crate that wasn't imported. For diagnostics use only.
     current_crate_outer_attr_insert_span: Span,
+
+    mods_with_parse_errors: FxHashSet<DefId>,
 }
 
 /// This provides memory for the rest of the crate. The `'ra` lifetime that is
@@ -1543,6 +1548,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             impl_unexpanded_invocations: Default::default(),
             impl_binding_keys: Default::default(),
             current_crate_outer_attr_insert_span,
+            mods_with_parse_errors: Default::default(),
         };
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);

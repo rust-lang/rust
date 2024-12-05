@@ -15,12 +15,6 @@ error[E0432]: unresolved import `parse_error::Canonical`
 LL | use parse_error::Canonical;
    |     ^^^^^^^^^^^^^^^^^^^^^^ no `Canonical` in `parse_error`
 
-error[E0425]: cannot find value `Canonical` in module `parse_error`
-  --> $DIR/parse-error-resolve.rs:6:18
-   |
-LL |     parse_error::Canonical.foo();
-   |                  ^^^^^^^^^ not found in `parse_error`
-
 error[E0369]: cannot add `{integer}` to `&str`
   --> $DIR/parse-error-resolve.rs:5:16
    |
@@ -29,7 +23,7 @@ LL |     let _ = "" + 1;
    |             |
    |             &str
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0369, E0425, E0432.
+Some errors have detailed explanations: E0369, E0432.
 For more information about an error, try `rustc --explain E0369`.
