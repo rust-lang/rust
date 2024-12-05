@@ -403,4 +403,8 @@ impl SyntaxFactory {
     pub fn token(&self, kind: SyntaxKind) -> SyntaxToken {
         make::token(kind)
     }
+
+    pub fn whitespace(&self, text: &str) -> ast::SyntaxToken {
+        make::tokens::whitespace(text)
+    }
 }
