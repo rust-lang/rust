@@ -9416,3 +9416,53 @@ fn f<T: UnCompat$0>
         "#]],
     );
 }
+
+#[test]
+fn issue_18613() {
+    check(
+        r#"
+fn main() {
+    struct S<T, D = bool>();
+    let x$0 = S::<()>;
+}"#,
+        expect![[r#"
+            *x*
+
+            ```rust
+            let x: fn S<()>() -> S<()>
+            ```
+
+            ---
+
+            size = 0, align = 1
+        "#]],
+    );
+
+    check(
+        r#"
+pub struct Global;
+pub struct Box<T, A = Global>(T, A);
+
+impl<T> Box<T> {
+    pub fn new(x: T) -> Self { loop {} }
+}
+
+pub struct String;
+
+fn main() {
+    let box_value$0 = Box::<String>new();
+}
+"#,
+        expect![[r#"
+            *box_value*
+
+            ```rust
+            let box_value: fn Box<String>(String, Global) -> Box<String>
+            ```
+
+            ---
+
+            size = 0, align = 1
+        "#]],
+    );
+}
