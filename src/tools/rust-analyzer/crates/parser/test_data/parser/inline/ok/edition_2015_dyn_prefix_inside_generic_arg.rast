@@ -1,9 +1,11 @@
 SOURCE_FILE
   TYPE_ALIAS
+    COMMENT "// 2015"
+    WHITESPACE "\n"
     TYPE_KW "type"
     WHITESPACE " "
     NAME
-      IDENT "T"
+      IDENT "A"
     WHITESPACE " "
     EQ "="
     WHITESPACE " "
@@ -11,17 +13,9 @@ SOURCE_FILE
       PATH
         PATH_SEGMENT
           NAME_REF
-            IDENT "S"
+            IDENT "Foo"
           GENERIC_ARG_LIST
             L_ANGLE "<"
-            TYPE_ARG
-              PATH_TYPE
-                PATH
-                  PATH_SEGMENT
-                    NAME_REF
-                      IDENT "i32"
-            COMMA ","
-            WHITESPACE " "
             TYPE_ARG
               DYN_TRAIT_TYPE
                 DYN_KW "dyn"
@@ -33,14 +27,6 @@ SOURCE_FILE
                         PATH_SEGMENT
                           NAME_REF
                             IDENT "T"
-            COMMA ","
-            WHITESPACE " "
-            TYPE_ARG
-              FN_PTR_TYPE
-                FN_KW "fn"
-                PARAM_LIST
-                  L_PAREN "("
-                  R_PAREN ")"
             R_ANGLE ">"
     SEMICOLON ";"
   WHITESPACE "\n"
