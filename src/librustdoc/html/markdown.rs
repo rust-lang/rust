@@ -32,6 +32,8 @@ use std::iter::Peekable;
 use std::ops::{ControlFlow, Range};
 use std::path::PathBuf;
 use std::str::{self, CharIndices};
+use std::sync::atomic::AtomicUsize;
+use std::sync::{Arc, Weak};
 
 use pulldown_cmark::{
     BrokenLink, CodeBlockKind, CowStr, Event, LinkType, Options, Parser, Tag, TagEnd, html,
@@ -1301,8 +1303,20 @@ impl LangString {
     }
 }
 
-impl Markdown<'_> {
+impl<'a> Markdown<'a> {
     pub fn into_string(self) -> String {
+        // This is actually common enough to special-case
+        if self.content.is_empty() {
+            return String::new();
+        }
+
+        let mut s = String::with_capacity(self.content.len() * 3 / 2);
+        html::push_html(&mut s, self.into_iter());
+
+        s
+    }
+
+    fn into_iter(self) -> CodeBlocks<'a, 'a, impl Iterator<Item = Event<'a>>> {
         let Markdown {
             content: md,
             links,
@@ -1313,32 +1327,72 @@ impl Markdown<'_> {
             heading_offset,
         } = self;
 
-        // This is actually common enough to special-case
-        if md.is_empty() {
-            return String::new();
-        }
-        let mut replacer = |broken_link: BrokenLink<'_>| {
+        let replacer = move |broken_link: BrokenLink<'_>| {
             links
                 .iter()
                 .find(|link| *link.original_text == *broken_link.reference)
                 .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
         };
 
-        let p = Parser::new_with_broken_link_callback(md, main_body_opts(), Some(&mut replacer));
+        let p = Parser::new_with_broken_link_callback(md, main_body_opts(), Some(replacer));
         let p = p.into_offset_iter();
-
-        let mut s = String::with_capacity(md.len() * 3 / 2);
 
         ids.handle_footnotes(|ids, existing_footnotes| {
             let p = HeadingLinks::new(p, None, ids, heading_offset);
             let p = footnotes::Footnotes::new(p, existing_footnotes);
             let p = LinkReplacer::new(p.map(|(ev, _)| ev), links);
             let p = TableWrapper::new(p);
-            let p = CodeBlocks::new(p, codes, edition, playground);
-            html::push_html(&mut s, p);
-        });
+            CodeBlocks::new(p, codes, edition, playground)
+        })
+    }
 
-        s
+    /// Convert markdown to (summary, remaining) HTML.
+    ///
+    /// - The summary is the first top-level Markdown element (usually a paragraph, but potentially
+    ///   any block).
+    /// - The remaining docs contain everything after the summary.
+    pub(crate) fn split_summary_and_content(self) -> (Option<String>, Option<String>) {
+        if self.content.is_empty() {
+            return (None, None);
+        }
+        let mut p = self.into_iter();
+
+        let mut event_level = 0;
+        let mut summary_events = Vec::new();
+        let mut get_next_tag = false;
+
+        let mut end_of_summary = false;
+        while let Some(event) = p.next() {
+            match event {
+                Event::Start(_) => event_level += 1,
+                Event::End(kind) => {
+                    event_level -= 1;
+                    if event_level == 0 {
+                        // We're back at the "top" so it means we're done with the summary.
+                        end_of_summary = true;
+                        // We surround tables with `<div>` HTML tags so this is a special case.
+                        get_next_tag = kind == TagEnd::Table;
+                    }
+                }
+                _ => {}
+            }
+            summary_events.push(event);
+            if end_of_summary {
+                if get_next_tag && let Some(event) = p.next() {
+                    summary_events.push(event);
+                }
+                break;
+            }
+        }
+        let mut summary = String::new();
+        html::push_html(&mut summary, summary_events.into_iter());
+        if summary.is_empty() {
+            return (None, None);
+        }
+        let mut content = String::new();
+        html::push_html(&mut content, p);
+
+        if content.is_empty() { (Some(summary), None) } else { (Some(summary), Some(content)) }
     }
 }
 
@@ -1882,7 +1936,7 @@ pub(crate) fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<Rust
 #[derive(Clone, Default, Debug)]
 pub struct IdMap {
     map: FxHashMap<String, usize>,
-    existing_footnotes: usize,
+    existing_footnotes: Arc<AtomicUsize>,
 }
 
 fn is_default_id(id: &str) -> bool {
@@ -1942,7 +1996,7 @@ fn is_default_id(id: &str) -> bool {
 
 impl IdMap {
     pub fn new() -> Self {
-        IdMap { map: FxHashMap::default(), existing_footnotes: 0 }
+        IdMap { map: FxHashMap::default(), existing_footnotes: Arc::new(AtomicUsize::new(0)) }
     }
 
     pub(crate) fn derive<S: AsRef<str> + ToString>(&mut self, candidate: S) -> String {
@@ -1970,15 +2024,17 @@ impl IdMap {
 
     /// Method to handle `existing_footnotes` increment automatically (to prevent forgetting
     /// about it).
-    pub(crate) fn handle_footnotes<F: FnOnce(&mut Self, &mut usize)>(&mut self, closure: F) {
-        let mut existing_footnotes = self.existing_footnotes;
+    pub(crate) fn handle_footnotes<'a, T, F: FnOnce(&'a mut Self, Weak<AtomicUsize>) -> T>(
+        &'a mut self,
+        closure: F,
+    ) -> T {
+        let existing_footnotes = Arc::downgrade(&self.existing_footnotes);
 
-        closure(self, &mut existing_footnotes);
-        self.existing_footnotes = existing_footnotes;
+        closure(self, existing_footnotes)
     }
 
     pub(crate) fn clear(&mut self) {
         self.map.clear();
-        self.existing_footnotes = 0;
+        self.existing_footnotes = Arc::new(AtomicUsize::new(0));
     }
 }

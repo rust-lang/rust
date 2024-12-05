@@ -1904,7 +1904,6 @@ fn render_impl(
         }
     }
 
-    let trait_is_none = trait_.is_none();
     // If we've implemented a trait, then also emit documentation for all
     // default items which weren't overridden in the implementation block.
     // We don't emit documentation for default items if they appear in the
@@ -1936,6 +1935,23 @@ fn render_impl(
                 if rendering_params.toggle_open_by_default { " open" } else { "" }
             );
         }
+
+        let (before_dox, after_dox) = i
+            .impl_item
+            .opt_doc_value()
+            .map(|dox| {
+                Markdown {
+                    content: &*dox,
+                    links: &i.impl_item.links(cx),
+                    ids: &mut cx.id_map.borrow_mut(),
+                    error_codes: cx.shared.codes,
+                    edition: cx.shared.edition(),
+                    playground: &cx.shared.playground,
+                    heading_offset: HeadingOffset::H4,
+                }
+                .split_summary_and_content()
+            })
+            .unwrap_or((None, None));
         render_impl_summary(
             w,
             cx,
@@ -1944,33 +1960,23 @@ fn render_impl(
             rendering_params.show_def_docs,
             use_absolute,
             aliases,
+            &before_dox,
         );
         if toggled {
             w.write_str("</summary>");
         }
 
-        if let Some(ref dox) = i.impl_item.opt_doc_value() {
-            if trait_is_none && impl_.items.is_empty() {
+        if before_dox.is_some() {
+            if trait_.is_none() && impl_.items.is_empty() {
                 w.write_str(
                     "<div class=\"item-info\">\
                          <div class=\"stab empty-impl\">This impl block contains no items.</div>\
                      </div>",
                 );
             }
-            write!(
-                w,
-                "<div class=\"docblock\">{}</div>",
-                Markdown {
-                    content: dox,
-                    links: &i.impl_item.links(cx),
-                    ids: &mut cx.id_map.borrow_mut(),
-                    error_codes: cx.shared.codes,
-                    edition: cx.shared.edition(),
-                    playground: &cx.shared.playground,
-                    heading_offset: HeadingOffset::H4,
-                }
-                .into_string()
-            );
+            if let Some(after_dox) = after_dox {
+                write!(w, "<div class=\"docblock\">{after_dox}</div>");
+            }
         }
         if !default_impl_items.is_empty() || !impl_items.is_empty() {
             w.write_str("<div class=\"impl-items\">");
@@ -2031,6 +2037,7 @@ pub(crate) fn render_impl_summary(
     // This argument is used to reference same type with different paths to avoid duplication
     // in documentation pages for trait with automatic implementations like "Send" and "Sync".
     aliases: &[String],
+    doc: &Option<String>,
 ) {
     let inner_impl = i.inner_impl();
     let id = cx.derive_id(get_id_for_impl(cx.tcx(), i.impl_item.item_id));
@@ -2080,6 +2087,10 @@ pub(crate) fn render_impl_summary(
                  <div class=\"stab portability\">{portability}</div>\
              </span>",
         );
+    }
+
+    if let Some(doc) = doc {
+        write!(w, "<div class=\"docblock\">{doc}</div>");
     }
 
     w.write_str("</section>");
