@@ -503,15 +503,15 @@ fn sparse_matrix_operations() {
     matrix.insert(2, 99);
     matrix.insert(4, 0);
 
-    let mut disjoint: ChunkedBitSet<usize> = ChunkedBitSet::new_empty(100);
+    let mut disjoint: BitSet<usize> = BitSet::new_empty(100);
     disjoint.insert(33);
 
-    let mut superset = ChunkedBitSet::new_empty(100);
+    let mut superset = BitSet::new_empty(100);
     superset.insert(22);
     superset.insert(75);
     superset.insert(33);
 
-    let mut subset = ChunkedBitSet::new_empty(100);
+    let mut subset = BitSet::new_empty(100);
     subset.insert(22);
 
     // SparseBitMatrix::remove
