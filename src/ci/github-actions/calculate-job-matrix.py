@@ -209,6 +209,7 @@ if __name__ == "__main__":
     if run_type is not None:
         jobs = calculate_jobs(run_type, data)
     jobs = skip_jobs(jobs, channel)
+    jobs = substitute_github_vars(jobs)
 
 
     if not jobs:
