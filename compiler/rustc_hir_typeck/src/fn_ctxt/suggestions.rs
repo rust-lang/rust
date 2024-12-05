@@ -3394,7 +3394,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let Some(ty) = self.node_ty_opt(tail_expr.hir_id) else {
             return;
         };
-        if self.can_eq(self.param_env, expected_ty, ty) {
+        if self.can_eq(self.param_env, expected_ty, ty)
+            // FIXME: this happens with macro calls. Need to figure out why the stmt
+            // `println!();` doesn't include the `;` in its `Span`. (#133845)
+            // We filter these out to avoid ICEs with debug assertions on caused by
+            // empty suggestions.
+            && stmt.span.hi() != tail_expr.span.hi()
+        {
             err.span_suggestion_short(
                 stmt.span.with_lo(tail_expr.span.hi()),
                 "remove this semicolon",
