@@ -333,7 +333,10 @@ fn make_module(sess: &Session, name: String) -> UnwindModule<ObjectModule> {
 
     let mut builder =
         ObjectBuilder::new(isa, name + ".o", cranelift_module::default_libcall_names()).unwrap();
-    builder.per_function_section(sess.opts.unstable_opts.function_sections.unwrap_or(true));
+    // Unlike cg_llvm, cg_clif defaults to disabling -Zfunction-sections. For cg_llvm binary size
+    // is important, while cg_clif cares more about compilation times. Enabling -Zfunction-sections
+    // can easily double the amount of time necessary to perform linking.
+    builder.per_function_section(sess.opts.unstable_opts.function_sections.unwrap_or(false));
     UnwindModule::new(ObjectModule::new(builder), true)
 }
 
