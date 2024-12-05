@@ -124,14 +124,19 @@ mod for_windows {
                 // (only when wrongly setting the environmental variable),
                 // it might be better to improve the experience of the second case
                 // when users have interrupted the parent process and we haven't finish
-                // duplicating the handle yet. We just need close the job object if that occurs.
-                CloseHandle(job).ok();
+                // duplicating the handle yet.
                 return;
             }
         };
 
         let mut parent_handle = HANDLE::default();
-        let r = DuplicateHandle(
+        // If this fails, well at least we tried! An example of DuplicateHandle
+        // failing in the past has been when the wrong python2 package spawned this
+        // build system (e.g., the `python2` package in MSYS instead of
+        // `mingw-w64-x86_64-python2`). Not sure why it failed, but the "failure
+        // mode" here is that we only clean everything up when the build system
+        // dies, not when the python parent does, so not too bad.
+        let _ = DuplicateHandle(
             GetCurrentProcess(),
             job,
             parent,
@@ -140,15 +145,6 @@ mod for_windows {
             false,
             DUPLICATE_SAME_ACCESS,
         );
-
-        // If this failed, well at least we tried! An example of DuplicateHandle
-        // failing in the past has been when the wrong python2 package spawned this
-        // build system (e.g., the `python2` package in MSYS instead of
-        // `mingw-w64-x86_64-python2`). Not sure why it failed, but the "failure
-        // mode" here is that we only clean everything up when the build system
-        // dies, not when the python parent does, so not too bad.
-        if r.is_err() {
-            CloseHandle(job).ok();
-        }
+        CloseHandle(parent).ok();
     }
 }
