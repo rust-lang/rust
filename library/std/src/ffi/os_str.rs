@@ -32,7 +32,7 @@ use crate::{cmp, fmt, slice};
 /// `OsString` and [`OsStr`] bridge this gap by simultaneously representing Rust
 /// and platform-native string values, and in particular allowing a Rust string
 /// to be converted into an "OS" string with no cost if possible. A consequence
-/// of this is that `OsString` instances are *not* `NUL` terminated; in order
+/// of this is that `OsString` instances are *not* `NULL` terminated; in order
 /// to pass to e.g., Unix system call, you should create a [`CStr`].
 ///
 /// `OsString` is to <code>&[OsStr]</code> as [`String`] is to <code>&[str]</code>: the former
