@@ -3105,4 +3105,73 @@ fn main() { let _: Baz; }
 "#,
         );
     }
+
+    #[test]
+    fn rename_type_param_ref_in_use_bound() {
+        check(
+            "U",
+            r#"
+fn foo<T>() -> impl use<T$0> Trait {}
+"#,
+            r#"
+fn foo<U>() -> impl use<U> Trait {}
+"#,
+        );
+    }
+
+    #[test]
+    fn rename_type_param_in_use_bound() {
+        check(
+            "U",
+            r#"
+fn foo<T$0>() -> impl use<T> Trait {}
+"#,
+            r#"
+fn foo<U>() -> impl use<U> Trait {}
+"#,
+        );
+    }
+
+    #[test]
+    fn rename_lifetime_param_ref_in_use_bound() {
+        check(
+            "u",
+            r#"
+fn foo<'t>() -> impl use<'t$0> Trait {}
+"#,
+            r#"
+fn foo<'u>() -> impl use<'u> Trait {}
+"#,
+        );
+    }
+
+    #[test]
+    fn rename_lifetime_param_in_use_bound() {
+        check(
+            "u",
+            r#"
+fn foo<'t$0>() -> impl use<'t> Trait {}
+"#,
+            r#"
+fn foo<'u>() -> impl use<'u> Trait {}
+"#,
+        );
+    }
+
+    #[test]
+    fn rename_parent_type_param_in_use_bound() {
+        check(
+            "U",
+            r#"
+trait Trait<T> {
+    fn foo() -> impl use<T$0> Trait {}
+}
+"#,
+            r#"
+trait Trait<U> {
+    fn foo() -> impl use<U> Trait {}
+}
+"#,
+        );
+    }
 }
