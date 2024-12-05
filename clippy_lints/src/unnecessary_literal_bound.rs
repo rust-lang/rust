@@ -17,7 +17,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     ///
-    /// This leaves the caller unable to use the `&str` as `&'static str`, causing unneccessary allocations or confusion.
+    /// This leaves the caller unable to use the `&str` as `&'static str`, causing unnecessary allocations or confusion.
     /// This is also most likely what you meant to write.
     ///
     /// ### Example

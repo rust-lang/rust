@@ -3969,7 +3969,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     ///
-    /// In the aformentioned cases it is not necessary to call `min()` or `max()`
+    /// In the aforementioned cases it is not necessary to call `min()` or `max()`
     /// to compare values, it may even cause confusion.
     ///
     /// ### Example

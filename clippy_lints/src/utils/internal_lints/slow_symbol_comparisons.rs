@@ -12,18 +12,18 @@ use rustc_span::Span;
 declare_clippy_lint! {
     /// ### What it does
     ///
-    /// Detects symbol comparision using `Symbol::intern`.
+    /// Detects symbol comparison using `Symbol::intern`.
     ///
     /// ### Why is this bad?
     ///
-    /// Comparision via `Symbol::as_str()` is faster if the interned symbols are not reused.
+    /// Comparison via `Symbol::as_str()` is faster if the interned symbols are not reused.
     ///
     /// ### Example
     ///
     /// None, see suggestion.
     pub SLOW_SYMBOL_COMPARISONS,
     internal,
-    "detects slow comparisions of symbol"
+    "detects slow comparisons of symbol"
 }
 
 declare_lint_pass!(SlowSymbolComparisons => [SLOW_SYMBOL_COMPARISONS]);
