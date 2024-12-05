@@ -46,6 +46,10 @@ runners:
   - &job-aarch64-linux
     os: ubuntu-22.04-arm64-8core-32gb
 
+  - &job-linux-4c-codebuild
+    os: codebuild-ubuntu-24-4c-${{ github.run_id }}-${{ github.run_attempt }}
+    <<: *base-job
+
 envs:
   env-x86_64-apple-tests: &env-x86_64-apple-tests
     SCRIPT: ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc -- --exact
@@ -237,7 +241,7 @@ auto:
     <<: *job-linux-4c
 
   - image: x86_64-gnu
-    <<: *job-linux-4c
+    <<: *job-linux-4c-codebuild
 
   # This job ensures commits landing on nightly still pass the full
   # test suite on the stable channel. There are some UI tests that
