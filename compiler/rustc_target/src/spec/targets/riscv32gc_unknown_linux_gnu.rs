@@ -9,7 +9,7 @@ pub(crate) fn target() -> Target {
             description: Some("RISC-V Linux (kernel 5.4, glibc 2.33)".into()),
             tier: Some(3),
             host_tools: Some(false),
-            std: Some(false),
+            std: Some(true),
         },
         pointer_width: 32,
         data_layout: "e-m:e-p:32:32-i64:64-n32-S128".into(),
