@@ -532,8 +532,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Mark the given tag as exposed. It was found on a pointer with the given AllocId.
-    fn tb_expose_tag(&mut self, alloc_id: AllocId, tag: BorTag) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+    fn tb_expose_tag(&self, alloc_id: AllocId, tag: BorTag) -> InterpResult<'tcx> {
+        let this = self.eval_context_ref();
 
         // Function pointers and dead objects don't have an alloc_extra so we ignore them.
         // This is okay because accessing them is UB anyway, no need for any Tree Borrows checks.

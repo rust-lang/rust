@@ -270,6 +270,9 @@ impl interpret::Provenance for Provenance {
     /// We use absolute addresses in the `offset` of a `StrictPointer`.
     const OFFSET_IS_ADDR: bool = true;
 
+    /// Miri implements wildcard provenance.
+    const WILDCARD: Option<Self> = Some(Provenance::Wildcard);
+
     fn get_alloc_id(self) -> Option<AllocId> {
         match self {
             Provenance::Concrete { alloc_id, .. } => Some(alloc_id),
@@ -1242,8 +1245,8 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     /// Called on `ptr as usize` casts.
     /// (Actually computing the resulting `usize` doesn't need machine help,
     /// that's just `Scalar::try_to_int`.)
-    fn expose_ptr(ecx: &mut InterpCx<'tcx, Self>, ptr: StrictPointer) -> InterpResult<'tcx> {
-        match ptr.provenance {
+    fn expose_provenance(ecx: &InterpCx<'tcx, Self>, provenance: Self::Provenance) -> InterpResult<'tcx> {
+        match provenance {
             Provenance::Concrete { alloc_id, tag } => ecx.expose_ptr(alloc_id, tag),
             Provenance::Wildcard => {
                 // No need to do anything for wildcard pointers as
