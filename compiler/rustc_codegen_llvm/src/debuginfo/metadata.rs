@@ -73,6 +73,9 @@ const DW_ATE_unsigned: c_uint = 0x07;
 #[allow(non_upper_case_globals)]
 const DW_ATE_UTF: c_uint = 0x10;
 
+#[allow(non_upper_case_globals)]
+const DW_TAG_const_type: c_uint = 0x26;
+
 pub(super) const UNKNOWN_LINE_NUMBER: c_uint = 0;
 pub(super) const UNKNOWN_COLUMN_NUMBER: c_uint = 0;
 
