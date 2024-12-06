@@ -709,28 +709,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "mdbook-trpl-listing"
+name = "mdbook-trpl"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "clap",
  "html_parser",
  "mdbook",
- "pulldown-cmark 0.10.3",
- "pulldown-cmark-to-cmark 13.0.0",
+ "pulldown-cmark 0.12.2",
+ "pulldown-cmark-to-cmark 19.0.0",
  "serde_json",
  "thiserror",
  "toml 0.8.19",
-]
-
-[[package]]
-name = "mdbook-trpl-note"
-version = "1.0.0"
-dependencies = [
- "clap",
- "mdbook",
- "pulldown-cmark 0.10.3",
- "pulldown-cmark-to-cmark 13.0.0",
- "serde_json",
 ]
 
 [[package]]
@@ -1010,7 +1000,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "76979bea66e7875e7509c4ec5300112b316af87fa7a252ca91c448b32dfe3993"
 dependencies = [
  "bitflags 2.6.0",
- "getopts",
  "memchr",
  "pulldown-cmark-escape 0.10.1",
  "unicase",
@@ -1023,6 +1012,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "679341d22c78c6c649893cbd6c3278dcbe9fc4faa62fea3a9296ae2b50c14625"
 dependencies = [
  "bitflags 2.6.0",
+ "memchr",
+ "pulldown-cmark-escape 0.11.0",
+ "unicase",
+]
+
+[[package]]
+name = "pulldown-cmark"
+version = "0.12.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f86ba2052aebccc42cbbb3ed234b8b13ce76f75c3551a303cb2bcffcff12bb14"
+dependencies = [
+ "bitflags 2.6.0",
+ "getopts",
  "memchr",
  "pulldown-cmark-escape 0.11.0",
  "unicase",
@@ -1042,20 +1044,20 @@ checksum = "007d8adb5ddab6f8e3f491ac63566a7d5002cc7ed73901f72057943fa71ae1ae"
 
 [[package]]
 name = "pulldown-cmark-to-cmark"
-version = "13.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f609795c8d835f79dcfcf768415b9fb57ef1b74891e99f86e73f43a7a257163b"
-dependencies = [
- "pulldown-cmark 0.10.3",
-]
-
-[[package]]
-name = "pulldown-cmark-to-cmark"
 version = "15.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9c77db841443d89a57ae94f22d29c022f6d9f41b00bddbf1f4024dbaf4bdce1"
 dependencies = [
  "pulldown-cmark 0.11.3",
+]
+
+[[package]]
+name = "pulldown-cmark-to-cmark"
+version = "19.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d742adcc7b655dba3e9ebab47954ca229fc0fa1df01fdc94349b6f3a2e6d257"
+dependencies = [
+ "pulldown-cmark 0.12.2",
 ]
 
 [[package]]
@@ -1144,8 +1146,7 @@ dependencies = [
  "mdbook",
  "mdbook-i18n-helpers",
  "mdbook-spec",
- "mdbook-trpl-listing",
- "mdbook-trpl-note",
+ "mdbook-trpl",
 ]
 
 [[package]]
