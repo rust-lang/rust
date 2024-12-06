@@ -47,7 +47,7 @@ runners:
     os: ubuntu-22.04-arm64-8core-32gb
 
   - &job-linux-4c-codebuild
-    os: codebuild-ubuntu-24-4c-${{ github.run_id }}-${{ github.run_attempt }}
+    os: codebuild-ubuntu-22-4c-${{ github.run_id }}-${{ github.run_attempt }}
     <<: *base-job
 
 envs:
