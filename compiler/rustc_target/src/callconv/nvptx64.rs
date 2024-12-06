@@ -75,7 +75,16 @@ where
         16 => Reg::i128(),
         _ => unreachable!("Align is given as power of 2 no larger than 16 bytes"),
     };
-    arg.cast_to(Uniform::new(unit, arg.layout.size));
+    if arg.layout.size.bytes() / align_bytes == 1 {
+        // Make sure we pass the struct as array at the LLVM IR level and not as a single integer.
+        arg.cast_to(CastTarget {
+            prefix: [Some(unit), None, None, None, None, None, None, None],
+            rest: Uniform::new(unit, Size::ZERO),
+            attrs: ArgAttributes::new(),
+        });
+    } else {
+        arg.cast_to(Uniform::new(unit, arg.layout.size));
+    }
 }
 
 pub(crate) fn compute_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {

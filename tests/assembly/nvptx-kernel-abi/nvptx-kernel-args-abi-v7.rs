@@ -166,7 +166,7 @@ pub unsafe extern "ptx-kernel" fn f_f32_arg(_a: f32) {}
 pub unsafe extern "ptx-kernel" fn f_f64_arg(_a: f64) {}
 
 // CHECK: .visible .entry f_single_u8_arg(
-// CHECK: .param .u8 f_single_u8_arg_param_0
+// CHECK: .param .align 1 .b8 f_single_u8_arg_param_0[1]
 #[no_mangle]
 pub unsafe extern "ptx-kernel" fn f_single_u8_arg(_a: SingleU8) {}
 
