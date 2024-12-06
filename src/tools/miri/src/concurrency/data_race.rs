@@ -874,22 +874,26 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
                         // Either Acquire | AcqRel | SeqCst
                         clocks.apply_acquire_fence();
                     }
-                    if atomic != AtomicFenceOrd::Acquire {
-                        // Either Release | AcqRel | SeqCst
-                        clocks.apply_release_fence();
-                    }
                     if atomic == AtomicFenceOrd::SeqCst {
                         // Behave like an RMW on the global fence location. This takes full care of
                         // all the SC fence requirements, including C++17 §32.4 [atomics.order]
                         // paragraph 6 (which would limit what future reads can see). It also rules
                         // out many legal behaviors, but we don't currently have a model that would
                         // be more precise.
+                        // Also see the second bullet on page 10 of
+                        // <https://www.cs.tau.ac.il/~orilahav/papers/popl21_robustness.pdf>.
                         let mut sc_fence_clock = data_race.last_sc_fence.borrow_mut();
                         sc_fence_clock.join(&clocks.clock);
                         clocks.clock.join(&sc_fence_clock);
                         // Also establish some sort of order with the last SC write that happened, globally
                         // (but this is only respected by future reads).
                         clocks.write_seqcst.join(&data_race.last_sc_write_per_thread.borrow());
+                    }
+                    // The release fence is last, since both of the above could alter our clock,
+                    // which should be part of what is being released.
+                    if atomic != AtomicFenceOrd::Acquire {
+                        // Either Release | AcqRel | SeqCst
+                        clocks.apply_release_fence();
                     }
 
                     // Increment timestamp in case of release semantics.
