@@ -42,11 +42,11 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
         graph::ConstraintGraph::new(graph::Normal, self, num_region_vars)
     }
 
-    /// Like `graph`, but constraints a reverse graph where `R1: R2`
-    /// represents an edge `R2 -> R1`.
-    pub(crate) fn reverse_graph(&self, num_region_vars: usize) -> graph::ReverseConstraintGraph {
-        graph::ConstraintGraph::new(graph::Reverse, self, num_region_vars)
-    }
+    // /// Like `graph`, but constraints a reverse graph where `R1: R2`
+    // /// represents an edge `R2 -> R1`.
+    // pub(crate) fn reverse_graph(&self, num_region_vars: usize) -> graph::ReverseConstraintGraph {
+    //     graph::ConstraintGraph::new(graph::Reverse, self, num_region_vars)
+    // }
 
     pub(crate) fn outlives(
         &self,

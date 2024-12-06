@@ -18,7 +18,7 @@ pub(crate) struct ConstraintGraph<D: ConstraintGraphDirection> {
 
 pub(crate) type NormalConstraintGraph = ConstraintGraph<Normal>;
 
-pub(crate) type ReverseConstraintGraph = ConstraintGraph<Reverse>;
+// pub(crate) type ReverseConstraintGraph = ConstraintGraph<Reverse>;
 
 /// Marker trait that controls whether a `R1: R2` constraint
 /// represents an edge `R1 -> R2` or `R2 -> R1`.
@@ -49,26 +49,26 @@ impl ConstraintGraphDirection for Normal {
     }
 }
 
-/// In reverse mode, a `R1: R2` constraint results in an edge `R2 ->
-/// R1`. We use this for optimizing liveness computation, because then
-/// we wish to iterate from a region (e.g., R2) to all the regions
-/// that will outlive it (e.g., R1).
-#[derive(Copy, Clone, Debug)]
-pub(crate) struct Reverse;
+// /// In reverse mode, a `R1: R2` constraint results in an edge `R2 ->
+// /// R1`. We use this for optimizing liveness computation, because then
+// /// we wish to iterate from a region (e.g., R2) to all the regions
+// /// that will outlive it (e.g., R1).
+// #[derive(Copy, Clone, Debug)]
+// pub(crate) struct Reverse;
 
-impl ConstraintGraphDirection for Reverse {
-    fn start_region(c: &OutlivesConstraint<'_>) -> RegionVid {
-        c.sub
-    }
+// impl ConstraintGraphDirection for Reverse {
+//     fn start_region(c: &OutlivesConstraint<'_>) -> RegionVid {
+//         c.sub
+//     }
 
-    fn end_region(c: &OutlivesConstraint<'_>) -> RegionVid {
-        c.sup
-    }
+//     fn end_region(c: &OutlivesConstraint<'_>) -> RegionVid {
+//         c.sup
+//     }
 
-    fn is_normal() -> bool {
-        false
-    }
-}
+//     fn is_normal() -> bool {
+//         false
+//     }
+// }
 
 impl<D: ConstraintGraphDirection> ConstraintGraph<D> {
     /// Creates a "dependency graph" where each region constraint `R1:

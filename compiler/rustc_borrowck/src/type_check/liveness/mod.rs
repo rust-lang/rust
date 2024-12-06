@@ -12,9 +12,9 @@ use rustc_mir_dataflow::points::DenseLocationMap;
 use tracing::debug;
 
 use super::TypeChecker;
-use crate::constraints::OutlivesConstraintSet;
+// use crate::constraints::OutlivesConstraintSet;
 use crate::region_infer::values::LivenessValues;
-use crate::universal_regions::UniversalRegions;
+// use crate::universal_regions::UniversalRegions;
 
 mod local_use_map;
 mod polonius;
@@ -37,11 +37,7 @@ pub(super) fn generate<'a, 'tcx>(
 ) {
     debug!("liveness::generate");
 
-    let free_regions = regions_that_outlive_free_regions(
-        typeck.infcx.num_region_vars(),
-        &typeck.universal_regions,
-        &typeck.constraints.outlives_constraints,
-    );
+    let free_regions = typeck.universal_regions.universal_regions_iter().collect();
     let (relevant_live_locals, boring_locals) =
         compute_relevant_live_locals(typeck.tcx(), &free_regions, body);
 
@@ -88,45 +84,45 @@ fn compute_relevant_live_locals<'tcx>(
     (relevant_live_locals, boring_locals)
 }
 
-/// Computes all regions that are (currently) known to outlive free
-/// regions. For these regions, we do not need to compute
-/// liveness, since the outlives constraints will ensure that they
-/// are live over the whole fn body anyhow.
-fn regions_that_outlive_free_regions<'tcx>(
-    num_region_vars: usize,
-    universal_regions: &UniversalRegions<'tcx>,
-    constraint_set: &OutlivesConstraintSet<'tcx>,
-) -> FxHashSet<RegionVid> {
-    // Build a graph of the outlives constraints thus far. This is
-    // a reverse graph, so for each constraint `R1: R2` we have an
-    // edge `R2 -> R1`. Therefore, if we find all regions
-    // reachable from each free region, we will have all the
-    // regions that are forced to outlive some free region.
-    let rev_constraint_graph = constraint_set.reverse_graph(num_region_vars);
-    let fr_static = universal_regions.fr_static;
-    let rev_region_graph = rev_constraint_graph.region_graph(constraint_set, fr_static);
+// /// Computes all regions that are (currently) known to outlive free
+// /// regions. For these regions, we do not need to compute
+// /// liveness, since the outlives constraints will ensure that they
+// /// are live over the whole fn body anyhow.
+// fn regions_that_outlive_free_regions<'tcx>(
+//     num_region_vars: usize,
+//     universal_regions: &UniversalRegions<'tcx>,
+//     constraint_set: &OutlivesConstraintSet<'tcx>,
+// ) -> FxHashSet<RegionVid> {
+//     // Build a graph of the outlives constraints thus far. This is
+//     // a reverse graph, so for each constraint `R1: R2` we have an
+//     // edge `R2 -> R1`. Therefore, if we find all regions
+//     // reachable from each free region, we will have all the
+//     // regions that are forced to outlive some free region.
+//     let rev_constraint_graph = constraint_set.reverse_graph(num_region_vars);
+//     let fr_static = universal_regions.fr_static;
+//     let rev_region_graph = rev_constraint_graph.region_graph(constraint_set, fr_static);
 
-    // Stack for the depth-first search. Start out with all the free regions.
-    let mut stack: Vec<_> = universal_regions.universal_regions_iter().collect();
+//     // Stack for the depth-first search. Start out with all the free regions.
+//     let mut stack: Vec<_> = universal_regions.universal_regions_iter().collect();
 
-    // Set of all free regions, plus anything that outlives them. Initially
-    // just contains the free regions.
-    let mut outlives_free_region: FxHashSet<_> = stack.iter().cloned().collect();
+//     // Set of all free regions, plus anything that outlives them. Initially
+//     // just contains the free regions.
+//     let mut outlives_free_region: FxHashSet<_> = stack.iter().cloned().collect();
 
-    // Do the DFS -- for each thing in the stack, find all things
-    // that outlive it and add them to the set. If they are not,
-    // push them onto the stack for later.
-    while let Some(sub_region) = stack.pop() {
-        stack.extend(
-            rev_region_graph
-                .outgoing_regions(sub_region)
-                .filter(|&r| outlives_free_region.insert(r)),
-        );
-    }
+//     // Do the DFS -- for each thing in the stack, find all things
+//     // that outlive it and add them to the set. If they are not,
+//     // push them onto the stack for later.
+//     while let Some(sub_region) = stack.pop() {
+//         stack.extend(
+//             rev_region_graph
+//                 .outgoing_regions(sub_region)
+//                 .filter(|&r| outlives_free_region.insert(r)),
+//         );
+//     }
 
-    // Return the final set of things we visited.
-    outlives_free_region
-}
+//     // Return the final set of things we visited.
+//     outlives_free_region
+// }
 
 /// Some variables are "regular live" at `location` -- i.e., they may be used later. This means that
 /// all regions appearing in their type must be live at `location`.
