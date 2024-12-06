@@ -1512,7 +1512,7 @@ fn extract_if_ranges() {
 
 #[test]
 #[should_panic]
-fn extraxt_if_out_of_bounds() {
+fn extract_if_out_of_bounds() {
     let mut vec = vec![0, 1];
     let _ = vec.extract_if(5.., |_| true).for_each(drop);
 }
