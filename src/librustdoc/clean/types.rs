@@ -1241,19 +1241,6 @@ impl Attributes {
     }
 }
 
-impl PartialEq for Attributes {
-    fn eq(&self, rhs: &Self) -> bool {
-        self.doc_strings == rhs.doc_strings
-            && self
-                .other_attrs
-                .iter()
-                .map(|attr| attr.id)
-                .eq(rhs.other_attrs.iter().map(|attr| attr.id))
-    }
-}
-
-impl Eq for Attributes {}
-
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum GenericBound {
     TraitBound(PolyTrait, hir::TraitBoundModifiers),
