@@ -2936,7 +2936,7 @@ pub(crate) mod dep_tracking {
     use rustc_target::spec::{
         CodeModel, FramePointer, MergeFunctions, OnBrokenPipe, PanicStrategy, RelocModel,
         RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, SymbolVisibility, TargetTuple,
-        TlsModel, WasmCAbi,
+        TlsModel,
     };
 
     use super::{
@@ -3047,7 +3047,6 @@ pub(crate) mod dep_tracking {
         Polonius,
         InliningThreshold,
         FunctionReturn,
-        WasmCAbi,
         Align,
     );
 
