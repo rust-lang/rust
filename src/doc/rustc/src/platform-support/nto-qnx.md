@@ -115,6 +115,7 @@ For conditional compilation, following QNX Neutrino specific attributes are defi
 - `target_env` = `"nto71"` (for QNX Neutrino 7.1 with "classic" network stack "io_pkt")
 - `target_env` = `"nto71_iosock"` (for QNX Neutrino 7.1 with network stack "io_sock")
 - `target_env` = `"nto70"` (for QNX Neutrino 7.0)
+- `target_env` = `"nto80"` (for QNX Neutrino 8.0)
 
 ## Building the target
 
