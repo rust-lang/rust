@@ -238,7 +238,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let scalar = src.to_scalar();
         let ptr = scalar.to_pointer(self)?;
         match ptr.into_pointer_or_addr() {
-            Ok(ptr) => M::expose_ptr(self, ptr)?,
+            Ok(ptr) => M::expose_provenance(self, ptr.provenance)?,
             Err(_) => {} // Do nothing, exposing an invalid pointer (`None` provenance) is a NOP.
         };
         interp_ok(ImmTy::from_scalar(

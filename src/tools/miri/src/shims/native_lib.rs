@@ -3,8 +3,11 @@ use std::ops::Deref;
 
 use libffi::high::call as ffi;
 use libffi::low::CodePtr;
-use rustc_abi::{BackendRepr, HasDataLayout};
-use rustc_middle::ty::{self as ty, IntTy, UintTy};
+use rustc_abi::{BackendRepr, HasDataLayout, Size};
+use rustc_middle::{
+    mir::interpret::Pointer,
+    ty::{self as ty, IntTy, UintTy},
+};
 use rustc_span::Symbol;
 
 use crate::*;
@@ -74,6 +77,11 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             ty::Tuple(t_list) if t_list.len() == 0 => {
                 unsafe { ffi::call::<()>(ptr, libffi_args.as_slice()) };
                 return interp_ok(ImmTy::uninit(dest.layout));
+            }
+            ty::RawPtr(..) => {
+                let x = unsafe { ffi::call::<*const ()>(ptr, libffi_args.as_slice()) };
+                let ptr = Pointer::new(Provenance::Wildcard, Size::from_bytes(x.addr()));
+                Scalar::from_pointer(ptr, this)
             }
             _ => throw_unsup_format!("unsupported return type for native call: {:?}", link_name),
         };
@@ -152,8 +160,26 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             if !matches!(arg.layout.backend_repr, BackendRepr::Scalar(_)) {
                 throw_unsup_format!("only scalar argument types are support for native calls")
             }
-            libffi_args.push(imm_to_carg(this.read_immediate(arg)?, this)?);
+            let imm = this.read_immediate(arg)?;
+            libffi_args.push(imm_to_carg(&imm, this)?);
+            // If we are passing a pointer, prepare the memory it points to.
+            if matches!(arg.layout.ty.kind(), ty::RawPtr(..)) {
+                let ptr = imm.to_scalar().to_pointer(this)?;
+                let Some(prov) = ptr.provenance else {
+                    // Pointer without provenance may not access any memory.
+                    continue;
+                };
+                // We use `get_alloc_id` for its best-effort behaviour with Wildcard provenance.
+                let Some(alloc_id) = prov.get_alloc_id() else {
+                    // Wildcard pointer, whatever it points to must be already exposed.
+                    continue;
+                };
+                this.prepare_for_native_call(alloc_id, prov)?;
+            }
         }
+        
+        // FIXME: In the future, we should also call `prepare_for_native_call` on all previously
+        // exposed allocations, since C may access any of them.
 
         // Convert them to `libffi::high::Arg` type.
         let libffi_args = libffi_args
@@ -220,7 +246,7 @@ impl<'a> CArg {
 
 /// Extract the scalar value from the result of reading a scalar from the machine,
 /// and convert it to a `CArg`.
-fn imm_to_carg<'tcx>(v: ImmTy<'tcx>, cx: &impl HasDataLayout) -> InterpResult<'tcx, CArg> {
+fn imm_to_carg<'tcx>(v: &ImmTy<'tcx>, cx: &impl HasDataLayout) -> InterpResult<'tcx, CArg> {
     interp_ok(match v.layout.ty.kind() {
         // If the primitive provided can be converted to a type matching the type pattern
         // then create a `CArg` of this primitive value with the corresponding `CArg` constructor.
@@ -238,18 +264,10 @@ fn imm_to_carg<'tcx>(v: ImmTy<'tcx>, cx: &impl HasDataLayout) -> InterpResult<'t
         ty::Uint(UintTy::U64) => CArg::UInt64(v.to_scalar().to_u64()?),
         ty::Uint(UintTy::Usize) =>
             CArg::USize(v.to_scalar().to_target_usize(cx)?.try_into().unwrap()),
-        ty::RawPtr(_, mutability) => {
-            // Arbitrary mutable pointer accesses are not currently supported in Miri.
-            if mutability.is_mut() {
-                throw_unsup_format!(
-                    "unsupported mutable pointer type for native call: {}",
-                    v.layout.ty
-                );
-            } else {
-                let s = v.to_scalar().to_pointer(cx)?.addr();
-                // This relies on the `expose_provenance` in `addr_from_alloc_id`.
-                CArg::RawPtr(std::ptr::with_exposed_provenance_mut(s.bytes_usize()))
-            }
+        ty::RawPtr(..) => {
+            let s = v.to_scalar().to_pointer(cx)?.addr();
+            // This relies on the `expose_provenance` in `addr_from_alloc_id`.
+            CArg::RawPtr(std::ptr::with_exposed_provenance_mut(s.bytes_usize()))
         }
         _ => throw_unsup_format!("unsupported argument type for native call: {}", v.layout.ty),
     })
