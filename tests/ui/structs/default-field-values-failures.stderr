@@ -21,6 +21,12 @@ error: default fields are not supported in tuple structs
 LL | pub struct Rak(i32 = 42);
    |                      ^^ default fields are only supported on structs
 
+error: generic `Self` types are currently not permitted in anonymous constants
+  --> $DIR/default-field-values-failures.rs:20:14
+   |
+LL |     bar: S = Self::S,
+   |              ^^^^
+
 error[E0277]: the trait bound `S: Default` is not satisfied
   --> $DIR/default-field-values-failures.rs:14:5
    |
@@ -105,12 +111,6 @@ help: remove the extra argument
 LL -     let _ = Rak(.., 0);
 LL +     let _ = Rak(0);
    |
-
-error: generic `Self` types are currently not permitted in anonymous constants
-  --> $DIR/default-field-values-failures.rs:20:14
-   |
-LL |     bar: S = Self::S,
-   |              ^^^^
 
 error: aborting due to 9 previous errors
 
