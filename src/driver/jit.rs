@@ -11,12 +11,12 @@ use cranelift_jit::{JITBuilder, JITModule};
 use rustc_codegen_ssa::CrateInfo;
 use rustc_middle::mir::mono::MonoItem;
 use rustc_session::Session;
-use rustc_span::Symbol;
+use rustc_span::sym;
 
 use crate::debuginfo::TypeDebugContext;
 use crate::prelude::*;
 use crate::unwind_module::UnwindModule;
-use crate::{BackendConfig, CodegenCx, CodegenMode};
+use crate::{CodegenCx, CodegenMode};
 
 struct JitState {
     jit_module: UnwindModule<JITModule>,
@@ -59,14 +59,10 @@ impl UnsafeMessage {
     }
 }
 
-fn create_jit_module(
-    tcx: TyCtxt<'_>,
-    backend_config: &BackendConfig,
-    hotswap: bool,
-) -> (UnwindModule<JITModule>, CodegenCx) {
+fn create_jit_module(tcx: TyCtxt<'_>, hotswap: bool) -> (UnwindModule<JITModule>, CodegenCx) {
     let crate_info = CrateInfo::new(tcx, "dummy_target_cpu".to_string());
 
-    let isa = crate::build_isa(tcx.sess, backend_config);
+    let isa = crate::build_isa(tcx.sess);
     let mut jit_builder = JITBuilder::with_isa(isa, cranelift_module::default_libcall_names());
     jit_builder.hotswap(hotswap);
     crate::compiler_builtins::register_functions_for_jit(&mut jit_builder);
@@ -81,7 +77,7 @@ fn create_jit_module(
     (jit_module, cx)
 }
 
-pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
+pub(crate) fn run_jit(tcx: TyCtxt<'_>, codegen_mode: CodegenMode, jit_args: Vec<String>) -> ! {
     if !tcx.sess.opts.output_types.should_codegen() {
         tcx.dcx().fatal("JIT mode doesn't work with `cargo check`");
     }
@@ -90,11 +86,8 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
         tcx.dcx().fatal("can't jit non-executable crate");
     }
 
-    let (mut jit_module, mut cx) = create_jit_module(
-        tcx,
-        &backend_config,
-        matches!(backend_config.codegen_mode, CodegenMode::JitLazy),
-    );
+    let (mut jit_module, mut cx) =
+        create_jit_module(tcx, matches!(codegen_mode, CodegenMode::JitLazy));
     let mut cached_context = Context::new();
 
     let (_, cgus) = tcx.collect_and_partition_mono_items(());
@@ -110,7 +103,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
         super::predefine_mono_items(tcx, &mut jit_module, &mono_items);
         for (mono_item, _) in mono_items {
             match mono_item {
-                MonoItem::Fn(inst) => match backend_config.codegen_mode {
+                MonoItem::Fn(inst) => match codegen_mode {
                     CodegenMode::Aot => unreachable!(),
                     CodegenMode::Jit => {
                         codegen_and_compile_fn(
@@ -151,7 +144,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
     );
 
     let args = std::iter::once(&*tcx.crate_name(LOCAL_CRATE).as_str().to_string())
-        .chain(backend_config.jit_args.iter().map(|arg| &**arg))
+        .chain(jit_args.iter().map(|arg| &**arg))
         .map(|arg| CString::new(arg).unwrap())
         .collect::<Vec<_>>();
 
@@ -211,7 +204,7 @@ pub(crate) fn codegen_and_compile_fn<'tcx>(
     instance: Instance<'tcx>,
 ) {
     cranelift_codegen::timing::set_thread_profiler(Box::new(super::MeasuremeProfiler(
-        cx.profiler.clone(),
+        tcx.prof.clone(),
     )));
 
     tcx.prof.generic_activity("codegen and compile fn").run(|| {
@@ -227,7 +220,7 @@ pub(crate) fn codegen_and_compile_fn<'tcx>(
             module,
             instance,
         ) {
-            crate::base::compile_fn(cx, cached_context, module, codegened_func);
+            crate::base::compile_fn(cx, &tcx.prof, cached_context, module, codegened_func);
         }
     });
 }

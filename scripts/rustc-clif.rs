@@ -33,6 +33,11 @@ fn main() {
         args.push(OsString::from("--sysroot"));
         args.push(OsString::from(sysroot.to_str().unwrap()));
     }
+    if passed_args.is_empty() {
+        // Don't pass any arguments when the user didn't pass any arguments
+        // either to ensure the help message is shown.
+        args.clear();
+    }
     args.extend(passed_args);
 
     let rustc = if let Some(rustc) = option_env!("RUSTC") {
