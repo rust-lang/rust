@@ -302,7 +302,11 @@ impl<D: Deps> DepGraph<D> {
         OP: FnOnce() -> R,
     {
         match self.data() {
-            Some(data) => data.with_anon_task(cx, dep_kind, op),
+            Some(data) => {
+                let (result, index) = data.with_anon_task_inner(cx, dep_kind, op);
+                self.read_index(index);
+                (result, index)
+            }
             None => (op(), self.next_virtual_depnode_index()),
         }
     }
@@ -397,7 +401,16 @@ impl<D: Deps> DepGraphData<D> {
 
     /// Executes something within an "anonymous" task, that is, a task the
     /// `DepNode` of which is determined by the list of inputs it read from.
-    pub(crate) fn with_anon_task<Tcx: DepContext<Deps = D>, OP, R>(
+    ///
+    /// NOTE: this does not actually count as a read of the DepNode here.
+    /// Using the result of this task without reading the DepNode will result
+    /// in untracked dependencies which may lead to ICEs as nodes are
+    /// incorrectly marked green.
+    ///
+    /// FIXME: This could perhaps return a `WithDepNode` to ensure that the
+    /// user of this function actually performs the read; we'll have to see
+    /// how to make that work with `anon` in `execute_job_incr`, though.
+    pub(crate) fn with_anon_task_inner<Tcx: DepContext<Deps = D>, OP, R>(
         &self,
         cx: Tcx,
         dep_kind: DepKind,

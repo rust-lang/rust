@@ -25,7 +25,7 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, Pos, SourceFile, Span};
 use tracing::{debug, debug_span, trace};
 
-use crate::coverage::counters::{CounterIncrementSite, CoverageCounters};
+use crate::coverage::counters::{CoverageCounters, Site};
 use crate::coverage::graph::CoverageGraph;
 use crate::coverage::mappings::ExtractedMappings;
 
@@ -265,13 +265,13 @@ fn inject_coverage_statements<'tcx>(
     coverage_counters: &CoverageCounters,
 ) {
     // Inject counter-increment statements into MIR.
-    for (id, counter_increment_site) in coverage_counters.counter_increment_sites() {
+    for (id, site) in coverage_counters.counter_increment_sites() {
         // Determine the block to inject a counter-increment statement into.
         // For BCB nodes this is just their first block, but for edges we need
         // to create a new block between the two BCBs, and inject into that.
-        let target_bb = match *counter_increment_site {
-            CounterIncrementSite::Node { bcb } => basic_coverage_blocks[bcb].leader_bb(),
-            CounterIncrementSite::Edge { from_bcb, to_bcb } => {
+        let target_bb = match site {
+            Site::Node { bcb } => basic_coverage_blocks[bcb].leader_bb(),
+            Site::Edge { from_bcb, to_bcb } => {
                 // Create a new block between the last block of `from_bcb` and
                 // the first block of `to_bcb`.
                 let from_bb = basic_coverage_blocks[from_bcb].last_bb();

@@ -1,29 +1,27 @@
 Function name: conditions::assign_3_and_or
-Raw bytes (69): 0x[01, 01, 07, 07, 11, 09, 0d, 01, 05, 05, 09, 16, 1a, 05, 09, 01, 05, 09, 01, 1c, 01, 00, 2f, 03, 01, 09, 00, 0a, 01, 00, 0d, 00, 0e, 20, 05, 1a, 00, 0d, 00, 0e, 05, 00, 12, 00, 13, 20, 09, 16, 00, 12, 00, 13, 13, 00, 17, 00, 18, 20, 0d, 11, 00, 17, 00, 18, 03, 01, 05, 01, 02]
+Raw bytes (65): 0x[01, 01, 05, 07, 11, 09, 0d, 01, 05, 05, 09, 01, 09, 09, 01, 1c, 01, 00, 2f, 03, 01, 09, 00, 0a, 01, 00, 0d, 00, 0e, 20, 05, 0a, 00, 0d, 00, 0e, 05, 00, 12, 00, 13, 20, 09, 0e, 00, 12, 00, 13, 12, 00, 17, 00, 18, 20, 0d, 11, 00, 17, 00, 18, 03, 01, 05, 01, 02]
 Number of files: 1
 - file 0 => global file 1
-Number of expressions: 7
+Number of expressions: 5
 - expression 0 operands: lhs = Expression(1, Add), rhs = Counter(4)
 - expression 1 operands: lhs = Counter(2), rhs = Counter(3)
 - expression 2 operands: lhs = Counter(0), rhs = Counter(1)
 - expression 3 operands: lhs = Counter(1), rhs = Counter(2)
-- expression 4 operands: lhs = Expression(5, Sub), rhs = Expression(6, Sub)
-- expression 5 operands: lhs = Counter(1), rhs = Counter(2)
-- expression 6 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 4 operands: lhs = Counter(0), rhs = Counter(2)
 Number of file 0 mappings: 9
 - Code(Counter(0)) at (prev + 28, 1) to (start + 0, 47)
 - Code(Expression(0, Add)) at (prev + 1, 9) to (start + 0, 10)
     = ((c2 + c3) + c4)
 - Code(Counter(0)) at (prev + 0, 13) to (start + 0, 14)
-- Branch { true: Counter(1), false: Expression(6, Sub) } at (prev + 0, 13) to (start + 0, 14)
+- Branch { true: Counter(1), false: Expression(2, Sub) } at (prev + 0, 13) to (start + 0, 14)
     true  = c1
     false = (c0 - c1)
 - Code(Counter(1)) at (prev + 0, 18) to (start + 0, 19)
-- Branch { true: Counter(2), false: Expression(5, Sub) } at (prev + 0, 18) to (start + 0, 19)
+- Branch { true: Counter(2), false: Expression(3, Sub) } at (prev + 0, 18) to (start + 0, 19)
     true  = c2
     false = (c1 - c2)
-- Code(Expression(4, Add)) at (prev + 0, 23) to (start + 0, 24)
-    = ((c1 - c2) + (c0 - c1))
+- Code(Expression(4, Sub)) at (prev + 0, 23) to (start + 0, 24)
+    = (c0 - c2)
 - Branch { true: Counter(3), false: Counter(4) } at (prev + 0, 23) to (start + 0, 24)
     true  = c3
     false = c4
@@ -32,54 +30,54 @@ Number of file 0 mappings: 9
 Highest counter ID seen: c4
 
 Function name: conditions::assign_3_or_and
-Raw bytes (73): 0x[01, 01, 09, 05, 07, 0b, 11, 09, 0d, 01, 05, 01, 05, 22, 11, 01, 05, 22, 11, 01, 05, 09, 01, 17, 01, 00, 2f, 03, 01, 09, 00, 0a, 01, 00, 0d, 00, 0e, 20, 05, 22, 00, 0d, 00, 0e, 22, 00, 12, 00, 13, 20, 1e, 11, 00, 12, 00, 13, 1e, 00, 17, 00, 18, 20, 09, 0d, 00, 17, 00, 18, 03, 01, 05, 01, 02]
+Raw bytes (73): 0x[01, 01, 09, 07, 11, 0b, 0d, 05, 09, 01, 05, 01, 05, 01, 23, 05, 11, 01, 23, 05, 11, 09, 01, 17, 01, 00, 2f, 03, 01, 09, 00, 0a, 01, 00, 0d, 00, 0e, 20, 05, 12, 00, 0d, 00, 0e, 12, 00, 12, 00, 13, 20, 1e, 11, 00, 12, 00, 13, 1e, 00, 17, 00, 18, 20, 09, 0d, 00, 17, 00, 18, 03, 01, 05, 01, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 9
-- expression 0 operands: lhs = Counter(1), rhs = Expression(1, Add)
-- expression 1 operands: lhs = Expression(2, Add), rhs = Counter(4)
-- expression 2 operands: lhs = Counter(2), rhs = Counter(3)
+- expression 0 operands: lhs = Expression(1, Add), rhs = Counter(4)
+- expression 1 operands: lhs = Expression(2, Add), rhs = Counter(3)
+- expression 2 operands: lhs = Counter(1), rhs = Counter(2)
 - expression 3 operands: lhs = Counter(0), rhs = Counter(1)
 - expression 4 operands: lhs = Counter(0), rhs = Counter(1)
-- expression 5 operands: lhs = Expression(8, Sub), rhs = Counter(4)
-- expression 6 operands: lhs = Counter(0), rhs = Counter(1)
-- expression 7 operands: lhs = Expression(8, Sub), rhs = Counter(4)
-- expression 8 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 5 operands: lhs = Counter(0), rhs = Expression(8, Add)
+- expression 6 operands: lhs = Counter(1), rhs = Counter(4)
+- expression 7 operands: lhs = Counter(0), rhs = Expression(8, Add)
+- expression 8 operands: lhs = Counter(1), rhs = Counter(4)
 Number of file 0 mappings: 9
 - Code(Counter(0)) at (prev + 23, 1) to (start + 0, 47)
 - Code(Expression(0, Add)) at (prev + 1, 9) to (start + 0, 10)
-    = (c1 + ((c2 + c3) + c4))
+    = (((c1 + c2) + c3) + c4)
 - Code(Counter(0)) at (prev + 0, 13) to (start + 0, 14)
-- Branch { true: Counter(1), false: Expression(8, Sub) } at (prev + 0, 13) to (start + 0, 14)
+- Branch { true: Counter(1), false: Expression(4, Sub) } at (prev + 0, 13) to (start + 0, 14)
     true  = c1
     false = (c0 - c1)
-- Code(Expression(8, Sub)) at (prev + 0, 18) to (start + 0, 19)
+- Code(Expression(4, Sub)) at (prev + 0, 18) to (start + 0, 19)
     = (c0 - c1)
 - Branch { true: Expression(7, Sub), false: Counter(4) } at (prev + 0, 18) to (start + 0, 19)
-    true  = ((c0 - c1) - c4)
+    true  = (c0 - (c1 + c4))
     false = c4
 - Code(Expression(7, Sub)) at (prev + 0, 23) to (start + 0, 24)
-    = ((c0 - c1) - c4)
+    = (c0 - (c1 + c4))
 - Branch { true: Counter(2), false: Counter(3) } at (prev + 0, 23) to (start + 0, 24)
     true  = c2
     false = c3
 - Code(Expression(0, Add)) at (prev + 1, 5) to (start + 1, 2)
-    = (c1 + ((c2 + c3) + c4))
+    = (((c1 + c2) + c3) + c4)
 Highest counter ID seen: c4
 
 Function name: conditions::assign_and
-Raw bytes (51): 0x[01, 01, 04, 07, 0e, 09, 0d, 01, 05, 01, 05, 07, 01, 0d, 01, 00, 21, 03, 01, 09, 00, 0a, 01, 00, 0d, 00, 0e, 20, 05, 0e, 00, 0d, 00, 0e, 05, 00, 12, 00, 13, 20, 09, 0d, 00, 12, 00, 13, 03, 01, 05, 01, 02]
+Raw bytes (51): 0x[01, 01, 04, 07, 05, 0b, 0d, 01, 09, 01, 05, 07, 01, 0d, 01, 00, 21, 02, 01, 09, 00, 0a, 01, 00, 0d, 00, 0e, 20, 05, 0e, 00, 0d, 00, 0e, 05, 00, 12, 00, 13, 20, 09, 0d, 00, 12, 00, 13, 02, 01, 05, 01, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 4
-- expression 0 operands: lhs = Expression(1, Add), rhs = Expression(3, Sub)
-- expression 1 operands: lhs = Counter(2), rhs = Counter(3)
-- expression 2 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 0 operands: lhs = Expression(1, Add), rhs = Counter(1)
+- expression 1 operands: lhs = Expression(2, Add), rhs = Counter(3)
+- expression 2 operands: lhs = Counter(0), rhs = Counter(2)
 - expression 3 operands: lhs = Counter(0), rhs = Counter(1)
 Number of file 0 mappings: 7
 - Code(Counter(0)) at (prev + 13, 1) to (start + 0, 33)
-- Code(Expression(0, Add)) at (prev + 1, 9) to (start + 0, 10)
-    = ((c2 + c3) + (c0 - c1))
+- Code(Expression(0, Sub)) at (prev + 1, 9) to (start + 0, 10)
+    = (((c0 + c2) + c3) - c1)
 - Code(Counter(0)) at (prev + 0, 13) to (start + 0, 14)
 - Branch { true: Counter(1), false: Expression(3, Sub) } at (prev + 0, 13) to (start + 0, 14)
     true  = c1
@@ -88,8 +86,8 @@ Number of file 0 mappings: 7
 - Branch { true: Counter(2), false: Counter(3) } at (prev + 0, 18) to (start + 0, 19)
     true  = c2
     false = c3
-- Code(Expression(0, Add)) at (prev + 1, 5) to (start + 1, 2)
-    = ((c2 + c3) + (c0 - c1))
+- Code(Expression(0, Sub)) at (prev + 1, 5) to (start + 1, 2)
+    = (((c0 + c2) + c3) - c1)
 Highest counter ID seen: c3
 
 Function name: conditions::assign_or
@@ -128,13 +126,14 @@ Number of file 0 mappings: 1
 Highest counter ID seen: c0
 
 Function name: conditions::func_call
-Raw bytes (39): 0x[01, 01, 03, 01, 05, 0b, 02, 09, 0d, 05, 01, 25, 01, 01, 0a, 20, 05, 02, 01, 09, 00, 0a, 05, 00, 0e, 00, 0f, 20, 09, 0d, 00, 0e, 00, 0f, 07, 01, 01, 00, 02]
+Raw bytes (41): 0x[01, 01, 04, 01, 05, 0b, 05, 0f, 0d, 01, 09, 05, 01, 25, 01, 01, 0a, 20, 05, 02, 01, 09, 00, 0a, 05, 00, 0e, 00, 0f, 20, 09, 0d, 00, 0e, 00, 0f, 06, 01, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
-Number of expressions: 3
+Number of expressions: 4
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
-- expression 1 operands: lhs = Expression(2, Add), rhs = Expression(0, Sub)
-- expression 2 operands: lhs = Counter(2), rhs = Counter(3)
+- expression 1 operands: lhs = Expression(2, Add), rhs = Counter(1)
+- expression 2 operands: lhs = Expression(3, Add), rhs = Counter(3)
+- expression 3 operands: lhs = Counter(0), rhs = Counter(2)
 Number of file 0 mappings: 5
 - Code(Counter(0)) at (prev + 37, 1) to (start + 1, 10)
 - Branch { true: Counter(1), false: Expression(0, Sub) } at (prev + 1, 9) to (start + 0, 10)
@@ -144,8 +143,8 @@ Number of file 0 mappings: 5
 - Branch { true: Counter(2), false: Counter(3) } at (prev + 0, 14) to (start + 0, 15)
     true  = c2
     false = c3
-- Code(Expression(1, Add)) at (prev + 1, 1) to (start + 0, 2)
-    = ((c2 + c3) + (c0 - c1))
+- Code(Expression(1, Sub)) at (prev + 1, 1) to (start + 0, 2)
+    = (((c0 + c2) + c3) - c1)
 Highest counter ID seen: c3
 
 Function name: conditions::simple_assign

@@ -418,9 +418,7 @@ fn run_compiler(
                 return early_exit();
             }
 
-            if sess.opts.unstable_opts.parse_crate_root_only
-                || sess.opts.unstable_opts.show_span.is_some()
-            {
+            if sess.opts.unstable_opts.parse_crate_root_only {
                 return early_exit();
             }
 

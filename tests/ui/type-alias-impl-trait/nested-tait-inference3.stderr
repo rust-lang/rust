@@ -1,5 +1,5 @@
 error: item does not constrain `FooX::{opaque#0}`, but has it in its signature
-  --> $DIR/nested-tait-inference3.rs:13:4
+  --> $DIR/nested-tait-inference3.rs:12:4
    |
 LL | fn foo() -> impl Foo<FooX> {
    |    ^^^
@@ -11,13 +11,5 @@ note: this opaque type is in the signature
 LL | type FooX = impl Debug;
    |             ^^^^^^^^^^
 
-error: unconstrained opaque type
-  --> $DIR/nested-tait-inference3.rs:6:13
-   |
-LL | type FooX = impl Debug;
-   |             ^^^^^^^^^^
-   |
-   = note: `FooX` must be used in combination with a concrete type within the same module
-
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 

@@ -169,6 +169,14 @@ where
             return result;
         }
 
+        // Only consider auto impls of unsafe traits when there are no unsafe
+        // fields.
+        if ecx.cx().trait_is_unsafe(goal.predicate.def_id())
+            && goal.predicate.self_ty().has_unsafe_fields()
+        {
+            return Err(NoSolution);
+        }
+
         // We only look into opaque types during analysis for opaque types
         // outside of their defining scope. Doing so for opaques in the
         // defining scope may require calling `typeck` on the same item we're

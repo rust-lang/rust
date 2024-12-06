@@ -12,7 +12,7 @@ const CONSTANT: &&MyType = &&MyType;
 
 fn main() {
     if let CONSTANT = &&MyType {
-        //~^ ERROR must be annotated with `#[derive(PartialEq)]`
+        //~^ ERROR constant of non-structural type `MyType` in a pattern
         println!("did match!");
     }
 }
