@@ -20,17 +20,16 @@ pub(super) type IdInterner = FxHashMap<FullItemId, types::Id>;
 /// to fully disambiguate items, because sometimes we choose to split a single HIR
 /// item into multiple JSON items, or have items with no coresponding HIR item.
 pub(super) struct FullItemId {
-    id: SingleItemId,
+    /// The "main" id of the item.
+    ///
+    /// In most cases this unequely identifies the item, other fields are just
+    /// used for edge-cases.
+    def_id: DefId,
+
     /// An extra DefId for auto-trait-impls or blanket-impls. These don't have DefId's
     /// as they're synthesized by rustdoc.
-    extra: Option<DefId>,
-}
+    extra_id: Option<DefId>,
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
-struct SingleItemId {
-    /// Almost all of the "identification" comes from the `DefId`, other fields
-    /// are only needed in weird cases.
-    def_id: DefId,
     /// Needed for `rustc_doc_primitive` modules.
     ///
     /// For these, 1 DefId is used for both the primitive and the fake-module
@@ -40,6 +39,7 @@ struct SingleItemId {
     /// `--document-private-items`. Maybe we should delete that module, and
     /// remove this.
     name: Option<Symbol>,
+
     /// Used to distinguish imports of different items with the same name.
     ///
     /// ```rust
@@ -67,38 +67,32 @@ impl JsonRenderer<'_> {
         name: Option<Symbol>,
         imported_id: Option<Id>,
     ) -> Id {
-        let make_part = |def_id: DefId| {
-            let name = match name {
-                Some(name) => Some(name),
-                None => {
-                    // We need this workaround because primitive types' DefId actually refers to
-                    // their parent module, which isn't present in the output JSON items. So
-                    // instead, we directly get the primitive symbol
-                    if matches!(self.tcx.def_kind(def_id), DefKind::Mod)
-                        && let Some(prim) = self
-                            .tcx
-                            .get_attrs(def_id, sym::rustc_doc_primitive)
-                            .find_map(|attr| attr.value_str())
-                    {
-                        Some(prim)
-                    } else {
-                        self.tcx.opt_item_name(def_id)
-                    }
+        let (def_id, extra_id) = match item_id {
+            ItemId::DefId(did) => (did, None),
+            ItemId::Blanket { for_, impl_id } => (for_, Some(impl_id)),
+            ItemId::Auto { for_, trait_ } => (for_, Some(trait_)),
+        };
+
+        let name = match name {
+            Some(name) => Some(name),
+            None => {
+                // We need this workaround because primitive types' DefId actually refers to
+                // their parent module, which isn't present in the output JSON items. So
+                // instead, we directly get the primitive symbol
+                if matches!(self.tcx.def_kind(def_id), DefKind::Mod)
+                    && let Some(prim) = self
+                        .tcx
+                        .get_attrs(def_id, sym::rustc_doc_primitive)
+                        .find_map(|attr| attr.value_str())
+                {
+                    Some(prim)
+                } else {
+                    self.tcx.opt_item_name(def_id)
                 }
-            };
-
-            SingleItemId { def_id, name, imported_id }
-        };
-
-        let key = match item_id {
-            ItemId::DefId(did) => FullItemId { id: make_part(did), extra: None },
-            ItemId::Blanket { for_, impl_id } => {
-                FullItemId { id: make_part(for_), extra: Some(impl_id) }
-            }
-            ItemId::Auto { for_, trait_ } => {
-                FullItemId { id: make_part(for_), extra: Some(trait_) }
             }
         };
+
+        let key = FullItemId { def_id, extra_id, name, imported_id };
 
         let mut interner = self.id_interner.borrow_mut();
         let len = interner.len();
