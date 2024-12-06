@@ -75,6 +75,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::cargo::NEGATIVE_FEATURE_NAMES_INFO,
     crate::cargo::REDUNDANT_FEATURE_NAMES_INFO,
     crate::cargo::WILDCARD_DEPENDENCIES_INFO,
+    crate::casts::AS_POINTER_UNDERSCORE_INFO,
     crate::casts::AS_PTR_CAST_MUT_INFO,
     crate::casts::AS_UNDERSCORE_INFO,
     crate::casts::BORROW_AS_PTR_INFO,
