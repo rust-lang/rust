@@ -730,6 +730,12 @@ enum RatomlFile {
     Crate(LocalConfigInput),
 }
 
+#[derive(Clone, Debug)]
+struct ClientInfo {
+    name: String,
+    version: Option<Version>,
+}
+
 #[derive(Clone)]
 pub struct Config {
     /// Projects that have a Cargo.toml or a rust-project.json in a
@@ -744,7 +750,7 @@ pub struct Config {
     caps: ClientCapabilities,
     root_path: AbsPathBuf,
     snippets: Vec<Snippet>,
-    visual_studio_code_version: Option<Version>,
+    client_info: Option<ClientInfo>,
 
     default_config: &'static DefaultConfigData,
     /// Config node that obtains its initial value during the server initialization and
@@ -777,7 +783,7 @@ impl fmt::Debug for Config {
             .field("caps", &self.caps)
             .field("root_path", &self.root_path)
             .field("snippets", &self.snippets)
-            .field("visual_studio_code_version", &self.visual_studio_code_version)
+            .field("client_info", &self.client_info)
             .field("client_config", &self.client_config)
             .field("user_config", &self.user_config)
             .field("ratoml_file", &self.ratoml_file)
@@ -1335,7 +1341,7 @@ impl Config {
         root_path: AbsPathBuf,
         caps: lsp_types::ClientCapabilities,
         workspace_roots: Vec<AbsPathBuf>,
-        visual_studio_code_version: Option<Version>,
+        client_info: Option<lsp_types::ClientInfo>,
     ) -> Self {
         static DEFAULT_CONFIG_DATA: OnceLock<&'static DefaultConfigData> = OnceLock::new();
 
@@ -1346,7 +1352,10 @@ impl Config {
             root_path,
             snippets: Default::default(),
             workspace_roots,
-            visual_studio_code_version,
+            client_info: client_info.map(|it| ClientInfo {
+                name: it.name,
+                version: it.version.as_deref().map(Version::parse).and_then(Result::ok),
+            }),
             client_config: (FullConfigInput::default(), ConfigErrors(vec![])),
             default_config: DEFAULT_CONFIG_DATA.get_or_init(|| Box::leak(Box::default())),
             source_root_parent_map: Arc::new(FxHashMap::default()),
@@ -1446,9 +1455,11 @@ impl Config {
             limit: self.completion_limit(source_root).to_owned(),
             enable_term_search: self.completion_termSearch_enable(source_root).to_owned(),
             term_search_fuel: self.completion_termSearch_fuel(source_root).to_owned() as u64,
-            fields_to_resolve: CompletionFieldsToResolve::from_client_capabilities(
-                &client_capability_fields,
-            ),
+            fields_to_resolve: if self.client_is_helix() {
+                CompletionFieldsToResolve::empty()
+            } else {
+                CompletionFieldsToResolve::from_client_capabilities(&client_capability_fields)
+            },
         }
     }
 
@@ -2163,7 +2174,14 @@ impl Config {
     // VSCode is our reference implementation, so we allow ourselves to work around issues by
     // special casing certain versions
     pub fn visual_studio_code_version(&self) -> Option<&Version> {
-        self.visual_studio_code_version.as_ref()
+        self.client_info
+            .as_ref()
+            .filter(|it| it.name.starts_with("Visual Studio Code"))
+            .and_then(|it| it.version.as_ref())
+    }
+
+    pub fn client_is_helix(&self) -> bool {
+        self.client_info.as_ref().map(|it| it.name == "helix").unwrap_or_default()
     }
 }
 // Deserialization definitions

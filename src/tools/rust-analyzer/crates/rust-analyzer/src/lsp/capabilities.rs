@@ -41,7 +41,11 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
         })),
         hover_provider: Some(HoverProviderCapability::Simple(true)),
         completion_provider: Some(CompletionOptions {
-            resolve_provider: Some(config.caps().completions_resolve_provider()),
+            resolve_provider: if config.client_is_helix() {
+                None
+            } else {
+                Some(config.caps().completions_resolve_provider())
+            },
             trigger_characters: Some(vec![
                 ":".to_owned(),
                 ".".to_owned(),
