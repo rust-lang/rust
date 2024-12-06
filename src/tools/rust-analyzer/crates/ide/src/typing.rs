@@ -15,6 +15,8 @@
 
 mod on_enter;
 
+use std::iter;
+
 use ide_db::{base_db::SourceDatabase, FilePosition, RootDatabase};
 use span::{Edition, EditionedFileId};
 use syntax::{
@@ -120,7 +122,8 @@ fn on_opening_delimiter_typed(
         '(' => (
             ')',
             SyntaxKind::L_PAREN,
-            &[ast::Expr::can_cast, ast::Pat::can_cast, ast::Type::can_cast] as &[FilterFn],
+            &[ast::Expr::can_cast as FilterFn, ast::Pat::can_cast, ast::Type::can_cast]
+                as &[FilterFn],
         ),
         '<' => ('>', SyntaxKind::L_ANGLE, &[ast::Type::can_cast as FilterFn] as &[FilterFn]),
         _ => return None,
@@ -208,7 +211,18 @@ fn on_delimited_node_typed(
 /// this works when adding `let =`.
 // FIXME: use a snippet completion instead of this hack here.
 fn on_eq_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
-    if !stdx::always!(file.syntax().text().char_at(offset) == Some('=')) {
+    let text = file.syntax().text();
+    if !stdx::always!(text.char_at(offset) == Some('=')) {
+        return None;
+    }
+
+    let has_newline = iter::successors(Some(offset), |&offset| Some(offset + TextSize::new(1)))
+        .filter_map(|offset| text.char_at(offset))
+        .find(|&c| !c.is_whitespace() || c == '\n')
+        == Some('n');
+    // don't attempt to add `;` if there is a newline after the `=`, the intent is likely to write
+    // out the expression afterwards!
+    if has_newline {
         return None;
     }
 
@@ -465,6 +479,15 @@ fn foo() {
 fn foo() {
     let foo =$0
     let bar = 1;
+}
+",
+        );
+        type_char_noop(
+            '=',
+            r"
+fn foo() {
+    let foo =$0
+     1 + 1
 }
 ",
         );
