@@ -1544,7 +1544,7 @@ pub const fn unlikely(b: bool) -> bool {
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 ///
-/// This intrinsic does not have a stable counterpart.
+/// The public form of this instrinsic is [`bool::select_unpredictable`].
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
 #[rustc_nounwind]
