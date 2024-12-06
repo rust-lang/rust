@@ -22,7 +22,7 @@
 // Available: https://ss265.host.cs.st-andrews.ac.uk/papers/n3132.pdf.
 
 use std::sync::atomic::Ordering::*;
-use std::sync::atomic::{AtomicBool, AtomicI32, fence};
+use std::sync::atomic::{AtomicBool, AtomicI32, Ordering, fence};
 use std::thread::spawn;
 
 #[derive(Copy, Clone)]
@@ -45,8 +45,8 @@ fn static_atomic_bool(val: bool) -> &'static AtomicBool {
 }
 
 // Spins until it acquires a pre-determined value.
-fn acquires_value(loc: &AtomicI32, val: i32) -> i32 {
-    while loc.load(Acquire) != val {
+fn loads_value(loc: &AtomicI32, ord: Ordering, val: i32) -> i32 {
+    while loc.load(ord) != val {
         std::hint::spin_loop();
     }
     val
@@ -69,7 +69,7 @@ fn test_corr() {
     }); //                                           |                    |
     #[rustfmt::skip] //                              |synchronizes-with   |happens-before
     let j3 = spawn(move || { //                      |                    |
-        acquires_value(&y, 1); // <------------------+                    |
+        loads_value(&y, Acquire, 1); // <------------+                    |
         x.load(Relaxed) // <----------------------------------------------+
         // The two reads on x are ordered by hb, so they cannot observe values
         // differently from the modification order. If the first read observed
@@ -94,12 +94,12 @@ fn test_wrc() {
     }); //                                           |                     |
     #[rustfmt::skip] //                              |synchronizes-with    |
     let j2 = spawn(move || { //                      |                     |
-        acquires_value(&x, 1); // <------------------+                     |
+        loads_value(&x, Acquire, 1); // <------------+                     |
         y.store(1, Release); // ---------------------+                     |happens-before
     }); //                                           |                     |
     #[rustfmt::skip] //                              |synchronizes-with    |
     let j3 = spawn(move || { //                      |                     |
-        acquires_value(&y, 1); // <------------------+                     |
+        loads_value(&y, Acquire, 1); // <------------+                     |
         x.load(Relaxed) // <-----------------------------------------------+
     });
 
@@ -125,7 +125,7 @@ fn test_message_passing() {
     #[rustfmt::skip] //                              |synchronizes-with  | happens-before
     let j2 = spawn(move || { //                      |                   |
         let x = x; // avoid field capturing          |                   |
-        acquires_value(&y, 1); // <------------------+                   |
+        loads_value(&y, Acquire, 1); // <------------+                   |
         unsafe { *x.0 } // <---------------------------------------------+
     });
 
@@ -268,9 +268,6 @@ fn test_iriw_sc_rlx() {
     let x = static_atomic_bool(false);
     let y = static_atomic_bool(false);
 
-    x.store(false, Relaxed);
-    y.store(false, Relaxed);
-
     let a = spawn(move || x.store(true, Relaxed));
     let b = spawn(move || y.store(true, Relaxed));
     let c = spawn(move || {
@@ -290,6 +287,84 @@ fn test_iriw_sc_rlx() {
     assert!(c || d);
 }
 
+// Similar to `test_iriw_sc_rlx` but with fences instead of SC accesses.
+fn test_cpp20_sc_fence_fix() {
+    let x = static_atomic_bool(false);
+    let y = static_atomic_bool(false);
+
+    let thread1 = spawn(|| {
+        let a = x.load(Relaxed);
+        fence(SeqCst);
+        let b = y.load(Relaxed);
+        (a, b)
+    });
+
+    let thread2 = spawn(|| {
+        x.store(true, Relaxed);
+    });
+    let thread3 = spawn(|| {
+        y.store(true, Relaxed);
+    });
+
+    let thread4 = spawn(|| {
+        let c = y.load(Relaxed);
+        fence(SeqCst);
+        let d = x.load(Relaxed);
+        (c, d)
+    });
+
+    let (a, b) = thread1.join().unwrap();
+    thread2.join().unwrap();
+    thread3.join().unwrap();
+    let (c, d) = thread4.join().unwrap();
+    let bad = a == true && b == false && c == true && d == false;
+    assert!(!bad);
+}
+
+// https://plv.mpi-sws.org/scfix/paper.pdf
+// 2.2 Second Problem: SC Fences are Too Weak
+fn test_cpp20_rwc_syncs() {
+    /*
+    int main() {
+        atomic_int x = 0;
+        atomic_int y = 0;
+        {{{ x.store(1,mo_relaxed);
+        ||| { r1=x.load(mo_relaxed).readsvalue(1);
+              fence(mo_seq_cst);
+              r2=y.load(mo_relaxed); }
+        ||| { y.store(1,mo_relaxed);
+              fence(mo_seq_cst);
+              r3=x.load(mo_relaxed); }
+        }}}
+        return 0;
+    }
+    */
+    let x = static_atomic(0);
+    let y = static_atomic(0);
+
+    let j1 = spawn(move || {
+        x.store(1, Relaxed);
+    });
+
+    let j2 = spawn(move || {
+        loads_value(&x, Relaxed, 1);
+        fence(SeqCst);
+        y.load(Relaxed)
+    });
+
+    let j3 = spawn(move || {
+        y.store(1, Relaxed);
+        fence(SeqCst);
+        x.load(Relaxed)
+    });
+
+    j1.join().unwrap();
+    let b = j2.join().unwrap();
+    let c = j3.join().unwrap();
+
+    assert!((b, c) != (0, 0));
+}
+
 pub fn main() {
     for _ in 0..50 {
         test_single_thread();
@@ -301,5 +376,7 @@ pub fn main() {
         test_sc_store_buffering();
         test_sync_through_rmw_and_fences();
         test_iriw_sc_rlx();
+        test_cpp20_sc_fence_fix();
+        test_cpp20_rwc_syncs();
     }
 }
