@@ -31,6 +31,7 @@
 #![feature(float_minimum_maximum)]
 #![feature(flt2dec)]
 #![feature(fmt_internals)]
+#![feature(formatting_options)]
 #![feature(freeze)]
 #![feature(future_join)]
 #![feature(generic_assert_internals)]
