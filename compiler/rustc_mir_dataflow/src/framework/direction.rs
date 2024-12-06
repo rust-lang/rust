@@ -76,8 +76,6 @@ impl Direction for Backward {
         for pred in body.basic_blocks.predecessors()[block].iter().copied() {
             match body[pred].terminator().kind {
                 // Apply terminator-specific edge effects.
-                //
-                // FIXME(ecstaticmorse): Avoid cloning the exit state unconditionally.
                 mir::TerminatorKind::Call { destination, target: Some(dest), .. }
                     if dest == block =>
                 {
