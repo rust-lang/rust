@@ -3,13 +3,10 @@
 use rustc_abi::{BackendRepr, CanonAbi, RegKind, X86Call};
 use rustc_hir::{CRATE_HIR_ID, HirId};
 use rustc_middle::mir::{self, Location, traversal};
-use rustc_middle::ty::layout::LayoutCx;
-use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt, TypingEnv};
-use rustc_session::lint::builtin::WASM_C_ABI;
+use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
-use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
-use rustc_target::spec::{HasWasmCAbiOpt, WasmCAbi};
+use rustc_target::callconv::{FnAbi, PassMode};
 
 use crate::errors;
 
@@ -81,73 +78,6 @@ fn do_check_simd_vector_abi<'tcx>(
     }
 }
 
-/// Determines whether the given argument is passed the same way on the old and new wasm ABIs.
-fn wasm_abi_safe<'tcx>(tcx: TyCtxt<'tcx>, arg: &ArgAbi<'tcx, Ty<'tcx>>) -> bool {
-    if matches!(arg.layout.backend_repr, BackendRepr::Scalar(_)) {
-        return true;
-    }
-
-    // Both the old and the new ABIs treat vector types like `v128` the same
-    // way.
-    if uses_vector_registers(&arg.mode, &arg.layout.backend_repr) {
-        return true;
-    }
-
-    // This matches `unwrap_trivial_aggregate` in the wasm ABI logic.
-    if arg.layout.is_aggregate() {
-        let cx = LayoutCx::new(tcx, TypingEnv::fully_monomorphized());
-        if let Some(unit) = arg.layout.homogeneous_aggregate(&cx).ok().and_then(|ha| ha.unit()) {
-            let size = arg.layout.size;
-            // Ensure there's just a single `unit` element in `arg`.
-            if unit.size == size {
-                return true;
-            }
-        }
-    }
-
-    // Zero-sized types are dropped in both ABIs, so they're safe
-    if arg.layout.is_zst() {
-        return true;
-    }
-
-    false
-}
-
-/// Warns against usage of `extern "C"` on wasm32-unknown-unknown that is affected by the
-/// ABI transition.
-fn do_check_wasm_abi<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    abi: &FnAbi<'tcx, Ty<'tcx>>,
-    is_call: bool,
-    loc: impl Fn() -> (Span, HirId),
-) {
-    // Only proceed for `extern "C" fn` on wasm32-unknown-unknown (same check as what
-    // `adjust_for_foreign_abi` uses to call `compute_wasm_abi_info`), and only proceed if
-    // `wasm_c_abi_opt` indicates we should emit the lint.
-    if !(tcx.sess.target.arch == "wasm32"
-        && tcx.sess.target.os == "unknown"
-        && tcx.wasm_c_abi_opt() == WasmCAbi::Legacy { with_lint: true }
-        && abi.conv == CanonAbi::C)
-    {
-        return;
-    }
-    // Warn against all types whose ABI will change. Return values are not affected by this change.
-    for arg_abi in abi.args.iter() {
-        if wasm_abi_safe(tcx, arg_abi) {
-            continue;
-        }
-        let (span, hir_id) = loc();
-        tcx.emit_node_span_lint(
-            WASM_C_ABI,
-            hir_id,
-            span,
-            errors::WasmCAbiTransition { ty: arg_abi.layout.ty, is_call },
-        );
-        // Let's only warn once per function.
-        break;
-    }
-}
-
 /// Checks that the ABI of a given instance of a function does not contain vector-passed arguments
 /// or return values for which the corresponding target feature is not enabled.
 fn check_instance_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
@@ -173,7 +103,6 @@ fn check_instance_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
         )
     };
     do_check_simd_vector_abi(tcx, abi, instance.def_id(), /*is_call*/ false, loc);
-    do_check_wasm_abi(tcx, abi, /*is_call*/ false, loc);
 }
 
 /// Checks that a call expression does not try to pass a vector-passed argument which requires a
@@ -212,7 +141,6 @@ fn check_call_site_abi<'tcx>(
         return;
     };
     do_check_simd_vector_abi(tcx, callee_abi, caller.def_id(), /*is_call*/ true, loc);
-    do_check_wasm_abi(tcx, callee_abi, /*is_call*/ true, loc);
 }
 
 fn check_callees_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>, body: &mir::Body<'tcx>) {

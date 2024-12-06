@@ -2233,22 +2233,6 @@ impl HasTargetSpec for Target {
     }
 }
 
-/// Which C ABI to use for `wasm32-unknown-unknown`.
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum WasmCAbi {
-    /// Spec-compliant C ABI.
-    Spec,
-    /// Legacy ABI. Which is non-spec-compliant.
-    Legacy {
-        /// Indicates whether the `wasm_c_abi` lint should be emitted.
-        with_lint: bool,
-    },
-}
-
-pub trait HasWasmCAbiOpt {
-    fn wasm_c_abi_opt(&self) -> WasmCAbi;
-}
-
 /// x86 (32-bit) abi options.
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct X86Abi {
