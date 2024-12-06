@@ -17,8 +17,8 @@ pub struct AnonymousParamInfo<'tcx> {
     pub param: &'tcx hir::Param<'tcx>,
     /// The type corresponding to the anonymous region parameter.
     pub param_ty: Ty<'tcx>,
-    /// The `ty::BoundRegionKind` corresponding to the anonymous region.
-    pub br: ty::BoundRegionKind,
+    /// The `ty::LateParamRegionKind` corresponding to the anonymous region.
+    pub kind: ty::LateParamRegionKind,
     /// The `Span` of the parameter type.
     pub param_ty_span: Span,
     /// Signals that the argument is the first parameter in the declaration.
@@ -43,11 +43,11 @@ pub fn find_param_with_region<'tcx>(
     anon_region: Region<'tcx>,
     replace_region: Region<'tcx>,
 ) -> Option<AnonymousParamInfo<'tcx>> {
-    let (id, br) = match *anon_region {
-        ty::ReLateParam(late_param) => (late_param.scope, late_param.bound_region),
+    let (id, kind) = match *anon_region {
+        ty::ReLateParam(late_param) => (late_param.scope, late_param.kind),
         ty::ReEarlyParam(ebr) => {
             let region_def = tcx.generics_of(generic_param_scope).region_param(ebr, tcx).def_id;
-            (tcx.parent(region_def), ty::BoundRegionKind::Named(region_def, ebr.name))
+            (tcx.parent(region_def), ty::LateParamRegionKind::Named(region_def, ebr.name))
         }
         _ => return None, // not a free region
     };
@@ -96,7 +96,7 @@ pub fn find_param_with_region<'tcx>(
                 let ty_hir_id = fn_decl.inputs[index].hir_id;
                 let param_ty_span = hir.span(ty_hir_id);
                 let is_first = index == 0;
-                AnonymousParamInfo { param, param_ty: new_param_ty, param_ty_span, br, is_first }
+                AnonymousParamInfo { param, param_ty: new_param_ty, param_ty_span, kind, is_first }
             })
         })
 }

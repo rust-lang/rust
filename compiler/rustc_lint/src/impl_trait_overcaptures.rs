@@ -325,7 +325,7 @@ where
                         ParamKind::Free(def_id, name) => ty::Region::new_late_param(
                             self.tcx,
                             self.parent_def_id.to_def_id(),
-                            ty::BoundRegionKind::Named(def_id, name),
+                            ty::LateParamRegionKind::Named(def_id, name),
                         ),
                         // Totally ignore late bound args from binders.
                         ParamKind::Late => return true,
@@ -475,7 +475,7 @@ fn extract_def_id_from_arg<'tcx>(
             )
             | ty::ReLateParam(ty::LateParamRegion {
                 scope: _,
-                bound_region: ty::BoundRegionKind::Named(def_id, ..),
+                kind: ty::LateParamRegionKind::Named(def_id, ..),
             }) => def_id,
             _ => unreachable!(),
         },
@@ -544,7 +544,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for FunctionalVariances<'tcx> {
             )
             | ty::ReLateParam(ty::LateParamRegion {
                 scope: _,
-                bound_region: ty::BoundRegionKind::Named(def_id, ..),
+                kind: ty::LateParamRegionKind::Named(def_id, ..),
             }) => def_id,
             _ => {
                 return Ok(a);
