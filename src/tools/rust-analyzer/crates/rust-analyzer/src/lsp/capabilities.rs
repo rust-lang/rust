@@ -72,9 +72,12 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
             RustfmtConfig::Rustfmt { enable_range_formatting: true, .. } => Some(OneOf::Left(true)),
             _ => Some(OneOf::Left(false)),
         },
-        document_on_type_formatting_provider: Some(DocumentOnTypeFormattingOptions {
-            first_trigger_character: "=".to_owned(),
-            more_trigger_character: Some(more_trigger_character(config)),
+        document_on_type_formatting_provider: Some({
+            let mut chars = ide::Analysis::SUPPORTED_TRIGGER_CHARS.chars();
+            DocumentOnTypeFormattingOptions {
+                first_trigger_character: chars.next().unwrap().to_string(),
+                more_trigger_character: Some(chars.map(|c| c.to_string()).collect()),
+            }
         }),
         selection_range_provider: Some(SelectionRangeProviderCapability::Simple(true)),
         folding_range_provider: Some(FoldingRangeProviderCapability::Simple(true)),
@@ -527,12 +530,4 @@ impl ClientCapabilities {
         })()
         .unwrap_or_default()
     }
-}
-
-fn more_trigger_character(config: &Config) -> Vec<String> {
-    let mut res = vec![".".to_owned(), ">".to_owned(), "{".to_owned(), "(".to_owned()];
-    if config.snippet_cap().is_some() {
-        res.push("<".to_owned());
-    }
-    res
 }

@@ -32,7 +32,7 @@ use crate::SourceChange;
 pub(crate) use on_enter::on_enter;
 
 // Don't forget to add new trigger characters to `server_capabilities` in `caps.rs`.
-pub(crate) const TRIGGER_CHARS: &str = ".=<>{(";
+pub(crate) const TRIGGER_CHARS: &str = ".=<>{(|";
 
 struct ExtendedTextEdit {
     edit: TextEdit,
@@ -99,6 +99,7 @@ fn on_char_typed_(
         '=' => on_eq_typed(&file.tree(), offset),
         '>' => on_right_angle_typed(&file.tree(), offset),
         '{' | '(' | '<' => on_opening_delimiter_typed(file, offset, char_typed, edition),
+        '|' => on_pipe_typed(&file.tree(), offset),
         _ => None,
     }
     .map(conv)
@@ -212,10 +213,6 @@ fn on_delimited_node_typed(
 // FIXME: use a snippet completion instead of this hack here.
 fn on_eq_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
     let text = file.syntax().text();
-    if !stdx::always!(text.char_at(offset) == Some('=')) {
-        return None;
-    }
-
     let has_newline = iter::successors(Some(offset), |&offset| Some(offset + TextSize::new(1)))
         .filter_map(|offset| text.char_at(offset))
         .find(|&c| !c.is_whitespace() || c == '\n')
@@ -308,9 +305,6 @@ fn on_eq_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
 
 /// Returns an edit which should be applied when a dot ('.') is typed on a blank line, indenting the line appropriately.
 fn on_dot_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
-    if !stdx::always!(file.syntax().text().char_at(offset) == Some('.')) {
-        return None;
-    }
     let whitespace =
         file.syntax().token_at_offset(offset).left_biased().and_then(ast::Whitespace::cast)?;
 
@@ -380,7 +374,9 @@ fn on_left_angle_typed(
     if ancestors_at_offset(file.syntax(), offset)
         .take_while(|n| !ast::Item::can_cast(n.kind()))
         .any(|n| {
-            ast::GenericParamList::can_cast(n.kind()) || ast::GenericArgList::can_cast(n.kind())
+            ast::GenericParamList::can_cast(n.kind())
+                || ast::GenericArgList::can_cast(n.kind())
+                || ast::UseBoundGenericArgs::can_cast(n.kind())
         })
     {
         // Insert the closing bracket right after
@@ -390,12 +386,21 @@ fn on_left_angle_typed(
     }
 }
 
+fn on_pipe_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
+    let pipe_token = file.syntax().token_at_offset(offset).right_biased()?;
+    if pipe_token.kind() != SyntaxKind::PIPE {
+        return None;
+    }
+    if pipe_token.parent().and_then(ast::ParamList::cast)?.r_paren_token().is_some() {
+        return None;
+    }
+    let after_lpipe = offset + TextSize::of('|');
+    Some(TextEdit::insert(after_lpipe, "|".to_owned()))
+}
+
 /// Adds a space after an arrow when `fn foo() { ... }` is turned into `fn foo() -> { ... }`
 fn on_right_angle_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
     let file_text = file.syntax().text();
-    if !stdx::always!(file_text.char_at(offset) == Some('>')) {
-        return None;
-    }
     let after_arrow = offset + TextSize::of('>');
     if file_text.char_at(after_arrow) != Some('{') {
         return None;
@@ -1526,6 +1531,44 @@ fn foo() {
         field.name().to_string(),
     )
     $0
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn completes_pipe_param_list() {
+        type_char(
+            '|',
+            r#"
+fn foo() {
+    $0
+}
+"#,
+            r#"
+fn foo() {
+    ||
+}
+"#,
+        );
+        type_char(
+            '|',
+            r#"
+fn foo() {
+    $0 a
+}
+"#,
+            r#"
+fn foo() {
+    || a
+}
+"#,
+        );
+        type_char_noop(
+            '|',
+            r#"
+fn foo() {
+    let $0
 }
 "#,
         );
