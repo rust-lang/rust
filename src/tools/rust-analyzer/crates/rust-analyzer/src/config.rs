@@ -308,8 +308,8 @@ config_data! {
         /// Show documentation.
         signatureInfo_documentation_enable: bool                       = true,
 
-        /// Specify the characters to exclude from triggering typing assists. The default trigger characters are `.`, `=`, `<`, `>`, `{`, and `(`. Setting this to a string will disable typing assists for the specified characters.
-        typing_excludeChars: Option<String> = None,
+        /// Specify the characters to exclude from triggering typing assists. The default trigger characters are `.`, `=`, `<`, `>`, `{`, and `(`.
+        typing_excludeChars: Option<String> = Some('<'.to_string()),
 
 
         /// Enables automatic discovery of projects using [`DiscoverWorkspaceConfig::command`].
