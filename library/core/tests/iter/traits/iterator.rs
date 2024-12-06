@@ -617,6 +617,19 @@ fn test_next_chunk() {
     assert_eq!(it.next_chunk::<0>().unwrap(), []);
 }
 
+#[test]
+fn test_collect_into_tuples() {
+    let a = vec![(1, 2, 3), (4, 5, 6), (7, 8, 9)];
+    let b = vec![1, 4, 7];
+    let c = vec![2, 5, 8];
+    let d = vec![3, 6, 9];
+    let mut e = (Vec::new(), Vec::new(), Vec::new());
+    a.iter().cloned().collect_into(&mut e);
+    assert!(e.0 == b);
+    assert!(e.1 == c);
+    assert!(e.2 == d);
+}
+
 // just tests by whether or not this compiles
 fn _empty_impl_all_auto_traits<T>() {
     use std::panic::{RefUnwindSafe, UnwindSafe};
