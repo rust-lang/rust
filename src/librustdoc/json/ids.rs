@@ -9,10 +9,10 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_span::{Symbol, sym};
-use rustdoc_json_types::{self as types, Id}; // FIXME: Consistant.
+use rustdoc_json_types as types;
 
 use super::JsonRenderer;
-use crate::clean::{self, ItemId};
+use crate::clean;
 
 pub(super) type IdInterner = FxHashMap<FullItemId, types::Id>;
 
@@ -66,20 +66,20 @@ pub(super) struct FullItemId {
 }
 
 impl JsonRenderer<'_> {
-    pub(crate) fn id_from_item_default(&self, item_id: ItemId) -> Id {
+    pub(crate) fn id_from_item_default(&self, item_id: clean::ItemId) -> types::Id {
         self.id_from_item_inner(item_id, None, None)
     }
 
     fn id_from_item_inner(
         &self,
-        item_id: ItemId,
+        item_id: clean::ItemId,
         name: Option<Symbol>,
         imported_id: Option<DefId>,
-    ) -> Id {
+    ) -> types::Id {
         let (def_id, mut extra_id) = match item_id {
-            ItemId::DefId(did) => (did, None),
-            ItemId::Blanket { for_, impl_id } => (for_, Some(impl_id)),
-            ItemId::Auto { for_, trait_ } => (for_, Some(trait_)),
+            clean::ItemId::DefId(did) => (did, None),
+            clean::ItemId::Blanket { for_, impl_id } => (for_, Some(impl_id)),
+            clean::ItemId::Auto { for_, trait_ } => (for_, Some(trait_)),
         };
 
         let name = match name {
@@ -112,10 +112,10 @@ impl JsonRenderer<'_> {
         let len = interner.len();
         *interner
             .entry(key)
-            .or_insert_with(|| Id(len.try_into().expect("too many items in a crate")))
+            .or_insert_with(|| types::Id(len.try_into().expect("too many items in a crate")))
     }
 
-    pub(crate) fn id_from_item(&self, item: &clean::Item) -> Id {
+    pub(crate) fn id_from_item(&self, item: &clean::Item) -> types::Id {
         match item.kind {
             clean::ItemKind::ImportItem(ref import) => {
                 let imported_id = import.source.did;
