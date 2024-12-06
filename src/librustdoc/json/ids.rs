@@ -1,3 +1,10 @@
+//! Id handling for rustdoc-json.
+//!
+//! Manages the creation of [`rustdoc_json_types::Id`] and the
+//! fact that these don't corespond exactly to [`DefId`], because
+//! [`rustdoc_json_types::Item`] doesn't corespond exactly to what
+//! other phasises thing of as an "item".
+
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -26,34 +33,36 @@ pub(super) struct FullItemId {
     /// used for edge-cases.
     def_id: DefId,
 
-    /// An extra DefId for auto-trait-impls or blanket-impls. These don't have DefId's
-    /// as they're synthesized by rustdoc.
+    /// An extra [`DefId`], which we need for:
+    ///
+    /// 1. Auto-trait impls synthesized by rustdoc.
+    /// 2. Blanket impls synthesized by rustdoc.
+    /// 3. Splitting of reexports of multiple items.
+    ///
+    ///    Eg:
+    ///
+    ///    ```rust
+    ///     mod module {
+    ///         pub struct Foo {} // Exists in type namespace
+    ///         pub fn Foo(){} // Exists in value namespace
+    ///     }
+    ///
+    ///     pub use module::Foo; // Imports both items
+    ///     ```
+    ///
+    ///     In HIR, the `pub use` is just 1 item, but in rustdoc-json it's 2, so
+    ///     we need to disambiguate.
     extra_id: Option<DefId>,
 
     /// Needed for `rustc_doc_primitive` modules.
     ///
-    /// For these, 1 DefId is used for both the primitive and the fake-module
+    /// For these, 1 [`DefId`] is used for both the primitive and the fake-module
     /// that holds it's docs.
     ///
     /// N.B. This only matters when documenting the standard library with
     /// `--document-private-items`. Maybe we should delete that module, and
     /// remove this.
     name: Option<Symbol>,
-
-    /// Used to distinguish imports of different items with the same name.
-    ///
-    /// ```rust
-    /// mod module {
-    ///     pub struct Foo {}; // Exists in type namespace
-    ///     pub fn Foo(){} // Exists in value namespace
-    /// }
-    ///
-    /// pub use module::Foo; // Imports both items
-    /// ```
-    ///
-    /// In HIR, the `pub use` is just 1 item, but in rustdoc-json it's 2, so
-    /// we need to disambiguate.
-    imported_id: Option<types::Id>,
 }
 
 impl JsonRenderer<'_> {
@@ -65,9 +74,9 @@ impl JsonRenderer<'_> {
         &self,
         item_id: ItemId,
         name: Option<Symbol>,
-        imported_id: Option<Id>,
+        imported_id: Option<DefId>,
     ) -> Id {
-        let (def_id, extra_id) = match item_id {
+        let (def_id, mut extra_id) = match item_id {
             ItemId::DefId(did) => (did, None),
             ItemId::Blanket { for_, impl_id } => (for_, Some(impl_id)),
             ItemId::Auto { for_, trait_ } => (for_, Some(trait_)),
@@ -92,7 +101,12 @@ impl JsonRenderer<'_> {
             }
         };
 
-        let key = FullItemId { def_id, extra_id, name, imported_id };
+        if let Some(imported_id) = imported_id {
+            assert_eq!(extra_id, None, "On an import item, so won't have extra from impl");
+            extra_id = Some(imported_id);
+        }
+
+        let key = FullItemId { def_id, extra_id, name };
 
         let mut interner = self.id_interner.borrow_mut();
         let len = interner.len();
@@ -104,9 +118,8 @@ impl JsonRenderer<'_> {
     pub(crate) fn id_from_item(&self, item: &clean::Item) -> Id {
         match item.kind {
             clean::ItemKind::ImportItem(ref import) => {
-                let extra =
-                    import.source.did.map(ItemId::from).map(|i| self.id_from_item_default(i));
-                self.id_from_item_inner(item.item_id, item.name, extra)
+                let imported_id = import.source.did;
+                self.id_from_item_inner(item.item_id, item.name, imported_id)
             }
             _ => self.id_from_item_inner(item.item_id, item.name, None),
         }
