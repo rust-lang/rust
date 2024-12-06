@@ -125,8 +125,9 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         returns: Vec<AbiParam>,
         args: &[Value],
     ) -> Cow<'_, [Value]> {
-        if self.tcx.sess.target.is_like_windows {
-            let (mut params, mut args): (Vec<_>, Vec<_>) = params
+        // Pass i128 arguments by-ref on Windows.
+        let (params, args): (Vec<_>, Cow<'_, [_]>) = if self.tcx.sess.target.is_like_windows {
+            let (params, args): (Vec<_>, Vec<_>) = params
                 .into_iter()
                 .zip(args)
                 .map(|(param, &arg)| {
@@ -140,29 +141,42 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
                 })
                 .unzip();
 
-            let indirect_ret_val = returns.len() == 1 && returns[0].value_type == types::I128;
+            (params, args.into())
+        } else {
+            (params, args.into())
+        };
 
-            if indirect_ret_val {
-                params.insert(0, AbiParam::new(self.pointer_type));
-                let ret_ptr = self.create_stack_slot(16, 16);
-                args.insert(0, ret_ptr.get_addr(self));
-                self.lib_call_unadjusted(name, params, vec![], &args);
-                return Cow::Owned(vec![ret_ptr.load(self, types::I128, MemFlags::trusted())]);
+        // Return i128 using a return area pointer on Windows and s390x.
+        let adjust_ret_param =
+            if self.tcx.sess.target.is_like_windows || self.tcx.sess.target.arch == "s390x" {
+                returns.len() == 1 && returns[0].value_type == types::I128
             } else {
-                return self.lib_call_unadjusted(name, params, returns, &args);
-            }
-        }
+                false
+            };
 
-        self.lib_call_unadjusted(name, params, returns, args)
+        if adjust_ret_param {
+            let mut params = params;
+            let mut args = args.to_vec();
+
+            params.insert(0, AbiParam::new(self.pointer_type));
+            let ret_ptr = self.create_stack_slot(16, 16);
+            args.insert(0, ret_ptr.get_addr(self));
+
+            self.lib_call_unadjusted(name, params, vec![], &args);
+
+            Cow::Owned(vec![ret_ptr.load(self, types::I128, MemFlags::trusted())])
+        } else {
+            Cow::Borrowed(self.lib_call_unadjusted(name, params, returns, &args))
+        }
     }
 
-    pub(crate) fn lib_call_unadjusted(
+    fn lib_call_unadjusted(
         &mut self,
         name: &str,
         params: Vec<AbiParam>,
         returns: Vec<AbiParam>,
         args: &[Value],
-    ) -> Cow<'_, [Value]> {
+    ) -> &[Value] {
         let sig = Signature { params, returns, call_conv: self.target_config.default_call_conv };
         let func_id = self.module.declare_function(name, Linkage::Import, &sig).unwrap();
         let func_ref = self.module.declare_func_in_func(func_id, &mut self.bcx.func);
@@ -175,7 +189,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         }
         let results = self.bcx.inst_results(call_inst);
         assert!(results.len() <= 2, "{}", results.len());
-        Cow::Borrowed(results)
+        results
     }
 }
 
