@@ -1,10 +1,9 @@
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_index::bit_set::BitSet;
-use rustc_middle::mir::CoverageIdsInfo;
 use rustc_middle::mir::coverage::{
-    CounterId, CovTerm, Expression, ExpressionId, FunctionCoverageInfo, Mapping, MappingKind, Op,
-    SourceRegion,
+    CounterId, CovTerm, CoverageIdsInfo, Expression, ExpressionId, FunctionCoverageInfo, Mapping,
+    MappingKind, Op, SourceRegion,
 };
 use rustc_middle::ty::Instance;
 use tracing::debug;

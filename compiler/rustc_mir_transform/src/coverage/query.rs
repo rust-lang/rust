@@ -1,8 +1,8 @@
 use rustc_data_structures::captures::Captures;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::mir::coverage::{CovTerm, CoverageKind, MappingKind};
-use rustc_middle::mir::{Body, CoverageIdsInfo, Statement, StatementKind};
+use rustc_middle::mir::coverage::{CovTerm, CoverageIdsInfo, CoverageKind, MappingKind};
+use rustc_middle::mir::{Body, Statement, StatementKind};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::util::Providers;
