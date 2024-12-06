@@ -2117,6 +2117,8 @@ pub struct X86Abi {
     /// On x86-32 targets, the regparm N causes the compiler to pass arguments
     /// in registers EAX, EDX, and ECX instead of on the stack.
     pub regparm: Option<u32>,
+    /// Override the default ABI to return small structs in registers
+    pub reg_struct_return: bool,
 }
 
 pub trait HasX86AbiOpt {
