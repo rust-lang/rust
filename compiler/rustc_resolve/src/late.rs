@@ -752,7 +752,7 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
         self.parent_scope.macro_rules = old_macro_rules;
     }
     fn visit_anon_const(&mut self, constant: &'ast AnonConst) {
-        bug!("encountered anon const without a manual call to `resolve_anon_const` {constant:#?}");
+        bug!("encountered anon const without a manual call to `resolve_anon_const`: {constant:#?}");
     }
     fn visit_expr(&mut self, expr: &'ast Expr) {
         self.resolve_expr(expr, None);

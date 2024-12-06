@@ -7,7 +7,7 @@ LL |     bat: i32 = <Qux<{ C }> as T>::K,
    = help: const parameters may only be used as standalone arguments, i.e. `C`
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
-error: default field in tuple struct
+error: default fields are not supported in tuple structs
   --> $DIR/default-field-values-failures.rs:26:22
    |
 LL | pub struct Rak(i32 = 42);

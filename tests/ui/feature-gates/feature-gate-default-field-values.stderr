@@ -14,7 +14,7 @@ LL |     Variant {
    |
    = help: consider a manual implementation of `Default`
 
-error[E0658]: default values on `struct` fields aren't supported
+error[E0658]: default values on fields are experimental
   --> $DIR/feature-gate-default-field-values.rs:8:15
    |
 LL |     pub bar: S = S,
@@ -24,7 +24,7 @@ LL |     pub bar: S = S,
    = help: add `#![feature(default_field_values)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: default values on `struct` fields aren't supported
+error[E0658]: default values on fields are experimental
   --> $DIR/feature-gate-default-field-values.rs:9:17
    |
 LL |     pub baz: i32 = 42 + 3,
@@ -34,7 +34,7 @@ LL |     pub baz: i32 = 42 + 3,
    = help: add `#![feature(default_field_values)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: default values on `struct` fields aren't supported
+error[E0658]: default values on fields are experimental
   --> $DIR/feature-gate-default-field-values.rs:16:15
    |
 LL |         bar: S = S,
@@ -44,7 +44,7 @@ LL |         bar: S = S,
    = help: add `#![feature(default_field_values)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: default values on `struct` fields aren't supported
+error[E0658]: default values on fields are experimental
   --> $DIR/feature-gate-default-field-values.rs:17:17
    |
 LL |         baz: i32 = 42 + 3,
@@ -54,7 +54,7 @@ LL |         baz: i32 = 42 + 3,
    = help: add `#![feature(default_field_values)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: default values on `struct` fields aren't supported
+error[E0658]: default values on fields are experimental
   --> $DIR/feature-gate-default-field-values.rs:23:11
    |
 LL |     bar: S = Qux::<A, C>::S,
@@ -64,7 +64,7 @@ LL |     bar: S = Qux::<A, C>::S,
    = help: add `#![feature(default_field_values)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: default values on `struct` fields aren't supported
+error[E0658]: default values on fields are experimental
   --> $DIR/feature-gate-default-field-values.rs:24:13
    |
 LL |     baz: i32 = foo(),
@@ -74,7 +74,7 @@ LL |     baz: i32 = foo(),
    = help: add `#![feature(default_field_values)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: default values on `struct` fields aren't supported
+error[E0658]: default values on fields are experimental
   --> $DIR/feature-gate-default-field-values.rs:25:13
    |
 LL |     bat: i32 = <Qux<A, C> as T>::K,
@@ -84,7 +84,7 @@ LL |     bat: i32 = <Qux<A, C> as T>::K,
    = help: add `#![feature(default_field_values)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: default values on `struct` fields aren't supported
+error[E0658]: default values on fields are experimental
   --> $DIR/feature-gate-default-field-values.rs:26:13
    |
 LL |     bay: i32 = C,
@@ -94,7 +94,7 @@ LL |     bay: i32 = C,
    = help: add `#![feature(default_field_values)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: default values on `struct` fields aren't supported
+error[E0658]: default values on fields are experimental
   --> $DIR/feature-gate-default-field-values.rs:27:16
    |
 LL |     bak: Vec<A> = Vec::new(),
@@ -104,7 +104,7 @@ LL |     bak: Vec<A> = Vec::new(),
    = help: add `#![feature(default_field_values)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: default values on `struct` fields aren't supported
+error[E0658]: default values on fields are experimental
   --> $DIR/feature-gate-default-field-values.rs:49:17
    |
 LL |     optional: () = (),
@@ -114,7 +114,7 @@ LL |     optional: () = (),
    = help: add `#![feature(default_field_values)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: default values on `struct` fields aren't supported
+error[E0658]: default values on fields are experimental
   --> $DIR/feature-gate-default-field-values.rs:57:21
    |
 LL |         optional: () = (),

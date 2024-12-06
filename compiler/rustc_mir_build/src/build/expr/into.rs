@@ -352,7 +352,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     AdtExprBase::Base(FruInfo { base, field_types }) => {
                         let place_builder = unpack!(block = this.as_place_builder(block, *base));
 
-                        // MIR does not natively support FRU, so for each
+                        // We desugar FRU as we lower to MIR, so for each
                         // base-supplied field, generate an operand that
                         // reads it from the base.
                         itertools::zip_eq(field_names, &**field_types)

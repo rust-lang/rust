@@ -5,26 +5,26 @@ pub struct S;
 
 #[derive(Default)]
 pub struct Foo {
-    pub bar: S = S, //~ ERROR default values on `struct` fields aren't supported
-    pub baz: i32 = 42 + 3, //~ ERROR default values on `struct` fields aren't supported
+    pub bar: S = S, //~ ERROR default values on fields are experimental
+    pub baz: i32 = 42 + 3, //~ ERROR default values on fields are experimental
 }
 
 #[derive(Default)]
 pub enum Bar {
     #[default]
     Foo { //~ ERROR the `#[default]` attribute may only be used on unit enum variants
-        bar: S = S, //~ ERROR default values on `struct` fields aren't supported
-        baz: i32 = 42 + 3, //~ ERROR default values on `struct` fields aren't supported
+        bar: S = S, //~ ERROR default values on fields are experimental
+        baz: i32 = 42 + 3, //~ ERROR default values on fields are experimental
     }
 }
 
 #[derive(Default)]
 pub struct Qux<A, const C: i32> {
-    bar: S = Qux::<A, C>::S, //~ ERROR default values on `struct` fields aren't supported
-    baz: i32 = foo(), //~ ERROR default values on `struct` fields aren't supported
-    bat: i32 = <Qux<A, C> as T>::K, //~ ERROR default values on `struct` fields aren't supported
-    bay: i32 = C, //~ ERROR default values on `struct` fields aren't supported
-    bak: Vec<A> = Vec::new(), //~ ERROR default values on `struct` fields aren't supported
+    bar: S = Qux::<A, C>::S, //~ ERROR default values on fields are experimental
+    baz: i32 = foo(), //~ ERROR default values on fields are experimental
+    bat: i32 = <Qux<A, C> as T>::K, //~ ERROR default values on fields are experimental
+    bay: i32 = C, //~ ERROR default values on fields are experimental
+    bak: Vec<A> = Vec::new(), //~ ERROR default values on fields are experimental
 }
 
 impl<A, const C: i32> Qux<A, C> {
@@ -46,7 +46,7 @@ const fn foo() -> i32 {
 #[derive(Default)]
 pub struct Opt {
     mandatory: Option<()>,
-    optional: () = (), //~ ERROR default values on `struct` fields aren't supported
+    optional: () = (), //~ ERROR default values on fields are experimental
 }
 
 #[derive(Default)]
@@ -54,7 +54,7 @@ pub enum OptEnum {
     #[default]
     Variant { //~ ERROR the `#[default]` attribute may only be used on unit enum variants
         mandatory: Option<()>,
-        optional: () = (), //~ ERROR default values on `struct` fields aren't supported
+        optional: () = (), //~ ERROR default values on fields are experimental
     }
 }
 
