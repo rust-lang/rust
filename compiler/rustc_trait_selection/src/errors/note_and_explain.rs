@@ -41,8 +41,7 @@ impl<'a> DescriptionCtx<'a> {
             }
             ty::ReLateParam(ref fr) => {
                 if !fr.bound_region.is_named()
-                    && let Some((ty, _)) =
-                        find_anon_type(tcx, generic_param_scope, region, &fr.bound_region)
+                    && let Some((ty, _)) = find_anon_type(tcx, generic_param_scope, region)
                 {
                     (Some(ty.span), "defined_here", String::new())
                 } else {

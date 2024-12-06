@@ -50,7 +50,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     // This may have a closure and it would cause ICE
                     // through `find_param_with_region` (#78262).
                     let anon_reg_sup = tcx.is_suitable_region(self.generic_param_scope, *sup_r)?;
-                    let fn_returns = tcx.return_type_impl_or_dyn_traits(anon_reg_sup.def_id);
+                    let fn_returns = tcx.return_type_impl_or_dyn_traits(anon_reg_sup.scope);
                     if fn_returns.is_empty() {
                         return None;
                     }
@@ -196,7 +196,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
         let mut err = self.tcx().dcx().create_err(diag);
 
-        let fn_returns = tcx.return_type_impl_or_dyn_traits(anon_reg_sup.def_id);
+        let fn_returns = tcx.return_type_impl_or_dyn_traits(anon_reg_sup.scope);
 
         let mut override_error_code = None;
         if let SubregionOrigin::Subtype(box TypeTrace { cause, .. }) = &sup_origin
@@ -250,7 +250,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             Some(arg),
             captures,
             Some((param.param_ty_span, param.param_ty.to_string())),
-            Some(anon_reg_sup.def_id),
+            Some(anon_reg_sup.scope),
         );
 
         let reported = err.emit();
