@@ -61,7 +61,6 @@
 #![feature(maybe_uninit_write_slice)]
 #![feature(min_specialization)]
 #![feature(never_type)]
-#![feature(noop_waker)]
 #![feature(num_midpoint_signed)]
 #![feature(numfmt)]
 #![feature(pattern)]
