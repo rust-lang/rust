@@ -7,28 +7,67 @@ use rustdoc_json_types::{self as types, Id}; // FIXME: Consistant.
 use super::JsonRenderer;
 use crate::clean::{self, ItemId};
 
+pub(super) type IdInterner = FxHashMap<FullItemId, types::Id>;
+
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+/// An uninterned id.
+///
+/// One of these coresponds to every:
+/// 1. [`rustdoc_json_types::Item`].
+/// 2. [`rustdoc_json_types::Id`] transitivly (as each `Item` has an `Id`).
+///
+/// It's *broadly* equivalent to a [`DefId`], but needs slightly more information
+/// to fully disambiguate items, because sometimes we choose to split a single HIR
+/// item into multiple JSON items, or have items with no coresponding HIR item.
 pub(super) struct FullItemId {
-    def_id: DefId,
-    name: Option<Symbol>,
-    /// Used to distinguish imports of different items with the same name
-    extra: Option<types::Id>,
+    id: SingleItemId,
+    /// An extra DefId for auto-trait-impls or blanket-impls. These don't have DefId's
+    /// as they're synthesized by rustdoc.
+    extra: Option<DefId>,
 }
 
-pub(super) type IdInterner = FxHashMap<(FullItemId, Option<FullItemId>), types::Id>;
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+struct SingleItemId {
+    /// Almost all of the "identification" comes from the `DefId`, other fields
+    /// are only needed in weird cases.
+    def_id: DefId,
+    /// Needed for `rustc_doc_primitive` modules.
+    ///
+    /// For these, 1 DefId is used for both the primitive and the fake-module
+    /// that holds it's docs.
+    ///
+    /// N.B. This only matters when documenting the standard library with
+    /// `--document-private-items`. Maybe we should delete that module, and
+    /// remove this.
+    name: Option<Symbol>,
+    /// Used to distinguish imports of different items with the same name.
+    ///
+    /// ```rust
+    /// mod module {
+    ///     pub struct Foo {}; // Exists in type namespace
+    ///     pub fn Foo(){} // Exists in value namespace
+    /// }
+    ///
+    /// pub use module::Foo; // Imports both items
+    /// ```
+    ///
+    /// In HIR, the `pub use` is just 1 item, but in rustdoc-json it's 2, so
+    /// we need to disambiguate.
+    imported_id: Option<types::Id>,
+}
 
 impl JsonRenderer<'_> {
     pub(crate) fn id_from_item_default(&self, item_id: ItemId) -> Id {
         self.id_from_item_inner(item_id, None, None)
     }
 
-    pub(crate) fn id_from_item_inner(
+    fn id_from_item_inner(
         &self,
         item_id: ItemId,
         name: Option<Symbol>,
-        extra: Option<Id>,
+        imported_id: Option<Id>,
     ) -> Id {
-        let make_part = |def_id: DefId, name: Option<Symbol>, extra: Option<Id>| {
+        let make_part = |def_id: DefId| {
             let name = match name {
                 Some(name) => Some(name),
                 None => {
@@ -48,16 +87,16 @@ impl JsonRenderer<'_> {
                 }
             };
 
-            FullItemId { def_id, name, extra }
+            SingleItemId { def_id, name, imported_id }
         };
 
         let key = match item_id {
-            ItemId::DefId(did) => (make_part(did, name, extra), None),
+            ItemId::DefId(did) => FullItemId { id: make_part(did), extra: None },
             ItemId::Blanket { for_, impl_id } => {
-                (make_part(impl_id, None, None), Some(make_part(for_, name, extra)))
+                FullItemId { id: make_part(for_), extra: Some(impl_id) }
             }
             ItemId::Auto { for_, trait_ } => {
-                (make_part(trait_, None, None), Some(make_part(for_, name, extra)))
+                FullItemId { id: make_part(for_), extra: Some(trait_) }
             }
         };
 
