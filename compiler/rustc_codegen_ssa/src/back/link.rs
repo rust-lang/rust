@@ -2754,8 +2754,10 @@ fn add_upstream_rust_crates(
         .expect("failed to find crate type in dependency format list");
 
     if sess.target.is_like_aix {
-        // Unlike GNU's ld, AIX linker doesn't feature `-soname=...` when output
-        // a shared library. Instead, AIX linker offers `(no)ipath`. See
+        // Unlike ELF linkers, AIX doesn't feature `DT_SONAME` to override
+        // the dependency name when outputing a shared library. Thus, `ld` will
+        // use the full path to shared libraries as the dependency if passed it
+        // by default unless `noipath` is passed.
         // https://www.ibm.com/docs/en/aix/7.3?topic=l-ld-command.
         cmd.link_or_cc_arg("-bnoipath");
     }
