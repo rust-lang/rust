@@ -974,6 +974,3 @@ lint_use_let_underscore_ignore_suggestion = use `let _ = ...` to ignore the expr
 
 lint_variant_size_differences =
     enum variant is more than three times larger ({$largest} bytes) than the next largest
-
-lint_wasm_c_abi =
-    older versions of the `wasm-bindgen` crate will be incompatible with future versions of Rust; please update to `wasm-bindgen` v0.2.88

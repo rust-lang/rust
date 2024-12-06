@@ -783,7 +783,6 @@ pub enum BuiltinLintDiag {
         extern_crate: Symbol,
         local_crate: Symbol,
     },
-    WasmCAbi,
     IllFormedAttributeInput {
         suggestions: Vec<String>,
     },
