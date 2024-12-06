@@ -8,24 +8,24 @@ use itertools::Itertools;
 
 fn main() {
     let _ = "key=value".splitn(2, '=').nth(2);
-    let _ = "key=value".splitn(2, '=').nth(1).unwrap();
-    let _ = "key=value".splitn(2, '=').skip(1).next().unwrap();
-    let (_, _) = "key=value".splitn(2, '=').next_tuple().unwrap();
+    let _ = "key=value".split_once('=').unwrap().1;
+    let _ = "key=value".split_once('=').unwrap().1;
+    let (_, _) = "key=value".split_once('=').unwrap();
 
     let s = String::from("key=value");
-    let _ = s.splitn(2, '=').nth(1).unwrap();
+    let _ = s.split_once('=').unwrap().1;
 
     let s = Box::<str>::from("key=value");
-    let _ = s.splitn(2, '=').nth(1).unwrap();
+    let _ = s.split_once('=').unwrap().1;
 
     let s = &"key=value";
-    let _ = s.splitn(2, '=').skip(1).next().unwrap();
+    let _ = s.split_once('=').unwrap().1;
 
     fn _f(s: &str) -> Option<&str> {
-        let _ = s.splitn(2, '=').nth(1)?;
-        let _ = s.splitn(2, '=').skip(1).next()?;
-        let _ = s.rsplitn(2, '=').nth(1)?;
-        let _ = s.rsplitn(2, '=').skip(1).next()?;
+        let _ = s.split_once('=')?.1;
+        let _ = s.split_once('=')?.1;
+        let _ = s.rsplit_once('=')?.0;
+        let _ = s.rsplit_once('=')?.0;
         None
     }
 
@@ -33,27 +33,27 @@ fn main() {
     let _ = [0, 1, 2].splitn(2, |&x| x == 1).nth(1).unwrap();
 
     // `rsplitn` gives the results in the reverse order of `rsplit_once`
-    let _ = "key=value".rsplitn(2, '=').nth(1).unwrap();
-    let (_, _) = "key=value".rsplitn(2, '=').next_tuple().unwrap();
-    let _ = s.rsplitn(2, '=').nth(1);
+    let _ = "key=value".rsplit_once('=').unwrap().0;
+    let (_, _) = "key=value".rsplit_once('=').map(|(x, y)| (y, x)).unwrap();
+    let _ = s.rsplit_once('=').map(|x| x.0);
 }
 
 fn indirect() -> Option<()> {
-    let mut iter = "a.b.c".splitn(2, '.');
-    let l = iter.next().unwrap();
-    let r = iter.next().unwrap();
+    let (l, r) = "a.b.c".split_once('.').unwrap();
+    
+    
 
-    let mut iter = "a.b.c".splitn(2, '.');
-    let l = iter.next()?;
-    let r = iter.next()?;
+    let (l, r) = "a.b.c".split_once('.')?;
+    
+    
 
-    let mut iter = "a.b.c".rsplitn(2, '.');
-    let r = iter.next().unwrap();
-    let l = iter.next().unwrap();
+    let (l, r) = "a.b.c".rsplit_once('.').unwrap();
+    
+    
 
-    let mut iter = "a.b.c".rsplitn(2, '.');
-    let r = iter.next()?;
-    let l = iter.next()?;
+    let (l, r) = "a.b.c".rsplit_once('.')?;
+    
+    
 
     // could lint, currently doesn't
 
@@ -136,9 +136,9 @@ fn _msrv_1_51() {
 
 #[clippy::msrv = "1.52"]
 fn _msrv_1_52() {
-    let _ = "key=value".splitn(2, '=').nth(1).unwrap();
+    let _ = "key=value".split_once('=').unwrap().1;
 
-    let mut iter = "a.b.c".splitn(2, '.');
-    let a = iter.next().unwrap();
-    let b = iter.next().unwrap();
+    let (a, b) = "a.b.c".split_once('.').unwrap();
+    
+    
 }
