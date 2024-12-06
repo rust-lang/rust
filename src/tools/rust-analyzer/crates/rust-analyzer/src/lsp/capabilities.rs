@@ -41,8 +41,8 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
         })),
         hover_provider: Some(HoverProviderCapability::Simple(true)),
         completion_provider: Some(CompletionOptions {
-            resolve_provider: if config.client_is_helix() {
-                None
+            resolve_provider: if config.client_is_helix() || config.client_is_neovim() {
+                config.completion_item_edit_resolve().then_some(true)
             } else {
                 Some(config.caps().completions_resolve_provider())
             },
