@@ -1,4 +1,4 @@
-//@compile-flags: -Zmiri-ignore-leaks -Zmiri-disable-stacked-borrows -Zmiri-provenance-gc=10000
+//@compile-flags: -Zmiri-ignore-leaks -Zmiri-disable-stacked-borrows -Zmiri-disable-validation -Zmiri-provenance-gc=10000
 // This test's runtime explodes if the GC interval is set to 1 (which we do in CI), so we
 // override it internally back to the default frequency.
 
@@ -365,6 +365,45 @@ fn test_cpp20_rwc_syncs() {
     assert!((b, c) != (0, 0));
 }
 
+/// This checks that the *last* thing the SC fence does is act like a release fence.
+/// See <https://github.com/rust-lang/miri/pull/4057#issuecomment-2522296601>.
+fn test_sc_fence_release() {
+    let x = static_atomic(0);
+    let y = static_atomic(0);
+    let z = static_atomic(0);
+    let k = static_atomic(0);
+
+    let j1 = spawn(move || {
+        x.store(1, Relaxed);
+        fence(SeqCst);
+        k.store(1, Relaxed);
+    });
+    let j2 = spawn(move || {
+        y.store(1, Relaxed);
+        fence(SeqCst);
+        z.store(1, Relaxed);
+    });
+
+    let j3 = spawn(move || {
+        let kval = k.load(Acquire);
+        let yval = y.load(Relaxed);
+        (kval, yval)
+    });
+    let j4 = spawn(move || {
+        let zval = z.load(Acquire);
+        let xval = x.load(Relaxed);
+        (zval, xval)
+    });
+
+    j1.join().unwrap();
+    j2.join().unwrap();
+    let (kval, yval) = j3.join().unwrap();
+    let (zval, xval) = j4.join().unwrap();
+
+    let bad = kval == 1 && yval == 0 && zval == 1 && xval == 0;
+    assert!(!bad);
+}
+
 pub fn main() {
     for _ in 0..50 {
         test_single_thread();
@@ -378,5 +417,6 @@ pub fn main() {
         test_iriw_sc_rlx();
         test_cpp20_sc_fence_fix();
         test_cpp20_rwc_syncs();
+        test_sc_fence_release();
     }
 }
