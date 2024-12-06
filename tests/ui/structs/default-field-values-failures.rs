@@ -41,6 +41,12 @@ const fn foo() -> i32 {
     42
 }
 
+#[derive(Debug, Default)]
+enum E {
+    #[default]
+    Variant {} //~ ERROR the `#[default]` attribute may only be used on unit enum variants
+}
+
 fn main () {
     let _ = Foo { .. }; // ok
     let _ = Foo::default(); // ok

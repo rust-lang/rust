@@ -199,10 +199,17 @@ fn extract_default_variant<'a>(
     if cx.ecfg.features.default_field_values()
         && let VariantData::Struct { fields, .. } = &variant.data
         && fields.iter().all(|f| f.default.is_some())
+        // Disallow `#[default] Variant {}`
+        && !fields.is_empty()
     {
         // Allowed
     } else if !matches!(variant.data, VariantData::Unit(..)) {
-        let guar = cx.dcx().emit_err(errors::NonUnitDefault { span: variant.ident.span });
+        let post = if cx.ecfg.features.default_field_values() {
+            " or variants where every field has a default value"
+        } else {
+            ""
+        };
+        let guar = cx.dcx().emit_err(errors::NonUnitDefault { span: variant.ident.span, post });
         return Err(guar);
     }
 
@@ -261,7 +268,12 @@ struct DetectNonVariantDefaultAttr<'a, 'b> {
 impl<'a, 'b> rustc_ast::visit::Visitor<'a> for DetectNonVariantDefaultAttr<'a, 'b> {
     fn visit_attribute(&mut self, attr: &'a rustc_ast::Attribute) {
         if attr.has_name(kw::Default) {
-            self.cx.dcx().emit_err(errors::NonUnitDefault { span: attr.span });
+            let post = if self.cx.ecfg.features.default_field_values() {
+                " or variants where every field has a default value"
+            } else {
+                ""
+            };
+            self.cx.dcx().emit_err(errors::NonUnitDefault { span: attr.span, post });
         }
 
         rustc_ast::visit::walk_attribute(self, attr);
