@@ -320,7 +320,7 @@ pub struct MCDCDecisionSpan {
 #[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable)]
 pub struct CoverageIdsInfo {
     pub counters_seen: BitSet<CounterId>,
-    pub expressions_seen: BitSet<ExpressionId>,
+    pub zero_expressions: BitSet<ExpressionId>,
 }
 
 impl CoverageIdsInfo {
@@ -336,5 +336,16 @@ impl CoverageIdsInfo {
         // if its ID is less than that of the highest counter that really is
         // used. Fixing this would require adding a renumbering step somewhere.
         self.counters_seen.last_set_in(..).map_or(0, |max| max.as_u32() + 1)
+    }
+
+    /// Returns `true` if the given term is known to have a value of zero, taking
+    /// into account knowledge of which counters are unused and which expressions
+    /// are always zero.
+    pub fn is_zero_term(&self, term: CovTerm) -> bool {
+        match term {
+            CovTerm::Zero => true,
+            CovTerm::Counter(id) => !self.counters_seen.contains(id),
+            CovTerm::Expression(id) => self.zero_expressions.contains(id),
+        }
     }
 }
