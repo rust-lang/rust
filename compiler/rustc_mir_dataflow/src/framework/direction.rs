@@ -118,11 +118,11 @@ impl Direction for Backward {
                         let targets =
                             values.iter().map(|&value| SwitchIntTarget { value, target: block });
 
-                        let mut tmp = None;
+                        let mut tmp = analysis.bottom_value(body);
                         for target in targets {
-                            let tmp = opt_clone_from_or_clone(&mut tmp, exit_state);
-                            analysis.apply_switch_int_edge_effect(&mut data, tmp, target);
-                            propagate(pred, tmp);
+                            tmp.clone_from(&exit_state);
+                            analysis.apply_switch_int_edge_effect(&mut data, &mut tmp, target);
+                            propagate(pred, &tmp);
                         }
                     } else {
                         propagate(pred, exit_state)
@@ -251,7 +251,7 @@ impl Direction for Forward {
 
     fn apply_effects_in_block<'mir, 'tcx, A>(
         analysis: &mut A,
-        _body: &mir::Body<'tcx>,
+        body: &mir::Body<'tcx>,
         state: &mut A::Domain,
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
@@ -292,14 +292,15 @@ impl Direction for Forward {
             }
             TerminatorEdges::SwitchInt { targets, discr } => {
                 if let Some(mut data) = analysis.get_switch_int_data(block, discr) {
-                    let mut tmp = None;
+                    let mut tmp = analysis.bottom_value(body);
                     for (value, target) in targets.iter() {
-                        let tmp = opt_clone_from_or_clone(&mut tmp, exit_state);
-                        analysis.apply_switch_int_edge_effect(&mut data, tmp, SwitchIntTarget {
-                            value: Some(value),
-                            target,
-                        });
-                        propagate(target, tmp);
+                        tmp.clone_from(&exit_state);
+                        analysis.apply_switch_int_edge_effect(
+                            &mut data,
+                            &mut tmp,
+                            SwitchIntTarget { value: Some(value), target },
+                        );
+                        propagate(target, &tmp);
                     }
 
                     // Once we get to the final, "otherwise" branch, there is no need to preserve
@@ -423,23 +424,5 @@ impl Direction for Forward {
         vis.visit_after_primary_terminator_effect(results, state, term, loc);
 
         vis.visit_block_end(state);
-    }
-}
-
-/// An analogue of `Option::get_or_insert_with` that stores a clone of `val` into `opt`, but uses
-/// the more efficient `clone_from` if `opt` was `Some`.
-///
-/// Returns a mutable reference to the new clone that resides in `opt`.
-//
-// FIXME: Figure out how to express this using `Option::clone_from`, or maybe lift it into the
-// standard library?
-fn opt_clone_from_or_clone<'a, T: Clone>(opt: &'a mut Option<T>, val: &T) -> &'a mut T {
-    if opt.is_some() {
-        let ret = opt.as_mut().unwrap();
-        ret.clone_from(val);
-        ret
-    } else {
-        *opt = Some(val.clone());
-        opt.as_mut().unwrap()
     }
 }
