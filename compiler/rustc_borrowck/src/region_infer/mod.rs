@@ -973,25 +973,20 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         propagated_outlives_requirements: &mut Vec<ClosureOutlivesRequirement<'tcx>>,
     ) -> bool {
         let tcx = infcx.tcx;
-
-        let TypeTest { generic_kind, lower_bound, span: _, verify_bound: _ } = type_test;
+        let TypeTest { generic_kind, lower_bound, span: blame_span, ref verify_bound } = *type_test;
 
         let generic_ty = generic_kind.to_ty(tcx);
         let Some(subject) = self.try_promote_type_test_subject(infcx, generic_ty) else {
             return false;
         };
 
-        debug!("subject = {:?}", subject);
-
-        let r_scc = self.constraint_sccs.scc(*lower_bound);
-
+        let r_scc = self.constraint_sccs.scc(lower_bound);
         debug!(
             "lower_bound = {:?} r_scc={:?} universe={:?}",
             lower_bound,
             r_scc,
             self.constraint_sccs.annotation(r_scc).min_universe()
         );
-
         // If the type test requires that `T: 'a` where `'a` is a
         // placeholder from another universe, that effectively requires
         // `T: 'static`, so we have to propagate that requirement.
@@ -1004,7 +999,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             propagated_outlives_requirements.push(ClosureOutlivesRequirement {
                 subject,
                 outlived_free_region: static_r,
-                blame_span: type_test.span,
+                blame_span,
                 category: ConstraintCategory::Boring,
             });
 
@@ -1031,12 +1026,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // where `ur` is a local bound -- we are sometimes in a
             // position to prove things that our caller cannot. See
             // #53570 for an example.
-            if self.eval_verify_bound(infcx, generic_ty, ur, &type_test.verify_bound) {
+            if self.eval_verify_bound(infcx, generic_ty, ur, &verify_bound) {
                 continue;
             }
 
             let non_local_ub = self.universal_region_relations.non_local_upper_bounds(ur);
-            debug!("try_promote_type_test: non_local_ub={:?}", non_local_ub);
+            debug!(?non_local_ub);
 
             // This is slightly too conservative. To show T: '1, given `'2: '1`
             // and `'3: '1` we only need to prove that T: '2 *or* T: '3, but to
@@ -1049,10 +1044,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 let requirement = ClosureOutlivesRequirement {
                     subject,
                     outlived_free_region: upper_bound,
-                    blame_span: type_test.span,
+                    blame_span,
                     category: ConstraintCategory::Boring,
                 };
-                debug!("try_promote_type_test: pushing {:#?}", requirement);
+                debug!(?requirement, "adding closure requirement");
                 propagated_outlives_requirements.push(requirement);
             }
         }
@@ -1063,44 +1058,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// variables in the type `T` with an equal universal region from the
     /// closure signature.
     /// This is not always possible, so this is a fallible process.
-    #[instrument(level = "debug", skip(self, infcx))]
+    #[instrument(level = "debug", skip(self, infcx), ret)]
     fn try_promote_type_test_subject(
         &self,
         infcx: &InferCtxt<'tcx>,
         ty: Ty<'tcx>,
     ) -> Option<ClosureOutlivesSubject<'tcx>> {
         let tcx = infcx.tcx;
-
-        // Opaque types' args may include useless lifetimes.
-        // We will replace them with ReStatic.
-        struct OpaqueFolder<'tcx> {
-            tcx: TyCtxt<'tcx>,
-        }
-        impl<'tcx> ty::TypeFolder<TyCtxt<'tcx>> for OpaqueFolder<'tcx> {
-            fn cx(&self) -> TyCtxt<'tcx> {
-                self.tcx
-            }
-            fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-                use ty::TypeSuperFoldable as _;
-                let tcx = self.tcx;
-                let &ty::Alias(ty::Opaque, ty::AliasTy { args, def_id, .. }) = t.kind() else {
-                    return t.super_fold_with(self);
-                };
-                let args = std::iter::zip(args, tcx.variances_of(def_id)).map(|(arg, v)| {
-                    match (arg.unpack(), v) {
-                        (ty::GenericArgKind::Lifetime(_), ty::Bivariant) => {
-                            tcx.lifetimes.re_static.into()
-                        }
-                        _ => arg.fold_with(self),
-                    }
-                });
-                Ty::new_opaque(tcx, def_id, tcx.mk_args_from_iter(args))
-            }
-        }
-
-        let ty = ty.fold_with(&mut OpaqueFolder { tcx });
         let mut failed = false;
-
         let ty = fold_regions(tcx, ty, |r, _depth| {
             let r_vid = self.to_region_vid(r);
             let r_scc = self.constraint_sccs.scc(r_vid);

@@ -4,7 +4,6 @@
 use std::fmt::Debug;
 
 type FooX = impl Debug;
-//~^ ERROR unconstrained opaque type
 
 trait Foo<A> {}
 

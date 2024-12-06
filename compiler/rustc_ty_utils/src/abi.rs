@@ -31,20 +31,20 @@ fn fn_sig_for_fn_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: ty::Instance<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
-) -> ty::PolyFnSig<'tcx> {
+) -> ty::FnSig<'tcx> {
     if let InstanceKind::ThreadLocalShim(..) = instance.def {
-        return ty::Binder::dummy(tcx.mk_fn_sig(
+        return tcx.mk_fn_sig(
             [],
             tcx.thread_local_ptr_ty(instance.def_id()),
             false,
             hir::Safety::Safe,
             rustc_abi::ExternAbi::Unadjusted,
-        ));
+        );
     }
 
     let ty = instance.ty(tcx, typing_env);
     match *ty.kind() {
-        ty::FnDef(..) => {
+        ty::FnDef(def_id, args) => {
             // HACK(davidtwco,eddyb): This is a workaround for polymorphization considering
             // parameters unused if they show up in the signature, but not in the `mir::Body`
             // (i.e. due to being inside a projection that got normalized, see
@@ -52,9 +52,8 @@ fn fn_sig_for_fn_abi<'tcx>(
             // track of a polymorphization `ParamEnv` to allow normalizing later.
             //
             // We normalize the `fn_sig` again after instantiating at a later point.
-            let mut sig = match *ty.kind() {
-                ty::FnDef(def_id, args) => tcx
-                    .fn_sig(def_id)
+            let mut sig = tcx.instantiate_bound_regions_with_erased(
+                tcx.fn_sig(def_id)
                     .map_bound(|fn_sig| {
                         tcx.normalize_erasing_regions(
                             ty::TypingEnv::non_body_analysis(tcx, def_id),
@@ -62,62 +61,36 @@ fn fn_sig_for_fn_abi<'tcx>(
                         )
                     })
                     .instantiate(tcx, args),
-                _ => unreachable!(),
-            };
+            );
 
             if let ty::InstanceKind::VTableShim(..) = instance.def {
-                // Modify `fn(self, ...)` to `fn(self: *mut Self, ...)`.
-                sig = sig.map_bound(|mut sig| {
-                    let mut inputs_and_output = sig.inputs_and_output.to_vec();
-                    inputs_and_output[0] = Ty::new_mut_ptr(tcx, inputs_and_output[0]);
-                    sig.inputs_and_output = tcx.mk_type_list(&inputs_and_output);
-                    sig
-                });
+                let mut inputs_and_output = sig.inputs_and_output.to_vec();
+                inputs_and_output[0] = Ty::new_mut_ptr(tcx, inputs_and_output[0]);
+                sig.inputs_and_output = tcx.mk_type_list(&inputs_and_output);
             }
+
             sig
         }
         ty::Closure(def_id, args) => {
-            let sig = args.as_closure().sig();
-
-            let bound_vars =
-                tcx.mk_bound_variable_kinds_from_iter(sig.bound_vars().iter().chain(iter::once(
-                    ty::BoundVariableKind::Region(ty::BoundRegionKind::ClosureEnv),
-                )));
-            let br = ty::BoundRegion {
-                var: ty::BoundVar::from_usize(bound_vars.len() - 1),
-                kind: ty::BoundRegionKind::ClosureEnv,
-            };
-            let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, br);
+            let sig = tcx.instantiate_bound_regions_with_erased(args.as_closure().sig());
             let env_ty = tcx.closure_env_ty(
                 Ty::new_closure(tcx, def_id, args),
                 args.as_closure().kind(),
-                env_region,
+                tcx.lifetimes.re_erased,
             );
 
-            let sig = sig.skip_binder();
-            ty::Binder::bind_with_vars(
-                tcx.mk_fn_sig(
-                    iter::once(env_ty).chain(sig.inputs().iter().cloned()),
-                    sig.output(),
-                    sig.c_variadic,
-                    sig.safety,
-                    sig.abi,
-                ),
-                bound_vars,
+            tcx.mk_fn_sig(
+                iter::once(env_ty).chain(sig.inputs().iter().cloned()),
+                sig.output(),
+                sig.c_variadic,
+                sig.safety,
+                sig.abi,
             )
         }
         ty::CoroutineClosure(def_id, args) => {
             let coroutine_ty = Ty::new_coroutine_closure(tcx, def_id, args);
             let sig = args.as_coroutine_closure().coroutine_closure_sig();
-            let bound_vars =
-                tcx.mk_bound_variable_kinds_from_iter(sig.bound_vars().iter().chain(iter::once(
-                    ty::BoundVariableKind::Region(ty::BoundRegionKind::ClosureEnv),
-                )));
-            let br = ty::BoundRegion {
-                var: ty::BoundVar::from_usize(bound_vars.len() - 1),
-                kind: ty::BoundRegionKind::ClosureEnv,
-            };
-            let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, br);
+
             // When this `CoroutineClosure` comes from a `ConstructCoroutineInClosureShim`,
             // make sure we respect the `target_kind` in that shim.
             // FIXME(async_closures): This shouldn't be needed, and we should be populating
@@ -138,42 +111,32 @@ fn fn_sig_for_fn_abi<'tcx>(
                         coroutine_ty
                     }
                 } else {
-                    tcx.closure_env_ty(coroutine_ty, coroutine_kind, env_region)
+                    tcx.closure_env_ty(coroutine_ty, coroutine_kind, tcx.lifetimes.re_erased)
                 };
 
-            let sig = sig.skip_binder();
-            ty::Binder::bind_with_vars(
-                tcx.mk_fn_sig(
-                    iter::once(env_ty).chain([sig.tupled_inputs_ty]),
-                    sig.to_coroutine_given_kind_and_upvars(
-                        tcx,
-                        args.as_coroutine_closure().parent_args(),
-                        tcx.coroutine_for_closure(def_id),
-                        coroutine_kind,
-                        env_region,
-                        args.as_coroutine_closure().tupled_upvars_ty(),
-                        args.as_coroutine_closure().coroutine_captures_by_ref_ty(),
-                    ),
-                    sig.c_variadic,
-                    sig.safety,
-                    sig.abi,
+            let sig = tcx.instantiate_bound_regions_with_erased(sig);
+
+            tcx.mk_fn_sig(
+                iter::once(env_ty).chain([sig.tupled_inputs_ty]),
+                sig.to_coroutine_given_kind_and_upvars(
+                    tcx,
+                    args.as_coroutine_closure().parent_args(),
+                    tcx.coroutine_for_closure(def_id),
+                    coroutine_kind,
+                    tcx.lifetimes.re_erased,
+                    args.as_coroutine_closure().tupled_upvars_ty(),
+                    args.as_coroutine_closure().coroutine_captures_by_ref_ty(),
                 ),
-                bound_vars,
+                sig.c_variadic,
+                sig.safety,
+                sig.abi,
             )
         }
         ty::Coroutine(did, args) => {
             let coroutine_kind = tcx.coroutine_kind(did).unwrap();
             let sig = args.as_coroutine().sig();
 
-            let bound_vars = tcx.mk_bound_variable_kinds_from_iter(iter::once(
-                ty::BoundVariableKind::Region(ty::BoundRegionKind::ClosureEnv),
-            ));
-            let br = ty::BoundRegion {
-                var: ty::BoundVar::from_usize(bound_vars.len() - 1),
-                kind: ty::BoundRegionKind::ClosureEnv,
-            };
-
-            let env_ty = Ty::new_mut_ref(tcx, ty::Region::new_bound(tcx, ty::INNERMOST, br), ty);
+            let env_ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, ty);
 
             let pin_did = tcx.require_lang_item(LangItem::Pin, None);
             let pin_adt_ref = tcx.adt_def(pin_did);
@@ -268,7 +231,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                 }
             };
 
-            let fn_sig = if let Some(resume_ty) = resume_ty {
+            if let Some(resume_ty) = resume_ty {
                 tcx.mk_fn_sig(
                     [env_ty, resume_ty],
                     ret_ty,
@@ -285,8 +248,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                     hir::Safety::Safe,
                     rustc_abi::ExternAbi::Rust,
                 )
-            };
-            ty::Binder::bind_with_vars(fn_sig, bound_vars)
+            }
         }
         _ => bug!("unexpected type {:?} in Instance::fn_sig", ty),
     }
@@ -335,8 +297,16 @@ fn fn_abi_of_fn_ptr<'tcx>(
     query: ty::PseudoCanonicalInput<'tcx, (ty::PolyFnSig<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
 ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
     let ty::PseudoCanonicalInput { typing_env, value: (sig, extra_args) } = query;
+
     let cx = LayoutCx::new(tcx, typing_env);
-    fn_abi_new_uncached(&cx, sig, extra_args, None, None, false)
+    fn_abi_new_uncached(
+        &cx,
+        tcx.instantiate_bound_regions_with_erased(sig),
+        extra_args,
+        None,
+        None,
+        false,
+    )
 }
 
 fn fn_abi_of_instance<'tcx>(
@@ -567,7 +537,7 @@ fn fn_abi_sanity_check<'tcx>(
 #[tracing::instrument(level = "debug", skip(cx, caller_location, fn_def_id, force_thin_self_ptr))]
 fn fn_abi_new_uncached<'tcx>(
     cx: &LayoutCx<'tcx>,
-    sig: ty::PolyFnSig<'tcx>,
+    sig: ty::FnSig<'tcx>,
     extra_args: &[Ty<'tcx>],
     caller_location: Option<Ty<'tcx>>,
     fn_def_id: Option<DefId>,
@@ -575,7 +545,7 @@ fn fn_abi_new_uncached<'tcx>(
     force_thin_self_ptr: bool,
 ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
     let tcx = cx.tcx();
-    let sig = tcx.normalize_erasing_late_bound_regions(cx.typing_env, sig);
+    let sig = tcx.normalize_erasing_regions(cx.typing_env, sig);
 
     let conv = conv_from_spec_abi(cx.tcx(), sig.abi, sig.c_variadic);
 

@@ -1400,10 +1400,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     where
         OP: FnOnce(&mut Self) -> R,
     {
-        let (result, dep_node) =
-            self.tcx().dep_graph.with_anon_task(self.tcx(), dep_kinds::TraitSelect, || op(self));
-        self.tcx().dep_graph.read_index(dep_node);
-        (result, dep_node)
+        self.tcx().dep_graph.with_anon_task(self.tcx(), dep_kinds::TraitSelect, || op(self))
     }
 
     /// filter_impls filters candidates that have a positive impl for a negative
