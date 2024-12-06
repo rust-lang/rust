@@ -193,7 +193,7 @@ pub unsafe fn _mm256_cvtneoph_ps(a: *const __m256h) -> __m256 {
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtneps_avx_pbh)
 #[inline]
-#[target_feature(enable = "avxneconvert,sse")]
+#[target_feature(enable = "avxneconvert")]
 #[cfg_attr(
     all(test, any(target_os = "linux", target_env = "msvc")),
     assert_instr(vcvtneps2bf16)
@@ -215,7 +215,7 @@ pub unsafe fn _mm_cvtneps_avx_pbh(a: __m128) -> __m128bh {
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtneps_avx_pbh)
 #[inline]
-#[target_feature(enable = "avxneconvert,sse,avx")]
+#[target_feature(enable = "avxneconvert")]
 #[cfg_attr(
     all(test, any(target_os = "linux", target_env = "msvc")),
     assert_instr(vcvtneps2bf16)

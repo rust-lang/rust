@@ -33670,7 +33670,7 @@ pub unsafe fn _mm_maskz_load_pd(k: __mmask8, mem_addr: *const f64) -> __m128d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_load_ss)
 #[inline]
 #[cfg_attr(test, assert_instr(vmovss))]
-#[target_feature(enable = "sse,avx512f")]
+#[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_mask_load_ss(src: __m128, k: __mmask8, mem_addr: *const f32) -> __m128 {
     let mut dst: __m128 = src;
@@ -33692,7 +33692,7 @@ pub unsafe fn _mm_mask_load_ss(src: __m128, k: __mmask8, mem_addr: *const f32) -
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_load_ss)
 #[inline]
 #[cfg_attr(test, assert_instr(vmovss))]
-#[target_feature(enable = "sse,avx512f")]
+#[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_maskz_load_ss(k: __mmask8, mem_addr: *const f32) -> __m128 {
     let mut dst: __m128;
@@ -33714,7 +33714,7 @@ pub unsafe fn _mm_maskz_load_ss(k: __mmask8, mem_addr: *const f32) -> __m128 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_load_sd)
 #[inline]
 #[cfg_attr(test, assert_instr(vmovsd))]
-#[target_feature(enable = "sse,avx512f")]
+#[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_mask_load_sd(src: __m128d, k: __mmask8, mem_addr: *const f64) -> __m128d {
     let mut dst: __m128d = src;
@@ -33736,7 +33736,7 @@ pub unsafe fn _mm_mask_load_sd(src: __m128d, k: __mmask8, mem_addr: *const f64) 
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_maskz_load_sd)
 #[inline]
 #[cfg_attr(test, assert_instr(vmovsd))]
-#[target_feature(enable = "sse,avx512f")]
+#[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_maskz_load_sd(k: __mmask8, mem_addr: *const f64) -> __m128d {
     let mut dst: __m128d;
@@ -34044,7 +34044,7 @@ pub unsafe fn _mm_mask_store_pd(mem_addr: *mut f64, mask: __mmask8, a: __m128d) 
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_store_ss)
 #[inline]
 #[cfg_attr(test, assert_instr(vmovss))]
-#[target_feature(enable = "sse,avx512f")]
+#[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_mask_store_ss(mem_addr: *mut f32, k: __mmask8, a: __m128) {
     asm!(
@@ -34062,7 +34062,7 @@ pub unsafe fn _mm_mask_store_ss(mem_addr: *mut f32, k: __mmask8, a: __m128) {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mask_store_sd)
 #[inline]
 #[cfg_attr(test, assert_instr(vmovsd))]
-#[target_feature(enable = "sse,avx512f")]
+#[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
 pub unsafe fn _mm_mask_store_sd(mem_addr: *mut f64, k: __mmask8, a: __m128d) {
     asm!(

@@ -3137,7 +3137,7 @@ pub unsafe fn _mm256_srlv_epi64(a: __m256i, count: __m256i) -> __m256i {
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_stream_load_si256)
 #[inline]
-#[target_feature(enable = "avx,avx2")]
+#[target_feature(enable = "avx2")]
 #[cfg_attr(test, assert_instr(vmovntdqa))]
 #[stable(feature = "simd_x86_updates", since = "1.82.0")]
 pub unsafe fn _mm256_stream_load_si256(mem_addr: *const __m256i) -> __m256i {

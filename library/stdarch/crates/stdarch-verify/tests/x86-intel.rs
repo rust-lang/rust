@@ -405,7 +405,7 @@ fn print_missing(map: &HashMap<&str, Vec<&Intrinsic>>, mut f: impl Write) -> io:
     f.flush()
 }
 
-fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
+fn check_target_features(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
     // Verify that all `#[target_feature]` annotations are correct,
     // ensuring that we've actually enabled the right instruction
     // set for this intrinsic.
@@ -432,7 +432,7 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
         }
     }
 
-    let rust_features: HashSet<String> = match rust.target_feature {
+    let rust_features = match rust.target_feature {
         Some(features) => features
             .split(',')
             .map(|feature| feature.to_string())
@@ -440,16 +440,13 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
         None => HashSet::new(),
     };
 
+    let mut intel_cpuids = HashSet::new();
+
     for cpuid in &intel.cpuid {
         // The pause intrinsic is in the SSE2 module, but it is backwards
         // compatible with CPUs without SSE2, and it therefore does not need the
         // target-feature attribute.
         if rust.name == "_mm_pause" {
-            continue;
-        }
-        // this is needed by _xsave and probably some related intrinsics,
-        // but let's just skip it for now.
-        if *cpuid == "XSS" {
             continue;
         }
 
@@ -513,19 +510,45 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
             // The XML file names AVX-VNNI_INT16 as "avx_vnni_int16", while Rust calls
             // it "avxvnniint16"
             "avx_vnni_int16" => String::from("avxvnniint16"),
+            "xss" => String::from("xsaves"),
             _ => cpuid,
         };
-        let fixed_cpuid = fixup_cpuid(cpuid);
 
-        if !rust_features.contains(&fixed_cpuid) {
-            bail!(
-                "intel cpuid `{}` not in `{:?}` for {}",
-                fixed_cpuid,
-                rust_features,
-                rust.name
-            );
+        intel_cpuids.insert(fixup_cpuid(cpuid));
+    }
+
+    if intel_cpuids.contains("gfni") {
+        if rust.name.contains("mask") {
+            // LLVM requires avx512bw for all masked GFNI intrinsics, and also avx512vl for the 128- and 256-bit versions
+            if !rust.name.starts_with("_mm512") {
+                intel_cpuids.insert(String::from("avx512vl"));
+            }
+            intel_cpuids.insert(String::from("avx512bw"));
+        } else if rust.name.starts_with("_mm256") {
+            // LLVM requires AVX for all non-masked 256-bit GFNI intrinsics
+            intel_cpuids.insert(String::from("avx"));
         }
     }
+
+    // Also, 512-bit vpclmulqdq intrisic requires avx512f
+    if &rust.name == &"_mm512_clmulepi64_epi128" {
+        intel_cpuids.insert(String::from("avx512f"));
+    }
+
+    if rust_features != intel_cpuids {
+        bail!(
+            "Intel cpuids `{:?}` doesn't match Rust `{:?}` for {}",
+            intel_cpuids,
+            rust_features,
+            rust.name
+        );
+    }
+
+    Ok(())
+}
+
+fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
+    check_target_features(rust, intel)?;
 
     if PRINT_INSTRUCTION_VIOLATIONS {
         if rust.instrs.is_empty() {
