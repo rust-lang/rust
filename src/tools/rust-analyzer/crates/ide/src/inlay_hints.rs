@@ -29,6 +29,7 @@ mod closing_brace;
 mod closure_captures;
 mod closure_ret;
 mod discriminant;
+mod extern_block;
 mod generic_param;
 mod implicit_drop;
 mod implicit_static;
@@ -116,6 +117,7 @@ pub(crate) fn inlay_hints(
 #[derive(Default)]
 struct InlayHintCtx {
     lifetime_stacks: Vec<Vec<SmolStr>>,
+    extern_block_parent: Option<ast::ExternBlock>,
 }
 
 pub(crate) fn inlay_hints_resolve(
@@ -174,11 +176,17 @@ fn handle_event(ctx: &mut InlayHintCtx, node: WalkEvent<SyntaxNode>) -> Option<S
                     .unwrap_or_default();
                 ctx.lifetime_stacks.push(params);
             }
+            if let Some(node) = ast::ExternBlock::cast(node.clone()) {
+                ctx.extern_block_parent = Some(node);
+            }
             Some(node)
         }
         WalkEvent::Leave(n) => {
             if ast::AnyHasGenericParams::can_cast(n.kind()) {
                 ctx.lifetime_stacks.pop();
+            }
+            if ast::ExternBlock::can_cast(n.kind()) {
+                ctx.extern_block_parent = None;
             }
             None
         }
@@ -234,12 +242,20 @@ fn hints(
             ast::Item(it) => match it {
                 ast::Item::Fn(it) => {
                     implicit_drop::hints(hints, famous_defs, config, file_id, &it);
+                    if let Some(extern_block) = &ctx.extern_block_parent {
+                        extern_block::fn_hints(hints, famous_defs, config, file_id, &it, extern_block);
+                    }
                     lifetime::fn_hints(hints, ctx, famous_defs, config, file_id, it)
                 },
-                // static type elisions
-                ast::Item::Static(it) => implicit_static::hints(hints, famous_defs, config, file_id, Either::Left(it)),
+                ast::Item::Static(it) => {
+                    if let Some(extern_block) = &ctx.extern_block_parent {
+                        extern_block::static_hints(hints, famous_defs, config, file_id, &it, extern_block);
+                    }
+                    implicit_static::hints(hints, famous_defs, config, file_id, Either::Left(it))
+                },
                 ast::Item::Const(it) => implicit_static::hints(hints, famous_defs, config, file_id, Either::Right(it)),
                 ast::Item::Enum(it) => discriminant::enum_hints(hints, famous_defs, config, file_id, it),
+                ast::Item::ExternBlock(it) => extern_block::extern_block_hints(hints, famous_defs, config, file_id, it),
                 _ => None,
             },
             // FIXME: trait object type elisions
@@ -368,6 +384,7 @@ pub enum InlayKind {
     Type,
     Drop,
     RangeExclusive,
+    ExternUnsafety,
 }
 
 #[derive(Debug, Hash)]
