@@ -1,6 +1,6 @@
 use crate::arch::asm;
 use crate::core_arch::{simd::*, x86::*};
-use crate::intrinsics::simd::*;
+use crate::intrinsics::{fmaf16, simd::*};
 use crate::ptr;
 
 /// Set packed half-precision (16-bit) floating-point elements in dst with the supplied values.
@@ -16070,8 +16070,6 @@ extern "C" {
 
     #[link_name = "llvm.x86.avx512fp16.vfmadd.ph.512"]
     fn vfmaddph_512(a: __m512h, b: __m512h, c: __m512h, rounding: i32) -> __m512h;
-    #[link_name = "llvm.fma.f16"]
-    fn fmaf16(a: f16, b: f16, c: f16) -> f16; // TODO: use `crate::intrinsics::fmaf16` when it's available
     #[link_name = "llvm.x86.avx512fp16.vfmadd.f16"]
     fn vfmaddsh(a: f16, b: f16, c: f16, rounding: i32) -> f16;
 
