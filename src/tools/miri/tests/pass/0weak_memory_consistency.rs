@@ -34,14 +34,10 @@ unsafe impl<T> Sync for EvilSend<T> {}
 // We can't create static items because we need to run each test
 // multiple times
 fn static_atomic(val: i32) -> &'static AtomicI32 {
-    let ret = Box::leak(Box::new(AtomicI32::new(val)));
-    ret.store(val, Relaxed); // work around https://github.com/rust-lang/miri/issues/2164
-    ret
+    Box::leak(Box::new(AtomicI32::new(val)))
 }
 fn static_atomic_bool(val: bool) -> &'static AtomicBool {
-    let ret = Box::leak(Box::new(AtomicBool::new(val)));
-    ret.store(val, Relaxed); // work around https://github.com/rust-lang/miri/issues/2164
-    ret
+    Box::leak(Box::new(AtomicBool::new(val)))
 }
 
 // Spins until it acquires a pre-determined value.
