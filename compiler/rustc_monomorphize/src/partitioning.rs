@@ -113,7 +113,6 @@ use rustc_middle::mir::mono::{
     Visibility,
 };
 use rustc_middle::ty::print::{characteristic_def_id_of_type, with_no_trimmed_paths};
-use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, InstanceKind, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_session::CodegenUnits;
@@ -661,18 +660,14 @@ fn characteristic_def_id_of_mono_item<'tcx>(
                     return None;
                 }
 
-                // When polymorphization is enabled, methods which do not depend on their generic
-                // parameters, but the self-type of their impl block do will fail to normalize.
-                if !tcx.sess.opts.unstable_opts.polymorphize || !instance.has_param() {
-                    // This is a method within an impl, find out what the self-type is:
-                    let impl_self_ty = tcx.instantiate_and_normalize_erasing_regions(
-                        instance.args,
-                        ty::TypingEnv::fully_monomorphized(),
-                        tcx.type_of(impl_def_id),
-                    );
-                    if let Some(def_id) = characteristic_def_id_of_type(impl_self_ty) {
-                        return Some(def_id);
-                    }
+                // This is a method within an impl, find out what the self-type is:
+                let impl_self_ty = tcx.instantiate_and_normalize_erasing_regions(
+                    instance.args,
+                    ty::TypingEnv::fully_monomorphized(),
+                    tcx.type_of(impl_def_id),
+                );
+                if let Some(def_id) = characteristic_def_id_of_type(impl_self_ty) {
+                    return Some(def_id);
                 }
             }
 

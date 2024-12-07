@@ -394,8 +394,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             def_id,
             fn_args,
             source_info.span,
-        )
-        .polymorphize(fx.tcx);
+        );
 
         if is_call_from_compiler_builtins_to_upstream_monomorphization(fx.tcx, instance) {
             if target.is_some() {
@@ -698,7 +697,7 @@ pub(crate) fn codegen_drop<'tcx>(
     target: BasicBlock,
 ) {
     let ty = drop_place.layout().ty;
-    let drop_instance = Instance::resolve_drop_in_place(fx.tcx, ty).polymorphize(fx.tcx);
+    let drop_instance = Instance::resolve_drop_in_place(fx.tcx, ty);
 
     if let ty::InstanceKind::DropGlue(_, None) | ty::InstanceKind::AsyncDropGlueCtorShim(_, None) =
         drop_instance.def

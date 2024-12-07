@@ -19,8 +19,8 @@ use crate::error;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::print::{FmtPrinter, Printer, shrunk_instance_name};
 use crate::ty::{
-    self, EarlyBinder, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    self, EarlyBinder, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 
 /// An `InstanceKind` along with the args that are needed to substitute the instance.
@@ -917,116 +917,6 @@ impl<'tcx> Instance<'tcx> {
             tcx.try_normalize_erasing_regions(typing_env, v.instantiate_identity())
         }
     }
-
-    /// Returns a new `Instance` where generic parameters in `instance.args` are replaced by
-    /// identity parameters if they are determined to be unused in `instance.def`.
-    pub fn polymorphize(self, tcx: TyCtxt<'tcx>) -> Self {
-        debug!("polymorphize: running polymorphization analysis");
-        if !tcx.sess.opts.unstable_opts.polymorphize {
-            return self;
-        }
-
-        let polymorphized_args = polymorphize(tcx, self.def, self.args);
-        debug!("polymorphize: self={:?} polymorphized_args={:?}", self, polymorphized_args);
-        Self { def: self.def, args: polymorphized_args }
-    }
-}
-
-fn polymorphize<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    instance: ty::InstanceKind<'tcx>,
-    args: GenericArgsRef<'tcx>,
-) -> GenericArgsRef<'tcx> {
-    debug!("polymorphize({:?}, {:?})", instance, args);
-    let unused = tcx.unused_generic_params(instance);
-    debug!("polymorphize: unused={:?}", unused);
-
-    // If this is a closure or coroutine then we need to handle the case where another closure
-    // from the function is captured as an upvar and hasn't been polymorphized. In this case,
-    // the unpolymorphized upvar closure would result in a polymorphized closure producing
-    // multiple mono items (and eventually symbol clashes).
-    let def_id = instance.def_id();
-    let upvars_ty = match tcx.type_of(def_id).skip_binder().kind() {
-        ty::Closure(..) => Some(args.as_closure().tupled_upvars_ty()),
-        ty::Coroutine(..) => {
-            assert_eq!(
-                args.as_coroutine().kind_ty(),
-                tcx.types.unit,
-                "polymorphization does not support coroutines from async closures"
-            );
-            Some(args.as_coroutine().tupled_upvars_ty())
-        }
-        _ => None,
-    };
-    let has_upvars = upvars_ty.is_some_and(|ty| !ty.tuple_fields().is_empty());
-    debug!("polymorphize: upvars_ty={:?} has_upvars={:?}", upvars_ty, has_upvars);
-
-    struct PolymorphizationFolder<'tcx> {
-        tcx: TyCtxt<'tcx>,
-    }
-
-    impl<'tcx> ty::TypeFolder<TyCtxt<'tcx>> for PolymorphizationFolder<'tcx> {
-        fn cx(&self) -> TyCtxt<'tcx> {
-            self.tcx
-        }
-
-        fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-            debug!("fold_ty: ty={:?}", ty);
-            match *ty.kind() {
-                ty::Closure(def_id, args) => {
-                    let polymorphized_args =
-                        polymorphize(self.tcx, ty::InstanceKind::Item(def_id), args);
-                    if args == polymorphized_args {
-                        ty
-                    } else {
-                        Ty::new_closure(self.tcx, def_id, polymorphized_args)
-                    }
-                }
-                ty::Coroutine(def_id, args) => {
-                    let polymorphized_args =
-                        polymorphize(self.tcx, ty::InstanceKind::Item(def_id), args);
-                    if args == polymorphized_args {
-                        ty
-                    } else {
-                        Ty::new_coroutine(self.tcx, def_id, polymorphized_args)
-                    }
-                }
-                _ => ty.super_fold_with(self),
-            }
-        }
-    }
-
-    GenericArgs::for_item(tcx, def_id, |param, _| {
-        let is_unused = unused.is_unused(param.index);
-        debug!("polymorphize: param={:?} is_unused={:?}", param, is_unused);
-        match param.kind {
-            // Upvar case: If parameter is a type parameter..
-            ty::GenericParamDefKind::Type { .. } if
-                // ..and has upvars..
-                has_upvars &&
-                // ..and this param has the same type as the tupled upvars..
-                upvars_ty == Some(args[param.index as usize].expect_ty()) => {
-                    // ..then double-check that polymorphization marked it used..
-                    debug_assert!(!is_unused);
-                    // ..and polymorphize any closures/coroutines captured as upvars.
-                    let upvars_ty = upvars_ty.unwrap();
-                    let polymorphized_upvars_ty = upvars_ty.fold_with(
-                        &mut PolymorphizationFolder { tcx });
-                    debug!("polymorphize: polymorphized_upvars_ty={:?}", polymorphized_upvars_ty);
-                    ty::GenericArg::from(polymorphized_upvars_ty)
-                },
-
-            // Simple case: If parameter is a const or type parameter..
-            ty::GenericParamDefKind::Const { .. } | ty::GenericParamDefKind::Type { .. } if
-                // ..and is within range and unused..
-                unused.is_unused(param.index) =>
-                    // ..then use the identity for this parameter.
-                    tcx.mk_param_from_def(param),
-
-            // Otherwise, use the parameter as before.
-            _ => args[param.index as usize],
-        }
-    })
 }
 
 fn needs_fn_once_adapter_shim(

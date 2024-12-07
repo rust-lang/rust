@@ -256,7 +256,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
         });
 
         // Encode impl generic params if the generic parameters contain non-region parameters
-        // (implying polymorphization is enabled) and this isn't an inherent impl.
+        // and this isn't an inherent impl.
         if impl_trait_ref.is_some() && args.iter().any(|a| a.has_non_region_param()) {
             self.path_generic_args(
                 |this| {
@@ -330,9 +330,8 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             ty::Float(FloatTy::F128) => "C4f128",
             ty::Never => "z",
 
-            // Should only be encountered with polymorphization,
-            // or within the identity-substituted impl header of an
-            // item nested within an impl item.
+            // Should only be encountered within the identity-substituted
+            // impl header of an item nested within an impl item.
             ty::Param(_) => "p",
 
             ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) | ty::Error(_) => bug!(),
@@ -558,9 +557,8 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
         let (ct_ty, valtree) = match ct.kind() {
             ty::ConstKind::Value(ty, val) => (ty, val),
 
-            // Should only be encountered with polymorphization,
-            // or within the identity-substituted impl header of an
-            // item nested within an impl item.
+            // Should only be encountered within the identity-substituted
+            // impl header of an item nested within an impl item.
             ty::ConstKind::Param(_) => {
                 // Never cached (single-character).
                 self.push("p");

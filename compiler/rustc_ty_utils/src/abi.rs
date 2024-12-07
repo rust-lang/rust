@@ -45,23 +45,8 @@ fn fn_sig_for_fn_abi<'tcx>(
     let ty = instance.ty(tcx, typing_env);
     match *ty.kind() {
         ty::FnDef(def_id, args) => {
-            // HACK(davidtwco,eddyb): This is a workaround for polymorphization considering
-            // parameters unused if they show up in the signature, but not in the `mir::Body`
-            // (i.e. due to being inside a projection that got normalized, see
-            // `tests/ui/polymorphization/normalized_sig_types.rs`), and codegen not keeping
-            // track of a polymorphization `ParamEnv` to allow normalizing later.
-            //
-            // We normalize the `fn_sig` again after instantiating at a later point.
-            let mut sig = tcx.instantiate_bound_regions_with_erased(
-                tcx.fn_sig(def_id)
-                    .map_bound(|fn_sig| {
-                        tcx.normalize_erasing_regions(
-                            ty::TypingEnv::non_body_analysis(tcx, def_id),
-                            fn_sig,
-                        )
-                    })
-                    .instantiate(tcx, args),
-            );
+            let mut sig = tcx
+                .instantiate_bound_regions_with_erased(tcx.fn_sig(def_id).instantiate(tcx, args));
 
             if let ty::InstanceKind::VTableShim(..) = instance.def {
                 let mut inputs_and_output = sig.inputs_and_output.to_vec();

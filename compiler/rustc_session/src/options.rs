@@ -1950,8 +1950,6 @@ options! {
         (default: PLT is disabled if full relro is enabled on x86_64)"),
     polonius: Polonius = (Polonius::default(), parse_polonius, [TRACKED],
         "enable polonius-based borrow-checker (default: no)"),
-    polymorphize: bool = (false, parse_bool, [TRACKED],
-          "perform polymorphization analysis"),
     pre_link_arg: (/* redirected to pre_link_args */) = ((), parse_string_push, [UNTRACKED],
         "a single extra argument to prepend the linker invocation (can be used several times)"),
     pre_link_args: Vec<String> = (Vec::new(), parse_list, [UNTRACKED],
