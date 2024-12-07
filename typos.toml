@@ -4,6 +4,11 @@ extend-exclude = [
     "compiler/rustc_codegen_gcc",
     "compiler/rustc_codegen_cranelift",
     "compiler/rustc_baked_icu_data",
+    "library/backtrace",
+    "library/stdarch",
+    # generated lorem ipsum texts
+    "library/alloc/benches/str.rs",
+    "library/alloc/tests/str.rs",
 ]
 
 [default.extend-words]
@@ -47,8 +52,11 @@ extend-ignore-words-re = [
 ]
 
 extend-ignore-re = [
-    # ignore this intensional typo examples from lints
+    # ignore this intensional typo examples
     "/// 1 \\| #\\[cfg\\(widnows\\)\\]",
     "/// warning: unexpected `cfg` condition name: `widnows`",
     "/// #\\[cfg\\(widnows\\)\\]",
+    "\\.arg\\(\"Oh no, a tpyo!\"\\)",
+    # string used in benches
+    "\"core::iter::adapters::Copie\"",
 ]

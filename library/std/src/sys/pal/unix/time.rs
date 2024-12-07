@@ -260,8 +260,8 @@ impl Instant {
         // https://www.manpagez.com/man/3/clock_gettime/
         //
         // CLOCK_UPTIME_RAW   clock that increments monotonically, in the same man-
-        //                    ner as CLOCK_MONOTONIC_RAW, but that does not incre-
-        //                    ment while the system is asleep.  The returned value
+        //                    ner as CLOCK_MONOTONIC_RAW, but that does not increment
+        //                    while the system is asleep.  The returned value
         //                    is identical to the result of mach_absolute_time()
         //                    after the appropriate mach_timebase conversion is
         //                    applied.
