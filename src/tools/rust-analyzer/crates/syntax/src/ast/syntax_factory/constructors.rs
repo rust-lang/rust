@@ -4,7 +4,7 @@ use itertools::Itertools;
 use crate::{
     ast::{self, make, HasName, HasTypeBounds},
     syntax_editor::SyntaxMappingBuilder,
-    AstNode,
+    AstNode, NodeOrToken, SyntaxKind, SyntaxNode, SyntaxToken,
 };
 
 use super::SyntaxFactory;
@@ -74,6 +74,23 @@ impl SyntaxFactory {
                 builder.map_node(input.syntax().clone(), output.syntax().clone());
             }
 
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn expr_bin(&self, lhs: ast::Expr, op: ast::BinaryOp, rhs: ast::Expr) -> ast::BinExpr {
+        let ast::Expr::BinExpr(ast) =
+            make::expr_bin_op(lhs.clone(), op, rhs.clone()).clone_for_update()
+        else {
+            unreachable!()
+        };
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(lhs.syntax().clone(), ast.lhs().unwrap().syntax().clone());
+            builder.map_node(rhs.syntax().clone(), ast.rhs().unwrap().syntax().clone());
             builder.finish(&mut mapping);
         }
 
@@ -150,5 +167,35 @@ impl SyntaxFactory {
         }
 
         ast
+    }
+
+    pub fn token_tree(
+        &self,
+        delimiter: SyntaxKind,
+        tt: Vec<NodeOrToken<ast::TokenTree, SyntaxToken>>,
+    ) -> ast::TokenTree {
+        let tt: Vec<_> = tt.into_iter().collect();
+        let input: Vec<_> = tt.iter().cloned().filter_map(only_nodes).collect();
+
+        let ast = make::token_tree(delimiter, tt).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_children(
+                input.into_iter(),
+                ast.token_trees_and_tokens().filter_map(only_nodes),
+            );
+            builder.finish(&mut mapping);
+        }
+
+        return ast;
+
+        fn only_nodes(element: NodeOrToken<ast::TokenTree, SyntaxToken>) -> Option<SyntaxNode> {
+            element.as_node().map(|it| it.syntax().clone())
+        }
+    }
+
+    pub fn token(&self, kind: SyntaxKind) -> SyntaxToken {
+        make::token(kind)
     }
 }
