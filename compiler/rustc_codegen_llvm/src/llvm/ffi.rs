@@ -11,9 +11,9 @@ use rustc_target::spec::SymbolVisibility;
 
 use super::RustString;
 use super::debuginfo::{
-    DIArray, DIBasicType, DIBuilder, DICompositeType, DIDerivedType, DIDescriptor, DIEnumerator,
-    DIFile, DIFlags, DIGlobalVariableExpression, DILocation, DISPFlags, DIScope, DISubprogram,
-    DISubrange, DITemplateTypeParameter, DIType, DIVariable, DebugEmissionKind, DebugNameTableKind,
+    DIArray, DIBasicType, DIBuilder, DIDerivedType, DIDescriptor, DIEnumerator, DIFile, DIFlags,
+    DIGlobalVariableExpression, DILocation, DISPFlags, DIScope, DISubprogram, DISubrange,
+    DITemplateTypeParameter, DIType, DIVariable, DebugEmissionKind, DebugNameTableKind,
 };
 use crate::llvm;
 
@@ -1715,6 +1715,25 @@ unsafe extern "C" {
         Name: *const c_uchar,
         NameLen: size_t,
     ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateStructType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Scope: Option<&'ll Metadata>,
+        Name: *const c_uchar,
+        NameLen: size_t,
+        File: &'ll Metadata,
+        LineNumber: c_uint,
+        SizeInBits: u64,
+        AlignInBits: u32,
+        Flags: DIFlags,
+        DerivedFrom: Option<&'ll Metadata>,
+        Elements: *const &'ll Metadata,
+        NumElements: c_uint,
+        RunTimeLang: c_uint,
+        VTableHolder: Option<&'ll Metadata>,
+        UniqueId: *const c_uchar,
+        UniqueIdLen: size_t,
+    ) -> &'ll Metadata;
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -2056,24 +2075,6 @@ unsafe extern "C" {
         LineNo: c_uint,
         Scope: Option<&'a DIScope>,
     ) -> &'a DIDerivedType;
-
-    pub fn LLVMRustDIBuilderCreateStructType<'a>(
-        Builder: &DIBuilder<'a>,
-        Scope: Option<&'a DIDescriptor>,
-        Name: *const c_char,
-        NameLen: size_t,
-        File: &'a DIFile,
-        LineNumber: c_uint,
-        SizeInBits: u64,
-        AlignInBits: u32,
-        Flags: DIFlags,
-        DerivedFrom: Option<&'a DIType>,
-        Elements: &'a DIArray,
-        RunTimeLang: c_uint,
-        VTableHolder: Option<&'a DIType>,
-        UniqueId: *const c_char,
-        UniqueIdLen: size_t,
-    ) -> &'a DICompositeType;
 
     pub fn LLVMRustDIBuilderCreateMemberType<'a>(
         Builder: &DIBuilder<'a>,

@@ -9,7 +9,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::{self, PolyExistentialTraitRef, Ty, TyCtxt};
 
 use super::{DefinitionLocation, SmallVec, UNKNOWN_LINE_NUMBER, unknown_file_metadata};
-use crate::common::{AsCCharPtr, CodegenCx};
+use crate::common::CodegenCx;
 use crate::debuginfo::utils::{DIB, create_DIArray, debug_context};
 use crate::llvm::debuginfo::{DIFlags, DIScope, DIType};
 use crate::llvm::{self};
@@ -191,7 +191,6 @@ pub(super) fn stub<'ll, 'tcx>(
     containing_scope: Option<&'ll DIScope>,
     flags: DIFlags,
 ) -> StubInfo<'ll, 'tcx> {
-    let empty_array = create_DIArray(DIB(cx), &[]);
     let unique_type_id_str = unique_type_id.generate_unique_id_string(cx.tcx);
 
     let (file_metadata, line_number) = if let Some(def_location) = def_location {
@@ -207,21 +206,22 @@ pub(super) fn stub<'ll, 'tcx>(
                 _ => None,
             };
             unsafe {
-                llvm::LLVMRustDIBuilderCreateStructType(
+                llvm::LLVMDIBuilderCreateStructType(
                     DIB(cx),
                     containing_scope,
-                    name.as_c_char_ptr(),
+                    name.as_ptr(),
                     name.len(),
                     file_metadata,
                     line_number,
                     size.bits(),
                     align.bits() as u32,
                     flags,
-                    None,
-                    empty_array,
-                    0,
+                    /* DerivedFrom */ None,
+                    /* Elements */ (&[]).as_ptr(),
+                    /* NumElements */ 0u32,
+                    /* RunTimeLang */ 0u32,
                     vtable_holder,
-                    unique_type_id_str.as_c_char_ptr(),
+                    unique_type_id_str.as_ptr(),
                     unique_type_id_str.len(),
                 )
             }
