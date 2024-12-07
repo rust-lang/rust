@@ -6,7 +6,8 @@ use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuar
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
-use crate::{UnsupportedLiteralReason, fluent_generated as fluent};
+use crate::attributes::util::UnsupportedLiteralReason;
+use crate::fluent_generated as fluent;
 
 #[derive(Diagnostic)]
 #[diag(attr_expected_one_cfg_pattern, code = E0536)]

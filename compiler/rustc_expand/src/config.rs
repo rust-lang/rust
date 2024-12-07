@@ -362,7 +362,7 @@ impl<'a> StripUnconfigured<'a> {
         ));
 
         let tokens = Some(LazyAttrTokenStream::new(AttrTokenStream::new(trees)));
-        let attr = attr::mk_attr_from_item(
+        let attr = ast::attr::mk_attr_from_item(
             &self.sess.psess.attr_id_generator,
             item,
             tokens,
