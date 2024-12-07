@@ -60,7 +60,8 @@ impl RawWaker {
         RawWaker { data, vtable }
     }
 
-    #[unstable(feature = "noop_waker", issue = "98286")]
+    #[stable(feature = "noop_waker", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "noop_waker", since = "CURRENT_RUSTC_VERSION")]
     const NOOP: RawWaker = {
         const VTABLE: RawWakerVTable = RawWakerVTable::new(
             // Cloning just returns a new no-op raw waker
@@ -283,7 +284,6 @@ impl fmt::Debug for Context<'_> {
 /// # Examples
 /// ```
 /// #![feature(local_waker)]
-/// #![feature(noop_waker)]
 /// use std::task::{ContextBuilder, LocalWaker, Waker, Poll};
 /// use std::future::Future;
 ///
@@ -555,8 +555,6 @@ impl Waker {
     /// # Examples
     ///
     /// ```
-    /// #![feature(noop_waker)]
-    ///
     /// use std::future::Future;
     /// use std::task;
     ///
@@ -567,7 +565,8 @@ impl Waker {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "noop_waker", issue = "98286")]
+    #[stable(feature = "noop_waker", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "noop_waker", since = "CURRENT_RUSTC_VERSION")]
     pub const fn noop() -> &'static Waker {
         const WAKER: &Waker = &Waker { waker: RawWaker::NOOP };
         WAKER
@@ -850,8 +849,6 @@ impl LocalWaker {
     ///
     /// ```
     /// #![feature(local_waker)]
-    /// #![feature(noop_waker)]
-    ///
     /// use std::future::Future;
     /// use std::task::{ContextBuilder, LocalWaker, Waker, Poll};
     ///
@@ -864,7 +861,7 @@ impl LocalWaker {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "noop_waker", issue = "98286")]
+    #[unstable(feature = "local_waker", issue = "118959")]
     pub const fn noop() -> &'static LocalWaker {
         const WAKER: &LocalWaker = &LocalWaker { waker: RawWaker::NOOP };
         WAKER

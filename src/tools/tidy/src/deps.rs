@@ -535,6 +535,8 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "regalloc2",
     "region",
     "rustc-hash",
+    "serde",
+    "serde_derive",
     "slice-group-by",
     "smallvec",
     "stable_deref_trait",

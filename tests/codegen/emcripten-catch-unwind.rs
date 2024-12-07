@@ -57,7 +57,7 @@ pub unsafe fn test_catch_unwind(
     // CHECK: [[IS_RUST_EXN_I8:%.*]] = zext i1 [[IS_RUST_EXN]] to i8
 
     // CHECK: store ptr [[EXCEPTION]], ptr [[ALLOCA]]
-    // CHECK: [[IS_RUST_SLOT:%.*]] = getelementptr inbounds i8, ptr [[ALLOCA]], [[PTR_SIZE]]
+    // CHECK: [[IS_RUST_SLOT:%.*]] = getelementptr inbounds{{( nuw)?}} i8, ptr [[ALLOCA]], [[PTR_SIZE]]
     // CHECK: store i8 [[IS_RUST_EXN_I8]], ptr [[IS_RUST_SLOT]]
 
     // CHECK: call void %catch_fn(ptr %data, ptr nonnull [[ALLOCA]])

@@ -628,7 +628,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let hint = expected.only_has_type(self).map_or(NoExpectation, |ty| {
-            match ty.kind() {
+            match self.try_structurally_resolve_type(expr.span, ty).kind() {
                 ty::Ref(_, ty, _) | ty::RawPtr(ty, _) => {
                     if oprnd.is_syntactic_place_expr() {
                         // Places may legitimately have unsized types.
@@ -1293,7 +1293,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let cond_diverges = self.diverges.get();
         self.diverges.set(Diverges::Maybe);
 
-        let expected = orig_expected.adjust_for_branches(self);
+        let expected = orig_expected.try_structurally_resolve_and_adjust_for_branches(self, sp);
         let then_ty = self.check_expr_with_expectation(then_expr, expected);
         let then_diverges = self.diverges.get();
         self.diverges.set(Diverges::Maybe);
@@ -1354,8 +1354,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rhs: &'tcx hir::Expr<'tcx>,
         span: Span,
     ) -> Ty<'tcx> {
-        let expected_ty = expected.coercion_target_type(self, expr.span);
-        if expected_ty == self.tcx.types.bool {
+        let expected_ty = expected.only_has_type(self);
+        if expected_ty == Some(self.tcx.types.bool) {
             let guar = self.expr_assign_expected_bool_error(expr, lhs, rhs, span);
             return Ty::new_error(self.tcx, guar);
         }
@@ -1639,7 +1639,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let element_ty = if !args.is_empty() {
             let coerce_to = expected
                 .to_option(self)
-                .and_then(|uty| match *uty.kind() {
+                .and_then(|uty| match *self.try_structurally_resolve_type(expr.span, uty).kind() {
                     ty::Array(ty, _) | ty::Slice(ty) => Some(ty),
                     _ => None,
                 })

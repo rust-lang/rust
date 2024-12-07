@@ -34,7 +34,7 @@ extern crate rustc_target;
 extern crate rustc_driver;
 
 use std::any::Any;
-use std::cell::{Cell, RefCell};
+use std::env;
 use std::sync::Arc;
 
 use cranelift_codegen::isa::TargetIsa;
@@ -42,7 +42,6 @@ use cranelift_codegen::settings::{self, Configurable};
 use rustc_codegen_ssa::CodegenResults;
 use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_session::Session;
@@ -123,11 +122,10 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
 /// The codegen context holds any information shared between the codegen of individual functions
 /// inside a single codegen unit with the exception of the Cranelift [`Module`](cranelift_module::Module).
 struct CodegenCx {
-    profiler: SelfProfilerRef,
     output_filenames: Arc<OutputFilenames>,
     should_write_ir: bool,
     global_asm: String,
-    inline_asm_index: Cell<usize>,
+    inline_asm_index: usize,
     debug_context: Option<DebugContext>,
     cgu_name: Symbol,
 }
@@ -142,11 +140,10 @@ impl CodegenCx {
             None
         };
         CodegenCx {
-            profiler: tcx.prof.clone(),
             output_filenames: tcx.output_filenames(()).clone(),
             should_write_ir: crate::pretty_clif::should_write_ir(tcx),
             global_asm: String::new(),
-            inline_asm_index: Cell::new(0),
+            inline_asm_index: 0,
             debug_context,
             cgu_name,
         }
@@ -154,7 +151,7 @@ impl CodegenCx {
 }
 
 pub struct CraneliftCodegenBackend {
-    pub config: RefCell<Option<BackendConfig>>,
+    pub config: Option<BackendConfig>,
 }
 
 impl CodegenBackend for CraneliftCodegenBackend {
@@ -175,13 +172,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
         if sess.opts.cg.instrument_coverage() != InstrumentCoverage::No {
             sess.dcx()
                 .fatal("`-Cinstrument-coverage` is LLVM specific and not supported by Cranelift");
-        }
-
-        let mut config = self.config.borrow_mut();
-        if config.is_none() {
-            let new_config = BackendConfig::from_opts(&sess.opts.cg.llvm_args)
-                .unwrap_or_else(|err| sess.dcx().fatal(err));
-            *config = Some(new_config);
         }
     }
 
@@ -215,12 +205,15 @@ impl CodegenBackend for CraneliftCodegenBackend {
         need_metadata_module: bool,
     ) -> Box<dyn Any> {
         tcx.dcx().abort_if_errors();
-        let config = self.config.borrow().clone().unwrap();
+        let config = self.config.clone().unwrap_or_else(|| {
+            BackendConfig::from_opts(&tcx.sess.opts.cg.llvm_args)
+                .unwrap_or_else(|err| tcx.sess.dcx().fatal(err))
+        });
         match config.codegen_mode {
-            CodegenMode::Aot => driver::aot::run_aot(tcx, config, metadata, need_metadata_module),
+            CodegenMode::Aot => driver::aot::run_aot(tcx, metadata, need_metadata_module),
             CodegenMode::Jit | CodegenMode::JitLazy => {
                 #[cfg(feature = "jit")]
-                driver::jit::run_jit(tcx, config);
+                driver::jit::run_jit(tcx, config.codegen_mode, config.jit_args);
 
                 #[cfg(not(feature = "jit"))]
                 tcx.dcx().fatal("jit support was disabled when compiling rustc_codegen_cranelift");
@@ -236,12 +229,18 @@ impl CodegenBackend for CraneliftCodegenBackend {
     ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
         let _timer = sess.timer("finish_ongoing_codegen");
 
-        ongoing_codegen.downcast::<driver::aot::OngoingCodegen>().unwrap().join(
-            sess,
-            outputs,
-            self.config.borrow().as_ref().unwrap(),
-        )
+        ongoing_codegen.downcast::<driver::aot::OngoingCodegen>().unwrap().join(sess, outputs)
     }
+}
+
+/// Determine if the Cranelift ir verifier should run.
+///
+/// Returns true when `-Zverify-llvm-ir` is passed, the `CG_CLIF_ENABLE_VERIFIER` env var is set to
+/// 1 or when cg_clif is compiled with debug assertions enabled or false otherwise.
+fn enable_verifier(sess: &Session) -> bool {
+    sess.verify_llvm_ir()
+        || cfg!(debug_assertions)
+        || env::var("CG_CLIF_ENABLE_VERIFIER").as_deref() == Ok("1")
 }
 
 fn target_triple(sess: &Session) -> target_lexicon::Triple {
@@ -253,14 +252,14 @@ fn target_triple(sess: &Session) -> target_lexicon::Triple {
     }
 }
 
-fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Arc<dyn TargetIsa + 'static> {
+fn build_isa(sess: &Session) -> Arc<dyn TargetIsa + 'static> {
     use target_lexicon::BinaryFormat;
 
     let target_triple = crate::target_triple(sess);
 
     let mut flags_builder = settings::builder();
     flags_builder.enable("is_pic").unwrap();
-    let enable_verifier = if backend_config.enable_verifier { "true" } else { "false" };
+    let enable_verifier = if enable_verifier(sess) { "true" } else { "false" };
     flags_builder.set("enable_verifier", enable_verifier).unwrap();
     flags_builder.set("regalloc_checker", enable_verifier).unwrap();
 
@@ -293,6 +292,16 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Arc<dyn TargetIs
         | OptLevel::Aggressive => {
             flags_builder.set("opt_level", "speed_and_size").unwrap();
         }
+    }
+
+    if let target_lexicon::OperatingSystem::Windows = target_triple.operating_system {
+        // FIXME remove dependency on this from the Rust ABI. cc bytecodealliance/wasmtime#9510
+        flags_builder.enable("enable_multi_ret_implicit_sret").unwrap();
+    }
+
+    if let target_lexicon::Architecture::S390x = target_triple.architecture {
+        // FIXME remove dependency on this from the Rust ABI. cc bytecodealliance/wasmtime#9510
+        flags_builder.enable("enable_multi_ret_implicit_sret").unwrap();
     }
 
     if let target_lexicon::Architecture::Aarch64(_)
@@ -347,5 +356,5 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Arc<dyn TargetIs
 /// This is the entrypoint for a hot plugged rustc_codegen_cranelift
 #[no_mangle]
 pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
-    Box::new(CraneliftCodegenBackend { config: RefCell::new(None) })
+    Box::new(CraneliftCodegenBackend { config: None })
 }

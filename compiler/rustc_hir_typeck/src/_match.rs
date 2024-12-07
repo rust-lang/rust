@@ -57,7 +57,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // type in that case)
         let mut all_arms_diverge = Diverges::WarnedAlways;
 
-        let expected = orig_expected.adjust_for_branches(self);
+        let expected =
+            orig_expected.try_structurally_resolve_and_adjust_for_branches(self, expr.span);
         debug!(?expected);
 
         let mut coercion = {

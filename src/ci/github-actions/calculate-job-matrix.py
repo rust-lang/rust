@@ -7,6 +7,7 @@ be executed on CI.
 It reads job definitions from `src/ci/github-actions/jobs.yml`
 and filters them based on the event that happened on CI.
 """
+
 import dataclasses
 import json
 import logging
@@ -94,7 +95,7 @@ def find_run_type(ctx: GitHubCtx) -> Optional[WorkflowRunType]:
         try_build = ctx.ref in (
             "refs/heads/try",
             "refs/heads/try-perf",
-            "refs/heads/automation/bors/try"
+            "refs/heads/automation/bors/try",
         )
 
         # Unrolled branch from a rollup for testing perf
@@ -135,11 +136,15 @@ def calculate_jobs(run_type: WorkflowRunType, job_data: Dict[str, Any]) -> List[
                     continue
                 jobs.append(job[0])
             if unknown_jobs:
-                raise Exception(f"Custom job(s) `{unknown_jobs}` not found in auto jobs")
+                raise Exception(
+                    f"Custom job(s) `{unknown_jobs}` not found in auto jobs"
+                )
 
         return add_base_env(name_jobs(jobs, "try"), job_data["envs"]["try"])
     elif isinstance(run_type, AutoRunType):
-        return add_base_env(name_jobs(job_data["auto"], "auto"), job_data["envs"]["auto"])
+        return add_base_env(
+            name_jobs(job_data["auto"], "auto"), job_data["envs"]["auto"]
+        )
 
     return []
 
@@ -161,7 +166,7 @@ def get_github_ctx() -> GitHubCtx:
         event_name=event_name,
         ref=os.environ["GITHUB_REF"],
         repository=os.environ["GITHUB_REPOSITORY"],
-        commit_message=commit_message
+        commit_message=commit_message,
     )
 
 

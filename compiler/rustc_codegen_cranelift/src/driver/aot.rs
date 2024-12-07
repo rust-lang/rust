@@ -1,6 +1,7 @@
 //! The AOT driver uses [`cranelift_object`] to write object files suitable for linking into a
 //! standalone executable.
 
+use std::env;
 use std::fs::{self, File};
 use std::io::BufWriter;
 use std::path::{Path, PathBuf};
@@ -25,12 +26,17 @@ use rustc_middle::mir::mono::{CodegenUnit, MonoItem};
 use rustc_session::Session;
 use rustc_session::config::{DebugInfo, OutFileName, OutputFilenames, OutputType};
 
-use crate::BackendConfig;
+use crate::CodegenCx;
+use crate::base::CodegenedFunction;
 use crate::concurrency_limiter::{ConcurrencyLimiter, ConcurrencyLimiterToken};
 use crate::debuginfo::TypeDebugContext;
 use crate::global_asm::GlobalAsmConfig;
 use crate::prelude::*;
 use crate::unwind_module::UnwindModule;
+
+fn disable_incr_cache() -> bool {
+    env::var("CG_CLIF_DISABLE_INCR_CACHE").as_deref() == Ok("1")
+}
 
 struct ModuleCodegenResult {
     module_regular: CompiledModule,
@@ -63,10 +69,10 @@ impl OngoingCodegen {
         self,
         sess: &Session,
         outputs: &OutputFilenames,
-        backend_config: &BackendConfig,
     ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
         let mut work_products = FxIndexMap::default();
         let mut modules = vec![];
+        let disable_incr_cache = disable_incr_cache();
 
         for module_codegen in self.modules {
             let module_codegen_result = match module_codegen {
@@ -87,7 +93,7 @@ impl OngoingCodegen {
             if let Some((work_product_id, work_product)) = existing_work_product {
                 work_products.insert(work_product_id, work_product);
             } else {
-                let work_product = if backend_config.disable_incr_cache {
+                let work_product = if disable_incr_cache {
                     None
                 } else if let Some(module_global_asm) = &module_global_asm {
                     rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
@@ -322,12 +328,8 @@ fn produce_final_output_artifacts(
     // These are used in linking steps and will be cleaned up afterward.
 }
 
-fn make_module(
-    sess: &Session,
-    backend_config: &BackendConfig,
-    name: String,
-) -> UnwindModule<ObjectModule> {
-    let isa = crate::build_isa(sess, backend_config);
+fn make_module(sess: &Session, name: String) -> UnwindModule<ObjectModule> {
+    let isa = crate::build_isa(sess);
 
     let mut builder =
         ObjectBuilder::new(isa, name + ".o", cranelift_module::default_libcall_names()).unwrap();
@@ -412,7 +414,13 @@ fn emit_module(
         Err(err) => return Err(format!("error writing object file: {}", err)),
     };
 
-    prof.artifact_size("object_file", &*name, file.metadata().unwrap().len());
+    if prof.enabled() {
+        prof.artifact_size(
+            "object_file",
+            tmp_file.file_name().unwrap().to_string_lossy(),
+            file.metadata().unwrap().len(),
+        );
+    }
 
     Ok(CompiledModule {
         name,
@@ -486,91 +494,101 @@ fn reuse_workproduct_for_cgu(
     })
 }
 
+fn codegen_cgu_content(
+    tcx: TyCtxt<'_>,
+    module: &mut dyn Module,
+    cgu_name: rustc_span::Symbol,
+) -> (CodegenCx, Vec<CodegenedFunction>) {
+    let _timer = tcx.prof.generic_activity_with_arg("codegen cgu", cgu_name.as_str());
+
+    let cgu = tcx.codegen_unit(cgu_name);
+    let mono_items = cgu.items_in_deterministic_order(tcx);
+
+    let mut cx = crate::CodegenCx::new(
+        tcx,
+        module.isa(),
+        tcx.sess.opts.debuginfo != DebugInfo::None,
+        cgu_name,
+    );
+    let mut type_dbg = TypeDebugContext::default();
+    super::predefine_mono_items(tcx, module, &mono_items);
+    let mut codegened_functions = vec![];
+    for (mono_item, _) in mono_items {
+        match mono_item {
+            MonoItem::Fn(inst) => {
+                if let Some(codegened_function) = crate::base::codegen_fn(
+                    tcx,
+                    &mut cx,
+                    &mut type_dbg,
+                    Function::new(),
+                    module,
+                    inst,
+                ) {
+                    codegened_functions.push(codegened_function);
+                }
+            }
+            MonoItem::Static(def_id) => {
+                let data_id = crate::constant::codegen_static(tcx, module, def_id);
+                if let Some(debug_context) = &mut cx.debug_context {
+                    debug_context.define_static(tcx, &mut type_dbg, def_id, data_id);
+                }
+            }
+            MonoItem::GlobalAsm(item_id) => {
+                crate::global_asm::codegen_global_asm_item(tcx, &mut cx.global_asm, item_id);
+            }
+        }
+    }
+    crate::main_shim::maybe_create_entry_wrapper(tcx, module, false, cgu.is_primary());
+
+    (cx, codegened_functions)
+}
+
 fn module_codegen(
     tcx: TyCtxt<'_>,
-    (backend_config, global_asm_config, cgu_name, token): (
-        BackendConfig,
+    (global_asm_config, cgu_name, token): (
         Arc<GlobalAsmConfig>,
         rustc_span::Symbol,
         ConcurrencyLimiterToken,
     ),
 ) -> OngoingModuleCodegen {
-    let (cgu_name, mut cx, mut module, codegened_functions) =
-        tcx.prof.generic_activity_with_arg("codegen cgu", cgu_name.as_str()).run(|| {
-            let cgu = tcx.codegen_unit(cgu_name);
-            let mono_items = cgu.items_in_deterministic_order(tcx);
+    let mut module = make_module(tcx.sess, cgu_name.as_str().to_string());
 
-            let mut module = make_module(tcx.sess, &backend_config, cgu_name.as_str().to_string());
+    let (mut cx, codegened_functions) = codegen_cgu_content(tcx, &mut module, cgu_name);
 
-            let mut cx = crate::CodegenCx::new(
-                tcx,
-                module.isa(),
-                tcx.sess.opts.debuginfo != DebugInfo::None,
-                cgu_name,
-            );
-            let mut type_dbg = TypeDebugContext::default();
-            super::predefine_mono_items(tcx, &mut module, &mono_items);
-            let mut codegened_functions = vec![];
-            for (mono_item, _) in mono_items {
-                match mono_item {
-                    MonoItem::Fn(inst) => {
-                        if let Some(codegened_function) = crate::base::codegen_fn(
-                            tcx,
-                            &mut cx,
-                            &mut type_dbg,
-                            Function::new(),
-                            &mut module,
-                            inst,
-                        ) {
-                            codegened_functions.push(codegened_function);
-                        }
-                    }
-                    MonoItem::Static(def_id) => {
-                        let data_id = crate::constant::codegen_static(tcx, &mut module, def_id);
-                        if let Some(debug_context) = &mut cx.debug_context {
-                            debug_context.define_static(tcx, &mut type_dbg, def_id, data_id);
-                        }
-                    }
-                    MonoItem::GlobalAsm(item_id) => {
-                        crate::global_asm::codegen_global_asm_item(
-                            tcx,
-                            &mut cx.global_asm,
-                            item_id,
-                        );
-                    }
-                }
-            }
-            crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module, false, cgu.is_primary());
-
-            let cgu_name = cgu.name().as_str().to_owned();
-
-            (cgu_name, cx, module, codegened_functions)
-        });
+    let cgu_name = cgu_name.as_str().to_owned();
 
     let producer = crate::debuginfo::producer(tcx.sess);
 
+    let profiler = tcx.prof.clone();
+
     OngoingModuleCodegen::Async(std::thread::spawn(move || {
-        cx.profiler.clone().generic_activity_with_arg("compile functions", &*cgu_name).run(|| {
+        profiler.clone().generic_activity_with_arg("compile functions", &*cgu_name).run(|| {
             cranelift_codegen::timing::set_thread_profiler(Box::new(super::MeasuremeProfiler(
-                cx.profiler.clone(),
+                profiler.clone(),
             )));
 
             let mut cached_context = Context::new();
             for codegened_func in codegened_functions {
-                crate::base::compile_fn(&mut cx, &mut cached_context, &mut module, codegened_func);
+                crate::base::compile_fn(
+                    &mut cx,
+                    &profiler,
+                    &mut cached_context,
+                    &mut module,
+                    codegened_func,
+                );
             }
         });
 
         let global_asm_object_file =
-            cx.profiler.generic_activity_with_arg("compile assembly", &*cgu_name).run(|| {
+            profiler.generic_activity_with_arg("compile assembly", &*cgu_name).run(|| {
                 crate::global_asm::compile_global_asm(&global_asm_config, &cgu_name, &cx.global_asm)
             })?;
 
         let codegen_result =
-            cx.profiler.generic_activity_with_arg("write object file", &*cgu_name).run(|| {
+            profiler.generic_activity_with_arg("write object file", &*cgu_name).run(|| {
                 emit_cgu(
                     &global_asm_config.output_filenames,
-                    &cx.profiler,
+                    &profiler,
                     cgu_name,
                     module,
                     cx.debug_context,
@@ -583,9 +601,63 @@ fn module_codegen(
     }))
 }
 
+fn emit_metadata_module(tcx: TyCtxt<'_>, metadata: &EncodedMetadata) -> CompiledModule {
+    use rustc_middle::mir::mono::CodegenUnitNameBuilder;
+
+    let _timer = tcx.sess.timer("write compressed metadata");
+
+    let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
+    let metadata_cgu_name = cgu_name_builder
+        .build_cgu_name(LOCAL_CRATE, ["crate"], Some("metadata"))
+        .as_str()
+        .to_string();
+
+    let tmp_file =
+        tcx.output_filenames(()).temp_path(OutputType::Metadata, Some(&metadata_cgu_name));
+
+    let symbol_name = rustc_middle::middle::exported_symbols::metadata_symbol_name(tcx);
+    let obj = create_compressed_metadata_file(tcx.sess, metadata, &symbol_name);
+
+    if let Err(err) = std::fs::write(&tmp_file, obj) {
+        tcx.dcx().fatal(format!("error writing metadata object file: {}", err));
+    }
+
+    CompiledModule {
+        name: metadata_cgu_name,
+        kind: ModuleKind::Metadata,
+        object: Some(tmp_file),
+        dwarf_object: None,
+        bytecode: None,
+        assembly: None,
+        llvm_ir: None,
+    }
+}
+
+fn emit_allocator_module(tcx: TyCtxt<'_>) -> Option<CompiledModule> {
+    let mut allocator_module = make_module(tcx.sess, "allocator_shim".to_string());
+    let created_alloc_shim = crate::allocator::codegen(tcx, &mut allocator_module);
+
+    if created_alloc_shim {
+        let product = allocator_module.finish();
+
+        match emit_module(
+            tcx.output_filenames(()),
+            &tcx.sess.prof,
+            product.object,
+            ModuleKind::Allocator,
+            "allocator_shim".to_owned(),
+            &crate::debuginfo::producer(tcx.sess),
+        ) {
+            Ok(allocator_module) => Some(allocator_module),
+            Err(err) => tcx.dcx().fatal(err),
+        }
+    } else {
+        None
+    }
+}
+
 pub(crate) fn run_aot(
     tcx: TyCtxt<'_>,
-    backend_config: BackendConfig,
     metadata: EncodedMetadata,
     need_metadata_module: bool,
 ) -> Box<OngoingCodegen> {
@@ -631,9 +703,10 @@ pub(crate) fn run_aot(
 
     let global_asm_config = Arc::new(crate::global_asm::GlobalAsmConfig::new(tcx));
 
+    let disable_incr_cache = disable_incr_cache();
     let (todo_cgus, done_cgus) =
         cgus.into_iter().enumerate().partition::<Vec<_>, _>(|&(i, _)| match cgu_reuse[i] {
-            _ if backend_config.disable_incr_cache => true,
+            _ if disable_incr_cache => true,
             CguReuse::No => true,
             CguReuse::PreLto | CguReuse::PostLto => false,
         });
@@ -647,12 +720,7 @@ pub(crate) fn run_aot(
                 .with_task(
                     dep_node,
                     tcx,
-                    (
-                        backend_config.clone(),
-                        global_asm_config.clone(),
-                        cgu.name(),
-                        concurrency_limiter.acquire(tcx.dcx()),
-                    ),
+                    (global_asm_config.clone(), cgu.name(), concurrency_limiter.acquire(tcx.dcx())),
                     module_codegen,
                     Some(rustc_middle::dep_graph::hash_result),
                 )
@@ -666,62 +734,10 @@ pub(crate) fn run_aot(
         modules
     });
 
-    let mut allocator_module = make_module(tcx.sess, &backend_config, "allocator_shim".to_string());
-    let created_alloc_shim = crate::allocator::codegen(tcx, &mut allocator_module);
+    let allocator_module = emit_allocator_module(tcx);
 
-    let allocator_module = if created_alloc_shim {
-        let product = allocator_module.finish();
-
-        match emit_module(
-            tcx.output_filenames(()),
-            &tcx.sess.prof,
-            product.object,
-            ModuleKind::Allocator,
-            "allocator_shim".to_owned(),
-            &crate::debuginfo::producer(tcx.sess),
-        ) {
-            Ok(allocator_module) => Some(allocator_module),
-            Err(err) => tcx.dcx().fatal(err),
-        }
-    } else {
-        None
-    };
-
-    let metadata_module = if need_metadata_module {
-        let (metadata_cgu_name, tmp_file) = tcx.sess.time("write compressed metadata", || {
-            use rustc_middle::mir::mono::CodegenUnitNameBuilder;
-
-            let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
-            let metadata_cgu_name = cgu_name_builder
-                .build_cgu_name(LOCAL_CRATE, ["crate"], Some("metadata"))
-                .as_str()
-                .to_string();
-
-            let tmp_file =
-                tcx.output_filenames(()).temp_path(OutputType::Metadata, Some(&metadata_cgu_name));
-
-            let symbol_name = rustc_middle::middle::exported_symbols::metadata_symbol_name(tcx);
-            let obj = create_compressed_metadata_file(tcx.sess, &metadata, &symbol_name);
-
-            if let Err(err) = std::fs::write(&tmp_file, obj) {
-                tcx.dcx().fatal(format!("error writing metadata object file: {}", err));
-            }
-
-            (metadata_cgu_name, tmp_file)
-        });
-
-        Some(CompiledModule {
-            name: metadata_cgu_name,
-            kind: ModuleKind::Metadata,
-            object: Some(tmp_file),
-            dwarf_object: None,
-            bytecode: None,
-            assembly: None,
-            llvm_ir: None,
-        })
-    } else {
-        None
-    };
+    let metadata_module =
+        if need_metadata_module { Some(emit_metadata_module(tcx, &metadata)) } else { None };
 
     Box::new(OngoingCodegen {
         modules,

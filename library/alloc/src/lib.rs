@@ -117,6 +117,7 @@
 #![feature(extend_one_unchecked)]
 #![feature(fmt_internals)]
 #![feature(fn_traits)]
+#![feature(formatting_options)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(inplace_iteration)]
 #![feature(iter_advance_by)]

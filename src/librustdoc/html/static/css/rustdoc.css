@@ -2210,6 +2210,39 @@ details.toggle[open] > summary::after {
 	content: "Collapse";
 }
 
+details.toggle:not([open]) > summary .docblock {
+	max-height: calc(1.5em + 0.75em);
+	overflow-y: hidden;
+}
+details.toggle:not([open]) > summary .docblock > :first-child {
+	max-width: 100%;
+	overflow: hidden;
+	width: fit-content;
+	white-space: nowrap;
+	position: relative;
+	padding-right: 1em;
+}
+details.toggle:not([open]) > summary .docblock > :first-child::after {
+	content: "…";
+	position: absolute;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	z-index: 1;
+	background-color: var(--main-background-color);
+	font: 1rem/1.5 "Source Serif 4", NanumBarunGothic, serif;
+	/* To make it look a bit better and not have it stuck to the preceding element. */
+	padding-left: 0.2em;
+}
+details.toggle:not([open]) > summary .docblock > div:first-child::after {
+	/* This is to make the "..." always appear at the bottom. */
+	padding-top: calc(1.5em + 0.75em - 1.2rem);
+}
+
+details.toggle > summary .docblock {
+	margin-top: 0.75em;
+}
+
 /* This is needed in docblocks to have the "▶" element to be on the same line. */
 .docblock summary > * {
 	display: inline-block;

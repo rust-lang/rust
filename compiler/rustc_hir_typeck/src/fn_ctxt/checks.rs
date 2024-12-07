@@ -936,18 +936,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // can be collated pretty easily if needed.
 
         // Next special case: if there is only one "Incompatible" error, just emit that
-        if let [
+        if let &[
             Error::Invalid(provided_idx, expected_idx, Compatibility::Incompatible(Some(err))),
         ] = &errors[..]
         {
-            let (formal_ty, expected_ty) = formal_and_expected_inputs[*expected_idx];
-            let (provided_ty, provided_arg_span) = provided_arg_tys[*provided_idx];
+            let (formal_ty, expected_ty) = formal_and_expected_inputs[expected_idx];
+            let (provided_ty, provided_arg_span) = provided_arg_tys[provided_idx];
             let trace = mk_trace(provided_arg_span, (formal_ty, expected_ty), provided_ty);
-            let mut err =
-                self.err_ctxt().report_and_explain_type_error(trace, self.param_env, *err);
+            let mut err = self.err_ctxt().report_and_explain_type_error(trace, self.param_env, err);
             self.emit_coerce_suggestions(
                 &mut err,
-                provided_args[*provided_idx],
+                provided_args[provided_idx],
                 provided_ty,
                 Expectation::rvalue_hint(self, expected_ty)
                     .only_has_type(self)
@@ -982,7 +981,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.suggest_ptr_null_mut(
                 expected_ty,
                 provided_ty,
-                provided_args[*provided_idx],
+                provided_args[provided_idx],
                 &mut err,
             );
 
@@ -992,7 +991,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 call_ident,
                 expected_ty,
                 provided_ty,
-                provided_args[*provided_idx],
+                provided_args[provided_idx],
                 is_method,
             );
 

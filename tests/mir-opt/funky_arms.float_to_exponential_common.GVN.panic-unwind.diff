@@ -42,7 +42,7 @@
           StorageLive(_4);
           StorageLive(_20);
           StorageLive(_21);
-          _21 = copy ((*_1).0: u32);
+          _21 = copy (((*_1).0: std::fmt::FormattingOptions).0: u32);
           _20 = BitAnd(move _21, const 1_u32);
           StorageDead(_21);
           _4 = Ne(move _20, const 0_u32);
@@ -58,14 +58,14 @@
       }
   
       bb2: {
--         _5 = Minus;
-+         _5 = const Minus;
+-         _5 = core::num::flt2dec::Sign::Minus;
++         _5 = const core::num::flt2dec::Sign::Minus;
           goto -> bb3;
       }
   
       bb3: {
           StorageLive(_6);
-          _6 = copy ((*_1).4: std::option::Option<usize>);
+          _6 = copy (((*_1).0: std::fmt::FormattingOptions).4: std::option::Option<usize>);
           _7 = discriminant(_6);
           switchInt(move _7) -> [1: bb4, 0: bb6, otherwise: bb9];
       }

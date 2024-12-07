@@ -19,7 +19,6 @@ mod collector;
 mod errors;
 mod mono_checks;
 mod partitioning;
-mod polymorphize;
 mod util;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
@@ -50,6 +49,5 @@ fn custom_coerce_unsize_info<'tcx>(
 
 pub fn provide(providers: &mut Providers) {
     partitioning::provide(providers);
-    polymorphize::provide(providers);
     mono_checks::provide(providers);
 }
