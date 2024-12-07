@@ -216,7 +216,7 @@ fn true_significant_drop_ty<'tcx>(
     }
 }
 
-/// Returns the list of types with a "potentially sigificant" that may be dropped
+/// Returns the list of types with a "potentially significant" that may be dropped
 /// by dropping a value of type `ty`.
 #[instrument(level = "debug", skip(tcx, typing_env))]
 fn extract_component_raw<'tcx>(
