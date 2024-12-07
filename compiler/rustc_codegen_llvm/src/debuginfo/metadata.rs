@@ -827,14 +827,15 @@ fn build_basic_type_di_node<'ll, 'tcx>(
     };
 
     let typedef_di_node = unsafe {
-        llvm::LLVMRustDIBuilderCreateTypedef(
+        llvm::LLVMDIBuilderCreateTypedef(
             DIB(cx),
             ty_di_node,
-            typedef_name.as_c_char_ptr(),
+            typedef_name.as_ptr(),
             typedef_name.len(),
             unknown_file_metadata(cx),
-            0,
-            None,
+            /* LineNo */ 0u32,
+            /* Scope */ None,
+            /* AlignInBits (optional) */ 0u32,
         )
     };
 
