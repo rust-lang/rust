@@ -138,7 +138,7 @@ fn compute_replacement<'tcx>(
     // reborrowed references.
     let mut storage_to_remove = DenseBitSet::new_empty(body.local_decls.len());
 
-    let fully_replacable_locals = fully_replacable_locals(ssa);
+    let fully_replaceable_locals = fully_replaceable_locals(ssa);
 
     // Returns true iff we can use `place` as a pointee.
     //
@@ -204,7 +204,7 @@ fn compute_replacement<'tcx>(
         let needs_unique = ty.is_mutable_ptr();
 
         // If this a mutable reference that we cannot fully replace, mark it as unknown.
-        if needs_unique && !fully_replacable_locals.contains(local) {
+        if needs_unique && !fully_replaceable_locals.contains(local) {
             debug!("not fully replaceable");
             continue;
         }
@@ -303,7 +303,7 @@ fn compute_replacement<'tcx>(
 
                     // This a reborrow chain, recursively allow the replacement.
                     //
-                    // This also allows to detect cases where `target.local` is not replacable,
+                    // This also allows to detect cases where `target.local` is not replaceable,
                     // and mark it as such.
                     if let &[PlaceElem::Deref] = &target.projection[..] {
                         assert!(perform_opt);
@@ -313,7 +313,7 @@ fn compute_replacement<'tcx>(
                     } else if perform_opt {
                         self.allowed_replacements.insert((target.local, loc));
                     } else if needs_unique {
-                        // This mutable reference is not fully replacable, so drop it.
+                        // This mutable reference is not fully replaceable, so drop it.
                         self.targets[place.local] = Value::Unknown;
                     }
                 }
@@ -326,22 +326,22 @@ fn compute_replacement<'tcx>(
 
 /// Compute the set of locals that can be fully replaced.
 ///
-/// We consider a local to be replacable iff it's only used in a `Deref` projection `*_local` or
+/// We consider a local to be replaceable iff it's only used in a `Deref` projection `*_local` or
 /// non-use position (like storage statements and debuginfo).
-fn fully_replacable_locals(ssa: &SsaLocals) -> DenseBitSet<Local> {
-    let mut replacable = DenseBitSet::new_empty(ssa.num_locals());
+fn fully_replaceable_locals(ssa: &SsaLocals) -> DenseBitSet<Local> {
+    let mut replaceable = DenseBitSet::new_empty(ssa.num_locals());
 
     // First pass: for each local, whether its uses can be fully replaced.
     for local in ssa.locals() {
         if ssa.num_direct_uses(local) == 0 {
-            replacable.insert(local);
+            replaceable.insert(local);
         }
     }
 
     // Second pass: a local can only be fully replaced if all its copies can.
-    ssa.meet_copy_equivalence(&mut replacable);
+    ssa.meet_copy_equivalence(&mut replaceable);
 
-    replacable
+    replaceable
 }
 
 /// Utility to help performing substitution of `*pattern` by `target`.
