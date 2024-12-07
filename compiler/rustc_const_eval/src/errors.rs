@@ -44,29 +44,6 @@ pub(crate) struct MutablePtrInFinal {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_unstable_in_stable_exposed)]
-pub(crate) struct UnstableInStableExposed {
-    pub gate: String,
-    #[primary_span]
-    pub span: Span,
-    #[help(const_eval_is_function_call)]
-    pub is_function_call: bool,
-    /// Need to duplicate the field so that fluent also provides it as a variable...
-    pub is_function_call2: bool,
-    #[suggestion(
-        const_eval_unstable_sugg,
-        code = "#[rustc_const_unstable(feature = \"...\", issue = \"...\")]\n",
-        applicability = "has-placeholders"
-    )]
-    #[suggestion(
-        const_eval_bypass_sugg,
-        code = "#[rustc_allow_const_fn_unstable({gate})]\n",
-        applicability = "has-placeholders"
-    )]
-    pub attr_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(const_eval_thread_local_access, code = E0625)]
 pub(crate) struct ThreadLocalAccessErr {
     #[primary_span]

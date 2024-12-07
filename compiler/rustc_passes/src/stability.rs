@@ -593,9 +593,11 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
     }
 
     fn check_missing_const_stability(&self, def_id: LocalDefId, span: Span) {
-        let is_const = self.tcx.is_const_fn(def_id.to_def_id());
+        let is_const = self.tcx.is_const_fn(def_id.to_def_id())
+            || (self.tcx.def_kind(def_id.to_def_id()) == DefKind::Trait
+                && self.tcx.is_const_trait(def_id.to_def_id()));
 
-        // Reachable const fn must have a stability attribute.
+        // Reachable const fn/trait must have a stability attribute.
         if is_const
             && self.effective_visibilities.is_reachable(def_id)
             && self.tcx.lookup_const_stability(def_id).is_none()

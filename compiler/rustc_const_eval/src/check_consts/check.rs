@@ -12,6 +12,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
 use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_middle::middle::stability::emit_const_unstable_in_const_stable_exposed_error;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
@@ -19,7 +20,7 @@ use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_mir_dataflow::Analysis;
 use rustc_mir_dataflow::impls::{MaybeStorageLive, always_storage_live_locals};
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Span, sym};
 use rustc_trait_selection::traits::{
     Obligation, ObligationCause, ObligationCauseCode, ObligationCtxt,
 };
@@ -287,9 +288,15 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                 // if this function wants to be safe-to-expose-on-stable.
                 if !safe_to_expose_on_stable
                     && self.enforce_recursive_const_stability()
-                    && !super::rustc_allow_const_fn_unstable(self.tcx, self.def_id(), gate)
+                    && !self.tcx.rustc_allow_const_fn_unstable(self.def_id(), gate)
                 {
-                    emit_unstable_in_stable_exposed_error(self.ccx, span, gate, is_function_call);
+                    emit_const_unstable_in_const_stable_exposed_error(
+                        self.tcx,
+                        self.def_id(),
+                        span,
+                        gate,
+                        is_function_call,
+                    );
                 }
 
                 return;
@@ -709,8 +716,11 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     if trait_is_const {
                         // Trait calls are always conditionally-const.
                         self.check_op(ops::ConditionallyConstCall { callee, args: fn_args });
-                        // FIXME(const_trait_impl): do a more fine-grained check whether this
-                        // particular trait can be const-stably called.
+                        self.tcx.enforce_trait_const_stability(
+                            trait_did,
+                            *fn_span,
+                            Some(self.def_id()),
+                        );
                     } else {
                         // Not even a const trait.
                         self.check_op(ops::FnCallNonConst {
@@ -955,21 +965,4 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
 fn is_int_bool_float_or_char(ty: Ty<'_>) -> bool {
     ty.is_bool() || ty.is_integral() || ty.is_char() || ty.is_floating_point()
-}
-
-fn emit_unstable_in_stable_exposed_error(
-    ccx: &ConstCx<'_, '_>,
-    span: Span,
-    gate: Symbol,
-    is_function_call: bool,
-) -> ErrorGuaranteed {
-    let attr_span = ccx.tcx.def_span(ccx.def_id()).shrink_to_lo();
-
-    ccx.dcx().emit_err(errors::UnstableInStableExposed {
-        gate: gate.to_string(),
-        span,
-        attr_span,
-        is_function_call,
-        is_function_call2: is_function_call,
-    })
 }

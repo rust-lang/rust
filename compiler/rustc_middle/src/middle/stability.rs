@@ -10,6 +10,7 @@ use rustc_attr_parsing::{
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee};
 use rustc_feature::GateIssue;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
 use rustc_hir::{self as hir, HirId};
 use rustc_macros::{Decodable, Encodable, HashStable, Subdiagnostic};
@@ -18,7 +19,7 @@ use rustc_session::Session;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
 use rustc_session::lint::{BuiltinLintDiag, DeprecatedSinceKind, Level, Lint, LintBuffer};
 use rustc_session::parse::feature_err_issue;
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 use tracing::debug;
 
 pub use self::StabilityLevel::*;
@@ -597,4 +598,93 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn lookup_deprecation(self, id: DefId) -> Option<Deprecation> {
         self.lookup_deprecation_entry(id).map(|depr| depr.attr)
     }
+
+    /// Returns true if `def_id` has an attribute that allows usage of the const unstable feature `feature_gate`.
+    pub fn rustc_allow_const_fn_unstable(self, def_id: LocalDefId, feature_gate: Symbol) -> bool {
+        let attrs = self.hir().attrs(self.local_def_id_to_hir_id(def_id));
+        attr::rustc_allow_const_fn_unstable(self.sess, attrs).any(|name| name == feature_gate)
+    }
+
+    pub fn enforce_trait_const_stability(
+        self,
+        trait_def_id: DefId,
+        span: Span,
+        parent_def: Option<LocalDefId>,
+    ) {
+        // This should work pretty much exactly like the function stability logic in
+        // `compiler/rustc_const_eval/src/check_consts/check.rs`.
+        // FIXME: Find some way to not duplicate that logic.
+        let Some(ConstStability {
+            level: attr::StabilityLevel::Unstable { implied_by: implied_feature, .. },
+            feature,
+            ..
+        }) = self.lookup_const_stability(trait_def_id)
+        else {
+            return;
+        };
+
+        let unstable_feature_allowed = span.allows_unstable(feature)
+            || implied_feature.is_some_and(|f| span.allows_unstable(f));
+
+        let feature_enabled = trait_def_id.is_local()
+            || self.features().enabled(feature)
+            || implied_feature.is_some_and(|f| self.features().enabled(f));
+
+        if !unstable_feature_allowed && !feature_enabled {
+            let mut diag = self.dcx().create_err(crate::error::UnstableConstTrait {
+                span,
+                def_path: self.def_path_str(trait_def_id),
+            });
+            self.disabled_nightly_features(&mut diag, None, [(String::new(), feature)]);
+            diag.emit();
+        } else if let Some(parent) = parent_def {
+            // user either has enabled the feature or the unstable feature is allowed inside a macro,
+            // but if we consider the item we're in to be const stable, we should error as const stable
+            // items cannot use unstable features.
+            let is_stable =
+                matches!(self.def_kind(parent), DefKind::AssocFn | DefKind::Fn | DefKind::Trait)
+                    && match self.lookup_const_stability(parent) {
+                        None => {
+                            // `const fn`s without const stability attributes in a `staged_api` crate
+                            // are implicitly stable.
+                            self.features().staged_api()
+                        }
+                        Some(stab) => {
+                            // an explicitly stable `const fn`, or an unstable `const fn` that claims to not use any
+                            // other unstably-const features with `const_stable_indirect`
+                            stab.is_const_stable() || stab.const_stable_indirect
+                        }
+                    };
+
+            // if our parent function is unstable, no need to error
+            if !is_stable {
+                return;
+            }
+
+            // if the feature is explicitly allowed, don't error
+            if self.rustc_allow_const_fn_unstable(parent, feature) {
+                return;
+            }
+
+            emit_const_unstable_in_const_stable_exposed_error(self, parent, span, feature, false);
+        }
+    }
+}
+
+pub fn emit_const_unstable_in_const_stable_exposed_error(
+    tcx: TyCtxt<'_>,
+    def_id: LocalDefId,
+    span: Span,
+    gate: Symbol,
+    is_function_call: bool,
+) -> ErrorGuaranteed {
+    let attr_span = tcx.def_span(def_id).shrink_to_lo();
+
+    tcx.dcx().emit_err(crate::error::ConstUnstableInConstStableExposed {
+        gate: gate.to_string(),
+        span,
+        attr_span,
+        is_function_call,
+        is_function_call2: is_function_call,
+    })
 }

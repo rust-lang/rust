@@ -8,6 +8,14 @@ LL |         self.0
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
+error: `Deref` is not yet stable as a const trait
+  --> $DIR/arbitrary-self-from-method-substs-ice.rs:13:9
+   |
+LL |         self.0
+   |         ^^^^^^
+   |
+   = help: add `#![feature(const_deref)]` to the crate attributes to enable
+
 error[E0493]: destructor of `R` cannot be evaluated at compile-time
   --> $DIR/arbitrary-self-from-method-substs-ice.rs:10:43
    |
@@ -26,7 +34,7 @@ LL |     const fn get<R: Deref<Target = Self>>(self: R) -> u32 {
    = note: type of `self` must not be a method generic parameter type
    = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0493, E0658, E0801.
 For more information about an error, try `rustc --explain E0493`.

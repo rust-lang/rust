@@ -204,6 +204,7 @@
 #[lang = "drop"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[const_trait]
+#[rustc_const_unstable(feature = "const_destruct", issue = "133214")]
 pub trait Drop {
     /// Executes the destructor for this type.
     ///

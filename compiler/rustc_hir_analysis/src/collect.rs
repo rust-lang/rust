@@ -1640,6 +1640,7 @@ fn check_impl_constness(
 
     let Some(trait_def_id) = hir_trait_ref.trait_def_id() else { return };
     if tcx.is_const_trait(trait_def_id) {
+        tcx.enforce_trait_const_stability(trait_def_id, hir_trait_ref.path.span, None);
         return;
     }
 

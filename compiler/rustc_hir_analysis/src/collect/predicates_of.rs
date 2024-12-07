@@ -334,6 +334,14 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         debug!(?predicates);
     }
 
+    for (clause, span) in predicates.iter().copied() {
+        // enforce trait const stability for `const Tr` bounds.
+        let ty::ClauseKind::HostEffect(pred) = clause.kind().skip_binder() else {
+            continue;
+        };
+        tcx.enforce_trait_const_stability(pred.trait_ref.def_id, span, Some(def_id));
+    }
+
     ty::GenericPredicates {
         parent: generics.parent,
         predicates: tcx.arena.alloc_from_iter(predicates),
@@ -1046,16 +1054,18 @@ pub(super) fn const_conditions<'tcx>(
     ty::ConstConditions {
         parent: has_parent.then(|| tcx.local_parent(def_id).to_def_id()),
         predicates: tcx.arena.alloc_from_iter(bounds.clauses().map(|(clause, span)| {
-            (
-                clause.kind().map_bound(|clause| match clause {
-                    ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
-                        trait_ref,
-                        constness: ty::BoundConstness::Maybe,
-                    }) => trait_ref,
-                    _ => bug!("converted {clause:?}"),
-                }),
-                span,
-            )
+            let poly_trait_ref = clause.kind().map_bound(|clause| match clause {
+                ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
+                    trait_ref,
+                    constness: ty::BoundConstness::Maybe,
+                }) => trait_ref,
+                _ => bug!("converted {clause:?}"),
+            });
+
+            // check the const-stability of `Tr` for `~const Tr` bounds
+            tcx.enforce_trait_const_stability(poly_trait_ref.def_id(), span, Some(def_id));
+
+            (poly_trait_ref, span)
         })),
     }
 }

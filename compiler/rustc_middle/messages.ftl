@@ -50,6 +50,15 @@ middle_const_eval_non_int =
 middle_const_not_used_in_type_alias =
     const parameter `{$ct}` is part of concrete type but not used in parameter list for the `impl Trait` type alias
 
+middle_const_unstable_in_const_stable_exposed =
+    const function that might be (indirectly) exposed to stable cannot use `#[feature({$gate})]`
+    .is_function_call = mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unsafe features
+    .unstable_sugg = if the {$is_function_call2 ->
+            [true] caller
+            *[false] function
+        } is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
+    .bypass_sugg = otherwise, as a last resort `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks (this requires team approval)
+
 middle_cycle =
     a cycle occurred during layout computation
 
@@ -104,6 +113,8 @@ middle_type_length_limit = reached the type-length limit while instantiating `{$
 
 middle_unknown_layout =
     the type `{$ty}` has an unknown layout
+
+middle_unstable_const_trait = `{$def_path}` is not yet stable as a const trait
 
 middle_values_too_big =
     values of the type `{$ty}` are too big for the target architecture

@@ -5,11 +5,10 @@
 //! it finds operations that are invalid in a certain context.
 
 use rustc_errors::DiagCtxtHandle;
+use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::{self, PolyFnSig, TyCtxt};
 use rustc_middle::{bug, mir};
-use rustc_span::Symbol;
-use {rustc_attr_parsing as attr, rustc_hir as hir};
 
 pub use self::qualifs::Qualif;
 
@@ -73,15 +72,6 @@ impl<'mir, 'tcx> ConstCx<'mir, 'tcx> {
             self.tcx.fn_sig(did).instantiate_identity()
         }
     }
-}
-
-pub fn rustc_allow_const_fn_unstable(
-    tcx: TyCtxt<'_>,
-    def_id: LocalDefId,
-    feature_gate: Symbol,
-) -> bool {
-    let attrs = tcx.hir().attrs(tcx.local_def_id_to_hir_id(def_id));
-    attr::rustc_allow_const_fn_unstable(tcx.sess, attrs).any(|name| name == feature_gate)
 }
 
 /// Returns `true` if the given `const fn` is "safe to expose on stable".

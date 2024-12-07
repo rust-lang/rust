@@ -171,3 +171,34 @@ pub struct TypeLengthLimit {
     pub path: PathBuf,
     pub type_length: usize,
 }
+
+#[derive(Diagnostic)]
+#[diag(middle_unstable_const_trait)]
+pub struct UnstableConstTrait {
+    #[primary_span]
+    pub span: Span,
+    pub def_path: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(middle_const_unstable_in_const_stable_exposed)]
+pub struct ConstUnstableInConstStableExposed {
+    pub gate: String,
+    #[primary_span]
+    pub span: Span,
+    #[help(middle_is_function_call)]
+    pub is_function_call: bool,
+    /// Need to duplicate the field so that fluent also provides it as a variable...
+    pub is_function_call2: bool,
+    #[suggestion(
+        middle_unstable_sugg,
+        code = "#[rustc_const_unstable(feature = \"...\", issue = \"...\")]\n",
+        applicability = "has-placeholders"
+    )]
+    #[suggestion(
+        middle_bypass_sugg,
+        code = "#[rustc_allow_const_fn_unstable({gate})]\n",
+        applicability = "has-placeholders"
+    )]
+    pub attr_span: Span,
+}

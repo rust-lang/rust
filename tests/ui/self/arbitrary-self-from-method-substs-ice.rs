@@ -12,6 +12,7 @@ impl Foo {
         //~| ERROR destructor of `R` cannot be evaluated at compile-time
         self.0
         //~^ ERROR cannot call conditionally-const method `<R as Deref>::deref` in constant function
+        //~| ERROR `Deref` is not yet stable as a const trait
     }
 }
 

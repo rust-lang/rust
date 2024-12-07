@@ -8,6 +8,14 @@ LL | static S: &'static B = &A;
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 1 previous error
+error: `Deref` is not yet stable as a const trait
+  --> $DIR/issue-25901.rs:4:24
+   |
+LL | static S: &'static B = &A;
+   |                        ^^
+   |
+   = help: add `#![feature(const_deref)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0658`.
