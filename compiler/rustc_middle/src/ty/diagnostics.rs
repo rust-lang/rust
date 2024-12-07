@@ -361,10 +361,10 @@ pub fn suggest_constraining_type_params<'a>(
             trait_names.dedup();
             let n = trait_names.len();
             let stable = if all_stable { "" } else { "unstable " };
-            let trait_ = if all_known { "trait" } else { "" };
-            format!("{stable}{trait_}{} {}", pluralize!(n), match &trait_names[..] {
-                [t] => t.to_string(),
-                [ts @ .., last] => format!("{} and {last}", ts.join(", ")),
+            let trait_ = if all_known { format!("trait{}", pluralize!(n)) } else { String::new() };
+            format!("{stable}{trait_}{}", match &trait_names[..] {
+                [t] => format!(" {t}"),
+                [ts @ .., last] => format!(" {} and {last}", ts.join(", ")),
                 [] => return false,
             },)
         } else {
@@ -531,7 +531,7 @@ pub fn suggest_constraining_type_params<'a>(
         let (span, post, suggestion, msg) = suggestions.pop().unwrap();
         let msg = match msg {
             SuggestChangingConstraintsMessage::RestrictBoundFurther => {
-                format!("consider further restricting this bound with {post}")
+                format!("consider further restricting this bound")
             }
             SuggestChangingConstraintsMessage::RestrictTypeFurther { ty }
             | SuggestChangingConstraintsMessage::RestrictType { ty }
