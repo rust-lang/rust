@@ -1078,14 +1078,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticMemberType(
       unwrap<llvm::ConstantInt>(val), llvm::dwarf::DW_TAG_member, AlignInBits));
 }
 
-extern "C" LLVMMetadataRef
-LLVMRustDIBuilderCreateLexicalBlock(LLVMRustDIBuilderRef Builder,
-                                    LLVMMetadataRef Scope, LLVMMetadataRef File,
-                                    unsigned Line, unsigned Col) {
-  return wrap(Builder->createLexicalBlock(unwrapDI<DIDescriptor>(Scope),
-                                          unwrapDI<DIFile>(File), Line, Col));
-}
-
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateLexicalBlockFile(
     LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope, LLVMMetadataRef File) {
   return wrap(Builder->createLexicalBlockFile(unwrapDI<DIDescriptor>(Scope),
