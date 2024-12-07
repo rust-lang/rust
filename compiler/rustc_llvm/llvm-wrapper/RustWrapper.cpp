@@ -909,10 +909,6 @@ extern "C" void LLVMRustGlobalAddMetadata(LLVMValueRef Global, unsigned Kind,
   unwrap<GlobalObject>(Global)->addMetadata(Kind, *unwrap<MDNode>(MD));
 }
 
-extern "C" void LLVMRustDIBuilderFinalize(LLVMRustDIBuilderRef Builder) {
-  Builder->finalize();
-}
-
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateCompileUnit(
     LLVMRustDIBuilderRef Builder, unsigned Lang, LLVMMetadataRef FileRef,
     const char *Producer, size_t ProducerLen, bool isOptimized,

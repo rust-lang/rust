@@ -80,7 +80,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
     }
 
     pub(crate) fn finalize(&self, sess: &Session) {
-        unsafe { llvm::LLVMRustDIBuilderFinalize(self.builder.as_ref()) };
+        unsafe { llvm::LLVMDIBuilderFinalize(self.builder.as_ref()) };
         if !sess.target.is_like_msvc {
             // Debuginfo generation in LLVM by default uses a higher
             // version of dwarf than macOS currently understands. We can
