@@ -909,14 +909,6 @@ extern "C" void LLVMRustGlobalAddMetadata(LLVMValueRef Global, unsigned Kind,
   unwrap<GlobalObject>(Global)->addMetadata(Kind, *unwrap<MDNode>(MD));
 }
 
-extern "C" LLVMRustDIBuilderRef LLVMRustDIBuilderCreate(LLVMModuleRef M) {
-  return new DIBuilder(*unwrap(M));
-}
-
-extern "C" void LLVMRustDIBuilderDispose(LLVMRustDIBuilderRef Builder) {
-  delete Builder;
-}
-
 extern "C" void LLVMRustDIBuilderFinalize(LLVMRustDIBuilderRef Builder) {
   Builder->finalize();
 }

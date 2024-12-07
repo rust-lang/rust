@@ -945,7 +945,7 @@ pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
 
     unsafe {
         let compile_unit_file = llvm::LLVMRustDIBuilderCreateFile(
-            debug_context.builder,
+            debug_context.builder.as_ref(),
             name_in_debuginfo.as_c_char_ptr(),
             name_in_debuginfo.len(),
             work_dir.as_c_char_ptr(),
@@ -958,7 +958,7 @@ pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
         );
 
         let unit_metadata = llvm::LLVMRustDIBuilderCreateCompileUnit(
-            debug_context.builder,
+            debug_context.builder.as_ref(),
             DW_LANG_RUST,
             compile_unit_file,
             producer.as_c_char_ptr(),
