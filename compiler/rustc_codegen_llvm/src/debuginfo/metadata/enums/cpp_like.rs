@@ -213,8 +213,7 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
         |cx, enum_type_di_node| {
             match enum_type_and_layout.variants {
                 Variants::Empty => {
-                    // Uninhabited enums have Variants::Single. We don't generate
-                    // any members for them.
+                    // We don't generate any members for uninhabited types.
                     return smallvec![];
                 }
                 Variants::Single { index: variant_index } => build_single_variant_union_fields(
