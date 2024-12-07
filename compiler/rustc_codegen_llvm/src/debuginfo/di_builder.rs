@@ -54,4 +54,23 @@ impl<'ll> DIBuilder<'ll> {
             )
         }
     }
+
+    pub(crate) fn create_array_type(
+        &self,
+        size: Size,
+        align: Align,
+        element_type: &'ll Metadata,
+        subscripts: &[&'ll Metadata],
+    ) -> &'ll Metadata {
+        unsafe {
+            llvm::LLVMDIBuilderCreateArrayType(
+                self,
+                size.bits(),
+                align.bits() as u32,
+                element_type,
+                subscripts.as_ptr(),
+                subscripts.len() as c_uint,
+            )
+        }
+    }
 }
