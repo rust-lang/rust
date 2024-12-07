@@ -1344,7 +1344,7 @@ impl Expr {
         }
     }
 
-    /// Returns an expression with (when possible) *one* outter brace removed
+    /// Returns an expression with (when possible) *one* outer brace removed
     pub fn maybe_unwrap_block(&self) -> &Expr {
         if let ExprKind::Block(block, None) = &self.kind
             && let [stmt] = block.stmts.as_slice()

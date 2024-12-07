@@ -457,7 +457,7 @@ pub(crate) fn provide(providers: &mut Providers) {
                                     // one, just keep it.
                                 }
                                 _ => {
-                                    // Overwrite stabilite.
+                                    // Overwrite stability.
                                     occupied_entry.insert(stability);
                                 }
                             }

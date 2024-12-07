@@ -1171,7 +1171,7 @@ fn clean_poly_fn_sig<'tcx>(
     // If this comes from a fn item, let's not perpetuate anon params from Rust 2015; use `_` for them.
     // If this comes from a fn ptr ty, we just keep params unnamed since it's more conventional stylistically.
     // Since the param name is not part of the semantic type, these params never bear a name unlike
-    // in the HIR case, thus we can't peform any fancy fallback logic unlike `clean_bare_fn_ty`.
+    // in the HIR case, thus we can't perform any fancy fallback logic unlike `clean_bare_fn_ty`.
     let fallback = did.map(|_| kw::Underscore);
 
     let params = sig

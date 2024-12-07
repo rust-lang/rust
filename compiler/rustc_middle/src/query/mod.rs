@@ -355,7 +355,7 @@ rustc_queries! {
     /// Returns whether the type alias given by `DefId` is lazy.
     ///
     /// I.e., if the type alias expands / ought to expand to a [free] [alias type]
-    /// instead of the underyling aliased type.
+    /// instead of the underlying aliased type.
     ///
     /// Relevant for features `lazy_type_alias` and `type_alias_impl_trait`.
     ///

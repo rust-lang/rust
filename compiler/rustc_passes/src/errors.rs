@@ -157,7 +157,7 @@ pub(crate) struct NonExhaustiveWrongLocation {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_non_exaustive_with_default_field_values)]
+#[diag(passes_non_exhaustive_with_default_field_values)]
 pub(crate) struct NonExhaustiveWithDefaultFieldValues {
     #[primary_span]
     pub attr_span: Span,

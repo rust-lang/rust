@@ -262,7 +262,7 @@ pub struct Body<'tcx> {
     /// us to see the difference and forego optimization on the inlined promoted items.
     pub phase: MirPhase,
 
-    /// How many passses we have executed since starting the current phase. Used for debug output.
+    /// How many passes we have executed since starting the current phase. Used for debug output.
     pub pass_count: usize,
 
     pub source: MirSource<'tcx>,

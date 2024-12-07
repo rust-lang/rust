@@ -381,7 +381,7 @@ pub enum StatementKind<'tcx> {
     /// computing these locals.
     ///
     /// If the local is already allocated, calling `StorageLive` again will implicitly free the
-    /// local and then allocate fresh uninitilized memory. If a local is already deallocated,
+    /// local and then allocate fresh uninitialized memory. If a local is already deallocated,
     /// calling `StorageDead` again is a NOP.
     StorageLive(Local),
 

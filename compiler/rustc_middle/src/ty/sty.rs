@@ -1676,7 +1676,7 @@ impl<'tcx> Ty<'tcx> {
     /// This is particularly useful for getting the type of the result of
     /// [`UnOp::PtrMetadata`](crate::mir::UnOp::PtrMetadata).
     ///
-    /// Panics if `self` is not dereferencable.
+    /// Panics if `self` is not dereferenceable.
     #[track_caller]
     pub fn pointee_metadata_ty_or_projection(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         let Some(pointee_ty) = self.builtin_deref(true) else {

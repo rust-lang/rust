@@ -56,7 +56,7 @@ pub fn evaluate_host_effect_obligation<'tcx>(
         Err(EvaluationFailure::NoSolution) => {}
     }
 
-    match evaluate_host_effect_from_selection_candiate(selcx, obligation) {
+    match evaluate_host_effect_from_selection_candidate(selcx, obligation) {
         Ok(result) => return Ok(result),
         Err(EvaluationFailure::Ambiguous) => return Err(EvaluationFailure::Ambiguous),
         Err(EvaluationFailure::NoSolution) => {}
@@ -333,7 +333,7 @@ fn evaluate_host_effect_for_destruct_goal<'tcx>(
         .collect())
 }
 
-fn evaluate_host_effect_from_selection_candiate<'tcx>(
+fn evaluate_host_effect_from_selection_candidate<'tcx>(
     selcx: &mut SelectionContext<'_, 'tcx>,
     obligation: &HostEffectObligation<'tcx>,
 ) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {

@@ -310,7 +310,7 @@ fn insert_discr_cast_to_u128<'tcx>(
         StatementKind::Assign(Box::new((discr_in_discr_ty, rvalue))),
     ));
 
-    // Cast the discriminant to a u128 (base for comparisions of enum discriminants).
+    // Cast the discriminant to a u128 (base for comparisons of enum discriminants).
     let const_u128 = Ty::new_uint(tcx, ty::UintTy::U128);
     let rvalue = Rvalue::Cast(CastKind::IntToInt, Operand::Copy(discr_in_discr_ty), const_u128);
     let discr = local_decls.push(LocalDecl::with_source_info(const_u128, source_info)).into();
@@ -445,7 +445,7 @@ fn insert_niche_check<'tcx>(
         source_info,
     );
 
-    // Compare the discriminant agains the valid_range.
+    // Compare the discriminant against the valid_range.
     let start_const = Operand::Constant(Box::new(ConstOperand {
         span: source_info.span,
         user_ty: None,

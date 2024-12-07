@@ -187,7 +187,7 @@ impl Stage for Late {
     }
 }
 
-/// used when parsing attributes for miscelaneous things *before* ast lowering
+/// used when parsing attributes for miscellaneous things *before* ast lowering
 pub struct Early;
 /// used when parsing attributes during ast lowering
 pub struct Late;

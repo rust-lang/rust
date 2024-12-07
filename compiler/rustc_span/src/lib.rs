@@ -418,7 +418,7 @@ impl FileName {
         }
     }
 
-    pub fn prefer_remapped_unconditionaly(&self) -> FileNameDisplay<'_> {
+    pub fn prefer_remapped_unconditionally(&self) -> FileNameDisplay<'_> {
         FileNameDisplay { inner: self, display_pref: FileNameDisplayPreference::Remapped }
     }
 

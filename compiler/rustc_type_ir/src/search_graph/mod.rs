@@ -390,8 +390,8 @@ impl PathsToNested {
 ///
 /// They are used when checking whether reevaluating a global cache
 /// would encounter a cycle or use a provisional cache entry given the
-/// currentl search graph state. We need to disable the global cache
-/// in this case as it could otherwise result in behaviorial differences.
+/// current search graph state. We need to disable the global cache
+/// in this case as it could otherwise result in behavioral differences.
 /// Cycles can impact behavior. The cycle ABA may have different final
 /// results from a the cycle BAB depending on the cycle root.
 ///
@@ -513,7 +513,7 @@ pub struct SearchGraph<D: Delegate<Cx = X>, X: Cx = <D as Delegate>::Cx> {
 ///
 /// `nested_goals` are only used when checking whether global cache entries
 /// are applicable. This only cares about whether a goal is actually accessed.
-/// Given that the usage of the provisional cache is fully determinstic, we
+/// Given that the usage of the provisional cache is fully deterministic, we
 /// don't need to track the nested goals used while computing a provisional
 /// cache entry.
 enum UpdateParentGoalCtxt<'a, X: Cx> {
