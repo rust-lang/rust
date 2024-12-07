@@ -11,7 +11,7 @@ use rustc_hir::{
     BodyId, Expr, ExprKind, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass, Lint};
-use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult, GlobalId};
+use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult, GlobalId, ReportedErrorInfo};
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::impl_lint_pass;
@@ -302,7 +302,10 @@ impl<'tcx> NonCopyConst<'tcx> {
                 tcx.const_eval_global_id_for_typeck(typing_env, cid, span)
             },
             Ok(None) => Err(ErrorHandled::TooGeneric(span)),
-            Err(err) => Err(ErrorHandled::Reported(err.into(), span)),
+            Err(err) => Err(ErrorHandled::Reported(
+                ReportedErrorInfo::non_const_eval_error(err),
+                span,
+            )),
         }
     }
 }
