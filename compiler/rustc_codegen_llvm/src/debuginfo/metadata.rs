@@ -325,9 +325,12 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
     debug_context(cx).type_map.unique_id_to_di_node.borrow_mut().remove(&unique_type_id);
 
     let fn_di_node = unsafe {
-        llvm::LLVMRustDIBuilderCreateSubroutineType(
+        llvm::LLVMDIBuilderCreateSubroutineType(
             DIB(cx),
-            create_DIArray(DIB(cx), &signature_di_nodes[..]),
+            /* File (unused) */ None,
+            signature_di_nodes.as_ptr(),
+            signature_di_nodes.len() as c_uint,
+            DIFlags::FlagZero,
         )
     };
 

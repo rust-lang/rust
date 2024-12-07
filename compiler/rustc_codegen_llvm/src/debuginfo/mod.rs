@@ -319,7 +319,13 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         let function_type_metadata = unsafe {
             let fn_signature = get_function_signature(self, fn_abi);
-            llvm::LLVMRustDIBuilderCreateSubroutineType(DIB(self), fn_signature)
+            llvm::LLVMDIBuilderCreateSubroutineType(
+                DIB(self),
+                /* File (unused) */ None,
+                fn_signature.as_ptr(),
+                fn_signature.len() as c_uint,
+                DIFlags::FlagZero,
+            )
         };
 
         let mut name = String::with_capacity(64);
@@ -412,9 +418,9 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         fn get_function_signature<'ll, 'tcx>(
             cx: &CodegenCx<'ll, 'tcx>,
             fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
-        ) -> &'ll DIArray {
+        ) -> Vec<Option<&'ll llvm::Metadata>> {
             if cx.sess().opts.debuginfo != DebugInfo::Full {
-                return create_DIArray(DIB(cx), &[]);
+                return vec![];
             }
 
             let mut signature = Vec::with_capacity(fn_abi.args.len() + 1);
@@ -455,7 +461,7 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     .extend(fn_abi.args.iter().map(|arg| Some(type_di_node(cx, arg.layout.ty))));
             }
 
-            create_DIArray(DIB(cx), &signature[..])
+            signature
         }
 
         fn get_template_parameters<'ll, 'tcx>(
