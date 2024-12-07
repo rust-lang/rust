@@ -4,6 +4,7 @@ warning: `extern` fn uses type `CStr`, which is not FFI-safe
 LL | type Foo = extern "C" fn(::std::ffi::CStr);
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
    |
+   = note: the function pointer to `extern "C" fn(CStr)` is FFI-unsafe due to `CStr`
    = help: consider passing a `*const std::ffi::c_char` instead, and use `CStr::as_ptr()`
    = note: `CStr`/`CString` do not have a guaranteed layout
    = note: `#[warn(improper_ctypes_definitions)]` on by default
@@ -14,6 +15,7 @@ warning: `extern` block uses type `CStr`, which is not FFI-safe
 LL |     fn meh(blah: Foo);
    |                  ^^^ not FFI-safe
    |
+   = note: the function pointer to `extern "C" fn(CStr)` is FFI-unsafe due to `CStr`
    = help: consider passing a `*const std::ffi::c_char` instead, and use `CStr::as_ptr()`
    = note: `CStr`/`CString` do not have a guaranteed layout
    = note: `#[warn(improper_ctypes)]` on by default

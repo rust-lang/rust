@@ -1,4 +1,5 @@
 #![feature(rustc_private)]
+#![feature(extern_types)]
 
 #![allow(private_interfaces)]
 #![deny(improper_ctypes)]
@@ -6,7 +7,9 @@
 use std::cell::UnsafeCell;
 use std::marker::PhantomData;
 use std::ffi::{c_int, c_uint};
+use std::fmt::Debug;
 
+unsafe extern "C" {type UnsizedOpaque;}
 trait Bar { }
 trait Mirror { type It: ?Sized; }
 impl<T: ?Sized> Mirror for T { type It = Self; }
@@ -20,7 +23,7 @@ pub type I32Pair = (i32, i32);
 #[repr(C)]
 pub struct ZeroSize;
 pub type RustFn = fn();
-pub type RustBadRet = extern "C" fn() -> Box<u32>;
+pub type RustBoxRet = extern "C" fn() -> Box<u32>;
 pub type CVoidRet = ();
 pub struct Foo;
 #[repr(transparent)]
@@ -28,7 +31,7 @@ pub struct TransparentI128(i128);
 #[repr(transparent)]
 pub struct TransparentStr(&'static str);
 #[repr(transparent)]
-pub struct TransparentBadFn(RustBadRet);
+pub struct TransparentBoxFn(RustBoxRet);
 #[repr(transparent)]
 pub struct TransparentInt(u32);
 #[repr(transparent)]
@@ -39,6 +42,16 @@ pub struct TransparentLifetime<'a>(*const u8, PhantomData<&'a ()>);
 pub struct TransparentUnit<U>(f32, PhantomData<U>);
 #[repr(transparent)]
 pub struct TransparentCustomZst(i32, ZeroSize);
+#[repr(C)]
+pub struct UnsizedStructBecauseForeign {
+    sized: u32,
+    unszd: UnsizedOpaque,
+}
+#[repr(C)]
+pub struct UnsizedStructBecauseDyn {
+    sized: u32,
+    unszd: dyn Debug,
+}
 
 #[repr(C)]
 pub struct ZeroSizeWithPhantomData(::std::marker::PhantomData<i32>);
@@ -48,15 +61,14 @@ extern "C" {
     pub fn ptr_type2(size: *const Foo); //~ ERROR: uses type `Foo`
     pub fn ptr_unit(p: *const ());
     pub fn ptr_tuple(p: *const ((),)); //~ ERROR: uses type `((),)`
-    pub fn slice_type(p: &[u32]); //~ ERROR: uses type `[u32]`
-    pub fn str_type(p: &str); //~ ERROR: uses type `str`
-    pub fn box_type(p: Box<u32>); //~ ERROR uses type `Box<u32>`
+    pub fn slice_type(p: &[u32]); //~ ERROR: uses type `&[u32]`
+    pub fn str_type(p: &str); //~ ERROR: uses type `&str`
+    pub fn box_type(p: Box<u32>);
     pub fn opt_box_type(p: Option<Box<u32>>);
-    //~^ ERROR uses type `Option<Box<u32>>`
     pub fn char_type(p: char); //~ ERROR uses type `char`
     pub fn i128_type(p: i128); //~ ERROR uses type `i128`
     pub fn u128_type(p: u128); //~ ERROR uses type `u128`
-    pub fn trait_type(p: &dyn Bar); //~ ERROR uses type `dyn Bar`
+    pub fn trait_type(p: &dyn Bar); //~ ERROR uses type `&dyn Bar`
     pub fn tuple_type(p: (i32, i32)); //~ ERROR uses type `(i32, i32)`
     pub fn tuple_type2(p: I32Pair); //~ ERROR uses type `(i32, i32)`
     pub fn zero_size(p: ZeroSize); //~ ERROR uses type `ZeroSize`
@@ -66,11 +78,14 @@ extern "C" {
         -> ::std::marker::PhantomData<bool>; //~ ERROR uses type `PhantomData<bool>`
     pub fn fn_type(p: RustFn); //~ ERROR uses type `fn()`
     pub fn fn_type2(p: fn()); //~ ERROR uses type `fn()`
-    pub fn fn_contained(p: RustBadRet); //~ ERROR: uses type `Box<u32>`
+    pub fn fn_contained(p: RustBoxRet);
     pub fn transparent_i128(p: TransparentI128); //~ ERROR: uses type `i128`
-    pub fn transparent_str(p: TransparentStr); //~ ERROR: uses type `str`
-    pub fn transparent_fn(p: TransparentBadFn); //~ ERROR: uses type `Box<u32>`
+    pub fn transparent_str(p: TransparentStr); //~ ERROR: uses type `&str`
+    pub fn transparent_fn(p: TransparentBoxFn);
     pub fn raw_array(arr: [u8; 8]); //~ ERROR: uses type `[u8; 8]`
+
+    pub fn struct_unsized_ptr_no_metadata(p: &UnsizedStructBecauseForeign);
+    pub fn struct_unsized_ptr_has_metadata(p: &UnsizedStructBecauseDyn); //~ ERROR uses type `&UnsizedStructBecauseDyn`
 
     pub fn no_niche_a(a: Option<UnsafeCell<extern fn()>>);
     //~^ ERROR: uses type `Option<UnsafeCell<extern "C" fn()>>`
