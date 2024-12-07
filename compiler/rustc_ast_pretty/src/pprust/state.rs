@@ -1710,10 +1710,12 @@ impl<'a> State<'a> {
                 }
             }
             PatKind::Guard(subpat, condition) => {
+                self.popen();
                 self.print_pat(subpat);
                 self.space();
                 self.word_space("if");
                 self.print_expr(condition, FixupContext::default());
+                self.pclose();
             }
             PatKind::Slice(elts) => {
                 self.word("[");
