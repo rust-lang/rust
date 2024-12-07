@@ -1174,19 +1174,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateEnumerationType(
       /* RunTimeLang */ 0, "", IsScoped));
 }
 
-extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateUnionType(
-    LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
-    size_t NameLen, LLVMMetadataRef File, unsigned LineNumber,
-    uint64_t SizeInBits, uint32_t AlignInBits, LLVMRustDIFlags Flags,
-    LLVMMetadataRef Elements, unsigned RunTimeLang, const char *UniqueId,
-    size_t UniqueIdLen) {
-  return wrap(Builder->createUnionType(
-      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
-      unwrapDI<DIFile>(File), LineNumber, SizeInBits, AlignInBits,
-      fromRust(Flags), DINodeArray(unwrapDI<MDTuple>(Elements)), RunTimeLang,
-      StringRef(UniqueId, UniqueIdLen)));
-}
-
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateTemplateTypeParameter(
     LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     size_t NameLen, LLVMMetadataRef Ty) {

@@ -1670,6 +1670,23 @@ unsafe extern "C" {
         NumParameterTypes: c_uint,
         Flags: DIFlags, // (optional; default is `DIFlags::FlagZero`)
     ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateUnionType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Scope: Option<&'ll Metadata>,
+        Name: *const c_uchar,
+        NameLen: size_t,
+        File: &'ll Metadata,
+        LineNumber: c_uint,
+        SizeInBits: u64,
+        AlignInBits: u32,
+        Flags: DIFlags,
+        Elements: *const &'ll Metadata,
+        NumElements: c_uint,
+        RunTimeLang: c_uint, // (optional; default is 0)
+        UniqueId: *const c_uchar,
+        UniqueIdLen: size_t,
+    ) -> &'ll Metadata;
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -2172,22 +2189,6 @@ unsafe extern "C" {
         Elements: &'a DIArray,
         ClassType: &'a DIType,
         IsScoped: bool,
-    ) -> &'a DIType;
-
-    pub fn LLVMRustDIBuilderCreateUnionType<'a>(
-        Builder: &DIBuilder<'a>,
-        Scope: Option<&'a DIScope>,
-        Name: *const c_char,
-        NameLen: size_t,
-        File: &'a DIFile,
-        LineNumber: c_uint,
-        SizeInBits: u64,
-        AlignInBits: u32,
-        Flags: DIFlags,
-        Elements: Option<&'a DIArray>,
-        RunTimeLang: c_uint,
-        UniqueId: *const c_char,
-        UniqueIdLen: size_t,
     ) -> &'a DIType;
 
     pub fn LLVMRustDIBuilderCreateVariantPart<'a>(
