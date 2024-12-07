@@ -1712,6 +1712,10 @@ unsafe extern "C" {
 
 // FFI bindings for `DIBuilder` functions in the LLVM-C API.
 // Try to keep these in the same order as in `llvm/include/llvm-c/DebugInfo.h`.
+//
+// FIXME(#134001): Audit all `Option` parameters, especially in lists, to check
+// that they really are nullable on the C/C++ side. LLVM doesn't appear to
+// actually document which ones are nullable.
 unsafe extern "C" {
     pub(crate) fn LLVMCreateDIBuilder<'ll>(M: &'ll Module) -> *mut DIBuilder<'ll>;
     pub(crate) fn LLVMDisposeDIBuilder<'ll>(Builder: ptr::NonNull<DIBuilder<'ll>>);
