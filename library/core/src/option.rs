@@ -1840,6 +1840,34 @@ impl<T> Option<T> {
             _ => None,
         }
     }
+
+    /// Returns the contained [`Some`] value (consumes the `self` value).
+    /// 
+    /// # Panics
+    ///
+    /// This function throws an unreachable if the self value equals [`None`]
+    ///
+    /// # Examples
+    /// ```
+    /// let x = Some("air");
+    /// assert_eq!(x.unreachable(), "air");
+    /// ```
+    ///
+    /// ```should_panic
+    /// let x: Option<&str> = None;
+    /// assert_eq!(x.unreachable(), "air"); // fails
+    /// ```
+    #[inline(always)]
+    #[track_caller]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "option_unreachable")]
+    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
+    #[rustc_const_stable(feature = "const_option", since = "1.83.0")]
+    pub const fn unreachable(self) -> T {
+        let Some(value) = self else { unreachable!() };
+
+        value
+    }
 }
 
 impl<T, U> Option<(T, U)> {
