@@ -1,6 +1,9 @@
 //@ run-pass
+//@ aux-build:struct_field_default.rs
 #![feature(default_field_values, generic_const_exprs)]
 #![allow(unused_variables, dead_code, incomplete_features)]
+
+extern crate struct_field_default as xc;
 
 pub struct S;
 
@@ -65,4 +68,7 @@ fn main () {
     let x = Qux::<i32, 4> { .. };
     assert!(matches!(Qux::<i32, 4> { bar: S, baz: 42, bat: 2, baq: 2, bay: 4, .. }, x));
     assert!(x.bak.is_empty());
+
+    let x = xc::A { .. };
+    assert!(matches!(xc::A { a: 42 }, x));
 }
