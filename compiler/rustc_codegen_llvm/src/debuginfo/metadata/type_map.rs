@@ -226,23 +226,17 @@ pub(super) fn stub<'ll, 'tcx>(
                 )
             }
         }
-        Stub::Union => unsafe {
-            llvm::LLVMRustDIBuilderCreateUnionType(
-                DIB(cx),
-                containing_scope,
-                name.as_c_char_ptr(),
-                name.len(),
-                file_metadata,
-                line_number,
-                size.bits(),
-                align.bits() as u32,
-                flags,
-                Some(empty_array),
-                0,
-                unique_type_id_str.as_c_char_ptr(),
-                unique_type_id_str.len(),
-            )
-        },
+        Stub::Union => DIB(cx).create_union_type(
+            containing_scope,
+            name,
+            file_metadata,
+            line_number,
+            size,
+            align,
+            flags,
+            &[],
+            &unique_type_id_str,
+        ),
     };
     StubInfo { metadata, unique_type_id }
 }
