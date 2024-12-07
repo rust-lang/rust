@@ -52,7 +52,7 @@ extend-ignore-words-re = [
 ]
 
 extend-ignore-re = [
-    # ignore this intensional typo examples
+    # ignore these intentional typo examples
     "/// 1 \\| #\\[cfg\\(widnows\\)\\]",
     "/// warning: unexpected `cfg` condition name: `widnows`",
     "/// #\\[cfg\\(widnows\\)\\]",
