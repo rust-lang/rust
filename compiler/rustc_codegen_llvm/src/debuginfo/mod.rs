@@ -172,14 +172,17 @@ impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
             addr_ops.push((fragment.end - fragment.start).bits() as u64);
         }
 
+        let expr = unsafe {
+            llvm::LLVMDIBuilderCreateExpression(DIB(self.cx()), addr_ops.as_ptr(), addr_ops.len())
+        };
+
         unsafe {
             // FIXME(eddyb) replace `llvm.dbg.declare` with `llvm.dbg.addr`.
-            llvm::LLVMRustDIBuilderInsertDeclareAtEnd(
+            llvm::LLVMRustDIBuilderInsertDeclareRecordAtEnd(
                 DIB(self.cx()),
                 variable_alloca,
                 dbg_var,
-                addr_ops.as_ptr(),
-                addr_ops.len() as c_uint,
+                expr,
                 dbg_loc,
                 self.llbb(),
             );

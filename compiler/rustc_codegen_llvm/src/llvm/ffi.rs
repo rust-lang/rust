@@ -1784,6 +1784,12 @@ unsafe extern "C" {
         Data: *const Option<&'ll Metadata>,
         NumElements: size_t,
     ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateExpression<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Addr: *const u64,
+        Length: size_t,
+    ) -> &'ll Metadata;
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -2162,14 +2168,15 @@ unsafe extern "C" {
         AlignInBits: u32,
     ) -> &'a DIVariable;
 
-    pub fn LLVMRustDIBuilderInsertDeclareAtEnd<'a>(
-        Builder: &DIBuilder<'a>,
-        Val: &'a Value,
-        VarInfo: &'a DIVariable,
-        AddrOps: *const u64,
-        AddrOpsCount: c_uint,
-        DL: &'a DILocation,
-        InsertAtEnd: &'a BasicBlock,
+    /// Mostly equivalent to `LLVMDIBuilderInsertDeclareRecordAtEnd` in LLVM 19,
+    /// except that this works on LLVM 18 and also doesn't return a value.
+    pub(crate) fn LLVMRustDIBuilderInsertDeclareRecordAtEnd<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Storage: &'ll Value,
+        VarInfo: &'ll Metadata,
+        Expr: &'ll Metadata,
+        DebugLoc: &'ll Metadata,
+        Block: &'ll BasicBlock,
     );
 
     pub fn LLVMRustDIBuilderCreateEnumerator<'a>(

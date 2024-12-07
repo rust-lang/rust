@@ -1058,15 +1058,12 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariable(
   }
 }
 
-extern "C" void LLVMRustDIBuilderInsertDeclareAtEnd(
-    LLVMRustDIBuilderRef Builder, LLVMValueRef V, LLVMMetadataRef VarInfo,
-    uint64_t *AddrOps, unsigned AddrOpsCount, LLVMMetadataRef DL,
-    LLVMBasicBlockRef InsertAtEnd) {
-  Builder->insertDeclare(unwrap(V), unwrap<DILocalVariable>(VarInfo),
-                         Builder->createExpression(
-                             llvm::ArrayRef<uint64_t>(AddrOps, AddrOpsCount)),
-                         DebugLoc(cast<MDNode>(unwrap(DL))),
-                         unwrap(InsertAtEnd));
+extern "C" void LLVMRustDIBuilderInsertDeclareRecordAtEnd(
+    LLVMDIBuilderRef Builder, LLVMValueRef Storage, LLVMMetadataRef VarInfo,
+    LLVMMetadataRef Expr, LLVMMetadataRef DebugLoc, LLVMBasicBlockRef Block) {
+  unwrap(Builder)->insertDeclare(
+      unwrap(Storage), unwrap<DILocalVariable>(VarInfo),
+      unwrap<DIExpression>(Expr), unwrap<DILocation>(DebugLoc), unwrap(Block));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateEnumerator(
