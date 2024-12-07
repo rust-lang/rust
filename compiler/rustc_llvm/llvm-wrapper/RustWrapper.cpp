@@ -1058,14 +1058,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariable(
   }
 }
 
-extern "C" LLVMMetadataRef
-LLVMRustDIBuilderGetOrCreateArray(LLVMRustDIBuilderRef Builder,
-                                  LLVMMetadataRef *Ptr, unsigned Count) {
-  Metadata **DataValue = unwrap(Ptr);
-  return wrap(
-      Builder->getOrCreateArray(ArrayRef<Metadata *>(DataValue, Count)).get());
-}
-
 extern "C" void LLVMRustDIBuilderInsertDeclareAtEnd(
     LLVMRustDIBuilderRef Builder, LLVMValueRef V, LLVMMetadataRef VarInfo,
     uint64_t *AddrOps, unsigned AddrOpsCount, LLVMMetadataRef DL,
