@@ -1,12 +1,15 @@
 [files]
 extend-exclude = [
-    # ./compiler excludes
+    # exclude git (sub)modules and generated content
     "compiler/rustc_codegen_gcc",
     "compiler/rustc_codegen_cranelift",
     "compiler/rustc_baked_icu_data",
 ]
 
 [default.extend-words]
+# Add exclusions here, lines should be like `x = "x"`, where `x` is excluded word.
+#
+# Also see docs: https://github.com/crate-ci/typos/blob/v1.28.2/docs/reference.md
 thir = "thir"
 padd = "padd"
 rplace = "rplace"
@@ -21,11 +24,21 @@ Lits = "Lits"
 makro = "makro"
 optin = "optin"
 parm = "parm"
-EXCED = "EXCED"
-Shortern = "Shortern"
 unparseable = "unparseable"
-replacable = "replacable"
 matcheable = "matcheable"
+smove = "smove"
+childs = "childs"
+filetimes = "filetimes"
+
+[default.extend-identifiers]
+ERROR_FILENAME_EXCED_RANGE = "ERROR_FILENAME_EXCED_RANGE"
+DNS_ERROR_INVAILD_VIRTUALIZATION_INSTANCE_NAME = "DNS_ERROR_INVAILD_VIRTUALIZATION_INSTANCE_NAME"
+ERROR_DS_FILTER_USES_CONTRUCTED_ATTRS = "ERROR_DS_FILTER_USES_CONTRUCTED_ATTRS"
+ERROR_DS_NOT_AUTHORITIVE_FOR_DST_NC = "ERROR_DS_NOT_AUTHORITIVE_FOR_DST_NC"
+ERROR_MCA_OCCURED = "ERROR_MCA_OCCURED"
+ERRNO_ACCES = "ERRNO_ACCES"
+tolen = "tolen"
+pard = "pard"
 
 [default]
 extend-ignore-words-re = [
