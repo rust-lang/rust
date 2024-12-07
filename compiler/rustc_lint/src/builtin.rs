@@ -1913,6 +1913,9 @@ impl EarlyLintPass for KeywordIdents {
             self.check_ident_token(cx, UnderMacro(false), *ident, "");
         }
     }
+    fn check_lifetime(&mut self, cx: &EarlyContext<'_>, lt: &ast::Lifetime) {
+        self.check_ident_token(cx, UnderMacro(false), lt.ident.without_first_quote(), "'");
+    }
 }
 
 declare_lint_pass!(ExplicitOutlivesRequirements => [EXPLICIT_OUTLIVES_REQUIREMENTS]);

@@ -41,7 +41,16 @@ LL | fn test<'gen>(_: &'gen i32) {}
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `gen` is a keyword in the 2024 edition
-  --> $DIR/gen-kw.rs:30:10
+  --> $DIR/gen-kw.rs:25:19
+   |
+LL | fn test<'gen>(_: &'gen i32) {}
+   |                   ^^^^ help: you can use a raw identifier to stay compatible: `'r#gen`
+   |
+   = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2024!
+   = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
+
+error: `gen` is a keyword in the 2024 edition
+  --> $DIR/gen-kw.rs:33:10
    |
 LL | struct S<'gen>(&'gen i32);
    |          ^^^^ help: you can use a raw identifier to stay compatible: `'r#gen`
@@ -50,7 +59,16 @@ LL | struct S<'gen>(&'gen i32);
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `gen` is a keyword in the 2024 edition
-  --> $DIR/gen-kw.rs:36:6
+  --> $DIR/gen-kw.rs:33:17
+   |
+LL | struct S<'gen>(&'gen i32);
+   |                 ^^^^ help: you can use a raw identifier to stay compatible: `'r#gen`
+   |
+   = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2024!
+   = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
+
+error: `gen` is a keyword in the 2024 edition
+  --> $DIR/gen-kw.rs:42:6
    |
 LL | impl<'gen> Tr for S<'gen> {}
    |      ^^^^ help: you can use a raw identifier to stay compatible: `'r#gen`
@@ -58,5 +76,14 @@ LL | impl<'gen> Tr for S<'gen> {}
    = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2024!
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
-error: aborting due to 6 previous errors
+error: `gen` is a keyword in the 2024 edition
+  --> $DIR/gen-kw.rs:42:21
+   |
+LL | impl<'gen> Tr for S<'gen> {}
+   |                     ^^^^ help: you can use a raw identifier to stay compatible: `'r#gen`
+   |
+   = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust 2024!
+   = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
+
+error: aborting due to 9 previous errors
 

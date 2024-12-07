@@ -137,6 +137,7 @@ macro_rules! early_lint_methods {
         $macro!($args, [
             fn check_param(a: &rustc_ast::Param);
             fn check_ident(a: &rustc_span::symbol::Ident);
+            fn check_lifetime(a: &rustc_ast::Lifetime);
             fn check_crate(a: &rustc_ast::Crate);
             fn check_crate_post(a: &rustc_ast::Crate);
             fn check_item(a: &rustc_ast::Item);
