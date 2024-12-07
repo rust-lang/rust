@@ -585,6 +585,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.trait_def(trait_def_id).implement_via_object
     }
 
+    fn trait_is_unsafe(self, trait_def_id: Self::DefId) -> bool {
+        self.trait_def(trait_def_id).safety == hir::Safety::Unsafe
+    }
+
     fn is_impl_trait_in_trait(self, def_id: DefId) -> bool {
         self.is_impl_trait_in_trait(def_id)
     }
