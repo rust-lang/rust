@@ -549,21 +549,7 @@ impl Builder<'_> {
             rustflags.arg(sysroot_str);
         }
 
-        let use_new_symbol_mangling = match self.config.rust_new_symbol_mangling {
-            Some(setting) => {
-                // If an explicit setting is given, use that
-                setting
-            }
-            None => {
-                if mode == Mode::Std {
-                    // The standard library defaults to the legacy scheme
-                    false
-                } else {
-                    // The compiler and tools default to the new scheme
-                    true
-                }
-            }
-        };
+        let use_new_symbol_mangling = self.config.rust_new_symbol_mangling.unwrap_or(true);
 
         // By default, windows-rs depends on a native library that doesn't get copied into the
         // sysroot. Passing this cfg enables raw-dylib support instead, which makes the native
