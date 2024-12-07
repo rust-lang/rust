@@ -1,0 +1,41 @@
+[files]
+extend-exclude = [
+    # ./compiler excludes
+    "compiler/rustc_codegen_gcc",
+    "compiler/rustc_codegen_cranelift",
+    "compiler/rustc_baked_icu_data",
+]
+
+[default.extend-words]
+thir = "thir"
+padd = "padd"
+rplace = "rplace"
+arange = "arange"
+rela = "rela"
+unstalled = "unstalled"
+taits = "taits"
+Datas = "Datas"
+splitted = "splitted"
+leafs = "leafs"
+Lits = "Lits"
+makro = "makro"
+optin = "optin"
+parm = "parm"
+EXCED = "EXCED"
+Shortern = "Shortern"
+unparseable = "unparseable"
+replacable = "replacable"
+matcheable = "matcheable"
+
+[default]
+extend-ignore-words-re = [
+    # words with length <= 3 chars is likely noise
+    "^[a-zA-Z]{1,3}$",
+]
+
+extend-ignore-re = [
+    # ignore this intensional typo examples from lints
+    "/// 1 \\| #\\[cfg\\(widnows\\)\\]",
+    "/// warning: unexpected `cfg` condition name: `widnows`",
+    "/// #\\[cfg\\(widnows\\)\\]",
+]
