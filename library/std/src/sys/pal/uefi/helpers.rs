@@ -314,7 +314,7 @@ impl<T> OwnedProtocol<T> {
         let protocol: *mut T = Box::into_raw(Box::new(protocol));
         let mut handle: r_efi::efi::Handle = crate::ptr::null_mut();
 
-        // FIXME: Move into r-efi once extended_varargs_abi_support is stablized
+        // FIXME: Move into r-efi once extended_varargs_abi_support is stabilized
         let func: BootInstallMultipleProtocolInterfaces =
             unsafe { crate::mem::transmute((*bt.as_ptr()).install_multiple_protocol_interfaces) };
 
@@ -348,7 +348,7 @@ impl<T> Drop for OwnedProtocol<T> {
         // Do not deallocate a runtime protocol
         if let Some(bt) = boot_services() {
             let bt: NonNull<r_efi::efi::BootServices> = bt.cast();
-            // FIXME: Move into r-efi once extended_varargs_abi_support is stablized
+            // FIXME: Move into r-efi once extended_varargs_abi_support is stabilized
             let func: BootUninstallMultipleProtocolInterfaces = unsafe {
                 crate::mem::transmute((*bt.as_ptr()).uninstall_multiple_protocol_interfaces)
             };
