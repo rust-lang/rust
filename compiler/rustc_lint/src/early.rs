@@ -245,6 +245,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
 
     fn visit_lifetime(&mut self, lt: &'a ast::Lifetime, _: ast_visit::LifetimeCtxt) {
         self.check_id(lt.id);
+        ast_visit::walk_lifetime(self, lt);
     }
 
     fn visit_path(&mut self, p: &'a ast::Path, id: ast::NodeId) {
@@ -259,6 +260,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
 
     fn visit_attribute(&mut self, attr: &'a ast::Attribute) {
         lint_callback!(self, check_attribute, attr);
+        ast_visit::walk_attribute(self, attr);
     }
 
     fn visit_mac_def(&mut self, mac: &'a ast::MacroDef, id: ast::NodeId) {
