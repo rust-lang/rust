@@ -1734,6 +1734,20 @@ unsafe extern "C" {
         UniqueId: *const c_uchar,
         UniqueIdLen: size_t,
     ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateMemberType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Scope: &'ll Metadata,
+        Name: *const c_uchar,
+        NameLen: size_t,
+        File: &'ll Metadata,
+        LineNo: c_uint,
+        SizeInBits: u64,
+        AlignInBits: u32,
+        OffsetInBits: u64,
+        Flags: DIFlags,
+        Ty: &'ll Metadata,
+    ) -> &'ll Metadata;
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -2074,20 +2088,6 @@ unsafe extern "C" {
         File: &'a DIFile,
         LineNo: c_uint,
         Scope: Option<&'a DIScope>,
-    ) -> &'a DIDerivedType;
-
-    pub fn LLVMRustDIBuilderCreateMemberType<'a>(
-        Builder: &DIBuilder<'a>,
-        Scope: &'a DIDescriptor,
-        Name: *const c_char,
-        NameLen: size_t,
-        File: &'a DIFile,
-        LineNo: c_uint,
-        SizeInBits: u64,
-        AlignInBits: u32,
-        OffsetInBits: u64,
-        Flags: DIFlags,
-        Ty: &'a DIType,
     ) -> &'a DIDerivedType;
 
     pub fn LLVMRustDIBuilderCreateVariantMemberType<'a>(

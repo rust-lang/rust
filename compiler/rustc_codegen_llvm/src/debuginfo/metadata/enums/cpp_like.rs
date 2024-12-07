@@ -829,10 +829,10 @@ fn build_union_fields_for_direct_tag_enum_or_coroutine<'ll, 'tcx>(
         // the build_field_di_node() function does not support specifying a source location,
         // which is something that we don't do anywhere else.
         unsafe {
-            llvm::LLVMRustDIBuilderCreateMemberType(
+            llvm::LLVMDIBuilderCreateMemberType(
                 DIB(cx),
                 enum_type_di_node,
-                field_name.as_c_char_ptr(),
+                field_name.as_ptr(),
                 field_name.len(),
                 file_di_node,
                 line_number,

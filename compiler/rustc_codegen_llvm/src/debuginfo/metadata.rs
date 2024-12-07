@@ -1002,10 +1002,10 @@ fn build_field_di_node<'ll, 'tcx>(
         (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
     };
     unsafe {
-        llvm::LLVMRustDIBuilderCreateMemberType(
+        llvm::LLVMDIBuilderCreateMemberType(
             DIB(cx),
             owner,
-            name.as_c_char_ptr(),
+            name.as_ptr(),
             name.len(),
             file_metadata,
             line_number,
