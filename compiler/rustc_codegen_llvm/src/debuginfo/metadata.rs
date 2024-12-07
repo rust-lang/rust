@@ -180,13 +180,13 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
             );
 
             let di_node = unsafe {
-                llvm::LLVMRustDIBuilderCreatePointerType(
+                llvm::LLVMDIBuilderCreatePointerType(
                     DIB(cx),
                     pointee_type_di_node,
                     data_layout.pointer_size.bits(),
                     data_layout.pointer_align.abi.bits() as u32,
                     0, // Ignore DWARF address space.
-                    ptr_type_debuginfo_name.as_c_char_ptr(),
+                    ptr_type_debuginfo_name.as_ptr(),
                     ptr_type_debuginfo_name.len(),
                 )
             };
@@ -238,7 +238,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                     // The data pointer type is a regular, thin pointer, regardless of whether this
                     // is a slice or a trait object.
                     let data_ptr_type_di_node = unsafe {
-                        llvm::LLVMRustDIBuilderCreatePointerType(
+                        llvm::LLVMDIBuilderCreatePointerType(
                             DIB(cx),
                             pointee_type_di_node,
                             addr_field.size.bits(),
@@ -343,13 +343,13 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
         _ => unreachable!(),
     };
     let di_node = unsafe {
-        llvm::LLVMRustDIBuilderCreatePointerType(
+        llvm::LLVMDIBuilderCreatePointerType(
             DIB(cx),
             fn_di_node,
             size,
             align,
             0, // Ignore DWARF address space.
-            name.as_c_char_ptr(),
+            name.as_ptr(),
             name.len(),
         )
     };

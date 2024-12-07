@@ -1705,6 +1705,16 @@ unsafe extern "C" {
         Encoding: c_uint, // `LLVMDWARFTypeEncoding`
         Flags: DIFlags,   // (optional; default is `DIFlags::FlagZero`)
     ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreatePointerType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        PointeeTy: &'ll Metadata,
+        SizeInBits: u64,
+        AlignInBits: u32,
+        AddressSpace: c_uint,
+        Name: *const c_uchar,
+        NameLen: size_t,
+    ) -> &'ll Metadata;
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -2045,16 +2055,6 @@ unsafe extern "C" {
         File: &'a DIFile,
         LineNo: c_uint,
         Scope: Option<&'a DIScope>,
-    ) -> &'a DIDerivedType;
-
-    pub fn LLVMRustDIBuilderCreatePointerType<'a>(
-        Builder: &DIBuilder<'a>,
-        PointeeTy: &'a DIType,
-        SizeInBits: u64,
-        AlignInBits: u32,
-        AddressSpace: c_uint,
-        Name: *const c_char,
-        NameLen: size_t,
     ) -> &'a DIDerivedType;
 
     pub fn LLVMRustDIBuilderCreateStructType<'a>(
