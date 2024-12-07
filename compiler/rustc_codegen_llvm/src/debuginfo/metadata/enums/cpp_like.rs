@@ -11,7 +11,7 @@ use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, AdtDef, CoroutineArgs, CoroutineArgsExt, Ty};
 use smallvec::smallvec;
 
-use crate::common::{AsCCharPtr, CodegenCx};
+use crate::common::CodegenCx;
 use crate::debuginfo::metadata::enums::DiscrResult;
 use crate::debuginfo::metadata::type_map::{self, Stub, UniqueTypeId};
 use crate::debuginfo::metadata::{
@@ -381,10 +381,10 @@ fn build_single_variant_union_fields<'ll, 'tcx>(
             None,
         ),
         unsafe {
-            llvm::LLVMRustDIBuilderCreateStaticMemberType(
+            llvm::LLVMDIBuilderCreateStaticMemberType(
                 DIB(cx),
                 enum_type_di_node,
-                TAG_FIELD_NAME.as_c_char_ptr(),
+                TAG_FIELD_NAME.as_ptr(),
                 TAG_FIELD_NAME.len(),
                 unknown_file_metadata(cx),
                 UNKNOWN_LINE_NUMBER,
@@ -571,10 +571,10 @@ fn build_variant_struct_wrapper_type_di_node<'ll, 'tcx>(
 
             let build_assoc_const =
                 |name: &str, type_di_node: &'ll DIType, value: u64, align: Align| unsafe {
-                    llvm::LLVMRustDIBuilderCreateStaticMemberType(
+                    llvm::LLVMDIBuilderCreateStaticMemberType(
                         DIB(cx),
                         wrapper_struct_type_di_node,
-                        name.as_c_char_ptr(),
+                        name.as_ptr(),
                         name.len(),
                         unknown_file_metadata(cx),
                         UNKNOWN_LINE_NUMBER,
