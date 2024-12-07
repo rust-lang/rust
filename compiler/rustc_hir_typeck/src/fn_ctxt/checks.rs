@@ -2642,7 +2642,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Returns the parameters of a function, with their generic parameters if those are the full
     /// type of that parameter. Returns `None` if the function has no generics or the body is
-    /// unavailable (eg is an instrinsic).
+    /// unavailable (eg is an intrinsic).
     fn get_hir_param_info(
         &self,
         def_id: DefId,

@@ -4435,7 +4435,7 @@ declare_lint! {
 
 declare_lint! {
     /// The `refining_impl_trait_reachable` lint detects `impl Trait` return
-    /// types in method signatures that are refined by a publically reachable
+    /// types in method signatures that are refined by a publicly reachable
     /// trait implementation, meaning the implementation adds information about
     /// the return type that is not present in the trait.
     ///
@@ -4476,7 +4476,7 @@ declare_lint! {
     ///
     /// `refining_impl_trait` is a lint group composed of two lints:
     ///
-    /// * `refining_impl_trait_reachable`, for refinements that are publically
+    /// * `refining_impl_trait_reachable`, for refinements that are publicly
     ///   reachable outside a crate, and
     /// * `refining_impl_trait_internal`, for refinements that are only visible
     ///    within a crate.
@@ -4532,7 +4532,7 @@ declare_lint! {
     ///
     /// `refining_impl_trait` is a lint group composed of two lints:
     ///
-    /// * `refining_impl_trait_reachable`, for refinements that are publically
+    /// * `refining_impl_trait_reachable`, for refinements that are publicly
     ///   reachable outside a crate, and
     /// * `refining_impl_trait_internal`, for refinements that are only visible
     ///    within a crate.
