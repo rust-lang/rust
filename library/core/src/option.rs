@@ -1842,7 +1842,7 @@ impl<T> Option<T> {
     }
 
     /// Returns the contained [`Some`] value (consumes the `self` value).
-    /// 
+    ///
     /// # Panics
     ///
     /// This function throws an unreachable if the self value equals [`None`]
