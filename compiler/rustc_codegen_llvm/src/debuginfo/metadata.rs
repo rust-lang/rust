@@ -4,7 +4,7 @@ use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::{iter, ptr};
 
-use libc::{c_char, c_longlong, c_uint};
+use libc::{c_char, c_uint};
 use rustc_abi::{Align, Size};
 use rustc_codegen_ssa::debuginfo::type_names::{VTableNameKind, cpp_like_debuginfo};
 use rustc_codegen_ssa::traits::*;
@@ -121,11 +121,16 @@ fn build_fixed_size_array_di_node<'ll, 'tcx>(
 
     let (size, align) = cx.size_and_align_of(array_type);
 
-    let upper_bound = len
-        .try_to_target_usize(cx.tcx)
-        .expect("expected monomorphic const in codegen") as c_longlong;
+    let upper_bound =
+        len.try_to_target_usize(cx.tcx).expect("expected monomorphic const in codegen");
 
-    let subrange = unsafe { llvm::LLVMRustDIBuilderGetOrCreateSubrange(DIB(cx), 0, upper_bound) };
+    let subrange = unsafe {
+        llvm::LLVMDIBuilderGetOrCreateSubrange(
+            DIB(cx),
+            /* LowerBound */ 0i64,
+            /* Count */ upper_bound as i64,
+        )
+    };
 
     let subscripts = &[subrange];
     let di_node = unsafe {

@@ -12,7 +12,7 @@ use rustc_target::spec::SymbolVisibility;
 use super::RustString;
 use super::debuginfo::{
     DIArray, DIBuilder, DIDerivedType, DIDescriptor, DIEnumerator, DIFile, DIFlags,
-    DIGlobalVariableExpression, DILocation, DISPFlags, DIScope, DISubprogram, DISubrange,
+    DIGlobalVariableExpression, DILocation, DISPFlags, DIScope, DISubprogram,
     DITemplateTypeParameter, DIType, DIVariable, DebugEmissionKind, DebugNameTableKind,
 };
 use crate::llvm;
@@ -1772,6 +1772,12 @@ unsafe extern "C" {
         Scope: Option<&'ll Metadata>,
         AlignInBits: u32, // (optional; default is 0)
     ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderGetOrCreateSubrange<'ll>(
+        Builder: &DIBuilder<'ll>,
+        LowerBound: i64,
+        Count: i64,
+    ) -> &'ll Metadata;
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -2149,12 +2155,6 @@ unsafe extern "C" {
         ArgNo: c_uint,
         AlignInBits: u32,
     ) -> &'a DIVariable;
-
-    pub fn LLVMRustDIBuilderGetOrCreateSubrange<'a>(
-        Builder: &DIBuilder<'a>,
-        Lo: i64,
-        Count: i64,
-    ) -> &'a DISubrange;
 
     pub fn LLVMRustDIBuilderGetOrCreateArray<'a>(
         Builder: &DIBuilder<'a>,

@@ -1059,12 +1059,6 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariable(
 }
 
 extern "C" LLVMMetadataRef
-LLVMRustDIBuilderGetOrCreateSubrange(LLVMRustDIBuilderRef Builder, int64_t Lo,
-                                     int64_t Count) {
-  return wrap(Builder->getOrCreateSubrange(Lo, Count));
-}
-
-extern "C" LLVMMetadataRef
 LLVMRustDIBuilderGetOrCreateArray(LLVMRustDIBuilderRef Builder,
                                   LLVMMetadataRef *Ptr, unsigned Count) {
   Metadata **DataValue = unwrap(Ptr);
