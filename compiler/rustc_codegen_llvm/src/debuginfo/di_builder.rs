@@ -92,4 +92,24 @@ impl<'ll> DIBuilder<'ll> {
             )
         }
     }
+
+    pub(crate) fn create_pointer_type(
+        &self,
+        pointee_type: &'ll Metadata,
+        size: Size,
+        align: Align,
+        name: &str,
+    ) -> &'ll Metadata {
+        unsafe {
+            llvm::LLVMDIBuilderCreatePointerType(
+                self,
+                pointee_type,
+                size.bits(),
+                align.bits() as u32,
+                0, // ("DWARF address space"; default is 0)
+                name.as_ptr(),
+                name.len(),
+            )
+        }
+    }
 }
