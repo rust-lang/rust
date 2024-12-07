@@ -741,8 +741,11 @@ pub mod debuginfo {
     pub type DIEnumerator = DIDescriptor;
     pub type DITemplateTypeParameter = DIDescriptor;
 
-    // These values **must** match with LLVMRustDIFlags!!
     bitflags! {
+        /// Must match the layout of `LLVMDIFlags` in the LLVM-C API.
+        ///
+        /// Each value declared here must also be covered by the static
+        /// assertions in `RustWrapper.cpp` used by `fromRust(LLVMDIFlags)`.
         #[repr(transparent)]
         #[derive(Clone, Copy, Default)]
         pub struct DIFlags: u32 {
@@ -752,7 +755,7 @@ pub mod debuginfo {
             const FlagPublic              = 3;
             const FlagFwdDecl             = (1 << 2);
             const FlagAppleBlock          = (1 << 3);
-            const FlagBlockByrefStruct    = (1 << 4);
+            const FlagReservedBit4        = (1 << 4);
             const FlagVirtual             = (1 << 5);
             const FlagArtificial          = (1 << 6);
             const FlagExplicit            = (1 << 7);
@@ -763,10 +766,21 @@ pub mod debuginfo {
             const FlagStaticMember        = (1 << 12);
             const FlagLValueReference     = (1 << 13);
             const FlagRValueReference     = (1 << 14);
-            const FlagExternalTypeRef     = (1 << 15);
+            const FlagReserved            = (1 << 15);
+            const FlagSingleInheritance   = (1 << 16);
+            const FlagMultipleInheritance = (2 << 16);
+            const FlagVirtualInheritance  = (3 << 16);
             const FlagIntroducedVirtual   = (1 << 18);
             const FlagBitField            = (1 << 19);
             const FlagNoReturn            = (1 << 20);
+            // The bit at (1 << 21) is unused, but was `LLVMDIFlagMainSubprogram`.
+            const FlagTypePassByValue     = (1 << 22);
+            const FlagTypePassByReference = (1 << 23);
+            const FlagEnumClass           = (1 << 24);
+            const FlagThunk               = (1 << 25);
+            const FlagNonTrivial          = (1 << 26);
+            const FlagBigEndian           = (1 << 27);
+            const FlagLittleEndian        = (1 << 28);
         }
     }
 
