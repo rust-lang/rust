@@ -495,32 +495,31 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             // - Panic, e.g. triggered by `abort_if_errors` or a fatal error.
             //
             // We must run `finish_diagnostics` in both cases.
-            let res = {
-                let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(&compiler)));
+            let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(&compiler)));
 
-                compiler.sess.finish_diagnostics();
+            compiler.sess.finish_diagnostics();
 
-                // If error diagnostics have been emitted, we can't return an
-                // error directly, because the return type of this function
-                // is `R`, not `Result<R, E>`. But we need to communicate the
-                // errors' existence to the caller, otherwise the caller might
-                // mistakenly think that no errors occurred and return a zero
-                // exit code. So we abort (panic) instead, similar to if `f`
-                // had panicked.
-                if res.is_ok() {
-                    compiler.sess.dcx().abort_if_errors();
-                }
+            // If error diagnostics have been emitted, we can't return an
+            // error directly, because the return type of this function
+            // is `R`, not `Result<R, E>`. But we need to communicate the
+            // errors' existence to the caller, otherwise the caller might
+            // mistakenly think that no errors occurred and return a zero
+            // exit code. So we abort (panic) instead, similar to if `f`
+            // had panicked.
+            if res.is_ok() {
+                compiler.sess.dcx().abort_if_errors();
+            }
 
-                // Also make sure to flush delayed bugs as if we panicked, the
-                // bugs would be flushed by the Drop impl of DiagCtxt while
-                // unwinding, which would result in an abort with
-                // "panic in a destructor during cleanup".
-                compiler.sess.dcx().flush_delayed();
+            // Also make sure to flush delayed bugs as if we panicked, the
+            // bugs would be flushed by the Drop impl of DiagCtxt while
+            // unwinding, which would result in an abort with
+            // "panic in a destructor during cleanup".
+            compiler.sess.dcx().flush_delayed();
 
-                match res {
-                    Ok(res) => res,
-                    Err(err) => std::panic::resume_unwind(err),
-                }
+            let res = match res {
+                Ok(res) => res,
+                // Resume unwinding if a panic happened.
+                Err(err) => std::panic::resume_unwind(err),
             };
 
             let prof = compiler.sess.prof.clone();
