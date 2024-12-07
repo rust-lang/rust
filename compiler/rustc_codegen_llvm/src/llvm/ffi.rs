@@ -1797,6 +1797,15 @@ unsafe extern "C" {
         UniqueId: *const c_uchar,
         UniqueIdLen: size_t,
     ) -> &'ll Metadata;
+
+    pub(crate) fn LLVMDIBuilderCreateArrayType<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Size: u64,
+        AlignInBits: u32,
+        Ty: &'ll Metadata,
+        Subscripts: *const &'ll Metadata,
+        NumSubscripts: c_uint,
+    ) -> &'ll Metadata;
 }
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -2267,14 +2276,6 @@ unsafe extern "C" {
         ArgNo: c_uint,
         AlignInBits: u32,
     ) -> &'a DIVariable;
-
-    pub(crate) fn LLVMRustDIBuilderCreateArrayType<'a>(
-        Builder: &DIBuilder<'a>,
-        Size: u64,
-        AlignInBits: u32,
-        Ty: &'a DIType,
-        Subscripts: &'a DIArray,
-    ) -> &'a DIType;
 
     pub(crate) fn LLVMRustDIBuilderGetOrCreateSubrange<'a>(
         Builder: &DIBuilder<'a>,

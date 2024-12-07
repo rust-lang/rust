@@ -29,9 +29,7 @@ use self::type_map::{DINodeCreationResult, Stub, UniqueTypeId};
 use super::CodegenUnitDebugContext;
 use super::namespace::mangled_name_of_instance;
 use super::type_names::{compute_debuginfo_type_name, compute_debuginfo_vtable_name};
-use super::utils::{
-    DIB, create_DIArray, debug_context, get_namespace_for_item, is_node_local_to_unit,
-};
+use super::utils::{DIB, debug_context, get_namespace_for_item, is_node_local_to_unit};
 use crate::common::{AsCCharPtr, CodegenCx};
 use crate::debuginfo::dwarf_const;
 use crate::debuginfo::metadata::type_map::build_type_with_children;
@@ -114,19 +112,9 @@ fn build_fixed_size_array_di_node<'ll, 'tcx>(
         .try_to_target_usize(cx.tcx)
         .expect("expected monomorphic const in codegen") as c_longlong;
 
-    let subrange =
-        unsafe { Some(llvm::LLVMRustDIBuilderGetOrCreateSubrange(DIB(cx), 0, upper_bound)) };
+    let subrange = unsafe { llvm::LLVMRustDIBuilderGetOrCreateSubrange(DIB(cx), 0, upper_bound) };
 
-    let subscripts = create_DIArray(DIB(cx), &[subrange]);
-    let di_node = unsafe {
-        llvm::LLVMRustDIBuilderCreateArrayType(
-            DIB(cx),
-            size.bits(),
-            align.bits() as u32,
-            element_type_di_node,
-            subscripts,
-        )
-    };
+    let di_node = DIB(cx).create_array_type(size, align, element_type_di_node, &[subrange]);
 
     DINodeCreationResult::new(di_node, false)
 }
