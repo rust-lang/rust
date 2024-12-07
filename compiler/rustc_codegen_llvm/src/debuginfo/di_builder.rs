@@ -73,4 +73,23 @@ impl<'ll> DIBuilder<'ll> {
             )
         }
     }
+
+    pub(crate) fn create_basic_type(
+        &self,
+        name: &str,
+        size: Size,
+        dwarf_type_encoding: u32,
+        flags: DIFlags,
+    ) -> &'ll Metadata {
+        unsafe {
+            llvm::LLVMDIBuilderCreateBasicType(
+                self,
+                name.as_ptr(),
+                name.len(),
+                size.bits(),
+                dwarf_type_encoding,
+                flags,
+            )
+        }
+    }
 }
