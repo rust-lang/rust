@@ -516,12 +516,13 @@ fn recursion_marker_type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) -> &'ll D
             // FIXME: it might make sense to use an actual pointer type here
             //        so that debuggers can show the address.
             let name = "<recur_type>";
-            llvm::LLVMRustDIBuilderCreateBasicType(
+            llvm::LLVMDIBuilderCreateBasicType(
                 DIB(cx),
-                name.as_c_char_ptr(),
+                name.as_ptr(),
                 name.len(),
                 cx.tcx.data_layout.pointer_size.bits(),
                 DW_ATE_unsigned,
+                DIFlags::FlagZero,
             )
         }
     })
@@ -804,12 +805,13 @@ fn build_basic_type_di_node<'ll, 'tcx>(
     };
 
     let ty_di_node = unsafe {
-        llvm::LLVMRustDIBuilderCreateBasicType(
+        llvm::LLVMDIBuilderCreateBasicType(
             DIB(cx),
-            name.as_c_char_ptr(),
+            name.as_ptr(),
             name.len(),
             cx.size_of(t).bits(),
             encoding,
+            DIFlags::FlagZero,
         )
     };
 
