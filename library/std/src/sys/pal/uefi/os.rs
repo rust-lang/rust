@@ -314,7 +314,7 @@ mod uefi_env {
 
         let mut start = 0;
 
-        // UEFI Shell returns all keys seperated by NULL.
+        // UEFI Shell returns all keys separated by NULL.
         // End of string is denoted by two NULLs
         for i in 0.. {
             if unsafe { *val.add(i) } == 0 {
