@@ -400,6 +400,35 @@ fn test_sc_fence_release() {
     assert!(!bad);
 }
 
+/// Test that SC fences and accesses sync correctly with each other.
+fn test_sc_fence_access() {
+    /*
+        Wx1 sc
+        Ry0 sc
+        ||
+        Wy1 rlx
+        SC-fence
+        Rx0 rlx
+    */
+    let x = static_atomic(0);
+    let y = static_atomic(0);
+
+    let j1 = spawn(move || {
+        x.store(1, SeqCst);
+        y.load(SeqCst)
+    });
+    let j2 = spawn(move || {
+        y.store(1, Relaxed);
+        fence(SeqCst);
+        x.load(Relaxed)
+    });
+
+    let v1 = j1.join().unwrap();
+    let v2 = j2.join().unwrap();
+    let bad = v1 == 0 && v2 == 0;
+    assert!(!bad);
+}
+
 pub fn main() {
     for _ in 0..50 {
         test_single_thread();
@@ -414,5 +443,6 @@ pub fn main() {
         test_cpp20_sc_fence_fix();
         test_cpp20_rwc_syncs();
         test_sc_fence_release();
+        test_sc_fence_access();
     }
 }
