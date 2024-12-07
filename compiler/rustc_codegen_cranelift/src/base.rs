@@ -6,6 +6,7 @@ use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use cranelift_module::ModuleError;
 use rustc_ast::InlineAsmOptions;
 use rustc_codegen_ssa::base::is_call_from_compiler_builtins_to_upstream_monomorphization;
+use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_index::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::InlineAsmMacro;
@@ -16,6 +17,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 
 use crate::constant::ConstantCx;
 use crate::debuginfo::{FunctionDebugContext, TypeDebugContext};
+use crate::enable_verifier;
 use crate::inline_asm::codegen_naked_asm;
 use crate::prelude::*;
 use crate::pretty_clif::CommentWriter;
@@ -169,12 +171,13 @@ pub(crate) fn codegen_fn<'tcx>(
 
 pub(crate) fn compile_fn(
     cx: &mut crate::CodegenCx,
+    profiler: &SelfProfilerRef,
     cached_context: &mut Context,
     module: &mut dyn Module,
     codegened_func: CodegenedFunction,
 ) {
     let _timer =
-        cx.profiler.generic_activity_with_arg("compile function", &*codegened_func.symbol_name);
+        profiler.generic_activity_with_arg("compile function", &*codegened_func.symbol_name);
 
     let clif_comments = codegened_func.clif_comments;
 
@@ -212,7 +215,7 @@ pub(crate) fn compile_fn(
     };
 
     // Define function
-    cx.profiler.generic_activity("define function").run(|| {
+    profiler.generic_activity("define function").run(|| {
         context.want_disasm = cx.should_write_ir;
         match module.define_function(codegened_func.func_id, context) {
             Ok(()) => {}
@@ -253,7 +256,7 @@ pub(crate) fn compile_fn(
 
     // Define debuginfo for function
     let debug_context = &mut cx.debug_context;
-    cx.profiler.generic_activity("generate debug info").run(|| {
+    profiler.generic_activity("generate debug info").run(|| {
         if let Some(debug_context) = debug_context {
             codegened_func.func_debug_cx.unwrap().finalize(
                 debug_context,
@@ -264,11 +267,11 @@ pub(crate) fn compile_fn(
     });
 }
 
-pub(crate) fn verify_func(
-    tcx: TyCtxt<'_>,
-    writer: &crate::pretty_clif::CommentWriter,
-    func: &Function,
-) {
+fn verify_func(tcx: TyCtxt<'_>, writer: &crate::pretty_clif::CommentWriter, func: &Function) {
+    if !enable_verifier(tcx.sess) {
+        return;
+    }
+
     tcx.prof.generic_activity("verify clif ir").run(|| {
         let flags = cranelift_codegen::settings::Flags::new(cranelift_codegen::settings::builder());
         match cranelift_codegen::verify_function(&func, &flags) {
@@ -670,8 +673,7 @@ fn codegen_stmt<'tcx>(
                                     def_id,
                                     args,
                                 )
-                                .unwrap()
-                                .polymorphize(fx.tcx),
+                                .unwrap(),
                             );
                             let func_addr = fx.bcx.ins().func_addr(fx.pointer_type, func_ref);
                             lval.write_cvalue(fx, CValue::by_val(func_addr, to_layout));
@@ -757,8 +759,7 @@ fn codegen_stmt<'tcx>(
                                 def_id,
                                 args,
                                 ty::ClosureKind::FnOnce,
-                            )
-                            .polymorphize(fx.tcx);
+                            );
                             let func_ref = fx.get_function_ref(instance);
                             let func_addr = fx.bcx.ins().func_addr(fx.pointer_type, func_ref);
                             lval.write_cvalue(fx, CValue::by_val(func_addr, lval.layout()));
@@ -1084,7 +1085,7 @@ fn codegen_panic_inner<'tcx>(
 
     let def_id = fx.tcx.require_lang_item(lang_item, span);
 
-    let instance = Instance::mono(fx.tcx, def_id).polymorphize(fx.tcx);
+    let instance = Instance::mono(fx.tcx, def_id);
 
     if is_call_from_compiler_builtins_to_upstream_monomorphization(fx.tcx, instance) {
         fx.bcx.ins().trap(TrapCode::user(2).unwrap());

@@ -1746,7 +1746,6 @@ symbols! {
         rustc_peek_liveness,
         rustc_peek_maybe_init,
         rustc_peek_maybe_uninit,
-        rustc_polymorphize_error,
         rustc_preserve_ub_checks,
         rustc_private,
         rustc_proc_macro_decls,

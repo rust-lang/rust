@@ -6,7 +6,7 @@
 // `mir_inliner_callees` for the synthetic by-move coroutine body since
 // its def-id wasn't previously being considered.
 
-#![feature(async_closure, noop_waker)]
+#![feature(async_closure)]
 
 use std::future::Future;
 use std::pin::pin;

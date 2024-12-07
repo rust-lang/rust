@@ -6,7 +6,6 @@ tests/ui/functions-closures/parallel-codegen-closures.rs
 tests/ui/linkage-attr/linkage1.rs
 tests/ui/lto/dylib-works.rs
 tests/ui/numbers-arithmetic/saturating-float-casts.rs
-tests/ui/polymorphization/promoted-function.rs
 tests/ui/sepcomp/sepcomp-cci.rs
 tests/ui/sepcomp/sepcomp-extern.rs
 tests/ui/sepcomp/sepcomp-fns-backwards.rs

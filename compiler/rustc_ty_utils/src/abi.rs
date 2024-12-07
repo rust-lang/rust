@@ -45,23 +45,8 @@ fn fn_sig_for_fn_abi<'tcx>(
     let ty = instance.ty(tcx, typing_env);
     match *ty.kind() {
         ty::FnDef(def_id, args) => {
-            // HACK(davidtwco,eddyb): This is a workaround for polymorphization considering
-            // parameters unused if they show up in the signature, but not in the `mir::Body`
-            // (i.e. due to being inside a projection that got normalized, see
-            // `tests/ui/polymorphization/normalized_sig_types.rs`), and codegen not keeping
-            // track of a polymorphization `ParamEnv` to allow normalizing later.
-            //
-            // We normalize the `fn_sig` again after instantiating at a later point.
-            let mut sig = tcx.instantiate_bound_regions_with_erased(
-                tcx.fn_sig(def_id)
-                    .map_bound(|fn_sig| {
-                        tcx.normalize_erasing_regions(
-                            ty::TypingEnv::non_body_analysis(tcx, def_id),
-                            fn_sig,
-                        )
-                    })
-                    .instantiate(tcx, args),
-            );
+            let mut sig = tcx
+                .instantiate_bound_regions_with_erased(tcx.fn_sig(def_id).instantiate(tcx, args));
 
             if let ty::InstanceKind::VTableShim(..) = instance.def {
                 let mut inputs_and_output = sig.inputs_and_output.to_vec();
@@ -473,20 +458,30 @@ fn fn_abi_sanity_check<'tcx>(
                         // This really shouldn't happen even for sized aggregates, since
                         // `immediate_llvm_type` will use `layout.fields` to turn this Rust type into an
                         // LLVM type. This means all sorts of Rust type details leak into the ABI.
-                        // However wasm sadly *does* currently use this mode so we have to allow it --
-                        // but we absolutely shouldn't let any more targets do that.
-                        // (Also see <https://github.com/rust-lang/rust/issues/115666>.)
+                        // However wasm sadly *does* currently use this mode for it's "C" ABI so we
+                        // have to allow it -- but we absolutely shouldn't let any more targets do
+                        // that. (Also see <https://github.com/rust-lang/rust/issues/115666>.)
                         //
                         // The unstable abi `PtxKernel` also uses Direct for now.
                         // It needs to switch to something else before stabilization can happen.
                         // (See issue: https://github.com/rust-lang/rust/issues/117271)
-                        assert!(
-                            matches!(&*tcx.sess.target.arch, "wasm32" | "wasm64")
-                                || matches!(spec_abi, ExternAbi::PtxKernel | ExternAbi::Unadjusted),
-                            "`PassMode::Direct` for aggregates only allowed for \"unadjusted\" and \"ptx-kernel\" functions and on wasm\n\
-                          Problematic type: {:#?}",
-                            arg.layout,
-                        );
+                        //
+                        // And finally the unadjusted ABI is ill specified and uses Direct for all
+                        // args, but unfortunately we need it for calling certain LLVM intrinsics.
+
+                        match spec_abi {
+                            ExternAbi::Unadjusted => {}
+                            ExternAbi::PtxKernel => {}
+                            ExternAbi::C { unwind: _ }
+                                if matches!(&*tcx.sess.target.arch, "wasm32" | "wasm64") => {}
+                            _ => {
+                                panic!(
+                                    "`PassMode::Direct` for aggregates only allowed for \"unadjusted\" and \"ptx-kernel\" functions and on wasm\n\
+                                      Problematic type: {:#?}",
+                                    arg.layout,
+                                );
+                            }
+                        }
                     }
                 }
             }

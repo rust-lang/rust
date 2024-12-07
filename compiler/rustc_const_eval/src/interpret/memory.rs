@@ -944,6 +944,52 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         interp_ok(())
     }
 
+    /// Handle the effect an FFI call might have on the state of allocations.
+    /// This overapproximates the modifications which external code might make to memory:
+    /// We set all reachable allocations as initialized, mark all provenances as exposed
+    /// and overwrite them with `Provenance::WILDCARD`.
+    pub fn prepare_for_native_call(
+        &mut self,
+        id: AllocId,
+        initial_prov: M::Provenance,
+    ) -> InterpResult<'tcx> {
+        // Expose provenance of the root allocation.
+        M::expose_provenance(self, initial_prov)?;
+
+        let mut done = FxHashSet::default();
+        let mut todo = vec![id];
+        while let Some(id) = todo.pop() {
+            if !done.insert(id) {
+                // We already saw this allocation before, don't process it again.
+                continue;
+            }
+            let info = self.get_alloc_info(id);
+
+            // If there is no data behind this pointer, skip this.
+            if !matches!(info.kind, AllocKind::LiveData) {
+                continue;
+            }
+
+            // Expose all provenances in this allocation, and add them to `todo`.
+            let alloc = self.get_alloc_raw(id)?;
+            for prov in alloc.provenance().provenances() {
+                M::expose_provenance(self, prov)?;
+                if let Some(id) = prov.get_alloc_id() {
+                    todo.push(id);
+                }
+            }
+
+            // Prepare for possible write from native code if mutable.
+            if info.mutbl.is_mut() {
+                self.get_alloc_raw_mut(id)?
+                    .0
+                    .prepare_for_native_write()
+                    .map_err(|e| e.to_interp_error(id))?;
+            }
+        }
+        interp_ok(())
+    }
+
     /// Create a lazy debug printer that prints the given allocation and all allocations it points
     /// to, recursively.
     #[must_use]

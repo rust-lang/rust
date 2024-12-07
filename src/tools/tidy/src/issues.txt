@@ -510,7 +510,6 @@ ui/confuse-field-and-method/issue-2392.rs
 ui/confuse-field-and-method/issue-32128.rs
 ui/confuse-field-and-method/issue-33784.rs
 ui/const-generics/generic_arg_infer/issue-91614.rs
-ui/const-generics/generic_const_exprs/auxiliary/issue-94287-aux.rs
 ui/const-generics/generic_const_exprs/const_kind_expr/issue_114151.rs
 ui/const-generics/generic_const_exprs/issue-100217.rs
 ui/const-generics/generic_const_exprs/issue-100360.rs
@@ -540,7 +539,6 @@ ui/const-generics/generic_const_exprs/issue-85848.rs
 ui/const-generics/generic_const_exprs/issue-86710.rs
 ui/const-generics/generic_const_exprs/issue-89851.rs
 ui/const-generics/generic_const_exprs/issue-90847.rs
-ui/const-generics/generic_const_exprs/issue-94287.rs
 ui/const-generics/generic_const_exprs/issue-94293.rs
 ui/const-generics/generic_const_exprs/issue-96699.rs
 ui/const-generics/generic_const_exprs/issue-97047-ice-1.rs
@@ -3481,8 +3479,6 @@ ui/pattern/usefulness/issue-80501-or-pat-and-macro.rs
 ui/pattern/usefulness/issue-82772-match-box-as-struct.rs
 ui/pattern/usefulness/issue-85222-types-containing-non-exhaustive-types.rs
 ui/pattern/usefulness/issue-88747.rs
-ui/polymorphization/issue-74614.rs
-ui/polymorphization/issue-74636.rs
 ui/privacy/auxiliary/issue-117997.rs
 ui/privacy/auxiliary/issue-119463-extern.rs
 ui/privacy/auxiliary/issue-17718-const-privacy.rs
