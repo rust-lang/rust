@@ -120,7 +120,7 @@ pub unsafe fn simd_shr<T>(_lhs: T, _rhs: T) -> T {
     unreachable!()
 }
 
-/// "Ands" vectors elementwise.
+/// "And"s vectors elementwise.
 ///
 /// `T` must be a vector of integer primitive types.
 #[rustc_intrinsic]
@@ -574,7 +574,7 @@ pub unsafe fn simd_reduce_min<T, U>(_x: T) -> U {
     unreachable!()
 }
 
-/// Logical "ands" all elements together.
+/// Logical "and"s all elements together.
 ///
 /// `T` must be a vector of integer or floating-point primitive types.
 ///
