@@ -29,8 +29,9 @@ impl bool {
     /// assert_eq!(a, 2);
     /// ```
     #[stable(feature = "bool_to_option", since = "1.62.0")]
+    #[rustc_const_stable(feature = "const_bool_to_option", since = "1.85.0")]
     #[inline]
-    pub fn then_some<T>(self, t: T) -> Option<T> {
+    pub const fn then_some<T>(self, t: T) -> Option<T> {
         if self { Some(t) } else { None }
     }
 
