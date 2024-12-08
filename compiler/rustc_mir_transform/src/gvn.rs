@@ -1450,8 +1450,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
         }
 
-        // PtrToPtr-then-Transmute can just transmute the original, so long as the
-        // PtrToPtr didn't change metadata (and thus the size of the pointer)
+        // Transmute-then-PtrToPtr can just transmute the original, so long as the
+        // PtrToPtr won't change metadata (and thus the size of the pointer)
         if let PtrToPtr = kind
             && let Value::Cast {
                 kind: Transmute,
