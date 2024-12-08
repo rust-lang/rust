@@ -3,11 +3,13 @@
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
 use hir::{
     db::{ExpandDatabase, HirDatabase},
-    HasAttrs as HirHasAttrs, HirDisplay, InFile, Semantics,
+    HasAttrs as HirHasAttrs, HirDisplay, InFile, ModuleDef, PathResolution, Semantics,
 };
 use ide_db::{
-    famous_defs::FamousDefs, path_transform::PathTransform,
-    syntax_helpers::prettify_macro_expansion, RootDatabase,
+    famous_defs::FamousDefs,
+    path_transform::PathTransform,
+    syntax_helpers::{node_ext::preorder_expr, prettify_macro_expansion},
+    RootDatabase,
 };
 use stdx::format_to;
 use syntax::{
@@ -19,7 +21,7 @@ use syntax::{
     },
     ted, AstNode, AstToken, Direction, Edition, NodeOrToken, SourceFile,
     SyntaxKind::*,
-    SyntaxNode, SyntaxToken, TextRange, TextSize, T,
+    SyntaxNode, SyntaxToken, TextRange, TextSize, WalkEvent, T,
 };
 
 use crate::assist_context::{AssistContext, SourceChangeBuilder};
@@ -965,4 +967,38 @@ pub(crate) fn tt_from_syntax(node: SyntaxNode) -> Vec<NodeOrToken<ast::TokenTree
     }
 
     tt_stack.pop().expect("parent token tree was closed before it was completed").1
+}
+
+pub fn is_body_const(sema: &Semantics<'_, RootDatabase>, expr: &ast::Expr) -> bool {
+    let mut is_const = true;
+    preorder_expr(expr, &mut |ev| {
+        let expr = match ev {
+            WalkEvent::Enter(_) if !is_const => return true,
+            WalkEvent::Enter(expr) => expr,
+            WalkEvent::Leave(_) => return false,
+        };
+        match expr {
+            ast::Expr::CallExpr(call) => {
+                if let Some(ast::Expr::PathExpr(path_expr)) = call.expr() {
+                    if let Some(PathResolution::Def(ModuleDef::Function(func))) =
+                        path_expr.path().and_then(|path| sema.resolve_path(&path))
+                    {
+                        is_const &= func.is_const(sema.db);
+                    }
+                }
+            }
+            ast::Expr::MethodCallExpr(call) => {
+                is_const &=
+                    sema.resolve_method_call(&call).map(|it| it.is_const(sema.db)).unwrap_or(true)
+            }
+            ast::Expr::ForExpr(_)
+            | ast::Expr::ReturnExpr(_)
+            | ast::Expr::TryExpr(_)
+            | ast::Expr::YieldExpr(_)
+            | ast::Expr::AwaitExpr(_) => is_const = false,
+            _ => (),
+        }
+        !is_const
+    });
+    is_const
 }
