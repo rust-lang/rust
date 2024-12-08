@@ -8,7 +8,7 @@
 //@ run-rustfix
 
 fn main() {
-    let v: isize;
+    let mut v: isize;
     //~^ HELP consider making this binding mutable
     //~| SUGGESTION mut
     v = 1;

@@ -1,9 +1,9 @@
 error[E0384]: cannot assign twice to immutable variable `v`
-  --> $DIR/assign-imm-local-twice.rs:7:5
+  --> $DIR/assign-imm-local-twice.rs:17:5
    |
 LL |     v = 1;
    |     ----- first assignment to `v`
-LL |     println!("v={}", v);
+...
 LL |     v = 2;
    |     ^^^^^ cannot assign twice to immutable variable
    |
