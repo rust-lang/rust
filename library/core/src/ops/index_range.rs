@@ -1,3 +1,5 @@
+#![unstable(feature = "std_internals", issue = "none")]
+#![doc(hidden)]
 use crate::iter::{FusedIterator, TrustedLen};
 use crate::num::NonZero;
 use crate::ub_checks;
@@ -9,7 +11,7 @@ use crate::ub_checks;
 /// (Normal `Range` code needs to handle degenerate ranges like `10..0`,
 ///  which takes extra checks compared to only handling the canonical form.)
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct IndexRange {
+pub struct IndexRange {
     start: usize,
     end: usize,
 }

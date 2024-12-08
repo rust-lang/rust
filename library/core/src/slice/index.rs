@@ -149,6 +149,8 @@ mod private_slice_index {
     #[unstable(feature = "new_range_api", issue = "125687")]
     impl Sealed for range::RangeFrom<usize> {}
 
+    #[doc(hidden)]
+    #[unstable(feature = "std_internals", issue = "none")]
     impl Sealed for ops::IndexRange {}
 }
 
@@ -283,6 +285,8 @@ unsafe impl<T> SliceIndex<[T]> for usize {
 
 /// Because `IndexRange` guarantees `start <= end`, fewer checks are needed here
 /// than there are for a general `Range<usize>` (which might be `100..3`).
+#[doc(hidden)]
+#[unstable(feature = "std_internals", issue = "none")]
 unsafe impl<T> SliceIndex<[T]> for ops::IndexRange {
     type Output = [T];
 
