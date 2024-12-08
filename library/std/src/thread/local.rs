@@ -12,7 +12,7 @@ use crate::cell::{Cell, RefCell};
 use crate::error::Error;
 use crate::fmt;
 
-/// A thread local storage key which owns its contents.
+/// A thread local storage (TLS) key which owns its contents.
 ///
 /// This key uses the fastest possible implementation available to it for the
 /// target platform. It is instantiated with the [`thread_local!`] macro and the
