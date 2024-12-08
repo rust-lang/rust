@@ -8,8 +8,8 @@ use crate::coverageinfo::ffi::{Counter, CounterExpression, ExprKind};
 
 pub(crate) struct FunctionCoverage<'tcx> {
     pub(crate) function_coverage_info: &'tcx FunctionCoverageInfo,
-    ids_info: &'tcx CoverageIdsInfo,
-    is_used: bool,
+    /// If `None`, the corresponding function is unused.
+    ids_info: Option<&'tcx CoverageIdsInfo>,
 }
 
 impl<'tcx> FunctionCoverage<'tcx> {
@@ -17,25 +17,22 @@ impl<'tcx> FunctionCoverage<'tcx> {
         function_coverage_info: &'tcx FunctionCoverageInfo,
         ids_info: &'tcx CoverageIdsInfo,
     ) -> Self {
-        Self { function_coverage_info, ids_info, is_used: true }
+        Self { function_coverage_info, ids_info: Some(ids_info) }
     }
 
-    pub(crate) fn new_unused(
-        function_coverage_info: &'tcx FunctionCoverageInfo,
-        ids_info: &'tcx CoverageIdsInfo,
-    ) -> Self {
-        Self { function_coverage_info, ids_info, is_used: false }
+    pub(crate) fn new_unused(function_coverage_info: &'tcx FunctionCoverageInfo) -> Self {
+        Self { function_coverage_info, ids_info: None }
     }
 
     /// Returns true for a used (called) function, and false for an unused function.
     pub(crate) fn is_used(&self) -> bool {
-        self.is_used
+        self.ids_info.is_some()
     }
 
     /// Return the source hash, generated from the HIR node structure, and used to indicate whether
     /// or not the source code structure changed between different compilations.
     pub(crate) fn source_hash(&self) -> u64 {
-        if self.is_used { self.function_coverage_info.function_source_hash } else { 0 }
+        if self.is_used() { self.function_coverage_info.function_source_hash } else { 0 }
     }
 
     /// Convert this function's coverage expression data into a form that can be
@@ -78,6 +75,10 @@ impl<'tcx> FunctionCoverage<'tcx> {
     }
 
     fn is_zero_term(&self, term: CovTerm) -> bool {
-        !self.is_used || self.ids_info.is_zero_term(term)
+        match self.ids_info {
+            Some(ids_info) => ids_info.is_zero_term(term),
+            // This function is unused, so all coverage counters/expressions are zero.
+            None => true,
+        }
     }
 }
