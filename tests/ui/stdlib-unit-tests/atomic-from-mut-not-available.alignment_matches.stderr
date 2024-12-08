@@ -1,0 +1,13 @@
+error[E0658]: use of unstable library feature `atomic_from_mut`
+  --> $DIR/atomic-from-mut-not-available.rs:24:5
+   |
+LL |     core::sync::atomic::AtomicU64::from_mut(&mut 0u64);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #76314 <https://github.com/rust-lang/rust/issues/76314> for more information
+   = help: add `#![feature(atomic_from_mut)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.
