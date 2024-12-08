@@ -61,6 +61,29 @@ impl fmt::Debug for llvm::Metadata {
     }
 }
 
+// From DWARF 5.
+// See http://www.dwarfstd.org/ShowIssue.php?issue=140129.1.
+const DW_LANG_RUST: c_uint = 0x1c;
+#[allow(non_upper_case_globals)]
+const DW_ATE_boolean: c_uint = 0x02;
+#[allow(non_upper_case_globals)]
+const DW_ATE_float: c_uint = 0x04;
+#[allow(non_upper_case_globals)]
+const DW_ATE_signed: c_uint = 0x05;
+#[allow(non_upper_case_globals)]
+const DW_ATE_unsigned: c_uint = 0x07;
+#[allow(non_upper_case_globals)]
+const DW_ATE_UTF: c_uint = 0x10;
+
+#[allow(non_upper_case_globals)]
+const DW_TAG_pointer_type: c_uint = 0xf;
+#[allow(non_upper_case_globals)]
+const DW_TAG_reference_type: c_uint = 0x10;
+#[allow(non_upper_case_globals)]
+const DW_TAG_const_type: c_uint = 0x26;
+#[allow(non_upper_case_globals)]
+const DW_TAG_rvalue_reference_type: c_uint = 0x42;
+
 pub(super) const UNKNOWN_LINE_NUMBER: c_uint = 0;
 pub(super) const UNKNOWN_COLUMN_NUMBER: c_uint = 0;
 
@@ -166,16 +189,142 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                 "ptr_type={ptr_type}, pointee_type={pointee_type}",
             );
 
-            let di_node = unsafe {
-                llvm::LLVMRustDIBuilderCreatePointerType(
-                    DIB(cx),
-                    pointee_type_di_node,
-                    data_layout.pointer_size.bits(),
-                    data_layout.pointer_align.abi.bits() as u32,
-                    0, // Ignore DWARF address space.
-                    ptr_type_debuginfo_name.as_c_char_ptr(),
-                    ptr_type_debuginfo_name.len(),
-                )
+            /*
+               This block differentiates between mutable/immutable AND ref/ptr.
+
+               References to references (&&T) are invalid constructs in C/C++, and we are piggybacking off
+               of their type system when using LLDB (`TypeSystemClang`). Ptr-to-ref (*&T) and ref-to-ptr (&*T)
+               are valid constructs though. That means we can tell the debugger that ref-to-ref's are actually
+               ref-to-ptr's.
+
+               Additionally, to help debugger visualizers differentiate ref-to-ref's that *look like* ref-to-ptr
+               and *actual* ref-to-ptr, we can use the `rvalue_reference` tag. It's a C++ feature that doesn't
+               quite have an equivalent in Rust, but *is* represented as `&&` which is perfect! That means
+               ref-to-refs (&&T) will look like `T *&&` (i.e. an rvalue_reference to a pointer to T)
+               and on the debugger visualizer end, the scripts can "undo" that translation.
+
+               To handle immutable vs mutable (&/&mut) we use the `const` modifier. The modifier is applied
+               with proper C/C++ rules (i.e. pointer-to-constant vs constant pointer). This means that an
+               immutable reference applies the const modifier to the *pointee type*. When reversing the
+               debuginfo translation, the `const` modifier doesn't describe the value it's applied to, it describes
+               the pointer to the value. This is a **very** important distinction.
+
+               Here are some examples, the Rust representation is on the left and the debuginfo translation on
+               the right
+
+               Cosnt vs Mut:
+               *const T -> const T *
+               *mut T -> T *
+
+               *const *const T -> const T *const *
+               *mut *mut T -> T **
+
+               *mut *const T -> const T **
+               *const *mut T -> T *const *
+
+               Nested References:
+               &T -> const T &
+               &&T -> const T *const &&
+               &&&T -> const T &const *const &&
+               &&&&T -> const T *const &&const *const &&
+
+               &mut T -> T &
+               &mut &mut T -> T *&&
+               &mut &mut &mut T -> T &*&&
+               &mut &mut &mut &mut T -> T *&&*&&
+            */
+            let di_node = match (ptr_type.kind(), pointee_type.kind()) {
+                // if we have a ref-to-ref, convert the inner ref to a ptr and the outter ref to an rvalue ref
+                // and apply `const` to the inner ref's value and the inner ref itself as necessary
+                (ty::Ref(_, _, ptr_mut), ty::Ref(_, inner_type, ptee_mut)) => unsafe {
+                    let inner_type_di_node = type_di_node(cx, *inner_type);
+                    let inner_type_di_node = if ptee_mut.is_not() {
+                        llvm::LLVMRustDIBuilderCreateQualifiedType(
+                            DIB(cx),
+                            DW_TAG_const_type,
+                            inner_type_di_node,
+                        )
+                    } else {
+                        inner_type_di_node
+                    };
+
+                    // creating a reference node with the pointer tag outputs a regular pointer as far as LLDB
+                    // is concerned
+                    let wrapped_ref = llvm::LLVMRustDIBuilderCreateReferenceType(
+                        DIB(cx),
+                        DW_TAG_pointer_type,
+                        inner_type_di_node,
+                    );
+
+                    let wrapped_ref = if ptr_mut.is_not() {
+                        llvm::LLVMRustDIBuilderCreateQualifiedType(
+                            DIB(cx),
+                            DW_TAG_const_type,
+                            wrapped_ref,
+                        )
+                    } else {
+                        wrapped_ref
+                    };
+
+                    llvm::LLVMRustDIBuilderCreateReferenceType(
+                        DIB(cx),
+                        DW_TAG_rvalue_reference_type,
+                        wrapped_ref,
+                    )
+                },
+                // if we have a ref-to-<not a ref>, apply `const` to the inner value as necessary
+                (ty::Ref(_, _, ptr_mut), _) => unsafe {
+                    let pointee_type_di_node = if ptr_mut.is_not() {
+                        llvm::LLVMRustDIBuilderCreateQualifiedType(
+                            DIB(cx),
+                            DW_TAG_const_type,
+                            pointee_type_di_node,
+                        )
+                    } else {
+                        pointee_type_di_node
+                    };
+
+                    llvm::LLVMRustDIBuilderCreateReferenceType(
+                        DIB(cx),
+                        DW_TAG_reference_type,
+                        pointee_type_di_node,
+                    )
+                },
+                // if we have any pointer, apply `const` to the inner value as necessary
+                (ty::RawPtr(_, ptr_mut), _) => unsafe {
+                    let pointee_type_di_node = if ptr_mut.is_not() {
+                        llvm::LLVMRustDIBuilderCreateQualifiedType(
+                            DIB(cx),
+                            DW_TAG_const_type,
+                            pointee_type_di_node,
+                        )
+                    } else {
+                        pointee_type_di_node
+                    };
+
+                    llvm::LLVMRustDIBuilderCreatePointerType(
+                        DIB(cx),
+                        pointee_type_di_node,
+                        data_layout.pointer_size.bits(),
+                        data_layout.pointer_align.abi.bits() as u32,
+                        0, // Ignore DWARF address space.
+                        ptr_type_debuginfo_name.as_c_char_ptr(),
+                        ptr_type_debuginfo_name.len(),
+                    )
+                },
+                // apply no translations to `Box`
+                (ty::Adt(_, _), _) => unsafe {
+                    llvm::LLVMRustDIBuilderCreatePointerType(
+                        DIB(cx),
+                        pointee_type_di_node,
+                        data_layout.pointer_size.bits(),
+                        data_layout.pointer_align.abi.bits() as u32,
+                        0, // Ignore DWARF address space.
+                        ptr_type_debuginfo_name.as_c_char_ptr(),
+                        ptr_type_debuginfo_name.len(),
+                    )
+                },
+                _ => todo!(),
             };
 
             DINodeCreationResult { di_node, already_stored_in_typemap: false }
