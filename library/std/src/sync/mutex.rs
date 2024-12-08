@@ -500,6 +500,12 @@ impl<T: ?Sized + Default> Default for Mutex<T> {
     }
 }
 
+impl<'a, T> From<MutexGuard<'a, T>> for &'a Mutex<T>{
+    fn from(value: MutexGuard<'a, T>) -> Self{
+        value.lock
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + fmt::Debug> fmt::Debug for Mutex<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
