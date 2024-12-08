@@ -1141,6 +1141,20 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticMemberType(
 }
 
 extern "C" LLVMMetadataRef
+LLVMRustDIBuilderCreateQualifiedType(LLVMDIBuilderRef Builder, unsigned Tag,
+                                     LLVMMetadataRef Type) {
+  return wrap(
+      unwrap(Builder)->createQualifiedType(Tag, unwrapDI<DIType>(Type)));
+}
+
+extern "C" LLVMMetadataRef
+LLVMRustDIBuilderCreateReferenceType(LLVMDIBuilderRef Builder, unsigned Tag,
+                                     LLVMMetadataRef Type) {
+  return wrap(
+      unwrap(Builder)->createReferenceType(Tag, unwrapDI<DIType>(Type)));
+}
+
+extern "C" LLVMMetadataRef
 LLVMRustDIBuilderCreateLexicalBlock(LLVMRustDIBuilderRef Builder,
                                     LLVMMetadataRef Scope, LLVMMetadataRef File,
                                     unsigned Line, unsigned Col) {
