@@ -1,0 +1,1 @@
+COMMENT "/*" error: Missing trailing `*/` symbols to terminate the block comment

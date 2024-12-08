@@ -1,0 +1,14 @@
+error: invalid digit for a base 8 literal
+  --> $DIR/lex-bad-octal-literal.rs:2:8
+   |
+LL |     0o18;
+   |        ^
+
+error: invalid digit for a base 8 literal
+  --> $DIR/lex-bad-octal-literal.rs:3:12
+   |
+LL |     0o1234_9_5670;
+   |            ^
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,11 @@
+error[E0119]: conflicting implementations of trait `Trait` for type `[(); _]`
+  --> $DIR/generic_const_type_mismatch.rs:8:1
+   |
+LL | impl<const N: u8> Trait for [(); N] {}
+   | ----------------------------------- first implementation here
+LL | impl<const N: i8> Trait for [(); N] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `[(); _]`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

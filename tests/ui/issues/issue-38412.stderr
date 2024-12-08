@@ -1,0 +1,9 @@
+error[E0532]: cannot match against a tuple struct which contains private fields
+  --> $DIR/issue-38412.rs:2:9
+   |
+LL |     let Box(a) = loop { };
+   |         ^^^ constructor is not visible here due to private fields
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0532`.

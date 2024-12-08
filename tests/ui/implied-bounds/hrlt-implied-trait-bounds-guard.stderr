@@ -1,0 +1,69 @@
+error[E0623]: lifetime mismatch
+  --> $DIR/hrlt-implied-trait-bounds-guard.rs:29:29
+   |
+LL | fn badboi<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ T) -> &'out T {
+   |                             ^^^^^^^^^^^^^^^^^^                       -------
+   |                             |
+   |                             this parameter and the return type are declared with different lifetimes...
+   |                             ...but data from `x` is returned here
+
+error[E0623]: lifetime mismatch
+  --> $DIR/hrlt-implied-trait-bounds-guard.rs:35:30
+   |
+LL | fn badboi2<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ T) {
+   |                              ^^^^^^^^^^^^^^^^^^
+   |                              |
+   |                              this type is declared with multiple lifetimes...
+   |                              ...but data with one lifetime flows into the other here
+
+error[E0623]: lifetime mismatch
+  --> $DIR/hrlt-implied-trait-bounds-guard.rs:41:30
+   |
+LL | fn badboi3<'in_, 'out, T>(a: Foo<'in_, 'out, (&'in_ T, &'out T)>, sadness: &'in_ T) {
+   |                              ^^^^^^^^^^^^^^^^^-------^^-------^^
+   |                              |                |
+   |                              |                these two types are declared with different lifetimes...
+   |                              ...but data from `a` flows into `a` here
+
+error: lifetime may not live long enough
+  --> $DIR/hrlt-implied-trait-bounds-guard.rs:31:5
+   |
+LL | fn badboi<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ T) -> &'out T {
+   |           ----  ---- lifetime `'out` defined here
+   |           |
+   |           lifetime `'in_` defined here
+LL |
+LL |     sadness.cast()
+   |     ^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'out` but it is returning data with lifetime `'in_`
+   |
+   = help: consider adding the following bound: `'in_: 'out`
+
+error: lifetime may not live long enough
+  --> $DIR/hrlt-implied-trait-bounds-guard.rs:37:12
+   |
+LL | fn badboi2<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ T) {
+   |            ----  ---- lifetime `'out` defined here
+   |            |
+   |            lifetime `'in_` defined here
+LL |
+LL |     let _: &'out T = sadness.cast();
+   |            ^^^^^^^ type annotation requires that `'in_` must outlive `'out`
+   |
+   = help: consider adding the following bound: `'in_: 'out`
+
+error: lifetime may not live long enough
+  --> $DIR/hrlt-implied-trait-bounds-guard.rs:43:12
+   |
+LL | fn badboi3<'in_, 'out, T>(a: Foo<'in_, 'out, (&'in_ T, &'out T)>, sadness: &'in_ T) {
+   |            ----  ---- lifetime `'out` defined here
+   |            |
+   |            lifetime `'in_` defined here
+LL |
+LL |     let _: &'out T = sadness.cast();
+   |            ^^^^^^^ type annotation requires that `'in_` must outlive `'out`
+   |
+   = help: consider adding the following bound: `'in_: 'out`
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0623`.

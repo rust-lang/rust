@@ -1,0 +1,11 @@
+[package]
+name = "rustc-std-workspace-std"
+version = "1.0.1"
+authors = ["Alex Crichton <alex@alexcrichton.com>"]
+edition = "2021"
+license = "MIT/Apache-2.0"
+description = """
+crate for integration of crates.io crates into rust-lang/rust standard library workspace
+"""
+
+repository = "https://github.com/rust-lang/rust/tree/master/src/rustc-std-workspace"

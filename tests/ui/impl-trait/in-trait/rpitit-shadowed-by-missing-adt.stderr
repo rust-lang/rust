@@ -1,0 +1,9 @@
+error[E0412]: cannot find type `Missing` in this scope
+  --> $DIR/rpitit-shadowed-by-missing-adt.rs:6:35
+   |
+LL |     fn w() -> impl Deref<Target = Missing<impl Sized>>;
+   |                                   ^^^^^^^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0412`.

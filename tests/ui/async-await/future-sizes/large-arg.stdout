@@ -1,0 +1,60 @@
+print-type-size type: `{async fn body of test()}`: 3076 bytes, alignment: 1 bytes
+print-type-size     discriminant: 1 bytes
+print-type-size     variant `Unresumed`: 0 bytes
+print-type-size     variant `Suspend0`: 3075 bytes
+print-type-size         local `.__awaitee`: 3075 bytes, type: {async fn body of a<[u8; 1024]>()}
+print-type-size     variant `Returned`: 0 bytes
+print-type-size     variant `Panicked`: 0 bytes
+print-type-size type: `std::mem::ManuallyDrop<{async fn body of a<[u8; 1024]>()}>`: 3075 bytes, alignment: 1 bytes
+print-type-size     field `.value`: 3075 bytes
+print-type-size type: `std::mem::MaybeUninit<{async fn body of a<[u8; 1024]>()}>`: 3075 bytes, alignment: 1 bytes
+print-type-size     variant `MaybeUninit`: 3075 bytes
+print-type-size         field `.uninit`: 0 bytes
+print-type-size         field `.value`: 3075 bytes
+print-type-size type: `{async fn body of a<[u8; 1024]>()}`: 3075 bytes, alignment: 1 bytes
+print-type-size     discriminant: 1 bytes
+print-type-size     variant `Unresumed`: 1024 bytes
+print-type-size         upvar `.t`: 1024 bytes
+print-type-size     variant `Suspend0`: 3074 bytes
+print-type-size         upvar `.t`: 1024 bytes
+print-type-size         local `.__awaitee`: 2050 bytes, type: {async fn body of b<[u8; 1024]>()}
+print-type-size     variant `Returned`: 1024 bytes
+print-type-size         upvar `.t`: 1024 bytes
+print-type-size     variant `Panicked`: 1024 bytes
+print-type-size         upvar `.t`: 1024 bytes
+print-type-size type: `std::mem::ManuallyDrop<{async fn body of b<[u8; 1024]>()}>`: 2050 bytes, alignment: 1 bytes
+print-type-size     field `.value`: 2050 bytes
+print-type-size type: `std::mem::MaybeUninit<{async fn body of b<[u8; 1024]>()}>`: 2050 bytes, alignment: 1 bytes
+print-type-size     variant `MaybeUninit`: 2050 bytes
+print-type-size         field `.uninit`: 0 bytes
+print-type-size         field `.value`: 2050 bytes
+print-type-size type: `{async fn body of b<[u8; 1024]>()}`: 2050 bytes, alignment: 1 bytes
+print-type-size     discriminant: 1 bytes
+print-type-size     variant `Unresumed`: 1024 bytes
+print-type-size         upvar `.t`: 1024 bytes
+print-type-size     variant `Suspend0`: 2049 bytes
+print-type-size         upvar `.t`: 1024 bytes
+print-type-size         local `.__awaitee`: 1025 bytes, type: {async fn body of c<[u8; 1024]>()}
+print-type-size     variant `Returned`: 1024 bytes
+print-type-size         upvar `.t`: 1024 bytes
+print-type-size     variant `Panicked`: 1024 bytes
+print-type-size         upvar `.t`: 1024 bytes
+print-type-size type: `std::mem::ManuallyDrop<{async fn body of c<[u8; 1024]>()}>`: 1025 bytes, alignment: 1 bytes
+print-type-size     field `.value`: 1025 bytes
+print-type-size type: `std::mem::MaybeUninit<{async fn body of c<[u8; 1024]>()}>`: 1025 bytes, alignment: 1 bytes
+print-type-size     variant `MaybeUninit`: 1025 bytes
+print-type-size         field `.uninit`: 0 bytes
+print-type-size         field `.value`: 1025 bytes
+print-type-size type: `std::task::Poll<[u8; 1024]>`: 1025 bytes, alignment: 1 bytes
+print-type-size     discriminant: 1 bytes
+print-type-size     variant `Ready`: 1024 bytes
+print-type-size         field `.0`: 1024 bytes
+print-type-size     variant `Pending`: 0 bytes
+print-type-size type: `{async fn body of c<[u8; 1024]>()}`: 1025 bytes, alignment: 1 bytes
+print-type-size     discriminant: 1 bytes
+print-type-size     variant `Unresumed`: 1024 bytes
+print-type-size         upvar `.t`: 1024 bytes
+print-type-size     variant `Returned`: 1024 bytes
+print-type-size         upvar `.t`: 1024 bytes
+print-type-size     variant `Panicked`: 1024 bytes
+print-type-size         upvar `.t`: 1024 bytes

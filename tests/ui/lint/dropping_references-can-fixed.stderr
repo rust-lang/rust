@@ -1,0 +1,119 @@
+error: calls to `std::mem::drop` with a reference instead of an owned value does nothing
+  --> $DIR/dropping_references-can-fixed.rs:9:5
+   |
+LL |     drop(&SomeStruct);
+   |     ^^^^^-----------^
+   |          |
+   |          argument has type `&SomeStruct`
+   |
+note: the lint level is defined here
+  --> $DIR/dropping_references-can-fixed.rs:4:9
+   |
+LL | #![deny(dropping_references)]
+   |         ^^^^^^^^^^^^^^^^^^^
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     drop(&SomeStruct);
+LL +     let _ = &SomeStruct;
+   |
+
+error: calls to `std::mem::drop` with a reference instead of an owned value does nothing
+  --> $DIR/dropping_references-can-fixed.rs:12:5
+   |
+LL |     drop(&owned1);
+   |     ^^^^^-------^
+   |          |
+   |          argument has type `&SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     drop(&owned1);
+LL +     let _ = &owned1;
+   |
+
+error: calls to `std::mem::drop` with a reference instead of an owned value does nothing
+  --> $DIR/dropping_references-can-fixed.rs:13:5
+   |
+LL |     drop(&&owned1);
+   |     ^^^^^--------^
+   |          |
+   |          argument has type `&&SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     drop(&&owned1);
+LL +     let _ = &&owned1;
+   |
+
+error: calls to `std::mem::drop` with a reference instead of an owned value does nothing
+  --> $DIR/dropping_references-can-fixed.rs:14:5
+   |
+LL |     drop(&mut owned1);
+   |     ^^^^^-----------^
+   |          |
+   |          argument has type `&mut SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     drop(&mut owned1);
+LL +     let _ = &mut owned1;
+   |
+
+error: calls to `std::mem::drop` with a reference instead of an owned value does nothing
+  --> $DIR/dropping_references-can-fixed.rs:18:5
+   |
+LL |     drop(reference1);
+   |     ^^^^^----------^
+   |          |
+   |          argument has type `&SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     drop(reference1);
+LL +     let _ = reference1;
+   |
+
+error: calls to `std::mem::drop` with a reference instead of an owned value does nothing
+  --> $DIR/dropping_references-can-fixed.rs:21:5
+   |
+LL |     drop(reference2);
+   |     ^^^^^----------^
+   |          |
+   |          argument has type `&mut SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     drop(reference2);
+LL +     let _ = reference2;
+   |
+
+error: calls to `std::mem::drop` with a reference instead of an owned value does nothing
+  --> $DIR/dropping_references-can-fixed.rs:24:5
+   |
+LL |     drop(reference3);
+   |     ^^^^^----------^
+   |          |
+   |          argument has type `&SomeStruct`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     drop(reference3);
+LL +     let _ = reference3;
+   |
+
+error: calls to `std::mem::drop` with a reference instead of an owned value does nothing
+  --> $DIR/dropping_references-can-fixed.rs:29:5
+   |
+LL |     drop(&val);
+   |     ^^^^^----^
+   |          |
+   |          argument has type `&T`
+   |
+help: use `let _ = ...` to ignore the expression or result
+   |
+LL -     drop(&val);
+LL +     let _ = &val;
+   |
+
+error: aborting due to 8 previous errors
+

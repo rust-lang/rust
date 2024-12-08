@@ -1,0 +1,15 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/regions-var-type-out-of-scope.rs:9:14
+   |
+LL |         x = &id(3);
+   |              ^^^^^- temporary value is freed at the end of this statement
+   |              |
+   |              creates a temporary value which is freed while still in use
+LL |         assert_eq!(*x, 3);
+   |         ----------------- borrow later used here
+   |
+   = note: consider using a `let` binding to create a longer lived value
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0716`.

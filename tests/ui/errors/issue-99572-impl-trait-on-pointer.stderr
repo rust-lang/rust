@@ -1,0 +1,33 @@
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/issue-99572-impl-trait-on-pointer.rs:7:1
+   |
+LL | impl fmt::Display for *mut LocalType {
+   | ^^^^^^^^^^^^^^^^^^^^^^--------------
+   |                       |
+   |                       `*mut LocalType` is not defined in the current crate because raw pointers are always foreign
+   |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+   = note: define and implement a trait or new type instead
+help: consider introducing a new wrapper type
+   |
+LL + struct WrapperType(*mut LocalType);
+LL + 
+LL ~ impl fmt::Display for WrapperType {
+   |
+
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/issue-99572-impl-trait-on-pointer.rs:19:1
+   |
+LL | impl<T> marker::Copy for *mut T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^------
+   |                          |
+   |                          `*mut T` is not defined in the current crate because raw pointers are always foreign
+   |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+   = note: define and implement a trait or new type instead
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0117`.

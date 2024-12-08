@@ -1,0 +1,47 @@
+error[E0277]: Foo
+  --> $DIR/multiple_notes.rs:13:15
+   |
+LL |     takes_foo(());
+   |     --------- ^^ Bar
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Foo` is not implemented for `()`
+   = note: Baz
+   = note: Boom
+help: this trait has no implementations, consider adding one
+  --> $DIR/multiple_notes.rs:3:1
+   |
+LL | trait Foo {}
+   | ^^^^^^^^^
+note: required by a bound in `takes_foo`
+  --> $DIR/multiple_notes.rs:9:22
+   |
+LL | fn takes_foo(_: impl Foo) {}
+   |                      ^^^ required by this bound in `takes_foo`
+
+error[E0277]: Bar
+  --> $DIR/multiple_notes.rs:15:15
+   |
+LL |     takes_bar(());
+   |     --------- ^^ Foo
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Bar` is not implemented for `()`
+   = note: Baz
+   = note: Baz2
+help: this trait has no implementations, consider adding one
+  --> $DIR/multiple_notes.rs:7:1
+   |
+LL | trait Bar {}
+   | ^^^^^^^^^
+note: required by a bound in `takes_bar`
+  --> $DIR/multiple_notes.rs:10:22
+   |
+LL | fn takes_bar(_: impl Bar) {}
+   |                      ^^^ required by this bound in `takes_bar`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

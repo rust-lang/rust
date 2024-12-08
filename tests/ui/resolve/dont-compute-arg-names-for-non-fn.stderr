@@ -1,0 +1,14 @@
+error[E0412]: cannot find type `Bar` in this scope
+  --> $DIR/dont-compute-arg-names-for-non-fn.rs:8:14
+   |
+LL | impl Foo for Bar {}
+   |              ^^^
+   |
+help: you might have meant to use the associated type
+   |
+LL | impl Foo for Self::Bar {}
+   |              ++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0412`.

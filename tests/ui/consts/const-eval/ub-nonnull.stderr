@@ -1,0 +1,81 @@
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-nonnull.rs:14:1
+   |
+LL | const NULL_PTR: NonNull<u8> = unsafe { mem::transmute(0usize) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered 0, but expected something greater or equal to 1
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/ub-nonnull.rs:20:29
+   |
+LL |     let out_of_bounds_ptr = &ptr[255];
+   |                             ^^^^^^^^^ out-of-bounds pointer arithmetic: expected a pointer to 255 bytes of memory, but got ALLOC1 which is only 1 byte from the end of the allocation
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-nonnull.rs:24:1
+   |
+LL | const NULL_U8: NonZero<u8> = unsafe { mem::transmute(0u8) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .0: encountered 0, but expected something greater or equal to 1
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-nonnull.rs:26:1
+   |
+LL | const NULL_USIZE: NonZero<usize> = unsafe { mem::transmute(0usize) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .0: encountered 0, but expected something greater or equal to 1
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/ub-nonnull.rs:34:38
+   |
+LL | const UNINIT: NonZero<u8> = unsafe { MaybeUninit { uninit: () }.init };
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-nonnull.rs:43:1
+   |
+LL | const BAD_RANGE1: RestrictedRange1 = unsafe { RestrictedRange1(42) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered 42, but expected something in the range 10..=30
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-nonnull.rs:49:1
+   |
+LL | const BAD_RANGE2: RestrictedRange2 = unsafe { RestrictedRange2(20) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered 20, but expected something less or equal to 10, or greater or equal to 30
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-nonnull.rs:52:1
+   |
+LL | const NULL_FAT_PTR: NonNull<dyn Send> = unsafe {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered 0, but expected something greater or equal to 1
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

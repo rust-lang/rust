@@ -1,0 +1,35 @@
+error: `enum` definition cannot be nested inside `enum`
+  --> $DIR/nested-enum.rs:2:5
+   |
+LL |     enum Bar { Baz },
+   |     ^^^^
+   |
+help: consider creating a new `enum` definition instead of nesting
+   |
+LL -     enum Bar { Baz },
+   |
+
+error: `struct` definition cannot be nested inside `enum`
+  --> $DIR/nested-enum.rs:4:5
+   |
+LL |     struct Quux { field: u8 },
+   |     ^^^^^^
+   |
+help: consider creating a new `struct` definition instead of nesting
+   |
+LL -     struct Quux { field: u8 },
+   |
+
+error: `union` definition cannot be nested inside `enum`
+  --> $DIR/nested-enum.rs:6:5
+   |
+LL |     union Wibble { field: u8 },
+   |     ^^^^^
+   |
+help: consider creating a new `union` definition instead of nesting
+   |
+LL -     union Wibble { field: u8 },
+   |
+
+error: aborting due to 3 previous errors
+

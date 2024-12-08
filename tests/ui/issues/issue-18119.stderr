@@ -1,0 +1,21 @@
+error[E0573]: expected type, found constant `X`
+  --> $DIR/issue-18119.rs:5:6
+   |
+LL | impl X {}
+   |      ^ not a type
+
+error[E0573]: expected type, found static `Y`
+  --> $DIR/issue-18119.rs:7:6
+   |
+LL | impl Y {}
+   |      ^ not a type
+
+error[E0573]: expected type, found function `foo`
+  --> $DIR/issue-18119.rs:9:6
+   |
+LL | impl foo {}
+   |      ^^^ not a type
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0573`.

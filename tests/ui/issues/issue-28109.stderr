@@ -1,0 +1,15 @@
+error[E0426]: use of undeclared label `'b`
+  --> $DIR/issue-28109.rs:6:9
+   |
+LL |         'b
+   |         ^^ undeclared label `'b`
+
+error[E0426]: use of undeclared label `'c`
+  --> $DIR/issue-28109.rs:9:9
+   |
+LL |         'c
+   |         ^^ undeclared label `'c`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0426`.

@@ -1,0 +1,25 @@
+error[E0425]: cannot find function `transmute` in this scope
+  --> $DIR/filter-intrinsics.rs:3:13
+   |
+LL |     let _ = transmute::<usize>();
+   |             ^^^^^^^^^ not found in this scope
+   |
+help: consider importing this function
+   |
+LL + use std::mem::transmute;
+   |
+
+error[E0425]: cannot find function `fabsf64` in this scope
+  --> $DIR/filter-intrinsics.rs:8:13
+   |
+LL |     let _ = fabsf64(1.0);
+   |             ^^^^^^^ not found in this scope
+   |
+help: consider importing this function
+   |
+LL + use std::intrinsics::fabsf64;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

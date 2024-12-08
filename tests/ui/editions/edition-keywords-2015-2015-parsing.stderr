@@ -1,0 +1,26 @@
+error: no rules expected `r#async`
+  --> $DIR/edition-keywords-2015-2015-parsing.rs:16:31
+   |
+LL |     r#async = consumes_async!(r#async);
+   |                               ^^^^^^^ no rules expected this token in macro call
+   |
+note: while trying to match `async`
+  --> $DIR/auxiliary/edition-kw-macro-2015.rs:17:6
+   |
+LL |     (async) => (1)
+   |      ^^^^^
+
+error: no rules expected `async`
+  --> $DIR/edition-keywords-2015-2015-parsing.rs:17:35
+   |
+LL |     r#async = consumes_async_raw!(async);
+   |                                   ^^^^^ no rules expected this token in macro call
+   |
+note: while trying to match `r#async`
+  --> $DIR/auxiliary/edition-kw-macro-2015.rs:22:6
+   |
+LL |     (r#async) => (1)
+   |      ^^^^^^^
+
+error: aborting due to 2 previous errors
+

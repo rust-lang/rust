@@ -1,0 +1,16 @@
+error[E0076]: SIMD vector's only field must be an array
+  --> $DIR/monomorphize-heterogeneous.rs:4:1
+   |
+LL | struct I64F64(i64, f64);
+   | ^^^^^^^^^^^^^ --- not an array
+
+error[E0075]: SIMD vector cannot have multiple fields
+  --> $DIR/monomorphize-heterogeneous.rs:8:1
+   |
+LL | struct I64x4F64x0([i64; 4], [f64; 0]);
+   | ^^^^^^^^^^^^^^^^^           -------- excess field
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0075, E0076.
+For more information about an error, try `rustc --explain E0075`.

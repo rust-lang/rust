@@ -1,0 +1,18 @@
+error: lifetime may not live long enough
+  --> $DIR/variance-cell-is-invariant.rs:14:12
+   |
+LL | fn use_<'short,'long>(c: Foo<'short>,
+   |         ------ ----- lifetime `'long` defined here
+   |         |
+   |         lifetime `'short` defined here
+...
+LL |     let _: Foo<'long> = c;
+   |            ^^^^^^^^^^ type annotation requires that `'short` must outlive `'long`
+   |
+   = help: consider adding the following bound: `'short: 'long`
+   = note: requirement occurs because of the type `Foo<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `Foo<'a>` is invariant over the parameter `'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: aborting due to 1 previous error
+

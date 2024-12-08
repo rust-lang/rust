@@ -1,0 +1,18 @@
+error[E0658]: intrinsics are subject to change
+  --> $DIR/incorrect-transmute.rs:5:8
+   |
+LL | extern "rust-intrinsic" fn transmute() {}
+   |        ^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(intrinsics)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: intrinsic must be in `extern "rust-intrinsic" { ... }` block
+  --> $DIR/incorrect-transmute.rs:5:40
+   |
+LL | extern "rust-intrinsic" fn transmute() {}
+   |                                        ^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

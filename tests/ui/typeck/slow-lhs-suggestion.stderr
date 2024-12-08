@@ -1,0 +1,187 @@
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/slow-lhs-suggestion.rs:2:95
+   |
+LL |     1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1;
+   |                                                                                             - ^
+   |                                                                                             |
+   |                                                                                             cannot assign to this expression
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/slow-lhs-suggestion.rs:2:91
+   |
+LL |     1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1;
+   |                                                                                         - ^
+   |                                                                                         |
+   |                                                                                         cannot assign to this expression
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/slow-lhs-suggestion.rs:2:87
+   |
+LL |     1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1;
+   |                                                                                     - ^
+   |                                                                                     |
+   |                                                                                     cannot assign to this expression
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/slow-lhs-suggestion.rs:2:83
+   |
+LL |     1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1;
+   |                                                                                 - ^
+   |                                                                                 |
+   |                                                                                 cannot assign to this expression
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/slow-lhs-suggestion.rs:2:79
+   |
+LL |     1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1;
+   |                                                                             - ^
+   |                                                                             |
+   |                                                                             cannot assign to this expression
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/slow-lhs-suggestion.rs:2:75
+   |
+LL |     1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1;
+   |                                                                         - ^
+   |                                                                         |
+   |                                                                         cannot assign to this expression
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/slow-lhs-suggestion.rs:2:71
+   |
+LL |     1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1;
+   |                                                                     - ^
+   |                                                                     |
+   |                                                                     cannot assign to this expression
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/slow-lhs-suggestion.rs:2:67
+   |
+LL |     1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1;
+   |                                                                 - ^
+   |                                                                 |
+   |                                                                 cannot assign to this expression
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/slow-lhs-suggestion.rs:2:63
+   |
+LL |     1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1;
+   |                                                             - ^
+   |                                                             |
+   |                                                             cannot assign to this expression
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/slow-lhs-suggestion.rs:2:59
+   |
+LL |     1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1;
+   |                                                         - ^
+   |                                                         |
+   |                                                         cannot assign to this expression
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/slow-lhs-suggestion.rs:2:55
+   |
+LL |     1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1;
+   |                                                     - ^
+   |                                                     |
+   |                                                     cannot assign to this expression
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/slow-lhs-suggestion.rs:2:51
+   |
+LL |     1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1;
+   |                                                 - ^
+   |                                                 |
+   |                                                 cannot assign to this expression
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/slow-lhs-suggestion.rs:2:47
+   |
+LL |     1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1;
+   |                                             - ^
+   |                                             |
+   |                                             cannot assign to this expression
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/slow-lhs-suggestion.rs:2:43
+   |
+LL |     1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1;
+   |                                         - ^
+   |                                         |
+   |                                         cannot assign to this expression
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/slow-lhs-suggestion.rs:2:39
+   |
+LL |     1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1;
+   |                                     - ^
+   |                                     |
+   |                                     cannot assign to this expression
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/slow-lhs-suggestion.rs:2:35
+   |
+LL |     1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1;
+   |                                 - ^
+   |                                 |
+   |                                 cannot assign to this expression
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/slow-lhs-suggestion.rs:2:31
+   |
+LL |     1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1;
+   |                             - ^
+   |                             |
+   |                             cannot assign to this expression
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/slow-lhs-suggestion.rs:2:27
+   |
+LL |     1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1;
+   |                         - ^
+   |                         |
+   |                         cannot assign to this expression
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/slow-lhs-suggestion.rs:2:23
+   |
+LL |     1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1;
+   |                     - ^
+   |                     |
+   |                     cannot assign to this expression
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/slow-lhs-suggestion.rs:2:19
+   |
+LL |     1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1;
+   |                 - ^
+   |                 |
+   |                 cannot assign to this expression
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/slow-lhs-suggestion.rs:2:15
+   |
+LL |     1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1;
+   |             - ^
+   |             |
+   |             cannot assign to this expression
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/slow-lhs-suggestion.rs:2:11
+   |
+LL |     1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1;
+   |         - ^
+   |         |
+   |         cannot assign to this expression
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/slow-lhs-suggestion.rs:2:7
+   |
+LL |     1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1 = 1;
+   |     - ^
+   |     |
+   |     cannot assign to this expression
+
+error: aborting due to 23 previous errors
+
+For more information about this error, try `rustc --explain E0070`.

@@ -1,0 +1,8 @@
+error: expected one of `!` or `[`, found `<eof>`
+  --> $DIR/column-offset-1-based.rs:1:1
+   |
+LL | #
+   | ^ expected one of `!` or `[`
+
+error: aborting due to 1 previous error
+

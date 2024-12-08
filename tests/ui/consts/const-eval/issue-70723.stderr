@@ -1,0 +1,17 @@
+error: constant evaluation is taking a long time
+  --> $DIR/issue-70723.rs:1:17
+   |
+LL | static _X: () = loop {};
+   |                 ^^^^^^^
+   |
+   = note: this lint makes sure the compiler doesn't get stuck due to infinite loops in const eval.
+           If your compilation actually takes a long time, you can safely allow the lint.
+help: the constant being evaluated
+  --> $DIR/issue-70723.rs:1:1
+   |
+LL | static _X: () = loop {};
+   | ^^^^^^^^^^^^^
+   = note: `#[deny(long_running_const_eval)]` on by default
+
+error: aborting due to 1 previous error
+

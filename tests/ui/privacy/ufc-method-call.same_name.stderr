@@ -1,0 +1,12 @@
+error[E0624]: associated function `foo` is private
+  --> $DIR/ufc-method-call.rs:27:27
+   |
+LL |         fn foo() {}
+   |         -------- private associated function defined here
+...
+LL |     test::Foo::<test::B>::foo();
+   |                           ^^^ private associated function
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0624`.

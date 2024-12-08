@@ -1,0 +1,20 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/index-oob-ice-83993.rs:8:17
+   |
+LL |         let x: &'b ();
+   |                 ^^ cannot perform const operation using `'b`
+   |
+   = note: lifetime parameters may not be used in const expressions
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: generic parameters may not be used in const operations
+  --> $DIR/index-oob-ice-83993.rs:18:17
+   |
+LL |         let _: &'b ();
+   |                 ^^ cannot perform const operation using `'b`
+   |
+   = note: lifetime parameters may not be used in const expressions
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: aborting due to 2 previous errors
+

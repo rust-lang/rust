@@ -1,0 +1,14 @@
+error: expected trait bound, found `impl Trait` type
+  --> $DIR/issue-102182-impl-trait-recover.rs:1:11
+   |
+LL | fn foo<T: impl Trait>() {}
+   |           ^^^^^^^^^^ not a trait
+   |
+help: use the trait bounds directly
+   |
+LL - fn foo<T: impl Trait>() {}
+LL + fn foo<T: Trait>() {}
+   |
+
+error: aborting due to 1 previous error
+

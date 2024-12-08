@@ -1,0 +1,15 @@
+error[E0734]: stability attributes may not be used outside of the standard library
+  --> $DIR/stability-attribute-non-staged.rs:1:1
+   |
+LL | #[unstable()]
+   | ^^^^^^^^^^^^^
+
+error[E0734]: stability attributes may not be used outside of the standard library
+  --> $DIR/stability-attribute-non-staged.rs:2:1
+   |
+LL | #[stable()]
+   | ^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0734`.

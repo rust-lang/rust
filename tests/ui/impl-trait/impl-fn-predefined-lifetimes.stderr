@@ -1,0 +1,30 @@
+warning: elided lifetime has a name
+  --> $DIR/impl-fn-predefined-lifetimes.rs:4:48
+   |
+LL | fn a<'a>() -> impl Fn(&'a u8) -> (impl Debug + '_) {
+   |      -- lifetime `'a` declared here            ^^ this elided lifetime gets resolved as `'a`
+   |
+   = note: `#[warn(elided_named_lifetimes)]` on by default
+
+error[E0792]: expected generic lifetime parameter, found `'_`
+  --> $DIR/impl-fn-predefined-lifetimes.rs:7:9
+   |
+LL | fn a<'a>() -> impl Fn(&'a u8) -> (impl Debug + '_) {
+   |                                                -- this generic parameter must be used with a generic lifetime parameter
+...
+LL |     |x| x
+   |         ^
+
+error[E0720]: cannot resolve opaque type
+  --> $DIR/impl-fn-predefined-lifetimes.rs:4:35
+   |
+LL | fn a<'a>() -> impl Fn(&'a u8) -> (impl Debug + '_) {
+   |                                   ^^^^^^^^^^^^^^^ recursive opaque type
+...
+LL |     |x| x
+   |     ----- returning here with type `{closure@$DIR/impl-fn-predefined-lifetimes.rs:7:5: 7:8}`
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0720, E0792.
+For more information about an error, try `rustc --explain E0720`.

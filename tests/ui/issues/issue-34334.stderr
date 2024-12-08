@@ -1,0 +1,38 @@
+error: expected one of `,`, `:`, or `>`, found `=`
+  --> $DIR/issue-34334.rs:2:29
+   |
+LL |     let sr: Vec<(u32, _, _) = vec![];
+   |           -                 ^ expected one of `,`, `:`, or `>`
+   |           |
+   |           while parsing the type for `sr`
+   |
+help: you might have meant to end the type parameters here
+   |
+LL |     let sr: Vec<(u32, _, _)> = vec![];
+   |                            +
+
+error[E0277]: a value of type `Vec<(u32, _, _)>` cannot be built from an iterator over elements of type `()`
+  --> $DIR/issue-34334.rs:5:87
+   |
+LL |     let sr2: Vec<(u32, _, _)> = sr.iter().map(|(faction, th_sender, th_receiver)| {}).collect();
+   |                                                                                       ^^^^^^^ value of type `Vec<(u32, _, _)>` cannot be built from `std::iter::Iterator<Item=()>`
+   |
+   = help: the trait `FromIterator<()>` is not implemented for `Vec<(u32, _, _)>`
+           but trait `FromIterator<(u32, _, _)>` is implemented for it
+   = help: for that trait implementation, expected `(u32, _, _)`, found `()`
+note: the method call chain might not have had the expected associated types
+  --> $DIR/issue-34334.rs:5:43
+   |
+LL |     let sr: Vec<(u32, _, _) = vec![];
+   |                               ------ this expression has type `Vec<(_, _, _)>`
+...
+LL |     let sr2: Vec<(u32, _, _)> = sr.iter().map(|(faction, th_sender, th_receiver)| {}).collect();
+   |                                    ------ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Iterator::Item` changed to `()` here
+   |                                    |
+   |                                    `Iterator::Item` is `&(_, _, _)` here
+note: required by a bound in `collect`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

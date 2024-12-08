@@ -1,0 +1,30 @@
+error[E0379]: functions in traits cannot be declared const
+  --> $DIR/feature-gate-min_const_fn.rs:6:5
+   |
+LL |     const fn foo() -> u32;
+   |     ^^^^^-
+   |     |
+   |     functions in traits cannot be const
+   |     help: remove the `const`
+
+error[E0379]: functions in traits cannot be declared const
+  --> $DIR/feature-gate-min_const_fn.rs:7:5
+   |
+LL |     const fn bar() -> u32 { 0 }
+   |     ^^^^^-
+   |     |
+   |     functions in traits cannot be const
+   |     help: remove the `const`
+
+error[E0379]: functions in trait impls cannot be declared const
+  --> $DIR/feature-gate-min_const_fn.rs:11:5
+   |
+LL |     const fn foo() -> u32 { 0 }
+   |     ^^^^^-
+   |     |
+   |     functions in trait impls cannot be const
+   |     help: remove the `const`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0379`.

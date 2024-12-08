@@ -1,0 +1,15 @@
+error[E0503]: cannot use `y.1` because it was mutably borrowed
+  --> $DIR/match-cfg-fake-edges2.rs:8:5
+   |
+LL |     let r = &mut y.1;
+   |             -------- `y.1` is borrowed here
+...
+LL |     match y {
+   |     ^^^^^^^ use of borrowed `y.1`
+...
+LL |         (true, _) => drop(r),
+   |                           - borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0503`.

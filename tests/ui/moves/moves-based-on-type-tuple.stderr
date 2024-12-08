@@ -1,0 +1,19 @@
+error[E0382]: use of moved value: `x`
+  --> $DIR/moves-based-on-type-tuple.rs:4:18
+   |
+LL | fn dup(x: Box<isize>) -> Box<(Box<isize>,Box<isize>)> {
+   |        - move occurs because `x` has type `Box<isize>`, which does not implement the `Copy` trait
+...
+LL |     Box::new((x, x))
+   |               -  ^ value used here after move
+   |               |
+   |               value moved here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     Box::new((x.clone(), x))
+   |                ++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

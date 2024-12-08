@@ -1,0 +1,20 @@
+[book]
+title = "Error codes index"
+description = "Book listing all Rust error codes"
+src = ""
+
+[output.html]
+git-repository-url = "https://github.com/rust-lang/rust/"
+additional-css = ["error-index.css"]
+additional-js = ["error-index.js"]
+input-404 = ""
+
+[output.html.search]
+enable = true
+limit-results = 20
+use-boolean-and = true
+boost-title = 2
+boost-hierarchy = 2
+boost-paragraph = 1
+expand = true
+heading-split-level = 0

@@ -1,0 +1,9 @@
+error[E0463]: can't find crate for `core`
+   |
+   = note: the `thumbv7em-none-eabihf` target may not be installed
+   = help: consider downloading the target with `rustup target add thumbv7em-none-eabihf`
+   = help: consider building the standard library from source with `cargo build -Zbuild-std`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0463`.

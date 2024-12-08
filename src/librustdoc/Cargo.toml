@@ -1,0 +1,44 @@
+[package]
+name = "rustdoc"
+version = "0.0.0"
+edition = "2021"
+build = "build.rs"
+
+[lib]
+path = "lib.rs"
+
+[dependencies]
+arrayvec = { version = "0.7", default-features = false }
+rinja = { version = "0.3", default-features = false, features = ["config"] }
+base64 = "0.21.7"
+itertools = "0.12"
+indexmap = "2"
+minifier = { version = "0.3.2", default-features = false }
+pulldown-cmark-old = { version = "0.9.6", package = "pulldown-cmark", default-features = false }
+regex = "1"
+rustdoc-json-types = { path = "../rustdoc-json-types" }
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+smallvec = "1.8.1"
+tempfile = "3"
+tracing = "0.1"
+tracing-tree = "0.3.0"
+threadpool = "1.8.1"
+unicode-segmentation = "1.9"
+
+[dependencies.tracing-subscriber]
+version = "0.3.3"
+default-features = false
+features = ["fmt", "env-filter", "smallvec", "parking_lot", "ansi"]
+
+[build-dependencies]
+sha2 = "0.10.8"
+
+[dev-dependencies]
+expect-test = "1.4.0"
+
+[features]
+jemalloc = []
+
+[package.metadata.rust-analyzer]
+rustc_private = true

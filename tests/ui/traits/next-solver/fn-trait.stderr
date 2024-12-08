@@ -1,0 +1,69 @@
+error[E0277]: expected a `Fn()` closure, found `unsafe fn() -> i32`
+  --> $DIR/fn-trait.rs:20:16
+   |
+LL |     require_fn(f as unsafe fn() -> i32);
+   |     ---------- ^^^^^^^^^^^^^^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Fn()` is not implemented for `unsafe fn() -> i32`
+   = note: unsafe function cannot be called generically without an unsafe block
+   = note: wrap the `unsafe fn() -> i32` in a closure with no arguments: `|| { /* code */ }`
+note: required by a bound in `require_fn`
+  --> $DIR/fn-trait.rs:3:23
+   |
+LL | fn require_fn(_: impl Fn() -> i32) {}
+   |                       ^^^^^^^^^^^ required by this bound in `require_fn`
+
+error[E0277]: expected a `Fn()` closure, found `extern "C" fn() -> i32 {g}`
+  --> $DIR/fn-trait.rs:22:16
+   |
+LL |     require_fn(g);
+   |     ---------- ^ expected an `Fn()` closure, found `extern "C" fn() -> i32 {g}`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Fn()` is not implemented for fn item `extern "C" fn() -> i32 {g}`
+   = note: wrap the `extern "C" fn() -> i32 {g}` in a closure with no arguments: `|| { /* code */ }`
+note: required by a bound in `require_fn`
+  --> $DIR/fn-trait.rs:3:23
+   |
+LL | fn require_fn(_: impl Fn() -> i32) {}
+   |                       ^^^^^^^^^^^ required by this bound in `require_fn`
+
+error[E0277]: expected a `Fn()` closure, found `extern "C" fn() -> i32`
+  --> $DIR/fn-trait.rs:24:16
+   |
+LL |     require_fn(g as extern "C" fn() -> i32);
+   |     ---------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected an `Fn()` closure, found `extern "C" fn() -> i32`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Fn()` is not implemented for `extern "C" fn() -> i32`
+   = note: wrap the `extern "C" fn() -> i32` in a closure with no arguments: `|| { /* code */ }`
+note: required by a bound in `require_fn`
+  --> $DIR/fn-trait.rs:3:23
+   |
+LL | fn require_fn(_: impl Fn() -> i32) {}
+   |                       ^^^^^^^^^^^ required by this bound in `require_fn`
+
+error[E0277]: expected a `Fn()` closure, found `unsafe fn() -> i32 {h}`
+  --> $DIR/fn-trait.rs:26:16
+   |
+LL |     require_fn(h);
+   |     ---------- ^ call the function in a closure: `|| unsafe { /* code */ }`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Fn()` is not implemented for fn item `unsafe fn() -> i32 {h}`
+   = note: unsafe function cannot be called generically without an unsafe block
+   = note: wrap the `unsafe fn() -> i32 {h}` in a closure with no arguments: `|| { /* code */ }`
+note: required by a bound in `require_fn`
+  --> $DIR/fn-trait.rs:3:23
+   |
+LL | fn require_fn(_: impl Fn() -> i32) {}
+   |                       ^^^^^^^^^^^ required by this bound in `require_fn`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,122 @@
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-syntactic-fail.rs:7:5
+   |
+LL |     static IA: u8 = 0;
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-syntactic-fail.rs:8:5
+   |
+LL |     static IB: u8;
+   |     ^^^^^^^^^^^^^^
+
+error: a static item cannot be `default`
+  --> $DIR/assoc-static-syntactic-fail.rs:9:5
+   |
+LL |     default static IC: u8 = 0;
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-syntactic-fail.rs:9:5
+   |
+LL |     default static IC: u8 = 0;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a static item cannot be `default`
+  --> $DIR/assoc-static-syntactic-fail.rs:11:16
+   |
+LL |     pub(crate) default static ID: u8;
+   |                ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-syntactic-fail.rs:11:5
+   |
+LL |     pub(crate) default static ID: u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-syntactic-fail.rs:17:5
+   |
+LL |     static TA: u8 = 0;
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-syntactic-fail.rs:18:5
+   |
+LL |     static TB: u8;
+   |     ^^^^^^^^^^^^^^
+
+error: a static item cannot be `default`
+  --> $DIR/assoc-static-syntactic-fail.rs:19:5
+   |
+LL |     default static TC: u8 = 0;
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-syntactic-fail.rs:19:5
+   |
+LL |     default static TC: u8 = 0;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a static item cannot be `default`
+  --> $DIR/assoc-static-syntactic-fail.rs:21:16
+   |
+LL |     pub(crate) default static TD: u8;
+   |                ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-syntactic-fail.rs:21:5
+   |
+LL |     pub(crate) default static TD: u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-syntactic-fail.rs:27:5
+   |
+LL |     static TA: u8 = 0;
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-syntactic-fail.rs:28:5
+   |
+LL |     static TB: u8;
+   |     ^^^^^^^^^^^^^^
+
+error: a static item cannot be `default`
+  --> $DIR/assoc-static-syntactic-fail.rs:29:5
+   |
+LL |     default static TC: u8 = 0;
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-syntactic-fail.rs:29:5
+   |
+LL |     default static TC: u8 = 0;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a static item cannot be `default`
+  --> $DIR/assoc-static-syntactic-fail.rs:31:9
+   |
+LL |     pub default static TD: u8;
+   |         ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: associated `static` items are not allowed
+  --> $DIR/assoc-static-syntactic-fail.rs:31:5
+   |
+LL |     pub default static TD: u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 18 previous errors
+

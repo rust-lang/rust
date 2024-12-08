@@ -1,0 +1,18 @@
+error[E0767]: use of unreachable label `'a`
+  --> $DIR/issue-73541-2.rs:7:26
+   |
+LL |     'a: loop {
+   |     -- unreachable label defined here
+...
+LL |                 continue 'a
+   |                          ^^ unreachable label `'a`
+...
+LL |                 b!();
+   |                 ---- in this macro invocation
+   |
+   = note: labels are unreachable through functions, closures, async blocks and modules
+   = note: this error originates in the macro `b` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0767`.

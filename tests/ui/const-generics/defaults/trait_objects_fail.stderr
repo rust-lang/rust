@@ -1,0 +1,23 @@
+error[E0277]: the trait bound `u32: Trait` is not satisfied
+  --> $DIR/trait_objects_fail.rs:26:9
+   |
+LL |     foo(&10_u32);
+   |         ^^^^^^^ the trait `Trait` is not implemented for `u32`
+   |
+   = help: the trait `Trait<12>` is not implemented for `u32`
+           but trait `Trait<2>` is implemented for it
+   = note: required for the cast from `&u32` to `&dyn Trait`
+
+error[E0277]: the trait bound `bool: Traitor<_>` is not satisfied
+  --> $DIR/trait_objects_fail.rs:28:9
+   |
+LL |     bar(&true);
+   |         ^^^^^ the trait `Traitor<_>` is not implemented for `bool`
+   |
+   = help: the trait `Traitor<_, _>` is not implemented for `bool`
+           but trait `Traitor<2, 3>` is implemented for it
+   = note: required for the cast from `&bool` to `&dyn Traitor<_>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,66 @@
+error: mismatched types
+  --> $DIR/typeck.rs:24:9
+   |
+LL |         !,
+   |         ^ a never pattern must be used on an uninhabited type
+   |
+   = note: the matched value is of type `()`
+
+error: mismatched types
+  --> $DIR/typeck.rs:28:9
+   |
+LL |         !,
+   |         ^ a never pattern must be used on an uninhabited type
+   |
+   = note: the matched value is of type `(i32, bool)`
+
+error: mismatched types
+  --> $DIR/typeck.rs:32:13
+   |
+LL |         (_, !),
+   |             ^ a never pattern must be used on an uninhabited type
+   |
+   = note: the matched value is of type `bool`
+
+error: mismatched types
+  --> $DIR/typeck.rs:37:14
+   |
+LL |         Some(!),
+   |              ^ a never pattern must be used on an uninhabited type
+   |
+   = note: the matched value is of type `i32`
+
+error: mismatched types
+  --> $DIR/typeck.rs:44:9
+   |
+LL |         !,
+   |         ^ a never pattern must be used on an uninhabited type
+   |
+   = note: the matched value is of type `()`
+
+error: mismatched types
+  --> $DIR/typeck.rs:51:9
+   |
+LL |         !,
+   |         ^ a never pattern must be used on an uninhabited type
+   |
+   = note: the matched value is of type `Option<Void>`
+
+error: mismatched types
+  --> $DIR/typeck.rs:56:9
+   |
+LL |         !,
+   |         ^ a never pattern must be used on an uninhabited type
+   |
+   = note: the matched value is of type `[Void]`
+
+error: mismatched types
+  --> $DIR/typeck.rs:62:9
+   |
+LL |         !,
+   |         ^ a never pattern must be used on an uninhabited type
+   |
+   = note: the matched value is of type `Option<&Void>`
+
+error: aborting due to 8 previous errors
+

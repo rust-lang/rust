@@ -1,0 +1,28 @@
+error: incorrect function inside `extern` block
+  --> $DIR/issue-97193.rs:2:8
+   |
+LL |   extern "C" {
+   |   ---------- `extern` blocks define existing foreign functions and functions inside of them cannot have a body
+LL |       fn a(&mut self) {
+   |  ________^____________-
+   | |        |
+   | |        cannot have a body
+LL | |
+LL | |
+LL | |         fn b(buf: &Self) {}
+LL | |     }
+   | |_____- help: remove the invalid body: `;`
+   |
+   = help: you might have meant to write a function accessible through FFI, which can be done by writing `extern fn` outside of the `extern` block
+   = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/issue-97193.rs:2:10
+   |
+LL |     fn a(&mut self) {
+   |          ^^^^^^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error: aborting due to 2 previous errors
+

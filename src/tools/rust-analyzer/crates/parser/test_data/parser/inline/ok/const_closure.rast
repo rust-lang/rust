@@ -1,0 +1,42 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE " "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "cl"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          CLOSURE_EXPR
+            CONST_KW "const"
+            WHITESPACE " "
+            PARAM_LIST
+              PIPE "|"
+              PIPE "|"
+            WHITESPACE " "
+            BIN_EXPR
+              UNDERSCORE_EXPR
+                UNDERSCORE "_"
+              WHITESPACE " "
+              EQ "="
+              WHITESPACE " "
+              LITERAL
+                INT_NUMBER "0"
+          SEMICOLON ";"
+        WHITESPACE " "
+        R_CURLY "}"
+  WHITESPACE "\n"

@@ -1,0 +1,30 @@
+error[E0618]: expected function, found enum variant `X::Entry`
+  --> $DIR/E0618.rs:6:5
+   |
+LL |     Entry,
+   |     ----- enum variant `X::Entry` defined here
+...
+LL |     X::Entry();
+   |     ^^^^^^^^--
+   |     |
+   |     call expression requires function
+   |
+help: `X::Entry` is a unit enum variant, and does not take parentheses to be constructed
+   |
+LL -     X::Entry();
+LL +     X::Entry;
+   |
+
+error[E0618]: expected function, found `i32`
+  --> $DIR/E0618.rs:9:5
+   |
+LL |     let x = 0i32;
+   |         - `x` has type `i32`
+LL |     x();
+   |     ^--
+   |     |
+   |     call expression requires function
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0618`.

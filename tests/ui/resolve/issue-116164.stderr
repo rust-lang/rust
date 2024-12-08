@@ -1,0 +1,14 @@
+error[E0425]: cannot find value `ExOne` in this scope
+  --> $DIR/issue-116164.rs:17:5
+   |
+LL |     ExOne;
+   |     ^^^^^ not found in this scope
+   |
+help: consider importing this unit variant
+   |
+LL + use inner::Example::ExOne;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

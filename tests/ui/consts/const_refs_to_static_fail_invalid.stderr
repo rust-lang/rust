@@ -1,0 +1,36 @@
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/const_refs_to_static_fail_invalid.rs:8:5
+   |
+LL |     const C: &bool = unsafe { std::mem::transmute(&S) };
+   |     ^^^^^^^^^^^^^^ constructing invalid value at .<deref>: encountered 0x0a, but expected a boolean
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/const_refs_to_static_fail_invalid.rs:24:5
+   |
+LL |     const C: &i8 = unsafe { &S };
+   |     ^^^^^^^^^^^^ constructing invalid value: encountered reference to `extern` static in `const`
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/const_refs_to_static_fail_invalid.rs:38:5
+   |
+LL |     const C: &i32 = unsafe { &S_MUT };
+   |     ^^^^^^^^^^^^^ constructing invalid value: encountered reference to mutable memory in `const`
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               HEX_DUMP
+           }
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

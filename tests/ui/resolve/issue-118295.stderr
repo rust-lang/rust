@@ -1,0 +1,26 @@
+error: cannot find macro `macro_rules` in this scope
+  --> $DIR/issue-118295.rs:6:1
+   |
+LL | macro_rules!{}
+   | ^^^^^^^^^^^
+   |
+note: maybe you have forgotten to define a name for this `macro_rules!`
+  --> $DIR/issue-118295.rs:6:12
+   |
+LL | macro_rules!{}
+   |            ^ put a macro name here
+
+error: cannot find macro `macro_rules` in this scope
+  --> $DIR/issue-118295.rs:1:1
+   |
+LL | macro_rules! {}
+   | ^^^^^^^^^^^
+   |
+note: maybe you have forgotten to define a name for this `macro_rules!`
+  --> $DIR/issue-118295.rs:1:12
+   |
+LL | macro_rules! {}
+   |            ^ put a macro name here
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,16 @@
+[package]
+name = "rustc_index_macros"
+version = "0.0.0"
+edition = "2021"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "2.0.9", features = ["full", "extra-traits"] }
+proc-macro2 = "1"
+quote = "1"
+
+[features]
+default = ["nightly"]
+nightly = []

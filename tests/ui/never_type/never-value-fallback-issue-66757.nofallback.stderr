@@ -1,0 +1,13 @@
+error[E0277]: the trait bound `E: From<()>` is not satisfied
+  --> $DIR/never-value-fallback-issue-66757.rs:28:6
+   |
+LL |     <E as From<_>>::from(never);
+   |      ^ the trait `From<()>` is not implemented for `E`
+   |
+   = help: the trait `From<()>` is not implemented for `E`
+           but trait `From<!>` is implemented for it
+   = help: for that trait implementation, expected `!`, found `()`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

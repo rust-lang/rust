@@ -1,0 +1,12 @@
+error[E0046]: not all trait items implemented, missing: `Target`, `deref`
+  --> $DIR/dont-suggest-import-on-deref-err.rs:7:1
+   |
+LL | impl Deref for Foo {}
+   | ^^^^^^^^^^^^^^^^^^ missing `Target`, `deref` in implementation
+   |
+   = help: implement the missing item: `type Target = /* Type */;`
+   = help: implement the missing item: `fn deref(&self) -> &<Self as Deref>::Target { todo!() }`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0046`.

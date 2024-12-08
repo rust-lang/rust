@@ -1,0 +1,17 @@
+// MIR for `BOP` after built
+
+static BOP: &i32 = {
+    let mut _0: &i32;
+    let _1: &i32;
+    let _2: i32;
+
+    bb0: {
+        StorageLive(_1);
+        StorageLive(_2);
+        _2 = const 13_i32;
+        _1 = &_2;
+        _0 = &(*_1);
+        StorageDead(_1);
+        return;
+    }
+}

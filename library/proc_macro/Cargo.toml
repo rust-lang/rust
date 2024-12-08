@@ -1,0 +1,11 @@
+[package]
+name = "proc_macro"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+std = { path = "../std" }
+# Workaround: when documenting this crate rustdoc will try to load crate named
+# `core` when resolving doc links. Without this line a different `core` will be
+# loaded from sysroot causing duplicate lang items and other similar errors.
+core = { path = "../core" }

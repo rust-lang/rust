@@ -1,0 +1,22 @@
+error: `Struct::Trait` is both an associated constant and an associated type
+  --> $DIR/issue-108653-associated-items-4.rs:11:7
+   |
+LL | /// [`Struct::Trait`]
+   |       ^^^^^^^^^^^^^ ambiguous link
+   |
+note: the lint level is defined here
+  --> $DIR/issue-108653-associated-items-4.rs:4:9
+   |
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: to link to the associated constant, prefix with `const@`
+   |
+LL | /// [`const@Struct::Trait`]
+   |       ++++++
+help: to link to the associated type, prefix with `type@`
+   |
+LL | /// [`type@Struct::Trait`]
+   |       +++++
+
+error: aborting due to 1 previous error
+

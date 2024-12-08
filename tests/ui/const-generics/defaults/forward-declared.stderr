@@ -1,0 +1,27 @@
+error[E0128]: generic parameters with a default cannot use forward declared identifiers
+  --> $DIR/forward-declared.rs:1:29
+   |
+LL | struct Foo<const N: usize = M, const M: usize = 10>;
+   |                             ^ defaulted generic parameters cannot be forward declared
+
+error[E0128]: generic parameters with a default cannot use forward declared identifiers
+  --> $DIR/forward-declared.rs:4:27
+   |
+LL | enum Bar<const N: usize = M, const M: usize = 10> {}
+   |                           ^ defaulted generic parameters cannot be forward declared
+
+error[E0128]: generic parameters with a default cannot use forward declared identifiers
+  --> $DIR/forward-declared.rs:7:30
+   |
+LL | struct Foo2<const N: usize = N>;
+   |                              ^ defaulted generic parameters cannot be forward declared
+
+error[E0128]: generic parameters with a default cannot use forward declared identifiers
+  --> $DIR/forward-declared.rs:10:28
+   |
+LL | enum Bar2<const N: usize = N> {}
+   |                            ^ defaulted generic parameters cannot be forward declared
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0128`.

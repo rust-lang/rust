@@ -1,0 +1,12 @@
+error: rustc_outlives
+  --> $DIR/nested-regions.rs:4:1
+   |
+LL | struct Foo<'a, 'b, T> {
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: 'b: 'a
+   = note: T: 'a
+   = note: T: 'b
+
+error: aborting due to 1 previous error
+

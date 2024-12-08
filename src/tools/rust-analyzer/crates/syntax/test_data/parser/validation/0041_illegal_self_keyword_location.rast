@@ -1,0 +1,29 @@
+SOURCE_FILE@0..25
+  USE@0..11
+    USE_KW@0..3 "use"
+    WHITESPACE@3..4 " "
+    USE_TREE@4..10
+      PATH@4..10
+        PATH_SEGMENT@4..10
+          COLON2@4..6 "::"
+          NAME_REF@6..10
+            SELF_KW@6..10 "self"
+    SEMICOLON@10..11 ";"
+  WHITESPACE@11..12 "\n"
+  USE@12..24
+    USE_KW@12..15 "use"
+    WHITESPACE@15..16 " "
+    USE_TREE@16..23
+      PATH@16..23
+        PATH@16..17
+          PATH_SEGMENT@16..17
+            NAME_REF@16..17
+              IDENT@16..17 "a"
+        COLON2@17..19 "::"
+        PATH_SEGMENT@19..23
+          NAME_REF@19..23
+            SELF_KW@19..23 "self"
+    SEMICOLON@23..24 ";"
+  WHITESPACE@24..25 "\n"
+error 6..10: The `self` keyword is only allowed as the first segment of a path
+error 19..23: The `self` keyword is only allowed as the first segment of a path

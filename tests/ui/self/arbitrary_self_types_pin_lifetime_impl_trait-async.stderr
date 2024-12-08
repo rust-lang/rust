@@ -1,0 +1,17 @@
+error[E0700]: hidden type for `impl Clone` captures lifetime that does not appear in bounds
+  --> $DIR/arbitrary_self_types_pin_lifetime_impl_trait-async.rs:8:48
+   |
+LL |     async fn f(self: Pin<&Self>) -> impl Clone { self }
+   |                          -----      ---------- ^^^^^^^^
+   |                          |          |
+   |                          |          opaque type defined here
+   |                          hidden type `Pin<&Foo>` captures the anonymous lifetime defined here
+   |
+help: add a `use<...>` bound to explicitly capture `'_`
+   |
+LL |     async fn f(self: Pin<&Self>) -> impl Clone + use<'_> { self }
+   |                                                +++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0700`.

@@ -1,0 +1,13 @@
+error: expected identifier, found keyword `unsafe`
+  --> $DIR/keyword-unsafe-as-identifier.rs:4:9
+   |
+LL |     let unsafe = "foo";
+   |         ^^^^^^ expected identifier, found keyword
+   |
+help: escape `unsafe` to use it as an identifier
+   |
+LL |     let r#unsafe = "foo";
+   |         ++
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,36 @@
+error[E0046]: not all trait items implemented, missing: `call`
+  --> $DIR/location-insensitive-scopes-issue-116657.rs:18:1
+   |
+LL |     fn call(x: Self) -> Self::Output;
+   |     --------------------------------- `call` from trait
+...
+LL | impl<T: PlusOne> Callable for T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `call` in implementation
+
+error: unconstrained opaque type
+  --> $DIR/location-insensitive-scopes-issue-116657.rs:22:19
+   |
+LL |     type Output = impl PlusOne;
+   |                   ^^^^^^^^^^^^
+   |
+   = note: `Output` must be used in combination with a concrete type within the same impl
+
+error[E0700]: hidden type for `impl PlusOne` captures lifetime that does not appear in bounds
+  --> $DIR/location-insensitive-scopes-issue-116657.rs:28:5
+   |
+LL | fn test<'a>(y: &'a mut i32) -> impl PlusOne {
+   |         --                     ------------ opaque type defined here
+   |         |
+   |         hidden type `<&'a mut i32 as Callable>::Output` captures the lifetime `'a` as defined here
+LL |     <&mut i32 as Callable>::call(y)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add a `use<...>` bound to explicitly capture `'a`
+   |
+LL | fn test<'a>(y: &'a mut i32) -> impl PlusOne + use<'a> {
+   |                                             +++++++++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0046, E0700.
+For more information about an error, try `rustc --explain E0046`.

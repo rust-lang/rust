@@ -1,0 +1,27 @@
+error[E0608]: cannot index into a value of type `({integer}, {integer}, {integer})`
+  --> $DIR/issue-27842.rs:4:16
+   |
+LL |     let _ = tup[0];
+   |                ^^^ help: to access tuple elements, use: `.0`
+
+error[E0608]: cannot index into a value of type `({integer}, {integer}, {integer})`
+  --> $DIR/issue-27842.rs:9:16
+   |
+LL |     let _ = tup[i];
+   |                ^-^
+   |                 |
+   |                 cannot access tuple elements at a variable index
+   |
+   = help: to access tuple elements, use tuple indexing syntax (e.g., `tuple.0`)
+
+error[E0608]: cannot index into a value of type `({integer},)`
+  --> $DIR/issue-27842.rs:14:16
+   |
+LL |     let _ = tup[3];
+   |                ^^^
+   |
+   = help: to access tuple elements, use tuple indexing syntax (e.g., `tuple.0`)
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0608`.

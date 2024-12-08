@@ -1,0 +1,23 @@
+SOURCE_FILE
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "F"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    FN_PTR_TYPE
+      FN_KW "fn"
+      PARAM_LIST
+        L_PAREN "("
+        R_PAREN ")"
+      WHITESPACE " "
+      RET_TYPE
+        THIN_ARROW "->"
+        WHITESPACE " "
+        TUPLE_TYPE
+          L_PAREN "("
+          R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"

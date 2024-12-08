@@ -1,0 +1,27 @@
+error[E0582]: binding for associated type `Output` references lifetime `'a`, which does not appear in the trait input types
+  --> $DIR/bound-lifetime-in-binding-only.rs:32:29
+   |
+LL | fn paren<T: for<'a> Fn() -> &'a i32>() {
+   |                             ^^^^^^^
+
+error[E0582]: binding for associated type `Output` references lifetime `'a`, which does not appear in the trait input types
+  --> $DIR/bound-lifetime-in-binding-only.rs:37:41
+   |
+LL | fn paren1<T>() where T: for<'a> Fn() -> &'a i32 {
+   |                                         ^^^^^^^
+
+error[E0582]: binding for associated type `Output` references lifetime `'a`, which does not appear in the trait input types
+  --> $DIR/bound-lifetime-in-binding-only.rs:42:41
+   |
+LL | fn paren2<T>() where for<'a> T: Fn() -> &'a i32 {
+   |                                         ^^^^^^^
+
+error[E0582]: binding for associated type `Output` references lifetime `'a`, which does not appear in the trait input types
+  --> $DIR/bound-lifetime-in-binding-only.rs:47:35
+   |
+LL | fn paren3(_: &dyn for<'a> Fn() -> &'a i32) {
+   |                                   ^^^^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0582`.

@@ -1,0 +1,57 @@
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-type-parameters.rs:6:18
+   |
+LL |     let _: i32 = transmute(x);
+   |                  ^^^^^^^^^
+   |
+   = note: source type: `T` (this type does not have a fixed size)
+   = note: target type: `i32` (32 bits)
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-type-parameters.rs:11:18
+   |
+LL |     let _: i32 = transmute(x);
+   |                  ^^^^^^^^^
+   |
+   = note: source type: `(T, i32)` (size can vary because of T)
+   = note: target type: `i32` (32 bits)
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-type-parameters.rs:16:18
+   |
+LL |     let _: i32 = transmute(x);
+   |                  ^^^^^^^^^
+   |
+   = note: source type: `[T; 10]` (size can vary because of T)
+   = note: target type: `i32` (32 bits)
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-type-parameters.rs:25:18
+   |
+LL |     let _: i32 = transmute(x);
+   |                  ^^^^^^^^^
+   |
+   = note: source type: `Bad<T>` (size can vary because of T)
+   = note: target type: `i32` (32 bits)
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-type-parameters.rs:35:18
+   |
+LL |     let _: i32 = transmute(x);
+   |                  ^^^^^^^^^
+   |
+   = note: source type: `Worse<T>` (size can vary because of T)
+   = note: target type: `i32` (32 bits)
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/transmute-type-parameters.rs:40:18
+   |
+LL |     let _: i32 = transmute(x);
+   |                  ^^^^^^^^^
+   |
+   = note: source type: `Option<T>` (size can vary because of T)
+   = note: target type: `i32` (32 bits)
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0512`.

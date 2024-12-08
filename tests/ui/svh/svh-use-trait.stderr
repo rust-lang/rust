@@ -1,0 +1,14 @@
+error[E0460]: found possibly newer version of crate `uta` which `utb` depends on
+  --> $DIR/svh-use-trait.rs:13:1
+   |
+LL | extern crate utb;
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = note: perhaps that crate needs to be recompiled?
+   = note: the following crate versions were found:
+           crate `uta`: $PATH_uta
+           crate `utb`: $PATH_utb
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0460`.

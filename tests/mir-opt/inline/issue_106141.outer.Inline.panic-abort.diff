@@ -1,0 +1,49 @@
+- // MIR for `outer` before Inline
++ // MIR for `outer` after Inline
+  
+  fn outer() -> usize {
+      let mut _0: usize;
++     scope 1 (inlined inner) {
++         let mut _1: &[bool; 1];
++         let mut _2: bool;
++         let mut _3: bool;
++         scope 2 {
++             debug buffer => _1;
++             scope 3 {
++                 debug index => _0;
++             }
++         }
++     }
+  
+      bb0: {
+-         _0 = inner() -> [return: bb1, unwind unreachable];
++         StorageLive(_1);
++         StorageLive(_2);
++         _1 = const inner::promoted[0];
++         _0 = index() -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
++         StorageLive(_3);
++         _2 = Lt(copy _0, const 1_usize);
++         assert(move _2, "index out of bounds: the length is {} but the index is {}", const 1_usize, copy _0) -> [success: bb2, unwind unreachable];
++     }
++ 
++     bb2: {
++         _3 = copy (*_1)[_0];
++         switchInt(move _3) -> [0: bb3, otherwise: bb4];
++     }
++ 
++     bb3: {
++         _0 = const 0_usize;
++         goto -> bb4;
++     }
++ 
++     bb4: {
++         StorageDead(_3);
++         StorageDead(_2);
++         StorageDead(_1);
+          return;
+      }
+  }
+  

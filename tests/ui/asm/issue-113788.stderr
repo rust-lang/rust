@@ -1,0 +1,9 @@
+error[E0412]: cannot find type `PEB` in this scope
+  --> $DIR/issue-113788.rs:5:21
+   |
+LL |     let peb: *const PEB;
+   |                     ^^^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0412`.

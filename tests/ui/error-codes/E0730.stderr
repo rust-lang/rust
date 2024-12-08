@@ -1,0 +1,9 @@
+error[E0730]: cannot pattern-match on an array without a fixed length
+  --> $DIR/E0730.rs:3:9
+   |
+LL |         [1, 2, ..] => true,
+   |         ^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0730`.

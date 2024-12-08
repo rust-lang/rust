@@ -1,0 +1,58 @@
+error[E0107]: missing generics for associated type `Monad::Wrapped`
+  --> $DIR/issue-79636-1.rs:14:34
+   |
+LL |     MInner: Monad<Unwrapped = A, Wrapped = MOuter::Wrapped<A>>,
+   |                                  ^^^^^^^ expected 1 generic argument
+   |
+note: associated type defined here, with 1 generic parameter: `B`
+  --> $DIR/issue-79636-1.rs:3:10
+   |
+LL |     type Wrapped<B>;
+   |          ^^^^^^^ -
+help: add missing generic argument
+   |
+LL |     MInner: Monad<Unwrapped = A, Wrapped<B> = MOuter::Wrapped<A>>,
+   |                                         +++
+
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/issue-79636-1.rs:5:19
+   |
+LL |     fn bind<B, F>(self, f: F) -> Self::Wrapped<B> {
+   |                   ^^^^ doesn't have a size known at compile-time
+   |
+   = help: unsized fn params are gated as an unstable feature
+help: consider further restricting `Self`
+   |
+LL |     fn bind<B, F>(self, f: F) -> Self::Wrapped<B> where Self: Sized {
+   |                                                   +++++++++++++++++
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL |     fn bind<B, F>(&self, f: F) -> Self::Wrapped<B> {
+   |                   +
+
+error[E0277]: the trait bound `Option<Option<bool>>: Monad` is not satisfied
+  --> $DIR/issue-79636-1.rs:21:21
+   |
+LL |     assert_eq!(join(Some(Some(true))), Some(true));
+   |                ---- ^^^^^^^^^^^^^^^^ the trait `Monad` is not implemented for `Option<Option<bool>>`
+   |                |
+   |                required by a bound introduced by this call
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/issue-79636-1.rs:1:1
+   |
+LL | trait Monad {
+   | ^^^^^^^^^^^
+note: required by a bound in `join`
+  --> $DIR/issue-79636-1.rs:13:13
+   |
+LL | fn join<MOuter, MInner, A>(outer: MOuter) -> MOuter::Wrapped<A>
+   |    ---- required by a bound in this function
+LL | where
+LL |     MOuter: Monad<Unwrapped = MInner>,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `join`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0107, E0277.
+For more information about an error, try `rustc --explain E0107`.

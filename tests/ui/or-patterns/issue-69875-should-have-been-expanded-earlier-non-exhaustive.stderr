@@ -1,0 +1,31 @@
+error[E0005]: refutable pattern in local binding
+  --> $DIR/issue-69875-should-have-been-expanded-earlier-non-exhaustive.rs:2:10
+   |
+LL |     let (0 | (1 | 2)) = 0;
+   |          ^^^^^^^^^^^ patterns `i32::MIN..=-1_i32` and `3_i32..=i32::MAX` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `i32`
+help: you might want to use `if let` to ignore the variants that aren't matched
+   |
+LL |     if let (0 | (1 | 2)) = 0 { todo!() };
+   |     ++                       +++++++++++
+
+error[E0004]: non-exhaustive patterns: `i32::MIN..=-1_i32` and `3_i32..=i32::MAX` not covered
+  --> $DIR/issue-69875-should-have-been-expanded-earlier-non-exhaustive.rs:3:11
+   |
+LL |     match 0 {
+   |           ^ patterns `i32::MIN..=-1_i32` and `3_i32..=i32::MAX` not covered
+   |
+   = note: the matched value is of type `i32`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+   |
+LL ~         0 | (1 | 2) => {},
+LL +         i32::MIN..=-1_i32 | 3_i32..=i32::MAX => todo!()
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0004, E0005.
+For more information about an error, try `rustc --explain E0004`.

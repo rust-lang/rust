@@ -1,0 +1,98 @@
+error: invalid base prefix for number literal
+  --> $DIR/uppercase-base-prefix.rs:6:13
+   |
+LL |     let a = 0XABCDEF;
+   |             ^^^^^^^^ help: try making the prefix lowercase (notice the capitalization): `0xABCDEF`
+   |
+   = note: base prefixes (`0xff`, `0b1010`, `0o755`) are lowercase
+
+error: invalid base prefix for number literal
+  --> $DIR/uppercase-base-prefix.rs:12:13
+   |
+LL |     let b = 0O755;
+   |             ^^^^^ help: try making the prefix lowercase (notice the capitalization): `0o755`
+   |
+   = note: base prefixes (`0xff`, `0b1010`, `0o755`) are lowercase
+
+error: invalid base prefix for number literal
+  --> $DIR/uppercase-base-prefix.rs:18:13
+   |
+LL |     let c = 0B10101010;
+   |             ^^^^^^^^^^ help: try making the prefix lowercase: `0b10101010`
+   |
+   = note: base prefixes (`0xff`, `0b1010`, `0o755`) are lowercase
+
+error: invalid base prefix for number literal
+  --> $DIR/uppercase-base-prefix.rs:24:13
+   |
+LL |     let d = 0XABC_DEF;
+   |             ^^^^^^^^^ help: try making the prefix lowercase (notice the capitalization): `0xABC_DEF`
+   |
+   = note: base prefixes (`0xff`, `0b1010`, `0o755`) are lowercase
+
+error: invalid base prefix for number literal
+  --> $DIR/uppercase-base-prefix.rs:30:13
+   |
+LL |     let e = 0O7_55;
+   |             ^^^^^^ help: try making the prefix lowercase (notice the capitalization): `0o7_55`
+   |
+   = note: base prefixes (`0xff`, `0b1010`, `0o755`) are lowercase
+
+error: invalid base prefix for number literal
+  --> $DIR/uppercase-base-prefix.rs:36:13
+   |
+LL |     let f = 0B1010_1010;
+   |             ^^^^^^^^^^^ help: try making the prefix lowercase: `0b1010_1010`
+   |
+   = note: base prefixes (`0xff`, `0b1010`, `0o755`) are lowercase
+
+error: invalid base prefix for number literal
+  --> $DIR/uppercase-base-prefix.rs:42:13
+   |
+LL |     let g = 0XABC_DEF_u64;
+   |             ^^^^^^^^^^^^^ help: try making the prefix lowercase (notice the capitalization): `0xABC_DEF_u64`
+   |
+   = note: base prefixes (`0xff`, `0b1010`, `0o755`) are lowercase
+
+error: invalid base prefix for number literal
+  --> $DIR/uppercase-base-prefix.rs:48:13
+   |
+LL |     let h = 0O7_55_u32;
+   |             ^^^^^^^^^^ help: try making the prefix lowercase (notice the capitalization): `0o7_55_u32`
+   |
+   = note: base prefixes (`0xff`, `0b1010`, `0o755`) are lowercase
+
+error: invalid base prefix for number literal
+  --> $DIR/uppercase-base-prefix.rs:54:13
+   |
+LL |     let i = 0B1010_1010_u8;
+   |             ^^^^^^^^^^^^^^ help: try making the prefix lowercase: `0b1010_1010_u8`
+   |
+   = note: base prefixes (`0xff`, `0b1010`, `0o755`) are lowercase
+
+error: invalid base prefix for number literal
+  --> $DIR/uppercase-base-prefix.rs:60:13
+   |
+LL |     let j = 0XABCDEFu64;
+   |             ^^^^^^^^^^^ help: try making the prefix lowercase (notice the capitalization): `0xABCDEFu64`
+   |
+   = note: base prefixes (`0xff`, `0b1010`, `0o755`) are lowercase
+
+error: invalid base prefix for number literal
+  --> $DIR/uppercase-base-prefix.rs:66:13
+   |
+LL |     let k = 0O755u32;
+   |             ^^^^^^^^ help: try making the prefix lowercase (notice the capitalization): `0o755u32`
+   |
+   = note: base prefixes (`0xff`, `0b1010`, `0o755`) are lowercase
+
+error: invalid base prefix for number literal
+  --> $DIR/uppercase-base-prefix.rs:72:13
+   |
+LL |     let l = 0B10101010u8;
+   |             ^^^^^^^^^^^^ help: try making the prefix lowercase: `0b10101010u8`
+   |
+   = note: base prefixes (`0xff`, `0b1010`, `0o755`) are lowercase
+
+error: aborting due to 12 previous errors
+

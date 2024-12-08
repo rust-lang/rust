@@ -1,0 +1,21 @@
+error[E0277]: the size for values of type `[String]` cannot be known at compilation time
+  --> $DIR/issue-22874.rs:2:11
+   |
+LL |     rows: [[String]],
+   |           ^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[String]`
+   = note: slice and array elements must have `Sized` type
+
+error[E0277]: the size for values of type `[String]` cannot be known at compilation time
+  --> $DIR/issue-22874.rs:7:6
+   |
+LL |     &table.rows[0]
+   |      ^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[String]`
+   = note: required for `[[String]]` to implement `Index<_>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

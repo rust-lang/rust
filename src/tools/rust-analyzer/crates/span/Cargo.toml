@@ -1,0 +1,26 @@
+[package]
+name = "span"
+version = "0.0.0"
+repository.workspace = true
+description = "File and span related types for rust-analyzer."
+
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+
+[dependencies]
+la-arena.workspace = true
+ra-salsa.workspace = true
+rustc-hash.workspace = true
+hashbrown.workspace = true
+text-size.workspace = true
+
+# local deps
+vfs.workspace = true
+syntax.workspace = true
+stdx.workspace = true
+
+[lints]
+workspace = true

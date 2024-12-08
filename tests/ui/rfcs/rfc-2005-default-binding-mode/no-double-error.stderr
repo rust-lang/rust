@@ -1,0 +1,9 @@
+error[E0599]: no associated item named `XXX` found for type `u32` in the current scope
+  --> $DIR/no-double-error.rs:8:14
+   |
+LL |         u32::XXX => { }
+   |              ^^^ associated item not found in `u32`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

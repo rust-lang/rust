@@ -1,0 +1,40 @@
+//@ check-fail
+//@ run-rustfix
+
+#![deny(forgetting_references)]
+
+use std::mem::forget;
+
+struct SomeStruct;
+
+fn main() {
+    let _ = &SomeStruct; //~ ERROR calls to `std::mem::forget`
+
+    let mut owned = SomeStruct;
+    let _ = &owned; //~ ERROR calls to `std::mem::forget`
+    let _ = &&owned; //~ ERROR calls to `std::mem::forget`
+    let _ = &mut owned; //~ ERROR calls to `std::mem::forget`
+    forget(owned);
+
+    let reference1 = &SomeStruct;
+    let _ = &*reference1; //~ ERROR calls to `std::mem::forget`
+
+    let reference2 = &mut SomeStruct;
+    let _ = reference2; //~ ERROR calls to `std::mem::forget`
+
+    let ref reference3 = SomeStruct;
+    let _ = reference3; //~ ERROR calls to `std::mem::forget`
+}
+
+#[allow(dead_code)]
+fn test_generic_fn_forget<T>(val: T) {
+    let _ = &val; //~ ERROR calls to `std::mem::forget`
+    forget(val);
+}
+
+#[allow(dead_code)]
+fn test_similarly_named_function() {
+    fn forget<T>(_val: T) {}
+    forget(&SomeStruct); //OK; call to unrelated function which happens to have the same name
+    let _ = &SomeStruct; //~ ERROR calls to `std::mem::forget`
+}

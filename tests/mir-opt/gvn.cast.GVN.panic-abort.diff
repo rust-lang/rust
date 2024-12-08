@@ -1,0 +1,564 @@
+- // MIR for `cast` before GVN
++ // MIR for `cast` after GVN
+  
+  fn cast() -> () {
+      let mut _0: ();
+      let _1: i64;
+      let _4: ();
+      let mut _5: u8;
+      let mut _6: i64;
+      let _7: ();
+      let mut _8: u16;
+      let mut _9: i64;
+      let _10: ();
+      let mut _11: u32;
+      let mut _12: i64;
+      let _13: ();
+      let mut _14: u64;
+      let mut _15: i64;
+      let _16: ();
+      let mut _17: i8;
+      let mut _18: i64;
+      let _19: ();
+      let mut _20: i16;
+      let mut _21: i64;
+      let _22: ();
+      let mut _23: i32;
+      let mut _24: i64;
+      let _25: ();
+      let mut _26: i64;
+      let _27: ();
+      let mut _28: f32;
+      let mut _29: i64;
+      let _30: ();
+      let mut _31: f64;
+      let mut _32: i64;
+      let _33: ();
+      let mut _34: u8;
+      let mut _35: u64;
+      let _36: ();
+      let mut _37: u16;
+      let mut _38: u64;
+      let _39: ();
+      let mut _40: u32;
+      let mut _41: u64;
+      let _42: ();
+      let mut _43: u64;
+      let _44: ();
+      let mut _45: i8;
+      let mut _46: u64;
+      let _47: ();
+      let mut _48: i16;
+      let mut _49: u64;
+      let _50: ();
+      let mut _51: i32;
+      let mut _52: u64;
+      let _53: ();
+      let mut _54: i64;
+      let mut _55: u64;
+      let _56: ();
+      let mut _57: f32;
+      let mut _58: u64;
+      let _59: ();
+      let mut _60: f64;
+      let mut _61: u64;
+      let _62: ();
+      let mut _63: u8;
+      let mut _64: f64;
+      let _65: ();
+      let mut _66: u16;
+      let mut _67: f64;
+      let _68: ();
+      let mut _69: u32;
+      let mut _70: f64;
+      let _71: ();
+      let mut _72: u64;
+      let mut _73: f64;
+      let _74: ();
+      let mut _75: i8;
+      let mut _76: f64;
+      let _77: ();
+      let mut _78: i16;
+      let mut _79: f64;
+      let _80: ();
+      let mut _81: i32;
+      let mut _82: f64;
+      let _83: ();
+      let mut _84: i64;
+      let mut _85: f64;
+      let _86: ();
+      let mut _87: f32;
+      let mut _88: f64;
+      let _89: ();
+      let mut _90: f64;
+      scope 1 {
+          debug i => _1;
+          let _2: u64;
+          scope 2 {
+              debug u => _2;
+              let _3: f64;
+              scope 3 {
+                  debug f => _3;
+              }
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_1);
++         nop;
+          _1 = const 1_i64;
+-         StorageLive(_2);
++         nop;
+          _2 = const 1_u64;
+-         StorageLive(_3);
++         nop;
+          _3 = const 1f64;
+          StorageLive(_4);
+          StorageLive(_5);
+          StorageLive(_6);
+-         _6 = copy _1;
+-         _5 = move _6 as u8 (IntToInt);
++         _6 = const 1_i64;
++         _5 = const 1_u8;
+          StorageDead(_6);
+-         _4 = opaque::<u8>(move _5) -> [return: bb1, unwind unreachable];
++         _4 = opaque::<u8>(const 1_u8) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageDead(_5);
+          StorageDead(_4);
+          StorageLive(_7);
+          StorageLive(_8);
+          StorageLive(_9);
+-         _9 = copy _1;
+-         _8 = move _9 as u16 (IntToInt);
++         _9 = const 1_i64;
++         _8 = const 1_u16;
+          StorageDead(_9);
+-         _7 = opaque::<u16>(move _8) -> [return: bb2, unwind unreachable];
++         _7 = opaque::<u16>(const 1_u16) -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          StorageDead(_8);
+          StorageDead(_7);
+          StorageLive(_10);
+          StorageLive(_11);
+          StorageLive(_12);
+-         _12 = copy _1;
+-         _11 = move _12 as u32 (IntToInt);
++         _12 = const 1_i64;
++         _11 = const 1_u32;
+          StorageDead(_12);
+-         _10 = opaque::<u32>(move _11) -> [return: bb3, unwind unreachable];
++         _10 = opaque::<u32>(const 1_u32) -> [return: bb3, unwind unreachable];
+      }
+  
+      bb3: {
+          StorageDead(_11);
+          StorageDead(_10);
+          StorageLive(_13);
+          StorageLive(_14);
+          StorageLive(_15);
+-         _15 = copy _1;
+-         _14 = move _15 as u64 (IntToInt);
++         _15 = const 1_i64;
++         _14 = const 1_u64;
+          StorageDead(_15);
+-         _13 = opaque::<u64>(move _14) -> [return: bb4, unwind unreachable];
++         _13 = opaque::<u64>(const 1_u64) -> [return: bb4, unwind unreachable];
+      }
+  
+      bb4: {
+          StorageDead(_14);
+          StorageDead(_13);
+          StorageLive(_16);
+          StorageLive(_17);
+          StorageLive(_18);
+-         _18 = copy _1;
+-         _17 = move _18 as i8 (IntToInt);
++         _18 = const 1_i64;
++         _17 = const 1_i8;
+          StorageDead(_18);
+-         _16 = opaque::<i8>(move _17) -> [return: bb5, unwind unreachable];
++         _16 = opaque::<i8>(const 1_i8) -> [return: bb5, unwind unreachable];
+      }
+  
+      bb5: {
+          StorageDead(_17);
+          StorageDead(_16);
+          StorageLive(_19);
+          StorageLive(_20);
+          StorageLive(_21);
+-         _21 = copy _1;
+-         _20 = move _21 as i16 (IntToInt);
++         _21 = const 1_i64;
++         _20 = const 1_i16;
+          StorageDead(_21);
+-         _19 = opaque::<i16>(move _20) -> [return: bb6, unwind unreachable];
++         _19 = opaque::<i16>(const 1_i16) -> [return: bb6, unwind unreachable];
+      }
+  
+      bb6: {
+          StorageDead(_20);
+          StorageDead(_19);
+          StorageLive(_22);
+          StorageLive(_23);
+          StorageLive(_24);
+-         _24 = copy _1;
+-         _23 = move _24 as i32 (IntToInt);
++         _24 = const 1_i64;
++         _23 = const 1_i32;
+          StorageDead(_24);
+-         _22 = opaque::<i32>(move _23) -> [return: bb7, unwind unreachable];
++         _22 = opaque::<i32>(const 1_i32) -> [return: bb7, unwind unreachable];
+      }
+  
+      bb7: {
+          StorageDead(_23);
+          StorageDead(_22);
+          StorageLive(_25);
+          StorageLive(_26);
+-         _26 = copy _1;
+-         _25 = opaque::<i64>(move _26) -> [return: bb8, unwind unreachable];
++         _26 = const 1_i64;
++         _25 = opaque::<i64>(const 1_i64) -> [return: bb8, unwind unreachable];
+      }
+  
+      bb8: {
+          StorageDead(_26);
+          StorageDead(_25);
+          StorageLive(_27);
+          StorageLive(_28);
+          StorageLive(_29);
+-         _29 = copy _1;
+-         _28 = move _29 as f32 (IntToFloat);
++         _29 = const 1_i64;
++         _28 = const 1f32;
+          StorageDead(_29);
+-         _27 = opaque::<f32>(move _28) -> [return: bb9, unwind unreachable];
++         _27 = opaque::<f32>(const 1f32) -> [return: bb9, unwind unreachable];
+      }
+  
+      bb9: {
+          StorageDead(_28);
+          StorageDead(_27);
+          StorageLive(_30);
+          StorageLive(_31);
+          StorageLive(_32);
+-         _32 = copy _1;
+-         _31 = move _32 as f64 (IntToFloat);
++         _32 = const 1_i64;
++         _31 = const 1f64;
+          StorageDead(_32);
+-         _30 = opaque::<f64>(move _31) -> [return: bb10, unwind unreachable];
++         _30 = opaque::<f64>(const 1f64) -> [return: bb10, unwind unreachable];
+      }
+  
+      bb10: {
+          StorageDead(_31);
+          StorageDead(_30);
+          StorageLive(_33);
+          StorageLive(_34);
+          StorageLive(_35);
+-         _35 = copy _2;
+-         _34 = move _35 as u8 (IntToInt);
++         _35 = const 1_u64;
++         _34 = const 1_u8;
+          StorageDead(_35);
+-         _33 = opaque::<u8>(move _34) -> [return: bb11, unwind unreachable];
++         _33 = opaque::<u8>(const 1_u8) -> [return: bb11, unwind unreachable];
+      }
+  
+      bb11: {
+          StorageDead(_34);
+          StorageDead(_33);
+          StorageLive(_36);
+          StorageLive(_37);
+          StorageLive(_38);
+-         _38 = copy _2;
+-         _37 = move _38 as u16 (IntToInt);
++         _38 = const 1_u64;
++         _37 = const 1_u16;
+          StorageDead(_38);
+-         _36 = opaque::<u16>(move _37) -> [return: bb12, unwind unreachable];
++         _36 = opaque::<u16>(const 1_u16) -> [return: bb12, unwind unreachable];
+      }
+  
+      bb12: {
+          StorageDead(_37);
+          StorageDead(_36);
+          StorageLive(_39);
+          StorageLive(_40);
+          StorageLive(_41);
+-         _41 = copy _2;
+-         _40 = move _41 as u32 (IntToInt);
++         _41 = const 1_u64;
++         _40 = const 1_u32;
+          StorageDead(_41);
+-         _39 = opaque::<u32>(move _40) -> [return: bb13, unwind unreachable];
++         _39 = opaque::<u32>(const 1_u32) -> [return: bb13, unwind unreachable];
+      }
+  
+      bb13: {
+          StorageDead(_40);
+          StorageDead(_39);
+          StorageLive(_42);
+          StorageLive(_43);
+-         _43 = copy _2;
+-         _42 = opaque::<u64>(move _43) -> [return: bb14, unwind unreachable];
++         _43 = const 1_u64;
++         _42 = opaque::<u64>(const 1_u64) -> [return: bb14, unwind unreachable];
+      }
+  
+      bb14: {
+          StorageDead(_43);
+          StorageDead(_42);
+          StorageLive(_44);
+          StorageLive(_45);
+          StorageLive(_46);
+-         _46 = copy _2;
+-         _45 = move _46 as i8 (IntToInt);
++         _46 = const 1_u64;
++         _45 = const 1_i8;
+          StorageDead(_46);
+-         _44 = opaque::<i8>(move _45) -> [return: bb15, unwind unreachable];
++         _44 = opaque::<i8>(const 1_i8) -> [return: bb15, unwind unreachable];
+      }
+  
+      bb15: {
+          StorageDead(_45);
+          StorageDead(_44);
+          StorageLive(_47);
+          StorageLive(_48);
+          StorageLive(_49);
+-         _49 = copy _2;
+-         _48 = move _49 as i16 (IntToInt);
++         _49 = const 1_u64;
++         _48 = const 1_i16;
+          StorageDead(_49);
+-         _47 = opaque::<i16>(move _48) -> [return: bb16, unwind unreachable];
++         _47 = opaque::<i16>(const 1_i16) -> [return: bb16, unwind unreachable];
+      }
+  
+      bb16: {
+          StorageDead(_48);
+          StorageDead(_47);
+          StorageLive(_50);
+          StorageLive(_51);
+          StorageLive(_52);
+-         _52 = copy _2;
+-         _51 = move _52 as i32 (IntToInt);
++         _52 = const 1_u64;
++         _51 = const 1_i32;
+          StorageDead(_52);
+-         _50 = opaque::<i32>(move _51) -> [return: bb17, unwind unreachable];
++         _50 = opaque::<i32>(const 1_i32) -> [return: bb17, unwind unreachable];
+      }
+  
+      bb17: {
+          StorageDead(_51);
+          StorageDead(_50);
+          StorageLive(_53);
+          StorageLive(_54);
+          StorageLive(_55);
+-         _55 = copy _2;
+-         _54 = move _55 as i64 (IntToInt);
++         _55 = const 1_u64;
++         _54 = const 1_i64;
+          StorageDead(_55);
+-         _53 = opaque::<i64>(move _54) -> [return: bb18, unwind unreachable];
++         _53 = opaque::<i64>(const 1_i64) -> [return: bb18, unwind unreachable];
+      }
+  
+      bb18: {
+          StorageDead(_54);
+          StorageDead(_53);
+          StorageLive(_56);
+          StorageLive(_57);
+          StorageLive(_58);
+-         _58 = copy _2;
+-         _57 = move _58 as f32 (IntToFloat);
++         _58 = const 1_u64;
++         _57 = const 1f32;
+          StorageDead(_58);
+-         _56 = opaque::<f32>(move _57) -> [return: bb19, unwind unreachable];
++         _56 = opaque::<f32>(const 1f32) -> [return: bb19, unwind unreachable];
+      }
+  
+      bb19: {
+          StorageDead(_57);
+          StorageDead(_56);
+          StorageLive(_59);
+          StorageLive(_60);
+          StorageLive(_61);
+-         _61 = copy _2;
+-         _60 = move _61 as f64 (IntToFloat);
++         _61 = const 1_u64;
++         _60 = const 1f64;
+          StorageDead(_61);
+-         _59 = opaque::<f64>(move _60) -> [return: bb20, unwind unreachable];
++         _59 = opaque::<f64>(const 1f64) -> [return: bb20, unwind unreachable];
+      }
+  
+      bb20: {
+          StorageDead(_60);
+          StorageDead(_59);
+          StorageLive(_62);
+          StorageLive(_63);
+          StorageLive(_64);
+-         _64 = copy _3;
+-         _63 = move _64 as u8 (FloatToInt);
++         _64 = const 1f64;
++         _63 = const 1_u8;
+          StorageDead(_64);
+-         _62 = opaque::<u8>(move _63) -> [return: bb21, unwind unreachable];
++         _62 = opaque::<u8>(const 1_u8) -> [return: bb21, unwind unreachable];
+      }
+  
+      bb21: {
+          StorageDead(_63);
+          StorageDead(_62);
+          StorageLive(_65);
+          StorageLive(_66);
+          StorageLive(_67);
+-         _67 = copy _3;
+-         _66 = move _67 as u16 (FloatToInt);
++         _67 = const 1f64;
++         _66 = const 1_u16;
+          StorageDead(_67);
+-         _65 = opaque::<u16>(move _66) -> [return: bb22, unwind unreachable];
++         _65 = opaque::<u16>(const 1_u16) -> [return: bb22, unwind unreachable];
+      }
+  
+      bb22: {
+          StorageDead(_66);
+          StorageDead(_65);
+          StorageLive(_68);
+          StorageLive(_69);
+          StorageLive(_70);
+-         _70 = copy _3;
+-         _69 = move _70 as u32 (FloatToInt);
++         _70 = const 1f64;
++         _69 = const 1_u32;
+          StorageDead(_70);
+-         _68 = opaque::<u32>(move _69) -> [return: bb23, unwind unreachable];
++         _68 = opaque::<u32>(const 1_u32) -> [return: bb23, unwind unreachable];
+      }
+  
+      bb23: {
+          StorageDead(_69);
+          StorageDead(_68);
+          StorageLive(_71);
+          StorageLive(_72);
+          StorageLive(_73);
+-         _73 = copy _3;
+-         _72 = move _73 as u64 (FloatToInt);
++         _73 = const 1f64;
++         _72 = const 1_u64;
+          StorageDead(_73);
+-         _71 = opaque::<u64>(move _72) -> [return: bb24, unwind unreachable];
++         _71 = opaque::<u64>(const 1_u64) -> [return: bb24, unwind unreachable];
+      }
+  
+      bb24: {
+          StorageDead(_72);
+          StorageDead(_71);
+          StorageLive(_74);
+          StorageLive(_75);
+          StorageLive(_76);
+-         _76 = copy _3;
+-         _75 = move _76 as i8 (FloatToInt);
++         _76 = const 1f64;
++         _75 = const 1_i8;
+          StorageDead(_76);
+-         _74 = opaque::<i8>(move _75) -> [return: bb25, unwind unreachable];
++         _74 = opaque::<i8>(const 1_i8) -> [return: bb25, unwind unreachable];
+      }
+  
+      bb25: {
+          StorageDead(_75);
+          StorageDead(_74);
+          StorageLive(_77);
+          StorageLive(_78);
+          StorageLive(_79);
+-         _79 = copy _3;
+-         _78 = move _79 as i16 (FloatToInt);
++         _79 = const 1f64;
++         _78 = const 1_i16;
+          StorageDead(_79);
+-         _77 = opaque::<i16>(move _78) -> [return: bb26, unwind unreachable];
++         _77 = opaque::<i16>(const 1_i16) -> [return: bb26, unwind unreachable];
+      }
+  
+      bb26: {
+          StorageDead(_78);
+          StorageDead(_77);
+          StorageLive(_80);
+          StorageLive(_81);
+          StorageLive(_82);
+-         _82 = copy _3;
+-         _81 = move _82 as i32 (FloatToInt);
++         _82 = const 1f64;
++         _81 = const 1_i32;
+          StorageDead(_82);
+-         _80 = opaque::<i32>(move _81) -> [return: bb27, unwind unreachable];
++         _80 = opaque::<i32>(const 1_i32) -> [return: bb27, unwind unreachable];
+      }
+  
+      bb27: {
+          StorageDead(_81);
+          StorageDead(_80);
+          StorageLive(_83);
+          StorageLive(_84);
+          StorageLive(_85);
+-         _85 = copy _3;
+-         _84 = move _85 as i64 (FloatToInt);
++         _85 = const 1f64;
++         _84 = const 1_i64;
+          StorageDead(_85);
+-         _83 = opaque::<i64>(move _84) -> [return: bb28, unwind unreachable];
++         _83 = opaque::<i64>(const 1_i64) -> [return: bb28, unwind unreachable];
+      }
+  
+      bb28: {
+          StorageDead(_84);
+          StorageDead(_83);
+          StorageLive(_86);
+          StorageLive(_87);
+          StorageLive(_88);
+-         _88 = copy _3;
+-         _87 = move _88 as f32 (FloatToFloat);
++         _88 = const 1f64;
++         _87 = const 1f32;
+          StorageDead(_88);
+-         _86 = opaque::<f32>(move _87) -> [return: bb29, unwind unreachable];
++         _86 = opaque::<f32>(const 1f32) -> [return: bb29, unwind unreachable];
+      }
+  
+      bb29: {
+          StorageDead(_87);
+          StorageDead(_86);
+          StorageLive(_89);
+          StorageLive(_90);
+-         _90 = copy _3;
+-         _89 = opaque::<f64>(move _90) -> [return: bb30, unwind unreachable];
++         _90 = const 1f64;
++         _89 = opaque::<f64>(const 1f64) -> [return: bb30, unwind unreachable];
+      }
+  
+      bb30: {
+          StorageDead(_90);
+          StorageDead(_89);
+          _0 = const ();
+-         StorageDead(_3);
+-         StorageDead(_2);
+-         StorageDead(_1);
++         nop;
++         nop;
++         nop;
+          return;
+      }
+  }
+  

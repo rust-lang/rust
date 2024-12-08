@@ -1,0 +1,100 @@
+error: `if` chain can be rewritten with `match`
+  --> tests/ui/comparison_chain.rs:14:5
+   |
+LL | /     if x > y {
+LL | |
+LL | |         a()
+LL | |     } else if x < y {
+LL | |         b()
+LL | |     }
+   | |_____^
+   |
+   = help: consider rewriting the `if` chain to use `cmp` and `match`
+   = note: `-D clippy::comparison-chain` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::comparison_chain)]`
+
+error: `if` chain can be rewritten with `match`
+  --> tests/ui/comparison_chain.rs:28:5
+   |
+LL | /     if x > y {
+LL | |
+LL | |         a()
+LL | |     } else if x < y {
+...  |
+LL | |         c()
+LL | |     }
+   | |_____^
+   |
+   = help: consider rewriting the `if` chain to use `cmp` and `match`
+
+error: `if` chain can be rewritten with `match`
+  --> tests/ui/comparison_chain.rs:37:5
+   |
+LL | /     if x > y {
+LL | |
+LL | |         a()
+LL | |     } else if y > x {
+...  |
+LL | |         c()
+LL | |     }
+   | |_____^
+   |
+   = help: consider rewriting the `if` chain to use `cmp` and `match`
+
+error: `if` chain can be rewritten with `match`
+  --> tests/ui/comparison_chain.rs:46:5
+   |
+LL | /     if x > 1 {
+LL | |
+LL | |         a()
+LL | |     } else if x < 1 {
+...  |
+LL | |         c()
+LL | |     }
+   | |_____^
+   |
+   = help: consider rewriting the `if` chain to use `cmp` and `match`
+
+error: `if` chain can be rewritten with `match`
+  --> tests/ui/comparison_chain.rs:121:5
+   |
+LL | /     if x > y {
+LL | |
+LL | |         a()
+LL | |     } else if x < y {
+LL | |         b()
+LL | |     }
+   | |_____^
+   |
+   = help: consider rewriting the `if` chain to use `cmp` and `match`
+
+error: `if` chain can be rewritten with `match`
+  --> tests/ui/comparison_chain.rs:128:5
+   |
+LL | /     if x > y {
+LL | |
+LL | |         a()
+LL | |     } else if x < y {
+...  |
+LL | |         c()
+LL | |     }
+   | |_____^
+   |
+   = help: consider rewriting the `if` chain to use `cmp` and `match`
+
+error: `if` chain can be rewritten with `match`
+  --> tests/ui/comparison_chain.rs:137:5
+   |
+LL | /     if x > y {
+LL | |
+LL | |         a()
+LL | |     } else if y > x {
+...  |
+LL | |         c()
+LL | |     }
+   | |_____^
+   |
+   = help: consider rewriting the `if` chain to use `cmp` and `match`
+
+error: aborting due to 7 previous errors
+

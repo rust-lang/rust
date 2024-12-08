@@ -1,0 +1,9 @@
+#![warn(clippy::to_digit_is_some)]
+
+fn main() {
+    let c = 'x';
+    let d = &c;
+
+    let _ = d.is_digit(8);
+    let _ = char::is_digit(c, 8);
+}

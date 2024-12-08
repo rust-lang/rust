@@ -1,0 +1,35 @@
+error[E0038]: the trait `Foo` cannot be made into an object
+  --> $DIR/dyn-compatibility-err-where-bounds.rs:15:16
+   |
+LL | fn use_dyn(v: &dyn Foo) {
+   |                ^^^^^^^ `Foo` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/dyn-compatibility-err-where-bounds.rs:8:8
+   |
+LL | trait Foo {
+   |       --- this trait cannot be made into an object...
+LL |     fn test(&self) where [u8; bar::<Self>()]: Sized;
+   |        ^^^^ ...because method `test` references the `Self` type in its `where` clause
+   = help: consider moving `test` to another trait
+   = help: only type `()` implements the trait, consider using it directly instead
+
+error[E0038]: the trait `Foo` cannot be made into an object
+  --> $DIR/dyn-compatibility-err-where-bounds.rs:17:5
+   |
+LL |     v.test();
+   |     ^^^^^^^^ `Foo` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/dyn-compatibility-err-where-bounds.rs:8:8
+   |
+LL | trait Foo {
+   |       --- this trait cannot be made into an object...
+LL |     fn test(&self) where [u8; bar::<Self>()]: Sized;
+   |        ^^^^ ...because method `test` references the `Self` type in its `where` clause
+   = help: consider moving `test` to another trait
+   = help: only type `()` implements the trait, consider using it directly instead
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

@@ -1,0 +1,11 @@
+error[E0133]: call to unsafe function `dangerous` is unsafe and requires unsafe function or block
+  --> $DIR/unsafeck.rs:5:12
+   |
+LL |     become dangerous();
+   |            ^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0133`.

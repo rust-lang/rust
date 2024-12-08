@@ -1,0 +1,11 @@
+error[E0599]: no associated item named `Item` found for type parameter `T` in the current scope
+  --> $DIR/issue-38919.rs:2:8
+   |
+LL | fn foo<T: Iterator>() {
+   |        - associated item `Item` not found for this type parameter
+LL |     T::Item;
+   |        ^^^^ associated item not found in `T`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

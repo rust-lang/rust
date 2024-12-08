@@ -1,0 +1,34 @@
+[package]
+name = "profile"
+version = "0.0.0"
+repository.workspace = true
+description = "A collection of tools for profiling rust-analyzer."
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+cfg-if = "1.0.0"
+libc.workspace = true
+jemalloc-ctl = { version = "0.5.0", package = "tikv-jemalloc-ctl", optional = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+perf-event = "=0.4.7"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.52", features = ["Win32_System_Threading", "Win32_System_ProcessStatus"] }
+
+[features]
+cpu_profiler = []
+jemalloc = ["jemalloc-ctl"]
+
+# Uncomment to enable for the whole crate graph
+# default = [ "cpu_profiler" ]
+
+[lints]
+workspace = true

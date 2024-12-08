@@ -1,0 +1,223 @@
+SOURCE_FILE
+  FN
+    COMMENT "// format with label break value."
+    WHITESPACE "\n"
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BLOCK_EXPR
+            LABEL
+              LIFETIME
+                LIFETIME_IDENT "'empty_block"
+              COLON ":"
+            WHITESPACE " "
+            STMT_LIST
+              L_CURLY "{"
+              R_CURLY "}"
+        WHITESPACE "\n\n    "
+        EXPR_STMT
+          BLOCK_EXPR
+            LABEL
+              LIFETIME
+                LIFETIME_IDENT "'block"
+              COLON ":"
+            WHITESPACE " "
+            STMT_LIST
+              L_CURLY "{"
+              WHITESPACE "\n        "
+              EXPR_STMT
+                CALL_EXPR
+                  PATH_EXPR
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "do_thing"
+                  ARG_LIST
+                    L_PAREN "("
+                    R_PAREN ")"
+                SEMICOLON ";"
+              WHITESPACE "\n        "
+              EXPR_STMT
+                IF_EXPR
+                  IF_KW "if"
+                  WHITESPACE " "
+                  CALL_EXPR
+                    PATH_EXPR
+                      PATH
+                        PATH_SEGMENT
+                          NAME_REF
+                            IDENT "condition_not_met"
+                    ARG_LIST
+                      L_PAREN "("
+                      R_PAREN ")"
+                  WHITESPACE " "
+                  BLOCK_EXPR
+                    STMT_LIST
+                      L_CURLY "{"
+                      WHITESPACE "\n            "
+                      EXPR_STMT
+                        BREAK_EXPR
+                          BREAK_KW "break"
+                          WHITESPACE " "
+                          LIFETIME
+                            LIFETIME_IDENT "'block"
+                        SEMICOLON ";"
+                      WHITESPACE "\n        "
+                      R_CURLY "}"
+              WHITESPACE "\n        "
+              EXPR_STMT
+                CALL_EXPR
+                  PATH_EXPR
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "do_next_thing"
+                  ARG_LIST
+                    L_PAREN "("
+                    R_PAREN ")"
+                SEMICOLON ";"
+              WHITESPACE "\n        "
+              EXPR_STMT
+                IF_EXPR
+                  IF_KW "if"
+                  WHITESPACE " "
+                  CALL_EXPR
+                    PATH_EXPR
+                      PATH
+                        PATH_SEGMENT
+                          NAME_REF
+                            IDENT "condition_not_met"
+                    ARG_LIST
+                      L_PAREN "("
+                      R_PAREN ")"
+                  WHITESPACE " "
+                  BLOCK_EXPR
+                    STMT_LIST
+                      L_CURLY "{"
+                      WHITESPACE "\n            "
+                      EXPR_STMT
+                        BREAK_EXPR
+                          BREAK_KW "break"
+                          WHITESPACE " "
+                          LIFETIME
+                            LIFETIME_IDENT "'block"
+                        SEMICOLON ";"
+                      WHITESPACE "\n        "
+                      R_CURLY "}"
+              WHITESPACE "\n        "
+              EXPR_STMT
+                CALL_EXPR
+                  PATH_EXPR
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "do_last_thing"
+                  ARG_LIST
+                    L_PAREN "("
+                    R_PAREN ")"
+                SEMICOLON ";"
+              WHITESPACE "\n    "
+              R_CURLY "}"
+        WHITESPACE "\n\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "result"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          BLOCK_EXPR
+            LABEL
+              LIFETIME
+                LIFETIME_IDENT "'block"
+              COLON ":"
+            WHITESPACE " "
+            STMT_LIST
+              L_CURLY "{"
+              WHITESPACE "\n        "
+              EXPR_STMT
+                IF_EXPR
+                  IF_KW "if"
+                  WHITESPACE " "
+                  CALL_EXPR
+                    PATH_EXPR
+                      PATH
+                        PATH_SEGMENT
+                          NAME_REF
+                            IDENT "foo"
+                    ARG_LIST
+                      L_PAREN "("
+                      R_PAREN ")"
+                  WHITESPACE " "
+                  BLOCK_EXPR
+                    STMT_LIST
+                      L_CURLY "{"
+                      WHITESPACE "\n            "
+                      COMMENT "// comment"
+                      WHITESPACE "\n            "
+                      EXPR_STMT
+                        BREAK_EXPR
+                          BREAK_KW "break"
+                          WHITESPACE " "
+                          LIFETIME
+                            LIFETIME_IDENT "'block"
+                          WHITESPACE " "
+                          LITERAL
+                            INT_NUMBER "1"
+                        SEMICOLON ";"
+                      WHITESPACE "\n        "
+                      R_CURLY "}"
+              WHITESPACE "\n        "
+              EXPR_STMT
+                IF_EXPR
+                  IF_KW "if"
+                  WHITESPACE " "
+                  CALL_EXPR
+                    PATH_EXPR
+                      PATH
+                        PATH_SEGMENT
+                          NAME_REF
+                            IDENT "bar"
+                    ARG_LIST
+                      L_PAREN "("
+                      R_PAREN ")"
+                  WHITESPACE " "
+                  BLOCK_EXPR
+                    STMT_LIST
+                      L_CURLY "{"
+                      WHITESPACE "\n            "
+                      COMMENT "/* comment */"
+                      WHITESPACE "\n            "
+                      EXPR_STMT
+                        BREAK_EXPR
+                          BREAK_KW "break"
+                          WHITESPACE " "
+                          LIFETIME
+                            LIFETIME_IDENT "'block"
+                          WHITESPACE " "
+                          LITERAL
+                            INT_NUMBER "2"
+                        SEMICOLON ";"
+                      WHITESPACE "\n        "
+                      R_CURLY "}"
+              WHITESPACE "\n        "
+              LITERAL
+                INT_NUMBER "3"
+              WHITESPACE "\n    "
+              R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

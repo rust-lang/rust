@@ -1,0 +1,12 @@
+error[E0191]: the value of the associated type `Bar` in `Foo` must be specified
+  --> $DIR/associated-type-cycle.rs:6:22
+   |
+LL |     type Bar;
+   |     -------- `Bar` defined here
+...
+LL | impl Foo for Box<dyn Foo> {
+   |                      ^^^ help: specify the associated type: `Foo<Bar = Type>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0191`.

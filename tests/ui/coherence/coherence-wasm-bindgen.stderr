@@ -1,0 +1,27 @@
+error: conflicting implementations of trait `IntoWasmAbi` for type `&dyn Fn(&_) -> _`
+  --> $DIR/coherence-wasm-bindgen.rs:28:1
+   |
+LL | / impl<'a, 'b, A, R> IntoWasmAbi for &'a (dyn Fn(A) -> R + 'b)
+LL | | where
+LL | |     A: FromWasmAbi,
+LL | |     R: ReturnWasmAbi,
+   | |_____________________- first implementation here
+...
+LL | / impl<'a, 'b, A, R> IntoWasmAbi for &'a (dyn for<'x> Fn(&'x A) -> R + 'b)
+LL | | where
+LL | |     A: RefFromWasmAbi,
+LL | |     R: ReturnWasmAbi,
+   | |_____________________^ conflicting implementation for `&dyn Fn(&_) -> _`
+   |
+   = warning: the behavior may change in a future release
+   = note: for more information, see issue #56105 <https://github.com/rust-lang/rust/issues/56105>
+   = note: downstream crates may implement trait `FromWasmAbi` for type `&_`
+   = note: this behavior recently changed as a result of a bug fix; see rust-lang/rust#56105 for details
+note: the lint level is defined here
+  --> $DIR/coherence-wasm-bindgen.rs:10:9
+   |
+LL | #![deny(coherence_leak_check)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

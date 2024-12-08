@@ -1,0 +1,6 @@
+   LL|      1|fn main() {
+   LL|      1|    if false {
+   LL|      0|        loop {}
+   LL|      1|    }
+   LL|      1|}
+

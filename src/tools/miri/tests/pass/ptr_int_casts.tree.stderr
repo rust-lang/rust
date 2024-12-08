@@ -1,0 +1,89 @@
+warning: integer-to-pointer cast
+  --> tests/pass/ptr_int_casts.rs:LL:CC
+   |
+LL |     assert_eq!(1 as *const i32 as usize, 1);
+   |                ^^^^^^^^^^^^^^^ integer-to-pointer cast
+   |
+   = help: this program is using integer-to-pointer casts or (equivalently) `ptr::with_exposed_provenance`, which means that Miri might miss pointer bugs in this program
+   = help: see https://doc.rust-lang.org/nightly/std/ptr/fn.with_exposed_provenance.html for more details on that operation
+   = help: to ensure that Miri does not miss bugs in your program, use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead
+   = help: you can then set `MIRIFLAGS=-Zmiri-strict-provenance` to ensure you are not relying on `with_exposed_provenance` semantics
+   = help: Tree Borrows does not support integer-to-pointer casts, so the program is likely to go wrong when this pointer gets used
+   = note: BACKTRACE:
+   = note: inside `ptr_int_casts` at tests/pass/ptr_int_casts.rs:LL:CC
+note: inside `main`
+  --> tests/pass/ptr_int_casts.rs:LL:CC
+   |
+LL |     ptr_int_casts();
+   |     ^^^^^^^^^^^^^^^
+
+warning: integer-to-pointer cast
+  --> tests/pass/ptr_int_casts.rs:LL:CC
+   |
+LL |     assert_eq!((1 as *const i32).wrapping_offset(4) as usize, 1 + 4 * 4);
+   |                ^^^^^^^^^^^^^^^^^ integer-to-pointer cast
+   |
+   = note: BACKTRACE:
+   = note: inside `ptr_int_casts` at tests/pass/ptr_int_casts.rs:LL:CC
+note: inside `main`
+  --> tests/pass/ptr_int_casts.rs:LL:CC
+   |
+LL |     ptr_int_casts();
+   |     ^^^^^^^^^^^^^^^
+
+warning: integer-to-pointer cast
+  --> tests/pass/ptr_int_casts.rs:LL:CC
+   |
+LL |     *val = (1 as *const u8).wrapping_offset(-4);
+   |            ^^^^^^^^^^^^^^^^ integer-to-pointer cast
+   |
+   = note: BACKTRACE:
+   = note: inside `ptr_int_casts` at tests/pass/ptr_int_casts.rs:LL:CC
+note: inside `main`
+  --> tests/pass/ptr_int_casts.rs:LL:CC
+   |
+LL |     ptr_int_casts();
+   |     ^^^^^^^^^^^^^^^
+
+warning: integer-to-pointer cast
+  --> tests/pass/ptr_int_casts.rs:LL:CC
+   |
+LL |         let y = y as *const _;
+   |                 ^^^^^^^^^^^^^ integer-to-pointer cast
+   |
+   = note: BACKTRACE:
+   = note: inside `ptr_int_casts` at tests/pass/ptr_int_casts.rs:LL:CC
+note: inside `main`
+  --> tests/pass/ptr_int_casts.rs:LL:CC
+   |
+LL |     ptr_int_casts();
+   |     ^^^^^^^^^^^^^^^
+
+warning: integer-to-pointer cast
+  --> tests/pass/ptr_int_casts.rs:LL:CC
+   |
+LL |         let x: fn() -> i32 = unsafe { mem::transmute(y as *mut u8) };
+   |                                                      ^^^^^^^^^^^^ integer-to-pointer cast
+   |
+   = note: BACKTRACE:
+   = note: inside `ptr_int_casts` at tests/pass/ptr_int_casts.rs:LL:CC
+note: inside `main`
+  --> tests/pass/ptr_int_casts.rs:LL:CC
+   |
+LL |     ptr_int_casts();
+   |     ^^^^^^^^^^^^^^^
+
+warning: integer-to-pointer cast
+  --> tests/pass/ptr_int_casts.rs:LL:CC
+   |
+LL |     assert_eq!((-1i32) as usize as *const i32 as usize, (-1i32) as usize);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ integer-to-pointer cast
+   |
+   = note: BACKTRACE:
+   = note: inside `ptr_int_casts` at tests/pass/ptr_int_casts.rs:LL:CC
+note: inside `main`
+  --> tests/pass/ptr_int_casts.rs:LL:CC
+   |
+LL |     ptr_int_casts();
+   |     ^^^^^^^^^^^^^^^
+

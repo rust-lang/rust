@@ -1,0 +1,37 @@
+error: late-bound const parameters cannot be used currently
+  --> $DIR/binder-defaults-119489.rs:7:23
+   |
+LL |     for<T = (), const N: usize = 1> ():,
+   |                       ^
+
+warning: the feature `non_lifetime_binders` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/binder-defaults-119489.rs:1:12
+   |
+LL | #![feature(non_lifetime_binders, generic_const_exprs)]
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/binder-defaults-119489.rs:1:34
+   |
+LL | #![feature(non_lifetime_binders, generic_const_exprs)]
+   |                                  ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+
+error: defaults for generic parameters are not allowed in `for<...>` binders
+  --> $DIR/binder-defaults-119489.rs:7:9
+   |
+LL |     for<T = (), const N: usize = 1> ():,
+   |         ^^^^^^
+
+error: defaults for generic parameters are not allowed in `for<...>` binders
+  --> $DIR/binder-defaults-119489.rs:7:17
+   |
+LL |     for<T = (), const N: usize = 1> ():,
+   |                 ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors; 2 warnings emitted
+

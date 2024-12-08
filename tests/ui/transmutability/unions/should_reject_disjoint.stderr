@@ -1,0 +1,33 @@
+error[E0277]: `A` cannot be safely transmuted into `B`
+  --> $DIR/should_reject_disjoint.rs:32:40
+   |
+LL |     assert::is_maybe_transmutable::<A, B>();
+   |                                        ^ at least one value of `A` isn't a bit-valid value of `B`
+   |
+note: required by a bound in `is_maybe_transmutable`
+  --> $DIR/should_reject_disjoint.rs:12:14
+   |
+LL |     pub fn is_maybe_transmutable<Src, Dst>()
+   |            --------------------- required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::SAFETY.and(Assume::VALIDITY) }>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_maybe_transmutable`
+
+error[E0277]: `B` cannot be safely transmuted into `A`
+  --> $DIR/should_reject_disjoint.rs:33:40
+   |
+LL |     assert::is_maybe_transmutable::<B, A>();
+   |                                        ^ at least one value of `B` isn't a bit-valid value of `A`
+   |
+note: required by a bound in `is_maybe_transmutable`
+  --> $DIR/should_reject_disjoint.rs:12:14
+   |
+LL |     pub fn is_maybe_transmutable<Src, Dst>()
+   |            --------------------- required by a bound in this function
+LL |     where
+LL |         Dst: TransmuteFrom<Src, { Assume::SAFETY.and(Assume::VALIDITY) }>
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_maybe_transmutable`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

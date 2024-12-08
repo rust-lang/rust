@@ -1,0 +1,112 @@
+// MIR for `test` before ElaborateDrops
+
+fn test() -> Option<Box<u32>> {
+    let mut _0: std::option::Option<std::boxed::Box<u32>>;
+    let mut _1: std::boxed::Box<u32>;
+    let mut _2: usize;
+    let mut _3: usize;
+    let mut _4: *mut u8;
+    let mut _5: std::boxed::Box<u32>;
+    let mut _6: std::ops::ControlFlow<std::option::Option<std::convert::Infallible>, u32>;
+    let mut _7: std::option::Option<u32>;
+    let mut _8: isize;
+    let _9: std::option::Option<std::convert::Infallible>;
+    let mut _10: !;
+    let mut _11: std::option::Option<std::convert::Infallible>;
+    let _12: u32;
+    scope 1 {
+        debug residual => _9;
+        scope 2 {
+        }
+    }
+    scope 3 {
+        debug val => _12;
+        scope 4 {
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);
+        _2 = SizeOf(u32);
+        _3 = AlignOf(u32);
+        _4 = alloc::alloc::exchange_malloc(move _2, move _3) -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        StorageLive(_5);
+        _5 = ShallowInitBox(move _4, u32);
+        StorageLive(_6);
+        StorageLive(_7);
+        _7 = Option::<u32>::None;
+        _6 = <Option<u32> as Try>::branch(move _7) -> [return: bb2, unwind: bb12];
+    }
+
+    bb2: {
+        StorageDead(_7);
+        PlaceMention(_6);
+        _8 = discriminant(_6);
+        switchInt(move _8) -> [0: bb4, 1: bb5, otherwise: bb3];
+    }
+
+    bb3: {
+        unreachable;
+    }
+
+    bb4: {
+        StorageLive(_12);
+        _12 = copy ((_6 as Continue).0: u32);
+        (*_5) = copy _12;
+        StorageDead(_12);
+        _1 = move _5;
+        drop(_5) -> [return: bb7, unwind: bb11];
+    }
+
+    bb5: {
+        StorageLive(_9);
+        _9 = copy ((_6 as Break).0: std::option::Option<std::convert::Infallible>);
+        StorageLive(_11);
+        _11 = copy _9;
+        _0 = <Option<Box<u32>> as FromResidual<Option<Infallible>>>::from_residual(move _11) -> [return: bb6, unwind: bb12];
+    }
+
+    bb6: {
+        StorageDead(_11);
+        StorageDead(_9);
+        drop(_5) -> [return: bb9, unwind continue];
+    }
+
+    bb7: {
+        StorageDead(_5);
+        _0 = Option::<Box<u32>>::Some(move _1);
+        drop(_1) -> [return: bb8, unwind continue];
+    }
+
+    bb8: {
+        StorageDead(_1);
+        StorageDead(_6);
+        goto -> bb10;
+    }
+
+    bb9: {
+        StorageDead(_5);
+        StorageDead(_1);
+        StorageDead(_6);
+        goto -> bb10;
+    }
+
+    bb10: {
+        return;
+    }
+
+    bb11 (cleanup): {
+        drop(_1) -> [return: bb13, unwind terminate(cleanup)];
+    }
+
+    bb12 (cleanup): {
+        drop(_5) -> [return: bb13, unwind terminate(cleanup)];
+    }
+
+    bb13 (cleanup): {
+        resume;
+    }
+}

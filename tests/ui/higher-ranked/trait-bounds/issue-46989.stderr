@@ -1,0 +1,11 @@
+error: implementation of `Foo` is not general enough
+  --> $DIR/issue-46989.rs:38:5
+   |
+LL |     assert_foo::<fn(&i32)>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough
+   |
+   = note: `Foo` would have to be implemented for the type `for<'a> fn(&'a i32)`
+   = note: ...but `Foo` is actually implemented for the type `fn(&'0 i32)`, for some specific lifetime `'0`
+
+error: aborting due to 1 previous error
+

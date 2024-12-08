@@ -1,0 +1,12 @@
+error[E0599]: no method named `foo` found for reference `&dyn Foo` in the current scope
+  --> $DIR/issue-5153.rs:10:27
+   |
+LL |     fn foo(self: Box<Self>);
+   |                  --------- the method might not be found because of this arbitrary self type
+...
+LL |     (&5isize as &dyn Foo).foo();
+   |                           ^^^ method not found in `&dyn Foo`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

@@ -1,0 +1,17 @@
+error[E0282]: type annotations needed
+  --> $DIR/call_method_ambiguous.rs:26:13
+   |
+LL |         let mut iter = foo(n - 1, m);
+   |             ^^^^^^^^
+LL |
+LL |         assert_eq!(iter.get(), 1);
+   |                    ---- type must be known at this point
+   |
+help: consider giving `iter` an explicit type
+   |
+LL |         let mut iter: /* Type */ = foo(n - 1, m);
+   |                     ++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.

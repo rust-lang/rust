@@ -1,0 +1,19 @@
+error[E0277]: the trait bound `&impl DoesAThing: DoesAThing` is not satisfied
+  --> $DIR/clone-bounds-121524.rs:10:22
+   |
+LL |     drops_impl_owned(thing.clone());
+   |                      ^^^^^^^^^^^^^ the trait `DoesAThing` is not implemented for `&impl DoesAThing`
+   |
+note: this `clone()` copies the reference, which does not do anything, because `impl DoesAThing` does not implement `Clone`
+  --> $DIR/clone-bounds-121524.rs:10:28
+   |
+LL |     drops_impl_owned(thing.clone());
+   |                            ^^^^^
+help: consider restricting opaque type `impl DoesAThing` with trait `Clone`
+   |
+LL | fn clones_impl_ref_inline(thing: &impl DoesAThing + Clone) {
+   |                                                   +++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

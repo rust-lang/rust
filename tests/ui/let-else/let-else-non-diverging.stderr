@@ -1,0 +1,55 @@
+error[E0308]: `else` clause of `let...else` does not diverge
+  --> $DIR/let-else-non-diverging.rs:2:32
+   |
+LL |       let Some(x) = Some(1) else {
+   |  ________________________________^
+LL | |         Some(2)
+LL | |     };
+   | |_____^ expected `!`, found `Option<{integer}>`
+   |
+   = note: expected type `!`
+              found enum `Option<{integer}>`
+   = help: try adding a diverging expression, such as `return` or `panic!(..)`
+   = help: ...or use `match` instead of `let...else`
+
+error[E0308]: `else` clause of `let...else` does not diverge
+  --> $DIR/let-else-non-diverging.rs:5:32
+   |
+LL |       let Some(x) = Some(1) else {
+   |  ________________________________^
+LL | |         if 1 == 1 {
+LL | |             panic!();
+LL | |         }
+LL | |     };
+   | |_____^ expected `!`, found `()`
+   |
+   = note:   expected type `!`
+           found unit type `()`
+   = help: try adding a diverging expression, such as `return` or `panic!(..)`
+   = help: ...or use `match` instead of `let...else`
+
+error[E0308]: `else` clause of `let...else` does not diverge
+  --> $DIR/let-else-non-diverging.rs:10:32
+   |
+LL |     let Some(x) = Some(1) else { Some(2) };
+   |                                ^^^^^^^^^^^ expected `!`, found `Option<{integer}>`
+   |
+   = note: expected type `!`
+              found enum `Option<{integer}>`
+   = help: try adding a diverging expression, such as `return` or `panic!(..)`
+   = help: ...or use `match` instead of `let...else`
+
+error[E0308]: `else` clause of `let...else` does not diverge
+  --> $DIR/let-else-non-diverging.rs:15:32
+   |
+LL |     let Some(x) = Some(1) else { foo::<Uninhabited>() };
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^ expected `!`, found `Uninhabited`
+   |
+   = note: expected type `!`
+              found enum `Uninhabited`
+   = help: try adding a diverging expression, such as `return` or `panic!(..)`
+   = help: ...or use `match` instead of `let...else`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

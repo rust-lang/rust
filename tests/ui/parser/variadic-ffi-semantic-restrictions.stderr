@@ -1,0 +1,230 @@
+error: only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:6:19
+   |
+LL | fn f1_1(x: isize, ...) {}
+   |                   ^^^
+
+error: only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:9:9
+   |
+LL | fn f1_2(...) {}
+   |         ^^^
+
+error: only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:12:30
+   |
+LL | extern "C" fn f2_1(x: isize, ...) {}
+   |                              ^^^
+
+error: only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:15:20
+   |
+LL | extern "C" fn f2_2(...) {}
+   |                    ^^^
+
+error: `...` must be the last argument of a C-variadic function
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:18:20
+   |
+LL | extern "C" fn f2_3(..., x: isize) {}
+   |                    ^^^
+
+error: only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:18:20
+   |
+LL | extern "C" fn f2_3(..., x: isize) {}
+   |                    ^^^
+
+error: only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:22:30
+   |
+LL | extern "C" fn f3_1(x: isize, ...) {}
+   |                              ^^^
+
+error: only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:25:20
+   |
+LL | extern "C" fn f3_2(...) {}
+   |                    ^^^
+
+error: `...` must be the last argument of a C-variadic function
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:28:20
+   |
+LL | extern "C" fn f3_3(..., x: isize) {}
+   |                    ^^^
+
+error: only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:28:20
+   |
+LL | extern "C" fn f3_3(..., x: isize) {}
+   |                    ^^^
+
+error: functions cannot be both `const` and C-variadic
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:32:1
+   |
+LL | const unsafe extern "C" fn f4_1(x: isize, ...) {}
+   | ^^^^^ `const` because of this             ^^^ C-variadic because of this
+
+error: functions cannot be both `const` and C-variadic
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:36:1
+   |
+LL | const extern "C" fn f4_2(x: isize, ...) {}
+   | ^^^^^ `const` because of this      ^^^ C-variadic because of this
+
+error: only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:36:36
+   |
+LL | const extern "C" fn f4_2(x: isize, ...) {}
+   |                                    ^^^
+
+error: `...` must be the last argument of a C-variadic function
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:41:26
+   |
+LL | const extern "C" fn f4_3(..., x: isize, ...) {}
+   |                          ^^^
+
+error: functions cannot be both `const` and C-variadic
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:41:1
+   |
+LL | const extern "C" fn f4_3(..., x: isize, ...) {}
+   | ^^^^^                    ^^^            ^^^ C-variadic because of this
+   | |                        |
+   | |                        C-variadic because of this
+   | `const` because of this
+
+error: only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:41:26
+   |
+LL | const extern "C" fn f4_3(..., x: isize, ...) {}
+   |                          ^^^            ^^^
+
+error: `...` must be the last argument of a C-variadic function
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:47:13
+   |
+LL |     fn e_f2(..., x: isize);
+   |             ^^^
+
+error: only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:54:23
+   |
+LL |     fn i_f1(x: isize, ...) {}
+   |                       ^^^
+
+error: only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:56:13
+   |
+LL |     fn i_f2(...) {}
+   |             ^^^
+
+error: `...` must be the last argument of a C-variadic function
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:58:13
+   |
+LL |     fn i_f3(..., x: isize, ...) {}
+   |             ^^^
+
+error: only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:58:13
+   |
+LL |     fn i_f3(..., x: isize, ...) {}
+   |             ^^^            ^^^
+
+error: `...` must be the last argument of a C-variadic function
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:61:13
+   |
+LL |     fn i_f4(..., x: isize, ...) {}
+   |             ^^^
+
+error: only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:61:13
+   |
+LL |     fn i_f4(..., x: isize, ...) {}
+   |             ^^^            ^^^
+
+error: functions cannot be both `const` and C-variadic
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:64:5
+   |
+LL |     const fn i_f5(x: isize, ...) {}
+   |     ^^^^^                   ^^^ C-variadic because of this
+   |     |
+   |     `const` because of this
+
+error: only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:64:29
+   |
+LL |     const fn i_f5(x: isize, ...) {}
+   |                             ^^^
+
+error: only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:71:23
+   |
+LL |     fn t_f1(x: isize, ...) {}
+   |                       ^^^
+
+error: only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:73:23
+   |
+LL |     fn t_f2(x: isize, ...);
+   |                       ^^^
+
+error: only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:75:13
+   |
+LL |     fn t_f3(...) {}
+   |             ^^^
+
+error: only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:77:13
+   |
+LL |     fn t_f4(...);
+   |             ^^^
+
+error: `...` must be the last argument of a C-variadic function
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:79:13
+   |
+LL |     fn t_f5(..., x: isize) {}
+   |             ^^^
+
+error: only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:79:13
+   |
+LL |     fn t_f5(..., x: isize) {}
+   |             ^^^
+
+error: `...` must be the last argument of a C-variadic function
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:82:13
+   |
+LL |     fn t_f6(..., x: isize);
+   |             ^^^
+
+error: only foreign, `unsafe extern "C"`, or `unsafe extern "C-unwind"` functions may have a C-variadic arg
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:82:13
+   |
+LL |     fn t_f6(..., x: isize);
+   |             ^^^
+
+error[E0493]: destructor of `VaListImpl<'_>` cannot be evaluated at compile-time
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:32:43
+   |
+LL | const unsafe extern "C" fn f4_1(x: isize, ...) {}
+   |                                           ^^^   - value is dropped here
+   |                                           |
+   |                                           the destructor for this type cannot be evaluated in constant functions
+
+error[E0493]: destructor of `VaListImpl<'_>` cannot be evaluated at compile-time
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:36:36
+   |
+LL | const extern "C" fn f4_2(x: isize, ...) {}
+   |                                    ^^^   - value is dropped here
+   |                                    |
+   |                                    the destructor for this type cannot be evaluated in constant functions
+
+error[E0493]: destructor of `VaListImpl<'_>` cannot be evaluated at compile-time
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:64:29
+   |
+LL |     const fn i_f5(x: isize, ...) {}
+   |                             ^^^   - value is dropped here
+   |                             |
+   |                             the destructor for this type cannot be evaluated in constant functions
+
+error: aborting due to 36 previous errors
+
+For more information about this error, try `rustc --explain E0493`.

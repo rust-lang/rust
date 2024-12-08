@@ -1,0 +1,21 @@
+- // MIR for `expose_provenance` before SimplifyLocals-before-const-prop
++ // MIR for `expose_provenance` after SimplifyLocals-before-const-prop
+  
+  fn expose_provenance(_1: *const usize) -> () {
+      debug p => _1;
+      let mut _0: ();
+      let _2: usize;
+      let mut _3: *const usize;
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = copy _1;
+          _2 = move _3 as usize (PointerExposeProvenance);
+          StorageDead(_3);
+          StorageDead(_2);
+          _0 = const ();
+          return;
+      }
+  }
+  

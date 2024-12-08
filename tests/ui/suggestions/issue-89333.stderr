@@ -1,0 +1,20 @@
+error[E0277]: the trait bound `for<'a> &'a _: Trait` is not satisfied
+  --> $DIR/issue-89333.rs:6:5
+   |
+LL |     test(&|| 0);
+   |     ^^^^^^^^^^^ the trait `for<'a> Trait` is not implemented for `&'a _`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/issue-89333.rs:9:1
+   |
+LL | trait Trait {}
+   | ^^^^^^^^^^^
+note: required by a bound in `test`
+  --> $DIR/issue-89333.rs:11:55
+   |
+LL | fn test<T>(arg: &impl Fn() -> T) where for<'a> &'a T: Trait {}
+   |                                                       ^^^^^ required by this bound in `test`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

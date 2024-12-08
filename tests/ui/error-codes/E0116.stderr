@@ -1,0 +1,11 @@
+error[E0116]: cannot define inherent `impl` for a type outside of the crate where the type is defined
+  --> $DIR/E0116.rs:1:1
+   |
+LL | impl Vec<u8> {}
+   | ^^^^^^^^^^^^ impl for type defined outside of crate
+   |
+   = note: define and implement a trait or new type instead
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0116`.

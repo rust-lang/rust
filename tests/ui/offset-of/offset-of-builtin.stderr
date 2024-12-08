@@ -1,0 +1,46 @@
+error: expected one of `!`, `(`, `+`, `,`, `::`, or `<`, found `)`
+  --> $DIR/offset-of-builtin.rs:8:43
+   |
+LL |     builtin # offset_of(NotEnoughArguments);
+   |                                           ^ expected one of `!`, `(`, `+`, `,`, `::`, or `<`
+
+error: expected expression, found `)`
+  --> $DIR/offset-of-builtin.rs:11:55
+   |
+LL |     builtin # offset_of(NotEnoughArgumentsWithAComma, );
+   |                                                       ^ expected expression
+
+error: expected `)`, found `too`
+  --> $DIR/offset-of-builtin.rs:14:31
+   |
+LL |     builtin # offset_of(S, f, too many arguments);
+   |                               ^^^ expected `)`
+   |
+   = note: unexpected third argument to offset_of
+
+error: unexpected token: `)`
+  --> $DIR/offset-of-builtin.rs:20:30
+   |
+LL |     builtin # offset_of(S, f.);
+   |                              ^
+
+error: unexpected token: `,`
+  --> $DIR/offset-of-builtin.rs:23:30
+   |
+LL |     builtin # offset_of(S, f.,);
+   |                              ^
+
+error: offset_of expects dot-separated field and variant names
+  --> $DIR/offset-of-builtin.rs:26:28
+   |
+LL |     builtin # offset_of(S, f..);
+   |                            ^^^
+
+error: offset_of expects dot-separated field and variant names
+  --> $DIR/offset-of-builtin.rs:29:28
+   |
+LL |     builtin # offset_of(S, f..,);
+   |                            ^^^
+
+error: aborting due to 7 previous errors
+

@@ -1,0 +1,50 @@
+- // MIR for `main` before Derefer
++ // MIR for `main` after Derefer
+  
+  fn main() -> () {
+      let mut _0: ();
+      let mut _1: (i32, i32);
+      let mut _3: &mut (i32, i32);
++     let mut _6: &mut (i32, i32);
++     let mut _7: &mut (i32, i32);
+      scope 1 {
+          debug a => _1;
+          let mut _2: (i32, &mut (i32, i32));
+          scope 2 {
+              debug b => _2;
+              let _4: &mut i32;
+              scope 3 {
+                  debug x => _4;
+                  let _5: &mut i32;
+                  scope 4 {
+                      debug y => _5;
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = (const 42_i32, const 43_i32);
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = &mut _1;
+          _2 = (const 99_i32, move _3);
+          StorageDead(_3);
+          StorageLive(_4);
+-         _4 = &mut ((*(_2.1: &mut (i32, i32))).0: i32);
++         _6 = deref_copy (_2.1: &mut (i32, i32));
++         _4 = &mut ((*_6).0: i32);
+          StorageLive(_5);
+-         _5 = &mut ((*(_2.1: &mut (i32, i32))).1: i32);
++         _7 = deref_copy (_2.1: &mut (i32, i32));
++         _5 = &mut ((*_7).1: i32);
+          _0 = const ();
+          StorageDead(_5);
+          StorageDead(_4);
+          StorageDead(_2);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

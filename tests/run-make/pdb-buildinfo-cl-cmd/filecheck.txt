@@ -1,0 +1,4 @@
+CHECK: LF_BUILDINFO
+CHECK: rustc.exe
+CHECK: main.rs
+CHECK: "-g" "--crate-name" "my_crate_name" "--crate-type" "bin" "-Cmetadata=dc9ef878b0a48666"

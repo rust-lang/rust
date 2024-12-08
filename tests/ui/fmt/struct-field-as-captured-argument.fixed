@@ -1,0 +1,18 @@
+//@ run-rustfix
+
+#[derive(Debug)]
+struct Foo {
+    field: usize,
+}
+
+fn main() {
+    let foo = Foo { field: 0 };
+    let bar = 3;
+    let _ = format!("{0}", foo.field); //~ ERROR invalid format string: field access isn't supported
+    let _ = format!("{1} {} {bar}", "aa", foo.field); //~ ERROR invalid format string: field access isn't supported
+    let _ = format!("{2} {} {1} {bar}", "aa", "bb", foo.field); //~ ERROR invalid format string: field access isn't supported
+    let _ = format!("{1} {} {baz}", "aa", foo.field, baz = 3); //~ ERROR invalid format string: field access isn't supported
+    let _ = format!("{1:?} {} {baz}", "aa", foo.field, baz = 3); //~ ERROR invalid format string: field access isn't supported
+    let _ = format!("{1:#?} {} {baz}", "aa", foo.field, baz = 3); //~ ERROR invalid format string: field access isn't supported
+    let _ = format!("{1:.3} {} {baz}", "aa", foo.field, baz = 3); //~ ERROR invalid format string: field access isn't supported
+}

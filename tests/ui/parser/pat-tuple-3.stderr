@@ -1,0 +1,10 @@
+error: `..` can only be used once per tuple pattern
+  --> $DIR/pat-tuple-3.rs:3:19
+   |
+LL |         (.., pat, ..) => {}
+   |          --       ^^ can only be used once per tuple pattern
+   |          |
+   |          previously used here
+
+error: aborting due to 1 previous error
+

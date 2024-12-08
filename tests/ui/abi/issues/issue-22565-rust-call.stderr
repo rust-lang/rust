@@ -1,0 +1,57 @@
+error[E0277]: functions with the "rust-call" ABI must take a single non-self tuple argument
+  --> $DIR/issue-22565-rust-call.rs:3:1
+   |
+LL | extern "rust-call" fn b(_i: i32) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Tuple` is not implemented for `i32`
+
+error: functions with the "rust-call" ABI must take a single non-self tuple argument
+  --> $DIR/issue-22565-rust-call.rs:17:5
+   |
+LL |     extern "rust-call" fn bar() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: functions with the "rust-call" ABI must take a single non-self tuple argument
+  --> $DIR/issue-22565-rust-call.rs:22:5
+   |
+LL |     extern "rust-call" fn a() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: functions with the "rust-call" ABI must take a single non-self tuple argument
+  --> $DIR/issue-22565-rust-call.rs:7:5
+   |
+LL |     extern "rust-call" fn a();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: functions with the "rust-call" ABI must take a single non-self tuple argument
+  --> $DIR/issue-22565-rust-call.rs:10:5
+   |
+LL |     extern "rust-call" fn b() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: functions with the "rust-call" ABI must take a single non-self tuple argument
+  --> $DIR/issue-22565-rust-call.rs:27:7
+   |
+LL |     b(10);
+   |       ^^ the trait `Tuple` is not implemented for `i32`
+
+error: functions with the "rust-call" ABI must take a single non-self tuple argument
+  --> $DIR/issue-22565-rust-call.rs:29:5
+   |
+LL |     Foo::bar();
+   |     ^^^^^^^^^^
+
+error: functions with the "rust-call" ABI must take a single non-self tuple argument
+  --> $DIR/issue-22565-rust-call.rs:31:5
+   |
+LL |     <Foo as Tr>::a();
+   |     ^^^^^^^^^^^^^^^^
+
+error: functions with the "rust-call" ABI must take a single non-self tuple argument
+  --> $DIR/issue-22565-rust-call.rs:33:5
+   |
+LL |     <Foo as Tr>::b();
+   |     ^^^^^^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

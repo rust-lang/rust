@@ -1,0 +1,50 @@
+#![warn(clippy::needless_as_bytes)]
+#![allow(clippy::const_is_empty)]
+
+struct S;
+
+impl S {
+    fn as_bytes(&self) -> &[u8] {
+        &[]
+    }
+}
+
+fn main() {
+    if "some string".is_empty() {
+        //~^ needless_as_bytes
+        println!("len = {}", "some string".len());
+        //~^ needless_as_bytes
+    }
+
+    let s = String::from("yet another string");
+    if s.is_empty() {
+        //~^ needless_as_bytes
+        println!("len = {}", s.len());
+        //~^ needless_as_bytes
+    }
+
+    // Do not lint
+    let _ = S.as_bytes().is_empty();
+    let _ = S.as_bytes().len();
+    let _ = (&String::new() as &dyn AsBytes).as_bytes().len();
+    macro_rules! m {
+        (1) => {
+            ""
+        };
+        (2) => {
+            "".as_bytes()
+        };
+    }
+    m!(1).as_bytes().len();
+    m!(2).len();
+}
+
+pub trait AsBytes {
+    fn as_bytes(&self) -> &[u8];
+}
+
+impl AsBytes for String {
+    fn as_bytes(&self) -> &[u8] {
+        &[]
+    }
+}

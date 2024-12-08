@@ -1,0 +1,11 @@
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/issue-11681.rs:13:10
+   |
+LL |   let testValue = &Test;
+   |                    ---- temporary value created here
+LL |   return testValue;
+   |          ^^^^^^^^^ returns a value referencing data owned by the current function
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0515`.

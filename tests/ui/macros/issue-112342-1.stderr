@@ -1,0 +1,64 @@
+note: doc comments are ignored in matcher position
+  --> $DIR/issue-112342-1.rs:6:13
+   |
+LL |             ///
+   |             ^^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-112342-1.rs:5:10
+   |
+LL |           $(
+   |  __________^
+LL | |             ///
+LL | |         )*
+   | |_________^
+
+note: doc comments are ignored in matcher position
+  --> $DIR/issue-112342-1.rs:17:13
+   |
+LL |             ///
+   |             ^^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-112342-1.rs:16:10
+   |
+LL |           $(
+   |  __________^
+LL | |             ///
+LL | |         )+
+   | |_________^
+
+note: doc comments are ignored in matcher position
+  --> $DIR/issue-112342-1.rs:28:13
+   |
+LL |             ///
+   |             ^^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-112342-1.rs:27:10
+   |
+LL |           $(
+   |  __________^
+LL | |             ///
+LL | |         )?
+   | |_________^
+
+note: doc comments are ignored in matcher position
+  --> $DIR/issue-112342-1.rs:40:13
+   |
+LL | /             ///
+LL | |             ///
+   | |_______________^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-112342-1.rs:39:10
+   |
+LL |           $(
+   |  __________^
+LL | |             ///
+LL | |             ///
+LL | |         )*
+   | |_________^
+
+error: aborting due to 4 previous errors
+

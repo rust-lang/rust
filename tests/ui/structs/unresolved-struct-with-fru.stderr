@@ -1,0 +1,9 @@
+error[E0422]: cannot find struct, variant or union type `Oops` in this scope
+  --> $DIR/unresolved-struct-with-fru.rs:9:18
+   |
+LL |         let s2 = Oops { a: 2, ..s1 };
+   |                  ^^^^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0422`.

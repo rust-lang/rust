@@ -1,0 +1,15 @@
+error: item does not constrain `Existential::{opaque#0}`, but has it in its signature
+  --> $DIR/type-alias-impl-trait-in-fn-body.rs:8:4
+   |
+LL | fn main() {
+   |    ^^^^
+   |
+   = note: consider moving the opaque type's declaration and defining uses into a separate module
+note: this opaque type is in the signature
+  --> $DIR/type-alias-impl-trait-in-fn-body.rs:10:24
+   |
+LL |     type Existential = impl Debug;
+   |                        ^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

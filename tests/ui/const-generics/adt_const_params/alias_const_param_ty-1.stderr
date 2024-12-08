@@ -1,0 +1,11 @@
+warning: the feature `lazy_type_alias` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/alias_const_param_ty-1.rs:2:30
+   |
+LL | #![feature(adt_const_params, lazy_type_alias)]
+   |                              ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+warning: 1 warning emitted
+

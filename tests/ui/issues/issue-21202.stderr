@@ -1,0 +1,14 @@
+error[E0624]: method `foo` is private
+  --> $DIR/issue-21202.rs:10:14
+   |
+LL |         Foo::foo(&f);
+   |              ^^^ private method
+   |
+  ::: $DIR/auxiliary/issue-21202.rs:4:9
+   |
+LL |         fn foo(&self) { }
+   |         ------------- private method defined here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0624`.

@@ -1,0 +1,47 @@
+error[E0659]: `A` is ambiguous
+  --> $DIR/issue-107563-ambiguous-glob-reexports.rs:25:24
+   |
+LL |     pub use ambiguous::A;
+   |                        ^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `A` could refer to the type alias imported here
+  --> $DIR/issue-107563-ambiguous-glob-reexports.rs:19:13
+   |
+LL |     pub use self::m1::*;
+   |             ^^^^^^^^^^^
+   = help: consider adding an explicit import of `A` to disambiguate
+note: `A` could also refer to the type alias imported here
+  --> $DIR/issue-107563-ambiguous-glob-reexports.rs:21:13
+   |
+LL |     pub use self::m2::*;
+   |             ^^^^^^^^^^^
+   = help: consider adding an explicit import of `A` to disambiguate
+
+error: ambiguous glob re-exports
+  --> $DIR/issue-107563-ambiguous-glob-reexports.rs:12:9
+   |
+LL | pub use foo::*;
+   |         ^^^^^^ the name `X` in the type namespace is first re-exported here
+LL |
+LL | pub use bar::*;
+   |         ------ but the name `X` in the type namespace is also re-exported here
+   |
+note: the lint level is defined here
+  --> $DIR/issue-107563-ambiguous-glob-reexports.rs:1:9
+   |
+LL | #![deny(ambiguous_glob_reexports)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ambiguous glob re-exports
+  --> $DIR/issue-107563-ambiguous-glob-reexports.rs:19:13
+   |
+LL |     pub use self::m1::*;
+   |             ^^^^^^^^^^^ the name `A` in the type namespace is first re-exported here
+LL |
+LL |     pub use self::m2::*;
+   |             ----------- but the name `A` in the type namespace is also re-exported here
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0659`.

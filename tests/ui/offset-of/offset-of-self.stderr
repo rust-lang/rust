@@ -1,0 +1,63 @@
+error: offset_of expects dot-separated field and variant names
+  --> $DIR/offset-of-self.rs:18:26
+   |
+LL |         offset_of!(Self, Self::v);
+   |                          ^^^^^^^
+
+error[E0412]: cannot find type `S` in module `self`
+  --> $DIR/offset-of-self.rs:32:26
+   |
+LL |         offset_of!(self::S, v);
+   |                          ^ not found in `self`
+   |
+help: consider importing this struct
+   |
+LL +     use S;
+   |
+help: if you import `S`, refer to it directly
+   |
+LL -         offset_of!(self::S, v);
+LL +         offset_of!(S, v);
+   |
+
+error[E0411]: cannot find type `Self` in this scope
+  --> $DIR/offset-of-self.rs:49:16
+   |
+LL | fn main() {
+   |    ---- `Self` not allowed in a function
+LL |     offset_of!(self::S, v);
+LL |     offset_of!(Self, v);
+   |                ^^^^ `Self` is only available in impls, traits, and type definitions
+
+error[E0609]: no field `Self` on type `S`
+  --> $DIR/offset-of-self.rs:19:23
+   |
+LL |         offset_of!(S, Self);
+   |                       ^^^^
+   |
+   = note: available fields are: `v`, `w`
+
+error[E0616]: field `v` of struct `T` is private
+  --> $DIR/offset-of-self.rs:38:30
+   |
+LL |             offset_of!(Self, v)
+   |                              ^ private field
+
+error[E0609]: no field `self` on type `S`
+  --> $DIR/offset-of-self.rs:51:19
+   |
+LL |     offset_of!(S, self);
+   |                   ^^^^
+   |
+   = note: available fields are: `v`, `w`
+
+error[E0609]: no field `self` on type `u8`
+  --> $DIR/offset-of-self.rs:52:21
+   |
+LL |     offset_of!(S, v.self);
+   |                     ^^^^
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0411, E0412, E0609, E0616.
+For more information about an error, try `rustc --explain E0411`.

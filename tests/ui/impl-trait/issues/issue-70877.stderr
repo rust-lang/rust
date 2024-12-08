@@ -1,0 +1,15 @@
+error: item does not constrain `Foo::{opaque#0}`, but has it in its signature
+  --> $DIR/issue-70877.rs:30:12
+   |
+LL |     pub fn oof(_: Foo) -> impl std::fmt::Debug {
+   |            ^^^
+   |
+   = note: consider moving the opaque type's declaration and defining uses into a separate module
+note: this opaque type is in the signature
+  --> $DIR/issue-70877.rs:26:20
+   |
+LL |     pub type Foo = impl Iterator<Item = super::FooItem>;
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

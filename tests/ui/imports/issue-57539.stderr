@@ -1,0 +1,20 @@
+error[E0659]: `core` is ambiguous
+  --> $DIR/issue-57539.rs:4:9
+   |
+LL |     use core;
+   |         ^^^^ ambiguous name
+   |
+   = note: ambiguous because of a conflict between a name from a glob import and an outer scope during import or macro resolution
+   = note: `core` could refer to a built-in crate
+   = help: use `::core` to refer to this crate unambiguously
+note: `core` could also refer to the module imported here
+  --> $DIR/issue-57539.rs:5:9
+   |
+LL |     use crate::*;
+   |         ^^^^^^^^
+   = help: consider adding an explicit import of `core` to disambiguate
+   = help: or use `self::core` to refer to this module unambiguously
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0659`.

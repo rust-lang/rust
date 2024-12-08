@@ -1,0 +1,18 @@
+error: expected one of `!` or `::`, found `error`
+  --> $DIR/auxiliary/transitive_dep_three.rs:6:27
+   |
+LL |         macro_rules! parse_error {
+   |         ------------------------ in this expansion of `transitive_dep_two::parse_error!`
+LL |             () => { parse error }
+   |                           ^^^^^ expected one of `!` or `::`
+   |
+  ::: $DIR/transitive-dep-span.rs:13:1
+   |
+LL | transitive_dep_two::parse_error!();
+   | ----------------------------------
+   | |
+   | in this macro invocation
+   | in this macro invocation
+
+error: aborting due to 1 previous error
+

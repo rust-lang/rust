@@ -1,0 +1,57 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "cargo check",
+            "type": "shell",
+            "command": "cargo check",
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "cargo dev fmt",
+            "type": "shell",
+            "command": "cargo dev fmt",
+            "problemMatcher": [],
+            "group": "none"
+        },
+        {
+            "label": "cargo uitest",
+            "type": "shell",
+            "command": "cargo uitest",
+            "options": {
+                "env": {
+                    // This task will usually execute all UI tests inside `tests/ui` you can
+                    // optionally uncomment the line below and only run a specific test.
+                    //
+                    // See: https://github.com/rust-lang/rust-clippy/blob/master/book/src/development/adding_lints.md#testing
+                    //
+                    // "TESTNAME": "<TODO>",
+                    "RUST_BACKTRACE": "1"
+                }
+            },
+            "problemMatcher": [],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "cargo test",
+            "type": "shell",
+            "command": "cargo test",
+            "problemMatcher": [],
+            "group": "test"
+        },
+        {
+            "label": "bless ui tests",
+            "type": "shell",
+            "command": "cargo bless",
+            "problemMatcher": [],
+            "group": "none"
+        }
+    ]
+}

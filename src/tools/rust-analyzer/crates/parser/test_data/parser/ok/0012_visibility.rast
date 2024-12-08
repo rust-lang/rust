@@ -1,0 +1,132 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "a"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"
+  FN
+    VISIBILITY
+      PUB_KW "pub"
+    WHITESPACE " "
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "b"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"
+  MACRO_DEF
+    VISIBILITY
+      PUB_KW "pub"
+    WHITESPACE " "
+    MACRO_KW "macro"
+    WHITESPACE " "
+    NAME
+      IDENT "m"
+    TOKEN_TREE
+      L_PAREN "("
+      DOLLAR "$"
+      COLON ":"
+      IDENT "ident"
+      R_PAREN ")"
+    WHITESPACE " "
+    TOKEN_TREE
+      L_CURLY "{"
+      R_CURLY "}"
+  WHITESPACE "\n"
+  FN
+    VISIBILITY
+      PUB_KW "pub"
+      L_PAREN "("
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            CRATE_KW "crate"
+      R_PAREN ")"
+    WHITESPACE " "
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "c"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"
+  FN
+    VISIBILITY
+      PUB_KW "pub"
+      L_PAREN "("
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            SUPER_KW "super"
+      R_PAREN ")"
+    WHITESPACE " "
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "d"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"
+  FN
+    VISIBILITY
+      PUB_KW "pub"
+      L_PAREN "("
+      IN_KW "in"
+      WHITESPACE " "
+      PATH
+        PATH
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "foo"
+          COLON2 "::"
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "bar"
+        COLON2 "::"
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "baz"
+      R_PAREN ")"
+    WHITESPACE " "
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "e"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"

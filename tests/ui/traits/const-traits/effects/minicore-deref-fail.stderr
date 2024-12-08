@@ -1,0 +1,9 @@
+error[E0277]: the trait bound `Ty: ~const minicore::Deref` is not satisfied
+  --> $DIR/minicore-deref-fail.rs:18:5
+   |
+LL |     *Ty;
+   |     ^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

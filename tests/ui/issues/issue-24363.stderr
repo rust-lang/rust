@@ -1,0 +1,18 @@
+error[E0610]: `{integer}` is a primitive type and therefore doesn't have fields
+  --> $DIR/issue-24363.rs:2:7
+   |
+LL |     1.create_a_type_error[
+   |       ^^^^^^^^^^^^^^^^^^^
+
+error[E0369]: cannot add `()` to `()`
+  --> $DIR/issue-24363.rs:3:11
+   |
+LL |         ()+()
+   |         --^-- ()
+   |         |
+   |         ()
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0369, E0610.
+For more information about an error, try `rustc --explain E0369`.

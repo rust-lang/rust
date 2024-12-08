@@ -1,0 +1,15 @@
+error: moving 9999 bytes
+  --> $DIR/move_into_fn.rs:14:16
+   |
+LL |     let data = Data([100; 9999]);
+   |                ^^^^^^^^^^^^^^^^^ value moved from here
+   |
+   = note: The current maximum size is 1000, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
+note: the lint level is defined here
+  --> $DIR/move_into_fn.rs:5:9
+   |
+LL | #![deny(large_assignments)]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

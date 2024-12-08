@@ -1,0 +1,11 @@
+error[E0741]: `Foo<u8>` must implement `ConstParamTy` to be used as the type of a const generic parameter
+  --> $DIR/const-param-with-additional-obligations.rs:13:17
+   |
+LL | fn foo<const N: Foo<u8>>() {}
+   |                 ^^^^^^^
+   |
+   = note: `u8` must implement `Other`, but it does not
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0741`.

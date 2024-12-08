@@ -1,0 +1,24 @@
+error: doc alias is duplicated
+  --> $DIR/duplicate_doc_alias.rs:4:7
+   |
+LL | #[doc(alias = "A")]
+   |       ----------- first defined here
+LL | #[doc(alias = "A")]
+   |       ^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/duplicate_doc_alias.rs:1:9
+   |
+LL | #![deny(unused_attributes)]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: doc alias is duplicated
+  --> $DIR/duplicate_doc_alias.rs:6:13
+   |
+LL | #[doc(alias = "B")]
+   |       ----------- first defined here
+LL | #[doc(alias("B"))]
+   |             ^^^
+
+error: aborting due to 2 previous errors
+

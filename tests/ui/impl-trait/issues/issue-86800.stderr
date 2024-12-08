@@ -1,0 +1,72 @@
+error: item does not constrain `TransactionFuture::{opaque#0}`, but has it in its signature
+  --> $DIR/issue-86800.rs:27:4
+   |
+LL | fn execute_transaction_fut<'f, F, O>(
+   |    ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: consider moving the opaque type's declaration and defining uses into a separate module
+note: this opaque type is in the signature
+  --> $DIR/issue-86800.rs:25:34
+   |
+LL | type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResult<O>>;
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: item does not constrain `TransactionFuture::{opaque#0}`, but has it in its signature
+  --> $DIR/issue-86800.rs:39:14
+   |
+LL |     async fn do_transaction<O>(
+   |              ^^^^^^^^^^^^^^
+   |
+   = note: consider moving the opaque type's declaration and defining uses into a separate module
+note: this opaque type is in the signature
+  --> $DIR/issue-86800.rs:25:34
+   |
+LL | type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResult<O>>;
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: item does not constrain `TransactionFuture::{opaque#0}`, but has it in its signature
+  --> $DIR/issue-86800.rs:43:5
+   |
+LL | /     {
+LL | |
+LL | |
+LL | |         let mut conn = Connection {};
+LL | |         let mut transaction = TestTransaction { conn: &mut conn };
+LL | |         f(&mut transaction).await
+LL | |     }
+   | |_____^
+   |
+   = note: consider moving the opaque type's declaration and defining uses into a separate module
+note: this opaque type is in the signature
+  --> $DIR/issue-86800.rs:25:34
+   |
+LL | type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResult<O>>;
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0792]: expected generic lifetime parameter, found `'_`
+  --> $DIR/issue-86800.rs:34:5
+   |
+LL | type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResult<O>>;
+   |                        --- this generic parameter must be used with a generic lifetime parameter
+...
+LL |     f
+   |     ^
+
+error[E0792]: expected generic lifetime parameter, found `'_`
+  --> $DIR/issue-86800.rs:43:5
+   |
+LL |   type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResult<O>>;
+   |                          --- this generic parameter must be used with a generic lifetime parameter
+...
+LL | /     {
+LL | |
+LL | |
+LL | |         let mut conn = Connection {};
+LL | |         let mut transaction = TestTransaction { conn: &mut conn };
+LL | |         f(&mut transaction).await
+LL | |     }
+   | |_____^
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0792`.

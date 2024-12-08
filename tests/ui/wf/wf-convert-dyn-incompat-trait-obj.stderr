@@ -1,0 +1,51 @@
+error[E0038]: the trait `Trait` cannot be made into an object
+  --> $DIR/wf-convert-dyn-incompat-trait-obj.rs:16:25
+   |
+LL |     let t: &dyn Trait = &S;
+   |                         ^^ `Trait` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/wf-convert-dyn-incompat-trait-obj.rs:6:14
+   |
+LL | trait Trait: Sized {}
+   |       -----  ^^^^^ ...because it requires `Self: Sized`
+   |       |
+   |       this trait cannot be made into an object...
+   = help: only type `S` implements the trait, consider using it directly instead
+   = note: required for the cast from `&S` to `&dyn Trait`
+
+error[E0038]: the trait `Trait` cannot be made into an object
+  --> $DIR/wf-convert-dyn-incompat-trait-obj.rs:17:17
+   |
+LL |     takes_trait(&S);
+   |                 ^^ `Trait` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/wf-convert-dyn-incompat-trait-obj.rs:6:14
+   |
+LL | trait Trait: Sized {}
+   |       -----  ^^^^^ ...because it requires `Self: Sized`
+   |       |
+   |       this trait cannot be made into an object...
+   = help: only type `S` implements the trait, consider using it directly instead
+   = note: required for the cast from `&S` to `&dyn Trait`
+
+error[E0038]: the trait `Trait` cannot be made into an object
+  --> $DIR/wf-convert-dyn-incompat-trait-obj.rs:15:5
+   |
+LL |     &S as &dyn Trait;
+   |     ^^ `Trait` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/wf-convert-dyn-incompat-trait-obj.rs:6:14
+   |
+LL | trait Trait: Sized {}
+   |       -----  ^^^^^ ...because it requires `Self: Sized`
+   |       |
+   |       this trait cannot be made into an object...
+   = help: only type `S` implements the trait, consider using it directly instead
+   = note: required for the cast from `&S` to `&dyn Trait`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

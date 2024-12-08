@@ -1,0 +1,9 @@
+error[E0425]: cannot find function `consume` in this scope
+  --> $DIR/suggest-method-on-call-for-ambig-receiver.rs:10:13
+   |
+LL |             consume(right);
+   |             ^^^^^^^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

@@ -1,0 +1,9 @@
+error[E0573]: expected type, found function `issue_114682_2_extern::max`
+  --> $DIR/issue-114682-2.rs:8:10
+   |
+LL | type A = issue_114682_2_extern::max;
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^ not a type
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0573`.

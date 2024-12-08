@@ -1,0 +1,35 @@
+error: unconstrained generic constant
+  --> $DIR/no_where_clause.rs:10:6
+   |
+LL |   b: [f32; complex_maths(N)],
+   |      ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL | pub struct Example<const N: usize> where [(); complex_maths(N)]: {
+   |                                    +++++++++++++++++++++++++++++
+
+error: unconstrained generic constant
+  --> $DIR/no_where_clause.rs:18:10
+   |
+LL |       b: [0.; complex_maths(N)],
+   |          ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL |   pub fn new() -> Self where [(); complex_maths(N)]: {
+   |                        +++++++++++++++++++++++++++++
+
+error: unconstrained generic constant
+  --> $DIR/no_where_clause.rs:18:15
+   |
+LL |       b: [0.; complex_maths(N)],
+   |               ^^^^^^^^^^^^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL |   pub fn new() -> Self where [(); complex_maths(N)]: {
+   |                        +++++++++++++++++++++++++++++
+
+error: aborting due to 3 previous errors
+

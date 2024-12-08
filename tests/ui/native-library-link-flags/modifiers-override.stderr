@@ -1,0 +1,28 @@
+error: multiple `modifiers` arguments in a single `#[link]` attribute
+  --> $DIR/modifiers-override.rs:9:5
+   |
+LL |     modifiers = "+bundle"
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: multiple `whole-archive` modifiers in a single `modifiers` argument
+  --> $DIR/modifiers-override.rs:7:17
+   |
+LL |     modifiers = "+whole-archive,-whole-archive",
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: overriding linking modifiers from command line is not supported
+  --> $DIR/modifiers-override.rs:12:1
+   |
+LL | extern "C" {}
+   | ^^^^^^^^^^^^^
+
+error: overriding linking modifiers from command line is not supported
+  --> $DIR/modifiers-override.rs:12:1
+   |
+LL | extern "C" {}
+   | ^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 4 previous errors
+

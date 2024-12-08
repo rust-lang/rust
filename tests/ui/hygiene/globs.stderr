@@ -1,0 +1,73 @@
+error[E0425]: cannot find function `f` in this scope
+  --> $DIR/globs.rs:22:9
+   |
+LL |     pub fn g() {}
+   |     ---------- similarly named function `g` defined here
+...
+LL |         f();
+   |         ^
+   |
+help: a function with a similar name exists
+   |
+LL |         g();
+   |         ~
+help: consider importing this function
+   |
+LL + use foo::f;
+   |
+
+error[E0425]: cannot find function `g` in this scope
+  --> $DIR/globs.rs:15:5
+   |
+LL |       pub fn f() {}
+   |       ---------- similarly named function `f` defined here
+...
+LL |       g();
+   |       ^
+...
+LL | /     m! {
+LL | |         use bar::*;
+LL | |         g();
+LL | |         f();
+LL | |     }
+   | |_____- in this macro invocation
+   |
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: a function with a similar name exists
+   |
+LL |     f();
+   |     ~
+help: consider importing this function
+   |
+LL + use bar::g;
+   |
+
+error[E0425]: cannot find function `f` in this scope
+  --> $DIR/globs.rs:61:12
+   |
+LL | n!(f);
+   | ----- in this macro invocation
+...
+LL |         n!(f);
+   |            ^ not found in this scope
+   |
+   = help: consider importing this function:
+           foo::f
+   = note: this error originates in the macro `n` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find function `f` in this scope
+  --> $DIR/globs.rs:65:17
+   |
+LL | n!(f);
+   | ----- in this macro invocation
+...
+LL |                 f
+   |                 ^ not found in this scope
+   |
+   = help: consider importing this function:
+           foo::f
+   = note: this error originates in the macro `n` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

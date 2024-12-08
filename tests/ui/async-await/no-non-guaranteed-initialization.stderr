@@ -1,0 +1,16 @@
+error[E0381]: used binding `y` is possibly-uninitialized
+  --> $DIR/no-non-guaranteed-initialization.rs:9:5
+   |
+LL |     let y;
+   |         - binding declared here but left uninitialized
+LL |     if x > 5 {
+   |        ----- if this `if` condition is `false`, `y` is not initialized
+LL |         y = echo(10).await;
+LL |     }
+   |      - an `else` arm might be missing here, initializing `y`
+LL |     y
+   |     ^ `y` used here but it is possibly-uninitialized
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0381`.

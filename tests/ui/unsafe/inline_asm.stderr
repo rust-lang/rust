@@ -1,0 +1,11 @@
+error[E0133]: use of inline assembly is unsafe and requires unsafe function or block
+  --> $DIR/inline_asm.rs:6:5
+   |
+LL |     asm!("nop");
+   |     ^^^^^^^^^^^ use of inline assembly
+   |
+   = note: inline assembly is entirely unchecked and can cause undefined behavior
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0133`.

@@ -1,0 +1,57 @@
+error[E0500]: closure requires unique access to `x` but it is already borrowed
+  --> $DIR/borrowck-closures-unique.rs:26:14
+   |
+LL |     let c1 = || get(x);
+   |              --     - first borrow occurs due to use of `x` in closure
+   |              |
+   |              borrow occurs here
+LL |     let c2 = || set(x);
+   |              ^^     - second borrow occurs due to use of `x` in closure
+   |              |
+   |              closure construction occurs here
+LL |     c1;
+   |     -- first borrow later used here
+
+error[E0500]: closure requires unique access to `x` but it is already borrowed
+  --> $DIR/borrowck-closures-unique.rs:32:14
+   |
+LL |     let c1 = || get(x);
+   |              --     - first borrow occurs due to use of `x` in closure
+   |              |
+   |              borrow occurs here
+LL |     let c2 = || { get(x); set(x); };
+   |              ^^               - second borrow occurs due to use of `x` in closure
+   |              |
+   |              closure construction occurs here
+LL |     c1;
+   |     -- first borrow later used here
+
+error[E0524]: two closures require unique access to `x` at the same time
+  --> $DIR/borrowck-closures-unique.rs:38:14
+   |
+LL |     let c1 = || set(x);
+   |              --     - first borrow occurs due to use of `x` in closure
+   |              |
+   |              first closure is constructed here
+LL |     let c2 = || set(x);
+   |              ^^     - second borrow occurs due to use of `x` in closure
+   |              |
+   |              second closure is constructed here
+LL |     c1;
+   |     -- first borrow later used here
+
+error[E0594]: cannot assign to `x`, as it is not declared as mutable
+  --> $DIR/borrowck-closures-unique.rs:43:38
+   |
+LL |     let c1 = |y: &'static mut isize| x = y;
+   |                                      ^^^^^ cannot assign
+   |
+help: consider changing this to be mutable
+   |
+LL | fn e(mut x: &'static mut isize) {
+   |      +++
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0500, E0524, E0594.
+For more information about an error, try `rustc --explain E0500`.

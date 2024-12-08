@@ -1,0 +1,22 @@
+- // MIR for `baz` before DestinationPropagation
++ // MIR for `baz` after DestinationPropagation
+  
+  fn baz(_1: i32) -> i32 {
+      debug x => _1;
+      let mut _0: i32;
+      let mut _2: i32;
+  
+      bb0: {
+-         StorageLive(_2);
+-         _2 = copy _1;
+-         _1 = move _2;
+-         StorageDead(_2);
++         nop;
++         nop;
++         nop;
++         nop;
+          _0 = copy _1;
+          return;
+      }
+  }
+  

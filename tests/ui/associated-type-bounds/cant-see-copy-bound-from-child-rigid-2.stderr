@@ -1,0 +1,13 @@
+error[E0382]: use of moved value: `x`
+  --> $DIR/cant-see-copy-bound-from-child-rigid-2.rs:14:9
+   |
+LL | fn foo<T: Trait>(x: T::Assoc) -> (T::Assoc, T::Assoc) {
+   |                  - move occurs because `x` has type `<T as Trait>::Assoc`, which does not implement the `Copy` trait
+LL |     (x, x)
+   |      -  ^ value used here after move
+   |      |
+   |      value moved here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

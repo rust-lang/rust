@@ -1,0 +1,8 @@
+error: invalid linkage specified
+  --> $DIR/linkage3.rs:7:5
+   |
+LL |     static foo: *const i32;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

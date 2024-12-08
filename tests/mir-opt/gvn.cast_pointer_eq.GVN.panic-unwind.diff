@@ -1,0 +1,134 @@
+- // MIR for `cast_pointer_eq` before GVN
++ // MIR for `cast_pointer_eq` after GVN
+  
+  fn cast_pointer_eq(_1: *mut u8, _2: *mut u32, _3: *mut u32, _4: *mut [u32]) -> () {
+      debug p1 => _1;
+      debug p2 => _2;
+      debug p3 => _3;
+      debug p4 => _4;
+      let mut _0: ();
+      let _5: *const u32;
+      let mut _6: *mut u8;
+      let mut _8: *const u32;
+      let mut _9: *mut u32;
+      let mut _11: *const u32;
+      let mut _12: *mut u32;
+      let mut _14: *mut [u32];
+      let mut _16: *const u32;
+      let mut _17: *const u32;
+      let mut _19: *const u32;
+      let mut _20: *const u32;
+      let mut _22: *const u32;
+      let mut _23: *const u32;
+      scope 1 {
+          debug m1 => _5;
+          let _7: *const u32;
+          scope 2 {
+              debug m2 => _7;
+              let _10: *const u32;
+              scope 3 {
+                  debug m3 => _10;
+                  let _13: *const u32;
+                  scope 4 {
+                      debug m4 => _13;
+                      let _15: bool;
+                      scope 5 {
+                          debug eq_different_thing => _15;
+                          let _18: bool;
+                          scope 6 {
+                              debug eq_optimize => _18;
+                              let _21: bool;
+                              scope 7 {
+                                  debug eq_thin_fat => _21;
+                              }
+                          }
+                      }
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_5);
++         nop;
+          StorageLive(_6);
+          _6 = copy _1;
+-         _5 = move _6 as *const u32 (PtrToPtr);
++         _5 = copy _1 as *const u32 (PtrToPtr);
+          StorageDead(_6);
+          StorageLive(_7);
+-         StorageLive(_8);
++         nop;
+          StorageLive(_9);
+          _9 = copy _2;
+-         _8 = move _9 as *const u32 (PtrToPtr);
++         _8 = copy _2 as *const u32 (PtrToPtr);
+          StorageDead(_9);
+-         _7 = move _8 as *const u32 (PtrToPtr);
+-         StorageDead(_8);
++         _7 = copy _8;
++         nop;
+          StorageLive(_10);
+-         StorageLive(_11);
++         nop;
+          StorageLive(_12);
+          _12 = copy _3;
+-         _11 = move _12 as *const u32 (PtrToPtr);
++         _11 = copy _3 as *const u32 (PtrToPtr);
+          StorageDead(_12);
+-         _10 = move _11 as *const u32 (PtrToPtr);
+-         StorageDead(_11);
+-         StorageLive(_13);
++         _10 = copy _11;
++         nop;
++         nop;
+          StorageLive(_14);
+          _14 = copy _4;
+-         _13 = move _14 as *const u32 (PtrToPtr);
++         _13 = copy _4 as *const u32 (PtrToPtr);
+          StorageDead(_14);
+          StorageLive(_15);
+          StorageLive(_16);
+          _16 = copy _5;
+          StorageLive(_17);
+-         _17 = copy _7;
+-         _15 = Eq(move _16, move _17);
++         _17 = copy _8;
++         _15 = Eq(copy _5, copy _8);
+          StorageDead(_17);
+          StorageDead(_16);
+          StorageLive(_18);
+          StorageLive(_19);
+-         _19 = copy _7;
++         _19 = copy _8;
+          StorageLive(_20);
+-         _20 = copy _10;
+-         _18 = Eq(move _19, move _20);
++         _20 = copy _11;
++         _18 = Eq(copy _2, copy _3);
+          StorageDead(_20);
+          StorageDead(_19);
+          StorageLive(_21);
+          StorageLive(_22);
+-         _22 = copy _10;
++         _22 = copy _11;
+          StorageLive(_23);
+          _23 = copy _13;
+-         _21 = Eq(move _22, move _23);
++         _21 = Eq(copy _11, copy _13);
+          StorageDead(_23);
+          StorageDead(_22);
+          _0 = const ();
+          StorageDead(_21);
+          StorageDead(_18);
+          StorageDead(_15);
+-         StorageDead(_13);
++         nop;
+          StorageDead(_10);
+          StorageDead(_7);
+-         StorageDead(_5);
++         nop;
+          return;
+      }
+  }
+  

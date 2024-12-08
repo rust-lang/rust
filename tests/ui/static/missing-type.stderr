@@ -1,0 +1,8 @@
+error: missing type for `static` item
+  --> $DIR/missing-type.rs:2:16
+   |
+LL | static S_COUNT: = std::sync::atomic::AtomicUsize::new(0);
+   |                ^ help: provide a type for the static variable: `AtomicUsize`
+
+error: aborting due to 1 previous error
+

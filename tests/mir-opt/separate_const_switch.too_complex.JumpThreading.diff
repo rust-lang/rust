@@ -1,0 +1,84 @@
+- // MIR for `too_complex` before JumpThreading
++ // MIR for `too_complex` after JumpThreading
+  
+  fn too_complex(_1: Result<i32, usize>) -> Option<i32> {
+      debug x => _1;
+      let mut _0: std::option::Option<i32>;
+      let mut _2: std::ops::ControlFlow<usize, i32>;
+      let mut _3: isize;
+      let _4: i32;
+      let _5: usize;
+      let mut _6: isize;
+      let _7: i32;
+      let _8: usize;
+      scope 1 {
+          debug v => _4;
+      }
+      scope 2 {
+          debug r => _5;
+      }
+      scope 3 {
+          debug v => _7;
+      }
+      scope 4 {
+          debug r => _8;
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          _3 = discriminant(_1);
+          switchInt(move _3) -> [0: bb3, 1: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          unreachable;
+      }
+  
+      bb2: {
+          _5 = copy ((_1 as Err).0: usize);
+          _2 = ControlFlow::<usize, i32>::Break(copy _5);
+-         goto -> bb4;
++         goto -> bb8;
+      }
+  
+      bb3: {
+          _4 = copy ((_1 as Ok).0: i32);
+          _2 = ControlFlow::<usize, i32>::Continue(copy _4);
+          goto -> bb4;
+      }
+  
+      bb4: {
+          _6 = discriminant(_2);
+-         switchInt(move _6) -> [0: bb6, 1: bb5, otherwise: bb1];
++         goto -> bb6;
+      }
+  
+      bb5: {
+          StorageLive(_8);
+          _8 = copy ((_2 as Break).0: usize);
+          _0 = const Option::<i32>::None;
+          StorageDead(_8);
+          goto -> bb7;
+      }
+  
+      bb6: {
+          _7 = copy ((_2 as Continue).0: i32);
+          _0 = Option::<i32>::Some(copy _7);
+          goto -> bb7;
+      }
+  
+      bb7: {
+          StorageDead(_2);
+          return;
++     }
++ 
++     bb8: {
++         _6 = discriminant(_2);
++         goto -> bb5;
+      }
+  }
+  
+  ALLOC0 (size: 8, align: 4) {
+      00 00 00 00 __ __ __ __                         │ ....░░░░
+  }
+  

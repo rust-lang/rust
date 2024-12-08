@@ -1,0 +1,51 @@
+error[E0277]: the size for values of type `T` cannot be known at compilation time
+  --> $DIR/dst-object-from-unsized-type.rs:8:23
+   |
+LL | fn test1<T: ?Sized + Foo>(t: &T) {
+   |          - this type parameter needs to be `Sized`
+LL |     let u: &dyn Foo = t;
+   |                       ^ doesn't have a size known at compile-time
+   |
+   = note: required for the cast from `&T` to `&dyn Foo`
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - fn test1<T: ?Sized + Foo>(t: &T) {
+LL + fn test1<T: Foo>(t: &T) {
+   |
+
+error[E0277]: the size for values of type `T` cannot be known at compilation time
+  --> $DIR/dst-object-from-unsized-type.rs:13:23
+   |
+LL | fn test2<T: ?Sized + Foo>(t: &T) {
+   |          - this type parameter needs to be `Sized`
+LL |     let v: &dyn Foo = t as &dyn Foo;
+   |                       ^ doesn't have a size known at compile-time
+   |
+   = note: required for the cast from `&T` to `&dyn Foo`
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - fn test2<T: ?Sized + Foo>(t: &T) {
+LL + fn test2<T: Foo>(t: &T) {
+   |
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/dst-object-from-unsized-type.rs:18:28
+   |
+LL |     let _: &[&dyn Foo] = &["hi"];
+   |                            ^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: required for the cast from `&'static str` to `&dyn Foo`
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/dst-object-from-unsized-type.rs:23:23
+   |
+LL |     let _: &dyn Foo = x as &dyn Foo;
+   |                       ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+   = note: required for the cast from `&[u8]` to `&dyn Foo`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

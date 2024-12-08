@@ -1,0 +1,8 @@
+error: generic `Self` types are currently not permitted in anonymous constants
+  --> $DIR/ice-68875.rs:4:20
+   |
+LL |     data: &'a [u8; Self::SIZE],
+   |                    ^^^^
+
+error: aborting due to 1 previous error
+

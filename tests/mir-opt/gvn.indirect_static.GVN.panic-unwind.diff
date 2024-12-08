@@ -1,0 +1,17 @@
+- // MIR for `indirect_static` before GVN
++ // MIR for `indirect_static` after GVN
+  
+  fn indirect_static() -> () {
+      let mut _0: ();
+      let mut _1: &std::option::Option<u8>;
+      let mut _2: u8;
+  
+      bb0: {
+          _1 = const {ALLOC0: &Option<u8>};
+          _2 = copy (((*_1) as variant#1).0: u8);
+          return;
+      }
+  }
+  
+  ALLOC0 (static: A, size: 2, align: 1) { .. }
+  

@@ -1,0 +1,29 @@
+error[E0117]: only traits defined in the current crate can be implemented for types defined outside of the crate
+  --> $DIR/impl-foreign-for-fundamental[foreign].rs:10:1
+   |
+LL | impl Remote for Box<i32> {
+   | ^^^^^------^^^^^--------
+   |      |          |
+   |      |          `i32` is not defined in the current crate
+   |      `std::alloc::Global` is not defined in the current crate
+   |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+   = note: define and implement a trait or new type instead
+
+error[E0117]: only traits defined in the current crate can be implemented for types defined outside of the crate
+  --> $DIR/impl-foreign-for-fundamental[foreign].rs:14:1
+   |
+LL | impl<T> Remote for Box<Rc<T>> {
+   | ^^^^^^^^------^^^^^----------
+   |         |          |
+   |         |          `Rc` is not defined in the current crate
+   |         `std::alloc::Global` is not defined in the current crate
+   |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+   = note: define and implement a trait or new type instead
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0117`.

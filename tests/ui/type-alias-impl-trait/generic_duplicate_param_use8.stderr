@@ -1,0 +1,14 @@
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/generic_duplicate_param_use8.rs:14:5
+   |
+LL |     (u, 4u32)
+   |     ^^^^^^^^^ expected `(T, u32)`, got `(U, u32)`
+   |
+note: previous use here
+  --> $DIR/generic_duplicate_param_use8.rs:10:5
+   |
+LL |     (t, 4u32)
+   |     ^^^^^^^^^
+
+error: aborting due to 1 previous error
+

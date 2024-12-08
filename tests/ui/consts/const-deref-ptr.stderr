@@ -1,0 +1,9 @@
+error[E0080]: could not evaluate static initializer
+  --> $DIR/const-deref-ptr.rs:4:29
+   |
+LL |     static C: u64 = unsafe {*(0xdeadbeef as *const u64)};
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: expected a pointer to 8 bytes of memory, but got 0xdeadbeef[noalloc] which is a dangling pointer (it has no provenance)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

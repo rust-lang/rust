@@ -1,0 +1,107 @@
+error: the `nomem` and `readonly` options are mutually exclusive
+  --> $DIR/bad-options.rs:10:18
+   |
+LL |         asm!("", options(nomem, readonly));
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: the `pure` and `noreturn` options are mutually exclusive
+  --> $DIR/bad-options.rs:12:18
+   |
+LL |         asm!("", options(pure, nomem, noreturn));
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: asm with the `pure` option must have at least one output
+  --> $DIR/bad-options.rs:12:18
+   |
+LL |         asm!("", options(pure, nomem, noreturn));
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: asm with the `pure` option must have at least one output
+  --> $DIR/bad-options.rs:15:33
+   |
+LL |         asm!("{}", in(reg) foo, options(pure, nomem));
+   |                                 ^^^^^^^^^^^^^^^^^^^^
+
+error: asm outputs are not allowed with the `noreturn` option
+  --> $DIR/bad-options.rs:17:20
+   |
+LL |         asm!("{}", out(reg) foo, options(noreturn));
+   |                    ^^^^^^^^^^^^
+
+error: asm labels are not allowed with the `may_unwind` option
+  --> $DIR/bad-options.rs:19:20
+   |
+LL |         asm!("{}", label {}, options(may_unwind));
+   |                    ^^^^^^^^
+
+error: asm with `clobber_abi` must specify explicit registers for outputs
+  --> $DIR/bad-options.rs:26:20
+   |
+LL |         asm!("{}", out(reg) foo, clobber_abi("C"));
+   |                    ^^^^^^^^^^^^  ---------------- clobber_abi
+   |                    |
+   |                    generic outputs
+
+error: asm with `clobber_abi` must specify explicit registers for outputs
+  --> $DIR/bad-options.rs:28:20
+   |
+LL |         asm!("{}", out(reg) foo, clobber_abi("C"), clobber_abi("C"));
+   |                    ^^^^^^^^^^^^  ----------------  ---------------- clobber_abi
+   |                    |             |
+   |                    |             clobber_abi
+   |                    generic outputs
+
+error: the `nomem` option cannot be used with `global_asm!`
+  --> $DIR/bad-options.rs:35:25
+   |
+LL | global_asm!("", options(nomem));
+   |                         ^^^^^ the `nomem` option is not meaningful for global-scoped inline assembly
+
+error: the `readonly` option cannot be used with `global_asm!`
+  --> $DIR/bad-options.rs:37:25
+   |
+LL | global_asm!("", options(readonly));
+   |                         ^^^^^^^^ the `readonly` option is not meaningful for global-scoped inline assembly
+
+error: the `noreturn` option cannot be used with `global_asm!`
+  --> $DIR/bad-options.rs:39:25
+   |
+LL | global_asm!("", options(noreturn));
+   |                         ^^^^^^^^ the `noreturn` option is not meaningful for global-scoped inline assembly
+
+error: the `pure` option cannot be used with `global_asm!`
+  --> $DIR/bad-options.rs:41:25
+   |
+LL | global_asm!("", options(pure));
+   |                         ^^^^ the `pure` option is not meaningful for global-scoped inline assembly
+
+error: the `nostack` option cannot be used with `global_asm!`
+  --> $DIR/bad-options.rs:43:25
+   |
+LL | global_asm!("", options(nostack));
+   |                         ^^^^^^^ the `nostack` option is not meaningful for global-scoped inline assembly
+
+error: the `preserves_flags` option cannot be used with `global_asm!`
+  --> $DIR/bad-options.rs:45:25
+   |
+LL | global_asm!("", options(preserves_flags));
+   |                         ^^^^^^^^^^^^^^^ the `preserves_flags` option is not meaningful for global-scoped inline assembly
+
+error: invalid ABI for `clobber_abi`
+  --> $DIR/bad-options.rs:24:18
+   |
+LL |         asm!("", clobber_abi("foo"));
+   |                  ^^^^^^^^^^^^^^^^^^
+   |
+   = note: the following ABIs are supported on this target: `C`, `system`, `efiapi`, `win64`, `sysv64`
+
+error: `C` ABI specified multiple times
+  --> $DIR/bad-options.rs:28:52
+   |
+LL |         asm!("{}", out(reg) foo, clobber_abi("C"), clobber_abi("C"));
+   |                                  ----------------  ^^^^^^^^^^^^^^^^
+   |                                  |
+   |                                  previously specified here
+
+error: aborting due to 16 previous errors
+

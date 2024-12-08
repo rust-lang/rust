@@ -1,0 +1,26 @@
+error: type `Priv` is private
+  --> $DIR/private-inferred-type-1.rs:23:5
+   |
+LL |     [].arr0_secret();
+   |     ^^^^^^^^^^^^^^^^ private type
+
+error: type `Priv` is private
+  --> $DIR/private-inferred-type-1.rs:24:5
+   |
+LL |     None.ty_param_secret();
+   |     ^^^^^^^^^^^^^^^^^^^^^^ private type
+
+error: type `Priv` is private
+  --> $DIR/private-inferred-type-1.rs:25:5
+   |
+LL |     Ref::ref_secret(anyref());
+   |     ^^^^^^^^^^^^^^^ private type
+
+error: type `Priv` is private
+  --> $DIR/private-inferred-type-1.rs:25:21
+   |
+LL |     Ref::ref_secret(anyref());
+   |                     ^^^^^^^^ private type
+
+error: aborting due to 4 previous errors
+

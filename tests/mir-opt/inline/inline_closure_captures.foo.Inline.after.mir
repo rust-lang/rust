@@ -1,0 +1,61 @@
+// MIR for `foo` after Inline
+
+fn foo(_1: T, _2: i32) -> (i32, T) {
+    debug t => _1;
+    debug q => _2;
+    let mut _0: (i32, T);
+    let _3: {closure@foo<T>::{closure#0}};
+    let mut _4: &i32;
+    let mut _5: &T;
+    let mut _6: &{closure@foo<T>::{closure#0}};
+    let mut _7: (i32,);
+    let mut _8: i32;
+    let mut _9: i32;
+    scope 1 {
+        debug x => _3;
+        scope 2 (inlined foo::<T>::{closure#0}) {
+            let mut _10: &i32;
+            let mut _11: i32;
+            let mut _12: &T;
+            let mut _13: T;
+        }
+    }
+
+    bb0: {
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = &_2;
+        StorageLive(_5);
+        _5 = &_1;
+        _3 = {closure@foo::<T>::{closure#0}} { q: move _4, t: move _5 };
+        StorageDead(_5);
+        StorageDead(_4);
+        StorageLive(_6);
+        _6 = &_3;
+        StorageLive(_7);
+        StorageLive(_8);
+        _8 = copy _2;
+        _7 = (move _8,);
+        StorageLive(_9);
+        _9 = move (_7.0: i32);
+        StorageLive(_10);
+        StorageLive(_12);
+        StorageLive(_11);
+        _10 = copy ((*_6).0: &i32);
+        _11 = copy (*_10);
+        StorageLive(_13);
+        _12 = copy ((*_6).1: &T);
+        _13 = copy (*_12);
+        _0 = (move _11, move _13);
+        StorageDead(_13);
+        StorageDead(_11);
+        StorageDead(_12);
+        StorageDead(_10);
+        StorageDead(_9);
+        StorageDead(_8);
+        StorageDead(_7);
+        StorageDead(_6);
+        StorageDead(_3);
+        return;
+    }
+}

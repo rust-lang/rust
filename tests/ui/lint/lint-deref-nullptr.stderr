@@ -1,0 +1,56 @@
+error: dereferencing a null pointer
+  --> $DIR/lint-deref-nullptr.rs:15:18
+   |
+LL |         let ub = *(0 as *const i32);
+   |                  ^^^^^^^^^^^^^^^^^^ this code causes undefined behavior when executed
+   |
+note: the lint level is defined here
+  --> $DIR/lint-deref-nullptr.rs:3:9
+   |
+LL | #![deny(deref_nullptr)]
+   |         ^^^^^^^^^^^^^
+
+error: dereferencing a null pointer
+  --> $DIR/lint-deref-nullptr.rs:17:18
+   |
+LL |         let ub = *ptr::null::<i32>();
+   |                  ^^^^^^^^^^^^^^^^^^^ this code causes undefined behavior when executed
+
+error: dereferencing a null pointer
+  --> $DIR/lint-deref-nullptr.rs:19:18
+   |
+LL |         let ub = *ptr::null_mut::<i32>();
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^ this code causes undefined behavior when executed
+
+error: dereferencing a null pointer
+  --> $DIR/lint-deref-nullptr.rs:21:18
+   |
+LL |         let ub = *(ptr::null::<i16>() as *const i32);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this code causes undefined behavior when executed
+
+error: dereferencing a null pointer
+  --> $DIR/lint-deref-nullptr.rs:23:18
+   |
+LL |         let ub = *(ptr::null::<i16>() as *mut i32 as *mut usize as *const u8);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this code causes undefined behavior when executed
+
+error: dereferencing a null pointer
+  --> $DIR/lint-deref-nullptr.rs:25:19
+   |
+LL |         let ub = &*ptr::null::<i32>();
+   |                   ^^^^^^^^^^^^^^^^^^^ this code causes undefined behavior when executed
+
+error: dereferencing a null pointer
+  --> $DIR/lint-deref-nullptr.rs:27:19
+   |
+LL |         let ub = &*ptr::null_mut::<i32>();
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^ this code causes undefined behavior when executed
+
+error: dereferencing a null pointer
+  --> $DIR/lint-deref-nullptr.rs:33:36
+   |
+LL |         let offset = ptr::addr_of!((*ptr::null::<Struct>()).field);
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^ this code causes undefined behavior when executed
+
+error: aborting due to 8 previous errors
+

@@ -1,0 +1,49 @@
+error[E0741]: `&'static str` can't be used as a const parameter type
+  --> $DIR/slice-const-param-mismatch.rs:8:29
+   |
+LL | struct ConstString<const T: &'static str>;
+   |                             ^^^^^^^^^^^^
+
+error[E0741]: `&'static [u8]` can't be used as a const parameter type
+  --> $DIR/slice-const-param-mismatch.rs:11:28
+   |
+LL | struct ConstBytes<const T: &'static [u8]>;
+   |                            ^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/slice-const-param-mismatch.rs:17:35
+   |
+LL |     let _: ConstString<"Hello"> = ConstString::<"World">;
+   |            --------------------   ^^^^^^^^^^^^^^^^^^^^^^ expected `"Hello"`, found `"World"`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `ConstString<"Hello">`
+              found struct `ConstString<"World">`
+
+error[E0308]: mismatched types
+  --> $DIR/slice-const-param-mismatch.rs:19:33
+   |
+LL |     let _: ConstString<"ℇ㇈↦"> = ConstString::<"ℇ㇈↥">;
+   |            -------------------   ^^^^^^^^^^^^^^^^^^^^^ expected `"ℇ㇈↦"`, found `"ℇ㇈↥"`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `ConstString<"ℇ㇈↦">`
+              found struct `ConstString<"ℇ㇈↥">`
+
+error[E0308]: mismatched types
+  --> $DIR/slice-const-param-mismatch.rs:21:33
+   |
+LL |     let _: ConstBytes<b"AAA"> = ConstBytes::<b"BBB">;
+   |            ------------------   ^^^^^^^^^^^^^^^^^^^^ expected `b"AAA"`, found `b"BBB"`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `ConstBytes<b"AAA">`
+              found struct `ConstBytes<b"BBB">`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0308, E0741.
+For more information about an error, try `rustc --explain E0308`.

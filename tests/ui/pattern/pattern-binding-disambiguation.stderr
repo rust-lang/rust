@@ -1,0 +1,110 @@
+error[E0530]: match bindings cannot shadow tuple structs
+  --> $DIR/pattern-binding-disambiguation.rs:24:9
+   |
+LL | struct TupleStruct();
+   | --------------------- the tuple struct `TupleStruct` is defined here
+...
+LL |         TupleStruct => {}
+   |         ^^^^^^^^^^^
+   |         |
+   |         cannot be named the same as a tuple struct
+   |         help: try specify the pattern arguments: `TupleStruct(..)`
+
+error[E0530]: match bindings cannot shadow tuple variants
+  --> $DIR/pattern-binding-disambiguation.rs:33:9
+   |
+LL | use E::*;
+   |     ---- the tuple variant `TupleVariant` is imported here
+...
+LL |         TupleVariant => {}
+   |         ^^^^^^^^^^^^
+   |         |
+   |         cannot be named the same as a tuple variant
+   |         help: try specify the pattern arguments: `TupleVariant(..)`
+
+error[E0530]: match bindings cannot shadow statics
+  --> $DIR/pattern-binding-disambiguation.rs:42:9
+   |
+LL | static STATIC: () = ();
+   | ----------------------- the static `STATIC` is defined here
+...
+LL |         STATIC => {}
+   |         ^^^^^^ cannot be named the same as a static
+
+error[E0530]: let bindings cannot shadow tuple structs
+  --> $DIR/pattern-binding-disambiguation.rs:49:9
+   |
+LL | struct TupleStruct();
+   | --------------------- the tuple struct `TupleStruct` is defined here
+...
+LL |     let TupleStruct = doesnt_matter;
+   |         ^^^^^^^^^^^ cannot be named the same as a tuple struct
+
+error[E0530]: let bindings cannot shadow tuple variants
+  --> $DIR/pattern-binding-disambiguation.rs:52:9
+   |
+LL | use E::*;
+   |     ---- the tuple variant `TupleVariant` is imported here
+...
+LL |     let TupleVariant = doesnt_matter;
+   |         ^^^^^^^^^^^^ cannot be named the same as a tuple variant
+
+error[E0530]: let bindings cannot shadow statics
+  --> $DIR/pattern-binding-disambiguation.rs:55:9
+   |
+LL | static STATIC: () = ();
+   | ----------------------- the static `STATIC` is defined here
+...
+LL |     let STATIC = doesnt_matter;
+   |         ^^^^^^ cannot be named the same as a static
+
+error[E0004]: non-exhaustive patterns: `E::TupleVariant` and `E::BracedVariant {  }` not covered
+  --> $DIR/pattern-binding-disambiguation.rs:29:11
+   |
+LL |     match UnitVariant {
+   |           ^^^^^^^^^^^ patterns `E::TupleVariant` and `E::BracedVariant {  }` not covered
+   |
+note: `E` defined here
+  --> $DIR/pattern-binding-disambiguation.rs:5:6
+   |
+LL | enum E {
+   |      ^
+LL |     UnitVariant,
+LL |     TupleVariant(),
+   |     ------------ not covered
+LL |     BracedVariant{},
+   |     ------------- not covered
+   = note: the matched value is of type `E`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+   |
+LL |         UnitVariant => {}, E::TupleVariant | E::BracedVariant {  } => todo!() // OK, `UnitVariant` is a unit variant pattern
+   |                          ++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error[E0005]: refutable pattern in local binding
+  --> $DIR/pattern-binding-disambiguation.rs:51:9
+   |
+LL |     let UnitVariant = UnitVariant;
+   |         ^^^^^^^^^^^ patterns `E::TupleVariant` and `E::BracedVariant {  }` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+note: `E` defined here
+  --> $DIR/pattern-binding-disambiguation.rs:5:6
+   |
+LL | enum E {
+   |      ^
+LL |     UnitVariant,
+LL |     TupleVariant(),
+   |     ------------ not covered
+LL |     BracedVariant{},
+   |     ------------- not covered
+   = note: the matched value is of type `E`
+help: you might want to use `if let` to ignore the variants that aren't matched
+   |
+LL |     if let UnitVariant = UnitVariant { todo!() };
+   |     ++                               +++++++++++
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0004, E0005, E0530.
+For more information about an error, try `rustc --explain E0004`.

@@ -1,0 +1,15 @@
+error[E0308]: mismatched types
+  --> $DIR/binop-logic-int.rs:1:21
+   |
+LL | fn main() { let x = 1 && 2; }
+   |                     ^ expected `bool`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/binop-logic-int.rs:1:26
+   |
+LL | fn main() { let x = 1 && 2; }
+   |                          ^ expected `bool`, found integer
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

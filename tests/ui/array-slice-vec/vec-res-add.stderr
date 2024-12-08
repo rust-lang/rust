@@ -1,0 +1,16 @@
+error[E0369]: cannot add `Vec<R>` to `Vec<R>`
+  --> $DIR/vec-res-add.rs:16:15
+   |
+LL |     let k = i + j;
+   |             - ^ - Vec<R>
+   |             |
+   |             Vec<R>
+   |
+note: the foreign item type `Vec<R>` doesn't implement `Add`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+   |
+   = note: not implement `Add`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0369`.

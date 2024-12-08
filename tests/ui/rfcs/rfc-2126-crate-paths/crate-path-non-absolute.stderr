@@ -1,0 +1,15 @@
+error[E0433]: failed to resolve: `crate` in paths can only be used in start position
+  --> $DIR/crate-path-non-absolute.rs:5:22
+   |
+LL |         let s = ::m::crate::S;
+   |                      ^^^^^ `crate` in paths can only be used in start position
+
+error[E0433]: failed to resolve: global paths cannot start with `crate`
+  --> $DIR/crate-path-non-absolute.rs:6:20
+   |
+LL |         let s1 = ::crate::S;
+   |                    ^^^^^ global paths cannot start with `crate`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

@@ -1,0 +1,11 @@
+error[E0562]: `impl Trait` is not allowed in `fn` pointer return types
+  --> $DIR/type-alias-impl-trait-fn-type.rs:6:20
+   |
+LL | type Foo = fn() -> impl Send;
+   |                    ^^^^^^^^^
+   |
+   = note: `impl Trait` is only allowed in arguments and return types of functions and methods
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0562`.

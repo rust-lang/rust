@@ -1,0 +1,64 @@
+error: more than 3 bools in function parameters
+  --> tests/ui/fn_params_excessive_bools.rs:19:1
+   |
+LL | fn g(_: bool, _: bool, _: bool, _: bool) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider refactoring bools into two-variant enums
+   = note: `-D clippy::fn-params-excessive-bools` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::fn_params_excessive_bools)]`
+
+error: more than 3 bools in function parameters
+  --> tests/ui/fn_params_excessive_bools.rs:23:1
+   |
+LL | fn t(_: S, _: S, _: Box<S>, _: Vec<u32>, _: bool, _: bool, _: bool, _: bool) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider refactoring bools into two-variant enums
+
+error: more than 3 bools in function parameters
+  --> tests/ui/fn_params_excessive_bools.rs:29:5
+   |
+LL |     fn f(_: bool, _: bool, _: bool, _: bool);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider refactoring bools into two-variant enums
+
+error: more than 3 bools in function parameters
+  --> tests/ui/fn_params_excessive_bools.rs:34:5
+   |
+LL |     fn i(_: bool, _: bool, _: bool, _: bool) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider refactoring bools into two-variant enums
+
+error: more than 3 bools in function parameters
+  --> tests/ui/fn_params_excessive_bools.rs:39:5
+   |
+LL |     fn f(&self, _: bool, _: bool, _: bool, _: bool) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider refactoring bools into two-variant enums
+
+error: more than 3 bools in function parameters
+  --> tests/ui/fn_params_excessive_bools.rs:55:5
+   |
+LL | /     fn n(_: bool, _: u32, _: bool, _: Box<u32>, _: bool, _: bool) {
+LL | |
+LL | |         fn nn(_: bool, _: bool, _: bool, _: bool) {}
+LL | |
+LL | |     }
+   | |_____^
+   |
+   = help: consider refactoring bools into two-variant enums
+
+error: more than 3 bools in function parameters
+  --> tests/ui/fn_params_excessive_bools.rs:57:9
+   |
+LL |         fn nn(_: bool, _: bool, _: bool, _: bool) {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider refactoring bools into two-variant enums
+
+error: aborting due to 7 previous errors
+

@@ -1,0 +1,15 @@
+error[E0599]: no function or associated item named `foo` found for struct `Foo<B>` in the current scope
+  --> $DIR/ufc-method-call.rs:27:27
+   |
+LL |     pub struct Foo<T>(T);
+   |     ----------------- function or associated item `foo` not found for this struct
+...
+LL |     test::Foo::<test::B>::foo();
+   |                           ^^^ function or associated item not found in `Foo<B>`
+   |
+   = note: the function or associated item was found for
+           - `Foo<A>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

@@ -1,0 +1,29 @@
+error[E0277]: the trait bound `&T: X` is not satisfied
+  --> $DIR/issue-106443-sugg-clone-for-bound.rs:10:9
+   |
+LL |     foo(s);
+   |         ^ the trait `X` is not implemented for `&T`
+   |
+help: consider further restricting type parameter `T` with trait `Clone`
+   |
+LL | fn bar<T: X + Clone>(s: &T) {
+   |             +++++++
+help: consider using clone here
+   |
+LL |     foo(s.clone());
+   |          ++++++++
+
+error[E0277]: the trait bound `&T: X` is not satisfied
+  --> $DIR/issue-106443-sugg-clone-for-bound.rs:14:9
+   |
+LL |     foo(s);
+   |         ^ the trait `X` is not implemented for `&T`
+   |
+help: consider using clone here
+   |
+LL |     foo(s.clone());
+   |          ++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

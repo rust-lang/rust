@@ -1,0 +1,19 @@
+error[E0412]: cannot find type `Missing` in this scope
+  --> $DIR/ice-struct-tail-normalization-113272.rs:5:25
+   |
+LL | impl Trait for () where Missing: Trait {}
+   |                         ^^^^^^^ not found in this scope
+
+error[E0046]: not all trait items implemented, missing: `RefTarget`
+  --> $DIR/ice-struct-tail-normalization-113272.rs:5:1
+   |
+LL |     type RefTarget;
+   |     -------------- `RefTarget` from trait
+...
+LL | impl Trait for () where Missing: Trait {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `RefTarget` in implementation
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0046, E0412.
+For more information about an error, try `rustc --explain E0046`.

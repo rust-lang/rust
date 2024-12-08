@@ -1,0 +1,70 @@
+error[E0666]: nested `impl Trait` is not allowed
+  --> $DIR/nested_impl_trait.rs:6:56
+   |
+LL | fn bad_in_ret_position(x: impl Into<u32>) -> impl Into<impl Debug> { x }
+   |                                              ----------^^^^^^^^^^-
+   |                                              |         |
+   |                                              |         nested `impl Trait` here
+   |                                              outer `impl Trait`
+
+error[E0666]: nested `impl Trait` is not allowed
+  --> $DIR/nested_impl_trait.rs:10:42
+   |
+LL | fn bad_in_fn_syntax(x: fn() -> impl Into<impl Debug>) {}
+   |                                ----------^^^^^^^^^^-
+   |                                |         |
+   |                                |         nested `impl Trait` here
+   |                                outer `impl Trait`
+
+error[E0666]: nested `impl Trait` is not allowed
+  --> $DIR/nested_impl_trait.rs:14:37
+   |
+LL | fn bad_in_arg_position(_: impl Into<impl Debug>) { }
+   |                           ----------^^^^^^^^^^-
+   |                           |         |
+   |                           |         nested `impl Trait` here
+   |                           outer `impl Trait`
+
+error[E0666]: nested `impl Trait` is not allowed
+  --> $DIR/nested_impl_trait.rs:19:44
+   |
+LL |     fn bad(x: impl Into<u32>) -> impl Into<impl Debug> { x }
+   |                                  ----------^^^^^^^^^^-
+   |                                  |         |
+   |                                  |         nested `impl Trait` here
+   |                                  outer `impl Trait`
+
+error[E0562]: `impl Trait` is not allowed in `fn` pointer return types
+  --> $DIR/nested_impl_trait.rs:10:32
+   |
+LL | fn bad_in_fn_syntax(x: fn() -> impl Into<impl Debug>) {}
+   |                                ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `impl Trait` is only allowed in arguments and return types of functions and methods
+
+error[E0277]: the trait bound `impl Debug: From<impl Into<u32>>` is not satisfied
+  --> $DIR/nested_impl_trait.rs:6:46
+   |
+LL | fn bad_in_ret_position(x: impl Into<u32>) -> impl Into<impl Debug> { x }
+   |                                              ^^^^^^^^^^^^^^^^^^^^^   - return type was inferred to be `impl Into<u32>` here
+   |                                              |
+   |                                              the trait `From<impl Into<u32>>` is not implemented for `impl Debug`
+   |
+   = help: the trait `Into<U>` is implemented for `T`
+   = note: required for `impl Into<u32>` to implement `Into<impl Debug>`
+
+error[E0277]: the trait bound `impl Debug: From<impl Into<u32>>` is not satisfied
+  --> $DIR/nested_impl_trait.rs:19:34
+   |
+LL |     fn bad(x: impl Into<u32>) -> impl Into<impl Debug> { x }
+   |                                  ^^^^^^^^^^^^^^^^^^^^^   - return type was inferred to be `impl Into<u32>` here
+   |                                  |
+   |                                  the trait `From<impl Into<u32>>` is not implemented for `impl Debug`
+   |
+   = help: the trait `Into<U>` is implemented for `T`
+   = note: required for `impl Into<u32>` to implement `Into<impl Debug>`
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0277, E0562, E0666.
+For more information about an error, try `rustc --explain E0277`.

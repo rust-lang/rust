@@ -1,0 +1,6 @@
+error: invalid `--check-cfg` argument: `cfg(any(foo))`
+   |
+   = note: `any(foo)` is invalid
+   = note: `any()` takes no argument
+   = note: visit <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more details
+

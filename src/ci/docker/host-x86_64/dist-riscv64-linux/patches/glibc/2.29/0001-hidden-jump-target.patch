@@ -1,0 +1,58 @@
+From 68389203832ab39dd0dbaabbc4059e7fff51c29b Mon Sep 17 00:00:00 2001
+From: Fangrui Song <maskray@google.com>
+Date: Thu, 28 Oct 2021 11:39:49 -0700
+Subject: [PATCH] riscv: Fix incorrect jal with HIDDEN_JUMPTARGET
+
+A non-local STV_DEFAULT defined symbol is by default preemptible in a
+shared object. j/jal cannot target a preemptible symbol. On other
+architectures, such a jump instruction either causes PLT [BZ #18822], or
+if short-ranged, sometimes rejected by the linker (but not by GNU ld's
+riscv port [ld PR/28509]).
+
+Use HIDDEN_JUMPTARGET to target a non-preemptible symbol instead.
+
+With this patch, ld.so and libc.so can be linked with LLD if source
+files are compiled/assembled with -mno-relax/-Wa,-mno-relax.
+
+Acked-by: Palmer Dabbelt <palmer@dabbelt.com>
+Reviewed-by: Adhemerval Zanella  <adhemerval.zanella@linaro.org>
+---
+ sysdeps/riscv/setjmp.S                     | 2 +-
+ sysdeps/unix/sysv/linux/riscv/setcontext.S | 5 +++--
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/sysdeps/riscv/setjmp.S b/sysdeps/riscv/setjmp.S
+index 0b92016b311..bec7ff80f49 100644
+--- a/sysdeps/riscv/setjmp.S
++++ b/sysdeps/riscv/setjmp.S
+@@ -21,7 +21,7 @@
+ 
+ ENTRY (_setjmp)
+   li	a1, 0
+-  j	__sigsetjmp
++  j	HIDDEN_JUMPTARGET (__sigsetjmp)
+ END (_setjmp)
+ ENTRY (setjmp)
+   li	a1, 1
+diff --git a/sysdeps/unix/sysv/linux/riscv/setcontext.S b/sysdeps/unix/sysv/linux/riscv/setcontext.S
+index 9510518750a..e44a68aad47 100644
+--- a/sysdeps/unix/sysv/linux/riscv/setcontext.S
++++ b/sysdeps/unix/sysv/linux/riscv/setcontext.S
+@@ -95,6 +95,7 @@ LEAF (__setcontext)
+ 99:	j	__syscall_error
+ 
+ END (__setcontext)
++libc_hidden_def (__setcontext)
+ weak_alias (__setcontext, setcontext)
+ 
+ LEAF (__start_context)
+@@ -108,7 +109,7 @@ LEAF (__start_context)
+ 	/* Invoke subsequent context if present, else exit(0).  */
+ 	mv	a0, s2
+ 	beqz	s2, 1f
+-	jal	__setcontext
+-1:	j	exit
++	jal	HIDDEN_JUMPTARGET (__setcontext)
++1:	j	HIDDEN_JUMPTARGET (exit)
+ 
+ END (__start_context)

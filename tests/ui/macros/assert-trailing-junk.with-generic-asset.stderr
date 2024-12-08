@@ -1,0 +1,58 @@
+error: expected one of `,`, `.`, `?`, or an operator, found `some`
+  --> $DIR/assert-trailing-junk.rs:9:18
+   |
+LL |     assert!(true some extra junk, "whatever");
+   |                  ^^^^ expected one of `,`, `.`, `?`, or an operator
+
+error: expected one of `,`, `.`, `?`, or an operator, found `some`
+  --> $DIR/assert-trailing-junk.rs:12:18
+   |
+LL |     assert!(true some extra junk);
+   |                  ^^^^ expected one of `,`, `.`, `?`, or an operator
+
+error: no rules expected `blah`
+  --> $DIR/assert-trailing-junk.rs:15:30
+   |
+LL |     assert!(true, "whatever" blah);
+   |                             -^^^^ no rules expected this token in macro call
+   |                             |
+   |                             help: missing comma here
+   |
+   = note: while trying to match sequence start
+
+error: unexpected string literal
+  --> $DIR/assert-trailing-junk.rs:18:18
+   |
+LL |     assert!(true "whatever" blah);
+   |                 -^^^^^^^^^^
+   |                 |
+   |                 help: try adding a comma
+
+error: no rules expected `blah`
+  --> $DIR/assert-trailing-junk.rs:18:29
+   |
+LL |     assert!(true "whatever" blah);
+   |                            -^^^^ no rules expected this token in macro call
+   |                            |
+   |                            help: missing comma here
+   |
+   = note: while trying to match sequence start
+
+error: macro requires an expression as an argument
+  --> $DIR/assert-trailing-junk.rs:22:5
+   |
+LL |     assert!(true;);
+   |     ^^^^^^^^^^^^-^
+   |                 |
+   |                 help: try removing semicolon
+
+error: unexpected string literal
+  --> $DIR/assert-trailing-junk.rs:25:27
+   |
+LL |     assert!(false || true "error message");
+   |                          -^^^^^^^^^^^^^^^
+   |                          |
+   |                          help: try adding a comma
+
+error: aborting due to 7 previous errors
+

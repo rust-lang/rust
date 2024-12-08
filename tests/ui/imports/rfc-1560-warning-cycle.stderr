@@ -1,0 +1,23 @@
+error[E0659]: `Foo` is ambiguous
+  --> $DIR/rfc-1560-warning-cycle.rs:9:17
+   |
+LL |         fn f(_: Foo) {}
+   |                 ^^^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `Foo` could refer to the struct imported here
+  --> $DIR/rfc-1560-warning-cycle.rs:7:13
+   |
+LL |         use *;
+   |             ^
+   = help: consider adding an explicit import of `Foo` to disambiguate
+note: `Foo` could also refer to the struct imported here
+  --> $DIR/rfc-1560-warning-cycle.rs:8:13
+   |
+LL |         use bar::*;
+   |             ^^^^^^
+   = help: consider adding an explicit import of `Foo` to disambiguate
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0659`.

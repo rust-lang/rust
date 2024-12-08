@@ -1,0 +1,43 @@
+The build system of cg_clif.
+
+USAGE:
+    ./y.sh prepare [--out-dir DIR] [--download-dir DIR]
+    ./y.sh build [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen]
+    ./y.sh test [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen] [--skip-test TESTNAME]
+    ./y.sh abi-cafe [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen]
+    ./y.sh bench [--sysroot none|clif|llvm] [--out-dir DIR] [--download-dir DIR] [--no-unstable-features] [--frozen]
+
+OPTIONS:
+    --sysroot none|clif|llvm
+            Which sysroot libraries to use:
+            `none` will not include any standard library in the sysroot.
+            `clif` will build the standard library using Cranelift.
+            `llvm` will use the pre-compiled standard library of rustc which is compiled with LLVM.
+
+    --out-dir DIR
+            Specify the directory in which the download, build and dist directories are stored.
+            By default this is the working directory.
+
+    --download-dir DIR
+            Specify the directory in which the download directory is stored. Overrides --out-dir.
+
+    --no-unstable-features
+            Some features are not yet ready for production usage. This option will disable these
+            features. This includes the JIT mode and inline assembly support.
+
+    --frozen
+            Require Cargo.lock and cache are up to date
+
+    --skip-test TESTNAME
+            Skip testing the TESTNAME test. The test name format is the same as config.txt.
+
+    --use-backend NAME
+            Use the existing Cranelift (or other) backend of the rustc with which we built.
+            Warning: This is meant for use in rust's CI only!
+
+REQUIREMENTS:
+    * Rustup: By default rustup is used to install the right nightly version. If you don't want to
+      use rustup, you can manually install the nightly version indicated by rust-toolchain.toml and
+      point the CARGO, RUSTC and RUSTDOC env vars to the right executables.
+    * Git: Git is used for downloading test repos and applying patches.
+    * [Hyperfine](https://github.com/sharkdp/hyperfine/): Used for benchmarking with `./y.sh bench`.

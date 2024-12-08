@@ -1,0 +1,263 @@
+// WARNING: This is highly experimental output it's intended for stable-mir developers only.
+// If you find a bug or want to improve the output open a issue at https://github.com/rust-lang/project-stable-mir.
+fn operands(_1: u8) -> () {
+    let mut _0: ();
+    let  _2: [u8; 10];
+    let  _3: u8;
+    let  _4: usize;
+    let mut _5: usize;
+    let mut _6: bool;
+    let  _7: u8;
+    let  _8: usize;
+    let mut _9: (usize, bool);
+    let mut _10: usize;
+    let mut _11: bool;
+    let mut _12: (&u8, &u8);
+    let mut _13: &u8;
+    let mut _14: &u8;
+    let  _15: &u8;
+    let  _16: &u8;
+    let mut _17: bool;
+    let mut _18: u8;
+    let mut _19: u8;
+    let  _20: core::panicking::AssertKind;
+    let  _21: !;
+    let mut _22: Option<Arguments<'_>>;
+    let  _23: &u8;
+    let  _24: u8;
+    let mut _25: (&u8, &u8);
+    let mut _26: &u8;
+    let mut _27: &u8;
+    let  _28: &u8;
+    let  _29: &u8;
+    let mut _30: bool;
+    let mut _31: u8;
+    let mut _32: u8;
+    let  _33: core::panicking::AssertKind;
+    let  _34: !;
+    let mut _35: Option<Arguments<'_>>;
+    let  _36: (u8, u8);
+    let  _37: u8;
+    let  _38: u8;
+    let mut _39: (&u8, &u8);
+    let mut _40: &u8;
+    let mut _41: &u8;
+    let  _42: &u8;
+    let  _43: &u8;
+    let mut _44: bool;
+    let mut _45: u8;
+    let mut _46: u8;
+    let  _47: core::panicking::AssertKind;
+    let  _48: !;
+    let mut _49: Option<Arguments<'_>>;
+    let  _50: usize;
+    let mut _51: &[u8];
+    let mut _52: &[u8; 10];
+    let  _53: usize;
+    let  _54: &usize;
+    let mut _55: (&usize, &usize);
+    let mut _56: &usize;
+    let mut _57: &usize;
+    let  _58: &usize;
+    let  _59: &usize;
+    let mut _60: bool;
+    let mut _61: usize;
+    let mut _62: usize;
+    let  _63: core::panicking::AssertKind;
+    let  _64: !;
+    let mut _65: Option<Arguments<'_>>;
+    debug val => _1;
+    debug array => _2;
+    debug first => _3;
+    debug last => _7;
+    debug left_val => _15;
+    debug right_val => _16;
+    debug kind => _20;
+    debug reference => _23;
+    debug dereferenced => _24;
+    debug left_val => _28;
+    debug right_val => _29;
+    debug kind => _33;
+    debug tuple => _36;
+    debug first_again => _37;
+    debug first_again_again => _38;
+    debug left_val => _42;
+    debug right_val => _43;
+    debug kind => _47;
+    debug length => _50;
+    debug size_of => _53;
+    debug left_val => _58;
+    debug right_val => _59;
+    debug kind => _63;
+    bb0: {
+        _2 = [_1; 10];
+        _4 = 0_usize;
+        _5 = 10_usize;
+        _6 = Lt(_4, _5);
+        assert(move _6, "index out of bounds: the length is {} but the index is {}", move _5, _4) -> [success: bb1, unwind unreachable];
+    }
+    bb1: {
+        _3 = _2[_4];
+        _9 = CheckedSub(10_usize, 1_usize);
+        assert(!move (_9.1: bool), "attempt to compute `{} - {}`, which would overflow", 10_usize, 1_usize) -> [success: bb2, unwind unreachable];
+    }
+    bb2: {
+        _8 = move (_9.0: usize);
+        _10 = 10_usize;
+        _11 = Lt(_8, _10);
+        assert(move _11, "index out of bounds: the length is {} but the index is {}", move _10, _8) -> [success: bb3, unwind unreachable];
+    }
+    bb3: {
+        _7 = _2[_8];
+        _13 = &_3;
+        _14 = &_7;
+        _12 = (move _13, move _14);
+        _15 = (_12.0: &u8);
+        _16 = (_12.1: &u8);
+        _18 = (*_15);
+        _19 = (*_16);
+        _17 = Eq(move _18, move _19);
+        switchInt(move _17) -> [0: bb5, otherwise: bb4];
+    }
+    bb4: {
+        _23 = &_3;
+        _24 = (*_23);
+        _26 = &_24;
+        _27 = &_3;
+        _25 = (move _26, move _27);
+        _28 = (_25.0: &u8);
+        _29 = (_25.1: &u8);
+        _31 = (*_28);
+        _32 = (*_29);
+        _30 = Eq(move _31, move _32);
+        switchInt(move _30) -> [0: bb7, otherwise: bb6];
+    }
+    bb5: {
+        _20 = core::panicking::AssertKind::Eq;
+        _22 = std::option::Option::None;
+        _21 = core::panicking::assert_failed::<u8, u8>(move _20, _15, _16, move _22) -> unwind unreachable;
+    }
+    bb6: {
+        _36 = (_3, _7);
+        _37 = (_36.0: u8);
+        _38 = (_36.0: u8);
+        _40 = &_37;
+        _41 = &_38;
+        _39 = (move _40, move _41);
+        _42 = (_39.0: &u8);
+        _43 = (_39.1: &u8);
+        _45 = (*_42);
+        _46 = (*_43);
+        _44 = Eq(move _45, move _46);
+        switchInt(move _44) -> [0: bb9, otherwise: bb8];
+    }
+    bb7: {
+        _33 = core::panicking::AssertKind::Eq;
+        _35 = std::option::Option::None;
+        _34 = core::panicking::assert_failed::<u8, u8>(move _33, _28, _29, move _35) -> unwind unreachable;
+    }
+    bb8: {
+        _52 = &_2;
+        _51 = move _52 as &[u8];
+        _50 = PtrMetadata(move _51);
+        _54 = &_50;
+        _53 = std::mem::size_of_val::<usize>(_54) -> [return: bb10, unwind unreachable];
+    }
+    bb9: {
+        _47 = core::panicking::AssertKind::Eq;
+        _49 = std::option::Option::None;
+        _48 = core::panicking::assert_failed::<u8, u8>(move _47, _42, _43, move _49) -> unwind unreachable;
+    }
+    bb10: {
+        _56 = &_50;
+        _57 = &_53;
+        _55 = (move _56, move _57);
+        _58 = (_55.0: &usize);
+        _59 = (_55.1: &usize);
+        _61 = (*_58);
+        _62 = (*_59);
+        _60 = Eq(move _61, move _62);
+        switchInt(move _60) -> [0: bb12, otherwise: bb11];
+    }
+    bb11: {
+        return;
+    }
+    bb12: {
+        _63 = core::panicking::AssertKind::Eq;
+        _65 = std::option::Option::None;
+        _64 = core::panicking::assert_failed::<usize, usize>(move _63, _58, _59, move _65) -> unwind unreachable;
+    }
+}
+fn operands::{constant#0}() -> usize {
+    let mut _0: usize;
+    bb0: {
+        _0 = 10_usize;
+        return;
+    }
+}
+fn more_operands() -> [Ctors; 3] {
+    let mut _0: [Ctors; 3];
+    let  _1: Dummy;
+    let  _2: Ctors;
+    let  _3: Ctors;
+    let  _4: Ctors;
+    debug dummy => _1;
+    debug unit => _2;
+    debug struct_like => _3;
+    debug tup_like => _4;
+    bb0: {
+        _1 = Dummy('a', core::num::<impl i32>::MIN);
+        _2 = Ctors::Unit;
+        _3 = Ctors::StructLike(move _1);
+        _4 = Ctors::TupLike(false);
+        _0 = [move _2, move _3, move _4];
+        return;
+    }
+}
+fn more_operands::{constant#0}() -> usize {
+    let mut _0: usize;
+    bb0: {
+        _0 = 3_usize;
+        return;
+    }
+}
+fn closures(_1: bool, _2: bool) -> {closure@$DIR/operands.rs:47:5: 47:19} {
+    let mut _0: {closure@$DIR/operands.rs:47:5: 47:19};
+    debug x => _1;
+    debug z => _2;
+    bb0: {
+        _0 = {closure@$DIR/operands.rs:47:5: 47:19}(_1, _2);
+        return;
+    }
+}
+fn closures::{closure#0}(_1: {closure@$DIR/operands.rs:47:5: 47:19}, _2: bool) -> bool {
+    let mut _0: bool;
+    let mut _3: bool;
+    let mut _4: bool;
+    debug y => _2;
+    debug x => (_1.0: bool);
+    debug z => (_1.1: bool);
+    bb0: {
+        _4 = (_1.0: bool);
+        _3 = BitXor(move _4, _2);
+        switchInt(move _3) -> [0: bb2, otherwise: bb1];
+    }
+    bb1: {
+        _0 = true;
+        goto -> bb3;
+    }
+    bb2: {
+        _0 = (_1.1: bool);
+        goto -> bb3;
+    }
+    bb3: {
+        return;
+    }
+}
+fn Ctors::TupLike(_1: bool) -> Ctors {
+    let mut _0: Ctors;
+    bb0: {
+        _0 = Ctors::TupLike(move _1);
+        return;
+    }
+}

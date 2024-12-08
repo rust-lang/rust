@@ -1,0 +1,14 @@
+[package]
+name = "profiler_builtins"
+version = "0.0.0"
+edition = "2021"
+
+[lib]
+test = false
+bench = false
+doc = false
+
+[dependencies]
+
+[build-dependencies]
+cc = "1.2"

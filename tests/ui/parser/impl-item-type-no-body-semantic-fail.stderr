@@ -1,0 +1,131 @@
+error: associated type in `impl` without body
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:6:5
+   |
+LL |     type Y;
+   |     ^^^^^^-
+   |           |
+   |           help: provide a definition for the type: `= <type>;`
+
+error: associated type in `impl` without body
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:9:5
+   |
+LL |     type Z: Ord;
+   |     ^^^^^^^^^^^-
+   |                |
+   |                help: provide a definition for the type: `= <type>;`
+
+error: bounds on `type`s in `impl`s have no effect
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:9:13
+   |
+LL |     type Z: Ord;
+   |             ^^^
+
+error: associated type in `impl` without body
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:13:5
+   |
+LL |     type W: Ord where Self: Eq;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^-
+   |                               |
+   |                               help: provide a definition for the type: `= <type>;`
+
+error: bounds on `type`s in `impl`s have no effect
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:13:13
+   |
+LL |     type W: Ord where Self: Eq;
+   |             ^^^
+
+error: associated type in `impl` without body
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:18:5
+   |
+LL |     type W where Self: Eq;
+   |     ^^^^^^^^^^^^^^^^^^^^^-
+   |                          |
+   |                          help: provide a definition for the type: `= <type>;`
+
+error[E0658]: inherent associated types are unstable
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:6:5
+   |
+LL |     type Y;
+   |     ^^^^^^^
+   |
+   = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
+   = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: inherent associated types are unstable
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:9:5
+   |
+LL |     type Z: Ord;
+   |     ^^^^^^^^^^^^
+   |
+   = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
+   = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: inherent associated types are unstable
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:13:5
+   |
+LL |     type W: Ord where Self: Eq;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
+   = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: inherent associated types are unstable
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:18:5
+   |
+LL |     type W where Self: Eq;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
+   = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0277]: the trait bound `X: Eq` is not satisfied
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:13:23
+   |
+LL |     type W: Ord where Self: Eq;
+   |                       ^^^^^^^^ the trait `Eq` is not implemented for `X`
+   |
+   = help: see issue #48214
+help: consider annotating `X` with `#[derive(Eq)]`
+   |
+LL + #[derive(Eq)]
+LL | struct X;
+   |
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
+   |
+
+error[E0277]: the trait bound `X: Eq` is not satisfied
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:18:18
+   |
+LL |     type W where Self: Eq;
+   |                  ^^^^^^^^ the trait `Eq` is not implemented for `X`
+   |
+   = help: see issue #48214
+help: consider annotating `X` with `#[derive(Eq)]`
+   |
+LL + #[derive(Eq)]
+LL | struct X;
+   |
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
+   |
+
+error[E0592]: duplicate definitions with name `W`
+  --> $DIR/impl-item-type-no-body-semantic-fail.rs:18:5
+   |
+LL |     type W: Ord where Self: Eq;
+   |     ------ other definition for `W`
+...
+LL |     type W where Self: Eq;
+   |     ^^^^^^ duplicate definitions for `W`
+
+error: aborting due to 13 previous errors
+
+Some errors have detailed explanations: E0277, E0592, E0658.
+For more information about an error, try `rustc --explain E0277`.

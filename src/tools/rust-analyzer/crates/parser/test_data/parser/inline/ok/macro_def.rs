@@ -1,0 +1,1 @@
+macro m($i:ident) {}

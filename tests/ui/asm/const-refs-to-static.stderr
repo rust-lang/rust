@@ -1,0 +1,22 @@
+error: invalid type for `const` operand
+  --> $DIR/const-refs-to-static.rs:10:19
+   |
+LL | global_asm!("{}", const addr_of!(FOO));
+   |                   ^^^^^^-------------
+   |                         |
+   |                         is a `*const u8`
+   |
+   = help: `const` operands must be of an integer type
+
+error: invalid type for `const` operand
+  --> $DIR/const-refs-to-static.rs:15:25
+   |
+LL |     unsafe { asm!("{}", const addr_of!(FOO)) };
+   |                         ^^^^^^-------------
+   |                               |
+   |                               is a `*const u8`
+   |
+   = help: `const` operands must be of an integer type
+
+error: aborting due to 2 previous errors
+

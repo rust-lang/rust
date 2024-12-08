@@ -1,0 +1,13 @@
+error: expected one of `extern` or `fn`, found keyword `const`
+  --> $DIR/wrong-const.rs:9:8
+   |
+LL | unsafe const fn test() {}
+   | -------^^^^^
+   | |      |
+   | |      expected one of `extern` or `fn`
+   | help: `const` must come before `unsafe`: `const unsafe`
+   |
+   = note: keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`
+
+error: aborting due to 1 previous error
+

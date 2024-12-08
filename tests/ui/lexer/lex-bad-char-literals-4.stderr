@@ -1,0 +1,9 @@
+error[E0762]: unterminated character literal
+  --> $DIR/lex-bad-char-literals-4.rs:4:5
+   |
+LL |     '●
+   |     ^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0762`.

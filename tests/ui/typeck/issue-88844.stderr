@@ -1,0 +1,12 @@
+error[E0412]: cannot find type `Stuct` in this scope
+  --> $DIR/issue-88844.rs:6:6
+   |
+LL | struct Struct { value: i32 }
+   | ------------- similarly named struct `Struct` defined here
+...
+LL | impl Stuct {
+   |      ^^^^^ help: a struct with a similar name exists: `Struct`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0412`.

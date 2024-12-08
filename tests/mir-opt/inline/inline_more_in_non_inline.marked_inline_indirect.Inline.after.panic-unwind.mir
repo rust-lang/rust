@@ -1,0 +1,27 @@
+// MIR for `marked_inline_indirect` after Inline
+
+fn marked_inline_indirect(_1: i32) -> () {
+    debug x => _1;
+    let mut _0: ();
+    let _2: ();
+    let mut _3: i32;
+    scope 1 (inlined marked_inline_direct) {
+        let _4: ();
+    }
+
+    bb0: {
+        StorageLive(_2);
+        StorageLive(_3);
+        _3 = copy _1;
+        StorageLive(_4);
+        _4 = call_twice(move _3) -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        StorageDead(_4);
+        StorageDead(_3);
+        StorageDead(_2);
+        _0 = const ();
+        return;
+    }
+}

@@ -1,0 +1,71 @@
+error[E0617]: can't pass `f32` to variadic function
+  --> $DIR/E0617.rs:7:36
+   |
+LL |         printf(::std::ptr::null(), 0f32);
+   |                                    ^^^^
+   |
+help: cast the value to `c_double`
+   |
+LL |         printf(::std::ptr::null(), 0f32 as c_double);
+   |                                         +++++++++++
+
+error[E0617]: can't pass `i8` to variadic function
+  --> $DIR/E0617.rs:10:36
+   |
+LL |         printf(::std::ptr::null(), 0i8);
+   |                                    ^^^
+   |
+help: cast the value to `c_int`
+   |
+LL |         printf(::std::ptr::null(), 0i8 as c_int);
+   |                                        ++++++++
+
+error[E0617]: can't pass `i16` to variadic function
+  --> $DIR/E0617.rs:13:36
+   |
+LL |         printf(::std::ptr::null(), 0i16);
+   |                                    ^^^^
+   |
+help: cast the value to `c_int`
+   |
+LL |         printf(::std::ptr::null(), 0i16 as c_int);
+   |                                         ++++++++
+
+error[E0617]: can't pass `u8` to variadic function
+  --> $DIR/E0617.rs:16:36
+   |
+LL |         printf(::std::ptr::null(), 0u8);
+   |                                    ^^^
+   |
+help: cast the value to `c_uint`
+   |
+LL |         printf(::std::ptr::null(), 0u8 as c_uint);
+   |                                        +++++++++
+
+error[E0617]: can't pass `u16` to variadic function
+  --> $DIR/E0617.rs:19:36
+   |
+LL |         printf(::std::ptr::null(), 0u16);
+   |                                    ^^^^
+   |
+help: cast the value to `c_uint`
+   |
+LL |         printf(::std::ptr::null(), 0u16 as c_uint);
+   |                                         +++++++++
+
+error[E0617]: can't pass a function item to a variadic function
+  --> $DIR/E0617.rs:22:36
+   |
+LL |         printf(::std::ptr::null(), printf);
+   |                                    ^^^^^^
+   |
+   = help: a function item is zero-sized and needs to be cast into a function pointer to be used in FFI
+   = note: for more information on function items, visit https://doc.rust-lang.org/reference/types/function-item.html
+help: use a function pointer instead
+   |
+LL |         printf(::std::ptr::null(), printf as unsafe extern "C" fn(*const i8, ...));
+   |                                           +++++++++++++++++++++++++++++++++++++++
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0617`.

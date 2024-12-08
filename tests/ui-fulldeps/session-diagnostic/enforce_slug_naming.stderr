@@ -1,0 +1,11 @@
+error: derive(Diagnostic): diagnostic slug and crate name do not match
+  --> $DIR/enforce_slug_naming.rs:22:8
+   |
+LL | #[diag(compiletest_example, code = E0123)]
+   |        ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: slug is `compiletest_example` but the crate name is `rustc_dummy`
+   = help: expected a slug starting with `dummy_...`
+
+error: aborting due to 1 previous error
+

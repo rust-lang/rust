@@ -1,0 +1,13 @@
+error[E0033]: type `&dyn SomeTrait` cannot be dereferenced
+  --> $DIR/E0033-teach.rs:12:9
+   |
+LL |     let &invalid = trait_obj;
+   |         ^^^^^^^^ type `&dyn SomeTrait` cannot be dereferenced
+   |
+   = note: This error indicates that a pointer to a trait type cannot be implicitly dereferenced by a pattern. Every trait defines a type, but because the size of trait implementors isn't fixed, this type has no compile-time size. Therefore, all accesses to trait types must be through pointers. If you encounter this error you should try to avoid dereferencing the pointer.
+           
+           You can read more about trait objects in the Trait Objects section of the Reference: https://doc.rust-lang.org/reference/types.html#trait-objects
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0033`.

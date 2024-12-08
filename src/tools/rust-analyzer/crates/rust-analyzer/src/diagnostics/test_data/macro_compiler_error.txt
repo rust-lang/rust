@@ -1,0 +1,229 @@
+[
+    MappedRustDiagnostic {
+        url: Url {
+            scheme: "file",
+            cannot_be_a_base: false,
+            username: "",
+            password: None,
+            host: None,
+            port: None,
+            path: "/test/crates/hir_def/src/path.rs",
+            query: None,
+            fragment: None,
+        },
+        diagnostic: Diagnostic {
+            range: Range {
+                start: Position {
+                    line: 271,
+                    character: 8,
+                },
+                end: Position {
+                    line: 271,
+                    character: 50,
+                },
+            },
+            severity: Some(
+                Hint,
+            ),
+            code: None,
+            code_description: None,
+            source: Some(
+                "rustc",
+            ),
+            message: "Please register your known path in the path module",
+            related_information: Some(
+                [
+                    DiagnosticRelatedInformation {
+                        location: Location {
+                            uri: Url {
+                                scheme: "file",
+                                cannot_be_a_base: false,
+                                username: "",
+                                password: None,
+                                host: None,
+                                port: None,
+                                path: "/test/crates/hir_def/src/path.rs",
+                                query: None,
+                                fragment: None,
+                            },
+                            range: Range {
+                                start: Position {
+                                    line: 264,
+                                    character: 8,
+                                },
+                                end: Position {
+                                    line: 264,
+                                    character: 76,
+                                },
+                            },
+                        },
+                        message: "Exact error occurred here",
+                    },
+                ],
+            ),
+            tags: None,
+            data: None,
+        },
+        fix: None,
+    },
+    MappedRustDiagnostic {
+        url: Url {
+            scheme: "file",
+            cannot_be_a_base: false,
+            username: "",
+            password: None,
+            host: None,
+            port: None,
+            path: "/test/crates/hir_def/src/data.rs",
+            query: None,
+            fragment: None,
+        },
+        diagnostic: Diagnostic {
+            range: Range {
+                start: Position {
+                    line: 79,
+                    character: 15,
+                },
+                end: Position {
+                    line: 79,
+                    character: 41,
+                },
+            },
+            severity: Some(
+                Hint,
+            ),
+            code: None,
+            code_description: None,
+            source: Some(
+                "rustc",
+            ),
+            message: "Please register your known path in the path module",
+            related_information: Some(
+                [
+                    DiagnosticRelatedInformation {
+                        location: Location {
+                            uri: Url {
+                                scheme: "file",
+                                cannot_be_a_base: false,
+                                username: "",
+                                password: None,
+                                host: None,
+                                port: None,
+                                path: "/test/crates/hir_def/src/path.rs",
+                                query: None,
+                                fragment: None,
+                            },
+                            range: Range {
+                                start: Position {
+                                    line: 264,
+                                    character: 8,
+                                },
+                                end: Position {
+                                    line: 264,
+                                    character: 76,
+                                },
+                            },
+                        },
+                        message: "Exact error occurred here",
+                    },
+                ],
+            ),
+            tags: None,
+            data: None,
+        },
+        fix: None,
+    },
+    MappedRustDiagnostic {
+        url: Url {
+            scheme: "file",
+            cannot_be_a_base: false,
+            username: "",
+            password: None,
+            host: None,
+            port: None,
+            path: "/test/crates/hir_def/src/path.rs",
+            query: None,
+            fragment: None,
+        },
+        diagnostic: Diagnostic {
+            range: Range {
+                start: Position {
+                    line: 264,
+                    character: 8,
+                },
+                end: Position {
+                    line: 264,
+                    character: 76,
+                },
+            },
+            severity: Some(
+                Error,
+            ),
+            code: None,
+            code_description: None,
+            source: Some(
+                "rustc",
+            ),
+            message: "Please register your known path in the path module",
+            related_information: Some(
+                [
+                    DiagnosticRelatedInformation {
+                        location: Location {
+                            uri: Url {
+                                scheme: "file",
+                                cannot_be_a_base: false,
+                                username: "",
+                                password: None,
+                                host: None,
+                                port: None,
+                                path: "/test/crates/hir_def/src/path.rs",
+                                query: None,
+                                fragment: None,
+                            },
+                            range: Range {
+                                start: Position {
+                                    line: 271,
+                                    character: 8,
+                                },
+                                end: Position {
+                                    line: 271,
+                                    character: 50,
+                                },
+                            },
+                        },
+                        message: "Error originated from macro call here",
+                    },
+                    DiagnosticRelatedInformation {
+                        location: Location {
+                            uri: Url {
+                                scheme: "file",
+                                cannot_be_a_base: false,
+                                username: "",
+                                password: None,
+                                host: None,
+                                port: None,
+                                path: "/test/crates/hir_def/src/data.rs",
+                                query: None,
+                                fragment: None,
+                            },
+                            range: Range {
+                                start: Position {
+                                    line: 79,
+                                    character: 15,
+                                },
+                                end: Position {
+                                    line: 79,
+                                    character: 41,
+                                },
+                            },
+                        },
+                        message: "Error originated from macro call here",
+                    },
+                ],
+            ),
+            tags: None,
+            data: None,
+        },
+        fix: None,
+    },
+]

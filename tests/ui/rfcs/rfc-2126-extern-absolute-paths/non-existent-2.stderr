@@ -1,0 +1,9 @@
+error[E0433]: failed to resolve: could not find `xcrate` in the list of imported crates
+  --> $DIR/non-existent-2.rs:4:15
+   |
+LL |     let s = ::xcrate::S;
+   |               ^^^^^^ could not find `xcrate` in the list of imported crates
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

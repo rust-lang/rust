@@ -1,0 +1,11 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/issue-80062.rs:6:23
+   |
+LL |     let _: [u8; sof::<T>()];
+   |                       ^ cannot perform const operation using `T`
+   |
+   = note: type parameters may not be used in const expressions
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: aborting due to 1 previous error
+

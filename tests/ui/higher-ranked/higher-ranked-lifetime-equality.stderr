@@ -1,0 +1,22 @@
+error[E0308]: mismatched types
+  --> $DIR/higher-ranked-lifetime-equality.rs:34:25
+   |
+LL |     let foo: Foo<Two> = foo;
+   |                         ^^^ one type is more general than the other
+   |
+   = note: expected struct `my_api::Foo<for<'a, 'b> fn(&'a (), &'b ())>`
+              found struct `my_api::Foo<for<'a> fn(&'a (), &'a ())>`
+
+error[E0308]: mismatched types
+  --> $DIR/higher-ranked-lifetime-equality.rs:34:25
+   |
+LL |     let foo: Foo<Two> = foo;
+   |                         ^^^ one type is more general than the other
+   |
+   = note: expected struct `my_api::Foo<for<'a, 'b> fn(&'a (), &'b ())>`
+              found struct `my_api::Foo<for<'a> fn(&'a (), &'a ())>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

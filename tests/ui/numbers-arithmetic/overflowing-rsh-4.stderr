@@ -1,0 +1,14 @@
+error: this arithmetic operation will overflow
+  --> $DIR/overflowing-rsh-4.rs:11:13
+   |
+LL |     let x = 2_i8 >> 17;
+   |             ^^^^^^^^^^ attempt to shift right by `17_i32`, which would overflow
+   |
+note: the lint level is defined here
+  --> $DIR/overflowing-rsh-4.rs:7:9
+   |
+LL | #![deny(arithmetic_overflow)]
+   |         ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

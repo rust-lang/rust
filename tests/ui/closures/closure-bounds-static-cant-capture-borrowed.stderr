@@ -1,0 +1,44 @@
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/closure-bounds-static-cant-capture-borrowed.rs:5:5
+   |
+LL |   fn foo(x: &()) {
+   |          -  - let's call the lifetime of this reference `'1`
+   |          |
+   |          `x` is a reference that is only valid in the function body
+LL | /     bar(|| {
+LL | |
+LL | |
+LL | |         let _ = x;
+LL | |     })
+   | |      ^
+   | |      |
+   | |______`x` escapes the function body here
+   |        argument requires that `'1` must outlive `'static`
+
+error[E0373]: closure may outlive the current function, but it borrows `x`, which is owned by the current function
+  --> $DIR/closure-bounds-static-cant-capture-borrowed.rs:5:9
+   |
+LL |     bar(|| {
+   |         ^^ may outlive borrowed value `x`
+...
+LL |         let _ = x;
+   |                 - `x` is borrowed here
+   |
+note: function requires argument type to outlive `'static`
+  --> $DIR/closure-bounds-static-cant-capture-borrowed.rs:5:5
+   |
+LL | /     bar(|| {
+LL | |
+LL | |
+LL | |         let _ = x;
+LL | |     })
+   | |______^
+help: to force the closure to take ownership of `x` (and any other referenced variables), use the `move` keyword
+   |
+LL |     bar(move || {
+   |         ++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0373, E0521.
+For more information about an error, try `rustc --explain E0373`.

@@ -1,0 +1,10 @@
+enforced-import-renames = [
+    { path = "std::option::Option", rename = "Maybe" },
+    { path = "std::process::Child", rename = "Kid" },
+    { path = "std::process::exit", rename = "goodbye" },
+    { path = "std::collections::BTreeMap", rename = "Map" },
+    { path = "std::clone", rename = "foo" },
+    { path = "std::thread::sleep", rename = "thread_sleep" },
+    { path = "std::any::type_name", rename = "ident" },
+    { path = "std::sync::Mutex", rename = "StdMutie" }
+]

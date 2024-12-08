@@ -1,0 +1,8 @@
+error: expected item after doc comment
+  --> $DIR/doc-before-mod-rbrace.rs:2:5
+   |
+LL |     /// document
+   |     ^^^^^^^^^^^^ this doc comment doesn't document anything
+
+error: aborting due to 1 previous error
+

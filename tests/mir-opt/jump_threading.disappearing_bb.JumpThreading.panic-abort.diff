@@ -1,0 +1,59 @@
+- // MIR for `disappearing_bb` before JumpThreading
++ // MIR for `disappearing_bb` after JumpThreading
+  
+  fn disappearing_bb(_1: u8) -> u8 {
+      let mut _0: u8;
+      let mut _2: bool;
+      let mut _3: bool;
+  
+      bb0: {
+          _2 = const true;
+          _3 = const true;
+          switchInt(copy _1) -> [0: bb3, 1: bb3, 2: bb1, otherwise: bb2];
+      }
+  
+      bb1: {
+          _3 = const false;
+-         goto -> bb4;
++         goto -> bb9;
+      }
+  
+      bb2: {
+          unreachable;
+      }
+  
+      bb3: {
+          _2 = const false;
+          goto -> bb4;
+      }
+  
+      bb4: {
+          switchInt(copy _3) -> [0: bb5, otherwise: bb7];
+      }
+  
+      bb5: {
+          switchInt(copy _2) -> [0: bb6, otherwise: bb8];
+      }
+  
+      bb6: {
+          return;
+      }
+  
+      bb7: {
+-         goto -> bb5;
++         goto -> bb10;
+      }
+  
+      bb8: {
++         goto -> bb6;
++     }
++ 
++     bb9: {
++         goto -> bb5;
++     }
++ 
++     bb10: {
+          goto -> bb6;
+      }
+  }
+  

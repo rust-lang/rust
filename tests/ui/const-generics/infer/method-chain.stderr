@@ -1,0 +1,19 @@
+error[E0284]: type annotations needed
+  --> $DIR/method-chain.rs:15:33
+   |
+LL |     Foo.bar().bar().bar().bar().baz();
+   |                                 ^^^ cannot infer the value of the const parameter `N` declared on the method `baz`
+   |
+note: required by a const generic parameter in `Foo::baz`
+  --> $DIR/method-chain.rs:8:12
+   |
+LL |     fn baz<const N: usize>(self) -> Foo {
+   |            ^^^^^^^^^^^^^^ required by this const generic parameter in `Foo::baz`
+help: consider specifying the generic argument
+   |
+LL |     Foo.bar().bar().bar().bar().baz::<N>();
+   |                                    +++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0284`.

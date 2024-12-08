@@ -1,0 +1,8 @@
+error: expected one of `.`, `;`, `?`, or `}`, found `[`
+  --> $DIR/assoc-oddities-2.rs:5:29
+   |
+LL |     x..if c { a } else { b }[n];
+   |                             ^ expected one of `.`, `;`, `?`, or `}`
+
+error: aborting due to 1 previous error
+

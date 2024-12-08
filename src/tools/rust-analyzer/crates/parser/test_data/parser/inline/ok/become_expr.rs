@@ -1,0 +1,3 @@
+fn foo() {
+    become foo();
+}

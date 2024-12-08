@@ -1,0 +1,12 @@
+warning: unexpected `cfg` condition name: `uniz`
+  --> $DIR/check-cfg.rs:5:7
+   |
+LL | #[cfg(uniz)]
+   |       ^^^^ help: there is a config with a similar name: `unix`
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(uniz)`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: 1 warning emitted
+

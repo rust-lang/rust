@@ -1,0 +1,28 @@
+- // MIR for `try_execute_query` before Inline
++ // MIR for `try_execute_query` after Inline
+  
+  fn try_execute_query(_1: &C) -> () {
+      debug c => _1;
+      let mut _0: ();
+      let mut _2: &dyn Cache<V = <C as Cache>::V>;
+      let mut _3: &C;
++     scope 1 (inlined mk_cycle::<<C as Cache>::V>) {
++         debug c => _2;
++     }
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = copy _1;
+          _2 = move _3 as &dyn Cache<V = <C as Cache>::V> (PointerCoercion(Unsize, Implicit));
+          StorageDead(_3);
+-         _0 = mk_cycle::<<C as Cache>::V>(move _2) -> [return: bb1, unwind unreachable];
++         _0 = <dyn Cache<V = <C as Cache>::V> as Cache>::store_nocache(move _2) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageDead(_2);
+          return;
+      }
+  }
+  

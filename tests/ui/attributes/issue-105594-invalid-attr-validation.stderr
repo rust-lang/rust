@@ -1,0 +1,11 @@
+error[E0739]: attribute should be applied to a function definition
+  --> $DIR/issue-105594-invalid-attr-validation.rs:6:1
+   |
+LL | #[track_caller]
+   | ^^^^^^^^^^^^^^^
+LL | static _A: () = ();
+   | ------------------- not a function definition
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0739`.

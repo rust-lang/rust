@@ -1,0 +1,17 @@
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/projection-where-clause-none.rs:14:5
+   |
+LL | fn foo<'a, T>() -> &'a ()
+   |        -- the parameter type `T` must be valid for the lifetime `'a` as defined here...
+...
+LL |     bar::<T::Output>()
+   |     ^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     T: MyTrait<'a> + 'a,
+   |                    ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0309`.

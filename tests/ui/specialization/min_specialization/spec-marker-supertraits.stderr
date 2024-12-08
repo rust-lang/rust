@@ -1,0 +1,8 @@
+error: cannot specialize on trait `HasMethod`
+  --> $DIR/spec-marker-supertraits.rs:22:9
+   |
+LL | impl<T: Marker> Spec for T {
+   |         ^^^^^^
+
+error: aborting due to 1 previous error
+

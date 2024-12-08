@@ -1,0 +1,21 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/issue-67945-3.rs:11:23
+   |
+LL |         let x: Option<S> = None;
+   |                       ^ cannot perform const operation using `S`
+   |
+   = note: type parameters may not be used in const expressions
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error[E0392]: type parameter `S` is never used
+  --> $DIR/issue-67945-3.rs:9:12
+   |
+LL | struct Bug<S> {
+   |            ^ unused type parameter
+   |
+   = help: consider removing `S`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `S` to be a const parameter, use `const S: /* Type */` instead
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0392`.

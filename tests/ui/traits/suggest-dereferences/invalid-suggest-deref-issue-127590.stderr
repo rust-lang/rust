@@ -1,0 +1,61 @@
+error[E0277]: `&std::slice::Iter<'_, {integer}>` is not an iterator
+  --> $DIR/invalid-suggest-deref-issue-127590.rs:6:54
+   |
+LL |     for (src, dest) in std::iter::zip(fields.iter(), &variant.iter()) {
+   |                        --------------                ^^^^^^^^^^^^^^^ `&std::slice::Iter<'_, {integer}>` is not an iterator
+   |                        |
+   |                        required by a bound introduced by this call
+   |
+   = help: the trait `Iterator` is not implemented for `&std::slice::Iter<'_, {integer}>`
+   = note: required for `&std::slice::Iter<'_, {integer}>` to implement `IntoIterator`
+note: required by a bound in `std::iter::zip`
+  --> $SRC_DIR/core/src/iter/adapters/zip.rs:LL:COL
+help: consider removing the leading `&`-reference
+   |
+LL -     for (src, dest) in std::iter::zip(fields.iter(), &variant.iter()) {
+LL +     for (src, dest) in std::iter::zip(fields.iter(), variant.iter()) {
+   |
+
+error[E0277]: `&std::slice::Iter<'_, {integer}>` is not an iterator
+  --> $DIR/invalid-suggest-deref-issue-127590.rs:6:24
+   |
+LL |     for (src, dest) in std::iter::zip(fields.iter(), &variant.iter()) {
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `&std::slice::Iter<'_, {integer}>` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `&std::slice::Iter<'_, {integer}>`
+   = help: the trait `Iterator` is implemented for `std::slice::Iter<'_, T>`
+   = note: required for `Zip<std::slice::Iter<'_, {integer}>, &std::slice::Iter<'_, {integer}>>` to implement `Iterator`
+   = note: required for `Zip<std::slice::Iter<'_, {integer}>, &std::slice::Iter<'_, {integer}>>` to implement `IntoIterator`
+
+error[E0277]: `&std::slice::Iter<'_, {integer}>` is not an iterator
+  --> $DIR/invalid-suggest-deref-issue-127590.rs:13:54
+   |
+LL |     for (src, dest) in std::iter::zip(fields.iter(), &variant.iter().clone()) {
+   |                        --------------                ^^^^^^^^^^^^^^^^^^^^^^^ `&std::slice::Iter<'_, {integer}>` is not an iterator
+   |                        |
+   |                        required by a bound introduced by this call
+   |
+   = help: the trait `Iterator` is not implemented for `&std::slice::Iter<'_, {integer}>`
+   = note: required for `&std::slice::Iter<'_, {integer}>` to implement `IntoIterator`
+note: required by a bound in `std::iter::zip`
+  --> $SRC_DIR/core/src/iter/adapters/zip.rs:LL:COL
+help: consider removing the leading `&`-reference
+   |
+LL -     for (src, dest) in std::iter::zip(fields.iter(), &variant.iter().clone()) {
+LL +     for (src, dest) in std::iter::zip(fields.iter(), variant.iter().clone()) {
+   |
+
+error[E0277]: `&std::slice::Iter<'_, {integer}>` is not an iterator
+  --> $DIR/invalid-suggest-deref-issue-127590.rs:13:24
+   |
+LL |     for (src, dest) in std::iter::zip(fields.iter(), &variant.iter().clone()) {
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `&std::slice::Iter<'_, {integer}>` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `&std::slice::Iter<'_, {integer}>`
+   = help: the trait `Iterator` is implemented for `std::slice::Iter<'_, T>`
+   = note: required for `Zip<std::slice::Iter<'_, {integer}>, &std::slice::Iter<'_, {integer}>>` to implement `Iterator`
+   = note: required for `Zip<std::slice::Iter<'_, {integer}>, &std::slice::Iter<'_, {integer}>>` to implement `IntoIterator`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

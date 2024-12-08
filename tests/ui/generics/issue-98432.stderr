@@ -1,0 +1,14 @@
+error[E0401]: can't use generic parameters from outer item
+  --> $DIR/issue-98432.rs:5:34
+   |
+LL | impl<T> Struct<T> {
+   |      - type parameter from outer item
+LL |     const CONST: fn() = || {
+LL |         struct _Obligation where T:;
+   |                           -      ^ use of generic parameter from outer item
+   |                           |
+   |                           help: try introducing a local generic parameter here: `<T>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0401`.

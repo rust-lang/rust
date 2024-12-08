@@ -1,0 +1,48 @@
+error[E0792]: expected generic lifetime parameter, found `'_`
+  --> $DIR/hkl_forbidden.rs:10:5
+   |
+LL | type Opaque<'a> = impl Sized + 'a;
+   |             -- this generic parameter must be used with a generic lifetime parameter
+...
+LL |     (id, id)
+   |     ^^^^^^^^
+
+error[E0792]: expected generic lifetime parameter, found `'a`
+  --> $DIR/hkl_forbidden.rs:20:5
+   |
+LL | type Opaque2<'a> = impl Sized + 'a;
+   |              -- this generic parameter must be used with a generic lifetime parameter
+...
+LL |     id2
+   |     ^^^
+
+error[E0792]: expected generic lifetime parameter, found `'_`
+  --> $DIR/hkl_forbidden.rs:26:5
+   |
+LL | type Opaque3<'a> = impl Sized + 'a;
+   |              -- this generic parameter must be used with a generic lifetime parameter
+...
+LL |     (id, s)
+   |     ^^^^^^^
+
+error[E0792]: expected generic lifetime parameter, found `'_`
+  --> $DIR/hkl_forbidden.rs:31:5
+   |
+LL | type Opaque4<'a> = impl Sized + 'a;
+   |              -- this generic parameter must be used with a generic lifetime parameter
+LL | fn test4(s: &str) -> (Opaque4<'_>, impl Fn(&str) -> Opaque4<'_>) {
+LL |     (s, id)
+   |     ^^^^^^^
+
+error[E0792]: expected generic lifetime parameter, found `'a`
+  --> $DIR/hkl_forbidden.rs:36:5
+   |
+LL | type Inner<'a> = impl Sized;
+   |            -- this generic parameter must be used with a generic lifetime parameter
+LL | fn outer_impl() -> impl for<'a> Fn(&'a ()) -> Inner<'a> {
+LL |     |x| x
+   |     ^^^^^
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0792`.

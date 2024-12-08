@@ -1,0 +1,11 @@
+error[E0046]: not all trait items implemented, missing: `partial_cmp`
+  --> $DIR/issue-3344.rs:3:1
+   |
+LL | impl PartialOrd for Thing {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ missing `partial_cmp` in implementation
+   |
+   = help: implement the missing item: `fn partial_cmp(&self, _: &Thing) -> Option<std::cmp::Ordering> { todo!() }`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0046`.

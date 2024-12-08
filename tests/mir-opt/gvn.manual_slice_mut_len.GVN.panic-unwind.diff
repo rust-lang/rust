@@ -1,0 +1,41 @@
+- // MIR for `manual_slice_mut_len` before GVN
++ // MIR for `manual_slice_mut_len` after GVN
+  
+  fn manual_slice_mut_len(_1: &mut [i32]) -> usize {
+      debug x => _1;
+      let mut _0: usize;
+      let _2: *mut [i32];
+      let mut _4: *mut [i32];
+      let mut _5: *const [i32];
+      scope 1 {
+          debug x => _2;
+          let _3: *const [i32];
+          scope 2 {
+              debug x => _3;
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_2);
++         nop;
+          _2 = &raw mut (*_1);
+-         StorageLive(_3);
++         nop;
+          StorageLive(_4);
+          _4 = copy _2;
+-         _3 = move _4 as *const [i32] (PtrToPtr);
++         _3 = copy _2 as *const [i32] (PtrToPtr);
+          StorageDead(_4);
+          StorageLive(_5);
+          _5 = copy _3;
+-         _0 = PtrMetadata(move _5);
++         _0 = PtrMetadata(copy _1);
+          StorageDead(_5);
+-         StorageDead(_3);
+-         StorageDead(_2);
++         nop;
++         nop;
+          return;
+      }
+  }
+  

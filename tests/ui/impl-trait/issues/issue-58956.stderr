@@ -1,0 +1,19 @@
+error[E0562]: `impl Trait` is not allowed in const types
+  --> $DIR/issue-58956.rs:7:11
+   |
+LL | const _A: impl Lam = {
+   |           ^^^^^^^^
+   |
+   = note: `impl Trait` is only allowed in arguments and return types of functions and methods
+
+error[E0562]: `impl Trait` is not allowed in the type of variable bindings
+  --> $DIR/issue-58956.rs:9:17
+   |
+LL |     let x: Wrap<impl Lam> = Wrap(B);
+   |                 ^^^^^^^^
+   |
+   = note: `impl Trait` is only allowed in arguments and return types of functions and methods
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0562`.

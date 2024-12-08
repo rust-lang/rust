@@ -1,0 +1,48 @@
+error[E0658]: `?Trait` is not permitted in trait object types
+  --> $DIR/maybe-bound.rs:5:15
+   |
+LL | type _0 = dyn ?Sized + Foo;
+   |               ^^^^^^
+   |
+   = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `?Trait` is not permitted in trait object types
+  --> $DIR/maybe-bound.rs:8:21
+   |
+LL | type _1 = dyn Foo + ?Sized;
+   |                     ^^^^^^
+   |
+   = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `?Trait` is not permitted in trait object types
+  --> $DIR/maybe-bound.rs:11:21
+   |
+LL | type _2 = dyn Foo + ?Sized + ?Sized;
+   |                     ^^^^^^
+   |
+   = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `?Trait` is not permitted in trait object types
+  --> $DIR/maybe-bound.rs:11:30
+   |
+LL | type _2 = dyn Foo + ?Sized + ?Sized;
+   |                              ^^^^^^
+   |
+   = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `?Trait` is not permitted in trait object types
+  --> $DIR/maybe-bound.rs:15:15
+   |
+LL | type _3 = dyn ?Sized + Foo;
+   |               ^^^^^^
+   |
+   = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

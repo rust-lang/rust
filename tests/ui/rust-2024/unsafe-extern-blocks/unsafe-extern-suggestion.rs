@@ -1,0 +1,18 @@
+//@ run-rustfix
+
+#![deny(missing_unsafe_on_extern)]
+#![allow(unused)]
+
+extern "C" {
+    //~^ ERROR extern blocks should be unsafe [missing_unsafe_on_extern]
+    //~| WARN this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2024!
+    static TEST1: i32;
+    fn test1(i: i32);
+}
+
+unsafe extern "C" {
+    static TEST2: i32;
+    fn test2(i: i32);
+}
+
+fn main() {}

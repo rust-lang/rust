@@ -1,0 +1,8 @@
+error: reservation `Drop` impls are not supported
+  --> $DIR/reservation.rs:5:1
+   |
+LL | impl Drop for ReservedDrop {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

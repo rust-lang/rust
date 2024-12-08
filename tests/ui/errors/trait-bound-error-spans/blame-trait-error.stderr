@@ -1,0 +1,402 @@
+error[E0277]: the trait bound `Q: T3` is not satisfied
+  --> $DIR/blame-trait-error.rs:53:46
+   |
+LL |     want(Wrapper { value: Burrito { filling: q } });
+   |     ----                                     ^ the trait `T3` is not implemented for `Q`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required for `Burrito<Q>` to implement `T2`
+  --> $DIR/blame-trait-error.rs:11:13
+   |
+LL | impl<A: T3> T2 for Burrito<A> {}
+   |         --  ^^     ^^^^^^^^^^
+   |         |
+   |         unsatisfied trait bound introduced here
+note: required for `Wrapper<Burrito<Q>>` to implement `T1`
+  --> $DIR/blame-trait-error.rs:6:13
+   |
+LL | impl<B: T2> T1 for Wrapper<B> {}
+   |         --  ^^     ^^^^^^^^^^
+   |         |
+   |         unsatisfied trait bound introduced here
+note: required by a bound in `want`
+  --> $DIR/blame-trait-error.rs:25:12
+   |
+LL | fn want<V: T1>(_x: V) {}
+   |            ^^ required by this bound in `want`
+help: consider restricting type parameter `Q` with trait `T3`
+   |
+LL | fn example<Q: T3>(q: Q) {
+   |             ++++
+
+error[E0277]: `()` is not an iterator
+  --> $DIR/blame-trait-error.rs:56:15
+   |
+LL |     want(Some(()));
+   |     ----      ^^ `()` is not an iterator
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Iterator` is not implemented for `()`
+   = help: the trait `T1` is implemented for `Option<It>`
+note: required for `Option<()>` to implement `T1`
+  --> $DIR/blame-trait-error.rs:21:20
+   |
+LL | impl<It: Iterator> T1 for Option<It> {}
+   |          --------  ^^     ^^^^^^^^^^
+   |          |
+   |          unsatisfied trait bound introduced here
+note: required by a bound in `want`
+  --> $DIR/blame-trait-error.rs:25:12
+   |
+LL | fn want<V: T1>(_x: V) {}
+   |            ^^ required by this bound in `want`
+
+error[E0277]: `Q` is not an iterator
+  --> $DIR/blame-trait-error.rs:59:15
+   |
+LL |     want(Some(q));
+   |     ----      ^ `Q` is not an iterator
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required for `Option<Q>` to implement `T1`
+  --> $DIR/blame-trait-error.rs:21:20
+   |
+LL | impl<It: Iterator> T1 for Option<It> {}
+   |          --------  ^^     ^^^^^^^^^^
+   |          |
+   |          unsatisfied trait bound introduced here
+note: required by a bound in `want`
+  --> $DIR/blame-trait-error.rs:25:12
+   |
+LL | fn want<V: T1>(_x: V) {}
+   |            ^^ required by this bound in `want`
+help: consider restricting type parameter `Q` with trait `Iterator`
+   |
+LL | fn example<Q: std::iter::Iterator>(q: Q) {
+   |             +++++++++++++++++++++
+
+error[E0277]: `Q` is not an iterator
+  --> $DIR/blame-trait-error.rs:62:16
+   |
+LL |     want(&Some(q));
+   |     ----       ^ `Q` is not an iterator
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required for `Option<Q>` to implement `T1`
+  --> $DIR/blame-trait-error.rs:21:20
+   |
+LL | impl<It: Iterator> T1 for Option<It> {}
+   |          --------  ^^     ^^^^^^^^^^
+   |          |
+   |          unsatisfied trait bound introduced here
+   = note: 1 redundant requirement hidden
+   = note: required for `&Option<Q>` to implement `T1`
+note: required by a bound in `want`
+  --> $DIR/blame-trait-error.rs:25:12
+   |
+LL | fn want<V: T1>(_x: V) {}
+   |            ^^ required by this bound in `want`
+help: consider restricting type parameter `Q` with trait `Iterator`
+   |
+LL | fn example<Q: std::iter::Iterator>(q: Q) {
+   |             +++++++++++++++++++++
+
+error[E0277]: the trait bound `Q: T3` is not satisfied
+  --> $DIR/blame-trait-error.rs:65:45
+   |
+LL |     want(&ExampleTuple::ExampleTupleVariant(q));
+   |     ----                                    ^ the trait `T3` is not implemented for `Q`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required for `ExampleTuple<Q>` to implement `T1`
+  --> $DIR/blame-trait-error.rs:35:9
+   |
+LL | impl<A> T1 for ExampleTuple<A> where A: T3 {}
+   |         ^^     ^^^^^^^^^^^^^^^          -- unsatisfied trait bound introduced here
+   = note: 1 redundant requirement hidden
+   = note: required for `&ExampleTuple<Q>` to implement `T1`
+note: required by a bound in `want`
+  --> $DIR/blame-trait-error.rs:25:12
+   |
+LL | fn want<V: T1>(_x: V) {}
+   |            ^^ required by this bound in `want`
+help: consider restricting type parameter `Q` with trait `T3`
+   |
+LL | fn example<Q: T3>(q: Q) {
+   |             ++++
+
+error[E0277]: the trait bound `Q: T3` is not satisfied
+  --> $DIR/blame-trait-error.rs:68:31
+   |
+LL |     want(&ExampleTupleVariant(q));
+   |     ----                      ^ the trait `T3` is not implemented for `Q`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required for `ExampleTuple<Q>` to implement `T1`
+  --> $DIR/blame-trait-error.rs:35:9
+   |
+LL | impl<A> T1 for ExampleTuple<A> where A: T3 {}
+   |         ^^     ^^^^^^^^^^^^^^^          -- unsatisfied trait bound introduced here
+   = note: 1 redundant requirement hidden
+   = note: required for `&ExampleTuple<Q>` to implement `T1`
+note: required by a bound in `want`
+  --> $DIR/blame-trait-error.rs:25:12
+   |
+LL | fn want<V: T1>(_x: V) {}
+   |            ^^ required by this bound in `want`
+help: consider restricting type parameter `Q` with trait `T3`
+   |
+LL | fn example<Q: T3>(q: Q) {
+   |             ++++
+
+error[E0277]: the trait bound `Q: T3` is not satisfied
+  --> $DIR/blame-trait-error.rs:71:50
+   |
+LL |     want(&ExampleOtherTuple::ExampleTupleVariant(q));
+   |     ----                                         ^ the trait `T3` is not implemented for `Q`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required for `ExampleTuple<Q>` to implement `T1`
+  --> $DIR/blame-trait-error.rs:35:9
+   |
+LL | impl<A> T1 for ExampleTuple<A> where A: T3 {}
+   |         ^^     ^^^^^^^^^^^^^^^          -- unsatisfied trait bound introduced here
+   = note: 1 redundant requirement hidden
+   = note: required for `&ExampleTuple<Q>` to implement `T1`
+note: required by a bound in `want`
+  --> $DIR/blame-trait-error.rs:25:12
+   |
+LL | fn want<V: T1>(_x: V) {}
+   |            ^^ required by this bound in `want`
+help: consider restricting type parameter `Q` with trait `T3`
+   |
+LL | fn example<Q: T3>(q: Q) {
+   |             ++++
+
+error[E0277]: the trait bound `Q: T3` is not satisfied
+  --> $DIR/blame-trait-error.rs:74:44
+   |
+LL |     want(&ExampleDifferentTupleVariantName(q));
+   |     ----                                   ^ the trait `T3` is not implemented for `Q`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required for `ExampleTuple<Q>` to implement `T1`
+  --> $DIR/blame-trait-error.rs:35:9
+   |
+LL | impl<A> T1 for ExampleTuple<A> where A: T3 {}
+   |         ^^     ^^^^^^^^^^^^^^^          -- unsatisfied trait bound introduced here
+   = note: 1 redundant requirement hidden
+   = note: required for `&ExampleTuple<Q>` to implement `T1`
+note: required by a bound in `want`
+  --> $DIR/blame-trait-error.rs:25:12
+   |
+LL | fn want<V: T1>(_x: V) {}
+   |            ^^ required by this bound in `want`
+help: consider restricting type parameter `Q` with trait `T3`
+   |
+LL | fn example<Q: T3>(q: Q) {
+   |             ++++
+
+error[E0277]: the trait bound `Q: T3` is not satisfied
+  --> $DIR/blame-trait-error.rs:77:45
+   |
+LL |     want(&ExampleYetAnotherTupleVariantName(q));
+   |     ----                                    ^ the trait `T3` is not implemented for `Q`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required for `ExampleTuple<Q>` to implement `T1`
+  --> $DIR/blame-trait-error.rs:35:9
+   |
+LL | impl<A> T1 for ExampleTuple<A> where A: T3 {}
+   |         ^^     ^^^^^^^^^^^^^^^          -- unsatisfied trait bound introduced here
+   = note: 1 redundant requirement hidden
+   = note: required for `&ExampleTuple<Q>` to implement `T1`
+note: required by a bound in `want`
+  --> $DIR/blame-trait-error.rs:25:12
+   |
+LL | fn want<V: T1>(_x: V) {}
+   |            ^^ required by this bound in `want`
+help: consider restricting type parameter `Q` with trait `T3`
+   |
+LL | fn example<Q: T3>(q: Q) {
+   |             ++++
+
+error[E0277]: the trait bound `Q: T3` is not satisfied
+  --> $DIR/blame-trait-error.rs:80:56
+   |
+LL |     want(&ExampleStruct::ExampleStructVariant { field: q });
+   |     ---- required by a bound introduced by this call   ^ the trait `T3` is not implemented for `Q`
+   |
+note: required for `ExampleStruct<Q>` to implement `T1`
+  --> $DIR/blame-trait-error.rs:45:9
+   |
+LL | impl<A> T1 for ExampleStruct<A> where A: T3 {}
+   |         ^^     ^^^^^^^^^^^^^^^^          -- unsatisfied trait bound introduced here
+   = note: 1 redundant requirement hidden
+   = note: required for `&ExampleStruct<Q>` to implement `T1`
+note: required by a bound in `want`
+  --> $DIR/blame-trait-error.rs:25:12
+   |
+LL | fn want<V: T1>(_x: V) {}
+   |            ^^ required by this bound in `want`
+help: consider restricting type parameter `Q` with trait `T3`
+   |
+LL | fn example<Q: T3>(q: Q) {
+   |             ++++
+
+error[E0277]: the trait bound `Q: T3` is not satisfied
+  --> $DIR/blame-trait-error.rs:83:41
+   |
+LL |     want(&ExampleStructVariant { field: q });
+   |     ----                                ^ the trait `T3` is not implemented for `Q`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required for `ExampleStruct<Q>` to implement `T1`
+  --> $DIR/blame-trait-error.rs:45:9
+   |
+LL | impl<A> T1 for ExampleStruct<A> where A: T3 {}
+   |         ^^     ^^^^^^^^^^^^^^^^          -- unsatisfied trait bound introduced here
+   = note: 1 redundant requirement hidden
+   = note: required for `&ExampleStruct<Q>` to implement `T1`
+note: required by a bound in `want`
+  --> $DIR/blame-trait-error.rs:25:12
+   |
+LL | fn want<V: T1>(_x: V) {}
+   |            ^^ required by this bound in `want`
+help: consider restricting type parameter `Q` with trait `T3`
+   |
+LL | fn example<Q: T3>(q: Q) {
+   |             ++++
+
+error[E0277]: the trait bound `Q: T3` is not satisfied
+  --> $DIR/blame-trait-error.rs:86:61
+   |
+LL |     want(&ExampleOtherStruct::ExampleStructVariant { field: q });
+   |     ---- required by a bound introduced by this call        ^ the trait `T3` is not implemented for `Q`
+   |
+note: required for `ExampleStruct<Q>` to implement `T1`
+  --> $DIR/blame-trait-error.rs:45:9
+   |
+LL | impl<A> T1 for ExampleStruct<A> where A: T3 {}
+   |         ^^     ^^^^^^^^^^^^^^^^          -- unsatisfied trait bound introduced here
+   = note: 1 redundant requirement hidden
+   = note: required for `&ExampleStruct<Q>` to implement `T1`
+note: required by a bound in `want`
+  --> $DIR/blame-trait-error.rs:25:12
+   |
+LL | fn want<V: T1>(_x: V) {}
+   |            ^^ required by this bound in `want`
+help: consider restricting type parameter `Q` with trait `T3`
+   |
+LL | fn example<Q: T3>(q: Q) {
+   |             ++++
+
+error[E0277]: the trait bound `Q: T3` is not satisfied
+  --> $DIR/blame-trait-error.rs:89:54
+   |
+LL |     want(&ExampleDifferentStructVariantName { field: q });
+   |     ---- required by a bound introduced by this call ^ the trait `T3` is not implemented for `Q`
+   |
+note: required for `ExampleStruct<Q>` to implement `T1`
+  --> $DIR/blame-trait-error.rs:45:9
+   |
+LL | impl<A> T1 for ExampleStruct<A> where A: T3 {}
+   |         ^^     ^^^^^^^^^^^^^^^^          -- unsatisfied trait bound introduced here
+   = note: 1 redundant requirement hidden
+   = note: required for `&ExampleStruct<Q>` to implement `T1`
+note: required by a bound in `want`
+  --> $DIR/blame-trait-error.rs:25:12
+   |
+LL | fn want<V: T1>(_x: V) {}
+   |            ^^ required by this bound in `want`
+help: consider restricting type parameter `Q` with trait `T3`
+   |
+LL | fn example<Q: T3>(q: Q) {
+   |             ++++
+
+error[E0277]: the trait bound `Q: T3` is not satisfied
+  --> $DIR/blame-trait-error.rs:92:55
+   |
+LL |     want(&ExampleYetAnotherStructVariantName { field: q });
+   |     ---- required by a bound introduced by this call  ^ the trait `T3` is not implemented for `Q`
+   |
+note: required for `ExampleStruct<Q>` to implement `T1`
+  --> $DIR/blame-trait-error.rs:45:9
+   |
+LL | impl<A> T1 for ExampleStruct<A> where A: T3 {}
+   |         ^^     ^^^^^^^^^^^^^^^^          -- unsatisfied trait bound introduced here
+   = note: 1 redundant requirement hidden
+   = note: required for `&ExampleStruct<Q>` to implement `T1`
+note: required by a bound in `want`
+  --> $DIR/blame-trait-error.rs:25:12
+   |
+LL | fn want<V: T1>(_x: V) {}
+   |            ^^ required by this bound in `want`
+help: consider restricting type parameter `Q` with trait `T3`
+   |
+LL | fn example<Q: T3>(q: Q) {
+   |             ++++
+
+error[E0277]: the trait bound `Q: T3` is not satisfied
+  --> $DIR/blame-trait-error.rs:95:38
+   |
+LL |     want(&ExampleActuallyTupleStruct(q, 0));
+   |     ----                             ^ the trait `T3` is not implemented for `Q`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required for `ExampleActuallyTupleStruct<Q>` to implement `T1`
+  --> $DIR/blame-trait-error.rs:50:9
+   |
+LL | impl<A> T1 for ExampleActuallyTupleStruct<A> where A: T3 {}
+   |         ^^     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^          -- unsatisfied trait bound introduced here
+   = note: 1 redundant requirement hidden
+   = note: required for `&ExampleActuallyTupleStruct<Q>` to implement `T1`
+note: required by a bound in `want`
+  --> $DIR/blame-trait-error.rs:25:12
+   |
+LL | fn want<V: T1>(_x: V) {}
+   |            ^^ required by this bound in `want`
+help: consider restricting type parameter `Q` with trait `T3`
+   |
+LL | fn example<Q: T3>(q: Q) {
+   |             ++++
+
+error[E0277]: the trait bound `Q: T3` is not satisfied
+  --> $DIR/blame-trait-error.rs:98:43
+   |
+LL |     want(&ExampleActuallyTupleStructOther(q, 0));
+   |     ----                                  ^ the trait `T3` is not implemented for `Q`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required for `ExampleActuallyTupleStruct<Q>` to implement `T1`
+  --> $DIR/blame-trait-error.rs:50:9
+   |
+LL | impl<A> T1 for ExampleActuallyTupleStruct<A> where A: T3 {}
+   |         ^^     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^          -- unsatisfied trait bound introduced here
+   = note: 1 redundant requirement hidden
+   = note: required for `&ExampleActuallyTupleStruct<Q>` to implement `T1`
+note: required by a bound in `want`
+  --> $DIR/blame-trait-error.rs:25:12
+   |
+LL | fn want<V: T1>(_x: V) {}
+   |            ^^ required by this bound in `want`
+help: consider restricting type parameter `Q` with trait `T3`
+   |
+LL | fn example<Q: T3>(q: Q) {
+   |             ++++
+
+error: aborting due to 16 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

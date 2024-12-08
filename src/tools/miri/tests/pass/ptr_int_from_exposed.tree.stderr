@@ -1,0 +1,19 @@
+warning: integer-to-pointer cast
+  --> tests/pass/ptr_int_from_exposed.rs:LL:CC
+   |
+LL |     let ptr = ptr::with_exposed_provenance::<i32>(x_usize).wrapping_offset(-128);
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ integer-to-pointer cast
+   |
+   = help: this program is using integer-to-pointer casts or (equivalently) `ptr::with_exposed_provenance`, which means that Miri might miss pointer bugs in this program
+   = help: see https://doc.rust-lang.org/nightly/std/ptr/fn.with_exposed_provenance.html for more details on that operation
+   = help: to ensure that Miri does not miss bugs in your program, use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead
+   = help: you can then set `MIRIFLAGS=-Zmiri-strict-provenance` to ensure you are not relying on `with_exposed_provenance` semantics
+   = help: Tree Borrows does not support integer-to-pointer casts, so the program is likely to go wrong when this pointer gets used
+   = note: BACKTRACE:
+   = note: inside `ptr_roundtrip_out_of_bounds` at tests/pass/ptr_int_from_exposed.rs:LL:CC
+note: inside `main`
+  --> tests/pass/ptr_int_from_exposed.rs:LL:CC
+   |
+LL |     ptr_roundtrip_out_of_bounds();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+

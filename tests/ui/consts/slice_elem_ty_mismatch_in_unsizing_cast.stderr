@@ -1,0 +1,9 @@
+error[E0607]: cannot cast thin pointer `*const [i64; 0]` to wide pointer `*const [u8]`
+  --> $DIR/slice_elem_ty_mismatch_in_unsizing_cast.rs:1:31
+   |
+LL | const FOO: &str = unsafe { &*(1_usize as *const [i64; 0] as *const [u8] as *const str) };
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0607`.

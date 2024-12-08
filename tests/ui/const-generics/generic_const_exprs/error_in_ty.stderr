@@ -1,0 +1,45 @@
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/error_in_ty.rs:6:31
+   |
+LL | pub struct A<const z: [usize; x]> {}
+   |                    -          ^ help: a const parameter with a similar name exists: `z`
+   |                    |
+   |                    similarly named const parameter `z` defined here
+
+error: `[usize; x]` is forbidden as the type of a const generic parameter
+  --> $DIR/error_in_ty.rs:6:23
+   |
+LL | pub struct A<const z: [usize; x]> {}
+   |                       ^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
+   |
+LL + #![feature(adt_const_params)]
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/error_in_ty.rs:10:8
+   |
+LL | impl A<2> {
+   |        ^ expected `[usize; x]`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/error_in_ty.rs:16:8
+   |
+LL | impl A<2> {
+   |        ^ expected `[usize; x]`, found integer
+
+error[E0592]: duplicate definitions with name `B`
+  --> $DIR/error_in_ty.rs:12:5
+   |
+LL |     pub const fn B() {}
+   |     ^^^^^^^^^^^^^^^^ duplicate definitions for `B`
+...
+LL |     pub const fn B() {}
+   |     ---------------- other definition for `B`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0308, E0425, E0592.
+For more information about an error, try `rustc --explain E0308`.

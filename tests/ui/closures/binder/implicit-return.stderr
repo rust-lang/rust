@@ -1,0 +1,10 @@
+error: implicit types in closure signatures are forbidden when `for<...>` is present
+  --> $DIR/implicit-return.rs:4:33
+   |
+LL |     let _f = for<'a> |_: &'a ()| {};
+   |              -------            ^
+   |              |
+   |              `for<...>` is here
+
+error: aborting due to 1 previous error
+

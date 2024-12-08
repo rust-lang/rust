@@ -1,0 +1,28 @@
+error[E0061]: this enum variant takes 1 argument but 4 arguments were supplied
+  --> $DIR/issue-112507.rs:6:14
+   |
+LL |     let _a = Value::Float(
+   |              ^^^^^^^^^^^^
+LL |         0,
+   |         - unexpected argument #1 of type `{integer}`
+LL |         None,
+LL |         None,
+   |         ---- unexpected argument #3 of type `Option<_>`
+LL |         0,
+   |         - unexpected argument #4 of type `{integer}`
+   |
+note: tuple variant defined here
+  --> $DIR/issue-112507.rs:2:5
+   |
+LL |     Float(Option<f64>),
+   |     ^^^^^
+help: remove the extra arguments
+   |
+LL -         0,
+LL -         None,
+LL +         None);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0061`.

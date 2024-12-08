@@ -1,0 +1,28 @@
+error: unmatched angle brackets
+  --> $DIR/unmatched-langle-1.rs:5:10
+   |
+LL |     foo::<<<<Ty<i32>>();
+   |          ^^^
+   |
+help: remove extra angle brackets
+   |
+LL -     foo::<<<<Ty<i32>>();
+LL +     foo::<Ty<i32>>();
+   |
+
+error[E0412]: cannot find type `Ty` in this scope
+  --> $DIR/unmatched-langle-1.rs:5:14
+   |
+LL |     foo::<<<<Ty<i32>>();
+   |              ^^ not found in this scope
+
+error[E0425]: cannot find function `foo` in this scope
+  --> $DIR/unmatched-langle-1.rs:5:5
+   |
+LL |     foo::<<<<Ty<i32>>();
+   |     ^^^ not found in this scope
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0412, E0425.
+For more information about an error, try `rustc --explain E0412`.

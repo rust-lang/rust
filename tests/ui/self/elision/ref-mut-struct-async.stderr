@@ -1,0 +1,77 @@
+error: lifetime may not live long enough
+  --> $DIR/ref-mut-struct-async.rs:13:9
+   |
+LL |     async fn ref_Struct(self: &mut Struct, f: &u32) -> &u32 {
+   |                               -               - let's call the lifetime of this reference `'1`
+   |                               |
+   |                               let's call the lifetime of this reference `'2`
+LL |         f
+   |         ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     async fn ref_Struct<'a>(self: &mut Struct, f: &'a u32) -> &'a u32 {
+   |                        ++++                        ++          ++
+
+error: lifetime may not live long enough
+  --> $DIR/ref-mut-struct-async.rs:18:9
+   |
+LL |     async fn box_ref_Struct(self: Box<&mut Struct>, f: &u32) -> &u32 {
+   |                                       -                - let's call the lifetime of this reference `'1`
+   |                                       |
+   |                                       let's call the lifetime of this reference `'2`
+LL |         f
+   |         ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     async fn box_ref_Struct<'a>(self: Box<&mut Struct>, f: &'a u32) -> &'a u32 {
+   |                            ++++                             ++          ++
+
+error: lifetime may not live long enough
+  --> $DIR/ref-mut-struct-async.rs:23:9
+   |
+LL |     async fn pin_ref_Struct(self: Pin<&mut Struct>, f: &u32) -> &u32 {
+   |                                       -                - let's call the lifetime of this reference `'1`
+   |                                       |
+   |                                       let's call the lifetime of this reference `'2`
+LL |         f
+   |         ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     async fn pin_ref_Struct<'a>(self: Pin<&mut Struct>, f: &'a u32) -> &'a u32 {
+   |                            ++++                             ++          ++
+
+error: lifetime may not live long enough
+  --> $DIR/ref-mut-struct-async.rs:28:9
+   |
+LL |     async fn box_box_ref_Struct(self: Box<Box<&mut Struct>>, f: &u32) -> &u32 {
+   |                                               -                 - let's call the lifetime of this reference `'1`
+   |                                               |
+   |                                               let's call the lifetime of this reference `'2`
+LL |         f
+   |         ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     async fn box_box_ref_Struct<'a>(self: Box<Box<&mut Struct>>, f: &'a u32) -> &'a u32 {
+   |                                ++++                                  ++          ++
+
+error: lifetime may not live long enough
+  --> $DIR/ref-mut-struct-async.rs:33:9
+   |
+LL |     async fn box_pin_ref_Struct(self: Box<Pin<&mut Struct>>, f: &u32) -> &u32 {
+   |                                               -                 - let's call the lifetime of this reference `'1`
+   |                                               |
+   |                                               let's call the lifetime of this reference `'2`
+LL |         f
+   |         ^ method was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |
+help: consider introducing a named lifetime parameter and update trait if needed
+   |
+LL |     async fn box_pin_ref_Struct<'a>(self: Box<Pin<&mut Struct>>, f: &'a u32) -> &'a u32 {
+   |                                ++++                                  ++          ++
+
+error: aborting due to 5 previous errors
+

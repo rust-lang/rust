@@ -1,0 +1,51 @@
+SOURCE_FILE
+  MACRO_CALL
+    PATH
+      PATH_SEGMENT
+        NAME_REF
+          IDENT "gen"
+  WHITESPACE " "
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "gen_fn"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"
+  ERROR
+    ASYNC_KW "async"
+  WHITESPACE " "
+  MACRO_CALL
+    PATH
+      PATH_SEGMENT
+        NAME_REF
+          IDENT "gen"
+  WHITESPACE " "
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "async_gen_fn"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"
+error 3: expected BANG
+error 3: expected `{`, `[`, `(`
+error 3: expected SEMICOLON
+error 24: expected fn, trait or impl
+error 28: expected BANG
+error 28: expected `{`, `[`, `(`
+error 28: expected SEMICOLON

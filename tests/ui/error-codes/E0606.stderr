@@ -1,0 +1,26 @@
+error[E0606]: casting `&u8` as `u8` is invalid
+  --> $DIR/E0606.rs:2:14
+   |
+LL |     let x = &(&0u8 as u8);
+   |              ^^^^^^^^^^^^
+   |
+help: remove the unneeded borrow
+   |
+LL -     let x = &(&0u8 as u8);
+LL +     let x = &(0u8 as u8);
+   |
+
+error[E0606]: casting `&u8` as `u8` is invalid
+  --> $DIR/E0606.rs:3:5
+   |
+LL |     x as u8;
+   |     ^^^^^^^
+   |
+help: dereference the expression
+   |
+LL |     *x as u8;
+   |     +
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0606`.

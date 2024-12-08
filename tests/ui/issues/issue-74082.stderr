@@ -1,0 +1,19 @@
+error[E0517]: attribute should be applied to an enum
+  --> $DIR/issue-74082.rs:3:8
+   |
+LL | #[repr(i128)]
+   |        ^^^^
+LL | struct Foo;
+   | ----------- not an enum
+
+error[E0517]: attribute should be applied to an enum
+  --> $DIR/issue-74082.rs:6:8
+   |
+LL | #[repr(u128)]
+   |        ^^^^
+LL | struct Bar;
+   | ----------- not an enum
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0517`.

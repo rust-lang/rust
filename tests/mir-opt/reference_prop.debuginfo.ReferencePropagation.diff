@@ -1,0 +1,162 @@
+- // MIR for `debuginfo` before ReferencePropagation
++ // MIR for `debuginfo` after ReferencePropagation
+  
+  fn debuginfo() -> () {
+      let mut _0: ();
+      let _1: &mut u8;
+      let mut _2: u8;
+      let _4: debuginfo::T;
+      let _6: ();
+      let mut _7: std::option::Option<i32>;
+      let mut _8: isize;
+      let _10: ();
+      let mut _11: &[i32];
+      let _12: &[i32];
+      let mut _13: &[i32; 10];
+      let _14: [i32; 10];
+      let mut _15: std::ops::RangeFull;
+      let mut _16: usize;
+      let mut _17: usize;
+      let mut _18: bool;
+      let _23: &&mut u8;
+      let _24: &mut u8;
+      let mut _25: debuginfo::T;
+      scope 1 {
+          debug ref_mut_u8 => _1;
+          let _3: &u8;
+          let mut _28: &debuginfo::T;
+          scope 2 {
+              debug field => _3;
+              let _5: &u8;
+              scope 3 {
+-                 debug reborrow => _5;
++                 debug reborrow => _1;
+                  let _9: &i32;
+                  let _22: &&&mut u8;
+                  let mut _27: &std::option::Option<i32>;
+                  scope 4 {
+                      debug variant_field => _9;
+                  }
+                  scope 5 {
+                      debug constant_index => _19;
+                      debug subslice => _20;
+                      debug constant_index_from_end => _21;
+                      let _19: &i32;
+                      let _20: &[i32];
+                      let _21: &i32;
+                      let mut _26: &[i32; 10];
+                  }
+                  scope 6 {
+                      debug multiple_borrow => _22;
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          _2 = const 5_u8;
+          _1 = &mut _2;
+          StorageLive(_3);
+          _28 = const debuginfo::promoted[2];
+          _3 = &((*_28).0: u8);
+-         StorageLive(_5);
+-         _5 = &(*_1);
+-         StorageLive(_6);
+          StorageLive(_7);
+          _7 = Option::<i32>::Some(const 0_i32);
+          _8 = discriminant(_7);
+          switchInt(move _8) -> [0: bb3, 1: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          unreachable;
+      }
+  
+      bb2: {
+          StorageLive(_9);
+          _27 = const debuginfo::promoted[1];
+          _9 = &(((*_27) as Some).0: i32);
+-         _6 = const ();
+          StorageDead(_9);
+          goto -> bb4;
+      }
+  
+      bb3: {
+-         _6 = const ();
+          goto -> bb4;
+      }
+  
+      bb4: {
+          StorageDead(_7);
+-         StorageDead(_6);
+-         StorageLive(_10);
+-         StorageLive(_11);
+-         StorageLive(_12);
+          StorageLive(_13);
+          _26 = const debuginfo::promoted[0];
+          _13 = &(*_26);
+          StorageLive(_15);
+          _15 = RangeFull;
+          _12 = <[i32; 10] as Index<RangeFull>>::index(move _13, move _15) -> [return: bb5, unwind continue];
+      }
+  
+      bb5: {
+          StorageDead(_15);
+          StorageDead(_13);
+-         _11 = &(*_12);
+-         _16 = Len((*_11));
++         _16 = Len((*_12));
+          _17 = const 3_usize;
+          _18 = Ge(move _16, move _17);
+          switchInt(move _18) -> [0: bb7, otherwise: bb6];
+      }
+  
+      bb6: {
+          StorageLive(_19);
+-         _19 = &(*_11)[1 of 3];
++         _19 = &(*_12)[1 of 3];
+          StorageLive(_20);
+-         _20 = &(*_11)[2:-1];
++         _20 = &(*_12)[2:-1];
+          StorageLive(_21);
+-         _21 = &(*_11)[-1 of 3];
+-         _10 = const ();
++         _21 = &(*_12)[-1 of 3];
+          StorageDead(_21);
+          StorageDead(_20);
+          StorageDead(_19);
+          goto -> bb8;
+      }
+  
+      bb7: {
+-         _10 = const ();
+          goto -> bb8;
+      }
+  
+      bb8: {
+-         StorageDead(_12);
+-         StorageDead(_11);
+-         StorageDead(_10);
+          StorageLive(_22);
+          StorageLive(_23);
+          StorageLive(_24);
+          StorageLive(_25);
+          _25 = T(const 6_u8);
+          _24 = &mut (_25.0: u8);
+          _23 = &_24;
+          _22 = &_23;
+          _0 = const ();
+          StorageDead(_25);
+          StorageDead(_24);
+          StorageDead(_23);
+          StorageDead(_22);
+-         StorageDead(_5);
+          StorageDead(_3);
+          StorageDead(_2);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

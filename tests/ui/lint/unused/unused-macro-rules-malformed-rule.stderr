@@ -1,0 +1,8 @@
+error: macro rhs must be delimited
+  --> $DIR/unused-macro-rules-malformed-rule.rs:6:11
+   |
+LL |     () => 0;
+   |           ^
+
+error: aborting due to 1 previous error
+

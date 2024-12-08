@@ -1,0 +1,212 @@
+error: invalid register `s1`: s1 is used internally by LLVM and cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:34:18
+   |
+LL |         asm!("", out("s1") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `fp`: the frame pointer cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:36:18
+   |
+LL |         asm!("", out("fp") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `sp`: the stack pointer cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:38:18
+   |
+LL |         asm!("", out("sp") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `gp`: the global pointer cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:40:18
+   |
+LL |         asm!("", out("gp") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `gp`: the global pointer cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:42:18
+   |
+LL |         asm!("", out("gp") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `tp`: the thread pointer cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:44:18
+   |
+LL |         asm!("", out("tp") _);
+   |                  ^^^^^^^^^^^
+
+error: invalid register `zero`: the zero register cannot be used as an operand for inline asm
+  --> $DIR/bad-reg.rs:46:18
+   |
+LL |         asm!("", out("zero") _);
+   |                  ^^^^^^^^^^^^^
+
+error: register class `vreg` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:97:18
+   |
+LL |         asm!("", in("v0") x);
+   |                  ^^^^^^^^^^
+
+error: register class `vreg` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:100:18
+   |
+LL |         asm!("", out("v0") x);
+   |                  ^^^^^^^^^^^
+
+error: register class `vreg` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:103:26
+   |
+LL |         asm!("/* {} */", in(vreg) x);
+   |                          ^^^^^^^^^^
+
+error: register class `vreg` can only be used as a clobber, not as an input or output
+  --> $DIR/bad-reg.rs:106:26
+   |
+LL |         asm!("/* {} */", out(vreg) _);
+   |                          ^^^^^^^^^^^
+
+error: cannot use register `x16`: register can't be used with the `e` target feature
+  --> $DIR/bad-reg.rs:49:18
+   |
+LL |         asm!("", out("x16") _);
+   |                  ^^^^^^^^^^^^
+
+error: cannot use register `x17`: register can't be used with the `e` target feature
+  --> $DIR/bad-reg.rs:51:18
+   |
+LL |         asm!("", out("x17") _);
+   |                  ^^^^^^^^^^^^
+
+error: cannot use register `x18`: register can't be used with the `e` target feature
+  --> $DIR/bad-reg.rs:53:18
+   |
+LL |         asm!("", out("x18") _);
+   |                  ^^^^^^^^^^^^
+
+error: cannot use register `x19`: register can't be used with the `e` target feature
+  --> $DIR/bad-reg.rs:55:18
+   |
+LL |         asm!("", out("x19") _);
+   |                  ^^^^^^^^^^^^
+
+error: cannot use register `x20`: register can't be used with the `e` target feature
+  --> $DIR/bad-reg.rs:57:18
+   |
+LL |         asm!("", out("x20") _);
+   |                  ^^^^^^^^^^^^
+
+error: cannot use register `x21`: register can't be used with the `e` target feature
+  --> $DIR/bad-reg.rs:59:18
+   |
+LL |         asm!("", out("x21") _);
+   |                  ^^^^^^^^^^^^
+
+error: cannot use register `x22`: register can't be used with the `e` target feature
+  --> $DIR/bad-reg.rs:61:18
+   |
+LL |         asm!("", out("x22") _);
+   |                  ^^^^^^^^^^^^
+
+error: cannot use register `x23`: register can't be used with the `e` target feature
+  --> $DIR/bad-reg.rs:63:18
+   |
+LL |         asm!("", out("x23") _);
+   |                  ^^^^^^^^^^^^
+
+error: cannot use register `x24`: register can't be used with the `e` target feature
+  --> $DIR/bad-reg.rs:65:18
+   |
+LL |         asm!("", out("x24") _);
+   |                  ^^^^^^^^^^^^
+
+error: cannot use register `x25`: register can't be used with the `e` target feature
+  --> $DIR/bad-reg.rs:67:18
+   |
+LL |         asm!("", out("x25") _);
+   |                  ^^^^^^^^^^^^
+
+error: cannot use register `x26`: register can't be used with the `e` target feature
+  --> $DIR/bad-reg.rs:69:18
+   |
+LL |         asm!("", out("x26") _);
+   |                  ^^^^^^^^^^^^
+
+error: cannot use register `x27`: register can't be used with the `e` target feature
+  --> $DIR/bad-reg.rs:71:18
+   |
+LL |         asm!("", out("x27") _);
+   |                  ^^^^^^^^^^^^
+
+error: cannot use register `x28`: register can't be used with the `e` target feature
+  --> $DIR/bad-reg.rs:73:18
+   |
+LL |         asm!("", out("x28") _);
+   |                  ^^^^^^^^^^^^
+
+error: cannot use register `x29`: register can't be used with the `e` target feature
+  --> $DIR/bad-reg.rs:75:18
+   |
+LL |         asm!("", out("x29") _);
+   |                  ^^^^^^^^^^^^
+
+error: cannot use register `x30`: register can't be used with the `e` target feature
+  --> $DIR/bad-reg.rs:77:18
+   |
+LL |         asm!("", out("x30") _);
+   |                  ^^^^^^^^^^^^
+
+error: cannot use register `x31`: register can't be used with the `e` target feature
+  --> $DIR/bad-reg.rs:79:18
+   |
+LL |         asm!("", out("x31") _);
+   |                  ^^^^^^^^^^^^
+
+error: register class `freg` requires at least one of the following target features: d, f
+  --> $DIR/bad-reg.rs:83:26
+   |
+LL |         asm!("/* {} */", in(freg) f);
+   |                          ^^^^^^^^^^
+
+error: register class `freg` requires at least one of the following target features: d, f
+  --> $DIR/bad-reg.rs:85:26
+   |
+LL |         asm!("/* {} */", out(freg) _);
+   |                          ^^^^^^^^^^^
+
+error: register class `freg` requires at least one of the following target features: d, f
+  --> $DIR/bad-reg.rs:87:26
+   |
+LL |         asm!("/* {} */", in(freg) d);
+   |                          ^^^^^^^^^^
+
+error: register class `freg` requires at least one of the following target features: d, f
+  --> $DIR/bad-reg.rs:90:26
+   |
+LL |         asm!("/* {} */", out(freg) d);
+   |                          ^^^^^^^^^^^
+
+error: type `i32` cannot be used with this register class
+  --> $DIR/bad-reg.rs:97:27
+   |
+LL |         asm!("", in("v0") x);
+   |                           ^
+   |
+   = note: register class `vreg` supports these types: 
+
+error: type `i32` cannot be used with this register class
+  --> $DIR/bad-reg.rs:100:28
+   |
+LL |         asm!("", out("v0") x);
+   |                            ^
+   |
+   = note: register class `vreg` supports these types: 
+
+error: type `i32` cannot be used with this register class
+  --> $DIR/bad-reg.rs:103:35
+   |
+LL |         asm!("/* {} */", in(vreg) x);
+   |                                   ^
+   |
+   = note: register class `vreg` supports these types: 
+
+error: aborting due to 34 previous errors
+

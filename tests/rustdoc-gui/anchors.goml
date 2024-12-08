@@ -1,0 +1,106 @@
+// This test is to ensure that the anchors (`§`) have the expected color and position.
+include: "utils.goml"
+
+define-function: (
+    "check-colors",
+    [theme, main_color, title_color, main_heading_color, main_heading_type_color, src_link_color, sidebar_link_color],
+    block {
+        go-to: "file://" + |DOC_PATH| + "/staged_api/struct.Foo.html"
+        // This is needed to ensure that the text color is computed.
+        show-text: true
+
+        call-function: ("switch-theme", {"theme": |theme|})
+
+        assert-css: ("#toggle-all-docs", {"color": |main_color|})
+        assert-css: (".main-heading h1 span", {"color": |main_heading_type_color|})
+        assert-css: (
+             ".rightside a.src",
+             {"color": |src_link_color|, "text-decoration": "none solid " + |src_link_color|},
+             ALL,
+        )
+        compare-elements-css: (
+            ".rightside a.src",
+            "a.rightside.src",
+            ["color", "text-decoration"],
+        )
+        compare-elements-css: (
+            ".main-heading a.src",
+            "a.rightside.src",
+            ["color", "text-decoration"],
+        )
+
+        move-cursor-to: ".main-heading a.src"
+        assert-css: (
+             ".main-heading a.src",
+             {"color": |src_link_color|, "text-decoration": "underline solid " + |src_link_color|},
+        )
+        move-cursor-to: ".impl-items .rightside a.src"
+        assert-css: (
+             ".impl-items .rightside a.src",
+             {"color": |src_link_color|, "text-decoration": "none solid " + |src_link_color|},
+        )
+        move-cursor-to: ".impl-items a.rightside.src"
+        assert-css: (
+             ".impl-items a.rightside.src",
+             {"color": |src_link_color|, "text-decoration": "none solid " + |src_link_color|},
+        )
+
+        go-to: "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"
+        // Since we changed page, we need to set the theme again.
+        set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        // We reload the page so the local storage settings are being used.
+        reload:
+
+        assert-css: ("#top-doc-prose-title", {"color": |title_color|})
+
+        assert-css: (".sidebar .block a", {"color": |sidebar_link_color|})
+        assert-css: (".main-heading h1", {"color": |title_color|})
+
+        // We move the cursor over the "Implementations" title so the anchor is displayed.
+        move-cursor-to: "h2#implementations"
+        assert-css: ("h2#implementations a.anchor", {"color": |main_color|})
+
+        // Same thing with the impl block title.
+        move-cursor-to: "#impl-HeavilyDocumentedStruct"
+        assert-css: ("#impl-HeavilyDocumentedStruct a.anchor", {"color": |main_color|})
+
+        assert-css: ("#title-for-struct-impl-item-doc", {"margin-left": "0px"})
+    },
+)
+
+call-function: (
+    "check-colors",
+    {
+        "theme": "ayu",
+        "main_color": "#c5c5c5",
+        "title_color": "#fff",
+        "main_heading_color": "#fff",
+        "main_heading_type_color": "#ffa0a5",
+        "src_link_color": "#39afd7",
+        "sidebar_link_color": "#53b1db",
+    },
+)
+call-function: (
+    "check-colors",
+    {
+        "theme": "dark",
+        "main_color": "#ddd",
+        "title_color": "#ddd",
+        "main_heading_color": "#ddd",
+        "main_heading_type_color": "#2dbfb8",
+        "src_link_color": "#d2991d",
+        "sidebar_link_color": "#fdbf35",
+    },
+)
+call-function: (
+    "check-colors",
+    {
+        "theme": "light",
+        "main_color": "black",
+        "title_color": "black",
+        "main_heading_color": "black",
+        "main_heading_type_color": "#ad378a",
+        "src_link_color": "#3873ad",
+        "sidebar_link_color": "#356da4",
+    },
+)

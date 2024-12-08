@@ -1,0 +1,11 @@
+error[E0030]: lower range bound must be less than or equal to upper
+  --> $DIR/E0030-teach.rs:5:9
+   |
+LL |         1000 ..= 5 => {}
+   |         ^^^^^^^^^^ lower bound larger than upper bound
+   |
+   = note: When matching against a range, the compiler verifies that the range is non-empty. Range patterns include both end-points, so this is equivalent to requiring the start of the range to be less than or equal to the end of the range.
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0030`.

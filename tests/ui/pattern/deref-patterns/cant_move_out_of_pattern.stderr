@@ -1,0 +1,27 @@
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/cant_move_out_of_pattern.rs:9:11
+   |
+LL |     match b {
+   |           ^
+LL |
+LL |         deref!(x) => x,
+   |                -
+   |                |
+   |                data moved here
+   |                move occurs because `x` has type `Struct`, which does not implement the `Copy` trait
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/cant_move_out_of_pattern.rs:17:11
+   |
+LL |     match rc {
+   |           ^^
+LL |
+LL |         deref!(x) => x,
+   |                -
+   |                |
+   |                data moved here
+   |                move occurs because `x` has type `Struct`, which does not implement the `Copy` trait
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

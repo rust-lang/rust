@@ -1,0 +1,59 @@
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/issue-105675.rs:5:5
+   |
+LL |     thing(f);
+   |     ^^^^^^^^ implementation of `FnOnce` is not general enough
+   |
+   = note: closure with signature `for<'a> fn(&'2 u32, &'a u32, u32)` must implement `FnOnce<(&'1 u32, &u32, u32)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `FnOnce<(&'2 u32, &u32, u32)>`, for some specific lifetime `'2`
+
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/issue-105675.rs:5:5
+   |
+LL |     thing(f);
+   |     ^^^^^^^^ implementation of `FnOnce` is not general enough
+   |
+   = note: closure with signature `for<'a> fn(&'2 u32, &'a u32, u32)` must implement `FnOnce<(&'1 u32, &u32, u32)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `FnOnce<(&'2 u32, &u32, u32)>`, for some specific lifetime `'2`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/issue-105675.rs:9:5
+   |
+LL |     thing(f);
+   |     ^^^^^^^^ implementation of `FnOnce` is not general enough
+   |
+   = note: closure with signature `fn(&'2 u32, &u32, u32)` must implement `FnOnce<(&'1 u32, &u32, u32)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `FnOnce<(&'2 u32, &u32, u32)>`, for some specific lifetime `'2`
+
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/issue-105675.rs:9:5
+   |
+LL |     thing(f);
+   |     ^^^^^^^^ implementation of `FnOnce` is not general enough
+   |
+   = note: closure with signature `fn(&u32, &'2 u32, u32)` must implement `FnOnce<(&u32, &'1 u32, u32)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `FnOnce<(&u32, &'2 u32, u32)>`, for some specific lifetime `'2`
+
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/issue-105675.rs:9:5
+   |
+LL |     thing(f);
+   |     ^^^^^^^^ implementation of `FnOnce` is not general enough
+   |
+   = note: closure with signature `fn(&'2 u32, &u32, u32)` must implement `FnOnce<(&'1 u32, &u32, u32)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `FnOnce<(&'2 u32, &u32, u32)>`, for some specific lifetime `'2`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/issue-105675.rs:9:5
+   |
+LL |     thing(f);
+   |     ^^^^^^^^ implementation of `FnOnce` is not general enough
+   |
+   = note: closure with signature `fn(&u32, &'2 u32, u32)` must implement `FnOnce<(&u32, &'1 u32, u32)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `FnOnce<(&u32, &'2 u32, u32)>`, for some specific lifetime `'2`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 6 previous errors
+

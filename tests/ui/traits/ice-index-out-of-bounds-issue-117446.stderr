@@ -1,0 +1,33 @@
+error[E0049]: associated function `outer` has 0 type parameters but its trait declaration has 1 type parameter
+  --> $DIR/ice-index-out-of-bounds-issue-117446.rs:12:13
+   |
+LL |     fn outer<D>() -> Option<()>;
+   |              - expected 1 type parameter
+...
+LL |     fn outer() -> Option<()> {
+   |             ^ found 0 type parameters
+
+error[E0308]: mismatched types
+  --> $DIR/ice-index-out-of-bounds-issue-117446.rs:12:19
+   |
+LL |     fn outer() -> Option<()> {
+   |        -----      ^^^^^^^^^^ expected `Option<()>`, found `()`
+   |        |
+   |        implicitly returns `()` as its body has no tail or `return` expression
+   |
+   = note:   expected enum `Option<()>`
+           found unit type `()`
+
+error[E0401]: can't reference `Self` constructor from outer item
+  --> $DIR/ice-index-out-of-bounds-issue-117446.rs:17:22
+   |
+LL | impl<'a, T> Foo<'a> for Repeated<T> {
+   | ----------------------------------- the inner item doesn't inherit generics from this impl, so `Self` is invalid to reference
+...
+LL |                 _ => Self(unimplemented!()),
+   |                      ^^^^ help: replace `Self` with the actual type: `Repeated`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0049, E0308, E0401.
+For more information about an error, try `rustc --explain E0049`.

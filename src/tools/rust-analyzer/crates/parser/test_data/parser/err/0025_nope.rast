@@ -1,0 +1,206 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        ENUM
+          ENUM_KW "enum"
+          WHITESPACE " "
+          NAME
+            IDENT "Test"
+          WHITESPACE " "
+          VARIANT_LIST
+            L_CURLY "{"
+            WHITESPACE "\n        "
+            VARIANT
+              NAME
+                IDENT "Var1"
+            COMMA ","
+            WHITESPACE "\n        "
+            VARIANT
+              NAME
+                IDENT "Var2"
+              TUPLE_FIELD_LIST
+                L_PAREN "("
+                TUPLE_FIELD
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "String"
+                R_PAREN ")"
+            COMMA ","
+            WHITESPACE "\n        "
+            VARIANT
+              NAME
+                IDENT "Var3"
+              WHITESPACE " "
+              RECORD_FIELD_LIST
+                L_CURLY "{"
+                WHITESPACE "\n            "
+                RECORD_FIELD
+                  NAME
+                    IDENT "abc"
+                  COLON ":"
+                WHITESPACE " "
+                ERROR
+                  L_CURLY "{"
+                  R_CURLY "}"
+                ERROR
+                  COMMA ","
+                WHITESPACE " "
+                COMMENT "//~ ERROR: expected type, found `{`"
+                WHITESPACE "\n        "
+                R_CURLY "}"
+            COMMA ","
+            WHITESPACE "\n    "
+            R_CURLY "}"
+        WHITESPACE "\n\n    "
+        COMMENT "// recover..."
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "a"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          LITERAL
+            INT_NUMBER "1"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        ENUM
+          ENUM_KW "enum"
+          WHITESPACE " "
+          NAME
+            IDENT "Test2"
+          WHITESPACE " "
+          VARIANT_LIST
+            L_CURLY "{"
+            WHITESPACE "\n        "
+            VARIANT
+              NAME
+                IDENT "Fine"
+            COMMA ","
+            WHITESPACE "\n    "
+            R_CURLY "}"
+        WHITESPACE "\n\n    "
+        ENUM
+          ENUM_KW "enum"
+          WHITESPACE " "
+          NAME
+            IDENT "Test3"
+          WHITESPACE " "
+          VARIANT_LIST
+            L_CURLY "{"
+            WHITESPACE "\n        "
+            VARIANT
+              NAME
+                IDENT "StillFine"
+              WHITESPACE " "
+              RECORD_FIELD_LIST
+                L_CURLY "{"
+                WHITESPACE "\n            "
+                RECORD_FIELD
+                  NAME
+                    IDENT "def"
+                  COLON ":"
+                  WHITESPACE " "
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "i32"
+                COMMA ","
+                WHITESPACE "\n        "
+                R_CURLY "}"
+            COMMA ","
+            WHITESPACE "\n    "
+            R_CURLY "}"
+        WHITESPACE "\n\n    "
+        EXPR_STMT
+          BLOCK_EXPR
+            STMT_LIST
+              L_CURLY "{"
+              WHITESPACE "\n        "
+              ENUM
+                COMMENT "// fail again"
+                WHITESPACE "\n        "
+                ENUM_KW "enum"
+                WHITESPACE " "
+                NAME
+                  IDENT "Test4"
+                WHITESPACE " "
+                VARIANT_LIST
+                  L_CURLY "{"
+                  WHITESPACE "\n            "
+                  VARIANT
+                    NAME
+                      IDENT "Nope"
+                    TUPLE_FIELD_LIST
+                      L_PAREN "("
+                      TUPLE_FIELD
+                        PATH_TYPE
+                          PATH
+                            PATH_SEGMENT
+                              NAME_REF
+                                IDENT "i32"
+                  WHITESPACE " "
+                  ERROR
+                    L_CURLY "{"
+                    R_CURLY "}"
+                  ERROR
+                    R_PAREN ")"
+                  WHITESPACE " "
+                  COMMENT "//~ ERROR: found `{`"
+                  WHITESPACE "\n                         "
+                  COMMENT "//~^ ERROR: found `{`"
+                  WHITESPACE "\n        "
+                  R_CURLY "}"
+              WHITESPACE "\n    "
+              R_CURLY "}"
+        WHITESPACE "\n    "
+        COMMENT "// still recover later"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          ERROR
+            SEMICOLON ";"
+        WHITESPACE " "
+        COMMENT "//~ ERROR: expected pattern"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          WILDCARD_PAT
+            UNDERSCORE "_"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          LITERAL
+            INT_NUMBER "0"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"
+error 95: expected type
+error 95: expected COMMA
+error 96: expected field
+error 98: expected field declaration
+error 371: expected R_PAREN
+error 371: expected COMMA
+error 372: expected enum variant
+error 374: expected enum variant
+error 494: expected pattern
+error 495: expected SEMICOLON

@@ -1,0 +1,14 @@
+error[E0432]: unresolved import `main`
+  --> $DIR/import3.rs:2:5
+   |
+LL | use main::bar;
+   |     ^^^^ you might be missing crate `main`
+   |
+help: consider importing the `main` crate
+   |
+LL + extern crate main;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0432`.

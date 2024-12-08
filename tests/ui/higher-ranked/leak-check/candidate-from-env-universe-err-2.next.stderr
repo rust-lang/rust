@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `for<'a> T: Trait<'a, '_>` is not satisfied
+  --> $DIR/candidate-from-env-universe-err-2.rs:15:15
+   |
+LL |     impl_hr::<T>();
+   |               ^ the trait `for<'a> Trait<'a, '_>` is not implemented for `T`
+   |
+note: required by a bound in `impl_hr`
+  --> $DIR/candidate-from-env-universe-err-2.rs:12:19
+   |
+LL | fn impl_hr<'b, T: for<'a> Trait<'a, 'b>>() {}
+   |                   ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `impl_hr`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

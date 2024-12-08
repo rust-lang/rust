@@ -1,0 +1,12 @@
+// This test ensures that the mobile disables scrolling the page.
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
+set-window-size: (1280, 800) // desktop
+assert-css: (".sidebar", {"overscroll-behavior": "contain"})
+set-window-size: (700, 600) // mobile
+assert-css: (".sidebar", {"overscroll-behavior": "contain"})
+
+go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
+set-window-size: (1280, 800) // desktop
+assert-css: (".sidebar", {"overscroll-behavior": "contain"})
+set-window-size: (700, 600) // mobile
+assert-css: (".sidebar", {"overscroll-behavior": "contain"})

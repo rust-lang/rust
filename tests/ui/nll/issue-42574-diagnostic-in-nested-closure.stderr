@@ -1,0 +1,28 @@
+error: lifetime may not live long enough
+  --> $DIR/issue-42574-diagnostic-in-nested-closure.rs:6:8
+   |
+LL |     || doit(data);
+   |     -- ^^^^^^^^^^ argument requires that `'1` must outlive `'static`
+   |     |
+   |     lifetime `'1` represents this closure's body
+   |
+   = note: closure implements `FnMut`, so references to captured variables can't escape the closure
+
+error[E0597]: `data` does not live long enough
+  --> $DIR/issue-42574-diagnostic-in-nested-closure.rs:6:13
+   |
+LL | fn doit(data: &'static mut ()) {
+   |         ---- binding `data` declared here
+LL |     || doit(data);
+   |     -- -----^^^^-
+   |     |  |    |
+   |     |  |    borrowed value does not live long enough
+   |     |  argument requires that `data` is borrowed for `'static`
+   |     value captured here
+...
+LL | }
+   |  - `data` dropped here while still borrowed
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

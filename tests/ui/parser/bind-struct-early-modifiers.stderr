@@ -1,0 +1,10 @@
+error: expected `,`
+  --> $DIR/bind-struct-early-modifiers.rs:4:20
+   |
+LL |         Foo { ref x: ref x } => {},
+   |         ---        ^
+   |         |
+   |         while parsing the fields for this pattern
+
+error: aborting due to 1 previous error
+

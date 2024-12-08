@@ -1,0 +1,22 @@
+error[E0751]: found both positive and negative implementation of trait `Send` for type `TestType<_>`:
+  --> $DIR/issue-106755.rs:13:1
+   |
+LL | unsafe impl<T: MyTrait + 'static> Send for TestType<T> {}
+   | ------------------------------------------------------ positive implementation here
+LL |
+LL | impl<T: MyTrait> !Send for TestType<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ negative implementation here
+
+error[E0119]: conflicting implementations of trait `Send` for type `TestType<_>`
+  --> $DIR/issue-106755.rs:15:1
+   |
+LL | unsafe impl<T: MyTrait + 'static> Send for TestType<T> {}
+   | ------------------------------------------------------ first implementation here
+...
+LL | unsafe impl<T: 'static> Send for TestType<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `TestType<_>`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0119, E0751.
+For more information about an error, try `rustc --explain E0119`.

@@ -1,0 +1,127 @@
+error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
+  --> $DIR/closure-access-spans.rs:5:5
+   |
+LL |     let r = &mut x;
+   |             ------ mutable borrow occurs here
+LL |     || x;
+   |     ^^ - second borrow occurs due to use of `x` in closure
+   |     |
+   |     immutable borrow occurs here
+LL |     r.use_mut();
+   |     - mutable borrow later used here
+
+error[E0499]: cannot borrow `x` as mutable more than once at a time
+  --> $DIR/closure-access-spans.rs:11:5
+   |
+LL |     let r = &mut x;
+   |             ------ first mutable borrow occurs here
+LL |     || x = 2;
+   |     ^^ - second borrow occurs due to use of `x` in closure
+   |     |
+   |     second mutable borrow occurs here
+LL |     r.use_mut();
+   |     - first borrow later used here
+
+error[E0500]: closure requires unique access to `x` but it is already borrowed
+  --> $DIR/closure-access-spans.rs:17:5
+   |
+LL |     let r = &mut x;
+   |             ------ borrow occurs here
+LL |     || *x = 2;
+   |     ^^ -- second borrow occurs due to use of `x` in closure
+   |     |
+   |     closure construction occurs here
+LL |     r.use_mut();
+   |     - first borrow later used here
+
+error[E0503]: cannot use `x` because it was mutably borrowed
+  --> $DIR/closure-access-spans.rs:23:13
+   |
+LL |     let r = &mut x;
+   |             ------ `x` is borrowed here
+LL |     move || x;
+   |             ^ use of borrowed `x`
+LL |     r.use_ref();
+   |     - borrow later used here
+
+error[E0505]: cannot move out of `x` because it is borrowed
+  --> $DIR/closure-access-spans.rs:29:5
+   |
+LL | fn closure_move_capture_conflict(mut x: String) {
+   |                                  ----- binding `x` declared here
+LL |     let r = &x;
+   |             -- borrow of `x` occurs here
+LL |     || x;
+   |     ^^ - move occurs due to use in closure
+   |     |
+   |     move out of `x` occurs here
+LL |     r.use_ref();
+   |     - borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let r = &x.clone();
+   |               ++++++++
+
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/closure-access-spans.rs:35:5
+   |
+LL | fn closure_imm_capture_moved(mut x: String) {
+   |                              ----- move occurs because `x` has type `String`, which does not implement the `Copy` trait
+LL |     let r = x;
+   |             - value moved here
+LL |     || x.len();
+   |     ^^ - borrow occurs due to use in closure
+   |     |
+   |     value borrowed here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let r = x.clone();
+   |              ++++++++
+
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/closure-access-spans.rs:40:5
+   |
+LL | fn closure_mut_capture_moved(mut x: String) {
+   |                              ----- move occurs because `x` has type `String`, which does not implement the `Copy` trait
+LL |     let r = x;
+   |             - value moved here
+LL |     || x = String::new();
+   |     ^^ - borrow occurs due to use in closure
+   |     |
+   |     value borrowed here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let r = x.clone();
+   |              ++++++++
+
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/closure-access-spans.rs:45:5
+   |
+LL | fn closure_unique_capture_moved(x: &mut String) {
+   |                                 - move occurs because `x` has type `&mut String`, which does not implement the `Copy` trait
+LL |     let r = x;
+   |             - value moved here
+LL |     || *x = String::new();
+   |     ^^ -- borrow occurs due to use in closure
+   |     |
+   |     value borrowed here after move
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/closure-access-spans.rs:50:5
+   |
+LL | fn closure_move_capture_moved(x: &mut String) {
+   |                               - move occurs because `x` has type `&mut String`, which does not implement the `Copy` trait
+LL |     let r = x;
+   |             - value moved here
+LL |     || x;
+   |     ^^ - use occurs due to use in closure
+   |     |
+   |     value used here after move
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0382, E0499, E0500, E0502, E0503, E0505.
+For more information about an error, try `rustc --explain E0382`.

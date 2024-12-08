@@ -1,0 +1,38 @@
+warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/escaping-bound-var.rs:1:12
+   |
+LL | #![feature(generic_const_exprs)]
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: cannot capture late-bound lifetime in constant
+  --> $DIR/escaping-bound-var.rs:7:13
+   |
+LL | fn test<'a>(
+   |         -- lifetime defined here
+...
+LL |     let x: &'a ();
+   |             ^^
+
+error[E0308]: mismatched types
+  --> $DIR/escaping-bound-var.rs:6:6
+   |
+LL |   fn test<'a>(
+   |      ---- implicitly returns `()` as its body has no tail or `return` expression
+LL |       _: &'a (),
+LL |   ) -> [(); {
+   |  ______^
+LL | |     let x: &'a ();
+LL | |
+LL | |     1
+LL | | }] {
+   | |__^ expected `[(); {
+    let x: &'a ();
+    1
+}]`, found `()`
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0308`.

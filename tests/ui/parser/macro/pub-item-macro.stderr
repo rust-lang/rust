@@ -1,0 +1,36 @@
+error: can't qualify macro invocation with `pub`
+  --> $DIR/pub-item-macro.rs:10:5
+   |
+LL |     pub priv_x!();
+   |     ^^^
+...
+LL |     pub_x!();
+   |     -------- in this macro invocation
+   |
+   = help: try adjusting the macro to put `pub` inside the invocation
+   = note: this error originates in the macro `pub_x` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: remove the visibility
+   |
+LL -     pub priv_x!();
+LL +      priv_x!();
+   |
+
+error[E0603]: static `x` is private
+  --> $DIR/pub-item-macro.rs:20:23
+   |
+LL |     let y: u32 = foo::x;
+   |                       ^ private static
+   |
+note: the static `x` is defined here
+  --> $DIR/pub-item-macro.rs:5:9
+   |
+LL |         static x: u32 = 0;
+   |         ^^^^^^^^^^^^^^^^^^
+...
+LL |     pub_x!();
+   |     -------- in this macro invocation
+   = note: this error originates in the macro `priv_x` which comes from the expansion of the macro `pub_x` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0603`.

@@ -1,0 +1,30 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/issue-63388-2.rs:12:10
+   |
+LL |         foo: &dyn Foo, bar: &'a dyn Foo
+   |              --------       -----------
+LL |     ) -> &dyn Foo
+   |          ^ expected named lifetime parameter
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from `foo` or `bar`
+help: consider using the `'a` lifetime
+   |
+LL |     ) -> &'a dyn Foo
+   |           ++
+
+error[E0621]: explicit lifetime required in the type of `foo`
+  --> $DIR/issue-63388-2.rs:13:5
+   |
+LL |           foo: &dyn Foo, bar: &'a dyn Foo
+   |                -------- help: add explicit lifetime `'a` to the type of `foo`: `&'a (dyn Foo + 'a)`
+LL |       ) -> &dyn Foo
+LL | /     {
+LL | |
+LL | |         foo
+LL | |     }
+   | |_____^ lifetime `'a` required
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0106, E0621.
+For more information about an error, try `rustc --explain E0106`.

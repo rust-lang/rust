@@ -1,0 +1,8 @@
+error: expected type, found `{`
+  --> $DIR/removed-syntax-record.rs:1:10
+   |
+LL | type t = { f: () };
+   |          ^ expected type
+
+error: aborting due to 1 previous error
+

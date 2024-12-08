@@ -1,0 +1,17 @@
+error[E0308]: mismatched types
+  --> $DIR/proper-span-for-type-error.rs:8:5
+   |
+LL |     a().await
+   |     ^^^^^^^^^ expected `Result<(), i32>`, found `()`
+   |
+   = note:   expected enum `Result<(), i32>`
+           found unit type `()`
+help: try adding an expression at the end of the block
+   |
+LL ~     a().await;
+LL ~     Ok(())
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

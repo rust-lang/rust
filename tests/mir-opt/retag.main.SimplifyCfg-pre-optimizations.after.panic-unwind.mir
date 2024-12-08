@@ -1,0 +1,180 @@
+// MIR for `main` after SimplifyCfg-pre-optimizations
+
+fn main() -> () {
+    let mut _0: ();
+    let mut _1: i32;
+    let _2: ();
+    let mut _4: &Test;
+    let _5: Test;
+    let mut _6: &mut i32;
+    let mut _7: &mut i32;
+    let mut _9: &mut i32;
+    let mut _12: *mut i32;
+    let mut _14: {closure@main::{closure#0}};
+    let mut _16: for<'a> fn(&'a i32) -> &'a i32;
+    let mut _17: &i32;
+    let _18: &i32;
+    let _19: &i32;
+    let mut _20: &Test;
+    let _21: Test;
+    let mut _22: &i32;
+    let _23: &i32;
+    let _24: i32;
+    let mut _26: *const i32;
+    let _27: ();
+    scope 1 {
+        debug x => _1;
+        let _3: &mut i32;
+        let _13: for<'a> fn(&'a i32) -> &'a i32;
+        scope 2 {
+            debug v => _3;
+            let _8: &mut i32;
+            scope 3 {
+                debug w => _8;
+                let _10: &mut i32;
+                scope 4 {
+                    debug w => _10;
+                    let _11: *mut i32;
+                    scope 5 {
+                        debug _w => _11;
+                    }
+                }
+            }
+        }
+        scope 6 {
+            debug c => _13;
+            let _15: &i32;
+            scope 7 {
+                debug _w => _15;
+                let _25: *const i32;
+                let mut _28: &i32;
+                scope 8 {
+                    debug _w => _25;
+                }
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);
+        _1 = const 0_i32;
+        StorageLive(_2);
+        StorageLive(_3);
+        StorageLive(_4);
+        StorageLive(_5);
+        _5 = Test(const 0_i32);
+        _4 = &_5;
+        StorageLive(_6);
+        StorageLive(_7);
+        _7 = &mut _1;
+        _6 = &mut (*_7);
+        _3 = Test::foo(move _4, move _6) -> [return: bb1, unwind: bb8];
+    }
+
+    bb1: {
+        Retag(_3);
+        StorageDead(_6);
+        StorageDead(_4);
+        StorageDead(_7);
+        drop(_5) -> [return: bb2, unwind: bb9];
+    }
+
+    bb2: {
+        StorageDead(_5);
+        StorageLive(_8);
+        StorageLive(_9);
+        _9 = move _3;
+        Retag(_9);
+        _8 = &mut (*_9);
+        StorageDead(_9);
+        StorageLive(_10);
+        _10 = move _8;
+        Retag(_10);
+        StorageLive(_11);
+        StorageLive(_12);
+        _12 = &raw mut (*_10);
+        _11 = copy _12;
+        StorageDead(_12);
+        _2 = const ();
+        StorageDead(_11);
+        StorageDead(_10);
+        StorageDead(_8);
+        StorageDead(_3);
+        StorageDead(_2);
+        StorageLive(_13);
+        StorageLive(_14);
+        _14 = {closure@main::{closure#0}};
+        Retag(_14);
+        _13 = move _14 as for<'a> fn(&'a i32) -> &'a i32 (PointerCoercion(ClosureFnPointer(Safe), Implicit));
+        StorageDead(_14);
+        StorageLive(_15);
+        StorageLive(_16);
+        _16 = copy _13;
+        StorageLive(_17);
+        StorageLive(_18);
+        _18 = &_1;
+        _17 = &(*_18);
+        _15 = move _16(move _17) -> [return: bb3, unwind continue];
+    }
+
+    bb3: {
+        Retag(_15);
+        StorageDead(_17);
+        StorageDead(_16);
+        StorageDead(_18);
+        StorageLive(_19);
+        StorageLive(_20);
+        StorageLive(_21);
+        _21 = Test(const 0_i32);
+        _20 = &_21;
+        StorageLive(_22);
+        StorageLive(_23);
+        _28 = const main::promoted[0];
+        Retag(_28);
+        _23 = &(*_28);
+        _22 = &(*_23);
+        _19 = Test::foo_shr(move _20, move _22) -> [return: bb4, unwind: bb7];
+    }
+
+    bb4: {
+        Retag(_19);
+        StorageDead(_22);
+        StorageDead(_20);
+        StorageDead(_23);
+        drop(_21) -> [return: bb5, unwind: bb9];
+    }
+
+    bb5: {
+        StorageDead(_21);
+        StorageDead(_19);
+        StorageLive(_25);
+        StorageLive(_26);
+        _26 = &raw const (*_15);
+        _25 = copy _26;
+        StorageDead(_26);
+        StorageLive(_27);
+        _27 = array_casts() -> [return: bb6, unwind continue];
+    }
+
+    bb6: {
+        StorageDead(_27);
+        _0 = const ();
+        StorageDead(_25);
+        StorageDead(_15);
+        StorageDead(_13);
+        StorageDead(_1);
+        return;
+    }
+
+    bb7 (cleanup): {
+        drop(_21) -> [return: bb9, unwind terminate(cleanup)];
+    }
+
+    bb8 (cleanup): {
+        drop(_5) -> [return: bb9, unwind terminate(cleanup)];
+    }
+
+    bb9 (cleanup): {
+        resume;
+    }
+}

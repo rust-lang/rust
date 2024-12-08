@@ -1,0 +1,16 @@
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/refine-resolution-errors.rs:9:6
+   |
+LL | impl<T: ?Sized> Mirror for () {
+   |      ^ unconstrained type parameter
+
+error[E0282]: type annotations needed
+  --> $DIR/refine-resolution-errors.rs:15:5
+   |
+LL |     async fn first() -> <() as Mirror>::Assoc;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0207, E0282.
+For more information about an error, try `rustc --explain E0207`.

@@ -1,0 +1,9 @@
+error[E0412]: cannot find type `C` in this scope
+  --> $DIR/glob-conflict-cross-crate-2.rs:8:13
+   |
+LL |     let _a: C = 1;
+   |             ^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0412`.

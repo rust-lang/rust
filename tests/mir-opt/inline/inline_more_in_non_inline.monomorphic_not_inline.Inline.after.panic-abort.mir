@@ -1,0 +1,34 @@
+// MIR for `monomorphic_not_inline` after Inline
+
+fn monomorphic_not_inline(_1: i32) -> () {
+    debug x => _1;
+    let mut _0: ();
+    let _2: ();
+    let mut _3: i32;
+    scope 1 (inlined call_twice) {
+        let _4: ();
+        let _5: ();
+    }
+
+    bb0: {
+        StorageLive(_2);
+        StorageLive(_3);
+        _3 = copy _1;
+        StorageLive(_4);
+        StorageLive(_5);
+        _4 = other_thing(copy _3) -> [return: bb2, unwind unreachable];
+    }
+
+    bb1: {
+        StorageDead(_5);
+        StorageDead(_4);
+        StorageDead(_3);
+        StorageDead(_2);
+        _0 = const ();
+        return;
+    }
+
+    bb2: {
+        _5 = other_thing(move _3) -> [return: bb1, unwind unreachable];
+    }
+}

@@ -1,0 +1,322 @@
+error[E0308]: mismatched types
+  --> $DIR/binary-op-suggest-deref.rs:6:12
+   |
+LL |     if i < 0 {}
+   |            ^ expected `&i64`, found integer
+   |
+help: consider dereferencing the borrow
+   |
+LL |     if *i < 0 {}
+   |        +
+
+error[E0277]: can't compare `&&{integer}` with `{integer}`
+  --> $DIR/binary-op-suggest-deref.rs:15:13
+   |
+LL |     _ = foo == 0;
+   |             ^^ no implementation for `&&{integer} == {integer}`
+   |
+   = help: the trait `PartialEq<{integer}>` is not implemented for `&&{integer}`
+help: consider dereferencing here
+   |
+LL |     _ = **foo == 0;
+   |         ++
+
+error[E0277]: can't compare `&{integer}` with `{integer}`
+  --> $DIR/binary-op-suggest-deref.rs:17:13
+   |
+LL |     _ = foo == &0;
+   |             ^^ no implementation for `&{integer} == {integer}`
+   |
+   = help: the trait `PartialEq<{integer}>` is not implemented for `&{integer}`
+   = note: required for `&&{integer}` to implement `PartialEq<&{integer}>`
+help: consider dereferencing here
+   |
+LL |     _ = *foo == &0;
+   |         +
+
+error[E0277]: can't compare `&&&&&&{integer}` with `{integer}`
+  --> $DIR/binary-op-suggest-deref.rs:19:17
+   |
+LL |     _ = &&&&foo == 0;
+   |                 ^^ no implementation for `&&&&&&{integer} == {integer}`
+   |
+   = help: the trait `PartialEq<{integer}>` is not implemented for `&&&&&&{integer}`
+help: consider removing the borrows and dereferencing instead
+   |
+LL -     _ = &&&&foo == 0;
+LL +     _ = **foo == 0;
+   |
+
+error[E0277]: can't compare `&{integer}` with `{integer}`
+  --> $DIR/binary-op-suggest-deref.rs:21:14
+   |
+LL |     _ = *foo == 0;
+   |              ^^ no implementation for `&{integer} == {integer}`
+   |
+   = help: the trait `PartialEq<{integer}>` is not implemented for `&{integer}`
+help: consider dereferencing here
+   |
+LL |     _ = **foo == 0;
+   |         +
+
+error[E0277]: can't compare `&&{integer}` with `{integer}`
+  --> $DIR/binary-op-suggest-deref.rs:23:15
+   |
+LL |     _ = &&foo == &&0;
+   |               ^^ no implementation for `&&{integer} == {integer}`
+   |
+   = help: the trait `PartialEq<{integer}>` is not implemented for `&&{integer}`
+   = note: required for `&&&{integer}` to implement `PartialEq<&{integer}>`
+   = note: 1 redundant requirement hidden
+   = note: required for `&&&&{integer}` to implement `PartialEq<&&{integer}>`
+help: consider removing the borrows
+   |
+LL -     _ = &&foo == &&0;
+LL +     _ = foo == &&0;
+   |
+
+error[E0277]: can't compare `&Box<{integer}>` with `{integer}`
+  --> $DIR/binary-op-suggest-deref.rs:25:23
+   |
+LL |     _ = &Box::new(42) == 42;
+   |                       ^^ no implementation for `&Box<{integer}> == {integer}`
+   |
+   = help: the trait `PartialEq<{integer}>` is not implemented for `&Box<{integer}>`
+help: consider removing the borrow and dereferencing instead
+   |
+LL -     _ = &Box::new(42) == 42;
+LL +     _ = *Box::new(42) == 42;
+   |
+
+error[E0277]: can't compare `&Box<&Box<&{integer}>>` with `{integer}`
+  --> $DIR/binary-op-suggest-deref.rs:27:35
+   |
+LL |     _ = &Box::new(&Box::new(&42)) == 42;
+   |                                   ^^ no implementation for `&Box<&Box<&{integer}>> == {integer}`
+   |
+   = help: the trait `PartialEq<{integer}>` is not implemented for `&Box<&Box<&{integer}>>`
+help: consider removing the borrow and dereferencing instead
+   |
+LL -     _ = &Box::new(&Box::new(&42)) == 42;
+LL +     _ = ****Box::new(&Box::new(&42)) == 42;
+   |
+
+error[E0277]: can't compare `{integer}` with `&&{integer}`
+  --> $DIR/binary-op-suggest-deref.rs:31:11
+   |
+LL |     _ = 0 == foo;
+   |           ^^ no implementation for `{integer} == &&{integer}`
+   |
+   = help: the trait `PartialEq<&&{integer}>` is not implemented for `{integer}`
+help: consider dereferencing here
+   |
+LL |     _ = 0 == **foo;
+   |              ++
+
+error[E0277]: can't compare `{integer}` with `&{integer}`
+  --> $DIR/binary-op-suggest-deref.rs:33:12
+   |
+LL |     _ = &0 == foo;
+   |            ^^ no implementation for `{integer} == &{integer}`
+   |
+   = help: the trait `PartialEq<&{integer}>` is not implemented for `{integer}`
+   = note: required for `&{integer}` to implement `PartialEq<&&{integer}>`
+help: consider dereferencing here
+   |
+LL |     _ = &0 == *foo;
+   |               +
+
+error[E0277]: can't compare `{integer}` with `&&&&&&{integer}`
+  --> $DIR/binary-op-suggest-deref.rs:35:11
+   |
+LL |     _ = 0 == &&&&foo;
+   |           ^^ no implementation for `{integer} == &&&&&&{integer}`
+   |
+   = help: the trait `PartialEq<&&&&&&{integer}>` is not implemented for `{integer}`
+help: consider removing the borrows and dereferencing instead
+   |
+LL -     _ = 0 == &&&&foo;
+LL +     _ = 0 == **foo;
+   |
+
+error[E0277]: can't compare `{integer}` with `&{integer}`
+  --> $DIR/binary-op-suggest-deref.rs:37:11
+   |
+LL |     _ = 0 == *foo;
+   |           ^^ no implementation for `{integer} == &{integer}`
+   |
+   = help: the trait `PartialEq<&{integer}>` is not implemented for `{integer}`
+help: consider dereferencing here
+   |
+LL |     _ = 0 == **foo;
+   |              +
+
+error[E0277]: can't compare `{integer}` with `&&{integer}`
+  --> $DIR/binary-op-suggest-deref.rs:39:13
+   |
+LL |     _ = &&0 == &&foo;
+   |             ^^ no implementation for `{integer} == &&{integer}`
+   |
+   = help: the trait `PartialEq<&&{integer}>` is not implemented for `{integer}`
+   = note: required for `&{integer}` to implement `PartialEq<&&&{integer}>`
+   = note: 1 redundant requirement hidden
+   = note: required for `&&{integer}` to implement `PartialEq<&&&&{integer}>`
+help: consider removing the borrows
+   |
+LL -     _ = &&0 == &&foo;
+LL +     _ = &&0 == foo;
+   |
+
+error[E0277]: can't compare `Box<Box<{integer}>>` with `&&{integer}`
+  --> $DIR/binary-op-suggest-deref.rs:43:33
+   |
+LL |     _ = &Box::new(Box::new(42)) == &foo;
+   |                                 ^^ no implementation for `Box<Box<{integer}>> == &&{integer}`
+   |
+   = help: the trait `PartialEq<&&{integer}>` is not implemented for `Box<Box<{integer}>>`
+   = note: required for `&Box<Box<{integer}>>` to implement `PartialEq<&&&{integer}>`
+help: consider dereferencing both sides of the expression
+   |
+LL -     _ = &Box::new(Box::new(42)) == &foo;
+LL +     _ = **Box::new(Box::new(42)) == **foo;
+   |
+
+error[E0277]: can't compare `Box<{integer}>` with `&&{integer}`
+  --> $DIR/binary-op-suggest-deref.rs:45:23
+   |
+LL |     _ = &Box::new(42) == &foo;
+   |                       ^^ no implementation for `Box<{integer}> == &&{integer}`
+   |
+   = help: the trait `PartialEq<&&{integer}>` is not implemented for `Box<{integer}>`
+   = note: required for `&Box<{integer}>` to implement `PartialEq<&&&{integer}>`
+help: consider dereferencing both sides of the expression
+   |
+LL -     _ = &Box::new(42) == &foo;
+LL +     _ = *Box::new(42) == **foo;
+   |
+
+error[E0277]: can't compare `Box<Box<Box<Box<{integer}>>>>` with `&&{integer}`
+  --> $DIR/binary-op-suggest-deref.rs:47:53
+   |
+LL |     _ = &Box::new(Box::new(Box::new(Box::new(42)))) == &foo;
+   |                                                     ^^ no implementation for `Box<Box<Box<Box<{integer}>>>> == &&{integer}`
+   |
+   = help: the trait `PartialEq<&&{integer}>` is not implemented for `Box<Box<Box<Box<{integer}>>>>`
+   = note: required for `&Box<Box<Box<Box<{integer}>>>>` to implement `PartialEq<&&&{integer}>`
+help: consider dereferencing both sides of the expression
+   |
+LL -     _ = &Box::new(Box::new(Box::new(Box::new(42)))) == &foo;
+LL +     _ = ****Box::new(Box::new(Box::new(Box::new(42)))) == **foo;
+   |
+
+error[E0277]: can't compare `&&{integer}` with `Box<Box<Box<Box<{integer}>>>>`
+  --> $DIR/binary-op-suggest-deref.rs:49:14
+   |
+LL |     _ = &foo == &Box::new(Box::new(Box::new(Box::new(42))));
+   |              ^^ no implementation for `&&{integer} == Box<Box<Box<Box<{integer}>>>>`
+   |
+   = help: the trait `PartialEq<Box<Box<Box<Box<{integer}>>>>>` is not implemented for `&&{integer}`
+   = note: required for `&&&{integer}` to implement `PartialEq<&Box<Box<Box<Box<{integer}>>>>>`
+help: consider dereferencing both sides of the expression
+   |
+LL -     _ = &foo == &Box::new(Box::new(Box::new(Box::new(42))));
+LL +     _ = **foo == ****Box::new(Box::new(Box::new(Box::new(42))));
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/binary-op-suggest-deref.rs:53:25
+   |
+LL |     _ = Box::new(42) == 42;
+   |         ------------    ^^ expected `Box<{integer}>`, found integer
+   |         |
+   |         expected because this is `Box<{integer}>`
+   |
+   = note: expected struct `Box<{integer}>`
+                found type `{integer}`
+   = note: for more on the distinction between the stack and the heap, read https://doc.rust-lang.org/book/ch15-01-box.html, https://doc.rust-lang.org/rust-by-example/std/box.html, and https://doc.rust-lang.org/std/boxed/index.html
+help: store this in the heap by calling `Box::new`
+   |
+LL |     _ = Box::new(42) == Box::new(42);
+   |                         +++++++++  +
+
+error[E0277]: can't compare `&&{integer}` with `Foo`
+  --> $DIR/binary-op-suggest-deref.rs:58:13
+   |
+LL |     _ = &&0 == Foo;
+   |             ^^ no implementation for `&&{integer} == Foo`
+   |
+   = help: the trait `PartialEq<Foo>` is not implemented for `&&{integer}`
+   = help: the following other types implement trait `PartialEq<Rhs>`:
+             f128
+             f16
+             f32
+             f64
+             i128
+             i16
+             i32
+             i64
+           and 8 others
+
+error[E0369]: binary operation `==` cannot be applied to type `Foo`
+  --> $DIR/binary-op-suggest-deref.rs:60:13
+   |
+LL |     _ = Foo == &&0;
+   |         --- ^^ --- &&{integer}
+   |         |
+   |         Foo
+   |
+note: an implementation of `PartialEq<&&{integer}>` might be missing for `Foo`
+  --> $DIR/binary-op-suggest-deref.rs:57:5
+   |
+LL |     struct Foo;
+   |     ^^^^^^^^^^ must implement `PartialEq<&&{integer}>`
+
+error[E0277]: can't compare `&String` with `str`
+  --> $DIR/binary-op-suggest-deref.rs:69:20
+   |
+LL |     _ = string_ref == partial[..3];
+   |                    ^^ no implementation for `&String == str`
+   |
+   = help: the trait `PartialEq<str>` is not implemented for `&String`
+help: consider dereferencing here
+   |
+LL |     _ = *string_ref == partial[..3];
+   |         +
+
+error[E0277]: can't compare `str` with `&String`
+  --> $DIR/binary-op-suggest-deref.rs:71:22
+   |
+LL |     _ = partial[..3] == string_ref;
+   |                      ^^ no implementation for `str == &String`
+   |
+   = help: the trait `PartialEq<&String>` is not implemented for `str`
+help: consider dereferencing here
+   |
+LL |     _ = partial[..3] == *string_ref;
+   |                         +
+
+error[E0277]: no implementation for `i32 & str`
+  --> $DIR/binary-op-suggest-deref.rs:78:17
+   |
+LL |     let _ = FOO & (*"Sized".to_string().into_boxed_str());
+   |                 ^ no implementation for `i32 & str`
+   |
+   = help: the trait `BitAnd<str>` is not implemented for `i32`
+   = help: the following other types implement trait `BitAnd<Rhs>`:
+             `&i32` implements `BitAnd<i32>`
+             `&i32` implements `BitAnd`
+             `i32` implements `BitAnd<&i32>`
+             `i32` implements `BitAnd`
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/binary-op-suggest-deref.rs:78:17
+   |
+LL |     let _ = FOO & (*"Sized".to_string().into_boxed_str());
+   |                 ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+
+error: aborting due to 24 previous errors
+
+Some errors have detailed explanations: E0277, E0308, E0369.
+For more information about an error, try `rustc --explain E0277`.

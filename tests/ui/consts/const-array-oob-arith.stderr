@@ -1,0 +1,19 @@
+error[E0308]: mismatched types
+  --> $DIR/const-array-oob-arith.rs:5:45
+   |
+LL | const BLUB: [i32; (ARR[0] - 40) as usize] = [5];
+   |                   ----------------------    ^^^ expected an array with a size of 2, found one with a size of 1
+   |                   |
+   |                   help: consider specifying the actual array length: `1`
+
+error[E0308]: mismatched types
+  --> $DIR/const-array-oob-arith.rs:8:44
+   |
+LL | const BOO: [i32; (ARR[0] - 41) as usize] = [5, 99];
+   |                  ----------------------    ^^^^^^^ expected an array with a size of 1, found one with a size of 2
+   |                  |
+   |                  help: consider specifying the actual array length: `2`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

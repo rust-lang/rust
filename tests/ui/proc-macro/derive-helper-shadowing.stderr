@@ -1,0 +1,74 @@
+error: cannot use a derive helper attribute through an import
+  --> $DIR/derive-helper-shadowing.rs:42:15
+   |
+LL |             #[renamed]
+   |               ^^^^^^^
+   |
+note: the derive helper attribute imported here
+  --> $DIR/derive-helper-shadowing.rs:41:17
+   |
+LL |             use empty_helper as renamed;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: cannot find attribute `empty_helper` in this scope
+  --> $DIR/derive-helper-shadowing.rs:38:22
+   |
+LL |             #[derive(GenHelperUse)]
+   |                      ^^^^^^^^^^^^
+   |
+   = note: this error originates in the derive macro `GenHelperUse` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider importing this attribute macro through its public re-export
+   |
+LL +             use empty_helper;
+   |
+
+error: cannot find attribute `empty_helper` in this scope
+  --> $DIR/derive-helper-shadowing.rs:14:11
+   |
+LL |         #[empty_helper]
+   |           ^^^^^^^^^^^^
+...
+LL |             gen_helper_use!();
+   |             ----------------- in this macro invocation
+   |
+   = note: this error originates in the macro `gen_helper_use` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider importing this attribute macro through its public re-export
+   |
+LL +             use crate::empty_helper;
+   |
+
+error[E0659]: `empty_helper` is ambiguous
+  --> $DIR/derive-helper-shadowing.rs:19:3
+   |
+LL | #[empty_helper]
+   |   ^^^^^^^^^^^^ ambiguous name
+   |
+   = note: ambiguous because of a name conflict with a derive helper attribute
+note: `empty_helper` could refer to the derive helper attribute defined here
+  --> $DIR/derive-helper-shadowing.rs:22:10
+   |
+LL | #[derive(Empty)]
+   |          ^^^^^
+note: `empty_helper` could also refer to the attribute macro imported here
+  --> $DIR/derive-helper-shadowing.rs:10:5
+   |
+LL | use test_macros::empty_attr as empty_helper;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: use `crate::empty_helper` to refer to this attribute macro unambiguously
+
+warning: derive helper attribute is used before it is introduced
+  --> $DIR/derive-helper-shadowing.rs:19:3
+   |
+LL | #[empty_helper]
+   |   ^^^^^^^^^^^^
+...
+LL | #[derive(Empty)]
+   |          ----- the attribute is introduced here
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #79202 <https://github.com/rust-lang/rust/issues/79202>
+   = note: `#[warn(legacy_derive_helpers)]` on by default
+
+error: aborting due to 4 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0659`.

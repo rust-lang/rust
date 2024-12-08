@@ -1,0 +1,14 @@
+error[E0277]: the trait bound `String: Borrow<&str>` is not satisfied
+  --> $DIR/point-at-index-for-obligation-failure.rs:5:9
+   |
+LL |         &s
+   |         ^^ the trait `Borrow<&str>` is not implemented for `String`
+   |
+   = help: the trait `Borrow<&_>` is not implemented for `String`
+           but trait `Borrow<_>` is implemented for it
+   = help: for that trait implementation, expected `str`, found `&str`
+   = note: required for `HashMap<String, String>` to implement `Index<&&str>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

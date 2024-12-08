@@ -1,0 +1,19 @@
+error[E0741]: `(fn(),)` can't be used as a const parameter type
+  --> $DIR/issue-99641.rs:5:35
+   |
+LL |     pub struct Color<const WHITE: (fn(),)>;
+   |                                   ^^^^^^^
+   |
+   = note: `fn()` must implement `ConstParamTy_`, but it does not
+
+error[E0741]: `(fn(),)` can't be used as a const parameter type
+  --> $DIR/issue-99641.rs:8:23
+   |
+LL |     impl<const WHITE: (fn(),)> Color<WHITE> {
+   |                       ^^^^^^^
+   |
+   = note: `fn()` must implement `ConstParamTy_`, but it does not
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0741`.

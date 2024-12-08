@@ -1,0 +1,15 @@
+error[E0734]: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-106589.rs:3:1
+   |
+LL | #![stable(feature = "foo", since = "1.0.0")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0734]: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-106589.rs:6:1
+   |
+LL | #[unstable(feature = "foo", issue = "none")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0734`.

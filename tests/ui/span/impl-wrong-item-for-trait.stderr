@@ -1,0 +1,66 @@
+error[E0323]: item `bar` is an associated const, which doesn't match its trait `Foo`
+  --> $DIR/impl-wrong-item-for-trait.rs:12:5
+   |
+LL |     fn bar(&self);
+   |     -------------- item in trait
+...
+LL |     const bar: u64 = 1;
+   |     ^^^^^^^^^^^^^^^^^^^ does not match trait
+
+error[E0324]: item `MY_CONST` is an associated method, which doesn't match its trait `Foo`
+  --> $DIR/impl-wrong-item-for-trait.rs:22:5
+   |
+LL |     const MY_CONST: u32;
+   |     -------------------- item in trait
+...
+LL |     fn MY_CONST() {}
+   |     ^^^^^^^^^^^^^^^^ does not match trait
+
+error[E0325]: item `bar` is an associated type, which doesn't match its trait `Foo`
+  --> $DIR/impl-wrong-item-for-trait.rs:30:5
+   |
+LL |     fn bar(&self);
+   |     -------------- item in trait
+...
+LL |     type bar = u64;
+   |     ^^^^^^^^^^^^^^^ does not match trait
+
+error[E0046]: not all trait items implemented, missing: `bar`
+  --> $DIR/impl-wrong-item-for-trait.rs:10:1
+   |
+LL |     fn bar(&self);
+   |     -------------- `bar` from trait
+...
+LL | impl Foo for FooConstForMethod {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `bar` in implementation
+
+error[E0046]: not all trait items implemented, missing: `MY_CONST`
+  --> $DIR/impl-wrong-item-for-trait.rs:19:1
+   |
+LL |     const MY_CONST: u32;
+   |     ------------------- `MY_CONST` from trait
+...
+LL | impl Foo for FooMethodForConst {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `MY_CONST` in implementation
+
+error[E0046]: not all trait items implemented, missing: `bar`
+  --> $DIR/impl-wrong-item-for-trait.rs:28:1
+   |
+LL |     fn bar(&self);
+   |     -------------- `bar` from trait
+...
+LL | impl Foo for FooTypeForMethod {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `bar` in implementation
+
+error[E0046]: not all trait items implemented, missing: `fmt`
+  --> $DIR/impl-wrong-item-for-trait.rs:35:1
+   |
+LL | impl Debug for FooTypeForMethod {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `fmt` in implementation
+   |
+   = help: implement the missing item: `fn fmt(&self, _: &mut Formatter<'_>) -> Result<(), std::fmt::Error> { todo!() }`
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0046, E0323, E0324, E0325.
+For more information about an error, try `rustc --explain E0046`.

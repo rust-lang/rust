@@ -1,0 +1,48 @@
+warning: the feature `non_lifetime_binders` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/fail.rs:3:12
+   |
+LL | #![feature(non_lifetime_binders)]
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0277]: the trait bound `T: Trait` is not satisfied
+  --> $DIR/fail.rs:19:5
+   |
+LL |     fail();
+   |     ^^^^^^ the trait `Trait` is not implemented for `T`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/fail.rs:6:1
+   |
+LL | trait Trait {}
+   | ^^^^^^^^^^^
+note: required by a bound in `fail`
+  --> $DIR/fail.rs:10:15
+   |
+LL | fn fail()
+   |    ---- required by a bound in this function
+LL | where
+LL |     for<T> T: Trait,
+   |               ^^^^^ required by this bound in `fail`
+
+error[E0277]: `T` cannot be sent between threads safely
+  --> $DIR/fail.rs:21:5
+   |
+LL |     auto_trait();
+   |     ^^^^^^^^^^^^ `T` cannot be sent between threads safely
+   |
+   = help: the trait `Send` is not implemented for `T`
+note: required by a bound in `auto_trait`
+  --> $DIR/fail.rs:15:15
+   |
+LL | fn auto_trait()
+   |    ---------- required by a bound in this function
+LL | where
+LL |     for<T> T: Send,
+   |               ^^^^ required by this bound in `auto_trait`
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0277`.

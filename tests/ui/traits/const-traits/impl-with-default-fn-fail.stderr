@@ -1,0 +1,12 @@
+error[E0046]: not all trait items implemented, missing: `req`
+  --> $DIR/impl-with-default-fn-fail.rs:12:1
+   |
+LL |     fn req(&self);
+   |     -------------- `req` from trait
+...
+LL | impl const Tr for u16 {
+   | ^^^^^^^^^^^^^^^^^^^^^ missing `req` in implementation
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0046`.

@@ -1,0 +1,12 @@
+error[E0517]: attribute should be applied to an enum
+  --> $DIR/repr-disallow-on-variant.rs:4:12
+   |
+LL |     #[repr(u8)]
+   |            ^^
+LL |
+LL |     Variant,
+   |     ------- not an enum
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0517`.

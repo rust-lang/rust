@@ -1,0 +1,30 @@
+error[E0597]: `y` does not live long enough
+  --> $DIR/pattern_substs_on_brace_enum_variant.rs:7:33
+   |
+LL |     let y = 22;
+   |         - binding `y` declared here
+LL |     let foo = Foo::Bar { field: &y };
+   |                                 ^^ borrowed value does not live long enough
+LL |
+LL |     let Foo::Bar::<'static> { field: _z } = foo;
+   |         --------------------------------- type annotation requires that `y` is borrowed for `'static`
+LL | }
+   | - `y` dropped here while still borrowed
+
+error[E0597]: `y` does not live long enough
+  --> $DIR/pattern_substs_on_brace_enum_variant.rs:14:33
+   |
+LL |     let y = 22;
+   |         - binding `y` declared here
+LL |     let foo = Foo::Bar { field: &y };
+   |                                 ^^ borrowed value does not live long enough
+...
+LL |         Foo::Bar::<'static> { field: _z } => {
+   |         --------------------------------- type annotation requires that `y` is borrowed for `'static`
+...
+LL | }
+   | - `y` dropped here while still borrowed
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

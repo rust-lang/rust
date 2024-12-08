@@ -1,0 +1,64 @@
+error: creating a `Box` from a void raw pointer
+  --> tests/ui/from_raw_with_void_ptr.rs:11:22
+   |
+LL |     let _ = unsafe { Box::from_raw(ptr) };
+   |                      ^^^^^^^^^^^^^^^^^^
+   |
+help: cast this to a pointer of the appropriate type
+  --> tests/ui/from_raw_with_void_ptr.rs:11:36
+   |
+LL |     let _ = unsafe { Box::from_raw(ptr) };
+   |                                    ^^^
+   = note: `-D clippy::from-raw-with-void-ptr` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::from_raw_with_void_ptr)]`
+
+error: creating a `Rc` from a void raw pointer
+  --> tests/ui/from_raw_with_void_ptr.rs:23:22
+   |
+LL |     let _ = unsafe { Rc::from_raw(ptr) };
+   |                      ^^^^^^^^^^^^^^^^^
+   |
+help: cast this to a pointer of the appropriate type
+  --> tests/ui/from_raw_with_void_ptr.rs:23:35
+   |
+LL |     let _ = unsafe { Rc::from_raw(ptr) };
+   |                                   ^^^
+
+error: creating a `Arc` from a void raw pointer
+  --> tests/ui/from_raw_with_void_ptr.rs:28:22
+   |
+LL |     let _ = unsafe { Arc::from_raw(ptr) };
+   |                      ^^^^^^^^^^^^^^^^^^
+   |
+help: cast this to a pointer of the appropriate type
+  --> tests/ui/from_raw_with_void_ptr.rs:28:36
+   |
+LL |     let _ = unsafe { Arc::from_raw(ptr) };
+   |                                    ^^^
+
+error: creating a `Weak` from a void raw pointer
+  --> tests/ui/from_raw_with_void_ptr.rs:33:22
+   |
+LL |     let _ = unsafe { std::rc::Weak::from_raw(ptr) };
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: cast this to a pointer of the appropriate type
+  --> tests/ui/from_raw_with_void_ptr.rs:33:46
+   |
+LL |     let _ = unsafe { std::rc::Weak::from_raw(ptr) };
+   |                                              ^^^
+
+error: creating a `Weak` from a void raw pointer
+  --> tests/ui/from_raw_with_void_ptr.rs:38:22
+   |
+LL |     let _ = unsafe { std::sync::Weak::from_raw(ptr) };
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: cast this to a pointer of the appropriate type
+  --> tests/ui/from_raw_with_void_ptr.rs:38:48
+   |
+LL |     let _ = unsafe { std::sync::Weak::from_raw(ptr) };
+   |                                                ^^^
+
+error: aborting due to 5 previous errors
+

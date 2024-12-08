@@ -1,0 +1,35 @@
+warning: this method call resolves to `<&Box<[T]> as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<Box<[T]> as IntoIterator>::into_iter` in Rust 2024
+  --> $DIR/into-iter-on-boxed-slices-lint.rs:10:11
+   |
+LL |     boxed.into_iter();
+   |           ^^^^^^^^^
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: `#[warn(boxed_slice_into_iter)]` on by default
+help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
+   |
+LL |     boxed.iter();
+   |           ~~~~
+help: or use `IntoIterator::into_iter(..)` instead of `.into_iter()` to explicitly iterate by value
+   |
+LL |     IntoIterator::into_iter(boxed);
+   |     ++++++++++++++++++++++++     ~
+
+warning: this method call resolves to `<&Box<[T]> as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<Box<[T]> as IntoIterator>::into_iter` in Rust 2024
+  --> $DIR/into-iter-on-boxed-slices-lint.rs:13:29
+   |
+LL |     Box::new(boxed.clone()).into_iter();
+   |                             ^^^^^^^^^ help: use `.iter()` instead of `.into_iter()` to avoid ambiguity: `iter`
+   |
+   = warning: this changes meaning in Rust 2024
+
+warning: this method call resolves to `<&Box<[T]> as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<Box<[T]> as IntoIterator>::into_iter` in Rust 2024
+  --> $DIR/into-iter-on-boxed-slices-lint.rs:16:39
+   |
+LL |     Box::new(Box::new(boxed.clone())).into_iter();
+   |                                       ^^^^^^^^^ help: use `.iter()` instead of `.into_iter()` to avoid ambiguity: `iter`
+   |
+   = warning: this changes meaning in Rust 2024
+
+warning: 3 warnings emitted
+

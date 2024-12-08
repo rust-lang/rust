@@ -1,0 +1,2 @@
+error: incorrect value `invalid-value` for unstable option `fmt-debug` - either `full`, `shallow`, or `none` was expected
+

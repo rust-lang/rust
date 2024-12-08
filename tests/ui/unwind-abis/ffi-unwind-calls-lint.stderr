@@ -1,0 +1,20 @@
+warning: call to foreign function with FFI-unwind ABI
+  --> $DIR/ffi-unwind-calls-lint.rs:19:14
+   |
+LL |     unsafe { foo(); }
+   |              ^^^^^ call to foreign function with FFI-unwind ABI
+   |
+note: the lint level is defined here
+  --> $DIR/ffi-unwind-calls-lint.rs:4:9
+   |
+LL | #![warn(ffi_unwind_calls)]
+   |         ^^^^^^^^^^^^^^^^
+
+warning: call to function pointer with FFI-unwind ABI
+  --> $DIR/ffi-unwind-calls-lint.rs:23:5
+   |
+LL |     ptr();
+   |     ^^^^^ call to function pointer with FFI-unwind ABI
+
+warning: 2 warnings emitted
+

@@ -1,0 +1,39 @@
+error[E0382]: use of moved value: `x`
+  --> $DIR/closures-in-loops.rs:6:9
+   |
+LL | fn repreated_move(x: String) {
+   |                   - move occurs because `x` has type `String`, which does not implement the `Copy` trait
+LL |     for i in 0..10 {
+   |     -------------- inside of this loop
+LL |         || x;
+   |         ^^ - use occurs due to use in closure
+   |         |
+   |         value moved into closure here, in previous iteration of loop
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         || x.clone();
+   |             ++++++++
+
+error[E0499]: cannot borrow `x` as mutable more than once at a time
+  --> $DIR/closures-in-loops.rs:13:16
+   |
+LL |         v.push(|| x = String::new());
+   |         -      ^^ - borrows occur due to use of `x` in closure
+   |         |      |
+   |         |      `x` was mutably borrowed here in the previous iteration of the loop
+   |         first borrow used here, in later iteration of loop
+
+error[E0524]: two closures require unique access to `x` at the same time
+  --> $DIR/closures-in-loops.rs:20:16
+   |
+LL |         v.push(|| *x = String::new());
+   |         -      ^^ -- borrows occur due to use of `x` in closure
+   |         |      |
+   |         |      closures are constructed here in different iterations of loop
+   |         first borrow used here, in later iteration of loop
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0382, E0499, E0524.
+For more information about an error, try `rustc --explain E0382`.

@@ -1,0 +1,2 @@
+# Make vscode *not* count `config.toml` as ignored, so it is included in search
+!/config.toml

@@ -1,0 +1,146 @@
+- // MIR for `arithmetic_checked` before GVN
++ // MIR for `arithmetic_checked` after GVN
+  
+  fn arithmetic_checked(_1: u64) -> () {
+      debug x => _1;
+      let mut _0: ();
+      let _2: ();
+      let mut _3: u64;
+      let mut _4: u64;
+      let mut _5: (u64, bool);
+      let _6: ();
+      let mut _7: u64;
+      let mut _8: u64;
+      let mut _9: (u64, bool);
+      let _10: ();
+      let mut _11: u64;
+      let mut _12: u64;
+      let mut _13: u64;
+      let mut _14: (u64, bool);
+      let _15: ();
+      let mut _16: u64;
+      let mut _17: u64;
+      let mut _18: (u64, bool);
+      let _19: ();
+      let mut _20: u64;
+      let mut _21: u64;
+      let mut _22: (u64, bool);
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = copy _1;
+-         _5 = AddWithOverflow(copy _4, const 0_u64);
+-         assert(!move (_5.1: bool), "attempt to compute `{} + {}`, which would overflow", move _4, const 0_u64) -> [success: bb1, unwind unreachable];
++         _5 = AddWithOverflow(copy _1, const 0_u64);
++         assert(!const false, "attempt to compute `{} + {}`, which would overflow", copy _1, const 0_u64) -> [success: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+-         _3 = move (_5.0: u64);
++         _3 = copy _1;
+          StorageDead(_4);
+-         _2 = opaque::<u64>(move _3) -> [return: bb2, unwind unreachable];
++         _2 = opaque::<u64>(copy _1) -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          StorageDead(_3);
+          StorageDead(_2);
+          StorageLive(_6);
+          StorageLive(_7);
+          StorageLive(_8);
+          _8 = copy _1;
+-         _9 = SubWithOverflow(copy _8, const 0_u64);
+-         assert(!move (_9.1: bool), "attempt to compute `{} - {}`, which would overflow", move _8, const 0_u64) -> [success: bb3, unwind unreachable];
++         _9 = copy _5;
++         assert(!const false, "attempt to compute `{} - {}`, which would overflow", copy _1, const 0_u64) -> [success: bb3, unwind unreachable];
+      }
+  
+      bb3: {
+-         _7 = move (_9.0: u64);
++         _7 = copy _1;
+          StorageDead(_8);
+-         _6 = opaque::<u64>(move _7) -> [return: bb4, unwind unreachable];
++         _6 = opaque::<u64>(copy _1) -> [return: bb4, unwind unreachable];
+      }
+  
+      bb4: {
+          StorageDead(_7);
+          StorageDead(_6);
+          StorageLive(_10);
+-         StorageLive(_11);
++         nop;
+          StorageLive(_12);
+          _12 = copy _1;
+          StorageLive(_13);
+          _13 = copy _1;
+-         _14 = SubWithOverflow(copy _12, copy _13);
+-         assert(!move (_14.1: bool), "attempt to compute `{} - {}`, which would overflow", move _12, move _13) -> [success: bb5, unwind unreachable];
++         _14 = const (0_u64, false);
++         assert(!const false, "attempt to compute `{} - {}`, which would overflow", copy _1, copy _1) -> [success: bb5, unwind unreachable];
+      }
+  
+      bb5: {
+-         _11 = move (_14.0: u64);
++         _11 = const 0_u64;
+          StorageDead(_13);
+          StorageDead(_12);
+-         _10 = opaque::<u64>(move _11) -> [return: bb6, unwind unreachable];
++         _10 = opaque::<u64>(const 0_u64) -> [return: bb6, unwind unreachable];
+      }
+  
+      bb6: {
+-         StorageDead(_11);
++         nop;
+          StorageDead(_10);
+          StorageLive(_15);
+          StorageLive(_16);
+          StorageLive(_17);
+          _17 = copy _1;
+-         _18 = MulWithOverflow(copy _17, const 0_u64);
+-         assert(!move (_18.1: bool), "attempt to compute `{} * {}`, which would overflow", move _17, const 0_u64) -> [success: bb7, unwind unreachable];
++         _18 = const (0_u64, false);
++         assert(!const false, "attempt to compute `{} * {}`, which would overflow", copy _1, const 0_u64) -> [success: bb7, unwind unreachable];
+      }
+  
+      bb7: {
+-         _16 = move (_18.0: u64);
++         _16 = const 0_u64;
+          StorageDead(_17);
+-         _15 = opaque::<u64>(move _16) -> [return: bb8, unwind unreachable];
++         _15 = opaque::<u64>(const 0_u64) -> [return: bb8, unwind unreachable];
+      }
+  
+      bb8: {
+          StorageDead(_16);
+          StorageDead(_15);
+          StorageLive(_19);
+          StorageLive(_20);
+          StorageLive(_21);
+          _21 = copy _1;
+-         _22 = MulWithOverflow(copy _21, const 1_u64);
+-         assert(!move (_22.1: bool), "attempt to compute `{} * {}`, which would overflow", move _21, const 1_u64) -> [success: bb9, unwind unreachable];
++         _22 = copy _5;
++         assert(!const false, "attempt to compute `{} * {}`, which would overflow", copy _1, const 1_u64) -> [success: bb9, unwind unreachable];
+      }
+  
+      bb9: {
+-         _20 = move (_22.0: u64);
++         _20 = copy _1;
+          StorageDead(_21);
+-         _19 = opaque::<u64>(move _20) -> [return: bb10, unwind unreachable];
++         _19 = opaque::<u64>(copy _1) -> [return: bb10, unwind unreachable];
+      }
+  
+      bb10: {
+          StorageDead(_20);
+          StorageDead(_19);
+          _0 = const ();
+          return;
+      }
+  }
++ 
++ ALLOC0 (size: 16, align: 8) { .. }
+  

@@ -1,0 +1,54 @@
+# Configuration for ruff python linter, run as part of tidy external tools
+
+# lowest possible for ruff
+target-version = "py39"
+
+# Ignore all submodules
+extend-exclude = [
+    "src/doc/nomicon/",
+    "src/tools/cargo/",
+    "src/doc/reference/",
+    "src/doc/book/",
+    "src/doc/rust-by-example/",
+    "library/stdarch/",
+    "src/doc/rustc-dev-guide/",
+    "src/doc/edition-guide/",
+    "src/llvm-project/",
+    "src/doc/embedded-book/",
+    "library/backtrace/",
+    "src/tools/enzyme/",
+    "src/tools/rustc-perf/",
+    "src/gcc/",
+    "compiler/rustc_codegen_gcc",
+    "src/tools/clippy",
+    "src/tools/miri",
+    # Hack: CI runs from a subdirectory under the main checkout
+    "../src/doc/nomicon/",
+    "../src/tools/cargo/",
+    "../src/doc/reference/",
+    "../src/doc/book/",
+    "../src/doc/rust-by-example/",
+    "../library/stdarch/",
+    "../src/doc/rustc-dev-guide/",
+    "../src/doc/edition-guide/",
+    "../src/llvm-project/",
+    "../src/doc/embedded-book/",
+    "../library/backtrace/",
+    "../src/tools/enzyme/",
+    "../src/tools/rustc-perf/",
+    "../src/gcc/",
+    "../compiler/rustc_codegen_gcc",
+    "../src/tools/clippy",
+    "../src/tools/miri",
+]
+
+[lint]
+# B (bugbear), E (pycodestyle, standard), EXE (executables) F (flakes, standard)
+# ERM for error messages would be beneficial at some point
+select = ["B", "E", "EXE", "F"]
+
+ignore = [
+    "E501", # line-too-long
+    "F403", # undefined-local-with-import-star
+    "F405", # undefined-local-with-import-star-usage
+]

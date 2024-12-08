@@ -1,0 +1,53 @@
+error: indexing into a vector may panic
+  --> tests/ui/match_on_vec_items.rs:10:11
+   |
+LL |     match arr[idx] {
+   |           ^^^^^^^^ help: try: `arr.get(idx)`
+   |
+   = note: `-D clippy::match-on-vec-items` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::match_on_vec_items)]`
+
+error: indexing into a vector may panic
+  --> tests/ui/match_on_vec_items.rs:19:11
+   |
+LL |     match arr[range] {
+   |           ^^^^^^^^^^ help: try: `arr.get(range)`
+
+error: indexing into a vector may panic
+  --> tests/ui/match_on_vec_items.rs:33:11
+   |
+LL |     match arr[idx] {
+   |           ^^^^^^^^ help: try: `arr.get(idx)`
+
+error: indexing into a vector may panic
+  --> tests/ui/match_on_vec_items.rs:41:11
+   |
+LL |     match arr[range] {
+   |           ^^^^^^^^^^ help: try: `arr.get(range)`
+
+error: indexing into a vector may panic
+  --> tests/ui/match_on_vec_items.rs:55:11
+   |
+LL |     match arr[idx] {
+   |           ^^^^^^^^ help: try: `arr.get(idx)`
+
+error: indexing into a vector may panic
+  --> tests/ui/match_on_vec_items.rs:63:11
+   |
+LL |     match arr[range] {
+   |           ^^^^^^^^^^ help: try: `arr.get(range)`
+
+error: indexing into a vector may panic
+  --> tests/ui/match_on_vec_items.rs:77:11
+   |
+LL |     match arr[idx] {
+   |           ^^^^^^^^ help: try: `arr.get(idx)`
+
+error: indexing into a vector may panic
+  --> tests/ui/match_on_vec_items.rs:85:11
+   |
+LL |     match arr[range] {
+   |           ^^^^^^^^^^ help: try: `arr.get(range)`
+
+error: aborting due to 8 previous errors
+

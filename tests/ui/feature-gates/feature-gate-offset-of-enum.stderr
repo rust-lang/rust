@@ -1,0 +1,39 @@
+error[E0573]: expected type, found variant `Alpha::One`
+  --> $DIR/feature-gate-offset-of-enum.rs:9:16
+   |
+LL |     offset_of!(Alpha::One, 0);
+   |                ^^^^^^^^^^
+   |                |
+   |                not a type
+   |                help: try using the variant's enum: `Alpha`
+
+error[E0658]: using enums in offset_of is experimental
+  --> $DIR/feature-gate-offset-of-enum.rs:10:23
+   |
+LL |     offset_of!(Alpha, One);
+   |                       ^^^
+   |
+   = note: see issue #120141 <https://github.com/rust-lang/rust/issues/120141> for more information
+   = help: add `#![feature(offset_of_enum)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0795]: `One` is an enum variant; expected field at end of `offset_of`
+  --> $DIR/feature-gate-offset-of-enum.rs:10:23
+   |
+LL |     offset_of!(Alpha, One);
+   |                       ^^^ enum variant
+
+error[E0658]: using enums in offset_of is experimental
+  --> $DIR/feature-gate-offset-of-enum.rs:12:23
+   |
+LL |     offset_of!(Alpha, Two.0);
+   |                       ^^^
+   |
+   = note: see issue #120141 <https://github.com/rust-lang/rust/issues/120141> for more information
+   = help: add `#![feature(offset_of_enum)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0573, E0658, E0795.
+For more information about an error, try `rustc --explain E0573`.

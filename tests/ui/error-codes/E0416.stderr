@@ -1,0 +1,9 @@
+error[E0416]: identifier `x` is bound more than once in the same pattern
+  --> $DIR/E0416.rs:3:13
+   |
+LL |         (x, x) => {}
+   |             ^ used in a pattern more than once
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0416`.

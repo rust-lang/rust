@@ -1,0 +1,104 @@
+#![allow(unused)]
+#![warn(clippy::implicit_saturating_add)]
+
+fn main() {
+    let mut u_8: u8 = 255;
+    let mut u_16: u16 = 500;
+    let mut u_32: u32 = 7000;
+    let mut u_64: u64 = 7000;
+    let mut i_8: i8 = 30;
+    let mut i_16: i16 = 500;
+    let mut i_32: i32 = 7000;
+    let mut i_64: i64 = 7000;
+
+    if i_8 < 42 {
+        i_8 += 1;
+    }
+    if i_8 != 42 {
+        i_8 += 1;
+    }
+
+    u_8 = u_8.saturating_add(1);
+
+    u_8 = u_8.saturating_add(1);
+
+    if u_8 < 15 {
+        u_8 += 1;
+    }
+
+    u_16 = u_16.saturating_add(1);
+
+    u_16 = u_16.saturating_add(1);
+
+    u_16 = u_16.saturating_add(1);
+
+    u_32 = u_32.saturating_add(1);
+
+    u_32 = u_32.saturating_add(1);
+
+    u_32 = u_32.saturating_add(1);
+
+    u_64 = u_64.saturating_add(1);
+
+    u_64 = u_64.saturating_add(1);
+
+    u_64 = u_64.saturating_add(1);
+
+    i_8 = i_8.saturating_add(1);
+
+    i_8 = i_8.saturating_add(1);
+
+    i_8 = i_8.saturating_add(1);
+
+    i_16 = i_16.saturating_add(1);
+
+    i_16 = i_16.saturating_add(1);
+
+    i_16 = i_16.saturating_add(1);
+
+    i_32 = i_32.saturating_add(1);
+
+    i_32 = i_32.saturating_add(1);
+
+    i_32 = i_32.saturating_add(1);
+
+    i_64 = i_64.saturating_add(1);
+
+    i_64 = i_64.saturating_add(1);
+
+    i_64 = i_64.saturating_add(1);
+
+    if i_64 < 42 {
+        i_64 += 1;
+    }
+
+    if 42 > i_64 {
+        i_64 += 1;
+    }
+
+    let a = 12;
+    let mut b = 8;
+
+    if a < u8::MAX {
+        b += 1;
+    }
+
+    if u8::MAX > a {
+        b += 1;
+    }
+
+    if u_32 < u32::MAX {
+        u_32 += 1;
+    } else {
+        println!("don't lint this");
+    }
+
+    if u_32 < u32::MAX {
+        println!("don't lint this");
+        u_32 += 1;
+    }
+
+    if u_32 < 42 {
+        println!("brace yourself!");
+    } else {u_32 = u_32.saturating_add(1); }
+}

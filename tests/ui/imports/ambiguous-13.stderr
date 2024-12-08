@@ -1,0 +1,25 @@
+warning: `Rect` is ambiguous
+  --> $DIR/ambiguous-13.rs:19:9
+   |
+LL | fn a(_: Rect) {}
+   |         ^^^^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `Rect` could refer to the struct imported here
+  --> $DIR/ambiguous-13.rs:16:5
+   |
+LL | use crate::object::*;
+   |     ^^^^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `Rect` to disambiguate
+note: `Rect` could also refer to the struct imported here
+  --> $DIR/ambiguous-13.rs:17:5
+   |
+LL | use crate::content::*;
+   |     ^^^^^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `Rect` to disambiguate
+   = note: `#[warn(ambiguous_glob_imports)]` on by default
+
+warning: 1 warning emitted
+

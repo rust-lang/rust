@@ -1,0 +1,9 @@
+error[E0412]: cannot find type `Bar` in this scope
+  --> $DIR/apit-with-error-type-in-sig.rs:1:12
+   |
+LL | type Foo = Bar;
+   |            ^^^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0412`.

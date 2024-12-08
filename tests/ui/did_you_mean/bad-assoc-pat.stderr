@@ -1,0 +1,114 @@
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-pat.rs:3:9
+   |
+LL |         [u8]::AssocItem => {}
+   |         ^^^^
+   |
+help: types that don't start with an identifier need to be surrounded with angle brackets in qualified paths
+   |
+LL |         <[u8]>::AssocItem => {}
+   |         +    +
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-pat.rs:6:9
+   |
+LL |         (u8, u8)::AssocItem => {}
+   |         ^^^^^^^^
+   |
+help: types that don't start with an identifier need to be surrounded with angle brackets in qualified paths
+   |
+LL |         <(u8, u8)>::AssocItem => {}
+   |         +        +
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-pat.rs:9:9
+   |
+LL |         _::AssocItem => {}
+   |         ^
+   |
+help: types that don't start with an identifier need to be surrounded with angle brackets in qualified paths
+   |
+LL |         <_>::AssocItem => {}
+   |         + +
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-pat.rs:14:10
+   |
+LL |         &(u8,)::AssocItem => {}
+   |          ^^^^^
+   |
+help: types that don't start with an identifier need to be surrounded with angle brackets in qualified paths
+   |
+LL |         &<(u8,)>::AssocItem => {}
+   |          +     +
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-pat.rs:32:9
+   |
+LL |         ty!()::AssocItem => {}
+   |         ^^^^^
+   |
+help: types that don't start with an identifier need to be surrounded with angle brackets in qualified paths
+   |
+LL |         <ty!()>::AssocItem => {}
+   |         +     +
+
+error: missing angle brackets in associated item path
+  --> $DIR/bad-assoc-pat.rs:21:19
+   |
+LL |     ($ty: ty) => ($ty::AssocItem)
+   |                   ^^^
+...
+LL |         pat!(u8) => {}
+   |         -------- in this macro invocation
+   |
+   = note: this error originates in the macro `pat` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: types that don't start with an identifier need to be surrounded with angle brackets in qualified paths
+   |
+LL |     ($ty: ty) => (<$ty>::AssocItem)
+   |                   +   +
+
+error[E0599]: no associated item named `AssocItem` found for slice `[u8]` in the current scope
+  --> $DIR/bad-assoc-pat.rs:3:15
+   |
+LL |         [u8]::AssocItem => {}
+   |               ^^^^^^^^^ associated item not found in `[u8]`
+
+error[E0599]: no associated item named `AssocItem` found for tuple `(u8, u8)` in the current scope
+  --> $DIR/bad-assoc-pat.rs:6:19
+   |
+LL |         (u8, u8)::AssocItem => {}
+   |                   ^^^^^^^^^ associated item not found in `(u8, u8)`
+
+error[E0599]: no associated item named `AssocItem` found for type `_` in the current scope
+  --> $DIR/bad-assoc-pat.rs:9:12
+   |
+LL |         _::AssocItem => {}
+   |            ^^^^^^^^^ associated item not found in `_`
+
+error[E0599]: no associated item named `AssocItem` found for tuple `(u8,)` in the current scope
+  --> $DIR/bad-assoc-pat.rs:14:17
+   |
+LL |         &(u8,)::AssocItem => {}
+   |                 ^^^^^^^^^ associated item not found in `(u8,)`
+
+error[E0599]: no associated item named `AssocItem` found for type `u8` in the current scope
+  --> $DIR/bad-assoc-pat.rs:21:24
+   |
+LL |     ($ty: ty) => ($ty::AssocItem)
+   |                        ^^^^^^^^^ associated item not found in `u8`
+...
+LL |         pat!(u8) => {}
+   |         -------- in this macro invocation
+   |
+   = note: this error originates in the macro `pat` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0599]: no associated item named `AssocItem` found for type `u8` in the current scope
+  --> $DIR/bad-assoc-pat.rs:32:16
+   |
+LL |         ty!()::AssocItem => {}
+   |                ^^^^^^^^^ associated item not found in `u8`
+
+error: aborting due to 12 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

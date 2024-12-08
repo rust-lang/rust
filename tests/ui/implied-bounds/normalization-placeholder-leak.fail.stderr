@@ -1,0 +1,15 @@
+error[E0477]: the type `&'lt u8` does not fulfill the required lifetime
+  --> $DIR/normalization-placeholder-leak.rs:31:40
+   |
+LL |     fn test_lifetime<'lt, T: Trait>(_: Foo<&'lt u8>) {}
+   |                                        ^^^^^^^^^^^^
+
+error[E0477]: the type `<T as AnotherTrait>::Ty2<'lt>` does not fulfill the required lifetime
+  --> $DIR/normalization-placeholder-leak.rs:36:44
+   |
+LL |     fn test_alias<'lt, T: AnotherTrait>(_: Foo<T::Ty2::<'lt>>) {}
+   |                                            ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0477`.

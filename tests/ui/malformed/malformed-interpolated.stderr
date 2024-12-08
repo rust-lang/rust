@@ -1,0 +1,22 @@
+error: suffixed literals are not allowed in attributes
+  --> $DIR/malformed-interpolated.rs:12:8
+   |
+LL | check!(0u8);
+   |        ^^^
+   |
+   = help: instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
+
+error: attribute value must be a literal
+  --> $DIR/malformed-interpolated.rs:13:8
+   |
+LL | check!(-0);
+   |        ^^
+
+error: attribute value must be a literal
+  --> $DIR/malformed-interpolated.rs:14:8
+   |
+LL | check!(0 + 0);
+   |        ^^^^^
+
+error: aborting due to 3 previous errors
+

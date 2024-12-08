@@ -1,0 +1,14 @@
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/recursive-tait-conflicting-defn.rs:28:9
+   |
+LL |         Some(B { inner })
+   |         ^^^^^^^^^^^^^^^^^ expected `A`, got `B<TestImpl>`
+   |
+note: previous use here
+  --> $DIR/recursive-tait-conflicting-defn.rs:22:9
+   |
+LL |         A
+   |         ^
+
+error: aborting due to 1 previous error
+

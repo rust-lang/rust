@@ -1,0 +1,14 @@
+error: abi: Memory { sized: true }
+  --> $DIR/struct.rs:9:1
+   |
+LL | struct AlignedZstPreventsScalar(i16, [i32; 0]);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: abi: Scalar(Initialized { value: Int(I32, true), valid_range: 0..=4294967295 })
+  --> $DIR/struct.rs:12:1
+   |
+LL | struct AlignedZstButStillScalar(i32, [i16; 0]);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

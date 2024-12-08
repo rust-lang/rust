@@ -1,0 +1,83 @@
+error: expected `;`, found keyword `struct`
+  --> $DIR/recover-missing-semi-before-item.rs:6:16
+   |
+LL |     let foo = 3
+   |                ^ help: add `;` here
+LL |     struct Foo;
+   |     ------ unexpected token
+
+error: expected `;`, found `union`
+  --> $DIR/recover-missing-semi-before-item.rs:11:16
+   |
+LL |     let foo = 3
+   |                ^ help: add `;` here
+LL |     union Foo {
+   |     ----- unexpected token
+
+error: expected `;`, found keyword `enum`
+  --> $DIR/recover-missing-semi-before-item.rs:18:16
+   |
+LL |     let foo = 3
+   |                ^ help: add `;` here
+LL |     enum Foo {
+   |     ---- unexpected token
+
+error: expected `;`, found keyword `fn`
+  --> $DIR/recover-missing-semi-before-item.rs:25:16
+   |
+LL |     let foo = 3
+   |                ^ help: add `;` here
+LL |     fn foo() {}
+   |     -- unexpected token
+
+error: expected `;`, found keyword `extern`
+  --> $DIR/recover-missing-semi-before-item.rs:30:16
+   |
+LL |     let foo = 3
+   |                ^ help: add `;` here
+LL |     extern fn foo() {}
+   |     ------ unexpected token
+
+error: expected `;`, found keyword `impl`
+  --> $DIR/recover-missing-semi-before-item.rs:36:16
+   |
+LL |     let foo = 3
+   |                ^ help: add `;` here
+LL |     impl Foo {}
+   |     ---- unexpected token
+
+error: expected `;`, found keyword `pub`
+  --> $DIR/recover-missing-semi-before-item.rs:41:16
+   |
+LL |     let foo = 3
+   |                ^ help: add `;` here
+LL |     pub use bar::Bar;
+   |     --- unexpected token
+
+error: expected `;`, found keyword `mod`
+  --> $DIR/recover-missing-semi-before-item.rs:46:16
+   |
+LL |     let foo = 3
+   |                ^ help: add `;` here
+LL |     mod foo {}
+   |     --- unexpected token
+
+error: expected `;`, found keyword `type`
+  --> $DIR/recover-missing-semi-before-item.rs:51:16
+   |
+LL |     let foo = 3
+   |                ^ help: add `;` here
+LL |     type Foo = usize;
+   |     ---- unexpected token
+
+error: expected `;`, found keyword `fn`
+  --> $DIR/recover-missing-semi-before-item.rs:59:19
+   |
+LL | const X: i32 = 123
+   |                   ^ help: add `;` here
+LL |
+LL | fn main() {}
+   | -- unexpected token
+
+error: aborting due to 10 previous errors
+

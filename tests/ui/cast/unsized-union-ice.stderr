@@ -1,0 +1,23 @@
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/unsized-union-ice.rs:6:10
+   |
+LL |     val: std::mem::ManuallyDrop<[u8]>,
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `ManuallyDrop<[u8]>`, the trait `Sized` is not implemented for `[u8]`
+note: required because it appears within the type `ManuallyDrop<[u8]>`
+  --> $SRC_DIR/core/src/mem/manually_drop.rs:LL:COL
+   = note: no field of a union may have a dynamically sized type
+   = help: change the field's type to have a statically known size
+help: borrowed types always have a statically known size
+   |
+LL |     val: &std::mem::ManuallyDrop<[u8]>,
+   |          +
+help: the `Box` type always has a statically known size and allocates its contents in the heap
+   |
+LL |     val: Box<std::mem::ManuallyDrop<[u8]>>,
+   |          ++++                            +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

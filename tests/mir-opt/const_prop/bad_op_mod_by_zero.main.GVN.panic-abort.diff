@@ -1,0 +1,56 @@
+- // MIR for `main` before GVN
++ // MIR for `main` after GVN
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: i32;
+      let mut _3: i32;
+      let mut _4: bool;
+      let mut _5: bool;
+      let mut _6: bool;
+      let mut _7: bool;
+      scope 1 {
+          debug y => _1;
+          let _2: i32;
+          scope 2 {
+              debug _z => _2;
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_1);
++         nop;
+          _1 = const 0_i32;
+          StorageLive(_2);
+          StorageLive(_3);
+-         _3 = copy _1;
+-         _4 = Eq(copy _3, const 0_i32);
+-         assert(!move _4, "attempt to calculate the remainder of `{}` with a divisor of zero", const 1_i32) -> [success: bb1, unwind unreachable];
++         _3 = const 0_i32;
++         _4 = const true;
++         assert(!const true, "attempt to calculate the remainder of `{}` with a divisor of zero", const 1_i32) -> [success: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+-         _5 = Eq(copy _3, const -1_i32);
+-         _6 = Eq(const 1_i32, const i32::MIN);
+-         _7 = BitAnd(move _5, move _6);
+-         assert(!move _7, "attempt to compute the remainder of `{} % {}`, which would overflow", const 1_i32, copy _3) -> [success: bb2, unwind unreachable];
++         _5 = const false;
++         _6 = const false;
++         _7 = const false;
++         assert(!const false, "attempt to compute the remainder of `{} % {}`, which would overflow", const 1_i32, const 0_i32) -> [success: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+-         _2 = Rem(const 1_i32, move _3);
++         _2 = Rem(const 1_i32, const 0_i32);
+          StorageDead(_3);
+          _0 = const ();
+          StorageDead(_2);
+-         StorageDead(_1);
++         nop;
+          return;
+      }
+  }
+  

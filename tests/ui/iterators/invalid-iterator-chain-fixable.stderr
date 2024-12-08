@@ -1,0 +1,157 @@
+error[E0277]: a value of type `Vec<X>` cannot be built from an iterator over elements of type `&X`
+  --> $DIR/invalid-iterator-chain-fixable.rs:7:7
+   |
+LL |     let i = i.map(|x| x.clone());
+   |                         ------- this method call is cloning the reference `&X`, not `X` which doesn't implement `Clone`
+LL |     i.collect()
+   |       ^^^^^^^ value of type `Vec<X>` cannot be built from `std::iter::Iterator<Item=&X>`
+   |
+   = help: the trait `FromIterator<&_>` is not implemented for `Vec<X>`
+           but trait `FromIterator<_>` is implemented for it
+   = help: for that trait implementation, expected `X`, found `&X`
+note: the method call chain might not have had the expected associated types
+  --> $DIR/invalid-iterator-chain-fixable.rs:5:26
+   |
+LL | fn iter_to_vec<'b, X>(i: Iter<'b, X>) -> Vec<X> {
+   |                          ^^^^^^^^^^^ `Iterator::Item` is `&X` here
+LL |     let i = i.map(|x| x.clone());
+   |               ------------------ `Iterator::Item` remains `&X` here
+note: required by a bound in `collect`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+help: consider further restricting type parameter `X`
+   |
+LL | fn iter_to_vec<'b, X>(i: Iter<'b, X>) -> Vec<X> where X: Clone {
+   |                                                 ++++++++++++++
+
+error[E0277]: a value of type `i32` cannot be made by summing an iterator over elements of type `()`
+  --> $DIR/invalid-iterator-chain-fixable.rs:17:33
+   |
+LL |     println!("{}", scores.sum::<i32>());
+   |                           ---   ^^^ value of type `i32` cannot be made by summing a `std::iter::Iterator<Item=()>`
+   |                           |
+   |                           required by a bound introduced by this call
+   |
+   = help: the trait `Sum<()>` is not implemented for `i32`
+   = help: the following other types implement trait `Sum<A>`:
+             `i32` implements `Sum<&i32>`
+             `i32` implements `Sum`
+note: the method call chain might not have had the expected associated types
+  --> $DIR/invalid-iterator-chain-fixable.rs:14:10
+   |
+LL |       let v = vec![(0, 0)];
+   |               ------------ this expression has type `Vec<({integer}, {integer})>`
+LL |       let scores = v
+LL |           .iter()
+   |            ------ `Iterator::Item` is `&({integer}, {integer})` here
+LL |           .map(|(a, b)| {
+   |  __________^
+LL | |             a + b;
+LL | |         });
+   | |__________^ `Iterator::Item` changed to `()` here
+note: required by a bound in `std::iter::Iterator::sum`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+help: consider removing this semicolon
+   |
+LL -             a + b;
+LL +             a + b
+   |
+
+error[E0277]: a value of type `i32` cannot be made by summing an iterator over elements of type `()`
+  --> $DIR/invalid-iterator-chain-fixable.rs:25:20
+   |
+LL |             .sum::<i32>(),
+   |              ---   ^^^ value of type `i32` cannot be made by summing a `std::iter::Iterator<Item=()>`
+   |              |
+   |              required by a bound introduced by this call
+   |
+   = help: the trait `Sum<()>` is not implemented for `i32`
+   = help: the following other types implement trait `Sum<A>`:
+             `i32` implements `Sum<&i32>`
+             `i32` implements `Sum`
+note: the method call chain might not have had the expected associated types
+  --> $DIR/invalid-iterator-chain-fixable.rs:23:14
+   |
+LL |         vec![0, 1]
+   |         ---------- this expression has type `Vec<{integer}>`
+LL |             .iter()
+   |              ------ `Iterator::Item` is `&{integer}` here
+LL |             .map(|x| x * 2)
+   |              -------------- `Iterator::Item` changed to `{integer}` here
+LL |             .map(|x| { x; })
+   |              ^^^^^^^^^^^^^^^ `Iterator::Item` changed to `()` here
+LL |             .map(|x| { x })
+   |              -------------- `Iterator::Item` remains `()` here
+note: required by a bound in `std::iter::Iterator::sum`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+help: consider removing this semicolon
+   |
+LL -             .map(|x| { x; })
+LL +             .map(|x| { x })
+   |
+
+error[E0277]: a value of type `i32` cannot be made by summing an iterator over elements of type `()`
+  --> $DIR/invalid-iterator-chain-fixable.rs:27:60
+   |
+LL |     println!("{}", vec![0, 1].iter().map(|x| { x; }).sum::<i32>());
+   |                                                      ---   ^^^ value of type `i32` cannot be made by summing a `std::iter::Iterator<Item=()>`
+   |                                                      |
+   |                                                      required by a bound introduced by this call
+   |
+   = help: the trait `Sum<()>` is not implemented for `i32`
+   = help: the following other types implement trait `Sum<A>`:
+             `i32` implements `Sum<&i32>`
+             `i32` implements `Sum`
+note: the method call chain might not have had the expected associated types
+  --> $DIR/invalid-iterator-chain-fixable.rs:27:38
+   |
+LL |     println!("{}", vec![0, 1].iter().map(|x| { x; }).sum::<i32>());
+   |                    ---------- ------ ^^^^^^^^^^^^^^^ `Iterator::Item` changed to `()` here
+   |                    |          |
+   |                    |          `Iterator::Item` is `&{integer}` here
+   |                    this expression has type `Vec<{integer}>`
+note: required by a bound in `std::iter::Iterator::sum`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+help: consider removing this semicolon
+   |
+LL -     println!("{}", vec![0, 1].iter().map(|x| { x; }).sum::<i32>());
+LL +     println!("{}", vec![0, 1].iter().map(|x| { x }).sum::<i32>());
+   |
+
+error[E0277]: a value of type `Vec<i32>` cannot be built from an iterator over elements of type `()`
+  --> $DIR/invalid-iterator-chain-fixable.rs:36:25
+   |
+LL |     let g: Vec<i32> = f.collect();
+   |                         ^^^^^^^ value of type `Vec<i32>` cannot be built from `std::iter::Iterator<Item=()>`
+   |
+   = help: the trait `FromIterator<()>` is not implemented for `Vec<i32>`
+           but trait `FromIterator<i32>` is implemented for it
+   = help: for that trait implementation, expected `i32`, found `()`
+note: the method call chain might not have had the expected associated types
+  --> $DIR/invalid-iterator-chain-fixable.rs:32:15
+   |
+LL |       let a = vec![0];
+   |               ------- this expression has type `Vec<{integer}>`
+LL |       let b = a.into_iter();
+   |                 ----------- `Iterator::Item` is `{integer}` here
+LL |       let c = b.map(|x| x + 1);
+   |                 -------------- `Iterator::Item` remains `{integer}` here
+LL |       let d = c.filter(|x| *x > 10 );
+   |                 -------------------- `Iterator::Item` remains `{integer}` here
+LL |       let e = d.map(|x| {
+   |  _______________^
+LL | |         x + 1;
+LL | |     });
+   | |______^ `Iterator::Item` changed to `()` here
+LL |       let f = e.filter(|_| false);
+   |                 ----------------- `Iterator::Item` remains `()` here
+note: required by a bound in `collect`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+help: consider removing this semicolon
+   |
+LL -         x + 1;
+LL +         x + 1
+   |
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

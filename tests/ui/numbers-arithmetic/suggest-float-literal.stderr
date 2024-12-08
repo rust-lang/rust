@@ -1,0 +1,139 @@
+error[E0277]: cannot add `{integer}` to `f32`
+  --> $DIR/suggest-float-literal.rs:6:7
+   |
+LL |     x + 100
+   |       ^ no implementation for `f32 + {integer}`
+   |
+   = help: the trait `Add<{integer}>` is not implemented for `f32`
+   = help: the following other types implement trait `Add<Rhs>`:
+             `&f32` implements `Add<f32>`
+             `&f32` implements `Add`
+             `f32` implements `Add<&f32>`
+             `f32` implements `Add`
+help: consider using a floating-point literal by writing it with `.0`
+   |
+LL |     x + 100.0
+   |            ++
+
+error[E0277]: cannot add `{integer}` to `f64`
+  --> $DIR/suggest-float-literal.rs:10:7
+   |
+LL |     x + 100
+   |       ^ no implementation for `f64 + {integer}`
+   |
+   = help: the trait `Add<{integer}>` is not implemented for `f64`
+   = help: the following other types implement trait `Add<Rhs>`:
+             `&f64` implements `Add<f64>`
+             `&f64` implements `Add`
+             `f64` implements `Add<&f64>`
+             `f64` implements `Add`
+help: consider using a floating-point literal by writing it with `.0`
+   |
+LL |     x + 100.0
+   |            ++
+
+error[E0277]: cannot subtract `{integer}` from `f32`
+  --> $DIR/suggest-float-literal.rs:14:7
+   |
+LL |     x - 100
+   |       ^ no implementation for `f32 - {integer}`
+   |
+   = help: the trait `Sub<{integer}>` is not implemented for `f32`
+   = help: the following other types implement trait `Sub<Rhs>`:
+             `&f32` implements `Sub<f32>`
+             `&f32` implements `Sub`
+             `f32` implements `Sub<&f32>`
+             `f32` implements `Sub`
+help: consider using a floating-point literal by writing it with `.0`
+   |
+LL |     x - 100.0
+   |            ++
+
+error[E0277]: cannot subtract `{integer}` from `f64`
+  --> $DIR/suggest-float-literal.rs:18:7
+   |
+LL |     x - 100
+   |       ^ no implementation for `f64 - {integer}`
+   |
+   = help: the trait `Sub<{integer}>` is not implemented for `f64`
+   = help: the following other types implement trait `Sub<Rhs>`:
+             `&f64` implements `Sub<f64>`
+             `&f64` implements `Sub`
+             `f64` implements `Sub<&f64>`
+             `f64` implements `Sub`
+help: consider using a floating-point literal by writing it with `.0`
+   |
+LL |     x - 100.0
+   |            ++
+
+error[E0277]: cannot multiply `f32` by `{integer}`
+  --> $DIR/suggest-float-literal.rs:22:7
+   |
+LL |     x * 100
+   |       ^ no implementation for `f32 * {integer}`
+   |
+   = help: the trait `Mul<{integer}>` is not implemented for `f32`
+   = help: the following other types implement trait `Mul<Rhs>`:
+             `&f32` implements `Mul<f32>`
+             `&f32` implements `Mul`
+             `f32` implements `Mul<&f32>`
+             `f32` implements `Mul`
+help: consider using a floating-point literal by writing it with `.0`
+   |
+LL |     x * 100.0
+   |            ++
+
+error[E0277]: cannot multiply `f64` by `{integer}`
+  --> $DIR/suggest-float-literal.rs:26:7
+   |
+LL |     x * 100
+   |       ^ no implementation for `f64 * {integer}`
+   |
+   = help: the trait `Mul<{integer}>` is not implemented for `f64`
+   = help: the following other types implement trait `Mul<Rhs>`:
+             `&f64` implements `Mul<f64>`
+             `&f64` implements `Mul`
+             `f64` implements `Mul<&f64>`
+             `f64` implements `Mul`
+help: consider using a floating-point literal by writing it with `.0`
+   |
+LL |     x * 100.0
+   |            ++
+
+error[E0277]: cannot divide `f32` by `{integer}`
+  --> $DIR/suggest-float-literal.rs:30:7
+   |
+LL |     x / 100
+   |       ^ no implementation for `f32 / {integer}`
+   |
+   = help: the trait `Div<{integer}>` is not implemented for `f32`
+   = help: the following other types implement trait `Div<Rhs>`:
+             `&f32` implements `Div<f32>`
+             `&f32` implements `Div`
+             `f32` implements `Div<&f32>`
+             `f32` implements `Div`
+help: consider using a floating-point literal by writing it with `.0`
+   |
+LL |     x / 100.0
+   |            ++
+
+error[E0277]: cannot divide `f64` by `{integer}`
+  --> $DIR/suggest-float-literal.rs:34:7
+   |
+LL |     x / 100
+   |       ^ no implementation for `f64 / {integer}`
+   |
+   = help: the trait `Div<{integer}>` is not implemented for `f64`
+   = help: the following other types implement trait `Div<Rhs>`:
+             `&f64` implements `Div<f64>`
+             `&f64` implements `Div`
+             `f64` implements `Div<&f64>`
+             `f64` implements `Div`
+help: consider using a floating-point literal by writing it with `.0`
+   |
+LL |     x / 100.0
+   |            ++
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

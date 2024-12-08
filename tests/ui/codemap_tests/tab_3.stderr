@@ -1,0 +1,22 @@
+error[E0382]: borrow of moved value: `some_vec`
+  --> $DIR/tab_3.rs:7:20
+   |
+LL |     let some_vec = vec!["hi"];
+   |         -------- move occurs because `some_vec` has type `Vec<&str>`, which does not implement the `Copy` trait
+LL |     some_vec.into_iter();
+   |              ----------- `some_vec` moved due to this method call
+LL |     {
+LL |         println!("{:?}", some_vec);
+   |                          ^^^^^^^^ value borrowed here after move
+   |
+note: `into_iter` takes ownership of the receiver `self`, which moves `some_vec`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you can `clone` the value and consume it, but this might not be your desired behavior
+   |
+LL |     some_vec.clone().into_iter();
+   |             ++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

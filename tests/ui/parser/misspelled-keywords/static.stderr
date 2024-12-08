@@ -1,0 +1,13 @@
+error: expected one of `!` or `::`, found `a`
+  --> $DIR/static.rs:1:8
+   |
+LL | Static a = 0;
+   |        ^ expected one of `!` or `::`
+   |
+help: write keyword `static` in lowercase (notice the capitalization difference)
+   |
+LL | static a = 0;
+   | ~~~~~~
+
+error: aborting due to 1 previous error
+

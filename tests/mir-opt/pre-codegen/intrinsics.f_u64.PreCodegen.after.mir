@@ -1,0 +1,18 @@
+// MIR for `f_u64` after PreCodegen
+
+fn f_u64() -> () {
+    let mut _0: ();
+    scope 1 (inlined f_dispatch::<u64>) {
+        let _1: ();
+        scope 2 (inlined std::mem::size_of::<u64>) {
+        }
+    }
+
+    bb0: {
+        _1 = f_non_zst::<u64>(const 0_u64) -> [return: bb1, unwind unreachable];
+    }
+
+    bb1: {
+        return;
+    }
+}

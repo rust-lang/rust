@@ -1,0 +1,45 @@
+error[E0734]: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-unstable.rs:7:1
+   |
+LL | #![unstable()]
+   | ^^^^^^^^^^^^^^
+
+error[E0734]: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-unstable.rs:10:1
+   |
+LL | #[unstable()]
+   | ^^^^^^^^^^^^^
+
+error[E0734]: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-unstable.rs:14:9
+   |
+LL |         #![unstable()]
+   |         ^^^^^^^^^^^^^^
+
+error[E0734]: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-unstable.rs:18:5
+   |
+LL |     #[unstable()]
+   |     ^^^^^^^^^^^^^
+
+error[E0734]: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-unstable.rs:22:5
+   |
+LL |     #[unstable()]
+   |     ^^^^^^^^^^^^^
+
+error[E0734]: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-unstable.rs:26:5
+   |
+LL |     #[unstable()]
+   |     ^^^^^^^^^^^^^
+
+error[E0734]: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-unstable.rs:30:5
+   |
+LL |     #[unstable()]
+   |     ^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0734`.

@@ -1,0 +1,36 @@
+error[E0505]: cannot move out of `a` because it is borrowed
+  --> $DIR/borrow-for-loop-head.rs:4:18
+   |
+LL |     let a = vec![1, 2, 3];
+   |         - binding `a` declared here
+LL |     for i in &a {
+   |              -- borrow of `a` occurs here
+LL |         for j in a {
+   |                  ^ move out of `a` occurs here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     for i in &a.clone() {
+   |                ++++++++
+
+error[E0382]: use of moved value: `a`
+  --> $DIR/borrow-for-loop-head.rs:4:18
+   |
+LL |     let a = vec![1, 2, 3];
+   |         - move occurs because `a` has type `Vec<i32>`, which does not implement the `Copy` trait
+LL |     for i in &a {
+   |     ----------- inside of this loop
+LL |         for j in a {
+   |                  ^ `a` moved due to this implicit call to `.into_iter()`, in previous iteration of loop
+   |
+note: `into_iter` takes ownership of the receiver `self`, which moves `a`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+help: consider iterating over a slice of the `Vec<i32>`'s content to avoid moving into the `for` loop
+   |
+LL |         for j in &a {
+   |                  +
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0382, E0505.
+For more information about an error, try `rustc --explain E0382`.

@@ -1,0 +1,26 @@
+error: expected `;`, found `println`
+  --> $DIR/issue-87197-missing-semicolon.rs:6:16
+   |
+LL |     let x = 100
+   |                ^ help: add `;` here
+LL |     println!("{}", x)
+   |     ------- unexpected token
+
+error: expected `;`, found keyword `let`
+  --> $DIR/issue-87197-missing-semicolon.rs:7:22
+   |
+LL |     println!("{}", x)
+   |                      ^ help: add `;` here
+LL |     let y = 200
+   |     --- unexpected token
+
+error: expected `;`, found `println`
+  --> $DIR/issue-87197-missing-semicolon.rs:8:16
+   |
+LL |     let y = 200
+   |                ^ help: add `;` here
+LL |     println!("{}", y);
+   |     ------- unexpected token
+
+error: aborting due to 3 previous errors
+

@@ -1,0 +1,19 @@
+error[E0433]: failed to resolve: could not find `imp` in `sys`
+  --> $DIR/issue-38857.rs:2:23
+   |
+LL |     let a = std::sys::imp::process::process_common::StdioPipes { ..panic!() };
+   |                       ^^^ could not find `imp` in `sys`
+
+error[E0603]: module `sys` is private
+  --> $DIR/issue-38857.rs:2:18
+   |
+LL |     let a = std::sys::imp::process::process_common::StdioPipes { ..panic!() };
+   |                  ^^^ private module
+   |
+note: the module `sys` is defined here
+  --> $SRC_DIR/std/src/lib.rs:LL:COL
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0433, E0603.
+For more information about an error, try `rustc --explain E0433`.

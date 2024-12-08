@@ -1,0 +1,55 @@
+error[E0401]: can't use generic parameters from outer item
+  --> $DIR/target-expr.rs:18:17
+   |
+LL | fn bar<T: Default>(_: T) {
+   |        - type parameter from outer item
+LL |     reuse Trait::static_method {
+   |                               - help: try introducing a local generic parameter here: `T,`
+LL |
+LL |         let _ = T::Default();
+   |                 ^^^^^^^^^^ use of generic parameter from outer item
+
+error[E0434]: can't capture dynamic environment in a fn item
+  --> $DIR/target-expr.rs:26:17
+   |
+LL |         let x = y;
+   |                 ^
+   |
+   = help: use the `|| { ... }` closure form instead
+
+error[E0424]: expected value, found module `self`
+  --> $DIR/target-expr.rs:33:5
+   |
+LL | fn main() {
+   |    ---- this function can't have a `self` parameter
+...
+LL |     self.0;
+   |     ^^^^ `self` value is a keyword only available in methods with a `self` parameter
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/target-expr.rs:35:13
+   |
+LL |     let z = x;
+   |             ^
+   |
+help: the binding `x` is available in a different scope in the same function
+  --> $DIR/target-expr.rs:26:13
+   |
+LL |         let x = y;
+   |             ^
+
+error[E0308]: mismatched types
+  --> $DIR/target-expr.rs:16:32
+   |
+LL |       reuse Trait::static_method {
+   |  ________________________________^
+LL | |
+LL | |         let _ = T::Default();
+LL | |
+LL | |     }
+   | |_____^ expected `i32`, found `()`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0308, E0401, E0424, E0425, E0434.
+For more information about an error, try `rustc --explain E0308`.

@@ -1,0 +1,42 @@
+error: unreachable pattern
+  --> $DIR/patterns.rs:42:9
+   |
+LL |         Some(_x) => (),
+   |         ^^^^^^^^-------
+   |         |
+   |         matches no values because `UninhabitedVariants` is uninhabited
+   |         help: remove the match arm
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+note: the lint level is defined here
+  --> $DIR/patterns.rs:3:9
+   |
+LL | #![deny(unreachable_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/patterns.rs:47:15
+   |
+LL |     while let PartiallyInhabitedVariants::Struct { x, .. } = partially_inhabited_variant() {}
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ matches no values because `!` is uninhabited
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error: unreachable pattern
+  --> $DIR/patterns.rs:49:15
+   |
+LL |     while let Some(_x) = uninhabited_struct() {
+   |               ^^^^^^^^ matches no values because `UninhabitedStruct` is uninhabited
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error: unreachable pattern
+  --> $DIR/patterns.rs:52:15
+   |
+LL |     while let Some(_x) = uninhabited_tuple_struct() {
+   |               ^^^^^^^^ matches no values because `UninhabitedTupleStruct` is uninhabited
+   |
+   = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
+
+error: aborting due to 4 previous errors
+

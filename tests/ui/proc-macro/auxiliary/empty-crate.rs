@@ -1,0 +1,1 @@
+#![deny(unused_variables)]

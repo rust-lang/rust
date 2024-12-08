@@ -1,0 +1,18 @@
+error: multiple unused formatting arguments
+  --> $DIR/issue-89173.rs:7:20
+   |
+LL |     print!("%0*x", width, num);
+   |            ------  ^^^^^  ^^^ argument never used
+   |            |       |
+   |            |       argument never used
+   |            multiple missing formatting specifiers
+   |
+note: format specifiers use curly braces, and you have to use a positional or named parameter for the width
+  --> $DIR/issue-89173.rs:7:13
+   |
+LL |     print!("%0*x", width, num);
+   |             ^^^^
+   = note: printf formatting is not supported; see the documentation for `std::fmt`
+
+error: aborting due to 1 previous error
+

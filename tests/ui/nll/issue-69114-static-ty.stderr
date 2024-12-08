@@ -1,0 +1,17 @@
+error[E0597]: `n` does not live long enough
+  --> $DIR/issue-69114-static-ty.rs:7:9
+   |
+LL |     let n = 42;
+   |         - binding `n` declared here
+LL |     FOO(&n);
+   |     ----^^-
+   |     |   |
+   |     |   borrowed value does not live long enough
+   |     argument requires that `n` is borrowed for `'static`
+LL |
+LL | }
+   | - `n` dropped here while still borrowed
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

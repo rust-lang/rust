@@ -1,0 +1,10 @@
+error: `#![doc(test(...)]` does not take a literal
+  --> $DIR/doc-test-literal.rs:1:13
+   |
+LL | #![doc(test(""))]
+   |             ^^
+   |
+   = note: `#[deny(invalid_doc_attributes)]` on by default
+
+error: aborting due to 1 previous error
+

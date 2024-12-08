@@ -1,0 +1,19 @@
+error[E0573]: expected type, found built-in attribute `feature`
+  --> $DIR/issue-78654.rs:9:15
+   |
+LL | impl<const H: feature> Foo {
+   |               ^^^^^^^ not a type
+
+error[E0207]: the const parameter `H` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/issue-78654.rs:9:6
+   |
+LL | impl<const H: feature> Foo {
+   |      ^^^^^^^^^^^^^^^^ unconstrained const parameter
+   |
+   = note: expressions using a const parameter must map each value to a distinct output value
+   = note: proving the result of expressions other than the parameter are unique is not supported
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0207, E0573.
+For more information about an error, try `rustc --explain E0207`.

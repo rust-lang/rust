@@ -1,0 +1,7 @@
+error[E0275]: overflow evaluating the requirement `&mut Self: DispatchFromDyn<&mut RustaceansAreAwesome>`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "2"]` attribute to your crate (`zero_overflow`)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

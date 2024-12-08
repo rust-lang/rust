@@ -1,0 +1,12 @@
+warning: non-local `macro_rules!` definition, `#[macro_export]` macro should be written at top level module
+  --> $DIR/non_local_defs.rs:9:1
+   |
+LL | macro_rules! a_macro { () => {} }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove the `#[macro_export]` or make this doc-test a standalone test with its own `fn main() { ... }`
+   = note: a `macro_rules!` definition is non-local if it is nested inside an item and has a `#[macro_export]` attribute
+   = note: `#[warn(non_local_definitions)]` on by default
+
+warning: 1 warning emitted
+

@@ -1,0 +1,14 @@
+error[E0412]: cannot find type `Path` in this scope
+  --> $DIR/apit-with-bad-path.rs:3:29
+   |
+LL | fn foo(filename: impl AsRef<Path>) {
+   |                             ^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+LL + use std::path::Path;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0412`.

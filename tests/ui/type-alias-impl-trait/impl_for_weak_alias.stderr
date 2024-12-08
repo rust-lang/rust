@@ -1,0 +1,11 @@
+error[E0321]: traits with a default impl, like `Trait`, cannot be implemented for type alias `Alias`
+  --> $DIR/impl_for_weak_alias.rs:7:1
+   |
+LL | impl Trait for Alias {}
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: a trait object implements `Trait` if and only if `Trait` is one of the trait object's trait bounds
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0321`.

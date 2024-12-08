@@ -1,0 +1,8 @@
+error: bounds on associated types do not belong here
+  --> $DIR/assoc-type-in-type-arg.rs:5:26
+   |
+LL | struct Bar<'a, Item: Tr, <Item as Tr>::TrSubtype: 'a> {
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^ belongs in `where` clause
+
+error: aborting due to 1 previous error
+

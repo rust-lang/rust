@@ -1,0 +1,12 @@
+error[E0191]: the value of the associated type `Bar` in `Trait` must be specified
+  --> $DIR/E0191.rs:5:16
+   |
+LL |     type Bar;
+   |     -------- `Bar` defined here
+...
+LL | type Foo = dyn Trait;
+   |                ^^^^^ help: specify the associated type: `Trait<Bar = Type>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0191`.

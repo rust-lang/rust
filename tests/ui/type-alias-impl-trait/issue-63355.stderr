@@ -1,0 +1,15 @@
+error: item does not constrain `FooImpl::{opaque#0}`, but has it in its signature
+  --> $DIR/issue-63355.rs:40:8
+   |
+LL |     fn bar() -> Self::Bar {
+   |        ^^^
+   |
+   = note: consider moving the opaque type's declaration and defining uses into a separate module
+note: this opaque type is in the signature
+  --> $DIR/issue-63355.rs:29:20
+   |
+LL | pub type FooImpl = impl Foo;
+   |                    ^^^^^^^^
+
+error: aborting due to 1 previous error
+

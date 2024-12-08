@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<installer-gui-script minSpecVersion="2">
+    <title>The Rust Compiler</title>
+    <license file="LICENSE.txt" mime-type="text/plain"/>
+    <pkg-ref id="org.rust-lang.rust"/>
+    <options customize="always" require-scripts="false" hostArchitectures="i386,x86_64"/>
+    <domains enable_anywhere="false" enable_currentUserHome="false" enable_localSystem="true" />
+    <volume-check>
+        <allowed-os-versions>
+            <os-version min="10.12"/>
+        </allowed-os-versions>
+    </volume-check>
+    <choices-outline>
+      <line choice="install">
+      <line choice="rustc"/>
+      <line choice="rust-std"/>
+      <line choice="cargo"/>
+      <!-- tool-rust-docs-start -->
+      <line choice="rust-docs"/>
+      <!-- tool-rust-docs-end -->
+      </line>
+      <line choice="uninstall" />
+    </choices-outline>
+    <!--
+    These 'selected' scripts ensure that install and uninstall can never be selected at
+    the same time. Exactly how they work is pretty mysterious, tied to the unspecified algorithm
+    the installer uses to traverse the options after one is toggled.
+      -->
+    <choice id="install" visible="true"
+        title="Install Rust" description="Install the Rust compiler, package manager and documentation."
+        customLocation="/usr/local"
+        selected="!choices.uninstall.selected"
+        />
+    <choice id="uninstall" visible="true"
+        title="Uninstall Rust" description="Select this option to uninstall an existing Rust installation."
+        customLocation="/usr/local"
+        selected="!(choices.install.selected || choices.rustc.selected || choices.cargo.selected || choices['rust-docs'].selected)"
+        start_selected="false"
+        >
+        <pkg-ref id="org.rust-lang.uninstall"/>
+    </choice>
+    <choice id="rustc" visible="true"
+        title="Compiler" description="rustc, the Rust compiler, and rustdoc, the API documentation tool."
+        selected="(!choices.uninstall.selected &amp;&amp; choices.rustc.selected) || (choices.uninstall.selected &amp;&amp; choices.install.selected)"
+        >
+        <pkg-ref id="org.rust-lang.rustc"/>
+    </choice>
+    <choice id="cargo" visible="true"
+        title="Cargo" description="cargo, the Rust package manager."
+        selected="(!choices.uninstall.selected &amp;&amp; choices.cargo.selected) || (choices.uninstall.selected &amp;&amp; choices.install.selected)"
+        >
+        <pkg-ref id="org.rust-lang.cargo"/>
+    </choice>
+    <choice id="rust-std" visible="true"
+        title="Standard Library" description="The Rust standard library."
+        selected="(!choices.uninstall.selected &amp;&amp; choices['rust-std'].selected) || (choices.uninstall.selected &amp;&amp; choices.install.selected)"
+        >
+        <pkg-ref id="org.rust-lang.rust-std"/>
+    </choice>
+    <!-- tool-rust-docs-start -->
+    <choice id="rust-docs" visible="true"
+        title="Documentation" description="HTML documentation."
+        selected="(!choices.uninstall.selected &amp;&amp; choices['rust-docs'].selected) || (choices.uninstall.selected &amp;&amp; choices.install.selected)"
+        >
+        <pkg-ref id="org.rust-lang.rust-docs"/>
+    </choice>
+    <!-- tool-rust-docs-end -->
+    <pkg-ref id="org.rust-lang.rustc" version="0" onConclusion="none">rustc.pkg</pkg-ref>
+    <pkg-ref id="org.rust-lang.cargo" version="0" onConclusion="none">cargo.pkg</pkg-ref>
+    <!-- tool-rust-docs-start -->
+    <pkg-ref id="org.rust-lang.rust-docs" version="0" onConclusion="none">rust-docs.pkg</pkg-ref>
+    <!-- tool-rust-docs-end -->
+    <pkg-ref id="org.rust-lang.rust-std" version="0" onConclusion="none">rust-std.pkg</pkg-ref>
+    <pkg-ref id="org.rust-lang.uninstall" version="0" onConclusion="none">uninstall.pkg</pkg-ref>
+    <background file="rust-logo.png" mime-type="image/png"
+                alignment="bottomleft"/>
+</installer-gui-script>

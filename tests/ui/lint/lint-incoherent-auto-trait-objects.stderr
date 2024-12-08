@@ -1,0 +1,81 @@
+error: conflicting implementations of trait `Foo` for type `(dyn Send + 'static)`: (E0119)
+  --> $DIR/lint-incoherent-auto-trait-objects.rs:5:1
+   |
+LL | impl Foo for dyn Send {}
+   | --------------------- first implementation here
+LL |
+LL | impl Foo for dyn Send + Send {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn Send + 'static)`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #56484 <https://github.com/rust-lang/rust/issues/56484>
+   = note: `#[deny(order_dependent_trait_objects)]` on by default
+
+error: conflicting implementations of trait `Foo` for type `(dyn Send + Sync + 'static)`: (E0119)
+  --> $DIR/lint-incoherent-auto-trait-objects.rs:11:1
+   |
+LL | impl Foo for dyn Send + Sync {}
+   | ---------------------------- first implementation here
+LL |
+LL | impl Foo for dyn Sync + Send {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn Send + Sync + 'static)`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #56484 <https://github.com/rust-lang/rust/issues/56484>
+
+error: conflicting implementations of trait `Foo` for type `(dyn Send + Sync + 'static)`: (E0119)
+  --> $DIR/lint-incoherent-auto-trait-objects.rs:15:1
+   |
+LL | impl Foo for dyn Sync + Send {}
+   | ---------------------------- first implementation here
+...
+LL | impl Foo for dyn Send + Sync + Send {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn Send + Sync + 'static)`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #56484 <https://github.com/rust-lang/rust/issues/56484>
+
+error: aborting due to 3 previous errors
+
+Future incompatibility report: Future breakage diagnostic:
+error: conflicting implementations of trait `Foo` for type `(dyn Send + 'static)`: (E0119)
+  --> $DIR/lint-incoherent-auto-trait-objects.rs:5:1
+   |
+LL | impl Foo for dyn Send {}
+   | --------------------- first implementation here
+LL |
+LL | impl Foo for dyn Send + Send {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn Send + 'static)`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #56484 <https://github.com/rust-lang/rust/issues/56484>
+   = note: `#[deny(order_dependent_trait_objects)]` on by default
+
+Future breakage diagnostic:
+error: conflicting implementations of trait `Foo` for type `(dyn Send + Sync + 'static)`: (E0119)
+  --> $DIR/lint-incoherent-auto-trait-objects.rs:11:1
+   |
+LL | impl Foo for dyn Send + Sync {}
+   | ---------------------------- first implementation here
+LL |
+LL | impl Foo for dyn Sync + Send {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn Send + Sync + 'static)`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #56484 <https://github.com/rust-lang/rust/issues/56484>
+   = note: `#[deny(order_dependent_trait_objects)]` on by default
+
+Future breakage diagnostic:
+error: conflicting implementations of trait `Foo` for type `(dyn Send + Sync + 'static)`: (E0119)
+  --> $DIR/lint-incoherent-auto-trait-objects.rs:15:1
+   |
+LL | impl Foo for dyn Sync + Send {}
+   | ---------------------------- first implementation here
+...
+LL | impl Foo for dyn Send + Sync + Send {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn Send + Sync + 'static)`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #56484 <https://github.com/rust-lang/rust/issues/56484>
+   = note: `#[deny(order_dependent_trait_objects)]` on by default
+

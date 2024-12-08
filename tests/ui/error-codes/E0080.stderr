@@ -1,0 +1,15 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/E0080.rs:2:9
+   |
+LL |     X = (1 << 500),
+   |         ^^^^^^^^^^ attempt to shift left by `500_i32`, which would overflow
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/E0080.rs:4:9
+   |
+LL |     Y = (1 / 0)
+   |         ^^^^^^^ attempt to divide `1_isize` by zero
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

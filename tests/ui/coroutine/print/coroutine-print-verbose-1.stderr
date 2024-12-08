@@ -1,0 +1,59 @@
+error: coroutine cannot be sent between threads safely
+  --> $DIR/coroutine-print-verbose-1.rs:37:5
+   |
+LL |     require_send(send_gen);
+   |     ^^^^^^^^^^^^^^^^^^^^^^ coroutine is not `Send`
+   |
+   = help: the trait `Sync` is not implemented for `RefCell<i32>`
+   = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead
+note: coroutine is not `Send` as this value is used across a yield
+  --> $DIR/coroutine-print-verbose-1.rs:35:9
+   |
+LL |         let _non_send_gen = make_non_send_coroutine();
+   |             ------------- has type `Opaque(DefId(0:24 ~ coroutine_print_verbose_1[75fb]::make_non_send_coroutine::{opaque#0}), [])` which is not `Send`
+LL |         yield;
+   |         ^^^^^ yield occurs here, with `_non_send_gen` maybe used later
+note: required by a bound in `require_send`
+  --> $DIR/coroutine-print-verbose-1.rs:26:25
+   |
+LL | fn require_send(_: impl Send) {}
+   |                         ^^^^ required by this bound in `require_send`
+
+error[E0277]: `RefCell<i32>` cannot be shared between threads safely
+  --> $DIR/coroutine-print-verbose-1.rs:56:5
+   |
+LL |     require_send(send_gen);
+   |     ^^^^^^^^^^^^^^^^^^^^^^ `RefCell<i32>` cannot be shared between threads safely
+   |
+   = help: the trait `Sync` is not implemented for `RefCell<i32>`
+   = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead
+   = note: required for `Arc<RefCell<i32>>` to implement `Send`
+note: required because it's used within this coroutine
+  --> $DIR/coroutine-print-verbose-1.rs:42:18
+   |
+LL |     #[coroutine] || {
+   |                  ^^
+note: required because it appears within the type `Opaque(DefId(0:29 ~ coroutine_print_verbose_1[75fb]::make_gen2::{opaque#0}), [Arc<RefCell<i32>>])`
+  --> $DIR/coroutine-print-verbose-1.rs:41:30
+   |
+LL | pub fn make_gen2<T>(t: T) -> impl Coroutine<Return = T> {
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required because it appears within the type `Opaque(DefId(0:32 ~ coroutine_print_verbose_1[75fb]::make_non_send_coroutine2::{opaque#0}), [])`
+  --> $DIR/coroutine-print-verbose-1.rs:47:34
+   |
+LL | fn make_non_send_coroutine2() -> impl Coroutine<Return = Arc<RefCell<i32>>> {
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required because it's used within this coroutine
+  --> $DIR/coroutine-print-verbose-1.rs:52:33
+   |
+LL |     let send_gen = #[coroutine] || {
+   |                                 ^^
+note: required by a bound in `require_send`
+  --> $DIR/coroutine-print-verbose-1.rs:26:25
+   |
+LL | fn require_send(_: impl Send) {}
+   |                         ^^^^ required by this bound in `require_send`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

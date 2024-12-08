@@ -1,0 +1,32 @@
+error[E0391]: cycle detected when simplifying constant for the type system `Foo::B::{constant#0}`
+  --> $DIR/issue-36163.rs:4:9
+   |
+LL |     B = A,
+   |         ^
+   |
+note: ...which requires const-evaluating + checking `Foo::B::{constant#0}`...
+  --> $DIR/issue-36163.rs:4:9
+   |
+LL |     B = A,
+   |         ^
+note: ...which requires simplifying constant for the type system `A`...
+  --> $DIR/issue-36163.rs:1:1
+   |
+LL | const A: isize = Foo::B as isize;
+   | ^^^^^^^^^^^^^^
+note: ...which requires const-evaluating + checking `A`...
+  --> $DIR/issue-36163.rs:1:18
+   |
+LL | const A: isize = Foo::B as isize;
+   |                  ^^^^^^^^^^^^^^^
+   = note: ...which again requires simplifying constant for the type system `Foo::B::{constant#0}`, completing the cycle
+note: cycle used when checking that `Foo` is well-formed
+  --> $DIR/issue-36163.rs:3:1
+   |
+LL | enum Foo {
+   | ^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0391`.

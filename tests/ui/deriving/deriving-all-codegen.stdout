@@ -1,0 +1,1448 @@
+#![feature(prelude_import)]
+//@ check-pass
+//@ compile-flags: -Zunpretty=expanded
+//@ edition:2021
+//
+// This test checks the code generated for all[*] the builtin derivable traits
+// on a variety of structs and enums. It protects against accidental changes to
+// the generated code, and makes deliberate changes to the generated code
+// easier to review.
+//
+// [*] It excludes `Copy` in some cases, because that changes the code
+// generated for `Clone`.
+//
+// [*] It excludes `RustcEncodable` and `RustDecodable`, which are obsolete and
+// also require the `rustc_serialize` crate.
+
+#![crate_type = "lib"]
+#![allow(dead_code)]
+#![allow(deprecated)]
+#[prelude_import]
+use std::prelude::rust_2021::*;
+#[macro_use]
+extern crate std;
+
+// Empty struct.
+struct Empty;
+#[automatically_derived]
+impl ::core::clone::Clone for Empty {
+    #[inline]
+    fn clone(&self) -> Empty { *self }
+}
+#[automatically_derived]
+impl ::core::marker::Copy for Empty { }
+#[automatically_derived]
+impl ::core::fmt::Debug for Empty {
+    #[inline]
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        ::core::fmt::Formatter::write_str(f, "Empty")
+    }
+}
+#[automatically_derived]
+impl ::core::default::Default for Empty {
+    #[inline]
+    fn default() -> Empty { Empty {} }
+}
+#[automatically_derived]
+impl ::core::hash::Hash for Empty {
+    #[inline]
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {}
+}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for Empty { }
+#[automatically_derived]
+impl ::core::cmp::PartialEq for Empty {
+    #[inline]
+    fn eq(&self, other: &Empty) -> bool { true }
+}
+#[automatically_derived]
+impl ::core::cmp::Eq for Empty {
+    #[inline]
+    #[doc(hidden)]
+    #[coverage(off)]
+    fn assert_receiver_is_total_eq(&self) -> () {}
+}
+#[automatically_derived]
+impl ::core::cmp::PartialOrd for Empty {
+    #[inline]
+    fn partial_cmp(&self, other: &Empty)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::Ord for Empty {
+    #[inline]
+    fn cmp(&self, other: &Empty) -> ::core::cmp::Ordering {
+        ::core::cmp::Ordering::Equal
+    }
+}
+
+// A basic struct. Note: because this derives `Copy`, it gets the simple
+// `clone` implemention that just does `*self`.
+struct Point {
+    x: u32,
+    y: u32,
+}
+#[automatically_derived]
+impl ::core::clone::Clone for Point {
+    #[inline]
+    fn clone(&self) -> Point {
+        let _: ::core::clone::AssertParamIsClone<u32>;
+        *self
+    }
+}
+#[automatically_derived]
+impl ::core::marker::Copy for Point { }
+#[automatically_derived]
+impl ::core::fmt::Debug for Point {
+    #[inline]
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        ::core::fmt::Formatter::debug_struct_field2_finish(f, "Point", "x",
+            &self.x, "y", &&self.y)
+    }
+}
+#[automatically_derived]
+impl ::core::default::Default for Point {
+    #[inline]
+    fn default() -> Point {
+        Point {
+            x: ::core::default::Default::default(),
+            y: ::core::default::Default::default(),
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::hash::Hash for Point {
+    #[inline]
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+        ::core::hash::Hash::hash(&self.x, state);
+        ::core::hash::Hash::hash(&self.y, state)
+    }
+}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for Point { }
+#[automatically_derived]
+impl ::core::cmp::PartialEq for Point {
+    #[inline]
+    fn eq(&self, other: &Point) -> bool {
+        self.x == other.x && self.y == other.y
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::Eq for Point {
+    #[inline]
+    #[doc(hidden)]
+    #[coverage(off)]
+    fn assert_receiver_is_total_eq(&self) -> () {
+        let _: ::core::cmp::AssertParamIsEq<u32>;
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::PartialOrd for Point {
+    #[inline]
+    fn partial_cmp(&self, other: &Point)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        match ::core::cmp::PartialOrd::partial_cmp(&self.x, &other.x) {
+            ::core::option::Option::Some(::core::cmp::Ordering::Equal) =>
+                ::core::cmp::PartialOrd::partial_cmp(&self.y, &other.y),
+            cmp => cmp,
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::Ord for Point {
+    #[inline]
+    fn cmp(&self, other: &Point) -> ::core::cmp::Ordering {
+        match ::core::cmp::Ord::cmp(&self.x, &other.x) {
+            ::core::cmp::Ordering::Equal =>
+                ::core::cmp::Ord::cmp(&self.y, &other.y),
+            cmp => cmp,
+        }
+    }
+}
+
+// A basic packed struct. Note: because this derives `Copy`, it gets the simple
+// `clone` implemention that just does `*self`.
+#[repr(packed)]
+struct PackedPoint {
+    x: u32,
+    y: u32,
+}
+#[automatically_derived]
+impl ::core::clone::Clone for PackedPoint {
+    #[inline]
+    fn clone(&self) -> PackedPoint {
+        let _: ::core::clone::AssertParamIsClone<u32>;
+        *self
+    }
+}
+#[automatically_derived]
+impl ::core::marker::Copy for PackedPoint { }
+#[automatically_derived]
+impl ::core::fmt::Debug for PackedPoint {
+    #[inline]
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        ::core::fmt::Formatter::debug_struct_field2_finish(f, "PackedPoint",
+            "x", &{ self.x }, "y", &&{ self.y })
+    }
+}
+#[automatically_derived]
+impl ::core::default::Default for PackedPoint {
+    #[inline]
+    fn default() -> PackedPoint {
+        PackedPoint {
+            x: ::core::default::Default::default(),
+            y: ::core::default::Default::default(),
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::hash::Hash for PackedPoint {
+    #[inline]
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+        ::core::hash::Hash::hash(&{ self.x }, state);
+        ::core::hash::Hash::hash(&{ self.y }, state)
+    }
+}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for PackedPoint { }
+#[automatically_derived]
+impl ::core::cmp::PartialEq for PackedPoint {
+    #[inline]
+    fn eq(&self, other: &PackedPoint) -> bool {
+        ({ self.x }) == ({ other.x }) && ({ self.y }) == ({ other.y })
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::Eq for PackedPoint {
+    #[inline]
+    #[doc(hidden)]
+    #[coverage(off)]
+    fn assert_receiver_is_total_eq(&self) -> () {
+        let _: ::core::cmp::AssertParamIsEq<u32>;
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::PartialOrd for PackedPoint {
+    #[inline]
+    fn partial_cmp(&self, other: &PackedPoint)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        match ::core::cmp::PartialOrd::partial_cmp(&{ self.x }, &{ other.x })
+            {
+            ::core::option::Option::Some(::core::cmp::Ordering::Equal) =>
+                ::core::cmp::PartialOrd::partial_cmp(&{ self.y },
+                    &{ other.y }),
+            cmp => cmp,
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::Ord for PackedPoint {
+    #[inline]
+    fn cmp(&self, other: &PackedPoint) -> ::core::cmp::Ordering {
+        match ::core::cmp::Ord::cmp(&{ self.x }, &{ other.x }) {
+            ::core::cmp::Ordering::Equal =>
+                ::core::cmp::Ord::cmp(&{ self.y }, &{ other.y }),
+            cmp => cmp,
+        }
+    }
+}
+
+// A large struct. Note: because this derives `Copy`, it gets the simple
+// `clone` implemention that just does `*self`.
+struct Big {
+    b1: u32,
+    b2: u32,
+    b3: u32,
+    b4: u32,
+    b5: u32,
+    b6: u32,
+    b7: u32,
+    b8: u32,
+}
+#[automatically_derived]
+impl ::core::clone::Clone for Big {
+    #[inline]
+    fn clone(&self) -> Big {
+        let _: ::core::clone::AssertParamIsClone<u32>;
+        *self
+    }
+}
+#[automatically_derived]
+impl ::core::marker::Copy for Big { }
+#[automatically_derived]
+impl ::core::fmt::Debug for Big {
+    #[inline]
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        let names: &'static _ =
+            &["b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8"];
+        let values: &[&dyn ::core::fmt::Debug] =
+            &[&self.b1, &self.b2, &self.b3, &self.b4, &self.b5, &self.b6,
+                        &self.b7, &&self.b8];
+        ::core::fmt::Formatter::debug_struct_fields_finish(f, "Big", names,
+            values)
+    }
+}
+#[automatically_derived]
+impl ::core::default::Default for Big {
+    #[inline]
+    fn default() -> Big {
+        Big {
+            b1: ::core::default::Default::default(),
+            b2: ::core::default::Default::default(),
+            b3: ::core::default::Default::default(),
+            b4: ::core::default::Default::default(),
+            b5: ::core::default::Default::default(),
+            b6: ::core::default::Default::default(),
+            b7: ::core::default::Default::default(),
+            b8: ::core::default::Default::default(),
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::hash::Hash for Big {
+    #[inline]
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+        ::core::hash::Hash::hash(&self.b1, state);
+        ::core::hash::Hash::hash(&self.b2, state);
+        ::core::hash::Hash::hash(&self.b3, state);
+        ::core::hash::Hash::hash(&self.b4, state);
+        ::core::hash::Hash::hash(&self.b5, state);
+        ::core::hash::Hash::hash(&self.b6, state);
+        ::core::hash::Hash::hash(&self.b7, state);
+        ::core::hash::Hash::hash(&self.b8, state)
+    }
+}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for Big { }
+#[automatically_derived]
+impl ::core::cmp::PartialEq for Big {
+    #[inline]
+    fn eq(&self, other: &Big) -> bool {
+        self.b1 == other.b1 && self.b2 == other.b2 && self.b3 == other.b3 &&
+                            self.b4 == other.b4 && self.b5 == other.b5 &&
+                    self.b6 == other.b6 && self.b7 == other.b7 &&
+            self.b8 == other.b8
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::Eq for Big {
+    #[inline]
+    #[doc(hidden)]
+    #[coverage(off)]
+    fn assert_receiver_is_total_eq(&self) -> () {
+        let _: ::core::cmp::AssertParamIsEq<u32>;
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::PartialOrd for Big {
+    #[inline]
+    fn partial_cmp(&self, other: &Big)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        match ::core::cmp::PartialOrd::partial_cmp(&self.b1, &other.b1) {
+            ::core::option::Option::Some(::core::cmp::Ordering::Equal) =>
+                match ::core::cmp::PartialOrd::partial_cmp(&self.b2,
+                        &other.b2) {
+                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                        =>
+                        match ::core::cmp::PartialOrd::partial_cmp(&self.b3,
+                                &other.b3) {
+                            ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                =>
+                                match ::core::cmp::PartialOrd::partial_cmp(&self.b4,
+                                        &other.b4) {
+                                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                        =>
+                                        match ::core::cmp::PartialOrd::partial_cmp(&self.b5,
+                                                &other.b5) {
+                                            ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                                =>
+                                                match ::core::cmp::PartialOrd::partial_cmp(&self.b6,
+                                                        &other.b6) {
+                                                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                                        =>
+                                                        match ::core::cmp::PartialOrd::partial_cmp(&self.b7,
+                                                                &other.b7) {
+                                                            ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                                                                =>
+                                                                ::core::cmp::PartialOrd::partial_cmp(&self.b8, &other.b8),
+                                                            cmp => cmp,
+                                                        },
+                                                    cmp => cmp,
+                                                },
+                                            cmp => cmp,
+                                        },
+                                    cmp => cmp,
+                                },
+                            cmp => cmp,
+                        },
+                    cmp => cmp,
+                },
+            cmp => cmp,
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::Ord for Big {
+    #[inline]
+    fn cmp(&self, other: &Big) -> ::core::cmp::Ordering {
+        match ::core::cmp::Ord::cmp(&self.b1, &other.b1) {
+            ::core::cmp::Ordering::Equal =>
+                match ::core::cmp::Ord::cmp(&self.b2, &other.b2) {
+                    ::core::cmp::Ordering::Equal =>
+                        match ::core::cmp::Ord::cmp(&self.b3, &other.b3) {
+                            ::core::cmp::Ordering::Equal =>
+                                match ::core::cmp::Ord::cmp(&self.b4, &other.b4) {
+                                    ::core::cmp::Ordering::Equal =>
+                                        match ::core::cmp::Ord::cmp(&self.b5, &other.b5) {
+                                            ::core::cmp::Ordering::Equal =>
+                                                match ::core::cmp::Ord::cmp(&self.b6, &other.b6) {
+                                                    ::core::cmp::Ordering::Equal =>
+                                                        match ::core::cmp::Ord::cmp(&self.b7, &other.b7) {
+                                                            ::core::cmp::Ordering::Equal =>
+                                                                ::core::cmp::Ord::cmp(&self.b8, &other.b8),
+                                                            cmp => cmp,
+                                                        },
+                                                    cmp => cmp,
+                                                },
+                                            cmp => cmp,
+                                        },
+                                    cmp => cmp,
+                                },
+                            cmp => cmp,
+                        },
+                    cmp => cmp,
+                },
+            cmp => cmp,
+        }
+    }
+}
+
+// A struct that doesn't impl `Copy`, which means it gets the non-simple
+// `clone` implemention that clones the fields individually.
+struct NonCopy(u32);
+#[automatically_derived]
+impl ::core::clone::Clone for NonCopy {
+    #[inline]
+    fn clone(&self) -> NonCopy {
+        NonCopy(::core::clone::Clone::clone(&self.0))
+    }
+}
+
+// A packed struct that doesn't impl `Copy`, which means it gets the non-simple
+// `clone` implemention that clones the fields individually.
+#[repr(packed)]
+struct PackedNonCopy(u32);
+#[automatically_derived]
+impl ::core::clone::Clone for PackedNonCopy {
+    #[inline]
+    fn clone(&self) -> PackedNonCopy {
+        PackedNonCopy(::core::clone::Clone::clone(&{ self.0 }))
+    }
+}
+
+// A struct that impls `Copy` manually, which means it gets the non-simple
+// `clone` implemention that clones the fields individually.
+struct ManualCopy(u32);
+#[automatically_derived]
+impl ::core::clone::Clone for ManualCopy {
+    #[inline]
+    fn clone(&self) -> ManualCopy {
+        ManualCopy(::core::clone::Clone::clone(&self.0))
+    }
+}
+impl Copy for ManualCopy {}
+
+// A packed struct that impls `Copy` manually, which means it gets the
+// non-simple `clone` implemention that clones the fields individually.
+#[repr(packed)]
+struct PackedManualCopy(u32);
+#[automatically_derived]
+impl ::core::clone::Clone for PackedManualCopy {
+    #[inline]
+    fn clone(&self) -> PackedManualCopy {
+        PackedManualCopy(::core::clone::Clone::clone(&{ self.0 }))
+    }
+}
+impl Copy for PackedManualCopy {}
+
+// A struct with an unsized field. Some derives are not usable in this case.
+struct Unsized([u32]);
+#[automatically_derived]
+impl ::core::fmt::Debug for Unsized {
+    #[inline]
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Unsized",
+            &&self.0)
+    }
+}
+#[automatically_derived]
+impl ::core::hash::Hash for Unsized {
+    #[inline]
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+        ::core::hash::Hash::hash(&self.0, state)
+    }
+}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for Unsized { }
+#[automatically_derived]
+impl ::core::cmp::PartialEq for Unsized {
+    #[inline]
+    fn eq(&self, other: &Unsized) -> bool { self.0 == other.0 }
+}
+#[automatically_derived]
+impl ::core::cmp::Eq for Unsized {
+    #[inline]
+    #[doc(hidden)]
+    #[coverage(off)]
+    fn assert_receiver_is_total_eq(&self) -> () {
+        let _: ::core::cmp::AssertParamIsEq<[u32]>;
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::PartialOrd for Unsized {
+    #[inline]
+    fn partial_cmp(&self, other: &Unsized)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        ::core::cmp::PartialOrd::partial_cmp(&self.0, &other.0)
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::Ord for Unsized {
+    #[inline]
+    fn cmp(&self, other: &Unsized) -> ::core::cmp::Ordering {
+        ::core::cmp::Ord::cmp(&self.0, &other.0)
+    }
+}
+
+trait Trait {
+    type A;
+}
+
+// A generic struct involving an associated type.
+struct Generic<T: Trait, U> {
+    t: T,
+    ta: T::A,
+    u: U,
+}
+#[automatically_derived]
+impl<T: ::core::clone::Clone + Trait, U: ::core::clone::Clone>
+    ::core::clone::Clone for Generic<T, U> where T::A: ::core::clone::Clone {
+    #[inline]
+    fn clone(&self) -> Generic<T, U> {
+        Generic {
+            t: ::core::clone::Clone::clone(&self.t),
+            ta: ::core::clone::Clone::clone(&self.ta),
+            u: ::core::clone::Clone::clone(&self.u),
+        }
+    }
+}
+#[automatically_derived]
+impl<T: ::core::marker::Copy + Trait, U: ::core::marker::Copy>
+    ::core::marker::Copy for Generic<T, U> where T::A: ::core::marker::Copy {
+}
+#[automatically_derived]
+impl<T: ::core::fmt::Debug + Trait, U: ::core::fmt::Debug> ::core::fmt::Debug
+    for Generic<T, U> where T::A: ::core::fmt::Debug {
+    #[inline]
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        ::core::fmt::Formatter::debug_struct_field3_finish(f, "Generic", "t",
+            &self.t, "ta", &self.ta, "u", &&self.u)
+    }
+}
+#[automatically_derived]
+impl<T: ::core::default::Default + Trait, U: ::core::default::Default>
+    ::core::default::Default for Generic<T, U> where
+    T::A: ::core::default::Default {
+    #[inline]
+    fn default() -> Generic<T, U> {
+        Generic {
+            t: ::core::default::Default::default(),
+            ta: ::core::default::Default::default(),
+            u: ::core::default::Default::default(),
+        }
+    }
+}
+#[automatically_derived]
+impl<T: ::core::hash::Hash + Trait, U: ::core::hash::Hash> ::core::hash::Hash
+    for Generic<T, U> where T::A: ::core::hash::Hash {
+    #[inline]
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+        ::core::hash::Hash::hash(&self.t, state);
+        ::core::hash::Hash::hash(&self.ta, state);
+        ::core::hash::Hash::hash(&self.u, state)
+    }
+}
+#[automatically_derived]
+impl<T: Trait, U> ::core::marker::StructuralPartialEq for Generic<T, U> { }
+#[automatically_derived]
+impl<T: ::core::cmp::PartialEq + Trait, U: ::core::cmp::PartialEq>
+    ::core::cmp::PartialEq for Generic<T, U> where
+    T::A: ::core::cmp::PartialEq {
+    #[inline]
+    fn eq(&self, other: &Generic<T, U>) -> bool {
+        self.t == other.t && self.ta == other.ta && self.u == other.u
+    }
+}
+#[automatically_derived]
+impl<T: ::core::cmp::Eq + Trait, U: ::core::cmp::Eq> ::core::cmp::Eq for
+    Generic<T, U> where T::A: ::core::cmp::Eq {
+    #[inline]
+    #[doc(hidden)]
+    #[coverage(off)]
+    fn assert_receiver_is_total_eq(&self) -> () {
+        let _: ::core::cmp::AssertParamIsEq<T>;
+        let _: ::core::cmp::AssertParamIsEq<T::A>;
+        let _: ::core::cmp::AssertParamIsEq<U>;
+    }
+}
+#[automatically_derived]
+impl<T: ::core::cmp::PartialOrd + Trait, U: ::core::cmp::PartialOrd>
+    ::core::cmp::PartialOrd for Generic<T, U> where
+    T::A: ::core::cmp::PartialOrd {
+    #[inline]
+    fn partial_cmp(&self, other: &Generic<T, U>)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        match ::core::cmp::PartialOrd::partial_cmp(&self.t, &other.t) {
+            ::core::option::Option::Some(::core::cmp::Ordering::Equal) =>
+                match ::core::cmp::PartialOrd::partial_cmp(&self.ta,
+                        &other.ta) {
+                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                        => ::core::cmp::PartialOrd::partial_cmp(&self.u, &other.u),
+                    cmp => cmp,
+                },
+            cmp => cmp,
+        }
+    }
+}
+#[automatically_derived]
+impl<T: ::core::cmp::Ord + Trait, U: ::core::cmp::Ord> ::core::cmp::Ord for
+    Generic<T, U> where T::A: ::core::cmp::Ord {
+    #[inline]
+    fn cmp(&self, other: &Generic<T, U>) -> ::core::cmp::Ordering {
+        match ::core::cmp::Ord::cmp(&self.t, &other.t) {
+            ::core::cmp::Ordering::Equal =>
+                match ::core::cmp::Ord::cmp(&self.ta, &other.ta) {
+                    ::core::cmp::Ordering::Equal =>
+                        ::core::cmp::Ord::cmp(&self.u, &other.u),
+                    cmp => cmp,
+                },
+            cmp => cmp,
+        }
+    }
+}
+
+// A packed, generic tuple struct involving an associated type. Because it is
+// packed, a `T: Copy` bound is added to all impls (and where clauses within
+// them) except for `Default`. This is because we must access fields using
+// copies (e.g. `&{self.0}`), instead of using direct references (e.g.
+// `&self.0`) which may be misaligned in a packed struct.
+#[repr(packed)]
+struct PackedGeneric<T: Trait, U>(T, T::A, U);
+#[automatically_derived]
+impl<T: ::core::clone::Clone + ::core::marker::Copy + Trait,
+    U: ::core::clone::Clone + ::core::marker::Copy> ::core::clone::Clone for
+    PackedGeneric<T, U> where T::A: ::core::clone::Clone +
+    ::core::marker::Copy {
+    #[inline]
+    fn clone(&self) -> PackedGeneric<T, U> {
+        PackedGeneric(::core::clone::Clone::clone(&{ self.0 }),
+            ::core::clone::Clone::clone(&{ self.1 }),
+            ::core::clone::Clone::clone(&{ self.2 }))
+    }
+}
+#[automatically_derived]
+impl<T: ::core::marker::Copy + Trait, U: ::core::marker::Copy>
+    ::core::marker::Copy for PackedGeneric<T, U> where
+    T::A: ::core::marker::Copy {
+}
+#[automatically_derived]
+impl<T: ::core::fmt::Debug + ::core::marker::Copy + Trait,
+    U: ::core::fmt::Debug + ::core::marker::Copy> ::core::fmt::Debug for
+    PackedGeneric<T, U> where T::A: ::core::fmt::Debug + ::core::marker::Copy
+    {
+    #[inline]
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        ::core::fmt::Formatter::debug_tuple_field3_finish(f, "PackedGeneric",
+            &{ self.0 }, &{ self.1 }, &&{ self.2 })
+    }
+}
+#[automatically_derived]
+impl<T: ::core::default::Default + Trait, U: ::core::default::Default>
+    ::core::default::Default for PackedGeneric<T, U> where
+    T::A: ::core::default::Default {
+    #[inline]
+    fn default() -> PackedGeneric<T, U> {
+        PackedGeneric(::core::default::Default::default(),
+            ::core::default::Default::default(),
+            ::core::default::Default::default())
+    }
+}
+#[automatically_derived]
+impl<T: ::core::hash::Hash + ::core::marker::Copy + Trait,
+    U: ::core::hash::Hash + ::core::marker::Copy> ::core::hash::Hash for
+    PackedGeneric<T, U> where T::A: ::core::hash::Hash + ::core::marker::Copy
+    {
+    #[inline]
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+        ::core::hash::Hash::hash(&{ self.0 }, state);
+        ::core::hash::Hash::hash(&{ self.1 }, state);
+        ::core::hash::Hash::hash(&{ self.2 }, state)
+    }
+}
+#[automatically_derived]
+impl<T: Trait, U> ::core::marker::StructuralPartialEq for PackedGeneric<T, U>
+    {
+}
+#[automatically_derived]
+impl<T: ::core::cmp::PartialEq + ::core::marker::Copy + Trait,
+    U: ::core::cmp::PartialEq + ::core::marker::Copy> ::core::cmp::PartialEq
+    for PackedGeneric<T, U> where T::A: ::core::cmp::PartialEq +
+    ::core::marker::Copy {
+    #[inline]
+    fn eq(&self, other: &PackedGeneric<T, U>) -> bool {
+        ({ self.0 }) == ({ other.0 }) && ({ self.1 }) == ({ other.1 }) &&
+            ({ self.2 }) == ({ other.2 })
+    }
+}
+#[automatically_derived]
+impl<T: ::core::cmp::Eq + ::core::marker::Copy + Trait, U: ::core::cmp::Eq +
+    ::core::marker::Copy> ::core::cmp::Eq for PackedGeneric<T, U> where
+    T::A: ::core::cmp::Eq + ::core::marker::Copy {
+    #[inline]
+    #[doc(hidden)]
+    #[coverage(off)]
+    fn assert_receiver_is_total_eq(&self) -> () {
+        let _: ::core::cmp::AssertParamIsEq<T>;
+        let _: ::core::cmp::AssertParamIsEq<T::A>;
+        let _: ::core::cmp::AssertParamIsEq<U>;
+    }
+}
+#[automatically_derived]
+impl<T: ::core::cmp::PartialOrd + ::core::marker::Copy + Trait,
+    U: ::core::cmp::PartialOrd + ::core::marker::Copy> ::core::cmp::PartialOrd
+    for PackedGeneric<T, U> where T::A: ::core::cmp::PartialOrd +
+    ::core::marker::Copy {
+    #[inline]
+    fn partial_cmp(&self, other: &PackedGeneric<T, U>)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        match ::core::cmp::PartialOrd::partial_cmp(&{ self.0 }, &{ other.0 })
+            {
+            ::core::option::Option::Some(::core::cmp::Ordering::Equal) =>
+                match ::core::cmp::PartialOrd::partial_cmp(&{ self.1 },
+                        &{ other.1 }) {
+                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                        =>
+                        ::core::cmp::PartialOrd::partial_cmp(&{ self.2 },
+                            &{ other.2 }),
+                    cmp => cmp,
+                },
+            cmp => cmp,
+        }
+    }
+}
+#[automatically_derived]
+impl<T: ::core::cmp::Ord + ::core::marker::Copy + Trait, U: ::core::cmp::Ord +
+    ::core::marker::Copy> ::core::cmp::Ord for PackedGeneric<T, U> where
+    T::A: ::core::cmp::Ord + ::core::marker::Copy {
+    #[inline]
+    fn cmp(&self, other: &PackedGeneric<T, U>) -> ::core::cmp::Ordering {
+        match ::core::cmp::Ord::cmp(&{ self.0 }, &{ other.0 }) {
+            ::core::cmp::Ordering::Equal =>
+                match ::core::cmp::Ord::cmp(&{ self.1 }, &{ other.1 }) {
+                    ::core::cmp::Ordering::Equal =>
+                        ::core::cmp::Ord::cmp(&{ self.2 }, &{ other.2 }),
+                    cmp => cmp,
+                },
+            cmp => cmp,
+        }
+    }
+}
+
+// An empty enum.
+enum Enum0 {}
+#[automatically_derived]
+impl ::core::clone::Clone for Enum0 {
+    #[inline]
+    fn clone(&self) -> Enum0 { *self }
+}
+#[automatically_derived]
+impl ::core::marker::Copy for Enum0 { }
+#[automatically_derived]
+impl ::core::fmt::Debug for Enum0 {
+    #[inline]
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        match *self {}
+    }
+}
+#[automatically_derived]
+impl ::core::hash::Hash for Enum0 {
+    #[inline]
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+        match *self {}
+    }
+}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for Enum0 { }
+#[automatically_derived]
+impl ::core::cmp::PartialEq for Enum0 {
+    #[inline]
+    fn eq(&self, other: &Enum0) -> bool { match *self {} }
+}
+#[automatically_derived]
+impl ::core::cmp::Eq for Enum0 {
+    #[inline]
+    #[doc(hidden)]
+    #[coverage(off)]
+    fn assert_receiver_is_total_eq(&self) -> () {}
+}
+#[automatically_derived]
+impl ::core::cmp::PartialOrd for Enum0 {
+    #[inline]
+    fn partial_cmp(&self, other: &Enum0)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        match *self {}
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::Ord for Enum0 {
+    #[inline]
+    fn cmp(&self, other: &Enum0) -> ::core::cmp::Ordering { match *self {} }
+}
+
+// A single-variant enum.
+enum Enum1 {
+    Single {
+        x: u32,
+    },
+}
+#[automatically_derived]
+impl ::core::clone::Clone for Enum1 {
+    #[inline]
+    fn clone(&self) -> Enum1 {
+        match self {
+            Enum1::Single { x: __self_0 } =>
+                Enum1::Single { x: ::core::clone::Clone::clone(__self_0) },
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::fmt::Debug for Enum1 {
+    #[inline]
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        match self {
+            Enum1::Single { x: __self_0 } =>
+                ::core::fmt::Formatter::debug_struct_field1_finish(f,
+                    "Single", "x", &__self_0),
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::hash::Hash for Enum1 {
+    #[inline]
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+        match self {
+            Enum1::Single { x: __self_0 } =>
+                ::core::hash::Hash::hash(__self_0, state),
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for Enum1 { }
+#[automatically_derived]
+impl ::core::cmp::PartialEq for Enum1 {
+    #[inline]
+    fn eq(&self, other: &Enum1) -> bool {
+        match (self, other) {
+            (Enum1::Single { x: __self_0 }, Enum1::Single { x: __arg1_0 }) =>
+                __self_0 == __arg1_0,
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::Eq for Enum1 {
+    #[inline]
+    #[doc(hidden)]
+    #[coverage(off)]
+    fn assert_receiver_is_total_eq(&self) -> () {
+        let _: ::core::cmp::AssertParamIsEq<u32>;
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::PartialOrd for Enum1 {
+    #[inline]
+    fn partial_cmp(&self, other: &Enum1)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        match (self, other) {
+            (Enum1::Single { x: __self_0 }, Enum1::Single { x: __arg1_0 }) =>
+                ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg1_0),
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::Ord for Enum1 {
+    #[inline]
+    fn cmp(&self, other: &Enum1) -> ::core::cmp::Ordering {
+        match (self, other) {
+            (Enum1::Single { x: __self_0 }, Enum1::Single { x: __arg1_0 }) =>
+                ::core::cmp::Ord::cmp(__self_0, __arg1_0),
+        }
+    }
+}
+
+// A C-like, fieldless enum with a single variant.
+enum Fieldless1 {
+
+    #[default]
+    A,
+}
+#[automatically_derived]
+impl ::core::clone::Clone for Fieldless1 {
+    #[inline]
+    fn clone(&self) -> Fieldless1 { Fieldless1::A }
+}
+#[automatically_derived]
+impl ::core::fmt::Debug for Fieldless1 {
+    #[inline]
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        ::core::fmt::Formatter::write_str(f, "A")
+    }
+}
+#[automatically_derived]
+impl ::core::default::Default for Fieldless1 {
+    #[inline]
+    fn default() -> Fieldless1 { Self::A }
+}
+#[automatically_derived]
+impl ::core::hash::Hash for Fieldless1 {
+    #[inline]
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {}
+}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for Fieldless1 { }
+#[automatically_derived]
+impl ::core::cmp::PartialEq for Fieldless1 {
+    #[inline]
+    fn eq(&self, other: &Fieldless1) -> bool { true }
+}
+#[automatically_derived]
+impl ::core::cmp::Eq for Fieldless1 {
+    #[inline]
+    #[doc(hidden)]
+    #[coverage(off)]
+    fn assert_receiver_is_total_eq(&self) -> () {}
+}
+#[automatically_derived]
+impl ::core::cmp::PartialOrd for Fieldless1 {
+    #[inline]
+    fn partial_cmp(&self, other: &Fieldless1)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::Ord for Fieldless1 {
+    #[inline]
+    fn cmp(&self, other: &Fieldless1) -> ::core::cmp::Ordering {
+        ::core::cmp::Ordering::Equal
+    }
+}
+
+// A C-like, fieldless enum.
+enum Fieldless {
+
+    #[default]
+    A,
+    B,
+    C,
+}
+#[automatically_derived]
+impl ::core::clone::Clone for Fieldless {
+    #[inline]
+    fn clone(&self) -> Fieldless { *self }
+}
+#[automatically_derived]
+impl ::core::marker::Copy for Fieldless { }
+#[automatically_derived]
+impl ::core::fmt::Debug for Fieldless {
+    #[inline]
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        ::core::fmt::Formatter::write_str(f,
+            match self {
+                Fieldless::A => "A",
+                Fieldless::B => "B",
+                Fieldless::C => "C",
+            })
+    }
+}
+#[automatically_derived]
+impl ::core::default::Default for Fieldless {
+    #[inline]
+    fn default() -> Fieldless { Self::A }
+}
+#[automatically_derived]
+impl ::core::hash::Hash for Fieldless {
+    #[inline]
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+        let __self_discr = ::core::intrinsics::discriminant_value(self);
+        ::core::hash::Hash::hash(&__self_discr, state)
+    }
+}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for Fieldless { }
+#[automatically_derived]
+impl ::core::cmp::PartialEq for Fieldless {
+    #[inline]
+    fn eq(&self, other: &Fieldless) -> bool {
+        let __self_discr = ::core::intrinsics::discriminant_value(self);
+        let __arg1_discr = ::core::intrinsics::discriminant_value(other);
+        __self_discr == __arg1_discr
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::Eq for Fieldless {
+    #[inline]
+    #[doc(hidden)]
+    #[coverage(off)]
+    fn assert_receiver_is_total_eq(&self) -> () {}
+}
+#[automatically_derived]
+impl ::core::cmp::PartialOrd for Fieldless {
+    #[inline]
+    fn partial_cmp(&self, other: &Fieldless)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        let __self_discr = ::core::intrinsics::discriminant_value(self);
+        let __arg1_discr = ::core::intrinsics::discriminant_value(other);
+        ::core::cmp::PartialOrd::partial_cmp(&__self_discr, &__arg1_discr)
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::Ord for Fieldless {
+    #[inline]
+    fn cmp(&self, other: &Fieldless) -> ::core::cmp::Ordering {
+        let __self_discr = ::core::intrinsics::discriminant_value(self);
+        let __arg1_discr = ::core::intrinsics::discriminant_value(other);
+        ::core::cmp::Ord::cmp(&__self_discr, &__arg1_discr)
+    }
+}
+
+// An enum with multiple fieldless and fielded variants.
+enum Mixed {
+
+    #[default]
+    P,
+    Q,
+    R(u32),
+    S {
+        d1: Option<u32>,
+        d2: Option<i32>,
+    },
+}
+#[automatically_derived]
+impl ::core::clone::Clone for Mixed {
+    #[inline]
+    fn clone(&self) -> Mixed {
+        let _: ::core::clone::AssertParamIsClone<u32>;
+        let _: ::core::clone::AssertParamIsClone<Option<u32>>;
+        let _: ::core::clone::AssertParamIsClone<Option<i32>>;
+        *self
+    }
+}
+#[automatically_derived]
+impl ::core::marker::Copy for Mixed { }
+#[automatically_derived]
+impl ::core::fmt::Debug for Mixed {
+    #[inline]
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        match self {
+            Mixed::P => ::core::fmt::Formatter::write_str(f, "P"),
+            Mixed::Q => ::core::fmt::Formatter::write_str(f, "Q"),
+            Mixed::R(__self_0) =>
+                ::core::fmt::Formatter::debug_tuple_field1_finish(f, "R",
+                    &__self_0),
+            Mixed::S { d1: __self_0, d2: __self_1 } =>
+                ::core::fmt::Formatter::debug_struct_field2_finish(f, "S",
+                    "d1", __self_0, "d2", &__self_1),
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::default::Default for Mixed {
+    #[inline]
+    fn default() -> Mixed { Self::P }
+}
+#[automatically_derived]
+impl ::core::hash::Hash for Mixed {
+    #[inline]
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+        let __self_discr = ::core::intrinsics::discriminant_value(self);
+        ::core::hash::Hash::hash(&__self_discr, state);
+        match self {
+            Mixed::R(__self_0) => ::core::hash::Hash::hash(__self_0, state),
+            Mixed::S { d1: __self_0, d2: __self_1 } => {
+                ::core::hash::Hash::hash(__self_0, state);
+                ::core::hash::Hash::hash(__self_1, state)
+            }
+            _ => {}
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for Mixed { }
+#[automatically_derived]
+impl ::core::cmp::PartialEq for Mixed {
+    #[inline]
+    fn eq(&self, other: &Mixed) -> bool {
+        let __self_discr = ::core::intrinsics::discriminant_value(self);
+        let __arg1_discr = ::core::intrinsics::discriminant_value(other);
+        __self_discr == __arg1_discr &&
+            match (self, other) {
+                (Mixed::R(__self_0), Mixed::R(__arg1_0)) =>
+                    __self_0 == __arg1_0,
+                (Mixed::S { d1: __self_0, d2: __self_1 }, Mixed::S {
+                    d1: __arg1_0, d2: __arg1_1 }) =>
+                    __self_0 == __arg1_0 && __self_1 == __arg1_1,
+                _ => true,
+            }
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::Eq for Mixed {
+    #[inline]
+    #[doc(hidden)]
+    #[coverage(off)]
+    fn assert_receiver_is_total_eq(&self) -> () {
+        let _: ::core::cmp::AssertParamIsEq<u32>;
+        let _: ::core::cmp::AssertParamIsEq<Option<u32>>;
+        let _: ::core::cmp::AssertParamIsEq<Option<i32>>;
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::PartialOrd for Mixed {
+    #[inline]
+    fn partial_cmp(&self, other: &Mixed)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        let __self_discr = ::core::intrinsics::discriminant_value(self);
+        let __arg1_discr = ::core::intrinsics::discriminant_value(other);
+        match (self, other) {
+            (Mixed::R(__self_0), Mixed::R(__arg1_0)) =>
+                ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg1_0),
+            (Mixed::S { d1: __self_0, d2: __self_1 }, Mixed::S {
+                d1: __arg1_0, d2: __arg1_1 }) =>
+                match ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg1_0)
+                    {
+                    ::core::option::Option::Some(::core::cmp::Ordering::Equal)
+                        => ::core::cmp::PartialOrd::partial_cmp(__self_1, __arg1_1),
+                    cmp => cmp,
+                },
+            _ =>
+                ::core::cmp::PartialOrd::partial_cmp(&__self_discr,
+                    &__arg1_discr),
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::Ord for Mixed {
+    #[inline]
+    fn cmp(&self, other: &Mixed) -> ::core::cmp::Ordering {
+        let __self_discr = ::core::intrinsics::discriminant_value(self);
+        let __arg1_discr = ::core::intrinsics::discriminant_value(other);
+        match ::core::cmp::Ord::cmp(&__self_discr, &__arg1_discr) {
+            ::core::cmp::Ordering::Equal =>
+                match (self, other) {
+                    (Mixed::R(__self_0), Mixed::R(__arg1_0)) =>
+                        ::core::cmp::Ord::cmp(__self_0, __arg1_0),
+                    (Mixed::S { d1: __self_0, d2: __self_1 }, Mixed::S {
+                        d1: __arg1_0, d2: __arg1_1 }) =>
+                        match ::core::cmp::Ord::cmp(__self_0, __arg1_0) {
+                            ::core::cmp::Ordering::Equal =>
+                                ::core::cmp::Ord::cmp(__self_1, __arg1_1),
+                            cmp => cmp,
+                        },
+                    _ => ::core::cmp::Ordering::Equal,
+                },
+            cmp => cmp,
+        }
+    }
+}
+
+// An enum with no fieldless variants. Note that `Default` cannot be derived
+// for this enum.
+enum Fielded { X(u32), Y(bool), Z(Option<i32>), }
+#[automatically_derived]
+impl ::core::clone::Clone for Fielded {
+    #[inline]
+    fn clone(&self) -> Fielded {
+        match self {
+            Fielded::X(__self_0) =>
+                Fielded::X(::core::clone::Clone::clone(__self_0)),
+            Fielded::Y(__self_0) =>
+                Fielded::Y(::core::clone::Clone::clone(__self_0)),
+            Fielded::Z(__self_0) =>
+                Fielded::Z(::core::clone::Clone::clone(__self_0)),
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::fmt::Debug for Fielded {
+    #[inline]
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        match self {
+            Fielded::X(__self_0) =>
+                ::core::fmt::Formatter::debug_tuple_field1_finish(f, "X",
+                    &__self_0),
+            Fielded::Y(__self_0) =>
+                ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Y",
+                    &__self_0),
+            Fielded::Z(__self_0) =>
+                ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Z",
+                    &__self_0),
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::hash::Hash for Fielded {
+    #[inline]
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+        let __self_discr = ::core::intrinsics::discriminant_value(self);
+        ::core::hash::Hash::hash(&__self_discr, state);
+        match self {
+            Fielded::X(__self_0) => ::core::hash::Hash::hash(__self_0, state),
+            Fielded::Y(__self_0) => ::core::hash::Hash::hash(__self_0, state),
+            Fielded::Z(__self_0) => ::core::hash::Hash::hash(__self_0, state),
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for Fielded { }
+#[automatically_derived]
+impl ::core::cmp::PartialEq for Fielded {
+    #[inline]
+    fn eq(&self, other: &Fielded) -> bool {
+        let __self_discr = ::core::intrinsics::discriminant_value(self);
+        let __arg1_discr = ::core::intrinsics::discriminant_value(other);
+        __self_discr == __arg1_discr &&
+            match (self, other) {
+                (Fielded::X(__self_0), Fielded::X(__arg1_0)) =>
+                    __self_0 == __arg1_0,
+                (Fielded::Y(__self_0), Fielded::Y(__arg1_0)) =>
+                    __self_0 == __arg1_0,
+                (Fielded::Z(__self_0), Fielded::Z(__arg1_0)) =>
+                    __self_0 == __arg1_0,
+                _ => unsafe { ::core::intrinsics::unreachable() }
+            }
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::Eq for Fielded {
+    #[inline]
+    #[doc(hidden)]
+    #[coverage(off)]
+    fn assert_receiver_is_total_eq(&self) -> () {
+        let _: ::core::cmp::AssertParamIsEq<u32>;
+        let _: ::core::cmp::AssertParamIsEq<bool>;
+        let _: ::core::cmp::AssertParamIsEq<Option<i32>>;
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::PartialOrd for Fielded {
+    #[inline]
+    fn partial_cmp(&self, other: &Fielded)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        let __self_discr = ::core::intrinsics::discriminant_value(self);
+        let __arg1_discr = ::core::intrinsics::discriminant_value(other);
+        match (self, other) {
+            (Fielded::X(__self_0), Fielded::X(__arg1_0)) =>
+                ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg1_0),
+            (Fielded::Y(__self_0), Fielded::Y(__arg1_0)) =>
+                ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg1_0),
+            (Fielded::Z(__self_0), Fielded::Z(__arg1_0)) =>
+                ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg1_0),
+            _ =>
+                ::core::cmp::PartialOrd::partial_cmp(&__self_discr,
+                    &__arg1_discr),
+        }
+    }
+}
+#[automatically_derived]
+impl ::core::cmp::Ord for Fielded {
+    #[inline]
+    fn cmp(&self, other: &Fielded) -> ::core::cmp::Ordering {
+        let __self_discr = ::core::intrinsics::discriminant_value(self);
+        let __arg1_discr = ::core::intrinsics::discriminant_value(other);
+        match ::core::cmp::Ord::cmp(&__self_discr, &__arg1_discr) {
+            ::core::cmp::Ordering::Equal =>
+                match (self, other) {
+                    (Fielded::X(__self_0), Fielded::X(__arg1_0)) =>
+                        ::core::cmp::Ord::cmp(__self_0, __arg1_0),
+                    (Fielded::Y(__self_0), Fielded::Y(__arg1_0)) =>
+                        ::core::cmp::Ord::cmp(__self_0, __arg1_0),
+                    (Fielded::Z(__self_0), Fielded::Z(__arg1_0)) =>
+                        ::core::cmp::Ord::cmp(__self_0, __arg1_0),
+                    _ => unsafe { ::core::intrinsics::unreachable() }
+                },
+            cmp => cmp,
+        }
+    }
+}
+
+// A generic enum. Note that `Default` cannot be derived for this enum.
+enum EnumGeneric<T, U> { One(T), Two(U), }
+#[automatically_derived]
+impl<T: ::core::clone::Clone, U: ::core::clone::Clone> ::core::clone::Clone
+    for EnumGeneric<T, U> {
+    #[inline]
+    fn clone(&self) -> EnumGeneric<T, U> {
+        match self {
+            EnumGeneric::One(__self_0) =>
+                EnumGeneric::One(::core::clone::Clone::clone(__self_0)),
+            EnumGeneric::Two(__self_0) =>
+                EnumGeneric::Two(::core::clone::Clone::clone(__self_0)),
+        }
+    }
+}
+#[automatically_derived]
+impl<T: ::core::marker::Copy, U: ::core::marker::Copy> ::core::marker::Copy
+    for EnumGeneric<T, U> {
+}
+#[automatically_derived]
+impl<T: ::core::fmt::Debug, U: ::core::fmt::Debug> ::core::fmt::Debug for
+    EnumGeneric<T, U> {
+    #[inline]
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        match self {
+            EnumGeneric::One(__self_0) =>
+                ::core::fmt::Formatter::debug_tuple_field1_finish(f, "One",
+                    &__self_0),
+            EnumGeneric::Two(__self_0) =>
+                ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Two",
+                    &__self_0),
+        }
+    }
+}
+#[automatically_derived]
+impl<T: ::core::hash::Hash, U: ::core::hash::Hash> ::core::hash::Hash for
+    EnumGeneric<T, U> {
+    #[inline]
+    fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
+        let __self_discr = ::core::intrinsics::discriminant_value(self);
+        ::core::hash::Hash::hash(&__self_discr, state);
+        match self {
+            EnumGeneric::One(__self_0) =>
+                ::core::hash::Hash::hash(__self_0, state),
+            EnumGeneric::Two(__self_0) =>
+                ::core::hash::Hash::hash(__self_0, state),
+        }
+    }
+}
+#[automatically_derived]
+impl<T, U> ::core::marker::StructuralPartialEq for EnumGeneric<T, U> { }
+#[automatically_derived]
+impl<T: ::core::cmp::PartialEq, U: ::core::cmp::PartialEq>
+    ::core::cmp::PartialEq for EnumGeneric<T, U> {
+    #[inline]
+    fn eq(&self, other: &EnumGeneric<T, U>) -> bool {
+        let __self_discr = ::core::intrinsics::discriminant_value(self);
+        let __arg1_discr = ::core::intrinsics::discriminant_value(other);
+        __self_discr == __arg1_discr &&
+            match (self, other) {
+                (EnumGeneric::One(__self_0), EnumGeneric::One(__arg1_0)) =>
+                    __self_0 == __arg1_0,
+                (EnumGeneric::Two(__self_0), EnumGeneric::Two(__arg1_0)) =>
+                    __self_0 == __arg1_0,
+                _ => unsafe { ::core::intrinsics::unreachable() }
+            }
+    }
+}
+#[automatically_derived]
+impl<T: ::core::cmp::Eq, U: ::core::cmp::Eq> ::core::cmp::Eq for
+    EnumGeneric<T, U> {
+    #[inline]
+    #[doc(hidden)]
+    #[coverage(off)]
+    fn assert_receiver_is_total_eq(&self) -> () {
+        let _: ::core::cmp::AssertParamIsEq<T>;
+        let _: ::core::cmp::AssertParamIsEq<U>;
+    }
+}
+#[automatically_derived]
+impl<T: ::core::cmp::PartialOrd, U: ::core::cmp::PartialOrd>
+    ::core::cmp::PartialOrd for EnumGeneric<T, U> {
+    #[inline]
+    fn partial_cmp(&self, other: &EnumGeneric<T, U>)
+        -> ::core::option::Option<::core::cmp::Ordering> {
+        let __self_discr = ::core::intrinsics::discriminant_value(self);
+        let __arg1_discr = ::core::intrinsics::discriminant_value(other);
+        match (self, other) {
+            (EnumGeneric::One(__self_0), EnumGeneric::One(__arg1_0)) =>
+                ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg1_0),
+            (EnumGeneric::Two(__self_0), EnumGeneric::Two(__arg1_0)) =>
+                ::core::cmp::PartialOrd::partial_cmp(__self_0, __arg1_0),
+            _ =>
+                ::core::cmp::PartialOrd::partial_cmp(&__self_discr,
+                    &__arg1_discr),
+        }
+    }
+}
+#[automatically_derived]
+impl<T: ::core::cmp::Ord, U: ::core::cmp::Ord> ::core::cmp::Ord for
+    EnumGeneric<T, U> {
+    #[inline]
+    fn cmp(&self, other: &EnumGeneric<T, U>) -> ::core::cmp::Ordering {
+        let __self_discr = ::core::intrinsics::discriminant_value(self);
+        let __arg1_discr = ::core::intrinsics::discriminant_value(other);
+        match ::core::cmp::Ord::cmp(&__self_discr, &__arg1_discr) {
+            ::core::cmp::Ordering::Equal =>
+                match (self, other) {
+                    (EnumGeneric::One(__self_0), EnumGeneric::One(__arg1_0)) =>
+                        ::core::cmp::Ord::cmp(__self_0, __arg1_0),
+                    (EnumGeneric::Two(__self_0), EnumGeneric::Two(__arg1_0)) =>
+                        ::core::cmp::Ord::cmp(__self_0, __arg1_0),
+                    _ => unsafe { ::core::intrinsics::unreachable() }
+                },
+            cmp => cmp,
+        }
+    }
+}
+
+// An enum that has variant, which does't implement `Copy`.
+enum NonCopyEnum {
+
+    // The `dyn NonCopyTrait` implements `PartialEq`, but it doesn't require `Copy`.
+    // So we cannot generate `PartialEq` with dereference.
+    NonCopyField(Box<dyn NonCopyTrait>),
+}
+#[automatically_derived]
+impl ::core::marker::StructuralPartialEq for NonCopyEnum { }
+#[automatically_derived]
+impl ::core::cmp::PartialEq for NonCopyEnum {
+    #[inline]
+    fn eq(&self, other: &NonCopyEnum) -> bool {
+        match (self, other) {
+            (NonCopyEnum::NonCopyField(__self_0),
+                NonCopyEnum::NonCopyField(__arg1_0)) => __self_0 == __arg1_0,
+        }
+    }
+}
+trait NonCopyTrait {}
+impl PartialEq for dyn NonCopyTrait {
+    fn eq(&self, _other: &Self) -> bool { true }
+}
+
+// A union. Most builtin traits are not derivable for unions.
+pub union Union {
+    pub b: bool,
+    pub u: u32,
+    pub i: i32,
+}
+#[automatically_derived]
+impl ::core::clone::Clone for Union {
+    #[inline]
+    fn clone(&self) -> Union {
+        let _: ::core::clone::AssertParamIsCopy<Self>;
+        *self
+    }
+}
+#[automatically_derived]
+impl ::core::marker::Copy for Union { }

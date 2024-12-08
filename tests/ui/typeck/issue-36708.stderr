@@ -1,0 +1,14 @@
+error[E0049]: associated function `foo` has 1 type parameter but its trait declaration has 0 type parameters
+  --> $DIR/issue-36708.rs:8:12
+   |
+LL |     fn foo<T>() {}
+   |            ^ found 1 type parameter
+   |
+  ::: $DIR/auxiliary/issue-36708.rs:4:5
+   |
+LL |     fn foo();
+   |     --------- expected 0 type parameters
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0049`.

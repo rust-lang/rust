@@ -1,0 +1,14 @@
+//@ run-rustfix
+#![allow(dead_code)]
+
+pub mod a {
+    pub use self::b::Trait;
+    mod b {
+        pub trait Trait {}
+    }
+}
+
+struct S;
+impl a::Trait for S {} //~ ERROR module `b` is private
+
+fn main() {}

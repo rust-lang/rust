@@ -1,0 +1,24 @@
+error[E0277]: the trait bound `Fancy: SomeTrait` is not satisfied
+  --> $DIR/issue-84973.rs:6:24
+   |
+LL |     let o = Other::new(f);
+   |             ---------- ^ the trait `SomeTrait` is not implemented for `Fancy`
+   |             |
+   |             required by a bound introduced by this call
+   |
+note: required by a bound in `Other::<'a, G>::new`
+  --> $DIR/issue-84973.rs:25:8
+   |
+LL |     G: SomeTrait,
+   |        ^^^^^^^^^ required by this bound in `Other::<'a, G>::new`
+LL | {
+LL |     pub fn new(g: G) -> Self {
+   |            --- required by a bound in this associated function
+help: consider borrowing here
+   |
+LL |     let o = Other::new(&f);
+   |                        +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

@@ -1,0 +1,8 @@
+error: `T` does not live long enough
+  --> $DIR/forall-wf-ref-reflexive.rs:12:5
+   |
+LL |     self_wf2::<T>();
+   |     ^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

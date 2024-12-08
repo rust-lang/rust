@@ -1,0 +1,4 @@
+   LL|       |//@ ignore-coverage-map
+   LL|       |
+   LL|      1|fn main() {}
+

@@ -1,0 +1,65 @@
+error: manual implementation of `Option::map`
+  --> tests/ui/manual_map_option_2.rs:6:13
+   |
+LL |       let _ = match Some(0) {
+   |  _____________^
+LL | |         Some(x) => Some({
+LL | |             let y = (String::new(), String::new());
+LL | |             (x, y.0)
+LL | |         }),
+LL | |         None => None,
+LL | |     };
+   | |_____^
+   |
+   = note: `-D clippy::manual-map` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_map)]`
+help: try
+   |
+LL ~     let _ = Some(0).map(|x| {
+LL +             let y = (String::new(), String::new());
+LL +             (x, y.0)
+LL ~         });
+   |
+
+error: manual implementation of `Option::map`
+  --> tests/ui/manual_map_option_2.rs:48:13
+   |
+LL |       let _ = match &s {
+   |  _____________^
+LL | |         Some(x) => Some({ if let Some(ref s) = s { (x.clone(), s) } else { panic!() } }),
+LL | |         None => None,
+LL | |     };
+   | |_____^ help: try: `s.as_ref().map(|x| { if let Some(ref s) = s { (x.clone(), s) } else { panic!() } })`
+
+error: manual implementation of `Option::map`
+  --> tests/ui/manual_map_option_2.rs:58:17
+   |
+LL |           let _ = match Some(0) {
+   |  _________________^
+LL | |             Some(x) => Some(f(x)),
+LL | |             None => None,
+LL | |         };
+   | |_________^ help: try: `Some(0).map(|x| f(x))`
+
+error: manual implementation of `Option::map`
+  --> tests/ui/manual_map_option_2.rs:63:13
+   |
+LL |       let _ = match Some(0) {
+   |  _____________^
+LL | |         Some(x) => unsafe { Some(f(x)) },
+LL | |         None => None,
+LL | |     };
+   | |_____^ help: try: `Some(0).map(|x| unsafe { f(x) })`
+
+error: manual implementation of `Option::map`
+  --> tests/ui/manual_map_option_2.rs:67:13
+   |
+LL |       let _ = match Some(0) {
+   |  _____________^
+LL | |         Some(x) => Some(unsafe { f(x) }),
+LL | |         None => None,
+LL | |     };
+   | |_____^ help: try: `Some(0).map(|x| unsafe { f(x) })`
+
+error: aborting due to 5 previous errors
+

@@ -1,0 +1,13 @@
+- // MIR for `pointee` before ElaborateBoxDerefs
++ // MIR for `pointee` after ElaborateBoxDerefs
+  
+  fn pointee(_1: Box<i32>) -> () {
+-     debug foo => (*_1);
++     debug foo => (*(((_1.0: std::ptr::Unique<i32>).0: std::ptr::NonNull<i32>).0: *const i32));
+      let mut _0: ();
+  
+      bb0: {
+          return;
+      }
+  }
+  

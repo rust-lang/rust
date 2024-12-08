@@ -1,0 +1,11 @@
+error[E0046]: not all trait items implemented, missing: `Item`
+  --> $DIR/issue-23729.rs:10:9
+   |
+LL |         impl Iterator for Recurrence {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `Item` in implementation
+   |
+   = help: implement the missing item: `type Item = /* Type */;`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0046`.

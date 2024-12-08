@@ -1,0 +1,16 @@
+error: expected pattern, found `$`
+  --> $DIR/issue-116781.rs:4:16
+   |
+LL |     field: fn(($),),
+   |                ^ expected pattern
+
+error: expected pattern, found `$`
+  --> $DIR/issue-116781.rs:4:16
+   |
+LL |     field: fn(($),),
+   |                ^ expected pattern
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+

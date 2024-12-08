@@ -1,0 +1,50 @@
+error[E0277]: the trait bound `usize: GlobalAlloc` is not satisfied
+  --> $DIR/not-an-allocator.rs:2:11
+   |
+LL | #[global_allocator]
+   | ------------------- in this procedural macro expansion
+LL | static A: usize = 0;
+   |           ^^^^^ the trait `GlobalAlloc` is not implemented for `usize`
+   |
+   = help: the trait `GlobalAlloc` is implemented for `System`
+   = note: this error originates in the attribute macro `global_allocator` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `usize: GlobalAlloc` is not satisfied
+  --> $DIR/not-an-allocator.rs:2:11
+   |
+LL | #[global_allocator]
+   | ------------------- in this procedural macro expansion
+LL | static A: usize = 0;
+   |           ^^^^^ the trait `GlobalAlloc` is not implemented for `usize`
+   |
+   = help: the trait `GlobalAlloc` is implemented for `System`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   = note: this error originates in the attribute macro `global_allocator` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `usize: GlobalAlloc` is not satisfied
+  --> $DIR/not-an-allocator.rs:2:11
+   |
+LL | #[global_allocator]
+   | ------------------- in this procedural macro expansion
+LL | static A: usize = 0;
+   |           ^^^^^ the trait `GlobalAlloc` is not implemented for `usize`
+   |
+   = help: the trait `GlobalAlloc` is implemented for `System`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   = note: this error originates in the attribute macro `global_allocator` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `usize: GlobalAlloc` is not satisfied
+  --> $DIR/not-an-allocator.rs:2:11
+   |
+LL | #[global_allocator]
+   | ------------------- in this procedural macro expansion
+LL | static A: usize = 0;
+   |           ^^^^^ the trait `GlobalAlloc` is not implemented for `usize`
+   |
+   = help: the trait `GlobalAlloc` is implemented for `System`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   = note: this error originates in the attribute macro `global_allocator` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

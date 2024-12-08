@@ -1,0 +1,4 @@
+   LL|       |//@ edition: 2021
+   LL|       |
+   LL|      1|fn main() {}
+

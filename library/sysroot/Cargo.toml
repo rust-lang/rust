@@ -1,0 +1,31 @@
+[package]
+name = "sysroot"
+version = "0.0.0"
+edition = "2021"
+
+# this is a dummy crate to ensure that all required crates appear in the sysroot
+[dependencies]
+proc_macro = { path = "../proc_macro" }
+profiler_builtins = { path = "../profiler_builtins", optional = true }
+std = { path = "../std" }
+test = { path = "../test" }
+
+# Forward features to the `std` crate as necessary
+[features]
+default = ["std_detect_file_io", "std_detect_dlsym_getauxval", "panic-unwind"]
+backtrace = ["std/backtrace"]
+compiler-builtins-c = ["std/compiler-builtins-c"]
+compiler-builtins-mem = ["std/compiler-builtins-mem"]
+compiler-builtins-no-asm = ["std/compiler-builtins-no-asm"]
+compiler-builtins-no-f16-f128 = ["std/compiler-builtins-no-f16-f128"]
+compiler-builtins-mangled-names = ["std/compiler-builtins-mangled-names"]
+llvm-libunwind = ["std/llvm-libunwind"]
+system-llvm-libunwind = ["std/system-llvm-libunwind"]
+panic-unwind = ["std/panic_unwind"]
+panic_immediate_abort = ["std/panic_immediate_abort"]
+optimize_for_size = ["std/optimize_for_size"]
+profiler = ["dep:profiler_builtins"]
+std_detect_file_io = ["std/std_detect_file_io"]
+std_detect_dlsym_getauxval = ["std/std_detect_dlsym_getauxval"]
+std_detect_env_override = ["std/std_detect_env_override"]
+windows_raw_dylib = ["std/windows_raw_dylib"]

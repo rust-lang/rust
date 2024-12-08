@@ -1,0 +1,93 @@
+error[E0579]: lower range bound must be less than upper
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:11:11
+   |
+LL |     m!(0, ..u8::MIN);
+   |           ^^^^^^^^^
+
+error[E0579]: lower range bound must be less than upper
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:13:11
+   |
+LL |     m!(0, ..u16::MIN);
+   |           ^^^^^^^^^^
+
+error[E0579]: lower range bound must be less than upper
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:15:11
+   |
+LL |     m!(0, ..u32::MIN);
+   |           ^^^^^^^^^^
+
+error[E0579]: lower range bound must be less than upper
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:17:11
+   |
+LL |     m!(0, ..u64::MIN);
+   |           ^^^^^^^^^^
+
+error[E0579]: lower range bound must be less than upper
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:19:11
+   |
+LL |     m!(0, ..u128::MIN);
+   |           ^^^^^^^^^^^
+
+error[E0579]: lower range bound must be less than upper
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:22:11
+   |
+LL |     m!(0, ..i8::MIN);
+   |           ^^^^^^^^^
+
+error[E0579]: lower range bound must be less than upper
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:24:11
+   |
+LL |     m!(0, ..i16::MIN);
+   |           ^^^^^^^^^^
+
+error[E0579]: lower range bound must be less than upper
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:26:11
+   |
+LL |     m!(0, ..i32::MIN);
+   |           ^^^^^^^^^^
+
+error[E0579]: lower range bound must be less than upper
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:28:11
+   |
+LL |     m!(0, ..i64::MIN);
+   |           ^^^^^^^^^^
+
+error[E0579]: lower range bound must be less than upper
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:30:11
+   |
+LL |     m!(0, ..i128::MIN);
+   |           ^^^^^^^^^^^
+
+error[E0579]: lower range bound must be less than upper
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:33:14
+   |
+LL |     m!(0f16, ..f16::NEG_INFINITY);
+   |              ^^^^^^^^^^^^^^^^^^^
+
+error[E0579]: lower range bound must be less than upper
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:35:14
+   |
+LL |     m!(0f32, ..f32::NEG_INFINITY);
+   |              ^^^^^^^^^^^^^^^^^^^
+
+error[E0579]: lower range bound must be less than upper
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:37:14
+   |
+LL |     m!(0f64, ..f64::NEG_INFINITY);
+   |              ^^^^^^^^^^^^^^^^^^^
+
+error[E0579]: lower range bound must be less than upper
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:39:15
+   |
+LL |     m!(0f128, ..f128::NEG_INFINITY);
+   |               ^^^^^^^^^^^^^^^^^^^^
+
+error[E0579]: lower range bound must be less than upper
+  --> $DIR/half-open-range-pats-thir-lower-empty.rs:42:13
+   |
+LL |     m!('a', ..'\u{0}');
+   |             ^^^^^^^^^
+
+error: aborting due to 15 previous errors
+
+For more information about this error, try `rustc --explain E0579`.

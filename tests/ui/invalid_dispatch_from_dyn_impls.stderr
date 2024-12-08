@@ -1,0 +1,50 @@
+error[E0378]: the trait `DispatchFromDyn` may only be implemented for structs containing the field being coerced, ZST fields with 1 byte alignment, and nothing else
+  --> $DIR/invalid_dispatch_from_dyn_impls.rs:10:1
+   |
+LL | / impl<T, U> DispatchFromDyn<WrapperWithExtraField<U>> for WrapperWithExtraField<T>
+LL | | where
+LL | |     T: DispatchFromDyn<U>,
+   | |__________________________^
+   |
+   = note: extra field `1` of type `i32` is not allowed
+
+error[E0378]: implementing the `DispatchFromDyn` trait requires multiple coercions
+  --> $DIR/invalid_dispatch_from_dyn_impls.rs:21:1
+   |
+LL | / impl<T: ?Sized, U: ?Sized> DispatchFromDyn<MultiplePointers<U>> for MultiplePointers<T>
+LL | | where
+LL | |     T: Unsize<U>,
+   | |_________________^
+   |
+   = note: the trait `DispatchFromDyn` may only be implemented for a coercion between structures with a single field being coerced
+   = note: currently, 2 fields need coercions: `ptr1` (`*const T` to `*const U`), `ptr2` (`*const T` to `*const U`)
+
+error[E0378]: the trait `DispatchFromDyn` may only be implemented for a coercion between structures
+  --> $DIR/invalid_dispatch_from_dyn_impls.rs:31:1
+   |
+LL | impl<T: ?Sized, U: ?Sized> DispatchFromDyn<NothingToCoerce<T>> for NothingToCoerce<U> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected a single field to be coerced, none found
+
+error[E0378]: structs implementing `DispatchFromDyn` may not have `#[repr(packed)]` or `#[repr(C)]`
+  --> $DIR/invalid_dispatch_from_dyn_impls.rs:37:1
+   |
+LL | / impl<T: ?Sized, U: ?Sized> DispatchFromDyn<HasReprC<U>> for HasReprC<T>
+LL | | where
+LL | |     T: Unsize<U>,
+   | |_________________^
+
+error[E0378]: the trait `DispatchFromDyn` may only be implemented for structs containing the field being coerced, ZST fields with 1 byte alignment, and nothing else
+  --> $DIR/invalid_dispatch_from_dyn_impls.rs:46:1
+   |
+LL | / impl<T: ?Sized, U: ?Sized> DispatchFromDyn<OverAligned<U>> for OverAligned<T>
+LL | |     where
+LL | |         T: Unsize<U>,
+   | |_____________________^
+   |
+   = note: extra field `1` of type `OverAlignedZst` is not allowed
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0378`.

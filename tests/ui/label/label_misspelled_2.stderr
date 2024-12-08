@@ -1,0 +1,47 @@
+error: malformed loop label
+  --> $DIR/label_misspelled_2.rs:10:5
+   |
+LL |     c: for _ in 0..1 {
+   |     ^
+   |
+help: use the correct loop label format
+   |
+LL |     'c: for _ in 0..1 {
+   |     +
+
+error: malformed loop label
+  --> $DIR/label_misspelled_2.rs:13:5
+   |
+LL |     d: for _ in 0..1 {
+   |     ^
+   |
+help: use the correct loop label format
+   |
+LL |     'd: for _ in 0..1 {
+   |     +
+
+error[E0425]: cannot find value `b` in this scope
+  --> $DIR/label_misspelled_2.rs:8:15
+   |
+LL |     'b: for _ in 0..1 {
+   |     -- a label with a similar name exists
+LL |         break b;
+   |               ^
+   |               |
+   |               not found in this scope
+   |               help: use the similarly named label: `'b`
+
+error[E0425]: cannot find value `d` in this scope
+  --> $DIR/label_misspelled_2.rs:14:15
+   |
+LL |     d: for _ in 0..1 {
+   |     - a label with a similar name exists
+LL |         break d;
+   |               ^
+   |               |
+   |               not found in this scope
+   |               help: use the similarly named label: `'d`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

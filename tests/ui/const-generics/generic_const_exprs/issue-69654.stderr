@@ -1,0 +1,30 @@
+error[E0423]: expected value, found type parameter `T`
+  --> $DIR/issue-69654.rs:5:25
+   |
+LL | impl<T> Bar<T> for [u8; T] {}
+   |      -                  ^ not a value
+   |      |
+   |      found this type parameter
+
+error[E0599]: the function or associated item `foo` exists for struct `Foo<_>`, but its trait bounds were not satisfied
+  --> $DIR/issue-69654.rs:17:10
+   |
+LL | struct Foo<const N: usize> {}
+   | -------------------------- function or associated item `foo` not found for this struct
+...
+LL |     Foo::foo();
+   |          ^^^ function or associated item cannot be called on `Foo<_>` due to unsatisfied trait bounds
+   |
+note: trait bound `[u8; _]: Bar<[(); _]>` was not satisfied
+  --> $DIR/issue-69654.rs:11:14
+   |
+LL | impl<const N: usize> Foo<N>
+   |                      ------
+LL | where
+LL |     [u8; N]: Bar<[(); N]>,
+   |              ^^^^^^^^^^^^ unsatisfied trait bound introduced here
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0423, E0599.
+For more information about an error, try `rustc --explain E0423`.

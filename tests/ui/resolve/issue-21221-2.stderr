@@ -1,0 +1,16 @@
+error[E0405]: cannot find trait `T` in this scope
+  --> $DIR/issue-21221-2.rs:18:6
+   |
+LL | impl T for Foo { }
+   |      ^ not found in this scope
+   |
+help: consider importing one of these traits
+   |
+LL + use baz::T;
+   |
+LL + use foo::bar::T;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0405`.

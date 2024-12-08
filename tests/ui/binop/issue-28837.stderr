@@ -1,0 +1,261 @@
+error[E0369]: cannot add `A` to `A`
+  --> $DIR/issue-28837.rs:6:7
+   |
+LL |     a + a;
+   |     - ^ - A
+   |     |
+   |     A
+   |
+note: an implementation of `Add` might be missing for `A`
+  --> $DIR/issue-28837.rs:1:1
+   |
+LL | struct A;
+   | ^^^^^^^^ must implement `Add`
+note: the trait `Add` must be implemented
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+
+error[E0369]: cannot subtract `A` from `A`
+  --> $DIR/issue-28837.rs:8:7
+   |
+LL |     a - a;
+   |     - ^ - A
+   |     |
+   |     A
+   |
+note: an implementation of `Sub` might be missing for `A`
+  --> $DIR/issue-28837.rs:1:1
+   |
+LL | struct A;
+   | ^^^^^^^^ must implement `Sub`
+note: the trait `Sub` must be implemented
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+
+error[E0369]: cannot multiply `A` by `A`
+  --> $DIR/issue-28837.rs:10:7
+   |
+LL |     a * a;
+   |     - ^ - A
+   |     |
+   |     A
+   |
+note: an implementation of `Mul` might be missing for `A`
+  --> $DIR/issue-28837.rs:1:1
+   |
+LL | struct A;
+   | ^^^^^^^^ must implement `Mul`
+note: the trait `Mul` must be implemented
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+
+error[E0369]: cannot divide `A` by `A`
+  --> $DIR/issue-28837.rs:12:7
+   |
+LL |     a / a;
+   |     - ^ - A
+   |     |
+   |     A
+   |
+note: an implementation of `Div` might be missing for `A`
+  --> $DIR/issue-28837.rs:1:1
+   |
+LL | struct A;
+   | ^^^^^^^^ must implement `Div`
+note: the trait `Div` must be implemented
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+
+error[E0369]: cannot calculate the remainder of `A` divided by `A`
+  --> $DIR/issue-28837.rs:14:7
+   |
+LL |     a % a;
+   |     - ^ - A
+   |     |
+   |     A
+   |
+note: an implementation of `Rem` might be missing for `A`
+  --> $DIR/issue-28837.rs:1:1
+   |
+LL | struct A;
+   | ^^^^^^^^ must implement `Rem`
+note: the trait `Rem` must be implemented
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+
+error[E0369]: no implementation for `A & A`
+  --> $DIR/issue-28837.rs:16:7
+   |
+LL |     a & a;
+   |     - ^ - A
+   |     |
+   |     A
+   |
+note: an implementation of `BitAnd` might be missing for `A`
+  --> $DIR/issue-28837.rs:1:1
+   |
+LL | struct A;
+   | ^^^^^^^^ must implement `BitAnd`
+note: the trait `BitAnd` must be implemented
+  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
+
+error[E0369]: no implementation for `A | A`
+  --> $DIR/issue-28837.rs:18:7
+   |
+LL |     a | a;
+   |     - ^ - A
+   |     |
+   |     A
+   |
+note: an implementation of `BitOr` might be missing for `A`
+  --> $DIR/issue-28837.rs:1:1
+   |
+LL | struct A;
+   | ^^^^^^^^ must implement `BitOr`
+note: the trait `BitOr` must be implemented
+  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
+
+error[E0369]: no implementation for `A << A`
+  --> $DIR/issue-28837.rs:20:7
+   |
+LL |     a << a;
+   |     - ^^ - A
+   |     |
+   |     A
+   |
+note: an implementation of `Shl` might be missing for `A`
+  --> $DIR/issue-28837.rs:1:1
+   |
+LL | struct A;
+   | ^^^^^^^^ must implement `Shl`
+note: the trait `Shl` must be implemented
+  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
+
+error[E0369]: no implementation for `A >> A`
+  --> $DIR/issue-28837.rs:22:7
+   |
+LL |     a >> a;
+   |     - ^^ - A
+   |     |
+   |     A
+   |
+note: an implementation of `Shr` might be missing for `A`
+  --> $DIR/issue-28837.rs:1:1
+   |
+LL | struct A;
+   | ^^^^^^^^ must implement `Shr`
+note: the trait `Shr` must be implemented
+  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
+
+error[E0369]: binary operation `==` cannot be applied to type `A`
+  --> $DIR/issue-28837.rs:24:7
+   |
+LL |     a == a;
+   |     - ^^ - A
+   |     |
+   |     A
+   |
+note: an implementation of `PartialEq` might be missing for `A`
+  --> $DIR/issue-28837.rs:1:1
+   |
+LL | struct A;
+   | ^^^^^^^^ must implement `PartialEq`
+help: consider annotating `A` with `#[derive(PartialEq)]`
+   |
+LL + #[derive(PartialEq)]
+LL | struct A;
+   |
+
+error[E0369]: binary operation `!=` cannot be applied to type `A`
+  --> $DIR/issue-28837.rs:26:7
+   |
+LL |     a != a;
+   |     - ^^ - A
+   |     |
+   |     A
+   |
+note: an implementation of `PartialEq` might be missing for `A`
+  --> $DIR/issue-28837.rs:1:1
+   |
+LL | struct A;
+   | ^^^^^^^^ must implement `PartialEq`
+help: consider annotating `A` with `#[derive(PartialEq)]`
+   |
+LL + #[derive(PartialEq)]
+LL | struct A;
+   |
+
+error[E0369]: binary operation `<` cannot be applied to type `A`
+  --> $DIR/issue-28837.rs:28:7
+   |
+LL |     a < a;
+   |     - ^ - A
+   |     |
+   |     A
+   |
+note: an implementation of `PartialOrd` might be missing for `A`
+  --> $DIR/issue-28837.rs:1:1
+   |
+LL | struct A;
+   | ^^^^^^^^ must implement `PartialOrd`
+help: consider annotating `A` with `#[derive(PartialEq, PartialOrd)]`
+   |
+LL + #[derive(PartialEq, PartialOrd)]
+LL | struct A;
+   |
+
+error[E0369]: binary operation `<=` cannot be applied to type `A`
+  --> $DIR/issue-28837.rs:30:7
+   |
+LL |     a <= a;
+   |     - ^^ - A
+   |     |
+   |     A
+   |
+note: an implementation of `PartialOrd` might be missing for `A`
+  --> $DIR/issue-28837.rs:1:1
+   |
+LL | struct A;
+   | ^^^^^^^^ must implement `PartialOrd`
+help: consider annotating `A` with `#[derive(PartialEq, PartialOrd)]`
+   |
+LL + #[derive(PartialEq, PartialOrd)]
+LL | struct A;
+   |
+
+error[E0369]: binary operation `>` cannot be applied to type `A`
+  --> $DIR/issue-28837.rs:32:7
+   |
+LL |     a > a;
+   |     - ^ - A
+   |     |
+   |     A
+   |
+note: an implementation of `PartialOrd` might be missing for `A`
+  --> $DIR/issue-28837.rs:1:1
+   |
+LL | struct A;
+   | ^^^^^^^^ must implement `PartialOrd`
+help: consider annotating `A` with `#[derive(PartialEq, PartialOrd)]`
+   |
+LL + #[derive(PartialEq, PartialOrd)]
+LL | struct A;
+   |
+
+error[E0369]: binary operation `>=` cannot be applied to type `A`
+  --> $DIR/issue-28837.rs:34:7
+   |
+LL |     a >= a;
+   |     - ^^ - A
+   |     |
+   |     A
+   |
+note: an implementation of `PartialOrd` might be missing for `A`
+  --> $DIR/issue-28837.rs:1:1
+   |
+LL | struct A;
+   | ^^^^^^^^ must implement `PartialOrd`
+help: consider annotating `A` with `#[derive(PartialEq, PartialOrd)]`
+   |
+LL + #[derive(PartialEq, PartialOrd)]
+LL | struct A;
+   |
+
+error: aborting due to 15 previous errors
+
+For more information about this error, try `rustc --explain E0369`.

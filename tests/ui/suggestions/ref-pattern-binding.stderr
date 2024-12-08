@@ -1,0 +1,103 @@
+error: borrow of moved value
+  --> $DIR/ref-pattern-binding.rs:10:9
+   |
+LL |     let _moved @ ref _from = String::from("foo");
+   |         ^^^^^^   --------- value borrowed here after move
+   |         |
+   |         value moved into `_moved` here
+   |         move occurs because `_moved` has type `String`, which does not implement the `Copy` trait
+   |
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |     let ref _moved @ ref _from = String::from("foo");
+   |         +++
+
+error: cannot move out of value because it is borrowed
+  --> $DIR/ref-pattern-binding.rs:11:9
+   |
+LL |     let ref _moved @ _from = String::from("foo");
+   |         ^^^^^^^^^^   ----- value is moved into `_from` here
+   |         |
+   |         value is borrowed by `_moved` here
+
+error: cannot move out of value because it is borrowed
+  --> $DIR/ref-pattern-binding.rs:15:9
+   |
+LL |     let ref _moved @ S { f } = S { f: String::from("foo") };
+   |         ^^^^^^^^^^       - value is moved into `f` here
+   |         |
+   |         value is borrowed by `_moved` here
+
+error: borrow of moved value
+  --> $DIR/ref-pattern-binding.rs:18:9
+   |
+LL |     let _moved @ S { ref f } = S { f: String::from("foo") };
+   |         ^^^^^^       ----- value borrowed here after move
+   |         |
+   |         value moved into `_moved` here
+   |         move occurs because `_moved` has type `S`, which does not implement the `Copy` trait
+   |
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |     let ref _moved @ S { ref f } = S { f: String::from("foo") };
+   |         +++
+
+error[E0382]: use of moved value
+  --> $DIR/ref-pattern-binding.rs:9:9
+   |
+LL |     let _moved @ _from = String::from("foo");
+   |         ^^^^^^   -----   ------------------- move occurs because value has type `String`, which does not implement the `Copy` trait
+   |         |        |
+   |         |        value moved here
+   |         value used here after move
+   |
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |     let ref _moved @ ref _from = String::from("foo");
+   |         +++          +++
+
+error[E0382]: borrow of moved value
+  --> $DIR/ref-pattern-binding.rs:11:9
+   |
+LL |     let ref _moved @ _from = String::from("foo");
+   |         ^^^^^^^^^^   -----   ------------------- move occurs because value has type `String`, which does not implement the `Copy` trait
+   |         |            |
+   |         |            value moved here
+   |         value borrowed here after move
+   |
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |     let ref _moved @ ref _from = String::from("foo");
+   |                      +++
+
+error[E0382]: use of partially moved value
+  --> $DIR/ref-pattern-binding.rs:14:9
+   |
+LL |     let _moved @ S { f } = S { f: String::from("foo") };
+   |         ^^^^^^       - value partially moved here
+   |         |
+   |         value used here after partial move
+   |
+   = note: partial move occurs because value has type `String`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |     let ref _moved @ S { ref f } = S { f: String::from("foo") };
+   |         +++              +++
+
+error[E0382]: borrow of partially moved value
+  --> $DIR/ref-pattern-binding.rs:15:9
+   |
+LL |     let ref _moved @ S { f } = S { f: String::from("foo") };
+   |         ^^^^^^^^^^       - value partially moved here
+   |         |
+   |         value borrowed here after partial move
+   |
+   = note: partial move occurs because value has type `String`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |     let ref _moved @ S { ref f } = S { f: String::from("foo") };
+   |                          +++
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

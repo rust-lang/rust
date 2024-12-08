@@ -1,0 +1,21 @@
+error[E0277]: `F` cannot be sent between threads safely
+  --> $DIR/remove-invalid-type-bound-suggest-issue-127555.rs:13:5
+   |
+LL | /     async fn bar<F>(&mut self, _func: F) -> ()
+LL | |
+LL | |     where
+LL | |         F: FnMut() + Send,
+   | |__________________________^ `F` cannot be sent between threads safely
+   |
+note: required by a bound in `<Baz as Foo>::bar`
+  --> $DIR/remove-invalid-type-bound-suggest-issue-127555.rs:16:22
+   |
+LL |     async fn bar<F>(&mut self, _func: F) -> ()
+   |              --- required by a bound in this associated function
+...
+LL |         F: FnMut() + Send,
+   |                      ^^^^ required by this bound in `<Baz as Foo>::bar`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

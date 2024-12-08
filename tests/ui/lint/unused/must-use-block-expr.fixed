@@ -1,0 +1,36 @@
+//@ run-rustfix
+//@ check-pass
+
+#![warn(unused_must_use)]
+
+#[must_use]
+fn foo() -> i32 {
+    42
+}
+
+fn bar() {
+    {
+        let _ = foo();
+        //~^ WARN unused return value
+    }
+}
+
+fn baz() {
+    {
+        let _ = foo();
+        //~^ WARN unused return value
+    };
+}
+
+fn main() {
+    bar();
+    baz();
+    {
+        let _ = 1 + 2;
+        //~^ WARN unused arithmetic operation
+    }
+    {
+        let _ = 1 + 2;
+        //~^ WARN unused arithmetic operation
+    };
+}

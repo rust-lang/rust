@@ -1,0 +1,19 @@
+error[E0449]: visibility qualifiers are not permitted here
+  --> $DIR/issue-28433.rs:2:5
+   |
+LL |     pub Duck,
+   |     ^^^ help: remove the qualifier
+   |
+   = note: enum variants and their fields always share the visibility of the enum they are in
+
+error[E0449]: visibility qualifiers are not permitted here
+  --> $DIR/issue-28433.rs:5:5
+   |
+LL |     pub(crate) Dove
+   |     ^^^^^^^^^^ help: remove the qualifier
+   |
+   = note: enum variants and their fields always share the visibility of the enum they are in
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0449`.

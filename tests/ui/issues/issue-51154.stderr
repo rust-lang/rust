@@ -1,0 +1,19 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-51154.rs:2:30
+   |
+LL | fn foo<F: FnMut()>() {
+   |        - expected this type parameter
+LL |     let _: Box<F> = Box::new(|| ());
+   |                     -------- ^^^^^ expected type parameter `F`, found closure
+   |                     |
+   |                     arguments to this function are incorrect
+   |
+   = note: expected type parameter `F`
+                     found closure `{closure@$DIR/issue-51154.rs:2:30: 2:32}`
+   = help: every closure has a distinct type and so could not always match the caller-chosen type of parameter `F`
+note: associated function defined here
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

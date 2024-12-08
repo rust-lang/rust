@@ -1,0 +1,14 @@
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/generic_duplicate_param_use3.rs:15:5
+   |
+LL |     u
+   |     ^ expected `T`, got `U`
+   |
+note: previous use here
+  --> $DIR/generic_duplicate_param_use3.rs:11:5
+   |
+LL |     t
+   |     ^
+
+error: aborting due to 1 previous error
+

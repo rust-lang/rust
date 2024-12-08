@@ -1,0 +1,17 @@
+- // MIR for `transmute_uninhabited` before LowerIntrinsics
++ // MIR for `transmute_uninhabited` after LowerIntrinsics
+  
+  fn transmute_uninhabited(_1: ()) -> Never {
+      debug u => _1;
+      let mut _0: Never;
+      let mut _2: ();
+  
+      bb0: {
+          StorageLive(_2);
+          _2 = copy _1;
+-         _0 = std::intrinsics::transmute::<(), Never>(move _2) -> unwind unreachable;
++         _0 = move _2 as Never (Transmute);
++         unreachable;
+      }
+  }
+  

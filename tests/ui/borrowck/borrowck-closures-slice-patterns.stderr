@@ -1,0 +1,125 @@
+error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-closures-slice-patterns.rs:7:13
+   |
+LL |     let f = || {
+   |             -- immutable borrow occurs here
+LL |         let [ref y, ref z @ ..] = x;
+   |                                   - first borrow occurs due to use of `x` in closure
+LL |     };
+LL |     let r = &mut x;
+   |             ^^^^^^ mutable borrow occurs here
+LL |
+LL |     f();
+   |     - immutable borrow later used here
+
+error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-closures-slice-patterns.rs:16:13
+   |
+LL |     let mut f = || {
+   |                 -- mutable borrow occurs here
+LL |         let [ref mut y, ref mut z @ ..] = x;
+   |                                           - first borrow occurs due to use of `x` in closure
+LL |     };
+LL |     let r = &x;
+   |             ^^ immutable borrow occurs here
+LL |
+LL |     f();
+   |     - mutable borrow later used here
+
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/borrowck-closures-slice-patterns.rs:25:5
+   |
+LL | fn arr_by_move(x: [String; 3]) {
+   |                - move occurs because `x` has type `[String; 3]`, which does not implement the `Copy` trait
+LL |     let f = || {
+   |             -- value moved into closure here
+LL |         let [y, z @ ..] = x;
+   |                           - variable moved due to use in closure
+LL |     };
+LL |     &x;
+   |     ^^ value borrowed here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         let [y, z @ ..] = x.clone();
+   |                            ++++++++
+
+error[E0502]: cannot borrow `*x` as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-closures-slice-patterns.rs:33:13
+   |
+LL |     let f = || {
+   |             -- immutable borrow occurs here
+LL |         let [ref y, ref z @ ..] = *x;
+   |                                   -- first borrow occurs due to use of `x` in closure
+LL |     };
+LL |     let r = &mut *x;
+   |             ^^^^^^^ mutable borrow occurs here
+LL |
+LL |     f();
+   |     - immutable borrow later used here
+
+error[E0501]: cannot borrow `x` as immutable because previous closure requires unique access
+  --> $DIR/borrowck-closures-slice-patterns.rs:42:13
+   |
+LL |     let mut f = || {
+   |                 -- closure construction occurs here
+LL |         let [ref mut y, ref mut z @ ..] = *x;
+   |                                           -- first borrow occurs due to use of `x` in closure
+LL |     };
+LL |     let r = &x;
+   |             ^^ second borrow occurs here
+LL |
+LL |     f();
+   |     - first borrow later used here
+
+error[E0382]: borrow of moved value: `x`
+  --> $DIR/borrowck-closures-slice-patterns.rs:51:5
+   |
+LL | fn arr_box_by_move(x: Box<[String; 3]>) {
+   |                    - move occurs because `x` has type `Box<[String; 3]>`, which does not implement the `Copy` trait
+LL |     let f = || {
+   |             -- value moved into closure here
+LL |         let [y, z @ ..] = *x;
+   |                           -- variable moved due to use in closure
+LL |     };
+LL |     &x;
+   |     ^^ value borrowed here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL -         let [y, z @ ..] = *x;
+LL +         let [y, z @ ..] = x.clone();
+   |
+
+error[E0502]: cannot borrow `*x` as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-closures-slice-patterns.rs:59:13
+   |
+LL |     let f = || {
+   |             -- immutable borrow occurs here
+LL |         if let [ref y, ref z @ ..] = *x {}
+   |                                      -- first borrow occurs due to use of `x` in closure
+LL |     };
+LL |     let r = &mut *x;
+   |             ^^^^^^^ mutable borrow occurs here
+LL |
+LL |     f();
+   |     - immutable borrow later used here
+
+error[E0501]: cannot borrow `x` as immutable because previous closure requires unique access
+  --> $DIR/borrowck-closures-slice-patterns.rs:68:13
+   |
+LL |     let mut f = || {
+   |                 -- closure construction occurs here
+LL |         if let [ref mut y, ref mut z @ ..] = *x {}
+   |                                              -- first borrow occurs due to use of `x` in closure
+LL |     };
+LL |     let r = &x;
+   |             ^^ second borrow occurs here
+LL |
+LL |     f();
+   |     - first borrow later used here
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0382, E0501, E0502.
+For more information about an error, try `rustc --explain E0382`.

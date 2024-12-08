@@ -1,0 +1,52 @@
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_multiple_lints.rs:8:28
+   |
+LL | #[expect(unused_variables, unused_mut, while_true)]
+   |                            ^^^^^^^^^^
+   |
+   = note: `#[warn(unfulfilled_lint_expectations)]` on by default
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_multiple_lints.rs:8:40
+   |
+LL | #[expect(unused_variables, unused_mut, while_true)]
+   |                                        ^^^^^^^^^^
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_multiple_lints.rs:17:10
+   |
+LL | #[expect(unused_variables, unused_mut, while_true)]
+   |          ^^^^^^^^^^^^^^^^
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_multiple_lints.rs:17:40
+   |
+LL | #[expect(unused_variables, unused_mut, while_true)]
+   |                                        ^^^^^^^^^^
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_multiple_lints.rs:26:10
+   |
+LL | #[expect(unused_variables, unused_mut, while_true)]
+   |          ^^^^^^^^^^^^^^^^
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_multiple_lints.rs:26:28
+   |
+LL | #[expect(unused_variables, unused_mut, while_true)]
+   |                            ^^^^^^^^^^
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_multiple_lints.rs:34:18
+   |
+LL | #[expect(unused, while_true)]
+   |                  ^^^^^^^^^^
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_multiple_lints.rs:43:10
+   |
+LL | #[expect(unused, while_true)]
+   |          ^^^^^^
+
+warning: 8 warnings emitted
+

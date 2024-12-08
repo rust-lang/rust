@@ -1,0 +1,47 @@
+error[E0597]: `c` does not live long enough
+  --> $DIR/adt-brace-structs.rs:23:37
+   |
+LL |     let c = 66;
+   |         - binding `c` declared here
+LL |     SomeStruct::<&'static u32> { t: &c };
+   |                                     ^^
+   |                                     |
+   |                                     borrowed value does not live long enough
+   |                                     this usage requires that `c` is borrowed for `'static`
+LL | }
+   | - `c` dropped here while still borrowed
+
+error[E0597]: `c` does not live long enough
+  --> $DIR/adt-brace-structs.rs:28:32
+   |
+LL | fn annot_reference_named_lifetime<'a>(_d: &'a u32) {
+   |                                   -- lifetime `'a` defined here
+LL |     let c = 66;
+   |         - binding `c` declared here
+LL |     SomeStruct::<&'a u32> { t: &c };
+   |                                ^^
+   |                                |
+   |                                borrowed value does not live long enough
+   |                                this usage requires that `c` is borrowed for `'a`
+LL | }
+   | - `c` dropped here while still borrowed
+
+error[E0597]: `c` does not live long enough
+  --> $DIR/adt-brace-structs.rs:38:36
+   |
+LL | fn annot_reference_named_lifetime_in_closure<'a>(_: &'a u32) {
+   |                                              -- lifetime `'a` defined here
+LL |     let _closure = || {
+LL |         let c = 66;
+   |             - binding `c` declared here
+LL |         SomeStruct::<&'a u32> { t: &c };
+   |                                    ^^
+   |                                    |
+   |                                    borrowed value does not live long enough
+   |                                    this usage requires that `c` is borrowed for `'a`
+LL |     };
+   |     - `c` dropped here while still borrowed
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

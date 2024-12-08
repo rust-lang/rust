@@ -1,0 +1,58 @@
+// MIR for `slice_get_mut_usize` after PreCodegen
+
+fn slice_get_mut_usize(_1: &mut [u32], _2: usize) -> Option<&mut u32> {
+    debug slice => _1;
+    debug index => _2;
+    let mut _0: std::option::Option<&mut u32>;
+    scope 1 (inlined core::slice::<impl [u32]>::get_mut::<usize>) {
+        scope 2 (inlined <usize as SliceIndex<[u32]>>::get_mut) {
+            let mut _3: usize;
+            let mut _4: bool;
+            let mut _5: *mut [u32];
+            let mut _7: *mut u32;
+            let mut _8: &mut u32;
+            scope 3 (inlined core::slice::index::get_mut_noubcheck::<u32>) {
+                let _6: *mut u32;
+                scope 4 {
+                }
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_8);
+        StorageLive(_4);
+        StorageLive(_3);
+        _3 = PtrMetadata(copy _1);
+        _4 = Lt(copy _2, move _3);
+        switchInt(move _4) -> [0: bb1, otherwise: bb2];
+    }
+
+    bb1: {
+        StorageDead(_3);
+        _0 = const Option::<&mut u32>::None;
+        goto -> bb3;
+    }
+
+    bb2: {
+        StorageDead(_3);
+        StorageLive(_7);
+        StorageLive(_5);
+        _5 = &raw mut (*_1);
+        StorageLive(_6);
+        _6 = copy _5 as *mut u32 (PtrToPtr);
+        _7 = Offset(copy _6, copy _2);
+        StorageDead(_6);
+        StorageDead(_5);
+        _8 = &mut (*_7);
+        _0 = Option::<&mut u32>::Some(copy _8);
+        StorageDead(_7);
+        goto -> bb3;
+    }
+
+    bb3: {
+        StorageDead(_4);
+        StorageDead(_8);
+        return;
+    }
+}

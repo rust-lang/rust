@@ -1,0 +1,17 @@
+error: bit mask could be simplified with a call to `trailing_zeros`
+  --> tests/ui/trailing_zeros.rs:6:13
+   |
+LL |     let _ = (x & 0b1111 == 0);
+   |             ^^^^^^^^^^^^^^^^^ help: try: `x.trailing_zeros() >= 4`
+   |
+   = note: `-D clippy::verbose-bit-mask` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::verbose_bit_mask)]`
+
+error: bit mask could be simplified with a call to `trailing_zeros`
+  --> tests/ui/trailing_zeros.rs:9:13
+   |
+LL |     let _ = x & 0b1_1111 == 0;
+   |             ^^^^^^^^^^^^^^^^^ help: try: `x.trailing_zeros() >= 5`
+
+error: aborting due to 2 previous errors
+

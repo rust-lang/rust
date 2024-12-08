@@ -1,0 +1,52 @@
+Future incompatibility report: Future breakage diagnostic:
+warning: trailing semicolon in macro used in expression position
+  --> $DIR/expect-future_breakage-crash-issue-126521.rs:7:13
+   |
+LL |         true;
+   |             ^
+...
+LL |     let _ = foo!(x);
+   |             ------- in this macro invocation
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
+   = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+Future breakage diagnostic:
+warning: trailing semicolon in macro used in expression position
+  --> $DIR/expect-future_breakage-crash-issue-126521.rs:13:35
+   |
+LL |         (5_i32.overflowing_sub(3));
+   |                                   ^
+...
+LL |     let _ = bar!(x);
+   |             ------- in this macro invocation
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
+   = note: this warning originates in the macro `bar` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+Future breakage diagnostic:
+warning: trailing semicolon in macro used in expression position
+  --> $DIR/expect-future_breakage-crash-issue-126521.rs:7:13
+   |
+LL |         true;
+   |             ^
+...
+LL |     let _ = foo!(x);
+   |             ------- in this macro invocation
+   |
+   = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+Future breakage diagnostic:
+warning: trailing semicolon in macro used in expression position
+  --> $DIR/expect-future_breakage-crash-issue-126521.rs:13:35
+   |
+LL |         (5_i32.overflowing_sub(3));
+   |                                   ^
+...
+LL |     let _ = bar!(x);
+   |             ------- in this macro invocation
+   |
+   = note: this warning originates in the macro `bar` (in Nightly builds, run with -Z macro-backtrace for more info)
+

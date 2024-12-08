@@ -1,0 +1,13 @@
+error: type `for<'a> fn(&'a foo::S) {foo::S::f}` is private
+  --> $DIR/impl_items.rs:10:23
+   |
+LL |         let _: () = S.f();
+   |                       ^ private type
+...
+LL |     foo::m!();
+   |     --------- in this macro invocation
+   |
+   = note: this error originates in the macro `foo::m` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+

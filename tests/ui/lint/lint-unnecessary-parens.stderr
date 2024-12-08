@@ -1,0 +1,403 @@
+error: unnecessary parentheses around `return` value
+  --> $DIR/lint-unnecessary-parens.rs:13:12
+   |
+LL |     return (1);
+   |            ^ ^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-unnecessary-parens.rs:3:9
+   |
+LL | #![deny(unused_parens)]
+   |         ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL -     return (1);
+LL +     return 1;
+   |
+
+error: unnecessary parentheses around `return` value
+  --> $DIR/lint-unnecessary-parens.rs:16:12
+   |
+LL |     return (X { y });
+   |            ^       ^
+   |
+help: remove these parentheses
+   |
+LL -     return (X { y });
+LL +     return X { y };
+   |
+
+error: unnecessary parentheses around type
+  --> $DIR/lint-unnecessary-parens.rs:19:46
+   |
+LL | pub fn unused_parens_around_return_type() -> (u32) {
+   |                                              ^   ^
+   |
+help: remove these parentheses
+   |
+LL - pub fn unused_parens_around_return_type() -> (u32) {
+LL + pub fn unused_parens_around_return_type() -> u32 {
+   |
+
+error: unnecessary parentheses around block return value
+  --> $DIR/lint-unnecessary-parens.rs:25:9
+   |
+LL |         (5)
+   |         ^ ^
+   |
+help: remove these parentheses
+   |
+LL -         (5)
+LL +         5
+   |
+
+error: unnecessary parentheses around block return value
+  --> $DIR/lint-unnecessary-parens.rs:27:5
+   |
+LL |     (5)
+   |     ^ ^
+   |
+help: remove these parentheses
+   |
+LL -     (5)
+LL +     5
+   |
+
+error: unnecessary parentheses around `if` condition
+  --> $DIR/lint-unnecessary-parens.rs:39:7
+   |
+LL |     if(true) {}
+   |       ^    ^
+   |
+help: remove these parentheses
+   |
+LL -     if(true) {}
+LL +     if true {}
+   |
+
+error: unnecessary parentheses around `while` condition
+  --> $DIR/lint-unnecessary-parens.rs:40:10
+   |
+LL |     while(true) {}
+   |          ^    ^
+   |
+help: remove these parentheses
+   |
+LL -     while(true) {}
+LL +     while true {}
+   |
+
+error: unnecessary parentheses around `for` iterator expression
+  --> $DIR/lint-unnecessary-parens.rs:41:13
+   |
+LL |     for _ in(e) {}
+   |             ^ ^
+   |
+help: remove these parentheses
+   |
+LL -     for _ in(e) {}
+LL +     for _ in e {}
+   |
+
+error: unnecessary parentheses around `match` scrutinee expression
+  --> $DIR/lint-unnecessary-parens.rs:42:10
+   |
+LL |     match(1) { _ => ()}
+   |          ^ ^
+   |
+help: remove these parentheses
+   |
+LL -     match(1) { _ => ()}
+LL +     match 1 { _ => ()}
+   |
+
+error: unnecessary parentheses around `return` value
+  --> $DIR/lint-unnecessary-parens.rs:43:11
+   |
+LL |     return(1);
+   |           ^ ^
+   |
+help: remove these parentheses
+   |
+LL -     return(1);
+LL +     return 1;
+   |
+
+error: unnecessary parentheses around assigned value
+  --> $DIR/lint-unnecessary-parens.rs:74:31
+   |
+LL | pub const CONST_ITEM: usize = (10);
+   |                               ^  ^
+   |
+help: remove these parentheses
+   |
+LL - pub const CONST_ITEM: usize = (10);
+LL + pub const CONST_ITEM: usize = 10;
+   |
+
+error: unnecessary parentheses around assigned value
+  --> $DIR/lint-unnecessary-parens.rs:75:33
+   |
+LL | pub static STATIC_ITEM: usize = (10);
+   |                                 ^  ^
+   |
+help: remove these parentheses
+   |
+LL - pub static STATIC_ITEM: usize = (10);
+LL + pub static STATIC_ITEM: usize = 10;
+   |
+
+error: unnecessary parentheses around function argument
+  --> $DIR/lint-unnecessary-parens.rs:79:9
+   |
+LL |     bar((true));
+   |         ^    ^
+   |
+help: remove these parentheses
+   |
+LL -     bar((true));
+LL +     bar(true);
+   |
+
+error: unnecessary parentheses around `if` condition
+  --> $DIR/lint-unnecessary-parens.rs:81:8
+   |
+LL |     if (true) {}
+   |        ^    ^
+   |
+help: remove these parentheses
+   |
+LL -     if (true) {}
+LL +     if true {}
+   |
+
+error: unnecessary parentheses around `while` condition
+  --> $DIR/lint-unnecessary-parens.rs:82:11
+   |
+LL |     while (true) {}
+   |           ^    ^
+   |
+help: remove these parentheses
+   |
+LL -     while (true) {}
+LL +     while true {}
+   |
+
+error: unnecessary parentheses around `match` scrutinee expression
+  --> $DIR/lint-unnecessary-parens.rs:83:11
+   |
+LL |     match (true) {
+   |           ^    ^
+   |
+help: remove these parentheses
+   |
+LL -     match (true) {
+LL +     match true {
+   |
+
+error: unnecessary parentheses around `let` scrutinee expression
+  --> $DIR/lint-unnecessary-parens.rs:86:16
+   |
+LL |     if let 1 = (1) {}
+   |                ^ ^
+   |
+help: remove these parentheses
+   |
+LL -     if let 1 = (1) {}
+LL +     if let 1 = 1 {}
+   |
+
+error: unnecessary parentheses around `let` scrutinee expression
+  --> $DIR/lint-unnecessary-parens.rs:87:19
+   |
+LL |     while let 1 = (2) {}
+   |                   ^ ^
+   |
+help: remove these parentheses
+   |
+LL -     while let 1 = (2) {}
+LL +     while let 1 = 2 {}
+   |
+
+error: unnecessary parentheses around method argument
+  --> $DIR/lint-unnecessary-parens.rs:103:24
+   |
+LL |     X { y: false }.foo((true));
+   |                        ^    ^
+   |
+help: remove these parentheses
+   |
+LL -     X { y: false }.foo((true));
+LL +     X { y: false }.foo(true);
+   |
+
+error: unnecessary parentheses around assigned value
+  --> $DIR/lint-unnecessary-parens.rs:105:18
+   |
+LL |     let mut _a = (0);
+   |                  ^ ^
+   |
+help: remove these parentheses
+   |
+LL -     let mut _a = (0);
+LL +     let mut _a = 0;
+   |
+
+error: unnecessary parentheses around assigned value
+  --> $DIR/lint-unnecessary-parens.rs:106:10
+   |
+LL |     _a = (0);
+   |          ^ ^
+   |
+help: remove these parentheses
+   |
+LL -     _a = (0);
+LL +     _a = 0;
+   |
+
+error: unnecessary parentheses around assigned value
+  --> $DIR/lint-unnecessary-parens.rs:107:11
+   |
+LL |     _a += (1);
+   |           ^ ^
+   |
+help: remove these parentheses
+   |
+LL -     _a += (1);
+LL +     _a += 1;
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/lint-unnecessary-parens.rs:109:8
+   |
+LL |     let(mut _a) = 3;
+   |        ^      ^
+   |
+help: remove these parentheses
+   |
+LL -     let(mut _a) = 3;
+LL +     let mut _a = 3;
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/lint-unnecessary-parens.rs:110:9
+   |
+LL |     let (mut _a) = 3;
+   |         ^      ^
+   |
+help: remove these parentheses
+   |
+LL -     let (mut _a) = 3;
+LL +     let mut _a = 3;
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/lint-unnecessary-parens.rs:111:8
+   |
+LL |     let( mut _a) = 3;
+   |        ^^      ^
+   |
+help: remove these parentheses
+   |
+LL -     let( mut _a) = 3;
+LL +     let mut _a = 3;
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/lint-unnecessary-parens.rs:113:8
+   |
+LL |     let(_a) = 3;
+   |        ^  ^
+   |
+help: remove these parentheses
+   |
+LL -     let(_a) = 3;
+LL +     let _a = 3;
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/lint-unnecessary-parens.rs:114:9
+   |
+LL |     let (_a) = 3;
+   |         ^  ^
+   |
+help: remove these parentheses
+   |
+LL -     let (_a) = 3;
+LL +     let _a = 3;
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/lint-unnecessary-parens.rs:115:8
+   |
+LL |     let( _a) = 3;
+   |        ^^  ^
+   |
+help: remove these parentheses
+   |
+LL -     let( _a) = 3;
+LL +     let _a = 3;
+   |
+
+error: unnecessary parentheses around block return value
+  --> $DIR/lint-unnecessary-parens.rs:121:9
+   |
+LL |         (unit!() - One)
+   |         ^             ^
+   |
+help: remove these parentheses
+   |
+LL -         (unit!() - One)
+LL +         unit!() - One
+   |
+
+error: unnecessary parentheses around block return value
+  --> $DIR/lint-unnecessary-parens.rs:123:9
+   |
+LL |         (unit![] - One)
+   |         ^             ^
+   |
+help: remove these parentheses
+   |
+LL -         (unit![] - One)
+LL +         unit![] - One
+   |
+
+error: unnecessary parentheses around block return value
+  --> $DIR/lint-unnecessary-parens.rs:126:9
+   |
+LL |         (unit! {} - One)
+   |         ^              ^
+   |
+help: remove these parentheses
+   |
+LL -         (unit! {} - One)
+LL +         unit! {} - One
+   |
+
+error: unnecessary parentheses around assigned value
+  --> $DIR/lint-unnecessary-parens.rs:131:14
+   |
+LL |     let _r = (&x);
+   |              ^  ^
+   |
+help: remove these parentheses
+   |
+LL -     let _r = (&x);
+LL +     let _r = &x;
+   |
+
+error: unnecessary parentheses around assigned value
+  --> $DIR/lint-unnecessary-parens.rs:132:14
+   |
+LL |     let _r = (&mut x);
+   |              ^      ^
+   |
+help: remove these parentheses
+   |
+LL -     let _r = (&mut x);
+LL +     let _r = &mut x;
+   |
+
+error: aborting due to 33 previous errors
+

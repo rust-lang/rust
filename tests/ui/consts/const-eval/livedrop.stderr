@@ -1,0 +1,12 @@
+error[E0493]: destructor of `Option<Vec<i32>>` cannot be evaluated at compile-time
+  --> $DIR/livedrop.rs:3:9
+   |
+LL |     let mut always_returned = None;
+   |         ^^^^^^^^^^^^^^^^^^^ the destructor for this type cannot be evaluated in constants
+...
+LL |         always_returned = never_returned;
+   |         --------------- value is dropped here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0493`.

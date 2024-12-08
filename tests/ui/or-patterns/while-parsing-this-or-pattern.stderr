@@ -1,0 +1,10 @@
+error: expected pattern, found `.`
+  --> $DIR/while-parsing-this-or-pattern.rs:5:20
+   |
+LL |         Some(42) | .=. => {}
+   |         --------   ^ expected pattern
+   |         |
+   |         while parsing this or-pattern starting here
+
+error: aborting due to 1 previous error
+

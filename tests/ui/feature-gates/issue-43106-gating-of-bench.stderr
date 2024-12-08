@@ -1,0 +1,17 @@
+error: `bench` attribute cannot be used at crate level
+  --> $DIR/issue-43106-gating-of-bench.rs:7:1
+   |
+LL | #![bench                   = "4100"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | fn main() {}
+   |    ---- the inner attribute doesn't annotate this function
+   |
+help: perhaps you meant to use an outer attribute
+   |
+LL - #![bench                   = "4100"]
+LL + #[bench                   = "4100"]
+   |
+
+error: aborting due to 1 previous error
+

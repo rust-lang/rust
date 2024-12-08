@@ -1,0 +1,16 @@
+error[E0597]: `p` does not live long enough
+  --> $DIR/issue-18118.rs:4:9
+   |
+LL |         let p = 3;
+   |             - binding `p` declared here
+LL |         &p
+   |         ^^
+   |         |
+   |         borrowed value does not live long enough
+   |         using this value as a constant requires that `p` is borrowed for `'static`
+LL |     };
+   |     - `p` dropped here while still borrowed
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

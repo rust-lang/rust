@@ -1,0 +1,8 @@
+error: expected one of `#`, `async`, `const`, `default`, `extern`, `fn`, `pub`, `safe`, `unsafe`, or `use`, found `gen`
+  --> $DIR/gen_fn.rs:4:1
+   |
+LL | gen fn foo() {}
+   | ^^^ expected one of 10 possible tokens
+
+error: aborting due to 1 previous error
+

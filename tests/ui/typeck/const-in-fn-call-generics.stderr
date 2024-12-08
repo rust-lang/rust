@@ -1,0 +1,9 @@
+error[E0308]: mismatched types
+  --> $DIR/const-in-fn-call-generics.rs:11:21
+   |
+LL |         generic::<{ true }>()
+   |                     ^^^^ expected `u32`, found `bool`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

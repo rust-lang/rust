@@ -1,0 +1,15 @@
+error: lifetime may not live long enough
+  --> $DIR/suggest-using-tick-underscore-lifetime-in-return-trait-object.rs:5:5
+   |
+LL | fn foo<T: Any>(value: &T) -> Box<dyn Any> {
+   |                       - let's call the lifetime of this reference `'1`
+LL |     Box::new(value) as Box<dyn Any>
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cast requires that `'1` must outlive `'static`
+   |
+help: to declare that the trait object captures data from argument `value`, you can add an explicit `'_` lifetime bound
+   |
+LL | fn foo<T: Any>(value: &T) -> Box<dyn Any + '_> {
+   |                                          ++++
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,10 @@
+error: variable `_InappropriateCamelCasing` should have a snake case name
+  --> $DIR/command-line-lint-group-forbid.rs:4:9
+   |
+LL |     let _InappropriateCamelCasing = true;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert the identifier to snake case: `_inappropriate_camel_casing`
+   |
+   = note: `-F non-snake-case` implied by `-F bad-style`
+
+error: aborting due to 1 previous error
+

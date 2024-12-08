@@ -1,0 +1,41 @@
+error[E0204]: the trait `Copy` cannot be implemented for this type
+  --> $DIR/deep-bad-copy-reason.rs:38:24
+   |
+LL | pub struct List<'tcx, T>(Interned<'tcx, ListS<T>>);
+   |                          ------------------------ this field does not implement `Copy`
+...
+LL | impl<'tcx, T> Copy for List<'tcx, T> {}
+   |                        ^^^^^^^^^^^^^
+   |
+note: the `Copy` impl for `Interned<'tcx, ListS<T>>` requires that `OpaqueListContents: Sized`
+  --> $DIR/deep-bad-copy-reason.rs:26:26
+   |
+LL | pub struct List<'tcx, T>(Interned<'tcx, ListS<T>>);
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the size for values of type `OpaqueListContents` cannot be known at compilation time
+  --> $DIR/deep-bad-copy-reason.rs:26:26
+   |
+LL | pub struct List<'tcx, T>(Interned<'tcx, ListS<T>>);
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `ListS<T>`, the trait `Sized` is not implemented for `OpaqueListContents`
+note: required because it appears within the type `ListS<T>`
+  --> $DIR/deep-bad-copy-reason.rs:7:12
+   |
+LL | pub struct ListS<T> {
+   |            ^^^^^
+note: required by an implicit `Sized` bound in `Interned`
+  --> $DIR/deep-bad-copy-reason.rs:14:25
+   |
+LL | pub struct Interned<'a, T>(&'a T);
+   |                         ^ required by the implicit `Sized` requirement on this type parameter in `Interned`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | pub struct Interned<'a, T: ?Sized>(&'a T);
+   |                          ++++++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0204, E0277.
+For more information about an error, try `rustc --explain E0204`.

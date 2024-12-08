@@ -1,0 +1,8 @@
+[book]
+title = "The Rust Style Guide"
+author = "The Rust Style Team"
+multilingual = false
+src = "src"
+
+[output.html]
+git-repository-url = "https://github.com/rust-lang/rust/tree/HEAD/src/doc/style-guide/"

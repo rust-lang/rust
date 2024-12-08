@@ -1,0 +1,44 @@
+error[E0277]: a value of type `Vec<f64>` cannot be built from an iterator over elements of type `&f64`
+  --> $DIR/issue-66923-show-error-for-correct-call.rs:8:39
+   |
+LL |     let x2: Vec<f64> = x1.into_iter().collect();
+   |                                       ^^^^^^^ value of type `Vec<f64>` cannot be built from `std::iter::Iterator<Item=&f64>`
+   |
+   = help: the trait `FromIterator<&_>` is not implemented for `Vec<f64>`
+           but trait `FromIterator<_>` is implemented for it
+   = help: for that trait implementation, expected `f64`, found `&f64`
+note: the method call chain might not have had the expected associated types
+  --> $DIR/issue-66923-show-error-for-correct-call.rs:8:27
+   |
+LL |     let x1: &[f64] = &v;
+   |                      -- this expression has type `&Vec<f64>`
+LL |     let x2: Vec<f64> = x1.into_iter().collect();
+   |                           ^^^^^^^^^^^ `Iterator::Item` is `&f64` here
+note: required by a bound in `collect`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+
+error[E0277]: a value of type `Vec<f64>` cannot be built from an iterator over elements of type `&f64`
+  --> $DIR/issue-66923-show-error-for-correct-call.rs:12:39
+   |
+LL |     let x3 = x1.into_iter().collect::<Vec<f64>>();
+   |                             -------   ^^^^^^^^ value of type `Vec<f64>` cannot be built from `std::iter::Iterator<Item=&f64>`
+   |                             |
+   |                             required by a bound introduced by this call
+   |
+   = help: the trait `FromIterator<&_>` is not implemented for `Vec<f64>`
+           but trait `FromIterator<_>` is implemented for it
+   = help: for that trait implementation, expected `f64`, found `&f64`
+note: the method call chain might not have had the expected associated types
+  --> $DIR/issue-66923-show-error-for-correct-call.rs:12:17
+   |
+LL |     let x1: &[f64] = &v;
+   |                      -- this expression has type `&Vec<f64>`
+...
+LL |     let x3 = x1.into_iter().collect::<Vec<f64>>();
+   |                 ^^^^^^^^^^^ `Iterator::Item` is `&f64` here
+note: required by a bound in `collect`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

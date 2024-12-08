@@ -1,0 +1,9 @@
+error[E0432]: unresolved import `bar::Foo`
+  --> $DIR/issue-32833.rs:1:5
+   |
+LL | use bar::Foo;
+   |     ^^^^^^^^ no `Foo` in `bar`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0432`.

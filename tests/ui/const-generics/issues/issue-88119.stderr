@@ -1,0 +1,23 @@
+error: `-Znext-solver=globally` and `generic_const_exprs` are incompatible, using them at the same time is not allowed
+  --> $DIR/issue-88119.rs:4:30
+   |
+LL | #![feature(const_trait_impl, generic_const_exprs)]
+   |                              ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove one of these features
+
+error[E0284]: type annotations needed: cannot normalize `<&T as ConstName>::{constant#0}`
+  --> $DIR/issue-88119.rs:19:49
+   |
+LL | impl<T: ?Sized + ConstName> const ConstName for &T
+   |                                                 ^^ cannot normalize `<&T as ConstName>::{constant#0}`
+
+error[E0284]: type annotations needed: cannot normalize `<&mut T as ConstName>::{constant#0}`
+  --> $DIR/issue-88119.rs:26:49
+   |
+LL | impl<T: ?Sized + ConstName> const ConstName for &mut T
+   |                                                 ^^^^^^ cannot normalize `<&mut T as ConstName>::{constant#0}`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0284`.

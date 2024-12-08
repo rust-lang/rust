@@ -1,0 +1,44 @@
+From 43c2948756bb6e144c7b871e827bba37d61ad3a3 Mon Sep 17 00:00:00 2001
+From: Aurelien Jarno <aurelien@aurel32.net>
+Date: Sat, 18 Jun 2016 19:11:23 +0200
+Subject: [PATCH 1/2] MIPS, SPARC: fix wrong vfork aliases in libpthread.so
+
+With recent binutils versions the GNU libc fails to build on at least
+MISP and SPARC, with this kind of error:
+
+  /home/aurel32/glibc/glibc-build/nptl/libpthread.so:(*IND*+0x0): multiple definition of `vfork@GLIBC_2.0'
+  /home/aurel32/glibc/glibc-build/nptl/libpthread.so::(.text+0xee50): first defined here
+
+It appears that on these architectures pt-vfork.S includes vfork.S
+(through the alpha version of pt-vfork.S) and that the __vfork aliases
+are not conditionalized on IS_IN (libc) like on other architectures.
+Therefore the aliases are also wrongly included in libpthread.so.
+
+Fix this by properly conditionalizing the aliases like on other
+architectures.
+
+Changelog:
+	* sysdeps/unix/sysv/linux/mips/vfork.S (__vfork): Conditionalize
+	hidden_def, weak_alias and strong_alias on [IS_IN (libc)].
+	* sysdeps/unix/sysv/linux/sparc/sparc32/vfork.S: Likewise.
+	* sysdeps/unix/sysv/linux/sparc/sparc64/vfork.S: Likewise.
+---
+ sysdeps/unix/sysv/linux/mips/vfork.S | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/sysdeps/unix/sysv/linux/mips/vfork.S b/sysdeps/unix/sysv/linux/mips/vfork.S
+index 8c6615143708..c0c0ce699159 100644
+--- a/sysdeps/unix/sysv/linux/mips/vfork.S
++++ b/sysdeps/unix/sysv/linux/mips/vfork.S
+@@ -106,6 +106,8 @@ L(error):
+ #endif
+ 	END(__vfork)
+ 
++#if IS_IN (libc)
+ libc_hidden_def(__vfork)
+ weak_alias (__vfork, vfork)
+ strong_alias (__vfork, __libc_vfork)
++#endif
+-- 
+2.37.3
+

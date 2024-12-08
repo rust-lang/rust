@@ -1,0 +1,77 @@
+error[E0277]: `()` is not an iterator
+  --> $DIR/issue-28098.rs:2:28
+   |
+LL |     let _ = Iterator::next(&mut ());
+   |             -------------- ^^^^^^^ `()` is not an iterator
+   |             |
+   |             required by a bound introduced by this call
+   |
+   = help: the trait `Iterator` is not implemented for `()`
+
+error[E0277]: `bool` is not an iterator
+  --> $DIR/issue-28098.rs:6:14
+   |
+LL |     for _ in false {}
+   |              ^^^^^ `bool` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `bool`
+   = note: required for `bool` to implement `IntoIterator`
+
+error[E0277]: `()` is not an iterator
+  --> $DIR/issue-28098.rs:9:28
+   |
+LL |     let _ = Iterator::next(&mut ());
+   |             -------------- ^^^^^^^ `()` is not an iterator
+   |             |
+   |             required by a bound introduced by this call
+   |
+   = help: the trait `Iterator` is not implemented for `()`
+
+error[E0277]: `()` is not an iterator
+  --> $DIR/issue-28098.rs:2:13
+   |
+LL |     let _ = Iterator::next(&mut ());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^ `()` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `()`
+
+error[E0277]: `()` is not an iterator
+  --> $DIR/issue-28098.rs:18:28
+   |
+LL |     let _ = Iterator::next(&mut ());
+   |             -------------- ^^^^^^^ `()` is not an iterator
+   |             |
+   |             required by a bound introduced by this call
+   |
+   = help: the trait `Iterator` is not implemented for `()`
+
+error[E0277]: `()` is not an iterator
+  --> $DIR/issue-28098.rs:22:28
+   |
+LL |     let _ = Iterator::next(&mut ());
+   |             -------------- ^^^^^^^ `()` is not an iterator
+   |             |
+   |             required by a bound introduced by this call
+   |
+   = help: the trait `Iterator` is not implemented for `()`
+
+error[E0277]: `bool` is not an iterator
+  --> $DIR/issue-28098.rs:25:14
+   |
+LL |     for _ in false {}
+   |              ^^^^^ `bool` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `bool`
+   = note: required for `bool` to implement `IntoIterator`
+
+error[E0277]: `()` is not an iterator
+  --> $DIR/issue-28098.rs:18:13
+   |
+LL |     let _ = Iterator::next(&mut ());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^ `()` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `()`
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

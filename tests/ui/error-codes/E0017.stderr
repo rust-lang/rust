@@ -1,0 +1,51 @@
+warning: taking a mutable reference to a `const` item
+  --> $DIR/E0017.rs:8:30
+   |
+LL | const CR: &'static mut i32 = &mut C;
+   |                              ^^^^^^
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: the mutable reference will refer to this temporary, not the original `const` item
+note: `const` item defined here
+  --> $DIR/E0017.rs:5:1
+   |
+LL | const C: i32 = 2;
+   | ^^^^^^^^^^^^
+   = note: `#[warn(const_item_mutation)]` on by default
+
+error[E0764]: mutable references are not allowed in the final value of constants
+  --> $DIR/E0017.rs:8:30
+   |
+LL | const CR: &'static mut i32 = &mut C;
+   |                              ^^^^^^
+
+error[E0596]: cannot borrow immutable static item `X` as mutable
+  --> $DIR/E0017.rs:11:39
+   |
+LL | static STATIC_REF: &'static mut i32 = &mut X;
+   |                                       ^^^^^^ cannot borrow as mutable
+
+warning: taking a mutable reference to a `const` item
+  --> $DIR/E0017.rs:13:38
+   |
+LL | static CONST_REF: &'static mut i32 = &mut C;
+   |                                      ^^^^^^
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: the mutable reference will refer to this temporary, not the original `const` item
+note: `const` item defined here
+  --> $DIR/E0017.rs:5:1
+   |
+LL | const C: i32 = 2;
+   | ^^^^^^^^^^^^
+
+error[E0764]: mutable references are not allowed in the final value of statics
+  --> $DIR/E0017.rs:13:38
+   |
+LL | static CONST_REF: &'static mut i32 = &mut C;
+   |                                      ^^^^^^
+
+error: aborting due to 3 previous errors; 2 warnings emitted
+
+Some errors have detailed explanations: E0596, E0764.
+For more information about an error, try `rustc --explain E0596`.

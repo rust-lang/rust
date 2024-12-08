@@ -1,0 +1,12 @@
+// This test ensures that the "item-info" looks about the same
+// whether or not it's inside a toggle.
+go-to: "file://" + |DOC_PATH| + "/lib2/struct.ItemInfoAlignmentTest.html"
+
+// First, we try it in "desktop" mode.
+set-window-size: (1200, 870)
+wait-for-size: ("body", {"width": 1200})
+compare-elements-position: (".impl-items > .item-info", "summary > .item-info", ["x"])
+// Next, we try it in "mobile" mode (max-width: 700px).
+set-window-size: (650, 650)
+wait-for-size: ("body", {"width": 650})
+compare-elements-position: (".impl-items > .item-info", "summary > .item-info", ["x"])

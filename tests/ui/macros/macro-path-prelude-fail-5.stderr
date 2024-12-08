@@ -1,0 +1,30 @@
+error: expected derive macro, found built-in attribute `inline`
+  --> $DIR/macro-path-prelude-fail-5.rs:4:17
+   |
+LL | #[derive(Debug, inline)]
+   |                 ^^^^^^ not a derive macro
+   |
+help: remove from the surrounding `derive()`
+  --> $DIR/macro-path-prelude-fail-5.rs:4:17
+   |
+LL | #[derive(Debug, inline)]
+   |                 ^^^^^^
+   = help: add as non-Derive macro
+           `#[inline]`
+
+error: expected derive macro, found built-in attribute `inline`
+  --> $DIR/macro-path-prelude-fail-5.rs:7:10
+   |
+LL | #[derive(inline, Debug)]
+   |          ^^^^^^ not a derive macro
+   |
+help: remove from the surrounding `derive()`
+  --> $DIR/macro-path-prelude-fail-5.rs:7:10
+   |
+LL | #[derive(inline, Debug)]
+   |          ^^^^^^
+   = help: add as non-Derive macro
+           `#[inline]`
+
+error: aborting due to 2 previous errors
+

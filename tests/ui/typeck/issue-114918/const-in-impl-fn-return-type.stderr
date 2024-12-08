@@ -1,0 +1,15 @@
+error[E0308]: mismatched types
+  --> $DIR/const-in-impl-fn-return-type.rs:15:39
+   |
+LL |     fn func<const N: u32>() -> [(); { () }] {
+   |                                       ^^ expected `usize`, found `()`
+
+error: the constant `N` is not of type `usize`
+  --> $DIR/const-in-impl-fn-return-type.rs:7:32
+   |
+LL |     fn func<const N: u32>() -> [(); N];
+   |                                ^^^^^^^ expected `usize`, found `u32`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

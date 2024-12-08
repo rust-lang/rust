@@ -1,0 +1,60 @@
+error[E0391]: cycle detected when resolving instance `<LazyUpdim<'_, T, <T as TensorDimension>::DIM, DIM> as TensorDimension>::DIM`
+  --> $DIR/issue-83765.rs:5:5
+   |
+LL |     const DIM: usize;
+   |     ^^^^^^^^^^^^^^^^
+   |
+note: ...which requires computing candidate for `<LazyUpdim<'_, T, <T as TensorDimension>::DIM, DIM> as TensorDimension>`...
+  --> $DIR/issue-83765.rs:4:1
+   |
+LL | trait TensorDimension {
+   | ^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires resolving instance `<LazyUpdim<'_, T, <T as TensorDimension>::DIM, DIM> as TensorDimension>::DIM`, completing the cycle
+note: cycle used when checking assoc item `<impl at $DIR/issue-83765.rs:50:1: 50:94>::size` is compatible with trait definition
+  --> $DIR/issue-83765.rs:51:5
+   |
+LL |     fn size(&self) -> [usize; DIM] {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error[E0391]: cycle detected when resolving instance `<LazyUpdim<'_, T, <T as TensorDimension>::DIM, DIM> as TensorDimension>::DIM`
+  --> $DIR/issue-83765.rs:5:5
+   |
+LL |     const DIM: usize;
+   |     ^^^^^^^^^^^^^^^^
+   |
+note: ...which requires computing candidate for `<LazyUpdim<'_, T, <T as TensorDimension>::DIM, DIM> as TensorDimension>`...
+  --> $DIR/issue-83765.rs:4:1
+   |
+LL | trait TensorDimension {
+   | ^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires resolving instance `<LazyUpdim<'_, T, <T as TensorDimension>::DIM, DIM> as TensorDimension>::DIM`, completing the cycle
+note: cycle used when checking assoc item `<impl at $DIR/issue-83765.rs:56:1: 56:97>::bget` is compatible with trait definition
+  --> $DIR/issue-83765.rs:58:5
+   |
+LL |     fn bget(&self, index: [usize; DIM]) -> Option<Self::Element> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error[E0308]: method not compatible with trait
+  --> $DIR/issue-83765.rs:82:5
+   |
+LL |     fn size(&self) -> [usize; DIM] {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Self::DIM`, found `DIM`
+   |
+   = note: expected constant `Self::DIM`
+              found constant `DIM`
+
+error[E0308]: method not compatible with trait
+  --> $DIR/issue-83765.rs:92:5
+   |
+LL |     fn bget(&self, index: [usize; DIM]) -> Option<Self::Element> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Self::DIM`, found `DIM`
+   |
+   = note: expected constant `Self::DIM`
+              found constant `DIM`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0308, E0391.
+For more information about an error, try `rustc --explain E0308`.

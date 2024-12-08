@@ -1,0 +1,61 @@
+// Issue #5746
+#![warn(clippy::redundant_pattern_matching)]
+#![allow(
+    clippy::if_same_then_else,
+    clippy::equatable_if_let,
+    clippy::needless_if,
+    clippy::needless_else
+)]
+use std::task::Poll::{Pending, Ready};
+
+fn main() {
+    let m = std::sync::Mutex::new((0, 0));
+
+    // Result
+    if m.lock().is_ok() {}
+    if Err::<(), _>(m.lock().unwrap().0).is_err() {}
+
+    {
+        if Ok::<_, std::sync::MutexGuard<()>>(()).is_ok() {}
+    }
+    if Ok::<_, std::sync::MutexGuard<()>>(()).is_ok() {
+    } else {
+    }
+    if Ok::<_, std::sync::MutexGuard<()>>(()).is_ok() {}
+    if Err::<std::sync::MutexGuard<()>, _>(()).is_err() {}
+
+    if Ok::<_, ()>(String::new()).is_ok() {}
+    if Err::<(), _>((String::new(), ())).is_err() {}
+
+    // Option
+    if Some(m.lock()).is_some() {}
+    if Some(m.lock().unwrap().0).is_some() {}
+
+    {
+        if None::<std::sync::MutexGuard<()>>.is_none() {}
+    }
+    if None::<std::sync::MutexGuard<()>>.is_none() {
+    } else {
+    }
+
+    if None::<std::sync::MutexGuard<()>>.is_none() {}
+
+    if Some(String::new()).is_some() {}
+    if Some((String::new(), ())).is_some() {}
+
+    // Poll
+    if Ready(m.lock()).is_ready() {}
+    if Ready(m.lock().unwrap().0).is_ready() {}
+
+    {
+        if Pending::<std::sync::MutexGuard<()>>.is_pending() {}
+    }
+    if Pending::<std::sync::MutexGuard<()>>.is_pending() {
+    } else {
+    }
+
+    if Pending::<std::sync::MutexGuard<()>>.is_pending() {}
+
+    if Ready(String::new()).is_ready() {}
+    if Ready((String::new(), ())).is_ready() {}
+}

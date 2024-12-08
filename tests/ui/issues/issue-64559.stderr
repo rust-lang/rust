@@ -1,0 +1,22 @@
+error[E0382]: use of moved value: `orig`
+  --> $DIR/issue-64559.rs:4:20
+   |
+LL |     let orig = vec![true];
+   |         ---- move occurs because `orig` has type `Vec<bool>`, which does not implement the `Copy` trait
+LL |     for _val in orig {}
+   |                 ---- `orig` moved due to this implicit call to `.into_iter()`
+LL |     let _closure = || orig;
+   |                    ^^ ---- use occurs due to use in closure
+   |                    |
+   |                    value used here after move
+   |
+note: `into_iter` takes ownership of the receiver `self`, which moves `orig`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+help: consider iterating over a slice of the `Vec<bool>`'s content to avoid moving into the `for` loop
+   |
+LL |     for _val in &orig {}
+   |                 +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

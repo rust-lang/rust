@@ -1,0 +1,13 @@
+error: expected identifier, found keyword `loop`
+  --> $DIR/keyword-loop-as-identifier.rs:4:9
+   |
+LL |     let loop = "foo";
+   |         ^^^^ expected identifier, found keyword
+   |
+help: escape `loop` to use it as an identifier
+   |
+LL |     let r#loop = "foo";
+   |         ++
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,34 @@
+warning: unreachable definition
+  --> $DIR/issue-85071-2.rs:20:9
+   |
+LL |     let x = s.f();
+   |             ----- any code following this expression is unreachable
+LL |
+LL |     let _y = x;
+   |         ^^ unreachable definition
+   |
+note: this expression has type `Foo`, which is uninhabited
+  --> $DIR/issue-85071-2.rs:18:13
+   |
+LL |     let x = s.f();
+   |             ^^^^^
+note: the lint level is defined here
+  --> $DIR/issue-85071-2.rs:7:26
+   |
+LL | #![warn(unused_variables,unreachable_code)]
+   |                          ^^^^^^^^^^^^^^^^
+
+warning: unused variable: `x`
+  --> $DIR/issue-85071-2.rs:18:9
+   |
+LL |     let x = s.f();
+   |         ^ help: if this is intentional, prefix it with an underscore: `_x`
+   |
+note: the lint level is defined here
+  --> $DIR/issue-85071-2.rs:7:9
+   |
+LL | #![warn(unused_variables,unreachable_code)]
+   |         ^^^^^^^^^^^^^^^^
+
+warning: 2 warnings emitted
+

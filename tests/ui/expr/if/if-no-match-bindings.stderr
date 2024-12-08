@@ -1,0 +1,105 @@
+error[E0308]: mismatched types
+  --> $DIR/if-no-match-bindings.rs:19:8
+   |
+LL |     if b_ref() {}
+   |        ^^^^^^^ expected `bool`, found `&bool`
+   |
+help: consider dereferencing the borrow
+   |
+LL |     if *b_ref() {}
+   |        +
+
+error[E0308]: mismatched types
+  --> $DIR/if-no-match-bindings.rs:20:8
+   |
+LL |     if b_mut_ref() {}
+   |        ^^^^^^^^^^^ expected `bool`, found `&mut bool`
+   |
+help: consider dereferencing the borrow
+   |
+LL |     if *b_mut_ref() {}
+   |        +
+
+error[E0308]: mismatched types
+  --> $DIR/if-no-match-bindings.rs:21:8
+   |
+LL |     if &true {}
+   |        ^^^^^ expected `bool`, found `&bool`
+   |
+help: consider removing the borrow
+   |
+LL -     if &true {}
+LL +     if true {}
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/if-no-match-bindings.rs:22:8
+   |
+LL |     if &mut true {}
+   |        ^^^^^^^^^ expected `bool`, found `&mut bool`
+   |
+help: consider removing the borrow
+   |
+LL -     if &mut true {}
+LL +     if true {}
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/if-no-match-bindings.rs:25:11
+   |
+LL |     while b_ref() {}
+   |           ^^^^^^^ expected `bool`, found `&bool`
+   |
+help: consider dereferencing the borrow
+   |
+LL |     while *b_ref() {}
+   |           +
+
+error[E0308]: mismatched types
+  --> $DIR/if-no-match-bindings.rs:26:11
+   |
+LL |     while b_mut_ref() {}
+   |           ^^^^^^^^^^^ expected `bool`, found `&mut bool`
+   |
+help: consider dereferencing the borrow
+   |
+LL |     while *b_mut_ref() {}
+   |           +
+
+error[E0308]: mismatched types
+  --> $DIR/if-no-match-bindings.rs:27:11
+   |
+LL |     while &true {}
+   |           ^^^^^ expected `bool`, found `&bool`
+   |
+help: consider removing the borrow
+   |
+LL -     while &true {}
+LL +     while true {}
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/if-no-match-bindings.rs:28:11
+   |
+LL |     while &mut true {}
+   |           ^^^^^^^^^ expected `bool`, found `&mut bool`
+   |
+help: consider removing the borrow
+   |
+LL -     while &mut true {}
+LL +     while true {}
+   |
+
+error[E0515]: cannot return reference to temporary value
+  --> $DIR/if-no-match-bindings.rs:8:38
+   |
+LL | fn b_mut_ref<'a>() -> &'a mut bool { &mut true }
+   |                                      ^^^^^----
+   |                                      |    |
+   |                                      |    temporary value created here
+   |                                      returns a reference to data owned by the current function
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0308, E0515.
+For more information about an error, try `rustc --explain E0308`.

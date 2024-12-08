@@ -1,0 +1,18 @@
+error[E0761]: file for module `mod_file_disambig_aux` found at both "$DIR/mod_file_disambig_aux.rs" and "$DIR/mod_file_disambig_aux/mod.rs"
+  --> $DIR/mod_file_disambig.rs:1:1
+   |
+LL | mod mod_file_disambig_aux;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: delete or rename one of them to remove the ambiguity
+
+error[E0433]: failed to resolve: use of undeclared crate or module `mod_file_aux`
+  --> $DIR/mod_file_disambig.rs:4:16
+   |
+LL |     assert_eq!(mod_file_aux::bar(), 10);
+   |                ^^^^^^^^^^^^ use of undeclared crate or module `mod_file_aux`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0433, E0761.
+For more information about an error, try `rustc --explain E0433`.

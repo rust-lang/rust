@@ -1,0 +1,8 @@
+error: values of the type `[usize; usize::MAX]` are too big for the target architecture
+  --> $DIR/issue-15919-32.rs:5:9
+   |
+LL |     let x = [0usize; 0xffff_ffff];
+   |         ^
+
+error: aborting due to 1 previous error
+

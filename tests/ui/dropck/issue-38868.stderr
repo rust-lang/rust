@@ -1,0 +1,16 @@
+error[E0366]: `Drop` impls cannot be specialized
+  --> $DIR/issue-38868.rs:5:1
+   |
+LL | impl Drop for List<i32> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `i32` is not a generic parameter
+note: use the same sequence of generic lifetime, type and const parameters as the struct definition
+  --> $DIR/issue-38868.rs:1:1
+   |
+LL | pub struct List<T> {
+   | ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0366`.

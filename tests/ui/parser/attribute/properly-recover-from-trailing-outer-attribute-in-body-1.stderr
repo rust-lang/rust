@@ -1,0 +1,27 @@
+error: expected `;`, found `#`
+  --> $DIR/properly-recover-from-trailing-outer-attribute-in-body-1.rs:4:47
+   |
+LL |     #[cfg(feature = )]
+   |     ------------------ only `;` terminated statements or tail expressions are allowed after this attribute
+LL |     [1, 2, 3].iter().map().collect::<String>()
+   |                                               ^ expected `;` here
+LL |     #[attr]
+   |     - unexpected token
+   |
+help: add `;` here
+   |
+LL |     [1, 2, 3].iter().map().collect::<String>();
+   |                                               +
+help: alternatively, consider surrounding the expression with a block
+   |
+LL |     { [1, 2, 3].iter().map().collect::<String>() }
+   |     +                                            +
+
+error: expected statement after outer attribute
+  --> $DIR/properly-recover-from-trailing-outer-attribute-in-body-1.rs:5:5
+   |
+LL |     #[attr]
+   |     ^^^^^^^
+
+error: aborting due to 2 previous errors
+

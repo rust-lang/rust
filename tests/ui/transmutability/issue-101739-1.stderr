@@ -1,0 +1,18 @@
+error[E0412]: cannot find type `Dst` in this scope
+  --> $DIR/issue-101739-1.rs:8:9
+   |
+LL |         Dst: TransmuteFrom<Src, ASSUME_ALIGNMENT>,
+   |         ^^^ not found in this scope
+
+error: the constant `ASSUME_ALIGNMENT` is not of type `Assume`
+  --> $DIR/issue-101739-1.rs:8:14
+   |
+LL |         Dst: TransmuteFrom<Src, ASSUME_ALIGNMENT>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Assume`, found `bool`
+   |
+note: required by a const generic parameter in `TransmuteFrom`
+  --> $SRC_DIR/core/src/mem/transmutability.rs:LL:COL
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0412`.

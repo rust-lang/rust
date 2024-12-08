@@ -1,0 +1,17 @@
+error: literal out of range for `u8`
+  --> $DIR/deny-overflowing-literals.rs:2:17
+   |
+LL |     let x: u8 = 256;
+   |                 ^^^
+   |
+   = note: the literal `256` does not fit into the type `u8` whose range is `0..=255`
+   = note: `#[deny(overflowing_literals)]` on by default
+
+error: range endpoint is out of range for `u8`
+  --> $DIR/deny-overflowing-literals.rs:5:14
+   |
+LL |     for _ in 0..256u8 {}
+   |              ^^^^^^^^ help: use an inclusive range instead: `0..=255u8`
+
+error: aborting due to 2 previous errors
+

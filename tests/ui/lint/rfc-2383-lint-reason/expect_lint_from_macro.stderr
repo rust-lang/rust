@@ -1,0 +1,29 @@
+warning: unused variable: `x`
+  --> $DIR/expect_lint_from_macro.rs:7:13
+   |
+LL |         let x = 0;
+   |             ^ help: if this is intentional, prefix it with an underscore: `_x`
+...
+LL |     trigger_unused_variables_macro!();
+   |     --------------------------------- in this macro invocation
+   |
+note: the lint level is defined here
+  --> $DIR/expect_lint_from_macro.rs:3:9
+   |
+LL | #![warn(unused_variables)]
+   |         ^^^^^^^^^^^^^^^^
+   = note: this warning originates in the macro `trigger_unused_variables_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: unused variable: `x`
+  --> $DIR/expect_lint_from_macro.rs:7:13
+   |
+LL |         let x = 0;
+   |             ^ help: if this is intentional, prefix it with an underscore: `_x`
+...
+LL |     trigger_unused_variables_macro!();
+   |     --------------------------------- in this macro invocation
+   |
+   = note: this warning originates in the macro `trigger_unused_variables_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: 2 warnings emitted
+

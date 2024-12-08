@@ -1,0 +1,84 @@
+error: `cfg` is not an unsafe attribute
+  --> $DIR/extraneous-unsafe-attributes.rs:3:3
+   |
+LL | #[unsafe(cfg(any()))]
+   |   ^^^^^^ this is not an unsafe attribute
+   |
+   = note: extraneous unsafe is not allowed in attributes
+
+error: `cfg_attr` is not an unsafe attribute
+  --> $DIR/extraneous-unsafe-attributes.rs:6:3
+   |
+LL | #[unsafe(cfg_attr(any(), allow(dead_code)))]
+   |   ^^^^^^ this is not an unsafe attribute
+   |
+   = note: extraneous unsafe is not allowed in attributes
+
+error: `test` is not an unsafe attribute
+  --> $DIR/extraneous-unsafe-attributes.rs:9:3
+   |
+LL | #[unsafe(test)]
+   |   ^^^^^^ this is not an unsafe attribute
+   |
+   = note: extraneous unsafe is not allowed in attributes
+
+error: expected identifier, found keyword `unsafe`
+  --> $DIR/extraneous-unsafe-attributes.rs:30:19
+   |
+LL |     let _a = cfg!(unsafe(foo));
+   |                   ^^^^^^ expected identifier, found keyword
+   |
+help: escape `unsafe` to use it as an identifier
+   |
+LL |     let _a = cfg!(r#unsafe(foo));
+   |                   ++
+
+error[E0537]: invalid predicate `r#unsafe`
+  --> $DIR/extraneous-unsafe-attributes.rs:30:19
+   |
+LL |     let _a = cfg!(unsafe(foo));
+   |                   ^^^^^^^^^^^
+
+error: `ignore` is not an unsafe attribute
+  --> $DIR/extraneous-unsafe-attributes.rs:12:3
+   |
+LL | #[unsafe(ignore = "test")]
+   |   ^^^^^^ this is not an unsafe attribute
+   |
+   = note: extraneous unsafe is not allowed in attributes
+
+error: `should_panic` is not an unsafe attribute
+  --> $DIR/extraneous-unsafe-attributes.rs:15:3
+   |
+LL | #[unsafe(should_panic(expected = "test"))]
+   |   ^^^^^^ this is not an unsafe attribute
+   |
+   = note: extraneous unsafe is not allowed in attributes
+
+error: `macro_use` is not an unsafe attribute
+  --> $DIR/extraneous-unsafe-attributes.rs:18:3
+   |
+LL | #[unsafe(macro_use)]
+   |   ^^^^^^ this is not an unsafe attribute
+   |
+   = note: extraneous unsafe is not allowed in attributes
+
+error: `macro_export` is not an unsafe attribute
+  --> $DIR/extraneous-unsafe-attributes.rs:20:7
+   |
+LL |     #[unsafe(macro_export)]
+   |       ^^^^^^ this is not an unsafe attribute
+   |
+   = note: extraneous unsafe is not allowed in attributes
+
+error: `used` is not an unsafe attribute
+  --> $DIR/extraneous-unsafe-attributes.rs:26:3
+   |
+LL | #[unsafe(used)]
+   |   ^^^^^^ this is not an unsafe attribute
+   |
+   = note: extraneous unsafe is not allowed in attributes
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0537`.

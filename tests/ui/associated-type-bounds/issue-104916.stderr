@@ -1,0 +1,8 @@
+error: associated type bounds are not allowed in `dyn` types
+  --> $DIR/issue-104916.rs:7:19
+   |
+LL |     dyn for<'j> B<AssocType: 'j>:,
+   |                   ^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

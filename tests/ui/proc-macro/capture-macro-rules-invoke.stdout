@@ -1,0 +1,324 @@
+PRINT-BANG INPUT (DISPLAY): self
+PRINT-BANG INPUT (DEBUG): TokenStream [
+    Group {
+        delimiter: None,
+        stream: TokenStream [
+            Ident {
+                ident: "self",
+                span: $DIR/capture-macro-rules-invoke.rs:36:24: 36:28 (#0),
+            },
+        ],
+        span: $DIR/capture-macro-rules-invoke.rs:21:21: 21:26 (#3),
+    },
+]
+PRINT-BANG INPUT (DISPLAY): 1 + 1, { "a" }, let a = 1, String, my_name, 'a, my_val = 30,
+std::option::Option, pub(in some::path), [a b c], -30
+PRINT-BANG DEEP-RE-COLLECTED (DISPLAY): 1 + 1, { "a" }, let a = 1, String, my_name, 'a, my_val = 30,
+std :: option :: Option, pub(in some :: path), [a b c], - 30
+PRINT-BANG INPUT (DEBUG): TokenStream [
+    Group {
+        delimiter: None,
+        stream: TokenStream [
+            Literal {
+                kind: Integer,
+                symbol: "1",
+                suffix: None,
+                span: $DIR/capture-macro-rules-invoke.rs:38:13: 38:14 (#0),
+            },
+            Punct {
+                ch: '+',
+                spacing: Alone,
+                span: $DIR/capture-macro-rules-invoke.rs:38:15: 38:16 (#0),
+            },
+            Literal {
+                kind: Integer,
+                symbol: "1",
+                suffix: None,
+                span: $DIR/capture-macro-rules-invoke.rs:38:17: 38:18 (#0),
+            },
+        ],
+        span: $DIR/capture-macro-rules-invoke.rs:14:29: 14:34 (#7),
+    },
+    Punct {
+        ch: ',',
+        spacing: Alone,
+        span: $DIR/capture-macro-rules-invoke.rs:14:34: 14:35 (#7),
+    },
+    Group {
+        delimiter: None,
+        stream: TokenStream [
+            Group {
+                delimiter: Brace,
+                stream: TokenStream [
+                    Literal {
+                        kind: Str,
+                        symbol: "a",
+                        suffix: None,
+                        span: $DIR/capture-macro-rules-invoke.rs:39:15: 39:18 (#0),
+                    },
+                ],
+                span: $DIR/capture-macro-rules-invoke.rs:39:13: 39:20 (#0),
+            },
+        ],
+        span: $DIR/capture-macro-rules-invoke.rs:14:36: 14:42 (#7),
+    },
+    Punct {
+        ch: ',',
+        spacing: Alone,
+        span: $DIR/capture-macro-rules-invoke.rs:14:42: 14:43 (#7),
+    },
+    Group {
+        delimiter: None,
+        stream: TokenStream [
+            Ident {
+                ident: "let",
+                span: $DIR/capture-macro-rules-invoke.rs:40:13: 40:16 (#0),
+            },
+            Ident {
+                ident: "a",
+                span: $DIR/capture-macro-rules-invoke.rs:40:17: 40:18 (#0),
+            },
+            Punct {
+                ch: '=',
+                spacing: Alone,
+                span: $DIR/capture-macro-rules-invoke.rs:40:19: 40:20 (#0),
+            },
+            Literal {
+                kind: Integer,
+                symbol: "1",
+                suffix: None,
+                span: $DIR/capture-macro-rules-invoke.rs:40:21: 40:22 (#0),
+            },
+        ],
+        span: $DIR/capture-macro-rules-invoke.rs:14:44: 14:49 (#7),
+    },
+    Punct {
+        ch: ',',
+        spacing: Alone,
+        span: $DIR/capture-macro-rules-invoke.rs:14:49: 14:50 (#7),
+    },
+    Group {
+        delimiter: None,
+        stream: TokenStream [
+            Ident {
+                ident: "String",
+                span: $DIR/capture-macro-rules-invoke.rs:41:13: 41:19 (#0),
+            },
+        ],
+        span: $DIR/capture-macro-rules-invoke.rs:14:51: 14:54 (#7),
+    },
+    Punct {
+        ch: ',',
+        spacing: Alone,
+        span: $DIR/capture-macro-rules-invoke.rs:14:54: 14:55 (#7),
+    },
+    Ident {
+        ident: "my_name",
+        span: $DIR/capture-macro-rules-invoke.rs:42:13: 42:20 (#0),
+    },
+    Punct {
+        ch: ',',
+        spacing: Alone,
+        span: $DIR/capture-macro-rules-invoke.rs:14:62: 14:63 (#7),
+    },
+    Group {
+        delimiter: None,
+        stream: TokenStream [
+            Punct {
+                ch: '\'',
+                spacing: Joint,
+                span: $DIR/capture-macro-rules-invoke.rs:43:13: 43:15 (#0),
+            },
+            Ident {
+                ident: "a",
+                span: $DIR/capture-macro-rules-invoke.rs:43:13: 43:15 (#0),
+            },
+        ],
+        span: $DIR/capture-macro-rules-invoke.rs:15:29: 15:38 (#7),
+    },
+    Punct {
+        ch: ',',
+        spacing: Alone,
+        span: $DIR/capture-macro-rules-invoke.rs:15:38: 15:39 (#7),
+    },
+    Group {
+        delimiter: None,
+        stream: TokenStream [
+            Ident {
+                ident: "my_val",
+                span: $DIR/capture-macro-rules-invoke.rs:44:13: 44:19 (#0),
+            },
+            Punct {
+                ch: '=',
+                spacing: Alone,
+                span: $DIR/capture-macro-rules-invoke.rs:44:20: 44:21 (#0),
+            },
+            Literal {
+                kind: Integer,
+                symbol: "30",
+                suffix: None,
+                span: $DIR/capture-macro-rules-invoke.rs:44:22: 44:24 (#0),
+            },
+        ],
+        span: $DIR/capture-macro-rules-invoke.rs:15:40: 15:45 (#7),
+    },
+    Punct {
+        ch: ',',
+        spacing: Alone,
+        span: $DIR/capture-macro-rules-invoke.rs:15:45: 15:46 (#7),
+    },
+    Group {
+        delimiter: None,
+        stream: TokenStream [
+            Ident {
+                ident: "std",
+                span: $DIR/capture-macro-rules-invoke.rs:45:13: 45:16 (#0),
+            },
+            Punct {
+                ch: ':',
+                spacing: Joint,
+                span: $DIR/capture-macro-rules-invoke.rs:45:16: 45:17 (#0),
+            },
+            Punct {
+                ch: ':',
+                spacing: Alone,
+                span: $DIR/capture-macro-rules-invoke.rs:45:17: 45:18 (#0),
+            },
+            Ident {
+                ident: "option",
+                span: $DIR/capture-macro-rules-invoke.rs:45:18: 45:24 (#0),
+            },
+            Punct {
+                ch: ':',
+                spacing: Joint,
+                span: $DIR/capture-macro-rules-invoke.rs:45:24: 45:25 (#0),
+            },
+            Punct {
+                ch: ':',
+                spacing: Alone,
+                span: $DIR/capture-macro-rules-invoke.rs:45:25: 45:26 (#0),
+            },
+            Ident {
+                ident: "Option",
+                span: $DIR/capture-macro-rules-invoke.rs:45:26: 45:32 (#0),
+            },
+        ],
+        span: $DIR/capture-macro-rules-invoke.rs:15:47: 15:52 (#7),
+    },
+    Punct {
+        ch: ',',
+        spacing: Alone,
+        span: $DIR/capture-macro-rules-invoke.rs:15:52: 15:53 (#7),
+    },
+    Group {
+        delimiter: None,
+        stream: TokenStream [
+            Ident {
+                ident: "pub",
+                span: $DIR/capture-macro-rules-invoke.rs:46:13: 46:16 (#0),
+            },
+            Group {
+                delimiter: Parenthesis,
+                stream: TokenStream [
+                    Ident {
+                        ident: "in",
+                        span: $DIR/capture-macro-rules-invoke.rs:46:17: 46:19 (#0),
+                    },
+                    Ident {
+                        ident: "some",
+                        span: $DIR/capture-macro-rules-invoke.rs:46:20: 46:24 (#0),
+                    },
+                    Punct {
+                        ch: ':',
+                        spacing: Joint,
+                        span: $DIR/capture-macro-rules-invoke.rs:46:24: 46:25 (#0),
+                    },
+                    Punct {
+                        ch: ':',
+                        spacing: Alone,
+                        span: $DIR/capture-macro-rules-invoke.rs:46:25: 46:26 (#0),
+                    },
+                    Ident {
+                        ident: "path",
+                        span: $DIR/capture-macro-rules-invoke.rs:46:26: 46:30 (#0),
+                    },
+                ],
+                span: $DIR/capture-macro-rules-invoke.rs:46:16: 46:31 (#0),
+            },
+        ],
+        span: $DIR/capture-macro-rules-invoke.rs:15:54: 15:58 (#7),
+    },
+    Punct {
+        ch: ',',
+        spacing: Alone,
+        span: $DIR/capture-macro-rules-invoke.rs:15:58: 15:59 (#7),
+    },
+    Group {
+        delimiter: Bracket,
+        stream: TokenStream [
+            Ident {
+                ident: "a",
+                span: $DIR/capture-macro-rules-invoke.rs:47:15: 47:16 (#0),
+            },
+            Ident {
+                ident: "b",
+                span: $DIR/capture-macro-rules-invoke.rs:47:17: 47:18 (#0),
+            },
+            Ident {
+                ident: "c",
+                span: $DIR/capture-macro-rules-invoke.rs:47:19: 47:20 (#0),
+            },
+        ],
+        span: $DIR/capture-macro-rules-invoke.rs:47:13: 47:22 (#0),
+    },
+    Punct {
+        ch: ',',
+        spacing: Alone,
+        span: $DIR/capture-macro-rules-invoke.rs:15:63: 15:64 (#7),
+    },
+    Group {
+        delimiter: None,
+        stream: TokenStream [
+            Punct {
+                ch: '-',
+                spacing: Alone,
+                span: $DIR/capture-macro-rules-invoke.rs:48:13: 48:14 (#0),
+            },
+            Literal {
+                kind: Integer,
+                symbol: "30",
+                suffix: None,
+                span: $DIR/capture-macro-rules-invoke.rs:48:14: 48:16 (#0),
+            },
+        ],
+        span: $DIR/capture-macro-rules-invoke.rs:15:65: 15:69 (#7),
+    },
+]
+PRINT-BANG INPUT (DISPLAY): (a, b)
+PRINT-BANG INPUT (DEBUG): TokenStream [
+    Group {
+        delimiter: None,
+        stream: TokenStream [
+            Group {
+                delimiter: Parenthesis,
+                stream: TokenStream [
+                    Ident {
+                        ident: "a",
+                        span: $DIR/capture-macro-rules-invoke.rs:52:27: 52:28 (#0),
+                    },
+                    Punct {
+                        ch: ',',
+                        spacing: Alone,
+                        span: $DIR/capture-macro-rules-invoke.rs:52:28: 52:29 (#0),
+                    },
+                    Ident {
+                        ident: "b",
+                        span: $DIR/capture-macro-rules-invoke.rs:52:30: 52:31 (#0),
+                    },
+                ],
+                span: $DIR/capture-macro-rules-invoke.rs:52:26: 52:32 (#0),
+            },
+        ],
+        span: $DIR/capture-macro-rules-invoke.rs:27:21: 27:25 (#11),
+    },
+]

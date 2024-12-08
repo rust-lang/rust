@@ -1,0 +1,27 @@
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/synthetic-hir-has-parent.rs:7:9
+   |
+LL |         String: Copy;
+   |         ^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
+   |
+   = help: see issue #48214
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
+   |
+
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/synthetic-hir-has-parent.rs:4:18
+   |
+LL |     fn demo() -> impl Foo
+   |                  ^^^^^^^^ the trait `Copy` is not implemented for `String`
+   |
+   = help: see issue #48214
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

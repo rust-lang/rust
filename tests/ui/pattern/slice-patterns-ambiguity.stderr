@@ -1,0 +1,40 @@
+error[E0282]: type annotations needed for `&_`
+  --> $DIR/slice-patterns-ambiguity.rs:25:9
+   |
+LL |     let &[a, b] = Zeroes.into() else {
+   |         ^^^^^^^
+   |
+help: consider giving this pattern a type, where the placeholders `_` are specified
+   |
+LL |     let &[a, b]: &_ = Zeroes.into() else {
+   |                ++++
+
+error[E0282]: type annotations needed
+  --> $DIR/slice-patterns-ambiguity.rs:32:29
+   |
+LL |     if let &[a, b] = Zeroes.into() {
+   |             ------          ^^^^
+   |             |
+   |             type must be known at this point
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL |     if let &[a, b] = <Zeroes as Into<&_>>::into(Zeroes) {
+   |                      +++++++++++++++++++++++++++      ~
+
+error[E0282]: type annotations needed
+  --> $DIR/slice-patterns-ambiguity.rs:39:29
+   |
+LL |     if let &[a, b] = Zeroes.into() {
+   |             ------          ^^^^
+   |             |
+   |             type must be known at this point
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL |     if let &[a, b] = <Zeroes as Into<&_>>::into(Zeroes) {
+   |                      +++++++++++++++++++++++++++      ~
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0282`.

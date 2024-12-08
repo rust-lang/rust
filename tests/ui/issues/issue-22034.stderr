@@ -1,0 +1,13 @@
+error[E0277]: expected a `Fn()` closure, found `()`
+  --> $DIR/issue-22034.rs:4:16
+   |
+LL |         &mut *(ptr as *mut dyn Fn())
+   |                ^^^ expected an `Fn()` closure, found `()`
+   |
+   = help: the trait `Fn()` is not implemented for `()`
+   = note: wrap the `()` in a closure with no arguments: `|| { /* code */ }`
+   = note: required for the cast from `*mut ()` to `*mut dyn Fn()`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

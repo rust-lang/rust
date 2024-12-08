@@ -1,0 +1,57 @@
+- // MIR for `custom_discr` before JumpThreading
++ // MIR for `custom_discr` after JumpThreading
+  
+  fn custom_discr(_1: bool) -> u8 {
+      debug x => _1;
+      let mut _0: u8;
+      let mut _2: CustomDiscr;
+      let mut _3: bool;
+      let mut _4: u8;
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = copy _1;
+          switchInt(move _3) -> [0: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          _2 = CustomDiscr::A;
+-         goto -> bb3;
++         goto -> bb7;
+      }
+  
+      bb2: {
+          _2 = CustomDiscr::B;
+          goto -> bb3;
+      }
+  
+      bb3: {
+          StorageDead(_3);
+          _4 = discriminant(_2);
+-         switchInt(move _4) -> [35: bb5, otherwise: bb4];
++         goto -> bb4;
+      }
+  
+      bb4: {
+          _0 = const 13_u8;
+          goto -> bb6;
+      }
+  
+      bb5: {
+          _0 = const 5_u8;
+          goto -> bb6;
+      }
+  
+      bb6: {
+          StorageDead(_2);
+          return;
++     }
++ 
++     bb7: {
++         StorageDead(_3);
++         _4 = discriminant(_2);
++         goto -> bb5;
+      }
+  }
+  

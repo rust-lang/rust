@@ -1,0 +1,17 @@
+error[E0005]: refutable pattern in local binding
+  --> $DIR/E0005.rs:3:9
+   |
+LL |     let Some(y) = x;
+   |         ^^^^^^^ pattern `None` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+   = note: the matched value is of type `Option<i32>`
+help: you might want to use `let else` to handle the variant that isn't matched
+   |
+LL |     let Some(y) = x else { todo!() };
+   |                     ++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0005`.

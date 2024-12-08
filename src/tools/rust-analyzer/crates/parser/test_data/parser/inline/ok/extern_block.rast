@@ -1,0 +1,21 @@
+SOURCE_FILE
+  EXTERN_BLOCK
+    UNSAFE_KW "unsafe"
+    WHITESPACE " "
+    ABI
+      EXTERN_KW "extern"
+      WHITESPACE " "
+      STRING "\"C\""
+    WHITESPACE " "
+    EXTERN_ITEM_LIST
+      L_CURLY "{"
+      R_CURLY "}"
+  WHITESPACE "\n"
+  EXTERN_BLOCK
+    ABI
+      EXTERN_KW "extern"
+    WHITESPACE " "
+    EXTERN_ITEM_LIST
+      L_CURLY "{"
+      R_CURLY "}"
+  WHITESPACE "\n"

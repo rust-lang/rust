@@ -1,0 +1,2 @@
+#[cfg(any())]
+extern "C++" {}

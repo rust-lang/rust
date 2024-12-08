@@ -1,0 +1,28 @@
+error[E0277]: the trait bound `{integer}: Scalar` is not satisfied
+  --> $DIR/issue-22645.rs:15:5
+   |
+LL |   b + 3
+   |     ^ the trait `Scalar` is not implemented for `{integer}`
+   |
+   = help: the trait `Scalar` is implemented for `f64`
+note: required for `Bob` to implement `Add<{integer}>`
+  --> $DIR/issue-22645.rs:8:19
+   |
+LL | impl<RHS: Scalar> Add <RHS> for Bob {
+   |           ------  ^^^^^^^^^     ^^^
+   |           |
+   |           unsatisfied trait bound introduced here
+
+error[E0308]: mismatched types
+  --> $DIR/issue-22645.rs:15:3
+   |
+LL | fn main() {
+   |          - expected `()` because of default return type
+LL |   let b = Bob + 3.5;
+LL |   b + 3
+   |   ^^^^^ expected `()`, found `Bob`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

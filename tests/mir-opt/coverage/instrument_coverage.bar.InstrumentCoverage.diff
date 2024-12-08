@@ -1,0 +1,16 @@
+- // MIR for `bar` before InstrumentCoverage
++ // MIR for `bar` after InstrumentCoverage
+  
+  fn bar() -> bool {
+      let mut _0: bool;
+  
++     coverage body span: $DIR/instrument_coverage.rs:19:18: 21:2 (#0)
++     coverage Code(Counter(0)) => 19:1 - 21:2;
++ 
+      bb0: {
++         Coverage::CounterIncrement(0);
+          _0 = const true;
+          return;
+      }
+  }
+  

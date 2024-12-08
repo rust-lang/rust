@@ -1,0 +1,184 @@
+- // MIR for `wide_ptr_integer` before GVN
++ // MIR for `wide_ptr_integer` after GVN
+  
+  fn wide_ptr_integer() -> () {
+      let mut _0: ();
+      let _1: *const [u8];
+      let mut _2: (usize, usize);
+      let mut _4: (usize, usize);
+      let _5: ();
+      let mut _6: bool;
+      let mut _7: *const [u8];
+      let mut _8: *const [u8];
+      let _9: ();
+      let mut _10: bool;
+      let mut _11: *const [u8];
+      let mut _12: *const [u8];
+      let _13: ();
+      let mut _14: bool;
+      let mut _15: *const [u8];
+      let mut _16: *const [u8];
+      let _17: ();
+      let mut _18: bool;
+      let mut _19: *const [u8];
+      let mut _20: *const [u8];
+      let _21: ();
+      let mut _22: bool;
+      let mut _23: *const [u8];
+      let mut _24: *const [u8];
+      let _25: ();
+      let mut _26: bool;
+      let mut _27: *const [u8];
+      let mut _28: *const [u8];
+      scope 1 {
+          debug a => _1;
+          let _3: *const [u8];
+          scope 2 {
+              debug b => _3;
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_1);
++         nop;
+          StorageLive(_2);
+-         _2 = (const 1_usize, const 1_usize);
+-         _1 = move _2 as *const [u8] (Transmute);
++         _2 = const (1_usize, 1_usize);
++         _1 = const Indirect { alloc_id: ALLOC0, offset: Size(0 bytes) }: *const [u8];
+          StorageDead(_2);
+-         StorageLive(_3);
++         nop;
+          StorageLive(_4);
+-         _4 = (const 1_usize, const 2_usize);
+-         _3 = move _4 as *const [u8] (Transmute);
++         _4 = const (1_usize, 2_usize);
++         _3 = const Indirect { alloc_id: ALLOC1, offset: Size(0 bytes) }: *const [u8];
+          StorageDead(_4);
+          StorageLive(_5);
+          StorageLive(_6);
+          StorageLive(_7);
+-         _7 = copy _1;
++         _7 = const Indirect { alloc_id: ALLOC0, offset: Size(0 bytes) }: *const [u8];
+          StorageLive(_8);
+-         _8 = copy _3;
+-         _6 = Eq(move _7, move _8);
++         _8 = const Indirect { alloc_id: ALLOC1, offset: Size(0 bytes) }: *const [u8];
++         _6 = const false;
+          StorageDead(_8);
+          StorageDead(_7);
+-         _5 = opaque::<bool>(move _6) -> [return: bb1, unwind unreachable];
++         _5 = opaque::<bool>(const false) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageDead(_6);
+          StorageDead(_5);
+          StorageLive(_9);
+          StorageLive(_10);
+          StorageLive(_11);
+-         _11 = copy _1;
++         _11 = const Indirect { alloc_id: ALLOC0, offset: Size(0 bytes) }: *const [u8];
+          StorageLive(_12);
+-         _12 = copy _3;
+-         _10 = Ne(move _11, move _12);
++         _12 = const Indirect { alloc_id: ALLOC1, offset: Size(0 bytes) }: *const [u8];
++         _10 = const true;
+          StorageDead(_12);
+          StorageDead(_11);
+-         _9 = opaque::<bool>(move _10) -> [return: bb2, unwind unreachable];
++         _9 = opaque::<bool>(const true) -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          StorageDead(_10);
+          StorageDead(_9);
+          StorageLive(_13);
+          StorageLive(_14);
+          StorageLive(_15);
+-         _15 = copy _1;
++         _15 = const Indirect { alloc_id: ALLOC0, offset: Size(0 bytes) }: *const [u8];
+          StorageLive(_16);
+-         _16 = copy _3;
+-         _14 = Lt(move _15, move _16);
++         _16 = const Indirect { alloc_id: ALLOC1, offset: Size(0 bytes) }: *const [u8];
++         _14 = const true;
+          StorageDead(_16);
+          StorageDead(_15);
+-         _13 = opaque::<bool>(move _14) -> [return: bb3, unwind unreachable];
++         _13 = opaque::<bool>(const true) -> [return: bb3, unwind unreachable];
+      }
+  
+      bb3: {
+          StorageDead(_14);
+          StorageDead(_13);
+          StorageLive(_17);
+          StorageLive(_18);
+          StorageLive(_19);
+-         _19 = copy _1;
++         _19 = const Indirect { alloc_id: ALLOC0, offset: Size(0 bytes) }: *const [u8];
+          StorageLive(_20);
+-         _20 = copy _3;
+-         _18 = Le(move _19, move _20);
++         _20 = const Indirect { alloc_id: ALLOC1, offset: Size(0 bytes) }: *const [u8];
++         _18 = const true;
+          StorageDead(_20);
+          StorageDead(_19);
+-         _17 = opaque::<bool>(move _18) -> [return: bb4, unwind unreachable];
++         _17 = opaque::<bool>(const true) -> [return: bb4, unwind unreachable];
+      }
+  
+      bb4: {
+          StorageDead(_18);
+          StorageDead(_17);
+          StorageLive(_21);
+          StorageLive(_22);
+          StorageLive(_23);
+-         _23 = copy _1;
++         _23 = const Indirect { alloc_id: ALLOC0, offset: Size(0 bytes) }: *const [u8];
+          StorageLive(_24);
+-         _24 = copy _3;
+-         _22 = Gt(move _23, move _24);
++         _24 = const Indirect { alloc_id: ALLOC1, offset: Size(0 bytes) }: *const [u8];
++         _22 = const false;
+          StorageDead(_24);
+          StorageDead(_23);
+-         _21 = opaque::<bool>(move _22) -> [return: bb5, unwind unreachable];
++         _21 = opaque::<bool>(const false) -> [return: bb5, unwind unreachable];
+      }
+  
+      bb5: {
+          StorageDead(_22);
+          StorageDead(_21);
+          StorageLive(_25);
+          StorageLive(_26);
+          StorageLive(_27);
+-         _27 = copy _1;
++         _27 = const Indirect { alloc_id: ALLOC0, offset: Size(0 bytes) }: *const [u8];
+          StorageLive(_28);
+-         _28 = copy _3;
+-         _26 = Ge(move _27, move _28);
++         _28 = const Indirect { alloc_id: ALLOC1, offset: Size(0 bytes) }: *const [u8];
++         _26 = const false;
+          StorageDead(_28);
+          StorageDead(_27);
+-         _25 = opaque::<bool>(move _26) -> [return: bb6, unwind unreachable];
++         _25 = opaque::<bool>(const false) -> [return: bb6, unwind unreachable];
+      }
+  
+      bb6: {
+          StorageDead(_26);
+          StorageDead(_25);
+          _0 = const ();
+-         StorageDead(_3);
+-         StorageDead(_1);
++         nop;
++         nop;
+          return;
+      }
+  }
++ 
++ ALLOC1 (size: 16, align: 8) { .. }
++ 
++ ALLOC0 (size: 16, align: 8) { .. }
+  

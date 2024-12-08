@@ -1,0 +1,19 @@
+error[E0429]: `self` imports are only allowed within a { } list
+  --> $DIR/use-mod-6.rs:7:13
+   |
+LL | use foo::bar::self as abc;
+   |             ^^^^^^
+   |
+help: consider importing the module directly
+   |
+LL - use foo::bar::self as abc;
+LL + use foo::bar as abc;
+   |
+help: alternatively, use the multi-path `use` syntax to import `self`
+   |
+LL | use foo::bar::{self as abc};
+   |               +           +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0429`.

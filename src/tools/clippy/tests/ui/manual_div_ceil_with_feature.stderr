@@ -1,0 +1,47 @@
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil_with_feature.rs:11:13
+   |
+LL |     let _ = (x + (y - 1)) / y;
+   |             ^^^^^^^^^^^^^^^^^ help: consider using `.div_ceil()`: `x.div_ceil(y)`
+   |
+   = note: `-D clippy::manual-div-ceil` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_div_ceil)]`
+
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil_with_feature.rs:12:13
+   |
+LL |     let _ = ((y - 1) + x) / y;
+   |             ^^^^^^^^^^^^^^^^^ help: consider using `.div_ceil()`: `x.div_ceil(y)`
+
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil_with_feature.rs:13:13
+   |
+LL |     let _ = (x + y - 1) / y;
+   |             ^^^^^^^^^^^^^^^ help: consider using `.div_ceil()`: `x.div_ceil(y)`
+
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil_with_feature.rs:15:13
+   |
+LL |     let _ = (7_i32 + (4 - 1)) / 4;
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: consider using `.div_ceil()`: `7_i32.div_ceil(4)`
+
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil_with_feature.rs:16:13
+   |
+LL |     let _ = (7_i32 as u32 + (4 - 1)) / 4;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.div_ceil()`: `(7_i32 as u32).div_ceil(4)`
+
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil_with_feature.rs:17:13
+   |
+LL |     let _ = (7_u32 as i32 + (4 - 1)) / 4;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.div_ceil()`: `(7_u32 as i32).div_ceil(4)`
+
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil_with_feature.rs:18:13
+   |
+LL |     let _ = (z_u + (4 - 1)) / 4;
+   |             ^^^^^^^^^^^^^^^^^^^ help: consider using `.div_ceil()`: `z_u.div_ceil(4)`
+
+error: aborting due to 7 previous errors
+

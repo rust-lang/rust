@@ -1,0 +1,20 @@
+- // MIR for `t1` before SimplifyLocals-before-const-prop
++ // MIR for `t1` after SimplifyLocals-before-const-prop
+  
+  fn t1() -> () {
+      let mut _0: ();
+-     let _1: u32;
+-     let mut _2: *mut u32;
+  
+      bb0: {
+-         StorageLive(_1);
+-         StorageLive(_2);
+-         _2 = &/*tls*/ mut X;
+-         _1 = copy (*_2);
+-         StorageDead(_2);
+-         StorageDead(_1);
+          _0 = const ();
+          return;
+      }
+  }
+  

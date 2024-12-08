@@ -1,0 +1,26 @@
+// MIR for `a` after Inline
+
+fn a(_1: &mut [T]) -> &mut [T] {
+    debug x => _1;
+    let mut _0: &mut [T];
+    let mut _2: &mut [T];
+    let mut _3: &mut [T];
+    let mut _4: &mut [T];
+    scope 1 (inlined <[T] as AsMut<[T]>>::as_mut) {
+        debug self => _4;
+    }
+
+    bb0: {
+        StorageLive(_2);
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = copy _1;
+        _3 = copy _4;
+        _2 = copy _3;
+        StorageDead(_4);
+        _0 = copy _2;
+        StorageDead(_3);
+        StorageDead(_2);
+        return;
+    }
+}

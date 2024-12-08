@@ -1,0 +1,14 @@
+error: lint `intra_doc_link_resolution_failure` has been removed: use `rustdoc::broken_intra_doc_links` instead
+  --> $DIR/rustdoc-renamed.rs:11:9
+   |
+LL | #![deny(intra_doc_link_resolution_failure)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/rustdoc-renamed.rs:4:9
+   |
+LL | #![deny(renamed_and_removed_lints)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

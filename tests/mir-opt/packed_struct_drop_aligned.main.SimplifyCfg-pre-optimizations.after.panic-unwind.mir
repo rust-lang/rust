@@ -1,0 +1,55 @@
+// MIR for `main` after SimplifyCfg-pre-optimizations
+
+fn main() -> () {
+    let mut _0: ();
+    let mut _1: Packed;
+    let mut _2: Aligned;
+    let mut _3: Droppy;
+    let mut _4: Aligned;
+    let mut _5: Droppy;
+    let mut _6: Aligned;
+    scope 1 {
+        debug x => _1;
+    }
+
+    bb0: {
+        StorageLive(_1);
+        StorageLive(_2);
+        StorageLive(_3);
+        _3 = Droppy(const 0_usize);
+        _2 = Aligned(move _3);
+        StorageDead(_3);
+        _1 = Packed(move _2);
+        StorageDead(_2);
+        StorageLive(_4);
+        StorageLive(_5);
+        _5 = Droppy(const 0_usize);
+        _4 = Aligned(move _5);
+        StorageDead(_5);
+        StorageLive(_6);
+        _6 = move (_1.0: Aligned);
+        drop(_6) -> [return: bb4, unwind: bb1];
+    }
+
+    bb1 (cleanup): {
+        (_1.0: Aligned) = move _4;
+        drop(_1) -> [return: bb3, unwind terminate(cleanup)];
+    }
+
+    bb2: {
+        StorageDead(_1);
+        return;
+    }
+
+    bb3 (cleanup): {
+        resume;
+    }
+
+    bb4: {
+        StorageDead(_6);
+        (_1.0: Aligned) = move _4;
+        StorageDead(_4);
+        _0 = const ();
+        drop(_1) -> [return: bb2, unwind: bb3];
+    }
+}

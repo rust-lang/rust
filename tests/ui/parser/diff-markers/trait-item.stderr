@@ -1,0 +1,23 @@
+error: encountered diff marker
+  --> $DIR/trait-item.rs:2:1
+   |
+LL | <<<<<<< HEAD
+   | ^^^^^^^ between this marker and `=======` is the code that we're merging into
+LL |     fn foo() {}
+LL | =======
+   | ------- between this marker and `>>>>>>>` is the incoming code
+LL |     fn bar() {}
+LL | >>>>>>> branch
+   | ^^^^^^^ this marker concludes the conflict region
+   |
+   = note: conflict markers indicate that a merge was started but could not be completed due to merge conflicts
+           to resolve a conflict, keep only the code you want and then delete the lines containing conflict markers
+   = help: if you're having merge conflicts after pulling new code:
+           the top section is the code you already had and the bottom section is the remote code
+           if you're in the middle of a rebase:
+           the top section is the code being rebased onto and the bottom section is the code coming from the current commit being rebased
+   = note: for an explanation on these markers from the `git` documentation:
+           visit <https://git-scm.com/book/en/v2/Git-Tools-Advanced-Merging#_checking_out_conflicts>
+
+error: aborting due to 1 previous error
+

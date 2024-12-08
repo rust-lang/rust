@@ -1,0 +1,19 @@
+error[E0261]: use of undeclared lifetime name `'foo`
+  --> $DIR/regions-in-enums.rs:13:9
+   |
+LL | enum No0 {
+   |         - help: consider introducing lifetime `'foo` here: `<'foo>`
+LL |     X5(&'foo usize)
+   |         ^^^^ undeclared lifetime
+
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/regions-in-enums.rs:17:9
+   |
+LL | enum No1 {
+   |         - help: consider introducing lifetime `'a` here: `<'a>`
+LL |     X6(&'a usize)
+   |         ^^ undeclared lifetime
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0261`.

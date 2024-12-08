@@ -1,0 +1,9 @@
+error[E0191]: the value of the associated type `Item` in `Iterator` must be specified
+  --> $DIR/trait-hidden-method.rs:4:33
+   |
+LL |     Box::new(1..=10) as Box<dyn Iterator>
+   |                                 ^^^^^^^^ help: specify the associated type: `Iterator<Item = Type>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0191`.

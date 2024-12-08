@@ -1,0 +1,4 @@
+[package]
+name = "hello_world"
+
+[dependencies]

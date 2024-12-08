@@ -1,0 +1,22 @@
+error[E0046]: not all trait items implemented, missing: `RefTarget`
+  --> $DIR/ice-type-error-in-tail-124031.rs:11:1
+   |
+LL |     type RefTarget;
+   |     -------------- `RefTarget` from trait
+...
+LL | impl Trait for () {}
+   | ^^^^^^^^^^^^^^^^^ missing `RefTarget` in implementation
+
+error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
+  --> $DIR/ice-type-error-in-tail-124031.rs:20:9
+   |
+LL |         std::mem::transmute::<Option<()>, Option<&Other>>(None);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: source type: `Option<()>` ($BITS bits)
+   = note: target type: `Option<&Other>` ($BITS bits)
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0046, E0512.
+For more information about an error, try `rustc --explain E0046`.

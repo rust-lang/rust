@@ -1,0 +1,20 @@
+error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+  --> $DIR/parameter-defaults.rs:10:12
+   |
+LL | const NONE<T = ()>: Option<T> = None::<T>;
+   |            ^^^^^^
+
+error[E0282]: type annotations needed for `Option<_>`
+  --> $DIR/parameter-defaults.rs:13:9
+   |
+LL |     let _ = NONE;
+   |         ^   ---- type must be known at this point
+   |
+help: consider giving this pattern a type, where the type for type parameter `T` is specified
+   |
+LL |     let _: Option<T> = NONE;
+   |          +++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0282`.

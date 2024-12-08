@@ -1,0 +1,18 @@
+error: expected `;`, found `assert_eq`
+  --> $DIR/macros-no-semicolon.rs:2:21
+   |
+LL |     assert_eq!(1, 2)
+   |                     ^ help: add `;` here
+LL |     assert_eq!(3, 4)
+   |     --------- unexpected token
+
+error: expected `;`, found `println`
+  --> $DIR/macros-no-semicolon.rs:3:21
+   |
+LL |     assert_eq!(3, 4)
+   |                     ^ help: add `;` here
+LL |     println!("hello");
+   |     ------- unexpected token
+
+error: aborting due to 2 previous errors
+

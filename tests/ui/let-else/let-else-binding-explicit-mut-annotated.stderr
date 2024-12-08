@@ -1,0 +1,25 @@
+error[E0308]: mismatched types
+  --> $DIR/let-else-binding-explicit-mut-annotated.rs:9:37
+   |
+LL |     let Some(n): &mut Option<i32> = &&Some(5i32) else { return };
+   |                  ----------------   ^^^^^^^^^^^^ types differ in mutability
+   |                  |
+   |                  expected due to this
+   |
+   = note: expected mutable reference `&mut Option<_>`
+                      found reference `&&Option<_>`
+
+error[E0308]: mismatched types
+  --> $DIR/let-else-binding-explicit-mut-annotated.rs:13:37
+   |
+LL |     let Some(n): &mut Option<i32> = &&mut Some(5i32) else { return };
+   |                  ----------------   ^^^^^^^^^^^^^^^^ types differ in mutability
+   |                  |
+   |                  expected due to this
+   |
+   = note: expected mutable reference `&mut Option<_>`
+                      found reference `&&mut Option<_>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

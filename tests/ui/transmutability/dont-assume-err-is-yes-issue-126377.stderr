@@ -1,0 +1,34 @@
+warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/dont-assume-err-is-yes-issue-126377.rs:2:12
+   |
+LL | #![feature(generic_const_exprs)]
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0308]: mismatched types
+  --> $DIR/dont-assume-err-is-yes-issue-126377.rs:14:23
+   |
+LL |     is_transmutable::<{}>();
+   |                       ^^ expected `bool`, found `()`
+
+error[E0277]: the trait bound `(): TransmuteFrom<(), { Assume::SAFETY }>` is not satisfied
+  --> $DIR/dont-assume-err-is-yes-issue-126377.rs:14:23
+   |
+LL |     is_transmutable::<{}>();
+   |                       ^^ the trait `TransmuteFrom<(), { Assume::SAFETY }>` is not implemented for `()`
+   |
+note: required by a bound in `is_transmutable`
+  --> $DIR/dont-assume-err-is-yes-issue-126377.rs:9:9
+   |
+LL | pub fn is_transmutable<const ASSUME_ALIGNMENT: bool>()
+   |        --------------- required by a bound in this function
+LL | where
+LL |     (): TransmuteFrom<(), { Assume::SAFETY }>,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_transmutable`
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

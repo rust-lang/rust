@@ -1,0 +1,101 @@
+// MIR for `int_range` after PreCodegen
+
+fn int_range(_1: usize, _2: usize) -> () {
+    debug start => _1;
+    debug end => _2;
+    let mut _0: ();
+    let mut _3: std::ops::Range<usize>;
+    let mut _4: std::ops::Range<usize>;
+    let mut _5: &mut std::ops::Range<usize>;
+    let mut _13: std::option::Option<usize>;
+    let _15: ();
+    scope 1 {
+        debug iter => _4;
+        let _14: usize;
+        scope 2 {
+            debug i => _14;
+        }
+        scope 4 (inlined iter::range::<impl Iterator for std::ops::Range<usize>>::next) {
+            debug self => _5;
+            scope 5 (inlined <std::ops::Range<usize> as iter::range::RangeIteratorImpl>::spec_next) {
+                debug self => _5;
+                let mut _6: &usize;
+                let mut _7: &usize;
+                let mut _10: bool;
+                let _11: usize;
+                let mut _12: usize;
+                scope 6 {
+                    debug old => _11;
+                }
+                scope 7 (inlined std::cmp::impls::<impl PartialOrd for usize>::lt) {
+                    debug self => _6;
+                    debug other => _7;
+                    let mut _8: usize;
+                    let mut _9: usize;
+                }
+            }
+        }
+    }
+    scope 3 (inlined <std::ops::Range<usize> as IntoIterator>::into_iter) {
+        debug self => _3;
+    }
+
+    bb0: {
+        _3 = std::ops::Range::<usize> { start: copy _1, end: copy _2 };
+        StorageLive(_4);
+        _4 = copy _3;
+        goto -> bb1;
+    }
+
+    bb1: {
+        StorageLive(_13);
+        _5 = &mut _4;
+        StorageLive(_11);
+        StorageLive(_10);
+        StorageLive(_6);
+        _6 = &(_4.0: usize);
+        StorageLive(_7);
+        _7 = &(_4.1: usize);
+        StorageLive(_8);
+        _8 = copy (_4.0: usize);
+        StorageLive(_9);
+        _9 = copy (_4.1: usize);
+        _10 = Lt(move _8, move _9);
+        StorageDead(_9);
+        StorageDead(_8);
+        switchInt(move _10) -> [0: bb2, otherwise: bb3];
+    }
+
+    bb2: {
+        StorageDead(_7);
+        StorageDead(_6);
+        StorageDead(_10);
+        StorageDead(_11);
+        StorageDead(_13);
+        StorageDead(_4);
+        return;
+    }
+
+    bb3: {
+        StorageDead(_7);
+        StorageDead(_6);
+        _11 = copy (_4.0: usize);
+        StorageLive(_12);
+        _12 = <usize as Step>::forward_unchecked(copy _11, const 1_usize) -> [return: bb4, unwind continue];
+    }
+
+    bb4: {
+        (_4.0: usize) = move _12;
+        StorageDead(_12);
+        _13 = Option::<usize>::Some(copy _11);
+        StorageDead(_10);
+        StorageDead(_11);
+        _14 = copy ((_13 as Some).0: usize);
+        _15 = opaque::<usize>(move _14) -> [return: bb5, unwind continue];
+    }
+
+    bb5: {
+        StorageDead(_13);
+        goto -> bb1;
+    }
+}

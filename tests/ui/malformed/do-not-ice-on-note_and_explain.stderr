@@ -1,0 +1,12 @@
+error[E0401]: can't reference `Self` constructor from outer item
+  --> $DIR/do-not-ice-on-note_and_explain.rs:6:13
+   |
+LL | impl<B> A<B> {
+   | ------------ the inner item doesn't inherit generics from this impl, so `Self` is invalid to reference
+...
+LL |             Self(1)
+   |             ^^^^ help: replace `Self` with the actual type: `A`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0401`.

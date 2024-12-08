@@ -1,0 +1,11 @@
+error: lifetime may not live long enough
+  --> $DIR/mir_check_cast_reify.rs:35:5
+   |
+LL | fn bar<'a>(x: &'a u32) -> &'static u32 {
+   |        -- lifetime `'a` defined here
+...
+LL |     f(x)
+   |     ^^^^ returning this value requires that `'a` must outlive `'static`
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,17 @@
+error: unreachable statement
+  --> $DIR/expr_again.rs:8:9
+   |
+LL |         continue;
+   |         -------- any code following this expression is unreachable
+LL |         println!("hi");
+   |         ^^^^^^^^^^^^^^ unreachable statement
+   |
+note: the lint level is defined here
+  --> $DIR/expr_again.rs:3:9
+   |
+LL | #![deny(unreachable_code)]
+   |         ^^^^^^^^^^^^^^^^
+   = note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,28 @@
+error[E0412]: cannot find type `Nonexistent` in this scope
+  --> $DIR/drop-on-non-struct.rs:9:15
+   |
+LL | impl Drop for Nonexistent {
+   |               ^^^^^^^^^^^ not found in this scope
+
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/drop-on-non-struct.rs:1:1
+   |
+LL | impl<'a> Drop for &'a mut isize {
+   | ^^^^^^^^^^^^^^^^^^-------------
+   |                   |
+   |                   `isize` is not defined in the current crate
+   |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+   = note: define and implement a trait or new type instead
+
+error[E0120]: the `Drop` trait may only be implemented for local structs, enums, and unions
+  --> $DIR/drop-on-non-struct.rs:1:19
+   |
+LL | impl<'a> Drop for &'a mut isize {
+   |                   ^^^^^^^^^^^^^ must be a struct, enum, or union in the current crate
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0117, E0120, E0412.
+For more information about an error, try `rustc --explain E0117`.

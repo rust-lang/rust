@@ -1,0 +1,17 @@
+error[E0252]: the name `ConstructorExtension` is defined multiple times
+  --> $DIR/issue-32354-suggest-import-rename.rs:14:5
+   |
+LL | use extension1::ConstructorExtension;
+   |     -------------------------------- previous import of the trait `ConstructorExtension` here
+LL | use extension2::ConstructorExtension;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ConstructorExtension` reimported here
+   |
+   = note: `ConstructorExtension` must be defined only once in the type namespace of this module
+help: you can use `as` to change the binding name of the import
+   |
+LL | use extension2::ConstructorExtension as OtherConstructorExtension;
+   |                                      ++++++++++++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0252`.

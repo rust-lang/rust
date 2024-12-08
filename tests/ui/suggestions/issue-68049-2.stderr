@@ -1,0 +1,29 @@
+error[E0594]: cannot assign to `*input`, which is behind a `&` reference
+  --> $DIR/issue-68049-2.rs:9:7
+   |
+LL |       *input = self.0;
+   |       ^^^^^^^^^^^^^^^ `input` is a `&` reference, so the data it refers to cannot be written
+   |
+help: consider changing this to be a mutable reference in the `impl` method and the `trait` definition
+   |
+LL |   fn example(&self, input: &mut i32) {
+   |                             +++
+
+error[E0594]: cannot assign to `self.0`, which is behind a `&` reference
+  --> $DIR/issue-68049-2.rs:17:5
+   |
+LL |     self.0 += *input;
+   |     ^^^^^^^^^^^^^^^^ `self` is a `&` reference, so the data it refers to cannot be written
+   |
+help: consider changing this to be a mutable reference in the `impl` method and the `trait` definition
+   |
+LL ~   fn example(&mut self, input: &i32);
+LL | }
+...
+LL | impl Hello for Test2 {
+LL ~   fn example(&mut self, input: &i32) {
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0594`.

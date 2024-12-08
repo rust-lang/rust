@@ -1,0 +1,4 @@
+error: failed to write `.` due to $ERROR_MESSAGE
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,19 @@
+# Should not lint for dev or build dependencies. See issue 5041.
+
+[package]
+name = "multiple_crate_versions"
+version = "0.1.0"
+publish = false
+
+[workspace]
+
+# One of the versions of winapi is only a dev dependency: allowed
+[dependencies]
+ctrlc = "=3.1.0"
+[dev-dependencies]
+ansi_term = "=0.11.0"
+
+# Both versions of winapi are a build dependency: allowed
+[build-dependencies]
+ctrlc = "=3.1.0"
+ansi_term = "=0.11.0"

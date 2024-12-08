@@ -1,0 +1,27 @@
+error[E0277]: the trait bound `usize: Trait` is not satisfied
+  --> $DIR/on-structs-and-enums-xc.rs:7:15
+   |
+LL | fn explode(x: Foo<usize>) {}
+   |               ^^^^^^^^^^ the trait `Trait` is not implemented for `usize`
+   |
+note: required by a bound in `Foo`
+  --> $DIR/auxiliary/on_structs_and_enums_xc.rs:5:18
+   |
+LL | pub struct Foo<T:Trait> {
+   |                  ^^^^^ required by this bound in `Foo`
+
+error[E0277]: the trait bound `f32: Trait` is not satisfied
+  --> $DIR/on-structs-and-enums-xc.rs:10:14
+   |
+LL | fn kaboom(y: Bar<f32>) {}
+   |              ^^^^^^^^ the trait `Trait` is not implemented for `f32`
+   |
+note: required by a bound in `Bar`
+  --> $DIR/auxiliary/on_structs_and_enums_xc.rs:9:16
+   |
+LL | pub enum Bar<T:Trait> {
+   |                ^^^^^ required by this bound in `Bar`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

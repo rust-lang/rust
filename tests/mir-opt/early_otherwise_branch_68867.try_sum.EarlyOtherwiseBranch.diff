@@ -1,0 +1,221 @@
+- // MIR for `try_sum` before EarlyOtherwiseBranch
++ // MIR for `try_sum` after EarlyOtherwiseBranch
+  
+  fn try_sum(_1: &ViewportPercentageLength, _2: &ViewportPercentageLength) -> Result<ViewportPercentageLength, ()> {
+      debug x => _1;
+      debug other => _2;
+      let mut _0: std::result::Result<ViewportPercentageLength, ()>;
+      let mut _3: ViewportPercentageLength;
+      let mut _4: (&ViewportPercentageLength, &ViewportPercentageLength);
+      let mut _5: &ViewportPercentageLength;
+      let mut _6: &ViewportPercentageLength;
+      let mut _7: isize;
+      let mut _8: isize;
+      let mut _9: isize;
+      let mut _10: isize;
+      let mut _11: isize;
+      let _12: f32;
+      let _13: f32;
+      let mut _14: f32;
+      let mut _15: f32;
+      let mut _16: f32;
+      let _17: f32;
+      let _18: f32;
+      let mut _19: f32;
+      let mut _20: f32;
+      let mut _21: f32;
+      let _22: f32;
+      let _23: f32;
+      let mut _24: f32;
+      let mut _25: f32;
+      let mut _26: f32;
+      let _27: f32;
+      let _28: f32;
+      let mut _29: f32;
+      let mut _30: f32;
+      let mut _31: f32;
+      let mut _32: !;
+      let mut _33: ();
+      let mut _34: &ViewportPercentageLength;
+      let mut _35: &ViewportPercentageLength;
+      let mut _36: &ViewportPercentageLength;
+      let mut _37: &ViewportPercentageLength;
+      let mut _38: &ViewportPercentageLength;
+      let mut _39: &ViewportPercentageLength;
+      let mut _40: &ViewportPercentageLength;
+      let mut _41: &ViewportPercentageLength;
+      let mut _42: &ViewportPercentageLength;
+      let mut _43: &ViewportPercentageLength;
+      let mut _44: &ViewportPercentageLength;
+      let mut _45: &ViewportPercentageLength;
+      let mut _46: &ViewportPercentageLength;
+      scope 1 {
+          debug one => _12;
+          debug other => _13;
+      }
+      scope 2 {
+          debug one => _17;
+          debug other => _18;
+      }
+      scope 3 {
+          debug one => _22;
+          debug other => _23;
+      }
+      scope 4 {
+          debug one => _27;
+          debug other => _28;
+      }
+  
+      bb0: {
+          StorageLive(_3);
+          StorageLive(_4);
+          StorageLive(_5);
+          _5 = copy _1;
+          StorageLive(_6);
+          _6 = copy _2;
+          _4 = (move _5, move _6);
+          StorageDead(_6);
+          StorageDead(_5);
+          _34 = deref_copy (_4.0: &ViewportPercentageLength);
+          _11 = discriminant((*_34));
+          switchInt(move _11) -> [0: bb2, 1: bb3, 2: bb4, 3: bb5, otherwise: bb12];
+      }
+  
+      bb1: {
+          StorageLive(_33);
+          _33 = ();
+          _0 = Result::<ViewportPercentageLength, ()>::Err(move _33);
+          StorageDead(_33);
+          StorageDead(_3);
+          StorageDead(_4);
+          goto -> bb11;
+      }
+  
+      bb2: {
+          _35 = deref_copy (_4.1: &ViewportPercentageLength);
+          _7 = discriminant((*_35));
+          switchInt(move _7) -> [0: bb9, otherwise: bb1];
+      }
+  
+      bb3: {
+          _36 = deref_copy (_4.1: &ViewportPercentageLength);
+          _8 = discriminant((*_36));
+          switchInt(move _8) -> [1: bb8, otherwise: bb1];
+      }
+  
+      bb4: {
+          _37 = deref_copy (_4.1: &ViewportPercentageLength);
+          _9 = discriminant((*_37));
+          switchInt(move _9) -> [2: bb7, otherwise: bb1];
+      }
+  
+      bb5: {
+          _38 = deref_copy (_4.1: &ViewportPercentageLength);
+          _10 = discriminant((*_38));
+          switchInt(move _10) -> [3: bb6, otherwise: bb1];
+      }
+  
+      bb6: {
+          StorageLive(_27);
+          _39 = deref_copy (_4.0: &ViewportPercentageLength);
+          _27 = copy (((*_39) as Vmax).0: f32);
+          StorageLive(_28);
+          _40 = deref_copy (_4.1: &ViewportPercentageLength);
+          _28 = copy (((*_40) as Vmax).0: f32);
+          StorageLive(_29);
+          StorageLive(_30);
+          _30 = copy _27;
+          StorageLive(_31);
+          _31 = copy _28;
+          _29 = Add(move _30, move _31);
+          StorageDead(_31);
+          StorageDead(_30);
+          _3 = ViewportPercentageLength::Vmax(move _29);
+          StorageDead(_29);
+          StorageDead(_28);
+          StorageDead(_27);
+          goto -> bb10;
+      }
+  
+      bb7: {
+          StorageLive(_22);
+          _41 = deref_copy (_4.0: &ViewportPercentageLength);
+          _22 = copy (((*_41) as Vmin).0: f32);
+          StorageLive(_23);
+          _42 = deref_copy (_4.1: &ViewportPercentageLength);
+          _23 = copy (((*_42) as Vmin).0: f32);
+          StorageLive(_24);
+          StorageLive(_25);
+          _25 = copy _22;
+          StorageLive(_26);
+          _26 = copy _23;
+          _24 = Add(move _25, move _26);
+          StorageDead(_26);
+          StorageDead(_25);
+          _3 = ViewportPercentageLength::Vmin(move _24);
+          StorageDead(_24);
+          StorageDead(_23);
+          StorageDead(_22);
+          goto -> bb10;
+      }
+  
+      bb8: {
+          StorageLive(_17);
+          _43 = deref_copy (_4.0: &ViewportPercentageLength);
+          _17 = copy (((*_43) as Vh).0: f32);
+          StorageLive(_18);
+          _44 = deref_copy (_4.1: &ViewportPercentageLength);
+          _18 = copy (((*_44) as Vh).0: f32);
+          StorageLive(_19);
+          StorageLive(_20);
+          _20 = copy _17;
+          StorageLive(_21);
+          _21 = copy _18;
+          _19 = Add(move _20, move _21);
+          StorageDead(_21);
+          StorageDead(_20);
+          _3 = ViewportPercentageLength::Vh(move _19);
+          StorageDead(_19);
+          StorageDead(_18);
+          StorageDead(_17);
+          goto -> bb10;
+      }
+  
+      bb9: {
+          StorageLive(_12);
+          _45 = deref_copy (_4.0: &ViewportPercentageLength);
+          _12 = copy (((*_45) as Vw).0: f32);
+          StorageLive(_13);
+          _46 = deref_copy (_4.1: &ViewportPercentageLength);
+          _13 = copy (((*_46) as Vw).0: f32);
+          StorageLive(_14);
+          StorageLive(_15);
+          _15 = copy _12;
+          StorageLive(_16);
+          _16 = copy _13;
+          _14 = Add(move _15, move _16);
+          StorageDead(_16);
+          StorageDead(_15);
+          _3 = ViewportPercentageLength::Vw(move _14);
+          StorageDead(_14);
+          StorageDead(_13);
+          StorageDead(_12);
+          goto -> bb10;
+      }
+  
+      bb10: {
+          _0 = Result::<ViewportPercentageLength, ()>::Ok(move _3);
+          StorageDead(_3);
+          StorageDead(_4);
+          goto -> bb11;
+      }
+  
+      bb11: {
+          return;
+      }
+  
+      bb12: {
+          unreachable;
+      }
+  }
+  

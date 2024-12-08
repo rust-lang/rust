@@ -1,0 +1,8 @@
+error: symbol `fail` is already defined
+  --> $DIR/dupe-symbols-6.rs:10:1
+   |
+LL | static HELLO_TWICE: u16 = 0;
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

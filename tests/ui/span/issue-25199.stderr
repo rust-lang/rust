@@ -1,0 +1,17 @@
+error[E0597]: `container` does not live long enough
+  --> $DIR/issue-25199.rs:70:27
+   |
+LL |     let container = Container::new();
+   |         --------- binding `container` declared here
+LL |     let test = Test{test: &container};
+   |                           ^^^^^^^^^^ borrowed value does not live long enough
+...
+LL | }
+   | -
+   | |
+   | `container` dropped here while still borrowed
+   | borrow might be used here, when `container` is dropped and runs the destructor for type `Container<'_>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

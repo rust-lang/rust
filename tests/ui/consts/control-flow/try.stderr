@@ -1,0 +1,19 @@
+error[E0015]: `?` is not allowed on `Option<i32>` in constant functions
+  --> $DIR/try.rs:6:5
+   |
+LL |     x?;
+   |     ^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error[E0015]: `?` is not allowed on `Option<i32>` in constant functions
+  --> $DIR/try.rs:6:5
+   |
+LL |     x?;
+   |     ^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0015`.

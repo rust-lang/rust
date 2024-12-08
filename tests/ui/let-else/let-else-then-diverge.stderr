@@ -1,0 +1,14 @@
+error: unused variable: `x`
+  --> $DIR/let-else-then-diverge.rs:9:13
+   |
+LL |         let x = 5;
+   |             ^ help: if this is intentional, prefix it with an underscore: `_x`
+   |
+note: the lint level is defined here
+  --> $DIR/let-else-then-diverge.rs:4:9
+   |
+LL | #![deny(unused_variables)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

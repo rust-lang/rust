@@ -1,0 +1,159 @@
+warning: where clauses on type aliases are not enforced
+  --> $DIR/type-alias.rs:3:25
+   |
+LL | type _TaWhere1<T> where T: Iterator<Item: Copy> = T;
+   |                   ------^^^^^^^^^^^^^^^^^^^^^^^
+   |                   |     |
+   |                   |     will not be checked at usage sites of the type alias
+   |                   help: remove this where clause
+   |
+   = note: this is a known limitation of the type checker that may be lifted in a future edition.
+           see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+   = help: add `#![feature(lazy_type_alias)]` to the crate attributes to enable the desired semantics
+   = note: `#[warn(type_alias_bounds)]` on by default
+
+warning: where clauses on type aliases are not enforced
+  --> $DIR/type-alias.rs:4:25
+   |
+LL | type _TaWhere2<T> where T: Iterator<Item: 'static> = T;
+   |                   ------^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                   |     |
+   |                   |     will not be checked at usage sites of the type alias
+   |                   help: remove this where clause
+   |
+   = note: this is a known limitation of the type checker that may be lifted in a future edition.
+           see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+   = help: add `#![feature(lazy_type_alias)]` to the crate attributes to enable the desired semantics
+
+warning: where clauses on type aliases are not enforced
+  --> $DIR/type-alias.rs:5:25
+   |
+LL | type _TaWhere3<T> where T: Iterator<Item: 'static> = T;
+   |                   ------^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                   |     |
+   |                   |     will not be checked at usage sites of the type alias
+   |                   help: remove this where clause
+   |
+   = note: this is a known limitation of the type checker that may be lifted in a future edition.
+           see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+   = help: add `#![feature(lazy_type_alias)]` to the crate attributes to enable the desired semantics
+
+warning: where clauses on type aliases are not enforced
+  --> $DIR/type-alias.rs:6:25
+   |
+LL | type _TaWhere4<T> where T: Iterator<Item: 'static + Copy + Send> = T;
+   |                   ------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                   |     |
+   |                   |     will not be checked at usage sites of the type alias
+   |                   help: remove this where clause
+   |
+   = note: this is a known limitation of the type checker that may be lifted in a future edition.
+           see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+   = help: add `#![feature(lazy_type_alias)]` to the crate attributes to enable the desired semantics
+
+warning: where clauses on type aliases are not enforced
+  --> $DIR/type-alias.rs:7:25
+   |
+LL | type _TaWhere5<T> where T: Iterator<Item: for<'a> Into<&'a u8>> = T;
+   |                   ------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                   |     |
+   |                   |     will not be checked at usage sites of the type alias
+   |                   help: remove this where clause
+   |
+   = note: this is a known limitation of the type checker that may be lifted in a future edition.
+           see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+   = help: add `#![feature(lazy_type_alias)]` to the crate attributes to enable the desired semantics
+
+warning: where clauses on type aliases are not enforced
+  --> $DIR/type-alias.rs:8:25
+   |
+LL | type _TaWhere6<T> where T: Iterator<Item: Iterator<Item: Copy>> = T;
+   |                   ------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                   |     |
+   |                   |     will not be checked at usage sites of the type alias
+   |                   help: remove this where clause
+   |
+   = note: this is a known limitation of the type checker that may be lifted in a future edition.
+           see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+   = help: add `#![feature(lazy_type_alias)]` to the crate attributes to enable the desired semantics
+
+warning: bounds on generic parameters in type aliases are not enforced
+  --> $DIR/type-alias.rs:10:20
+   |
+LL | type _TaInline1<T: Iterator<Item: Copy>> = T;
+   |                  --^^^^^^^^^^^^^^^^^^^^
+   |                  | |
+   |                  | will not be checked at usage sites of the type alias
+   |                  help: remove this bound
+   |
+   = note: this is a known limitation of the type checker that may be lifted in a future edition.
+           see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+   = help: add `#![feature(lazy_type_alias)]` to the crate attributes to enable the desired semantics
+
+warning: bounds on generic parameters in type aliases are not enforced
+  --> $DIR/type-alias.rs:11:20
+   |
+LL | type _TaInline2<T: Iterator<Item: 'static>> = T;
+   |                  --^^^^^^^^^^^^^^^^^^^^^^^
+   |                  | |
+   |                  | will not be checked at usage sites of the type alias
+   |                  help: remove this bound
+   |
+   = note: this is a known limitation of the type checker that may be lifted in a future edition.
+           see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+   = help: add `#![feature(lazy_type_alias)]` to the crate attributes to enable the desired semantics
+
+warning: bounds on generic parameters in type aliases are not enforced
+  --> $DIR/type-alias.rs:12:20
+   |
+LL | type _TaInline3<T: Iterator<Item: 'static>> = T;
+   |                  --^^^^^^^^^^^^^^^^^^^^^^^
+   |                  | |
+   |                  | will not be checked at usage sites of the type alias
+   |                  help: remove this bound
+   |
+   = note: this is a known limitation of the type checker that may be lifted in a future edition.
+           see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+   = help: add `#![feature(lazy_type_alias)]` to the crate attributes to enable the desired semantics
+
+warning: bounds on generic parameters in type aliases are not enforced
+  --> $DIR/type-alias.rs:13:20
+   |
+LL | type _TaInline4<T: Iterator<Item: 'static + Copy + Send>> = T;
+   |                  --^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  | |
+   |                  | will not be checked at usage sites of the type alias
+   |                  help: remove this bound
+   |
+   = note: this is a known limitation of the type checker that may be lifted in a future edition.
+           see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+   = help: add `#![feature(lazy_type_alias)]` to the crate attributes to enable the desired semantics
+
+warning: bounds on generic parameters in type aliases are not enforced
+  --> $DIR/type-alias.rs:14:20
+   |
+LL | type _TaInline5<T: Iterator<Item: for<'a> Into<&'a u8>>> = T;
+   |                  --^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  | |
+   |                  | will not be checked at usage sites of the type alias
+   |                  help: remove this bound
+   |
+   = note: this is a known limitation of the type checker that may be lifted in a future edition.
+           see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+   = help: add `#![feature(lazy_type_alias)]` to the crate attributes to enable the desired semantics
+
+warning: bounds on generic parameters in type aliases are not enforced
+  --> $DIR/type-alias.rs:15:20
+   |
+LL | type _TaInline6<T: Iterator<Item: Iterator<Item: Copy>>> = T;
+   |                  --^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  | |
+   |                  | will not be checked at usage sites of the type alias
+   |                  help: remove this bound
+   |
+   = note: this is a known limitation of the type checker that may be lifted in a future edition.
+           see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+   = help: add `#![feature(lazy_type_alias)]` to the crate attributes to enable the desired semantics
+
+warning: 12 warnings emitted
+

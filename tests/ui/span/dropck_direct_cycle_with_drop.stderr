@@ -1,0 +1,34 @@
+error[E0597]: `d2` does not live long enough
+  --> $DIR/dropck_direct_cycle_with_drop.rs:36:19
+   |
+LL |     let (d1, d2) = (D::new(format!("d1")), D::new(format!("d2")));
+   |              -- binding `d2` declared here
+LL |     d1.p.set(Some(&d2));
+   |                   ^^^ borrowed value does not live long enough
+...
+LL | }
+   | -
+   | |
+   | `d2` dropped here while still borrowed
+   | borrow might be used here, when `d1` is dropped and runs the `Drop` code for type `D`
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
+
+error[E0597]: `d1` does not live long enough
+  --> $DIR/dropck_direct_cycle_with_drop.rs:38:19
+   |
+LL |     let (d1, d2) = (D::new(format!("d1")), D::new(format!("d2")));
+   |          -- binding `d1` declared here
+...
+LL |     d2.p.set(Some(&d1));
+   |                   ^^^ borrowed value does not live long enough
+LL |
+LL | }
+   | -
+   | |
+   | `d1` dropped here while still borrowed
+   | borrow might be used here, when `d1` is dropped and runs the `Drop` code for type `D`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

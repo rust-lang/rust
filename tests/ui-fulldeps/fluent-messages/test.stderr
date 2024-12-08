@@ -1,0 +1,122 @@
+error: could not open Fluent resource: os-specific message
+  --> $DIR/test.rs:21:44
+   |
+LL |     rustc_fluent_macro::fluent_messages! { "/definitely_does_not_exist.ftl" }
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: could not open Fluent resource: os-specific message
+  --> $DIR/test.rs:26:44
+   |
+LL |     rustc_fluent_macro::fluent_messages! { "../definitely_does_not_exist.ftl" }
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: could not parse Fluent resource
+  --> $DIR/test.rs:31:44
+   |
+LL |     rustc_fluent_macro::fluent_messages! { "./missing-message.ftl" }
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: see additional errors emitted
+
+error: expected a message field for "no_crate_missing_message"
+ --> ./missing-message.ftl:1:1
+  |
+1 | no_crate_missing_message =
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+
+error: overrides existing message: `no_crate_a_b_key`
+  --> $DIR/test.rs:36:44
+   |
+LL |     rustc_fluent_macro::fluent_messages! { "./duplicate.ftl" }
+   |                                            ^^^^^^^^^^^^^^^^^
+
+error: name `no_crate_this-slug-has-hyphens` contains a '-' character
+  --> $DIR/test.rs:41:44
+   |
+LL |     rustc_fluent_macro::fluent_messages! { "./slug-with-hyphens.ftl" }
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: replace any '-'s with '_'s
+
+error: attribute `label-has-hyphens` contains a '-' character
+  --> $DIR/test.rs:46:44
+   |
+LL |     rustc_fluent_macro::fluent_messages! { "./label-with-hyphens.ftl" }
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: replace any '-'s with '_'s
+
+error: name `with-hyphens` contains a '-' character
+  --> $DIR/test.rs:59:44
+   |
+LL |     rustc_fluent_macro::fluent_messages! { "./missing-crate-name.ftl" }
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: replace any '-'s with '_'s
+
+error: name `with-hyphens` does not start with the crate name
+  --> $DIR/test.rs:59:44
+   |
+LL |     rustc_fluent_macro::fluent_messages! { "./missing-crate-name.ftl" }
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: prepend `no_crate_` to the slug name: `no_crate_with_hyphens`
+
+error: name `no-crate_foo` contains a '-' character
+  --> $DIR/test.rs:59:44
+   |
+LL |     rustc_fluent_macro::fluent_messages! { "./missing-crate-name.ftl" }
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: replace any '-'s with '_'s
+
+error: referenced message `message` does not exist (in message `no_crate_missing_message_ref`)
+  --> $DIR/test.rs:73:44
+   |
+LL |     rustc_fluent_macro::fluent_messages! { "./missing-message-ref.ftl" }
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: you may have meant to use a variable reference (`{$message}`)
+
+error: invalid escape `\n` in Fluent resource
+  --> $DIR/test.rs:78:44
+   |
+LL |     rustc_fluent_macro::fluent_messages! { "./invalid-escape.ftl" }
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: Fluent does not interpret these escape sequences (<https://projectfluent.org/fluent/guide/special.html>)
+
+error: invalid escape `\"` in Fluent resource
+  --> $DIR/test.rs:78:44
+   |
+LL |     rustc_fluent_macro::fluent_messages! { "./invalid-escape.ftl" }
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: Fluent does not interpret these escape sequences (<https://projectfluent.org/fluent/guide/special.html>)
+
+error: invalid escape `\'` in Fluent resource
+  --> $DIR/test.rs:78:44
+   |
+LL |     rustc_fluent_macro::fluent_messages! { "./invalid-escape.ftl" }
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: Fluent does not interpret these escape sequences (<https://projectfluent.org/fluent/guide/special.html>)
+
+error: could not parse Fluent resource
+  --> $DIR/test.rs:85:44
+   |
+LL |     rustc_fluent_macro::fluent_messages! { "./many-lines.ftl" }
+   |                                            ^^^^^^^^^^^^^^^^^^
+   |
+   = help: see additional errors emitted
+
+error: expected a message field for "no_crate_bar"
+ --> ./many-lines.ftl:8:1
+  |
+8 | no_crate_bar =
+  | ^^^^^^^^^^^^^^
+  |
+
+error: aborting due to 14 previous errors
+

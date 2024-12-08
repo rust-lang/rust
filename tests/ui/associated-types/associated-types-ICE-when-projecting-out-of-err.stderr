@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `(): Add<A>` is not satisfied
+  --> $DIR/associated-types-ICE-when-projecting-out-of-err.rs:23:11
+   |
+LL |     r = r + a;
+   |           ^ the trait `Add<A>` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/associated-types-ICE-when-projecting-out-of-err.rs:15:1
+   |
+LL | trait Add<RHS=Self> {
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

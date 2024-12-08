@@ -1,0 +1,8 @@
+error: attribute value must be a literal
+  --> $DIR/validation-on-associated-items-issue-121537.rs:2:13
+   |
+LL |     #[doc = MyTrait]
+   |             ^^^^^^^
+
+error: aborting due to 1 previous error
+

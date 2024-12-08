@@ -1,0 +1,15 @@
+error: expected pattern, found `+`
+  --> $DIR/match-arrows-block-then-binop.rs:5:9
+   |
+LL |       } + 5
+   |         ^ expected pattern
+   |
+help: parentheses are required to parse this as an expression
+   |
+LL ~       0 => ({
+LL |         0
+LL ~       }) + 5
+   |
+
+error: aborting due to 1 previous error
+

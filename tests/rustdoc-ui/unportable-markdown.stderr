@@ -1,0 +1,23 @@
+error: unportable markdown
+  --> $DIR/unportable-markdown.rs:48:5
+   |
+LL | /// >bar
+   |     ^
+   |
+   = help: confusing block quote with no space after the `>` marker
+note: the lint level is defined here
+  --> $DIR/unportable-markdown.rs:8:9
+   |
+LL | #![deny(rustdoc::unportable_markdown)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: if the quote is intended, add a space
+   |
+LL | /// > bar
+   |      +
+help: if it should not be a quote, escape it
+   |
+LL | /// \>bar
+   |     +
+
+error: aborting due to 1 previous error
+

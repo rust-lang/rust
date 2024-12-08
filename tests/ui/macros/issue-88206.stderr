@@ -1,0 +1,114 @@
+error: cannot find macro `X` in this scope
+  --> $DIR/issue-88206.rs:64:5
+   |
+LL |     X!();
+   |     ^
+   |
+note: `X` is imported here, but it is a struct, not a macro
+  --> $DIR/issue-88206.rs:17:35
+   |
+LL | use hey::{Serialize, Deserialize, X};
+   |                                   ^
+
+error: cannot find macro `test` in this scope
+  --> $DIR/issue-88206.rs:60:5
+   |
+LL |     test!();
+   |     ^^^^
+   |
+   = note: `test` is in scope, but it is an attribute: `#[test]`
+
+error: cannot find macro `Copy` in this scope
+  --> $DIR/issue-88206.rs:56:5
+   |
+LL |     Copy!();
+   |     ^^^^
+   |
+   = note: `Copy` is in scope, but it is a derive macro: `#[derive(Copy)]`
+
+error: cannot find macro `Box` in this scope
+  --> $DIR/issue-88206.rs:52:5
+   |
+LL |     Box!();
+   |     ^^^
+   |
+   = note: `Box` is in scope, but it is a struct, not a macro
+
+error: cannot find macro `from_utf8` in this scope
+  --> $DIR/issue-88206.rs:49:5
+   |
+LL |     from_utf8!();
+   |     ^^^^^^^^^
+   |
+note: `from_utf8` is imported here, but it is a function, not a macro
+  --> $DIR/issue-88206.rs:5:5
+   |
+LL | use std::str::*;
+   |     ^^^^^^^^^^^
+
+error: cannot find attribute `println` in this scope
+  --> $DIR/issue-88206.rs:43:3
+   |
+LL | #[println]
+   |   ^^^^^^^
+   |
+   = note: `println` is in scope, but it is a function-like macro
+
+error: cannot find attribute `from_utf8_unchecked` in this scope
+  --> $DIR/issue-88206.rs:39:3
+   |
+LL | #[from_utf8_unchecked]
+   |   ^^^^^^^^^^^^^^^^^^^
+   |
+note: `from_utf8_unchecked` is imported here, but it is a function, not an attribute
+  --> $DIR/issue-88206.rs:5:5
+   |
+LL | use std::str::*;
+   |     ^^^^^^^^^^^
+
+error: cannot find attribute `Deserialize` in this scope
+  --> $DIR/issue-88206.rs:35:3
+   |
+LL | #[Deserialize]
+   |   ^^^^^^^^^^^
+   |
+note: `Deserialize` is imported here, but it is a trait, not an attribute
+  --> $DIR/issue-88206.rs:17:22
+   |
+LL | use hey::{Serialize, Deserialize, X};
+   |                      ^^^^^^^^^^^
+
+error: cannot find derive macro `println` in this scope
+  --> $DIR/issue-88206.rs:30:10
+   |
+LL | #[derive(println)]
+   |          ^^^^^^^
+   |
+   = note: `println` is in scope, but it is a function-like macro
+
+error: cannot find derive macro `from_utf8_mut` in this scope
+  --> $DIR/issue-88206.rs:26:10
+   |
+LL | #[derive(from_utf8_mut)]
+   |          ^^^^^^^^^^^^^
+   |
+note: `from_utf8_mut` is imported here, but it is a function, not a derive macro
+  --> $DIR/issue-88206.rs:5:5
+   |
+LL | use std::str::*;
+   |     ^^^^^^^^^^^
+
+error: cannot find derive macro `Serialize` in this scope
+  --> $DIR/issue-88206.rs:22:10
+   |
+LL | #[derive(Serialize)]
+   |          ^^^^^^^^^
+   |
+note: `Serialize` is imported here, but it is only a trait, without a derive macro
+  --> $DIR/issue-88206.rs:17:11
+   |
+LL | use hey::{Serialize, Deserialize, X};
+   |           ^^^^^^^^^
+
+error: aborting due to 11 previous errors
+

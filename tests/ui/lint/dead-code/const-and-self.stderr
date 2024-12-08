@@ -1,0 +1,19 @@
+warning: variants `B` and `C` are never constructed
+  --> $DIR/const-and-self.rs:33:5
+   |
+LL | enum E {
+   |      - variants in this enum
+LL |     A,
+LL |     B,
+   |     ^
+LL |     C,
+   |     ^
+   |
+note: the lint level is defined here
+  --> $DIR/const-and-self.rs:3:9
+   |
+LL | #![warn(dead_code)]
+   |         ^^^^^^^^^
+
+warning: 1 warning emitted
+

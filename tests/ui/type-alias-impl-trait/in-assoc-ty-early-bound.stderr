@@ -1,0 +1,13 @@
+error[E0700]: hidden type for `<() as Foo>::Assoc<'b, 'a>` captures lifetime that does not appear in bounds
+  --> $DIR/in-assoc-ty-early-bound.rs:11:60
+   |
+LL |     type Assoc<'a, 'b> = impl Sized;
+   |                          ---------- opaque type defined here
+LL |     fn bar<'a: 'a, 'b: 'b>(x: &'a ()) -> Self::Assoc<'a, 'b> {
+   |            -- hidden type `&'a ()` captures the lifetime `'a` as defined here
+LL |         let closure = |x: &'a ()| -> Self::Assoc<'b, 'a> { x };
+   |                                                            ^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0700`.

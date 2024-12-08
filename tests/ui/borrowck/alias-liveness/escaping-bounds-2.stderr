@@ -1,0 +1,19 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/escaping-bounds-2.rs:10:31
+   |
+LL |     let func = get_func::<T>(&String::new());
+   |                               ^^^^^^^^^^^^^ - temporary value is freed at the end of this statement
+   |                               |
+   |                               creates a temporary value which is freed while still in use
+LL |     drop(func);
+   |          ---- borrow later used here
+   |
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let binding = String::new();
+LL ~     let func = get_func::<T>(&binding);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0716`.

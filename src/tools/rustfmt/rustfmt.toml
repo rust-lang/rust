@@ -1,0 +1,4 @@
+error_on_line_overflow = true
+error_on_unformatted = true
+style_edition = "2024"
+overflow_delimited_expr = false

@@ -1,0 +1,12 @@
+error[E0728]: `await` is only allowed inside `async` functions and blocks
+  --> $DIR/non-async-enclosing-span.rs:9:28
+   |
+LL | fn main() {
+   | --------- this is not `async`
+LL |     let x = move || {};
+LL |     let y = do_the_thing().await;
+   |                            ^^^^^ only allowed inside `async` functions and blocks
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0728`.

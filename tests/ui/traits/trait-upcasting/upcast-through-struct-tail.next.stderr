@@ -1,0 +1,14 @@
+error[E0658]: cannot cast `dyn A` to `dyn B`, trait upcasting coercion is experimental
+  --> $DIR/upcast-through-struct-tail.rs:11:5
+   |
+LL |     x
+   |     ^
+   |
+   = note: see issue #65991 <https://github.com/rust-lang/rust/issues/65991> for more information
+   = help: add `#![feature(trait_upcasting)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: required when coercing `Box<Wrapper<(dyn A + 'a)>>` into `Box<Wrapper<(dyn B + 'a)>>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

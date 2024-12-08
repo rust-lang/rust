@@ -1,0 +1,14 @@
+error: bounds cannot be used in this context
+  --> $DIR/bounds-on-closure-type-binders.rs:11:20
+   |
+LL |     let _ = for<T: Trait> || -> () {};
+   |                    ^^^^^
+
+error: late-bound type parameter not allowed on closures
+  --> $DIR/bounds-on-closure-type-binders.rs:11:17
+   |
+LL |     let _ = for<T: Trait> || -> () {};
+   |                 ^
+
+error: aborting due to 2 previous errors
+

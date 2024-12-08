@@ -1,0 +1,30 @@
+error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
+  --> $DIR/issue-34126.rs:6:18
+   |
+LL |         self.run(&mut self);
+   |                  ^^^^^^^^^ cannot borrow as mutable
+   |
+note: the binding is already a mutable borrow
+  --> $DIR/issue-34126.rs:5:14
+   |
+LL |     fn start(&mut self) {
+   |              ^^^^^^^^^
+help: try removing `&mut` here
+   |
+LL -         self.run(&mut self);
+LL +         self.run(self);
+   |
+
+error[E0502]: cannot borrow `self` as mutable because it is also borrowed as immutable
+  --> $DIR/issue-34126.rs:6:18
+   |
+LL |         self.run(&mut self);
+   |         ---- --- ^^^^^^^^^ mutable borrow occurs here
+   |         |    |
+   |         |    immutable borrow later used by call
+   |         immutable borrow occurs here
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0502, E0596.
+For more information about an error, try `rustc --explain E0502`.

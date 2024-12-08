@@ -1,0 +1,10 @@
+error: no rules expected `,`
+  --> $DIR/vec-macro-with-comma-only.rs:2:10
+   |
+LL |     vec![,];
+   |          ^ no rules expected this token in macro call
+   |
+   = note: while trying to match end of macro
+
+error: aborting due to 1 previous error
+

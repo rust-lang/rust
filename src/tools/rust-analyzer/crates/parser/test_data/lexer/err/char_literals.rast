@@ -1,0 +1,92 @@
+CHAR "'hello'" error: character literal may only contain one codepoint
+WHITESPACE "\n"
+CHAR "''" error: empty character literal
+WHITESPACE "\n"
+CHAR "'\n'" error: character constant must be escaped
+WHITESPACE "\n"
+CHAR "'spam'" error: character literal may only contain one codepoint
+WHITESPACE "\n"
+CHAR "'\\x0ff'" error: character literal may only contain one codepoint
+WHITESPACE "\n"
+CHAR "'\\\"a'" error: character literal may only contain one codepoint
+WHITESPACE "\n"
+CHAR "'\\na'" error: character literal may only contain one codepoint
+WHITESPACE "\n"
+CHAR "'\\ra'" error: character literal may only contain one codepoint
+WHITESPACE "\n"
+CHAR "'\\ta'" error: character literal may only contain one codepoint
+WHITESPACE "\n"
+CHAR "'\\\\a'" error: character literal may only contain one codepoint
+WHITESPACE "\n"
+CHAR "'\\'a'" error: character literal may only contain one codepoint
+WHITESPACE "\n"
+CHAR "'\\0a'" error: character literal may only contain one codepoint
+WHITESPACE "\n"
+CHAR "'\\u{0}x'" error: character literal may only contain one codepoint
+WHITESPACE "\n"
+CHAR "'\\u{1F63b}}'" error: character literal may only contain one codepoint
+WHITESPACE "\n"
+CHAR "'\\v'" error: unknown character escape
+WHITESPACE "\n"
+CHAR "'\\💩'" error: unknown character escape
+WHITESPACE "\n"
+CHAR "'\\●'" error: unknown character escape
+WHITESPACE "\n"
+CHAR "'\\\\\\r'" error: character literal may only contain one codepoint
+WHITESPACE "\n"
+CHAR "'\\x'" error: numeric character escape is too short
+WHITESPACE "\n"
+CHAR "'\\x0'" error: numeric character escape is too short
+WHITESPACE "\n"
+CHAR "'\\xf'" error: numeric character escape is too short
+WHITESPACE "\n"
+CHAR "'\\xa'" error: numeric character escape is too short
+WHITESPACE "\n"
+CHAR "'\\xx'" error: invalid character in numeric character escape
+WHITESPACE "\n"
+CHAR "'\\xы'" error: invalid character in numeric character escape
+WHITESPACE "\n"
+CHAR "'\\x🦀'" error: invalid character in numeric character escape
+WHITESPACE "\n"
+CHAR "'\\xtt'" error: invalid character in numeric character escape
+WHITESPACE "\n"
+CHAR "'\\xff'" error: out of range hex escape
+WHITESPACE "\n"
+CHAR "'\\xFF'" error: out of range hex escape
+WHITESPACE "\n"
+CHAR "'\\x80'" error: out of range hex escape
+WHITESPACE "\n"
+CHAR "'\\u'" error: incorrect unicode escape sequence
+WHITESPACE "\n"
+CHAR "'\\u[0123]'" error: incorrect unicode escape sequence
+WHITESPACE "\n"
+CHAR "'\\u{0x}'" error: invalid character in unicode escape
+WHITESPACE "\n"
+CHAR "'\\u{'" error: unterminated unicode escape
+WHITESPACE "\n"
+CHAR "'\\u{0000'" error: unterminated unicode escape
+WHITESPACE "\n"
+CHAR "'\\u{}'" error: empty unicode escape
+WHITESPACE "\n"
+CHAR "'\\u{_0000}'" error: invalid start of unicode escape
+WHITESPACE "\n"
+CHAR "'\\u{0000000}'" error: overlong unicode escape
+WHITESPACE "\n"
+CHAR "'\\u{FFFFFF}'" error: invalid unicode character escape
+WHITESPACE "\n"
+CHAR "'\\u{ffffff}'" error: invalid unicode character escape
+WHITESPACE "\n"
+CHAR "'\\u{ffffff}'" error: invalid unicode character escape
+WHITESPACE "\n"
+CHAR "'\\u{DC00}'" error: invalid unicode character escape
+WHITESPACE "\n"
+CHAR "'\\u{DDDD}'" error: invalid unicode character escape
+WHITESPACE "\n"
+CHAR "'\\u{DFFF}'" error: invalid unicode character escape
+WHITESPACE "\n"
+CHAR "'\\u{D800}'" error: invalid unicode character escape
+WHITESPACE "\n"
+CHAR "'\\u{DAAA}'" error: invalid unicode character escape
+WHITESPACE "\n"
+CHAR "'\\u{DBFF}'" error: invalid unicode character escape
+WHITESPACE "\n"

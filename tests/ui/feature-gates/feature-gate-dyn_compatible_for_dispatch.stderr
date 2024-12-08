@@ -1,0 +1,83 @@
+error[E0038]: the trait `DynIncompatible1` cannot be made into an object
+  --> $DIR/feature-gate-dyn_compatible_for_dispatch.rs:18:40
+   |
+LL | fn takes_dyn_incompatible_ref<T>(obj: &dyn DynIncompatible1) {
+   |                                        ^^^^^^^^^^^^^^^^^^^^ `DynIncompatible1` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/feature-gate-dyn_compatible_for_dispatch.rs:4:25
+   |
+LL | trait DynIncompatible1: Sized {}
+   |       ----------------  ^^^^^ ...because it requires `Self: Sized`
+   |       |
+   |       this trait cannot be made into an object...
+
+error[E0038]: the trait `DynIncompatible2` cannot be made into an object
+  --> $DIR/feature-gate-dyn_compatible_for_dispatch.rs:22:46
+   |
+LL | fn return_dyn_incompatible_ref() -> &'static dyn DynIncompatible2 {
+   |                                              ^^^^^^^^^^^^^^^^^^^^ `DynIncompatible2` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/feature-gate-dyn_compatible_for_dispatch.rs:7:8
+   |
+LL | trait DynIncompatible2 {
+   |       ---------------- this trait cannot be made into an object...
+LL |     fn static_fn() {}
+   |        ^^^^^^^^^ ...because associated function `static_fn` has no `self` parameter
+help: consider turning `static_fn` into a method by giving it a `&self` argument
+   |
+LL |     fn static_fn(&self) {}
+   |                  +++++
+help: alternatively, consider constraining `static_fn` so it does not apply to trait objects
+   |
+LL |     fn static_fn() where Self: Sized {}
+   |                    +++++++++++++++++
+
+error[E0038]: the trait `DynIncompatible3` cannot be made into an object
+  --> $DIR/feature-gate-dyn_compatible_for_dispatch.rs:27:40
+   |
+LL | fn takes_dyn_incompatible_box(obj: Box<dyn DynIncompatible3>) {
+   |                                        ^^^^^^^^^^^^^^^^^^^^ `DynIncompatible3` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/feature-gate-dyn_compatible_for_dispatch.rs:11:8
+   |
+LL | trait DynIncompatible3 {
+   |       ---------------- this trait cannot be made into an object...
+LL |     fn foo<T>(&self);
+   |        ^^^ ...because method `foo` has generic type parameters
+   = help: consider moving `foo` to another trait
+
+error[E0038]: the trait `DynIncompatible4` cannot be made into an object
+  --> $DIR/feature-gate-dyn_compatible_for_dispatch.rs:31:48
+   |
+LL | fn return_dyn_incompatible_rc() -> std::rc::Rc<dyn DynIncompatible4> {
+   |                                                ^^^^^^^^^^^^^^^^^^^^ `DynIncompatible4` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/feature-gate-dyn_compatible_for_dispatch.rs:15:22
+   |
+LL | trait DynIncompatible4 {
+   |       ---------------- this trait cannot be made into an object...
+LL |     fn foo(&self, s: &Self);
+   |                      ^^^^^ ...because method `foo` references the `Self` type in this parameter
+   = help: consider moving `foo` to another trait
+
+error[E0038]: the trait `DynIncompatible1` cannot be made into an object
+  --> $DIR/feature-gate-dyn_compatible_for_dispatch.rs:38:16
+   |
+LL | impl Trait for dyn DynIncompatible1 {}
+   |                ^^^^^^^^^^^^^^^^^^^^ `DynIncompatible1` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/feature-gate-dyn_compatible_for_dispatch.rs:4:25
+   |
+LL | trait DynIncompatible1: Sized {}
+   |       ----------------  ^^^^^ ...because it requires `Self: Sized`
+   |       |
+   |       this trait cannot be made into an object...
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

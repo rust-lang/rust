@@ -1,0 +1,14 @@
+- // MIR for `keep_parameter` before SingleUseConsts
++ // MIR for `keep_parameter` after SingleUseConsts
+  
+  fn keep_parameter(_1: i32) -> () {
+      debug other => _1;
+      let mut _0: ();
+  
+      bb0: {
+          _1 = const <T as MyTrait>::ASSOC_INT;
+          _0 = const ();
+          return;
+      }
+  }
+  

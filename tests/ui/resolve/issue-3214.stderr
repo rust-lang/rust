@@ -1,0 +1,28 @@
+error[E0401]: can't use generic parameters from outer item
+  --> $DIR/issue-3214.rs:3:12
+   |
+LL | fn foo<T>() {
+   |        - type parameter from outer item
+LL |     struct Foo {
+   |               - help: try introducing a local generic parameter here: `<T>`
+LL |         x: T,
+   |            ^ use of generic parameter from outer item
+
+error[E0107]: struct takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/issue-3214.rs:6:22
+   |
+LL |     impl<T> Drop for Foo<T> {
+   |                      ^^^--- help: remove the unnecessary generics
+   |                      |
+   |                      expected 0 generic arguments
+   |
+note: struct defined here, with 0 generic parameters
+  --> $DIR/issue-3214.rs:2:12
+   |
+LL |     struct Foo {
+   |            ^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0107, E0401.
+For more information about an error, try `rustc --explain E0107`.

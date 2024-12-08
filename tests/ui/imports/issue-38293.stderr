@@ -1,0 +1,21 @@
+error[E0432]: unresolved import `foo::f`
+  --> $DIR/issue-38293.rs:6:14
+   |
+LL | use foo::f::{self};
+   |              ^^^^ no `f` in `foo`
+
+error[E0423]: expected function, found module `baz`
+  --> $DIR/issue-38293.rs:15:5
+   |
+LL |     baz();
+   |     ^^^ not a function
+   |
+help: consider importing this function instead
+   |
+LL + use bar::baz;
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0423, E0432.
+For more information about an error, try `rustc --explain E0423`.

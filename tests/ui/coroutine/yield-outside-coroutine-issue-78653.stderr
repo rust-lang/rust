@@ -1,0 +1,31 @@
+error: `yield` can only be used in `#[coroutine]` closures, or `gen` blocks
+  --> $DIR/yield-outside-coroutine-issue-78653.rs:4:5
+   |
+LL |     yield || for i in 0 { }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `#[coroutine]` to make this closure a coroutine
+   |
+LL | #[coroutine] fn main() {
+   | ++++++++++++
+
+error[E0627]: yield expression outside of coroutine literal
+  --> $DIR/yield-outside-coroutine-issue-78653.rs:4:5
+   |
+LL |     yield || for i in 0 { }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `{integer}` is not an iterator
+  --> $DIR/yield-outside-coroutine-issue-78653.rs:4:23
+   |
+LL |     yield || for i in 0 { }
+   |                       ^ `{integer}` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `{integer}`
+   = note: if you want to iterate between `start` until a value `end`, use the exclusive range syntax `start..end` or the inclusive range syntax `start..=end`
+   = note: required for `{integer}` to implement `IntoIterator`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0627.
+For more information about an error, try `rustc --explain E0277`.

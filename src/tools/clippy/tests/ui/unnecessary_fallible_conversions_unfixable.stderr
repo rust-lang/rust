@@ -1,0 +1,52 @@
+error: use of a fallible conversion when an infallible one could be used
+  --> tests/ui/unnecessary_fallible_conversions_unfixable.rs:27:34
+   |
+LL |     let _: Result<Foo, _> = 0i64.try_into();
+   |                                  ^^^^^^^^ help: use: `into`
+   |
+   = note: converting `i64` to `Foo` cannot fail
+   = note: `-D clippy::unnecessary-fallible-conversions` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_fallible_conversions)]`
+
+error: use of a fallible conversion when an infallible one could be used
+  --> tests/ui/unnecessary_fallible_conversions_unfixable.rs:29:29
+   |
+LL |     let _: Result<Foo, _> = i64::try_into(0i64);
+   |                             ^^^^^^^^^^^^^ help: use: `Into::into`
+   |
+   = note: converting `i64` to `Foo` cannot fail
+
+error: use of a fallible conversion when an infallible one could be used
+  --> tests/ui/unnecessary_fallible_conversions_unfixable.rs:31:29
+   |
+LL |     let _: Result<Foo, _> = Foo::try_from(0i64);
+   |                             ^^^^^^^^^^^^^ help: use: `From::from`
+   |
+   = note: converting `i64` to `Foo` cannot fail
+
+error: use of a fallible conversion when an infallible one could be used
+  --> tests/ui/unnecessary_fallible_conversions_unfixable.rs:34:34
+   |
+LL |     let _: Result<i64, _> = 0i32.try_into();
+   |                                  ^^^^^^^^ help: use: `into`
+   |
+   = note: converting `i32` to `i64` cannot fail
+
+error: use of a fallible conversion when an infallible one could be used
+  --> tests/ui/unnecessary_fallible_conversions_unfixable.rs:36:29
+   |
+LL |     let _: Result<i64, _> = i32::try_into(0i32);
+   |                             ^^^^^^^^^^^^^ help: use: `Into::into`
+   |
+   = note: converting `i32` to `i64` cannot fail
+
+error: use of a fallible conversion when an infallible one could be used
+  --> tests/ui/unnecessary_fallible_conversions_unfixable.rs:38:29
+   |
+LL |     let _: Result<i64, _> = <_>::try_from(0i32);
+   |                             ^^^^^^^^^^^^^ help: use: `From::from`
+   |
+   = note: converting `i32` to `i64` cannot fail
+
+error: aborting due to 6 previous errors
+

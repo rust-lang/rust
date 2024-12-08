@@ -1,0 +1,19 @@
+error[E0585]: found a documentation comment that doesn't document anything
+  --> $DIR/doc-after-struct-field.rs:2:11
+   |
+LL |     a: u8 /** document a */,
+   |           ^^^^^^^^^^^^^^^^^
+   |
+   = help: doc comments must come before what they document, if a comment was intended use `//`
+
+error[E0585]: found a documentation comment that doesn't document anything
+  --> $DIR/doc-after-struct-field.rs:8:11
+   |
+LL |     a: u8 /// document a
+   |           ^^^^^^^^^^^^^^
+   |
+   = help: doc comments must come before what they document, if a comment was intended use `//`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0585`.

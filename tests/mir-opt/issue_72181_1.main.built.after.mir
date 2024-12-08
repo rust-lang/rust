@@ -1,0 +1,49 @@
+// MIR for `main` after built
+
+| User Type Annotations
+| 0: user_ty: Canonical { value: Ty(Void), max_universe: U0, variables: [] }, span: $DIR/issue_72181_1.rs:17:12: 17:16, inferred_ty: Void
+| 1: user_ty: Canonical { value: Ty(Void), max_universe: U0, variables: [] }, span: $DIR/issue_72181_1.rs:17:12: 17:16, inferred_ty: Void
+|
+fn main() -> () {
+    let mut _0: ();
+    let mut _1: !;
+    let _2: Void as UserTypeProjection { base: UserType(0), projs: [] };
+    let mut _3: ();
+    let _4: !;
+    let mut _5: Void;
+    scope 1 {
+        debug v => _2;
+    }
+
+    bb0: {
+        StorageLive(_2);
+        StorageLive(_3);
+        _3 = ();
+        _2 = std::intrinsics::transmute::<(), Void>(move _3) -> bb4;
+    }
+
+    bb1: {
+        StorageDead(_3);
+        FakeRead(ForLet(None), _2);
+        AscribeUserType(_2, o, UserTypeProjection { base: UserType(1), projs: [] });
+        StorageLive(_4);
+        StorageLive(_5);
+        _5 = move _2;
+        _4 = f(move _5) -> bb4;
+    }
+
+    bb2: {
+        StorageDead(_5);
+        StorageDead(_4);
+        StorageDead(_2);
+        unreachable;
+    }
+
+    bb3: {
+        return;
+    }
+
+    bb4 (cleanup): {
+        resume;
+    }
+}

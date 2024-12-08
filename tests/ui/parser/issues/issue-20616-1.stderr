@@ -1,0 +1,8 @@
+error: expected one of `,`, `:`, or `>`, found `T`
+  --> $DIR/issue-20616-1.rs:9:16
+   |
+LL | type Type_1<'a T> = &'a T;
+   |                ^ expected one of `,`, `:`, or `>`
+
+error: aborting due to 1 previous error
+

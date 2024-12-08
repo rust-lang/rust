@@ -1,0 +1,13 @@
+error: expected identifier, found keyword `true`
+  --> $DIR/bad-value-ident-true.rs:1:4
+   |
+LL | fn true() { }
+   |    ^^^^ expected identifier, found keyword
+   |
+help: escape `true` to use it as an identifier
+   |
+LL | fn r#true() { }
+   |    ++
+
+error: aborting due to 1 previous error
+

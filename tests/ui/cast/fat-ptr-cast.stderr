@@ -1,0 +1,88 @@
+error[E0606]: casting `&[i32]` as `usize` is invalid
+  --> $DIR/fat-ptr-cast.rs:10:5
+   |
+LL |     a as usize;
+   |     ^^^^^^^^^^
+   |
+   = help: cast through a raw pointer first
+
+error[E0606]: casting `&[i32]` as `isize` is invalid
+  --> $DIR/fat-ptr-cast.rs:11:5
+   |
+LL |     a as isize;
+   |     ^^^^^^^^^^
+   |
+   = help: cast through a raw pointer first
+
+error[E0606]: casting `&[i32]` as `i16` is invalid
+  --> $DIR/fat-ptr-cast.rs:12:5
+   |
+LL |     a as i16;
+   |     ^^^^^^^^
+   |
+   = help: cast through a raw pointer first
+
+error[E0606]: casting `&[i32]` as `u32` is invalid
+  --> $DIR/fat-ptr-cast.rs:13:5
+   |
+LL |     a as u32;
+   |     ^^^^^^^^
+   |
+   = help: cast through a raw pointer first
+
+error[E0605]: non-primitive cast: `Box<[i32]>` as `usize`
+  --> $DIR/fat-ptr-cast.rs:14:5
+   |
+LL |     b as usize;
+   |     ^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
+
+error[E0606]: casting `*const [i32]` as `usize` is invalid
+  --> $DIR/fat-ptr-cast.rs:15:5
+   |
+LL |     p as usize;
+   |     ^^^^^^^^^^
+   |
+   = help: cast through a thin pointer first
+
+error[E0607]: cannot cast thin pointer `*const i32` to wide pointer `*const [i32]`
+  --> $DIR/fat-ptr-cast.rs:19:5
+   |
+LL |     q as *const [i32];
+   |     ^^^^^^^^^^^^^^^^^
+
+error[E0606]: cannot cast `usize` to a pointer that is wide
+  --> $DIR/fat-ptr-cast.rs:22:46
+   |
+LL |     let t: *mut (dyn Trait + 'static) = 0 as *mut _;
+   |                                         -    ^^^^^^ creating a `*mut (dyn Trait + 'static)` requires both an address and a vtable
+   |                                         |
+   |                                         consider casting this expression to `*const ()`, then using `core::ptr::from_raw_parts`
+
+error[E0606]: cannot cast `usize` to a pointer that is wide
+  --> $DIR/fat-ptr-cast.rs:24:37
+   |
+LL |     let mut fail: *const str = 0 as *const str;
+   |                                -    ^^^^^^^^^^ creating a `*const str` requires both an address and a length
+   |                                |
+   |                                consider casting this expression to `*const ()`, then using `core::ptr::from_raw_parts`
+
+error[E0606]: cannot cast `isize` to a pointer that is wide
+  --> $DIR/fat-ptr-cast.rs:26:43
+   |
+LL |     let mut fail2: *const str = 0isize as *const str;
+   |                                 ------    ^^^^^^^^^^ creating a `*const str` requires both an address and a length
+   |                                 |
+   |                                 consider casting this expression to `*const ()`, then using `core::ptr::from_raw_parts`
+
+error[E0606]: cannot cast `usize` to a pointer that may be wide
+  --> $DIR/fat-ptr-cast.rs:31:18
+   |
+LL |     let s = 0 as *const T;
+   |             -    ^^^^^^^^ creating a `*const T` requires both an address and type-specific metadata
+   |             |
+   |             consider casting this expression to `*const ()`, then using `core::ptr::from_raw_parts`
+
+error: aborting due to 11 previous errors
+
+Some errors have detailed explanations: E0605, E0606, E0607.
+For more information about an error, try `rustc --explain E0605`.

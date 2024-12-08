@@ -1,0 +1,15 @@
+error: unsupported operation: can't call foreign function `signal` on $OS
+  --> tests/fail-dep/libc/unsupported_incomplete_function.rs:LL:CC
+   |
+LL |         libc::signal(libc::SIGPIPE, libc::SIG_IGN);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't call foreign function `signal` on $OS
+   |
+   = help: if this is a basic API commonly used on this target, please report an issue with Miri
+   = help: however, note that Miri does not aim to support every FFI function out there; for instance, we will not support APIs for things such as GUIs, scripting languages, or databases
+   = note: BACKTRACE:
+   = note: inside `main` at tests/fail-dep/libc/unsupported_incomplete_function.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

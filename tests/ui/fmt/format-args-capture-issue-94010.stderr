@@ -1,0 +1,20 @@
+error[E0425]: cannot find value `foo` in this scope
+  --> $DIR/format-args-capture-issue-94010.rs:3:16
+   |
+LL |     const FOO: i32 = 123;
+   |     --------------------- similarly named constant `FOO` defined here
+LL |     println!("{foo:X}");
+   |                ^^^ help: a constant with a similar name exists (notice the capitalization): `FOO`
+
+error[E0425]: cannot find value `foo` in this scope
+  --> $DIR/format-args-capture-issue-94010.rs:5:18
+   |
+LL |     const FOO: i32 = 123;
+   |     --------------------- similarly named constant `FOO` defined here
+...
+LL |     println!("{:.foo$}", 0);
+   |                  ^^^ help: a constant with a similar name exists (notice the capitalization): `FOO`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

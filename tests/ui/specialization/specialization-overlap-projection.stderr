@@ -1,0 +1,30 @@
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/specialization-overlap-projection.rs:4:12
+   |
+LL | #![feature(specialization)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+   = help: consider using `min_specialization` instead, which is more stable and complete
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0119]: conflicting implementations of trait `Foo` for type `u32`
+  --> $DIR/specialization-overlap-projection.rs:20:1
+   |
+LL | impl Foo for u32 {}
+   | ---------------- first implementation here
+LL | impl Foo for <u8 as Assoc>::Output {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `u32`
+
+error[E0119]: conflicting implementations of trait `Foo` for type `u32`
+  --> $DIR/specialization-overlap-projection.rs:22:1
+   |
+LL | impl Foo for u32 {}
+   | ---------------- first implementation here
+...
+LL | impl Foo for <u16 as Assoc>::Output {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `u32`
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0119`.

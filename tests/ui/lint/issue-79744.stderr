@@ -1,0 +1,12 @@
+error: literal out of range for `i8`
+  --> $DIR/issue-79744.rs:3:14
+   |
+LL |     let e2 = 230;
+   |              ^^^
+   |
+   = note: the literal `230` does not fit into the type `i8` whose range is `-128..=127`
+   = help: consider using the type `u8` instead
+   = note: `#[deny(overflowing_literals)]` on by default
+
+error: aborting due to 1 previous error
+

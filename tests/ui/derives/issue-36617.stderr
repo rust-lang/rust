@@ -1,0 +1,77 @@
+error: `derive` attribute cannot be used at crate level
+  --> $DIR/issue-36617.rs:1:1
+   |
+LL | #![derive(Copy)]
+   | ^^^^^^^^^^^^^^^^
+...
+LL | fn main() {}
+   |    ---- the inner attribute doesn't annotate this function
+   |
+help: perhaps you meant to use an outer attribute
+   |
+LL - #![derive(Copy)]
+LL + #[derive(Copy)]
+   |
+
+error: `test` attribute cannot be used at crate level
+  --> $DIR/issue-36617.rs:4:1
+   |
+LL | #![test]
+   | ^^^^^^^^
+...
+LL | fn main() {}
+   |    ---- the inner attribute doesn't annotate this function
+   |
+help: perhaps you meant to use an outer attribute
+   |
+LL - #![test]
+LL + #[test]
+   |
+
+error: `test_case` attribute cannot be used at crate level
+  --> $DIR/issue-36617.rs:7:1
+   |
+LL | #![test_case]
+   | ^^^^^^^^^^^^^
+...
+LL | fn main() {}
+   |    ---- the inner attribute doesn't annotate this function
+   |
+help: perhaps you meant to use an outer attribute
+   |
+LL - #![test_case]
+LL + #[test_case]
+   |
+
+error: `bench` attribute cannot be used at crate level
+  --> $DIR/issue-36617.rs:10:1
+   |
+LL | #![bench]
+   | ^^^^^^^^^
+...
+LL | fn main() {}
+   |    ---- the inner attribute doesn't annotate this function
+   |
+help: perhaps you meant to use an outer attribute
+   |
+LL - #![bench]
+LL + #[bench]
+   |
+
+error: `global_allocator` attribute cannot be used at crate level
+  --> $DIR/issue-36617.rs:13:1
+   |
+LL | #![global_allocator]
+   | ^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn main() {}
+   |    ---- the inner attribute doesn't annotate this function
+   |
+help: perhaps you meant to use an outer attribute
+   |
+LL - #![global_allocator]
+LL + #[global_allocator]
+   |
+
+error: aborting due to 5 previous errors
+

@@ -1,0 +1,14 @@
+error[E0282]: type annotations needed for `[_; 0]`
+  --> $DIR/cannot_infer_local_or_array.rs:2:9
+   |
+LL |     let x = [];
+   |         ^   -- type must be known at this point
+   |
+help: consider giving `x` an explicit type, where the placeholders `_` are specified
+   |
+LL |     let x: [_; 0] = [];
+   |          ++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.

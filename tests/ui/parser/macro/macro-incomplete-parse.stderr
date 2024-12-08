@@ -1,0 +1,35 @@
+error: macro expansion ignores `,` and any tokens following
+  --> $DIR/macro-incomplete-parse.rs:5:9
+   |
+LL |         ,
+   |         ^
+...
+LL | ignored_item!();
+   | --------------- caused by the macro expansion here
+   |
+   = note: the usage of `ignored_item!` is likely invalid in item context
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `,`
+  --> $DIR/macro-incomplete-parse.rs:10:14
+   |
+LL |     () => ( 1,
+   |              ^ expected one of `.`, `;`, `?`, `}`, or an operator
+...
+LL |     ignored_expr!();
+   |     --------------- in this macro invocation
+   |
+   = note: this error originates in the macro `ignored_expr` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: macro expansion ignores `,` and any tokens following
+  --> $DIR/macro-incomplete-parse.rs:16:14
+   |
+LL |     () => ( 1, 2 )
+   |              ^
+...
+LL |         ignored_pat!() => (),
+   |         -------------- caused by the macro expansion here
+   |
+   = note: the usage of `ignored_pat!` is likely invalid in pattern context
+
+error: aborting due to 3 previous errors
+

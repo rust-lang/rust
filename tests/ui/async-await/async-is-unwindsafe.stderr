@@ -1,0 +1,34 @@
+error[E0277]: the type `&mut Context<'_>` may not be safely transferred across an unwind boundary
+  --> $DIR/async-is-unwindsafe.rs:12:5
+   |
+LL |       is_unwindsafe(async {
+   |       ^             ----- within this `{async block@$DIR/async-is-unwindsafe.rs:12:19: 12:24}`
+   |  _____|
+   | |
+LL | |
+LL | |         use std::ptr::null;
+LL | |         use std::task::{Context, RawWaker, RawWakerVTable, Waker};
+...  |
+LL | |         drop(cx_ref);
+LL | |     });
+   | |______^ `&mut Context<'_>` may not be safely transferred across an unwind boundary
+   |
+   = help: within `{async block@$DIR/async-is-unwindsafe.rs:12:19: 12:24}`, the trait `UnwindSafe` is not implemented for `&mut Context<'_>`
+   = note: `UnwindSafe` is implemented for `&Context<'_>`, but not for `&mut Context<'_>`
+note: future does not implement `UnwindSafe` as this value is used across an await
+  --> $DIR/async-is-unwindsafe.rs:25:18
+   |
+LL |         let cx_ref = &mut cx;
+   |             ------ has type `&mut Context<'_>` which does not implement `UnwindSafe`
+LL |
+LL |         async {}.await; // this needs an inner await point
+   |                  ^^^^^ await occurs here, with `cx_ref` maybe used later
+note: required by a bound in `is_unwindsafe`
+  --> $DIR/async-is-unwindsafe.rs:3:26
+   |
+LL | fn is_unwindsafe(_: impl std::panic::UnwindSafe) {}
+   |                          ^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `is_unwindsafe`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

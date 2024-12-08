@@ -1,0 +1,52 @@
+- // MIR for `match_sext_i8_u16` before MatchBranchSimplification
++ // MIR for `match_sext_i8_u16` after MatchBranchSimplification
+  
+  fn match_sext_i8_u16(_1: EnumAi8) -> u16 {
+      debug i => _1;
+      let mut _0: u16;
+      let mut _2: i8;
++     let mut _3: i8;
+  
+      bb0: {
+          _2 = discriminant(_1);
+-         switchInt(move _2) -> [128: bb6, 255: bb5, 0: bb4, 1: bb3, 127: bb2, otherwise: bb1];
+-     }
+- 
+-     bb1: {
+-         unreachable;
+-     }
+- 
+-     bb2: {
+-         _0 = const 127_u16;
+-         goto -> bb7;
+-     }
+- 
+-     bb3: {
+-         _0 = const 1_u16;
+-         goto -> bb7;
+-     }
+- 
+-     bb4: {
+-         _0 = const 0_u16;
+-         goto -> bb7;
+-     }
+- 
+-     bb5: {
+-         _0 = const u16::MAX;
+-         goto -> bb7;
+-     }
+- 
+-     bb6: {
+-         _0 = const 65408_u16;
+-         goto -> bb7;
+-     }
+- 
+-     bb7: {
++         StorageLive(_3);
++         _3 = move _2;
++         _0 = copy _3 as u16 (IntToInt);
++         StorageDead(_3);
+          return;
+      }
+  }
+  

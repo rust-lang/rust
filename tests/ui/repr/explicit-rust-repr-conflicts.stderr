@@ -1,0 +1,40 @@
+error[E0658]: SIMD types are experimental and possibly buggy
+  --> $DIR/explicit-rust-repr-conflicts.rs:18:1
+   |
+LL | #[repr(Rust, simd)]
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #27731 <https://github.com/rust-lang/rust/issues/27731> for more information
+   = help: add `#![feature(repr_simd)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0566]: conflicting representation hints
+  --> $DIR/explicit-rust-repr-conflicts.rs:1:8
+   |
+LL | #[repr(C, Rust)]
+   |        ^  ^^^^
+
+error[E0566]: conflicting representation hints
+  --> $DIR/explicit-rust-repr-conflicts.rs:7:8
+   |
+LL | #[repr(Rust)]
+   |        ^^^^
+LL | #[repr(C)]
+   |        ^
+
+error[E0566]: conflicting representation hints
+  --> $DIR/explicit-rust-repr-conflicts.rs:13:8
+   |
+LL | #[repr(Rust, u64)]
+   |        ^^^^  ^^^
+
+error[E0566]: conflicting representation hints
+  --> $DIR/explicit-rust-repr-conflicts.rs:18:8
+   |
+LL | #[repr(Rust, simd)]
+   |        ^^^^  ^^^^
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0566, E0658.
+For more information about an error, try `rustc --explain E0566`.

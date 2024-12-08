@@ -1,0 +1,17 @@
+error: struct `Foo` is never constructed
+  --> tests/fail/deny_lint.rs:LL:CC
+   |
+LL | struct Foo;
+   |        ^^^
+   |
+note: the lint level is defined here
+  --> tests/fail/deny_lint.rs:LL:CC
+   |
+LL | #![deny(warnings, unused)]
+   |                   ^^^^^^
+   = note: `#[deny(dead_code)]` implied by `#[deny(unused)]`
+
+error: miri cannot be run on programs that fail compilation
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,14 @@
+error[E0259]: the name `test_macros` is defined multiple times
+  --> $DIR/shadow.rs:6:1
+   |
+LL | extern crate test_macros;
+   | ------------------------- previous import of the extern crate `test_macros` here
+LL | #[macro_use]
+LL | extern crate test_macros;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ `test_macros` reimported here
+   |
+   = note: `test_macros` must be defined only once in the type namespace of this module
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0259`.

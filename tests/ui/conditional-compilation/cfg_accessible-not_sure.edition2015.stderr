@@ -1,0 +1,122 @@
+error: not sure whether the path is accessible or not
+  --> $DIR/cfg_accessible-not_sure.rs:14:18
+   |
+LL | #[cfg_accessible(Struct::existing)]
+   |                  ^^^^^^^^^^^^^^^^
+   |
+   = note: the type may have associated items, but we are currently not checking them
+
+error: not sure whether the path is accessible or not
+  --> $DIR/cfg_accessible-not_sure.rs:16:18
+   |
+LL | #[cfg_accessible(Struct::unresolved)]
+   |                  ^^^^^^^^^^^^^^^^^^
+   |
+   = note: the type may have associated items, but we are currently not checking them
+
+error: not sure whether the path is accessible or not
+  --> $DIR/cfg_accessible-not_sure.rs:25:18
+   |
+LL | #[cfg_accessible(Union::existing)]
+   |                  ^^^^^^^^^^^^^^^
+   |
+   = note: the type may have associated items, but we are currently not checking them
+
+error: not sure whether the path is accessible or not
+  --> $DIR/cfg_accessible-not_sure.rs:27:18
+   |
+LL | #[cfg_accessible(Union::unresolved)]
+   |                  ^^^^^^^^^^^^^^^^^
+   |
+   = note: the type may have associated items, but we are currently not checking them
+
+error: not sure whether the path is accessible or not
+  --> $DIR/cfg_accessible-not_sure.rs:36:18
+   |
+LL | #[cfg_accessible(Enum::Existing::existing)]
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the type may have associated items, but we are currently not checking them
+
+error: not sure whether the path is accessible or not
+  --> $DIR/cfg_accessible-not_sure.rs:38:18
+   |
+LL | #[cfg_accessible(Enum::Existing::unresolved)]
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the type may have associated items, but we are currently not checking them
+
+error: not sure whether the path is accessible or not
+  --> $DIR/cfg_accessible-not_sure.rs:40:18
+   |
+LL | #[cfg_accessible(Enum::unresolved)]
+   |                  ^^^^^^^^^^^^^^^^
+   |
+   = note: the type may have associated items, but we are currently not checking them
+
+error: not sure whether the path is accessible or not
+  --> $DIR/cfg_accessible-not_sure.rs:50:18
+   |
+LL | #[cfg_accessible(Trait::existing)]
+   |                  ^^^^^^^^^^^^^^^
+   |
+   = note: the type may have associated items, but we are currently not checking them
+
+error: not sure whether the path is accessible or not
+  --> $DIR/cfg_accessible-not_sure.rs:52:18
+   |
+LL | #[cfg_accessible(Trait::unresolved)]
+   |                  ^^^^^^^^^^^^^^^^^
+   |
+   = note: the type may have associated items, but we are currently not checking them
+
+error: not sure whether the path is accessible or not
+  --> $DIR/cfg_accessible-not_sure.rs:59:18
+   |
+LL | #[cfg_accessible(TypeAlias::existing)]
+   |                  ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the type may have associated items, but we are currently not checking them
+
+error: not sure whether the path is accessible or not
+  --> $DIR/cfg_accessible-not_sure.rs:61:18
+   |
+LL | #[cfg_accessible(TypeAlias::unresolved)]
+   |                  ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the type may have associated items, but we are currently not checking them
+
+error: not sure whether the path is accessible or not
+  --> $DIR/cfg_accessible-not_sure.rs:70:18
+   |
+LL | #[cfg_accessible(ForeignType::unresolved)]
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the type may have associated items, but we are currently not checking them
+
+error: not sure whether the path is accessible or not
+  --> $DIR/cfg_accessible-not_sure.rs:79:18
+   |
+LL | #[cfg_accessible(AssocType::AssocType::unresolved)]
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the type may have associated items, but we are currently not checking them
+
+error: not sure whether the path is accessible or not
+  --> $DIR/cfg_accessible-not_sure.rs:84:18
+   |
+LL | #[cfg_accessible(u8::unresolved)]
+   |                  ^^^^^^^^^^^^^^
+   |
+   = note: the type may have associated items, but we are currently not checking them
+
+error: not sure whether the path is accessible or not
+  --> $DIR/cfg_accessible-not_sure.rs:86:18
+   |
+LL | #[cfg_accessible(u8::is_ascii)]
+   |                  ^^^^^^^^^^^^
+   |
+   = note: the type may have associated items, but we are currently not checking them
+
+error: aborting due to 15 previous errors
+

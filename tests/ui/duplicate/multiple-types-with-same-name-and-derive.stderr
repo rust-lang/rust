@@ -1,0 +1,71 @@
+error[E0428]: the name `NotSM` is defined multiple times
+  --> $DIR/multiple-types-with-same-name-and-derive.rs:15:1
+   |
+LL | struct NotSM;
+   | ------------- previous definition of the type `NotSM` here
+...
+LL | struct NotSM<T>(T);
+   | ^^^^^^^^^^^^^^^^^^^ `NotSM` redefined here
+   |
+   = note: `NotSM` must be defined only once in the type namespace of this module
+
+error[E0107]: struct takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/multiple-types-with-same-name-and-derive.rs:10:10
+   |
+LL | #[derive(PartialEq, Eq)]
+   |          ^^^^^^^^^ expected 0 generic arguments
+   |
+note: struct defined here, with 0 generic parameters
+  --> $DIR/multiple-types-with-same-name-and-derive.rs:8:8
+   |
+LL | struct NotSM;
+   |        ^^^^^
+
+error[E0107]: struct takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/multiple-types-with-same-name-and-derive.rs:10:10
+   |
+LL | #[derive(PartialEq, Eq)]
+   |          ^^^^^^^^^ expected 0 generic arguments
+   |
+note: struct defined here, with 0 generic parameters
+  --> $DIR/multiple-types-with-same-name-and-derive.rs:8:8
+   |
+LL | struct NotSM;
+   |        ^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0107]: struct takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/multiple-types-with-same-name-and-derive.rs:10:21
+   |
+LL | #[derive(PartialEq, Eq)]
+   |                     ^^ expected 0 generic arguments
+   |
+note: struct defined here, with 0 generic parameters
+  --> $DIR/multiple-types-with-same-name-and-derive.rs:8:8
+   |
+LL | struct NotSM;
+   |        ^^^^^
+
+error[E0107]: struct takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/multiple-types-with-same-name-and-derive.rs:10:10
+   |
+LL | #[derive(PartialEq, Eq)]
+   |          ^^^^^^^^^ expected 0 generic arguments
+   |
+note: struct defined here, with 0 generic parameters
+  --> $DIR/multiple-types-with-same-name-and-derive.rs:8:8
+   |
+LL | struct NotSM;
+   |        ^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0609]: no field `0` on type `&NotSM`
+  --> $DIR/multiple-types-with-same-name-and-derive.rs:15:17
+   |
+LL | struct NotSM<T>(T);
+   |                 ^ unknown field
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0107, E0428, E0609.
+For more information about an error, try `rustc --explain E0107`.

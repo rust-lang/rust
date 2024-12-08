@@ -1,0 +1,60 @@
+- // MIR for `casts_before_aggregate_raw_ptr` before GVN
++ // MIR for `casts_before_aggregate_raw_ptr` after GVN
+  
+  fn casts_before_aggregate_raw_ptr(_1: *const u32) -> *const [u8] {
+      debug x => _1;
+      let mut _0: *const [u8];
+      let _2: *const [u8; 4];
+      let mut _3: *const u32;
+      let mut _5: *const [u8; 4];
+      let mut _7: *const u8;
+      let mut _8: *const ();
+      scope 1 {
+          debug x => _2;
+          let _4: *const u8;
+          scope 2 {
+              debug x => _4;
+              let _6: *const ();
+              scope 3 {
+                  debug x => _6;
+              }
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_2);
++         nop;
+          StorageLive(_3);
+          _3 = copy _1;
+-         _2 = move _3 as *const [u8; 4] (PtrToPtr);
++         _2 = copy _1 as *const [u8; 4] (PtrToPtr);
+          StorageDead(_3);
+-         StorageLive(_4);
++         nop;
+          StorageLive(_5);
+          _5 = copy _2;
+-         _4 = move _5 as *const u8 (PtrToPtr);
++         _4 = copy _1 as *const u8 (PtrToPtr);
+          StorageDead(_5);
+-         StorageLive(_6);
++         nop;
+          StorageLive(_7);
+          _7 = copy _4;
+-         _6 = move _7 as *const () (PtrToPtr);
++         _6 = copy _1 as *const () (PtrToPtr);
+          StorageDead(_7);
+          StorageLive(_8);
+          _8 = copy _6;
+-         _0 = *const [u8] from (move _8, const 4_usize);
++         _0 = *const [u8] from (copy _1, const 4_usize);
+          StorageDead(_8);
+-         StorageDead(_6);
+-         StorageDead(_4);
+-         StorageDead(_2);
++         nop;
++         nop;
++         nop;
+          return;
+      }
+  }
+  

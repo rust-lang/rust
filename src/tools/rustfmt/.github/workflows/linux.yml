@@ -1,0 +1,39 @@
+name: linux
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: (${{ matrix.target }}, ${{ matrix.cfg_release_channel }})
+    env:
+      CFG_RELEASE_CHANNEL: ${{ matrix.cfg_release_channel }}
+    strategy:
+      # https://help.github.com/en/actions/getting-started-with-github-actions/about-github-actions#usage-limits
+      # There's a limit of 60 concurrent jobs across all repos in the rust-lang organization.
+      # In order to prevent overusing too much of that 60 limit, we throttle the
+      # number of rustfmt jobs that will run concurrently.
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        target: [
+          x86_64-unknown-linux-gnu,
+        ]
+        cfg_release_channel: [nightly, stable]
+
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4
+
+      # Run build
+    - name: install rustup
+      run: |
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup-init.sh
+        sh rustup-init.sh -y --default-toolchain none
+        rustup target add ${{ matrix.target }}
+
+    - name: Build and Test
+      run: ./ci/build_and_test.sh

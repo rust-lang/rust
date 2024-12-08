@@ -1,0 +1,74 @@
+error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
+  --> $DIR/attributes-on-modules-fail.rs:16:1
+   |
+LL | #[derive(Copy)]
+   | ^^^^^^^^^^^^^^^ not applicable here
+LL | mod n {}
+   | -------- not a `struct`, `enum` or `union`
+
+error[E0658]: non-inline modules in proc macro input are unstable
+  --> $DIR/attributes-on-modules-fail.rs:20:1
+   |
+LL | mod module;
+   | ^^^^^^^^^^^
+   |
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
+   = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: non-inline modules in proc macro input are unstable
+  --> $DIR/attributes-on-modules-fail.rs:24:5
+   |
+LL |     mod inner;
+   |     ^^^^^^^^^^
+   |
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
+   = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: non-inline modules in proc macro input are unstable
+  --> $DIR/attributes-on-modules-fail.rs:33:9
+   |
+LL |         mod inner;
+   |         ^^^^^^^^^^
+   |
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
+   = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: non-inline modules in proc macro input are unstable
+  --> $DIR/attributes-on-modules-fail.rs:42:5
+   |
+LL |     mod inner;
+   |     ^^^^^^^^^^
+   |
+   = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
+   = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0412]: cannot find type `Y` in this scope
+  --> $DIR/attributes-on-modules-fail.rs:10:14
+   |
+LL |     type A = Y;
+   |              ^ not found in this scope
+   |
+help: consider importing this struct
+   |
+LL +     use Y;
+   |
+
+error[E0412]: cannot find type `X` in this scope
+  --> $DIR/attributes-on-modules-fail.rs:14:10
+   |
+LL | type A = X;
+   |          ^ not found in this scope
+   |
+help: consider importing this struct
+   |
+LL + use m::X;
+   |
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0412, E0658, E0774.
+For more information about an error, try `rustc --explain E0412`.

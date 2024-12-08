@@ -1,0 +1,2 @@
+fn foo(  /* comment */
+) {}

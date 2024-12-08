@@ -1,0 +1,19 @@
+error[E0659]: `main` is ambiguous
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `main` could refer to the function imported here
+  --> $DIR/imported_main_conflict.rs:5:5
+   |
+LL | use m1::*;
+   |     ^^^^^
+   = help: consider adding an explicit import of `main` to disambiguate
+note: `main` could also refer to the function imported here
+  --> $DIR/imported_main_conflict.rs:6:5
+   |
+LL | use m2::*;
+   |     ^^^^^
+   = help: consider adding an explicit import of `main` to disambiguate
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0659`.

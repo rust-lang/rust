@@ -1,0 +1,36 @@
+error: attribute applied to an invalid target
+  --> $DIR/optimize.rs:8:1
+   |
+LL | #[optimize(speed)]
+   | ^^^^^^^^^^^^^^^^^^
+LL | struct F;
+   | --------- invalid target
+
+error: attribute applied to an invalid target
+  --> $DIR/optimize.rs:12:5
+   |
+LL |       #[optimize(speed)]
+   |       ^^^^^^^^^^^^^^^^^^
+LL | /     {
+LL | |         1
+LL | |     };
+   | |_____- invalid target
+
+error: attribute applied to an invalid target
+  --> $DIR/optimize.rs:21:1
+   |
+LL | #[optimize(speed)]
+   | ^^^^^^^^^^^^^^^^^^
+LL | mod valid_module {}
+   | ------------------- invalid target
+
+error: attribute applied to an invalid target
+  --> $DIR/optimize.rs:24:1
+   |
+LL | #[optimize(speed)]
+   | ^^^^^^^^^^^^^^^^^^
+LL | impl F {}
+   | --------- invalid target
+
+error: aborting due to 4 previous errors
+

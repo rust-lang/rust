@@ -1,0 +1,46 @@
+- // MIR for `if_const_debug` before SingleUseConsts
++ // MIR for `if_const_debug` after SingleUseConsts
+  
+  fn if_const_debug() -> i32 {
+      let mut _0: i32;
+      let _1: bool;
+      let _2: ();
+      let mut _3: bool;
+      scope 1 {
+-         debug my_bool => _1;
++         debug my_bool => const <T as MyTrait>::ASSOC_BOOL;
+      }
+  
+      bb0: {
+          StorageLive(_1);
+-         _1 = const <T as MyTrait>::ASSOC_BOOL;
++         nop;
+          StorageLive(_2);
+          _2 = do_whatever() -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+          StorageDead(_2);
+          StorageLive(_3);
+-         _3 = copy _1;
++         _3 = const <T as MyTrait>::ASSOC_BOOL;
+          switchInt(move _3) -> [0: bb3, otherwise: bb2];
+      }
+  
+      bb2: {
+          _0 = const 7_i32;
+          goto -> bb4;
+      }
+  
+      bb3: {
+          _0 = const 42_i32;
+          goto -> bb4;
+      }
+  
+      bb4: {
+          StorageDead(_3);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

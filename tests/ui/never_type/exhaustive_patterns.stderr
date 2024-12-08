@@ -1,0 +1,26 @@
+error[E0005]: refutable pattern in local binding
+  --> $DIR/exhaustive_patterns.rs:21:9
+   |
+LL |     let Either::A(()) = foo();
+   |         ^^^^^^^^^^^^^ pattern `Either::B(_)` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
+note: `Either<(), !>` defined here
+  --> $DIR/exhaustive_patterns.rs:9:6
+   |
+LL | enum Either<A, B> {
+   |      ^^^^^^
+LL |     A(A),
+LL |     B(inner::Wrapper<B>),
+   |     - not covered
+   = note: pattern `Either::B(_)` is currently uninhabited, but this variant contains private fields which may become inhabited in the future
+   = note: the matched value is of type `Either<(), !>`
+help: you might want to use `if let` to ignore the variant that isn't matched
+   |
+LL |     if let Either::A(()) = foo() { todo!() };
+   |     ++                           +++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0005`.

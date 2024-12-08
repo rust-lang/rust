@@ -1,0 +1,415 @@
+error: warn(unused) incompatible with previous forbid
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:22:13
+   |
+LL |     #![forbid(unused)]
+   |               ------ `forbid` level set here
+LL |     #![deny(unused)]
+LL |     #![warn(unused)]
+   |             ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:17:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+Future incompatibility report: Future breakage diagnostic:
+error: warn(unused) incompatible with previous forbid
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:22:13
+   |
+LL |     #![forbid(unused)]
+   |               ------ `forbid` level set here
+LL |     #![deny(unused)]
+LL |     #![warn(unused)]
+   |             ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:17:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: warn(unused) incompatible with previous forbid
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:22:13
+   |
+LL |     #![forbid(unused)]
+   |               ------ `forbid` level set here
+LL |     #![deny(unused)]
+LL |     #![warn(unused)]
+   |             ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:17:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: warn(unused) incompatible with previous forbid
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:22:13
+   |
+LL |     #![forbid(unused)]
+   |               ------ `forbid` level set here
+LL |     #![deny(unused)]
+LL |     #![warn(unused)]
+   |             ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:17:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: warn(unused) incompatible with previous forbid
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:22:13
+   |
+LL |     #![forbid(unused)]
+   |               ------ `forbid` level set here
+LL |     #![deny(unused)]
+LL |     #![warn(unused)]
+   |             ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:17:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: warn(unused) incompatible with previous forbid
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:22:13
+   |
+LL |     #![forbid(unused)]
+   |               ------ `forbid` level set here
+LL |     #![deny(unused)]
+LL |     #![warn(unused)]
+   |             ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:17:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: warn(unused) incompatible with previous forbid
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:22:13
+   |
+LL |     #![forbid(unused)]
+   |               ------ `forbid` level set here
+LL |     #![deny(unused)]
+LL |     #![warn(unused)]
+   |             ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:17:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: warn(unused) incompatible with previous forbid
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:22:13
+   |
+LL |     #![forbid(unused)]
+   |               ------ `forbid` level set here
+LL |     #![deny(unused)]
+LL |     #![warn(unused)]
+   |             ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:17:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: warn(unused) incompatible with previous forbid
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:22:13
+   |
+LL |     #![forbid(unused)]
+   |               ------ `forbid` level set here
+LL |     #![deny(unused)]
+LL |     #![warn(unused)]
+   |             ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:17:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: warn(unused) incompatible with previous forbid
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:22:13
+   |
+LL |     #![forbid(unused)]
+   |               ------ `forbid` level set here
+LL |     #![deny(unused)]
+LL |     #![warn(unused)]
+   |             ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:17:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: warn(unused) incompatible with previous forbid
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:22:13
+   |
+LL |     #![forbid(unused)]
+   |               ------ `forbid` level set here
+LL |     #![deny(unused)]
+LL |     #![warn(unused)]
+   |             ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:17:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: warn(unused) incompatible with previous forbid
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:22:13
+   |
+LL |     #![forbid(unused)]
+   |               ------ `forbid` level set here
+LL |     #![deny(unused)]
+LL |     #![warn(unused)]
+   |             ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:17:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: warn(unused) incompatible with previous forbid
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:22:13
+   |
+LL |     #![forbid(unused)]
+   |               ------ `forbid` level set here
+LL |     #![deny(unused)]
+LL |     #![warn(unused)]
+   |             ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:17:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: warn(unused) incompatible with previous forbid
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:22:13
+   |
+LL |     #![forbid(unused)]
+   |               ------ `forbid` level set here
+LL |     #![deny(unused)]
+LL |     #![warn(unused)]
+   |             ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:17:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: warn(unused) incompatible with previous forbid
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:22:13
+   |
+LL |     #![forbid(unused)]
+   |               ------ `forbid` level set here
+LL |     #![deny(unused)]
+LL |     #![warn(unused)]
+   |             ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:17:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: warn(unused) incompatible with previous forbid
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:22:13
+   |
+LL |     #![forbid(unused)]
+   |               ------ `forbid` level set here
+LL |     #![deny(unused)]
+LL |     #![warn(unused)]
+   |             ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:17:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: warn(unused) incompatible with previous forbid
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:22:13
+   |
+LL |     #![forbid(unused)]
+   |               ------ `forbid` level set here
+LL |     #![deny(unused)]
+LL |     #![warn(unused)]
+   |             ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:17:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: warn(unused) incompatible with previous forbid
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:22:13
+   |
+LL |     #![forbid(unused)]
+   |               ------ `forbid` level set here
+LL |     #![deny(unused)]
+LL |     #![warn(unused)]
+   |             ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:17:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: warn(unused) incompatible with previous forbid
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:22:13
+   |
+LL |     #![forbid(unused)]
+   |               ------ `forbid` level set here
+LL |     #![deny(unused)]
+LL |     #![warn(unused)]
+   |             ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:17:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: warn(unused) incompatible with previous forbid
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:22:13
+   |
+LL |     #![forbid(unused)]
+   |               ------ `forbid` level set here
+LL |     #![deny(unused)]
+LL |     #![warn(unused)]
+   |             ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:17:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: warn(unused) incompatible with previous forbid
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:22:13
+   |
+LL |     #![forbid(unused)]
+   |               ------ `forbid` level set here
+LL |     #![deny(unused)]
+LL |     #![warn(unused)]
+   |             ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:17:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: warn(unused) incompatible with previous forbid
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:22:13
+   |
+LL |     #![forbid(unused)]
+   |               ------ `forbid` level set here
+LL |     #![deny(unused)]
+LL |     #![warn(unused)]
+   |             ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:17:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+
+Future breakage diagnostic:
+error: warn(unused) incompatible with previous forbid
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:22:13
+   |
+LL |     #![forbid(unused)]
+   |               ------ `forbid` level set here
+LL |     #![deny(unused)]
+LL |     #![warn(unused)]
+   |             ^^^^^^ overruled by previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+note: the lint level is defined here
+  --> $DIR/issue-70819-dont-override-forbid-in-same-scope.rs:17:11
+   |
+LL | #![forbid(forbidden_lint_groups)]
+   |           ^^^^^^^^^^^^^^^^^^^^^
+

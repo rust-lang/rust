@@ -1,0 +1,23 @@
+error[E0446]: private type `fn(u8) -> u8 {my_const_fn}` in public interface
+  --> $DIR/eval-privacy.rs:17:5
+   |
+LL |     type AssocTy = Const<{ my_const_fn(U) }>;
+   |     ^^^^^^^^^^^^ can't leak private type
+...
+LL | const fn my_const_fn(val: u8) -> u8 {
+   | ----------------------------------- `fn(u8) -> u8 {my_const_fn}` declared as private
+
+error[E0446]: private type `fn(u8) -> u8 {my_const_fn}` in public interface
+  --> $DIR/eval-privacy.rs:17:5
+   |
+LL |     type AssocTy = Const<{ my_const_fn(U) }>;
+   |     ^^^^^^^^^^^^ can't leak private type
+...
+LL | const fn my_const_fn(val: u8) -> u8 {
+   | ----------------------------------- `fn(u8) -> u8 {my_const_fn}` declared as private
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0446`.

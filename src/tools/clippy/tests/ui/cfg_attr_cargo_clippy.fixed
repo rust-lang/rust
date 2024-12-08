@@ -1,0 +1,13 @@
+#![warn(clippy::deprecated_clippy_cfg_attr)]
+#![allow(clippy::non_minimal_cfg)]
+#![cfg_attr(clippy, doc = "a")] //~ ERROR: `feature = "cargo-clippy"` was
+
+#[cfg_attr(clippy, derive(Debug))] //~ ERROR: `feature = "cargo-clippy"` was
+#[cfg_attr(not(clippy), derive(Debug))] //~ ERROR: `feature = "cargo-clippy"` was
+#[cfg(clippy)] //~ ERROR: `feature = "cargo-clippy"` was
+#[cfg(not(clippy))] //~ ERROR: `feature = "cargo-clippy"` was
+#[cfg(any(clippy))] //~ ERROR: `feature = "cargo-clippy"` was
+#[cfg(all(clippy))] //~ ERROR: `feature = "cargo-clippy"` was
+pub struct Bar;
+
+fn main() {}

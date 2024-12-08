@@ -1,0 +1,14 @@
+# This is the template for reuse-requirements.txt.
+#
+# The pip-tools project is used to generate the file again. To install it, the
+# recommended way is to:
+#
+# - Install pipx from https://github.com/pypa/pipx
+# - Run `pipx install pip-tools`
+#
+# Once pip-tools is installed, run this command to regenerate the .txt file:
+#
+#    pip-compile --allow-unsafe --generate-hashes reuse-requirements.in
+#
+
+reuse>=4.0,<5.0

@@ -1,0 +1,45 @@
+error[E0505]: cannot move out of `v` because it is borrowed
+  --> $DIR/borrowck-loan-blocks-move-cc.rs:14:19
+   |
+LL |     let v: Box<_> = Box::new(3);
+   |         - binding `v` declared here
+LL |     let w = &v;
+   |             -- borrow of `v` occurs here
+LL |     thread::spawn(move|| {
+   |                   ^^^^^^ move out of `v` occurs here
+LL |
+LL |         println!("v={}", *v);
+   |                          -- move occurs due to use in closure
+LL |     });
+LL |     w.use_ref();
+   |     - borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let w = &v.clone();
+   |               ++++++++
+
+error[E0505]: cannot move out of `v` because it is borrowed
+  --> $DIR/borrowck-loan-blocks-move-cc.rs:24:19
+   |
+LL |     let v: Box<_> = Box::new(3);
+   |         - binding `v` declared here
+LL |     let w = &v;
+   |             -- borrow of `v` occurs here
+LL |     thread::spawn(move|| {
+   |                   ^^^^^^ move out of `v` occurs here
+LL |
+LL |         println!("v={}", *v);
+   |                          -- move occurs due to use in closure
+LL |     });
+LL |     w.use_ref();
+   |     - borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let w = &v.clone();
+   |               ++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0505`.

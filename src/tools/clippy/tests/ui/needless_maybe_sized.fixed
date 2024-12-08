@@ -1,0 +1,116 @@
+//@aux-build:proc_macros.rs
+
+#![allow(unused, clippy::multiple_bound_locations)]
+#![warn(clippy::needless_maybe_sized)]
+
+extern crate proc_macros;
+use proc_macros::external;
+
+fn directly<T: Sized>(t: &T) {}
+
+trait A: Sized {}
+trait B: A {}
+
+fn depth_1<T: A>(t: &T) {}
+fn depth_2<T: B>(t: &T) {}
+
+// We only need to show one
+fn multiple_paths<T: A + B>(t: &T) {}
+
+fn in_where<T>(t: &T)
+where
+    T: Sized,
+{
+}
+
+fn mixed_1<T: Sized>(t: &T)
+{
+}
+
+fn mixed_2<T>(t: &T)
+where
+    T: Sized,
+{
+}
+
+fn mixed_3<T>(t: &T)
+where
+    T: Sized,
+{
+}
+
+struct Struct<T: Sized>(T);
+
+impl<T: Sized> Struct<T> {
+    fn method<U: Sized>(&self) {}
+}
+
+enum Enum<T: Sized + 'static> {
+    Variant(&'static T),
+}
+
+union Union<'a, T: Sized> {
+    a: &'a T,
+}
+
+trait Trait<T: Sized> {
+    fn trait_method<U: Sized>() {}
+
+    type GAT<U: Sized>;
+
+    type Assoc: Sized + ?Sized; // False negative
+}
+
+trait SecondInTrait: Send + Sized {}
+fn second_in_trait<T: SecondInTrait>() {}
+
+fn impl_trait(_: &(impl Sized)) {}
+
+trait GenericTrait<T>: Sized {}
+fn in_generic_trait<T: GenericTrait<U>, U>() {}
+
+mod larger_graph {
+    // C1  C2  Sized
+    //  \  /\  /
+    //   B1  B2
+    //    \  /
+    //     A1
+
+    trait C1 {}
+    trait C2 {}
+    trait B1: C1 + C2 {}
+    trait B2: C2 + Sized {}
+    trait A1: B1 + B2 {}
+
+    fn larger_graph<T: A1>() {}
+}
+
+// Should not lint
+
+fn sized<T: Sized>() {}
+fn maybe_sized<T: ?Sized>() {}
+
+struct SeparateBounds<T: ?Sized>(T);
+impl<T: Sized> SeparateBounds<T> {}
+
+trait P {}
+trait Q: P {}
+
+fn ok_depth_1<T: P + ?Sized>() {}
+fn ok_depth_2<T: Q + ?Sized>() {}
+
+external! {
+    fn in_macro<T: Clone + ?Sized>(t: &T) {}
+
+    fn with_local_clone<T: $Clone + ?Sized>(t: &T) {}
+}
+
+#[derive(Clone)]
+struct InDerive<T: ?Sized> {
+    t: T,
+}
+
+struct Refined<T: ?Sized>(T);
+impl<T: Sized> Refined<T> {}
+
+fn main() {}

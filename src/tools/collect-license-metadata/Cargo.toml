@@ -1,0 +1,12 @@
+[package]
+name = "collect-license-metadata"
+version = "0.1.0"
+edition = "2021"
+description = "Runs the reuse tool and caches the output, so rust toolchain devs don't need to have reuse installed"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+anyhow = "1.0.65"
+serde = { version = "1.0.147", features = ["derive"] }
+serde_json = "1.0.85"
+spdx-rs = "0.5.1"

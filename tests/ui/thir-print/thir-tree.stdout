@@ -1,0 +1,31 @@
+DefId(0:3 ~ thir_tree[7aaa]::main):
+params: [
+]
+body:
+    Expr {
+        ty: ()
+        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(2)), backwards_incompatible: None }
+        span: $DIR/thir-tree.rs:4:15: 4:17 (#0)
+        kind: 
+            Scope {
+                region_scope: Node(2)
+                lint_level: Explicit(HirId(DefId(0:3 ~ thir_tree[7aaa]::main).2))
+                value:
+                    Expr {
+                        ty: ()
+                        temp_lifetime: TempLifetime { temp_lifetime: Some(Node(2)), backwards_incompatible: None }
+                        span: $DIR/thir-tree.rs:4:15: 4:17 (#0)
+                        kind: 
+                            Block {
+                                targeted_by_break: false
+                                span: $DIR/thir-tree.rs:4:15: 4:17 (#0)
+                                region_scope: Node(1)
+                                safety_mode: Safe
+                                stmts: []
+                                expr: []
+                            }
+                    }
+            }
+    }
+
+

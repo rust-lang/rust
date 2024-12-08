@@ -1,0 +1,32 @@
+//@ run-rustfix
+trait Trait {}
+struct Struct;
+impl Trait for Struct {}
+fn foo() -> Box<dyn Trait> {
+    Box::new(Struct)
+}
+fn bar() -> impl Trait {
+    Struct
+}
+fn main() {
+    let _ = if true {
+        Box::new(Struct)
+    } else {
+        foo() //~ ERROR E0308
+    };
+    let _ = if true {
+        foo()
+    } else {
+        Box::new(Struct) //~ ERROR E0308
+    };
+    let _ = if true {
+        Box::new(Struct) as Box<dyn Trait>
+    } else {
+        Box::new(bar()) //~ ERROR E0308
+    };
+    let _ = if true {
+        Box::new(bar()) as Box<dyn Trait>
+    } else {
+        Box::new(Struct) //~ ERROR E0308
+    };
+}

@@ -1,0 +1,56 @@
+SOURCE_FILE
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "B"
+    TUPLE_FIELD_LIST
+      L_PAREN "("
+      TUPLE_FIELD
+        VISIBILITY
+          PUB_KW "pub"
+        WHITESPACE " "
+        PAREN_TYPE
+          L_PAREN "("
+          PATH_TYPE
+            PATH
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    SUPER_KW "super"
+              COLON2 "::"
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "A"
+          R_PAREN ")"
+      R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "B"
+    TUPLE_FIELD_LIST
+      L_PAREN "("
+      TUPLE_FIELD
+        VISIBILITY
+          PUB_KW "pub"
+        WHITESPACE " "
+        TUPLE_TYPE
+          L_PAREN "("
+          PATH_TYPE
+            PATH
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    CRATE_KW "crate"
+              COLON2 "::"
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "A"
+          COMMA ","
+          R_PAREN ")"
+      R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"

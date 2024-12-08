@@ -1,0 +1,32 @@
+error: using function pointers as const generic parameters is forbidden
+  --> $DIR/fn-const-param-infer.rs:8:25
+   |
+LL | struct Checked<const F: fn(usize) -> bool>;
+   |                         ^^^^^^^^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+
+error[E0308]: mismatched types
+  --> $DIR/fn-const-param-infer.rs:33:25
+   |
+LL |     let _ = Checked::<{ generic_arg::<u32> }>;
+   |                         ^^^^^^^^^^^^^^^^^^ expected fn pointer, found fn item
+   |
+   = note: expected fn pointer `fn(usize) -> _`
+                 found fn item `fn(u32) -> _ {generic_arg::<u32>}`
+
+error[E0282]: type annotations needed
+  --> $DIR/fn-const-param-infer.rs:35:23
+   |
+LL |     let _ = Checked::<generic>;
+   |                       ^^^^^^^ cannot infer type of the type parameter `T` declared on the function `generic`
+   |
+help: consider specifying the generic argument
+   |
+LL |     let _ = Checked::<generic::<T>>;
+   |                              +++++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0282, E0308.
+For more information about an error, try `rustc --explain E0282`.
