@@ -48,7 +48,7 @@ fn duplicate_custom_1<T>(t: S<T>) -> (S<T>, S<T>) where {
 fn duplicate_custom_2<T>(t: S<T>) -> (S<T>, S<T>)
 where
     T: A,
-    //~^ HELP consider further restricting this bound
+    //~^ HELP consider further restricting
 {
     (t, t) //~ use of moved value: `t`
 }
@@ -56,14 +56,14 @@ where
 fn duplicate_custom_3<T>(t: S<T>) -> (S<T>, S<T>)
 where
     T: A,
-    //~^ HELP consider further restricting this bound
+    //~^ HELP consider further restricting
     T: B,
 {
     (t, t) //~ use of moved value: `t`
 }
 
 fn duplicate_custom_4<T: A>(t: S<T>) -> (S<T>, S<T>)
-//~^ HELP consider further restricting this bound
+//~^ HELP consider further restricting
 where
     T: B,
 {

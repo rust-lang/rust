@@ -10,7 +10,7 @@ note: required by a bound in `CastTo`
    |
 LL | pub trait CastTo<U: ?Sized>: Unsize<U> {}
    |                              ^^^^^^^^^ required by this bound in `CastTo`
-help: consider further restricting this bound
+help: consider further restricting type parameter `T` with unstable trait `Unsize`
    |
 LL | impl<T: ?Sized + std::marker::Unsize<U>, U: ?Sized> CastTo<U> for T {}
    |                ++++++++++++++++++++++++
