@@ -207,3 +207,21 @@ impl<'a, const N: usize, I, A: Allocator> !Iterator for &'a Box<[I; N], A> {}
 /// implementation doesn't overlap with `IntoIterator for T where T: Iterator` blanket.
 #[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
 impl<'a, const N: usize, I, A: Allocator> !Iterator for &'a mut Box<[I; N], A> {}
+
+#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, T, const N: usize, A: Allocator> IntoIterator for &'a Box<[T; N], A> {
+    type IntoIter = slice::Iter<'a, T>;
+    type Item = &'a T;
+    fn into_iter(self) -> slice::Iter<'a, T> {
+        self.iter()
+    }
+}
+
+#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, T, const N: usize, A: Allocator> IntoIterator for &'a mut Box<[T; N], A> {
+    type IntoIter = slice::IterMut<'a, T>;
+    type Item = &'a mut T;
+    fn into_iter(self) -> slice::IterMut<'a, T> {
+        self.iter_mut()
+    }
+}
