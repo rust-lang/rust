@@ -1,0 +1,4 @@
+Checking if Unicode version changed.
+If the Unicode version changes are intentional, it should also be updated in the reference at https://github.com/rust-lang/reference/blob/HEAD/src/identifiers.md.
+Unicode XID version is: (16, 0, 0)
+Unicode normalization version is: (16, 0, 0)

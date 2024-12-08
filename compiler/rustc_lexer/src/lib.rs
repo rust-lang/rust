@@ -33,6 +33,7 @@ pub mod unescape;
 mod tests;
 
 use unicode_properties::UnicodeEmoji;
+pub use unicode_xid::UNICODE_VERSION as UNICODE_XID_VERSION;
 
 use self::LiteralKind::*;
 use self::TokenKind::*;
