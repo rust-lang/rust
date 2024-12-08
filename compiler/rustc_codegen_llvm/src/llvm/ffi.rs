@@ -2014,6 +2014,12 @@ unsafe extern "C" {
         Type: &'a DIType,
     ) -> &'a DIDerivedType;
 
+    pub fn LLVMRustDIBuilderCreateReferenceType<'a>(
+        Builder: &DIBuilder<'a>,
+        Tag: c_uint,
+        Type: &'a DIType,
+    ) -> &'a DIDerivedType;
+
     pub fn LLVMRustDIBuilderCreateLexicalBlock<'a>(
         Builder: &DIBuilder<'a>,
         Scope: &'a DIScope,
