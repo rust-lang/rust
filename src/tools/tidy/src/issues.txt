@@ -2295,8 +2295,6 @@ ui/issues/issue-43853.rs
 ui/issues/issue-4387.rs
 ui/issues/issue-43910.rs
 ui/issues/issue-43923.rs
-ui/issues/issue-43925.rs
-ui/issues/issue-43926.rs
 ui/issues/issue-43988.rs
 ui/issues/issue-44023.rs
 ui/issues/issue-44056.rs
@@ -2545,8 +2543,6 @@ ui/issues/issue-6936.rs
 ui/issues/issue-69455.rs
 ui/issues/issue-69602-type-err-during-codegen-ice.rs
 ui/issues/issue-69683.rs
-ui/issues/issue-70093/issue-70093-link-directives.rs
-ui/issues/issue-70093/issue-70093.rs
 ui/issues/issue-7012.rs
 ui/issues/issue-70381.rs
 ui/issues/issue-7044.rs
@@ -2711,11 +2707,15 @@ ui/limits/issue-17913.rs
 ui/limits/issue-55878.rs
 ui/limits/issue-69485-var-size-diffs-too-large.rs
 ui/limits/issue-75158-64.rs
+ui/link-native-libs/issue-109144.rs
+ui/link-native-libs/issue-43925.rs
+ui/link-native-libs/issue-43926.rs
+ui/link-native-libs/issue-70093/issue-70093-link-directives.rs
+ui/link-native-libs/issue-70093/issue-70093.rs
 ui/linkage-attr/auxiliary/issue-12133-dylib.rs
 ui/linkage-attr/auxiliary/issue-12133-dylib2.rs
 ui/linkage-attr/auxiliary/issue-12133-rlib.rs
 ui/linkage-attr/issue-10755.rs
-ui/linkage-attr/issue-109144.rs
 ui/linkage-attr/issue-12133-1.rs
 ui/linkage-attr/issue-12133-2.rs
 ui/linkage-attr/issue-12133-3.rs
