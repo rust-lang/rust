@@ -644,7 +644,7 @@ cc = ["@rust-lang/wg-const-eval"]
 message = "Some changes occurred to the CTFE / Miri interpreter"
 cc = ["@rust-lang/miri"]
 
-[mentions."compiler/rustc_infer/src/infer/error_reporting/need_type_info.rs"]
+[mentions."compiler/rustc_trait_selection/src/error_reporting/infer/need_type_info.rs"]
 message = "Some changes occurred in need_type_info.rs"
 cc = ["@lcnr"]
 
@@ -656,7 +656,7 @@ cc = ["@compiler-errors", "@lcnr"]
 message = "changes to the core type system"
 cc = ["@compiler-errors", "@lcnr"]
 
-[mentions."compiler/rustc_hir_analysis/src/fn_ctxt/inspect_obligations.rs"]
+[mentions."compiler/rustc_hir_typeck/src/fn_ctxt/inspect_obligations.rs"]
 message = "changes to `inspect_obligations.rs`"
 cc = ["@compiler-errors", "@lcnr"]
 
@@ -761,10 +761,6 @@ cc = [
     "@jsha",
 ]
 
-[mentions."src/librustdoc/html/static/css/themes"]
-message = "Some changes occurred in HTML/CSS themes."
-cc = ["@GuillaumeGomez"]
-
 [mentions."tests/rustdoc-gui/"]
 message = "Some changes occurred in GUI tests."
 cc = ["@GuillaumeGomez"]
@@ -778,10 +774,6 @@ so we can track our progress. You can either modify the tracking issue
 directly, or you can comment on the tracking issue and link this PR.
 """
 cc = ["@jieyouxu"]
-
-[mentions."src/librustdoc/html/static/css/themes/ayu.css"]
-message = "A change occurred in the Ayu theme."
-cc = ["@Cldfire"]
 
 [mentions."src/rustdoc-json-types"]
 message = """
