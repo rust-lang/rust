@@ -503,7 +503,7 @@ Compatibility Notes
 * We have renamed `std::panic::PanicInfo` to `std::panic::PanicHookInfo`. The old name will continue to work as an alias, but will result in a deprecation warning starting in Rust 1.82.0.
 
   `core::panic::PanicInfo` will remain unchanged, however, as this is now a *different type*.
- 
+
   The reason is that these types have different roles: `std::panic::PanicHookInfo` is the argument to the [panic hook](https://doc.rust-lang.org/stable/std/panic/fn.set_hook.html) in std context (where panics can have an arbitrary payload), while `core::panic::PanicInfo` is the argument to the [`#[panic_handler]`](https://doc.rust-lang.org/nomicon/panic-handler.html) in no_std context (where panics always carry a formatted *message*). Separating these types allows us to add more useful methods to these types, such as `std::panic::PanicHookInfo::payload_as_str()` and `core::panic::PanicInfo::message()`.
 
 * The new sort implementations may panic if a type's implementation of [`Ord`](https://doc.rust-lang.org/std/cmp/trait.Ord.html) (or the given comparison function) does not implement a [total order](https://en.wikipedia.org/wiki/Total_order) as the trait requires. `Ord`'s supertraits (`PartialOrd`, `Eq`, and `PartialEq`) must also be consistent. The previous implementations would not "notice" any problem, but the new implementations have a good chance of detecting inconsistencies, throwing a panic rather than returning knowingly unsorted data.
@@ -584,7 +584,7 @@ Stabilized APIs
 - [`impl Default for Arc<CStr>`](https://doc.rust-lang.org/beta/alloc/sync/struct.Arc.html#impl-Default-for-Arc%3CCStr%3E)
 - [`impl Default for Arc<[T]>`](https://doc.rust-lang.org/beta/alloc/sync/struct.Arc.html#impl-Default-for-Arc%3C%5BT%5D%3E)
 - [`impl IntoIterator for Box<[T]>`](https://doc.rust-lang.org/beta/alloc/boxed/struct.Box.html#impl-IntoIterator-for-Box%3C%5BI%5D,+A%3E)
-- [`impl FromIterator<String> for Box<str>`](https://doc.rust-lang.org/beta/alloc/boxed/struct.Box.html#impl-FromIterator%3CString%3E-for-Box%3Cstr%3E) 
+- [`impl FromIterator<String> for Box<str>`](https://doc.rust-lang.org/beta/alloc/boxed/struct.Box.html#impl-FromIterator%3CString%3E-for-Box%3Cstr%3E)
 - [`impl FromIterator<char> for Box<str>`](https://doc.rust-lang.org/beta/alloc/boxed/struct.Box.html#impl-FromIterator%3Cchar%3E-for-Box%3Cstr%3E)
 - [`LazyCell`](https://doc.rust-lang.org/beta/core/cell/struct.LazyCell.html)
 - [`LazyLock`](https://doc.rust-lang.org/beta/std/sync/struct.LazyLock.html)
@@ -1816,7 +1816,7 @@ Compiler
 - [Detect uninhabited types early in const eval](https://github.com/rust-lang/rust/pull/109435/)
 - [Switch to LLD as default linker for {arm,thumb}v4t-none-eabi](https://github.com/rust-lang/rust/pull/109721/)
 - [Add tier 3 target `loongarch64-unknown-linux-gnu`](https://github.com/rust-lang/rust/pull/96971)
-- [Add tier 3 target for `i586-pc-nto-qnx700` (QNX Neutrino RTOS, version 7.0)](https://github.com/rust-lang/rust/pull/109173/), 
+- [Add tier 3 target for `i586-pc-nto-qnx700` (QNX Neutrino RTOS, version 7.0)](https://github.com/rust-lang/rust/pull/109173/),
 - [Insert alignment checks for pointer dereferences as debug assertions](https://github.com/rust-lang/rust/pull/98112)
   This catches undefined behavior at runtime, and may cause existing code to fail.
 
@@ -2023,7 +2023,7 @@ Compatibility Notes
   If `tools = [...]` is set in config.toml, we will respect a missing rustdoc in that list. By
   default rustdoc remains included. To retain the prior behavior explicitly add `"rustdoc"` to the
   list.
-  
+
 <a id="1.69.0-Internal-Changes"></a>
 
 Internal Changes
