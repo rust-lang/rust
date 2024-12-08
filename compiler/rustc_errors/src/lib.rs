@@ -1558,18 +1558,18 @@ impl DiagCtxtInner {
                 debug!(?diagnostic);
                 debug!(?self.emitted_diagnostics);
 
-                let already_emitted_sub = |sub: &mut Subdiag| {
+                let not_yet_emitted = |sub: &mut Subdiag| {
                     debug!(?sub);
                     if sub.level != OnceNote && sub.level != OnceHelp {
-                        return false;
+                        return true;
                     }
                     let mut hasher = StableHasher::new();
                     sub.hash(&mut hasher);
                     let diagnostic_hash = hasher.finish();
                     debug!(?diagnostic_hash);
-                    !self.emitted_diagnostics.insert(diagnostic_hash)
+                    self.emitted_diagnostics.insert(diagnostic_hash)
                 };
-                diagnostic.children.extract_if(already_emitted_sub).for_each(|_| {});
+                diagnostic.children.retain_mut(not_yet_emitted);
                 if already_emitted {
                     let msg = "duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`";
                     diagnostic.sub(Note, msg, MultiSpan::new());
