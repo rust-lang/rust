@@ -2063,6 +2063,9 @@ unsafe extern "C" {
         ValueLen: size_t,
     );
 
+    /// As of LLVM 18/19, the corresponding LLVM-C function is hard-coded to
+    /// assume `DebugNameTableKind = Default`, but we sometimes want to pass
+    /// `None`.
     pub fn LLVMRustDIBuilderCreateCompileUnit<'a>(
         Builder: &DIBuilder<'a>,
         Lang: c_uint,
@@ -2080,6 +2083,8 @@ unsafe extern "C" {
         DebugNameTableKind: DebugNameTableKind,
     ) -> &'a DIDescriptor;
 
+    /// As of LLVM 18/19, the corresponding LLVM-C function is hard-coded to
+    /// assume that there is no optional checksum or optional source text.
     pub fn LLVMRustDIBuilderCreateFile<'a>(
         Builder: &DIBuilder<'a>,
         Filename: *const c_char,
@@ -2093,6 +2098,8 @@ unsafe extern "C" {
         SourceLen: size_t,
     ) -> &'a DIFile;
 
+    /// As of LLVM 18/19, the corresponding LLVM-C function only supports a
+    /// subset of `DISPFlags`.
     pub fn LLVMRustDIBuilderCreateFunction<'a>(
         Builder: &DIBuilder<'a>,
         Scope: &'a DIDescriptor,
@@ -2111,6 +2118,7 @@ unsafe extern "C" {
         Decl: Option<&'a DIDescriptor>,
     ) -> &'a DISubprogram;
 
+    /// As of LLVM 18/19, there is no corresponding LLVM-C function.
     pub fn LLVMRustDIBuilderCreateMethod<'a>(
         Builder: &DIBuilder<'a>,
         Scope: &'a DIDescriptor,
@@ -2126,6 +2134,7 @@ unsafe extern "C" {
         TParam: &'a DIArray,
     ) -> &'a DISubprogram;
 
+    /// As of LLVM 18/19, there is no corresponding LLVM-C function.
     pub fn LLVMRustDIBuilderCreateVariantMemberType<'a>(
         Builder: &DIBuilder<'a>,
         Scope: &'a DIScope,
@@ -2141,6 +2150,7 @@ unsafe extern "C" {
         Ty: &'a DIType,
     ) -> &'a DIType;
 
+    /// FIXME(#134001): This doesn't map cleanly to any single LLVM-C function.
     pub fn LLVMRustDIBuilderCreateStaticVariable<'a>(
         Builder: &DIBuilder<'a>,
         Context: Option<&'a DIScope>,
@@ -2157,6 +2167,7 @@ unsafe extern "C" {
         AlignInBits: u32,
     ) -> &'a DIGlobalVariableExpression;
 
+    /// FIXME(#134001): This doesn't map cleanly to any single LLVM-C function.
     pub fn LLVMRustDIBuilderCreateVariable<'a>(
         Builder: &DIBuilder<'a>,
         Tag: c_uint,
@@ -2183,6 +2194,8 @@ unsafe extern "C" {
         Block: &'ll BasicBlock,
     );
 
+    /// As of LLVM 18/19, the corresponding LLVM-C function is hard-coded to
+    /// assume a 64-bit value.
     pub fn LLVMRustDIBuilderCreateEnumerator<'a>(
         Builder: &DIBuilder<'a>,
         Name: *const c_char,
@@ -2192,6 +2205,8 @@ unsafe extern "C" {
         IsUnsigned: bool,
     ) -> &'a DIEnumerator;
 
+    /// As of LLVM 18/19, the corresponding LLVM-C function is hard-coded to
+    /// assume `IsScoped = false`, but we want to pass `true`.
     pub fn LLVMRustDIBuilderCreateEnumerationType<'a>(
         Builder: &DIBuilder<'a>,
         Scope: &'a DIScope,
@@ -2206,6 +2221,7 @@ unsafe extern "C" {
         IsScoped: bool,
     ) -> &'a DIType;
 
+    /// As of LLVM 18/19, there is no corresponding LLVM-C function.
     pub fn LLVMRustDIBuilderCreateVariantPart<'a>(
         Builder: &DIBuilder<'a>,
         Scope: &'a DIScope,
@@ -2222,6 +2238,7 @@ unsafe extern "C" {
         UniqueIdLen: size_t,
     ) -> &'a DIDerivedType;
 
+    /// As of LLVM 18/19, there is no corresponding LLVM-C function.
     pub fn LLVMRustDIBuilderCreateTemplateTypeParameter<'a>(
         Builder: &DIBuilder<'a>,
         Scope: Option<&'a DIScope>,
@@ -2230,6 +2247,7 @@ unsafe extern "C" {
         Ty: &'a DIType,
     ) -> &'a DITemplateTypeParameter;
 
+    /// As of LLVM 18/19, there is no corresponding LLVM-C function.
     pub fn LLVMRustDICompositeTypeReplaceArrays<'a>(
         Builder: &DIBuilder<'a>,
         CompositeType: &'a DIType,
@@ -2237,6 +2255,7 @@ unsafe extern "C" {
         Params: Option<&'a DIArray>,
     );
 
+    /// As of LLVM 18/19, there is no corresponding LLVM-C function.
     pub fn LLVMRustDILocationCloneWithBaseDiscriminator<'a>(
         Location: &'a DILocation,
         BD: c_uint,
