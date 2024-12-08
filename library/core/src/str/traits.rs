@@ -22,6 +22,17 @@ impl Ord for str {
     }
 }
 
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+impl const PartialEq for str {
+    #[inline]
+    fn eq(&self, other: &str) -> bool {
+        self.as_bytes() == other.as_bytes()
+    }
+}
+
+#[cfg(bootstrap)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq for str {
     #[inline]

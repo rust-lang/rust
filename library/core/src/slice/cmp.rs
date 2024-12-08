@@ -6,6 +6,23 @@ use crate::intrinsics::compare_bytes;
 use crate::num::NonZero;
 use crate::{ascii, mem};
 
+#[cfg(not(bootstrap))]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+impl<T, U> const PartialEq<[U]> for [T]
+where
+    T: ~const PartialEq<U>,
+{
+    fn eq(&self, other: &[U]) -> bool {
+        SlicePartialEq::equal(self, other)
+    }
+
+    fn ne(&self, other: &[U]) -> bool {
+        SlicePartialEq::not_equal(self, other)
+    }
+}
+
+#[cfg(bootstrap)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, U> PartialEq<[U]> for [T]
 where
@@ -40,6 +57,7 @@ impl<T: PartialOrd> PartialOrd for [T] {
 }
 
 #[doc(hidden)]
+#[cfg_attr(not(bootstrap), const_trait)]
 // intermediate trait for specialization of slice's PartialEq
 trait SlicePartialEq<B> {
     fn equal(&self, other: &[B]) -> bool;
@@ -50,6 +68,43 @@ trait SlicePartialEq<B> {
 }
 
 // Generic slice equality
+#[cfg(not(bootstrap))]
+#[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+impl<A, B> const SlicePartialEq<B> for [A]
+where
+    A: ~const PartialEq<B>,
+{
+    default fn equal(&self, other: &[B]) -> bool {
+        if self.len() != other.len() {
+            return false;
+        }
+
+        /* FIXME(const_trait_impl): As soon as iterators are impld.
+        // Implemented as explicit indexing rather
+        // than zipped iterators for performance reasons.
+        // See PR https://github.com/rust-lang/rust/pull/116846
+        for idx in 0..self.len() {
+            // bound checks are optimized away
+            if self[idx] != other[idx] {
+                return false;
+            }
+        }
+        */
+
+        let mut idx = 0;
+        while idx < self.len() {
+            // bound checks are optimized away
+            if self[idx] != other[idx] {
+                return false;
+            }
+            idx += 1;
+        }
+
+        true
+    }
+}
+
+#[cfg(bootstrap)]
 impl<A, B> SlicePartialEq<B> for [A]
 where
     A: PartialEq<B>,
@@ -75,6 +130,27 @@ where
 
 // When each element can be compared byte-wise, we can compare all the bytes
 // from the whole size in one call to the intrinsics.
+#[cfg(not(bootstrap))]
+#[rustc_const_unstable(feature = "const_trait_impl", issue = "67792")]
+impl<A, B> const SlicePartialEq<B> for [A]
+where
+    A: BytewiseEq<B> + ~const PartialEq<B>,
+{
+    fn equal(&self, other: &[B]) -> bool {
+        if self.len() != other.len() {
+            return false;
+        }
+
+        // SAFETY: `self` and `other` are references and are thus guaranteed to be valid.
+        // The two slices have been checked to have the same size above.
+        unsafe {
+            let size = mem::size_of_val(self);
+            compare_bytes(self.as_ptr() as *const u8, other.as_ptr() as *const u8, size) == 0
+        }
+    }
+}
+
+#[cfg(bootstrap)]
 impl<A, B> SlicePartialEq<B> for [A]
 where
     A: BytewiseEq<B>,
