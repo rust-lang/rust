@@ -2784,7 +2784,7 @@ pub unsafe fn _mm_loadu_si32(mem_addr: *const u8) -> __m128i {
     ))
 }
 
-/// Loads unaligned 16-bits of integer data from memory into new vector.
+/// Loads unaligned 64-bits of integer data from memory into new vector.
 ///
 /// `mem_addr` does not need to be aligned on any particular boundary.
 ///
