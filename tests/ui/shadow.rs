@@ -133,4 +133,12 @@ fn shadow_closure() {
         .collect();
 }
 
+struct Issue13795 {
+    value: i32,
+}
+
+fn issue13795(value: Issue13795) {
+    let Issue13795 { value, .. } = value;
+}
+
 fn main() {}
