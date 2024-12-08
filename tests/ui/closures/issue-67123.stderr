@@ -7,7 +7,7 @@ LL |     || { t; t; };
    |          value moved here
    |
    = note: move occurs because `t` has type `T`, which does not implement the `Copy` trait
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `Copy`
    |
 LL | fn foo<T: Copy>(t: T) {
    |         ++++++

@@ -23,7 +23,7 @@ note: required by a bound in `is_zen`
    |
 LL | fn is_zen<T: Zen>(_: T) {}
    |              ^^^ required by this bound in `is_zen`
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `Sync`
    |
 LL | fn not_sync<T: std::marker::Sync>(x: Guard<T>) {
    |              +++++++++++++++++++
@@ -58,7 +58,7 @@ note: required by a bound in `is_zen`
    |
 LL | fn is_zen<T: Zen>(_: T) {}
    |              ^^^ required by this bound in `is_zen`
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `Sync`
    |
 LL | fn nested_not_sync<T: std::marker::Sync>(x: Nested<Guard<T>>) {
    |                     +++++++++++++++++++
