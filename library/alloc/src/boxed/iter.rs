@@ -192,3 +192,18 @@ impl<'a> FromIterator<Cow<'a, str>> for Box<str> {
         String::from_iter(iter).into_boxed_str()
     }
 }
+
+/// This implementation is required to make sure that the `Box<[I; N]>: IntoIterator`
+/// implementation doesn't overlap with `IntoIterator for T where T: Iterator` blanket.
+#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+impl<I, const N: usize, A: Allocator> !Iterator for Box<[I; N], A> {}
+
+/// This implementation is required to make sure that the `&Box<[I; N]>: IntoIterator`
+/// implementation doesn't overlap with `IntoIterator for T where T: Iterator` blanket.
+#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, const N: usize, I, A: Allocator> !Iterator for &'a Box<[I; N], A> {}
+
+/// This implementation is required to make sure that the `&mut Box<[I; N]>: IntoIterator`
+/// implementation doesn't overlap with `IntoIterator for T where T: Iterator` blanket.
+#[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, const N: usize, I, A: Allocator> !Iterator for &'a mut Box<[I; N], A> {}
