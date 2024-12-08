@@ -365,7 +365,7 @@ unsafe impl<T, const N: usize> TrustedLen for IntoIter<T, N> {}
 #[doc(hidden)]
 #[unstable(issue = "none", feature = "std_internals")]
 #[rustc_unsafe_specialization_marker]
-pub trait NonDrop {}
+trait NonDrop {}
 
 // T: Copy as approximation for !Drop since get_unchecked does not advance self.alive
 // and thus we can't implement drop-handling
