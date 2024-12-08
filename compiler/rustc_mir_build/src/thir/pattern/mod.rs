@@ -626,31 +626,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     ) -> PatKind<'tcx> {
         let tcx = self.tcx;
         let def_id = block.def_id;
-        let body_id = block.body;
-        let expr = &tcx.hir().body(body_id).value;
         let ty = tcx.typeck(def_id).node_type(block.hir_id);
-
-        // Special case inline consts that are just literals. This is solely
-        // a performance optimization, as we could also just go through the regular
-        // const eval path below.
-        // FIXME: investigate the performance impact of removing this.
-        let lit_input = match expr.kind {
-            hir::ExprKind::Lit(lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),
-            hir::ExprKind::Unary(hir::UnOp::Neg, expr) => match expr.kind {
-                hir::ExprKind::Lit(lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: true }),
-                _ => None,
-            },
-            _ => None,
-        };
-        if let Some(lit_input) = lit_input {
-            match tcx.at(expr.span).lit_to_const(lit_input) {
-                Ok(c) => return self.const_to_pat(c, ty, id, span).kind,
-                // If an error occurred, ignore that it's a literal
-                // and leave reporting the error up to const eval of
-                // the unevaluated constant below.
-                Err(_) => {}
-            }
-        }
 
         let typeck_root_def_id = tcx.typeck_root_def_id(def_id.to_def_id());
         let parent_args =

@@ -113,7 +113,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         c::ERROR_WRITE_PROTECT => return ReadOnlyFilesystem,
         c::ERROR_DISK_FULL | c::ERROR_HANDLE_DISK_FULL => return StorageFull,
         c::ERROR_SEEK_ON_DEVICE => return NotSeekable,
-        c::ERROR_DISK_QUOTA_EXCEEDED => return FilesystemQuotaExceeded,
+        c::ERROR_DISK_QUOTA_EXCEEDED => return QuotaExceeded,
         c::ERROR_FILE_TOO_LARGE => return FileTooLarge,
         c::ERROR_BUSY => return ResourceBusy,
         c::ERROR_POSSIBLE_DEADLOCK => return Deadlock,
@@ -138,7 +138,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         c::WSAEHOSTUNREACH => HostUnreachable,
         c::WSAENETDOWN => NetworkDown,
         c::WSAENETUNREACH => NetworkUnreachable,
-        c::WSAEDQUOT => FilesystemQuotaExceeded,
+        c::WSAEDQUOT => QuotaExceeded,
 
         _ => Uncategorized,
     }
