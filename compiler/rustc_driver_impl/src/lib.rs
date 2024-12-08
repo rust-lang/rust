@@ -449,7 +449,7 @@ fn run_compiler(
                     return early_exit();
                 }
 
-                let _ = tcx.analysis(());
+                tcx.ensure().analysis(());
 
                 if callbacks.after_analysis(compiler, tcx) == Compilation::Stop {
                     return early_exit();
