@@ -73,6 +73,11 @@ const DW_ATE_unsigned: c_uint = 0x07;
 #[allow(non_upper_case_globals)]
 const DW_ATE_UTF: c_uint = 0x10;
 
+#[allow(non_upper_case_globals)]
+const DW_TAG_reference_type: c_uint = 0x10;
+#[allow(non_upper_case_globals)]
+const DW_TAG_const_type: c_uint = 0x26;
+
 pub(super) const UNKNOWN_LINE_NUMBER: c_uint = 0;
 pub(super) const UNKNOWN_COLUMN_NUMBER: c_uint = 0;
 
@@ -180,16 +185,61 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                 "ptr_type={ptr_type}, pointee_type={pointee_type}",
             );
 
-            let di_node = unsafe {
-                llvm::LLVMRustDIBuilderCreatePointerType(
-                    DIB(cx),
-                    pointee_type_di_node,
-                    data_layout.pointer_size.bits(),
-                    data_layout.pointer_align.abi.bits() as u32,
-                    0, // Ignore DWARF address space.
-                    ptr_type_debuginfo_name.as_c_char_ptr(),
-                    ptr_type_debuginfo_name.len(),
-                )
+            // Immutable pointers/references will mark the data as `const`. For example:
+            // unsigned char & => &mut u8
+            // const unsigned char & => &u8
+            // unsigned char * => *mut u8
+            // const unsigned char * => *const u8
+            let di_node = match ptr_type.kind() {
+                ty::Ref(_, _, mutability) => unsafe {
+                    let pointee_type_di_node = if mutability.is_not() {
+                        llvm::LLVMRustDIBuilderCreateQualifiedType(
+                            DIB(cx),
+                            DW_TAG_const_type,
+                            pointee_type_di_node,
+                        )
+                    } else {
+                        pointee_type_di_node
+                    };
+
+                    llvm::LLVMRustDIBuilderCreateReferenceType(
+                        DIB(cx),
+                        DW_TAG_reference_type,
+                        pointee_type_di_node,
+                    )
+                },
+                ty::RawPtr(_, mutability) => unsafe {
+                    let pointee_type_di_node = if mutability.is_not() {
+                        llvm::LLVMRustDIBuilderCreateQualifiedType(
+                            DIB(cx),
+                            DW_TAG_const_type,
+                            pointee_type_di_node,
+                        )
+                    } else {
+                        pointee_type_di_node
+                    };
+                    llvm::LLVMRustDIBuilderCreatePointerType(
+                        DIB(cx),
+                        pointee_type_di_node,
+                        data_layout.pointer_size.bits(),
+                        data_layout.pointer_align.abi.bits() as u32,
+                        0, // Ignore DWARF address space.
+                        ptr_type_debuginfo_name.as_c_char_ptr(),
+                        ptr_type_debuginfo_name.len(),
+                    )
+                },
+                ty::Adt(_, _) => unsafe {
+                    llvm::LLVMRustDIBuilderCreatePointerType(
+                        DIB(cx),
+                        pointee_type_di_node,
+                        data_layout.pointer_size.bits(),
+                        data_layout.pointer_align.abi.bits() as u32,
+                        0, // Ignore DWARF address space.
+                        ptr_type_debuginfo_name.as_c_char_ptr(),
+                        ptr_type_debuginfo_name.len(),
+                    )
+                },
+                _ => unreachable!("Thin pointer not of type ty::RawPtr, ty::Ref, or ty::Adt"),
             };
 
             DINodeCreationResult { di_node, already_stored_in_typemap: false }
