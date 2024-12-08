@@ -352,84 +352,84 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             | sym::saturating_add
             | sym::saturating_sub => {
                 let ty = arg_tys[0];
-                match int_type_width_signed(ty, self) {
-                    Some((width, signed)) => match name {
-                        sym::ctlz | sym::cttz => {
-                            let y = self.const_bool(false);
-                            let ret = self.call_intrinsic(&format!("llvm.{name}.i{width}"), &[
-                                args[0].immediate(),
-                                y,
-                            ]);
+                if !ty.is_integral() {
+                    tcx.dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
+                        span,
+                        name,
+                        ty,
+                    });
+                    return Ok(());
+                }
+                let (size, signed) = ty.int_size_and_signed(self.tcx);
+                let width = size.bits();
+                match name {
+                    sym::ctlz | sym::cttz => {
+                        let y = self.const_bool(false);
+                        let ret = self.call_intrinsic(&format!("llvm.{name}.i{width}"), &[
+                            args[0].immediate(),
+                            y,
+                        ]);
 
-                            self.intcast(ret, llret_ty, false)
-                        }
-                        sym::ctlz_nonzero => {
-                            let y = self.const_bool(true);
-                            let llvm_name = &format!("llvm.ctlz.i{width}");
-                            let ret = self.call_intrinsic(llvm_name, &[args[0].immediate(), y]);
-                            self.intcast(ret, llret_ty, false)
-                        }
-                        sym::cttz_nonzero => {
-                            let y = self.const_bool(true);
-                            let llvm_name = &format!("llvm.cttz.i{width}");
-                            let ret = self.call_intrinsic(llvm_name, &[args[0].immediate(), y]);
-                            self.intcast(ret, llret_ty, false)
-                        }
-                        sym::ctpop => {
-                            let ret = self.call_intrinsic(&format!("llvm.ctpop.i{width}"), &[args
-                                [0]
-                            .immediate()]);
-                            self.intcast(ret, llret_ty, false)
-                        }
-                        sym::bswap => {
-                            if width == 8 {
-                                args[0].immediate() // byte swap a u8/i8 is just a no-op
-                            } else {
-                                self.call_intrinsic(&format!("llvm.bswap.i{width}"), &[
-                                    args[0].immediate()
-                                ])
-                            }
-                        }
-                        sym::bitreverse => self
-                            .call_intrinsic(&format!("llvm.bitreverse.i{width}"), &[
-                                args[0].immediate()
-                            ]),
-                        sym::rotate_left | sym::rotate_right => {
-                            let is_left = name == sym::rotate_left;
-                            let val = args[0].immediate();
-                            let raw_shift = args[1].immediate();
-                            // rotate = funnel shift with first two args the same
-                            let llvm_name =
-                                &format!("llvm.fsh{}.i{}", if is_left { 'l' } else { 'r' }, width);
-
-                            // llvm expects shift to be the same type as the values, but rust
-                            // always uses `u32`.
-                            let raw_shift = self.intcast(raw_shift, self.val_ty(val), false);
-
-                            self.call_intrinsic(llvm_name, &[val, val, raw_shift])
-                        }
-                        sym::saturating_add | sym::saturating_sub => {
-                            let is_add = name == sym::saturating_add;
-                            let lhs = args[0].immediate();
-                            let rhs = args[1].immediate();
-                            let llvm_name = &format!(
-                                "llvm.{}{}.sat.i{}",
-                                if signed { 's' } else { 'u' },
-                                if is_add { "add" } else { "sub" },
-                                width
-                            );
-                            self.call_intrinsic(llvm_name, &[lhs, rhs])
-                        }
-                        _ => bug!(),
-                    },
-                    None => {
-                        tcx.dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
-                            span,
-                            name,
-                            ty,
-                        });
-                        return Ok(());
+                        self.intcast(ret, llret_ty, false)
                     }
+                    sym::ctlz_nonzero => {
+                        let y = self.const_bool(true);
+                        let llvm_name = &format!("llvm.ctlz.i{width}");
+                        let ret = self.call_intrinsic(llvm_name, &[args[0].immediate(), y]);
+                        self.intcast(ret, llret_ty, false)
+                    }
+                    sym::cttz_nonzero => {
+                        let y = self.const_bool(true);
+                        let llvm_name = &format!("llvm.cttz.i{width}");
+                        let ret = self.call_intrinsic(llvm_name, &[args[0].immediate(), y]);
+                        self.intcast(ret, llret_ty, false)
+                    }
+                    sym::ctpop => {
+                        let ret = self.call_intrinsic(&format!("llvm.ctpop.i{width}"), &[
+                            args[0].immediate()
+                        ]);
+                        self.intcast(ret, llret_ty, false)
+                    }
+                    sym::bswap => {
+                        if width == 8 {
+                            args[0].immediate() // byte swap a u8/i8 is just a no-op
+                        } else {
+                            self.call_intrinsic(&format!("llvm.bswap.i{width}"), &[
+                                args[0].immediate()
+                            ])
+                        }
+                    }
+                    sym::bitreverse => self
+                        .call_intrinsic(&format!("llvm.bitreverse.i{width}"), &[
+                            args[0].immediate()
+                        ]),
+                    sym::rotate_left | sym::rotate_right => {
+                        let is_left = name == sym::rotate_left;
+                        let val = args[0].immediate();
+                        let raw_shift = args[1].immediate();
+                        // rotate = funnel shift with first two args the same
+                        let llvm_name =
+                            &format!("llvm.fsh{}.i{}", if is_left { 'l' } else { 'r' }, width);
+
+                        // llvm expects shift to be the same type as the values, but rust
+                        // always uses `u32`.
+                        let raw_shift = self.intcast(raw_shift, self.val_ty(val), false);
+
+                        self.call_intrinsic(llvm_name, &[val, val, raw_shift])
+                    }
+                    sym::saturating_add | sym::saturating_sub => {
+                        let is_add = name == sym::saturating_add;
+                        let lhs = args[0].immediate();
+                        let rhs = args[1].immediate();
+                        let llvm_name = &format!(
+                            "llvm.{}{}.sat.i{}",
+                            if signed { 's' } else { 'u' },
+                            if is_add { "add" } else { "sub" },
+                            width
+                        );
+                        self.call_intrinsic(llvm_name, &[lhs, rhs])
+                    }
+                    _ => bug!(),
                 }
             }
 
@@ -2530,20 +2530,4 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     span_bug!(span, "unknown SIMD intrinsic");
-}
-
-// Returns the width of an int Ty, and if it's signed or not
-// Returns None if the type is not an integer
-// FIXME: there’s multiple of this functions, investigate using some of the already existing
-// stuffs.
-fn int_type_width_signed(ty: Ty<'_>, cx: &CodegenCx<'_, '_>) -> Option<(u64, bool)> {
-    match ty.kind() {
-        ty::Int(t) => {
-            Some((t.bit_width().unwrap_or(u64::from(cx.tcx.sess.target.pointer_width)), true))
-        }
-        ty::Uint(t) => {
-            Some((t.bit_width().unwrap_or(u64::from(cx.tcx.sess.target.pointer_width)), false))
-        }
-        _ => None,
-    }
 }
