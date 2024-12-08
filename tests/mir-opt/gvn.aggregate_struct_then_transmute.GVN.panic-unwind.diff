@@ -14,11 +14,19 @@
       let _10: ();
       let mut _11: u16;
       let mut _12: TypedId<std::string::String>;
+      let mut _14: u16;
+      let _15: ();
+      let mut _16: u16;
+      let mut _17: std::result::Result<aggregate_struct_then_transmute::Never, u16>;
       scope 1 {
           debug a => _2;
           let _7: TypedId<std::string::String>;
           scope 2 {
               debug b => _7;
+              let _13: std::result::Result<aggregate_struct_then_transmute::Never, u16>;
+              scope 3 {
+                  debug c => _13;
+              }
           }
       }
   
@@ -62,17 +70,42 @@
 -         _12 = move _7;
 -         _11 = move _12 as u16 (Transmute);
 +         _12 = copy _7;
-+         _11 = copy _7 as u16 (Transmute);
++         _11 = copy _1;
           StorageDead(_12);
-          _10 = opaque::<u16>(move _11) -> [return: bb2, unwind continue];
+-         _10 = opaque::<u16>(move _11) -> [return: bb2, unwind continue];
++         _10 = opaque::<u16>(copy _1) -> [return: bb2, unwind continue];
       }
   
       bb2: {
           StorageDead(_11);
           StorageDead(_10);
+-         StorageLive(_13);
++         nop;
+          StorageLive(_14);
+          _14 = copy _1;
+-         _13 = Result::<Never, u16>::Err(move _14);
++         _13 = Result::<Never, u16>::Err(copy _1);
+          StorageDead(_14);
+          StorageLive(_15);
+          StorageLive(_16);
+          StorageLive(_17);
+-         _17 = move _13;
+-         _16 = move _17 as u16 (Transmute);
++         _17 = copy _13;
++         _16 = copy _1;
+          StorageDead(_17);
+-         _15 = opaque::<u16>(move _16) -> [return: bb3, unwind continue];
++         _15 = opaque::<u16>(copy _1) -> [return: bb3, unwind continue];
+      }
+  
+      bb3: {
+          StorageDead(_16);
+          StorageDead(_15);
           _0 = const ();
+-         StorageDead(_13);
 -         StorageDead(_7);
 -         StorageDead(_2);
++         nop;
 +         nop;
 +         nop;
           return;

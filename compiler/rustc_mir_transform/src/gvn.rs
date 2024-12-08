@@ -1410,24 +1410,23 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         }
 
         // Aggregate-then-Transmute can just transmute the original field value,
-        // so long as the type is transparent over only that one single field.
+        // so long as the bytes of a value from only from a single field.
         if let Transmute = kind
             && let Value::Aggregate(
                 AggregateTy::Def(aggregate_did, aggregate_args),
-                FIRST_VARIANT,
+                variant_idx,
                 field_values,
             ) = self.get(value)
-            && let [single_field_value] = **field_values
-            && let adt = self.tcx.adt_def(aggregate_did)
-            && adt.is_struct()
-            && adt.repr().transparent()
+            && let aggregate_ty =
+                self.tcx.type_of(aggregate_did).instantiate(self.tcx, aggregate_args)
+            && let Some((field_idx, field_ty)) =
+                self.value_is_all_in_one_field(aggregate_ty, *variant_idx)
         {
-            let field_ty = adt.non_enum_variant().single_field().ty(self.tcx, aggregate_args);
             from = field_ty;
-            value = single_field_value;
+            value = field_values[field_idx.as_usize()];
             was_updated = true;
             if field_ty == to {
-                return Some(single_field_value);
+                return Some(value);
             }
         }
 
@@ -1490,6 +1489,32 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             left == right
         } else {
             false
+        }
+    }
+
+    fn value_is_all_in_one_field(
+        &self,
+        ty: Ty<'tcx>,
+        variant: VariantIdx,
+    ) -> Option<(FieldIdx, Ty<'tcx>)> {
+        if let Ok(layout) = self.ecx.layout_of(ty)
+            && let abi::Variants::Single { index } = layout.variants
+            && index == variant
+            && let Some((field_idx, field_layout)) = layout.non_1zst_field(&self.ecx)
+            && layout.size == field_layout.size
+        {
+            // We needed to check the variant to avoid trying to read the tag
+            // field from an enum where no fields have variants, since that tag
+            // field isn't in the `Aggregate` from which we're getting values.
+            Some((FieldIdx::from_usize(field_idx), field_layout.ty))
+        } else if let ty::Adt(adt, args) = ty.kind()
+            && adt.is_struct()
+            && adt.repr().transparent()
+            && let [single_field] = adt.non_enum_variant().fields.raw.as_slice()
+        {
+            Some((FieldIdx::ZERO, single_field.ty(self.tcx, args)))
+        } else {
+            None
         }
     }
 }

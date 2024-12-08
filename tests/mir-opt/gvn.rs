@@ -938,13 +938,15 @@ unsafe fn aggregate_struct_then_transmute(id: u16) {
     let a = MyId(id);
     opaque(std::intrinsics::transmute::<_, u16>(a));
 
-    // GVN can't do this yet because it doesn't know which field is the ZST,
-    // but future changes might enable it.
-    // CHECK: [[AGG:_.+]] = TypedId::<String>(copy _1, const PhantomData::<String>);
-    // CHECK: [[INT:_.+]] = copy [[AGG]] as u16 (Transmute);
-    // CHECK: opaque::<u16>(move [[INT]])
+    // CHECK: opaque::<u16>(copy _1)
     let b = TypedId::<String>(id, PhantomData);
     opaque(std::intrinsics::transmute::<_, u16>(b));
+
+    // CHECK: opaque::<u16>(copy _1)
+    let c = Err::<Never, u16>(id);
+    opaque(std::intrinsics::transmute::<_, u16>(c));
+
+    enum Never {}
 }
 
 // Transmuting can skip a pointer cast so long as it wasn't a fat-to-thin cast.
