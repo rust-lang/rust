@@ -188,6 +188,33 @@ impl SyntaxFactory {
         ast
     }
 
+    pub fn item_const(
+        &self,
+        visibility: Option<ast::Visibility>,
+        name: ast::Name,
+        ty: ast::Type,
+        expr: ast::Expr,
+    ) -> ast::Const {
+        let ast = make::item_const(visibility.clone(), name.clone(), ty.clone(), expr.clone())
+            .clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            if let Some(visibility) = visibility {
+                builder.map_node(
+                    visibility.syntax().clone(),
+                    ast.visibility().unwrap().syntax().clone(),
+                );
+            }
+            builder.map_node(name.syntax().clone(), ast.name().unwrap().syntax().clone());
+            builder.map_node(ty.syntax().clone(), ast.ty().unwrap().syntax().clone());
+            builder.map_node(expr.syntax().clone(), ast.body().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
     pub fn turbofish_generic_arg_list(
         &self,
         args: impl IntoIterator<Item = ast::GenericArg> + Clone,
