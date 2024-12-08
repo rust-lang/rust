@@ -7,7 +7,7 @@ use core::pin::Pin;
 use core::task::{Context, Poll};
 use core::{ptr, slice};
 
-use crate::alloc::Allocator;
+use crate::alloc::{Allocator, Global};
 #[cfg(not(no_global_oom_handling))]
 use crate::borrow::Cow;
 use crate::boxed::Box;
@@ -214,7 +214,7 @@ impl<'a, const N: usize, I, A: Allocator> !Iterator for &'a mut Box<[I; N], A> {
 /// A by-value `Box<[T; N]>` iterator.
 #[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_insignificant_dtor]
-pub struct BoxedArrayIntoIter<T, const N: usize, A: Allocator> {
+pub struct BoxedArrayIntoIter<T, const N: usize, A: Allocator = Global> {
     /// This is the array we are iterating over.
     ///
     /// Elements with index `i` where `alive.start <= i < alive.end` have not
