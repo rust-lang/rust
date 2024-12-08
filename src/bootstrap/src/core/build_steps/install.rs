@@ -21,9 +21,9 @@ const SHELL: &str = "sh";
 
 /// We have to run a few shell scripts, which choke quite a bit on both `\`
 /// characters and on `C:\` paths, so normalize both of them away.
-fn sanitize_sh(path: &Path) -> String {
+fn sanitize_sh(path: &Path, is_cygwin: bool) -> String {
     let path = path.to_str().unwrap().replace('\\', "/");
-    return change_drive(unc_to_lfs(&path)).unwrap_or(path);
+    return if is_cygwin { path } else { change_drive(unc_to_lfs(&path)).unwrap_or(path) };
 
     fn unc_to_lfs(s: &str) -> &str {
         s.strip_prefix("//?/").unwrap_or(s)
@@ -71,6 +71,7 @@ fn install_sh(
     let prefix = default_path(&builder.config.prefix, "/usr/local");
     let sysconfdir = prefix.join(default_path(&builder.config.sysconfdir, "/etc"));
     let destdir_env = env::var_os("DESTDIR").map(PathBuf::from);
+    let is_cygwin = builder.config.build.is_cygwin();
 
     // Sanity checks on the write access of user.
     //
@@ -103,14 +104,14 @@ fn install_sh(
 
     let mut cmd = command(SHELL);
     cmd.current_dir(&empty_dir)
-        .arg(sanitize_sh(&tarball.decompressed_output().join("install.sh")))
-        .arg(format!("--prefix={}", prepare_dir(&destdir_env, prefix)))
-        .arg(format!("--sysconfdir={}", prepare_dir(&destdir_env, sysconfdir)))
-        .arg(format!("--datadir={}", prepare_dir(&destdir_env, datadir)))
-        .arg(format!("--docdir={}", prepare_dir(&destdir_env, docdir)))
-        .arg(format!("--bindir={}", prepare_dir(&destdir_env, bindir)))
-        .arg(format!("--libdir={}", prepare_dir(&destdir_env, libdir)))
-        .arg(format!("--mandir={}", prepare_dir(&destdir_env, mandir)))
+        .arg(sanitize_sh(&tarball.decompressed_output().join("install.sh"), is_cygwin))
+        .arg(format!("--prefix={}", prepare_dir(&destdir_env, prefix, is_cygwin)))
+        .arg(format!("--sysconfdir={}", prepare_dir(&destdir_env, sysconfdir, is_cygwin)))
+        .arg(format!("--datadir={}", prepare_dir(&destdir_env, datadir, is_cygwin)))
+        .arg(format!("--docdir={}", prepare_dir(&destdir_env, docdir, is_cygwin)))
+        .arg(format!("--bindir={}", prepare_dir(&destdir_env, bindir, is_cygwin)))
+        .arg(format!("--libdir={}", prepare_dir(&destdir_env, libdir, is_cygwin)))
+        .arg(format!("--mandir={}", prepare_dir(&destdir_env, mandir, is_cygwin)))
         .arg("--disable-ldconfig");
     cmd.run(builder);
     t!(fs::remove_dir_all(&empty_dir));
@@ -120,7 +121,7 @@ fn default_path(config: &Option<PathBuf>, default: &str) -> PathBuf {
     config.as_ref().cloned().unwrap_or_else(|| PathBuf::from(default))
 }
 
-fn prepare_dir(destdir_env: &Option<PathBuf>, mut path: PathBuf) -> String {
+fn prepare_dir(destdir_env: &Option<PathBuf>, mut path: PathBuf, is_cygwin: bool) -> String {
     // The DESTDIR environment variable is a standard way to install software in a subdirectory
     // while keeping the original directory structure, even if the prefix or other directories
     // contain absolute paths.
@@ -146,7 +147,7 @@ fn prepare_dir(destdir_env: &Option<PathBuf>, mut path: PathBuf) -> String {
         assert!(path.is_absolute(), "could not make the path relative");
     }
 
-    sanitize_sh(&path)
+    sanitize_sh(&path, is_cygwin)
 }
 
 macro_rules! install {
