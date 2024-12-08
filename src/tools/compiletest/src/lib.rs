@@ -37,8 +37,8 @@ use walkdir::WalkDir;
 
 use self::header::{EarlyProps, make_test_description};
 use crate::common::{
-    Config, Mode, PassMode, TestPaths, UI_EXTENSIONS, expected_output_path, output_base_dir,
-    output_relative_path,
+    CompareMode, Config, Mode, PassMode, TestPaths, UI_EXTENSIONS, expected_output_path,
+    output_base_dir, output_relative_path,
 };
 use crate::header::HeadersCache;
 use crate::util::logv;
@@ -273,6 +273,15 @@ pub fn parse_config(args: Vec<String>) -> Config {
     } else {
         matches.free.clone()
     };
+    let compare_mode = matches.opt_str("compare-mode").map(|s| {
+        s.parse().unwrap_or_else(|_| {
+            let variants: Vec<_> = CompareMode::STR_VARIANTS.iter().copied().collect();
+            panic!(
+                "`{s}` is not a valid value for `--compare-mode`, it should be one of: {}",
+                variants.join(", ")
+            );
+        })
+    });
     Config {
         bless: matches.opt_present("bless"),
         compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
@@ -342,9 +351,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         only_modified: matches.opt_present("only-modified"),
         color,
         remote_test_client: matches.opt_str("remote-test-client").map(PathBuf::from),
-        compare_mode: matches
-            .opt_str("compare-mode")
-            .map(|s| s.parse().expect("invalid --compare-mode provided")),
+        compare_mode,
         rustfix_coverage: matches.opt_present("rustfix-coverage"),
         has_html_tidy,
         has_enzyme,
