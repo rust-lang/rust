@@ -1070,23 +1070,33 @@ impl Step for Tidy {
         }
 
         if builder.config.channel == "dev" || builder.config.channel == "nightly" {
-            builder.info("fmt check");
-            if builder.initial_rustfmt().is_none() {
-                let inferred_rustfmt_dir = builder.initial_sysroot.join("bin");
-                eprintln!(
-                    "\
+            if !builder.config.json_output {
+                builder.info("fmt check");
+                if builder.initial_rustfmt().is_none() {
+                    let inferred_rustfmt_dir = builder.initial_sysroot.join("bin");
+                    eprintln!(
+                        "\
 ERROR: no `rustfmt` binary found in {PATH}
 INFO: `rust.channel` is currently set to \"{CHAN}\"
 HELP: if you are testing a beta branch, set `rust.channel` to \"beta\" in the `config.toml` file
 HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to `x.py test`",
-                    PATH = inferred_rustfmt_dir.display(),
-                    CHAN = builder.config.channel,
+                        PATH = inferred_rustfmt_dir.display(),
+                        CHAN = builder.config.channel,
+                    );
+                    crate::exit!(1);
+                }
+                let all = false;
+                crate::core::build_steps::format::format(
+                    builder,
+                    !builder.config.cmd.bless(),
+                    all,
+                    &[],
                 );
-                crate::exit!(1);
+            } else {
+                eprintln!(
+                    "WARNING: `--json-output` is not supported on rustfmt, formatting will be skipped"
+                );
             }
-            let all = false;
-            crate::core::build_steps::format::format(builder, !builder.config.cmd.bless(), all, &[
-            ]);
         }
 
         builder.info("tidy check");
@@ -2624,6 +2634,11 @@ fn prepare_cargo_test(
     if builder.kind == Kind::Test && !builder.fail_fast {
         cargo.arg("--no-fail-fast");
     }
+
+    if builder.config.json_output {
+        cargo.arg("--message-format=json");
+    }
+
     match builder.doc_tests {
         DocTests::Only => {
             cargo.arg("--doc");
