@@ -3,8 +3,8 @@
 //! # Problem statement
 //!
 //! We are given a decimal string such as `12.34e56`. This string consists of integral (`12`),
-//! fractional (`34`), and exponent (`56`) parts. All parts are optional and interpreted as zero
-//! when missing.
+//! fractional (`34`), and exponent (`56`) parts. All parts are optional and interpreted as a
+//! default value (1 or 0) when missing.
 //!
 //! We seek the IEEE 754 floating point number that is closest to the exact value of the decimal
 //! string. It is well-known that many decimal strings do not have terminating representations in
@@ -67,6 +67,18 @@
 //! "such that the exponent +/- the number of decimal digits fits into a 64 bit integer".
 //! Larger exponents are accepted, but we don't do arithmetic with them, they are immediately
 //! turned into {positive,negative} {zero,infinity}.
+//!
+//! # Notation
+//!
+//! This module uses the same notation as the Lemire paper:
+//!
+//! - `m`: binary mantissa; always nonnegative
+//! - `p`: binary exponent; a signed integer
+//! - `w`: decimal significand; always nonnegative
+//! - `q`: decimal exponent; a signed integer
+//!
+//! This gives `m * 2^p` for the binary floating-point number, with `w * 10^q` as the decimal
+//! equivalent.
 
 #![doc(hidden)]
 #![unstable(
