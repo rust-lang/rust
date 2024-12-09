@@ -1,4 +1,5 @@
 //@ check-pass
+// https://github.com/rust-lang/rust/issues/103997
 
 pub fn foo() {}
 

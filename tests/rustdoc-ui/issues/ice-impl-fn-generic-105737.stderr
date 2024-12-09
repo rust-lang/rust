@@ -1,5 +1,5 @@
 error[E0747]: constant provided when a type was expected
-  --> $DIR/issue-105737.rs:1:10
+  --> $DIR/ice-impl-fn-generic-105737.rs:2:10
    |
 LL | impl Vec<lol> {}
    |          ^^^
