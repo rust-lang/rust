@@ -2,6 +2,7 @@
 //! SIMD vector length constants instead of assuming they are literals.
 
 //@ only-x86_64
+//@ check-pass
 
 #![feature(repr_simd)]
 
@@ -15,7 +16,6 @@ pub unsafe fn foo(a: Foo) {
     std::arch::asm!(
         "movaps {src}, {src}",
         src = in(xmm_reg) a,
-        //~^ ERROR: cannot use value of type `Foo` for inline assembly
     );
 }
 
