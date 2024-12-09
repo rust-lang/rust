@@ -1,4 +1,5 @@
 //@ compile-flags: -Znormalize-docs
+// https://github.com/rust-lang/rust/issues/105742
 use std::ops::Index;
 
 pub fn next<'a, T>(s: &'a mut dyn SVec<Item = T, Output = T>) {

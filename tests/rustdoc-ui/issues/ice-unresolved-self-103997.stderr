@@ -1,5 +1,5 @@
 warning: unresolved link to `Self::foo`
-  --> $DIR/issue-103997.rs:5:13
+  --> $DIR/ice-unresolved-self-103997.rs:6:13
    |
 LL | /// [`foo`](Self::foo)
    |             ^^^^^^^^^ no item named `Self` in scope
