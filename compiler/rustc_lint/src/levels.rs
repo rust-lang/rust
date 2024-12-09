@@ -1,9 +1,10 @@
 use rustc_ast_pretty::pprust;
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{Diag, LintDiagnostic, MultiSpan};
 use rustc_feature::{Features, GateIssue};
+use rustc_hir::HirId;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{CRATE_HIR_ID, HirId};
 use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
@@ -115,12 +116,10 @@ impl LintLevelSets {
     }
 }
 
-fn lints_that_dont_need_to_run(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LintId> {
+fn lints_that_dont_need_to_run(tcx: TyCtxt<'_>, (): ()) -> UnordSet<LintId> {
     let store = unerased_lint_store(&tcx.sess);
 
-    let map = tcx.shallow_lint_levels_on(rustc_hir::CRATE_OWNER_ID);
-
-    let dont_need_to_run: FxIndexSet<LintId> = store
+    let mut dont_need_to_run: FxHashSet<LintId> = store
         .get_lints()
         .into_iter()
         .filter(|lint| {
@@ -129,24 +128,28 @@ fn lints_that_dont_need_to_run(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LintId> {
                 lint.future_incompatible.is_some_and(|fut| fut.reason.has_future_breakage());
             !has_future_breakage && !lint.eval_always
         })
-        .filter_map(|lint| {
-            let lint_level = map.lint_level_id_at_node(tcx, LintId::of(lint), CRATE_HIR_ID);
-            if matches!(lint_level, (Level::Allow, ..))
-                || (matches!(lint_level, (.., LintLevelSource::Default)))
-                    && lint.default_level(tcx.sess.edition()) == Level::Allow
-            {
-                Some(LintId::of(lint))
-            } else {
-                None
-            }
-        })
+        .map(|lint| LintId::of(*lint))
         .collect();
 
-    let mut visitor = LintLevelMaximum { tcx, dont_need_to_run };
-    visitor.process_opts();
-    tcx.hir().walk_attributes(&mut visitor);
+    let mut remove_non_allow_lints_from_owner = |owner| {
+        let map = tcx.shallow_lint_levels_on(owner);
 
-    visitor.dont_need_to_run
+        // All lints that appear with a non-allow level must be run.
+        for (_, specs) in map.specs.iter() {
+            for (lint, (level, _)) in specs.iter() {
+                if !matches!(level, Level::Allow) {
+                    dont_need_to_run.remove(lint);
+                }
+            }
+        }
+    };
+
+    remove_non_allow_lints_from_owner(rustc_hir::CRATE_OWNER_ID);
+    for owner in tcx.hir_crate_items(()).owners() {
+        remove_non_allow_lints_from_owner(owner);
+    }
+
+    dont_need_to_run.into()
 }
 
 #[instrument(level = "trace", skip(tcx), ret)]
@@ -332,83 +335,6 @@ impl<'tcx> Visitor<'tcx> for LintLevelsBuilder<'_, LintLevelQueryMap<'tcx>> {
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         self.add_id(impl_item.hir_id());
         intravisit::walk_impl_item(self, impl_item);
-    }
-}
-
-/// Visitor with the only function of visiting every item-like in a crate and
-/// computing the highest level that every lint gets put to.
-///
-/// E.g., if a crate has a global #![allow(lint)] attribute, but a single item
-/// uses #[warn(lint)], this visitor will set that lint level as `Warn`
-struct LintLevelMaximum<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    /// The actual list of detected lints.
-    dont_need_to_run: FxIndexSet<LintId>,
-}
-
-impl<'tcx> LintLevelMaximum<'tcx> {
-    fn process_opts(&mut self) {
-        let store = unerased_lint_store(self.tcx.sess);
-        for (lint_group, level) in &self.tcx.sess.opts.lint_opts {
-            if *level != Level::Allow {
-                let Ok(lints) = store.find_lints(lint_group) else {
-                    return;
-                };
-                for lint in lints {
-                    self.dont_need_to_run.swap_remove(&lint);
-                }
-            }
-        }
-    }
-}
-
-impl<'tcx> Visitor<'tcx> for LintLevelMaximum<'tcx> {
-    type NestedFilter = nested_filter::All;
-
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
-    }
-
-    /// FIXME(blyxyas): In a future revision, we should also graph #![allow]s,
-    /// but that is handled with more care
-    fn visit_attribute(&mut self, attribute: &'tcx ast::Attribute) {
-        if matches!(
-            Level::from_attr(attribute),
-            Some(
-                Level::Warn
-                    | Level::Deny
-                    | Level::Forbid
-                    | Level::Expect(..)
-                    | Level::ForceWarn(..),
-            )
-        ) {
-            let store = unerased_lint_store(self.tcx.sess);
-            let Some(meta) = attribute.meta() else { return };
-            // Lint attributes are always a metalist inside a
-            // metalist (even with just one lint).
-            let Some(meta_item_list) = meta.meta_item_list() else { return };
-
-            for meta_list in meta_item_list {
-                // Convert Path to String
-                let Some(meta_item) = meta_list.meta_item() else { return };
-                let ident: &str = &meta_item
-                    .path
-                    .segments
-                    .iter()
-                    .map(|segment| segment.ident.as_str())
-                    .collect::<Vec<&str>>()
-                    .join("::");
-                let Ok(lints) = store.find_lints(
-                    // Lint attributes can only have literals
-                    ident,
-                ) else {
-                    return;
-                };
-                for lint in lints {
-                    self.dont_need_to_run.swap_remove(&lint);
-                }
-            }
-        }
     }
 }
 

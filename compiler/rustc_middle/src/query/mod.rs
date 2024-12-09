@@ -422,7 +422,7 @@ rustc_queries! {
         desc { "computing `#[expect]`ed lints in this crate" }
     }
 
-    query lints_that_dont_need_to_run(_: ()) -> &'tcx FxIndexSet<LintId> {
+    query lints_that_dont_need_to_run(_: ()) -> &'tcx UnordSet<LintId> {
         arena_cache
         desc { "Computing all lints that are explicitly enabled or with a default level greater than Allow" }
     }
