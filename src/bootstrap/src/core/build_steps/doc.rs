@@ -72,7 +72,7 @@ macro_rules! book {
 }
 
 // NOTE: When adding a book here, make sure to ALSO build the book by
-// adding a build step in `src/bootstrap/builder.rs`!
+// adding a build step in `src/bootstrap/code/builder/mod.rs`!
 // NOTE: Make sure to add the corresponding submodule when adding a new book.
 // FIXME: Make checking for a submodule automatic somehow (maybe by having a list of all submodules
 // and checking against it?).
