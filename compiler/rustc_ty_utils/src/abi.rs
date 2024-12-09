@@ -48,9 +48,35 @@ fn fn_sig_for_fn_abi<'tcx>(
             let mut sig = tcx
                 .instantiate_bound_regions_with_erased(tcx.fn_sig(def_id).instantiate(tcx, args));
 
+            // Modify `fn(self, ...)` to `fn(self: *mut Self, ...)`.
             if let ty::InstanceKind::VTableShim(..) = instance.def {
                 let mut inputs_and_output = sig.inputs_and_output.to_vec();
                 inputs_and_output[0] = Ty::new_mut_ptr(tcx, inputs_and_output[0]);
+                sig.inputs_and_output = tcx.mk_type_list(&inputs_and_output);
+            }
+
+            // Modify `fn() -> impl Future` to `fn() -> dyn* Future`.
+            if let ty::InstanceKind::ReifyShim(def_id, _) = instance.def
+                && let Some((rpitit_def_id, fn_args)) =
+                    tcx.return_position_impl_trait_in_trait_shim_data(def_id)
+            {
+                let fn_args = fn_args.instantiate(tcx, args);
+                let rpitit_args =
+                    fn_args.extend_to(tcx, rpitit_def_id, |param, _| match param.kind {
+                        ty::GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
+                        ty::GenericParamDefKind::Type { .. }
+                        | ty::GenericParamDefKind::Const { .. } => {
+                            unreachable!("rpitit should have no addition ty/ct")
+                        }
+                    });
+                let dyn_star_ty = Ty::new_dynamic(
+                    tcx,
+                    tcx.item_bounds_to_existential_predicates(rpitit_def_id, rpitit_args),
+                    tcx.lifetimes.re_erased,
+                    ty::DynStar,
+                );
+                let mut inputs_and_output = sig.inputs_and_output.to_vec();
+                *inputs_and_output.last_mut().unwrap() = dyn_star_ty;
                 sig.inputs_and_output = tcx.mk_type_list(&inputs_and_output);
             }
 
