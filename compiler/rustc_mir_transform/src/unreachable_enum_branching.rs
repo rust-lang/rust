@@ -78,8 +78,8 @@ fn variant_discriminants<'tcx>(
 }
 
 impl<'tcx> crate::MirPass<'tcx> for UnreachableEnumBranching {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() > 0
+    fn is_enabled(&self, tcx: TyCtxt<'tcx>) -> bool {
+        tcx.sess.mir_opt_level() > 0
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
