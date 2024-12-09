@@ -34,14 +34,15 @@ pub struct Decimal {
 impl Decimal {
     /// Detect if the float can be accurately reconstructed from native floats.
     #[inline]
-    fn is_fast_path<F: RawFloat>(&self) -> bool {
+    fn can_use_fast_path<F: RawFloat>(&self) -> bool {
         F::MIN_EXPONENT_FAST_PATH <= self.exponent
             && self.exponent <= F::MAX_EXPONENT_DISGUISED_FAST_PATH
             && self.mantissa <= F::MAX_MANTISSA_FAST_PATH
             && !self.many_digits
     }
 
-    /// The fast path algorithm using machine-sized integers and floats.
+    /// Try turning the decimal into an exact float representation, using machine-sized integers
+    /// and floats.
     ///
     /// This is extracted into a separate function so that it can be attempted before constructing
     /// a Decimal. This only works if both the mantissa and the exponent
@@ -59,30 +60,28 @@ impl Decimal {
         // require setting it by changing the global state (like the control word of the x87 FPU).
         let _cw = set_precision::<F>();
 
-        if self.is_fast_path::<F>() {
-            let mut value = if self.exponent <= F::MAX_EXPONENT_FAST_PATH {
-                // normal fast path
-                let value = F::from_u64(self.mantissa);
-                if self.exponent < 0 {
-                    value / F::pow10_fast_path((-self.exponent) as _)
-                } else {
-                    value * F::pow10_fast_path(self.exponent as _)
-                }
-            } else {
-                // disguised fast path
-                let shift = self.exponent - F::MAX_EXPONENT_FAST_PATH;
-                let mantissa = self.mantissa.checked_mul(INT_POW10[shift as usize])?;
-                if mantissa > F::MAX_MANTISSA_FAST_PATH {
-                    return None;
-                }
-                F::from_u64(mantissa) * F::pow10_fast_path(F::MAX_EXPONENT_FAST_PATH as _)
-            };
-            if self.negative {
-                value = -value;
-            }
-            Some(value)
-        } else {
-            None
+        if !self.can_use_fast_path::<F>() {
+            return None;
         }
+
+        let value = if self.exponent <= F::MAX_EXPONENT_FAST_PATH {
+            // normal fast path
+            let value = F::from_u64(self.mantissa);
+            if self.exponent < 0 {
+                value / F::pow10_fast_path((-self.exponent) as _)
+            } else {
+                value * F::pow10_fast_path(self.exponent as _)
+            }
+        } else {
+            // disguised fast path
+            let shift = self.exponent - F::MAX_EXPONENT_FAST_PATH;
+            let mantissa = self.mantissa.checked_mul(INT_POW10[shift as usize])?;
+            if mantissa > F::MAX_MANTISSA_FAST_PATH {
+                return None;
+            }
+            F::from_u64(mantissa) * F::pow10_fast_path(F::MAX_EXPONENT_FAST_PATH as _)
+        };
+
+        if self.negative { Some(-value) } else { Some(value) }
     }
 }
