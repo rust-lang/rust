@@ -13,7 +13,7 @@ use tracing::{debug, instrument};
 
 use crate::builder::Builder;
 use crate::common::CodegenCx;
-use crate::coverageinfo::map_data::FunctionCoverageCollector;
+use crate::coverageinfo::map_data::FunctionCoverage;
 use crate::llvm;
 
 pub(crate) mod ffi;
@@ -24,8 +24,7 @@ mod mapgen;
 /// Extra per-CGU context/state needed for coverage instrumentation.
 pub(crate) struct CguCoverageContext<'ll, 'tcx> {
     /// Coverage data for each instrumented function identified by DefId.
-    pub(crate) function_coverage_map:
-        RefCell<FxIndexMap<Instance<'tcx>, FunctionCoverageCollector<'tcx>>>,
+    pub(crate) function_coverage_map: RefCell<FxIndexMap<Instance<'tcx>, FunctionCoverage<'tcx>>>,
     pub(crate) pgo_func_name_var_map: RefCell<FxHashMap<Instance<'tcx>, &'ll llvm::Value>>,
     pub(crate) mcdc_condition_bitmap_map: RefCell<FxHashMap<Instance<'tcx>, Vec<&'ll llvm::Value>>>,
 
@@ -42,9 +41,7 @@ impl<'ll, 'tcx> CguCoverageContext<'ll, 'tcx> {
         }
     }
 
-    fn take_function_coverage_map(
-        &self,
-    ) -> FxIndexMap<Instance<'tcx>, FunctionCoverageCollector<'tcx>> {
+    fn take_function_coverage_map(&self) -> FxIndexMap<Instance<'tcx>, FunctionCoverage<'tcx>> {
         self.function_coverage_map.replace(FxIndexMap::default())
     }
 
@@ -161,8 +158,7 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
         // This includes functions that were not partitioned into this CGU,
         // but were MIR-inlined into one of this CGU's functions.
         coverage_cx.function_coverage_map.borrow_mut().entry(instance).or_insert_with(|| {
-            FunctionCoverageCollector::new(
-                instance,
+            FunctionCoverage::new_used(
                 function_coverage_info,
                 bx.tcx.coverage_ids_info(instance.def),
             )
