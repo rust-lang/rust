@@ -55,12 +55,13 @@ impl Invert for i64 {
     }
 }
 
-// CHECK-LABEL: generic_function
 // CHECK: .balign 4
+// CHECK-LABEL: generic_function:
 // CHECK: call
 // CHECK: ret
 
 #[naked]
+#[no_mangle]
 pub extern "C" fn generic_function<T: Invert>(x: i64) -> i64 {
     unsafe {
         naked_asm!(
@@ -75,8 +76,8 @@ pub extern "C" fn generic_function<T: Invert>(x: i64) -> i64 {
 #[repr(transparent)]
 struct Foo(u64);
 
-// CHECK-LABEL: method
 // CHECK: .balign 4
+// CHECK-LABEL: method:
 // CHECK: mov rax, rdi
 
 impl Foo {
@@ -87,8 +88,8 @@ impl Foo {
     }
 }
 
-// CHECK-LABEL: trait_method
 // CHECK: .balign 4
+// CHECK-LABEL: trait_method:
 // CHECK: mov rax, rdi
 
 trait Bar {
@@ -103,8 +104,8 @@ impl Bar for Foo {
     }
 }
 
-// CHECK-LABEL: naked_with_args_and_return
 // CHECK: .balign 4
+// CHECK-LABEL: naked_with_args_and_return:
 // CHECK: lea rax, [rdi + rsi]
 
 // this previously ICE'd, see https://github.com/rust-lang/rust/issues/124375
