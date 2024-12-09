@@ -581,7 +581,7 @@ rustc_queries! {
     /// Summarizes coverage IDs inserted by the `InstrumentCoverage` MIR pass
     /// (for compiler option `-Cinstrument-coverage`), after MIR optimizations
     /// have had a chance to potentially remove some of them.
-    query coverage_ids_info(key: ty::InstanceKind<'tcx>) -> &'tcx mir::CoverageIdsInfo {
+    query coverage_ids_info(key: ty::InstanceKind<'tcx>) -> &'tcx mir::coverage::CoverageIdsInfo {
         desc { |tcx| "retrieving coverage IDs info from MIR for `{}`", tcx.def_path_str(key.def_id()) }
         arena_cache
     }
