@@ -80,10 +80,120 @@ jobs:
         # Check the `calculate_matrix` job to see how is the matrix defined.
         include: ${{ fromJSON(needs.calculate_matrix.outputs.jobs) }}
     steps:
-      - name: list env
-        run: |
-          ls env:
-        shell: pwsh
+      - if: contains(matrix.os, 'windows')
+        uses: msys2/setup-msys2@v2.22.0
+        with:
+          # i686 jobs use mingw32. x86_64 and cross-compile jobs use mingw64.
+          msystem: ${{ contains(matrix.name, 'i686') && 'mingw32' || 'mingw64' }}
+          # don't try to download updates for already installed packages
+          update: false
+          # don't try to use the msys that comes built-in to the github runner,
+          # so we can control what is installed (i.e. not python)
+          release: true
+          # Inherit the full path from the Windows environment, with MSYS2's */bin/
+          # dirs placed in front. This lets us run Windows-native Python etc.
+          path-type: inherit
+          install: >
+            make
+
+      - name: disable git crlf conversion
+        run: git config --global core.autocrlf false
+
+      - name: checkout the source code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      # Free up disk space on Linux by removing preinstalled components that
+      # we do not need. We do this to enable some of the less resource
+      # intensive jobs to run on free runners, which however also have
+      # less disk space.
+      - name: free up disk space
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
+        if: matrix.free_disk
+
+      # Rust Log Analyzer can't currently detect the PR number of a GitHub
+      # Actions build on its own, so a hint in the log message is needed to
+      # point it in the right direction.
+      - name: configure the PR in which the error message will be posted
+        run: echo "[CI_PR_NUMBER=$num]"
+        env:
+          num: ${{ github.event.number }}
+        if: needs.calculate_matrix.outputs.run_type == 'pr'
+
+      - name: add extra environment variables
+        run: src/ci/scripts/setup-environment.sh
+        env:
+          # Since it's not possible to merge `${{ matrix.env }}` with the other
+          # variables in `job.<name>.env`, the variables defined in the matrix
+          # are passed to the `setup-environment.sh` script encoded in JSON,
+          # which then uses log commands to actually set them.
+          EXTRA_VARIABLES: ${{ toJson(matrix.env) }}
+
+      - name: setup upstream remote
+        run: src/ci/scripts/setup-upstream-remote.sh
+
+      - name: ensure the channel matches the target branch
+        run: src/ci/scripts/verify-channel.sh
+
+      - name: collect CPU statistics
+        run: src/ci/scripts/collect-cpu-stats.sh
+
+      - name: show the current environment
+        run: src/ci/scripts/dump-environment.sh
+
+      - name: install awscli
+        run: src/ci/scripts/install-awscli.sh
+
+      - name: install sccache
+        run: src/ci/scripts/install-sccache.sh
+
+      - name: select Xcode
+        run: src/ci/scripts/select-xcode.sh
+
+      - name: install clang
+        run: src/ci/scripts/install-clang.sh
+
+      - name: install tidy
+        run: src/ci/scripts/install-tidy.sh
+
+      - name: install WIX
+        run: src/ci/scripts/install-wix.sh
+
+      - name: disable git crlf conversion
+        run: src/ci/scripts/disable-git-crlf-conversion.sh
+
+      - name: checkout submodules
+        run: src/ci/scripts/checkout-submodules.sh
+
+      - name: install MinGW
+        run: src/ci/scripts/install-mingw.sh
+
+      - name: install ninja
+        run: src/ci/scripts/install-ninja.sh
+
+      - name: enable ipv6 on Docker
+        run: src/ci/scripts/enable-docker-ipv6.sh
+
+      # Disable automatic line ending conversion (again). On Windows, when we're
+      # installing dependencies, something switches the git configuration directory or
+      # re-enables autocrlf. We've not tracked down the exact cause -- and there may
+      # be multiple -- but this should ensure submodules are checked out with the
+      # appropriate line endings.
+      - name: disable git crlf conversion
+        run: src/ci/scripts/disable-git-crlf-conversion.sh
+
+      - name: ensure line endings are correct
+        run: src/ci/scripts/verify-line-endings.sh
+
+      - name: ensure backported commits are in upstream branches
+        run: src/ci/scripts/verify-backported-commits.sh
+
+      - name: ensure the stable version number is correct
+        run: src/ci/scripts/verify-stable-version-number.sh
+
+      - name: run the build
+        run: printenv
 
   # This job isused to tell bors the final status of the build, as there is no practical way to detect
   # when a workflow is successful listening to webhooks only in our current bors implementation (homu).
