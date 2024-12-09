@@ -77,12 +77,19 @@ fn completion_item_hash(item: &CompletionItem, is_ref_completion: bool) -> [u8; 
         }
     }
 
-    fn has_completion_relevance(hasher: &mut TentHasher, relevance: &CompletionRelevance) {
+    fn hash_completion_relevance(hasher: &mut TentHasher, relevance: &CompletionRelevance) {
         use ide_completion::{
             CompletionRelevancePostfixMatch, CompletionRelevanceReturnType,
             CompletionRelevanceTypeMatch,
         };
 
+        hasher.update(&[
+            u8::from(relevance.exact_name_match),
+            u8::from(relevance.is_local),
+            u8::from(relevance.is_name_already_imported),
+            u8::from(relevance.requires_import),
+            u8::from(relevance.is_private_editable),
+        ]);
         if let Some(type_match) = &relevance.type_match {
             let label = match type_match {
                 CompletionRelevanceTypeMatch::CouldUnify => "could_unify",
@@ -90,15 +97,9 @@ fn completion_item_hash(item: &CompletionItem, is_ref_completion: bool) -> [u8; 
             };
             hasher.update(label);
         }
-        hasher.update(&[u8::from(relevance.exact_name_match), u8::from(relevance.is_local)]);
         if let Some(trait_) = &relevance.trait_ {
             hasher.update(&[u8::from(trait_.is_op_method), u8::from(trait_.notable_trait)]);
         }
-        hasher.update(&[
-            u8::from(relevance.is_name_already_imported),
-            u8::from(relevance.requires_import),
-            u8::from(relevance.is_private_editable),
-        ]);
         if let Some(postfix_match) = &relevance.postfix_match {
             let label = match postfix_match {
                 CompletionRelevancePostfixMatch::NonExact => "non_exact",
@@ -139,7 +140,7 @@ fn completion_item_hash(item: &CompletionItem, is_ref_completion: bool) -> [u8; 
     if let Some(documentation) = &item.documentation {
         hasher.update(documentation.as_str());
     }
-    has_completion_relevance(&mut hasher, &item.relevance);
+    hash_completion_relevance(&mut hasher, &item.relevance);
     if let Some((mutability, text_size)) = &item.ref_match {
         hasher.update(mutability.as_keyword_for_ref());
         hasher.update(u32::from(*text_size).to_le_bytes());

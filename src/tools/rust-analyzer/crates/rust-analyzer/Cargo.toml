@@ -92,13 +92,13 @@ jemalloc = ["jemallocator", "profile/jemalloc"]
 force-always-assert = ["always-assert/force"]
 sysroot-abi = []
 in-rust-tree = [
-    "sysroot-abi",
-    "syntax/in-rust-tree",
-    "parser/in-rust-tree",
-    "hir/in-rust-tree",
-    "hir-def/in-rust-tree",
-    "hir-ty/in-rust-tree",
-    "load-cargo/in-rust-tree",
+  "sysroot-abi",
+  "syntax/in-rust-tree",
+  "parser/in-rust-tree",
+  "hir/in-rust-tree",
+  "hir-def/in-rust-tree",
+  "hir-ty/in-rust-tree",
+  "load-cargo/in-rust-tree",
 ]
 
 [lints]
