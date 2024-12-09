@@ -97,7 +97,7 @@ use crate::fmt;
 use crate::str::FromStr;
 
 mod common;
-mod decimal;
+pub mod decimal_seq;
 mod fpu;
 mod slow;
 mod table;

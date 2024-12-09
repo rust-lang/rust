@@ -11,9 +11,9 @@
 
 use crate::num::dec2flt::common::{ByteSlice, is_8digits};
 
-/// A decimal floating-point number.
-#[derive(Clone)]
-pub(super) struct Decimal {
+/// A decimal floating-point number, represented as a sequence of decimal digits.
+#[derive(Clone, Debug, PartialEq)]
+pub struct DecimalSeq {
     /// The number of significant digits in the decimal.
     pub num_digits: usize,
     /// The offset of the decimal point in the significant digits.
@@ -24,13 +24,13 @@ pub(super) struct Decimal {
     pub digits: [u8; Self::MAX_DIGITS],
 }
 
-impl Default for Decimal {
+impl Default for DecimalSeq {
     fn default() -> Self {
         Self { num_digits: 0, decimal_point: 0, truncated: false, digits: [0; Self::MAX_DIGITS] }
     }
 }
 
-impl Decimal {
+impl DecimalSeq {
     /// The maximum number of digits required to unambiguously round up to a 64-bit float.
     ///
     /// For an IEEE 754 binary64 float, this required 767 digits. So we store the max digits + 1.
@@ -55,7 +55,8 @@ impl Decimal {
     ///
     /// In Python:
     ///     `-emin + p2 + math.floor((emin+ 1)*math.log(2, b)-math.log(1-2**(-p2), b))`
-    pub(super) const MAX_DIGITS: usize = 768;
+    pub const MAX_DIGITS: usize = 768;
+
     /// The max decimal digits that can be exactly represented in a 64-bit integer.
     pub(super) const MAX_DIGITS_WITHOUT_OVERFLOW: usize = 19;
     pub(super) const DECIMAL_POINT_RANGE: i32 = 2047;
@@ -73,12 +74,12 @@ impl Decimal {
 
     /// Trim trailing zeros from the buffer.
     // FIXME(tgross35): this could be `.rev().position()` if perf is okay
-    pub(super) fn trim(&mut self) {
-        // All of the following calls to `Decimal::trim` can't panic because:
+    pub fn trim(&mut self) {
+        // All of the following calls to `DecimalSeq::trim` can't panic because:
         //
-        //  1. `parse_decimal` sets `num_digits` to a max of `Decimal::MAX_DIGITS`.
+        //  1. `parse_decimal` sets `num_digits` to a max of `DecimalSeq::MAX_DIGITS`.
         //  2. `right_shift` sets `num_digits` to `write_index`, which is bounded by `num_digits`.
-        //  3. `left_shift` `num_digits` to a max of `Decimal::MAX_DIGITS`.
+        //  3. `left_shift` `num_digits` to a max of `DecimalSeq::MAX_DIGITS`.
         //
         // Trim is only called in `right_shift` and `left_shift`.
         debug_assert!(self.num_digits <= Self::MAX_DIGITS);
@@ -93,21 +94,26 @@ impl Decimal {
         } else if self.decimal_point >= Self::MAX_DIGITS_WITHOUT_OVERFLOW as i32 {
             return 0xFFFF_FFFF_FFFF_FFFF_u64;
         }
+
         let dp = self.decimal_point as usize;
         let mut n = 0_u64;
+
         for i in 0..dp {
             n *= 10;
             if i < self.num_digits {
                 n += self.digits[i] as u64;
             }
         }
+
         let mut round_up = false;
+
         if dp < self.num_digits {
             round_up = self.digits[dp] >= 5;
             if self.digits[dp] == 5 && dp + 1 == self.num_digits {
                 round_up = self.truncated || ((dp != 0) && (1 & self.digits[dp - 1] != 0))
             }
         }
+
         if round_up {
             n += 1;
         }
@@ -123,6 +129,7 @@ impl Decimal {
         let mut read_index = self.num_digits;
         let mut write_index = self.num_digits + num_new_digits;
         let mut n = 0_u64;
+
         while read_index != 0 {
             read_index -= 1;
             write_index -= 1;
@@ -136,6 +143,7 @@ impl Decimal {
             }
             n = quotient;
         }
+
         while n > 0 {
             write_index -= 1;
             let quotient = n / 10;
@@ -147,10 +155,13 @@ impl Decimal {
             }
             n = quotient;
         }
+
         self.num_digits += num_new_digits;
+
         if self.num_digits > Self::MAX_DIGITS {
             self.num_digits = Self::MAX_DIGITS;
         }
+
         self.decimal_point += num_new_digits as i32;
         self.trim();
     }
@@ -206,8 +217,8 @@ impl Decimal {
 }
 
 /// Parse a big integer representation of the float as a decimal.
-pub(super) fn parse_decimal(mut s: &[u8]) -> Decimal {
-    let mut d = Decimal::default();
+pub fn parse_decimal_seq(mut s: &[u8]) -> DecimalSeq {
+    let mut d = DecimalSeq::default();
     let start = s;
 
     while let Some((&b'0', s_next)) = s.split_first() {
@@ -225,7 +236,7 @@ pub(super) fn parse_decimal(mut s: &[u8]) -> Decimal {
                 s = s_next;
             }
         }
-        while s.len() >= 8 && d.num_digits + 8 < Decimal::MAX_DIGITS {
+        while s.len() >= 8 && d.num_digits + 8 < DecimalSeq::MAX_DIGITS {
             let v = s.read_u64();
             if !is_8digits(v) {
                 break;
@@ -237,6 +248,7 @@ pub(super) fn parse_decimal(mut s: &[u8]) -> Decimal {
         s = s.parse_digits(|digit| d.try_add_digit(digit));
         d.decimal_point = s.len() as i32 - first.len() as i32;
     }
+
     if d.num_digits != 0 {
         // Ignore the trailing zeros if there are any
         let mut n_trailing_zeros = 0;
@@ -250,11 +262,12 @@ pub(super) fn parse_decimal(mut s: &[u8]) -> Decimal {
         d.decimal_point += n_trailing_zeros as i32;
         d.num_digits -= n_trailing_zeros;
         d.decimal_point += d.num_digits as i32;
-        if d.num_digits > Decimal::MAX_DIGITS {
+        if d.num_digits > DecimalSeq::MAX_DIGITS {
             d.truncated = true;
-            d.num_digits = Decimal::MAX_DIGITS;
+            d.num_digits = DecimalSeq::MAX_DIGITS;
         }
     }
+
     if let Some((&ch, s_next)) = s.split_first() {
         if ch == b'e' || ch == b'E' {
             s = s_next;
@@ -276,13 +289,15 @@ pub(super) fn parse_decimal(mut s: &[u8]) -> Decimal {
             d.decimal_point += if neg_exp { -exp_num } else { exp_num };
         }
     }
-    for i in d.num_digits..Decimal::MAX_DIGITS_WITHOUT_OVERFLOW {
+
+    for i in d.num_digits..DecimalSeq::MAX_DIGITS_WITHOUT_OVERFLOW {
         d.digits[i] = 0;
     }
+
     d
 }
 
-fn number_of_digits_decimal_left_shift(d: &Decimal, mut shift: usize) -> usize {
+fn number_of_digits_decimal_left_shift(d: &DecimalSeq, mut shift: usize) -> usize {
     #[rustfmt::skip]
     const TABLE: [u16; 65] = [
         0x0000, 0x0800, 0x0801, 0x0803, 0x1006, 0x1009, 0x100D, 0x1812, 0x1817, 0x181D, 0x2024,
@@ -347,6 +362,7 @@ fn number_of_digits_decimal_left_shift(d: &Decimal, mut shift: usize) -> usize {
     let pow5_a = (0x7FF & x_a) as usize;
     let pow5_b = (0x7FF & x_b) as usize;
     let pow5 = &TABLE_POW5[pow5_a..];
+
     for (i, &p5) in pow5.iter().enumerate().take(pow5_b - pow5_a) {
         if i >= d.num_digits {
             return num_new_digits - 1;
@@ -358,5 +374,6 @@ fn number_of_digits_decimal_left_shift(d: &Decimal, mut shift: usize) -> usize {
             return num_new_digits;
         }
     }
+
     num_new_digits
 }
