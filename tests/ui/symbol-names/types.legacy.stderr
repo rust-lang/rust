@@ -502,19 +502,19 @@ error: demangling-alt(a::b::Type<[T; N]>)
 LL |     #[rustc_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_ZN1a1b35Type$LT$$u5b$u8$u3b$$u20$_$u5d$$GT$17h[HASH]E)
+error: symbol-name(_ZN1a1b35Type$LT$$u5b$u8$u3b$$u20$0$u5d$$GT$17h[HASH]E)
   --> $DIR/types.rs:272:5
    |
 LL |     #[rustc_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(a::b::Type<[u8; _]>::h[HASH])
+error: demangling(a::b::Type<[u8; 0]>::h[HASH])
   --> $DIR/types.rs:272:5
    |
 LL |     #[rustc_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling-alt(a::b::Type<[u8; _]>)
+error: demangling-alt(a::b::Type<[u8; 0]>)
   --> $DIR/types.rs:272:5
    |
 LL |     #[rustc_symbol_name]
