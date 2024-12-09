@@ -97,6 +97,7 @@ use crate::fmt;
 use crate::str::FromStr;
 
 mod common;
+pub mod decimal;
 pub mod decimal_seq;
 mod fpu;
 mod slow;
@@ -104,7 +105,6 @@ mod table;
 // float is used in flt2dec, and all are used in unit tests.
 pub mod float;
 pub mod lemire;
-pub mod number;
 pub mod parse;
 
 macro_rules! from_str_float_impl {
