@@ -80,8 +80,8 @@ jobs:
         # Check the `calculate_matrix` job to see how is the matrix defined.
         include: ${{ fromJSON(needs.calculate_matrix.outputs.jobs) }}
     steps:
-      - name: test link
-        run: link --version || true
+      - name: list env
+        run: ls env:
         shell: pwsh
 
   # This job isused to tell bors the final status of the build, as there is no practical way to detect
