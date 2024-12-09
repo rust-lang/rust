@@ -1123,9 +1123,6 @@ pub(crate) fn handle_completion_resolve(
         return Ok(original_completion);
     };
     let source_root = snap.analysis.source_root_id(file_id)?;
-    let Some(completion_hash_for_resolve) = &resolve_data.completion_item_hash else {
-        return Ok(original_completion);
-    };
 
     let mut forced_resolve_completions_config = snap.config.completion(Some(source_root));
     forced_resolve_completions_config.fields_to_resolve = CompletionFieldsToResolve::empty();
@@ -1142,7 +1139,7 @@ pub(crate) fn handle_completion_resolve(
 
     let Some(corresponding_completion) = completions.into_iter().find(|completion_item| {
         let hash = completion_item_hash(&completion_item, resolve_data.for_ref);
-        &hash == completion_hash_for_resolve
+        hash == resolve_data.hash
     }) else {
         return Ok(original_completion);
     };

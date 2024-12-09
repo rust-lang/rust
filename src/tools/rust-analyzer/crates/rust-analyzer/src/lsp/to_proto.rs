@@ -275,11 +275,7 @@ fn completion_item(
     completion_trigger_character: Option<char>,
     item: CompletionItem,
 ) {
-    let original_completion_item = if fields_to_resolve == &CompletionFieldsToResolve::empty() {
-        None
-    } else {
-        Some(item.clone())
-    };
+    let original_completion_item = item.clone();
     let insert_replace_support = config.insert_replace_support().then_some(tdpp.position);
     let ref_match = item.ref_match();
 
@@ -406,9 +402,7 @@ fn completion_item(
                 version,
                 trigger_character: completion_trigger_character,
                 for_ref: true,
-                completion_item_hash: original_completion_item
-                    .as_ref()
-                    .map(|item| completion_item_hash(item, true)),
+                hash: completion_item_hash(&original_completion_item, true),
             };
             Some(to_value(ref_resolve_data).unwrap())
         } else {
@@ -420,9 +414,7 @@ fn completion_item(
             version,
             trigger_character: completion_trigger_character,
             for_ref: false,
-            completion_item_hash: original_completion_item
-                .as_ref()
-                .map(|item| completion_item_hash(item, false)),
+            hash: completion_item_hash(&original_completion_item, false),
         };
         (ref_resolve_data, Some(to_value(resolve_data).unwrap()))
     } else {

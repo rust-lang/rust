@@ -827,7 +827,7 @@ pub struct CompletionResolveData {
     pub version: Option<i32>,
     pub trigger_character: Option<char>,
     pub for_ref: bool,
-    pub completion_item_hash: Option<[u8; 20]>,
+    pub hash: [u8; 20],
 }
 
 #[derive(Debug, Serialize, Deserialize)]
