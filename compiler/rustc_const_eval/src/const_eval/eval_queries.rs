@@ -3,13 +3,13 @@ use std::sync::atomic::Ordering::Relaxed;
 use either::{Left, Right};
 use rustc_abi::{self as abi, BackendRepr};
 use rustc_hir::def::DefKind;
-use rustc_middle::bug;
-use rustc_middle::mir::interpret::{AllocId, ErrorHandled, InterpErrorInfo};
+use rustc_middle::mir::interpret::{AllocId, ErrorHandled, InterpErrorInfo, ReportedErrorInfo};
 use rustc_middle::mir::{self, ConstAlloc, ConstValue};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::{bug, throw_inval};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument, trace};
@@ -93,18 +93,18 @@ fn eval_body_using_ecx<'tcx, R: InterpretationResult<'tcx>>(
     match intern_result {
         Ok(()) => {}
         Err(InternResult::FoundDanglingPointer) => {
-            return Err(ecx
-                .tcx
-                .dcx()
-                .emit_err(errors::DanglingPtrInFinal { span: ecx.tcx.span, kind: intern_kind }))
-            .into();
+            throw_inval!(AlreadyReported(ReportedErrorInfo::non_const_eval_error(
+                ecx.tcx
+                    .dcx()
+                    .emit_err(errors::DanglingPtrInFinal { span: ecx.tcx.span, kind: intern_kind }),
+            )));
         }
         Err(InternResult::FoundBadMutablePointer) => {
-            return Err(ecx
-                .tcx
-                .dcx()
-                .emit_err(errors::MutablePtrInFinal { span: ecx.tcx.span, kind: intern_kind }))
-            .into();
+            throw_inval!(AlreadyReported(ReportedErrorInfo::non_const_eval_error(
+                ecx.tcx
+                    .dcx()
+                    .emit_err(errors::MutablePtrInFinal { span: ecx.tcx.span, kind: intern_kind }),
+            )));
         }
     }
 
