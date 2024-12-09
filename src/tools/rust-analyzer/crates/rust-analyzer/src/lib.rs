@@ -47,7 +47,7 @@ use self::lsp::ext as lsp_ext;
 #[cfg(test)]
 mod integrated_benchmarks;
 
-use ide::{CompletionItem, CompletionRelevance, TextEdit, TextRange};
+use ide::{CompletionItem, CompletionRelevance};
 use serde::de::DeserializeOwned;
 use tenthash::TentHasher;
 
@@ -65,18 +65,6 @@ pub fn from_json<T: DeserializeOwned>(
 }
 
 fn completion_item_hash(item: &CompletionItem, is_ref_completion: bool) -> [u8; 20] {
-    fn hash_text_range(hasher: &mut TentHasher, text_range: &TextRange) {
-        hasher.update(u32::from(text_range.start()).to_le_bytes());
-        hasher.update(u32::from(text_range.end()).to_le_bytes());
-    }
-
-    fn hash_text_edit(hasher: &mut TentHasher, edit: &TextEdit) {
-        for indel in edit.iter() {
-            hasher.update(&indel.insert);
-            hash_text_range(hasher, &indel.delete);
-        }
-    }
-
     fn hash_completion_relevance(hasher: &mut TentHasher, relevance: &CompletionRelevance) {
         use ide_completion::{
             CompletionRelevancePostfixMatch, CompletionRelevanceReturnType,
@@ -130,8 +118,8 @@ fn completion_item_hash(item: &CompletionItem, is_ref_completion: bool) -> [u8; 
     if let Some(label_detail) = &item.label_detail {
         hasher.update(label_detail);
     }
-    hash_text_range(&mut hasher, &item.source_range);
-    hash_text_edit(&mut hasher, &item.text_edit);
+    // NB: do not hash edits or source range, as those may change between the time the client sends the resolve request
+    // and the time it receives it: some editors do allow changing the buffer between that, leading to ranges being different.
     hasher.update(item.kind.tag());
     hasher.update(&item.lookup);
     if let Some(detail) = &item.detail {
