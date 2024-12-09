@@ -728,7 +728,6 @@ pub mod ops {
                 }
             }
 
-            #[unstable(feature = "async_fn_traits", issue = "none")]
             impl<A: Tuple, F: ?Sized> AsyncFnMut<A> for &F
             where
                 F: AsyncFn<A>,
@@ -746,7 +745,6 @@ pub mod ops {
                 }
             }
 
-            #[unstable(feature = "async_fn_traits", issue = "none")]
             impl<'a, A: Tuple, F: ?Sized> AsyncFnOnce<A> for &'a F
             where
                 F: AsyncFn<A>,
@@ -759,7 +757,6 @@ pub mod ops {
                 }
             }
 
-            #[unstable(feature = "async_fn_traits", issue = "none")]
             impl<A: Tuple, F: ?Sized> AsyncFnMut<A> for &mut F
             where
                 F: AsyncFnMut<A>,
@@ -777,7 +774,6 @@ pub mod ops {
                 }
             }
 
-            #[unstable(feature = "async_fn_traits", issue = "none")]
             impl<'a, A: Tuple, F: ?Sized> AsyncFnOnce<A> for &'a mut F
             where
                 F: AsyncFnMut<A>,
