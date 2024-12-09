@@ -81,7 +81,8 @@ jobs:
         include: ${{ fromJSON(needs.calculate_matrix.outputs.jobs) }}
     steps:
       - name: list env
-        run: ls env:
+        run: |
+          ls env:
         shell: pwsh
 
   # This job isused to tell bors the final status of the build, as there is no practical way to detect
