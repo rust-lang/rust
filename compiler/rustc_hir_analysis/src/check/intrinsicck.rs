@@ -83,6 +83,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
 
                 let (size, ty) = match elem_ty.kind() {
                     ty::Array(ty, len) => {
+                        let len = self.tcx.normalize_erasing_regions(self.typing_env, *len);
                         if let Some(len) = len.try_to_target_usize(self.tcx) {
                             (len, *ty)
                         } else {
