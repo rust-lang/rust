@@ -80,6 +80,9 @@ jobs:
         # Check the `calculate_matrix` job to see how is the matrix defined.
         include: ${{ fromJSON(needs.calculate_matrix.outputs.jobs) }}
     steps:
+      - name: test link
+        run: link --version || true
+
       - if: contains(matrix.os, 'windows')
         uses: msys2/setup-msys2@v2.22.0
         with:
@@ -95,6 +98,9 @@ jobs:
           path-type: inherit
           install: >
             make
+            
+      - name: test link
+        run: link --version || true
 
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
