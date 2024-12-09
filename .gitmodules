@@ -22,10 +22,6 @@
 	path = library/stdarch
 	url = https://github.com/rust-lang/stdarch.git
 	shallow = true
-[submodule "src/doc/rustc-dev-guide"]
-	path = src/doc/rustc-dev-guide
-	url = https://github.com/rust-lang/rustc-dev-guide.git
-	shallow = true
 [submodule "src/doc/edition-guide"]
 	path = src/doc/edition-guide
 	url = https://github.com/rust-lang/edition-guide.git
