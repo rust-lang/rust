@@ -1,4 +1,4 @@
-//! Arbitrary-precision decimal class for fallback algorithms.
+//! Arbitrary-precision decimal type used by fallback algorithms.
 //!
 //! This is only used if the fast-path (native floats) and
 //! the Eisel-Lemire algorithm are unable to unambiguously
@@ -11,6 +11,7 @@
 
 use crate::num::dec2flt::common::{ByteSlice, is_8digits};
 
+/// A decimal floating-point number.
 #[derive(Clone)]
 pub(super) struct Decimal {
     /// The number of significant digits in the decimal.
@@ -30,18 +31,17 @@ impl Default for Decimal {
 }
 
 impl Decimal {
-    /// The maximum number of digits required to unambiguously round a float.
+    /// The maximum number of digits required to unambiguously round up to a 64-bit float.
     ///
-    /// For a double-precision IEEE 754 float, this required 767 digits,
-    /// so we store the max digits + 1.
+    /// For an IEEE 754 binary64 float, this required 767 digits. So we store the max digits + 1.
     ///
     /// We can exactly represent a float in radix `b` from radix 2 if
     /// `b` is divisible by 2. This function calculates the exact number of
     /// digits required to exactly represent that float.
     ///
     /// According to the "Handbook of Floating Point Arithmetic",
-    /// for IEEE754, with emin being the min exponent, p2 being the
-    /// precision, and b being the radix, the number of digits follows as:
+    /// for IEEE754, with `emin` being the min exponent, `p2` being the
+    /// precision, and `b` being the radix, the number of digits follows as:
     ///
     /// `−emin + p2 + ⌊(emin + 1) log(2, b) − log(1 − 2^(−p2), b)⌋`
     ///
@@ -56,11 +56,14 @@ impl Decimal {
     /// In Python:
     ///     `-emin + p2 + math.floor((emin+ 1)*math.log(2, b)-math.log(1-2**(-p2), b))`
     pub(super) const MAX_DIGITS: usize = 768;
-    /// The max digits that can be exactly represented in a 64-bit integer.
+    /// The max decimal digits that can be exactly represented in a 64-bit integer.
     pub(super) const MAX_DIGITS_WITHOUT_OVERFLOW: usize = 19;
     pub(super) const DECIMAL_POINT_RANGE: i32 = 2047;
 
-    /// Append a digit to the buffer.
+    /// Append a digit to the buffer if it fits.
+    // FIXME(tgross35): it may be better for this to return an option
+    // FIXME(tgross35): incrementing the digit counter even if we don't push anything
+    // seems incorrect.
     pub(super) fn try_add_digit(&mut self, digit: u8) {
         if self.num_digits < Self::MAX_DIGITS {
             self.digits[self.num_digits] = digit;
@@ -69,6 +72,7 @@ impl Decimal {
     }
 
     /// Trim trailing zeros from the buffer.
+    // FIXME(tgross35): this could be `.rev().position()` if perf is okay
     pub(super) fn trim(&mut self) {
         // All of the following calls to `Decimal::trim` can't panic because:
         //
@@ -86,7 +90,7 @@ impl Decimal {
     pub(super) fn round(&self) -> u64 {
         if self.num_digits == 0 || self.decimal_point < 0 {
             return 0;
-        } else if self.decimal_point > 18 {
+        } else if self.decimal_point >= Self::MAX_DIGITS_WITHOUT_OVERFLOW as i32 {
             return 0xFFFF_FFFF_FFFF_FFFF_u64;
         }
         let dp = self.decimal_point as usize;
