@@ -1,7 +1,7 @@
 use std::{
     cell::{Cell, RefCell},
-    fs,
-    sync::Once,
+    env, fs,
+    sync::{Once, OnceLock},
     time::Duration,
 };
 
@@ -127,7 +127,53 @@ impl Project<'_> {
     }
 
     pub(crate) fn server(self) -> Server {
-        static CONFIG_DIR_LOCK: Mutex<()> = Mutex::new(());
+        Project::server_with_lock(self, false)
+    }
+
+    /// `prelock` : Forcefully acquire a lock that will maintain the path to the config dir throughout the whole test.
+    ///
+    /// When testing we set the user config dir by setting an envvar `__TEST_RA_USER_CONFIG_DIR`.
+    /// This value must be maintained until the end of a test case. When tests run in parallel
+    /// this value may change thus making the tests flaky. As such, we use a `MutexGuard` that locks
+    /// the process until `Server` is dropped. To optimize parallelization we use a lock only when it is
+    /// needed, that is when a test uses config directory to do stuff. Our naive approach is to use a lock
+    /// if there is a path to config dir in the test fixture. However, in certain cases we create a
+    /// file in the config dir after server is run, something where our naive approach comes short.
+    /// Using a `prelock` allows us to force a lock when we know we need it.
+    pub(crate) fn server_with_lock(self, config_lock: bool) -> Server {
+        static CONFIG_DIR_LOCK: OnceLock<(Utf8PathBuf, Mutex<()>)> = OnceLock::new();
+
+        let config_dir_guard = if config_lock {
+            Some({
+                let (path, mutex) = CONFIG_DIR_LOCK.get_or_init(|| {
+                    let value = TestDir::new().keep().path().to_owned();
+                    env::set_var("__TEST_RA_USER_CONFIG_DIR", &value);
+                    (value, Mutex::new(()))
+                });
+                #[allow(dyn_drop)]
+                (mutex.lock(), {
+                    Box::new({
+                        struct Dropper(Utf8PathBuf);
+                        impl Drop for Dropper {
+                            fn drop(&mut self) {
+                                for entry in fs::read_dir(&self.0).unwrap() {
+                                    let path = entry.unwrap().path();
+                                    if path.is_file() {
+                                        fs::remove_file(path).unwrap();
+                                    } else if path.is_dir() {
+                                        fs::remove_dir_all(path).unwrap();
+                                    }
+                                }
+                            }
+                        }
+                        Dropper(path.clone())
+                    }) as Box<dyn Drop>
+                })
+            })
+        } else {
+            None
+        };
+
         let tmp_dir = self.tmp_dir.unwrap_or_else(|| {
             if self.root_dir_contains_symlink {
                 TestDir::new_symlink()
@@ -160,13 +206,9 @@ impl Project<'_> {
         assert!(mini_core.is_none());
         assert!(toolchain.is_none());
 
-        let mut config_dir_guard = None;
         for entry in fixture {
             if let Some(pth) = entry.path.strip_prefix("/$$CONFIG_DIR$$") {
-                if config_dir_guard.is_none() {
-                    config_dir_guard = Some(CONFIG_DIR_LOCK.lock());
-                }
-                let path = Config::user_config_path().unwrap().join(&pth['/'.len_utf8()..]);
+                let path = Config::user_config_dir_path().unwrap().join(&pth['/'.len_utf8()..]);
                 fs::create_dir_all(path.parent().unwrap()).unwrap();
                 fs::write(path.as_path(), entry.text.as_bytes()).unwrap();
             } else {
@@ -269,12 +311,14 @@ pub(crate) struct Server {
     client: Connection,
     /// XXX: remove the tempdir last
     dir: TestDir,
-    _config_dir_guard: Option<MutexGuard<'static, ()>>,
+    #[allow(dyn_drop)]
+    _config_dir_guard: Option<(MutexGuard<'static, ()>, Box<dyn Drop>)>,
 }
 
 impl Server {
+    #[allow(dyn_drop)]
     fn new(
-        config_dir_guard: Option<MutexGuard<'static, ()>>,
+        config_dir_guard: Option<(MutexGuard<'static, ()>, Box<dyn Drop>)>,
         dir: TestDir,
         config: Config,
     ) -> Server {
