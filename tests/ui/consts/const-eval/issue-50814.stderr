@@ -10,6 +10,14 @@ note: erroneous constant encountered
 LL |     &Sum::<U8, U8>::MAX
    |      ^^^^^^^^^^^^^^^^^^
 
+note: erroneous constant encountered
+  --> $DIR/issue-50814.rs:21:6
+   |
+LL |     &Sum::<U8, U8>::MAX
+   |      ^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error[E0080]: evaluation of `<Sum<U8, U8> as Unsigned>::MAX` failed
   --> $DIR/issue-50814.rs:15:21
    |
