@@ -24,6 +24,7 @@ anyhow.workspace = true
 crossbeam-channel.workspace = true
 dirs = "5.0.1"
 dissimilar.workspace = true
+ide-completion.workspace = true
 itertools.workspace = true
 scip = "0.5.1"
 lsp-types = { version = "=0.95.0", features = ["proposed"] }
@@ -34,6 +35,7 @@ rayon.workspace = true
 rustc-hash.workspace = true
 serde_json = { workspace = true, features = ["preserve_order"] }
 serde.workspace = true
+tenthash = "0.4.0"
 num_cpus = "1.15.0"
 mimalloc = { version = "0.1.30", default-features = false, optional = true }
 lsp-server.workspace = true
@@ -90,13 +92,13 @@ jemalloc = ["jemallocator", "profile/jemalloc"]
 force-always-assert = ["always-assert/force"]
 sysroot-abi = []
 in-rust-tree = [
-  "sysroot-abi",
-  "syntax/in-rust-tree",
-  "parser/in-rust-tree",
-  "hir/in-rust-tree",
-  "hir-def/in-rust-tree",
-  "hir-ty/in-rust-tree",
-  "load-cargo/in-rust-tree",
+    "sysroot-abi",
+    "syntax/in-rust-tree",
+    "parser/in-rust-tree",
+    "hir/in-rust-tree",
+    "hir-def/in-rust-tree",
+    "hir-ty/in-rust-tree",
+    "load-cargo/in-rust-tree",
 ]
 
 [lints]

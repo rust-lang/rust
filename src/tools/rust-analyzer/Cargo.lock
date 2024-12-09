@@ -1659,6 +1659,7 @@ dependencies = [
  "hir-def",
  "hir-ty",
  "ide",
+ "ide-completion",
  "ide-db",
  "ide-ssr",
  "intern",
@@ -1687,6 +1688,7 @@ dependencies = [
  "stdx",
  "syntax",
  "syntax-bridge",
+ "tenthash",
  "test-fixture",
  "test-utils",
  "tikv-jemallocator",
@@ -1989,6 +1991,12 @@ dependencies = [
  "tracing",
  "tt",
 ]
+
+[[package]]
+name = "tenthash"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d67f9f3cf70e0852941d7bc3cb884b49b24b8ee956baf91ad0abae31f5ef11fb"
 
 [[package]]
 name = "test-fixture"

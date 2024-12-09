@@ -1,5 +1,5 @@
 <!---
-lsp/ext.rs hash: 96f88b7a5d0080c6
+lsp/ext.rs hash: 7d77940d7e63a8b
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:

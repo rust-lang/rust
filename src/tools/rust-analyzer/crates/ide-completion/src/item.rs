@@ -346,8 +346,7 @@ pub enum CompletionItemKind {
 impl_from!(SymbolKind for CompletionItemKind);
 
 impl CompletionItemKind {
-    #[cfg(test)]
-    pub(crate) fn tag(self) -> &'static str {
+    pub fn tag(self) -> &'static str {
         match self {
             CompletionItemKind::SymbolKind(kind) => match kind {
                 SymbolKind::Attribute => "at",

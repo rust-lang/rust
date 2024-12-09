@@ -21,6 +21,7 @@ use serde_json::to_value;
 use vfs::AbsPath;
 
 use crate::{
+    completion_item_hash,
     config::{CallInfoConfig, Config},
     global_state::GlobalStateSnapshot,
     line_index::{LineEndings, LineIndex, PositionEncoding},
@@ -274,6 +275,11 @@ fn completion_item(
     completion_trigger_character: Option<char>,
     item: CompletionItem,
 ) {
+    let original_completion_item = if fields_to_resolve == &CompletionFieldsToResolve::empty() {
+        None
+    } else {
+        Some(item.clone())
+    };
     let insert_replace_support = config.insert_replace_support().then_some(tdpp.position);
     let ref_match = item.ref_match();
 
@@ -393,16 +399,17 @@ fn completion_item(
             Vec::new()
         };
     let (ref_resolve_data, resolve_data) = if something_to_resolve || !imports.is_empty() {
-        let mut item_index = acc.len();
         let ref_resolve_data = if ref_match.is_some() {
             let ref_resolve_data = lsp_ext::CompletionResolveData {
                 position: tdpp.clone(),
                 imports: Vec::new(),
                 version,
                 trigger_character: completion_trigger_character,
-                completion_item_index: item_index,
+                for_ref: true,
+                completion_item_hash: original_completion_item
+                    .as_ref()
+                    .map(|item| completion_item_hash(item, true)),
             };
-            item_index += 1;
             Some(to_value(ref_resolve_data).unwrap())
         } else {
             None
@@ -412,7 +419,10 @@ fn completion_item(
             imports,
             version,
             trigger_character: completion_trigger_character,
-            completion_item_index: item_index,
+            for_ref: false,
+            completion_item_hash: original_completion_item
+                .as_ref()
+                .map(|item| completion_item_hash(item, false)),
         };
         (ref_resolve_data, Some(to_value(resolve_data).unwrap()))
     } else {

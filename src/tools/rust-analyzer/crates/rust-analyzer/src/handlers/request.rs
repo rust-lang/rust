@@ -36,6 +36,7 @@ use triomphe::Arc;
 use vfs::{AbsPath, AbsPathBuf, FileId, VfsPath};
 
 use crate::{
+    completion_item_hash,
     config::{Config, RustfmtConfig, WorkspaceSymbolConfig},
     diagnostics::convert_diagnostic,
     global_state::{FetchWorkspaceRequest, GlobalState, GlobalStateSnapshot},
@@ -1122,12 +1123,15 @@ pub(crate) fn handle_completion_resolve(
         return Ok(original_completion);
     };
     let source_root = snap.analysis.source_root_id(file_id)?;
+    let Some(completion_hash_for_resolve) = &resolve_data.completion_item_hash else {
+        return Ok(original_completion);
+    };
 
     let mut forced_resolve_completions_config = snap.config.completion(Some(source_root));
     forced_resolve_completions_config.fields_to_resolve = CompletionFieldsToResolve::empty();
 
     let position = FilePosition { file_id, offset };
-    let Some(resolved_completions) = snap.analysis.completions(
+    let Some(completions) = snap.analysis.completions(
         &forced_resolve_completions_config,
         position,
         resolve_data.trigger_character,
@@ -1135,6 +1139,14 @@ pub(crate) fn handle_completion_resolve(
     else {
         return Ok(original_completion);
     };
+
+    let Some(corresponding_completion) = completions.into_iter().find(|completion_item| {
+        let hash = completion_item_hash(&completion_item, resolve_data.for_ref);
+        &hash == completion_hash_for_resolve
+    }) else {
+        return Ok(original_completion);
+    };
+
     let mut resolved_completions = to_proto::completion_items(
         &snap.config,
         &forced_resolve_completions_config.fields_to_resolve,
@@ -1142,15 +1154,11 @@ pub(crate) fn handle_completion_resolve(
         snap.file_version(position.file_id),
         resolve_data.position,
         resolve_data.trigger_character,
-        resolved_completions,
+        vec![corresponding_completion],
     );
-
-    let mut resolved_completion =
-        if resolved_completions.get(resolve_data.completion_item_index).is_some() {
-            resolved_completions.swap_remove(resolve_data.completion_item_index)
-        } else {
-            return Ok(original_completion);
-        };
+    let Some(mut resolved_completion) = resolved_completions.pop() else {
+        return Ok(original_completion);
+    };
 
     if !resolve_data.imports.is_empty() {
         let additional_edits = snap
