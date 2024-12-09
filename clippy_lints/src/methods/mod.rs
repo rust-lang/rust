@@ -1864,7 +1864,6 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// // example code where clippy issues a warning
     /// let opt: Option<u32> = None;
     ///
     /// opt.unwrap_or_else(|| 42);
@@ -3839,13 +3838,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// // example code where clippy issues a warning
     /// vec![Some(1)].into_iter().filter(Option::is_some);
     ///
     /// ```
     /// Use instead:
     /// ```no_run
-    /// // example code which does not raise clippy warning
     /// vec![Some(1)].into_iter().flatten();
     /// ```
     #[clippy::version = "1.77.0"]
@@ -3865,13 +3862,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// // example code where clippy issues a warning
     /// vec![Ok::<i32, String>(1)].into_iter().filter(Result::is_ok);
     ///
     /// ```
     /// Use instead:
     /// ```no_run
-    /// // example code which does not raise clippy warning
     /// vec![Ok::<i32, String>(1)].into_iter().flatten();
     /// ```
     #[clippy::version = "1.77.0"]
