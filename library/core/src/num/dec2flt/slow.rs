@@ -105,5 +105,5 @@ pub(crate) fn parse_long_mantissa<F: RawFloat>(s: &[u8]) -> BiasedFp {
     }
     // Zero out all the bits above the explicit mantissa bits.
     mantissa &= (1_u64 << F::MANTISSA_EXPLICIT_BITS) - 1;
-    BiasedFp { f: mantissa, e: power2 }
+    BiasedFp { m: mantissa, p_biased: power2 }
 }

@@ -233,8 +233,8 @@ pub fn pfe_invalid() -> ParseFloatError {
 
 /// Converts a `BiasedFp` to the closest machine float type.
 fn biased_fp_to_float<T: RawFloat>(x: BiasedFp) -> T {
-    let mut word = x.f;
-    word |= (x.e as u64) << T::MANTISSA_EXPLICIT_BITS;
+    let mut word = x.m;
+    word |= (x.p_biased as u64) << T::MANTISSA_EXPLICIT_BITS;
     T::from_u64_bits(word)
 }
 
@@ -272,12 +272,15 @@ pub fn dec2flt<F: RawFloat>(s: &str) -> Result<F, ParseFloatError> {
     // redundantly using the Eisel-Lemire algorithm if it was unable to
     // correctly round on the first pass.
     let mut fp = compute_float::<F>(num.exponent, num.mantissa);
-    if num.many_digits && fp.e >= 0 && fp != compute_float::<F>(num.exponent, num.mantissa + 1) {
-        fp.e = -1;
+    if num.many_digits
+        && fp.p_biased >= 0
+        && fp != compute_float::<F>(num.exponent, num.mantissa + 1)
+    {
+        fp.p_biased = -1;
     }
     // Unable to correctly round the float using the Eisel-Lemire algorithm.
     // Fallback to a slower, but always correct algorithm.
-    if fp.e < 0 {
+    if fp.p_biased < 0 {
         fp = parse_long_mantissa::<F>(s);
     }
 

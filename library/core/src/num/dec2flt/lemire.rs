@@ -73,7 +73,7 @@ pub fn compute_float<F: RawFloat>(q: i64, mut w: u64) -> BiasedFp {
         mantissa += mantissa & 1;
         mantissa >>= 1;
         power2 = (mantissa >= (1_u64 << F::MANTISSA_EXPLICIT_BITS)) as i32;
-        return BiasedFp { f: mantissa, e: power2 };
+        return BiasedFp { m: mantissa, p_biased: power2 };
     }
     // Need to handle rounding ties. Normally, we need to round up,
     // but if we fall right in between and we have an even basis, we
@@ -111,7 +111,7 @@ pub fn compute_float<F: RawFloat>(q: i64, mut w: u64) -> BiasedFp {
         // Exponent is above largest normal value, must be infinite.
         return fp_inf;
     }
-    BiasedFp { f: mantissa, e: power2 }
+    BiasedFp { m: mantissa, p_biased: power2 }
 }
 
 /// Calculate a base 2 exponent from a decimal exponent.

@@ -63,19 +63,20 @@ pub(crate) fn is_8digits(v: u64) -> bool {
     (a | b) & 0x8080_8080_8080_8080 == 0
 }
 
-/// A custom 64-bit floating point type, representing `f * 2^e`.
-/// e is biased, so it be directly shifted into the exponent bits.
+/// A custom 64-bit floating point type, representing `m * 2^p`.
+/// p is biased, so it be directly shifted into the exponent bits.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
 pub struct BiasedFp {
     /// The significant digits.
-    pub f: u64,
+    pub m: u64,
     /// The biased, binary exponent.
-    pub e: i32,
+    pub p_biased: i32,
 }
 
 impl BiasedFp {
+    /// Represent `0 ^ p`
     #[inline]
-    pub const fn zero_pow2(e: i32) -> Self {
-        Self { f: 0, e }
+    pub const fn zero_pow2(p_biased: i32) -> Self {
+        Self { m: 0, p_biased }
     }
 }
