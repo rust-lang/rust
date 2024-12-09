@@ -992,7 +992,7 @@ Show full signature of the callable. Only shows parameters if disabled.
 --
 Show documentation.
 --
-[[rust-analyzer.typing.excludeChars]]rust-analyzer.typing.excludeChars (default: `"<"`)::
+[[rust-analyzer.typing.excludeChars]]rust-analyzer.typing.excludeChars (default: `"|<"`)::
 +
 --
 Specify the characters to exclude from triggering typing assists. The default trigger characters are `.`, `=`, `<`, `>`, `{`, and `(`.
