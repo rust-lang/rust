@@ -19,7 +19,6 @@ use rustc_errors::emitter::{
     DynEmitter, HumanEmitter, HumanReadableErrorType, OutputTheme, stderr_destination,
 };
 use rustc_errors::json::JsonEmitter;
-use rustc_errors::registry::Registry;
 use rustc_errors::{
     Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, FatalAbort,
     FluentBundle, LazyFallbackBundle, TerminalUrl, fallback_fluent_bundle,
@@ -276,11 +275,11 @@ impl Session {
     }
 
     /// Invoked all the way at the end to finish off diagnostics printing.
-    pub fn finish_diagnostics(&self, registry: &Registry) -> Option<ErrorGuaranteed> {
+    pub fn finish_diagnostics(&self) -> Option<ErrorGuaranteed> {
         let mut guar = None;
         guar = guar.or(self.check_miri_unleashed_features());
         guar = guar.or(self.dcx().emit_stashed_diagnostics());
-        self.dcx().print_error_count(registry);
+        self.dcx().print_error_count();
         if self.opts.json_future_incompat {
             self.dcx().emit_future_breakage_report();
         }
@@ -880,7 +879,6 @@ impl Session {
 #[allow(rustc::bad_opt_access)]
 fn default_emitter(
     sopts: &config::Options,
-    registry: rustc_errors::registry::Registry,
     source_map: Lrc<SourceMap>,
     bundle: Option<Lrc<FluentBundle>>,
     fallback_bundle: LazyFallbackBundle,
@@ -943,7 +941,6 @@ fn default_emitter(
                 json_rendered,
                 color_config,
             )
-            .registry(Some(registry))
             .fluent_bundle(bundle)
             .ui_testing(sopts.unstable_opts.ui_testing)
             .ignored_directories_in_source_blocks(
@@ -999,11 +996,11 @@ pub fn build_session(
         sopts.unstable_opts.translate_directionality_markers,
     );
     let source_map = rustc_span::source_map::get_source_map().unwrap();
-    let emitter =
-        default_emitter(&sopts, registry, Lrc::clone(&source_map), bundle, fallback_bundle);
+    let emitter = default_emitter(&sopts, Lrc::clone(&source_map), bundle, fallback_bundle);
 
-    let mut dcx =
-        DiagCtxt::new(emitter).with_flags(sopts.unstable_opts.dcx_flags(can_emit_warnings));
+    let mut dcx = DiagCtxt::new(emitter)
+        .with_flags(sopts.unstable_opts.dcx_flags(can_emit_warnings))
+        .with_registry(registry);
     if let Some(ice_file) = ice_file {
         dcx = dcx.with_ice_file(ice_file);
     }

@@ -99,10 +99,7 @@ impl Expander {
 /// If this function is intended to be used with command line arguments,
 /// `argv[0]` must be removed prior to calling it manually.
 #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
-pub fn arg_expand_all(
-    early_dcx: &EarlyDiagCtxt,
-    at_args: &[String],
-) -> Result<Vec<String>, ErrorGuaranteed> {
+pub fn arg_expand_all(early_dcx: &EarlyDiagCtxt, at_args: &[String]) -> Vec<String> {
     let mut expander = Expander::default();
     let mut result = Ok(());
     for arg in at_args {
@@ -110,7 +107,10 @@ pub fn arg_expand_all(
             result = Err(early_dcx.early_err(format!("failed to load argument file: {err}")));
         }
     }
-    result.map(|()| expander.finish())
+    if let Err(guar) = result {
+        guar.raise_fatal();
+    }
+    expander.finish()
 }
 
 /// Gets the raw unprocessed command-line arguments as Unicode strings, without doing any further

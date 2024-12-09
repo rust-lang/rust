@@ -3,7 +3,6 @@
 //@only-on-host
 //@compile-flags: -Zmiri-permissive-provenance
 
-
 #![feature(box_as_ptr)]
 
 use std::mem::MaybeUninit;
@@ -60,7 +59,7 @@ fn test_init_array() {
     const LEN: usize = 3;
     let mut array = MaybeUninit::<[i32; LEN]>::uninit();
     let val = 31;
-    
+
     let array = unsafe {
         init_array(array.as_mut_ptr().cast::<i32>(), LEN, val);
         array.assume_init()
@@ -72,7 +71,7 @@ fn test_init_array() {
 fn test_init_static_inner() {
     #[repr(C)]
     struct SyncPtr {
-        ptr: *mut i32
+        ptr: *mut i32,
     }
     unsafe impl Sync for SyncPtr {}
 
@@ -183,16 +182,11 @@ fn test_swap_ptr_triple_dangling() {
     let ptr = Box::as_ptr(&b);
     drop(b);
     let z = 121;
-    let triple = Triple {
-        ptr0: &raw const x,
-        ptr1: ptr,
-        ptr2: &raw const z
-    };
+    let triple = Triple { ptr0: &raw const x, ptr1: ptr, ptr2: &raw const z };
 
     unsafe { swap_ptr_triple_dangling(&triple) }
     assert_eq!(unsafe { *triple.ptr2 }, x);
 }
-
 
 /// Test function that directly returns its pointer argument.
 fn test_return_ptr() {

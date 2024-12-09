@@ -3,6 +3,7 @@
     clippy::manual_range_contains,
     clippy::useless_format,
     clippy::field_reassign_with_default,
+    clippy::needless_lifetimes,
     rustc::diagnostic_outside_of_impl,
     rustc::untranslatable_diagnostic
 )]
@@ -289,7 +290,8 @@ fn run_compiler(
     let exit_code = rustc_driver::catch_with_exit_code(move || {
         rustc_driver::RunCompiler::new(&args, callbacks)
             .set_using_internal_features(using_internal_features)
-            .run()
+            .run();
+        Ok(())
     });
     std::process::exit(exit_code)
 }

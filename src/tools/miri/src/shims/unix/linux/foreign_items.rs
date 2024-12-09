@@ -1,11 +1,12 @@
 use rustc_abi::ExternAbi;
 use rustc_span::Symbol;
 
-use self::shims::unix::linux::epoll::EvalContextExt as _;
-use self::shims::unix::linux::eventfd::EvalContextExt as _;
 use self::shims::unix::linux::mem::EvalContextExt as _;
-use self::shims::unix::linux::syscall::syscall;
+use self::shims::unix::linux_like::epoll::EvalContextExt as _;
+use self::shims::unix::linux_like::eventfd::EvalContextExt as _;
+use self::shims::unix::linux_like::syscall::syscall;
 use crate::machine::{SIGRTMAX, SIGRTMIN};
+use crate::shims::unix::foreign_items::EvalContextExt as _;
 use crate::shims::unix::*;
 use crate::*;
 
@@ -142,6 +143,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
                 let ptr = this.mremap(old_address, old_size, new_size, flags)?;
                 this.write_scalar(ptr, dest)?;
+            }
+            "__xpg_strerror_r" => {
+                let [errnum, buf, buflen] =
+                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                let result = this.strerror_r(errnum, buf, buflen)?;
+                this.write_scalar(result, dest)?;
             }
             "__errno_location" => {
                 let [] = this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;

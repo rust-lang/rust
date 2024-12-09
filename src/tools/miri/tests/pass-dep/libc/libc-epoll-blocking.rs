@@ -1,4 +1,4 @@
-//@only-target: linux
+//@only-target: linux android
 // test_epoll_block_then_unblock and test_epoll_race depend on a deterministic schedule.
 //@compile-flags: -Zmiri-preemption-rate=0
 

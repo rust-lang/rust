@@ -27,6 +27,7 @@ use termcolor::{Buffer, BufferWriter, Color, ColorChoice, ColorSpec, StandardStr
 use tracing::{debug, instrument, trace, warn};
 
 use crate::diagnostic::DiagLocation;
+use crate::registry::Registry;
 use crate::snippet::{
     Annotation, AnnotationColumn, AnnotationType, Line, MultilineAnnotation, Style, StyledString,
 };
@@ -181,7 +182,7 @@ pub type DynEmitter = dyn Emitter + DynSend;
 /// Emitter trait for emitting errors.
 pub trait Emitter: Translate {
     /// Emit a structured diagnostic.
-    fn emit_diagnostic(&mut self, diag: DiagInner);
+    fn emit_diagnostic(&mut self, diag: DiagInner, registry: &Registry);
 
     /// Emit a notification that an artifact has been output.
     /// Currently only supported for the JSON format.
@@ -189,7 +190,7 @@ pub trait Emitter: Translate {
 
     /// Emit a report about future breakage.
     /// Currently only supported for the JSON format.
-    fn emit_future_breakage_report(&mut self, _diags: Vec<DiagInner>) {}
+    fn emit_future_breakage_report(&mut self, _diags: Vec<DiagInner>, _registry: &Registry) {}
 
     /// Emit list of unused externs.
     /// Currently only supported for the JSON format.
@@ -500,7 +501,7 @@ impl Emitter for HumanEmitter {
         self.sm.as_deref()
     }
 
-    fn emit_diagnostic(&mut self, mut diag: DiagInner) {
+    fn emit_diagnostic(&mut self, mut diag: DiagInner, _registry: &Registry) {
         let fluent_args = to_fluent_args(diag.args.iter());
 
         let mut suggestions = diag.suggestions.unwrap_tag();
@@ -561,7 +562,7 @@ impl Emitter for SilentEmitter {
         None
     }
 
-    fn emit_diagnostic(&mut self, mut diag: DiagInner) {
+    fn emit_diagnostic(&mut self, mut diag: DiagInner, _registry: &Registry) {
         if self.emit_fatal_diagnostic && diag.level == Level::Fatal {
             if let Some(fatal_note) = &self.fatal_note {
                 diag.sub(Level::Note, fatal_note.clone(), MultiSpan::new());

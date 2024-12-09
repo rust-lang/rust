@@ -5,9 +5,9 @@ use std::sync::Arc;
 use rustc_ast::{LitKind, MetaItemKind, token};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::jobserver;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::Lrc;
-use rustc_data_structures::{defer, jobserver};
 use rustc_errors::registry::Registry;
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed};
 use rustc_lint::LintStore;
@@ -441,7 +441,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                     temps_dir,
                 },
                 bundle,
-                config.registry.clone(),
+                config.registry,
                 locale_resources,
                 config.lint_caps,
                 target,
@@ -492,32 +492,34 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 
             // There are two paths out of `f`.
             // - Normal exit.
-            // - Panic, e.g. triggered by `abort_if_errors`.
+            // - Panic, e.g. triggered by `abort_if_errors` or a fatal error.
             //
             // We must run `finish_diagnostics` in both cases.
-            let res = {
-                // If `f` panics, `finish_diagnostics` will run during
-                // unwinding because of the `defer`.
-                let sess_abort_guard = defer(|| {
-                    compiler.sess.finish_diagnostics(&config.registry);
-                });
+            let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(&compiler)));
 
-                let res = f(&compiler);
+            compiler.sess.finish_diagnostics();
 
-                // If `f` doesn't panic, `finish_diagnostics` will run
-                // normally when `sess_abort_guard` is dropped.
-                drop(sess_abort_guard);
-
-                // If error diagnostics have been emitted, we can't return an
-                // error directly, because the return type of this function
-                // is `R`, not `Result<R, E>`. But we need to communicate the
-                // errors' existence to the caller, otherwise the caller might
-                // mistakenly think that no errors occurred and return a zero
-                // exit code. So we abort (panic) instead, similar to if `f`
-                // had panicked.
+            // If error diagnostics have been emitted, we can't return an
+            // error directly, because the return type of this function
+            // is `R`, not `Result<R, E>`. But we need to communicate the
+            // errors' existence to the caller, otherwise the caller might
+            // mistakenly think that no errors occurred and return a zero
+            // exit code. So we abort (panic) instead, similar to if `f`
+            // had panicked.
+            if res.is_ok() {
                 compiler.sess.dcx().abort_if_errors();
+            }
 
-                res
+            // Also make sure to flush delayed bugs as if we panicked, the
+            // bugs would be flushed by the Drop impl of DiagCtxt while
+            // unwinding, which would result in an abort with
+            // "panic in a destructor during cleanup".
+            compiler.sess.dcx().flush_delayed();
+
+            let res = match res {
+                Ok(res) => res,
+                // Resume unwinding if a panic happened.
+                Err(err) => std::panic::resume_unwind(err),
             };
 
             let prof = compiler.sess.prof.clone();
