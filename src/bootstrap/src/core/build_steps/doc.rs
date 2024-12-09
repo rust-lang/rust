@@ -85,6 +85,7 @@ book!(
     RustByExample, "src/doc/rust-by-example", "rust-by-example", &["ja", "zh"], submodule;
     RustdocBook, "src/doc/rustdoc", "rustdoc", &[];
     StyleGuide, "src/doc/style-guide", "style-guide", &[];
+    RustcDevGuide, "src/doc/rustc-dev-guide", "rustc-dev-guide", &[];
 );
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]

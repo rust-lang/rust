@@ -994,6 +994,7 @@ impl<'a> Builder<'a> {
                 doc::EmbeddedBook,
                 doc::EditionGuide,
                 doc::StyleGuide,
+                doc::RustcDevGuide,
                 doc::Tidy,
                 doc::Bootstrap,
                 doc::Releases,
