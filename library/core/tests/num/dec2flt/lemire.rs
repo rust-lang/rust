@@ -2,12 +2,12 @@ use core::num::dec2flt::lemire::compute_float;
 
 fn compute_float32(q: i64, w: u64) -> (i32, u64) {
     let fp = compute_float::<f32>(q, w);
-    (fp.e, fp.f)
+    (fp.p_biased, fp.m)
 }
 
 fn compute_float64(q: i64, w: u64) -> (i32, u64) {
     let fp = compute_float::<f64>(q, w);
-    (fp.e, fp.f)
+    (fp.p_biased, fp.m)
 }
 
 #[test]
