@@ -58,3 +58,8 @@ print-type-size     variant `Returned`: 1024 bytes
 print-type-size         upvar `.t`: 1024 bytes
 print-type-size     variant `Panicked`: 1024 bytes
 print-type-size         upvar `.t`: 1024 bytes
+print-type-size type: `std::task::Poll<()>`: 1 bytes, alignment: 1 bytes
+print-type-size     discriminant: 1 bytes
+print-type-size     variant `Ready`: 0 bytes
+print-type-size         field `.0`: 0 bytes
+print-type-size     variant `Pending`: 0 bytes

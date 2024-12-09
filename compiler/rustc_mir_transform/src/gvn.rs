@@ -107,13 +107,13 @@ use rustc_span::def_id::DefId;
 use smallvec::SmallVec;
 use tracing::{debug, instrument, trace};
 
-use crate::ssa::{AssignedValue, SsaLocals};
+use crate::ssa::{AssignedValue, SsaAnalysis, SsaLocals};
 
 pub(super) struct GVN;
 
 impl<'tcx> crate::MirPass<'tcx> for GVN {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 2
+        sess.mir_opt_level() >= 1
     }
 
     #[instrument(level = "trace", skip(self, tcx, body))]
@@ -121,7 +121,11 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
         debug!(def_id = ?body.source.def_id());
 
         let typing_env = body.typing_env(tcx);
-        let ssa = SsaLocals::new(tcx, body, typing_env);
+        let ssa_analysis = match tcx.sess.mir_opt_level() {
+            0 | 1 => SsaAnalysis::Partial,
+            _ => SsaAnalysis::Full,
+        };
+        let ssa = SsaLocals::new(tcx, body, typing_env, ssa_analysis);
         // Clone dominators because we need them while mutating the body.
         let dominators = body.basic_blocks.dominators().clone();
 

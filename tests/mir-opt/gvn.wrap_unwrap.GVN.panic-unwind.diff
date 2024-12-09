@@ -31,7 +31,6 @@
       }
   
       bb2: {
-          StorageLive(_6);
           _6 = begin_panic::<&str>(const "explicit panic") -> unwind continue;
       }
   

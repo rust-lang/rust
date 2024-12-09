@@ -69,7 +69,6 @@
           StorageDead(_5);
           StorageDead(_4);
           StorageDead(_3);
-          _0 = const ();
           StorageDead(_2);
 -         StorageDead(_1);
 +         nop;

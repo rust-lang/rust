@@ -55,7 +55,6 @@
 +         _4 = const (1_usize, 2_usize);
 +         _3 = const Indirect { alloc_id: ALLOC1, offset: Size(0 bytes) }: *const [u8];
           StorageDead(_4);
-          StorageLive(_5);
           StorageLive(_6);
           StorageLive(_7);
 -         _7 = copy _1;
@@ -73,8 +72,6 @@
   
       bb1: {
           StorageDead(_6);
-          StorageDead(_5);
-          StorageLive(_9);
           StorageLive(_10);
           StorageLive(_11);
 -         _11 = copy _1;
@@ -92,8 +89,6 @@
   
       bb2: {
           StorageDead(_10);
-          StorageDead(_9);
-          StorageLive(_13);
           StorageLive(_14);
           StorageLive(_15);
 -         _15 = copy _1;
@@ -111,8 +106,6 @@
   
       bb3: {
           StorageDead(_14);
-          StorageDead(_13);
-          StorageLive(_17);
           StorageLive(_18);
           StorageLive(_19);
 -         _19 = copy _1;
@@ -130,8 +123,6 @@
   
       bb4: {
           StorageDead(_18);
-          StorageDead(_17);
-          StorageLive(_21);
           StorageLive(_22);
           StorageLive(_23);
 -         _23 = copy _1;
@@ -149,8 +140,6 @@
   
       bb5: {
           StorageDead(_22);
-          StorageDead(_21);
-          StorageLive(_25);
           StorageLive(_26);
           StorageLive(_27);
 -         _27 = copy _1;
@@ -168,8 +157,6 @@
   
       bb6: {
           StorageDead(_26);
-          StorageDead(_25);
-          _0 = const ();
 -         StorageDead(_3);
 -         StorageDead(_1);
 +         nop;
