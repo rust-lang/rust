@@ -71,7 +71,7 @@ fn completion_item_hash(item: &CompletionItem, is_ref_completion: bool) -> [u8; 
             CompletionRelevanceTypeMatch,
         };
 
-        hasher.update(&[
+        hasher.update([
             u8::from(relevance.exact_name_match),
             u8::from(relevance.is_local),
             u8::from(relevance.is_name_already_imported),
@@ -86,7 +86,7 @@ fn completion_item_hash(item: &CompletionItem, is_ref_completion: bool) -> [u8; 
             hasher.update(label);
         }
         if let Some(trait_) = &relevance.trait_ {
-            hasher.update(&[u8::from(trait_.is_op_method), u8::from(trait_.notable_trait)]);
+            hasher.update([u8::from(trait_.is_op_method), u8::from(trait_.notable_trait)]);
         }
         if let Some(postfix_match) = &relevance.postfix_match {
             let label = match postfix_match {
@@ -96,7 +96,7 @@ fn completion_item_hash(item: &CompletionItem, is_ref_completion: bool) -> [u8; 
             hasher.update(label);
         }
         if let Some(function) = &relevance.function {
-            hasher.update(&[u8::from(function.has_params), u8::from(function.has_self_param)]);
+            hasher.update([u8::from(function.has_params), u8::from(function.has_self_param)]);
             let label = match function.return_type {
                 CompletionRelevanceReturnType::Other => "other",
                 CompletionRelevanceReturnType::DirectConstructor => "direct_constructor",
@@ -108,7 +108,7 @@ fn completion_item_hash(item: &CompletionItem, is_ref_completion: bool) -> [u8; 
     }
 
     let mut hasher = TentHasher::new();
-    hasher.update(&[
+    hasher.update([
         u8::from(is_ref_completion),
         u8::from(item.is_snippet),
         u8::from(item.deprecated),
