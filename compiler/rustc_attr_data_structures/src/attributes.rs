@@ -46,6 +46,12 @@ pub enum OptimizeAttr {
     Size,
 }
 
+impl OptimizeAttr {
+    pub fn do_not_optimize(&self) -> bool {
+        matches!(self, Self::DoNotOptimize)
+    }
+}
+
 #[derive(Clone, Debug, Encodable, Decodable)]
 pub enum DiagnosticAttribute {
     // tidy-alphabetical-start

@@ -61,6 +61,10 @@ impl<'tcx> crate::MirPass<'tcx> for InstrumentCoverage {
 
         instrument_function_for_coverage(tcx, mir_body);
     }
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }
 
 fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir::Body<'tcx>) {

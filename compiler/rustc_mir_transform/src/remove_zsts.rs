@@ -27,6 +27,10 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveZsts {
             replacer.visit_basic_block_data(bb, data);
         }
     }
+
+    fn is_required(&self) -> bool {
+        true
+    }
 }
 
 struct Replacer<'a, 'tcx> {
