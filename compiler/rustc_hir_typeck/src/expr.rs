@@ -1567,7 +1567,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let rcvr_t = self.check_expr(rcvr);
         // no need to check for bot/err -- callee does that
-        let rcvr_t = self.structurally_resolve_type(rcvr.span, rcvr_t);
+        let rcvr_t = self.try_structurally_resolve_type(rcvr.span, rcvr_t);
 
         let method = match self.lookup_method(rcvr_t, segment, segment.ident.span, expr, rcvr, args)
         {

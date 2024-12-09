@@ -1,8 +1,8 @@
 error[E0282]: type annotations needed
-  --> $DIR/issue-20261.rs:4:11
+  --> $DIR/issue-20261.rs:4:9
    |
 LL |         i.clone();
-   |           ^^^^^ cannot infer type
+   |         ^^^^^^^^^ cannot infer type
 
 error: aborting due to 1 previous error
 

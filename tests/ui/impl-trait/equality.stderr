@@ -22,20 +22,13 @@ help: change the type of the numeric literal from `u32` to `i32`
 LL |     0_i32
    |       ~~~
 
-error[E0277]: cannot add `impl Foo` to `u32`
+error[E0284]: type annotations needed: cannot satisfy `<u32 as Add<impl Foo>>::Output == i32`
   --> $DIR/equality.rs:24:11
    |
 LL |         n + sum_to(n - 1)
-   |           ^ no implementation for `u32 + impl Foo`
-   |
-   = help: the trait `Add<impl Foo>` is not implemented for `u32`
-   = help: the following other types implement trait `Add<Rhs>`:
-             `&u32` implements `Add<u32>`
-             `&u32` implements `Add`
-             `u32` implements `Add<&u32>`
-             `u32` implements `Add`
+   |           ^ cannot satisfy `<u32 as Add<impl Foo>>::Output == i32`
 
 error: aborting due to 2 previous errors; 1 warning emitted
 
-Some errors have detailed explanations: E0277, E0308.
-For more information about an error, try `rustc --explain E0277`.
+Some errors have detailed explanations: E0284, E0308.
+For more information about an error, try `rustc --explain E0284`.

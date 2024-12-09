@@ -5,7 +5,7 @@ LL |     needs_foo(|x| {
    |                ^
 ...
 LL |         x.to_string();
-   |         - type must be known at this point
+   |         ------------- type must be known at this point
    |
 help: consider giving this closure parameter an explicit type
    |

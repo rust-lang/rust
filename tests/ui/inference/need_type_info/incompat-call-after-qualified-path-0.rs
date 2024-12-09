@@ -19,6 +19,6 @@ fn f() {}
 fn main() {
   <Foo as A>::Assoc {};
   f(|a, b| a.cmp(b));
-  //~^ ERROR: type annotations needed
+  //~^ ERROR: multiple applicable items in scope
   //~| ERROR: this function takes 0 arguments but 1 argument was supplied
 }

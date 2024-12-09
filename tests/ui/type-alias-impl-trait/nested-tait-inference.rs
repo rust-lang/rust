@@ -4,7 +4,7 @@
 //@ revisions: current next
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
-//@[next] check-pass
+//@check-pass
 
 use std::fmt::Debug;
 
@@ -15,8 +15,6 @@ trait Foo<A> {}
 impl Foo<()> for () {}
 
 fn foo() -> impl Foo<FooX> {
-    //[current]~^ ERROR: the trait bound `(): Foo<FooX>` is not satisfied
-    // FIXME(type-alias-impl-trait): We could probably make this work.
     ()
 }
 
