@@ -38,7 +38,11 @@ pub enum InstructionSetAttr {
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum OptimizeAttr {
     None,
+    /// `#[optimize(none)]`
+    DoNotOptimize,
+    /// `#[optimize(speed)]`
     Speed,
+    /// `#[optimize(size)]`
     Size,
 }
 
