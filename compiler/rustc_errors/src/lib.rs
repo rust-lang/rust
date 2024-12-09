@@ -55,7 +55,6 @@ pub use diagnostic_impls::{
 };
 pub use emitter::ColorConfig;
 use emitter::{DynEmitter, Emitter, is_case_difference, is_different};
-use registry::Registry;
 use rustc_data_structures::AtomicRef;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{Hash128, StableHasher};
@@ -76,6 +75,8 @@ pub use snippet::Style;
 // See https://github.com/rust-lang/rust/pull/115393.
 pub use termcolor::{Color, ColorSpec, WriteColor};
 use tracing::debug;
+
+use crate::registry::Registry;
 
 pub mod annotate_snippet_emitter_writer;
 pub mod codes;
@@ -483,6 +484,8 @@ impl<'a> std::ops::Deref for DiagCtxtHandle<'a> {
 struct DiagCtxtInner {
     flags: DiagCtxtFlags,
 
+    registry: Registry,
+
     /// The error guarantees from all emitted errors. The length gives the error count.
     err_guars: Vec<ErrorGuaranteed>,
     /// The error guarantee from all emitted lint errors. The length gives the
@@ -619,9 +622,7 @@ impl Drop for DiagCtxtInner {
         // Important: it is sound to produce an `ErrorGuaranteed` when emitting
         // delayed bugs because they are guaranteed to be emitted here if
         // necessary.
-        if self.err_guars.is_empty() {
-            self.flush_delayed()
-        }
+        self.flush_delayed();
 
         // Sanity check: did we use some of the expensive `trimmed_def_paths` functions
         // unexpectedly, that is, without producing diagnostics? If so, for debugging purposes, we
@@ -664,6 +665,11 @@ impl DiagCtxt {
         self
     }
 
+    pub fn with_registry(mut self, registry: Registry) -> Self {
+        self.inner.get_mut().registry = registry;
+        self
+    }
+
     pub fn new(emitter: Box<DynEmitter>) -> Self {
         Self { inner: Lock::new(DiagCtxtInner::new(emitter)) }
     }
@@ -694,7 +700,7 @@ impl DiagCtxt {
         struct FalseEmitter;
 
         impl Emitter for FalseEmitter {
-            fn emit_diagnostic(&mut self, _: DiagInner) {
+            fn emit_diagnostic(&mut self, _: DiagInner, _: &Registry) {
                 unimplemented!("false emitter must only used during `wrap_emitter`")
             }
 
@@ -759,6 +765,7 @@ impl DiagCtxt {
         let mut inner = self.inner.borrow_mut();
         let DiagCtxtInner {
             flags: _,
+            registry: _,
             err_guars,
             lint_err_guars,
             delayed_bugs,
@@ -964,7 +971,7 @@ impl<'a> DiagCtxtHandle<'a> {
         self.inner.borrow().has_errors_or_delayed_bugs()
     }
 
-    pub fn print_error_count(&self, registry: &Registry) {
+    pub fn print_error_count(&self) {
         let mut inner = self.inner.borrow_mut();
 
         // Any stashed diagnostics should have been handled by
@@ -1014,7 +1021,7 @@ impl<'a> DiagCtxtHandle<'a> {
                 .emitted_diagnostic_codes
                 .iter()
                 .filter_map(|&code| {
-                    if registry.try_find_description(code).is_ok() {
+                    if inner.registry.try_find_description(code).is_ok() {
                         Some(code.to_string())
                     } else {
                         None
@@ -1075,10 +1082,10 @@ impl<'a> DiagCtxtHandle<'a> {
     }
 
     pub fn emit_future_breakage_report(&self) {
-        let mut inner = self.inner.borrow_mut();
+        let inner = &mut *self.inner.borrow_mut();
         let diags = std::mem::take(&mut inner.future_breakage_diagnostics);
         if !diags.is_empty() {
-            inner.emitter.emit_future_breakage_report(diags);
+            inner.emitter.emit_future_breakage_report(diags, &inner.registry);
         }
     }
 
@@ -1409,6 +1416,7 @@ impl DiagCtxtInner {
     fn new(emitter: Box<DynEmitter>) -> Self {
         Self {
             flags: DiagCtxtFlags { can_emit_warnings: true, ..Default::default() },
+            registry: Registry::new(&[]),
             err_guars: Vec::new(),
             lint_err_guars: Vec::new(),
             delayed_bugs: Vec::new(),
@@ -1582,7 +1590,7 @@ impl DiagCtxtInner {
                 }
                 self.has_printed = true;
 
-                self.emitter.emit_diagnostic(diagnostic);
+                self.emitter.emit_diagnostic(diagnostic, &self.registry);
             }
 
             if is_error {
@@ -1695,7 +1703,13 @@ impl DiagCtxtInner {
         // eventually happened.
         assert!(self.stashed_diagnostics.is_empty());
 
+        if !self.err_guars.is_empty() {
+            // If an error happened already. We shouldn't expose delayed bugs.
+            return;
+        }
+
         if self.delayed_bugs.is_empty() {
+            // Nothing to do.
             return;
         }
 

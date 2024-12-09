@@ -16,7 +16,7 @@ use rustc_session::Session;
 use rustc_session::config::{self, OutputFilenames, OutputType};
 
 use crate::errors::FailedWritingFile;
-use crate::interface::{Compiler, Result};
+use crate::interface::Compiler;
 use crate::passes;
 
 /// Represent the result of a query.
@@ -27,19 +27,17 @@ use crate::passes;
 /// [`compute`]: Self::compute
 pub struct Query<T> {
     /// `None` means no value has been computed yet.
-    result: RefCell<Option<Result<Steal<T>>>>,
+    result: RefCell<Option<Steal<T>>>,
 }
 
 impl<T> Query<T> {
-    fn compute<F: FnOnce() -> Result<T>>(&self, f: F) -> Result<QueryResult<'_, T>> {
-        RefMut::filter_map(
+    fn compute<F: FnOnce() -> T>(&self, f: F) -> QueryResult<'_, T> {
+        QueryResult(RefMut::map(
             self.result.borrow_mut(),
-            |r: &mut Option<Result<Steal<T>>>| -> Option<&mut Steal<T>> {
-                r.get_or_insert_with(|| f().map(Steal::new)).as_mut().ok()
+            |r: &mut Option<Steal<T>>| -> &mut Steal<T> {
+                r.get_or_insert_with(|| Steal::new(f()))
             },
-        )
-        .map_err(|r| *r.as_ref().unwrap().as_ref().map(|_| ()).unwrap_err())
-        .map(QueryResult)
+        ))
     }
 }
 
@@ -95,13 +93,13 @@ impl<'tcx> Queries<'tcx> {
         }
     }
 
-    pub fn parse(&self) -> Result<QueryResult<'_, ast::Crate>> {
+    pub fn parse(&self) -> QueryResult<'_, ast::Crate> {
         self.parse.compute(|| passes::parse(&self.compiler.sess))
     }
 
-    pub fn global_ctxt(&'tcx self) -> Result<QueryResult<'tcx, &'tcx GlobalCtxt<'tcx>>> {
+    pub fn global_ctxt(&'tcx self) -> QueryResult<'tcx, &'tcx GlobalCtxt<'tcx>> {
         self.gcx.compute(|| {
-            let krate = self.parse()?.steal();
+            let krate = self.parse().steal();
 
             passes::create_global_ctxt(
                 self.compiler,
@@ -126,8 +124,8 @@ impl Linker {
     pub fn codegen_and_build_linker(
         tcx: TyCtxt<'_>,
         codegen_backend: &dyn CodegenBackend,
-    ) -> Result<Linker> {
-        let ongoing_codegen = passes::start_codegen(codegen_backend, tcx)?;
+    ) -> Linker {
+        let ongoing_codegen = passes::start_codegen(codegen_backend, tcx);
 
         // This must run after monomorphization so that all generic types
         // have been instantiated.
@@ -141,7 +139,7 @@ impl Linker {
             tcx.sess.code_stats.print_vtable_sizes(crate_name);
         }
 
-        Ok(Linker {
+        Linker {
             dep_graph: tcx.dep_graph.clone(),
             output_filenames: Arc::clone(tcx.output_filenames(())),
             crate_hash: if tcx.needs_crate_hash() {
@@ -150,16 +148,17 @@ impl Linker {
                 None
             },
             ongoing_codegen,
-        })
+        }
     }
 
-    pub fn link(self, sess: &Session, codegen_backend: &dyn CodegenBackend) -> Result<()> {
-        let (codegen_results, work_products) =
-            codegen_backend.join_codegen(self.ongoing_codegen, sess, &self.output_filenames);
+    pub fn link(self, sess: &Session, codegen_backend: &dyn CodegenBackend) {
+        let (codegen_results, work_products) = sess.time("finish_ongoing_codegen", || {
+            codegen_backend.join_codegen(self.ongoing_codegen, sess, &self.output_filenames)
+        });
 
-        if let Some(guar) = sess.dcx().has_errors() {
-            return Err(guar);
-        }
+        sess.dcx().abort_if_errors();
+
+        let _timer = sess.timer("link");
 
         sess.time("serialize_work_products", || {
             rustc_incremental::save_work_product_index(sess, &self.dep_graph, work_products)
@@ -178,7 +177,7 @@ impl Linker {
             .keys()
             .any(|&i| i == OutputType::Exe || i == OutputType::Metadata)
         {
-            return Ok(());
+            return;
         }
 
         if sess.opts.unstable_opts.no_link {
@@ -189,10 +188,10 @@ impl Linker {
                 &codegen_results,
                 &*self.output_filenames,
             )
-            .map_err(|error| {
+            .unwrap_or_else(|error| {
                 sess.dcx().emit_fatal(FailedWritingFile { path: &rlink_file, error })
-            })?;
-            return Ok(());
+            });
+            return;
         }
 
         let _timer = sess.prof.verbose_generic_activity("link_crate");

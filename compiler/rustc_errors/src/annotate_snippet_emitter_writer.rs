@@ -12,6 +12,7 @@ use rustc_span::SourceFile;
 use rustc_span::source_map::SourceMap;
 
 use crate::emitter::FileWithAnnotatedLines;
+use crate::registry::Registry;
 use crate::snippet::Line;
 use crate::translation::{Translate, to_fluent_args};
 use crate::{
@@ -45,7 +46,7 @@ impl Translate for AnnotateSnippetEmitter {
 
 impl Emitter for AnnotateSnippetEmitter {
     /// The entry point for the diagnostics generation
-    fn emit_diagnostic(&mut self, mut diag: DiagInner) {
+    fn emit_diagnostic(&mut self, mut diag: DiagInner, _registry: &Registry) {
         let fluent_args = to_fluent_args(diag.args.iter());
 
         let mut suggestions = diag.suggestions.unwrap_tag();
