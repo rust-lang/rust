@@ -1,6 +1,5 @@
 mod block;
 
-use base_db::SourceDatabase;
 use expect_test::{expect, Expect};
 use test_fixture::WithFixture;
 
@@ -11,7 +10,7 @@ use super::*;
 fn lower(ra_fixture: &str) -> (TestDB, Arc<Body>, DefWithBodyId) {
     let db = TestDB::with_files(ra_fixture);
 
-    let krate = db.crate_graph().iter().next().unwrap();
+    let krate = db.fetch_test_crate();
     let def_map = db.crate_def_map(krate);
     let mut fn_def = None;
     'outer: for (_, module) in def_map.modules() {

@@ -236,7 +236,7 @@ impl ChangeFixture {
             crate_graph.add_crate_root(
                 crate_root,
                 Edition::CURRENT,
-                Some(CrateName::new("test").unwrap().into()),
+                Some(CrateName::new("ra_test_fixture").unwrap().into()),
                 None,
                 From::from(default_cfg.clone()),
                 Some(From::from(default_cfg)),
