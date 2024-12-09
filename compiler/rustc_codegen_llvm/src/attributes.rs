@@ -395,17 +395,9 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         to_add.push(MemoryEffects::None.create_attr(cx.llcx));
     }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
-        to_add.push(AttributeKind::Naked.create_attr(cx.llcx));
-        // HACK(jubilee): "indirect branch tracking" works by attaching prologues to functions.
-        // And it is a module-level attribute, so the alternative is pulling naked functions into
-        // new LLVM modules. Otherwise LLVM's "naked" functions come with endbr prefixes per
-        // https://github.com/rust-lang/rust/issues/98768
-        to_add.push(AttributeKind::NoCfCheck.create_attr(cx.llcx));
-        if llvm_util::get_version() < (19, 0, 0) {
-            // Prior to LLVM 19, branch-target-enforcement was disabled by setting the attribute to
-            // the string "false". Now it is disabled by absence of the attribute.
-            to_add.push(llvm::CreateAttrStringValue(cx.llcx, "branch-target-enforcement", "false"));
-        }
+        // do nothing; a naked function is converted into an extern function
+        // and a global assembly block. LLVM's support for naked functions is
+        // not used.
     } else {
         // Do not set sanitizer attributes for naked functions.
         to_add.extend(sanitize_attrs(cx, codegen_fn_attrs.no_sanitize));
