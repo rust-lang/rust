@@ -16,7 +16,6 @@ mod proc_macros;
 
 use std::{iter, ops::Range, sync};
 
-use base_db::SourceDatabase;
 use expect_test::Expect;
 use hir_expand::{
     db::ExpandDatabase,
@@ -63,7 +62,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         },
     )];
     let db = TestDB::with_files_extra_proc_macros(ra_fixture, extra_proc_macros);
-    let krate = db.crate_graph().iter().next().unwrap();
+    let krate = db.fetch_test_crate();
     let def_map = db.crate_def_map(krate);
     let local_id = DefMap::ROOT;
     let module = def_map.module_id(local_id);

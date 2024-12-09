@@ -1,16 +1,11 @@
-use base_db::{SourceDatabase, SourceDatabaseFileInputExt as _};
+use base_db::SourceDatabaseFileInputExt as _;
 use test_fixture::WithFixture;
 
 use crate::{db::DefDatabase, nameres::tests::TestDB, AdtId, ModuleDefId};
 
 fn check_def_map_is_not_recomputed(ra_fixture_initial: &str, ra_fixture_change: &str) {
     let (mut db, pos) = TestDB::with_position(ra_fixture_initial);
-    let krate = {
-        let crate_graph = db.crate_graph();
-        // Some of these tests use minicore/proc-macros which will be injected as the first crate
-        let krate = crate_graph.iter().next().unwrap();
-        krate
-    };
+    let krate = db.fetch_test_crate();
     {
         let events = db.log_executed(|| {
             db.crate_def_map(krate);
@@ -121,6 +116,8 @@ fn f() { foo }
     );
 }
 
+// Would be nice if this was the case, but as attribute inputs are stored in the item tree, this is
+// not currently the case.
 // #[test]
 // fn typing_inside_an_attribute_arg_should_not_invalidate_def_map() {
 //     check_def_map_is_not_recomputed(
@@ -200,6 +197,8 @@ pub struct S {}
     );
 }
 
+// Would be nice if this was the case, but as attribute inputs are stored in the item tree, this is
+// not currently the case.
 // #[test]
 // fn typing_inside_a_derive_should_not_invalidate_def_map() {
 //     check_def_map_is_not_recomputed(
