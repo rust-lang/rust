@@ -534,8 +534,13 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             // This allows the set of visited edges to grow monotonically with the lattice.
             FlatSet::Bottom => TerminatorEdges::None,
             FlatSet::Elem(scalar) => {
-                let choice = scalar.assert_scalar_int().to_bits_unchecked();
-                TerminatorEdges::Single(targets.target_for_value(choice))
+                if let Ok(scalar_int) = scalar.try_to_scalar_int() {
+                    TerminatorEdges::Single(
+                        targets.target_for_value(scalar_int.to_bits_unchecked()),
+                    )
+                } else {
+                    TerminatorEdges::SwitchInt { discr, targets }
+                }
             }
             FlatSet::Top => TerminatorEdges::SwitchInt { discr, targets },
         }
