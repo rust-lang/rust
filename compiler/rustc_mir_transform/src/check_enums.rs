@@ -6,7 +6,6 @@ use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::PrimitiveExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypingEnv};
-use rustc_session::Session;
 use tracing::debug;
 
 /// This pass inserts checks for a valid enum discriminant where they are most
@@ -15,8 +14,8 @@ use tracing::debug;
 pub(super) struct CheckEnums;
 
 impl<'tcx> crate::MirPass<'tcx> for CheckEnums {
-    fn is_enabled(&self, sess: &Session) -> bool {
-        sess.ub_checks()
+    fn is_enabled(&self, tcx: TyCtxt<'tcx>) -> bool {
+        tcx.sess.ub_checks()
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {

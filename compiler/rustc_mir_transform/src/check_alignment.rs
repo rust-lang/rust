@@ -4,15 +4,14 @@ use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::PlaceContext;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{Ty, TyCtxt};
-use rustc_session::Session;
 
 use crate::check_pointers::{BorrowedFieldProjectionMode, PointerCheck, check_pointers};
 
 pub(super) struct CheckAlignment;
 
 impl<'tcx> crate::MirPass<'tcx> for CheckAlignment {
-    fn is_enabled(&self, sess: &Session) -> bool {
-        sess.ub_checks()
+    fn is_enabled(&self, tcx: TyCtxt<'tcx>) -> bool {
+        tcx.sess.ub_checks()
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {

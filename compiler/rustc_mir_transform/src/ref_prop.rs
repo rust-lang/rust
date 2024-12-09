@@ -11,7 +11,7 @@ use rustc_mir_dataflow::Analysis;
 use rustc_mir_dataflow::impls::{MaybeStorageDead, always_storage_live_locals};
 use tracing::{debug, instrument};
 
-use crate::ssa::{SsaLocals, StorageLiveLocals};
+use crate::ssa::{SsaAnalysis, SsaLocals, StorageLiveLocals};
 
 /// Propagate references using SSA analysis.
 ///
@@ -72,8 +72,8 @@ use crate::ssa::{SsaLocals, StorageLiveLocals};
 pub(super) struct ReferencePropagation;
 
 impl<'tcx> crate::MirPass<'tcx> for ReferencePropagation {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 2
+    fn is_enabled(&self, tcx: TyCtxt<'tcx>) -> bool {
+        tcx.sess.mir_opt_level() >= 2
     }
 
     #[instrument(level = "trace", skip(self, tcx, body))]
@@ -122,7 +122,7 @@ fn move_to_copy_pointers<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
 fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     let typing_env = body.typing_env(tcx);
-    let ssa = SsaLocals::new(tcx, body, typing_env);
+    let ssa = SsaLocals::new(tcx, body, typing_env, SsaAnalysis::Full);
 
     let mut replacer = compute_replacement(tcx, body, ssa);
     debug!(?replacer.targets);

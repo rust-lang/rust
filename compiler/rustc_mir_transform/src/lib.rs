@@ -125,7 +125,10 @@ declare_passes! {
     // This pass is public to allow external drivers to perform MIR cleanup
     pub mod cleanup_post_borrowck : CleanupPostBorrowck;
 
-    mod copy_prop : CopyProp;
+    mod copy_prop : CopyProp {
+        Partial,
+        Full
+    };
     mod coroutine : StateTransform;
     mod coverage : InstrumentCoverage;
     mod ctfe_limit : CtfeLimit;
@@ -141,7 +144,10 @@ declare_passes! {
     mod elaborate_box_derefs : ElaborateBoxDerefs;
     mod elaborate_drops : ElaborateDrops;
     mod function_item_references : FunctionItemReferences;
-    mod gvn : GVN;
+    mod gvn : GVN {
+        Partial,
+        Full
+    };
     // Made public so that `mir_drops_elaborated_and_const_checked` can be overridden
     // by custom rustc drivers, running all the steps by themselves. See #114628.
     pub mod inline : Inline, ForceInline;
@@ -702,7 +708,8 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             &instsimplify::InstSimplify::AfterSimplifyCfg,
             &simplify::SimplifyLocals::BeforeConstProp,
             &dead_store_elimination::DeadStoreElimination::Initial,
-            &gvn::GVN,
+            &gvn::GVN::Full,
+            &gvn::GVN::Partial,
             &simplify::SimplifyLocals::AfterGVN,
             &match_branches::MatchBranchSimplification,
             &dataflow_const_prop::DataflowConstProp,
@@ -717,7 +724,8 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             &o1(simplify::SimplifyCfg::Final),
             // After the last SimplifyCfg, because this wants one-block functions.
             &strip_debuginfo::StripDebugInfo,
-            &copy_prop::CopyProp,
+            &copy_prop::CopyProp::Full,
+            &copy_prop::CopyProp::Partial,
             &dead_store_elimination::DeadStoreElimination::Final,
             &nrvo::RenameReturnPlace,
             &simplify::SimplifyLocals::Final,

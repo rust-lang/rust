@@ -5,7 +5,8 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use tracing::{debug, instrument};
 
-use crate::ssa::SsaLocals;
+use crate::pass_manager as pm;
+use crate::ssa::{SsaAnalysis, SsaLocals};
 
 /// Unify locals that copy each other.
 ///
@@ -17,11 +18,27 @@ use crate::ssa::SsaLocals;
 /// where each of the locals is only assigned once.
 ///
 /// We want to replace all those locals by `_a`, either copied or moved.
-pub(super) struct CopyProp;
+pub(super) enum CopyProp {
+    Partial,
+    Full,
+}
 
 impl<'tcx> crate::MirPass<'tcx> for CopyProp {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 1
+    fn name(&self) -> &'static str {
+        match self {
+            CopyProp::Partial => "CopyProp-partial",
+            CopyProp::Full => "CopyProp",
+        }
+    }
+
+    fn is_enabled(&self, tcx: TyCtxt<'tcx>) -> bool {
+        match self {
+            CopyProp::Partial => {
+                tcx.sess.mir_opt_level() == 1
+                    && !pm::should_run_pass(tcx, &CopyProp::Full, pm::Optimizations::Allowed)
+            }
+            CopyProp::Full => tcx.sess.mir_opt_level() >= 2,
+        }
     }
 
     #[instrument(level = "trace", skip(self, tcx, body))]
@@ -29,9 +46,11 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
         debug!(def_id = ?body.source.def_id());
 
         let typing_env = body.typing_env(tcx);
-        let ssa = SsaLocals::new(tcx, body, typing_env);
-        debug!(borrowed_locals = ?ssa.borrowed_locals());
-        debug!(copy_classes = ?ssa.copy_classes());
+        let ssa_analysis = match self {
+            CopyProp::Partial => SsaAnalysis::Partial,
+            CopyProp::Full => SsaAnalysis::Full,
+        };
+        let ssa = SsaLocals::new(tcx, body, typing_env, ssa_analysis);
 
         let mut any_replacement = false;
         let mut storage_to_remove = DenseBitSet::new_empty(body.local_decls.len());

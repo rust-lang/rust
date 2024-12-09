@@ -32,11 +32,17 @@ pub(super) struct SsaLocals {
     borrowed_locals: DenseBitSet<Local>,
 }
 
+pub(super) enum SsaAnalysis {
+    Full,
+    Partial,
+}
+
 impl SsaLocals {
     pub(super) fn new<'tcx>(
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
+        analysis: SsaAnalysis,
     ) -> SsaLocals {
         let assignment_order = Vec::with_capacity(body.local_decls.len());
 
@@ -73,9 +79,15 @@ impl SsaLocals {
         // borrows, we need to check the types. For raw pointers and mutable borrows, the locals
         // have already been marked as non-SSA.
         debug!(?visitor.borrowed_locals);
+
         for local in visitor.borrowed_locals.iter() {
-            if !body.local_decls[local].ty.is_freeze(tcx, typing_env) {
-                visitor.assignments[local] = Set1::Many;
+            match analysis {
+                SsaAnalysis::Full => {
+                    if !body.local_decls[local].ty.is_freeze(tcx, typing_env) {
+                        visitor.assignments[local] = Set1::Many;
+                    }
+                }
+                SsaAnalysis::Partial => visitor.assignments[local] = Set1::Many,
             }
         }
 
