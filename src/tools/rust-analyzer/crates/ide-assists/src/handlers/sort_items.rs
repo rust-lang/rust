@@ -133,10 +133,9 @@ impl AddRewrite for Assists {
             |builder| {
                 let mut editor = builder.make_editor(target);
 
-                old.into_iter().zip(new).for_each(|(old, new)| {
-                    // FIXME: remove `clone_for_update` when `SyntaxEditor` handles it for us
-                    editor.replace(old.syntax(), new.clone_for_update().syntax())
-                });
+                old.into_iter()
+                    .zip(new)
+                    .for_each(|(old, new)| editor.replace(old.syntax(), new.syntax()));
 
                 builder.add_file_edits(builder.file_id, editor)
             },

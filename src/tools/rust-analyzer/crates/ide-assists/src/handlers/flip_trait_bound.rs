@@ -37,8 +37,8 @@ pub(crate) fn flip_trait_bound(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
         target,
         |builder| {
             let mut editor = builder.make_editor(parent.syntax());
-            editor.replace(before.clone(), after.clone_for_update());
-            editor.replace(after.clone(), before.clone_for_update());
+            editor.replace(before.clone(), after.clone());
+            editor.replace(after, before);
             builder.add_file_edits(ctx.file_id(), editor);
         },
     )
