@@ -1,5 +1,6 @@
 #![allow(overflowing_literals)]
 
+mod decimal;
 mod decimal_seq;
 mod float;
 mod lemire;
