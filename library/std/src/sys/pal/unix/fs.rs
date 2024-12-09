@@ -34,7 +34,6 @@ use libc::readdir as readdir64;
 #[cfg(not(any(
     target_os = "android",
     target_os = "linux",
-    target_os = "emscripten",
     target_os = "solaris",
     target_os = "illumos",
     target_os = "l4re",
@@ -48,7 +47,7 @@ use libc::readdir as readdir64;
 use libc::readdir_r as readdir64_r;
 #[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
 use libc::readdir64;
-#[cfg(any(target_os = "emscripten", target_os = "l4re"))]
+#[cfg(target_os = "l4re")]
 use libc::readdir64_r;
 use libc::{c_int, mode_t};
 #[cfg(target_os = "android")]
@@ -58,7 +57,6 @@ use libc::{
 };
 #[cfg(not(any(
     all(target_os = "linux", not(target_env = "musl")),
-    target_os = "emscripten",
     target_os = "l4re",
     target_os = "android",
     target_os = "hurd",
@@ -69,7 +67,6 @@ use libc::{
 };
 #[cfg(any(
     all(target_os = "linux", not(target_env = "musl")),
-    target_os = "emscripten",
     target_os = "l4re",
     target_os = "hurd"
 ))]
