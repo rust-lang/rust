@@ -12,7 +12,6 @@
 //!   metadata we remembered when pushing said frame.
 
 use rustc_abi::ExternAbi;
-use rustc_ast::Mutability;
 use rustc_middle::{mir, ty};
 use rustc_target::spec::PanicStrategy;
 
@@ -161,7 +160,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         // First arg: message.
-        let msg = this.allocate_str(msg, MiriMemoryKind::Machine.into(), Mutability::Not)?;
+        let msg = this.allocate_str_dedup(msg)?;
 
         // Call the lang item.
         let panic = this.tcx.lang_items().panic_fn().unwrap();
@@ -180,7 +179,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         // First arg: message.
-        let msg = this.allocate_str(msg, MiriMemoryKind::Machine.into(), Mutability::Not)?;
+        let msg = this.allocate_str_dedup(msg)?;
 
         // Call the lang item.
         let panic = this.tcx.lang_items().panic_nounwind().unwrap();
