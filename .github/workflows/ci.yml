@@ -82,6 +82,7 @@ jobs:
     steps:
       - name: test link
         run: link --version || true
+        shell: bash
 
       - if: contains(matrix.os, 'windows')
         uses: msys2/setup-msys2@v2.22.0
