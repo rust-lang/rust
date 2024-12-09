@@ -1440,7 +1440,7 @@ impl Config {
             limit: self.completion_limit(source_root).to_owned(),
             enable_term_search: self.completion_termSearch_enable(source_root).to_owned(),
             term_search_fuel: self.completion_termSearch_fuel(source_root).to_owned() as u64,
-            fields_to_resolve: if self.client_is_helix() || self.client_is_neovim() {
+            fields_to_resolve: if self.client_is_neovim() {
                 CompletionFieldsToResolve::empty()
             } else {
                 CompletionFieldsToResolve::from_client_capabilities(&client_capability_fields)
