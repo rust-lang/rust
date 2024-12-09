@@ -7,8 +7,8 @@ use tracing::trace;
 pub(super) struct RemoveStorageMarkers;
 
 impl<'tcx> crate::MirPass<'tcx> for RemoveStorageMarkers {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() > 0 && !sess.emit_lifetime_markers()
+    fn is_enabled(&self, tcx: TyCtxt<'tcx>) -> bool {
+        tcx.sess.mir_opt_level() > 0 && !tcx.sess.emit_lifetime_markers()
     }
 
     fn run_pass(&self, _tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
