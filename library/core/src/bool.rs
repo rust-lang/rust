@@ -62,12 +62,14 @@ impl bool {
     }
 
     /// Returns either `true_val` or `false_val` depending on the value of
-    /// `condition`, with a hint to the compiler that `condition` is unlikely
+    /// `self`, with a hint to the compiler that `self` is unlikely
     /// to be correctly predicted by a CPU’s branch predictor.
     ///
-    /// This method is functionally equivalent to writing
+    /// This method is functionally equivalent to
     /// ```ignore (this is just for illustrative purposes)
-    /// if b { true_val } else { false_val }
+    /// fn select_unpredictable<T>(b: bool, true_val: T, false_val: T) -> T {
+    ///     if b { true_val } else { false_val }
+    /// }
     /// ```
     /// but might generate different assembly. In particular, on platforms with
     /// a conditional move or select instruction (like `cmov` on x86 or `csel`
