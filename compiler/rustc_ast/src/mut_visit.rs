@@ -1525,6 +1525,10 @@ pub fn walk_pat<T: MutVisitor>(vis: &mut T, pat: &mut P<Pat>) {
             visit_opt(e2, |e| vis.visit_expr(e));
             vis.visit_span(span);
         }
+        PatKind::Guard(p, e) => {
+            vis.visit_pat(p);
+            vis.visit_expr(e);
+        }
         PatKind::Tuple(elems) | PatKind::Slice(elems) | PatKind::Or(elems) => {
             visit_thin_vec(elems, |elem| vis.visit_pat(elem))
         }

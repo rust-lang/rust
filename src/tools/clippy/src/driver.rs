@@ -236,7 +236,8 @@ pub fn main() {
             let mut args: Vec<String> = orig_args.clone();
             pass_sysroot_env_if_given(&mut args, sys_root_env);
 
-            return rustc_driver::RunCompiler::new(&args, &mut DefaultCallbacks).run();
+            rustc_driver::RunCompiler::new(&args, &mut DefaultCallbacks).run();
+            return Ok(());
         }
 
         if orig_args.iter().any(|a| a == "--version" || a == "-V") {
@@ -296,12 +297,13 @@ pub fn main() {
             args.extend(clippy_args);
             rustc_driver::RunCompiler::new(&args, &mut ClippyCallbacks { clippy_args_var })
                 .set_using_internal_features(using_internal_features)
-                .run()
+                .run();
         } else {
             rustc_driver::RunCompiler::new(&args, &mut RustcCallbacks { clippy_args_var })
                 .set_using_internal_features(using_internal_features)
-                .run()
+                .run();
         }
+        return Ok(());
     }))
 }
 

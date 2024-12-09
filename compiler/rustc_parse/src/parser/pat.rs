@@ -99,9 +99,34 @@ pub enum PatternLocation {
 impl<'a> Parser<'a> {
     /// Parses a pattern.
     ///
-    /// Corresponds to `pat<no_top_alt>` in RFC 2535 and does not admit or-patterns
-    /// at the top level. Used when parsing the parameters of lambda expressions,
-    /// functions, function pointers, and `pat` macro fragments.
+    /// Corresponds to `Pattern` in RFC 3637 and admits guard patterns at the top level.
+    /// Used when parsing patterns in all cases where neither `PatternNoTopGuard` nor
+    /// `PatternNoTopAlt` (see below) are used.
+    pub fn parse_pat_allow_top_guard(
+        &mut self,
+        expected: Option<Expected>,
+        rc: RecoverComma,
+        ra: RecoverColon,
+        rt: CommaRecoveryMode,
+    ) -> PResult<'a, P<Pat>> {
+        let pat = self.parse_pat_no_top_guard(expected, rc, ra, rt)?;
+
+        if self.eat_keyword(kw::If) {
+            let cond = self.parse_expr()?;
+            // Feature-gate guard patterns
+            self.psess.gated_spans.gate(sym::guard_patterns, cond.span);
+            let span = pat.span.to(cond.span);
+            Ok(self.mk_pat(span, PatKind::Guard(pat, cond)))
+        } else {
+            Ok(pat)
+        }
+    }
+
+    /// Parses a pattern.
+    ///
+    /// Corresponds to `PatternNoTopAlt` in RFC 3637 and does not admit or-patterns
+    /// or guard patterns at the top level. Used when parsing the parameters of lambda
+    /// expressions, functions, function pointers, and `pat_param` macro fragments.
     pub fn parse_pat_no_top_alt(
         &mut self,
         expected: Option<Expected>,
@@ -112,25 +137,26 @@ impl<'a> Parser<'a> {
 
     /// Parses a pattern.
     ///
-    /// Corresponds to `top_pat` in RFC 2535 and allows or-pattern at the top level.
-    /// Used for parsing patterns in all cases when `pat<no_top_alt>` is not used.
+    /// Corresponds to `PatternNoTopGuard` in RFC 3637 and allows or-patterns, but not
+    /// guard patterns, at the top level. Used for parsing patterns in `pat` fragments (until
+    /// the next edition) and `let`, `if let`, and `while let` expressions.
     ///
     /// Note that after the FCP in <https://github.com/rust-lang/rust/issues/81415>,
     /// a leading vert is allowed in nested or-patterns, too. This allows us to
     /// simplify the grammar somewhat.
-    pub fn parse_pat_allow_top_alt(
+    pub fn parse_pat_no_top_guard(
         &mut self,
         expected: Option<Expected>,
         rc: RecoverComma,
         ra: RecoverColon,
         rt: CommaRecoveryMode,
     ) -> PResult<'a, P<Pat>> {
-        self.parse_pat_allow_top_alt_inner(expected, rc, ra, rt, None).map(|(pat, _)| pat)
+        self.parse_pat_no_top_guard_inner(expected, rc, ra, rt, None).map(|(pat, _)| pat)
     }
 
     /// Returns the pattern and a bool indicating whether we recovered from a trailing vert (true =
     /// recovered).
-    fn parse_pat_allow_top_alt_inner(
+    fn parse_pat_no_top_guard_inner(
         &mut self,
         expected: Option<Expected>,
         rc: RecoverComma,
@@ -231,7 +257,7 @@ impl<'a> Parser<'a> {
         // We use `parse_pat_allow_top_alt` regardless of whether we actually want top-level
         // or-patterns so that we can detect when a user tries to use it. This allows us to print a
         // better error message.
-        let (pat, trailing_vert) = self.parse_pat_allow_top_alt_inner(
+        let (pat, trailing_vert) = self.parse_pat_no_top_guard_inner(
             expected,
             rc,
             RecoverColon::No,
@@ -696,7 +722,7 @@ impl<'a> Parser<'a> {
         } else if self.check(&token::OpenDelim(Delimiter::Bracket)) {
             // Parse `[pat, pat,...]` as a slice pattern.
             let (pats, _) = self.parse_delim_comma_seq(Delimiter::Bracket, |p| {
-                p.parse_pat_allow_top_alt(
+                p.parse_pat_allow_top_guard(
                     None,
                     RecoverComma::No,
                     RecoverColon::No,
@@ -944,7 +970,7 @@ impl<'a> Parser<'a> {
         let open_paren = self.token.span;
 
         let (fields, trailing_comma) = self.parse_paren_comma_seq(|p| {
-            p.parse_pat_allow_top_alt(
+            p.parse_pat_allow_top_guard(
                 None,
                 RecoverComma::No,
                 RecoverColon::No,
@@ -1361,7 +1387,7 @@ impl<'a> Parser<'a> {
         path: Path,
     ) -> PResult<'a, PatKind> {
         let (fields, _) = self.parse_paren_comma_seq(|p| {
-            p.parse_pat_allow_top_alt(
+            p.parse_pat_allow_top_guard(
                 None,
                 RecoverComma::No,
                 RecoverColon::No,
@@ -1396,7 +1422,7 @@ impl<'a> Parser<'a> {
         self.parse_builtin(|self_, _lo, ident| {
             Ok(match ident.name {
                 // builtin#deref(PAT)
-                sym::deref => Some(ast::PatKind::Deref(self_.parse_pat_allow_top_alt(
+                sym::deref => Some(ast::PatKind::Deref(self_.parse_pat_allow_top_guard(
                     None,
                     RecoverComma::Yes,
                     RecoverColon::Yes,
@@ -1671,7 +1697,7 @@ impl<'a> Parser<'a> {
             // Parsing a pattern of the form `fieldname: pat`.
             let fieldname = self.parse_field_name()?;
             self.bump();
-            let pat = self.parse_pat_allow_top_alt(
+            let pat = self.parse_pat_allow_top_guard(
                 None,
                 RecoverComma::No,
                 RecoverColon::No,

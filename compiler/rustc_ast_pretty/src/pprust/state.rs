@@ -1709,6 +1709,14 @@ impl<'a> State<'a> {
                     self.print_expr(e, FixupContext::default());
                 }
             }
+            PatKind::Guard(subpat, condition) => {
+                self.popen();
+                self.print_pat(subpat);
+                self.space();
+                self.word_space("if");
+                self.print_expr(condition, FixupContext::default());
+                self.pclose();
+            }
             PatKind::Slice(elts) => {
                 self.word("[");
                 self.commasep(Inconsistent, elts, |s, p| s.print_pat(p));

@@ -114,7 +114,6 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_data_structures::{base_n, flock};
-use rustc_errors::ErrorGuaranteed;
 use rustc_fs_util::{LinkOrCopy, link_or_copy, try_canonicalize};
 use rustc_middle::bug;
 use rustc_session::config::CrateType;
@@ -212,9 +211,9 @@ pub fn in_incr_comp_dir(incr_comp_session_dir: &Path, file_name: &str) -> PathBu
 /// The garbage collection will take care of it.
 ///
 /// [`rustc_interface::queries::dep_graph`]: ../../rustc_interface/struct.Queries.html#structfield.dep_graph
-pub(crate) fn prepare_session_directory(sess: &Session) -> Result<(), ErrorGuaranteed> {
+pub(crate) fn prepare_session_directory(sess: &Session) {
     if sess.opts.incremental.is_none() {
-        return Ok(());
+        return;
     }
 
     let _timer = sess.timer("incr_comp_prepare_session_directory");
@@ -224,7 +223,7 @@ pub(crate) fn prepare_session_directory(sess: &Session) -> Result<(), ErrorGuara
     // {incr-comp-dir}/{crate-name-and-disambiguator}
     let crate_dir = crate_path(sess);
     debug!("crate-dir: {}", crate_dir.display());
-    create_dir(sess, &crate_dir, "crate")?;
+    create_dir(sess, &crate_dir, "crate");
 
     // Hack: canonicalize the path *after creating the directory*
     // because, on windows, long paths can cause problems;
@@ -233,7 +232,7 @@ pub(crate) fn prepare_session_directory(sess: &Session) -> Result<(), ErrorGuara
     let crate_dir = match try_canonicalize(&crate_dir) {
         Ok(v) => v,
         Err(err) => {
-            return Err(sess.dcx().emit_err(errors::CanonicalizePath { path: crate_dir, err }));
+            sess.dcx().emit_fatal(errors::CanonicalizePath { path: crate_dir, err });
         }
     };
 
@@ -248,11 +247,11 @@ pub(crate) fn prepare_session_directory(sess: &Session) -> Result<(), ErrorGuara
 
         // Lock the new session directory. If this fails, return an
         // error without retrying
-        let (directory_lock, lock_file_path) = lock_directory(sess, &session_dir)?;
+        let (directory_lock, lock_file_path) = lock_directory(sess, &session_dir);
 
         // Now that we have the lock, we can actually create the session
         // directory
-        create_dir(sess, &session_dir, "session")?;
+        create_dir(sess, &session_dir, "session");
 
         // Find a suitable source directory to copy from. Ignore those that we
         // have already tried before.
@@ -266,7 +265,7 @@ pub(crate) fn prepare_session_directory(sess: &Session) -> Result<(), ErrorGuara
             );
 
             sess.init_incr_comp_session(session_dir, directory_lock);
-            return Ok(());
+            return;
         };
 
         debug!("attempting to copy data from source: {}", source_directory.display());
@@ -280,7 +279,7 @@ pub(crate) fn prepare_session_directory(sess: &Session) -> Result<(), ErrorGuara
             }
 
             sess.init_incr_comp_session(session_dir, directory_lock);
-            return Ok(());
+            return;
         } else {
             debug!("copying failed - trying next directory");
 
@@ -459,21 +458,17 @@ fn generate_session_dir_path(crate_dir: &Path) -> PathBuf {
     directory_path
 }
 
-fn create_dir(sess: &Session, path: &Path, dir_tag: &str) -> Result<(), ErrorGuaranteed> {
+fn create_dir(sess: &Session, path: &Path, dir_tag: &str) {
     match std_fs::create_dir_all(path) {
         Ok(()) => {
             debug!("{} directory created successfully", dir_tag);
-            Ok(())
         }
-        Err(err) => Err(sess.dcx().emit_err(errors::CreateIncrCompDir { tag: dir_tag, path, err })),
+        Err(err) => sess.dcx().emit_fatal(errors::CreateIncrCompDir { tag: dir_tag, path, err }),
     }
 }
 
 /// Allocate the lock-file and lock it.
-fn lock_directory(
-    sess: &Session,
-    session_dir: &Path,
-) -> Result<(flock::Lock, PathBuf), ErrorGuaranteed> {
+fn lock_directory(sess: &Session, session_dir: &Path) -> (flock::Lock, PathBuf) {
     let lock_file_path = lock_file_path(session_dir);
     debug!("lock_directory() - lock_file: {}", lock_file_path.display());
 
@@ -484,15 +479,15 @@ fn lock_directory(
         true,
     ) {
         // the lock should be exclusive
-        Ok(lock) => Ok((lock, lock_file_path)),
+        Ok(lock) => (lock, lock_file_path),
         Err(lock_err) => {
             let is_unsupported_lock = flock::Lock::error_unsupported(&lock_err);
-            Err(sess.dcx().emit_err(errors::CreateLock {
+            sess.dcx().emit_fatal(errors::CreateLock {
                 lock_err,
                 session_dir,
                 is_unsupported_lock,
                 is_cargo: rustc_session::utils::was_invoked_from_cargo(),
-            }))
+            });
         }
     }
 }

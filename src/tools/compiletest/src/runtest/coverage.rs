@@ -39,8 +39,12 @@ impl<'test> TestCx<'test> {
         let expected_coverage_dump = self.load_expected_output(kind);
         let actual_coverage_dump = self.normalize_output(&proc_res.stdout, &[]);
 
-        let coverage_dump_errors =
-            self.compare_output(kind, &actual_coverage_dump, &expected_coverage_dump);
+        let coverage_dump_errors = self.compare_output(
+            kind,
+            &actual_coverage_dump,
+            &proc_res.stdout,
+            &expected_coverage_dump,
+        );
 
         if coverage_dump_errors > 0 {
             self.fatal_proc_rec(
@@ -135,8 +139,12 @@ impl<'test> TestCx<'test> {
                 self.fatal_proc_rec(&err, &proc_res);
             });
 
-        let coverage_errors =
-            self.compare_output(kind, &normalized_actual_coverage, &expected_coverage);
+        let coverage_errors = self.compare_output(
+            kind,
+            &normalized_actual_coverage,
+            &proc_res.stdout,
+            &expected_coverage,
+        );
 
         if coverage_errors > 0 {
             self.fatal_proc_rec(

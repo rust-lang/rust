@@ -8,7 +8,7 @@ note: there are multiple different versions of crate `foo` in the dependency gra
   --> foo-current.rs:7:1
    |
 4  | extern crate foo;
-   | ----------------- one version of crate `foo` is used here, as a direct dependency of the current crate
+   | ----------------- one version of crate `foo` used here, as a direct dependency of the current crate
 5  |
 6  | pub struct Struct;
    | ----------------- this type implements the required trait

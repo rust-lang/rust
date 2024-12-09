@@ -52,7 +52,9 @@ use std::{cmp, fmt, iter};
 
 use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_errors::{Applicability, Diag, DiagStyledString, IntoDiagArg, StringPart, pluralize};
+use rustc_errors::{
+    Applicability, Diag, DiagStyledString, IntoDiagArg, MultiSpan, StringPart, pluralize,
+};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
@@ -67,6 +69,7 @@ use rustc_middle::ty::{
     self, List, Region, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt,
 };
+use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{BytePos, DesugaringKind, Pos, Span, sym};
 use tracing::{debug, instrument};
 
@@ -211,7 +214,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     }
 
     /// Adds a note if the types come from similarly named crates
-    fn check_and_note_conflicting_crates(&self, err: &mut Diag<'_>, terr: TypeError<'tcx>) {
+    fn check_and_note_conflicting_crates(&self, err: &mut Diag<'_>, terr: TypeError<'tcx>) -> bool {
+        // FIXME(estebank): unify with `report_similar_impl_candidates`. The message is similar,
+        // even if the logic needed to detect the case is very different.
         use hir::def_id::CrateNum;
         use rustc_hir::definitions::DisambiguatedDefPathData;
         use ty::GenericArg;
@@ -285,7 +290,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
         }
 
-        let report_path_match = |err: &mut Diag<'_>, did1: DefId, did2: DefId| {
+        let report_path_match = |err: &mut Diag<'_>, did1: DefId, did2: DefId, ty: &str| -> bool {
             // Only report definitions from different crates. If both definitions
             // are from a local module we could have false positives, e.g.
             // let _ = [{struct Foo; Foo}, {struct Foo; Foo}];
@@ -297,24 +302,112 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                 // We compare strings because DefPath can be different
                 // for imported and non-imported crates
+                let expected_str = self.tcx.def_path_str(did1);
+                let found_str = self.tcx.def_path_str(did2);
+                let Ok(expected_abs) = abs_path(did1) else { return false };
+                let Ok(found_abs) = abs_path(did2) else { return false };
                 let same_path = || -> Result<_, PrintError> {
-                    Ok(self.tcx.def_path_str(did1) == self.tcx.def_path_str(did2)
-                        || abs_path(did1)? == abs_path(did2)?)
+                    Ok(expected_str == found_str || expected_abs == found_abs)
+                };
+                // We want to use as unique a type path as possible. If both types are "locally
+                // known" by the same name, we use the "absolute path" which uses the original
+                // crate name instead.
+                let (expected, found) = if expected_str == found_str {
+                    (expected_abs.join("::"), found_abs.join("::"))
+                } else {
+                    (expected_str.clone(), found_str.clone())
                 };
                 if same_path().unwrap_or(false) {
-                    let crate_name = self.tcx.crate_name(did1.krate);
-                    let msg = if did1.is_local() || did2.is_local() {
+                    // We've displayed "expected `a::b`, found `a::b`". We add context to
+                    // differentiate the different cases where that might happen.
+                    let expected_crate_name = self.tcx.crate_name(did1.krate);
+                    let found_crate_name = self.tcx.crate_name(did2.krate);
+                    let same_crate = expected_crate_name == found_crate_name;
+                    let expected_sp = self.tcx.def_span(did1);
+                    let found_sp = self.tcx.def_span(did2);
+
+                    let both_direct_dependencies = if !did1.is_local()
+                        && !did2.is_local()
+                        && let Some(data1) = self.tcx.extern_crate(did1.krate)
+                        && let Some(data2) = self.tcx.extern_crate(did2.krate)
+                        && data1.dependency_of == LOCAL_CRATE
+                        && data2.dependency_of == LOCAL_CRATE
+                    {
+                        // If both crates are directly depended on, we don't want to mention that
+                        // in the final message, as it is redundant wording.
+                        // We skip the case of semver trick, where one version of the local crate
+                        // depends on another version of itself by checking that both crates at play
+                        // are not the current one.
+                        true
+                    } else {
+                        false
+                    };
+
+                    let mut span: MultiSpan = vec![expected_sp, found_sp].into();
+                    span.push_span_label(
+                        self.tcx.def_span(did1),
+                        format!("this is the expected {ty} `{expected}`"),
+                    );
+                    span.push_span_label(
+                        self.tcx.def_span(did2),
+                        format!("this is the found {ty} `{found}`"),
+                    );
+                    for def_id in [did1, did2] {
+                        let crate_name = self.tcx.crate_name(def_id.krate);
+                        if !def_id.is_local()
+                            && let Some(data) = self.tcx.extern_crate(def_id.krate)
+                        {
+                            let descr = if same_crate {
+                                "one version of".to_string()
+                            } else {
+                                format!("one {ty} comes from")
+                            };
+                            let dependency = if both_direct_dependencies {
+                                if let rustc_session::cstore::ExternCrateSource::Extern(def_id) =
+                                    data.src
+                                    && let Some(name) = self.tcx.opt_item_name(def_id)
+                                {
+                                    format!(", which is renamed locally to `{name}`")
+                                } else {
+                                    String::new()
+                                }
+                            } else if data.dependency_of == LOCAL_CRATE {
+                                ", as a direct dependency of the current crate".to_string()
+                            } else {
+                                let dep = self.tcx.crate_name(data.dependency_of);
+                                format!(", as a dependency of crate `{dep}`")
+                            };
+                            span.push_span_label(
+                                data.span,
+                                format!("{descr} crate `{crate_name}` used here{dependency}"),
+                            );
+                        }
+                    }
+                    let msg = if (did1.is_local() || did2.is_local()) && same_crate {
                         format!(
-                            "the crate `{crate_name}` is compiled multiple times, possibly with different configurations"
+                            "the crate `{expected_crate_name}` is compiled multiple times, \
+                             possibly with different configurations",
+                        )
+                    } else if same_crate {
+                        format!(
+                            "two different versions of crate `{expected_crate_name}` are being \
+                             used; two types coming from two different versions of the same crate \
+                             are different types even if they look the same",
                         )
                     } else {
                         format!(
-                            "perhaps two different versions of crate `{crate_name}` are being used?"
+                            "two types coming from two different crates are different types even \
+                             if they look the same",
                         )
                     };
-                    err.note(msg);
+                    err.span_note(span, msg);
+                    if same_crate {
+                        err.help("you can use `cargo tree` to explore your dependency tree");
+                    }
+                    return true;
                 }
             }
+            false
         };
         match terr {
             TypeError::Sorts(ref exp_found) => {
@@ -323,14 +416,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 if let (&ty::Adt(exp_adt, _), &ty::Adt(found_adt, _)) =
                     (exp_found.expected.kind(), exp_found.found.kind())
                 {
-                    report_path_match(err, exp_adt.did(), found_adt.did());
+                    return report_path_match(err, exp_adt.did(), found_adt.did(), "type");
                 }
             }
             TypeError::Traits(ref exp_found) => {
-                report_path_match(err, exp_found.expected, exp_found.found);
+                return report_path_match(err, exp_found.expected, exp_found.found, "trait");
             }
             _ => (), // FIXME(#22750) handle traits and stuff
         }
+        false
     }
 
     fn note_error_origin(
@@ -1409,6 +1503,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             label_or_note(span, terr.to_string(self.tcx));
         }
 
+        if self.check_and_note_conflicting_crates(diag, terr) {
+            return;
+        }
+
         if let Some((expected, found, path)) = expected_found {
             let (expected_label, found_label, exp_found) = match exp_found {
                 Mismatch::Variable(ef) => (
@@ -1470,15 +1568,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         |prim: Ty<'tcx>, shadow: Ty<'tcx>, defid: DefId, diag: &mut Diag<'_>| {
                             let name = shadow.sort_string(self.tcx);
                             diag.note(format!(
-                                "{prim} and {name} have similar names, but are actually distinct types"
+                                "`{prim}` and {name} have similar names, but are actually distinct types"
                             ));
-                            diag.note(format!("{prim} is a primitive defined by the language"));
+                            diag.note(format!(
+                                "one `{prim}` is a primitive defined by the language",
+                            ));
                             let def_span = self.tcx.def_span(defid);
                             let msg = if defid.is_local() {
-                                format!("{name} is defined in the current crate")
+                                format!("the other {name} is defined in the current crate")
                             } else {
                                 let crate_name = self.tcx.crate_name(defid.krate);
-                                format!("{name} is defined in crate `{crate_name}`")
+                                format!("the other {name} is defined in crate `{crate_name}`")
                             };
                             diag.span_note(def_span, msg);
                         };
@@ -1665,8 +1765,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 self.suggest_turning_stmt_into_expr(cause, &exp_found, diag);
             }
         }
-
-        self.check_and_note_conflicting_crates(diag, terr);
 
         self.note_and_explain_type_err(diag, terr, cause, span, cause.body_id.to_def_id());
         if let Some(exp_found) = exp_found

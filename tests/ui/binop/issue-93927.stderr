@@ -6,7 +6,7 @@ LL |     val == val
    |     |
    |     MyType<T>
    |
-help: consider further restricting this bound
+help: consider further restricting type parameter `T` with trait `Eq`
    |
 LL | fn cond<T: PartialEq + std::cmp::Eq>(val: MyType<T>) -> bool {
    |                      ++++++++++++++

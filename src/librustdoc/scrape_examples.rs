@@ -7,7 +7,6 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir};
-use rustc_interface::interface;
 use rustc_macros::{Decodable, Encodable};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt};
@@ -275,7 +274,7 @@ pub(crate) fn run(
     tcx: TyCtxt<'_>,
     options: ScrapeExamplesOptions,
     bin_crate: bool,
-) -> interface::Result<()> {
+) {
     let inner = move || -> Result<(), String> {
         // Generates source files for examples
         renderopts.no_emit_shared = true;
@@ -329,8 +328,6 @@ pub(crate) fn run(
     if let Err(e) = inner() {
         tcx.dcx().fatal(e);
     }
-
-    Ok(())
 }
 
 // Note: the DiagCtxt must be passed in explicitly because sess isn't available while parsing

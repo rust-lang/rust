@@ -68,10 +68,10 @@ pub extern "C" fn ptr_unit(p: *const ()) { }
 pub extern "C" fn ptr_tuple(p: *const ((),)) { }
 
 pub extern "C" fn slice_type(p: &[u32]) { }
-//~^ ERROR: uses type `[u32]`
+//~^ ERROR: uses type `&[u32]`
 
 pub extern "C" fn str_type(p: &str) { }
-//~^ ERROR: uses type `str`
+//~^ ERROR: uses type `&str`
 
 pub extern "C" fn box_type(p: Box<u32>) { }
 
@@ -124,7 +124,7 @@ pub extern "C" fn transparent_i128(p: TransparentI128) { }
 //~^ ERROR: uses type `i128`
 
 pub extern "C" fn transparent_str(p: TransparentStr) { }
-//~^ ERROR: uses type `str`
+//~^ ERROR: uses type `&str`
 
 pub extern "C" fn transparent_fn(p: TransparentBadFn) { }
 

@@ -16,7 +16,7 @@ pub(crate) use markdown::test as test_markdown;
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_errors::emitter::HumanReadableErrorType;
-use rustc_errors::{ColorConfig, DiagCtxtHandle, ErrorGuaranteed, FatalError};
+use rustc_errors::{ColorConfig, DiagCtxtHandle};
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::interface;
@@ -89,11 +89,7 @@ fn get_doctest_dir() -> io::Result<TempDir> {
     TempFileBuilder::new().prefix("rustdoctest").tempdir()
 }
 
-pub(crate) fn run(
-    dcx: DiagCtxtHandle<'_>,
-    input: Input,
-    options: RustdocOptions,
-) -> Result<(), ErrorGuaranteed> {
+pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions) {
     let invalid_codeblock_attributes_name = crate::lint::INVALID_CODEBLOCK_ATTRIBUTES.name;
 
     // See core::create_config for what's going on here.
@@ -167,7 +163,7 @@ pub(crate) fn run(
         Err(error) => return crate::wrap_return(dcx, Err(error)),
     };
     let args_path = temp_dir.path().join("rustdoc-cfgs");
-    crate::wrap_return(dcx, generate_args_file(&args_path, &options))?;
+    crate::wrap_return(dcx, generate_args_file(&args_path, &options));
 
     let CreateRunnableDocTests {
         standalone_tests,
@@ -179,7 +175,7 @@ pub(crate) fn run(
         ..
     } = interface::run_compiler(config, |compiler| {
         compiler.enter(|queries| {
-            let collector = queries.global_ctxt()?.enter(|tcx| {
+            let collector = queries.global_ctxt().enter(|tcx| {
                 let crate_name = tcx.crate_name(LOCAL_CRATE).to_string();
                 let crate_attrs = tcx.hir().attrs(CRATE_HIR_ID);
                 let opts = scrape_test_config(crate_name, crate_attrs, args_path);
@@ -196,13 +192,11 @@ pub(crate) fn run(
 
                 collector
             });
-            if compiler.sess.dcx().has_errors().is_some() {
-                FatalError.raise();
-            }
+            compiler.sess.dcx().abort_if_errors();
 
-            Ok(collector)
+            collector
         })
-    })?;
+    });
 
     run_tests(opts, &rustdoc_options, &unused_extern_reports, standalone_tests, mergeable_tests);
 
@@ -246,8 +240,6 @@ pub(crate) fn run(
             eprintln!("{unused_extern_json}");
         }
     }
-
-    Ok(())
 }
 
 pub(crate) fn run_tests(

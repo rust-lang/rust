@@ -9,7 +9,7 @@ note: required by a bound on the type alias `Underconstrained`
    |
 LL | type Underconstrained<T: Trait> = impl Send;
    |                          ^^^^^ required by this bound
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `Trait`
    |
 LL | fn underconstrain<T: Trait>(_: T) -> Underconstrained<T> {
    |                    +++++++
@@ -30,7 +30,7 @@ note: required by a bound on the type alias `Underconstrained`
    |
 LL | type Underconstrained<T: Trait> = impl Send;
    |                          ^^^^^ required by this bound
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `Trait`
    |
 LL | fn underconstrain<T: Trait>(_: T) -> Underconstrained<T> {
    |                    +++++++

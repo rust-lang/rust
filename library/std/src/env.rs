@@ -597,6 +597,13 @@ impl Error for JoinPathsError {
 
 /// Returns the path of the current user's home directory if known.
 ///
+/// This may return `None` if getting the directory fails or if the platform does not have user home directories.
+///
+/// For storing user data and configuration it is often preferable to use more specific directories.
+/// For example, [XDG Base Directories] on Unix or the `LOCALAPPDATA` and `APPDATA` environment variables on Windows.
+///
+/// [XDG Base Directories]: https://specifications.freedesktop.org/basedir-spec/latest/
+///
 /// # Unix
 ///
 /// - Returns the value of the 'HOME' environment variable if it is set

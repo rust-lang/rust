@@ -1745,9 +1745,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     };
                     (
                         data.span,
-                        format!(
-                            "one version of crate `{crate_name}` is used here, as a {dependency}"
-                        ),
+                        format!("one version of crate `{crate_name}` used here, as a {dependency}"),
                     )
                 })
             {

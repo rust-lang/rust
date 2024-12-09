@@ -9,7 +9,7 @@ note: required by a bound in `DropMe`
    |
 LL | struct DropMe<T: Copy>(T);
    |                  ^^^^ required by this bound in `DropMe`
-help: consider further restricting type parameter `T`
+help: consider further restricting type parameter `T` with trait `Copy`
    |
 LL |     [T; 1]: Copy, T: std::marker::Copy // But `[T; 1]: Copy` does not imply `T: Copy`
    |                 ~~~~~~~~~~~~~~~~~~~~~~
@@ -25,7 +25,7 @@ note: required by a bound in `DropMe`
    |
 LL | struct DropMe<T: Copy>(T);
    |                  ^^^^ required by this bound in `DropMe`
-help: consider further restricting type parameter `T`
+help: consider further restricting type parameter `T` with trait `Copy`
    |
 LL |     [T; 1]: Copy, T: std::marker::Copy // But `[T; 1]: Copy` does not imply `T: Copy`
    |                 ~~~~~~~~~~~~~~~~~~~~~~
