@@ -232,10 +232,10 @@ pub fn pfe_invalid() -> ParseFloatError {
 }
 
 /// Converts a `BiasedFp` to the closest machine float type.
-fn biased_fp_to_float<T: RawFloat>(x: BiasedFp) -> T {
+fn biased_fp_to_float<F: RawFloat>(x: BiasedFp) -> F {
     let mut word = x.m;
-    word |= (x.p_biased as u64) << T::MANTISSA_EXPLICIT_BITS;
-    T::from_u64_bits(word)
+    word |= (x.p_biased as u64) << F::SIG_BITS;
+    F::from_u64_bits(word)
 }
 
 /// Converts a decimal string into a floating point number.

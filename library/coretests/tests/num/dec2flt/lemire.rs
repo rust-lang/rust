@@ -1,3 +1,4 @@
+use core::num::dec2flt::float::RawFloat;
 use core::num::dec2flt::lemire::compute_float;
 
 fn compute_float32(q: i64, w: u64) -> (i32, u64) {
@@ -27,6 +28,11 @@ fn compute_float_f32_rounding() {
     // Let's check the lines to see if anything is different in table...
     assert_eq!(compute_float32(-10, 167772190000000000), (151, 2));
     assert_eq!(compute_float32(-10, 167772200000000000), (151, 2));
+
+    // Check the rounding point between infinity and the next representable number down
+    assert_eq!(compute_float32(38, 3), (f32::INFINITE_POWER - 1, 6402534));
+    assert_eq!(compute_float32(38, 4), (f32::INFINITE_POWER, 0)); // infinity
+    assert_eq!(compute_float32(20, 3402823470000000000), (f32::INFINITE_POWER - 1, 8388607));
 }
 
 #[test]

@@ -74,36 +74,36 @@ pub(crate) fn parse_long_mantissa<F: RawFloat>(s: &[u8]) -> BiasedFp {
     }
     // We are now in the range [1/2 ... 1] but the binary format uses [1 ... 2].
     exp2 -= 1;
-    while (F::MINIMUM_EXPONENT + 1) > exp2 {
-        let mut n = ((F::MINIMUM_EXPONENT + 1) - exp2) as usize;
+    while F::EXP_MIN > exp2 {
+        let mut n = (F::EXP_MIN - exp2) as usize;
         if n > MAX_SHIFT {
             n = MAX_SHIFT;
         }
         d.right_shift(n);
         exp2 += n as i32;
     }
-    if (exp2 - F::MINIMUM_EXPONENT) >= F::INFINITE_POWER {
+    if (exp2 - F::EXP_MIN + 1) >= F::INFINITE_POWER {
         return fp_inf;
     }
     // Shift the decimal to the hidden bit, and then round the value
     // to get the high mantissa+1 bits.
-    d.left_shift(F::MANTISSA_EXPLICIT_BITS + 1);
+    d.left_shift(F::SIG_BITS as usize + 1);
     let mut mantissa = d.round();
-    if mantissa >= (1_u64 << (F::MANTISSA_EXPLICIT_BITS + 1)) {
+    if mantissa >= (1_u64 << (F::SIG_BITS + 1)) {
         // Rounding up overflowed to the carry bit, need to
         // shift back to the hidden bit.
         d.right_shift(1);
         exp2 += 1;
         mantissa = d.round();
-        if (exp2 - F::MINIMUM_EXPONENT) >= F::INFINITE_POWER {
+        if (exp2 - F::EXP_MIN + 1) >= F::INFINITE_POWER {
             return fp_inf;
         }
     }
-    let mut power2 = exp2 - F::MINIMUM_EXPONENT;
-    if mantissa < (1_u64 << F::MANTISSA_EXPLICIT_BITS) {
+    let mut power2 = exp2 - F::EXP_MIN + 1;
+    if mantissa < (1_u64 << F::SIG_BITS) {
         power2 -= 1;
     }
     // Zero out all the bits above the explicit mantissa bits.
-    mantissa &= (1_u64 << F::MANTISSA_EXPLICIT_BITS) - 1;
+    mantissa &= (1_u64 << F::SIG_BITS) - 1;
     BiasedFp { m: mantissa, p_biased: power2 }
 }
