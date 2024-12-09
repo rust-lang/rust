@@ -1,11 +1,11 @@
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:15:21
+  --> $DIR/ice-generic-type-alias-105742.rs:16:21
    |
 LL |     <Self as SVec>::Item,
    |                     ^^^^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^ --
@@ -15,13 +15,13 @@ LL |     <Self as SVec>::Item<'a>,
    |                         ++++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:15:21
+  --> $DIR/ice-generic-type-alias-105742.rs:16:21
    |
 LL |     <Self as SVec>::Item,
    |                     ^^^^ expected 1 generic argument
    |
 note: associated type defined here, with 1 generic parameter: `T`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^     -
@@ -31,13 +31,13 @@ LL |     <Self as SVec>::Item<T>,
    |                         +++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:26:37
+  --> $DIR/ice-generic-type-alias-105742.rs:27:37
    |
 LL |     Output = <Index<<Self as SVec>::Item,
    |                                     ^^^^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^ --
@@ -47,13 +47,13 @@ LL |     Output = <Index<<Self as SVec>::Item<'a>,
    |                                         ++++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:26:37
+  --> $DIR/ice-generic-type-alias-105742.rs:27:37
    |
 LL |     Output = <Index<<Self as SVec>::Item,
    |                                     ^^^^ expected 1 generic argument
    |
 note: associated type defined here, with 1 generic parameter: `T`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^     -
@@ -63,13 +63,13 @@ LL |     Output = <Index<<Self as SVec>::Item<T>,
    |                                         +++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:37:30
+  --> $DIR/ice-generic-type-alias-105742.rs:38:30
    |
 LL |     Output = <Self as SVec>::Item> as SVec>::Item,
    |                              ^^^^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^ --
@@ -79,13 +79,13 @@ LL |     Output = <Self as SVec>::Item<'a>> as SVec>::Item,
    |                                  ++++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:37:30
+  --> $DIR/ice-generic-type-alias-105742.rs:38:30
    |
 LL |     Output = <Self as SVec>::Item> as SVec>::Item,
    |                              ^^^^ expected 1 generic argument
    |
 note: associated type defined here, with 1 generic parameter: `T`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^     -
@@ -95,13 +95,13 @@ LL |     Output = <Self as SVec>::Item<T>> as SVec>::Item,
    |                                  +++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:37:46
+  --> $DIR/ice-generic-type-alias-105742.rs:38:46
    |
 LL |     Output = <Self as SVec>::Item> as SVec>::Item,
    |                                              ^^^^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^ --
@@ -111,13 +111,13 @@ LL |     Output = <Self as SVec>::Item> as SVec>::Item<'a>,
    |                                                  ++++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:37:46
+  --> $DIR/ice-generic-type-alias-105742.rs:38:46
    |
 LL |     Output = <Self as SVec>::Item> as SVec>::Item,
    |                                              ^^^^ expected 1 generic argument
    |
 note: associated type defined here, with 1 generic parameter: `T`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^     -
@@ -127,13 +127,13 @@ LL |     Output = <Self as SVec>::Item> as SVec>::Item<T>,
    |                                                  +++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:4:40
+  --> $DIR/ice-generic-type-alias-105742.rs:5:40
    |
 LL | pub fn next<'a, T>(s: &'a mut dyn SVec<Item = T, Output = T>) {
    |                                        ^^^^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^ --
@@ -143,13 +143,13 @@ LL | pub fn next<'a, T>(s: &'a mut dyn SVec<Item<'_> = T, Output = T>) {
    |                                            ++++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:4:40
+  --> $DIR/ice-generic-type-alias-105742.rs:5:40
    |
 LL | pub fn next<'a, T>(s: &'a mut dyn SVec<Item = T, Output = T>) {
    |                                        ^^^^ expected 1 generic argument
    |
 note: associated type defined here, with 1 generic parameter: `T`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^     -
@@ -159,13 +159,13 @@ LL | pub fn next<'a, T>(s: &'a mut dyn SVec<Item<T> = T, Output = T>) {
    |                                            +++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:15:21
+  --> $DIR/ice-generic-type-alias-105742.rs:16:21
    |
 LL |     <Self as SVec>::Item,
    |                     ^^^^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^ --
@@ -176,13 +176,13 @@ LL |     <Self as SVec>::Item<'a>,
    |                         ++++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:15:21
+  --> $DIR/ice-generic-type-alias-105742.rs:16:21
    |
 LL |     <Self as SVec>::Item,
    |                     ^^^^ expected 1 generic argument
    |
 note: associated type defined here, with 1 generic parameter: `T`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^     -
@@ -193,13 +193,13 @@ LL |     <Self as SVec>::Item<T>,
    |                         +++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:26:37
+  --> $DIR/ice-generic-type-alias-105742.rs:27:37
    |
 LL |     Output = <Index<<Self as SVec>::Item,
    |                                     ^^^^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^ --
@@ -210,13 +210,13 @@ LL |     Output = <Index<<Self as SVec>::Item<'a>,
    |                                         ++++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:26:37
+  --> $DIR/ice-generic-type-alias-105742.rs:27:37
    |
 LL |     Output = <Index<<Self as SVec>::Item,
    |                                     ^^^^ expected 1 generic argument
    |
 note: associated type defined here, with 1 generic parameter: `T`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^     -
@@ -227,13 +227,13 @@ LL |     Output = <Index<<Self as SVec>::Item<T>,
    |                                         +++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:37:30
+  --> $DIR/ice-generic-type-alias-105742.rs:38:30
    |
 LL |     Output = <Self as SVec>::Item> as SVec>::Item,
    |                              ^^^^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^ --
@@ -244,13 +244,13 @@ LL |     Output = <Self as SVec>::Item<'a>> as SVec>::Item,
    |                                  ++++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:37:30
+  --> $DIR/ice-generic-type-alias-105742.rs:38:30
    |
 LL |     Output = <Self as SVec>::Item> as SVec>::Item,
    |                              ^^^^ expected 1 generic argument
    |
 note: associated type defined here, with 1 generic parameter: `T`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^     -
@@ -261,13 +261,13 @@ LL |     Output = <Self as SVec>::Item<T>> as SVec>::Item,
    |                                  +++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:37:46
+  --> $DIR/ice-generic-type-alias-105742.rs:38:46
    |
 LL |     Output = <Self as SVec>::Item> as SVec>::Item,
    |                                              ^^^^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^ --
@@ -278,13 +278,13 @@ LL |     Output = <Self as SVec>::Item> as SVec>::Item<'a>,
    |                                                  ++++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:37:46
+  --> $DIR/ice-generic-type-alias-105742.rs:38:46
    |
 LL |     Output = <Self as SVec>::Item> as SVec>::Item,
    |                                              ^^^^ expected 1 generic argument
    |
 note: associated type defined here, with 1 generic parameter: `T`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^     -
@@ -295,13 +295,13 @@ LL |     Output = <Self as SVec>::Item> as SVec>::Item<T>,
    |                                                  +++
 
 error[E0038]: the trait `SVec` cannot be made into an object
-  --> $DIR/issue-105742.rs:4:31
+  --> $DIR/ice-generic-type-alias-105742.rs:5:31
    |
 LL | pub fn next<'a, T>(s: &'a mut dyn SVec<Item = T, Output = T>) {
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `SVec` cannot be made into an object
    |
 note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/issue-105742.rs:14:17
+  --> $DIR/ice-generic-type-alias-105742.rs:15:17
    |
 LL |    pub trait SVec: Index<
    |  ____________----__^
@@ -329,13 +329,13 @@ LL | pub fn next<'a, T>(s: &'a mut impl SVec<Item = T, Output = T>) {
    |                               ~~~~
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:15:21
+  --> $DIR/ice-generic-type-alias-105742.rs:16:21
    |
 LL |     <Self as SVec>::Item,
    |                     ^^^^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^ --
@@ -346,13 +346,13 @@ LL |     <Self as SVec>::Item<'a>,
    |                         ++++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:15:21
+  --> $DIR/ice-generic-type-alias-105742.rs:16:21
    |
 LL |     <Self as SVec>::Item,
    |                     ^^^^ expected 1 generic argument
    |
 note: associated type defined here, with 1 generic parameter: `T`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^     -
@@ -363,13 +363,13 @@ LL |     <Self as SVec>::Item<T>,
    |                         +++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:26:37
+  --> $DIR/ice-generic-type-alias-105742.rs:27:37
    |
 LL |     Output = <Index<<Self as SVec>::Item,
    |                                     ^^^^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^ --
@@ -380,13 +380,13 @@ LL |     Output = <Index<<Self as SVec>::Item<'a>,
    |                                         ++++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:26:37
+  --> $DIR/ice-generic-type-alias-105742.rs:27:37
    |
 LL |     Output = <Index<<Self as SVec>::Item,
    |                                     ^^^^ expected 1 generic argument
    |
 note: associated type defined here, with 1 generic parameter: `T`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^     -
@@ -397,13 +397,13 @@ LL |     Output = <Index<<Self as SVec>::Item<T>,
    |                                         +++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:37:30
+  --> $DIR/ice-generic-type-alias-105742.rs:38:30
    |
 LL |     Output = <Self as SVec>::Item> as SVec>::Item,
    |                              ^^^^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^ --
@@ -414,13 +414,13 @@ LL |     Output = <Self as SVec>::Item<'a>> as SVec>::Item,
    |                                  ++++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:37:30
+  --> $DIR/ice-generic-type-alias-105742.rs:38:30
    |
 LL |     Output = <Self as SVec>::Item> as SVec>::Item,
    |                              ^^^^ expected 1 generic argument
    |
 note: associated type defined here, with 1 generic parameter: `T`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^     -
@@ -431,13 +431,13 @@ LL |     Output = <Self as SVec>::Item<T>> as SVec>::Item,
    |                                  +++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:37:46
+  --> $DIR/ice-generic-type-alias-105742.rs:38:46
    |
 LL |     Output = <Self as SVec>::Item> as SVec>::Item,
    |                                              ^^^^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^ --
@@ -448,13 +448,13 @@ LL |     Output = <Self as SVec>::Item> as SVec>::Item<'a>,
    |                                                  ++++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:37:46
+  --> $DIR/ice-generic-type-alias-105742.rs:38:46
    |
 LL |     Output = <Self as SVec>::Item> as SVec>::Item,
    |                                              ^^^^ expected 1 generic argument
    |
 note: associated type defined here, with 1 generic parameter: `T`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^     -
@@ -465,13 +465,13 @@ LL |     Output = <Self as SVec>::Item> as SVec>::Item<T>,
    |                                                  +++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:15:21
+  --> $DIR/ice-generic-type-alias-105742.rs:16:21
    |
 LL |     <Self as SVec>::Item,
    |                     ^^^^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^ --
@@ -482,13 +482,13 @@ LL |     <Self as SVec>::Item<'a>,
    |                         ++++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:15:21
+  --> $DIR/ice-generic-type-alias-105742.rs:16:21
    |
 LL |     <Self as SVec>::Item,
    |                     ^^^^ expected 1 generic argument
    |
 note: associated type defined here, with 1 generic parameter: `T`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^     -
@@ -499,13 +499,13 @@ LL |     <Self as SVec>::Item<T>,
    |                         +++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:26:37
+  --> $DIR/ice-generic-type-alias-105742.rs:27:37
    |
 LL |     Output = <Index<<Self as SVec>::Item,
    |                                     ^^^^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^ --
@@ -516,13 +516,13 @@ LL |     Output = <Index<<Self as SVec>::Item<'a>,
    |                                         ++++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:26:37
+  --> $DIR/ice-generic-type-alias-105742.rs:27:37
    |
 LL |     Output = <Index<<Self as SVec>::Item,
    |                                     ^^^^ expected 1 generic argument
    |
 note: associated type defined here, with 1 generic parameter: `T`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^     -
@@ -533,13 +533,13 @@ LL |     Output = <Index<<Self as SVec>::Item<T>,
    |                                         +++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:37:30
+  --> $DIR/ice-generic-type-alias-105742.rs:38:30
    |
 LL |     Output = <Self as SVec>::Item> as SVec>::Item,
    |                              ^^^^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^ --
@@ -550,13 +550,13 @@ LL |     Output = <Self as SVec>::Item<'a>> as SVec>::Item,
    |                                  ++++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:37:30
+  --> $DIR/ice-generic-type-alias-105742.rs:38:30
    |
 LL |     Output = <Self as SVec>::Item> as SVec>::Item,
    |                              ^^^^ expected 1 generic argument
    |
 note: associated type defined here, with 1 generic parameter: `T`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^     -
@@ -567,13 +567,13 @@ LL |     Output = <Self as SVec>::Item<T>> as SVec>::Item,
    |                                  +++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:37:46
+  --> $DIR/ice-generic-type-alias-105742.rs:38:46
    |
 LL |     Output = <Self as SVec>::Item> as SVec>::Item,
    |                                              ^^^^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^ --
@@ -584,13 +584,13 @@ LL |     Output = <Self as SVec>::Item> as SVec>::Item<'a>,
    |                                                  ++++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:37:46
+  --> $DIR/ice-generic-type-alias-105742.rs:38:46
    |
 LL |     Output = <Self as SVec>::Item> as SVec>::Item,
    |                                              ^^^^ expected 1 generic argument
    |
 note: associated type defined here, with 1 generic parameter: `T`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^     -
@@ -601,13 +601,13 @@ LL |     Output = <Self as SVec>::Item> as SVec>::Item<T>,
    |                                                  +++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:61:38
+  --> $DIR/ice-generic-type-alias-105742.rs:62:38
    |
 LL |     fn len(&self) -> <Self as SVec>::Item;
    |                                      ^^^^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^ --
@@ -617,13 +617,13 @@ LL |     fn len(&self) -> <Self as SVec>::Item<'_>;
    |                                          ++++
 
 error[E0107]: missing generics for associated type `SVec::Item`
-  --> $DIR/issue-105742.rs:61:38
+  --> $DIR/ice-generic-type-alias-105742.rs:62:38
    |
 LL |     fn len(&self) -> <Self as SVec>::Item;
    |                                      ^^^^ expected 1 generic argument
    |
 note: associated type defined here, with 1 generic parameter: `T`
-  --> $DIR/issue-105742.rs:59:10
+  --> $DIR/ice-generic-type-alias-105742.rs:60:10
    |
 LL |     type Item<'a, T>;
    |          ^^^^     -
