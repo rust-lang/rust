@@ -48,7 +48,8 @@ fn is_short_pattern_inner(pat: &ast::Pat) -> bool {
         | ast::PatKind::MacCall(..)
         | ast::PatKind::Slice(..)
         | ast::PatKind::Path(..)
-        | ast::PatKind::Range(..) => false,
+        | ast::PatKind::Range(..)
+        | ast::PatKind::Guard(..) => false,
         ast::PatKind::Tuple(ref subpats) => subpats.len() <= 1,
         ast::PatKind::TupleStruct(_, ref path, ref subpats) => {
             path.segments.len() <= 1 && subpats.len() <= 1
@@ -338,8 +339,9 @@ impl Rewrite for Pat {
                         .max_width_error(shape.width, self.span)?,
                 )
                 .map(|inner_pat| format!("({})", inner_pat)),
-            PatKind::Err(_) => Err(RewriteError::Unknown),
+            PatKind::Guard(..) => Ok(context.snippet(self.span).to_string()),
             PatKind::Deref(_) => Err(RewriteError::Unknown),
+            PatKind::Err(_) => Err(RewriteError::Unknown),
         }
     }
 }

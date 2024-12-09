@@ -1,5 +1,5 @@
 //@ known-bug: #130970
-//@ compile-flags: -Zmir-opt-level=5 -Zvalidate-mir
+//@ compile-flags: -Zmir-enable-passes=+GVN -Zvalidate-mir
 
 fn main() {
     extern "C" {

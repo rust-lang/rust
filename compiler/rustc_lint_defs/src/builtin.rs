@@ -3929,6 +3929,7 @@ declare_lint! {
 }
 
 declare_lint! {
+    #[allow(text_direction_codepoint_in_literal)]
     /// The `text_direction_codepoint_in_comment` lint detects Unicode codepoints in comments that
     /// change the visual representation of text on screen in a way that does not correspond to
     /// their on memory representation.
