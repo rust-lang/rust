@@ -1,5 +1,5 @@
 //@ known-bug: #131347
-//@ compile-flags: -Zmir-opt-level=5 -Zvalidate-mir
+//@ compile-flags: -Zmir-enable-passes=+GVN -Zmir-enable-passes=+Inline -Zvalidate-mir
 
 struct S;
 static STUFF: [i8] = [0; S::N];
