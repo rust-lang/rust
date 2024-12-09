@@ -2274,7 +2274,6 @@ dependencies = [
  "chrono",
  "chrono-tz",
  "colored",
- "ctrlc",
  "directories",
  "getrandom",
  "libc",

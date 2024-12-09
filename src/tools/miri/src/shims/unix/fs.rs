@@ -2,7 +2,8 @@
 
 use std::borrow::Cow;
 use std::fs::{
-    DirBuilder, File, FileType, OpenOptions, ReadDir, read_dir, remove_dir, remove_file, rename,
+    DirBuilder, File, FileType, Metadata, OpenOptions, ReadDir, read_dir, remove_dir, remove_file,
+    rename,
 };
 use std::io::{self, ErrorKind, IsTerminal, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
@@ -11,12 +12,11 @@ use std::time::SystemTime;
 use rustc_abi::Size;
 use rustc_data_structures::fx::FxHashMap;
 
-use self::fd::FlockOp;
 use self::shims::time::system_time_to_duration;
 use crate::helpers::check_min_arg_count;
+use crate::shims::files::{EvalContextExt as _, FileDescription, FileDescriptionRef};
 use crate::shims::os_str::bytes_to_os_str;
-use crate::shims::unix::fd::FileDescriptionRef;
-use crate::shims::unix::*;
+use crate::shims::unix::fd::{FlockOp, UnixFileDescription};
 use crate::*;
 
 #[derive(Debug)]
@@ -66,6 +66,55 @@ impl FileDescription for FileHandle {
         }
     }
 
+    fn seek<'tcx>(
+        &self,
+        communicate_allowed: bool,
+        offset: SeekFrom,
+    ) -> InterpResult<'tcx, io::Result<u64>> {
+        assert!(communicate_allowed, "isolation should have prevented even opening a file");
+        interp_ok((&mut &self.file).seek(offset))
+    }
+
+    fn close<'tcx>(
+        self: Box<Self>,
+        communicate_allowed: bool,
+        _ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, io::Result<()>> {
+        assert!(communicate_allowed, "isolation should have prevented even opening a file");
+        // We sync the file if it was opened in a mode different than read-only.
+        if self.writable {
+            // `File::sync_all` does the checks that are done when closing a file. We do this to
+            // to handle possible errors correctly.
+            let result = self.file.sync_all();
+            // Now we actually close the file and return the result.
+            drop(*self);
+            interp_ok(result)
+        } else {
+            // We drop the file, this closes it but ignores any errors
+            // produced when closing it. This is done because
+            // `File::sync_all` cannot be done over files like
+            // `/dev/urandom` which are read-only. Check
+            // https://github.com/rust-lang/miri/issues/999#issuecomment-568920439
+            // for a deeper discussion.
+            drop(*self);
+            interp_ok(Ok(()))
+        }
+    }
+
+    fn metadata<'tcx>(&self) -> InterpResult<'tcx, io::Result<Metadata>> {
+        interp_ok(self.file.metadata())
+    }
+
+    fn is_tty(&self, communicate_allowed: bool) -> bool {
+        communicate_allowed && self.file.is_terminal()
+    }
+
+    fn as_unix(&self) -> &dyn UnixFileDescription {
+        self
+    }
+}
+
+impl UnixFileDescription for FileHandle {
     fn pread<'tcx>(
         &self,
         communicate_allowed: bool,
@@ -125,41 +174,6 @@ impl FileDescription for FileHandle {
         match result {
             Ok(write_size) => ecx.return_write_success(write_size, dest),
             Err(e) => ecx.set_last_error_and_return(e, dest),
-        }
-    }
-
-    fn seek<'tcx>(
-        &self,
-        communicate_allowed: bool,
-        offset: SeekFrom,
-    ) -> InterpResult<'tcx, io::Result<u64>> {
-        assert!(communicate_allowed, "isolation should have prevented even opening a file");
-        interp_ok((&mut &self.file).seek(offset))
-    }
-
-    fn close<'tcx>(
-        self: Box<Self>,
-        communicate_allowed: bool,
-        _ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<()>> {
-        assert!(communicate_allowed, "isolation should have prevented even opening a file");
-        // We sync the file if it was opened in a mode different than read-only.
-        if self.writable {
-            // `File::sync_all` does the checks that are done when closing a file. We do this to
-            // to handle possible errors correctly.
-            let result = self.file.sync_all();
-            // Now we actually close the file and return the result.
-            drop(*self);
-            interp_ok(result)
-        } else {
-            // We drop the file, this closes it but ignores any errors
-            // produced when closing it. This is done because
-            // `File::sync_all` cannot be done over files like
-            // `/dev/urandom` which are read-only. Check
-            // https://github.com/rust-lang/miri/issues/999#issuecomment-568920439
-            // for a deeper discussion.
-            drop(*self);
-            interp_ok(Ok(()))
         }
     }
 
@@ -257,54 +271,62 @@ impl FileDescription for FileHandle {
             compile_error!("flock is supported only on UNIX and Windows hosts");
         }
     }
-
-    fn is_tty(&self, communicate_allowed: bool) -> bool {
-        communicate_allowed && self.file.is_terminal()
-    }
 }
 
 impl<'tcx> EvalContextExtPrivate<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn macos_stat_write_buf(
+    fn macos_fbsd_solaris_write_buf(
         &mut self,
         metadata: FileMetadata,
         buf_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let mode: u16 = metadata.mode.to_u16()?;
-
         let (access_sec, access_nsec) = metadata.accessed.unwrap_or((0, 0));
         let (created_sec, created_nsec) = metadata.created.unwrap_or((0, 0));
         let (modified_sec, modified_nsec) = metadata.modified.unwrap_or((0, 0));
+        let mode = metadata.mode.to_uint(this.libc_ty_layout("mode_t").size)?;
 
         let buf = this.deref_pointer_as(buf_op, this.libc_ty_layout("stat"))?;
-
         this.write_int_fields_named(
             &[
                 ("st_dev", 0),
-                ("st_mode", mode.into()),
+                ("st_mode", mode.try_into().unwrap()),
                 ("st_nlink", 0),
                 ("st_ino", 0),
                 ("st_uid", 0),
                 ("st_gid", 0),
                 ("st_rdev", 0),
                 ("st_atime", access_sec.into()),
-                ("st_atime_nsec", access_nsec.into()),
                 ("st_mtime", modified_sec.into()),
-                ("st_mtime_nsec", modified_nsec.into()),
                 ("st_ctime", 0),
-                ("st_ctime_nsec", 0),
-                ("st_birthtime", created_sec.into()),
-                ("st_birthtime_nsec", created_nsec.into()),
                 ("st_size", metadata.size.into()),
                 ("st_blocks", 0),
                 ("st_blksize", 0),
-                ("st_flags", 0),
-                ("st_gen", 0),
             ],
             &buf,
         )?;
+
+        if matches!(&*this.tcx.sess.target.os, "macos" | "freebsd") {
+            this.write_int_fields_named(
+                &[
+                    ("st_atime_nsec", access_nsec.into()),
+                    ("st_mtime_nsec", modified_nsec.into()),
+                    ("st_ctime_nsec", 0),
+                    ("st_birthtime", created_sec.into()),
+                    ("st_birthtime_nsec", created_nsec.into()),
+                    ("st_flags", 0),
+                    ("st_gen", 0),
+                ],
+                &buf,
+            )?;
+        }
+
+        if matches!(&*this.tcx.sess.target.os, "solaris" | "illumos") {
+            // FIXME: write st_fstype field once libc is updated.
+            // https://github.com/rust-lang/libc/pull/4145
+            //this.write_int_fields_named(&[("st_fstype", 0)], &buf)?;
+        }
 
         interp_ok(0)
     }
@@ -648,15 +670,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
     }
 
-    fn macos_fbsd_stat(
+    fn macos_fbsd_solaris_stat(
         &mut self,
         path_op: &OpTy<'tcx>,
         buf_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        if !matches!(&*this.tcx.sess.target.os, "macos" | "freebsd") {
-            panic!("`macos_fbsd_stat` should not be called on {}", this.tcx.sess.target.os);
+        if !matches!(&*this.tcx.sess.target.os, "macos" | "freebsd" | "solaris" | "illumos") {
+            panic!("`macos_fbsd_solaris_stat` should not be called on {}", this.tcx.sess.target.os);
         }
 
         let path_scalar = this.read_pointer(path_op)?;
@@ -674,19 +696,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Err(err) => return this.set_last_error_and_return_i32(err),
         };
 
-        interp_ok(Scalar::from_i32(this.macos_stat_write_buf(metadata, buf_op)?))
+        interp_ok(Scalar::from_i32(this.macos_fbsd_solaris_write_buf(metadata, buf_op)?))
     }
 
     // `lstat` is used to get symlink metadata.
-    fn macos_fbsd_lstat(
+    fn macos_fbsd_solaris_lstat(
         &mut self,
         path_op: &OpTy<'tcx>,
         buf_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        if !matches!(&*this.tcx.sess.target.os, "macos" | "freebsd") {
-            panic!("`macos_fbsd_lstat` should not be called on {}", this.tcx.sess.target.os);
+        if !matches!(&*this.tcx.sess.target.os, "macos" | "freebsd" | "solaris" | "illumos") {
+            panic!(
+                "`macos_fbsd_solaris_lstat` should not be called on {}",
+                this.tcx.sess.target.os
+            );
         }
 
         let path_scalar = this.read_pointer(path_op)?;
@@ -703,18 +728,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Err(err) => return this.set_last_error_and_return_i32(err),
         };
 
-        interp_ok(Scalar::from_i32(this.macos_stat_write_buf(metadata, buf_op)?))
+        interp_ok(Scalar::from_i32(this.macos_fbsd_solaris_write_buf(metadata, buf_op)?))
     }
 
-    fn macos_fbsd_fstat(
+    fn macos_fbsd_solaris_fstat(
         &mut self,
         fd_op: &OpTy<'tcx>,
         buf_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        if !matches!(&*this.tcx.sess.target.os, "macos" | "freebsd") {
-            panic!("`macos_fbsd_fstat` should not be called on {}", this.tcx.sess.target.os);
+        if !matches!(&*this.tcx.sess.target.os, "macos" | "freebsd" | "solaris" | "illumos") {
+            panic!(
+                "`macos_fbsd_solaris_fstat` should not be called on {}",
+                this.tcx.sess.target.os
+            );
         }
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
@@ -730,7 +758,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Ok(metadata) => metadata,
             Err(err) => return this.set_last_error_and_return_i32(err),
         };
-        interp_ok(Scalar::from_i32(this.macos_stat_write_buf(metadata, buf_op)?))
+        interp_ok(Scalar::from_i32(this.macos_fbsd_solaris_write_buf(metadata, buf_op)?))
     }
 
     fn linux_statx(
@@ -1675,16 +1703,7 @@ impl FileMetadata {
             return interp_ok(Err(LibcError("EBADF")));
         };
 
-        let file = &fd
-            .downcast::<FileHandle>()
-            .ok_or_else(|| {
-                err_unsup_format!(
-                    "obtaining metadata is only supported on file-backed file descriptors"
-                )
-            })?
-            .file;
-
-        let metadata = file.metadata();
+        let metadata = fd.metadata()?;
         drop(fd);
         FileMetadata::from_meta(ecx, metadata)
     }

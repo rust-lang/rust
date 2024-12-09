@@ -5,7 +5,6 @@
 //@error-in-other-file: deadlock
 
 use std::convert::TryInto;
-use std::thread;
 use std::thread::spawn;
 
 // Using `as` cast since `EPOLLET` wraps around
@@ -41,10 +40,10 @@ fn check_epoll_wait<const N: usize>(
 
 // Test if only one thread is unblocked if multiple threads blocked on same epfd.
 // Expected execution:
-// 1. Thread 2 blocks.
-// 2. Thread 3 blocks.
-// 3. Thread 1 unblocks thread 3.
-// 4. Thread 2 deadlocks.
+// 1. Thread 1 blocks.
+// 2. Thread 2 blocks.
+// 3. Thread 3 unblocks thread 2.
+// 4. Thread 1 deadlocks.
 fn main() {
     // Create an epoll instance.
     let epfd = unsafe { libc::epoll_create1(0) };
@@ -65,30 +64,21 @@ fn main() {
     let expected_value = fds[0] as u64;
     check_epoll_wait::<1>(epfd, &[(expected_event, expected_value)], 0);
 
+    let expected_event = u32::try_from(libc::EPOLLIN | libc::EPOLLOUT).unwrap();
+    let expected_value = fds[0] as u64;
     let thread1 = spawn(move || {
-        thread::park();
+        check_epoll_wait::<1>(epfd, &[(expected_event, expected_value)], -1);
+        //~^ERROR: deadlocked
+    });
+    let thread2 = spawn(move || {
+        check_epoll_wait::<1>(epfd, &[(expected_event, expected_value)], -1);
+    });
+
+    let thread3 = spawn(move || {
         let data = "abcde".as_bytes().as_ptr();
         let res = unsafe { libc::write(fds[1], data as *const libc::c_void, 5) };
         assert_eq!(res, 5);
     });
-
-    let expected_event = u32::try_from(libc::EPOLLIN | libc::EPOLLOUT).unwrap();
-    let expected_value = fds[0] as u64;
-    let thread2 = spawn(move || {
-        thread::park();
-        check_epoll_wait::<1>(epfd, &[(expected_event, expected_value)], -1);
-        //~^ERROR: deadlocked
-    });
-    let thread3 = spawn(move || {
-        thread::park();
-        check_epoll_wait::<1>(epfd, &[(expected_event, expected_value)], -1);
-    });
-
-    thread2.thread().unpark();
-    thread::yield_now();
-    thread3.thread().unpark();
-    thread::yield_now();
-    thread1.thread().unpark();
 
     thread1.join().unwrap();
     thread2.join().unwrap();

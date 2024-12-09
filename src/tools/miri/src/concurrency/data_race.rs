@@ -108,19 +108,19 @@ pub(super) struct ThreadClockSet {
     fence_acquire: VClock,
 
     /// The last timestamp of happens-before relations that
-    /// have been released by this thread by a fence.
+    /// have been released by this thread by a release fence.
     fence_release: VClock,
 
-    /// Timestamps of the last SC fence performed by each
-    /// thread, updated when this thread performs an SC fence
-    pub(super) fence_seqcst: VClock,
-
     /// Timestamps of the last SC write performed by each
-    /// thread, updated when this thread performs an SC fence
+    /// thread, updated when this thread performs an SC fence.
+    /// This is never acquired into the thread's clock, it
+    /// just limits which old writes can be seen in weak memory emulation.
     pub(super) write_seqcst: VClock,
 
     /// Timestamps of the last SC fence performed by each
-    /// thread, updated when this thread performs an SC read
+    /// thread, updated when this thread performs an SC read.
+    /// This is never acquired into the thread's clock, it
+    /// just limits which old writes can be seen in weak memory emulation.
     pub(super) read_seqcst: VClock,
 }
 
@@ -256,6 +256,106 @@ enum AccessType {
     AtomicRmw,
 }
 
+/// Per-byte vector clock metadata for data-race detection.
+#[derive(Clone, PartialEq, Eq, Debug)]
+struct MemoryCellClocks {
+    /// The vector-clock timestamp and the thread that did the last non-atomic write. We don't need
+    /// a full `VClock` here, it's always a single thread and nothing synchronizes, so the effective
+    /// clock is all-0 except for the thread that did the write.
+    write: (VectorIdx, VTimestamp),
+
+    /// The type of operation that the write index represents,
+    /// either newly allocated memory, a non-atomic write or
+    /// a deallocation of memory.
+    write_type: NaWriteType,
+
+    /// The vector-clock of all non-atomic reads that happened since the last non-atomic write
+    /// (i.e., we join together the "singleton" clocks corresponding to each read). It is reset to
+    /// zero on each write operation.
+    read: VClock,
+
+    /// Atomic access, acquire, release sequence tracking clocks.
+    /// For non-atomic memory this value is set to None.
+    /// For atomic memory, each byte carries this information.
+    atomic_ops: Option<Box<AtomicMemoryCellClocks>>,
+}
+
+/// Extra metadata associated with a thread.
+#[derive(Debug, Clone, Default)]
+struct ThreadExtraState {
+    /// The current vector index in use by the
+    /// thread currently, this is set to None
+    /// after the vector index has been re-used
+    /// and hence the value will never need to be
+    /// read during data-race reporting.
+    vector_index: Option<VectorIdx>,
+
+    /// Thread termination vector clock, this
+    /// is set on thread termination and is used
+    /// for joining on threads since the vector_index
+    /// may be re-used when the join operation occurs.
+    termination_vector_clock: Option<VClock>,
+}
+
+/// Global data-race detection state, contains the currently
+/// executing thread as well as the vector-clocks associated
+/// with each of the threads.
+// FIXME: it is probably better to have one large RefCell, than to have so many small ones.
+#[derive(Debug, Clone)]
+pub struct GlobalState {
+    /// Set to true once the first additional
+    /// thread has launched, due to the dependency
+    /// between before and after a thread launch.
+    /// Any data-races must be recorded after this
+    /// so concurrent execution can ignore recording
+    /// any data-races.
+    multi_threaded: Cell<bool>,
+
+    /// A flag to mark we are currently performing
+    /// a data race free action (such as atomic access)
+    /// to suppress the race detector
+    ongoing_action_data_race_free: Cell<bool>,
+
+    /// Mapping of a vector index to a known set of thread
+    /// clocks, this is not directly mapping from a thread id
+    /// since it may refer to multiple threads.
+    vector_clocks: RefCell<IndexVec<VectorIdx, ThreadClockSet>>,
+
+    /// Mapping of a given vector index to the current thread
+    /// that the execution is representing, this may change
+    /// if a vector index is re-assigned to a new thread.
+    vector_info: RefCell<IndexVec<VectorIdx, ThreadId>>,
+
+    /// The mapping of a given thread to associated thread metadata.
+    thread_info: RefCell<IndexVec<ThreadId, ThreadExtraState>>,
+
+    /// Potential vector indices that could be re-used on thread creation
+    /// values are inserted here on after the thread has terminated and
+    /// been joined with, and hence may potentially become free
+    /// for use as the index for a new thread.
+    /// Elements in this set may still require the vector index to
+    /// report data-races, and can only be re-used after all
+    /// active vector-clocks catch up with the threads timestamp.
+    reuse_candidates: RefCell<FxHashSet<VectorIdx>>,
+
+    /// We make SC fences act like RMWs on a global location.
+    /// To implement that, they all release and acquire into this clock.
+    last_sc_fence: RefCell<VClock>,
+
+    /// The timestamp of last SC write performed by each thread.
+    /// Threads only update their own index here!
+    last_sc_write_per_thread: RefCell<VClock>,
+
+    /// Track when an outdated (weak memory) load happens.
+    pub track_outdated_loads: bool,
+}
+
+impl VisitProvenance for GlobalState {
+    fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {
+        // We don't have any tags.
+    }
+}
+
 impl AccessType {
     fn description(self, ty: Option<Ty<'_>>, size: Option<Size>) -> String {
         let mut msg = String::new();
@@ -307,30 +407,6 @@ impl AccessType {
             AccessType::NaRead(NaReadType::Retag) | AccessType::NaWrite(NaWriteType::Retag)
         )
     }
-}
-
-/// Per-byte vector clock metadata for data-race detection.
-#[derive(Clone, PartialEq, Eq, Debug)]
-struct MemoryCellClocks {
-    /// The vector-clock timestamp and the thread that did the last non-atomic write. We don't need
-    /// a full `VClock` here, it's always a single thread and nothing synchronizes, so the effective
-    /// clock is all-0 except for the thread that did the write.
-    write: (VectorIdx, VTimestamp),
-
-    /// The type of operation that the write index represents,
-    /// either newly allocated memory, a non-atomic write or
-    /// a deallocation of memory.
-    write_type: NaWriteType,
-
-    /// The vector-clock of all non-atomic reads that happened since the last non-atomic write
-    /// (i.e., we join together the "singleton" clocks corresponding to each read). It is reset to
-    /// zero on each write operation.
-    read: VClock,
-
-    /// Atomic access, acquire, release sequence tracking clocks.
-    /// For non-atomic memory this value is set to None.
-    /// For atomic memory, each byte carries this information.
-    atomic_ops: Option<Box<AtomicMemoryCellClocks>>,
 }
 
 impl AtomicMemoryCellClocks {
@@ -798,14 +874,26 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
                         // Either Acquire | AcqRel | SeqCst
                         clocks.apply_acquire_fence();
                     }
+                    if atomic == AtomicFenceOrd::SeqCst {
+                        // Behave like an RMW on the global fence location. This takes full care of
+                        // all the SC fence requirements, including C++17 §32.4 [atomics.order]
+                        // paragraph 6 (which would limit what future reads can see). It also rules
+                        // out many legal behaviors, but we don't currently have a model that would
+                        // be more precise.
+                        // Also see the second bullet on page 10 of
+                        // <https://www.cs.tau.ac.il/~orilahav/papers/popl21_robustness.pdf>.
+                        let mut sc_fence_clock = data_race.last_sc_fence.borrow_mut();
+                        sc_fence_clock.join(&clocks.clock);
+                        clocks.clock.join(&sc_fence_clock);
+                        // Also establish some sort of order with the last SC write that happened, globally
+                        // (but this is only respected by future reads).
+                        clocks.write_seqcst.join(&data_race.last_sc_write_per_thread.borrow());
+                    }
+                    // The release fence is last, since both of the above could alter our clock,
+                    // which should be part of what is being released.
                     if atomic != AtomicFenceOrd::Acquire {
                         // Either Release | AcqRel | SeqCst
                         clocks.apply_release_fence();
-                    }
-                    if atomic == AtomicFenceOrd::SeqCst {
-                        data_race.last_sc_fence.borrow_mut().set_at_index(&clocks.clock, index);
-                        clocks.fence_seqcst.join(&data_race.last_sc_fence.borrow());
-                        clocks.write_seqcst.join(&data_race.last_sc_write.borrow());
                     }
 
                     // Increment timestamp in case of release semantics.
@@ -1463,80 +1551,6 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     }
 }
 
-/// Extra metadata associated with a thread.
-#[derive(Debug, Clone, Default)]
-struct ThreadExtraState {
-    /// The current vector index in use by the
-    /// thread currently, this is set to None
-    /// after the vector index has been re-used
-    /// and hence the value will never need to be
-    /// read during data-race reporting.
-    vector_index: Option<VectorIdx>,
-
-    /// Thread termination vector clock, this
-    /// is set on thread termination and is used
-    /// for joining on threads since the vector_index
-    /// may be re-used when the join operation occurs.
-    termination_vector_clock: Option<VClock>,
-}
-
-/// Global data-race detection state, contains the currently
-/// executing thread as well as the vector-clocks associated
-/// with each of the threads.
-// FIXME: it is probably better to have one large RefCell, than to have so many small ones.
-#[derive(Debug, Clone)]
-pub struct GlobalState {
-    /// Set to true once the first additional
-    /// thread has launched, due to the dependency
-    /// between before and after a thread launch.
-    /// Any data-races must be recorded after this
-    /// so concurrent execution can ignore recording
-    /// any data-races.
-    multi_threaded: Cell<bool>,
-
-    /// A flag to mark we are currently performing
-    /// a data race free action (such as atomic access)
-    /// to suppress the race detector
-    ongoing_action_data_race_free: Cell<bool>,
-
-    /// Mapping of a vector index to a known set of thread
-    /// clocks, this is not directly mapping from a thread id
-    /// since it may refer to multiple threads.
-    vector_clocks: RefCell<IndexVec<VectorIdx, ThreadClockSet>>,
-
-    /// Mapping of a given vector index to the current thread
-    /// that the execution is representing, this may change
-    /// if a vector index is re-assigned to a new thread.
-    vector_info: RefCell<IndexVec<VectorIdx, ThreadId>>,
-
-    /// The mapping of a given thread to associated thread metadata.
-    thread_info: RefCell<IndexVec<ThreadId, ThreadExtraState>>,
-
-    /// Potential vector indices that could be re-used on thread creation
-    /// values are inserted here on after the thread has terminated and
-    /// been joined with, and hence may potentially become free
-    /// for use as the index for a new thread.
-    /// Elements in this set may still require the vector index to
-    /// report data-races, and can only be re-used after all
-    /// active vector-clocks catch up with the threads timestamp.
-    reuse_candidates: RefCell<FxHashSet<VectorIdx>>,
-
-    /// The timestamp of last SC fence performed by each thread
-    last_sc_fence: RefCell<VClock>,
-
-    /// The timestamp of last SC write performed by each thread
-    last_sc_write: RefCell<VClock>,
-
-    /// Track when an outdated (weak memory) load happens.
-    pub track_outdated_loads: bool,
-}
-
-impl VisitProvenance for GlobalState {
-    fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {
-        // We don't have any tags.
-    }
-}
-
 impl GlobalState {
     /// Create a new global state, setup with just thread-id=0
     /// advanced to timestamp = 1.
@@ -1549,7 +1563,7 @@ impl GlobalState {
             thread_info: RefCell::new(IndexVec::new()),
             reuse_candidates: RefCell::new(FxHashSet::default()),
             last_sc_fence: RefCell::new(VClock::default()),
-            last_sc_write: RefCell::new(VClock::default()),
+            last_sc_write_per_thread: RefCell::new(VClock::default()),
             track_outdated_loads: config.track_outdated_loads,
         };
 
@@ -1851,7 +1865,7 @@ impl GlobalState {
     // SC ATOMIC STORE rule in the paper.
     pub(super) fn sc_write(&self, thread_mgr: &ThreadManager<'_>) {
         let (index, clocks) = self.active_thread_state(thread_mgr);
-        self.last_sc_write.borrow_mut().set_at_index(&clocks.clock, index);
+        self.last_sc_write_per_thread.borrow_mut().set_at_index(&clocks.clock, index);
     }
 
     // SC ATOMIC READ rule in the paper.
