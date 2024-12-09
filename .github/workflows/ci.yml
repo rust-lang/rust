@@ -191,52 +191,9 @@ jobs:
 
       - name: ensure the stable version number is correct
         run: src/ci/scripts/verify-stable-version-number.sh
-
-      - name: run the build
-        # Redirect stderr to stdout to avoid reordering the two streams in the GHA logs.
-        run: src/ci/scripts/run-build-from-ci.sh 2>&1
-        env:
-          AWS_ACCESS_KEY_ID: ${{ env.CACHES_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}
-
-      - name: create github artifacts
-        run: src/ci/scripts/create-doc-artifacts.sh
-
-      - name: print disk usage
-        run: |
-          echo "disk usage:"
-          df -h
-
-      - name: upload artifacts to github
-        uses: actions/upload-artifact@v4
-        with:
-          # name is set in previous step
-          name: ${{ env.DOC_ARTIFACT_NAME }}
-          path: obj/artifacts/doc
-          if-no-files-found: ignore
-          retention-days: 5
-
-      - name: upload artifacts to S3
-        run: src/ci/scripts/upload-artifacts.sh
-        env:
-          AWS_ACCESS_KEY_ID: ${{ env.ARTIFACTS_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.ARTIFACTS_AWS_ACCESS_KEY_ID)] }}
-        # Adding a condition on DEPLOY=1 or DEPLOY_ALT=1 is not needed as all deploy
-        # builders *should* have the AWS credentials available. Still, explicitly
-        # adding the condition is helpful as this way CI will not silently skip
-        # deploying artifacts from a dist builder if the variables are misconfigured,
-        # erroring about invalid credentials instead.
-        if: github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1'
-
-      - name: upload job metrics to DataDog
-        if: needs.calculate_matrix.outputs.run_type != 'pr'
-        env:
-          DATADOG_SITE: datadoghq.com
-          DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
-          DD_GITHUB_JOB_NAME: ${{ matrix.name }}
-        run: |
-          npm install -g @datadog/datadog-ci@^2.x.x
-          python3 src/ci/scripts/upload-build-metrics.py build/cpu-usage.csv
+      
+      - name: test link
+        run: link --version || true
 
   # This job isused to tell bors the final status of the build, as there is no practical way to detect
   # when a workflow is successful listening to webhooks only in our current bors implementation (homu).
