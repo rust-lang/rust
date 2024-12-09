@@ -77,6 +77,31 @@ pub use saturating::Saturating;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use wrapping::Wrapping;
 
+macro_rules! u8_xe_bytes_doc {
+    () => {
+        "
+
+**Note**: This function is meaningless on `u8`. Byte order does not exist as a
+concept for byte-sized integers. This function is only provided in symmetry
+with larger integer types.
+
+"
+    };
+}
+
+macro_rules! i8_xe_bytes_doc {
+    () => {
+        "
+
+**Note**: This function is meaningless on `i8`. Byte order does not exist as a
+concept for byte-sized integers. This function is only provided in symmetry
+with larger integer types. You can cast from and to `u8` using `as i8` and `as
+u8`.
+
+"
+    };
+}
+
 macro_rules! usize_isize_to_xe_bytes_doc {
     () => {
         "
@@ -348,8 +373,8 @@ impl i8 {
         reversed = "0x48",
         le_bytes = "[0x12]",
         be_bytes = "[0x12]",
-        to_xe_bytes_doc = "",
-        from_xe_bytes_doc = "",
+        to_xe_bytes_doc = i8_xe_bytes_doc!(),
+        from_xe_bytes_doc = i8_xe_bytes_doc!(),
         bound_condition = "",
     }
     midpoint_impl! { i8, i16, signed }
@@ -547,8 +572,8 @@ impl u8 {
         reversed = "0x48",
         le_bytes = "[0x12]",
         be_bytes = "[0x12]",
-        to_xe_bytes_doc = "",
-        from_xe_bytes_doc = "",
+        to_xe_bytes_doc = u8_xe_bytes_doc!(),
+        from_xe_bytes_doc = u8_xe_bytes_doc!(),
         bound_condition = "",
     }
     widening_impl! { u8, u16, 8, unsigned }
