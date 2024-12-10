@@ -1,4 +1,4 @@
-FROM ubuntu:24.10
+FROM public.ecr.aws/ubuntu/ubuntu:24.10
 
 ARG DEBIAN_FRONTEND=noninteractive
 

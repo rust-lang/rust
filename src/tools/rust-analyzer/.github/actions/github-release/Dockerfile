@@ -1,4 +1,4 @@
-FROM node:slim
+FROM public.ecr.aws/docker/library/node:slim
 
 COPY . /action
 WORKDIR /action

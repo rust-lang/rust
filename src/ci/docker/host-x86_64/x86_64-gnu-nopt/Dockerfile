@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM public.ecr.aws/ubuntu/ubuntu:22.04
 
 # Avoid interactive prompts while installing `tzdata` dependency with `DEBIAN_FRONTEND`.
 ARG DEBIAN_FRONTEND=noninteractive

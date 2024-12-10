@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM public.ecr.aws/ubuntu/ubuntu:18.04
 
 # Enable source repositories, which are disabled by default on Ubuntu >= 18.04
 RUN sed -i 's/^# deb-src/deb-src/' /etc/apt/sources.list

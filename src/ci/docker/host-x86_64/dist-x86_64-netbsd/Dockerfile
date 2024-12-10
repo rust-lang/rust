@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM public.ecr.aws/ubuntu/ubuntu:22.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 COPY scripts/cross-apt-packages.sh /scripts/

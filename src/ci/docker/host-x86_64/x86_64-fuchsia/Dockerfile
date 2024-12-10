@@ -2,7 +2,7 @@
 # Fuchsia as an integration test of the toolchain. See the build-fuchsia.sh
 # script in this directory for more details.
 
-FROM ubuntu:22.04
+FROM public.ecr.aws/ubuntu/ubuntu:22.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
