@@ -904,9 +904,6 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) -> V::Resul
         }
         TyKind::Typeof(ref expression) => try_visit!(visitor.visit_anon_const(expression)),
         TyKind::Infer | TyKind::InferDelegation(..) | TyKind::Err(_) => {}
-        TyKind::AnonAdt(item_id) => {
-            try_visit!(visitor.visit_nested_item(item_id));
-        }
         TyKind::Pat(ty, pat) => {
             try_visit!(visitor.visit_ty(ty));
             try_visit!(visitor.visit_pattern_type_pattern(pat));
