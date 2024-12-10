@@ -523,38 +523,43 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     mixed_export_name_no_mangle_lint_state.lint_if_mixed(tcx);
 
     codegen_fn_attrs.inline = attrs.iter().fold(InlineAttr::None, |ia, attr| {
-        if attr.has_name(sym::inline) {
-            if attr.is_word() {
-                InlineAttr::Hint
-            } else if let Some(ref items) = attr.meta_item_list() {
-                inline_span = Some(attr.span);
-                if items.len() != 1 {
-                    struct_span_code_err!(tcx.dcx(), attr.span, E0534, "expected one argument").emit();
-                    InlineAttr::None
-                } else if list_contains_name(items, sym::always) {
-                    InlineAttr::Always
-                } else if list_contains_name(items, sym::never) {
-                    InlineAttr::Never
-                } else {
-                    struct_span_code_err!(tcx.dcx(), items[0].span(), E0535, "invalid argument")
-                        .with_help("valid inline arguments are `always` and `never`")
-                        .emit();
+        if !attr.has_name(sym::inline) {
+            return ia;
+        }
 
-                    InlineAttr::None
-                }
+        if attr.is_word() {
+            InlineAttr::Hint
+        } else if let Some(ref items) = attr.meta_item_list() {
+            inline_span = Some(attr.span);
+            if items.len() != 1 {
+                struct_span_code_err!(tcx.dcx(), attr.span, E0534, "expected one argument").emit();
+                InlineAttr::None
+            } else if list_contains_name(items, sym::always) {
+                InlineAttr::Always
+            } else if list_contains_name(items, sym::never) {
+                InlineAttr::Never
             } else {
-                ia
-            }
-        } else if attr.has_name(sym::rustc_force_inline) && tcx.features().rustc_attrs() {
-            if attr.is_word() {
-                InlineAttr::Force { attr_span: attr.span, reason: None }
-            } else if let Some(val) = attr.value_str() {
-                InlineAttr::Force { attr_span: attr.span, reason: Some(val) }
-            } else {
-                debug!("`rustc_force_inline` not checked by attribute validation");
-                ia
+                struct_span_code_err!(tcx.dcx(), items[0].span(), E0535, "invalid argument")
+                    .with_help("valid inline arguments are `always` and `never`")
+                    .emit();
+
+                InlineAttr::None
             }
         } else {
+            ia
+        }
+    });
+    codegen_fn_attrs.inline = attrs.iter().fold(codegen_fn_attrs.inline, |ia, attr| {
+        if !attr.has_name(sym::rustc_force_inline) || !tcx.features().rustc_attrs() {
+            return ia;
+        }
+
+        if attr.is_word() {
+            InlineAttr::Force { attr_span: attr.span, reason: None }
+        } else if let Some(val) = attr.value_str() {
+            InlineAttr::Force { attr_span: attr.span, reason: Some(val) }
+        } else {
+            debug!("`rustc_force_inline` not checked by attribute validation");
             ia
         }
     });
