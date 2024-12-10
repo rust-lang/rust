@@ -18,6 +18,7 @@ use ide_db::{
     },
     FxIndexSet, RootDatabase,
 };
+use itertools::Itertools;
 use syntax::{
     ast::{
         self, edit::IndentLevel, edit_in_place::Indent, AstNode, AstToken, HasGenericParams,
@@ -114,8 +115,7 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                 return;
             }
 
-            let params =
-                body.extracted_function_params(ctx, &container_info, locals_used.iter().copied());
+            let params = body.extracted_function_params(ctx, &container_info, locals_used);
 
             let name = make_function_name(&semantics_scope);
 
@@ -1067,9 +1067,11 @@ impl FunctionBody {
         &self,
         ctx: &AssistContext<'_>,
         container_info: &ContainerInfo,
-        locals: impl Iterator<Item = Local>,
+        locals: FxIndexSet<Local>,
     ) -> Vec<Param> {
         locals
+            .into_iter()
+            .sorted()
             .map(|local| (local, local.primary_source(ctx.db())))
             .filter(|(_, src)| is_defined_outside_of_body(ctx, self, src))
             .filter_map(|(local, src)| match src.into_ident_pat() {
@@ -3167,11 +3169,11 @@ fn foo() {
     let mut c = C { p: P { n: 0 } };
     let mut v = C { p: P { n: 0 } };
     let u = C { p: P { n: 0 } };
-    fun_name(&mut c, &u, &mut v);
+    fun_name(&mut c, &mut v, &u);
     let m = c.p.n + v.p.n + u.p.n;
 }
 
-fn $0fun_name(c: &mut C, u: &C, v: &mut C) {
+fn $0fun_name(c: &mut C, v: &mut C, u: &C) {
     c.p.n += u.p.n;
     let r = &mut v.p.n;
 }
@@ -5602,10 +5604,10 @@ fn parent(factor: i32) {
 fn parent(factor: i32) {
     let v = &[1, 2, 3];
 
-    fun_name(v, factor);
+    fun_name(factor, v);
 }
 
-fn $0fun_name(v: &[i32; 3], factor: i32) {
+fn $0fun_name(factor: i32, v: &[i32; 3]) {
     v.iter().map(|it| it * factor);
 }
 "#,
@@ -5786,11 +5788,11 @@ struct Struct<T: Into<i32>>(T);
 impl <T: Into<i32> + Copy> Struct<T> {
     fn func<V: Into<i32>>(&self, v: V) -> i32 {
         let t = self.0;
-        fun_name(t, v)
+        fun_name(v, t)
     }
 }
 
-fn $0fun_name<T: Into<i32> + Copy, V: Into<i32>>(t: T, v: V) -> i32 {
+fn $0fun_name<T: Into<i32> + Copy, V: Into<i32>>(v: V, t: T) -> i32 {
     t.into() + v.into()
 }
 "#,
@@ -5815,11 +5817,11 @@ struct Struct<T: Into<i32>, U: Debug>(T, U);
 impl <T: Into<i32> + Copy, U: Debug> Struct<T, U> {
     fn func<V: Into<i32>>(&self, v: V) -> i32 {
         let t = self.0;
-        fun_name(t, v)
+        fun_name(v, t)
     }
 }
 
-fn $0fun_name<T: Into<i32> + Copy, V: Into<i32>>(t: T, v: V) -> i32 {
+fn $0fun_name<T: Into<i32> + Copy, V: Into<i32>>(v: V, t: T) -> i32 {
     t.into() + v.into()
 }
 "#,
@@ -5844,11 +5846,11 @@ struct Struct<T>(T) where T: Into<i32>;
 impl <T> Struct<T> where T: Into<i32> + Copy {
     fn func<V>(&self, v: V) -> i32 where V: Into<i32> {
         let t = self.0;
-        fun_name(t, v)
+        fun_name(v, t)
     }
 }
 
-fn $0fun_name<T, V>(t: T, v: V) -> i32 where T: Into<i32> + Copy, V: Into<i32> {
+fn $0fun_name<T, V>(v: V, t: T) -> i32 where T: Into<i32> + Copy, V: Into<i32> {
     t.into() + v.into()
 }
 "#,
@@ -5873,11 +5875,11 @@ struct Struct<T, U>(T, U) where T: Into<i32>, U: Debug;
 impl <T, U> Struct<T, U> where T: Into<i32> + Copy, U: Debug {
     fn func<V>(&self, v: V) -> i32 where V: Into<i32> {
         let t = self.0;
-        fun_name(t, v)
+        fun_name(v, t)
     }
 }
 
-fn $0fun_name<T, V>(t: T, v: V) -> i32 where T: Into<i32> + Copy, V: Into<i32> {
+fn $0fun_name<T, V>(v: V, t: T) -> i32 where T: Into<i32> + Copy, V: Into<i32> {
     t.into() + v.into()
 }
 "#,
@@ -6101,6 +6103,31 @@ fn $0fun_name() -> i32 {
     // comment 2
     let b = 5;
     a + b
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn sort_params_in_order() {
+        check_assist(
+            extract_function,
+            r#"
+fn existing(a: i32, b: i32, c: i32) {
+    let x = 32;
+
+    let p = $0x + b + c + a$0;
+}
+"#,
+            r#"
+fn existing(a: i32, b: i32, c: i32) {
+    let x = 32;
+
+    let p = fun_name(a, b, c, x);
+}
+
+fn $0fun_name(a: i32, b: i32, c: i32, x: i32) -> i32 {
+    x + b + c + a
 }
 "#,
         );

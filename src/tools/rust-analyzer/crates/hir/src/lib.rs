@@ -3781,6 +3781,18 @@ impl Local {
     }
 }
 
+impl PartialOrd for Local {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Local {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.binding_id.cmp(&other.binding_id)
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct DeriveHelper {
     pub(crate) derive: MacroId,
