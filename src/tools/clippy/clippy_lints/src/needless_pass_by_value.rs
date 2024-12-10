@@ -200,6 +200,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                                 cx.param_env,
                                 ty,
                                 traits::ObligationCause::dummy_with_span(span),
+                                rustc_hir::Safety::Safe,
                             )
                             .is_ok()
                             {
