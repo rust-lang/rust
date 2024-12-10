@@ -18,6 +18,14 @@ impl SyntaxFactory {
         make::ty(text).clone_for_update()
     }
 
+    pub fn ty_infer(&self) -> ast::InferType {
+        let ast::Type::InferType(ast) = make::ty_placeholder().clone_for_update() else {
+            unreachable!()
+        };
+
+        ast
+    }
+
     pub fn type_param(
         &self,
         name: ast::Name,
