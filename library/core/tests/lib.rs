@@ -15,7 +15,6 @@
 #![feature(clone_to_uninit)]
 #![feature(const_black_box)]
 #![feature(const_eval_select)]
-#![feature(const_nonnull_new)]
 #![feature(const_swap)]
 #![feature(const_trait_impl)]
 #![feature(core_intrinsics)]
