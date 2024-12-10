@@ -67,7 +67,7 @@ jobs:
         run: echo "::add-matcher::.github/rust.json"
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@9bdad043e88c75890e36ad3bbc8d27f0090dd609
+        uses: Swatinem/rust-cache@e8e63cdbf2788df3801e6f9a81516b2ca8391886
         with:
           key: ${{ env.RUST_CHANNEL }}
 
@@ -136,7 +136,7 @@ jobs:
           rustup target add ${{ env.targets }} ${{ env.targets_ide }}
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@9bdad043e88c75890e36ad3bbc8d27f0090dd609
+        uses: Swatinem/rust-cache@e8e63cdbf2788df3801e6f9a81516b2ca8391886
 
       - name: Check
         run: |
