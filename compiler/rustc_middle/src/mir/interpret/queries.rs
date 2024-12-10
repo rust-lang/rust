@@ -6,6 +6,7 @@ use tracing::{debug, instrument};
 
 use super::{
     ErrorHandled, EvalToAllocationRawResult, EvalToConstValueResult, EvalToValTreeResult, GlobalId,
+    ReportedErrorInfo,
 };
 use crate::mir;
 use crate::query::TyCtxtEnsure;
@@ -81,7 +82,9 @@ impl<'tcx> TyCtxt<'tcx> {
             // For errors during resolution, we deliberately do not point at the usage site of the constant,
             // since for these errors the place the constant is used shouldn't matter.
             Ok(None) => Err(ErrorHandled::TooGeneric(DUMMY_SP)),
-            Err(err) => Err(ErrorHandled::Reported(err.into(), DUMMY_SP)),
+            Err(err) => {
+                Err(ErrorHandled::Reported(ReportedErrorInfo::non_const_eval_error(err), DUMMY_SP))
+            }
         }
     }
 
@@ -138,7 +141,9 @@ impl<'tcx> TyCtxt<'tcx> {
             // For errors during resolution, we deliberately do not point at the usage site of the constant,
             // since for these errors the place the constant is used shouldn't matter.
             Ok(None) => Err(ErrorHandled::TooGeneric(DUMMY_SP)),
-            Err(err) => Err(ErrorHandled::Reported(err.into(), DUMMY_SP)),
+            Err(err) => {
+                Err(ErrorHandled::Reported(ReportedErrorInfo::non_const_eval_error(err), DUMMY_SP))
+            }
         }
     }
 

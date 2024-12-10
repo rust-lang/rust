@@ -8,6 +8,7 @@ use rustc_session::config::RemapPathScopeComponents;
 use rustc_span::{DUMMY_SP, Span};
 use rustc_type_ir::visit::TypeVisitableExt;
 
+use super::interpret::ReportedErrorInfo;
 use crate::mir::interpret::{AllocId, ConstAllocation, ErrorHandled, Scalar, alloc_range};
 use crate::mir::{Promoted, pretty_print_const_value};
 use crate::ty::print::{pretty_print_const, with_no_trimmed_paths};
@@ -331,7 +332,10 @@ impl<'tcx> Const<'tcx> {
                     ConstKind::Expr(_) => {
                         bug!("Normalization of `ty::ConstKind::Expr` is unimplemented")
                     }
-                    _ => Err(tcx.dcx().delayed_bug("Unevaluated `ty::Const` in MIR body").into()),
+                    _ => Err(ReportedErrorInfo::non_const_eval_error(
+                        tcx.dcx().delayed_bug("Unevaluated `ty::Const` in MIR body"),
+                    )
+                    .into()),
                 }
             }
             Const::Unevaluated(uneval, _) => {

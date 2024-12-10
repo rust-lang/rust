@@ -88,12 +88,12 @@ package.json
 tests/rustdoc-gui/src/**.lock
 
 ## direnv
-.envrc
-.direnv/
+/.envrc
+/.direnv/
 
 ## nix
-flake.nix
+/flake.nix
 flake.lock
-default.nix
+/default.nix
 
 # Before adding new lines, see the comment at the top.
