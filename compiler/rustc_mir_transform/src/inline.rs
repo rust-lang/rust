@@ -6,7 +6,7 @@ use std::ops::{Range, RangeFrom};
 use rustc_abi::{ExternAbi, FieldIdx};
 use rustc_attr_parsing::InlineAttr;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::DefId;
 use rustc_index::Idx;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::bug;
@@ -98,12 +98,12 @@ impl<'tcx> crate::MirPass<'tcx> for ForceInline {
 }
 
 trait Inliner<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<'tcx>) -> Self;
+    fn new(tcx: TyCtxt<'tcx>, def_id: DefId, body: &Body<'tcx>) -> Self;
 
     fn tcx(&self) -> TyCtxt<'tcx>;
     fn typing_env(&self) -> ty::TypingEnv<'tcx>;
     fn history(&self) -> &[DefId];
-    fn caller_def_id(&self) -> LocalDefId;
+    fn caller_def_id(&self) -> DefId;
 
     /// Has the caller body been changed?
     fn changed(self) -> bool;
@@ -146,7 +146,7 @@ struct ForceInliner<'tcx> {
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     /// `DefId` of caller.
-    def_id: LocalDefId,
+    def_id: DefId,
     /// Stack of inlined instances.
     /// We only check the `DefId` and not the args because we want to
     /// avoid inlining cases of polymorphic recursion.
@@ -158,7 +158,7 @@ struct ForceInliner<'tcx> {
 }
 
 impl<'tcx> Inliner<'tcx> for ForceInliner<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<'tcx>) -> Self {
+    fn new(tcx: TyCtxt<'tcx>, def_id: DefId, body: &Body<'tcx>) -> Self {
         Self { tcx, typing_env: body.typing_env(tcx), def_id, history: Vec::new(), changed: false }
     }
 
@@ -174,7 +174,7 @@ impl<'tcx> Inliner<'tcx> for ForceInliner<'tcx> {
         &self.history
     }
 
-    fn caller_def_id(&self) -> LocalDefId {
+    fn caller_def_id(&self) -> DefId {
         self.def_id
     }
 
@@ -248,7 +248,7 @@ struct NormalInliner<'tcx> {
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     /// `DefId` of caller.
-    def_id: LocalDefId,
+    def_id: DefId,
     /// Stack of inlined instances.
     /// We only check the `DefId` and not the args because we want to
     /// avoid inlining cases of polymorphic recursion.
@@ -263,7 +263,7 @@ struct NormalInliner<'tcx> {
 }
 
 impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<'tcx>) -> Self {
+    fn new(tcx: TyCtxt<'tcx>, def_id: DefId, body: &Body<'tcx>) -> Self {
         let typing_env = body.typing_env(tcx);
         let codegen_fn_attrs = tcx.codegen_fn_attrs(def_id);
 
@@ -284,7 +284,7 @@ impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
         self.tcx
     }
 
-    fn caller_def_id(&self) -> LocalDefId {
+    fn caller_def_id(&self) -> DefId {
         self.def_id
     }
 
@@ -442,7 +442,7 @@ impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
 }
 
 fn inline<'tcx, T: Inliner<'tcx>>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
-    let def_id = body.source.def_id().expect_local();
+    let def_id = body.source.def_id();
 
     // Only do inlining into fn bodies.
     if !tcx.hir().body_owner_kind(def_id).is_fn_or_closure() {
@@ -723,7 +723,11 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
         return Ok(());
     }
 
-    if callee_def_id.is_local() {
+    if callee_def_id.is_local()
+        && !inliner
+            .tcx()
+            .is_lang_item(inliner.tcx().parent(caller_def_id), rustc_hir::LangItem::FnOnce)
+    {
         // If we know for sure that the function we're calling will itself try to
         // call us, then we avoid inlining that function.
         if inliner.tcx().mir_callgraph_reachable((callee, caller_def_id.expect_local())) {
