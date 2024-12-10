@@ -195,10 +195,37 @@ impl<'tcx> Inliner<'tcx> for ForceInliner<'tcx> {
         &self,
         _: &CallSite<'tcx>,
         callee_body: &Body<'tcx>,
-        _: &CodegenFnAttrs,
+        callee_attrs: &CodegenFnAttrs,
         _: bool,
     ) -> Result<(), &'static str> {
-        if let Some(_) = callee_body.tainted_by_errors { Err("body has errors") } else { Ok(()) }
+        if callee_body.tainted_by_errors.is_some() {
+            return Err("body has errors");
+        }
+
+        let caller_attrs = self.tcx().codegen_fn_attrs(self.caller_def_id());
+        if callee_attrs.instruction_set != caller_attrs.instruction_set
+            && callee_body
+                .basic_blocks
+                .iter()
+                .any(|bb| matches!(bb.terminator().kind, TerminatorKind::InlineAsm { .. }))
+        {
+            // During the attribute checking stage we allow a callee with no
+            // instruction_set assigned to count as compatible with a function that does
+            // assign one. However, during this stage we require an exact match when any
+            // inline-asm is detected. LLVM will still possibly do an inline later on
+            // if the no-attribute function ends up with the same instruction set anyway.
+            Err("cannot move inline-asm across instruction sets")
+        } else if callee_body
+            .basic_blocks
+            .iter()
+            .any(|bb| matches!(bb.terminator().kind, TerminatorKind::TailCall { .. }))
+        {
+            // FIXME(explicit_tail_calls): figure out how exactly functions containing tail
+            // calls can be inlined (and if they even should)
+            Err("can't inline functions with tail calls")
+        } else {
+            Ok(())
+        }
     }
 
     fn inline_limit_for_block(&self) -> Option<usize> {
