@@ -3,6 +3,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
+use rustc_span::sym;
 
 pub fn is_parent_const_impl_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     let parent_id = tcx.local_parent(def_id);
@@ -25,6 +26,14 @@ fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Constness {
             hir::Constness::Const
         }
         hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(impl_), .. }) => impl_.constness,
+        hir::Node::Item(hir::Item { kind: hir::ItemKind::Trait(..), .. }) => {
+            if tcx.has_attr(def_id, sym::const_trait) {
+                hir::Constness::Const
+            } else {
+                hir::Constness::NotConst
+            }
+        }
+
         hir::Node::ForeignItem(_) => {
             // Foreign items cannot be evaluated at compile-time.
             hir::Constness::NotConst

@@ -2067,7 +2067,8 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn is_const_trait(self, def_id: DefId) -> bool {
-        self.trait_def(def_id).constness == hir::Constness::Const
+        debug_assert_eq!(self.def_kind(def_id), DefKind::Trait);
+        self.constness(def_id) == hir::Constness::Const
     }
 
     #[inline]

@@ -1269,6 +1269,7 @@ fn should_encode_constness(def_kind: DefKind) -> bool {
         | DefKind::Closure
         | DefKind::Impl { of_trait: true }
         | DefKind::Variant
+        | DefKind::Trait
         | DefKind::Ctor(..) => true,
 
         DefKind::Struct
@@ -1287,7 +1288,6 @@ fn should_encode_constness(def_kind: DefKind) -> bool {
         | DefKind::InlineConst
         | DefKind::AssocTy
         | DefKind::TyParam
-        | DefKind::Trait
         | DefKind::TraitAlias
         | DefKind::Mod
         | DefKind::ForeignMod
