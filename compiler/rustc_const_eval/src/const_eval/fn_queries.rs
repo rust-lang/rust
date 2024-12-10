@@ -4,16 +4,21 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 
-fn is_parent_const_impl_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+fn parent_impl_constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Constness {
     let parent_id = tcx.local_parent(def_id);
-    matches!(tcx.def_kind(parent_id), DefKind::Impl { .. })
-        && tcx.constness(parent_id) == hir::Constness::Const
+    if matches!(tcx.def_kind(parent_id), DefKind::Impl { .. })
+        && let Some(header) = tcx.impl_trait_header(parent_id)
+    {
+        header.constness
+    } else {
+        hir::Constness::NotConst
+    }
 }
 
-/// Checks whether an item is considered to be `const`. If it is a constructor, anonymous const,
-/// const block, const item or associated const, it is const. If it is a trait impl/function,
+/// Checks whether an item is considered to be `const`. If it is a constructor, it is const.
+/// If it is an assoc method or function,
 /// return if it has a `const` modifier. If it is an intrinsic, report whether said intrinsic
-/// has a `rustc_const_{un,}stable` attribute. Otherwise, return `Constness::NotConst`.
+/// has a `rustc_const_{un,}stable` attribute. Otherwise, panic.
 fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Constness {
     let node = tcx.hir_node_by_def_id(def_id);
 
@@ -22,7 +27,6 @@ fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Constness {
         | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(..), .. }) => {
             hir::Constness::Const
         }
-        hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(impl_), .. }) => impl_.constness,
         hir::Node::ForeignItem(_) => {
             // Foreign items cannot be evaluated at compile-time.
             hir::Constness::NotConst
@@ -36,8 +40,7 @@ fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Constness {
 
                 // If the function itself is not annotated with `const`, it may still be a `const fn`
                 // if it resides in a const trait impl.
-                let is_const = is_parent_const_impl_raw(tcx, def_id);
-                if is_const { hir::Constness::Const } else { hir::Constness::NotConst }
+                parent_impl_constness(tcx, def_id)
             } else {
                 tcx.dcx().span_bug(
                     tcx.def_span(def_id),

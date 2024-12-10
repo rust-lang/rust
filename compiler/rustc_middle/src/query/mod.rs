@@ -746,7 +746,8 @@ rustc_queries! {
         desc { |tcx| "computing drop-check constraints for `{}`", tcx.def_path_str(key) }
     }
 
-    /// Returns the constness of functions and impls.
+    /// Returns the constness of function-like things (tuple struct/variant constructors, functions,
+    /// methods)
     ///
     /// Will ICE if used on things that are always const or never const.
     ///
