@@ -1632,7 +1632,6 @@ impl Config {
         set(&mut config.docs_minification, docs_minification);
         set(&mut config.docs, docs);
         set(&mut config.locked_deps, locked_deps);
-        set(&mut config.vendor, vendor);
         set(&mut config.full_bootstrap, full_bootstrap);
         set(&mut config.extended, extended);
         config.tools = tools;
@@ -1710,6 +1709,12 @@ impl Config {
             GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/enzyme"));
         config.in_tree_llvm_info = GitInfo::new(false, &config.src.join("src/llvm-project"));
         config.in_tree_gcc_info = GitInfo::new(false, &config.src.join("src/gcc"));
+
+        config.vendor = vendor.unwrap_or(
+            config.rust_info.is_from_tarball()
+                && config.src.join("vendor").exists()
+                && config.src.join(".cargo/config.toml").exists(),
+        );
 
         if let Some(rust) = toml.rust {
             let Rust {
