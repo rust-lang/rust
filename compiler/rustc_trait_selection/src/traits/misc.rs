@@ -18,6 +18,7 @@ pub enum CopyImplementationError<'tcx> {
     InfringingFields(Vec<(&'tcx ty::FieldDef, Ty<'tcx>, InfringingFieldsReason<'tcx>)>),
     NotAnAdt,
     HasDestructor,
+    HasUnsafeFields,
 }
 
 pub enum ConstParamTyImplementationError<'tcx> {
@@ -39,11 +40,16 @@ pub enum InfringingFieldsReason<'tcx> {
 ///
 /// If it's not an ADT, int ty, `bool`, float ty, `char`, raw pointer, `!`,
 /// a reference or an array returns `Err(NotAnAdt)`.
+///
+/// If the impl is `Safe`, `self_type` must not have unsafe fields. When used to
+/// generate suggestions in lints, `Safe` should be supplied so as to not
+/// suggest implementing `Copy` for types with unsafe fields.
 pub fn type_allowed_to_implement_copy<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     self_type: Ty<'tcx>,
     parent_cause: ObligationCause<'tcx>,
+    impl_safety: hir::Safety,
 ) -> Result<(), CopyImplementationError<'tcx>> {
     let (adt, args) = match self_type.kind() {
         // These types used to have a builtin impl.
@@ -76,6 +82,10 @@ pub fn type_allowed_to_implement_copy<'tcx>(
 
     if adt.has_dtor(tcx) {
         return Err(CopyImplementationError::HasDestructor);
+    }
+
+    if impl_safety == hir::Safety::Safe && self_type.has_unsafe_fields() {
+        return Err(CopyImplementationError::HasUnsafeFields);
     }
 
     Ok(())
