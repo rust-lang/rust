@@ -329,7 +329,7 @@ impl CompletedProcess {
     /// Checks that `stderr` does not contain the regex pattern `unexpected`.
     #[track_caller]
     pub fn assert_stderr_not_contains_regex<S: AsRef<str>>(&self, unexpected: S) -> &Self {
-        assert_not_contains_regex(&self.stdout_utf8(), unexpected);
+        assert_not_contains_regex(&self.stderr_utf8(), unexpected);
         self
     }
 
