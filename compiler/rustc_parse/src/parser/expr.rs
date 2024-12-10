@@ -1369,11 +1369,14 @@ impl<'a> Parser<'a> {
             ))
         } else {
             // Field access `expr.f`
+            let span = lo.to(self.prev_token.span);
             if let Some(args) = seg.args {
-                self.dcx().emit_err(errors::FieldExpressionWithGeneric(args.span()));
+                // See `StashKey::GenericInFieldExpr` for more info on why we stash this.
+                self.dcx()
+                    .create_err(errors::FieldExpressionWithGeneric(args.span()))
+                    .stash(seg.ident.span, StashKey::GenericInFieldExpr);
             }
 
-            let span = lo.to(self.prev_token.span);
             Ok(self.mk_expr(span, ExprKind::Field(self_arg, seg.ident)))
         }
     }
