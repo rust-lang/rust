@@ -1014,7 +1014,6 @@ compiler = [
     "@Noratrieb",
     "@oli-obk",
     "@petrochenkov",
-    "@pnkfelix",
     "@SparrowLii",
     "@wesleywiser",
 ]
@@ -1107,7 +1106,6 @@ types = [
 ]
 borrowck = [
     "@davidtwco",
-    "@pnkfelix",
     "@matthewjasper"
 ]
 ast_lowering = [
