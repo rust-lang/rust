@@ -1,3 +1,6 @@
+// Exercise the `default_field_values` feature to confirm it interacts correctly with other nightly
+// features. In particular, we want to verify that interaction with consts coming from different
+// contexts are usable as a default field value.
 //@ run-pass
 //@ aux-build:struct_field_default.rs
 #![feature(const_trait_impl, default_field_values, generic_const_exprs)]
@@ -7,12 +10,14 @@ extern crate struct_field_default as xc;
 
 pub struct S;
 
+// Basic expressions and `Default` expansion
 #[derive(Default)]
 pub struct Foo {
     pub bar: S = S,
     pub baz: i32 = 42 + 3,
 }
 
+// Enum support for deriving `Default` when all fields have default values
 #[derive(Default)]
 pub enum Bar {
     #[default]
@@ -33,13 +38,13 @@ impl const ConstDefault for i32 {
 }
 
 pub struct Qux<A, const C: i32, X: const ConstDefault> {
-    bar: S = Qux::<A, C, X>::S,
-    baz: i32 = foo(),
-    bat: i32 = <Qux<A, C, X> as T>::K,
-    baq: i32 = Self::K,
-    bay: i32 = C,
-    bak: Vec<A> = Vec::new(),
-    ban: X = X::value(),
+    bar: S = Qux::<A, C, X>::S, // Associated constant from inherent impl
+    baz: i32 = foo(), // Constant function
+    bat: i32 = <Qux<A, C, X> as T>::K, // Associated constant from explicit trait
+    baq: i32 = Self::K, // Associated constant from implicit trait
+    bay: i32 = C, // `const` parameter
+    bak: Vec<A> = Vec::new(), // Associated constant function
+    ban: X = X::value(), // Associated constant function from `const` trait parameter
 }
 
 impl<A, const C: i32, X: const ConstDefault> Qux<A, C, X> {
