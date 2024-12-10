@@ -424,6 +424,111 @@ fn test_mul_add() {
 }
 
 #[test]
+fn test_div_euclid() {
+    use core::cmp::Ordering;
+
+    let nan = f32::NAN;
+    let inf = f32::INFINITY;
+    let largest_subnormal = f32::from_bits(LARGEST_SUBNORMAL_BITS);
+
+    // Infinity and NaN.
+    assert!(nan.div_euclid(5.0).is_nan());
+    assert!(inf.div_euclid(inf).is_nan());
+    assert!(0.0f32.div_euclid(0.0).is_nan());
+
+    assert_eq!(inf.div_euclid(3.0), inf);
+    assert_eq!(inf.div_euclid(0.0), inf);
+    assert_eq!(5.0f32.div_euclid(0.0), inf);
+    assert_eq!((-5.0f32).div_euclid(0.0), -inf);
+
+    // 0 / x
+    assert_eq!(Ordering::Equal, 0.0f32.div_euclid(10.0).total_cmp(&0.0));
+    assert_eq!(Ordering::Equal, (-0.0f32).div_euclid(10.0).total_cmp(&-0.0));
+
+    // small / large
+    assert_eq!(Ordering::Equal, 1.0f32.div_euclid(10.0).total_cmp(&0.0));
+    assert_eq!((-1.0f32).div_euclid(10.0), -1.0);
+    assert_eq!(Ordering::Equal, 1.0f32.div_euclid(-10.0).total_cmp(&-0.0));
+    assert_eq!((-1.0f32).div_euclid(-10.0), 1.0);
+
+    // Small results.
+    assert_eq!(20.0f32.div_euclid(10.0), 2.0);
+    assert_eq!((-20.0f32).div_euclid(10.0), -2.0);
+    assert_eq!(20.0f32.div_euclid(-10.0), -2.0);
+    assert_eq!((-20.0f32).div_euclid(-10.0), 2.0);
+
+    assert_eq!(23.0f32.div_euclid(10.0), 2.0);
+    assert_eq!((-23.0f32).div_euclid(10.0), -3.0);
+    assert_eq!(23.0f32.div_euclid(-10.0), -2.0);
+    assert_eq!((-23.0f32).div_euclid(-10.0), 3.0);
+
+    assert_eq!((2.0 * largest_subnormal).div_euclid(largest_subnormal), 2.0);
+
+    // Medium results.
+    assert_eq!(1000000.0f32.div_euclid(10.0), 100000.0);
+    assert_eq!((-1000000.0f32).div_euclid(10.0), -100000.0);
+    assert_eq!(1000000.0f32.div_euclid(-10.0), -100000.0);
+    assert_eq!((-1000000.0f32).div_euclid(-10.0), 100000.0);
+
+    assert_eq!(1000003.0f32.div_euclid(10.0), 100000.0);
+    assert_eq!((-1000003.0f32).div_euclid(10.0), -100001.0);
+    assert_eq!(1000003.0f32.div_euclid(-10.0), -100000.0);
+    assert_eq!((-1000003.0f32).div_euclid(-10.0), 100001.0);
+
+    // Infinite results.
+    assert_eq!(1e30f32.div_euclid(1e-30), inf);
+    assert_eq!((-1e30f32).div_euclid(1e-30), -inf);
+    assert_eq!(1e30f32.div_euclid(-1e-30), -inf);
+    assert_eq!((-1e30f32).div_euclid(-1e-30), inf);
+
+    // Large results, exactly divisible.
+    assert_eq!(1e30f32.div_euclid(2.0), 0.5e30);
+    assert_eq!((-1e30f32).div_euclid(2.0), -0.5e30);
+    assert_eq!(1e30f32.div_euclid(-2.0), -0.5e30);
+    assert_eq!((-1e30f32).div_euclid(-2.0), 0.5e30);
+
+    // Large results, not divisible.
+    let a = 3377699720527872f32; // 3 * 2^50
+    let b = 7f32;
+    // a / b = 0x1b6db6db6db6d.b6... = 482528531503981.71...
+    // floor(a / b) = 0x1b6db6db6db6d
+    // ceil(a / b) = 0x1b6db6db6db6e
+    // Both round to 0x1b6db6e000000 = 482528536297472
+    assert_eq!(a.div_euclid(b), 482528536297472f32);
+    assert_eq!((-a).div_euclid(-b), 482528536297472f32);
+
+    // Large results, test precise rounding edge cases.
+
+    // a = 0x7dccd9000000000 = 566553671500824576
+    // b = 0xed5c1c = 5555612
+    let a = 566553671500824576f32;
+    let b = 15555612f32;
+
+    // a / b = 0x87adf0800.c9... = 36421175296.78...
+    // floor(a / b) = 0x87adf0800
+    // Rounds down to 0x87adf0000 = 36421173248
+    assert_eq!(a.div_euclid(b), 36421173248f32);
+
+    // ceil(a / b) = 0x87adf0801
+    // Rounds up to 0x87adf1000 = 36421177344
+    assert_eq!((-a).div_euclid(-b), 36421177344f32);
+
+    // a = 0x7a83d5800000000 = 551758402519302144
+    // b = 0x868b0f = 8817423
+    let a = 551758402519302144f32;
+    let b = 8817423f32;
+
+    // a / b = 0xe91d0d7ff.03... = 62575925247.01...
+    // floor(a / b) = 0xe91d0d7ff
+    // Rounds down to 0xe91d0d000 = 62575923200
+    assert_eq!(a.div_euclid(b), 62575923200f32);
+
+    // ceil(a / b) = 0xe91d0d800
+    // Rounds up to 0xe91d0e000 = 62575927296
+    assert_eq!((-a).div_euclid(-b), 62575927296f32);
+}
+
+#[test]
 fn test_recip() {
     let nan: f32 = f32::NAN;
     let inf: f32 = f32::INFINITY;

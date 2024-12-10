@@ -460,7 +460,122 @@ fn test_mul_add() {
 }
 
 #[test]
-#[cfg(reliable_f16_math)]
+#[cfg(reliable_f128_math)]
+fn test_div_euclid() {
+    use core::cmp::Ordering;
+
+    let nan = f128::NAN;
+    let inf = f128::INFINITY;
+    let largest_subnormal = f128::from_bits(LARGEST_SUBNORMAL_BITS);
+
+    // Infinity and NaN.
+
+    assert!(nan.div_euclid(5.0).is_nan());
+    assert!(inf.div_euclid(inf).is_nan());
+    assert!(0.0f128.div_euclid(0.0).is_nan());
+
+    assert_eq!(inf.div_euclid(3.0), inf);
+    assert_eq!(inf.div_euclid(0.0), inf);
+    assert_eq!(5.0f128.div_euclid(0.0), inf);
+    assert_eq!((-5.0f128).div_euclid(0.0), -inf);
+
+    // 0 / x
+    assert_eq!(Ordering::Equal, 0.0f128.div_euclid(10.0).total_cmp(&0.0));
+    assert_eq!(Ordering::Equal, (-0.0f128).div_euclid(10.0).total_cmp(&-0.0));
+
+    // small / large
+    assert_eq!(Ordering::Equal, 1.0f128.div_euclid(10.0).total_cmp(&0.0));
+    assert_eq!((-1.0f128).div_euclid(10.0), -1.0);
+    assert_eq!(Ordering::Equal, 1.0f128.div_euclid(-10.0).total_cmp(&-0.0));
+    assert_eq!((-1.0f128).div_euclid(-10.0), 1.0);
+
+    // Small results.
+    assert_eq!(20.0f128.div_euclid(10.0), 2.0);
+    assert_eq!((-20.0f128).div_euclid(10.0), -2.0);
+    assert_eq!(20.0f128.div_euclid(-10.0), -2.0);
+    assert_eq!((-20.0f128).div_euclid(-10.0), 2.0);
+
+    assert_eq!(23.0f128.div_euclid(10.0), 2.0);
+    assert_eq!((-23.0f128).div_euclid(10.0), -3.0);
+    assert_eq!(23.0f128.div_euclid(-10.0), -2.0);
+    assert_eq!((-23.0f128).div_euclid(-10.0), 3.0);
+
+    assert_eq!((2.0 * largest_subnormal).div_euclid(largest_subnormal), 2.0);
+
+    // Medium results.
+    assert_eq!(1e9f128.div_euclid(10.0), 1e8);
+    assert_eq!((-1e9f128).div_euclid(10.0), -1e8);
+    assert_eq!(1e9f128.div_euclid(-10.0), -1e8);
+    assert_eq!((-1e9f128).div_euclid(-10.0), 1e8);
+
+    assert_eq!(1_000_000_003.0f128.div_euclid(10.0), 100_000_000.0);
+    assert_eq!((-1_000_000_003.0f128).div_euclid(10.0), -100_000_001.0);
+    assert_eq!(1_000_000_003.0f128.div_euclid(-10.0), -100_000_000.0);
+    assert_eq!((-1_000_000_003.0f128).div_euclid(-10.0), 100_000_001.0);
+
+    // Infinite results.
+    assert_eq!(1e4000f128.div_euclid(1e-4000), inf);
+    assert_eq!((-1e4000f128).div_euclid(1e-4000), -inf);
+    assert_eq!(1e4000f128.div_euclid(-1e-4000), -inf);
+    assert_eq!((-1e4000f128).div_euclid(-1e-4000), inf);
+
+    // Large results, exactly divisible.
+    assert_eq!(1e4000f128.div_euclid(2.0), 0.5e4000);
+    assert_eq!((-1e4000f128).div_euclid(2.0), -0.5e4000);
+    assert_eq!(1e4000f128.div_euclid(-2.0), -0.5e4000);
+    assert_eq!((-1e4000f128).div_euclid(-2.0), 0.5e4000);
+
+    // Large results, not divisible.
+    let a = 4281743078117879643174857908348485409148239872f128; // 3 * 2^150
+    let b = 7f128;
+    // a / b = 0x1b6db6db6db6db6db6db6db6db6db6db6db6db.6d...
+    //   = 611677582588268520453551129764069344164034267.42...
+    // floor(a / b) = 0x1b6db6db6db6db6db6db6db6db6db6db6db6db
+    // ceil(a / b) = 0x1b6db6db6db6db6db6db6db6db6db6db6db6dc
+    // Both round to 0x1b6db6db6db6db6db6db6db6db6db000000000
+    //   = 611677582588268520453551129764069314712829952
+    assert_eq!(a.div_euclid(b), 611677582588268520453551129764069314712829952f128);
+    assert_eq!((-a).div_euclid(-b), 611677582588268520453551129764069314712829952f128);
+
+    // Large results, test precise rounding edge cases.
+
+    // a = 0x3abab02be95086e38544e68b3c78a0000000000000000000000000000000000
+    // b = 0x10d3b8a2cc1076df4f04ec48a0a4e
+    let a = 1660249666442741415340463590408472308581124489457651197969883177321645473792f128;
+    let b = 5460685408006286130247220436011598f128;
+
+    // a / b = 0x37d7bea0c08a6e5c00f664cda8aa1000000.be...
+    //       = 304036863945418882481381401039785785556992.74...
+    // floor(a / b) = 0x37d7bea0c08a6e5c00f664cda8aa1000000
+    // Rounds down to 0x37d7bea0c08a6e5c00f664cda8aa0000000
+    //   = 304036863945418882481381401039785785556992
+    assert_eq!(a.div_euclid(b), 304036863945418882481381401039785785556992f128);
+
+    // ceil(a / b) = 0x37d7bea0c08a6e5c00f664cda8aa1000001
+    // Rounds up to 0x37d7bea0c08a6e5c00f664cda8aa2000000
+    //   = 304036863945418882481381401039785802334208
+    assert_eq!((-a).div_euclid(-b), 304036863945418882481381401039785802334208f128);
+
+    // a = 0x36625c03bcfd7d822e780b258e6ec0000000000000000000000000000000000
+    // b = 0x166d7391fbd4d59a891d674eb11f3
+    let a = 1537417493580712628196032571713889096389680551356671222166298628797042262016f128;
+    let b = 7278154372064079194208203952558579f128;
+
+    // a / b = 0x26cc5433ff626fe2bbc14362e154affffff.5f...
+    //       = 211237274587334998320332278178386764890111.37...
+    // floor(a / b) = 0x26cc5433ff626fe2bbc14362e154affffff
+    // Rounds down to 0x26cc5433ff626fe2bbc14362e154a000000
+    //   = 211237274587334998320332278178386748112896
+    assert_eq!(a.div_euclid(b), 211237274587334998320332278178386748112896f128);
+
+    // ceil(a / b) = 0x26cc5433ff626fe2bbc14362e154b000000
+    // Rounds up to 0x26cc5433ff626fe2bbc14362e154c000000
+    //   = 211237274587334998320332278178386781667328
+    assert_eq!((-a).div_euclid(-b), 211237274587334998320332278178386781667328f128);
+}
+
+#[test]
+#[cfg(reliable_f128_math)]
 fn test_recip() {
     let nan: f128 = f128::NAN;
     let inf: f128 = f128::INFINITY;

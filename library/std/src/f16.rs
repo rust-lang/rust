@@ -4,6 +4,8 @@
 //!
 //! Mathematically significant numbers are provided in the `consts` sub-module.
 
+mod div_euclid;
+
 #[cfg(test)]
 mod tests;
 
@@ -235,10 +237,14 @@ impl f16 {
 
     /// Calculates Euclidean division, the matching method for `rem_euclid`.
     ///
-    /// This computes the integer `n` such that
+    /// In infinite precision this computes the integer `n` such that
     /// `self = n * rhs + self.rem_euclid(rhs)`.
-    /// In other words, the result is `self / rhs` rounded to the integer `n`
-    /// such that `self >= n * rhs`.
+    /// In other words, the result is `self / rhs` rounded to the
+    /// integer `n` such that `self >= n * rhs`.
+    ///
+    /// However, due to a floating point round-off error the result can be rounded if
+    /// `self` is much larger in magnitude than `rhs`, such that `n` can't be represented
+    /// exactly.
     ///
     /// # Precision
     ///
@@ -264,28 +270,22 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn div_euclid(self, rhs: f16) -> f16 {
-        let q = (self / rhs).trunc();
-        if self % rhs < 0.0 {
-            return if rhs > 0.0 { q - 1.0 } else { q + 1.0 };
-        }
-        q
+        div_euclid::div_euclid(self, rhs)
     }
 
     /// Calculates the least nonnegative remainder of `self (mod rhs)`.
     ///
-    /// In particular, the return value `r` satisfies `0.0 <= r < rhs.abs()` in
-    /// most cases. However, due to a floating point round-off error it can
-    /// result in `r == rhs.abs()`, violating the mathematical definition, if
-    /// `self` is much smaller than `rhs.abs()` in magnitude and `self < 0.0`.
-    /// This result is not an element of the function's codomain, but it is the
-    /// closest floating point number in the real numbers and thus fulfills the
-    /// property `self == self.div_euclid(rhs) * rhs + self.rem_euclid(rhs)`
-    /// approximately.
+    /// In infinite precision the return value `r` satisfies `0 <= r < rhs.abs()`.
+    ///
+    /// However, due to a floating point round-off error the result can round to
+    /// `rhs.abs()` if `self` is much smaller than `rhs.abs()` in magnitude and `self < 0.0`.
     ///
     /// # Precision
     ///
     /// The result of this operation is guaranteed to be the rounded
     /// infinite-precision result.
+    ///
+    /// The result is precise when `self >= 0.0`.
     ///
     /// # Examples
     ///

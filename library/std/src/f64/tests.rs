@@ -412,6 +412,122 @@ fn test_mul_add() {
 }
 
 #[test]
+fn test_div_euclid() {
+    use core::cmp::Ordering;
+
+    let nan = f64::NAN;
+    let inf = f64::INFINITY;
+    let largest_subnormal = f64::from_bits(LARGEST_SUBNORMAL_BITS);
+
+    // Infinity and NaN.
+    assert!(nan.div_euclid(5.0).is_nan());
+    assert!(inf.div_euclid(inf).is_nan());
+    assert!(0.0f64.div_euclid(0.0).is_nan());
+
+    assert_eq!(inf.div_euclid(3.0), inf);
+    assert_eq!(inf.div_euclid(0.0), inf);
+    assert_eq!(5.0f64.div_euclid(0.0), inf);
+    assert_eq!((-5.0f64).div_euclid(0.0), -inf);
+
+    // 0 / x
+    assert_eq!(Ordering::Equal, 0.0f64.div_euclid(10.0).total_cmp(&0.0));
+    assert_eq!(Ordering::Equal, (-0.0f64).div_euclid(10.0).total_cmp(&-0.0));
+
+    // small / large
+    assert_eq!(Ordering::Equal, 1.0f64.div_euclid(10.0).total_cmp(&0.0));
+    assert_eq!((-1.0f64).div_euclid(10.0), -1.0);
+    assert_eq!(Ordering::Equal, 1.0f64.div_euclid(-10.0).total_cmp(&-0.0));
+    assert_eq!((-1.0f64).div_euclid(-10.0), 1.0);
+
+    // Small results.
+    assert_eq!(20.0f64.div_euclid(10.0), 2.0);
+    assert_eq!((-20.0f64).div_euclid(10.0), -2.0);
+    assert_eq!(20.0f64.div_euclid(-10.0), -2.0);
+    assert_eq!((-20.0f64).div_euclid(-10.0), 2.0);
+
+    assert_eq!(23.0f64.div_euclid(10.0), 2.0);
+    assert_eq!((-23.0f64).div_euclid(10.0), -3.0);
+    assert_eq!(23.0f64.div_euclid(-10.0), -2.0);
+    assert_eq!((-23.0f64).div_euclid(-10.0), 3.0);
+
+    assert_eq!((2.0 * largest_subnormal).div_euclid(largest_subnormal), 2.0);
+
+    // Issue #107904
+    let a = -0.7500000000000006f64;
+    let b = 0.0833333333333334f64;
+    assert_eq!(a.div_euclid(b), -9.0);
+
+    let a = 46.11764705882354f64;
+    let b = 1.6470588235294124f64;
+    assert_eq!(a.div_euclid(b), 27.0);
+
+    // Medium results.
+    assert_eq!(1000000.0f64.div_euclid(10.0), 100000.0);
+    assert_eq!((-1000000.0f64).div_euclid(10.0), -100000.0);
+    assert_eq!(1000000.0f64.div_euclid(-10.0), -100000.0);
+    assert_eq!((-1000000.0f64).div_euclid(-10.0), 100000.0);
+
+    assert_eq!(1000003.0f64.div_euclid(10.0), 100000.0);
+    assert_eq!((-1000003.0f64).div_euclid(10.0), -100001.0);
+    assert_eq!(1000003.0f64.div_euclid(-10.0), -100000.0);
+    assert_eq!((-1000003.0f64).div_euclid(-10.0), 100001.0);
+
+    // Large results, exactly divisible.
+    assert_eq!(1e300f64.div_euclid(2.0), 0.5e300);
+    assert_eq!((-1e300f64).div_euclid(2.0), -0.5e300);
+    assert_eq!(1e300f64.div_euclid(-2.0), -0.5e300);
+    assert_eq!((-1e300f64).div_euclid(-2.0), 0.5e300);
+
+    // Infinite results.
+    assert_eq!(1e300f64.div_euclid(1e-300), inf);
+    assert_eq!((-1e300f64).div_euclid(1e-300), -inf);
+    assert_eq!(1e300f64.div_euclid(-1e-300), -inf);
+    assert_eq!((-1e300f64).div_euclid(-1e-300), inf);
+
+    // Large results, not divisible.
+    let a = 3802951800684688204490109616128f64; // 3 * 2^100
+    let b = 7f64;
+    // a / b = 0x6db6db6db6db6db6db6db6db6.db...
+    //   = 543278828669241172070015659446.85...
+    // floor(a / b) = 0x6db6db6db6db6db6db6db6db6
+    // ceil(a / b) = 0x6db6db6db6db6db6db6db6db7
+    // Both round to 0x6db6db6db6db6c00000000000
+    //   = 543278828669241141911982440448
+    assert_eq!(a.div_euclid(b), 543278828669241141911982440448f64);
+    assert_eq!((-a).div_euclid(-b), 543278828669241141911982440448f64);
+
+    // Large results, test precise rounding edge cases.
+
+    // a = 0xc3b75b9c77bfa80000000000000000 = 1016216826558977217020954221979107328
+    // b = 0x130594ed7aaacb = 5354161755040459
+    let a = 1016216826558977217020954221979107328f64;
+    let b = 5354161755040459f64;
+
+    // a / b = 0xa49ff0421f8f94000.0a... = 189799425764882989056.03...
+    // floor(a / b) = 0xa49ff0421f8f94000
+    // Rounds down to 0xa49ff0421f8f90000 = 189799425764882972672
+    assert_eq!(a.div_euclid(b), 189799425764882972672f64);
+
+    // ceil(a / b) = 0xa49ff0421f8f94001
+    // Rounds up to 0xa49ff0421f8f98000 = 189799425764883005440
+    assert_eq!((-a).div_euclid(-b), 189799425764883005440f64);
+
+    // a = 0xee67640bd3b6880000000000000000 = 1237863666996996959508242859395383296
+    // b = 0x15409d10e91300 = 5982017848677120
+    // a / b = 0xb37bdd747bac8bfff.5b... = 206930787956565786623.35...
+    let a = 1237863666996996959508242859395383296f64;
+    let b = 5982017848677120f64;
+
+    // floor(a / b) = 0xb37bdd747bac8bfff
+    // Rounds down to 0xb37bdd747bac88000 = 206930787956565770240
+    assert_eq!(a.div_euclid(b), 206930787956565770240f64);
+
+    // ceil(a / b) = 0xb37bdd747bac8c000
+    // Rounds up to 0xb37bdd747bac90000 =
+    assert_eq!((-a).div_euclid(-b), 206930787956565803008f64);
+}
+
+#[test]
 fn test_recip() {
     let nan: f64 = f64::NAN;
     let inf: f64 = f64::INFINITY;

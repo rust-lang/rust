@@ -444,6 +444,67 @@ fn test_mul_add() {
 
 #[test]
 #[cfg(reliable_f16_math)]
+fn test_div_euclid() {
+    use core::cmp::Ordering;
+
+    let nan = f16::NAN;
+    let inf = f16::INFINITY;
+    let largest_subnormal = f16::from_bits(LARGEST_SUBNORMAL_BITS);
+
+    // Infinity and NaN.
+    assert!(nan.div_euclid(5.0).is_nan());
+    assert!(inf.div_euclid(inf).is_nan());
+    assert!(0.0f16.div_euclid(0.0).is_nan());
+
+    assert_eq!(inf.div_euclid(3.0), inf);
+    assert_eq!(inf.div_euclid(0.0), inf);
+    assert_eq!(5.0f16.div_euclid(0.0), inf);
+    assert_eq!((-5.0f16).div_euclid(0.0), -inf);
+
+    // 0 / x
+    assert_eq!(Ordering::Equal, 0.0f16.div_euclid(10.0).total_cmp(&0.0));
+    assert_eq!(Ordering::Equal, (-0.0f16).div_euclid(10.0).total_cmp(&-0.0));
+
+    // small / large
+    assert_eq!(Ordering::Equal, 1.0f16.div_euclid(10.0).total_cmp(&0.0));
+    assert_eq!((-1.0f16).div_euclid(10.0), -1.0);
+    assert_eq!(Ordering::Equal, 1.0f16.div_euclid(-10.0).total_cmp(&-0.0));
+    assert_eq!((-1.0f16).div_euclid(-10.0), 1.0);
+
+    // Small results.
+    assert_eq!(20.0f16.div_euclid(10.0), 2.0);
+    assert_eq!((-20.0f16).div_euclid(10.0), -2.0);
+    assert_eq!(20.0f16.div_euclid(-10.0), -2.0);
+    assert_eq!((-20.0f16).div_euclid(-10.0), 2.0);
+
+    assert_eq!(23.0f16.div_euclid(10.0), 2.0);
+    assert_eq!((-23.0f16).div_euclid(10.0), -3.0);
+    assert_eq!(23.0f16.div_euclid(-10.0), -2.0);
+    assert_eq!((-23.0f16).div_euclid(-10.0), 3.0);
+
+    assert_eq!((2.0 * largest_subnormal).div_euclid(largest_subnormal), 2.0);
+
+    // Large results, exactly divisible.
+    assert_eq!(1e4f16.div_euclid(2.0), 0.5e4);
+    assert_eq!((-1e4f16).div_euclid(2.0), -0.5e4);
+    assert_eq!(1e4f16.div_euclid(-2.0), -0.5e4);
+    assert_eq!((-1e4f16).div_euclid(-2.0), 0.5e4);
+
+    // Large results, not divisible.
+    assert_eq!(1003.0f16.div_euclid(10.0), 100.0);
+    assert_eq!((-1003.0f16).div_euclid(10.0), -101.0);
+    assert_eq!(1003.0f16.div_euclid(-10.0), -100.0);
+    assert_eq!((-1003.0f16).div_euclid(-10.0), 101.0);
+
+    // Infinite results.
+    assert_eq!(1000f16.div_euclid(0.001f16), inf);
+    assert_eq!((-1000f16).div_euclid(0.001f16), -inf);
+    assert_eq!(1000f16.div_euclid(-0.001f16), -inf);
+    assert_eq!((-1000f16).div_euclid(-0.001f16), inf);
+}
+
+#[test]
+#[cfg(reliable_f16_math)]
 fn test_recip() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;

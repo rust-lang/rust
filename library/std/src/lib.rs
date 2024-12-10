@@ -321,6 +321,7 @@
 // Library features (core):
 // tidy-alphabetical-start
 #![feature(array_chunks)]
+#![feature(bigint_helper_methods)]
 #![feature(c_str_module)]
 #![feature(char_internals)]
 #![feature(clone_to_uninit)]
