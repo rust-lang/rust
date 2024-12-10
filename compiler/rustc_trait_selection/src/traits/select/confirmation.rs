@@ -1197,6 +1197,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 continue;
                             }
 
+                            // RPITITs with `Self: Sized` don't need to be checked.
+                            if tcx.generics_require_sized_self(assoc_item) {
+                                continue;
+                            }
+
                             let pointer_like_goal = pointer_like_goal_for_rpitit(
                                 tcx,
                                 supertrait,
