@@ -410,7 +410,12 @@ impl<'test> TestCx<'test> {
             truncated: Truncated::No,
             cmdline: format!("{cmd:?}"),
         };
-        self.dump_output(&proc_res.stdout, &proc_res.stderr);
+        self.dump_output(
+            self.config.verbose,
+            &cmd.get_program().to_string_lossy(),
+            &proc_res.stdout,
+            &proc_res.stderr,
+        );
 
         proc_res
     }
@@ -1401,7 +1406,12 @@ impl<'test> TestCx<'test> {
             cmdline,
         };
 
-        self.dump_output(&result.stdout, &result.stderr);
+        self.dump_output(
+            self.config.verbose,
+            &command.get_program().to_string_lossy(),
+            &result.stdout,
+            &result.stderr,
+        );
 
         result
     }
@@ -1816,12 +1826,22 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn dump_output(&self, out: &str, err: &str) {
+    fn dump_output(&self, print_output: bool, proc_name: &str, out: &str, err: &str) {
         let revision = if let Some(r) = self.revision { format!("{}.", r) } else { String::new() };
 
         self.dump_output_file(out, &format!("{}out", revision));
         self.dump_output_file(err, &format!("{}err", revision));
-        self.maybe_dump_to_stdout(out, err);
+
+        if !print_output {
+            return;
+        }
+
+        let proc_name = Path::new(proc_name).file_name().unwrap().to_string_lossy();
+        println!("------{proc_name} stdout------------------------------");
+        println!("{}", out);
+        println!("------{proc_name} stderr------------------------------");
+        println!("{}", err);
+        println!("------------------------------------------");
     }
 
     fn dump_output_file(&self, out: &str, extension: &str) {
@@ -1872,16 +1892,6 @@ impl<'test> TestCx<'test> {
     /// E.g., `/.../relative/testname.revision.mode/testname`.
     fn output_base_name(&self) -> PathBuf {
         output_base_name(self.config, self.testpaths, self.safe_revision())
-    }
-
-    fn maybe_dump_to_stdout(&self, out: &str, err: &str) {
-        if self.config.verbose {
-            println!("------stdout------------------------------");
-            println!("{}", out);
-            println!("------stderr------------------------------");
-            println!("{}", err);
-            println!("------------------------------------------");
-        }
     }
 
     fn error(&self, err: &str) {
