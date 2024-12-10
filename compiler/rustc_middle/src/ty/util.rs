@@ -1288,6 +1288,15 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// Checks whether this type is an ADT that has unsafe fields.
+    pub fn has_unsafe_fields(self) -> bool {
+        if let ty::Adt(adt_def, ..) = self.kind() {
+            adt_def.all_fields().any(|x| x.safety == hir::Safety::Unsafe)
+        } else {
+            false
+        }
+    }
+
     /// Get morphology of the async drop glue, needed for types which do not
     /// use async drop. To get async drop glue morphology for a definition see
     /// [`TyCtxt::async_drop_glue_morphology`]. Used for `AsyncDestruct::Destructor`

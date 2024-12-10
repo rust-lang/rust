@@ -454,20 +454,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         closure_kind: hir::ClosureKind,
         projection: ty::PolyProjectionPredicate<'tcx>,
     ) -> Option<ExpectedSig<'tcx>> {
-        let tcx = self.tcx;
-
-        let trait_def_id = projection.trait_def_id(tcx);
+        let def_id = projection.projection_def_id();
 
         // For now, we only do signature deduction based off of the `Fn` and `AsyncFn` traits,
         // for closures and async closures, respectively.
         match closure_kind {
-            hir::ClosureKind::Closure
-                if self.tcx.fn_trait_kind_from_def_id(trait_def_id).is_some() =>
-            {
+            hir::ClosureKind::Closure if self.tcx.is_lang_item(def_id, LangItem::FnOnceOutput) => {
                 self.extract_sig_from_projection(cause_span, projection)
             }
             hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Async)
-                if self.tcx.async_fn_trait_kind_from_def_id(trait_def_id).is_some() =>
+                if self.tcx.is_lang_item(def_id, LangItem::AsyncFnOnceOutput) =>
             {
                 self.extract_sig_from_projection(cause_span, projection)
             }
@@ -475,7 +471,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // `F: FnOnce() -> Fut, Fut: Future<Output = T>` style bound. Let's still
             // guide inference here, since it's beneficial for the user.
             hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Async)
-                if self.tcx.fn_trait_kind_from_def_id(trait_def_id).is_some() =>
+                if self.tcx.is_lang_item(def_id, LangItem::FnOnceOutput) =>
             {
                 self.extract_sig_from_projection_and_future_bound(cause_span, projection)
             }

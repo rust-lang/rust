@@ -1011,9 +1011,11 @@ compiler = [
     "@lcnr",
     "@Nadrieril",
     "@nnethercote",
+    "@Noratrieb",
     "@oli-obk",
     "@petrochenkov",
     "@pnkfelix",
+    "@SparrowLii",
     "@wesleywiser",
 ]
 libs = [

@@ -103,7 +103,7 @@ fn visit_implementation_of_copy(checker: &Checker<'_>) -> Result<(), ErrorGuaran
     }
 
     let cause = traits::ObligationCause::misc(DUMMY_SP, impl_did);
-    match type_allowed_to_implement_copy(tcx, param_env, self_type, cause) {
+    match type_allowed_to_implement_copy(tcx, param_env, self_type, cause, impl_header.safety) {
         Ok(()) => Ok(()),
         Err(CopyImplementationError::InfringingFields(fields)) => {
             let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
@@ -122,6 +122,12 @@ fn visit_implementation_of_copy(checker: &Checker<'_>) -> Result<(), ErrorGuaran
         Err(CopyImplementationError::HasDestructor) => {
             let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
             Err(tcx.dcx().emit_err(errors::CopyImplOnTypeWithDtor { span }))
+        }
+        Err(CopyImplementationError::HasUnsafeFields) => {
+            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
+            Err(tcx
+                .dcx()
+                .span_delayed_bug(span, format!("cannot implement `Copy` for `{}`", self_type)))
         }
     }
 }

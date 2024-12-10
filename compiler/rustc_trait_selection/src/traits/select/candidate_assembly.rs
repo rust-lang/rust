@@ -795,8 +795,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Never
                 | ty::Tuple(_)
                 | ty::CoroutineWitness(..) => {
-                    use rustc_type_ir::inherent::*;
-
                     // Only consider auto impls of unsafe traits when there are
                     // no unsafe fields.
                     if self.tcx().trait_is_unsafe(def_id) && self_ty.has_unsafe_fields() {

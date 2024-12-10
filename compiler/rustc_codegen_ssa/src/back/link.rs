@@ -2745,6 +2745,15 @@ fn add_upstream_rust_crates(
         .find(|(ty, _)| *ty == crate_type)
         .expect("failed to find crate type in dependency format list");
 
+    if sess.target.is_like_aix {
+        // Unlike ELF linkers, AIX doesn't feature `DT_SONAME` to override
+        // the dependency name when outputing a shared library. Thus, `ld` will
+        // use the full path to shared libraries as the dependency if passed it
+        // by default unless `noipath` is passed.
+        // https://www.ibm.com/docs/en/aix/7.3?topic=l-ld-command.
+        cmd.link_or_cc_arg("-bnoipath");
+    }
+
     for &cnum in &codegen_results.crate_info.used_crates {
         // We may not pass all crates through to the linker. Some crates may appear statically in
         // an existing dylib, meaning we'll pick up all the symbols from the dylib.

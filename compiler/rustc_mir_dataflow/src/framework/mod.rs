@@ -42,7 +42,7 @@ use rustc_middle::mir::{self, BasicBlock, CallReturnPlaces, Location, Terminator
 use rustc_middle::ty::TyCtxt;
 use tracing::error;
 
-use self::results::write_graphviz_results;
+use self::graphviz::write_graphviz_results;
 use super::fmt::DebugWithContext;
 
 mod cursor;

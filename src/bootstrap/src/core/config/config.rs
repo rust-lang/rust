@@ -565,6 +565,12 @@ impl TargetSelection {
         self.ends_with("windows-gnu")
     }
 
+    pub fn is_cygwin(&self) -> bool {
+        self.is_windows() &&
+        // ref. https://cygwin.com/pipermail/cygwin/2022-February/250802.html
+        env::var("OSTYPE").is_ok_and(|v| v.to_lowercase().contains("cygwin"))
+    }
+
     /// Path to the file defining the custom target, if any.
     pub fn filepath(&self) -> Option<&Path> {
         self.file.as_ref().map(Path::new)
