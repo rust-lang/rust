@@ -2014,7 +2014,17 @@ impl<'tcx> TyCtxt<'tcx> {
                 self.constness(def_id) == hir::Constness::Const
             }
             DefKind::Trait => self.is_const_trait(def_id),
-            DefKind::AssocTy | DefKind::AssocFn => {
+            DefKind::AssocTy => {
+                let parent_def_id = self.parent(def_id);
+                match self.def_kind(parent_def_id) {
+                    DefKind::Impl { of_trait: false } => false,
+                    DefKind::Impl { of_trait: true } | DefKind::Trait => {
+                        self.is_conditionally_const(parent_def_id)
+                    }
+                    _ => bug!("unexpected parent item of associated type: {parent_def_id:?}"),
+                }
+            }
+            DefKind::AssocFn => {
                 let parent_def_id = self.parent(def_id);
                 match self.def_kind(parent_def_id) {
                     DefKind::Impl { of_trait: false } => {
@@ -2023,7 +2033,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     DefKind::Impl { of_trait: true } | DefKind::Trait => {
                         self.is_conditionally_const(parent_def_id)
                     }
-                    _ => bug!("unexpected parent item of associated item: {parent_def_id:?}"),
+                    _ => bug!("unexpected parent item of associated fn: {parent_def_id:?}"),
                 }
             }
             DefKind::OpaqueTy => match self.opaque_ty_origin(def_id) {

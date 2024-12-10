@@ -18,9 +18,7 @@ fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Constness {
     let node = tcx.hir_node_by_def_id(def_id);
 
     match node {
-        hir::Node::Ctor(_)
-        | hir::Node::AnonConst(_)
-        | hir::Node::ConstBlock(_)
+        hir::Node::Ctor(hir::VariantData::Tuple(..))
         | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(..), .. }) => {
             hir::Constness::Const
         }
@@ -41,7 +39,10 @@ fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Constness {
                 let is_const = is_parent_const_impl_raw(tcx, def_id);
                 if is_const { hir::Constness::Const } else { hir::Constness::NotConst }
             } else {
-                hir::Constness::NotConst
+                tcx.dcx().span_bug(
+                    tcx.def_span(def_id),
+                    format!("should not be requesting the constness of items that can't be const: {node:#?}: {:?}", tcx.def_kind(def_id))
+                )
             }
         }
     }
