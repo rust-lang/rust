@@ -10,7 +10,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{Visitor, walk_ty};
-use rustc_hir::{FnRetTy, GenericParamKind};
+use rustc_hir::{FnRetTy, GenericParamKind, Node};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::print::{PrintTraitRefExt as _, TraitRefPrintOnlyTraitPath};
 use rustc_middle::ty::{self, Binder, ClosureKind, FnSig, PolyTraitRef, Region, Ty, TyCtxt};
@@ -1888,10 +1888,35 @@ pub fn impl_trait_overcapture_suggestion<'tcx>(
         .collect::<Vec<_>>()
         .join(", ");
 
-    suggs.push((
-        tcx.def_span(opaque_def_id).shrink_to_hi(),
-        format!(" + use<{concatenated_bounds}>"),
-    ));
+    let opaque_hir_id = tcx.local_def_id_to_hir_id(opaque_def_id);
+    // FIXME: This is a bit too conservative, since it ignores parens already written in AST.
+    let (lparen, rparen) = match tcx
+        .hir()
+        .parent_iter(opaque_hir_id)
+        .nth(1)
+        .expect("expected ty to have a parent always")
+        .1
+    {
+        Node::PathSegment(segment)
+            if segment.args().paren_sugar_output().is_some_and(|ty| ty.hir_id == opaque_hir_id) =>
+        {
+            ("(", ")")
+        }
+        Node::Ty(ty) => match ty.kind {
+            rustc_hir::TyKind::Ptr(_) | rustc_hir::TyKind::Ref(..) => ("(", ")"),
+            // FIXME: RPITs are not allowed to be nested in `impl Fn() -> ...`,
+            // but we eventually could support that, and that would necessitate
+            // making this more sophisticated.
+            _ => ("", ""),
+        },
+        _ => ("", ""),
+    };
+
+    let rpit_span = tcx.def_span(opaque_def_id);
+    if !lparen.is_empty() {
+        suggs.push((rpit_span.shrink_to_lo(), lparen.to_string()));
+    }
+    suggs.push((rpit_span.shrink_to_hi(), format!(" + use<{concatenated_bounds}>{rparen}")));
 
     Some(AddPreciseCapturingForOvercapture { suggs, apit_spans })
 }
