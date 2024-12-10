@@ -2781,6 +2781,12 @@ pub struct BareFnTy<'hir> {
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
+pub struct UnsafeBinderTy<'hir> {
+    pub generic_params: &'hir [GenericParam<'hir>],
+    pub inner_ty: &'hir Ty<'hir>,
+}
+
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct OpaqueTy<'hir> {
     pub hir_id: HirId,
     pub def_id: LocalDefId,
@@ -2878,6 +2884,8 @@ pub enum TyKind<'hir> {
     Ref(&'hir Lifetime, MutTy<'hir>),
     /// A bare function (e.g., `fn(usize) -> bool`).
     BareFn(&'hir BareFnTy<'hir>),
+    /// Uwu
+    UnsafeBinder(&'hir UnsafeBinderTy<'hir>),
     /// The never type (`!`).
     Never,
     /// A tuple (`(A, B, C, D, ...)`).

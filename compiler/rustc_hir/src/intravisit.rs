@@ -886,6 +886,10 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) -> V::Resul
             walk_list!(visitor, visit_generic_param, function_declaration.generic_params);
             try_visit!(visitor.visit_fn_decl(function_declaration.decl));
         }
+        TyKind::UnsafeBinder(ref unsafe_binder) => {
+            walk_list!(visitor, visit_generic_param, unsafe_binder.generic_params);
+            try_visit!(visitor.visit_ty(unsafe_binder.inner_ty));
+        }
         TyKind::Path(ref qpath) => {
             try_visit!(visitor.visit_qpath(qpath, typ.hir_id, typ.span));
         }
