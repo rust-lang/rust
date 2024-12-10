@@ -230,6 +230,8 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         "aarch64"
     } else if sess.target.arch == "sparc64" {
         "sparc"
+    } else if sess.target.arch == "powerpc64" {
+        "powerpc"
     } else {
         &*sess.target.arch
     };
@@ -289,6 +291,7 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         // https://github.com/llvm/llvm-project/blob/llvmorg-18.1.0/llvm/lib/Target/Sparc/MCTargetDesc/SparcELFObjectWriter.cpp#L26
         ("sparc", "v8plus") if get_version().0 == 19 => Some(LLVMFeature::new("v9")),
         ("sparc", "v8plus") if get_version().0 < 19 => None,
+        ("powerpc", "power8-crypto") => Some(LLVMFeature::new("crypto")),
         (_, s) => Some(LLVMFeature::new(s)),
     }
 }
