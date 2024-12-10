@@ -1349,11 +1349,11 @@ impl<'a> Parser<'a> {
         self.check_trailing_angle_brackets(&seg, &[&token::OpenDelim(Delimiter::Parenthesis)]);
         self.check_turbofish_missing_angle_brackets(&mut seg);
 
+        let span = lo.to(self.prev_token.span);
         if self.check(&token::OpenDelim(Delimiter::Parenthesis)) {
             // Method call `expr.f()`
             let args = self.parse_expr_paren_seq()?;
             let fn_span = fn_span_lo.to(self.prev_token.span);
-            let span = lo.to(self.prev_token.span);
             Ok(self.mk_expr(
                 span,
                 ExprKind::MethodCall(Box::new(ast::MethodCall {
@@ -1369,7 +1369,6 @@ impl<'a> Parser<'a> {
                 self.dcx().emit_err(errors::FieldExpressionWithGeneric(args.span()));
             }
 
-            let span = lo.to(self.prev_token.span);
             Ok(self.mk_expr(span, ExprKind::Field(self_arg, seg.ident)))
         }
     }
