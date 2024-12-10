@@ -423,12 +423,12 @@ impl TokenStream {
         self.0.len()
     }
 
-    pub fn iter(&self) -> TokenStreamIter<'_> {
-        TokenStreamIter::new(self)
+    pub fn get(&self, index: usize) -> Option<&TokenTree> {
+        self.0.get(index)
     }
 
-    pub fn into_trees(self) -> TokenTreeCursor {
-        TokenTreeCursor::new(self)
+    pub fn iter(&self) -> TokenStreamIter<'_> {
+        TokenStreamIter::new(self)
     }
 
     /// Compares two `TokenStream`s, checking equality without regarding span information.
@@ -692,39 +692,6 @@ impl<'t> Iterator for TokenStreamIter<'t> {
             self.index += 1;
             tree
         })
-    }
-}
-
-/// Owning by-value iterator over a [`TokenStream`], that produces `&TokenTree`
-/// items.
-///
-/// Doesn't impl `Iterator` because Rust doesn't permit an owning iterator to
-/// return `&T` from `next`; the need for an explicit lifetime in the `Item`
-/// associated type gets in the way. Instead, use `next_ref` (which doesn't
-/// involve associated types) for getting individual elements, or
-/// `TokenStreamIter` if you really want an `Iterator`, e.g. in a `for`
-/// loop.
-#[derive(Clone, Debug)]
-pub struct TokenTreeCursor {
-    pub stream: TokenStream,
-    index: usize,
-}
-
-impl TokenTreeCursor {
-    fn new(stream: TokenStream) -> Self {
-        TokenTreeCursor { stream, index: 0 }
-    }
-
-    #[inline]
-    pub fn next_ref(&mut self) -> Option<&TokenTree> {
-        self.stream.0.get(self.index).map(|tree| {
-            self.index += 1;
-            tree
-        })
-    }
-
-    pub fn look_ahead(&self, n: usize) -> Option<&TokenTree> {
-        self.stream.0.get(self.index + n)
     }
 }
 
