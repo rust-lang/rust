@@ -1,5 +1,5 @@
-//! Check `RUSTC_BOOTSTRAP`'s behavior in relation to feature stability and what rustc considers
-//! itself to be (stable vs non-stable ).
+//! Check the compiler's behavior when the perma-unstable env var `RUSTC_BOOTSTRAP` is set in the
+//! environment in relation to feature stability and which channel rustc considers itself to be.
 //!
 //! `RUSTC_BOOTSTRAP` accepts:
 //!
