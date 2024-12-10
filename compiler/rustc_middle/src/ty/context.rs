@@ -1479,7 +1479,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_adt_def_from_data(ty::AdtDefData::new(self, did, kind, variants, repr))
     }
 
-    /// Allocates a read-only byte or string literal for `mir::interpret`.
+    /// Allocates a read-only byte or string literal for `mir::interpret` with alignment 1.
     /// Returns the same `AllocId` if called again with the same bytes.
     pub fn allocate_bytes_dedup(self, bytes: &[u8], salt: usize) -> interpret::AllocId {
         // Create an allocation that just contains these bytes.

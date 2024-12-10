@@ -1,4 +1,5 @@
 //@ check-pass
+// https://github.com/rust-lang/rust/issues/110900
 
 #![crate_type="lib"]
 

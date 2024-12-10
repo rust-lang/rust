@@ -196,12 +196,12 @@ impl Flags {
         if let Ok(HelpVerboseOnly { help: true, verbose: 1.., cmd: subcommand }) =
             HelpVerboseOnly::try_parse_from(normalize_args(args))
         {
-            println!("NOTE: updating submodules before printing available paths");
+            eprintln!("NOTE: updating submodules before printing available paths");
             let config = Config::parse(Self::parse(&[String::from("build")]));
             let build = Build::new(config);
             let paths = Builder::get_help(&build, subcommand);
             if let Some(s) = paths {
-                println!("{s}");
+                eprintln!("{s}");
             } else {
                 panic!("No paths available for subcommand `{}`", subcommand.as_str());
             }
