@@ -1,5 +1,4 @@
 use rustc_abi::FIRST_VARIANT;
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -278,123 +277,115 @@ fn structurally_same_type_impl<'tcx>(
         let is_primitive_or_pointer =
             |ty: Ty<'tcx>| ty.is_primitive() || matches!(ty.kind(), RawPtr(..) | Ref(..));
 
-        ensure_sufficient_stack(|| {
-            match (a.kind(), b.kind()) {
-                (&Adt(a_def, a_gen_args), &Adt(b_def, b_gen_args)) => {
-                    // Only `repr(C)` types can be compared structurally.
-                    if !(a_def.repr().c() && b_def.repr().c()) {
-                        return false;
-                    }
-                    // If the types differ in their packed-ness, align, or simd-ness they conflict.
-                    let repr_characteristica =
-                        |def: AdtDef<'tcx>| (def.repr().pack, def.repr().align, def.repr().simd());
-                    if repr_characteristica(a_def) != repr_characteristica(b_def) {
-                        return false;
-                    }
+        match (a.kind(), b.kind()) {
+            (&Adt(a_def, a_gen_args), &Adt(b_def, b_gen_args)) => {
+                // Only `repr(C)` types can be compared structurally.
+                if !(a_def.repr().c() && b_def.repr().c()) {
+                    return false;
+                }
+                // If the types differ in their packed-ness, align, or simd-ness they conflict.
+                let repr_characteristica =
+                    |def: AdtDef<'tcx>| (def.repr().pack, def.repr().align, def.repr().simd());
+                if repr_characteristica(a_def) != repr_characteristica(b_def) {
+                    return false;
+                }
 
-                    // Grab a flattened representation of all fields.
-                    let a_fields = a_def.variants().iter().flat_map(|v| v.fields.iter());
-                    let b_fields = b_def.variants().iter().flat_map(|v| v.fields.iter());
+                // Grab a flattened representation of all fields.
+                let a_fields = a_def.variants().iter().flat_map(|v| v.fields.iter());
+                let b_fields = b_def.variants().iter().flat_map(|v| v.fields.iter());
 
-                    // Perform a structural comparison for each field.
-                    a_fields.eq_by(
-                        b_fields,
-                        |&ty::FieldDef { did: a_did, .. }, &ty::FieldDef { did: b_did, .. }| {
-                            structurally_same_type_impl(
-                                seen_types,
-                                tcx,
-                                typing_env,
-                                tcx.type_of(a_did).instantiate(tcx, a_gen_args),
-                                tcx.type_of(b_did).instantiate(tcx, b_gen_args),
-                                ckind,
-                            )
-                        },
-                    )
-                }
-                (Array(a_ty, a_len), Array(b_ty, b_len)) => {
-                    // For arrays, we also check the length.
-                    a_len == b_len
-                        && structurally_same_type_impl(
-                            seen_types, tcx, typing_env, *a_ty, *b_ty, ckind,
-                        )
-                }
-                (Slice(a_ty), Slice(b_ty)) => {
-                    structurally_same_type_impl(seen_types, tcx, typing_env, *a_ty, *b_ty, ckind)
-                }
-                (RawPtr(a_ty, a_mutbl), RawPtr(b_ty, b_mutbl)) => {
-                    a_mutbl == b_mutbl
-                        && structurally_same_type_impl(
-                            seen_types, tcx, typing_env, *a_ty, *b_ty, ckind,
-                        )
-                }
-                (Ref(_a_region, a_ty, a_mut), Ref(_b_region, b_ty, b_mut)) => {
-                    // For structural sameness, we don't need the region to be same.
-                    a_mut == b_mut
-                        && structurally_same_type_impl(
-                            seen_types, tcx, typing_env, *a_ty, *b_ty, ckind,
-                        )
-                }
-                (FnDef(..), FnDef(..)) => {
-                    let a_poly_sig = a.fn_sig(tcx);
-                    let b_poly_sig = b.fn_sig(tcx);
-
-                    // We don't compare regions, but leaving bound regions around ICEs, so
-                    // we erase them.
-                    let a_sig = tcx.instantiate_bound_regions_with_erased(a_poly_sig);
-                    let b_sig = tcx.instantiate_bound_regions_with_erased(b_poly_sig);
-
-                    (a_sig.abi, a_sig.safety, a_sig.c_variadic)
-                        == (b_sig.abi, b_sig.safety, b_sig.c_variadic)
-                        && a_sig.inputs().iter().eq_by(b_sig.inputs().iter(), |a, b| {
-                            structurally_same_type_impl(seen_types, tcx, typing_env, *a, *b, ckind)
-                        })
-                        && structurally_same_type_impl(
+                // Perform a structural comparison for each field.
+                a_fields.eq_by(
+                    b_fields,
+                    |&ty::FieldDef { did: a_did, .. }, &ty::FieldDef { did: b_did, .. }| {
+                        structurally_same_type_impl(
                             seen_types,
                             tcx,
                             typing_env,
-                            a_sig.output(),
-                            b_sig.output(),
+                            tcx.type_of(a_did).instantiate(tcx, a_gen_args),
+                            tcx.type_of(b_did).instantiate(tcx, b_gen_args),
                             ckind,
                         )
-                }
-                (Tuple(..), Tuple(..)) => {
-                    // Tuples are not `repr(C)` so these cannot be compared structurally.
+                    },
+                )
+            }
+            (Array(a_ty, a_len), Array(b_ty, b_len)) => {
+                // For arrays, we also check the length.
+                a_len == b_len
+                    && structurally_same_type_impl(seen_types, tcx, typing_env, *a_ty, *b_ty, ckind)
+            }
+            (Slice(a_ty), Slice(b_ty)) => {
+                structurally_same_type_impl(seen_types, tcx, typing_env, *a_ty, *b_ty, ckind)
+            }
+            (RawPtr(a_ty, a_mutbl), RawPtr(b_ty, b_mutbl)) => {
+                a_mutbl == b_mutbl
+                    && structurally_same_type_impl(seen_types, tcx, typing_env, *a_ty, *b_ty, ckind)
+            }
+            (Ref(_a_region, a_ty, a_mut), Ref(_b_region, b_ty, b_mut)) => {
+                // For structural sameness, we don't need the region to be same.
+                a_mut == b_mut
+                    && structurally_same_type_impl(seen_types, tcx, typing_env, *a_ty, *b_ty, ckind)
+            }
+            (FnDef(..), FnDef(..)) => {
+                let a_poly_sig = a.fn_sig(tcx);
+                let b_poly_sig = b.fn_sig(tcx);
+
+                // We don't compare regions, but leaving bound regions around ICEs, so
+                // we erase them.
+                let a_sig = tcx.instantiate_bound_regions_with_erased(a_poly_sig);
+                let b_sig = tcx.instantiate_bound_regions_with_erased(b_poly_sig);
+
+                (a_sig.abi, a_sig.safety, a_sig.c_variadic)
+                    == (b_sig.abi, b_sig.safety, b_sig.c_variadic)
+                    && a_sig.inputs().iter().eq_by(b_sig.inputs().iter(), |a, b| {
+                        structurally_same_type_impl(seen_types, tcx, typing_env, *a, *b, ckind)
+                    })
+                    && structurally_same_type_impl(
+                        seen_types,
+                        tcx,
+                        typing_env,
+                        a_sig.output(),
+                        b_sig.output(),
+                        ckind,
+                    )
+            }
+            (Tuple(..), Tuple(..)) => {
+                // Tuples are not `repr(C)` so these cannot be compared structurally.
+                false
+            }
+            // For these, it's not quite as easy to define structural-sameness quite so easily.
+            // For the purposes of this lint, take the conservative approach and mark them as
+            // not structurally same.
+            (Dynamic(..), Dynamic(..))
+            | (Error(..), Error(..))
+            | (Closure(..), Closure(..))
+            | (Coroutine(..), Coroutine(..))
+            | (CoroutineWitness(..), CoroutineWitness(..))
+            | (Alias(ty::Projection, ..), Alias(ty::Projection, ..))
+            | (Alias(ty::Inherent, ..), Alias(ty::Inherent, ..))
+            | (Alias(ty::Opaque, ..), Alias(ty::Opaque, ..)) => false,
+
+            // These definitely should have been caught above.
+            (Bool, Bool) | (Char, Char) | (Never, Never) | (Str, Str) => unreachable!(),
+
+            // An Adt and a primitive or pointer type. This can be FFI-safe if non-null
+            // enum layout optimisation is being applied.
+            (Adt(..), _) if is_primitive_or_pointer(b) => {
+                if let Some(a_inner) = types::repr_nullable_ptr(tcx, typing_env, a, ckind) {
+                    a_inner == b
+                } else {
                     false
                 }
-                // For these, it's not quite as easy to define structural-sameness quite so easily.
-                // For the purposes of this lint, take the conservative approach and mark them as
-                // not structurally same.
-                (Dynamic(..), Dynamic(..))
-                | (Error(..), Error(..))
-                | (Closure(..), Closure(..))
-                | (Coroutine(..), Coroutine(..))
-                | (CoroutineWitness(..), CoroutineWitness(..))
-                | (Alias(ty::Projection, ..), Alias(ty::Projection, ..))
-                | (Alias(ty::Inherent, ..), Alias(ty::Inherent, ..))
-                | (Alias(ty::Opaque, ..), Alias(ty::Opaque, ..)) => false,
-
-                // These definitely should have been caught above.
-                (Bool, Bool) | (Char, Char) | (Never, Never) | (Str, Str) => unreachable!(),
-
-                // An Adt and a primitive or pointer type. This can be FFI-safe if non-null
-                // enum layout optimisation is being applied.
-                (Adt(..), _) if is_primitive_or_pointer(b) => {
-                    if let Some(a_inner) = types::repr_nullable_ptr(tcx, typing_env, a, ckind) {
-                        a_inner == b
-                    } else {
-                        false
-                    }
-                }
-                (_, Adt(..)) if is_primitive_or_pointer(a) => {
-                    if let Some(b_inner) = types::repr_nullable_ptr(tcx, typing_env, b, ckind) {
-                        b_inner == a
-                    } else {
-                        false
-                    }
-                }
-
-                _ => false,
             }
-        })
+            (_, Adt(..)) if is_primitive_or_pointer(a) => {
+                if let Some(b_inner) = types::repr_nullable_ptr(tcx, typing_env, b, ckind) {
+                    b_inner == a
+                } else {
+                    false
+                }
+            }
+
+            _ => false,
+        }
     }
 }

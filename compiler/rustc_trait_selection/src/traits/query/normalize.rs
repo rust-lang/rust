@@ -3,7 +3,6 @@
 //! `normalize_canonicalized_projection_ty` query when it encounters projections.
 
 use rustc_data_structures::sso::SsoHashMap;
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::traits::PredicateObligations;
 use rustc_macros::extension;
 pub use rustc_middle::traits::query::NormalizationResult;
@@ -247,7 +246,7 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
                                 "recursive opaque type",
                             );
                         }
-                        let folded_ty = ensure_sufficient_stack(|| self.try_fold_ty(concrete_ty));
+                        let folded_ty = self.try_fold_ty(concrete_ty);
                         self.anon_depth -= 1;
                         folded_ty?
                     }

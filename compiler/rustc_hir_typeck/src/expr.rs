@@ -7,7 +7,6 @@
 
 use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::codes::*;
 use rustc_errors::{
@@ -246,13 +245,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.diverges.set(self.function_diverges_because_of_empty_arguments.get())
         };
 
-        let ty = ensure_sufficient_stack(|| match &expr.kind {
+        let ty = match &expr.kind {
             // Intercept the callee path expr and give it better spans.
             hir::ExprKind::Path(
                 qpath @ (hir::QPath::Resolved(..) | hir::QPath::TypeRelative(..)),
             ) => self.check_expr_path(qpath, expr, call_expr_and_args),
             _ => self.check_expr_kind(expr, expected),
-        });
+        };
         let ty = self.resolve_vars_if_possible(ty);
 
         // Warn for non-block expressions with diverging children.

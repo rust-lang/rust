@@ -709,8 +709,6 @@
 
 use std::fmt;
 
-#[cfg(feature = "rustc")]
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hash::{FxHashMap, FxHashSet};
 use rustc_index::bit_set::BitSet;
 use smallvec::{SmallVec, smallvec};
@@ -720,7 +718,6 @@ use self::PlaceValidity::*;
 use crate::constructor::{Constructor, ConstructorSet, IntRange};
 use crate::pat::{DeconstructedPat, PatId, PatOrWild, WitnessPat};
 use crate::{Captures, MatchArm, PatCx, PrivateUninhabitedField};
-#[cfg(not(feature = "rustc"))]
 pub fn ensure_sufficient_stack<R>(f: impl FnOnce() -> R) -> R {
     f()
 }

@@ -1,5 +1,4 @@
 use rustc_abi::{BackendRepr, VariantIdx};
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId, ReportedErrorInfo};
 use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
@@ -105,7 +104,7 @@ fn const_to_valtree_inner<'tcx>(
             // Since the returned valtree does not contain the type or layout, we can just
             // switch to the base type.
             place.layout = ecx.layout_of(*base).unwrap();
-            ensure_sufficient_stack(|| const_to_valtree_inner(ecx, &place, num_nodes))
+            const_to_valtree_inner(ecx, &place, num_nodes)
         },
 
 

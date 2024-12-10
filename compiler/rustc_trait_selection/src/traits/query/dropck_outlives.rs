@@ -240,39 +240,28 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
 
         ty::Pat(ety, _) | ty::Array(ety, _) | ty::Slice(ety) => {
             // single-element containers, behave like their element
-            rustc_data_structures::stack::ensure_sufficient_stack(|| {
-                dtorck_constraint_for_ty_inner(tcx, typing_env, span, depth + 1, *ety, constraints)
-            })?;
+            dtorck_constraint_for_ty_inner(tcx, typing_env, span, depth + 1, *ety, constraints)?
         }
 
-        ty::Tuple(tys) => rustc_data_structures::stack::ensure_sufficient_stack(|| {
+        ty::Tuple(tys) => {
             for ty in tys.iter() {
                 dtorck_constraint_for_ty_inner(tcx, typing_env, span, depth + 1, ty, constraints)?;
             }
-            Ok::<_, NoSolution>(())
-        })?,
+            Ok::<_, NoSolution>(())?
+        }
 
-        ty::Closure(_, args) => rustc_data_structures::stack::ensure_sufficient_stack(|| {
+        ty::Closure(_, args) => {
             for ty in args.as_closure().upvar_tys() {
                 dtorck_constraint_for_ty_inner(tcx, typing_env, span, depth + 1, ty, constraints)?;
             }
-            Ok::<_, NoSolution>(())
-        })?,
+            Ok::<_, NoSolution>(())?
+        }
 
         ty::CoroutineClosure(_, args) => {
-            rustc_data_structures::stack::ensure_sufficient_stack(|| {
-                for ty in args.as_coroutine_closure().upvar_tys() {
-                    dtorck_constraint_for_ty_inner(
-                        tcx,
-                        typing_env,
-                        span,
-                        depth + 1,
-                        ty,
-                        constraints,
-                    )?;
-                }
-                Ok::<_, NoSolution>(())
-            })?
+            for ty in args.as_coroutine_closure().upvar_tys() {
+                dtorck_constraint_for_ty_inner(tcx, typing_env, span, depth + 1, ty, constraints)?;
+            }
+            Ok::<_, NoSolution>(())?
         }
 
         ty::Coroutine(_, args) => {

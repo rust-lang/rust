@@ -3,7 +3,6 @@
 use std::ops::ControlFlow;
 
 use rustc_data_structures::sso::SsoHashSet;
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::lang_items::LangItem;
@@ -1925,27 +1924,23 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
     let cache_projection = cache_entry.projection_term;
     let mut nested_obligations = PredicateObligations::new();
     let obligation_projection = obligation.predicate;
-    let obligation_projection = ensure_sufficient_stack(|| {
+    let obligation_projection = normalize_with_depth_to(
+        selcx,
+        obligation.param_env,
+        obligation.cause.clone(),
+        obligation.recursion_depth + 1,
+        obligation_projection,
+        &mut nested_obligations,
+    );
+    let cache_projection = if potentially_unnormalized_candidate {
         normalize_with_depth_to(
             selcx,
             obligation.param_env,
             obligation.cause.clone(),
             obligation.recursion_depth + 1,
-            obligation_projection,
+            cache_projection,
             &mut nested_obligations,
         )
-    });
-    let cache_projection = if potentially_unnormalized_candidate {
-        ensure_sufficient_stack(|| {
-            normalize_with_depth_to(
-                selcx,
-                obligation.param_env,
-                obligation.cause.clone(),
-                obligation.recursion_depth + 1,
-                cache_projection,
-                &mut nested_obligations,
-            )
-        })
     } else {
         cache_projection
     };

@@ -1,7 +1,6 @@
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, struct_span_code_err};
 use rustc_hir::def::*;
@@ -200,7 +199,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
     fn with_let_source(&mut self, let_source: LetSource, f: impl FnOnce(&mut Self)) {
         let old_let_source = self.let_source;
         self.let_source = let_source;
-        ensure_sufficient_stack(|| f(self));
+        f(self);
         self.let_source = old_let_source;
     }
 

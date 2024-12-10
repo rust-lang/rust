@@ -2,7 +2,6 @@
 
 use rustc_ast::{AsmMacro, InlineAsmOptions};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
@@ -43,10 +42,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let block_and = match expr.kind {
             ExprKind::Scope { region_scope, lint_level, value } => {
                 let region_scope = (region_scope, source_info);
-                ensure_sufficient_stack(|| {
-                    this.in_scope(region_scope, lint_level, |this| {
-                        this.expr_into_dest(destination, block, value)
-                    })
+                this.in_scope(region_scope, lint_level, |this| {
+                    this.expr_into_dest(destination, block, value)
                 })
             }
             ExprKind::Block { block: ast_block } => {

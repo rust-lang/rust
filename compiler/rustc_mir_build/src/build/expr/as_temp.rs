@@ -1,6 +1,5 @@
 //! See docs in build/expr/mod.rs
 
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::HirId;
 use rustc_middle::middle::region::{Scope, ScopeData};
 use rustc_middle::mir::*;
@@ -23,7 +22,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // this is the only place in mir building that we need to truly need to worry about
         // infinite recursion. Everything else does recurse, too, but it always gets broken up
         // at some point by inserting an intermediate temporary
-        ensure_sufficient_stack(|| self.as_temp_inner(block, temp_lifetime, expr_id, mutability))
+        self.as_temp_inner(block, temp_lifetime, expr_id, mutability)
     }
 
     #[instrument(skip(self), level = "debug")]
