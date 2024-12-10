@@ -19,7 +19,8 @@ rustup self uninstall -y || true
 
 # Authenticate to the public ECR registry. See https://gallery.ecr.aws/.
 # The region `us-east-1` is the only allowed value by aws to authenticate to ECR.
-aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
+aws ecr-public get-login-password --region us-east-1 \
+    | docker login --username AWS --password-stdin public.ecr.aws
 
 if [ -z "${IMAGE+x}" ]; then
     src/ci/run.sh
