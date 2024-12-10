@@ -2,7 +2,7 @@
 use itertools::Itertools;
 
 use crate::{
-    ast::{self, make, HasName, HasTypeBounds},
+    ast::{self, make, HasGenericParams, HasName, HasTypeBounds, HasVisibility},
     syntax_editor::SyntaxMappingBuilder,
     AstNode, NodeOrToken, SyntaxKind, SyntaxNode, SyntaxToken,
 };
@@ -163,6 +163,211 @@ impl SyntaxFactory {
                 args.into_iter().map(|arg| arg.syntax().clone()),
                 ast.generic_args().map(|arg| arg.syntax().clone()),
             );
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn record_field_list(
+        &self,
+        fields: impl IntoIterator<Item = ast::RecordField>,
+    ) -> ast::RecordFieldList {
+        let fields: Vec<ast::RecordField> = fields.into_iter().collect();
+        let input: Vec<_> = fields.iter().map(|it| it.syntax().clone()).collect();
+        let ast = make::record_field_list(fields).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+
+            builder.map_children(input.into_iter(), ast.fields().map(|it| it.syntax().clone()));
+
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn record_field(
+        &self,
+        visibility: Option<ast::Visibility>,
+        name: ast::Name,
+        ty: ast::Type,
+    ) -> ast::RecordField {
+        let ast =
+            make::record_field(visibility.clone(), name.clone(), ty.clone()).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            if let Some(visibility) = visibility {
+                builder.map_node(
+                    visibility.syntax().clone(),
+                    ast.visibility().unwrap().syntax().clone(),
+                );
+            }
+
+            builder.map_node(name.syntax().clone(), ast.name().unwrap().syntax().clone());
+            builder.map_node(ty.syntax().clone(), ast.ty().unwrap().syntax().clone());
+
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn tuple_field_list(
+        &self,
+        fields: impl IntoIterator<Item = ast::TupleField>,
+    ) -> ast::TupleFieldList {
+        let fields: Vec<ast::TupleField> = fields.into_iter().collect();
+        let input: Vec<_> = fields.iter().map(|it| it.syntax().clone()).collect();
+        let ast = make::tuple_field_list(fields).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+
+            builder.map_children(input.into_iter(), ast.fields().map(|it| it.syntax().clone()));
+
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn tuple_field(
+        &self,
+        visibility: Option<ast::Visibility>,
+        ty: ast::Type,
+    ) -> ast::TupleField {
+        let ast = make::tuple_field(visibility.clone(), ty.clone()).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            if let Some(visibility) = visibility {
+                builder.map_node(
+                    visibility.syntax().clone(),
+                    ast.visibility().unwrap().syntax().clone(),
+                );
+            }
+
+            builder.map_node(ty.syntax().clone(), ast.ty().unwrap().syntax().clone());
+
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn item_enum(
+        &self,
+        visibility: Option<ast::Visibility>,
+        name: ast::Name,
+        generic_param_list: Option<ast::GenericParamList>,
+        where_clause: Option<ast::WhereClause>,
+        variant_list: ast::VariantList,
+    ) -> ast::Enum {
+        let ast = make::enum_(
+            visibility.clone(),
+            name.clone(),
+            generic_param_list.clone(),
+            where_clause.clone(),
+            variant_list.clone(),
+        )
+        .clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            if let Some(visibility) = visibility {
+                builder.map_node(
+                    visibility.syntax().clone(),
+                    ast.visibility().unwrap().syntax().clone(),
+                );
+            }
+
+            builder.map_node(name.syntax().clone(), ast.name().unwrap().syntax().clone());
+
+            if let Some(generic_param_list) = generic_param_list {
+                builder.map_node(
+                    generic_param_list.syntax().clone(),
+                    ast.generic_param_list().unwrap().syntax().clone(),
+                );
+            }
+
+            if let Some(where_clause) = where_clause {
+                builder.map_node(
+                    where_clause.syntax().clone(),
+                    ast.where_clause().unwrap().syntax().clone(),
+                );
+            }
+
+            builder.map_node(
+                variant_list.syntax().clone(),
+                ast.variant_list().unwrap().syntax().clone(),
+            );
+
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn variant_list(
+        &self,
+        variants: impl IntoIterator<Item = ast::Variant>,
+    ) -> ast::VariantList {
+        let variants: Vec<ast::Variant> = variants.into_iter().collect();
+        let input: Vec<_> = variants.iter().map(|it| it.syntax().clone()).collect();
+        let ast = make::variant_list(variants).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+
+            builder.map_children(input.into_iter(), ast.variants().map(|it| it.syntax().clone()));
+
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn variant(
+        &self,
+        visibility: Option<ast::Visibility>,
+        name: ast::Name,
+        field_list: Option<ast::FieldList>,
+        discriminant: Option<ast::Expr>,
+    ) -> ast::Variant {
+        let ast = make::variant(
+            visibility.clone(),
+            name.clone(),
+            field_list.clone(),
+            discriminant.clone(),
+        )
+        .clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            if let Some(visibility) = visibility {
+                builder.map_node(
+                    visibility.syntax().clone(),
+                    ast.visibility().unwrap().syntax().clone(),
+                );
+            }
+
+            builder.map_node(name.syntax().clone(), ast.name().unwrap().syntax().clone());
+
+            if let Some(field_list) = field_list {
+                builder.map_node(
+                    field_list.syntax().clone(),
+                    ast.field_list().unwrap().syntax().clone(),
+                );
+            }
+
+            if let Some(discriminant) = discriminant {
+                builder
+                    .map_node(discriminant.syntax().clone(), ast.expr().unwrap().syntax().clone());
+            }
+
             builder.finish(&mut mapping);
         }
 

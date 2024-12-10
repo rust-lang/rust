@@ -1173,7 +1173,7 @@ mod tests {
 
     #[test]
     fn add_variant_to_empty_enum() {
-        let variant = make::variant(make::name("Bar"), None).clone_for_update();
+        let variant = make::variant(None, make::name("Bar"), None, None).clone_for_update();
 
         check_add_variant(
             r#"
@@ -1190,7 +1190,7 @@ enum Foo {
 
     #[test]
     fn add_variant_to_non_empty_enum() {
-        let variant = make::variant(make::name("Baz"), None).clone_for_update();
+        let variant = make::variant(None, make::name("Baz"), None, None).clone_for_update();
 
         check_add_variant(
             r#"
@@ -1211,10 +1211,12 @@ enum Foo {
     #[test]
     fn add_variant_with_tuple_field_list() {
         let variant = make::variant(
+            None,
             make::name("Baz"),
             Some(ast::FieldList::TupleFieldList(make::tuple_field_list(std::iter::once(
                 make::tuple_field(None, make::ty("bool")),
             )))),
+            None,
         )
         .clone_for_update();
 
@@ -1237,10 +1239,12 @@ enum Foo {
     #[test]
     fn add_variant_with_record_field_list() {
         let variant = make::variant(
+            None,
             make::name("Baz"),
             Some(ast::FieldList::RecordFieldList(make::record_field_list(std::iter::once(
                 make::record_field(None, make::name("x"), make::ty("bool")),
             )))),
+            None,
         )
         .clone_for_update();
 

@@ -137,7 +137,7 @@ fn make_variant(
     parent: PathParent,
 ) -> ast::Variant {
     let field_list = parent.make_field_list(ctx);
-    make::variant(make::name(&name_ref.text()), field_list)
+    make::variant(None, make::name(&name_ref.text()), field_list, None)
 }
 
 fn make_record_field_list(
