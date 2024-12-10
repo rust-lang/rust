@@ -22,6 +22,8 @@ Currently, the following QNX Neutrino versions and compilation targets are suppo
 
 | QNX Neutrino Version | Target Architecture | Full support | `no_std` support |
 |----------------------|---------------------|:------------:|:----------------:|
+| 8.0              | AArch64  | ? | ✓ |
+| 8.0              | x86      | ? | ✓ |
 | 7.1 with io-pkt  | AArch64  | ✓ | ✓ |
 | 7.1 with io-sock | AArch64  | ? | ✓ |
 | 7.1 with io-pkt  | x86_64   | ✓ | ✓ |
@@ -31,6 +33,8 @@ Currently, the following QNX Neutrino versions and compilation targets are suppo
 
 On QNX 7.0 and 7.1, `io-pkt` is used as network stack by default. QNX 7.1 includes
 the optional network stack `io-sock`.
+QNX 8.0 always uses `io-sock`. QNX 8.0 support is currently in development
+and not tested.
 
 Adding other architectures that are supported by QNX Neutrino is possible.
 
@@ -121,53 +125,55 @@ For conditional compilation, following QNX Neutrino specific attributes are defi
 
 1. Create a `config.toml`
 
-Example content:
+    Example content:
 
-```toml
-profile = "compiler"
-change-id = 115898
-```
+    ```toml
+    profile = "compiler"
+    change-id = 999999
+    ```
 
-2. Compile the Rust toolchain for an `x86_64-unknown-linux-gnu` host (for both `aarch64` and `x86_64` targets)
+2. Compile the Rust toolchain for an `x86_64-unknown-linux-gnu` host
 
-Compiling the Rust toolchain requires the same environment variables used for compiling C binaries.
-Refer to the [QNX developer manual](https://www.qnx.com/developers/docs/7.1/#com.qnx.doc.neutrino.prog/topic/devel_OS_version.html).
+    Compiling the Rust toolchain requires the same environment variables used for compiling C binaries.
+    Refer to the [QNX developer manual](https://www.qnx.com/developers/docs/7.1/#com.qnx.doc.neutrino.prog/topic/devel_OS_version.html).
 
-To compile for QNX Neutrino (aarch64 and x86_64) and Linux (x86_64):
+    To compile for QNX Neutrino, environment variables must be set to use the correct tools and compiler switches:
 
-```bash
-export build_env='
-    CC_i586_pc_nto_qnx700=qcc
-    CFLAGS_i586_pc_nto_qnx700=-Vgcc_ntox86_cxx
-    CXX_i586_pc_nto_qnx700=qcc
-    AR_i586_pc_nto_qnx700=ntox86-ar
+    - `CC_<target>=qcc`
+    - `CFLAGS_<target>=<nto_cflag>`
+    - `CXX_<target>=qcc`
+    - `AR_<target>=<nto_ar>`
 
-    CC_aarch64_unknown_nto_qnx710=qcc
-    CFLAGS_aarch64_unknown_nto_qnx710=-Vgcc_ntoaarch64le_cxx
-    CXX_aarch64_unknown_nto_qnx710=qcc
-    AR_aarch64_unknown_nto_qnx710=ntoaarch64-ar
+    With:
 
-    CC_aarch64_unknown_nto_qnx710_iosock=qcc
-    CFLAGS_aarch64_unknown_nto_qnx710_iosock=-Vgcc_ntoaarch64le_cxx
-    CXX_aarch64_unknown_nto_qnx710_iosock=qcc
-    AR_aarch64_unknown_nto_qnx710_iosock=ntoaarch64-ar
+    - `<target>` target triplet using underscores instead of hyphens, e.g. `aarch64_unknown_nto_qnx710`
+    - `<nto_cflag>`
 
-    CC_aarch64_unknown_nto_qnx700=qcc
-    CFLAGS_aarch64_unknown_nto_qnx700=-Vgcc_ntoaarch64le_cxx
-    CXX_aarch64_unknown_nto_qnx700=qcc
-    AR_aarch64_unknown_nto_qnx700=ntoaarch64-ar
+      - `-Vgcc_ntox86_cxx` for x86 (32 bit)
+      - `-Vgcc_ntox86_64_cxx` for x86_64 (64 bit)
+      - `-Vgcc_ntoaarch64le_cxx` for Aarch64 (64 bit)
 
-    CC_x86_64_pc_nto_qnx710=qcc
-    CFLAGS_x86_64_pc_nto_qnx710=-Vgcc_ntox86_64_cxx
-    CXX_x86_64_pc_nto_qnx710=qcc
-    AR_x86_64_pc_nto_qnx710=ntox86_64-ar
-    '
+    - `<nto_ar>`
 
-env $build_env \
-    ./x.py build \
-        --target aarch64-unknown-nto-qnx710_iosock,aarch64-unknown-nto-qnx710,x86_64-pc-nto-qnx710,x86_64-unknown-linux-gnu \
-        rustc library/core library/alloc library/std
-```
+      - `ntox86-ar` for x86 (32 bit)
+      - `ntox86_64-ar` for x86_64 (64 bit)
+      - `ntoaarch64-ar` for Aarch64 (64 bit)
+
+    Example to build the Rust toolchain including a standard library for x86_64-linux-gnu and Aarch64-QNX-7.1:
+
+    ```bash
+    export build_env='
+        CC_aarch64_unknown_nto_qnx710=qcc
+        CFLAGS_aarch64_unknown_nto_qnx710=-Vgcc_ntoaarch64le_cxx
+        CXX_aarch64_unknown_nto_qnx710=qcc
+        AR_aarch64_unknown_nto_qnx710=ntoaarch64-ar
+        '
+
+    env $build_env \
+        ./x.py build \
+            --target x86_64-unknown-linux-gnu,aarch64-unknown-nto-qnx710 \
+            rustc library/core library/alloc library/std
+    ```
 
 ## Running the Rust test suite
 
