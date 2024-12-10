@@ -2893,7 +2893,7 @@ pub enum TyKind<'hir> {
     Ref(&'hir Lifetime, MutTy<'hir>),
     /// A bare function (e.g., `fn(usize) -> bool`).
     BareFn(&'hir BareFnTy<'hir>),
-    /// Uwu
+    /// An unsafe binder type (e.g. `unsafe<'a> Foo<'a>`).
     UnsafeBinder(&'hir UnsafeBinderTy<'hir>),
     /// The never type (`!`).
     Never,
