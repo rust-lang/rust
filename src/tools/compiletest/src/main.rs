@@ -18,6 +18,16 @@ fn main() {
 
     let config = Arc::new(parse_config(env::args().collect()));
 
+    eprintln!("INFO: compiletest was told channel=`{}`", config.channel);
+    eprintln!("INFO: rustc -vV reports:");
+    eprintln!(
+        "{}",
+        String::from_utf8(
+            std::process::Command::new(&config.rustc_path).arg("-vV").output().unwrap().stdout
+        )
+        .unwrap()
+    );
+
     if !config.has_html_tidy && config.mode == Mode::Rustdoc {
         eprintln!("warning: `tidy` (html-tidy.org) is not installed; diffs will not be generated");
     }
