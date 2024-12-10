@@ -59,7 +59,6 @@ Term                                                  | Meaning
 <span id="obligation">obligation</span>        |  Something that must be proven by the trait system. ([see more](../traits/resolution.md))
 <span id="placeholder">placeholder</span>      |  **NOTE: skolemization is deprecated by placeholder** a way of handling subtyping around "for-all" types (e.g., `for<'a> fn(&'a u32)`) as well as solving higher-ranked trait bounds (e.g., `for<'a> T: Trait<'a>`). See [the chapter on placeholder and universes](../borrow_check/region_inference/placeholders_and_universes.md) for more details.
 <span id="point">point</span>                  |  Used in the NLL analysis to refer to some particular location in the MIR; typically used to refer to a node in the control-flow graph.
-<span id="polymorphize">polymorphize</span>    |  An optimization that avoids unnecessary monomorphisation. ([see more](../backend/monomorph.md#polymorphization))
 <span id="projection">projection</span>        |  A general term for a "relative path", e.g. `x.f` is a "field projection", and `T::Item` is an ["associated type projection"](../traits/goals-and-clauses.md#trait-ref).
 <span id="pc">promoted constants</span>        |  Constants extracted from a function and lifted to static scope; see [this section](../mir/index.md#promoted) for more details.
 <span id="provider">provider</span>            |  The function that executes a query. ([see more](../query.md))
