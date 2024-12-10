@@ -1,6 +1,6 @@
 use rustc_abi::{BackendRepr, VariantIdx};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId};
+use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId, ReportedErrorInfo};
 use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
@@ -261,7 +261,7 @@ pub(crate) fn eval_to_valtree<'tcx>(
                 ValTreeCreationError::NodesOverflow => {
                     let handled =
                         tcx.dcx().emit_err(MaxNumNodesInConstErr { span, global_const_id });
-                    Err(handled.into())
+                    Err(ReportedErrorInfo::allowed_in_infallible(handled).into())
                 }
                 ValTreeCreationError::NonSupportedType(ty) => Ok(Err(ty)),
             }
