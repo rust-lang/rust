@@ -332,10 +332,6 @@ impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
     }
 
     fn check_caller_mir_body(&self, body: &Body<'tcx>) -> bool {
-        if body.source.promoted.is_some() {
-            return false;
-        }
-
         // Avoid inlining into coroutines, since their `optimized_mir` is used for layout computation,
         // which can create a cycle, even when no attempt is made to inline the function in the other
         // direction.
