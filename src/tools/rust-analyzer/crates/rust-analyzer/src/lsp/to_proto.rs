@@ -275,7 +275,6 @@ fn completion_item(
     completion_trigger_character: Option<char>,
     item: CompletionItem,
 ) {
-    let original_completion_item = item.clone();
     let insert_replace_support = config.insert_replace_support().then_some(tdpp.position);
     let ref_match = item.ref_match();
 
@@ -297,7 +296,7 @@ fn completion_item(
         // non-trivial mapping here.
         let mut text_edit = None;
         let source_range = item.source_range;
-        for indel in item.text_edit {
+        for indel in &item.text_edit {
             if indel.delete.contains_range(source_range) {
                 // Extract this indel as the main edit
                 text_edit = Some(if indel.delete == source_range {
@@ -349,7 +348,7 @@ fn completion_item(
         something_to_resolve |= item.documentation.is_some();
         None
     } else {
-        item.documentation.map(documentation)
+        item.documentation.clone().map(documentation)
     };
 
     let mut lsp_item = lsp_types::CompletionItem {
@@ -373,10 +372,10 @@ fn completion_item(
         } else {
             lsp_item.label_details = Some(lsp_types::CompletionItemLabelDetails {
                 detail: item.label_detail.as_ref().map(ToString::to_string),
-                description: item.detail,
+                description: item.detail.clone(),
             });
         }
-    } else if let Some(label_detail) = item.label_detail {
+    } else if let Some(label_detail) = &item.label_detail {
         lsp_item.label.push_str(label_detail.as_str());
     }
 
@@ -385,6 +384,7 @@ fn completion_item(
     let imports =
         if config.completion(None).enable_imports_on_the_fly && !item.import_to_add.is_empty() {
             item.import_to_add
+                .clone()
                 .into_iter()
                 .map(|(import_path, import_name)| lsp_ext::CompletionImport {
                     full_import_path: import_path,
@@ -402,7 +402,7 @@ fn completion_item(
                 version,
                 trigger_character: completion_trigger_character,
                 for_ref: true,
-                hash: completion_item_hash(&original_completion_item, true),
+                hash: completion_item_hash(&item, true),
             };
             Some(to_value(ref_resolve_data).unwrap())
         } else {
@@ -414,7 +414,7 @@ fn completion_item(
             version,
             trigger_character: completion_trigger_character,
             for_ref: false,
-            hash: completion_item_hash(&original_completion_item, false),
+            hash: completion_item_hash(&item, false),
         };
         (ref_resolve_data, Some(to_value(resolve_data).unwrap()))
     } else {

@@ -120,13 +120,13 @@ fn completion_item_hash(item: &CompletionItem, is_ref_completion: bool) -> [u8; 
     }
     // NB: do not hash edits or source range, as those may change between the time the client sends the resolve request
     // and the time it receives it: some editors do allow changing the buffer between that, leading to ranges being different.
+    //
+    // Documentation hashing is skipped too, as it's a large blob to process,
+    // while not really making completion properties more unique as they are already.
     hasher.update(item.kind.tag());
     hasher.update(&item.lookup);
     if let Some(detail) = &item.detail {
         hasher.update(detail);
-    }
-    if let Some(documentation) = &item.documentation {
-        hasher.update(documentation.as_str());
     }
     hash_completion_relevance(&mut hasher, &item.relevance);
     if let Some((mutability, text_size)) = &item.ref_match {
