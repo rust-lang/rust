@@ -1,7 +1,3 @@
-//! Dataflow analyses are built upon some interpretation of the
-//! bitvectors attached to each basic block, represented via a
-//! zero-sized structure.
-
 mod borrowed_locals;
 mod initialized;
 mod liveness;
