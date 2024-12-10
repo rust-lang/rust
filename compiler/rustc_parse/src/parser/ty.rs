@@ -758,7 +758,11 @@ impl<'a> Parser<'a> {
         let path = self.parse_path_inner(PathStyle::Type, ty_generics)?;
         if self.eat(&token::Not) {
             // Macro invocation in type position
-            Ok(TyKind::MacCall(P(MacCall { path, args: self.parse_delim_args()? })))
+            Ok(TyKind::MacCall(P(MacCall {
+                is_in_const_env: self.is_in_const_env,
+                path,
+                args: self.parse_delim_args()?,
+            })))
         } else if allow_plus == AllowPlus::Yes && self.check_plus() {
             // `Trait1 + Trait2 + 'a`
             self.parse_remaining_bounds_path(ThinVec::new(), path, lo, true)

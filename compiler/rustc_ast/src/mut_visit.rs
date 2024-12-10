@@ -714,7 +714,7 @@ fn walk_attribute<T: MutVisitor>(vis: &mut T, attr: &mut Attribute) {
 }
 
 fn walk_mac<T: MutVisitor>(vis: &mut T, mac: &mut MacCall) {
-    let MacCall { path, args } = mac;
+    let MacCall { is_in_const_env: _, path, args } = mac;
     vis.visit_path(path);
     visit_delim_args(vis, args);
 }

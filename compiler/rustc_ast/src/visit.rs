@@ -1002,7 +1002,7 @@ pub fn walk_stmt<'a, V: Visitor<'a>>(visitor: &mut V, statement: &'a Stmt) -> V:
 }
 
 pub fn walk_mac<'a, V: Visitor<'a>>(visitor: &mut V, mac: &'a MacCall) -> V::Result {
-    let MacCall { path, args: _ } = mac;
+    let MacCall { is_in_const_env: _, path, args: _ } = mac;
     visitor.visit_path(path, DUMMY_NODE_ID)
 }
 

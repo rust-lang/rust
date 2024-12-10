@@ -1614,7 +1614,11 @@ impl<'a> Parser<'a> {
                 self.dcx().emit_err(errors::MacroInvocationWithQualifiedPath(path.span));
             }
             let lo = path.span;
-            let mac = P(MacCall { path, args: self.parse_delim_args()? });
+            let mac = P(MacCall {
+                is_in_const_env: self.is_in_const_env,
+                path,
+                args: self.parse_delim_args()?,
+            });
             (lo.to(self.prev_token.span), ExprKind::MacCall(mac))
         } else if self.check(&token::OpenDelim(Delimiter::Brace))
             && let Some(expr) = self.maybe_parse_struct_expr(&qself, &path)

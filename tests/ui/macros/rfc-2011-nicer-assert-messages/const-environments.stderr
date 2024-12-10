@@ -1,0 +1,11 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-environments.rs:5:5
+   |
+LL |     assert!(foo == 3);
+   |     ^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'assertion failed: foo == 3', $DIR/const-environments.rs:5:5
+   |
+   = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

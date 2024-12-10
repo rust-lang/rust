@@ -241,11 +241,14 @@ impl<'a> Parser<'a> {
             // CONST ITEM
             if self.token.is_keyword(kw::Impl) {
                 // recover from `const impl`, suggest `impl const`
-                self.recover_const_impl(const_span, attrs, def_())?
+                self.with_const_management(|this| {
+                    this.recover_const_impl(const_span, attrs, def_())
+                })?
             } else {
                 self.recover_const_mut(const_span);
                 self.recover_missing_kw_before_item()?;
-                let (ident, generics, ty, expr) = self.parse_const_item()?;
+                let tuple = self.with_const_management(|this| this.parse_const_item())?;
+                let (ident, generics, ty, expr) = tuple;
                 (
                     ident,
                     ItemKind::Const(Box::new(ConstItem {
@@ -486,7 +489,7 @@ impl<'a> Parser<'a> {
             Ok(args) => {
                 self.eat_semi_for_macro_if_needed(&args);
                 self.complain_if_pub_macro(vis, false);
-                Ok(MacCall { path, args })
+                Ok(MacCall { is_in_const_env: self.is_in_const_env, path, args })
             }
 
             Err(mut err) => {
@@ -2383,8 +2386,19 @@ impl<'a> Parser<'a> {
 
         let mut sig_hi = self.prev_token.span;
         // Either `;` or `{ ... }`.
-        let body =
-            self.parse_fn_body(attrs, &ident, &mut sig_hi, fn_parse_mode.req_body, fn_params_end)?;
+        let body = if let Const::Yes(_) = header.constness {
+            self.with_const_management(|this| {
+                this.parse_fn_body(
+                    attrs,
+                    &ident,
+                    &mut sig_hi,
+                    fn_parse_mode.req_body,
+                    fn_params_end,
+                )
+            })?
+        } else {
+            self.parse_fn_body(attrs, &ident, &mut sig_hi, fn_parse_mode.req_body, fn_params_end)?
+        };
         let fn_sig_span = sig_lo.to(sig_hi);
         Ok((ident, FnSig { header, decl, span: fn_sig_span }, generics, body))
     }

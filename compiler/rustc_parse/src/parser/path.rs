@@ -843,11 +843,13 @@ impl<'a> Parser<'a> {
     /// the caller.
     pub(super) fn parse_const_arg(&mut self) -> PResult<'a, AnonConst> {
         // Parse const argument.
-        let value = if let token::OpenDelim(Delimiter::Brace) = self.token.kind {
-            self.parse_expr_block(None, self.token.span, BlockCheckMode::Default)?
-        } else {
-            self.handle_unambiguous_unbraced_const_arg()?
-        };
+        let value = self.with_const_management(|this| {
+            if let token::OpenDelim(Delimiter::Brace) = this.token.kind {
+                this.parse_expr_block(None, this.token.span, BlockCheckMode::Default)
+            } else {
+                this.handle_unambiguous_unbraced_const_arg()
+            }
+        })?;
         Ok(AnonConst { id: ast::DUMMY_NODE_ID, value })
     }
 

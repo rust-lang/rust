@@ -53,12 +53,14 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn macro_call(
         &self,
+        is_in_const_env: bool,
         span: Span,
         path: ast::Path,
         delim: ast::token::Delimiter,
         tokens: ast::tokenstream::TokenStream,
     ) -> P<ast::MacCall> {
         P(ast::MacCall {
+            is_in_const_env,
             path,
             args: P(ast::DelimArgs {
                 dspan: ast::tokenstream::DelimSpan { open: span, close: span },
@@ -435,6 +437,7 @@ impl<'a> ExtCtxt<'a> {
         self.expr_macro_call(
             span,
             self.macro_call(
+                false,
                 span,
                 self.path_global(
                     span,

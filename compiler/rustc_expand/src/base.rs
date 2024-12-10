@@ -280,6 +280,7 @@ pub trait BangProcMacro {
     fn expand<'cx>(
         &self,
         ecx: &'cx mut ExtCtxt<'_>,
+        is_in_const_env: bool,
         span: Span,
         ts: TokenStream,
     ) -> Result<TokenStream, ErrorGuaranteed>;
@@ -292,6 +293,7 @@ where
     fn expand<'cx>(
         &self,
         _ecx: &'cx mut ExtCtxt<'_>,
+        _is_in_const_env: bool,
         _span: Span,
         ts: TokenStream,
     ) -> Result<TokenStream, ErrorGuaranteed> {
@@ -331,6 +333,7 @@ pub trait TTMacroExpander {
     fn expand<'cx>(
         &self,
         ecx: &'cx mut ExtCtxt<'_>,
+        is_in_const_env: bool,
         span: Span,
         input: TokenStream,
     ) -> MacroExpanderResult<'cx>;
@@ -339,19 +342,20 @@ pub trait TTMacroExpander {
 pub type MacroExpanderResult<'cx> = ExpandResult<Box<dyn MacResult + 'cx>, ()>;
 
 pub type MacroExpanderFn =
-    for<'cx> fn(&'cx mut ExtCtxt<'_>, Span, TokenStream) -> MacroExpanderResult<'cx>;
+    for<'cx> fn(&'cx mut ExtCtxt<'_>, bool, Span, TokenStream) -> MacroExpanderResult<'cx>;
 
 impl<F> TTMacroExpander for F
 where
-    F: for<'cx> Fn(&'cx mut ExtCtxt<'_>, Span, TokenStream) -> MacroExpanderResult<'cx>,
+    F: for<'cx> Fn(&'cx mut ExtCtxt<'_>, bool, Span, TokenStream) -> MacroExpanderResult<'cx>,
 {
     fn expand<'cx>(
         &self,
         ecx: &'cx mut ExtCtxt<'_>,
+        is_in_const_env: bool,
         span: Span,
         input: TokenStream,
     ) -> MacroExpanderResult<'cx> {
-        self(ecx, span, input)
+        self(ecx, is_in_const_env, span, input)
     }
 }
 
@@ -901,6 +905,7 @@ impl SyntaxExtension {
     pub fn dummy_bang(edition: Edition) -> SyntaxExtension {
         fn expander<'cx>(
             cx: &'cx mut ExtCtxt<'_>,
+            _is_in_const_env: bool,
             span: Span,
             _: TokenStream,
         ) -> MacroExpanderResult<'cx> {

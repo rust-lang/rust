@@ -46,6 +46,7 @@ impl base::BangProcMacro for BangProcMacro {
     fn expand(
         &self,
         ecx: &mut ExtCtxt<'_>,
+        _is_in_const_env: bool,
         span: Span,
         input: TokenStream,
     ) -> Result<TokenStream, ErrorGuaranteed> {

@@ -1015,6 +1015,7 @@ fn expand_format_args_impl<'cx>(
 
 pub(crate) fn expand_format_args<'cx>(
     ecx: &'cx mut ExtCtxt<'_>,
+    _is_in_const_env: bool,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {
@@ -1023,6 +1024,7 @@ pub(crate) fn expand_format_args<'cx>(
 
 pub(crate) fn expand_format_args_nl<'cx>(
     ecx: &'cx mut ExtCtxt<'_>,
+    _is_in_const_env: bool,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {

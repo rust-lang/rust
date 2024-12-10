@@ -7,6 +7,7 @@ use crate::errors;
 
 pub(crate) fn expand_trace_macros(
     cx: &mut ExtCtxt<'_>,
+    _is_in_const_env: bool,
     sp: Span,
     tt: TokenStream,
 ) -> MacroExpanderResult<'static> {

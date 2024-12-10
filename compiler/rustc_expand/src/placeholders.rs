@@ -18,6 +18,7 @@ pub(crate) fn placeholder(
 ) -> AstFragment {
     fn mac_placeholder() -> P<ast::MacCall> {
         P(ast::MacCall {
+            is_in_const_env: false,
             path: ast::Path { span: DUMMY_SP, segments: ThinVec::new(), tokens: None },
             args: P(ast::DelimArgs {
                 dspan: ast::tokenstream::DelimSpan::dummy(),

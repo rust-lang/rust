@@ -17,6 +17,7 @@ use crate::errors;
 
 pub(crate) fn expand_assert<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
+    is_in_const_env: bool,
     span: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {
@@ -56,6 +57,7 @@ pub(crate) fn expand_assert<'cx>(
         let then = cx.expr(
             call_site_span,
             ExprKind::MacCall(P(MacCall {
+                is_in_const_env,
                 path: panic_path(),
                 args: P(DelimArgs {
                     dspan: DelimSpan::from_single(call_site_span),
@@ -69,8 +71,8 @@ pub(crate) fn expand_assert<'cx>(
     // If `generic_assert` is enabled, generates rich captured outputs
     //
     // FIXME(c410-f3r) See https://github.com/rust-lang/rust/issues/96949
-    else if cx.ecfg.features.generic_assert() {
-        context::Context::new(cx, call_site_span).build(cond_expr, panic_path())
+    else if cx.ecfg.features.generic_assert() && !is_in_const_env {
+        context::Context::new(cx, call_site_span).build(cond_expr, is_in_const_env, panic_path())
     }
     // If `generic_assert` is not enabled, only outputs a literal "assertion failed: ..."
     // string

@@ -8,6 +8,7 @@ use crate::util::get_single_str_from_tts;
 
 pub(crate) fn expand_compile_error<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
+    _is_in_const_env: bool,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {

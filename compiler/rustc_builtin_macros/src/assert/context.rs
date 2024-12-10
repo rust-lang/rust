@@ -71,11 +71,16 @@ impl<'cx, 'a> Context<'cx, 'a> {
     ///   }
     /// }
     /// ```
-    pub(super) fn build(mut self, mut cond_expr: P<Expr>, panic_path: Path) -> P<Expr> {
+    pub(super) fn build(
+        mut self,
+        mut cond_expr: P<Expr>,
+        is_in_const_env: bool,
+        panic_path: Path,
+    ) -> P<Expr> {
         let expr_str = pprust::expr_to_string(&cond_expr);
         self.manage_cond_expr(&mut cond_expr);
         let initial_imports = self.build_initial_imports();
-        let panic = self.build_panic(&expr_str, panic_path);
+        let panic = self.build_panic(&expr_str, is_in_const_env, panic_path);
         let cond_expr_with_unlikely = self.build_unlikely(cond_expr);
 
         let Self { best_case_captures, capture_decls, cx, local_bind_decls, span, .. } = self;
@@ -147,7 +152,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
     ///     __capture0,
     ///     ...
     /// );
-    fn build_panic(&self, expr_str: &str, panic_path: Path) -> P<Expr> {
+    fn build_panic(&self, expr_str: &str, is_in_const_env: bool, panic_path: Path) -> P<Expr> {
         let escaped_expr_str = escape_to_fmt(expr_str);
         let initial = [
             TokenTree::token_joint(
@@ -179,6 +184,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
         self.cx.expr(
             self.span,
             ExprKind::MacCall(P(MacCall {
+                is_in_const_env,
                 path: panic_path,
                 args: P(DelimArgs {
                     dspan: DelimSpan::from_single(self.span),

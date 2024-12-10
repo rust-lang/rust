@@ -10,6 +10,7 @@ use crate::errors;
 
 pub(crate) fn expand_concat_idents<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
+    _is_in_const_env: bool,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {

@@ -226,7 +226,7 @@ impl<'a> Parser<'a> {
             _ => MacStmtStyle::NoBraces,
         };
 
-        let mac = P(MacCall { path, args });
+        let mac = P(MacCall { is_in_const_env: self.is_in_const_env, path, args });
 
         let kind = if (style == MacStmtStyle::Braces
             && self.token != token::Dot

@@ -814,6 +814,7 @@ fn expand_preparsed_asm(
 
 pub(super) fn expand_asm<'cx>(
     ecx: &'cx mut ExtCtxt<'_>,
+    _is_in_const_env: bool,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {
@@ -843,6 +844,7 @@ pub(super) fn expand_asm<'cx>(
 
 pub(super) fn expand_naked_asm<'cx>(
     ecx: &'cx mut ExtCtxt<'_>,
+    _is_in_const_env: bool,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {
@@ -873,6 +875,7 @@ pub(super) fn expand_naked_asm<'cx>(
 
 pub(super) fn expand_global_asm<'cx>(
     ecx: &'cx mut ExtCtxt<'_>,
+    _is_in_const_env: bool,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {

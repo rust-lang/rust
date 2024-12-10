@@ -676,7 +676,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         ExpandResult::Ready(match invoc.kind {
             InvocationKind::Bang { mac, span } => match ext {
                 SyntaxExtensionKind::Bang(expander) => {
-                    match expander.expand(self.cx, span, mac.args.tokens.clone()) {
+                    match expander.expand(
+                        self.cx,
+                        mac.is_in_const_env,
+                        span,
+                        mac.args.tokens.clone(),
+                    ) {
                         Ok(tok_result) => {
                             self.parse_ast_fragment(tok_result, fragment_kind, &mac.path, span)
                         }
@@ -684,7 +689,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     }
                 }
                 SyntaxExtensionKind::LegacyBang(expander) => {
-                    let tok_result = match expander.expand(self.cx, span, mac.args.tokens.clone()) {
+                    let tok_result = match expander.expand(
+                        self.cx,
+                        mac.is_in_const_env,
+                        span,
+                        mac.args.tokens.clone(),
+                    ) {
                         ExpandResult::Ready(tok_result) => tok_result,
                         ExpandResult::Retry(_) => {
                             // retry the original

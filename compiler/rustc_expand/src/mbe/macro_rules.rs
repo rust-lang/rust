@@ -111,6 +111,7 @@ impl TTMacroExpander for MacroRulesMacroExpander {
     fn expand<'cx>(
         &self,
         cx: &'cx mut ExtCtxt<'_>,
+        _is_in_const_env: bool,
         sp: Span,
         input: TokenStream,
     ) -> MacroExpanderResult<'cx> {
@@ -134,6 +135,7 @@ impl TTMacroExpander for DummyExpander {
     fn expand<'cx>(
         &self,
         _: &'cx mut ExtCtxt<'_>,
+        _is_in_const_env: bool,
         span: Span,
         _: TokenStream,
     ) -> ExpandResult<Box<dyn MacResult + 'cx>, ()> {

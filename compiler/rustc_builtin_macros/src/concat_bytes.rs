@@ -112,6 +112,7 @@ fn handle_array_element(
 
 pub(crate) fn expand_concat_bytes(
     cx: &mut ExtCtxt<'_>,
+    _is_in_const_env: bool,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'static> {

@@ -1098,7 +1098,7 @@ impl<'a> Parser<'a> {
     fn parse_pat_mac_invoc(&mut self, path: Path) -> PResult<'a, PatKind> {
         self.bump();
         let args = self.parse_delim_args()?;
-        let mac = P(MacCall { path, args });
+        let mac = P(MacCall { is_in_const_env: self.is_in_const_env, path, args });
         Ok(PatKind::MacCall(mac))
     }
 

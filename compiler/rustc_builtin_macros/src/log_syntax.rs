@@ -4,6 +4,7 @@ use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacroExpanderResult
 
 pub(crate) fn expand_log_syntax<'cx>(
     _cx: &'cx mut ExtCtxt<'_>,
+    _is_in_const_env: bool,
     sp: rustc_span::Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {

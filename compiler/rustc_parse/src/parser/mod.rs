@@ -185,12 +185,14 @@ pub struct Parser<'a> {
     /// Whether the parser is allowed to do recovery.
     /// This is disabled when parsing macro arguments, see #103534
     recovery: Recovery,
+    /// If the current parsing is within a constant environment
+    is_in_const_env: bool,
 }
 
 // This type is used a lot, e.g. it's cloned when matching many declarative macro rules with nonterminals. Make sure
 // it doesn't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
-rustc_data_structures::static_assert_size!(Parser<'_>, 288);
+rustc_data_structures::static_assert_size!(Parser<'_>, 296);
 
 /// Stores span information about a closure.
 #[derive(Clone, Debug)]
@@ -481,6 +483,7 @@ impl<'a> Parser<'a> {
             },
             current_closure: None,
             recovery: Recovery::Allowed,
+            is_in_const_env: false,
         };
 
         // Make parser point to the first token.
@@ -1320,7 +1323,7 @@ impl<'a> Parser<'a> {
             self.psess.gated_spans.gate(sym::inline_const_pat, span);
         }
         self.expect_keyword(kw::Const)?;
-        let (attrs, blk) = self.parse_inner_attrs_and_block()?;
+        let (attrs, blk) = self.with_const_management(|this| this.parse_inner_attrs_and_block())?;
         let anon_const = AnonConst {
             id: DUMMY_NODE_ID,
             value: self.mk_expr(blk.span, ExprKind::Block(blk, None)),
@@ -1649,6 +1652,13 @@ impl<'a> Parser<'a> {
 
     pub fn approx_token_stream_pos(&self) -> u32 {
         self.num_bump_calls
+    }
+
+    fn with_const_management<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
+        self.is_in_const_env = true;
+        let rslt = f(self);
+        self.is_in_const_env = false;
+        rslt
     }
 }
 

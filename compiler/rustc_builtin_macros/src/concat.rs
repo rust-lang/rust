@@ -9,6 +9,7 @@ use crate::util::get_exprs_from_tts;
 
 pub(crate) fn expand_concat(
     cx: &mut ExtCtxt<'_>,
+    _is_in_const_env: bool,
     sp: rustc_span::Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'static> {

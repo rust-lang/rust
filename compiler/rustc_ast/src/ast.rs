@@ -1715,6 +1715,7 @@ pub enum ClosureBinder {
 /// is being invoked, and the `args` are arguments passed to it.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct MacCall {
+    pub is_in_const_env: bool,
     pub path: Path,
     pub args: P<DelimArgs>,
 }

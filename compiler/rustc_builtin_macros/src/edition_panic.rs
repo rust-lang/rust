@@ -18,11 +18,12 @@ use rustc_span::symbol::sym;
 /// one we're expanding from.
 pub(crate) fn expand_panic<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
+    is_in_const_env: bool,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {
     let mac = if use_panic_2021(sp) { sym::panic_2021 } else { sym::panic_2015 };
-    expand(mac, cx, sp, tts)
+    expand(is_in_const_env, mac, cx, sp, tts)
 }
 
 /// This expands to either
@@ -31,14 +32,16 @@ pub(crate) fn expand_panic<'cx>(
 /// depending on the edition.
 pub(crate) fn expand_unreachable<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
+    is_in_const_env: bool,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {
     let mac = if use_panic_2021(sp) { sym::unreachable_2021 } else { sym::unreachable_2015 };
-    expand(mac, cx, sp, tts)
+    expand(is_in_const_env, mac, cx, sp, tts)
 }
 
 fn expand<'cx>(
+    is_in_const_env: bool,
     mac: rustc_span::Symbol,
     cx: &'cx ExtCtxt<'_>,
     sp: Span,
@@ -50,6 +53,7 @@ fn expand<'cx>(
         cx.expr(
             sp,
             ExprKind::MacCall(P(MacCall {
+                is_in_const_env,
                 path: Path {
                     span: sp,
                     segments: cx

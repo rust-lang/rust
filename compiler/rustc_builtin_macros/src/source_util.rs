@@ -32,6 +32,7 @@ use crate::util::{
 /// line!(): expands to the current line number
 pub(crate) fn expand_line(
     cx: &mut ExtCtxt<'_>,
+    _is_in_const_env: bool,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'static> {
@@ -47,6 +48,7 @@ pub(crate) fn expand_line(
 /* column!(): expands to the current column number */
 pub(crate) fn expand_column(
     cx: &mut ExtCtxt<'_>,
+    _is_in_const_env: bool,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'static> {
@@ -64,6 +66,7 @@ pub(crate) fn expand_column(
 /// out if we wanted.
 pub(crate) fn expand_file(
     cx: &mut ExtCtxt<'_>,
+    _is_in_const_env: bool,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'static> {
@@ -85,6 +88,7 @@ pub(crate) fn expand_file(
 
 pub(crate) fn expand_stringify(
     cx: &mut ExtCtxt<'_>,
+    _is_in_const_env: bool,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'static> {
@@ -95,6 +99,7 @@ pub(crate) fn expand_stringify(
 
 pub(crate) fn expand_mod(
     cx: &mut ExtCtxt<'_>,
+    _is_in_const_env: bool,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'static> {
@@ -111,6 +116,7 @@ pub(crate) fn expand_mod(
 /// unhygienically.
 pub(crate) fn expand_include<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
+    _is_in_const_env: bool,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'cx> {
@@ -192,6 +198,7 @@ pub(crate) fn expand_include<'cx>(
 /// `include_str!`: read the given file, insert it as a literal string expr
 pub(crate) fn expand_include_str(
     cx: &mut ExtCtxt<'_>,
+    _is_in_const_env: bool,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'static> {
@@ -221,6 +228,7 @@ pub(crate) fn expand_include_str(
 
 pub(crate) fn expand_include_bytes(
     cx: &mut ExtCtxt<'_>,
+    _is_in_const_env: bool,
     sp: Span,
     tts: TokenStream,
 ) -> MacroExpanderResult<'static> {
