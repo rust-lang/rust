@@ -4,7 +4,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 
-pub fn is_parent_const_impl_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+fn is_parent_const_impl_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     let parent_id = tcx.local_parent(def_id);
     matches!(tcx.def_kind(parent_id), DefKind::Impl { .. })
         && tcx.constness(parent_id) == hir::Constness::Const
