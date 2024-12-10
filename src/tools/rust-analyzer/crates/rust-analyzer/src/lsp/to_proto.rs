@@ -5,6 +5,7 @@ use std::{
     sync::atomic::{AtomicU32, Ordering},
 };
 
+use base64::{prelude::BASE64_STANDARD, Engine};
 use ide::{
     Annotation, AnnotationKind, Assist, AssistKind, Cancellable, CompletionFieldsToResolve,
     CompletionItem, CompletionItemKind, CompletionRelevance, Documentation, FileId, FileRange,
@@ -402,7 +403,7 @@ fn completion_item(
                 version,
                 trigger_character: completion_trigger_character,
                 for_ref: true,
-                hash: completion_item_hash(&item, true),
+                hash: BASE64_STANDARD.encode(completion_item_hash(&item, true)),
             };
             Some(to_value(ref_resolve_data).unwrap())
         } else {
@@ -414,7 +415,7 @@ fn completion_item(
             version,
             trigger_character: completion_trigger_character,
             for_ref: false,
-            hash: completion_item_hash(&item, false),
+            hash: BASE64_STANDARD.encode(completion_item_hash(&item, false)),
         };
         (ref_resolve_data, Some(to_value(resolve_data).unwrap()))
     } else {

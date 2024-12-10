@@ -85,6 +85,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "base64"
+version = "0.22.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
+
+[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1649,6 +1655,7 @@ version = "0.0.0"
 dependencies = [
  "always-assert",
  "anyhow",
+ "base64",
  "cargo_metadata",
  "cfg",
  "crossbeam-channel",

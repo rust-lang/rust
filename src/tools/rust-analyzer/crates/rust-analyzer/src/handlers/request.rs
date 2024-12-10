@@ -10,6 +10,7 @@ use std::{
 
 use anyhow::Context;
 
+use base64::{prelude::BASE64_STANDARD, Engine};
 use ide::{
     AnnotationConfig, AssistKind, AssistResolveStrategy, Cancellable, CompletionFieldsToResolve,
     FilePosition, FileRange, HoverAction, HoverGotoTypeData, InlayFieldsToResolve, Query,
@@ -1136,10 +1137,15 @@ pub(crate) fn handle_completion_resolve(
     else {
         return Ok(original_completion);
     };
+    let Ok(resolve_data_hash) = BASE64_STANDARD.decode(resolve_data.hash) else {
+        return Ok(original_completion);
+    };
 
     let Some(corresponding_completion) = completions.into_iter().find(|completion_item| {
-        let hash = completion_item_hash(completion_item, resolve_data.for_ref);
-        hash == resolve_data.hash
+        // Avoid computing hashes for items that obviously do not match
+        // r-a might append a detail-based suffix to the label, so we cannot check for equality
+        original_completion.label.starts_with(completion_item.label.as_str())
+            && resolve_data_hash == completion_item_hash(completion_item, resolve_data.for_ref)
     }) else {
         return Ok(original_completion);
     };
