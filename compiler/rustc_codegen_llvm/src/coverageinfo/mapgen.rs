@@ -20,7 +20,7 @@ use rustc_target::spec::HasTargetSpec;
 use tracing::debug;
 
 use crate::common::CodegenCx;
-use crate::coverageinfo::map_data::{FunctionCoverage, FunctionCoverageCollector};
+use crate::coverageinfo::map_data::FunctionCoverage;
 use crate::coverageinfo::{ffi, llvm_cov};
 use crate::llvm;
 
@@ -63,16 +63,11 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
         None => return,
     };
     if function_coverage_map.is_empty() {
-        // This module has no functions with coverage instrumentation
+        // This CGU has no functions with coverage instrumentation.
         return;
     }
 
-    let function_coverage_entries = function_coverage_map
-        .into_iter()
-        .map(|(instance, function_coverage)| (instance, function_coverage.into_finished()))
-        .collect::<Vec<_>>();
-
-    let all_file_names = function_coverage_entries
+    let all_file_names = function_coverage_map
         .iter()
         .map(|(_, fn_cov)| fn_cov.function_coverage_info.body_span)
         .map(|span| span_file_name(tcx, span));
@@ -92,7 +87,7 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
     let mut unused_function_names = Vec::new();
 
     // Encode coverage mappings and generate function records
-    for (instance, function_coverage) in function_coverage_entries {
+    for (instance, function_coverage) in function_coverage_map {
         debug!("Generate function coverage for {}, {:?}", cx.codegen_unit.name(), instance);
 
         let mangled_function_name = tcx.symbol_name(instance).name;
@@ -536,11 +531,6 @@ fn add_unused_function_coverage<'tcx>(
     );
 
     // An unused function's mappings will all be rewritten to map to zero.
-    let function_coverage = FunctionCoverageCollector::unused(
-        instance,
-        function_coverage_info,
-        tcx.coverage_ids_info(instance.def),
-    );
-
+    let function_coverage = FunctionCoverage::new_unused(function_coverage_info);
     cx.coverage_cx().function_coverage_map.borrow_mut().insert(instance, function_coverage);
 }
