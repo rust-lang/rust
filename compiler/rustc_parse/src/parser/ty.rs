@@ -348,7 +348,9 @@ impl<'a> Parser<'a> {
                     TyKind::Err(guar)
                 }
             }
-        } else if self.check_keyword(kw::Unsafe) {
+        } else if self.check_keyword(kw::Unsafe)
+            && self.look_ahead(1, |tok| matches!(tok.kind, token::Lt))
+        {
             self.parse_unsafe_binder_ty()?
         } else {
             let msg = format!("expected type, found {}", super::token_descr(&self.token));
