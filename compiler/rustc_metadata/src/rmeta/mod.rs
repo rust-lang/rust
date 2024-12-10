@@ -450,6 +450,7 @@ define_tables! {
     trait_def: Table<DefIndex, LazyValue<ty::TraitDef>>,
     trait_item_def_id: Table<DefIndex, RawDefId>,
     expn_that_defined: Table<DefIndex, LazyValue<ExpnId>>,
+    default_fields: Table<DefIndex, LazyValue<DefId>>,
     params_in_repr: Table<DefIndex, LazyValue<BitSet<u32>>>,
     repr_options: Table<DefIndex, LazyValue<ReprOptions>>,
     // `def_keys` and `def_path_hashes` represent a lazy version of a

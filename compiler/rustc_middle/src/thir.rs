@@ -158,8 +158,21 @@ pub struct AdtExpr<'tcx> {
     pub user_ty: UserTy<'tcx>,
 
     pub fields: Box<[FieldExpr]>,
-    /// The base, e.g. `Foo {x: 1, .. base}`.
-    pub base: Option<FruInfo<'tcx>>,
+    /// The base, e.g. `Foo {x: 1, ..base}`.
+    pub base: AdtExprBase<'tcx>,
+}
+
+#[derive(Clone, Debug, HashStable)]
+pub enum AdtExprBase<'tcx> {
+    /// A struct expression where all the fields are explicitly enumerated: `Foo { a, b }`.
+    None,
+    /// A struct expression with a "base", an expression of the same type as the outer struct that
+    /// will be used to populate any fields not explicitly mentioned: `Foo { ..base }`
+    Base(FruInfo<'tcx>),
+    /// A struct expression with a `..` tail but no "base" expression. The values from the struct
+    /// fields' default values will be used to populate any fields not explicitly mentioned:
+    /// `Foo { .. }`.
+    DefaultFields(Box<[Ty<'tcx>]>),
 }
 
 #[derive(Clone, Debug, HashStable)]

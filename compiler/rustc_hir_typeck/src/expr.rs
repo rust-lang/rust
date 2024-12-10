@@ -44,10 +44,11 @@ use crate::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExpectatio
 use crate::TupleArgumentsFlag::DontTupleArguments;
 use crate::coercion::{CoerceMany, DynamicCoerceMany};
 use crate::errors::{
-    AddressOfTemporaryTaken, FieldMultiplySpecifiedInInitializer,
-    FunctionalRecordUpdateOnNonStruct, HelpUseLatestEdition, ReturnLikeStatementKind,
-    ReturnStmtOutsideOfFnBody, StructExprNonExhaustive, TypeMismatchFruTypo,
-    YieldExprOutsideOfCoroutine,
+    AddressOfTemporaryTaken, BaseExpressionDoubleDot, BaseExpressionDoubleDotAddExpr,
+    BaseExpressionDoubleDotEnableDefaultFieldValues, BaseExpressionDoubleDotRemove,
+    FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct, HelpUseLatestEdition,
+    ReturnLikeStatementKind, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive,
+    TypeMismatchFruTypo, YieldExprOutsideOfCoroutine,
 };
 use crate::{
     BreakableCtxt, CoroutineTypes, Diverges, FnCtxt, Needs, cast, fatally_break_rust,
@@ -723,7 +724,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.suggest_assoc_method_call(segs);
                 let e =
                     self.dcx().span_delayed_bug(qpath.span(), "`Res::Err` but no error emitted");
-                self.set_tainted_by_errors(e);
                 Ty::new_error(tcx, e)
             }
             Res::Def(DefKind::Variant, _) => {
@@ -1855,11 +1855,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_expr_struct(
         &self,
-        expr: &hir::Expr<'_>,
+        expr: &hir::Expr<'tcx>,
         expected: Expectation<'tcx>,
-        qpath: &QPath<'tcx>,
+        qpath: &'tcx QPath<'tcx>,
         fields: &'tcx [hir::ExprField<'tcx>],
-        base_expr: &'tcx Option<&'tcx hir::Expr<'tcx>>,
+        base_expr: &'tcx hir::StructTailExpr<'tcx>,
     ) -> Ty<'tcx> {
         // Find the relevant variant
         let (variant, adt_ty) = match self.check_struct_path(qpath, expr.hir_id) {
@@ -1899,7 +1899,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         variant: &'tcx ty::VariantDef,
         hir_fields: &'tcx [hir::ExprField<'tcx>],
-        base_expr: &'tcx Option<&'tcx hir::Expr<'tcx>>,
+        base_expr: &'tcx hir::StructTailExpr<'tcx>,
     ) {
         let tcx = self.tcx;
 
@@ -2023,13 +2023,90 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // the fields with the base_expr. This could cause us to hit errors later
         // when certain fields are assumed to exist that in fact do not.
         if error_happened {
-            if let Some(base_expr) = base_expr {
+            if let hir::StructTailExpr::Base(base_expr) = base_expr {
                 self.check_expr(base_expr);
             }
             return;
         }
 
-        if let Some(base_expr) = base_expr {
+        if let hir::StructTailExpr::DefaultFields(span) = *base_expr {
+            let mut missing_mandatory_fields = Vec::new();
+            let mut missing_optional_fields = Vec::new();
+            for f in &variant.fields {
+                let ident = self.tcx.adjust_ident(f.ident(self.tcx), variant.def_id);
+                if let Some(_) = remaining_fields.remove(&ident) {
+                    if f.value.is_none() {
+                        missing_mandatory_fields.push(ident);
+                    } else {
+                        missing_optional_fields.push(ident);
+                    }
+                }
+            }
+            if !self.tcx.features().default_field_values() {
+                self.dcx().emit_err(BaseExpressionDoubleDot {
+                    span: span.shrink_to_hi(),
+                    // We only mention enabling the feature if this is a nightly rustc *and* the
+                    // expression would make sense with the feature enabled.
+                    default_field_values: if self.tcx.sess.is_nightly_build()
+                        && missing_mandatory_fields.is_empty()
+                        && !missing_optional_fields.is_empty()
+                    {
+                        Some(BaseExpressionDoubleDotEnableDefaultFieldValues)
+                    } else {
+                        None
+                    },
+                    add_expr: if !missing_mandatory_fields.is_empty()
+                        || !missing_optional_fields.is_empty()
+                    {
+                        Some(BaseExpressionDoubleDotAddExpr { span: span.shrink_to_hi() })
+                    } else {
+                        None
+                    },
+                    remove_dots: if missing_mandatory_fields.is_empty()
+                        && missing_optional_fields.is_empty()
+                    {
+                        Some(BaseExpressionDoubleDotRemove { span })
+                    } else {
+                        None
+                    },
+                });
+                return;
+            }
+            if !missing_mandatory_fields.is_empty() {
+                let s = pluralize!(missing_mandatory_fields.len());
+                let fields: Vec<_> =
+                    missing_mandatory_fields.iter().map(|f| format!("`{f}`")).collect();
+                let fields = match &fields[..] {
+                    [] => unreachable!(),
+                    [only] => only.to_string(),
+                    [start @ .., last] => format!("{} and {last}", start.join(", ")),
+                };
+                self.dcx()
+                    .struct_span_err(
+                        span.shrink_to_hi(),
+                        format!("missing mandatory field{s} {fields}"),
+                    )
+                    .emit();
+                return;
+            }
+            let fru_tys = match adt_ty.kind() {
+                ty::Adt(adt, args) if adt.is_struct() => variant
+                    .fields
+                    .iter()
+                    .map(|f| self.normalize(span, f.ty(self.tcx, args)))
+                    .collect(),
+                ty::Adt(adt, args) if adt.is_enum() => variant
+                    .fields
+                    .iter()
+                    .map(|f| self.normalize(span, f.ty(self.tcx, args)))
+                    .collect(),
+                _ => {
+                    self.dcx().emit_err(FunctionalRecordUpdateOnNonStruct { span });
+                    return;
+                }
+            };
+            self.typeck_results.borrow_mut().fru_field_types_mut().insert(expr.hir_id, fru_tys);
+        } else if let hir::StructTailExpr::Base(base_expr) = base_expr {
             // FIXME: We are currently creating two branches here in order to maintain
             // consistency. But they should be merged as much as possible.
             let fru_tys = if self.tcx.features().type_changing_struct_update() {
@@ -2161,12 +2238,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_struct_fields_on_error(
         &self,
         fields: &'tcx [hir::ExprField<'tcx>],
-        base_expr: &'tcx Option<&'tcx hir::Expr<'tcx>>,
+        base_expr: &'tcx hir::StructTailExpr<'tcx>,
     ) {
         for field in fields {
             self.check_expr(field.expr);
         }
-        if let Some(base) = *base_expr {
+        if let hir::StructTailExpr::Base(base) = *base_expr {
             self.check_expr(base);
         }
     }

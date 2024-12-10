@@ -8,7 +8,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{
     BinOpKind, BlockCheckMode, Expr, ExprKind, HirId, HirIdMap, ItemKind, LocalSource, Node, PatKind, Stmt, StmtKind,
-    UnsafeSource, is_range_literal,
+    UnsafeSource, StructTailExpr, is_range_literal,
 };
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -238,7 +238,10 @@ fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         ExprKind::Struct(_, fields, ref base) => {
             !has_drop(cx, cx.typeck_results().expr_ty(expr))
                 && fields.iter().all(|field| has_no_effect(cx, field.expr))
-                && base.as_ref().is_none_or(|base| has_no_effect(cx, base))
+                && match &base {
+                    StructTailExpr::None | StructTailExpr::DefaultFields(_) => true,
+                    StructTailExpr::Base(base) => has_no_effect(cx, base),
+                }
         },
         ExprKind::Call(callee, args) => {
             if let ExprKind::Path(ref qpath) = callee.kind {
@@ -342,6 +345,10 @@ fn reduce_expression<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<Vec
             if has_drop(cx, cx.typeck_results().expr_ty(expr)) {
                 None
             } else {
+                let base = match base {
+                    StructTailExpr::Base(base) => Some(base),
+                    StructTailExpr::None | StructTailExpr::DefaultFields(_) => None,
+                };
                 Some(fields.iter().map(|f| &f.expr).chain(base).map(Deref::deref).collect())
             }
         },

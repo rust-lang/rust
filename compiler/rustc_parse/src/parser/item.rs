@@ -1836,6 +1836,22 @@ impl<'a> Parser<'a> {
                         return Err(err);
                     }
                 };
+                let mut default = None;
+                if p.token == token::Eq {
+                    let mut snapshot = p.create_snapshot_for_diagnostic();
+                    snapshot.bump();
+                    match snapshot.parse_expr_anon_const() {
+                        Ok(const_expr) => {
+                            let sp = ty.span.shrink_to_hi().to(const_expr.value.span);
+                            p.psess.gated_spans.gate(sym::default_field_values, sp);
+                            p.restore_snapshot(snapshot);
+                            default = Some(const_expr);
+                        }
+                        Err(err) => {
+                            err.cancel();
+                        }
+                    }
+                }
 
                 Ok((
                     FieldDef {
@@ -1845,6 +1861,7 @@ impl<'a> Parser<'a> {
                         ident: None,
                         id: DUMMY_NODE_ID,
                         ty,
+                        default,
                         attrs,
                         is_placeholder: false,
                     },
@@ -2024,12 +2041,15 @@ impl<'a> Parser<'a> {
         if self.token == token::Colon && self.look_ahead(1, |t| *t != token::Colon) {
             self.dcx().emit_err(errors::SingleColonStructType { span: self.token.span });
         }
-        if self.token == token::Eq {
+        let default = if self.token == token::Eq {
             self.bump();
             let const_expr = self.parse_expr_anon_const()?;
             let sp = ty.span.shrink_to_hi().to(const_expr.value.span);
-            self.dcx().emit_err(errors::EqualsStructDefault { span: sp });
-        }
+            self.psess.gated_spans.gate(sym::default_field_values, sp);
+            Some(const_expr)
+        } else {
+            None
+        };
         Ok(FieldDef {
             span: lo.to(self.prev_token.span),
             ident: Some(name),
@@ -2037,6 +2057,7 @@ impl<'a> Parser<'a> {
             safety,
             id: DUMMY_NODE_ID,
             ty,
+            default,
             attrs,
             is_placeholder: false,
         })

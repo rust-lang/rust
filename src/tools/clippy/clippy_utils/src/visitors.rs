@@ -7,7 +7,7 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::intravisit::{self, Visitor, walk_block, walk_expr};
 use rustc_hir::{
     AnonConst, Arm, Block, BlockCheckMode, Body, BodyId, Expr, ExprKind, HirId, ItemId, ItemKind, LetExpr, Pat, QPath,
-    Safety, Stmt, UnOp, UnsafeSource,
+    Safety, Stmt, UnOp, UnsafeSource, StructTailExpr,
 };
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
@@ -663,7 +663,7 @@ pub fn for_each_unconsumed_temporary<'tcx, B>(
                 for field in fields {
                     helper(typeck, true, field.expr, f)?;
                 }
-                if let Some(default) = default {
+                if let StructTailExpr::Base(default) = default {
                     helper(typeck, false, default, f)?;
                 }
             },

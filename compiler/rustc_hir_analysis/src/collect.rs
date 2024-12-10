@@ -1021,12 +1021,12 @@ impl<'tcx> FieldUniquenessCheckContext<'tcx> {
     }
 }
 
-fn lower_variant(
-    tcx: TyCtxt<'_>,
+fn lower_variant<'tcx>(
+    tcx: TyCtxt<'tcx>,
     variant_did: Option<LocalDefId>,
     ident: Ident,
     discr: ty::VariantDiscr,
-    def: &hir::VariantData<'_>,
+    def: &hir::VariantData<'tcx>,
     adt_kind: ty::AdtKind,
     parent_did: LocalDefId,
 ) -> ty::VariantDef {
@@ -1042,6 +1042,7 @@ fn lower_variant(
             name: f.ident.name,
             vis: tcx.visibility(f.def_id),
             safety: f.safety,
+            value: f.default.map(|v| v.def_id.to_def_id()),
         })
         .collect();
     let recovered = match def {
