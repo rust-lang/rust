@@ -24,7 +24,7 @@ jobs:
       proc_macros: ${{ steps.filter.outputs.proc_macros }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@1441771bbfdd59dcd748680ee64ebd8faab1a242
+      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
         id: filter
         with:
           filters: |
