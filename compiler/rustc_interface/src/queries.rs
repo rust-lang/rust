@@ -127,18 +127,6 @@ impl Linker {
     ) -> Linker {
         let ongoing_codegen = passes::start_codegen(codegen_backend, tcx);
 
-        // This must run after monomorphization so that all generic types
-        // have been instantiated.
-        if tcx.sess.opts.unstable_opts.print_type_sizes {
-            tcx.sess.code_stats.print_type_sizes();
-        }
-
-        if tcx.sess.opts.unstable_opts.print_vtable_sizes {
-            let crate_name = tcx.crate_name(LOCAL_CRATE);
-
-            tcx.sess.code_stats.print_vtable_sizes(crate_name);
-        }
-
         Linker {
             dep_graph: tcx.dep_graph.clone(),
             output_filenames: Arc::clone(tcx.output_filenames(())),
