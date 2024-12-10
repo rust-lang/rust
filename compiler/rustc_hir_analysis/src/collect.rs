@@ -14,7 +14,7 @@
 //! At present, however, we do run collection across all items in the
 //! crate as a kind of pass. This should eventually be factored away.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::iter;
 use std::ops::Bound;
 
@@ -35,6 +35,10 @@ use rustc_infer::traits::ObligationCause;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::fold::fold_regions;
+use rustc_middle::ty::typeck_results::{
+    HasTypeDependentDefs, LocalTableInContext, LocalTableInContextMut, TypeDependentDef,
+    TypeDependentDefs,
+};
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypingMode};
 use rustc_middle::{bug, span_bug};
@@ -126,6 +130,7 @@ pub fn provide(providers: &mut Providers) {
 pub struct ItemCtxt<'tcx> {
     tcx: TyCtxt<'tcx>,
     item_def_id: LocalDefId,
+    type_dependent_defs: RefCell<TypeDependentDefs>,
     tainted_by_errors: Cell<Option<ErrorGuaranteed>>,
 }
 
@@ -375,7 +380,12 @@ fn bad_placeholder<'cx, 'tcx>(
 
 impl<'tcx> ItemCtxt<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, item_def_id: LocalDefId) -> ItemCtxt<'tcx> {
-        ItemCtxt { tcx, item_def_id, tainted_by_errors: Cell::new(None) }
+        ItemCtxt {
+            tcx,
+            item_def_id,
+            type_dependent_defs: Default::default(),
+            tainted_by_errors: Cell::new(None),
+        }
     }
 
     pub fn lower_ty(&self, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
@@ -542,6 +552,14 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         // There's no place to record types from signatures?
     }
 
+    fn record_res(&self, hir_id: hir::HirId, result: TypeDependentDef) {
+        LocalTableInContextMut::new(
+            self.hir_id().owner,
+            &mut self.type_dependent_defs.borrow_mut(),
+        )
+        .insert(hir_id, result);
+    }
+
     fn infcx(&self) -> Option<&InferCtxt<'tcx>> {
         None
     }
@@ -627,6 +645,15 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         }
 
         (input_tys, output_ty)
+    }
+}
+
+impl HasTypeDependentDefs for ItemCtxt<'_> {
+    fn type_dependent_def(&self, id: hir::HirId) -> Option<(DefKind, DefId)> {
+        LocalTableInContext::new(self.hir_id().owner, &self.type_dependent_defs.borrow())
+            .get(id)
+            .copied()
+            .and_then(|result| result.ok())
     }
 }
 

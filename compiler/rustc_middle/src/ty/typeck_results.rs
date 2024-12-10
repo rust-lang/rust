@@ -32,9 +32,7 @@ pub struct TypeckResults<'tcx> {
     /// The `HirId::owner` all `ItemLocalId`s in this table are relative to.
     pub hir_owner: OwnerId,
 
-    /// Resolved definitions for `<T>::X` associated paths and
-    /// method calls, including those of overloaded operators.
-    type_dependent_defs: ItemLocalMap<Result<(DefKind, DefId), ErrorGuaranteed>>,
+    type_dependent_defs: TypeDependentDefs,
 
     /// Resolved field indices for field accesses in expressions (`S { field }`, `obj.field`)
     /// or patterns (`S { field }`). The index is often useful by itself, but to learn more
@@ -248,32 +246,22 @@ impl<'tcx> TypeckResults<'tcx> {
 
     /// Returns the final resolution of a `QPath` in an `Expr` or `Pat` node.
     pub fn qpath_res(&self, qpath: &hir::QPath<'_>, id: HirId) -> Res {
-        match *qpath {
-            hir::QPath::Resolved(_, path) => path.res,
-            hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => self
-                .type_dependent_def(id)
-                .map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id)),
-        }
+        HasTypeDependentDefs::qpath_res(self, qpath, id)
     }
 
-    pub fn type_dependent_defs(
-        &self,
-    ) -> LocalTableInContext<'_, Result<(DefKind, DefId), ErrorGuaranteed>> {
+    pub fn type_dependent_defs(&self) -> LocalTableInContext<'_, TypeDependentDef> {
         LocalTableInContext { hir_owner: self.hir_owner, data: &self.type_dependent_defs }
     }
 
     pub fn type_dependent_def(&self, id: HirId) -> Option<(DefKind, DefId)> {
-        validate_hir_id_for_typeck_results(self.hir_owner, id);
-        self.type_dependent_defs.get(&id.local_id).cloned().and_then(|r| r.ok())
+        self.type_dependent_defs().get(id).copied().and_then(|result| result.ok())
     }
 
     pub fn type_dependent_def_id(&self, id: HirId) -> Option<DefId> {
         self.type_dependent_def(id).map(|(_, def_id)| def_id)
     }
 
-    pub fn type_dependent_defs_mut(
-        &mut self,
-    ) -> LocalTableInContextMut<'_, Result<(DefKind, DefId), ErrorGuaranteed>> {
+    pub fn type_dependent_defs_mut(&mut self) -> LocalTableInContextMut<'_, TypeDependentDef> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.type_dependent_defs }
     }
 
@@ -531,6 +519,33 @@ impl<'tcx> TypeckResults<'tcx> {
     }
 }
 
+/// Resolved definitions for `<T>::X` associated paths and
+/// method calls, including those of overloaded operators.
+pub type TypeDependentDefs = ItemLocalMap<TypeDependentDef>;
+
+pub type TypeDependentDef = Result<(DefKind, DefId), ErrorGuaranteed>;
+
+// FIXME(fmease): Yuck!
+pub trait HasTypeDependentDefs {
+    fn type_dependent_def(&self, id: HirId) -> Option<(DefKind, DefId)>;
+
+    /// Returns the final resolution of a `QPath`.
+    fn qpath_res(&self, qpath: &hir::QPath<'_>, id: HirId) -> Res {
+        match qpath {
+            hir::QPath::Resolved(_, path) => path.res,
+            hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => self
+                .type_dependent_def(id)
+                .map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id)),
+        }
+    }
+}
+
+impl HasTypeDependentDefs for TypeckResults<'_> {
+    fn type_dependent_def(&self, id: HirId) -> Option<(DefKind, DefId)> {
+        self.type_dependent_def(id)
+    }
+}
+
 /// Validate that the given HirId (respectively its `local_id` part) can be
 /// safely used as a key in the maps of a TypeckResults. For that to be
 /// the case, the HirId must have the same `owner` as all the other IDs in
@@ -563,6 +578,10 @@ pub struct LocalTableInContext<'a, V> {
 }
 
 impl<'a, V> LocalTableInContext<'a, V> {
+    pub fn new(hir_owner: OwnerId, data: &'a ItemLocalMap<V>) -> Self {
+        Self { hir_owner, data }
+    }
+
     pub fn contains_key(&self, id: HirId) -> bool {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.data.contains_key(&id.local_id)
@@ -601,6 +620,10 @@ pub struct LocalTableInContextMut<'a, V> {
 }
 
 impl<'a, V> LocalTableInContextMut<'a, V> {
+    pub fn new(hir_owner: OwnerId, data: &'a mut ItemLocalMap<V>) -> Self {
+        Self { hir_owner, data }
+    }
+
     pub fn get_mut(&mut self, id: HirId) -> Option<&mut V> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.data.get_mut(&id.local_id)

@@ -173,9 +173,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn write_resolution(
         &self,
         hir_id: HirId,
-        r: Result<(DefKind, DefId), ErrorGuaranteed>,
+        result: Result<(DefKind, DefId), ErrorGuaranteed>,
     ) {
-        self.typeck_results.borrow_mut().type_dependent_defs_mut().insert(hir_id, r);
+        self.typeck_results.borrow_mut().type_dependent_defs_mut().insert(hir_id, result);
     }
 
     #[instrument(level = "debug", skip(self))]

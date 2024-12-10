@@ -70,6 +70,7 @@ This API is completely unstable and subject to change.
 #![feature(never_type)]
 #![feature(rustdoc_internals)]
 #![feature(slice_partition_dedup)]
+#![feature(trait_upcasting)]
 #![feature(try_blocks)]
 #![feature(unwrap_infallible)]
 #![warn(unreachable_pub)]

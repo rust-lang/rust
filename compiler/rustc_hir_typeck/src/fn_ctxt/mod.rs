@@ -8,12 +8,13 @@ mod suggestions;
 use std::cell::{Cell, RefCell};
 use std::ops::Deref;
 
-use hir::def_id::CRATE_DEF_ID;
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, RegionInferReason};
 use rustc_infer::infer;
+use rustc_middle::ty::typeck_results::{HasTypeDependentDefs, TypeDependentDef};
 use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
@@ -337,6 +338,10 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         self.write_ty(hir_id, ty)
     }
 
+    fn record_res(&self, hir_id: hir::HirId, result: TypeDependentDef) {
+        self.write_resolution(hir_id, result);
+    }
+
     fn infcx(&self) -> Option<&infer::InferCtxt<'tcx>> {
         Some(&self.infcx)
     }
@@ -355,6 +360,12 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
             hir::FnRetTy::DefaultReturn(..) => self.tcx().types.unit,
         };
         (input_tys, output_ty)
+    }
+}
+
+impl HasTypeDependentDefs for FnCtxt<'_, '_> {
+    fn type_dependent_def(&self, id: hir::HirId) -> Option<(DefKind, DefId)> {
+        self.typeck_results.borrow().type_dependent_def(id)
     }
 }
 
