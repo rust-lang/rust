@@ -4,7 +4,8 @@ use quote::{format_ident, quote, ToTokens, TokenStreamExt};
 use serde::{Deserialize, Serialize};
 use serde_with::{DeserializeFromStr, SerializeDisplay};
 use std::collections::{HashMap, HashSet};
-use std::fmt;
+use std::fmt::{self};
+use std::num::ParseIntError;
 use std::ops::RangeInclusive;
 use std::str::FromStr;
 
@@ -16,6 +17,7 @@ use crate::{
     assert_instr::InstructionAssertionMethod,
     context::{self, ArchitectureSettings, Context, LocalContext, VariableType},
     expression::{Expression, FnCall, IdentifierType},
+    fn_suffix::{type_to_size, SuffixKind},
     input::IntrinsicInput,
     matching::{KindMatchable, SizeMatchable},
     typekinds::*,
@@ -238,7 +240,10 @@ impl Constraint {
                 .map_err(|_| format!("the minimum value `{min}` is not a valid number"))?;
             let max: i32 = max
                 .parse()
-                .map_err(|_| format!("the maximum value `{max}` is not a valid number"))?;
+                .or_else(|_| Ok(type_to_size(max.as_str())))
+                .map_err(|_: ParseIntError| {
+                    format!("the maximum value `{max}` is not a valid number")
+                })?;
             *self = Self::RangeI32 {
                 variable: variable.to_owned(),
                 range: SizeMatchable::Matched(RangeInclusive::new(min, max)),
@@ -282,6 +287,9 @@ pub struct Signature {
     /// Function return type, leave unset for void
     pub return_type: Option<TypeKind>,
 
+    /// For some neon intrinsics we want to modify the suffix of the function name
+    pub suffix_type: Option<SuffixKind>,
+
     /// List of static definitions, leave unset of empty if not required
     #[serde(default)]
     pub static_defs: Vec<StaticDefinition>,
@@ -312,7 +320,11 @@ impl Signature {
     }
 
     pub fn build(&mut self, ctx: &LocalContext) -> context::Result {
-        self.name.build_acle(ctx)?;
+        if self.name_has_neon_suffix() {
+            self.name.build_neon_intrinsic_signature(ctx)?;
+        } else {
+            self.name.build_acle(ctx)?;
+        }
 
         if let Some(ref mut return_type) = self.return_type {
             if let Some(w) = return_type.clone().wildcard() {
@@ -341,6 +353,20 @@ impl Signature {
 
     pub fn doc_name(&self) -> String {
         self.name.to_string()
+    }
+
+    fn name_has_neon_suffix(&self) -> bool {
+        for part in self.name.wildcards() {
+            let has_suffix = match part {
+                Wildcard::NEONType(_, _, suffix_type) => suffix_type.is_some(),
+                _ => false,
+            };
+
+            if has_suffix {
+                return true;
+            }
+        }
+        false
     }
 }
 
@@ -380,18 +406,46 @@ impl ToTokens for Signature {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LLVMLinkAttribute {
+    /// Either one architecture or a comma separated list of architectures with NO spaces
     pub arch: String,
-    pub link: String,
+    pub link: WildString,
 }
 
 impl ToTokens for LLVMLinkAttribute {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let LLVMLinkAttribute { arch, link } = self;
-        tokens.append_all(quote! {
-            #[cfg_attr(target_arch = #arch, link_name = #link)]
-        })
+        let link = link.to_string();
+        let archs: Vec<&str> = arch.split(',').collect();
+        let arch_len = archs.len();
+
+        if arch_len == 1 {
+            tokens.append_all(quote! {
+                #[cfg_attr(target_arch = #arch, link_name = #link)]
+            })
+        } else {
+            tokens.append(Punct::new('#', Spacing::Alone));
+            tokens.append(Punct::new('[', Spacing::Alone));
+            tokens.append_all(quote! { cfg_attr });
+            tokens.append(Punct::new('(', Spacing::Alone));
+            tokens.append_all(quote! { any });
+            tokens.append(Punct::new('(', Spacing::Alone));
+            let mut i = 0;
+            while i < arch_len {
+                let arch = archs[i].to_string();
+                tokens.append_all(quote! { target_arch = #arch });
+                if i + 1 != arch_len {
+                    tokens.append(Punct::new(',', Spacing::Alone));
+                }
+                i += 1;
+            }
+            tokens.append(Punct::new(')', Spacing::Alone));
+            tokens.append(Punct::new(',', Spacing::Alone));
+            tokens.append_all(quote! { link_name = #link });
+            tokens.append(Punct::new(')', Spacing::Alone));
+            tokens.append(Punct::new(']', Spacing::Alone));
+        }
     }
 }
 
@@ -406,10 +460,9 @@ pub struct LLVMLink {
     /// LLVM link signature return type, leave unset if it inherits from intrinsic's signature
     pub return_type: Option<TypeKind>,
 
-    /// **Internal use only. Do not set.**
+    /// **This will be set automatically if not set**
     /// Attribute LLVM links for the function. First element is the architecture it targets,
     /// second element is the LLVM link itself.
-    #[serde(skip)]
     pub links: Option<Vec<LLVMLinkAttribute>>,
 
     /// **Internal use only. Do not set.**
@@ -453,6 +506,7 @@ impl LLVMLink {
                 .return_type
                 .clone()
                 .or_else(|| ctx.local.signature.return_type.clone()),
+            suffix_type: None,
             static_defs: vec![],
             is_predicate_specific: ctx.local.signature.is_predicate_specific,
             predicate_needs_conversion: false,
@@ -467,16 +521,25 @@ impl LLVMLink {
             .insert(Wildcard::LLVMLink, sig.fn_name().to_string());
 
         self.signature = Some(Box::new(sig));
-        self.links = Some(
-            ctx.global
-                .arch_cfgs
-                .iter()
-                .map(|cfg| LLVMLinkAttribute {
-                    arch: cfg.arch_name.to_owned(),
-                    link: self.resolve(cfg),
-                })
-                .collect_vec(),
-        );
+
+        if let Some(ref mut links) = self.links {
+            links.iter_mut().for_each(|ele| {
+                ele.link
+                    .build(&ctx.local, TypeRepr::LLVMMachine)
+                    .expect("Failed to transform to LLVMMachine representation");
+            });
+        } else {
+            self.links = Some(
+                ctx.global
+                    .arch_cfgs
+                    .iter()
+                    .map(|cfg| LLVMLinkAttribute {
+                        arch: cfg.arch_name.to_owned(),
+                        link: self.resolve(cfg).into(),
+                    })
+                    .collect_vec(),
+            );
+        }
 
         Ok(())
     }
@@ -603,8 +666,8 @@ impl ToTokens for LLVMLink {
         let signature = self.signature.as_ref().unwrap();
         let links = self.links.as_ref().unwrap();
         tokens.append_all(quote! {
-            extern "C" {
-                #(#links),*
+            extern "unadjusted" {
+                #(#links)*
                 #signature;
             }
         })
@@ -725,6 +788,7 @@ pub enum UnsafetyComment {
     Dereference(GovernedBy),
     UnpredictableOnFault,
     NonTemporal,
+    Neon,
     NoProvenance(String),
 }
 
@@ -759,6 +823,7 @@ impl fmt::Display for UnsafetyComment {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Custom(s) => s.fmt(f),
+            Self::Neon => write!(f, "Neon instrinsic unsafe"),
             Self::Uninitialized => write!(
                 f,
                 "This creates an uninitialized value, and may be unsound (like \
@@ -834,13 +899,15 @@ pub struct Intrinsic {
     /// behaviour is all unsigned types are converted to signed)
     #[serde(default)]
     pub defer_to_signed_only_indices: HashSet<usize>,
-    pub assert_instr: Vec<InstructionAssertionMethod>,
+    pub assert_instr: Option<Vec<InstructionAssertionMethod>>,
     /// Whether we should generate a test for this intrinsic
     #[serde(default)]
     pub test: Test,
     /// Primary base type, used for instruction assertion.
     #[serde(skip)]
     pub base_type: Option<BaseType>,
+    /// Attributes for the function
+    pub attr: Option<Vec<Expression>>,
 }
 
 impl Intrinsic {
@@ -929,6 +996,21 @@ impl Intrinsic {
                 }
             }
         };
+
+        if variant.attr.is_none() && variant.assert_instr.is_none() {
+            panic!("Error: {} is missing both 'attr' and 'assert_instr' fields. You must either manually declare the attributes using the 'attr' field or use 'assert_instr'!", variant.signature.name.to_string());
+        }
+
+        if variant.attr.is_some() {
+            let attr: &Vec<Expression> = &variant.attr.clone().unwrap();
+            let mut expanded_attr: Vec<Expression> = Vec::new();
+            for idx in 0..attr.len() {
+                let mut ex = attr[idx].clone();
+                ex.build(&variant, &mut ctx)?;
+                expanded_attr.push(ex);
+            }
+            variant.attr = Some(expanded_attr);
+        }
 
         variant.post_build(&mut ctx)?;
 
@@ -1238,9 +1320,9 @@ impl Intrinsic {
             }
         }
 
-        self.assert_instr
-            .iter_mut()
-            .try_for_each(|ai| ai.build(ctx))?;
+        if let Some(ref mut assert_instr) = self.assert_instr {
+            assert_instr.iter_mut().try_for_each(|ai| ai.build(ctx))?;
+        }
 
         // Prepend constraint assertions
         self.constraints.iter_mut().try_for_each(|c| c.build(ctx))?;
@@ -1347,8 +1429,13 @@ impl Intrinsic {
                         match (from_base_type, to_base_type) {
                             // Use AsSigned for uint -> int
                             (Some(BaseTypeKind::UInt), Some(BaseTypeKind::Int)) => as_signed(ex),
+                            (Some(BaseTypeKind::Int), Some(BaseTypeKind::Int)) => ex,
                             // Use AsUnsigned for int -> uint
                             (Some(BaseTypeKind::Int), Some(BaseTypeKind::UInt)) => as_unsigned(ex),
+                            (Some(BaseTypeKind::Float), Some(BaseTypeKind::Float)) => ex,
+                            (Some(BaseTypeKind::UInt), Some(BaseTypeKind::UInt)) => ex,
+                            (Some(BaseTypeKind::Poly), Some(BaseTypeKind::Poly)) => ex,
+
                             (None, None) => ex,
                             _ => unreachable!("unsupported conversion case from {from_base_type:?} to {to_base_type:?} hit"),
                         }
@@ -1426,11 +1513,9 @@ impl ToTokens for Intrinsic {
         if let Some(doc) = &self.doc {
             let mut doc = vec![doc.to_string()];
 
-            doc.push(String::new());
             doc.push(format!("[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/{})", &signature.doc_name()));
 
             if safety.has_doc_comments() {
-                doc.push(String::new());
                 doc.push("## Safety".to_string());
                 for comment in safety.doc_comments() {
                     doc.push(format!("  * {comment}"));
@@ -1454,14 +1539,43 @@ impl ToTokens for Intrinsic {
             );
         }
 
-        tokens.append_all(quote! {
-            #[inline]
-            #[target_feature(enable = #target_feature)]
-        });
+        tokens.append_all(quote! { #[inline] });
 
-        if !self.assert_instr.is_empty() {
-            InstructionAssertionsForBaseType(&self.assert_instr, &self.base_type.as_ref())
-                .to_tokens(tokens)
+        /* If we have manually defined attributes on the block of yaml with
+         * 'attr:' we want to add them */
+        if let Some(attr) = &self.attr {
+            /* Scan to see if we have defined `FnCall: [target_feature, ['<bespoke>']]`*/
+            if !has_target_feature_attr(attr) {
+                /* If not add the default one that is defined at the top of
+                 * the yaml file. This does mean we scan the attributes vector
+                 * twice, once to see if the `target_feature` exists and again
+                 * to actually append the tokens. We could impose that the
+                 * `target_feature` call has to be the first argument of the
+                 * `attr` block */
+                tokens.append_all(quote! {
+                    #[target_feature(enable = #target_feature)]
+                });
+            }
+
+            /* Target feature will get added here */
+            let attr_expressions = &mut attr.iter().peekable();
+            while let Some(ex) = attr_expressions.next() {
+                tokens.append(Punct::new('#', Spacing::Alone));
+                tokens.append(Punct::new('[', Spacing::Alone));
+                ex.to_tokens(tokens);
+                tokens.append(Punct::new(']', Spacing::Alone));
+            }
+        } else {
+            tokens.append_all(quote! {
+                #[target_feature(enable = #target_feature)]
+            });
+        }
+
+        if let Some(assert_instr) = &self.assert_instr {
+            if !assert_instr.is_empty() {
+                InstructionAssertionsForBaseType(&assert_instr, &self.base_type.as_ref())
+                    .to_tokens(tokens)
+            }
         }
 
         match &self.visibility {
@@ -1494,5 +1608,17 @@ impl ToTokens for Intrinsic {
         }
 
         tokens.append(Punct::new('}', Spacing::Alone));
+        tokens.append(Punct::new('\n', Spacing::Alone));
+        tokens.append(Punct::new('\n', Spacing::Alone));
     }
+}
+
+fn has_target_feature_attr(attrs: &[Expression]) -> bool {
+    attrs.iter().any(|attr| {
+        if let Expression::FnCall(fn_call) = attr {
+            fn_call.is_target_feature_call()
+        } else {
+            false
+        }
+    })
 }

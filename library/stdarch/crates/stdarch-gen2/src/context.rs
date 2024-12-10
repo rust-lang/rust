@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::{collections::HashMap, usize};
 
 use crate::{
     expression::Expression,
@@ -71,17 +71,31 @@ impl LocalContext {
     }
 
     pub fn provide_type_wildcard(&self, wildcard: &Wildcard) -> Result<TypeKind> {
-        let err = || format!("wildcard {{{wildcard}}} not found");
+        let err = || {
+            format!(
+                "provide_type_wildcard() wildcard {{{wildcard}}} not found for {}",
+                &self.signature.name.to_string()
+            )
+        };
 
-        let make_neon = |tuple_size| move |ty| TypeKind::make_vector(ty, false, tuple_size);
+        /* If the type is already a vector then we can just return the vector */
+        let make_neon = |tuple_size| {
+            move |ty| match ty {
+                TypeKind::Vector(_) => Ok(ty),
+                _ => TypeKind::make_vector(ty, false, tuple_size),
+            }
+        };
         let make_sve = |tuple_size| move |ty| TypeKind::make_vector(ty, true, tuple_size);
 
         match wildcard {
             Wildcard::Type(idx) => self.input.typekind(*idx).ok_or_else(err),
-            Wildcard::NEONType(idx, tuple_size) => self
+            Wildcard::NEONType(idx, tuple_size, _) => self
                 .input
                 .typekind(*idx)
-                .ok_or_else(err)
+                .ok_or_else(|| {
+                    dbg!("{:?}", &self);
+                    err()
+                })
                 .and_then(make_neon(*tuple_size)),
             Wildcard::SVEType(idx, tuple_size) => self
                 .input

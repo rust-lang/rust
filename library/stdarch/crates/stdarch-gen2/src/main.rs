@@ -3,6 +3,7 @@
 mod assert_instr;
 mod context;
 mod expression;
+mod fn_suffix;
 mod input;
 mod intrinsic;
 mod load_store_tests;
@@ -39,7 +40,9 @@ fn main() -> Result<(), String> {
         .into_iter()
         .map(|(input, filepath, out)| {
             let intrinsics = input.intrinsics.into_iter()
-                .map(|intrinsic| intrinsic.generate_variants(&input.ctx))
+                .map(|intrinsic| {
+                    intrinsic.generate_variants(&input.ctx)
+                })
                 .try_collect()
                 .map(|mut vv: Vec<_>| {
                     vv.sort_by_cached_key(|variants| {
@@ -50,23 +53,26 @@ fn main() -> Result<(), String> {
                     vv.into_iter().flatten().collect_vec()
                 })?;
 
-            let loads = intrinsics.iter()
-                .filter_map(|i| {
-                    if matches!(i.test, Test::Load(..)) {
-                        Some(i.clone())
-                    } else {
-                        None
-                    }
-                }).collect();
-            let stores = intrinsics.iter()
-                .filter_map(|i| {
-                    if matches!(i.test, Test::Store(..)) {
-                        Some(i.clone())
-                    } else {
-                        None
-                    }
-                }).collect();
-            load_store_tests::generate_load_store_tests(loads, stores, out.as_ref().map(|o| make_tests_filepath(&filepath, o)).as_ref())?;
+            if filepath.ends_with("sve.spec.yml") || filepath.ends_with("sve2.spec.yml") {
+                let loads = intrinsics.iter()
+                    .filter_map(|i| {
+                        if matches!(i.test, Test::Load(..)) {
+                            Some(i.clone())
+                        } else {
+                            None
+                        }
+                    }).collect();
+                let stores = intrinsics.iter()
+                    .filter_map(|i| {
+                        if matches!(i.test, Test::Store(..)) {
+                            Some(i.clone())
+                        } else {
+                            None
+                        }
+                    }).collect();
+                load_store_tests::generate_load_store_tests(loads, stores, out.as_ref().map(|o| make_tests_filepath(&filepath, o)).as_ref())?;
+            }
+
             Ok((
                 input::GeneratorInput {
                     intrinsics,

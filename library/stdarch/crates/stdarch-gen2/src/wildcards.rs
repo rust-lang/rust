@@ -5,6 +5,7 @@ use std::fmt;
 use std::str::FromStr;
 
 use crate::{
+    fn_suffix::SuffixKind,
     predicate_forms::PredicationMask,
     typekinds::{ToRepr, TypeKind, TypeKindOptions, VectorTupleSize},
 };
@@ -13,7 +14,7 @@ use crate::{
 pub enum Wildcard {
     Type(Option<usize>),
     /// NEON type derivated by a base type
-    NEONType(Option<usize>, Option<VectorTupleSize>),
+    NEONType(Option<usize>, Option<VectorTupleSize>, Option<SuffixKind>),
     /// SVE type derivated by a base type
     SVEType(Option<usize>, Option<VectorTupleSize>),
     /// Integer representation of bitsize
@@ -87,7 +88,14 @@ impl FromStr for Wildcard {
 
             let wildcard = match (wildcard_name, inputset_index, tuple_size, modifiers) {
                 ("type", index, None, None) => Ok(Wildcard::Type(index)),
-                ("neon_type", index, tuple, None) => Ok(Wildcard::NEONType(index, tuple)),
+                ("neon_type", index, tuple, modifier) => {
+                    if let Some(str_suffix) = modifier {
+                        let suffix_kind = SuffixKind::from_str(str_suffix);
+                        return Ok(Wildcard::NEONType(index, tuple, Some(suffix_kind.unwrap())));
+                    } else {
+                        Ok(Wildcard::NEONType(index, tuple, None))
+                    }
+                }
                 ("sve_type", index, tuple, None) => Ok(Wildcard::SVEType(index, tuple)),
                 ("size", index, None, None) => Ok(Wildcard::Size(index)),
                 ("size_minus_one", index, None, None) => Ok(Wildcard::SizeMinusOne(index)),
@@ -131,7 +139,7 @@ impl FromStr for Wildcard {
                 Ok(wildcard)
             }
         } else {
-            Err(format!("invalid wildcard `{s:#?}`"))
+            Err(format!("## invalid wildcard `{s:#?}`"))
         }
     }
 }
@@ -141,11 +149,21 @@ impl fmt::Display for Wildcard {
         match self {
             Self::Type(None) => write!(f, "type"),
             Self::Type(Some(index)) => write!(f, "type[{index}]"),
-            Self::NEONType(None, None) => write!(f, "neon_type"),
-            Self::NEONType(Some(index), None) => write!(f, "neon_type[{index}]"),
-            Self::NEONType(None, Some(tuple_size)) => write!(f, "neon_type_x{tuple_size}"),
-            Self::NEONType(Some(index), Some(tuple_size)) => {
+            Self::NEONType(None, None, None) => write!(f, "neon_type"),
+            Self::NEONType(None, None, Some(suffix_kind)) => write!(f, "neon_type.{suffix_kind}"),
+            Self::NEONType(Some(index), None, None) => write!(f, "neon_type[{index}]"),
+            Self::NEONType(Some(index), None, Some(suffix_kind)) => {
+                write!(f, "neon_type[{index}].{suffix_kind}")
+            }
+            Self::NEONType(None, Some(tuple_size), Some(suffix_kind)) => {
+                write!(f, "neon_type_x{tuple_size}.{suffix_kind}")
+            }
+            Self::NEONType(None, Some(tuple_size), None) => write!(f, "neon_type_x{tuple_size}"),
+            Self::NEONType(Some(index), Some(tuple_size), None) => {
                 write!(f, "neon_type_x{tuple_size}[{index}]")
+            }
+            Self::NEONType(Some(index), Some(tuple_size), Some(suffix_kind)) => {
+                write!(f, "neon_type_x{tuple_size}[{index}].{suffix_kind}")
             }
             Self::SVEType(None, None) => write!(f, "sve_type"),
             Self::SVEType(Some(index), None) => write!(f, "sve_type[{index}]"),

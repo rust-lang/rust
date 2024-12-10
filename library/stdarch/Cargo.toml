@@ -8,7 +8,6 @@ members = [
   "crates/std_detect",
   "crates/stdarch-gen-arm",
   "crates/stdarch-gen-loongarch",
-  "crates/stdarch-gen",
   "crates/stdarch-gen2",
   "crates/intrinsic-test",
   "examples/"

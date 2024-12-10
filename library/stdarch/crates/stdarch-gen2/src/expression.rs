@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use lazy_static::lazy_static;
-use proc_macro2::{Literal, TokenStream};
+use proc_macro2::{Literal, Punct, Spacing, TokenStream};
 use quote::{format_ident, quote, ToTokens, TokenStreamExt};
 use regex::Regex;
 use serde::de::{self, MapAccess, Visitor};
@@ -48,8 +48,16 @@ impl FnCall {
     }
 
     pub fn is_llvm_link_call(&self, llvm_link_name: &String) -> bool {
+        self.is_expected_call(llvm_link_name)
+    }
+
+    pub fn is_target_feature_call(&self) -> bool {
+        self.is_expected_call("target_feature")
+    }
+
+    pub fn is_expected_call(&self, fn_call_name: &str) -> bool {
         if let Expression::Identifier(fn_name, IdentifierType::Symbol) = self.0.as_ref() {
-            &fn_name.to_string() == llvm_link_name
+            &fn_name.to_string() == fn_call_name
         } else {
             false
         }
@@ -128,6 +136,8 @@ pub enum Expression {
     SvUndef,
     /// Multiplication
     Multiply(Box<Expression>, Box<Expression>),
+    /// Xor
+    Xor(Box<Expression>, Box<Expression>),
     /// Converts the specified constant to the specified type's kind
     ConvertConst(TypeKind, i32),
     /// Yields the given type in the Rust representation
@@ -149,7 +159,7 @@ impl Expression {
                 ex.pre_build(ctx)
             }
             Self::CastAs(ex, _) => ex.pre_build(ctx),
-            Self::Multiply(lhs, rhs) => {
+            Self::Multiply(lhs, rhs) | Self::Xor(lhs, rhs) => {
                 lhs.pre_build(ctx)?;
                 rhs.pre_build(ctx)
             }
@@ -223,7 +233,7 @@ impl Expression {
                 ex.build(intrinsic, ctx)
             }
             Self::CastAs(ex, _) => ex.build(intrinsic, ctx),
-            Self::Multiply(lhs, rhs) => {
+            Self::Multiply(lhs, rhs) | Self::Xor(lhs, rhs) => {
                 lhs.build(intrinsic, ctx)?;
                 rhs.build(intrinsic, ctx)
             }
@@ -279,7 +289,7 @@ impl Expression {
                 exp.requires_unsafe_wrapper(ctx_fn)
             }
             Self::Array(exps) => exps.iter().any(|exp| exp.requires_unsafe_wrapper(ctx_fn)),
-            Self::Multiply(lhs, rhs) => {
+            Self::Multiply(lhs, rhs) | Self::Xor(lhs, rhs) => {
                 lhs.requires_unsafe_wrapper(ctx_fn) || rhs.requires_unsafe_wrapper(ctx_fn)
             }
             Self::CastAs(exp, _ty) => exp.requires_unsafe_wrapper(ctx_fn),
@@ -413,7 +423,26 @@ impl ToTokens for Expression {
                 tokens.append_all(quote! { let #var_ident: #ty = #exp })
             }
             Self::Assign(var_name, exp) => {
-                let var_ident = format_ident!("{}", var_name);
+                /* If we are dereferencing a variable to assign a value \
+                 * the 'format_ident!' macro does not like the asterix */
+                let var_name_str: &str;
+
+                if let Some(ch) = var_name.chars().nth(0) {
+                    /* Manually append the asterix and split out the rest of
+                     * the variable name */
+                    if ch == '*' {
+                        tokens.append(Punct::new('*', Spacing::Alone));
+                        var_name_str = &var_name[1..var_name.len()];
+                    } else {
+                        var_name_str = var_name.as_str();
+                    }
+                } else {
+                    /* Should not be reached as you cannot have a variable
+                     * without a name */
+                    panic!("Invalid variable name, must be at least one character")
+                }
+
+                let var_ident = format_ident!("{}", var_name_str);
                 tokens.append_all(quote! { #var_ident = #exp })
             }
             Self::MacroCall(name, ex) => {
@@ -434,7 +463,7 @@ impl ToTokens for Expression {
                 identifier
                     .to_string()
                     .parse::<TokenStream>()
-                    .expect("invalid syntax")
+                    .expect(format!("invalid syntax: {:?}", self).as_str())
                     .to_tokens(tokens);
             }
             Self::IntConstant(n) => tokens.append(Literal::i32_unsuffixed(*n)),
@@ -449,6 +478,7 @@ impl ToTokens for Expression {
             }
             Self::SvUndef => tokens.append_all(quote! { simd_reinterpret(()) }),
             Self::Multiply(lhs, rhs) => tokens.append_all(quote! { #lhs * #rhs }),
+            Self::Xor(lhs, rhs) => tokens.append_all(quote! { #lhs ^ #rhs }),
             Self::Type(ty) => ty.to_tokens(tokens),
             _ => unreachable!("{self:?} cannot be converted to tokens."),
         }

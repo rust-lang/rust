@@ -67,6 +67,7 @@ pub struct TypeKindOptions {
     f: bool,
     s: bool,
     u: bool,
+    p: bool,
 }
 
 impl TypeKindOptions {
@@ -75,6 +76,7 @@ impl TypeKindOptions {
             BaseTypeKind::Float => self.f,
             BaseTypeKind::Int => self.s,
             BaseTypeKind::UInt => self.u,
+            BaseTypeKind::Poly => self.p,
             BaseTypeKind::Bool => false,
         }
     }
@@ -90,6 +92,7 @@ impl FromStr for TypeKindOptions {
                 b'f' => result.f = true,
                 b's' => result.s = true,
                 b'u' => result.u = true,
+                b'p' => result.p = true,
                 _ => {
                     return Err(format!("unknown type kind: {}", char::from(kind)));
                 }
@@ -113,6 +116,7 @@ pub enum BaseTypeKind {
     Int,
     UInt,
     Bool,
+    Poly,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -128,6 +132,16 @@ pub enum VectorTupleSize {
     Two,
     Three,
     Four,
+}
+
+impl VectorTupleSize {
+    pub fn to_int(&self) -> u32 {
+        match self {
+            Self::Two => 2,
+            Self::Three => 3,
+            Self::Four => 4,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -181,6 +195,7 @@ impl TypeKind {
         match self {
             Self::Base(ty) => Some(ty),
             Self::Pointer(tk, _) => tk.base(),
+            Self::Vector(ty) => Some(&ty.base_type),
             _ => None,
         }
     }
@@ -366,21 +381,21 @@ impl PartialOrd for TypeKind {
     }
 }
 
+impl From<&TypeKind> for usize {
+    fn from(ty: &TypeKind) -> Self {
+        match ty {
+            TypeKind::Base(_) => 1,
+            TypeKind::Pointer(_, _) => 2,
+            TypeKind::Vector(_) => 3,
+            TypeKind::Custom(_) => 4,
+            TypeKind::Wildcard(_) => 5,
+        }
+    }
+}
+
 impl Ord for TypeKind {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         use std::cmp::Ordering::*;
-
-        impl From<&TypeKind> for usize {
-            fn from(ty: &TypeKind) -> Self {
-                match ty {
-                    TypeKind::Base(_) => 1,
-                    TypeKind::Pointer(_, _) => 2,
-                    TypeKind::Vector(_) => 3,
-                    TypeKind::Custom(_) => 4,
-                    TypeKind::Wildcard(_) => 5,
-                }
-            }
-        }
 
         let self_int: usize = self.into();
         let other_int: usize = other.into();
@@ -466,6 +481,14 @@ impl VectorType {
     pub fn cast_base_type_as(&mut self, ty: BaseType) {
         self.base_type = ty
     }
+
+    pub fn lanes(&self) -> u32 {
+        self.lanes
+    }
+
+    pub fn tuple_size(&self) -> Option<VectorTupleSize> {
+        self.tuple_size
+    }
 }
 
 impl FromStr for VectorType {
@@ -473,7 +496,7 @@ impl FromStr for VectorType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         lazy_static! {
-            static ref RE: Regex = Regex::new(r"^(?:(?:sv(?P<sv_ty>(?:uint|int|bool|float)(?:\d+)?))|(?:(?P<ty>(?:uint|int|bool|float)(?:\d+)?)x(?P<lanes>[0-9])))(?:x(?P<tuple_size>2|3|4))?_t$").unwrap();
+            static ref RE: Regex = Regex::new(r"^(?:(?:sv(?P<sv_ty>(?:uint|int|bool|float)(?:\d+)?))|(?:(?P<ty>(?:uint|int|bool|poly|float)(?:\d+)?)x(?P<lanes>(?:\d+)?)))(?:x(?P<tuple_size>2|3|4))?_t$").unwrap();
         }
 
         if let Some(c) = RE.captures(s) {
@@ -498,12 +521,13 @@ impl FromStr for VectorType {
                 .transpose()
                 .unwrap();
 
-            Ok(VectorType {
+            let v = Ok(VectorType {
                 base_type,
                 is_scalable: c.name("sv_ty").is_some(),
                 lanes,
                 tuple_size,
-            })
+            });
+            return v;
         } else {
             Err(format!("invalid vector type {s:#?} given"))
         }
@@ -612,6 +636,7 @@ impl FromStr for BaseTypeKind {
             "float" | "f" => Ok(Self::Float),
             "int" | "i" => Ok(Self::Int),
             "uint" | "u" => Ok(Self::UInt),
+            "poly" | "p" => Ok(Self::Poly),
             "bool" | "b" => Ok(Self::Bool),
             _ => Err(format!("no match for {s}")),
         }
@@ -624,9 +649,11 @@ impl ToRepr for BaseTypeKind {
             (TypeRepr::C, Self::Float) => "float",
             (TypeRepr::C, Self::Int) => "int",
             (TypeRepr::C, Self::UInt) => "uint",
+            (TypeRepr::C, Self::Poly) => "poly",
             (TypeRepr::Rust | TypeRepr::LLVMMachine | TypeRepr::ACLENotation, Self::Float) => "f",
             (TypeRepr::Rust, Self::Int) | (TypeRepr::LLVMMachine, Self::Int | Self::UInt) => "i",
             (TypeRepr::Rust | TypeRepr::ACLENotation, Self::UInt) => "u",
+            (TypeRepr::Rust | TypeRepr::LLVMMachine | TypeRepr::ACLENotation, Self::Poly) => "p",
             (TypeRepr::ACLENotation, Self::Int) => "s",
             (TypeRepr::ACLENotation, Self::Bool) => "b",
             (_, Self::Bool) => "bool",
@@ -683,7 +710,6 @@ impl FromStr for BaseType {
                 .map(u32::from_str)
                 .transpose()
                 .unwrap();
-
             match size {
                 Some(size) => Ok(Self::Sized(kind, size)),
                 None => Ok(Self::Unsized(kind)),
@@ -705,6 +731,7 @@ impl ToRepr for BaseType {
             (Sized(_, size), SizeLiteral) if *size == 16 => "h".to_string(),
             (Sized(_, size), SizeLiteral) if *size == 32 => "w".to_string(),
             (Sized(_, size), SizeLiteral) if *size == 64 => "d".to_string(),
+            (Sized(_, size), SizeLiteral) if *size == 128 => "q".to_string(),
             (_, SizeLiteral) => unreachable!("cannot represent {self:#?} as size literal"),
             (Sized(Float, _) | Unsized(Float), TypeKind) => "f".to_string(),
             (Sized(Int, _) | Unsized(Int), TypeKind) => "s".to_string(),

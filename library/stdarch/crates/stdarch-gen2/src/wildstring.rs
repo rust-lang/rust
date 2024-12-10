@@ -6,6 +6,7 @@ use std::str::pattern::Pattern;
 use std::{fmt, str::FromStr};
 
 use crate::context::LocalContext;
+use crate::fn_suffix::make_neon_suffix;
 use crate::typekinds::{ToRepr, TypeRepr};
 use crate::wildcards::Wildcard;
 
@@ -17,7 +18,7 @@ pub enum WildStringPart {
 
 /// Wildcard-able string
 #[derive(Debug, Clone, PartialEq, Eq, Default, SerializeDisplay, DeserializeFromStr)]
-pub struct WildString(Vec<WildStringPart>);
+pub struct WildString(pub Vec<WildStringPart>);
 
 impl WildString {
     pub fn has_wildcards(&self) -> bool {
@@ -67,7 +68,7 @@ impl WildString {
 
     pub fn replace<'a, P>(&'a self, from: P, to: &str) -> WildString
     where
-        P: Pattern<'a> + Copy,
+        P: Pattern + Copy,
     {
         WildString(
             self.0
@@ -84,16 +85,61 @@ impl WildString {
         self.build(ctx, TypeRepr::ACLENotation)
     }
 
-    pub fn build(&mut self, ctx: &LocalContext, repr: TypeRepr) -> Result<(), String> {
+    pub fn build_neon_intrinsic_signature(&mut self, ctx: &LocalContext) -> Result<(), String> {
+        let repr = TypeRepr::ACLENotation;
         self.iter_mut().try_for_each(|wp| -> Result<(), String> {
             if let WildStringPart::Wildcard(w) = wp {
-                let value = ctx
-                    .provide_substitution_wildcard(w)
-                    .or_else(|_| ctx.provide_type_wildcard(w).map(|ty| ty.repr(repr)))?;
-                *wp = WildStringPart::String(value);
+                match w {
+                    Wildcard::NEONType(_, _, ref maybe_suffix_kind) => {
+                        if let Some(suffix_kind) = maybe_suffix_kind {
+                            let x = ctx.provide_type_wildcard(w).unwrap();
+                            *wp = WildStringPart::String(make_neon_suffix(x, *suffix_kind))
+                        } else {
+                            *wp = WildString::make_default_build(ctx, repr, w)
+                        }
+                    }
+                    _ => *wp = WildString::make_default_build(ctx, repr, w),
+                }
             }
             Ok(())
         })
+    }
+
+    pub fn build(&mut self, ctx: &LocalContext, repr: TypeRepr) -> Result<(), String> {
+        match repr {
+            TypeRepr::ACLENotation | TypeRepr::LLVMMachine => {
+                self.iter_mut().try_for_each(|wp| -> Result<(), String> {
+                    if let WildStringPart::Wildcard(w) = wp {
+                        match w {
+                            Wildcard::NEONType(_, _, ref maybe_suffix_kind) => {
+                                if let Some(suffix_kind) = maybe_suffix_kind {
+                                    let x = ctx.provide_type_wildcard(w).unwrap();
+                                    *wp = WildStringPart::String(make_neon_suffix(x, *suffix_kind))
+                                } else {
+                                    *wp = WildString::make_default_build(ctx, repr, w)
+                                }
+                            }
+                            _ => *wp = WildString::make_default_build(ctx, repr, w),
+                        }
+                    }
+                    Ok(())
+                })
+            }
+            _ => self.iter_mut().try_for_each(|wp| -> Result<(), String> {
+                if let WildStringPart::Wildcard(w) = wp {
+                    *wp = WildString::make_default_build(ctx, repr, w);
+                }
+                Ok(())
+            }),
+        }
+    }
+
+    fn make_default_build(ctx: &LocalContext, repr: TypeRepr, w: &mut Wildcard) -> WildStringPart {
+        WildStringPart::String(
+            ctx.provide_substitution_wildcard(w)
+                .or_else(|_| ctx.provide_type_wildcard(w).map(|ty| ty.repr(repr)))
+                .unwrap(),
+        )
     }
 }
 
