@@ -1073,6 +1073,8 @@ pub trait ResolverExpand {
         trait_def_id: DefId,
         impl_def_id: LocalDefId,
     ) -> Result<Vec<(Ident, Option<Ident>)>, Indeterminate>;
+
+    fn add_necessary_parens(&mut self, node_span: Span);
 }
 
 pub trait LintStoreExpand {

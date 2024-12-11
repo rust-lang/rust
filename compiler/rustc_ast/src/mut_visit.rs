@@ -807,7 +807,7 @@ fn visit_lazy_tts_opt_mut<T: MutVisitor>(vis: &mut T, lazy_tts: Option<&mut Lazy
     }
 }
 
-fn visit_lazy_tts<T: MutVisitor>(vis: &mut T, lazy_tts: &mut Option<LazyAttrTokenStream>) {
+pub fn visit_lazy_tts<T: MutVisitor>(vis: &mut T, lazy_tts: &mut Option<LazyAttrTokenStream>) {
     visit_lazy_tts_opt_mut(vis, lazy_tts.as_mut());
 }
 

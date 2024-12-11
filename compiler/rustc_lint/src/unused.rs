@@ -1060,7 +1060,8 @@ impl UnusedDelimLint for UnusedParens {
     ) {
         match value.kind {
             ast::ExprKind::Paren(ref inner) => {
-                if !Self::is_expr_delims_necessary(inner, ctx, followed_by_block)
+                if cx.necessary_parens.map_or(true, |set| !set.contains(&value.span))
+                    && !Self::is_expr_delims_necessary(inner, ctx, followed_by_block)
                     && value.attrs.is_empty()
                     && !value.span.from_expansion()
                     && (ctx != UnusedDelimsCtx::LetScrutineeExpr

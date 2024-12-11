@@ -1198,6 +1198,12 @@ pub struct Resolver<'ra, 'tcx> {
     /// This is the `Span` where an `extern crate foo;` suggestion would be inserted, if `foo`
     /// could be a crate that wasn't imported. For diagnostics use only.
     current_crate_outer_attr_insert_span: Span,
+
+    /// It is used for the `unused_paren` lint because the lint checks after expansion.
+    /// This helps us record nodes that are wrapped by necessary parentheses.
+    ///
+    /// The reason for using `Span` is that the id has not been generated yet.
+    pub necessary_parens: FxHashSet<Span>,
 }
 
 /// This provides memory for the rest of the crate. The `'ra` lifetime that is
@@ -1543,6 +1549,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             impl_unexpanded_invocations: Default::default(),
             impl_binding_keys: Default::default(),
             current_crate_outer_attr_insert_span,
+            necessary_parens: Default::default(),
         };
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);
@@ -1656,6 +1663,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             lifetime_elision_allowed: self.lifetime_elision_allowed,
             lint_buffer: Steal::new(self.lint_buffer),
             delegation_fn_sigs: self.delegation_fn_sigs,
+            necessary_parens: self.necessary_parens,
         };
         ResolverOutputs { global_ctxt, ast_lowering }
     }

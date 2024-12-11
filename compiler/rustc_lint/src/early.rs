@@ -7,6 +7,7 @@
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{self as ast_visit, Visitor, walk_list};
 use rustc_ast::{self as ast, HasAttrs};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_feature::Features;
 use rustc_middle::ty::RegisteredTools;
@@ -364,6 +365,7 @@ pub fn check_ast_node<'a>(
     lint_store: &LintStore,
     registered_tools: &RegisteredTools,
     lint_buffer: Option<LintBuffer>,
+    necessary_parens: Option<&'a FxHashSet<Span>>,
     builtin_lints: impl EarlyLintPass + 'static,
     check_node: impl EarlyCheckNode<'a>,
 ) {
@@ -374,6 +376,7 @@ pub fn check_ast_node<'a>(
         lint_store,
         registered_tools,
         lint_buffer.unwrap_or_default(),
+        necessary_parens,
     );
 
     // Note: `passes` is often empty. In that case, it's faster to run

@@ -213,6 +213,7 @@ pub struct ResolverAstLowering {
 
     /// Information about functions signatures for delegation items expansion
     pub delegation_fn_sigs: LocalDefIdMap<DelegationFnSig>,
+    pub necessary_parens: FxHashSet<Span>,
 }
 
 #[derive(Debug)]

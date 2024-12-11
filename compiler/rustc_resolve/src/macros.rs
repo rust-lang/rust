@@ -534,6 +534,10 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         });
         Ok(idents)
     }
+
+    fn add_necessary_parens(&mut self, span: Span) {
+        self.necessary_parens.insert(span);
+    }
 }
 
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
