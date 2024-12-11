@@ -1,0 +1,13 @@
+[package]
+name = "edition"
+version = "0.0.0"
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true

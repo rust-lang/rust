@@ -132,11 +132,9 @@ pub use ide_db::{
     search::{ReferenceCategory, SearchScope},
     source_change::{FileSystemEdit, SnippetEdit, SourceChange},
     symbol_index::Query,
-    FileId, FilePosition, FileRange, RootDatabase, SymbolKind,
+    FileId, FilePosition, FileRange, RootDatabase, Severity, SymbolKind,
 };
-pub use ide_diagnostics::{
-    Diagnostic, DiagnosticCode, DiagnosticsConfig, ExprFillDefaultMode, Severity,
-};
+pub use ide_diagnostics::{Diagnostic, DiagnosticCode, DiagnosticsConfig, ExprFillDefaultMode};
 pub use ide_ssr::SsrError;
 pub use span::Edition;
 pub use syntax::{TextRange, TextSize};
