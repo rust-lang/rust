@@ -1020,7 +1020,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
                     self.insert_trait_and_projection(
                         trait_ref,
-                        Some((proj.projection_def_id(), proj.term())),
+                        Some((proj.item_def_id(), proj.term())),
                         &mut traits,
                         &mut fn_traits,
                     );

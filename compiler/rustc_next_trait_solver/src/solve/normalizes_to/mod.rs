@@ -144,7 +144,7 @@ where
         then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResult<I>,
     ) -> Result<Candidate<I>, NoSolution> {
         if let Some(projection_pred) = assumption.as_projection_clause() {
-            if projection_pred.projection_def_id() == goal.predicate.def_id() {
+            if projection_pred.item_def_id() == goal.predicate.def_id() {
                 let cx = ecx.cx();
                 if !DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
                     goal.predicate.alias.args,

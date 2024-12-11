@@ -1,18 +1,23 @@
+// Exercise the `default_field_values` feature to confirm it interacts correctly with other nightly
+// features. In particular, we want to verify that interaction with consts coming from different
+// contexts are usable as a default field value.
 //@ run-pass
 //@ aux-build:struct_field_default.rs
-#![feature(default_field_values, generic_const_exprs)]
+#![feature(const_trait_impl, default_field_values, generic_const_exprs)]
 #![allow(unused_variables, dead_code, incomplete_features)]
 
 extern crate struct_field_default as xc;
 
 pub struct S;
 
+// Basic expressions and `Default` expansion
 #[derive(Default)]
 pub struct Foo {
     pub bar: S = S,
     pub baz: i32 = 42 + 3,
 }
 
+// Enum support for deriving `Default` when all fields have default values
 #[derive(Default)]
 pub enum Bar {
     #[default]
@@ -22,17 +27,27 @@ pub enum Bar {
     }
 }
 
-#[derive(Default)]
-pub struct Qux<A, const C: i32> {
-    bar: S = Qux::<A, C>::S,
-    baz: i32 = foo(),
-    bat: i32 = <Qux<A, C> as T>::K,
-    baq: i32 = Self::K,
-    bay: i32 = C,
-    bak: Vec<A> = Vec::new(),
+#[const_trait] pub trait ConstDefault {
+    fn value() -> Self;
 }
 
-impl<A, const C: i32> Qux<A, C> {
+impl const ConstDefault for i32 {
+    fn value() -> i32 {
+        101
+    }
+}
+
+pub struct Qux<A, const C: i32, X: const ConstDefault> {
+    bar: S = Qux::<A, C, X>::S, // Associated constant from inherent impl
+    baz: i32 = foo(), // Constant function
+    bat: i32 = <Qux<A, C, X> as T>::K, // Associated constant from explicit trait
+    baq: i32 = Self::K, // Associated constant from implicit trait
+    bay: i32 = C, // `const` parameter
+    bak: Vec<A> = Vec::new(), // Associated constant function
+    ban: X = X::value(), // Associated constant function from `const` trait parameter
+}
+
+impl<A, const C: i32, X: const ConstDefault> Qux<A, C, X> {
     const S: S = S;
 }
 
@@ -40,7 +55,7 @@ trait T {
     const K: i32;
 }
 
-impl<A, const C: i32> T for Qux<A, C> {
+impl<A, const C: i32, X: const ConstDefault> T for Qux<A, C, X> {
     const K: i32 = 2;
 }
 
@@ -65,8 +80,19 @@ fn main () {
     assert!(matches!(Bar::Foo { bar: S, baz: 45 }, y));
     assert!(matches!(Bar::Foo { bar: S, baz: 1 }, z));
 
-    let x = Qux::<i32, 4> { .. };
-    assert!(matches!(Qux::<i32, 4> { bar: S, baz: 42, bat: 2, baq: 2, bay: 4, .. }, x));
+    let x = Qux::<i32, 4, i32> { .. };
+    assert!(matches!(
+        Qux::<i32, 4, i32> {
+            bar: S,
+            baz: 42,
+            bat: 2,
+            baq: 2,
+            bay: 4,
+            ban: 101,
+            ..
+        },
+        x,
+    ));
     assert!(x.bak.is_empty());
 
     let x = xc::A { .. };

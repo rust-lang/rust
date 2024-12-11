@@ -744,7 +744,7 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
             let Some(clause) = clause.as_projection_clause() else {
                 return ControlFlow::Continue(());
             };
-            if clause.projection_def_id() != obligation.predicate.def_id {
+            if clause.item_def_id() != obligation.predicate.def_id {
                 return ControlFlow::Continue(());
             }
 
@@ -847,7 +847,7 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
         let bound_predicate = predicate.kind();
         if let ty::ClauseKind::Projection(data) = predicate.kind().skip_binder() {
             let data = bound_predicate.rebind(data);
-            if data.projection_def_id() != obligation.predicate.def_id {
+            if data.item_def_id() != obligation.predicate.def_id {
                 continue;
             }
 
