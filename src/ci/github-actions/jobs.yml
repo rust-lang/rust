@@ -117,7 +117,7 @@ pr:
       ENABLE_GCC_CODEGEN: "1"
       # We are adding (temporarily) a dummy commit on the compiler
       READ_ONLY_SRC: "0"
-      DOCKER_SCRIPT: python3 ../x.py --stage 2 test --skip src/tools/tidy
+      DOCKER_SCRIPT: x86_64-gnu-llvm.sh
     <<: *job-linux-16c
   - image: x86_64-gnu-tools
     <<: *job-linux-16c
@@ -319,7 +319,7 @@ auto:
     env:
       RUST_BACKTRACE: 1
       IMAGE: x86_64-gnu-llvm-19
-      <<: *stage_2_test_set1
+      DOCKER_SCRIPT: x86_64-gnu-llvm1.sh
     <<: *job-linux-4c
 
   # Skip tests that run in x86_64-gnu-llvm-19-2
@@ -327,7 +327,7 @@ auto:
     env:
       RUST_BACKTRACE: 1
       IMAGE: x86_64-gnu-llvm-19
-      <<: *stage_2_test_set2
+      DOCKER_SCRIPT: x86_64-gnu-llvm2.sh
     <<: *job-linux-4c
 
   # The x86_64-gnu-llvm-18 job is split into multiple jobs to run tests in parallel.
@@ -337,7 +337,7 @@ auto:
       RUST_BACKTRACE: 1
       READ_ONLY_SRC: "0"
       IMAGE: x86_64-gnu-llvm-18
-      <<: *stage_2_test_set1
+      DOCKER_SCRIPT: x86_64-gnu-llvm1.sh
     <<: *job-linux-4c
 
   # Skip tests that run in x86_64-gnu-llvm-18-2
@@ -346,7 +346,7 @@ auto:
       RUST_BACKTRACE: 1
       READ_ONLY_SRC: "0"
       IMAGE: x86_64-gnu-llvm-18
-      <<: *stage_2_test_set2
+      DOCKER_SCRIPT: x86_64-gnu-llvm2.sh
     <<: *job-linux-4c
 
   - image: x86_64-gnu-nopt
