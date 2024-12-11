@@ -194,7 +194,7 @@ rustc_index::newtype_index! {
 
 /// Holds a mapping from "local" (per-function) file IDs to "global" (per-CGU)
 /// file IDs.
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct VirtualFileMapping {
     local_to_global: IndexVec<LocalFileId, GlobalFileId>,
     global_to_local: FxIndexMap<GlobalFileId, LocalFileId>,
@@ -208,10 +208,10 @@ impl VirtualFileMapping {
             .or_insert_with(|| self.local_to_global.push(global_file_id))
     }
 
-    fn into_vec(self) -> Vec<u32> {
-        // This conversion should be optimized away to ~zero overhead.
-        // In any case, it's probably not hot enough to worry about.
-        self.local_to_global.into_iter().map(|global| global.as_u32()).collect()
+    fn to_vec(&self) -> Vec<u32> {
+        // This clone could be avoided by transmuting `&[GlobalFileId]` to `&[u32]`,
+        // but it isn't hot or expensive enough to justify the extra unsafety.
+        self.local_to_global.iter().map(|&global| GlobalFileId::as_u32(global)).collect()
     }
 }
 

@@ -29,7 +29,10 @@ pub(crate) struct CovfunRecord<'tcx> {
     mangled_function_name: &'tcx str,
     source_hash: u64,
     is_used: bool,
-    coverage_mapping_buffer: Vec<u8>,
+
+    virtual_file_mapping: VirtualFileMapping,
+    expressions: Vec<ffi::CounterExpression>,
+    regions: ffi::Regions,
 }
 
 impl<'tcx> CovfunRecord<'tcx> {
@@ -46,50 +49,40 @@ pub(crate) fn prepare_covfun_record<'tcx>(
     instance: Instance<'tcx>,
     function_coverage: &FunctionCoverage<'tcx>,
 ) -> Option<CovfunRecord<'tcx>> {
-    let mangled_function_name = tcx.symbol_name(instance).name;
-    let source_hash = function_coverage.source_hash();
-    let is_used = function_coverage.is_used();
+    let mut covfun = CovfunRecord {
+        mangled_function_name: tcx.symbol_name(instance).name,
+        source_hash: function_coverage.source_hash(),
+        is_used: function_coverage.is_used(),
+        virtual_file_mapping: VirtualFileMapping::default(),
+        expressions: function_coverage.counter_expressions().collect::<Vec<_>>(),
+        regions: ffi::Regions::default(),
+    };
 
-    let coverage_mapping_buffer =
-        encode_mappings_for_function(tcx, global_file_table, function_coverage);
+    fill_region_tables(tcx, global_file_table, function_coverage, &mut covfun);
 
-    if coverage_mapping_buffer.is_empty() {
-        if function_coverage.is_used() {
-            bug!(
-                "A used function should have had coverage mapping data but did not: {}",
-                mangled_function_name
-            );
+    if covfun.regions.has_no_regions() {
+        if covfun.is_used {
+            bug!("a used function should have had coverage mapping data but did not: {covfun:?}");
         } else {
-            debug!("unused function had no coverage mapping data: {}", mangled_function_name);
+            debug!(?covfun, "unused function had no coverage mapping data");
             return None;
         }
     }
 
-    Some(CovfunRecord { mangled_function_name, source_hash, is_used, coverage_mapping_buffer })
+    Some(covfun)
 }
 
-/// Using the expressions and counter regions collected for a single function,
-/// generate the variable-sized payload of its corresponding `__llvm_covfun`
-/// entry. The payload is returned as a vector of bytes.
-///
-/// Newly-encountered filenames will be added to the global file table.
-fn encode_mappings_for_function(
-    tcx: TyCtxt<'_>,
+/// Populates the mapping region tables in the current function's covfun record.
+fn fill_region_tables<'tcx>(
+    tcx: TyCtxt<'tcx>,
     global_file_table: &GlobalFileTable,
-    function_coverage: &FunctionCoverage<'_>,
-) -> Vec<u8> {
+    function_coverage: &FunctionCoverage<'tcx>,
+    covfun: &mut CovfunRecord<'tcx>,
+) {
     let counter_regions = function_coverage.counter_regions();
     if counter_regions.is_empty() {
-        return Vec::new();
+        return;
     }
-
-    let expressions = function_coverage.counter_expressions().collect::<Vec<_>>();
-
-    let mut virtual_file_mapping = VirtualFileMapping::default();
-    let mut code_regions = vec![];
-    let mut branch_regions = vec![];
-    let mut mcdc_branch_regions = vec![];
-    let mut mcdc_decision_regions = vec![];
 
     // Currently a function's mappings must all be in the same file as its body span.
     let file_name = span_file_name(tcx, function_coverage.function_coverage_info.body_span);
@@ -98,8 +91,11 @@ fn encode_mappings_for_function(
     let global_file_id = global_file_table.global_file_id_for_file_name(file_name);
 
     // Associate that global file ID with a local file ID for this function.
-    let local_file_id = virtual_file_mapping.local_id_for_global(global_file_id);
+    let local_file_id = covfun.virtual_file_mapping.local_id_for_global(global_file_id);
     debug!("  file id: {local_file_id:?} => {global_file_id:?} = '{file_name:?}'");
+
+    let ffi::Regions { code_regions, branch_regions, mcdc_branch_regions, mcdc_decision_regions } =
+        &mut covfun.regions;
 
     // For each counter/region pair in this function+file, convert it to a
     // form suitable for FFI.
@@ -133,16 +129,6 @@ fn encode_mappings_for_function(
             }
         }
     }
-
-    // Encode the function's coverage mappings into a buffer.
-    llvm_cov::write_function_mappings_to_buffer(
-        &virtual_file_mapping.into_vec(),
-        &expressions,
-        &code_regions,
-        &branch_regions,
-        &mcdc_branch_regions,
-        &mcdc_decision_regions,
-    )
 }
 
 /// Generates the contents of the covfun record for this function, which
@@ -157,8 +143,17 @@ pub(crate) fn generate_covfun_record<'tcx>(
         mangled_function_name,
         source_hash,
         is_used,
-        ref coverage_mapping_buffer, // Previously-encoded coverage mappings
+        ref virtual_file_mapping,
+        ref expressions,
+        ref regions,
     } = covfun;
+
+    // Encode the function's coverage mappings into a buffer.
+    let coverage_mapping_buffer = llvm_cov::write_function_mappings_to_buffer(
+        &virtual_file_mapping.to_vec(),
+        expressions,
+        regions,
+    );
 
     // Concatenate the encoded coverage mappings
     let coverage_mapping_size = coverage_mapping_buffer.len();
