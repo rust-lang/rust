@@ -1025,6 +1025,24 @@ fn bar(name: i32) -> i32 {
 }
 
 #[test]
+fn doctest_extract_static() {
+    check_doc_test(
+        "extract_static",
+        r#####"
+fn main() {
+    $0(1 + 2)$0 * 4;
+}
+"#####,
+        r#####"
+fn main() {
+    static $0VAR_NAME: i32 = 1 + 2;
+    VAR_NAME * 4;
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_extract_struct_from_enum_variant() {
     check_doc_test(
         "extract_struct_from_enum_variant",

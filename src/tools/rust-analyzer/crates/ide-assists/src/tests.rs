@@ -362,8 +362,7 @@ pub fn test_some_range(a: int) -> bool {
 
     expect![[r#"
         Convert integer base
-        Extract into variable
-        Extract into constant
+        Extract into...
         Extract into function
         Replace if let with match
     "#]]
@@ -392,8 +391,7 @@ pub fn test_some_range(a: int) -> bool {
 
         expect![[r#"
             Convert integer base
-            Extract into variable
-            Extract into constant
+            Extract into...
             Extract into function
             Replace if let with match
         "#]]
@@ -407,8 +405,7 @@ pub fn test_some_range(a: int) -> bool {
         let expected = labels(&assists);
 
         expect![[r#"
-            Extract into variable
-            Extract into constant
+            Extract into...
             Extract into function
         "#]]
         .assert_eq(&expected);
@@ -443,7 +440,7 @@ pub fn test_some_range(a: int) -> bool {
 
     {
         let assists = assists(&db, &cfg, AssistResolveStrategy::None, frange.into());
-        assert_eq!(3, assists.len());
+        assert_eq!(4, assists.len());
         let mut assists = assists.into_iter();
 
         let extract_into_variable_assist = assists.next().unwrap();
@@ -454,7 +451,11 @@ pub fn test_some_range(a: int) -> bool {
                     RefactorExtract,
                 ),
                 label: "Extract into variable",
-                group: None,
+                group: Some(
+                    GroupLabel(
+                        "Extract into...",
+                    ),
+                ),
                 target: 59..60,
                 source_change: None,
                 command: None,
@@ -470,13 +471,37 @@ pub fn test_some_range(a: int) -> bool {
                     RefactorExtract,
                 ),
                 label: "Extract into constant",
-                group: None,
+                group: Some(
+                    GroupLabel(
+                        "Extract into...",
+                    ),
+                ),
                 target: 59..60,
                 source_change: None,
                 command: None,
             }
         "#]]
         .assert_debug_eq(&extract_into_constant_assist);
+
+        let extract_into_static_assist = assists.next().unwrap();
+        expect![[r#"
+            Assist {
+                id: AssistId(
+                    "extract_static",
+                    RefactorExtract,
+                ),
+                label: "Extract into static",
+                group: Some(
+                    GroupLabel(
+                        "Extract into...",
+                    ),
+                ),
+                target: 59..60,
+                source_change: None,
+                command: None,
+            }
+        "#]]
+        .assert_debug_eq(&extract_into_static_assist);
 
         let extract_into_function_assist = assists.next().unwrap();
         expect![[r#"
@@ -505,7 +530,7 @@ pub fn test_some_range(a: int) -> bool {
             }),
             frange.into(),
         );
-        assert_eq!(3, assists.len());
+        assert_eq!(4, assists.len());
         let mut assists = assists.into_iter();
 
         let extract_into_variable_assist = assists.next().unwrap();
@@ -516,7 +541,11 @@ pub fn test_some_range(a: int) -> bool {
                     RefactorExtract,
                 ),
                 label: "Extract into variable",
-                group: None,
+                group: Some(
+                    GroupLabel(
+                        "Extract into...",
+                    ),
+                ),
                 target: 59..60,
                 source_change: None,
                 command: None,
@@ -532,13 +561,37 @@ pub fn test_some_range(a: int) -> bool {
                     RefactorExtract,
                 ),
                 label: "Extract into constant",
-                group: None,
+                group: Some(
+                    GroupLabel(
+                        "Extract into...",
+                    ),
+                ),
                 target: 59..60,
                 source_change: None,
                 command: None,
             }
         "#]]
         .assert_debug_eq(&extract_into_constant_assist);
+
+        let extract_into_static_assist = assists.next().unwrap();
+        expect![[r#"
+            Assist {
+                id: AssistId(
+                    "extract_static",
+                    RefactorExtract,
+                ),
+                label: "Extract into static",
+                group: Some(
+                    GroupLabel(
+                        "Extract into...",
+                    ),
+                ),
+                target: 59..60,
+                source_change: None,
+                command: None,
+            }
+        "#]]
+        .assert_debug_eq(&extract_into_static_assist);
 
         let extract_into_function_assist = assists.next().unwrap();
         expect![[r#"
@@ -567,7 +620,7 @@ pub fn test_some_range(a: int) -> bool {
             }),
             frange.into(),
         );
-        assert_eq!(3, assists.len());
+        assert_eq!(4, assists.len());
         let mut assists = assists.into_iter();
 
         let extract_into_variable_assist = assists.next().unwrap();
@@ -578,7 +631,11 @@ pub fn test_some_range(a: int) -> bool {
                     RefactorExtract,
                 ),
                 label: "Extract into variable",
-                group: None,
+                group: Some(
+                    GroupLabel(
+                        "Extract into...",
+                    ),
+                ),
                 target: 59..60,
                 source_change: Some(
                     SourceChange {
@@ -637,13 +694,37 @@ pub fn test_some_range(a: int) -> bool {
                     RefactorExtract,
                 ),
                 label: "Extract into constant",
-                group: None,
+                group: Some(
+                    GroupLabel(
+                        "Extract into...",
+                    ),
+                ),
                 target: 59..60,
                 source_change: None,
                 command: None,
             }
         "#]]
         .assert_debug_eq(&extract_into_constant_assist);
+
+        let extract_into_static_assist = assists.next().unwrap();
+        expect![[r#"
+            Assist {
+                id: AssistId(
+                    "extract_static",
+                    RefactorExtract,
+                ),
+                label: "Extract into static",
+                group: Some(
+                    GroupLabel(
+                        "Extract into...",
+                    ),
+                ),
+                target: 59..60,
+                source_change: None,
+                command: None,
+            }
+        "#]]
+        .assert_debug_eq(&extract_into_static_assist);
 
         let extract_into_function_assist = assists.next().unwrap();
         expect![[r#"
@@ -664,7 +745,7 @@ pub fn test_some_range(a: int) -> bool {
 
     {
         let assists = assists(&db, &cfg, AssistResolveStrategy::All, frange.into());
-        assert_eq!(3, assists.len());
+        assert_eq!(4, assists.len());
         let mut assists = assists.into_iter();
 
         let extract_into_variable_assist = assists.next().unwrap();
@@ -675,7 +756,11 @@ pub fn test_some_range(a: int) -> bool {
                     RefactorExtract,
                 ),
                 label: "Extract into variable",
-                group: None,
+                group: Some(
+                    GroupLabel(
+                        "Extract into...",
+                    ),
+                ),
                 target: 59..60,
                 source_change: Some(
                     SourceChange {
@@ -734,7 +819,11 @@ pub fn test_some_range(a: int) -> bool {
                     RefactorExtract,
                 ),
                 label: "Extract into constant",
-                group: None,
+                group: Some(
+                    GroupLabel(
+                        "Extract into...",
+                    ),
+                ),
                 target: 59..60,
                 source_change: Some(
                     SourceChange {
@@ -788,6 +877,73 @@ pub fn test_some_range(a: int) -> bool {
             }
         "#]]
         .assert_debug_eq(&extract_into_constant_assist);
+
+        let extract_into_static_assist = assists.next().unwrap();
+        expect![[r#"
+            Assist {
+                id: AssistId(
+                    "extract_static",
+                    RefactorExtract,
+                ),
+                label: "Extract into static",
+                group: Some(
+                    GroupLabel(
+                        "Extract into...",
+                    ),
+                ),
+                target: 59..60,
+                source_change: Some(
+                    SourceChange {
+                        source_file_edits: {
+                            FileId(
+                                0,
+                            ): (
+                                TextEdit {
+                                    indels: [
+                                        Indel {
+                                            insert: "static",
+                                            delete: 45..47,
+                                        },
+                                        Indel {
+                                            insert: "VAR_NAME:",
+                                            delete: 48..60,
+                                        },
+                                        Indel {
+                                            insert: "i32",
+                                            delete: 61..81,
+                                        },
+                                        Indel {
+                                            insert: "=",
+                                            delete: 82..86,
+                                        },
+                                        Indel {
+                                            insert: "5;\n    if let 2..6 = VAR_NAME {\n        true\n    } else {\n        false\n    }",
+                                            delete: 87..108,
+                                        },
+                                    ],
+                                },
+                                Some(
+                                    SnippetEdit(
+                                        [
+                                            (
+                                                0,
+                                                52..52,
+                                            ),
+                                        ],
+                                    ),
+                                ),
+                            ),
+                        },
+                        file_system_edits: [],
+                        is_snippet: true,
+                    },
+                ),
+                command: Some(
+                    Rename,
+                ),
+            }
+        "#]]
+        .assert_debug_eq(&extract_into_static_assist);
 
         let extract_into_function_assist = assists.next().unwrap();
         expect![[r#"

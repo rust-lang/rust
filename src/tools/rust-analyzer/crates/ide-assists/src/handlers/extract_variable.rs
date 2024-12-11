@@ -1,14 +1,12 @@
 use hir::{HirDisplay, TypeInfo};
-use ide_db::syntax_helpers::suggest_name;
+use ide_db::{assists::GroupLabel, syntax_helpers::suggest_name};
 use syntax::{
     ast::{
         self, edit::IndentLevel, edit_in_place::Indent, make, syntax_factory::SyntaxFactory,
         AstNode,
     },
     syntax_editor::Position,
-    NodeOrToken,
-    SyntaxKind::{self},
-    SyntaxNode, T,
+    NodeOrToken, SyntaxKind, SyntaxNode, T,
 };
 
 use crate::{utils::is_body_const, AssistContext, AssistId, AssistKind, Assists};
@@ -43,6 +41,23 @@ use crate::{utils::is_body_const, AssistContext, AssistId, AssistKind, Assists};
 // ```
 // fn main() {
 //     const $0VAR_NAME: i32 = 1 + 2;
+//     VAR_NAME * 4;
+// }
+// ```
+
+// Assist: extract_static
+//
+// Extracts subexpression into a static.
+//
+// ```
+// fn main() {
+//     $0(1 + 2)$0 * 4;
+// }
+// ```
+// ->
+// ```
+// fn main() {
+//     static $0VAR_NAME: i32 = 1 + 2;
 //     VAR_NAME * 4;
 // }
 // ```
@@ -114,15 +129,20 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
         let Some(anchor) = Anchor::from(&to_extract, kind) else {
             continue;
         };
+
         let ty_string = match kind {
-            ExtractionKind::Constant => {
+            ExtractionKind::Constant | ExtractionKind::Static => {
                 let Some(ty) = ty.clone() else {
                     continue;
                 };
 
                 // We can't mutably reference a const, nor can we define
                 // one using a non-const expression or one of unknown type
-                if needs_mut || !is_body_const(&ctx.sema, &to_extract_no_ref) || ty.is_unknown() {
+                if needs_mut
+                    || !is_body_const(&ctx.sema, &to_extract_no_ref)
+                    || ty.is_unknown()
+                    || ty.is_mutable_reference()
+                {
                     continue;
                 }
 
@@ -135,92 +155,111 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
             _ => "".to_owned(),
         };
 
-        acc.add(kind.assist_id(), kind.label(), target, |edit| {
-            let (var_name, expr_replace) = kind.get_name_and_expr(ctx, &to_extract);
+        acc.add_group(
+            &GroupLabel("Extract into...".to_owned()),
+            kind.assist_id(),
+            kind.label(),
+            target,
+            |edit| {
+                let (var_name, expr_replace) = kind.get_name_and_expr(ctx, &to_extract);
 
-            let make = SyntaxFactory::new();
-            let mut editor = edit.make_editor(&expr_replace);
+                let make = SyntaxFactory::new();
+                let mut editor = edit.make_editor(&expr_replace);
 
-            let pat_name = make.name(&var_name);
-            let name_expr = make.expr_path(make::ext::ident_path(&var_name));
+                let pat_name = make.name(&var_name);
+                let name_expr = make.expr_path(make::ext::ident_path(&var_name));
 
-            if let Some(cap) = ctx.config.snippet_cap {
-                let tabstop = edit.make_tabstop_before(cap);
-                editor.add_annotation(pat_name.syntax().clone(), tabstop);
-            }
-
-            let initializer = match ty.as_ref().filter(|_| needs_ref) {
-                Some(receiver_type) if receiver_type.is_mutable_reference() => {
-                    make.expr_ref(to_extract_no_ref.clone(), true)
+                if let Some(cap) = ctx.config.snippet_cap {
+                    let tabstop = edit.make_tabstop_before(cap);
+                    editor.add_annotation(pat_name.syntax().clone(), tabstop);
                 }
-                Some(receiver_type) if receiver_type.is_reference() => {
-                    make.expr_ref(to_extract_no_ref.clone(), false)
-                }
-                _ => to_extract_no_ref.clone(),
-            };
 
-            let new_stmt: ast::Stmt = match kind {
-                ExtractionKind::Variable => {
-                    let ident_pat = make.ident_pat(false, needs_mut, pat_name);
-                    make.let_stmt(ident_pat.into(), None, Some(initializer)).into()
-                }
-                ExtractionKind::Constant => {
-                    let ast_ty = make.ty(&ty_string);
-                    ast::Item::Const(make.item_const(None, pat_name, ast_ty, initializer)).into()
-                }
-            };
+                let initializer = match ty.as_ref().filter(|_| needs_ref) {
+                    Some(receiver_type) if receiver_type.is_mutable_reference() => {
+                        make.expr_ref(to_extract_no_ref.clone(), true)
+                    }
+                    Some(receiver_type) if receiver_type.is_reference() => {
+                        make.expr_ref(to_extract_no_ref.clone(), false)
+                    }
+                    _ => to_extract_no_ref.clone(),
+                };
 
-            match &anchor {
-                Anchor::Before(place) => {
-                    let prev_ws = place.prev_sibling_or_token().and_then(|it| it.into_token());
-                    let indent_to = IndentLevel::from_node(place);
+                let new_stmt: ast::Stmt = match kind {
+                    ExtractionKind::Variable => {
+                        let ident_pat = make.ident_pat(false, needs_mut, pat_name);
+                        make.let_stmt(ident_pat.into(), None, Some(initializer)).into()
+                    }
+                    ExtractionKind::Constant => {
+                        let ast_ty = make.ty(&ty_string);
+                        ast::Item::Const(make.item_const(None, pat_name, ast_ty, initializer))
+                            .into()
+                    }
+                    ExtractionKind::Static => {
+                        let ast_ty = make.ty(&ty_string);
+                        ast::Item::Static(make.item_static(
+                            None,
+                            false,
+                            false,
+                            pat_name,
+                            ast_ty,
+                            Some(initializer),
+                        ))
+                        .into()
+                    }
+                };
 
-                    // Adjust ws to insert depending on if this is all inline or on separate lines
-                    let trailing_ws = if prev_ws.is_some_and(|it| it.text().starts_with('\n')) {
-                        format!("\n{indent_to}")
-                    } else {
-                        " ".to_owned()
-                    };
+                match &anchor {
+                    Anchor::Before(place) => {
+                        let prev_ws = place.prev_sibling_or_token().and_then(|it| it.into_token());
+                        let indent_to = IndentLevel::from_node(place);
 
-                    editor.insert_all(
-                        Position::before(place),
-                        vec![
-                            new_stmt.syntax().clone().into(),
-                            make::tokens::whitespace(&trailing_ws).into(),
-                        ],
-                    );
+                        // Adjust ws to insert depending on if this is all inline or on separate lines
+                        let trailing_ws = if prev_ws.is_some_and(|it| it.text().starts_with('\n')) {
+                            format!("\n{indent_to}")
+                        } else {
+                            " ".to_owned()
+                        };
 
-                    editor.replace(expr_replace, name_expr.syntax());
-                }
-                Anchor::Replace(stmt) => {
-                    cov_mark::hit!(test_extract_var_expr_stmt);
+                        editor.insert_all(
+                            Position::before(place),
+                            vec![
+                                new_stmt.syntax().clone().into(),
+                                make::tokens::whitespace(&trailing_ws).into(),
+                            ],
+                        );
 
-                    editor.replace(stmt.syntax(), new_stmt.syntax());
-                }
-                Anchor::WrapInBlock(to_wrap) => {
-                    let indent_to = to_wrap.indent_level();
-
-                    let block = if to_wrap.syntax() == &expr_replace {
-                        // Since `expr_replace` is the same that needs to be wrapped in a block,
-                        // we can just directly replace it with a block
-                        make.block_expr([new_stmt], Some(name_expr))
-                    } else {
-                        // `expr_replace` is a descendant of `to_wrap`, so we just replace it with `name_expr`.
                         editor.replace(expr_replace, name_expr.syntax());
-                        make.block_expr([new_stmt], Some(to_wrap.clone()))
-                    };
+                    }
+                    Anchor::Replace(stmt) => {
+                        cov_mark::hit!(test_extract_var_expr_stmt);
 
-                    editor.replace(to_wrap.syntax(), block.syntax());
+                        editor.replace(stmt.syntax(), new_stmt.syntax());
+                    }
+                    Anchor::WrapInBlock(to_wrap) => {
+                        let indent_to = to_wrap.indent_level();
 
-                    // fixup indentation of block
-                    block.indent(indent_to);
+                        let block = if to_wrap.syntax() == &expr_replace {
+                            // Since `expr_replace` is the same that needs to be wrapped in a block,
+                            // we can just directly replace it with a block
+                            make.block_expr([new_stmt], Some(name_expr))
+                        } else {
+                            // `expr_replace` is a descendant of `to_wrap`, so we just replace it with `name_expr`.
+                            editor.replace(expr_replace, name_expr.syntax());
+                            make.block_expr([new_stmt], Some(to_wrap.clone()))
+                        };
+
+                        editor.replace(to_wrap.syntax(), block.syntax());
+
+                        // fixup indentation of block
+                        block.indent(indent_to);
+                    }
                 }
-            }
 
-            editor.add_mappings(make.finish_with_mappings());
-            edit.add_file_edits(ctx.file_id(), editor);
-            edit.rename();
-        });
+                editor.add_mappings(make.finish_with_mappings());
+                edit.add_file_edits(ctx.file_id(), editor);
+                edit.rename();
+            },
+        );
     }
 
     Some(())
@@ -251,15 +290,18 @@ fn valid_target_expr(node: SyntaxNode) -> Option<ast::Expr> {
 enum ExtractionKind {
     Variable,
     Constant,
+    Static,
 }
 
 impl ExtractionKind {
-    const ALL: &'static [ExtractionKind] = &[ExtractionKind::Variable, ExtractionKind::Constant];
+    const ALL: &'static [ExtractionKind] =
+        &[ExtractionKind::Variable, ExtractionKind::Constant, ExtractionKind::Static];
 
     fn assist_id(&self) -> AssistId {
         let s = match self {
             ExtractionKind::Variable => "extract_variable",
             ExtractionKind::Constant => "extract_constant",
+            ExtractionKind::Static => "extract_static",
         };
 
         AssistId(s, AssistKind::RefactorExtract)
@@ -269,6 +311,7 @@ impl ExtractionKind {
         match self {
             ExtractionKind::Variable => "Extract into variable",
             ExtractionKind::Constant => "Extract into constant",
+            ExtractionKind::Static => "Extract into static",
         }
     }
 
@@ -291,7 +334,7 @@ impl ExtractionKind {
 
         let var_name = match self {
             ExtractionKind::Variable => var_name,
-            ExtractionKind::Constant => var_name.to_uppercase(),
+            ExtractionKind::Constant | ExtractionKind::Static => var_name.to_uppercase(),
         };
 
         (var_name, expr_replace)
@@ -351,7 +394,7 @@ impl Anchor {
             });
 
         match kind {
-            ExtractionKind::Constant if result.is_none() => {
+            ExtractionKind::Constant | ExtractionKind::Static if result.is_none() => {
                 to_extract.syntax().ancestors().find_map(|node| {
                     let item = ast::Item::cast(node.clone())?;
                     let parent = item.syntax().parent()?;
@@ -380,21 +423,6 @@ mod tests {
     };
 
     use super::*;
-
-    #[test]
-    fn now_bad() {
-        // unknown type
-        check_assist_not_applicable_by_label(
-            extract_variable,
-            r#"
-fn main() {
-    let a = Some(2);
-    a.is_some();$0
-}
-"#,
-            "Extract into constant",
-        );
-    }
 
     #[test]
     fn extract_var_simple_without_select() {
@@ -604,7 +632,102 @@ fn main() {
     }
 
     #[test]
-    fn extract_var_unit_expr_without_select_not_applicable() {
+    fn extract_static_simple_without_select() {
+        check_assist_by_label(
+            extract_variable,
+            r#"
+fn main() -> i32 {
+    if true {
+        1
+    } else {
+        2
+    }$0
+}
+"#,
+            r#"
+fn main() -> i32 {
+    static $0VAR_NAME: i32 = if true {
+        1
+    } else {
+        2
+    };
+    VAR_NAME
+}
+"#,
+            "Extract into static",
+        );
+
+        check_assist_by_label(
+            extract_variable,
+            r#"
+const fn foo() -> i32 { 1 }
+fn main() {
+    foo();$0
+}
+"#,
+            r#"
+const fn foo() -> i32 { 1 }
+fn main() {
+    static $0FOO: i32 = foo();
+}
+"#,
+            "Extract into static",
+        );
+
+        check_assist_by_label(
+            extract_variable,
+            r#"
+fn main() {
+    "hello"$0;
+}
+"#,
+            r#"
+fn main() {
+    static $0VAR_NAME: &str = "hello";
+}
+"#,
+            "Extract into static",
+        );
+
+        check_assist_by_label(
+            extract_variable,
+            r#"
+fn main() {
+    1  + 2$0;
+}
+"#,
+            r#"
+fn main() {
+    static $0VAR_NAME: i32 = 1  + 2;
+}
+"#,
+            "Extract into static",
+        );
+
+        check_assist_by_label(
+            extract_variable,
+            r#"
+fn main() {
+    match () {
+        () if true => 1,
+        _ => 2,
+    };$0
+}
+"#,
+            r#"
+fn main() {
+    static $0VAR_NAME: i32 = match () {
+        () if true => 1,
+        _ => 2,
+    };
+}
+"#,
+            "Extract into static",
+        );
+    }
+
+    #[test]
+    fn dont_extract_unit_expr_without_select() {
         check_assist_not_applicable(
             extract_variable,
             r#"
@@ -664,7 +787,24 @@ fn foo() {
     }
 
     #[test]
-    fn extract_var_in_comment_is_not_applicable() {
+    fn extract_static_simple() {
+        check_assist_by_label(
+            extract_variable,
+            r#"
+fn foo() {
+    foo($01 + 1$0);
+}"#,
+            r#"
+fn foo() {
+    static $0VAR_NAME: i32 = 1 + 1;
+    foo(VAR_NAME);
+}"#,
+            "Extract into static",
+        );
+    }
+
+    #[test]
+    fn dont_extract_in_comment() {
         cov_mark::check!(extract_var_in_comment_is_not_applicable);
         check_assist_not_applicable(extract_variable, r#"fn main() { 1 + /* $0comment$0 */ 1; }"#);
     }
@@ -733,6 +873,38 @@ fn foo() {
     }
 
     #[test]
+    fn extract_static_expr_stmt() {
+        cov_mark::check!(test_extract_var_expr_stmt);
+        check_assist_by_label(
+            extract_variable,
+            r#"
+fn foo() {
+  $0  1 + 1$0;
+}"#,
+            r#"
+fn foo() {
+    static $0VAR_NAME: i32 = 1 + 1;
+}"#,
+            "Extract into static",
+        );
+        // This is hilarious but as far as I know, it's valid
+        check_assist_by_label(
+            extract_variable,
+            r#"
+fn foo() {
+    $0{ let x = 0; x }$0;
+    something_else();
+}"#,
+            r#"
+fn foo() {
+    static $0VAR_NAME: i32 = { let x = 0; x };
+    something_else();
+}"#,
+            "Extract into static",
+        );
+    }
+
+    #[test]
     fn extract_var_part_of_expr_stmt() {
         check_assist_by_label(
             extract_variable,
@@ -763,6 +935,23 @@ fn foo() {
     VAR_NAME + 1;
 }"#,
             "Extract into constant",
+        );
+    }
+
+    #[test]
+    fn extract_static_part_of_expr_stmt() {
+        check_assist_by_label(
+            extract_variable,
+            r#"
+fn foo() {
+    $01$0 + 1;
+}"#,
+            r#"
+fn foo() {
+    static $0VAR_NAME: i32 = 1;
+    VAR_NAME + 1;
+}"#,
+            "Extract into static",
         );
     }
 
@@ -849,6 +1038,49 @@ const fn bar(i: i32) -> i32 {
 }
 "#,
             "Extract into constant",
+        )
+    }
+
+    #[test]
+    fn extract_static_last_expr() {
+        cov_mark::check!(test_extract_var_last_expr);
+        check_assist_by_label(
+            extract_variable,
+            r#"
+fn foo() {
+    bar($01 + 1$0)
+}
+"#,
+            r#"
+fn foo() {
+    static $0VAR_NAME: i32 = 1 + 1;
+    bar(VAR_NAME)
+}
+"#,
+            "Extract into static",
+        );
+        check_assist_by_label(
+            extract_variable,
+            r#"
+fn foo() -> i32 {
+    $0bar(1 + 1)$0
+}
+
+const fn bar(i: i32) -> i32 {
+    i
+}
+"#,
+            r#"
+fn foo() -> i32 {
+    static $0BAR: i32 = bar(1 + 1);
+    BAR
+}
+
+const fn bar(i: i32) -> i32 {
+    i
+}
+"#,
+            "Extract into static",
         )
     }
 
@@ -1427,6 +1659,30 @@ fn main() {
 "#,
             "Extract into constant",
         );
+
+        check_assist_by_label(
+            extract_variable,
+            r#"
+struct Vec;
+macro_rules! vec {
+    () => {Vec}
+}
+fn main() {
+    let _ = $0vec![]$0;
+}
+"#,
+            r#"
+struct Vec;
+macro_rules! vec {
+    () => {Vec}
+}
+fn main() {
+    static $0VEC: Vec = vec![];
+    let _ = VEC;
+}
+"#,
+            "Extract into static",
+        );
     }
 
     #[test]
@@ -1590,6 +1846,109 @@ fn bar() {
     }
 
     #[test]
+    fn extract_static_no_block_body() {
+        check_assist_by_label(
+            extract_variable,
+            r#"
+const fn foo(x: i32) -> i32 {
+    x
+}
+
+const FOO: i32 = foo($0100$0);
+"#,
+            r#"
+const fn foo(x: i32) -> i32 {
+    x
+}
+
+static $0X: i32 = 100;
+const FOO: i32 = foo(X);
+"#,
+            "Extract into static",
+        );
+
+        check_assist_by_label(
+            extract_variable,
+            r#"
+mod foo {
+    enum Foo {
+        Bar,
+        Baz = $042$0,
+    }
+}
+"#,
+            r#"
+mod foo {
+    static $0VAR_NAME: isize = 42;
+    enum Foo {
+        Bar,
+        Baz = VAR_NAME,
+    }
+}
+"#,
+            "Extract into static",
+        );
+
+        check_assist_by_label(
+            extract_variable,
+            r#"
+const fn foo(x: i32) -> i32 {
+    x
+}
+
+trait Hello {
+    const World: i32;
+}
+
+struct Bar;
+impl Hello for Bar {
+    const World = foo($042$0);
+}
+"#,
+            r#"
+const fn foo(x: i32) -> i32 {
+    x
+}
+
+trait Hello {
+    const World: i32;
+}
+
+struct Bar;
+impl Hello for Bar {
+    static $0X: i32 = 42;
+    const World = foo(X);
+}
+"#,
+            "Extract into static",
+        );
+
+        check_assist_by_label(
+            extract_variable,
+            r#"
+const fn foo(x: i32) -> i32 {
+    x
+}
+
+fn bar() {
+    const BAZ: i32 = foo($042$0);
+}
+"#,
+            r#"
+const fn foo(x: i32) -> i32 {
+    x
+}
+
+fn bar() {
+    static $0X: i32 = 42;
+    const BAZ: i32 = foo(X);
+}
+"#,
+            "Extract into static",
+        );
+    }
+
+    #[test]
     fn extract_var_mutable_reference_parameter() {
         check_assist_by_label(
             extract_variable,
@@ -1641,7 +2000,28 @@ impl<T> Vec<T> {
 fn foo(s: &mut S) {
     $0s.vec$0.push(0);
 }"#,
-            "Extract into const",
+            "Extract into constant",
+        );
+    }
+
+    #[test]
+    fn dont_extract_static_mutable_reference_parameter() {
+        check_assist_not_applicable_by_label(
+            extract_variable,
+            r#"
+struct S {
+    vec: Vec<u8>
+}
+
+struct Vec<T>;
+impl<T> Vec<T> {
+    fn push(&mut self, _:usize) {}
+}
+
+fn foo(s: &mut S) {
+    $0s.vec$0.push(0);
+}"#,
+            "Extract into static",
         );
     }
 
@@ -2027,6 +2407,18 @@ fn foo() {
     let v = &mut $00$0;
 }"#,
             "Extract into constant",
+        );
+    }
+
+    #[test]
+    fn dont_extract_static_for_mutable_borrow() {
+        check_assist_not_applicable_by_label(
+            extract_variable,
+            r#"
+fn foo() {
+    let v = &mut $00$0;
+}"#,
+            "Extract into static",
         );
     }
 
