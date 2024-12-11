@@ -11,12 +11,12 @@ use crate::universal_regions::UniversalRegions;
 
 /// Emit polonius facts for variable defs, uses, drops, and path accesses.
 pub(crate) fn emit_access_facts<'tcx>(
-    facts: &mut AllFacts,
     tcx: TyCtxt<'tcx>,
+    facts: &mut AllFacts,
     body: &Body<'tcx>,
+    location_table: &LocationTable,
     move_data: &MoveData<'tcx>,
     universal_regions: &UniversalRegions<'tcx>,
-    location_table: &LocationTable,
 ) {
     let mut extractor = AccessFactsExtractor { facts, move_data, location_table };
     extractor.visit_body(body);

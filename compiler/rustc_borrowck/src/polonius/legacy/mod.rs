@@ -43,40 +43,38 @@ pub(crate) fn emit_facts<'tcx>(
     universal_region_relations: &UniversalRegionRelations<'tcx>,
     constraints: &MirTypeckRegionConstraints<'tcx>,
 ) {
-    let Some(all_facts) = all_facts else {
+    let Some(facts) = all_facts else {
         // We don't do anything if there are no facts to fill.
         return;
     };
     let _prof_timer = tcx.prof.generic_activity("polonius_fact_generation");
-    emit_move_facts(all_facts, move_data, location_table, body);
-    emit_universal_region_facts(all_facts, borrow_set, universal_region_relations);
-    loan_kills::emit_loan_kills(tcx, all_facts, location_table, body, borrow_set);
-    loan_invalidations::emit_loan_invalidations(tcx, all_facts, location_table, body, borrow_set);
+    emit_move_facts(facts, body, location_table, move_data);
+    emit_universal_region_facts(facts, borrow_set, universal_region_relations);
+    loan_kills::emit_loan_kills(tcx, facts, body, location_table, borrow_set);
+    loan_invalidations::emit_loan_invalidations(tcx, facts, body, location_table, borrow_set);
     accesses::emit_access_facts(
-        all_facts,
         tcx,
+        facts,
         body,
+        location_table,
         move_data,
         &universal_region_relations.universal_regions,
-        location_table,
     );
-    emit_outlives_facts(all_facts, location_table, constraints);
+    emit_outlives_facts(facts, location_table, constraints);
 }
 
 /// Emit facts needed for move/init analysis: moves and assignments.
 fn emit_move_facts(
-    all_facts: &mut AllFacts,
-    move_data: &MoveData<'_>,
-    location_table: &LocationTable,
+    facts: &mut AllFacts,
     body: &Body<'_>,
+    location_table: &LocationTable,
+    move_data: &MoveData<'_>,
 ) {
-    all_facts
-        .path_is_var
-        .extend(move_data.rev_lookup.iter_locals_enumerated().map(|(l, r)| (r, l)));
+    facts.path_is_var.extend(move_data.rev_lookup.iter_locals_enumerated().map(|(l, r)| (r, l)));
 
     for (child, move_path) in move_data.move_paths.iter_enumerated() {
         if let Some(parent) = move_path.parent {
-            all_facts.child_path.push((child, parent));
+            facts.child_path.push((child, parent));
         }
     }
 
@@ -102,14 +100,14 @@ fn emit_move_facts(
                         // The initialization happened in (or rather, when arriving at)
                         // the successors, but not in the unwind block.
                         let first_statement = Location { block: successor, statement_index: 0 };
-                        all_facts
+                        facts
                             .path_assigned_at_base
                             .push((init.path, location_table.start_index(first_statement)));
                     }
                 } else {
                     // In all other cases, the initialization just happens at the
                     // midpoint, like any other effect.
-                    all_facts
+                    facts
                         .path_assigned_at_base
                         .push((init.path, location_table.mid_index(location)));
                 }
@@ -117,7 +115,7 @@ fn emit_move_facts(
             // Arguments are initialized on function entry
             InitLocation::Argument(local) => {
                 assert!(body.local_kind(local) == LocalKind::Arg);
-                all_facts.path_assigned_at_base.push((init.path, fn_entry_start));
+                facts.path_assigned_at_base.push((init.path, fn_entry_start));
             }
         }
     }
@@ -126,20 +124,20 @@ fn emit_move_facts(
         if body.local_kind(local) != LocalKind::Arg {
             // Non-arguments start out deinitialised; we simulate this with an
             // initial move:
-            all_facts.path_moved_at_base.push((path, fn_entry_start));
+            facts.path_moved_at_base.push((path, fn_entry_start));
         }
     }
 
     // moved_out_at
     // deinitialisation is assumed to always happen!
-    all_facts
+    facts
         .path_moved_at_base
         .extend(move_data.moves.iter().map(|mo| (mo.path, location_table.mid_index(mo.source))));
 }
 
 /// Emit universal regions facts, and their relations.
 fn emit_universal_region_facts(
-    all_facts: &mut AllFacts,
+    facts: &mut AllFacts,
     borrow_set: &BorrowSet<'_>,
     universal_region_relations: &UniversalRegionRelations<'_>,
 ) {
@@ -150,7 +148,7 @@ fn emit_universal_region_facts(
     //   added to the existing number of loans, as if they succeeded them in the set.
     //
     let universal_regions = &universal_region_relations.universal_regions;
-    all_facts
+    facts
         .universal_region
         .extend(universal_regions.universal_regions_iter().map(PoloniusRegionVid::from));
     let borrow_count = borrow_set.len();
@@ -163,7 +161,7 @@ fn emit_universal_region_facts(
     for universal_region in universal_regions.universal_regions_iter() {
         let universal_region_idx = universal_region.index();
         let placeholder_loan_idx = borrow_count + universal_region_idx;
-        all_facts.placeholder.push((universal_region.into(), placeholder_loan_idx.into()));
+        facts.placeholder.push((universal_region.into(), placeholder_loan_idx.into()));
     }
 
     // 2: the universal region relations `outlives` constraints are emitted as
@@ -175,7 +173,7 @@ fn emit_universal_region_facts(
                      fr1={:?}, fr2={:?}",
                 fr1, fr2
             );
-            all_facts.known_placeholder_subset.push((fr1.into(), fr2.into()));
+            facts.known_placeholder_subset.push((fr1.into(), fr2.into()));
         }
     }
 }
