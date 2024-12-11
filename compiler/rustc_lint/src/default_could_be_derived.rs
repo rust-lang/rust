@@ -38,6 +38,7 @@ declare_lint_pass!(DefaultCouldBeDerived => [DEFAULT_COULD_BE_DERIVED]);
 
 impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
+        let hir = cx.tcx.hir();
         let hir::ItemKind::Impl(data) = item.kind else { return };
         let Some(trait_ref) = data.of_trait else { return };
         let Res::Def(DefKind::Trait, def_id) = trait_ref.path.res else { return };
@@ -51,6 +52,47 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
         let hir_self_ty = data.self_ty;
         let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = hir_self_ty.kind else { return };
         let Res::Def(def_kind, type_def_id) = path.res else { return };
+        match hir.get_if_local(type_def_id) {
+            Some(hir::Node::Item(hir::Item {
+                kind:
+                    hir::ItemKind::Struct(hir::VariantData::Struct { fields, recovered: _ }, _generics),
+                ..
+            })) => {
+                if fields.iter().all(|f| f.default.is_some()) {
+                    cx.tcx.node_span_lint(
+                        DEFAULT_COULD_BE_DERIVED,
+                        item.hir_id(),
+                        item.span,
+                        |diag| {
+                            diag.primary_message("`impl Default` that could be derived");
+                            diag.span_label(
+                                cx.tcx.def_span(type_def_id),
+                                "all the fields in this struct have default values",
+                            );
+                            for field in &fields[..] {
+                                if let Some(anon) = field.default {
+                                    diag.span_label(anon.span, "");
+                                }
+                            }
+                            diag.multipart_suggestion_verbose(
+                                "to avoid divergence in behavior between `Struct { .. }` and \
+                                 `<Struct as Default>::default()`, derive the `Default`",
+                                vec![
+                                    (
+                                        cx.tcx.def_span(type_def_id).shrink_to_lo(),
+                                        "#[derive(Default)] ".to_string(),
+                                    ),
+                                    (item.span, String::new()),
+                                ],
+                                Applicability::MachineApplicable,
+                            );
+                        },
+                    );
+                    return;
+                }
+            }
+            _ => {}
+        }
         let generics = cx.tcx.generics_of(type_def_id);
         if !generics.own_params.is_empty() && def_kind != DefKind::Enum {
             // For enums, `#[derive(Default)]` forces you to select a unit variant to avoid
@@ -61,7 +103,6 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
         }
         // We have a manual `impl Default for Ty {}` item, where `Ty` has no type parameters.
 
-        let hir = cx.tcx.hir();
         for assoc in data.items {
             let hir::AssocItemKind::Fn { has_self: false } = assoc.kind else { continue };
             if assoc.ident.name != kw::Default {

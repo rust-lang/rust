@@ -1,5 +1,5 @@
 error: `impl Default` that could be derived
-  --> $DIR/manual-default-impl-could-be-derived.rs:34:1
+  --> $DIR/manual-default-impl-could-be-derived.rs:35:1
    |
 LL | / impl Default for D {
 LL | |     fn default() -> Self {
@@ -21,7 +21,7 @@ LL ~ #[derive(Default)] struct D {
    |
 
 error: `impl Default` that could be derived
-  --> $DIR/manual-default-impl-could-be-derived.rs:49:1
+  --> $DIR/manual-default-impl-could-be-derived.rs:50:1
    |
 LL | / impl Default for E {
 LL | |     fn default() -> Self {
@@ -38,7 +38,7 @@ LL ~ #[derive(Default)] struct E {
    |
 
 error: `impl Default` that could be derived
-  --> $DIR/manual-default-impl-could-be-derived.rs:63:1
+  --> $DIR/manual-default-impl-could-be-derived.rs:64:1
    |
 LL | / impl<T> Default for F<T> {
 LL | |     fn default() -> Self {
@@ -54,7 +54,7 @@ LL ~     #[default] Unit,
    |
 
 error: `impl Default` that could be derived
-  --> $DIR/manual-default-impl-could-be-derived.rs:74:1
+  --> $DIR/manual-default-impl-could-be-derived.rs:75:1
    |
 LL | / impl Default for G {
 LL | |     fn default() -> Self {
@@ -70,5 +70,27 @@ help: you don't need to manually `impl Default`, you can derive it
 LL ~ #[derive(Default)] struct G {
    |
 
-error: aborting due to 4 previous errors
+error: `impl Default` that could be derived
+  --> $DIR/manual-default-impl-could-be-derived.rs:89:1
+   |
+LL |   struct H {
+   |   -------- all the fields in this struct have default values
+LL |       x: i32 = 101,
+   |                ---
+...
+LL | / impl Default for H {
+LL | |     fn default() -> Self {
+LL | |         H {
+LL | |             x: 1,
+LL | |         }
+LL | |     }
+LL | | }
+   | |_^
+   |
+help: to avoid divergence in behavior between `Struct { .. }` and `<Struct as Default>::default()`, derive the `Default`
+   |
+LL ~ #[derive(Default)] struct H {
+   |
+
+error: aborting due to 5 previous errors
 

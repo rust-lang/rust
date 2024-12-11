@@ -2,6 +2,7 @@
 //@ run-rustfix
 #![allow(dead_code)]
 #![deny(default_could_be_derived)]
+#![feature(default_field_values)]
 
 // #[derive(Debug)]
 // struct A;
@@ -79,6 +80,20 @@ impl Default for G { //~ ERROR
     }
 }
 
+// Always lint against manual `Default` impl if all fields are defaulted.
+#[derive(PartialEq, Debug)]
+struct H {
+    x: i32 = 101,
+}
+
+impl Default for H { //~ ERROR
+    fn default() -> Self {
+        H {
+            x: 1,
+        }
+    }
+}
+
 fn main() {
 //    let _ = A::default();
 //    let _ = B::default();
@@ -87,4 +102,5 @@ fn main() {
     let _ = E::default();
     let _ = F::<i32>::default();
     let _ = G::default();
+    assert_eq!(H::default(), H { .. });
 }

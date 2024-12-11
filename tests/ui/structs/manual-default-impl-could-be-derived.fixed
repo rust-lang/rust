@@ -2,6 +2,7 @@
 //@ run-rustfix
 #![allow(dead_code)]
 #![deny(default_could_be_derived)]
+#![feature(default_field_values)]
 
 // #[derive(Debug)]
 // struct A;
@@ -40,15 +41,22 @@
 
 
 // Detection of unit variant ctors that could have been marked `#[default]`.
-#[derive(Default)] enum F {
+#[derive(Default)] enum F<T> {
     #[default] Unit,
-    Tuple(i32),
+    Tuple(T),
 }
 
 
 // Comparison of `impl` *fields* with their `Default::default()` bodies.
 #[derive(Default)] struct G {
-    f: F,
+    f: F<i32>,
+}
+
+
+// Always lint against manual `Default` impl if all fields are defaulted.
+#[derive(PartialEq, Debug)]
+#[derive(Default)] struct H {
+    x: i32 = 101,
 }
 
 
@@ -58,6 +66,7 @@ fn main() {
 //    let _ = C::default();
     let _ = D::default();
     let _ = E::default();
-    let _ = F::default();
+    let _ = F::<i32>::default();
     let _ = G::default();
+    assert_eq!(H::default(), H { .. });
 }
