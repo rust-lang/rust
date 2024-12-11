@@ -219,18 +219,17 @@ fn check_impl(
 
     if spellcheck_all || spellcheck_fix {
         let config_path = root_path.join("typos.toml");
-        let mut args =
         // sync target files with .github/workflows/ci.yml
+        let mut args =
             vec!["-c", config_path.as_os_str().to_str().unwrap(), "./compiler", "./library"];
 
         if spellcheck_all {
             eprintln!("spellcheck files");
-            spellcheck_runner(&args)?;
         } else if spellcheck_fix {
             eprintln!("spellcheck files and fix");
             args.push("--write-changes");
-            spellcheck_runner(&args)?;
         }
+        spellcheck_runner(&args)?;
     }
 
     Ok(())
