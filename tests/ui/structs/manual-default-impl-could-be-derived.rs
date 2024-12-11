@@ -55,12 +55,12 @@ impl Default for E { //~ ERROR
 }
 
 // Detection of unit variant ctors that could have been marked `#[default]`.
-enum F {
+enum F<T> {
     Unit,
-    Tuple(i32),
+    Tuple(T),
 }
 
-impl Default for F { //~ ERROR
+impl<T> Default for F<T> { //~ ERROR
     fn default() -> Self {
         F::Unit
     }
@@ -68,7 +68,7 @@ impl Default for F { //~ ERROR
 
 // Comparison of `impl` *fields* with their `Default::default()` bodies.
 struct G {
-    f: F,
+    f: F<i32>,
 }
 
 impl Default for G { //~ ERROR
@@ -85,6 +85,6 @@ fn main() {
 //    let _ = C::default();
     let _ = D::default();
     let _ = E::default();
-    let _ = F::default();
+    let _ = F::<i32>::default();
     let _ = G::default();
 }

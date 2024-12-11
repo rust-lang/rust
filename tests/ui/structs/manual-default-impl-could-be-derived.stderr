@@ -40,7 +40,7 @@ LL ~ #[derive(Default)] struct E {
 error: `impl Default` that could be derived
   --> $DIR/manual-default-impl-could-be-derived.rs:63:1
    |
-LL | / impl Default for F {
+LL | / impl<T> Default for F<T> {
 LL | |     fn default() -> Self {
 LL | |         F::Unit
 LL | |     }
@@ -49,7 +49,7 @@ LL | | }
    |
 help: you don't need to manually `impl Default`, you can derive it
    |
-LL ~ #[derive(Default)] enum F {
+LL ~ #[derive(Default)] enum F<T> {
 LL ~     #[default] Unit,
    |
 

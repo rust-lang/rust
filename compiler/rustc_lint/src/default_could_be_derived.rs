@@ -50,9 +50,13 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
         }
         let hir_self_ty = data.self_ty;
         let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = hir_self_ty.kind else { return };
-        let Res::Def(_, type_def_id) = path.res else { return };
+        let Res::Def(def_kind, type_def_id) = path.res else { return };
         let generics = cx.tcx.generics_of(type_def_id);
-        if !generics.own_params.is_empty() {
+        if !generics.own_params.is_empty() && def_kind != DefKind::Enum {
+            // For enums, `#[derive(Default)]` forces you to select a unit variant to avoid
+            // "imperfect derives", unnecessary bounds on type parameters, so even if the enum has
+            // type parameters we can still lint on the manual impl if the return is a unit
+            // variant.
             return;
         }
         // We have a manual `impl Default for Ty {}` item, where `Ty` has no type parameters.
