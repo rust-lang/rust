@@ -6,7 +6,7 @@ use std::{iter, ptr};
 
 use libc::{c_char, c_longlong, c_uint};
 use rustc_abi::{Align, Size};
-use rustc_codegen_ssa::debuginfo::type_names::{VTableNameKind, cpp_like_debuginfo};
+use rustc_codegen_ssa::debuginfo::type_names::{cpp_like_debuginfo, VTableNameKind};
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -23,15 +23,15 @@ use smallvec::smallvec;
 use tracing::{debug, instrument};
 
 use self::type_map::{DINodeCreationResult, Stub, UniqueTypeId};
-use super::CodegenUnitDebugContext;
 use super::namespace::mangled_name_of_instance;
 use super::type_names::{compute_debuginfo_type_name, compute_debuginfo_vtable_name};
 use super::utils::{
-    DIB, create_DIArray, debug_context, get_namespace_for_item, is_node_local_to_unit,
+    create_DIArray, debug_context, get_namespace_for_item, is_node_local_to_unit, DIB,
 };
+use super::CodegenUnitDebugContext;
 use crate::common::{AsCCharPtr, CodegenCx};
 use crate::debuginfo::metadata::type_map::build_type_with_children;
-use crate::debuginfo::utils::{WidePtrKind, wide_pointer_kind};
+use crate::debuginfo::utils::{wide_pointer_kind, WidePtrKind};
 use crate::llvm::debuginfo::{
     DIDescriptor, DIFile, DIFlags, DILexicalBlock, DIScope, DIType, DebugEmissionKind,
     DebugNameTableKind,
@@ -74,9 +74,13 @@ const DW_ATE_unsigned: c_uint = 0x07;
 const DW_ATE_UTF: c_uint = 0x10;
 
 #[allow(non_upper_case_globals)]
+const DW_TAG_pointer_type: c_uint = 0xf;
+#[allow(non_upper_case_globals)]
 const DW_TAG_reference_type: c_uint = 0x10;
 #[allow(non_upper_case_globals)]
 const DW_TAG_const_type: c_uint = 0x26;
+#[allow(non_upper_case_globals)]
+const DW_TAG_rvalue_reference_type: c_uint = 0x42;
 
 pub(super) const UNKNOWN_LINE_NUMBER: c_uint = 0;
 pub(super) const UNKNOWN_COLUMN_NUMBER: c_uint = 0;
@@ -185,14 +189,43 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                 "ptr_type={ptr_type}, pointee_type={pointee_type}",
             );
 
-            // Immutable pointers/references will mark the data as `const`. For example:
-            // unsigned char & => &mut u8
-            // const unsigned char & => &u8
-            // unsigned char * => *mut u8
-            // const unsigned char * => *const u8
-            let di_node = match ptr_type.kind() {
-                ty::Ref(_, _, mutability) => unsafe {
-                    let pointee_type_di_node = if mutability.is_not() {
+            let di_node = match (ptr_type.kind(), pointee_type.kind()) {
+                (ty::Ref(_, _, ptr_mut), ty::Ref(_, inner_type, ptee_mut)) => unsafe {
+                    let inner_type_di_node = type_di_node(cx, *inner_type);
+                    let inner_type_di_node = if ptee_mut.is_not() {
+                        llvm::LLVMRustDIBuilderCreateQualifiedType(
+                            DIB(cx),
+                            DW_TAG_const_type,
+                            inner_type_di_node,
+                        )
+                    } else {
+                        inner_type_di_node
+                    };
+
+                    let ptr_wrapper = llvm::LLVMRustDIBuilderCreateReferenceType(
+                        DIB(cx),
+                        DW_TAG_pointer_type,
+                        inner_type_di_node,
+                    );
+
+                    let ptr_wrapper = if ptr_mut.is_not() {
+                        llvm::LLVMRustDIBuilderCreateQualifiedType(
+                            DIB(cx),
+                            DW_TAG_const_type,
+                            ptr_wrapper,
+                        )
+                    } else {
+                        ptr_wrapper
+                    };
+
+                    llvm::LLVMRustDIBuilderCreateReferenceType(
+                        DIB(cx),
+                        DW_TAG_rvalue_reference_type,
+                        ptr_wrapper,
+                    )
+                },
+                (ty::Ref(_, _, ptr_mut), _) => unsafe {
+                    let pointee_type_di_node = if ptr_mut.is_not() {
                         llvm::LLVMRustDIBuilderCreateQualifiedType(
                             DIB(cx),
                             DW_TAG_const_type,
@@ -208,8 +241,8 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                         pointee_type_di_node,
                     )
                 },
-                ty::RawPtr(_, mutability) => unsafe {
-                    let pointee_type_di_node = if mutability.is_not() {
+                (ty::RawPtr(_, ptr_mut), _) => unsafe {
+                    let pointee_type_di_node = if ptr_mut.is_not() {
                         llvm::LLVMRustDIBuilderCreateQualifiedType(
                             DIB(cx),
                             DW_TAG_const_type,
@@ -218,6 +251,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                     } else {
                         pointee_type_di_node
                     };
+
                     llvm::LLVMRustDIBuilderCreatePointerType(
                         DIB(cx),
                         pointee_type_di_node,
@@ -228,7 +262,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                         ptr_type_debuginfo_name.len(),
                     )
                 },
-                ty::Adt(_, _) => unsafe {
+                (ty::Adt(_, _), _) => unsafe {
                     llvm::LLVMRustDIBuilderCreatePointerType(
                         DIB(cx),
                         pointee_type_di_node,
@@ -239,8 +273,90 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                         ptr_type_debuginfo_name.len(),
                     )
                 },
-                _ => unreachable!("Thin pointer not of type ty::RawPtr, ty::Ref, or ty::Adt"),
+                _ => todo!(),
             };
+
+            // Immutable pointers/references will mark the data as `const`. For example:
+            // unsigned char & => &mut u8
+            // const unsigned char & => &u8
+            // unsigned char * => *mut u8
+            // const unsigned char * => *const u8
+            // let di_node = match ptr_type.kind() {
+            //     ty::Ref(_, _, mutability) => unsafe {
+            //         let pointee_type_di_node = if mutability.is_not() {
+            //             llvm::LLVMRustDIBuilderCreateQualifiedType(
+            //                 DIB(cx),
+            //                 DW_TAG_const_type,
+            //                 pointee_type_di_node,
+            //             )
+            //         } else {
+            //             pointee_type_di_node
+            //         };
+
+            //         if let ty::Ref(_, pt_e, _) = pointee_type.kind() {
+            //             let pointee_type_di_node = type_di_node(cx, *pt_e);
+            //             let temp = llvm::LLVMRustDIBuilderCreateReferenceType(
+            //                 DIB(cx),
+            //                 0xf,
+            //                 pointee_type_di_node,
+            //             );
+
+            //             let temp = if mutability.is_not() {
+            //                 llvm::LLVMRustDIBuilderCreateQualifiedType(
+            //                     DIB(cx),
+            //                     DW_TAG_const_type,
+            //                     temp,
+            //                 )
+            //             } else {
+            //                 temp
+            //             };
+
+            //             llvm::LLVMRustDIBuilderCreateReferenceType(
+            //                 DIB(cx),
+            //                 DW_TAG_rvalue_reference_type,
+            //                 temp,
+            //             )
+            //         } else {
+            //             llvm::LLVMRustDIBuilderCreateReferenceType(
+            //                 DIB(cx),
+            //                 DW_TAG_reference_type,
+            //                 pointee_type_di_node,
+            //             )
+            //         }
+            //     },
+            //     ty::RawPtr(_, mutability) => unsafe {
+            //         let pointee_type_di_node = if mutability.is_not() {
+            //             llvm::LLVMRustDIBuilderCreateQualifiedType(
+            //                 DIB(cx),
+            //                 DW_TAG_const_type,
+            //                 pointee_type_di_node,
+            //             )
+            //         } else {
+            //             pointee_type_di_node
+            //         };
+            //         llvm::LLVMRustDIBuilderCreatePointerType(
+            //             DIB(cx),
+            //             pointee_type_di_node,
+            //             data_layout.pointer_size.bits(),
+            //             data_layout.pointer_align.abi.bits() as u32,
+            //             0, // Ignore DWARF address space.
+            //             ptr_type_debuginfo_name.as_c_char_ptr(),
+            //             ptr_type_debuginfo_name.len(),
+            //         )
+            //     },
+            //     ty::Adt(_, _) => unsafe {
+            //         llvm::LLVMRustDIBuilderCreatePointerType(
+            //             DIB(cx),
+            //             pointee_type_di_node,
+            //             data_layout.pointer_size.bits(),
+            //             data_layout.pointer_align.abi.bits() as u32,
+            //             0, // Ignore DWARF address space.
+            //             ptr_type_debuginfo_name.as_c_char_ptr(),
+            //             ptr_type_debuginfo_name.len(),
+            //         )
+            //     },
+            //     _ => unreachable!("Thin pointer not of type ty::RawPtr, ty::Ref, or ty::Adt"),
+            // };
 
             DINodeCreationResult { di_node, already_stored_in_typemap: false }
         }
@@ -923,8 +1039,8 @@ pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
     codegen_unit_name: &str,
     debug_context: &CodegenUnitDebugContext<'ll, 'tcx>,
 ) -> &'ll DIDescriptor {
-    use rustc_session::RemapFileNameExt;
     use rustc_session::config::RemapPathScopeComponents;
+    use rustc_session::RemapFileNameExt;
     let mut name_in_debuginfo = tcx
         .sess
         .local_crate_source_file()
