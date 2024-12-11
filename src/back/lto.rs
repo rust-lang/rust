@@ -41,10 +41,6 @@ use crate::back::write::save_temp_bitcode;
 use crate::errors::{DynamicLinkingWithLTO, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib};
 use crate::{GccCodegenBackend, GccContext, SyncContext, to_gcc_opt_level};
 
-/// We keep track of the computed LTO cache keys from the previous
-/// session to determine which CGUs we can reuse.
-//pub const THIN_LTO_KEYS_INCR_COMP_FILE_NAME: &str = "thin-lto-past-keys.bin";
-
 pub fn crate_type_allows_lto(crate_type: CrateType) -> bool {
     match crate_type {
         CrateType::Executable | CrateType::Dylib | CrateType::Staticlib | CrateType::Cdylib => true,

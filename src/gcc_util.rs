@@ -94,12 +94,12 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
                         };
                         sess.dcx().emit_warn(unknown_feature);
                     }
-                    Some((_, Stability::Stable, _)) => {}
-                    Some((_, Stability::Unstable(_), _)) => {
+                    Some(&(_, Stability::Stable, _)) => {}
+                    Some(&(_, Stability::Unstable(_), _)) => {
                         // An unstable feature. Warn about using it.
                         sess.dcx().emit_warn(UnstableCTargetFeature { feature });
                     }
-                    Some((_, Stability::Forbidden { .. }, _)) => {
+                    Some(&(_, Stability::Forbidden { .. }, _)) => {
                         sess.dcx().emit_err(ForbiddenCTargetFeature { feature });
                     }
                 }

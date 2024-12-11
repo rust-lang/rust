@@ -27,6 +27,8 @@
 // Some "regular" crates we want to share with rustc
 extern crate object;
 extern crate smallvec;
+// FIXME: clippy bug: remove the #[allow] when it's fixed.
+#[allow(unused_extern_crates)]
 extern crate tempfile;
 #[macro_use]
 extern crate tracing;
@@ -485,7 +487,7 @@ pub fn target_features(
     sess.target
         .rust_target_features()
         .iter()
-        .filter(|(_, gate, _)| gate.is_supported())
+        .filter(|&&(_, gate, _)| gate.is_supported())
         .filter_map(|&(feature, gate, _)| {
             if sess.is_nightly_build() || allow_unstable || gate.is_stable() {
                 Some(feature)
