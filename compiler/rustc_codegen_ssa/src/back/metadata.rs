@@ -370,7 +370,7 @@ pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
 /// Mach-O files contain information about:
 /// - The platform/OS they were built for (macOS/watchOS/Mac Catalyst/iOS simulator etc).
 /// - The minimum OS version / deployment target.
-/// - The version of the SDK they were targeting.
+/// - The version of the SDK they were targetting.
 ///
 /// In the past, this was accomplished using the LC_VERSION_MIN_MACOSX, LC_VERSION_MIN_IPHONEOS,
 /// LC_VERSION_MIN_TVOS or LC_VERSION_MIN_WATCHOS load commands, which each contain information
