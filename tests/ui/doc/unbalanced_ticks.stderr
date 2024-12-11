@@ -3,9 +3,7 @@ error: backticks are unbalanced
    |
 LL |   /// This is a doc comment with `unbalanced_tick marks and several words that
    |  _____^
-LL | |
-LL | | /// should be `encompassed_by` tick marks because they `contain_underscores`.
-LL | | /// Because of the initial `unbalanced_tick` pair, the error message is
+...  |
 LL | | /// very `confusing_and_misleading`.
    | |____________________________________^
    |

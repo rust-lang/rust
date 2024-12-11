@@ -13,8 +13,7 @@ error: assignment to temporary
 LL | /     MultiStruct {
 LL | |
 LL | |         structure: Struct { field: 0 },
-LL | |     }
-LL | |     .structure
+...  |
 LL | |     .field = 1;
    | |______________^
 

@@ -43,7 +43,6 @@ LL |       } else {
    |  ____________^
 LL | |         if y == "world" {
 LL | |             println!("world")
-LL | |         }
 ...  |
 LL | |         }
 LL | |     }
@@ -66,7 +65,6 @@ LL |       } else {
    |  ____________^
 LL | |         if let Some(42) = Some(42) {
 LL | |             println!("world")
-LL | |         }
 ...  |
 LL | |         }
 LL | |     }
@@ -89,7 +87,6 @@ LL |       } else {
    |  ____________^
 LL | |         if let Some(42) = Some(42) {
 LL | |             println!("world")
-LL | |         }
 ...  |
 LL | |         }
 LL | |     }
@@ -112,7 +109,6 @@ LL |       } else {
    |  ____________^
 LL | |         if x == "hello" {
 LL | |             println!("world")
-LL | |         }
 ...  |
 LL | |         }
 LL | |     }
@@ -135,7 +131,6 @@ LL |       } else {
    |  ____________^
 LL | |         if let Some(42) = Some(42) {
 LL | |             println!("world")
-LL | |         }
 ...  |
 LL | |         }
 LL | |     }
