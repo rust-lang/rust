@@ -52,6 +52,12 @@ pub fn type_op_ascribe_user_type_with_span<'tcx>(
             relate_mir_and_user_args(ocx, param_env, span, mir_ty, def_id, user_args)?
         }
     };
+
+    // Enforce any bounds that come from impl trait in bindings.
+    ocx.register_obligations(user_ty.bounds.iter().map(|clause| {
+        Obligation::new(ocx.infcx.tcx, ObligationCause::dummy_with_span(span), param_env, clause)
+    }));
+
     Ok(())
 }
 

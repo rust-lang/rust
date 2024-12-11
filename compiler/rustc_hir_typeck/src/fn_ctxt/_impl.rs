@@ -4,11 +4,11 @@ use std::slice;
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey};
-use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{ExprKind, GenericArg, HirId, Node, QPath};
+use rustc_hir::{self as hir, ExprKind, GenericArg, HirId, Node, QPath, intravisit};
 use rustc_hir_analysis::hir_ty_lowering::errors::GenericsArgsErrExtend;
 use rustc_hir_analysis::hir_ty_lowering::generics::{
     check_generic_arg_count_for_call, lower_generic_args,
@@ -460,8 +460,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         LoweredTy::from_raw(self, hir_ty.span, ty)
     }
 
+    /// Walk a `hir_ty` and collect any clauses that may have come from a type
+    /// within the `hir_ty`. These clauses will be canonicalized with a user type
+    /// annotation so that we can enforce these bounds in borrowck, too.
+    pub(crate) fn collect_impl_trait_clauses_from_hir_ty(
+        &self,
+        hir_ty: &'tcx hir::Ty<'tcx>,
+    ) -> ty::Clauses<'tcx> {
+        struct CollectClauses<'a, 'tcx> {
+            clauses: Vec<ty::Clause<'tcx>>,
+            fcx: &'a FnCtxt<'a, 'tcx>,
+        }
+
+        impl<'tcx> intravisit::Visitor<'tcx> for CollectClauses<'_, 'tcx> {
+            fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
+                if let Some(clauses) = self.fcx.trait_ascriptions.borrow().get(&ty.hir_id.local_id)
+                {
+                    self.clauses.extend(clauses.iter().cloned());
+                }
+                intravisit::walk_ty(self, ty)
+            }
+        }
+
+        let mut clauses = CollectClauses { clauses: vec![], fcx: self };
+        clauses.visit_ty(hir_ty);
+        self.tcx.mk_clauses(&clauses.clauses)
+    }
+
     #[instrument(level = "debug", skip_all)]
-    pub(crate) fn lower_ty_saving_user_provided_ty(&self, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
+    pub(crate) fn lower_ty_saving_user_provided_ty(&self, hir_ty: &'tcx hir::Ty<'tcx>) -> Ty<'tcx> {
         let ty = self.lower_ty(hir_ty);
         debug!(?ty);
 

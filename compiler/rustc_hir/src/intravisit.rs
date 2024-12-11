@@ -900,6 +900,9 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) -> V::Resul
         TyKind::OpaqueDef(opaque) => {
             try_visit!(visitor.visit_opaque_ty(opaque));
         }
+        TyKind::TraitAscription(bounds) => {
+            walk_list!(visitor, visit_param_bound, bounds);
+        }
         TyKind::Array(ref ty, ref length) => {
             try_visit!(visitor.visit_ty(ty));
             try_visit!(visitor.visit_const_arg(length));

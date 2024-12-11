@@ -704,11 +704,18 @@ pub type CanonicalUserType<'tcx> = Canonical<'tcx, UserType<'tcx>>;
 #[derive(Eq, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub struct UserType<'tcx> {
     pub kind: UserTypeKind<'tcx>,
+    pub bounds: ty::Clauses<'tcx>,
 }
 
 impl<'tcx> UserType<'tcx> {
     pub fn new(kind: UserTypeKind<'tcx>) -> UserType<'tcx> {
-        UserType { kind }
+        UserType { kind, bounds: ty::ListWithCachedTypeInfo::empty() }
+    }
+
+    /// A user type annotation with additional bounds that need to be enforced.
+    /// These bounds are lowered from `impl Trait` in bindings.
+    pub fn new_with_bounds(kind: UserTypeKind<'tcx>, bounds: ty::Clauses<'tcx>) -> UserType<'tcx> {
+        UserType { kind, bounds }
     }
 }
 
@@ -733,7 +740,9 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
     /// Returns `true` if this represents the generic parameters of the form `[?0, ?1, ?2]`,
     /// i.e., each thing is mapped to a canonical variable with the same index.
     fn is_identity(&self) -> bool {
-        // TODO:
+        if !self.value.bounds.is_empty() {
+            return false;
+        }
 
         match self.value.kind {
             UserTypeKind::Ty(_) => false,
@@ -779,9 +788,13 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
 
 impl<'tcx> std::fmt::Display for UserType<'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // TODO:
-
-        self.kind.fmt(f)
+        if self.bounds.is_empty() {
+            self.kind.fmt(f)
+        } else {
+            self.kind.fmt(f)?;
+            write!(f, " + ")?;
+            std::fmt::Debug::fmt(&self.bounds, f)
+        }
     }
 }
 

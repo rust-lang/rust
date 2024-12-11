@@ -997,7 +997,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             if let ty::UserTypeKind::TypeOf(def, args) = annotation.kind
                 && let DefKind::InlineConst = tcx.def_kind(def)
             {
-                // TODO:
+                assert!(annotation.bounds.is_empty());
                 self.check_inline_const(inferred_ty, def.expect_local(), args, span);
             } else {
                 self.ascribe_user_type(inferred_ty, annotation, span);
