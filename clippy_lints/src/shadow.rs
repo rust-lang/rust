@@ -263,7 +263,7 @@ fn is_self_shadow(cx: &LateContext<'_>, pat: &Pat<'_>, mut expr: &Expr<'_>, hir_
 fn find_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<(&'tcx Expr<'tcx>, Option<HirId>)> {
     for (hir_id, node) in cx.tcx.hir().parent_iter(hir_id) {
         let init = match node {
-            Node::Arm(_) | Node::Pat(_) | Node::Param(_) => continue,
+            Node::Arm(_) | Node::Pat(_) | Node::PatField(_) | Node::Param(_) => continue,
             Node::Expr(expr) => match expr.kind {
                 ExprKind::Match(e, _, _) | ExprKind::Let(&LetExpr { init: e, .. }) => Some((e, None)),
                 // If we're a closure argument, then a parent call is also an associated item.
