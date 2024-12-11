@@ -339,7 +339,7 @@ fn from_clean_item(item: clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum {
             })
         }
         // FIXME(generic_const_items): Add support for generic associated consts.
-        TyAssocConstItem(_generics, ty) => {
+        RequiredAssocConstItem(_generics, ty) => {
             ItemEnum::AssocConst { type_: (*ty).into_json(renderer), value: None }
         }
         // FIXME(generic_const_items): Add support for generic associated consts.

@@ -1081,7 +1081,7 @@ fn render_assoc_item(
         clean::MethodItem(m, _) => {
             assoc_method(w, item, &m.generics, &m.decl, link, parent, cx, render_mode)
         }
-        clean::TyAssocConstItem(generics, ty) => assoc_const(
+        clean::RequiredAssocConstItem(generics, ty) => assoc_const(
             w,
             item,
             generics,
@@ -1689,7 +1689,7 @@ fn render_impl(
                     w.write_str("</h4></section>");
                 }
             }
-            clean::TyAssocConstItem(ref generics, ref ty) => {
+            clean::RequiredAssocConstItem(ref generics, ref ty) => {
                 let source_id = format!("{item_type}.{name}");
                 let id = cx.derive_id(&source_id);
                 write!(w, "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">");
@@ -1812,7 +1812,7 @@ fn render_impl(
                 clean::TyAssocTypeItem(..) | clean::AssocTypeItem(..) => {
                     assoc_types.push(trait_item)
                 }
-                clean::TyAssocConstItem(..) | clean::AssocConstItem(_) => {
+                clean::RequiredAssocConstItem(..) | clean::AssocConstItem(_) => {
                     // We render it directly since they're supposed to come first.
                     doc_impl_item(
                         &mut default_impl_items,

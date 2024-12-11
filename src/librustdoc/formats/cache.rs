@@ -337,7 +337,7 @@ impl DocFolder for CacheBuilder<'_, '_> {
             | clean::TyMethodItem(..)
             | clean::MethodItem(..)
             | clean::StructFieldItem(..)
-            | clean::TyAssocConstItem(..)
+            | clean::RequiredAssocConstItem(..)
             | clean::AssocConstItem(..)
             | clean::TyAssocTypeItem(..)
             | clean::AssocTypeItem(..)
@@ -450,7 +450,7 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
             return;
         }
         clean::TyMethodItem(..)
-        | clean::TyAssocConstItem(..)
+        | clean::RequiredAssocConstItem(..)
         | clean::TyAssocTypeItem(..)
         | clean::StructFieldItem(..)
         | clean::VariantItem(..) => {

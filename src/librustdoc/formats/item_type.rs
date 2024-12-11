@@ -96,7 +96,7 @@ impl<'a> From<&'a clean::Item> for ItemType {
             clean::ForeignStaticItem(..) => ItemType::Static,     // no ForeignStatic
             clean::MacroItem(..) => ItemType::Macro,
             clean::PrimitiveItem(..) => ItemType::Primitive,
-            clean::TyAssocConstItem(..) | clean::AssocConstItem(..) => ItemType::AssocConst,
+            clean::RequiredAssocConstItem(..) | clean::AssocConstItem(..) => ItemType::AssocConst,
             clean::TyAssocTypeItem(..) | clean::AssocTypeItem(..) => ItemType::AssocType,
             clean::ForeignTypeItem => ItemType::ForeignType,
             clean::KeywordItem => ItemType::Keyword,

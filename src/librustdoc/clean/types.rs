@@ -553,8 +553,8 @@ impl Item {
     pub(crate) fn is_associated_const(&self) -> bool {
         matches!(self.kind, AssocConstItem(..) | StrippedItem(box AssocConstItem(..)))
     }
-    pub(crate) fn is_ty_associated_const(&self) -> bool {
-        matches!(self.kind, TyAssocConstItem(..) | StrippedItem(box TyAssocConstItem(..)))
+    pub(crate) fn is_required_associated_const(&self) -> bool {
+        matches!(self.kind, RequiredAssocConstItem(..) | StrippedItem(box RequiredAssocConstItem(..)))
     }
     pub(crate) fn is_method(&self) -> bool {
         self.type_() == ItemType::Method
@@ -701,8 +701,12 @@ impl Item {
             // Variants always inherit visibility
             VariantItem(..) | ImplItem(..) => return None,
             // Trait items inherit the trait's visibility
-            AssocConstItem(..) | TyAssocConstItem(..) | AssocTypeItem(..) | TyAssocTypeItem(..)
-            | TyMethodItem(..) | MethodItem(..) => {
+            AssocConstItem(..)
+            | RequiredAssocConstItem(..)
+            | AssocTypeItem(..)
+            | TyAssocTypeItem(..)
+            | TyMethodItem(..)
+            | MethodItem(..) => {
                 let assoc_item = tcx.associated_item(def_id);
                 let is_trait_item = match assoc_item.container {
                     ty::AssocItemContainer::Trait => true,
@@ -864,7 +868,7 @@ pub(crate) enum ItemKind {
     ProcMacroItem(ProcMacro),
     PrimitiveItem(PrimitiveType),
     /// A required associated constant in a trait declaration.
-    TyAssocConstItem(Generics, Box<Type>),
+    RequiredAssocConstItem(Generics, Box<Type>),
     ConstantItem(Box<Constant>),
     /// An associated constant in a trait impl or a provided one in a trait declaration.
     AssocConstItem(Box<Constant>),
@@ -911,7 +915,7 @@ impl ItemKind {
             | MacroItem(_)
             | ProcMacroItem(_)
             | PrimitiveItem(_)
-            | TyAssocConstItem(..)
+            | RequiredAssocConstItem(..)
             | AssocConstItem(..)
             | TyAssocTypeItem(..)
             | AssocTypeItem(..)

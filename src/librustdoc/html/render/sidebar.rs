@@ -285,7 +285,7 @@ fn sidebar_trait<'a>(
     let req_assoc = filter_items(&t.items, |m| m.is_ty_associated_type(), "associatedtype");
     let prov_assoc = filter_items(&t.items, |m| m.is_associated_type(), "associatedtype");
     let req_assoc_const =
-        filter_items(&t.items, |m| m.is_ty_associated_const(), "associatedconstant");
+        filter_items(&t.items, |m| m.is_required_associated_const(), "associatedconstant");
     let prov_assoc_const =
         filter_items(&t.items, |m| m.is_associated_const(), "associatedconstant");
     let req_method = filter_items(&t.items, |m| m.is_ty_method(), "tymethod");

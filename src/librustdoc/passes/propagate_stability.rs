@@ -69,7 +69,7 @@ impl DocFolder for StabilityPropagator<'_, '_> {
                     ItemKind::ImplItem(..)
                     | ItemKind::TyMethodItem(..)
                     | ItemKind::MethodItem(..)
-                    | ItemKind::TyAssocConstItem(..)
+                    | ItemKind::RequiredAssocConstItem(..)
                     | ItemKind::AssocConstItem(..)
                     | ItemKind::TyAssocTypeItem(..)
                     | ItemKind::AssocTypeItem(..)

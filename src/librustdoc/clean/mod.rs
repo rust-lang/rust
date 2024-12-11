@@ -1229,7 +1229,7 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
             })),
             hir::TraitItemKind::Const(ty, None) => {
                 let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
-                TyAssocConstItem(generics, Box::new(clean_ty(ty, cx)))
+                RequiredAssocConstItem(generics, Box::new(clean_ty(ty, cx)))
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
                 let m = clean_function(cx, sig, trait_item.generics, FunctionArgs::Body(body));
@@ -1331,7 +1331,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                     type_: ty,
                 }))
             } else {
-                TyAssocConstItem(generics, Box::new(ty))
+                RequiredAssocConstItem(generics, Box::new(ty))
             }
         }
         ty::AssocKind::Fn => {
