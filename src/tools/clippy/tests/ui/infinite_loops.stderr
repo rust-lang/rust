@@ -37,7 +37,6 @@ LL | /         loop {
 LL | |
 LL | |             loop {
 ...  |
-LL | |             }
 LL | |         }
    | |_________^
    |
@@ -94,7 +93,6 @@ LL | |
 LL | |         loop {
 LL | |             if cond {
 ...  |
-LL | |         }
 LL | |     }
    | |_____^
    |
@@ -111,7 +109,6 @@ LL | |
 LL | |         'inner: loop {
 LL | |             loop {
 ...  |
-LL | |         }
 LL | |     }
    | |_____^
    |
@@ -142,7 +139,6 @@ LL | |
 LL | |             'inner: loop {
 LL | |                 loop {
 ...  |
-LL | |             }
 LL | |         }
    | |_________^
    |
@@ -159,7 +155,6 @@ LL | |
 LL | |         match opt {
 LL | |             Some(v) => {
 ...  |
-LL | |         }
 LL | |     }
    | |_____^
    |
@@ -276,7 +271,6 @@ LL | |
 LL | |         'inner: loop {
 LL | |             loop {
 ...  |
-LL | |         }
 LL | |     }
    | |_____^
    |

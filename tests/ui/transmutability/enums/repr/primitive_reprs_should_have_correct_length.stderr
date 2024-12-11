@@ -16,7 +16,6 @@ LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -38,7 +37,6 @@ LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -60,7 +58,6 @@ LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -82,7 +79,6 @@ LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -104,7 +100,6 @@ LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -126,7 +121,6 @@ LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -148,7 +142,6 @@ LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -170,7 +163,6 @@ LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -192,7 +184,6 @@ LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -214,7 +205,6 @@ LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -236,7 +226,6 @@ LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -258,7 +247,6 @@ LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -280,7 +268,6 @@ LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -302,7 +289,6 @@ LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -324,7 +310,6 @@ LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -346,7 +331,6 @@ LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -368,7 +352,6 @@ LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -390,7 +373,6 @@ LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -412,7 +394,6 @@ LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 
@@ -434,7 +415,6 @@ LL | |             Assume {
 LL | |                 alignment: true,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_transmutable`
 

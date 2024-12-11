@@ -272,7 +272,6 @@ error: unescaped backtick
    |
 LL | /     /// The Subscriber` may be accessed by calling [`WeakDispatch::upgrade`],
 ...  |
-LL | |     /// [`rebuild_interest_cache`][rebuild] is called after the value of the max
 LL | |     /// level changes.
    | |______________________^
    |
@@ -288,7 +287,6 @@ error: unescaped backtick
    |
 LL | /     /// The Subscriber` may be accessed by calling [`WeakDispatch::upgrade`],
 ...  |
-LL | |     /// [`rebuild_interest_cache`][rebuild] is called after the value of the max
 LL | |     /// level changes.
    | |______________________^
    |
@@ -302,7 +300,6 @@ error: unescaped backtick
    |
 LL | /     /// The Subscriber` may be accessed by calling [`WeakDispatch::upgrade`],
 ...  |
-LL | |     /// [`rebuild_interest_cache`][rebuild] is called after the value of the max
 LL | |     /// level changes.
    | |______________________^
    |
@@ -318,7 +315,6 @@ error: unescaped backtick
    |
 LL | /     /// The Subscriber` may be accessed by calling [`WeakDispatch::upgrade`],
 ...  |
-LL | |     /// [`rebuild_interest_cache`][rebuild] is called after the value of the max
 LL | |     /// level changes.
    | |______________________^
    |

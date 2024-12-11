@@ -3,7 +3,6 @@ error: unknown attribute `standalone`
    |
 11 | / //! ```standalone
 ...  |
-16 | | //! bla
 17 | | //! ```
    | |_______^
    |
@@ -21,7 +20,6 @@ error: unknown attribute `standalone-crate`
    |
 11 | / //! ```standalone
 ...  |
-16 | | //! bla
 17 | | //! ```
    | |_______^
    |

@@ -27,7 +27,6 @@ LL |       async const fn bar(&self) {
    |  _____`async` because of this
    | |
 ...  |
-LL | |
 LL | |     }
    | |_____-
 
@@ -36,7 +35,6 @@ error[E0407]: method `bar` is not a member of trait `MyTrait`
    |
 LL | /     async const fn bar(&self) {
 ...  |
-LL | |
 LL | |     }
    | |_____^ not a member of trait `MyTrait`
 

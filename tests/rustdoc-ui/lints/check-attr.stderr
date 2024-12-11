@@ -3,7 +3,6 @@ error: unknown attribute `compile-fail`
    |
 LL | / /// foo
 ...  |
-LL | | /// boo
 LL | | /// ```
    | |_______^
    |
@@ -20,7 +19,6 @@ error: unknown attribute `compilefail`
    |
 LL | / /// foo
 ...  |
-LL | | /// boo
 LL | | /// ```
    | |_______^
    |
@@ -32,7 +30,6 @@ error: unknown attribute `comPile_fail`
    |
 LL | / /// foo
 ...  |
-LL | | /// boo
 LL | | /// ```
    | |_______^
    |
@@ -44,7 +41,6 @@ error: unknown attribute `should-panic`
    |
 LL | / /// bar
 ...  |
-LL | | /// boo
 LL | | /// ```
    | |_______^
    |
@@ -56,7 +52,6 @@ error: unknown attribute `shouldpanic`
    |
 LL | / /// bar
 ...  |
-LL | | /// boo
 LL | | /// ```
    | |_______^
    |
@@ -68,7 +63,6 @@ error: unknown attribute `sHould_panic`
    |
 LL | / /// bar
 ...  |
-LL | | /// boo
 LL | | /// ```
    | |_______^
    |
@@ -80,7 +74,6 @@ error: unknown attribute `no-run`
    |
 LL | / /// foobar
 ...  |
-LL | | /// boo
 LL | | /// ```
    | |_______^
    |
@@ -92,7 +85,6 @@ error: unknown attribute `norun`
    |
 LL | / /// foobar
 ...  |
-LL | | /// boo
 LL | | /// ```
    | |_______^
    |
@@ -104,7 +96,6 @@ error: unknown attribute `no_Run`
    |
 LL | / /// foobar
 ...  |
-LL | | /// boo
 LL | | /// ```
    | |_______^
    |
@@ -116,7 +107,6 @@ error: unknown attribute `test-harness`
    |
 LL | / /// b
 ...  |
-LL | | /// boo
 LL | | /// ```
    | |_______^
    |
@@ -128,7 +118,6 @@ error: unknown attribute `testharness`
    |
 LL | / /// b
 ...  |
-LL | | /// boo
 LL | | /// ```
    | |_______^
    |
@@ -140,7 +129,6 @@ error: unknown attribute `teSt_harness`
    |
 LL | / /// b
 ...  |
-LL | | /// boo
 LL | | /// ```
    | |_______^
    |
@@ -162,7 +150,6 @@ error: unknown attribute `rust2018`
    |
 LL | / /// b
 ...  |
-LL | | /// boo
 LL | | /// ```
    | |_______^
    |
@@ -173,7 +160,6 @@ error: unknown attribute `shouldpanic`
    |
 LL | / /// b
 ...  |
-LL | | /// boo
 LL | | /// ```
    | |_______^
    |

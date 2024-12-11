@@ -6,7 +6,6 @@ LL | / fn main() {
 LL | |     |_: [_; return || {}]| {};
    | |             ^^^^^^^^^^^^ the return is part of this body...
 ...  |
-LL | |
 LL | | }
    | |_- ...not the enclosing function body
 
@@ -18,7 +17,6 @@ LL | / fn main() {
 LL | |     [(); return || {}];
    | |          ^^^^^^^^^^^^ the return is part of this body...
 ...  |
-LL | |
 LL | | }
    | |_- ...not the enclosing function body
 
@@ -30,7 +28,6 @@ LL | / fn main() {
 LL | |     [(); return |ice| {}];
    | |          ^^^^^^^^^^^^^^^ the return is part of this body...
 ...  |
-LL | |
 LL | | }
    | |_- ...not the enclosing function body
 
@@ -41,8 +38,7 @@ LL | / fn main() {
 ...  |
 LL | |     [(); return while let Some(n) = Some(0) {}];
    | |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the return is part of this body...
-LL | |
-LL | |
+...  |
 LL | | }
    | |_- ...not the enclosing function body
 

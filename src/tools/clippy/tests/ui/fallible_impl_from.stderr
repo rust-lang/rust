@@ -29,7 +29,6 @@ LL | |
 LL | |     fn from(i: usize) -> Invalid {
 LL | |         if i != 42 {
 ...  |
-LL | |     }
 LL | | }
    | |_^
    |
@@ -49,7 +48,6 @@ LL | |
 LL | |     fn from(s: Option<String>) -> Invalid {
 LL | |         let s = s.unwrap();
 ...  |
-LL | |     }
 LL | | }
    | |_^
    |
@@ -76,7 +74,6 @@ LL | |
 LL | |     fn from(s: &'a mut <Box<u32> as ProjStrTrait>::ProjString) -> Invalid {
 LL | |         if s.parse::<u32>().ok().unwrap() != 42 {
 ...  |
-LL | |     }
 LL | | }
    | |_^
    |

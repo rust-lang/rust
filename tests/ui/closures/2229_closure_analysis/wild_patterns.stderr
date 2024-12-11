@@ -33,7 +33,6 @@ error: First Pass analysis includes:
    |
 LL | /     || {
 ...  |
-LL | |
 LL | |     };
    | |_____^
    |
@@ -48,7 +47,6 @@ error: Min Capture analysis includes:
    |
 LL | /     || {
 ...  |
-LL | |
 LL | |     };
    | |_____^
    |
@@ -63,7 +61,6 @@ error: First Pass analysis includes:
    |
 LL | /     || {
 ...  |
-LL | |
 LL | |     };
    | |_____^
    |
@@ -78,7 +75,6 @@ error: Min Capture analysis includes:
    |
 LL | /     || {
 ...  |
-LL | |
 LL | |     };
    | |_____^
    |
@@ -93,7 +89,6 @@ error: First Pass analysis includes:
    |
 LL | /     || {
 ...  |
-LL | |
 LL | |     };
    | |_____^
    |
@@ -108,7 +103,6 @@ error: Min Capture analysis includes:
    |
 LL | /     || {
 ...  |
-LL | |
 LL | |     };
    | |_____^
    |

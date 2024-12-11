@@ -3,7 +3,6 @@ warning: constant evaluation is taking a long time
    |
 LL | /     loop {
 ...  |
-LL | |         }
 LL | |     }
    | |_____^ the const evaluator is currently interpreting this expression
    |
@@ -18,7 +17,6 @@ warning: constant evaluation is taking a long time
    |
 LL | /     loop {
 ...  |
-LL | |         }
 LL | |     }
    | |_____^ the const evaluator is currently interpreting this expression
    |
@@ -33,7 +31,6 @@ warning: constant evaluation is taking a long time
    |
 LL | /     loop {
 ...  |
-LL | |         }
 LL | |     }
    | |_____^ the const evaluator is currently interpreting this expression
    |
@@ -48,7 +45,6 @@ warning: constant evaluation is taking a long time
    |
 LL | /     loop {
 ...  |
-LL | |         }
 LL | |     }
    | |_____^ the const evaluator is currently interpreting this expression
    |
@@ -63,7 +59,6 @@ warning: constant evaluation is taking a long time
    |
 LL | /     loop {
 ...  |
-LL | |         }
 LL | |     }
    | |_____^ the const evaluator is currently interpreting this expression
    |

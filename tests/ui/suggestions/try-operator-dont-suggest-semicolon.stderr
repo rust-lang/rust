@@ -14,7 +14,6 @@ LL | |
 LL | |         x?
    | |         ^^ expected `()`, found integer
 ...  |
-LL | |
 LL | |     }
    | |_____- expected this to be `()`
    |

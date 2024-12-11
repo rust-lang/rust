@@ -3,7 +3,6 @@ error: this loop never actually loops
    |
 LL | /     loop {
 ...  |
-LL | |
 LL | |     }
    | |_____^
    |
@@ -14,7 +13,6 @@ error: this loop could be written as a `while let` loop
    |
 LL | /     loop {
 ...  |
-LL | |
 LL | |     }
    | |_____^ help: try: `while let Some(ele) = iter.next() { .. }`
    |

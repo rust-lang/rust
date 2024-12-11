@@ -311,11 +311,9 @@ LL | |      <Self as SVec>::Item,
 ...  |
 LL | |/     Output = <Index<<Self as SVec>::Item,
 ...  ||
-LL | ||
 LL | ||     Output = <Self as SVec>::Item> as SVec>::Item,
    | ||_________________________________________________^ ...because it uses `Self` as a type parameter
 ...  |
-LL | |
 LL | |  > {
    | |__^ ...because it uses `Self` as a type parameter
 help: consider using an opaque type instead

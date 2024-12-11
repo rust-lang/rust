@@ -55,7 +55,6 @@ LL |   #[inline]
 LL |
 LL | / mod inline {
 ...  |
-LL | |
 LL | | }
    | |_- not a function or closure
 
@@ -70,7 +69,6 @@ LL | |
 LL | |
 LL | |     mod inner { #![no_link] }
 ...  |
-LL | |
 LL | | }
    | |_- not an `extern crate` item
 
@@ -85,7 +83,6 @@ LL | |
 LL | |
 LL | |     mod inner { #![export_name="2200"] }
 ...  |
-LL | |     }
 LL | | }
    | |_- not a free function, impl method or static
 
@@ -99,7 +96,6 @@ LL | / mod repr {
 LL | |
 LL | |     mod inner { #![repr(C)] }
 ...  |
-LL | |
 LL | | }
    | |_- not a struct, enum, or union
 
@@ -113,7 +109,6 @@ LL | / mod repr_rust {
 LL | |
 LL | |     mod inner { #![repr(Rust)] }
 ...  |
-LL | |
 LL | | }
    | |_- not a struct, enum, or union
 

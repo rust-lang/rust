@@ -6,7 +6,6 @@ LL | |
 LL | |
 LL | |         if let Some(_x) = y {
 ...  |
-LL | |         }
 LL | |     }
    | |_____^ help: try: `while let Some(_x) = y { .. }`
    |
@@ -45,7 +44,6 @@ LL | |
 LL | |         let x = match y {
 LL | |             Some(x) => x,
 ...  |
-LL | |         }
 LL | |     }
    | |_____^ help: try: `while let Some(x) = y { .. }`
 

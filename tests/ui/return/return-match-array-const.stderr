@@ -6,7 +6,6 @@ LL | / fn main() {
 LL | |     [(); return match 0 { n => n }];
    | |          ^^^^^^^^^^^^^^^^^^^^^^^^^ the return is part of this body...
 ...  |
-LL | |
 LL | | }
    | |_- ...not the enclosing function body
 
@@ -18,7 +17,6 @@ LL | / fn main() {
 LL | |     [(); return match 0 { 0 => 0 }];
    | |          ^^^^^^^^^^^^^^^^^^^^^^^^^ the return is part of this body...
 ...  |
-LL | |
 LL | | }
    | |_- ...not the enclosing function body
 
@@ -30,7 +28,6 @@ LL | / fn main() {
 LL | |     [(); return match () { 'a' => 0, _ => 0 }];
    | |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the return is part of this body...
 ...  |
-LL | |
 LL | | }
    | |_- ...not the enclosing function body
 

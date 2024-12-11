@@ -6,7 +6,6 @@ LL | |
 LL | |         // checks whether a string represents a number divisible by 3
 LL | |         let i = i_str.parse::<i32>().unwrap();
 ...  |
-LL | |         }
 LL | |     }
    | |_____^
    |

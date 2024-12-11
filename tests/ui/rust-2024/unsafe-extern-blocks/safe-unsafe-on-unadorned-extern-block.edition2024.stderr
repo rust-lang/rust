@@ -5,7 +5,6 @@ LL | / extern "C" {
 LL | |
 LL | |     safe static TEST1: i32;
 ...  |
-LL | |
 LL | | }
    | |_^
 

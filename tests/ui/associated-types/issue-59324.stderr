@@ -19,7 +19,6 @@ LL | |
 LL | |
 LL | |     Service<AssocType = <Bug as Foo>::OnlyFoo>
 ...  |
-LL | |
 LL | | }
    | |_^ the trait `Foo` is not implemented for `Bug`
    |
