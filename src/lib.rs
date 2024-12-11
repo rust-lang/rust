@@ -140,8 +140,16 @@ impl TargetInfo {
         false
     }
 
-    fn supports_128bit_int(&self) -> bool {
-        self.supports_128bit_integers.load(Ordering::SeqCst)
+    fn supports_target_dependent_type(&self, typ: CType) -> bool {
+        match typ {
+            CType::UInt128t | CType::Int128t => {
+                if self.supports_128bit_integers.load(Ordering::SeqCst) {
+                    return true;
+                }
+            }
+            _ => (),
+        }
+        false
     }
 
     fn supports_target_dependent_type(&self, _typ: CType) -> bool {
@@ -163,10 +171,6 @@ impl Debug for LockedTargetInfo {
 impl LockedTargetInfo {
     fn cpu_supports(&self, feature: &str) -> bool {
         self.info.lock().expect("lock").cpu_supports(feature)
-    }
-
-    fn supports_128bit_int(&self) -> bool {
-        self.info.lock().expect("lock").supports_128bit_int()
     }
 
     fn supports_target_dependent_type(&self, typ: CType) -> bool {

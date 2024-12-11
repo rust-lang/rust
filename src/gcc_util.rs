@@ -39,10 +39,10 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
     // Features implied by an implicit or explicit `--target`.
     features.extend(
         sess.target
-            .features
-            .split(',')
-            .filter(|v| !v.is_empty() && backend_feature_name(v).is_some())
-            .map(String::from),
+        .features
+        .split(',')
+        .filter(|v| !v.is_empty() && backend_feature_name(v).is_some())
+        .map(String::from),
     );
 
     // -Ctarget-features
