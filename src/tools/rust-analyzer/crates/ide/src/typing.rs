@@ -15,12 +15,14 @@
 
 mod on_enter;
 
+use std::iter;
+
 use ide_db::{base_db::SourceDatabase, FilePosition, RootDatabase};
-use span::EditionedFileId;
+use span::{Edition, EditionedFileId};
 use syntax::{
     algo::{ancestors_at_offset, find_node_at_offset},
     ast::{self, edit::IndentLevel, AstToken},
-    AstNode, Parse, SourceFile, SyntaxKind, TextRange, TextSize, T,
+    AstNode, Parse, SourceFile, SyntaxKind, TextRange, TextSize,
 };
 
 use ide_db::text_edit::TextEdit;
@@ -30,7 +32,7 @@ use crate::SourceChange;
 pub(crate) use on_enter::on_enter;
 
 // Don't forget to add new trigger characters to `server_capabilities` in `caps.rs`.
-pub(crate) const TRIGGER_CHARS: &str = ".=<>{(";
+pub(crate) const TRIGGER_CHARS: &str = ".=<>{(|";
 
 struct ExtendedTextEdit {
     edit: TextEdit,
@@ -47,6 +49,7 @@ struct ExtendedTextEdit {
 // - typing `.` in a chain method call auto-indents
 // - typing `{` or `(` in front of an expression inserts a closing `}` or `)` after the expression
 // - typing `{` in a use item adds a closing `}` in the right place
+// - typing `>` to complete a return type `->` will insert a whitespace after it
 //
 // VS Code::
 //
@@ -66,54 +69,66 @@ pub(crate) fn on_char_typed(
     if !stdx::always!(TRIGGER_CHARS.contains(char_typed)) {
         return None;
     }
-    let file = &db.parse(EditionedFileId::current_edition(position.file_id));
-    if !stdx::always!(file.tree().syntax().text().char_at(position.offset) == Some(char_typed)) {
+    // FIXME: We need to figure out the edition of the file here, but that means hitting the
+    // database for more than just parsing the file which is bad.
+    // FIXME: We are hitting the database here, if we are unlucky this call might block momentarily
+    // causing the editor to feel sluggish!
+    let edition = Edition::CURRENT_FIXME;
+    let file = &db.parse(EditionedFileId::new(position.file_id, edition));
+    let char_matches_position =
+        file.tree().syntax().text().char_at(position.offset) == Some(char_typed);
+    if !stdx::always!(char_matches_position) {
         return None;
     }
-    let edit = on_char_typed_inner(file, position.offset, char_typed)?;
+
+    let edit = on_char_typed_(file, position.offset, char_typed, edition)?;
+
     let mut sc = SourceChange::from_text_edit(position.file_id, edit.edit);
     sc.is_snippet = edit.is_snippet;
     Some(sc)
 }
 
-fn on_char_typed_inner(
+fn on_char_typed_(
     file: &Parse<SourceFile>,
     offset: TextSize,
     char_typed: char,
+    edition: Edition,
 ) -> Option<ExtendedTextEdit> {
-    if !stdx::always!(TRIGGER_CHARS.contains(char_typed)) {
-        return None;
-    }
-    let conv = |text_edit: Option<TextEdit>| {
-        Some(ExtendedTextEdit { edit: text_edit?, is_snippet: false })
-    };
     match char_typed {
-        '.' => conv(on_dot_typed(&file.tree(), offset)),
-        '=' => conv(on_eq_typed(&file.tree(), offset)),
-        '<' => on_left_angle_typed(&file.tree(), offset),
-        '>' => conv(on_right_angle_typed(&file.tree(), offset)),
-        '{' => conv(on_opening_bracket_typed(file, offset, '{')),
-        '(' => conv(on_opening_bracket_typed(file, offset, '(')),
+        '.' => on_dot_typed(&file.tree(), offset),
+        '=' => on_eq_typed(&file.tree(), offset),
+        '>' => on_right_angle_typed(&file.tree(), offset),
+        '{' | '(' | '<' => on_opening_delimiter_typed(file, offset, char_typed, edition),
+        '|' => on_pipe_typed(&file.tree(), offset),
         _ => None,
     }
+    .map(conv)
 }
 
-/// Inserts a closing bracket when the user types an opening bracket, wrapping an existing expression in a
+fn conv(edit: TextEdit) -> ExtendedTextEdit {
+    ExtendedTextEdit { edit, is_snippet: false }
+}
+
+/// Inserts a closing delimiter when the user types an opening bracket, wrapping an existing expression in a
 /// block, or a part of a `use` item (for `{`).
-fn on_opening_bracket_typed(
+fn on_opening_delimiter_typed(
     file: &Parse<SourceFile>,
     offset: TextSize,
     opening_bracket: char,
+    edition: Edition,
 ) -> Option<TextEdit> {
-    let (closing_bracket, expected_ast_bracket) = match opening_bracket {
-        '{' => ('}', SyntaxKind::L_CURLY),
-        '(' => (')', SyntaxKind::L_PAREN),
+    type FilterFn = fn(SyntaxKind) -> bool;
+    let (closing_bracket, expected_ast_bracket, allowed_kinds) = match opening_bracket {
+        '{' => ('}', SyntaxKind::L_CURLY, &[ast::Expr::can_cast as FilterFn] as &[FilterFn]),
+        '(' => (
+            ')',
+            SyntaxKind::L_PAREN,
+            &[ast::Expr::can_cast as FilterFn, ast::Pat::can_cast, ast::Type::can_cast]
+                as &[FilterFn],
+        ),
+        '<' => ('>', SyntaxKind::L_ANGLE, &[ast::Type::can_cast as FilterFn] as &[FilterFn]),
         _ => return None,
     };
-
-    if !stdx::always!(file.tree().syntax().text().char_at(offset) == Some(opening_bracket)) {
-        return None;
-    }
 
     let brace_token = file.tree().syntax().token_at_offset(offset).right_biased()?;
     if brace_token.kind() != expected_ast_bracket {
@@ -125,58 +140,53 @@ fn on_opening_bracket_typed(
     if !stdx::always!(range.len() == TextSize::of(opening_bracket)) {
         return None;
     }
-    // FIXME: Edition
-    let file = file.reparse(range, "", span::Edition::CURRENT_FIXME);
+    let reparsed = file.reparse(range, "", edition).tree();
 
-    if let Some(edit) = bracket_expr(&file.tree(), offset, opening_bracket, closing_bracket) {
+    if let Some(edit) =
+        on_delimited_node_typed(&reparsed, offset, opening_bracket, closing_bracket, allowed_kinds)
+    {
         return Some(edit);
     }
 
-    if closing_bracket == '}' {
-        if let Some(edit) = brace_use_path(&file.tree(), offset) {
-            return Some(edit);
-        }
+    match opening_bracket {
+        '{' => on_left_brace_typed(&reparsed, offset),
+        '<' => on_left_angle_typed(&file.tree(), &reparsed, offset),
+        _ => None,
+    }
+}
+
+fn on_left_brace_typed(reparsed: &SourceFile, offset: TextSize) -> Option<TextEdit> {
+    let segment: ast::PathSegment = find_node_at_offset(reparsed.syntax(), offset)?;
+    if segment.syntax().text_range().start() != offset {
+        return None;
     }
 
-    return None;
+    let tree: ast::UseTree = find_node_at_offset(reparsed.syntax(), offset)?;
 
-    fn brace_use_path(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
-        let segment: ast::PathSegment = find_node_at_offset(file.syntax(), offset)?;
-        if segment.syntax().text_range().start() != offset {
-            return None;
-        }
+    Some(TextEdit::insert(tree.syntax().text_range().end() + TextSize::of("{"), "}".to_owned()))
+}
 
-        let tree: ast::UseTree = find_node_at_offset(file.syntax(), offset)?;
+fn on_delimited_node_typed(
+    reparsed: &SourceFile,
+    offset: TextSize,
+    opening_bracket: char,
+    closing_bracket: char,
+    kinds: &[fn(SyntaxKind) -> bool],
+) -> Option<TextEdit> {
+    let t = reparsed.syntax().token_at_offset(offset).right_biased()?;
+    let (filter, node) = t
+        .parent_ancestors()
+        .take_while(|n| n.text_range().start() == offset)
+        .find_map(|n| kinds.iter().find(|&kind_filter| kind_filter(n.kind())).zip(Some(n)))?;
+    let mut node = node
+        .ancestors()
+        .take_while(|n| n.text_range().start() == offset && filter(n.kind()))
+        .last()?;
 
-        Some(TextEdit::insert(tree.syntax().text_range().end() + TextSize::of("{"), "}".to_owned()))
-    }
-
-    fn bracket_expr(
-        file: &SourceFile,
-        offset: TextSize,
-        opening_bracket: char,
-        closing_bracket: char,
-    ) -> Option<TextEdit> {
-        let mut expr: ast::Expr = find_node_at_offset(file.syntax(), offset)?;
-        if expr.syntax().text_range().start() != offset {
-            return None;
-        }
-
-        // Enclose the outermost expression starting at `offset`
-        while let Some(parent) = expr.syntax().parent() {
-            if parent.text_range().start() != expr.syntax().text_range().start() {
-                break;
-            }
-
-            match ast::Expr::cast(parent) {
-                Some(parent) => expr = parent,
-                None => break,
-            }
-        }
-
-        if let Some(parent) = expr.syntax().parent().and_then(ast::Expr::cast) {
-            let mut node = expr.syntax().clone();
-            let all_prev_sib_attr = loop {
+    if let Some(parent) = node.parent().filter(|it| filter(it.kind())) {
+        let all_prev_sib_attr = {
+            let mut node = node.clone();
+            loop {
                 match node.prev_sibling() {
                     Some(sib) if sib.kind().is_trivia() || sib.kind() == SyntaxKind::ATTR => {
                         node = sib
@@ -184,26 +194,32 @@ fn on_opening_bracket_typed(
                     Some(_) => break false,
                     None => break true,
                 };
-            };
-
-            if all_prev_sib_attr {
-                expr = parent;
             }
+        };
+
+        if all_prev_sib_attr {
+            node = parent;
         }
-
-        // Insert the closing bracket right after the expression.
-        Some(TextEdit::insert(
-            expr.syntax().text_range().end() + TextSize::of(opening_bracket),
-            closing_bracket.to_string(),
-        ))
     }
-}
 
+    // Insert the closing bracket right after the node.
+    Some(TextEdit::insert(
+        node.text_range().end() + TextSize::of(opening_bracket),
+        closing_bracket.to_string(),
+    ))
+}
 /// Returns an edit which should be applied after `=` was typed. Primarily,
 /// this works when adding `let =`.
 // FIXME: use a snippet completion instead of this hack here.
 fn on_eq_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
-    if !stdx::always!(file.syntax().text().char_at(offset) == Some('=')) {
+    let text = file.syntax().text();
+    let has_newline = iter::successors(Some(offset), |&offset| Some(offset + TextSize::new(1)))
+        .filter_map(|offset| text.char_at(offset))
+        .find(|&c| !c.is_whitespace() || c == '\n')
+        == Some('n');
+    // don't attempt to add `;` if there is a newline after the `=`, the intent is likely to write
+    // out the expression afterwards!
+    if has_newline {
         return None;
     }
 
@@ -289,9 +305,6 @@ fn on_eq_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
 
 /// Returns an edit which should be applied when a dot ('.') is typed on a blank line, indenting the line appropriately.
 fn on_dot_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
-    if !stdx::always!(file.syntax().text().char_at(offset) == Some('.')) {
-        return None;
-    }
     let whitespace =
         file.syntax().token_at_offset(offset).left_biased().and_then(ast::Whitespace::cast)?;
 
@@ -342,14 +355,15 @@ fn on_dot_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
 }
 
 /// Add closing `>` for generic arguments/parameters.
-fn on_left_angle_typed(file: &SourceFile, offset: TextSize) -> Option<ExtendedTextEdit> {
-    let file_text = file.syntax().text();
-    if !stdx::always!(file_text.char_at(offset) == Some('<')) {
-        return None;
-    }
+fn on_left_angle_typed(
+    file: &SourceFile,
+    reparsed: &SourceFile,
+    offset: TextSize,
+) -> Option<TextEdit> {
+    let file_text = reparsed.syntax().text();
 
-    // Find the next non-whitespace char in the line.
-    let mut next_offset = offset + TextSize::of('<');
+    // Find the next non-whitespace char in the line, check if its a `>`
+    let mut next_offset = offset;
     while file_text.char_at(next_offset) == Some(' ') {
         next_offset += TextSize::of(' ')
     }
@@ -357,34 +371,36 @@ fn on_left_angle_typed(file: &SourceFile, offset: TextSize) -> Option<ExtendedTe
         return None;
     }
 
-    let range = TextRange::at(offset, TextSize::of('<'));
-    if let Some(t) = file.syntax().token_at_offset(offset).left_biased() {
-        if T![impl] == t.kind() {
-            return Some(ExtendedTextEdit {
-                edit: TextEdit::replace(range, "<$0>".to_owned()),
-                is_snippet: true,
-            });
-        }
-    }
-
-    if ancestors_at_offset(file.syntax(), offset).any(|n| {
-        ast::GenericParamList::can_cast(n.kind()) || ast::GenericArgList::can_cast(n.kind())
-    }) {
-        Some(ExtendedTextEdit {
-            edit: TextEdit::replace(range, "<$0>".to_owned()),
-            is_snippet: true,
+    if ancestors_at_offset(file.syntax(), offset)
+        .take_while(|n| !ast::Item::can_cast(n.kind()))
+        .any(|n| {
+            ast::GenericParamList::can_cast(n.kind())
+                || ast::GenericArgList::can_cast(n.kind())
+                || ast::UseBoundGenericArgs::can_cast(n.kind())
         })
+    {
+        // Insert the closing bracket right after
+        Some(TextEdit::insert(offset + TextSize::of('<'), '>'.to_string()))
     } else {
         None
     }
 }
 
+fn on_pipe_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
+    let pipe_token = file.syntax().token_at_offset(offset).right_biased()?;
+    if pipe_token.kind() != SyntaxKind::PIPE {
+        return None;
+    }
+    if pipe_token.parent().and_then(ast::ParamList::cast)?.r_paren_token().is_some() {
+        return None;
+    }
+    let after_lpipe = offset + TextSize::of('|');
+    Some(TextEdit::insert(after_lpipe, "|".to_owned()))
+}
+
 /// Adds a space after an arrow when `fn foo() { ... }` is turned into `fn foo() -> { ... }`
 fn on_right_angle_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
     let file_text = file.syntax().text();
-    if !stdx::always!(file_text.char_at(offset) == Some('>')) {
-        return None;
-    }
     let after_arrow = offset + TextSize::of('>');
     if file_text.char_at(after_arrow) != Some('{') {
         return None;
@@ -411,7 +427,7 @@ mod tests {
         let edit = TextEdit::insert(offset, char_typed.to_string());
         edit.apply(&mut before);
         let parse = SourceFile::parse(&before, span::Edition::CURRENT_FIXME);
-        on_char_typed_inner(&parse, offset, char_typed).map(|it| {
+        on_char_typed_(&parse, offset, char_typed, span::Edition::CURRENT_FIXME).map(|it| {
             it.apply(&mut before);
             before.to_string()
         })
@@ -426,7 +442,7 @@ mod tests {
 
     fn type_char_noop(char_typed: char, ra_fixture_before: &str) {
         let file_change = do_type_char(char_typed, ra_fixture_before);
-        assert!(file_change.is_none())
+        assert_eq!(file_change, None)
     }
 
     #[test]
@@ -468,6 +484,15 @@ fn foo() {
 fn foo() {
     let foo =$0
     let bar = 1;
+}
+",
+        );
+        type_char_noop(
+            '=',
+            r"
+fn foo() {
+    let foo =$0
+     1 + 1
 }
 ",
         );
@@ -1067,6 +1092,81 @@ fn f() {
     }
 
     #[test]
+    fn adds_closing_parenthesis_for_pat() {
+        type_char(
+            '(',
+            r#"
+fn f() { match () { $0() => () } }
+"#,
+            r#"
+fn f() { match () { (()) => () } }
+"#,
+        );
+        type_char(
+            '(',
+            r#"
+fn f($0n: ()) {}
+"#,
+            r#"
+fn f((n): ()) {}
+"#,
+        );
+    }
+
+    #[test]
+    fn adds_closing_parenthesis_for_ty() {
+        type_char(
+            '(',
+            r#"
+fn f(n: $0()) {}
+"#,
+            r#"
+fn f(n: (())) {}
+"#,
+        );
+        type_char(
+            '(',
+            r#"
+fn f(n: $0a::b::<d>::c) {}
+"#,
+            r#"
+fn f(n: (a::b::<d>::c)) {}
+"#,
+        );
+    }
+
+    #[test]
+    fn adds_closing_angles_for_ty() {
+        type_char(
+            '<',
+            r#"
+fn f(n: $0()) {}
+"#,
+            r#"
+fn f(n: <()>) {}
+"#,
+        );
+        type_char(
+            '<',
+            r#"
+fn f(n: $0a::b::<d>::c) {}
+"#,
+            r#"
+fn f(n: <a::b::<d>::c>) {}
+"#,
+        );
+        type_char(
+            '<',
+            r#"
+fn f(n: a$0b::<d>::c) {}
+"#,
+            r#"
+fn f(n: a<>b::<d>::c) {}
+"#,
+        );
+    }
+
+    #[test]
     fn parenthesis_noop_in_string_literal() {
         // Regression test for #9351
         type_char_noop(
@@ -1157,6 +1257,12 @@ use $0Thing as _;
 use some::pa$0th::to::Item;
             "#,
         );
+        type_char_noop(
+            '<',
+            r#"
+use some::pa$0th::to::Item;
+            "#,
+        );
     }
 
     #[test]
@@ -1170,7 +1276,7 @@ fn foo() {
             "#,
             r#"
 fn foo() {
-    bar::<$0>
+    bar::<>
 }
             "#,
         );
@@ -1184,7 +1290,7 @@ fn foo(bar: &[u64]) {
             "#,
             r#"
 fn foo(bar: &[u64]) {
-    bar.iter().collect::<$0>();
+    bar.iter().collect::<>();
 }
             "#,
         );
@@ -1198,7 +1304,7 @@ fn foo(bar: &[u64]) {
 fn foo$0() {}
             "#,
             r#"
-fn foo<$0>() {}
+fn foo<>() {}
             "#,
         );
         type_char(
@@ -1207,7 +1313,7 @@ fn foo<$0>() {}
 fn foo$0
             "#,
             r#"
-fn foo<$0>
+fn foo<>
             "#,
         );
         type_char(
@@ -1216,7 +1322,7 @@ fn foo<$0>
 struct Foo$0 {}
             "#,
             r#"
-struct Foo<$0> {}
+struct Foo<> {}
             "#,
         );
         type_char(
@@ -1225,7 +1331,7 @@ struct Foo<$0> {}
 struct Foo$0();
             "#,
             r#"
-struct Foo<$0>();
+struct Foo<>();
             "#,
         );
         type_char(
@@ -1234,7 +1340,7 @@ struct Foo<$0>();
 struct Foo$0
             "#,
             r#"
-struct Foo<$0>
+struct Foo<>
             "#,
         );
         type_char(
@@ -1243,7 +1349,7 @@ struct Foo<$0>
 enum Foo$0
             "#,
             r#"
-enum Foo<$0>
+enum Foo<>
             "#,
         );
         type_char(
@@ -1252,7 +1358,7 @@ enum Foo<$0>
 trait Foo$0
             "#,
             r#"
-trait Foo<$0>
+trait Foo<>
             "#,
         );
         type_char(
@@ -1261,16 +1367,7 @@ trait Foo<$0>
 type Foo$0 = Bar;
             "#,
             r#"
-type Foo<$0> = Bar;
-            "#,
-        );
-        type_char(
-            '<',
-            r#"
-impl$0 Foo {}
-            "#,
-            r#"
-impl<$0> Foo {}
+type Foo<> = Bar;
             "#,
         );
         type_char(
@@ -1279,7 +1376,7 @@ impl<$0> Foo {}
 impl<T> Foo$0 {}
             "#,
             r#"
-impl<T> Foo<$0> {}
+impl<T> Foo<> {}
             "#,
         );
         type_char(
@@ -1288,7 +1385,7 @@ impl<T> Foo<$0> {}
 impl Foo$0 {}
             "#,
             r#"
-impl Foo<$0> {}
+impl Foo<> {}
             "#,
         );
     }
@@ -1434,6 +1531,44 @@ fn foo() {
         field.name().to_string(),
     )
     $0
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn completes_pipe_param_list() {
+        type_char(
+            '|',
+            r#"
+fn foo() {
+    $0
+}
+"#,
+            r#"
+fn foo() {
+    ||
+}
+"#,
+        );
+        type_char(
+            '|',
+            r#"
+fn foo() {
+    $0 a
+}
+"#,
+            r#"
+fn foo() {
+    || a
+}
+"#,
+        );
+        type_char_noop(
+            '|',
+            r#"
+fn foo() {
+    let $0
 }
 "#,
         );

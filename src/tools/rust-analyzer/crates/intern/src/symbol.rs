@@ -77,8 +77,12 @@ impl TaggedArcPtr {
     }
 
     /// Retrieves the tag.
+    ///
+    /// # Safety
+    ///
+    /// You can only drop the `Arc` if the instance is dropped.
     #[inline]
-    pub(crate) fn try_as_arc_owned(self) -> Option<ManuallyDrop<Arc<Box<str>>>> {
+    pub(crate) unsafe fn try_as_arc_owned(self) -> Option<ManuallyDrop<Arc<Box<str>>>> {
         // Unpack the tag from the alignment niche
         let tag = Strict::addr(self.packed.as_ptr()) & Self::BOOL_BITS;
         if tag != 0 {
@@ -245,16 +249,14 @@ impl Symbol {
             }
         }
 
-        ManuallyDrop::into_inner(
-            match shard.raw_entry_mut().from_key_hashed_nocheck::<str>(hash, arc.as_ref()) {
-                RawEntryMut::Occupied(occ) => occ.remove_entry(),
-                RawEntryMut::Vacant(_) => unreachable!(),
-            }
-            .0
-             .0
-            .try_as_arc_owned()
-            .unwrap(),
-        );
+        let ptr = match shard.raw_entry_mut().from_key_hashed_nocheck::<str>(hash, arc.as_ref()) {
+            RawEntryMut::Occupied(occ) => occ.remove_entry(),
+            RawEntryMut::Vacant(_) => unreachable!(),
+        }
+        .0
+         .0;
+        // SAFETY: We're dropping, we have ownership.
+        ManuallyDrop::into_inner(unsafe { ptr.try_as_arc_owned().unwrap() });
         debug_assert_eq!(Arc::count(arc), 1);
 
         // Shrink the backing storage if the shard is less than 50% occupied.
@@ -267,7 +269,8 @@ impl Symbol {
 impl Drop for Symbol {
     #[inline]
     fn drop(&mut self) {
-        let Some(arc) = self.repr.try_as_arc_owned() else {
+        // SAFETY: We're dropping, we have ownership.
+        let Some(arc) = (unsafe { self.repr.try_as_arc_owned() }) else {
             return;
         };
         // When the last `Ref` is dropped, remove the object from the global map.
@@ -288,7 +291,8 @@ impl Clone for Symbol {
 }
 
 fn increase_arc_refcount(repr: TaggedArcPtr) -> TaggedArcPtr {
-    let Some(arc) = repr.try_as_arc_owned() else {
+    // SAFETY: We're not dropping the `Arc`.
+    let Some(arc) = (unsafe { repr.try_as_arc_owned() }) else {
         return repr;
     };
     // increase the ref count

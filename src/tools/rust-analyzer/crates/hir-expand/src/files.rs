@@ -180,6 +180,13 @@ impl<FileId: FileIdToSyntax, T> InFileWrapper<FileId, T> {
     }
 }
 
+#[allow(private_bounds)]
+impl<FileId: FileIdToSyntax, N: AstNode> InFileWrapper<FileId, AstPtr<N>> {
+    pub fn to_node(&self, db: &dyn ExpandDatabase) -> N {
+        self.value.to_node(&self.file_syntax(db))
+    }
+}
+
 impl<FileId: Copy, N: AstNode> InFileWrapper<FileId, N> {
     pub fn syntax(&self) -> InFileWrapper<FileId, &SyntaxNode> {
         self.with_value(self.value.syntax())

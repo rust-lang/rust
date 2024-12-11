@@ -402,7 +402,7 @@ pub fn join_paths(paths: impl IntoIterator<Item = ast::Path>) -> ast::Path {
 
 // FIXME: should not be pub
 pub fn path_from_text(text: &str) -> ast::Path {
-    ast_from_text(&format!("fn main() {{ let test = {text}; }}"))
+    ast_from_text(&format!("fn main() {{ let test: {text}; }}"))
 }
 
 pub fn use_tree_glob() -> ast::UseTree {
@@ -1053,7 +1053,17 @@ pub fn variant_list(variants: impl IntoIterator<Item = ast::Variant>) -> ast::Va
     ast_from_text(&format!("enum f {{ {variants} }}"))
 }
 
-pub fn variant(name: ast::Name, field_list: Option<ast::FieldList>) -> ast::Variant {
+pub fn variant(
+    visibility: Option<ast::Visibility>,
+    name: ast::Name,
+    field_list: Option<ast::FieldList>,
+    discriminant: Option<ast::Expr>,
+) -> ast::Variant {
+    let visibility = match visibility {
+        None => String::new(),
+        Some(it) => format!("{it} "),
+    };
+
     let field_list = match field_list {
         None => String::new(),
         Some(it) => match it {
@@ -1061,7 +1071,12 @@ pub fn variant(name: ast::Name, field_list: Option<ast::FieldList>) -> ast::Vari
             ast::FieldList::TupleFieldList(tuple) => format!("{tuple}"),
         },
     };
-    ast_from_text(&format!("enum f {{ {name}{field_list} }}"))
+
+    let discriminant = match discriminant {
+        Some(it) => format!(" = {it}"),
+        None => String::new(),
+    };
+    ast_from_text(&format!("enum f {{ {visibility}{name}{field_list}{discriminant} }}"))
 }
 
 pub fn fn_(
@@ -1122,6 +1137,8 @@ pub fn struct_(
 pub fn enum_(
     visibility: Option<ast::Visibility>,
     enum_name: ast::Name,
+    generic_param_list: Option<ast::GenericParamList>,
+    where_clause: Option<ast::WhereClause>,
     variant_list: ast::VariantList,
 ) -> ast::Enum {
     let visibility = match visibility {
@@ -1129,7 +1146,12 @@ pub fn enum_(
         Some(it) => format!("{it} "),
     };
 
-    ast_from_text(&format!("{visibility}enum {enum_name} {variant_list}"))
+    let generic_params = generic_param_list.map(|it| it.to_string()).unwrap_or_default();
+    let where_clause = where_clause.map(|it| format!(" {it}")).unwrap_or_default();
+
+    ast_from_text(&format!(
+        "{visibility}enum {enum_name}{generic_params}{where_clause} {variant_list}"
+    ))
 }
 
 pub fn attr_outer(meta: ast::Meta) -> ast::Attr {

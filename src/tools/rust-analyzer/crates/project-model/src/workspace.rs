@@ -747,17 +747,14 @@ impl ProjectWorkspace {
         let _p = tracing::info_span!("ProjectWorkspace::to_crate_graph").entered();
 
         let Self { kind, sysroot, cfg_overrides, rustc_cfg, .. } = self;
-        let ((mut crate_graph, proc_macros), sysroot) = match kind {
-            ProjectWorkspaceKind::Json(project) => (
-                project_json_to_crate_graph(
-                    rustc_cfg.clone(),
-                    load,
-                    project,
-                    sysroot,
-                    extra_env,
-                    cfg_overrides,
-                ),
+        let (crate_graph, proc_macros) = match kind {
+            ProjectWorkspaceKind::Json(project) => project_json_to_crate_graph(
+                rustc_cfg.clone(),
+                load,
+                project,
                 sysroot,
+                extra_env,
+                cfg_overrides,
             ),
             ProjectWorkspaceKind::Cargo {
                 cargo,
@@ -766,20 +763,17 @@ impl ProjectWorkspace {
                 cargo_config_extra_env: _,
                 error: _,
                 set_test,
-            } => (
-                cargo_to_crate_graph(
-                    load,
-                    rustc.as_ref().map(|a| a.as_ref()).ok(),
-                    cargo,
-                    sysroot,
-                    rustc_cfg.clone(),
-                    cfg_overrides,
-                    build_scripts,
-                    *set_test,
-                ),
+            } => cargo_to_crate_graph(
+                load,
+                rustc.as_ref().map(|a| a.as_ref()).ok(),
+                cargo,
                 sysroot,
+                rustc_cfg.clone(),
+                cfg_overrides,
+                build_scripts,
+                *set_test,
             ),
-            ProjectWorkspaceKind::DetachedFile { file, cargo: cargo_script, set_test, .. } => (
+            ProjectWorkspaceKind::DetachedFile { file, cargo: cargo_script, set_test, .. } => {
                 if let Some((cargo, build_scripts, _)) = cargo_script {
                     cargo_to_crate_graph(
                         &mut |path| load(path),
@@ -800,16 +794,10 @@ impl ProjectWorkspace {
                         cfg_overrides,
                         *set_test,
                     )
-                },
-                sysroot,
-            ),
+                }
+            }
         };
 
-        if matches!(sysroot.mode(), SysrootMode::Stitched(_)) && crate_graph.patch_cfg_if() {
-            debug!("Patched std to depend on cfg-if")
-        } else {
-            debug!("Did not patch std to depend on cfg-if")
-        }
         (crate_graph, proc_macros)
     }
 

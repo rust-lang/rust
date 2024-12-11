@@ -41,7 +41,15 @@ pub(super) fn fn_hints(
         fd,
         config,
         file_id,
-        param_list,
+        param_list.params().filter_map(|it| {
+            Some((
+                it.pat().and_then(|it| match it {
+                    ast::Pat::IdentPat(p) => p.name(),
+                    _ => None,
+                }),
+                it.ty()?,
+            ))
+        }),
         generic_param_list,
         ret_type,
         self_param,
@@ -90,7 +98,15 @@ pub(super) fn fn_ptr_hints(
         fd,
         config,
         file_id,
-        param_list,
+        param_list.params().filter_map(|it| {
+            Some((
+                it.pat().and_then(|it| match it {
+                    ast::Pat::IdentPat(p) => p.name(),
+                    _ => None,
+                }),
+                it.ty()?,
+            ))
+        }),
         generic_param_list,
         ret_type,
         None,
@@ -148,7 +164,7 @@ pub(super) fn fn_path_hints(
         fd,
         config,
         file_id,
-        param_list,
+        param_list.type_args().filter_map(|it| Some((None, it.ty()?))),
         generic_param_list,
         ret_type,
         None,
@@ -177,8 +193,8 @@ pub(super) fn fn_path_hints(
     )
 }
 
-fn path_as_fn(path: &ast::Path) -> Option<(ast::ParamList, Option<ast::RetType>)> {
-    path.segment().and_then(|it| it.param_list().zip(Some(it.ret_type())))
+fn path_as_fn(path: &ast::Path) -> Option<(ast::ParenthesizedArgList, Option<ast::RetType>)> {
+    path.segment().and_then(|it| it.parenthesized_arg_list().zip(Some(it.ret_type())))
 }
 
 fn hints_(
@@ -187,7 +203,7 @@ fn hints_(
     FamousDefs(_, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
     _file_id: EditionedFileId,
-    param_list: ast::ParamList,
+    params: impl Iterator<Item = (Option<ast::Name>, ast::Type)>,
     generic_param_list: Option<ast::GenericParamList>,
     ret_type: Option<ast::RetType>,
     self_param: Option<ast::SelfParam>,
@@ -217,45 +233,34 @@ fn hints_(
             let is_elided = is_elided(&lifetime);
             acc.push((None, self_param.amp_token(), lifetime, is_elided));
         }
-        param_list
-            .params()
-            .filter_map(|it| {
-                Some((
-                    it.pat().and_then(|it| match it {
-                        ast::Pat::IdentPat(p) => p.name(),
-                        _ => None,
-                    }),
-                    it.ty()?,
-                ))
-            })
-            .for_each(|(name, ty)| {
-                // FIXME: check path types
-                walk_ty(&ty, &mut |ty| match ty {
-                    ast::Type::RefType(r) => {
-                        let lifetime = r.lifetime();
-                        let is_elided = is_elided(&lifetime);
-                        acc.push((name.clone(), r.amp_token(), lifetime, is_elided));
-                        false
-                    }
-                    ast::Type::FnPtrType(_) => {
+        params.for_each(|(name, ty)| {
+            // FIXME: check path types
+            walk_ty(&ty, &mut |ty| match ty {
+                ast::Type::RefType(r) => {
+                    let lifetime = r.lifetime();
+                    let is_elided = is_elided(&lifetime);
+                    acc.push((name.clone(), r.amp_token(), lifetime, is_elided));
+                    false
+                }
+                ast::Type::FnPtrType(_) => {
+                    is_trivial = false;
+                    true
+                }
+                ast::Type::PathType(t) => {
+                    if t.path()
+                        .and_then(|it| it.segment())
+                        .and_then(|it| it.parenthesized_arg_list())
+                        .is_some()
+                    {
                         is_trivial = false;
                         true
+                    } else {
+                        false
                     }
-                    ast::Type::PathType(t) => {
-                        if t.path()
-                            .and_then(|it| it.segment())
-                            .and_then(|it| it.param_list())
-                            .is_some()
-                        {
-                            is_trivial = false;
-                            true
-                        } else {
-                            false
-                        }
-                    }
-                    _ => false,
-                })
-            });
+                }
+                _ => false,
+            })
+        });
         acc
     };
 
@@ -339,7 +344,10 @@ fn hints_(
                     true
                 }
                 ast::Type::PathType(t) => {
-                    if t.path().and_then(|it| it.segment()).and_then(|it| it.param_list()).is_some()
+                    if t.path()
+                        .and_then(|it| it.segment())
+                        .and_then(|it| it.parenthesized_arg_list())
+                        .is_some()
                     {
                         is_trivial = false;
                         true

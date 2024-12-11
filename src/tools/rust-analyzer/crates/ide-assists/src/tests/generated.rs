@@ -1392,7 +1392,7 @@ pub fn add(a: i32, b: i32) -> i32 { a + b }
 /// # Examples
 ///
 /// ```
-/// use test::add;
+/// use ra_test_fixture::add;
 ///
 /// assert_eq!(add(a, b), );
 /// ```

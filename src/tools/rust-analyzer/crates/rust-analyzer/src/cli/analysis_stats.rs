@@ -13,8 +13,9 @@ use hir::{
     ModuleDef, Name,
 };
 use hir_def::{
-    body::{BodySourceMap, SyntheticSyntax},
+    body::BodySourceMap,
     hir::{ExprId, PatId},
+    SyntheticSyntax,
 };
 use hir_ty::{Interner, Substitution, TyExt, TypeFlags};
 use ide::{

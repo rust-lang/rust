@@ -21,6 +21,30 @@ SOURCE_FILE
                     IDENT "x"
             DOT "."
             NAME_REF
+              SELF_KW "self"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          FIELD_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "x"
+            DOT "."
+            NAME_REF
+              SELF_TYPE_KW "Self"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          FIELD_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "x"
+            DOT "."
+            NAME_REF
               IDENT "foo"
           SEMICOLON ";"
         WHITESPACE "\n    "

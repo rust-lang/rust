@@ -7,8 +7,8 @@ mod tests;
 use std::{iter, ops::ControlFlow};
 
 use hir::{
-    HasAttrs, Local, ModuleSource, Name, PathResolution, ScopeDef, Semantics, SemanticsScope, Type,
-    TypeInfo,
+    HasAttrs, Local, ModuleSource, Name, PathResolution, ScopeDef, Semantics, SemanticsScope,
+    Symbol, Type, TypeInfo,
 };
 use ide_db::{
     base_db::SourceDatabase, famous_defs::FamousDefs, helpers::is_editable_crate, FilePosition,
@@ -133,6 +133,7 @@ pub(crate) type ExistingDerives = FxHashSet<hir::Macro>;
 pub(crate) struct AttrCtx {
     pub(crate) kind: AttrKind,
     pub(crate) annotated_item_kind: Option<SyntaxKind>,
+    pub(crate) derive_helpers: Vec<(Symbol, Symbol)>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -289,15 +290,14 @@ pub(crate) struct ParamContext {
 /// The state of the lifetime we are completing.
 #[derive(Debug)]
 pub(crate) struct LifetimeContext {
-    pub(crate) lifetime: Option<ast::Lifetime>,
     pub(crate) kind: LifetimeKind,
 }
 
 /// The kind of lifetime we are completing.
 #[derive(Debug)]
 pub(crate) enum LifetimeKind {
-    LifetimeParam { is_decl: bool, param: ast::LifetimeParam },
-    Lifetime,
+    LifetimeParam,
+    Lifetime { in_lifetime_param_bound: bool, def: Option<hir::GenericDef> },
     LabelRef,
     LabelDef,
 }
