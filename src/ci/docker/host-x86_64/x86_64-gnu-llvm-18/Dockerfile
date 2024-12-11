@@ -60,5 +60,7 @@ COPY host-x86_64/dist-x86_64-linux/build-gccjit.sh /scripts/
 RUN /scripts/build-gccjit.sh /scripts
 
 ARG SCRIPT_ARG
-COPY scripts/${SCRIPT_ARG} /tmp/script.sh
-ENV SCRIPT /tmp/script.sh
+COPY scripts/x86_64-gnu-llvm.sh /tmp/x86_64-gnu-llvm.sh
+COPY scripts/x86_64-gnu-llvm1.sh /tmp/x86_64-gnu-llvm1.sh
+COPY scripts/x86_64-gnu-llvm2.sh /tmp/x86_64-gnu-llvm2.sh
+ENV SCRIPT /tmp/${SCRIPT_ARG}
