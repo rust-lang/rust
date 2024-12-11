@@ -1091,7 +1091,7 @@ fn render_assoc_item(
             if parent == ItemType::Trait { 4 } else { 0 },
             cx,
         ),
-        clean::AssocConstItem(ci) => assoc_const(
+        clean::ProvidedAssocConstItem(ci) | clean::ImplAssocConstItem(ci) => assoc_const(
             w,
             item,
             &ci.generics,
@@ -1711,7 +1711,7 @@ fn render_impl(
                 );
                 w.write_str("</h4></section>");
             }
-            clean::AssocConstItem(ci) => {
+            clean::ProvidedAssocConstItem(ci) | clean::ImplAssocConstItem(ci) => {
                 let source_id = format!("{item_type}.{name}");
                 let id = cx.derive_id(&source_id);
                 write!(w, "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">");
@@ -1812,7 +1812,9 @@ fn render_impl(
                 clean::TyAssocTypeItem(..) | clean::AssocTypeItem(..) => {
                     assoc_types.push(trait_item)
                 }
-                clean::RequiredAssocConstItem(..) | clean::AssocConstItem(_) => {
+                clean::RequiredAssocConstItem(..)
+                | clean::ProvidedAssocConstItem(_)
+                | clean::ImplAssocConstItem(_) => {
                     // We render it directly since they're supposed to come first.
                     doc_impl_item(
                         &mut default_impl_items,

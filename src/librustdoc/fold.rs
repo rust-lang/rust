@@ -92,7 +92,8 @@ pub(crate) trait DocFolder: Sized {
             | ProcMacroItem(_)
             | PrimitiveItem(_)
             | RequiredAssocConstItem(..)
-            | AssocConstItem(..)
+            | ProvidedAssocConstItem(..)
+            | ImplAssocConstItem(..)
             | TyAssocTypeItem(..)
             | AssocTypeItem(..)
             | KeywordItem => kind,

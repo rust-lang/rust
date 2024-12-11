@@ -79,7 +79,10 @@ impl DocFolder for Stripper<'_, '_> {
                 }
             }
 
-            clean::MethodItem(..) | clean::AssocConstItem(..) | clean::AssocTypeItem(..) => {
+            clean::MethodItem(..)
+            | clean::ProvidedAssocConstItem(..)
+            | clean::ImplAssocConstItem(..)
+            | clean::AssocTypeItem(..) => {
                 let item_id = i.item_id;
                 if item_id.is_local()
                     && !self.effective_visibilities.is_reachable(self.tcx, item_id.expect_def_id())
