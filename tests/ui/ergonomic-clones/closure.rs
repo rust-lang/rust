@@ -3,6 +3,9 @@
 
 #![feature(ergonomic_clones)]
 
+use std::clone::UseCloned;
+use std::future::Future;
+
 fn ergonomic_clone_closure_no_captures() -> i32 {
     let cl = use || {
         1
@@ -10,7 +13,7 @@ fn ergonomic_clone_closure_no_captures() -> i32 {
     cl()
 }
 
-fn ergonomic_clone_closure_with_captures() -> String {
+fn ergonomic_clone_closure_move() -> String {
     let s = String::from("hi");
 
     let cl = use || {
@@ -19,14 +22,31 @@ fn ergonomic_clone_closure_with_captures() -> String {
     cl()
 }
 
-fn ergonomic_clone_async_closures() -> String {
+#[derive(Clone)]
+struct Foo;
+
+impl UseCloned for Foo {}
+
+fn ergonomic_clone_closure_use_cloned() -> Foo {
+    let f = Foo;
+
+    let f1 = use || {
+        f
+    };
+
+    let f2 = use || {
+        f
+    };
+
+    f
+}
+
+fn ergonomic_clone_async_closures() -> impl Future<Output = String> {
     let s = String::from("hi");
 
     async use {
         s
-    };
-
-    s
+    }
 }
 
 fn main() {}
