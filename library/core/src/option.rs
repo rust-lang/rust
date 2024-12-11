@@ -2050,6 +2050,9 @@ where
     }
 }
 
+#[unstable(feature = "ergonomic_clones", issue = "132290")]
+impl<T> crate::clone::UseCloned for Option<T> where T: crate::clone::UseCloned {}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for Option<T> {
     /// Returns [`None`][Option::None].
