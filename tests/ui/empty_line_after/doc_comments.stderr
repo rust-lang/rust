@@ -97,7 +97,6 @@ error: empty lines after doc comment
    |
 LL | /     /// for OldA
 ...  |
-LL | |     // struct OldB;
 LL | |
    | |_^
 ...

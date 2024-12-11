@@ -45,7 +45,6 @@ LL | / enum Food {
 LL | |
 LL | |     FoodGood,
 ...  |
-LL | |
 LL | | }
    | |_^
    |

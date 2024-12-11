@@ -44,7 +44,6 @@ LL | |         if {
 LL | |             if s == "43" {
 LL | |                 return Some(43);
 ...  |
-LL | |         }
 LL | |     });
    | |______^
    |
