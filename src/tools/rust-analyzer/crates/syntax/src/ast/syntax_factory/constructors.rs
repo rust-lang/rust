@@ -66,26 +66,39 @@ impl SyntaxFactory {
         tail_expr: Option<ast::Expr>,
     ) -> ast::BlockExpr {
         let stmts = stmts.into_iter().collect_vec();
-        let input = stmts.iter().map(|it| it.syntax().clone()).collect_vec();
+        let mut input = stmts.iter().map(|it| it.syntax().clone()).collect_vec();
 
         let ast = make::block_expr(stmts, tail_expr.clone()).clone_for_update();
 
-        if let Some((mut mapping, stmt_list)) = self.mappings().zip(ast.stmt_list()) {
+        if let Some(mut mapping) = self.mappings() {
+            let stmt_list = ast.stmt_list().unwrap();
             let mut builder = SyntaxMappingBuilder::new(stmt_list.syntax().clone());
+
+            if let Some(input) = tail_expr {
+                builder.map_node(
+                    input.syntax().clone(),
+                    stmt_list.tail_expr().unwrap().syntax().clone(),
+                );
+            } else if let Some(ast_tail) = stmt_list.tail_expr() {
+                // The parser interpreted the last statement (probably a statement with a block) as an Expr
+                let last_stmt = input.pop().unwrap();
+
+                builder.map_node(last_stmt, ast_tail.syntax().clone());
+            }
 
             builder.map_children(
                 input.into_iter(),
                 stmt_list.statements().map(|it| it.syntax().clone()),
             );
 
-            if let Some((input, output)) = tail_expr.zip(stmt_list.tail_expr()) {
-                builder.map_node(input.syntax().clone(), output.syntax().clone());
-            }
-
             builder.finish(&mut mapping);
         }
 
         ast
+    }
+
+    pub fn expr_empty_block(&self) -> ast::BlockExpr {
+        ast::BlockExpr { syntax: make::expr_empty_block().syntax().clone_for_update() }
     }
 
     pub fn expr_bin(&self, lhs: ast::Expr, op: ast::BinaryOp, rhs: ast::Expr) -> ast::BinExpr {
@@ -132,6 +145,22 @@ impl SyntaxFactory {
         }
 
         ast.into()
+    }
+
+    pub fn expr_return(&self, expr: Option<ast::Expr>) -> ast::ReturnExpr {
+        let ast::Expr::ReturnExpr(ast) = make::expr_return(expr.clone()).clone_for_update() else {
+            unreachable!()
+        };
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            if let Some(input) = expr {
+                builder.map_node(input.syntax().clone(), ast.expr().unwrap().syntax().clone());
+            }
+            builder.finish(&mut mapping);
+        }
+
+        ast
     }
 
     pub fn let_stmt(
