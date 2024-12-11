@@ -564,7 +564,7 @@ use crate::{cmp, convert, hint, mem, slice};
 
 /// The `Option` type. See [the module level documentation](self) for more.
 #[doc(search_unbox)]
-#[derive(Copy, Eq, Debug, Hash)]
+#[derive(Copy, Eq, Debug, Hash, Default)]
 #[rustc_diagnostic_item = "Option"]
 #[lang = "Option"]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -573,6 +573,7 @@ pub enum Option<T> {
     /// No value.
     #[lang = "None"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[default]
     None,
     /// Some value of type `T`.
     #[lang = "Some"]
@@ -2041,22 +2042,6 @@ where
             (Some(to), Some(from)) => to.clone_from(from),
             (to, from) => *to = from.clone(),
         }
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Default for Option<T> {
-    /// Returns [`None`][Option::None].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let opt: Option<u32> = Option::default();
-    /// assert!(opt.is_none());
-    /// ```
-    #[inline]
-    fn default() -> Option<T> {
-        None
     }
 }
 
