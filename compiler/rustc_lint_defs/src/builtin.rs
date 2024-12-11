@@ -4480,7 +4480,7 @@ declare_lint! {
 
 declare_lint! {
     /// The `refining_impl_trait_reachable` lint detects `impl Trait` return
-    /// types in method signatures that are refined by a publicly reachable
+    /// types in method signatures that are refined by a publically reachable
     /// trait implementation, meaning the implementation adds information about
     /// the return type that is not present in the trait.
     ///
