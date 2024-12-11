@@ -155,9 +155,6 @@ use crate::collections::TryReserveError;
 use crate::slice;
 use crate::vec::{self, AsVecIntoIter, Vec};
 
-#[cfg(test)]
-mod tests;
-
 /// A priority queue implemented with a binary heap.
 ///
 /// This will be a max-heap.
