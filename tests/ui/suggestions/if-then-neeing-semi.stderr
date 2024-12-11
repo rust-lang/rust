@@ -6,8 +6,7 @@ LL |       let _ = if true {
 LL | |
 LL | |         async_dummy();
    | |         -------------- expected because of this
-LL | |
-LL | |     } else {
+...  |
 LL | |         async_dummy()
    | |         ^^^^^^^^^^^^^ expected `()`, found future
 ...  |
@@ -38,8 +37,7 @@ LL |       let _ = if true {
 LL | |
 LL | |         async_dummy();
    | |         -------------- expected because of this
-LL | |
-LL | |     } else {
+...  |
 LL | |         async_dummy2()
    | |         ^^^^^^^^^^^^^^ expected `()`, found future
 ...  |
@@ -72,8 +70,7 @@ LL |       let _ = if true {
 LL | |
 LL | |         async_dummy()
    | |         ------------- expected because of this
-LL | |
-LL | |     } else {
+...  |
 LL | |         async_dummy2()
    | |         ^^^^^^^^^^^^^^ expected future, found a different future
 LL | |
@@ -101,8 +98,7 @@ LL | |         dummy();
    | |         |      |
    | |         |      help: consider removing this semicolon
    | |         expected because of this
-LL | |
-LL | |     } else {
+...  |
 LL | |         dummy()
    | |         ^^^^^^^ expected `()`, found `i32`
 LL | |

@@ -23,9 +23,6 @@ error: First Pass analysis includes:
    |
 LL |       let x = #[rustc_capture_analysis] move || {
    |  _______________________________________^
-LL | |
-LL | |
-LL | |
 ...  |
 LL | |
 LL | |     };
@@ -42,9 +39,6 @@ error: Min Capture analysis includes:
    |
 LL |       let x = #[rustc_capture_analysis] move || {
    |  _______________________________________^
-LL | |
-LL | |
-LL | |
 ...  |
 LL | |
 LL | |     };
@@ -61,9 +55,6 @@ error: First Pass analysis includes:
    |
 LL |       let c = #[rustc_capture_analysis] move || {
    |  _______________________________________^
-LL | |
-LL | |
-LL | |
 ...  |
 LL | |
 LL | |     };
@@ -80,9 +71,6 @@ error: Min Capture analysis includes:
    |
 LL |       let c = #[rustc_capture_analysis] move || {
    |  _______________________________________^
-LL | |
-LL | |
-LL | |
 ...  |
 LL | |
 LL | |     };

@@ -26,9 +26,6 @@ LL |       async const fn bar(&self) {
    |       |
    |  _____`async` because of this
    | |
-LL | |
-LL | |
-LL | |
 ...  |
 LL | |
 LL | |     }
@@ -38,9 +35,6 @@ error[E0407]: method `bar` is not a member of trait `MyTrait`
   --> $DIR/ice-120503-async-const-method.rs:6:5
    |
 LL | /     async const fn bar(&self) {
-LL | |
-LL | |
-LL | |
 ...  |
 LL | |
 LL | |     }

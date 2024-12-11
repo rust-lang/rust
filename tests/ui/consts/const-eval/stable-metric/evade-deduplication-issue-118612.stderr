@@ -2,9 +2,6 @@ warning: constant evaluation is taking a long time
   --> $DIR/evade-deduplication-issue-118612.rs:8:5
    |
 LL | /     loop {
-LL | |
-LL | |
-LL | |
 ...  |
 LL | |         }
 LL | |     }
@@ -20,9 +17,6 @@ warning: constant evaluation is taking a long time
   --> $DIR/evade-deduplication-issue-118612.rs:8:5
    |
 LL | /     loop {
-LL | |
-LL | |
-LL | |
 ...  |
 LL | |         }
 LL | |     }
@@ -38,9 +32,6 @@ warning: constant evaluation is taking a long time
   --> $DIR/evade-deduplication-issue-118612.rs:8:5
    |
 LL | /     loop {
-LL | |
-LL | |
-LL | |
 ...  |
 LL | |         }
 LL | |     }
@@ -56,9 +47,6 @@ warning: constant evaluation is taking a long time
   --> $DIR/evade-deduplication-issue-118612.rs:8:5
    |
 LL | /     loop {
-LL | |
-LL | |
-LL | |
 ...  |
 LL | |         }
 LL | |     }
@@ -74,9 +62,6 @@ warning: constant evaluation is taking a long time
   --> $DIR/evade-deduplication-issue-118612.rs:8:5
    |
 LL | /     loop {
-LL | |
-LL | |
-LL | |
 ...  |
 LL | |         }
 LL | |     }

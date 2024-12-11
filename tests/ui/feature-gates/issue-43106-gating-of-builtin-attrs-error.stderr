@@ -54,9 +54,6 @@ LL |   #[inline]
    |   ^^^^^^^^^
 LL |
 LL | / mod inline {
-LL | |
-LL | |
-LL | |
 ...  |
 LL | |
 LL | | }
@@ -101,7 +98,6 @@ LL |
 LL | / mod repr {
 LL | |
 LL | |     mod inner { #![repr(C)] }
-LL | |
 ...  |
 LL | |
 LL | | }
@@ -116,7 +112,6 @@ LL |
 LL | / mod repr_rust {
 LL | |
 LL | |     mod inner { #![repr(Rust)] }
-LL | |
 ...  |
 LL | |
 LL | | }

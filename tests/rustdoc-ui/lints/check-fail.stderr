@@ -26,8 +26,7 @@ error: unknown attribute `testharness`
   --> $DIR/check-fail.rs:8:1
    |
 LL | / //! ```rust,testharness
-LL | |
-LL | | //! let x = 12;
+...  |
 LL | | //! ```
    | |_______^
    |
@@ -44,10 +43,7 @@ error: unknown attribute `testharness`
   --> $DIR/check-fail.rs:17:1
    |
 LL | / /// hello
-LL | |
-LL | | ///
-LL | | /// ```rust,testharness
-LL | | /// let x = 12;
+...  |
 LL | | /// ```
    | |_______^
    |

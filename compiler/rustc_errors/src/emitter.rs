@@ -3048,11 +3048,15 @@ impl FileWithAnnotatedLines {
                 // working correctly.
                 let middle = min(ann.line_start + 4, ann.line_end);
                 // We'll show up to 4 lines past the beginning of the multispan start.
-                // We will *not* include the tail of lines that are only whitespace.
+                // We will *not* include the tail of lines that are only whitespace, a comment or
+                // a bare delimiter.
                 let until = (ann.line_start..middle)
                     .rev()
                     .filter_map(|line| file.get_line(line - 1).map(|s| (line + 1, s)))
-                    .find(|(_, s)| !s.trim().is_empty())
+                    .find(|(_, s)| {
+                        let s = s.trim();
+                        !["", "{", "}", "(", ")", "[", "]"].contains(&s) && !s.starts_with("//")
+                    })
                     .map(|(line, _)| line)
                     .unwrap_or(ann.line_start);
                 for line in ann.line_start + 1..until {

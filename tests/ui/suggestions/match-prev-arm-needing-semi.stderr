@@ -6,8 +6,7 @@ LL |       let _ = match true {
 LL | |         true => {
 LL | |             async_dummy();
    | |             -------------- this is found to be of type `()`
-LL | |
-LL | |         }
+...  |
 LL | |         false => async_dummy(),
    | |                  ^^^^^^^^^^^^^ expected `()`, found future
 ...  |
@@ -38,8 +37,7 @@ LL |       let _ = match true {
 LL | |         true => {
 LL | |             async_dummy();
    | |             -------------- this is found to be of type `()`
-LL | |
-LL | |         }
+...  |
 LL | |         false => async_dummy2(),
    | |                  ^^^^^^^^^^^^^^ expected `()`, found future
 ...  |
@@ -98,8 +96,7 @@ LL | |             dummy();
    | |             |      |
    | |             |      help: consider removing this semicolon
    | |             this is found to be of type `()`
-LL | |
-LL | |         }
+...  |
 LL | |         false => dummy(),
    | |                  ^^^^^^^ expected `()`, found `i32`
 LL | |

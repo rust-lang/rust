@@ -308,13 +308,8 @@ LL |    pub trait SVec: Index<
    | |            |
    | |            this trait cannot be made into an object...
 LL | |      <Self as SVec>::Item,
-LL | |
-LL | |
 ...  |
 LL | |/     Output = <Index<<Self as SVec>::Item,
-LL | ||
-LL | ||
-LL | ||
 ...  ||
 LL | ||
 LL | ||     Output = <Self as SVec>::Item> as SVec>::Item,

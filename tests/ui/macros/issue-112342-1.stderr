@@ -55,8 +55,7 @@ error: repetition matches empty token tree
    |
 LL |           $(
    |  __________^
-LL | |             ///
-LL | |             ///
+...  |
 LL | |         )*
    | |_________^
 

@@ -2,9 +2,6 @@ error: this loop never actually loops
   --> tests/ui/never_loop.rs:12:5
    |
 LL | /     loop {
-LL | |
-LL | |
-LL | |         // clippy::never_loop
 ...  |
 LL | |         break;
 LL | |     }

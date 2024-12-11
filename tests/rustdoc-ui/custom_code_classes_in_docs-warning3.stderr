@@ -2,9 +2,6 @@ error: unclosed quote string `"`
   --> $DIR/custom_code_classes_in_docs-warning3.rs:8:1
    |
 LL | / /// ```{class="}
-LL | | /// main;
-LL | | /// ```
-LL | |
 ...  |
 LL | | /// main;
 LL | | /// ```
@@ -21,9 +18,6 @@ error: unclosed quote string `"`
   --> $DIR/custom_code_classes_in_docs-warning3.rs:8:1
    |
 LL | / /// ```{class="}
-LL | | /// main;
-LL | | /// ```
-LL | |
 ...  |
 LL | | /// main;
 LL | | /// ```

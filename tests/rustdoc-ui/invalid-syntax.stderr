@@ -21,9 +21,7 @@ warning: could not parse code block as Rust code
    |
 LL |   /// ```
    |  _____^
-LL | | ///    |
-LL | | /// LL | use foobar::Baz;
-LL | | ///    |     ^^^^^^ did you mean `baz::foobar`?
+...  |
 LL | | /// ```
    | |_______^
    |
@@ -114,8 +112,7 @@ warning: Rust code block is empty
    |
 LL |   /// ```
    |  _____^
-LL | | ///
-LL | | ///
+...  |
 LL | | /// ```
    | |_______^
    |
