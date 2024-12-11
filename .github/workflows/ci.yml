@@ -235,8 +235,9 @@ jobs:
           DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
           DD_GITHUB_JOB_NAME: ${{ matrix.name }}
         run: |
-          npm install -g @datadog/datadog-ci@^2.x.x
-          python3 src/ci/scripts/upload-build-metrics.py build/cpu-usage.csv
+          cd src/ci
+          npm ci
+          python3 scripts/upload-build-metrics.py ../../build/cpu-usage.csv
 
   # This job isused to tell bors the final status of the build, as there is no practical way to detect
   # when a workflow is successful listening to webhooks only in our current bors implementation (homu).
