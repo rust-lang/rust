@@ -677,6 +677,7 @@ pub mod alloc;
 
 // Private support modules
 mod panicking;
+mod u256;
 
 #[path = "../../backtrace/src/lib.rs"]
 #[allow(dead_code, unused_attributes, fuzzy_provenance_casts, unsafe_op_in_unsafe_fn)]

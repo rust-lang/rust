@@ -12,7 +12,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
 
-mod div_euclid;
+mod soft;
 
 #[cfg(test)]
 mod tests;
@@ -250,7 +250,7 @@ impl f64 {
     #[inline]
     #[stable(feature = "euclidean_division", since = "1.38.0")]
     pub fn div_euclid(self, rhs: f64) -> f64 {
-        div_euclid::div_euclid(self, rhs)
+        soft::div_euclid(self, rhs)
     }
 
     /// Calculates the least nonnegative remainder of `self (mod rhs)`.

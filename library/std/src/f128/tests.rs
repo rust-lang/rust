@@ -460,7 +460,6 @@ fn test_mul_add() {
 }
 
 #[test]
-#[cfg(reliable_f128_math)]
 fn test_div_euclid() {
     use core::cmp::Ordering;
 
@@ -469,7 +468,6 @@ fn test_div_euclid() {
     let largest_subnormal = f128::from_bits(LARGEST_SUBNORMAL_BITS);
 
     // Infinity and NaN.
-
     assert!(nan.div_euclid(5.0).is_nan());
     assert!(inf.div_euclid(inf).is_nan());
     assert!(0.0f128.div_euclid(0.0).is_nan());
@@ -478,6 +476,16 @@ fn test_div_euclid() {
     assert_eq!(inf.div_euclid(0.0), inf);
     assert_eq!(5.0f128.div_euclid(0.0), inf);
     assert_eq!((-5.0f128).div_euclid(0.0), -inf);
+
+    // Small / infinity.
+    assert_eq!(Ordering::Equal, 5.0f128.div_euclid(inf).total_cmp(&0.0));
+    assert_eq!(Ordering::Equal, 0.0f128.div_euclid(inf).total_cmp(&0.0));
+    assert_eq!(Ordering::Equal, (-0.0f128).div_euclid(inf).total_cmp(&-0.0));
+    assert_eq!((-5.0f128).div_euclid(inf), -1.0);
+    assert_eq!(Ordering::Equal, 5.0f128.div_euclid(-inf).total_cmp(&-0.0));
+    assert_eq!(Ordering::Equal, 0.0f128.div_euclid(-inf).total_cmp(&-0.0));
+    assert_eq!(Ordering::Equal, (-0.0f128).div_euclid(-inf).total_cmp(&0.0));
+    assert_eq!((-5.0f128).div_euclid(-inf), 1.0);
 
     // 0 / x
     assert_eq!(Ordering::Equal, 0.0f128.div_euclid(10.0).total_cmp(&0.0));

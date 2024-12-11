@@ -443,7 +443,6 @@ fn test_mul_add() {
 }
 
 #[test]
-#[cfg(reliable_f16_math)]
 fn test_div_euclid() {
     use core::cmp::Ordering;
 
@@ -460,6 +459,16 @@ fn test_div_euclid() {
     assert_eq!(inf.div_euclid(0.0), inf);
     assert_eq!(5.0f16.div_euclid(0.0), inf);
     assert_eq!((-5.0f16).div_euclid(0.0), -inf);
+
+    // Small / infinity.
+    assert_eq!(Ordering::Equal, 5.0f16.div_euclid(inf).total_cmp(&0.0));
+    assert_eq!(Ordering::Equal, 0.0f16.div_euclid(inf).total_cmp(&0.0));
+    assert_eq!(Ordering::Equal, (-0.0f16).div_euclid(inf).total_cmp(&-0.0));
+    assert_eq!((-5.0f16).div_euclid(inf), -1.0);
+    assert_eq!(Ordering::Equal, 5.0f16.div_euclid(-inf).total_cmp(&-0.0));
+    assert_eq!(Ordering::Equal, 0.0f16.div_euclid(-inf).total_cmp(&-0.0));
+    assert_eq!(Ordering::Equal, (-0.0f16).div_euclid(-inf).total_cmp(&0.0));
+    assert_eq!((-5.0f16).div_euclid(-inf), 1.0);
 
     // 0 / x
     assert_eq!(Ordering::Equal, 0.0f16.div_euclid(10.0).total_cmp(&0.0));

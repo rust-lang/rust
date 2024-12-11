@@ -4,7 +4,7 @@
 //!
 //! Mathematically significant numbers are provided in the `consts` sub-module.
 
-mod div_euclid;
+mod soft;
 
 #[cfg(test)]
 mod tests;
@@ -270,7 +270,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn div_euclid(self, rhs: f16) -> f16 {
-        div_euclid::div_euclid(self, rhs)
+        soft::div_euclid(self, rhs)
     }
 
     /// Calculates the least nonnegative remainder of `self (mod rhs)`.
