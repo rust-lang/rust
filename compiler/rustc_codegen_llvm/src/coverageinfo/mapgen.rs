@@ -19,6 +19,7 @@ use tracing::debug;
 use crate::common::CodegenCx;
 use crate::coverageinfo::llvm_cov;
 use crate::coverageinfo::map_data::FunctionCoverage;
+use crate::coverageinfo::mapgen::covfun::prepare_covfun_record;
 use crate::llvm;
 
 mod covfun;
@@ -85,16 +86,17 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
 
     let mut unused_function_names = Vec::new();
 
-    // Encode coverage mappings and generate function records
-    for (instance, function_coverage) in function_coverage_map {
-        covfun::prepare_and_generate_covfun_record(
-            cx,
-            &global_file_table,
-            filenames_ref,
-            &mut unused_function_names,
-            instance,
-            &function_coverage,
-        );
+    let covfun_records = function_coverage_map
+        .into_iter()
+        .filter_map(|(instance, function_coverage)| {
+            prepare_covfun_record(tcx, &global_file_table, instance, &function_coverage)
+        })
+        .collect::<Vec<_>>();
+
+    for covfun in &covfun_records {
+        unused_function_names.extend(covfun.mangled_function_name_if_unused());
+
+        covfun::generate_covfun_record(cx, filenames_ref, covfun)
     }
 
     // For unused functions, we need to take their mangled names and store them

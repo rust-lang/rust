@@ -22,16 +22,30 @@ use crate::coverageinfo::mapgen::{GlobalFileTable, VirtualFileMapping, span_file
 use crate::coverageinfo::{ffi, llvm_cov};
 use crate::llvm;
 
-pub(crate) fn prepare_and_generate_covfun_record<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
+/// Intermediate coverage metadata for a single function, used to help build
+/// the final record that will be embedded in the `__llvm_covfun` section.
+#[derive(Debug)]
+pub(crate) struct CovfunRecord<'tcx> {
+    mangled_function_name: &'tcx str,
+    source_hash: u64,
+    is_used: bool,
+    coverage_mapping_buffer: Vec<u8>,
+}
+
+impl<'tcx> CovfunRecord<'tcx> {
+    /// FIXME(Zalathar): Make this the responsibility of the code that determines
+    /// which functions are unused.
+    pub(crate) fn mangled_function_name_if_unused(&self) -> Option<&'tcx str> {
+        (!self.is_used).then_some(self.mangled_function_name)
+    }
+}
+
+pub(crate) fn prepare_covfun_record<'tcx>(
+    tcx: TyCtxt<'tcx>,
     global_file_table: &GlobalFileTable,
-    filenames_ref: u64,
-    unused_function_names: &mut Vec<&'tcx str>,
     instance: Instance<'tcx>,
     function_coverage: &FunctionCoverage<'tcx>,
-) {
-    let tcx = cx.tcx;
-
+) -> Option<CovfunRecord<'tcx>> {
     let mangled_function_name = tcx.symbol_name(instance).name;
     let source_hash = function_coverage.source_hash();
     let is_used = function_coverage.is_used();
@@ -47,22 +61,11 @@ pub(crate) fn prepare_and_generate_covfun_record<'ll, 'tcx>(
             );
         } else {
             debug!("unused function had no coverage mapping data: {}", mangled_function_name);
-            return;
+            return None;
         }
     }
 
-    if !is_used {
-        unused_function_names.push(mangled_function_name);
-    }
-
-    generate_covfun_record(
-        cx,
-        mangled_function_name,
-        source_hash,
-        filenames_ref,
-        coverage_mapping_buffer,
-        is_used,
-    );
+    Some(CovfunRecord { mangled_function_name, source_hash, is_used, coverage_mapping_buffer })
 }
 
 /// Using the expressions and counter regions collected for a single function,
@@ -145,14 +148,18 @@ fn encode_mappings_for_function(
 /// Generates the contents of the covfun record for this function, which
 /// contains the function's coverage mapping data. The record is then stored
 /// as a global variable in the `__llvm_covfun` section.
-fn generate_covfun_record(
-    cx: &CodegenCx<'_, '_>,
-    mangled_function_name: &str,
-    source_hash: u64,
+pub(crate) fn generate_covfun_record<'tcx>(
+    cx: &CodegenCx<'_, 'tcx>,
     filenames_ref: u64,
-    coverage_mapping_buffer: Vec<u8>,
-    is_used: bool,
+    covfun: &CovfunRecord<'tcx>,
 ) {
+    let &CovfunRecord {
+        mangled_function_name,
+        source_hash,
+        is_used,
+        ref coverage_mapping_buffer, // Previously-encoded coverage mappings
+    } = covfun;
+
     // Concatenate the encoded coverage mappings
     let coverage_mapping_size = coverage_mapping_buffer.len();
     let coverage_mapping_val = cx.const_bytes(&coverage_mapping_buffer);
