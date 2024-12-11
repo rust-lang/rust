@@ -692,7 +692,7 @@ impl<I: Interner> ty::Binder<I, ProjectionPredicate<I>> {
     ///
     /// Note that this is not the `DefId` of the `TraitRef` containing this
     /// associated type, which is in `tcx.associated_item(projection_def_id()).container`.
-    pub fn projection_def_id(&self) -> I::DefId {
+    pub fn item_def_id(&self) -> I::DefId {
         // Ok to skip binder since trait `DefId` does not care about regions.
         self.skip_binder().projection_term.def_id
     }
