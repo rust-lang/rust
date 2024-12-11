@@ -13,11 +13,11 @@ use tracing::debug;
 
 use super::TypeChecker;
 use crate::constraints::OutlivesConstraintSet;
+use crate::polonius;
 use crate::region_infer::values::LivenessValues;
 use crate::universal_regions::UniversalRegions;
 
 mod local_use_map;
-mod polonius;
 mod trace;
 
 /// Combines liveness analysis with initialization analysis to
@@ -45,7 +45,7 @@ pub(super) fn generate<'a, 'tcx>(
     let (relevant_live_locals, boring_locals) =
         compute_relevant_live_locals(typeck.tcx(), &free_regions, body);
 
-    crate::polonius::legacy::emit_access_facts(
+    polonius::legacy::emit_access_facts(
         typeck.tcx(),
         body,
         move_data,

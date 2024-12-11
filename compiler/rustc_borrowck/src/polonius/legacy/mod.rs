@@ -3,8 +3,8 @@
 //! Will be removed in the future, once the in-tree `-Zpolonius=next` implementation reaches feature
 //! parity.
 
-use rustc_middle::mir::{Body, LocalKind, Location, START_BLOCK};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::mir::{Body, Local, LocalKind, Location, START_BLOCK};
+use rustc_middle::ty::{GenericArg, TyCtxt};
 use rustc_mir_dataflow::move_paths::{InitKind, InitLocation, MoveData};
 use tracing::debug;
 
@@ -12,6 +12,7 @@ use crate::borrow_set::BorrowSet;
 use crate::facts::{AllFacts, PoloniusRegionVid};
 use crate::location::LocationTable;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
+use crate::universal_regions::UniversalRegions;
 
 mod accesses;
 mod loan_invalidations;
@@ -184,4 +185,23 @@ fn emit_cfg_and_loan_kills_facts<'tcx>(
     borrow_set: &BorrowSet<'tcx>,
 ) {
     loan_kills::emit_loan_kills(tcx, all_facts, location_table, body, borrow_set);
+}
+
+/// For every potentially drop()-touched region `region` in `local`'s type
+/// (`kind`), emit a `drop_of_var_derefs_origin(local, origin)` fact.
+pub(crate) fn emit_drop_facts<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    local: Local,
+    kind: &GenericArg<'tcx>,
+    universal_regions: &UniversalRegions<'tcx>,
+    all_facts: &mut Option<AllFacts>,
+) {
+    debug!("emit_drop_facts(local={:?}, kind={:?}", local, kind);
+    if let Some(facts) = all_facts.as_mut() {
+        let _prof_timer = tcx.prof.generic_activity("polonius_fact_generation");
+        tcx.for_each_free_region(kind, |drop_live_region| {
+            let region_vid = universal_regions.to_region_vid(drop_live_region);
+            facts.drop_of_var_derefs_origin.push((local, region_vid.into()));
+        });
+    }
 }
