@@ -53,5 +53,22 @@ LL ~ #[derive(Default)] enum F {
 LL ~     #[default] Unit,
    |
 
-error: aborting due to 3 previous errors
+error: `impl Default` that could be derived
+  --> $DIR/manual-default-impl-could-be-derived.rs:74:1
+   |
+LL | / impl Default for G {
+LL | |     fn default() -> Self {
+LL | |         G {
+LL | |             f: F::Unit,
+LL | |         }
+LL | |     }
+LL | | }
+   | |_^
+   |
+help: you don't need to manually `impl Default`, you can derive it
+   |
+LL ~ #[derive(Default)] struct G {
+   |
+
+error: aborting due to 4 previous errors
 

@@ -67,17 +67,17 @@ impl Default for F { //~ ERROR
 }
 
 // Comparison of `impl` *fields* with their `Default::default()` bodies.
-// struct G {
-//     f: F,
-// }
+struct G {
+    f: F,
+}
 
-// impl Default for G {
-//     fn default() -> Self {
-//         G {
-//             f: F::Unit,
-//         }
-//     }
-// }
+impl Default for G { //~ ERROR
+    fn default() -> Self {
+        G {
+            f: F::Unit,
+        }
+    }
+}
 
 fn main() {
 //    let _ = A::default();
@@ -86,5 +86,5 @@ fn main() {
     let _ = D::default();
     let _ = E::default();
     let _ = F::default();
-//    let _ = G::default();
+    let _ = G::default();
 }
