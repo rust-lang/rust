@@ -24,18 +24,20 @@
 //     fn default() -> Self { C(None) }
 // }
 // 
-// #[derive(Debug)]
-// struct D {
-//     x: Option<i32>,
-// }
-// 
-// impl Default for D {
-//     fn default() -> Self {
-//         D {
-//             x: Default::default(),
-//         }
-//     }
-// }
+
+struct D {
+    x: Option<i32>,
+    y: i32,
+}
+
+impl Default for D { //~ ERROR
+    fn default() -> Self {
+        D {
+            x: Default::default(),
+            y: 0,
+        }
+    }
+}
 // 
 // #[derive(Debug)]
 // struct E {

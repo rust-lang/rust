@@ -1,6 +1,8 @@
+use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
+use rustc_middle::ty::TyCtxt;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::symbol::{kw, sym};
 
@@ -114,6 +116,68 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
                             );
                         },
                     );
+                }
+                hir::ExprKind::Struct(_qpath, fields, _tail) => {
+                    // We have a struct literal
+                    //
+                    // struct Foo {
+                    //     field: Type,
+                    // }
+                    //
+                    // impl Default for Foo {
+                    //     fn default() -> Foo {
+                    //         Foo {
+                    //             field: val,
+                    //         }
+                    //     }
+                    // }
+                    //
+                    // We suggest #[derive(Default)] if
+                    //  - `val` is `Default::default()` 
+                    //  - `val` is `0` 
+                    //  - `val` is `false` 
+                    fn check_expr(tcx: TyCtxt<'_>, kind: hir::ExprKind<'_>) -> bool {
+                        match kind {
+                            hir::ExprKind::Lit(spanned_lit) => match spanned_lit.node {
+                                LitKind::Int(val, _) if val == 0 => true, // field: 0,
+                                LitKind::Bool(false) => true,             // field: false,
+                                _ => false,
+                            },
+                            hir::ExprKind::Call(expr, [])
+                                if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) =
+                                    expr.kind
+                                    && let Some(def_id) = path.res.opt_def_id()
+                                    && tcx.is_diagnostic_item(sym::default_fn, def_id) =>
+                            {
+                                // field: Default::default(),
+                                true
+                            }
+                            _ => {
+                                false
+                            }
+                        }
+                    }
+                    if fields.iter().all(|f| check_expr(cx.tcx, f.expr.kind)) {
+                        cx.tcx.node_span_lint(
+                            DEFAULT_COULD_BE_DERIVED,
+                            item.hir_id(),
+                            item.span,
+                            |diag| {
+                                diag.primary_message("`impl Default` that could be derived");
+                                diag.multipart_suggestion_verbose(
+                                    "you don't need to manually `impl Default`, you can derive it",
+                                    vec![
+                                        (
+                                            cx.tcx.def_span(type_def_id).shrink_to_lo(),
+                                            "#[derive(Default)] ".to_string(),
+                                        ),
+                                        (item.span, String::new()),
+                                    ],
+                                    Applicability::MachineApplicable,
+                                );
+                            },
+                        );
+                    }
                 }
                 _ => {}
             }

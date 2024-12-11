@@ -1,9 +1,11 @@
 error: `impl Default` that could be derived
-  --> $DIR/manual-default-impl-could-be-derived.rs:58:1
+  --> $DIR/manual-default-impl-could-be-derived.rs:33:1
    |
-LL | / impl Default for F {
+LL | / impl Default for D {
 LL | |     fn default() -> Self {
-LL | |         F::Unit
+LL | |         D {
+LL | |             x: Default::default(),
+...  |
 LL | |     }
 LL | | }
    | |_^
@@ -15,9 +17,24 @@ LL | #![deny(default_could_be_derived)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 help: you don't need to manually `impl Default`, you can derive it
    |
+LL ~ #[derive(Default)] struct D {
+   |
+
+error: `impl Default` that could be derived
+  --> $DIR/manual-default-impl-could-be-derived.rs:60:1
+   |
+LL | / impl Default for F {
+LL | |     fn default() -> Self {
+LL | |         F::Unit
+LL | |     }
+LL | | }
+   | |_^
+   |
+help: you don't need to manually `impl Default`, you can derive it
+   |
 LL ~ #[derive(Default)] enum F {
 LL ~     #[default] Unit,
    |
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
