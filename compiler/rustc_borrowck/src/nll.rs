@@ -116,7 +116,7 @@ pub(crate) fn compute_regions<'a, 'tcx>(
     let var_origins = infcx.get_region_var_origins();
 
     // If requested, emit legacy polonius facts.
-    polonius::emit_facts(
+    polonius::legacy::emit_facts(
         &mut all_facts,
         infcx.tcx,
         location_table,
