@@ -39,8 +39,8 @@ pub(crate) fn emit_facts<'tcx>(
     location_table: &LocationTable,
     body: &Body<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
-    move_data: &MoveData<'_>,
-    universal_region_relations: &UniversalRegionRelations<'_>,
+    move_data: &MoveData<'tcx>,
+    universal_region_relations: &UniversalRegionRelations<'tcx>,
 ) {
     let Some(all_facts) = all_facts else {
         // We don't do anything if there are no facts to fill.
@@ -202,13 +202,12 @@ pub(crate) fn emit_drop_facts<'tcx>(
     all_facts: &mut Option<AllFacts>,
 ) {
     debug!("emit_drop_facts(local={:?}, kind={:?}", local, kind);
-    if let Some(facts) = all_facts.as_mut() {
-        let _prof_timer = tcx.prof.generic_activity("polonius_fact_generation");
-        tcx.for_each_free_region(kind, |drop_live_region| {
-            let region_vid = universal_regions.to_region_vid(drop_live_region);
-            facts.drop_of_var_derefs_origin.push((local, region_vid.into()));
-        });
-    }
+    let Some(facts) = all_facts.as_mut() else { return };
+    let _prof_timer = tcx.prof.generic_activity("polonius_fact_generation");
+    tcx.for_each_free_region(kind, |drop_live_region| {
+        let region_vid = universal_regions.to_region_vid(drop_live_region);
+        facts.drop_of_var_derefs_origin.push((local, region_vid.into()));
+    });
 }
 
 /// Emit facts about the outlives constraints: the `subset` base relation, i.e. not a transitive
@@ -219,22 +218,23 @@ pub(crate) fn emit_outlives_facts<'tcx>(
     location_table: &LocationTable,
     all_facts: &mut Option<AllFacts>,
 ) {
-    if let Some(facts) = all_facts {
-        let _prof_timer = tcx.prof.generic_activity("polonius_fact_generation");
-        facts.subset_base.extend(constraints.outlives_constraints.outlives().iter().flat_map(
-            |constraint: &OutlivesConstraint<'_>| {
-                if let Some(from_location) = constraint.locations.from_location() {
-                    Either::Left(iter::once((
-                        constraint.sup.into(),
-                        constraint.sub.into(),
-                        location_table.mid_index(from_location),
-                    )))
-                } else {
-                    Either::Right(location_table.all_points().map(move |location| {
+    let Some(facts) = all_facts else { return };
+    let _prof_timer = tcx.prof.generic_activity("polonius_fact_generation");
+    facts.subset_base.extend(constraints.outlives_constraints.outlives().iter().flat_map(
+        |constraint: &OutlivesConstraint<'_>| {
+            if let Some(from_location) = constraint.locations.from_location() {
+                Either::Left(iter::once((
+                    constraint.sup.into(),
+                    constraint.sub.into(),
+                    location_table.mid_index(from_location),
+                )))
+            } else {
+                Either::Right(
+                    location_table.all_points().map(move |location| {
                         (constraint.sup.into(), constraint.sub.into(), location)
-                    }))
-                }
-            },
-        ));
-    }
+                    }),
+                )
+            }
+        },
+    ));
 }

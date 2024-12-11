@@ -21,30 +21,24 @@ pub(crate) fn emit_access_facts<'tcx>(
     location_table: &LocationTable,
     all_facts: &mut Option<AllFacts>,
 ) {
-    if let Some(facts) = all_facts.as_mut() {
-        debug!("emit_access_facts()");
+    let Some(facts) = all_facts.as_mut() else { return };
+    let _prof_timer = tcx.prof.generic_activity("polonius_fact_generation");
+    let mut extractor = AccessFactsExtractor {
+        var_defined_at: &mut facts.var_defined_at,
+        var_used_at: &mut facts.var_used_at,
+        var_dropped_at: &mut facts.var_dropped_at,
+        path_accessed_at_base: &mut facts.path_accessed_at_base,
+        location_table,
+        move_data,
+    };
+    extractor.visit_body(body);
 
-        let _prof_timer = tcx.prof.generic_activity("polonius_fact_generation");
-        let mut extractor = AccessFactsExtractor {
-            var_defined_at: &mut facts.var_defined_at,
-            var_used_at: &mut facts.var_used_at,
-            var_dropped_at: &mut facts.var_dropped_at,
-            path_accessed_at_base: &mut facts.path_accessed_at_base,
-            location_table,
-            move_data,
-        };
-        extractor.visit_body(body);
-
-        for (local, local_decl) in body.local_decls.iter_enumerated() {
-            debug!(
-                "add use_of_var_derefs_origin facts - local={:?}, type={:?}",
-                local, local_decl.ty
-            );
-            tcx.for_each_free_region(&local_decl.ty, |region| {
-                let region_vid = universal_regions.to_region_vid(region);
-                facts.use_of_var_derefs_origin.push((local, region_vid.into()));
-            });
-        }
+    for (local, local_decl) in body.local_decls.iter_enumerated() {
+        debug!("add use_of_var_derefs_origin facts - local={:?}, type={:?}", local, local_decl.ty);
+        tcx.for_each_free_region(&local_decl.ty, |region| {
+            let region_vid = universal_regions.to_region_vid(region);
+            facts.use_of_var_derefs_origin.push((local, region_vid.into()));
+        });
     }
 }
 
