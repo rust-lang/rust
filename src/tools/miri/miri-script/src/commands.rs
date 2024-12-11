@@ -409,6 +409,7 @@ impl Command {
             OsString::new()
         };
         let target_flag = &target_flag;
+        let toolchain = active_toolchain()?;
         // Run the requested benchmarks
         for bench in benches {
             let current_bench = path!(benches_dir / bench / "Cargo.toml");
@@ -416,7 +417,7 @@ impl Command {
             // That seems to make Windows CI happy.
             cmd!(
                 sh,
-                "{program_name} {args...} 'cargo miri run '{target_flag}' --manifest-path \"'{current_bench}'\"'"
+                "{program_name} {args...} 'cargo +'{toolchain}' miri run '{target_flag}' --manifest-path \"'{current_bench}'\"'"
             )
             .run()?;
         }
