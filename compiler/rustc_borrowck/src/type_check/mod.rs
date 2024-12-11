@@ -59,7 +59,7 @@ use crate::renumber::RegionCtxt;
 use crate::session_diagnostics::{MoveUnsized, SimdIntrinsicArgConst};
 use crate::type_check::free_region_relations::{CreateResult, UniversalRegionRelations};
 use crate::universal_regions::{DefiningTy, UniversalRegions};
-use crate::{BorrowckInferCtxt, path_utils, polonius};
+use crate::{BorrowckInferCtxt, path_utils};
 
 macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
@@ -181,12 +181,6 @@ pub(crate) fn type_check<'a, 'tcx>(
 
     liveness::generate(&mut checker, body, &elements, flow_inits, move_data);
 
-    polonius::legacy::emit_outlives_facts(
-        infcx.tcx,
-        checker.constraints,
-        location_table,
-        checker.all_facts,
-    );
     let opaque_type_values = infcx.take_opaque_types();
 
     let opaque_type_values = opaque_type_values

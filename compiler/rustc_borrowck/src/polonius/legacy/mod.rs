@@ -41,6 +41,7 @@ pub(crate) fn emit_facts<'tcx>(
     borrow_set: &BorrowSet<'tcx>,
     move_data: &MoveData<'tcx>,
     universal_region_relations: &UniversalRegionRelations<'tcx>,
+    constraints: &MirTypeckRegionConstraints<'tcx>,
 ) {
     let Some(all_facts) = all_facts else {
         // We don't do anything if there are no facts to fill.
@@ -59,6 +60,7 @@ pub(crate) fn emit_facts<'tcx>(
         &universal_region_relations.universal_regions,
         location_table,
     );
+    emit_outlives_facts(all_facts, location_table, constraints);
 }
 
 /// Emit facts needed for move/init analysis: moves and assignments.
@@ -198,14 +200,11 @@ pub(crate) fn emit_drop_facts<'tcx>(
 
 /// Emit facts about the outlives constraints: the `subset` base relation, i.e. not a transitive
 /// closure.
-pub(crate) fn emit_outlives_facts<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    constraints: &MirTypeckRegionConstraints<'tcx>,
+fn emit_outlives_facts<'tcx>(
+    facts: &mut AllFacts,
     location_table: &LocationTable,
-    all_facts: &mut Option<AllFacts>,
+    constraints: &MirTypeckRegionConstraints<'tcx>,
 ) {
-    let Some(facts) = all_facts else { return };
-    let _prof_timer = tcx.prof.generic_activity("polonius_fact_generation");
     facts.subset_base.extend(constraints.outlives_constraints.outlives().iter().flat_map(
         |constraint: &OutlivesConstraint<'_>| {
             if let Some(from_location) = constraint.locations.from_location() {
