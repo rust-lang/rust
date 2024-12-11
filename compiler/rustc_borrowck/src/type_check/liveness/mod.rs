@@ -13,7 +13,6 @@ use tracing::debug;
 
 use super::TypeChecker;
 use crate::constraints::OutlivesConstraintSet;
-use crate::polonius;
 use crate::region_infer::values::LivenessValues;
 use crate::universal_regions::UniversalRegions;
 
@@ -44,15 +43,6 @@ pub(super) fn generate<'a, 'tcx>(
     );
     let (relevant_live_locals, boring_locals) =
         compute_relevant_live_locals(typeck.tcx(), &free_regions, body);
-
-    polonius::legacy::emit_access_facts(
-        typeck.tcx(),
-        body,
-        move_data,
-        typeck.universal_regions,
-        typeck.location_table,
-        typeck.all_facts,
-    );
 
     trace::trace(
         typeck,

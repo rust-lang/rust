@@ -3,14 +3,19 @@
 //! Will be removed in the future, once the in-tree `-Zpolonius=next` implementation reaches feature
 //! parity.
 
+use std::iter;
+
+use either::Either;
 use rustc_middle::mir::{Body, Local, LocalKind, Location, START_BLOCK};
 use rustc_middle::ty::{GenericArg, TyCtxt};
 use rustc_mir_dataflow::move_paths::{InitKind, InitLocation, MoveData};
 use tracing::debug;
 
 use crate::borrow_set::BorrowSet;
+use crate::constraints::OutlivesConstraint;
 use crate::facts::{AllFacts, PoloniusRegionVid};
 use crate::location::LocationTable;
+use crate::type_check::MirTypeckRegionConstraints;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::universal_regions::UniversalRegions;
 
@@ -203,5 +208,33 @@ pub(crate) fn emit_drop_facts<'tcx>(
             let region_vid = universal_regions.to_region_vid(drop_live_region);
             facts.drop_of_var_derefs_origin.push((local, region_vid.into()));
         });
+    }
+}
+
+/// Emit facts about the outlives constraints: the `subset` base relation, i.e. not a transitive
+/// closure.
+pub(crate) fn emit_outlives_facts<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    constraints: &MirTypeckRegionConstraints<'tcx>,
+    location_table: &LocationTable,
+    all_facts: &mut Option<AllFacts>,
+) {
+    if let Some(facts) = all_facts {
+        let _prof_timer = tcx.prof.generic_activity("polonius_fact_generation");
+        facts.subset_base.extend(constraints.outlives_constraints.outlives().iter().flat_map(
+            |constraint: &OutlivesConstraint<'_>| {
+                if let Some(from_location) = constraint.locations.from_location() {
+                    Either::Left(iter::once((
+                        constraint.sup.into(),
+                        constraint.sub.into(),
+                        location_table.mid_index(from_location),
+                    )))
+                } else {
+                    Either::Right(location_table.all_points().map(move |location| {
+                        (constraint.sup.into(), constraint.sub.into(), location)
+                    }))
+                }
+            },
+        ));
     }
 }

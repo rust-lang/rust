@@ -3,7 +3,6 @@
 use std::rc::Rc;
 use std::{fmt, iter, mem};
 
-use either::Either;
 use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -60,7 +59,7 @@ use crate::renumber::RegionCtxt;
 use crate::session_diagnostics::{MoveUnsized, SimdIntrinsicArgConst};
 use crate::type_check::free_region_relations::{CreateResult, UniversalRegionRelations};
 use crate::universal_regions::{DefiningTy, UniversalRegions};
-use crate::{BorrowckInferCtxt, path_utils};
+use crate::{BorrowckInferCtxt, path_utils, polonius};
 
 macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
@@ -182,7 +181,20 @@ pub(crate) fn type_check<'a, 'tcx>(
 
     liveness::generate(&mut checker, body, &elements, flow_inits, move_data);
 
-    translate_outlives_facts(&mut checker);
+    polonius::legacy::emit_access_facts(
+        infcx.tcx,
+        body,
+        move_data,
+        &universal_region_relations.universal_regions,
+        location_table,
+        checker.all_facts,
+    );
+    polonius::legacy::emit_outlives_facts(
+        infcx.tcx,
+        checker.constraints,
+        location_table,
+        checker.all_facts,
+    );
     let opaque_type_values = infcx.take_opaque_types();
 
     let opaque_type_values = opaque_type_values
@@ -232,30 +244,6 @@ pub(crate) fn type_check<'a, 'tcx>(
         .collect();
 
     MirTypeckResults { constraints, universal_region_relations, opaque_type_values }
-}
-
-fn translate_outlives_facts(typeck: &mut TypeChecker<'_, '_>) {
-    if let Some(facts) = typeck.all_facts {
-        let _prof_timer = typeck.infcx.tcx.prof.generic_activity("polonius_fact_generation");
-        let location_table = typeck.location_table;
-        facts.subset_base.extend(
-            typeck.constraints.outlives_constraints.outlives().iter().flat_map(
-                |constraint: &OutlivesConstraint<'_>| {
-                    if let Some(from_location) = constraint.locations.from_location() {
-                        Either::Left(iter::once((
-                            constraint.sup.into(),
-                            constraint.sub.into(),
-                            location_table.mid_index(from_location),
-                        )))
-                    } else {
-                        Either::Right(location_table.all_points().map(move |location| {
-                            (constraint.sup.into(), constraint.sub.into(), location)
-                        }))
-                    }
-                },
-            ),
-        );
-    }
 }
 
 #[track_caller]
