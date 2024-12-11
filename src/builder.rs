@@ -1244,13 +1244,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn ptrtoint(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
-        let usize_value = self.cx.const_bitcast(value, self.cx.type_isize());
+        let usize_value = self.cx.context.new_cast(None, value, self.cx.type_isize());
         self.intcast(usize_value, dest_ty, false)
     }
 
     fn inttoptr(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
         let usize_value = self.intcast(value, self.cx.type_isize(), false);
-        self.cx.const_bitcast(usize_value, dest_ty)
+        self.cx.context.new_cast(None, usize_value, dest_ty)
     }
 
     fn bitcast(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
