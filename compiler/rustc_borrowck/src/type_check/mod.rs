@@ -181,14 +181,6 @@ pub(crate) fn type_check<'a, 'tcx>(
 
     liveness::generate(&mut checker, body, &elements, flow_inits, move_data);
 
-    polonius::legacy::emit_access_facts(
-        infcx.tcx,
-        body,
-        move_data,
-        &universal_region_relations.universal_regions,
-        location_table,
-        checker.all_facts,
-    );
     polonius::legacy::emit_outlives_facts(
         infcx.tcx,
         checker.constraints,

@@ -23,14 +23,14 @@ mod accesses;
 mod loan_invalidations;
 mod loan_kills;
 
-pub(crate) use accesses::emit_access_facts;
-
 /// When requested, emit most of the facts needed by polonius:
 /// - moves and assignments
 /// - universal regions and their relations
 /// - CFG points and edges
 /// - loan kills
 /// - loan invalidations
+/// - access facts such as variable definitions, uses, drops, and path accesses
+/// - outlives constraints
 ///
 /// The rest of the facts are emitted during typeck and liveness.
 pub(crate) fn emit_facts<'tcx>(
@@ -49,8 +49,16 @@ pub(crate) fn emit_facts<'tcx>(
     let _prof_timer = tcx.prof.generic_activity("polonius_fact_generation");
     emit_move_facts(all_facts, move_data, location_table, body);
     emit_universal_region_facts(all_facts, borrow_set, universal_region_relations);
-    emit_cfg_and_loan_kills_facts(all_facts, tcx, location_table, body, borrow_set);
-    emit_loan_invalidations_facts(all_facts, tcx, location_table, body, borrow_set);
+    loan_kills::emit_loan_kills(tcx, all_facts, location_table, body, borrow_set);
+    loan_invalidations::emit_loan_invalidations(tcx, all_facts, location_table, body, borrow_set);
+    accesses::emit_access_facts(
+        all_facts,
+        tcx,
+        body,
+        move_data,
+        &universal_region_relations.universal_regions,
+        location_table,
+    );
 }
 
 /// Emit facts needed for move/init analysis: moves and assignments.
@@ -168,28 +176,6 @@ fn emit_universal_region_facts(
             all_facts.known_placeholder_subset.push((fr1.into(), fr2.into()));
         }
     }
-}
-
-/// Emit facts about loan invalidations.
-fn emit_loan_invalidations_facts<'tcx>(
-    all_facts: &mut AllFacts,
-    tcx: TyCtxt<'tcx>,
-    location_table: &LocationTable,
-    body: &Body<'tcx>,
-    borrow_set: &BorrowSet<'tcx>,
-) {
-    loan_invalidations::emit_loan_invalidations(tcx, all_facts, location_table, body, borrow_set);
-}
-
-/// Emit facts about CFG points and edges, as well as locations where loans are killed.
-fn emit_cfg_and_loan_kills_facts<'tcx>(
-    all_facts: &mut AllFacts,
-    tcx: TyCtxt<'tcx>,
-    location_table: &LocationTable,
-    body: &Body<'tcx>,
-    borrow_set: &BorrowSet<'tcx>,
-) {
-    loan_kills::emit_loan_kills(tcx, all_facts, location_table, body, borrow_set);
 }
 
 /// For every potentially drop()-touched region `region` in `local`'s type
