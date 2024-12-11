@@ -275,8 +275,7 @@ fn eat_dollar<'psess>(
     psess: &'psess ParseSess,
     span: Span,
 ) -> PResult<'psess, ()> {
-    if let Some(TokenTree::Token(Token { kind: token::Dollar, .. }, _)) = iter.peek() {
-        let _ = iter.next();
+    if try_eat_dollar(iter) {
         return Ok(());
     }
     Err(psess.dcx().struct_span_err(
