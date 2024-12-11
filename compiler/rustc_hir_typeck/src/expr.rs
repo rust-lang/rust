@@ -430,6 +430,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | hir::Node::AssocItemConstraint(_)
             | hir::Node::TraitRef(_)
             | hir::Node::PatField(_)
+            | hir::Node::PatExpr(_)
             | hir::Node::LetStmt(_)
             | hir::Node::Synthetic
             | hir::Node::Err(_)
@@ -1796,7 +1797,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn check_expr_const_block(
+    pub(super) fn check_expr_const_block(
         &self,
         block: &'tcx hir::ConstBlock,
         expected: Expectation<'tcx>,
