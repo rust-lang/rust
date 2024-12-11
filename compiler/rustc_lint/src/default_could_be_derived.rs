@@ -133,9 +133,9 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
                     // }
                     //
                     // We suggest #[derive(Default)] if
-                    //  - `val` is `Default::default()` 
-                    //  - `val` is `0` 
-                    //  - `val` is `false` 
+                    //  - `val` is `Default::default()`
+                    //  - `val` is `0`
+                    //  - `val` is `false`
                     fn check_expr(tcx: TyCtxt<'_>, kind: hir::ExprKind<'_>) -> bool {
                         match kind {
                             hir::ExprKind::Lit(spanned_lit) => match spanned_lit.node {
@@ -152,9 +152,20 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
                                 // field: Default::default(),
                                 true
                             }
-                            _ => {
-                                false
+                            hir::ExprKind::Path(hir::QPath::Resolved(_, path))
+                                if let Res::Def(
+                                    DefKind::Ctor(CtorOf::Variant, CtorKind::Const),
+                                    def_id,
+                                ) = path.res
+                                    && let def_id = tcx.parent(def_id) // From Ctor to variant
+                                    && tcx.is_lang_item(def_id, hir::LangItem::OptionNone) =>
+                            {
+                                // FIXME: We should use a better check where we explore existing
+                                // `impl Default for def_id` of the found type and see compare them
+                                // against what we have here. For now, special case `Option::None`.
+                                true
                             }
+                            _ => false,
                         }
                     }
                     if fields.iter().all(|f| check_expr(cx.tcx, f.expr.kind)) {
