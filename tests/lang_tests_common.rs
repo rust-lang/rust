@@ -22,14 +22,20 @@ pub fn main_inner(profile: Profile) {
     let tempdir = TempDir::new().expect("temp dir");
     let current_dir = current_dir().expect("current dir");
     let current_dir = current_dir.to_str().expect("current dir").to_string();
-    let toml = Toml::parse(include_str!("../config.toml")).expect("Failed to parse `config.toml`");
-    let gcc_path = if let Ok(gcc_path) = toml.get_string("gcc-path") {
-        PathBuf::from(gcc_path.to_string())
-    } else {
-        // then we try to retrieve it from the `target` folder.
-        let commit = include_str!("../libgccjit.version").trim();
-        Path::new("build/libgccjit").join(commit)
-    };
+
+    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+
+    let gcc_path = std::fs::read_to_string(manifest_dir.join("config.toml"))
+        .ok()
+        .and_then(|v| {
+            let toml = Toml::parse(&v).expect("Failed to parse `config.toml`");
+            toml.get_string("gcc-path").map(PathBuf::from).ok()
+        })
+        .unwrap_or_else(|| {
+            // then we try to retrieve it from the `target` folder.
+            let commit = include_str!("../libgccjit.version").trim();
+            Path::new("build/libgccjit").join(commit)
+        });
 
     let gcc_path = Path::new(&gcc_path)
         .canonicalize()
