@@ -39,6 +39,9 @@ if [[ -z "${PR_CI_JOB}" ]]; then
         library/std library/alloc library/core
 fi
 
+# NOTE: intentionally uses all of `x.py`, `x`, and `x.ps1` to make sure they all work on Linux.
+../x.py --stage 2 test --skip src/tools/tidy
+
 # Run the `mir-opt` tests again but this time for a 32-bit target.
 # This enforces that tests using `// EMIT_MIR_FOR_EACH_BIT_WIDTH` have
 # both 32-bit and 64-bit outputs updated by the PR author, before
