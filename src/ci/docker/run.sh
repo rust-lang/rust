@@ -38,7 +38,9 @@ root_dir="`dirname $src_dir`"
 
 source "$ci_dir/shared.sh"
 
+echo "Checking is running in CI..."
 if isCI; then
+    echo "CI detected"
     objdir=$root_dir/obj
 else
     objdir=$root_dir/obj/$image
@@ -53,6 +55,7 @@ fi
 CACHE_DOMAIN="${CACHE_DOMAIN:-ci-caches.rust-lang.org}"
 
 if [ -f "$docker_dir/$image/Dockerfile" ]; then
+    echo "Dockefile exists for $image"
     hash_key=/tmp/.docker-hash-key.txt
     rm -f "${hash_key}"
     echo $image >> $hash_key
