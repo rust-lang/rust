@@ -54,12 +54,13 @@ use crate::{assert_unsafe_precondition, fmt};
 /// [chart]: https://www.unicode.org/charts/PDF/U0000.pdf
 /// [NIST FIPS 1-2]: https://nvlpubs.nist.gov/nistpubs/Legacy/FIPS/fipspub1-2-1977.pdf
 /// [NamesList]: https://www.unicode.org/Public/15.0.0/ucd/NamesList.txt
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Default)]
 #[unstable(feature = "ascii_char", issue = "110998")]
 #[repr(u8)]
 pub enum AsciiChar {
     /// U+0000 (The default variant)
     #[unstable(feature = "ascii_char_variants", issue = "110998")]
+    #[default]
     Null = 0,
     /// U+0001
     #[unstable(feature = "ascii_char_variants", issue = "110998")]
