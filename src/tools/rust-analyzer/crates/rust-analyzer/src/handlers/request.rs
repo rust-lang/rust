@@ -2352,6 +2352,10 @@ fn run_rustfmt(
                 );
                 Ok(None)
             }
+            // rustfmt panicked at lexing/parsing the file
+            Some(101) if !rustfmt_not_installed && captured_stderr.starts_with("error[") => {
+                Ok(None)
+            }
             _ => {
                 // Something else happened - e.g. `rustfmt` is missing or caught a signal
                 Err(LspError::new(
