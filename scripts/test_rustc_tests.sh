@@ -129,6 +129,7 @@ rm tests/ui/abi/large-byval-align.rs # exceeds implementation limit of Cranelift
 # ============================================================
 rm -r tests/run-make/remap-path-prefix-dwarf # requires llvm-dwarfdump
 rm -r tests/run-make/compiler-builtins # Expects lib/rustlib/src/rust to contains the standard library source
+rm -r tests/run-make/missing-unstable-trait-bound # This disables support for unstable features, but running cg_clif needs some unstable features
 
 # genuine bugs
 # ============
