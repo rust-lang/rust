@@ -74,7 +74,7 @@ impl MetaVarExpr {
                         }
                     };
                     result.push(element);
-                    if iter.look_ahead(0).is_none() {
+                    if iter.peek().is_none() {
                         break;
                     }
                     if !try_eat_comma(&mut iter) {
@@ -166,7 +166,7 @@ fn parse_count<'psess>(
     eat_dollar(iter, psess, span)?;
     let ident = parse_ident(iter, psess, span)?;
     let depth = if try_eat_comma(iter) {
-        if iter.look_ahead(0).is_none() {
+        if iter.peek().is_none() {
             return Err(psess.dcx().struct_span_err(
                 span,
                 "`count` followed by a comma must have an associated index indicating its depth",
@@ -252,7 +252,7 @@ fn parse_token<'psess, 't>(
 /// Tries to move the iterator forward returning `true` if there is a comma. If not, then the
 /// iterator is not modified and the result is `false`.
 fn try_eat_comma(iter: &mut RefTokenTreeCursor<'_>) -> bool {
-    if let Some(TokenTree::Token(Token { kind: token::Comma, .. }, _)) = iter.look_ahead(0) {
+    if let Some(TokenTree::Token(Token { kind: token::Comma, .. }, _)) = iter.peek() {
         let _ = iter.next();
         return true;
     }
@@ -262,7 +262,7 @@ fn try_eat_comma(iter: &mut RefTokenTreeCursor<'_>) -> bool {
 /// Tries to move the iterator forward returning `true` if there is a dollar sign. If not, then the
 /// iterator is not modified and the result is `false`.
 fn try_eat_dollar(iter: &mut RefTokenTreeCursor<'_>) -> bool {
-    if let Some(TokenTree::Token(Token { kind: token::Dollar, .. }, _)) = iter.look_ahead(0) {
+    if let Some(TokenTree::Token(Token { kind: token::Dollar, .. }, _)) = iter.peek() {
         let _ = iter.next();
         return true;
     }
@@ -275,7 +275,7 @@ fn eat_dollar<'psess>(
     psess: &'psess ParseSess,
     span: Span,
 ) -> PResult<'psess, ()> {
-    if let Some(TokenTree::Token(Token { kind: token::Dollar, .. }, _)) = iter.look_ahead(0) {
+    if let Some(TokenTree::Token(Token { kind: token::Dollar, .. }, _)) = iter.peek() {
         let _ = iter.next();
         return Ok(());
     }

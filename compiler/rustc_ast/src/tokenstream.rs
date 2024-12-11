@@ -678,8 +678,8 @@ impl<'t> RefTokenTreeCursor<'t> {
         RefTokenTreeCursor { stream, index: 0 }
     }
 
-    pub fn look_ahead(&self, n: usize) -> Option<&TokenTree> {
-        self.stream.0.get(self.index + n)
+    pub fn peek(&self) -> Option<&TokenTree> {
+        self.stream.0.get(self.index)
     }
 }
 

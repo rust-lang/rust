@@ -86,7 +86,7 @@ fn contains_unhygienic_crate_reference(tts: &TokenStream) -> Option<Span> {
     while let Some(curr) = cursor.next() {
         if !prev_is_dollar
             && let Some(span) = is_crate_keyword(curr)
-            && let Some(next) = cursor.look_ahead(0)
+            && let Some(next) = cursor.peek()
             && is_token(next, &TokenKind::PathSep)
         {
             return Some(span);
