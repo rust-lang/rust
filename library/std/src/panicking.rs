@@ -81,7 +81,9 @@ extern "C" fn __rust_foreign_exception() -> ! {
     rtabort!("Rust cannot catch foreign exceptions");
 }
 
+#[derive(Default)]
 enum Hook {
+    #[default]
     Default,
     Custom(Box<dyn Fn(&PanicHookInfo<'_>) + 'static + Sync + Send>),
 }
@@ -93,13 +95,6 @@ impl Hook {
             Hook::Default => Box::new(default_hook),
             Hook::Custom(hook) => hook,
         }
-    }
-}
-
-impl Default for Hook {
-    #[inline]
-    fn default() -> Hook {
-        Hook::Default
     }
 }
 

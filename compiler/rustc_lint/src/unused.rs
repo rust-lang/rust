@@ -1023,17 +1023,12 @@ declare_lint! {
     "`if`, `match`, `while` and `return` do not need parentheses"
 }
 
+#[derive(Default)]
 pub(crate) struct UnusedParens {
     with_self_ty_parens: bool,
     /// `1 as (i32) < 2` parses to ExprKind::Lt
     /// `1 as i32 < 2` parses to i32::<2[missing angle bracket]
     parens_in_cast_in_lt: Vec<ast::NodeId>,
-}
-
-impl Default for UnusedParens {
-    fn default() -> Self {
-        Self { with_self_ty_parens: false, parens_in_cast_in_lt: Vec::new() }
-    }
 }
 
 impl_lint_pass!(UnusedParens => [UNUSED_PARENS]);
