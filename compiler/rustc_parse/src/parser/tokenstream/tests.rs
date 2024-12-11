@@ -1,3 +1,5 @@
+#![cfg_attr(not(bootstrap), allow(rustc::symbol_intern_string_literal))]
+
 use rustc_ast::token::{self, IdentIsRaw};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_span::{BytePos, Span, Symbol, create_default_session_globals_then};
