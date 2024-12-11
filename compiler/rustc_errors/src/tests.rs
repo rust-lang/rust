@@ -97,7 +97,7 @@ fn wellformed_fluent() {
 }
 
 #[test]
-fn malformed_fluent() {
+fn misformed_fluent() {
     let dummy = make_dummy("mir_build_borrow_of_moved_value = borrow of moved value
     .label = value moved into `{name}` here
     .occurs_because_label = move occurs because `{$oops}` has type `{$ty}` which does not implement the `Copy` trait
