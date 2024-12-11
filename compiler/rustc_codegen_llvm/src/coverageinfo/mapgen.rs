@@ -80,10 +80,6 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
     let filenames_val = cx.const_bytes(&filenames_buffer);
     let filenames_ref = llvm_cov::hash_bytes(&filenames_buffer);
 
-    // Generate the coverage map header, which contains the filenames used by
-    // this CGU's coverage mappings, and store it in a well-known global.
-    generate_covmap_record(cx, covmap_version, filenames_size, filenames_val);
-
     let mut unused_function_names = Vec::new();
 
     let covfun_records = function_coverage_map
@@ -92,6 +88,15 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
             prepare_covfun_record(tcx, &global_file_table, instance, &function_coverage)
         })
         .collect::<Vec<_>>();
+
+    // If there are no covfun records for this CGU, don't generate a covmap record.
+    // Emitting a covmap record without any covfun records causes `llvm-cov` to
+    // fail when generating coverage reports, and if there are no covfun records
+    // then the covmap record isn't useful anyway.
+    // This should prevent a repeat of <https://github.com/rust-lang/rust/issues/133606>.
+    if covfun_records.is_empty() {
+        return;
+    }
 
     for covfun in &covfun_records {
         unused_function_names.extend(covfun.mangled_function_name_if_unused());
@@ -117,6 +122,11 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
         llvm::set_linkage(array, llvm::Linkage::InternalLinkage);
         llvm::set_initializer(array, initializer);
     }
+
+    // Generate the coverage map header, which contains the filenames used by
+    // this CGU's coverage mappings, and store it in a well-known global.
+    // (This is skipped if we returned early due to having no covfun records.)
+    generate_covmap_record(cx, covmap_version, filenames_size, filenames_val);
 }
 
 /// Maps "global" (per-CGU) file ID numbers to their underlying filenames.
