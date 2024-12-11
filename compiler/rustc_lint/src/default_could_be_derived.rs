@@ -58,21 +58,52 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
                     hir::ItemKind::Struct(hir::VariantData::Struct { fields, recovered: _ }, _generics),
                 ..
             })) => {
-                if fields.iter().all(|f| f.default.is_some()) {
+                let fields_with_default_value: Vec<_> =
+                    fields.iter().filter_map(|f| f.default).collect();
+                let fields_with_default_impl: Vec<_> = fields
+                    .iter()
+                    .filter_map(|f| match (f.ty.kind, f.default) {
+                        (hir::TyKind::Path(hir::QPath::Resolved(_, path)), None)
+                            if let Some(def_id) = path.res.opt_def_id()
+                                && let DefKind::Struct | DefKind::Enum =
+                                    cx.tcx.def_kind(def_id) =>
+                        {
+                            let ty = cx.tcx.type_of(def_id).instantiate_identity();
+                            let mut count = 0;
+                            cx.tcx.for_each_relevant_impl(default_def_id, ty, |_| count += 1);
+                            if count > 0 { Some(f.ty.span) } else { None }
+                        }
+                        _ => None,
+                    })
+                    .collect();
+                if !fields_with_default_value.is_empty()
+                    && fields.len()
+                        == fields_with_default_value.len() + fields_with_default_impl.len()
+                {
                     cx.tcx.node_span_lint(
                         DEFAULT_COULD_BE_DERIVED,
                         item.hir_id(),
                         item.span,
                         |diag| {
                             diag.primary_message("`impl Default` that could be derived");
+                            let msg = match (
+                                !fields_with_default_value.is_empty(),
+                                !fields_with_default_impl.is_empty(),
+                            ) {
+                                (true, true) => "default values or a type that impls `Default`",
+                                (true, false) => "default values",
+                                (false, true) => "a type that impls `Default`",
+                                (false, false) => unreachable!(),
+                            };
                             diag.span_label(
                                 cx.tcx.def_span(type_def_id),
-                                "all the fields in this struct have default values",
+                                format!("all the fields in this struct have {msg}"),
                             );
-                            for field in &fields[..] {
-                                if let Some(anon) = field.default {
-                                    diag.span_label(anon.span, "");
-                                }
+                            for anon in fields_with_default_value {
+                                diag.span_label(anon.span, "default value");
+                            }
+                            for field in fields_with_default_impl {
+                                diag.span_label(field, "implements `Default`");
                             }
                             diag.multipart_suggestion_verbose(
                                 "to avoid divergence in behavior between `Struct { .. }` and \

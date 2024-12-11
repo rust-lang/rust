@@ -76,7 +76,7 @@ error: `impl Default` that could be derived
 LL |   struct H {
    |   -------- all the fields in this struct have default values
 LL |       x: i32 = 101,
-   |                ---
+   |                --- default value
 ...
 LL | / impl Default for H {
 LL | |     fn default() -> Self {
@@ -92,5 +92,29 @@ help: to avoid divergence in behavior between `Struct { .. }` and `<Struct as De
 LL ~ #[derive(Default)] struct H {
    |
 
-error: aborting due to 5 previous errors
+error: `impl Default` that could be derived
+  --> $DIR/manual-default-impl-could-be-derived.rs:104:1
+   |
+LL |   struct I {
+   |   -------- all the fields in this struct have default values or a type that impls `Default`
+LL |       x: i32 = 101,
+   |                --- default value
+LL |       y: Option<i32>,
+   |          ----------- implements `Default`
+...
+LL | / impl Default for I {
+LL | |     fn default() -> Self {
+LL | |         I {
+LL | |             x: 1,
+...  |
+LL | |     }
+LL | | }
+   | |_^
+   |
+help: to avoid divergence in behavior between `Struct { .. }` and `<Struct as Default>::default()`, derive the `Default`
+   |
+LL ~ #[derive(Default)] struct I {
+   |
+
+error: aborting due to 6 previous errors
 

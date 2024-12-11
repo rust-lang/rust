@@ -60,6 +60,14 @@
 }
 
 
+// Always lint against manual `Default` impl if all fields are defaulted.
+#[derive(PartialEq, Debug)]
+#[derive(Default)] struct I {
+    x: i32 = 101,
+    y: Option<i32>,
+}
+
+
 fn main() {
 //    let _ = A::default();
 //    let _ = B::default();

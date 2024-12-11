@@ -94,6 +94,22 @@ impl Default for H { //~ ERROR
     }
 }
 
+// Always lint against manual `Default` impl if all fields are defaulted.
+#[derive(PartialEq, Debug)]
+struct I {
+    x: i32 = 101,
+    y: Option<i32>,
+}
+
+impl Default for I { //~ ERROR
+    fn default() -> Self {
+        I {
+            x: 1,
+            y: None,
+        }
+    }
+}
+
 fn main() {
 //    let _ = A::default();
 //    let _ = B::default();
