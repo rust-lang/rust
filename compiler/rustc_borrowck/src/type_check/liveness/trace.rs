@@ -590,7 +590,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
         // the destructor and must be live at this point.
         for &kind in &drop_data.dropck_result.kinds {
             Self::make_all_regions_live(self.elements, self.typeck, kind, live_at);
-            polonius::add_drop_of_var_derefs_origin(self.typeck, dropped_local, &kind);
+            polonius::emit_drop_facts(self.typeck, dropped_local, &kind);
         }
     }
 

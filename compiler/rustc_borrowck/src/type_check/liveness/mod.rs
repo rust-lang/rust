@@ -45,7 +45,7 @@ pub(super) fn generate<'a, 'tcx>(
     let (relevant_live_locals, boring_locals) =
         compute_relevant_live_locals(typeck.tcx(), &free_regions, body);
 
-    polonius::populate_access_facts(typeck, body, move_data);
+    polonius::emit_access_facts(typeck, body, move_data);
 
     trace::trace(
         typeck,
