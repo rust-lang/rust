@@ -1190,7 +1190,7 @@ impl<'a> MacroParser<'a> {
     // (`(` ... `)` `=>` `{` ... `}`)*
     fn parse(&mut self) -> Option<Macro> {
         let mut branches = vec![];
-        while self.toks.look_ahead(1).is_some() {
+        while self.toks.look_ahead(0).is_some() {
             branches.push(self.parse_branch()?);
         }
 
