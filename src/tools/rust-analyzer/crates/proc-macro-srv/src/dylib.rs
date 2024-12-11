@@ -3,7 +3,12 @@
 mod version;
 
 use proc_macro::bridge;
-use std::{fmt, fs::File, io};
+use std::{
+    fmt,
+    fs::{self, File},
+    io,
+    time::SystemTime,
+};
 
 use libloading::Library;
 use memmap2::Mmap;
@@ -136,6 +141,7 @@ impl ProcMacroLibraryLibloading {
 pub(crate) struct Expander {
     inner: ProcMacroLibraryLibloading,
     path: Utf8PathBuf,
+    modified_time: SystemTime,
 }
 
 impl Drop for Expander {
@@ -151,12 +157,13 @@ impl Expander {
         // Some libraries for dynamic loading require canonicalized path even when it is
         // already absolute
         let lib = lib.canonicalize_utf8()?;
+        let modified_time = fs::metadata(&lib).and_then(|it| it.modified())?;
 
         let path = ensure_file_with_lock_free_access(&lib)?;
 
         let library = ProcMacroLibraryLibloading::open(path.as_ref())?;
 
-        Ok(Expander { inner: library, path })
+        Ok(Expander { inner: library, path, modified_time })
     }
 
     pub(crate) fn expand<S: ProcMacroSrvSpan>(
@@ -180,6 +187,10 @@ impl Expander {
 
     pub(crate) fn list_macros(&self) -> Vec<(String, ProcMacroKind)> {
         self.inner.proc_macros.list_macros()
+    }
+
+    pub(crate) fn modified_time(&self) -> SystemTime {
+        self.modified_time
     }
 }
 
