@@ -13,8 +13,11 @@ use crate::facts::{AllFacts, PoloniusRegionVid};
 use crate::location::LocationTable;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
 
+mod accesses;
 mod loan_invalidations;
 mod loan_kills;
+
+pub(crate) use accesses::emit_access_facts;
 
 /// When requested, emit most of the facts needed by polonius:
 /// - moves and assignments
