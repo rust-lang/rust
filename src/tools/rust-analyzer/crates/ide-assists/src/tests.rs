@@ -363,7 +363,6 @@ pub fn test_some_range(a: int) -> bool {
     expect![[r#"
         Convert integer base
         Extract into...
-        Extract into function
         Replace if let with match
     "#]]
     .assert_eq(&expected);
@@ -392,7 +391,6 @@ pub fn test_some_range(a: int) -> bool {
         expect![[r#"
             Convert integer base
             Extract into...
-            Extract into function
             Replace if let with match
         "#]]
         .assert_eq(&expected);
@@ -406,7 +404,6 @@ pub fn test_some_range(a: int) -> bool {
 
         expect![[r#"
             Extract into...
-            Extract into function
         "#]]
         .assert_eq(&expected);
     }
@@ -511,7 +508,11 @@ pub fn test_some_range(a: int) -> bool {
                     RefactorExtract,
                 ),
                 label: "Extract into function",
-                group: None,
+                group: Some(
+                    GroupLabel(
+                        "Extract into...",
+                    ),
+                ),
                 target: 59..60,
                 source_change: None,
                 command: None,
@@ -601,7 +602,11 @@ pub fn test_some_range(a: int) -> bool {
                     RefactorExtract,
                 ),
                 label: "Extract into function",
-                group: None,
+                group: Some(
+                    GroupLabel(
+                        "Extract into...",
+                    ),
+                ),
                 target: 59..60,
                 source_change: None,
                 command: None,
@@ -734,7 +739,11 @@ pub fn test_some_range(a: int) -> bool {
                     RefactorExtract,
                 ),
                 label: "Extract into function",
-                group: None,
+                group: Some(
+                    GroupLabel(
+                        "Extract into...",
+                    ),
+                ),
                 target: 59..60,
                 source_change: None,
                 command: None,
@@ -953,7 +962,11 @@ pub fn test_some_range(a: int) -> bool {
                     RefactorExtract,
                 ),
                 label: "Extract into function",
-                group: None,
+                group: Some(
+                    GroupLabel(
+                        "Extract into...",
+                    ),
+                ),
                 target: 59..60,
                 source_change: Some(
                     SourceChange {
