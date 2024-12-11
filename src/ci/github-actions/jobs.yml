@@ -46,8 +46,8 @@ runners:
   - &job-aarch64-linux
     os: ubuntu-22.04-arm64-8core-32gb
 
-  - &job-linux-4c-codebuild
-    os: codebuild-ubuntu-22-4c-${{ github.run_id }}-${{ github.run_attempt }}
+  - &job-linux-8c-codebuild
+    os: codebuild-ubuntu-22-8c-${{ github.run_id }}-${{ github.run_attempt }}
     <<: *base-job
 
 envs:
@@ -241,7 +241,7 @@ auto:
     <<: *job-linux-4c
 
   - image: x86_64-gnu
-    <<: *job-linux-4c-codebuild
+    <<: *job-linux-8c-codebuild
 
   # This job ensures commits landing on nightly still pass the full
   # test suite on the stable channel. There are some UI tests that
