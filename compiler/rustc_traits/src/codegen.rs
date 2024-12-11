@@ -12,7 +12,7 @@ use rustc_trait_selection::traits::{
     ImplSource, Obligation, ObligationCause, ObligationCtxt, ScrubbedTraitError, SelectionContext,
     Unimplemented,
 };
-use tracing::debug;
+use tracing::{debug, warn};
 
 /// Attempts to resolve an obligation to an `ImplSource`. The result is
 /// a shallow `ImplSource` resolution, meaning that we do not
@@ -26,7 +26,8 @@ pub(crate) fn codegen_select_candidate<'tcx>(
     key: PseudoCanonicalInput<'tcx, ty::TraitRef<'tcx>>,
 ) -> Result<&'tcx ImplSource<'tcx, ()>, CodegenObligationError> {
     let PseudoCanonicalInput { typing_env, value: trait_ref } = key;
-    // We expect the input to be fully normalized.
+
+    // Ensure the input is fully normalized.
     debug_assert_eq!(trait_ref, tcx.normalize_erasing_regions(typing_env, trait_ref));
 
     // Do the initial selection for the obligation. This yields the
@@ -39,19 +40,31 @@ pub(crate) fn codegen_select_candidate<'tcx>(
 
     let selection = match selcx.select(&obligation) {
         Ok(Some(selection)) => selection,
-        Ok(None) => return Err(CodegenObligationError::Ambiguity),
-        Err(Unimplemented) => return Err(CodegenObligationError::Unimplemented),
+        Ok(None) => {
+            warn!(
+                "Ambiguity encountered in trait resolution for {:?}. Ensure that all associated types are fully resolved.",
+                trait_ref
+            );
+            return Err(CodegenObligationError::Ambiguity);
+        }
+        Err(Unimplemented) => {
+            warn!(
+                "Trait {:?} is not implemented for the given context during codegen.",
+                trait_ref
+            );
+            return Err(CodegenObligationError::Unimplemented);
+        }
         Err(e) => {
-            bug!("Encountered error `{:?}` selecting `{:?}` during codegen", e, trait_ref)
+            bug!(
+                "Unexpected error `{:?}` encountered while selecting `{:?}` during codegen.",
+                e, trait_ref
+            );
         }
     };
 
-    debug!(?selection);
+    debug!(?selection, "Selection result before resolving nested obligations");
 
-    // Currently, we use a fulfillment context to completely resolve
-    // all nested obligations. This is because they can inform the
-    // inference of the impl's type parameters.
-    // FIXME(-Znext-solver): Doesn't need diagnostics if new solver.
+    // Resolve all nested obligations to finalize inference of type parameters.
     let ocx = ObligationCtxt::new(&infcx);
     let impl_source = selection.map(|obligation| {
         ocx.register_obligation(obligation);
@@ -84,10 +97,10 @@ pub(crate) fn codegen_select_candidate<'tcx>(
             ImplSource::UserDefined(impl_) => {
                 tcx.dcx().span_delayed_bug(
                     tcx.def_span(impl_.impl_def_id),
-                    "this impl has unconstrained generic parameters",
+                    "This implementation has unconstrained generic parameters. Consider reviewing the definition."
                 );
             }
-            _ => unreachable!(),
+            _ => unreachable!("Unexpected ImplSource variant with unresolved inference variables."),
         }
         return Err(CodegenObligationError::FulfillmentError);
     }
