@@ -36,8 +36,8 @@ impl Copy for i8 {}
 impl Copy for u8 {}
 impl<T: ?Sized> Copy for *mut T {}
 
-#[lang = "receiver"]
-trait Receiver {
+#[lang = "legacy_receiver"]
+trait LegacyReceiver {
 }
 
 #[lang = "freeze"]
