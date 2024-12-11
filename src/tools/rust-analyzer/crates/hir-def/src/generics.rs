@@ -26,8 +26,8 @@ use crate::{
     nameres::{DefMap, MacroSubNs},
     path::{AssociatedTypeBinding, GenericArg, GenericArgs, NormalPath, Path},
     type_ref::{
-        ArrayType, ConstRef, FnType, LifetimeRef, RefType, TypeBound, TypeRef, TypeRefId, TypesMap,
-        TypesSourceMap,
+        ArrayType, ConstRef, FnType, LifetimeRef, PathId, RefType, TypeBound, TypeRef, TypeRefId,
+        TypesMap, TypesSourceMap,
     },
     AdtId, ConstParamId, GenericDefId, HasModule, ItemTreeLoc, LifetimeParamId,
     LocalLifetimeParamId, LocalTypeOrConstParamId, Lookup, TypeOrConstParamId, TypeParamId,
@@ -222,6 +222,11 @@ impl GenericParams {
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+
+    #[inline]
+    pub fn no_predicates(&self) -> bool {
+        self.where_predicates.is_empty()
     }
 
     #[inline]
@@ -874,14 +879,20 @@ fn copy_type_bound(
     to: &mut TypesMap,
     to_source_map: &mut TypesSourceMap,
 ) -> TypeBound {
-    match bound {
-        TypeBound::Path(path, modifier) => {
-            TypeBound::Path(copy_path(path, from, from_source_map, to, to_source_map), *modifier)
+    let mut copy_path_id = |path: PathId| {
+        let new_path = copy_path(&from[path], from, from_source_map, to, to_source_map);
+        let new_path_id = to.types.alloc(TypeRef::Path(new_path));
+        if let Some(&ptr) = from_source_map.types_map_back.get(path.type_ref()) {
+            to_source_map.types_map_back.insert(new_path_id, ptr);
         }
-        TypeBound::ForLifetime(lifetimes, path) => TypeBound::ForLifetime(
-            lifetimes.clone(),
-            copy_path(path, from, from_source_map, to, to_source_map),
-        ),
+        PathId::from_type_ref_unchecked(new_path_id)
+    };
+
+    match bound {
+        &TypeBound::Path(path, modifier) => TypeBound::Path(copy_path_id(path), modifier),
+        TypeBound::ForLifetime(lifetimes, path) => {
+            TypeBound::ForLifetime(lifetimes.clone(), copy_path_id(*path))
+        }
         TypeBound::Lifetime(lifetime) => TypeBound::Lifetime(lifetime.clone()),
         TypeBound::Use(use_args) => TypeBound::Use(use_args.clone()),
         TypeBound::Error => TypeBound::Error,

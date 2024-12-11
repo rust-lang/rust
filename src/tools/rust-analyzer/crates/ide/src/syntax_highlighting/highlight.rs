@@ -151,6 +151,14 @@ fn punctuation(
             T!['['] | T![']'] => HlPunct::Bracket,
             T!['{'] | T!['}'] => HlPunct::Brace,
             T!['('] | T![')'] => HlPunct::Parenthesis,
+            T![>]
+                if parent
+                    .as_ref()
+                    .and_then(SyntaxNode::parent)
+                    .map_or(false, |it| it.kind() == MACRO_RULES) =>
+            {
+                return HlOperator::Other.into()
+            }
             T![<] | T![>] => HlPunct::Angle,
             T![,] => HlPunct::Comma,
             T![:] => HlPunct::Colon,

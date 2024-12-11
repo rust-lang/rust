@@ -19,7 +19,7 @@ use crate::{
     TyBuilder, TyExt, TyKind, ValueTyDefId,
 };
 
-use super::{ExprOrPatId, InferenceContext};
+use super::{ExprOrPatId, InferenceContext, InferenceTyDiagnosticSource};
 
 impl InferenceContext<'_> {
     pub(super) fn infer_path(&mut self, path: &Path, id: ExprOrPatId) -> Option<Ty> {
@@ -163,6 +163,7 @@ impl InferenceContext<'_> {
 
             let remaining_segments_for_ty = path.segments().take(path.segments().len() - 1);
             let (ty, _) = ctx.lower_ty_relative_path(ty, orig_ns, remaining_segments_for_ty);
+            self.push_ty_diagnostics(InferenceTyDiagnosticSource::Body, ctx.diagnostics);
             let ty = self.table.insert_type_vars(ty);
             let ty = self.table.normalize_associated_types_in(ty);
             self.resolve_ty_assoc_item(ty, last.name, id).map(|(it, substs)| (it, Some(substs)))?
@@ -265,6 +266,9 @@ impl InferenceContext<'_> {
                         resolved_segment,
                         remaining_segments_for_ty,
                         true,
+                        &mut |_, _reason| {
+                            // FIXME: Report an error.
+                        },
                     )
                 });
                 if ty.is_unknown() {

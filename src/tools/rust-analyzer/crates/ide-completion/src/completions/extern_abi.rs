@@ -38,7 +38,6 @@ const SUPPORTED_CALLING_CONVENTIONS: &[&str] = &[
     "system-unwind",
     "rust-intrinsic",
     "rust-call",
-    "platform-intrinsic",
     "unadjusted",
 ];
 

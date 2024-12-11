@@ -910,8 +910,13 @@ impl DefCollector<'_> {
                             self.update(module_id, &items, vis, Some(ImportType::Glob(id)));
                             // record the glob import in case we add further items
                             let glob = self.glob_imports.entry(m.local_id).or_default();
-                            if !glob.iter().any(|(mid, _, _)| *mid == module_id) {
-                                glob.push((module_id, vis, id));
+                            match glob.iter_mut().find(|(mid, _, _)| *mid == module_id) {
+                                None => glob.push((module_id, vis, id)),
+                                Some((_, old_vis, _)) => {
+                                    if let Some(new_vis) = old_vis.max(vis, &self.def_map) {
+                                        *old_vis = new_vis;
+                                    }
+                                }
                             }
                         }
                     }

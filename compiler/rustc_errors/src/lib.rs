@@ -1291,7 +1291,7 @@ impl<'a> DiagCtxtHandle<'a> {
         Diag::<ErrorGuaranteed>::new(self, DelayedBug, msg.into()).emit()
     }
 
-    /// Ensures that an error is printed. See `Level::DelayedBug`.
+    /// Ensures that an error is printed. See [`Level::DelayedBug`].
     ///
     /// Note: this function used to be called `delay_span_bug`. It was renamed
     /// to match similar functions like `span_err`, `span_warn`, etc.

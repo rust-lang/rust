@@ -62,11 +62,10 @@ pub(crate) fn write_filenames_to_buffer<'a>(
 pub(crate) fn write_function_mappings_to_buffer(
     virtual_file_mapping: &[u32],
     expressions: &[ffi::CounterExpression],
-    code_regions: &[ffi::CodeRegion],
-    branch_regions: &[ffi::BranchRegion],
-    mcdc_branch_regions: &[ffi::MCDCBranchRegion],
-    mcdc_decision_regions: &[ffi::MCDCDecisionRegion],
+    regions: &ffi::Regions,
 ) -> Vec<u8> {
+    let ffi::Regions { code_regions, branch_regions, mcdc_branch_regions, mcdc_decision_regions } =
+        regions;
     llvm::build_byte_buffer(|buffer| unsafe {
         llvm::LLVMRustCoverageWriteFunctionMappingsToBuffer(
             virtual_file_mapping.as_ptr(),

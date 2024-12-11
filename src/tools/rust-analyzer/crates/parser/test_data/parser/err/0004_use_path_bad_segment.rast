@@ -9,7 +9,8 @@ SOURCE_FILE
             NAME_REF
               IDENT "foo"
         COLON2 "::"
-        ERROR
-          INT_NUMBER "92"
+        PATH_SEGMENT
+          ERROR
+            INT_NUMBER "92"
     SEMICOLON ";"
-error 9: expected identifier
+error 9: expected identifier, `self`, `super`, `crate`, or `Self`

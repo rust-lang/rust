@@ -1510,20 +1510,20 @@ impl ExprCollector<'_> {
                         BuiltinShadowMode::Other,
                         None,
                     );
+                    // Funnily enough, record structs/variants *can* be shadowed
+                    // by pattern bindings (but unit or tuple structs/variants
+                    // can't).
                     match resolved.take_values() {
                         Some(ModuleDefId::ConstId(_)) => (None, Pat::Path(name.into())),
-                        Some(ModuleDefId::EnumVariantId(_)) => {
-                            // this is only really valid for unit variants, but
-                            // shadowing other enum variants with a pattern is
-                            // an error anyway
+                        Some(ModuleDefId::EnumVariantId(variant))
+                            if self.db.variant_data(variant.into()).kind()
+                                != StructKind::Record =>
+                        {
                             (None, Pat::Path(name.into()))
                         }
                         Some(ModuleDefId::AdtId(AdtId::StructId(s)))
                             if self.db.struct_data(s).variant_data.kind() != StructKind::Record =>
                         {
-                            // Funnily enough, record structs *can* be shadowed
-                            // by pattern bindings (but unit or tuple structs
-                            // can't).
                             (None, Pat::Path(name.into()))
                         }
                         // shadowing statics is an error as well, so we just ignore that case here

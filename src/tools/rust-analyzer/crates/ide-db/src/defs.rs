@@ -733,6 +733,12 @@ impl NameRefClass {
                     }
                     None
                 },
+                ast::UseBoundGenericArgs(_) => {
+                    sema.resolve_use_type_arg(name_ref)
+                        .map(GenericParam::TypeParam)
+                        .map(Definition::GenericParam)
+                        .map(NameRefClass::Definition)
+                },
                 ast::ExternCrate(extern_crate_ast) => {
                     let extern_crate = sema.to_def(&extern_crate_ast)?;
                     let krate = extern_crate.resolved_crate(sema.db)?;
@@ -764,6 +770,7 @@ impl NameRefClass {
                 sema.resolve_label(lifetime).map(Definition::Label).map(NameRefClass::Definition)
             }
             SyntaxKind::LIFETIME_ARG
+            | SyntaxKind::USE_BOUND_GENERIC_ARGS
             | SyntaxKind::SELF_PARAM
             | SyntaxKind::TYPE_BOUND
             | SyntaxKind::WHERE_PRED
@@ -772,16 +779,6 @@ impl NameRefClass {
                 .map(GenericParam::LifetimeParam)
                 .map(Definition::GenericParam)
                 .map(NameRefClass::Definition),
-            // lifetime bounds, as in the 'b in 'a: 'b aren't wrapped in TypeBound nodes so we gotta check
-            // if our lifetime is in a LifetimeParam without being the constrained lifetime
-            _ if ast::LifetimeParam::cast(parent).and_then(|param| param.lifetime()).as_ref()
-                != Some(lifetime) =>
-            {
-                sema.resolve_lifetime_param(lifetime)
-                    .map(GenericParam::LifetimeParam)
-                    .map(Definition::GenericParam)
-                    .map(NameRefClass::Definition)
-            }
             _ => None,
         }
     }
