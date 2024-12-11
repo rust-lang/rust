@@ -61,4 +61,4 @@ RUN /scripts/build-gccjit.sh /scripts
 
 ARG SCRIPT_ARG
 COPY scripts/${SCRIPT_ARG} /tmp/script.sh
-ENV SCRIPT= /tmp/script.sh
+ENV SCRIPT /tmp/script.sh
