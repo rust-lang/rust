@@ -1,0 +1,23 @@
+error: `impl Default` that could be derived
+  --> $DIR/manual-default-impl-could-be-derived.rs:58:1
+   |
+LL | / impl Default for F {
+LL | |     fn default() -> Self {
+LL | |         F::Unit
+LL | |     }
+LL | | }
+   | |_^
+   |
+note: the lint level is defined here
+  --> $DIR/manual-default-impl-could-be-derived.rs:4:9
+   |
+LL | #![deny(default_could_be_derived)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+help: you don't need to manually `impl Default`, you can derive it
+   |
+LL ~ #[derive(Default)] enum F {
+LL ~     #[default] Unit,
+   |
+
+error: aborting due to 1 previous error
+
