@@ -153,10 +153,6 @@ impl TargetInfo {
         }
         false
     }
-
-    fn supports_target_dependent_type(&self, _typ: CType) -> bool {
-        false
-    }
 }
 
 #[derive(Clone)]
