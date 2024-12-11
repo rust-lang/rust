@@ -250,7 +250,7 @@ use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
 #[cfg(not(no_global_oom_handling))]
 use core::iter;
-use core::marker::{PhantomData, Unsize};
+use core::marker::{PhantomData, Unsize, UseCloned};
 use core::mem::{self, ManuallyDrop, align_of_val_raw};
 use core::num::NonZeroUsize;
 use core::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, LegacyReceiver};
@@ -2333,6 +2333,9 @@ impl<T: ?Sized, A: Allocator + Clone> Clone for Rc<T, A> {
     }
 }
 
+#[unstable(feature = "ergonomic_clones", issue = "132290")]
+impl<T: ?Sized, A: Allocator + Clone> UseCloned for Rc<T, A> {}
+
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Default> Default for Rc<T> {
@@ -3495,6 +3498,9 @@ impl<T: ?Sized, A: Allocator + Clone> Clone for Weak<T, A> {
         Weak { ptr: self.ptr, alloc: self.alloc.clone() }
     }
 }
+
+#[unstable(feature = "ergonomic_clones", issue = "132290")]
+impl<T: ?Sized, A: Allocator + Clone> UseCloned for Weak<T, A> {}
 
 #[stable(feature = "rc_weak", since = "1.4.0")]
 impl<T: ?Sized, A: Allocator> fmt::Debug for Weak<T, A> {

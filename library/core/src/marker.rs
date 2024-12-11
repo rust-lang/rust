@@ -453,6 +453,41 @@ impl Copy for ! {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Copy for &T {}
 
+/// Trait for objects whose [`Clone`] impl is lightweight (e.g. reference-counted)
+///
+/// Cloning an object implementing this trait should in general:
+/// - be O(1) (constant) time regardless of the amount of data managed by the object,
+/// - not require a memory allocation,
+/// - not require copying more than roughly 64 bytes (a typical cache line size),
+/// - not block the current thread,
+/// - not have any semantic side effects (e.g. allocating a file descriptor), and
+/// - not have overhead larger than a couple of atomic operations.
+///
+/// The `UseCloned` trait does not provide a method; instead, it indicates that
+/// `Clone::clone` is lightweight, and allows the use of the `.use` syntax.
+#[unstable(feature = "ergonomic_clones", issue = "132290")]
+#[cfg_attr(not(bootstrap), lang = "use_cloned")]
+#[marker]
+pub trait UseCloned: Clone {
+    // Empty.
+}
+
+macro_rules! impl_use_cloned {
+    ($($t:ty)*) => {
+        $(
+            #[unstable(feature = "ergonomic_clones", issue = "132290")]
+            impl UseCloned for $t {}
+        )*
+    }
+}
+
+impl_use_cloned! {
+    usize u8 u16 u32 u64 u128
+    isize i8 i16 i32 i64 i128
+             f16 f32 f64 f128
+    bool char
+}
+
 /// Marker trait for the types that are allowed in union fields, unsafe fields,
 /// and unsafe binder types.
 ///
