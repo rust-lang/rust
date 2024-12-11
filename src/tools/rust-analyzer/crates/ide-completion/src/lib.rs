@@ -34,6 +34,7 @@ pub use crate::{
     config::{CallableSnippets, CompletionConfig},
     item::{
         CompletionItem, CompletionItemKind, CompletionRelevance, CompletionRelevancePostfixMatch,
+        CompletionRelevanceReturnType, CompletionRelevanceTypeMatch,
     },
     snippet::{Snippet, SnippetScope},
 };
