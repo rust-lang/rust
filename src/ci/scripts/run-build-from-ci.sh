@@ -17,6 +17,8 @@ echo "::add-matcher::src/ci/github-actions/problem_matchers.json"
 # the environment
 rustup self uninstall -y || true
 
+aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
 # Authenticate to the public ECR registry. See https://gallery.ecr.aws/.
 # The region `us-east-1` is the only allowed value by aws to authenticate to ECR.
 aws ecr-public get-login-password --region us-east-1 \
