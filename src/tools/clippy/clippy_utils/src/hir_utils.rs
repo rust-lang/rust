@@ -10,7 +10,7 @@ use rustc_hir::{
     AssocItemConstraint, BinOpKind, BindingMode, Block, BodyId, Closure, ConstArg, ConstArgKind, Expr,
     ExprField, ExprKind, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime,
     LifetimeName, Pat, PatField, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitBoundModifiers, Ty,
-    TyKind,
+    TyKind, StructTailExpr,
 };
 use rustc_lexer::{TokenKind, tokenize};
 use rustc_lint::LateContext;
@@ -380,7 +380,12 @@ impl HirEqInterExpr<'_, '_, '_> {
             (ExprKind::Ret(l), ExprKind::Ret(r)) => both(l.as_ref(), r.as_ref(), |l, r| self.eq_expr(l, r)),
             (&ExprKind::Struct(l_path, lf, ref lo), &ExprKind::Struct(r_path, rf, ref ro)) => {
                 self.eq_qpath(l_path, r_path)
-                    && both(lo.as_ref(), ro.as_ref(), |l, r| self.eq_expr(l, r))
+                    && match (lo, ro) {
+                        (StructTailExpr::Base(l),StructTailExpr::Base(r)) => self.eq_expr(l, r),
+                        (StructTailExpr::None, StructTailExpr::None) => true,
+                        (StructTailExpr::DefaultFields(_), StructTailExpr::DefaultFields(_)) => true,
+                        _ => false,
+                    }
                     && over(lf, rf, |l, r| self.eq_expr_field(l, r))
             },
             (&ExprKind::Tup(l_tup), &ExprKind::Tup(r_tup)) => self.eq_exprs(l_tup, r_tup),
@@ -539,7 +544,7 @@ impl HirEqInterExpr<'_, '_, '_> {
     fn eq_path_parameters(&mut self, left: &GenericArgs<'_>, right: &GenericArgs<'_>) -> bool {
         if left.parenthesized == right.parenthesized {
             over(left.args, right.args, |l, r| self.eq_generic_arg(l, r)) // FIXME(flip1995): may not work
-                && over(left.constraints, right.constraints, |l, r| self.eq_assoc_type_binding(l, r))
+                && over(left.constraints, right.constraints, |l, r| self.eq_assoc_eq_constraint(l, r))
         } else {
             false
         }
@@ -596,12 +601,13 @@ impl HirEqInterExpr<'_, '_, '_> {
         }
     }
 
-    fn eq_assoc_type_binding(&mut self, left: &AssocItemConstraint<'_>, right: &AssocItemConstraint<'_>) -> bool {
+    /// Checks whether two constraints designate the same equality constraint (same name, and same
+    /// type or const).
+    fn eq_assoc_eq_constraint(&mut self, left: &AssocItemConstraint<'_>, right: &AssocItemConstraint<'_>) -> bool {
+        // TODO: this could be extended to check for identical associated item bound constraints
         left.ident.name == right.ident.name
-            && self.eq_ty(
-                left.ty().expect("expected assoc type binding"),
-                right.ty().expect("expected assoc type binding"),
-            )
+            && (both_some_and(left.ty(), right.ty(), |l, r| self.eq_ty(l, r))
+                || both_some_and(left.ct(), right.ct(), |l, r| self.eq_const_arg(l, r)))
     }
 
     fn check_ctxt(&mut self, left: SyntaxContext, right: SyntaxContext) -> bool {
@@ -719,6 +725,11 @@ fn swap_binop<'a>(
 pub fn both<X>(l: Option<&X>, r: Option<&X>, mut eq_fn: impl FnMut(&X, &X) -> bool) -> bool {
     l.as_ref()
         .map_or_else(|| r.is_none(), |x| r.as_ref().is_some_and(|y| eq_fn(x, y)))
+}
+
+/// Checks if the two `Option`s are both `Some` and pass the predicate function.
+pub fn both_some_and<X, Y>(l: Option<X>, r: Option<Y>, mut pred: impl FnMut(X, Y) -> bool) -> bool {
+    l.is_some_and(|l| r.is_some_and(|r| pred(l, r)))
 }
 
 /// Checks if two slices are equal as per `eq_fn`.
@@ -1011,7 +1022,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_expr(f.expr);
                 }
 
-                if let Some(e) = *expr {
+                if let StructTailExpr::Base(e) = *expr {
                     self.hash_expr(e);
                 }
             },

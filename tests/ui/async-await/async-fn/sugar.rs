@@ -1,7 +1,7 @@
 //@ edition: 2021
 //@ check-pass
 
-#![feature(async_closure)]
+#![feature(async_closure, async_trait_bounds)]
 
 async fn foo() {}
 

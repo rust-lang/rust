@@ -14,7 +14,7 @@ pub(crate) fn target() -> Target {
             description: None,
             tier: None,
             host_tools: None,
-            std: None,
+            std: Some(true),
         },
         pointer_width: 64,
         data_layout:

@@ -2,6 +2,7 @@
 
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_errors::emitter::Emitter;
+use rustc_errors::registry::Registry;
 use rustc_errors::translation::{Translate, to_fluent_args};
 use rustc_errors::{Applicability, DiagCtxt, DiagInner, LazyFallbackBundle};
 use rustc_parse::{source_str_to_stream, unwrap_or_emit_fatal};
@@ -155,7 +156,7 @@ impl Translate for BufferEmitter {
 }
 
 impl Emitter for BufferEmitter {
-    fn emit_diagnostic(&mut self, diag: DiagInner) {
+    fn emit_diagnostic(&mut self, diag: DiagInner, _registry: &Registry) {
         let mut buffer = self.buffer.borrow_mut();
 
         let fluent_args = to_fluent_args(diag.args.iter());

@@ -7,6 +7,7 @@
 - [Configuration](configuration.md)
     - [Lint Configuration](lint_configuration.md)
 - [Clippy's Lints](lints.md)
+- [Attributes for Crate Authors](attribs.md)
 - [Continuous Integration](continuous_integration/README.md)
     - [GitHub Actions](continuous_integration/github_actions.md)
     - [GitLab CI](continuous_integration/gitlab.md)

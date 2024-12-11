@@ -231,7 +231,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             if range.start <= range.end { BinOp::BitAnd } else { BinOp::BitOr };
 
                         let mut comparer = |range: u128, bin_op: BinOp| -> Place<'tcx> {
-                            // We can use `ty::TypingEnv::fully_monomorphized()`` here
+                            // We can use `ty::TypingEnv::fully_monomorphized()` here
                             // as we only need it to compute the layout of a primitive.
                             let range_val = Const::from_bits(
                                 this.tcx,

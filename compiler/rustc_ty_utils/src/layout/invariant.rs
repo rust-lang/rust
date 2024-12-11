@@ -1,11 +1,11 @@
 use std::assert_matches::assert_matches;
 
-use rustc_abi::{BackendRepr, FieldsShape, Scalar, Size, Variants};
+use rustc_abi::{BackendRepr, FieldsShape, Scalar, Size, TagEncoding, Variants};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, TyAndLayout};
 
 /// Enforce some basic invariants on layouts.
-pub(super) fn partially_check_layout<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) {
+pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) {
     let tcx = cx.tcx();
 
     // Type-level uninhabitedness should always imply ABI uninhabitedness.
@@ -241,7 +241,17 @@ pub(super) fn partially_check_layout<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLa
 
     check_layout_abi(cx, layout);
 
-    if let Variants::Multiple { variants, .. } = &layout.variants {
+    if let Variants::Multiple { variants, tag, tag_encoding, .. } = &layout.variants {
+        if let TagEncoding::Niche { niche_start, untagged_variant, niche_variants } = tag_encoding {
+            let niche_size = tag.size(cx);
+            assert!(*niche_start <= niche_size.unsigned_int_max());
+            for (idx, variant) in variants.iter_enumerated() {
+                // Ensure all inhabited variants are accounted for.
+                if !variant.is_uninhabited() {
+                    assert!(idx == *untagged_variant || niche_variants.contains(&idx));
+                }
+            }
+        }
         for variant in variants.iter() {
             // No nested "multiple".
             assert_matches!(variant.variants, Variants::Single { .. });

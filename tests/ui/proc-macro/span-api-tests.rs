@@ -1,5 +1,5 @@
 //@ run-pass
-//@ aux-build:span-api-tests.rs
+//@ proc-macro: span-api-tests.rs
 //@ aux-build:span-test-macros.rs
 //@ compile-flags: -Ztranslate-remapped-path-to-local-path=yes
 

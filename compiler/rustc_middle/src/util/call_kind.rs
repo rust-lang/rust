@@ -14,6 +14,8 @@ use crate::ty::{AssocItemContainer, GenericArgsRef, Instance, Ty, TyCtxt, Typing
 pub enum CallDesugaringKind {
     /// for _ in x {} calls x.into_iter()
     ForLoopIntoIter,
+    /// for _ in x {} calls iter.next()
+    ForLoopNext,
     /// x? calls x.branch()
     QuestionBranch,
     /// x? calls type_of(x)::from_residual()
@@ -28,6 +30,7 @@ impl CallDesugaringKind {
     pub fn trait_def_id(self, tcx: TyCtxt<'_>) -> DefId {
         match self {
             Self::ForLoopIntoIter => tcx.get_diagnostic_item(sym::IntoIterator).unwrap(),
+            Self::ForLoopNext => tcx.require_lang_item(LangItem::Iterator, None),
             Self::QuestionBranch | Self::TryBlockFromOutput => {
                 tcx.require_lang_item(LangItem::Try, None)
             }
@@ -121,6 +124,10 @@ pub fn call_kind<'tcx>(
             && fn_call_span.desugaring_kind() == Some(DesugaringKind::ForLoop)
         {
             Some((CallDesugaringKind::ForLoopIntoIter, method_args.type_at(0)))
+        } else if tcx.is_lang_item(method_did, LangItem::IteratorNext)
+            && fn_call_span.desugaring_kind() == Some(DesugaringKind::ForLoop)
+        {
+            Some((CallDesugaringKind::ForLoopNext, method_args.type_at(0)))
         } else if fn_call_span.desugaring_kind() == Some(DesugaringKind::QuestionMark) {
             if tcx.is_lang_item(method_did, LangItem::TryTraitBranch) {
                 Some((CallDesugaringKind::QuestionBranch, method_args.type_at(0)))

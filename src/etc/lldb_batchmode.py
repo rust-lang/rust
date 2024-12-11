@@ -45,7 +45,7 @@ def normalize_whitespace(s):
 
 def breakpoint_callback(frame, bp_loc, dict):
     """This callback is registered with every breakpoint and makes sure that the
-    frame containing the breakpoint location is selected """
+    frame containing the breakpoint location is selected"""
 
     # HACK(eddyb) print a newline to avoid continuing an unfinished line.
     print("")
@@ -79,7 +79,7 @@ def execute_command(command_interpreter, command):
 
     if res.Succeeded():
         if res.HasResult():
-            print(normalize_whitespace(res.GetOutput() or ''), end='\n')
+            print(normalize_whitespace(res.GetOutput() or ""), end="\n")
 
         # If the command introduced any breakpoints, make sure to register
         # them with the breakpoint
@@ -89,20 +89,32 @@ def execute_command(command_interpreter, command):
             breakpoint_id = new_breakpoints.pop()
 
             if breakpoint_id in registered_breakpoints:
-                print_debug("breakpoint with id %s is already registered. Ignoring." %
-                            str(breakpoint_id))
+                print_debug(
+                    "breakpoint with id %s is already registered. Ignoring."
+                    % str(breakpoint_id)
+                )
             else:
-                print_debug("registering breakpoint callback, id = " + str(breakpoint_id))
-                callback_command = ("breakpoint command add -F breakpoint_callback " +
-                                    str(breakpoint_id))
+                print_debug(
+                    "registering breakpoint callback, id = " + str(breakpoint_id)
+                )
+                callback_command = (
+                    "breakpoint command add -F breakpoint_callback "
+                    + str(breakpoint_id)
+                )
                 command_interpreter.HandleCommand(callback_command, res)
                 if res.Succeeded():
-                    print_debug("successfully registered breakpoint callback, id = " +
-                                str(breakpoint_id))
+                    print_debug(
+                        "successfully registered breakpoint callback, id = "
+                        + str(breakpoint_id)
+                    )
                     registered_breakpoints.add(breakpoint_id)
                 else:
-                    print("Error while trying to register breakpoint callback, id = " +
-                          str(breakpoint_id) + ", message = " + str(res.GetError()))
+                    print(
+                        "Error while trying to register breakpoint callback, id = "
+                        + str(breakpoint_id)
+                        + ", message = "
+                        + str(res.GetError())
+                    )
     else:
         print(res.GetError())
 
@@ -117,14 +129,16 @@ def start_breakpoint_listener(target):
         try:
             while True:
                 if listener.WaitForEvent(120, event):
-                    if lldb.SBBreakpoint.EventIsBreakpointEvent(event) and \
-                            lldb.SBBreakpoint.GetBreakpointEventTypeFromEvent(event) == \
-                            lldb.eBreakpointEventTypeAdded:
+                    if (
+                        lldb.SBBreakpoint.EventIsBreakpointEvent(event)
+                        and lldb.SBBreakpoint.GetBreakpointEventTypeFromEvent(event)
+                        == lldb.eBreakpointEventTypeAdded
+                    ):
                         global new_breakpoints
                         breakpoint = lldb.SBBreakpoint.GetBreakpointFromEvent(event)
                         print_debug("breakpoint added, id = " + str(breakpoint.id))
                         new_breakpoints.append(breakpoint.id)
-        except BaseException: # explicitly catch ctrl+c/sysexit
+        except BaseException:  # explicitly catch ctrl+c/sysexit
             print_debug("breakpoint listener shutting down")
 
     # Start the listener and let it run as a daemon
@@ -133,7 +147,9 @@ def start_breakpoint_listener(target):
     listener_thread.start()
 
     # Register the listener with the target
-    target.GetBroadcaster().AddListener(listener, lldb.SBTarget.eBroadcastBitBreakpointChanged)
+    target.GetBroadcaster().AddListener(
+        listener, lldb.SBTarget.eBroadcastBitBreakpointChanged
+    )
 
 
 def start_watchdog():
@@ -158,6 +174,7 @@ def start_watchdog():
     watchdog_thread = threading.Thread(target=watchdog)
     watchdog_thread.daemon = True
     watchdog_thread.start()
+
 
 ####################################################################################################
 # ~main
@@ -193,8 +210,14 @@ target_error = lldb.SBError()
 target = debugger.CreateTarget(target_path, None, None, True, target_error)
 
 if not target:
-    print("Could not create debugging target '" + target_path + "': " +
-          str(target_error) + ". Aborting.", file=sys.stderr)
+    print(
+        "Could not create debugging target '"
+        + target_path
+        + "': "
+        + str(target_error)
+        + ". Aborting.",
+        file=sys.stderr,
+    )
     sys.exit(1)
 
 
@@ -204,15 +227,19 @@ start_breakpoint_listener(target)
 command_interpreter = debugger.GetCommandInterpreter()
 
 try:
-    script_file = open(script_path, 'r')
+    script_file = open(script_path, "r")
 
     for line in script_file:
         command = line.strip()
-        if command == "run" or command == "r" or re.match("^process\s+launch.*", command):
+        if (
+            command == "run"
+            or command == "r"
+            or re.match("^process\s+launch.*", command)
+        ):
             # Before starting to run the program, let the thread sleep a bit, so all
             # breakpoint added events can be processed
             time.sleep(0.5)
-        if command != '':
+        if command != "":
             execute_command(command_interpreter, command)
 
 except IOError as e:

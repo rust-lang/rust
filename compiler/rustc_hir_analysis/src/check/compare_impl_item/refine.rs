@@ -17,7 +17,7 @@ use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt;
 use rustc_trait_selection::traits::{ObligationCtxt, elaborate, normalize_param_env_or_error};
 
 /// Check that an implementation does not refine an RPITIT from a trait method signature.
-pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
+pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_m: ty::AssocItem,
     trait_m: ty::AssocItem,

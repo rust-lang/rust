@@ -1,6 +1,6 @@
 use crate::methods::MAP_WITH_UNUSED_ARGUMENT_OVER_RANGES;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{eager_or_lazy, higher, usage};

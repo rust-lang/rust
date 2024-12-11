@@ -1,7 +1,7 @@
 // ignore-tidy-filelength
 
 use core::mem;
-use core::ops::ControlFlow;
+use core::ops::{Bound, ControlFlow};
 
 use ast::mut_visit::{self, MutVisitor};
 use ast::token::IdentIsRaw;
@@ -10,7 +10,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::util::case::Case;
 use rustc_ast::util::classify;
-use rustc_ast::util::parser::{AssocOp, Fixity, prec_let_scrutinee_needs_par};
+use rustc_ast::util::parser::{AssocOp, ExprPrecedence, Fixity, prec_let_scrutinee_needs_par};
 use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_ast::{
     self as ast, AnonConst, Arm, AttrStyle, AttrVec, BinOp, BinOpKind, BlockCheckMode, CaptureBy,
@@ -120,7 +120,7 @@ impl<'a> Parser<'a> {
         r: Restrictions,
         attrs: AttrWrapper,
     ) -> PResult<'a, (P<Expr>, bool)> {
-        self.with_res(r, |this| this.parse_expr_assoc_with(0, attrs))
+        self.with_res(r, |this| this.parse_expr_assoc_with(Bound::Unbounded, attrs))
     }
 
     /// Parses an associative expression with operators of at least `min_prec` precedence.
@@ -128,7 +128,7 @@ impl<'a> Parser<'a> {
     /// followed by a subexpression (e.g. `1 + 2`).
     pub(super) fn parse_expr_assoc_with(
         &mut self,
-        min_prec: usize,
+        min_prec: Bound<ExprPrecedence>,
         attrs: AttrWrapper,
     ) -> PResult<'a, (P<Expr>, bool)> {
         let lhs = if self.token.is_range_separator() {
@@ -144,7 +144,7 @@ impl<'a> Parser<'a> {
     /// was actually parsed.
     pub(super) fn parse_expr_assoc_rest_with(
         &mut self,
-        min_prec: usize,
+        min_prec: Bound<ExprPrecedence>,
         starts_stmt: bool,
         mut lhs: P<Expr>,
     ) -> PResult<'a, (P<Expr>, bool)> {
@@ -163,7 +163,11 @@ impl<'a> Parser<'a> {
                 self.restrictions
             };
             let prec = op.node.precedence();
-            if prec < min_prec {
+            if match min_prec {
+                Bound::Included(min_prec) => prec < min_prec,
+                Bound::Excluded(min_prec) => prec <= min_prec,
+                Bound::Unbounded => false,
+            } {
                 break;
             }
             // Check for deprecated `...` syntax
@@ -276,16 +280,16 @@ impl<'a> Parser<'a> {
             }
 
             let fixity = op.fixity();
-            let prec_adjustment = match fixity {
-                Fixity::Right => 0,
-                Fixity::Left => 1,
+            let min_prec = match fixity {
+                Fixity::Right => Bound::Included(prec),
+                Fixity::Left => Bound::Excluded(prec),
                 // We currently have no non-associative operators that are not handled above by
                 // the special cases. The code is here only for future convenience.
-                Fixity::None => 1,
+                Fixity::None => Bound::Excluded(prec),
             };
             let (rhs, _) = self.with_res(restrictions - Restrictions::STMT_EXPR, |this| {
                 let attrs = this.parse_outer_attributes()?;
-                this.parse_expr_assoc_with(prec + prec_adjustment, attrs)
+                this.parse_expr_assoc_with(min_prec, attrs)
             })?;
 
             let span = self.mk_expr_sp(&lhs, lhs_span, rhs.span);
@@ -451,7 +455,7 @@ impl<'a> Parser<'a> {
     /// The other two variants are handled in `parse_prefix_range_expr` below.
     fn parse_expr_range(
         &mut self,
-        prec: usize,
+        prec: ExprPrecedence,
         lhs: P<Expr>,
         op: AssocOp,
         cur_op_span: Span,
@@ -460,7 +464,7 @@ impl<'a> Parser<'a> {
             let maybe_lt = self.token.clone();
             let attrs = self.parse_outer_attributes()?;
             Some(
-                self.parse_expr_assoc_with(prec + 1, attrs)
+                self.parse_expr_assoc_with(Bound::Excluded(prec), attrs)
                     .map_err(|err| self.maybe_err_dotdotlt_syntax(maybe_lt, err))?
                     .0,
             )
@@ -518,7 +522,7 @@ impl<'a> Parser<'a> {
             let (span, opt_end) = if this.is_at_start_of_range_notation_rhs() {
                 // RHS must be parsed with more associativity than the dots.
                 let attrs = this.parse_outer_attributes()?;
-                this.parse_expr_assoc_with(op.unwrap().precedence() + 1, attrs)
+                this.parse_expr_assoc_with(Bound::Excluded(op.unwrap().precedence()), attrs)
                     .map(|(x, _)| (lo.to(x.span), Some(x)))
                     .map_err(|err| this.maybe_err_dotdotlt_syntax(maybe_lt, err))?
             } else {
@@ -1446,34 +1450,31 @@ impl<'a> Parser<'a> {
                     this.parse_expr_closure()
                 } else {
                     assert!(this.eat_keyword(kw::For));
-                    this.parse_expr_for(None, this.prev_token.span)
+                    this.parse_expr_for(None, lo)
                 }
             } else if this.eat_keyword(kw::While) {
-                this.parse_expr_while(None, this.prev_token.span)
+                this.parse_expr_while(None, lo)
             } else if let Some(label) = this.eat_label() {
                 this.parse_expr_labeled(label, true)
             } else if this.eat_keyword(kw::Loop) {
-                let sp = this.prev_token.span;
-                this.parse_expr_loop(None, this.prev_token.span).map_err(|mut err| {
-                    err.span_label(sp, "while parsing this `loop` expression");
+                this.parse_expr_loop(None, lo).map_err(|mut err| {
+                    err.span_label(lo, "while parsing this `loop` expression");
                     err
                 })
             } else if this.eat_keyword(kw::Match) {
-                let match_sp = this.prev_token.span;
                 this.parse_expr_match().map_err(|mut err| {
-                    err.span_label(match_sp, "while parsing this `match` expression");
+                    err.span_label(lo, "while parsing this `match` expression");
                     err
                 })
             } else if this.eat_keyword(kw::Unsafe) {
-                let sp = this.prev_token.span;
                 this.parse_expr_block(None, lo, BlockCheckMode::Unsafe(ast::UserProvided)).map_err(
                     |mut err| {
-                        err.span_label(sp, "while parsing this `unsafe` expression");
+                        err.span_label(lo, "while parsing this `unsafe` expression");
                         err
                     },
                 )
             } else if this.check_inline_const(0) {
-                this.parse_const_block(lo.to(this.token.span), false)
+                this.parse_const_block(lo, false)
             } else if this.may_recover() && this.is_do_catch_block() {
                 this.recover_do_catch()
             } else if this.is_try_block() {
@@ -1514,7 +1515,7 @@ impl<'a> Parser<'a> {
                         this.parse_expr_closure()
                     }
                 } else if this.eat_keyword_noexpect(kw::Await) {
-                    this.recover_incorrect_await_syntax(lo, this.prev_token.span)
+                    this.recover_incorrect_await_syntax(lo)
                 } else {
                     this.parse_expr_lit()
                 }
@@ -2630,7 +2631,7 @@ impl<'a> Parser<'a> {
         };
         self.bump(); // Eat `let` token
         let lo = self.prev_token.span;
-        let pat = self.parse_pat_allow_top_alt(
+        let pat = self.parse_pat_no_top_guard(
             None,
             RecoverComma::Yes,
             RecoverColon::Yes,
@@ -2646,7 +2647,8 @@ impl<'a> Parser<'a> {
             self.expect(&token::Eq)?;
         }
         let attrs = self.parse_outer_attributes()?;
-        let (expr, _) = self.parse_expr_assoc_with(1 + prec_let_scrutinee_needs_par(), attrs)?;
+        let (expr, _) =
+            self.parse_expr_assoc_with(Bound::Excluded(prec_let_scrutinee_needs_par()), attrs)?;
         let span = lo.to(expr.span);
         Ok(self.mk_expr(span, ExprKind::Let(pat, expr, span, recovered)))
     }
@@ -2776,7 +2778,7 @@ impl<'a> Parser<'a> {
         };
         // Try to parse the pattern `for ($PAT) in $EXPR`.
         let pat = match (
-            self.parse_pat_allow_top_alt(
+            self.parse_pat_allow_top_guard(
                 None,
                 RecoverComma::Yes,
                 RecoverColon::Yes,
@@ -3239,7 +3241,7 @@ impl<'a> Parser<'a> {
                     // then we should recover.
                     let mut snapshot = this.create_snapshot_for_diagnostic();
                     let pattern_follows = snapshot
-                        .parse_pat_allow_top_alt(
+                        .parse_pat_no_top_guard(
                             None,
                             RecoverComma::Yes,
                             RecoverColon::Yes,
@@ -3313,43 +3315,37 @@ impl<'a> Parser<'a> {
 
     fn parse_match_arm_pat_and_guard(&mut self) -> PResult<'a, (P<Pat>, Option<P<Expr>>)> {
         if self.token == token::OpenDelim(Delimiter::Parenthesis) {
-            // Detect and recover from `($pat if $cond) => $arm`.
             let left = self.token.span;
-            match self.parse_pat_allow_top_alt(
+            let pat = self.parse_pat_no_top_guard(
                 None,
                 RecoverComma::Yes,
                 RecoverColon::Yes,
                 CommaRecoveryMode::EitherTupleOrPipe,
-            ) {
-                Ok(pat) => Ok((pat, self.parse_match_arm_guard()?)),
-                Err(err)
-                    if let prev_sp = self.prev_token.span
-                        && let true = self.eat_keyword(kw::If) =>
-                {
-                    // We know for certain we've found `($pat if` so far.
-                    let mut cond = match self.parse_match_guard_condition() {
-                        Ok(cond) => cond,
-                        Err(cond_err) => {
-                            cond_err.cancel();
-                            return Err(err);
-                        }
-                    };
-                    err.cancel();
-                    CondChecker::new(self).visit_expr(&mut cond);
-                    self.eat_to_tokens(&[&token::CloseDelim(Delimiter::Parenthesis)]);
-                    self.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
-                    let right = self.prev_token.span;
-                    self.dcx().emit_err(errors::ParenthesesInMatchPat {
-                        span: vec![left, right],
-                        sugg: errors::ParenthesesInMatchPatSugg { left, right },
-                    });
-                    Ok((self.mk_pat(left.to(prev_sp), ast::PatKind::Wild), Some(cond)))
-                }
-                Err(err) => Err(err),
+            )?;
+            if let ast::PatKind::Paren(subpat) = &pat.kind
+                && let ast::PatKind::Guard(..) = &subpat.kind
+            {
+                // Detect and recover from `($pat if $cond) => $arm`.
+                // FIXME(guard_patterns): convert this to a normal guard instead
+                let span = pat.span;
+                let ast::PatKind::Paren(subpat) = pat.into_inner().kind else { unreachable!() };
+                let ast::PatKind::Guard(_, mut cond) = subpat.into_inner().kind else {
+                    unreachable!()
+                };
+                self.psess.gated_spans.ungate_last(sym::guard_patterns, cond.span);
+                CondChecker::new(self).visit_expr(&mut cond);
+                let right = self.prev_token.span;
+                self.dcx().emit_err(errors::ParenthesesInMatchPat {
+                    span: vec![left, right],
+                    sugg: errors::ParenthesesInMatchPatSugg { left, right },
+                });
+                Ok((self.mk_pat(span, ast::PatKind::Wild), Some(cond)))
+            } else {
+                Ok((pat, self.parse_match_arm_guard()?))
             }
         } else {
             // Regular parser flow:
-            let pat = self.parse_pat_allow_top_alt(
+            let pat = self.parse_pat_no_top_guard(
                 None,
                 RecoverComma::Yes,
                 RecoverColon::Yes,
@@ -3537,7 +3533,7 @@ impl<'a> Parser<'a> {
                 let exp_span = self.prev_token.span;
                 // We permit `.. }` on the left-hand side of a destructuring assignment.
                 if self.check(&token::CloseDelim(close_delim)) {
-                    base = ast::StructRest::Rest(self.prev_token.span.shrink_to_hi());
+                    base = ast::StructRest::Rest(self.prev_token.span);
                     break;
                 }
                 match self.parse_expr() {

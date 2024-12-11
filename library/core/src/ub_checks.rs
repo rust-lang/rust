@@ -47,7 +47,6 @@ use crate::intrinsics::{self, const_eval_select};
 /// order to call it. Since the precompiled standard library is built with full debuginfo and these
 /// variables cannot be optimized out in MIR, an innocent-looking `let` can produce enough
 /// debuginfo to have a measurable compile-time impact on debug builds.
-#[cfg_attr(bootstrap, allow_internal_unstable(const_ub_checks))] // permit this to be called in stably-const fn
 #[macro_export]
 #[unstable(feature = "ub_checks", issue = "none")]
 macro_rules! assert_unsafe_precondition {
@@ -89,7 +88,6 @@ pub use intrinsics::ub_checks as check_library_ub;
 ///
 /// The intention is to not do that when running in the interpreter, as that one has its own
 /// language UB checks which generally produce better errors.
-#[cfg_attr(bootstrap, rustc_const_unstable(feature = "const_ub_checks", issue = "none"))]
 #[inline]
 #[rustc_allow_const_fn_unstable(const_eval_select)]
 pub(crate) const fn check_language_ub() -> bool {

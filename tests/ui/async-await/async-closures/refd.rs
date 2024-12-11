@@ -10,15 +10,15 @@ struct NoCopy;
 
 fn main() {
     block_on::block_on(async {
-        async fn call_once(x: impl async Fn()) { x().await }
+        async fn call_once(x: impl AsyncFn()) { x().await }
 
-        // check that `&{async-closure}` implements `async Fn`.
+        // check that `&{async-closure}` implements `AsyncFn`.
         call_once(&async || {}).await;
 
-        // check that `&{closure}` implements `async Fn`.
+        // check that `&{closure}` implements `AsyncFn`.
         call_once(&|| async {}).await;
 
-        // check that `&fndef` implements `async Fn`.
+        // check that `&fndef` implements `AsyncFn`.
         async fn foo() {}
         call_once(&foo).await;
     });

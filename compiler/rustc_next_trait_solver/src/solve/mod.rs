@@ -23,7 +23,7 @@ mod trait_goals;
 
 use rustc_type_ir::inherent::*;
 pub use rustc_type_ir::solve::*;
-use rustc_type_ir::{self as ty, Interner};
+use rustc_type_ir::{self as ty, Interner, TypingMode};
 use tracing::instrument;
 
 pub use self::eval_ctxt::{EvalCtxt, GenerateProofTree, SolverDelegateEvalExt};
@@ -319,6 +319,19 @@ where
             Ok(self.resolve_vars_if_possible(normalized_ct))
         } else {
             Ok(ct)
+        }
+    }
+
+    fn opaque_type_is_rigid(&self, def_id: I::DefId) -> bool {
+        match self.typing_mode() {
+            // Opaques are never rigid outside of analysis mode.
+            TypingMode::Coherence | TypingMode::PostAnalysis => false,
+            // During analysis, opaques are rigid unless they may be defined by
+            // the current body.
+            TypingMode::Analysis { defining_opaque_types: non_rigid_opaques }
+            | TypingMode::PostBorrowckAnalysis { defined_opaque_types: non_rigid_opaques } => {
+                !def_id.as_local().is_some_and(|def_id| non_rigid_opaques.contains(&def_id))
+            }
         }
     }
 }

@@ -1,4 +1,4 @@
-//@ aux-build:test-macros.rs
+//@ proc-macro: test-macros.rs
 // gate-test-proc_macro_hygiene
 
 #![feature(stmt_expr_attributes)]

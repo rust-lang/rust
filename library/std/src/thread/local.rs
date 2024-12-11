@@ -12,7 +12,7 @@ use crate::cell::{Cell, RefCell};
 use crate::error::Error;
 use crate::fmt;
 
-/// A thread local storage key which owns its contents.
+/// A thread local storage (TLS) key which owns its contents.
 ///
 /// This key uses the fastest possible implementation available to it for the
 /// target platform. It is instantiated with the [`thread_local!`] macro and the
@@ -237,7 +237,6 @@ impl<T: 'static> LocalKey<T> {
         reason = "recently added to create a key",
         issue = "none"
     )]
-    #[cfg_attr(bootstrap, rustc_const_unstable(feature = "thread_local_internals", issue = "none"))]
     pub const unsafe fn new(inner: fn(Option<&mut Option<T>>) -> *const T) -> LocalKey<T> {
         LocalKey { inner }
     }

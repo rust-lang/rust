@@ -928,6 +928,7 @@ pub enum InlineAsmClobberAbi {
     AArch64,
     AArch64NoX18,
     Arm64EC,
+    Avr,
     RiscV,
     RiscVE,
     LoongArch,
@@ -985,6 +986,10 @@ impl InlineAsmClobberAbi {
                     InlineAsmClobberAbi::RiscV
                 }),
                 _ => Err(&["C", "system", "efiapi"]),
+            },
+            InlineAsmArch::Avr => match name {
+                "C" | "system" => Ok(InlineAsmClobberAbi::Avr),
+                _ => Err(&["C", "system"]),
             },
             InlineAsmArch::LoongArch64 => match name {
                 "C" | "system" => Ok(InlineAsmClobberAbi::LoongArch),
@@ -1131,6 +1136,23 @@ impl InlineAsmClobberAbi {
                     // s16-s31 are callee-saved
                     d16, d17, d18, d19, d20, d21, d22, d23,
                     d24, d25, d26, d27, d28, d29, d30, d31,
+                }
+            },
+            InlineAsmClobberAbi::Avr => clobbered_regs! {
+                Avr AvrInlineAsmReg {
+                    // The list of "Call-Used Registers" according to
+                    // https://gcc.gnu.org/wiki/avr-gcc#Call-Used_Registers
+
+                    // Clobbered registers available in inline assembly
+                    r18, r19, r20, r21, r22, r23, r24, r25, r26, r27, r30, r31,
+                    // As per the AVR-GCC-ABI documentation linked above, the R0
+                    // register is a clobbered register as well. Since we don't
+                    // allow the usage of R0 in inline assembly, nothing has to
+                    // be done here.
+                    // Likewise, the T-flag in the SREG should be clobbered, but
+                    // this is not necessary to be listed here, since the SREG
+                    // is considered clobbered anyways unless `preserve_flags`
+                    // is used.
                 }
             },
             InlineAsmClobberAbi::RiscV => clobbered_regs! {

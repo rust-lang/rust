@@ -36,6 +36,8 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	--button-border-radius: 2px;
 	--toolbar-button-border-radius: 6px;
 	--code-block-border-radius: 6px;
+	--impl-items-indent: 0.3em;
+	--docblock-indent: 24px;
 }
 
 /* See FiraSans-LICENSE.txt for the Fira Sans license. */
@@ -909,7 +911,7 @@ both the code example and the line numbers, so we need to remove the radius in t
 .docblock h6 { font-size: 0.875rem; }
 
 .docblock {
-	margin-left: 24px;
+	margin-left: var(--docblock-indent);
 	position: relative;
 }
 
@@ -982,7 +984,11 @@ div.where {
 
 .item-info {
 	display: block;
-	margin-left: 24px;
+	margin-left: var(--docblock-indent);
+}
+.impl-items > .item-info {
+	/* Margin of docblocks + margin of impl block items. */
+	margin-left: calc(var(--docblock-indent) + var(--impl-items-indent));
 }
 
 .item-info code {
@@ -2166,6 +2172,15 @@ details.toggle > summary:not(.hideme)::before {
 	left: -24px;
 }
 
+/* We indent items of an impl block to have a visual marker that these items are part
+	of this impl block. */
+.impl-items > *:not(.item-info),
+/* We also indent the first top doc comment the same to still keep an indent on the
+	doc block while aligning it with the impl block items. */
+.implementors-toggle > .docblock {
+	margin-left: var(--impl-items-indent);
+}
+
 details.big-toggle > summary:not(.hideme)::before {
 	left: -34px;
 	top: 9px;
@@ -2193,6 +2208,39 @@ details.toggle[open] > summary::before {
 
 details.toggle[open] > summary::after {
 	content: "Collapse";
+}
+
+details.toggle:not([open]) > summary .docblock {
+	max-height: calc(1.5em + 0.75em);
+	overflow-y: hidden;
+}
+details.toggle:not([open]) > summary .docblock > :first-child {
+	max-width: 100%;
+	overflow: hidden;
+	width: fit-content;
+	white-space: nowrap;
+	position: relative;
+	padding-right: 1em;
+}
+details.toggle:not([open]) > summary .docblock > :first-child::after {
+	content: "…";
+	position: absolute;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	z-index: 1;
+	background-color: var(--main-background-color);
+	font: 1rem/1.5 "Source Serif 4", NanumBarunGothic, serif;
+	/* To make it look a bit better and not have it stuck to the preceding element. */
+	padding-left: 0.2em;
+}
+details.toggle:not([open]) > summary .docblock > div:first-child::after {
+	/* This is to make the "..." always appear at the bottom. */
+	padding-top: calc(1.5em + 0.75em - 1.2rem);
+}
+
+details.toggle > summary .docblock {
+	margin-top: 0.75em;
 }
 
 /* This is needed in docblocks to have the "▶" element to be on the same line. */
@@ -2255,6 +2303,10 @@ If you update this line, then you also need to update the line with the same war
 in src-script.js and main.js
 */
 @media (max-width: 700px) {
+	:root {
+		--impl-items-indent: 0.7em;
+	}
+
 	/* When linking to an item with an `id` (for instance, by clicking a link in the sidebar,
 	   or visiting a URL with a fragment like `#method.new`, we don't want the item to be obscured
 	   by the topbar. Anything with an `id` gets scroll-margin-top equal to .mobile-topbar's size.
@@ -2454,19 +2506,20 @@ in src-script.js and main.js
 		padding-top: 0;
 	}
 
-	/* Position of the "[-]" element. */
-	details.toggle:not(.top-doc) > summary, .impl-items > section  {
+	details.implementors-toggle:not(.top-doc) > summary  {
 		margin-left: 10px;
 	}
-	.impl-items > details.toggle > summary:not(.hideme)::before,
-	#main-content > details.toggle:not(.top-doc) > summary::before,
-	#main-content > div > details.toggle > summary::before {
-		left: -11px;
+
+	.impl-items > details.toggle > summary:not(.hideme)::before {
+		left: -20px;
 	}
 
 	/* Align summary-nested and unnested item-info gizmos. */
+	summary > .item-info {
+		margin-left: 10px;
+	}
 	.impl-items > .item-info {
-		margin-left: 34px;
+		margin-left: calc(var(--impl-items-indent) + 10px);
 	}
 
 	.src nav.sub {
@@ -2500,14 +2553,14 @@ in src-script.js and main.js
 }
 
 @media print {
+	:root {
+		--docblock-indent: 0;
+	}
+
 	nav.sidebar, nav.sub, .out-of-band, a.src, #copy-path,
 	details.toggle[open] > summary::before, details.toggle > summary::before,
 	details.toggle.top-doc > summary {
 		display: none;
-	}
-
-	.docblock {
-		margin-left: 0;
 	}
 
 	main {
@@ -2516,8 +2569,8 @@ in src-script.js and main.js
 }
 
 @media (max-width: 464px) {
-	.docblock {
-		margin-left: 12px;
+	:root {
+		--docblock-indent: 12px;
 	}
 
 	.docblock code {

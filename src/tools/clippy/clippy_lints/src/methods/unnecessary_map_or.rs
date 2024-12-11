@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::eager_or_lazy::switch_to_eager_eval;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::sugg::{Sugg, make_binop};
 use clippy_utils::ty::{get_type_diagnostic_name, implements_trait};
@@ -60,7 +60,7 @@ pub(super) fn check<'a>(
         Some(_) | None => return,
     };
 
-    let (sugg, method) = if let ExprKind::Closure(map_closure) = map.kind
+    let (sugg, method, applicability) = if let ExprKind::Closure(map_closure) = map.kind
             && let closure_body = cx.tcx.hir().body(map_closure.body)
             && let closure_body_value = closure_body.value.peel_blocks()
             && let ExprKind::Binary(op, l, r) = closure_body_value.kind
@@ -100,7 +100,7 @@ pub(super) fn check<'a>(
             .maybe_par()
             .into_string();
 
-        (binop, "a standard comparison")
+        (binop, "a standard comparison", Applicability::MaybeIncorrect)
     } else if !def_bool
         && msrv.meets(msrvs::OPTION_RESULT_IS_VARIANT_AND)
         && let Some(recv_callsite) = snippet_opt(cx, recv.span.source_callsite())
@@ -110,6 +110,18 @@ pub(super) fn check<'a>(
         (
             format!("{recv_callsite}.{suggested_name}({span_callsite})",),
             suggested_name,
+            Applicability::MachineApplicable,
+        )
+    } else if def_bool
+        && matches!(variant, Variant::Some)
+        && msrv.meets(msrvs::IS_NONE_OR)
+        && let Some(recv_callsite) = snippet_opt(cx, recv.span.source_callsite())
+        && let Some(span_callsite) = snippet_opt(cx, map.span.source_callsite())
+    {
+        (
+            format!("{recv_callsite}.is_none_or({span_callsite})"),
+            "is_none_or",
+            Applicability::MachineApplicable,
         )
     } else {
         return;
@@ -123,9 +135,9 @@ pub(super) fn check<'a>(
         cx,
         UNNECESSARY_MAP_OR,
         expr.span,
-        "this `map_or` is redundant",
+        "this `map_or` can be simplified",
         format!("use {method} instead"),
         sugg,
-        Applicability::MaybeIncorrect,
+        applicability,
     );
 }

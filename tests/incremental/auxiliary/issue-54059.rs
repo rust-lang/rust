@@ -1,9 +1,5 @@
-//@ force-host
-//@ no-prefer-dynamic
-
 // check that having extern "C" functions in a proc macro doesn't crash.
 
-#![crate_type="proc-macro"]
 #![allow(non_snake_case)]
 
 extern crate proc_macro;

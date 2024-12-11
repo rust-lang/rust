@@ -1990,7 +1990,6 @@ impl<'a> Parser<'a> {
     /// `await? <expr>`, `await(<expr>)`, and `await { <expr> }`.
     pub(super) fn recover_incorrect_await_syntax(
         &mut self,
-        lo: Span,
         await_sp: Span,
     ) -> PResult<'a, P<Expr>> {
         let (hi, expr, is_question) = if self.token == token::Not {
@@ -1999,8 +1998,8 @@ impl<'a> Parser<'a> {
         } else {
             self.recover_await_prefix(await_sp)?
         };
-        let (sp, guar) = self.error_on_incorrect_await(lo, hi, &expr, is_question);
-        let expr = self.mk_expr_err(lo.to(sp), guar);
+        let (sp, guar) = self.error_on_incorrect_await(await_sp, hi, &expr, is_question);
+        let expr = self.mk_expr_err(await_sp.to(sp), guar);
         self.maybe_recover_from_bad_qpath(expr)
     }
 

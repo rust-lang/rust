@@ -57,7 +57,7 @@ impl<'tcx> LateLintPass<'tcx> for BorrowDerefRef {
             && !addrof_target.span.from_expansion()
             && let ref_ty = cx.typeck_results().expr_ty(deref_target)
             && let ty::Ref(_, inner_ty, Mutability::Not) = ref_ty.kind()
-            && get_parent_expr(cx, e).map_or(true, |parent| {
+            && get_parent_expr(cx, e).is_none_or(|parent| {
                 match parent.kind {
                     // `*&*foo` should lint `deref_addrof` instead.
                     ExprKind::Unary(UnOp::Deref, _) => is_lint_allowed(cx, DEREF_ADDROF, parent.hir_id),

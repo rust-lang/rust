@@ -1,7 +1,5 @@
 //! See docs in build/expr/mod.rs
 
-use std::iter;
-
 use rustc_ast::{AsmMacro, InlineAsmOptions};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -344,25 +342,51 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     })
                     .collect();
 
-                let field_names = adt_def.variant(variant_index).fields.indices();
+                let variant = adt_def.variant(variant_index);
+                let field_names = variant.fields.indices();
 
-                let fields = if let Some(FruInfo { base, field_types }) = base {
-                    let place_builder = unpack!(block = this.as_place_builder(block, *base));
+                let fields = match base {
+                    AdtExprBase::None => {
+                        field_names.filter_map(|n| fields_map.get(&n).cloned()).collect()
+                    }
+                    AdtExprBase::Base(FruInfo { base, field_types }) => {
+                        let place_builder = unpack!(block = this.as_place_builder(block, *base));
 
-                    // MIR does not natively support FRU, so for each
-                    // base-supplied field, generate an operand that
-                    // reads it from the base.
-                    iter::zip(field_names, &**field_types)
-                        .map(|(n, ty)| match fields_map.get(&n) {
-                            Some(v) => v.clone(),
-                            None => {
-                                let place = place_builder.clone_project(PlaceElem::Field(n, *ty));
-                                this.consume_by_copy_or_move(place.to_place(this))
-                            }
-                        })
-                        .collect()
-                } else {
-                    field_names.filter_map(|n| fields_map.get(&n).cloned()).collect()
+                        // We desugar FRU as we lower to MIR, so for each
+                        // base-supplied field, generate an operand that
+                        // reads it from the base.
+                        itertools::zip_eq(field_names, &**field_types)
+                            .map(|(n, ty)| match fields_map.get(&n) {
+                                Some(v) => v.clone(),
+                                None => {
+                                    let place =
+                                        place_builder.clone_project(PlaceElem::Field(n, *ty));
+                                    this.consume_by_copy_or_move(place.to_place(this))
+                                }
+                            })
+                            .collect()
+                    }
+                    AdtExprBase::DefaultFields(field_types) => {
+                        itertools::zip_eq(field_names, &**field_types)
+                            .map(|(n, ty)| match fields_map.get(&n) {
+                                Some(v) => v.clone(),
+                                None => match variant.fields[n].value {
+                                    Some(def) => {
+                                        let value = Const::from_unevaluated(this.tcx, def)
+                                            .instantiate(this.tcx, args);
+                                        this.literal_operand(expr_span, value)
+                                    }
+                                    None => {
+                                        let name = variant.fields[n].name;
+                                        span_bug!(
+                                            expr_span,
+                                            "missing mandatory field `{name}` of type `{ty}`",
+                                        );
+                                    }
+                                },
+                            })
+                            .collect()
+                    }
                 };
 
                 let inferred_ty = expr.ty;

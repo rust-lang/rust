@@ -1,5 +1,4 @@
 use rustc_abi::{ExternAbi, Size};
-use rustc_ast::ast::Mutability;
 use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_span::{BytePos, Loc, Symbol, hygiene};
@@ -179,14 +178,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         match flags {
             0 => {
-                // These are "mutable" allocations as we consider them to be owned by the callee.
-                let name_alloc =
-                    this.allocate_str(&name, MiriMemoryKind::Rust.into(), Mutability::Mut)?;
-                let filename_alloc =
-                    this.allocate_str(&filename, MiriMemoryKind::Rust.into(), Mutability::Mut)?;
-
-                this.write_immediate(name_alloc.to_ref(this), &this.project_field(dest, 0)?)?;
-                this.write_immediate(filename_alloc.to_ref(this), &this.project_field(dest, 1)?)?;
+                throw_unsup_format!("miri_resolve_frame: v0 is not supported any more");
             }
             1 => {
                 this.write_scalar(

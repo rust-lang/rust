@@ -1,4 +1,4 @@
-//@ aux-build:test-macros.rs
+//@ proc-macro: test-macros.rs
 //@ compile-flags: -Z proc-macro-backtrace
 //@ rustc-env:RUST_BACKTRACE=0
 //@ normalize-stderr-test: "thread '.*' panicked " -> ""

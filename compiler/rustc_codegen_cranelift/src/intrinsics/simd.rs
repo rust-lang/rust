@@ -415,7 +415,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             });
         }
 
-        sym::simd_fma => {
+        // FIXME: simd_relaxed_fma doesn't relax to non-fused multiply-add
+        sym::simd_fma | sym::simd_relaxed_fma => {
             intrinsic_args!(fx, args => (a, b, c); intrinsic);
 
             if !a.layout().ty.is_simd() {

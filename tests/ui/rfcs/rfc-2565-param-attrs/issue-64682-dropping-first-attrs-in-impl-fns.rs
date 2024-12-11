@@ -1,4 +1,4 @@
-//@ aux-build:param-attrs.rs
+//@ proc-macro: param-attrs.rs
 
 //@ check-pass
 

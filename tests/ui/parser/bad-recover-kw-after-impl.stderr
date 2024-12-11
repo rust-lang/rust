@@ -7,16 +7,16 @@ LL |     ($ty:ty) => {
 LL | impl_primitive!(impl async);
    |                      ^^^^^ expected identifier
 
-error[E0658]: async closures are unstable
+error[E0658]: `async` trait bounds are unstable
   --> $DIR/bad-recover-kw-after-impl.rs:13:22
    |
 LL | impl_primitive!(impl async);
    |                      ^^^^^
    |
    = note: see issue #62290 <https://github.com/rust-lang/rust/issues/62290> for more information
-   = help: add `#![feature(async_closure)]` to the crate attributes to enable
+   = help: add `#![feature(async_trait_bounds)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = help: to use an async block, remove the `||`: `async {`
+   = help: use the desugared name of the async trait, such as `AsyncFn`
 
 error: aborting due to 2 previous errors
 

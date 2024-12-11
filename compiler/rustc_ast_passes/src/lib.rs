@@ -1,8 +1,6 @@
 //! The `rustc_ast_passes` crate contains passes which validate the AST in `syntax`
 //! parsed by `rustc_parse` and then lowered, after the passes in this crate,
 //! by `rustc_ast_lowering`.
-//!
-//! The crate also contains other misc AST visitors, e.g. `node_count` and `show_span`.
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
@@ -18,6 +16,5 @@
 pub mod ast_validation;
 mod errors;
 pub mod feature_gate;
-pub mod show_span;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

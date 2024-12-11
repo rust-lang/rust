@@ -3,7 +3,7 @@ use clippy_utils::fulfill_or_allowed;
 use clippy_utils::source::snippet;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
-use rustc_hir::{self as hir, ExprKind};
+use rustc_hir::{self as hir, ExprKind, StructTailExpr};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::Symbol;
@@ -95,7 +95,7 @@ impl<'tcx> LateLintPass<'tcx> for InconsistentStructConstructor {
             }
             fields_snippet.push_str(&last_ident.to_string());
 
-            let base_snippet = if let Some(base) = base {
+            let base_snippet = if let StructTailExpr::Base(base) = base {
                 format!(", ..{}", snippet(cx, base.span, ".."))
             } else {
                 String::new()

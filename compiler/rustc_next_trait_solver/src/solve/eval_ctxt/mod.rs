@@ -644,6 +644,12 @@ where
         }
     }
 
+    pub(super) fn next_region_var(&mut self) -> I::Region {
+        let region = self.delegate.next_region_infer();
+        self.inspect.add_var_value(region);
+        region
+    }
+
     pub(super) fn next_ty_infer(&mut self) -> I::Ty {
         let ty = self.delegate.next_ty_infer();
         self.inspect.add_var_value(ty);

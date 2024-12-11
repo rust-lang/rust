@@ -648,14 +648,14 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             AttrArgs::Empty => {
                 self.print_path(&item.path, false, 0);
             }
-            AttrArgs::Eq(_, AttrArgsEq::Ast(expr)) => {
+            AttrArgs::Eq { value: AttrArgsEq::Ast(expr), .. } => {
                 self.print_path(&item.path, false, 0);
                 self.space();
                 self.word_space("=");
                 let token_str = self.expr_to_string(expr);
                 self.word(token_str);
             }
-            AttrArgs::Eq(_, AttrArgsEq::Hir(lit)) => {
+            AttrArgs::Eq { value: AttrArgsEq::Hir(lit), .. } => {
                 self.print_path(&item.path, false, 0);
                 self.space();
                 self.word_space("=");
@@ -1708,6 +1708,14 @@ impl<'a> State<'a> {
                 if let Some(e) = end {
                     self.print_expr(e, FixupContext::default());
                 }
+            }
+            PatKind::Guard(subpat, condition) => {
+                self.popen();
+                self.print_pat(subpat);
+                self.space();
+                self.word_space("if");
+                self.print_expr(condition, FixupContext::default());
+                self.pclose();
             }
             PatKind::Slice(elts) => {
                 self.word("[");

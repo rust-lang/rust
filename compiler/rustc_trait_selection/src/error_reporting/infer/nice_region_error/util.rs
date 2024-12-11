@@ -3,6 +3,7 @@
 
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
+use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::{self, Binder, Region, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 use tracing::instrument;
@@ -83,7 +84,7 @@ pub fn find_param_with_region<'tcx>(
             // May return None; sometimes the tables are not yet populated.
             let ty = fn_sig.inputs()[index];
             let mut found_anon_region = false;
-            let new_param_ty = tcx.fold_regions(ty, |r, _| {
+            let new_param_ty = fold_regions(tcx, ty, |r, _| {
                 if r == anon_region {
                     found_anon_region = true;
                     replace_region

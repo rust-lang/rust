@@ -1,5 +1,4 @@
 #![feature(never_type)]
-#![feature(noop_waker)]
 
 use std::future::Future;
 

@@ -1,4 +1,4 @@
-//@ aux-build:issue-60674.rs
+//@ proc-macro: issue-60674.rs
 //@ build-pass (FIXME(62277): could be check-pass?)
 //@ edition:2018
 

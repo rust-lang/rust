@@ -1,6 +1,6 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::get_parent_expr;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet;
 use rustc_ast::{LitKind, StrStyle};
 use rustc_errors::Applicability;

@@ -5,7 +5,6 @@ trait Item {
 pub struct Flatten<I> {
     inner: <IntoIterator<Item: IntoIterator<Item: >>::IntoIterator as Item>::Core,
     //~^ ERROR E0191
-    //~| ERROR E0223
 }
 
 fn main() {}

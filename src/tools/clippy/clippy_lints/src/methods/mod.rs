@@ -137,10 +137,10 @@ mod wrong_self_convention;
 mod zst_offset;
 
 use clippy_config::Conf;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::macros::FormatArgsStorage;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::ty::{contains_ty_adt_constructor_opaque, implements_trait, is_copy, is_type_diagnostic_item};
 use clippy_utils::{contains_return, is_bool, is_trait_method, iter_input_pats, peel_blocks, return_ty};
 pub use path_ends_with_ext::DEFAULT_ALLOWED_DOTFILES;
@@ -4107,24 +4107,32 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// Calls such as `opt.map_or(false, |val| val == 5)` are needlessly long and cumbersome,
     /// and can be reduced to, for example, `opt == Some(5)` assuming `opt` implements `PartialEq`.
+    /// Also, calls such as `opt.map_or(true, |val| val == 5)` can be reduced to
+    /// `opt.is_none_or(|val| val == 5)`.
     /// This lint offers readability and conciseness improvements.
     ///
     /// ### Example
     /// ```no_run
-    /// pub fn a(x: Option<i32>) -> bool {
-    ///     x.map_or(false, |n| n == 5)
+    /// pub fn a(x: Option<i32>) -> (bool, bool) {
+    ///     (
+    ///         x.map_or(false, |n| n == 5),
+    ///         x.map_or(true, |n| n > 5),
+    ///     )
     /// }
     /// ```
     /// Use instead:
     /// ```no_run
-    /// pub fn a(x: Option<i32>) -> bool {
-    ///     x == Some(5)
+    /// pub fn a(x: Option<i32>) -> (bool, bool) {
+    ///     (
+    ///         x == Some(5),
+    ///         x.is_none_or(|n| n > 5),
+    ///     )
     /// }
     /// ```
-    #[clippy::version = "1.75.0"]
+    #[clippy::version = "1.84.0"]
     pub UNNECESSARY_MAP_OR,
     style,
-    "reduce unnecessary pattern matching for constructs that implement `PartialEq`"
+    "reduce unnecessary calls to `.map_or(bool, …)`"
 }
 
 declare_clippy_lint! {
@@ -4531,7 +4539,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                         && method_config.output_type.matches(&sig.decl.output)
                         // in case there is no first arg, since we already have checked the number of arguments
                         // it's should be always true
-                        && first_arg_ty_opt.map_or(true, |first_arg_ty| method_config
+                        && first_arg_ty_opt.is_none_or(|first_arg_ty| method_config
                             .self_kind.matches(cx, self_ty, first_arg_ty)
                             )
                         && fn_header_equals(method_config.fn_header, sig.header)

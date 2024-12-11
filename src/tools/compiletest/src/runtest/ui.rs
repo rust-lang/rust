@@ -100,7 +100,7 @@ impl TestCx<'_> {
                 )
             });
 
-            errors += self.compare_output("fixed", &fixed_code, &expected_fixed);
+            errors += self.compare_output("fixed", &fixed_code, &fixed_code, &expected_fixed);
         } else if !expected_fixed.is_empty() {
             panic!(
                 "the `//@ run-rustfix` directive wasn't found but a `*.fixed` \
@@ -109,10 +109,10 @@ impl TestCx<'_> {
         }
 
         if errors > 0 {
-            println!("To update references, rerun the tests and pass the `--bless` flag");
+            eprintln!("To update references, rerun the tests and pass the `--bless` flag");
             let relative_path_to_file =
                 self.testpaths.relative_dir.join(self.testpaths.file.file_name().unwrap());
-            println!(
+            eprintln!(
                 "To only update this specific test, also pass `--test-args {}`",
                 relative_path_to_file.display(),
             );

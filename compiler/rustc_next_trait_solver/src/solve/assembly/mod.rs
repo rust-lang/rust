@@ -339,7 +339,9 @@ where
 
         match self.typing_mode() {
             TypingMode::Coherence => {}
-            TypingMode::Analysis { .. } | TypingMode::PostAnalysis => {
+            TypingMode::Analysis { .. }
+            | TypingMode::PostBorrowckAnalysis { .. }
+            | TypingMode::PostAnalysis => {
                 self.discard_impls_shadowed_by_env(goal, &mut candidates);
             }
         }

@@ -111,6 +111,13 @@ impl<'tcx> MonoItem<'tcx> {
                     return InstantiationMode::GloballyShared { may_conflict: false };
                 }
 
+                if let InlineAttr::Never = tcx.codegen_fn_attrs(instance.def_id()).inline
+                    && self.is_generic_fn()
+                {
+                    // Upgrade inline(never) to a globally shared instance.
+                    return InstantiationMode::GloballyShared { may_conflict: true };
+                }
+
                 // At this point we don't have explicit linkage and we're an
                 // inlined function. If we're inlining into all CGUs then we'll
                 // be creating a local copy per CGU.

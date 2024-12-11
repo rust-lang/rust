@@ -34,6 +34,7 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::query::Providers;
+use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypingMode};
 use rustc_middle::{bug, span_bug};
@@ -308,10 +309,10 @@ impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
                     self.tcx.ensure().type_of(param.def_id);
                     if let Some(default) = default {
                         // need to store default and type of default
+                        self.tcx.ensure().const_param_default(param.def_id);
                         if let hir::ConstArgKind::Anon(ac) = default.kind {
                             self.tcx.ensure().type_of(ac.def_id);
                         }
-                        self.tcx.ensure().const_param_default(param.def_id);
                     }
                 }
             }
@@ -1020,12 +1021,12 @@ impl<'tcx> FieldUniquenessCheckContext<'tcx> {
     }
 }
 
-fn lower_variant(
-    tcx: TyCtxt<'_>,
+fn lower_variant<'tcx>(
+    tcx: TyCtxt<'tcx>,
     variant_did: Option<LocalDefId>,
     ident: Ident,
     discr: ty::VariantDiscr,
-    def: &hir::VariantData<'_>,
+    def: &hir::VariantData<'tcx>,
     adt_kind: ty::AdtKind,
     parent_did: LocalDefId,
 ) -> ty::VariantDef {
@@ -1041,6 +1042,7 @@ fn lower_variant(
             name: f.ident.name,
             vis: tcx.visibility(f.def_id),
             safety: f.safety,
+            value: f.default.map(|v| v.def_id.to_def_id()),
         })
         .collect();
     let recovered = match def {
@@ -1415,7 +1417,7 @@ fn infer_return_ty_for_fn_sig<'tcx>(
                 GenericParamKind::Lifetime { .. } => true,
                 _ => false,
             });
-            let fn_sig = tcx.fold_regions(fn_sig, |r, _| match *r {
+            let fn_sig = fold_regions(tcx, fn_sig, |r, _| match *r {
                 ty::ReErased => {
                     if has_region_params {
                         ty::Region::new_error_with_message(
@@ -1636,11 +1638,23 @@ fn check_impl_constness(
     }
 
     let trait_name = tcx.item_name(trait_def_id).to_string();
+    let (local_trait_span, suggestion_pre) =
+        match (trait_def_id.is_local(), tcx.sess.is_nightly_build()) {
+            (true, true) => (
+                Some(tcx.def_span(trait_def_id).shrink_to_lo()),
+                if tcx.features().const_trait_impl() {
+                    ""
+                } else {
+                    "enable `#![feature(const_trait_impl)]` in your crate and "
+                },
+            ),
+            (false, _) | (_, false) => (None, ""),
+        };
     Some(tcx.dcx().emit_err(errors::ConstImplForNonConstTrait {
         trait_ref_span: hir_trait_ref.path.span,
         trait_name,
-        local_trait_span:
-            trait_def_id.as_local().map(|_| tcx.def_span(trait_def_id).shrink_to_lo()),
+        local_trait_span,
+        suggestion_pre,
         marking: (),
         adding: (),
     }))
@@ -1816,7 +1830,6 @@ fn const_param_default<'tcx>(
         ),
     };
     let icx = ItemCtxt::new(tcx, def_id);
-    // FIXME(const_generics): investigate which places do and don't need const ty feeding
-    let ct = icx.lowerer().lower_const_arg(default_ct, FeedConstTy::No);
+    let ct = icx.lowerer().lower_const_arg(default_ct, FeedConstTy::Param(def_id.to_def_id()));
     ty::EarlyBinder::bind(ct)
 }

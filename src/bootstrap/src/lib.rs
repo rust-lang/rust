@@ -158,7 +158,7 @@ pub struct Build {
     initial_rustc: PathBuf,
     initial_cargo: PathBuf,
     initial_lld: PathBuf,
-    initial_libdir: PathBuf,
+    initial_relative_libdir: PathBuf,
     initial_sysroot: PathBuf,
 
     // Runtime state filled in later on
@@ -312,46 +312,19 @@ impl Build {
         let in_tree_llvm_info = config.in_tree_llvm_info.clone();
         let in_tree_gcc_info = config.in_tree_gcc_info.clone();
 
-        let initial_target_libdir_str = if config.dry_run() {
-            "/dummy/lib/path/to/lib/".to_string()
-        } else {
-            output(
-                Command::new(&config.initial_rustc)
-                    .arg("--target")
-                    .arg(config.build.rustc_target_arg())
-                    .arg("--print")
-                    .arg("target-libdir"),
-            )
-        };
+        let initial_target_libdir_str =
+            config.initial_sysroot.join("lib/rustlib").join(config.build).join("lib");
+
         let initial_target_dir = Path::new(&initial_target_libdir_str).parent().unwrap();
         let initial_lld = initial_target_dir.join("bin").join("rust-lld");
 
-        let initial_sysroot = if config.dry_run() {
-            "/dummy".to_string()
-        } else {
-            output(Command::new(&config.initial_rustc).arg("--print").arg("sysroot"))
-        }
-        .trim()
-        .to_string();
-
-        // FIXME(Zalathar): Determining this path occasionally fails locally for
-        // unknown reasons, so we print some extra context to help track down why.
-        let find_initial_libdir = || {
-            let initial_libdir =
-                initial_target_dir.parent()?.parent()?.strip_prefix(&initial_sysroot).ok()?;
-            Some(initial_libdir.to_path_buf())
-        };
-        let Some(initial_libdir) = find_initial_libdir() else {
-            panic!(
-                "couldn't determine `initial_libdir`:
-- config.initial_rustc:      {rustc:?}
-- initial_target_libdir_str: {initial_target_libdir_str:?}
-- initial_target_dir:        {initial_target_dir:?}
-- initial_sysroot:           {initial_sysroot:?}
-",
-                rustc = config.initial_rustc,
-            );
-        };
+        let initial_relative_libdir = initial_target_dir
+            .ancestors()
+            .nth(2)
+            .unwrap()
+            .strip_prefix(&config.initial_sysroot)
+            .expect("Couldn’t determine initial relative libdir.")
+            .to_path_buf();
 
         let version = std::fs::read_to_string(src.join("src").join("version"))
             .expect("failed to read src/version");
@@ -380,11 +353,11 @@ impl Build {
         }
 
         let mut build = Build {
+            initial_lld,
+            initial_relative_libdir,
             initial_rustc: config.initial_rustc.clone(),
             initial_cargo: config.initial_cargo.clone(),
-            initial_lld,
-            initial_libdir,
-            initial_sysroot: initial_sysroot.into(),
+            initial_sysroot: config.initial_sysroot.clone(),
             local_rebuild: config.local_rebuild,
             fail_fast: config.cmd.fail_fast(),
             doc_tests: config.cmd.doc_tests(),
@@ -433,11 +406,11 @@ impl Build {
             .unwrap()
             .trim();
         if local_release.split('.').take(2).eq(version.split('.').take(2)) {
-            build.verbose(|| println!("auto-detected local-rebuild {local_release}"));
+            build.verbose(|| eprintln!("auto-detected local-rebuild {local_release}"));
             build.local_rebuild = true;
         }
 
-        build.verbose(|| println!("finding compilers"));
+        build.verbose(|| eprintln!("finding compilers"));
         utils::cc_detect::find(&build);
         // When running `setup`, the profile is about to change, so any requirements we have now may
         // be different on the next invocation. Don't check for them until the next time x.py is
@@ -445,7 +418,7 @@ impl Build {
         //
         // Similarly, for `setup` we don't actually need submodules or cargo metadata.
         if !matches!(build.config.cmd, Subcommand::Setup { .. }) {
-            build.verbose(|| println!("running sanity check"));
+            build.verbose(|| eprintln!("running sanity check"));
             crate::core::sanity::check(&mut build);
 
             // Make sure we update these before gathering metadata so we don't get an error about missing
@@ -463,7 +436,7 @@ impl Build {
             // Now, update all existing submodules.
             build.update_existing_submodules();
 
-            build.verbose(|| println!("learning about cargo"));
+            build.verbose(|| eprintln!("learning about cargo"));
             crate::core::metadata::build(&mut build);
         }
 
@@ -632,7 +605,7 @@ impl Build {
         let stamp = dir.join(".stamp");
         let mut cleared = false;
         if mtime(&stamp) < mtime(input) {
-            self.verbose(|| println!("Dirty - {}", dir.display()));
+            self.verbose(|| eprintln!("Dirty - {}", dir.display()));
             let _ = fs::remove_dir_all(dir);
             cleared = true;
         } else if stamp.exists() {
@@ -917,7 +890,7 @@ impl Build {
         let executed_at = std::panic::Location::caller();
 
         self.verbose(|| {
-            println!("running: {command:?} (created at {created_at}, executed at {executed_at})")
+            eprintln!("running: {command:?} (created at {created_at}, executed at {executed_at})")
         });
 
         let cmd = command.as_command_mut();
@@ -974,7 +947,7 @@ Executed at: {executed_at}"#,
 
         let fail = |message: &str, output: CommandOutput| -> ! {
             if self.is_verbose() {
-                println!("{message}");
+                eprintln!("{message}");
             } else {
                 let (stdout, stderr) = (output.stdout_if_present(), output.stderr_if_present());
                 // If the command captures output, the user would not see any indication that
@@ -984,16 +957,16 @@ Executed at: {executed_at}"#,
                     if let Some(stdout) =
                         output.stdout_if_present().take_if(|s| !s.trim().is_empty())
                     {
-                        println!("STDOUT:\n{stdout}\n");
+                        eprintln!("STDOUT:\n{stdout}\n");
                     }
                     if let Some(stderr) =
                         output.stderr_if_present().take_if(|s| !s.trim().is_empty())
                     {
-                        println!("STDERR:\n{stderr}\n");
+                        eprintln!("STDERR:\n{stderr}\n");
                     }
-                    println!("Command {command:?} has failed. Rerun with -v to see more details.");
+                    eprintln!("Command {command:?} has failed. Rerun with -v to see more details.");
                 } else {
-                    println!("Command has failed. Rerun with -v to see more details.");
+                    eprintln!("Command has failed. Rerun with -v to see more details.");
                 }
             }
             exit!(1);
@@ -1038,7 +1011,7 @@ Executed at: {executed_at}"#,
         match self.config.dry_run {
             DryRun::SelfCheck => (),
             DryRun::Disabled | DryRun::UserSelected => {
-                println!("{msg}");
+                eprintln!("{msg}");
             }
         }
     }
@@ -1693,7 +1666,7 @@ Executed at: {executed_at}"#,
         if self.config.dry_run() {
             return;
         }
-        self.verbose_than(1, || println!("Copy/Link {src:?} to {dst:?}"));
+        self.verbose_than(1, || eprintln!("Copy/Link {src:?} to {dst:?}"));
         if src == dst {
             return;
         }
@@ -1802,7 +1775,7 @@ Executed at: {executed_at}"#,
             return;
         }
         let dst = dstdir.join(src.file_name().unwrap());
-        self.verbose_than(1, || println!("Install {src:?} to {dst:?}"));
+        self.verbose_than(1, || eprintln!("Install {src:?} to {dst:?}"));
         t!(fs::create_dir_all(dstdir));
         if !src.exists() {
             panic!("ERROR: File \"{}\" not found!", src.display());

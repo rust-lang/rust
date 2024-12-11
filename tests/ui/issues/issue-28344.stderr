@@ -18,17 +18,8 @@ error[E0191]: the value of the associated type `Output` in `BitXor` must be spec
 LL |     let x: u8 = BitXor::bitor(0 as u8, 0 as u8);
    |                 ^^^^^^ help: specify the associated type: `BitXor::<Output = Type>`
 
-error[E0599]: no function or associated item named `bitor` found for trait object `dyn BitXor<_>` in the current scope
-  --> $DIR/issue-28344.rs:4:25
-   |
-LL |     let x: u8 = BitXor::bitor(0 as u8, 0 as u8);
-   |                         ^^^^^ function or associated item not found in `dyn BitXor<_>`
-   |
-help: there is a method `bitxor` with a similar name, but with different arguments
-  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
-
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/issue-28344.rs:10:13
+  --> $DIR/issue-28344.rs:9:13
    |
 LL |     let g = BitXor::bitor;
    |             ^^^^^^
@@ -41,21 +32,11 @@ LL |     let g = <dyn BitXor>::bitor;
    |             ++++       +
 
 error[E0191]: the value of the associated type `Output` in `BitXor` must be specified
-  --> $DIR/issue-28344.rs:10:13
+  --> $DIR/issue-28344.rs:9:13
    |
 LL |     let g = BitXor::bitor;
    |             ^^^^^^ help: specify the associated type: `BitXor::<Output = Type>`
 
-error[E0599]: no function or associated item named `bitor` found for trait object `dyn BitXor<_>` in the current scope
-  --> $DIR/issue-28344.rs:10:21
-   |
-LL |     let g = BitXor::bitor;
-   |                     ^^^^^ function or associated item not found in `dyn BitXor<_>`
-   |
-help: there is a method `bitxor` with a similar name
-  --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
+error: aborting due to 2 previous errors; 2 warnings emitted
 
-error: aborting due to 4 previous errors; 2 warnings emitted
-
-Some errors have detailed explanations: E0191, E0599.
-For more information about an error, try `rustc --explain E0191`.
+For more information about this error, try `rustc --explain E0191`.

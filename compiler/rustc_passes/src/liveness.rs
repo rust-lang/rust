@@ -1007,7 +1007,12 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             hir::ExprKind::Array(exprs) => self.propagate_through_exprs(exprs, succ),
 
             hir::ExprKind::Struct(_, fields, ref with_expr) => {
-                let succ = self.propagate_through_opt_expr(with_expr.as_deref(), succ);
+                let succ = match with_expr {
+                    hir::StructTailExpr::Base(base) => {
+                        self.propagate_through_opt_expr(Some(base), succ)
+                    }
+                    hir::StructTailExpr::None | hir::StructTailExpr::DefaultFields(_) => succ,
+                };
                 fields
                     .iter()
                     .rev()

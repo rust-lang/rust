@@ -17,10 +17,12 @@ fn main() {
     not_exported(&rdylib, "private_naked");
 
     global_function(&rdylib, "public_vanilla");
-    global_function(&rdylib, "public_naked");
+    global_function(&rdylib, "public_naked_nongeneric");
 
     not_exported(&rdylib, "public_vanilla_generic");
-    not_exported(&rdylib, "public_naked_generic");
+    // #[naked] functions are implicitly #[inline(never)], so they get shared regardless of
+    // -Zshare-generics.
+    global_function(&rdylib, "public_naked_generic");
 
     global_function(&rdylib, "vanilla_external_linkage");
     global_function(&rdylib, "naked_external_linkage");

@@ -1,10 +1,10 @@
 use crate::ClippyConfiguration;
-use crate::msrvs::Msrv;
 use crate::types::{
     DisallowedPath, MacroMatcher, MatchLintBehaviour, PubUnderscoreFieldsBehaviour, Rename, SourceItemOrdering,
     SourceItemOrderingCategory, SourceItemOrderingModuleItemGroupings, SourceItemOrderingModuleItemKind,
     SourceItemOrderingTraitAssocItemKind, SourceItemOrderingTraitAssocItemKinds,
 };
+use clippy_utils::msrvs::Msrv;
 use rustc_errors::Applicability;
 use rustc_session::Session;
 use rustc_span::edit_distance::edit_distance;
@@ -181,7 +181,7 @@ macro_rules! define_Conf {
     )*) => {
         /// Clippy lint configuration
         pub struct Conf {
-            $($(#[doc = $doc])+ pub $name: $ty,)*
+            $($(#[cfg_attr(doc, doc = $doc)])+ pub $name: $ty,)*
         }
 
         mod defaults {
@@ -678,7 +678,7 @@ define_Conf! {
     #[lints(arbitrary_source_item_ordering)]
     trait_assoc_item_kinds_order: SourceItemOrderingTraitAssocItemKinds = DEFAULT_TRAIT_ASSOC_ITEM_KINDS_ORDER.into(),
     /// The maximum size (in bytes) to consider a `Copy` type for passing by value instead of by
-    /// reference. By default there is no limit
+    /// reference.
     #[default_text = "target_pointer_width * 2"]
     #[lints(trivially_copy_pass_by_ref)]
     trivial_copy_size_limit: Option<u64> = None,

@@ -198,12 +198,12 @@ trait QueryConfigRestored<'tcx> {
     -> Self::RestoredValue;
 }
 
-pub fn query_system<'tcx>(
+pub fn query_system<'a>(
     local_providers: Providers,
     extern_providers: ExternProviders,
-    on_disk_cache: Option<OnDiskCache<'tcx>>,
+    on_disk_cache: Option<OnDiskCache>,
     incremental: bool,
-) -> QuerySystem<'tcx> {
+) -> QuerySystem<'a> {
     QuerySystem {
         states: Default::default(),
         arenas: Default::default(),

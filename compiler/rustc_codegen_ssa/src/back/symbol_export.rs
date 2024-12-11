@@ -282,7 +282,7 @@ fn exported_symbols_provider_local(
         }));
     }
 
-    if tcx.sess.opts.share_generics() && tcx.local_crate_exports_generics() {
+    if tcx.local_crate_exports_generics() {
         use rustc_middle::mir::mono::{Linkage, MonoItem, Visibility};
         use rustc_middle::ty::InstanceKind;
 
@@ -308,6 +308,16 @@ fn exported_symbols_provider_local(
                 // If we potentially share things from Rust dylibs, they must
                 // not be hidden
                 continue;
+            }
+
+            if !tcx.sess.opts.share_generics() {
+                if tcx.codegen_fn_attrs(mono_item.def_id()).inline == rustc_attr::InlineAttr::Never
+                {
+                    // this is OK, we explicitly allow sharing inline(never) across crates even
+                    // without share-generics.
+                } else {
+                    continue;
+                }
             }
 
             match *mono_item {

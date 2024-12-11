@@ -1,5 +1,5 @@
 error[E0133]: call to unsafe function `before_exec` is unsafe and requires unsafe block
-  --> $DIR/unsafe-before_exec.rs:14:5
+  --> $DIR/unsafe-before_exec.rs:13:5
    |
 LL |     cmd.before_exec(|| Ok(()));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function

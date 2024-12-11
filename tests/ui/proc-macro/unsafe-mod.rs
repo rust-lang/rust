@@ -1,5 +1,5 @@
 //@ run-pass
-//@ aux-build:macro-only-syntax.rs
+//@ proc-macro: macro-only-syntax.rs
 
 #![feature(proc_macro_hygiene)]
 

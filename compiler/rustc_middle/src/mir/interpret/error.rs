@@ -28,10 +28,10 @@ pub enum ErrorHandled {
     TooGeneric(Span),
 }
 
-impl From<ErrorGuaranteed> for ErrorHandled {
+impl From<ReportedErrorInfo> for ErrorHandled {
     #[inline]
-    fn from(error: ErrorGuaranteed) -> ErrorHandled {
-        ErrorHandled::Reported(error.into(), DUMMY_SP)
+    fn from(error: ReportedErrorInfo) -> ErrorHandled {
+        ErrorHandled::Reported(error, DUMMY_SP)
     }
 }
 
@@ -46,7 +46,7 @@ impl ErrorHandled {
     pub fn emit_note(&self, tcx: TyCtxt<'_>) {
         match self {
             &ErrorHandled::Reported(err, span) => {
-                if !err.is_tainted_by_errors && !span.is_dummy() {
+                if !err.allowed_in_infallible && !span.is_dummy() {
                     tcx.dcx().emit_note(error::ErroneousConstant { span });
                 }
             }
@@ -58,34 +58,33 @@ impl ErrorHandled {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
 pub struct ReportedErrorInfo {
     error: ErrorGuaranteed,
-    is_tainted_by_errors: bool,
-    /// Whether this is the kind of error that can sometimes occur, and sometimes not.
-    /// Used for resource exhaustion errors.
-    can_be_spurious: bool,
+    /// Whether this error is allowed to show up even in otherwise "infallible" promoteds.
+    /// This is for things like overflows during size computation or resource exhaustion.
+    allowed_in_infallible: bool,
 }
 
 impl ReportedErrorInfo {
     #[inline]
-    pub fn tainted_by_errors(error: ErrorGuaranteed) -> ReportedErrorInfo {
-        ReportedErrorInfo { is_tainted_by_errors: true, can_be_spurious: false, error }
-    }
-    #[inline]
-    pub fn spurious(error: ErrorGuaranteed) -> ReportedErrorInfo {
-        ReportedErrorInfo { can_be_spurious: true, is_tainted_by_errors: false, error }
+    pub fn const_eval_error(error: ErrorGuaranteed) -> ReportedErrorInfo {
+        ReportedErrorInfo { allowed_in_infallible: false, error }
     }
 
-    pub fn is_tainted_by_errors(&self) -> bool {
-        self.is_tainted_by_errors
-    }
-    pub fn can_be_spurious(&self) -> bool {
-        self.can_be_spurious
-    }
-}
-
-impl From<ErrorGuaranteed> for ReportedErrorInfo {
+    /// Use this when the error that led to this is *not* a const-eval error
+    /// (e.g., a layout or type checking error).
     #[inline]
-    fn from(error: ErrorGuaranteed) -> ReportedErrorInfo {
-        ReportedErrorInfo { is_tainted_by_errors: false, can_be_spurious: false, error }
+    pub fn non_const_eval_error(error: ErrorGuaranteed) -> ReportedErrorInfo {
+        ReportedErrorInfo { allowed_in_infallible: true, error }
+    }
+
+    /// Use this when the error that led to this *is* a const-eval error, but
+    /// we do allow it to occur in infallible constants (e.g., resource exhaustion).
+    #[inline]
+    pub fn allowed_in_infallible(error: ErrorGuaranteed) -> ReportedErrorInfo {
+        ReportedErrorInfo { allowed_in_infallible: true, error }
+    }
+
+    pub fn is_allowed_in_infallible(&self) -> bool {
+        self.allowed_in_infallible
     }
 }
 
@@ -186,12 +185,6 @@ impl<'tcx> InterpErrorInfo<'tcx> {
 
 fn print_backtrace(backtrace: &Backtrace) {
     eprintln!("\n\nAn error occurred in the MIR interpreter:\n{backtrace}");
-}
-
-impl From<ErrorGuaranteed> for InterpErrorInfo<'_> {
-    fn from(err: ErrorGuaranteed) -> Self {
-        InterpErrorKind::InvalidProgram(InvalidProgramInfo::AlreadyReported(err.into())).into()
-    }
 }
 
 impl From<ErrorHandled> for InterpErrorInfo<'_> {

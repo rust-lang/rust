@@ -26,8 +26,7 @@ fn main() {
     // Fetch rustc's inferred deployment target.
     let current_deployment_target =
         rustc().target(target()).print("deployment-target").run().stdout_utf8();
-    let current_deployment_target =
-        current_deployment_target.strip_prefix("deployment_target=").unwrap().trim();
+    let current_deployment_target = current_deployment_target.split('=').last().unwrap().trim();
 
     // Fetch current SDK version via. xcrun.
     //

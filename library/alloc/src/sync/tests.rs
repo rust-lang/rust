@@ -412,9 +412,9 @@ fn test_unsized() {
 #[test]
 fn test_maybe_thin_unsized() {
     // If/when custom thin DSTs exist, this test should be updated to use one
-    use std::ffi::{CStr, CString};
+    use std::ffi::CStr;
 
-    let x: Arc<CStr> = Arc::from(CString::new("swordfish").unwrap().into_boxed_c_str());
+    let x: Arc<CStr> = Arc::from(c"swordfish");
     assert_eq!(format!("{x:?}"), "\"swordfish\"");
     let y: Weak<CStr> = Arc::downgrade(&x);
     drop(x);

@@ -440,20 +440,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty: Ty<'tcx>,
                     cast_ty: &str,
                 ) {
-                    let (sugg_span, replace, help) =
-                        if let Ok(snippet) = sess.source_map().span_to_snippet(span) {
-                            (Some(span), format!("{snippet} as {cast_ty}"), false)
-                        } else {
-                            (None, "".to_string(), true)
-                        };
-
                     sess.dcx().emit_err(errors::PassToVariadicFunction {
                         span,
                         ty,
                         cast_ty,
-                        help,
-                        replace,
-                        sugg_span,
+                        sugg_span: span.shrink_to_hi(),
                         teach: sess.teach(E0617),
                     });
                 }
@@ -472,9 +463,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         variadic_error(tcx.sess, arg.span, arg_ty, "c_uint");
                     }
                     ty::FnDef(..) => {
-                        let ptr_ty = Ty::new_fn_ptr(self.tcx, arg_ty.fn_sig(self.tcx));
-                        let ptr_ty = self.resolve_vars_if_possible(ptr_ty);
-                        variadic_error(tcx.sess, arg.span, arg_ty, &ptr_ty.to_string());
+                        let fn_ptr = Ty::new_fn_ptr(self.tcx, arg_ty.fn_sig(self.tcx));
+                        let fn_ptr = self.resolve_vars_if_possible(fn_ptr).to_string();
+
+                        let fn_item_spa = arg.span;
+                        tcx.sess.dcx().emit_err(errors::PassFnItemToVariadicFunction {
+                            span: fn_item_spa,
+                            sugg_span: fn_item_spa.shrink_to_hi(),
+                            replace: fn_ptr,
+                        });
                     }
                     _ => {}
                 }
@@ -906,6 +903,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
+        let detect_dotdot = |err: &mut Diag<'_>, ty: Ty<'_>, expr: &hir::Expr<'_>| {
+            if let ty::Adt(adt, _) = ty.kind()
+                && self.tcx().lang_items().get(hir::LangItem::RangeFull) == Some(adt.did())
+                && let hir::ExprKind::Struct(
+                    hir::QPath::LangItem(hir::LangItem::RangeFull, _),
+                    [],
+                    _,
+                ) = expr.kind
+            {
+                // We have `Foo(a, .., c)`, where the user might be trying to use the "rest" syntax
+                // from default field values, which is not supported on tuples.
+                let explanation = if self.tcx.features().default_field_values() {
+                    "this is only supported on non-tuple struct literals"
+                } else if self.tcx.sess.is_nightly_build() {
+                    "this is only supported on non-tuple struct literals when \
+                     `#![feature(default_field_values)]` is enabled"
+                } else {
+                    "this is not supported"
+                };
+                let msg = format!(
+                    "you might have meant to use `..` to skip providing a value for \
+                     expected fields, but {explanation}; it is instead interpreted as a \
+                     `std::ops::RangeFull` literal",
+                );
+                err.span_help(expr.span, msg);
+            }
+        };
+
         let mut reported = None;
         errors.retain(|error| {
             let Error::Invalid(provided_idx, expected_idx, Compatibility::Incompatible(Some(e))) =
@@ -939,18 +964,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // can be collated pretty easily if needed.
 
         // Next special case: if there is only one "Incompatible" error, just emit that
-        if let [
+        if let &[
             Error::Invalid(provided_idx, expected_idx, Compatibility::Incompatible(Some(err))),
         ] = &errors[..]
         {
-            let (formal_ty, expected_ty) = formal_and_expected_inputs[*expected_idx];
-            let (provided_ty, provided_arg_span) = provided_arg_tys[*provided_idx];
+            let (formal_ty, expected_ty) = formal_and_expected_inputs[expected_idx];
+            let (provided_ty, provided_arg_span) = provided_arg_tys[provided_idx];
             let trace = mk_trace(provided_arg_span, (formal_ty, expected_ty), provided_ty);
-            let mut err =
-                self.err_ctxt().report_and_explain_type_error(trace, self.param_env, *err);
+            let mut err = self.err_ctxt().report_and_explain_type_error(trace, self.param_env, err);
             self.emit_coerce_suggestions(
                 &mut err,
-                provided_args[*provided_idx],
+                provided_args[provided_idx],
                 provided_ty,
                 Expectation::rvalue_hint(self, expected_ty)
                     .only_has_type(self)
@@ -985,7 +1009,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.suggest_ptr_null_mut(
                 expected_ty,
                 provided_ty,
-                provided_args[*provided_idx],
+                provided_args[provided_idx],
                 &mut err,
             );
 
@@ -995,7 +1019,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 call_ident,
                 expected_ty,
                 provided_ty,
-                provided_args[*provided_idx],
+                provided_args[provided_idx],
                 is_method,
             );
 
@@ -1013,6 +1037,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 tuple_arguments,
             );
             suggest_confusable(&mut err);
+            detect_dotdot(&mut err, provided_ty, provided_args[provided_idx]);
             return err.emit();
         }
 
@@ -1137,6 +1162,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         None,
                         None,
                     );
+                    detect_dotdot(&mut err, provided_ty, provided_args[provided_idx]);
                 }
                 Error::Extra(arg_idx) => {
                     let (provided_ty, provided_span) = provided_arg_tys[arg_idx];
@@ -1220,6 +1246,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         };
                         prev_extra_idx = Some(arg_idx.index())
                     }
+                    detect_dotdot(&mut err, provided_ty, provided_args[arg_idx]);
                 }
                 Error::Missing(expected_idx) => {
                     // If there are multiple missing arguments adjacent to each other,

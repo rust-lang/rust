@@ -947,6 +947,25 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
             });
         }
     }
+
+    fn check_expanded_fields(
+        &mut self,
+        adt: ty::AdtDef<'tcx>,
+        variant: &'tcx ty::VariantDef,
+        fields: &[hir::ExprField<'tcx>],
+        hir_id: hir::HirId,
+        span: Span,
+    ) {
+        for (vf_index, variant_field) in variant.fields.iter_enumerated() {
+            let field =
+                fields.iter().find(|f| self.typeck_results().field_index(f.hir_id) == vf_index);
+            let (hir_id, use_ctxt, span) = match field {
+                Some(field) => (field.hir_id, field.ident.span, field.span),
+                None => (hir_id, span, span),
+            };
+            self.check_field(hir_id, use_ctxt, span, adt, variant_field, true);
+        }
+    }
 }
 
 impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
@@ -966,25 +985,29 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
             let res = self.typeck_results().qpath_res(qpath, expr.hir_id);
             let adt = self.typeck_results().expr_ty(expr).ty_adt_def().unwrap();
             let variant = adt.variant_of_res(res);
-            if let Some(base) = *base {
-                // If the expression uses FRU we need to make sure all the unmentioned fields
-                // are checked for privacy (RFC 736). Rather than computing the set of
-                // unmentioned fields, just check them all.
-                for (vf_index, variant_field) in variant.fields.iter_enumerated() {
-                    let field = fields
-                        .iter()
-                        .find(|f| self.typeck_results().field_index(f.hir_id) == vf_index);
-                    let (hir_id, use_ctxt, span) = match field {
-                        Some(field) => (field.hir_id, field.ident.span, field.span),
-                        None => (base.hir_id, base.span, base.span),
-                    };
-                    self.check_field(hir_id, use_ctxt, span, adt, variant_field, true);
+            match *base {
+                hir::StructTailExpr::Base(base) => {
+                    // If the expression uses FRU we need to make sure all the unmentioned fields
+                    // are checked for privacy (RFC 736). Rather than computing the set of
+                    // unmentioned fields, just check them all.
+                    self.check_expanded_fields(adt, variant, fields, base.hir_id, base.span);
                 }
-            } else {
-                for field in fields {
-                    let (hir_id, use_ctxt, span) = (field.hir_id, field.ident.span, field.span);
-                    let index = self.typeck_results().field_index(field.hir_id);
-                    self.check_field(hir_id, use_ctxt, span, adt, &variant.fields[index], false);
+                hir::StructTailExpr::DefaultFields(span) => {
+                    self.check_expanded_fields(adt, variant, fields, expr.hir_id, span);
+                }
+                hir::StructTailExpr::None => {
+                    for field in fields {
+                        let (hir_id, use_ctxt, span) = (field.hir_id, field.ident.span, field.span);
+                        let index = self.typeck_results().field_index(field.hir_id);
+                        self.check_field(
+                            hir_id,
+                            use_ctxt,
+                            span,
+                            adt,
+                            &variant.fields[index],
+                            false,
+                        );
+                    }
                 }
             }
         }

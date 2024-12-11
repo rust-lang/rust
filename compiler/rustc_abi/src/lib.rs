@@ -1215,6 +1215,15 @@ impl Scalar {
             Scalar::Union { .. } => true,
         }
     }
+
+    /// Returns `true` if this is a signed integer scalar
+    #[inline]
+    pub fn is_signed(&self) -> bool {
+        match self.primitive() {
+            Primitive::Int(_, signed) => signed,
+            _ => false,
+        }
+    }
 }
 
 // NOTE: This struct is generic over the FieldIdx for rust-analyzer usage.
@@ -1401,10 +1410,7 @@ impl BackendRepr {
     #[inline]
     pub fn is_signed(&self) -> bool {
         match self {
-            BackendRepr::Scalar(scal) => match scal.primitive() {
-                Primitive::Int(_, signed) => signed,
-                _ => false,
-            },
+            BackendRepr::Scalar(scal) => scal.is_signed(),
             _ => panic!("`is_signed` on non-scalar ABI {self:?}"),
         }
     }
@@ -1499,7 +1505,11 @@ impl BackendRepr {
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
 pub enum Variants<FieldIdx: Idx, VariantIdx: Idx> {
     /// Single enum variants, structs/tuples, unions, and all non-ADTs.
-    Single { index: VariantIdx },
+    Single {
+        /// Always 0 for non-enums/generators.
+        /// For enums without a variant, this is an invalid index!
+        index: VariantIdx,
+    },
 
     /// Enum-likes with more than one variant: each variant comes with
     /// a *discriminant* (usually the same as the variant index but the user can
@@ -1528,14 +1538,22 @@ pub enum TagEncoding<VariantIdx: Idx> {
     /// The variant `untagged_variant` contains a niche at an arbitrary
     /// offset (field `tag_field` of the enum), which for a variant with
     /// discriminant `d` is set to
-    /// `(d - niche_variants.start).wrapping_add(niche_start)`.
+    /// `(d - niche_variants.start).wrapping_add(niche_start)`
+    /// (this is wrapping arithmetic using the type of the niche field).
     ///
     /// For example, `Option<(usize, &T)>`  is represented such that
     /// `None` has a null pointer for the second tuple field, and
     /// `Some` is the identity function (with a non-null reference).
+    ///
+    /// Other variants that are not `untagged_variant` and that are outside the `niche_variants`
+    /// range cannot be represented; they must be uninhabited.
     Niche {
         untagged_variant: VariantIdx,
+        /// This range *may* contain `untagged_variant`; that is then just a "dead value" and
+        /// not used to encode anything.
         niche_variants: RangeInclusive<VariantIdx>,
+        /// This is inbounds of the type of the niche field
+        /// (not sign-extended, i.e., all bits beyond the niche field size are 0).
         niche_start: u128,
     },
 }

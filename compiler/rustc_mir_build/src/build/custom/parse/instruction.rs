@@ -283,7 +283,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
                     fields.iter().map(|e| self.parse_operand(*e)).collect::<Result<_, _>>()?
                 ))
             },
-            ExprKind::Adt(box AdtExpr{ adt_def, variant_index, args, fields, .. }) => {
+            ExprKind::Adt(box AdtExpr { adt_def, variant_index, args, fields, .. }) => {
                 let is_union = adt_def.is_union();
                 let active_field_index = is_union.then(|| fields[0].name);
 

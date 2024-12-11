@@ -4,7 +4,7 @@ use core::mem::MaybeUninit;
 use core::ptr::NonNull;
 
 #[test]
-#[cfg_attr(not(bootstrap), expect(dangling_pointers_from_temporaries))]
+#[expect(dangling_pointers_from_temporaries)]
 fn uninitialized_zero_size_box() {
     assert_eq!(
         &*Box::<()>::new_uninit() as *const _,

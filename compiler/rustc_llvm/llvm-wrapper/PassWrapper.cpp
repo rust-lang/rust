@@ -552,7 +552,7 @@ static CodeGenFileType fromRust(LLVMRustFileType Type) {
 extern "C" LLVMRustResult
 LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMPassManagerRef PMR,
                         LLVMModuleRef M, const char *Path, const char *DwoPath,
-                        LLVMRustFileType RustFileType) {
+                        LLVMRustFileType RustFileType, bool VerifyIR) {
   llvm::legacy::PassManager *PM = unwrap<llvm::legacy::PassManager>(PMR);
   auto FileType = fromRust(RustFileType);
 
@@ -577,10 +577,10 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMPassManagerRef PMR,
       return LLVMRustResult::Failure;
     }
     auto DBOS = buffer_ostream(DOS);
-    unwrap(Target)->addPassesToEmitFile(*PM, BOS, &DBOS, FileType, false);
+    unwrap(Target)->addPassesToEmitFile(*PM, BOS, &DBOS, FileType, !VerifyIR);
     PM->run(*unwrap(M));
   } else {
-    unwrap(Target)->addPassesToEmitFile(*PM, BOS, nullptr, FileType, false);
+    unwrap(Target)->addPassesToEmitFile(*PM, BOS, nullptr, FileType, !VerifyIR);
     PM->run(*unwrap(M));
   }
 

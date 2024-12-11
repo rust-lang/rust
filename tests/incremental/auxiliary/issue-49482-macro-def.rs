@@ -1,7 +1,3 @@
-//@ force-host
-//@ no-prefer-dynamic
-
-#![crate_type="proc-macro"]
 #![allow(non_snake_case)]
 
 extern crate proc_macro;

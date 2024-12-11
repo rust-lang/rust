@@ -709,8 +709,6 @@ passes_should_be_applied_to_trait =
     attribute should be applied to a trait
     .label = not a trait
 
-passes_skipping_const_checks = skipping const checks
-
 passes_stability_promotable =
     attribute cannot be applied to an expression
 

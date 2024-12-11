@@ -57,6 +57,7 @@ rm tests/ui/asm/x86_64/issue-96797.rs # const and sym inline asm operands don't 
 rm tests/ui/asm/x86_64/goto.rs # inline asm labels not supported
 rm tests/ui/simd/simd-bitmask-notpow2.rs # non-pow-of-2 simd vector sizes
 rm -r tests/run-make/embed-source-dwarf # embedding sources in debuginfo
+rm tests/ui/simd-abi-checks.rs # vector types >128bits not yet supported
 
 # requires LTO
 rm -r tests/run-make/cdylib
@@ -75,6 +76,8 @@ rm -r tests/ui/instrument-coverage/
 rm tests/ui/half-open-range-patterns/half-open-range-pats-semantics.rs
 rm tests/ui/asm/aarch64/type-f16.rs
 rm tests/ui/float/conv-bits-runtime-const.rs
+rm tests/ui/consts/const-eval/float_methods.rs
+rm tests/ui/match/match-float.rs
 
 # optimization tests
 # ==================

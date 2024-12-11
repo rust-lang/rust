@@ -304,6 +304,7 @@ fn test_const_nonnull_new() {
 #[test]
 #[cfg(unix)] // printf may not be available on other platforms
 #[allow(deprecated)] // For SipHasher
+#[cfg_attr(not(bootstrap), allow(unpredictable_function_pointer_comparisons))]
 pub fn test_variadic_fnptr() {
     use core::ffi;
     use core::hash::{Hash, SipHasher};
@@ -893,6 +894,25 @@ fn test_const_copy() {
 
         // Make sure they still work.
         assert!(*ptr1 == 1);
+        assert!(*ptr2 == 1);
+    };
+}
+
+#[test]
+fn test_const_swap() {
+    const {
+        let mut ptr1 = &1;
+        let mut ptr2 = &666;
+
+        // Swap ptr1 and ptr2, bytewise. `swap` does not take a count
+        // so the best we can do is use an array.
+        type T = [u8; mem::size_of::<&i32>()];
+        unsafe {
+            ptr::swap(ptr::from_mut(&mut ptr1).cast::<T>(), ptr::from_mut(&mut ptr2).cast::<T>());
+        }
+
+        // Make sure they still work.
+        assert!(*ptr1 == 666);
         assert!(*ptr2 == 1);
     };
 }

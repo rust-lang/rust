@@ -2,6 +2,7 @@ use super::{
     AdtExpr, Arm, Block, ClosureExpr, Expr, ExprKind, InlineAsmExpr, InlineAsmOperand, Pat,
     PatKind, Stmt, StmtKind, Thir,
 };
+use crate::thir::AdtExprBase;
 
 pub trait Visitor<'thir, 'tcx: 'thir>: Sized {
     fn thir(&self) -> &'thir Thir<'tcx>;
@@ -127,7 +128,7 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
             for field in &**fields {
                 visitor.visit_expr(&visitor.thir()[field.expr]);
             }
-            if let Some(base) = base {
+            if let AdtExprBase::Base(base) = base {
                 visitor.visit_expr(&visitor.thir()[base.base]);
             }
         }

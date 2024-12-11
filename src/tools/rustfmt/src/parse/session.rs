@@ -3,6 +3,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
 use rustc_errors::emitter::{DynEmitter, Emitter, HumanEmitter, SilentEmitter, stderr_destination};
+use rustc_errors::registry::Registry;
 use rustc_errors::translation::Translate;
 use rustc_errors::{ColorConfig, Diag, DiagCtxt, DiagInner, Level as DiagnosticLevel};
 use rustc_session::parse::ParseSess as RawParseSess;
@@ -38,10 +39,10 @@ struct SilentOnIgnoredFilesEmitter {
 }
 
 impl SilentOnIgnoredFilesEmitter {
-    fn handle_non_ignoreable_error(&mut self, diag: DiagInner) {
+    fn handle_non_ignoreable_error(&mut self, diag: DiagInner, registry: &Registry) {
         self.has_non_ignorable_parser_errors = true;
         self.can_reset.store(false, Ordering::Release);
-        self.emitter.emit_diagnostic(diag);
+        self.emitter.emit_diagnostic(diag, registry);
     }
 }
 
@@ -60,9 +61,9 @@ impl Emitter for SilentOnIgnoredFilesEmitter {
         None
     }
 
-    fn emit_diagnostic(&mut self, diag: DiagInner) {
+    fn emit_diagnostic(&mut self, diag: DiagInner, registry: &Registry) {
         if diag.level() == DiagnosticLevel::Fatal {
-            return self.handle_non_ignoreable_error(diag);
+            return self.handle_non_ignoreable_error(diag, registry);
         }
         if let Some(primary_span) = &diag.span.primary_span() {
             let file_name = self.source_map.span_to_filename(*primary_span);
@@ -80,7 +81,7 @@ impl Emitter for SilentOnIgnoredFilesEmitter {
                 }
             };
         }
-        self.handle_non_ignoreable_error(diag);
+        self.handle_non_ignoreable_error(diag, registry);
     }
 }
 
@@ -358,7 +359,7 @@ mod tests {
                 None
             }
 
-            fn emit_diagnostic(&mut self, _diag: DiagInner) {
+            fn emit_diagnostic(&mut self, _diag: DiagInner, _registry: &Registry) {
                 self.num_emitted_errors.fetch_add(1, Ordering::Release);
             }
         }
@@ -412,6 +413,7 @@ mod tests {
                 SourceMapFileName::Real(RealFileName::LocalPath(PathBuf::from("foo.rs"))),
                 source,
             );
+            let registry = Registry::new(&[]);
             let mut emitter = build_emitter(
                 Lrc::clone(&num_emitted_errors),
                 Lrc::clone(&can_reset_errors),
@@ -420,7 +422,7 @@ mod tests {
             );
             let span = MultiSpan::from_span(mk_sp(BytePos(0), BytePos(1)));
             let fatal_diagnostic = build_diagnostic(DiagnosticLevel::Fatal, Some(span));
-            emitter.emit_diagnostic(fatal_diagnostic);
+            emitter.emit_diagnostic(fatal_diagnostic, &registry);
             assert_eq!(num_emitted_errors.load(Ordering::Acquire), 1);
             assert_eq!(can_reset_errors.load(Ordering::Acquire), false);
         }
@@ -437,6 +439,7 @@ mod tests {
                 SourceMapFileName::Real(RealFileName::LocalPath(PathBuf::from("foo.rs"))),
                 source,
             );
+            let registry = Registry::new(&[]);
             let mut emitter = build_emitter(
                 Lrc::clone(&num_emitted_errors),
                 Lrc::clone(&can_reset_errors),
@@ -445,7 +448,7 @@ mod tests {
             );
             let span = MultiSpan::from_span(mk_sp(BytePos(0), BytePos(1)));
             let non_fatal_diagnostic = build_diagnostic(DiagnosticLevel::Warning, Some(span));
-            emitter.emit_diagnostic(non_fatal_diagnostic);
+            emitter.emit_diagnostic(non_fatal_diagnostic, &registry);
             assert_eq!(num_emitted_errors.load(Ordering::Acquire), 0);
             assert_eq!(can_reset_errors.load(Ordering::Acquire), true);
         }
@@ -461,6 +464,7 @@ mod tests {
                 SourceMapFileName::Real(RealFileName::LocalPath(PathBuf::from("foo.rs"))),
                 source,
             );
+            let registry = Registry::new(&[]);
             let mut emitter = build_emitter(
                 Lrc::clone(&num_emitted_errors),
                 Lrc::clone(&can_reset_errors),
@@ -469,7 +473,7 @@ mod tests {
             );
             let span = MultiSpan::from_span(mk_sp(BytePos(0), BytePos(1)));
             let non_fatal_diagnostic = build_diagnostic(DiagnosticLevel::Warning, Some(span));
-            emitter.emit_diagnostic(non_fatal_diagnostic);
+            emitter.emit_diagnostic(non_fatal_diagnostic, &registry);
             assert_eq!(num_emitted_errors.load(Ordering::Acquire), 1);
             assert_eq!(can_reset_errors.load(Ordering::Acquire), false);
         }
@@ -497,6 +501,7 @@ mod tests {
                 SourceMapFileName::Real(RealFileName::LocalPath(PathBuf::from("fatal.rs"))),
                 fatal_source,
             );
+            let registry = Registry::new(&[]);
             let mut emitter = build_emitter(
                 Lrc::clone(&num_emitted_errors),
                 Lrc::clone(&can_reset_errors),
@@ -508,9 +513,9 @@ mod tests {
             let bar_diagnostic = build_diagnostic(DiagnosticLevel::Warning, Some(bar_span));
             let foo_diagnostic = build_diagnostic(DiagnosticLevel::Warning, Some(foo_span));
             let fatal_diagnostic = build_diagnostic(DiagnosticLevel::Fatal, None);
-            emitter.emit_diagnostic(bar_diagnostic);
-            emitter.emit_diagnostic(foo_diagnostic);
-            emitter.emit_diagnostic(fatal_diagnostic);
+            emitter.emit_diagnostic(bar_diagnostic, &registry);
+            emitter.emit_diagnostic(foo_diagnostic, &registry);
+            emitter.emit_diagnostic(fatal_diagnostic, &registry);
             assert_eq!(num_emitted_errors.load(Ordering::Acquire), 2);
             assert_eq!(can_reset_errors.load(Ordering::Acquire), false);
         }

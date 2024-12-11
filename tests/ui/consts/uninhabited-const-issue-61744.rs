@@ -5,15 +5,15 @@ pub const unsafe fn fake_type<T>() -> T {
 }
 
 pub const unsafe fn hint_unreachable() -> ! {
-    fake_type()
+    fake_type() //~ inside
 }
 
 trait Const {
-    const CONSTANT: i32 = unsafe { fake_type() };
+    const CONSTANT: i32 = unsafe { fake_type() }; //~ inside
 }
 
 impl<T> Const for T {}
 
 pub fn main() -> () {
-    dbg!(i32::CONSTANT); //~ constant
+    dbg!(i32::CONSTANT);
 }

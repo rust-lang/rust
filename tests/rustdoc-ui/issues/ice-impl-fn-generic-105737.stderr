@@ -1,0 +1,12 @@
+error[E0747]: constant provided when a type was expected
+  --> $DIR/ice-impl-fn-generic-105737.rs:2:10
+   |
+LL | impl Vec<lol> {}
+   |          ^^^
+   |
+   = help: `lol` is a function item, not a type
+   = help: function item types cannot be named directly
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0747`.

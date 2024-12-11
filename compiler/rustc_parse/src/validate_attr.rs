@@ -43,7 +43,7 @@ pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
             }
         }
         _ => {
-            if let AttrArgs::Eq(..) = attr_item.args {
+            if let AttrArgs::Eq { .. } = attr_item.args {
                 // All key-value attributes are restricted to meta-item syntax.
                 match parse_meta(psess, attr) {
                     Ok(_) => {}
@@ -70,7 +70,7 @@ pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Met
                     parse_in(psess, tokens.clone(), "meta list", |p| p.parse_meta_seq_top())?;
                 MetaItemKind::List(nmis)
             }
-            AttrArgs::Eq(_, AttrArgsEq::Ast(expr)) => {
+            AttrArgs::Eq { value: AttrArgsEq::Ast(expr), .. } => {
                 if let ast::ExprKind::Lit(token_lit) = expr.kind {
                     let res = ast::MetaItemLit::from_token_lit(token_lit, expr.span);
                     let res = match res {
@@ -116,7 +116,9 @@ pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Met
                     return Err(err);
                 }
             }
-            AttrArgs::Eq(_, AttrArgsEq::Hir(lit)) => MetaItemKind::NameValue(lit.clone()),
+            AttrArgs::Eq { value: AttrArgsEq::Hir(lit), .. } => {
+                MetaItemKind::NameValue(lit.clone())
+            }
         },
     })
 }

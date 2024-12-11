@@ -134,4 +134,11 @@ struct Human<'a> {
     pub name: &'a str,
 }
 
+// https://github.com/rust-lang/rust-clippy/issues/13578
+mod issue_13578 {
+    pub trait Foo {}
+
+    impl<'a, T: 'a> Foo for Option<T> where &'a T: Foo {}
+}
+
 fn main() {}

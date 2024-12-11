@@ -60,8 +60,6 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
             item.kind,
             clean::StructFieldItem(_)
                 | clean::VariantItem(_)
-                | clean::AssocConstItem(..)
-                | clean::AssocTypeItem(..)
                 | clean::TypeAliasItem(_)
                 | clean::StaticItem(_)
                 | clean::ConstantItem(..)
@@ -69,6 +67,15 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
                 | clean::ImportItem(_)
                 | clean::PrimitiveItem(_)
                 | clean::KeywordItem
+                | clean::ModuleItem(_)
+                | clean::TraitAliasItem(_)
+                | clean::ForeignFunctionItem(..)
+                | clean::ForeignStaticItem(..)
+                | clean::ForeignTypeItem
+                | clean::AssocConstItem(..)
+                | clean::AssocTypeItem(..)
+                | clean::TyAssocConstItem(..)
+                | clean::TyAssocTypeItem(..)
                 // check for trait impl
                 | clean::ImplItem(box clean::Impl { trait_: Some(_), .. })
         )

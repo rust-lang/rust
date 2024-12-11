@@ -64,6 +64,22 @@ There are no special requirements for testing and running the target.
 For testing cross builds on the host, please refer to the "Cross-compilation
 toolchains and C code" section below.
 
+If you want to do native testing but do not have your own s390x
+machine, there are several options how to get access to one:
+
+* The [IBM LinuxONE Community Cloud][cloud-community] provides a
+  self-service portal where you can create s390x virtual machine
+  instances.  These are intended for temporary use (limited to 120 days).
+
+* The [IBM LinuxONE Open Source Cloud][cloud-opensource] provides
+  permanent access to s390x machines.  This requires approval by IBM,
+  which will normally be granted if you're planning to use the machine
+  to work on an open-source project that is relevant to the IBM Z
+  ecosystem - the Rust compiler would certainly qualify.
+
+[cloud-community]: https://linuxone.cloud.marist.edu/
+[cloud-opensource]: https://community.ibm.com/zsystems/form/l1cc-oss-vm-request/
+
 ## Cross-compilation toolchains and C code
 
 Rust code built using the target is compatible with C code compiled with

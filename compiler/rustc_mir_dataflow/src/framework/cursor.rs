@@ -15,7 +15,6 @@ pub enum ResultsHandle<'a, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
-    Borrowed(&'a Results<'tcx, A>),
     BorrowedMut(&'a mut Results<'tcx, A>),
     Owned(Results<'tcx, A>),
 }
@@ -28,7 +27,6 @@ where
 
     fn deref(&self) -> &Results<'tcx, A> {
         match self {
-            ResultsHandle::Borrowed(borrowed) => borrowed,
             ResultsHandle::BorrowedMut(borrowed) => borrowed,
             ResultsHandle::Owned(owned) => owned,
         }
@@ -41,9 +39,6 @@ where
 {
     fn deref_mut(&mut self) -> &mut Results<'tcx, A> {
         match self {
-            ResultsHandle::Borrowed(_borrowed) => {
-                panic!("tried to deref_mut a `ResultsHandle::Borrowed")
-            }
             ResultsHandle::BorrowedMut(borrowed) => borrowed,
             ResultsHandle::Owned(owned) => owned,
         }

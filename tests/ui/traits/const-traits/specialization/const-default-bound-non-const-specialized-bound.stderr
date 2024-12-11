@@ -1,11 +1,31 @@
-error: cannot specialize on const impl with non-const impl
+error[E0119]: conflicting implementations of trait `Bar`
   --> $DIR/const-default-bound-non-const-specialized-bound.rs:28:1
    |
+LL | / impl<T> const Bar for T
+LL | | where
+LL | |     T: ~const Foo,
+   | |__________________- first implementation here
+...
 LL | / impl<T> Bar for T
 LL | | where
 LL | |     T: Foo, //FIXME ~ ERROR missing `~const` qualifier
 LL | |     T: Specialize,
-   | |__________________^
+   | |__________________^ conflicting implementation
 
-error: aborting due to 1 previous error
+error[E0119]: conflicting implementations of trait `Baz`
+  --> $DIR/const-default-bound-non-const-specialized-bound.rs:48:1
+   |
+LL | / impl<T> const Baz for T
+LL | | where
+LL | |     T: ~const Foo,
+   | |__________________- first implementation here
+...
+LL | / impl<T> const Baz for T //FIXME ~ ERROR conflicting implementations of trait `Baz`
+LL | | where
+LL | |     T: Foo,
+LL | |     T: Specialize,
+   | |__________________^ conflicting implementation
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0119`.

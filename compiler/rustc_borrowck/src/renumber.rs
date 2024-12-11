@@ -2,6 +2,7 @@ use rustc_index::IndexSlice;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::mir::visit::{MutVisitor, TyContext};
 use rustc_middle::mir::{Body, ConstOperand, Location, Promoted};
+use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Symbol;
 use tracing::{debug, instrument};
@@ -68,7 +69,7 @@ impl<'a, 'tcx> RegionRenumberer<'a, 'tcx> {
         F: Fn() -> RegionCtxt,
     {
         let origin = NllRegionVariableOrigin::Existential { from_forall: false };
-        self.infcx.tcx.fold_regions(value, |_region, _depth| {
+        fold_regions(self.infcx.tcx, value, |_region, _depth| {
             self.infcx.next_nll_region_var(origin, || region_ctxt_fn())
         })
     }

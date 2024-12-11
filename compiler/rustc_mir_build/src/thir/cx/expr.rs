@@ -222,7 +222,7 @@ impl<'tcx> Cx<'tcx> {
                     args,
                     fields: Box::new([FieldExpr { name: FieldIdx::from(0u32), expr }]),
                     user_ty: None,
-                    base: None,
+                    base: AdtExprBase::None,
                 }));
 
                 debug!(?kind);
@@ -464,7 +464,7 @@ impl<'tcx> Cx<'tcx> {
                             variant_index: index,
                             fields: field_refs,
                             user_ty,
-                            base: None,
+                            base: AdtExprBase::None,
                         }))
                     } else {
                         ExprKind::Call {
@@ -594,20 +594,36 @@ impl<'tcx> Cx<'tcx> {
                             args,
                             user_ty,
                             fields: self.field_refs(fields),
-                            base: base.map(|base| FruInfo {
-                                base: self.mirror_expr(base),
-                                field_types: self.typeck_results().fru_field_types()[expr.hir_id]
-                                    .iter()
-                                    .copied()
-                                    .collect(),
-                            }),
+                            base: match base {
+                                hir::StructTailExpr::Base(base) => AdtExprBase::Base(FruInfo {
+                                    base: self.mirror_expr(base),
+                                    field_types: self.typeck_results().fru_field_types()
+                                        [expr.hir_id]
+                                        .iter()
+                                        .copied()
+                                        .collect(),
+                                }),
+                                hir::StructTailExpr::DefaultFields(_) => {
+                                    AdtExprBase::DefaultFields(
+                                        self.typeck_results().fru_field_types()[expr.hir_id]
+                                            .iter()
+                                            .copied()
+                                            .collect(),
+                                    )
+                                }
+                                hir::StructTailExpr::None => AdtExprBase::None,
+                            },
                         }))
                     }
                     AdtKind::Enum => {
                         let res = self.typeck_results().qpath_res(qpath, expr.hir_id);
                         match res {
                             Res::Def(DefKind::Variant, variant_id) => {
-                                assert!(base.is_none());
+                                assert!(matches!(
+                                    base,
+                                    hir::StructTailExpr::None
+                                        | hir::StructTailExpr::DefaultFields(_)
+                                ));
 
                                 let index = adt.variant_index_with_id(variant_id);
                                 let user_provided_types =
@@ -621,7 +637,21 @@ impl<'tcx> Cx<'tcx> {
                                     args,
                                     user_ty,
                                     fields: self.field_refs(fields),
-                                    base: None,
+                                    base: match base {
+                                        hir::StructTailExpr::DefaultFields(_) => {
+                                            AdtExprBase::DefaultFields(
+                                                self.typeck_results().fru_field_types()
+                                                    [expr.hir_id]
+                                                    .iter()
+                                                    .copied()
+                                                    .collect(),
+                                            )
+                                        }
+                                        hir::StructTailExpr::Base(base) => {
+                                            span_bug!(base.span, "unexpected res: {:?}", res);
+                                        }
+                                        hir::StructTailExpr::None => AdtExprBase::None,
+                                    },
                                 }))
                             }
                             _ => {
@@ -1029,7 +1059,7 @@ impl<'tcx> Cx<'tcx> {
                         args,
                         user_ty,
                         fields: Box::new([]),
-                        base: None,
+                        base: AdtExprBase::None,
                     })),
                     _ => bug!("unexpected ty: {:?}", ty),
                 }

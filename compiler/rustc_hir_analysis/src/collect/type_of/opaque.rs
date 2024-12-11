@@ -226,12 +226,17 @@ impl TaitConstraintLocator<'_> {
             constrained = true;
 
             if !opaque_types_defined_by.contains(&self.def_id) {
-                self.tcx.dcx().emit_err(TaitForwardCompat {
+                let guar = self.tcx.dcx().emit_err(TaitForwardCompat {
                     span: hidden_type.span,
                     item_span: self
                         .tcx
                         .def_ident_span(item_def_id)
                         .unwrap_or_else(|| self.tcx.def_span(item_def_id)),
+                });
+                // Avoid "opaque type not constrained" errors on the opaque itself.
+                self.found = Some(ty::OpaqueHiddenType {
+                    span: DUMMY_SP,
+                    ty: Ty::new_error(self.tcx, guar),
                 });
             }
             let concrete_type =
@@ -248,13 +253,18 @@ impl TaitConstraintLocator<'_> {
         if !constrained {
             debug!("no constraints in typeck results");
             if opaque_types_defined_by.contains(&self.def_id) {
-                self.tcx.dcx().emit_err(TaitForwardCompat2 {
+                let guar = self.tcx.dcx().emit_err(TaitForwardCompat2 {
                     span: self
                         .tcx
                         .def_ident_span(item_def_id)
                         .unwrap_or_else(|| self.tcx.def_span(item_def_id)),
                     opaque_type_span: self.tcx.def_span(self.def_id),
                     opaque_type: self.tcx.def_path_str(self.def_id),
+                });
+                // Avoid "opaque type not constrained" errors on the opaque itself.
+                self.found = Some(ty::OpaqueHiddenType {
+                    span: DUMMY_SP,
+                    ty: Ty::new_error(self.tcx, guar),
                 });
             }
             return;

@@ -168,9 +168,9 @@ impl<'tcx> interpret::Machine<'tcx> for DummyMachine {
         })
     }
 
-    fn expose_ptr(
-        _ecx: &mut InterpCx<'tcx, Self>,
-        _ptr: interpret::Pointer<Self::Provenance>,
+    fn expose_provenance(
+        _ecx: &InterpCx<'tcx, Self>,
+        _provenance: Self::Provenance,
     ) -> interpret::InterpResult<'tcx> {
         unimplemented!()
     }

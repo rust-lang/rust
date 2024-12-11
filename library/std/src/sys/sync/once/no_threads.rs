@@ -35,7 +35,6 @@ unsafe impl Sync for Once {}
 
 impl Once {
     #[inline]
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_once_new", since = "1.32.0"))]
     pub const fn new() -> Once {
         Once { state: Cell::new(State::Incomplete) }
     }

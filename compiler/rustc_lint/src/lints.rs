@@ -908,6 +908,11 @@ pub(crate) struct QueryUntracked {
 pub(crate) struct SpanUseEqCtxtDiag;
 
 #[derive(LintDiagnostic)]
+#[diag(lint_symbol_intern_string_literal)]
+#[help]
+pub(crate) struct SymbolInternStringLiteralDiag;
+
+#[derive(LintDiagnostic)]
 #[diag(lint_tykind_kind)]
 pub(crate) struct TykindKind {
     #[suggestion(code = "ty", applicability = "maybe-incorrect")]
@@ -1808,6 +1813,42 @@ pub(crate) enum AmbiguousWidePointerComparisonsAddrSuggestion<'a> {
         #[suggestion_part(code = "{r_modifiers}{paren_right}.cast::<()>()")]
         right_after: Span,
     },
+}
+
+#[derive(LintDiagnostic)]
+pub(crate) enum UnpredictableFunctionPointerComparisons<'a> {
+    #[diag(lint_unpredictable_fn_pointer_comparisons)]
+    #[note(lint_note_duplicated_fn)]
+    #[note(lint_note_deduplicated_fn)]
+    #[note(lint_note_visit_fn_addr_eq)]
+    Suggestion {
+        #[subdiagnostic]
+        sugg: UnpredictableFunctionPointerComparisonsSuggestion<'a>,
+    },
+    #[diag(lint_unpredictable_fn_pointer_comparisons)]
+    #[note(lint_note_duplicated_fn)]
+    #[note(lint_note_deduplicated_fn)]
+    #[note(lint_note_visit_fn_addr_eq)]
+    Warn,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    lint_fn_addr_eq_suggestion,
+    style = "verbose",
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct UnpredictableFunctionPointerComparisonsSuggestion<'a> {
+    pub ne: &'a str,
+    pub cast_right: String,
+    pub deref_left: &'a str,
+    pub deref_right: &'a str,
+    #[suggestion_part(code = "{ne}std::ptr::fn_addr_eq({deref_left}")]
+    pub left: Span,
+    #[suggestion_part(code = ", {deref_right}")]
+    pub middle: Span,
+    #[suggestion_part(code = "{cast_right})")]
+    pub right: Span,
 }
 
 pub(crate) struct ImproperCTypes<'a> {

@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitStatus;
 
 use rustc_abi::TargetDataLayoutErrors;
+use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast_pretty::pprust;
 use rustc_macros::Subdiagnostic;
 use rustc_span::Span;
@@ -295,6 +296,12 @@ impl IntoDiagArg for ClosureKind {
 impl IntoDiagArg for hir::def::Namespace {
     fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::Borrowed(self.descr()))
+    }
+}
+
+impl IntoDiagArg for ExprPrecedence {
+    fn into_diag_arg(self) -> DiagArgValue {
+        DiagArgValue::Number(self as i32)
     }
 }
 
