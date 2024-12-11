@@ -1,5 +1,5 @@
 use rustc_ast::token::{self, Delimiter, IdentIsRaw, Lit, Token, TokenKind};
-use rustc_ast::tokenstream::{RefTokenTreeCursor, TokenStream, TokenTree};
+use rustc_ast::tokenstream::{TokenStream, TokenStreamIter, TokenTree};
 use rustc_ast::{LitIntType, LitKind};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, PResult};
@@ -39,14 +39,14 @@ impl MetaVarExpr {
         outer_span: Span,
         psess: &'psess ParseSess,
     ) -> PResult<'psess, MetaVarExpr> {
-        let mut tts = input.trees();
-        let ident = parse_ident(&mut tts, psess, outer_span)?;
-        let Some(TokenTree::Delimited(.., Delimiter::Parenthesis, args)) = tts.next() else {
+        let mut iter = input.iter();
+        let ident = parse_ident(&mut iter, psess, outer_span)?;
+        let Some(TokenTree::Delimited(.., Delimiter::Parenthesis, args)) = iter.next() else {
             let msg = "meta-variable expression parameter must be wrapped in parentheses";
             return Err(psess.dcx().struct_span_err(ident.span, msg));
         };
-        check_trailing_token(&mut tts, psess)?;
-        let mut iter = args.trees();
+        check_trailing_token(&mut iter, psess)?;
+        let mut iter = args.iter();
         let rslt = match ident.as_str() {
             "concat" => {
                 let mut result = Vec::new();
@@ -143,7 +143,7 @@ pub(crate) enum MetaVarExprConcatElem {
 
 // Checks if there are any remaining tokens. For example, `${ignore(ident ... a b c ...)}`
 fn check_trailing_token<'psess>(
-    iter: &mut RefTokenTreeCursor<'_>,
+    iter: &mut TokenStreamIter<'_>,
     psess: &'psess ParseSess,
 ) -> PResult<'psess, ()> {
     if let Some(tt) = iter.next() {
@@ -159,7 +159,7 @@ fn check_trailing_token<'psess>(
 
 /// Parse a meta-variable `count` expression: `count(ident[, depth])`
 fn parse_count<'psess>(
-    iter: &mut RefTokenTreeCursor<'_>,
+    iter: &mut TokenStreamIter<'_>,
     psess: &'psess ParseSess,
     span: Span,
 ) -> PResult<'psess, MetaVarExpr> {
@@ -181,7 +181,7 @@ fn parse_count<'psess>(
 
 /// Parses the depth used by index(depth) and len(depth).
 fn parse_depth<'psess>(
-    iter: &mut RefTokenTreeCursor<'_>,
+    iter: &mut TokenStreamIter<'_>,
     psess: &'psess ParseSess,
     span: Span,
 ) -> PResult<'psess, usize> {
@@ -204,7 +204,7 @@ fn parse_depth<'psess>(
 
 /// Parses an generic ident
 fn parse_ident<'psess>(
-    iter: &mut RefTokenTreeCursor<'_>,
+    iter: &mut TokenStreamIter<'_>,
     psess: &'psess ParseSess,
     fallback_span: Span,
 ) -> PResult<'psess, Ident> {
@@ -236,7 +236,7 @@ fn parse_ident_from_token<'psess>(
 }
 
 fn parse_token<'psess, 't>(
-    iter: &mut RefTokenTreeCursor<'t>,
+    iter: &mut TokenStreamIter<'t>,
     psess: &'psess ParseSess,
     fallback_span: Span,
 ) -> PResult<'psess, &'t Token> {
@@ -251,7 +251,7 @@ fn parse_token<'psess, 't>(
 
 /// Tries to move the iterator forward returning `true` if there is a comma. If not, then the
 /// iterator is not modified and the result is `false`.
-fn try_eat_comma(iter: &mut RefTokenTreeCursor<'_>) -> bool {
+fn try_eat_comma(iter: &mut TokenStreamIter<'_>) -> bool {
     if let Some(TokenTree::Token(Token { kind: token::Comma, .. }, _)) = iter.peek() {
         let _ = iter.next();
         return true;
@@ -261,7 +261,7 @@ fn try_eat_comma(iter: &mut RefTokenTreeCursor<'_>) -> bool {
 
 /// Tries to move the iterator forward returning `true` if there is a dollar sign. If not, then the
 /// iterator is not modified and the result is `false`.
-fn try_eat_dollar(iter: &mut RefTokenTreeCursor<'_>) -> bool {
+fn try_eat_dollar(iter: &mut TokenStreamIter<'_>) -> bool {
     if let Some(TokenTree::Token(Token { kind: token::Dollar, .. }, _)) = iter.peek() {
         let _ = iter.next();
         return true;
@@ -271,7 +271,7 @@ fn try_eat_dollar(iter: &mut RefTokenTreeCursor<'_>) -> bool {
 
 /// Expects that the next item is a dollar sign.
 fn eat_dollar<'psess>(
-    iter: &mut RefTokenTreeCursor<'_>,
+    iter: &mut TokenStreamIter<'_>,
     psess: &'psess ParseSess,
     span: Span,
 ) -> PResult<'psess, ()> {

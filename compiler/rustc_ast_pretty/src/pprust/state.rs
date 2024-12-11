@@ -725,7 +725,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     // E.g. we have seen cases where a proc macro can handle `a :: b` but not
     // `a::b`. See #117433 for some examples.
     fn print_tts(&mut self, tts: &TokenStream, convert_dollar_crate: bool) {
-        let mut iter = tts.trees().peekable();
+        let mut iter = tts.iter().peekable();
         while let Some(tt) = iter.next() {
             let spacing = self.print_tt(tt, convert_dollar_crate);
             if let Some(next) = iter.peek() {
