@@ -2692,32 +2692,45 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         None
     }
 
-    // Check field access expressions
+    /// Check field access expressions, this works for both structs and tuples.
+    /// Returns the Ty of the field.
+    ///
+    /// ```not_rust
+    ///  base.field
+    ///  ^^^^^^^^^^ expr
+    ///  ^^^^       base
+    ///       ^^^^^ field
+    ///  ```
     fn check_expr_field(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         base: &'tcx hir::Expr<'tcx>,
         field: Ident,
+        // The expected type hint of the field.
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         debug!("check_field(expr: {:?}, base: {:?}, field: {:?})", expr, base, field);
         let base_ty = self.check_expr(base);
         let base_ty = self.structurally_resolve_type(base.span, base_ty);
+
+        // Whether we are trying to access a private field. Used for error reporting.
         let mut private_candidate = None;
+
+        // Field expressions automatically deref
         let mut autoderef = self.autoderef(expr.span, base_ty);
         while let Some((deref_base_ty, _)) = autoderef.next() {
             debug!("deref_base_ty: {:?}", deref_base_ty);
             match deref_base_ty.kind() {
                 ty::Adt(base_def, args) if !base_def.is_enum() => {
                     debug!("struct named {:?}", deref_base_ty);
-                    let body_hir_id = self.tcx.local_def_id_to_hir_id(self.body_id);
-                    let (ident, def_scope) =
-                        self.tcx.adjust_ident_and_get_scope(field, base_def.did(), body_hir_id);
-
                     // we don't care to report errors for a struct if the struct itself is tainted
                     if let Err(guar) = base_def.non_enum_variant().has_errors() {
                         return Ty::new_error(self.tcx(), guar);
                     }
+
+                    let fn_body_hir_id = self.tcx.local_def_id_to_hir_id(self.body_id);
+                    let (ident, def_scope) =
+                        self.tcx.adjust_ident_and_get_scope(field, base_def.did(), fn_body_hir_id);
 
                     if let Some((idx, field)) = self.find_adt_field(*base_def, ident) {
                         self.write_field_index(expr.hir_id, idx);
@@ -2752,6 +2765,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => {}
             }
         }
+        // We failed to check the expression, report an error.
+
+        // Emits an error if we deref an infer variable, like calling `.field` on a base type of &_.
         self.structurally_resolve_type(autoderef.span(), autoderef.final_ty(false));
 
         if let Some((adjustments, did)) = private_candidate {
@@ -2776,6 +2792,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expr.hir_id,
             expected.only_has_type(self),
         ) {
+            // If taking a method instead of calling it
             self.ban_take_value_of_method(expr, base_ty, field)
         } else if !base_ty.is_primitive_ty() {
             self.ban_nonexisting_field(field, base, expr, base_ty)
