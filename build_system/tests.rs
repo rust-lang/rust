@@ -92,10 +92,6 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
     TestCase::build_bin_and_run("aot.mod_bench", "example/mod_bench.rs", &[]),
     TestCase::build_bin_and_run("aot.issue-72793", "example/issue-72793.rs", &[]),
     TestCase::build_bin("aot.issue-59326", "example/issue-59326.rs"),
-    TestCase::custom("aot.polymorphize_coroutine", &|runner| {
-        runner.run_rustc(&["example/polymorphize_coroutine.rs", "-Zpolymorphize"]);
-        runner.run_out_command("polymorphize_coroutine", &[]);
-    }),
     TestCase::build_bin_and_run("aot.neon", "example/neon.rs", &[]),
     TestCase::custom("aot.gen_block_iterate", &|runner| {
         runner.run_rustc([

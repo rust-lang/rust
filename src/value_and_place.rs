@@ -1005,9 +1005,6 @@ pub(crate) fn assert_assignable<'tcx>(
                 }
             }
         }
-        (ty::Param(_), _) | (_, ty::Param(_)) if fx.tcx.sess.opts.unstable_opts.polymorphize => {
-            // No way to check if it is correct or not with polymorphization enabled
-        }
         _ => {
             assert_eq!(
                 from_ty,
