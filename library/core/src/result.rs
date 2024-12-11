@@ -513,6 +513,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::clone::UseCloned;
 use crate::iter::{self, FusedIterator, TrustedLen};
 use crate::ops::{self, ControlFlow, Deref, DerefMut};
 use crate::{convert, fmt, hint};
@@ -1742,6 +1743,14 @@ where
             (to, from) => *to = from.clone(),
         }
     }
+}
+
+#[unstable(feature = "ergonomic_clones", issue = "132290")]
+impl<T, E> UseCloned for Result<T, E>
+where
+    T: UseCloned,
+    E: UseCloned,
+{
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

@@ -2150,6 +2150,7 @@ symbols! {
         unwrap_binder,
         unwrap_or,
         unwrap_unsafe_binder,
+        use_cloned,
         use_extern_macros,
         use_nested_groups,
         used,

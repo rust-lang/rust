@@ -176,6 +176,24 @@ pub trait Clone: Sized {
     }
 }
 
+/// Trait for objects whose clone impl is lightweight (e.g. reference-counted)
+///
+/// Cloning an object implementing this trait should in general:
+/// - be O(1) (constant) time regardless of the amount of data managed by the object,
+/// - not require a memory allocation,
+/// - not require copying more than roughly 64 bytes (a typical cache line size),
+/// - not block,
+/// - not have any semantic side effects (e.g. allocating a file descriptor), and
+/// - not have overhead larger than a couple of atomic operations.
+///
+/// The `Use` trait does not provide a method; instead, it indicates that
+/// `Clone::clone` is lightweight, and allows the use of the `.use` syntax.
+#[unstable(feature = "ergonomic_clones", issue = "132290")]
+#[cfg_attr(not(bootstrap), lang = "use_cloned")]
+#[rustc_diagnostic_item = "UseCloned"]
+#[rustc_trivial_field_reads]
+pub trait UseCloned: Clone {}
+
 /// Derive macro generating an impl of the trait `Clone`.
 #[rustc_builtin_macro]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
@@ -332,6 +350,22 @@ mod impls {
     }
 
     impl_clone! {
+        usize u8 u16 u32 u64 u128
+        isize i8 i16 i32 i64 i128
+        f16 f32 f64 f128
+        bool char
+    }
+
+    macro_rules! impl_use_cloned {
+        ($($t:ty)*) => {
+            $(
+                #[unstable(feature = "ergonomic_clones", issue = "132290")]
+                impl crate::clone::UseCloned for $t {}
+            )*
+        }
+    }
+
+    impl_use_cloned! {
         usize u8 u16 u32 u64 u128
         isize i8 i16 i32 i64 i128
         f16 f32 f64 f128
