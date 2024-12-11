@@ -121,6 +121,8 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
     if [ -n "${DOCKER_SCRIPT+x}" ]; then
       build_args+=("--build-arg" "SCRIPT_ARG=${DOCKER_SCRIPT}")
       echo "Using docker build arg SCRIPT_ARG=${DOCKER_SCRIPT}"
+    else
+      echo "DOCKER_SCRIPT is not defined"
     fi
 
     # On non-CI jobs, we try to download a pre-built image from the rust-lang-ci
