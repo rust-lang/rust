@@ -3,7 +3,7 @@
 use super::{IntErrorKind, ParseIntError};
 use crate::cmp::Ordering;
 use crate::hash::{Hash, Hasher};
-use crate::marker::{Freeze, StructuralPartialEq};
+use crate::marker::{Freeze, StructuralPartialEq, UseCloned};
 use crate::ops::{BitOr, BitOrAssign, Div, DivAssign, Neg, Rem, RemAssign};
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::str::FromStr;
@@ -182,6 +182,9 @@ where
         *self
     }
 }
+
+#[unstable(feature = "ergonomic_clones", issue = "132290")]
+impl<T> UseCloned for NonZero<T> where T: ZeroablePrimitive {}
 
 #[stable(feature = "nonzero", since = "1.28.0")]
 impl<T> Copy for NonZero<T> where T: ZeroablePrimitive {}
