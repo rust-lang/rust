@@ -31,6 +31,7 @@ use std::{env, fs, vec};
 
 use build_helper::git::{get_git_modified_files, get_git_untracked_files};
 use getopts::Options;
+use header::auxiliary::check_cycles;
 use test::ColorConfig;
 use tracing::*;
 use walkdir::WalkDir;
@@ -766,6 +767,8 @@ fn collect_tests_from_dir(
             if &file_name != "auxiliary" {
                 debug!("found directory: {:?}", file_path.display());
                 collect_tests_from_dir(cx, collector, &file_path, &relative_file_path)?;
+            } else {
+                check_cycles(&cx.config, &file_path)?;
             }
         } else {
             debug!("found other file/directory: {:?}", file_path.display());
