@@ -9,7 +9,7 @@ use rustc_arena::DroplessArena;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{Visitor, walk_pat};
-use rustc_hir::{Arm, Expr, ExprKind, HirId, Node, Pat, PatKind, QPath, StmtKind};
+use rustc_hir::{Arm, Expr, ExprKind, HirId, Node, Pat, PatKind, QPath, StmtKind, PatExpr, PatExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, AdtDef, TyCtxt, TypeckResults, VariantDef};
 use rustc_span::{Span, sym};
@@ -126,8 +126,8 @@ fn report_single_pattern(cx: &LateContext<'_>, ex: &Expr<'_>, arm: &Arm<'_>, exp
         // scrutinee derives PartialEq and the pattern is a constant.
         let pat_ref_count = match pat.kind {
             // string literals are already a reference.
-            PatKind::Lit(Expr {
-                kind: ExprKind::Lit(lit),
+            PatKind::Lit(PatExpr {
+                kind: PatExprKind::Lit { lit, negated: false },
                 ..
             }) if lit.node.is_str() || lit.node.is_bytestr() => pat_ref_count + 1,
             _ => pat_ref_count,
