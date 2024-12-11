@@ -1,7 +1,6 @@
 //! Functions dealing with attributes and meta items.
 
 use std::fmt::Debug;
-use std::iter;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use rustc_index::bit_set::GrowableBitSet;
@@ -17,7 +16,9 @@ use crate::ast::{
 };
 use crate::ptr::P;
 use crate::token::{self, CommentKind, Delimiter, Token};
-use crate::tokenstream::{DelimSpan, LazyAttrTokenStream, Spacing, TokenStream, TokenTree};
+use crate::tokenstream::{
+    DelimSpan, LazyAttrTokenStream, Spacing, TokenStream, TokenStreamIter, TokenTree,
+};
 use crate::util::comments;
 use crate::util::literal::escape_string_symbol;
 
@@ -366,10 +367,7 @@ impl MetaItem {
         }
     }
 
-    fn from_tokens<'a, I>(iter: &mut iter::Peekable<I>) -> Option<MetaItem>
-    where
-        I: Iterator<Item = &'a TokenTree>,
-    {
+    fn from_tokens(iter: &mut TokenStreamIter<'_>) -> Option<MetaItem> {
         // FIXME: Share code with `parse_path`.
         let tt = iter.next().map(|tt| TokenTree::uninterpolate(tt));
         let path = match tt.as_deref() {
@@ -439,7 +437,7 @@ impl MetaItem {
 impl MetaItemKind {
     // public because it can be called in the hir
     pub fn list_from_tokens(tokens: TokenStream) -> Option<ThinVec<MetaItemInner>> {
-        let mut iter = tokens.iter().peekable();
+        let mut iter = tokens.iter();
         let mut result = ThinVec::new();
         while iter.peek().is_some() {
             let item = MetaItemInner::from_tokens(&mut iter)?;
@@ -452,9 +450,7 @@ impl MetaItemKind {
         Some(result)
     }
 
-    fn name_value_from_tokens<'a>(
-        iter: &mut impl Iterator<Item = &'a TokenTree>,
-    ) -> Option<MetaItemKind> {
+    fn name_value_from_tokens(iter: &mut TokenStreamIter<'_>) -> Option<MetaItemKind> {
         match iter.next() {
             Some(TokenTree::Delimited(.., Delimiter::Invisible(_), inner_tokens)) => {
                 MetaItemKind::name_value_from_tokens(&mut inner_tokens.iter())
@@ -466,9 +462,7 @@ impl MetaItemKind {
         }
     }
 
-    fn from_tokens<'a>(
-        iter: &mut iter::Peekable<impl Iterator<Item = &'a TokenTree>>,
-    ) -> Option<MetaItemKind> {
+    fn from_tokens(iter: &mut TokenStreamIter<'_>) -> Option<MetaItemKind> {
         match iter.peek() {
             Some(TokenTree::Delimited(.., Delimiter::Parenthesis, inner_tokens)) => {
                 let inner_tokens = inner_tokens.clone();
@@ -594,10 +588,7 @@ impl MetaItemInner {
         self.meta_item().is_some()
     }
 
-    fn from_tokens<'a, I>(iter: &mut iter::Peekable<I>) -> Option<MetaItemInner>
-    where
-        I: Iterator<Item = &'a TokenTree>,
-    {
+    fn from_tokens(iter: &mut TokenStreamIter<'_>) -> Option<MetaItemInner> {
         match iter.peek() {
             Some(TokenTree::Token(token, _)) if let Some(lit) = MetaItemLit::from_token(token) => {
                 iter.next();
@@ -605,7 +596,7 @@ impl MetaItemInner {
             }
             Some(TokenTree::Delimited(.., Delimiter::Invisible(_), inner_tokens)) => {
                 iter.next();
-                return MetaItemInner::from_tokens(&mut inner_tokens.iter().peekable());
+                return MetaItemInner::from_tokens(&mut inner_tokens.iter());
             }
             _ => {}
         }

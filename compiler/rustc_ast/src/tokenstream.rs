@@ -676,7 +676,10 @@ impl<'t> TokenStreamIter<'t> {
         TokenStreamIter { stream, index: 0 }
     }
 
-    pub fn peek(&self) -> Option<&TokenTree> {
+    // Peeking could be done via `Peekable`, but most iterators need peeking,
+    // and this is simple and avoids the need to use `peekable` and `Peekable`
+    // at all the use sites.
+    pub fn peek(&self) -> Option<&'t TokenTree> {
         self.stream.0.get(self.index)
     }
 }
