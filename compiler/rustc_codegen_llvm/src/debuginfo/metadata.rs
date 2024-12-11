@@ -189,7 +189,53 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                 "ptr_type={ptr_type}, pointee_type={pointee_type}",
             );
 
+            /*
+                This block differentiates between mutable/immutable AND ref/ptr.
+
+                References to references (&&T) are invalid constructs in C/C++, and we are piggybacking off
+                of their type system when using LLDB (`TypeSystemClang`). Ptr-to-ref (*&T) and ref-to-ptr (&*T)
+                are valid constructs though. That means we can tell the debugger that ref-to-ref's are actually
+                ref-to-ptr's.
+
+                Additionally, to help debugger visualizers differentiate ref-to-ref's that *look like* ref-to-ptr
+                and *actual* ref-to-ptr, we can use the `rvalue_reference` tag. It's a C++ feature that doesn't
+                quite have an equivalent in Rust, but *is* represented as `&&` which is perfect! That means
+                ref-to-refs (&&T) will look like `T *&&` (i.e. an rvalue_reference to a pointer to T)
+                and on the debugger visualizer end, the scripts can "undo" that translation.
+
+                To handle immutable vs mutable (&/&mut) we use the `const` modifier. The modifier is applied
+                with proper C/C++ rules (i.e. pointer-to-constant vs constant pointer). This means that an
+                immutable reference applies the const modifier to the *pointee type*. When reversing the
+                debuginfo translation, the `const` modifier doesn't describe the value it's applied to, it describes
+                the pointer to the value. This is a **very** important distinction.
+
+                Here are some examples, the Rust representation is on the left and the debuginfo translation on
+                the right
+
+                Cosnt vs Mut:
+                *const T -> const T *
+                *mut T -> T *
+
+                *const *const T -> const T *const *
+                *mut *mut T -> T **
+
+                *mut *const T -> const T **
+                *const *mut T -> T *const *
+
+                Nested References:
+                &T -> const T &
+                &&T -> const T *const &&
+                &&&T -> const T &const *const &&
+                &&&&T -> const T *const &&const *const &&
+
+                &mut T -> T &
+                &mut &mut T -> T *&&
+                &mut &mut &mut T -> T &*&&
+                &mut &mut &mut &mut T -> T *&&*&&
+             */
             let di_node = match (ptr_type.kind(), pointee_type.kind()) {
+                // if we have a ref-to-ref, convert the inner ref to a ptr and the outter ref to an rvalue ref
+                // and apply `const` to the inner ref's value and the inner ref itself as necessary
                 (ty::Ref(_, _, ptr_mut), ty::Ref(_, inner_type, ptee_mut)) => unsafe {
                     let inner_type_di_node = type_di_node(cx, *inner_type);
                     let inner_type_di_node = if ptee_mut.is_not() {
@@ -202,28 +248,31 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                         inner_type_di_node
                     };
 
-                    let ptr_wrapper = llvm::LLVMRustDIBuilderCreateReferenceType(
+                    // creating a reference node with the pointer tag outputs a regular pointer as far as LLDB
+                    // is concerned
+                    let wrapped_ref = llvm::LLVMRustDIBuilderCreateReferenceType(
                         DIB(cx),
                         DW_TAG_pointer_type,
                         inner_type_di_node,
                     );
 
-                    let ptr_wrapper = if ptr_mut.is_not() {
+                    let wrapped_ref = if ptr_mut.is_not() {
                         llvm::LLVMRustDIBuilderCreateQualifiedType(
                             DIB(cx),
                             DW_TAG_const_type,
-                            ptr_wrapper,
+                            wrapped_ref,
                         )
                     } else {
-                        ptr_wrapper
+                        wrapped_ref
                     };
 
                     llvm::LLVMRustDIBuilderCreateReferenceType(
                         DIB(cx),
                         DW_TAG_rvalue_reference_type,
-                        ptr_wrapper,
+                        wrapped_ref,
                     )
                 },
+                // if we have a ref-to-<not a ref>, apply `const` to the inner value as necessary
                 (ty::Ref(_, _, ptr_mut), _) => unsafe {
                     let pointee_type_di_node = if ptr_mut.is_not() {
                         llvm::LLVMRustDIBuilderCreateQualifiedType(
@@ -241,6 +290,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                         pointee_type_di_node,
                     )
                 },
+                // if we have any pointer, apply `const` to the inner value as necessary
                 (ty::RawPtr(_, ptr_mut), _) => unsafe {
                     let pointee_type_di_node = if ptr_mut.is_not() {
                         llvm::LLVMRustDIBuilderCreateQualifiedType(
@@ -262,6 +312,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                         ptr_type_debuginfo_name.len(),
                     )
                 },
+                // apply no translations to `Box`
                 (ty::Adt(_, _), _) => unsafe {
                     llvm::LLVMRustDIBuilderCreatePointerType(
                         DIB(cx),
@@ -275,88 +326,6 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                 },
                 _ => todo!(),
             };
-
-            // Immutable pointers/references will mark the data as `const`. For example:
-            // unsigned char & => &mut u8
-            // const unsigned char & => &u8
-            // unsigned char * => *mut u8
-            // const unsigned char * => *const u8
-            // let di_node = match ptr_type.kind() {
-            //     ty::Ref(_, _, mutability) => unsafe {
-            //         let pointee_type_di_node = if mutability.is_not() {
-            //             llvm::LLVMRustDIBuilderCreateQualifiedType(
-            //                 DIB(cx),
-            //                 DW_TAG_const_type,
-            //                 pointee_type_di_node,
-            //             )
-            //         } else {
-            //             pointee_type_di_node
-            //         };
-
-            //         if let ty::Ref(_, pt_e, _) = pointee_type.kind() {
-            //             let pointee_type_di_node = type_di_node(cx, *pt_e);
-            //             let temp = llvm::LLVMRustDIBuilderCreateReferenceType(
-            //                 DIB(cx),
-            //                 0xf,
-            //                 pointee_type_di_node,
-            //             );
-
-            //             let temp = if mutability.is_not() {
-            //                 llvm::LLVMRustDIBuilderCreateQualifiedType(
-            //                     DIB(cx),
-            //                     DW_TAG_const_type,
-            //                     temp,
-            //                 )
-            //             } else {
-            //                 temp
-            //             };
-
-            //             llvm::LLVMRustDIBuilderCreateReferenceType(
-            //                 DIB(cx),
-            //                 DW_TAG_rvalue_reference_type,
-            //                 temp,
-            //             )
-            //         } else {
-            //             llvm::LLVMRustDIBuilderCreateReferenceType(
-            //                 DIB(cx),
-            //                 DW_TAG_reference_type,
-            //                 pointee_type_di_node,
-            //             )
-            //         }
-            //     },
-            //     ty::RawPtr(_, mutability) => unsafe {
-            //         let pointee_type_di_node = if mutability.is_not() {
-            //             llvm::LLVMRustDIBuilderCreateQualifiedType(
-            //                 DIB(cx),
-            //                 DW_TAG_const_type,
-            //                 pointee_type_di_node,
-            //             )
-            //         } else {
-            //             pointee_type_di_node
-            //         };
-            //         llvm::LLVMRustDIBuilderCreatePointerType(
-            //             DIB(cx),
-            //             pointee_type_di_node,
-            //             data_layout.pointer_size.bits(),
-            //             data_layout.pointer_align.abi.bits() as u32,
-            //             0, // Ignore DWARF address space.
-            //             ptr_type_debuginfo_name.as_c_char_ptr(),
-            //             ptr_type_debuginfo_name.len(),
-            //         )
-            //     },
-            //     ty::Adt(_, _) => unsafe {
-            //         llvm::LLVMRustDIBuilderCreatePointerType(
-            //             DIB(cx),
-            //             pointee_type_di_node,
-            //             data_layout.pointer_size.bits(),
-            //             data_layout.pointer_align.abi.bits() as u32,
-            //             0, // Ignore DWARF address space.
-            //             ptr_type_debuginfo_name.as_c_char_ptr(),
-            //             ptr_type_debuginfo_name.len(),
-            //         )
-            //     },
-            //     _ => unreachable!("Thin pointer not of type ty::RawPtr, ty::Ref, or ty::Adt"),
-            // };
 
             DINodeCreationResult { di_node, already_stored_in_typemap: false }
         }
