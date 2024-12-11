@@ -330,7 +330,6 @@ impl<'a> State<'a> {
             hir::TyKind::Infer | hir::TyKind::InferDelegation(..) => {
                 self.word("_");
             }
-            hir::TyKind::AnonAdt(..) => self.word("/* anonymous adt */"),
             hir::TyKind::Pat(ty, pat) => {
                 self.print_type(ty);
                 self.word(" is ");

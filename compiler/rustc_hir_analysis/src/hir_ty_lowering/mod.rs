@@ -50,7 +50,7 @@ use rustc_span::{DUMMY_SP, Span};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::wf::object_region_bounds;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
-use tracing::{debug, debug_span, instrument};
+use tracing::{debug, instrument};
 
 use crate::bounds::Bounds;
 use crate::check::check_abi_fn_ptr;
@@ -2303,19 +2303,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             hir::TyKind::Never => tcx.types.never,
             hir::TyKind::Tup(fields) => {
                 Ty::new_tup_from_iter(tcx, fields.iter().map(|t| self.lower_ty(t)))
-            }
-            hir::TyKind::AnonAdt(item_id) => {
-                let _guard = debug_span!("AnonAdt");
-
-                let did = item_id.owner_id.def_id;
-                let adt_def = tcx.adt_def(did);
-
-                let args = ty::GenericArgs::for_item(tcx, did.to_def_id(), |param, _| {
-                    tcx.mk_param_from_def(param)
-                });
-                debug!(?args);
-
-                Ty::new_adt(tcx, adt_def, tcx.mk_args(args))
             }
             hir::TyKind::BareFn(bf) => {
                 require_c_abi_if_c_variadic(tcx, bf.decl, bf.abi, hir_ty.span);
