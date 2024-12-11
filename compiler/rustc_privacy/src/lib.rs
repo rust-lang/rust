@@ -1351,6 +1351,7 @@ struct SearchInterfaceForPrivateItemsVisitor<'tcx> {
     required_effective_vis: Option<EffectiveVisibility>,
     in_assoc_ty: bool,
     in_primary_interface: bool,
+    check_private_dep_leaks_only: bool,
 }
 
 impl SearchInterfaceForPrivateItemsVisitor<'_> {
@@ -1409,6 +1410,10 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                     krate: self.tcx.crate_name(def_id.krate),
                 },
             );
+        }
+
+        if self.check_private_dep_leaks_only {
+            return false;
         }
 
         let Some(local_def_id) = def_id.as_local() else {
@@ -1530,6 +1535,23 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
             required_effective_vis,
             in_assoc_ty: false,
             in_primary_interface: true,
+            check_private_dep_leaks_only: false,
+        }
+    }
+
+    fn check_private_dep_leaks_only(
+        &self,
+        def_id: LocalDefId,
+        required_visibility: ty::Visibility,
+    ) -> SearchInterfaceForPrivateItemsVisitor<'tcx> {
+        SearchInterfaceForPrivateItemsVisitor {
+            tcx: self.tcx,
+            item_def_id: def_id,
+            required_visibility,
+            required_effective_vis: None,
+            in_assoc_ty: false,
+            in_primary_interface: true,
+            check_private_dep_leaks_only: true,
         }
     }
 
@@ -1732,6 +1754,14 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
                             .generics()
                             .predicates();
                     }
+
+                    // normally, a public item can implement a private trait, but this should be linted for leakages of
+                    // private dependencies.
+                    if let Some(trait_ref) = tcx.impl_trait_ref(item.owner_id.def_id) {
+                        self.check_private_dep_leaks_only(item.owner_id.def_id, impl_vis)
+                            .visit_trait(trait_ref.instantiate_identity());
+                    }
+
                     for impl_item_ref in impl_.items {
                         let impl_item_vis = if impl_.of_trait.is_none() {
                             min(
@@ -1757,6 +1787,33 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
                             impl_item_ev,
                         );
                     }
+                }
+            }
+            DefKind::Use => {
+                let item = tcx.hir_item(id);
+                if let hir::ItemKind::Use(path, use_kind) = item.kind
+                    // List imports are desugared as single ones so skip `ListStem`s
+                    && use_kind != rustc_hir::UseKind::ListStem
+                {
+                    if let Some(def_id) = path.res.iter().filter_map(Res::opt_def_id).last() {
+                        // normally, public items in a private modules can be re-exported but this should be linted for
+                        // leakages of a private dependencies
+                        self.check_private_dep_leaks_only(item.owner_id.def_id, item_visibility)
+                            .check_def_id(
+                                def_id,
+                                item.kind.descr(),
+                                &LazyDefPathStr { def_id, tcx },
+                            );
+                    }
+                }
+            }
+            DefKind::ExternCrate => {
+                let item = tcx.hir_item(id);
+                if let Some(cnum) = tcx.extern_mod_stmt_cnum(item.owner_id.def_id) {
+                    let def_id = cnum.as_def_id();
+                    // `pub extern some_dep` should be linted if and only if `some_dep` is a private dependency
+                    self.check_private_dep_leaks_only(item.owner_id.def_id, item_visibility)
+                        .visit_def_id(def_id, item.kind.descr(), &LazyDefPathStr { def_id, tcx });
                 }
             }
             _ => {}
