@@ -25,6 +25,7 @@
 //!
 //! # Prelude contents
 //!
+//! The items included in the prelude depend on the edition of the crate.
 //! The first version of the prelude is used in Rust 2015 and Rust 2018,
 //! and lives in [`std::prelude::v1`].
 //! [`std::prelude::rust_2015`] and [`std::prelude::rust_2018`] re-export this prelude.
@@ -67,8 +68,13 @@
 //! The prelude used in Rust 2021, [`std::prelude::rust_2021`], includes all of the above,
 //! and in addition re-exports:
 //!
-//! * <code>[std::convert]::{[TryFrom], [TryInto]}</code>,
+//! * <code>[std::convert]::{[TryFrom], [TryInto]}</code>.
 //! * <code>[std::iter]::[FromIterator]</code>.
+//!
+//! The prelude used in Rust 2024, [`std::prelude::rust_2024`], includes all of the above,
+//! and in addition re-exports:
+//!
+//! * <code>[std::future]::{[Future], [IntoFuture]}</code>.
 //!
 //! [std::borrow]: crate::borrow
 //! [std::boxed]: crate::boxed
@@ -76,6 +82,7 @@
 //! [std::cmp]: crate::cmp
 //! [std::convert]: crate::convert
 //! [std::default]: crate::default
+//! [std::future]: crate::future
 //! [std::iter]: crate::iter
 //! [std::marker]: crate::marker
 //! [std::mem]: crate::mem
@@ -85,6 +92,7 @@
 //! [`std::prelude::rust_2015`]: rust_2015
 //! [`std::prelude::rust_2018`]: rust_2018
 //! [`std::prelude::rust_2021`]: rust_2021
+//! [`std::prelude::rust_2024`]: rust_2024
 //! [std::result]: crate::result
 //! [std::slice]: crate::slice
 //! [std::string]: crate::string
@@ -94,6 +102,8 @@
 //! [book-dtor]: ../../book/ch15-03-drop.html
 //! [book-enums]: ../../book/ch06-01-defining-an-enum.html
 //! [book-iter]: ../../book/ch13-02-iterators.html
+//! [Future]: crate::future::Future
+//! [IntoFuture]: crate::future::IntoFuture
 
 // No formatting: this file is nothing but re-exports, and their order is worth preserving.
 #![cfg_attr(rustfmt, rustfmt::skip)]
@@ -158,12 +168,12 @@ pub mod rust_2021 {
 /// The 2024 version of the prelude of The Rust Standard Library.
 ///
 /// See the [module-level documentation](self) for more.
-#[unstable(feature = "prelude_2024", issue = "121042")]
+#[stable(feature = "prelude_2024", since = "CURRENT_RUSTC_VERSION")]
 pub mod rust_2024 {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::common::*;
 
-    #[unstable(feature = "prelude_2024", issue = "121042")]
+    #[stable(feature = "prelude_2024", since = "CURRENT_RUSTC_VERSION")]
     #[doc(no_inline)]
     pub use core::prelude::rust_2024::*;
 }
