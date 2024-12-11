@@ -25,7 +25,7 @@ use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{
     self, AdtKind, CanonicalUserType, GenericArgKind, GenericArgsRef, GenericParamDefKind,
-    IsIdentity, Ty, TyCtxt, UserArgs, UserSelfTy, UserType,
+    IsIdentity, Ty, TyCtxt, UserArgs, UserSelfTy,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
@@ -216,11 +216,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("fcx {}", self.tag());
 
         if Self::can_contain_user_lifetime_bounds((args, user_self_ty)) {
-            let canonicalized =
-                self.canonicalize_user_type_annotation(UserType::TypeOf(def_id, UserArgs {
-                    args,
-                    user_self_ty,
-                }));
+            let canonicalized = self.canonicalize_user_type_annotation(ty::UserType::new(
+                ty::UserTypeKind::TypeOf(def_id, UserArgs { args, user_self_ty }),
+            ));
             debug!(?canonicalized);
             self.write_user_type_annotation(hir_id, canonicalized);
         }
@@ -468,7 +466,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!(?ty);
 
         if Self::can_contain_user_lifetime_bounds(ty.raw) {
-            let c_ty = self.canonicalize_response(UserType::Ty(ty.raw));
+            let c_ty = self.canonicalize_response(ty::UserType::new(ty::UserTypeKind::Ty(ty.raw)));
             debug!(?c_ty);
             self.typeck_results.borrow_mut().user_provided_types_mut().insert(hir_ty.hir_id, c_ty);
         }

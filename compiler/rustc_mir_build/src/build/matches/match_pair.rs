@@ -176,9 +176,8 @@ impl<'pat, 'tcx> MatchPairTree<'pat, 'tcx> {
                         ty: cx.infcx.next_ty_var(span),
                     })
                     .args;
-                    let user_ty = cx.infcx.canonicalize_user_type_annotation(ty::UserType::TypeOf(
-                        def_id,
-                        ty::UserArgs { args, user_self_ty: None },
+                    let user_ty = cx.infcx.canonicalize_user_type_annotation(ty::UserType::new(
+                        ty::UserTypeKind::TypeOf(def_id, ty::UserArgs { args, user_self_ty: None }),
                     ));
                     let annotation = ty::CanonicalUserTypeAnnotation {
                         inferred_ty: pattern.ty,
