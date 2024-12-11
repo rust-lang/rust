@@ -895,7 +895,29 @@ pub fn item_const(
         None => String::new(),
         Some(it) => format!("{it} "),
     };
-    ast_from_text(&format!("{visibility} const {name}: {ty} = {expr};"))
+    ast_from_text(&format!("{visibility}const {name}: {ty} = {expr};"))
+}
+
+pub fn item_static(
+    visibility: Option<ast::Visibility>,
+    is_unsafe: bool,
+    is_mut: bool,
+    name: ast::Name,
+    ty: ast::Type,
+    expr: Option<ast::Expr>,
+) -> ast::Static {
+    let visibility = match visibility {
+        None => String::new(),
+        Some(it) => format!("{it} "),
+    };
+    let is_unsafe = if is_unsafe { "unsafe " } else { "" };
+    let is_mut = if is_mut { "mut " } else { "" };
+    let expr = match expr {
+        Some(it) => &format!(" = {it}"),
+        None => "",
+    };
+
+    ast_from_text(&format!("{visibility}{is_unsafe}static {is_mut}{name}: {ty}{expr};"))
 }
 
 pub fn unnamed_param(ty: ast::Type) -> ast::Param {
