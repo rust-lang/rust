@@ -711,12 +711,19 @@ pub(super) fn assert_only_contains_predicates_from<'tcx>(
                             `{filter:?}` implied bounds: {clause:?}"
                         );
                     }
+                    ty::ClauseKind::HostEffect(host_effect_predicate) => {
+                        assert_eq!(
+                            host_effect_predicate.self_ty(),
+                            ty,
+                            "expected `Self` predicate when computing \
+                            `{filter:?}` implied bounds: {clause:?}"
+                        );
+                    }
 
                     ty::ClauseKind::RegionOutlives(_)
                     | ty::ClauseKind::ConstArgHasType(_, _)
                     | ty::ClauseKind::WellFormed(_)
-                    | ty::ClauseKind::ConstEvaluatable(_)
-                    | ty::ClauseKind::HostEffect(..) => {
+                    | ty::ClauseKind::ConstEvaluatable(_) => {
                         bug!(
                             "unexpected non-`Self` predicate when computing \
                             `{filter:?}` implied bounds: {clause:?}"
