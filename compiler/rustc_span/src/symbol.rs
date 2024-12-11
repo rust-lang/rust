@@ -2182,6 +2182,7 @@ symbols! {
         unwrap,
         unwrap_binder,
         unwrap_or,
+        use_cloned,
         use_extern_macros,
         use_nested_groups,
         used,
