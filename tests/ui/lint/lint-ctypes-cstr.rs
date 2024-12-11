@@ -8,7 +8,7 @@ extern "C" {
     //~^ ERROR `extern` block uses type `CStr`, which is not FFI-safe
     //~| HELP consider passing a `*const std::ffi::c_char` instead, and use `CStr::as_ptr()`
     fn take_cstr_ref(s: &CStr);
-    //~^ ERROR `extern` block uses type `CStr`, which is not FFI-safe
+    //~^ ERROR `extern` block uses type `&CStr`, which is not FFI-safe
     //~| HELP consider passing a `*const std::ffi::c_char` instead, and use `CStr::as_ptr()`
     fn take_cstring(s: CString);
     //~^ ERROR `extern` block uses type `CString`, which is not FFI-safe
@@ -27,7 +27,7 @@ extern "C" {
 }
 
 extern "C" fn rust_take_cstr_ref(s: &CStr) {}
-//~^ ERROR `extern` fn uses type `CStr`, which is not FFI-safe
+//~^ ERROR `extern` fn uses type `&CStr`, which is not FFI-safe
 //~| HELP consider passing a `*const std::ffi::c_char` instead, and use `CStr::as_ptr()`
 extern "C" fn rust_take_cstring(s: CString) {}
 //~^ ERROR `extern` fn uses type `CString`, which is not FFI-safe
