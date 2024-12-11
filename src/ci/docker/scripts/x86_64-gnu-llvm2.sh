@@ -20,8 +20,8 @@ fi
 
 # Only run the stage 1 tests on merges, not on PR CI jobs.
 if [[ -z "${PR_CI_JOB}" ]]; then
-    ../x.py --stage 1 test
-      --skip compiler
+    ../x.py --stage 1 test \
+      --skip compiler \
       --skip src
 
     # Run the `mir-opt` tests again but this time for a 32-bit target.
@@ -41,8 +41,8 @@ if [[ -z "${PR_CI_JOB}" ]]; then
         library/std library/alloc library/core
 fi
 
-../x.py --stage 2 test
-  --skip compiler
+../x.py --stage 2 test \
+  --skip compiler \
   --skip src
 
 # Run the `mir-opt` tests again but this time for a 32-bit target.
