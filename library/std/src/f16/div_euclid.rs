@@ -68,7 +68,7 @@ fn div_ceil(exp: i16, a: u16, b: u16) -> f16 {
         let aa = u32::from(a) << exp;
         let bb = u32::from(b);
         // q <= (2^27 - 2^16) / 2^10 + 1 = 2^17 - 2^6 + 1
-        let q = ((aa - 1) / bb) as u16 + 1;
+        let q = (aa - 1) / bb + 1;
         q as f16
     } else {
         // exp >= 17
