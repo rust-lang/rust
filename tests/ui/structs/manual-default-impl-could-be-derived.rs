@@ -11,20 +11,20 @@
 //     fn default() -> Self { A }
 // }
 // 
-// #[derive(Debug)]
-// struct B(Option<i32>);
-// 
-// impl Default for B {
-//     fn default() -> Self { B(Default::default()) }
-// }
-// 
-// #[derive(Debug)]
-// struct C(Option<i32>);
-// 
-// impl Default for C {
-//     fn default() -> Self { C(None) }
-// }
-// 
+#[derive(Debug)]
+struct B(Option<i32>);
+
+impl Default for B { //~ ERROR
+    fn default() -> Self { B(Default::default()) }
+}
+
+#[derive(Debug)]
+struct C(Option<i32>);
+
+impl Default for C { //~ ERROR
+    fn default() -> Self { C(None) }
+}
+
 
 // Explicit check against numeric literals and `Default::default()` calls.
 struct D {
@@ -112,8 +112,8 @@ impl Default for I { //~ ERROR
 
 fn main() {
 //    let _ = A::default();
-//    let _ = B::default();
-//    let _ = C::default();
+    let _ = B::default();
+    let _ = C::default();
     let _ = D::default();
     let _ = E::default();
     let _ = F::<i32>::default();
