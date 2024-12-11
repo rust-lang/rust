@@ -8,17 +8,28 @@
 //@[aix64] compile-flags: --target powerpc64-ibm-aix
 //@[aix64] needs-llvm-components: powerpc
 //@ needs-asm-support
+// ignore-tidy-linelength
 
 #![crate_type = "rlib"]
-#![feature(no_core, rustc_attrs, lang_items, asm_experimental_arch)]
+#![feature(no_core, rustc_attrs, lang_items, repr_simd, asm_experimental_arch)]
 #![no_core]
+#![allow(non_camel_case_types)]
 
 #[lang = "sized"]
 trait Sized {}
 #[lang = "copy"]
 trait Copy {}
 
+#[repr(simd)]
+pub struct i32x4([i32; 4]);
+#[repr(simd)]
+pub struct i64x2([i64; 2]);
+
+impl<T: Copy, const N: usize> Copy for [T; N] {}
 impl Copy for i32 {}
+impl Copy for i64 {}
+impl Copy for i32x4 {}
+impl Copy for i64x2 {}
 
 #[rustc_builtin_macro]
 macro_rules! asm {
@@ -27,6 +38,8 @@ macro_rules! asm {
 
 fn f() {
     let mut x = 0;
+    let mut v32x4 = i32x4([0; 4]);
+    let mut v64x2 = i64x2([0; 2]);
     unsafe {
         // Unsupported registers
         asm!("", out("sp") _);
@@ -47,6 +60,36 @@ fn f() {
         //~^ ERROR invalid register `ctr`: the counter register cannot be used as an operand for inline asm
         asm!("", out("vrsave") _);
         //~^ ERROR invalid register `vrsave`: the vrsave register cannot be used as an operand for inline asm
+
+        // vreg
+        asm!("", out("v0") _); // always ok
+        asm!("", in("v0") v32x4); // requires altivec
+        //[powerpc]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
+        asm!("", out("v0") v32x4); // requires altivec
+        //[powerpc]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
+        asm!("", in("v0") v64x2); // requires vsx
+        //[powerpc]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
+        //[powerpc64]~^^ ERROR `vsx` target feature is not enabled
+        asm!("", out("v0") v64x2); // requires vsx
+        //[powerpc]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
+        //[powerpc64]~^^ ERROR `vsx` target feature is not enabled
+        asm!("", in("v0") x); // FIXME: should be ok if vsx is available
+        //[powerpc]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
+        //[powerpc64,powerpc64le,aix64]~^^ ERROR type `i32` cannot be used with this register class
+        asm!("", out("v0") x); // FIXME: should be ok if vsx is available
+        //[powerpc]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
+        //[powerpc64,powerpc64le,aix64]~^^ ERROR type `i32` cannot be used with this register class
+        asm!("/* {} */", in(vreg) v32x4); // requires altivec
+        //[powerpc]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
+        asm!("/* {} */", in(vreg) v64x2); // requires vsx
+        //[powerpc]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
+        //[powerpc64]~^^ ERROR `vsx` target feature is not enabled
+        asm!("/* {} */", in(vreg) x); // FIXME: should be ok if vsx is available
+        //[powerpc]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
+        //[powerpc64,powerpc64le,aix64]~^^ ERROR type `i32` cannot be used with this register class
+        asm!("/* {} */", out(vreg) _); // requires altivec
+        //[powerpc]~^ ERROR register class `vreg` requires at least one of the following target features: altivec, vsx
+        // v20-v31 are reserved on AIX with vec-default ABI (this ABI is not currently used in Rust's builtin AIX targets).
         asm!("", out("v20") _);
         asm!("", out("v21") _);
         asm!("", out("v22") _);
@@ -86,20 +129,6 @@ fn f() {
         //~^ ERROR can only be used as a clobber
         //~| ERROR type `i32` cannot be used with this register class
         asm!("/* {} */", out(xer) _);
-        //~^ ERROR can only be used as a clobber
-        // vreg
-        asm!("", out("v0") _); // ok
-        // FIXME: will be supported in the subsequent patch: https://github.com/rust-lang/rust/pull/131551
-        asm!("", in("v0") x);
-        //~^ ERROR can only be used as a clobber
-        //~| ERROR type `i32` cannot be used with this register class
-        asm!("", out("v0") x);
-        //~^ ERROR can only be used as a clobber
-        //~| ERROR type `i32` cannot be used with this register class
-        asm!("/* {} */", in(vreg) x);
-        //~^ ERROR can only be used as a clobber
-        //~| ERROR type `i32` cannot be used with this register class
-        asm!("/* {} */", out(vreg) _);
         //~^ ERROR can only be used as a clobber
 
         // Overlapping-only registers

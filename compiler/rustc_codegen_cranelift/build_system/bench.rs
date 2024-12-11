@@ -3,7 +3,7 @@ use std::io::Write;
 use std::path::Path;
 use std::process::Command;
 
-use crate::path::{Dirs, RelPath};
+use crate::path::Dirs;
 use crate::prepare::GitRepo;
 use crate::rustc_info::get_file_name;
 use crate::utils::{Compiler, spawn_and_wait};
@@ -39,11 +39,11 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
     };
 
     eprintln!("[BENCH COMPILE] ebobby/simple-raytracer");
-    let cargo_clif = RelPath::DIST
-        .to_path(dirs)
+    let cargo_clif = dirs
+        .dist_dir
         .join(get_file_name(&bootstrap_host_compiler.rustc, "cargo_clif", "bin").replace('_', "-"));
     let manifest_path = SIMPLE_RAYTRACER_REPO.source_dir().to_path(dirs).join("Cargo.toml");
-    let target_dir = RelPath::BUILD.join("simple_raytracer").to_path(dirs);
+    let target_dir = dirs.build_dir.join("simple_raytracer");
 
     let clean_cmd = format!(
         "RUSTC=rustc cargo clean --manifest-path {manifest_path} --target-dir {target_dir}",
@@ -68,7 +68,7 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
         target_dir = target_dir.display(),
     );
 
-    let bench_compile_markdown = RelPath::DIST.to_path(dirs).join("bench_compile.md");
+    let bench_compile_markdown = dirs.dist_dir.join("bench_compile.md");
 
     let bench_compile = hyperfine_command(
         1,
@@ -92,7 +92,7 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
 
     eprintln!("[BENCH RUN] ebobby/simple-raytracer");
 
-    let bench_run_markdown = RelPath::DIST.to_path(dirs).join("bench_run.md");
+    let bench_run_markdown = dirs.dist_dir.join("bench_run.md");
 
     let raytracer_cg_llvm = Path::new(".").join(get_file_name(
         &bootstrap_host_compiler.rustc,
@@ -120,7 +120,7 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
         ],
         &bench_run_markdown,
     );
-    bench_run.current_dir(RelPath::BUILD.to_path(dirs));
+    bench_run.current_dir(&dirs.build_dir);
     spawn_and_wait(bench_run);
 
     if let Some(gha_step_summary) = gha_step_summary.as_mut() {

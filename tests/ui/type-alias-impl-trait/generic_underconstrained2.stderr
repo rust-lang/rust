@@ -9,7 +9,7 @@ note: required by a bound on the type alias `Underconstrained`
    |
 LL | type Underconstrained<T: std::fmt::Debug> = impl Send;
    |                          ^^^^^^^^^^^^^^^ required by this bound
-help: consider restricting type parameter `U`
+help: consider restricting type parameter `U` with trait `Debug`
    |
 LL | fn underconstrained<U: std::fmt::Debug>(_: U) -> Underconstrained<U> {
    |                      +++++++++++++++++
@@ -25,7 +25,7 @@ note: required by a bound on the type alias `Underconstrained2`
    |
 LL | type Underconstrained2<T: std::fmt::Debug> = impl Send;
    |                           ^^^^^^^^^^^^^^^ required by this bound
-help: consider restricting type parameter `V`
+help: consider restricting type parameter `V` with trait `Debug`
    |
 LL | fn underconstrained2<U, V: std::fmt::Debug>(_: U, _: V) -> Underconstrained2<V> {
    |                          +++++++++++++++++
@@ -46,7 +46,7 @@ note: required by a bound on the type alias `Underconstrained`
    |
 LL | type Underconstrained<T: std::fmt::Debug> = impl Send;
    |                          ^^^^^^^^^^^^^^^ required by this bound
-help: consider restricting type parameter `U`
+help: consider restricting type parameter `U` with trait `Debug`
    |
 LL | fn underconstrained<U: std::fmt::Debug>(_: U) -> Underconstrained<U> {
    |                      +++++++++++++++++
@@ -67,7 +67,7 @@ note: required by a bound on the type alias `Underconstrained2`
    |
 LL | type Underconstrained2<T: std::fmt::Debug> = impl Send;
    |                           ^^^^^^^^^^^^^^^ required by this bound
-help: consider restricting type parameter `V`
+help: consider restricting type parameter `V` with trait `Debug`
    |
 LL | fn underconstrained2<U, V: std::fmt::Debug>(_: U, _: V) -> Underconstrained2<V> {
    |                          +++++++++++++++++

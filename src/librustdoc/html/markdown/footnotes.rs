@@ -1,5 +1,8 @@
 //! Markdown footnote handling.
+
 use std::fmt::Write as _;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Weak};
 
 use pulldown_cmark::{CowStr, Event, Tag, TagEnd, html};
 use rustc_data_structures::fx::FxIndexMap;
@@ -8,10 +11,11 @@ use super::SpannedEvent;
 
 /// Moves all footnote definitions to the end and add back links to the
 /// references.
-pub(super) struct Footnotes<'a, 'b, I> {
+pub(super) struct Footnotes<'a, I> {
     inner: I,
     footnotes: FxIndexMap<String, FootnoteDef<'a>>,
-    existing_footnotes: &'b mut usize,
+    existing_footnotes: Arc<AtomicUsize>,
+    start_id: usize,
 }
 
 /// The definition of a single footnote.
@@ -21,13 +25,16 @@ struct FootnoteDef<'a> {
     id: usize,
 }
 
-impl<'a, 'b, I: Iterator<Item = SpannedEvent<'a>>> Footnotes<'a, 'b, I> {
-    pub(super) fn new(iter: I, existing_footnotes: &'b mut usize) -> Self {
-        Footnotes { inner: iter, footnotes: FxIndexMap::default(), existing_footnotes }
+impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Footnotes<'a, I> {
+    pub(super) fn new(iter: I, existing_footnotes: Weak<AtomicUsize>) -> Self {
+        let existing_footnotes =
+            existing_footnotes.upgrade().expect("`existing_footnotes` was dropped");
+        let start_id = existing_footnotes.load(Ordering::Relaxed);
+        Footnotes { inner: iter, footnotes: FxIndexMap::default(), existing_footnotes, start_id }
     }
 
     fn get_entry(&mut self, key: &str) -> (&mut Vec<Event<'a>>, usize) {
-        let new_id = self.footnotes.len() + 1 + *self.existing_footnotes;
+        let new_id = self.footnotes.len() + 1 + self.start_id;
         let key = key.to_owned();
         let FootnoteDef { content, id } =
             self.footnotes.entry(key).or_insert(FootnoteDef { content: Vec::new(), id: new_id });
@@ -44,7 +51,7 @@ impl<'a, 'b, I: Iterator<Item = SpannedEvent<'a>>> Footnotes<'a, 'b, I> {
             id,
             // Although the ID count is for the whole page, the footnote reference
             // are local to the item so we make this ID "local" when displayed.
-            id - *self.existing_footnotes
+            id - self.start_id
         );
         Event::Html(reference.into())
     }
@@ -64,7 +71,7 @@ impl<'a, 'b, I: Iterator<Item = SpannedEvent<'a>>> Footnotes<'a, 'b, I> {
     }
 }
 
-impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Iterator for Footnotes<'a, '_, I> {
+impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Iterator for Footnotes<'a, I> {
     type Item = SpannedEvent<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -87,7 +94,7 @@ impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Iterator for Footnotes<'a, '_, I>
                         // After all the markdown is emmited, emit an <hr> then all the footnotes
                         // in a list.
                         let defs: Vec<_> = self.footnotes.drain(..).map(|(_, x)| x).collect();
-                        *self.existing_footnotes += defs.len();
+                        self.existing_footnotes.fetch_add(defs.len(), Ordering::Relaxed);
                         let defs_html = render_footnotes_defs(defs);
                         return Some((Event::Html(defs_html.into()), 0..0));
                     } else {

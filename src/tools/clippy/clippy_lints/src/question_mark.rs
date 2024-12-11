@@ -1,9 +1,9 @@
 use crate::manual_let_else::MANUAL_LET_ELSE;
 use crate::question_mark_used::QUESTION_MARK_USED;
 use clippy_config::Conf;
-use clippy_config::msrvs::Msrv;
 use clippy_config::types::MatchLintBehaviour;
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::Msrv;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use clippy_utils::{
@@ -251,7 +251,7 @@ fn check_is_none_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr: &Ex
     {
         let mut applicability = Applicability::MachineApplicable;
         let receiver_str = snippet_with_applicability(cx, caller.span, "..", &mut applicability);
-        let by_ref = !caller_ty.is_copy_modulo_regions(cx.tcx, cx.typing_env())
+        let by_ref = !cx.type_is_copy_modulo_regions(caller_ty)
             && !matches!(caller.kind, ExprKind::Call(..) | ExprKind::MethodCall(..));
         let sugg = if let Some(else_inner) = r#else {
             if eq_expr_value(cx, caller, peel_blocks(else_inner)) {

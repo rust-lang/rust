@@ -63,7 +63,7 @@ walkdir = "2.4"
 xz2 = "0.1"
 
 # Dependencies needed by the build-metrics feature
-sysinfo = { version = "0.31.2", default-features = false, optional = true, features = ["system"] }
+sysinfo = { version = "0.33.0", default-features = false, optional = true, features = ["system"] }
 
 [target.'cfg(windows)'.dependencies.junction]
 version = "1.0.0"

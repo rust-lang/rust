@@ -35,14 +35,14 @@
 use std::cmp::Ordering;
 
 use rustc_data_structures::work_queue::WorkQueue;
-use rustc_index::bit_set::{BitSet, ChunkedBitSet, HybridBitSet};
+use rustc_index::bit_set::{BitSet, MixedBitSet};
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::bug;
 use rustc_middle::mir::{self, BasicBlock, CallReturnPlaces, Location, TerminatorEdges, traversal};
 use rustc_middle::ty::TyCtxt;
 use tracing::error;
 
-use self::results::write_graphviz_results;
+use self::graphviz::write_graphviz_results;
 use super::fmt::DebugWithContext;
 
 mod cursor;
@@ -63,35 +63,17 @@ pub use self::visitor::{ResultsVisitor, visit_results};
 /// operations needed by all of them.
 pub trait BitSetExt<T> {
     fn contains(&self, elem: T) -> bool;
-    fn union(&mut self, other: &HybridBitSet<T>);
-    fn subtract(&mut self, other: &HybridBitSet<T>);
 }
 
 impl<T: Idx> BitSetExt<T> for BitSet<T> {
     fn contains(&self, elem: T) -> bool {
         self.contains(elem)
     }
-
-    fn union(&mut self, other: &HybridBitSet<T>) {
-        self.union(other);
-    }
-
-    fn subtract(&mut self, other: &HybridBitSet<T>) {
-        self.subtract(other);
-    }
 }
 
-impl<T: Idx> BitSetExt<T> for ChunkedBitSet<T> {
+impl<T: Idx> BitSetExt<T> for MixedBitSet<T> {
     fn contains(&self, elem: T) -> bool {
         self.contains(elem)
-    }
-
-    fn union(&mut self, other: &HybridBitSet<T>) {
-        self.union(other);
-    }
-
-    fn subtract(&mut self, other: &HybridBitSet<T>) {
-        self.subtract(other);
     }
 }
 
@@ -299,10 +281,10 @@ pub trait Analysis<'tcx> {
             );
         }
 
-        let results = Results { analysis: self, entry_sets };
+        let mut results = Results { analysis: self, entry_sets };
 
         if tcx.sess.opts.unstable_opts.dump_mir_dataflow {
-            let res = write_graphviz_results(tcx, body, &results, pass_name);
+            let res = write_graphviz_results(tcx, body, &mut results, pass_name);
             if let Err(e) = res {
                 error!("Failed to write graphviz dataflow results: {}", e);
             }
@@ -345,7 +327,7 @@ impl<T: Idx> GenKill<T> for BitSet<T> {
     }
 }
 
-impl<T: Idx> GenKill<T> for ChunkedBitSet<T> {
+impl<T: Idx> GenKill<T> for MixedBitSet<T> {
     fn gen_(&mut self, elem: T) {
         self.insert(elem);
     }

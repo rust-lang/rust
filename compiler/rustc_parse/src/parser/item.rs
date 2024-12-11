@@ -1836,6 +1836,22 @@ impl<'a> Parser<'a> {
                         return Err(err);
                     }
                 };
+                let mut default = None;
+                if p.token == token::Eq {
+                    let mut snapshot = p.create_snapshot_for_diagnostic();
+                    snapshot.bump();
+                    match snapshot.parse_expr_anon_const() {
+                        Ok(const_expr) => {
+                            let sp = ty.span.shrink_to_hi().to(const_expr.value.span);
+                            p.psess.gated_spans.gate(sym::default_field_values, sp);
+                            p.restore_snapshot(snapshot);
+                            default = Some(const_expr);
+                        }
+                        Err(err) => {
+                            err.cancel();
+                        }
+                    }
+                }
 
                 Ok((
                     FieldDef {
@@ -1845,6 +1861,7 @@ impl<'a> Parser<'a> {
                         ident: None,
                         id: DUMMY_NODE_ID,
                         ty,
+                        default,
                         attrs,
                         is_placeholder: false,
                     },
@@ -2024,12 +2041,15 @@ impl<'a> Parser<'a> {
         if self.token == token::Colon && self.look_ahead(1, |t| *t != token::Colon) {
             self.dcx().emit_err(errors::SingleColonStructType { span: self.token.span });
         }
-        if self.token == token::Eq {
+        let default = if self.token == token::Eq {
             self.bump();
             let const_expr = self.parse_expr_anon_const()?;
             let sp = ty.span.shrink_to_hi().to(const_expr.value.span);
-            self.dcx().emit_err(errors::EqualsStructDefault { span: sp });
-        }
+            self.psess.gated_spans.gate(sym::default_field_values, sp);
+            Some(const_expr)
+        } else {
+            None
+        };
         Ok(FieldDef {
             span: lo.to(self.prev_token.span),
             ident: Some(name),
@@ -2037,6 +2057,7 @@ impl<'a> Parser<'a> {
             safety,
             id: DUMMY_NODE_ID,
             ty,
+            default,
             attrs,
             is_placeholder: false,
         })
@@ -2941,6 +2962,32 @@ impl<'a> Parser<'a> {
             };
             Ok((eself, eself_ident, eself_hi))
         };
+        let expect_self_ident_not_typed =
+            |this: &mut Self, modifier: &SelfKind, modifier_span: Span| {
+                let eself_ident = expect_self_ident(this);
+
+                // Recover `: Type` after a qualified self
+                if this.may_recover() && this.eat_noexpect(&token::Colon) {
+                    let snap = this.create_snapshot_for_diagnostic();
+                    match this.parse_ty() {
+                        Ok(ty) => {
+                            this.dcx().emit_err(errors::IncorrectTypeOnSelf {
+                                span: ty.span,
+                                move_self_modifier: errors::MoveSelfModifier {
+                                    removal_span: modifier_span,
+                                    insertion_span: ty.span.shrink_to_lo(),
+                                    modifier: modifier.to_ref_suggestion(),
+                                },
+                            });
+                        }
+                        Err(diag) => {
+                            diag.cancel();
+                            this.restore_snapshot(snap);
+                        }
+                    }
+                }
+                eself_ident
+            };
         // Recover for the grammar `*self`, `*const self`, and `*mut self`.
         let recover_self_ptr = |this: &mut Self| {
             this.dcx().emit_err(errors::SelfArgumentPointer { span: this.token.span });
@@ -2978,7 +3025,9 @@ impl<'a> Parser<'a> {
                     // `&not_self`
                     return Ok(None);
                 };
-                (eself, expect_self_ident(self), self.prev_token.span)
+                let hi = self.token.span;
+                let self_ident = expect_self_ident_not_typed(self, &eself, eself_lo.until(hi));
+                (eself, self_ident, hi)
             }
             // `*self`
             token::BinOp(token::Star) if is_isolated_self(self, 1) => {

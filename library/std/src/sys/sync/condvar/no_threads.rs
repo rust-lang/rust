@@ -5,7 +5,6 @@ pub struct Condvar {}
 
 impl Condvar {
     #[inline]
-    #[cfg_attr(bootstrap, rustc_const_stable(feature = "const_locks", since = "1.63.0"))]
     pub const fn new() -> Condvar {
         Condvar {}
     }

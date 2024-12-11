@@ -108,7 +108,7 @@ pub fn provide(providers: &mut Providers) {
         adt_async_destructor,
         region_scope_tree,
         collect_return_position_impl_trait_in_trait_tys,
-        compare_impl_const: compare_impl_item::compare_impl_const_raw,
+        compare_impl_item: compare_impl_item::compare_impl_item,
         check_coroutine_obligations: check::check_coroutine_obligations,
         ..*providers
     };

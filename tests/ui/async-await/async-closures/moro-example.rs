@@ -22,7 +22,7 @@ impl<'scope, 'env: 'scope> Scope<'scope, 'env> {
 
 fn scope_with_closure<'env, B>(_body: B) -> BoxFuture<'env, ()>
 where
-    for<'scope> B: async FnOnce(&'scope Scope<'scope, 'env>),
+    for<'scope> B: AsyncFnOnce(&'scope Scope<'scope, 'env>),
 {
     todo!()
 }

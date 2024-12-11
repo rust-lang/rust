@@ -226,7 +226,7 @@ impl Constant<'_> {
                     .zip(r)
                     .zip(tys)
                     .map(|((li, ri), cmp_type)| Self::partial_cmp(tcx, cmp_type, li, ri))
-                    .find(|r| r.map_or(true, |o| o != Ordering::Equal))
+                    .find(|r| r.is_none_or(|o| o != Ordering::Equal))
                     .unwrap_or_else(|| Some(l.len().cmp(&r.len()))),
                 _ => None,
             },
@@ -236,7 +236,7 @@ impl Constant<'_> {
                 };
                 iter::zip(l, r)
                     .map(|(li, ri)| Self::partial_cmp(tcx, cmp_type, li, ri))
-                    .find(|r| r.map_or(true, |o| o != Ordering::Equal))
+                    .find(|r| r.is_none_or(|o| o != Ordering::Equal))
                     .unwrap_or_else(|| Some(l.len().cmp(&r.len())))
             },
             (Self::Repeat(lv, ls), Self::Repeat(rv, rs)) => {

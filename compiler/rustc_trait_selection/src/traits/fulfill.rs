@@ -213,6 +213,10 @@ where
         }
     }
 
+    fn has_pending_obligations(&self) -> bool {
+        self.predicates.has_pending_obligations()
+    }
+
     fn pending_obligations(&self) -> PredicateObligations<'tcx> {
         self.predicates.map_pending_obligations(|o| o.obligation.clone())
     }

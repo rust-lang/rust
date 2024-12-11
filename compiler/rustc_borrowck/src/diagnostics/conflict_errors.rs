@@ -1151,7 +1151,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         expr: &hir::Expr<'_>,
     ) {
         let typeck_results = self.infcx.tcx.typeck(self.mir_def_id());
-        let hir::ExprKind::Struct(struct_qpath, fields, Some(base)) = expr.kind else { return };
+        let hir::ExprKind::Struct(struct_qpath, fields, hir::StructTailExpr::Base(base)) =
+            expr.kind
+        else {
+            return;
+        };
         let hir::QPath::Resolved(_, path) = struct_qpath else { return };
         let hir::def::Res::Def(_, def_id) = path.res else { return };
         let Some(expr_ty) = typeck_results.node_type_opt(expr.hir_id) else { return };
@@ -1239,7 +1243,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
         use_spans: Option<UseSpans<'tcx>>,
     ) {
-        if let hir::ExprKind::Struct(_, _, Some(_)) = expr.kind {
+        if let hir::ExprKind::Struct(_, _, hir::StructTailExpr::Base(_)) = expr.kind {
             // We have `S { foo: val, ..base }`. In `check_aggregate_rvalue` we have a single
             // `Location` that covers both the `S { ... }` literal, all of its fields and the
             // `base`. If the move happens because of `S { foo: val, bar: base.bar }` the `expr`
@@ -1450,6 +1454,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         ty::Param(param_ty) => Ok((
                             generics.type_param(param_ty, tcx),
                             predicate.trait_ref.print_trait_sugared().to_string(),
+                            Some(predicate.trait_ref.def_id),
                         )),
                         _ => Err(()),
                     }
@@ -1463,9 +1468,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 tcx,
                 hir_generics,
                 err,
-                predicates
-                    .iter()
-                    .map(|(param, constraint)| (param.name.as_str(), &**constraint, None)),
+                predicates.iter().map(|(param, constraint, def_id)| {
+                    (param.name.as_str(), &**constraint, *def_id)
+                }),
                 None,
             );
         }

@@ -614,6 +614,8 @@ fn register_internals(store: &mut LintStore) {
     store.register_late_mod_pass(|_| Box::new(PassByValue));
     store.register_lints(&SpanUseEqCtxt::lint_vec());
     store.register_late_mod_pass(|_| Box::new(SpanUseEqCtxt));
+    store.register_lints(&SymbolInternStringLiteral::lint_vec());
+    store.register_late_mod_pass(|_| Box::new(SymbolInternStringLiteral));
     // FIXME(davidtwco): deliberately do not include `UNTRANSLATABLE_DIAGNOSTIC` and
     // `DIAGNOSTIC_OUTSIDE_OF_IMPL` here because `-Wrustc::internal` is provided to every crate and
     // these lints will trigger all of the time - change this once migration to diagnostic structs

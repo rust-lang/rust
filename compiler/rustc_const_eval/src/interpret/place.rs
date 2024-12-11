@@ -5,8 +5,7 @@
 use std::assert_matches::assert_matches;
 
 use either::{Either, Left, Right};
-use rustc_abi::{Align, BackendRepr, HasDataLayout, Size};
-use rustc_ast::Mutability;
+use rustc_abi::{BackendRepr, HasDataLayout, Size};
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::{bug, mir, span_bug};
@@ -1018,29 +1017,39 @@ where
         self.allocate_dyn(layout, kind, MemPlaceMeta::None)
     }
 
-    /// Returns a wide MPlace of type `str` to a new 1-aligned allocation.
-    /// Immutable strings are deduplicated and stored in global memory.
-    pub fn allocate_str(
+    /// Allocates a sequence of bytes in the interpreter's memory with alignment 1.
+    /// This is allocated in immutable global memory and deduplicated.
+    pub fn allocate_bytes_dedup(
+        &mut self,
+        bytes: &[u8],
+    ) -> InterpResult<'tcx, Pointer<M::Provenance>> {
+        let salt = M::get_global_alloc_salt(self, None);
+        let id = self.tcx.allocate_bytes_dedup(bytes, salt);
+
+        // Turn untagged "global" pointers (obtained via `tcx`) into the machine pointer to the allocation.
+        M::adjust_alloc_root_pointer(
+            &self,
+            Pointer::from(id),
+            M::GLOBAL_KIND.map(MemoryKind::Machine),
+        )
+    }
+
+    /// Allocates a string in the interpreter's memory, returning it as a (wide) place.
+    /// This is allocated in immutable global memory and deduplicated.
+    pub fn allocate_str_dedup(
         &mut self,
         str: &str,
-        kind: MemoryKind<M::MemoryKind>,
-        mutbl: Mutability,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
-        let tcx = self.tcx.tcx;
+        let bytes = str.as_bytes();
+        let ptr = self.allocate_bytes_dedup(bytes)?;
 
-        // Use cache for immutable strings.
-        let ptr = if mutbl.is_not() {
-            // Use dedup'd allocation function.
-            let salt = M::get_global_alloc_salt(self, None);
-            let id = tcx.allocate_bytes_dedup(str.as_bytes(), salt);
+        // Create length metadata for the string.
+        let meta = Scalar::from_target_usize(u64::try_from(bytes.len()).unwrap(), self);
 
-            // Turn untagged "global" pointers (obtained via `tcx`) into the machine pointer to the allocation.
-            M::adjust_alloc_root_pointer(&self, Pointer::from(id), Some(kind))?
-        } else {
-            self.allocate_bytes_ptr(str.as_bytes(), Align::ONE, kind, mutbl)?
-        };
-        let meta = Scalar::from_target_usize(u64::try_from(str.len()).unwrap(), self);
+        // Get layout for Rust's str type.
         let layout = self.layout_of(self.tcx.types.str_).unwrap();
+
+        // Combine pointer and metadata into a wide pointer.
         interp_ok(self.ptr_with_meta_to_mplace(
             ptr.into(),
             MemPlaceMeta::Meta(meta),

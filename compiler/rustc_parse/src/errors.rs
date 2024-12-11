@@ -3,6 +3,7 @@
 use std::borrow::Cow;
 
 use rustc_ast::token::Token;
+use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::{Path, Visibility};
 use rustc_errors::codes::*;
 use rustc_errors::{
@@ -2686,7 +2687,7 @@ pub(crate) struct UnexpectedExpressionInPattern {
     /// Was a `RangePatternBound` expected?
     pub is_bound: bool,
     /// The unexpected expr's precedence (used in match arm guard suggestions).
-    pub expr_precedence: i8,
+    pub expr_precedence: ExprPrecedence,
 }
 
 #[derive(Subdiagnostic)]
@@ -3066,14 +3067,6 @@ pub(crate) struct SingleColonStructType {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_equals_struct_default)]
-pub(crate) struct EqualsStructDefault {
-    #[primary_span]
-    #[suggestion(code = "", applicability = "machine-applicable", style = "verbose")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(parse_macro_rules_missing_bang)]
 pub(crate) struct MacroRulesMissingBang {
     #[primary_span]
@@ -3407,4 +3400,23 @@ pub(crate) struct PolarityAndModifiers {
     pub modifiers_span: Span,
     pub polarity: &'static str,
     pub modifiers_concatenated: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_incorrect_type_on_self)]
+pub(crate) struct IncorrectTypeOnSelf {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub move_self_modifier: MoveSelfModifier,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
+pub(crate) struct MoveSelfModifier {
+    #[suggestion_part(code = "")]
+    pub removal_span: Span,
+    #[suggestion_part(code = "{modifier}")]
+    pub insertion_span: Span,
+    pub modifier: String,
 }

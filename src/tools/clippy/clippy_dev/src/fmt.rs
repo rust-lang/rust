@@ -1,4 +1,4 @@
-use crate::clippy_project_root;
+use crate::utils::clippy_project_root;
 use itertools::Itertools;
 use rustc_lexer::{TokenKind, tokenize};
 use shell_escape::escape;

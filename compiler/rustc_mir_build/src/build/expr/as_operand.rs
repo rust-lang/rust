@@ -176,7 +176,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let ty = expr.ty;
             if !ty.is_sized(tcx, this.typing_env()) {
                 // !sized means !copy, so this is an unsized move
-                assert!(!ty.is_copy_modulo_regions(tcx, this.typing_env()));
+                assert!(!tcx.type_is_copy_modulo_regions(this.typing_env(), ty));
 
                 // As described above, detect the case where we are passing a value of unsized
                 // type, and that value is coming from the deref of a box.

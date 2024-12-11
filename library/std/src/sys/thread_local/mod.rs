@@ -86,7 +86,9 @@ pub(crate) mod guard {
             mod windows;
             pub(crate) use windows::enable;
         } else if #[cfg(any(
-            target_family = "wasm",
+            all(target_family = "wasm", not(
+                all(target_os = "wasi", target_env = "p1", target_feature = "atomics")
+            )),
             target_os = "uefi",
             target_os = "zkvm",
         ))] {
@@ -135,6 +137,7 @@ pub(crate) mod key {
                 target_family = "unix",
             ),
             target_os = "teeos",
+            all(target_os = "wasi", target_env = "p1", target_feature = "atomics"),
         ))] {
             mod racy;
             mod unix;

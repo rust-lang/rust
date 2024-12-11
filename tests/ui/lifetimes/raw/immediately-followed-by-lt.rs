@@ -1,4 +1,8 @@
-//@ edition: 2021
+//@ revisions: e2015 e2021
+
+//@[e2021] edition: 2021
+//@[e2015] edition: 2015
+//@[e2015] check-pass
 
 // Make sure we reject the case where a raw lifetime is immediately followed by another
 // lifetime. This reserves a modest amount of space for changing lexing to, for example,
@@ -9,6 +13,6 @@ macro_rules! w {
 }
 
 w!('r#long'id);
-//~^ ERROR character literal may only contain one codepoint
+//[e2021]~^ ERROR character literal may only contain one codepoint
 
 fn main() {}

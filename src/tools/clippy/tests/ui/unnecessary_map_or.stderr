@@ -1,4 +1,4 @@
-error: this `map_or` is redundant
+error: this `map_or` can be simplified
   --> tests/ui/unnecessary_map_or.rs:12:13
    |
 LL |     let _ = Some(5).map_or(false, |n| n == 5);
@@ -7,13 +7,13 @@ LL |     let _ = Some(5).map_or(false, |n| n == 5);
    = note: `-D clippy::unnecessary-map-or` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_map_or)]`
 
-error: this `map_or` is redundant
+error: this `map_or` can be simplified
   --> tests/ui/unnecessary_map_or.rs:13:13
    |
 LL |     let _ = Some(5).map_or(true, |n| n != 5);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use a standard comparison instead: `(Some(5) != Some(5))`
 
-error: this `map_or` is redundant
+error: this `map_or` can be simplified
   --> tests/ui/unnecessary_map_or.rs:14:13
    |
 LL |       let _ = Some(5).map_or(false, |n| {
@@ -23,7 +23,7 @@ LL | |         n == 5
 LL | |     });
    | |______^ help: use a standard comparison instead: `(Some(5) == Some(5))`
 
-error: this `map_or` is redundant
+error: this `map_or` can be simplified
   --> tests/ui/unnecessary_map_or.rs:18:13
    |
 LL |       let _ = Some(5).map_or(false, |n| {
@@ -41,59 +41,89 @@ LL +         6 >= 5
 LL ~     });
    |
 
-error: this `map_or` is redundant
+error: this `map_or` can be simplified
   --> tests/ui/unnecessary_map_or.rs:22:13
    |
 LL |     let _ = Some(vec![5]).map_or(false, |n| n == [5]);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use is_some_and instead: `Some(vec![5]).is_some_and(|n| n == [5])`
 
-error: this `map_or` is redundant
+error: this `map_or` can be simplified
   --> tests/ui/unnecessary_map_or.rs:23:13
    |
 LL |     let _ = Some(vec![1]).map_or(false, |n| vec![2] == n);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use is_some_and instead: `Some(vec![1]).is_some_and(|n| vec![2] == n)`
 
-error: this `map_or` is redundant
+error: this `map_or` can be simplified
   --> tests/ui/unnecessary_map_or.rs:24:13
    |
 LL |     let _ = Some(5).map_or(false, |n| n == n);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use is_some_and instead: `Some(5).is_some_and(|n| n == n)`
 
-error: this `map_or` is redundant
+error: this `map_or` can be simplified
   --> tests/ui/unnecessary_map_or.rs:25:13
    |
 LL |     let _ = Some(5).map_or(false, |n| n == if 2 > 1 { n } else { 0 });
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use is_some_and instead: `Some(5).is_some_and(|n| n == if 2 > 1 { n } else { 0 })`
 
-error: this `map_or` is redundant
+error: this `map_or` can be simplified
   --> tests/ui/unnecessary_map_or.rs:26:13
    |
 LL |     let _ = Ok::<Vec<i32>, i32>(vec![5]).map_or(false, |n| n == [5]);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use is_ok_and instead: `Ok::<Vec<i32>, i32>(vec![5]).is_ok_and(|n| n == [5])`
 
-error: this `map_or` is redundant
+error: this `map_or` can be simplified
   --> tests/ui/unnecessary_map_or.rs:27:13
    |
 LL |     let _ = Ok::<i32, i32>(5).map_or(false, |n| n == 5);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use a standard comparison instead: `(Ok::<i32, i32>(5) == Ok(5))`
 
-error: this `map_or` is redundant
+error: this `map_or` can be simplified
   --> tests/ui/unnecessary_map_or.rs:28:13
    |
 LL |     let _ = Some(5).map_or(false, |n| n == 5).then(|| 1);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use a standard comparison instead: `(Some(5) == Some(5))`
 
-error: this `map_or` is redundant
-  --> tests/ui/unnecessary_map_or.rs:55:13
+error: this `map_or` can be simplified
+  --> tests/ui/unnecessary_map_or.rs:29:13
+   |
+LL |     let _ = Some(5).map_or(true, |n| n == 5);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use is_none_or instead: `Some(5).is_none_or(|n| n == 5)`
+
+error: this `map_or` can be simplified
+  --> tests/ui/unnecessary_map_or.rs:30:13
+   |
+LL |     let _ = Some(5).map_or(true, |n| 5 == n);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use is_none_or instead: `Some(5).is_none_or(|n| 5 == n)`
+
+error: this `map_or` can be simplified
+  --> tests/ui/unnecessary_map_or.rs:54:13
    |
 LL |     let _ = r.map_or(false, |x| x == 7);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use is_ok_and instead: `r.is_ok_and(|x| x == 7)`
 
-error: this `map_or` is redundant
+error: this `map_or` can be simplified
+  --> tests/ui/unnecessary_map_or.rs:59:13
+   |
+LL |     let _ = r.map_or(false, func);
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: use is_ok_and instead: `r.is_ok_and(func)`
+
+error: this `map_or` can be simplified
   --> tests/ui/unnecessary_map_or.rs:60:13
+   |
+LL |     let _ = Some(5).map_or(false, func);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use is_some_and instead: `Some(5).is_some_and(func)`
+
+error: this `map_or` can be simplified
+  --> tests/ui/unnecessary_map_or.rs:61:13
+   |
+LL |     let _ = Some(5).map_or(true, func);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use is_none_or instead: `Some(5).is_none_or(func)`
+
+error: this `map_or` can be simplified
+  --> tests/ui/unnecessary_map_or.rs:66:13
    |
 LL |     let _ = r.map_or(false, |x| x == 8);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use a standard comparison instead: `(r == Ok(8))`
 
-error: aborting due to 13 previous errors
+error: aborting due to 18 previous errors
 

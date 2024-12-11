@@ -1,7 +1,3 @@
-//@ force-host
-//@ no-prefer-dynamic
-
-#![crate_type = "proc-macro"]
 #![crate_name = "macro_dump_debug"]
 
 extern crate proc_macro;

@@ -179,7 +179,7 @@ declare_lint! {
     Warn,
     "applying forbid to lint-groups",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
         reference: "issue #81670 <https://github.com/rust-lang/rust/issues/81670>",
     };
 }
@@ -3929,6 +3929,7 @@ declare_lint! {
 }
 
 declare_lint! {
+    #[allow(text_direction_codepoint_in_literal)]
     /// The `text_direction_codepoint_in_comment` lint detects Unicode codepoints in comments that
     /// change the visual representation of text on screen in a way that does not correspond to
     /// their on memory representation.

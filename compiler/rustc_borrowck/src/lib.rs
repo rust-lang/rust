@@ -26,7 +26,7 @@ use rustc_data_structures::graph::dominators::Dominators;
 use rustc_errors::Diag;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
-use rustc_index::bit_set::{BitSet, ChunkedBitSet};
+use rustc_index::bit_set::{BitSet, MixedBitSet};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::{
     InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin, TyCtxtInferExt,
@@ -34,6 +34,7 @@ use rustc_infer::infer::{
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
+use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::{self, ParamEnv, RegionVid, TyCtxt, TypingMode};
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::impls::{
@@ -502,7 +503,7 @@ impl<'tcx> BorrowckInferCtxt<'tcx> {
         for data in tcx.typeck(def_id).concrete_opaque_types.iter().map(|(k, v)| (*k, *v)) {
             // HIR typeck did not infer the regions of the opaque, so we instantiate
             // them with fresh inference variables.
-            let (key, hidden_ty) = tcx.fold_regions(data, |_, _| {
+            let (key, hidden_ty) = fold_regions(tcx, data, |_, _| {
                 self.next_nll_region_var_in_universe(
                     NllRegionVariableOrigin::Existential { from_forall: false },
                     ty::UniverseIndex::ROOT,
@@ -1796,7 +1797,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         location: Location,
         desired_action: InitializationRequiringAction,
         place_span: (PlaceRef<'tcx>, Span),
-        maybe_uninits: &ChunkedBitSet<MovePathIndex>,
+        maybe_uninits: &MixedBitSet<MovePathIndex>,
         from: u64,
         to: u64,
     ) {

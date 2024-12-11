@@ -296,7 +296,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             );
                         };
                         *deref = OverloadedDeref { mutbl, span: deref.span };
-                        self.enforce_context_effects(expr.span, method.def_id, method.args);
+                        self.enforce_context_effects(None, expr.span, method.def_id, method.args);
                         // If this is a union field, also throw an error for `DerefMut` of `ManuallyDrop` (see RFC 2514).
                         // This helps avoid accidental drops.
                         if inside_union

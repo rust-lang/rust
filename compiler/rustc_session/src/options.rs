@@ -1702,6 +1702,8 @@ options! {
         "threshold to allow cross crate inlining of functions"),
     debug_info_for_profiling: bool = (false, parse_bool, [TRACKED],
         "emit discriminators and other data necessary for AutoFDO"),
+    debug_info_type_line_numbers: bool = (false, parse_bool, [TRACKED],
+        "emit type and line information for additional data types (default: no)"),
     debuginfo_compression: DebugInfoCompression = (DebugInfoCompression::None, parse_debuginfo_compression, [TRACKED],
         "compress debug info sections (none, zlib, zstd, default: none)"),
     deduplicate_diagnostics: bool = (true, parse_bool, [UNTRACKED],
@@ -1937,8 +1939,9 @@ options! {
         "support compiling tests with panic=abort (default: no)"),
     panic_in_drop: PanicStrategy = (PanicStrategy::Unwind, parse_panic_strategy, [TRACKED],
         "panic strategy for panics in drops"),
-    parse_only: bool = (false, parse_bool, [UNTRACKED],
-        "parse only; do not compile, assemble, or link (default: no)"),
+    parse_crate_root_only: bool = (false, parse_bool, [UNTRACKED],
+        "parse the crate root file only; do not parse other files, compile, assemble, or link \
+        (default: no)"),
     patchable_function_entry: PatchableFunctionEntry = (PatchableFunctionEntry::default(), parse_patchable_function_entry, [TRACKED],
         "nop padding at function entry"),
     plt: Option<bool> = (None, parse_opt_bool, [TRACKED],
@@ -1947,8 +1950,6 @@ options! {
         (default: PLT is disabled if full relro is enabled on x86_64)"),
     polonius: Polonius = (Polonius::default(), parse_polonius, [TRACKED],
         "enable polonius-based borrow-checker (default: no)"),
-    polymorphize: bool = (false, parse_bool, [TRACKED],
-          "perform polymorphization analysis"),
     pre_link_arg: (/* redirected to pre_link_args */) = ((), parse_string_push, [UNTRACKED],
         "a single extra argument to prepend the linker invocation (can be used several times)"),
     pre_link_args: Vec<String> = (Vec::new(), parse_list, [UNTRACKED],
@@ -1985,6 +1986,9 @@ options! {
         "enable queries of the dependency graph for regression testing (default: no)"),
     randomize_layout: bool = (false, parse_bool, [TRACKED],
         "randomize the layout of types (default: no)"),
+    reg_struct_return: bool = (false, parse_bool, [TRACKED],
+        "On x86-32 targets, it overrides the default ABI to return small structs in registers.
+        It is UNSOUND to link together crates that use different values for this flag!"),
     regparm: Option<u32> = (None, parse_opt_number, [TRACKED],
         "On x86-32 targets, setting this to N causes the compiler to pass N arguments \
         in registers EAX, EDX, and ECX instead of on the stack for\
@@ -2035,8 +2039,6 @@ written to standard error output)"),
         "make the current crate share its generic instantiations"),
     shell_argfiles: bool = (false, parse_bool, [UNTRACKED],
         "allow argument files to be specified with POSIX \"shell-style\" argument quoting"),
-    show_span: Option<String> = (None, parse_opt_string, [TRACKED],
-        "show spans for compiler debugging (expr|pat|ty)"),
     simulate_remapped_rust_src_base: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
         "simulate the effect of remap-debuginfo = true at bootstrapping by remapping path \
         to rust's source base directory. only meant for testing purposes"),

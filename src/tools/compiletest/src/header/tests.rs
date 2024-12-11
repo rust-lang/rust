@@ -787,3 +787,40 @@ fn test_not_trailing_directive() {
     run_path(&mut poisoned, Path::new("a.rs"), b"//@ revisions: incremental");
     assert!(!poisoned);
 }
+
+#[test]
+fn test_needs_target_has_atomic() {
+    use std::collections::BTreeSet;
+
+    // `x86_64-unknown-linux-gnu` supports `["8", "16", "32", "64", "ptr"]` but not `128`.
+
+    let config = cfg().target("x86_64-unknown-linux-gnu").build();
+    // Expectation sanity check.
+    assert_eq!(
+        config.target_cfg().target_has_atomic,
+        BTreeSet::from([
+            "8".to_string(),
+            "16".to_string(),
+            "32".to_string(),
+            "64".to_string(),
+            "ptr".to_string()
+        ]),
+        "expected `x86_64-unknown-linux-gnu` to not have 128-bit atomic support"
+    );
+
+    assert!(!check_ignore(&config, "//@ needs-target-has-atomic: 8"));
+    assert!(!check_ignore(&config, "//@ needs-target-has-atomic: 16"));
+    assert!(!check_ignore(&config, "//@ needs-target-has-atomic: 32"));
+    assert!(!check_ignore(&config, "//@ needs-target-has-atomic: 64"));
+    assert!(!check_ignore(&config, "//@ needs-target-has-atomic: ptr"));
+
+    assert!(check_ignore(&config, "//@ needs-target-has-atomic: 128"));
+
+    assert!(!check_ignore(&config, "//@ needs-target-has-atomic: 8,16,32,64,ptr"));
+
+    assert!(check_ignore(&config, "//@ needs-target-has-atomic: 8,16,32,64,ptr,128"));
+
+    // Check whitespace between widths is permitted.
+    assert!(!check_ignore(&config, "//@ needs-target-has-atomic: 8, ptr"));
+    assert!(check_ignore(&config, "//@ needs-target-has-atomic: 8, ptr, 128"));
+}

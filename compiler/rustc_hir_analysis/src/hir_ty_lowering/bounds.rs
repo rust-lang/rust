@@ -703,7 +703,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 ///
 /// It might actually be possible that we can already support early-bound generic params
 /// in such types if we just lifted some more checks in other places, too, for example
-/// inside [`ty::Const::from_anon_const`]. However, even if that were the case, we should
+/// inside `HirTyLowerer::lower_anon_const`. However, even if that were the case, we should
 /// probably gate this behind another feature flag.
 ///
 /// [^1]: <https://github.com/rust-lang/project-const-generics/issues/28>.

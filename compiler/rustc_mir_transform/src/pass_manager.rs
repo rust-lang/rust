@@ -292,7 +292,7 @@ fn run_passes_inner<'tcx>(
 }
 
 pub(super) fn validate_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, when: String) {
-    validate::Validator { when, mir_phase: body.phase }.run_pass(tcx, body);
+    validate::Validator { when }.run_pass(tcx, body);
 }
 
 fn dump_mir_for_pass<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, pass_name: &str, is_after: bool) {

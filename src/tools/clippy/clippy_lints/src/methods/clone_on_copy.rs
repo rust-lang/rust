@@ -30,7 +30,7 @@ pub(super) fn check(
         .type_dependent_def_id(expr.hir_id)
         .and_then(|id| cx.tcx.trait_of_item(id))
         .zip(cx.tcx.lang_items().clone_trait())
-        .map_or(true, |(x, y)| x != y)
+        .is_none_or(|(x, y)| x != y)
     {
         return;
     }

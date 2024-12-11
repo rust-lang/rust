@@ -330,7 +330,7 @@ fn copy_third_party_objects(
 
     if target == "x86_64-fortanix-unknown-sgx"
         || builder.config.llvm_libunwind(target) == LlvmLibunwind::InTree
-            && (target.contains("linux") || target.contains("fuchsia"))
+            && (target.contains("linux") || target.contains("fuchsia") || target.contains("aix"))
     {
         let libunwind_path =
             copy_llvm_libunwind(builder, target, &builder.sysroot_target_libdir(*compiler, target));
@@ -1611,7 +1611,7 @@ impl Step for Sysroot {
         let sysroot = sysroot_dir(compiler.stage);
 
         builder
-            .verbose(|| println!("Removing sysroot {} to avoid caching bugs", sysroot.display()));
+            .verbose(|| eprintln!("Removing sysroot {} to avoid caching bugs", sysroot.display()));
         let _ = fs::remove_dir_all(&sysroot);
         t!(fs::create_dir_all(&sysroot));
 
@@ -1655,7 +1655,7 @@ impl Step for Sysroot {
             let mut add_filtered_files = |suffix, contents| {
                 for path in contents {
                     let path = Path::new(&path);
-                    if path.parent().map_or(false, |parent| parent.ends_with(suffix)) {
+                    if path.parent().is_some_and(|parent| parent.ends_with(suffix)) {
                         filtered_files.push(path.file_name().unwrap().to_owned());
                     }
                 }
@@ -1681,7 +1681,7 @@ impl Step for Sysroot {
                     return true;
                 }
                 if !filtered_files.iter().all(|f| f != path.file_name().unwrap()) {
-                    builder.verbose_than(1, || println!("ignoring {}", path.display()));
+                    builder.verbose_than(1, || eprintln!("ignoring {}", path.display()));
                     false
                 } else {
                     true
@@ -2240,7 +2240,7 @@ pub fn stream_cargo(
         cargo.arg(arg);
     }
 
-    builder.verbose(|| println!("running: {cargo:?}"));
+    builder.verbose(|| eprintln!("running: {cargo:?}"));
 
     if builder.config.dry_run() {
         return true;
@@ -2266,7 +2266,7 @@ pub fn stream_cargo(
                 cb(msg)
             }
             // If this was informational, just print it out and continue
-            Err(_) => println!("{line}"),
+            Err(_) => eprintln!("{line}"),
         }
     }
 

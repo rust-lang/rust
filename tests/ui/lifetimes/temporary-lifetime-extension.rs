@@ -15,7 +15,6 @@
 //@ revisions: edition2021 edition2024
 //@ [edition2021] edition: 2021
 //@ [edition2024] edition: 2024
-//@ [edition2024] compile-flags: -Z unstable-options
 
 fn temp() -> (String, i32) {
     (String::from("Hello"), 1)

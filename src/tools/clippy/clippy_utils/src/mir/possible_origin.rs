@@ -1,7 +1,7 @@
 use super::transitive_relation::TransitiveRelation;
 use crate::ty::is_copy;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_index::bit_set::HybridBitSet;
+use rustc_index::bit_set::BitSet;
 use rustc_lint::LateContext;
 use rustc_middle::mir;
 
@@ -22,7 +22,7 @@ impl<'a, 'tcx> PossibleOriginVisitor<'a, 'tcx> {
         }
     }
 
-    pub fn into_map(self, cx: &LateContext<'tcx>) -> FxHashMap<mir::Local, HybridBitSet<mir::Local>> {
+    pub fn into_map(self, cx: &LateContext<'tcx>) -> FxHashMap<mir::Local, BitSet<mir::Local>> {
         let mut map = FxHashMap::default();
         for row in (1..self.body.local_decls.len()).map(mir::Local::from_usize) {
             if is_copy(cx, self.body.local_decls[row].ty) {

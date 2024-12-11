@@ -55,7 +55,7 @@ pub fn exe(name: &str, target: TargetSelection) -> String {
 
 /// Returns `true` if the file name given looks like a dynamic library.
 pub fn is_dylib(path: &Path) -> bool {
-    path.extension().and_then(|ext| ext.to_str()).map_or(false, |ext| {
+    path.extension().and_then(|ext| ext.to_str()).is_some_and(|ext| {
         ext == "dylib" || ext == "so" || ext == "dll" || (ext == "a" && is_aix_shared_archive(path))
     })
 }
@@ -135,7 +135,7 @@ impl Drop for TimeIt {
     fn drop(&mut self) {
         let time = self.1.elapsed();
         if !self.0 {
-            println!("\tfinished in {}.{:03} seconds", time.as_secs(), time.subsec_millis());
+            eprintln!("\tfinished in {}.{:03} seconds", time.as_secs(), time.subsec_millis());
         }
     }
 }
@@ -267,12 +267,12 @@ pub fn check_run(cmd: &mut BootstrapCommand, print_cmd_on_fail: bool) -> bool {
     let status = match cmd.as_command_mut().status() {
         Ok(status) => status,
         Err(e) => {
-            println!("failed to execute command: {cmd:?}\nERROR: {e}");
+            eprintln!("failed to execute command: {cmd:?}\nERROR: {e}");
             return false;
         }
     };
     if !status.success() && print_cmd_on_fail {
-        println!(
+        eprintln!(
             "\n\ncommand did not execute successfully: {cmd:?}\n\
              expected success, got: {status}\n\n"
         );

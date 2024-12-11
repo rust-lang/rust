@@ -33,6 +33,7 @@ pub mod unescape;
 mod tests;
 
 use unicode_properties::UnicodeEmoji;
+pub use unicode_xid::UNICODE_VERSION as UNICODE_XID_VERSION;
 
 use self::LiteralKind::*;
 use self::TokenKind::*;
@@ -707,17 +708,7 @@ impl Cursor<'_> {
             self.bump();
             self.bump();
             self.eat_while(is_id_continue);
-            match self.first() {
-                '\'' => {
-                    // Check if after skipping literal contents we've met a closing
-                    // single quote (which means that user attempted to create a
-                    // string with single quotes).
-                    self.bump();
-                    let kind = Char { terminated: true };
-                    return Literal { kind, suffix_start: self.pos_within_token() };
-                }
-                _ => return RawLifetime,
-            }
+            return RawLifetime;
         }
 
         // Either a lifetime or a character literal with

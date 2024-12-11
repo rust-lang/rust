@@ -3,6 +3,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, TyCtxtInferExt as _};
 use rustc_macros::extension;
+use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{
     self, GenericArgKind, GenericArgs, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable,
@@ -117,7 +118,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 });
             debug!(?opaque_type_key, ?arg_regions);
 
-            let concrete_type = infcx.tcx.fold_regions(concrete_type, |region, _| {
+            let concrete_type = fold_regions(infcx.tcx, concrete_type, |region, _| {
                 arg_regions
                     .iter()
                     .find(|&&(arg_vid, _)| self.eval_equal(region.as_var(), arg_vid))
@@ -204,7 +205,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        tcx.fold_regions(ty, |region, _| match *region {
+        fold_regions(tcx, ty, |region, _| match *region {
             ty::ReVar(vid) => {
                 let scc = self.constraint_sccs.scc(vid);
 
@@ -442,7 +443,7 @@ impl<'tcx> LazyOpaqueTyEnv<'tcx> {
         let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
 
         let mut seen = vec![tcx.lifetimes.re_static];
-        let canonical_args = tcx.fold_regions(args, |r1, _| {
+        let canonical_args = fold_regions(tcx, args, |r1, _| {
             if r1.is_error() {
                 r1
             } else if let Some(&r2) = seen.iter().find(|&&r2| {

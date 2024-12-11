@@ -27,10 +27,10 @@ LL | trait Bar {
    |       ^^^
 
 error[E0277]: the trait bound `(): const Bar` is not satisfied
-  --> $DIR/no-explicit-const-params.rs:24:5
+  --> $DIR/no-explicit-const-params.rs:24:6
    |
 LL |     <() as Bar<false>>::bar();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |      ^^
 
 error[E0107]: function takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/no-explicit-const-params.rs:15:5

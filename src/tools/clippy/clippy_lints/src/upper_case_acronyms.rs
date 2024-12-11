@@ -93,7 +93,7 @@ fn check_ident(cx: &LateContext<'_>, ident: &Ident, hir_id: HirId, be_aggressive
         while let Some(c) = s.next() {
             r.push(
                 if replace(&mut prev_upper, c.is_ascii_uppercase())
-                    && s.clone().next().map_or(true, |c| c.is_ascii_uppercase())
+                    && s.clone().next().is_none_or(|c| c.is_ascii_uppercase())
                 {
                     c.to_ascii_lowercase()
                 } else {

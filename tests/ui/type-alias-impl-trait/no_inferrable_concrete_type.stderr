@@ -1,5 +1,5 @@
 error: item does not constrain `Foo::{opaque#0}`, but has it in its signature
-  --> $DIR/no_inferrable_concrete_type.rs:11:12
+  --> $DIR/no_inferrable_concrete_type.rs:10:12
    |
 LL |     pub fn bar(x: Foo) -> Foo {
    |            ^^^
@@ -11,13 +11,5 @@ note: this opaque type is in the signature
 LL |     pub type Foo = impl Copy;
    |                    ^^^^^^^^^
 
-error: unconstrained opaque type
-  --> $DIR/no_inferrable_concrete_type.rs:7:20
-   |
-LL |     pub type Foo = impl Copy;
-   |                    ^^^^^^^^^
-   |
-   = note: `Foo` must be used in combination with a concrete type within the same module
-
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 

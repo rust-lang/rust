@@ -17,8 +17,9 @@ use tracing::debug;
 
 use crate::lints::{
     BadOptAccessDiag, DefaultHashTypesDiag, DiagOutOfImpl, LintPassByHand, NonExistentDocKeyword,
-    NonGlobImportTypeIrInherent, QueryInstability, QueryUntracked, SpanUseEqCtxtDiag, TyQualified,
-    TykindDiag, TykindKind, TypeIrInherentUsage, UntranslatableDiag,
+    NonGlobImportTypeIrInherent, QueryInstability, QueryUntracked, SpanUseEqCtxtDiag,
+    SymbolInternStringLiteralDiag, TyQualified, TykindDiag, TykindKind, TypeIrInherentUsage,
+    UntranslatableDiag,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 
@@ -242,17 +243,10 @@ fn is_ty_or_ty_ctxt(cx: &LateContext<'_>, path: &Path<'_>) -> Option<String> {
         }
         // Only lint on `&Ty` and `&TyCtxt` if it is used outside of a trait.
         Res::SelfTyAlias { alias_to: did, is_trait_impl: false, .. } => {
-            if let ty::Adt(adt, args) = cx.tcx.type_of(did).instantiate_identity().kind() {
-                if let Some(name @ (sym::Ty | sym::TyCtxt)) = cx.tcx.get_diagnostic_name(adt.did())
-                {
-                    // NOTE: This path is currently unreachable as `Ty<'tcx>` is
-                    // defined as a type alias meaning that `impl<'tcx> Ty<'tcx>`
-                    // is not actually allowed.
-                    //
-                    // I(@lcnr) still kept this branch in so we don't miss this
-                    // if we ever change it in the future.
-                    return Some(format!("{}<{}>", name, args[0]));
-                }
+            if let ty::Adt(adt, args) = cx.tcx.type_of(did).instantiate_identity().kind()
+                && let Some(name @ (sym::Ty | sym::TyCtxt)) = cx.tcx.get_diagnostic_name(adt.did())
+            {
+                return Some(format!("{}<{}>", name, args[0]));
             }
         }
         _ => (),
@@ -655,5 +649,35 @@ fn is_span_ctxt_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
             .is_some_and(|call_did| cx.tcx.is_diagnostic_item(sym::SpanCtxt, call_did)),
 
         _ => false,
+    }
+}
+
+declare_tool_lint! {
+    /// The `symbol_intern_string_literal` detects `Symbol::intern` being called on a string literal
+    pub rustc::SYMBOL_INTERN_STRING_LITERAL,
+    // rustc_driver crates out of the compiler can't/shouldn't add preinterned symbols;
+    // bootstrap will deny this manually
+    Allow,
+    "Forbid uses of string literals in `Symbol::intern`, suggesting preinterning instead",
+    report_in_external_macro: true
+}
+
+declare_lint_pass!(SymbolInternStringLiteral => [SYMBOL_INTERN_STRING_LITERAL]);
+
+impl<'tcx> LateLintPass<'tcx> for SymbolInternStringLiteral {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx rustc_hir::Expr<'tcx>) {
+        if let ExprKind::Call(path, [arg]) = expr.kind
+            && let ExprKind::Path(ref qpath) = path.kind
+            && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
+            && cx.tcx.is_diagnostic_item(sym::SymbolIntern, def_id)
+            && let ExprKind::Lit(kind) = arg.kind
+            && let rustc_ast::LitKind::Str(_, _) = kind.node
+        {
+            cx.emit_span_lint(
+                SYMBOL_INTERN_STRING_LITERAL,
+                kind.span,
+                SymbolInternStringLiteralDiag,
+            );
+        }
     }
 }

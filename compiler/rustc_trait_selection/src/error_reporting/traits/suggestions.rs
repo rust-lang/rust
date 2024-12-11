@@ -2803,6 +2803,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
             ObligationCauseCode::WhereClause(item_def_id, span)
             | ObligationCauseCode::WhereClauseInExpr(item_def_id, span, ..)
+            | ObligationCauseCode::HostEffectInExpr(item_def_id, span, ..)
                 if !span.is_dummy() =>
             {
                 if let ObligationCauseCode::WhereClauseInExpr(_, _, hir_id, pos) = &cause_code {
@@ -2966,7 +2967,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     err.help(help);
                 }
             }
-            ObligationCauseCode::WhereClause(..) | ObligationCauseCode::WhereClauseInExpr(..) => {
+            ObligationCauseCode::WhereClause(..)
+            | ObligationCauseCode::WhereClauseInExpr(..)
+            | ObligationCauseCode::HostEffectInExpr(..) => {
                 // We hold the `DefId` of the item introducing the obligation, but displaying it
                 // doesn't add user usable information. It always point at an associated item.
             }
@@ -3835,6 +3838,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 && self.predicate_must_hold_modulo_regions(&Obligation::misc(
                     tcx, expr.span, body_id, param_env, pred,
                 ))
+                && expr.span.hi() != rcvr.span.hi()
             {
                 err.span_suggestion_verbose(
                     expr.span.with_lo(rcvr.span.hi()),
@@ -4112,6 +4116,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         // the expected is a projection that we need to resolve.
                         // && let Some(tail_ty) = typeck_results.expr_ty_opt(expr)
                         && expected_found.found.is_unit()
+                        // FIXME: this happens with macro calls. Need to figure out why the stmt
+                        // `println!();` doesn't include the `;` in its `Span`. (#133845)
+                        // We filter these out to avoid ICEs with debug assertions on caused by
+                        // empty suggestions.
+                        && expr.span.hi() != stmt.span.hi()
                     {
                         err.span_suggestion_verbose(
                             expr.span.shrink_to_hi().with_hi(stmt.span.hi()),

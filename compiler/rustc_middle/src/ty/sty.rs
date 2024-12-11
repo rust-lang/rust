@@ -978,6 +978,10 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
     fn async_destructor_ty(self, interner: TyCtxt<'tcx>) -> Ty<'tcx> {
         self.async_destructor_ty(interner)
     }
+
+    fn has_unsafe_fields(self) -> bool {
+        Ty::has_unsafe_fields(self)
+    }
 }
 
 /// Type utilities

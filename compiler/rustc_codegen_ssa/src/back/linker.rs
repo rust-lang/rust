@@ -24,6 +24,9 @@ use super::command::Command;
 use super::symbol_export;
 use crate::errors;
 
+#[cfg(test)]
+mod tests;
+
 /// Disables non-English messages from localized linkers.
 /// Such messages may cause issues with text encoding on Windows (#35785)
 /// and prevent inspection of linker output in case of errors, which we occasionally do.
@@ -178,23 +181,42 @@ fn verbatim_args<L: Linker + ?Sized>(
     }
     l
 }
-/// Arguments for the underlying linker.
-/// Add options to pass them through cc wrapper if `Linker` is a cc wrapper.
-fn link_args<L: Linker + ?Sized>(
-    l: &mut L,
-    args: impl IntoIterator<Item: AsRef<OsStr>, IntoIter: ExactSizeIterator>,
-) -> &mut L {
-    let args = args.into_iter();
-    if !l.is_cc() {
-        verbatim_args(l, args);
-    } else if args.len() != 0 {
-        // FIXME: Support arguments with commas, see `rpaths_to_flags` for the example.
-        let mut combined_arg = OsString::from("-Wl");
-        for arg in args {
+/// Add underlying linker arguments to C compiler command, by wrapping them in
+/// `-Wl` or `-Xlinker`.
+fn convert_link_args_to_cc_args(cmd: &mut Command, args: impl IntoIterator<Item: AsRef<OsStr>>) {
+    let mut combined_arg = OsString::from("-Wl");
+    for arg in args {
+        // If the argument itself contains a comma, we need to emit it
+        // as `-Xlinker`, otherwise we can use `-Wl`.
+        if arg.as_ref().as_encoded_bytes().contains(&b',') {
+            // Emit current `-Wl` argument, if any has been built.
+            if combined_arg != OsStr::new("-Wl") {
+                cmd.arg(combined_arg);
+                // Begin next `-Wl` argument.
+                combined_arg = OsString::from("-Wl");
+            }
+
+            // Emit `-Xlinker` argument.
+            cmd.arg("-Xlinker");
+            cmd.arg(arg);
+        } else {
+            // Append to `-Wl` argument.
             combined_arg.push(",");
             combined_arg.push(arg);
         }
-        l.cmd().arg(combined_arg);
+    }
+    // Emit final `-Wl` argument.
+    if combined_arg != OsStr::new("-Wl") {
+        cmd.arg(combined_arg);
+    }
+}
+/// Arguments for the underlying linker.
+/// Add options to pass them through cc wrapper if `Linker` is a cc wrapper.
+fn link_args<L: Linker + ?Sized>(l: &mut L, args: impl IntoIterator<Item: AsRef<OsStr>>) -> &mut L {
+    if !l.is_cc() {
+        verbatim_args(l, args);
+    } else {
+        convert_link_args_to_cc_args(l.cmd(), args);
     }
     l
 }
@@ -224,7 +246,7 @@ macro_rules! generate_arg_methods {
                 verbatim_args(self, iter::once(arg))
             }
             #[allow(unused)]
-            pub(crate) fn link_args(&mut self, args: impl IntoIterator<Item: AsRef<OsStr>, IntoIter: ExactSizeIterator>) -> &mut Self {
+            pub(crate) fn link_args(&mut self, args: impl IntoIterator<Item: AsRef<OsStr>>) -> &mut Self {
                 link_args(self, args)
             }
             #[allow(unused)]

@@ -348,14 +348,17 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
             // Create a stub .d file to stop Cargo from "rebuilding" the crate:
             // https://github.com/rust-lang/miri/issues/1724#issuecomment-787115693
             // As we store a JSON file instead of building the crate here, an empty file is fine.
-            let dep_info_name = format!(
-                "{}/{}{}.d",
-                get_arg_flag_value("--out-dir").unwrap(),
+            let mut dep_info_name = PathBuf::from(get_arg_flag_value("--out-dir").unwrap());
+            dep_info_name.push(format!(
+                "{}{}.d",
                 get_arg_flag_value("--crate-name").unwrap(),
                 get_arg_flag_value("extra-filename").unwrap_or_default(),
-            );
+            ));
             if verbose > 0 {
-                eprintln!("[cargo-miri rustc] writing stub dep-info to `{dep_info_name}`");
+                eprintln!(
+                    "[cargo-miri rustc] writing stub dep-info to `{}`",
+                    dep_info_name.display()
+                );
             }
             File::create(dep_info_name).expect("failed to create fake .d file");
         }

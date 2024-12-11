@@ -12,7 +12,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::span_bug;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
-use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
+use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, fold_regions};
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperFoldable};
 use rustc_span::Span;
@@ -827,7 +827,10 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
         // no reason to keep regions around. They will be repopulated during MIR
         // borrowck, and specifically region constraints will be populated during
         // MIR typeck which is run on the new body.
-        value = tcx.fold_regions(value, |_, _| tcx.lifetimes.re_erased);
+        //
+        // We're not using `tcx.erase_regions` as that also anonymizes bound variables,
+        // regressing borrowck diagnostics.
+        value = fold_regions(tcx, value, |_, _| tcx.lifetimes.re_erased);
 
         // Normalize consts in writeback, because GCE doesn't normalize eagerly.
         if tcx.features().generic_const_exprs() {

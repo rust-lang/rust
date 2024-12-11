@@ -1,5 +1,5 @@
 //@ run-pass
-//@ aux-build:custom-attr-only-one-derive.rs
+//@ proc-macro: custom-attr-only-one-derive.rs
 
 #[macro_use]
 extern crate custom_attr_only_one_derive;

@@ -1,6 +1,3 @@
-//@ force-host
-//@ no-prefer-dynamic
-
 // These are tests for syntax that is accepted by the Rust parser but
 // unconditionally rejected semantically after macro expansion. Attribute macros
 // are permitted to accept such syntax as long as they replace it with something
@@ -9,7 +6,6 @@
 // We also inspect some of the spans to verify the syntax is not triggering the
 // lossy string reparse hack (https://github.com/rust-lang/rust/issues/43081).
 
-#![crate_type = "proc-macro"]
 #![feature(proc_macro_span)]
 
 extern crate proc_macro;

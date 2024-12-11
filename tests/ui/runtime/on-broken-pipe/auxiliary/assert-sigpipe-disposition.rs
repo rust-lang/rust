@@ -25,7 +25,14 @@ fn start(argc: isize, argv: *const *const u8) -> isize {
     let actual = unsafe {
         let mut actual: libc::sigaction = std::mem::zeroed();
         libc::sigaction(libc::SIGPIPE, std::ptr::null(), &mut actual);
-        actual.sa_sigaction
+        #[cfg(not(target_os = "aix"))]
+        {
+            actual.sa_sigaction
+        }
+        #[cfg(target_os = "aix")]
+        {
+            actual.sa_union.__su_sigaction as libc::sighandler_t
+        }
     };
 
     assert_eq!(actual, expected, "actual and expected SIGPIPE disposition in child differs");

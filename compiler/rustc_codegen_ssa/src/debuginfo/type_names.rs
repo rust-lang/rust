@@ -432,11 +432,8 @@ fn push_debuginfo_type_name<'tcx>(
                 push_closure_or_coroutine_name(tcx, def_id, args, qualified, output, visited);
             }
         }
-        // Type parameters from polymorphized functions.
-        ty::Param(_) => {
-            write!(output, "{t:?}").unwrap();
-        }
-        ty::Error(_)
+        ty::Param(_)
+        | ty::Error(_)
         | ty::Infer(_)
         | ty::Placeholder(..)
         | ty::Alias(..)

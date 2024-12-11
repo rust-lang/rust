@@ -5,7 +5,7 @@
 //@ revisions: call call_once force_once
 
 // call - Call the closure regularly.
-// call_once - Call the closure w/ `async FnOnce`, so exercising the by_move shim.
+// call_once - Call the closure w/ `AsyncFnOnce`, so exercising the by_move shim.
 // force_once - Force the closure mode to `FnOnce`, so exercising what was fixed
 //   in <https://github.com/rust-lang/rust/pull/123350>.
 
@@ -20,7 +20,7 @@ macro_rules! call {
 }
 
 #[cfg(call_once)]
-async fn call_once(f: impl async FnOnce()) {
+async fn call_once(f: impl AsyncFnOnce()) {
     f().await
 }
 
@@ -35,7 +35,7 @@ macro_rules! guidance {
 }
 
 #[cfg(force_once)]
-fn infer_fnonce(c: impl async FnOnce()) -> impl async FnOnce() { c }
+fn infer_fnonce(c: impl AsyncFnOnce()) -> impl AsyncFnOnce() { c }
 
 #[cfg(force_once)]
 macro_rules! guidance {

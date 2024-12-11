@@ -11,6 +11,7 @@ use crate::intrinsics::{exact_div, select_unpredictable, unchecked_sub};
 use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZero;
 use crate::ops::{Bound, OneSidedRange, Range, RangeBounds, RangeInclusive};
+use crate::panic::const_panic;
 use crate::simd::{self, Simd};
 use crate::ub_checks::assert_unsafe_precondition;
 use crate::{fmt, hint, ptr, range, slice};
@@ -735,7 +736,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_slice_as_ptr", since = "1.32.0")]
     #[rustc_never_returns_null_ptr]
-    #[cfg_attr(not(bootstrap), rustc_as_ptr)]
+    #[rustc_as_ptr]
     #[inline(always)]
     #[must_use]
     pub const fn as_ptr(&self) -> *const T {
@@ -766,7 +767,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     #[rustc_never_returns_null_ptr]
-    #[cfg_attr(not(bootstrap), rustc_as_ptr)]
+    #[rustc_as_ptr]
     #[inline(always)]
     #[must_use]
     pub const fn as_mut_ptr(&mut self) -> *mut T {
@@ -857,9 +858,8 @@ impl<T> [T] {
 
     /// Gets a reference to the underlying array.
     ///
-    /// If `N` is not exactly equal to slice's the length of `self`, then this method returns `None`.
+    /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
     #[unstable(feature = "slice_as_array", issue = "133508")]
-    #[rustc_const_unstable(feature = "slice_as_array", issue = "133508")]
     #[inline]
     #[must_use]
     pub const fn as_array<const N: usize>(&self) -> Option<&[T; N]> {
@@ -878,7 +878,6 @@ impl<T> [T] {
     ///
     /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
     #[unstable(feature = "slice_as_array", issue = "133508")]
-    #[rustc_const_unstable(feature = "slice_as_array", issue = "133508")]
     #[inline]
     #[must_use]
     pub const fn as_mut_array<const N: usize>(&mut self) -> Option<&mut [T; N]> {
@@ -959,7 +958,7 @@ impl<T> [T] {
     /// [`swap`]: slice::swap
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[unstable(feature = "slice_swap_unchecked", issue = "88539")]
-    #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+    #[rustc_const_unstable(feature = "slice_swap_unchecked", issue = "88539")]
     pub const unsafe fn swap_unchecked(&mut self, a: usize, b: usize) {
         assert_unsafe_precondition!(
             check_library_ub,
@@ -1077,7 +1076,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `size` is 0.
+    /// Panics if `size` is zero.
     ///
     /// # Examples
     ///
@@ -1133,7 +1132,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `chunk_size` is 0.
+    /// Panics if `chunk_size` is zero.
     ///
     /// # Examples
     ///
@@ -1168,7 +1167,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `chunk_size` is 0.
+    /// Panics if `chunk_size` is zero.
     ///
     /// # Examples
     ///
@@ -1210,7 +1209,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `chunk_size` is 0.
+    /// Panics if `chunk_size` is zero.
     ///
     /// # Examples
     ///
@@ -1249,7 +1248,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `chunk_size` is 0.
+    /// Panics if `chunk_size` is zero.
     ///
     /// # Examples
     ///
@@ -1326,7 +1325,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `N` is 0. This check will most probably get changed to a compile time
+    /// Panics if `N` is zero. This check will most probably get changed to a compile time
     /// error before this method gets stabilized.
     ///
     /// # Examples
@@ -1372,7 +1371,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `N` is 0. This check will most probably get changed to a compile time
+    /// Panics if `N` is zero. This check will most probably get changed to a compile time
     /// error before this method gets stabilized.
     ///
     /// # Examples
@@ -1410,7 +1409,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `N` is 0. This check will most probably get changed to a compile time
+    /// Panics if `N` is zero. This check will most probably get changed to a compile time
     /// error before this method gets stabilized.
     ///
     /// # Examples
@@ -1486,7 +1485,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `N` is 0. This check will most probably get changed to a compile time
+    /// Panics if `N` is zero. This check will most probably get changed to a compile time
     /// error before this method gets stabilized.
     ///
     /// # Examples
@@ -1527,7 +1526,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `N` is 0. This check will most probably get changed to a compile time
+    /// Panics if `N` is zero. This check will most probably get changed to a compile time
     /// error before this method gets stabilized.
     ///
     /// # Examples
@@ -1571,7 +1570,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `N` is 0. This check will most probably get changed to a compile time
+    /// Panics if `N` is zero. This check will most probably get changed to a compile time
     /// error before this method gets stabilized.
     ///
     /// # Examples
@@ -1606,7 +1605,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `N` is 0. This check will most probably get changed to a compile time
+    /// Panics if `N` is zero. This check will most probably get changed to a compile time
     /// error before this method gets stabilized.
     ///
     /// # Examples
@@ -1642,7 +1641,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `chunk_size` is 0.
+    /// Panics if `chunk_size` is zero.
     ///
     /// # Examples
     ///
@@ -1677,7 +1676,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `chunk_size` is 0.
+    /// Panics if `chunk_size` is zero.
     ///
     /// # Examples
     ///
@@ -1720,7 +1719,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `chunk_size` is 0.
+    /// Panics if `chunk_size` is zero.
     ///
     /// # Examples
     ///
@@ -1760,7 +1759,7 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// Panics if `chunk_size` is 0.
+    /// Panics if `chunk_size` is zero.
     ///
     /// # Examples
     ///
@@ -3703,8 +3702,9 @@ impl<T> [T] {
     /// [`split_at_mut`]: slice::split_at_mut
     #[doc(alias = "memcpy")]
     #[stable(feature = "copy_from_slice", since = "1.9.0")]
+    #[rustc_const_unstable(feature = "const_copy_from_slice", issue = "131415")]
     #[track_caller]
-    pub fn copy_from_slice(&mut self, src: &[T])
+    pub const fn copy_from_slice(&mut self, src: &[T])
     where
         T: Copy,
     {
@@ -3713,11 +3713,13 @@ impl<T> [T] {
         #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
         #[cfg_attr(feature = "panic_immediate_abort", inline)]
         #[track_caller]
-        fn len_mismatch_fail(dst_len: usize, src_len: usize) -> ! {
-            panic!(
-                "source slice length ({}) does not match destination slice length ({})",
-                src_len, dst_len,
-            );
+        const fn len_mismatch_fail(dst_len: usize, src_len: usize) -> ! {
+            const_panic!(
+                "copy_from_slice: source slice length does not match destination slice length",
+                "copy_from_slice: source slice length ({src_len}) does not match destination slice length ({dst_len})",
+                src_len: usize,
+                dst_len: usize,
+            )
         }
 
         if self.len() != src.len() {

@@ -3,6 +3,7 @@
     clippy::manual_range_contains,
     clippy::useless_format,
     clippy::field_reassign_with_default,
+    clippy::needless_lifetimes,
     rustc::diagnostic_outside_of_impl,
     rustc::untranslatable_diagnostic
 )]
@@ -289,7 +290,8 @@ fn run_compiler(
     let exit_code = rustc_driver::catch_with_exit_code(move || {
         rustc_driver::RunCompiler::new(&args, callbacks)
             .set_using_internal_features(using_internal_features)
-            .run()
+            .run();
+        Ok(())
     });
     std::process::exit(exit_code)
 }
@@ -315,6 +317,8 @@ fn jemalloc_magic() {
     // <https://github.com/rust-lang/rust/blob/e89bd9428f621545c979c0ec686addc6563a394e/compiler/rustc/src/main.rs#L39>.
     // See there for further comments.
     use std::os::raw::{c_int, c_void};
+
+    use tikv_jemalloc_sys as jemalloc_sys;
 
     #[used]
     static _F1: unsafe extern "C" fn(usize, usize) -> *mut c_void = jemalloc_sys::calloc;

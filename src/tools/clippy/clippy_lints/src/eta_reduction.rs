@@ -276,7 +276,7 @@ fn check_inputs(
             && typeck
                 .expr_adjustments(arg)
                 .last()
-                .map_or(true, |a| a.target == typeck.expr_ty(arg))
+                .is_none_or(|a| a.target == typeck.expr_ty(arg))
         })
 }
 

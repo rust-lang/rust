@@ -452,8 +452,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
             let data_id = match reloc_target_alloc {
                 GlobalAlloc::Function { instance, .. } => {
                     assert_eq!(addend, 0);
-                    let func_id =
-                        crate::abi::import_function(tcx, module, instance.polymorphize(tcx));
+                    let func_id = crate::abi::import_function(tcx, module, instance);
                     let local_func_id = module.declare_func_in_data(func_id, &mut data);
                     data.write_function_addr(offset.bytes() as u32, local_func_id);
                     continue;

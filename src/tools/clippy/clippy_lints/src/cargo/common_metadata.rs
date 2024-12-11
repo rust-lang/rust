@@ -43,7 +43,7 @@ fn missing_warning(cx: &LateContext<'_>, package: &cargo_metadata::Package, fiel
 }
 
 fn is_empty_str<T: AsRef<std::ffi::OsStr>>(value: Option<&T>) -> bool {
-    value.map_or(true, |s| s.as_ref().is_empty())
+    value.is_none_or(|s| s.as_ref().is_empty())
 }
 
 fn is_empty_vec(value: &[String]) -> bool {

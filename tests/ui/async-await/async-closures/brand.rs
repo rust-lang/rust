@@ -13,7 +13,7 @@ struct S;
 struct B<'b>(PhantomData<&'b mut &'b mut ()>);
 
 impl S {
-    async fn q<F: async Fn(B<'_>)>(self, f: F) {
+    async fn q<F: AsyncFn(B<'_>)>(self, f: F) {
         f(B(PhantomData)).await;
     }
 }

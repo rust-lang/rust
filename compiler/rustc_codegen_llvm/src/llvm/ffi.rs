@@ -2240,6 +2240,7 @@ unsafe extern "C" {
         Output: *const c_char,
         DwoOutput: *const c_char,
         FileType: FileType,
+        VerifyIR: bool,
     ) -> LLVMRustResult;
     pub fn LLVMRustOptimize<'a>(
         M: &'a Module,

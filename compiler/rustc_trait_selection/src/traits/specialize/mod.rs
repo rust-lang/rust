@@ -15,6 +15,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_infer::traits::Obligation;
 use rustc_middle::bug;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
@@ -224,21 +225,30 @@ pub(super) fn specialization_enabled_in(tcx: TyCtxt<'_>, _: LocalCrate) -> bool 
     tcx.features().specialization() || tcx.features().min_specialization()
 }
 
-/// Is `impl1` a specialization of `impl2`?
+/// Is `specializing_impl_def_id` a specialization of `parent_impl_def_id`?
 ///
-/// Specialization is determined by the sets of types to which the impls apply;
-/// `impl1` specializes `impl2` if it applies to a subset of the types `impl2` applies
-/// to.
+/// For every type that could apply to `specializing_impl_def_id`, we prove that
+/// the `parent_impl_def_id` also applies (i.e. it has a valid impl header and
+/// its where-clauses hold).
+///
+/// For the purposes of const traits, we also check that the specializing
+/// impl is not more restrictive than the parent impl. That is, if the
+/// `parent_impl_def_id` is a const impl (conditionally based off of some `~const`
+/// bounds), then `specializing_impl_def_id` must also be const for the same
+/// set of types.
 #[instrument(skip(tcx), level = "debug")]
-pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId, DefId)) -> bool {
+pub(super) fn specializes(
+    tcx: TyCtxt<'_>,
+    (specializing_impl_def_id, parent_impl_def_id): (DefId, DefId),
+) -> bool {
     // We check that the specializing impl comes from a crate that has specialization enabled,
     // or if the specializing impl is marked with `allow_internal_unstable`.
     //
     // We don't really care if the specialized impl (the parent) is in a crate that has
     // specialization enabled, since it's not being specialized, and it's already been checked
     // for coherence.
-    if !tcx.specialization_enabled_in(impl1_def_id.krate) {
-        let span = tcx.def_span(impl1_def_id);
+    if !tcx.specialization_enabled_in(specializing_impl_def_id.krate) {
+        let span = tcx.def_span(specializing_impl_def_id);
         if !span.allows_unstable(sym::specialization)
             && !span.allows_unstable(sym::min_specialization)
         {
@@ -246,7 +256,7 @@ pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId,
         }
     }
 
-    let impl1_trait_header = tcx.impl_trait_header(impl1_def_id).unwrap();
+    let specializing_impl_trait_header = tcx.impl_trait_header(specializing_impl_def_id).unwrap();
 
     // We determine whether there's a subset relationship by:
     //
@@ -261,27 +271,123 @@ pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId,
     // See RFC 1210 for more details and justification.
 
     // Currently we do not allow e.g., a negative impl to specialize a positive one
-    if impl1_trait_header.polarity != tcx.impl_polarity(impl2_def_id) {
+    if specializing_impl_trait_header.polarity != tcx.impl_polarity(parent_impl_def_id) {
         return false;
     }
 
-    // create a parameter environment corresponding to an identity instantiation of impl1,
-    // i.e. the most generic instantiation of impl1.
-    let param_env = tcx.param_env(impl1_def_id);
+    // create a parameter environment corresponding to an identity instantiation of the specializing impl,
+    // i.e. the most generic instantiation of the specializing impl.
+    let param_env = tcx.param_env(specializing_impl_def_id);
 
-    // Create an infcx, taking the predicates of impl1 as assumptions:
+    // Create an infcx, taking the predicates of the specializing impl as assumptions:
     let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
 
-    // Attempt to prove that impl2 applies, given all of the above.
-    fulfill_implication(
-        &infcx,
+    let specializing_impl_trait_ref =
+        specializing_impl_trait_header.trait_ref.instantiate_identity();
+    let cause = &ObligationCause::dummy();
+    debug!(
+        "fulfill_implication({:?}, trait_ref={:?} |- {:?} applies)",
+        param_env, specializing_impl_trait_ref, parent_impl_def_id
+    );
+
+    // Attempt to prove that the parent impl applies, given all of the above.
+
+    let ocx = ObligationCtxt::new(&infcx);
+    let specializing_impl_trait_ref = ocx.normalize(cause, param_env, specializing_impl_trait_ref);
+
+    if !ocx.select_all_or_error().is_empty() {
+        infcx.dcx().span_delayed_bug(
+            infcx.tcx.def_span(specializing_impl_def_id),
+            format!("failed to fully normalize {specializing_impl_trait_ref}"),
+        );
+        return false;
+    }
+
+    let parent_args = infcx.fresh_args_for_item(DUMMY_SP, parent_impl_def_id);
+    let parent_impl_trait_ref = ocx.normalize(
+        cause,
         param_env,
-        impl1_trait_header.trait_ref.instantiate_identity(),
-        impl1_def_id,
-        impl2_def_id,
-        &ObligationCause::dummy(),
-    )
-    .is_ok()
+        infcx
+            .tcx
+            .impl_trait_ref(parent_impl_def_id)
+            .expect("expected source impl to be a trait impl")
+            .instantiate(infcx.tcx, parent_args),
+    );
+
+    // do the impls unify? If not, no specialization.
+    let Ok(()) = ocx.eq(cause, param_env, specializing_impl_trait_ref, parent_impl_trait_ref)
+    else {
+        return false;
+    };
+
+    // Now check that the source trait ref satisfies all the where clauses of the target impl.
+    // This is not just for correctness; we also need this to constrain any params that may
+    // only be referenced via projection predicates.
+    let predicates = ocx.normalize(
+        cause,
+        param_env,
+        infcx.tcx.predicates_of(parent_impl_def_id).instantiate(infcx.tcx, parent_args),
+    );
+    let obligations = predicates_for_generics(|_, _| cause.clone(), param_env, predicates);
+    ocx.register_obligations(obligations);
+
+    let errors = ocx.select_all_or_error();
+    if !errors.is_empty() {
+        // no dice!
+        debug!(
+            "fulfill_implication: for impls on {:?} and {:?}, \
+                 could not fulfill: {:?} given {:?}",
+            specializing_impl_trait_ref,
+            parent_impl_trait_ref,
+            errors,
+            param_env.caller_bounds()
+        );
+        return false;
+    }
+
+    // If the parent impl is const, then the specializing impl must be const,
+    // and it must not be *more restrictive* than the parent impl (that is,
+    // it cannot be const in fewer cases than the parent impl).
+    if tcx.is_conditionally_const(parent_impl_def_id) {
+        if !tcx.is_conditionally_const(specializing_impl_def_id) {
+            return false;
+        }
+
+        let const_conditions = ocx.normalize(
+            cause,
+            param_env,
+            infcx.tcx.const_conditions(parent_impl_def_id).instantiate(infcx.tcx, parent_args),
+        );
+        ocx.register_obligations(const_conditions.into_iter().map(|(trait_ref, _)| {
+            Obligation::new(
+                infcx.tcx,
+                cause.clone(),
+                param_env,
+                trait_ref.to_host_effect_clause(infcx.tcx, ty::BoundConstness::Maybe),
+            )
+        }));
+
+        let errors = ocx.select_all_or_error();
+        if !errors.is_empty() {
+            // no dice!
+            debug!(
+                "fulfill_implication: for impls on {:?} and {:?}, \
+                 could not fulfill: {:?} given {:?}",
+                specializing_impl_trait_ref,
+                parent_impl_trait_ref,
+                errors,
+                param_env.caller_bounds()
+            );
+            return false;
+        }
+    }
+
+    debug!(
+        "fulfill_implication: an impl for {:?} specializes {:?}",
+        specializing_impl_trait_ref, parent_impl_trait_ref
+    );
+
+    true
 }
 
 /// Query provider for `specialization_graph_of`.

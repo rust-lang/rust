@@ -228,7 +228,7 @@ impl<'tcx> TypeInformationCtxt<'tcx> for (&LateContext<'tcx>, LocalDefId) {
     }
 
     fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_copy_modulo_regions(self.0.tcx, self.0.typing_env())
+        self.0.type_is_copy_modulo_regions(ty)
     }
 
     fn body_owner_def_id(&self) -> LocalDefId {
@@ -686,7 +686,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     fn walk_struct_expr<'hir>(
         &self,
         fields: &[hir::ExprField<'_>],
-        opt_with: &Option<&'hir hir::Expr<'_>>,
+        opt_with: &hir::StructTailExpr<'hir>,
     ) -> Result<(), Cx::Error> {
         // Consume the expressions supplying values for each field.
         for field in fields {
@@ -702,8 +702,8 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         }
 
         let with_expr = match *opt_with {
-            Some(w) => &*w,
-            None => {
+            hir::StructTailExpr::Base(w) => &*w,
+            hir::StructTailExpr::DefaultFields(_) | hir::StructTailExpr::None => {
                 return Ok(());
             }
         };

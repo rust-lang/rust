@@ -338,9 +338,9 @@ pub enum ErrorKind {
     /// example, on Unix, a named pipe opened with `File::open`.
     #[stable(feature = "io_error_a_bit_more", since = "1.83.0")]
     NotSeekable,
-    /// Filesystem quota was exceeded.
-    #[unstable(feature = "io_error_more", issue = "86442")]
-    FilesystemQuotaExceeded,
+    /// Filesystem quota or some other kind of quota was exceeded.
+    #[stable(feature = "io_error_quota_exceeded", since = "CURRENT_RUSTC_VERSION")]
+    QuotaExceeded,
     /// File larger than allowed or supported.
     ///
     /// This might arise from a hard limit of the underlying filesystem or file access API, or from
@@ -364,7 +364,7 @@ pub enum ErrorKind {
     #[stable(feature = "io_error_a_bit_more", since = "1.83.0")]
     Deadlock,
     /// Cross-device or cross-filesystem (hard) link or rename.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    #[stable(feature = "io_error_crosses_devices", since = "CURRENT_RUSTC_VERSION")]
     CrossesDevices,
     /// Too many (hard) links to the same filesystem object.
     ///
@@ -446,8 +446,8 @@ pub enum ErrorKind {
 impl ErrorKind {
     pub(crate) fn as_str(&self) -> &'static str {
         use ErrorKind::*;
-        // tidy-alphabetical-start
         match *self {
+            // tidy-alphabetical-start
             AddrInUse => "address in use",
             AddrNotAvailable => "address not available",
             AlreadyExists => "entity already exists",
@@ -460,12 +460,11 @@ impl ErrorKind {
             Deadlock => "deadlock",
             DirectoryNotEmpty => "directory not empty",
             ExecutableFileBusy => "executable file busy",
-            FileTooLarge => "file too large",
             FilesystemLoop => "filesystem loop or indirection limit (e.g. symlink loop)",
-            FilesystemQuotaExceeded => "filesystem quota exceeded",
+            FileTooLarge => "file too large",
             HostUnreachable => "host unreachable",
-            Interrupted => "operation interrupted",
             InProgress => "in progress",
+            Interrupted => "operation interrupted",
             InvalidData => "invalid data",
             InvalidFilename => "invalid filename",
             InvalidInput => "invalid input parameter",
@@ -479,6 +478,7 @@ impl ErrorKind {
             Other => "other error",
             OutOfMemory => "out of memory",
             PermissionDenied => "permission denied",
+            QuotaExceeded => "quota exceeded",
             ReadOnlyFilesystem => "read-only filesystem or storage medium",
             ResourceBusy => "resource busy",
             StaleNetworkFileHandle => "stale network file handle",
@@ -490,8 +490,8 @@ impl ErrorKind {
             Unsupported => "unsupported",
             WouldBlock => "operation would block",
             WriteZero => "write zero",
+            // tidy-alphabetical-end
         }
-        // tidy-alphabetical-end
     }
 }
 

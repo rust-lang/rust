@@ -149,7 +149,8 @@ fn resolve_associated_item<'tcx>(
                 // get a result which isn't correct for all monomorphizations.
                 match typing_env.typing_mode {
                     ty::TypingMode::Coherence
-                    | ty::TypingMode::Analysis { defining_opaque_types: _ } => false,
+                    | ty::TypingMode::Analysis { .. }
+                    | ty::TypingMode::PostBorrowckAnalysis { .. } => false,
                     ty::TypingMode::PostAnalysis => !trait_ref.still_further_specializable(),
                 }
             };
@@ -215,15 +216,15 @@ fn resolve_associated_item<'tcx>(
 
             let args = tcx.erase_regions(args);
 
-            // Check if we just resolved an associated `const` declaration from
-            // a `trait` to an associated `const` definition in an `impl`, where
-            // the definition in the `impl` has the wrong type (for which an
-            // error has already been/will be emitted elsewhere).
-            if leaf_def.item.kind == ty::AssocKind::Const
-                && trait_item_id != leaf_def.item.def_id
+            // We check that the impl item is compatible with the trait item
+            // because otherwise we may ICE in const eval due to type mismatches,
+            // signature incompatibilities, etc.
+            // NOTE: We could also only enforce this in `PostAnalysis`, which
+            // is what CTFE and MIR inlining would care about anyways.
+            if trait_item_id != leaf_def.item.def_id
                 && let Some(leaf_def_item) = leaf_def.item.def_id.as_local()
             {
-                tcx.compare_impl_const((leaf_def_item, trait_item_id))?;
+                tcx.ensure().compare_impl_item(leaf_def_item)?;
             }
 
             Some(ty::Instance::new(leaf_def.item.def_id, args))

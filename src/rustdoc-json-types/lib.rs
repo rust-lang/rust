@@ -30,7 +30,7 @@ pub type FxHashMap<K, V> = HashMap<K, V>; // re-export for use in src/librustdoc
 /// This integer is incremented with every breaking change to the API,
 /// and is returned along with the JSON blob as [`Crate::format_version`].
 /// Consuming code should assert that this value matches the format version(s) that it supports.
-pub const FORMAT_VERSION: u32 = 36;
+pub const FORMAT_VERSION: u32 = 37;
 
 /// The root of the emitted JSON blob.
 ///
@@ -1238,6 +1238,22 @@ pub struct Static {
     ///
     /// It's not guaranteed that it'll match the actual source code for the initial value.
     pub expr: String,
+
+    /// Is the static `unsafe`?
+    ///
+    /// This is only true if it's in an `extern` block, and not explicity marked
+    /// as `safe`.
+    ///
+    /// ```rust
+    /// unsafe extern {
+    ///     static A: i32;      // unsafe
+    ///     safe static B: i32; // safe
+    /// }
+    ///
+    /// static C: i32 = 0;     // safe
+    /// static mut D: i32 = 0; // safe
+    /// ```
+    pub is_unsafe: bool,
 }
 
 /// A primitive type declaration. Declarations of this kind can only come from the core library.

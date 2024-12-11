@@ -520,7 +520,7 @@ use crate::{convert, fmt, hint};
 /// `Result` is a type that represents either success ([`Ok`]) or failure ([`Err`]).
 ///
 /// See the [module documentation](self) for details.
-#[cfg_attr(not(bootstrap), doc(search_unbox))]
+#[doc(search_unbox)]
 #[derive(Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 #[must_use = "this `Result` may be an `Err` variant, which should be handled"]
 #[rustc_diagnostic_item = "Result"]

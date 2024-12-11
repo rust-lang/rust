@@ -2,7 +2,7 @@
 // `issue_59191::no_main` replaces whatever's passed in with `fn main() {}`.
 
 //@ edition:2018
-//@ aux-crate:issue_59191=issue-59191.rs
+//@ proc-macro: issue-59191.rs
 //@ error-pattern: requires `sized` lang_item
 
 #![feature(custom_inner_attributes)]

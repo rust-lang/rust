@@ -4,7 +4,6 @@
 
 #![feature(rustdoc_missing_doc_code_examples)]
 //~^ WARN
-//~^^ WARN
 
 #![warn(missing_docs)]
 #![warn(rustdoc::missing_doc_code_examples)]

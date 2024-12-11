@@ -1,6 +1,6 @@
-use clippy_config::msrvs::Msrv;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::matching_root_macro_call;
+use clippy_utils::msrvs::Msrv;
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::{for_each_expr_without_closures, is_local_used};
 use clippy_utils::{is_in_const_context, path_to_local};
@@ -243,11 +243,6 @@ fn emit_redundant_guards<'tcx>(
 }
 
 /// Checks if the given `Expr` can also be represented as a `Pat`.
-///
-/// All literals generally also work as patterns, however float literals are special.
-/// They are currently (as of 2023/08/08) still allowed in patterns, but that will become
-/// an error in the future, and rustc already actively warns against this (see rust#41620),
-/// so we don't consider those as usable within patterns for linting purposes.
 fn expr_can_be_pat(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     for_each_expr_without_closures(expr, |expr| {
         if match expr.kind {
@@ -267,7 +262,7 @@ fn expr_can_be_pat(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
             | ExprKind::Tup(..)
             | ExprKind::Struct(..)
             | ExprKind::Unary(UnOp::Neg, _) => true,
-            ExprKind::Lit(lit) if !matches!(lit.node, LitKind::Float(..)) => true,
+            ExprKind::Lit(lit) if !matches!(lit.node, LitKind::CStr(..)) => true,
             _ => false,
         } {
             return ControlFlow::Continue(());

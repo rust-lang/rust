@@ -51,6 +51,7 @@ pub mod source_map;
 use source_map::{SourceMap, SourceMapInputs};
 
 pub use self::caching_source_map_view::CachingSourceMapView;
+use crate::fatal_error::FatalError;
 
 pub mod edition;
 use edition::Edition;
@@ -2613,6 +2614,10 @@ impl ErrorGuaranteed {
     #[deprecated = "should only be used in `DiagCtxtInner::emit_diagnostic`"]
     pub fn unchecked_error_guaranteed() -> Self {
         ErrorGuaranteed(())
+    }
+
+    pub fn raise_fatal(self) -> ! {
+        FatalError.raise()
     }
 }
 

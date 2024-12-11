@@ -6,7 +6,7 @@ mod weak_types;
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
-use rustc_type_ir::{self as ty, Interner, NormalizesTo, TypingMode, Upcast as _};
+use rustc_type_ir::{self as ty, Interner, NormalizesTo, Upcast as _};
 use tracing::instrument;
 
 use crate::delegate::SolverDelegate;
@@ -71,21 +71,10 @@ where
                 Ok(())
             }
             ty::AliasTermKind::OpaqueTy => {
-                match self.typing_mode() {
-                    // Opaques are never rigid outside of analysis mode.
-                    TypingMode::Coherence | TypingMode::PostAnalysis => Err(NoSolution),
-                    // During analysis, opaques are only rigid if we may not define it.
-                    TypingMode::Analysis { defining_opaque_types } => {
-                        if rigid_alias
-                            .def_id
-                            .as_local()
-                            .is_some_and(|def_id| defining_opaque_types.contains(&def_id))
-                        {
-                            Err(NoSolution)
-                        } else {
-                            Ok(())
-                        }
-                    }
+                if self.opaque_type_is_rigid(rigid_alias.def_id) {
+                    Ok(())
+                } else {
+                    Err(NoSolution)
                 }
             }
             // FIXME(generic_const_exprs): we would need to support generic consts here

@@ -1,7 +1,7 @@
 use clippy_config::Conf;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::is_from_proc_macro;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_opt;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};

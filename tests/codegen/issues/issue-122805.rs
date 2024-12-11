@@ -17,19 +17,19 @@
 // CHECK-LABEL: define{{.*}}void @convert(
 // CHECK-NOT: shufflevector
 // OPT2: store i16
-// OPT2-NEXT: getelementptr inbounds i8, {{.+}} 2
+// OPT2-NEXT: getelementptr inbounds{{( nuw)?}} i8, {{.+}} 2
 // OPT2-NEXT: store i16
-// OPT2-NEXT: getelementptr inbounds i8, {{.+}} 4
+// OPT2-NEXT: getelementptr inbounds{{( nuw)?}} i8, {{.+}} 4
 // OPT2-NEXT: store i16
-// OPT2-NEXT: getelementptr inbounds i8, {{.+}} 6
+// OPT2-NEXT: getelementptr inbounds{{( nuw)?}} i8, {{.+}} 6
 // OPT2-NEXT: store i16
-// OPT2-NEXT: getelementptr inbounds i8, {{.+}} 8
+// OPT2-NEXT: getelementptr inbounds{{( nuw)?}} i8, {{.+}} 8
 // OPT2-NEXT: store i16
-// OPT2-NEXT: getelementptr inbounds i8, {{.+}} 10
+// OPT2-NEXT: getelementptr inbounds{{( nuw)?}} i8, {{.+}} 10
 // OPT2-NEXT: store i16
-// OPT2-NEXT: getelementptr inbounds i8, {{.+}} 12
+// OPT2-NEXT: getelementptr inbounds{{( nuw)?}} i8, {{.+}} 12
 // OPT2-NEXT: store i16
-// OPT2-NEXT: getelementptr inbounds i8, {{.+}} 14
+// OPT2-NEXT: getelementptr inbounds{{( nuw)?}} i8, {{.+}} 14
 // OPT2-NEXT: store i16
 // OPT3LINX64: load <8 x i16>
 // OPT3LINX64-NEXT: call <8 x i16> @llvm.bswap

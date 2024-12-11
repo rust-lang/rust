@@ -1,7 +1,3 @@
-//@ force-host
-//@ no-prefer-dynamic
-
-#![crate_type = "proc-macro"]
 #![deny(warnings)]
 #![feature(proc_macro_expand, proc_macro_span)]
 

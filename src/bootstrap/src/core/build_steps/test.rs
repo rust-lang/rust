@@ -263,12 +263,16 @@ pub struct Cargo {
     host: TargetSelection,
 }
 
+impl Cargo {
+    const CRATE_PATH: &str = "src/tools/cargo";
+}
+
 impl Step for Cargo {
     type Output = ();
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/cargo")
+        run.path(Self::CRATE_PATH)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -286,7 +290,7 @@ impl Step for Cargo {
             Mode::ToolRustc,
             self.host,
             Kind::Test,
-            "src/tools/cargo",
+            Self::CRATE_PATH,
             SourceType::Submodule,
             &[],
         );
@@ -301,6 +305,10 @@ impl Step for Cargo {
         // those features won't be able to land.
         cargo.env("CARGO_TEST_DISABLE_NIGHTLY", "1");
         cargo.env("PATH", path_for_cargo(builder, compiler));
+        // Cargo's test suite uses `CARGO_RUSTC_CURRENT_DIR` to determine the path that `file!` is
+        // relative to. Cargo no longer sets this env var, so we have to do that. This has to be the
+        // same value as `-Zroot-dir`.
+        cargo.env("CARGO_RUSTC_CURRENT_DIR", builder.src.display().to_string());
 
         #[cfg(feature = "build-metrics")]
         builder.metrics.begin_test_suite(
@@ -463,11 +471,11 @@ impl Miri {
         // We re-use the `cargo` from above.
         cargo.arg("--print-sysroot");
 
-        builder.verbose(|| println!("running: {cargo:?}"));
+        builder.verbose(|| eprintln!("running: {cargo:?}"));
         let stdout = cargo.run_capture_stdout(builder).stdout();
         // Output is "<sysroot>\n".
         let sysroot = stdout.trim_end();
-        builder.verbose(|| println!("`cargo miri setup --print-sysroot` said: {sysroot:?}"));
+        builder.verbose(|| eprintln!("`cargo miri setup --print-sysroot` said: {sysroot:?}"));
         PathBuf::from(sysroot)
     }
 }
@@ -1062,23 +1070,33 @@ impl Step for Tidy {
         }
 
         if builder.config.channel == "dev" || builder.config.channel == "nightly" {
-            builder.info("fmt check");
-            if builder.initial_rustfmt().is_none() {
-                let inferred_rustfmt_dir = builder.initial_rustc.parent().unwrap();
-                eprintln!(
-                    "\
+            if !builder.config.json_output {
+                builder.info("fmt check");
+                if builder.initial_rustfmt().is_none() {
+                    let inferred_rustfmt_dir = builder.initial_sysroot.join("bin");
+                    eprintln!(
+                        "\
 ERROR: no `rustfmt` binary found in {PATH}
 INFO: `rust.channel` is currently set to \"{CHAN}\"
 HELP: if you are testing a beta branch, set `rust.channel` to \"beta\" in the `config.toml` file
 HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to `x.py test`",
-                    PATH = inferred_rustfmt_dir.display(),
-                    CHAN = builder.config.channel,
+                        PATH = inferred_rustfmt_dir.display(),
+                        CHAN = builder.config.channel,
+                    );
+                    crate::exit!(1);
+                }
+                let all = false;
+                crate::core::build_steps::format::format(
+                    builder,
+                    !builder.config.cmd.bless(),
+                    all,
+                    &[],
                 );
-                crate::exit!(1);
+            } else {
+                eprintln!(
+                    "WARNING: `--json-output` is not supported on rustfmt, formatting will be skipped"
+                );
             }
-            let all = false;
-            crate::core::build_steps::format::format(builder, !builder.config.cmd.bless(), all, &[
-            ]);
         }
 
         builder.info("tidy check");
@@ -2470,7 +2488,7 @@ fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> 
         }
     }
 
-    builder.verbose(|| println!("doc tests for: {}", markdown.display()));
+    builder.verbose(|| eprintln!("doc tests for: {}", markdown.display()));
     let mut cmd = builder.rustdoc_cmd(compiler);
     builder.add_rust_test_threads(&mut cmd);
     // allow for unstable options such as new editions
@@ -2616,6 +2634,11 @@ fn prepare_cargo_test(
     if builder.kind == Kind::Test && !builder.fail_fast {
         cargo.arg("--no-fail-fast");
     }
+
+    if builder.config.json_output {
+        cargo.arg("--message-format=json");
+    }
+
     match builder.doc_tests {
         DocTests::Only => {
             cargo.arg("--doc");
@@ -2748,6 +2771,10 @@ impl Step for Crate {
             // `lib.rs` file, and a `lib.miri.rs` file exists in the same folder, we build that
             // instead. But crucially we only do that for the library, not the test builds.
             cargo.env("MIRI_REPLACE_LIBRS_IF_NOT_TEST", "1");
+            // std needs to be built with `-Zforce-unstable-if-unmarked`. For some reason the builder
+            // does not set this directly, but relies on the rustc wrapper to set it, and we are not using
+            // the wrapper -- hence we have to set it ourselves.
+            cargo.rustflag("-Zforce-unstable-if-unmarked");
             cargo
         } else {
             // Also prepare a sysroot for the target.

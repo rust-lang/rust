@@ -321,8 +321,8 @@ fn from_clean_item(item: clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum {
         MethodItem(m, _) => ItemEnum::Function(from_function(m, true, header.unwrap(), renderer)),
         TyMethodItem(m) => ItemEnum::Function(from_function(m, false, header.unwrap(), renderer)),
         ImplItem(i) => ItemEnum::Impl((*i).into_json(renderer)),
-        StaticItem(s) => ItemEnum::Static(s.into_json(renderer)),
-        ForeignStaticItem(s, _) => ItemEnum::Static(s.into_json(renderer)),
+        StaticItem(s) => ItemEnum::Static(convert_static(s, rustc_hir::Safety::Safe, renderer)),
+        ForeignStaticItem(s, safety) => ItemEnum::Static(convert_static(s, safety, renderer)),
         ForeignTypeItem => ItemEnum::ExternType,
         TypeAliasItem(t) => ItemEnum::TypeAlias(t.into_json(renderer)),
         // FIXME(generic_const_items): Add support for generic free consts
@@ -831,17 +831,20 @@ impl FromClean<Box<clean::TypeAlias>> for TypeAlias {
     }
 }
 
-impl FromClean<clean::Static> for Static {
-    fn from_clean(stat: clean::Static, renderer: &JsonRenderer<'_>) -> Self {
-        let tcx = renderer.tcx;
-        Static {
-            type_: (*stat.type_).into_json(renderer),
-            is_mutable: stat.mutability == ast::Mutability::Mut,
-            expr: stat
-                .expr
-                .map(|e| rendered_const(tcx, tcx.hir().body(e), tcx.hir().body_owner_def_id(e)))
-                .unwrap_or_default(),
-        }
+fn convert_static(
+    stat: clean::Static,
+    safety: rustc_hir::Safety,
+    renderer: &JsonRenderer<'_>,
+) -> Static {
+    let tcx = renderer.tcx;
+    Static {
+        type_: (*stat.type_).into_json(renderer),
+        is_mutable: stat.mutability == ast::Mutability::Mut,
+        is_unsafe: safety == rustc_hir::Safety::Unsafe,
+        expr: stat
+            .expr
+            .map(|e| rendered_const(tcx, tcx.hir().body(e), tcx.hir().body_owner_def_id(e)))
+            .unwrap_or_default(),
     }
 }
 

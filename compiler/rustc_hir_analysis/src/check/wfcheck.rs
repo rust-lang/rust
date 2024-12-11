@@ -13,6 +13,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_macros::LintDiagnostic;
+use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
@@ -116,13 +117,12 @@ where
     }
     f(&mut wfcx)?;
 
-    let assumed_wf_types = wfcx.ocx.assumed_wf_types_and_report_errors(param_env, body_def_id)?;
-
     let errors = wfcx.select_all_or_error();
     if !errors.is_empty() {
         return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
     }
 
+    let assumed_wf_types = wfcx.ocx.assumed_wf_types_and_report_errors(param_env, body_def_id)?;
     debug!(?assumed_wf_types);
 
     let infcx_compat = infcx.fork();
@@ -1104,6 +1104,25 @@ fn check_type_defn<'tcx>(
         for variant in variants.iter() {
             // All field types must be well-formed.
             for field in &variant.fields {
+                if let Some(def_id) = field.value
+                    && let Some(_ty) = tcx.type_of(def_id).no_bound_vars()
+                {
+                    // FIXME(generic_const_exprs, default_field_values): this is a hack and needs to
+                    // be refactored to check the instantiate-ability of the code better.
+                    if let Some(def_id) = def_id.as_local()
+                        && let hir::Node::AnonConst(anon) = tcx.hir_node_by_def_id(def_id)
+                        && let expr = &tcx.hir().body(anon.body).value
+                        && let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
+                        && let Res::Def(DefKind::ConstParam, _def_id) = path.res
+                    {
+                        // Do not evaluate bare `const` params, as those would ICE and are only
+                        // usable if `#![feature(generic_const_exprs)]` is enabled.
+                    } else {
+                        // Evaluate the constant proactively, to emit an error if the constant has
+                        // an unconditional error. We only do so if the const has no type params.
+                        let _ = tcx.const_eval_poly(def_id.into());
+                    }
+                }
                 let field_id = field.did.expect_local();
                 let hir::FieldDef { ty: hir_ty, .. } =
                     tcx.hir_node_by_def_id(field_id).expect_field();
@@ -1170,19 +1189,13 @@ fn check_type_defn<'tcx>(
 
             // Explicit `enum` discriminant values must const-evaluate successfully.
             if let ty::VariantDiscr::Explicit(discr_def_id) = variant.discr {
-                let cause = traits::ObligationCause::new(
-                    tcx.def_span(discr_def_id),
-                    wfcx.body_def_id,
-                    ObligationCauseCode::Misc,
-                );
-                wfcx.register_obligation(Obligation::new(
-                    tcx,
-                    cause,
-                    wfcx.param_env,
-                    ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(
-                        ty::Const::from_anon_const(tcx, discr_def_id.expect_local()),
-                    ))),
-                ));
+                match tcx.const_eval_poly(discr_def_id) {
+                    Ok(_) => {}
+                    Err(ErrorHandled::Reported(..)) => {}
+                    Err(ErrorHandled::TooGeneric(sp)) => {
+                        span_bug!(sp, "enum variant discr was too generic to eval")
+                    }
+                }
             }
         }
 

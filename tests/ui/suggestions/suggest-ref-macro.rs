@@ -1,5 +1,5 @@
 // run-check
-//@ aux-build:proc-macro-type-error.rs
+//@ proc-macro: proc-macro-type-error.rs
 
 extern crate proc_macro_type_error;
 

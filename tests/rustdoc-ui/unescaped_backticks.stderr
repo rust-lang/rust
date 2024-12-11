@@ -124,10 +124,10 @@ LL |     /// also avoids the need to import `OpenOptions\`.
    |                                                    +
 
 error: unescaped backtick
-  --> $DIR/unescaped_backticks.rs:221:46
+  --> $DIR/unescaped_backticks.rs:221:47
    |
-LL |     /// `HybridBitSet`. Has no effect if `row` does not exist.
-   |                                              ^
+LL |     /// `ChunkedBitSet`. Has no effect if `row` does not exist.
+   |                                               ^
    |
 help: a previous inline code might be longer than expected
    |
@@ -135,8 +135,8 @@ LL |     /// Subtracts `set` from `row`. `set` can be either `BitSet` or
    |                       +
 help: if you meant to use a literal backtick, escape it
    |
-LL |     /// `HybridBitSet`. Has no effect if `row\` does not exist.
-   |                                              +
+LL |     /// `ChunkedBitSet`. Has no effect if `row\` does not exist.
+   |                                               +
 
 error: unescaped backtick
   --> $DIR/unescaped_backticks.rs:247:12

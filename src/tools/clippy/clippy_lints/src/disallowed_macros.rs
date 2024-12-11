@@ -1,5 +1,5 @@
 use clippy_config::Conf;
-use clippy_utils::create_disallowed_map;
+use clippy_config::types::create_disallowed_map;
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::macros::macro_backtrace;
 use rustc_data_structures::fx::FxHashSet;

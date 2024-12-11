@@ -258,11 +258,11 @@ impl PathSet {
 
     // internal use only
     fn check(p: &TaskPath, needle: &Path, module: Kind) -> bool {
-        if let Some(p_kind) = &p.kind {
-            p.path.ends_with(needle) && *p_kind == module
-        } else {
-            p.path.ends_with(needle)
-        }
+        let check_path = || {
+            // This order is important for retro-compatibility, as `starts_with` was introduced later.
+            p.path.ends_with(needle) || p.path.starts_with(needle)
+        };
+        if let Some(p_kind) = &p.kind { check_path() && *p_kind == module } else { check_path() }
     }
 
     /// Return all `TaskPath`s in `Self` that contain any of the `needles`, removing the
@@ -392,14 +392,14 @@ impl StepDescription {
     fn is_excluded(&self, builder: &Builder<'_>, pathset: &PathSet) -> bool {
         if builder.config.skip.iter().any(|e| pathset.has(e, builder.kind)) {
             if !matches!(builder.config.dry_run, DryRun::SelfCheck) {
-                println!("Skipping {pathset:?} because it is excluded");
+                eprintln!("Skipping {pathset:?} because it is excluded");
             }
             return true;
         }
 
         if !builder.config.skip.is_empty() && !matches!(builder.config.dry_run, DryRun::SelfCheck) {
             builder.verbose(|| {
-                println!(
+                eprintln!(
                     "{:?} not skipped for {:?} -- not in {:?}",
                     pathset, self.name, builder.config.skip
                 )
@@ -762,6 +762,54 @@ impl Kind {
             }
         }
         .to_owned()
+    }
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+struct Libdir {
+    compiler: Compiler,
+    target: TargetSelection,
+}
+
+impl Step for Libdir {
+    type Output = PathBuf;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.never()
+    }
+
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
+        let relative_sysroot_libdir = builder.sysroot_libdir_relative(self.compiler);
+        let sysroot = builder.sysroot(self.compiler).join(relative_sysroot_libdir).join("rustlib");
+
+        if !builder.config.dry_run() {
+            // Avoid deleting the `rustlib/` directory we just copied (in `impl Step for
+            // Sysroot`).
+            if !builder.download_rustc() {
+                let sysroot_target_libdir = sysroot.join(self.target).join("lib");
+                builder.verbose(|| {
+                    eprintln!(
+                        "Removing sysroot {} to avoid caching bugs",
+                        sysroot_target_libdir.display()
+                    )
+                });
+                let _ = fs::remove_dir_all(&sysroot_target_libdir);
+                t!(fs::create_dir_all(&sysroot_target_libdir));
+            }
+
+            if self.compiler.stage == 0 {
+                // The stage 0 compiler for the build triple is always pre-built. Ensure that
+                // `libLLVM.so` ends up in the target libdir, so that ui-fulldeps tests can use
+                // it when run.
+                dist::maybe_install_llvm_target(
+                    builder,
+                    self.compiler.host,
+                    &builder.sysroot(self.compiler),
+                );
+            }
+        }
+
+        sysroot
     }
 }
 
@@ -1165,56 +1213,13 @@ impl<'a> Builder<'a> {
 
     /// Returns the bindir for a compiler's sysroot.
     pub fn sysroot_target_bindir(&self, compiler: Compiler, target: TargetSelection) -> PathBuf {
-        self.sysroot_target_libdir(compiler, target).parent().unwrap().join("bin")
+        self.ensure(Libdir { compiler, target }).join(target).join("bin")
     }
 
     /// Returns the libdir where the standard library and other artifacts are
     /// found for a compiler's sysroot.
     pub fn sysroot_target_libdir(&self, compiler: Compiler, target: TargetSelection) -> PathBuf {
-        #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-        struct Libdir {
-            compiler: Compiler,
-            target: TargetSelection,
-        }
-        impl Step for Libdir {
-            type Output = PathBuf;
-
-            fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                run.never()
-            }
-
-            fn run(self, builder: &Builder<'_>) -> PathBuf {
-                let lib = builder.sysroot_libdir_relative(self.compiler);
-                let sysroot = builder
-                    .sysroot(self.compiler)
-                    .join(lib)
-                    .join("rustlib")
-                    .join(self.target)
-                    .join("lib");
-                // Avoid deleting the rustlib/ directory we just copied
-                // (in `impl Step for Sysroot`).
-                if !builder.download_rustc() {
-                    builder.verbose(|| {
-                        println!("Removing sysroot {} to avoid caching bugs", sysroot.display())
-                    });
-                    let _ = fs::remove_dir_all(&sysroot);
-                    t!(fs::create_dir_all(&sysroot));
-                }
-
-                if self.compiler.stage == 0 {
-                    // The stage 0 compiler for the build triple is always pre-built.
-                    // Ensure that `libLLVM.so` ends up in the target libdir, so that ui-fulldeps tests can use it when run.
-                    dist::maybe_install_llvm_target(
-                        builder,
-                        self.compiler.host,
-                        &builder.sysroot(self.compiler),
-                    );
-                }
-
-                sysroot
-            }
-        }
-        self.ensure(Libdir { compiler, target })
+        self.ensure(Libdir { compiler, target }).join(target).join("lib")
     }
 
     pub fn sysroot_codegen_backends(&self, compiler: Compiler) -> PathBuf {
@@ -1262,7 +1267,7 @@ impl<'a> Builder<'a> {
     pub fn sysroot_libdir_relative(&self, compiler: Compiler) -> &Path {
         match self.config.libdir_relative() {
             Some(relative_libdir) if compiler.stage >= 1 => relative_libdir,
-            _ if compiler.stage == 0 => &self.build.initial_libdir,
+            _ if compiler.stage == 0 => &self.build.initial_relative_libdir,
             _ => Path::new("lib"),
         }
     }
@@ -1432,11 +1437,11 @@ impl<'a> Builder<'a> {
                 panic!("{}", out);
             }
             if let Some(out) = self.cache.get(&step) {
-                self.verbose_than(1, || println!("{}c {:?}", "  ".repeat(stack.len()), step));
+                self.verbose_than(1, || eprintln!("{}c {:?}", "  ".repeat(stack.len()), step));
 
                 return out;
             }
-            self.verbose_than(1, || println!("{}> {:?}", "  ".repeat(stack.len()), step));
+            self.verbose_than(1, || eprintln!("{}> {:?}", "  ".repeat(stack.len()), step));
             stack.push(Box::new(step.clone()));
         }
 
@@ -1457,7 +1462,7 @@ impl<'a> Builder<'a> {
             let step_string = format!("{step:?}");
             let brace_index = step_string.find('{').unwrap_or(0);
             let type_string = type_name::<S>();
-            println!(
+            eprintln!(
                 "[TIMING] {} {} -- {}.{:03}",
                 &type_string.strip_prefix("bootstrap::").unwrap_or(type_string),
                 &step_string[brace_index..],
@@ -1474,7 +1479,9 @@ impl<'a> Builder<'a> {
             let cur_step = stack.pop().expect("step stack empty");
             assert_eq!(cur_step.downcast_ref(), Some(&step));
         }
-        self.verbose_than(1, || println!("{}< {:?}", "  ".repeat(self.stack.borrow().len()), step));
+        self.verbose_than(1, || {
+            eprintln!("{}< {:?}", "  ".repeat(self.stack.borrow().len()), step)
+        });
         self.cache.put(step, out.clone());
         out
     }

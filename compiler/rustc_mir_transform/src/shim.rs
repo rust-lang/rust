@@ -747,8 +747,8 @@ fn build_call_shim<'tcx>(
         sig.inputs_and_output = tcx.mk_type_list(&inputs_and_output);
     }
 
-    // FIXME(eddyb) avoid having this snippet both here and in
-    // `Instance::fn_sig` (introduce `InstanceKind::fn_sig`?).
+    // FIXME: Avoid having to adjust the signature both here and in
+    // `fn_sig_for_fn_abi`.
     if let ty::InstanceKind::VTableShim(..) = instance {
         // Modify fn(self, ...) to fn(self: *mut Self, ...)
         let mut inputs_and_output = sig.inputs_and_output.to_vec();

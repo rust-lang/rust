@@ -35,7 +35,7 @@ declare_clippy_lint! {
     /// let mut child = Command::new("ls").spawn().expect("failed to execute child");
     /// child.wait().expect("failed to wait on child");
     /// ```
-    #[clippy::version = "1.74.0"]
+    #[clippy::version = "1.83.0"]
     pub ZOMBIE_PROCESSES,
     suspicious,
     "not waiting on a spawned child process"

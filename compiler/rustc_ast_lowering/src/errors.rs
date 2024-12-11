@@ -38,6 +38,14 @@ pub(crate) struct InvalidAbi {
     pub suggestion: Option<InvalidAbiSuggestion>,
 }
 
+#[derive(Diagnostic)]
+#[diag(ast_lowering_default_field_in_tuple)]
+pub(crate) struct TupleStructWithDefault {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
 pub(crate) struct InvalidAbiReason(pub &'static str);
 
 impl Subdiagnostic for InvalidAbiReason {
@@ -111,14 +119,6 @@ pub(crate) struct MisplacedAssocTyBinding {
 pub(crate) struct UnderscoreExprLhsAssign {
     #[primary_span]
     #[label]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(ast_lowering_base_expression_double_dot, code = E0797)]
-pub(crate) struct BaseExpressionDoubleDot {
-    #[primary_span]
-    #[suggestion(code = "/* expr */", applicability = "has-placeholders", style = "verbose")]
     pub span: Span,
 }
 

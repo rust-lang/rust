@@ -66,7 +66,7 @@ pub struct QuerySystem<'tcx> {
     /// Do not access this directly. It is only meant to be used by
     /// `DepGraph::try_mark_green()` and the query infrastructure.
     /// This is `None` if we are not incremental compilation mode
-    pub on_disk_cache: Option<OnDiskCache<'tcx>>,
+    pub on_disk_cache: Option<OnDiskCache>,
 
     pub fns: QuerySystemFns<'tcx>,
 

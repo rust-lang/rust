@@ -136,6 +136,9 @@ pub trait Ty<I: Interner<Ty = Self>>:
         matches!(self.kind(), ty::FnPtr(..))
     }
 
+    /// Checks whether this type is an ADT that has unsafe fields.
+    fn has_unsafe_fields(self) -> bool;
+
     fn fn_sig(self, interner: I) -> ty::Binder<I, ty::FnSig<I>> {
         match self.kind() {
             ty::FnPtr(sig_tys, hdr) => sig_tys.with(hdr),

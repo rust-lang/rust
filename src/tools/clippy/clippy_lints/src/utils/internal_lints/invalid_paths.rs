@@ -5,8 +5,8 @@ use rustc_hir as hir;
 use rustc_hir::Item;
 use rustc_hir::def::DefKind;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::FloatTy;
 use rustc_middle::ty::fast_reject::SimplifiedType;
+use rustc_middle::ty::{self, FloatTy};
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::Symbol;
 
@@ -32,9 +32,12 @@ impl<'tcx> LateLintPass<'tcx> for InvalidPaths {
         let mod_name = &cx.tcx.item_name(local_def_id.to_def_id());
         if mod_name.as_str() == "paths"
             && let hir::ItemKind::Const(.., body_id) = item.kind
-            && let Some(Constant::Vec(path)) =
-                ConstEvalCtxt::with_env(cx.tcx, cx.tcx.param_env(item.owner_id), cx.tcx.typeck(item.owner_id))
-                    .eval_simple(cx.tcx.hir().body(body_id).value)
+            && let Some(Constant::Vec(path)) = ConstEvalCtxt::with_env(
+                cx.tcx,
+                ty::TypingEnv::post_analysis(cx.tcx, item.owner_id),
+                cx.tcx.typeck(item.owner_id),
+            )
+            .eval_simple(cx.tcx.hir().body(body_id).value)
             && let Some(path) = path
                 .iter()
                 .map(|x| {

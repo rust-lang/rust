@@ -56,10 +56,7 @@ fn rustfmt(src: &Path, rustfmt: &Path, paths: &[PathBuf], check: bool) -> impl F
 fn get_rustfmt_version(build: &Builder<'_>) -> Option<(String, PathBuf)> {
     let stamp_file = build.out.join("rustfmt.stamp");
 
-    let mut cmd = command(match build.initial_rustfmt() {
-        Some(p) => p,
-        None => return None,
-    });
+    let mut cmd = command(build.initial_rustfmt()?);
     cmd.arg("--version");
 
     let output = cmd.allow_failure().run_capture(build);
@@ -110,10 +107,10 @@ fn print_paths(verb: &str, adjective: Option<&str>, paths: &[String]) {
         if let Some(adjective) = adjective { format!("{adjective} ") } else { String::new() };
     if len <= 10 {
         for path in paths {
-            println!("fmt: {verb} {adjective}file {path}");
+            eprintln!("fmt: {verb} {adjective}file {path}");
         }
     } else {
-        println!("fmt: {verb} {len} {adjective}files");
+        eprintln!("fmt: {verb} {len} {adjective}files");
     }
 }
 
@@ -202,7 +199,7 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
                 match get_modified_rs_files(build) {
                     Ok(Some(files)) => {
                         if files.is_empty() {
-                            println!("fmt info: No modified files detected for formatting.");
+                            eprintln!("fmt info: No modified files detected for formatting.");
                             return;
                         }
 
@@ -279,7 +276,7 @@ pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
         Box::new(move |entry| {
             let cwd = std::env::current_dir();
             let entry = t!(entry);
-            if entry.file_type().map_or(false, |t| t.is_file()) {
+            if entry.file_type().is_some_and(|t| t.is_file()) {
                 formatted_paths_ref.lock().unwrap().push({
                     // `into_path` produces an absolute path. Try to strip `cwd` to get a shorter
                     // relative path.

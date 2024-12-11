@@ -712,7 +712,7 @@ fn test_unstable_options_tracking_hash() {
     untracked!(no_analysis, true);
     untracked!(no_leak_check, true);
     untracked!(no_parallel_backend, true);
-    untracked!(parse_only, true);
+    untracked!(parse_crate_root_only, true);
     // `pre_link_arg` is omitted because it just forwards to `pre_link_args`.
     untracked!(pre_link_args, vec![String::from("abc"), String::from("def")]);
     untracked!(print_codegen_stats, true);
@@ -771,6 +771,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(crate_attr, vec!["abc".to_string()]);
     tracked!(cross_crate_inline_threshold, InliningThreshold::Always);
     tracked!(debug_info_for_profiling, true);
+    tracked!(debug_info_type_line_numbers, true);
     tracked!(default_visibility, Some(rustc_target::spec::SymbolVisibility::Hidden));
     tracked!(dep_info_omit_d_target, true);
     tracked!(direct_access_external_data, Some(true));
@@ -831,6 +832,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(precise_enum_drop_elaboration, false);
     tracked!(profile_sample_use, Some(PathBuf::from("abc")));
     tracked!(profiler_runtime, "abc".to_string());
+    tracked!(reg_struct_return, true);
     tracked!(regparm, Some(3));
     tracked!(relax_elf_relocations, Some(true));
     tracked!(remap_cwd_prefix, Some(PathBuf::from("abc")));
@@ -843,7 +845,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(sanitizer_recover, SanitizerSet::ADDRESS);
     tracked!(saturating_float_casts, Some(true));
     tracked!(share_generics, Some(true));
-    tracked!(show_span, Some(String::from("abc")));
     tracked!(simulate_remapped_rust_src_base, Some(PathBuf::from("/rustc/abc")));
     tracked!(small_data_threshold, Some(16));
     tracked!(split_lto_unit, Some(true));

@@ -1,5 +1,5 @@
 //@ aux-build:make-macro.rs
-//@ aux-build:meta-macro.rs
+//@ proc-macro: meta-macro.rs
 //@ edition:2018
 //@ compile-flags: -Z span-debug -Z macro-backtrace -Z unpretty=expanded,hygiene -Z trim-diagnostic-paths=no
 //@ check-pass

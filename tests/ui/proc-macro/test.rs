@@ -1,5 +1,5 @@
 //@ check-pass
-//@ aux-build:api/mod.rs
+//@ proc-macro: api/proc_macro_api_tests.rs
 //@ edition: 2021
 
 //! This is for everything that *would* be a #[test] inside of libproc_macro,

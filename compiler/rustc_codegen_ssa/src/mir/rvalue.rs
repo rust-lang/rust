@@ -478,8 +478,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     def_id,
                                     args,
                                 )
-                                .unwrap()
-                                .polymorphize(bx.cx().tcx());
+                                .unwrap();
                                 OperandValue::Immediate(bx.get_fn_addr(instance))
                             }
                             _ => bug!("{} cannot be reified to a fn ptr", operand.layout.ty),
@@ -493,8 +492,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     def_id,
                                     args,
                                     ty::ClosureKind::FnOnce,
-                                )
-                                .polymorphize(bx.cx().tcx());
+                                );
                                 OperandValue::Immediate(bx.cx().get_fn_addr(instance))
                             }
                             _ => bug!("{} cannot be cast to a fn ptr", operand.layout.ty),

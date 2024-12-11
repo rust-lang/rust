@@ -5,7 +5,7 @@ use clippy_utils::higher::ForLoop;
 use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::source::snippet;
 use rustc_errors::Applicability;
-use rustc_hir::{Block, Destination, Expr, ExprKind, HirId, InlineAsmOperand, Pat, Stmt, StmtKind};
+use rustc_hir::{Block, Destination, Expr, ExprKind, HirId, InlineAsmOperand, Pat, Stmt, StmtKind, StructTailExpr};
 use rustc_lint::LateContext;
 use rustc_span::{Span, sym};
 use std::iter::once;
@@ -164,7 +164,7 @@ fn never_loop_expr<'tcx>(
         },
         ExprKind::Struct(_, fields, base) => {
             let fields = never_loop_expr_all(cx, fields.iter().map(|f| f.expr), local_labels, main_loop_id);
-            if let Some(base) = base {
+            if let StructTailExpr::Base(base) = base {
                 combine_seq(fields, || never_loop_expr(cx, base, local_labels, main_loop_id))
             } else {
                 fields

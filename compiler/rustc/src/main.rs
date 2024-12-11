@@ -43,6 +43,8 @@ fn main() {
     {
         use std::os::raw::{c_int, c_void};
 
+        use tikv_jemalloc_sys as jemalloc_sys;
+
         #[used]
         static _F1: unsafe extern "C" fn(usize, usize) -> *mut c_void = jemalloc_sys::calloc;
         #[used]

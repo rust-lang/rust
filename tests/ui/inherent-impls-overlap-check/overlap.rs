@@ -1,4 +1,4 @@
-//@ aux-build:repeat.rs
+//@ proc-macro: repeat.rs
 
 #![allow(unused)]
 

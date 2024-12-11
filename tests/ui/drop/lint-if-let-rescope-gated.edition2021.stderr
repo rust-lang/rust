@@ -1,5 +1,5 @@
 error: `if let` assigns a shorter lifetime since Edition 2024
-  --> $DIR/lint-if-let-rescope-gated.rs:27:8
+  --> $DIR/lint-if-let-rescope-gated.rs:26:8
    |
 LL |     if let Some(_value) = Droppy.get() {
    |        ^^^^^^^^^^^^^^^^^^^------^^^^^^
@@ -9,12 +9,12 @@ LL |     if let Some(_value) = Droppy.get() {
    = warning: this changes meaning in Rust 2024
    = note: for more information, see issue #124085 <https://github.com/rust-lang/rust/issues/124085>
 help: the value is now dropped here in Edition 2024
-  --> $DIR/lint-if-let-rescope-gated.rs:31:5
+  --> $DIR/lint-if-let-rescope-gated.rs:30:5
    |
 LL |     } else {
    |     ^
 note: the lint level is defined here
-  --> $DIR/lint-if-let-rescope-gated.rs:11:9
+  --> $DIR/lint-if-let-rescope-gated.rs:10:9
    |
 LL | #![deny(if_let_rescope)]
    |         ^^^^^^^^^^^^^^

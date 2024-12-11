@@ -1,31 +1,32 @@
 error[E0277]: the trait bound `NonTrivialDrop: const Destruct` is not satisfied
-  --> $DIR/const-drop-fail.rs:27:23
+  --> $DIR/const-drop-fail.rs:32:5
    |
-LL |           const _: () = check($exp);
-   |                         ^^^^^^^^^^^
+LL |         const _: () = check($exp);
+   |                       ----- required by a bound introduced by this call
 ...
-LL | / check_all! {
-LL | |     NonTrivialDrop,
-LL | |     ConstImplWithDropGlue(NonTrivialDrop),
-LL | | }
-   | |_- in this macro invocation
+LL |     NonTrivialDrop,
+   |     ^^^^^^^^^^^^^^
    |
-   = note: this error originates in the macro `check_all` (in Nightly builds, run with -Z macro-backtrace for more info)
+note: required by a bound in `check`
+  --> $DIR/const-drop-fail.rs:23:19
+   |
+LL | const fn check<T: ~const Destruct>(_: T) {}
+   |                   ^^^^^^ required by this bound in `check`
 
 error[E0277]: the trait bound `NonTrivialDrop: const Destruct` is not satisfied
-  --> $DIR/const-drop-fail.rs:27:23
+  --> $DIR/const-drop-fail.rs:34:5
    |
-LL |           const _: () = check($exp);
-   |                         ^^^^^^^^^^^
+LL |         const _: () = check($exp);
+   |                       ----- required by a bound introduced by this call
 ...
-LL | / check_all! {
-LL | |     NonTrivialDrop,
-LL | |     ConstImplWithDropGlue(NonTrivialDrop),
-LL | | }
-   | |_- in this macro invocation
+LL |     ConstImplWithDropGlue(NonTrivialDrop),
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-   = note: this error originates in the macro `check_all` (in Nightly builds, run with -Z macro-backtrace for more info)
+note: required by a bound in `check`
+  --> $DIR/const-drop-fail.rs:23:19
+   |
+LL | const fn check<T: ~const Destruct>(_: T) {}
+   |                   ^^^^^^ required by this bound in `check`
 
 error: aborting due to 2 previous errors
 

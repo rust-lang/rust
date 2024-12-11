@@ -2,7 +2,7 @@
 // without it being recognized as an unknown macro variable.
 
 //@ check-pass
-//@ aux-build:generate-dollar-ident.rs
+//@ proc-macro: generate-dollar-ident.rs
 
 extern crate generate_dollar_ident;
 use generate_dollar_ident::*;

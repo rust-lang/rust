@@ -1554,7 +1554,6 @@ pub(crate) mod builtin {
     #[unstable(feature = "autodiff", issue = "124509")]
     #[allow_internal_unstable(rustc_attrs)]
     #[rustc_builtin_macro]
-    #[cfg(not(bootstrap))]
     pub macro autodiff($item:item) {
         /* compiler built-in */
     }

@@ -2,7 +2,7 @@
 
 //@ check-pass
 //@ edition:2018
-//@ aux-build:test-macros.rs
+//@ proc-macro: test-macros.rs
 
 #![no_std] // Don't load unnecessary hygiene information from std
 extern crate std;

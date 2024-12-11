@@ -1,0 +1,10 @@
+// MIR for `constant` after built
+
+fn constant() -> () {
+    debug scalar => const 5_usize;
+    let mut _0: ();
+
+    bb0: {
+        return;
+    }
+}

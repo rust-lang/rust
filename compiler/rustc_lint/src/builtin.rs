@@ -586,7 +586,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
                 return;
             }
         }
-        if ty.is_copy_modulo_regions(cx.tcx, cx.typing_env()) {
+        if cx.type_is_copy_modulo_regions(ty) {
             return;
         }
         if type_implements_negative_copy_modulo_regions(cx.tcx, ty, cx.typing_env()) {
@@ -625,6 +625,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
             cx.param_env,
             ty,
             traits::ObligationCause::misc(item.span, item.owner_id.def_id),
+            hir::Safety::Safe,
         )
         .is_ok()
         {

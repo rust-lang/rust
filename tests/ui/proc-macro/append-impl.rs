@@ -1,5 +1,5 @@
 //@ run-pass
-//@ aux-build:append-impl.rs
+//@ proc-macro: append-impl.rs
 
 #![allow(warnings)]
 

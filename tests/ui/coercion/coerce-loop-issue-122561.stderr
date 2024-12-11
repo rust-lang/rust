@@ -1,5 +1,5 @@
 warning: denote infinite loops with `loop { ... }`
-  --> $DIR/coerce-loop-issue-122561.rs:48:5
+  --> $DIR/coerce-loop-issue-122561.rs:47:5
    |
 LL |     while true {
    |     ^^^^^^^^^^ help: use `loop`
@@ -7,56 +7,10 @@ LL |     while true {
    = note: `#[warn(while_true)]` on by default
 
 warning: denote infinite loops with `loop { ... }`
-  --> $DIR/coerce-loop-issue-122561.rs:72:5
+  --> $DIR/coerce-loop-issue-122561.rs:71:5
    |
 LL |     while true {
    |     ^^^^^^^^^^ help: use `loop`
-
-error[E0658]: `for` is not allowed in a `const`
-  --> $DIR/coerce-loop-issue-122561.rs:41:24
-   |
-LL | fn for_in_arg(a: &[(); for x in 0..2 {}]) -> bool {
-   |                        ^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #87575 <https://github.com/rust-lang/rust/issues/87575> for more information
-   = help: add `#![feature(const_for)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: `for` is not allowed in a `const`
-  --> $DIR/coerce-loop-issue-122561.rs:86:5
-   |
-LL | /     for i in 0.. {
-LL | |
-LL | |
-LL | |     }
-   | |_____^
-   |
-   = note: see issue #87575 <https://github.com/rust-lang/rust/issues/87575> for more information
-   = help: add `#![feature(const_for)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: `for` is not allowed in a `const`
-  --> $DIR/coerce-loop-issue-122561.rs:94:9
-   |
-LL | /         for i in 0..5 {
-LL | |
-LL | |
-LL | |         }
-   | |_________^
-   |
-   = note: see issue #87575 <https://github.com/rust-lang/rust/issues/87575> for more information
-   = help: add `#![feature(const_for)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: `for` is not allowed in a `const`
-  --> $DIR/coerce-loop-issue-122561.rs:107:23
-   |
-LL |     let _ = |a: &[(); for x in 0..2 {}]| {};
-   |                       ^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #87575 <https://github.com/rust-lang/rust/issues/87575> for more information
-   = help: add `#![feature(const_for)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0308]: mismatched types
   --> $DIR/coerce-loop-issue-122561.rs:41:24
@@ -71,10 +25,9 @@ LL | fn for_in_arg(a: &[(); for x in 0..2 {} /* `usize` value */]) -> bool {
    |                                         +++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:86:5
+  --> $DIR/coerce-loop-issue-122561.rs:85:5
    |
 LL | /     for i in 0.. {
-LL | |
 LL | |
 LL | |     }
    | |_____^ expected `i32`, found `()`
@@ -174,7 +127,7 @@ LL | fn for_single_line() -> bool { for i in 0.. { return false; } /* `bool` val
    |                                                               ++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:48:5
+  --> $DIR/coerce-loop-issue-122561.rs:47:5
    |
 LL |   fn while_inifinite() -> bool {
    |                           ---- expected `bool` because of return type
@@ -193,7 +146,7 @@ LL +     /* `bool` value */
    |
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:57:5
+  --> $DIR/coerce-loop-issue-122561.rs:56:5
    |
 LL |   fn while_finite() -> bool {
    |                        ---- expected `bool` because of return type
@@ -213,7 +166,7 @@ LL +     /* `bool` value */
    |
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:65:5
+  --> $DIR/coerce-loop-issue-122561.rs:64:5
    |
 LL |   fn while_zero_times() -> bool {
    |                            ---- expected `bool` because of return type
@@ -231,7 +184,7 @@ LL +     /* `bool` value */
    |
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:72:5
+  --> $DIR/coerce-loop-issue-122561.rs:71:5
    |
 LL |   fn while_never_type() -> ! {
    |                            - expected `!` because of return type
@@ -251,10 +204,9 @@ LL +     /* `loop {}` or `panic!("...")` */
    |
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:94:9
+  --> $DIR/coerce-loop-issue-122561.rs:92:9
    |
 LL | /         for i in 0..5 {
-LL | |
 LL | |
 LL | |         }
    | |_________^ expected `usize`, found `()`
@@ -267,7 +219,7 @@ LL +         /* `usize` value */
    |
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:101:9
+  --> $DIR/coerce-loop-issue-122561.rs:98:9
    |
 LL | /         while false {
 LL | |
@@ -282,7 +234,7 @@ LL +         /* `usize` value */
    |
 
 error[E0308]: mismatched types
-  --> $DIR/coerce-loop-issue-122561.rs:107:23
+  --> $DIR/coerce-loop-issue-122561.rs:104:23
    |
 LL |     let _ = |a: &[(); for x in 0..2 {}]| {};
    |                       ^^^^^^^^^^^^^^^^ expected `usize`, found `()`
@@ -293,7 +245,6 @@ help: consider returning a value here
 LL |     let _ = |a: &[(); for x in 0..2 {} /* `usize` value */]| {};
    |                                        +++++++++++++++++++
 
-error: aborting due to 18 previous errors; 2 warnings emitted
+error: aborting due to 14 previous errors; 2 warnings emitted
 
-Some errors have detailed explanations: E0308, E0658.
-For more information about an error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0308`.

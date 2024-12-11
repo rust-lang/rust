@@ -2,7 +2,6 @@
 //@[e2015] check-pass
 //@[e2024] check-fail
 //@[e2024] edition:2024
-//@[e2024] compile-flags: -Zunstable-options
 
 use std::{marker, mem, ptr};
 

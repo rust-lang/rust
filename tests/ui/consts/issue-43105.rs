@@ -5,8 +5,7 @@ const NUM: u8 = xyz();
 
 fn main() {
     match 1 {
-        NUM => unimplemented!(),
-        //~^ ERROR could not evaluate constant pattern
+        NUM => unimplemented!(), // ok, the `const` already emitted an error
         _ => unimplemented!(),
     }
 }

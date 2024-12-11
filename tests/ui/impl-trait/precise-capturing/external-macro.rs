@@ -2,7 +2,7 @@
 // has an RPIT will not fail when the call-site is 2024.
 // https://github.com/rust-lang/rust/issues/132917
 
-//@ aux-crate: no_use_pm=no-use-pm.rs
+//@ proc-macro: no-use-pm.rs
 //@ aux-crate: no_use_macro=no-use-macro.rs
 //@ edition: 2024
 //@ check-pass

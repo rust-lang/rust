@@ -1,4 +1,4 @@
-//@ aux-build:raw-ident.rs
+//@ proc-macro: raw-ident.rs
 
 #[macro_use] extern crate raw_ident;
 

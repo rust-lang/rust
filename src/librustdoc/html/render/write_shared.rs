@@ -43,7 +43,6 @@ use crate::config::{EmitType, PathToParts, RenderOptions, ShouldMerge};
 use crate::docfs::PathError;
 use crate::error::Error;
 use crate::formats::Impl;
-use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::format::Buffer;
 use crate::html::layout;
@@ -62,13 +61,12 @@ pub(crate) fn write_shared(
     tcx: TyCtxt<'_>,
 ) -> Result<(), Error> {
     // NOTE(EtomicBomb): I don't think we need sync here because no read-after-write?
-    Rc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(true);
+    cx.shared.fs.set_sync_only(true);
     let lock_file = cx.dst.join(".lock");
     // Write shared runs within a flock; disable thread dispatching of IO temporarily.
     let _lock = try_err!(flock::Lock::new(&lock_file, true, true, true), &lock_file);
 
-    let SerializedSearchIndex { index, desc } =
-        build_index(krate, &mut Rc::get_mut(&mut cx.shared).unwrap().cache, tcx);
+    let SerializedSearchIndex { index, desc } = build_index(krate, &mut cx.shared.cache, tcx);
     write_search_desc(cx, krate, &desc)?; // does not need to be merged
 
     let crate_name = krate.name(cx.tcx());
@@ -104,7 +102,7 @@ pub(crate) fn write_shared(
             &cx.shared.style_files,
             cx.shared.layout.css_file_extension.as_deref(),
             &cx.shared.resource_suffix,
-            cx.include_sources,
+            cx.info.include_sources,
         )?;
         match &opt.index_page {
             Some(index_page) if opt.enable_index_page => {
@@ -128,7 +126,7 @@ pub(crate) fn write_shared(
         }
     }
 
-    Rc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(false);
+    cx.shared.fs.set_sync_only(false);
     Ok(())
 }
 
@@ -597,13 +595,11 @@ impl TypeAliasPart {
         krate: &Crate,
         crate_name_json: &OrderedJson,
     ) -> Result<PartsAndLocations<Self>, Error> {
-        let cache = &Rc::clone(&cx.shared).cache;
         let mut path_parts = PartsAndLocations::default();
 
         let mut type_impl_collector = TypeImplCollector {
             aliased_types: IndexMap::default(),
             visited_aliases: FxHashSet::default(),
-            cache,
             cx,
         };
         DocVisitor::visit_crate(&mut type_impl_collector, krate);
@@ -625,14 +621,14 @@ impl TypeAliasPart {
                     // each type alias, and if it gives a different result, split the impl
                     for &(type_alias_fqp, type_alias_item) in type_aliases {
                         let mut buf = Buffer::html();
-                        cx.id_map = Default::default();
-                        cx.deref_id_map = Default::default();
+                        cx.id_map.borrow_mut().clear();
+                        cx.deref_id_map.borrow_mut().clear();
                         let target_did = impl_
                             .inner_impl()
                             .trait_
                             .as_ref()
                             .map(|trait_| trait_.def_id())
-                            .or_else(|| impl_.inner_impl().for_.def_id(cache));
+                            .or_else(|| impl_.inner_impl().for_.def_id(&cx.shared.cache));
                         let provided_methods;
                         let assoc_link = if let Some(target_did) = target_did {
                             provided_methods = impl_.inner_impl().provided_trait_methods(cx.tcx());
@@ -720,7 +716,7 @@ impl TraitAliasPart {
     }
 
     fn get(
-        cx: &mut Context<'_>,
+        cx: &Context<'_>,
         crate_name_json: &OrderedJson,
     ) -> Result<PartsAndLocations<Self>, Error> {
         let cache = &cx.shared.cache;
@@ -828,8 +824,7 @@ struct TypeImplCollector<'cx, 'cache, 'item> {
     /// Map from DefId-of-aliased-type to its data.
     aliased_types: IndexMap<DefId, AliasedType<'cache, 'item>>,
     visited_aliases: FxHashSet<DefId>,
-    cache: &'cache Cache,
-    cx: &'cache mut Context<'cx>,
+    cx: &'cache Context<'cx>,
 }
 
 /// Data for an aliased type.
@@ -868,7 +863,7 @@ struct AliasedTypeImpl<'cache, 'item> {
 impl<'item> DocVisitor<'item> for TypeImplCollector<'_, '_, 'item> {
     fn visit_item(&mut self, it: &'item Item) {
         self.visit_item_recur(it);
-        let cache = self.cache;
+        let cache = &self.cx.shared.cache;
         let ItemKind::TypeAliasItem(ref t) = it.kind else { return };
         let Some(self_did) = it.item_id.as_def_id() else { return };
         if !self.visited_aliases.insert(self_did) {

@@ -82,7 +82,7 @@ use crate::ty::print::{PrintTraitRefExt, describe_as_module};
 use crate::ty::util::AlwaysRequiresDrop;
 use crate::ty::{
     self, CrateInherentImpls, GenericArg, GenericArgsRef, PseudoCanonicalInput, Ty, TyCtxt,
-    TyCtxtFeed, UnusedGenericParams,
+    TyCtxtFeed,
 };
 use crate::{dep_graph, mir, thir};
 
@@ -276,7 +276,7 @@ rustc_queries! {
     }
 
     /// The root query triggering all analysis passes like typeck or borrowck.
-    query analysis(key: ()) -> Result<(), ErrorGuaranteed> {
+    query analysis(key: ()) {
         eval_always
         desc { "running analysis passes on this crate" }
     }
@@ -581,7 +581,7 @@ rustc_queries! {
     /// Summarizes coverage IDs inserted by the `InstrumentCoverage` MIR pass
     /// (for compiler option `-Cinstrument-coverage`), after MIR optimizations
     /// have had a chance to potentially remove some of them.
-    query coverage_ids_info(key: ty::InstanceKind<'tcx>) -> &'tcx mir::CoverageIdsInfo {
+    query coverage_ids_info(key: ty::InstanceKind<'tcx>) -> &'tcx mir::coverage::CoverageIdsInfo {
         desc { |tcx| "retrieving coverage IDs info from MIR for `{}`", tcx.def_path_str(key.def_id()) }
         arena_cache
     }
@@ -916,6 +916,12 @@ rustc_queries! {
         cache_on_disk_if { true }
     }
 
+    /// Checks well-formedness of tail calls (`become f()`).
+    query check_tail_calls(key: LocalDefId) -> Result<(), rustc_errors::ErrorGuaranteed> {
+        desc { |tcx| "tail-call-checking `{}`", tcx.def_path_str(key) }
+        cache_on_disk_if { true }
+    }
+
     /// Returns the types assumed to be well formed while "inside" of the given item.
     ///
     /// Note that we've liberated the late bound regions of function signatures, so
@@ -956,11 +962,6 @@ rustc_queries! {
     /// Checks for uses of unstable APIs in the module.
     query check_mod_unstable_api_usage(key: LocalModDefId) {
         desc { |tcx| "checking for unstable API usage in {}", describe_as_module(key, tcx) }
-    }
-
-    /// Checks the const bodies in the module for illegal operations (e.g. `if` or `loop`).
-    query check_mod_const_bodies(key: LocalModDefId) {
-        desc { |tcx| "checking consts in {}", describe_as_module(key, tcx) }
     }
 
     /// Checks the loops in the module.
@@ -1086,6 +1087,8 @@ rustc_queries! {
     }
 
     /// Computes the tag (if any) for a given type and variant.
+    /// `None` means that the variant doesn't need a tag (because it is niched).
+    /// Will panic for uninhabited variants.
     query tag_for_variant(
         key: (Ty<'tcx>, abi::VariantIdx)
     ) -> Option<ty::ScalarInt> {
@@ -2045,15 +2048,6 @@ rustc_queries! {
         desc { "getting codegen unit `{sym}`" }
     }
 
-    query unused_generic_params(key: ty::InstanceKind<'tcx>) -> UnusedGenericParams {
-        cache_on_disk_if { key.def_id().is_local() }
-        desc {
-            |tcx| "determining which generic parameters are unused by `{}`",
-                tcx.def_path_str(key.def_id())
-        }
-        separate_provide_extern
-    }
-
     query backend_optimization_level(_: ()) -> OptLevel {
         desc { "optimization level used by backend" }
     }
@@ -2311,10 +2305,13 @@ rustc_queries! {
         desc { "checking validity requirement for `{}`: {}", key.1.value, key.0 }
     }
 
-    query compare_impl_const(
-        key: (LocalDefId, DefId)
-    ) -> Result<(), ErrorGuaranteed> {
-        desc { |tcx| "checking assoc const `{}` has the same type as trait item", tcx.def_path_str(key.0) }
+    /// This takes the def-id of an associated item from a impl of a trait,
+    /// and checks its validity against the trait item it corresponds to.
+    ///
+    /// Any other def id will ICE.
+    query compare_impl_item(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
+        desc { |tcx| "checking assoc item `{}` is compatible with trait definition", tcx.def_path_str(key) }
+        ensure_forwards_result_if_red
     }
 
     query deduced_param_attrs(def_id: DefId) -> &'tcx [ty::DeducedParamAttrs] {

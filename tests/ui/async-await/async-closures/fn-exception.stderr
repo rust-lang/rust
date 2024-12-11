@@ -9,8 +9,8 @@ LL |     test(unsafety);
 note: required by a bound in `test`
   --> $DIR/fn-exception.rs:16:17
    |
-LL | fn test(f: impl async Fn()) {}
-   |                 ^^^^^^^^^^ required by this bound in `test`
+LL | fn test(f: impl AsyncFn()) {}
+   |                 ^^^^^^^^^ required by this bound in `test`
 
 error[E0277]: the trait bound `extern "C" fn() -> Pin<Box<(dyn Future<Output = ()> + 'static)>> {abi}: AsyncFn()` is not satisfied
   --> $DIR/fn-exception.rs:20:10
@@ -23,8 +23,8 @@ LL |     test(abi);
 note: required by a bound in `test`
   --> $DIR/fn-exception.rs:16:17
    |
-LL | fn test(f: impl async Fn()) {}
-   |                 ^^^^^^^^^^ required by this bound in `test`
+LL | fn test(f: impl AsyncFn()) {}
+   |                 ^^^^^^^^^ required by this bound in `test`
 
 error: aborting due to 2 previous errors
 

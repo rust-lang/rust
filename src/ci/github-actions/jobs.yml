@@ -43,7 +43,7 @@ runners:
     os: windows-2022-16core-64gb
     <<: *base-job
 
-  - &job-aarch64-linux
+  - &job-linux-8c-aarch64
     os: ubuntu-22.04-arm64-8core-32gb
 
 envs:
@@ -57,6 +57,22 @@ envs:
     NO_LLVM_ASSERTIONS: 1
     NO_DEBUG_ASSERTIONS: 1
     NO_OVERFLOW_CHECKS: 1
+
+  # Different set of tests to run tests in parallel in multiple jobs.
+  stage_2_test_set1: &stage_2_test_set1
+    DOCKER_SCRIPT: >-
+      python3 ../x.py --stage 2 test
+      --skip compiler
+      --skip src
+
+  stage_2_test_set2: &stage_2_test_set2
+    DOCKER_SCRIPT: >-
+      python3 ../x.py --stage 2 test
+      --skip tests
+      --skip coverage-map
+      --skip coverage-run
+      --skip library
+      --skip tidyselftest
 
   production:
     &production
@@ -123,10 +139,10 @@ auto:
   #############################
 
   - image: aarch64-gnu
-    <<: *job-aarch64-linux
+    <<: *job-linux-8c-aarch64
 
   - image: aarch64-gnu-debug
-    <<: *job-aarch64-linux
+    <<: *job-linux-8c-aarch64
 
   - image: arm-android
     <<: *job-linux-4c
@@ -143,7 +159,7 @@ auto:
     <<: *job-linux-4c
 
   - image: dist-arm-linux
-    <<: *job-linux-8c
+    <<: *job-linux-8c-aarch64
 
   - image: dist-armhf-linux
     <<: *job-linux-4c
@@ -212,11 +228,42 @@ auto:
   - image: dist-x86_64-netbsd
     <<: *job-linux-4c
 
-  - image: i686-gnu
-    <<: *job-linux-8c
+  # The i686-gnu job is split into multiple jobs to run tests in parallel.
+  # i686-gnu-1 skips tests that run in i686-gnu-2.
+  - image: i686-gnu-1
+    env:
+      IMAGE: i686-gnu
+      <<: *stage_2_test_set1
+    <<: *job-linux-4c
 
-  - image: i686-gnu-nopt
-    <<: *job-linux-8c
+  # Skip tests that run in i686-gnu-1
+  - image: i686-gnu-2
+    env:
+      IMAGE: i686-gnu
+      <<: *stage_2_test_set2
+    <<: *job-linux-4c
+
+  # The i686-gnu-nopt job is split into multiple jobs to run tests in parallel.
+  # i686-gnu-nopt-1 skips tests that run in i686-gnu-nopt-2
+  - image: i686-gnu-nopt-1
+    env:
+      IMAGE: i686-gnu-nopt
+      <<: *stage_2_test_set1
+    <<: *job-linux-4c
+
+  # Skip tests that run in i686-gnu-nopt-1
+  - image: i686-gnu-nopt-2
+    env:
+      IMAGE: i686-gnu-nopt
+      DOCKER_SCRIPT: >-
+        python3 ../x.py test --stage 0 --config /config/nopt-std-config.toml library/std &&
+        python3 ../x.py --stage 2 test
+        --skip tests
+        --skip coverage-map
+        --skip coverage-run
+        --skip library
+        --skip tidyselftest
+    <<: *job-linux-4c
 
   - image: mingw-check
     <<: *job-linux-4c
@@ -338,6 +385,7 @@ auto:
         --set rust.jemalloc
         --set llvm.ninja=false
         --set rust.lto=thin
+        --set rust.codegen-units=1
       RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
       SELECT_XCODE: /Applications/Xcode_15.4.app
       USE_XCODE_CLANG: 1
@@ -439,14 +487,24 @@ auto:
       NO_DOWNLOAD_CI_LLVM: 1
     <<: *job-windows-8c
 
-  - image: x86_64-mingw
+  # x86_64-mingw is split into two jobs to run tests in parallel.
+  - image: x86_64-mingw-1
     env:
-      SCRIPT: make ci-mingw
+      SCRIPT: make ci-mingw-x
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
       # We are intentionally allowing an old toolchain on this builder (and that's
       # incompatible with LLVM downloads today).
       NO_DOWNLOAD_CI_LLVM: 1
-    <<: *job-windows-8c
+    <<: *job-windows
+
+  - image: x86_64-mingw-2
+    env:
+      SCRIPT: make ci-mingw-bootstrap
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
+      # We are intentionally allowing an old toolchain on this builder (and that's
+      # incompatible with LLVM downloads today).
+      NO_DOWNLOAD_CI_LLVM: 1
+    <<: *job-windows
 
   - image: dist-x86_64-msvc
     env:
