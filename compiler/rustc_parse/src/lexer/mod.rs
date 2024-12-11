@@ -83,7 +83,7 @@ pub(crate) fn lex_token_trees<'psess, 'src>(
             .filter_map(|unmatched_delim| make_unclosed_delims_error(unmatched_delim, psess))
             .collect();
         if let Err(errs) = res {
-            // Add unclosing delimiter or diff marker errors
+            // Add unclosing delimiter errors.
             buffer.extend(errs);
         }
         Err(buffer)
