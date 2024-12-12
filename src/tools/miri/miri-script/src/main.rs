@@ -69,6 +69,8 @@ pub enum Command {
     /// Runs the benchmarks from bench-cargo-miri in hyperfine. hyperfine needs to be installed.
     Bench {
         target: Option<String>,
+        /// When `true`, skip the `./miri install` step.
+        no_install: bool,
         /// List of benchmarks to run. By default all benchmarks are run.
         benches: Vec<String>,
     },
@@ -121,9 +123,11 @@ install`. Sets up the rpath such that the installed binary should work in any
 working directory. Note that the binaries are placed in the `miri` toolchain
 sysroot, to prevent conflicts with other toolchains.
 
-./miri bench [--target <target>] <benches>:
+./miri bench [--target <target>] [--no-install] <benches>:
 Runs the benchmarks from bench-cargo-miri in hyperfine. hyperfine needs to be installed.
 <benches> can explicitly list the benchmarks to run; by default, all of them are run.
+By default, this runs `./miri install` to ensure the latest local Miri is being benchmarked;
+`--no-install` can be used to skip that step.
 
 ./miri toolchain <flags>:
 Update and activate the rustup toolchain 'miri' to the commit given in the
@@ -218,16 +222,19 @@ fn main() -> Result<()> {
         Some("bench") => {
             let mut target = None;
             let mut benches = Vec::new();
+            let mut no_install = false;
             loop {
                 if let Some(val) = args.get_long_opt("target")? {
                     target = Some(val);
+                } else if args.get_long_flag("no-install")? {
+                    no_install = true;
                 } else if let Some(flag) = args.get_other() {
                     benches.push(flag);
                 } else {
                     break;
                 }
             }
-            Command::Bench { target, benches }
+            Command::Bench { target, benches, no_install }
         }
         Some("toolchain") => Command::Toolchain { flags: args.remainder() },
         Some("rustc-pull") => {
