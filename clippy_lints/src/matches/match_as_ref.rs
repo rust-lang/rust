@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{is_res_lang_ctor, path_res, peel_blocks};
 use rustc_errors::Applicability;
-use rustc_hir::{Arm, BindingMode, ByRef, Expr, ExprKind, LangItem, Mutability, PatKind, QPath};
+use rustc_hir::{Arm, BindingMode, ByRef, Expr, ExprKind, LangItem, Mutability, PatExpr, PatExprKind, PatKind, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 
@@ -59,7 +59,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr:
 fn is_none_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
     matches!(
         arm.pat.kind,
-        PatKind::Path(ref qpath) if is_res_lang_ctor(cx, cx.qpath_res(qpath, arm.pat.hir_id), LangItem::OptionNone)
+        PatKind::Expr(PatExpr { kind: PatExprKind::Path(qpath), .. }) if is_res_lang_ctor(cx, cx.qpath_res(qpath, arm.pat.hir_id), LangItem::OptionNone)
     )
 }
 

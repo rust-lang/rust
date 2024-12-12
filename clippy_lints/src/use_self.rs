@@ -10,7 +10,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_ty};
 use rustc_hir::{
     self as hir, AmbigArg, Expr, ExprKind, FnRetTy, FnSig, GenericArgsParentheses, GenericParam, GenericParamKind,
-    HirId, Impl, ImplItemKind, Item, ItemKind, Pat, PatKind, Path, QPath, Ty, TyKind,
+    HirId, Impl, ImplItemKind, Item, ItemKind, Pat, PatExpr, PatExprKind, PatKind, Path, QPath, Ty, TyKind,
 };
 use rustc_hir_analysis::lower_ty;
 use rustc_lint::{LateContext, LateLintPass};
@@ -258,7 +258,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             && self.msrv.meets(msrvs::TYPE_ALIAS_ENUM_VARIANTS)
             && let Some(&StackItem::Check { impl_id, .. }) = self.stack.last()
             // get the path from the pattern
-            && let PatKind::Path(QPath::Resolved(_, path))
+            && let PatKind::Expr(&PatExpr { kind: PatExprKind::Path(QPath::Resolved(_, path)), .. })
                  | PatKind::TupleStruct(QPath::Resolved(_, path), _, _)
                  | PatKind::Struct(QPath::Resolved(_, path), _, _) = pat.kind
             && cx.typeck_results().pat_ty(pat) == cx.tcx.type_of(impl_id).instantiate_identity()
