@@ -20,7 +20,7 @@ mod coverageinfo;
 pub mod debuginfo;
 mod intrinsic;
 mod locals;
-mod naked_asm;
+pub(crate) mod naked_asm;
 pub mod operand;
 pub mod place;
 mod rvalue;
@@ -169,11 +169,6 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     instance: Instance<'tcx>,
 ) {
     assert!(!instance.args.has_infer());
-
-    if cx.tcx().codegen_fn_attrs(instance.def_id()).flags.contains(CodegenFnAttrFlags::NAKED) {
-        crate::mir::naked_asm::codegen_naked_asm::<Bx::CodegenCx>(cx, instance);
-        return;
-    }
 
     let tcx = cx.tcx();
     let llfn = cx.get_fn(instance);
