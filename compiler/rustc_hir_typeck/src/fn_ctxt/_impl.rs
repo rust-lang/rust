@@ -147,13 +147,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut typeck = self.typeck_results.borrow_mut();
         let mut node_ty = typeck.node_types_mut();
         if let Some(ty) = node_ty.get(id)
-            && let Err(e) = ty.error_reported()
+            && ty.references_error()
         {
-            // Do not overwrite nodes that were already marked as `{type error}`. This allows us to
-            // silence unnecessary errors from obligations that were set earlier than a type error
-            // was produced, but that is overwritten by later analysis. This happens in particular
-            // for `Sized` obligations introduced in gather_locals. (#117846)
-            self.set_tainted_by_errors(e);
             return;
         }
 
