@@ -6,7 +6,6 @@ use proc_macro::bridge;
 use std::{fmt, fs, io, time::SystemTime};
 
 use libloading::Library;
-use memmap2::Mmap;
 use object::Object;
 use paths::{Utf8Path, Utf8PathBuf};
 use proc_macro_api::ProcMacroKind;
@@ -23,8 +22,8 @@ fn is_derive_registrar_symbol(symbol: &str) -> bool {
     symbol.contains(NEW_REGISTRAR_SYMBOL)
 }
 
-fn find_registrar_symbol(buffer: &[u8]) -> object::Result<Option<String>> {
-    Ok(object::File::parse(buffer)?
+fn find_registrar_symbol(obj: &object::File<'_>) -> object::Result<Option<String>> {
+    Ok(obj
         .exports()?
         .into_iter()
         .map(|export| export.name())
@@ -109,14 +108,15 @@ struct ProcMacroLibraryLibloading {
 
 impl ProcMacroLibraryLibloading {
     fn open(path: &Utf8Path) -> Result<Self, LoadProcMacroDylibError> {
-        let buffer = unsafe { Mmap::map(&fs::File::open(path)?)? };
+        let file = fs::File::open(path)?;
+        let file = unsafe { memmap2::Mmap::map(&file) }?;
+        let obj = object::File::parse(&*file)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+        let version_info = version::read_dylib_info(&obj)?;
         let symbol_name =
-            find_registrar_symbol(&buffer).map_err(invalid_data_err)?.ok_or_else(|| {
+            find_registrar_symbol(&obj).map_err(invalid_data_err)?.ok_or_else(|| {
                 invalid_data_err(format!("Cannot find registrar symbol in file {path}"))
             })?;
-
-        let version_info = version::read_dylib_info(&buffer)?;
-        drop(buffer);
 
         let lib = load_library(path).map_err(invalid_data_err)?;
         let proc_macros = crate::proc_macros::ProcMacros::from_lib(
