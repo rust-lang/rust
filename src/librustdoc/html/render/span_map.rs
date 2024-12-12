@@ -4,7 +4,7 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{ExprKind, HirId, Item, ItemKind, Mod, Node};
+use rustc_hir::{ExprKind, HirId, Item, ItemKind, Mod, Node, Pat, PatKind, QPath};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::hygiene::MacroKind;
@@ -189,6 +189,27 @@ impl SpanMapVisitor<'_> {
             self.matches.insert(span, link);
         }
     }
+
+    fn handle_pat(&mut self, p: &Pat<'_>) {
+        match p.kind {
+            PatKind::Binding(_, _, _, Some(p)) => self.handle_pat(p),
+            PatKind::Struct(qpath, _, _)
+            | PatKind::TupleStruct(qpath, _, _)
+            | PatKind::Path(qpath) => match qpath {
+                QPath::TypeRelative(_, path) if matches!(path.res, Res::Err) => {
+                    self.handle_call(path.hir_id, Some(p.hir_id), qpath.span());
+                }
+                QPath::Resolved(_, path) => self.handle_path(path),
+                _ => {}
+            },
+            PatKind::Or(pats) => {
+                for pat in pats {
+                    self.handle_pat(pat);
+                }
+            }
+            _ => {}
+        }
+    }
 }
 
 impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
@@ -204,6 +225,10 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
         }
         self.handle_path(path);
         intravisit::walk_path(self, path);
+    }
+
+    fn visit_pat(&mut self, p: &Pat<'tcx>) {
+        self.handle_pat(p);
     }
 
     fn visit_mod(&mut self, m: &'tcx Mod<'tcx>, span: Span, id: HirId) {
