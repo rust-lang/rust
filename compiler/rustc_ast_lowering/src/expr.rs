@@ -1391,7 +1391,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         None,
                     );
                     // Destructure like a unit struct.
-                    let unit_struct_pat = hir::PatKind::Path(qpath);
+                    let unit_struct_pat = hir::PatKind::Expr(self.arena.alloc(hir::PatExpr {
+                        kind: hir::PatExprKind::Path(qpath),
+                        hir_id: self.next_id(),
+                        span: self.lower_span(lhs.span),
+                    }));
                     return self.pat_without_dbm(lhs.span, unit_struct_pat);
                 }
             }
