@@ -1,3 +1,15 @@
+//! Bindings to the LLVM-C API (`LLVM*`), and to our own `extern "C"` wrapper
+//! functions around the unstable LLVM C++ API (`LLVMRust*`).
+//!
+//! ## Passing pointer/length strings as `*const c_uchar`
+//!
+//! Normally it's a good idea for Rust-side bindings to match the corresponding
+//! C-side function declarations as closely as possible. But when passing `&str`
+//! or `&[u8]` data as a pointer/length pair, it's more convenient to declare
+//! the Rust-side pointer as `*const c_uchar` instead of `*const c_char`.
+//! Both pointer types have the same ABI, and using `*const c_uchar` avoids
+//! the need for an extra cast from `*const u8` on the Rust side.
+
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 
