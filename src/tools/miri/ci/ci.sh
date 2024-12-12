@@ -73,7 +73,7 @@ function run_tests {
   fi
   if [ -n "${TEST_BENCH-}" ]; then
     # Check that the benchmarks build and run, but only once.
-    time HYPERFINE="hyperfine -w0 -r1" ./miri bench $TARGET_FLAG
+    time HYPERFINE="hyperfine -w0 -r1 --show-output" ./miri bench $TARGET_FLAG
   fi
   # Smoke-test `./miri run --dep`.
   ./miri run $TARGET_FLAG --dep tests/pass-dep/getrandom.rs
