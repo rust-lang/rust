@@ -39,7 +39,7 @@ use crate::{Idx, IndexSlice};
 #[repr(transparent)]
 pub struct IndexVec<I: Idx, T> {
     pub raw: Vec<T>,
-    _marker: PhantomData<fn(&I)>,
+    _marker: PhantomData<I>,
 }
 
 impl<I: Idx, T> IndexVec<I, T> {
