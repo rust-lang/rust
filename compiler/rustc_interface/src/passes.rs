@@ -19,7 +19,7 @@ use rustc_incremental::setup_dep_graph;
 use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore, unerased_lint_store};
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
-use rustc_middle::ty::{self, GlobalCtxt, RegisteredTools, TyCtxt};
+use rustc_middle::ty::{self, CurrentGcx, GlobalCtxt, RegisteredTools, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_parse::{
     new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal, validate_attr,
@@ -770,15 +770,14 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
     // subtyping for GlobalCtxt::enter to be allowed.
     let inner: Box<
         dyn for<'tcx> FnOnce(
-            &'tcx Compiler,
+            &'tcx Session,
+            CurrentGcx,
             &'tcx OnceLock<GlobalCtxt<'tcx>>,
             &'tcx WorkerLocal<Arena<'tcx>>,
             &'tcx WorkerLocal<rustc_hir::Arena<'tcx>>,
             F,
         ) -> T,
-    > = Box::new(move |compiler, gcx_cell, arena, hir_arena, f| {
-        let sess = &compiler.sess;
-
+    > = Box::new(move |sess, current_gcx, gcx_cell, arena, hir_arena, f| {
         TyCtxt::create_global_ctxt(
             gcx_cell,
             sess,
@@ -796,7 +795,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
                 incremental,
             ),
             providers.hooks,
-            compiler.current_gcx.clone(),
+            current_gcx,
             |tcx| {
                 let feed = tcx.create_crate_num(stable_crate_id).unwrap();
                 assert_eq!(feed.key(), LOCAL_CRATE);
@@ -804,7 +803,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
 
                 let feed = tcx.feed_unit_query();
                 feed.features_query(tcx.arena.alloc(rustc_expand::config::features(
-                    sess,
+                    tcx.sess,
                     &pre_configured_attrs,
                     crate_name,
                 )));
@@ -819,7 +818,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
         )
     });
 
-    inner(compiler, &gcx_cell, &arena, &hir_arena, f)
+    inner(&compiler.sess, compiler.current_gcx.clone(), &gcx_cell, &arena, &hir_arena, f)
 }
 
 /// Runs all analyses that we guarantee to run, even if errors were reported in earlier analyses.
