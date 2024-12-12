@@ -536,9 +536,6 @@ lint_non_camel_case_type = {$sort} `{$name}` should have an upper camel case nam
     .suggestion = convert the identifier to upper camel case
     .label = should have an UpperCamelCase name
 
-lint_non_existent_doc_keyword = found non-existing keyword `{$keyword}` used in `#[doc(keyword = "...")]`
-    .help = only existing keywords are allowed in core/std
-
 lint_non_fmt_panic = panic message is not a string literal
     .note = this usage of `{$name}!()` is deprecated; it will be a hard error in Rust 2021
     .more_info_note = for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>

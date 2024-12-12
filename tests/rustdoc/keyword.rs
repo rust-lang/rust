@@ -16,7 +16,7 @@
 /// this is a test!
 mod foo{}
 
-//@ has foo/keyword.foo.html '//section[@id="main-content"]//div[@class="docblock"]//p' 'hello'
-#[doc(keyword = "foo")]
+//@ has foo/keyword.break.html '//section[@id="main-content"]//div[@class="docblock"]//p' 'hello'
+#[doc(keyword = "break")]
 /// hello
 mod bar {}
