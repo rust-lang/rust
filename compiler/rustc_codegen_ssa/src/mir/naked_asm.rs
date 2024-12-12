@@ -21,7 +21,7 @@ pub fn codegen_naked_asm<
         + FnAbiOf<'tcx, FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>>
         + AsmCodegenMethods<'tcx>,
 >(
-    cx: &'a Cx,
+    cx: &'a mut Cx,
     instance: Instance<'tcx>,
     item_data: MonoItemData,
 ) {
