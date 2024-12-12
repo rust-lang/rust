@@ -173,7 +173,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let mut mir = cx.tcx().instance_mir(instance.def);
 
     if cx.tcx().codegen_fn_attrs(instance.def_id()).flags.contains(CodegenFnAttrFlags::NAKED) {
-        crate::mir::naked_asm::codegen_naked_asm::<Bx>(cx, &mir, instance);
+        crate::mir::naked_asm::codegen_naked_asm::<Bx::CodegenCx>(cx, &mir, instance);
         return;
     }
 
