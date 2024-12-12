@@ -78,7 +78,7 @@ use crate::html::markdown::{
 use crate::html::static_files::SCRAPE_EXAMPLES_HELP_MD;
 use crate::html::{highlight, sources};
 use crate::scrape_examples::{CallData, CallLocation};
-use crate::{DOC_RUST_LANG_ORG_CHANNEL, try_none};
+use crate::try_none;
 
 pub(crate) fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
     crate::html::format::display_fn(move |f| {
@@ -477,10 +477,12 @@ impl AllTypes {
 
 fn scrape_examples_help(shared: &SharedContext<'_>) -> String {
     let mut content = SCRAPE_EXAMPLES_HELP_MD.to_owned();
-    content.push_str(&format!(
+    content.push_str(concat!(
         "## More information\n\n\
       If you want more information about this feature, please read the [corresponding chapter in \
-      the Rustdoc book]({DOC_RUST_LANG_ORG_CHANNEL}/rustdoc/scraped-examples.html)."
+      the Rustdoc book](",
+        env!("DOC_RUST_LANG_ORG_CHANNEL"),
+        "/rustdoc/scraped-examples.html)."
     ));
 
     let mut ids = IdMap::default();

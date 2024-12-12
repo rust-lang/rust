@@ -713,7 +713,7 @@ mod test {
 
     #[test]
     fn test_dump_default_config() {
-        let default_config = format!(
+        let default_config = concat!(
             r#"max_width = 100
 hard_tabs = false
 tab_spaces = 4
@@ -784,7 +784,9 @@ use_field_init_shorthand = false
 force_explicit_abi = true
 condense_wildcard_suffixes = false
 color = "Auto"
-required_version = "{}"
+required_version = ""#,
+            env!("CARGO_PKG_VERSION"),
+            r#""
 unstable_features = false
 disable_all_formatting = false
 skip_children = false
@@ -795,7 +797,6 @@ ignore = []
 emit_mode = "Files"
 make_backup = false
 "#,
-            env!("CARGO_PKG_VERSION")
         );
         let toml = Config::default().all_options().to_toml().unwrap();
         assert_eq!(&toml, &default_config);
@@ -803,7 +804,7 @@ make_backup = false
 
     #[test]
     fn test_dump_style_edition_2024_config() {
-        let edition_2024_config = format!(
+        let edition_2024_config = concat!(
             r#"max_width = 100
 hard_tabs = false
 tab_spaces = 4
@@ -874,7 +875,9 @@ use_field_init_shorthand = false
 force_explicit_abi = true
 condense_wildcard_suffixes = false
 color = "Auto"
-required_version = "{}"
+required_version = ""#,
+            env!("CARGO_PKG_VERSION"),
+            r#""
 unstable_features = false
 disable_all_formatting = false
 skip_children = false
@@ -885,7 +888,6 @@ ignore = []
 emit_mode = "Files"
 make_backup = false
 "#,
-            env!("CARGO_PKG_VERSION")
         );
         let toml = Config::default_with_style_edition(StyleEdition::Edition2024)
             .all_options()

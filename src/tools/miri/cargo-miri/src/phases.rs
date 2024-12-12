@@ -49,7 +49,7 @@ fn show_help() {
 
 fn show_version() {
     print!("miri {}", env!("CARGO_PKG_VERSION"));
-    let version = format!("{} {}", env!("GIT_HASH"), env!("COMMIT_DATE"));
+    let version = concat!(env!("GIT_HASH"), " ", env!("COMMIT_DATE"));
     if version.len() > 1 {
         // If there is actually something here, print it.
         print!(" ({version})");

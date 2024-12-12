@@ -13,8 +13,8 @@ fn main() {
     }
 
     let mut rustflags = vec!["-Cpanic=abort".to_owned(), "-Zpanic-abort-tests".to_owned()];
-    if let Some(name) = option_env!("BUILTIN_BACKEND") {
-        rustflags.push(format!("-Zcodegen-backend={name}"));
+    if let Some(_) = option_env!("BUILTIN_BACKEND") {
+        rustflags.push(concat!("-Zcodegen-backend=", env!("BUILTIN_BACKEND")).to_owned());
     } else {
         let dylib = sysroot.join(if cfg!(windows) { "bin" } else { "lib" }).join(
             env::consts::DLL_PREFIX.to_string()

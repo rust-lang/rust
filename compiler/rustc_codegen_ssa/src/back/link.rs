@@ -1367,8 +1367,9 @@ fn link_sanitizer_runtime(
         }
     }
 
-    let channel =
-        option_env!("CFG_RELEASE_CHANNEL").map(|channel| format!("-{channel}")).unwrap_or_default();
+    let channel = option_env!("CFG_RELEASE_CHANNEL")
+        .map(|_| concat!("-", env!("CFG_RELEASE_CHANNEL")))
+        .unwrap_or_default();
 
     if sess.target.is_like_osx {
         // On Apple platforms, the sanitizer is always built as a dylib, and

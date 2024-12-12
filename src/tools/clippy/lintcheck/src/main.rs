@@ -88,15 +88,13 @@ impl Crate {
             );
         }
 
-        let cargo_home = env!("CARGO_HOME");
-
         // `src/lib.rs` -> `target/lintcheck/sources/crate-1.2.3/src/lib.rs`
         let remap_relative = format!("={}", self.path.display());
         // Fallback for other sources, `~/.cargo/...` -> `$CARGO_HOME/...`
-        let remap_cargo_home = format!("{cargo_home}=$CARGO_HOME");
+        let remap_cargo_home = concat!(env!("CARGO_HOME"), "=$CARGO_HOME");
         // `~/.cargo/registry/src/index.crates.io-6f17d22bba15001f/crate-2.3.4/src/lib.rs`
         //     -> `crate-2.3.4/src/lib.rs`
-        let remap_crates_io = format!("{cargo_home}/registry/src/index.crates.io-6f17d22bba15001f/=");
+        let remap_crates_io = concat!(env!("CARGO_HOME"), "/registry/src/index.crates.io-6f17d22bba15001f/=");
 
         let mut clippy_args = vec![
             "--remap-path-prefix",
