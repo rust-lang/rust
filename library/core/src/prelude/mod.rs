@@ -71,7 +71,7 @@ pub mod rust_2021 {
 /// The 2024 version of the core prelude.
 ///
 /// See the [module-level documentation](self) for more.
-#[unstable(feature = "prelude_2024", issue = "121042")]
+#[stable(feature = "prelude_2024", since = "CURRENT_RUSTC_VERSION")]
 pub mod rust_2024 {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::common::*;
@@ -84,7 +84,7 @@ pub mod rust_2024 {
     #[doc(no_inline)]
     pub use crate::convert::{TryFrom, TryInto};
 
-    #[unstable(feature = "prelude_2024", issue = "121042")]
+    #[stable(feature = "prelude_2024", since = "CURRENT_RUSTC_VERSION")]
     #[doc(no_inline)]
     pub use crate::future::{Future, IntoFuture};
 }

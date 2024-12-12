@@ -1,7 +1,7 @@
 use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust::token_to_string;
-use rustc_errors::{Applicability, PErr};
+use rustc_errors::{Applicability, Diag};
 use rustc_span::symbol::kw;
 
 use super::diagnostics::{report_suspicious_mismatch_block, same_indentation_level};
@@ -14,7 +14,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
     pub(super) fn lex_token_trees(
         &mut self,
         is_delimited: bool,
-    ) -> (Spacing, TokenStream, Result<(), Vec<PErr<'psess>>>) {
+    ) -> (Spacing, TokenStream, Result<(), Vec<Diag<'psess>>>) {
         // Move past the opening delimiter.
         let open_spacing = self.bump_minimal();
 
@@ -56,7 +56,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         }
     }
 
-    fn eof_err(&mut self) -> PErr<'psess> {
+    fn eof_err(&mut self) -> Diag<'psess> {
         let msg = "this file contains an unclosed delimiter";
         let mut err = self.dcx().struct_span_err(self.token.span, msg);
 
@@ -98,7 +98,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
     fn lex_token_tree_open_delim(
         &mut self,
         open_delim: Delimiter,
-    ) -> Result<TokenTree, Vec<PErr<'psess>>> {
+    ) -> Result<TokenTree, Vec<Diag<'psess>>> {
         // The span for beginning of the delimited section.
         let pre_span = self.token.span;
 
@@ -250,8 +250,8 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
     fn unclosed_delim_err(
         &mut self,
         tts: TokenStream,
-        mut errs: Vec<PErr<'psess>>,
-    ) -> Vec<PErr<'psess>> {
+        mut errs: Vec<Diag<'psess>>,
+    ) -> Vec<Diag<'psess>> {
         // If there are unclosed delims, see if there are diff markers and if so, point them
         // out instead of complaining about the unclosed delims.
         let mut parser = Parser::new(self.psess, tts, None);
@@ -308,7 +308,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         errs
     }
 
-    fn close_delim_err(&mut self, delim: Delimiter) -> PErr<'psess> {
+    fn close_delim_err(&mut self, delim: Delimiter) -> Diag<'psess> {
         // An unexpected closing delimiter (i.e., there is no matching opening delimiter).
         let token_str = token_to_string(&self.token);
         let msg = format!("unexpected closing delimiter: `{token_str}`");

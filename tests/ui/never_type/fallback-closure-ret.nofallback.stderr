@@ -15,8 +15,8 @@ LL |     foo(|| panic!());
    = note: `#[warn(dependency_on_unit_never_type_fallback)]` on by default
 help: use `()` annotations to avoid fallback changes
    |
-LL |     foo::<(), _>(|| panic!());
-   |        +++++++++
+LL |     foo::<()>(|| panic!());
+   |        ++++++
 
 warning: 1 warning emitted
 
