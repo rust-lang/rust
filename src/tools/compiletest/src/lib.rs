@@ -508,7 +508,9 @@ pub fn run_tests(config: Arc<Config>) {
             // easy to miss which tests failed, and as such fail to reproduce
             // the failure locally.
 
-            eprintln!(
+            // Note: this needs to output to stderr because that's where libtest
+            // also outputs the dots to.
+            println!(
                 "Some tests failed in compiletest suite={}{} mode={} host={} target={}",
                 config.suite,
                 config
