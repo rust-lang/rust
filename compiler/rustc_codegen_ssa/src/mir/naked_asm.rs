@@ -224,8 +224,10 @@ fn prefix_and_suffix<'tcx>(
             writeln!(begin, ".pushsection {section},\"ax\", {progbits}").unwrap();
             writeln!(begin, ".balign {align}").unwrap();
             write_linkage(&mut begin).unwrap();
-            if let Visibility::Hidden = item_data.visibility {
-                writeln!(begin, ".hidden {asm_name}").unwrap();
+            match item_data.visibility {
+                Visibility::Default => {}
+                Visibility::Protected => writeln!(begin, ".protected {asm_name}").unwrap(),
+                Visibility::Hidden => writeln!(begin, ".hidden {asm_name}").unwrap(),
             }
             writeln!(begin, ".type {asm_name}, {function}").unwrap();
             if !arch_prefix.is_empty() {
@@ -245,8 +247,9 @@ fn prefix_and_suffix<'tcx>(
             writeln!(begin, ".pushsection {},regular,pure_instructions", section).unwrap();
             writeln!(begin, ".balign {align}").unwrap();
             write_linkage(&mut begin).unwrap();
-            if let Visibility::Hidden = item_data.visibility {
-                writeln!(begin, ".private_extern {asm_name}").unwrap();
+            match item_data.visibility {
+                Visibility::Default | Visibility::Protected => {}
+                Visibility::Hidden => writeln!(begin, ".private_extern {asm_name}").unwrap(),
             }
             writeln!(begin, "{asm_name}:").unwrap();
 
