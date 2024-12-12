@@ -502,11 +502,6 @@ fn process_blocks<'tcx, I: Inliner<'tcx>>(
         let span = trace_span!("process_blocks", %callsite.callee, ?bb);
         let _guard = span.enter();
 
-        if !inliner.should_inline_for_callee(callsite.callee.def_id()) {
-            debug!("not enabled");
-            continue;
-        }
-
         match try_inlining(inliner, caller_body, &callsite) {
             Err(reason) => {
                 debug!("not-inlined {} [{}]", callsite.callee, reason);
@@ -541,6 +536,11 @@ fn resolve_callsite<'tcx, I: Inliner<'tcx>>(
     if let TerminatorKind::Call { ref func, fn_span, .. } = terminator.kind {
         let func_ty = func.ty(caller_body, tcx);
         if let ty::FnDef(def_id, args) = *func_ty.kind() {
+            if !inliner.should_inline_for_callee(def_id) {
+                debug!("not enabled");
+                return None;
+            }
+
             // To resolve an instance its args have to be fully normalized.
             let args = tcx.try_normalize_erasing_regions(inliner.typing_env(), args).ok()?;
             let callee =
