@@ -7,6 +7,7 @@ use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::{span_bug, ty};
 use tracing::debug;
 
+use crate::mir::naked_asm;
 use crate::traits::*;
 use crate::{base, common};
 
@@ -99,7 +100,16 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
                 }
             }
             MonoItem::Fn(instance) => {
-                base::codegen_instance::<Bx>(cx, instance);
+                if cx
+                    .tcx()
+                    .codegen_fn_attrs(instance.def_id())
+                    .flags
+                    .contains(CodegenFnAttrFlags::NAKED)
+                {
+                    naked_asm::codegen_naked_asm::<Bx::CodegenCx>(cx, instance);
+                } else {
+                    base::codegen_instance::<Bx>(cx, instance);
+                }
             }
         }
 
