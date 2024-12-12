@@ -39,9 +39,6 @@ use crate::string::String;
 #[cfg(not(no_global_oom_handling))]
 use crate::vec::Vec;
 
-#[cfg(test)]
-mod tests;
-
 /// A soft limit on the amount of references that may be made to an `Arc`.
 ///
 /// Going above this limit will abort your program (although not
