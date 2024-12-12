@@ -94,8 +94,7 @@ mod styled_buffer;
 mod tests;
 pub mod translation;
 
-pub type PErr<'a> = Diag<'a>;
-pub type PResult<'a, T> = Result<T, PErr<'a>>;
+pub type PResult<'a, T> = Result<T, Diag<'a>>;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
