@@ -146,13 +146,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("write_ty({:?}, {:?}) in fcx {}", id, self.resolve_vars_if_possible(ty), self.tag());
         let mut typeck = self.typeck_results.borrow_mut();
         let mut node_ty = typeck.node_types_mut();
-        if let Some(ty) = node_ty.get(id)
-            && ty.references_error()
-        {
-            return;
-        }
 
-        node_ty.insert(id, ty);
+        if let Some(prev) = node_ty.insert(id, ty) {
+            if prev.references_error() {
+                node_ty.insert(id, prev);
+            } else if !ty.references_error() {
+                // Could change this to a bug, but there's lots of diagnostic code re-lowering
+                // or re-typechecking nodes that were already typecked.
+                // Lots of that diagnostics code relies on subtle effects of re-lowering, so we'll
+                // let it keep doing that and just ensure that compilation won't succeed.
+                self.dcx().span_delayed_bug(
+                    self.tcx.hir().span(id),
+                    format!("`{prev}` overridden by `{ty}` for {id:?} in {:?}", self.body_id),
+                );
+            }
+        }
 
         if let Err(e) = ty.error_reported() {
             self.set_tainted_by_errors(e);
