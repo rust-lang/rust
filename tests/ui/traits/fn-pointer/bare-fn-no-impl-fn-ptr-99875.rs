@@ -1,3 +1,6 @@
+//@ ignore-windows
+// FIXME: compiletest path normalization bug
+
 struct Argument;
 struct Return;
 
