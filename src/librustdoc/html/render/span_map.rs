@@ -170,7 +170,7 @@ impl SpanMapVisitor<'_> {
         true
     }
 
-    fn handle_call(&mut self, hir_id: HirId, expr_hir_id: Option<HirId>, span: Span) {
+    fn infer_id(&mut self, hir_id: HirId, expr_hir_id: Option<HirId>, span: Span) {
         let hir = self.tcx.hir();
         let body_id = hir.enclosing_body_owner(hir_id);
         // FIXME: this is showing error messages for parts of the code that are not
@@ -197,7 +197,7 @@ impl SpanMapVisitor<'_> {
             | PatKind::TupleStruct(qpath, _, _)
             | PatKind::Path(qpath) => match qpath {
                 QPath::TypeRelative(_, path) if matches!(path.res, Res::Err) => {
-                    self.handle_call(path.hir_id, Some(p.hir_id), qpath.span());
+                    self.infer_id(path.hir_id, Some(p.hir_id), qpath.span());
                 }
                 QPath::Resolved(_, path) => self.handle_path(path),
                 _ => {}
@@ -253,9 +253,9 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
     fn visit_expr(&mut self, expr: &'tcx rustc_hir::Expr<'tcx>) {
         match expr.kind {
             ExprKind::MethodCall(segment, ..) => {
-                self.handle_call(segment.hir_id, Some(expr.hir_id), segment.ident.span)
+                self.infer_id(segment.hir_id, Some(expr.hir_id), segment.ident.span)
             }
-            ExprKind::Call(call, ..) => self.handle_call(call.hir_id, None, call.span),
+            ExprKind::Call(call, ..) => self.infer_id(call.hir_id, None, call.span),
             _ => {
                 if self.handle_macro(expr.span) {
                     // We don't want to go deeper into the macro.
