@@ -2,7 +2,7 @@
 
 set -ex
 
-${PWD}add_dummy_commit.sh
+/tmp/add_dummy_commit.sh
 
 ../x.py --stage 2 test \
   --skip tests \
