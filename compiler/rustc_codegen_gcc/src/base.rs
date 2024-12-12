@@ -223,8 +223,8 @@ pub fn compile_codegen_unit(
             }
 
             // ... and now that we have everything pre-defined, fill out those definitions.
-            for &(mono_item, _) in &mono_items {
-                mono_item.define::<Builder<'_, '_, '_>>(&cx);
+            for &(mono_item, item_data) in &mono_items {
+                mono_item.define::<Builder<'_, '_, '_>>(&cx, item_data);
             }
 
             // If this codegen unit contains the main function, also create the
