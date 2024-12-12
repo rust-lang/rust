@@ -90,6 +90,11 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for ParseTargetMachineConfig<'_> {
 }
 
 #[derive(Diagnostic)]
+#[diag(codegen_llvm_autodiff_without_lto)]
+#[note]
+pub(crate) struct AutoDiffWithoutLTO;
+
+#[derive(Diagnostic)]
 #[diag(codegen_llvm_lto_disallowed)]
 pub(crate) struct LtoDisallowed;
 
@@ -131,6 +136,8 @@ pub enum LlvmError<'a> {
     PrepareThinLtoModule,
     #[diag(codegen_llvm_parse_bitcode)]
     ParseBitcode,
+    #[diag(codegen_llvm_prepare_autodiff)]
+    PrepareAutoDiff { src: String, target: String, error: String },
 }
 
 pub(crate) struct WithLlvmError<'a>(pub LlvmError<'a>, pub String);
@@ -152,6 +159,7 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for WithLlvmError<'_> {
             }
             PrepareThinLtoModule => fluent::codegen_llvm_prepare_thin_lto_module_with_llvm_err,
             ParseBitcode => fluent::codegen_llvm_parse_bitcode_with_llvm_err,
+            PrepareAutoDiff { .. } => fluent::codegen_llvm_prepare_autodiff_with_llvm_err,
         };
         self.0
             .into_diag(dcx, level)

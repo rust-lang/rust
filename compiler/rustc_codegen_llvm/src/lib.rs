@@ -26,9 +26,10 @@ use std::mem::ManuallyDrop;
 
 use back::owned_target_machine::OwnedTargetMachine;
 use back::write::{create_informational_target_machine, create_target_machine};
-use errors::ParseTargetMachineConfig;
+use errors::{AutoDiffWithoutLTO, ParseTargetMachineConfig};
 pub use llvm_util::target_features;
 use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
 use rustc_codegen_ssa::back::write::{
     CodegenContext, FatLtoInput, ModuleConfig, TargetMachineFactoryConfig, TargetMachineFactoryFn,
@@ -42,7 +43,7 @@ use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::Session;
-use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
+use rustc_session::config::{Lto, OptLevel, OutputFilenames, PrintKind, PrintRequest};
 use rustc_span::symbol::Symbol;
 
 mod back {
@@ -230,6 +231,19 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     }
     fn serialize_module(module: ModuleCodegen<Self::Module>) -> (String, Self::ModuleBuffer) {
         (module.name, back::lto::ModuleBuffer::new(module.module_llvm.llmod()))
+    }
+    /// Generate autodiff rules
+    fn autodiff(
+        cgcx: &CodegenContext<Self>,
+        module: &ModuleCodegen<Self::Module>,
+        diff_fncs: Vec<AutoDiffItem>,
+        config: &ModuleConfig,
+    ) -> Result<(), FatalError> {
+        if cgcx.lto != Lto::Fat {
+            let dcx = cgcx.create_dcx();
+            return Err(dcx.handle().emit_almost_fatal(AutoDiffWithoutLTO));
+        }
+        back::write::differentiate(module, cgcx, diff_fncs, config)
     }
 }
 
