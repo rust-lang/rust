@@ -242,6 +242,20 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
                     {
                         let type_def_id = cx.tcx.parent(ctor_def_id); // From Ctor to struct
                         if args.iter().all(|expr| check_expr(cx.tcx, expr.kind)) {
+                            // We have a struct literal
+                            //
+                            // struct Foo(Type);
+                            //
+                            // impl Default for Foo {
+                            //     fn default() -> Foo {
+                            //         Foo(val)
+                            //     }
+                            // }
+                            //
+                            // We suggest #[derive(Default)] if
+                            //  - `val` is `Default::default()`
+                            //  - `val` is `0`
+                            //  - `val` is `false`
                             cx.tcx.node_span_lint(
                                 DEFAULT_COULD_BE_DERIVED,
                                 item.hir_id(),
@@ -263,6 +277,41 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
                             );
                         }
                     }
+                }
+                hir::ExprKind::Path(hir::QPath::Resolved(_, path))
+                    if let Res::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Const), _) =
+                        path.res =>
+                {
+                    // We have a struct literal
+                    //
+                    // struct Foo;
+                    //
+                    // impl Default for Foo {
+                    //     fn default() -> Foo {
+                    //         Foo
+                    //     }
+                    // }
+                    //
+                    // We always suggest `#[derive(Default)]`.
+                    cx.tcx.node_span_lint(
+                        DEFAULT_COULD_BE_DERIVED,
+                        item.hir_id(),
+                        item.span,
+                        |diag| {
+                            diag.primary_message("`impl Default` that could be derived");
+                            diag.multipart_suggestion_verbose(
+                                "you don't need to manually `impl Default`, you can derive it",
+                                vec![
+                                    (
+                                        cx.tcx.def_span(type_def_id).shrink_to_lo(),
+                                        "#[derive(Default)] ".to_string(),
+                                    ),
+                                    (item.span, String::new()),
+                                ],
+                                Applicability::MachineApplicable,
+                            );
+                        },
+                    );
                 }
                 _ => {}
             }

@@ -4,13 +4,10 @@
 #![deny(default_could_be_derived)]
 #![feature(default_field_values)]
 
-// #[derive(Debug)]
-// struct A;
-// 
-// impl Default for A {
-//     fn default() -> Self { A }
-// }
-// 
+#[derive(Debug)]
+#[derive(Default)] struct A;
+
+
 #[derive(Debug)]
 #[derive(Default)] struct B(Option<i32>);
 
@@ -63,9 +60,9 @@
 
 
 fn main() {
-//    let _ = A::default();
-//    let _ = B::default();
-//    let _ = C::default();
+    let _ = A::default();
+    let _ = B::default();
+    let _ = C::default();
     let _ = D::default();
     let _ = E::default();
     let _ = F::<i32>::default();
