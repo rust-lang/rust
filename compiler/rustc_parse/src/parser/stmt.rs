@@ -5,7 +5,7 @@ use std::ops::Bound;
 use ast::Label;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, TokenKind};
+use rustc_ast::token::{self, Delimiter};
 use rustc_ast::util::classify::{self, TrailingBrace};
 use rustc_ast::{
     AttrStyle, AttrVec, Block, BlockCheckMode, DUMMY_NODE_ID, Expr, ExprKind, HasAttrs, Local,
@@ -678,22 +678,12 @@ impl<'a> Parser<'a> {
         recover: AttemptLocalParseRecovery,
     ) -> PResult<'a, P<Block>> {
         let mut stmts = ThinVec::new();
-        let mut snapshot = None;
         while !self.eat(&token::CloseDelim(Delimiter::Brace)) {
             if self.token == token::Eof {
                 break;
             }
-            if self.is_vcs_conflict_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt) {
-                // Account for `<<<<<<<` diff markers. We can't proactively error here because
-                // that can be a valid path start, so we snapshot and reparse only we've
-                // encountered another parse error.
-                snapshot = Some(self.create_snapshot_for_diagnostic());
-            }
             let stmt = match self.parse_full_stmt(recover) {
                 Err(mut err) if recover.yes() => {
-                    if let Some(ref mut snapshot) = snapshot {
-                        snapshot.recover_vcs_conflict_marker();
-                    }
                     if self.token == token::Colon {
                         // if a previous and next token of the current one is
                         // integer literal (e.g. `1:42`), it's likely a range

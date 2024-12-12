@@ -129,9 +129,7 @@ impl<'a> Parser<'a> {
         fn_parse_mode: FnParseMode,
         force_collect: ForceCollect,
     ) -> PResult<'a, Option<Item>> {
-        self.recover_vcs_conflict_marker();
         let attrs = self.parse_outer_attributes()?;
-        self.recover_vcs_conflict_marker();
         self.parse_item_common(attrs, true, false, fn_parse_mode, force_collect)
     }
 
@@ -775,7 +773,6 @@ impl<'a> Parser<'a> {
             if self.recover_doc_comment_before_brace() {
                 continue;
             }
-            self.recover_vcs_conflict_marker();
             match parse_item(self) {
                 Ok(None) => {
                     let mut is_unnecessary_semicolon = !items.is_empty()
@@ -1121,11 +1118,8 @@ impl<'a> Parser<'a> {
     /// USE_TREE_LIST = ∅ | (USE_TREE `,`)* USE_TREE [`,`]
     /// ```
     fn parse_use_tree_list(&mut self) -> PResult<'a, ThinVec<(UseTree, ast::NodeId)>> {
-        self.parse_delim_comma_seq(Delimiter::Brace, |p| {
-            p.recover_vcs_conflict_marker();
-            Ok((p.parse_use_tree()?, DUMMY_NODE_ID))
-        })
-        .map(|(r, _)| r)
+        self.parse_delim_comma_seq(Delimiter::Brace, |p| Ok((p.parse_use_tree()?, DUMMY_NODE_ID)))
+            .map(|(r, _)| r)
     }
 
     fn parse_rename(&mut self) -> PResult<'a, Option<Ident>> {
@@ -1564,9 +1558,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_enum_variant(&mut self, span: Span) -> PResult<'a, Option<Variant>> {
-        self.recover_vcs_conflict_marker();
         let variant_attrs = self.parse_outer_attributes()?;
-        self.recover_vcs_conflict_marker();
         let help = "enum variants can be `Variant`, `Variant = <integer>`, \
                     `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`";
         self.collect_tokens(None, variant_attrs, ForceCollect::No, |this, variant_attrs| {
@@ -1808,34 +1800,11 @@ impl<'a> Parser<'a> {
         self.parse_paren_comma_seq(|p| {
             let attrs = p.parse_outer_attributes()?;
             p.collect_tokens(None, attrs, ForceCollect::No, |p, attrs| {
-                let mut snapshot = None;
-                if p.is_vcs_conflict_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt) {
-                    // Account for `<<<<<<<` diff markers. We can't proactively error here because
-                    // that can be a valid type start, so we snapshot and reparse only we've
-                    // encountered another parse error.
-                    snapshot = Some(p.create_snapshot_for_diagnostic());
-                }
                 let lo = p.token.span;
-                let vis = match p.parse_visibility(FollowedByType::Yes) {
-                    Ok(vis) => vis,
-                    Err(err) => {
-                        if let Some(ref mut snapshot) = snapshot {
-                            snapshot.recover_vcs_conflict_marker();
-                        }
-                        return Err(err);
-                    }
-                };
+                let vis = p.parse_visibility(FollowedByType::Yes)?;
                 // Unsafe fields are not supported in tuple structs, as doing so would result in a
                 // parsing ambiguity for `struct X(unsafe fn())`.
-                let ty = match p.parse_ty() {
-                    Ok(ty) => ty,
-                    Err(err) => {
-                        if let Some(ref mut snapshot) = snapshot {
-                            snapshot.recover_vcs_conflict_marker();
-                        }
-                        return Err(err);
-                    }
-                };
+                let ty = p.parse_ty()?;
                 let mut default = None;
                 if p.token == token::Eq {
                     let mut snapshot = p.create_snapshot_for_diagnostic();
@@ -1875,9 +1844,7 @@ impl<'a> Parser<'a> {
 
     /// Parses an element of a struct declaration.
     fn parse_field_def(&mut self, adt_ty: &str) -> PResult<'a, FieldDef> {
-        self.recover_vcs_conflict_marker();
         let attrs = self.parse_outer_attributes()?;
-        self.recover_vcs_conflict_marker();
         self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
             let vis = this.parse_visibility(FollowedByType::No)?;
@@ -2830,7 +2797,6 @@ impl<'a> Parser<'a> {
         }
 
         let (mut params, _) = self.parse_paren_comma_seq(|p| {
-            p.recover_vcs_conflict_marker();
             let snapshot = p.create_snapshot_for_diagnostic();
             let param = p.parse_param_general(req_name, first_param).or_else(|e| {
                 let guar = e.emit();

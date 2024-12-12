@@ -16,7 +16,7 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, FatalError, PErr, PResult, Subdiagnostic,
+    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, PErr, PResult, Subdiagnostic,
     Suggestions, pluralize,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
@@ -3027,120 +3027,6 @@ impl<'a> Parser<'a> {
             );
         }
         err
-    }
-
-    /// This checks if this is a conflict marker, depending of the parameter passed.
-    ///
-    /// * `<<<<<<<`
-    /// * `|||||||`
-    /// * `=======`
-    /// * `>>>>>>>`
-    ///
-    pub(super) fn is_vcs_conflict_marker(
-        &mut self,
-        long_kind: &TokenKind,
-        short_kind: &TokenKind,
-    ) -> bool {
-        (0..3).all(|i| self.look_ahead(i, |tok| tok == long_kind))
-            && self.look_ahead(3, |tok| tok == short_kind)
-    }
-
-    fn conflict_marker(&mut self, long_kind: &TokenKind, short_kind: &TokenKind) -> Option<Span> {
-        if self.is_vcs_conflict_marker(long_kind, short_kind) {
-            let lo = self.token.span;
-            for _ in 0..4 {
-                self.bump();
-            }
-            return Some(lo.to(self.prev_token.span));
-        }
-        None
-    }
-
-    pub(super) fn recover_vcs_conflict_marker(&mut self) {
-        if let Err(err) = self.err_vcs_conflict_marker() {
-            err.emit();
-            FatalError.raise();
-        }
-    }
-
-    pub(crate) fn err_vcs_conflict_marker(&mut self) -> PResult<'a, ()> {
-        // <<<<<<<
-        let Some(start) = self.conflict_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt)
-        else {
-            return Ok(());
-        };
-        let mut spans = Vec::with_capacity(3);
-        spans.push(start);
-        // |||||||
-        let mut middlediff3 = None;
-        // =======
-        let mut middle = None;
-        // >>>>>>>
-        let mut end = None;
-        loop {
-            if self.token == TokenKind::Eof {
-                break;
-            }
-            if let Some(span) = self.conflict_marker(&TokenKind::OrOr, &TokenKind::BinOp(token::Or))
-            {
-                middlediff3 = Some(span);
-            }
-            if let Some(span) = self.conflict_marker(&TokenKind::EqEq, &TokenKind::Eq) {
-                middle = Some(span);
-            }
-            if let Some(span) = self.conflict_marker(&TokenKind::BinOp(token::Shr), &TokenKind::Gt)
-            {
-                spans.push(span);
-                end = Some(span);
-                break;
-            }
-            self.bump();
-        }
-
-        let mut err = self.dcx().struct_span_err(spans, "encountered diff marker");
-        match middlediff3 {
-            // We're using diff3
-            Some(middlediff3) => {
-                err.span_label(
-                    start,
-                    "between this marker and `|||||||` is the code that we're merging into",
-                );
-                err.span_label(middlediff3, "between this marker and `=======` is the base code (what the two refs diverged from)");
-            }
-            None => {
-                err.span_label(
-                    start,
-                    "between this marker and `=======` is the code that we're merging into",
-                );
-            }
-        };
-
-        if let Some(middle) = middle {
-            err.span_label(middle, "between this marker and `>>>>>>>` is the incoming code");
-        }
-        if let Some(end) = end {
-            err.span_label(end, "this marker concludes the conflict region");
-        }
-        err.note(
-            "conflict markers indicate that a merge was started but could not be completed due \
-             to merge conflicts\n\
-             to resolve a conflict, keep only the code you want and then delete the lines \
-             containing conflict markers",
-        );
-        err.help(
-            "if you're having merge conflicts after pulling new code:\n\
-             the top section is the code you already had and the bottom section is the remote code\n\
-             if you're in the middle of a rebase:\n\
-             the top section is the code being rebased onto and the bottom section is the code \
-             coming from the current commit being rebased",
-        );
-
-        err.note(
-            "for an explanation on these markers from the `git` documentation:\n\
-             visit <https://git-scm.com/book/en/v2/Git-Tools-Advanced-Merging#_checking_out_conflicts>",
-        );
-
-        Err(err)
     }
 
     /// Parse and throw away a parenthesized comma separated

@@ -108,8 +108,9 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         // We stop at any delimiter so we can try to recover if the user
         // uses an incorrect delimiter.
         let (open_spacing, tts, res) = self.lex_token_trees(/* is_delimited */ true);
-        if let Err(errs) = res {
-            return Err(self.unclosed_delim_err(tts, errs));
+        if let Err(mut errs) = res {
+            self.unclosed_delim_err(tts, &mut errs);
+            return Err(errs);
         }
 
         // Expand to cover the entire delimited token tree.
@@ -247,23 +248,14 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         this_spacing
     }
 
-    fn unclosed_delim_err(
-        &mut self,
-        tts: TokenStream,
-        mut errs: Vec<PErr<'psess>>,
-    ) -> Vec<PErr<'psess>> {
-        // If there are unclosed delims, see if there are diff markers and if so, point them
-        // out instead of complaining about the unclosed delims.
+    fn unclosed_delim_err(&mut self, tts: TokenStream, errs: &mut Vec<PErr<'psess>>) {
         let mut parser = Parser::new(self.psess, tts, None);
-        let mut diff_errs = vec![];
         // Suggest removing a `{` we think appears in an `if`/`while` condition.
         // We want to suggest removing a `{` only if we think we're in an `if`/`while` condition,
         // but we have no way of tracking this in the lexer itself, so we piggyback on the parser.
         let mut in_cond = false;
         while parser.token != token::Eof {
-            if let Err(diff_err) = parser.err_vcs_conflict_marker() {
-                diff_errs.push(diff_err);
-            } else if parser.is_keyword_ahead(0, &[kw::If, kw::While]) {
+            if parser.is_keyword_ahead(0, &[kw::If, kw::While]) {
                 in_cond = true;
             } else if matches!(
                 parser.token.kind,
@@ -299,13 +291,6 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
             }
             parser.bump();
         }
-        if !diff_errs.is_empty() {
-            for err in errs {
-                err.cancel();
-            }
-            return diff_errs;
-        }
-        errs
     }
 
     fn close_delim_err(&mut self, delim: Delimiter) -> PErr<'psess> {
