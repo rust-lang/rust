@@ -1,7 +1,7 @@
 // Warn when we encounter a manual `Default` impl that could be derived.
 //@ run-rustfix
 #![allow(dead_code)]
-#![deny(default_could_be_derived)]
+#![deny(default_could_be_derived, manual_default_for_type_with_default_fields)]
 #![feature(default_field_values)]
 
 #[derive(Debug)]

@@ -1,27 +1,27 @@
 // Warn when we encounter a manual `Default` impl that could be derived.
 //@ run-rustfix
 #![allow(dead_code)]
-#![deny(default_could_be_derived)]
+#![deny(default_could_be_derived, manual_default_for_type_with_default_fields)]
 #![feature(default_field_values)]
 
 #[derive(Debug)]
 struct A;
 
-impl Default for A { //~ ERROR
+impl Default for A { //~ ERROR default_could_be_derived
     fn default() -> Self { A }
 }
 
 #[derive(Debug)]
 struct B(Option<i32>);
 
-impl Default for B { //~ ERROR
+impl Default for B { //~ ERROR default_could_be_derived
     fn default() -> Self { B(Default::default()) }
 }
 
 #[derive(Debug)]
 struct C(Option<i32>);
 
-impl Default for C { //~ ERROR
+impl Default for C { //~ ERROR default_could_be_derived
     fn default() -> Self { C(None) }
 }
 
@@ -32,7 +32,7 @@ struct D {
     y: i32,
 }
 
-impl Default for D { //~ ERROR
+impl Default for D { //~ ERROR default_could_be_derived
     fn default() -> Self {
         D {
             x: Default::default(),
@@ -47,7 +47,7 @@ struct E {
     x: Option<i32>,
 }
 
-impl Default for E { //~ ERROR
+impl Default for E { //~ ERROR default_could_be_derived
     fn default() -> Self {
         E {
             x: None,
@@ -61,7 +61,7 @@ enum F<T> {
     Tuple(T),
 }
 
-impl<T> Default for F<T> { //~ ERROR
+impl<T> Default for F<T> { //~ ERROR default_could_be_derived
     fn default() -> Self {
         F::Unit
     }
@@ -72,7 +72,7 @@ struct G {
     f: F<i32>,
 }
 
-impl Default for G { //~ ERROR
+impl Default for G { //~ ERROR default_could_be_derived
     fn default() -> Self {
         G {
             f: F::Unit,
@@ -86,7 +86,7 @@ struct H {
     x: i32 = 101,
 }
 
-impl Default for H { //~ ERROR
+impl Default for H { //~ ERROR [manual_default_for_type_with_default_fields]
     fn default() -> Self {
         H {
             x: 1,
@@ -101,7 +101,7 @@ struct I {
     y: Option<i32>,
 }
 
-impl Default for I { //~ ERROR
+impl Default for I {  //~ ERROR [manual_default_for_type_with_default_fields]
     fn default() -> Self {
         I {
             x: 1,
@@ -116,7 +116,7 @@ struct J {
     x: K,
 }
 
-impl Default for J { //~ ERROR
+impl Default for J { //~ ERROR default_could_be_derived
     fn default() -> Self {
         J {
             x: foo(), // fn call that isn't an assoc fn
@@ -141,7 +141,7 @@ struct L {
     x: Vec<i32>,
 }
 
-impl Default for L { //~ ERROR
+impl Default for L { //~ ERROR default_could_be_derived
     fn default() -> Self {
         L {
             x: Vec::new(), // `<Vec as Default>::default()` just calls `Vec::new()`
@@ -154,7 +154,7 @@ struct M {
     x: N,
 }
 
-impl Default for M { //~ ERROR
+impl Default for M { //~ ERROR default_could_be_derived
     fn default() -> Self {
         M {
             x: N_CONST,

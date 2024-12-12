@@ -15,6 +15,19 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,compile_fail
+    /// struct A {
+    ///     b: Option<i32>,
+    /// }
+    ///
+    /// #[deny(default_could_be_derived)]
+    /// impl Default for Foo {
+    ///     fn default() -> Foo {
+    ///         A {
+    ///             b: None,
+    ///         }
+    ///     }
+    /// }
+    ///
     /// enum Foo {
     ///     Bar,
     /// }
@@ -29,12 +42,56 @@ declare_lint! {
     ///
     /// {{produces}}
     ///
+    /// ### Explanation
+    ///
+    /// `#[derive(Default)]` uses the `Default` impl for every field of your
+    /// type. If your manual `Default` impl either invokes `Default::default()`
+    /// or uses the same value that that associated function produces, then it
+    /// is better to use the derive to avoid the different `Default` impls from
+    /// diverging over time.
+    ///
+    /// This lint also triggers on cases where there the type has no fields,
+    /// so the derive for `Default` for a struct is trivial, and for an enum
+    /// variant with no fields, which can be annotated with `#[default]`.
     pub DEFAULT_COULD_BE_DERIVED,
     Warn,
     "detect `Default` impl that could be derived"
 }
 
-declare_lint_pass!(DefaultCouldBeDerived => [DEFAULT_COULD_BE_DERIVED]);
+declare_lint! {
+    /// The `default_could_be_derived` lint checks for manual `impl` blocks
+    /// of the `Default` trait that could have been derived.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// struct Foo {
+    ///     x: i32 = 101,
+    /// }
+    ///
+    /// #[deny(manual_default_for_type_with_default_fields)]
+    /// impl Default for Foo {
+    ///     fn default() -> Foo {
+    ///         Foo { x: 100 }
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Manually writing a `Default` implementation for a type that has
+    /// default field values runs the risk of diverging behavior between
+    /// `Type { .. }` and `<Type as Default>::default()`, which would be a
+    /// foot-gun for users of that type that would expect these to be
+    /// equivalent.
+    pub MANUAL_DEFAULT_FOR_TYPE_WITH_DEFAULT_FIELDS,
+    Warn,
+    "detect `Default` impl on type with default field values that should be derived"
+}
+
+declare_lint_pass!(DefaultCouldBeDerived => [DEFAULT_COULD_BE_DERIVED, MANUAL_DEFAULT_FOR_TYPE_WITH_DEFAULT_FIELDS]);
 
 impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
@@ -81,11 +138,13 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
                         == fields_with_default_value.len() + fields_with_default_impl.len()
                 {
                     cx.tcx.node_span_lint(
-                        DEFAULT_COULD_BE_DERIVED,
+                        MANUAL_DEFAULT_FOR_TYPE_WITH_DEFAULT_FIELDS,
                         item.hir_id(),
                         item.span,
                         |diag| {
-                            diag.primary_message("`impl Default` that could be derived");
+                            diag.primary_message(
+                                "manual `Default` impl for type with default field values",
+                            );
                             let msg = match (
                                 !fields_with_default_value.is_empty(),
                                 !fields_with_default_impl.is_empty(),

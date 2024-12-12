@@ -10,7 +10,7 @@ LL | | }
 note: the lint level is defined here
   --> $DIR/manual-default-impl-could-be-derived.rs:4:9
    |
-LL | #![deny(default_could_be_derived)]
+LL | #![deny(default_could_be_derived, manual_default_for_type_with_default_fields)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 help: you don't need to manually `impl Default`, you can derive it
    |
@@ -121,7 +121,7 @@ help: you don't need to manually `impl Default`, you can derive it
 LL ~ #[derive(Default)] struct G {
    |
 
-error: `impl Default` that could be derived
+error: manual `Default` impl for type with default field values
   --> $DIR/manual-default-impl-could-be-derived.rs:89:1
    |
 LL |   struct H {
@@ -138,12 +138,17 @@ LL | |     }
 LL | | }
    | |_^
    |
+note: the lint level is defined here
+  --> $DIR/manual-default-impl-could-be-derived.rs:4:35
+   |
+LL | #![deny(default_could_be_derived, manual_default_for_type_with_default_fields)]
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: to avoid divergence in behavior between `Struct { .. }` and `<Struct as Default>::default()`, derive the `Default`
    |
 LL ~ #[derive(Default)] struct H {
    |
 
-error: `impl Default` that could be derived
+error: manual `Default` impl for type with default field values
   --> $DIR/manual-default-impl-could-be-derived.rs:104:1
    |
 LL |   struct I {
