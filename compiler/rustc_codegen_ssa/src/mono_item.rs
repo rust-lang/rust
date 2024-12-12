@@ -12,7 +12,11 @@ use crate::traits::*;
 use crate::{base, common};
 
 pub trait MonoItemExt<'a, 'tcx> {
-    fn define<Bx: BuilderMethods<'a, 'tcx>>(&self, cx: &'a Bx::CodegenCx, item_data: MonoItemData);
+    fn define<Bx: BuilderMethods<'a, 'tcx>>(
+        &self,
+        cx: &'a mut Bx::CodegenCx,
+        item_data: MonoItemData,
+    );
     fn predefine<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
         cx: &'a Bx::CodegenCx,
@@ -23,7 +27,11 @@ pub trait MonoItemExt<'a, 'tcx> {
 }
 
 impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
-    fn define<Bx: BuilderMethods<'a, 'tcx>>(&self, cx: &'a Bx::CodegenCx, item_data: MonoItemData) {
+    fn define<Bx: BuilderMethods<'a, 'tcx>>(
+        &self,
+        cx: &'a mut Bx::CodegenCx,
+        item_data: MonoItemData,
+    ) {
         debug!(
             "BEGIN IMPLEMENTING '{} ({})' in cgu {}",
             self,
