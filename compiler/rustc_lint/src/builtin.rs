@@ -55,10 +55,10 @@ use crate::lints::{
     BuiltinIncompleteFeatures, BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures,
     BuiltinKeywordIdents, BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc,
     BuiltinMutablesTransmutes, BuiltinNoMangleGeneric, BuiltinNonShorthandFieldPatterns,
-    BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds, BuiltinTypeAliasBounds,
-    BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit, BuiltinUnpermittedTypeInitSub,
-    BuiltinUnreachablePub, BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment,
-    BuiltinUnusedDocCommentSub, BuiltinWhileTrue, InvalidAsmLabel,
+    BuiltinReturningPointersToLocalVariables, BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds,
+    BuiltinTypeAliasBounds, BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit,
+    BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub, BuiltinUnsafe, BuiltinUnstableFeatures,
+    BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub, BuiltinWhileTrue, InvalidAsmLabel,
 };
 use crate::nonstandard_style::{MethodLateContext, method_context};
 use crate::{
@@ -3060,6 +3060,159 @@ impl<'tcx> LateLintPass<'tcx> for AsmLabels {
                 }
             }
         }
+    }
+}
+
+declare_lint! {
+    /// The `returning_pointers_to_local_variables` lint detects when pointer
+    /// to stack memory associated with a local variable is returned. That
+    /// pointer is immediately dangling.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,no_run
+    /// fn foo() -> *const i32 {
+    ///   let x = 42;
+    ///   &x
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Returning a pointer to memory refering to a local variable will always
+    /// end up in a dangling pointer after returning.
+    pub RETURNING_POINTERS_TO_LOCAL_VARIABLES,
+    Warn,
+    "returning a pointer to stack memory associated with a local variable",
+}
+
+declare_lint_pass!(ReturningPointersToLocalVariables => [RETURNING_POINTERS_TO_LOCAL_VARIABLES]);
+
+impl<'tcx> LateLintPass<'tcx> for ReturningPointersToLocalVariables {
+    fn check_fn(
+        &mut self,
+        cx: &LateContext<'tcx>,
+        _: HirFnKind<'tcx>,
+        fn_decl: &'tcx FnDecl<'tcx>,
+        body: &'tcx Body<'tcx>,
+        _: Span,
+        _: LocalDefId,
+    ) {
+        let hir::FnRetTy::Return(&hir::Ty { kind: hir::TyKind::Ptr(ptr_ty), .. }) = fn_decl.output
+        else {
+            return;
+        };
+        if matches!(ptr_ty.ty.kind, hir::TyKind::Tup([])) {
+            return;
+        }
+
+        // Check the block of the function that we're looking at.
+        if let Some(block) = Self::get_enclosing_block(cx, body.value.hir_id) {
+            match block {
+                &hir::Block {
+                    stmts:
+                        &[
+                            ..,
+                            hir::Stmt {
+                                kind:
+                                    hir::StmtKind::Semi(&hir::Expr {
+                                        kind: hir::ExprKind::Ret(Some(return_expr)),
+                                        ..
+                                    }),
+                                ..
+                            },
+                        ],
+                    ..
+                } => {
+                    Self::maybe_lint_return_expr(cx, return_expr, fn_decl.inputs);
+                }
+                hir::Block { expr: Some(return_expr), .. } => {
+                    Self::maybe_lint_return_expr(cx, return_expr, fn_decl.inputs);
+                }
+                _ => return,
+            }
+        }
+    }
+}
+
+impl ReturningPointersToLocalVariables {
+    /// Evaluates the return expression of a function and emits a lint if it
+    /// returns a pointer to a local variable.
+    fn maybe_lint_return_expr<'tcx>(
+        cx: &LateContext<'tcx>,
+        return_expr: &hir::Expr<'tcx>,
+        params: &'tcx [hir::Ty<'tcx>],
+    ) {
+        // Early exit if we see that this is a pointer to an input parameter.
+        if Self::expr_is_param(cx.typeck_results(), return_expr, params) {
+            return;
+        }
+
+        match return_expr {
+            hir::Expr { kind: hir::ExprKind::AddrOf(_, _, addr_expr), .. } => {
+                Self::maybe_lint_return_expr(cx, addr_expr, params)
+            }
+            hir::Expr {
+                kind:
+                    hir::ExprKind::Cast(
+                        hir::Expr { kind: hir::ExprKind::AddrOf(_, _, addr_expr), .. },
+                        _,
+                    ),
+                ..
+            } => Self::maybe_lint_return_expr(cx, addr_expr, params),
+            hir::Expr { kind: hir::ExprKind::Cast(expr, _), .. } => {
+                Self::maybe_lint_return_expr(cx, expr, params)
+            }
+            hir::Expr {
+                kind:
+                    hir::ExprKind::Path(
+                        hir::QPath::Resolved(_, hir::Path { res: hir::def::Res::Local(_), .. }),
+                        ..,
+                    ),
+                ..
+            } => cx.emit_span_lint(
+                RETURNING_POINTERS_TO_LOCAL_VARIABLES,
+                return_expr.span,
+                BuiltinReturningPointersToLocalVariables,
+            ),
+            _ => (),
+        }
+    }
+
+    fn expr_is_param<'tcx>(
+        typeck_results: &ty::TypeckResults<'tcx>,
+        expr: &hir::Expr<'tcx>,
+        params: &'tcx [hir::Ty<'tcx>],
+    ) -> bool {
+        params
+            .iter()
+            .map(|param| typeck_results.type_dependent_def_id(param.hir_id))
+            .collect::<Vec<_>>()
+            .contains(&typeck_results.type_dependent_def_id(expr.hir_id))
+    }
+
+    /// Returns the enclosing block for a [hir::HirId], if available.
+    fn get_enclosing_block<'tcx>(
+        cx: &LateContext<'tcx>,
+        hir_id: hir::HirId,
+    ) -> Option<&'tcx hir::Block<'tcx>> {
+        let enclosing_node = cx
+            .tcx
+            .hir_get_enclosing_scope(hir_id)
+            .map(|enclosing_id| cx.tcx.hir_node(enclosing_id));
+        enclosing_node.and_then(|node| match node {
+            hir::Node::Block(block) => Some(block),
+            hir::Node::Item(&hir::Item { kind: hir::ItemKind::Fn { body: eid, .. }, .. })
+            | hir::Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(_, eid), .. }) => {
+                match cx.tcx.hir_body(eid).value.kind {
+                    hir::ExprKind::Block(block, _) => Some(block),
+                    _ => None,
+                }
+            }
+            _ => None,
+        })
     }
 }
 

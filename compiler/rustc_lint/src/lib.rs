@@ -243,6 +243,7 @@ late_lint_methods!(
             IfLetRescope: IfLetRescope::default(),
             StaticMutRefs: StaticMutRefs,
             UnqualifiedLocalImports: UnqualifiedLocalImports,
+            ReturningPointersToLocalVariables : ReturningPointersToLocalVariables,
         ]
     ]
 );

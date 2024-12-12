@@ -1,5 +1,6 @@
 // Make sure we catch this even without Stacked Borrows
 //@compile-flags: -Zmiri-disable-stacked-borrows
+#![allow(returning_pointers_to_local_variables)]
 use std::mem;
 
 fn dangling() -> *const u8 {
