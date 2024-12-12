@@ -2,7 +2,7 @@ use rustc_abi::{BackendRepr, Float, Integer, Primitive, RegKind};
 use rustc_attr_parsing::InstructionSetAttr;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::mono::{Linkage, MonoItem, MonoItemData, Visibility};
-use rustc_middle::mir::{Body, InlineAsmOperand, START_BLOCK};
+use rustc_middle::mir::{InlineAsmOperand, START_BLOCK};
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{Instance, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
@@ -23,9 +23,10 @@ pub(crate) fn codegen_naked_asm<
         + MiscCodegenMethods<'tcx>,
 >(
     cx: &'a Cx,
-    mir: &Body<'tcx>,
     instance: Instance<'tcx>,
 ) {
+    let mir = cx.tcx().instance_mir(instance.def);
+
     let rustc_middle::mir::TerminatorKind::InlineAsm {
         asm_macro: _,
         template,
