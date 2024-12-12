@@ -63,4 +63,5 @@ ARG SCRIPT_ARG
 COPY scripts/x86_64-gnu-llvm.sh /tmp/x86_64-gnu-llvm.sh
 COPY scripts/x86_64-gnu-llvm1.sh /tmp/x86_64-gnu-llvm1.sh
 COPY scripts/x86_64-gnu-llvm2.sh /tmp/x86_64-gnu-llvm2.sh
+COPY scripts/x86_64-gnu-llvm3.sh /tmp/x86_64-gnu-llvm3.sh
 ENV SCRIPT /tmp/${SCRIPT_ARG}
