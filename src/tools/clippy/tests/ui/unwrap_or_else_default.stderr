@@ -97,5 +97,27 @@ error: use of `or_insert_with` to construct default value
 LL |     let _ = inner_map.entry(0).or_insert_with(Default::default);
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `or_default()`
 
-error: aborting due to 16 previous errors
+error: `impl Default` that could be derived
+  --> tests/ui/unwrap_or_else_default.rs:28:5
+   |
+LL | /     impl Default for HasDefaultAndDuplicate {
+LL | |         fn default() -> Self {
+LL | |             HasDefaultAndDuplicate
+   | |             ---------------------- this type has no fields, so it's trivially derivable
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+   = note: `-D default-could-be-derived` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(default_could_be_derived)]`
+help: you don't need to manually `impl Default`, you can derive it
+   |
+LL ~     #[derive(Default)] struct HasDefaultAndDuplicate;
+LL |
+...
+LL |
+LL ~     
+   |
+
+error: aborting due to 17 previous errors
 

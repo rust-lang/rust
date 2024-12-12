@@ -38,7 +38,7 @@ impl Bar {
     }
 }
 
-pub struct Ok;
+#[derive(Default)] pub struct Ok;
 
 impl Ok {
     pub fn new() -> Self {
@@ -46,11 +46,6 @@ impl Ok {
     }
 }
 
-impl Default for Ok {
-    fn default() -> Self {
-        Ok
-    }
-}
 
 pub struct Params;
 

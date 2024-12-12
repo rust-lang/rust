@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(dead_code, default_could_be_derived)]
 
 use std::collections::HashMap;
 

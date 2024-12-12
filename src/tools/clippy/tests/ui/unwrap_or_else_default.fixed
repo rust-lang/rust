@@ -17,7 +17,7 @@ fn unwrap_or_else_default() {
         }
     }
 
-    struct HasDefaultAndDuplicate;
+    #[derive(Default)] struct HasDefaultAndDuplicate;
 
     impl HasDefaultAndDuplicate {
         fn default() -> Self {
@@ -25,11 +25,7 @@ fn unwrap_or_else_default() {
         }
     }
 
-    impl Default for HasDefaultAndDuplicate {
-        fn default() -> Self {
-            HasDefaultAndDuplicate
-        }
-    }
+    
 
     enum Enum {
         A(),

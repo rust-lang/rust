@@ -166,5 +166,23 @@ LL +     }
 LL + }
    |
 
-error: aborting due to 9 previous errors
+error: `impl Default` that could be derived
+  --> tests/ui/new_without_default.rs:37:1
+   |
+LL | / impl Default for Ok {
+LL | |     fn default() -> Self {
+LL | |         Ok
+   | |         -- this type has no fields, so it's trivially derivable
+LL | |     }
+LL | | }
+   | |_^
+   |
+   = note: `-D default-could-be-derived` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(default_could_be_derived)]`
+help: you don't need to manually `impl Default`, you can derive it
+   |
+LL ~ #[derive(Default)] pub struct Ok;
+   |
+
+error: aborting due to 10 previous errors
 

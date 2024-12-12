@@ -21,18 +21,14 @@ fn or_fun_call() {
         }
     }
 
-    struct FakeDefault;
+    #[derive(Default)] struct FakeDefault;
     impl FakeDefault {
         fn default() -> Self {
             FakeDefault
         }
     }
 
-    impl Default for FakeDefault {
-        fn default() -> Self {
-            FakeDefault
-        }
-    }
+    
 
     enum Enum {
         A(i32),
@@ -268,18 +264,14 @@ mod lazy {
             }
         }
 
-        struct FakeDefault;
+        #[derive(Default)] struct FakeDefault;
         impl FakeDefault {
             fn default() -> Self {
                 FakeDefault
             }
         }
 
-        impl Default for FakeDefault {
-            fn default() -> Self {
-                FakeDefault
-            }
-        }
+        
 
         let with_new = Some(vec![1]);
         with_new.unwrap_or_default();

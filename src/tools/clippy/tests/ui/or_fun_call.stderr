@@ -244,5 +244,47 @@ error: function call inside of `unwrap_or`
 LL |     let _ = opt_foo.unwrap_or(Foo { val: String::default() });
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| Foo { val: String::default() })`
 
-error: aborting due to 38 previous errors
+error: `impl Default` that could be derived
+  --> tests/ui/or_fun_call.rs:31:5
+   |
+LL | /     impl Default for FakeDefault {
+LL | |         fn default() -> Self {
+LL | |             FakeDefault
+   | |             ----------- this type has no fields, so it's trivially derivable
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+   = note: `-D default-could-be-derived` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(default_could_be_derived)]`
+help: you don't need to manually `impl Default`, you can derive it
+   |
+LL ~     #[derive(Default)] struct FakeDefault;
+LL |     impl FakeDefault {
+...
+LL |
+LL ~     
+   |
+
+error: `impl Default` that could be derived
+  --> tests/ui/or_fun_call.rs:278:9
+   |
+LL | /         impl Default for FakeDefault {
+LL | |             fn default() -> Self {
+LL | |                 FakeDefault
+   | |                 ----------- this type has no fields, so it's trivially derivable
+LL | |             }
+LL | |         }
+   | |_________^
+   |
+help: you don't need to manually `impl Default`, you can derive it
+   |
+LL ~         #[derive(Default)] struct FakeDefault;
+LL |         impl FakeDefault {
+...
+LL |
+LL ~         
+   |
+
+error: aborting due to 40 previous errors
 
