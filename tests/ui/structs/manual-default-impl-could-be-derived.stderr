@@ -176,7 +176,7 @@ LL ~ #[derive(Default)] struct J {
    |
 
 error: `impl Default` that could be derived
-  --> $DIR/manual-default-impl-could-be-derived.rs:145:1
+  --> $DIR/manual-default-impl-could-be-derived.rs:144:1
    |
 LL | / impl Default for L {
 LL | |     fn default() -> Self {
@@ -192,5 +192,22 @@ help: you don't need to manually `impl Default`, you can derive it
 LL ~ #[derive(Default)] struct L {
    |
 
-error: aborting due to 11 previous errors
+error: `impl Default` that could be derived
+  --> $DIR/manual-default-impl-could-be-derived.rs:157:1
+   |
+LL | / impl Default for M {
+LL | |     fn default() -> Self {
+LL | |         M {
+LL | |             x: N_CONST,
+LL | |         }
+LL | |     }
+LL | | }
+   | |_^
+   |
+help: you don't need to manually `impl Default`, you can derive it
+   |
+LL ~ #[derive(Default)] struct M {
+   |
+
+error: aborting due to 12 previous errors
 

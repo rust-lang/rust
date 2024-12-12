@@ -137,7 +137,6 @@ fn foo() -> K {
 }
 
 // Verify that cross-crate tracking of "equivalences" keeps working.
-#[derive(PartialEq, Debug)]
 struct L {
     x: Vec<i32>,
 }
@@ -149,6 +148,29 @@ impl Default for L { //~ ERROR
         }
     }
 }
+
+// Account for `const`s
+struct M {
+    x: N,
+}
+
+impl Default for M { //~ ERROR
+    fn default() -> Self {
+        M {
+            x: N_CONST,
+        }
+    }
+}
+
+struct N;
+
+impl Default for N { // ok
+    fn default() -> Self {
+        N_CONST
+    }
+}
+
+const N_CONST: N = N;
 
 fn main() {
     let _ = A::default();
@@ -163,4 +185,6 @@ fn main() {
     let _ = J::default();
     let _ = K::default();
     let _ = L::default();
+    let _ = M::default();
+    let _ = N::default();
 }
