@@ -38,9 +38,7 @@ root_dir="`dirname $src_dir`"
 
 source "$ci_dir/shared.sh"
 
-echo "Checking is running in CI..."
 if isCI; then
-    echo "CI detected"
     objdir=$root_dir/obj
 else
     objdir=$root_dir/obj/$image
@@ -55,7 +53,6 @@ fi
 CACHE_DOMAIN="${CACHE_DOMAIN:-ci-caches.rust-lang.org}"
 
 if [ -f "$docker_dir/$image/Dockerfile" ]; then
-    echo "Dockefile exists for $image"
     hash_key=/tmp/.docker-hash-key.txt
     rm -f "${hash_key}"
     echo $image >> $hash_key
@@ -123,9 +120,6 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
     # instead of the one defined in the Dockerfile.
     if [ -n "${DOCKER_SCRIPT+x}" ]; then
       build_args+=("--build-arg" "SCRIPT_ARG=${DOCKER_SCRIPT}")
-      echo "Using docker build arg SCRIPT_ARG=${DOCKER_SCRIPT}"
-    else
-      echo "DOCKER_SCRIPT is not defined"
     fi
 
     # On non-CI jobs, we try to download a pre-built image from the rust-lang-ci
