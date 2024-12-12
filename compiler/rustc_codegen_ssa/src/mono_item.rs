@@ -1,7 +1,7 @@
 use rustc_hir as hir;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_middle::mir::mono::{Linkage, MonoItem, Visibility};
+use rustc_middle::mir::mono::{Linkage, MonoItem, MonoItemData, Visibility};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::{span_bug, ty};
@@ -12,7 +12,7 @@ use crate::traits::*;
 use crate::{base, common};
 
 pub trait MonoItemExt<'a, 'tcx> {
-    fn define<Bx: BuilderMethods<'a, 'tcx>>(&self, cx: &'a Bx::CodegenCx);
+    fn define<Bx: BuilderMethods<'a, 'tcx>>(&self, cx: &'a Bx::CodegenCx, item_data: MonoItemData);
     fn predefine<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
         cx: &'a Bx::CodegenCx,
@@ -23,7 +23,7 @@ pub trait MonoItemExt<'a, 'tcx> {
 }
 
 impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
-    fn define<Bx: BuilderMethods<'a, 'tcx>>(&self, cx: &'a Bx::CodegenCx) {
+    fn define<Bx: BuilderMethods<'a, 'tcx>>(&self, cx: &'a Bx::CodegenCx, item_data: MonoItemData) {
         debug!(
             "BEGIN IMPLEMENTING '{} ({})' in cgu {}",
             self,
@@ -106,7 +106,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
                     .flags
                     .contains(CodegenFnAttrFlags::NAKED)
                 {
-                    naked_asm::codegen_naked_asm::<Bx::CodegenCx>(cx, instance);
+                    naked_asm::codegen_naked_asm::<Bx::CodegenCx>(cx, instance, item_data);
                 } else {
                     base::codegen_instance::<Bx>(cx, instance);
                 }
