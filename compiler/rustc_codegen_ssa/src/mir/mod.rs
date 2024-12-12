@@ -20,7 +20,7 @@ mod coverageinfo;
 pub mod debuginfo;
 mod intrinsic;
 mod locals;
-pub(crate) mod naked_asm;
+pub mod naked_asm;
 pub mod operand;
 pub mod place;
 mod rvalue;

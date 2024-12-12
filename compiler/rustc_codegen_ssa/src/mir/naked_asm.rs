@@ -14,7 +14,7 @@ use crate::common;
 use crate::mir::AsmCodegenMethods;
 use crate::traits::GlobalAsmOperandRef;
 
-pub(crate) fn codegen_naked_asm<
+pub fn codegen_naked_asm<
     'a,
     'tcx,
     Cx: LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>>
