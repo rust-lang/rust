@@ -22,7 +22,10 @@ use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
 use rustc_metadata::EncodedMetadata;
 use rustc_metadata::fs::copy_to_stdout;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
-use rustc_middle::mir::mono::{CodegenUnit, MonoItem};
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::mir::mono::{
+    CodegenUnit, Linkage as RLinkage, MonoItem, MonoItemData, Visibility,
+};
 use rustc_session::Session;
 use rustc_session::config::{DebugInfo, OutFileName, OutputFilenames, OutputType};
 
@@ -30,7 +33,7 @@ use crate::CodegenCx;
 use crate::base::CodegenedFunction;
 use crate::concurrency_limiter::{ConcurrencyLimiter, ConcurrencyLimiterToken};
 use crate::debuginfo::TypeDebugContext;
-use crate::global_asm::GlobalAsmConfig;
+use crate::global_asm::{GlobalAsmConfig, GlobalAsmContext};
 use crate::prelude::*;
 use crate::unwind_module::UnwindModule;
 
@@ -530,19 +533,35 @@ fn codegen_cgu_content(
     let mut type_dbg = TypeDebugContext::default();
     super::predefine_mono_items(tcx, module, &mono_items);
     let mut codegened_functions = vec![];
-    for (mono_item, _) in mono_items {
+    for (mono_item, item_data) in mono_items {
         match mono_item {
-            MonoItem::Fn(inst) => {
-                if let Some(codegened_function) = crate::base::codegen_fn(
+            MonoItem::Fn(instance) => {
+                if tcx.codegen_fn_attrs(instance.def_id()).flags.contains(CodegenFnAttrFlags::NAKED)
+                {
+                    rustc_codegen_ssa::mir::naked_asm::codegen_naked_asm(
+                        &mut GlobalAsmContext { tcx, global_asm: &mut cx.global_asm },
+                        instance,
+                        MonoItemData {
+                            linkage: RLinkage::External,
+                            visibility: if item_data.linkage == RLinkage::Internal {
+                                Visibility::Hidden
+                            } else {
+                                item_data.visibility
+                            },
+                            ..item_data
+                        },
+                    );
+                    continue;
+                }
+                let codegened_function = crate::base::codegen_fn(
                     tcx,
                     &mut cx,
                     &mut type_dbg,
                     Function::new(),
                     module,
-                    inst,
-                ) {
-                    codegened_functions.push(codegened_function);
-                }
+                    instance,
+                );
+                codegened_functions.push(codegened_function);
             }
             MonoItem::Static(def_id) => {
                 let data_id = crate::constant::codegen_static(tcx, module, def_id);
