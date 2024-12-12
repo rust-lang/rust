@@ -2,7 +2,7 @@ use rustc_abi::{BackendRepr, Float, Integer, Primitive, RegKind};
 use rustc_attr_parsing::InstructionSetAttr;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::mono::{Linkage, MonoItem, MonoItemData, Visibility};
-use rustc_middle::mir::{Body, InlineAsmOperand};
+use rustc_middle::mir::{Body, InlineAsmOperand, START_BLOCK};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{Instance, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
@@ -26,7 +26,7 @@ pub(crate) fn codegen_naked_asm<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         line_spans,
         targets: _,
         unwind: _,
-    } = mir.basic_blocks.iter().next().unwrap().terminator().kind
+    } = mir.basic_blocks[START_BLOCK].terminator().kind
     else {
         bug!("#[naked] functions should always terminate with an asm! block")
     };
