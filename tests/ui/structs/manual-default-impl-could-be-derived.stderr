@@ -3,6 +3,7 @@ error: `impl Default` that could be derived
    |
 LL | / impl Default for A {
 LL | |     fn default() -> Self { A }
+   | |                            - this type has no fields, so it's trivially derivable
 LL | | }
    | |_^
    |
@@ -22,6 +23,7 @@ error: `impl Default` that could be derived
    |
 LL | / impl Default for B {
 LL | |     fn default() -> Self { B(Default::default()) }
+   | |                              ------------------ this is the same value the expansion of `#[derive(Default)]` would use
 LL | | }
    | |_^
    |
@@ -36,6 +38,7 @@ error: `impl Default` that could be derived
    |
 LL | / impl Default for C {
 LL | |     fn default() -> Self { C(None) }
+   | |                              ---- this is the same value the expansion of `#[derive(Default)]` would use
 LL | | }
    | |_^
    |
@@ -52,7 +55,10 @@ LL | / impl Default for D {
 LL | |     fn default() -> Self {
 LL | |         D {
 LL | |             x: Default::default(),
-...  |
+   | |                ------------------
+LL | |             y: 0,
+   | |                - these are the same values the expansion of `#[derive(Default)]` would use
+LL | |         }
 LL | |     }
 LL | | }
    | |_^
@@ -69,6 +75,7 @@ LL | / impl Default for E {
 LL | |     fn default() -> Self {
 LL | |         E {
 LL | |             x: None,
+   | |                ---- this is the same value the expansion of `#[derive(Default)]` would use
 LL | |         }
 LL | |     }
 LL | | }
@@ -85,6 +92,7 @@ error: `impl Default` that could be derived
 LL | / impl<T> Default for F<T> {
 LL | |     fn default() -> Self {
 LL | |         F::Unit
+   | |         ------- this enum variant has no fields, so it's trivially derivable
 LL | |     }
 LL | | }
    | |_^
@@ -102,6 +110,7 @@ LL | / impl Default for G {
 LL | |     fn default() -> Self {
 LL | |         G {
 LL | |             f: F::Unit,
+   | |                ------- this is the same value the expansion of `#[derive(Default)]` would use
 LL | |         }
 LL | |     }
 LL | | }
@@ -165,6 +174,7 @@ LL | / impl Default for J {
 LL | |     fn default() -> Self {
 LL | |         J {
 LL | |             x: foo(), // fn call that isn't an assoc fn
+   | |                ----- this is the same value the expansion of `#[derive(Default)]` would use
 LL | |         }
 LL | |     }
 LL | | }
@@ -182,6 +192,7 @@ LL | / impl Default for L {
 LL | |     fn default() -> Self {
 LL | |         L {
 LL | |             x: Vec::new(), // `<Vec as Default>::default()` just calls `Vec::new()`
+   | |                ---------- this is the same value the expansion of `#[derive(Default)]` would use
 LL | |         }
 LL | |     }
 LL | | }
@@ -199,6 +210,7 @@ LL | / impl Default for M {
 LL | |     fn default() -> Self {
 LL | |         M {
 LL | |             x: N_CONST,
+   | |                ------- this is the same value the expansion of `#[derive(Default)]` would use
 LL | |         }
 LL | |     }
 LL | | }

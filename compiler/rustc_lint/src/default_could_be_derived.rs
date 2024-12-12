@@ -180,6 +180,10 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
                         item.span,
                         |diag| {
                             diag.primary_message("`impl Default` that could be derived");
+                            diag.span_label(
+                                expr.span,
+                                "this enum variant has no fields, so it's trivially derivable",
+                            );
                             diag.multipart_suggestion_verbose(
                                 "you don't need to manually `impl Default`, you can derive it",
                                 vec![
@@ -198,7 +202,7 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
                         },
                     );
                 }
-                hir::ExprKind::Struct(_qpath, fields, _tail) => {
+                hir::ExprKind::Struct(_qpath, fields, tail) => {
                     // We have a struct literal
                     //
                     // struct Foo {
@@ -218,6 +222,16 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
                     //  - `val` matches the `Default::default()` body for that type
                     //  - `val` is `0`
                     //  - `val` is `false`
+                    if let hir::StructTailExpr::Base(_) = tail {
+                        // This is *very* niche. We'd only get here if someone wrote
+                        // impl Default for Ty {
+                        //     fn default() -> Ty {
+                        //         Ty { ..something() }
+                        //     }
+                        // }
+                        // where `something()` would have to be a call or path.
+                        return;
+                    }
                     if fields.iter().all(|f| check_expr(cx, f.expr)) {
                         cx.tcx.node_span_lint(
                             DEFAULT_COULD_BE_DERIVED,
@@ -225,6 +239,27 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
                             item.span,
                             |diag| {
                                 diag.primary_message("`impl Default` that could be derived");
+                                for (i, field) in fields.iter().enumerate() {
+                                    let msg = if i == fields.len() - 1 {
+                                        if fields.len() == 1 {
+                                            "this is the same value the expansion of \
+                                             `#[derive(Default)]` would use"
+                                        } else {
+                                            "these are the same values the expansion of \
+                                             `#[derive(Default)]` would use"
+                                        }
+                                    } else {
+                                        ""
+                                    };
+                                    diag.span_label(field.expr.span, msg);
+                                }
+                                if let hir::StructTailExpr::DefaultFields(span) = tail {
+                                    diag.span_label(
+                                        span,
+                                        "all remaining fields will use the same default field \
+                                         values that the `#[derive(Default)]` would use",
+                                    );
+                                }
                                 diag.multipart_suggestion_verbose(
                                     "you don't need to manually `impl Default`, you can derive it",
                                     vec![
@@ -268,6 +303,20 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
                                 item.span,
                                 |diag| {
                                     diag.primary_message("`impl Default` that could be derived");
+                                    for (i, field) in args.iter().enumerate() {
+                                        let msg = if i == args.len() - 1 {
+                                            if args.len() == 1 {
+                                                "this is the same value the expansion of \
+                                                 `#[derive(Default)]` would use"
+                                            } else {
+                                                "these are the same values the expansion of \
+                                                 `#[derive(Default)]` would use"
+                                            }
+                                        } else {
+                                            ""
+                                        };
+                                        diag.span_label(field.span, msg);
+                                    }
                                     diag.multipart_suggestion_verbose(
                                         "you don't need to manually `impl Default`, you can derive it",
                                         vec![
@@ -305,6 +354,10 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
                         item.span,
                         |diag| {
                             diag.primary_message("`impl Default` that could be derived");
+                            diag.span_label(
+                                expr.span,
+                                "this type has no fields, so it's trivially derivable",
+                            );
                             diag.multipart_suggestion_verbose(
                                 "you don't need to manually `impl Default`, you can derive it",
                                 vec![

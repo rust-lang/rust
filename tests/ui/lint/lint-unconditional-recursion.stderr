@@ -197,23 +197,5 @@ LL |             ..Default::default()
    |
    = help: a `loop` may express intention better if this is on purpose
 
-warning: `impl Default` that could be derived
-  --> $DIR/lint-unconditional-recursion.rs:185:1
-   |
-LL | / impl Default for Point {
-LL | |     fn default() -> Self {
-LL | |         Point {
-LL | |             x: Default::default(),
-...  |
-LL | |     }
-LL | | }
-   | |_^
-   |
-   = note: `#[warn(default_could_be_derived)]` on by default
-help: you don't need to manually `impl Default`, you can derive it
-   |
-LL ~ #[derive(Default)] pub struct Point {
-   |
-
-error: aborting due to 18 previous errors; 1 warning emitted
+error: aborting due to 18 previous errors
 
