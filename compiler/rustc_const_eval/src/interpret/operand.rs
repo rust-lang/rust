@@ -718,9 +718,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Read from a local of a given frame.
     /// Will not access memory, instead an indirect `Operand` is returned.
     ///
-    /// This is public because it is used by [priroda](https://github.com/oli-obk/priroda) and
-    /// [Aquascope](https://github.com/cognitive-engineering-lab/aquascope/) to get an
-    /// OpTy from a local.
+    /// This is public because it is used by [Aquascope](https://github.com/cognitive-engineering-lab/aquascope/)
+    /// to get an OpTy from a local.
     pub fn local_at_frame_to_op(
         &self,
         frame: &Frame<'tcx, M::Provenance, M::FrameExtra>,
@@ -732,7 +731,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         if matches!(op, Operand::Immediate(_)) {
             assert!(!layout.is_unsized());
         }
-        M::after_local_read(self, local)?;
+        M::after_local_read(self, frame, local)?;
         interp_ok(OpTy { op, layout })
     }
 

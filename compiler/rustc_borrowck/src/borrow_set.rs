@@ -20,18 +20,37 @@ pub struct BorrowSet<'tcx> {
     /// by the `Location` of the assignment statement in which it
     /// appears on the right hand side. Thus the location is the map
     /// key, and its position in the map corresponds to `BorrowIndex`.
-    pub location_map: FxIndexMap<Location, BorrowData<'tcx>>,
+    pub(crate) location_map: FxIndexMap<Location, BorrowData<'tcx>>,
 
     /// Locations which activate borrows.
     /// NOTE: a given location may activate more than one borrow in the future
     /// when more general two-phase borrow support is introduced, but for now we
     /// only need to store one borrow index.
-    pub activation_map: FxIndexMap<Location, Vec<BorrowIndex>>,
+    pub(crate) activation_map: FxIndexMap<Location, Vec<BorrowIndex>>,
 
     /// Map from local to all the borrows on that local.
-    pub local_map: FxIndexMap<mir::Local, FxIndexSet<BorrowIndex>>,
+    pub(crate) local_map: FxIndexMap<mir::Local, FxIndexSet<BorrowIndex>>,
 
-    pub locals_state_at_exit: LocalsStateAtExit,
+    pub(crate) locals_state_at_exit: LocalsStateAtExit,
+}
+
+// These methods are public to support borrowck consumers.
+impl<'tcx> BorrowSet<'tcx> {
+    pub fn location_map(&self) -> &FxIndexMap<Location, BorrowData<'tcx>> {
+        &self.location_map
+    }
+
+    pub fn activation_map(&self) -> &FxIndexMap<Location, Vec<BorrowIndex>> {
+        &self.activation_map
+    }
+
+    pub fn local_map(&self) -> &FxIndexMap<mir::Local, FxIndexSet<BorrowIndex>> {
+        &self.local_map
+    }
+
+    pub fn locals_state_at_exit(&self) -> &LocalsStateAtExit {
+        &self.locals_state_at_exit
+    }
 }
 
 impl<'tcx> Index<BorrowIndex> for BorrowSet<'tcx> {
@@ -55,17 +74,44 @@ pub enum TwoPhaseActivation {
 pub struct BorrowData<'tcx> {
     /// Location where the borrow reservation starts.
     /// In many cases, this will be equal to the activation location but not always.
-    pub reserve_location: Location,
+    pub(crate) reserve_location: Location,
     /// Location where the borrow is activated.
-    pub activation_location: TwoPhaseActivation,
+    pub(crate) activation_location: TwoPhaseActivation,
     /// What kind of borrow this is
-    pub kind: mir::BorrowKind,
+    pub(crate) kind: mir::BorrowKind,
     /// The region for which this borrow is live
-    pub region: RegionVid,
+    pub(crate) region: RegionVid,
     /// Place from which we are borrowing
-    pub borrowed_place: mir::Place<'tcx>,
+    pub(crate) borrowed_place: mir::Place<'tcx>,
     /// Place to which the borrow was stored
-    pub assigned_place: mir::Place<'tcx>,
+    pub(crate) assigned_place: mir::Place<'tcx>,
+}
+
+// These methods are public to support borrowck consumers.
+impl<'tcx> BorrowData<'tcx> {
+    pub fn reserve_location(&self) -> Location {
+        self.reserve_location
+    }
+
+    pub fn activation_location(&self) -> TwoPhaseActivation {
+        self.activation_location
+    }
+
+    pub fn kind(&self) -> mir::BorrowKind {
+        self.kind
+    }
+
+    pub fn region(&self) -> RegionVid {
+        self.region
+    }
+
+    pub fn borrowed_place(&self) -> mir::Place<'tcx> {
+        self.borrowed_place
+    }
+
+    pub fn assigned_place(&self) -> mir::Place<'tcx> {
+        self.assigned_place
+    }
 }
 
 impl<'tcx> fmt::Display for BorrowData<'tcx> {
