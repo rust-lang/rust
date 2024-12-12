@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fs::{self, File, create_dir_all};
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::prelude::*;
@@ -1836,7 +1836,20 @@ impl<'test> TestCx<'test> {
             return;
         }
 
-        let proc_name = Path::new(proc_name).file_name().unwrap().to_string_lossy();
+        let path = Path::new(proc_name);
+        let proc_name = if path.file_stem().is_some_and(|p| p == "rmake") {
+            OsString::from_iter(
+                path.parent()
+                    .unwrap()
+                    .file_name()
+                    .into_iter()
+                    .chain(Some(OsStr::new("/")))
+                    .chain(path.file_name()),
+            )
+        } else {
+            path.file_name().unwrap().into()
+        };
+        let proc_name = proc_name.to_string_lossy();
         println!("------{proc_name} stdout------------------------------");
         println!("{}", out);
         println!("------{proc_name} stderr------------------------------");
