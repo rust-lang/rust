@@ -177,8 +177,7 @@ LL | |     }
 LL | | }
    | |_^
    |
-   = note: `-D default-could-be-derived` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(default_could_be_derived)]`
+   = note: `#[deny(default_could_be_derived)]` on by default
 help: you don't need to manually `impl Default`, you can derive it
    |
 LL ~ #[derive(Default)] pub struct Ok;

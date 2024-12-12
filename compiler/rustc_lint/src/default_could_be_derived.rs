@@ -54,7 +54,7 @@ declare_lint! {
     /// so the derive for `Default` for a struct is trivial, and for an enum
     /// variant with no fields, which can be annotated with `#[default]`.
     pub DEFAULT_COULD_BE_DERIVED,
-    Warn,
+    Deny,
     "detect `Default` impl that could be derived"
 }
 
