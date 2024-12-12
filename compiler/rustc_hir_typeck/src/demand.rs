@@ -917,7 +917,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             [candidate] => format!(
                 "the method of the same name on {} `{}`",
                 match candidate.kind {
-                    probe::CandidateKind::InherentImplCandidate(_) => "the inherent impl for",
+                    probe::CandidateKind::InherentImplCandidate { .. } => "the inherent impl for",
                     _ => "trait",
                 },
                 self.tcx.def_path_str(candidate.item.container_id(self.tcx))
