@@ -262,7 +262,7 @@ pub fn each_linked_rlib(
     };
 
     for &cnum in crates {
-        match fmts.get(cnum.as_usize() - 1) {
+        match fmts.get(cnum) {
             Some(&Linkage::NotLinked | &Linkage::Dynamic | &Linkage::IncludedFromDylib) => continue,
             Some(_) => {}
             None => return Err(errors::LinkRlibError::MissingFormat),
@@ -624,7 +624,7 @@ fn link_staticlib(
 
     let mut all_rust_dylibs = vec![];
     for &cnum in crates {
-        match fmts.get(cnum.as_usize() - 1) {
+        match fmts.get(cnum) {
             Some(&Linkage::Dynamic) => {}
             _ => continue,
         }
@@ -2361,8 +2361,8 @@ fn linker_with_args(
         .crate_info
         .native_libraries
         .iter()
-        .filter_map(|(cnum, libraries)| {
-            (dependency_linkage[cnum.as_usize() - 1] != Linkage::Static).then_some(libraries)
+        .filter_map(|(&cnum, libraries)| {
+            (dependency_linkage[cnum] != Linkage::Static).then_some(libraries)
         })
         .flatten()
         .collect::<Vec<_>>();
@@ -2754,7 +2754,7 @@ fn add_upstream_rust_crates(
         // (e.g. `libstd` when `-C prefer-dynamic` is used).
         // FIXME: `dependency_formats` can report `profiler_builtins` as `NotLinked` for some
         // reason, it shouldn't do that because `profiler_builtins` should indeed be linked.
-        let linkage = data[cnum.as_usize() - 1];
+        let linkage = data[cnum];
         let link_static_crate = linkage == Linkage::Static
             || (linkage == Linkage::IncludedFromDylib || linkage == Linkage::NotLinked)
                 && (codegen_results.crate_info.compiler_builtins == Some(cnum)

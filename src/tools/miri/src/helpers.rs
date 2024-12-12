@@ -151,12 +151,14 @@ pub fn iter_exported_symbols<'tcx>(
     let dependency_format = dependency_formats
         .get(&CrateType::Executable)
         .expect("interpreting a non-executable crate");
-    for cnum in dependency_format.iter().enumerate().filter_map(|(num, &linkage)| {
-        // We add 1 to the number because that's what rustc also does everywhere it
-        // calls `CrateNum::new`...
-        #[expect(clippy::arithmetic_side_effects)]
-        (linkage != Linkage::NotLinked).then_some(CrateNum::new(num + 1))
-    }) {
+    for cnum in dependency_format
+        .iter_enumerated()
+        .filter_map(|(num, &linkage)| (linkage != Linkage::NotLinked).then_some(num))
+    {
+        if cnum == LOCAL_CRATE {
+            continue; // Already handled above
+        }
+
         // We can ignore `_export_info` here: we are a Rust crate, and everything is exported
         // from a Rust crate.
         for &(symbol, _export_info) in tcx.exported_symbols(cnum) {

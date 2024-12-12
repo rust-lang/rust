@@ -1474,7 +1474,7 @@ impl<'a> CrateMetadataRef<'a> {
     ) -> &'tcx [(CrateNum, LinkagePreference)] {
         tcx.arena.alloc_from_iter(
             self.root.dylib_dependency_formats.decode(self).enumerate().flat_map(|(i, link)| {
-                let cnum = CrateNum::new(i + 1);
+                let cnum = CrateNum::new(i + 1); // We skipped LOCAL_CRATE when encoding
                 link.map(|link| (self.cnum_map[cnum], link))
             }),
         )
