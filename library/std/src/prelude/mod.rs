@@ -33,8 +33,9 @@
 //!
 //! * <code>[std::marker]::{[Copy], [Send], [Sized], [Sync], [Unpin]}</code>,
 //!   marker traits that indicate fundamental properties of types.
-//! * <code>[std::ops]::{[Drop], [Fn], [FnMut], [FnOnce]}</code>, various
-//!   operations for both destructors and overloading `()`.
+//! * <code>[std::ops]::{[Fn], [FnMut], [FnOnce]}</code>, and their analogous
+//!   async traits, <code>[std::ops]::{[AsyncFn], [AsyncFnMut], [AsyncFnOnce]}</code>.
+//! * <code>[std::ops]::[Drop]</code>, for implementing destructors.
 //! * <code>[std::mem]::[drop]</code>, a convenience function for explicitly
 //!   dropping a value.
 //! * <code>[std::mem]::{[size_of], [size_of_val]}</code>, to get the size of
