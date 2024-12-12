@@ -236,7 +236,13 @@ pub fn each_linked_rlib(
 ) -> Result<(), errors::LinkRlibError> {
     let crates = info.used_crates.iter();
 
-    let fmts = if crate_type.is_none() {
+    let fmts = if let Some(crate_type) = crate_type {
+        let Some(fmts) = info.dependency_formats.get(&crate_type) else {
+            return Err(errors::LinkRlibError::MissingFormat);
+        };
+
+        fmts
+    } else {
         for combination in info.dependency_formats.iter().combinations(2) {
             let (ty1, list1) = &combination[0];
             let (ty2, list2) = &combination[1];
@@ -252,18 +258,7 @@ pub fn each_linked_rlib(
         if info.dependency_formats.is_empty() {
             return Err(errors::LinkRlibError::MissingFormat);
         }
-        &info.dependency_formats[0].1
-    } else {
-        let fmts = info
-            .dependency_formats
-            .iter()
-            .find_map(|&(ty, ref list)| if Some(ty) == crate_type { Some(list) } else { None });
-
-        let Some(fmts) = fmts else {
-            return Err(errors::LinkRlibError::MissingFormat);
-        };
-
-        fmts
+        info.dependency_formats.first().unwrap().1
     };
 
     for &cnum in crates {
@@ -624,8 +619,7 @@ fn link_staticlib(
     let fmts = codegen_results
         .crate_info
         .dependency_formats
-        .iter()
-        .find_map(|&(ty, ref list)| if ty == CrateType::Staticlib { Some(list) } else { None })
+        .get(&CrateType::Staticlib)
         .expect("no dependency formats for staticlib");
 
     let mut all_rust_dylibs = vec![];
@@ -2355,11 +2349,10 @@ fn linker_with_args(
     // they are used within inlined functions or instantiated generic functions. We do this *after*
     // handling the raw-dylib symbols in the current crate to make sure that those are chosen first
     // by the linker.
-    let (_, dependency_linkage) = codegen_results
+    let dependency_linkage = codegen_results
         .crate_info
         .dependency_formats
-        .iter()
-        .find(|(ty, _)| *ty == crate_type)
+        .get(&crate_type)
         .expect("failed to find crate type in dependency format list");
 
     // We sort the libraries below
@@ -2738,11 +2731,10 @@ fn add_upstream_rust_crates(
     // Linking to a rlib involves just passing it to the linker (the linker
     // will slurp up the object files inside), and linking to a dynamic library
     // involves just passing the right -l flag.
-    let (_, data) = codegen_results
+    let data = codegen_results
         .crate_info
         .dependency_formats
-        .iter()
-        .find(|(ty, _)| *ty == crate_type)
+        .get(&crate_type)
         .expect("failed to find crate type in dependency format list");
 
     if sess.target.is_like_aix {

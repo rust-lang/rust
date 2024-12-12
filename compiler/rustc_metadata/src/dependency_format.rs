@@ -77,7 +77,7 @@ pub(crate) fn calculate(tcx: TyCtxt<'_>) -> Dependencies {
             verify_ok(tcx, &linkage);
             (ty, linkage)
         })
-        .collect::<Vec<_>>()
+        .collect()
 }
 
 fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
