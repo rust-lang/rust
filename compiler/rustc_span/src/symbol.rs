@@ -461,6 +461,7 @@ symbols! {
         async_drop_slice,
         async_drop_surface_drop_in_place,
         async_fn,
+        async_fn_in_dyn_trait,
         async_fn_in_trait,
         async_fn_kind_helper,
         async_fn_kind_upvars,

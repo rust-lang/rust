@@ -390,6 +390,8 @@ declare_features! (
     (unstable, associated_type_defaults, "1.2.0", Some(29661)),
     /// Allows `async || body` closures.
     (unstable, async_closure, "1.37.0", Some(62290)),
+    /// Allows async functions to be called from `dyn Trait`.
+    (incomplete, async_fn_in_dyn_trait, "CURRENT_RUSTC_VERSION", Some(133119)),
     /// Allows `#[track_caller]` on async functions.
     (unstable, async_fn_track_caller, "1.73.0", Some(110011)),
     /// Allows `for await` loops.

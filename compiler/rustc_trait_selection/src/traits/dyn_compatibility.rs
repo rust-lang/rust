@@ -11,6 +11,7 @@ use rustc_abi::BackendRepr;
 use rustc_errors::FatalError;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
     self, EarlyBinder, ExistentialPredicateStableCmpExt as _, GenericArgs, Ty, TyCtxt,
@@ -901,23 +902,59 @@ fn contains_illegal_impl_trait_in_trait<'tcx>(
     fn_def_id: DefId,
     ty: ty::Binder<'tcx, Ty<'tcx>>,
 ) -> Option<MethodViolationCode> {
-    // This would be caught below, but rendering the error as a separate
-    // `async-specific` message is better.
-    if tcx.asyncness(fn_def_id).is_async() {
-        return Some(MethodViolationCode::AsyncFn);
-    }
+    let ty = tcx.liberate_late_bound_regions(fn_def_id, ty);
 
-    // FIXME(RPITIT): Perhaps we should use a visitor here?
-    ty.skip_binder().walk().find_map(|arg| {
-        if let ty::GenericArgKind::Type(ty) = arg.unpack()
-            && let ty::Alias(ty::Projection, proj) = ty.kind()
-            && tcx.is_impl_trait_in_trait(proj.def_id)
-        {
-            Some(MethodViolationCode::ReferencesImplTraitInTrait(tcx.def_span(proj.def_id)))
-        } else {
+    if tcx.asyncness(fn_def_id).is_async() {
+        // FIXME(async_fn_in_dyn_trait): Think of a better way to unify these code paths
+        // to issue an appropriate feature suggestion when users try to use AFIDT.
+        // Obviously we must only do this once AFIDT is finished enough to actually be usable.
+        if tcx.features().async_fn_in_dyn_trait() {
+            let ty::Alias(ty::Projection, proj) = *ty.kind() else {
+                bug!("expected async fn in trait to return an RPITIT");
+            };
+            assert!(tcx.is_impl_trait_in_trait(proj.def_id));
+
+            // FIXME(async_fn_in_dyn_trait): We should check that this bound is legal too,
+            // and stop relying on `async fn` in the definition.
+            for bound in tcx.item_bounds(proj.def_id).instantiate(tcx, proj.args) {
+                if let Some(violation) = bound
+                    .visit_with(&mut IllegalRpititVisitor { tcx, allowed: Some(proj) })
+                    .break_value()
+                {
+                    return Some(violation);
+                }
+            }
+
             None
+        } else {
+            // Rendering the error as a separate `async-specific` message is better.
+            Some(MethodViolationCode::AsyncFn)
         }
-    })
+    } else {
+        ty.visit_with(&mut IllegalRpititVisitor { tcx, allowed: None }).break_value()
+    }
+}
+
+struct IllegalRpititVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    allowed: Option<ty::AliasTy<'tcx>>,
+}
+
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalRpititVisitor<'tcx> {
+    type Result = ControlFlow<MethodViolationCode>;
+
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
+        if let ty::Alias(ty::Projection, proj) = *ty.kind()
+            && Some(proj) != self.allowed
+            && self.tcx.is_impl_trait_in_trait(proj.def_id)
+        {
+            ControlFlow::Break(MethodViolationCode::ReferencesImplTraitInTrait(
+                self.tcx.def_span(proj.def_id),
+            ))
+        } else {
+            ty.super_visit_with(self)
+        }
+    }
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
