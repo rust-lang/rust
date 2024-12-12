@@ -613,19 +613,16 @@ impl<'tcx> AnnotateUnitFallbackVisitor<'_, 'tcx> {
         if arg_segment.args.is_none()
             && let Some(all_args) = self.fcx.typeck_results.borrow().node_args_opt(id)
             && let generics = self.fcx.tcx.generics_of(def_id)
-            && let args = &all_args[generics.parent_count..]
+            && let args = all_args[generics.parent_count..].iter().zip(&generics.own_params)
             // We can't turbofish consts :(
-            && args.iter().all(|arg| matches!(arg.unpack(), ty::GenericArgKind::Type(_) | ty::GenericArgKind::Lifetime(_)))
+            && args.clone().all(|(_, param)| matches!(param.kind, ty::GenericParamDefKind::Type { .. } | ty::GenericParamDefKind::Lifetime))
         {
-            let n_tys = args
-                .iter()
-                .filter(|arg| matches!(arg.unpack(), ty::GenericArgKind::Type(_)))
-                .count();
-            for (idx, arg) in args
-                .iter()
-                .filter(|arg| matches!(arg.unpack(), ty::GenericArgKind::Type(_)))
-                .enumerate()
-            {
+            // We filter out APITs, which are not turbofished.
+            let non_apit_type_args = args.filter(|(_, param)| {
+                matches!(param.kind, ty::GenericParamDefKind::Type { synthetic: false, .. })
+            });
+            let n_tys = non_apit_type_args.clone().count();
+            for (idx, (arg, _)) in non_apit_type_args.enumerate() {
                 if let Some(ty) = arg.as_type()
                     && let Some(vid) = self.fcx.root_vid(ty)
                     && self.reachable_vids.contains(&vid)

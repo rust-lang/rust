@@ -11,6 +11,8 @@ fn main() {
     m();
     q();
     let _ = meow();
+    let _ = fallback_return();
+    let _ = fully_apit();
 }
 
 fn m() {
@@ -47,5 +49,31 @@ fn meow() -> Result<(), ()> {
     //[e2021]~| this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
     help(1)?;
     //[e2024]~^ error: the trait bound `(): From<!>` is not satisfied
+    Ok(())
+}
+
+pub fn takes_apit<T>(_y: impl Fn() -> T) -> Result<T, ()> {
+    Err(())
+}
+
+pub fn fallback_return() -> Result<(), ()> {
+    //[e2021]~^ this function depends on never type fallback being `()`
+    //[e2021]~| this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
+    takes_apit(|| Default::default())?;
+    //[e2024]~^ error: the trait bound `!: Default` is not satisfied
+    Ok(())
+}
+
+fn mk<T>() -> Result<T, ()> {
+    Err(())
+}
+
+fn takes_apit2(_x: impl Default) {}
+
+fn fully_apit() -> Result<(), ()> {
+    //[e2021]~^ this function depends on never type fallback being `()`
+    //[e2021]~| this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
+    takes_apit2(mk()?);
+    //[e2024]~^ error: the trait bound `!: Default` is not satisfied
     Ok(())
 }
