@@ -60,6 +60,7 @@ COPY host-x86_64/dist-x86_64-linux/build-gccjit.sh /scripts/
 RUN /scripts/build-gccjit.sh /scripts
 
 ARG SCRIPT_ARG
+COPY scripts/add_dummy_commit.sh /tmp/add_dummy_commit.sh
 COPY scripts/x86_64-gnu-llvm.sh /tmp/x86_64-gnu-llvm.sh
 COPY scripts/x86_64-gnu-llvm1.sh /tmp/x86_64-gnu-llvm1.sh
 COPY scripts/x86_64-gnu-llvm2.sh /tmp/x86_64-gnu-llvm2.sh
