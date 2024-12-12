@@ -3076,7 +3076,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.help("methods are immutable and cannot be assigned to");
         }
 
-        err.emit()
+        // See `StashKey::GenericInFieldExpr` for more info
+        self.dcx().try_steal_replace_and_emit_err(field.span, StashKey::GenericInFieldExpr, err)
     }
 
     fn point_at_param_definition(&self, err: &mut Diag<'_>, param: ty::ParamTy) {
