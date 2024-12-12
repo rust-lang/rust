@@ -1983,18 +1983,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             })
             .unwrap_or_else(|| ObligationCauseCode::Misc);
 
-        // Classify each of the constraints along the path.
-        let mut categorized_path: Vec<BlameConstraint<'tcx>> = path
-            .iter()
-            .map(|constraint| BlameConstraint {
-                category: constraint.category,
-                from_closure: constraint.from_closure,
-                cause: ObligationCause::new(constraint.span, CRATE_DEF_ID, cause_code.clone()),
-                variance_info: constraint.variance_info,
-            })
-            .collect();
-        debug!("categorized_path={:#?}", categorized_path);
-
         // To find the best span to cite, we first try to look for the
         // final constraint that is interesting and where the `sup` is
         // not unified with the ultimate target region. The reason
@@ -2015,7 +2003,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // we still want to screen for an "interesting" point to
         // highlight (e.g., a call site or something).
         let target_scc = self.constraint_sccs.scc(target_region);
-        let mut range = 0..path.len();
 
         // As noted above, when reporting an error, there is typically a chain of constraints
         // leading from some "source" region which must outlive some "target" region.
@@ -2059,13 +2046,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             | NllRegionVariableOrigin::Existential { from_forall: true } => false,
         };
 
-        let find_region = |i: &usize| {
-            let constraint = &path[*i];
-
+        let interesting_to_blame = |constraint: &OutlivesConstraint<'tcx>| {
             let constraint_sup_scc = self.constraint_sccs.scc(constraint.sup);
 
             if blame_source {
-                match categorized_path[*i].category {
+                match constraint.category {
                     ConstraintCategory::OpaqueType
                     | ConstraintCategory::Boring
                     | ConstraintCategory::BoringNoLocation
@@ -2078,7 +2063,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 }
             } else {
                 !matches!(
-                    categorized_path[*i].category,
+                    constraint.category,
                     ConstraintCategory::OpaqueType
                         | ConstraintCategory::Boring
                         | ConstraintCategory::BoringNoLocation
@@ -2088,49 +2073,59 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
         };
 
-        let best_choice =
-            if blame_source { range.rev().find(find_region) } else { range.find(find_region) };
+        let best_choice = if blame_source {
+            path.iter().rposition(interesting_to_blame)
+        } else {
+            path.iter().position(interesting_to_blame)
+        };
 
         debug!(?best_choice, ?blame_source);
 
-        if let Some(i) = best_choice {
-            if let Some(next) = categorized_path.get(i + 1) {
-                if matches!(categorized_path[i].category, ConstraintCategory::Return(_))
-                    && next.category == ConstraintCategory::OpaqueType
-                {
-                    // The return expression is being influenced by the return type being
-                    // impl Trait, point at the return type and not the return expr.
-                    return (next.clone(), path);
-                }
-            }
-
-            if categorized_path[i].category == ConstraintCategory::Return(ReturnConstraint::Normal)
+        let best_constraint = match best_choice {
+            Some(i)
+                if let Some(next) = path.get(i + 1)
+                    && matches!(path[i].category, ConstraintCategory::Return(_))
+                    && next.category == ConstraintCategory::OpaqueType =>
             {
-                let field = categorized_path.iter().find_map(|p| {
-                    if let ConstraintCategory::ClosureUpvar(f) = p.category {
-                        Some(f)
-                    } else {
-                        None
-                    }
-                });
+                // The return expression is being influenced by the return type being
+                // impl Trait, point at the return type and not the return expr.
+                *next
+            }
 
-                if let Some(field) = field {
-                    categorized_path[i].category =
-                        ConstraintCategory::Return(ReturnConstraint::ClosureUpvar(field));
+            Some(i)
+                if path[i].category == ConstraintCategory::Return(ReturnConstraint::Normal)
+                    && let Some(field) = path.iter().find_map(|p| {
+                        if let ConstraintCategory::ClosureUpvar(f) = p.category {
+                            Some(f)
+                        } else {
+                            None
+                        }
+                    }) =>
+            {
+                OutlivesConstraint {
+                    category: ConstraintCategory::Return(ReturnConstraint::ClosureUpvar(field)),
+                    ..path[i]
                 }
             }
 
-            return (categorized_path[i].clone(), path);
-        }
+            Some(i) => path[i],
 
-        // If that search fails, that is.. unusual. Maybe everything
-        // is in the same SCC or something. In that case, find what
-        // appears to be the most interesting point to report to the
-        // user via an even more ad-hoc guess.
-        categorized_path.sort_by_key(|p| p.category);
-        debug!("sorted_path={:#?}", categorized_path);
+            None => {
+                // If that search fails, that is.. unusual. Maybe everything
+                // is in the same SCC or something. In that case, find what
+                // appears to be the most interesting point to report to the
+                // user via an even more ad-hoc guess.
+                *path.iter().min_by_key(|p| p.category).unwrap()
+            }
+        };
 
-        (categorized_path.remove(0), path)
+        let blame_constraint = BlameConstraint {
+            category: best_constraint.category,
+            from_closure: best_constraint.from_closure,
+            cause: ObligationCause::new(best_constraint.span, CRATE_DEF_ID, cause_code.clone()),
+            variance_info: best_constraint.variance_info,
+        };
+        (blame_constraint, path)
     }
 
     pub(crate) fn universe_info(&self, universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
