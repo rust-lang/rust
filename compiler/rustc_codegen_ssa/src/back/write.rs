@@ -33,8 +33,7 @@ use rustc_session::config::{
     self, CrateType, Lto, OutFileName, OutputFilenames, OutputType, Passes, SwitchWithOptPath,
 };
 use rustc_span::source_map::SourceMap;
-use rustc_span::symbol::sym;
-use rustc_span::{FileName, InnerSpan, Span, SpanData};
+use rustc_span::{FileName, InnerSpan, Span, SpanData, sym};
 use rustc_target::spec::{MergeFunctions, SanitizerSet};
 use tracing::debug;
 

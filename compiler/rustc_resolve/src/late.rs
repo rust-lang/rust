@@ -33,8 +33,7 @@ use rustc_session::config::{CrateType, ResolveDocLinks};
 use rustc_session::lint::{self, BuiltinLintDiag};
 use rustc_session::parse::feature_err;
 use rustc_span::source_map::{Spanned, respan};
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{BytePos, Span, SyntaxContext};
+use rustc_span::{BytePos, Ident, Span, Symbol, SyntaxContext, kw, sym};
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument, trace};
 

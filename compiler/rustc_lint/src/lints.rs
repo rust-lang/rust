@@ -16,8 +16,7 @@ use rustc_middle::ty::{Clause, PolyExistentialTraitRef, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_session::lint::AmbiguityErrorDiag;
 use rustc_span::edition::Edition;
-use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent};
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol, kw, sym};
 
 use crate::builtin::{InitError, ShorthandAssocTyCollector, TypeAliasBounds};
 use crate::errors::{OverruledAttributeSub, RequestedLevel};
@@ -2215,8 +2214,7 @@ pub(crate) struct UnexpectedCfgName {
 pub(crate) mod unexpected_cfg_name {
     use rustc_errors::DiagSymbolList;
     use rustc_macros::Subdiagnostic;
-    use rustc_span::symbol::Ident;
-    use rustc_span::{Span, Symbol};
+    use rustc_span::{Ident, Span, Symbol};
 
     #[derive(Subdiagnostic)]
     pub(crate) enum CodeSuggestion {
@@ -2689,7 +2687,7 @@ impl<G: EmissionGuarantee> LintDiagnostic<'_, G> for ElidedNamedLifetime {
         //  but currently this lint's suggestions can conflict with those of `clippy::needless_lifetimes`:
         //  https://github.com/rust-lang/rust/pull/129840#issuecomment-2323349119
         // HACK: `'static` suggestions will never sonflict, emit only those for now.
-        if name != rustc_span::symbol::kw::StaticLifetime {
+        if name != kw::StaticLifetime {
             return;
         }
         match kind {

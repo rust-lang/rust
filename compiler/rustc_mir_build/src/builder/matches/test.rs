@@ -16,8 +16,7 @@ use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{Symbol, sym};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use tracing::{debug, instrument};
 
 use crate::builder::Builder;

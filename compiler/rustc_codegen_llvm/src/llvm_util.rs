@@ -15,7 +15,7 @@ use rustc_fs_util::path_to_c_string;
 use rustc_middle::bug;
 use rustc_session::Session;
 use rustc_session::config::{PrintKind, PrintRequest};
-use rustc_span::symbol::Symbol;
+use rustc_span::Symbol;
 use rustc_target::spec::{MergeFunctions, PanicStrategy, SmallDataThresholdSupport};
 use rustc_target::target_features::{RUSTC_SPECIAL_FEATURES, RUSTC_SPECIFIC_FEATURES};
 

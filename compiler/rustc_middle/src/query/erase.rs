@@ -332,7 +332,7 @@ trivial! {
     rustc_span::ExpnId,
     rustc_span::Span,
     rustc_span::Symbol,
-    rustc_span::symbol::Ident,
+    rustc_span::Ident,
     rustc_target::spec::PanicStrategy,
     rustc_type_ir::Variance,
     u32,

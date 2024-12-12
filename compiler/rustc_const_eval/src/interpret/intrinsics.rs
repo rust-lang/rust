@@ -11,7 +11,7 @@ use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::{LayoutOf as _, TyAndLayout, ValidityRequirement};
 use rustc_middle::ty::{GenericArgsRef, Ty, TyCtxt};
 use rustc_middle::{bug, ty};
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Symbol, sym};
 use tracing::trace;
 
 use super::memory::MemoryKind;

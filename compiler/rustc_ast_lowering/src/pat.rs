@@ -3,9 +3,8 @@ use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
-use rustc_span::Span;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::Ident;
+use rustc_span::{Ident, Span};
 
 use super::errors::{
     ArbitraryExpressionInPattern, ExtraDoubleDot, MisplacedDoubleDot, SubTupleBinding,

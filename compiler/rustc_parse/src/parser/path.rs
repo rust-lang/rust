@@ -9,8 +9,7 @@ use rustc_ast::{
     Path, PathSegment, QSelf,
 };
 use rustc_errors::{Applicability, Diag, PResult};
-use rustc_span::symbol::{Ident, kw, sym};
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, Ident, Span, kw, sym};
 use thin_vec::ThinVec;
 use tracing::debug;
 

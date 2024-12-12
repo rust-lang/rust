@@ -12,8 +12,7 @@ use rustc_middle::bug;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, IsSuggestable, Region, Ty, TyCtxt, TypeVisitableExt as _};
-use rustc_span::symbol::kw;
-use rustc_span::{BytePos, ErrorGuaranteed, Span, Symbol};
+use rustc_span::{BytePos, ErrorGuaranteed, Span, Symbol, kw};
 use rustc_type_ir::Upcast as _;
 use tracing::{debug, instrument};
 

@@ -24,8 +24,8 @@ use rustc_ast::{
 use rustc_data_structures::sync::Lrc;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{SourceMap, Spanned};
-use rustc_span::symbol::{Ident, IdentPrinter, Symbol, kw, sym};
-use rustc_span::{BytePos, CharPos, DUMMY_SP, FileName, Pos, Span};
+use rustc_span::symbol::IdentPrinter;
+use rustc_span::{BytePos, CharPos, DUMMY_SP, FileName, Ident, Pos, Span, Symbol, kw, sym};
 use thin_vec::ThinVec;
 
 use crate::pp::Breaks::{Consistent, Inconsistent};

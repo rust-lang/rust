@@ -21,8 +21,7 @@ use rustc_hir::{
     HirId, LifetimeParamKind, Node, PatKind, PreciseCapturingArg, RangeEnd, Term,
 };
 use rustc_span::source_map::SourceMap;
-use rustc_span::symbol::{Ident, Symbol, kw};
-use rustc_span::{FileName, Span};
+use rustc_span::{FileName, Ident, Span, Symbol, kw};
 use {rustc_ast as ast, rustc_hir as hir};
 
 pub fn id_to_string(map: &dyn rustc_hir::intravisit::Map<'_>, hir_id: HirId) -> String {

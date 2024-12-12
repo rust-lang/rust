@@ -86,8 +86,8 @@ macro_rules! arena_types {
             [] dyn_compatibility_violations: rustc_middle::traits::DynCompatibilityViolation,
             [] codegen_unit: rustc_middle::mir::mono::CodegenUnit<'tcx>,
             [decode] attribute: rustc_hir::Attribute,
-            [] name_set: rustc_data_structures::unord::UnordSet<rustc_span::symbol::Symbol>,
-            [] ordered_name_set: rustc_data_structures::fx::FxIndexSet<rustc_span::symbol::Symbol>,
+            [] name_set: rustc_data_structures::unord::UnordSet<rustc_span::Symbol>,
+            [] ordered_name_set: rustc_data_structures::fx::FxIndexSet<rustc_span::Symbol>,
             [] pats: rustc_middle::ty::PatternKind<'tcx>,
 
             // Note that this deliberately duplicates items in the `rustc_hir::arena`,

@@ -16,8 +16,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{self as ty, TyCtxt};
 use rustc_session::parse::feature_err;
 use rustc_session::{Session, lint};
-use rustc_span::symbol::Ident;
-use rustc_span::{Span, sym};
+use rustc_span::{Ident, Span, sym};
 use rustc_target::spec::{SanitizerSet, abi};
 
 use crate::errors;

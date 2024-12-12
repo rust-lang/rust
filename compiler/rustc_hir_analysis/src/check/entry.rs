@@ -7,9 +7,8 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypingMode};
 use rustc_session::config::EntryFnType;
-use rustc_span::Span;
 use rustc_span::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
-use rustc_span::symbol::sym;
+use rustc_span::{Span, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
 

@@ -27,8 +27,7 @@ use rustc_middle::ty::{
     self, ToPolyTraitRef, TraitRef, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, Upcast,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::symbol::sym;
-use rustc_span::{BytePos, DUMMY_SP, Span, Symbol};
+use rustc_span::{BytePos, DUMMY_SP, Span, Symbol, sym};
 use tracing::{debug, instrument};
 
 use super::on_unimplemented::{AppendConstMessage, OnUnimplementedNote};

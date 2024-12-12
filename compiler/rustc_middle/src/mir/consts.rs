@@ -5,7 +5,7 @@ use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, Lift, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_session::RemapFileNameExt;
 use rustc_session::config::RemapPathScopeComponents;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_type_ir::visit::TypeVisitableExt;
 
 use super::interpret::ReportedErrorInfo;
@@ -569,7 +569,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
         let caller = self.sess.source_map().lookup_char_pos(topmost.lo());
         self.const_caller_location(
-            rustc_span::symbol::Symbol::intern(
+            Symbol::intern(
                 &caller
                     .file
                     .name

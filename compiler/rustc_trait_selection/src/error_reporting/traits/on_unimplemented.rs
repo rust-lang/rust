@@ -13,8 +13,7 @@ use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{self, GenericArgsRef, GenericParamDefKind, ToPolyTraitRef, TyCtxt};
 use rustc_parse_format::{ParseMode, Parser, Piece, Position};
 use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
-use rustc_span::Span;
-use rustc_span::symbol::{Symbol, kw, sym};
+use rustc_span::{Span, Symbol, kw, sym};
 use tracing::{debug, info};
 use {rustc_attr_parsing as attr, rustc_hir as hir};
 

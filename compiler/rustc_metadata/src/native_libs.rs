@@ -16,7 +16,7 @@ use rustc_session::parse::feature_err;
 use rustc_session::search_paths::PathKind;
 use rustc_session::utils::NativeLibKind;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Symbol, sym};
 use rustc_target::spec::LinkSelfContainedComponents;
 
 use crate::{errors, fluent_generated};

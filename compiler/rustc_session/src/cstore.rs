@@ -13,8 +13,7 @@ use rustc_hir::def_id::{
 };
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash, Definitions};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_span::Span;
-use rustc_span::symbol::Symbol;
+use rustc_span::{Span, Symbol};
 
 use crate::search_paths::PathKind;
 use crate::utils::NativeLibKind;

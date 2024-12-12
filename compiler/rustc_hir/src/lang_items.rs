@@ -11,8 +11,7 @@ use rustc_ast::attr::AttributeExt;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_span::Span;
-use rustc_span::symbol::{Symbol, kw, sym};
+use rustc_span::{Span, Symbol, kw, sym};
 
 use crate::def_id::DefId;
 use crate::{MethodKind, Target};

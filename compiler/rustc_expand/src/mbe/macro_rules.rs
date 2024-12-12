@@ -21,10 +21,9 @@ use rustc_lint_defs::builtin::{
 use rustc_parse::parser::{ParseNtResult, Parser, Recovery};
 use rustc_session::Session;
 use rustc_session::parse::ParseSess;
-use rustc_span::Span;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::Transparency;
-use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent, kw, sym};
+use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, kw, sym};
 use tracing::{debug, instrument, trace, trace_span};
 
 use super::diagnostics;

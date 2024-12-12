@@ -22,8 +22,8 @@ use rustc_errors::{
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{AllKeywords, Ident, kw, sym};
-use rustc_span::{BytePos, DUMMY_SP, Span, SpanSnippetError, Symbol};
+use rustc_span::symbol::AllKeywords;
+use rustc_span::{BytePos, DUMMY_SP, Ident, Span, SpanSnippetError, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, trace};
 

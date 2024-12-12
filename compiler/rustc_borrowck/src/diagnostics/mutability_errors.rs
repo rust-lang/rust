@@ -15,8 +15,7 @@ use rustc_middle::mir::{
     PlaceRef, ProjectionElem,
 };
 use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt, Upcast};
-use rustc_span::symbol::{Symbol, kw};
-use rustc_span::{BytePos, DesugaringKind, Span, sym};
+use rustc_span::{BytePos, DesugaringKind, Span, Symbol, kw, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits;

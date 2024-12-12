@@ -14,8 +14,7 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::{self, *};
 use rustc_middle::thir::{self, *};
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
-use rustc_span::symbol::Symbol;
-use rustc_span::{BytePos, Pos, Span};
+use rustc_span::{BytePos, Pos, Span, Symbol};
 use tracing::{debug, instrument};
 
 use crate::builder::ForGuard::{self, OutsideGuard, RefWithinGuard};

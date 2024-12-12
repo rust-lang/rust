@@ -40,8 +40,7 @@ use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::sym;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, sym};
 use rustc_trait_selection::traits::query::type_op::custom::{
     CustomTypeOp, scrape_region_constraints,
 };

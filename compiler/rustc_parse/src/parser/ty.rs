@@ -8,8 +8,7 @@ use rustc_ast::{
     TyKind, UnsafeBinderTy,
 };
 use rustc_errors::{Applicability, PResult};
-use rustc_span::symbol::{Ident, kw, sym};
-use rustc_span::{ErrorGuaranteed, Span};
+use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use super::{Parser, PathStyle, SeqSep, TokenType, Trailing};

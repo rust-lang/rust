@@ -26,7 +26,7 @@ use rustc_middle::mir::interpret::{
 };
 use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Symbol, sym};
 use tracing::trace;
 
 use super::machine::AllocMap;

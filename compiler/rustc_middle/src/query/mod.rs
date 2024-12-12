@@ -41,8 +41,7 @@ use rustc_session::cstore::{
 use rustc_session::lint::LintExpectationId;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::Symbol;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_target::spec::PanicStrategy;
 use {rustc_abi as abi, rustc_ast as ast, rustc_attr_parsing as attr, rustc_hir as hir};
 
@@ -680,7 +679,7 @@ rustc_queries! {
     /// of supertraits that define the given associated type. This is used to avoid
     /// cycles in resolving type-dependent associated item paths like `T::Item`.
     query explicit_supertraits_containing_assoc_item(
-        key: (DefId, rustc_span::symbol::Ident)
+        key: (DefId, rustc_span::Ident)
     ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
         desc { |tcx| "computing the super traits of `{}` with associated type name `{}`",
             tcx.def_path_str(key.0),
@@ -709,7 +708,7 @@ rustc_queries! {
     /// To avoid cycles within the predicates of a single item we compute
     /// per-type-parameter predicates for resolving `T::AssocTy`.
     query type_param_predicates(
-        key: (LocalDefId, LocalDefId, rustc_span::symbol::Ident)
+        key: (LocalDefId, LocalDefId, rustc_span::Ident)
     ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
         desc { |tcx| "computing the bounds for type parameter `{}`", tcx.hir().ty_param_name(key.1) }
     }
@@ -1284,7 +1283,7 @@ rustc_queries! {
         desc { |tcx| "computing target features for inline asm of `{}`", tcx.def_path_str(def_id) }
     }
 
-    query fn_arg_names(def_id: DefId) -> &'tcx [rustc_span::symbol::Ident] {
+    query fn_arg_names(def_id: DefId) -> &'tcx [rustc_span::Ident] {
         desc { |tcx| "looking up function parameter names for `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }

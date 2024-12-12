@@ -24,7 +24,7 @@ extern crate proc_macro;
 
 use rustc_expand::base::{MacroExpanderFn, ResolverExpand, SyntaxExtensionKind};
 use rustc_expand::proc_macro::BangProcMacro;
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 
 use crate::deriving::*;
 

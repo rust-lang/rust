@@ -6,8 +6,7 @@ use rustc_ast_pretty::pprust;
 use rustc_attr_data_structures::{DeprecatedSince, Deprecation};
 use rustc_feature::Features;
 use rustc_session::Session;
-use rustc_span::Span;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Span, Symbol, sym};
 
 use super::util::UnsupportedLiteralReason;
 use crate::{parse_version, session_diagnostics};

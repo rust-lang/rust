@@ -3,7 +3,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, IsSuggestable, Region, Ty};
-use rustc_span::symbol::kw;
+use rustc_span::kw;
 use tracing::debug;
 
 use super::ObligationCauseAsDiagArg;

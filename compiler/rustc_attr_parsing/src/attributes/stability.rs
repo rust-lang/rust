@@ -11,8 +11,7 @@ use rustc_attr_data_structures::{
 };
 use rustc_errors::ErrorGuaranteed;
 use rustc_session::Session;
-use rustc_span::Span;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Span, Symbol, sym};
 
 use crate::attributes::util::UnsupportedLiteralReason;
 use crate::{parse_version, session_diagnostics};

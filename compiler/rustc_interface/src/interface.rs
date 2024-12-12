@@ -22,9 +22,8 @@ use rustc_session::config::{self, Cfg, CheckCfg, ExpectedValues, Input, OutFileN
 use rustc_session::filesearch::{self, sysroot_candidates};
 use rustc_session::parse::ParseSess;
 use rustc_session::{CompilerIO, EarlyDiagCtxt, Session, lint};
-use rustc_span::FileName;
 use rustc_span::source_map::{FileLoader, RealFileLoader, SourceMapInputs};
-use rustc_span::symbol::sym;
+use rustc_span::{FileName, sym};
 use tracing::trace;
 
 use crate::util;

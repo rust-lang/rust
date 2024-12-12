@@ -21,7 +21,7 @@ use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_session::config::MirIncludeSpans;
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 use tracing::{debug, instrument};
 
 use crate::borrow_set::BorrowSet;

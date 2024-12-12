@@ -20,8 +20,7 @@ use rustc_session::lint::builtin::{
     UNFULFILLED_LINT_EXPECTATIONS, UNKNOWN_LINTS, UNUSED_ATTRIBUTES,
 };
 use rustc_session::lint::{Level, Lint, LintExpectationId, LintId};
-use rustc_span::symbol::{Symbol, sym};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use tracing::{debug, instrument};
 use {rustc_ast as ast, rustc_hir as hir};
 

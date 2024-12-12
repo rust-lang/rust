@@ -3,7 +3,7 @@
 //! and Rust adds some features that do not correspond to LLVM features at all.
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Symbol, sym};
 
 use crate::spec::Target;
 

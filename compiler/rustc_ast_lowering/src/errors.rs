@@ -1,8 +1,7 @@
 use rustc_errors::codes::*;
 use rustc_errors::{Diag, DiagArgFromDisplay, EmissionGuarantee, SubdiagMessageOp, Subdiagnostic};
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_span::symbol::Ident;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Ident, Span, Symbol};
 
 #[derive(Diagnostic)]
 #[diag(ast_lowering_generic_type_with_parentheses, code = E0214)]

@@ -41,8 +41,7 @@ use rustc_middle::ty::{
     GenericParamDefKind, InferConst, IntVid, PseudoCanonicalInput, Ty, TyCtxt, TyVid,
     TypeVisitable, TypingEnv, TypingMode,
 };
-use rustc_span::Span;
-use rustc_span::symbol::Symbol;
+use rustc_span::{Span, Symbol};
 use snapshot::undo_log::InferCtxtUndoLogs;
 use tracing::{debug, instrument};
 use type_variable::TypeVariableOrigin;

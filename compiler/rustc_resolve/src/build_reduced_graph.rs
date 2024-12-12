@@ -22,9 +22,8 @@ use rustc_metadata::creader::LoadedMacro;
 use rustc_middle::metadata::ModChild;
 use rustc_middle::ty::Feed;
 use rustc_middle::{bug, ty};
-use rustc_span::Span;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind};
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
+use rustc_span::{Ident, Span, Symbol, kw, sym};
 use tracing::debug;
 
 use crate::Namespace::{MacroNS, TypeNS, ValueNS};

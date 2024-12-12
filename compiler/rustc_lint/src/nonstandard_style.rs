@@ -6,8 +6,7 @@ use rustc_middle::ty;
 use rustc_session::config::CrateType;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::symbol::{Ident, sym};
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, Ident, Span, sym};
 use {rustc_ast as ast, rustc_attr_parsing as attr, rustc_hir as hir};
 
 use crate::lints::{

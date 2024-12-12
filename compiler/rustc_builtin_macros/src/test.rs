@@ -9,8 +9,7 @@ use rustc_ast::{self as ast, GenericParamKind, attr};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diag, Level};
 use rustc_expand::base::*;
-use rustc_span::symbol::{Ident, Symbol, sym};
-use rustc_span::{ErrorGuaranteed, FileNameDisplayPreference, Span};
+use rustc_span::{ErrorGuaranteed, FileNameDisplayPreference, Ident, Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::debug;
 

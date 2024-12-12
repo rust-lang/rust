@@ -799,7 +799,7 @@ macro_rules! impl_ref_decoder {
 impl_ref_decoder! {<'tcx>
     Span,
     rustc_hir::Attribute,
-    rustc_span::symbol::Ident,
+    rustc_span::Ident,
     ty::Variance,
     rustc_span::def_id::DefId,
     rustc_span::def_id::LocalDefId,

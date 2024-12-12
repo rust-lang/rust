@@ -12,8 +12,7 @@ use rustc_hir::*;
 use rustc_hir_pretty as pprust_hir;
 use rustc_middle::hir::nested_filter;
 use rustc_span::def_id::StableCrateId;
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{ErrorGuaranteed, Span};
+use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
 
 use crate::hir::ModuleItems;
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;

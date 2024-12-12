@@ -10,8 +10,7 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_span::edit_distance::find_best_match_for_name;
-use rustc_span::symbol::{Ident, kw, sym};
-use rustc_span::{DesugaringKind, Span, Symbol};
+use rustc_span::{DesugaringKind, Ident, Span, Symbol, kw, sym};
 use rustc_target::spec::abi;
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
@@ -1172,9 +1171,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // we can keep the same name for the parameter.
                 // This lets rustdoc render it correctly in documentation.
                 hir::PatKind::Binding(_, _, ident, _) => (ident, false),
-                hir::PatKind::Wild => {
-                    (Ident::with_dummy_span(rustc_span::symbol::kw::Underscore), false)
-                }
+                hir::PatKind::Wild => (Ident::with_dummy_span(rustc_span::kw::Underscore), false),
                 _ => {
                     // Replace the ident for bindings that aren't simple.
                     let name = format!("__arg{index}");

@@ -21,8 +21,7 @@ use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableEx
 use rustc_middle::ty::{self, Ty, TyCtxt, TypingMode};
 pub use rustc_next_trait_solver::coherence::*;
 use rustc_next_trait_solver::solve::SolverDelegateEvalExt;
-use rustc_span::symbol::sym;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, sym};
 use tracing::{debug, instrument, warn};
 
 use super::ObligationCtxt;

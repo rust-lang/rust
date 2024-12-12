@@ -3,8 +3,7 @@
 use std::path::PathBuf;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_span::Span;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Span, Symbol, sym};
 
 use super::{Feature, to_nonzero};
 

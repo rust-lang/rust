@@ -28,7 +28,7 @@ use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_lint_defs::BuiltinLintDiag;
 use rustc_lint_defs::builtin::EXPLICIT_BUILTIN_CFGS_IN_FLAGS;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Symbol, sym};
 use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet, TARGETS, Target, TargetTuple};
 
 use crate::Session;

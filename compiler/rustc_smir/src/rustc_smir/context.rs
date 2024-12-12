@@ -251,8 +251,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let mut tables = self.0.borrow_mut();
         let tcx = tables.tcx;
         let did = tables[def_id];
-        let attr_name: Vec<_> =
-            attr.iter().map(|seg| rustc_span::symbol::Symbol::intern(&seg)).collect();
+        let attr_name: Vec<_> = attr.iter().map(|seg| rustc_span::Symbol::intern(&seg)).collect();
         tcx.get_attrs_by_path(did, &attr_name)
             .map(|attribute| {
                 let attr_str = rustc_hir_pretty::attribute_to_string(&tcx, attribute);

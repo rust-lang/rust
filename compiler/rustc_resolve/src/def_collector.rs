@@ -7,9 +7,8 @@ use rustc_expand::expand::AstFragment;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::LocalDefId;
-use rustc_span::Span;
 use rustc_span::hygiene::LocalExpnId;
-use rustc_span::symbol::{Symbol, kw, sym};
+use rustc_span::{Span, Symbol, kw, sym};
 use tracing::debug;
 
 use crate::{ImplTraitContext, InvocationParent, Resolver};

@@ -15,8 +15,7 @@ use rustc_middle::bug;
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::{ConstraintCategory, ReturnConstraint};
 use rustc_middle::ty::{self, GenericArgs, Region, RegionVid, Ty, TyCtxt, TypeVisitor};
-use rustc_span::Span;
-use rustc_span::symbol::{Ident, kw};
+use rustc_span::{Ident, Span, kw};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::infer::nice_region_error::{
     self, HirTraitObjectVisitor, NiceRegionError, TraitObjectVisitor, find_anon_type,

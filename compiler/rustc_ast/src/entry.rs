@@ -1,5 +1,4 @@
-use rustc_span::Symbol;
-use rustc_span::symbol::sym;
+use rustc_span::{Symbol, sym};
 
 use crate::attr::{self, AttributeExt};
 

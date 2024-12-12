@@ -20,8 +20,7 @@ use rustc_macros::{
     Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
 };
 use rustc_span::def_id::{CRATE_DEF_ID, LocalDefId};
-use rustc_span::symbol::Symbol;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, Symbol};
 // FIXME: Remove this import and import via `solve::`
 pub use rustc_type_ir::solve::BuiltinImplSource;
 use smallvec::{SmallVec, smallvec};

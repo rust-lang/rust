@@ -11,9 +11,8 @@ use rustc_hir::{
 use rustc_middle::ty::{
     self, AssocItemContainer, StaticLifetimeVisitor, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor,
 };
-use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::symbol::Ident;
+use rustc_span::{Ident, Span};
 use tracing::debug;
 
 use crate::error_reporting::infer::nice_region_error::NiceRegionError;

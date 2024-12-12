@@ -4,9 +4,8 @@ use rustc_ast::{NodeId, PatKind, attr, token};
 use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute, Features, GateIssue};
 use rustc_session::Session;
 use rustc_session::parse::{feature_err, feature_err_issue, feature_warn};
-use rustc_span::Span;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Span, Symbol, sym};
 use rustc_target::spec::abi;
 use thin_vec::ThinVec;
 

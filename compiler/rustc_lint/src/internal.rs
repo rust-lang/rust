@@ -10,9 +10,8 @@ use rustc_hir::{
 };
 use rustc_middle::ty::{self, GenericArgsRef, Ty as MiddleTy};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::Span;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
-use rustc_span::symbol::sym;
+use rustc_span::{Span, sym};
 use tracing::debug;
 
 use crate::lints::{

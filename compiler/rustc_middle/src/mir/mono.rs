@@ -13,8 +13,7 @@ use rustc_index::Idx;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::config::OptLevel;
-use rustc_span::Span;
-use rustc_span::symbol::Symbol;
+use rustc_span::{Span, Symbol};
 use rustc_target::spec::SymbolVisibility;
 use tracing::debug;
 

@@ -15,8 +15,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint::Level;
 use rustc_session::lint::builtin::{DEPRECATED_SAFE_2024, UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
 use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_span::symbol::Symbol;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, Symbol, sym};
 
 use crate::builder::ExprCategory;
 use crate::errors::*;

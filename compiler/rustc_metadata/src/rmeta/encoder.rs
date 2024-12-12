@@ -27,9 +27,9 @@ use rustc_middle::{bug, span_bug};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque};
 use rustc_session::config::{CrateType, OptLevel};
 use rustc_span::hygiene::HygieneEncodeContext;
-use rustc_span::symbol::sym;
 use rustc_span::{
     ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId, SyntaxContext,
+    sym,
 };
 use tracing::{debug, instrument, trace};
 

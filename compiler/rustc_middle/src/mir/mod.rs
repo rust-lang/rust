@@ -26,8 +26,7 @@ use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::Symbol;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, Symbol};
 use tracing::trace;
 
 pub use self::query::*;

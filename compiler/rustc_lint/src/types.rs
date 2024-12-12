@@ -12,8 +12,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::symbol::sym;
-use rustc_span::{Span, Symbol, source_map};
+use rustc_span::{Span, Symbol, source_map, sym};
 use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
 

@@ -16,8 +16,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
-use rustc_span::symbol::{Ident, kw, sym};
-use rustc_span::{BytePos, DUMMY_SP, Span, Symbol};
+use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_trait_selection::error_reporting::traits::report_dyn_incompatibility;
 use rustc_trait_selection::traits::{
     FulfillmentError, TraitAliasExpansionInfo, dyn_compatibility_violations_for_assoc_item,

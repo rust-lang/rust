@@ -17,7 +17,7 @@ use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, Term, Ty, TyCtxt, TypingMode, Upcast};
 use rustc_middle::{bug, span_bug};
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 use thin_vec::thin_vec;
 use tracing::{debug, instrument};
 
