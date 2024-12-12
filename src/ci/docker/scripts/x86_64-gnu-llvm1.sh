@@ -18,16 +18,6 @@ if [ "$READ_ONLY_SRC" = "0" ]; then
     git reset --hard HEAD~1
 fi
 
-# Only run the stage 1 tests on merges, not on PR CI jobs.
-if [[ -z "${PR_CI_JOB}" ]]; then
-    ../x.py --stage 1 test \
-      --skip tests \
-      --skip coverage-map \
-      --skip coverage-run \
-      --skip library \
-      --skip tidyselftest
-fi
-
 ../x.py --stage 2 test \
   --skip tests \
   --skip coverage-map \
