@@ -201,7 +201,7 @@ pub(crate) fn build_index(
                             // exported from this same module). It's also likely to Do
                             // What I Mean, since if a re-export changes the name, it might
                             // also be a change in semantic meaning.
-                            .filter(|fqp| fqp.last() == fqp.last());
+                            .filter(|this_fqp| this_fqp.last() == fqp.last());
                         Some(insert_into_map(
                             itemid_to_pathid,
                             ItemId::DefId(defid),
