@@ -4395,6 +4395,12 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             PathResult::Module(ModuleOrUniformRoot::Module(module)) if !module.is_normal() => {
                 PartialRes::new(module.res().unwrap())
             }
+            // A part of this path references a `mod` that had a parse error. To avoid resolution
+            // errors for each reference to that module, we don't emit an error for them until the
+            // `mod` is fixed. this can have a significant cascade effect.
+            PathResult::Failed { error_implied_by_parse_error: true, .. } => {
+                PartialRes::new(Res::Err)
+            }
             // In `a(::assoc_item)*` `a` cannot be a module. If `a` does resolve to a module we
             // don't report an error right away, but try to fallback to a primitive type.
             // So, we are still able to successfully resolve something like
@@ -4443,6 +4449,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 suggestion,
                 module,
                 segment_name,
+                error_implied_by_parse_error: _,
             } => {
                 return Err(respan(span, ResolutionError::FailedToResolve {
                     segment: Some(segment_name),
