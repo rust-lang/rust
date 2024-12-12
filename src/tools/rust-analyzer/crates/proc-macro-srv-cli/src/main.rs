@@ -69,7 +69,7 @@ fn run() -> io::Result<()> {
 
     let write_response = |msg: msg::Response| msg.write(write_json, &mut io::stdout().lock());
 
-    let env = EnvSnapshot::new();
+    let env = EnvSnapshot::default();
     let mut srv = proc_macro_srv::ProcMacroSrv::new(&env);
     let mut buf = String::new();
 

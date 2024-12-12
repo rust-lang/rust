@@ -13,7 +13,7 @@
 #![cfg(any(feature = "sysroot-abi", rust_analyzer))]
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 #![feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span)]
-#![allow(unreachable_pub, internal_features)]
+#![allow(unreachable_pub, internal_features, clippy::disallowed_types, clippy::print_stderr)]
 
 extern crate proc_macro;
 #[cfg(feature = "in-rust-tree")]
@@ -65,7 +65,7 @@ impl<'env> ProcMacroSrv<'env> {
 
 const EXPANDER_STACK_SIZE: usize = 8 * 1024 * 1024;
 
-impl<'env> ProcMacroSrv<'env> {
+impl ProcMacroSrv<'_> {
     pub fn set_span_mode(&mut self, span_mode: SpanMode) {
         self.span_mode = span_mode;
     }
@@ -248,8 +248,8 @@ pub struct EnvSnapshot {
     vars: HashMap<OsString, OsString>,
 }
 
-impl EnvSnapshot {
-    pub fn new() -> EnvSnapshot {
+impl Default for EnvSnapshot {
+    fn default() -> EnvSnapshot {
         EnvSnapshot { vars: env::vars_os().collect() }
     }
 }
@@ -305,7 +305,7 @@ impl Drop for EnvChange<'_> {
         }
 
         if let Some(dir) = &self.prev_working_dir {
-            if let Err(err) = std::env::set_current_dir(&dir) {
+            if let Err(err) = std::env::set_current_dir(dir) {
                 eprintln!(
                     "Failed to set the current working dir to {}. Error: {:?}",
                     dir.display(),

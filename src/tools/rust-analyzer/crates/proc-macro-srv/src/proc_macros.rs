@@ -13,7 +13,7 @@ pub(crate) struct ProcMacros {
 
 impl From<bridge::PanicMessage> for crate::PanicMessage {
     fn from(p: bridge::PanicMessage) -> Self {
-        Self { message: p.as_str().map(|s| s.to_string()) }
+        Self { message: p.as_str().map(|s| s.to_owned()) }
     }
 }
 
