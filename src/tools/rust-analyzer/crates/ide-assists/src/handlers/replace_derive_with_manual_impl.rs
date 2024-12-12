@@ -139,9 +139,15 @@ fn add_assist(
             let trait_path = make::ty_path(replace_trait_path.clone());
 
             match (ctx.config.snippet_cap, impl_def_with_items) {
-                (None, _) => {
+                (None, None) => {
                     let impl_def = generate_trait_impl(adt, trait_path);
 
+                    ted::insert_all(
+                        insert_after,
+                        vec![make::tokens::blank_line().into(), impl_def.syntax().clone().into()],
+                    );
+                }
+                (None, Some((impl_def, _))) => {
                     ted::insert_all(
                         insert_after,
                         vec![make::tokens::blank_line().into(), impl_def.syntax().clone().into()],
@@ -272,7 +278,7 @@ fn update_attribute(
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_assist, check_assist_not_applicable};
+    use crate::tests::{check_assist, check_assist_no_snippet_cap, check_assist_not_applicable};
 
     use super::*;
 
@@ -294,6 +300,30 @@ struct Foo {
 
 impl core::fmt::Debug for Foo {
     $0fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Foo").field("bar", &self.bar).finish()
+    }
+}
+"#,
+        )
+    }
+    #[test]
+    fn add_custom_impl_without_snippet() {
+        check_assist_no_snippet_cap(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: fmt, derive
+#[derive(Debu$0g)]
+struct Foo {
+    bar: String,
+}
+"#,
+            r#"
+struct Foo {
+    bar: String,
+}
+
+impl core::fmt::Debug for Foo {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("Foo").field("bar", &self.bar).finish()
     }
 }
