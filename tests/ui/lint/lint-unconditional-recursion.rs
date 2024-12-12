@@ -182,7 +182,7 @@ pub struct Point {
     pub y: f32,
 }
 
-impl Default for Point {
+impl Default for Point { //~ WARN
     fn default() -> Self { //~ ERROR function cannot return without recursing
         Point {
             x: Default::default(),
