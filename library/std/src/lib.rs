@@ -348,7 +348,6 @@
 #![feature(pin_coerce_unsized_trait)]
 #![feature(pointer_is_aligned_to)]
 #![feature(portable_simd)]
-#![feature(prelude_2024)]
 #![feature(ptr_as_uninit)]
 #![feature(ptr_mask)]
 #![feature(random)]
