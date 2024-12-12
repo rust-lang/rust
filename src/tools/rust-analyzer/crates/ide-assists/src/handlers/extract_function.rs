@@ -7,6 +7,7 @@ use hir::{
     TypeInfo, TypeParam,
 };
 use ide_db::{
+    assists::GroupLabel,
     defs::{Definition, NameRefClass},
     famous_defs::FamousDefs,
     helpers::mod_path_to_ast,
@@ -104,7 +105,8 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
 
     let scope = ImportScope::find_insert_use_container(&node, &ctx.sema)?;
 
-    acc.add(
+    acc.add_group(
+        &GroupLabel("Extract into...".to_owned()),
         AssistId("extract_function", crate::AssistKind::RefactorExtract),
         "Extract into function",
         target_range,
