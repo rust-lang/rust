@@ -10,9 +10,6 @@ use core::hint;
 #[cfg(not(test))]
 use core::ptr::{self, NonNull};
 
-#[cfg(test)]
-mod tests;
-
 extern "Rust" {
     // These are the magic symbols to call the global allocator. rustc generates
     // them to call `__rg_alloc` etc. if there is a `#[global_allocator]` attribute

@@ -1,7 +1,9 @@
+use alloc::boxed::Box;
+use alloc::collections::binary_heap::*;
+use std::iter::TrustedLen;
+use std::mem;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
-use super::*;
-use crate::boxed::Box;
 use crate::testing::crash_test::{CrashTestDummy, Panic};
 
 #[test]
@@ -531,7 +533,7 @@ fn panic_safe() {
             self.0.partial_cmp(&other.0)
         }
     }
-    let mut rng = crate::test_helpers::test_rng();
+    let mut rng = crate::test_rng();
     const DATASZ: usize = 32;
     // Miri is too slow
     let ntest = if cfg!(miri) { 1 } else { 10 };
