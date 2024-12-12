@@ -1,13 +1,8 @@
 //! Reading proc-macro rustc version information from binary data
 
-use std::{
-    fs::File,
-    io::{self, Read},
-};
+use std::io::{self, Read};
 
-use memmap2::Mmap;
 use object::read::{File as BinaryFile, Object, ObjectSection};
-use paths::AbsPath;
 
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -21,14 +16,14 @@ pub struct RustCInfo {
 }
 
 /// Read rustc dylib information
-pub fn read_dylib_info(dylib_path: &AbsPath) -> io::Result<RustCInfo> {
+pub fn read_dylib_info(buffer: &[u8]) -> io::Result<RustCInfo> {
     macro_rules! err {
         ($e:literal) => {
             io::Error::new(io::ErrorKind::InvalidData, $e)
         };
     }
 
-    let ver_str = read_version(dylib_path)?;
+    let ver_str = read_version(buffer)?;
     let mut items = ver_str.split_whitespace();
     let tag = items.next().ok_or_else(|| err!("version format error"))?;
     if tag != "rustc" {
@@ -106,11 +101,8 @@ fn read_section<'a>(dylib_binary: &'a [u8], section_name: &str) -> io::Result<&'
 ///
 /// Check this issue for more about the bytes layout:
 /// <https://github.com/rust-lang/rust-analyzer/issues/6174>
-pub fn read_version(dylib_path: &AbsPath) -> io::Result<String> {
-    let dylib_file = File::open(dylib_path)?;
-    let dylib_mmapped = unsafe { Mmap::map(&dylib_file) }?;
-
-    let dot_rustc = read_section(&dylib_mmapped, ".rustc")?;
+pub fn read_version(buffer: &[u8]) -> io::Result<String> {
+    let dot_rustc = read_section(buffer, ".rustc")?;
 
     // check if magic is valid
     if &dot_rustc[0..4] != b"rust" {
@@ -159,8 +151,12 @@ pub fn read_version(dylib_path: &AbsPath) -> io::Result<String> {
 
 #[test]
 fn test_version_check() {
-    let path = paths::AbsPathBuf::assert(crate::proc_macro_test_dylib_path());
-    let info = read_dylib_info(&path).unwrap();
+    let info = read_dylib_info(&unsafe {
+        memmap2::Mmap::map(&std::fs::File::open(crate::proc_macro_test_dylib_path()).unwrap())
+            .unwrap()
+    })
+    .unwrap();
+
     assert_eq!(
         info.version_string,
         crate::RUSTC_VERSION_STRING,
