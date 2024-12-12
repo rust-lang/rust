@@ -12,7 +12,7 @@ use rustc_codegen_ssa::traits::{
 };
 use rustc_middle::bug;
 use rustc_middle::mir::coverage::{
-    CoverageIdsInfo, Expression, FunctionCoverageInfo, MappingKind, Op,
+    CovTerm, CoverageIdsInfo, Expression, FunctionCoverageInfo, Mapping, MappingKind, Op,
 };
 use rustc_middle::ty::{Instance, TyCtxt};
 use rustc_target::spec::HasTargetSpec;
@@ -65,7 +65,7 @@ pub(crate) fn prepare_covfun_record<'tcx>(
         regions: ffi::Regions::default(),
     };
 
-    fill_region_tables(tcx, global_file_table, function_coverage, &mut covfun);
+    fill_region_tables(tcx, global_file_table, fn_cov_info, ids_info, &mut covfun);
 
     if covfun.regions.has_no_regions() {
         if covfun.is_used {
@@ -117,16 +117,12 @@ fn prepare_expressions(
 fn fill_region_tables<'tcx>(
     tcx: TyCtxt<'tcx>,
     global_file_table: &mut GlobalFileTable,
-    function_coverage: &FunctionCoverage<'tcx>,
+    fn_cov_info: &'tcx FunctionCoverageInfo,
+    ids_info: &'tcx CoverageIdsInfo,
     covfun: &mut CovfunRecord<'tcx>,
 ) {
-    let counter_regions = function_coverage.counter_regions();
-    if counter_regions.is_empty() {
-        return;
-    }
-
     // Currently a function's mappings must all be in the same file as its body span.
-    let file_name = span_file_name(tcx, function_coverage.function_coverage_info.body_span);
+    let file_name = span_file_name(tcx, fn_cov_info.body_span);
 
     // Look up the global file ID for that filename.
     let global_file_id = global_file_table.global_file_id_for_file_name(file_name);
@@ -140,10 +136,14 @@ fn fill_region_tables<'tcx>(
 
     // For each counter/region pair in this function+file, convert it to a
     // form suitable for FFI.
-    for (mapping_kind, region) in counter_regions {
-        debug!("Adding counter {mapping_kind:?} to map for {region:?}");
-        let span = ffi::CoverageSpan::from_source_region(local_file_id, region);
-        match mapping_kind {
+    let is_zero_term = |term| !covfun.is_used || ids_info.is_zero_term(term);
+    for Mapping { kind, ref source_region } in &fn_cov_info.mappings {
+        // If the mapping refers to counters/expressions that were removed by
+        // MIR opts, replace those occurrences with zero.
+        let kind = kind.map_terms(|term| if is_zero_term(term) { CovTerm::Zero } else { term });
+
+        let span = ffi::CoverageSpan::from_source_region(local_file_id, source_region);
+        match kind {
             MappingKind::Code(term) => {
                 code_regions.push(ffi::CodeRegion { span, counter: ffi::Counter::from_term(term) });
             }

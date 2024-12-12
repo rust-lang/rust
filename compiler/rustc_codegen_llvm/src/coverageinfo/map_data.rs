@@ -1,6 +1,4 @@
-use rustc_middle::mir::coverage::{
-    CovTerm, CoverageIdsInfo, FunctionCoverageInfo, Mapping, MappingKind, SourceRegion,
-};
+use rustc_middle::mir::coverage::{CoverageIdsInfo, FunctionCoverageInfo};
 
 pub(crate) struct FunctionCoverage<'tcx> {
     pub(crate) function_coverage_info: &'tcx FunctionCoverageInfo,
@@ -29,26 +27,5 @@ impl<'tcx> FunctionCoverage<'tcx> {
     /// or not the source code structure changed between different compilations.
     pub(crate) fn source_hash(&self) -> u64 {
         if self.is_used() { self.function_coverage_info.function_source_hash } else { 0 }
-    }
-
-    /// Converts this function's coverage mappings into an intermediate form
-    /// that will be used by `mapgen` when preparing for FFI.
-    pub(crate) fn counter_regions(
-        &self,
-    ) -> impl Iterator<Item = (MappingKind, &SourceRegion)> + ExactSizeIterator {
-        self.function_coverage_info.mappings.iter().map(move |mapping| {
-            let Mapping { kind, source_region } = mapping;
-            let kind =
-                kind.map_terms(|term| if self.is_zero_term(term) { CovTerm::Zero } else { term });
-            (kind, source_region)
-        })
-    }
-
-    fn is_zero_term(&self, term: CovTerm) -> bool {
-        match self.ids_info {
-            Some(ids_info) => ids_info.is_zero_term(term),
-            // This function is unused, so all coverage counters/expressions are zero.
-            None => true,
-        }
     }
 }
