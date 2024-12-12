@@ -75,7 +75,10 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
 
     // Encode all filenames referenced by coverage mappings in this CGU.
     let filenames_buffer = global_file_table.make_filenames_buffer(tcx);
-    let filenames_ref = llvm_cov::hash_bytes(&filenames_buffer);
+    // The `llvm-cov` tool uses this hash to associate each covfun record with
+    // its corresponding filenames table, since the final binary will typically
+    // contain multiple covmap records from different compilation units.
+    let filenames_hash = llvm_cov::hash_bytes(&filenames_buffer);
 
     let mut unused_function_names = Vec::new();
 
@@ -98,7 +101,7 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
     for covfun in &covfun_records {
         unused_function_names.extend(covfun.mangled_function_name_if_unused());
 
-        covfun::generate_covfun_record(cx, filenames_ref, covfun)
+        covfun::generate_covfun_record(cx, filenames_hash, covfun)
     }
 
     // For unused functions, we need to take their mangled names and store them
