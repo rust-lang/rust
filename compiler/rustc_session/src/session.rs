@@ -156,9 +156,6 @@ pub struct Session {
     /// This only ever stores a `LintStore` but we don't want a dependency on that type here.
     pub lint_store: Option<Lrc<dyn LintStoreMarker>>,
 
-    /// Should be set if any lints are registered in `lint_store`.
-    pub registered_lints: bool,
-
     /// Cap lint level specified by a driver specifically.
     pub driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
 
@@ -1068,7 +1065,6 @@ pub fn build_session(
         prof,
         code_stats: Default::default(),
         lint_store: None,
-        registered_lints: false,
         driver_lint_caps,
         ctfe_backtrace,
         miri_unleashed_features: Lock::new(Default::default()),

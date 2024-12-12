@@ -479,7 +479,6 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             let mut lint_store = rustc_lint::new_lint_store(sess.enable_internal_lints());
             if let Some(register_lints) = config.register_lints.as_deref() {
                 register_lints(&sess, &mut lint_store);
-                sess.registered_lints = true;
             }
             sess.lint_store = Some(Lrc::new(lint_store));
 
