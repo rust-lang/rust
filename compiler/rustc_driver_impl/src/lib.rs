@@ -45,7 +45,7 @@ use rustc_errors::registry::Registry;
 use rustc_errors::{ColorConfig, DiagCtxt, ErrCode, FatalError, PResult, markdown};
 use rustc_feature::find_gated_cfg;
 use rustc_interface::util::{self, get_codegen_backend};
-use rustc_interface::{Linker, Queries, interface, passes};
+use rustc_interface::{Linker, interface, passes};
 use rustc_lint::unerased_lint_store;
 use rustc_metadata::creader::MetadataLoader;
 use rustc_metadata::locator;
@@ -158,13 +158,10 @@ pub trait Callbacks {
     /// Called after parsing the crate root. Submodules are not yet parsed when
     /// this callback is called. Return value instructs the compiler whether to
     /// continue the compilation afterwards (defaults to `Compilation::Continue`)
-    #[deprecated = "This callback will likely be removed or stop giving access \
-                    to the TyCtxt in the future. Use either the after_expansion \
-                    or the after_analysis callback instead."]
-    fn after_crate_root_parsing<'tcx>(
+    fn after_crate_root_parsing(
         &mut self,
         _compiler: &interface::Compiler,
-        _queries: &'tcx Queries<'tcx>,
+        _queries: &ast::Crate,
     ) -> Compilation {
         Compilation::Continue
     }
@@ -416,8 +413,9 @@ fn run_compiler(
                 return early_exit();
             }
 
-            #[allow(deprecated)]
-            if callbacks.after_crate_root_parsing(compiler, queries) == Compilation::Stop {
+            if callbacks.after_crate_root_parsing(compiler, &*queries.parse().borrow())
+                == Compilation::Stop
+            {
                 return early_exit();
             }
 
