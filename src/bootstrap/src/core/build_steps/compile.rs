@@ -2261,7 +2261,7 @@ pub fn stream_cargo(
             Ok(msg) => {
                 if builder.config.json_output {
                     // Forward JSON to stdout.
-                    println!("{line}");
+                    eprintln!("{line}");
                 }
                 cb(msg)
             }
