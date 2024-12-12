@@ -198,7 +198,7 @@ fn div_floor_pos_finite(a: PositiveFinite, b: PositiveFinite) -> FP {
         // `q` fits in `Bits` because `a.mantissa < 2 * b.mantissa`.
         let q = (aa / bb) as Bits;
         q as FP
-    } else {
+    } else if exp <= FP::MAX_EXP {
         // exp >= Bits::BITS
         let aa = DoubleBits::from(a.mantissa) << (Bits::BITS - 1);
         let bb = DoubleBits::from(b.mantissa);
@@ -252,6 +252,10 @@ fn div_floor_pos_finite(a: PositiveFinite, b: PositiveFinite) -> FP {
             q | 1
         };
         q_adj as FP * pow2(e)
+    } else {
+        // a.mantissa / b.mantissa >= 1/2, hence
+        // a / b >= 1/2 * 2^(MAX_EXP+1) = 2^MAX_EXP
+        FP::INFINITY
     }
 }
 
@@ -277,7 +281,7 @@ fn div_ceil_pos_finite(a: PositiveFinite, b: PositiveFinite) -> FP {
         //   <= 2^Bits::BITS - 2^(Bits::BITS - SIGNIFICAND_BITS) + 1 <= Bits::MAX
         let q = ((aa - 1) / bb) as Bits + 1;
         q as FP
-    } else {
+    } else if exp <= FP::MAX_EXP {
         let aa = DoubleBits::from(a.mantissa) << (Bits::BITS - 1);
         let bb = DoubleBits::from(b.mantissa);
         // e > 0
@@ -340,5 +344,9 @@ fn div_ceil_pos_finite(a: PositiveFinite, b: PositiveFinite) -> FP {
             q + 1
         };
         q_adj as FP * pow2(e)
+    } else {
+        // a.mantissa / b.mantissa >= 1/2, hence
+        // a / b >= 1/2 * 2^(MAX_EXP+1) = 2^MAX_EXP
+        FP::INFINITY
     }
 }
