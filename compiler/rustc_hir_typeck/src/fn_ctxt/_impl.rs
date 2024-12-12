@@ -1104,7 +1104,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Res::Local(hid) = res {
             let ty = self.local_ty(span, hid);
             let ty = self.normalize(span, ty);
-            self.write_ty(hir_id, ty);
             return (ty, res);
         }
 
