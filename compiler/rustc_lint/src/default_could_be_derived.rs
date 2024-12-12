@@ -2,7 +2,7 @@ use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::Ty;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::symbol::{kw, sym};
 
@@ -135,6 +135,8 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
         // We have a manual `impl Default for Ty {}` item, where `Ty` has no type parameters.
 
         for assoc in data.items {
+            // We look for the user's `fn default() -> Self` associated fn of the `Default` impl.
+
             let hir::AssocItemKind::Fn { has_self: false } = assoc.kind else { continue };
             if assoc.ident.name != kw::Default {
                 continue;
@@ -148,6 +150,8 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
                 continue;
             };
 
+            // We check `fn default()` body is a single ADT literal and all the fields are being
+            // set to something equivalent to the corresponding types' `Default::default()`.
             match expr.kind {
                 hir::ExprKind::Path(hir::QPath::Resolved(_, path))
                     if let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Const), def_id) =
@@ -211,9 +215,10 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
                     //
                     // We suggest #[derive(Default)] if
                     //  - `val` is `Default::default()`
+                    //  - `val` matches the `Default::default()` body for that type
                     //  - `val` is `0`
                     //  - `val` is `false`
-                    if fields.iter().all(|f| check_expr(cx.tcx, f.expr.kind)) {
+                    if fields.iter().all(|f| check_expr(cx, f.expr)) {
                         cx.tcx.node_span_lint(
                             DEFAULT_COULD_BE_DERIVED,
                             item.hir_id(),
@@ -241,7 +246,7 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
                             path.res
                     {
                         let type_def_id = cx.tcx.parent(ctor_def_id); // From Ctor to struct
-                        if args.iter().all(|expr| check_expr(cx.tcx, expr.kind)) {
+                        if args.iter().all(|expr| check_expr(cx, expr)) {
                             // We have a struct literal
                             //
                             // struct Foo(Type);
@@ -254,6 +259,7 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
                             //
                             // We suggest #[derive(Default)] if
                             //  - `val` is `Default::default()`
+                            //  - `val` matches the `Default::default()` body for that type
                             //  - `val` is `0`
                             //  - `val` is `false`
                             cx.tcx.node_span_lint(
@@ -319,97 +325,77 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
     }
 }
 
-fn check_expr(tcx: TyCtxt<'_>, kind: hir::ExprKind<'_>) -> bool {
-    let Some(default_def_id) = tcx.get_diagnostic_item(sym::Default) else {
+fn check_path<'tcx>(
+    cx: &LateContext<'tcx>,
+    path: &hir::QPath<'_>,
+    hir_id: hir::HirId,
+    ty: Ty<'tcx>,
+) -> bool {
+    let Some(default_def_id) = cx.tcx.get_diagnostic_item(sym::Default) else {
         return false;
     };
-    match kind {
+    let res = cx.qpath_res(&path, hir_id);
+    let Some(def_id) = res.opt_def_id() else { return false };
+    if cx.tcx.is_diagnostic_item(sym::default_fn, def_id) {
+        // We have `field: Default::default(),`. This is what the derive would do already.
+        return true;
+    }
+    // For every `Default` impl for this type (there should be a single one), we see if it
+    // has a "canonical" `DefId` for a fn call with no arguments, or a path. If it does, we
+    // check that `DefId` with the `DefId` of this field's value if it is also a call/path.
+    // If there's a match, it means that the contents of that type's `Default` impl are the
+    // same to what the user wrote on *their* `Default` impl for this field.
+    let mut equivalents = vec![];
+    cx.tcx.for_each_relevant_impl(default_def_id, ty, |impl_def_id| {
+        let equivalent = match impl_def_id.as_local() {
+            None => cx.tcx.get_default_impl_equivalent(impl_def_id),
+            Some(local) => {
+                let def_kind = cx.tcx.def_kind(impl_def_id);
+                cx.tcx.get_default_equivalent(def_kind, local)
+            }
+        };
+        if let Some(did) = equivalent {
+            equivalents.push(did);
+        }
+    });
+    for did in equivalents {
+        if did == def_id {
+            return true;
+        }
+    }
+    false
+}
+
+fn check_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
+    match expr.kind {
         hir::ExprKind::Lit(spanned_lit) => match spanned_lit.node {
             LitKind::Int(val, _) if val == 0 => true, // field: 0,
             LitKind::Bool(false) => true,             // field: false,
             _ => false,
         },
-        hir::ExprKind::Call(expr, [])
-            if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = expr.kind
-                && let Some(def_id) = path.res.opt_def_id()
-                && tcx.is_diagnostic_item(sym::default_fn, def_id) =>
-        {
-            // field: Default::default(),
-            true
+        hir::ExprKind::Call(hir::Expr { kind: hir::ExprKind::Path(path), hir_id, .. }, []) => {
+            // `field: foo(),` or `field: Ty::assoc(),`
+            let Some(ty) = cx
+                .tcx
+                .has_typeck_results(expr.hir_id.owner.def_id)
+                .then(|| cx.tcx.typeck(expr.hir_id.owner.def_id))
+                .and_then(|typeck| typeck.expr_ty_adjusted_opt(expr))
+            else {
+                return false;
+            };
+            check_path(cx, &path, *hir_id, ty)
         }
-        hir::ExprKind::Path(hir::QPath::Resolved(_, path))
-            if let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Const), ctor_def_id) =
-                path.res =>
-        {
-            // FIXME: We should use a better check where we explore existing
-            // `impl Default for def_id` of the found type when `def_id` is not
-            // local and see compare them against what we have here. For now,
-            // we special case `Option::None` and only check unit variants of
-            // local `Default` impls.
-            let var_def_id = tcx.parent(ctor_def_id); // From Ctor to variant
-
-            // We explicitly check for `Option::<T>::None`. If `Option` was
-            // local, it would be accounted by the logic further down, but
-            // because the analysis uses purely the HIR, that doesn't work
-            // accross crates.
-            //
-            // field: None,
-            let mut found = tcx.is_lang_item(var_def_id, hir::LangItem::OptionNone);
-
-            // Look at the local `impl Default for ty` of the field's `ty`.
-            let ty_def_id = tcx.parent(var_def_id); // From variant to enum
-            let ty = tcx.type_of(ty_def_id).instantiate_identity();
-            tcx.for_each_relevant_impl(default_def_id, ty, |impl_did| {
-                let hir = tcx.hir();
-                let Some(hir::Node::Item(impl_item)) = hir.get_if_local(impl_did) else {
-                    return;
-                };
-                let hir::ItemKind::Impl(impl_item) = impl_item.kind else {
-                    return;
-                };
-                for assoc in impl_item.items {
-                    let hir::AssocItemKind::Fn { has_self: false } = assoc.kind else {
-                        continue;
-                    };
-                    if assoc.ident.name != kw::Default {
-                        continue;
-                    }
-                    let assoc = hir.impl_item(assoc.id);
-                    let hir::ImplItemKind::Fn(_ty, body) = assoc.kind else {
-                        continue;
-                    };
-                    let body = hir.body(body);
-                    let hir::ExprKind::Block(hir::Block { stmts: [], expr: Some(expr), .. }, None) =
-                        body.value.kind
-                    else {
-                        continue;
-                    };
-                    // Look at a specific implementation of `Default::default()`
-                    // for their content and see if they are requivalent to what
-                    // the user wrote in their manual `impl` for a given field.
-                    match expr.kind {
-                        hir::ExprKind::Path(hir::QPath::Resolved(_, path))
-                            if let Res::Def(
-                                DefKind::Ctor(CtorOf::Variant, CtorKind::Const),
-                                orig_def_id,
-                            ) = path.res =>
-                        {
-                            // We found
-                            //
-                            // field: Foo::Unit,
-                            //
-                            // and
-                            //
-                            // impl Default for Foo {
-                            //     fn default() -> Foo { Foo::Unit }
-                            // }
-                            found |= orig_def_id == ctor_def_id
-                        }
-                        _ => {}
-                    }
-                }
-            });
-            found
+        hir::ExprKind::Path(path) => {
+            // `field: qualified::Path,` or `field: <Ty as Trait>::Assoc,`
+            let Some(ty) = cx
+                .tcx
+                .has_typeck_results(expr.hir_id.owner.def_id)
+                .then(|| cx.tcx.typeck(expr.hir_id.owner.def_id))
+                .and_then(|typeck| typeck.expr_ty_adjusted_opt(expr))
+            else {
+                return false;
+            };
+            check_path(cx, &path, expr.hir_id, ty)
         }
         _ => false,
     }

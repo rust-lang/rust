@@ -110,6 +110,46 @@ impl Default for I { //~ ERROR
     }
 }
 
+// Account for fn calls that are not assoc fns, still check that they match between what the user
+// wrote and the Default impl.
+struct J {
+    x: K,
+}
+
+impl Default for J { //~ ERROR
+    fn default() -> Self {
+        J {
+            x: foo(), // fn call that isn't an assoc fn
+        }
+    }
+}
+
+struct K;
+
+impl Default for K { // *could* be derived, but it isn't lintable because of the `foo()` call
+    fn default() -> Self {
+        foo()
+    }
+}
+
+fn foo() -> K {
+    K
+}
+
+// Verify that cross-crate tracking of "equivalences" keeps working.
+#[derive(PartialEq, Debug)]
+struct L {
+    x: Vec<i32>,
+}
+
+impl Default for L { //~ ERROR
+    fn default() -> Self {
+        L {
+            x: Vec::new(), // `<Vec as Default>::default()` just calls `Vec::new()`
+        }
+    }
+}
+
 fn main() {
     let _ = A::default();
     let _ = B::default();
@@ -119,4 +159,8 @@ fn main() {
     let _ = F::<i32>::default();
     let _ = G::default();
     assert_eq!(H::default(), H { .. });
+    let _ = I::default();
+    let _ = J::default();
+    let _ = K::default();
+    let _ = L::default();
 }

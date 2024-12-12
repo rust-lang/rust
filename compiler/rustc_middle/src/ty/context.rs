@@ -29,7 +29,7 @@ use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, LintDiagnostic, MultiSpan,
 };
-use rustc_hir::def::{CtorKind, DefKind};
+use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::definitions::Definitions;
 use rustc_hir::intravisit::Visitor;
@@ -3203,6 +3203,58 @@ impl<'tcx> TyCtxt<'tcx> {
         } else {
             false
         }
+    }
+
+    fn get_expr_equivalent(self, expr: &hir::Expr<'_>) -> Option<DefId> {
+        match &expr.kind {
+            hir::ExprKind::Path(qpath) => {
+                if self.has_typeck_results(expr.hir_id.owner.def_id) {
+                    let res = self.typeck(expr.hir_id.owner.def_id).qpath_res(&qpath, expr.hir_id);
+                    return res.opt_def_id();
+                }
+            }
+            hir::ExprKind::Call(hir::Expr { kind: hir::ExprKind::Path(qpath), hir_id, .. }, []) => {
+                if self.has_typeck_results(expr.hir_id.owner.def_id) {
+                    let res = self.typeck(expr.hir_id.owner.def_id).qpath_res(&qpath, *hir_id);
+                    return res.opt_def_id();
+                }
+            }
+            _ => {}
+        }
+        None
+    }
+
+    /// Given an `impl Default for Ty` item, return the `DefId` of the single path or fn call within
+    /// the `<Ty as Default::default()` function. This is used to compare between a type's
+    /// `Default::defaut()` implementation and what a user has used in their manual `Default` impl
+    /// for a type they control that has a field of type `Ty`.
+    pub fn get_default_equivalent(self, def_kind: DefKind, local_id: LocalDefId) -> Option<DefId> {
+        if (DefKind::Impl { of_trait: true }) == def_kind
+            && let hir::Node::Item(item) = self.hir_node_by_def_id(local_id)
+            && let hir::ItemKind::Impl(data) = item.kind
+            && let Some(trait_ref) = data.of_trait
+            && let Res::Def(DefKind::Trait, trait_def_id) = trait_ref.path.res
+            && let Some(default_def_id) = self.get_diagnostic_item(sym::Default)
+            && Some(trait_def_id) == Some(default_def_id)
+        {
+            let hir = self.hir();
+            for assoc in data.items {
+                let hir::AssocItemKind::Fn { has_self: false } = assoc.kind else { continue };
+                if assoc.ident.name != kw::Default {
+                    continue;
+                }
+                let assoc = hir.impl_item(assoc.id);
+                let hir::ImplItemKind::Fn(_ty, body) = assoc.kind else { continue };
+                let body = hir.body(body);
+                let hir::ExprKind::Block(hir::Block { stmts: [], expr: Some(expr), .. }, None) =
+                    body.value.kind
+                else {
+                    continue;
+                };
+                return self.get_expr_equivalent(&expr);
+            }
+        }
+        None
     }
 
     /// Whether this is a trait implementation that has `#[diagnostic::do_not_recommend]`

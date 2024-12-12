@@ -158,5 +158,39 @@ help: to avoid divergence in behavior between `Struct { .. }` and `<Struct as De
 LL ~ #[derive(Default)] struct I {
    |
 
-error: aborting due to 9 previous errors
+error: `impl Default` that could be derived
+  --> $DIR/manual-default-impl-could-be-derived.rs:119:1
+   |
+LL | / impl Default for J {
+LL | |     fn default() -> Self {
+LL | |         J {
+LL | |             x: foo(), // fn call that isn't an assoc fn
+LL | |         }
+LL | |     }
+LL | | }
+   | |_^
+   |
+help: you don't need to manually `impl Default`, you can derive it
+   |
+LL ~ #[derive(Default)] struct J {
+   |
+
+error: `impl Default` that could be derived
+  --> $DIR/manual-default-impl-could-be-derived.rs:145:1
+   |
+LL | / impl Default for L {
+LL | |     fn default() -> Self {
+LL | |         L {
+LL | |             x: Vec::new(), // `<Vec as Default>::default()` just calls `Vec::new()`
+LL | |         }
+LL | |     }
+LL | | }
+   | |_^
+   |
+help: you don't need to manually `impl Default`, you can derive it
+   |
+LL ~ #[derive(Default)] struct L {
+   |
+
+error: aborting due to 11 previous errors
 

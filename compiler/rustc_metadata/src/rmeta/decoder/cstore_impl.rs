@@ -423,6 +423,8 @@ provide! { tcx, def_id, other, cdata,
         syms
     }
 
+    get_default_impl_equivalent => { cdata.get_default_impl_equivalent(def_id.index) }
+
     crate_extern_paths => { cdata.source().paths().cloned().collect() }
     expn_that_defined => { cdata.get_expn_that_defined(def_id.index, tcx.sess) }
     is_doc_hidden => { cdata.get_attr_flags(def_id.index).contains(AttrFlags::IS_DOC_HIDDEN) }

@@ -1174,6 +1174,12 @@ impl<'a> CrateMetadataRef<'a> {
         self.root.tables.default_fields.get(self, id).map(|d| d.decode(self))
     }
 
+    /// For a given `impl Default for Ty`, return the "equivalence" for it, namely the `DefId` of
+    /// a path or function with no arguments that get's called from `<Ty as Default>::default()`.
+    fn get_default_impl_equivalent(self, id: DefIndex) -> Option<DefId> {
+        self.root.tables.default_impl_equivalent.get(self, id).map(|d| d.decode(self))
+    }
+
     fn get_trait_item_def_id(self, id: DefIndex) -> Option<DefId> {
         self.root.tables.trait_item_def_id.get(self, id).map(|d| d.decode_from_cdata(self))
     }

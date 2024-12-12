@@ -1568,6 +1568,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let table = tcx.associated_types_for_impl_traits_in_associated_fn(def_id);
                 record_defaulted_array!(self.tables.associated_types_for_impl_traits_in_associated_fn[def_id] <- table);
             }
+
+            if let Some(path_def_id) = tcx.get_default_equivalent(def_kind, local_id) {
+                record!(self.tables.default_impl_equivalent[def_id] <- path_def_id);
+            }
         }
 
         for (def_id, impls) in &tcx.crate_inherent_impls(()).0.inherent_impls {
