@@ -211,8 +211,9 @@ passes_doc_invalid =
 passes_doc_keyword_empty_mod =
     `#[doc(keyword = "...")]` should be used on empty modules
 
-passes_doc_keyword_invalid_ident =
-    `{$doc_keyword}` is not a valid identifier
+passes_doc_keyword_not_keyword =
+    nonexistent keyword `{$keyword}` used in `#[doc(keyword = "...")]`
+    .help = only existing keywords are allowed in core/std
 
 passes_doc_keyword_not_mod =
     `#[doc(keyword = "...")]` should be used on modules

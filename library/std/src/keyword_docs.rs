@@ -1263,10 +1263,10 @@ mod return_keyword {}
 /// [Reference]: ../reference/items/associated-items.html#methods
 mod self_keyword {}
 
-// FIXME: Once rustdoc can handle URL conflicts on case insensitive file systems, we can remove the
-// three next lines and put back: `#[doc(keyword = "Self")]`.
+// FIXME: Once rustdoc can handle URL conflicts on case insensitive file systems, we can replace
+// these two lines with `#[doc(keyword = "Self")]` and update `is_doc_keyword` in
+// `CheckAttrVisitor`.
 #[doc(alias = "Self")]
-#[allow(rustc::existing_doc_keyword)]
 #[doc(keyword = "SelfTy")]
 //
 /// The implementing type within a [`trait`] or [`impl`] block, or the current type within a type
