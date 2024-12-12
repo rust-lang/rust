@@ -170,18 +170,18 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ) {
     assert!(!instance.args.has_infer());
 
-    let tcx = cx.tcx();
-    let llfn = cx.get_fn(instance);
+    let mut mir = cx.tcx().instance_mir(instance.def);
 
-    let mut mir = tcx.instance_mir(instance.def);
-
-    let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
-    debug!("fn_abi: {:?}", fn_abi);
-
-    if tcx.codegen_fn_attrs(instance.def_id()).flags.contains(CodegenFnAttrFlags::NAKED) {
+    if cx.tcx().codegen_fn_attrs(instance.def_id()).flags.contains(CodegenFnAttrFlags::NAKED) {
         crate::mir::naked_asm::codegen_naked_asm::<Bx>(cx, &mir, instance);
         return;
     }
+
+    let tcx = cx.tcx();
+    let llfn = cx.get_fn(instance);
+
+    let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
+    debug!("fn_abi: {:?}", fn_abi);
 
     if tcx.features().ergonomic_clones() {
         let monomorphized_mir = instance.instantiate_mir_and_normalize_erasing_regions(
