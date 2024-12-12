@@ -16,7 +16,7 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, FatalError, PErr, PResult, Subdiagnostic,
+    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, FatalError, PResult, Subdiagnostic,
     Suggestions, pluralize,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
@@ -2132,7 +2132,7 @@ impl<'a> Parser<'a> {
         &mut self,
         delim: Delimiter,
         lo: Span,
-        err: PErr<'a>,
+        err: Diag<'a>,
     ) -> P<Expr> {
         let guar = err.emit();
         // Recover from parse error, callers expect the closing delim to be consumed.
@@ -3014,7 +3014,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Check for exclusive ranges written as `..<`
-    pub(crate) fn maybe_err_dotdotlt_syntax(&self, maybe_lt: Token, mut err: PErr<'a>) -> PErr<'a> {
+    pub(crate) fn maybe_err_dotdotlt_syntax(&self, maybe_lt: Token, mut err: Diag<'a>) -> Diag<'a> {
         if maybe_lt == token::Lt
             && (self.expected_tokens.contains(&TokenType::Token(token::Gt))
                 || matches!(self.token.kind, token::Literal(..)))
