@@ -80,7 +80,7 @@ impl<'tcx> crate::MirPass<'tcx> for Validator {
             cfg_checker.fail(location, msg);
         }
 
-        if let MirPhase::Runtime(phase) = body.phase {
+        if let MirPhase::Runtime(_) = body.phase {
             if let ty::InstanceKind::Item(_) = body.source.instance {
                 if body.has_free_regions() {
                     cfg_checker.fail(
@@ -88,27 +88,6 @@ impl<'tcx> crate::MirPass<'tcx> for Validator {
                         format!("Free regions in optimized {} MIR", body.phase.name()),
                     );
                 }
-            }
-
-            if phase >= RuntimePhase::Optimized
-                && body
-                    .basic_blocks
-                    .iter()
-                    .filter_map(|bb| match &bb.terminator().kind {
-                        TerminatorKind::Call { func, .. }
-                        | TerminatorKind::TailCall { func, .. } => Some(func),
-                        _ => None,
-                    })
-                    .filter_map(|func| match func.ty(&body.local_decls, tcx).kind() {
-                        ty::FnDef(did, ..) => Some(did),
-                        _ => None,
-                    })
-                    .any(|did| matches!(tcx.codegen_fn_attrs(did).inline, InlineAttr::Force { .. }))
-            {
-                cfg_checker.fail(
-                    Location::START,
-                    "`#[rustc_force_inline]`-annotated function not inlined",
-                );
             }
         }
     }
@@ -388,7 +367,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 self.check_edge(location, *target, EdgeKind::Normal);
                 self.check_unwind_edge(location, *unwind);
             }
-            TerminatorKind::Call { args, .. } | TerminatorKind::TailCall { args, .. } => {
+            TerminatorKind::Call { func, args, .. }
+            | TerminatorKind::TailCall { func, args, .. } => {
                 // FIXME(explicit_tail_calls): refactor this & add tail-call specific checks
                 if let TerminatorKind::Call { target, unwind, destination, .. } = terminator.kind {
                     if let Some(target) = target {
@@ -440,6 +420,13 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                             );
                         }
                     }
+                }
+
+                if let ty::FnDef(did, ..) = func.ty(&self.body.local_decls, self.tcx).kind()
+                    && self.body.phase >= MirPhase::Runtime(RuntimePhase::Optimized)
+                    && matches!(self.tcx.codegen_fn_attrs(did).inline, InlineAttr::Force { .. })
+                {
+                    self.fail(location, "`#[rustc_force_inline]`-annotated function not inlined");
                 }
             }
             TerminatorKind::Assert { target, unwind, .. } => {
