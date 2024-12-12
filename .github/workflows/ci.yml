@@ -87,7 +87,7 @@ jobs:
 
     - name: Clean
       run: |
-        ./y.sh clean all      
+        ./y.sh clean all
 
     - name: Prepare dependencies
       run: |
