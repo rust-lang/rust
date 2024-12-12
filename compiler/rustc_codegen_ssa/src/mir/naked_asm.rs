@@ -4,7 +4,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::mir::mono::{Linkage, MonoItem, MonoItemData, Visibility};
 use rustc_middle::mir::{InlineAsmOperand, START_BLOCK};
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
-use rustc_middle::ty::{Instance, Ty, TyCtxt};
+use rustc_middle::ty::{Instance, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug, ty};
 use rustc_span::sym;
 use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
@@ -25,6 +25,7 @@ pub(crate) fn codegen_naked_asm<
     cx: &'a Cx,
     instance: Instance<'tcx>,
 ) {
+    assert!(!instance.args.has_infer());
     let mir = cx.tcx().instance_mir(instance.def);
 
     let rustc_middle::mir::TerminatorKind::InlineAsm {
