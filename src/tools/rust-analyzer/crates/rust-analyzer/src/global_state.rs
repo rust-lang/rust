@@ -392,7 +392,14 @@ impl GlobalState {
             || !self.config.same_source_root_parent_map(&self.local_roots_parent_map)
         {
             let config_change = {
-                let user_config_path = Config::user_config_path();
+                let user_config_path = (|| {
+                    let mut p = Config::user_config_dir_path()?;
+                    p.push("rust-analyzer.toml");
+                    Some(p)
+                })();
+
+                let user_config_abs_path = user_config_path.as_deref();
+
                 let mut change = ConfigChange::default();
                 let db = self.analysis_host.raw_database();
 
@@ -411,7 +418,7 @@ impl GlobalState {
                     .collect_vec();
 
                 for (file_id, (_change_kind, vfs_path)) in modified_ratoml_files {
-                    if vfs_path.as_path() == user_config_path {
+                    if vfs_path.as_path() == user_config_abs_path {
                         change.change_user_config(Some(db.file_text(file_id)));
                         continue;
                     }

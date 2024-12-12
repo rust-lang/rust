@@ -26,7 +26,7 @@ use rustc_data_structures::graph::dominators::Dominators;
 use rustc_errors::Diag;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
-use rustc_index::bit_set::{BitSet, ChunkedBitSet};
+use rustc_index::bit_set::{BitSet, MixedBitSet};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::{
     InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin, TyCtxtInferExt,
@@ -1797,7 +1797,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         location: Location,
         desired_action: InitializationRequiringAction,
         place_span: (PlaceRef<'tcx>, Span),
-        maybe_uninits: &ChunkedBitSet<MovePathIndex>,
+        maybe_uninits: &MixedBitSet<MovePathIndex>,
         from: u64,
         to: u64,
     ) {

@@ -73,7 +73,7 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
         })
         .all(|(l, r)| {
             get_node_depth(l.target_parent()) != get_node_depth(r.target_parent())
-                || l.target_range().intersect(r.target_range()).is_none()
+                || (l.target_range().end() <= r.target_range().start())
         });
 
     if stdx::never!(
@@ -128,13 +128,14 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
 
         // Add to changed ancestors, if applicable
         match change {
-            Change::Insert(_, _) | Change::InsertAll(_, _) => {}
-            Change::Replace(target, _) | Change::ReplaceWithMany(target, _) => {
+            Change::Replace(SyntaxElement::Node(target), _)
+            | Change::ReplaceWithMany(SyntaxElement::Node(target), _) => {
                 changed_ancestors.push_back(ChangedAncestor::single(target, change_index))
             }
             Change::ReplaceAll(range, _) => {
                 changed_ancestors.push_back(ChangedAncestor::multiple(range, change_index))
             }
+            _ => (),
         }
     }
 
@@ -153,6 +154,12 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
                         *child = tree_mutator.make_element_mut(child);
                     }
                 };
+            }
+            Change::Replace(SyntaxElement::Node(target), Some(SyntaxElement::Node(new_target))) => {
+                *target = tree_mutator.make_syntax_mut(target);
+                if new_target.ancestors().any(|node| node == tree_mutator.immutable) {
+                    *new_target = new_target.clone_for_update();
+                }
             }
             Change::Replace(target, _) | Change::ReplaceWithMany(target, _) => {
                 *target = tree_mutator.make_element_mut(target);
@@ -304,13 +311,8 @@ enum ChangedAncestorKind {
 }
 
 impl ChangedAncestor {
-    fn single(element: &SyntaxElement, change_index: usize) -> Self {
-        let kind = match element {
-            SyntaxElement::Node(node) => ChangedAncestorKind::Single { node: node.clone() },
-            SyntaxElement::Token(token) => {
-                ChangedAncestorKind::Single { node: token.parent().unwrap() }
-            }
-        };
+    fn single(node: &SyntaxNode, change_index: usize) -> Self {
+        let kind = ChangedAncestorKind::Single { node: node.clone() };
 
         Self { kind, change_index }
     }

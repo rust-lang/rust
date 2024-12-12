@@ -383,9 +383,6 @@ impl<'db> PatCx for MatchCheckCtx<'db> {
                     } else {
                         let variant = Self::variant_id_for_adt(self.db, ctor, adt).unwrap();
 
-                        // Whether we must not match the fields of this variant exhaustively.
-                        let is_non_exhaustive =
-                            LazyCell::new(|| self.is_foreign_non_exhaustive(adt));
                         let visibilities = LazyCell::new(|| self.db.field_visibilities(variant));
 
                         self.list_variant_fields(ty, variant)
@@ -396,8 +393,7 @@ impl<'db> PatCx for MatchCheckCtx<'db> {
                                             .is_visible_from(self.db.upcast(), self.module)
                                 };
                                 let is_uninhabited = self.is_uninhabited(&ty);
-                                let private_uninhabited =
-                                    is_uninhabited && (!is_visible() || *is_non_exhaustive);
+                                let private_uninhabited = is_uninhabited && !is_visible();
                                 (ty, PrivateUninhabitedField(private_uninhabited))
                             })
                             .collect()

@@ -8,7 +8,7 @@ use crate::ty::is_type_diagnostic_item;
 
 use rustc_ast::ast;
 use rustc_hir as hir;
-use rustc_hir::{Arm, Block, Expr, ExprKind, HirId, LoopSource, MatchSource, Node, Pat, QPath};
+use rustc_hir::{Arm, Block, Expr, ExprKind, StructTailExpr, HirId, LoopSource, MatchSource, Node, Pat, QPath};
 use rustc_lint::LateContext;
 use rustc_span::{Span, sym, symbol};
 
@@ -236,7 +236,7 @@ impl<'a> Range<'a> {
                     limits: ast::RangeLimits::Closed,
                 })
             },
-            ExprKind::Struct(path, fields, None) => match (path, fields) {
+            ExprKind::Struct(path, fields, StructTailExpr::None) => match (path, fields) {
                 (QPath::LangItem(hir::LangItem::RangeFull, ..), []) => Some(Range {
                     start: None,
                     end: None,

@@ -1047,10 +1047,14 @@ impl HirDisplay for Ty {
                     );
                     // We print all params except implicit impl Trait params. Still a bit weird; should we leave out parent and self?
                     if parameters.len() - impl_ > 0 {
+                        let params_len = parameters.len();
                         // `parameters` are in the order of fn's params (including impl traits), fn's lifetimes
                         let parameters =
                             generic_args_sans_defaults(f, Some(generic_def_id), parameters);
-                        let without_impl = self_param as usize + type_ + const_ + lifetime;
+                        assert!(params_len >= parameters.len());
+                        let defaults = params_len - parameters.len();
+                        let without_impl =
+                            self_param as usize + type_ + const_ + lifetime - defaults;
                         // parent's params (those from enclosing impl or trait, if any).
                         let (fn_params, parent_params) = parameters.split_at(without_impl + impl_);
 
@@ -2062,12 +2066,12 @@ impl HirDisplayWithTypesMap for TypeBound {
         types_map: &TypesMap,
     ) -> Result<(), HirDisplayError> {
         match self {
-            TypeBound::Path(path, modifier) => {
+            &TypeBound::Path(path, modifier) => {
                 match modifier {
                     TraitBoundModifier::None => (),
                     TraitBoundModifier::Maybe => write!(f, "?")?,
                 }
-                path.hir_fmt(f, types_map)
+                types_map[path].hir_fmt(f, types_map)
             }
             TypeBound::Lifetime(lifetime) => {
                 write!(f, "{}", lifetime.name.display(f.db.upcast(), f.edition()))
@@ -2079,7 +2083,7 @@ impl HirDisplayWithTypesMap for TypeBound {
                     "for<{}> ",
                     lifetimes.iter().map(|it| it.display(f.db.upcast(), edition)).format(", ")
                 )?;
-                path.hir_fmt(f, types_map)
+                types_map[*path].hir_fmt(f, types_map)
             }
             TypeBound::Use(args) => {
                 let edition = f.edition();

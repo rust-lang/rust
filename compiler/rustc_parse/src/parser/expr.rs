@@ -3533,7 +3533,7 @@ impl<'a> Parser<'a> {
                 let exp_span = self.prev_token.span;
                 // We permit `.. }` on the left-hand side of a destructuring assignment.
                 if self.check(&token::CloseDelim(close_delim)) {
-                    base = ast::StructRest::Rest(self.prev_token.span.shrink_to_hi());
+                    base = ast::StructRest::Rest(self.prev_token.span);
                     break;
                 }
                 match self.parse_expr() {

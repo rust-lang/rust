@@ -27,6 +27,7 @@ mod handlers {
     pub(crate) mod await_outside_of_async;
     pub(crate) mod break_outside_of_loop;
     pub(crate) mod expected_function;
+    pub(crate) mod generic_args_prohibited;
     pub(crate) mod inactive_code;
     pub(crate) mod incoherent_impl;
     pub(crate) mod incorrect_case;
@@ -468,6 +469,7 @@ pub fn semantic_diagnostics(
                 Some(it) => it,
                 None => continue,
             },
+            AnyDiagnostic::GenericArgsProhibited(d) => handlers::generic_args_prohibited::generic_args_prohibited(&ctx, &d)
         };
         res.push(d)
     }
@@ -542,7 +544,13 @@ fn handle_diag_from_macros(
         sema.db.lookup_intern_syntax_context(span.ctx).outer_expn.is_some_and(|expansion| {
             let macro_call =
                 sema.db.lookup_intern_macro_call(expansion.as_macro_file().macro_call_id);
+            // We don't want to show diagnostics for non-local macros at all, but proc macros authors
+            // seem to rely on being able to emit non-warning-free code, so we don't want to show warnings
+            // for them even when the proc macro comes from the same workspace (in rustc that's not a
+            // problem because it doesn't have the concept of workspaces, and proc macros always reside
+            // in a different crate).
             !Crate::from(macro_call.def.krate).origin(sema.db).is_local()
+                || !macro_call.def.kind.is_declarative()
         })
     }) {
         // Disable suggestions for external macros, they'll change library code and it's just bad.

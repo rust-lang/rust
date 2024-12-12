@@ -89,7 +89,7 @@ impl TestCx<'_> {
                 }
                 let expected_string = fs::read_to_string(&expected_file).unwrap();
                 if dumped_string != expected_string {
-                    print!("{}", write_diff(&expected_string, &dumped_string, 3));
+                    eprint!("{}", write_diff(&expected_string, &dumped_string, 3));
                     panic!(
                         "Actual MIR output differs from expected MIR output {}",
                         expected_file.display()

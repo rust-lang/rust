@@ -22,7 +22,7 @@ use crate::{
     consteval::ConstEvalError,
     dyn_compatibility::DynCompatibilityViolation,
     layout::{Layout, LayoutError},
-    lower::{GenericDefaults, GenericPredicates},
+    lower::{Diagnostics, GenericDefaults, GenericPredicates},
     method_resolution::{InherentImpls, TraitImpls, TyFingerprint},
     mir::{BorrowckResult, MirBody, MirLowerError},
     Binders, ClosureId, Const, FnDefId, ImplTraitId, ImplTraits, InferenceResult, Interner,
@@ -115,21 +115,35 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[ra_salsa::cycle(crate::lower::ty_recover)]
     fn ty(&self, def: TyDefId) -> Binders<Ty>;
 
+    #[ra_salsa::invoke(crate::lower::type_for_type_alias_with_diagnostics_query)]
+    fn type_for_type_alias_with_diagnostics(&self, def: TypeAliasId) -> (Binders<Ty>, Diagnostics);
+
     /// Returns the type of the value of the given constant, or `None` if the `ValueTyDefId` is
     /// a `StructId` or `EnumVariantId` with a record constructor.
     #[ra_salsa::invoke(crate::lower::value_ty_query)]
     fn value_ty(&self, def: ValueTyDefId) -> Option<Binders<Ty>>;
 
+    #[ra_salsa::invoke(crate::lower::impl_self_ty_with_diagnostics_query)]
+    #[ra_salsa::cycle(crate::lower::impl_self_ty_with_diagnostics_recover)]
+    fn impl_self_ty_with_diagnostics(&self, def: ImplId) -> (Binders<Ty>, Diagnostics);
     #[ra_salsa::invoke(crate::lower::impl_self_ty_query)]
-    #[ra_salsa::cycle(crate::lower::impl_self_ty_recover)]
     fn impl_self_ty(&self, def: ImplId) -> Binders<Ty>;
 
+    #[ra_salsa::invoke(crate::lower::const_param_ty_with_diagnostics_query)]
+    fn const_param_ty_with_diagnostics(&self, def: ConstParamId) -> (Ty, Diagnostics);
     #[ra_salsa::invoke(crate::lower::const_param_ty_query)]
     fn const_param_ty(&self, def: ConstParamId) -> Ty;
 
+    #[ra_salsa::invoke(crate::lower::impl_trait_with_diagnostics_query)]
+    fn impl_trait_with_diagnostics(&self, def: ImplId) -> Option<(Binders<TraitRef>, Diagnostics)>;
     #[ra_salsa::invoke(crate::lower::impl_trait_query)]
     fn impl_trait(&self, def: ImplId) -> Option<Binders<TraitRef>>;
 
+    #[ra_salsa::invoke(crate::lower::field_types_with_diagnostics_query)]
+    fn field_types_with_diagnostics(
+        &self,
+        var: VariantId,
+    ) -> (Arc<ArenaMap<LocalFieldId, Binders<Ty>>>, Diagnostics);
     #[ra_salsa::invoke(crate::lower::field_types_query)]
     fn field_types(&self, var: VariantId) -> Arc<ArenaMap<LocalFieldId, Binders<Ty>>>;
 
@@ -154,6 +168,11 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[ra_salsa::invoke(crate::lower::generic_predicates_query)]
     fn generic_predicates(&self, def: GenericDefId) -> GenericPredicates;
 
+    #[ra_salsa::invoke(crate::lower::generic_predicates_without_parent_with_diagnostics_query)]
+    fn generic_predicates_without_parent_with_diagnostics(
+        &self,
+        def: GenericDefId,
+    ) -> (GenericPredicates, Diagnostics);
     #[ra_salsa::invoke(crate::lower::generic_predicates_without_parent_query)]
     fn generic_predicates_without_parent(&self, def: GenericDefId) -> GenericPredicates;
 
@@ -164,8 +183,13 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[ra_salsa::invoke(crate::lower::trait_environment_query)]
     fn trait_environment(&self, def: GenericDefId) -> Arc<TraitEnvironment>;
 
+    #[ra_salsa::invoke(crate::lower::generic_defaults_with_diagnostics_query)]
+    #[ra_salsa::cycle(crate::lower::generic_defaults_with_diagnostics_recover)]
+    fn generic_defaults_with_diagnostics(
+        &self,
+        def: GenericDefId,
+    ) -> (GenericDefaults, Diagnostics);
     #[ra_salsa::invoke(crate::lower::generic_defaults_query)]
-    #[ra_salsa::cycle(crate::lower::generic_defaults_recover)]
     fn generic_defaults(&self, def: GenericDefId) -> GenericDefaults;
 
     #[ra_salsa::invoke(InherentImpls::inherent_impls_in_crate_query)]

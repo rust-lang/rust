@@ -992,12 +992,12 @@ fn link_natively(
                 let mut output = prog.stderr.clone();
                 output.extend_from_slice(&prog.stdout);
                 let escaped_output = escape_linker_output(&output, flavor);
-                // FIXME: Add UI tests for this error.
                 let err = errors::LinkingFailed {
                     linker_path: &linker_path,
                     exit_status: prog.status,
-                    command: &cmd,
+                    command: cmd,
                     escaped_output,
+                    verbose: sess.opts.verbose,
                 };
                 sess.dcx().emit_err(err);
                 // If MSVC's `link.exe` was expected but the return code
@@ -2744,6 +2744,15 @@ fn add_upstream_rust_crates(
         .iter()
         .find(|(ty, _)| *ty == crate_type)
         .expect("failed to find crate type in dependency format list");
+
+    if sess.target.is_like_aix {
+        // Unlike ELF linkers, AIX doesn't feature `DT_SONAME` to override
+        // the dependency name when outputing a shared library. Thus, `ld` will
+        // use the full path to shared libraries as the dependency if passed it
+        // by default unless `noipath` is passed.
+        // https://www.ibm.com/docs/en/aix/7.3?topic=l-ld-command.
+        cmd.link_or_cc_arg("-bnoipath");
+    }
 
     for &cnum in &codegen_results.crate_info.used_crates {
         // We may not pass all crates through to the linker. Some crates may appear statically in

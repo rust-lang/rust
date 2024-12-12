@@ -19,10 +19,10 @@ use thin_vec::{ThinVec, thin_vec};
 use visit::{Visitor, walk_expr};
 
 use super::errors::{
-    AsyncCoroutinesNotSupported, AwaitOnlyInAsyncFnAndBlocks, BaseExpressionDoubleDot,
-    ClosureCannotBeStatic, CoroutineTooManyParameters,
-    FunctionalRecordUpdateDestructuringAssignment, InclusiveRangeWithNoEnd, MatchArmWithNoBody,
-    NeverPatternWithBody, NeverPatternWithGuard, UnderscoreExprLhsAssign,
+    AsyncCoroutinesNotSupported, AwaitOnlyInAsyncFnAndBlocks, ClosureCannotBeStatic,
+    CoroutineTooManyParameters, FunctionalRecordUpdateDestructuringAssignment,
+    InclusiveRangeWithNoEnd, MatchArmWithNoBody, NeverPatternWithBody, NeverPatternWithGuard,
+    UnderscoreExprLhsAssign,
 };
 use super::{
     GenericArgsMode, ImplTraitContext, LoweringContext, ParamMode, ResolverAstLoweringExt,
@@ -357,12 +357,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ),
                 ExprKind::Struct(se) => {
                     let rest = match &se.rest {
-                        StructRest::Base(e) => Some(self.lower_expr(e)),
-                        StructRest::Rest(sp) => {
-                            let guar = self.dcx().emit_err(BaseExpressionDoubleDot { span: *sp });
-                            Some(&*self.arena.alloc(self.expr_err(*sp, guar)))
-                        }
-                        StructRest::None => None,
+                        StructRest::Base(e) => hir::StructTailExpr::Base(self.lower_expr(e)),
+                        StructRest::Rest(sp) => hir::StructTailExpr::DefaultFields(*sp),
+                        StructRest::None => hir::StructTailExpr::None,
                     };
                     hir::ExprKind::Struct(
                         self.arena.alloc(self.lower_qpath(
@@ -1526,7 +1523,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::ExprKind::Struct(
             self.arena.alloc(hir::QPath::LangItem(lang_item, self.lower_span(span))),
             fields,
-            None,
+            hir::StructTailExpr::None,
         )
     }
 

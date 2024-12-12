@@ -1104,6 +1104,25 @@ fn check_type_defn<'tcx>(
         for variant in variants.iter() {
             // All field types must be well-formed.
             for field in &variant.fields {
+                if let Some(def_id) = field.value
+                    && let Some(_ty) = tcx.type_of(def_id).no_bound_vars()
+                {
+                    // FIXME(generic_const_exprs, default_field_values): this is a hack and needs to
+                    // be refactored to check the instantiate-ability of the code better.
+                    if let Some(def_id) = def_id.as_local()
+                        && let hir::Node::AnonConst(anon) = tcx.hir_node_by_def_id(def_id)
+                        && let expr = &tcx.hir().body(anon.body).value
+                        && let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
+                        && let Res::Def(DefKind::ConstParam, _def_id) = path.res
+                    {
+                        // Do not evaluate bare `const` params, as those would ICE and are only
+                        // usable if `#![feature(generic_const_exprs)]` is enabled.
+                    } else {
+                        // Evaluate the constant proactively, to emit an error if the constant has
+                        // an unconditional error. We only do so if the const has no type params.
+                        let _ = tcx.const_eval_poly(def_id.into());
+                    }
+                }
                 let field_id = field.did.expect_local();
                 let hir::FieldDef { ty: hir_ty, .. } =
                     tcx.hir_node_by_def_id(field_id).expect_field();

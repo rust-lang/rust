@@ -296,6 +296,111 @@ impl<T: Idx> From<GrowableBitSet<T>> for BitSet<T> {
     }
 }
 
+impl<T> Clone for BitSet<T> {
+    fn clone(&self) -> Self {
+        BitSet { domain_size: self.domain_size, words: self.words.clone(), marker: PhantomData }
+    }
+
+    fn clone_from(&mut self, from: &Self) {
+        self.domain_size = from.domain_size;
+        self.words.clone_from(&from.words);
+    }
+}
+
+impl<T: Idx> fmt::Debug for BitSet<T> {
+    fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
+        w.debug_list().entries(self.iter()).finish()
+    }
+}
+
+impl<T: Idx> ToString for BitSet<T> {
+    fn to_string(&self) -> String {
+        let mut result = String::new();
+        let mut sep = '[';
+
+        // Note: this is a little endian printout of bytes.
+
+        // i tracks how many bits we have printed so far.
+        let mut i = 0;
+        for word in &self.words {
+            let mut word = *word;
+            for _ in 0..WORD_BYTES {
+                // for each byte in `word`:
+                let remain = self.domain_size - i;
+                // If less than a byte remains, then mask just that many bits.
+                let mask = if remain <= 8 { (1 << remain) - 1 } else { 0xFF };
+                assert!(mask <= 0xFF);
+                let byte = word & mask;
+
+                result.push_str(&format!("{sep}{byte:02x}"));
+
+                if remain <= 8 {
+                    break;
+                }
+                word >>= 8;
+                i += 8;
+                sep = '-';
+            }
+            sep = '|';
+        }
+        result.push(']');
+
+        result
+    }
+}
+
+pub struct BitIter<'a, T: Idx> {
+    /// A copy of the current word, but with any already-visited bits cleared.
+    /// (This lets us use `trailing_zeros()` to find the next set bit.) When it
+    /// is reduced to 0, we move onto the next word.
+    word: Word,
+
+    /// The offset (measured in bits) of the current word.
+    offset: usize,
+
+    /// Underlying iterator over the words.
+    iter: slice::Iter<'a, Word>,
+
+    marker: PhantomData<T>,
+}
+
+impl<'a, T: Idx> BitIter<'a, T> {
+    #[inline]
+    fn new(words: &'a [Word]) -> BitIter<'a, T> {
+        // We initialize `word` and `offset` to degenerate values. On the first
+        // call to `next()` we will fall through to getting the first word from
+        // `iter`, which sets `word` to the first word (if there is one) and
+        // `offset` to 0. Doing it this way saves us from having to maintain
+        // additional state about whether we have started.
+        BitIter {
+            word: 0,
+            offset: usize::MAX - (WORD_BITS - 1),
+            iter: words.iter(),
+            marker: PhantomData,
+        }
+    }
+}
+
+impl<'a, T: Idx> Iterator for BitIter<'a, T> {
+    type Item = T;
+    fn next(&mut self) -> Option<T> {
+        loop {
+            if self.word != 0 {
+                // Get the position of the next set bit in the current word,
+                // then clear the bit.
+                let bit_pos = self.word.trailing_zeros() as usize;
+                self.word ^= 1 << bit_pos;
+                return Some(T::new(bit_pos + self.offset));
+            }
+
+            // Move onto the next word. `wrapping_add()` is needed to handle
+            // the degenerate initial value given to `offset` in `new()`.
+            self.word = *self.iter.next()?;
+            self.offset = self.offset.wrapping_add(WORD_BITS);
+        }
+    }
+}
+
 /// A fixed-size bitset type with a partially dense, partially sparse
 /// representation. The bitset is broken into chunks, and chunks that are all
 /// zeros or all ones are represented and handled very efficiently.
@@ -304,6 +409,9 @@ impl<T: Idx> From<GrowableBitSet<T>> for BitSet<T> {
 /// `domain_size` with significant stretches of all zeros or all ones, and also
 /// some stretches with lots of 0s and 1s mixed in a way that causes trouble
 /// for `IntervalSet`.
+///
+/// Best used via `MixedBitSet`, rather than directly, because `MixedBitSet`
+/// has better performance for small bitsets.
 ///
 /// `T` is an index type, typically a newtyped `usize` wrapper, but it can also
 /// just be `usize`.
@@ -958,114 +1066,9 @@ fn sequential_update<T: Idx>(
     it.fold(false, |changed, elem| self_update(elem) | changed)
 }
 
-impl<T> Clone for BitSet<T> {
-    fn clone(&self) -> Self {
-        BitSet { domain_size: self.domain_size, words: self.words.clone(), marker: PhantomData }
-    }
-
-    fn clone_from(&mut self, from: &Self) {
-        self.domain_size = from.domain_size;
-        self.words.clone_from(&from.words);
-    }
-}
-
-impl<T: Idx> fmt::Debug for BitSet<T> {
-    fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
-        w.debug_list().entries(self.iter()).finish()
-    }
-}
-
 impl<T: Idx> fmt::Debug for ChunkedBitSet<T> {
     fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
         w.debug_list().entries(self.iter()).finish()
-    }
-}
-
-impl<T: Idx> ToString for BitSet<T> {
-    fn to_string(&self) -> String {
-        let mut result = String::new();
-        let mut sep = '[';
-
-        // Note: this is a little endian printout of bytes.
-
-        // i tracks how many bits we have printed so far.
-        let mut i = 0;
-        for word in &self.words {
-            let mut word = *word;
-            for _ in 0..WORD_BYTES {
-                // for each byte in `word`:
-                let remain = self.domain_size - i;
-                // If less than a byte remains, then mask just that many bits.
-                let mask = if remain <= 8 { (1 << remain) - 1 } else { 0xFF };
-                assert!(mask <= 0xFF);
-                let byte = word & mask;
-
-                result.push_str(&format!("{sep}{byte:02x}"));
-
-                if remain <= 8 {
-                    break;
-                }
-                word >>= 8;
-                i += 8;
-                sep = '-';
-            }
-            sep = '|';
-        }
-        result.push(']');
-
-        result
-    }
-}
-
-pub struct BitIter<'a, T: Idx> {
-    /// A copy of the current word, but with any already-visited bits cleared.
-    /// (This lets us use `trailing_zeros()` to find the next set bit.) When it
-    /// is reduced to 0, we move onto the next word.
-    word: Word,
-
-    /// The offset (measured in bits) of the current word.
-    offset: usize,
-
-    /// Underlying iterator over the words.
-    iter: slice::Iter<'a, Word>,
-
-    marker: PhantomData<T>,
-}
-
-impl<'a, T: Idx> BitIter<'a, T> {
-    #[inline]
-    fn new(words: &'a [Word]) -> BitIter<'a, T> {
-        // We initialize `word` and `offset` to degenerate values. On the first
-        // call to `next()` we will fall through to getting the first word from
-        // `iter`, which sets `word` to the first word (if there is one) and
-        // `offset` to 0. Doing it this way saves us from having to maintain
-        // additional state about whether we have started.
-        BitIter {
-            word: 0,
-            offset: usize::MAX - (WORD_BITS - 1),
-            iter: words.iter(),
-            marker: PhantomData,
-        }
-    }
-}
-
-impl<'a, T: Idx> Iterator for BitIter<'a, T> {
-    type Item = T;
-    fn next(&mut self) -> Option<T> {
-        loop {
-            if self.word != 0 {
-                // Get the position of the next set bit in the current word,
-                // then clear the bit.
-                let bit_pos = self.word.trailing_zeros() as usize;
-                self.word ^= 1 << bit_pos;
-                return Some(T::new(bit_pos + self.offset));
-            }
-
-            // Move onto the next word. `wrapping_add()` is needed to handle
-            // the degenerate initial value given to `offset` in `new()`.
-            self.word = *self.iter.next()?;
-            self.offset = self.offset.wrapping_add(WORD_BITS);
-        }
     }
 }
 
@@ -1104,6 +1107,158 @@ where
         }
     }
     false
+}
+
+/// A bitset with a mixed representation, using `BitSet` for small and medium
+/// bitsets, and `ChunkedBitSet` for large bitsets, i.e. those with enough bits
+/// for at least two chunks. This is a good choice for many bitsets that can
+/// have large domain sizes (e.g. 5000+).
+///
+/// `T` is an index type, typically a newtyped `usize` wrapper, but it can also
+/// just be `usize`.
+///
+/// All operations that involve an element will panic if the element is equal
+/// to or greater than the domain size. All operations that involve two bitsets
+/// will panic if the bitsets have differing domain sizes.
+#[derive(PartialEq, Eq)]
+pub enum MixedBitSet<T> {
+    Small(BitSet<T>),
+    Large(ChunkedBitSet<T>),
+}
+
+impl<T> MixedBitSet<T> {
+    pub fn domain_size(&self) -> usize {
+        match self {
+            MixedBitSet::Small(set) => set.domain_size(),
+            MixedBitSet::Large(set) => set.domain_size(),
+        }
+    }
+}
+
+impl<T: Idx> MixedBitSet<T> {
+    #[inline]
+    pub fn new_empty(domain_size: usize) -> MixedBitSet<T> {
+        if domain_size <= CHUNK_BITS {
+            MixedBitSet::Small(BitSet::new_empty(domain_size))
+        } else {
+            MixedBitSet::Large(ChunkedBitSet::new_empty(domain_size))
+        }
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        match self {
+            MixedBitSet::Small(set) => set.is_empty(),
+            MixedBitSet::Large(set) => set.is_empty(),
+        }
+    }
+
+    #[inline]
+    pub fn contains(&self, elem: T) -> bool {
+        match self {
+            MixedBitSet::Small(set) => set.contains(elem),
+            MixedBitSet::Large(set) => set.contains(elem),
+        }
+    }
+
+    #[inline]
+    pub fn insert(&mut self, elem: T) -> bool {
+        match self {
+            MixedBitSet::Small(set) => set.insert(elem),
+            MixedBitSet::Large(set) => set.insert(elem),
+        }
+    }
+
+    pub fn insert_all(&mut self) {
+        match self {
+            MixedBitSet::Small(set) => set.insert_all(),
+            MixedBitSet::Large(set) => set.insert_all(),
+        }
+    }
+
+    #[inline]
+    pub fn remove(&mut self, elem: T) -> bool {
+        match self {
+            MixedBitSet::Small(set) => set.remove(elem),
+            MixedBitSet::Large(set) => set.remove(elem),
+        }
+    }
+
+    pub fn iter(&self) -> MixedBitIter<'_, T> {
+        match self {
+            MixedBitSet::Small(set) => MixedBitIter::Small(set.iter()),
+            MixedBitSet::Large(set) => MixedBitIter::Large(set.iter()),
+        }
+    }
+
+    bit_relations_inherent_impls! {}
+}
+
+impl<T> Clone for MixedBitSet<T> {
+    fn clone(&self) -> Self {
+        match self {
+            MixedBitSet::Small(set) => MixedBitSet::Small(set.clone()),
+            MixedBitSet::Large(set) => MixedBitSet::Large(set.clone()),
+        }
+    }
+
+    /// WARNING: this implementation of clone_from may panic if the two
+    /// bitsets have different domain sizes. This constraint is not inherent to
+    /// `clone_from`, but it works with the existing call sites and allows a
+    /// faster implementation, which is important because this function is hot.
+    fn clone_from(&mut self, from: &Self) {
+        match (self, from) {
+            (MixedBitSet::Small(set), MixedBitSet::Small(from)) => set.clone_from(from),
+            (MixedBitSet::Large(set), MixedBitSet::Large(from)) => set.clone_from(from),
+            _ => panic!("MixedBitSet size mismatch"),
+        }
+    }
+}
+
+impl<T: Idx> BitRelations<MixedBitSet<T>> for MixedBitSet<T> {
+    fn union(&mut self, other: &MixedBitSet<T>) -> bool {
+        match (self, other) {
+            (MixedBitSet::Small(set), MixedBitSet::Small(other)) => set.union(other),
+            (MixedBitSet::Large(set), MixedBitSet::Large(other)) => set.union(other),
+            _ => panic!("MixedBitSet size mismatch"),
+        }
+    }
+
+    fn subtract(&mut self, other: &MixedBitSet<T>) -> bool {
+        match (self, other) {
+            (MixedBitSet::Small(set), MixedBitSet::Small(other)) => set.subtract(other),
+            (MixedBitSet::Large(set), MixedBitSet::Large(other)) => set.subtract(other),
+            _ => panic!("MixedBitSet size mismatch"),
+        }
+    }
+
+    fn intersect(&mut self, _other: &MixedBitSet<T>) -> bool {
+        unimplemented!("implement if/when necessary");
+    }
+}
+
+impl<T: Idx> fmt::Debug for MixedBitSet<T> {
+    fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            MixedBitSet::Small(set) => set.fmt(w),
+            MixedBitSet::Large(set) => set.fmt(w),
+        }
+    }
+}
+
+pub enum MixedBitIter<'a, T: Idx> {
+    Small(BitIter<'a, T>),
+    Large(ChunkedBitIter<'a, T>),
+}
+
+impl<'a, T: Idx> Iterator for MixedBitIter<'a, T> {
+    type Item = T;
+    fn next(&mut self) -> Option<T> {
+        match self {
+            MixedBitIter::Small(iter) => iter.next(),
+            MixedBitIter::Large(iter) => iter.next(),
+        }
+    }
 }
 
 /// A resizable bitset type with a dense representation.
@@ -1374,7 +1529,7 @@ impl<R: Idx, C: Idx> fmt::Debug for BitMatrix<R, C> {
 /// sparse representation.
 ///
 /// Initially, every row has no explicit representation. If any bit within a
-/// row is set, the entire row is instantiated as `Some(<ChunkedBitSet>)`.
+/// row is set, the entire row is instantiated as `Some(<BitSet>)`.
 /// Furthermore, any previously uninstantiated rows prior to it will be
 /// instantiated as `None`. Those prior rows may themselves become fully
 /// instantiated later on if any of their bits are set.
@@ -1388,7 +1543,7 @@ where
     C: Idx,
 {
     num_columns: usize,
-    rows: IndexVec<R, Option<ChunkedBitSet<C>>>,
+    rows: IndexVec<R, Option<BitSet<C>>>,
 }
 
 impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
@@ -1397,10 +1552,10 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         Self { num_columns, rows: IndexVec::new() }
     }
 
-    fn ensure_row(&mut self, row: R) -> &mut ChunkedBitSet<C> {
-        // Instantiate any missing rows up to and including row `row` with an empty ChunkedBitSet.
-        // Then replace row `row` with a full ChunkedBitSet if necessary.
-        self.rows.get_or_insert_with(row, || ChunkedBitSet::new_empty(self.num_columns))
+    fn ensure_row(&mut self, row: R) -> &mut BitSet<C> {
+        // Instantiate any missing rows up to and including row `row` with an empty `BitSet`.
+        // Then replace row `row` with a full `BitSet` if necessary.
+        self.rows.get_or_insert_with(row, || BitSet::new_empty(self.num_columns))
     }
 
     /// Sets the cell at `(row, column)` to true. Put another way, insert
@@ -1474,7 +1629,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
         self.row(row).into_iter().flat_map(|r| r.iter())
     }
 
-    pub fn row(&self, row: R) -> Option<&ChunkedBitSet<C>> {
+    pub fn row(&self, row: R) -> Option<&BitSet<C>> {
         self.rows.get(row)?.as_ref()
     }
 
@@ -1484,7 +1639,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     /// Returns true if the row was changed.
     pub fn intersect_row<Set>(&mut self, row: R, set: &Set) -> bool
     where
-        ChunkedBitSet<C>: BitRelations<Set>,
+        BitSet<C>: BitRelations<Set>,
     {
         match self.rows.get_mut(row) {
             Some(Some(row)) => row.intersect(set),
@@ -1498,7 +1653,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     /// Returns true if the row was changed.
     pub fn subtract_row<Set>(&mut self, row: R, set: &Set) -> bool
     where
-        ChunkedBitSet<C>: BitRelations<Set>,
+        BitSet<C>: BitRelations<Set>,
     {
         match self.rows.get_mut(row) {
             Some(Some(row)) => row.subtract(set),
@@ -1512,7 +1667,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     /// Returns true if the row was changed.
     pub fn union_row<Set>(&mut self, row: R, set: &Set) -> bool
     where
-        ChunkedBitSet<C>: BitRelations<Set>,
+        BitSet<C>: BitRelations<Set>,
     {
         self.ensure_row(row).union(set)
     }

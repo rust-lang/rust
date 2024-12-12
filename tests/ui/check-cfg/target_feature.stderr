@@ -153,6 +153,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `popcnt`
 `power10-vector`
 `power8-altivec`
+`power8-crypto`
 `power8-vector`
 `power9-altivec`
 `power9-vector`

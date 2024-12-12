@@ -5,8 +5,6 @@ use std::time::{Duration, SystemTime};
 
 use chrono::{DateTime, Datelike, Offset, Timelike, Utc};
 use chrono_tz::Tz;
-use rustc_abi::Align;
-use rustc_ast::ast::Mutability;
 
 use crate::*;
 
@@ -202,12 +200,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             tm_zone.push('\0');
 
             // Deduplicate and allocate the string.
-            let tm_zone_ptr = this.allocate_bytes(
-                tm_zone.as_bytes(),
-                Align::ONE,
-                MiriMemoryKind::Machine.into(),
-                Mutability::Not,
-            )?;
+            let tm_zone_ptr = this.allocate_bytes_dedup(tm_zone.as_bytes())?;
 
             // Write the timezone pointer and offset into the result structure.
             this.write_pointer(tm_zone_ptr, &this.project_field_named(&result, "tm_zone")?)?;

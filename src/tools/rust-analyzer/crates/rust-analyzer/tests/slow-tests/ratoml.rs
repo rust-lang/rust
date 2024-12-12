@@ -46,7 +46,7 @@ impl RatomlTest {
             project = project.with_config(client_config);
         }
 
-        let server = project.server().wait_until_workspace_is_loaded();
+        let server = project.server_with_lock(true).wait_until_workspace_is_loaded();
 
         let mut case = Self { urls: vec![], server, tmp_path };
         let urls = fixtures.iter().map(|fixture| case.fixture_path(fixture)).collect::<Vec<_>>();
@@ -72,7 +72,7 @@ impl RatomlTest {
         let mut spl = spl.into_iter();
         if let Some(first) = spl.next() {
             if first == "$$CONFIG_DIR$$" {
-                path = Config::user_config_path().unwrap().to_path_buf().into();
+                path = Config::user_config_dir_path().unwrap().into();
             } else {
                 path = path.join(first);
             }
@@ -285,7 +285,6 @@ enum Value {
 //     }
 
 #[test]
-#[ignore = "the user config is currently not being watched on startup, fix this"]
 fn ratoml_user_config_detected() {
     if skip_slow_tests() {
         return;
@@ -294,7 +293,7 @@ fn ratoml_user_config_detected() {
     let server = RatomlTest::new(
         vec![
             r#"
-//- /$$CONFIG_DIR$$/rust-analyzer/rust-analyzer.toml
+//- /$$CONFIG_DIR$$/rust-analyzer.toml
 assist.emitMustUse = true
 "#,
             r#"
@@ -322,7 +321,6 @@ enum Value {
 }
 
 #[test]
-#[ignore = "the user config is currently not being watched on startup, fix this"]
 fn ratoml_create_user_config() {
     if skip_slow_tests() {
         return;
@@ -353,10 +351,7 @@ enum Value {
         1,
         InternalTestingFetchConfigResponse::AssistEmitMustUse(false),
     );
-    server.create(
-        "//- /$$CONFIG_DIR$$/rust-analyzer/rust-analyzer.toml",
-        RatomlTest::EMIT_MUST_USE.to_owned(),
-    );
+    server.create("//- /$$CONFIG_DIR$$/rust-analyzer.toml", RatomlTest::EMIT_MUST_USE.to_owned());
     server.query(
         InternalTestingFetchConfigOption::AssistEmitMustUse,
         1,
@@ -365,7 +360,6 @@ enum Value {
 }
 
 #[test]
-#[ignore = "the user config is currently not being watched on startup, fix this"]
 fn ratoml_modify_user_config() {
     if skip_slow_tests() {
         return;
@@ -386,7 +380,7 @@ enum Value {
     Text(String),
 }"#,
             r#"
-//- /$$CONFIG_DIR$$/rust-analyzer/rust-analyzer.toml
+//- /$$CONFIG_DIR$$/rust-analyzer.toml
 assist.emitMustUse = true"#,
         ],
         vec!["p1"],
@@ -407,7 +401,6 @@ assist.emitMustUse = true"#,
 }
 
 #[test]
-#[ignore = "the user config is currently not being watched on startup, fix this"]
 fn ratoml_delete_user_config() {
     if skip_slow_tests() {
         return;
@@ -428,7 +421,7 @@ enum Value {
     Text(String),
 }"#,
             r#"
-//- /$$CONFIG_DIR$$/rust-analyzer/rust-analyzer.toml
+//- /$$CONFIG_DIR$$/rust-analyzer.toml
 assist.emitMustUse = true"#,
         ],
         vec!["p1"],

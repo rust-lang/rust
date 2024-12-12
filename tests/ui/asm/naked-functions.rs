@@ -219,7 +219,6 @@ pub unsafe extern "C" fn compatible_must_use_attributes() -> u64 {
 
 #[export_name = "exported_function_name"]
 #[link_section = ".custom_section"]
-#[no_mangle]
 #[naked]
 pub unsafe extern "C" fn compatible_ffi_attributes_1() {
     naked_asm!("", options(raw));

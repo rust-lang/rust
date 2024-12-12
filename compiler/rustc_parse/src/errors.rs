@@ -3067,14 +3067,6 @@ pub(crate) struct SingleColonStructType {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_equals_struct_default)]
-pub(crate) struct EqualsStructDefault {
-    #[primary_span]
-    #[suggestion(code = "", applicability = "machine-applicable", style = "verbose")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(parse_macro_rules_missing_bang)]
 pub(crate) struct MacroRulesMissingBang {
     #[primary_span]

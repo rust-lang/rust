@@ -424,6 +424,7 @@ pub(crate) struct MultipleDefaultsSugg {
 pub(crate) struct NonUnitDefault {
     #[primary_span]
     pub(crate) span: Span,
+    pub(crate) post: &'static str,
 }
 
 #[derive(Diagnostic)]

@@ -14,7 +14,7 @@ error: const `impl` for trait `Default` which is not marked with `#[const_trait]
   --> $DIR/derive-const-use.rs:7:12
    |
 LL | impl const Default for A {
-   |            ^^^^^^^
+   |            ^^^^^^^ this trait is not `const`
    |
    = note: marking a trait with `#[const_trait]` ensures all default method bodies are `const`
    = note: adding a non-const method body in the future would be a breaking change
@@ -23,7 +23,7 @@ error: const `impl` for trait `Default` which is not marked with `#[const_trait]
   --> $DIR/derive-const-use.rs:15:16
    |
 LL | #[derive_const(Default, PartialEq)]
-   |                ^^^^^^^
+   |                ^^^^^^^ this trait is not `const`
    |
    = note: marking a trait with `#[const_trait]` ensures all default method bodies are `const`
    = note: adding a non-const method body in the future would be a breaking change
@@ -33,7 +33,7 @@ error: const `impl` for trait `PartialEq` which is not marked with `#[const_trai
   --> $DIR/derive-const-use.rs:11:12
    |
 LL | impl const PartialEq for A {
-   |            ^^^^^^^^^
+   |            ^^^^^^^^^ this trait is not `const`
    |
    = note: marking a trait with `#[const_trait]` ensures all default method bodies are `const`
    = note: adding a non-const method body in the future would be a breaking change
@@ -42,7 +42,7 @@ error: const `impl` for trait `PartialEq` which is not marked with `#[const_trai
   --> $DIR/derive-const-use.rs:15:25
    |
 LL | #[derive_const(Default, PartialEq)]
-   |                         ^^^^^^^^^
+   |                         ^^^^^^^^^ this trait is not `const`
    |
    = note: marking a trait with `#[const_trait]` ensures all default method bodies are `const`
    = note: adding a non-const method body in the future would be a breaking change

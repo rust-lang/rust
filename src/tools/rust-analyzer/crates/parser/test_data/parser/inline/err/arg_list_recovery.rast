@@ -98,7 +98,7 @@ SOURCE_FILE
         WHITESPACE "\n"
         R_CURLY "}"
   WHITESPACE "\n"
-error 25: expected identifier
+error 25: expected identifier, `self`, `super`, `crate`, or `Self`
 error 39: expected COMMA
 error 39: expected expression
 error 55: expected expression

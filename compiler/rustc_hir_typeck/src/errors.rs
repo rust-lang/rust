@@ -16,6 +16,47 @@ use rustc_span::{Span, Symbol};
 use crate::fluent_generated as fluent;
 
 #[derive(Diagnostic)]
+#[diag(hir_typeck_base_expression_double_dot, code = E0797)]
+pub(crate) struct BaseExpressionDoubleDot {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub default_field_values: Option<BaseExpressionDoubleDotEnableDefaultFieldValues>,
+    #[subdiagnostic]
+    pub add_expr: Option<BaseExpressionDoubleDotAddExpr>,
+    #[subdiagnostic]
+    pub remove_dots: Option<BaseExpressionDoubleDotRemove>,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    hir_typeck_base_expression_double_dot_remove,
+    code = "",
+    applicability = "machine-applicable",
+    style = "verbose"
+)]
+pub(crate) struct BaseExpressionDoubleDotRemove {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    hir_typeck_base_expression_double_dot_add_expr,
+    code = "/* expr */",
+    applicability = "has-placeholders",
+    style = "verbose"
+)]
+pub(crate) struct BaseExpressionDoubleDotAddExpr {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[help(hir_typeck_base_expression_double_dot_enable_default_field_values)]
+pub(crate) struct BaseExpressionDoubleDotEnableDefaultFieldValues;
+
+#[derive(Diagnostic)]
 #[diag(hir_typeck_field_multiply_specified_in_initializer, code = E0062)]
 pub(crate) struct FieldMultiplySpecifiedInInitializer {
     #[primary_span]

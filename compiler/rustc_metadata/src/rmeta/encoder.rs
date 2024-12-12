@@ -1401,6 +1401,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 continue;
             }
 
+            if def_kind == DefKind::Field
+                && let hir::Node::Field(field) = tcx.hir_node_by_def_id(local_id)
+                && let Some(anon) = field.default
+            {
+                record!(self.tables.default_fields[def_id] <- anon.def_id.to_def_id());
+            }
+
             if should_encode_span(def_kind) {
                 let def_span = tcx.def_span(local_id);
                 record!(self.tables.def_span[def_id] <- def_span);

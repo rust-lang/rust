@@ -15,10 +15,10 @@ LL | .intel_syntax noprefix
    | ^
 
 error: unknown directive
-  --> $DIR/inline-syntax.rs:29:15
+  --> $DIR/inline-syntax.rs:35:15
    |
 LL |         asm!(".intel_syntax noprefix", "nop");
-   |               ^
+   |               ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: instantiated into assembly here
   --> <inline asm>:1:2
@@ -27,10 +27,10 @@ LL |     .intel_syntax noprefix
    |     ^
 
 error: unknown directive
-  --> $DIR/inline-syntax.rs:32:15
+  --> $DIR/inline-syntax.rs:39:15
    |
 LL |         asm!(".intel_syntax aaa noprefix", "nop");
-   |               ^
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: instantiated into assembly here
   --> <inline asm>:1:2
@@ -39,10 +39,10 @@ LL |     .intel_syntax aaa noprefix
    |     ^
 
 error: unknown directive
-  --> $DIR/inline-syntax.rs:35:15
+  --> $DIR/inline-syntax.rs:43:15
    |
 LL |         asm!(".att_syntax noprefix", "nop");
-   |               ^
+   |               ^^^^^^^^^^^^^^^^^^^^
    |
 note: instantiated into assembly here
   --> <inline asm>:1:2
@@ -51,10 +51,10 @@ LL |     .att_syntax noprefix
    |     ^
 
 error: unknown directive
-  --> $DIR/inline-syntax.rs:38:15
+  --> $DIR/inline-syntax.rs:47:15
    |
 LL |         asm!(".att_syntax bbb noprefix", "nop");
-   |               ^
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: instantiated into assembly here
   --> <inline asm>:1:2
@@ -63,10 +63,10 @@ LL |     .att_syntax bbb noprefix
    |     ^
 
 error: unknown directive
-  --> $DIR/inline-syntax.rs:41:15
+  --> $DIR/inline-syntax.rs:51:15
    |
 LL |         asm!(".intel_syntax noprefix; nop");
-   |               ^
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: instantiated into assembly here
   --> <inline asm>:1:2
@@ -75,10 +75,10 @@ LL |     .intel_syntax noprefix; nop
    |     ^
 
 error: unknown directive
-  --> $DIR/inline-syntax.rs:47:13
+  --> $DIR/inline-syntax.rs:58:13
    |
 LL |             .intel_syntax noprefix
-   |             ^
+   |             ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: instantiated into assembly here
   --> <inline asm>:2:13

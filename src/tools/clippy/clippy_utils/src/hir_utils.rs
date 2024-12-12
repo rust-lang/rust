@@ -10,7 +10,7 @@ use rustc_hir::{
     AssocItemConstraint, BinOpKind, BindingMode, Block, BodyId, Closure, ConstArg, ConstArgKind, Expr,
     ExprField, ExprKind, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime,
     LifetimeName, Pat, PatField, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitBoundModifiers, Ty,
-    TyKind,
+    TyKind, StructTailExpr,
 };
 use rustc_lexer::{TokenKind, tokenize};
 use rustc_lint::LateContext;
@@ -380,7 +380,12 @@ impl HirEqInterExpr<'_, '_, '_> {
             (ExprKind::Ret(l), ExprKind::Ret(r)) => both(l.as_ref(), r.as_ref(), |l, r| self.eq_expr(l, r)),
             (&ExprKind::Struct(l_path, lf, ref lo), &ExprKind::Struct(r_path, rf, ref ro)) => {
                 self.eq_qpath(l_path, r_path)
-                    && both(lo.as_ref(), ro.as_ref(), |l, r| self.eq_expr(l, r))
+                    && match (lo, ro) {
+                        (StructTailExpr::Base(l),StructTailExpr::Base(r)) => self.eq_expr(l, r),
+                        (StructTailExpr::None, StructTailExpr::None) => true,
+                        (StructTailExpr::DefaultFields(_), StructTailExpr::DefaultFields(_)) => true,
+                        _ => false,
+                    }
                     && over(lf, rf, |l, r| self.eq_expr_field(l, r))
             },
             (&ExprKind::Tup(l_tup), &ExprKind::Tup(r_tup)) => self.eq_exprs(l_tup, r_tup),
@@ -591,7 +596,6 @@ impl HirEqInterExpr<'_, '_, '_> {
             (TyKind::Path(l), TyKind::Path(r)) => self.eq_qpath(l, r),
             (&TyKind::Tup(l), &TyKind::Tup(r)) => over(l, r, |l, r| self.eq_ty(l, r)),
             (&TyKind::Infer, &TyKind::Infer) => true,
-            (TyKind::AnonAdt(l_item_id), TyKind::AnonAdt(r_item_id)) => l_item_id == r_item_id,
             _ => false,
         }
     }
@@ -1017,7 +1021,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_expr(f.expr);
                 }
 
-                if let Some(e) = *expr {
+                if let StructTailExpr::Base(e) = *expr {
                     self.hash_expr(e);
                 }
             },
@@ -1241,8 +1245,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             | TyKind::Infer
             | TyKind::Never
             | TyKind::InferDelegation(..)
-            | TyKind::OpaqueDef(_)
-            | TyKind::AnonAdt(_) => {},
+            | TyKind::OpaqueDef(_) => {},
         }
     }
 
