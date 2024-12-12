@@ -2,7 +2,7 @@
 
 set -ex
 
-./add_dummy_commit.sh
+${PWD}add_dummy_commit.sh
 
 ##### Test stage 1 #####
 
