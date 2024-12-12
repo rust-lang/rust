@@ -18,6 +18,7 @@ use crate::net::Shutdown;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::path::Path;
 use crate::sealed::Sealed;
+use crate::sync::Arc;
 use crate::sys::cvt;
 use crate::sys::net::Socket;
 use crate::sys_common::{AsInner, FromInner};
@@ -646,6 +647,47 @@ impl<'a> io::Write for &'a UnixStream {
     #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
+    }
+}
+
+#[stable(feature = "io_traits_arc_more", since = "CURRENT_RUSTC_VERSION")]
+impl io::Read for Arc<UnixStream> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        (&**self).read(buf)
+    }
+
+    fn read_buf(&mut self, buf: io::BorrowedCursor<'_>) -> io::Result<()> {
+        (&**self).read_buf(buf)
+    }
+
+    fn read_vectored(&mut self, bufs: &mut [io::IoSliceMut<'_>]) -> io::Result<usize> {
+        (&**self).read_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        (&**self).is_read_vectored()
+    }
+}
+
+#[stable(feature = "io_traits_arc_more", since = "CURRENT_RUSTC_VERSION")]
+impl io::Write for Arc<UnixStream> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        (&**self).write(buf)
+    }
+
+    fn write_vectored(&mut self, bufs: &[io::IoSlice<'_>]) -> io::Result<usize> {
+        (&**self).write_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        (&**self).is_write_vectored()
+    }
+
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> {
+        (&**self).flush()
     }
 }
 
