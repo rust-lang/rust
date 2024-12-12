@@ -126,7 +126,7 @@ declare_clippy_lint! {
     ///
     /// [cargo-pgo]: https://github.com/Kobzol/cargo-pgo/blob/main/README.md
     ///
-    #[clippy::version = "1.82.0"]
+    #[clippy::version = "1.84.0"]
     pub ARBITRARY_SOURCE_ITEM_ORDERING,
     restriction,
     "arbitrary source item ordering"
