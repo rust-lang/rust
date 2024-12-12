@@ -30,7 +30,7 @@ impl TestCx<'_> {
         assert!(incremental_dir.exists(), "init_incremental_test failed to create incremental dir");
 
         if self.config.verbose {
-            eprint!("revision={:?} props={:#?}", revision, self.props);
+            print!("revision={:?} props={:#?}", revision, self.props);
         }
 
         if revision.starts_with("cpass") {

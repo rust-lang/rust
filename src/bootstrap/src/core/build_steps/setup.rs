@@ -134,7 +134,7 @@ impl Step for Profile {
                     t!(fs::remove_file(path));
                 }
                 _ => {
-                    eprintln!("Exiting.");
+                    println!("Exiting.");
                     crate::exit!(1);
                 }
             }
@@ -184,15 +184,15 @@ pub fn setup(config: &Config, profile: Profile) {
         Profile::Dist => &["dist", "build"],
     };
 
-    eprintln!();
+    println!();
 
-    eprintln!("To get started, try one of the following commands:");
+    println!("To get started, try one of the following commands:");
     for cmd in suggestions {
-        eprintln!("- `x.py {cmd}`");
+        println!("- `x.py {cmd}`");
     }
 
     if profile != Profile::Dist {
-        eprintln!(
+        println!(
             "For more suggestions, see https://rustc-dev-guide.rust-lang.org/building/suggested.html"
         );
     }
@@ -224,7 +224,7 @@ fn setup_config_toml(path: &PathBuf, profile: Profile, config: &Config) {
     t!(fs::write(path, settings));
 
     let include_path = profile.include_path(&config.src);
-    eprintln!("`x.py` will now use the configuration at {}", include_path.display());
+    println!("`x.py` will now use the configuration at {}", include_path.display());
 }
 
 /// Creates a toolchain link for stage1 using `rustup`
@@ -256,7 +256,7 @@ impl Step for Link {
         }
 
         if !rustup_installed(builder) {
-            eprintln!("WARNING: `rustup` is not installed; Skipping `stage1` toolchain linking.");
+            println!("WARNING: `rustup` is not installed; Skipping `stage1` toolchain linking.");
             return;
         }
 
@@ -296,7 +296,7 @@ fn attempt_toolchain_link(builder: &Builder<'_>, stage_path: &str) {
     }
 
     if try_link_toolchain(builder, stage_path) {
-        eprintln!(
+        println!(
             "Added `stage1` rustup toolchain; try `cargo +stage1 build` on a separate rust project to run a newly-built toolchain"
         );
     } else {
@@ -321,14 +321,14 @@ fn toolchain_is_linked(builder: &Builder<'_>) -> bool {
                 return false;
             }
             // The toolchain has already been linked.
-            eprintln!(
+            println!(
                 "`stage1` toolchain already linked; not attempting to link `stage1` toolchain"
             );
         }
         None => {
             // In this case, we don't know if the `stage1` toolchain has been linked;
             // but `rustup` failed, so let's not go any further.
-            eprintln!(
+            println!(
                 "`rustup` failed to list current toolchains; not attempting to link `stage1` toolchain"
             );
         }
@@ -389,12 +389,12 @@ pub fn interactive_path() -> io::Result<Profile> {
         input.parse()
     }
 
-    eprintln!("Welcome to the Rust project! What do you want to do with x.py?");
+    println!("Welcome to the Rust project! What do you want to do with x.py?");
     for ((letter, _), profile) in abbrev_all() {
-        eprintln!("{}) {}: {}", letter, profile, profile.purpose());
+        println!("{}) {}: {}", letter, profile, profile.purpose());
     }
     let template = loop {
-        eprint!(
+        print!(
             "Please choose one ({}): ",
             abbrev_all().map(|((l, _), _)| l).collect::<Vec<_>>().join("/")
         );
@@ -428,7 +428,7 @@ enum PromptResult {
 fn prompt_user(prompt: &str) -> io::Result<Option<PromptResult>> {
     let mut input = String::new();
     loop {
-        eprint!("{prompt} ");
+        print!("{prompt} ");
         io::stdout().flush()?;
         input.clear();
         io::stdin().read_line(&mut input)?;
@@ -490,7 +490,7 @@ fn install_git_hook_maybe(builder: &Builder<'_>, config: &Config) -> io::Result<
         return Ok(());
     }
 
-    eprintln!(
+    println!(
         "\nRust's CI will automatically fail if it doesn't pass `tidy`, the internal tool for ensuring code quality.
 If you'd like, x.py can install a git hook for you that will automatically run `test tidy` before
 pushing your code to ensure your code is up to par. If you decide later that this behavior is
@@ -498,7 +498,7 @@ undesirable, simply delete the `pre-push` file from .git/hooks."
     );
 
     if prompt_user("Would you like to install the git hook?: [y/N]")? != Some(PromptResult::Yes) {
-        eprintln!("Ok, skipping installation!");
+        println!("Ok, skipping installation!");
         return Ok(());
     }
     if !hooks_dir.exists() {
@@ -515,7 +515,7 @@ undesirable, simply delete the `pre-push` file from .git/hooks."
             );
             return Err(e);
         }
-        Ok(_) => eprintln!("Linked `src/etc/pre-push.sh` to `.git/hooks/pre-push`"),
+        Ok(_) => println!("Linked `src/etc/pre-push.sh` to `.git/hooks/pre-push`"),
     };
     Ok(())
 }
@@ -541,7 +541,7 @@ Select which editor you would like to set up [default: None]: ";
 
         let mut input = String::new();
         loop {
-            eprint!("{}", prompt_str);
+            print!("{}", prompt_str);
             io::stdout().flush()?;
             input.clear();
             io::stdin().read_line(&mut input)?;
@@ -656,7 +656,7 @@ impl Step for Editor {
                 if let Some(editor_kind) = editor_kind {
                     while !t!(create_editor_settings_maybe(config, editor_kind.clone())) {}
                 } else {
-                    eprintln!("Ok, skipping editor setup!");
+                    println!("Ok, skipping editor setup!");
                 }
             }
             Err(e) => eprintln!("Could not determine the editor: {e}"),
@@ -689,7 +689,7 @@ fn create_editor_settings_maybe(config: &Config, editor: EditorKind) -> io::Resu
             mismatched_settings = Some(false);
         }
     }
-    eprintln!(
+    println!(
         "\nx.py can automatically install the recommended `{settings_filename}` file for rustc development"
     );
 
@@ -708,7 +708,7 @@ fn create_editor_settings_maybe(config: &Config, editor: EditorKind) -> io::Resu
         Some(PromptResult::Yes) => true,
         Some(PromptResult::Print) => false,
         _ => {
-            eprintln!("Ok, skipping settings!");
+            println!("Ok, skipping settings!");
             return Ok(true);
         }
     };
@@ -735,9 +735,9 @@ fn create_editor_settings_maybe(config: &Config, editor: EditorKind) -> io::Resu
             _ => "Created",
         };
         fs::write(&settings_path, editor.settings_template())?;
-        eprintln!("{verb} `{}`", settings_filename);
+        println!("{verb} `{}`", settings_filename);
     } else {
-        eprintln!("\n{}", editor.settings_template());
+        println!("\n{}", editor.settings_template());
     }
     Ok(should_create)
 }

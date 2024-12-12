@@ -1299,7 +1299,7 @@ impl Config {
                     .map(|change_id| change_id.inner.map(crate::find_recent_config_change_ids))
                 {
                     if !changes.is_empty() {
-                        eprintln!(
+                        println!(
                             "WARNING: There have been changes to x.py since you last updated:\n{}",
                             crate::human_readable_changes(&changes)
                         );
@@ -1565,7 +1565,7 @@ impl Config {
         }
 
         if cargo_clippy.is_some() && rustc.is_none() {
-            eprintln!(
+            println!(
                 "WARNING: Using `build.cargo-clippy` without `build.rustc` usually fails due to toolchain conflict."
             );
         }
@@ -1852,7 +1852,7 @@ impl Config {
 
             // FIXME: Remove this option at the end of 2024.
             if parallel_compiler.is_some() {
-                eprintln!(
+                println!(
                     "WARNING: The `rust.parallel-compiler` option is deprecated and does nothing. The parallel compiler (with one thread) is now the default"
                 );
             }
@@ -1884,7 +1884,7 @@ impl Config {
                         if available_backends.contains(&backend) {
                             panic!("Invalid value '{s}' for 'rust.codegen-backends'. Instead, please use '{backend}'.");
                         } else {
-                            eprintln!("HELP: '{s}' for 'rust.codegen-backends' might fail. \
+                            println!("HELP: '{s}' for 'rust.codegen-backends' might fail. \
                                 Codegen backends are mostly defined without the '{CODEGEN_BACKEND_PREFIX}' prefix. \
                                 In this case, it would be referred to as '{backend}'.");
                         }
@@ -1913,7 +1913,7 @@ impl Config {
         // tests may fail due to using a different channel than the one used by the compiler during tests.
         if let Some(commit) = &config.download_rustc_commit {
             if is_user_configured_rust_channel {
-                eprintln!(
+                println!(
                     "WARNING: `rust.download-rustc` is enabled. The `rust.channel` option will be overridden by the CI rustc's channel."
                 );
 
@@ -2003,10 +2003,10 @@ impl Config {
 
             if config.llvm_from_ci {
                 let warn = |option: &str| {
-                    eprintln!(
+                    println!(
                         "WARNING: `{option}` will only be used on `compiler/rustc_llvm` build, not for the LLVM build."
                     );
-                    eprintln!(
+                    println!(
                         "HELP: To use `{option}` for LLVM builds, set `download-ci-llvm` option to false."
                     );
                 };
@@ -2025,12 +2025,12 @@ impl Config {
                 // if they've chosen a different value.
 
                 if libzstd.is_some() {
-                    eprintln!(
+                    println!(
                         "WARNING: when using `download-ci-llvm`, the local `llvm.libzstd` option, \
                         like almost all `llvm.*` options, will be ignored and set by the LLVM CI \
                         artifacts builder config."
                     );
-                    eprintln!(
+                    println!(
                         "HELP: To use `llvm.libzstd` for LLVM/LLD builds, set `download-ci-llvm` option to false."
                     );
                 }
@@ -2099,7 +2099,7 @@ impl Config {
                             if available_backends.contains(&backend) {
                                 panic!("Invalid value '{s}' for 'target.{triple}.codegen-backends'. Instead, please use '{backend}'.");
                             } else {
-                                eprintln!("HELP: '{s}' for 'target.{triple}.codegen-backends' might fail. \
+                                println!("HELP: '{s}' for 'target.{triple}.codegen-backends' might fail. \
                                     Codegen backends are mostly defined without the '{CODEGEN_BACKEND_PREFIX}' prefix. \
                                     In this case, it would be referred to as '{backend}'.");
                             }
@@ -2315,7 +2315,7 @@ impl Config {
         if self.dry_run() {
             return Ok(());
         }
-        self.verbose(|| eprintln!("running: {cmd:?}"));
+        self.verbose(|| println!("running: {cmd:?}"));
         build_helper::util::try_run(cmd, self.is_verbose())
     }
 
@@ -2490,7 +2490,7 @@ impl Config {
                         // This happens when LLVM submodule is updated in CI, we should disable ci-rustc without an error
                         // to not break CI. For non-CI environments, we should return an error.
                         if CiEnv::is_ci() {
-                            eprintln!("WARNING: LLVM submodule has changes, `download-rustc` will be disabled.");
+                            println!("WARNING: LLVM submodule has changes, `download-rustc` will be disabled.");
                             return None;
                         } else {
                             panic!("ERROR: LLVM submodule has changes, `download-rustc` can't be used.");
@@ -2501,8 +2501,8 @@ impl Config {
                         let ci_config_toml = match self.get_builder_toml("ci-rustc") {
                             Ok(ci_config_toml) => ci_config_toml,
                             Err(e) if e.to_string().contains("unknown field") => {
-                                eprintln!("WARNING: CI rustc has some fields that are no longer supported in bootstrap; download-rustc will be disabled.");
-                                eprintln!("HELP: Consider rebasing to a newer commit if available.");
+                                println!("WARNING: CI rustc has some fields that are no longer supported in bootstrap; download-rustc will be disabled.");
+                                println!("HELP: Consider rebasing to a newer commit if available.");
                                 return None;
                             },
                             Err(e) => {
@@ -2527,7 +2527,7 @@ impl Config {
                             .is_some_and(|s| s == "1" || s == "true");
 
                         if disable_ci_rustc_if_incompatible && res.is_err() {
-                            eprintln!("WARNING: download-rustc is disabled with `DISABLE_CI_RUSTC_IF_INCOMPATIBLE` env.");
+                            println!("WARNING: download-rustc is disabled with `DISABLE_CI_RUSTC_IF_INCOMPATIBLE` env.");
                             return None;
                         }
 
@@ -2712,7 +2712,7 @@ impl Config {
             return;
         }
 
-        eprintln!("Updating submodule {relative_path}");
+        println!("Updating submodule {relative_path}");
         self.check_run(
             helpers::git(Some(&self.src))
                 .run_always()
@@ -2835,7 +2835,7 @@ impl Config {
             Some(StringOrBool::Bool(true)) => false,
             Some(StringOrBool::String(s)) if s == "if-unchanged" => {
                 if !self.rust_info.is_managed_git_subrepository() {
-                    eprintln!(
+                    println!(
                         "ERROR: `download-rustc=if-unchanged` is only compatible with Git managed sources."
                     );
                     crate::exit!(1);
@@ -2868,10 +2868,10 @@ impl Config {
                 if if_unchanged {
                     return None;
                 }
-                eprintln!("ERROR: could not find commit hash for downloading rustc");
-                eprintln!("HELP: maybe your repository history is too shallow?");
-                eprintln!("HELP: consider setting `rust.download-rustc=false` in config.toml");
-                eprintln!("HELP: or fetch enough history to include one upstream commit");
+                println!("ERROR: could not find commit hash for downloading rustc");
+                println!("HELP: maybe your repository history is too shallow?");
+                println!("HELP: consider setting `rust.download-rustc=false` in config.toml");
+                println!("HELP: or fetch enough history to include one upstream commit");
                 crate::exit!(1);
             }
         };
@@ -2910,7 +2910,7 @@ impl Config {
         let if_unchanged = || {
             if self.rust_info.is_from_tarball() {
                 // Git is needed for running "if-unchanged" logic.
-                eprintln!(
+                println!(
                     "WARNING: 'if-unchanged' has no effect on tarball sources; ignoring `download-ci-llvm`."
                 );
                 return false;
@@ -2959,10 +2959,10 @@ impl Config {
         // Only commits merged by bors will have CI artifacts.
         let commit = get_closest_merge_commit(Some(&self.src), &self.git_config(), &[]).unwrap();
         if commit.is_empty() {
-            eprintln!("error: could not find commit hash for downloading components from CI");
-            eprintln!("help: maybe your repository history is too shallow?");
-            eprintln!("help: consider disabling `{option_name}`");
-            eprintln!("help: or fetch enough history to include one upstream commit");
+            println!("error: could not find commit hash for downloading components from CI");
+            println!("help: maybe your repository history is too shallow?");
+            println!("help: consider disabling `{option_name}`");
+            println!("help: or fetch enough history to include one upstream commit");
             crate::exit!(1);
         }
 
@@ -2974,14 +2974,14 @@ impl Config {
         if has_changes {
             if if_unchanged {
                 if self.is_verbose() {
-                    eprintln!(
+                    println!(
                         "warning: saw changes to one of {modified_paths:?} since {commit}; \
                             ignoring `{option_name}`"
                     );
                 }
                 return None;
             }
-            eprintln!(
+            println!(
                 "warning: `{option_name}` is enabled, but there are changes to one of {modified_paths:?}"
             );
         }
@@ -3018,7 +3018,7 @@ pub(crate) fn check_incompatible_options_for_ci_llvm(
         ($current:expr, $expected:expr) => {
             if let Some(current) = &$current {
                 if Some(current) != $expected.as_ref() {
-                    eprintln!(
+                    println!(
                         "WARNING: `llvm.{}` has no effect with `llvm.download-ci-llvm`. \
                         Current value: {:?}, Expected value(s): {}{:?}",
                         stringify!($expected).replace("_", "-"),
@@ -3123,7 +3123,7 @@ fn check_incompatible_options_for_ci_rustc(
         ($current:expr, $expected:expr, $config_section:expr) => {
             if let Some(current) = &$current {
                 if Some(current) != $expected.as_ref() {
-                    eprintln!(
+                    println!(
                         "WARNING: `{}` has no effect with `rust.download-rustc`. \
                         Current value: {:?}, Expected value(s): {}{:?}",
                         format!("{}.{}", $config_section, stringify!($expected).replace("_", "-")),
