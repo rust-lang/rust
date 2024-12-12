@@ -1035,12 +1035,7 @@ impl Builder<'_> {
             rustflags.arg("-Wrustc::internal");
             // cfg(bootstrap) - remove this check when lint is in bootstrap compiler
             if stage != 0 {
-                // Lint is allow by default so downstream tools don't get a lit
-                // they can do nothing about
-                // We shouldn't be preinterning symbols used by tests
-                if cmd_kind != Kind::Test {
-                    rustflags.arg("-Drustc::symbol_intern_string_literal");
-                }
+                rustflags.arg("-Drustc::symbol_intern_string_literal");
             }
             // FIXME(edition_2024): Change this to `-Wrust_2024_idioms` when all
             // of the individual lints are satisfied.
