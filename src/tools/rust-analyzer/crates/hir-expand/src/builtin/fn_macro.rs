@@ -74,7 +74,7 @@ impl BuiltinFnLikeExpander {
     }
 
     pub fn is_asm(&self) -> bool {
-        matches!(self, Self::Asm | Self::GlobalAsm)
+        matches!(self, Self::Asm | Self::GlobalAsm | Self::NakedAsm)
     }
 }
 
@@ -122,6 +122,7 @@ register_builtin! {
     (stringify, Stringify) => stringify_expand,
     (asm, Asm) => asm_expand,
     (global_asm, GlobalAsm) => asm_expand,
+    (naked_asm, NakedAsm) => asm_expand,
     (cfg, Cfg) => cfg_expand,
     (core_panic, CorePanic) => panic_expand,
     (std_panic, StdPanic) => panic_expand,
