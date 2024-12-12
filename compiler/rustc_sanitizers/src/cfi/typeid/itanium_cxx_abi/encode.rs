@@ -716,8 +716,7 @@ fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
             | hir::definitions::DefPathData::Use
             | hir::definitions::DefPathData::GlobalAsm
             | hir::definitions::DefPathData::MacroNs(..)
-            | hir::definitions::DefPathData::LifetimeNs(..)
-            | hir::definitions::DefPathData::AnonAdt => {
+            | hir::definitions::DefPathData::LifetimeNs(..) => {
                 bug!("encode_ty_name: unexpected `{:?}`", disambiguated_data.data);
             }
         });

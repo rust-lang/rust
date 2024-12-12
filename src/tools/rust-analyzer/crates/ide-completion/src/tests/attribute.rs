@@ -9,6 +9,70 @@ fn check(ra_fixture: &str, expect: Expect) {
 }
 
 #[test]
+fn derive_helpers() {
+    check(
+        r#"
+//- /mac.rs crate:mac
+#![crate_type = "proc-macro"]
+
+#[proc_macro_derive(MyDerive, attributes(my_cool_helper_attribute))]
+pub fn my_derive() {}
+
+//- /lib.rs crate:lib deps:mac
+#[rustc_builtin_macro]
+pub macro derive($item:item) {}
+
+#[derive(mac::MyDerive)]
+pub struct Foo(#[m$0] i32);
+"#,
+        expect![[r#"
+            at allow(…)
+            at automatically_derived
+            at cfg(…)
+            at cfg_attr(…)
+            at cold
+            at deny(…)
+            at deprecated
+            at derive                 macro derive
+            at derive(…)
+            at doc = "…"
+            at doc(alias = "…")
+            at doc(hidden)
+            at expect(…)
+            at export_name = "…"
+            at forbid(…)
+            at global_allocator
+            at ignore = "…"
+            at inline
+            at link
+            at link_name = "…"
+            at link_section = "…"
+            at macro_export
+            at macro_use
+            at must_use
+            at my_cool_helper_attribute derive helper of `MyDerive`
+            at no_mangle
+            at non_exhaustive
+            at panic_handler
+            at path = "…"
+            at proc_macro
+            at proc_macro_attribute
+            at proc_macro_derive(…)
+            at repr(…)
+            at should_panic
+            at target_feature(enable = "…")
+            at test
+            at track_caller
+            at used
+            at warn(…)
+            md mac
+            kw crate::
+            kw self::
+        "#]],
+    )
+}
+
+#[test]
 fn proc_macros() {
     check(
         r#"

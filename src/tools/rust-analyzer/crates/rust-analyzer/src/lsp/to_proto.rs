@@ -5,6 +5,7 @@ use std::{
     sync::atomic::{AtomicU32, Ordering},
 };
 
+use base64::{prelude::BASE64_STANDARD, Engine};
 use ide::{
     Annotation, AnnotationKind, Assist, AssistKind, Cancellable, CompletionFieldsToResolve,
     CompletionItem, CompletionItemKind, CompletionRelevance, Documentation, FileId, FileRange,
@@ -21,6 +22,7 @@ use serde_json::to_value;
 use vfs::AbsPath;
 
 use crate::{
+    completion_item_hash,
     config::{CallInfoConfig, Config},
     global_state::GlobalStateSnapshot,
     line_index::{LineEndings, LineIndex, PositionEncoding},
@@ -295,7 +297,7 @@ fn completion_item(
         // non-trivial mapping here.
         let mut text_edit = None;
         let source_range = item.source_range;
-        for indel in item.text_edit {
+        for indel in &item.text_edit {
             if indel.delete.contains_range(source_range) {
                 // Extract this indel as the main edit
                 text_edit = Some(if indel.delete == source_range {
@@ -347,7 +349,7 @@ fn completion_item(
         something_to_resolve |= item.documentation.is_some();
         None
     } else {
-        item.documentation.map(documentation)
+        item.documentation.clone().map(documentation)
     };
 
     let mut lsp_item = lsp_types::CompletionItem {
@@ -371,10 +373,10 @@ fn completion_item(
         } else {
             lsp_item.label_details = Some(lsp_types::CompletionItemLabelDetails {
                 detail: item.label_detail.as_ref().map(ToString::to_string),
-                description: item.detail,
+                description: item.detail.clone(),
             });
         }
-    } else if let Some(label_detail) = item.label_detail {
+    } else if let Some(label_detail) = &item.label_detail {
         lsp_item.label.push_str(label_detail.as_str());
     }
 
@@ -383,6 +385,7 @@ fn completion_item(
     let imports =
         if config.completion(None).enable_imports_on_the_fly && !item.import_to_add.is_empty() {
             item.import_to_add
+                .clone()
                 .into_iter()
                 .map(|(import_path, import_name)| lsp_ext::CompletionImport {
                     full_import_path: import_path,
@@ -393,16 +396,15 @@ fn completion_item(
             Vec::new()
         };
     let (ref_resolve_data, resolve_data) = if something_to_resolve || !imports.is_empty() {
-        let mut item_index = acc.len();
         let ref_resolve_data = if ref_match.is_some() {
             let ref_resolve_data = lsp_ext::CompletionResolveData {
                 position: tdpp.clone(),
                 imports: Vec::new(),
                 version,
                 trigger_character: completion_trigger_character,
-                completion_item_index: item_index,
+                for_ref: true,
+                hash: BASE64_STANDARD.encode(completion_item_hash(&item, true)),
             };
-            item_index += 1;
             Some(to_value(ref_resolve_data).unwrap())
         } else {
             None
@@ -412,7 +414,8 @@ fn completion_item(
             imports,
             version,
             trigger_character: completion_trigger_character,
-            completion_item_index: item_index,
+            for_ref: false,
+            hash: BASE64_STANDARD.encode(completion_item_hash(&item, false)),
         };
         (ref_resolve_data, Some(to_value(resolve_data).unwrap()))
     } else {

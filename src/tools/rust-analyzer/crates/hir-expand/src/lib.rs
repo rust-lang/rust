@@ -269,6 +269,13 @@ pub enum MacroDefKind {
     ProcMacro(AstId<ast::Fn>, CustomProcMacroExpander, ProcMacroKind),
 }
 
+impl MacroDefKind {
+    #[inline]
+    pub fn is_declarative(&self) -> bool {
+        matches!(self, MacroDefKind::Declarative(..))
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct EagerCallInfo {
     /// The expanded argument of the eager macro.

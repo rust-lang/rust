@@ -16,6 +16,7 @@ use rustc_hash::FxHashMap;
 use crate::{SyntaxElement, SyntaxNode, SyntaxToken};
 
 mod edit_algo;
+mod edits;
 mod mapping;
 
 pub use mapping::{SyntaxMapping, SyntaxMappingBuilder};
@@ -326,7 +327,7 @@ mod tests {
 
     use crate::{
         ast::{self, make, syntax_factory::SyntaxFactory},
-        AstNode,
+        AstNode, SyntaxKind,
     };
 
     use super::*;
@@ -537,6 +538,52 @@ mod tests {
                 let second = 2;
             }
             }"#]];
+        expect.assert_eq(&edit.new_root.to_string());
+    }
+
+    #[test]
+    fn test_replace_token_in_parent() {
+        let parent_fn = make::fn_(
+            None,
+            make::name("it"),
+            None,
+            None,
+            make::param_list(None, []),
+            make::block_expr([], Some(make::expr_unit())),
+            Some(make::ret_type(make::ty_unit())),
+            false,
+            false,
+            false,
+            false,
+        );
+
+        let mut editor = SyntaxEditor::new(parent_fn.syntax().clone());
+
+        if let Some(ret_ty) = parent_fn.ret_type() {
+            editor.delete(ret_ty.syntax().clone());
+
+            if let Some(SyntaxElement::Token(token)) = ret_ty.syntax().next_sibling_or_token() {
+                if token.kind().is_trivia() {
+                    editor.delete(token);
+                }
+            }
+        }
+
+        if let Some(tail) = parent_fn.body().unwrap().tail_expr() {
+            // FIXME: We do this because `xtask tidy` will not allow us to have trailing whitespace in the expect string.
+            if let Some(SyntaxElement::Token(token)) = tail.syntax().prev_sibling_or_token() {
+                if let SyntaxKind::WHITESPACE = token.kind() {
+                    editor.delete(token);
+                }
+            }
+            editor.delete(tail.syntax().clone());
+        }
+
+        let edit = editor.finish();
+
+        let expect = expect![[r#"
+fn it() {
+}"#]];
         expect.assert_eq(&edit.new_root.to_string());
     }
 }

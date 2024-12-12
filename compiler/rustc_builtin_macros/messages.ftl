@@ -261,7 +261,7 @@ builtin_macros_non_exhaustive_default = default variant must be exhaustive
 
 builtin_macros_non_generic_pointee = the `#[pointee]` attribute may only be used on generic parameters
 
-builtin_macros_non_unit_default = the `#[default]` attribute may only be used on unit enum variants
+builtin_macros_non_unit_default = the `#[default]` attribute may only be used on unit enum variants{$post}
     .help = consider a manual implementation of `Default`
 
 builtin_macros_only_one_argument = {$name} takes 1 argument

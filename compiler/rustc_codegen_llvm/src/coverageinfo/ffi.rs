@@ -152,6 +152,34 @@ impl CoverageSpan {
     }
 }
 
+/// Holds tables of the various region types in one struct.
+///
+/// Don't pass this struct across FFI; pass the individual region tables as
+/// pointer/length pairs instead.
+///
+/// Each field name has a `_regions` suffix for improved readability after
+/// exhaustive destructing, which ensures that all region types are handled.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct Regions {
+    pub(crate) code_regions: Vec<CodeRegion>,
+    pub(crate) branch_regions: Vec<BranchRegion>,
+    pub(crate) mcdc_branch_regions: Vec<MCDCBranchRegion>,
+    pub(crate) mcdc_decision_regions: Vec<MCDCDecisionRegion>,
+}
+
+impl Regions {
+    /// Returns true if none of this structure's tables contain any regions.
+    pub(crate) fn has_no_regions(&self) -> bool {
+        let Self { code_regions, branch_regions, mcdc_branch_regions, mcdc_decision_regions } =
+            self;
+
+        code_regions.is_empty()
+            && branch_regions.is_empty()
+            && mcdc_branch_regions.is_empty()
+            && mcdc_decision_regions.is_empty()
+    }
+}
+
 /// Must match the layout of `LLVMRustCoverageCodeRegion`.
 #[derive(Clone, Debug)]
 #[repr(C)]

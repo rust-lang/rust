@@ -1021,12 +1021,12 @@ impl<'tcx> FieldUniquenessCheckContext<'tcx> {
     }
 }
 
-fn lower_variant(
-    tcx: TyCtxt<'_>,
+fn lower_variant<'tcx>(
+    tcx: TyCtxt<'tcx>,
     variant_did: Option<LocalDefId>,
     ident: Ident,
     discr: ty::VariantDiscr,
-    def: &hir::VariantData<'_>,
+    def: &hir::VariantData<'tcx>,
     adt_kind: ty::AdtKind,
     parent_did: LocalDefId,
 ) -> ty::VariantDef {
@@ -1042,6 +1042,7 @@ fn lower_variant(
             name: f.ident.name,
             vis: tcx.visibility(f.def_id),
             safety: f.safety,
+            value: f.default.map(|v| v.def_id.to_def_id()),
         })
         .collect();
     let recovered = match def {
@@ -1637,11 +1638,23 @@ fn check_impl_constness(
     }
 
     let trait_name = tcx.item_name(trait_def_id).to_string();
+    let (local_trait_span, suggestion_pre) =
+        match (trait_def_id.is_local(), tcx.sess.is_nightly_build()) {
+            (true, true) => (
+                Some(tcx.def_span(trait_def_id).shrink_to_lo()),
+                if tcx.features().const_trait_impl() {
+                    ""
+                } else {
+                    "enable `#![feature(const_trait_impl)]` in your crate and "
+                },
+            ),
+            (false, _) | (_, false) => (None, ""),
+        };
     Some(tcx.dcx().emit_err(errors::ConstImplForNonConstTrait {
         trait_ref_span: hir_trait_ref.path.span,
         trait_name,
-        local_trait_span:
-            trait_def_id.as_local().map(|_| tcx.def_span(trait_def_id).shrink_to_lo()),
+        local_trait_span,
+        suggestion_pre,
         marking: (),
         adding: (),
     }))

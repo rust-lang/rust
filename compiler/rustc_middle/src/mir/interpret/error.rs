@@ -28,10 +28,10 @@ pub enum ErrorHandled {
     TooGeneric(Span),
 }
 
-impl From<ErrorGuaranteed> for ErrorHandled {
+impl From<ReportedErrorInfo> for ErrorHandled {
     #[inline]
-    fn from(error: ErrorGuaranteed) -> ErrorHandled {
-        ErrorHandled::Reported(error.into(), DUMMY_SP)
+    fn from(error: ReportedErrorInfo) -> ErrorHandled {
+        ErrorHandled::Reported(error, DUMMY_SP)
     }
 }
 
@@ -65,19 +65,26 @@ pub struct ReportedErrorInfo {
 
 impl ReportedErrorInfo {
     #[inline]
+    pub fn const_eval_error(error: ErrorGuaranteed) -> ReportedErrorInfo {
+        ReportedErrorInfo { allowed_in_infallible: false, error }
+    }
+
+    /// Use this when the error that led to this is *not* a const-eval error
+    /// (e.g., a layout or type checking error).
+    #[inline]
+    pub fn non_const_eval_error(error: ErrorGuaranteed) -> ReportedErrorInfo {
+        ReportedErrorInfo { allowed_in_infallible: true, error }
+    }
+
+    /// Use this when the error that led to this *is* a const-eval error, but
+    /// we do allow it to occur in infallible constants (e.g., resource exhaustion).
+    #[inline]
     pub fn allowed_in_infallible(error: ErrorGuaranteed) -> ReportedErrorInfo {
         ReportedErrorInfo { allowed_in_infallible: true, error }
     }
 
     pub fn is_allowed_in_infallible(&self) -> bool {
         self.allowed_in_infallible
-    }
-}
-
-impl From<ErrorGuaranteed> for ReportedErrorInfo {
-    #[inline]
-    fn from(error: ErrorGuaranteed) -> ReportedErrorInfo {
-        ReportedErrorInfo { allowed_in_infallible: false, error }
     }
 }
 
@@ -178,12 +185,6 @@ impl<'tcx> InterpErrorInfo<'tcx> {
 
 fn print_backtrace(backtrace: &Backtrace) {
     eprintln!("\n\nAn error occurred in the MIR interpreter:\n{backtrace}");
-}
-
-impl From<ErrorGuaranteed> for InterpErrorInfo<'_> {
-    fn from(err: ErrorGuaranteed) -> Self {
-        InterpErrorKind::InvalidProgram(InvalidProgramInfo::AlreadyReported(err.into())).into()
-    }
 }
 
 impl From<ErrorHandled> for InterpErrorInfo<'_> {

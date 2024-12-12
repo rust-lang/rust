@@ -4,7 +4,7 @@ use itertools::Itertools;
 
 use syntax::{
     ast::{self, HasName},
-    ted, AstNode, TextRange,
+    AstNode, SyntaxNode,
 };
 
 use crate::{utils::get_methods, AssistContext, AssistId, AssistKind, Assists};
@@ -114,7 +114,7 @@ trait AddRewrite {
         label: &str,
         old: Vec<T>,
         new: Vec<T>,
-        target: TextRange,
+        target: &SyntaxNode,
     ) -> Option<()>;
 }
 
@@ -124,15 +124,22 @@ impl AddRewrite for Assists {
         label: &str,
         old: Vec<T>,
         new: Vec<T>,
-        target: TextRange,
+        target: &SyntaxNode,
     ) -> Option<()> {
-        self.add(AssistId("sort_items", AssistKind::RefactorRewrite), label, target, |builder| {
-            let mutable: Vec<T> = old.into_iter().map(|it| builder.make_mut(it)).collect();
-            mutable
-                .into_iter()
-                .zip(new)
-                .for_each(|(old, new)| ted::replace(old.syntax(), new.clone_for_update().syntax()));
-        })
+        self.add(
+            AssistId("sort_items", AssistKind::RefactorRewrite),
+            label,
+            target.text_range(),
+            |builder| {
+                let mut editor = builder.make_editor(target);
+
+                old.into_iter()
+                    .zip(new)
+                    .for_each(|(old, new)| editor.replace(old.syntax(), new.syntax()));
+
+                builder.add_file_edits(builder.file_id, editor)
+            },
+        )
     }
 }
 
@@ -167,7 +174,7 @@ fn add_sort_methods_assist(
         return None;
     }
 
-    acc.add_rewrite("Sort methods alphabetically", methods, sorted, item_list.syntax().text_range())
+    acc.add_rewrite("Sort methods alphabetically", methods, sorted, item_list.syntax())
 }
 
 fn add_sort_fields_assist(
@@ -182,12 +189,7 @@ fn add_sort_fields_assist(
         return None;
     }
 
-    acc.add_rewrite(
-        "Sort fields alphabetically",
-        fields,
-        sorted,
-        record_field_list.syntax().text_range(),
-    )
+    acc.add_rewrite("Sort fields alphabetically", fields, sorted, record_field_list.syntax())
 }
 
 fn add_sort_variants_assist(acc: &mut Assists, variant_list: ast::VariantList) -> Option<()> {
@@ -199,12 +201,7 @@ fn add_sort_variants_assist(acc: &mut Assists, variant_list: ast::VariantList) -
         return None;
     }
 
-    acc.add_rewrite(
-        "Sort variants alphabetically",
-        variants,
-        sorted,
-        variant_list.syntax().text_range(),
-    )
+    acc.add_rewrite("Sort variants alphabetically", variants, sorted, variant_list.syntax())
 }
 
 fn sort_by_name<T: HasName + Clone>(initial: &[T]) -> Vec<T> {

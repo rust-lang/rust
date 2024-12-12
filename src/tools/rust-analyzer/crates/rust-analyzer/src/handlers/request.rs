@@ -10,6 +10,7 @@ use std::{
 
 use anyhow::Context;
 
+use base64::{prelude::BASE64_STANDARD, Engine};
 use ide::{
     AnnotationConfig, AssistKind, AssistResolveStrategy, Cancellable, CompletionFieldsToResolve,
     FilePosition, FileRange, HoverAction, HoverGotoTypeData, InlayFieldsToResolve, Query,
@@ -36,6 +37,7 @@ use triomphe::Arc;
 use vfs::{AbsPath, AbsPathBuf, FileId, VfsPath};
 
 use crate::{
+    completion_item_hash,
     config::{Config, RustfmtConfig, WorkspaceSymbolConfig},
     diagnostics::convert_diagnostic,
     global_state::{FetchWorkspaceRequest, GlobalState, GlobalStateSnapshot},
@@ -459,9 +461,9 @@ pub(crate) fn handle_on_type_formatting(
     if char_typed == '>' {
         return Ok(None);
     }
+    let chars_to_exclude = snap.config.typing_exclude_chars();
 
-    let edit =
-        snap.analysis.on_char_typed(position, char_typed, snap.config.typing_autoclose_angle())?;
+    let edit = snap.analysis.on_char_typed(position, char_typed, chars_to_exclude)?;
     let edit = match edit {
         Some(it) => it,
         None => return Ok(None),
@@ -1127,7 +1129,7 @@ pub(crate) fn handle_completion_resolve(
     forced_resolve_completions_config.fields_to_resolve = CompletionFieldsToResolve::empty();
 
     let position = FilePosition { file_id, offset };
-    let Some(resolved_completions) = snap.analysis.completions(
+    let Some(completions) = snap.analysis.completions(
         &forced_resolve_completions_config,
         position,
         resolve_data.trigger_character,
@@ -1135,6 +1137,19 @@ pub(crate) fn handle_completion_resolve(
     else {
         return Ok(original_completion);
     };
+    let Ok(resolve_data_hash) = BASE64_STANDARD.decode(resolve_data.hash) else {
+        return Ok(original_completion);
+    };
+
+    let Some(corresponding_completion) = completions.into_iter().find(|completion_item| {
+        // Avoid computing hashes for items that obviously do not match
+        // r-a might append a detail-based suffix to the label, so we cannot check for equality
+        original_completion.label.starts_with(completion_item.label.as_str())
+            && resolve_data_hash == completion_item_hash(completion_item, resolve_data.for_ref)
+    }) else {
+        return Ok(original_completion);
+    };
+
     let mut resolved_completions = to_proto::completion_items(
         &snap.config,
         &forced_resolve_completions_config.fields_to_resolve,
@@ -1142,15 +1157,11 @@ pub(crate) fn handle_completion_resolve(
         snap.file_version(position.file_id),
         resolve_data.position,
         resolve_data.trigger_character,
-        resolved_completions,
+        vec![corresponding_completion],
     );
-
-    let mut resolved_completion =
-        if resolved_completions.get(resolve_data.completion_item_index).is_some() {
-            resolved_completions.swap_remove(resolve_data.completion_item_index)
-        } else {
-            return Ok(original_completion);
-        };
+    let Some(mut resolved_completion) = resolved_completions.pop() else {
+        return Ok(original_completion);
+    };
 
     if !resolve_data.imports.is_empty() {
         let additional_edits = snap
@@ -2339,6 +2350,10 @@ fn run_rustfmt(
                     %captured_stderr,
                     "rustfmt exited with status 1"
                 );
+                Ok(None)
+            }
+            // rustfmt panicked at lexing/parsing the file
+            Some(101) if !rustfmt_not_installed && captured_stderr.starts_with("error[") => {
                 Ok(None)
             }
             _ => {

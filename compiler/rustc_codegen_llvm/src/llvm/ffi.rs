@@ -2317,7 +2317,7 @@ unsafe extern "C" {
 
     pub fn LLVMRustGetSMDiagnostic<'a>(
         DI: &'a DiagnosticInfo,
-        cookie_out: &mut c_uint,
+        cookie_out: &mut u64,
     ) -> &'a SMDiagnostic;
 
     pub fn LLVMRustUnpackSMDiagnostic(

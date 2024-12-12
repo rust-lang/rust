@@ -141,8 +141,8 @@ impl<B, C> ControlFlow<B, C> {
     /// ```
     /// use std::ops::ControlFlow;
     ///
-    /// assert!(ControlFlow::<i32, String>::Break(3).is_break());
-    /// assert!(!ControlFlow::<String, i32>::Continue(3).is_break());
+    /// assert!(ControlFlow::<&str, i32>::Break("Stop right there!").is_break());
+    /// assert!(!ControlFlow::<&str, i32>::Continue(3).is_break());
     /// ```
     #[inline]
     #[stable(feature = "control_flow_enum_is", since = "1.59.0")]
@@ -157,8 +157,8 @@ impl<B, C> ControlFlow<B, C> {
     /// ```
     /// use std::ops::ControlFlow;
     ///
-    /// assert!(!ControlFlow::<i32, String>::Break(3).is_continue());
-    /// assert!(ControlFlow::<String, i32>::Continue(3).is_continue());
+    /// assert!(!ControlFlow::<&str, i32>::Break("Stop right there!").is_continue());
+    /// assert!(ControlFlow::<&str, i32>::Continue(3).is_continue());
     /// ```
     #[inline]
     #[stable(feature = "control_flow_enum_is", since = "1.59.0")]
@@ -174,8 +174,8 @@ impl<B, C> ControlFlow<B, C> {
     /// ```
     /// use std::ops::ControlFlow;
     ///
-    /// assert_eq!(ControlFlow::<i32, String>::Break(3).break_value(), Some(3));
-    /// assert_eq!(ControlFlow::<String, i32>::Continue(3).break_value(), None);
+    /// assert_eq!(ControlFlow::<&str, i32>::Break("Stop right there!").break_value(), Some("Stop right there!"));
+    /// assert_eq!(ControlFlow::<&str, i32>::Continue(3).break_value(), None);
     /// ```
     #[inline]
     #[stable(feature = "control_flow_enum", since = "1.83.0")]
@@ -205,8 +205,8 @@ impl<B, C> ControlFlow<B, C> {
     /// ```
     /// use std::ops::ControlFlow;
     ///
-    /// assert_eq!(ControlFlow::<i32, String>::Break(3).continue_value(), None);
-    /// assert_eq!(ControlFlow::<String, i32>::Continue(3).continue_value(), Some(3));
+    /// assert_eq!(ControlFlow::<&str, i32>::Break("Stop right there!").continue_value(), None);
+    /// assert_eq!(ControlFlow::<&str, i32>::Continue(3).continue_value(), Some(3));
     /// ```
     #[inline]
     #[stable(feature = "control_flow_enum", since = "1.83.0")]

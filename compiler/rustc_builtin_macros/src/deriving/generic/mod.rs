@@ -182,8 +182,8 @@ pub(crate) use StaticFields::*;
 pub(crate) use SubstructureFields::*;
 use rustc_ast::ptr::P;
 use rustc_ast::{
-    self as ast, BindingMode, ByRef, EnumDef, Expr, GenericArg, GenericParamKind, Generics,
-    Mutability, PatKind, VariantData,
+    self as ast, AnonConst, BindingMode, ByRef, EnumDef, Expr, GenericArg, GenericParamKind,
+    Generics, Mutability, PatKind, VariantData,
 };
 use rustc_attr as attr;
 use rustc_expand::base::{Annotatable, ExtCtxt};
@@ -296,7 +296,7 @@ pub(crate) enum StaticFields {
     /// Tuple and unit structs/enum variants like this.
     Unnamed(Vec<Span>, IsTuple),
     /// Normal structs/struct variants.
-    Named(Vec<(Ident, Span)>),
+    Named(Vec<(Ident, Span, Option<AnonConst>)>),
 }
 
 /// A summary of the possible sets of fields.
@@ -1435,7 +1435,7 @@ impl<'a> TraitDef<'a> {
         for field in struct_def.fields() {
             let sp = field.span.with_ctxt(self.span.ctxt());
             match field.ident {
-                Some(ident) => named_idents.push((ident, sp)),
+                Some(ident) => named_idents.push((ident, sp, field.default.clone())),
                 _ => just_spans.push(sp),
             }
         }

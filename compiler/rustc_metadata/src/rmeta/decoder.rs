@@ -1104,6 +1104,7 @@ impl<'a> CrateMetadataRef<'a> {
                         name: self.item_name(did.index),
                         vis: self.get_visibility(did.index),
                         safety: self.get_safety(did.index),
+                        value: self.get_default_field(did.index),
                     })
                     .collect(),
                 adt_kind,
@@ -1167,6 +1168,10 @@ impl<'a> CrateMetadataRef<'a> {
 
     fn get_safety(self, id: DefIndex) -> Safety {
         self.root.tables.safety.get(self, id).unwrap_or_else(|| self.missing("safety", id))
+    }
+
+    fn get_default_field(self, id: DefIndex) -> Option<DefId> {
+        self.root.tables.default_fields.get(self, id).map(|d| d.decode(self))
     }
 
     fn get_trait_item_def_id(self, id: DefIndex) -> Option<DefId> {

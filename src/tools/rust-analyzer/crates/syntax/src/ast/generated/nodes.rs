@@ -1363,6 +1363,21 @@ impl ParenType {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ParenthesizedArgList {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ParenthesizedArgList {
+    #[inline]
+    pub fn type_args(&self) -> AstChildren<TypeArg> { support::children(&self.syntax) }
+    #[inline]
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
+    #[inline]
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
+    #[inline]
+    pub fn coloncolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![::]) }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Path {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1403,7 +1418,9 @@ impl PathSegment {
     #[inline]
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
     #[inline]
-    pub fn param_list(&self) -> Option<ParamList> { support::child(&self.syntax) }
+    pub fn parenthesized_arg_list(&self) -> Option<ParenthesizedArgList> {
+        support::child(&self.syntax)
+    }
     #[inline]
     pub fn path_type(&self) -> Option<PathType> { support::child(&self.syntax) }
     #[inline]
@@ -3749,6 +3766,20 @@ impl AstNode for ParenPat {
 impl AstNode for ParenType {
     #[inline]
     fn can_cast(kind: SyntaxKind) -> bool { kind == PAREN_TYPE }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for ParenthesizedArgList {
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == PARENTHESIZED_ARG_LIST }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
@@ -7093,6 +7124,11 @@ impl std::fmt::Display for ParenPat {
     }
 }
 impl std::fmt::Display for ParenType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for ParenthesizedArgList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

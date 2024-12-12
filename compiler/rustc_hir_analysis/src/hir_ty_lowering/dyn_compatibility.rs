@@ -203,7 +203,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // corresponding `Projection` clause
         for def_ids in associated_types.values_mut() {
             for (projection_bound, span) in &projection_bounds {
-                let def_id = projection_bound.projection_def_id();
+                let def_id = projection_bound.item_def_id();
                 def_ids.swap_remove(&def_id);
                 if tcx.generics_require_sized_self(def_id) {
                     tcx.emit_node_span_lint(
@@ -413,7 +413,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             late_bound_in_projection_term,
             late_bound_in_term,
             |br_name| {
-                let item_name = tcx.item_name(pred.projection_def_id());
+                let item_name = tcx.item_name(pred.item_def_id());
                 struct_span_code_err!(
                     self.dcx(),
                     span,

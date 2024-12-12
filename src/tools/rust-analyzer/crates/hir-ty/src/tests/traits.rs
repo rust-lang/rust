@@ -1631,6 +1631,29 @@ fn test<'lifetime>(
 }
 
 #[test]
+fn lifetime_bounds() {
+    check_infer(
+        r#"
+//- minicore: sized, coerce_unsized
+trait Trait<'a>: Sized {
+    fn f(&'a self) {}
+}
+fn test<'a, 'b: 'a>(it: impl Trait<'a>){
+    it.f();
+}
+"#,
+        expect![[r#"
+            38..42 'self': &'a Self
+            44..46 '{}': ()
+            69..71 'it': impl Trait<'a>
+            88..103 '{     it.f(); }': ()
+            94..96 'it': impl Trait<'a>
+            94..100 'it.f()': ()
+        "#]],
+    );
+}
+
+#[test]
 fn error_bound_chalk() {
     check_types(
         r#"
@@ -4808,6 +4831,56 @@ fn bar(v: *const ()) {
             86..87 '_': *const WeirdFoo
             90..91 'v': *const ()
             90..110 'v as *...irdFoo': *const WeirdFoo
+        "#]],
+    );
+}
+
+#[test]
+fn async_fn_traits() {
+    check_infer(
+        r#"
+//- minicore: async_fn
+async fn foo<T: AsyncFn(u32) -> i32>(a: T) {
+    let fut1 = a(0);
+    fut1.await;
+}
+async fn bar<T: AsyncFnMut(u32) -> i32>(mut b: T) {
+    let fut2 = b(0);
+    fut2.await;
+}
+async fn baz<T: AsyncFnOnce(u32) -> i32>(c: T) {
+    let fut3 = c(0);
+    fut3.await;
+}
+    "#,
+        expect![[r#"
+            37..38 'a': T
+            43..83 '{     ...ait; }': ()
+            43..83 '{     ...ait; }': impl Future<Output = ()>
+            53..57 'fut1': AsyncFnMut::CallRefFuture<'?, T, (u32,)>
+            60..61 'a': T
+            60..64 'a(0)': AsyncFnMut::CallRefFuture<'?, T, (u32,)>
+            62..63 '0': u32
+            70..74 'fut1': AsyncFnMut::CallRefFuture<'?, T, (u32,)>
+            70..80 'fut1.await': i32
+            124..129 'mut b': T
+            134..174 '{     ...ait; }': ()
+            134..174 '{     ...ait; }': impl Future<Output = ()>
+            144..148 'fut2': AsyncFnMut::CallRefFuture<'?, T, (u32,)>
+            151..152 'b': T
+            151..155 'b(0)': AsyncFnMut::CallRefFuture<'?, T, (u32,)>
+            153..154 '0': u32
+            161..165 'fut2': AsyncFnMut::CallRefFuture<'?, T, (u32,)>
+            161..171 'fut2.await': i32
+            216..217 'c': T
+            222..262 '{     ...ait; }': ()
+            222..262 '{     ...ait; }': impl Future<Output = ()>
+            232..236 'fut3': AsyncFnOnce::CallOnceFuture<T, (u32,)>
+            239..240 'c': T
+            239..243 'c(0)': AsyncFnOnce::CallOnceFuture<T, (u32,)>
+            241..242 '0': u32
+            249..253 'fut3': AsyncFnOnce::CallOnceFuture<T, (u32,)>
+            249..259 'fut3.await': i32
         "#]],
     );
 }

@@ -170,7 +170,7 @@ where
             let reported = if allowed_in_infallible {
                 ReportedErrorInfo::allowed_in_infallible(g)
             } else {
-                ReportedErrorInfo::from(g)
+                ReportedErrorInfo::const_eval_error(g)
             };
             ErrorHandled::Reported(reported, span)
         }

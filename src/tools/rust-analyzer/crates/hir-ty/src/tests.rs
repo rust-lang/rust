@@ -18,13 +18,13 @@ use std::sync::LazyLock;
 use base_db::SourceDatabaseFileInputExt as _;
 use expect_test::Expect;
 use hir_def::{
-    body::{Body, BodySourceMap, SyntheticSyntax},
+    body::{Body, BodySourceMap},
     db::DefDatabase,
     hir::{ExprId, Pat, PatId},
     item_scope::ItemScope,
     nameres::DefMap,
     src::HasSource,
-    AssocItemId, DefWithBodyId, HasModule, LocalModuleId, Lookup, ModuleDefId,
+    AssocItemId, DefWithBodyId, HasModule, LocalModuleId, Lookup, ModuleDefId, SyntheticSyntax,
 };
 use hir_expand::{db::ExpandDatabase, FileRange, InFile};
 use itertools::Itertools;

@@ -159,6 +159,16 @@ pub(crate) unsafe fn create_module<'ll>(
             // See https://github.com/llvm/llvm-project/pull/112084
             target_data_layout = target_data_layout.replace("-i128:128", "");
         }
+        if sess.target.arch.starts_with("powerpc64") {
+            // LLVM 20 updates the powerpc64 layout to correctly align 128 bit integers to 128 bit.
+            // See https://github.com/llvm/llvm-project/pull/118004
+            target_data_layout = target_data_layout.replace("-i128:128", "");
+        }
+        if sess.target.arch.starts_with("wasm32") || sess.target.arch.starts_with("wasm64") {
+            // LLVM 20 updates the wasm(32|64) layout to correctly align 128 bit integers to 128 bit.
+            // See https://github.com/llvm/llvm-project/pull/119204
+            target_data_layout = target_data_layout.replace("-i128:128", "");
+        }
     }
 
     // Ensure the data-layout values hardcoded remain the defaults.

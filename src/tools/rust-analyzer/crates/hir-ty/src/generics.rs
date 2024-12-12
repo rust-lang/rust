@@ -55,6 +55,10 @@ impl Generics {
         self.def
     }
 
+    pub(crate) fn self_types_map(&self) -> &TypesMap {
+        &self.params.types_map
+    }
+
     pub(crate) fn iter_id(&self) -> impl Iterator<Item = GenericParamId> + '_ {
         self.iter_self_id().chain(self.iter_parent_id())
     }
@@ -86,15 +90,13 @@ impl Generics {
         self.iter_self().chain(self.iter_parent())
     }
 
-    pub(crate) fn iter_with_types_map(
+    pub(crate) fn iter_parents_with_types_map(
         &self,
     ) -> impl Iterator<Item = ((GenericParamId, GenericParamDataRef<'_>), &TypesMap)> + '_ {
-        self.iter_self().zip(std::iter::repeat(&self.params.types_map)).chain(
-            self.iter_parent().zip(
-                self.parent_generics()
-                    .into_iter()
-                    .flat_map(|it| std::iter::repeat(&it.params.types_map)),
-            ),
+        self.iter_parent().zip(
+            self.parent_generics()
+                .into_iter()
+                .flat_map(|it| std::iter::repeat(&it.params.types_map)),
         )
     }
 

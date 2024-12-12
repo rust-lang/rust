@@ -169,9 +169,6 @@ parse_enum_struct_mutually_exclusive = `enum` and `struct` are mutually exclusiv
 parse_eq_field_init = expected `:`, found `=`
     .suggestion = replace equals symbol with a colon
 
-parse_equals_struct_default = default values on `struct` fields aren't supported
-    .suggestion = remove this unsupported default value
-
 parse_escape_only_char = {$byte ->
     [true] byte
     *[false] character

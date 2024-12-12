@@ -29,7 +29,7 @@ const USELESS_NAME_PREFIXES: &[&str] = &["from_", "with_", "into_"];
 /// # Examples
 /// `Option<Name>` -> `Name`
 /// `Result<User, Error>` -> `User`
-const WRAPPER_TYPES: &[&str] = &["Box", "Option", "Result"];
+const WRAPPER_TYPES: &[&str] = &["Box", "Arc", "Rc", "Option", "Result"];
 
 /// Prefixes to strip from methods names
 ///
@@ -852,6 +852,32 @@ enum Result<T, E> { Ok(T), Err(E) }
 struct Seed;
 struct Error;
 fn bar() -> Result<Seed, Error> {}
+fn foo() { $0(bar())$0; }
+"#,
+            "seed",
+        );
+    }
+
+    #[test]
+    fn arc_value() {
+        check(
+            r#"
+struct Arc<T>(*const T);
+struct Seed;
+fn bar() -> Arc<Seed> {}
+fn foo() { $0(bar())$0; }
+"#,
+            "seed",
+        );
+    }
+
+    #[test]
+    fn rc_value() {
+        check(
+            r#"
+struct Rc<T>(*const T);
+struct Seed;
+fn bar() -> Rc<Seed> {}
 fn foo() { $0(bar())$0; }
 "#,
             "seed",

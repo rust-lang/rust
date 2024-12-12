@@ -1,7 +1,7 @@
 use std::assert_matches::assert_matches;
 
 use rustc_index::Idx;
-use rustc_index::bit_set::{BitSet, ChunkedBitSet};
+use rustc_index::bit_set::{BitSet, MixedBitSet};
 use rustc_middle::bug;
 use rustc_middle::mir::{self, Body, CallReturnPlaces, Location, TerminatorEdges};
 use rustc_middle::ty::{self, TyCtxt};
@@ -70,7 +70,7 @@ impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
     pub fn is_unwind_dead(
         &self,
         place: mir::Place<'tcx>,
-        state: &MaybeReachable<ChunkedBitSet<MovePathIndex>>,
+        state: &MaybeReachable<MixedBitSet<MovePathIndex>>,
     ) -> bool {
         if let LookupResult::Exact(path) = self.move_data().rev_lookup.find(place.as_ref()) {
             let mut maybe_live = false;
@@ -244,8 +244,8 @@ impl<'tcx> MaybeUninitializedPlaces<'_, 'tcx> {
 
 impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
     /// There can be many more `MovePathIndex` than there are locals in a MIR body.
-    /// We use a chunked bitset to avoid paying too high a memory footprint.
-    type Domain = MaybeReachable<ChunkedBitSet<MovePathIndex>>;
+    /// We use a mixed bitset to avoid paying too high a memory footprint.
+    type Domain = MaybeReachable<MixedBitSet<MovePathIndex>>;
 
     const NAME: &'static str = "maybe_init";
 
@@ -256,7 +256,7 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
 
     fn initialize_start_block(&self, _: &mir::Body<'tcx>, state: &mut Self::Domain) {
         *state =
-            MaybeReachable::Reachable(ChunkedBitSet::new_empty(self.move_data().move_paths.len()));
+            MaybeReachable::Reachable(MixedBitSet::new_empty(self.move_data().move_paths.len()));
         drop_flag_effects_for_function_entry(self.body, self.move_data, |path, s| {
             assert!(s == DropFlagState::Present);
             state.gen_(path);
@@ -371,14 +371,14 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
 
 impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     /// There can be many more `MovePathIndex` than there are locals in a MIR body.
-    /// We use a chunked bitset to avoid paying too high a memory footprint.
-    type Domain = ChunkedBitSet<MovePathIndex>;
+    /// We use a mixed bitset to avoid paying too high a memory footprint.
+    type Domain = MixedBitSet<MovePathIndex>;
 
     const NAME: &'static str = "maybe_uninit";
 
     fn bottom_value(&self, _: &mir::Body<'tcx>) -> Self::Domain {
         // bottom = initialized (start_block_effect counters this at outset)
-        ChunkedBitSet::new_empty(self.move_data().move_paths.len())
+        MixedBitSet::new_empty(self.move_data().move_paths.len())
     }
 
     // sets on_entry bits for Arg places
@@ -492,14 +492,14 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
 
 impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
     /// There can be many more `InitIndex` than there are locals in a MIR body.
-    /// We use a chunked bitset to avoid paying too high a memory footprint.
-    type Domain = ChunkedBitSet<InitIndex>;
+    /// We use a mixed bitset to avoid paying too high a memory footprint.
+    type Domain = MixedBitSet<InitIndex>;
 
     const NAME: &'static str = "ever_init";
 
     fn bottom_value(&self, _: &mir::Body<'tcx>) -> Self::Domain {
         // bottom = no initialized variables by default
-        ChunkedBitSet::new_empty(self.move_data().inits.len())
+        MixedBitSet::new_empty(self.move_data().inits.len())
     }
 
     fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut Self::Domain) {

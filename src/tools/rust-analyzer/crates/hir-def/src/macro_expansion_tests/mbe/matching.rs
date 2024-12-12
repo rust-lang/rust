@@ -184,3 +184,31 @@ fn test() {
 "#]],
     );
 }
+
+#[test]
+fn meta_variable_raw_name_equals_non_raw() {
+    check(
+        r#"
+macro_rules! m {
+    ($r#name:tt) => {
+        $name
+    }
+}
+
+fn test() {
+    m!(1234)
+}
+"#,
+        expect![[r#"
+macro_rules! m {
+    ($r#name:tt) => {
+        $name
+    }
+}
+
+fn test() {
+    1234
+}
+"#]],
+    );
+}

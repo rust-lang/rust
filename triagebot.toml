@@ -983,11 +983,19 @@ cc = ["@Zalathar"]
 [mentions."src/tools/opt-dist"]
 cc = ["@kobzol"]
 
+[mentions."tests/ui-fulldeps/lexer/unicode-version.run.stdout"]
+message = """If the Unicode version changes are intentional,
+it should also be updated in the reference at
+https://github.com/rust-lang/reference/blob/HEAD/src/identifiers.md.
+"""
+cc = ["@ehuss"]
+
 [assign]
 warn_non_default_branch = true
 contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
 users_on_vacation = [
     "jyn514",
+    "celinval",
 ]
 
 [assign.adhoc_groups]
@@ -1004,9 +1012,10 @@ compiler = [
     "@lcnr",
     "@Nadrieril",
     "@nnethercote",
+    "@Noratrieb",
     "@oli-obk",
     "@petrochenkov",
-    "@pnkfelix",
+    "@SparrowLii",
     "@wesleywiser",
 ]
 libs = [
@@ -1098,7 +1107,6 @@ types = [
 ]
 borrowck = [
     "@davidtwco",
-    "@pnkfelix",
     "@matthewjasper"
 ]
 ast_lowering = [

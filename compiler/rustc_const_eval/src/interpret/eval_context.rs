@@ -268,7 +268,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         };
         // do not continue if typeck errors occurred (can only occur in local crate)
         if let Some(err) = body.tainted_by_errors {
-            throw_inval!(AlreadyReported(ReportedErrorInfo::from(err)));
+            throw_inval!(AlreadyReported(ReportedErrorInfo::non_const_eval_error(err)));
         }
         interp_ok(body)
     }
@@ -317,7 +317,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             Ok(None) => throw_inval!(TooGeneric),
 
             // FIXME(eddyb) this could be a bit more specific than `AlreadyReported`.
-            Err(error_reported) => throw_inval!(AlreadyReported(error_reported.into())),
+            Err(error_guaranteed) => throw_inval!(AlreadyReported(
+                ReportedErrorInfo::non_const_eval_error(error_guaranteed)
+            )),
         }
     }
 

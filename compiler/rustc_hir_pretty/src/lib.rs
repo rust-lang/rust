@@ -330,7 +330,6 @@ impl<'a> State<'a> {
             hir::TyKind::Infer | hir::TyKind::InferDelegation(..) => {
                 self.word("_");
             }
-            hir::TyKind::AnonAdt(..) => self.word("/* anonymous adt */"),
             hir::TyKind::Pat(ty, pat) => {
                 self.print_type(ty);
                 self.word(" is ");
@@ -1080,22 +1079,36 @@ impl<'a> State<'a> {
         &mut self,
         qpath: &hir::QPath<'_>,
         fields: &[hir::ExprField<'_>],
-        wth: Option<&hir::Expr<'_>>,
+        wth: hir::StructTailExpr<'_>,
     ) {
         self.print_qpath(qpath, true);
         self.word("{");
         self.commasep_cmnt(Consistent, fields, |s, field| s.print_expr_field(field), |f| f.span);
-        if let Some(expr) = wth {
-            self.ibox(INDENT_UNIT);
-            if !fields.is_empty() {
-                self.word(",");
-                self.space();
+        match wth {
+            hir::StructTailExpr::Base(expr) => {
+                self.ibox(INDENT_UNIT);
+                if !fields.is_empty() {
+                    self.word(",");
+                    self.space();
+                }
+                self.word("..");
+                self.print_expr(expr);
+                self.end();
             }
-            self.word("..");
-            self.print_expr(expr);
-            self.end();
-        } else if !fields.is_empty() {
-            self.word(",");
+            hir::StructTailExpr::DefaultFields(_) => {
+                self.ibox(INDENT_UNIT);
+                if !fields.is_empty() {
+                    self.word(",");
+                    self.space();
+                }
+                self.word("..");
+                self.end();
+            }
+            hir::StructTailExpr::None => {
+                if !fields.is_empty() {
+                    self.word(",");
+                }
+            }
         }
 
         self.word("}");

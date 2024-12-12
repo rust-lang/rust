@@ -822,7 +822,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
 
     /// Detect guarded string literal syntax
     ///
-    /// RFC 3598 reserved this syntax for future use. As of Rust 2024,
+    /// RFC 3593 reserved this syntax for future use. As of Rust 2024,
     /// using this syntax produces an error. In earlier editions, however, it
     /// only results in an (allowed by default) lint, and is treated as
     /// separate tokens.

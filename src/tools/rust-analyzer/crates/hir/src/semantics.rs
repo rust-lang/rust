@@ -34,7 +34,7 @@ use intern::Symbol;
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
-use span::{EditionedFileId, FileId, HirFileIdRepr, SyntaxContextId};
+use span::{AstIdMap, EditionedFileId, FileId, HirFileIdRepr, SyntaxContextId};
 use stdx::TupleExt;
 use syntax::{
     algo::skip_trivia_token,
@@ -42,6 +42,7 @@ use syntax::{
     AstNode, AstToken, Direction, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange,
     TextSize,
 };
+use triomphe::Arc;
 
 use crate::{
     db::HirDatabase,
@@ -507,6 +508,22 @@ impl<'db> SemanticsImpl<'db> {
         let file_id = self.find_file(adt.syntax()).file_id;
         let adt = InFile::new(file_id, adt);
         self.with_ctx(|ctx| ctx.has_derives(adt))
+    }
+
+    pub fn derive_helpers_in_scope(&self, adt: &ast::Adt) -> Option<Vec<(Symbol, Symbol)>> {
+        let sa = self.analyze_no_infer(adt.syntax())?;
+        let id = self.db.ast_id_map(sa.file_id).ast_id(adt);
+        let result = sa
+            .resolver
+            .def_map()
+            .derive_helpers_in_scope(InFile::new(sa.file_id, id))?
+            .iter()
+            .map(|(name, macro_, _)| {
+                let macro_name = Macro::from(*macro_).name(self.db).symbol().clone();
+                (name.symbol().clone(), macro_name)
+            })
+            .collect();
+        Some(result)
     }
 
     pub fn derive_helper(&self, attr: &ast::Attr) -> Option<Vec<(Macro, MacroFileId)>> {
@@ -1500,6 +1517,10 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(path.syntax())?.resolve_path(self.db, path)
     }
 
+    pub fn resolve_use_type_arg(&self, name: &ast::NameRef) -> Option<TypeParam> {
+        self.analyze(name.syntax())?.resolve_use_type_arg(name)
+    }
+
     pub fn resolve_mod_path(
         &self,
         scope: &SyntaxNode,
@@ -1973,10 +1994,16 @@ impl SemanticsScope<'_> {
     /// Resolve a path as-if it was written at the given scope. This is
     /// necessary a heuristic, as it doesn't take hygiene into account.
     pub fn speculative_resolve(&self, ast_path: &ast::Path) -> Option<PathResolution> {
+        let root = ast_path.syntax().ancestors().last().unwrap();
+        let ast_id_map = Arc::new(AstIdMap::from_source(&root));
         let (mut types_map, mut types_source_map) =
             (TypesMap::default(), TypesSourceMap::default());
-        let mut ctx =
-            LowerCtx::new(self.db.upcast(), self.file_id, &mut types_map, &mut types_source_map);
+        let mut ctx = LowerCtx::for_synthetic_ast(
+            self.db.upcast(),
+            ast_id_map,
+            &mut types_map,
+            &mut types_source_map,
+        );
         let path = Path::from_src(&mut ctx, ast_path.clone())?;
         resolve_hir_path(
             self.db,
@@ -2001,6 +2028,10 @@ impl SemanticsScope<'_> {
             resolution.in_type_ns()?,
             |name, id| cb(name, id.into()),
         )
+    }
+
+    pub fn generic_def(&self) -> Option<crate::GenericDef> {
+        self.resolver.generic_def().map(|id| id.into())
     }
 
     pub fn extern_crates(&self) -> impl Iterator<Item = (Name, Module)> + '_ {

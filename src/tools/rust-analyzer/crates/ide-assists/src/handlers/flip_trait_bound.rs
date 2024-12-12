@@ -23,11 +23,11 @@ pub(crate) fn flip_trait_bound(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
     let plus = ctx.find_token_syntax_at_offset(T![+])?;
 
     // Make sure we're in a `TypeBoundList`
-    ast::TypeBoundList::cast(plus.parent()?)?;
+    let parent = ast::TypeBoundList::cast(plus.parent()?)?;
 
     let (before, after) = (
-        non_trivia_sibling(plus.clone().into(), Direction::Prev)?,
-        non_trivia_sibling(plus.clone().into(), Direction::Next)?,
+        non_trivia_sibling(plus.clone().into(), Direction::Prev)?.into_node()?,
+        non_trivia_sibling(plus.clone().into(), Direction::Next)?.into_node()?,
     );
 
     let target = plus.text_range();
@@ -35,9 +35,11 @@ pub(crate) fn flip_trait_bound(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
         AssistId("flip_trait_bound", AssistKind::RefactorRewrite),
         "Flip trait bounds",
         target,
-        |edit| {
-            edit.replace(before.text_range(), after.to_string());
-            edit.replace(after.text_range(), before.to_string());
+        |builder| {
+            let mut editor = builder.make_editor(parent.syntax());
+            editor.replace(before.clone(), after.clone());
+            editor.replace(after, before);
+            builder.add_file_edits(ctx.file_id(), editor);
         },
     )
 }
