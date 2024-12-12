@@ -11,7 +11,9 @@ use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, ConstCodegenMethods, StaticCodegenMethods,
 };
 use rustc_middle::bug;
-use rustc_middle::mir::coverage::MappingKind;
+use rustc_middle::mir::coverage::{
+    CoverageIdsInfo, Expression, FunctionCoverageInfo, MappingKind, Op,
+};
 use rustc_middle::ty::{Instance, TyCtxt};
 use rustc_target::spec::HasTargetSpec;
 use tracing::debug;
@@ -49,12 +51,17 @@ pub(crate) fn prepare_covfun_record<'tcx>(
     instance: Instance<'tcx>,
     function_coverage: &FunctionCoverage<'tcx>,
 ) -> Option<CovfunRecord<'tcx>> {
+    let fn_cov_info = tcx.instance_mir(instance.def).function_coverage_info.as_deref()?;
+    let ids_info = tcx.coverage_ids_info(instance.def);
+
+    let expressions = prepare_expressions(fn_cov_info, ids_info, function_coverage.is_used());
+
     let mut covfun = CovfunRecord {
         mangled_function_name: tcx.symbol_name(instance).name,
         source_hash: function_coverage.source_hash(),
         is_used: function_coverage.is_used(),
         virtual_file_mapping: VirtualFileMapping::default(),
-        expressions: function_coverage.counter_expressions().collect::<Vec<_>>(),
+        expressions,
         regions: ffi::Regions::default(),
     };
 
@@ -70,6 +77,40 @@ pub(crate) fn prepare_covfun_record<'tcx>(
     }
 
     Some(covfun)
+}
+
+/// Convert the function's coverage-counter expressions into a form suitable for FFI.
+fn prepare_expressions(
+    fn_cov_info: &FunctionCoverageInfo,
+    ids_info: &CoverageIdsInfo,
+    is_used: bool,
+) -> Vec<ffi::CounterExpression> {
+    // If any counters or expressions were removed by MIR opts, replace their
+    // terms with zero.
+    let counter_for_term = |term| {
+        if !is_used || ids_info.is_zero_term(term) {
+            ffi::Counter::ZERO
+        } else {
+            ffi::Counter::from_term(term)
+        }
+    };
+
+    // We know that LLVM will optimize out any unused expressions before
+    // producing the final coverage map, so there's no need to do the same
+    // thing on the Rust side unless we're confident we can do much better.
+    // (See `CounterExpressionsMinimizer` in `CoverageMappingWriter.cpp`.)
+    fn_cov_info
+        .expressions
+        .iter()
+        .map(move |&Expression { lhs, op, rhs }| ffi::CounterExpression {
+            lhs: counter_for_term(lhs),
+            kind: match op {
+                Op::Add => ffi::ExprKind::Add,
+                Op::Subtract => ffi::ExprKind::Subtract,
+            },
+            rhs: counter_for_term(rhs),
+        })
+        .collect::<Vec<_>>()
 }
 
 /// Populates the mapping region tables in the current function's covfun record.

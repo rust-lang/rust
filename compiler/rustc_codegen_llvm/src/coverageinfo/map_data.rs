@@ -1,10 +1,6 @@
-use rustc_data_structures::captures::Captures;
 use rustc_middle::mir::coverage::{
-    CovTerm, CoverageIdsInfo, Expression, FunctionCoverageInfo, Mapping, MappingKind, Op,
-    SourceRegion,
+    CovTerm, CoverageIdsInfo, FunctionCoverageInfo, Mapping, MappingKind, SourceRegion,
 };
-
-use crate::coverageinfo::ffi::{Counter, CounterExpression, ExprKind};
 
 pub(crate) struct FunctionCoverage<'tcx> {
     pub(crate) function_coverage_info: &'tcx FunctionCoverageInfo,
@@ -35,28 +31,6 @@ impl<'tcx> FunctionCoverage<'tcx> {
         if self.is_used() { self.function_coverage_info.function_source_hash } else { 0 }
     }
 
-    /// Convert this function's coverage expression data into a form that can be
-    /// passed through FFI to LLVM.
-    pub(crate) fn counter_expressions(
-        &self,
-    ) -> impl Iterator<Item = CounterExpression> + ExactSizeIterator + Captures<'_> {
-        // We know that LLVM will optimize out any unused expressions before
-        // producing the final coverage map, so there's no need to do the same
-        // thing on the Rust side unless we're confident we can do much better.
-        // (See `CounterExpressionsMinimizer` in `CoverageMappingWriter.cpp`.)
-
-        self.function_coverage_info.expressions.iter().map(move |&Expression { lhs, op, rhs }| {
-            CounterExpression {
-                lhs: self.counter_for_term(lhs),
-                kind: match op {
-                    Op::Add => ExprKind::Add,
-                    Op::Subtract => ExprKind::Subtract,
-                },
-                rhs: self.counter_for_term(rhs),
-            }
-        })
-    }
-
     /// Converts this function's coverage mappings into an intermediate form
     /// that will be used by `mapgen` when preparing for FFI.
     pub(crate) fn counter_regions(
@@ -68,10 +42,6 @@ impl<'tcx> FunctionCoverage<'tcx> {
                 kind.map_terms(|term| if self.is_zero_term(term) { CovTerm::Zero } else { term });
             (kind, source_region)
         })
-    }
-
-    fn counter_for_term(&self, term: CovTerm) -> Counter {
-        if self.is_zero_term(term) { Counter::ZERO } else { Counter::from_term(term) }
     }
 
     fn is_zero_term(&self, term: CovTerm) -> bool {
