@@ -170,14 +170,14 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ) {
     assert!(!instance.args.has_infer());
 
-    let mir = cx.tcx().instance_mir(instance.def);
-
     if cx.tcx().codegen_fn_attrs(instance.def_id()).flags.contains(CodegenFnAttrFlags::NAKED) {
-        crate::mir::naked_asm::codegen_naked_asm::<Bx::CodegenCx>(cx, &mir, instance);
+        crate::mir::naked_asm::codegen_naked_asm::<Bx::CodegenCx>(cx, instance);
         return;
     }
 
     let llfn = cx.get_fn(instance);
+
+    let mir = cx.tcx().instance_mir(instance.def);
 
     let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
     debug!("fn_abi: {:?}", fn_abi);
