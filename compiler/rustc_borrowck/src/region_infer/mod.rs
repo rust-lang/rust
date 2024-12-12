@@ -1945,7 +1945,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         target_test: impl Fn(RegionVid) -> bool,
     ) -> (BlameConstraint<'tcx>, Vec<OutlivesConstraint<'tcx>>) {
         // Find all paths
-        let (path, _) = self
+        let (path, target_region) = self
             .find_constraint_paths_between_regions(from_region, target_test)
             .or_else(|| {
                 self.find_constraint_paths_between_regions(from_region, |r| {
@@ -2069,6 +2069,26 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     category: ConstraintCategory::Return(ReturnConstraint::ClosureUpvar(field)),
                     ..path[i]
                 }
+            }
+
+            Some(_)
+                if target_region == self.universal_regions().fr_static
+                    && let Some(old_best) = path.iter().min_by_key(|p| p.category)
+                    && matches!(old_best.category, ConstraintCategory::Cast {
+                        is_implicit_coercion: true,
+                        unsize_to: Some(_)
+                    }) =>
+            {
+                // FIXME(dianne): This is a hack in order to emit the subdiagnostic
+                // `BorrowExplanation::add_object_lifetime_default_note` more often, e.g. on
+                // `tests/ui/traits/trait-object-lifetime-default-note.rs`. The subdiagnostic
+                // depends on a coercion being blamed, so we fall back to an earlier version of this
+                // function's blaming logic to keep the test result the same. A proper fix will
+                // require rewriting the subdiagnostic not to rely on a coercion being blamed.
+                // For examples of where notes are missing, see #131008 and
+                // `tests/ui/suggestions/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs`.
+                // As part of fixing those, this case should be removed.
+                *old_best
             }
 
             Some(i) => path[i],
