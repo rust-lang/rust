@@ -64,7 +64,7 @@ struct Exception {
     data: Option<Box<dyn Any + Send>>,
 }
 
-pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
+pub(crate) unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
     // intrinsics::try actually gives us a pointer to this structure.
     #[repr(C)]
     struct CatchData {
@@ -93,7 +93,7 @@ pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
     out
 }
 
-pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
+pub(crate) unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     let exception = __cxa_allocate_exception(mem::size_of::<Exception>()) as *mut Exception;
     if exception.is_null() {
         return uw::_URC_FATAL_PHASE1_ERROR as u32;

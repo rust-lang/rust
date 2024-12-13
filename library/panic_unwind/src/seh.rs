@@ -111,18 +111,18 @@ struct Exception {
 mod imp {
     #[repr(transparent)]
     #[derive(Copy, Clone)]
-    pub struct ptr_t(*mut u8);
+    pub(super) struct ptr_t(*mut u8);
 
     impl ptr_t {
-        pub const fn null() -> Self {
+        pub(super) const fn null() -> Self {
             Self(core::ptr::null_mut())
         }
 
-        pub const fn new(ptr: *mut u8) -> Self {
+        pub(super) const fn new(ptr: *mut u8) -> Self {
             Self(ptr)
         }
 
-        pub const fn raw(self) -> *mut u8 {
+        pub(super) const fn raw(self) -> *mut u8 {
             self.0
         }
     }
@@ -133,18 +133,18 @@ mod imp {
     // On 64-bit systems, SEH represents pointers as 32-bit offsets from `__ImageBase`.
     #[repr(transparent)]
     #[derive(Copy, Clone)]
-    pub struct ptr_t(u32);
+    pub(super) struct ptr_t(u32);
 
     extern "C" {
-        pub static __ImageBase: u8;
+        static __ImageBase: u8;
     }
 
     impl ptr_t {
-        pub const fn null() -> Self {
+        pub(super) const fn null() -> Self {
             Self(0)
         }
 
-        pub fn new(ptr: *mut u8) -> Self {
+        pub(super) fn new(ptr: *mut u8) -> Self {
             // We need to expose the provenance of the pointer because it is not carried by
             // the `u32`, while the FFI needs to have this provenance to excess our statics.
             //
@@ -159,7 +159,7 @@ mod imp {
             Self(offset as u32)
         }
 
-        pub const fn raw(self) -> u32 {
+        pub(super) const fn raw(self) -> u32 {
             self.0
         }
     }
@@ -168,7 +168,7 @@ mod imp {
 use imp::ptr_t;
 
 #[repr(C)]
-pub struct _ThrowInfo {
+struct _ThrowInfo {
     pub attributes: c_uint,
     pub pmfnUnwind: ptr_t,
     pub pForwardCompat: ptr_t,
@@ -176,13 +176,13 @@ pub struct _ThrowInfo {
 }
 
 #[repr(C)]
-pub struct _CatchableTypeArray {
+struct _CatchableTypeArray {
     pub nCatchableTypes: c_int,
     pub arrayOfCatchableTypes: [ptr_t; 1],
 }
 
 #[repr(C)]
-pub struct _CatchableType {
+struct _CatchableType {
     pub properties: c_uint,
     pub pType: ptr_t,
     pub thisDisplacement: _PMD,
@@ -191,14 +191,14 @@ pub struct _CatchableType {
 }
 
 #[repr(C)]
-pub struct _PMD {
+struct _PMD {
     pub mdisp: c_int,
     pub pdisp: c_int,
     pub vdisp: c_int,
 }
 
 #[repr(C)]
-pub struct _TypeDescriptor {
+struct _TypeDescriptor {
     pub pVFTable: *const u8,
     pub spare: *mut u8,
     pub name: [u8; 11],
@@ -288,7 +288,7 @@ cfg_if::cfg_if! {
    }
 }
 
-pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
+pub(crate) unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     use core::intrinsics::atomic_store_seqcst;
 
     // _CxxThrowException executes entirely on this stack frame, so there's no
@@ -350,7 +350,7 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     _CxxThrowException(throw_ptr, (&raw mut THROW_INFO) as *mut _);
 }
 
-pub unsafe fn cleanup(payload: *mut u8) -> Box<dyn Any + Send> {
+pub(crate) unsafe fn cleanup(payload: *mut u8) -> Box<dyn Any + Send> {
     // A null payload here means that we got here from the catch (...) of
     // __rust_try. This happens when a non-Rust foreign exception is caught.
     if payload.is_null() {
