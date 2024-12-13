@@ -3762,9 +3762,20 @@ impl fmt::Display for Constness {
     }
 }
 
+#[derive(Copy, Clone, Debug, HashStable_Generic, PartialEq, Eq)]
+pub enum HeaderSafety {
+    Normal(Safety),
+}
+
+impl From<Safety> for HeaderSafety {
+    fn from(v: Safety) -> Self {
+        Self::Normal(v)
+    }
+}
+
 #[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub struct FnHeader {
-    pub safety: Safety,
+    pub safety: HeaderSafety,
     pub constness: Constness,
     pub asyncness: IsAsync,
     pub abi: ExternAbi,
@@ -3780,7 +3791,17 @@ impl FnHeader {
     }
 
     pub fn is_unsafe(&self) -> bool {
-        self.safety.is_unsafe()
+        self.safety().is_unsafe()
+    }
+
+    pub fn is_safe(&self) -> bool {
+        self.safety().is_safe()
+    }
+
+    pub fn safety(&self) -> Safety {
+        match self.safety {
+            HeaderSafety::Normal(safety) => safety,
+        }
     }
 }
 

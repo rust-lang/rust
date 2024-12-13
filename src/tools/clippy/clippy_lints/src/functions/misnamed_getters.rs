@@ -34,7 +34,7 @@ pub fn check_fn(cx: &LateContext<'_>, kind: FnKind<'_>, decl: &FnDecl<'_>, body:
         ImplicitSelfKind::None => return,
     };
 
-    let name = if sig.header.safety.is_unsafe() {
+    let name = if sig.header.is_unsafe() {
         name.strip_suffix("_unchecked").unwrap_or(name)
     } else {
         name

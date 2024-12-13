@@ -5019,12 +5019,13 @@ struct ItemInfoCollector<'a, 'ra, 'tcx> {
 }
 
 impl ItemInfoCollector<'_, '_, '_> {
-    fn collect_fn_info(&mut self, sig: &FnSig, id: NodeId) {
+    fn collect_fn_info(&mut self, sig: &FnSig, id: NodeId, attrs: &[Attribute]) {
         let sig = DelegationFnSig {
             header: sig.header,
             param_count: sig.decl.inputs.len(),
             has_self: sig.decl.has_self(),
             c_variadic: sig.decl.c_variadic(),
+            target_feature: attrs.iter().any(|attr| attr.has_name(sym::target_feature)),
         };
         self.r.delegation_fn_sigs.insert(self.r.local_def_id(id), sig);
     }
@@ -5043,7 +5044,7 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
             | ItemKind::Trait(box Trait { ref generics, .. })
             | ItemKind::TraitAlias(ref generics, _) => {
                 if let ItemKind::Fn(box Fn { ref sig, .. }) = &item.kind {
-                    self.collect_fn_info(sig, item.id);
+                    self.collect_fn_info(sig, item.id, &item.attrs);
                 }
 
                 let def_id = self.r.local_def_id(item.id);
@@ -5076,7 +5077,7 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
 
     fn visit_assoc_item(&mut self, item: &'ast AssocItem, ctxt: AssocCtxt) {
         if let AssocItemKind::Fn(box Fn { ref sig, .. }) = &item.kind {
-            self.collect_fn_info(sig, item.id);
+            self.collect_fn_info(sig, item.id, &item.attrs);
         }
         visit::walk_assoc_item(self, item, ctxt);
     }

@@ -20,8 +20,8 @@ pub(super) fn check_fn<'tcx>(
     def_id: LocalDefId,
 ) {
     let safety = match kind {
-        intravisit::FnKind::ItemFn(_, _, hir::FnHeader { safety, .. }) => safety,
-        intravisit::FnKind::Method(_, sig) => sig.header.safety,
+        intravisit::FnKind::ItemFn(_, _, header) => header.safety(),
+        intravisit::FnKind::Method(_, sig) => sig.header.safety(),
         intravisit::FnKind::Closure => return,
     };
 
@@ -31,7 +31,7 @@ pub(super) fn check_fn<'tcx>(
 pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
     if let hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(eid)) = item.kind {
         let body = cx.tcx.hir().body(eid);
-        check_raw_ptr(cx, sig.header.safety, sig.decl, body, item.owner_id.def_id);
+        check_raw_ptr(cx, sig.header.safety(), sig.decl, body, item.owner_id.def_id);
     }
 }
 

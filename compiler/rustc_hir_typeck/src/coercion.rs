@@ -932,10 +932,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                         return Err(TypeError::ForceInlineCast);
                     }
 
-                    // Safe `#[target_feature]` functions are not assignable to safe fn pointers
-                    // (RFC 2396).
+                    // Safe `#[target_feature]` functions are not assignable to safe fn pointers (RFC 2396),
+                    // report a better error than a safety mismatch.
+                    // FIXME(target_feature): do this inside `coerce_from_safe_fn`.
                     if b_hdr.safety.is_safe()
-                        && !self.tcx.codegen_fn_attrs(def_id).target_features.is_empty()
+                        && self.tcx.codegen_fn_attrs(def_id).safe_target_features
                     {
                         return Err(TypeError::TargetFeatureCast(def_id));
                     }

@@ -1358,8 +1358,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         } else {
             hir::IsAsync::NotAsync
         };
+
+        let safety = self.lower_safety(h.safety, default_safety);
+        let safety = safety.into();
+
         hir::FnHeader {
-            safety: self.lower_safety(h.safety, default_safety),
+            safety,
             asyncness,
             constness: self.lower_constness(h.constness),
             abi: self.lower_extern(h.ext),
