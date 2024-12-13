@@ -20,8 +20,8 @@ mod tests;
 
 // The proc macro code for this is in `compiler/rustc_macros/src/symbols.rs`.
 symbols! {
-    // If you modify this list, adjust `is_special`, `is_used_keyword`/`is_unused_keyword`
-    // and `AllKeywords`.
+    // If you modify this list, adjust any relevant `Symbol::{is,can_be}_*` functions and
+    // `used_keywords`.
     // But this should rarely be necessary if the keywords are kept in alphabetic order.
     Keywords {
         // Special reserved identifiers used internally for elided lifetimes,
@@ -2683,41 +2683,19 @@ impl Ident {
     }
 }
 
-/// An iterator over all the keywords in Rust.
-#[derive(Copy, Clone)]
-pub struct AllKeywords {
-    curr_idx: u32,
-    end_idx: u32,
-}
-
-impl AllKeywords {
-    /// Initialize a new iterator over all the keywords.
-    ///
-    /// *Note:* Please update this if a new keyword is added beyond the current
-    /// range.
-    pub fn new() -> Self {
-        AllKeywords { curr_idx: kw::Empty.as_u32(), end_idx: kw::Yeet.as_u32() }
-    }
-
-    /// Collect all the keywords in a given edition into a vector.
-    pub fn collect_used(&self, edition: impl Copy + FnOnce() -> Edition) -> Vec<Symbol> {
-        self.filter(|&keyword| {
-            keyword.is_used_keyword_always() || keyword.is_used_keyword_conditional(edition)
+/// Collect all the keywords in a given edition into a vector.
+///
+/// *Note:* Please update this if a new keyword is added beyond the current
+/// range.
+pub fn used_keywords(edition: impl Copy + FnOnce() -> Edition) -> Vec<Symbol> {
+    (kw::Empty.as_u32()..kw::Yeet.as_u32())
+        .filter_map(|kw| {
+            let kw = Symbol::new(kw);
+            if kw.is_used_keyword_always() || kw.is_used_keyword_conditional(edition) {
+                Some(kw)
+            } else {
+                None
+            }
         })
         .collect()
-    }
-}
-
-impl Iterator for AllKeywords {
-    type Item = Symbol;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.curr_idx <= self.end_idx {
-            let keyword = Symbol::new(self.curr_idx);
-            self.curr_idx += 1;
-            Some(keyword)
-        } else {
-            None
-        }
-    }
 }
