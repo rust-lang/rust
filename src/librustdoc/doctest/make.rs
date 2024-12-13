@@ -520,6 +520,8 @@ fn handle_attr(mod_attr_pending: &mut String, source_info: &mut SourceInfo, edit
         mod_attr_pending.clear();
     } else if mod_attr_pending.ends_with('\\') {
         mod_attr_pending.push('n');
+    } else {
+        mod_attr_pending.push_str("\n");
     }
 }
 
