@@ -846,11 +846,13 @@ fn main_args(
 
     let config = core::create_config(input, options, &render_options, using_internal_features);
 
+    let registered_lints = config.register_lints.is_some();
+
     interface::run_compiler(config, |compiler| {
         let sess = &compiler.sess;
 
         if sess.opts.describe_lints {
-            rustc_driver::describe_lints(sess);
+            rustc_driver::describe_lints(sess, registered_lints);
             return;
         }
 

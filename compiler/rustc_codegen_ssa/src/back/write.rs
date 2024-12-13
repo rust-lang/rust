@@ -6,9 +6,9 @@ use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::{fs, io, mem, str, thread};
 
-use jobserver::{Acquired, Client};
 use rustc_ast::attr;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::jobserver::{self, Acquired};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::{SelfProfilerRef, VerboseTimingGuard};
 use rustc_errors::emitter::Emitter;
@@ -456,7 +456,6 @@ pub(crate) fn start_async_codegen<B: ExtraBackendMethods>(
     metadata_module: Option<CompiledModule>,
 ) -> OngoingCodegen<B> {
     let (coordinator_send, coordinator_receive) = channel();
-    let sess = tcx.sess;
 
     let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
     let no_builtins = attr::contains_name(crate_attrs, sym::no_builtins);
@@ -477,7 +476,6 @@ pub(crate) fn start_async_codegen<B: ExtraBackendMethods>(
         shared_emitter,
         codegen_worker_send,
         coordinator_receive,
-        sess.jobserver.clone(),
         Arc::new(regular_config),
         Arc::new(metadata_config),
         Arc::new(allocator_config),
@@ -1093,7 +1091,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
     shared_emitter: SharedEmitter,
     codegen_worker_send: Sender<CguMessage>,
     coordinator_receive: Receiver<Box<dyn Any + Send>>,
-    jobserver: Client,
     regular_config: Arc<ModuleConfig>,
     metadata_config: Arc<ModuleConfig>,
     allocator_config: Arc<ModuleConfig>,
@@ -1145,7 +1142,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     // get tokens on `coordinator_receive` which will
     // get managed in the main loop below.
     let coordinator_send2 = coordinator_send.clone();
-    let helper = jobserver
+    let helper = jobserver::client()
         .into_helper_thread(move |token| {
             drop(coordinator_send2.send(Box::new(Message::Token::<B>(token))));
         })

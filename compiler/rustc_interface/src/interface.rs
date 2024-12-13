@@ -371,7 +371,6 @@ pub(crate) fn initialize_checked_jobserver(early_dcx: &EarlyDiagCtxt) {
 
 // JUSTIFICATION: before session exists, only config
 #[allow(rustc::bad_opt_access)]
-#[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Send) -> R {
     trace!("run_compiler");
 
@@ -425,7 +424,11 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 config.opts.unstable_opts.translate_directionality_markers,
             ) {
                 Ok(bundle) => bundle,
-                Err(e) => early_dcx.early_fatal(format!("failed to load fluent bundle: {e}")),
+                Err(e) => {
+                    // We can't translate anything if we failed to load translations
+                    #[allow(rustc::untranslatable_diagnostic)]
+                    early_dcx.early_fatal(format!("failed to load fluent bundle: {e}"))
+                }
             };
 
             let mut locale_resources = config.locale_resources;
@@ -479,7 +482,6 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             let mut lint_store = rustc_lint::new_lint_store(sess.enable_internal_lints());
             if let Some(register_lints) = config.register_lints.as_deref() {
                 register_lints(&sess, &mut lint_store);
-                sess.registered_lints = true;
             }
             sess.lint_store = Some(Lrc::new(lint_store));
 

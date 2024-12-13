@@ -679,7 +679,7 @@ pub(crate) fn run_aot(
             metadata_module: None,
             metadata,
             crate_info: CrateInfo::new(tcx, target_cpu),
-            concurrency_limiter: ConcurrencyLimiter::new(tcx.sess, 0),
+            concurrency_limiter: ConcurrencyLimiter::new(0),
         });
     };
 
@@ -711,7 +711,7 @@ pub(crate) fn run_aot(
             CguReuse::PreLto | CguReuse::PostLto => false,
         });
 
-    let concurrency_limiter = IntoDynSyncSend(ConcurrencyLimiter::new(tcx.sess, todo_cgus.len()));
+    let concurrency_limiter = IntoDynSyncSend(ConcurrencyLimiter::new(todo_cgus.len()));
 
     let modules = tcx.sess.time("codegen mono items", || {
         let mut modules: Vec<_> = par_map(todo_cgus, |(_, cgu)| {

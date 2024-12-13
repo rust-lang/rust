@@ -12,7 +12,6 @@
 #![warn(unused_lifetimes)]
 // tidy-alphabetical-end
 
-extern crate jobserver;
 #[macro_use]
 extern crate rustc_middle;
 extern crate rustc_abi;
