@@ -360,7 +360,7 @@ mod tests {
     use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
     #[test]
-    fn test_if_let_with_match_unapplicable_for_simple_ifs() {
+    fn test_if_let_with_match_inapplicable_for_simple_ifs() {
         check_assist_not_applicable(
             replace_if_let_with_match,
             r#"
