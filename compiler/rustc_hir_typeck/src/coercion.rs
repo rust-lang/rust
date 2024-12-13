@@ -863,7 +863,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             let outer_universe = self.infcx.universe();
 
             let result = if let ty::FnPtr(_, hdr_b) = b.kind()
-                && fn_ty_a.safety().is_safe()
+                && matches!(
+                    fn_ty_a.safety(),
+                    hir::Safety::Safe | hir::Safety::Unsafe { target_feature: true }
+                )
                 && hdr_b.safety.is_unsafe()
             {
                 let unsafe_a = self.tcx.safe_to_unsafe_fn_ty(fn_ty_a);
@@ -924,10 +927,12 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                         return Err(TypeError::IntrinsicCast);
                     }
 
-                    // Safe `#[target_feature]` functions are not assignable to safe fn pointers (RFC 2396).
+                    // Safe `#[target_feature]` functions are not assignable to safe fn pointers (RFC 2396),
+                    // report a better error than a safety mismatch.
+                    // FIXME(target_feature): do this inside `coerce_from_safe_fn`
 
                     if b_hdr.safety.is_safe()
-                        && !self.tcx.codegen_fn_attrs(def_id).target_features.is_empty()
+                        && matches!(a_sig.safety(), hir::Safety::Unsafe { target_feature: true })
                     {
                         return Err(TypeError::TargetFeatureCast(def_id));
                     }

@@ -1371,7 +1371,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, ty::PolyFn
             // constructors for structs with `layout_scalar_valid_range` are unsafe to call
             let safety = match tcx.layout_scalar_valid_range(adt_def_id) {
                 (Bound::Unbounded, Bound::Unbounded) => hir::Safety::Safe,
-                _ => hir::Safety::Unsafe,
+                _ => hir::Safety::Unsafe { target_feature: false },
             };
             ty::Binder::dummy(tcx.mk_fn_sig(inputs, ty, false, safety, ExternAbi::Rust))
         }

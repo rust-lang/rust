@@ -226,7 +226,9 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         let def_kind = match fi.kind {
             ForeignItemKind::Static(box StaticItem { ty: _, mutability, expr: _, safety }) => {
                 let safety = match safety {
-                    ast::Safety::Unsafe(_) | ast::Safety::Default => hir::Safety::Unsafe,
+                    ast::Safety::Unsafe(_) | ast::Safety::Default => {
+                        hir::Safety::Unsafe { target_feature: false }
+                    }
                     ast::Safety::Safe(_) => hir::Safety::Safe,
                 };
 

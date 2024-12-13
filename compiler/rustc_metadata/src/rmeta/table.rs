@@ -155,13 +155,17 @@ fixed_size_enum! {
         ( Impl { of_trait: false }                 )
         ( Impl { of_trait: true }                  )
         ( Closure                                  )
-        ( Static { safety: hir::Safety::Unsafe, mutability: ast::Mutability::Not, nested: false } )
+        ( Static { safety: hir::Safety::Unsafe { target_feature: true }, mutability: ast::Mutability::Not, nested: false } )
+        ( Static { safety: hir::Safety::Unsafe { target_feature: false }, mutability: ast::Mutability::Not, nested: false } )
         ( Static { safety: hir::Safety::Safe, mutability: ast::Mutability::Not, nested: false } )
-        ( Static { safety: hir::Safety::Unsafe, mutability: ast::Mutability::Mut, nested: false } )
+        ( Static { safety: hir::Safety::Unsafe{ target_feature: true }, mutability: ast::Mutability::Mut, nested: false } )
+        ( Static { safety: hir::Safety::Unsafe{ target_feature: false }, mutability: ast::Mutability::Mut, nested: false } )
         ( Static { safety: hir::Safety::Safe, mutability: ast::Mutability::Mut, nested: false } )
-        ( Static { safety: hir::Safety::Unsafe, mutability: ast::Mutability::Not, nested: true } )
+        ( Static { safety: hir::Safety::Unsafe{ target_feature: true }, mutability: ast::Mutability::Not, nested: true } )
+        ( Static { safety: hir::Safety::Unsafe{ target_feature: false }, mutability: ast::Mutability::Not, nested: true } )
         ( Static { safety: hir::Safety::Safe, mutability: ast::Mutability::Not, nested: true } )
-        ( Static { safety: hir::Safety::Unsafe, mutability: ast::Mutability::Mut, nested: true } )
+        ( Static { safety: hir::Safety::Unsafe{ target_feature: true }, mutability: ast::Mutability::Mut, nested: true } )
+        ( Static { safety: hir::Safety::Unsafe{ target_feature: false }, mutability: ast::Mutability::Mut, nested: true } )
         ( Static { safety: hir::Safety::Safe, mutability: ast::Mutability::Mut, nested: true } )
         ( Ctor(CtorOf::Struct, CtorKind::Fn)       )
         ( Ctor(CtorOf::Struct, CtorKind::Const)    )
@@ -199,7 +203,8 @@ fixed_size_enum! {
 
 fixed_size_enum! {
     hir::Safety {
-        ( Unsafe )
+        ( Unsafe { target_feature: false } )
+        ( Unsafe { target_feature: true } )
         ( Safe   )
     }
 }

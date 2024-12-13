@@ -1222,7 +1222,7 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(
             iter::once(i8p),
             tcx.types.unit,
             false,
-            rustc_hir::Safety::Unsafe,
+            rustc_hir::Safety::Unsafe { target_feature: false },
             Abi::Rust,
         )),
     );
@@ -1233,7 +1233,7 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(
             [i8p, i8p].iter().cloned(),
             tcx.types.unit,
             false,
-            rustc_hir::Safety::Unsafe,
+            rustc_hir::Safety::Unsafe { target_feature: false },
             Abi::Rust,
         )),
     );
@@ -1242,7 +1242,7 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(
         [try_fn_ty, i8p, catch_fn_ty],
         tcx.types.i32,
         false,
-        rustc_hir::Safety::Unsafe,
+        rustc_hir::Safety::Unsafe { target_feature: false },
         Abi::Rust,
     ));
     let rust_try = gen_fn(cx, "__rust_try", rust_fn_sig, codegen);

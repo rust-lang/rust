@@ -76,7 +76,7 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
         tcx.fn_sig(intrinsic_id).skip_binder().safety()
     } else {
         // Old-style intrinsics are never safe
-        Safety::Unsafe
+        Safety::Unsafe { target_feature: false }
     };
     let is_in_list = match tcx.item_name(intrinsic_id.into()) {
         // When adding a new intrinsic to this list,
@@ -137,7 +137,7 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
         | sym::fdiv_algebraic
         | sym::frem_algebraic
         | sym::const_eval_select => hir::Safety::Safe,
-        _ => hir::Safety::Unsafe,
+        _ => hir::Safety::Unsafe { target_feature: false },
     };
 
     if has_safe_attr != is_in_list {
@@ -216,7 +216,7 @@ pub fn check_intrinsic_type(
                 return;
             }
         };
-        (n_tps, 0, 0, inputs, output, hir::Safety::Unsafe)
+        (n_tps, 0, 0, inputs, output, hir::Safety::Unsafe { target_feature: false })
     } else {
         let safety = intrinsic_operation_unsafety(tcx, intrinsic_id);
         let (n_tps, n_cts, inputs, output) = match intrinsic_name {

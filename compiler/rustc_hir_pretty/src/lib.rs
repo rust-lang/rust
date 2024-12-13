@@ -2293,8 +2293,8 @@ impl<'a> State<'a> {
 
     fn print_safety(&mut self, s: hir::Safety) {
         match s {
-            hir::Safety::Safe => {}
-            hir::Safety::Unsafe => self.word_nbsp("unsafe"),
+            hir::Safety::Unsafe { target_feature: true } | hir::Safety::Safe => {}
+            hir::Safety::Unsafe { target_feature: false } => self.word_nbsp("unsafe"),
         }
     }
 

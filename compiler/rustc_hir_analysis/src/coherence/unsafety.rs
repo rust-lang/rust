@@ -24,7 +24,7 @@ pub(super) fn check_item(
     let trait_def_safety = if is_copy {
         // If `Self` has unsafe fields, `Copy` is unsafe to implement.
         if trait_header.trait_ref.skip_binder().self_ty().has_unsafe_fields() {
-            rustc_hir::Safety::Unsafe
+            rustc_hir::Safety::Unsafe { target_feature: false }
         } else {
             rustc_hir::Safety::Safe
         }
@@ -33,7 +33,7 @@ pub(super) fn check_item(
     };
 
     match (trait_def_safety, unsafe_attr, trait_header.safety, trait_header.polarity) {
-        (Safety::Safe, None, Safety::Unsafe, Positive | Reservation) => {
+        (Safety::Safe, None, Safety::Unsafe { .. }, Positive | Reservation) => {
             let span = tcx.def_span(def_id);
             return Err(struct_span_code_err!(
                 tcx.dcx(),
@@ -51,7 +51,7 @@ pub(super) fn check_item(
             .emit());
         }
 
-        (Safety::Unsafe, _, Safety::Safe, Positive | Reservation) => {
+        (Safety::Unsafe { .. }, _, Safety::Safe, Positive | Reservation) => {
             let span = tcx.def_span(def_id);
             return Err(struct_span_code_err!(
                 tcx.dcx(),
@@ -109,14 +109,14 @@ pub(super) fn check_item(
             .emit());
         }
 
-        (_, _, Safety::Unsafe, Negative) => {
+        (_, _, Safety::Unsafe { .. }, Negative) => {
             // Reported in AST validation
             assert!(tcx.dcx().has_errors().is_some(), "unsafe negative impl");
             Ok(())
         }
         (_, _, Safety::Safe, Negative)
-        | (Safety::Unsafe, _, Safety::Unsafe, Positive | Reservation)
-        | (Safety::Safe, Some(_), Safety::Unsafe, Positive | Reservation)
+        | (Safety::Unsafe { .. }, _, Safety::Unsafe { .. }, Positive | Reservation)
+        | (Safety::Safe, Some(_), Safety::Unsafe { .. }, Positive | Reservation)
         | (Safety::Safe, None, Safety::Safe, _) => Ok(()),
     }
 }

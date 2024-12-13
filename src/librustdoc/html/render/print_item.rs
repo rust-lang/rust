@@ -473,7 +473,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                     {
                         "<sup title=\"unsafe function\">⚠</sup>"
                     }
-                    clean::ForeignStaticItem(_, hir::Safety::Unsafe) => {
+                    clean::ForeignStaticItem(_, hir::Safety::Unsafe { .. }) => {
                         "<sup title=\"unsafe static\">⚠</sup>"
                     }
                     _ => "",

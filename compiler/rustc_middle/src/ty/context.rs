@@ -2521,8 +2521,14 @@ impl<'tcx> TyCtxt<'tcx> {
     /// that is, a `fn` type that is equivalent in every way for being
     /// unsafe.
     pub fn safe_to_unsafe_fn_ty(self, sig: PolyFnSig<'tcx>) -> Ty<'tcx> {
-        assert!(sig.safety().is_safe());
-        Ty::new_fn_ptr(self, sig.map_bound(|sig| ty::FnSig { safety: hir::Safety::Unsafe, ..sig }))
+        matches!(sig.safety(), hir::Safety::Safe | hir::Safety::Unsafe { target_feature: true });
+        Ty::new_fn_ptr(
+            self,
+            sig.map_bound(|sig| ty::FnSig {
+                safety: hir::Safety::Unsafe { target_feature: false },
+                ..sig
+            }),
+        )
     }
 
     /// Given the def_id of a Trait `trait_def_id` and the name of an associated item `assoc_name`

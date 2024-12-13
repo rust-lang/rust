@@ -207,7 +207,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let fn_sig = self_ty.fn_sig(self.tcx);
                 let shortname = match fn_sig.safety() {
                     hir::Safety::Safe => "fn",
-                    hir::Safety::Unsafe => "unsafe fn",
+                    hir::Safety::Unsafe { .. } => "unsafe fn",
                 };
                 flags.push((sym::_Self, Some(shortname.to_owned())));
             }

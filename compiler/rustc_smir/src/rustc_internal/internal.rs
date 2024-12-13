@@ -489,7 +489,7 @@ impl RustcInternal for Safety {
 
     fn internal<'tcx>(&self, _tables: &mut Tables<'_>, _tcx: TyCtxt<'tcx>) -> Self::T<'tcx> {
         match self {
-            Safety::Unsafe => rustc_hir::Safety::Unsafe,
+            Safety::Unsafe => rustc_hir::Safety::Unsafe { target_feature: false },
             Safety::Safe => rustc_hir::Safety::Safe,
         }
     }

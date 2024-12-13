@@ -15,7 +15,7 @@ impl<'tcx> Stable<'tcx> for rustc_hir::Safety {
     type T = stable_mir::mir::Safety;
     fn stable(&self, _: &mut Tables<'_>) -> Self::T {
         match self {
-            rustc_hir::Safety::Unsafe => stable_mir::mir::Safety::Unsafe,
+            rustc_hir::Safety::Unsafe { .. } => stable_mir::mir::Safety::Unsafe,
             rustc_hir::Safety::Safe => stable_mir::mir::Safety::Safe,
         }
     }

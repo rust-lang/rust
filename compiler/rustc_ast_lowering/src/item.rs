@@ -231,7 +231,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     });
                     let sig = hir::FnSig {
                         decl,
-                        header: this.lower_fn_header(*header, hir::Safety::Safe),
+                        header: this.lower_fn_header(*header, hir::Safety::Safe, attrs),
                         span: this.lower_span(*fn_sig_span),
                     };
                     hir::ItemKind::Fn(sig, generics, body_id)
@@ -609,7 +609,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_foreign_item(&mut self, i: &ForeignItem) -> &'hir hir::ForeignItem<'hir> {
         let hir_id = hir::HirId::make_owner(self.current_hir_id_owner.def_id);
         let owner_id = hir_id.expect_owner();
-        self.lower_attrs(hir_id, &i.attrs);
+        let attrs = self.lower_attrs(hir_id, &i.attrs);
         let item = hir::ForeignItem {
             owner_id,
             ident: self.lower_ident(i.ident),
@@ -633,7 +633,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         });
 
                     // Unmarked safety in unsafe block defaults to unsafe.
-                    let header = self.lower_fn_header(sig.header, hir::Safety::Unsafe);
+                    let header = self.lower_fn_header(
+                        sig.header,
+                        hir::Safety::Unsafe { target_feature: false },
+                        attrs,
+                    );
 
                     hir::ForeignItemKind::Fn(
                         hir::FnSig { header, decl, span: self.lower_span(sig.span) },
@@ -644,7 +648,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ForeignItemKind::Static(box StaticItem { ty, mutability, expr: _, safety }) => {
                     let ty = self
                         .lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::StaticTy));
-                    let safety = self.lower_safety(*safety, hir::Safety::Unsafe);
+                    let safety =
+                        self.lower_safety(*safety, hir::Safety::Unsafe { target_feature: false });
 
                     hir::ForeignItemKind::Static(ty, *mutability, safety)
                 }
@@ -748,7 +753,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_trait_item(&mut self, i: &AssocItem) -> &'hir hir::TraitItem<'hir> {
         let hir_id = hir::HirId::make_owner(self.current_hir_id_owner.def_id);
-        self.lower_attrs(hir_id, &i.attrs);
+        let attrs = self.lower_attrs(hir_id, &i.attrs);
         let trait_item_def_id = hir_id.expect_owner();
 
         let (generics, kind, has_default) = match &i.kind {
@@ -775,6 +780,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     i.id,
                     FnDeclKind::Trait,
                     sig.header.coroutine_kind,
+                    attrs,
                 );
                 (generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Required(names)), false)
             }
@@ -793,6 +799,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     i.id,
                     FnDeclKind::Trait,
                     sig.header.coroutine_kind,
+                    attrs,
                 );
                 (generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Provided(body_id)), true)
             }
@@ -878,7 +885,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let has_value = true;
         let (defaultness, _) = self.lower_defaultness(i.kind.defaultness(), has_value);
         let hir_id = hir::HirId::make_owner(self.current_hir_id_owner.def_id);
-        self.lower_attrs(hir_id, &i.attrs);
+        let attrs = self.lower_attrs(hir_id, &i.attrs);
 
         let (generics, kind) = match &i.kind {
             AssocItemKind::Const(box ConstItem { generics, ty, expr, .. }) => self.lower_generics(
@@ -908,6 +915,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     i.id,
                     if self.is_in_trait_impl { FnDeclKind::Impl } else { FnDeclKind::Inherent },
                     sig.header.coroutine_kind,
+                    attrs,
                 );
 
                 (generics, hir::ImplItemKind::Fn(sig, body_id))
@@ -1322,8 +1330,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         id: NodeId,
         kind: FnDeclKind,
         coroutine_kind: Option<CoroutineKind>,
+        attrs: &[Attribute],
     ) -> (&'hir hir::Generics<'hir>, hir::FnSig<'hir>) {
-        let header = self.lower_fn_header(sig.header, hir::Safety::Safe);
+        let header = self.lower_fn_header(sig.header, hir::Safety::Safe, attrs);
         let itctx = ImplTraitContext::Universal;
         let (generics, decl) = self.lower_generics(generics, id, itctx, |this| {
             this.lower_fn_decl(&sig.decl, id, sig.span, kind, coroutine_kind)
@@ -1335,12 +1344,23 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         h: FnHeader,
         default_safety: hir::Safety,
+        attrs: &[Attribute],
     ) -> hir::FnHeader {
         let asyncness = if let Some(CoroutineKind::Async { span, .. }) = h.coroutine_kind {
             hir::IsAsync::Async(span)
         } else {
             hir::IsAsync::NotAsync
         };
+
+        let default_safety = if attrs.iter().any(|attr| attr.has_name(sym::target_feature))
+            && !matches!(h.safety, Safety::Unsafe(_))
+            && default_safety.is_safe()
+        {
+            hir::Safety::Unsafe { target_feature: true }
+        } else {
+            default_safety
+        };
+
         hir::FnHeader {
             safety: self.lower_safety(h.safety, default_safety),
             asyncness,
@@ -1394,7 +1414,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     pub(super) fn lower_safety(&mut self, s: Safety, default: hir::Safety) -> hir::Safety {
         match s {
-            Safety::Unsafe(_) => hir::Safety::Unsafe,
+            Safety::Unsafe(_) => hir::Safety::Unsafe { target_feature: false },
             Safety::Default => default,
             Safety::Safe(_) => hir::Safety::Safe,
         }

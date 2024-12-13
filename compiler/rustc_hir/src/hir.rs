@@ -3390,14 +3390,21 @@ impl<'hir> Item<'hir> {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum Safety {
-    Unsafe,
+    Unsafe {
+        /// Whether this is a safe target_feature function.
+        /// We treat those as unsafe almost everywhere, but in unsafeck,
+        /// which allows calling them from other target_feature functions
+        /// without an `unsafe` block.
+        target_feature: bool,
+    },
     Safe,
 }
 
 impl Safety {
     pub fn prefix_str(self) -> &'static str {
         match self {
-            Self::Unsafe => "unsafe ",
+            Self::Unsafe { target_feature: false } => "unsafe ",
+            Self::Unsafe { target_feature: true } => "#[target_feature] ",
             Self::Safe => "",
         }
     }
@@ -3410,7 +3417,7 @@ impl Safety {
     #[inline]
     pub fn is_safe(self) -> bool {
         match self {
-            Self::Unsafe => false,
+            Self::Unsafe { .. } => false,
             Self::Safe => true,
         }
     }
@@ -3419,7 +3426,8 @@ impl Safety {
 impl fmt::Display for Safety {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match *self {
-            Self::Unsafe => "unsafe",
+            Self::Unsafe { target_feature: false } => "unsafe",
+            Self::Unsafe { target_feature: true } => "#[target_feature] safe",
             Self::Safe => "safe",
         })
     }

@@ -1091,7 +1091,7 @@ fn get_rust_try_fn<'ll, 'tcx>(
             [i8p],
             tcx.types.unit,
             false,
-            hir::Safety::Unsafe,
+            hir::Safety::Unsafe { target_feature: false },
             ExternAbi::Rust,
         )),
     );
@@ -1102,7 +1102,7 @@ fn get_rust_try_fn<'ll, 'tcx>(
             [i8p, i8p],
             tcx.types.unit,
             false,
-            hir::Safety::Unsafe,
+            hir::Safety::Unsafe { target_feature: false },
             ExternAbi::Rust,
         )),
     );
@@ -1111,7 +1111,7 @@ fn get_rust_try_fn<'ll, 'tcx>(
         [try_fn_ty, i8p, catch_fn_ty],
         tcx.types.i32,
         false,
-        hir::Safety::Unsafe,
+        hir::Safety::Unsafe { target_feature: false },
         ExternAbi::Rust,
     ));
     let rust_try = gen_fn(cx, "__rust_try", rust_fn_sig, codegen);

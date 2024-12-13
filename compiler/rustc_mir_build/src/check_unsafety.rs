@@ -479,7 +479,9 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 return; // don't visit the whole expression
             }
             ExprKind::Call { fun, ty: _, args: _, from_hir_call: _, fn_span: _ } => {
-                if self.thir[fun].ty.fn_sig(self.tcx).safety().is_unsafe() {
+                if matches!(self.thir[fun].ty.fn_sig(self.tcx).safety(), hir::Safety::Unsafe {
+                    target_feature: false
+                }) {
                     let func_id = if let ty::FnDef(func_id, _) = self.thir[fun].ty.kind() {
                         Some(*func_id)
                     } else {
@@ -1112,7 +1114,11 @@ pub(crate) fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
 
     let hir_id = tcx.local_def_id_to_hir_id(def);
     let safety_context = tcx.hir().fn_sig_by_hir_id(hir_id).map_or(SafetyContext::Safe, |fn_sig| {
-        if fn_sig.header.safety.is_unsafe() { SafetyContext::UnsafeFn } else { SafetyContext::Safe }
+        if matches!(fn_sig.header.safety, hir::Safety::Unsafe { target_feature: false }) {
+            SafetyContext::UnsafeFn
+        } else {
+            SafetyContext::Safe
+        }
     });
     let body_target_features = &tcx.body_codegen_attrs(def.to_def_id()).target_features;
     let mut warnings = Vec::new();

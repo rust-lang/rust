@@ -33,7 +33,7 @@ pub fn check(
 
     let span = cx.tcx.def_span(owner_id);
     match (headers.safety, sig.header.safety) {
-        (false, Safety::Unsafe) => span_lint(
+        (false, Safety::Unsafe {..}) => span_lint(
             cx,
             MISSING_SAFETY_DOC,
             span,

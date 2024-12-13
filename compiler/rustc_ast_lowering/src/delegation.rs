@@ -189,7 +189,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> hir::FnSig<'hir> {
         let header = if let Some(local_sig_id) = sig_id.as_local() {
             match self.resolver.delegation_fn_sigs.get(&local_sig_id) {
-                Some(sig) => self.lower_fn_header(sig.header, hir::Safety::Safe),
+                Some(sig) => self.lower_fn_header(
+                    sig.header,
+                    if sig.target_feature && !matches!(sig.header.safety, Safety::Unsafe(_)) {
+                        hir::Safety::Unsafe { target_feature: true }
+                    } else {
+                        hir::Safety::Safe
+                    },
+                    &[],
+                ),
                 None => self.generate_header_error(),
             }
         } else {
