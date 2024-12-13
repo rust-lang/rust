@@ -156,6 +156,8 @@ pub struct Cli {
 }
 
 fn main() -> Result<()> {
+    /// Split the arguments into the part before the `--` and the part after.
+    /// The `--` itself ends up in the second part.
     let miri_args: Vec<_> = std::env::args().take_while(|x| *x != "--").collect();
     let remainder: Vec<_> = std::env::args().skip_while(|x| *x != "--").collect();
 
