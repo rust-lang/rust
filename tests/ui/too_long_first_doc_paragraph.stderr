@@ -2,7 +2,9 @@ error: first doc comment paragraph is too long
   --> tests/ui/too_long_first_doc_paragraph.rs:8:5
    |
 LL | /     //! A very short summary.
-...  |
+LL | |     //! A much longer explanation that goes into a lot more detail about
+LL | |     //! how the thing works, possibly with doclinks and so one,
+LL | |     //! and probably spanning a many rows. Blablabla, it needs to be over
 LL | |     //! 200 characters so I needed to write something longeeeeeeer.
    | |____^
    |
@@ -27,7 +29,8 @@ error: first doc comment paragraph is too long
   --> tests/ui/too_long_first_doc_paragraph.rs:36:1
    |
 LL | / /// Lorem
-...  |
+LL | | /// ipsum dolor sit amet, consectetur adipiscing elit. Nunc turpis nunc, lacinia
+LL | | /// a dolor in, pellentesque aliquet enim. Cras nec maximus sem. Mauris arcu libero,
 LL | | /// gravida non lacinia at, rhoncus eu lacus.
    | |_^
 

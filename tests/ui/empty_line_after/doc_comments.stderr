@@ -96,6 +96,9 @@ error: empty lines after doc comment
   --> tests/ui/empty_line_after/doc_comments.rs:63:5
    |
 LL | /     /// for OldA
+LL | |     // struct OldA;
+LL | |
+LL | |     /// Docs
 ...  |
 LL | |
    | |_^
