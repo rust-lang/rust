@@ -17,7 +17,7 @@ use rustc_session::Session;
 use rustc_session::config::{PrintKind, PrintRequest};
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::{MergeFunctions, PanicStrategy, SmallDataThresholdSupport};
-use rustc_target::target_features::{RUSTC_SPECIAL_FEATURES, RUSTC_SPECIFIC_FEATURES, Stability};
+use rustc_target::target_features::{RUSTC_SPECIAL_FEATURES, RUSTC_SPECIFIC_FEATURES};
 
 use crate::back::write::create_informational_target_machine;
 use crate::errors::{
@@ -300,7 +300,7 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
 /// Must express features in the way Rust understands them.
 ///
 /// We do not have to worry about RUSTC_SPECIFIC_FEATURES here, those are handled outside codegen.
-pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
+pub fn target_features_cfg(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
     let mut features: FxHashSet<Symbol> = Default::default();
 
     // Add base features for the target.
@@ -316,7 +316,7 @@ pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
         sess.target
             .rust_target_features()
             .iter()
-            .filter(|(_, gate, _)| gate.is_supported())
+            .filter(|(_, gate, _)| gate.in_cfg())
             .filter(|(feature, _, _)| {
                 // skip checking special features, as LLVM may not understand them
                 if RUSTC_SPECIAL_FEATURES.contains(feature) {
@@ -372,9 +372,9 @@ pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
     sess.target
         .rust_target_features()
         .iter()
-        .filter(|(_, gate, _)| gate.is_supported())
+        .filter(|(_, gate, _)| gate.in_cfg())
         .filter_map(|&(feature, gate, _)| {
-            if sess.is_nightly_build() || allow_unstable || gate.is_stable() {
+            if sess.is_nightly_build() || allow_unstable || gate.requires_nightly().is_none() {
                 Some(feature)
             } else {
                 None
@@ -493,7 +493,7 @@ fn print_target_features(sess: &Session, tm: &llvm::TargetMachine, out: &mut Str
         .rust_target_features()
         .iter()
         .filter_map(|(feature, gate, _implied)| {
-            if !gate.is_supported() {
+            if !gate.in_cfg() {
                 // Only list (experimentally) supported features.
                 return None;
             }
@@ -716,13 +716,17 @@ pub(crate) fn global_llvm_features(
                             };
                             sess.dcx().emit_warn(unknown_feature);
                         }
-                        Some((_, Stability::Stable, _)) => {}
-                        Some((_, Stability::Unstable(_), _)) => {
-                            // An unstable feature. Warn about using it.
-                            sess.dcx().emit_warn(UnstableCTargetFeature { feature });
-                        }
-                        Some((_, Stability::Forbidden { reason }, _)) => {
-                            sess.dcx().emit_warn(ForbiddenCTargetFeature { feature, reason });
+                        Some((_, stability, _)) => {
+                            if let Err(reason) =
+                                stability.compute_toggleability(&sess.target).allow_toggle()
+                            {
+                                sess.dcx().emit_warn(ForbiddenCTargetFeature { feature, reason });
+                            } else if stability.requires_nightly().is_some() {
+                                // An unstable feature. Warn about using it. It makes little sense
+                                // to hard-error here since we just warn about fully unknown
+                                // features above.
+                                sess.dcx().emit_warn(UnstableCTargetFeature { feature });
+                            }
                         }
                     }
 

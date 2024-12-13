@@ -2233,7 +2233,7 @@ rustc_queries! {
     }
 
     /// Returns the Rust target features for the current target. These are not always the same as LLVM target features!
-    query rust_target_features(_: CrateNum) -> &'tcx UnordMap<String, rustc_target::target_features::Stability> {
+    query rust_target_features(_: CrateNum) -> &'tcx UnordMap<String, rustc_target::target_features::StabilityComputed> {
         arena_cache
         eval_always
         desc { "looking up Rust target features" }
