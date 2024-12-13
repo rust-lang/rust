@@ -2224,6 +2224,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn scc_representative(&self, scc: ConstraintSccIndex) -> RegionVid {
         self.constraint_sccs.annotation(scc).representative
     }
+
+    pub(crate) fn liveness_constraints(&self) -> &LivenessValues {
+        &self.liveness_constraints
+    }
 }
 
 impl<'tcx> RegionDefinition<'tcx> {

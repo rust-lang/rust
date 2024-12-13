@@ -202,6 +202,7 @@ fn do_mir_borrowck<'tcx>(
         polonius_output,
         opt_closure_req,
         nll_errors,
+        localized_outlives_constraints,
     } = nll::compute_regions(
         &infcx,
         free_regions,

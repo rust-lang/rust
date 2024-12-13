@@ -29,6 +29,7 @@ use crate::consumers::ConsumerOptions;
 use crate::diagnostics::RegionErrors;
 use crate::facts::{AllFacts, AllFactsExt, RustcFacts};
 use crate::location::LocationTable;
+use crate::polonius::LocalizedOutlivesConstraintSet;
 use crate::region_infer::RegionInferenceContext;
 use crate::type_check::{self, MirTypeckResults};
 use crate::universal_regions::UniversalRegions;
@@ -45,6 +46,9 @@ pub(crate) struct NllOutput<'tcx> {
     pub polonius_output: Option<Box<PoloniusOutput>>,
     pub opt_closure_req: Option<ClosureRegionRequirements<'tcx>>,
     pub nll_errors: RegionErrors<'tcx>,
+
+    /// When using `-Zpolonius=next`: the localized typeck and liveness constraints.
+    pub localized_outlives_constraints: LocalizedOutlivesConstraintSet,
 }
 
 /// Rewrites the regions in the MIR to use NLL variables, also scraping out the set of universal
@@ -135,6 +139,18 @@ pub(crate) fn compute_regions<'a, 'tcx>(
         elements,
     );
 
+    // If requested for `-Zpolonius=next`, convert NLL constraints to localized outlives
+    // constraints.
+    let mut localized_outlives_constraints = LocalizedOutlivesConstraintSet::default();
+    if infcx.tcx.sess.opts.unstable_opts.polonius.is_next_enabled() {
+        polonius::create_localized_constraints(
+            &mut regioncx,
+            infcx.infcx.tcx,
+            body,
+            &mut localized_outlives_constraints,
+        );
+    }
+
     // If requested: dump NLL facts, and run legacy polonius analysis.
     let polonius_output = all_facts.as_ref().and_then(|all_facts| {
         if infcx.tcx.sess.opts.unstable_opts.nll_facts {
@@ -175,6 +191,7 @@ pub(crate) fn compute_regions<'a, 'tcx>(
         polonius_output,
         opt_closure_req: closure_region_requirements,
         nll_errors,
+        localized_outlives_constraints,
     }
 }
 
