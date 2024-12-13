@@ -2,7 +2,9 @@ error: unknown attribute `compile-fail`
  --> $DIR/check-attr-test.rs:5:1
   |
 5 | / /// foo
-... |
+6 | | ///
+7 | | /// ```compile-fail,compilefail,comPile_fail
+8 | | /// boo
 9 | | /// ```
   | |_______^
   |
@@ -18,7 +20,9 @@ error: unknown attribute `compilefail`
  --> $DIR/check-attr-test.rs:5:1
   |
 5 | / /// foo
-... |
+6 | | ///
+7 | | /// ```compile-fail,compilefail,comPile_fail
+8 | | /// boo
 9 | | /// ```
   | |_______^
   |
@@ -29,7 +33,9 @@ error: unknown attribute `comPile_fail`
  --> $DIR/check-attr-test.rs:5:1
   |
 5 | / /// foo
-... |
+6 | | ///
+7 | | /// ```compile-fail,compilefail,comPile_fail
+8 | | /// boo
 9 | | /// ```
   | |_______^
   |
@@ -40,7 +46,9 @@ error: unknown attribute `should-panic`
   --> $DIR/check-attr-test.rs:12:1
    |
 12 | / /// bar
-...  |
+13 | | ///
+14 | | /// ```should-panic,shouldpanic,shOuld_panic
+15 | | /// boo
 16 | | /// ```
    | |_______^
    |
@@ -51,7 +59,9 @@ error: unknown attribute `shouldpanic`
   --> $DIR/check-attr-test.rs:12:1
    |
 12 | / /// bar
-...  |
+13 | | ///
+14 | | /// ```should-panic,shouldpanic,shOuld_panic
+15 | | /// boo
 16 | | /// ```
    | |_______^
    |
@@ -62,7 +72,9 @@ error: unknown attribute `shOuld_panic`
   --> $DIR/check-attr-test.rs:12:1
    |
 12 | / /// bar
-...  |
+13 | | ///
+14 | | /// ```should-panic,shouldpanic,shOuld_panic
+15 | | /// boo
 16 | | /// ```
    | |_______^
    |
@@ -73,7 +85,9 @@ error: unknown attribute `no-run`
   --> $DIR/check-attr-test.rs:19:1
    |
 19 | / /// foobar
-...  |
+20 | | ///
+21 | | /// ```no-run,norun,nO_run
+22 | | /// boo
 23 | | /// ```
    | |_______^
    |
@@ -84,7 +98,9 @@ error: unknown attribute `norun`
   --> $DIR/check-attr-test.rs:19:1
    |
 19 | / /// foobar
-...  |
+20 | | ///
+21 | | /// ```no-run,norun,nO_run
+22 | | /// boo
 23 | | /// ```
    | |_______^
    |
@@ -95,7 +111,9 @@ error: unknown attribute `nO_run`
   --> $DIR/check-attr-test.rs:19:1
    |
 19 | / /// foobar
-...  |
+20 | | ///
+21 | | /// ```no-run,norun,nO_run
+22 | | /// boo
 23 | | /// ```
    | |_______^
    |
@@ -106,7 +124,9 @@ error: unknown attribute `test-harness`
   --> $DIR/check-attr-test.rs:26:1
    |
 26 | / /// b
-...  |
+27 | | ///
+28 | | /// ```test-harness,testharness,tesT_harness
+29 | | /// boo
 30 | | /// ```
    | |_______^
    |
@@ -117,7 +137,9 @@ error: unknown attribute `testharness`
   --> $DIR/check-attr-test.rs:26:1
    |
 26 | / /// b
-...  |
+27 | | ///
+28 | | /// ```test-harness,testharness,tesT_harness
+29 | | /// boo
 30 | | /// ```
    | |_______^
    |
@@ -128,7 +150,9 @@ error: unknown attribute `tesT_harness`
   --> $DIR/check-attr-test.rs:26:1
    |
 26 | / /// b
-...  |
+27 | | ///
+28 | | /// ```test-harness,testharness,tesT_harness
+29 | | /// boo
 30 | | /// ```
    | |_______^
    |

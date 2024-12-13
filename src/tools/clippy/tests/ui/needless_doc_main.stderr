@@ -3,7 +3,9 @@ error: needless `fn main` in doctest
    |
 LL |   /// fn main() {
    |  _____^
-...  |
+LL | |
+LL | |
+LL | | ///     unimplemented!();
 LL | | /// }
    | |_____^
    |
@@ -15,7 +17,8 @@ error: needless `fn main` in doctest
    |
 LL |   /// fn main() -> () {
    |  _____^
-...  |
+LL | |
+LL | | ///     unimplemented!();
 LL | | /// }
    | |_____^
 
@@ -24,7 +27,8 @@ error: needless `fn main` in doctest
    |
 LL |   /// fn main() {
    |  _____^
-...  |
+LL | |
+LL | | ///     unimplemented!();
 LL | | /// }
    | |_____^
 
@@ -33,7 +37,9 @@ error: needless `fn main` in doctest
    |
 LL |   /// // the fn is not always the first line
    |  _____^
-...  |
+LL | |
+LL | | /// fn main() {
+LL | | ///     unimplemented!();
 LL | | /// }
    | |_____^
 

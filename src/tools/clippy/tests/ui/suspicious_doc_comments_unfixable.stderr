@@ -2,7 +2,10 @@ error: this is an outer doc comment and does not apply to the parent module or c
   --> tests/ui/suspicious_doc_comments_unfixable.rs:4:1
    |
 LL | / ///! a
-...  |
+LL | |
+LL | |
+LL | | ///! b
+LL | | /// c
 LL | | ///! d
    | |______^
    |
@@ -22,7 +25,9 @@ error: this is an outer doc comment and does not apply to the parent module or c
   --> tests/ui/suspicious_doc_comments_unfixable.rs:12:1
    |
 LL | / ///! a
-...  |
+LL | |
+LL | | ///! b
+LL | | /// c
 LL | | ///! d
    | |______^
    |

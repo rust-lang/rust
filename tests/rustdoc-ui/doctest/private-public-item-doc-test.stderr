@@ -2,7 +2,9 @@ error: documentation test in private item
   --> $DIR/private-public-item-doc-test.rs:4:5
    |
 LL | /     /// private doc test
-...  |
+LL | |     ///
+LL | |     /// ```
+LL | |     /// assert!(false);
 LL | |     /// ```
    | |___________^
    |

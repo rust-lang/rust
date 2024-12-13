@@ -14,7 +14,9 @@ error: documentation test in private item
   --> $DIR/lint-group.rs:22:1
    |
 LL | / /// wait, this *does* have a doctest?
-...  |
+LL | | ///
+LL | | /// ```
+LL | | /// println!("sup");
 LL | | /// ```
    | |_______^
    |
