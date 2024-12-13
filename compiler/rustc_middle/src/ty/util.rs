@@ -1291,7 +1291,7 @@ impl<'tcx> Ty<'tcx> {
     /// Checks whether this type is an ADT that has unsafe fields.
     pub fn has_unsafe_fields(self) -> bool {
         if let ty::Adt(adt_def, ..) = self.kind() {
-            adt_def.all_fields().any(|x| x.safety == hir::Safety::Unsafe)
+            adt_def.all_fields().any(|x| x.safety.is_unsafe())
         } else {
             false
         }

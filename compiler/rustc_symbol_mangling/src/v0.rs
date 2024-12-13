@@ -439,7 +439,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 let sig = sig_tys.with(hdr);
                 self.push("F");
                 self.in_binder(&sig, |cx, sig| {
-                    if sig.safety == hir::Safety::Unsafe {
+                    if sig.safety.is_unsafe() {
                         cx.push("U");
                     }
                     match sig.abi {

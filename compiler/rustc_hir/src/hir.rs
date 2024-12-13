@@ -3401,6 +3401,19 @@ impl Safety {
             Self::Safe => "",
         }
     }
+
+    #[inline]
+    pub fn is_unsafe(self) -> bool {
+        !self.is_safe()
+    }
+
+    #[inline]
+    pub fn is_safe(self) -> bool {
+        match self {
+            Self::Unsafe => false,
+            Self::Safe => true,
+        }
+    }
 }
 
 impl fmt::Display for Safety {
@@ -3445,7 +3458,7 @@ impl FnHeader {
     }
 
     pub fn is_unsafe(&self) -> bool {
-        matches!(&self.safety, Safety::Unsafe)
+        self.safety.is_unsafe()
     }
 }
 
