@@ -1,7 +1,7 @@
 //! Module converting command-line arguments into test configuration.
 
 use std::env;
-use std::io::{self, IsTerminal};
+use std::io::{self, IsTerminal, Write};
 use std::path::PathBuf;
 
 use super::options::{ColorConfig, Options, OutputFormat, RunIgnored};
@@ -58,7 +58,7 @@ fn optgroups() -> getopts::Options {
         .optflag("", "bench", "Run benchmarks instead of tests")
         .optflag("", "list", "List all tests and benchmarks")
         .optflag("h", "help", "Display this message")
-        .optopt("", "logfile", "Write logs to the specified file", "PATH")
+        .optopt("", "logfile", "Write logs to the specified file (deprecated)", "PATH")
         .optflag(
             "",
             "nocapture",
@@ -280,6 +280,10 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
     let format = get_format(&matches, quiet, allow_unstable)?;
 
     let options = Options::new().display_output(matches.opt_present("show-output"));
+
+    if logfile.is_some() {
+        let _ = write!(io::stderr(), "warning: `--logfile` is deprecated");
+    }
 
     let test_opts = TestOpts {
         list,
