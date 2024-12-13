@@ -34,6 +34,7 @@ windows_targets::link!("kernel32.dll" "system" fn FreeEnvironmentStringsW(penv :
 windows_targets::link!("kernel32.dll" "system" fn GetActiveProcessorCount(groupnumber : u16) -> u32);
 windows_targets::link!("kernel32.dll" "system" fn GetCommandLineW() -> PCWSTR);
 windows_targets::link!("kernel32.dll" "system" fn GetConsoleMode(hconsolehandle : HANDLE, lpmode : *mut CONSOLE_MODE) -> BOOL);
+windows_targets::link!("kernel32.dll" "system" fn GetConsoleOutputCP() -> u32);
 windows_targets::link!("kernel32.dll" "system" fn GetCurrentDirectoryW(nbufferlength : u32, lpbuffer : PWSTR) -> u32);
 windows_targets::link!("kernel32.dll" "system" fn GetCurrentProcess() -> HANDLE);
 windows_targets::link!("kernel32.dll" "system" fn GetCurrentProcessId() -> u32);
@@ -3317,6 +3318,7 @@ pub struct XSAVE_FORMAT {
     pub XmmRegisters: [M128A; 8],
     pub Reserved4: [u8; 224],
 }
+
 #[cfg(target_arch = "arm")]
 #[repr(C)]
 pub struct WSADATA {

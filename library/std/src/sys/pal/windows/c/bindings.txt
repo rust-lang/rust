@@ -2425,6 +2425,7 @@ Windows.Win32.System.Console.ENABLE_VIRTUAL_TERMINAL_PROCESSING
 Windows.Win32.System.Console.ENABLE_WINDOW_INPUT
 Windows.Win32.System.Console.ENABLE_WRAP_AT_EOL_OUTPUT
 Windows.Win32.System.Console.GetConsoleMode
+Windows.Win32.System.Console.GetConsoleOutputCP
 Windows.Win32.System.Console.GetStdHandle
 Windows.Win32.System.Console.ReadConsoleW
 Windows.Win32.System.Console.STD_ERROR_HANDLE
