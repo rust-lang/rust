@@ -1,3 +1,9 @@
+//! Diagnostics test to check that higher-ranked lifetimes are properly named when being pretty
+//! printed in diagnostics.
+//!
+//! Issue: <https://github.com/rust-lang/rust/issues/44887>
+//! PR: <https://github.com/rust-lang/rust/pull/44888>
+
 fn main() {
     f1(|_: (), _: ()| {}); //~ ERROR type mismatch
     f2(|_: (), _: ()| {}); //~ ERROR type mismatch
