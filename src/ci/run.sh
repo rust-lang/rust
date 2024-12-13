@@ -22,6 +22,7 @@ if [ "$NO_CHANGE_USER" = "" ]; then
     echo -e '[safe]\n\tdirectory = *' > /home/user/.gitconfig
 
     exec su --preserve-environment -c "env PATH=$PATH \"$0\"" user
+    echo "whoami: $(whoami)"
   fi
 fi
 
