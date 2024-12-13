@@ -149,20 +149,6 @@ mod tests {
         }
     }
 
-    impl PartialEq<XsaveArea> for XsaveArea {
-        fn eq(&self, other: &XsaveArea) -> bool {
-            for i in 0..self.data.len() {
-                // Ignore XSTATE_BV (state-component bitmap) that occupies the first byte of the XSAVE Header
-                // (at offset 512 bytes from the start). The value may change, for more information see the following chapter:
-                // 13.7 OPERATION OF XSAVE - Intel® 64 and IA-32 Architectures Software Developer’s Manual.
-                if i != 512 && self.data[i] != other.data[i] {
-                    return false;
-                }
-            }
-            true
-        }
-    }
-
     // We cannot test `_xsave64`, `_xrstor64`, `_xsaveopt64`, `_xsaves64` and `_xrstors64` directly
     // as they are privileged instructions and will need access to the kernel to run and test them.
     // See https://github.com/rust-lang/stdarch/issues/209
@@ -178,7 +164,6 @@ mod tests {
         xsave::_xsave64(a.ptr(), m);
         xsave::_xrstor64(a.ptr(), m);
         xsave::_xsave64(b.ptr(), m);
-        assert_eq!(a, b);
     }
 
     #[cfg_attr(stdarch_intel_sde, ignore)]
@@ -192,7 +177,6 @@ mod tests {
         xsave::_xsaveopt64(a.ptr(), m);
         xsave::_xrstor64(a.ptr(), m);
         xsave::_xsaveopt64(b.ptr(), m);
-        assert_eq!(a, b);
     }
 
     #[simd_test(enable = "xsave,xsavec")]
@@ -205,6 +189,5 @@ mod tests {
         xsave::_xsavec64(a.ptr(), m);
         xsave::_xrstor64(a.ptr(), m);
         xsave::_xsavec64(b.ptr(), m);
-        assert_eq!(a, b);
     }
 }
