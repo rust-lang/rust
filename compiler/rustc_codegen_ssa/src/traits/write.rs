@@ -1,3 +1,4 @@
+use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_errors::{DiagCtxtHandle, FatalError};
 use rustc_middle::dep_graph::WorkProduct;
 
@@ -61,6 +62,12 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
         want_summary: bool,
     ) -> (String, Self::ThinBuffer);
     fn serialize_module(module: ModuleCodegen<Self::Module>) -> (String, Self::ModuleBuffer);
+    fn autodiff(
+        cgcx: &CodegenContext<Self>,
+        module: &ModuleCodegen<Self::Module>,
+        diff_fncs: Vec<AutoDiffItem>,
+        config: &ModuleConfig,
+    ) -> Result<(), FatalError>;
 }
 
 pub trait ThinBufferMethods: Send + Sync {
