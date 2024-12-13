@@ -325,6 +325,12 @@ impl Rustc {
         self
     }
 
+    /// Pass the `--verbose` flag.
+    pub fn verbose(&mut self) -> &mut Self {
+        self.cmd.arg("--verbose");
+        self
+    }
+
     /// `EXTRARSCXXFLAGS`
     pub fn extra_rs_cxx_flags(&mut self) -> &mut Self {
         // Adapted from tools.mk (trimmed):
