@@ -35,6 +35,8 @@
 
 mod constraints;
 pub(crate) use constraints::*;
+mod dump;
+pub(crate) use dump::dump_polonius_mir;
 pub(crate) mod legacy;
 
 use rustc_middle::mir::{Body, Location};

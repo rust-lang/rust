@@ -199,6 +199,11 @@ impl LivenessValues {
         self.elements.point_from_location(location)
     }
 
+    #[inline]
+    pub(crate) fn location_from_point(&self, point: PointIndex) -> Location {
+        self.elements.to_location(point)
+    }
+
     /// When using `-Zpolonius=next`, returns whether the `loan_idx` is live at the given `point`.
     pub(crate) fn is_loan_live_at(&self, loan_idx: BorrowIndex, point: PointIndex) -> bool {
         self.loans
