@@ -5011,7 +5011,7 @@ fn $0fun_name(bar: &str) {
     }
 
     #[test]
-    fn unresolveable_types_default_to_placeholder() {
+    fn unresolvable_types_default_to_placeholder() {
         check_assist(
             extract_function,
             r#"
