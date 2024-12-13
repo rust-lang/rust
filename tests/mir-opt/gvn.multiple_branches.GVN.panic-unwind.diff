@@ -6,202 +6,181 @@
       debug x => _2;
       debug y => _3;
       let mut _0: ();
-      let _4: ();
-      let mut _5: bool;
-      let _6: ();
+      let mut _4: bool;
+      let _5: ();
+      let mut _6: u8;
       let mut _7: u8;
       let mut _8: u8;
-      let mut _9: u8;
-      let _10: ();
+      let _9: ();
+      let mut _10: u8;
       let mut _11: u8;
       let mut _12: u8;
-      let mut _13: u8;
-      let _14: ();
+      let _13: ();
+      let mut _14: u8;
       let mut _15: u8;
       let mut _16: u8;
-      let mut _17: u8;
-      let _18: ();
+      let _17: ();
+      let mut _18: u8;
       let mut _19: u8;
       let mut _20: u8;
-      let mut _21: u8;
-      let _22: ();
+      let _21: ();
+      let mut _22: u8;
       let mut _23: u8;
       let mut _24: u8;
-      let mut _25: u8;
-      let mut _26: bool;
-      let _27: ();
+      let mut _25: bool;
+      let _26: ();
+      let mut _27: u8;
       let mut _28: u8;
       let mut _29: u8;
-      let mut _30: u8;
-      let _31: ();
+      let _30: ();
+      let mut _31: u8;
       let mut _32: u8;
       let mut _33: u8;
-      let mut _34: u8;
   
       bb0: {
           StorageLive(_4);
-          StorageLive(_5);
-          _5 = copy _1;
--         switchInt(move _5) -> [0: bb4, otherwise: bb1];
+          _4 = copy _1;
+-         switchInt(move _4) -> [0: bb4, otherwise: bb1];
 +         switchInt(copy _1) -> [0: bb4, otherwise: bb1];
       }
   
       bb1: {
-          StorageLive(_6);
--         StorageLive(_7);
+-         StorageLive(_6);
 +         nop;
+          StorageLive(_7);
+          _7 = copy _2;
           StorageLive(_8);
-          _8 = copy _2;
-          StorageLive(_9);
-          _9 = copy _3;
--         _7 = Add(move _8, move _9);
-+         _7 = Add(copy _2, copy _3);
-          StorageDead(_9);
+          _8 = copy _3;
+-         _6 = Add(move _7, move _8);
++         _6 = Add(copy _2, copy _3);
           StorageDead(_8);
--         _6 = opaque::<u8>(move _7) -> [return: bb2, unwind continue];
-+         _6 = opaque::<u8>(copy _7) -> [return: bb2, unwind continue];
+          StorageDead(_7);
+-         _5 = opaque::<u8>(move _6) -> [return: bb2, unwind continue];
++         _5 = opaque::<u8>(copy _6) -> [return: bb2, unwind continue];
       }
   
       bb2: {
--         StorageDead(_7);
+-         StorageDead(_6);
 +         nop;
-          StorageDead(_6);
           StorageLive(_10);
           StorageLive(_11);
+          _11 = copy _2;
           StorageLive(_12);
-          _12 = copy _2;
-          StorageLive(_13);
-          _13 = copy _3;
--         _11 = Add(move _12, move _13);
-+         _11 = copy _7;
-          StorageDead(_13);
+          _12 = copy _3;
+-         _10 = Add(move _11, move _12);
++         _10 = copy _6;
           StorageDead(_12);
--         _10 = opaque::<u8>(move _11) -> [return: bb3, unwind continue];
-+         _10 = opaque::<u8>(copy _7) -> [return: bb3, unwind continue];
+          StorageDead(_11);
+-         _9 = opaque::<u8>(move _10) -> [return: bb3, unwind continue];
++         _9 = opaque::<u8>(copy _6) -> [return: bb3, unwind continue];
       }
   
       bb3: {
-          StorageDead(_11);
           StorageDead(_10);
-          _4 = const ();
           goto -> bb7;
       }
   
       bb4: {
-          StorageLive(_14);
--         StorageLive(_15);
+-         StorageLive(_14);
 +         nop;
+          StorageLive(_15);
+          _15 = copy _2;
           StorageLive(_16);
-          _16 = copy _2;
-          StorageLive(_17);
-          _17 = copy _3;
--         _15 = Add(move _16, move _17);
-+         _15 = Add(copy _2, copy _3);
-          StorageDead(_17);
+          _16 = copy _3;
+-         _14 = Add(move _15, move _16);
++         _14 = Add(copy _2, copy _3);
           StorageDead(_16);
--         _14 = opaque::<u8>(move _15) -> [return: bb5, unwind continue];
-+         _14 = opaque::<u8>(copy _15) -> [return: bb5, unwind continue];
+          StorageDead(_15);
+-         _13 = opaque::<u8>(move _14) -> [return: bb5, unwind continue];
++         _13 = opaque::<u8>(copy _14) -> [return: bb5, unwind continue];
       }
   
       bb5: {
--         StorageDead(_15);
+-         StorageDead(_14);
 +         nop;
-          StorageDead(_14);
           StorageLive(_18);
           StorageLive(_19);
+          _19 = copy _2;
           StorageLive(_20);
-          _20 = copy _2;
-          StorageLive(_21);
-          _21 = copy _3;
--         _19 = Add(move _20, move _21);
-+         _19 = copy _15;
-          StorageDead(_21);
+          _20 = copy _3;
+-         _18 = Add(move _19, move _20);
++         _18 = copy _14;
           StorageDead(_20);
--         _18 = opaque::<u8>(move _19) -> [return: bb6, unwind continue];
-+         _18 = opaque::<u8>(copy _15) -> [return: bb6, unwind continue];
+          StorageDead(_19);
+-         _17 = opaque::<u8>(move _18) -> [return: bb6, unwind continue];
++         _17 = opaque::<u8>(copy _14) -> [return: bb6, unwind continue];
       }
   
       bb6: {
-          StorageDead(_19);
           StorageDead(_18);
-          _4 = const ();
           goto -> bb7;
       }
   
       bb7: {
-          StorageDead(_5);
           StorageDead(_4);
-          StorageLive(_22);
--         StorageLive(_23);
+-         StorageLive(_22);
 +         nop;
+          StorageLive(_23);
+          _23 = copy _2;
           StorageLive(_24);
-          _24 = copy _2;
-          StorageLive(_25);
-          _25 = copy _3;
--         _23 = Add(move _24, move _25);
-+         _23 = Add(copy _2, copy _3);
-          StorageDead(_25);
+          _24 = copy _3;
+-         _22 = Add(move _23, move _24);
++         _22 = Add(copy _2, copy _3);
           StorageDead(_24);
--         _22 = opaque::<u8>(move _23) -> [return: bb8, unwind continue];
-+         _22 = opaque::<u8>(copy _23) -> [return: bb8, unwind continue];
+          StorageDead(_23);
+-         _21 = opaque::<u8>(move _22) -> [return: bb8, unwind continue];
++         _21 = opaque::<u8>(copy _22) -> [return: bb8, unwind continue];
       }
   
       bb8: {
--         StorageDead(_23);
+-         StorageDead(_22);
 +         nop;
-          StorageDead(_22);
-          StorageLive(_26);
-          _26 = copy _1;
--         switchInt(move _26) -> [0: bb11, otherwise: bb9];
+          StorageLive(_25);
+          _25 = copy _1;
+-         switchInt(move _25) -> [0: bb11, otherwise: bb9];
 +         switchInt(copy _1) -> [0: bb11, otherwise: bb9];
       }
   
       bb9: {
           StorageLive(_27);
           StorageLive(_28);
+          _28 = copy _2;
           StorageLive(_29);
-          _29 = copy _2;
-          StorageLive(_30);
-          _30 = copy _3;
--         _28 = Add(move _29, move _30);
-+         _28 = copy _23;
-          StorageDead(_30);
+          _29 = copy _3;
+-         _27 = Add(move _28, move _29);
++         _27 = copy _22;
           StorageDead(_29);
--         _27 = opaque::<u8>(move _28) -> [return: bb10, unwind continue];
-+         _27 = opaque::<u8>(copy _23) -> [return: bb10, unwind continue];
+          StorageDead(_28);
+-         _26 = opaque::<u8>(move _27) -> [return: bb10, unwind continue];
++         _26 = opaque::<u8>(copy _22) -> [return: bb10, unwind continue];
       }
   
       bb10: {
-          StorageDead(_28);
           StorageDead(_27);
-          _0 = const ();
           goto -> bb13;
       }
   
       bb11: {
           StorageLive(_31);
           StorageLive(_32);
+          _32 = copy _2;
           StorageLive(_33);
-          _33 = copy _2;
-          StorageLive(_34);
-          _34 = copy _3;
--         _32 = Add(move _33, move _34);
-+         _32 = copy _23;
-          StorageDead(_34);
+          _33 = copy _3;
+-         _31 = Add(move _32, move _33);
++         _31 = copy _22;
           StorageDead(_33);
--         _31 = opaque::<u8>(move _32) -> [return: bb12, unwind continue];
-+         _31 = opaque::<u8>(copy _23) -> [return: bb12, unwind continue];
+          StorageDead(_32);
+-         _30 = opaque::<u8>(move _31) -> [return: bb12, unwind continue];
++         _30 = opaque::<u8>(copy _22) -> [return: bb12, unwind continue];
       }
   
       bb12: {
-          StorageDead(_32);
           StorageDead(_31);
-          _0 = const ();
           goto -> bb13;
       }
   
       bb13: {
-          StorageDead(_26);
+          StorageDead(_25);
           return;
       }
   }

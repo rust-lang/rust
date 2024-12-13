@@ -33,7 +33,6 @@
       }
   
       bb0: {
-          StorageLive(_2);
           StorageLive(_3);
           StorageLive(_4);
           StorageLive(_5);
@@ -50,7 +49,6 @@
   
       bb1: {
           StorageDead(_3);
-          StorageDead(_2);
 -         StorageLive(_6);
 +         nop;
           StorageLive(_7);
@@ -58,7 +56,6 @@
 -         _6 = Lt(move _7, const 13_i64);
 +         _6 = Lt(copy _1, const 13_i64);
           StorageDead(_7);
-          StorageLive(_8);
           StorageLive(_9);
           StorageLive(_10);
           StorageLive(_11);
@@ -75,8 +72,6 @@
   
       bb2: {
           StorageDead(_9);
-          StorageDead(_8);
-          StorageLive(_12);
 -         StorageLive(_13);
 +         nop;
           StorageLive(_14);
@@ -91,8 +86,6 @@
       bb3: {
 -         StorageDead(_13);
 +         nop;
-          StorageDead(_12);
-          StorageLive(_15);
           StorageLive(_16);
           StorageLive(_17);
           StorageLive(_18);
@@ -109,8 +102,6 @@
   
       bb4: {
           StorageDead(_16);
-          StorageDead(_15);
-          StorageLive(_19);
 -         StorageLive(_20);
 +         nop;
           StorageLive(_21);
@@ -125,8 +116,6 @@
       bb5: {
 -         StorageDead(_20);
 +         nop;
-          StorageDead(_19);
-          StorageLive(_22);
           StorageLive(_23);
           StorageLive(_24);
           StorageLive(_25);
@@ -143,8 +132,6 @@
   
       bb6: {
           StorageDead(_23);
-          StorageDead(_22);
-          _0 = const ();
 -         StorageDead(_6);
 +         nop;
           return;

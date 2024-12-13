@@ -38,7 +38,6 @@
           StorageDead(_8);
           _6 = move _7 as usize (Transmute);
           StorageDead(_7);
-          _0 = const ();
           StorageDead(_6);
           StorageDead(_3);
           return;

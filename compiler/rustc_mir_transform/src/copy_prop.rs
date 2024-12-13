@@ -5,7 +5,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use tracing::{debug, instrument};
 
-use crate::ssa::SsaLocals;
+use crate::ssa::{SsaAnalysis, SsaLocals};
 
 /// Unify locals that copy each other.
 ///
@@ -29,7 +29,11 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
         debug!(def_id = ?body.source.def_id());
 
         let typing_env = body.typing_env(tcx);
-        let ssa = SsaLocals::new(tcx, body, typing_env);
+        let ssa_analysis = match tcx.sess.mir_opt_level() {
+            0 | 1 => SsaAnalysis::Partial,
+            _ => SsaAnalysis::Full,
+        };
+        let ssa = SsaLocals::new(tcx, body, typing_env, ssa_analysis);
 
         let fully_moved = fully_moved_locals(&ssa, body);
         debug!(?fully_moved);

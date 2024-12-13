@@ -35,7 +35,6 @@
       let mut _30: f64;
   
       bb0: {
-          StorageLive(_2);
           StorageLive(_3);
           StorageLive(_4);
           _4 = copy _1;
@@ -47,8 +46,6 @@
   
       bb1: {
           StorageDead(_3);
-          StorageDead(_2);
-          StorageLive(_5);
           StorageLive(_6);
           StorageLive(_7);
           _7 = copy _1;
@@ -60,8 +57,6 @@
   
       bb2: {
           StorageDead(_6);
-          StorageDead(_5);
-          StorageLive(_8);
           StorageLive(_9);
           StorageLive(_10);
           _10 = copy _1;
@@ -73,8 +68,6 @@
   
       bb3: {
           StorageDead(_9);
-          StorageDead(_8);
-          StorageLive(_11);
           StorageLive(_12);
           StorageLive(_13);
           _13 = copy _1;
@@ -86,8 +79,6 @@
   
       bb4: {
           StorageDead(_12);
-          StorageDead(_11);
-          StorageLive(_14);
           StorageLive(_15);
           StorageLive(_16);
           _16 = copy _1;
@@ -99,8 +90,6 @@
   
       bb5: {
           StorageDead(_15);
-          StorageDead(_14);
-          StorageLive(_17);
           StorageLive(_18);
           StorageLive(_19);
           _19 = copy _1;
@@ -112,8 +101,6 @@
   
       bb6: {
           StorageDead(_18);
-          StorageDead(_17);
-          StorageLive(_20);
           StorageLive(_21);
           StorageLive(_22);
           _22 = copy _1;
@@ -125,8 +112,6 @@
   
       bb7: {
           StorageDead(_21);
-          StorageDead(_20);
-          StorageLive(_23);
           StorageLive(_24);
           StorageLive(_25);
           _25 = copy _1;
@@ -141,8 +126,6 @@
   
       bb8: {
           StorageDead(_24);
-          StorageDead(_23);
-          StorageLive(_27);
           StorageLive(_28);
           StorageLive(_29);
           _29 = copy _1;
@@ -157,8 +140,6 @@
   
       bb9: {
           StorageDead(_28);
-          StorageDead(_27);
-          _0 = const ();
           return;
       }
   }

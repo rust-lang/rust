@@ -20,8 +20,9 @@
 -         StorageLive(_2);
 +         nop;
           StorageLive(_3);
-          _3 = &(*_1);
-          _2 = core::slice::<impl [i32]>::as_ptr(move _3) -> [return: bb1, unwind continue];
+          _3 = copy _1;
+-         _2 = core::slice::<impl [i32]>::as_ptr(move _3) -> [return: bb1, unwind continue];
++         _2 = core::slice::<impl [i32]>::as_ptr(copy _1) -> [return: bb1, unwind continue];
       }
   
       bb1: {

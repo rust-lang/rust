@@ -24,10 +24,10 @@
           debug m1 => _5;
           let _7: *const u32;
           scope 2 {
-              debug m2 => _7;
+              debug m2 => _8;
               let _10: *const u32;
               scope 3 {
-                  debug m3 => _10;
+                  debug m3 => _11;
                   let _13: *const u32;
                   scope 4 {
                       debug m4 => _13;
@@ -64,7 +64,7 @@
 -         _8 = move _9 as *const u32 (PtrToPtr);
 +         _8 = copy _2 as *const u32 (PtrToPtr);
           StorageDead(_9);
--         _7 = move _8 as *const u32 (PtrToPtr);
+-         _7 = move _8;
 -         StorageDead(_8);
 +         _7 = copy _8;
 +         nop;
@@ -76,7 +76,7 @@
 -         _11 = move _12 as *const u32 (PtrToPtr);
 +         _11 = copy _3 as *const u32 (PtrToPtr);
           StorageDead(_12);
--         _10 = move _11 as *const u32 (PtrToPtr);
+-         _10 = move _11;
 -         StorageDead(_11);
 -         StorageLive(_13);
 +         _10 = copy _11;
@@ -118,7 +118,6 @@
 +         _21 = Eq(copy _11, copy _13);
           StorageDead(_23);
           StorageDead(_22);
-          _0 = const ();
           StorageDead(_21);
           StorageDead(_18);
           StorageDead(_15);

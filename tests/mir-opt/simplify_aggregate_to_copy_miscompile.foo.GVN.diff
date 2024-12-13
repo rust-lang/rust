@@ -25,9 +25,8 @@
           StorageLive(_4);
           _4 = &_1;
 -         _11 = deref_copy (*_4);
--         _3 = &(*_11);
-+         _11 = copy _1;
-+         _3 = &(*_1);
++         _11 = copy (*_4);
+          _3 = &(*_11);
           _2 = get(move _3) -> [return: bb1, unwind unreachable];
       }
   

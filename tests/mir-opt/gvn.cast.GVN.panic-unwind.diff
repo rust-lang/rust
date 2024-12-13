@@ -113,7 +113,6 @@
 -         StorageLive(_3);
 +         nop;
           _3 = const 1f64;
-          StorageLive(_4);
           StorageLive(_5);
           StorageLive(_6);
 -         _6 = copy _1;
@@ -127,8 +126,6 @@
   
       bb1: {
           StorageDead(_5);
-          StorageDead(_4);
-          StorageLive(_7);
           StorageLive(_8);
           StorageLive(_9);
 -         _9 = copy _1;
@@ -142,8 +139,6 @@
   
       bb2: {
           StorageDead(_8);
-          StorageDead(_7);
-          StorageLive(_10);
           StorageLive(_11);
           StorageLive(_12);
 -         _12 = copy _1;
@@ -157,8 +152,6 @@
   
       bb3: {
           StorageDead(_11);
-          StorageDead(_10);
-          StorageLive(_13);
           StorageLive(_14);
           StorageLive(_15);
 -         _15 = copy _1;
@@ -172,8 +165,6 @@
   
       bb4: {
           StorageDead(_14);
-          StorageDead(_13);
-          StorageLive(_16);
           StorageLive(_17);
           StorageLive(_18);
 -         _18 = copy _1;
@@ -187,8 +178,6 @@
   
       bb5: {
           StorageDead(_17);
-          StorageDead(_16);
-          StorageLive(_19);
           StorageLive(_20);
           StorageLive(_21);
 -         _21 = copy _1;
@@ -202,8 +191,6 @@
   
       bb6: {
           StorageDead(_20);
-          StorageDead(_19);
-          StorageLive(_22);
           StorageLive(_23);
           StorageLive(_24);
 -         _24 = copy _1;
@@ -217,8 +204,6 @@
   
       bb7: {
           StorageDead(_23);
-          StorageDead(_22);
-          StorageLive(_25);
           StorageLive(_26);
 -         _26 = copy _1;
 -         _25 = opaque::<i64>(move _26) -> [return: bb8, unwind continue];
@@ -228,8 +213,6 @@
   
       bb8: {
           StorageDead(_26);
-          StorageDead(_25);
-          StorageLive(_27);
           StorageLive(_28);
           StorageLive(_29);
 -         _29 = copy _1;
@@ -243,8 +226,6 @@
   
       bb9: {
           StorageDead(_28);
-          StorageDead(_27);
-          StorageLive(_30);
           StorageLive(_31);
           StorageLive(_32);
 -         _32 = copy _1;
@@ -258,8 +239,6 @@
   
       bb10: {
           StorageDead(_31);
-          StorageDead(_30);
-          StorageLive(_33);
           StorageLive(_34);
           StorageLive(_35);
 -         _35 = copy _2;
@@ -273,8 +252,6 @@
   
       bb11: {
           StorageDead(_34);
-          StorageDead(_33);
-          StorageLive(_36);
           StorageLive(_37);
           StorageLive(_38);
 -         _38 = copy _2;
@@ -288,8 +265,6 @@
   
       bb12: {
           StorageDead(_37);
-          StorageDead(_36);
-          StorageLive(_39);
           StorageLive(_40);
           StorageLive(_41);
 -         _41 = copy _2;
@@ -303,8 +278,6 @@
   
       bb13: {
           StorageDead(_40);
-          StorageDead(_39);
-          StorageLive(_42);
           StorageLive(_43);
 -         _43 = copy _2;
 -         _42 = opaque::<u64>(move _43) -> [return: bb14, unwind continue];
@@ -314,8 +287,6 @@
   
       bb14: {
           StorageDead(_43);
-          StorageDead(_42);
-          StorageLive(_44);
           StorageLive(_45);
           StorageLive(_46);
 -         _46 = copy _2;
@@ -329,8 +300,6 @@
   
       bb15: {
           StorageDead(_45);
-          StorageDead(_44);
-          StorageLive(_47);
           StorageLive(_48);
           StorageLive(_49);
 -         _49 = copy _2;
@@ -344,8 +313,6 @@
   
       bb16: {
           StorageDead(_48);
-          StorageDead(_47);
-          StorageLive(_50);
           StorageLive(_51);
           StorageLive(_52);
 -         _52 = copy _2;
@@ -359,8 +326,6 @@
   
       bb17: {
           StorageDead(_51);
-          StorageDead(_50);
-          StorageLive(_53);
           StorageLive(_54);
           StorageLive(_55);
 -         _55 = copy _2;
@@ -374,8 +339,6 @@
   
       bb18: {
           StorageDead(_54);
-          StorageDead(_53);
-          StorageLive(_56);
           StorageLive(_57);
           StorageLive(_58);
 -         _58 = copy _2;
@@ -389,8 +352,6 @@
   
       bb19: {
           StorageDead(_57);
-          StorageDead(_56);
-          StorageLive(_59);
           StorageLive(_60);
           StorageLive(_61);
 -         _61 = copy _2;
@@ -404,8 +365,6 @@
   
       bb20: {
           StorageDead(_60);
-          StorageDead(_59);
-          StorageLive(_62);
           StorageLive(_63);
           StorageLive(_64);
 -         _64 = copy _3;
@@ -419,8 +378,6 @@
   
       bb21: {
           StorageDead(_63);
-          StorageDead(_62);
-          StorageLive(_65);
           StorageLive(_66);
           StorageLive(_67);
 -         _67 = copy _3;
@@ -434,8 +391,6 @@
   
       bb22: {
           StorageDead(_66);
-          StorageDead(_65);
-          StorageLive(_68);
           StorageLive(_69);
           StorageLive(_70);
 -         _70 = copy _3;
@@ -449,8 +404,6 @@
   
       bb23: {
           StorageDead(_69);
-          StorageDead(_68);
-          StorageLive(_71);
           StorageLive(_72);
           StorageLive(_73);
 -         _73 = copy _3;
@@ -464,8 +417,6 @@
   
       bb24: {
           StorageDead(_72);
-          StorageDead(_71);
-          StorageLive(_74);
           StorageLive(_75);
           StorageLive(_76);
 -         _76 = copy _3;
@@ -479,8 +430,6 @@
   
       bb25: {
           StorageDead(_75);
-          StorageDead(_74);
-          StorageLive(_77);
           StorageLive(_78);
           StorageLive(_79);
 -         _79 = copy _3;
@@ -494,8 +443,6 @@
   
       bb26: {
           StorageDead(_78);
-          StorageDead(_77);
-          StorageLive(_80);
           StorageLive(_81);
           StorageLive(_82);
 -         _82 = copy _3;
@@ -509,8 +456,6 @@
   
       bb27: {
           StorageDead(_81);
-          StorageDead(_80);
-          StorageLive(_83);
           StorageLive(_84);
           StorageLive(_85);
 -         _85 = copy _3;
@@ -524,8 +469,6 @@
   
       bb28: {
           StorageDead(_84);
-          StorageDead(_83);
-          StorageLive(_86);
           StorageLive(_87);
           StorageLive(_88);
 -         _88 = copy _3;
@@ -539,8 +482,6 @@
   
       bb29: {
           StorageDead(_87);
-          StorageDead(_86);
-          StorageLive(_89);
           StorageLive(_90);
 -         _90 = copy _3;
 -         _89 = opaque::<f64>(move _90) -> [return: bb30, unwind continue];
@@ -550,8 +491,6 @@
   
       bb30: {
           StorageDead(_90);
-          StorageDead(_89);
-          _0 = const ();
 -         StorageDead(_3);
 -         StorageDead(_2);
 -         StorageDead(_1);
