@@ -75,10 +75,10 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
 
     // Encode all filenames referenced by coverage mappings in this CGU.
     let filenames_buffer = global_file_table.make_filenames_buffer(tcx);
-
-    let filenames_size = filenames_buffer.len();
-    let filenames_val = cx.const_bytes(&filenames_buffer);
-    let filenames_ref = llvm_cov::hash_bytes(&filenames_buffer);
+    // The `llvm-cov` tool uses this hash to associate each covfun record with
+    // its corresponding filenames table, since the final binary will typically
+    // contain multiple covmap records from different compilation units.
+    let filenames_hash = llvm_cov::hash_bytes(&filenames_buffer);
 
     let mut unused_function_names = Vec::new();
 
@@ -101,7 +101,7 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
     for covfun in &covfun_records {
         unused_function_names.extend(covfun.mangled_function_name_if_unused());
 
-        covfun::generate_covfun_record(cx, filenames_ref, covfun)
+        covfun::generate_covfun_record(cx, filenames_hash, covfun)
     }
 
     // For unused functions, we need to take their mangled names and store them
@@ -126,7 +126,7 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
     // Generate the coverage map header, which contains the filenames used by
     // this CGU's coverage mappings, and store it in a well-known global.
     // (This is skipped if we returned early due to having no covfun records.)
-    generate_covmap_record(cx, covmap_version, filenames_size, filenames_val);
+    generate_covmap_record(cx, covmap_version, &filenames_buffer);
 }
 
 /// Maps "global" (per-CGU) file ID numbers to their underlying filenames.
@@ -225,38 +225,35 @@ fn span_file_name(tcx: TyCtxt<'_>, span: Span) -> Symbol {
 /// Generates the contents of the covmap record for this CGU, which mostly
 /// consists of a header and a list of filenames. The record is then stored
 /// as a global variable in the `__llvm_covmap` section.
-fn generate_covmap_record<'ll>(
-    cx: &CodegenCx<'ll, '_>,
-    version: u32,
-    filenames_size: usize,
-    filenames_val: &'ll llvm::Value,
-) {
-    debug!("cov map: filenames_size = {}, 0-based version = {}", filenames_size, version);
-
-    // Create the coverage data header (Note, fields 0 and 2 are now always zero,
-    // as of `llvm::coverage::CovMapVersion::Version4`.)
-    let zero_was_n_records_val = cx.const_u32(0);
-    let filenames_size_val = cx.const_u32(filenames_size as u32);
-    let zero_was_coverage_size_val = cx.const_u32(0);
-    let version_val = cx.const_u32(version);
-    let cov_data_header_val = cx.const_struct(
-        &[zero_was_n_records_val, filenames_size_val, zero_was_coverage_size_val, version_val],
-        /*packed=*/ false,
+fn generate_covmap_record<'ll>(cx: &CodegenCx<'ll, '_>, version: u32, filenames_buffer: &[u8]) {
+    // A covmap record consists of four target-endian u32 values, followed by
+    // the encoded filenames table. Two of the header fields are unused in
+    // modern versions of the LLVM coverage mapping format, and are always 0.
+    // <https://llvm.org/docs/CoverageMappingFormat.html#llvm-ir-representation>
+    // See also `src/llvm-project/clang/lib/CodeGen/CoverageMappingGen.cpp`.
+    let covmap_header = cx.const_struct(
+        &[
+            cx.const_u32(0), // (unused)
+            cx.const_u32(filenames_buffer.len() as u32),
+            cx.const_u32(0), // (unused)
+            cx.const_u32(version),
+        ],
+        /* packed */ false,
     );
+    let covmap_record = cx
+        .const_struct(&[covmap_header, cx.const_bytes(filenames_buffer)], /* packed */ false);
 
-    // Create the complete LLVM coverage data value to add to the LLVM IR
-    let covmap_data =
-        cx.const_struct(&[cov_data_header_val, filenames_val], /*packed=*/ false);
-
-    let llglobal = llvm::add_global(cx.llmod, cx.val_ty(covmap_data), &llvm_cov::covmap_var_name());
-    llvm::set_initializer(llglobal, covmap_data);
-    llvm::set_global_constant(llglobal, true);
-    llvm::set_linkage(llglobal, llvm::Linkage::PrivateLinkage);
-    llvm::set_section(llglobal, &llvm_cov::covmap_section_name(cx.llmod));
+    let covmap_global =
+        llvm::add_global(cx.llmod, cx.val_ty(covmap_record), &llvm_cov::covmap_var_name());
+    llvm::set_initializer(covmap_global, covmap_record);
+    llvm::set_global_constant(covmap_global, true);
+    llvm::set_linkage(covmap_global, llvm::Linkage::PrivateLinkage);
+    llvm::set_section(covmap_global, &llvm_cov::covmap_section_name(cx.llmod));
     // LLVM's coverage mapping format specifies 8-byte alignment for items in this section.
     // <https://llvm.org/docs/CoverageMappingFormat.html>
-    llvm::set_alignment(llglobal, Align::EIGHT);
-    cx.add_used_global(llglobal);
+    llvm::set_alignment(covmap_global, Align::EIGHT);
+
+    cx.add_used_global(covmap_global);
 }
 
 /// Each CGU will normally only emit coverage metadata for the functions that it actually generates.
