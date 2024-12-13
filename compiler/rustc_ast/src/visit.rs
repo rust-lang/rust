@@ -380,7 +380,7 @@ impl WalkItemKind for ItemKind {
                 try_visit!(visitor.visit_fn(kind, span, id));
             }
             ItemKind::Mod(_unsafety, mod_kind) => match mod_kind {
-                ModKind::Loaded(items, _inline, _inner_span) => {
+                ModKind::Loaded(items, _inline, _inner_span, _) => {
                     walk_list!(visitor, visit_item, items);
                 }
                 ModKind::Unloaded => {}

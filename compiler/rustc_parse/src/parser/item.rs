@@ -45,7 +45,7 @@ impl<'a> Parser<'a> {
             let (inner_attrs, items, inner_span) =
                 self.parse_mod(&token::CloseDelim(Delimiter::Brace))?;
             attrs.extend(inner_attrs);
-            ModKind::Loaded(items, Inline::Yes, inner_span)
+            ModKind::Loaded(items, Inline::Yes, inner_span, Ok(()))
         };
         Ok((id, ItemKind::Mod(safety, mod_kind)))
     }
