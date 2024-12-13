@@ -2312,6 +2312,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     self.lower_fn_ty(hir_ty.hir_id, bf.safety, bf.abi, bf.decl, None, Some(hir_ty)),
                 )
             }
+            hir::TyKind::UnsafeBinder(_binder) => {
+                let guar = self
+                    .dcx()
+                    .struct_span_err(hir_ty.span, "unsafe binders are not yet implemented")
+                    .emit();
+                Ty::new_error(tcx, guar)
+            }
             hir::TyKind::TraitObject(bounds, lifetime, repr) => {
                 if let Some(guar) = self.prohibit_or_lint_bare_trait_object_ty(hir_ty) {
                     // Don't continue with type analysis if the `dyn` keyword is missing

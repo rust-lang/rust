@@ -329,6 +329,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Assignment does call `drop_in_place`, though, but its safety
                     // requirements are not the same.
                     ExprKind::AddrOf(..) | hir::ExprKind::Field(..) => false,
+
+                    // Place-preserving expressions only constitute reads if their
+                    // parent expression constitutes a read.
+                    ExprKind::Type(..) | ExprKind::UnsafeBinderCast(..) => {
+                        self.expr_guaranteed_to_constitute_read_for_never(expr)
+                    }
+
                     ExprKind::Assign(lhs, _, _) => {
                         // Only the LHS does not constitute a read
                         expr.hir_id != lhs.hir_id
@@ -353,7 +360,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     | ExprKind::Binary(_, _, _)
                     | ExprKind::Unary(_, _)
                     | ExprKind::Cast(_, _)
-                    | ExprKind::Type(_, _)
                     | ExprKind::DropTemps(_)
                     | ExprKind::If(_, _, _)
                     | ExprKind::Closure(_)
@@ -564,7 +570,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_expr_index(base, idx, expr, brackets_span)
             }
             ExprKind::Yield(value, _) => self.check_expr_yield(value, expr),
-            hir::ExprKind::Err(guar) => Ty::new_error(tcx, guar),
+            ExprKind::UnsafeBinderCast(kind, expr, ty) => {
+                self.check_expr_unsafe_binder_cast(kind, expr, ty, expected)
+            }
+            ExprKind::Err(guar) => Ty::new_error(tcx, guar),
         }
     }
 
@@ -1632,6 +1641,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Err(guar) => Ty::new_error(self.tcx, guar),
             }
         }
+    }
+
+    fn check_expr_unsafe_binder_cast(
+        &self,
+        _kind: hir::UnsafeBinderCastKind,
+        expr: &'tcx hir::Expr<'tcx>,
+        _hir_ty: Option<&'tcx hir::Ty<'tcx>>,
+        _expected: Expectation<'tcx>,
+    ) -> Ty<'tcx> {
+        let guar =
+            self.dcx().struct_span_err(expr.span, "unsafe binders are not yet implemented").emit();
+        Ty::new_error(self.tcx, guar)
     }
 
     fn check_expr_array(

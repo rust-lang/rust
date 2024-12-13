@@ -887,6 +887,28 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
                     },
                 )
             }
+            TyKind::UnsafeBinder(unsafe_binder) => {
+                // FIXME(unsafe_binder): Better span
+                let span = ty.span;
+                self.with_generic_param_rib(
+                    &unsafe_binder.generic_params,
+                    RibKind::Normal,
+                    LifetimeRibKind::Generics {
+                        binder: ty.id,
+                        kind: LifetimeBinderKind::BareFnType,
+                        span,
+                    },
+                    |this| {
+                        this.visit_generic_params(&unsafe_binder.generic_params, false);
+                        this.with_lifetime_rib(
+                            // We don't allow anonymous `unsafe &'_ ()` binders,
+                            // although I guess we could.
+                            LifetimeRibKind::AnonymousReportError,
+                            |this| this.visit_ty(&unsafe_binder.inner_ty),
+                        );
+                    },
+                )
+            }
             TyKind::Array(element_ty, length) => {
                 self.visit_ty(element_ty);
                 self.resolve_anon_const(length, AnonConstKind::ConstArg(IsRepeatExpr::No));

@@ -772,6 +772,25 @@ impl<'a> State<'a> {
                 self.word_nbsp("try");
                 self.print_block_with_attrs(blk, attrs)
             }
+            ast::ExprKind::UnsafeBinderCast(kind, expr, ty) => {
+                self.word("builtin # ");
+                match kind {
+                    ast::UnsafeBinderCastKind::Wrap => self.word("wrap_binder"),
+                    ast::UnsafeBinderCastKind::Unwrap => self.word("unwrap_binder"),
+                }
+                self.popen();
+                self.ibox(0);
+                self.print_expr(expr, FixupContext::default());
+
+                if let Some(ty) = ty {
+                    self.word(",");
+                    self.space();
+                    self.print_type(ty);
+                }
+
+                self.end();
+                self.pclose();
+            }
             ast::ExprKind::Err(_) => {
                 self.popen();
                 self.word("/*ERROR*/");

@@ -558,6 +558,11 @@ pub fn walk_ty<T: MutVisitor>(vis: &mut T, ty: &mut P<Ty>) {
             vis.visit_fn_decl(decl);
             vis.visit_span(decl_span);
         }
+        TyKind::UnsafeBinder(binder) => {
+            let UnsafeBinderTy { generic_params, inner_ty } = binder.deref_mut();
+            generic_params.flat_map_in_place(|param| vis.flat_map_generic_param(param));
+            vis.visit_ty(inner_ty);
+        }
         TyKind::Tup(tys) => visit_thin_vec(tys, |ty| vis.visit_ty(ty)),
         TyKind::Paren(ty) => vis.visit_ty(ty),
         TyKind::Pat(ty, pat) => {
@@ -1780,6 +1785,12 @@ pub fn walk_expr<T: MutVisitor>(vis: &mut T, Expr { kind, id, span, attrs, token
         ExprKind::TryBlock(body) => vis.visit_block(body),
         ExprKind::Lit(_token) => {}
         ExprKind::IncludedBytes(_bytes) => {}
+        ExprKind::UnsafeBinderCast(_kind, expr, ty) => {
+            vis.visit_expr(expr);
+            if let Some(ty) = ty {
+                vis.visit_ty(ty);
+            }
+        }
         ExprKind::Err(_guar) => {}
         ExprKind::Dummy => {}
     }

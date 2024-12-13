@@ -819,6 +819,7 @@ impl TyCoercionStability {
                 | TyKind::TraitObject(..)
                 | TyKind::InferDelegation(..)
                 | TyKind::Err(_) => Self::Reborrow,
+                TyKind::UnsafeBinder(..) => Self::None,
             };
         }
     }
