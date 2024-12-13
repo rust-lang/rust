@@ -19,18 +19,6 @@ LL ~     };
    |
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> tests/ui/single_match.rs:23:5
-   |
-LL | /     match x {
-LL | |         // Note the missing block braces.
-LL | |         // We suggest `if let Some(y) = x { .. }` because the macro
-LL | |         // is expanded before we can do anything.
-LL | |         Some(y) => println!("{:?}", y),
-LL | |         _ => (),
-LL | |     }
-   | |_____^ help: try: `if let Some(y) = x { println!("{:?}", y) }`
-
-error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
   --> tests/ui/single_match.rs:32:5
    |
 LL | /     match z {
@@ -279,7 +267,7 @@ LL | /     match CONST_I32 {
 LL | |         CONST_I32 => println!(),
 LL | |         _ => {},
 LL | |     }
-   | |_____^ help: try: `println!()`
+   | |_____^ help: try: `println!();`
 
-error: aborting due to 26 previous errors
+error: aborting due to 25 previous errors
 
