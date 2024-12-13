@@ -77,6 +77,7 @@
 /// your type that should be the default:
 ///
 /// ```
+/// # #![cfg_attr(not(bootstrap), allow(default_could_be_derived))]
 /// # #![allow(dead_code)]
 /// enum Kind {
 ///     A,
@@ -121,6 +122,7 @@ pub trait Default: Sized {
     /// Making your own:
     ///
     /// ```
+    /// # #![cfg_attr(not(bootstrap), allow(default_could_be_derived))]
     /// # #[allow(dead_code)]
     /// enum Kind {
     ///     A,
