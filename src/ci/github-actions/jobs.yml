@@ -335,16 +335,18 @@ auto:
   #  macOS Builders  #
   ####################
 
-  - image: dist-x86_64-apple
+  # XXX(jieyouxu): temporarily change name so we get LLVM assertions...
+  - image: dist-x86_64-apple-alt
     env:
       SCRIPT: ./x.py dist bootstrap --include-default-paths --host=x86_64-apple-darwin --target=x86_64-apple-darwin
       RUST_CONFIGURE_ARGS: --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set rust.lto=thin --set rust.codegen-units=1
       RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
       MACOSX_DEPLOYMENT_TARGET: 10.12
       SELECT_XCODE: /Applications/Xcode_15.2.app
-      NO_LLVM_ASSERTIONS: 1
-      NO_DEBUG_ASSERTIONS: 1
-      NO_OVERFLOW_CHECKS: 1
+      # XXX(jieyouxu): I want assertions
+      #NO_LLVM_ASSERTIONS: 1
+      #NO_DEBUG_ASSERTIONS: 1
+      #NO_OVERFLOW_CHECKS: 1
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-macos-xl
