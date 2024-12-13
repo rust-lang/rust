@@ -258,7 +258,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     && span.desugaring_kind() != Some(DesugaringKind::IndexBoundsCheckReborrow)
                 {
                     // If this was not already raw, it needs retagging.
-                    // Unless it's the `PtrMetadata(&raw const *_n)` from indexing.
+                    // As a special hack, we exclude the desugared `PtrMetadata(&raw const *_n)`
+                    // from indexing. (Really we should not do any retag on `&raw` but that does not
+                    // currently work with Stacked Borrows.)
                     val = M::retag_ptr_value(self, mir::RetagKind::Raw, &val)?;
                 }
                 self.write_immediate(*val, &dest)?;
