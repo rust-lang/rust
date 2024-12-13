@@ -1455,6 +1455,11 @@ fn suggest_ampmut<'tcx>(
         && let Ok(src) = tcx.sess.source_map().span_to_snippet(assignment_rhs_span)
         && let Some(stripped) = src.strip_prefix('&')
     {
+        let is_raw_ref = stripped.trim_start().starts_with("raw ");
+        // We don't support raw refs yet
+        if is_raw_ref {
+            return None;
+        }
         let is_mut = if let Some(rest) = stripped.trim_start().strip_prefix("mut") {
             match rest.chars().next() {
                 // e.g. `&mut x`
