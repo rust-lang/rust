@@ -2,12 +2,15 @@
 
 set -e
 
+echo "Running inside src/ci/run.sh script"
+
 if [ -n "$CI_JOB_NAME" ]; then
   echo "[CI_JOB_NAME=$CI_JOB_NAME]"
 fi
 
 if [ "$NO_CHANGE_USER" = "" ]; then
   if [ "$LOCAL_USER_ID" != "" ]; then
+    echo "Starting with UID: $LOCAL_USER_ID"
     id -u user &>/dev/null || useradd --shell /bin/bash -u $LOCAL_USER_ID -o -c "" -m user
     export HOME=/home/user
     unset LOCAL_USER_ID
@@ -21,6 +24,7 @@ if [ "$NO_CHANGE_USER" = "" ]; then
     # For NO_CHANGE_USER done in the small number of Dockerfiles affected.
     echo -e '[safe]\n\tdirectory = *' > /home/user/.gitconfig
 
+    echo "Switching to user"
     exec su --preserve-environment -c "env PATH=$PATH \"$0\"" user
     echo "whoami: $(whoami)"
   fi
