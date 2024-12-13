@@ -86,17 +86,24 @@ pub(crate) fn compile_codegen_unit(
             let mut cx = CodegenCx::new(tcx, cgu, &llvm_module);
             let mono_items = cx.codegen_unit.items_in_deterministic_order(cx.tcx);
             for &(mono_item, data) in &mono_items {
-                mono_item.predefine::<Builder<'_, '_, '_>>(&cx, data.linkage, data.visibility);
+                mono_item.predefine::<Builder<'_, '_, '_>>(
+                    &cx,
+                    cgu_name.as_str(),
+                    data.linkage,
+                    data.visibility,
+                );
             }
 
             // ... and now that we have everything pre-defined, fill out those definitions.
             for &(mono_item, item_data) in &mono_items {
-                mono_item.define::<Builder<'_, '_, '_>>(&mut cx, item_data);
+                mono_item.define::<Builder<'_, '_, '_>>(&mut cx, cgu_name.as_str(), item_data);
             }
 
             // If this codegen unit contains the main function, also create the
             // wrapper here
-            if let Some(entry) = maybe_create_entry_wrapper::<Builder<'_, '_, '_>>(&cx) {
+            if let Some(entry) =
+                maybe_create_entry_wrapper::<Builder<'_, '_, '_>>(&cx, cx.codegen_unit)
+            {
                 let attrs = attributes::sanitize_attrs(&cx, SanitizerSet::empty());
                 attributes::apply_to_llfn(entry, llvm::AttributePlace::Function, &attrs);
             }
