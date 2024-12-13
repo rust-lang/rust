@@ -66,12 +66,12 @@ impl Direction for Backward {
     {
         let terminator = block_data.terminator();
         let location = Location { block, statement_index: block_data.statements.len() };
-        analysis.apply_before_terminator_effect(state, terminator, location);
-        analysis.apply_terminator_effect(state, terminator, location);
+        analysis.apply_early_terminator_effect(state, terminator, location);
+        analysis.apply_primary_terminator_effect(state, terminator, location);
         for (statement_index, statement) in block_data.statements.iter().enumerate().rev() {
             let location = Location { block, statement_index };
-            analysis.apply_before_statement_effect(state, statement, location);
-            analysis.apply_statement_effect(state, statement, location);
+            analysis.apply_early_statement_effect(state, statement, location);
+            analysis.apply_primary_statement_effect(state, statement, location);
         }
 
         let exit_state = state;
@@ -159,14 +159,14 @@ impl Direction for Backward {
                 let location = Location { block, statement_index: from.statement_index };
                 let terminator = block_data.terminator();
 
-                if from.effect == Effect::Before {
-                    analysis.apply_before_terminator_effect(state, terminator, location);
-                    if to == Effect::Before.at_index(terminator_index) {
+                if from.effect == Effect::Early {
+                    analysis.apply_early_terminator_effect(state, terminator, location);
+                    if to == Effect::Early.at_index(terminator_index) {
                         return;
                     }
                 }
 
-                analysis.apply_terminator_effect(state, terminator, location);
+                analysis.apply_primary_terminator_effect(state, terminator, location);
                 if to == Effect::Primary.at_index(terminator_index) {
                     return;
                 }
@@ -180,7 +180,7 @@ impl Direction for Backward {
                 let location = Location { block, statement_index: from.statement_index };
                 let statement = &block_data.statements[from.statement_index];
 
-                analysis.apply_statement_effect(state, statement, location);
+                analysis.apply_primary_statement_effect(state, statement, location);
                 if to == Effect::Primary.at_index(from.statement_index) {
                     return;
                 }
@@ -188,7 +188,7 @@ impl Direction for Backward {
                 from.statement_index - 1
             }
 
-            Effect::Before => from.statement_index,
+            Effect::Early => from.statement_index,
         };
 
         // Handle all statements between `first_unapplied_idx` and `to.statement_index`.
@@ -196,21 +196,21 @@ impl Direction for Backward {
         for statement_index in (to.statement_index..next_effect).rev().map(|i| i + 1) {
             let location = Location { block, statement_index };
             let statement = &block_data.statements[statement_index];
-            analysis.apply_before_statement_effect(state, statement, location);
-            analysis.apply_statement_effect(state, statement, location);
+            analysis.apply_early_statement_effect(state, statement, location);
+            analysis.apply_primary_statement_effect(state, statement, location);
         }
 
         // Handle the statement at `to`.
 
         let location = Location { block, statement_index: to.statement_index };
         let statement = &block_data.statements[to.statement_index];
-        analysis.apply_before_statement_effect(state, statement, location);
+        analysis.apply_early_statement_effect(state, statement, location);
 
-        if to.effect == Effect::Before {
+        if to.effect == Effect::Early {
             return;
         }
 
-        analysis.apply_statement_effect(state, statement, location);
+        analysis.apply_primary_statement_effect(state, statement, location);
     }
 
     fn visit_results_in_block<'mir, 'tcx, A>(
@@ -228,17 +228,17 @@ impl Direction for Backward {
 
         let loc = Location { block, statement_index: block_data.statements.len() };
         let term = block_data.terminator();
-        results.analysis.apply_before_terminator_effect(state, term, loc);
-        vis.visit_terminator_before_primary_effect(results, state, term, loc);
-        results.analysis.apply_terminator_effect(state, term, loc);
-        vis.visit_terminator_after_primary_effect(results, state, term, loc);
+        results.analysis.apply_early_terminator_effect(state, term, loc);
+        vis.visit_after_early_terminator_effect(results, state, term, loc);
+        results.analysis.apply_primary_terminator_effect(state, term, loc);
+        vis.visit_after_primary_terminator_effect(results, state, term, loc);
 
         for (statement_index, stmt) in block_data.statements.iter().enumerate().rev() {
             let loc = Location { block, statement_index };
-            results.analysis.apply_before_statement_effect(state, stmt, loc);
-            vis.visit_statement_before_primary_effect(results, state, stmt, loc);
-            results.analysis.apply_statement_effect(state, stmt, loc);
-            vis.visit_statement_after_primary_effect(results, state, stmt, loc);
+            results.analysis.apply_early_statement_effect(state, stmt, loc);
+            vis.visit_after_early_statement_effect(results, state, stmt, loc);
+            results.analysis.apply_primary_statement_effect(state, stmt, loc);
+            vis.visit_after_primary_statement_effect(results, state, stmt, loc);
         }
 
         vis.visit_block_start(state);
@@ -294,13 +294,13 @@ impl Direction for Forward {
     {
         for (statement_index, statement) in block_data.statements.iter().enumerate() {
             let location = Location { block, statement_index };
-            analysis.apply_before_statement_effect(state, statement, location);
-            analysis.apply_statement_effect(state, statement, location);
+            analysis.apply_early_statement_effect(state, statement, location);
+            analysis.apply_primary_statement_effect(state, statement, location);
         }
         let terminator = block_data.terminator();
         let location = Location { block, statement_index: block_data.statements.len() };
-        analysis.apply_before_terminator_effect(state, terminator, location);
-        let edges = analysis.apply_terminator_effect(state, terminator, location);
+        analysis.apply_early_terminator_effect(state, terminator, location);
+        let edges = analysis.apply_primary_terminator_effect(state, terminator, location);
 
         let exit_state = state;
         match edges {
@@ -368,21 +368,21 @@ impl Direction for Forward {
         // after effect, do so now and start the loop below from the next statement.
 
         let first_unapplied_index = match from.effect {
-            Effect::Before => from.statement_index,
+            Effect::Early => from.statement_index,
 
             Effect::Primary if from.statement_index == terminator_index => {
                 debug_assert_eq!(from, to);
 
                 let location = Location { block, statement_index: terminator_index };
                 let terminator = block_data.terminator();
-                analysis.apply_terminator_effect(state, terminator, location);
+                analysis.apply_primary_terminator_effect(state, terminator, location);
                 return;
             }
 
             Effect::Primary => {
                 let location = Location { block, statement_index: from.statement_index };
                 let statement = &block_data.statements[from.statement_index];
-                analysis.apply_statement_effect(state, statement, location);
+                analysis.apply_primary_statement_effect(state, statement, location);
 
                 // If we only needed to apply the after effect of the statement at `idx`, we are
                 // done.
@@ -399,8 +399,8 @@ impl Direction for Forward {
         for statement_index in first_unapplied_index..to.statement_index {
             let location = Location { block, statement_index };
             let statement = &block_data.statements[statement_index];
-            analysis.apply_before_statement_effect(state, statement, location);
-            analysis.apply_statement_effect(state, statement, location);
+            analysis.apply_early_statement_effect(state, statement, location);
+            analysis.apply_primary_statement_effect(state, statement, location);
         }
 
         // Handle the statement or terminator at `to`.
@@ -408,17 +408,17 @@ impl Direction for Forward {
         let location = Location { block, statement_index: to.statement_index };
         if to.statement_index == terminator_index {
             let terminator = block_data.terminator();
-            analysis.apply_before_terminator_effect(state, terminator, location);
+            analysis.apply_early_terminator_effect(state, terminator, location);
 
             if to.effect == Effect::Primary {
-                analysis.apply_terminator_effect(state, terminator, location);
+                analysis.apply_primary_terminator_effect(state, terminator, location);
             }
         } else {
             let statement = &block_data.statements[to.statement_index];
-            analysis.apply_before_statement_effect(state, statement, location);
+            analysis.apply_early_statement_effect(state, statement, location);
 
             if to.effect == Effect::Primary {
-                analysis.apply_statement_effect(state, statement, location);
+                analysis.apply_primary_statement_effect(state, statement, location);
             }
         }
     }
@@ -438,18 +438,18 @@ impl Direction for Forward {
 
         for (statement_index, stmt) in block_data.statements.iter().enumerate() {
             let loc = Location { block, statement_index };
-            results.analysis.apply_before_statement_effect(state, stmt, loc);
-            vis.visit_statement_before_primary_effect(results, state, stmt, loc);
-            results.analysis.apply_statement_effect(state, stmt, loc);
-            vis.visit_statement_after_primary_effect(results, state, stmt, loc);
+            results.analysis.apply_early_statement_effect(state, stmt, loc);
+            vis.visit_after_early_statement_effect(results, state, stmt, loc);
+            results.analysis.apply_primary_statement_effect(state, stmt, loc);
+            vis.visit_after_primary_statement_effect(results, state, stmt, loc);
         }
 
         let loc = Location { block, statement_index: block_data.statements.len() };
         let term = block_data.terminator();
-        results.analysis.apply_before_terminator_effect(state, term, loc);
-        vis.visit_terminator_before_primary_effect(results, state, term, loc);
-        results.analysis.apply_terminator_effect(state, term, loc);
-        vis.visit_terminator_after_primary_effect(results, state, term, loc);
+        results.analysis.apply_early_terminator_effect(state, term, loc);
+        vis.visit_after_early_terminator_effect(results, state, term, loc);
+        results.analysis.apply_primary_terminator_effect(state, term, loc);
+        vis.visit_after_primary_terminator_effect(results, state, term, loc);
 
         vis.visit_block_end(state);
     }

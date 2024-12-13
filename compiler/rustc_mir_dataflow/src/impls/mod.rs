@@ -5,7 +5,8 @@ mod storage_liveness;
 
 pub use self::borrowed_locals::{MaybeBorrowedLocals, borrowed_locals};
 pub use self::initialized::{
-    EverInitializedPlaces, MaybeInitializedPlaces, MaybeUninitializedPlaces,
+    EverInitializedPlaces, EverInitializedPlacesDomain, MaybeInitializedPlaces,
+    MaybeUninitializedPlaces, MaybeUninitializedPlacesDomain,
 };
 pub use self::liveness::{
     MaybeLiveLocals, MaybeTransitiveLiveLocals, TransferFunction as LivenessTransferFunction,
