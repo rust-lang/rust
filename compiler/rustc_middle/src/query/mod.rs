@@ -746,7 +746,10 @@ rustc_queries! {
         desc { |tcx| "computing drop-check constraints for `{}`", tcx.def_path_str(key) }
     }
 
-    /// Returns `true` if this is a const fn / const impl.
+    /// Returns the constness of function-like things (tuple struct/variant constructors, functions,
+    /// methods)
+    ///
+    /// Will ICE if used on things that are always const or never const.
     ///
     /// **Do not call this function manually.** It is only meant to cache the base data for the
     /// higher-level functions. Consider using `is_const_fn` or `is_const_trait_impl` instead.

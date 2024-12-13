@@ -389,7 +389,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     .delay_as_bug();
             }
 
-            dtor_candidate = Some((*item_id, self.constness(impl_did)));
+            dtor_candidate = Some((*item_id, self.impl_trait_header(impl_did).unwrap().constness));
         });
 
         let (did, constness) = dtor_candidate?;

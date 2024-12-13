@@ -254,6 +254,7 @@ pub struct ImplTraitHeader<'tcx> {
     pub trait_ref: ty::EarlyBinder<'tcx, ty::TraitRef<'tcx>>,
     pub polarity: ImplPolarity,
     pub safety: hir::Safety,
+    pub constness: hir::Constness,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable)]
@@ -2005,17 +2006,25 @@ impl<'tcx> TyCtxt<'tcx> {
         let def_id: DefId = def_id.into();
         match self.def_kind(def_id) {
             DefKind::Impl { of_trait: true } => {
-                self.constness(def_id) == hir::Constness::Const
-                    && self.is_const_trait(
-                        self.trait_id_of_impl(def_id)
-                            .expect("expected trait for trait implementation"),
-                    )
+                let header = self.impl_trait_header(def_id).unwrap();
+                header.constness == hir::Constness::Const
+                    && self.is_const_trait(header.trait_ref.skip_binder().def_id)
             }
             DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn) => {
                 self.constness(def_id) == hir::Constness::Const
             }
             DefKind::Trait => self.is_const_trait(def_id),
-            DefKind::AssocTy | DefKind::AssocFn => {
+            DefKind::AssocTy => {
+                let parent_def_id = self.parent(def_id);
+                match self.def_kind(parent_def_id) {
+                    DefKind::Impl { of_trait: false } => false,
+                    DefKind::Impl { of_trait: true } | DefKind::Trait => {
+                        self.is_conditionally_const(parent_def_id)
+                    }
+                    _ => bug!("unexpected parent item of associated type: {parent_def_id:?}"),
+                }
+            }
+            DefKind::AssocFn => {
                 let parent_def_id = self.parent(def_id);
                 match self.def_kind(parent_def_id) {
                     DefKind::Impl { of_trait: false } => {
@@ -2024,7 +2033,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     DefKind::Impl { of_trait: true } | DefKind::Trait => {
                         self.is_conditionally_const(parent_def_id)
                     }
-                    _ => bug!("unexpected parent item of associated item: {parent_def_id:?}"),
+                    _ => bug!("unexpected parent item of associated fn: {parent_def_id:?}"),
                 }
             }
             DefKind::OpaqueTy => match self.opaque_ty_origin(def_id) {

@@ -4042,9 +4042,7 @@ impl<'hir> Node<'hir> {
                 _ => None,
             },
             Node::TraitItem(ti) => match ti.kind {
-                TraitItemKind::Fn(ref sig, TraitFn::Provided(_)) => {
-                    Some(FnKind::Method(ti.ident, sig))
-                }
+                TraitItemKind::Fn(ref sig, _) => Some(FnKind::Method(ti.ident, sig)),
                 _ => None,
             },
             Node::ImplItem(ii) => match ii.kind {

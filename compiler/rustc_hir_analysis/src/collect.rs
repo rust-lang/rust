@@ -1611,7 +1611,7 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::ImplTrai
     impl_.of_trait.as_ref().map(|ast_trait_ref| {
         let selfty = tcx.type_of(def_id).instantiate_identity();
 
-        check_impl_constness(tcx, tcx.is_const_trait_impl(def_id.to_def_id()), ast_trait_ref);
+        check_impl_constness(tcx, impl_.constness, ast_trait_ref);
 
         let trait_ref = icx.lowerer().lower_impl_trait_ref(ast_trait_ref, selfty);
 
@@ -1619,22 +1619,23 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::ImplTrai
             trait_ref: ty::EarlyBinder::bind(trait_ref),
             safety: impl_.safety,
             polarity: polarity_of_impl(tcx, def_id, impl_, item.span),
+            constness: impl_.constness,
         }
     })
 }
 
 fn check_impl_constness(
     tcx: TyCtxt<'_>,
-    is_const: bool,
+    constness: hir::Constness,
     hir_trait_ref: &hir::TraitRef<'_>,
-) -> Option<ErrorGuaranteed> {
-    if !is_const {
-        return None;
+) {
+    if let hir::Constness::NotConst = constness {
+        return;
     }
 
-    let trait_def_id = hir_trait_ref.trait_def_id()?;
+    let Some(trait_def_id) = hir_trait_ref.trait_def_id() else { return };
     if tcx.is_const_trait(trait_def_id) {
-        return None;
+        return;
     }
 
     let trait_name = tcx.item_name(trait_def_id).to_string();
@@ -1650,14 +1651,14 @@ fn check_impl_constness(
             ),
             (false, _) | (_, false) => (None, ""),
         };
-    Some(tcx.dcx().emit_err(errors::ConstImplForNonConstTrait {
+    tcx.dcx().emit_err(errors::ConstImplForNonConstTrait {
         trait_ref_span: hir_trait_ref.path.span,
         trait_name,
         local_trait_span,
         suggestion_pre,
         marking: (),
         adding: (),
-    }))
+    });
 }
 
 fn polarity_of_impl(
