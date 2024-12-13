@@ -2,8 +2,8 @@
 
 use rustc_ast::{self as ast, LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit, NodeId};
 use rustc_ast_pretty::pprust;
+use rustc_attr_data_structures::RustcVersion;
 use rustc_feature::{Features, GatedCfg, find_gated_cfg};
-use rustc_session::RustcVersion;
 use rustc_session::Session;
 use rustc_session::config::ExpectedValues;
 use rustc_session::lint::BuiltinLintDiag;
@@ -12,9 +12,8 @@ use rustc_session::parse::feature_err;
 use rustc_span::Span;
 use rustc_span::symbol::{Symbol, kw, sym};
 
-use crate::{fluent_generated, parse_version};
-use crate::session_diagnostics;
 use crate::util::UnsupportedLiteralReason;
+use crate::{fluent_generated, parse_version, session_diagnostics};
 
 #[derive(Clone, Debug)]
 pub struct Condition {
@@ -194,7 +193,7 @@ pub fn eval_condition(
                             sess,
                             sym::cfg_target_compact,
                             cfg.span,
-                            fluent_generated::attr_unstable_cfg_target_compact,
+                            fluent_generated::attr_parsing_unstable_cfg_target_compact,
                         )
                         .emit();
                     }

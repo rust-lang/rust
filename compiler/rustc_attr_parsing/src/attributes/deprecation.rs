@@ -1,16 +1,16 @@
 //! Parsing and validation of builtin attributes
 
 use rustc_ast::attr::AttributeExt;
-use rustc_ast::{MetaItemInner, MetaItem};
+use rustc_ast::{MetaItem, MetaItemInner};
 use rustc_ast_pretty::pprust;
+use rustc_attr_data_structures::{DeprecatedSince, Deprecation};
 use rustc_feature::Features;
-use crate::types::{DeprecatedSince, Deprecation};
 use rustc_session::Session;
 use rustc_span::Span;
 use rustc_span::symbol::{Symbol, sym};
-use crate::{parse_version, session_diagnostics};
 
 use super::util::UnsupportedLiteralReason;
+use crate::{parse_version, session_diagnostics};
 
 /// Finds the deprecation attribute. `None` if none exists.
 pub fn find_deprecation(

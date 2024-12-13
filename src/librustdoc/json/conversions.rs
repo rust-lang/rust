@@ -6,7 +6,7 @@
 
 use rustc_abi::ExternAbi;
 use rustc_ast::ast;
-use rustc_attr::DeprecatedSince;
+use rustc_attr_parsing::DeprecatedSince;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::DefId;
 use rustc_metadata::rendered_const;
@@ -215,8 +215,8 @@ where
     }
 }
 
-pub(crate) fn from_deprecation(deprecation: rustc_attr::Deprecation) -> Deprecation {
-    let rustc_attr::Deprecation { since, note, suggestion: _ } = deprecation;
+pub(crate) fn from_deprecation(deprecation: rustc_attr_parsing::Deprecation) -> Deprecation {
+    let rustc_attr_parsing::Deprecation { since, note, suggestion: _ } = deprecation;
     let since = match since {
         DeprecatedSince::RustcVersion(version) => Some(version.to_string()),
         DeprecatedSince::Future => Some("TBD".to_owned()),

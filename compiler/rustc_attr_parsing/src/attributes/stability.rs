@@ -2,20 +2,20 @@
 
 use std::num::NonZero;
 
-use rustc_ast::attr::AttributeExt;
 use rustc_ast::MetaItem;
+use rustc_ast::attr::AttributeExt;
 use rustc_ast_pretty::pprust;
-use rustc_errors::ErrorGuaranteed;
-use crate::types::{
-    ConstStability, DefaultBodyStability,
-    Stability, StabilityLevel, StableSince, UnstableReason, VERSION_PLACEHOLDER,
+use rustc_attr_data_structures::{
+    ConstStability, DefaultBodyStability, Stability, StabilityLevel, StableSince, UnstableReason,
+    VERSION_PLACEHOLDER,
 };
+use rustc_errors::ErrorGuaranteed;
 use rustc_session::Session;
 use rustc_span::Span;
 use rustc_span::symbol::{Symbol, sym};
 
-use crate::{parse_version, session_diagnostics};
 use crate::attributes::util::UnsupportedLiteralReason;
+use crate::{parse_version, session_diagnostics};
 
 /// Collects stability info from `stable`/`unstable`/`rustc_allowed_through_unstable_modules`
 /// attributes in `attrs`. Returns `None` if no stability attributes are found.

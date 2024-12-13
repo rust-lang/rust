@@ -10,7 +10,7 @@ use rustc_ast::token::Nonterminal;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind};
-use rustc_attr::{self as attr, Deprecation, Stability};
+use rustc_attr_parsing::{self as attr, Deprecation, Stability};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, PResult};
@@ -848,7 +848,7 @@ impl SyntaxExtension {
         is_local: bool,
     ) -> SyntaxExtension {
         let allow_internal_unstable =
-            rustc_attr::allow_internal_unstable(sess, attrs).collect::<Vec<Symbol>>();
+            rustc_attr_parsing::allow_internal_unstable(sess, attrs).collect::<Vec<Symbol>>();
 
         let allow_internal_unsafe = ast::attr::contains_name(attrs, sym::allow_internal_unsafe);
         let local_inner_macros = ast::attr::find_by_name(attrs, sym::macro_export)

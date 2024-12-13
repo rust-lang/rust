@@ -4,7 +4,7 @@
 use std::num::NonZero;
 
 use rustc_ast::NodeId;
-use rustc_attr::{
+use rustc_attr_parsing::{
     self as attr, ConstStability, DefaultBodyStability, DeprecatedSince, Deprecation, Stability,
 };
 use rustc_data_structures::unord::UnordMap;

@@ -1,5 +1,5 @@
 use rustc_abi::Align;
-use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr};
+use rustc_attr_parsing::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::SanitizerSet;

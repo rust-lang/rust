@@ -1,6 +1,7 @@
 use rustc_ast::attr::AttributeExt;
-use crate::types::TransparencyError;
-use rustc_span::{hygiene::Transparency, sym};
+use rustc_attr_data_structures::TransparencyError;
+use rustc_span::hygiene::Transparency;
+use rustc_span::sym;
 
 pub fn find_transparency(
     attrs: &[impl AttributeExt],

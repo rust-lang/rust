@@ -453,7 +453,7 @@ pub fn build_output_filenames(attrs: &[ast::Attribute], sess: &Session) -> Outpu
         .opts
         .crate_name
         .clone()
-        .or_else(|| rustc_attr::find_crate_name(attrs).map(|n| n.to_string()));
+        .or_else(|| rustc_attr_parsing::find_crate_name(attrs).map(|n| n.to_string()));
 
     match sess.io.output_file {
         None => {

@@ -7,7 +7,7 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::PResult;
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
 use rustc_span::Span;
-use {rustc_ast as ast, rustc_attr as attr};
+use {rustc_ast as ast, rustc_attr_parsing as attr};
 
 use crate::errors;
 

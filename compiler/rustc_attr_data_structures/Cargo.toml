@@ -1,5 +1,5 @@
 [package]
-name = "rustc_attr"
+name = "rustc_attr_data_structures"
 version = "0.0.0"
 edition = "2021"
 

@@ -3,14 +3,13 @@
 use rustc_abi::Align;
 use rustc_ast::attr::AttributeExt;
 use rustc_ast::{self as ast, MetaItemKind};
-use crate::types::{
-    IntType, ReprAttr::*,
-};
-use crate::ReprAttr;
+use rustc_attr_data_structures::IntType;
+use rustc_attr_data_structures::ReprAttr::*;
 use rustc_session::Session;
 use rustc_span::symbol::{Symbol, sym};
-use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
 
+use crate::ReprAttr;
+use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
 
 /// Parse #[repr(...)] forms.
 ///
@@ -177,7 +176,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &impl AttributeExt) -> Vec<ReprAttr
 }
 
 fn int_type_of_word(s: Symbol) -> Option<IntType> {
-    use crate::types::IntType::*;
+    use rustc_attr_data_structures::IntType::*;
 
     match s {
         sym::i8 => Some(SignedInt(ast::IntTy::I8)),

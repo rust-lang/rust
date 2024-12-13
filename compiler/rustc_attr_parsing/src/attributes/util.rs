@@ -1,6 +1,6 @@
 use rustc_ast::attr::{AttributeExt, first_attr_value_str_by_name};
+use rustc_attr_data_structures::RustcVersion;
 use rustc_feature::is_builtin_attr_name;
-use rustc_session::RustcVersion;
 use rustc_span::symbol::{Symbol, sym};
 
 pub(crate) enum UnsupportedLiteralReason {

@@ -40,7 +40,7 @@ use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Span};
 use rustc_target::spec::{PanicStrategy, TargetTuple};
 use table::TableBuilder;
-use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
+use {rustc_ast as ast, rustc_attr_parsing as attr, rustc_hir as hir};
 
 use crate::creader::CrateMetadataRef;
 

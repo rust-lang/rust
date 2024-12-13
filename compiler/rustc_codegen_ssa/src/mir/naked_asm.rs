@@ -1,4 +1,4 @@
-use rustc_attr::InstructionSetAttr;
+use rustc_attr_parsing::InstructionSetAttr;
 use rustc_middle::mir::mono::{Linkage, MonoItem, MonoItemData, Visibility};
 use rustc_middle::mir::{Body, InlineAsmOperand};
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf};

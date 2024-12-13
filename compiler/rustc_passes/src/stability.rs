@@ -4,7 +4,7 @@
 use std::mem::replace;
 use std::num::NonZero;
 
-use rustc_attr::{
+use rustc_attr_parsing::{
     self as attr, ConstStability, DeprecatedSince, Stability, StabilityLevel, StableSince,
     UnstableReason, VERSION_PLACEHOLDER,
 };

@@ -12,7 +12,7 @@ use rustc_ast::{
     self as ast, AssocItem, AssocItemKind, Block, ForeignItem, ForeignItemKind, Impl, Item,
     ItemKind, MetaItemKind, NodeId, StmtKind,
 };
-use rustc_attr as attr;
+use rustc_attr_parsing as attr;
 use rustc_data_structures::sync::Lrc;
 use rustc_expand::base::ResolverExpand;
 use rustc_expand::expand::AstFragment;

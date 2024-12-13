@@ -41,7 +41,7 @@ use rustc_span::Span;
 use rustc_span::hygiene::Transparency;
 use rustc_span::symbol::{Ident, kw, sym};
 use tracing::debug;
-use {rustc_attr as attr, rustc_hir as hir};
+use {rustc_attr_parsing as attr, rustc_hir as hir};
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 

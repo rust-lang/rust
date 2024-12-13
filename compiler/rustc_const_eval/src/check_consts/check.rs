@@ -6,7 +6,7 @@ use std::mem;
 use std::num::NonZero;
 use std::ops::Deref;
 
-use rustc_attr::{ConstStability, StabilityLevel};
+use rustc_attr_parsing::{ConstStability, StabilityLevel};
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
