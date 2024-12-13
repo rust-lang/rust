@@ -2589,6 +2589,11 @@ pub mod sym {
 }
 
 impl Symbol {
+    /// Don't use this unless you're doing something very loose and heuristic-y.
+    pub fn is_any_keyword(self) -> bool {
+        self >= kw::As && self <= kw::Yeet
+    }
+
     fn is_special(self) -> bool {
         self <= kw::Underscore
     }
@@ -2645,6 +2650,11 @@ impl Symbol {
 }
 
 impl Ident {
+    /// Don't use this unless you're doing something very loose and heuristic-y.
+    pub fn is_any_keyword(self) -> bool {
+        self.name.is_any_keyword()
+    }
+
     /// Returns `true` for reserved identifiers used internally for elided lifetimes,
     /// unnamed method parameters, crate root module, error recovery etc.
     pub fn is_special(self) -> bool {

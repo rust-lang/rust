@@ -815,8 +815,8 @@ impl<'a> Parser<'a> {
 
             // Otherwise, check the previous token with all the keywords as possible candidates.
             // This handles code like `Struct Human;` and `While a < b {}`.
-            // We check the previous token only when the current token is an identifier to avoid false
-            // positives like suggesting keyword `for` for `extern crate foo {}`.
+            // We check the previous token only when the current token is an identifier to avoid
+            // false positives like suggesting keyword `for` for `extern crate foo {}`.
             if let Some(misspelled_kw) = find_similar_kw(prev_ident, &all_keywords) {
                 err.subdiagnostic(misspelled_kw);
                 // We don't want other suggestions to be added as they are most likely meaningless
