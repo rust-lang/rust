@@ -45,7 +45,7 @@ impl<'tcx> CovfunRecord<'tcx> {
 
 pub(crate) fn prepare_covfun_record<'tcx>(
     tcx: TyCtxt<'tcx>,
-    global_file_table: &GlobalFileTable,
+    global_file_table: &mut GlobalFileTable,
     instance: Instance<'tcx>,
     function_coverage: &FunctionCoverage<'tcx>,
 ) -> Option<CovfunRecord<'tcx>> {
@@ -75,7 +75,7 @@ pub(crate) fn prepare_covfun_record<'tcx>(
 /// Populates the mapping region tables in the current function's covfun record.
 fn fill_region_tables<'tcx>(
     tcx: TyCtxt<'tcx>,
-    global_file_table: &GlobalFileTable,
+    global_file_table: &mut GlobalFileTable,
     function_coverage: &FunctionCoverage<'tcx>,
     covfun: &mut CovfunRecord<'tcx>,
 ) {

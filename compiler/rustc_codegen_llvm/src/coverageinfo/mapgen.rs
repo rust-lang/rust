@@ -1,6 +1,6 @@
 use std::iter;
 
-use itertools::Itertools as _;
+use itertools::Itertools;
 use rustc_abi::Align;
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, ConstCodegenMethods, StaticCodegenMethods,
@@ -8,8 +8,8 @@ use rustc_codegen_ssa::traits::{
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::IndexVec;
+use rustc_middle::mir;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_middle::{bug, mir};
 use rustc_session::RemapFileNameExt;
 use rustc_session::config::RemapPathScopeComponents;
 use rustc_span::def_id::DefIdSet;
@@ -67,25 +67,21 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
         return;
     }
 
-    let all_file_names = function_coverage_map
-        .iter()
-        .map(|(_, fn_cov)| fn_cov.function_coverage_info.body_span)
-        .map(|span| span_file_name(tcx, span));
-    let global_file_table = GlobalFileTable::new(all_file_names);
-
-    // Encode all filenames referenced by coverage mappings in this CGU.
-    let filenames_buffer = global_file_table.make_filenames_buffer(tcx);
-    // The `llvm-cov` tool uses this hash to associate each covfun record with
-    // its corresponding filenames table, since the final binary will typically
-    // contain multiple covmap records from different compilation units.
-    let filenames_hash = llvm_cov::hash_bytes(&filenames_buffer);
-
-    let mut unused_function_names = Vec::new();
+    // The order of entries in this global file table needs to be deterministic,
+    // and ideally should also be independent of the details of stable-hashing,
+    // because coverage tests snapshots (`.cov-map`) can observe the order and
+    // would need to be re-blessed if it changes. As long as those requirements
+    // are satisfied, the order can be arbitrary.
+    let mut global_file_table = GlobalFileTable::new();
 
     let covfun_records = function_coverage_map
         .into_iter()
+        // Sort by symbol name, so that the global file table is built in an
+        // order that doesn't depend on the stable-hash-based order in which
+        // instances were visited during codegen.
+        .sorted_by_cached_key(|&(instance, _)| tcx.symbol_name(instance).name)
         .filter_map(|(instance, function_coverage)| {
-            prepare_covfun_record(tcx, &global_file_table, instance, &function_coverage)
+            prepare_covfun_record(tcx, &mut global_file_table, instance, &function_coverage)
         })
         .collect::<Vec<_>>();
 
@@ -97,6 +93,15 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
     if covfun_records.is_empty() {
         return;
     }
+
+    // Encode all filenames referenced by coverage mappings in this CGU.
+    let filenames_buffer = global_file_table.make_filenames_buffer(tcx);
+    // The `llvm-cov` tool uses this hash to associate each covfun record with
+    // its corresponding filenames table, since the final binary will typically
+    // contain multiple covmap records from different compilation units.
+    let filenames_hash = llvm_cov::hash_bytes(&filenames_buffer);
+
+    let mut unused_function_names = vec![];
 
     for covfun in &covfun_records {
         unused_function_names.extend(covfun.mangled_function_name_if_unused());
@@ -137,22 +142,13 @@ struct GlobalFileTable {
 }
 
 impl GlobalFileTable {
-    fn new(all_file_names: impl IntoIterator<Item = Symbol>) -> Self {
-        // Collect all of the filenames into a set. Filenames usually come in
-        // contiguous runs, so we can dedup adjacent ones to save work.
-        let mut raw_file_table = all_file_names.into_iter().dedup().collect::<FxIndexSet<Symbol>>();
-
-        // Sort the file table by its actual string values, not the arbitrary
-        // ordering of its symbols.
-        raw_file_table.sort_unstable_by(|a, b| a.as_str().cmp(b.as_str()));
-
-        Self { raw_file_table }
+    fn new() -> Self {
+        Self { raw_file_table: FxIndexSet::default() }
     }
 
-    fn global_file_id_for_file_name(&self, file_name: Symbol) -> GlobalFileId {
-        let raw_id = self.raw_file_table.get_index_of(&file_name).unwrap_or_else(|| {
-            bug!("file name not found in prepared global file table: {file_name}");
-        });
+    fn global_file_id_for_file_name(&mut self, file_name: Symbol) -> GlobalFileId {
+        // Ensure the given file has a table entry, and get its index.
+        let (raw_id, _) = self.raw_file_table.insert_full(file_name);
         // The raw file table doesn't include an entry for the working dir
         // (which has ID 0), so add 1 to get the correct ID.
         GlobalFileId::from_usize(raw_id + 1)
