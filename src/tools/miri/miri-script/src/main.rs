@@ -6,7 +6,7 @@ mod util;
 
 use std::ops::Range;
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result, anyhow, bail};
 use clap::{Parser, Subcommand};
 
 /// Parses a seed range
@@ -144,7 +144,7 @@ impl Command {
                 Ok(())
             }
             Self::Bench { .. } | Self::RustcPull { .. } | Self::RustcPush { .. } =>
-                Err(anyhow::Error::msg("unexpected \"--\" found in arguments")),
+                bail!("unexpected \"--\" found in arguments"),
         }
     }
 }
@@ -156,8 +156,8 @@ pub struct Cli {
 }
 
 fn main() -> Result<()> {
-    /// Split the arguments into the part before the `--` and the part after.
-    /// The `--` itself ends up in the second part.
+    // Split the arguments into the part before the `--` and the part after.
+    // The `--` itself ends up in the second part.
     let miri_args: Vec<_> = std::env::args().take_while(|x| *x != "--").collect();
     let remainder: Vec<_> = std::env::args().skip_while(|x| *x != "--").collect();
 
