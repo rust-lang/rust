@@ -88,6 +88,7 @@ symbols! {
         Dyn:                "dyn", // >= 2018 Edition only
 
         // Edition-specific keywords that are used in unstable Rust or reserved for future use.
+        Gen:                "gen", // >= 2024 Edition only
         Try:                "try", // >= 2018 Edition only
 
         // Special lifetime names
@@ -99,7 +100,6 @@ symbols! {
         Builtin:            "builtin",
         Catch:              "catch",
         Default:            "default",
-        Gen:                "gen",
         MacroRules:         "macro_rules",
         Raw:                "raw",
         Reuse:              "reuse",
@@ -2611,8 +2611,8 @@ impl Symbol {
     }
 
     fn is_unused_keyword_conditional(self, edition: impl Copy + FnOnce() -> Edition) -> bool {
-        self == kw::Try && edition().at_least_rust_2018()
-            || self == kw::Gen && edition().at_least_rust_2024()
+        self == kw::Gen && edition().at_least_rust_2024()
+            || self == kw::Try && edition().at_least_rust_2018()
     }
 
     pub fn is_reserved(self, edition: impl Copy + FnOnce() -> Edition) -> bool {
