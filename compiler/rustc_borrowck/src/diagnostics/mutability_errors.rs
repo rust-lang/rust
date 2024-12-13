@@ -1150,7 +1150,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         None
                     }
                     None => {
-                        let (has_sugg, decl_span, sugg) = if name != kw::SelfLower {
+                        if name != kw::SelfLower {
                             suggest_ampmut(
                                 self.infcx.tcx,
                                 local_decl.ty,
@@ -1165,7 +1165,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                     ..
                                 })) => {
                                     let sugg = suggest_ampmut_self(self.infcx.tcx, decl_span);
-                                    (true, decl_span, sugg)
+                                    Some((true, decl_span, sugg, None))
                                 }
                                 // explicit self (eg `self: &'a Self`)
                                 _ => suggest_ampmut(
@@ -1176,8 +1176,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                     opt_ty_info,
                                 ),
                             }
-                        };
-                        Some((has_sugg, decl_span, sugg, None))
+                        }
                     }
                 }
             }
@@ -1443,7 +1442,7 @@ fn suggest_ampmut<'tcx>(
     decl_span: Span,
     opt_assignment_rhs_span: Option<Span>,
     opt_ty_info: Option<Span>,
-) -> (bool, Span, String) {
+) -> Option<(bool, Span, String, Option<(Span, String)>)> {
     // if there is a RHS and it starts with a `&` from it, then check if it is
     // mutable, and if not, put suggest putting `mut ` to make it mutable.
     // we don't have to worry about lifetime annotations here because they are
@@ -1479,7 +1478,7 @@ fn suggest_ampmut<'tcx>(
 
             // FIXME(Ezrashaw): returning is bad because we still might want to
             // update the annotated type, see #106857.
-            return (true, span, "mut ".to_owned());
+            return Some((true, span, "mut ".to_owned(), None));
         }
     }
 
@@ -1504,18 +1503,18 @@ fn suggest_ampmut<'tcx>(
         && let Some(ws_pos) = src.find(char::is_whitespace)
     {
         let span = span.with_lo(span.lo() + BytePos(ws_pos as u32)).shrink_to_lo();
-        (true, span, " mut".to_owned())
+        Some((true, span, " mut".to_owned(), None))
     // if there is already a binding, we modify it to be `mut`
     } else if binding_exists {
         // shrink the span to just after the `&` in `&variable`
         let span = span.with_lo(span.lo() + BytePos(1)).shrink_to_lo();
-        (true, span, "mut ".to_owned())
+        Some((true, span, "mut ".to_owned(), None))
     } else {
         // otherwise, suggest that the user annotates the binding; we provide the
         // type of the local.
         let ty = decl_ty.builtin_deref(true).unwrap();
 
-        (false, span, format!("{}mut {}", if decl_ty.is_ref() { "&" } else { "*" }, ty))
+        Some((false, span, format!("{}mut {}", if decl_ty.is_ref() { "&" } else { "*" }, ty), None))
     }
 }
 
