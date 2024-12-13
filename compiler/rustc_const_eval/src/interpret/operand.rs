@@ -297,6 +297,7 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
 
     #[inline]
     pub fn from_bool(b: bool, tcx: TyCtxt<'tcx>) -> Self {
+        // Can use any typing env, since `bool` is always monomorphic.
         let layout = tcx
             .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(tcx.types.bool))
             .unwrap();
@@ -305,17 +306,18 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
 
     #[inline]
     pub fn from_ordering(c: std::cmp::Ordering, tcx: TyCtxt<'tcx>) -> Self {
+        // Can use any typing env, since `Ordering` is always monomorphic.
         let ty = tcx.ty_ordering_enum(None);
         let layout =
             tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty)).unwrap();
         Self::from_scalar(Scalar::from_i8(c as i8), layout)
     }
 
-    pub fn from_pair(a: Self, b: Self, tcx: TyCtxt<'tcx>) -> Self {
-        let layout = tcx
+    pub fn from_pair(a: Self, b: Self, cx: &(impl HasTypingEnv<'tcx> + HasTyCtxt<'tcx>)) -> Self {
+        let layout = cx
+            .tcx()
             .layout_of(
-                ty::TypingEnv::fully_monomorphized()
-                    .as_query_input(Ty::new_tup(tcx, &[a.layout.ty, b.layout.ty])),
+                cx.typing_env().as_query_input(Ty::new_tup(cx.tcx(), &[a.layout.ty, b.layout.ty])),
             )
             .unwrap();
         Self::from_scalar_pair(a.to_scalar(), b.to_scalar(), layout)

@@ -156,7 +156,8 @@ fn never_loop_expr<'tcx>(
         | ExprKind::Field(e, _)
         | ExprKind::AddrOf(_, _, e)
         | ExprKind::Repeat(e, _)
-        | ExprKind::DropTemps(e) => never_loop_expr(cx, e, local_labels, main_loop_id),
+        | ExprKind::DropTemps(e)
+        | ExprKind::UnsafeBinderCast(_, e, _) => never_loop_expr(cx, e, local_labels, main_loop_id),
         ExprKind::Let(let_expr) => never_loop_expr(cx, let_expr.init, local_labels, main_loop_id),
         ExprKind::Array(es) | ExprKind::Tup(es) => never_loop_expr_all(cx, es.iter(), local_labels, main_loop_id),
         ExprKind::MethodCall(_, receiver, es, _) => {

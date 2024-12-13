@@ -623,6 +623,9 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 kind!("DropTemps({expr})");
                 self.expr(expr);
             },
+            ExprKind::UnsafeBinderCast(..) => {
+                unimplemented!("unsafe binders are not implemented yet");
+            }
         }
     }
 

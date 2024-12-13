@@ -186,6 +186,7 @@ impl CheckInlineAssembly {
             | ExprKind::Lit(..)
             | ExprKind::Cast(..)
             | ExprKind::Type(..)
+            | ExprKind::UnsafeBinderCast(..)
             | ExprKind::Loop(..)
             | ExprKind::Match(..)
             | ExprKind::If(..)

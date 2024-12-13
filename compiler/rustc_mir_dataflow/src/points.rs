@@ -125,7 +125,7 @@ where
     A: Analysis<'tcx, Domain = BitSet<N>>,
     N: Idx,
 {
-    fn visit_statement_after_primary_effect(
+    fn visit_after_primary_statement_effect(
         &mut self,
         _results: &mut Results<'tcx, A>,
         state: &A::Domain,
@@ -139,7 +139,7 @@ where
         });
     }
 
-    fn visit_terminator_after_primary_effect(
+    fn visit_after_primary_terminator_effect(
         &mut self,
         _results: &mut Results<'tcx, A>,
         state: &A::Domain,

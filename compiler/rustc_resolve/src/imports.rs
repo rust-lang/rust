@@ -670,9 +670,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn throw_unresolved_import_error(
         &mut self,
-        errors: Vec<(Import<'_>, UnresolvedImportError)>,
+        mut errors: Vec<(Import<'_>, UnresolvedImportError)>,
         glob_error: bool,
     ) {
+        errors.retain(|(_import, err)| match err.module {
+            // Skip `use` errors for `use foo::Bar;` if `foo.rs` has unrecovered parse errors.
+            Some(def_id) if self.mods_with_parse_errors.contains(&def_id) => false,
+            _ => true,
+        });
         if errors.is_empty() {
             return;
         }
@@ -898,6 +903,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 label,
                 suggestion,
                 module,
+                error_implied_by_parse_error: _,
             } => {
                 if no_ambiguity {
                     assert!(import.imported_module.get().is_none());

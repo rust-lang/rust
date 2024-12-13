@@ -45,7 +45,7 @@ use rustc_errors::registry::Registry;
 use rustc_errors::{ColorConfig, DiagCtxt, ErrCode, FatalError, PResult, markdown};
 use rustc_feature::find_gated_cfg;
 use rustc_interface::util::{self, get_codegen_backend};
-use rustc_interface::{Linker, Queries, interface, passes};
+use rustc_interface::{Linker, interface, passes};
 use rustc_lint::unerased_lint_store;
 use rustc_metadata::creader::MetadataLoader;
 use rustc_metadata::locator;
@@ -158,13 +158,10 @@ pub trait Callbacks {
     /// Called after parsing the crate root. Submodules are not yet parsed when
     /// this callback is called. Return value instructs the compiler whether to
     /// continue the compilation afterwards (defaults to `Compilation::Continue`)
-    #[deprecated = "This callback will likely be removed or stop giving access \
-                    to the TyCtxt in the future. Use either the after_expansion \
-                    or the after_analysis callback instead."]
-    fn after_crate_root_parsing<'tcx>(
+    fn after_crate_root_parsing(
         &mut self,
         _compiler: &interface::Compiler,
-        _queries: &'tcx Queries<'tcx>,
+        _queries: &ast::Crate,
     ) -> Compilation {
         Compilation::Continue
     }
@@ -173,7 +170,7 @@ pub trait Callbacks {
     fn after_expansion<'tcx>(
         &mut self,
         _compiler: &interface::Compiler,
-        _queries: &'tcx Queries<'tcx>,
+        _tcx: TyCtxt<'tcx>,
     ) -> Compilation {
         Compilation::Continue
     }
@@ -416,8 +413,9 @@ fn run_compiler(
                 return early_exit();
             }
 
-            #[allow(deprecated)]
-            if callbacks.after_crate_root_parsing(compiler, queries) == Compilation::Stop {
+            if callbacks.after_crate_root_parsing(compiler, &*queries.parse().borrow())
+                == Compilation::Stop
+            {
                 return early_exit();
             }
 
@@ -425,18 +423,18 @@ fn run_compiler(
                 return early_exit();
             }
 
-            // Make sure name resolution and macro expansion is run.
-            queries.global_ctxt().enter(|tcx| tcx.resolver_for_lowering());
-
-            if let Some(metrics_dir) = &sess.opts.unstable_opts.metrics_dir {
-                queries.global_ctxt().enter(|tcxt| dump_feature_usage_metrics(tcxt, metrics_dir));
-            }
-
-            if callbacks.after_expansion(compiler, queries) == Compilation::Stop {
-                return early_exit();
-            }
-
             queries.global_ctxt().enter(|tcx| {
+                // Make sure name resolution and macro expansion is run.
+                let _ = tcx.resolver_for_lowering();
+
+                if let Some(metrics_dir) = &sess.opts.unstable_opts.metrics_dir {
+                    dump_feature_usage_metrics(tcx, metrics_dir);
+                }
+
+                if callbacks.after_expansion(compiler, tcx) == Compilation::Stop {
+                    return early_exit();
+                }
+
                 passes::write_dep_info(tcx);
 
                 if sess.opts.output_types.contains_key(&OutputType::DepInfo)

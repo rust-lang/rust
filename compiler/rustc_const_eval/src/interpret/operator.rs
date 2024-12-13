@@ -222,7 +222,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let res = ImmTy::from_scalar_int(result, left.layout);
                 return interp_ok(if with_overflow {
                     let overflow = ImmTy::from_bool(overflow, *self.tcx);
-                    ImmTy::from_pair(res, overflow, *self.tcx)
+                    ImmTy::from_pair(res, overflow, self)
                 } else {
                     res
                 });
@@ -279,7 +279,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let res = ImmTy::from_scalar_int(result, left.layout);
                 if with_overflow {
                     let overflow = ImmTy::from_bool(overflow, *self.tcx);
-                    ImmTy::from_pair(res, overflow, *self.tcx)
+                    ImmTy::from_pair(res, overflow, self)
                 } else {
                     res
                 }

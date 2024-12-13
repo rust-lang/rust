@@ -915,6 +915,11 @@ impl<'tcx> Cx<'tcx> {
                     }
                 }
             }
+
+            hir::ExprKind::UnsafeBinderCast(_kind, _source, _ty) => {
+                unreachable!("unsafe binders are not yet implemented")
+            }
+
             hir::ExprKind::DropTemps(source) => ExprKind::Use { source: self.mirror_expr(source) },
             hir::ExprKind::Array(fields) => ExprKind::Array { fields: self.mirror_exprs(fields) },
             hir::ExprKind::Tup(fields) => ExprKind::Tuple { fields: self.mirror_exprs(fields) },
