@@ -156,7 +156,7 @@ pub enum AnEnum {
     WithVariants { and: usize, sub: usize, variants: usize },
 }
 
-#[doc(keyword = "auto")]
+#[doc(keyword = "for")]
 /// Some keyword.
 pub mod keyword {}
 
