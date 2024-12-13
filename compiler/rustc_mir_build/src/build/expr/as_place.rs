@@ -11,7 +11,7 @@ use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, AdtDef, CanonicalUserTypeAnnotation, Ty, Variance};
 use rustc_middle::{bug, span_bug};
-use rustc_span::Span;
+use rustc_span::{DesugaringKind, Span};
 use tracing::{debug, instrument, trace};
 
 use crate::build::ForGuard::{OutsideGuard, RefWithinGuard};
@@ -668,11 +668,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // the MIR we're building here needs to pass NLL later.
                     Operand::Copy(Place::from(place.local))
                 } else {
+                    let len_span = self.tcx.with_stable_hashing_context(|hcx| {
+                        let span = source_info.span;
+                        span.mark_with_reason(
+                            None,
+                            DesugaringKind::IndexBoundsCheckReborrow,
+                            span.edition(),
+                            hcx,
+                        )
+                    });
                     let ptr_ty = Ty::new_imm_ptr(self.tcx, place_ty);
                     let slice_ptr = self.temp(ptr_ty, span);
                     self.cfg.push_assign(
                         block,
-                        source_info,
+                        SourceInfo { span: len_span, ..source_info },
                         slice_ptr,
                         Rvalue::RawPtr(Mutability::Not, place),
                     );
