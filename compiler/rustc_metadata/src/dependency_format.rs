@@ -229,7 +229,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
     // static libraries.
     //
     // If the crate hasn't been included yet and it's not actually required
-    // (e.g., it's an allocator) then we skip it here as well.
+    // (e.g., it's a panic runtime) then we skip it here as well.
     for &cnum in tcx.crates(()).iter() {
         let src = tcx.used_crate_source(cnum);
         if src.dylib.is_none()
@@ -247,8 +247,7 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
     // artifact which means that we may need to inject dependencies of some
     // form.
     //
-    // Things like allocators and panic runtimes may not have been activated
-    // quite yet, so do so here.
+    // Things like panic runtimes may not have been activated quite yet, so do so here.
     activate_injected_dep(CStore::from_tcx(tcx).injected_panic_runtime(), &mut ret, &|cnum| {
         tcx.is_panic_runtime(cnum)
     });
@@ -355,9 +354,9 @@ fn attempt_static(tcx: TyCtxt<'_>, unavailable: &mut Vec<CrateNum>) -> Option<De
         );
     }
 
-    // Our allocator/panic runtime may not have been linked above if it wasn't
-    // explicitly linked, which is the case for any injected dependency. Handle
-    // that here and activate them.
+    // Our panic runtime may not have been linked above if it wasn't explicitly
+    // linked, which is the case for any injected dependency. Handle that here
+    // and activate it.
     activate_injected_dep(CStore::from_tcx(tcx).injected_panic_runtime(), &mut ret, &|cnum| {
         tcx.is_panic_runtime(cnum)
     });
@@ -393,8 +392,8 @@ fn activate_injected_dep(
     }
 }
 
-// After the linkage for a crate has been determined we need to verify that
-// there's only going to be one allocator in the output.
+/// After the linkage for a crate has been determined we need to verify that
+/// there's only going to be one panic runtime in the output.
 fn verify_ok(tcx: TyCtxt<'_>, list: &DependencyList) {
     let sess = &tcx.sess;
     if list.is_empty() {
