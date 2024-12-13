@@ -6,7 +6,7 @@
 use std::cell::Cell;
 use std::{iter, slice};
 
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::sync;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Diag, LintDiagnostic, MultiSpan};
@@ -509,6 +509,7 @@ pub struct LateContext<'tcx> {
 pub struct EarlyContext<'a> {
     pub builder: LintLevelsBuilder<'a, crate::levels::TopDown>,
     pub buffered: LintBuffer,
+    pub necessary_parens: Option<&'a FxHashSet<Span>>,
 }
 
 impl EarlyContext<'_> {
@@ -636,6 +637,7 @@ impl<'a> EarlyContext<'a> {
         lint_store: &'a LintStore,
         registered_tools: &'a RegisteredTools,
         buffered: LintBuffer,
+        necessary_parens: Option<&'a FxHashSet<Span>>,
     ) -> EarlyContext<'a> {
         EarlyContext {
             builder: LintLevelsBuilder::new(
@@ -646,6 +648,7 @@ impl<'a> EarlyContext<'a> {
                 registered_tools,
             ),
             buffered,
+            necessary_parens,
         }
     }
 }

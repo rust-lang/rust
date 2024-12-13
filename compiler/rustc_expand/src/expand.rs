@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::{iter, mem};
@@ -594,6 +594,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 cx: self.cx,
                 invocations: Vec::new(),
                 monotonic: self.monotonic,
+                expr_under_let_init_else: false,
             };
             fragment.mut_visit_with(&mut collector);
             fragment.add_placeholders(extra_placeholders);
@@ -1771,6 +1772,7 @@ struct InvocationCollector<'a, 'b> {
     cx: &'a mut ExtCtxt<'b>,
     invocations: Vec<(Invocation, Option<Lrc<SyntaxExtension>>)>,
     monotonic: bool,
+    expr_under_let_init_else: bool,
 }
 
 impl<'a, 'b> InvocationCollector<'a, 'b> {
@@ -2167,6 +2169,35 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         self.flat_map_node(node)
     }
 
+    fn visit_local(&mut self, local: &mut P<rustc_ast::Local>) {
+        let ast::Local { id, pat, ty, kind, span, colon_sp, attrs, tokens } = local.deref_mut();
+        self.visit_id(id);
+        for attr in attrs.iter_mut() {
+            self.visit_attribute(attr);
+        }
+        self.visit_pat(pat);
+        if let Some(ty) = ty {
+            self.visit_ty(ty);
+        }
+        match kind {
+            ast::LocalKind::Decl => {}
+            ast::LocalKind::Init(init) => {
+                self.visit_expr(init);
+            }
+            ast::LocalKind::InitElse(init, els) => {
+                self.expr_under_let_init_else = true;
+                self.visit_expr(init);
+                self.expr_under_let_init_else = false;
+                self.visit_block(els);
+            }
+        }
+        visit_lazy_tts(self, tokens);
+        if let Some(sp) = colon_sp {
+            self.visit_span(sp);
+        }
+        self.visit_span(span);
+    }
+
     fn visit_crate(&mut self, node: &mut ast::Crate) {
         self.visit_node(node)
     }
@@ -2180,6 +2211,13 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     }
 
     fn visit_expr(&mut self, node: &mut P<ast::Expr>) {
+        if self.expr_under_let_init_else
+            && let ast::ExprKind::Paren(paren) = &node.kind
+            && let ast::ExprKind::MacCall(mac) = &paren.kind
+            && mac.args.delim == Delimiter::Brace
+        {
+            self.cx.resolver.add_necessary_parens(node.span);
+        }
         // FIXME: Feature gating is performed inconsistently between `Expr` and `OptExpr`.
         if let Some(attr) = node.attrs.first() {
             self.cfg().maybe_emit_expr_attr_err(attr);
