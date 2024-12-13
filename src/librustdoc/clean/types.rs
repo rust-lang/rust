@@ -668,14 +668,25 @@ impl Item {
                 ty::Asyncness::Yes => hir::IsAsync::Async(DUMMY_SP),
                 ty::Asyncness::No => hir::IsAsync::NotAsync,
             };
-            hir::FnHeader { safety: sig.safety().into(), abi: sig.abi(), constness, asyncness }
+            hir::FnHeader {
+                safety: if tcx.codegen_fn_attrs(def_id).safe_target_features {
+                    hir::HeaderSafety::SafeTargetFeatures
+                } else {
+                    sig.safety().into()
+                },
+                abi: sig.abi(),
+                constness,
+                asyncness,
+            }
         }
         let header = match self.kind {
             ItemKind::ForeignFunctionItem(_, safety) => {
                 let def_id = self.def_id().unwrap();
                 let abi = tcx.fn_sig(def_id).skip_binder().abi();
                 hir::FnHeader {
-                    safety: if abi == ExternAbi::RustIntrinsic {
+                    safety: if tcx.codegen_fn_attrs(def_id).safe_target_features {
+                        hir::HeaderSafety::SafeTargetFeatures
+                    } else if abi == ExternAbi::RustIntrinsic {
                         intrinsic_operation_unsafety(tcx, def_id.expect_local()).into()
                     } else {
                         safety.into()

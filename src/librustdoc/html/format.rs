@@ -1640,6 +1640,7 @@ impl PrintWithSpace for hir::Safety {
 impl PrintWithSpace for hir::HeaderSafety {
     fn print_with_space(&self) -> &str {
         match self {
+            hir::HeaderSafety::SafeTargetFeatures => "",
             hir::HeaderSafety::Normal(safety) => safety.print_with_space(),
         }
     }

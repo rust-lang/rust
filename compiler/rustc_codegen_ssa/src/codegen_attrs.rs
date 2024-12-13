@@ -250,10 +250,14 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 }
             }
             sym::target_feature => {
-                if !tcx.is_closure_like(did.to_def_id())
-                    && let Some(fn_sig) = fn_sig()
-                    && fn_sig.skip_binder().safety().is_safe()
-                {
+                let Some(sig) = tcx.hir_node_by_def_id(did).fn_sig() else {
+                    tcx.dcx().span_delayed_bug(attr.span, "target_feature applied to non-fn");
+                    continue;
+                };
+                let safe_target_features =
+                    matches!(sig.header.safety, hir::HeaderSafety::SafeTargetFeatures);
+                codegen_fn_attrs.safe_target_features = safe_target_features;
+                if safe_target_features {
                     if tcx.sess.target.is_like_wasm || tcx.sess.opts.actually_rustdoc {
                         // The `#[target_feature]` attribute is allowed on
                         // WebAssembly targets on all functions, including safe
