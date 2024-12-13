@@ -1,4 +1,4 @@
-#![crate_name="foo"]
+#![crate_name = "foo"]
 
 pub struct TyCtxt;
 pub struct DefId;
