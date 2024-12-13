@@ -1,43 +1,23 @@
-error: use of unstable library feature `test`: `bench` is a part of custom test frameworks which are unstable
+error[E0658]: use of unstable library feature `test`: `bench` is a part of custom test frameworks which are unstable
   --> $DIR/bench.rs:3:3
    |
 LL | #[bench]
    |   ^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
-   = note: `#[deny(soft_unstable)]` on by default
+   = note: see issue #50297 <https://github.com/rust-lang/rust/issues/50297> for more information
+   = help: add `#![feature(test)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: use of unstable library feature `test`: `bench` is a part of custom test frameworks which are unstable
-  --> $DIR/bench.rs:7:5
+error[E0658]: use of unstable library feature `test`: `bench` is a part of custom test frameworks which are unstable
+  --> $DIR/bench.rs:6:5
    |
 LL | use bench as _;
    |     ^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+   = note: see issue #50297 <https://github.com/rust-lang/rust/issues/50297> for more information
+   = help: add `#![feature(test)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 2 previous errors
 
-Future incompatibility report: Future breakage diagnostic:
-error: use of unstable library feature `test`: `bench` is a part of custom test frameworks which are unstable
-  --> $DIR/bench.rs:3:3
-   |
-LL | #[bench]
-   |   ^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
-   = note: `#[deny(soft_unstable)]` on by default
-
-Future breakage diagnostic:
-error: use of unstable library feature `test`: `bench` is a part of custom test frameworks which are unstable
-  --> $DIR/bench.rs:7:5
-   |
-LL | use bench as _;
-   |     ^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
-   = note: `#[deny(soft_unstable)]` on by default
-
+For more information about this error, try `rustc --explain E0658`.
