@@ -26,6 +26,9 @@ LL |     Quux.avx_bmi2();
 error[E0133]: call to function `avx_bmi2` with `#[target_feature]` is unsafe and requires unsafe function or block
   --> $DIR/safe-calls.rs:38:5
    |
+LL | fn bar() {
+   | -------- items do not inherit unsafety from separate enclosing items
+LL |     sse2();
 LL |     avx_bmi2();
    |     ^^^^^^^^^^ call to function with `#[target_feature]`
    |
@@ -34,6 +37,9 @@ LL |     avx_bmi2();
 error[E0133]: call to function `Quux::avx_bmi2` with `#[target_feature]` is unsafe and requires unsafe function or block
   --> $DIR/safe-calls.rs:40:5
    |
+LL | fn bar() {
+   | -------- items do not inherit unsafety from separate enclosing items
+...
 LL |     Quux.avx_bmi2();
    |     ^^^^^^^^^^^^^^^ call to function with `#[target_feature]`
    |
@@ -42,6 +48,9 @@ LL |     Quux.avx_bmi2();
 error[E0133]: call to function `avx_bmi2` with `#[target_feature]` is unsafe and requires unsafe function or block
   --> $DIR/safe-calls.rs:47:5
    |
+LL | fn baz() {
+   | -------- items do not inherit unsafety from separate enclosing items
+LL |     sse2();
 LL |     avx_bmi2();
    |     ^^^^^^^^^^ call to function with `#[target_feature]`
    |
@@ -50,6 +59,9 @@ LL |     avx_bmi2();
 error[E0133]: call to function `Quux::avx_bmi2` with `#[target_feature]` is unsafe and requires unsafe function or block
   --> $DIR/safe-calls.rs:49:5
    |
+LL | fn baz() {
+   | -------- items do not inherit unsafety from separate enclosing items
+...
 LL |     Quux.avx_bmi2();
    |     ^^^^^^^^^^^^^^^ call to function with `#[target_feature]`
    |

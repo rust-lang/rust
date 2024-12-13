@@ -2424,6 +2424,10 @@ impl<'a> State<'a> {
         self.print_constness(header.constness);
 
         let safety = match header.safety {
+            hir::HeaderSafety::SafeTargetFeatures => {
+                self.word_nbsp("#[target_feature]");
+                hir::Safety::Safe
+            }
             hir::HeaderSafety::Normal(safety) => safety,
         };
 
