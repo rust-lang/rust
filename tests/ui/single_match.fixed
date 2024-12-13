@@ -303,6 +303,10 @@ fn issue11365() {
     if let Some(A | B) = &Some(A) { println!() }
 }
 
+fn issue12758(s: &[u8]) {
+    if &s[0..3] == b"foo" { println!() }
+}
+
 #[derive(Eq, PartialEq)]
 pub struct Data([u8; 4]);
 
