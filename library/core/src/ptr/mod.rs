@@ -200,7 +200,7 @@
 //!
 //! But it *is* still sound to:
 //!
-//! * Create a pointer without provenance from just an address (see [`ptr::dangling`]). Such a
+//! * Create a pointer without provenance from just an address (see [`without_provenance`]). Such a
 //!   pointer cannot be used for memory accesses (except for zero-sized accesses). This can still be
 //!   useful for sentinel values like `null` *or* to represent a tagged pointer that will never be
 //!   dereferenceable. In general, it is always sound for an integer to pretend to be a pointer "for
@@ -314,8 +314,8 @@
 //! }
 //! ```
 //!
-//! (Yes, if you've been using AtomicUsize for pointers in concurrent datastructures, you should
-//! be using AtomicPtr instead. If that messes up the way you atomically manipulate pointers,
+//! (Yes, if you've been using [`AtomicUsize`] for pointers in concurrent datastructures, you should
+//! be using [`AtomicPtr`] instead. If that messes up the way you atomically manipulate pointers,
 //! we would like to know why, and what needs to be done to fix it.)
 //!
 //! Situations where a valid pointer *must* be created from just an address, such as baremetal code
@@ -381,7 +381,8 @@
 //! [`with_addr`]: pointer::with_addr
 //! [`map_addr`]: pointer::map_addr
 //! [`addr`]: pointer::addr
-//! [`ptr::dangling`]: core::ptr::dangling
+//! [`AtomicUsize`]: crate::sync::atomic::AtomicUsize
+//! [`AtomicPtr`]: crate::sync::atomic::AtomicPtr
 //! [`expose_provenance`]: pointer::expose_provenance
 //! [`with_exposed_provenance`]: with_exposed_provenance
 //! [Miri]: https://github.com/rust-lang/miri
