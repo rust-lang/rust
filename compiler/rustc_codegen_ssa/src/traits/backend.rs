@@ -21,12 +21,12 @@ use crate::back::write::TargetMachineFactoryFn;
 use crate::{CodegenResults, ModuleCodegen, TargetConfig};
 
 pub trait BackendTypes {
-    type Value: CodegenObject;
+    type Value: CodegenObject + PartialEq;
     type Metadata: CodegenObject;
     type Function: CodegenObject;
 
     type BasicBlock: Copy;
-    type Type: CodegenObject;
+    type Type: CodegenObject + PartialEq;
     type Funclet;
 
     // FIXME(eddyb) find a common convention for all of the debuginfo-related
