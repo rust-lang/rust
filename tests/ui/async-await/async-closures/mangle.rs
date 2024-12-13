@@ -5,8 +5,6 @@
 //@[v0] compile-flags: -Csymbol-mangling-version=v0
 //@[legacy] compile-flags: -Csymbol-mangling-version=legacy -Zunstable-options
 
-#![feature(async_closure)]
-
 extern crate block_on;
 
 use std::future::Future;

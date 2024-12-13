@@ -1587,15 +1587,6 @@ impl<T: ?Sized> *mut T {
     /// beyond the allocation that the pointer points into. It is up to the caller to ensure that
     /// the returned offset is correct in all terms other than alignment.
     ///
-    /// When this is called during compile-time evaluation (which is unstable), the implementation
-    /// may return `usize::MAX` in cases where that can never happen at runtime. This is because the
-    /// actual alignment of pointers is not known yet during compile-time, so an offset with
-    /// guaranteed alignment can sometimes not be computed. For example, a buffer declared as `[u8;
-    /// N]` might be allocated at an odd or an even address, but at compile-time this is not yet
-    /// known, so the execution has to be correct for either choice. It is therefore impossible to
-    /// find an offset that is guaranteed to be 2-aligned. (This behavior is subject to change, as usual
-    /// for unstable APIs.)
-    ///
     /// # Panics
     ///
     /// The function panics if `align` is not a power-of-two.

@@ -1,8 +1,6 @@
 //@ build-fail
 //@ edition: 2021
 
-#![feature(async_closure)]
-
 use std::future::Future;
 use std::pin::pin;
 use std::task::*;

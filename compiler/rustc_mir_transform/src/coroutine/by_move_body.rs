@@ -3,8 +3,6 @@
 //!
 //! Consider an async closure like:
 //! ```rust
-//! #![feature(async_closure)]
-//!
 //! let x = vec![1, 2, 3];
 //!
 //! let closure = async move || {

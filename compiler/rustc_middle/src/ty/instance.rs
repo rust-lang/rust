@@ -677,23 +677,26 @@ impl<'tcx> Instance<'tcx> {
                 //
                 // 1) The underlying method expects a caller location parameter
                 // in the ABI
-                if resolved.def.requires_caller_location(tcx)
-                        // 2) The caller location parameter comes from having `#[track_caller]`
-                        // on the implementation, and *not* on the trait method.
-                        && !tcx.should_inherit_track_caller(def)
-                        // If the method implementation comes from the trait definition itself
-                        // (e.g. `trait Foo { #[track_caller] my_fn() { /* impl */ } }`),
-                        // then we don't need to generate a shim. This check is needed because
-                        // `should_inherit_track_caller` returns `false` if our method
-                        // implementation comes from the trait block, and not an impl block
-                        && !matches!(
-                            tcx.opt_associated_item(def),
-                            Some(ty::AssocItem {
-                                container: ty::AssocItemContainer::Trait,
-                                ..
-                            })
-                        )
-                {
+                let needs_track_caller_shim = resolved.def.requires_caller_location(tcx)
+                    // 2) The caller location parameter comes from having `#[track_caller]`
+                    // on the implementation, and *not* on the trait method.
+                    && !tcx.should_inherit_track_caller(def)
+                    // If the method implementation comes from the trait definition itself
+                    // (e.g. `trait Foo { #[track_caller] my_fn() { /* impl */ } }`),
+                    // then we don't need to generate a shim. This check is needed because
+                    // `should_inherit_track_caller` returns `false` if our method
+                    // implementation comes from the trait block, and not an impl block
+                    && !matches!(
+                        tcx.opt_associated_item(def),
+                        Some(ty::AssocItem {
+                            container: ty::AssocItemContainer::Trait,
+                            ..
+                        })
+                    );
+                // We also need to generate a shim if this is an AFIT.
+                let needs_rpitit_shim =
+                    tcx.return_position_impl_trait_in_trait_shim_data(def).is_some();
+                if needs_track_caller_shim || needs_rpitit_shim {
                     if tcx.is_closure_like(def) {
                         debug!(
                             " => vtable fn pointer created for closure with #[track_caller]: {:?} for method {:?} {:?}",

@@ -178,3 +178,8 @@ cfg_if::cfg_if! {
 #[cfg(target_os = "hurd")]
 #[link(name = "gcc_s")]
 extern "C" {}
+
+#[cfg(all(target_os = "windows", target_env = "gnu", target_abi = "llvm"))]
+#[link(name = "unwind", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
+#[link(name = "unwind", cfg(not(target_feature = "crt-static")))]
+extern "C" {}

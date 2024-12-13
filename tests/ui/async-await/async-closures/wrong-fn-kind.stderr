@@ -1,5 +1,5 @@
 error[E0525]: expected a closure that implements the `AsyncFn` trait, but this closure only implements `AsyncFnOnce`
-  --> $DIR/wrong-fn-kind.rs:17:20
+  --> $DIR/wrong-fn-kind.rs:15:20
    |
 LL |       needs_async_fn(move || async move {
    |       -------------- -^^^^^^
@@ -14,13 +14,13 @@ LL | |     });
    | |_____- the requirement to implement `AsyncFn` derives from here
    |
 note: required by a bound in `needs_async_fn`
-  --> $DIR/wrong-fn-kind.rs:5:27
+  --> $DIR/wrong-fn-kind.rs:3:27
    |
 LL | fn needs_async_fn(_: impl AsyncFn()) {}
    |                           ^^^^^^^^^ required by this bound in `needs_async_fn`
 
 error[E0596]: cannot borrow `x` as mutable, as it is a captured variable in a `Fn` closure
-  --> $DIR/wrong-fn-kind.rs:9:20
+  --> $DIR/wrong-fn-kind.rs:7:20
    |
 LL | fn needs_async_fn(_: impl AsyncFn()) {}
    |                      -------------- change this to accept `FnMut` instead of `Fn`

@@ -611,6 +611,8 @@ const HEXAGON_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] =
     &[/*(512, "hvx-length64b"),*/ (1024, "hvx-length128b")];
 const MIPS_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(128, "msa")];
 const CSKY_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(128, "vdspv1")];
+const LOONGARCH_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] =
+    &[(128, "lsx"), (256, "lasx")];
 
 impl super::spec::Target {
     pub fn rust_target_features(&self) -> &'static [(&'static str, Stability, ImpliedFeatures)] {
@@ -638,7 +640,7 @@ impl super::spec::Target {
             "aarch64" | "arm64ec" => AARCH64_FEATURES_FOR_CORRECT_VECTOR_ABI,
             "arm" => ARM_FEATURES_FOR_CORRECT_VECTOR_ABI,
             "powerpc" | "powerpc64" => POWERPC_FEATURES_FOR_CORRECT_VECTOR_ABI,
-            "loongarch64" => &[], // on-stack ABI, so we complain about all by-val vectors
+            "loongarch64" => LOONGARCH_FEATURES_FOR_CORRECT_VECTOR_ABI,
             "riscv32" | "riscv64" => RISCV_FEATURES_FOR_CORRECT_VECTOR_ABI,
             "wasm32" | "wasm64" => WASM_FEATURES_FOR_CORRECT_VECTOR_ABI,
             "s390x" => S390X_FEATURES_FOR_CORRECT_VECTOR_ABI,

@@ -79,12 +79,6 @@ pub(crate) struct ProbeContext<'a, 'tcx> {
     /// used for error reporting
     static_candidates: RefCell<Vec<CandidateSource>>,
 
-    /// Collects near misses when trait bounds for type parameters are unsatisfied and is only used
-    /// for error reporting
-    unsatisfied_predicates: RefCell<
-        Vec<(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>, Option<ObligationCause<'tcx>>)>,
-    >,
-
     scope_expr_id: HirId,
 
     /// Is this probe being done for a diagnostic? This will skip some error reporting
@@ -109,7 +103,7 @@ pub(crate) struct Candidate<'tcx> {
 
 #[derive(Debug, Clone)]
 pub(crate) enum CandidateKind<'tcx> {
-    InherentImplCandidate(DefId),
+    InherentImplCandidate { impl_def_id: DefId, receiver_steps: usize },
     ObjectCandidate(ty::PolyTraitRef<'tcx>),
     TraitCandidate(ty::PolyTraitRef<'tcx>),
     WhereClauseCandidate(ty::PolyTraitRef<'tcx>),
@@ -162,6 +156,52 @@ impl AutorefOrPtrAdjustment {
     }
 }
 
+/// Extra information required only for error reporting.
+#[derive(Debug)]
+struct PickDiagHints<'a, 'tcx> {
+    /// Unstable candidates alongside the stable ones.
+    unstable_candidates: Option<Vec<(Candidate<'tcx>, Symbol)>>,
+
+    /// Collects near misses when trait bounds for type parameters are unsatisfied and is only used
+    /// for error reporting
+    unsatisfied_predicates: &'a mut Vec<(
+        ty::Predicate<'tcx>,
+        Option<ty::Predicate<'tcx>>,
+        Option<ObligationCause<'tcx>>,
+    )>,
+}
+
+/// Criteria to apply when searching for a given Pick. This is used during
+/// the search for potentially shadowed methods to ensure we don't search
+/// more candidates than strictly necessary.
+#[derive(Debug)]
+struct PickConstraintsForShadowed {
+    autoderefs: usize,
+    receiver_steps: Option<usize>,
+    def_id: DefId,
+}
+
+impl PickConstraintsForShadowed {
+    fn may_shadow_based_on_autoderefs(&self, autoderefs: usize) -> bool {
+        autoderefs == self.autoderefs
+    }
+
+    fn candidate_may_shadow(&self, candidate: &Candidate<'_>) -> bool {
+        // An item never shadows itself
+        candidate.item.def_id != self.def_id
+            // and we're only concerned about inherent impls doing the shadowing.
+            // Shadowing can only occur if the shadowed is further along
+            // the Receiver dereferencing chain than the shadowed.
+            && match candidate.kind {
+                CandidateKind::InherentImplCandidate { receiver_steps, .. } => match self.receiver_steps {
+                    Some(shadowed_receiver_steps) => receiver_steps > shadowed_receiver_steps,
+                    _ => false
+                },
+                _ => false
+            }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct Pick<'tcx> {
     pub item: ty::AssocItem,
@@ -181,6 +221,11 @@ pub(crate) struct Pick<'tcx> {
 
     /// Unstable candidates alongside the stable ones.
     unstable_candidates: Vec<(Candidate<'tcx>, Symbol)>,
+
+    /// Number of jumps along the `Receiver::Target` chain we followed
+    /// to identify this method. Used only for deshadowing errors.
+    /// Only applies for inherent impls.
+    pub receiver_steps: Option<usize>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -366,6 +411,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         autoderefs: 0,
                         from_unsafe_deref: false,
                         unsize: false,
+                        reachable_via_deref: true,
                     }]),
                     opt_bad_ty: None,
                     reached_recursion_limit: false,
@@ -516,47 +562,93 @@ fn method_autoderef_steps<'tcx>(
     let (ref infcx, goal, inference_vars) = tcx.infer_ctxt().build_with_canonical(DUMMY_SP, &goal);
     let ParamEnvAnd { param_env, value: self_ty } = goal;
 
-    let mut autoderef =
+    // If arbitrary self types is not enabled, we follow the chain of
+    // `Deref<Target=T>`. If arbitrary self types is enabled, we instead
+    // follow the chain of `Receiver<Target=T>`, but we also record whether
+    // such types are reachable by following the (potentially shorter)
+    // chain of `Deref<Target=T>`. We will use the first list when finding
+    // potentially relevant function implementations (e.g. relevant impl blocks)
+    // but the second list when determining types that the receiver may be
+    // converted to, in order to find out which of those methods might actually
+    // be callable.
+    let mut autoderef_via_deref =
         Autoderef::new(infcx, param_env, hir::def_id::CRATE_DEF_ID, DUMMY_SP, self_ty)
             .include_raw_pointers()
             .silence_errors();
-    let mut reached_raw_pointer = false;
-    let mut steps: Vec<_> = autoderef
-        .by_ref()
-        .map(|(ty, d)| {
-            let step = CandidateStep {
-                self_ty: infcx.make_query_response_ignoring_pending_obligations(inference_vars, ty),
-                autoderefs: d,
-                from_unsafe_deref: reached_raw_pointer,
-                unsize: false,
-            };
-            if let ty::RawPtr(_, _) = ty.kind() {
-                // all the subsequent steps will be from_unsafe_deref
-                reached_raw_pointer = true;
-            }
-            step
-        })
-        .collect();
 
-    let final_ty = autoderef.final_ty(true);
+    let mut reached_raw_pointer = false;
+    let arbitrary_self_types_enabled =
+        tcx.features().arbitrary_self_types() || tcx.features().arbitrary_self_types_pointers();
+    let (mut steps, reached_recursion_limit): (Vec<_>, bool) = if arbitrary_self_types_enabled {
+        let reachable_via_deref =
+            autoderef_via_deref.by_ref().map(|_| true).chain(std::iter::repeat(false));
+
+        let mut autoderef_via_receiver =
+            Autoderef::new(infcx, param_env, hir::def_id::CRATE_DEF_ID, DUMMY_SP, self_ty)
+                .include_raw_pointers()
+                .use_receiver_trait()
+                .silence_errors();
+        let steps = autoderef_via_receiver
+            .by_ref()
+            .zip(reachable_via_deref)
+            .map(|((ty, d), reachable_via_deref)| {
+                let step = CandidateStep {
+                    self_ty: infcx
+                        .make_query_response_ignoring_pending_obligations(inference_vars, ty),
+                    autoderefs: d,
+                    from_unsafe_deref: reached_raw_pointer,
+                    unsize: false,
+                    reachable_via_deref,
+                };
+                if ty.is_unsafe_ptr() {
+                    // all the subsequent steps will be from_unsafe_deref
+                    reached_raw_pointer = true;
+                }
+                step
+            })
+            .collect();
+        (steps, autoderef_via_receiver.reached_recursion_limit())
+    } else {
+        let steps = autoderef_via_deref
+            .by_ref()
+            .map(|(ty, d)| {
+                let step = CandidateStep {
+                    self_ty: infcx
+                        .make_query_response_ignoring_pending_obligations(inference_vars, ty),
+                    autoderefs: d,
+                    from_unsafe_deref: reached_raw_pointer,
+                    unsize: false,
+                    reachable_via_deref: true,
+                };
+                if ty.is_unsafe_ptr() {
+                    // all the subsequent steps will be from_unsafe_deref
+                    reached_raw_pointer = true;
+                }
+                step
+            })
+            .collect();
+        (steps, autoderef_via_deref.reached_recursion_limit())
+    };
+    let final_ty = autoderef_via_deref.final_ty(true);
     let opt_bad_ty = match final_ty.kind() {
         ty::Infer(ty::TyVar(_)) | ty::Error(_) => Some(MethodAutoderefBadTy {
             reached_raw_pointer,
             ty: infcx.make_query_response_ignoring_pending_obligations(inference_vars, final_ty),
         }),
         ty::Array(elem_ty, _) => {
-            let dereferences = steps.len() - 1;
-
+            let autoderefs = steps.iter().filter(|s| s.reachable_via_deref).count() - 1;
             steps.push(CandidateStep {
                 self_ty: infcx.make_query_response_ignoring_pending_obligations(
                     inference_vars,
                     Ty::new_slice(infcx.tcx, *elem_ty),
                 ),
-                autoderefs: dereferences,
+                autoderefs,
                 // this could be from an unsafe deref if we had
                 // a *mut/const [T; N]
                 from_unsafe_deref: reached_raw_pointer,
                 unsize: true,
+                reachable_via_deref: true, // this is always the final type from
+                                           // autoderef_via_deref
             });
 
             None
@@ -569,7 +661,7 @@ fn method_autoderef_steps<'tcx>(
     MethodAutoderefStepsResult {
         steps: tcx.arena.alloc_from_iter(steps),
         opt_bad_ty: opt_bad_ty.map(|ty| &*tcx.arena.alloc(ty)),
-        reached_recursion_limit: autoderef.reached_recursion_limit(),
+        reached_recursion_limit,
     }
 }
 
@@ -600,7 +692,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             private_candidates: Vec::new(),
             private_candidate: Cell::new(None),
             static_candidates: RefCell::new(Vec::new()),
-            unsatisfied_predicates: RefCell::new(Vec::new()),
             scope_expr_id,
             is_suggestion,
         }
@@ -613,7 +704,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         self.private_candidates.clear();
         self.private_candidate.set(None);
         self.static_candidates.borrow_mut().clear();
-        self.unsatisfied_predicates.borrow_mut().clear();
     }
 
     /// When we're looking up a method by path (UFCS), we relate the receiver
@@ -652,12 +742,16 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     fn assemble_inherent_candidates(&mut self) {
         for step in self.steps.iter() {
-            self.assemble_probe(&step.self_ty);
+            self.assemble_probe(&step.self_ty, step.autoderefs);
         }
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn assemble_probe(&mut self, self_ty: &Canonical<'tcx, QueryResponse<'tcx, Ty<'tcx>>>) {
+    fn assemble_probe(
+        &mut self,
+        self_ty: &Canonical<'tcx, QueryResponse<'tcx, Ty<'tcx>>>,
+        receiver_steps: usize,
+    ) {
         let raw_self_ty = self_ty.value.value;
         match *raw_self_ty.kind() {
             ty::Dynamic(data, ..) if let Some(p) = data.principal() => {
@@ -682,22 +776,31 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     self.fcx.instantiate_canonical(self.span, self_ty);
 
                 self.assemble_inherent_candidates_from_object(generalized_self_ty);
-                self.assemble_inherent_impl_candidates_for_type(p.def_id());
+                self.assemble_inherent_impl_candidates_for_type(p.def_id(), receiver_steps);
                 if self.tcx.has_attr(p.def_id(), sym::rustc_has_incoherent_inherent_impls) {
-                    self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty);
+                    self.assemble_inherent_candidates_for_incoherent_ty(
+                        raw_self_ty,
+                        receiver_steps,
+                    );
                 }
             }
             ty::Adt(def, _) => {
                 let def_id = def.did();
-                self.assemble_inherent_impl_candidates_for_type(def_id);
+                self.assemble_inherent_impl_candidates_for_type(def_id, receiver_steps);
                 if self.tcx.has_attr(def_id, sym::rustc_has_incoherent_inherent_impls) {
-                    self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty);
+                    self.assemble_inherent_candidates_for_incoherent_ty(
+                        raw_self_ty,
+                        receiver_steps,
+                    );
                 }
             }
             ty::Foreign(did) => {
-                self.assemble_inherent_impl_candidates_for_type(did);
+                self.assemble_inherent_impl_candidates_for_type(did, receiver_steps);
                 if self.tcx.has_attr(did, sym::rustc_has_incoherent_inherent_impls) {
-                    self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty);
+                    self.assemble_inherent_candidates_for_incoherent_ty(
+                        raw_self_ty,
+                        receiver_steps,
+                    );
                 }
             }
             ty::Param(p) => {
@@ -714,29 +817,35 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             | ty::RawPtr(_, _)
             | ty::Ref(..)
             | ty::Never
-            | ty::Tuple(..) => self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty),
+            | ty::Tuple(..) => {
+                self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty, receiver_steps)
+            }
             _ => {}
         }
     }
 
-    fn assemble_inherent_candidates_for_incoherent_ty(&mut self, self_ty: Ty<'tcx>) {
+    fn assemble_inherent_candidates_for_incoherent_ty(
+        &mut self,
+        self_ty: Ty<'tcx>,
+        receiver_steps: usize,
+    ) {
         let Some(simp) = simplify_type(self.tcx, self_ty, TreatParams::InstantiateWithInfer) else {
             bug!("unexpected incoherent type: {:?}", self_ty)
         };
         for &impl_def_id in self.tcx.incoherent_impls(simp).into_iter() {
-            self.assemble_inherent_impl_probe(impl_def_id);
+            self.assemble_inherent_impl_probe(impl_def_id, receiver_steps);
         }
     }
 
-    fn assemble_inherent_impl_candidates_for_type(&mut self, def_id: DefId) {
+    fn assemble_inherent_impl_candidates_for_type(&mut self, def_id: DefId, receiver_steps: usize) {
         let impl_def_ids = self.tcx.at(self.span).inherent_impls(def_id).into_iter();
         for &impl_def_id in impl_def_ids {
-            self.assemble_inherent_impl_probe(impl_def_id);
+            self.assemble_inherent_impl_probe(impl_def_id, receiver_steps);
         }
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn assemble_inherent_impl_probe(&mut self, impl_def_id: DefId) {
+    fn assemble_inherent_impl_probe(&mut self, impl_def_id: DefId, receiver_steps: usize) {
         if !self.impl_dups.insert(impl_def_id) {
             return; // already visited
         }
@@ -750,7 +859,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             self.push_candidate(
                 Candidate {
                     item,
-                    kind: InherentImplCandidate(impl_def_id),
+                    kind: InherentImplCandidate { impl_def_id, receiver_steps },
                     import_ids: smallvec![],
                 },
                 true,
@@ -989,7 +1098,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     fn pick(mut self) -> PickResult<'tcx> {
         assert!(self.method_name.is_some());
 
-        if let Some(r) = self.pick_core() {
+        let mut unsatisfied_predicates = Vec::new();
+
+        if let Some(r) = self.pick_core(&mut unsatisfied_predicates) {
             return r;
         }
 
@@ -1009,7 +1120,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         let static_candidates = std::mem::take(self.static_candidates.get_mut());
         let private_candidate = self.private_candidate.take();
-        let unsatisfied_predicates = std::mem::take(self.unsatisfied_predicates.get_mut());
 
         // things failed, so lets look at all traits, for diagnostic purposes now:
         self.reset();
@@ -1019,7 +1129,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         self.assemble_extension_candidates_for_all_traits();
 
-        let out_of_scope_traits = match self.pick_core() {
+        let out_of_scope_traits = match self.pick_core(&mut Vec::new()) {
             Some(Ok(p)) => vec![p.item.container_id(self.tcx)],
             Some(Err(MethodError::Ambiguity(v))) => v
                 .into_iter()
@@ -1054,17 +1164,48 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         }))
     }
 
-    fn pick_core(&self) -> Option<PickResult<'tcx>> {
+    fn pick_core(
+        &self,
+        unsatisfied_predicates: &mut Vec<(
+            ty::Predicate<'tcx>,
+            Option<ty::Predicate<'tcx>>,
+            Option<ObligationCause<'tcx>>,
+        )>,
+    ) -> Option<PickResult<'tcx>> {
         // Pick stable methods only first, and consider unstable candidates if not found.
-        self.pick_all_method(Some(&mut vec![])).or_else(|| self.pick_all_method(None))
+        self.pick_all_method(&mut PickDiagHints {
+            // This first cycle, maintain a list of unstable candidates which
+            // we encounter. This will end up in the Pick for diagnostics.
+            unstable_candidates: Some(Vec::new()),
+            // Contribute to the list of unsatisfied predicates which may
+            // also be used for diagnostics.
+            unsatisfied_predicates,
+        })
+        .or_else(|| {
+            self.pick_all_method(&mut PickDiagHints {
+                // On the second search, don't provide a special list of unstable
+                // candidates. This indicates to the picking code that it should
+                // in fact include such unstable candidates in the actual
+                // search.
+                unstable_candidates: None,
+                // And there's no need to duplicate ourselves in the
+                // unsatisifed predicates list. Provide a throwaway list.
+                unsatisfied_predicates: &mut Vec::new(),
+            })
+        })
     }
 
-    fn pick_all_method(
+    fn pick_all_method<'b>(
         &self,
-        mut unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+        pick_diag_hints: &mut PickDiagHints<'b, 'tcx>,
     ) -> Option<PickResult<'tcx>> {
+        let track_unstable_candidates = pick_diag_hints.unstable_candidates.is_some();
         self.steps
             .iter()
+            // At this point we're considering the types to which the receiver can be converted,
+            // so we want to follow the `Deref` chain not the `Receiver` chain. Filter out
+            // steps which can only be reached by following the (longer) `Receiver` chain.
+            .filter(|step| step.reachable_via_deref)
             .filter(|step| {
                 debug!("pick_all_method: step={:?}", step);
                 // skip types that are from a type error or that would require dereferencing
@@ -1082,38 +1223,186 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     .unwrap_or_else(|_| {
                         span_bug!(self.span, "{:?} was applicable but now isn't?", step.self_ty)
                     });
-                self.pick_by_value_method(step, self_ty, unstable_candidates.as_deref_mut())
-                    .or_else(|| {
-                        self.pick_autorefd_method(
-                            step,
-                            self_ty,
-                            hir::Mutability::Not,
-                            unstable_candidates.as_deref_mut(),
-                        )
-                        .or_else(|| {
-                            self.pick_autorefd_method(
+
+                let by_value_pick = self.pick_by_value_method(step, self_ty, pick_diag_hints);
+
+                // Check for shadowing of a by-reference method by a by-value method (see comments on check_for_shadowing)
+                if let Some(by_value_pick) = by_value_pick {
+                    if let Ok(by_value_pick) = by_value_pick.as_ref() {
+                        if by_value_pick.kind == PickKind::InherentImplPick {
+                            if let Err(e) = self.check_for_shadowed_autorefd_method(
+                                by_value_pick,
+                                step,
+                                self_ty,
+                                hir::Mutability::Not,
+                                track_unstable_candidates,
+                            ) {
+                                return Some(Err(e));
+                            }
+                            if let Err(e) = self.check_for_shadowed_autorefd_method(
+                                by_value_pick,
                                 step,
                                 self_ty,
                                 hir::Mutability::Mut,
-                                unstable_candidates.as_deref_mut(),
-                            )
-                        })
-                        .or_else(|| {
-                            self.pick_const_ptr_method(
+                                track_unstable_candidates,
+                            ) {
+                                return Some(Err(e));
+                            }
+                        }
+                    }
+                    return Some(by_value_pick);
+                }
+
+                let autoref_pick = self.pick_autorefd_method(
+                    step,
+                    self_ty,
+                    hir::Mutability::Not,
+                    pick_diag_hints,
+                    None,
+                );
+                // Check for shadowing of a by-mut-ref method by a by-reference method (see comments on check_for_shadowing)
+                if let Some(autoref_pick) = autoref_pick {
+                    if let Ok(autoref_pick) = autoref_pick.as_ref() {
+                        // Check we're not shadowing others
+                        if autoref_pick.kind == PickKind::InherentImplPick {
+                            if let Err(e) = self.check_for_shadowed_autorefd_method(
+                                autoref_pick,
                                 step,
                                 self_ty,
-                                unstable_candidates.as_deref_mut(),
-                            )
-                        })
-                        .or_else(|| {
-                            self.pick_reborrow_pin_method(
-                                step,
-                                self_ty,
-                                unstable_candidates.as_deref_mut(),
-                            )
-                        })
-                    })
+                                hir::Mutability::Mut,
+                                track_unstable_candidates,
+                            ) {
+                                return Some(Err(e));
+                            }
+                        }
+                    }
+                    return Some(autoref_pick);
+                }
+
+                // Note that no shadowing errors are produced from here on,
+                // as we consider const ptr methods.
+                // We allow new methods that take *mut T to shadow
+                // methods which took *const T, so there is no entry in
+                // this list for the results of `pick_const_ptr_method`.
+                // The reason is that the standard pointer cast method
+                // (on a mutable pointer) always already shadows the
+                // cast method (on a const pointer). So, if we added
+                // `pick_const_ptr_method` to this method, the anti-
+                // shadowing algorithm would always complain about
+                // the conflict between *const::cast and *mut::cast.
+                // In practice therefore this does constrain us:
+                // we cannot add new
+                //   self: *mut Self
+                // methods to types such as NonNull or anything else
+                // which implements Receiver, because this might in future
+                // shadow existing methods taking
+                //   self: *const NonNull<Self>
+                // in the pointee. In practice, methods taking raw pointers
+                // are rare, and it seems that it should be easily possible
+                // to avoid such compatibility breaks.
+                // We also don't check for reborrowed pin methods which
+                // may be shadowed; these also seem unlikely to occur.
+                self.pick_autorefd_method(
+                    step,
+                    self_ty,
+                    hir::Mutability::Mut,
+                    pick_diag_hints,
+                    None,
+                )
+                .or_else(|| self.pick_const_ptr_method(step, self_ty, pick_diag_hints))
+                .or_else(|| self.pick_reborrow_pin_method(step, self_ty, pick_diag_hints))
             })
+    }
+
+    /// Check for cases where arbitrary self types allows shadowing
+    /// of methods that might be a compatibility break. Specifically,
+    /// we have something like:
+    /// ```ignore (illustrative)
+    /// struct A;
+    /// impl A {
+    ///   fn foo(self: &NonNull<A>) {}
+    ///      // note this is by reference
+    /// }
+    /// ```
+    /// then we've come along and added this method to `NonNull`:
+    /// ```ignore (illustrative)
+    ///   fn foo(self)  // note this is by value
+    /// ```
+    /// Report an error in this case.
+    fn check_for_shadowed_autorefd_method(
+        &self,
+        possible_shadower: &Pick<'tcx>,
+        step: &CandidateStep<'tcx>,
+        self_ty: Ty<'tcx>,
+        mutbl: hir::Mutability,
+        track_unstable_candidates: bool,
+    ) -> Result<(), MethodError<'tcx>> {
+        // We don't want to remember any of the diagnostic hints from this
+        // shadow search, but we do need to provide Some/None for the
+        // unstable_candidates in order to reflect the behavior of the
+        // main search.
+        let mut pick_diag_hints = PickDiagHints {
+            unstable_candidates: if track_unstable_candidates { Some(Vec::new()) } else { None },
+            unsatisfied_predicates: &mut Vec::new(),
+        };
+        // Set criteria for how we find methods possibly shadowed by 'possible_shadower'
+        let pick_constraints = PickConstraintsForShadowed {
+            // It's the same `self` type...
+            autoderefs: possible_shadower.autoderefs,
+            // ... but the method was found in an impl block determined
+            // by searching further along the Receiver chain than the other,
+            // showing that it's a smart pointer type causing the problem...
+            receiver_steps: possible_shadower.receiver_steps,
+            // ... and they don't end up pointing to the same item in the
+            // first place (could happen with things like blanket impls for T)
+            def_id: possible_shadower.item.def_id,
+        };
+        // A note on the autoderefs above. Within pick_by_value_method, an extra
+        // autoderef may be applied in order to reborrow a reference with
+        // a different lifetime. That seems as though it would break the
+        // logic of these constraints, since the number of autoderefs could
+        // no longer be used to identify the fundamental type of the receiver.
+        // However, this extra autoderef is applied only to by-value calls
+        // where the receiver is already a reference. So this situation would
+        // only occur in cases where the shadowing looks like this:
+        // ```
+        // struct A;
+        // impl A {
+        //   fn foo(self: &&NonNull<A>) {}
+        //      // note this is by DOUBLE reference
+        // }
+        // ```
+        // then we've come along and added this method to `NonNull`:
+        // ```
+        //   fn foo(&self)  // note this is by single reference
+        // ```
+        // and the call is:
+        // ```
+        // let bar = NonNull<Foo>;
+        // let bar = &foo;
+        // bar.foo();
+        // ```
+        // In these circumstances, the logic is wrong, and we wouldn't spot
+        // the shadowing, because the autoderef-based maths wouldn't line up.
+        // This is a niche case and we can live without generating an error
+        // in the case of such shadowing.
+        let potentially_shadowed_pick = self.pick_autorefd_method(
+            step,
+            self_ty,
+            mutbl,
+            &mut pick_diag_hints,
+            Some(&pick_constraints),
+        );
+        // Look for actual pairs of shadower/shadowed which are
+        // the sort of shadowing case we want to avoid. Specifically...
+        if let Some(Ok(possible_shadowed)) = potentially_shadowed_pick.as_ref() {
+            let sources = [possible_shadower, possible_shadowed]
+                .into_iter()
+                .map(|p| self.candidate_source_from_pick(p))
+                .collect();
+            return Err(MethodError::Ambiguity(sources));
+        }
+        Ok(())
     }
 
     /// For each type `T` in the step list, this attempts to find a method where
@@ -1126,13 +1415,13 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         step: &CandidateStep<'tcx>,
         self_ty: Ty<'tcx>,
-        unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+        pick_diag_hints: &mut PickDiagHints<'_, 'tcx>,
     ) -> Option<PickResult<'tcx>> {
         if step.unsize {
             return None;
         }
 
-        self.pick_method(self_ty, unstable_candidates).map(|r| {
+        self.pick_method(self_ty, pick_diag_hints, None).map(|r| {
             r.map(|mut pick| {
                 pick.autoderefs = step.autoderefs;
 
@@ -1170,15 +1459,22 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         step: &CandidateStep<'tcx>,
         self_ty: Ty<'tcx>,
         mutbl: hir::Mutability,
-        unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+        pick_diag_hints: &mut PickDiagHints<'_, 'tcx>,
+        pick_constraints: Option<&PickConstraintsForShadowed>,
     ) -> Option<PickResult<'tcx>> {
         let tcx = self.tcx;
+
+        if let Some(pick_constraints) = pick_constraints {
+            if !pick_constraints.may_shadow_based_on_autoderefs(step.autoderefs) {
+                return None;
+            }
+        }
 
         // In general, during probing we erase regions.
         let region = tcx.lifetimes.re_erased;
 
         let autoref_ty = Ty::new_ref(tcx, region, self_ty, mutbl);
-        self.pick_method(autoref_ty, unstable_candidates).map(|r| {
+        self.pick_method(autoref_ty, pick_diag_hints, pick_constraints).map(|r| {
             r.map(|mut pick| {
                 pick.autoderefs = step.autoderefs;
                 pick.autoref_or_ptr_adjustment =
@@ -1189,12 +1485,12 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     }
 
     /// Looks for applicable methods if we reborrow a `Pin<&mut T>` as a `Pin<&T>`.
-    #[instrument(level = "debug", skip(self, step, unstable_candidates))]
+    #[instrument(level = "debug", skip(self, step, pick_diag_hints))]
     fn pick_reborrow_pin_method(
         &self,
         step: &CandidateStep<'tcx>,
         self_ty: Ty<'tcx>,
-        unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+        pick_diag_hints: &mut PickDiagHints<'_, 'tcx>,
     ) -> Option<PickResult<'tcx>> {
         if !self.tcx.features().pin_ergonomics() {
             return None;
@@ -1215,7 +1511,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         let region = self.tcx.lifetimes.re_erased;
         let autopin_ty = Ty::new_pinned_ref(self.tcx, region, inner_ty, hir::Mutability::Not);
-        self.pick_method(autopin_ty, unstable_candidates).map(|r| {
+        self.pick_method(autopin_ty, pick_diag_hints, None).map(|r| {
             r.map(|mut pick| {
                 pick.autoderefs = step.autoderefs;
                 pick.autoref_or_ptr_adjustment =
@@ -1232,7 +1528,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         step: &CandidateStep<'tcx>,
         self_ty: Ty<'tcx>,
-        unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+        pick_diag_hints: &mut PickDiagHints<'_, 'tcx>,
     ) -> Option<PickResult<'tcx>> {
         // Don't convert an unsized reference to ptr
         if step.unsize {
@@ -1244,7 +1540,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         };
 
         let const_ptr_ty = Ty::new_imm_ptr(self.tcx, ty);
-        self.pick_method(const_ptr_ty, unstable_candidates).map(|r| {
+        self.pick_method(const_ptr_ty, pick_diag_hints, None).map(|r| {
             r.map(|mut pick| {
                 pick.autoderefs = step.autoderefs;
                 pick.autoref_or_ptr_adjustment = Some(AutorefOrPtrAdjustment::ToConstPtr);
@@ -1256,39 +1552,34 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     fn pick_method(
         &self,
         self_ty: Ty<'tcx>,
-        mut unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+        pick_diag_hints: &mut PickDiagHints<'_, 'tcx>,
+        pick_constraints: Option<&PickConstraintsForShadowed>,
     ) -> Option<PickResult<'tcx>> {
         debug!("pick_method(self_ty={})", self.ty_to_string(self_ty));
-
-        let mut possibly_unsatisfied_predicates = Vec::new();
 
         for (kind, candidates) in
             [("inherent", &self.inherent_candidates), ("extension", &self.extension_candidates)]
         {
             debug!("searching {} candidates", kind);
-            let res = self.consider_candidates(
-                self_ty,
-                candidates,
-                &mut possibly_unsatisfied_predicates,
-                unstable_candidates.as_deref_mut(),
-            );
+            let res =
+                self.consider_candidates(self_ty, candidates, pick_diag_hints, pick_constraints);
             if let Some(pick) = res {
                 return Some(pick);
             }
         }
 
         if self.private_candidate.get().is_none() {
-            if let Some(Ok(pick)) =
-                self.consider_candidates(self_ty, &self.private_candidates, &mut vec![], None)
-            {
+            if let Some(Ok(pick)) = self.consider_candidates(
+                self_ty,
+                &self.private_candidates,
+                &mut PickDiagHints {
+                    unstable_candidates: None,
+                    unsatisfied_predicates: &mut vec![],
+                },
+                None,
+            ) {
                 self.private_candidate.set(Some((pick.item.kind.as_def_kind(), pick.item.def_id)));
             }
-        }
-
-        // `pick_method` may be called twice for the same self_ty if no stable methods
-        // match. Only extend once.
-        if unstable_candidates.is_some() {
-            self.unsatisfied_predicates.borrow_mut().extend(possibly_unsatisfied_predicates);
         }
         None
     }
@@ -1297,17 +1588,25 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         self_ty: Ty<'tcx>,
         candidates: &[Candidate<'tcx>],
-        possibly_unsatisfied_predicates: &mut Vec<(
-            ty::Predicate<'tcx>,
-            Option<ty::Predicate<'tcx>>,
-            Option<ObligationCause<'tcx>>,
-        )>,
-        mut unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+        pick_diag_hints: &mut PickDiagHints<'_, 'tcx>,
+        pick_constraints: Option<&PickConstraintsForShadowed>,
     ) -> Option<PickResult<'tcx>> {
         let mut applicable_candidates: Vec<_> = candidates
             .iter()
+            .filter(|candidate| {
+                pick_constraints
+                    .map(|pick_constraints| pick_constraints.candidate_may_shadow(&candidate))
+                    .unwrap_or(true)
+            })
             .map(|probe| {
-                (probe, self.consider_probe(self_ty, probe, possibly_unsatisfied_predicates))
+                (
+                    probe,
+                    self.consider_probe(
+                        self_ty,
+                        probe,
+                        &mut pick_diag_hints.unsatisfied_predicates,
+                    ),
+                )
             })
             .filter(|&(_, status)| status != ProbeResult::NoMatch)
             .collect();
@@ -1322,7 +1621,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
         }
 
-        if let Some(uc) = &mut unstable_candidates {
+        if let Some(uc) = &mut pick_diag_hints.unstable_candidates {
             applicable_candidates.retain(|&(candidate, _)| {
                 if let stability::EvalResult::Deny { feature, .. } =
                     self.tcx.eval_stability(candidate.item.def_id, None, self.span, None)
@@ -1340,10 +1639,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         }
 
         applicable_candidates.pop().map(|(probe, status)| match status {
-            ProbeResult::Match => {
-                Ok(probe
-                    .to_unadjusted_pick(self_ty, unstable_candidates.cloned().unwrap_or_default()))
-            }
+            ProbeResult::Match => Ok(probe.to_unadjusted_pick(
+                self_ty,
+                pick_diag_hints.unstable_candidates.clone().unwrap_or_default(),
+            )),
             ProbeResult::NoMatch | ProbeResult::BadReturnType => Err(MethodError::BadReturnType),
         })
     }
@@ -1372,6 +1671,7 @@ impl<'tcx> Pick<'tcx> {
             autoref_or_ptr_adjustment: _,
             self_ty,
             unstable_candidates: _,
+            receiver_steps: _,
         } = *self;
         self_ty != other.self_ty || def_id != other.item.def_id
     }
@@ -1447,7 +1747,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     /// so do not use to make a decision that may lead to a successful compilation.
     fn candidate_source(&self, candidate: &Candidate<'tcx>, self_ty: Ty<'tcx>) -> CandidateSource {
         match candidate.kind {
-            InherentImplCandidate(_) => {
+            InherentImplCandidate { .. } => {
                 CandidateSource::Impl(candidate.item.container_id(self.tcx))
             }
             ObjectCandidate(_) | WhereClauseCandidate(_) => {
@@ -1477,6 +1777,15 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         }
     }
 
+    fn candidate_source_from_pick(&self, pick: &Pick<'tcx>) -> CandidateSource {
+        match pick.kind {
+            InherentImplPick => CandidateSource::Impl(pick.item.container_id(self.tcx)),
+            ObjectPick | WhereClausePick(_) | TraitPick => {
+                CandidateSource::Trait(pick.item.container_id(self.tcx))
+            }
+        }
+    }
+
     #[instrument(level = "trace", skip(self, possibly_unsatisfied_predicates), ret)]
     fn consider_probe(
         &self,
@@ -1501,7 +1810,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             let (mut xform_self_ty, mut xform_ret_ty);
 
             match probe.kind {
-                InherentImplCandidate(impl_def_id) => {
+                InherentImplCandidate { impl_def_id, .. } => {
                     let impl_args = self.fresh_args_for_item(self.span, impl_def_id);
                     let impl_ty = self.tcx.type_of(impl_def_id).instantiate(self.tcx, impl_args);
                     (xform_self_ty, xform_ret_ty) =
@@ -1693,7 +2002,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 // We don't normalize the other candidates for perf/backwards-compat reasons...
                 // but `self.return_type` is only set on the diagnostic-path, so we
                 // should be okay doing it here.
-                if !matches!(probe.kind, InherentImplCandidate(_)) {
+                if !matches!(probe.kind, InherentImplCandidate { .. }) {
                     xform_ret_ty = ocx.normalize(&cause, self.param_env, xform_ret_ty);
                 }
 
@@ -1771,6 +2080,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             autoref_or_ptr_adjustment: None,
             self_ty,
             unstable_candidates: vec![],
+            receiver_steps: None,
         })
     }
 
@@ -1808,7 +2118,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     pcx.method_name = Some(method_name);
                     pcx.assemble_inherent_candidates();
                     pcx.assemble_extension_candidates_for_all_traits();
-                    pcx.pick_core().and_then(|pick| pick.ok()).map(|pick| pick.item)
+                    pcx.pick_core(&mut Vec::new()).and_then(|pick| pick.ok()).map(|pick| pick.item)
                 })
                 .collect();
 
@@ -2042,7 +2352,7 @@ impl<'tcx> Candidate<'tcx> {
         Pick {
             item: self.item,
             kind: match self.kind {
-                InherentImplCandidate(_) => InherentImplPick,
+                InherentImplCandidate { .. } => InherentImplPick,
                 ObjectCandidate(_) => ObjectPick,
                 TraitCandidate(_) => TraitPick,
                 WhereClauseCandidate(trait_ref) => {
@@ -2064,6 +2374,10 @@ impl<'tcx> Candidate<'tcx> {
             autoref_or_ptr_adjustment: None,
             self_ty,
             unstable_candidates,
+            receiver_steps: match self.kind {
+                InherentImplCandidate { receiver_steps, .. } => Some(receiver_steps),
+                _ => None,
+            },
         }
     }
 }

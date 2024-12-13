@@ -3,8 +3,6 @@
 //@ edition:2021
 //@ build-pass
 
-#![feature(async_closure)]
-
 use std::future::Future;
 
 extern crate block_on;

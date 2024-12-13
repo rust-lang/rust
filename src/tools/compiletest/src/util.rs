@@ -30,7 +30,7 @@ fn path_div() -> &'static str {
 pub fn logv(config: &Config, s: String) {
     debug!("{}", s);
     if config.verbose {
-        eprintln!("{}", s);
+        println!("{}", s);
     }
 }
 
