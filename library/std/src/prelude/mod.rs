@@ -124,8 +124,7 @@ pub mod v1 {
     // Do not `doc(inline)` these `doc(hidden)` items.
     #[unstable(
         feature = "rustc_encodable_decodable",
-        issue = "none",
-        soft,
+        issue = "134301",
         reason = "derive macro for `rustc-serialize`; should not be used in new code"
     )]
     #[allow(deprecated)]
