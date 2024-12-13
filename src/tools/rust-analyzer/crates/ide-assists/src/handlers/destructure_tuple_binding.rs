@@ -1,7 +1,7 @@
 use ide_db::{
     assists::{AssistId, AssistKind},
     defs::Definition,
-    search::{FileReference, SearchScope, UsageSearchResult},
+    search::{FileReference, SearchScope},
     syntax_helpers::suggest_name,
     text_edit::TextRange,
 };
@@ -124,22 +124,25 @@ fn collect_data(ident_pat: IdentPat, ctx: &AssistContext<'_>) -> Option<TupleDat
         return None;
     }
 
-    let name = ident_pat.name()?.to_string();
-
-    let usages = ctx.sema.to_def(&ident_pat).map(|def| {
+    let usages = ctx.sema.to_def(&ident_pat).and_then(|def| {
         Definition::Local(def)
             .usages(&ctx.sema)
             .in_scope(&SearchScope::single_file(ctx.file_id()))
             .all()
+            .iter()
+            .next()
+            .map(|(_, refs)| refs.to_vec())
     });
 
     let mut name_generator = {
         let mut names = vec![];
-        ctx.sema.scope(ident_pat.syntax())?.process_all_names(&mut |name, scope| {
-            if let hir::ScopeDef::Local(_) = scope {
-                names.push(name.as_str().into())
-            }
-        });
+        if let Some(scope) = ctx.sema.scope(ident_pat.syntax()) {
+            scope.process_all_names(&mut |name, scope| {
+                if let hir::ScopeDef::Local(_) = scope {
+                    names.push(name.as_str().into())
+                }
+            })
+        }
         suggest_name::NameGenerator::new_with_names(names.iter().map(|s: &SmolStr| s.as_str()))
     };
 
@@ -166,7 +169,7 @@ struct TupleData {
     ident_pat: IdentPat,
     ref_type: Option<RefType>,
     field_names: Vec<String>,
-    usages: Option<UsageSearchResult>,
+    usages: Option<Vec<FileReference>>,
 }
 fn edit_tuple_assignment(
     ctx: &AssistContext<'_>,
@@ -222,42 +225,23 @@ fn edit_tuple_usages(
     ctx: &AssistContext<'_>,
     in_sub_pattern: bool,
 ) -> Option<Vec<EditTupleUsage>> {
-    let mut current_file_usages = None;
+    // We need to collect edits first before actually applying them
+    // as mapping nodes to their mutable node versions requires an
+    // unmodified syntax tree.
+    //
+    // We also defer editing usages in the current file first since
+    // tree mutation in the same file breaks when `builder.edit_file`
+    // is called
 
-    if let Some(usages) = data.usages.as_ref() {
-        // We need to collect edits first before actually applying them
-        // as mapping nodes to their mutable node versions requires an
-        // unmodified syntax tree.
-        //
-        // We also defer editing usages in the current file first since
-        // tree mutation in the same file breaks when `builder.edit_file`
-        // is called
+    let edits = data
+        .usages
+        .as_ref()?
+        .as_slice()
+        .iter()
+        .filter_map(|r| edit_tuple_usage(ctx, edit, r, data, in_sub_pattern))
+        .collect_vec();
 
-        if let Some((_, refs)) = usages.iter().find(|(file_id, _)| *file_id == ctx.file_id()) {
-            current_file_usages = Some(
-                refs.iter()
-                    .filter_map(|r| edit_tuple_usage(ctx, edit, r, data, in_sub_pattern))
-                    .collect_vec(),
-            );
-        }
-
-        for (file_id, refs) in usages.iter() {
-            if file_id == ctx.file_id() {
-                continue;
-            }
-
-            edit.edit_file(file_id.file_id());
-
-            let tuple_edits = refs
-                .iter()
-                .filter_map(|r| edit_tuple_usage(ctx, edit, r, data, in_sub_pattern))
-                .collect_vec();
-
-            tuple_edits.into_iter().for_each(|tuple_edit| tuple_edit.apply(edit))
-        }
-    }
-
-    current_file_usages
+    Some(edits)
 }
 fn edit_tuple_usage(
     ctx: &AssistContext<'_>,
