@@ -1,4 +1,3 @@
-   LL|       |#![feature(async_closure)]
    LL|       |//@ edition: 2021
    LL|       |
    LL|       |//@ aux-build: executor.rs

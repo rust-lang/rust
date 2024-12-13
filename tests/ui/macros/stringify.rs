@@ -3,7 +3,6 @@
 //@ compile-flags: --test
 
 #![allow(incomplete_features)]
-#![feature(async_closure)]
 #![feature(auto_traits)]
 #![feature(box_patterns)]
 #![feature(const_trait_impl)]

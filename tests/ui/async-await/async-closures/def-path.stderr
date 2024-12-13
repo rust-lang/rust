@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/def-path.rs:9:9
+  --> $DIR/def-path.rs:7:9
    |
 LL |     let x = async || {};
    |                      -- the expected `async` closure body

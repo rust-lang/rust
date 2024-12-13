@@ -2,8 +2,6 @@
 //@ edition:2021
 //@ build-pass
 
-#![feature(async_closure)]
-
 extern crate block_on;
 
 // Make sure that we don't call `coroutine_by_move_body_def_id` query

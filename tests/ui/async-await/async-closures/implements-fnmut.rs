@@ -7,8 +7,6 @@
 // `should_reborrow_from_env_of_parent_coroutine_closure` for more detail for when we
 // must borrow from the closure env.
 
-#![feature(async_closure)]
-
 fn main() {
     hello(&Ty);
 }

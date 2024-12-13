@@ -512,11 +512,6 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     );
     gate_all!(let_chains, "`let` expressions in this position are unstable");
     gate_all!(
-        async_closure,
-        "async closures are unstable",
-        "to use an async block, remove the `||`: `async {`"
-    );
-    gate_all!(
         async_trait_bounds,
         "`async` trait bounds are unstable",
         "use the desugared name of the async trait, such as `AsyncFn`"

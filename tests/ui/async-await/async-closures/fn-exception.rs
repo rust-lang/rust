@@ -1,7 +1,5 @@
 //@ edition: 2021
 
-#![feature(async_closure)]
-
 use std::pin::Pin;
 use std::future::Future;
 

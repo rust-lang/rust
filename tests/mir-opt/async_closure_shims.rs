@@ -1,7 +1,6 @@
 //@ edition:2021
 // skip-filecheck
 
-#![feature(async_closure, async_fn_traits)]
 #![allow(unused)]
 
 use std::future::Future;

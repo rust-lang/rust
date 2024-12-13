@@ -1369,11 +1369,14 @@ impl<'a> Parser<'a> {
             ))
         } else {
             // Field access `expr.f`
+            let span = lo.to(self.prev_token.span);
             if let Some(args) = seg.args {
-                self.dcx().emit_err(errors::FieldExpressionWithGeneric(args.span()));
+                // See `StashKey::GenericInFieldExpr` for more info on why we stash this.
+                self.dcx()
+                    .create_err(errors::FieldExpressionWithGeneric(args.span()))
+                    .stash(seg.ident.span, StashKey::GenericInFieldExpr);
             }
 
-            let span = lo.to(self.prev_token.span);
             Ok(self.mk_expr(span, ExprKind::Field(self_arg, seg.ident)))
         }
     }
@@ -2363,10 +2366,7 @@ impl<'a> Parser<'a> {
         };
 
         match coroutine_kind {
-            Some(CoroutineKind::Async { span, .. }) => {
-                // Feature-gate `async ||` closures.
-                self.psess.gated_spans.gate(sym::async_closure, span);
-            }
+            Some(CoroutineKind::Async { .. }) => {}
             Some(CoroutineKind::Gen { span, .. }) | Some(CoroutineKind::AsyncGen { span, .. }) => {
                 // Feature-gate `gen ||` and `async gen ||` closures.
                 // FIXME(gen_blocks): This perhaps should be a different gate.

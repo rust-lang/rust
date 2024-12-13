@@ -5,8 +5,6 @@
 //@[next] compile-flags: -Znext-solver
 //@ build-pass (since it ICEs during mono)
 
-#![feature(async_closure)]
-
 extern crate block_on;
 
 use std::future::Future;
