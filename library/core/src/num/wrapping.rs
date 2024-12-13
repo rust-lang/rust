@@ -1058,33 +1058,33 @@ mod shift_max {
 
     #[cfg(target_pointer_width = "16")]
     mod platform {
-        pub const usize: u32 = super::u16;
-        pub const isize: u32 = super::i16;
+        pub(crate) const usize: u32 = super::u16;
+        pub(crate) const isize: u32 = super::i16;
     }
 
     #[cfg(target_pointer_width = "32")]
     mod platform {
-        pub const usize: u32 = super::u32;
-        pub const isize: u32 = super::i32;
+        pub(crate) const usize: u32 = super::u32;
+        pub(crate) const isize: u32 = super::i32;
     }
 
     #[cfg(target_pointer_width = "64")]
     mod platform {
-        pub const usize: u32 = super::u64;
-        pub const isize: u32 = super::i64;
+        pub(crate) const usize: u32 = super::u64;
+        pub(crate) const isize: u32 = super::i64;
     }
 
-    pub const i8: u32 = (1 << 3) - 1;
-    pub const i16: u32 = (1 << 4) - 1;
-    pub const i32: u32 = (1 << 5) - 1;
-    pub const i64: u32 = (1 << 6) - 1;
-    pub const i128: u32 = (1 << 7) - 1;
-    pub use self::platform::isize;
+    pub(super) const i8: u32 = (1 << 3) - 1;
+    pub(super) const i16: u32 = (1 << 4) - 1;
+    pub(super) const i32: u32 = (1 << 5) - 1;
+    pub(super) const i64: u32 = (1 << 6) - 1;
+    pub(super) const i128: u32 = (1 << 7) - 1;
+    pub(super) use self::platform::isize;
 
-    pub const u8: u32 = i8;
-    pub const u16: u32 = i16;
-    pub const u32: u32 = i32;
-    pub const u64: u32 = i64;
-    pub const u128: u32 = i128;
-    pub use self::platform::usize;
+    pub(super) const u8: u32 = i8;
+    pub(super) const u16: u32 = i16;
+    pub(super) const u32: u32 = i32;
+    pub(super) const u64: u32 = i64;
+    pub(super) const u128: u32 = i128;
+    pub(super) use self::platform::usize;
 }

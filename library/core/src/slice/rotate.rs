@@ -60,7 +60,7 @@ use crate::{cmp, ptr};
 /// we cannot swap any more, but a smaller rotation problem is left to solve
 /// ```
 /// when `left < right` the swapping happens from the left instead.
-pub unsafe fn ptr_rotate<T>(mut left: usize, mut mid: *mut T, mut right: usize) {
+pub(super) unsafe fn ptr_rotate<T>(mut left: usize, mut mid: *mut T, mut right: usize) {
     type BufType = [usize; 32];
     if T::IS_ZST {
         return;

@@ -163,28 +163,28 @@ pub(crate) struct EscapeIterInner<const N: usize> {
 }
 
 impl<const N: usize> EscapeIterInner<N> {
-    pub const fn backslash(c: ascii::Char) -> Self {
+    pub(crate) const fn backslash(c: ascii::Char) -> Self {
         let (data, range) = backslash(c);
         Self { data, alive: range }
     }
 
-    pub const fn ascii(c: u8) -> Self {
+    pub(crate) const fn ascii(c: u8) -> Self {
         let (data, range) = escape_ascii(c);
         Self { data, alive: range }
     }
 
-    pub const fn unicode(c: char) -> Self {
+    pub(crate) const fn unicode(c: char) -> Self {
         let (data, range) = escape_unicode(c);
         Self { data, alive: range }
     }
 
     #[inline]
-    pub const fn empty() -> Self {
+    pub(crate) const fn empty() -> Self {
         Self { data: [ascii::Char::Null; N], alive: 0..0 }
     }
 
     #[inline]
-    pub fn as_ascii(&self) -> &[ascii::Char] {
+    pub(crate) fn as_ascii(&self) -> &[ascii::Char] {
         // SAFETY: `self.alive` is guaranteed to be a valid range for indexing `self.data`.
         unsafe {
             self.data.get_unchecked(usize::from(self.alive.start)..usize::from(self.alive.end))
@@ -192,34 +192,34 @@ impl<const N: usize> EscapeIterInner<N> {
     }
 
     #[inline]
-    pub fn as_str(&self) -> &str {
+    pub(crate) fn as_str(&self) -> &str {
         self.as_ascii().as_str()
     }
 
     #[inline]
-    pub fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         usize::from(self.alive.end - self.alive.start)
     }
 
-    pub fn next(&mut self) -> Option<u8> {
+    pub(crate) fn next(&mut self) -> Option<u8> {
         let i = self.alive.next()?;
 
         // SAFETY: `i` is guaranteed to be a valid index for `self.data`.
         unsafe { Some(self.data.get_unchecked(usize::from(i)).to_u8()) }
     }
 
-    pub fn next_back(&mut self) -> Option<u8> {
+    pub(crate) fn next_back(&mut self) -> Option<u8> {
         let i = self.alive.next_back()?;
 
         // SAFETY: `i` is guaranteed to be a valid index for `self.data`.
         unsafe { Some(self.data.get_unchecked(usize::from(i)).to_u8()) }
     }
 
-    pub fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+    pub(crate) fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         self.alive.advance_by(n)
     }
 
-    pub fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+    pub(crate) fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
         self.alive.advance_back_by(n)
     }
 }
