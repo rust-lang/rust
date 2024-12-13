@@ -264,12 +264,17 @@ impl RibKind<'_> {
 #[derive(Debug)]
 pub(crate) struct Rib<'ra, R = Res> {
     pub bindings: IdentMap<R>,
+    pub patterns_with_skipped_bindings: FxHashMap<DefId, Vec<(Span, bool /* recovered error */)>>,
     pub kind: RibKind<'ra>,
 }
 
 impl<'ra, R> Rib<'ra, R> {
     fn new(kind: RibKind<'ra>) -> Rib<'ra, R> {
-        Rib { bindings: Default::default(), kind }
+        Rib {
+            bindings: Default::default(),
+            patterns_with_skipped_bindings: Default::default(),
+            kind,
+        }
     }
 }
 
@@ -3753,6 +3758,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     /// When a whole or-pattern has been dealt with, the thing happens.
     ///
     /// See the implementation and `fresh_binding` for more details.
+    #[tracing::instrument(skip(self, bindings), level = "debug")]
     fn resolve_pattern_inner(
         &mut self,
         pat: &Pat,
@@ -3761,7 +3767,6 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     ) {
         // Visit all direct subpatterns of this pattern.
         pat.walk(&mut |pat| {
-            debug!("resolve_pattern pat={:?} node={:?}", pat, pat.kind);
             match pat.kind {
                 PatKind::Ident(bmode, ident, ref sub) => {
                     // First try to resolve the identifier as some existing entity,
@@ -3787,8 +3792,9 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 PatKind::Path(ref qself, ref path) => {
                     self.smart_resolve_path(pat.id, qself, path, PathSource::Pat);
                 }
-                PatKind::Struct(ref qself, ref path, ..) => {
+                PatKind::Struct(ref qself, ref path, ref _fields, ref rest) => {
                     self.smart_resolve_path(pat.id, qself, path, PathSource::Struct);
+                    self.record_patterns_with_skipped_bindings(pat, rest);
                 }
                 PatKind::Or(ref ps) => {
                     // Add a new set of bindings to the stack. `Or` here records that when a
@@ -3819,6 +3825,27 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
             true
         });
+    }
+
+    fn record_patterns_with_skipped_bindings(&mut self, pat: &Pat, rest: &ast::PatFieldsRest) {
+        match rest {
+            ast::PatFieldsRest::Rest | ast::PatFieldsRest::Recovered(_) => {
+                // Record that the pattern doesn't introduce all the bindings it could.
+                if let Some(partial_res) = self.r.partial_res_map.get(&pat.id)
+                    && let Some(res) = partial_res.full_res()
+                    && let Some(def_id) = res.opt_def_id()
+                {
+                    self.ribs[ValueNS]
+                        .last_mut()
+                        .unwrap()
+                        .patterns_with_skipped_bindings
+                        .entry(def_id)
+                        .or_default()
+                        .push((pat.span, matches!(rest, ast::PatFieldsRest::Recovered(_))));
+                }
+            }
+            ast::PatFieldsRest::None => {}
+        }
     }
 
     fn fresh_binding(
