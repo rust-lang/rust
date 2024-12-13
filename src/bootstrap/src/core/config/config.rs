@@ -1320,7 +1320,31 @@ impl Config {
 
         // Set flags.
         config.paths = std::mem::take(&mut flags.paths);
-        config.skip = flags.skip.into_iter().chain(flags.exclude).collect();
+        config.skip = flags
+            .skip
+            .into_iter()
+            .chain(flags.exclude)
+            .map(|p| {
+                let p = if cfg!(windows) {
+                    PathBuf::from(p.to_str().unwrap().replace('/', "\\"))
+                } else {
+                    p
+                };
+
+                // Jump to top-level project path to support passing paths
+                // from sub directories.
+                let top_level_path = config.src.join(&p);
+                if !config.src.join(&top_level_path).exists() {
+                    eprintln!("WARNING: '{}' does not exist.", top_level_path.display());
+                }
+
+                // Never return top-level path here as it would break `--skip`
+                // logic on rustc's internal test framework which is utilized
+                // by compiletest.
+                p
+            })
+            .collect();
+
         config.include_default_paths = flags.include_default_paths;
         config.rustc_error_format = flags.rustc_error_format;
         config.json_output = flags.json_output;
