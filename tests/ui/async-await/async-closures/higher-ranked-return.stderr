@@ -1,10 +1,10 @@
 error: lifetime may not live long enough
-  --> $DIR/higher-ranked-return.rs:13:46
+  --> $DIR/higher-ranked-return.rs:11:46
    |
 LL |           let x = async move |x: &str| -> &str {
    |  ________________________________-________----_^
    | |                                |        |
-   | |                                |        return type of async closure `{async closure body@$DIR/higher-ranked-return.rs:13:46: 15:10}` contains a lifetime `'2`
+   | |                                |        return type of async closure `{async closure body@$DIR/higher-ranked-return.rs:11:46: 13:10}` contains a lifetime `'2`
    | |                                let's call the lifetime of this reference `'1`
 LL | |             x
 LL | |         };

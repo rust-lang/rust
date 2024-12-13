@@ -1,7 +1,5 @@
 //@ edition:2021
 
-#![feature(async_closure)]
-
 fn needs_async_fn(_: impl AsyncFn()) {}
 
 fn a() {

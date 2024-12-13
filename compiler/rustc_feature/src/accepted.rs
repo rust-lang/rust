@@ -72,6 +72,8 @@ declare_features! (
     (accepted, associated_types, "1.0.0", None),
     /// Allows free and inherent `async fn`s, `async` blocks, and `<expr>.await` expressions.
     (accepted, async_await, "1.39.0", Some(50547)),
+    /// Allows `async || body` closures.
+    (accepted, async_closure, "CURRENT_RUSTC_VERSION", Some(62290)),
     /// Allows async functions to be declared, implemented, and used in traits.
     (accepted, async_fn_in_trait, "1.75.0", Some(91611)),
     /// Allows all literals in attribute lists and values of key-value pairs.

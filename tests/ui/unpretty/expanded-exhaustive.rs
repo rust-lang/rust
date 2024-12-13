@@ -2,7 +2,6 @@
 //@ edition:2024
 //@ check-pass
 
-#![feature(async_closure)]
 #![feature(auto_traits)]
 #![feature(box_patterns)]
 #![feature(builtin_syntax)]

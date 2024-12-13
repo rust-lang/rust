@@ -2,8 +2,6 @@
 //@ edition:2021
 //@ run-pass
 
-#![feature(async_closure)]
-
 extern crate block_on;
 
 pub trait Trait {

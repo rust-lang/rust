@@ -5,8 +5,6 @@
 //@[e2018] edition:2018
 //@[e2021] edition:2021
 
-#![feature(async_closure)]
-
 extern crate block_on;
 
 async fn call_once(f: impl AsyncFnOnce()) { f().await; }
