@@ -8,8 +8,6 @@ use std::sync::Arc;
 
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_codegen_ssa::traits::{AsmCodegenMethods, GlobalAsmOperandRef};
-use rustc_hir::{InlineAsmOperand, ItemId};
-use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTyCtxt, HasTypingEnv, LayoutError, LayoutOfHelpers,
@@ -82,72 +80,6 @@ impl<'tcx> HasTypingEnv<'tcx> for GlobalAsmContext<'_, 'tcx> {
     fn typing_env(&self) -> ty::TypingEnv<'tcx> {
         ty::TypingEnv::fully_monomorphized()
     }
-}
-
-pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, item_id: ItemId) {
-    let item = tcx.hir_item(item_id);
-    let rustc_hir::ItemKind::GlobalAsm { asm, .. } = item.kind else {
-        bug!("Expected GlobalAsm found {:?}", item);
-    };
-
-    // Adapted from rustc_codegen_ssa::mono_items::MonoItem::define
-    let operands: Vec<_> = asm
-        .operands
-        .iter()
-        .map(|(op, op_sp)| match *op {
-            InlineAsmOperand::Const { ref anon_const } => {
-                match tcx.const_eval_poly(anon_const.def_id.to_def_id()) {
-                    Ok(const_value) => {
-                        let ty = tcx.typeck_body(anon_const.body).node_type(anon_const.hir_id);
-                        let string = rustc_codegen_ssa::common::asm_const_to_str(
-                            tcx,
-                            *op_sp,
-                            const_value,
-                            FullyMonomorphizedLayoutCx(tcx).layout_of(ty),
-                        );
-                        GlobalAsmOperandRef::Const { string }
-                    }
-                    Err(ErrorHandled::Reported { .. }) => {
-                        // An error has already been reported and
-                        // compilation is guaranteed to fail if execution
-                        // hits this path. So an empty string instead of
-                        // a stringified constant value will suffice.
-                        GlobalAsmOperandRef::Const { string: String::new() }
-                    }
-                    Err(ErrorHandled::TooGeneric(_)) => {
-                        span_bug!(*op_sp, "asm const cannot be resolved; too generic")
-                    }
-                }
-            }
-            InlineAsmOperand::SymFn { expr } => {
-                if cfg!(not(feature = "inline_asm_sym")) {
-                    tcx.dcx().span_err(
-                        item.span,
-                        "asm! and global_asm! sym operands are not yet supported",
-                    );
-                }
-
-                let ty = tcx.typeck(item_id.owner_id).expr_ty(expr);
-                let instance = match ty.kind() {
-                    &ty::FnDef(def_id, args) => Instance::new(def_id, args),
-                    _ => span_bug!(*op_sp, "asm sym is not a function"),
-                };
-                GlobalAsmOperandRef::SymFn { instance }
-            }
-            InlineAsmOperand::SymStatic { path: _, def_id } => {
-                GlobalAsmOperandRef::SymStatic { def_id }
-            }
-            InlineAsmOperand::In { .. }
-            | InlineAsmOperand::Out { .. }
-            | InlineAsmOperand::InOut { .. }
-            | InlineAsmOperand::SplitInOut { .. }
-            | InlineAsmOperand::Label { .. } => {
-                span_bug!(*op_sp, "invalid operand type for global_asm!")
-            }
-        })
-        .collect();
-
-    codegen_global_asm_inner(tcx, global_asm, asm.template, &operands, asm.options);
 }
 
 fn codegen_global_asm_inner<'tcx>(

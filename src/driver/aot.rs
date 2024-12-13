@@ -570,7 +570,10 @@ fn codegen_cgu_content(
                 }
             }
             MonoItem::GlobalAsm(item_id) => {
-                crate::global_asm::codegen_global_asm_item(tcx, &mut cx.global_asm, item_id);
+                rustc_codegen_ssa::base::codegen_global_asm(
+                    &mut GlobalAsmContext { tcx, global_asm: &mut cx.global_asm },
+                    item_id,
+                );
             }
         }
     }
