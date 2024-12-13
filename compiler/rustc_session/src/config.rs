@@ -472,6 +472,13 @@ impl ToString for DebugInfoCompression {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Hash)]
+pub enum MirStripDebugInfo {
+    None,
+    LocalsInTinyFunctions,
+    AllLocals,
+}
+
 /// Split debug-information is enabled by `-C split-debuginfo`, this enum is only used if split
 /// debug-information is enabled (in either `Packed` or `Unpacked` modes), and the platform
 /// uses DWARF for debug-information.
@@ -2900,10 +2907,10 @@ pub(crate) mod dep_tracking {
         BranchProtection, CFGuard, CFProtection, CollapseMacroDebuginfo, CoverageOptions,
         CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug, FunctionReturn,
         InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
-        LtoCli, NextSolverConfig, OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes,
-        PatchableFunctionEntry, Polonius, RemapPathScopeComponents, ResolveDocLinks,
-        SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
-        WasiExecModel,
+        LtoCli, MirStripDebugInfo, NextSolverConfig, OomStrategy, OptLevel, OutFileName,
+        OutputType, OutputTypes, PatchableFunctionEntry, Polonius, RemapPathScopeComponents,
+        ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath,
+        SymbolManglingVersion, WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;
@@ -2971,6 +2978,7 @@ pub(crate) mod dep_tracking {
         LtoCli,
         DebugInfo,
         DebugInfoCompression,
+        MirStripDebugInfo,
         CollapseMacroDebuginfo,
         UnstableFeatures,
         NativeLib,
