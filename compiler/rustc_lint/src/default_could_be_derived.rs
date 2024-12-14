@@ -20,8 +20,8 @@ declare_lint! {
     /// }
     ///
     /// #[deny(default_could_be_derived)]
-    /// impl Default for Foo {
-    ///     fn default() -> Foo {
+    /// impl Default for A {
+    ///     fn default() -> A {
     ///         A {
     ///             b: None,
     ///         }
@@ -59,12 +59,14 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `default_could_be_derived` lint checks for manual `impl` blocks
-    /// of the `Default` trait that could have been derived.
+    /// The `manual_default_for_type_with_default_fields` lint checks for
+    /// manual `impl` blocks of the `Default` trait of types with default
+    /// field values.
     ///
     /// ### Example
     ///
     /// ```rust,compile_fail
+    /// #![feature(default_field_values)]
     /// struct Foo {
     ///     x: i32 = 101,
     /// }
@@ -114,7 +116,7 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
                 kind:
                     hir::ItemKind::Struct(hir::VariantData::Struct { fields, recovered: _ }, _generics),
                 ..
-            })) => {
+            })) if cx.tcx.features().default_field_values() => {
                 let fields_with_default_value: Vec<_> =
                     fields.iter().filter_map(|f| f.default).collect();
                 let fields_with_default_impl: Vec<_> = fields
@@ -133,6 +135,10 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
                         _ => None,
                     })
                     .collect();
+                // FIXME: look at the `Default::default()` implementation and call check_expr and
+                // check_const_expr on every field. If all are either of those, then we suggest
+                // adding a default field value for the const-able ones and deriving if the feature
+                // is enabled.
                 if !fields_with_default_value.is_empty()
                     && fields.len()
                         == fields_with_default_value.len() + fields_with_default_impl.len()
