@@ -249,7 +249,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let layout = start_bx.layout_of(fx.monomorphize(decl.ty));
             assert!(!layout.ty.has_erasable_regions());
 
-            if layout.size.bytes() >= MIN_DANGEROUS_SIZE {
+            if layout.size.bytes() >= MIN_DANGEROUS_ALLOC_SIZE {
                 let (size_quantity, size_unit) = human_readable_bytes(layout.size.bytes());
                 cx.tcx().node_span_lint(
                     lint::builtin::DANGEROUS_STACK_ALLOCATION,
