@@ -6,7 +6,6 @@ LL | |     fn default() -> Self {
 LL | |         Self {
 LL | |             a: false,
 ...  |
-LL | |     }
 LL | | }
    | |_^
    |

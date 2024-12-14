@@ -99,8 +99,7 @@ LL | /     /// for OldA
 LL | |     // struct OldA;
 LL | |
 LL | |     /// Docs
-LL | |     /// for OldB
-LL | |     // struct OldB;
+...  |
 LL | |
    | |_^
 ...
