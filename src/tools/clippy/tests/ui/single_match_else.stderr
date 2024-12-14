@@ -68,8 +68,7 @@ LL | /     match Result::<i32, &Infallible>::Ok(1) {
 LL | |         Ok(a) => println!("${:?}", a),
 LL | |         Err(_) => {
 LL | |             println!("else block");
-LL | |             return;
-LL | |         }
+...  |
 LL | |     }
    | |_____^
    |
@@ -88,8 +87,7 @@ LL | /     match Cow::from("moo") {
 LL | |         Cow::Owned(a) => println!("${:?}", a),
 LL | |         Cow::Borrowed(_) => {
 LL | |             println!("else block");
-LL | |             return;
-LL | |         }
+...  |
 LL | |     }
    | |_____^
    |
