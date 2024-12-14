@@ -13,9 +13,7 @@ LL | /     if true {
 LL | |
 LL | |         x?
    | |         ^^ expected `()`, found integer
-LL | |
-LL | |
-LL | |
+...  |
 LL | |     }
    | |_____- expected this to be `()`
    |

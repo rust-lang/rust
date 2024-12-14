@@ -2,8 +2,7 @@ error[E0277]: the trait bound `Bug: Foo` is not satisfied
   --> $DIR/issue-59324.rs:11:1
    |
 LL | / pub trait ThriftService<Bug: NotFoo>:
-LL | |
-LL | |
+...  |
 LL | |     Service<AssocType = <Bug as Foo>::OnlyFoo>
    | |______________________________________________^ the trait `Foo` is not implemented for `Bug`
    |
@@ -20,7 +19,6 @@ LL | |
 LL | |
 LL | |     Service<AssocType = <Bug as Foo>::OnlyFoo>
 ...  |
-LL | |
 LL | | }
    | |_^ the trait `Foo` is not implemented for `Bug`
    |

@@ -39,10 +39,7 @@ error[E0277]: the trait bound `B: Clone` is not satisfied
    |
 LL |       fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
    |  ______________________________________________________________^
-LL | |
-LL | |
-LL | |
-LL | |         write!(f, "foo")
+...  |
 LL | |     }
    | |_____^ the trait `Clone` is not implemented for `B`
    |

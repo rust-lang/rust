@@ -2,9 +2,7 @@ error: missing documentation for the crate
   --> tests/ui/missing_doc_crate_missing.rs:1:1
    |
 LL | / #![warn(clippy::missing_docs_in_private_items)]
-LL | |
-LL | |
-LL | |
+...  |
 LL | | fn main() {}
    | |____________^
    |
