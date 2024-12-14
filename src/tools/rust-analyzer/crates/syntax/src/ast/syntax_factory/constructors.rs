@@ -1,6 +1,6 @@
 //! Wrappers over [`make`] constructors
 use crate::{
-    ast::{self, make, HasGenericParams, HasName, HasTypeBounds, HasVisibility},
+    ast::{self, make, HasGenericArgs, HasGenericParams, HasName, HasTypeBounds, HasVisibility},
     syntax_editor::SyntaxMappingBuilder,
     AstNode, NodeOrToken, SyntaxKind, SyntaxNode, SyntaxToken,
 };
@@ -10,6 +10,10 @@ use super::SyntaxFactory;
 impl SyntaxFactory {
     pub fn name(&self, name: &str) -> ast::Name {
         make::name(name).clone_for_update()
+    }
+
+    pub fn name_ref(&self, name: &str) -> ast::NameRef {
+        make::name_ref(name).clone_for_update()
     }
 
     pub fn ty(&self, text: &str) -> ast::Type {
@@ -40,6 +44,71 @@ impl SyntaxFactory {
                     ast.type_bound_list().unwrap().syntax().clone(),
                 );
             }
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn path_segment(&self, name_ref: ast::NameRef) -> ast::PathSegment {
+        let ast = make::path_segment(name_ref.clone()).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(name_ref.syntax().clone(), ast.name_ref().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn path_segment_generics(
+        &self,
+        name_ref: ast::NameRef,
+        generic_arg_list: ast::GenericArgList,
+    ) -> ast::PathSegment {
+        let ast::Type::PathType(path) = make::ty(&format!("{name_ref}{generic_arg_list}")) else {
+            unreachable!();
+        };
+
+        let ast = path.path().unwrap().segment().unwrap().clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(name_ref.syntax().clone(), ast.name_ref().unwrap().syntax().clone());
+            builder.map_node(
+                generic_arg_list.syntax().clone(),
+                ast.generic_arg_list().unwrap().syntax().clone(),
+            );
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn path_unqualified(&self, segment: ast::PathSegment) -> ast::Path {
+        let ast = make::path_unqualified(segment.clone()).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(segment.syntax().clone(), ast.segment().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn path_from_segments(
+        &self,
+        segments: impl IntoIterator<Item = ast::PathSegment>,
+        is_abs: bool,
+    ) -> ast::Path {
+        let (segments, input) = iterator_input(segments);
+        let ast = make::path_from_segments(segments, is_abs).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_children(input.into_iter(), ast.segments().map(|it| it.syntax().clone()));
             builder.finish(&mut mapping);
         }
 
@@ -505,6 +574,13 @@ impl SyntaxFactory {
 
     pub fn whitespace(&self, text: &str) -> ast::SyntaxToken {
         make::tokens::whitespace(text)
+    }
+}
+
+// `ext` constructors
+impl SyntaxFactory {
+    pub fn ident_path(&self, ident: &str) -> ast::Path {
+        self.path_unqualified(self.path_segment(self.name_ref(ident)))
     }
 }
 
