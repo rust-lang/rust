@@ -285,7 +285,7 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext<'
             )
             .indent(IndentLevel::from_node(match_expr.syntax()));
 
-            edit.replace_ast::<ast::Expr>(match_expr.into(), if_let_expr);
+            edit.replace_ast::<ast::Expr>(match_expr.into(), if_let_expr.into());
         },
     )
 }

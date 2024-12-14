@@ -607,7 +607,7 @@ pub fn expr_if(
     condition: ast::Expr,
     then_branch: ast::BlockExpr,
     else_branch: Option<ast::ElseBranch>,
-) -> ast::Expr {
+) -> ast::IfExpr {
     let else_branch = match else_branch {
         Some(ast::ElseBranch::Block(block)) => format!("else {block}"),
         Some(ast::ElseBranch::IfExpr(if_expr)) => format!("else {if_expr}"),
