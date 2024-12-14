@@ -69,24 +69,30 @@ pub(crate) fn lex_token_trees<'psess, 'src>(
         token: Token::dummy(),
         diag_info: TokenTreeDiagInfo::default(),
     };
-    let (_open_spacing, stream, res) = lexer.lex_token_trees(/* is_delimited */ false);
-    let unmatched_delims = lexer.diag_info.unmatched_delims;
+    let res = lexer.lex_token_trees(/* is_delimited */ false);
 
-    if res.is_ok() && unmatched_delims.is_empty() {
-        Ok(stream)
-    } else {
-        // Return error if there are unmatched delimiters or unclosed delimiters.
-        // We emit delimiter mismatch errors first, then emit the unclosing delimiter mismatch
-        // because the delimiter mismatch is more likely to be the root cause of error
-        let mut buffer: Vec<_> = unmatched_delims
-            .into_iter()
-            .filter_map(|unmatched_delim| make_unclosed_delims_error(unmatched_delim, psess))
-            .collect();
-        if let Err(errs) = res {
-            // Add unclosing delimiter or diff marker errors
-            buffer.extend(errs);
+    let mut unmatched_delims: Vec<_> = lexer
+        .diag_info
+        .unmatched_delims
+        .into_iter()
+        .filter_map(|unmatched_delim| make_unclosed_delims_error(unmatched_delim, psess))
+        .collect();
+
+    match res {
+        Ok((_open_spacing, stream)) => {
+            if unmatched_delims.is_empty() {
+                Ok(stream)
+            } else {
+                // Return error if there are unmatched delimiters or unclosed delimiters.
+                Err(unmatched_delims)
+            }
         }
-        Err(buffer)
+        Err(errs) => {
+            // We emit delimiter mismatch errors first, then emit the unclosing delimiter mismatch
+            // because the delimiter mismatch is more likely to be the root cause of error
+            unmatched_delims.extend(errs);
+            Err(unmatched_delims)
+        }
     }
 }
 
