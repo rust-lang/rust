@@ -367,14 +367,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             .collect()
                     }
                     AdtExprBase::DefaultFields(field_types) => {
-                        itertools::zip_eq(field_names, &**field_types)
-                            .map(|(n, ty)| match fields_map.get(&n) {
+                        itertools::zip_eq(field_names, field_types)
+                            .map(|(n, &ty)| match fields_map.get(&n) {
                                 Some(v) => v.clone(),
                                 None => match variant.fields[n].value {
                                     Some(def) => {
-                                        let value = Const::from_unevaluated(this.tcx, def)
-                                            .instantiate(this.tcx, args);
-                                        this.literal_operand(expr_span, value)
+                                        let value = Const::Unevaluated(
+                                            UnevaluatedConst::new(def, args),
+                                            ty,
+                                        );
+                                        Operand::Constant(Box::new(ConstOperand {
+                                            span: expr_span,
+                                            user_ty: None,
+                                            const_: value,
+                                        }))
                                     }
                                     None => {
                                         let name = variant.fields[n].name;
