@@ -29,60 +29,74 @@ fn parse_range(val: &str) -> anyhow::Result<Range<u32>> {
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum Command {
-    /// Installs the miri driver and cargo-miri.
+    /// Installs the miri driver and cargo-miri to the sysroot of the active toolchain.
+    ///
     /// Sets up the rpath such that the installed binary should work in any
-    /// working directory. Note that the binaries are placed in the `miri` toolchain
-    /// sysroot, to prevent conflicts with other toolchains.
+    /// working directory.
     Install {
         /// Flags that are passed through to `cargo install`.
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         flags: Vec<String>,
     },
-    /// Just build miri.
+    /// Build Miri.
     Build {
         /// Flags that are passed through to `cargo build`.
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         flags: Vec<String>,
     },
-    /// Just check miri.
+    /// Check Miri.
     Check {
         /// Flags that are passed through to `cargo check`.
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         flags: Vec<String>,
     },
-    /// Build miri, set up a sysroot and then run the test suite.
+    /// Check Miri with Clippy.
+    Clippy {
+        /// Flags that are passed through to `cargo clippy`.
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        flags: Vec<String>,
+    },
+    /// Run the Miri test suite.
     Test {
+        /// Update stdout/stderr reference files.
         #[arg(long)]
         bless: bool,
         /// The cross-interpretation target.
-        /// If none then the host is the target.
         #[arg(long)]
         target: Option<String>,
-        /// Produce coverage report if set.
+        /// Produce coverage report.
         #[arg(long)]
         coverage: bool,
         /// Flags that are passed through to the test harness.
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         flags: Vec<String>,
     },
-    /// Build miri, set up a sysroot and then run the driver with the given <flags>.
-    /// (Also respects MIRIFLAGS environment variable.)
+    /// Run the Miri driver.
+    ///
+    /// Also respects MIRIFLAGS environment variable.
     Run {
+        /// Build the program with the dependencies declared in `test_dependencies/Cargo.toml`.
         #[arg(long)]
         dep: bool,
+        /// Show build progress.
         #[arg(long, short)]
         verbose: bool,
+        /// Run the driver with the seeds in the given range (`..to` or `from..to`, default: `0..64`).
         #[arg(long, value_parser = parse_range)]
         many_seeds: Option<Range<u32>>,
+        /// The cross-interpretation target.
         #[arg(long)]
         target: Option<String>,
+        /// The Rust edition.
         #[arg(long)]
         edition: Option<String>,
         /// Flags that are passed through to `miri`.
+        ///
+        /// The flags set in `MIRIFLAGS` are added in front of these flags.
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         flags: Vec<String>,
     },
-    /// Build documentation
+    /// Build documentation.
     Doc {
         /// Flags that are passed through to `cargo doc`.
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
@@ -94,34 +108,45 @@ pub enum Command {
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         flags: Vec<String>,
     },
-    /// Runs clippy on all sources.
-    Clippy {
-        /// Flags that are passed through to `cargo clippy`.
-        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
-        flags: Vec<String>,
-    },
-    /// Runs the benchmarks from bench-cargo-miri in hyperfine. hyperfine needs to be installed.
+    /// Runs the benchmarks from bench-cargo-miri in hyperfine.
+    ///
+    /// hyperfine needs to be installed.
     Bench {
         #[arg(long)]
         target: Option<String>,
         /// When `true`, skip the `./miri install` step.
+        #[arg(long)]
         no_install: bool,
-        /// List of benchmarks to run. By default all benchmarks are run.
+        /// List of benchmarks to run (default: run all benchmarks).
         benches: Vec<String>,
     },
-    /// Update and activate the rustup toolchain 'miri' to the commit given in the
-    /// `rust-version` file.
-    /// `rustup-toolchain-install-master` must be installed for this to work. Any extra
-    /// flags are passed to `rustup-toolchain-install-master`.
-    Toolchain { flags: Vec<String> },
-    /// Pull and merge Miri changes from the rustc repo. Defaults to fetching the latest
-    /// rustc commit. The fetched commit is stored in the `rust-version` file, so the
-    /// next `./miri toolchain` will install the rustc that just got pulled.
-    RustcPull { commit: Option<String> },
-    /// Push Miri changes back to the rustc repo. This will pull a copy of the rustc
-    /// history into the Miri repo, unless you set the RUSTC_GIT env var to an existing
-    /// clone of the rustc repo.
-    RustcPush { github_user: String, branch: String },
+    /// Update and activate the rustup toolchain 'miri'.
+    ///
+    /// The `rust-version` file is used to determine the commit that will be intsalled.
+    /// `rustup-toolchain-install-master` must be installed for this to work.
+    Toolchain {
+        /// Flags that are passed through to `rustup-toolchain-install-master`.
+        flags: Vec<String>,
+    },
+    /// Pull and merge Miri changes from the rustc repo.
+    ///
+    /// The fetched commit is stored in the `rust-version` file, so the next `./miri toolchain` will
+    /// install the rustc that just got pulled.
+    RustcPull {
+        /// The commit to fetch (default: latest rustc commit).
+        commit: Option<String>,
+    },
+    /// Push Miri changes back to the rustc repo.
+    ///
+    /// This will pull a copy of the rustc history into the Miri repo, unless you set the RUSTC_GIT
+    /// env var to an existing clone of the rustc repo.
+    RustcPush {
+        /// The Github user that owns the rustc fork to which we should push.
+        github_user: String,
+        /// The branch to push to.
+        #[arg(default_value = "miri-sync")]
+        branch: String,
+    },
 }
 
 impl Command {
@@ -150,6 +175,9 @@ impl Command {
 }
 
 #[derive(Parser)]
+#[command(after_help = "Environment variables:
+  MIRI_SYSROOT: If already set, the \"sysroot setup\" step is skipped
+  CARGO_EXTRA_FLAGS: Pass extra flags to all cargo invocations")]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Command,
