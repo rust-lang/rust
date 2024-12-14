@@ -753,7 +753,7 @@ declare_lint! {
     /// stack on most platforms.
     pub DANGEROUS_STACK_ALLOCATION,
     Warn,
-    "Detects dangerous stack allocations at the limit of most architectures"
+    "detects dangerously large stack allocations at the limit of most architectures"
 }
 
 declare_lint! {
