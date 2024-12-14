@@ -6,7 +6,7 @@ use std::{iter, ptr};
 
 use libc::{c_char, c_longlong, c_uint};
 use rustc_abi::{Align, Size};
-use rustc_codegen_ssa::debuginfo::type_names::{cpp_like_debuginfo, VTableNameKind};
+use rustc_codegen_ssa::debuginfo::type_names::{VTableNameKind, cpp_like_debuginfo};
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -23,15 +23,15 @@ use smallvec::smallvec;
 use tracing::{debug, instrument};
 
 use self::type_map::{DINodeCreationResult, Stub, UniqueTypeId};
+use super::CodegenUnitDebugContext;
 use super::namespace::mangled_name_of_instance;
 use super::type_names::{compute_debuginfo_type_name, compute_debuginfo_vtable_name};
 use super::utils::{
-    create_DIArray, debug_context, get_namespace_for_item, is_node_local_to_unit, DIB,
+    DIB, create_DIArray, debug_context, get_namespace_for_item, is_node_local_to_unit,
 };
-use super::CodegenUnitDebugContext;
 use crate::common::{AsCCharPtr, CodegenCx};
 use crate::debuginfo::metadata::type_map::build_type_with_children;
-use crate::debuginfo::utils::{wide_pointer_kind, WidePtrKind};
+use crate::debuginfo::utils::{WidePtrKind, wide_pointer_kind};
 use crate::llvm::debuginfo::{
     DIDescriptor, DIFile, DIFlags, DILexicalBlock, DIScope, DIType, DebugEmissionKind,
     DebugNameTableKind,
@@ -190,49 +190,49 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
             );
 
             /*
-                This block differentiates between mutable/immutable AND ref/ptr.
+               This block differentiates between mutable/immutable AND ref/ptr.
 
-                References to references (&&T) are invalid constructs in C/C++, and we are piggybacking off
-                of their type system when using LLDB (`TypeSystemClang`). Ptr-to-ref (*&T) and ref-to-ptr (&*T)
-                are valid constructs though. That means we can tell the debugger that ref-to-ref's are actually
-                ref-to-ptr's.
+               References to references (&&T) are invalid constructs in C/C++, and we are piggybacking off
+               of their type system when using LLDB (`TypeSystemClang`). Ptr-to-ref (*&T) and ref-to-ptr (&*T)
+               are valid constructs though. That means we can tell the debugger that ref-to-ref's are actually
+               ref-to-ptr's.
 
-                Additionally, to help debugger visualizers differentiate ref-to-ref's that *look like* ref-to-ptr
-                and *actual* ref-to-ptr, we can use the `rvalue_reference` tag. It's a C++ feature that doesn't
-                quite have an equivalent in Rust, but *is* represented as `&&` which is perfect! That means
-                ref-to-refs (&&T) will look like `T *&&` (i.e. an rvalue_reference to a pointer to T)
-                and on the debugger visualizer end, the scripts can "undo" that translation.
+               Additionally, to help debugger visualizers differentiate ref-to-ref's that *look like* ref-to-ptr
+               and *actual* ref-to-ptr, we can use the `rvalue_reference` tag. It's a C++ feature that doesn't
+               quite have an equivalent in Rust, but *is* represented as `&&` which is perfect! That means
+               ref-to-refs (&&T) will look like `T *&&` (i.e. an rvalue_reference to a pointer to T)
+               and on the debugger visualizer end, the scripts can "undo" that translation.
 
-                To handle immutable vs mutable (&/&mut) we use the `const` modifier. The modifier is applied
-                with proper C/C++ rules (i.e. pointer-to-constant vs constant pointer). This means that an
-                immutable reference applies the const modifier to the *pointee type*. When reversing the
-                debuginfo translation, the `const` modifier doesn't describe the value it's applied to, it describes
-                the pointer to the value. This is a **very** important distinction.
+               To handle immutable vs mutable (&/&mut) we use the `const` modifier. The modifier is applied
+               with proper C/C++ rules (i.e. pointer-to-constant vs constant pointer). This means that an
+               immutable reference applies the const modifier to the *pointee type*. When reversing the
+               debuginfo translation, the `const` modifier doesn't describe the value it's applied to, it describes
+               the pointer to the value. This is a **very** important distinction.
 
-                Here are some examples, the Rust representation is on the left and the debuginfo translation on
-                the right
+               Here are some examples, the Rust representation is on the left and the debuginfo translation on
+               the right
 
-                Cosnt vs Mut:
-                *const T -> const T *
-                *mut T -> T *
+               Cosnt vs Mut:
+               *const T -> const T *
+               *mut T -> T *
 
-                *const *const T -> const T *const *
-                *mut *mut T -> T **
+               *const *const T -> const T *const *
+               *mut *mut T -> T **
 
-                *mut *const T -> const T **
-                *const *mut T -> T *const *
+               *mut *const T -> const T **
+               *const *mut T -> T *const *
 
-                Nested References:
-                &T -> const T &
-                &&T -> const T *const &&
-                &&&T -> const T &const *const &&
-                &&&&T -> const T *const &&const *const &&
+               Nested References:
+               &T -> const T &
+               &&T -> const T *const &&
+               &&&T -> const T &const *const &&
+               &&&&T -> const T *const &&const *const &&
 
-                &mut T -> T &
-                &mut &mut T -> T *&&
-                &mut &mut &mut T -> T &*&&
-                &mut &mut &mut &mut T -> T *&&*&&
-             */
+               &mut T -> T &
+               &mut &mut T -> T *&&
+               &mut &mut &mut T -> T &*&&
+               &mut &mut &mut &mut T -> T *&&*&&
+            */
             let di_node = match (ptr_type.kind(), pointee_type.kind()) {
                 // if we have a ref-to-ref, convert the inner ref to a ptr and the outter ref to an rvalue ref
                 // and apply `const` to the inner ref's value and the inner ref itself as necessary
@@ -1008,8 +1008,8 @@ pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
     codegen_unit_name: &str,
     debug_context: &CodegenUnitDebugContext<'ll, 'tcx>,
 ) -> &'ll DIDescriptor {
-    use rustc_session::config::RemapPathScopeComponents;
     use rustc_session::RemapFileNameExt;
+    use rustc_session::config::RemapPathScopeComponents;
     let mut name_in_debuginfo = tcx
         .sess
         .local_crate_source_file()
