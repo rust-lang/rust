@@ -42,11 +42,11 @@ LL | type Bat<Rhs> = dyn Add<Rhs> + Sub<Rhs> + Fine<Rhs>;
    = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Add<Rhs> + Sub<Rhs> + Fine<Rhs> {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
-error[E0191]: the value of the associated types `Output` in `Div`, `Output` in `Mul` must be specified
+error[E0191]: the value of the associated types `Output` in `Div<Rhs>`, `Output` in `Mul<Rhs>` must be specified
   --> $DIR/missing-associated-types.rs:20:21
    |
 LL | type Bal<Rhs> = dyn X<Rhs>;
-   |                     ^^^^^^ associated types `Output` (from trait `Div`), `Output` (from trait `Mul`) must be specified
+   |                     ^^^^^^ associated types `Output` (from trait `Div<Rhs>`), `Output` (from trait `Mul<Rhs>`) must be specified
    |
    = help: consider introducing a new type parameter, adding `where` constraints using the fully-qualified path to the associated types
 
