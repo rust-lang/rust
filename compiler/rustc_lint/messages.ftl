@@ -806,10 +806,14 @@ lint_unexpected_cfg_add_build_rs_println = or consider adding `{$build_rs_printl
 lint_unexpected_cfg_add_cargo_feature = consider using a Cargo feature instead
 lint_unexpected_cfg_add_cargo_toml_lint_cfg = or consider adding in `Cargo.toml` the `check-cfg` lint config for the lint:{$cargo_toml_lint_cfg}
 lint_unexpected_cfg_add_cmdline_arg = to expect this configuration use `{$cmdline_arg}`
+lint_unexpected_cfg_cargo_update = the {$macro_kind} `{$macro_name}` may come from an old version of it's defining crate, try updating your dependencies with `cargo update`
+
 lint_unexpected_cfg_define_features = consider defining some features in `Cargo.toml`
 lint_unexpected_cfg_doc_cargo = see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
 lint_unexpected_cfg_doc_rustc = see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
+lint_unexpected_cfg_from_external_macro_origin = using a cfg inside a {$macro_kind} will use the cfgs from the destination crate and not the ones from the defining crate
+lint_unexpected_cfg_from_external_macro_refer = try refering to `{$macro_name}` crate for guidance on how handle this unexpected cfg
 lint_unexpected_cfg_name = unexpected `cfg` condition name: `{$name}`
 lint_unexpected_cfg_name_expected_names = expected names are: {$possibilities}{$and_more ->
         [0] {""}

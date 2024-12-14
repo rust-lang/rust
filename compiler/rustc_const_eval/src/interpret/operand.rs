@@ -15,9 +15,9 @@ use rustc_middle::{bug, mir, span_bug, ty};
 use tracing::trace;
 
 use super::{
-    CtfeProvenance, InterpCx, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta, OffsetMode,
-    PlaceTy, Pointer, Projectable, Provenance, Scalar, alloc_range, err_ub, from_known_layout,
-    interp_ok, mir_assign_valid_types, throw_ub,
+    CtfeProvenance, Frame, InterpCx, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta,
+    OffsetMode, PlaceTy, Pointer, Projectable, Provenance, Scalar, alloc_range, err_ub,
+    from_known_layout, interp_ok, mir_assign_valid_types, throw_ub,
 };
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
@@ -708,23 +708,32 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         interp_ok(str)
     }
 
-    /// Read from a local of the current frame.
-    /// Will not access memory, instead an indirect `Operand` is returned.
-    ///
-    /// This is public because it is used by [priroda](https://github.com/oli-obk/priroda) to get an
-    /// OpTy from a local.
+    /// Read from a local of the current frame. Convenience method for [`InterpCx::local_at_frame_to_op`].
     pub fn local_to_op(
         &self,
         local: mir::Local,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
-        let frame = self.frame();
+        self.local_at_frame_to_op(self.frame(), local, layout)
+    }
+
+    /// Read from a local of a given frame.
+    /// Will not access memory, instead an indirect `Operand` is returned.
+    ///
+    /// This is public because it is used by [Aquascope](https://github.com/cognitive-engineering-lab/aquascope/)
+    /// to get an OpTy from a local.
+    pub fn local_at_frame_to_op(
+        &self,
+        frame: &Frame<'tcx, M::Provenance, M::FrameExtra>,
+        local: mir::Local,
+        layout: Option<TyAndLayout<'tcx>>,
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         let layout = self.layout_of_local(frame, local, layout)?;
         let op = *frame.locals[local].access()?;
         if matches!(op, Operand::Immediate(_)) {
             assert!(!layout.is_unsized());
         }
-        M::after_local_read(self, local)?;
+        M::after_local_read(self, frame, local)?;
         interp_ok(OpTy { op, layout })
     }
 
