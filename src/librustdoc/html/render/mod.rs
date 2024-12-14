@@ -835,12 +835,23 @@ fn assoc_href_attr(it: &clean::Item, link: AssocItemLink<'_>, cx: &Context<'_>) 
     href.map(|href| format!(" href=\"{href}\"")).unwrap_or_default()
 }
 
+#[derive(Debug)]
+enum AssocConstValue<'a> {
+    // In trait definitions, it is relevant for the public API whether an
+    // associated constant comes with a default value, so even if we cannot
+    // render its value, the presence of a value must be shown using `= _`.
+    TraitDefault(&'a clean::ConstantKind),
+    // In impls, there is no need to show `= _`.
+    Impl(&'a clean::ConstantKind),
+    None,
+}
+
 fn assoc_const(
     w: &mut Buffer,
     it: &clean::Item,
     generics: &clean::Generics,
     ty: &clean::Type,
-    default: Option<&clean::ConstantKind>,
+    value: AssocConstValue<'_>,
     link: AssocItemLink<'_>,
     indent: usize,
     cx: &Context<'_>,
@@ -856,15 +867,20 @@ fn assoc_const(
         generics = generics.print(cx),
         ty = ty.print(cx),
     );
-    if let Some(default) = default {
-        w.write_str(" = ");
-
+    if let AssocConstValue::TraitDefault(konst) | AssocConstValue::Impl(konst) = value {
         // FIXME: `.value()` uses `clean::utils::format_integer_with_underscore_sep` under the
         //        hood which adds noisy underscores and a type suffix to number literals.
         //        This hurts readability in this context especially when more complex expressions
         //        are involved and it doesn't add much of value.
         //        Find a way to print constants here without all that jazz.
-        write!(w, "{}", Escape(&default.value(tcx).unwrap_or_else(|| default.expr(tcx))));
+        let repr = konst.value(tcx).unwrap_or_else(|| konst.expr(tcx));
+        if match value {
+            AssocConstValue::TraitDefault(_) => true, // always show
+            AssocConstValue::Impl(_) => repr != "_",  // show if there is a meaningful value to show
+            AssocConstValue::None => unreachable!(),
+        } {
+            write!(w, " = {}", Escape(&repr));
+        }
     }
     write!(w, "{}", print_where_clause(generics, cx, indent, Ending::NoNewline));
 }
@@ -1086,17 +1102,27 @@ fn render_assoc_item(
             item,
             generics,
             ty,
-            None,
+            AssocConstValue::None,
             link,
             if parent == ItemType::Trait { 4 } else { 0 },
             cx,
         ),
-        clean::ProvidedAssocConstItem(ci) | clean::ImplAssocConstItem(ci) => assoc_const(
+        clean::ProvidedAssocConstItem(ci) => assoc_const(
             w,
             item,
             &ci.generics,
             &ci.type_,
-            Some(&ci.kind),
+            AssocConstValue::TraitDefault(&ci.kind),
+            link,
+            if parent == ItemType::Trait { 4 } else { 0 },
+            cx,
+        ),
+        clean::ImplAssocConstItem(ci) => assoc_const(
+            w,
+            item,
+            &ci.generics,
+            &ci.type_,
+            AssocConstValue::Impl(&ci.kind),
             link,
             if parent == ItemType::Trait { 4 } else { 0 },
             cx,
@@ -1704,7 +1730,7 @@ fn render_impl(
                     item,
                     generics,
                     ty,
-                    None,
+                    AssocConstValue::None,
                     link.anchor(if trait_.is_some() { &source_id } else { &id }),
                     0,
                     cx,
@@ -1726,7 +1752,11 @@ fn render_impl(
                     item,
                     &ci.generics,
                     &ci.type_,
-                    Some(&ci.kind),
+                    match item.kind {
+                        clean::ProvidedAssocConstItem(_) => AssocConstValue::TraitDefault(&ci.kind),
+                        clean::ImplAssocConstItem(_) => AssocConstValue::Impl(&ci.kind),
+                        _ => unreachable!(),
+                    },
                     link.anchor(if trait_.is_some() { &source_id } else { &id }),
                     0,
                     cx,
