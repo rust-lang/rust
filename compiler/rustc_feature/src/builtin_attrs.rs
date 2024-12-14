@@ -408,11 +408,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         crate_type, CrateLevel, template!(NameValueStr: "bin|lib|..."), DuplicatesOk,
         EncodeCrossCrate::No,
     ),
-    // crate_id is deprecated
-    ungated!(
-        crate_id, CrateLevel, template!(NameValueStr: "ignored"), FutureWarnFollowing,
-        EncodeCrossCrate::No,
-    ),
 
     // ABI, linking, symbols, and FFI
     ungated!(
@@ -448,7 +443,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     // Entry point:
-    ungated!(no_start, CrateLevel, template!(Word), WarnFollowing, EncodeCrossCrate::No),
     ungated!(no_main, CrateLevel, template!(Word), WarnFollowing, EncodeCrossCrate::No),
 
     // Modules, prelude, and resolution:
