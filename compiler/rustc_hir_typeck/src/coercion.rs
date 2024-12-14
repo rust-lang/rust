@@ -42,6 +42,8 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::Expr;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::relate::RelateResult;
 use rustc_infer::infer::{Coercion, DefineOpaqueTypes, InferOk, InferResult};
@@ -1803,10 +1805,10 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
 
                 if let Some(expr) = expression {
                     if let hir::ExprKind::Loop(
-                        _,
+                        loop_blk,
                         _,
                         loop_src @ (hir::LoopSource::While | hir::LoopSource::ForLoop),
-                        _,
+                        loop_span,
                     ) = expr.kind
                     {
                         let loop_type = if loop_src == hir::LoopSource::While {
@@ -1816,6 +1818,33 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                         };
 
                         err.note(format!("{loop_type} evaluate to unit type `()`"));
+
+                        struct RetExprChecker {
+                            contains_ret_expr: bool,
+                        }
+                        impl<'v> Visitor<'v> for RetExprChecker {
+                            fn visit_expr(&mut self, ex: &'v Expr<'v>) {
+                                if let hir::ExprKind::Ret(_) = ex.kind {
+                                    self.contains_ret_expr = true;
+                                    return;
+                                }
+                                intravisit::walk_expr(self, ex);
+                            }
+                        }
+                        let mut visitor = RetExprChecker { contains_ret_expr: false };
+                        intravisit::walk_block(&mut visitor, loop_blk);
+                        if visitor.contains_ret_expr {
+                            let loop_header = if loop_src == hir::LoopSource::While {
+                                "loop condition expression or pattern"
+                            } else {
+                                "iterator expression"
+                            };
+                            err.span_note(
+                                    loop_span,
+                                    format!("It is determined that this might iterate zero times, regardless of the {loop_header}.")
+                                );
+                            err.span_help(loop_span, "If you are assuming that it will iterate at least once, consider using a `loop` expression instead.");
+                        }
                     }
 
                     fcx.emit_coerce_suggestions(
