@@ -3,8 +3,7 @@ error[E0658]: associated const equality is incomplete
    |
 LL |   impl Tr3<N
    |  __________^
-LL | |
-LL | |
+...  |
 LL | | = 42, T2 = Qux, T3 = usize> for Bar {
    | |____^
    |
@@ -198,8 +197,7 @@ error[E0229]: associated item constraints are not allowed here
    |
 LL |   impl Tr3<N
    |  __________^
-LL | |
-LL | |
+...  |
 LL | | = 42, T2 = Qux, T3 = usize> for Bar {
    | |____^ associated item constraint not allowed here
    |

@@ -24,10 +24,7 @@ error: item does not constrain `Bar::{opaque#0}`, but has it in its signature
    |
 LL |   async fn test<const N: crate::Bar>() {
    |  ______________________________________^
-LL | |
-LL | |
-LL | |
-LL | |     #[cfg(infer)]
+...  |
 LL | |     let x: u32 = N;
 LL | | }
    | |_^

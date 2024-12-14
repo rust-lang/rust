@@ -2,14 +2,10 @@ error[E0572]: return statement outside of function body
   --> $DIR/issue-51714.rs:6:13
    |
 LL | / fn main() {
-LL | |
-LL | |
-LL | |
-LL | |
+...  |
 LL | |     |_: [_; return || {}]| {};
    | |             ^^^^^^^^^^^^ the return is part of this body...
 ...  |
-LL | |
 LL | | }
    | |_- ...not the enclosing function body
 
@@ -17,14 +13,10 @@ error[E0572]: return statement outside of function body
   --> $DIR/issue-51714.rs:10:10
    |
 LL | / fn main() {
-LL | |
-LL | |
-LL | |
 ...  |
 LL | |     [(); return || {}];
    | |          ^^^^^^^^^^^^ the return is part of this body...
 ...  |
-LL | |
 LL | | }
    | |_- ...not the enclosing function body
 
@@ -32,14 +24,10 @@ error[E0572]: return statement outside of function body
   --> $DIR/issue-51714.rs:14:10
    |
 LL | / fn main() {
-LL | |
-LL | |
-LL | |
 ...  |
 LL | |     [(); return |ice| {}];
    | |          ^^^^^^^^^^^^^^^ the return is part of this body...
 ...  |
-LL | |
 LL | | }
    | |_- ...not the enclosing function body
 
@@ -47,14 +35,10 @@ error[E0572]: return statement outside of function body
   --> $DIR/issue-51714.rs:18:10
    |
 LL | / fn main() {
-LL | |
-LL | |
-LL | |
 ...  |
 LL | |     [(); return while let Some(n) = Some(0) {}];
    | |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the return is part of this body...
-LL | |
-LL | |
+...  |
 LL | | }
    | |_- ...not the enclosing function body
 

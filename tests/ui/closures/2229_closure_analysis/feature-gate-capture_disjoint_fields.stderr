@@ -15,8 +15,7 @@ LL | /     || {
 LL | |
 LL | |
 LL | |         println!("This uses new capture analyysis to capture s={}", s);
-LL | |
-LL | |
+...  |
 LL | |     };
    | |_____^
    |
@@ -33,8 +32,7 @@ LL | /     || {
 LL | |
 LL | |
 LL | |         println!("This uses new capture analyysis to capture s={}", s);
-LL | |
-LL | |
+...  |
 LL | |     };
    | |_____^
    |
