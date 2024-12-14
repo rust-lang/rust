@@ -641,7 +641,7 @@ fn test_projects(env: &Env, args: &TestArg) -> Result<(), String> {
         //failing test is fixed upstream.
         //"https://github.com/marshallpierce/rust-base64", // FIXME: one test is OOM-killed.
         // TODO: ignore the base64 test that is OOM-killed.
-        "https://github.com/time-rs/time",
+        //"https://github.com/time-rs/time", // FIXME: one test fails (https://github.com/time-rs/time/issues/719).
         "https://github.com/rust-lang/log",
         "https://github.com/bitflags/bitflags",
         //"https://github.com/serde-rs/serde", // FIXME: one test fails.
