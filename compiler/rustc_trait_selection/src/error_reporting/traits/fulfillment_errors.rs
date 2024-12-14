@@ -14,6 +14,7 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, LangItem, Node};
 use rustc_infer::infer::{InferOk, TypeTrace};
+use rustc_infer::traits::ScrubbedTraitError;
 use rustc_middle::traits::SignatureMismatchData;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
@@ -1852,7 +1853,21 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         {
                             terrs.push(terr);
                         }
-                        if !ocx.select_where_possible().is_empty() {
+
+                        let errors = ocx.select_where_possible();
+
+                        if !errors.is_empty() {
+                            for error in errors.iter() {
+                                if let ScrubbedTraitError::Select(obligations) = error {
+                                    for obligation in obligations.iter() {
+                                        let predicate = &obligation.predicate;
+                                        err.help(format!(
+                                            "the following constraint is not satisfied: `{}`",
+                                            predicate
+                                        ));
+                                    }
+                                }
+                            }
                             return false;
                         }
                     }
