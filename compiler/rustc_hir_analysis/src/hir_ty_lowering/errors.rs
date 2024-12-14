@@ -9,7 +9,6 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
-use rustc_middle::query::Key;
 use rustc_middle::ty::print::{PrintPolyTraitRefExt as _, PrintTraitRefExt as _};
 use rustc_middle::ty::{
     self, AdtDef, Binder, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeVisitableExt,
@@ -1007,8 +1006,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     )),
                 ..
             }) = node
-            && let Some(ty_def_id) = qself_ty.ty_def_id()
-            && let [inherent_impl] = tcx.inherent_impls(ty_def_id)
+            && let Some(adt_def) = qself_ty.ty_adt_def()
+            && let [inherent_impl] = tcx.inherent_impls(adt_def.did())
             && let name = format!("{ident2}_{ident3}")
             && let Some(ty::AssocItem { kind: ty::AssocKind::Fn, .. }) = tcx
                 .associated_items(inherent_impl)
