@@ -15,7 +15,9 @@ use rustc_middle::mir::mono::Visibility;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::DebugInfo;
 use rustc_span::Symbol;
-use rustc_target::spec::{PanicStrategy, SymbolVisibility};
+use rustc_target::spec::PanicStrategy;
+#[cfg(feature = "master")]
+use rustc_target::spec::SymbolVisibility;
 
 use crate::builder::Builder;
 use crate::context::CodegenCx;

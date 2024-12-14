@@ -1,6 +1,6 @@
+use gccjit::{Context, FunctionType, GlobalKind, ToRValue, Type};
 #[cfg(feature = "master")]
 use gccjit::{FnAttribute, VarAttribute};
-use gccjit::{Context, FunctionType, GlobalKind, ToRValue, Type};
 use rustc_ast::expand::allocator::{
     ALLOCATOR_METHODS, AllocatorKind, AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE,
     alloc_error_handler_name, default_fn_name, global_fn_name,
@@ -9,8 +9,9 @@ use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::OomStrategy;
 
-use crate::base::symbol_visibility_to_gcc;
 use crate::GccContext;
+#[cfg(feature = "master")]
+use crate::base::symbol_visibility_to_gcc;
 
 pub(crate) unsafe fn codegen(
     tcx: TyCtxt<'_>,
@@ -72,7 +73,9 @@ pub(crate) unsafe fn codegen(
     let name = OomStrategy::SYMBOL.to_string();
     let global = context.new_global(None, GlobalKind::Exported, i8, name);
     #[cfg(feature = "master")]
-    global.add_attribute(VarAttribute::Visibility(symbol_visibility_to_gcc(tcx.sess.default_visibility())));
+    global.add_attribute(VarAttribute::Visibility(symbol_visibility_to_gcc(
+        tcx.sess.default_visibility(),
+    )));
     let value = tcx.sess.opts.unstable_opts.oom.should_panic();
     let value = context.new_rvalue_from_int(i8, value as i32);
     global.global_set_initializer_rvalue(value);
@@ -80,7 +83,9 @@ pub(crate) unsafe fn codegen(
     let name = NO_ALLOC_SHIM_IS_UNSTABLE.to_string();
     let global = context.new_global(None, GlobalKind::Exported, i8, name);
     #[cfg(feature = "master")]
-    global.add_attribute(VarAttribute::Visibility(symbol_visibility_to_gcc(tcx.sess.default_visibility())));
+    global.add_attribute(VarAttribute::Visibility(symbol_visibility_to_gcc(
+        tcx.sess.default_visibility(),
+    )));
     let value = context.new_rvalue_from_int(i8, 0);
     global.global_set_initializer_rvalue(value);
 }
@@ -109,10 +114,10 @@ fn create_wrapper_function(
         false,
     );
 
-    println!("{} -> {}: {:?}", from_name, to_name, tcx.sess.default_visibility());
-
     #[cfg(feature = "master")]
-    func.add_attribute(FnAttribute::Visibility(symbol_visibility_to_gcc(tcx.sess.default_visibility())));
+    func.add_attribute(FnAttribute::Visibility(symbol_visibility_to_gcc(
+        tcx.sess.default_visibility(),
+    )));
 
     if tcx.sess.must_emit_unwind_tables() {
         // TODO(antoyo): emit unwind tables.

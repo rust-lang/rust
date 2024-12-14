@@ -21,7 +21,7 @@ use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use gccjit::{Context, FnAttribute, FunctionType, GlobalKind, OutputKind};
+use gccjit::{Context, OutputKind};
 use object::read::archive::ArchiveFile;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule, ThinShared};
 use rustc_codegen_ssa::back::symbol_export;
@@ -50,7 +50,7 @@ pub fn crate_type_allows_lto(crate_type: CrateType) -> bool {
 
 struct LtoData {
     // TODO(antoyo): use symbols_below_threshold.
-    symbols_below_threshold: Vec<String>,
+    //symbols_below_threshold: Vec<String>,
     upstream_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
     tmp_path: TempDir,
 }
@@ -85,14 +85,11 @@ fn prepare_lto(
         }
     };
     let exported_symbols = cgcx.exported_symbols.as_ref().expect("needs exported symbols for LTO");
-    //println!("1. {:?}", exported_symbols);
     let mut symbols_below_threshold = {
         let _timer = cgcx.prof.generic_activity("GCC_lto_generate_symbols_below_threshold");
         exported_symbols[&LOCAL_CRATE].iter().filter_map(symbol_filter).collect::<Vec<String>>()
     };
     info!("{} symbols to preserve in this crate", symbols_below_threshold.len());
-
-    //println!("2. {:?}", symbols_below_threshold);
 
     // If we're performing LTO for the entire crate graph, then for each of our
     // upstream dependencies, find the corresponding rlib and load the bitcode
@@ -122,7 +119,6 @@ fn prepare_lto(
         for &(cnum, ref path) in cgcx.each_linked_rlib_for_lto.iter() {
             let exported_symbols =
                 cgcx.exported_symbols.as_ref().expect("needs exported symbols for LTO");
-            //println!("3. {:?}", exported_symbols);
             {
                 let _timer = cgcx.prof.generic_activity("GCC_lto_generate_symbols_below_threshold");
                 symbols_below_threshold
@@ -159,12 +155,7 @@ fn prepare_lto(
         }
     }
 
-    println!("**** 4. {:?}", symbols_below_threshold);
-    Ok(LtoData {
-        symbols_below_threshold,
-        upstream_modules,
-        tmp_path,
-    })
+    Ok(LtoData { upstream_modules, tmp_path })
 }
 
 fn save_as_file(obj: &[u8], path: &Path) -> Result<(), LtoBitcodeFromRlib> {
@@ -192,7 +183,7 @@ pub(crate) fn run_fat(
         cached_modules,
         lto_data.upstream_modules,
         lto_data.tmp_path,
-        &lto_data.symbols_below_threshold,
+        //&lto_data.symbols_below_threshold,
     )
 }
 
@@ -203,7 +194,7 @@ fn fat_lto(
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
     mut serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
     tmp_path: TempDir,
-    symbols_below_threshold: &[String],
+    //symbols_below_threshold: &[String],
 ) -> Result<LtoModuleCodegen<GccCodegenBackend>, FatalError> {
     let _timer = cgcx.prof.generic_activity("GCC_fat_lto_build_monolithic_module");
     info!("going for a fat lto");
@@ -328,14 +319,7 @@ fn fat_lto(
             ptr as *const *const libc::c_char,
             symbols_below_threshold.len() as libc::size_t,
         );*/
-        let int_type = module.module_llvm.context.new_type::<i32>();
-        for symbol in symbols_below_threshold {
-            println!("*** Keeping symbol: {}", symbol);
-            module.module_llvm.context.new_global(None, GlobalKind::Imported, int_type, symbol);
-        }
-        let void_type = module.module_llvm.context.new_type::<()>();
-        let func = module.module_llvm.context.new_function(None, FunctionType::Extern, void_type, &[], "__rust_alloc", false);
-        func.add_attribute(FnAttribute::Used);
+
         save_temp_bitcode(cgcx, &module, "lto.after-restriction");
         //}
     }
@@ -385,7 +369,7 @@ pub(crate) fn run_thin(
         lto_data.upstream_modules,
         lto_data.tmp_path,
         cached_modules,
-        &lto_data.symbols_below_threshold,
+        //&lto_data.symbols_below_threshold,
     )
 }
 
@@ -436,10 +420,8 @@ fn thin_lto(
     serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
     tmp_path: TempDir,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
-    symbols_below_threshold: &[String],
+    //_symbols_below_threshold: &[String],
 ) -> Result<(Vec<LtoModuleCodegen<GccCodegenBackend>>, Vec<WorkProduct>), FatalError> {
-    println!("********* Thin LTO");
-
     let _timer = cgcx.prof.generic_activity("LLVM_thin_lto_global_analysis");
     info!("going for that thin, thin LTO");
 
@@ -508,12 +490,6 @@ fn thin_lto(
                 unimplemented!("from uncompressed file")
             }
         }
-
-        /*for symbol in symbols_below_threshold {
-            module.module_llvm.context.new_global(symbol);
-        }*/
-
-        println!("**** Name: {:?}\n******", name);
 
         serialized.push(module);
         module_names.push(name);
