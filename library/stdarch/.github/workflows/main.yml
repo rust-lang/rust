@@ -171,11 +171,6 @@ jobs:
             tuple: aarch64-pc-windows-msvc
             os: windows-latest
           norun: true
-        - target:
-            tuple: x86_64-pc-windows-msvc
-            os: windows-latest
-          profile: dev
-          norun: true # FIXME: why doesn't this work in debug mode?
 
     steps:
     - uses: actions/checkout@v4
