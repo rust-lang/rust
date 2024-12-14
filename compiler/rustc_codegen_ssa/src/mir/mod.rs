@@ -257,7 +257,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                     decl.source_info.span,
                     |lint| {
                         lint.primary_message(format!(
-                            "allocation of size: {:.2} {}  exceeds most system architecture limits",
+                            "allocation of {:.2} {}  exceeds most system architecture limits",
                             size_quantity, size_unit
                         ));
                     },
