@@ -266,6 +266,17 @@ pub fn b() {
     //[v0]~| ERROR ::b::Type<[_; _]>>)
     //[v0]~| ERROR demangling-alt(<a::b::Type<[_; _]>>)
     impl<const N: usize, T> Type<[T; N]> {}
+
+    const ZERO: usize = 0;
+
+    #[rustc_symbol_name]
+    //[legacy,verbose-legacy]~^ ERROR symbol-name(_ZN1a1b35Type$LT$$u5b$u8$u3b$$u20$0$u5d$$GT$
+    //[legacy,verbose-legacy]~| ERROR demangling(a::b::Type<[u8; 0]>::
+    //[legacy,verbose-legacy]~| ERROR demangling-alt(a::b::Type<[u8; 0]>)
+    //[v0]~^^^^ ERROR symbol-name(_RMsq_NvCsCRATE_HASH_1a1bINtB<REF>_4TypeAhj0_E)
+    //[v0]~| ERROR ::b::Type<[u8; 0usize]>>)
+    //[v0]~| ERROR demangling-alt(<a::b::Type<[u8; 0]>>)
+    impl Type<[u8; ZERO]> {}
 }
 
 fn main() {}
