@@ -1,6 +1,6 @@
 //@compile-flags: -Cpanic=abort
-#![no_main]
 #![no_std]
+#![no_main]
 
 use core::fmt::Write;
 
@@ -9,7 +9,7 @@ mod utils;
 
 #[no_mangle]
 fn miri_start(_argc: isize, _argv: *const *const u8) -> isize {
-    writeln!(utils::MiriStdout, "Hello from miri_start!").unwrap();
+    writeln!(utils::MiriStdout, "hello, world!").unwrap();
     0
 }
 

@@ -502,11 +502,6 @@ passes_multiple_rustc_main =
     .first = first `#[rustc_main]` function
     .additional = additional `#[rustc_main]` function
 
-passes_multiple_start_functions =
-    multiple `start` functions
-    .label = multiple `start` functions
-    .previous = previous `#[start]` function here
-
 passes_must_not_suspend =
     `must_not_suspend` attribute should be applied to a struct, enum, union, or trait
     .label = is not a struct, enum, union, or trait

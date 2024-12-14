@@ -211,7 +211,7 @@ codegen_ssa_msvc_missing_linker = the msvc targets depend on the msvc linker but
 codegen_ssa_multiple_external_func_decl = multiple declarations of external function `{$function}` from library `{$library_name}` have different calling conventions
 
 codegen_ssa_multiple_main_functions = entry symbol `main` declared multiple times
-    .help = did you use `#[no_mangle]` on `fn main`? Use `#[start]` instead
+    .help = did you use `#[no_mangle]` on `fn main`? Use `#![no_main]` to suppress the usual Rust-generated entry point
 
 codegen_ssa_no_field = no field `{$name}`
 

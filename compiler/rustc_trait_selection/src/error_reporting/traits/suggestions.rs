@@ -2740,7 +2740,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             | ObligationCauseCode::IfExpression { .. }
             | ObligationCauseCode::IfExpressionWithNoElse
             | ObligationCauseCode::MainFunctionType
-            | ObligationCauseCode::StartFunctionType
             | ObligationCauseCode::LangFunctionType(_)
             | ObligationCauseCode::IntrinsicType
             | ObligationCauseCode::MethodReceiver

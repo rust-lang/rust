@@ -489,21 +489,6 @@ hir_analysis_simd_ffi_highly_experimental = use of SIMD type{$snip} in FFI is hi
 hir_analysis_specialization_trait = implementing `rustc_specialization_trait` traits is unstable
     .help = add `#![feature(min_specialization)]` to the crate attributes to enable
 
-hir_analysis_start_function_parameters = `#[start]` function is not allowed to have type parameters
-    .label = `#[start]` function cannot have type parameters
-
-hir_analysis_start_function_where = `#[start]` function is not allowed to have a `where` clause
-    .label = `#[start]` function cannot have a `where` clause
-
-hir_analysis_start_not_async = `#[start]` function is not allowed to be `async`
-    .label = `#[start]` is not allowed to be `async`
-
-hir_analysis_start_not_target_feature = `#[start]` function is not allowed to have `#[target_feature]`
-    .label = `#[start]` function is not allowed to have `#[target_feature]`
-
-hir_analysis_start_not_track_caller = `#[start]` function is not allowed to be `#[track_caller]`
-    .label = `#[start]` function is not allowed to be `#[track_caller]`
-
 hir_analysis_static_specialize = cannot specialize on `'static` lifetime
 
 hir_analysis_tait_forward_compat = item constrains opaque type that is not in its signature

@@ -1314,17 +1314,6 @@ pub(crate) struct MultipleRustcMain {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_multiple_start_functions, code = E0138)]
-pub(crate) struct MultipleStartFunctions {
-    #[primary_span]
-    pub span: Span,
-    #[label]
-    pub labeled: Span,
-    #[label(passes_previous)]
-    pub previous: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_extern_main)]
 pub(crate) struct ExternMain {
     #[primary_span]

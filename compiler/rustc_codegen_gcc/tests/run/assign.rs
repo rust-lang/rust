@@ -6,10 +6,11 @@
 //     10
 
 #![allow(internal_features, unused_attributes)]
-#![feature(auto_traits, lang_items, no_core, start, intrinsics, rustc_attrs, track_caller)]
+#![feature(auto_traits, lang_items, no_core, intrinsics, rustc_attrs, track_caller)]
 
 #![no_std]
 #![no_core]
+#![no_main]
 
 /*
  * Core
@@ -142,8 +143,8 @@ fn inc(num: isize) -> isize {
 }
 
 
-#[start]
-fn main(mut argc: isize, _argv: *const *const u8) -> isize {
+#[no_mangle]
+extern "C" fn main(argc: i32, _argv: *const *const u8) -> i32 {
     argc = inc(argc);
     unsafe {
         libc::printf(b"%ld\n\0" as *const u8 as *const i8, argc);

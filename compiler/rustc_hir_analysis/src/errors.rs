@@ -620,48 +620,6 @@ pub(crate) struct TargetFeatureOnMain {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_start_not_track_caller)]
-pub(crate) struct StartTrackCaller {
-    #[primary_span]
-    pub span: Span,
-    #[label]
-    pub start: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_start_not_target_feature)]
-pub(crate) struct StartTargetFeature {
-    #[primary_span]
-    pub span: Span,
-    #[label]
-    pub start: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_start_not_async, code = E0752)]
-pub(crate) struct StartAsync {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_start_function_where, code = E0647)]
-pub(crate) struct StartFunctionWhere {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_start_function_parameters, code = E0132)]
-pub(crate) struct StartFunctionParameters {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(hir_analysis_main_function_return_type_generic, code = E0131)]
 pub(crate) struct MainFunctionReturnTypeGeneric {
     #[primary_span]

@@ -2310,7 +2310,6 @@ impl<'tcx> ObligationCause<'tcx> {
             | ObligationCauseCode::MatchExpressionArm(_)
             | ObligationCauseCode::IfExpression { .. }
             | ObligationCauseCode::LetElse
-            | ObligationCauseCode::StartFunctionType
             | ObligationCauseCode::LangFunctionType(_)
             | ObligationCauseCode::IntrinsicType
             | ObligationCauseCode::MethodReceiver => FailureCode::Error0308,
@@ -2368,9 +2367,6 @@ impl<'tcx> ObligationCause<'tcx> {
             ObligationCauseCode::MainFunctionType => {
                 ObligationCauseFailureCode::FnMainCorrectType { span }
             }
-            ObligationCauseCode::StartFunctionType => {
-                ObligationCauseFailureCode::FnStartCorrectType { span, subdiags }
-            }
             &ObligationCauseCode::LangFunctionType(lang_item_name) => {
                 ObligationCauseFailureCode::FnLangCorrectType { span, subdiags, lang_item_name }
             }
@@ -2413,7 +2409,6 @@ impl<'tcx> ObligationCause<'tcx> {
                 "const is compatible with trait"
             }
             ObligationCauseCode::MainFunctionType => "`main` function has the correct type",
-            ObligationCauseCode::StartFunctionType => "`#[start]` function has the correct type",
             ObligationCauseCode::LangFunctionType(_) => "lang item function has the correct type",
             ObligationCauseCode::IntrinsicType => "intrinsic has the correct type",
             ObligationCauseCode::MethodReceiver => "method receiver has the correct type",
@@ -2434,7 +2429,6 @@ impl IntoDiagArg for ObligationCauseAsDiagArg<'_> {
                 "const_compat"
             }
             ObligationCauseCode::MainFunctionType => "fn_main_correct_type",
-            ObligationCauseCode::StartFunctionType => "fn_start_correct_type",
             ObligationCauseCode::LangFunctionType(_) => "fn_lang_correct_type",
             ObligationCauseCode::IntrinsicType => "intrinsic_correct_type",
             ObligationCauseCode::MethodReceiver => "method_correct_type",

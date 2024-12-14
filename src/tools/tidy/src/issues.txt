@@ -183,7 +183,6 @@ ui/async-await/issue-67252-unnamed-future.rs
 ui/async-await/issue-67651.rs
 ui/async-await/issue-67765-async-diagnostic.rs
 ui/async-await/issue-68112.rs
-ui/async-await/issue-68523-start.rs
 ui/async-await/issue-68523.rs
 ui/async-await/issue-69446-fnmut-capture.rs
 ui/async-await/issue-70594.rs
@@ -2395,7 +2394,6 @@ ui/issues/issue-50618.rs
 ui/issues/issue-5062.rs
 ui/issues/issue-5067.rs
 ui/issues/issue-50688.rs
-ui/issues/issue-50714-1.rs
 ui/issues/issue-50714.rs
 ui/issues/issue-50761.rs
 ui/issues/issue-50781.rs
@@ -2630,7 +2628,6 @@ ui/issues/issue-9259.rs
 ui/issues/issue-92741.rs
 ui/issues/issue-9382.rs
 ui/issues/issue-9446.rs
-ui/issues/issue-9575.rs
 ui/issues/issue-9719.rs
 ui/issues/issue-9725.rs
 ui/issues/issue-9737.rs
@@ -2645,7 +2642,6 @@ ui/issues/issue-9968.rs
 ui/issues/issue-99838.rs
 ui/iterators/issue-28098.rs
 ui/iterators/issue-58952-filter-type-length.rs
-ui/lang-items/issue-19660.rs
 ui/lang-items/issue-83471.rs
 ui/lang-items/issue-87573.rs
 ui/late-bound-lifetimes/issue-36381.rs
@@ -3702,7 +3698,6 @@ ui/rfcs/rfc-2005-default-binding-mode/issue-44912-or.rs
 ui/rfcs/rfc-2008-non-exhaustive/uninhabited/issue-65157-repeated-match-arm.rs
 ui/rfcs/rfc-2093-infer-outlives/issue-54467.rs
 ui/rfcs/rfc-2396-target_feature-11/issue-108645-target-feature-on-main.rs
-ui/rfcs/rfc-2396-target_feature-11/issue-108645-target-feature-on-start.rs
 ui/rfcs/rfc-2396-target_feature-11/issue-108655-inline-always-closure.rs
 ui/rfcs/rfc-2396-target_feature-11/issue-99876.rs
 ui/rfcs/rfc-2497-if-let-chains/issue-88498.rs

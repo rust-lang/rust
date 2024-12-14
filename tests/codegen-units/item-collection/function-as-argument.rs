@@ -1,7 +1,7 @@
 //@ compile-flags:-Zprint-mono-items=eager -Zinline-mir=no
 
 #![deny(dead_code)]
-#![feature(start)]
+#![crate_type = "lib"]
 
 fn take_fn_once<T1, T2, F: FnOnce(T1, T2)>(f: F, x: T1, y: T2) {
     (f)(x, y)
@@ -14,8 +14,8 @@ fn take_fn_pointer<T1, T2>(f: fn(T1, T2), x: T1, y: T2) {
 }
 
 //~ MONO_ITEM fn start
-#[start]
-fn start(_: isize, _: *const *const u8) -> isize {
+#[no_mangle]
+pub fn start(_: isize, _: *const *const u8) -> isize {
     //~ MONO_ITEM fn take_fn_once::<u32, &str, fn(u32, &str) {function::<u32, &str>}>
     //~ MONO_ITEM fn function::<u32, &str>
     //~ MONO_ITEM fn <fn(u32, &str) {function::<u32, &str>} as std::ops::FnOnce<(u32, &str)>>::call_once - shim(fn(u32, &str) {function::<u32, &str>})

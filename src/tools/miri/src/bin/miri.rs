@@ -33,7 +33,7 @@ use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, Once};
 
 use miri::{
-    BacktraceStyle, BorrowTrackerMethod, MiriConfig, ProvenanceMode, RetagFields, ValidationMode,
+    BacktraceStyle, BorrowTrackerMethod, MiriConfig, MiriEntryFnType,ProvenanceMode, RetagFields, ValidationMode,
 };
 use rustc_abi::ExternAbi;
 use rustc_data_structures::sync;
@@ -51,7 +51,7 @@ use rustc_middle::query::LocalCrate;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util::Providers;
-use rustc_session::config::{CrateType, EntryFnType, ErrorOutputType, OptLevel};
+use rustc_session::config::{CrateType, ErrorOutputType, OptLevel};
 use rustc_session::search_paths::PathKind;
 use rustc_session::{CtfeBacktrace, EarlyDiagCtxt};
 use rustc_span::def_id::DefId;
@@ -73,9 +73,9 @@ impl MiriCompilerCalls {
     }
 }
 
-fn entry_fn(tcx: TyCtxt<'_>) -> (DefId, EntryFnType) {
-    if let Some(entry_def) = tcx.entry_fn(()) {
-        return entry_def;
+fn entry_fn(tcx: TyCtxt<'_>) -> (DefId, MiriEntryFnType) {
+    if let Some((def_id, entry_type)) = tcx.entry_fn(()) {
+        return (def_id, MiriEntryFnType::Rustc(entry_type));
     }
     // Look for a symbol in the local crate named `miri_start`, and treat that as the entry point.
     let sym = tcx.exported_symbols(LOCAL_CRATE).iter().find_map(|(sym, _)| {
@@ -102,7 +102,7 @@ fn entry_fn(tcx: TyCtxt<'_>) -> (DefId, EntryFnType) {
         .is_ok();
 
         if correct_func_sig {
-            (*id, EntryFnType::Start)
+            (*id, MiriEntryFnType::MiriStart)
         } else {
             tcx.dcx().fatal(
                 "`miri_start` must have the following signature:\n\
