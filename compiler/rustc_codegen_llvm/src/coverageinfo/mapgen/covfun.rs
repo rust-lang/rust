@@ -19,7 +19,6 @@ use rustc_target::spec::HasTargetSpec;
 use tracing::debug;
 
 use crate::common::CodegenCx;
-use crate::coverageinfo::map_data::FunctionCoverage;
 use crate::coverageinfo::mapgen::{GlobalFileTable, VirtualFileMapping, span_file_name};
 use crate::coverageinfo::{ffi, llvm_cov};
 use crate::llvm;
@@ -49,17 +48,17 @@ pub(crate) fn prepare_covfun_record<'tcx>(
     tcx: TyCtxt<'tcx>,
     global_file_table: &mut GlobalFileTable,
     instance: Instance<'tcx>,
-    function_coverage: &FunctionCoverage<'tcx>,
+    is_used: bool,
 ) -> Option<CovfunRecord<'tcx>> {
     let fn_cov_info = tcx.instance_mir(instance.def).function_coverage_info.as_deref()?;
     let ids_info = tcx.coverage_ids_info(instance.def);
 
-    let expressions = prepare_expressions(fn_cov_info, ids_info, function_coverage.is_used());
+    let expressions = prepare_expressions(fn_cov_info, ids_info, is_used);
 
     let mut covfun = CovfunRecord {
         mangled_function_name: tcx.symbol_name(instance).name,
-        source_hash: function_coverage.source_hash(),
-        is_used: function_coverage.is_used(),
+        source_hash: if is_used { fn_cov_info.function_source_hash } else { 0 },
+        is_used,
         virtual_file_mapping: VirtualFileMapping::default(),
         expressions,
         regions: ffi::Regions::default(),

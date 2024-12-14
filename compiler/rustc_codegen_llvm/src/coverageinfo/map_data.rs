@@ -1,6 +1,7 @@
 use rustc_middle::mir::coverage::{CoverageIdsInfo, FunctionCoverageInfo};
 
 pub(crate) struct FunctionCoverage<'tcx> {
+    #[expect(unused)] // This whole file gets deleted later in the same PR.
     pub(crate) function_coverage_info: &'tcx FunctionCoverageInfo,
     /// If `None`, the corresponding function is unused.
     ids_info: Option<&'tcx CoverageIdsInfo>,
@@ -21,11 +22,5 @@ impl<'tcx> FunctionCoverage<'tcx> {
     /// Returns true for a used (called) function, and false for an unused function.
     pub(crate) fn is_used(&self) -> bool {
         self.ids_info.is_some()
-    }
-
-    /// Return the source hash, generated from the HIR node structure, and used to indicate whether
-    /// or not the source code structure changed between different compilations.
-    pub(crate) fn source_hash(&self) -> u64 {
-        if self.is_used() { self.function_coverage_info.function_source_hash } else { 0 }
     }
 }

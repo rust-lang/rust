@@ -81,7 +81,8 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
         // instances were visited during codegen.
         .sorted_by_cached_key(|&(instance, _)| tcx.symbol_name(instance).name)
         .filter_map(|(instance, function_coverage)| {
-            prepare_covfun_record(tcx, &mut global_file_table, instance, &function_coverage)
+            let is_used = function_coverage.is_used();
+            prepare_covfun_record(tcx, &mut global_file_table, instance, is_used)
         })
         .collect::<Vec<_>>();
 
