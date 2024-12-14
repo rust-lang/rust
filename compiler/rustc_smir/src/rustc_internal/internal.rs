@@ -141,6 +141,10 @@ impl RustcInternal for RigidTy {
             RigidTy::Coroutine(def, args, _mov) => {
                 rustc_ty::TyKind::Coroutine(def.0.internal(tables, tcx), args.internal(tables, tcx))
             }
+            RigidTy::CoroutineClosure(def, args) => rustc_ty::TyKind::CoroutineClosure(
+                def.0.internal(tables, tcx),
+                args.internal(tables, tcx),
+            ),
             RigidTy::CoroutineWitness(def, args) => rustc_ty::TyKind::CoroutineWitness(
                 def.0.internal(tables, tcx),
                 args.internal(tables, tcx),

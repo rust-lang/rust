@@ -63,6 +63,11 @@ impl Ty {
         Ty::from_rigid_kind(RigidTy::Coroutine(def, args, mov))
     }
 
+    /// Create a new closure type.
+    pub fn new_coroutine_closure(def: CoroutineClosureDef, args: GenericArgs) -> Ty {
+        Ty::from_rigid_kind(RigidTy::CoroutineClosure(def, args))
+    }
+
     /// Create a new box type that represents `Box<T>`, for the given inner type `T`.
     pub fn new_box(inner_ty: Ty) -> Ty {
         with(|cx| cx.new_box_ty(inner_ty))
@@ -550,6 +555,7 @@ pub enum RigidTy {
     Closure(ClosureDef, GenericArgs),
     // FIXME(stable_mir): Movability here is redundant
     Coroutine(CoroutineDef, GenericArgs, Movability),
+    CoroutineClosure(CoroutineClosureDef, GenericArgs),
     Dynamic(Vec<Binder<ExistentialPredicate>>, Region, DynKind),
     Never,
     Tuple(Vec<Ty>),
@@ -738,6 +744,11 @@ crate_def! {
 crate_def! {
     #[derive(Serialize)]
     pub CoroutineDef;
+}
+
+crate_def! {
+    #[derive(Serialize)]
+    pub CoroutineClosureDef;
 }
 
 crate_def! {
