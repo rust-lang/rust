@@ -271,16 +271,15 @@ fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
     let usage = prepare_usage_sets(tcx);
 
     let is_unused_fn = |def_id: LocalDefId| -> bool {
-        let def_id = def_id.to_def_id();
-
-        // To be eligible for "unused function" mappings, a definition must:
-        // - Be function-like
+        // Usage sets expect `DefId`, so convert from `LocalDefId`.
+        let d: DefId = LocalDefId::to_def_id(def_id);
+        // To be potentially eligible for "unused function" mappings, a definition must:
+        // - Be eligible for coverage instrumentation
         // - Not participate directly in codegen (or have lost all its coverage statements)
         // - Not have any coverage statements inlined into codegenned functions
-        tcx.def_kind(def_id).is_fn_like()
-            && (!usage.all_mono_items.contains(&def_id)
-                || usage.missing_own_coverage.contains(&def_id))
-            && !usage.used_via_inlining.contains(&def_id)
+        tcx.is_eligible_for_coverage(def_id)
+            && (!usage.all_mono_items.contains(&d) || usage.missing_own_coverage.contains(&d))
+            && !usage.used_via_inlining.contains(&d)
     };
 
     // Scan for unused functions that were instrumented for coverage.
