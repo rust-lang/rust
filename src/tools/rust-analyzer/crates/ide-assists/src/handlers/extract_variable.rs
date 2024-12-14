@@ -1,5 +1,8 @@
 use hir::{HirDisplay, TypeInfo};
-use ide_db::{assists::GroupLabel, syntax_helpers::suggest_name};
+use ide_db::{
+    assists::GroupLabel,
+    syntax_helpers::{suggest_name, LexedStr},
+};
 use syntax::{
     ast::{
         self, edit::IndentLevel, edit_in_place::Indent, make, syntax_factory::SyntaxFactory,
@@ -320,24 +323,58 @@ impl ExtractionKind {
         ctx: &AssistContext<'_>,
         to_extract: &ast::Expr,
     ) -> (String, SyntaxNode) {
-        let field_shorthand = to_extract
-            .syntax()
-            .parent()
-            .and_then(ast::RecordExprField::cast)
-            .filter(|field| field.name_ref().is_some());
-        let (var_name, expr_replace) = match field_shorthand {
-            Some(field) => (field.to_string(), field.syntax().clone()),
-            None => {
-                (suggest_name::for_variable(to_extract, &ctx.sema), to_extract.syntax().clone())
+        // We only do this sort of extraction for fields because they should have lowercase names
+        if let ExtractionKind::Variable = self {
+            let field_shorthand = to_extract
+                .syntax()
+                .parent()
+                .and_then(ast::RecordExprField::cast)
+                .filter(|field| field.name_ref().is_some());
+
+            if let Some(field) = field_shorthand {
+                return (field.to_string(), field.syntax().clone());
             }
+        }
+
+        let var_name = if let Some(literal_name) = get_literal_name(ctx, to_extract) {
+            literal_name
+        } else {
+            suggest_name::for_variable(to_extract, &ctx.sema)
         };
 
         let var_name = match self {
-            ExtractionKind::Variable => var_name,
+            ExtractionKind::Variable => var_name.to_lowercase(),
             ExtractionKind::Constant | ExtractionKind::Static => var_name.to_uppercase(),
         };
 
-        (var_name, expr_replace)
+        (var_name, to_extract.syntax().clone())
+    }
+}
+
+fn get_literal_name(ctx: &AssistContext<'_>, expr: &ast::Expr) -> Option<String> {
+    let literal = match expr {
+        ast::Expr::Literal(literal) => literal,
+        _ => return None,
+    };
+    let inner = match literal.kind() {
+        ast::LiteralKind::String(string) => string.value().ok()?.into_owned(),
+        ast::LiteralKind::ByteString(byte_string) => {
+            String::from_utf8(byte_string.value().ok()?.into_owned()).ok()?
+        }
+        ast::LiteralKind::CString(cstring) => {
+            String::from_utf8(cstring.value().ok()?.into_owned()).ok()?
+        }
+        _ => return None,
+    };
+
+    // Entirely arbitrary
+    if inner.len() > 32 {
+        return None;
+    }
+
+    match LexedStr::single_token(ctx.file_id().edition(), &inner) {
+        Some((SyntaxKind::IDENT, None)) => Some(inner),
+        _ => None,
     }
 }
 
@@ -493,7 +530,7 @@ fn main() {
 "#,
             r#"
 fn main() {
-    let $0var_name = "hello";
+    let $0hello = "hello";
 }
 "#,
             "Extract into variable",
@@ -588,7 +625,7 @@ fn main() {
 "#,
             r#"
 fn main() {
-    const $0VAR_NAME: &str = "hello";
+    const $0HELLO: &str = "hello";
 }
 "#,
             "Extract into constant",
@@ -683,7 +720,7 @@ fn main() {
 "#,
             r#"
 fn main() {
-    static $0VAR_NAME: &str = "hello";
+    static $0HELLO: &str = "hello";
 }
 "#,
             "Extract into static",
@@ -2477,6 +2514,122 @@ fn foo() {
 }
 "#,
             "Extract into variable",
+        );
+    }
+
+    #[test]
+    fn extract_string_literal() {
+        check_assist_by_label(
+            extract_variable,
+            r#"
+struct Entry(&str);
+fn foo() {
+    let entry = Entry($0"Hello"$0);
+}
+"#,
+            r#"
+struct Entry(&str);
+fn foo() {
+    let $0hello = "Hello";
+    let entry = Entry(hello);
+}
+"#,
+            "Extract into variable",
+        );
+
+        check_assist_by_label(
+            extract_variable,
+            r#"
+struct Entry(&str);
+fn foo() {
+    let entry = Entry($0"Hello"$0);
+}
+"#,
+            r#"
+struct Entry(&str);
+fn foo() {
+    const $0HELLO: &str = "Hello";
+    let entry = Entry(HELLO);
+}
+"#,
+            "Extract into constant",
+        );
+
+        check_assist_by_label(
+            extract_variable,
+            r#"
+struct Entry(&str);
+fn foo() {
+    let entry = Entry($0"Hello"$0);
+}
+"#,
+            r#"
+struct Entry(&str);
+fn foo() {
+    static $0HELLO: &str = "Hello";
+    let entry = Entry(HELLO);
+}
+"#,
+            "Extract into static",
+        );
+    }
+
+    #[test]
+    fn extract_variable_string_literal_use_field_shorthand() {
+        // When field shorthand is available, it should
+        // only be used when extracting into a variable
+        check_assist_by_label(
+            extract_variable,
+            r#"
+struct Entry { message: &str }
+fn foo() {
+    let entry = Entry { message: $0"Hello"$0 };
+}
+"#,
+            r#"
+struct Entry { message: &str }
+fn foo() {
+    let $0message = "Hello";
+    let entry = Entry { message };
+}
+"#,
+            "Extract into variable",
+        );
+
+        check_assist_by_label(
+            extract_variable,
+            r#"
+struct Entry { message: &str }
+fn foo() {
+    let entry = Entry { message: $0"Hello"$0 };
+}
+"#,
+            r#"
+struct Entry { message: &str }
+fn foo() {
+    const $0HELLO: &str = "Hello";
+    let entry = Entry { message: HELLO };
+}
+"#,
+            "Extract into constant",
+        );
+
+        check_assist_by_label(
+            extract_variable,
+            r#"
+struct Entry { message: &str }
+fn foo() {
+    let entry = Entry { message: $0"Hello"$0 };
+}
+"#,
+            r#"
+struct Entry { message: &str }
+fn foo() {
+    static $0HELLO: &str = "Hello";
+    let entry = Entry { message: HELLO };
+}
+"#,
+            "Extract into static",
         );
     }
 }
