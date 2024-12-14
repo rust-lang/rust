@@ -33,28 +33,14 @@ pub(crate) fn maybe_codegen<'tcx>(
                 (BinOp::Rem, true) => "__modti3",
                 _ => unreachable!(),
             };
-            if fx.tcx.sess.target.is_like_windows {
-                let args = [lhs.load_scalar(fx), rhs.load_scalar(fx)];
-                let ret = fx.lib_call(
-                    name,
-                    vec![AbiParam::new(types::I128), AbiParam::new(types::I128)],
-                    vec![AbiParam::new(types::I64X2)],
-                    &args,
-                )[0];
-                // FIXME(bytecodealliance/wasmtime#6104) use bitcast instead of store to get from i64x2 to i128
-                let ret_place = CPlace::new_stack_slot(fx, lhs.layout());
-                ret_place.to_ptr().store(fx, ret, MemFlags::trusted());
-                Some(ret_place.to_cvalue(fx))
-            } else {
-                let args = [lhs.load_scalar(fx), rhs.load_scalar(fx)];
-                let ret_val = fx.lib_call(
-                    name,
-                    vec![AbiParam::new(types::I128), AbiParam::new(types::I128)],
-                    vec![AbiParam::new(types::I128)],
-                    &args,
-                )[0];
-                Some(CValue::by_val(ret_val, lhs.layout()))
-            }
+            let args = [lhs.load_scalar(fx), rhs.load_scalar(fx)];
+            let ret_val = fx.lib_call(
+                name,
+                vec![AbiParam::new(types::I128), AbiParam::new(types::I128)],
+                vec![AbiParam::new(types::I128)],
+                &args,
+            )[0];
+            Some(CValue::by_val(ret_val, lhs.layout()))
         }
         BinOp::Lt | BinOp::Le | BinOp::Eq | BinOp::Ge | BinOp::Gt | BinOp::Ne | BinOp::Cmp => None,
         BinOp::Shl | BinOp::ShlUnchecked | BinOp::Shr | BinOp::ShrUnchecked => None,
