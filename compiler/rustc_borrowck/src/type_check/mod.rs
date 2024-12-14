@@ -2427,7 +2427,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
             Rvalue::RawPtr(..)
             | Rvalue::ThreadLocalRef(..)
-            | Rvalue::Len(..)
             | Rvalue::Discriminant(..)
             | Rvalue::NullaryOp(NullOp::OffsetOf(..), _) => {}
         }
@@ -2443,7 +2442,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | Rvalue::Repeat(..)
             | Rvalue::Ref(..)
             | Rvalue::RawPtr(..)
-            | Rvalue::Len(..)
             | Rvalue::Cast(..)
             | Rvalue::ShallowInitBox(..)
             | Rvalue::BinaryOp(..)

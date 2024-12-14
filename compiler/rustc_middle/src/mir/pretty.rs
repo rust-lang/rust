@@ -1068,7 +1068,6 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 pretty_print_const(b, fmt, false)?;
                 write!(fmt, "]")
             }
-            Len(ref a) => write!(fmt, "Len({a:?})"),
             Cast(ref kind, ref place, ref ty) => {
                 with_no_trimmed_paths!(write!(fmt, "{place:?} as {ty} ({kind:?})"))
             }

@@ -408,18 +408,6 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         state: &mut State<FlatSet<Scalar>>,
     ) -> ValueOrPlace<FlatSet<Scalar>> {
         let val = match rvalue {
-            Rvalue::Len(place) => {
-                let place_ty = place.ty(self.local_decls, self.tcx);
-                if let ty::Array(_, len) = place_ty.ty.kind() {
-                    Const::Ty(self.tcx.types.usize, *len)
-                        .try_eval_scalar(self.tcx, self.typing_env)
-                        .map_or(FlatSet::Top, FlatSet::Elem)
-                } else if let [ProjectionElem::Deref] = place.projection[..] {
-                    state.get_len(place.local.into(), &self.map)
-                } else {
-                    FlatSet::Top
-                }
-            }
             Rvalue::Cast(CastKind::IntToInt | CastKind::IntToFloat, operand, ty) => {
                 let Ok(layout) = self.tcx.layout_of(self.typing_env.as_query_input(*ty)) else {
                     return ValueOrPlace::Value(FlatSet::Top);

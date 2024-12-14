@@ -243,11 +243,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             TestKind::Len { len, op } => {
-                let usize_ty = self.tcx.types.usize;
-                let actual = self.temp(usize_ty, test.span);
-
                 // actual = len(place)
-                self.cfg.push_assign(block, source_info, actual, Rvalue::Len(place));
+                let actual = self.len_of_slice_or_array(block, place, test.span, source_info);
 
                 // expected = <N>
                 let expected = self.push_usize(block, source_info, len);
@@ -262,7 +259,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     fail_block,
                     source_info,
                     op,
-                    Operand::Move(actual),
+                    actual,
                     Operand::Move(expected),
                 );
             }

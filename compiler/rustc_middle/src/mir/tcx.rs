@@ -175,7 +175,6 @@ impl<'tcx> Rvalue<'tcx> {
                 let place_ty = place.ty(local_decls, tcx).ty;
                 Ty::new_ptr(tcx, place_ty, mutability)
             }
-            Rvalue::Len(..) => tcx.types.usize,
             Rvalue::Cast(.., ty) => ty,
             Rvalue::BinaryOp(op, box (ref lhs, ref rhs)) => {
                 let lhs_ty = lhs.ty(local_decls, tcx);
