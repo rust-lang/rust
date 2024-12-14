@@ -6,6 +6,7 @@ use rustc_index::Idx;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
+use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt};
 use rustc_span::DUMMY_SP;
@@ -738,70 +739,52 @@ where
         loop_block
     }
 
-    fn open_drop_for_array(&mut self, ety: Ty<'tcx>, opt_size: Option<u64>) -> BasicBlock {
-        debug!("open_drop_for_array({:?}, {:?})", ety, opt_size);
+    fn open_drop_for_array(
+        &mut self,
+        place_ty: Ty<'tcx>,
+        element_ty: Ty<'tcx>,
+        opt_size: Option<u64>,
+    ) -> BasicBlock {
+        debug!("open_drop_for_array({:?}, {:?})", element_ty, opt_size);
         let tcx = self.tcx();
 
-        if let Some(size) = opt_size {
-            enum ProjectionKind<Path> {
-                Drop(std::ops::Range<u64>),
-                Keep(u64, Path),
-            }
-            // Previously, we'd make a projection for every element in the array and create a drop
-            // ladder if any `array_subpath` was `Some`, i.e. moving out with an array pattern.
-            // This caused huge memory usage when generating the drops for large arrays, so we instead
-            // record the *subslices* which are dropped and the *indexes* which are kept
-            let mut drop_ranges = vec![];
-            let mut dropping = true;
-            let mut start = 0;
-            for i in 0..size {
-                let path = self.elaborator.array_subpath(self.path, i, size);
-                if dropping && path.is_some() {
-                    drop_ranges.push(ProjectionKind::Drop(start..i));
-                    dropping = false;
-                } else if !dropping && path.is_none() {
-                    dropping = true;
-                    start = i;
-                }
-                if let Some(path) = path {
-                    drop_ranges.push(ProjectionKind::Keep(i, path));
-                }
-            }
-            if !drop_ranges.is_empty() {
-                if dropping {
-                    drop_ranges.push(ProjectionKind::Drop(start..size));
-                }
-                let fields = drop_ranges
-                    .iter()
-                    .rev()
-                    .map(|p| {
-                        let (project, path) = match p {
-                            ProjectionKind::Drop(r) => (
-                                ProjectionElem::Subslice {
-                                    from: r.start,
-                                    to: r.end,
-                                    from_end: false,
-                                },
-                                None,
-                            ),
-                            &ProjectionKind::Keep(offset, path) => (
-                                ProjectionElem::ConstantIndex {
-                                    offset,
-                                    min_length: size,
-                                    from_end: false,
-                                },
-                                Some(path),
-                            ),
-                        };
-                        (tcx.mk_place_elem(self.place, project), path)
-                    })
-                    .collect::<Vec<_>>();
-                let (succ, unwind) = self.drop_ladder_bottom();
-                return self.drop_ladder(fields, succ, unwind).0;
-            }
+        if let Some(0) = opt_size {
+            span_bug!(self.source_info.span, "Opened drop for zero-length array of {element_ty:?}")
         }
 
-        self.drop_loop_pair(ety)
+        let array_ptr_ty = Ty::new_mut_ptr(tcx, place_ty);
+        let array_ptr = self.new_temp(array_ptr_ty);
+        let slice_ty = Ty::new_slice(tcx, element_ty);
+        let slice_ptr_ty = Ty::new_mut_ptr(tcx, slice_ty);
+        let slice_ptr = self.new_temp(slice_ptr_ty);
+
+        let unsize_and_drop_block = BasicBlockData {
+            statements: vec![
+                self.assign(Place::from(array_ptr), Rvalue::RawPtr(Mutability::Mut, self.place)),
+                self.assign(
+                    Place::from(slice_ptr),
+                    Rvalue::Cast(
+                        CastKind::PointerCoercion(
+                            PointerCoercion::Unsize,
+                            CoercionSource::Implicit,
+                        ),
+                        Operand::Move(Place::from(array_ptr)),
+                        slice_ptr_ty,
+                    ),
+                ),
+            ],
+            is_cleanup: self.unwind.is_cleanup(),
+            terminator: Some(Terminator {
+                source_info: self.source_info,
+                kind: TerminatorKind::Drop {
+                    place: Place::from(slice_ptr).project_deeper(&[PlaceElem::Deref], tcx),
+                    target: self.succ,
+                    unwind: self.unwind.into_action(),
+                    replace: false,
+                },
+            }),
+        };
+        self.elaborator.patch().new_block(unsize_and_drop_block)
     }
 
     /// Creates a pair of drop-loops of `place`, which drops its contents, even
@@ -817,10 +800,27 @@ where
 
         let loop_block = self.drop_loop(self.succ, cur, len, ety, unwind);
 
+        let place_ty = self.place_ty(self.place);
+        assert!(place_ty.is_slice(), "Expected slice, got {place_ty:?}");
+
+        let [PlaceElem::Deref] = self.place.projection.as_slice() else {
+            span_bug!(
+                self.source_info.span,
+                "Expected place for slice drop shim to be *_n, but it's {:?}",
+                self.place,
+            );
+        };
+
         let zero = self.constant_usize(0);
         let block = BasicBlockData {
             statements: vec![
-                self.assign(len.into(), Rvalue::Len(self.place)),
+                self.assign(
+                    len.into(),
+                    Rvalue::UnaryOp(
+                        UnOp::PtrMetadata,
+                        Operand::Copy(Place::from(self.place.local)),
+                    ),
+                ),
                 self.assign(cur.into(), Rvalue::Use(zero)),
             ],
             is_cleanup: unwind.is_cleanup(),
@@ -863,7 +863,7 @@ where
             ty::Dynamic(..) => self.complete_drop(self.succ, self.unwind),
             ty::Array(ety, size) => {
                 let size = size.try_to_target_usize(self.tcx());
-                self.open_drop_for_array(*ety, size)
+                self.open_drop_for_array(ty, *ety, size)
             }
             ty::Slice(ety) => self.drop_loop_pair(*ety),
 

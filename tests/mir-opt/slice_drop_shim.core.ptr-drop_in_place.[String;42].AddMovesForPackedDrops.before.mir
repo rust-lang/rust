@@ -1,0 +1,25 @@
+// MIR for `std::ptr::drop_in_place` before AddMovesForPackedDrops
+
+fn std::ptr::drop_in_place(_1: *mut [String; 42]) -> () {
+    let mut _0: ();
+    let mut _2: *mut [std::string::String; 42];
+    let mut _3: *mut [std::string::String];
+
+    bb0: {
+        goto -> bb3;
+    }
+
+    bb1: {
+        return;
+    }
+
+    bb2 (cleanup): {
+        resume;
+    }
+
+    bb3: {
+        _2 = &raw mut (*_1);
+        _3 = move _2 as *mut [std::string::String] (PointerCoercion(Unsize, Implicit));
+        drop((*_3)) -> [return: bb1, unwind: bb2];
+    }
+}
