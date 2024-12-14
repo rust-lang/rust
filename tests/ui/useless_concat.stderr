@@ -1,0 +1,29 @@
+error: unneeded use of `concat!` macro
+  --> tests/ui/useless_concat.rs:11:13
+   |
+LL |     let x = concat!();
+   |             ^^^^^^^^^ help: replace with: `""`
+   |
+   = note: `-D clippy::useless-concat` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::useless_concat)]`
+
+error: unneeded use of `concat!` macro
+  --> tests/ui/useless_concat.rs:12:13
+   |
+LL |     let x = concat!("a");
+   |             ^^^^^^^^^^^^ help: replace with: `"a"`
+
+error: unneeded use of `concat!` macro
+  --> tests/ui/useless_concat.rs:13:13
+   |
+LL |     let x = concat!(1);
+   |             ^^^^^^^^^^ help: replace with: `"1"`
+
+error: unneeded use of `concat!` macro
+  --> tests/ui/useless_concat.rs:14:23
+   |
+LL |     println!("b: {}", concat!("a"));
+   |                       ^^^^^^^^^^^^ help: replace with: `"a"`
+
+error: aborting due to 4 previous errors
+
