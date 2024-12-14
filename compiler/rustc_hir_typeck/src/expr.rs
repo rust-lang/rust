@@ -72,12 +72,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if self.try_structurally_resolve_type(expr.span, ty).is_never()
             && self.expr_guaranteed_to_constitute_read_for_never(expr)
         {
-            if let Some(_) = self.typeck_results.borrow().adjustments().get(expr.hir_id) {
+            if let Some(adjustments) = self.typeck_results.borrow().adjustments().get(expr.hir_id) {
                 let reported = self.dcx().span_delayed_bug(
                     expr.span,
                     "expression with never type wound up being adjusted",
                 );
-                return Ty::new_error(self.tcx(), reported);
+
+                return if let [Adjustment { kind: Adjust::NeverToAny, target }] = &adjustments[..] {
+                    target.to_owned()
+                } else {
+                    Ty::new_error(self.tcx(), reported)
+                };
             }
 
             let adj_ty = self.next_ty_var(expr.span);
