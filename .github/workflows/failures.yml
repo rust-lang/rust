@@ -90,9 +90,6 @@ jobs:
       if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
       run: ./y.sh prepare
 
-    - name: Add more failing tests because the sysroot is not compiled with LTO
-      run: cat tests/failing-non-lto-tests.txt >> tests/failing-ui-tests.txt
-
     - name: Run tests
       # TODO: re-enable those tests for libgccjit 12.
       if: matrix.libgccjit_version.gcc != 'libgccjit12.so'

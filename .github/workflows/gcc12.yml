@@ -82,9 +82,6 @@ jobs:
     #- name: Add more failing tests for GCC 12
       #run: cat tests/failing-ui-tests12.txt >> tests/failing-ui-tests.txt
 
-    #- name: Add more failing tests because the sysroot is not compiled with LTO
-      #run: cat tests/failing-non-lto-tests.txt >> tests/failing-ui-tests.txt
-
     #- name: Run tests
       #run: |
         #./y.sh test --release --clean --build-sysroot ${{ matrix.commands }} --no-default-features
