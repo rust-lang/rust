@@ -15,18 +15,27 @@ use rustc_middle::mir::mono::Visibility;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::DebugInfo;
 use rustc_span::Symbol;
-use rustc_target::spec::PanicStrategy;
+use rustc_target::spec::{PanicStrategy, SymbolVisibility};
 
 use crate::builder::Builder;
 use crate::context::CodegenCx;
 use crate::{GccContext, LockedTargetInfo, SyncContext, gcc_util, new_context};
 
 #[cfg(feature = "master")]
-pub fn visibility_to_gcc(linkage: Visibility) -> gccjit::Visibility {
-    match linkage {
+pub fn visibility_to_gcc(visibility: Visibility) -> gccjit::Visibility {
+    match visibility {
         Visibility::Default => gccjit::Visibility::Default,
         Visibility::Hidden => gccjit::Visibility::Hidden,
         Visibility::Protected => gccjit::Visibility::Protected,
+    }
+}
+
+#[cfg(feature = "master")]
+pub fn symbol_visibility_to_gcc(visibility: SymbolVisibility) -> gccjit::Visibility {
+    match visibility {
+        SymbolVisibility::Hidden => gccjit::Visibility::Hidden,
+        SymbolVisibility::Protected => gccjit::Visibility::Protected,
+        SymbolVisibility::Interposable => gccjit::Visibility::Default,
     }
 }
 

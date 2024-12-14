@@ -1031,7 +1031,7 @@ where
             &"always",
             &"--stage",
             &"0",
-            &format!("tests/{}", test_type),
+            &format!("tests/{}/codegen/virtual-function-elimination.rs", test_type),
             &"--compiletest-rustc-args",
             &rustc_args,
         ],
