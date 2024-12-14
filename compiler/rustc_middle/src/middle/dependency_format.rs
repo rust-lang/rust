@@ -7,6 +7,7 @@
 // FIXME: move this file to rustc_metadata::dependency_format, but
 // this will introduce circular dependency between rustc_metadata and rustc_middle
 
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_session::config::CrateType;
 
@@ -18,7 +19,7 @@ pub type DependencyList = Vec<Linkage>;
 /// A mapping of all required dependencies for a particular flavor of output.
 ///
 /// This is local to the tcx, and is generally relevant to one session.
-pub type Dependencies = Vec<(CrateType, DependencyList)>;
+pub type Dependencies = FxIndexMap<CrateType, DependencyList>;
 
 #[derive(Copy, Clone, PartialEq, Debug, HashStable, Encodable, Decodable)]
 pub enum Linkage {

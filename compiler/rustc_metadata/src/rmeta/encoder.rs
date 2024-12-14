@@ -2161,10 +2161,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_dylib_dependency_formats(&mut self) -> LazyArray<Option<LinkagePreference>> {
         empty_proc_macro!(self);
         let formats = self.tcx.dependency_formats(());
-        for (ty, arr) in formats.iter() {
-            if *ty != CrateType::Dylib {
-                continue;
-            }
+        if let Some(arr) = formats.get(&CrateType::Dylib) {
             return self.lazy_array(arr.iter().map(|slot| match *slot {
                 Linkage::NotLinked | Linkage::IncludedFromDylib => None,
 
