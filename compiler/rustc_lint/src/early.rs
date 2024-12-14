@@ -8,16 +8,14 @@ use rustc_ast::ptr::P;
 use rustc_ast::visit::{self as ast_visit, Visitor, walk_list};
 use rustc_ast::{self as ast, HasAttrs};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::MultiSpan;
 use rustc_feature::Features;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::Session;
-use rustc_session::lint::{BufferedEarlyLint, BuiltinLintDiag, LintBuffer, LintPass};
+use rustc_session::lint::{BufferedEarlyLint, LintBuffer, LintPass};
 use rustc_span::Span;
 use rustc_span::symbol::Ident;
 use tracing::debug;
 
-use crate::Lint;
 use crate::context::{EarlyContext, LintContext, LintStore};
 use crate::passes::{EarlyLintPass, EarlyLintPassObject};
 
@@ -35,38 +33,6 @@ pub struct EarlyContextAndPass<'a, 'b, T: EarlyLintPass> {
     pass: T,
 }
 
-impl<T: EarlyLintPass> EarlyContextAndPass<'_, '_, T> {
-    /// Emit a lint at the appropriate level, with an associated span and an existing
-    /// diagnostic.
-    ///
-    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
-    #[rustc_lint_diagnostics]
-    pub fn span_lint_with_diagnostics(
-        &self,
-        lint: &'static Lint,
-        span: MultiSpan,
-        diagnostic: BuiltinLintDiag,
-    ) {
-        self.opt_span_lint_with_diagnostics(lint, Some(span), diagnostic);
-    }
-
-    /// Emit a lint at the appropriate level, with an optional associated span and an existing
-    /// diagnostic.
-    ///
-    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
-    #[rustc_lint_diagnostics]
-    pub fn opt_span_lint_with_diagnostics(
-        &self,
-        lint: &'static Lint,
-        span: Option<MultiSpan>,
-        diagnostic: BuiltinLintDiag,
-    ) {
-        self.context.opt_span_lint(lint, span, |diag| {
-            diagnostics::decorate_lint(self.context.sess(), self.tcx, diagnostic, diag);
-        });
-    }
-}
-
 impl<'a, 'b, T: EarlyLintPass> EarlyContextAndPass<'a, 'b, T> {
     // This always-inlined function is for the hot call site.
     #[inline(always)]
@@ -74,7 +40,9 @@ impl<'a, 'b, T: EarlyLintPass> EarlyContextAndPass<'a, 'b, T> {
     fn inlined_check_id(&mut self, id: ast::NodeId) {
         for early_lint in self.context.buffered.take(id) {
             let BufferedEarlyLint { span, node_id: _, lint_id, diagnostic } = early_lint;
-            self.opt_span_lint_with_diagnostics(lint_id.lint, span, diagnostic);
+            self.context.opt_span_lint(lint_id.lint, span, |diag| {
+                diagnostics::decorate_lint(self.context.sess(), self.tcx, diagnostic, diag);
+            });
         }
     }
 
