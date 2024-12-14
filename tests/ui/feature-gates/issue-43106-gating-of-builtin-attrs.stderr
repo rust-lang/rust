@@ -227,9 +227,7 @@ LL |   #[no_mangle]
 LL | / mod no_mangle {
 LL | |
 LL | |     mod inner { #![no_mangle] }
-LL | |
 ...  |
-LL | |     }
 LL | | }
    | |_- not a free function, impl method or static
    |
@@ -270,7 +268,6 @@ LL | |
 LL | |
 LL | |     mod inner { #![cold] }
 ...  |
-LL | |
 LL | | }
    | |_- not a function definition
    |
@@ -287,7 +284,6 @@ LL | |
 LL | |
 LL | |     #[link_name = "1900"]
 ...  |
-LL | |
 LL | | }
    | |_- not a foreign function or static
    |
@@ -304,7 +300,6 @@ LL | |
 LL | |
 LL | |     mod inner { #![link_section="1800"] }
 ...  |
-LL | |
 LL | | }
    | |_- not a function or static
    |
@@ -321,7 +316,6 @@ LL | |
 LL | |
 LL | |     mod inner { #![link()] }
 ...  |
-LL | |
 LL | | }
    | |_- not an `extern` block
    |

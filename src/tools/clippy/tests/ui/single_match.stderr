@@ -22,10 +22,7 @@ error: you seem to be trying to use `match` for destructuring a single pattern. 
   --> tests/ui/single_match.rs:23:5
    |
 LL | /     match x {
-LL | |         // Note the missing block braces.
-LL | |         // We suggest `if let Some(y) = x { .. }` because the macro
-LL | |         // is expanded before we can do anything.
-LL | |         Some(y) => println!("{:?}", y),
+...  |
 LL | |         _ => (),
 LL | |     }
    | |_____^ help: try: `if let Some(y) = x { println!("{:?}", y) }`

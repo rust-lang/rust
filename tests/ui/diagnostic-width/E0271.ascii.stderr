@@ -6,7 +6,6 @@ LL | |         Ok::<_, ()>(
 LL | |             Err::<(), _>(
 LL | |                 Ok::<_, ()>(
 ...  |
-LL | |         )
 LL | |     )
    | |_____^ type mismatch resolving `<Result<Result<(), Result<Result<(), ...>, ...>>, ...> as Future>::Error == Foo`
    |
