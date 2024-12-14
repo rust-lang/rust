@@ -828,12 +828,6 @@ fn codegen_stmt<'tcx>(
                         fx.bcx.ins().nop();
                     }
                 }
-                Rvalue::Len(place) => {
-                    let place = codegen_place(fx, place);
-                    let usize_layout = fx.layout_of(fx.tcx.types.usize);
-                    let len = codegen_array_len(fx, place);
-                    lval.write_cvalue(fx, CValue::by_val(len, usize_layout));
-                }
                 Rvalue::ShallowInitBox(ref operand, content_ty) => {
                     let content_ty = fx.monomorphize(content_ty);
                     let box_layout = fx.layout_of(Ty::new_box(fx.tcx, content_ty));
