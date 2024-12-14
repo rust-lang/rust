@@ -3,7 +3,7 @@ use super::hermit_abi::{
     self, DT_DIR, DT_LNK, DT_REG, DT_UNKNOWN, O_APPEND, O_CREAT, O_DIRECTORY, O_EXCL, O_RDONLY,
     O_RDWR, O_TRUNC, O_WRONLY, S_IFDIR, S_IFLNK, S_IFMT, S_IFREG, dirent64, stat as stat_struct,
 };
-use crate::ffi::{CStr, OsStr, OsString};
+use crate::ffi::{CStr, OsStr, OsString, c_char};
 use crate::io::{self, BorrowedCursor, Error, ErrorKind, IoSlice, IoSliceMut, SeekFrom};
 use crate::os::hermit::ffi::OsStringExt;
 use crate::os::hermit::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
@@ -204,7 +204,7 @@ impl Iterator for ReadDir {
                 // the size of dirent64. The file name is always a C string and terminated by `\0`.
                 // Consequently, we are able to ignore the last byte.
                 let name_bytes =
-                    unsafe { CStr::from_ptr(&dir.d_name as *const _ as *const i8).to_bytes() };
+                    unsafe { CStr::from_ptr(&dir.d_name as *const _ as *const c_char).to_bytes() };
                 let entry = DirEntry {
                     root: self.inner.root.clone(),
                     ino: dir.d_ino,
@@ -445,7 +445,7 @@ impl DirBuilder {
 
     pub fn mkdir(&self, path: &Path) -> io::Result<()> {
         run_path_with_cstr(path, &|path| {
-            cvt(unsafe { hermit_abi::mkdir(path.as_ptr(), self.mode.into()) }).map(|_| ())
+            cvt(unsafe { hermit_abi::mkdir(path.as_ptr().cast(), self.mode.into()) }).map(|_| ())
         })
     }
 
