@@ -426,19 +426,6 @@ fn std_tests(env: &Env, args: &TestArg) -> Result<(), String> {
     run_command_with_env(&command, None, Some(env))?;
     maybe_run_command_in_vm(&[&cargo_target_dir.join("track-caller-attribute")], env, args)?;
 
-    // FIXME: create a function "display_if_not_quiet" or something along the line.
-    println!("[AOT] mod_bench");
-    let mut command = args.config_info.rustc_command_vec();
-    command.extend_from_slice(&[
-        &"example/mod_bench.rs",
-        &"--crate-type",
-        &"bin",
-        &"--target",
-        &args.config_info.target_triple,
-    ]);
-    run_command_with_env(&command, None, Some(env))?;
-    // FIXME: the compiled binary is not run.
-
     Ok(())
 }
 
@@ -695,19 +682,6 @@ fn test_libcore(env: &Env, args: &TestArg) -> Result<(), String> {
     run_cargo_command(&[&"test"], Some(&path), env, args)?;
     Ok(())
 }
-
-// echo "[BENCH COMPILE] mod_bench"
-//
-// COMPILE_MOD_BENCH_INLINE="$RUSTC example/mod_bench.rs --crate-type bin -Zmir-opt-level=3 -O --crate-name mod_bench_inline"
-// COMPILE_MOD_BENCH_LLVM_0="rustc example/mod_bench.rs --crate-type bin -Copt-level=0 -o $cargo_target_dir/mod_bench_llvm_0 -Cpanic=abort"
-// COMPILE_MOD_BENCH_LLVM_1="rustc example/mod_bench.rs --crate-type bin -Copt-level=1 -o $cargo_target_dir/mod_bench_llvm_1 -Cpanic=abort"
-// COMPILE_MOD_BENCH_LLVM_2="rustc example/mod_bench.rs --crate-type bin -Copt-level=2 -o $cargo_target_dir/mod_bench_llvm_2 -Cpanic=abort"
-// COMPILE_MOD_BENCH_LLVM_3="rustc example/mod_bench.rs --crate-type bin -Copt-level=3 -o $cargo_target_dir/mod_bench_llvm_3 -Cpanic=abort"
-//
-// Use 100 runs, because a single compilations doesn't take more than ~150ms, so it isn't very slow
-// hyperfine --runs ${COMPILE_RUNS:-100} "$COMPILE_MOD_BENCH_INLINE" "$COMPILE_MOD_BENCH_LLVM_0" "$COMPILE_MOD_BENCH_LLVM_1" "$COMPILE_MOD_BENCH_LLVM_2" "$COMPILE_MOD_BENCH_LLVM_3"
-// echo "[BENCH RUN] mod_bench"
-// hyperfine --runs ${RUN_RUNS:-10} $cargo_target_dir/mod_bench{,_inline} $cargo_target_dir/mod_bench_llvm_*
 
 fn extended_rand_tests(env: &Env, args: &TestArg) -> Result<(), String> {
     if !args.is_using_gcc_master_branch() {
