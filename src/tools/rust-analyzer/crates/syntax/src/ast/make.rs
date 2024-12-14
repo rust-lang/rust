@@ -623,7 +623,7 @@ pub fn expr_loop(block: ast::BlockExpr) -> ast::Expr {
     expr_from_text(&format!("loop {block}"))
 }
 
-pub fn expr_prefix(op: SyntaxKind, expr: ast::Expr) -> ast::Expr {
+pub fn expr_prefix(op: SyntaxKind, expr: ast::Expr) -> ast::PrefixExpr {
     let token = token(op);
     expr_from_text(&format!("{token}{expr}"))
 }

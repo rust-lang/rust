@@ -272,7 +272,7 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext<'
                 ast::Pat::LiteralPat(p)
                     if p.literal().is_some_and(|it| it.token().kind() == T![false]) =>
                 {
-                    make::expr_prefix(T![!], scrutinee)
+                    make::expr_prefix(T![!], scrutinee).into()
                 }
                 _ => make::expr_let(if_let_pat, scrutinee).into(),
             };

@@ -303,7 +303,7 @@ fn include_references(initial_element: &ast::Expr) -> (ast::Expr, ast::Expr) {
 
         resulting_element = ast::Expr::from(parent_deref_element);
 
-        new_element_opt = make::expr_prefix(syntax::T![*], new_element_opt);
+        new_element_opt = make::expr_prefix(syntax::T![*], new_element_opt).into();
     }
 
     if let Some(first_ref_expr) = resulting_element.syntax().parent().and_then(ast::RefExpr::cast) {
