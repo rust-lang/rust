@@ -814,6 +814,7 @@ impl TyCoercionStability {
                 | TyKind::Tup(_)
                 | TyKind::Path(_) => Self::Deref,
                 TyKind::OpaqueDef(..)
+                | TyKind::TraitAscription(..)
                 | TyKind::Infer
                 | TyKind::Typeof(..)
                 | TyKind::TraitObject(..)

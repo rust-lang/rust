@@ -2906,6 +2906,8 @@ pub enum TyKind<'hir> {
     Path(QPath<'hir>),
     /// An opaque type definition itself. This is only used for `impl Trait`.
     OpaqueDef(&'hir OpaqueTy<'hir>),
+    /// A trait ascription type, which is `impl Trait` within a local binding.
+    TraitAscription(GenericBounds<'hir>),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
     TraitObject(&'hir [PolyTraitRef<'hir>], &'hir Lifetime, TraitObjectSyntax),

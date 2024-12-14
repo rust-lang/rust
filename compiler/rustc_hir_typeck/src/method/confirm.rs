@@ -17,7 +17,6 @@ use rustc_middle::ty::adjustment::{
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt, TypeVisitableExt, UserArgs,
-    UserType,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Span};
@@ -491,9 +490,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                     user_self_ty: None, // not relevant here
                 };
 
-                self.fcx.canonicalize_user_type_annotation(UserType::TypeOf(
-                    pick.item.def_id,
-                    user_args,
+                self.fcx.canonicalize_user_type_annotation(ty::UserType::new(
+                    ty::UserTypeKind::TypeOf(pick.item.def_id, user_args),
                 ))
             });
 

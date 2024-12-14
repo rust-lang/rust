@@ -292,6 +292,9 @@ impl<'a> State<'a> {
                 self.print_unsafe_binder(unsafe_binder);
             }
             hir::TyKind::OpaqueDef(..) => self.word("/*impl Trait*/"),
+            hir::TyKind::TraitAscription(bounds) => {
+                self.print_bounds("impl", bounds);
+            }
             hir::TyKind::Path(ref qpath) => self.print_qpath(qpath, false),
             hir::TyKind::TraitObject(bounds, lifetime, syntax) => {
                 if syntax == ast::TraitObjectSyntax::Dyn {

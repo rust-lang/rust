@@ -1,8 +1,8 @@
 error[E0562]: `impl Trait` is not allowed in the type of variable bindings
-  --> $DIR/issue-54600.rs:4:19
+  --> $DIR/feature-gate-impl-trait-in-bindings.rs:2:12
    |
-LL |     let x: Option<impl Debug> = Some(44_u32);
-   |                   ^^^^^^^^^^
+LL |     let x: impl Sized = ();
+   |            ^^^^^^^^^^
    |
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
    = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
