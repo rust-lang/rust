@@ -1869,7 +1869,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// # Panics
     ///
-    /// Panics if `index` is greater than deque's length
+    /// Panics if `index` is strictly greater than deque's length
     ///
     /// # Examples
     ///
