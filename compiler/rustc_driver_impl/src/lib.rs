@@ -347,6 +347,8 @@ fn run_compiler(
 
     callbacks.config(&mut config);
 
+    let registered_lints = config.register_lints.is_some();
+
     interface::run_compiler(config, |compiler| {
         let sess = &compiler.sess;
         let codegen_backend = &*compiler.codegen_backend;
@@ -362,7 +364,7 @@ fn run_compiler(
         // `--help`/`-Zhelp`/`-Chelp`. This is the earliest it can run, because
         // it must happen after lints are registered, during session creation.
         if sess.opts.describe_lints {
-            describe_lints(sess);
+            describe_lints(sess, registered_lints);
             return early_exit();
         }
 
@@ -980,7 +982,7 @@ the command line flag directly.
 }
 
 /// Write to stdout lint command options, together with a list of all available lints
-pub fn describe_lints(sess: &Session) {
+pub fn describe_lints(sess: &Session, registered_lints: bool) {
     safe_println!(
         "
 Available lint options:
@@ -1084,7 +1086,7 @@ Available lint options:
 
     print_lint_groups(builtin_groups, true);
 
-    match (sess.registered_lints, loaded.len(), loaded_groups.len()) {
+    match (registered_lints, loaded.len(), loaded_groups.len()) {
         (false, 0, _) | (false, _, 0) => {
             safe_println!("Lint tools like Clippy can load additional lints and lint groups.");
         }

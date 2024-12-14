@@ -149,10 +149,9 @@ pub fn iter_exported_symbols<'tcx>(
     let dependency_formats = tcx.dependency_formats(());
     // Find the dependencies of the executable we are running.
     let dependency_format = dependency_formats
-        .iter()
-        .find(|(crate_type, _)| *crate_type == CrateType::Executable)
+        .get(&CrateType::Executable)
         .expect("interpreting a non-executable crate");
-    for cnum in dependency_format.1.iter().enumerate().filter_map(|(num, &linkage)| {
+    for cnum in dependency_format.iter().enumerate().filter_map(|(num, &linkage)| {
         // We add 1 to the number because that's what rustc also does everywhere it
         // calls `CrateNum::new`...
         #[expect(clippy::arithmetic_side_effects)]
