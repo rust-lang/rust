@@ -829,6 +829,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             | sym::simd_flog
             | sym::simd_floor
             | sym::simd_fma
+            | sym::simd_relaxed_fma
             | sym::simd_fpow
             | sym::simd_fpowi
             | sym::simd_fsin
