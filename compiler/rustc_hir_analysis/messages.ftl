@@ -249,6 +249,12 @@ hir_analysis_invalid_receiver_ty_help =
 hir_analysis_invalid_receiver_ty_help_no_arbitrary_self_types =
     consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 
+hir_analysis_invalid_receiver_ty_help_nonnull_note =
+    `NonNull` does not implement `Receiver` because it has methods that may shadow the referent; consider wrapping your `NonNull` in a newtype wrapper for which you implement `Receiver`
+
+hir_analysis_invalid_receiver_ty_help_weak_note =
+    `Weak` does not implement `Receiver` because it has methods that may shadow the referent; consider wrapping your `Weak` in a newtype wrapper for which you implement `Receiver`
+
 hir_analysis_invalid_receiver_ty_no_arbitrary_self_types = invalid `self` parameter type: `{$receiver_ty}`
     .note = type of `self` must be `Self` or a type that dereferences to it
 
