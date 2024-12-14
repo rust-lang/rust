@@ -99,7 +99,7 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
-    let abi = if cx.target_spec().env == "musl" {
+    let abi = if cx.target_spec().env == "musl" || cx.target_spec().os == "freebsd" {
         ELFv2
     } else if cx.target_spec().os == "aix" {
         AIX
