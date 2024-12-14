@@ -1571,8 +1571,12 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         res
     }
 
-    fn after_local_read(ecx: &InterpCx<'tcx, Self>, local: mir::Local) -> InterpResult<'tcx> {
-        if let Some(data_race) = &ecx.frame().extra.data_race {
+    fn after_local_read(
+        ecx: &InterpCx<'tcx, Self>,
+        frame: &Frame<'tcx, Provenance, FrameExtra<'tcx>>,
+        local: mir::Local,
+    ) -> InterpResult<'tcx> {
+        if let Some(data_race) = &frame.extra.data_race {
             data_race.local_read(local, &ecx.machine);
         }
         interp_ok(())
