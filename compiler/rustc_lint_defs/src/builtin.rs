@@ -740,12 +740,12 @@ declare_lint! {
     ///
     /// ```text
     /// warning: allocation of size: 1 GiB  exceeds most system architecture limits
-    /// --> $DIR/large-stack-size-issue-83060.rs:7:9
-    /// |
+    ///   --> $DIR/large-stack-size-issue-83060.rs:7:9
+    ///    |
     /// LL |     let mut x: [u8; CAP>>1] = [0; CAP>>1];
-    ///  |         ^^^^^
-    ///  |
-    ///  = note: `#[warn(dangerous_stack_allocation)]` on by default
+    ///    |         ^^^^^
+    ///    |
+    ///    = note: `#[warn(dangerous_stack_allocation)]` on by default
     ///  ```
     /// ### Explanation
     ///
