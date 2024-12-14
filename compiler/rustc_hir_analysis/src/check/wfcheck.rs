@@ -1748,8 +1748,14 @@ fn check_method_receiver<'tcx>(
             // Report error; would not have worked with `arbitrary_self_types[_pointers]`.
             {
                 match receiver_validity_err {
-                    ReceiverValidityError::DoesNotDeref => {
+                    ReceiverValidityError::DoesNotDeref if arbitrary_self_types_level.is_some() => {
                         tcx.dcx().emit_err(errors::InvalidReceiverTy { span, receiver_ty })
+                    }
+                    ReceiverValidityError::DoesNotDeref => {
+                        tcx.dcx().emit_err(errors::InvalidReceiverTyNoArbitrarySelfTypes {
+                            span,
+                            receiver_ty,
+                        })
                     }
                     ReceiverValidityError::MethodGenericParamUsed => {
                         tcx.dcx().emit_err(errors::InvalidGenericReceiverTy { span, receiver_ty })
