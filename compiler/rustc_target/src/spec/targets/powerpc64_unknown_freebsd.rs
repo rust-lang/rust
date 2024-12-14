@@ -11,7 +11,7 @@ pub(crate) fn target() -> Target {
     Target {
         llvm_target: "powerpc64-unknown-freebsd".into(),
         metadata: crate::spec::TargetMetadata {
-            description: Some("PPC64 FreeBSD (ELFv1 and ELFv2)".into()),
+            description: Some("PPC64 FreeBSD (ELFv2)".into()),
             tier: Some(3),
             host_tools: Some(true),
             std: Some(true),

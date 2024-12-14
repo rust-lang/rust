@@ -343,7 +343,7 @@ target | std | host | notes
 [`powerpc-unknown-openbsd`](platform-support/powerpc-unknown-openbsd.md) | * |  |
 [`powerpc-wrs-vxworks-spe`](platform-support/vxworks.md) | ✓ |  |
 [`powerpc-wrs-vxworks`](platform-support/vxworks.md) | ✓ |  |
-`powerpc64-unknown-freebsd` | ✓ | ✓ | PPC64 FreeBSD (ELFv1 and ELFv2)
+`powerpc64-unknown-freebsd` | ✓ | ✓ | PPC64 FreeBSD (ELFv2)
 `powerpc64le-unknown-freebsd` | ✓ | ✓ | PPC64LE FreeBSD
 `powerpc-unknown-freebsd` | ? |   | PowerPC FreeBSD
 `powerpc64-unknown-linux-musl` | ? |  | 64-bit PowerPC Linux with musl 1.2.3
