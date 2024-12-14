@@ -10,7 +10,7 @@ fn main() {
 
     // CHECK: debug x => [[x:_.*]];
     // CHECK: [[array_lit:_.*]] = [const 0_u8; 5000];
-    // CHECK: {{_.*}} = const 5000_usize;
+    // CHECK: {{_.*}} = const 2_usize;
     // CHECK: {{_.*}} = const true;
     // CHECK: assert(const true
     // CHECK: [[x]] = copy [[array_lit]][2 of 3];
