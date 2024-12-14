@@ -63,10 +63,11 @@ use rustc_hir::{self as hir};
 use rustc_macros::extension;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::DepContext;
+use rustc_middle::traits::PatternOriginExpr;
 use rustc_middle::ty::error::{ExpectedFound, TypeError, TypeErrorToStringExt};
 use rustc_middle::ty::print::{PrintError, PrintTraitRefExt as _, with_forced_trimmed_paths};
 use rustc_middle::ty::{
-    self, List, Region, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable,
+    self, List, ParamEnv, Region, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt,
 };
 use rustc_span::def_id::LOCAL_CRATE;
@@ -77,7 +78,7 @@ use crate::error_reporting::TypeErrCtxt;
 use crate::errors::{ObligationCauseFailureCode, TypeErrorAdditionalDiags};
 use crate::infer;
 use crate::infer::relate::{self, RelateResult, TypeRelation};
-use crate::infer::{InferCtxt, TypeTrace, ValuePairs};
+use crate::infer::{InferCtxt, InferCtxtExt as _, TypeTrace, ValuePairs};
 use crate::solve::deeply_normalize_for_diagnostics;
 use crate::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
@@ -433,15 +434,22 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         cause: &ObligationCause<'tcx>,
         exp_found: Option<ty::error::ExpectedFound<Ty<'tcx>>>,
         terr: TypeError<'tcx>,
+        param_env: Option<ParamEnv<'tcx>>,
     ) {
         match *cause.code() {
-            ObligationCauseCode::Pattern { origin_expr: true, span: Some(span), root_ty } => {
-                let ty = self.resolve_vars_if_possible(root_ty);
-                if !matches!(ty.kind(), ty::Infer(ty::InferTy::TyVar(_) | ty::InferTy::FreshTy(_)))
-                {
+            ObligationCauseCode::Pattern {
+                origin_expr: Some(origin_expr),
+                span: Some(span),
+                root_ty,
+            } => {
+                let expected_ty = self.resolve_vars_if_possible(root_ty);
+                if !matches!(
+                    expected_ty.kind(),
+                    ty::Infer(ty::InferTy::TyVar(_) | ty::InferTy::FreshTy(_))
+                ) {
                     // don't show type `_`
                     if span.desugaring_kind() == Some(DesugaringKind::ForLoop)
-                        && let ty::Adt(def, args) = ty.kind()
+                        && let ty::Adt(def, args) = expected_ty.kind()
                         && Some(def.did()) == self.tcx.get_diagnostic_item(sym::Option)
                     {
                         err.span_label(
@@ -449,22 +457,48 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             format!("this is an iterator with items of type `{}`", args.type_at(0)),
                         );
                     } else {
-                        err.span_label(span, format!("this expression has type `{ty}`"));
+                        err.span_label(span, format!("this expression has type `{expected_ty}`"));
                     }
                 }
                 if let Some(ty::error::ExpectedFound { found, .. }) = exp_found
-                    && ty.boxed_ty() == Some(found)
-                    && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
+                    && let Ok(mut peeled_snippet) =
+                        self.tcx.sess.source_map().span_to_snippet(origin_expr.peeled_span)
                 {
-                    err.span_suggestion(
-                        span,
-                        "consider dereferencing the boxed value",
-                        format!("*{snippet}"),
-                        Applicability::MachineApplicable,
-                    );
+                    // Parentheses are needed for cases like as casts.
+                    // We use the peeled_span for deref suggestions.
+                    // It's also safe to use for box, since box only triggers if there
+                    // wasn't a reference to begin with.
+                    if origin_expr.peeled_prefix_suggestion_parentheses {
+                        peeled_snippet = format!("({peeled_snippet})");
+                    }
+
+                    // Try giving a box suggestion first, as it is a special case of the
+                    // deref suggestion.
+                    if expected_ty.boxed_ty() == Some(found) {
+                        err.span_suggestion_verbose(
+                            span,
+                            "consider dereferencing the boxed value",
+                            format!("*{peeled_snippet}"),
+                            Applicability::MachineApplicable,
+                        );
+                    } else if let Some(param_env) = param_env
+                        && let Some(prefix) = self.should_deref_suggestion_on_mismatch(
+                            param_env,
+                            found,
+                            expected_ty,
+                            origin_expr,
+                        )
+                    {
+                        err.span_suggestion_verbose(
+                            span,
+                            "consider dereferencing to access the inner value using the Deref trait",
+                            format!("{prefix}{peeled_snippet}"),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
                 }
             }
-            ObligationCauseCode::Pattern { origin_expr: false, span: Some(span), .. } => {
+            ObligationCauseCode::Pattern { origin_expr: None, span: Some(span), .. } => {
                 err.span_label(span, "expected due to this");
             }
             ObligationCauseCode::BlockTailExpression(
@@ -615,6 +649,45 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     err.span_note(*span, "the lifetime requirement is introduced here");
                 }
             }
+        }
+    }
+
+    /// Determines whether deref_to == <deref_from as Deref>::Target, and if so,
+    /// returns a prefix that should be added to deref_from as a suggestion.
+    fn should_deref_suggestion_on_mismatch(
+        &self,
+        param_env: ParamEnv<'tcx>,
+        deref_to: Ty<'tcx>,
+        deref_from: Ty<'tcx>,
+        origin_expr: PatternOriginExpr,
+    ) -> Option<String> {
+        // origin_expr contains stripped away versions of our expression.
+        // We'll want to use that to avoid suggesting things like *&x.
+        // However, the type that we have access to hasn't been stripped away,
+        // so we need to ignore the first n dereferences, where n is the number
+        // that's been stripped away in origin_expr.
+
+        // Find a way to autoderef from deref_from to deref_to.
+        let Some((num_derefs, (after_deref_ty, _))) = (self.autoderef_steps)(deref_from)
+            .into_iter()
+            .enumerate()
+            .find(|(_, (ty, _))| self.infcx.can_eq(param_env, *ty, deref_to))
+        else {
+            return None;
+        };
+
+        if num_derefs <= origin_expr.peeled_count {
+            return None;
+        }
+
+        let deref_part = "*".repeat(num_derefs - origin_expr.peeled_count);
+
+        // If the user used a reference in the original expression, they probably
+        // want the suggestion to still give a reference.
+        if deref_from.is_ref() && !after_deref_ty.is_ref() {
+            Some(format!("&{deref_part}"))
+        } else {
+            Some(deref_part)
         }
     }
 
@@ -1406,8 +1479,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             Variable(ty::error::ExpectedFound<Ty<'a>>),
             Fixed(&'static str),
         }
-        let (expected_found, exp_found, is_simple_error, values) = match values {
-            None => (None, Mismatch::Fixed("type"), false, None),
+        let (expected_found, exp_found, is_simple_error, values, param_env) = match values {
+            None => (None, Mismatch::Fixed("type"), false, None, None),
             Some(ty::ParamEnvAnd { param_env, value: values }) => {
                 let mut values = self.resolve_vars_if_possible(values);
                 if self.next_trait_solver() {
@@ -1459,7 +1532,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     diag.downgrade_to_delayed_bug();
                     return;
                 };
-                (Some(vals), exp_found, is_simple_error, Some(values))
+                (Some(vals), exp_found, is_simple_error, Some(values), Some(param_env))
             }
         };
 
@@ -1791,7 +1864,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         // It reads better to have the error origin as the final
         // thing.
-        self.note_error_origin(diag, cause, exp_found, terr);
+        self.note_error_origin(diag, cause, exp_found, terr, param_env);
 
         debug!(?diag);
     }
