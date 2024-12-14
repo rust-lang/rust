@@ -8,6 +8,7 @@ use rustc_errors::{
     Applicability, Diag, DiagArgValue, LintDiagnostic, elided_lifetime_in_path_suggestion,
 };
 use rustc_middle::middle::stability;
+use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::lint::{BuiltinLintDiag, ElidedLifetimeResolution};
 use rustc_span::BytePos;
@@ -18,7 +19,12 @@ use crate::lints::{self, ElidedNamedLifetime};
 
 mod check_cfg;
 
-pub(super) fn decorate_lint(sess: &Session, diagnostic: BuiltinLintDiag, diag: &mut Diag<'_, ()>) {
+pub(super) fn decorate_lint(
+    sess: &Session,
+    _tcx: Option<TyCtxt<'_>>,
+    diagnostic: BuiltinLintDiag,
+    diag: &mut Diag<'_, ()>,
+) {
     match diagnostic {
         BuiltinLintDiag::UnicodeTextFlow(comment_span, content) => {
             let spans: Vec<_> = content

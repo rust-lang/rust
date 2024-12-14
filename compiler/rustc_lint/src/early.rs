@@ -8,16 +8,20 @@ use rustc_ast::ptr::P;
 use rustc_ast::visit::{self as ast_visit, Visitor, walk_list};
 use rustc_ast::{self as ast, HasAttrs};
 use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_errors::MultiSpan;
 use rustc_feature::Features;
-use rustc_middle::ty::RegisteredTools;
+use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::Session;
-use rustc_session::lint::{BufferedEarlyLint, LintBuffer, LintPass};
+use rustc_session::lint::{BufferedEarlyLint, BuiltinLintDiag, LintBuffer, LintPass};
 use rustc_span::Span;
 use rustc_span::symbol::Ident;
 use tracing::debug;
 
-use crate::context::{EarlyContext, LintStore};
+use crate::Lint;
+use crate::context::{EarlyContext, LintContext, LintStore};
 use crate::passes::{EarlyLintPass, EarlyLintPassObject};
+
+mod diagnostics;
 
 macro_rules! lint_callback { ($cx:expr, $f:ident, $($args:expr),*) => ({
     $cx.pass.$f(&$cx.context, $($args),*);
@@ -25,19 +29,52 @@ macro_rules! lint_callback { ($cx:expr, $f:ident, $($args:expr),*) => ({
 
 /// Implements the AST traversal for early lint passes. `T` provides the
 /// `check_*` methods.
-pub struct EarlyContextAndPass<'a, T: EarlyLintPass> {
+pub struct EarlyContextAndPass<'a, 'b, T: EarlyLintPass> {
     context: EarlyContext<'a>,
+    tcx: Option<TyCtxt<'b>>,
     pass: T,
 }
 
-impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
+impl<T: EarlyLintPass> EarlyContextAndPass<'_, '_, T> {
+    /// Emit a lint at the appropriate level, with an associated span and an existing
+    /// diagnostic.
+    ///
+    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
+    #[rustc_lint_diagnostics]
+    pub fn span_lint_with_diagnostics(
+        &self,
+        lint: &'static Lint,
+        span: MultiSpan,
+        diagnostic: BuiltinLintDiag,
+    ) {
+        self.opt_span_lint_with_diagnostics(lint, Some(span), diagnostic);
+    }
+
+    /// Emit a lint at the appropriate level, with an optional associated span and an existing
+    /// diagnostic.
+    ///
+    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
+    #[rustc_lint_diagnostics]
+    pub fn opt_span_lint_with_diagnostics(
+        &self,
+        lint: &'static Lint,
+        span: Option<MultiSpan>,
+        diagnostic: BuiltinLintDiag,
+    ) {
+        self.context.opt_span_lint(lint, span, |diag| {
+            diagnostics::decorate_lint(self.context.sess(), self.tcx, diagnostic, diag);
+        });
+    }
+}
+
+impl<'a, 'b, T: EarlyLintPass> EarlyContextAndPass<'a, 'b, T> {
     // This always-inlined function is for the hot call site.
     #[inline(always)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     fn inlined_check_id(&mut self, id: ast::NodeId) {
         for early_lint in self.context.buffered.take(id) {
             let BufferedEarlyLint { span, node_id: _, lint_id, diagnostic } = early_lint;
-            self.context.opt_span_lint_with_diagnostics(lint_id.lint, span, diagnostic);
+            self.opt_span_lint_with_diagnostics(lint_id.lint, span, diagnostic);
         }
     }
 
@@ -67,7 +104,7 @@ impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
     }
 }
 
-impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T> {
+impl<'a, 'b, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, 'b, T> {
     fn visit_coroutine_kind(&mut self, coroutine_kind: &'a ast::CoroutineKind) -> Self::Result {
         self.check_id(coroutine_kind.closure_id());
     }
@@ -313,7 +350,7 @@ pub trait EarlyCheckNode<'a>: Copy {
     fn attrs<'b>(self) -> &'b [ast::Attribute]
     where
         'a: 'b;
-    fn check<'b, T: EarlyLintPass>(self, cx: &mut EarlyContextAndPass<'b, T>)
+    fn check<'b, 'c, T: EarlyLintPass>(self, cx: &mut EarlyContextAndPass<'b, 'c, T>)
     where
         'a: 'b;
 }
@@ -328,7 +365,7 @@ impl<'a> EarlyCheckNode<'a> for (&'a ast::Crate, &'a [ast::Attribute]) {
     {
         self.1
     }
-    fn check<'b, T: EarlyLintPass>(self, cx: &mut EarlyContextAndPass<'b, T>)
+    fn check<'b, 'c, T: EarlyLintPass>(self, cx: &mut EarlyContextAndPass<'b, 'c, T>)
     where
         'a: 'b,
     {
@@ -348,7 +385,7 @@ impl<'a> EarlyCheckNode<'a> for (ast::NodeId, &'a [ast::Attribute], &'a [P<ast::
     {
         self.1
     }
-    fn check<'b, T: EarlyLintPass>(self, cx: &mut EarlyContextAndPass<'b, T>)
+    fn check<'b, 'c, T: EarlyLintPass>(self, cx: &mut EarlyContextAndPass<'b, 'c, T>)
     where
         'a: 'b,
     {
@@ -359,6 +396,7 @@ impl<'a> EarlyCheckNode<'a> for (ast::NodeId, &'a [ast::Attribute], &'a [P<ast::
 
 pub fn check_ast_node<'a>(
     sess: &Session,
+    tcx: Option<TyCtxt<'_>>,
     features: &Features,
     pre_expansion: bool,
     lint_store: &LintStore,
@@ -382,22 +420,23 @@ pub fn check_ast_node<'a>(
     let passes =
         if pre_expansion { &lint_store.pre_expansion_passes } else { &lint_store.early_passes };
     if passes.is_empty() {
-        check_ast_node_inner(sess, check_node, context, builtin_lints);
+        check_ast_node_inner(sess, tcx, check_node, context, builtin_lints);
     } else {
         let mut passes: Vec<_> = passes.iter().map(|mk_pass| (mk_pass)()).collect();
         passes.push(Box::new(builtin_lints));
         let pass = RuntimeCombinedEarlyLintPass { passes: &mut passes[..] };
-        check_ast_node_inner(sess, check_node, context, pass);
+        check_ast_node_inner(sess, tcx, check_node, context, pass);
     }
 }
 
 fn check_ast_node_inner<'a, T: EarlyLintPass>(
     sess: &Session,
+    tcx: Option<TyCtxt<'_>>,
     check_node: impl EarlyCheckNode<'a>,
     context: EarlyContext<'_>,
     pass: T,
 ) {
-    let mut cx = EarlyContextAndPass { context, pass };
+    let mut cx = EarlyContextAndPass { context, tcx, pass };
 
     cx.with_lint_attrs(check_node.id(), check_node.attrs(), |cx| check_node.check(cx));
 
