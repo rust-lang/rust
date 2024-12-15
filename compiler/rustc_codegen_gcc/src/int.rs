@@ -322,36 +322,26 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 },
             }
         } else {
-            match new_kind {
-                Int(I128) | Uint(U128) => {
-                    let func_name = match oop {
-                        OverflowOp::Add => match new_kind {
-                            Int(I128) => "__rust_i128_addo",
-                            Uint(U128) => "__rust_u128_addo",
-                            _ => unreachable!(),
-                        },
-                        OverflowOp::Sub => match new_kind {
-                            Int(I128) => "__rust_i128_subo",
-                            Uint(U128) => "__rust_u128_subo",
-                            _ => unreachable!(),
-                        },
-                        OverflowOp::Mul => match new_kind {
-                            Int(I128) => "__rust_i128_mulo", // TODO(antoyo): use __muloti4d instead?
-                            Uint(U128) => "__rust_u128_mulo",
-                            _ => unreachable!(),
-                        },
-                    };
-                    return self.operation_with_overflow(func_name, lhs, rhs);
-                }
-                _ => match oop {
-                    OverflowOp::Mul => match new_kind {
-                        Int(I32) => "__mulosi4",
-                        Int(I64) => "__mulodi4",
-                        _ => unreachable!(),
-                    },
-                    _ => unimplemented!("overflow operation for {:?}", new_kind),
+            let (func_name, width) = match oop {
+                OverflowOp::Add => match new_kind {
+                    Int(I128) => ("__rust_i128_addo", 128),
+                    Uint(U128) => ("__rust_u128_addo", 128),
+                    _ => unreachable!(),
                 },
-            }
+                OverflowOp::Sub => match new_kind {
+                    Int(I128) => ("__rust_i128_subo", 128),
+                    Uint(U128) => ("__rust_u128_subo", 128),
+                    _ => unreachable!(),
+                },
+                OverflowOp::Mul => match new_kind {
+                    Int(I32) => ("__mulosi4", 32),
+                    Int(I64) => ("__mulodi4", 64),
+                    Int(I128) => ("__rust_i128_mulo", 128), // TODO(antoyo): use __muloti4d instead?
+                    Uint(U128) => ("__rust_u128_mulo", 128),
+                    _ => unreachable!(),
+                },
+            };
+            return self.operation_with_overflow(func_name, lhs, rhs, width);
         };
 
         let intrinsic = self.context.get_builtin_function(name);
@@ -364,80 +354,87 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         (res.dereference(self.location).to_rvalue(), overflow)
     }
 
+    /// Non-`__builtin_*` overflow operations with a `fn(T, T, &mut i32) -> T` signature.
     pub fn operation_with_overflow(
         &self,
         func_name: &str,
         lhs: RValue<'gcc>,
         rhs: RValue<'gcc>,
+        width: u64,
     ) -> (RValue<'gcc>, RValue<'gcc>) {
         let a_type = lhs.get_type();
         let b_type = rhs.get_type();
         debug_assert!(a_type.dyncast_array().is_some());
         debug_assert!(b_type.dyncast_array().is_some());
+        let overflow_type = self.i32_type;
+        let overflow_param_type = overflow_type.make_pointer();
+        let res_type = a_type;
+
+        let overflow_value =
+            self.current_func().new_local(self.location, overflow_type, "overflow");
+        let overflow_addr = overflow_value.get_address(self.location);
+
         let param_a = self.context.new_parameter(self.location, a_type, "a");
         let param_b = self.context.new_parameter(self.location, b_type, "b");
-        let result_field = self.context.new_field(self.location, a_type, "result");
-        let overflow_field = self.context.new_field(self.location, self.bool_type, "overflow");
+        let param_overflow =
+            self.context.new_parameter(self.location, overflow_param_type, "overflow");
 
-        let ret_ty = Ty::new_tup(self.tcx, &[self.tcx.types.i128, self.tcx.types.bool]);
+        let a_elem_type = a_type.dyncast_array().expect("non-array a value");
+        debug_assert!(a_elem_type.is_integral());
+        let res_ty = match width {
+            32 => self.tcx.types.i32,
+            64 => self.tcx.types.i64,
+            128 => self.tcx.types.i128,
+            _ => unreachable!("unexpected integer size"),
+        };
         let layout = self
             .tcx
-            .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ret_ty))
+            .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(res_ty))
             .unwrap();
 
         let arg_abi = ArgAbi { layout, mode: PassMode::Direct(ArgAttributes::new()) };
         let mut fn_abi = FnAbi {
-            args: vec![arg_abi.clone(), arg_abi.clone()].into_boxed_slice(),
+            args: vec![arg_abi.clone(), arg_abi.clone(), arg_abi.clone()].into_boxed_slice(),
             ret: arg_abi,
             c_variadic: false,
-            fixed_count: 2,
+            fixed_count: 3,
             conv: Conv::C,
             can_unwind: false,
         };
         fn_abi.adjust_for_foreign_abi(self.cx, spec::abi::Abi::C { unwind: false }).unwrap();
 
-        let indirect = matches!(fn_abi.ret.mode, PassMode::Indirect { .. });
+        let ret_indirect = matches!(fn_abi.ret.mode, PassMode::Indirect { .. });
 
-        let return_type = self
-            .context
-            .new_struct_type(self.location, "result_overflow", &[result_field, overflow_field]);
-        let result = if indirect {
-            let return_value =
-                self.current_func().new_local(self.location, return_type.as_type(), "return_value");
-            let return_param_type = return_type.as_type().make_pointer();
-            let return_param =
-                self.context.new_parameter(self.location, return_param_type, "return_value");
+        let result = if ret_indirect {
+            let res_value = self.current_func().new_local(self.location, res_type, "result_value");
+            let res_addr = res_value.get_address(self.location);
+            let res_param_type = res_type.make_pointer();
+            let param_res = self.context.new_parameter(self.location, res_param_type, "result");
+
             let func = self.context.new_function(
                 self.location,
                 FunctionType::Extern,
                 self.type_void(),
-                &[return_param, param_a, param_b],
+                &[param_res, param_a, param_b, param_overflow],
                 func_name,
                 false,
             );
-            self.llbb().add_eval(
-                self.location,
-                self.context.new_call(self.location, func, &[
-                    return_value.get_address(self.location),
-                    lhs,
-                    rhs,
-                ]),
-            );
-            return_value.to_rvalue()
+            let _void =
+                self.context.new_call(self.location, func, &[res_addr, lhs, rhs, overflow_addr]);
+            res_value.to_rvalue()
         } else {
             let func = self.context.new_function(
                 self.location,
                 FunctionType::Extern,
-                return_type.as_type(),
-                &[param_a, param_b],
+                res_type,
+                &[param_a, param_b, param_overflow],
                 func_name,
                 false,
             );
-            self.context.new_call(self.location, func, &[lhs, rhs])
+            self.context.new_call(self.location, func, &[lhs, rhs, overflow_addr])
         };
-        let overflow = result.access_field(self.location, overflow_field);
-        let int_result = result.access_field(self.location, result_field);
-        (int_result, overflow)
+
+        (result, self.context.new_cast(self.location, overflow_value, self.bool_type).to_rvalue())
     }
 
     pub fn gcc_icmp(
