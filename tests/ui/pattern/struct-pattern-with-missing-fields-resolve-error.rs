@@ -1,6 +1,6 @@
 struct Website {
     url: String,
-    title: Option<String> ,//~ NOTE defined here
+    title: Option<String>,
 }
 
 fn main() {
@@ -14,8 +14,7 @@ fn main() {
         println!("[{}]({})", title, url); // we hide the errors for `title` and `url`
     }
 
-    if let Website { url, .. } = website { //~ NOTE `Website` has a field `title`
-        //~^ NOTE this pattern
+    if let Website { url, .. } = website { //~ NOTE this pattern
         println!("[{}]({})", title, url); //~ ERROR cannot find value `title` in this scope
         //~^ NOTE not found in this scope
     }

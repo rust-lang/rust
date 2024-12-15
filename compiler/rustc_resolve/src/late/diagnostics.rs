@@ -1129,7 +1129,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     ) {
         let [segment] = path else { return };
         let None = following_seg else { return };
-        'outer: for rib in self.ribs[ValueNS].iter().rev() {
+        for rib in self.ribs[ValueNS].iter().rev() {
             for (def_id, spans) in &rib.patterns_with_skipped_bindings {
                 if let Some(fields) = self.r.field_idents(*def_id) {
                     for field in fields {
@@ -1141,23 +1141,14 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                     spans.iter().map(|(s, _)| *s).collect::<Vec<_>>().into();
                                 err.span_note(
                                     multispan,
-                                    "this pattern had a recovered parse error which likely \
-                                        lost the expected fields",
+                                    "this pattern had a recovered parse error which likely lost \
+                                     the expected fields",
                                 );
                                 err.downgrade_to_delayed_bug();
                             }
-                            let mut multispan: MultiSpan = spans
-                                .iter()
-                                .filter(|(_, had_error)| had_error.is_ok())
-                                .map(|(sp, _)| *sp)
-                                .collect::<Vec<_>>()
-                                .into();
-                            let def_span = self.r.def_span(*def_id);
                             let ty = self.r.tcx.item_name(*def_id);
-                            multispan.push_span_label(def_span, String::new());
-                            multispan.push_span_label(field.span, "defined here".to_string());
-                            for (span, _) in spans.iter().filter(|(_, had_err)| had_err.is_ok()) {
-                                multispan.push_span_label(
+                            for (span, _) in spans {
+                                err.span_label(
                                     *span,
                                     format!(
                                         "this pattern doesn't include `{field}`, which is \
@@ -1165,14 +1156,6 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                     ),
                                 );
                             }
-                            err.span_note(
-                                multispan,
-                                format!(
-                                    "`{ty}` has a field `{field}` which could have been included \
-                                     in this pattern, but it wasn't",
-                                ),
-                            );
-                            break 'outer;
                         }
                     }
                 }
