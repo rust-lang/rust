@@ -1953,11 +1953,11 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// let mut vec = vec![1, 2, 3];
-    /// vec.insert(1, 4);
-    /// assert_eq!(vec, [1, 4, 2, 3]);
-    /// vec.insert(4, 5);
-    /// assert_eq!(vec, [1, 4, 2, 3, 5]);
+    /// let mut vec = vec!['a', 'b', 'c'];
+    /// vec.insert(1, 'd');
+    /// assert_eq!(vec, ['a', 'd', 'b', 'c']);
+    /// vec.insert(4, 'e');
+    /// assert_eq!(vec, ['a', 'd', 'b', 'c', 'e']);
     /// ```
     ///
     /// # Time complexity
@@ -2024,9 +2024,9 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// let mut v = vec![1, 2, 3];
-    /// assert_eq!(v.remove(1), 2);
-    /// assert_eq!(v, [1, 3]);
+    /// let mut v = vec!['a', 'b', 'c'];
+    /// assert_eq!(v.remove(1), 'b');
+    /// assert_eq!(v, ['a', 'c']);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[track_caller]
@@ -2715,10 +2715,10 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// let mut vec = vec![1, 2, 3];
+    /// let mut vec = vec!['a', 'b', 'c'];
     /// let vec2 = vec.split_off(1);
-    /// assert_eq!(vec, [1]);
-    /// assert_eq!(vec2, [2, 3]);
+    /// assert_eq!(vec, ['a']);
+    /// assert_eq!(vec2, ['b', 'c']);
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
@@ -2982,9 +2982,9 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// vec.resize(3, "world");
     /// assert_eq!(vec, ["hello", "world", "world"]);
     ///
-    /// let mut vec = vec![1, 2, 3, 4];
-    /// vec.resize(2, 0);
-    /// assert_eq!(vec, [1, 2]);
+    /// let mut vec = vec!['a', 'b', 'c', 'd'];
+    /// vec.resize(2, '_');
+    /// assert_eq!(vec, ['a', 'b']);
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "vec_resize", since = "1.5.0")]
