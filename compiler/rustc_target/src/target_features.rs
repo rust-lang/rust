@@ -105,10 +105,10 @@ impl<Toggleability> Stability<Toggleability> {
     /// - for `#[target_feature]`/`-Ctarget-feature`, check `allow_toggle()`
     /// - for `cfg(target_feature)`, check `in_cfg`
     pub fn requires_nightly(&self) -> Option<Symbol> {
-        match self {
-            &Stability::Unstable { nightly_feature, .. } => Some(nightly_feature),
-            &Stability::Stable { .. } => None,
-            &Stability::Forbidden { .. } => panic!("forbidden features should not reach this far"),
+        match *self {
+            Stability::Unstable { nightly_feature, .. } => Some(nightly_feature),
+            Stability::Stable { .. } => None,
+            Stability::Forbidden { .. } => panic!("forbidden features should not reach this far"),
         }
     }
 }
@@ -120,21 +120,21 @@ impl StabilityUncomputed {
             enable: f(target, true),
             disable: f(target, false),
         };
-        match self {
-            &Stable { allow_toggle } => Stable { allow_toggle: compute(allow_toggle) },
-            &Unstable { nightly_feature, allow_toggle } => {
+        match *self {
+            Stable { allow_toggle } => Stable { allow_toggle: compute(allow_toggle) },
+            Unstable { nightly_feature, allow_toggle } => {
                 Unstable { nightly_feature, allow_toggle: compute(allow_toggle) }
             }
-            &Forbidden { reason } => Forbidden { reason },
+            Forbidden { reason } => Forbidden { reason },
         }
     }
 
     pub fn toggle_allowed(&self, target: &Target, enable: bool) -> Result<(), &'static str> {
         use Stability::*;
-        match self {
-            &Stable { allow_toggle } => allow_toggle(target, enable),
-            &Unstable { allow_toggle, .. } => allow_toggle(target, enable),
-            &Forbidden { reason } => Err(reason),
+        match *self {
+            Stable { allow_toggle } => allow_toggle(target, enable),
+            Unstable { allow_toggle, .. } => allow_toggle(target, enable),
+            Forbidden { reason } => Err(reason),
         }
     }
 }
