@@ -850,8 +850,20 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         // ^^^^^^
-        values.0.push(sig1.safety.prefix_str(), sig1.safety != sig2.safety);
-        values.1.push(sig2.safety.prefix_str(), sig1.safety != sig2.safety);
+        let safety = |fn_def, sig: ty::FnSig<'_>| match fn_def {
+            None => sig.safety.prefix_str(),
+            Some((did, _)) => {
+                if self.tcx.codegen_fn_attrs(did).safe_target_features {
+                    "#[target_features] "
+                } else {
+                    sig.safety.prefix_str()
+                }
+            }
+        };
+        let safety1 = safety(fn_def1, sig1);
+        let safety2 = safety(fn_def2, sig2);
+        values.0.push(safety1, safety1 != safety2);
+        values.1.push(safety2, safety1 != safety2);
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         //        ^^^^^^^^^^

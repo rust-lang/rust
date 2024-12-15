@@ -10,7 +10,7 @@ LL |     let foo: fn() = foo;
    |              expected due to this
    |
    = note: expected fn pointer `fn()`
-                 found fn item `unsafe fn() {foo}`
+                 found fn item `#[target_features] fn() {foo}`
    = note: functions with `#[target_feature]` can only be coerced to `unsafe` function pointers
    = note: unsafe functions cannot be coerced into safe function pointers
 
