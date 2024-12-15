@@ -373,6 +373,7 @@
 #![feature(thin_box)]
 #![feature(try_reserve_kind)]
 #![feature(try_with_capacity)]
+#![feature(unique_rc_arc)]
 #![feature(vec_into_raw_parts)]
 // tidy-alphabetical-end
 //
