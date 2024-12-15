@@ -706,6 +706,7 @@ pub enum BuiltinLintDiag {
         ty: String,
     },
     UnusedExternCrate {
+        span: Span,
         removal_span: Span,
     },
     ExternCrateNotIdiomatic {

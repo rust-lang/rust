@@ -288,8 +288,8 @@ pub(super) fn decorate_lint(sess: &Session, diagnostic: BuiltinLintDiag, diag: &
         BuiltinLintDiag::ByteSliceInPackedStructWithDerive { ty } => {
             lints::ByteSliceInPackedStructWithDerive { ty }.decorate_lint(diag);
         }
-        BuiltinLintDiag::UnusedExternCrate { removal_span } => {
-            lints::UnusedExternCrate { removal_span }.decorate_lint(diag);
+        BuiltinLintDiag::UnusedExternCrate { span, removal_span } => {
+            lints::UnusedExternCrate { span, removal_span }.decorate_lint(diag);
         }
         BuiltinLintDiag::ExternCrateNotIdiomatic { vis_span, ident_span } => {
             let suggestion_span = vis_span.between(ident_span);

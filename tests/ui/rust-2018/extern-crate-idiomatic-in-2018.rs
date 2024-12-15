@@ -10,7 +10,7 @@
 #![allow(dead_code)]
 
 extern crate edition_lint_paths;
-//~^ ERROR unused extern crate
+//~^ ERROR unused `extern crate`
 
 // Shouldn't suggest changing to `use`, as `bar`
 // would no longer be added to the prelude which could cause

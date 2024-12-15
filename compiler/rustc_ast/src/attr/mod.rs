@@ -226,6 +226,7 @@ impl Attribute {
 
     pub fn token_trees(&self) -> Vec<TokenTree> {
         match self.kind {
+            AttrKind::Normal(ref normal) if normal.item.is_cfg_placeholder() => vec![],
             AttrKind::Normal(ref normal) => normal
                 .tokens
                 .as_ref()

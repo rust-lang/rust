@@ -340,6 +340,10 @@ impl<'a> AstValidator<'a> {
                     sym::deny,
                     sym::expect,
                     sym::forbid,
+                    // `cfg` and `cfg_attr` get replaced with an inert `rustc_cfg_placeholder` to
+                    // keep the attribute "spot" in the AST. This allows suggestions to remove an
+                    // item to provide a correct suggestion when `#[cfg_attr]`s are present.
+                    sym::rustc_cfg_placeholder,
                     sym::warn,
                 ];
                 !arr.contains(&attr.name_or_empty()) && rustc_attr::is_builtin_attr(attr)

@@ -8,6 +8,6 @@
 
 // The suggestion span should include the attribute.
 
-//~^ ERROR unused extern crate
+//~^ ERROR unused `extern crate`
 
 fn main() {}
