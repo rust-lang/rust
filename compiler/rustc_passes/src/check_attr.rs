@@ -715,7 +715,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         attrs: &[Attribute],
     ) {
         match target {
-            Target::Fn => {
+            Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent)
+            | Target::Fn => {
                 // `#[target_feature]` is not allowed in lang items.
                 if let Some((lang_item, _)) = hir::lang_items::extract(attrs)
                     // Calling functions with `#[target_feature]` is
@@ -732,7 +733,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     });
                 }
             }
-            Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => {}
             // FIXME: #[target_feature] was previously erroneously allowed on statements and some
             // crates used this, so only emit a warning.
             Target::Statement => {

@@ -57,9 +57,8 @@ fn is_promotable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
             Some(stab) => {
                 if cfg!(debug_assertions) && stab.promotable {
                     let sig = tcx.fn_sig(def_id);
-                    assert_eq!(
-                        sig.skip_binder().safety(),
-                        hir::Safety::Safe,
+                    assert!(
+                        sig.skip_binder().safety().is_safe(),
                         "don't mark const unsafe fns as promotable",
                         // https://github.com/rust-lang/rust/pull/53851#issuecomment-418760682
                     );

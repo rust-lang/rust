@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::{implements_trait, is_type_lang_item};
 use clippy_utils::{return_ty, trait_ref_of_method};
-use rustc_hir::{GenericParamKind, ImplItem, ImplItemKind, LangItem, Safety};
+use rustc_hir::{GenericParamKind, ImplItem, ImplItemKind, LangItem};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
@@ -95,7 +95,7 @@ impl<'tcx> LateLintPass<'tcx> for InherentToString {
         if let ImplItemKind::Fn(ref signature, _) = impl_item.kind
             // #11201
             && let header = signature.header
-            && header.safety == Safety::Safe
+            && header.safety.is_safe()
             && header.abi == Abi::Rust
             && impl_item.ident.name == sym::to_string
             && let decl = signature.decl

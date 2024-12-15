@@ -6,7 +6,7 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::MultiSpan;
 use rustc_errors::codes::*;
 use rustc_hir::def::{CtorKind, DefKind};
-use rustc_hir::{Node, Safety, intravisit};
+use rustc_hir::{Node, intravisit};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, ObligationCauseCode};
 use rustc_lint_defs::builtin::{
@@ -161,7 +161,7 @@ fn check_unsafe_fields(tcx: TyCtxt<'_>, item_def_id: LocalDefId) {
     };
     let typing_env = ty::TypingEnv::non_body_analysis(tcx, item_def_id);
     for field in def.all_fields() {
-        if field.safety != Safety::Unsafe {
+        if !field.safety.is_unsafe() {
             continue;
         }
         let Ok(field_ty) = tcx.try_normalize_erasing_regions(typing_env, field.ty(tcx, args))
