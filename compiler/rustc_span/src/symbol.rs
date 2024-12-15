@@ -2476,13 +2476,6 @@ impl fmt::Display for Symbol {
     }
 }
 
-// takes advantage of `str::to_string` specialization
-impl ToString for Symbol {
-    fn to_string(&self) -> String {
-        self.as_str().to_string()
-    }
-}
-
 impl<CTX> HashStable<CTX> for Symbol {
     #[inline]
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {

@@ -19,9 +19,6 @@
 )]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
-// This library is copied into rust-analyzer to allow loading rustc compiled proc macros.
-// Please avoid unstable features where possible to minimize the amount of changes necessary
-// to make it compile with rust-analyzer on stable.
 #![feature(staged_api)]
 #![feature(allow_internal_unstable)]
 #![feature(decl_macro)]
@@ -30,7 +27,6 @@
 #![feature(panic_can_unwind)]
 #![feature(restricted_std)]
 #![feature(rustc_attrs)]
-#![feature(min_specialization)]
 #![feature(extend_one)]
 #![recursion_limit = "256"]
 #![allow(internal_features)]
@@ -185,16 +181,6 @@ impl FromStr for TokenStream {
     }
 }
 
-// N.B., the bridge only provides `to_string`, implement `fmt::Display`
-// based on it (the reverse of the usual relationship between the two).
-#[doc(hidden)]
-#[stable(feature = "proc_macro_lib", since = "1.15.0")]
-impl ToString for TokenStream {
-    fn to_string(&self) -> String {
-        self.0.as_ref().map(|t| t.to_string()).unwrap_or_default()
-    }
-}
-
 /// Prints the token stream as a string that is supposed to be losslessly convertible back
 /// into the same token stream (modulo spans), except for possibly `TokenTree::Group`s
 /// with `Delimiter::None` delimiters and negative numeric literals.
@@ -210,7 +196,10 @@ impl ToString for TokenStream {
 impl fmt::Display for TokenStream {
     #[allow(clippy::recursive_format_impl)] // clippy doesn't see the specialization
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.to_string())
+        match &self.0 {
+            Some(ts) => write!(f, "{}", ts.to_string()),
+            None => Ok(()),
+        }
     }
 }
 
@@ -756,21 +745,6 @@ impl From<Literal> for TokenTree {
     }
 }
 
-// N.B., the bridge only provides `to_string`, implement `fmt::Display`
-// based on it (the reverse of the usual relationship between the two).
-#[doc(hidden)]
-#[stable(feature = "proc_macro_lib", since = "1.15.0")]
-impl ToString for TokenTree {
-    fn to_string(&self) -> String {
-        match *self {
-            TokenTree::Group(ref t) => t.to_string(),
-            TokenTree::Ident(ref t) => t.to_string(),
-            TokenTree::Punct(ref t) => t.to_string(),
-            TokenTree::Literal(ref t) => t.to_string(),
-        }
-    }
-}
-
 /// Prints the token tree as a string that is supposed to be losslessly convertible back
 /// into the same token tree (modulo spans), except for possibly `TokenTree::Group`s
 /// with `Delimiter::None` delimiters and negative numeric literals.
@@ -786,7 +760,12 @@ impl ToString for TokenTree {
 impl fmt::Display for TokenTree {
     #[allow(clippy::recursive_format_impl)] // clippy doesn't see the specialization
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.to_string())
+        match self {
+            TokenTree::Group(t) => write!(f, "{t}"),
+            TokenTree::Ident(t) => write!(f, "{t}"),
+            TokenTree::Punct(t) => write!(f, "{t}"),
+            TokenTree::Literal(t) => write!(f, "{t}"),
+        }
     }
 }
 
@@ -912,16 +891,6 @@ impl Group {
     }
 }
 
-// N.B., the bridge only provides `to_string`, implement `fmt::Display`
-// based on it (the reverse of the usual relationship between the two).
-#[doc(hidden)]
-#[stable(feature = "proc_macro_lib", since = "1.15.0")]
-impl ToString for Group {
-    fn to_string(&self) -> String {
-        TokenStream::from(TokenTree::from(self.clone())).to_string()
-    }
-}
-
 /// Prints the group as a string that should be losslessly convertible back
 /// into the same group (modulo spans), except for possibly `TokenTree::Group`s
 /// with `Delimiter::None` delimiters.
@@ -929,7 +898,7 @@ impl ToString for Group {
 impl fmt::Display for Group {
     #[allow(clippy::recursive_format_impl)] // clippy doesn't see the specialization
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.to_string())
+        write!(f, "{}", TokenStream::from(TokenTree::from(self.clone())))
     }
 }
 
@@ -1035,14 +1004,6 @@ impl Punct {
     }
 }
 
-#[doc(hidden)]
-#[stable(feature = "proc_macro_lib2", since = "1.29.0")]
-impl ToString for Punct {
-    fn to_string(&self) -> String {
-        self.as_char().to_string()
-    }
-}
-
 /// Prints the punctuation character as a string that should be losslessly convertible
 /// back into the same character.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
@@ -1135,14 +1096,6 @@ impl Ident {
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn set_span(&mut self, span: Span) {
         self.0.span = span.0;
-    }
-}
-
-#[doc(hidden)]
-#[stable(feature = "proc_macro_lib2", since = "1.29.0")]
-impl ToString for Ident {
-    fn to_string(&self) -> String {
-        self.0.sym.with(|sym| if self.0.is_raw { ["r#", sym].concat() } else { sym.to_owned() })
     }
 }
 
@@ -1517,14 +1470,6 @@ impl FromStr for Literal {
             Ok(literal) => Ok(Literal(literal)),
             Err(()) => Err(LexError),
         }
-    }
-}
-
-#[doc(hidden)]
-#[stable(feature = "proc_macro_lib2", since = "1.29.0")]
-impl ToString for Literal {
-    fn to_string(&self) -> String {
-        self.with_stringify_parts(|parts| parts.concat())
     }
 }
 
