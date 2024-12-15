@@ -121,7 +121,7 @@ impl DocFolder for Stripper<'_, '_> {
             clean::ImplItem(..) => {}
 
             // tymethods etc. have no control over privacy
-            clean::TyMethodItem(..)
+            clean::RequiredMethodItem(..)
             | clean::RequiredAssocConstItem(..)
             | clean::RequiredAssocTypeItem(..) => {}
 

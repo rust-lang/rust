@@ -88,7 +88,7 @@ impl<'a> From<&'a clean::Item> for ItemType {
             clean::ConstantItem(..) => ItemType::Constant,
             clean::TraitItem(..) => ItemType::Trait,
             clean::ImplItem(..) => ItemType::Impl,
-            clean::TyMethodItem(..) => ItemType::TyMethod,
+            clean::RequiredMethodItem(..) => ItemType::TyMethod,
             clean::MethodItem(..) => ItemType::Method,
             clean::StructFieldItem(..) => ItemType::StructField,
             clean::VariantItem(..) => ItemType::Variant,

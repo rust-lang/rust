@@ -1091,7 +1091,7 @@ fn render_assoc_item(
 ) {
     match &item.kind {
         clean::StrippedItem(..) => {}
-        clean::TyMethodItem(m) => {
+        clean::RequiredMethodItem(m) => {
             assoc_method(w, item, &m.generics, &m.decl, link, parent, cx, render_mode)
         }
         clean::MethodItem(m, _) => {
@@ -1409,7 +1409,7 @@ fn render_deref_methods(
 fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> bool {
     let self_type_opt = match item.kind {
         clean::MethodItem(ref method, _) => method.decl.receiver_type(),
-        clean::TyMethodItem(ref method) => method.decl.receiver_type(),
+        clean::RequiredMethodItem(ref method) => method.decl.receiver_type(),
         _ => None,
     };
 
@@ -1685,7 +1685,7 @@ fn render_impl(
             write!(w, "<details class=\"toggle{method_toggle_class}\" open><summary>");
         }
         match &item.kind {
-            clean::MethodItem(..) | clean::TyMethodItem(_) => {
+            clean::MethodItem(..) | clean::RequiredMethodItem(_) => {
                 // Only render when the method is not static or we allow static methods
                 if render_method_item {
                     let id = cx.derive_id(format!("{item_type}.{name}"));
@@ -1838,7 +1838,7 @@ fn render_impl(
     if !impl_.is_negative_trait_impl() {
         for trait_item in &impl_.items {
             match trait_item.kind {
-                clean::MethodItem(..) | clean::TyMethodItem(_) => methods.push(trait_item),
+                clean::MethodItem(..) | clean::RequiredMethodItem(_) => methods.push(trait_item),
                 clean::RequiredAssocTypeItem(..) | clean::AssocTypeItem(..) => {
                     assoc_types.push(trait_item)
                 }

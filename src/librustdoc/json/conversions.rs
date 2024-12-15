@@ -319,7 +319,9 @@ fn from_clean_item(item: clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum {
         TraitItem(t) => ItemEnum::Trait((*t).into_json(renderer)),
         TraitAliasItem(t) => ItemEnum::TraitAlias(t.into_json(renderer)),
         MethodItem(m, _) => ItemEnum::Function(from_function(m, true, header.unwrap(), renderer)),
-        TyMethodItem(m) => ItemEnum::Function(from_function(m, false, header.unwrap(), renderer)),
+        RequiredMethodItem(m) => {
+            ItemEnum::Function(from_function(m, false, header.unwrap(), renderer))
+        }
         ImplItem(i) => ItemEnum::Impl((*i).into_json(renderer)),
         StaticItem(s) => ItemEnum::Static(convert_static(s, rustc_hir::Safety::Safe, renderer)),
         ForeignStaticItem(s, safety) => ItemEnum::Static(convert_static(s, safety, renderer)),

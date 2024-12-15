@@ -1239,7 +1239,7 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(names)) => {
                 let m = clean_function(cx, sig, trait_item.generics, FunctionArgs::Names(names));
-                TyMethodItem(m)
+                RequiredMethodItem(m)
             }
             hir::TraitItemKind::Type(bounds, Some(default)) => {
                 let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
@@ -1376,7 +1376,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                 };
                 MethodItem(item, defaultness)
             } else {
-                TyMethodItem(item)
+                RequiredMethodItem(item)
             }
         }
         ty::AssocKind::Type => {

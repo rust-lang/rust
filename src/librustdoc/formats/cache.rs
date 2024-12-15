@@ -334,7 +334,7 @@ impl DocFolder for CacheBuilder<'_, '_> {
             clean::ExternCrateItem { .. }
             | clean::ImportItem(..)
             | clean::ImplItem(..)
-            | clean::TyMethodItem(..)
+            | clean::RequiredMethodItem(..)
             | clean::MethodItem(..)
             | clean::StructFieldItem(..)
             | clean::RequiredAssocConstItem(..)
@@ -452,7 +452,7 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
             // skip associated items in trait impls
             return;
         }
-        clean::TyMethodItem(..)
+        clean::RequiredMethodItem(..)
         | clean::RequiredAssocConstItem(..)
         | clean::RequiredAssocTypeItem(..)
         | clean::StructFieldItem(..)

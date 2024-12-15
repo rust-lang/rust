@@ -837,7 +837,7 @@ pub(crate) fn get_function_type_for_search(
         clean::ForeignFunctionItem(ref f, _)
         | clean::FunctionItem(ref f)
         | clean::MethodItem(ref f, _)
-        | clean::TyMethodItem(ref f) => {
+        | clean::RequiredMethodItem(ref f) => {
             get_fn_inputs_and_outputs(f, tcx, impl_or_trait_generics, cache)
         }
         _ => return None,
