@@ -12,14 +12,17 @@ impl<T: ?Sized> *mut T {
     /// Therefore, two pointers that are null may still not compare equal to
     /// each other.
     ///
-    /// ## Behavior during const evaluation
+    /// # Panics during const evaluation
     ///
-    /// When this function is used during const evaluation, it may return `false` for pointers
-    /// that turn out to be null at runtime. Specifically, when a pointer to some memory
-    /// is offset beyond its bounds in such a way that the resulting pointer is null,
-    /// the function will still return `false`. There is no way for CTFE to know
-    /// the absolute position of that memory, so we cannot tell if the pointer is
-    /// null or not.
+    /// If this method is used during const evaluation, and `self` is a pointer
+    /// that is offset beyond the bounds of the memory it initially pointed to,
+    /// then there might not be enough information to determine whether the
+    /// pointer is null. This is because the absolute address in memory is not
+    /// known at compile time. If the nullness of the pointer cannot be
+    /// determined, this method will panic.
+    ///
+    /// In-bounds pointers are never null, so the method will never panic for
+    /// such pointers.
     ///
     /// # Examples
     ///
