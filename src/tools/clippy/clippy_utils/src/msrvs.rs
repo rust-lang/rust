@@ -1,4 +1,4 @@
-use rustc_ast::Attribute;
+use rustc_attr::AttributeExt;
 use rustc_attr::parse_version;
 use rustc_session::{RustcVersion, Session};
 use rustc_span::{Symbol, sym};
@@ -124,15 +124,15 @@ impl Msrv {
         self.current().is_none_or(|msrv| msrv >= required)
     }
 
-    fn parse_attr(sess: &Session, attrs: &[Attribute]) -> Option<RustcVersion> {
+    fn parse_attr(sess: &Session, attrs: &[impl AttributeExt]) -> Option<RustcVersion> {
         let sym_msrv = Symbol::intern("msrv");
         let mut msrv_attrs = attrs.iter().filter(|attr| attr.path_matches(&[sym::clippy, sym_msrv]));
 
         if let Some(msrv_attr) = msrv_attrs.next() {
             if let Some(duplicate) = msrv_attrs.last() {
                 sess.dcx()
-                    .struct_span_err(duplicate.span, "`clippy::msrv` is defined multiple times")
-                    .with_span_note(msrv_attr.span, "first definition found here")
+                    .struct_span_err(duplicate.span(), "`clippy::msrv` is defined multiple times")
+                    .with_span_note(msrv_attr.span(), "first definition found here")
                     .emit();
             }
 
@@ -142,22 +142,22 @@ impl Msrv {
                 }
 
                 sess.dcx()
-                    .span_err(msrv_attr.span, format!("`{msrv}` is not a valid Rust version"));
+                    .span_err(msrv_attr.span(), format!("`{msrv}` is not a valid Rust version"));
             } else {
-                sess.dcx().span_err(msrv_attr.span, "bad clippy attribute");
+                sess.dcx().span_err(msrv_attr.span(), "bad clippy attribute");
             }
         }
 
         None
     }
 
-    pub fn check_attributes(&mut self, sess: &Session, attrs: &[Attribute]) {
+    pub fn check_attributes(&mut self, sess: &Session, attrs: &[impl AttributeExt]) {
         if let Some(version) = Self::parse_attr(sess, attrs) {
             self.stack.push(version);
         }
     }
 
-    pub fn check_attributes_post(&mut self, sess: &Session, attrs: &[Attribute]) {
+    pub fn check_attributes_post(&mut self, sess: &Session, attrs: &[impl AttributeExt]) {
         if Self::parse_attr(sess, attrs).is_some() {
             self.stack.pop();
         }

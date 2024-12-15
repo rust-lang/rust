@@ -19,7 +19,7 @@
 //! - [`UnOp`], [`BinOp`], and [`BinOpKind`]: Unary and binary operators.
 
 use std::borrow::Cow;
-use std::{cmp, fmt, mem};
+use std::{cmp, fmt};
 
 pub use GenericArgs::*;
 pub use UnsafeSource::*;
@@ -1758,45 +1758,8 @@ pub enum AttrArgs {
     Eq {
         /// Span of the `=` token.
         eq_span: Span,
-
-        value: AttrArgsEq,
+        expr: P<Expr>,
     },
-}
-
-// The RHS of an `AttrArgs::Eq` starts out as an expression. Once macro
-// expansion is completed, all cases end up either as a meta item literal,
-// which is the form used after lowering to HIR, or as an error.
-#[derive(Clone, Encodable, Decodable, Debug)]
-pub enum AttrArgsEq {
-    Ast(P<Expr>),
-    Hir(MetaItemLit),
-}
-
-impl AttrArgsEq {
-    pub fn span(&self) -> Span {
-        match self {
-            AttrArgsEq::Ast(p) => p.span,
-            AttrArgsEq::Hir(lit) => lit.span,
-        }
-    }
-
-    pub fn unwrap_ast(&self) -> &Expr {
-        match self {
-            AttrArgsEq::Ast(p) => p,
-            AttrArgsEq::Hir(lit) => {
-                unreachable!("in literal form when getting inner tokens: {lit:?}")
-            }
-        }
-    }
-
-    pub fn unwrap_ast_mut(&mut self) -> &mut P<Expr> {
-        match self {
-            AttrArgsEq::Ast(p) => p,
-            AttrArgsEq::Hir(lit) => {
-                unreachable!("in literal form when getting inner tokens: {lit:?}")
-            }
-        }
-    }
 }
 
 impl AttrArgs {
@@ -1804,7 +1767,7 @@ impl AttrArgs {
         match self {
             AttrArgs::Empty => None,
             AttrArgs::Delimited(args) => Some(args.dspan.entire()),
-            AttrArgs::Eq { eq_span, value } => Some(eq_span.to(value.span())),
+            AttrArgs::Eq { eq_span, expr } => Some(eq_span.to(expr.span)),
         }
     }
 
@@ -1814,27 +1777,7 @@ impl AttrArgs {
         match self {
             AttrArgs::Empty => TokenStream::default(),
             AttrArgs::Delimited(args) => args.tokens.clone(),
-            AttrArgs::Eq { value, .. } => TokenStream::from_ast(value.unwrap_ast()),
-        }
-    }
-}
-
-impl<CTX> HashStable<CTX> for AttrArgs
-where
-    CTX: crate::HashStableContext,
-{
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        mem::discriminant(self).hash_stable(ctx, hasher);
-        match self {
-            AttrArgs::Empty => {}
-            AttrArgs::Delimited(args) => args.hash_stable(ctx, hasher),
-            AttrArgs::Eq { value: AttrArgsEq::Ast(expr), .. } => {
-                unreachable!("hash_stable {:?}", expr);
-            }
-            AttrArgs::Eq { eq_span, value: AttrArgsEq::Hir(lit) } => {
-                eq_span.hash_stable(ctx, hasher);
-                lit.hash_stable(ctx, hasher);
-            }
+            AttrArgs::Eq { expr, .. } => TokenStream::from_ast(expr),
         }
     }
 }
@@ -3051,7 +2994,7 @@ impl NormalAttr {
     }
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub struct AttrItem {
     pub unsafety: Safety,
     pub path: Path,

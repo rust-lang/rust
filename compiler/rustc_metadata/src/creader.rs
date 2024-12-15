@@ -17,6 +17,7 @@ use rustc_data_structures::sync::{self, FreezeReadGuard, FreezeWriteGuard};
 use rustc_errors::DiagCtxtHandle;
 use rustc_expand::base::SyntaxExtension;
 use rustc_fs_util::try_canonicalize;
+use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE, LocalDefId, StableCrateId};
 use rustc_hir::definitions::Definitions;
 use rustc_index::IndexVec;
@@ -97,7 +98,13 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
 }
 
 pub enum LoadedMacro {
-    MacroDef { def: MacroDef, ident: Ident, attrs: AttrVec, span: Span, edition: Edition },
+    MacroDef {
+        def: MacroDef,
+        ident: Ident,
+        attrs: Vec<hir::Attribute>,
+        span: Span,
+        edition: Edition,
+    },
     ProcMacro(SyntaxExtension),
 }
 

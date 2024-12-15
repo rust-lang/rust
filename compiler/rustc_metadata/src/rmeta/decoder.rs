@@ -1369,7 +1369,7 @@ impl<'a> CrateMetadataRef<'a> {
         self,
         id: DefIndex,
         sess: &'a Session,
-    ) -> impl Iterator<Item = ast::Attribute> + 'a {
+    ) -> impl Iterator<Item = hir::Attribute> + 'a {
         self.root
             .tables
             .attributes

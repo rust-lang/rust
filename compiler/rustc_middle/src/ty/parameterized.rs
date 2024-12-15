@@ -111,6 +111,7 @@ trivially_parameterized_over_tcx! {
     rustc_span::hygiene::SyntaxContextData,
     rustc_span::symbol::Ident,
     rustc_type_ir::Variance,
+    rustc_hir::Attribute,
 }
 
 // HACK(compiler-errors): This macro rule can only take a fake path,
@@ -140,5 +141,5 @@ parameterized_over_tcx! {
     ty::Predicate,
     ty::Clause,
     ty::ClauseKind,
-    ty::ImplTraitHeader
+    ty::ImplTraitHeader,
 }

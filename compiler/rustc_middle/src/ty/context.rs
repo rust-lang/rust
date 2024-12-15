@@ -13,7 +13,7 @@ use std::ops::{Bound, Deref};
 use std::{fmt, iter, mem};
 
 use rustc_abi::{ExternAbi, FieldIdx, Layout, LayoutData, TargetDataLayout, VariantIdx};
-use rustc_ast::{self as ast, attr};
+use rustc_ast as ast;
 use rustc_data_structures::defer;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
@@ -29,13 +29,12 @@ use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, LintDiagnostic, MultiSpan,
 };
-use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::definitions::Definitions;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{HirId, Node, TraitCandidate};
+use rustc_hir::{self as hir, Attribute, HirId, Node, TraitCandidate};
 use rustc_index::IndexVec;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::cache::WithDepNode;
@@ -3239,12 +3238,16 @@ pub fn provide(providers: &mut Providers) {
     providers.extern_mod_stmt_cnum =
         |tcx, id| tcx.resolutions(()).extern_crate_map.get(&id).cloned();
     providers.is_panic_runtime =
-        |tcx, LocalCrate| attr::contains_name(tcx.hir().krate_attrs(), sym::panic_runtime);
+        |tcx, LocalCrate| contains_name(tcx.hir().krate_attrs(), sym::panic_runtime);
     providers.is_compiler_builtins =
-        |tcx, LocalCrate| attr::contains_name(tcx.hir().krate_attrs(), sym::compiler_builtins);
+        |tcx, LocalCrate| contains_name(tcx.hir().krate_attrs(), sym::compiler_builtins);
     providers.has_panic_handler = |tcx, LocalCrate| {
         // We want to check if the panic handler was defined in this crate
         tcx.lang_items().panic_impl().is_some_and(|did| did.is_local())
     };
     providers.source_span = |tcx, def_id| tcx.untracked.source_span.get(def_id).unwrap_or(DUMMY_SP);
+}
+
+pub fn contains_name(attrs: &[Attribute], name: Symbol) -> bool {
+    attrs.iter().any(|x| x.has_name(name))
 }

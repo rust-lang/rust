@@ -3,8 +3,9 @@
 // tidy-alphabetical-end
 
 use rustc_abi::ExternAbi;
+use rustc_ast::AttrId;
+use rustc_ast::attr::AttributeExt;
 use rustc_ast::node_id::NodeId;
-use rustc_ast::{AttrId, Attribute};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
@@ -221,8 +222,8 @@ impl Level {
     }
 
     /// Converts an `Attribute` to a level.
-    pub fn from_attr(attr: &Attribute) -> Option<Self> {
-        Self::from_symbol(attr.name_or_empty(), Some(attr.id))
+    pub fn from_attr(attr: &impl AttributeExt) -> Option<Self> {
+        Self::from_symbol(attr.name_or_empty(), Some(attr.id()))
     }
 
     /// Converts a `Symbol` to a level.

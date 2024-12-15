@@ -9,11 +9,11 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalModDefId};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::*;
+use rustc_hir_pretty as pprust_hir;
 use rustc_middle::hir::nested_filter;
 use rustc_span::def_id::StableCrateId;
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{ErrorGuaranteed, Span};
-use {rustc_ast as ast, rustc_hir_pretty as pprust_hir};
 
 use crate::hir::ModuleItems;
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
@@ -381,7 +381,7 @@ impl<'hir> Map<'hir> {
     /// Gets the attributes on the crate. This is preferable to
     /// invoking `krate.attrs` because it registers a tighter
     /// dep-graph access.
-    pub fn krate_attrs(self) -> &'hir [ast::Attribute] {
+    pub fn krate_attrs(self) -> &'hir [Attribute] {
         self.attrs(CRATE_HIR_ID)
     }
 
@@ -792,7 +792,7 @@ impl<'hir> Map<'hir> {
 
     /// Given a node ID, gets a list of attributes associated with the AST
     /// corresponding to the node-ID.
-    pub fn attrs(self, id: HirId) -> &'hir [ast::Attribute] {
+    pub fn attrs(self, id: HirId) -> &'hir [Attribute] {
         self.tcx.hir_attrs(id.owner).get(id.local_id)
     }
 
