@@ -27,13 +27,13 @@ macro_rules! lint_callback { ($cx:expr, $f:ident, $($args:expr),*) => ({
 
 /// Implements the AST traversal for early lint passes. `T` provides the
 /// `check_*` methods.
-pub struct EarlyContextAndPass<'a, 'b, T: EarlyLintPass> {
-    context: EarlyContext<'a>,
-    tcx: Option<TyCtxt<'b>>,
+pub struct EarlyContextAndPass<'ecx, 'tcx, T: EarlyLintPass> {
+    context: EarlyContext<'ecx>,
+    tcx: Option<TyCtxt<'tcx>>,
     pass: T,
 }
 
-impl<'a, 'b, T: EarlyLintPass> EarlyContextAndPass<'a, 'b, T> {
+impl<'ecx, 'tcx, T: EarlyLintPass> EarlyContextAndPass<'ecx, 'tcx, T> {
     // This always-inlined function is for the hot call site.
     #[inline(always)]
     #[allow(rustc::diagnostic_outside_of_impl)]
@@ -54,7 +54,7 @@ impl<'a, 'b, T: EarlyLintPass> EarlyContextAndPass<'a, 'b, T> {
     /// Merge the lints specified by any lint attributes into the
     /// current lint context, call the provided function, then reset the
     /// lints in effect to their previous state.
-    fn with_lint_attrs<F>(&mut self, id: ast::NodeId, attrs: &'a [ast::Attribute], f: F)
+    fn with_lint_attrs<F>(&mut self, id: ast::NodeId, attrs: &'_ [ast::Attribute], f: F)
     where
         F: FnOnce(&mut Self),
     {
@@ -72,19 +72,21 @@ impl<'a, 'b, T: EarlyLintPass> EarlyContextAndPass<'a, 'b, T> {
     }
 }
 
-impl<'a, 'b, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, 'b, T> {
-    fn visit_coroutine_kind(&mut self, coroutine_kind: &'a ast::CoroutineKind) -> Self::Result {
+impl<'ast, 'ecx, 'tcx, T: EarlyLintPass> ast_visit::Visitor<'ast>
+    for EarlyContextAndPass<'ecx, 'tcx, T>
+{
+    fn visit_coroutine_kind(&mut self, coroutine_kind: &'ast ast::CoroutineKind) -> Self::Result {
         self.check_id(coroutine_kind.closure_id());
     }
 
-    fn visit_param(&mut self, param: &'a ast::Param) {
+    fn visit_param(&mut self, param: &'ast ast::Param) {
         self.with_lint_attrs(param.id, &param.attrs, |cx| {
             lint_callback!(cx, check_param, param);
             ast_visit::walk_param(cx, param);
         });
     }
 
-    fn visit_item(&mut self, it: &'a ast::Item) {
+    fn visit_item(&mut self, it: &'ast ast::Item) {
         self.with_lint_attrs(it.id, &it.attrs, |cx| {
             lint_callback!(cx, check_item, it);
             ast_visit::walk_item(cx, it);
@@ -92,31 +94,31 @@ impl<'a, 'b, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a
         })
     }
 
-    fn visit_foreign_item(&mut self, it: &'a ast::ForeignItem) {
+    fn visit_foreign_item(&mut self, it: &'ast ast::ForeignItem) {
         self.with_lint_attrs(it.id, &it.attrs, |cx| {
             ast_visit::walk_item(cx, it);
         })
     }
 
-    fn visit_pat(&mut self, p: &'a ast::Pat) {
+    fn visit_pat(&mut self, p: &'ast ast::Pat) {
         lint_callback!(self, check_pat, p);
         self.check_id(p.id);
         ast_visit::walk_pat(self, p);
         lint_callback!(self, check_pat_post, p);
     }
 
-    fn visit_pat_field(&mut self, field: &'a ast::PatField) {
+    fn visit_pat_field(&mut self, field: &'ast ast::PatField) {
         self.with_lint_attrs(field.id, &field.attrs, |cx| {
             ast_visit::walk_pat_field(cx, field);
         });
     }
 
-    fn visit_anon_const(&mut self, c: &'a ast::AnonConst) {
+    fn visit_anon_const(&mut self, c: &'ast ast::AnonConst) {
         self.check_id(c.id);
         ast_visit::walk_anon_const(self, c);
     }
 
-    fn visit_expr(&mut self, e: &'a ast::Expr) {
+    fn visit_expr(&mut self, e: &'ast ast::Expr) {
         self.with_lint_attrs(e.id, &e.attrs, |cx| {
             lint_callback!(cx, check_expr, e);
             ast_visit::walk_expr(cx, e);
@@ -124,13 +126,13 @@ impl<'a, 'b, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a
         })
     }
 
-    fn visit_expr_field(&mut self, f: &'a ast::ExprField) {
+    fn visit_expr_field(&mut self, f: &'ast ast::ExprField) {
         self.with_lint_attrs(f.id, &f.attrs, |cx| {
             ast_visit::walk_expr_field(cx, f);
         })
     }
 
-    fn visit_stmt(&mut self, s: &'a ast::Stmt) {
+    fn visit_stmt(&mut self, s: &'ast ast::Stmt) {
         // Add the statement's lint attributes to our
         // current state when checking the statement itself.
         // This allows us to handle attributes like
@@ -150,33 +152,33 @@ impl<'a, 'b, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a
         ast_visit::walk_stmt(self, s);
     }
 
-    fn visit_fn(&mut self, fk: ast_visit::FnKind<'a>, span: Span, id: ast::NodeId) {
+    fn visit_fn(&mut self, fk: ast_visit::FnKind<'ast>, span: Span, id: ast::NodeId) {
         lint_callback!(self, check_fn, fk, span, id);
         self.check_id(id);
         ast_visit::walk_fn(self, fk);
     }
 
-    fn visit_variant_data(&mut self, s: &'a ast::VariantData) {
+    fn visit_variant_data(&mut self, s: &'ast ast::VariantData) {
         if let Some(ctor_node_id) = s.ctor_node_id() {
             self.check_id(ctor_node_id);
         }
         ast_visit::walk_struct_def(self, s);
     }
 
-    fn visit_field_def(&mut self, s: &'a ast::FieldDef) {
+    fn visit_field_def(&mut self, s: &'ast ast::FieldDef) {
         self.with_lint_attrs(s.id, &s.attrs, |cx| {
             ast_visit::walk_field_def(cx, s);
         })
     }
 
-    fn visit_variant(&mut self, v: &'a ast::Variant) {
+    fn visit_variant(&mut self, v: &'ast ast::Variant) {
         self.with_lint_attrs(v.id, &v.attrs, |cx| {
             lint_callback!(cx, check_variant, v);
             ast_visit::walk_variant(cx, v);
         })
     }
 
-    fn visit_ty(&mut self, t: &'a ast::Ty) {
+    fn visit_ty(&mut self, t: &'ast ast::Ty) {
         lint_callback!(self, check_ty, t);
         self.check_id(t.id);
         ast_visit::walk_ty(self, t);
@@ -186,55 +188,55 @@ impl<'a, 'b, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a
         lint_callback!(self, check_ident, ident);
     }
 
-    fn visit_local(&mut self, l: &'a ast::Local) {
+    fn visit_local(&mut self, l: &'ast ast::Local) {
         self.with_lint_attrs(l.id, &l.attrs, |cx| {
             lint_callback!(cx, check_local, l);
             ast_visit::walk_local(cx, l);
         })
     }
 
-    fn visit_block(&mut self, b: &'a ast::Block) {
+    fn visit_block(&mut self, b: &'ast ast::Block) {
         lint_callback!(self, check_block, b);
         self.check_id(b.id);
         ast_visit::walk_block(self, b);
     }
 
-    fn visit_arm(&mut self, a: &'a ast::Arm) {
+    fn visit_arm(&mut self, a: &'ast ast::Arm) {
         self.with_lint_attrs(a.id, &a.attrs, |cx| {
             lint_callback!(cx, check_arm, a);
             ast_visit::walk_arm(cx, a);
         })
     }
 
-    fn visit_generic_arg(&mut self, arg: &'a ast::GenericArg) {
+    fn visit_generic_arg(&mut self, arg: &'ast ast::GenericArg) {
         lint_callback!(self, check_generic_arg, arg);
         ast_visit::walk_generic_arg(self, arg);
     }
 
-    fn visit_generic_param(&mut self, param: &'a ast::GenericParam) {
+    fn visit_generic_param(&mut self, param: &'ast ast::GenericParam) {
         self.with_lint_attrs(param.id, &param.attrs, |cx| {
             lint_callback!(cx, check_generic_param, param);
             ast_visit::walk_generic_param(cx, param);
         });
     }
 
-    fn visit_generics(&mut self, g: &'a ast::Generics) {
+    fn visit_generics(&mut self, g: &'ast ast::Generics) {
         lint_callback!(self, check_generics, g);
         ast_visit::walk_generics(self, g);
     }
 
-    fn visit_where_predicate(&mut self, p: &'a ast::WherePredicate) {
+    fn visit_where_predicate(&mut self, p: &'ast ast::WherePredicate) {
         lint_callback!(self, enter_where_predicate, p);
         ast_visit::walk_where_predicate(self, p);
         lint_callback!(self, exit_where_predicate, p);
     }
 
-    fn visit_poly_trait_ref(&mut self, t: &'a ast::PolyTraitRef) {
+    fn visit_poly_trait_ref(&mut self, t: &'ast ast::PolyTraitRef) {
         lint_callback!(self, check_poly_trait_ref, t);
         ast_visit::walk_poly_trait_ref(self, t);
     }
 
-    fn visit_assoc_item(&mut self, item: &'a ast::AssocItem, ctxt: ast_visit::AssocCtxt) {
+    fn visit_assoc_item(&mut self, item: &'ast ast::AssocItem, ctxt: ast_visit::AssocCtxt) {
         self.with_lint_attrs(item.id, &item.attrs, |cx| {
             match ctxt {
                 ast_visit::AssocCtxt::Trait => {
@@ -248,32 +250,32 @@ impl<'a, 'b, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a
         });
     }
 
-    fn visit_lifetime(&mut self, lt: &'a ast::Lifetime, _: ast_visit::LifetimeCtxt) {
+    fn visit_lifetime(&mut self, lt: &'ast ast::Lifetime, _: ast_visit::LifetimeCtxt) {
         self.check_id(lt.id);
         ast_visit::walk_lifetime(self, lt);
     }
 
-    fn visit_path(&mut self, p: &'a ast::Path, id: ast::NodeId) {
+    fn visit_path(&mut self, p: &'ast ast::Path, id: ast::NodeId) {
         self.check_id(id);
         ast_visit::walk_path(self, p);
     }
 
-    fn visit_path_segment(&mut self, s: &'a ast::PathSegment) {
+    fn visit_path_segment(&mut self, s: &'ast ast::PathSegment) {
         self.check_id(s.id);
         ast_visit::walk_path_segment(self, s);
     }
 
-    fn visit_attribute(&mut self, attr: &'a ast::Attribute) {
+    fn visit_attribute(&mut self, attr: &'ast ast::Attribute) {
         lint_callback!(self, check_attribute, attr);
         ast_visit::walk_attribute(self, attr);
     }
 
-    fn visit_mac_def(&mut self, mac: &'a ast::MacroDef, id: ast::NodeId) {
+    fn visit_mac_def(&mut self, mac: &'ast ast::MacroDef, id: ast::NodeId) {
         lint_callback!(self, check_mac_def, mac);
         self.check_id(id);
     }
 
-    fn visit_mac_call(&mut self, mac: &'a ast::MacCall) {
+    fn visit_mac_call(&mut self, mac: &'ast ast::MacCall) {
         lint_callback!(self, check_mac, mac);
         ast_visit::walk_mac(self, mac);
     }
@@ -315,28 +317,18 @@ crate::early_lint_methods!(impl_early_lint_pass, []);
 /// This trait generalizes over those nodes.
 pub trait EarlyCheckNode<'a>: Copy {
     fn id(self) -> ast::NodeId;
-    fn attrs<'b>(self) -> &'b [ast::Attribute]
-    where
-        'a: 'b;
-    fn check<'b, 'c, T: EarlyLintPass>(self, cx: &mut EarlyContextAndPass<'b, 'c, T>)
-    where
-        'a: 'b;
+    fn attrs(self) -> &'a [ast::Attribute];
+    fn check<'ecx, 'tcx, T: EarlyLintPass>(self, cx: &mut EarlyContextAndPass<'ecx, 'tcx, T>);
 }
 
 impl<'a> EarlyCheckNode<'a> for (&'a ast::Crate, &'a [ast::Attribute]) {
     fn id(self) -> ast::NodeId {
         ast::CRATE_NODE_ID
     }
-    fn attrs<'b>(self) -> &'b [ast::Attribute]
-    where
-        'a: 'b,
-    {
+    fn attrs(self) -> &'a [ast::Attribute] {
         self.1
     }
-    fn check<'b, 'c, T: EarlyLintPass>(self, cx: &mut EarlyContextAndPass<'b, 'c, T>)
-    where
-        'a: 'b,
-    {
+    fn check<'ecx, 'tcx, T: EarlyLintPass>(self, cx: &mut EarlyContextAndPass<'ecx, 'tcx, T>) {
         lint_callback!(cx, check_crate, self.0);
         ast_visit::walk_crate(cx, self.0);
         lint_callback!(cx, check_crate_post, self.0);
@@ -347,16 +339,10 @@ impl<'a> EarlyCheckNode<'a> for (ast::NodeId, &'a [ast::Attribute], &'a [P<ast::
     fn id(self) -> ast::NodeId {
         self.0
     }
-    fn attrs<'b>(self) -> &'b [ast::Attribute]
-    where
-        'a: 'b,
-    {
+    fn attrs(self) -> &'a [ast::Attribute] {
         self.1
     }
-    fn check<'b, 'c, T: EarlyLintPass>(self, cx: &mut EarlyContextAndPass<'b, 'c, T>)
-    where
-        'a: 'b,
-    {
+    fn check<'ecx, 'tcx, T: EarlyLintPass>(self, cx: &mut EarlyContextAndPass<'ecx, 'tcx, T>) {
         walk_list!(cx, visit_attribute, self.1);
         walk_list!(cx, visit_item, self.2);
     }
