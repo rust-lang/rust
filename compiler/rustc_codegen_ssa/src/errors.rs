@@ -1,6 +1,7 @@
 //! Errors emitted by codegen_ssa
 
 use std::borrow::Cow;
+use std::ffi::OsString;
 use std::io::Error;
 use std::num::ParseIntError;
 use std::path::{Path, PathBuf};
@@ -345,21 +346,82 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for ThorinErrorWrapper {
 }
 
 pub(crate) struct LinkingFailed<'a> {
-    pub linker_path: &'a PathBuf,
+    pub linker_path: &'a Path,
     pub exit_status: ExitStatus,
-    pub command: &'a Command,
+    pub command: Command,
     pub escaped_output: String,
+    pub verbose: bool,
 }
 
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for LinkingFailed<'_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+    fn into_diag(mut self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         let mut diag = Diag::new(dcx, level, fluent::codegen_ssa_linking_failed);
         diag.arg("linker_path", format!("{}", self.linker_path.display()));
         diag.arg("exit_status", format!("{}", self.exit_status));
 
         let contains_undefined_ref = self.escaped_output.contains("undefined reference to");
 
-        diag.note(format!("{:?}", self.command)).note(self.escaped_output);
+        if self.verbose {
+            diag.note(format!("{:?}", self.command));
+        } else {
+            enum ArgGroup {
+                Regular(OsString),
+                Objects(usize),
+                Rlibs(PathBuf, Vec<OsString>),
+            }
+
+            // Omit rust object files and fold rlibs in the error by default to make linker errors a
+            // bit less verbose.
+            let orig_args = self.command.take_args();
+            let mut args: Vec<ArgGroup> = vec![];
+            for arg in orig_args {
+                if arg.as_encoded_bytes().ends_with(b".rcgu.o") {
+                    if let Some(ArgGroup::Objects(n)) = args.last_mut() {
+                        *n += 1;
+                    } else {
+                        args.push(ArgGroup::Objects(1));
+                    }
+                } else if arg.as_encoded_bytes().ends_with(b".rlib") {
+                    let rlib_path = Path::new(&arg);
+                    let dir = rlib_path.parent().unwrap();
+                    let filename = rlib_path.file_name().unwrap().to_owned();
+                    if let Some(ArgGroup::Rlibs(parent, rlibs)) = args.last_mut() {
+                        if parent == dir {
+                            rlibs.push(filename);
+                        } else {
+                            args.push(ArgGroup::Rlibs(dir.to_owned(), vec![filename]));
+                        }
+                    } else {
+                        args.push(ArgGroup::Rlibs(dir.to_owned(), vec![filename]));
+                    }
+                } else {
+                    args.push(ArgGroup::Regular(arg));
+                }
+            }
+            self.command.args(args.into_iter().map(|arg_group| match arg_group {
+                ArgGroup::Regular(arg) => arg,
+                ArgGroup::Objects(n) => OsString::from(format!("<{n} object files omitted>")),
+                ArgGroup::Rlibs(dir, rlibs) => {
+                    let mut arg = dir.into_os_string();
+                    arg.push("/{");
+                    let mut first = true;
+                    for rlib in rlibs {
+                        if !first {
+                            arg.push(",");
+                        }
+                        first = false;
+                        arg.push(rlib);
+                    }
+                    arg.push("}");
+                    arg
+                }
+            }));
+
+            diag.note(format!("{:?}", self.command));
+            diag.note("some arguments are omitted. use `--verbose` to show all linker arguments");
+        }
+
+        diag.note(self.escaped_output);
 
         // Trying to match an error from OS linkers
         // which by now we have no way to translate.

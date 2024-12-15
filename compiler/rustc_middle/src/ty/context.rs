@@ -586,7 +586,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     }
 
     fn trait_is_unsafe(self, trait_def_id: Self::DefId) -> bool {
-        self.trait_def(trait_def_id).safety == hir::Safety::Unsafe
+        self.trait_def(trait_def_id).safety.is_unsafe()
     }
 
     fn is_impl_trait_in_trait(self, def_id: DefId) -> bool {
@@ -722,7 +722,7 @@ impl<'tcx> rustc_type_ir::inherent::Safety<TyCtxt<'tcx>> for hir::Safety {
     }
 
     fn is_safe(self) -> bool {
-        matches!(self, hir::Safety::Safe)
+        self.is_safe()
     }
 
     fn prefix_str(self) -> &'static str {
@@ -2521,7 +2521,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// that is, a `fn` type that is equivalent in every way for being
     /// unsafe.
     pub fn safe_to_unsafe_fn_ty(self, sig: PolyFnSig<'tcx>) -> Ty<'tcx> {
-        assert_eq!(sig.safety(), hir::Safety::Safe);
+        assert!(sig.safety().is_safe());
         Ty::new_fn_ptr(self, sig.map_bound(|sig| ty::FnSig { safety: hir::Safety::Unsafe, ..sig }))
     }
 

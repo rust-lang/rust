@@ -1869,7 +1869,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// # Panics
     ///
-    /// Panics if `index` is greater than deque's length
+    /// Panics if `index` is strictly greater than deque's length
     ///
     /// # Examples
     ///
@@ -1884,6 +1884,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// vec_deque.insert(1, 'd');
     /// assert_eq!(vec_deque, &['a', 'd', 'b', 'c']);
+    ///
+    /// vec_deque.insert(4, 'e');
+    /// assert_eq!(vec_deque, &['a', 'd', 'b', 'c', 'e']);
     /// ```
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     #[track_caller]
@@ -1928,13 +1931,13 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
-    /// buf.push_back(1);
-    /// buf.push_back(2);
-    /// buf.push_back(3);
-    /// assert_eq!(buf, [1, 2, 3]);
+    /// buf.push_back('a');
+    /// buf.push_back('b');
+    /// buf.push_back('c');
+    /// assert_eq!(buf, ['a', 'b', 'c']);
     ///
-    /// assert_eq!(buf.remove(1), Some(2));
-    /// assert_eq!(buf, [1, 3]);
+    /// assert_eq!(buf.remove(1), Some('b'));
+    /// assert_eq!(buf, ['a', 'c']);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("delete", "take")]
@@ -1982,10 +1985,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut buf: VecDeque<_> = [1, 2, 3].into();
+    /// let mut buf: VecDeque<_> = ['a', 'b', 'c'].into();
     /// let buf2 = buf.split_off(1);
-    /// assert_eq!(buf, [1]);
-    /// assert_eq!(buf2, [2, 3]);
+    /// assert_eq!(buf, ['a']);
+    /// assert_eq!(buf2, ['b', 'c']);
     /// ```
     #[inline]
     #[must_use = "use `.truncate()` if you don't need the other half"]

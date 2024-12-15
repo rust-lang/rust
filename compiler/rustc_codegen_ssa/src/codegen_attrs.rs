@@ -6,7 +6,7 @@ use rustc_errors::{DiagMessage, SubdiagMessage, struct_span_code_err};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::weak_lang_items::WEAK_LANG_ITEMS;
-use rustc_hir::{self as hir, HirId, LangItem, lang_items};
+use rustc_hir::{HirId, LangItem, lang_items};
 use rustc_middle::middle::codegen_fn_attrs::{
     CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry,
 };
@@ -251,7 +251,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             sym::target_feature => {
                 if !tcx.is_closure_like(did.to_def_id())
                     && let Some(fn_sig) = fn_sig()
-                    && fn_sig.skip_binder().safety() == hir::Safety::Safe
+                    && fn_sig.skip_binder().safety().is_safe()
                 {
                     if tcx.sess.target.is_like_wasm || tcx.sess.opts.actually_rustdoc {
                         // The `#[target_feature]` attribute is allowed on

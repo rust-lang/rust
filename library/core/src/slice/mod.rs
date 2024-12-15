@@ -1883,23 +1883,23 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// let v = [1, 2, 3, 4, 5, 6];
+    /// let v = ['a', 'b', 'c'];
     ///
     /// {
     ///    let (left, right) = v.split_at(0);
     ///    assert_eq!(left, []);
-    ///    assert_eq!(right, [1, 2, 3, 4, 5, 6]);
+    ///    assert_eq!(right, ['a', 'b', 'c']);
     /// }
     ///
     /// {
     ///     let (left, right) = v.split_at(2);
-    ///     assert_eq!(left, [1, 2]);
-    ///     assert_eq!(right, [3, 4, 5, 6]);
+    ///     assert_eq!(left, ['a', 'b']);
+    ///     assert_eq!(right, ['c']);
     /// }
     ///
     /// {
-    ///     let (left, right) = v.split_at(6);
-    ///     assert_eq!(left, [1, 2, 3, 4, 5, 6]);
+    ///     let (left, right) = v.split_at(3);
+    ///     assert_eq!(left, ['a', 'b', 'c']);
     ///     assert_eq!(right, []);
     /// }
     /// ```
@@ -1969,23 +1969,23 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// let v = [1, 2, 3, 4, 5, 6];
+    /// let v = ['a', 'b', 'c'];
     ///
     /// unsafe {
     ///    let (left, right) = v.split_at_unchecked(0);
     ///    assert_eq!(left, []);
-    ///    assert_eq!(right, [1, 2, 3, 4, 5, 6]);
+    ///    assert_eq!(right, ['a', 'b', 'c']);
     /// }
     ///
     /// unsafe {
     ///     let (left, right) = v.split_at_unchecked(2);
-    ///     assert_eq!(left, [1, 2]);
-    ///     assert_eq!(right, [3, 4, 5, 6]);
+    ///     assert_eq!(left, ['a', 'b']);
+    ///     assert_eq!(right, ['c']);
     /// }
     ///
     /// unsafe {
-    ///     let (left, right) = v.split_at_unchecked(6);
-    ///     assert_eq!(left, [1, 2, 3, 4, 5, 6]);
+    ///     let (left, right) = v.split_at_unchecked(3);
+    ///     assert_eq!(left, ['a', 'b', 'c']);
     ///     assert_eq!(right, []);
     /// }
     /// ```

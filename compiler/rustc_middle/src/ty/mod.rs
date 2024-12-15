@@ -33,9 +33,9 @@ use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_errors::{Diag, ErrorGuaranteed, StashKey};
+use rustc_hir::LangItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
-use rustc_hir::{LangItem, Safety};
 use rustc_index::IndexVec;
 use rustc_macros::{
     Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
@@ -1281,7 +1281,7 @@ impl VariantDef {
 
     /// Returns whether this variant has unsafe fields.
     pub fn has_unsafe_fields(&self) -> bool {
-        self.fields.iter().any(|x| x.safety == Safety::Unsafe)
+        self.fields.iter().any(|x| x.safety.is_unsafe())
     }
 }
 

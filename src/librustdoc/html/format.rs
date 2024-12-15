@@ -1626,10 +1626,7 @@ pub(crate) trait PrintWithSpace {
 
 impl PrintWithSpace for hir::Safety {
     fn print_with_space(&self) -> &str {
-        match self {
-            hir::Safety::Unsafe => "unsafe ",
-            hir::Safety::Safe => "",
-        }
+        self.prefix_str()
     }
 }
 

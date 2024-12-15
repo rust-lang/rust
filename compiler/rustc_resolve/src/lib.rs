@@ -190,6 +190,7 @@ impl InvocationParent {
 enum ImplTraitContext {
     Existential,
     Universal,
+    InBinding,
 }
 
 /// Used for tracking import use types which will be used for redundant import checking.
