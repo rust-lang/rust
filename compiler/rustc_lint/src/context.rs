@@ -286,6 +286,23 @@ impl LintStore {
         self.by_name.insert(old_name.to_string(), Renamed(new_name.to_string(), target));
     }
 
+    #[track_caller]
+    pub fn register_renamed_group(&mut self, old_name: &'static str, new_name: &'static str) {
+        let prev_lint = self.lint_groups.insert(old_name, LintGroup {
+            lint_ids: vec![],
+            is_externally_loaded: false,
+            depr: Some(LintAlias { name: new_name, silent: false }),
+        });
+
+        if prev_lint.is_some() {
+            bug!("The lint group {old_name} has already been registered");
+        }
+
+        if !self.lint_groups.contains_key(new_name) {
+            bug!("The lint group {new_name} has not been registered");
+        }
+    }
+
     pub fn register_removed(&mut self, name: &str, reason: &str) {
         self.by_name.insert(name.into(), Removed(reason.into()));
     }

@@ -1,0 +1,62 @@
+error: hidden lifetime parameters in types are deprecated
+  --> $DIR/elided-lifetime-in-path-details.rs:109:24
+   |
+LL | fn nested_parameter(v: ContainsLifetime) {}
+   |                        ^^^^^^^^^^^^^^^^ expected lifetime parameter
+   |
+note: the lint level is defined here
+  --> $DIR/elided-lifetime-in-path-details.rs:7:26
+   |
+LL | #![cfg_attr(untied, deny(elided_lifetimes_in_paths_untied))]
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: indicate the anonymous lifetime
+   |
+LL | fn nested_parameter(v: ContainsLifetime<'_>) {}
+   |                                        ++++
+
+error: hidden lifetime parameters in types are deprecated
+  --> $DIR/elided-lifetime-in-path-details.rs:113:35
+   |
+LL | fn top_level_nested_parameter(v: &ContainsLifetime) {}
+   |                                   ^^^^^^^^^^^^^^^^ expected lifetime parameter
+   |
+help: indicate the anonymous lifetime
+   |
+LL | fn top_level_nested_parameter(v: &ContainsLifetime<'_>) {}
+   |                                                   ++++
+
+error: hidden lifetime parameters in types are deprecated
+  --> $DIR/elided-lifetime-in-path-details.rs:205:12
+   |
+LL |         _: ContainsLifetime,
+   |            ^^^^^^^^^^^^^^^^ expected lifetime parameter
+   |
+help: indicate the anonymous lifetime
+   |
+LL |         _: ContainsLifetime<'_>,
+   |                            ++++
+
+error: hidden lifetime parameters in types are deprecated
+  --> $DIR/elided-lifetime-in-path-details.rs:218:12
+   |
+LL |         v: ContainsLifetime,
+   |            ^^^^^^^^^^^^^^^^ expected lifetime parameter
+   |
+help: indicate the anonymous lifetime
+   |
+LL |         v: ContainsLifetime<'_>,
+   |                            ++++
+
+error: hidden lifetime parameters in types are deprecated
+  --> $DIR/elided-lifetime-in-path-details.rs:225:12
+   |
+LL |         v: ContainsLifetime,
+   |            ^^^^^^^^^^^^^^^^ expected lifetime parameter
+   |
+help: indicate the anonymous lifetime
+   |
+LL |         v: ContainsLifetime<'_>,
+   |                            ++++
+
+error: aborting due to 5 previous errors
+

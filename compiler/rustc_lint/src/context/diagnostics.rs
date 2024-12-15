@@ -5,7 +5,8 @@ use std::borrow::Cow;
 
 use rustc_ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
 use rustc_errors::{
-    Applicability, Diag, DiagArgValue, LintDiagnostic, elided_lifetime_in_path_suggestion,
+    Applicability, Diag, DiagArgValue, ExpectedLifetimeParameter, LintDiagnostic,
+    elided_lifetime_in_path_suggestion, indicate_anonymous_lifetime,
 };
 use rustc_middle::middle::stability;
 use rustc_session::Session;
@@ -83,6 +84,27 @@ pub(super) fn decorate_lint(sess: &Session, diagnostic: BuiltinLintDiag, diag: &
             }
             .decorate_lint(diag);
         }
+
+        BuiltinLintDiag::ElidedLifetimesInPathsTied { elided_lifetime_source, suggestions } => {
+            let elided_lifetime_source =
+                elided_lifetime_source.map(|span| lints::ElidedLifetimesInPathsTiedSource { span });
+
+            let expected = suggestions
+                .iter()
+                .map(|&(span, count, _)| ExpectedLifetimeParameter { span, count })
+                .collect();
+
+            let suggestions = suggestions
+                .into_iter()
+                .flat_map(|(span, n, incl_angl_brckt)| {
+                    indicate_anonymous_lifetime(sess.source_map(), n, incl_angl_brckt, span)
+                })
+                .collect();
+
+            lints::ElidedLifetimesInPathsTied { expected, suggestions, elided_lifetime_source }
+                .decorate_lint(diag)
+        }
+
         BuiltinLintDiag::UnknownCrateTypes { span, candidate } => {
             let sugg = candidate.map(|candidate| lints::UnknownCrateTypesSub { span, candidate });
             lints::UnknownCrateTypes { sugg }.decorate_lint(diag);
