@@ -1190,6 +1190,7 @@ symbols! {
         loongarch_target_feature,
         loop_break_value,
         lt,
+        m68k_target_feature,
         macro_at_most_once_rep,
         macro_attributes_in_derive_output,
         macro_escape,

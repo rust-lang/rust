@@ -332,6 +332,7 @@ declare_features! (
     (unstable, hexagon_target_feature, "1.27.0", Some(44839)),
     (unstable, lahfsahf_target_feature, "1.78.0", Some(44839)),
     (unstable, loongarch_target_feature, "1.73.0", Some(44839)),
+    (unstable, m68k_target_feature, "CURRENT_RUSTC_VERSION", Some(134328)),
     (unstable, mips_target_feature, "1.27.0", Some(44839)),
     (unstable, powerpc_target_feature, "1.27.0", Some(44839)),
     (unstable, prfchw_target_feature, "1.78.0", Some(44839)),
