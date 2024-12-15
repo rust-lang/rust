@@ -26,7 +26,8 @@ declare_clippy_lint! {
     /// To ensure that every numeric type is chosen explicitly rather than implicitly.
     ///
     /// ### Known problems
-    /// This lint can only be allowed at the function level or above.
+    /// This lint is implemented using a custom algorithm independent of rustc's inference,
+    /// which results in many false positives and false negatives.
     ///
     /// ### Example
     /// ```no_run
@@ -36,8 +37,8 @@ declare_clippy_lint! {
     ///
     /// Use instead:
     /// ```no_run
-    /// let i = 10i32;
-    /// let f = 1.23f64;
+    /// let i = 10_i32;
+    /// let f = 1.23_f64;
     /// ```
     #[clippy::version = "1.52.0"]
     pub DEFAULT_NUMERIC_FALLBACK,

@@ -7,112 +7,114 @@ Clippy is released together with stable Rust releases. The dates for these
 releases can be found at the [Rust Forge]. This document explains the necessary
 steps to create a Clippy release.
 
-1. [Remerge the `beta` branch](#remerge-the-beta-branch)
-2. [Update the `beta` branch](#update-the-beta-branch)
-3. [Find the Clippy commit](#find-the-clippy-commit)
-4. [Tag the stable commit](#tag-the-stable-commit)
-5. [Update `CHANGELOG.md`](#update-changelogmd)
-
-> _NOTE:_ This document is for stable Rust releases, not for point releases. For
-> point releases, step 1. and 2. should be enough.
+1. [Defining Remotes](#defining-remotes)
+1. [Bump Version](#bump-version)
+1. [Find the Clippy commit](#find-the-clippy-commit)
+1. [Update the `beta` branch](#update-the-beta-branch)
+1. [Update the `stable` branch](#update-the-stable-branch)
+1. [Tag the stable commit](#tag-the-stable-commit)
+1. [Update `CHANGELOG.md`](#update-changelogmd)
 
 [Rust Forge]: https://forge.rust-lang.org/
 
-## Remerge the `beta` branch
+## Defining Remotes
 
-This step is only necessary, if since the last release something was backported
-to the beta Rust release. The remerge is then necessary, to make sure that the
-Clippy commit, that was used by the now stable Rust release, persists in the
-tree of the Clippy repository.
-
-To find out if this step is necessary run
+You may want to define the `upstream` remote of the Clippy project to simplify
+the following steps. However, this is optional and you can replace `upstream`
+with the full URL instead.
 
 ```bash
-# Assumes that the local master branch of rust-lang/rust-clippy is up-to-date
-$ git fetch upstream
-$ git branch master --contains upstream/beta
+git remote add upstream git@github.com:rust-lang/rust-clippy
 ```
 
-If this command outputs `master`, this step is **not** necessary.
+## Bump Version
+
+When a release needs to be done, `cargo test` will fail, if the versions in the
+`Cargo.toml` are not correct. During that sync, the versions need to be bumped.
+This is done by running:
 
 ```bash
-# Assuming `HEAD` is the current `master` branch of rust-lang/rust-clippy
-$ git checkout -b backport_remerge
-$ git merge upstream/beta
-$ git diff  # This diff has to be empty, otherwise something with the remerge failed
-$ git push origin backport_remerge  # This can be pushed to your fork
+cargo dev release bump_version
 ```
 
-After this, open a PR to the master branch. In this PR, the commit hash of the
-`HEAD` of the `beta` branch must exist. In addition to that, no files should be
-changed by this PR.
-
-## Update the `beta` branch
-
-This step must be done **after** the PR of the previous step was merged.
-
-First, the Clippy commit of the `beta` branch of the Rust repository has to be
-determined.
+This will increase the version number of each relevant `Cargo.toml` file. After
+that, just commit the updated files with:
 
 ```bash
-# Assuming the current directory corresponds to the Rust repository
-$ git fetch upstream
-$ git checkout upstream/beta
-$ BETA_SHA=$(git log --oneline -- src/tools/clippy/ | grep -o "Merge commit '[a-f0-9]*' into .*" | head -1 | sed -e "s/Merge commit '\([a-f0-9]*\)' into .*/\1/g")
+git commit -m "Bump Clippy version -> 0.1.XY" **/*Cargo.toml
 ```
 
-After finding the Clippy commit, the `beta` branch in the Clippy repository can
-be updated.
-
-```bash
-# Assuming the current directory corresponds to the Clippy repository
-$ git checkout beta
-$ git reset --hard $BETA_SHA
-$ git push upstream beta
-```
+`XY` should be exchanged with the corresponding version
 
 ## Find the Clippy commit
 
-The first step is to tag the Clippy commit, that is included in the stable Rust
-release. This commit can be found in the Rust repository.
+For both updating the `beta` and the `stable` branch, the first step is to find
+the Clippy commit of the last Clippy sync done in the respective Rust branch.
+
+Running the following commands _in the Rust repo_ will get the commit for the
+specified `<branch>`:
 
 ```bash
-# Assuming the current directory corresponds to the Rust repository
-$ git fetch upstream    # `upstream` is the `rust-lang/rust` remote
-$ git checkout 1.XX.0   # XX should be exchanged with the corresponding version
-$ SHA=$(git log --oneline -- src/tools/clippy/ | grep -o "Merge commit '[a-f0-9]*' into .*" | head -1 | sed -e "s/Merge commit '\([a-f0-9]*\)' into .*/\1/g")
+git switch <branch>
+SHA=$(git log --oneline -- src/tools/clippy/ | grep -o "Merge commit '[a-f0-9]*' into .*" | head -1 | sed -e "s/Merge commit '\([a-f0-9]*\)' into .*/\1/g")
 ```
 
-## Tag the stable commit
+Where `<branch>` is one of `stable`, `beta`, or `master`.
 
-After finding the Clippy commit, it can be tagged with the release number.
+## Update the `beta` branch
+
+After getting the commit of the `beta` branch, the `beta` branch in the Clippy
+repository can be updated.
 
 ```bash
-# Assuming the current directory corresponds to the Clippy repository
-$ git checkout $SHA
-$ git tag rust-1.XX.0               # XX should be exchanged with the corresponding version
-$ git push upstream rust-1.XX.0     # `upstream` is the `rust-lang/rust-clippy` remote
+git checkout beta
+git reset --hard $SHA
+git push upstream beta
+```
+
+## Update the `stable` branch
+
+After getting the commit of the `stable` branch, the `stable` branch in the
+Clippy repository can be updated.
+
+```bash
+git checkout stable
+git reset --hard $SHA
+git push upstream stable
+```
+
+## Tag the `stable` commit
+
+After updating the `stable` branch, tag the HEAD commit and push it to the
+Clippy repo.
+
+> Note: Only push the tag once the Deploy GitHub action of the `beta` branch is
+> finished. Otherwise the deploy for the tag might fail.
+
+```bash
+git tag rust-1.XX.0               # XX should be exchanged with the corresponding version
+git push upstream rust-1.XX.0     # `upstream` is the `rust-lang/rust-clippy` remote
 ```
 
 After this, the release should be available on the Clippy [release page].
 
 [release page]: https://github.com/rust-lang/rust-clippy/releases
 
-## Update the `stable` branch
+## Publish `clippy_utils`
 
-At this step you should have already checked out the commit of the `rust-1.XX.0`
-tag. Updating the stable branch from here is as easy as:
+The `clippy_utils` crate is published to `crates.io` without any stability
+guarantees. To do this, after the [sync] and the release is done, switch back to
+the `upstream/master` branch and publish `clippy_utils`:
+
+> Note: The Rustup PR bumping the nightly and Clippy version **must** be merged
+> before doing this.
 
 ```bash
-# Assuming the current directory corresponds to the Clippy repository and the
-# commit of the just created rust-1.XX.0 tag is checked out.
-$ git push upstream rust-1.XX.0:stable  # `upstream` is the `rust-lang/rust-clippy` remote
+git switch master && git pull upstream master
+cargo publish --manifest-path clippy_utils/Cargo.toml
 ```
 
-> _NOTE:_ Usually there are no stable backports for Clippy, so this update
-> should be possible without force pushing or anything like this. If there
-> should have happened a stable backport, make sure to re-merge those changes
-> just as with the `beta` branch.
+[sync]: sync.md
 
 ## Update `CHANGELOG.md`
 

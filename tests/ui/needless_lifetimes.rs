@@ -562,4 +562,18 @@ mod rayon {
     }
 }
 
+mod issue13749 {
+    pub struct Generic<T>(T);
+    // Non elidable lifetime
+    #[expect(clippy::extra_unused_lifetimes)]
+    impl<'a, T> Generic<T> where T: 'a {}
+}
+
+mod issue13749bis {
+    pub struct Generic<T>(T);
+    // Non elidable lifetime
+    #[expect(clippy::extra_unused_lifetimes)]
+    impl<'a, T: 'a> Generic<T> {}
+}
+
 fn main() {}

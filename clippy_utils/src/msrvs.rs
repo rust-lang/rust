@@ -19,9 +19,9 @@ macro_rules! msrv_aliases {
 // names may refer to stabilized feature flags or library items
 msrv_aliases! {
     1,83,0 { CONST_EXTERN_FN, CONST_FLOAT_BITS_CONV, CONST_FLOAT_CLASSIFY }
-    1,82,0 { IS_NONE_OR, REPEAT_N }
+    1,82,0 { IS_NONE_OR, REPEAT_N, RAW_REF_OP }
     1,81,0 { LINT_REASONS_STABILIZATION }
-    1,80,0 { BOX_INTO_ITER}
+    1,80,0 { BOX_INTO_ITER }
     1,77,0 { C_STR_LITERALS }
     1,76,0 { PTR_FROM_REF, OPTION_RESULT_INSPECT }
     1,73,0 { MANUAL_DIV_CEIL }

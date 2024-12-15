@@ -280,5 +280,41 @@ note: previous binding is here
 LL |         let x = 1;
    |             ^
 
-error: aborting due to 23 previous errors
+error: `x` is shadowed
+  --> tests/ui/shadow.rs:128:20
+   |
+LL |     let z = x.map(|x| x + 1);
+   |                    ^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:125:9
+   |
+LL |     let x = Some(1);
+   |         ^
+
+error: `i` is shadowed
+  --> tests/ui/shadow.rs:132:25
+   |
+LL |         .map(|i| i.map(|i| i - 10))
+   |                         ^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:132:15
+   |
+LL |         .map(|i| i.map(|i| i - 10))
+   |               ^
+
+error: `value` is shadowed by itself in `value`
+  --> tests/ui/shadow.rs:141:22
+   |
+LL |     let Issue13795 { value, .. } = value;
+   |                      ^^^^^
+   |
+note: previous binding is here
+  --> tests/ui/shadow.rs:140:15
+   |
+LL | fn issue13795(value: Issue13795) {
+   |               ^^^^^
+
+error: aborting due to 26 previous errors
 

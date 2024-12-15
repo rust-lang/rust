@@ -643,8 +643,7 @@ fn report_extra_impl_lifetimes<'tcx>(cx: &LateContext<'tcx>, impl_: &'tcx Impl<'
 
 // An `impl` lifetime is elidable if it satisfies the following conditions:
 // - It is used exactly once.
-// - That single use is not in a bounded type or `GenericArgs` in a `WherePredicate`. (Note that
-//   `GenericArgs` are different from `GenericParam`s.)
+// - That single use is not in a `WherePredicate`.
 fn report_elidable_impl_lifetimes<'tcx>(
     cx: &LateContext<'tcx>,
     impl_: &'tcx Impl<'_>,
@@ -657,12 +656,6 @@ fn report_elidable_impl_lifetimes<'tcx>(
                 Usage {
                     lifetime,
                     in_where_predicate: false,
-                    ..
-                }
-                | Usage {
-                    lifetime,
-                    in_bounded_ty: false,
-                    in_generics_arg: false,
                     ..
                 },
             ] = usages.as_slice()
