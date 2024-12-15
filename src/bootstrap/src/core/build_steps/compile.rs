@@ -191,10 +191,17 @@ impl Step for Std {
 
         let mut target_deps = builder.ensure(StartupObjects { compiler, target });
 
-        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
+        let mut compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
         trace!(?compiler_to_use);
 
-        if compiler_to_use != compiler {
+        if compiler_to_use != compiler
+            // Never uplift std unless we have compiled stage 2; if stage 2 is compiled,
+            // uplift it from there.
+            //
+            // FIXME: improve `fn compiler_for` to avoid adding stage condition here.
+            && compiler.stage > 2
+        {
+            compiler_to_use.stage = 2;
             trace!(?compiler_to_use, ?compiler, "compiler != compiler_to_use, uplifting library");
 
             builder.ensure(Std::new(compiler_to_use, target));
