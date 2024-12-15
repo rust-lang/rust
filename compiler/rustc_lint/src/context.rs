@@ -20,7 +20,7 @@ use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::print::{PrintError, PrintTraitRefExt as _, Printer, with_no_trimmed_paths};
 use rustc_middle::ty::{self, GenericArg, RegisteredTools, Ty, TyCtxt, TypingEnv, TypingMode};
 use rustc_session::lint::{
-    BuiltinLintDiag, FutureIncompatibleInfo, Level, Lint, LintBuffer, LintExpectationId, LintId,
+    FutureIncompatibleInfo, Level, Lint, LintBuffer, LintExpectationId, LintId,
 };
 use rustc_session::{LintStoreMarker, Session};
 use rustc_span::Span;
@@ -32,8 +32,6 @@ use {rustc_abi as abi, rustc_hir as hir};
 use self::TargetLint::*;
 use crate::levels::LintLevelsBuilder;
 use crate::passes::{EarlyLintPassObject, LateLintPassObject};
-
-mod diagnostics;
 
 type EarlyLintPassFactory = dyn Fn() -> EarlyLintPassObject + sync::DynSend + sync::DynSync;
 type LateLintPassFactory =
@@ -509,38 +507,6 @@ pub struct LateContext<'tcx> {
 pub struct EarlyContext<'a> {
     pub builder: LintLevelsBuilder<'a, crate::levels::TopDown>,
     pub buffered: LintBuffer,
-}
-
-impl EarlyContext<'_> {
-    /// Emit a lint at the appropriate level, with an associated span and an existing
-    /// diagnostic.
-    ///
-    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
-    #[rustc_lint_diagnostics]
-    pub fn span_lint_with_diagnostics(
-        &self,
-        lint: &'static Lint,
-        span: MultiSpan,
-        diagnostic: BuiltinLintDiag,
-    ) {
-        self.opt_span_lint_with_diagnostics(lint, Some(span), diagnostic);
-    }
-
-    /// Emit a lint at the appropriate level, with an optional associated span and an existing
-    /// diagnostic.
-    ///
-    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
-    #[rustc_lint_diagnostics]
-    pub fn opt_span_lint_with_diagnostics(
-        &self,
-        lint: &'static Lint,
-        span: Option<MultiSpan>,
-        diagnostic: BuiltinLintDiag,
-    ) {
-        self.opt_span_lint(lint, span, |diag| {
-            diagnostics::decorate_lint(self.sess(), diagnostic, diag);
-        });
-    }
 }
 
 pub trait LintContext {
