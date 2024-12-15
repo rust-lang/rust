@@ -10,7 +10,7 @@ use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
     Arm, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, GenericBound, HirId,
-    Node, Path, QPath, Stmt, StmtKind, TyKind, WherePredicateKind,
+    Node, Path, QPath, Stmt, StmtKind, TyKind, WherePredicateKind, expr_needs_parens,
 };
 use rustc_hir_analysis::collect::suggest_impl_trait;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
@@ -35,7 +35,6 @@ use tracing::{debug, instrument};
 
 use super::FnCtxt;
 use crate::fn_ctxt::rustc_span::BytePos;
-use crate::hir::is_range_literal;
 use crate::method::probe;
 use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
 use crate::{errors, fluent_generated as fluent};
@@ -2648,7 +2647,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
 
                     let make_sugg = |expr: &Expr<'_>, span: Span, sugg: &str| {
-                        if self.needs_parentheses(expr) {
+                        if expr_needs_parens(expr) {
                             (
                                 vec![
                                     (span.shrink_to_lo(), format!("{prefix}{sugg}(")),
@@ -2861,7 +2860,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             return None;
                         }
 
-                        if self.needs_parentheses(expr) {
+                        if expr_needs_parens(expr) {
                             return Some((
                                 vec![
                                     (span, format!("{suggestion}(")),
@@ -2900,16 +2899,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
         false
-    }
-
-    fn needs_parentheses(&self, expr: &hir::Expr<'_>) -> bool {
-        match expr.kind {
-            // parenthesize if needed (Issue #46756)
-            hir::ExprKind::Cast(_, _) | hir::ExprKind::Binary(_, _, _) => true,
-            // parenthesize borrows of range literals (Issue #54505)
-            _ if is_range_literal(expr) => true,
-            _ => false,
-        }
     }
 
     pub(crate) fn suggest_cast(

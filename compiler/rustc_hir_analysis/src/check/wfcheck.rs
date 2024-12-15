@@ -44,6 +44,7 @@ use {rustc_ast as ast, rustc_hir as hir};
 use crate::autoderef::Autoderef;
 use crate::collect::CollectItemTypesVisitor;
 use crate::constrained_generic_params::{Parameter, identify_constrained_generic_params};
+use crate::errors::InvalidReceiverTyHint;
 use crate::{errors, fluent_generated as fluent};
 
 pub(super) struct WfCheckingCtxt<'a, 'tcx> {
@@ -1749,7 +1750,18 @@ fn check_method_receiver<'tcx>(
             {
                 match receiver_validity_err {
                     ReceiverValidityError::DoesNotDeref if arbitrary_self_types_level.is_some() => {
-                        tcx.dcx().emit_err(errors::InvalidReceiverTy { span, receiver_ty })
+                        let hint = match receiver_ty
+                            .builtin_deref(false)
+                            .unwrap_or(receiver_ty)
+                            .ty_adt_def()
+                            .and_then(|adt_def| tcx.get_diagnostic_name(adt_def.did()))
+                        {
+                            Some(sym::RcWeak | sym::ArcWeak) => Some(InvalidReceiverTyHint::Weak),
+                            Some(sym::NonNull) => Some(InvalidReceiverTyHint::NonNull),
+                            _ => None,
+                        };
+
+                        tcx.dcx().emit_err(errors::InvalidReceiverTy { span, receiver_ty, hint })
                     }
                     ReceiverValidityError::DoesNotDeref => {
                         tcx.dcx().emit_err(errors::InvalidReceiverTyNoArbitrarySelfTypes {

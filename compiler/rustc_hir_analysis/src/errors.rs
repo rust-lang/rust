@@ -1655,6 +1655,14 @@ pub(crate) struct NonConstRange {
     pub span: Span,
 }
 
+#[derive(Subdiagnostic)]
+pub(crate) enum InvalidReceiverTyHint {
+    #[note(hir_analysis_invalid_receiver_ty_help_weak_note)]
+    Weak,
+    #[note(hir_analysis_invalid_receiver_ty_help_nonnull_note)]
+    NonNull,
+}
+
 #[derive(Diagnostic)]
 #[diag(hir_analysis_invalid_receiver_ty_no_arbitrary_self_types, code = E0307)]
 #[note]
@@ -1673,6 +1681,8 @@ pub(crate) struct InvalidReceiverTy<'tcx> {
     #[primary_span]
     pub span: Span,
     pub receiver_ty: Ty<'tcx>,
+    #[subdiagnostic]
+    pub hint: Option<InvalidReceiverTyHint>,
 }
 
 #[derive(Diagnostic)]
