@@ -747,6 +747,7 @@ where
     ) -> BasicBlock {
         debug!("open_drop_for_array({:?}, {:?})", element_ty, opt_size);
         let tcx = self.tcx();
+        let span = self.source_info.span;
 
         if let Some(0) = opt_size {
             span_bug!(self.source_info.span, "Opened drop for zero-length array of {element_ty:?}")
@@ -757,6 +758,10 @@ where
         let slice_ty = Ty::new_slice(tcx, element_ty);
         let slice_ptr_ty = Ty::new_mut_ptr(tcx, slice_ty);
         let slice_ptr = self.new_temp(slice_ptr_ty);
+
+        let drop_in_place = tcx.require_lang_item(LangItem::DropInPlace, Some(span));
+        let slice_drop_in_place =
+            Operand::function_handle(tcx, drop_in_place, [slice_ty.into()], span);
 
         let unsize_and_drop_block = BasicBlockData {
             statements: vec![
@@ -776,11 +781,14 @@ where
             is_cleanup: self.unwind.is_cleanup(),
             terminator: Some(Terminator {
                 source_info: self.source_info,
-                kind: TerminatorKind::Drop {
-                    place: Place::from(slice_ptr).project_deeper(&[PlaceElem::Deref], tcx),
-                    target: self.succ,
+                kind: TerminatorKind::Call {
+                    func: slice_drop_in_place,
+                    args: Box::new([Spanned { node: Operand::Move(Place::from(slice_ptr)), span }]),
+                    destination: Place::from(self.new_temp(tcx.types.unit)),
+                    target: Some(self.succ),
                     unwind: self.unwind.into_action(),
-                    replace: false,
+                    call_source: CallSource::Misc,
+                    fn_span: span,
                 },
             }),
         };
