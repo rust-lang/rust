@@ -199,18 +199,15 @@ fn ensure_file_with_lock_free_access(path: &Utf8Path) -> io::Result<Utf8PathBuf>
     to.push("rust-analyzer-proc-macros");
     _ = fs::create_dir(&to);
 
-    let file_name = path.file_name().ok_or_else(|| {
+    let file_name = path.file_stem().ok_or_else(|| {
         io::Error::new(io::ErrorKind::InvalidInput, format!("File path is invalid: {path}"))
     })?;
 
     to.push({
         // Generate a unique number by abusing `HashMap`'s hasher.
         // Maybe this will also "inspire" a libs team member to finally put `rand` in libstd.
-        let t = RandomState::new().build_hasher().finish();
-        let mut unique_name = t.to_string();
-        unique_name.push_str(file_name);
-        unique_name.push('-');
-        unique_name
+        let unique_name = RandomState::new().build_hasher().finish();
+        format!("{file_name}-{unique_name}.dll")
     });
     fs::copy(path, &to)?;
     Ok(to)
