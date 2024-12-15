@@ -41,7 +41,8 @@ pub trait Key: Sized {
         None
     }
 
-    fn ty_def_id(&self) -> Option<DefId> {
+    /// Used to detect when ADT def ids are used as keys in a cycle for better error reporting.
+    fn def_id_for_ty_in_cycle(&self) -> Option<DefId> {
         None
     }
 }
@@ -423,7 +424,7 @@ impl<'tcx> Key for Ty<'tcx> {
         DUMMY_SP
     }
 
-    fn ty_def_id(&self) -> Option<DefId> {
+    fn def_id_for_ty_in_cycle(&self) -> Option<DefId> {
         match *self.kind() {
             ty::Adt(adt, _) => Some(adt.did()),
             ty::Coroutine(def_id, ..) => Some(def_id),
@@ -471,8 +472,8 @@ impl<'tcx, T: Key> Key for ty::PseudoCanonicalInput<'tcx, T> {
         self.value.default_span(tcx)
     }
 
-    fn ty_def_id(&self) -> Option<DefId> {
-        self.value.ty_def_id()
+    fn def_id_for_ty_in_cycle(&self) -> Option<DefId> {
+        self.value.def_id_for_ty_in_cycle()
     }
 }
 
@@ -593,7 +594,7 @@ impl<'tcx> Key for (ValidityRequirement, ty::PseudoCanonicalInput<'tcx, Ty<'tcx>
         DUMMY_SP
     }
 
-    fn ty_def_id(&self) -> Option<DefId> {
+    fn def_id_for_ty_in_cycle(&self) -> Option<DefId> {
         match self.1.value.kind() {
             ty::Adt(adt, _) => Some(adt.did()),
             _ => None,

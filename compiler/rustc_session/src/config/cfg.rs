@@ -371,7 +371,7 @@ impl CheckCfg {
 
         ins!(sym::target_feature, empty_values).extend(
             rustc_target::target_features::all_rust_features()
-                .filter(|(_, s)| s.is_supported())
+                .filter(|(_, s)| s.in_cfg())
                 .map(|(f, _s)| f)
                 .chain(rustc_target::target_features::RUSTC_SPECIFIC_FEATURES.iter().cloned())
                 .map(Symbol::intern),

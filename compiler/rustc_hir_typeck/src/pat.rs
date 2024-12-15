@@ -10,8 +10,12 @@ use rustc_errors::{
 };
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
-use rustc_hir::{self as hir, BindingMode, ByRef, HirId, LangItem, Mutability, Pat, PatKind};
+use rustc_hir::{
+    self as hir, BindingMode, ByRef, ExprKind, HirId, LangItem, Mutability, Pat, PatKind,
+    expr_needs_parens,
+};
 use rustc_infer::infer;
+use rustc_middle::traits::PatternOriginExpr;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
@@ -94,10 +98,32 @@ struct PatInfo<'a, 'tcx> {
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn pattern_cause(&self, ti: &TopInfo<'tcx>, cause_span: Span) -> ObligationCause<'tcx> {
+        // If origin_expr exists, then expected represents the type of origin_expr.
+        // If span also exists, then span == origin_expr.span (although it doesn't need to exist).
+        // In that case, we can peel away references from both and treat them
+        // as the same.
+        let origin_expr_info = ti.origin_expr.map(|mut cur_expr| {
+            let mut count = 0;
+
+            // cur_ty may have more layers of references than cur_expr.
+            // We can only make suggestions about cur_expr, however, so we'll
+            // use that as our condition for stopping.
+            while let ExprKind::AddrOf(.., inner) = &cur_expr.kind {
+                cur_expr = inner;
+                count += 1;
+            }
+
+            PatternOriginExpr {
+                peeled_span: cur_expr.span,
+                peeled_count: count,
+                peeled_prefix_suggestion_parentheses: expr_needs_parens(cur_expr),
+            }
+        });
+
         let code = ObligationCauseCode::Pattern {
             span: ti.span,
             root_ty: ti.expected,
-            origin_expr: ti.origin_expr.is_some(),
+            origin_expr: origin_expr_info,
         };
         self.cause(cause_span, code)
     }

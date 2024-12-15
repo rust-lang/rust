@@ -8,7 +8,7 @@ use rustc_ast::{
 };
 pub use rustc_ast::{
     BinOp, BinOpKind, BindingMode, BorrowKind, BoundConstness, BoundPolarity, ByRef, CaptureBy,
-    ImplPolarity, IsAuto, Movability, Mutability, UnOp,
+    ImplPolarity, IsAuto, Movability, Mutability, UnOp, UnsafeBinderCastKind,
 };
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
@@ -1740,6 +1740,7 @@ impl Expr<'_> {
             | ExprKind::Struct(..)
             | ExprKind::Tup(_)
             | ExprKind::Type(..)
+            | ExprKind::UnsafeBinderCast(..)
             | ExprKind::Err(_) => ExprPrecedence::Unambiguous,
 
             ExprKind::DropTemps(ref expr, ..) => expr.precedence(),
@@ -1768,6 +1769,9 @@ impl Expr<'_> {
             // operand. See:
             // https://github.com/rust-lang/rfcs/blob/master/text/0803-type-ascription.md#type-ascription-and-temporaries
             ExprKind::Type(ref e, _) => e.is_place_expr(allow_projections_from),
+
+            // Unsafe binder cast preserves place-ness of the sub-expression.
+            ExprKind::UnsafeBinderCast(_, e, _) => e.is_place_expr(allow_projections_from),
 
             ExprKind::Unary(UnOp::Deref, _) => true,
 
@@ -1850,7 +1854,8 @@ impl Expr<'_> {
             | ExprKind::Field(base, _)
             | ExprKind::Index(base, _, _)
             | ExprKind::AddrOf(.., base)
-            | ExprKind::Cast(base, _) => {
+            | ExprKind::Cast(base, _)
+            | ExprKind::UnsafeBinderCast(_, base, _) => {
                 // This isn't exactly true for `Index` and all `Unary`, but we are using this
                 // method exclusively for diagnostics and there's a *cultural* pressure against
                 // them being used only for its side-effects.
@@ -2020,6 +2025,22 @@ pub fn is_range_literal(expr: &Expr<'_>) -> bool {
     }
 }
 
+/// Checks if the specified expression needs parentheses for prefix
+/// or postfix suggestions to be valid.
+/// For example, `a + b` requires parentheses to suggest `&(a + b)`,
+/// but just `a` does not.
+/// Similarly, `(a + b).c()` also requires parentheses.
+/// This should not be used for other types of suggestions.
+pub fn expr_needs_parens(expr: &Expr<'_>) -> bool {
+    match expr.kind {
+        // parenthesize if needed (Issue #46756)
+        ExprKind::Cast(_, _) | ExprKind::Binary(_, _, _) => true,
+        // parenthesize borrows of range literals (Issue #54505)
+        _ if is_range_literal(expr) => true,
+        _ => false,
+    }
+}
+
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum ExprKind<'hir> {
     /// Allow anonymous constants from an inline `const` block
@@ -2143,6 +2164,10 @@ pub enum ExprKind<'hir> {
 
     /// A suspension point for coroutines (i.e., `yield <expr>`).
     Yield(&'hir Expr<'hir>, YieldSource),
+
+    /// Operators which can be used to interconvert `unsafe` binder types.
+    /// e.g. `unsafe<'a> &'a i32` <=> `&i32`.
+    UnsafeBinderCast(UnsafeBinderCastKind, &'hir Expr<'hir>, Option<&'hir Ty<'hir>>),
 
     /// A placeholder for an expression that wasn't syntactically well formed in some way.
     Err(rustc_span::ErrorGuaranteed),
@@ -2781,6 +2806,12 @@ pub struct BareFnTy<'hir> {
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
+pub struct UnsafeBinderTy<'hir> {
+    pub generic_params: &'hir [GenericParam<'hir>],
+    pub inner_ty: &'hir Ty<'hir>,
+}
+
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct OpaqueTy<'hir> {
     pub hir_id: HirId,
     pub def_id: LocalDefId,
@@ -2878,6 +2909,8 @@ pub enum TyKind<'hir> {
     Ref(&'hir Lifetime, MutTy<'hir>),
     /// A bare function (e.g., `fn(usize) -> bool`).
     BareFn(&'hir BareFnTy<'hir>),
+    /// An unsafe binder type (e.g. `unsafe<'a> Foo<'a>`).
+    UnsafeBinder(&'hir UnsafeBinderTy<'hir>),
     /// The never type (`!`).
     Never,
     /// A tuple (`(A, B, C, D, ...)`).
@@ -2889,6 +2922,8 @@ pub enum TyKind<'hir> {
     Path(QPath<'hir>),
     /// An opaque type definition itself. This is only used for `impl Trait`.
     OpaqueDef(&'hir OpaqueTy<'hir>),
+    /// A trait ascription type, which is `impl Trait` within a local binding.
+    TraitAscription(GenericBounds<'hir>),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
     TraitObject(&'hir [PolyTraitRef<'hir>], &'hir Lifetime, TraitObjectSyntax),
@@ -4042,9 +4077,7 @@ impl<'hir> Node<'hir> {
                 _ => None,
             },
             Node::TraitItem(ti) => match ti.kind {
-                TraitItemKind::Fn(ref sig, TraitFn::Provided(_)) => {
-                    Some(FnKind::Method(ti.ident, sig))
-                }
+                TraitItemKind::Fn(ref sig, _) => Some(FnKind::Method(ti.ident, sig)),
                 _ => None,
             },
             Node::ImplItem(ii) => match ii.kind {

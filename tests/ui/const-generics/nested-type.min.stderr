@@ -25,7 +25,6 @@ LL | |     struct Foo<const N: usize>;
 LL | |
 LL | |     impl<const N: usize> Foo<N> {
 ...  |
-LL | |
 LL | | }]>;
    | |__^
    |

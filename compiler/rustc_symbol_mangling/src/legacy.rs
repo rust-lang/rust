@@ -2,7 +2,7 @@ use std::fmt::{self, Write};
 use std::mem::{self, discriminant};
 
 use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
-use rustc_hir::def_id::CrateNum;
+use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_middle::bug;
 use rustc_middle::ty::print::{PrettyPrinter, Print, PrintError, Printer};
@@ -377,6 +377,33 @@ impl<'tcx> Printer<'tcx> for SymbolPrinter<'tcx> {
         } else {
             Ok(())
         }
+    }
+
+    fn print_impl_path(
+        &mut self,
+        impl_def_id: DefId,
+        args: &'tcx [GenericArg<'tcx>],
+        mut self_ty: Ty<'tcx>,
+        mut impl_trait_ref: Option<ty::TraitRef<'tcx>>,
+    ) -> Result<(), PrintError> {
+        let mut typing_env = ty::TypingEnv::post_analysis(self.tcx, impl_def_id);
+        if !args.is_empty() {
+            typing_env.param_env =
+                ty::EarlyBinder::bind(typing_env.param_env).instantiate(self.tcx, args);
+        }
+
+        match &mut impl_trait_ref {
+            Some(impl_trait_ref) => {
+                assert_eq!(impl_trait_ref.self_ty(), self_ty);
+                *impl_trait_ref = self.tcx.normalize_erasing_regions(typing_env, *impl_trait_ref);
+                self_ty = impl_trait_ref.self_ty();
+            }
+            None => {
+                self_ty = self.tcx.normalize_erasing_regions(typing_env, self_ty);
+            }
+        }
+
+        self.default_print_impl_path(impl_def_id, args, self_ty, impl_trait_ref)
     }
 }
 

@@ -1,0 +1,8 @@
+error: target feature `x87` cannot be toggled with `#[target_feature]`: unsound on hard-float targets because it changes float ABI
+  --> $DIR/forbidden-hardfloat-target-feature-attribute.rs:9:18
+   |
+LL | #[target_feature(enable = "x87")]
+   |                  ^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

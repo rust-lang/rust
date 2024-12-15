@@ -11,16 +11,14 @@
       let mut _6: &[u8];
       let mut _7: &[u8; N];
       let _8: usize;
-      let mut _9: usize;
-      let mut _10: bool;
+      let mut _9: bool;
   
       bb0: {
 -         StorageLive(_3);
 +         nop;
           StorageLive(_4);
           _4 = copy _1;
--         StorageLive(_5);
-+         nop;
+          StorageLive(_5);
           StorageLive(_6);
           StorageLive(_7);
           _7 = &(*_2);
@@ -40,16 +38,13 @@
       }
   
       bb2: {
--         StorageDead(_5);
-+         nop;
+          StorageDead(_5);
           StorageDead(_4);
           StorageLive(_8);
           _8 = copy _1;
--         _9 = Len((*_2));
--         _10 = Lt(copy _8, copy _9);
--         assert(move _10, "index out of bounds: the length is {} but the index is {}", move _9, copy _8) -> [success: bb3, unwind unreachable];
-+         _9 = const N;
-+         _10 = copy _3;
+-         _9 = Lt(copy _8, const N);
+-         assert(move _9, "index out of bounds: the length is {} but the index is {}", const N, copy _8) -> [success: bb3, unwind unreachable];
++         _9 = copy _3;
 +         assert(copy _3, "index out of bounds: the length is {} but the index is {}", const N, copy _1) -> [success: bb3, unwind unreachable];
       }
   
@@ -61,8 +56,7 @@
       }
   
       bb4: {
--         StorageDead(_5);
-+         nop;
+          StorageDead(_5);
           StorageDead(_4);
           _0 = const 42_u8;
           goto -> bb5;

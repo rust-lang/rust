@@ -10,10 +10,11 @@ use std::ops::Deref;
 
 use hir::def_id::CRATE_DEF_ID;
 use rustc_errors::DiagCtxtHandle;
-use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::{self as hir, HirId, ItemLocalMap};
 use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, RegionInferReason};
 use rustc_infer::infer;
+use rustc_infer::traits::Obligation;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
@@ -114,6 +115,12 @@ pub(crate) struct FnCtxt<'a, 'tcx> {
 
     pub(super) diverging_fallback_behavior: DivergingFallbackBehavior,
     pub(super) diverging_block_behavior: DivergingBlockBehavior,
+
+    /// Clauses that we lowered as part of the `impl_trait_in_bindings` feature.
+    ///
+    /// These are stored here so we may collect them when canonicalizing user
+    /// type ascriptions later.
+    pub(super) trait_ascriptions: RefCell<ItemLocalMap<Vec<ty::Clause<'tcx>>>>,
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -141,6 +148,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             fallback_has_occurred: Cell::new(false),
             diverging_fallback_behavior,
             diverging_block_behavior,
+            trait_ascriptions: Default::default(),
         }
     }
 
@@ -249,6 +257,30 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         match param {
             Some(param) => self.var_for_def(span, param).as_const().unwrap(),
             None => self.next_const_var(span),
+        }
+    }
+
+    fn register_trait_ascription_bounds(
+        &self,
+        bounds: Vec<(ty::Clause<'tcx>, Span)>,
+        hir_id: HirId,
+        _span: Span,
+    ) {
+        for (clause, span) in bounds {
+            if clause.has_escaping_bound_vars() {
+                self.dcx().span_delayed_bug(span, "clause should have no escaping bound vars");
+                continue;
+            }
+
+            self.trait_ascriptions.borrow_mut().entry(hir_id.local_id).or_default().push(clause);
+
+            let clause = self.normalize(span, clause);
+            self.register_predicate(Obligation::new(
+                self.tcx,
+                self.misc(span),
+                self.param_env,
+                clause,
+            ));
         }
     }
 

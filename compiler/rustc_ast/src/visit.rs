@@ -380,7 +380,7 @@ impl WalkItemKind for ItemKind {
                 try_visit!(visitor.visit_fn(kind, span, id));
             }
             ItemKind::Mod(_unsafety, mod_kind) => match mod_kind {
-                ModKind::Loaded(items, _inline, _inner_span) => {
+                ModKind::Loaded(items, _inline, _inner_span, _) => {
                     walk_list!(visitor, visit_item, items);
                 }
                 ModKind::Unloaded => {}
@@ -521,6 +521,10 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) -> V::Result {
                 &**function_declaration;
             walk_list!(visitor, visit_generic_param, generic_params);
             try_visit!(visitor.visit_fn_decl(decl));
+        }
+        TyKind::UnsafeBinder(binder) => {
+            walk_list!(visitor, visit_generic_param, &binder.generic_params);
+            try_visit!(visitor.visit_ty(&binder.inner_ty));
         }
         TyKind::Path(maybe_qself, path) => {
             try_visit!(visitor.visit_qself(maybe_qself));
@@ -1226,6 +1230,10 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) -> V
         ExprKind::TryBlock(body) => try_visit!(visitor.visit_block(body)),
         ExprKind::Lit(_token) => {}
         ExprKind::IncludedBytes(_bytes) => {}
+        ExprKind::UnsafeBinderCast(_kind, expr, ty) => {
+            try_visit!(visitor.visit_expr(expr));
+            visit_opt!(visitor, visit_ty, ty);
+        }
         ExprKind::Err(_guar) => {}
         ExprKind::Dummy => {}
     }

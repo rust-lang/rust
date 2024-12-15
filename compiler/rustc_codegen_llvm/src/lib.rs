@@ -27,7 +27,7 @@ use std::mem::ManuallyDrop;
 use back::owned_target_machine::OwnedTargetMachine;
 use back::write::{create_informational_target_machine, create_target_machine};
 use errors::ParseTargetMachineConfig;
-pub use llvm_util::target_features;
+pub use llvm_util::target_features_cfg;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
 use rustc_codegen_ssa::back::write::{
@@ -330,8 +330,8 @@ impl CodegenBackend for LlvmCodegenBackend {
         llvm_util::print_version();
     }
 
-    fn target_features(&self, sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
-        target_features(sess, allow_unstable)
+    fn target_features_cfg(&self, sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
+        target_features_cfg(sess, allow_unstable)
     }
 
     fn codegen_crate<'tcx>(

@@ -34,6 +34,25 @@ pub struct BorrowSet<'tcx> {
     pub(crate) locals_state_at_exit: LocalsStateAtExit,
 }
 
+// These methods are public to support borrowck consumers.
+impl<'tcx> BorrowSet<'tcx> {
+    pub fn location_map(&self) -> &FxIndexMap<Location, BorrowData<'tcx>> {
+        &self.location_map
+    }
+
+    pub fn activation_map(&self) -> &FxIndexMap<Location, Vec<BorrowIndex>> {
+        &self.activation_map
+    }
+
+    pub fn local_map(&self) -> &FxIndexMap<mir::Local, FxIndexSet<BorrowIndex>> {
+        &self.local_map
+    }
+
+    pub fn locals_state_at_exit(&self) -> &LocalsStateAtExit {
+        &self.locals_state_at_exit
+    }
+}
+
 impl<'tcx> Index<BorrowIndex> for BorrowSet<'tcx> {
     type Output = BorrowData<'tcx>;
 
@@ -45,7 +64,7 @@ impl<'tcx> Index<BorrowIndex> for BorrowSet<'tcx> {
 /// Location where a two-phase borrow is activated, if a borrow
 /// is in fact a two-phase borrow.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub(crate) enum TwoPhaseActivation {
+pub enum TwoPhaseActivation {
     NotTwoPhase,
     NotActivated,
     ActivatedAt(Location),
@@ -66,6 +85,33 @@ pub struct BorrowData<'tcx> {
     pub(crate) borrowed_place: mir::Place<'tcx>,
     /// Place to which the borrow was stored
     pub(crate) assigned_place: mir::Place<'tcx>,
+}
+
+// These methods are public to support borrowck consumers.
+impl<'tcx> BorrowData<'tcx> {
+    pub fn reserve_location(&self) -> Location {
+        self.reserve_location
+    }
+
+    pub fn activation_location(&self) -> TwoPhaseActivation {
+        self.activation_location
+    }
+
+    pub fn kind(&self) -> mir::BorrowKind {
+        self.kind
+    }
+
+    pub fn region(&self) -> RegionVid {
+        self.region
+    }
+
+    pub fn borrowed_place(&self) -> mir::Place<'tcx> {
+        self.borrowed_place
+    }
+
+    pub fn assigned_place(&self) -> mir::Place<'tcx> {
+        self.assigned_place
+    }
 }
 
 impl<'tcx> fmt::Display for BorrowData<'tcx> {
@@ -120,7 +166,7 @@ impl LocalsStateAtExit {
 }
 
 impl<'tcx> BorrowSet<'tcx> {
-    pub(crate) fn build(
+    pub fn build(
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
         locals_are_invalidated_at_exit: bool,

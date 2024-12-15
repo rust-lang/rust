@@ -584,8 +584,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         interp_ok(())
     }
 
+    /// This is public because it is used by [Aquascope](https://github.com/cognitive-engineering-lab/aquascope/)
+    /// to analyze all the locals in a stack frame.
     #[inline(always)]
-    pub(super) fn layout_of_local(
+    pub fn layout_of_local(
         &self,
         frame: &Frame<'tcx, M::Provenance, M::FrameExtra>,
         local: mir::Local,

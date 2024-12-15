@@ -12,6 +12,8 @@ pub(crate) fn target() -> Target {
     base.stack_probes = StackProbeType::Inline;
     base.supported_sanitizers =
         SanitizerSet::ADDRESS | SanitizerSet::LEAK | SanitizerSet::MEMORY | SanitizerSet::THREAD;
+    // FIXME(compiler-team#422): musl targets should be dynamically linked by default.
+    base.crt_static_default = true;
 
     Target {
         llvm_target: "s390x-unknown-linux-musl".into(),

@@ -35,9 +35,9 @@ where
 {
     fn visit_block_start(&mut self, _state: &A::Domain) {}
 
-    /// Called with the `before_statement_effect` of the given statement applied to `state` but not
-    /// its `statement_effect`.
-    fn visit_statement_before_primary_effect(
+    /// // njn: grep for "before", "primary", etc.
+    /// Called after the "early" effect of the given statement is applied to `state`.
+    fn visit_after_early_statement_effect(
         &mut self,
         _results: &mut Results<'tcx, A>,
         _state: &A::Domain,
@@ -46,9 +46,8 @@ where
     ) {
     }
 
-    /// Called with both the `before_statement_effect` and the `statement_effect` of the given
-    /// statement applied to `state`.
-    fn visit_statement_after_primary_effect(
+    /// Called after the "primary" effect of the given statement is applied to `state`.
+    fn visit_after_primary_statement_effect(
         &mut self,
         _results: &mut Results<'tcx, A>,
         _state: &A::Domain,
@@ -57,9 +56,8 @@ where
     ) {
     }
 
-    /// Called with the `before_terminator_effect` of the given terminator applied to `state` but
-    /// not its `terminator_effect`.
-    fn visit_terminator_before_primary_effect(
+    /// Called after the "early" effect of the given terminator is applied to `state`.
+    fn visit_after_early_terminator_effect(
         &mut self,
         _results: &mut Results<'tcx, A>,
         _state: &A::Domain,
@@ -68,11 +66,10 @@ where
     ) {
     }
 
-    /// Called with both the `before_terminator_effect` and the `terminator_effect` of the given
-    /// terminator applied to `state`.
+    /// Called after the "primary" effect of the given terminator is applied to `state`.
     ///
     /// The `call_return_effect` (if one exists) will *not* be applied to `state`.
-    fn visit_terminator_after_primary_effect(
+    fn visit_after_primary_terminator_effect(
         &mut self,
         _results: &mut Results<'tcx, A>,
         _state: &A::Domain,

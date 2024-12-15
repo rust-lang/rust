@@ -3038,7 +3038,7 @@ impl EarlyLintPass for SpecialModuleName {
         for item in &krate.items {
             if let ast::ItemKind::Mod(
                 _,
-                ast::ModKind::Unloaded | ast::ModKind::Loaded(_, ast::Inline::No, _),
+                ast::ModKind::Unloaded | ast::ModKind::Loaded(_, ast::Inline::No, _, _),
             ) = item.kind
             {
                 if item.attrs.iter().any(|a| a.has_name(sym::path)) {

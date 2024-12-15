@@ -781,6 +781,36 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     intravisit::walk_ty(this, ty);
                 });
             }
+            hir::TyKind::UnsafeBinder(binder) => {
+                let (mut bound_vars, binders): (FxIndexMap<LocalDefId, ResolvedArg>, Vec<_>) =
+                    binder
+                        .generic_params
+                        .iter()
+                        .enumerate()
+                        .map(|(late_bound_idx, param)| {
+                            (
+                                (param.def_id, ResolvedArg::late(late_bound_idx as u32, param)),
+                                late_arg_as_bound_arg(self.tcx, param),
+                            )
+                        })
+                        .unzip();
+
+                deny_non_region_late_bound(self.tcx, &mut bound_vars, "function pointer types");
+
+                self.record_late_bound_vars(ty.hir_id, binders);
+                let scope = Scope::Binder {
+                    hir_id: ty.hir_id,
+                    bound_vars,
+                    s: self.scope,
+                    scope_type: BinderScopeType::Normal,
+                    where_bound_origin: None,
+                };
+                self.with(scope, |this| {
+                    // a bare fn has no bounds, so everything
+                    // contained within is scoped within its binder.
+                    intravisit::walk_ty(this, ty);
+                });
+            }
             hir::TyKind::TraitObject(bounds, lifetime, _) => {
                 debug!(?bounds, ?lifetime, "TraitObject");
                 let scope = Scope::TraitRefBoundary { s: self.scope };
@@ -821,6 +851,21 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     s: self.scope,
                 };
                 self.with(scope, |this| this.visit_ty(mt.ty));
+            }
+            hir::TyKind::TraitAscription(bounds) => {
+                let scope = Scope::TraitRefBoundary { s: self.scope };
+                self.with(scope, |this| {
+                    let scope = Scope::LateBoundary {
+                        s: this.scope,
+                        what: "`impl Trait` in binding",
+                        deny_late_regions: true,
+                    };
+                    this.with(scope, |this| {
+                        for bound in bounds {
+                            this.visit_param_bound(bound);
+                        }
+                    })
+                });
             }
             _ => intravisit::walk_ty(self, ty),
         }

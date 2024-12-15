@@ -11,19 +11,16 @@
       let mut _6: &[u8];
       let mut _7: &[u8; N];
       let _8: usize;
-      let mut _9: usize;
-      let mut _10: bool;
-      let _11: usize;
-      let mut _12: usize;
-      let mut _13: bool;
+      let mut _9: bool;
+      let _10: usize;
+      let mut _11: bool;
   
       bb0: {
 -         StorageLive(_3);
 +         nop;
           StorageLive(_4);
           _4 = copy _1;
--         StorageLive(_5);
-+         nop;
+          StorageLive(_5);
           StorageLive(_6);
           StorageLive(_7);
           _7 = &(*_2);
@@ -43,16 +40,13 @@
       }
   
       bb2: {
--         StorageDead(_5);
-+         nop;
+          StorageDead(_5);
           StorageDead(_4);
           StorageLive(_8);
           _8 = copy _1;
--         _9 = Len((*_2));
--         _10 = Lt(copy _8, copy _9);
--         assert(move _10, "index out of bounds: the length is {} but the index is {}", move _9, copy _8) -> [success: bb3, unwind unreachable];
-+         _9 = const N;
-+         _10 = copy _3;
+-         _9 = Lt(copy _8, const N);
+-         assert(move _9, "index out of bounds: the length is {} but the index is {}", const N, copy _8) -> [success: bb3, unwind unreachable];
++         _9 = copy _3;
 +         assert(copy _3, "index out of bounds: the length is {} but the index is {}", const N, copy _1) -> [success: bb3, unwind unreachable];
       }
   
@@ -64,23 +58,20 @@
       }
   
       bb4: {
--         StorageDead(_5);
-+         nop;
+          StorageDead(_5);
           StorageDead(_4);
-          StorageLive(_11);
-          _11 = const 0_usize;
--         _12 = Len((*_2));
--         _13 = Lt(copy _11, copy _12);
--         assert(move _13, "index out of bounds: the length is {} but the index is {}", move _12, copy _11) -> [success: bb5, unwind unreachable];
-+         _12 = const N;
-+         _13 = Lt(const 0_usize, const N);
-+         assert(move _13, "index out of bounds: the length is {} but the index is {}", const N, const 0_usize) -> [success: bb5, unwind unreachable];
+          StorageLive(_10);
+          _10 = const 0_usize;
+-         _11 = Lt(copy _10, const N);
+-         assert(move _11, "index out of bounds: the length is {} but the index is {}", const N, copy _10) -> [success: bb5, unwind unreachable];
++         _11 = Lt(const 0_usize, const N);
++         assert(move _11, "index out of bounds: the length is {} but the index is {}", const N, const 0_usize) -> [success: bb5, unwind unreachable];
       }
   
       bb5: {
--         (*_2)[_11] = const 42_u8;
+-         (*_2)[_10] = const 42_u8;
 +         (*_2)[0 of 1] = const 42_u8;
-          StorageDead(_11);
+          StorageDead(_10);
           _0 = const 42_u8;
           goto -> bb6;
       }

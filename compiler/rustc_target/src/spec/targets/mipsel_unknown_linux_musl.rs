@@ -5,7 +5,6 @@ pub(crate) fn target() -> Target {
     base.cpu = "mips32r2".into();
     base.features = "+mips32r2,+soft-float".into();
     base.max_atomic_width = Some(32);
-    base.crt_static_default = false;
     Target {
         llvm_target: "mipsel-unknown-linux-musl".into(),
         metadata: crate::spec::TargetMetadata {

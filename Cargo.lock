@@ -3507,7 +3507,6 @@ dependencies = [
  "cc",
  "either",
  "itertools",
- "jobserver",
  "libc",
  "object 0.36.5",
  "pathdiff",

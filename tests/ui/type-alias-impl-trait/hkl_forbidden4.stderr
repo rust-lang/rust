@@ -15,8 +15,7 @@ error: item does not constrain `FutNothing::{opaque#0}`, but has it in its signa
   --> $DIR/hkl_forbidden4.rs:22:1
    |
 LL | / {
-LL | |
-LL | |
+...  |
 LL | | }
    | |_^
    |
@@ -55,8 +54,7 @@ LL |   type FutNothing<'a> = impl 'a + Future<Output = ()>;
    |                   -- this generic parameter must be used with a generic lifetime parameter
 ...
 LL | / {
-LL | |
-LL | |
+...  |
 LL | | }
    | |_^
 

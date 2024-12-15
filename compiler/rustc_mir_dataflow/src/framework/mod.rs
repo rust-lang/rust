@@ -56,7 +56,7 @@ mod visitor;
 pub use self::cursor::ResultsCursor;
 pub use self::direction::{Backward, Direction, Forward};
 pub use self::lattice::{JoinSemiLattice, MaybeReachable};
-pub use self::results::{EntrySets, Results};
+pub use self::results::{EntryStates, Results};
 pub use self::visitor::{ResultsVisitor, visit_results};
 
 /// Analysis domains are all bitsets of various kinds. This trait holds
@@ -122,8 +122,23 @@ pub trait Analysis<'tcx> {
     // `resume`). It's not obvious how to handle `yield` points in coroutines, however.
     fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut Self::Domain);
 
+    /// Updates the current dataflow state with an "early" effect, i.e. one
+    /// that occurs immediately before the given statement.
+    ///
+    /// This method is useful if the consumer of the results of this analysis only needs to observe
+    /// *part* of the effect of a statement (e.g. for two-phase borrows). As a general rule,
+    /// analyses should not implement this without also implementing
+    /// `apply_primary_statement_effect`.
+    fn apply_early_statement_effect(
+        &mut self,
+        _state: &mut Self::Domain,
+        _statement: &mir::Statement<'tcx>,
+        _location: Location,
+    ) {
+    }
+
     /// Updates the current dataflow state with the effect of evaluating a statement.
-    fn apply_statement_effect(
+    fn apply_primary_statement_effect(
         &mut self,
         state: &mut Self::Domain,
         statement: &mir::Statement<'tcx>,
@@ -131,15 +146,16 @@ pub trait Analysis<'tcx> {
     );
 
     /// Updates the current dataflow state with an effect that occurs immediately *before* the
-    /// given statement.
+    /// given terminator.
     ///
-    /// This method is useful if the consumer of the results of this analysis only needs to observe
-    /// *part* of the effect of a statement (e.g. for two-phase borrows). As a general rule,
-    /// analyses should not implement this without also implementing `apply_statement_effect`.
-    fn apply_before_statement_effect(
+    /// This method is useful if the consumer of the results of this analysis needs only to observe
+    /// *part* of the effect of a terminator (e.g. for two-phase borrows). As a general rule,
+    /// analyses should not implement this without also implementing
+    /// `apply_primary_terminator_effect`.
+    fn apply_early_terminator_effect(
         &mut self,
         _state: &mut Self::Domain,
-        _statement: &mir::Statement<'tcx>,
+        _terminator: &mir::Terminator<'tcx>,
         _location: Location,
     ) {
     }
@@ -150,7 +166,7 @@ pub trait Analysis<'tcx> {
     /// in this function. That should go in `apply_call_return_effect`. For example, in the
     /// `InitializedPlaces` analyses, the return place for a function call is not marked as
     /// initialized here.
-    fn apply_terminator_effect<'mir>(
+    fn apply_primary_terminator_effect<'mir>(
         &mut self,
         _state: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
@@ -159,27 +175,13 @@ pub trait Analysis<'tcx> {
         terminator.edges()
     }
 
-    /// Updates the current dataflow state with an effect that occurs immediately *before* the
-    /// given terminator.
-    ///
-    /// This method is useful if the consumer of the results of this analysis needs only to observe
-    /// *part* of the effect of a terminator (e.g. for two-phase borrows). As a general rule,
-    /// analyses should not implement this without also implementing `apply_terminator_effect`.
-    fn apply_before_terminator_effect(
-        &mut self,
-        _state: &mut Self::Domain,
-        _terminator: &mir::Terminator<'tcx>,
-        _location: Location,
-    ) {
-    }
-
     /* Edge-specific effects */
 
     /// Updates the current dataflow state with the effect of a successful return from a `Call`
     /// terminator.
     ///
-    /// This is separate from `apply_terminator_effect` to properly track state across unwind
-    /// edges.
+    /// This is separate from `apply_primary_terminator_effect` to properly track state across
+    /// unwind edges.
     fn apply_call_return_effect(
         &mut self,
         _state: &mut Self::Domain,
@@ -234,11 +236,12 @@ pub trait Analysis<'tcx> {
         Self: Sized,
         Self::Domain: DebugWithContext<Self>,
     {
-        let mut entry_sets =
+        let mut entry_states =
             IndexVec::from_fn_n(|_| self.bottom_value(body), body.basic_blocks.len());
-        self.initialize_start_block(body, &mut entry_sets[mir::START_BLOCK]);
+        self.initialize_start_block(body, &mut entry_states[mir::START_BLOCK]);
 
-        if Self::Direction::IS_BACKWARD && entry_sets[mir::START_BLOCK] != self.bottom_value(body) {
+        if Self::Direction::IS_BACKWARD && entry_states[mir::START_BLOCK] != self.bottom_value(body)
+        {
             bug!("`initialize_start_block` is not yet supported for backward dataflow analyses");
         }
 
@@ -262,9 +265,9 @@ pub trait Analysis<'tcx> {
         let mut state = self.bottom_value(body);
         while let Some(bb) = dirty_queue.pop() {
             // Set the state to the entry state of the block.
-            // This is equivalent to `state = entry_sets[bb].clone()`,
+            // This is equivalent to `state = entry_states[bb].clone()`,
             // but it saves an allocation, thus improving compile times.
-            state.clone_from(&entry_sets[bb]);
+            state.clone_from(&entry_states[bb]);
 
             Self::Direction::apply_effects_in_block(
                 &mut self,
@@ -273,7 +276,7 @@ pub trait Analysis<'tcx> {
                 bb,
                 &body[bb],
                 |target: BasicBlock, state: &Self::Domain| {
-                    let set_changed = entry_sets[target].join(state);
+                    let set_changed = entry_states[target].join(state);
                     if set_changed {
                         dirty_queue.insert(target);
                     }
@@ -281,7 +284,7 @@ pub trait Analysis<'tcx> {
             );
         }
 
-        let mut results = Results { analysis: self, entry_sets };
+        let mut results = Results { analysis: self, entry_states };
 
         if tcx.sess.opts.unstable_opts.dump_mir_dataflow {
             let res = write_graphviz_results(tcx, body, &mut results, pass_name);
@@ -358,11 +361,10 @@ impl<T, S: GenKill<T>> GenKill<T> for MaybeReachable<S> {
 // NOTE: DO NOT CHANGE VARIANT ORDER. The derived `Ord` impls rely on the current order.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum Effect {
-    /// The "before" effect (e.g., `apply_before_statement_effect`) for a statement (or
-    /// terminator).
-    Before,
+    /// The "early" effect (e.g., `apply_early_statement_effect`) for a statement/terminator.
+    Early,
 
-    /// The "primary" effect (e.g., `apply_statement_effect`) for a statement (or terminator).
+    /// The "primary" effect (e.g., `apply_primary_statement_effect`) for a statement/terminator.
     Primary,
 }
 
@@ -381,15 +383,15 @@ pub struct EffectIndex {
 impl EffectIndex {
     fn next_in_forward_order(self) -> Self {
         match self.effect {
-            Effect::Before => Effect::Primary.at_index(self.statement_index),
-            Effect::Primary => Effect::Before.at_index(self.statement_index + 1),
+            Effect::Early => Effect::Primary.at_index(self.statement_index),
+            Effect::Primary => Effect::Early.at_index(self.statement_index + 1),
         }
     }
 
     fn next_in_backward_order(self) -> Self {
         match self.effect {
-            Effect::Before => Effect::Primary.at_index(self.statement_index),
-            Effect::Primary => Effect::Before.at_index(self.statement_index - 1),
+            Effect::Early => Effect::Primary.at_index(self.statement_index),
+            Effect::Primary => Effect::Early.at_index(self.statement_index - 1),
         }
     }
 

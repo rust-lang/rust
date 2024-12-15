@@ -315,9 +315,40 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
 
     fn visit_expr(&mut self, e: &'v hir::Expr<'v>) {
         record_variants!((self, e, e.kind, Some(e.hir_id), hir, Expr, ExprKind), [
-            ConstBlock, Array, Call, MethodCall, Tup, Binary, Unary, Lit, Cast, Type, DropTemps,
-            Let, If, Loop, Match, Closure, Block, Assign, AssignOp, Field, Index, Path, AddrOf,
-            Break, Continue, Ret, Become, InlineAsm, OffsetOf, Struct, Repeat, Yield, Err
+            ConstBlock,
+            Array,
+            Call,
+            MethodCall,
+            Tup,
+            Binary,
+            Unary,
+            Lit,
+            Cast,
+            Type,
+            DropTemps,
+            Let,
+            If,
+            Loop,
+            Match,
+            Closure,
+            Block,
+            Assign,
+            AssignOp,
+            Field,
+            Index,
+            Path,
+            AddrOf,
+            Break,
+            Continue,
+            Ret,
+            Become,
+            InlineAsm,
+            OffsetOf,
+            Struct,
+            Repeat,
+            Yield,
+            UnsafeBinderCast,
+            Err
         ]);
         hir_visit::walk_expr(self, e)
     }
@@ -335,10 +366,12 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
             Ptr,
             Ref,
             BareFn,
+            UnsafeBinder,
             Never,
             Tup,
             Path,
             OpaqueDef,
+            TraitAscription,
             TraitObject,
             Typeof,
             Infer,
@@ -571,7 +604,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 If, While, ForLoop, Loop, Match, Closure, Block, Await, TryBlock, Assign,
                 AssignOp, Field, Index, Range, Underscore, Path, AddrOf, Break, Continue, Ret,
                 InlineAsm, FormatArgs, OffsetOf, MacCall, Struct, Repeat, Paren, Try, Yield, Yeet,
-                Become, IncludedBytes, Gen, Err, Dummy
+                Become, IncludedBytes, Gen, UnsafeBinderCast, Err, Dummy
             ]
         );
         ast_visit::walk_expr(self, e)
@@ -585,6 +618,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
             Ref,
             PinnedRef,
             BareFn,
+            UnsafeBinder,
             Never,
             Tup,
             Path,

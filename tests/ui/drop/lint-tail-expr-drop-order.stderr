@@ -22,22 +22,14 @@ note: `#1` invokes this custom destructor
   --> $DIR/lint-tail-expr-drop-order.rs:11:1
    |
 LL | / impl Drop for LoudDropper {
-LL | |
-LL | |
-LL | |
 ...  |
-LL | |     }
 LL | | }
    | |_^
 note: `x` invokes this custom destructor
   --> $DIR/lint-tail-expr-drop-order.rs:11:1
    |
 LL | / impl Drop for LoudDropper {
-LL | |
-LL | |
-LL | |
 ...  |
-LL | |     }
 LL | | }
    | |_^
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
@@ -71,22 +63,14 @@ note: `#1` invokes this custom destructor
   --> $DIR/lint-tail-expr-drop-order.rs:11:1
    |
 LL | / impl Drop for LoudDropper {
-LL | |
-LL | |
-LL | |
 ...  |
-LL | |     }
 LL | | }
    | |_^
 note: `x` invokes this custom destructor
   --> $DIR/lint-tail-expr-drop-order.rs:11:1
    |
 LL | / impl Drop for LoudDropper {
-LL | |
-LL | |
-LL | |
 ...  |
-LL | |     }
 LL | | }
    | |_^
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
@@ -115,22 +99,14 @@ note: `#1` invokes this custom destructor
   --> $DIR/lint-tail-expr-drop-order.rs:11:1
    |
 LL | / impl Drop for LoudDropper {
-LL | |
-LL | |
-LL | |
 ...  |
-LL | |     }
 LL | | }
    | |_^
 note: `x` invokes this custom destructor
   --> $DIR/lint-tail-expr-drop-order.rs:11:1
    |
 LL | / impl Drop for LoudDropper {
-LL | |
-LL | |
-LL | |
 ...  |
-LL | |     }
 LL | | }
    | |_^
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
@@ -159,22 +135,14 @@ note: `#1` invokes this custom destructor
   --> $DIR/lint-tail-expr-drop-order.rs:11:1
    |
 LL | / impl Drop for LoudDropper {
-LL | |
-LL | |
-LL | |
 ...  |
-LL | |     }
 LL | | }
    | |_^
 note: `future` invokes this custom destructor
   --> $DIR/lint-tail-expr-drop-order.rs:11:1
    |
 LL | / impl Drop for LoudDropper {
-LL | |
-LL | |
-LL | |
 ...  |
-LL | |     }
 LL | | }
    | |_^
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
@@ -225,22 +193,14 @@ note: `#1` invokes this custom destructor
   --> $DIR/lint-tail-expr-drop-order.rs:11:1
    |
 LL | / impl Drop for LoudDropper {
-LL | |
-LL | |
-LL | |
 ...  |
-LL | |     }
 LL | | }
    | |_^
 note: `x` invokes this custom destructor
   --> $DIR/lint-tail-expr-drop-order.rs:11:1
    |
 LL | / impl Drop for LoudDropper {
-LL | |
-LL | |
-LL | |
 ...  |
-LL | |     }
 LL | | }
    | |_^
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
@@ -311,22 +271,14 @@ note: `#1` invokes this custom destructor
   --> $DIR/lint-tail-expr-drop-order.rs:11:1
    |
 LL | / impl Drop for LoudDropper {
-LL | |
-LL | |
-LL | |
 ...  |
-LL | |     }
 LL | | }
    | |_^
 note: `_x` invokes this custom destructor
   --> $DIR/lint-tail-expr-drop-order.rs:11:1
    |
 LL | / impl Drop for LoudDropper {
-LL | |
-LL | |
-LL | |
 ...  |
-LL | |     }
 LL | | }
    | |_^
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages

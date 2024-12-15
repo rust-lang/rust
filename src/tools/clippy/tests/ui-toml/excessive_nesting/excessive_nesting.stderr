@@ -66,8 +66,7 @@ error: this block is too nested
 LL |                   if true {
    |  _________________________^
 LL | |                     if true {
-LL | |
-LL | |                     }
+...  |
 LL | |                 }
    | |_________________^
    |

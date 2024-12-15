@@ -1,0 +1,8 @@
+warning: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+  --> $DIR/allow-non-lint-warnings.rs:26:13
+   |
+LL | pub fn f<T: ?Trait>() {}
+   |             ^^^^^^
+
+warning: 1 warning emitted
+

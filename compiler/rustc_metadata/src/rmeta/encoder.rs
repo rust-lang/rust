@@ -1264,12 +1264,7 @@ fn should_encode_fn_sig(def_kind: DefKind) -> bool {
 
 fn should_encode_constness(def_kind: DefKind) -> bool {
     match def_kind {
-        DefKind::Fn
-        | DefKind::AssocFn
-        | DefKind::Closure
-        | DefKind::Impl { of_trait: true }
-        | DefKind::Variant
-        | DefKind::Ctor(..) => true,
+        DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::Ctor(_, CtorKind::Fn) => true,
 
         DefKind::Struct
         | DefKind::Union
@@ -1281,7 +1276,7 @@ fn should_encode_constness(def_kind: DefKind) -> bool {
         | DefKind::Static { .. }
         | DefKind::TyAlias
         | DefKind::OpaqueTy
-        | DefKind::Impl { of_trait: false }
+        | DefKind::Impl { .. }
         | DefKind::ForeignTy
         | DefKind::ConstParam
         | DefKind::InlineConst
@@ -1296,6 +1291,8 @@ fn should_encode_constness(def_kind: DefKind) -> bool {
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
         | DefKind::ExternCrate
+        | DefKind::Ctor(_, CtorKind::Const)
+        | DefKind::Variant
         | DefKind::SyntheticCoroutineBody => false,
     }
 }
@@ -2164,10 +2161,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_dylib_dependency_formats(&mut self) -> LazyArray<Option<LinkagePreference>> {
         empty_proc_macro!(self);
         let formats = self.tcx.dependency_formats(());
-        for (ty, arr) in formats.iter() {
-            if *ty != CrateType::Dylib {
-                continue;
-            }
+        if let Some(arr) = formats.get(&CrateType::Dylib) {
             return self.lazy_array(arr.iter().map(|slot| match *slot {
                 Linkage::NotLinked | Linkage::IncludedFromDylib => None,
 

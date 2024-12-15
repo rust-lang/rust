@@ -15,8 +15,7 @@ error[E0277]: the trait bound `isize: HasState` is not satisfied
    |
 LL |   fn add_state(op: <isize as HasState>::State) {
    |  ______________________________________________^
-LL | |
-LL | |
+...  |
 LL | | }
    | |_^ the trait `HasState` is not implemented for `isize`
    |

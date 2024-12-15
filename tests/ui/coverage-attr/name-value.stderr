@@ -171,8 +171,6 @@ LL |   #[coverage = "off"]
 ...
 LL | / trait MyTrait {
 LL | |     #[coverage = "off"]
-LL | |
-LL | |
 ...  |
 LL | |     type T;
 LL | | }

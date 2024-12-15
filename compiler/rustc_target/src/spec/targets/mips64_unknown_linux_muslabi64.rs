@@ -22,6 +22,8 @@ pub(crate) fn target() -> Target {
             abi: "abi64".into(),
             endian: Endian::Big,
             mcount: "_mcount".into(),
+            // FIXME(compiler-team#422): musl targets should be dynamically linked by default.
+            crt_static_default: true,
             ..base
         },
     }

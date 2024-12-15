@@ -8,7 +8,10 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_mir_dataflow::fmt::DebugWithContext;
-use rustc_mir_dataflow::impls::{EverInitializedPlaces, MaybeUninitializedPlaces};
+use rustc_mir_dataflow::impls::{
+    EverInitializedPlaces, EverInitializedPlacesDomain, MaybeUninitializedPlaces,
+    MaybeUninitializedPlacesDomain,
+};
 use rustc_mir_dataflow::{Analysis, GenKill, JoinSemiLattice, SwitchIntEdgeEffects};
 use tracing::debug;
 
@@ -24,7 +27,7 @@ pub(crate) struct Borrowck<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Analysis<'tcx> for Borrowck<'a, 'tcx> {
-    type Domain = BorrowckDomain<'a, 'tcx>;
+    type Domain = BorrowckDomain;
 
     const NAME: &'static str = "borrowck";
 
@@ -41,48 +44,48 @@ impl<'a, 'tcx> Analysis<'tcx> for Borrowck<'a, 'tcx> {
         unreachable!();
     }
 
-    fn apply_before_statement_effect(
+    fn apply_early_statement_effect(
         &mut self,
         state: &mut Self::Domain,
         stmt: &mir::Statement<'tcx>,
         loc: Location,
     ) {
-        self.borrows.apply_before_statement_effect(&mut state.borrows, stmt, loc);
-        self.uninits.apply_before_statement_effect(&mut state.uninits, stmt, loc);
-        self.ever_inits.apply_before_statement_effect(&mut state.ever_inits, stmt, loc);
+        self.borrows.apply_early_statement_effect(&mut state.borrows, stmt, loc);
+        self.uninits.apply_early_statement_effect(&mut state.uninits, stmt, loc);
+        self.ever_inits.apply_early_statement_effect(&mut state.ever_inits, stmt, loc);
     }
 
-    fn apply_statement_effect(
+    fn apply_primary_statement_effect(
         &mut self,
         state: &mut Self::Domain,
         stmt: &mir::Statement<'tcx>,
         loc: Location,
     ) {
-        self.borrows.apply_statement_effect(&mut state.borrows, stmt, loc);
-        self.uninits.apply_statement_effect(&mut state.uninits, stmt, loc);
-        self.ever_inits.apply_statement_effect(&mut state.ever_inits, stmt, loc);
+        self.borrows.apply_primary_statement_effect(&mut state.borrows, stmt, loc);
+        self.uninits.apply_primary_statement_effect(&mut state.uninits, stmt, loc);
+        self.ever_inits.apply_primary_statement_effect(&mut state.ever_inits, stmt, loc);
     }
 
-    fn apply_before_terminator_effect(
+    fn apply_early_terminator_effect(
         &mut self,
         state: &mut Self::Domain,
         term: &mir::Terminator<'tcx>,
         loc: Location,
     ) {
-        self.borrows.apply_before_terminator_effect(&mut state.borrows, term, loc);
-        self.uninits.apply_before_terminator_effect(&mut state.uninits, term, loc);
-        self.ever_inits.apply_before_terminator_effect(&mut state.ever_inits, term, loc);
+        self.borrows.apply_early_terminator_effect(&mut state.borrows, term, loc);
+        self.uninits.apply_early_terminator_effect(&mut state.uninits, term, loc);
+        self.ever_inits.apply_early_terminator_effect(&mut state.ever_inits, term, loc);
     }
 
-    fn apply_terminator_effect<'mir>(
+    fn apply_primary_terminator_effect<'mir>(
         &mut self,
         state: &mut Self::Domain,
         term: &'mir mir::Terminator<'tcx>,
         loc: Location,
     ) -> TerminatorEdges<'mir, 'tcx> {
-        self.borrows.apply_terminator_effect(&mut state.borrows, term, loc);
-        self.uninits.apply_terminator_effect(&mut state.uninits, term, loc);
-        self.ever_inits.apply_terminator_effect(&mut state.ever_inits, term, loc);
+        self.borrows.apply_primary_terminator_effect(&mut state.borrows, term, loc);
+        self.uninits.apply_primary_terminator_effect(&mut state.uninits, term, loc);
+        self.ever_inits.apply_primary_terminator_effect(&mut state.ever_inits, term, loc);
 
         // This return value doesn't matter. It's only used by `iterate_to_fixpoint`, which this
         // analysis doesn't use.
@@ -110,14 +113,14 @@ impl<'a, 'tcx> Analysis<'tcx> for Borrowck<'a, 'tcx> {
     }
 }
 
-impl JoinSemiLattice for BorrowckDomain<'_, '_> {
+impl JoinSemiLattice for BorrowckDomain {
     fn join(&mut self, _other: &Self) -> bool {
         // This is only reachable from `iterate_to_fixpoint`, which this analysis doesn't use.
         unreachable!();
     }
 }
 
-impl<'tcx, C> DebugWithContext<C> for BorrowckDomain<'_, 'tcx>
+impl<'tcx, C> DebugWithContext<C> for BorrowckDomain
 where
     C: rustc_mir_dataflow::move_paths::HasMoveData<'tcx>,
 {
@@ -160,10 +163,10 @@ where
 
 /// The transient state of the dataflow analyses used by the borrow checker.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct BorrowckDomain<'a, 'tcx> {
-    pub(crate) borrows: <Borrows<'a, 'tcx> as Analysis<'tcx>>::Domain,
-    pub(crate) uninits: <MaybeUninitializedPlaces<'a, 'tcx> as Analysis<'tcx>>::Domain,
-    pub(crate) ever_inits: <EverInitializedPlaces<'a, 'tcx> as Analysis<'tcx>>::Domain,
+pub(crate) struct BorrowckDomain {
+    pub(crate) borrows: BorrowsDomain,
+    pub(crate) uninits: MaybeUninitializedPlacesDomain,
+    pub(crate) ever_inits: EverInitializedPlacesDomain,
 }
 
 rustc_index::newtype_index! {
@@ -503,7 +506,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
     /// That means they went out of a nonlexical scope
     fn kill_loans_out_of_scope_at_location(
         &self,
-        trans: &mut <Self as Analysis<'tcx>>::Domain,
+        state: &mut <Self as Analysis<'tcx>>::Domain,
         location: Location,
     ) {
         // NOTE: The state associated with a given `location`
@@ -518,14 +521,14 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
         // region, then setting that gen-bit will override any
         // potential kill introduced here.
         if let Some(indices) = self.borrows_out_of_scope_at_location.get(&location) {
-            trans.kill_all(indices.iter().copied());
+            state.kill_all(indices.iter().copied());
         }
     }
 
     /// Kill any borrows that conflict with `place`.
     fn kill_borrows_on_place(
         &self,
-        trans: &mut <Self as Analysis<'tcx>>::Domain,
+        state: &mut <Self as Analysis<'tcx>>::Domain,
         place: Place<'tcx>,
     ) {
         debug!("kill_borrows_on_place: place={:?}", place);
@@ -543,7 +546,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
         // `places_conflict` for every borrow.
         if place.projection.is_empty() {
             if !self.body.local_decls[place.local].is_ref_to_static() {
-                trans.kill_all(other_borrows_of_local);
+                state.kill_all(other_borrows_of_local);
             }
             return;
         }
@@ -562,9 +565,11 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
             )
         });
 
-        trans.kill_all(definitely_conflicting_borrows);
+        state.kill_all(definitely_conflicting_borrows);
     }
 }
+
+type BorrowsDomain = BitSet<BorrowIndex>;
 
 /// Forward dataflow computation of the set of borrows that are in scope at a particular location.
 /// - we gen the introduced loans
@@ -574,7 +579,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
 /// - we also kill loans of conflicting places when overwriting a shared path: e.g. borrows of
 ///   `a.b.c` when `a` is overwritten.
 impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
-    type Domain = BitSet<BorrowIndex>;
+    type Domain = BorrowsDomain;
 
     const NAME: &'static str = "borrows";
 
@@ -588,18 +593,18 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
         // function execution, so this method has no effect.
     }
 
-    fn apply_before_statement_effect(
+    fn apply_early_statement_effect(
         &mut self,
-        trans: &mut Self::Domain,
+        state: &mut Self::Domain,
         _statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
-        self.kill_loans_out_of_scope_at_location(trans, location);
+        self.kill_loans_out_of_scope_at_location(state, location);
     }
 
-    fn apply_statement_effect(
+    fn apply_primary_statement_effect(
         &mut self,
-        trans: &mut Self::Domain,
+        state: &mut Self::Domain,
         stmt: &mir::Statement<'tcx>,
         location: Location,
     ) {
@@ -617,18 +622,18 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
                         panic!("could not find BorrowIndex for location {location:?}");
                     });
 
-                    trans.gen_(index);
+                    state.gen_(index);
                 }
 
                 // Make sure there are no remaining borrows for variables
                 // that are assigned over.
-                self.kill_borrows_on_place(trans, *lhs);
+                self.kill_borrows_on_place(state, *lhs);
             }
 
             mir::StatementKind::StorageDead(local) => {
                 // Make sure there are no remaining borrows for locals that
                 // are gone out of scope.
-                self.kill_borrows_on_place(trans, Place::from(*local));
+                self.kill_borrows_on_place(state, Place::from(*local));
             }
 
             mir::StatementKind::FakeRead(..)
@@ -646,18 +651,18 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
         }
     }
 
-    fn apply_before_terminator_effect(
+    fn apply_early_terminator_effect(
         &mut self,
-        trans: &mut Self::Domain,
+        state: &mut Self::Domain,
         _terminator: &mir::Terminator<'tcx>,
         location: Location,
     ) {
-        self.kill_loans_out_of_scope_at_location(trans, location);
+        self.kill_loans_out_of_scope_at_location(state, location);
     }
 
-    fn apply_terminator_effect<'mir>(
+    fn apply_primary_terminator_effect<'mir>(
         &mut self,
-        trans: &mut Self::Domain,
+        state: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,
         _location: Location,
     ) -> TerminatorEdges<'mir, 'tcx> {
@@ -666,7 +671,7 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
                 if let mir::InlineAsmOperand::Out { place: Some(place), .. }
                 | mir::InlineAsmOperand::InOut { out_place: Some(place), .. } = *op
                 {
-                    self.kill_borrows_on_place(trans, place);
+                    self.kill_borrows_on_place(state, place);
                 }
             }
         }
