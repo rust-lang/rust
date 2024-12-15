@@ -103,7 +103,7 @@ use rustc_hir::definitions::{DefPath, DefPathData};
 use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
 use rustc_hir::{
-    self as hir, Arm, ArrayLen, BindingMode, Block, BlockCheckMode, Body, ByRef, Closure, ConstArgKind, ConstContext,
+    self as hir, Arm, BindingMode, Block, BlockCheckMode, Body, ByRef, Closure, ConstArgKind, ConstContext,
     Destination, Expr, ExprField, ExprKind, FnDecl, FnRetTy, GenericArgs, HirId, Impl, ImplItem, ImplItemKind,
     ImplItemRef, Item, ItemKind, LangItem, LetStmt, MatchSource, Mutability, Node, OwnerId, OwnerNode, Param, Pat,
     PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitItemRef, TraitRef,
@@ -910,7 +910,7 @@ pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
             _ => false,
         },
         ExprKind::Tup(items) | ExprKind::Array(items) => items.iter().all(|x| is_default_equivalent(cx, x)),
-        ExprKind::Repeat(x, ArrayLen::Body(len)) => {
+        ExprKind::Repeat(x, len) => {
             if let ConstArgKind::Anon(anon_const) = len.kind
                 && let ExprKind::Lit(const_lit) = cx.tcx.hir().body(anon_const.body).value.kind
                 && let LitKind::Int(v, _) = const_lit.node
@@ -940,7 +940,7 @@ fn is_default_equivalent_from(cx: &LateContext<'_>, from_func: &Expr<'_>, arg: &
                 ..
             }) => return sym.is_empty() && is_path_lang_item(cx, ty, LangItem::String),
             ExprKind::Array([]) => return is_path_diagnostic_item(cx, ty, sym::Vec),
-            ExprKind::Repeat(_, ArrayLen::Body(len)) => {
+            ExprKind::Repeat(_, len) => {
                 if let ConstArgKind::Anon(anon_const) = len.kind
                     && let ExprKind::Lit(const_lit) = cx.tcx.hir().body(anon_const.body).value.kind
                     && let LitKind::Int(v, _) = const_lit.node
@@ -1947,43 +1947,6 @@ pub fn in_automatically_derived(tcx: TyCtxt<'_>, id: HirId) -> bool {
                 sym::automatically_derived,
             )
         })
-}
-
-/// Matches a function call with the given path and returns the arguments.
-///
-/// Usage:
-///
-/// ```rust,ignore
-/// if let Some(args) = match_function_call(cx, cmp_max_call, &paths::CMP_MAX);
-/// ```
-/// This function is deprecated. Use [`match_function_call_with_def_id`].
-pub fn match_function_call<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx Expr<'_>,
-    path: &[&str],
-) -> Option<&'tcx [Expr<'tcx>]> {
-    if let ExprKind::Call(fun, args) = expr.kind
-        && let ExprKind::Path(ref qpath) = fun.kind
-        && let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id()
-        && match_def_path(cx, fun_def_id, path)
-    {
-        return Some(args);
-    };
-    None
-}
-
-pub fn match_function_call_with_def_id<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx Expr<'_>,
-    fun_def_id: DefId,
-) -> Option<&'tcx [Expr<'tcx>]> {
-    if let ExprKind::Call(fun, args) = expr.kind
-        && let ExprKind::Path(ref qpath) = fun.kind
-        && cx.qpath_res(qpath, fun.hir_id).opt_def_id() == Some(fun_def_id)
-    {
-        return Some(args);
-    };
-    None
 }
 
 /// Checks if the given `DefId` matches any of the paths. Returns the index of matching path, if

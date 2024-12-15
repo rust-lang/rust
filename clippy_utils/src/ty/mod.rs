@@ -38,7 +38,7 @@ pub use type_certainty::expr_type_is_certain;
 
 /// Checks if the given type implements copy.
 pub fn is_copy<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.is_copy_modulo_regions(cx.tcx, cx.typing_env())
+    cx.type_is_copy_modulo_regions(ty)
 }
 
 /// This checks whether a given type is known to implement Debug.

@@ -7,9 +7,9 @@ use rustc_data_structures::fx::FxHasher;
 use rustc_hir::MatchSource::TryDesugar;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{
-    ArrayLen, AssocItemConstraint, BinOpKind, BindingMode, Block, BodyId, Closure, ConstArg, ConstArgKind, Expr,
-    ExprField, ExprKind, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime,
-    LifetimeName, Pat, PatField, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitBoundModifiers, Ty,
+    AssocItemConstraint, BinOpKind, BindingMode, Block, BodyId, Closure, ConstArg, ConstArgKind, Expr, ExprField,
+    ExprKind, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime, LifetimeName,
+    Pat, PatField, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, StructTailExpr, TraitBoundModifiers, Ty,
     TyKind,
 };
 use rustc_lexer::{TokenKind, tokenize};
@@ -266,14 +266,6 @@ impl HirEqInterExpr<'_, '_, '_> {
         })
     }
 
-    pub fn eq_array_length(&mut self, left: ArrayLen<'_>, right: ArrayLen<'_>) -> bool {
-        match (left, right) {
-            (ArrayLen::Infer(..), ArrayLen::Infer(..)) => true,
-            (ArrayLen::Body(l_ct), ArrayLen::Body(r_ct)) => self.eq_const_arg(l_ct, r_ct),
-            (_, _) => false,
-        }
-    }
-
     pub fn eq_body(&mut self, left: BodyId, right: BodyId) -> bool {
         // swap out TypeckResults when hashing a body
         let old_maybe_typeck_results = self.inner.maybe_typeck_results.replace((
@@ -378,17 +370,26 @@ impl HirEqInterExpr<'_, '_, '_> {
                     && self.eq_expr(l_receiver, r_receiver)
                     && self.eq_exprs(l_args, r_args)
             },
+            (&ExprKind::UnsafeBinderCast(lkind, le, None), &ExprKind::UnsafeBinderCast(rkind, re, None)) =>
+                lkind == rkind && self.eq_expr(le, re),
+            (&ExprKind::UnsafeBinderCast(lkind, le, Some(lt)), &ExprKind::UnsafeBinderCast(rkind, re, Some(rt))) =>
+                lkind == rkind && self.eq_expr(le, re) && self.eq_ty(lt, rt),
             (&ExprKind::OffsetOf(l_container, l_fields), &ExprKind::OffsetOf(r_container, r_fields)) => {
                 self.eq_ty(l_container, r_container) && over(l_fields, r_fields, |l, r| l.name == r.name)
             },
             (ExprKind::Path(l), ExprKind::Path(r)) => self.eq_qpath(l, r),
             (&ExprKind::Repeat(le, ll), &ExprKind::Repeat(re, rl)) => {
-                self.eq_expr(le, re) && self.eq_array_length(ll, rl)
+                self.eq_expr(le, re) && self.eq_const_arg(ll, rl)
             },
             (ExprKind::Ret(l), ExprKind::Ret(r)) => both(l.as_ref(), r.as_ref(), |l, r| self.eq_expr(l, r)),
             (&ExprKind::Struct(l_path, lf, ref lo), &ExprKind::Struct(r_path, rf, ref ro)) => {
                 self.eq_qpath(l_path, r_path)
-                    && both(lo.as_ref(), ro.as_ref(), |l, r| self.eq_expr(l, r))
+                    && match (lo, ro) {
+                        (StructTailExpr::Base(l),StructTailExpr::Base(r)) => self.eq_expr(l, r),
+                        (StructTailExpr::None, StructTailExpr::None) |
+                        (StructTailExpr::DefaultFields(_), StructTailExpr::DefaultFields(_)) => true,
+                        _ => false,
+                    }
                     && over(lf, rf, |l, r| self.eq_expr_field(l, r))
             },
             (&ExprKind::Tup(l_tup), &ExprKind::Tup(r_tup)) => self.eq_exprs(l_tup, r_tup),
@@ -427,6 +428,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                 | &ExprKind::Type(..)
                 | &ExprKind::Unary(..)
                 | &ExprKind::Yield(..)
+                | &ExprKind::UnsafeBinderCast(..)
 
                 // --- Special cases that do not have a positive branch.
 
@@ -469,10 +471,12 @@ impl HirEqInterExpr<'_, '_, '_> {
         match (&left.kind, &right.kind) {
             (ConstArgKind::Path(l_p), ConstArgKind::Path(r_p)) => self.eq_qpath(l_p, r_p),
             (ConstArgKind::Anon(l_an), ConstArgKind::Anon(r_an)) => self.eq_body(l_an.body, r_an.body),
+            (ConstArgKind::Infer(..), ConstArgKind::Infer(..)) => true,
             // Use explicit match for now since ConstArg is undergoing flux.
-            (ConstArgKind::Path(..), ConstArgKind::Anon(..)) | (ConstArgKind::Anon(..), ConstArgKind::Path(..)) => {
-                false
-            },
+            (ConstArgKind::Path(..), ConstArgKind::Anon(..))
+            | (ConstArgKind::Anon(..), ConstArgKind::Path(..))
+            | (ConstArgKind::Infer(..), _)
+            | (_, ConstArgKind::Infer(..)) => false,
         }
     }
 
@@ -589,7 +593,7 @@ impl HirEqInterExpr<'_, '_, '_> {
     pub fn eq_ty(&mut self, left: &Ty<'_>, right: &Ty<'_>) -> bool {
         match (&left.kind, &right.kind) {
             (&TyKind::Slice(l_vec), &TyKind::Slice(r_vec)) => self.eq_ty(l_vec, r_vec),
-            (&TyKind::Array(lt, ll), &TyKind::Array(rt, rl)) => self.eq_ty(lt, rt) && self.eq_array_length(ll, rl),
+            (&TyKind::Array(lt, ll), &TyKind::Array(rt, rl)) => self.eq_ty(lt, rt) && self.eq_const_arg(ll, rl),
             (TyKind::Ptr(l_mut), TyKind::Ptr(r_mut)) => l_mut.mutbl == r_mut.mutbl && self.eq_ty(l_mut.ty, r_mut.ty),
             (TyKind::Ref(_, l_rmut), TyKind::Ref(_, r_rmut)) => {
                 l_rmut.mutbl == r_rmut.mutbl && self.eq_ty(l_rmut.ty, r_rmut.ty)
@@ -597,7 +601,6 @@ impl HirEqInterExpr<'_, '_, '_> {
             (TyKind::Path(l), TyKind::Path(r)) => self.eq_qpath(l, r),
             (&TyKind::Tup(l), &TyKind::Tup(r)) => over(l, r, |l, r| self.eq_ty(l, r)),
             (&TyKind::Infer, &TyKind::Infer) => true,
-            (TyKind::AnonAdt(l_item_id), TyKind::AnonAdt(r_item_id)) => l_item_id == r_item_id,
             _ => false,
         }
     }
@@ -1008,7 +1011,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             },
             ExprKind::Repeat(e, len) => {
                 self.hash_expr(e);
-                self.hash_array_length(len);
+                self.hash_const_arg(len);
             },
             ExprKind::Ret(ref e) => {
                 if let Some(e) = *e {
@@ -1023,7 +1026,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_expr(f.expr);
                 }
 
-                if let Some(e) = *expr {
+                if let StructTailExpr::Base(e) = *expr {
                     self.hash_expr(e);
                 }
             },
@@ -1033,6 +1036,13 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             ExprKind::Unary(lop, le) => {
                 std::mem::discriminant(&lop).hash(&mut self.s);
                 self.hash_expr(le);
+            },
+            ExprKind::UnsafeBinderCast(kind, expr, ty) => {
+                std::mem::discriminant(&kind).hash(&mut self.s);
+                self.hash_expr(expr);
+                if let Some(ty) = ty {
+                    self.hash_ty(ty);
+                }
             },
             ExprKind::Err(_) => {},
         }
@@ -1201,7 +1211,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             },
             &TyKind::Array(ty, len) => {
                 self.hash_ty(ty);
-                self.hash_array_length(len);
+                self.hash_const_arg(len);
             },
             TyKind::Pat(ty, pat) => {
                 self.hash_ty(ty);
@@ -1243,19 +1253,15 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             TyKind::Typeof(anon_const) => {
                 self.hash_body(anon_const.body);
             },
+            TyKind::UnsafeBinder(binder) => {
+                self.hash_ty(binder.inner_ty);
+            },
             TyKind::Err(_)
             | TyKind::Infer
             | TyKind::Never
             | TyKind::InferDelegation(..)
             | TyKind::OpaqueDef(_)
-            | TyKind::AnonAdt(_) => {},
-        }
-    }
-
-    pub fn hash_array_length(&mut self, length: ArrayLen<'_>) {
-        match length {
-            ArrayLen::Infer(..) => {},
-            ArrayLen::Body(ct) => self.hash_const_arg(ct),
+            | TyKind::TraitAscription(_) => {},
         }
     }
 
@@ -1270,6 +1276,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         match &const_arg.kind {
             ConstArgKind::Path(path) => self.hash_qpath(path),
             ConstArgKind::Anon(anon) => self.hash_body(anon.body),
+            ConstArgKind::Infer(..) => {},
         }
     }
 

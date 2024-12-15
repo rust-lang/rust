@@ -1,4 +1,3 @@
-#![feature(async_closure)]
 #![warn(clippy::redundant_closure_call)]
 #![allow(clippy::redundant_async_block)]
 #![allow(clippy::type_complexity)]

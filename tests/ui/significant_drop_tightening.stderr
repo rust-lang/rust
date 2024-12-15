@@ -5,8 +5,7 @@ LL |   pub fn complex_return_triggers_the_lint() -> i32 {
    |  __________________________________________________-
 LL | |     fn foo() -> i32 {
 LL | |         1
-LL | |     }
-LL | |     let mutex = Mutex::new(1);
+...  |
 LL | |     let lock = mutex.lock().unwrap();
    | |         ^^^^
 ...  |

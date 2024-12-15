@@ -5,7 +5,7 @@ use clippy_utils::{contains_name, get_parent_expr, in_automatically_derived, is_
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
-use rustc_hir::{Block, Expr, ExprKind, PatKind, QPath, Stmt, StmtKind};
+use rustc_hir::{Block, Expr, ExprKind, PatKind, QPath, Stmt, StmtKind, StructTailExpr};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
@@ -285,7 +285,7 @@ fn field_reassigned_by_stmt<'tcx>(this: &Stmt<'tcx>, binding_name: Symbol) -> Op
 /// Returns whether `expr` is the update syntax base: `Foo { a: 1, .. base }`
 fn is_update_syntax_base<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
     if let Some(parent) = get_parent_expr(cx, expr)
-        && let ExprKind::Struct(_, _, Some(base)) = parent.kind
+        && let ExprKind::Struct(_, _, StructTailExpr::Base(base)) = parent.kind
     {
         base.hir_id == expr.hir_id
     } else {

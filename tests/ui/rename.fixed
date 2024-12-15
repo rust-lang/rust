@@ -15,6 +15,7 @@
 #![allow(clippy::mixed_read_write_in_expression)]
 #![allow(clippy::manual_find_map)]
 #![allow(clippy::manual_filter_map)]
+#![allow(unpredictable_function_pointer_comparisons)]
 #![allow(clippy::useless_conversion)]
 #![allow(clippy::redundant_pattern_matching)]
 #![allow(clippy::match_result_ok)]
@@ -74,6 +75,7 @@
 #![warn(clippy::mixed_read_write_in_expression)] //~ ERROR: lint `clippy::eval_order_dependence`
 #![warn(clippy::manual_find_map)] //~ ERROR: lint `clippy::find_map`
 #![warn(clippy::manual_filter_map)] //~ ERROR: lint `clippy::filter_map`
+#![warn(unpredictable_function_pointer_comparisons)] //~ ERROR: lint `clippy::fn_address_comparisons`
 #![warn(clippy::useless_conversion)] //~ ERROR: lint `clippy::identity_conversion`
 #![warn(clippy::redundant_pattern_matching)] //~ ERROR: lint `clippy::if_let_redundant_pattern_matching`
 #![warn(clippy::match_result_ok)] //~ ERROR: lint `clippy::if_let_some_result`

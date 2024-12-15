@@ -3,8 +3,8 @@ use rustc_ast::LitIntType;
 use rustc_ast::ast::{LitFloatType, LitKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{
-    self as hir, ArrayLen, BindingMode, CaptureBy, Closure, ClosureKind, ConstArg, ConstArgKind, CoroutineKind,
-    ExprKind, FnRetTy, HirId, Lit, PatKind, QPath, StmtKind, TyKind,
+    self as hir, BindingMode, CaptureBy, Closure, ClosureKind, ConstArg, ConstArgKind, CoroutineKind, ExprKind,
+    FnRetTy, HirId, Lit, PatKind, QPath, StmtKind, StructTailExpr, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::declare_lint_pass;
@@ -278,6 +278,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 chain!(self, "let ConstArgKind::Anon({anon_const}) = {const_arg}.kind");
                 self.body(field!(anon_const.body));
             },
+            ConstArgKind::Infer(..) => chain!(self, "let ConstArgKind::Infer(..) = {const_arg}.kind"),
         }
     }
 
@@ -597,7 +598,10 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             },
             ExprKind::Struct(qpath, fields, base) => {
                 bind!(self, qpath, fields);
-                opt_bind!(self, base);
+                let base = OptionPat::new(match base {
+                    StructTailExpr::Base(base) => Some(self.bind("base", base)),
+                    StructTailExpr::None | StructTailExpr::DefaultFields(_) => None,
+                });
                 kind!("Struct({qpath}, {fields}, {base})");
                 self.qpath(qpath);
                 self.slice(fields, |field| {
@@ -611,20 +615,16 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 bind!(self, value, length);
                 kind!("Repeat({value}, {length})");
                 self.expr(value);
-                match length.value {
-                    ArrayLen::Infer(..) => chain!(self, "let ArrayLen::Infer(..) = length"),
-                    ArrayLen::Body(const_arg) => {
-                        bind!(self, const_arg);
-                        chain!(self, "let ArrayLen::Body({const_arg}) = {length}");
-                        self.const_arg(const_arg);
-                    },
-                }
+                self.const_arg(length);
             },
             ExprKind::Err(_) => kind!("Err(_)"),
             ExprKind::DropTemps(expr) => {
                 bind!(self, expr);
                 kind!("DropTemps({expr})");
                 self.expr(expr);
+            },
+            ExprKind::UnsafeBinderCast(..) => {
+                unimplemented!("unsafe binders are not implemented yet");
             },
         }
     }
