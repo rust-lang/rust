@@ -155,6 +155,21 @@ enum LargeEnumOfConst {
     Error(PossiblyLargeEnumWithConst<256>),
 }
 
+enum WithRecursion {
+    Large([u64; 64]),
+    Recursive(Box<WithRecursion>),
+}
+
+enum WithRecursionAndGenerics<T> {
+    Large([T; 64]),
+    Recursive(Box<WithRecursionAndGenerics<T>>),
+}
+
+enum LargeEnumWithGenericsAndRecursive {
+    Ok(),
+    Error(WithRecursionAndGenerics<u64>),
+}
+
 fn main() {
     external!(
         enum LargeEnumInMacro {
