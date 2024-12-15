@@ -824,7 +824,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn cmp_fn_sig(
         &self,
         sig1: &ty::PolyFnSig<'tcx>,
+        fn_def1: Option<(DefId, &'tcx [ty::GenericArg<'tcx>])>,
         sig2: &ty::PolyFnSig<'tcx>,
+        fn_def2: Option<(DefId, &'tcx [ty::GenericArg<'tcx>])>,
     ) -> (DiagStyledString, DiagStyledString) {
         let sig1 = &(self.normalize_fn_sig)(*sig1);
         let sig2 = &(self.normalize_fn_sig)(*sig2);
@@ -928,6 +930,25 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         if !output2.is_unit() || output_diff {
             values.1.push_normal(" -> ");
             (values.1).0.extend(x2.0);
+        }
+
+        let fmt = |(did, args)| format!(" {{{}}}", self.tcx.def_path_str_with_args(did, args));
+
+        match (fn_def1, fn_def2) {
+            (None, None) => {}
+            (Some(fn_def1), Some(fn_def2)) => {
+                let path1 = fmt(fn_def1);
+                let path2 = fmt(fn_def2);
+                let same_path = path1 == path2;
+                values.0.push(path1, !same_path);
+                values.1.push(path2, !same_path);
+            }
+            (Some(fn_def1), None) => {
+                values.0.push_highlighted(fmt(fn_def1));
+            }
+            (None, Some(fn_def2)) => {
+                values.1.push_highlighted(fmt(fn_def2));
+            }
         }
 
         values
@@ -1318,36 +1339,21 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             (ty::FnDef(did1, args1), ty::FnDef(did2, args2)) => {
                 let sig1 = self.tcx.fn_sig(*did1).instantiate(self.tcx, args1);
                 let sig2 = self.tcx.fn_sig(*did2).instantiate(self.tcx, args2);
-                let mut values = self.cmp_fn_sig(&sig1, &sig2);
-                let path1 = format!(" {{{}}}", self.tcx.def_path_str_with_args(*did1, args1));
-                let path2 = format!(" {{{}}}", self.tcx.def_path_str_with_args(*did2, args2));
-                let same_path = path1 == path2;
-                values.0.push(path1, !same_path);
-                values.1.push(path2, !same_path);
-                values
+                self.cmp_fn_sig(&sig1, Some((*did1, args1)), &sig2, Some((*did2, args2)))
             }
 
             (ty::FnDef(did1, args1), ty::FnPtr(sig_tys2, hdr2)) => {
                 let sig1 = self.tcx.fn_sig(*did1).instantiate(self.tcx, args1);
-                let mut values = self.cmp_fn_sig(&sig1, &sig_tys2.with(*hdr2));
-                values.0.push_highlighted(format!(
-                    " {{{}}}",
-                    self.tcx.def_path_str_with_args(*did1, args1)
-                ));
-                values
+                self.cmp_fn_sig(&sig1, Some((*did1, args1)), &sig_tys2.with(*hdr2), None)
             }
 
             (ty::FnPtr(sig_tys1, hdr1), ty::FnDef(did2, args2)) => {
                 let sig2 = self.tcx.fn_sig(*did2).instantiate(self.tcx, args2);
-                let mut values = self.cmp_fn_sig(&sig_tys1.with(*hdr1), &sig2);
-                values
-                    .1
-                    .push_normal(format!(" {{{}}}", self.tcx.def_path_str_with_args(*did2, args2)));
-                values
+                self.cmp_fn_sig(&sig_tys1.with(*hdr1), None, &sig2, Some((*did2, args2)))
             }
 
             (ty::FnPtr(sig_tys1, hdr1), ty::FnPtr(sig_tys2, hdr2)) => {
-                self.cmp_fn_sig(&sig_tys1.with(*hdr1), &sig_tys2.with(*hdr2))
+                self.cmp_fn_sig(&sig_tys1.with(*hdr1), None, &sig_tys2.with(*hdr2), None)
             }
 
             _ => {
@@ -2102,7 +2108,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 if exp_found.references_error() {
                     return None;
                 }
-                let (exp, fnd) = self.cmp_fn_sig(&exp_found.expected, &exp_found.found);
+                let (exp, fnd) = self.cmp_fn_sig(&exp_found.expected, None, &exp_found.found, None);
                 Some((exp, fnd, None))
             }
         }
