@@ -1134,7 +1134,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 if let Some(fields) = self.r.field_idents(*def_id) {
                     for field in fields {
                         if field.name == segment.ident.name {
-                            if spans.iter().all(|(_, was_recovered)| *was_recovered) {
+                            if spans.iter().all(|(_, had_error)| had_error.is_err()) {
                                 // This resolution error will likely be fixed by fixing a
                                 // syntax error in a pattern, so it is irrelevant to the user.
                                 let multispan: MultiSpan =
@@ -1148,7 +1148,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             }
                             let mut multispan: MultiSpan = spans
                                 .iter()
-                                .filter(|(_, was_recovered)| !was_recovered)
+                                .filter(|(_, had_error)| had_error.is_ok())
                                 .map(|(sp, _)| *sp)
                                 .collect::<Vec<_>>()
                                 .into();
@@ -1156,7 +1156,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             let ty = self.r.tcx.item_name(*def_id);
                             multispan.push_span_label(def_span, String::new());
                             multispan.push_span_label(field.span, "defined here".to_string());
-                            for (span, _) in spans.iter().filter(|(_, r)| !r) {
+                            for (span, _) in spans.iter().filter(|(_, had_err)| had_err.is_ok()) {
                                 multispan.push_span_label(
                                     *span,
                                     format!(

@@ -19,7 +19,9 @@ use rustc_ast::visit::{
 use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, DiagArgValue, IntoDiagArg, StashKey, Suggestions};
+use rustc_errors::{
+    Applicability, DiagArgValue, ErrorGuaranteed, IntoDiagArg, StashKey, Suggestions,
+};
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE, LocalDefId};
@@ -264,7 +266,7 @@ impl RibKind<'_> {
 #[derive(Debug)]
 pub(crate) struct Rib<'ra, R = Res> {
     pub bindings: IdentMap<R>,
-    pub patterns_with_skipped_bindings: FxHashMap<DefId, Vec<(Span, bool /* recovered error */)>>,
+    pub patterns_with_skipped_bindings: FxHashMap<DefId, Vec<(Span, Result<(), ErrorGuaranteed>)>>,
     pub kind: RibKind<'ra>,
 }
 
@@ -3841,7 +3843,10 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         .patterns_with_skipped_bindings
                         .entry(def_id)
                         .or_default()
-                        .push((pat.span, matches!(rest, ast::PatFieldsRest::Recovered(_))));
+                        .push((pat.span, match rest {
+                            ast::PatFieldsRest::Recovered(guar) => Err(*guar),
+                            _ => Ok(()),
+                        }));
                 }
             }
             ast::PatFieldsRest::None => {}
