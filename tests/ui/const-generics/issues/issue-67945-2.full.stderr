@@ -5,8 +5,7 @@ LL |       A: [(); {
    |  _____________^
 LL | |
 LL | |         let x: Option<Box<Self>> = None;
-LL | |
-LL | |         0
+...  |
 LL | |     }],
    | |_____^ blocks are not supported in generic constants
    |

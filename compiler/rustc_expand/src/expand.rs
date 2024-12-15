@@ -723,7 +723,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                     item_inner.kind,
                                     ItemKind::Mod(
                                         _,
-                                        ModKind::Unloaded | ModKind::Loaded(_, Inline::No, _),
+                                        ModKind::Unloaded | ModKind::Loaded(_, Inline::No, _, _),
                                     )
                                 ) =>
                         {
@@ -889,7 +889,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             fn visit_item(&mut self, item: &'ast ast::Item) {
                 match &item.kind {
                     ItemKind::Mod(_, mod_kind)
-                        if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _)) =>
+                        if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _, _)) =>
                     {
                         feature_err(
                             self.sess,
@@ -1195,7 +1195,7 @@ impl InvocationCollectorNode for P<ast::Item> {
 
         let ecx = &mut collector.cx;
         let (file_path, dir_path, dir_ownership) = match mod_kind {
-            ModKind::Loaded(_, inline, _) => {
+            ModKind::Loaded(_, inline, _, _) => {
                 // Inline `mod foo { ... }`, but we still need to push directories.
                 let (dir_path, dir_ownership) = mod_dir_path(
                     ecx.sess,
@@ -1217,15 +1217,21 @@ impl InvocationCollectorNode for P<ast::Item> {
             ModKind::Unloaded => {
                 // We have an outline `mod foo;` so we need to parse the file.
                 let old_attrs_len = attrs.len();
-                let ParsedExternalMod { items, spans, file_path, dir_path, dir_ownership } =
-                    parse_external_mod(
-                        ecx.sess,
-                        ident,
-                        span,
-                        &ecx.current_expansion.module,
-                        ecx.current_expansion.dir_ownership,
-                        &mut attrs,
-                    );
+                let ParsedExternalMod {
+                    items,
+                    spans,
+                    file_path,
+                    dir_path,
+                    dir_ownership,
+                    had_parse_error,
+                } = parse_external_mod(
+                    ecx.sess,
+                    ident,
+                    span,
+                    &ecx.current_expansion.module,
+                    ecx.current_expansion.dir_ownership,
+                    &mut attrs,
+                );
 
                 if let Some(lint_store) = ecx.lint_store {
                     lint_store.pre_expansion_lint(
@@ -1239,7 +1245,7 @@ impl InvocationCollectorNode for P<ast::Item> {
                     );
                 }
 
-                *mod_kind = ModKind::Loaded(items, Inline::No, spans);
+                *mod_kind = ModKind::Loaded(items, Inline::No, spans, had_parse_error);
                 node.attrs = attrs;
                 if node.attrs.len() > old_attrs_len {
                     // If we loaded an out-of-line module and added some inner attributes,

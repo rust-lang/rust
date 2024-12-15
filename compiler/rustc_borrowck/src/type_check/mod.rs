@@ -31,7 +31,7 @@ use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{
     self, Binder, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, CoroutineArgsExt,
     Dynamic, GenericArgsRef, OpaqueHiddenType, OpaqueTypeKey, RegionVid, Ty, TyCtxt, UserArgs,
-    UserType, UserTypeAnnotationIndex,
+    UserTypeAnnotationIndex,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::ResultsCursor;
@@ -370,7 +370,10 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 } else {
                     self.cx.ascribe_user_type(
                         constant.const_.ty(),
-                        UserType::TypeOf(uv.def, UserArgs { args: uv.args, user_self_ty: None }),
+                        ty::UserType::new(ty::UserTypeKind::TypeOf(uv.def, UserArgs {
+                            args: uv.args,
+                            user_self_ty: None,
+                        })),
                         locations.span(self.cx.body),
                     );
                 }
@@ -991,9 +994,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         for user_annotation in self.user_type_annotations {
             let CanonicalUserTypeAnnotation { span, ref user_ty, inferred_ty } = *user_annotation;
             let annotation = self.instantiate_canonical(span, user_ty);
-            if let ty::UserType::TypeOf(def, args) = annotation
+            if let ty::UserTypeKind::TypeOf(def, args) = annotation.kind
                 && let DefKind::InlineConst = tcx.def_kind(def)
             {
+                assert!(annotation.bounds.is_empty());
                 self.check_inline_const(inferred_ty, def.expect_local(), args, span);
             } else {
                 self.ascribe_user_type(inferred_ty, annotation, span);

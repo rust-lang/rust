@@ -927,7 +927,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         let ident_str = rewrite_ident(&self.get_context(), ident).to_owned();
         self.push_str(&ident_str);
 
-        if let ast::ModKind::Loaded(ref items, ast::Inline::Yes, ref spans) = mod_kind {
+        if let ast::ModKind::Loaded(ref items, ast::Inline::Yes, ref spans, _) = mod_kind {
             let ast::ModSpans {
                 inner_span,
                 inject_use_span: _,

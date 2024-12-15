@@ -422,6 +422,7 @@ impl<'tcx, 'a> Visitor<'tcx> for FindSignificantDropper<'tcx, 'a> {
             hir::ExprKind::Unary(_, expr)
             | hir::ExprKind::Cast(expr, _)
             | hir::ExprKind::Type(expr, _)
+            | hir::ExprKind::UnsafeBinderCast(_, expr, _)
             | hir::ExprKind::Yield(expr, _)
             | hir::ExprKind::AddrOf(_, _, expr)
             | hir::ExprKind::Match(expr, _, _)

@@ -34,7 +34,6 @@ error: this `if` branch is empty
 LL | /     if {
 LL | |         if let true = true
 LL | |             && true
-LL | |         {
 ...  |
 LL | |     } && true
 LL | |     {}

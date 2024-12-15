@@ -294,10 +294,22 @@ pub enum Linkage {
     Common,
 }
 
+/// Specifies the symbol visibility with regards to dynamic linking.
+///
+/// Visibility doesn't have any effect when linkage is internal.
+///
+/// DSO means dynamic shared object, that is a dynamically linked executable or dylib.
 #[derive(Copy, Clone, PartialEq, Debug, HashStable)]
 pub enum Visibility {
+    /// Export the symbol from the DSO and apply overrides of the symbol by outside DSOs to within
+    /// the DSO if the object file format supports this.
     Default,
+    /// Hide the symbol outside of the defining DSO even when external linkage is used to export it
+    /// from the object file.
     Hidden,
+    /// Export the symbol from the DSO, but don't apply overrides of the symbol by outside DSOs to
+    /// within the DSO. Equivalent to default visibility with object file formats that don't support
+    /// overriding exported symbols by another DSO.
     Protected,
 }
 

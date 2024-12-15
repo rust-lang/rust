@@ -189,6 +189,7 @@ declare_passes! {
     mod simplify_comparison_integral : SimplifyComparisonIntegral;
     mod single_use_consts : SingleUseConsts;
     mod sroa : ScalarReplacementOfAggregates;
+    mod strip_debuginfo : StripDebugInfo;
     mod unreachable_enum_branching : UnreachableEnumBranching;
     mod unreachable_prop : UnreachablePropagation;
     mod validate : Validator;
@@ -699,6 +700,8 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &o1(simplify_branches::SimplifyConstCondition::Final),
             &o1(remove_noop_landing_pads::RemoveNoopLandingPads),
             &o1(simplify::SimplifyCfg::Final),
+            // After the last SimplifyCfg, because this wants one-block functions.
+            &strip_debuginfo::StripDebugInfo,
             &copy_prop::CopyProp,
             &dead_store_elimination::DeadStoreElimination::Final,
             &nrvo::RenameReturnPlace,

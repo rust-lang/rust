@@ -107,6 +107,10 @@ impl<'tcx> Tables<'tcx> {
         stable_mir::ty::CoroutineDef(self.create_def_id(did))
     }
 
+    pub fn coroutine_closure_def(&mut self, did: DefId) -> stable_mir::ty::CoroutineClosureDef {
+        stable_mir::ty::CoroutineClosureDef(self.create_def_id(did))
+    }
+
     pub fn alias_def(&mut self, did: DefId) -> stable_mir::ty::AliasDef {
         stable_mir::ty::AliasDef(self.create_def_id(did))
     }

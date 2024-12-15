@@ -260,6 +260,13 @@ enum ImplTraitContext {
     /// equivalent to a new opaque type like `type T = impl Debug; fn foo() -> T`.
     ///
     OpaqueTy { origin: hir::OpaqueTyOrigin<LocalDefId> },
+
+    /// Treat `impl Trait` as a "trait ascription", which is like a type
+    /// variable but that also enforces that a set of trait goals hold.
+    ///
+    /// This is useful to guide inference for unnameable types.
+    InBinding,
+
     /// `impl Trait` is unstably accepted in this position.
     FeatureGated(ImplTraitPosition, Symbol),
     /// `impl Trait` is not accepted in this position.
@@ -1228,6 +1235,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     param_names: self.lower_fn_params_to_names(&f.decl),
                 }))
             }
+            TyKind::UnsafeBinder(f) => {
+                let generic_params = self.lower_lifetime_binder(t.id, &f.generic_params);
+                hir::TyKind::UnsafeBinder(self.arena.alloc(hir::UnsafeBinderTy {
+                    generic_params,
+                    inner_ty: self.lower_ty(&f.inner_ty, itctx),
+                }))
+            }
             TyKind::Never => hir::TyKind::Never,
             TyKind::Tup(tys) => hir::TyKind::Tup(
                 self.arena.alloc_from_iter(tys.iter().map(|ty| self.lower_ty_direct(ty, itctx))),
@@ -1319,6 +1333,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             self.impl_trait_bounds.push(bounds);
                         }
                         path
+                    }
+                    ImplTraitContext::InBinding => {
+                        hir::TyKind::TraitAscription(self.lower_param_bounds(bounds, itctx))
                     }
                     ImplTraitContext::FeatureGated(position, feature) => {
                         let guar = self

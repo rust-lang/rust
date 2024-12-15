@@ -31,8 +31,7 @@ LL | |         0;
    | |         ||
    | |         |help: consider removing this semicolon
    | |         expected integer, found `()`
-LL | |
-LL | |
+...  |
 LL | |     };
    | |_____- `if` and `else` have incompatible types
 

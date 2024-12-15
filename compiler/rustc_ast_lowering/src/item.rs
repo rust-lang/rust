@@ -238,7 +238,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 })
             }
             ItemKind::Mod(_, mod_kind) => match mod_kind {
-                ModKind::Loaded(items, _, spans) => {
+                ModKind::Loaded(items, _, spans, _) => {
                     hir::ItemKind::Mod(self.lower_mod(items, spans))
                 }
                 ModKind::Unloaded => panic!("`mod` items should have been loaded by now"),

@@ -288,7 +288,13 @@ impl<'a> State<'a> {
             hir::TyKind::BareFn(f) => {
                 self.print_ty_fn(f.abi, f.safety, f.decl, None, f.generic_params, f.param_names);
             }
+            hir::TyKind::UnsafeBinder(unsafe_binder) => {
+                self.print_unsafe_binder(unsafe_binder);
+            }
             hir::TyKind::OpaqueDef(..) => self.word("/*impl Trait*/"),
+            hir::TyKind::TraitAscription(bounds) => {
+                self.print_bounds("impl", bounds);
+            }
             hir::TyKind::Path(ref qpath) => self.print_qpath(qpath, false),
             hir::TyKind::TraitObject(bounds, lifetime, syntax) => {
                 if syntax == ast::TraitObjectSyntax::Dyn {
@@ -337,6 +343,15 @@ impl<'a> State<'a> {
             }
         }
         self.end()
+    }
+
+    fn print_unsafe_binder(&mut self, unsafe_binder: &hir::UnsafeBinderTy<'_>) {
+        self.ibox(INDENT_UNIT);
+        self.word("unsafe");
+        self.print_generic_params(unsafe_binder.generic_params);
+        self.nbsp();
+        self.print_type(unsafe_binder.inner_ty);
+        self.end();
     }
 
     fn print_foreign_item(&mut self, item: &hir::ForeignItem<'_>) {
@@ -1528,6 +1543,19 @@ impl<'a> State<'a> {
                     }
                 }
 
+                self.word(")");
+            }
+            hir::ExprKind::UnsafeBinderCast(kind, expr, ty) => {
+                match kind {
+                    hir::UnsafeBinderCastKind::Wrap => self.word("wrap_binder!("),
+                    hir::UnsafeBinderCastKind::Unwrap => self.word("unwrap_binder!("),
+                }
+                self.print_expr(expr);
+                if let Some(ty) = ty {
+                    self.word(",");
+                    self.space();
+                    self.print_type(ty);
+                }
                 self.word(")");
             }
             hir::ExprKind::Yield(expr, _) => {

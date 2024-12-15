@@ -126,9 +126,6 @@ declare_features! (
             better implied higher-ranked implied bounds support"
         )
     ),
-    /// Allows `impl Trait` in bindings (`let`, `const`, `static`).
-    (removed, impl_trait_in_bindings, "1.55.0", Some(63065),
-     Some("the implementation was not maintainable, the feature may get reintroduced once the current refactorings are done")),
     (removed, import_shadowing, "1.0.0", None, None),
     /// Allows in-band quantification of lifetime bindings (e.g., `fn foo(x: &'a u8) -> &'a u8`).
     (removed, in_band_lifetimes, "1.23.0", Some(44524),

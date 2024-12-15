@@ -379,6 +379,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::Yield(opt_expr) => self.lower_expr_yield(e.span, opt_expr.as_deref()),
                 ExprKind::Err(guar) => hir::ExprKind::Err(*guar),
 
+                ExprKind::UnsafeBinderCast(kind, expr, ty) => hir::ExprKind::UnsafeBinderCast(
+                    *kind,
+                    self.lower_expr(expr),
+                    ty.as_ref().map(|ty| {
+                        self.lower_ty(ty, ImplTraitContext::Disallowed(ImplTraitPosition::Cast))
+                    }),
+                ),
+
                 ExprKind::Dummy => {
                     span_bug!(e.span, "lowered ExprKind::Dummy")
                 }

@@ -29,7 +29,7 @@ use rustc_errors::{
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor, walk_generics};
-use rustc_hir::{self as hir, GenericParamKind, Node};
+use rustc_hir::{self as hir, GenericParamKind, HirId, Node};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::hir::nested_filter;
@@ -201,12 +201,13 @@ pub(crate) fn placeholder_type_error_diag<'cx, 'tcx>(
         placeholder_types.iter().map(|sp| (*sp, (*type_name).to_string())).collect();
 
     if let Some(generics) = generics {
-        if let Some(arg) = params.iter().find(|arg| {
-            matches!(arg.name, hir::ParamName::Plain(Ident { name: kw::Underscore, .. }))
+        if let Some(span) = params.iter().find_map(|arg| match arg.name {
+            hir::ParamName::Plain(Ident { name: kw::Underscore, span }) => Some(span),
+            _ => None,
         }) {
             // Account for `_` already present in cases like `struct S<_>(_);` and suggest
             // `struct S<T>(T);` instead of `struct S<_, T>(T);`.
-            sugg.push((arg.span, (*type_name).to_string()));
+            sugg.push((span, (*type_name).to_string()));
         } else if let Some(span) = generics.span_for_param_suggestion() {
             // Account for bounds, we want `fn foo<T: E, K>(_: K)` not `fn foo<T, K: E>(_: K)`.
             sugg.push((span, format!(", {type_name}")));
@@ -434,6 +435,15 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
 
     fn ct_infer(&self, _: Option<&ty::GenericParamDef>, span: Span) -> Const<'tcx> {
         ty::Const::new_error_with_message(self.tcx(), span, "bad placeholder constant")
+    }
+
+    fn register_trait_ascription_bounds(
+        &self,
+        _: Vec<(ty::Clause<'tcx>, Span)>,
+        _: HirId,
+        span: Span,
+    ) {
+        self.dcx().span_delayed_bug(span, "trait ascription type not allowed here");
     }
 
     fn probe_ty_param_bounds(
@@ -1330,7 +1340,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, ty::PolyFn
             ..
         })
         | Item(hir::Item { kind: ItemKind::Fn(sig, generics, _), .. }) => {
-            infer_return_ty_for_fn_sig(sig, generics, def_id, &icx)
+            lower_fn_sig_recovering_infer_ret_ty(&icx, sig, generics, def_id)
         }
 
         ImplItem(hir::ImplItem { kind: ImplItemKind::Fn(sig, _), generics, .. }) => {
@@ -1347,7 +1357,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, ty::PolyFn
                     None,
                 )
             } else {
-                infer_return_ty_for_fn_sig(sig, generics, def_id, &icx)
+                lower_fn_sig_recovering_infer_ret_ty(&icx, sig, generics, def_id)
             }
         }
 
@@ -1397,99 +1407,108 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, ty::PolyFn
     ty::EarlyBinder::bind(output)
 }
 
-fn infer_return_ty_for_fn_sig<'tcx>(
-    sig: &hir::FnSig<'tcx>,
-    generics: &hir::Generics<'_>,
-    def_id: LocalDefId,
+fn lower_fn_sig_recovering_infer_ret_ty<'tcx>(
     icx: &ItemCtxt<'tcx>,
+    sig: &'tcx hir::FnSig<'tcx>,
+    generics: &'tcx hir::Generics<'tcx>,
+    def_id: LocalDefId,
+) -> ty::PolyFnSig<'tcx> {
+    if let Some(infer_ret_ty) = sig.decl.output.get_infer_ret_ty() {
+        return recover_infer_ret_ty(icx, infer_ret_ty, generics, def_id);
+    }
+
+    icx.lowerer().lower_fn_ty(
+        icx.tcx().local_def_id_to_hir_id(def_id),
+        sig.header.safety,
+        sig.header.abi,
+        sig.decl,
+        Some(generics),
+        None,
+    )
+}
+
+fn recover_infer_ret_ty<'tcx>(
+    icx: &ItemCtxt<'tcx>,
+    infer_ret_ty: &'tcx hir::Ty<'tcx>,
+    generics: &'tcx hir::Generics<'tcx>,
+    def_id: LocalDefId,
 ) -> ty::PolyFnSig<'tcx> {
     let tcx = icx.tcx;
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
 
-    match sig.decl.output.get_infer_ret_ty() {
-        Some(ty) => {
-            let fn_sig = tcx.typeck(def_id).liberated_fn_sigs()[hir_id];
-            // Typeck doesn't expect erased regions to be returned from `type_of`.
-            // This is a heuristic approach. If the scope has region parameters,
-            // we should change fn_sig's lifetime from `ReErased` to `ReError`,
-            // otherwise to `ReStatic`.
-            let has_region_params = generics.params.iter().any(|param| match param.kind {
-                GenericParamKind::Lifetime { .. } => true,
-                _ => false,
-            });
-            let fn_sig = fold_regions(tcx, fn_sig, |r, _| match *r {
-                ty::ReErased => {
-                    if has_region_params {
-                        ty::Region::new_error_with_message(
-                            tcx,
-                            DUMMY_SP,
-                            "erased region is not allowed here in return type",
-                        )
-                    } else {
-                        tcx.lifetimes.re_static
-                    }
-                }
-                _ => r,
-            });
+    let fn_sig = tcx.typeck(def_id).liberated_fn_sigs()[hir_id];
 
-            let mut visitor = HirPlaceholderCollector::default();
-            visitor.visit_ty(ty);
-
-            let mut diag = bad_placeholder(icx.lowerer(), visitor.0, "return type");
-            let ret_ty = fn_sig.output();
-            // Don't leak types into signatures unless they're nameable!
-            // For example, if a function returns itself, we don't want that
-            // recursive function definition to leak out into the fn sig.
-            let mut recovered_ret_ty = None;
-
-            if let Some(suggestable_ret_ty) = ret_ty.make_suggestable(tcx, false, None) {
-                diag.span_suggestion(
-                    ty.span,
-                    "replace with the correct return type",
-                    suggestable_ret_ty,
-                    Applicability::MachineApplicable,
-                );
-                recovered_ret_ty = Some(suggestable_ret_ty);
-            } else if let Some(sugg) = suggest_impl_trait(
-                &tcx.infer_ctxt().build(TypingMode::non_body_analysis()),
-                tcx.param_env(def_id),
-                ret_ty,
-            ) {
-                diag.span_suggestion(
-                    ty.span,
-                    "replace with an appropriate return type",
-                    sugg,
-                    Applicability::MachineApplicable,
-                );
-            } else if ret_ty.is_closure() {
-                diag.help("consider using an `Fn`, `FnMut`, or `FnOnce` trait bound");
+    // Typeck doesn't expect erased regions to be returned from `type_of`.
+    // This is a heuristic approach. If the scope has region parameters,
+    // we should change fn_sig's lifetime from `ReErased` to `ReError`,
+    // otherwise to `ReStatic`.
+    let has_region_params = generics.params.iter().any(|param| match param.kind {
+        GenericParamKind::Lifetime { .. } => true,
+        _ => false,
+    });
+    let fn_sig = fold_regions(tcx, fn_sig, |r, _| match *r {
+        ty::ReErased => {
+            if has_region_params {
+                ty::Region::new_error_with_message(
+                    tcx,
+                    DUMMY_SP,
+                    "erased region is not allowed here in return type",
+                )
+            } else {
+                tcx.lifetimes.re_static
             }
-            // Also note how `Fn` traits work just in case!
-            if ret_ty.is_closure() {
-                diag.note(
-                    "for more information on `Fn` traits and closure types, see \
-                     https://doc.rust-lang.org/book/ch13-01-closures.html",
-                );
-            }
-
-            let guar = diag.emit();
-            ty::Binder::dummy(tcx.mk_fn_sig(
-                fn_sig.inputs().iter().copied(),
-                recovered_ret_ty.unwrap_or_else(|| Ty::new_error(tcx, guar)),
-                fn_sig.c_variadic,
-                fn_sig.safety,
-                fn_sig.abi,
-            ))
         }
-        None => icx.lowerer().lower_fn_ty(
-            hir_id,
-            sig.header.safety,
-            sig.header.abi,
-            sig.decl,
-            Some(generics),
-            None,
-        ),
+        _ => r,
+    });
+
+    let mut visitor = HirPlaceholderCollector::default();
+    visitor.visit_ty(infer_ret_ty);
+
+    let mut diag = bad_placeholder(icx.lowerer(), visitor.0, "return type");
+    let ret_ty = fn_sig.output();
+
+    // Don't leak types into signatures unless they're nameable!
+    // For example, if a function returns itself, we don't want that
+    // recursive function definition to leak out into the fn sig.
+    let mut recovered_ret_ty = None;
+    if let Some(suggestable_ret_ty) = ret_ty.make_suggestable(tcx, false, None) {
+        diag.span_suggestion(
+            infer_ret_ty.span,
+            "replace with the correct return type",
+            suggestable_ret_ty,
+            Applicability::MachineApplicable,
+        );
+        recovered_ret_ty = Some(suggestable_ret_ty);
+    } else if let Some(sugg) = suggest_impl_trait(
+        &tcx.infer_ctxt().build(TypingMode::non_body_analysis()),
+        tcx.param_env(def_id),
+        ret_ty,
+    ) {
+        diag.span_suggestion(
+            infer_ret_ty.span,
+            "replace with an appropriate return type",
+            sugg,
+            Applicability::MachineApplicable,
+        );
+    } else if ret_ty.is_closure() {
+        diag.help("consider using an `Fn`, `FnMut`, or `FnOnce` trait bound");
     }
+
+    // Also note how `Fn` traits work just in case!
+    if ret_ty.is_closure() {
+        diag.note(
+            "for more information on `Fn` traits and closure types, see \
+                     https://doc.rust-lang.org/book/ch13-01-closures.html",
+        );
+    }
+    let guar = diag.emit();
+    ty::Binder::dummy(tcx.mk_fn_sig(
+        fn_sig.inputs().iter().copied(),
+        recovered_ret_ty.unwrap_or_else(|| Ty::new_error(tcx, guar)),
+        fn_sig.c_variadic,
+        fn_sig.safety,
+        fn_sig.abi,
+    ))
 }
 
 pub fn suggest_impl_trait<'tcx>(
@@ -1611,7 +1630,7 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::ImplTrai
     impl_.of_trait.as_ref().map(|ast_trait_ref| {
         let selfty = tcx.type_of(def_id).instantiate_identity();
 
-        check_impl_constness(tcx, tcx.is_const_trait_impl(def_id.to_def_id()), ast_trait_ref);
+        check_impl_constness(tcx, impl_.constness, ast_trait_ref);
 
         let trait_ref = icx.lowerer().lower_impl_trait_ref(ast_trait_ref, selfty);
 
@@ -1619,22 +1638,23 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::ImplTrai
             trait_ref: ty::EarlyBinder::bind(trait_ref),
             safety: impl_.safety,
             polarity: polarity_of_impl(tcx, def_id, impl_, item.span),
+            constness: impl_.constness,
         }
     })
 }
 
 fn check_impl_constness(
     tcx: TyCtxt<'_>,
-    is_const: bool,
+    constness: hir::Constness,
     hir_trait_ref: &hir::TraitRef<'_>,
-) -> Option<ErrorGuaranteed> {
-    if !is_const {
-        return None;
+) {
+    if let hir::Constness::NotConst = constness {
+        return;
     }
 
-    let trait_def_id = hir_trait_ref.trait_def_id()?;
+    let Some(trait_def_id) = hir_trait_ref.trait_def_id() else { return };
     if tcx.is_const_trait(trait_def_id) {
-        return None;
+        return;
     }
 
     let trait_name = tcx.item_name(trait_def_id).to_string();
@@ -1650,14 +1670,14 @@ fn check_impl_constness(
             ),
             (false, _) | (_, false) => (None, ""),
         };
-    Some(tcx.dcx().emit_err(errors::ConstImplForNonConstTrait {
+    tcx.dcx().emit_err(errors::ConstImplForNonConstTrait {
         trait_ref_span: hir_trait_ref.path.span,
         trait_name,
         local_trait_span,
         suggestion_pre,
         marking: (),
         adding: (),
-    }))
+    });
 }
 
 fn polarity_of_impl(

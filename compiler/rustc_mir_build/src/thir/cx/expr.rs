@@ -15,7 +15,6 @@ use rustc_middle::ty::adjustment::{
 };
 use rustc_middle::ty::{
     self, AdtKind, GenericArgs, InlineConstArgs, InlineConstArgsParts, ScalarInt, Ty, UpvarArgs,
-    UserType,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, sym};
@@ -443,7 +442,9 @@ impl<'tcx> Cx<'tcx> {
                         let user_provided_types = self.typeck_results().user_provided_types();
                         let user_ty =
                             user_provided_types.get(fun.hir_id).copied().map(|mut u_ty| {
-                                if let UserType::TypeOf(ref mut did, _) = &mut u_ty.value {
+                                if let ty::UserTypeKind::TypeOf(ref mut did, _) =
+                                    &mut u_ty.value.kind
+                                {
                                     *did = adt_def.did();
                                 }
                                 Box::new(u_ty)
@@ -915,6 +916,11 @@ impl<'tcx> Cx<'tcx> {
                     }
                 }
             }
+
+            hir::ExprKind::UnsafeBinderCast(_kind, _source, _ty) => {
+                unreachable!("unsafe binders are not yet implemented")
+            }
+
             hir::ExprKind::DropTemps(source) => ExprKind::Use { source: self.mirror_expr(source) },
             hir::ExprKind::Array(fields) => ExprKind::Array { fields: self.mirror_exprs(fields) },
             hir::ExprKind::Tup(fields) => ExprKind::Tuple { fields: self.mirror_exprs(fields) },

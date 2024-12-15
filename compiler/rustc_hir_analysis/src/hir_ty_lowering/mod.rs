@@ -123,6 +123,13 @@ pub trait HirTyLowerer<'tcx> {
     /// Returns the const to use when a const is omitted.
     fn ct_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Const<'tcx>;
 
+    fn register_trait_ascription_bounds(
+        &self,
+        bounds: Vec<(ty::Clause<'tcx>, Span)>,
+        hir_id: HirId,
+        span: Span,
+    );
+
     /// Probe bounds in scope where the bounded type coincides with the given type parameter.
     ///
     /// Rephrased, this returns bounds of the form `T: Trait`, where `T` is a type parameter
@@ -2312,6 +2319,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     self.lower_fn_ty(hir_ty.hir_id, bf.safety, bf.abi, bf.decl, None, Some(hir_ty)),
                 )
             }
+            hir::TyKind::UnsafeBinder(_binder) => {
+                let guar = self
+                    .dcx()
+                    .struct_span_err(hir_ty.span, "unsafe binders are not yet implemented")
+                    .emit();
+                Ty::new_error(tcx, guar)
+            }
             hir::TyKind::TraitObject(bounds, lifetime, repr) => {
                 if let Some(guar) = self.prohibit_or_lint_bare_trait_object_ty(hir_ty) {
                     // Don't continue with type analysis if the `dyn` keyword is missing
@@ -2367,6 +2381,25 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 };
 
                 self.lower_opaque_ty(opaque_ty.def_id, in_trait)
+            }
+            hir::TyKind::TraitAscription(hir_bounds) => {
+                // Impl trait in bindings lower as an infer var with additional
+                // set of type bounds.
+                let self_ty = self.ty_infer(None, hir_ty.span);
+                let mut bounds = Bounds::default();
+                self.lower_bounds(
+                    self_ty,
+                    hir_bounds.iter(),
+                    &mut bounds,
+                    ty::List::empty(),
+                    PredicateFilter::All,
+                );
+                self.register_trait_ascription_bounds(
+                    bounds.clauses().collect(),
+                    hir_ty.hir_id,
+                    hir_ty.span,
+                );
+                self_ty
             }
             // If we encounter a type relative path with RTN generics, then it must have
             // *not* gone through `lower_ty_maybe_return_type_notation`, and therefore

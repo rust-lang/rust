@@ -565,8 +565,11 @@ impl<'tcx> Stable<'tcx> for mir::AggregateKind<'tcx> {
                     tables.tcx.coroutine_movability(*def_id).stable(tables),
                 )
             }
-            mir::AggregateKind::CoroutineClosure(..) => {
-                todo!("FIXME(async_closures): Lower these to SMIR")
+            mir::AggregateKind::CoroutineClosure(def_id, generic_args) => {
+                stable_mir::mir::AggregateKind::CoroutineClosure(
+                    tables.coroutine_closure_def(*def_id),
+                    generic_args.stable(tables),
+                )
             }
             mir::AggregateKind::RawPtr(ty, mutability) => {
                 stable_mir::mir::AggregateKind::RawPtr(ty.stable(tables), mutability.stable(tables))

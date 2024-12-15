@@ -5,7 +5,7 @@ use rustc_ast::{
     self as ast, BareFnTy, BoundAsyncness, BoundConstness, BoundPolarity, DUMMY_NODE_ID, FnRetTy,
     GenericBound, GenericBounds, GenericParam, Generics, Lifetime, MacCall, MutTy, Mutability,
     Pinnedness, PolyTraitRef, PreciseCapturingArg, TraitBoundModifiers, TraitObjectSyntax, Ty,
-    TyKind,
+    TyKind, UnsafeBinderTy,
 };
 use rustc_errors::{Applicability, PResult};
 use rustc_span::symbol::{Ident, kw, sym};
@@ -348,6 +348,10 @@ impl<'a> Parser<'a> {
                     TyKind::Err(guar)
                 }
             }
+        } else if self.check_keyword(kw::Unsafe)
+            && self.look_ahead(1, |tok| matches!(tok.kind, token::Lt))
+        {
+            self.parse_unsafe_binder_ty()?
         } else {
             let msg = format!("expected type, found {}", super::token_descr(&self.token));
             let mut err = self.dcx().struct_span_err(lo, msg);
@@ -367,6 +371,19 @@ impl<'a> Parser<'a> {
             ty = self.maybe_recover_from_question_mark(ty);
         }
         if allow_qpath_recovery { self.maybe_recover_from_bad_qpath(ty) } else { Ok(ty) }
+    }
+
+    fn parse_unsafe_binder_ty(&mut self) -> PResult<'a, TyKind> {
+        let lo = self.token.span;
+        assert!(self.eat_keyword(kw::Unsafe));
+        self.expect_lt()?;
+        let generic_params = self.parse_generic_params()?;
+        self.expect_gt()?;
+        let inner_ty = self.parse_ty()?;
+        let span = lo.to(self.prev_token.span);
+        self.psess.gated_spans.gate(sym::unsafe_binders, span);
+
+        Ok(TyKind::UnsafeBinder(P(UnsafeBinderTy { generic_params, inner_ty })))
     }
 
     /// Parses either:
