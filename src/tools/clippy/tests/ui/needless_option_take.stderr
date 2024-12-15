@@ -1,11 +1,76 @@
 error: called `Option::take()` on a temporary value
-  --> tests/ui/needless_option_take.rs:12:5
+  --> tests/ui/needless_option_take.rs:23:5
    |
 LL |     x.as_ref().take();
-   |     ^^^^^^^^^^^^^^^^^ help: try: `x.as_ref()`
+   |     ^^^^^^^^^^^^^^^^^
    |
+   = note: `as_ref` creates a temporary value, so calling take() has no effect
    = note: `-D clippy::needless-option-take` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::needless_option_take)]`
 
-error: aborting due to 1 previous error
+error: called `Option::take()` on a temporary value
+  --> tests/ui/needless_option_take.rs:31:13
+   |
+LL |     let y = x.as_mut().take();
+   |             ^^^^^^^^^^^^^^^^^
+   |
+   = note: `as_mut` creates a temporary value, so calling take() has no effect
+
+error: called `Option::take()` on a temporary value
+  --> tests/ui/needless_option_take.rs:33:13
+   |
+LL |     let y = x.replace(289).take();
+   |             ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `replace` creates a temporary value, so calling take() has no effect
+
+error: called `Option::take()` on a temporary value
+  --> tests/ui/needless_option_take.rs:36:13
+   |
+LL |     let y = Some(3).as_mut().take();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `as_mut` creates a temporary value, so calling take() has no effect
+
+error: called `Option::take()` on a temporary value
+  --> tests/ui/needless_option_take.rs:39:13
+   |
+LL |     let y = Option::as_mut(&mut x).take();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `as_mut` creates a temporary value, so calling take() has no effect
+
+error: called `Option::take()` on a temporary value
+  --> tests/ui/needless_option_take.rs:43:13
+   |
+LL |     let x = return_option().take();
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `return_option` creates a temporary value, so calling take() has no effect
+
+error: called `Option::take()` on a temporary value
+  --> tests/ui/needless_option_take.rs:47:13
+   |
+LL |     let x = MyStruct::get_option().take();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `get_option` creates a temporary value, so calling take() has no effect
+
+error: called `Option::take()` on a temporary value
+  --> tests/ui/needless_option_take.rs:53:13
+   |
+LL |     let y = my_vec.first().take();
+   |             ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `first` creates a temporary value, so calling take() has no effect
+
+error: called `Option::take()` on a temporary value
+  --> tests/ui/needless_option_take.rs:56:13
+   |
+LL |     let y = my_vec.first().take();
+   |             ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `first` creates a temporary value, so calling take() has no effect
+
+error: aborting due to 9 previous errors
 

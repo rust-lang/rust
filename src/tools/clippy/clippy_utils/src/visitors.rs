@@ -7,7 +7,7 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::intravisit::{self, Visitor, walk_block, walk_expr};
 use rustc_hir::{
     AnonConst, Arm, Block, BlockCheckMode, Body, BodyId, Expr, ExprKind, HirId, ItemId, ItemKind, LetExpr, Pat, QPath,
-    Stmt, UnOp, UnsafeSource, StructTailExpr,
+    Stmt, StructTailExpr, UnOp, UnsafeSource,
 };
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
