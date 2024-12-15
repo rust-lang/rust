@@ -65,7 +65,7 @@ pub(crate) fn from_target_feature_attr(
 
             // Only allow target features whose feature gates have been enabled
             // and which are permitted to be toggled.
-            if let Err(reason) = stability.allow_toggle() {
+            if let Err(reason) = stability.toggle_allowed(/*enable*/ true) {
                 tcx.dcx().emit_err(errors::ForbiddenTargetFeatureAttr {
                     span: item.span(),
                     feature,
@@ -160,7 +160,7 @@ pub(crate) fn provide(providers: &mut Providers) {
                     .target
                     .rust_target_features()
                     .iter()
-                    .map(|&(a, b, _)| (a.to_string(), b.compute_toggleability(target)))
+                    .map(|(a, b, _)| (a.to_string(), b.compute_toggleability(target)))
                     .collect()
             }
         },

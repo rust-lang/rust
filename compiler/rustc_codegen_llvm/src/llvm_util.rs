@@ -373,9 +373,9 @@ pub fn target_features_cfg(sess: &Session, allow_unstable: bool) -> Vec<Symbol> 
         .rust_target_features()
         .iter()
         .filter(|(_, gate, _)| gate.in_cfg())
-        .filter_map(|&(feature, gate, _)| {
+        .filter_map(|(feature, gate, _)| {
             if sess.is_nightly_build() || allow_unstable || gate.requires_nightly().is_none() {
-                Some(feature)
+                Some(*feature)
             } else {
                 None
             }
@@ -718,7 +718,7 @@ pub(crate) fn global_llvm_features(
                         }
                         Some((_, stability, _)) => {
                             if let Err(reason) =
-                                stability.compute_toggleability(&sess.target).allow_toggle()
+                                stability.toggle_allowed(&sess.target, enable_disable == '+')
                             {
                                 sess.dcx().emit_warn(ForbiddenCTargetFeature { feature, reason });
                             } else if stability.requires_nightly().is_some() {

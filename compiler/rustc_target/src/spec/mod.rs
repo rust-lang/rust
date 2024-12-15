@@ -2213,6 +2213,10 @@ pub struct TargetOptions {
     /// `-Ctarget-cpu` but can be overwritten with `-Ctarget-features`.
     /// Corresponds to `llc -mattr=$features`.
     /// Note that these are LLVM feature names, not Rust feature names!
+    ///
+    /// Generally it is a bad idea to use negative target features because they often interact very
+    /// poorly with how `-Ctarget-cpu` works. Instead, try to use a lower "base CPU" and enable the
+    /// features you want to use.
     pub features: StaticCow<str>,
     /// Direct or use GOT indirect to reference external data symbols
     pub direct_access_external_data: Option<bool>,
@@ -2605,15 +2609,11 @@ impl TargetOptions {
     }
 
     pub(crate) fn has_feature(&self, search_feature: &str) -> bool {
-        self.features.split(',').any(|f| {
-            if let Some(f) = f.strip_prefix('+')
-                && f == search_feature
-            {
-                true
-            } else {
-                false
-            }
-        })
+        self.features.split(',').any(|f| f.strip_prefix('+').is_some_and(|f| f == search_feature))
+    }
+
+    pub(crate) fn has_neg_feature(&self, search_feature: &str) -> bool {
+        self.features.split(',').any(|f| f.strip_prefix('-').is_some_and(|f| f == search_feature))
     }
 }
 
