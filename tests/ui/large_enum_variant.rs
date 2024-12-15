@@ -178,3 +178,65 @@ fn main() {
         }
     );
 }
+
+mod issue11915 {
+    use std::sync::atomic::AtomicPtr;
+
+    pub struct Bytes {
+        ptr: *const u8,
+        len: usize,
+        // inlined "trait object"
+        data: AtomicPtr<()>,
+        vtable: &'static Vtable,
+    }
+    pub(crate) struct Vtable {
+        /// fn(data, ptr, len)
+        pub clone: unsafe fn(&AtomicPtr<()>, *const u8, usize) -> Bytes,
+        /// fn(data, ptr, len)
+        ///
+        /// takes `Bytes` to value
+        pub to_vec: unsafe fn(&AtomicPtr<()>, *const u8, usize) -> Vec<u8>,
+        /// fn(data, ptr, len)
+        pub drop: unsafe fn(&mut AtomicPtr<()>, *const u8, usize),
+    }
+
+    enum NoWarnings {
+        BigBoi(PublishWithBytes),
+        _SmallBoi(u8),
+    }
+
+    enum MakesClippyAngry {
+        BigBoi(PublishWithVec),
+        _SmallBoi(u8),
+    }
+
+    struct PublishWithBytes {
+        _dup: bool,
+        _retain: bool,
+        _topic: Bytes,
+        __topic: Bytes,
+        ___topic: Bytes,
+        ____topic: Bytes,
+        _pkid: u16,
+        _payload: Bytes,
+        __payload: Bytes,
+        ___payload: Bytes,
+        ____payload: Bytes,
+        _____payload: Bytes,
+    }
+
+    struct PublishWithVec {
+        _dup: bool,
+        _retain: bool,
+        _topic: Vec<u8>,
+        __topic: Vec<u8>,
+        ___topic: Vec<u8>,
+        ____topic: Vec<u8>,
+        _pkid: u16,
+        _payload: Vec<u8>,
+        __payload: Vec<u8>,
+        ___payload: Vec<u8>,
+        ____payload: Vec<u8>,
+        _____payload: Vec<u8>,
+    }
+}

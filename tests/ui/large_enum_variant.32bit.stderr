@@ -283,14 +283,30 @@ LL | / enum WithRecursion {
 LL | |     Large([u64; 64]),
    | |     ---------------- the largest variant contains at least 512 bytes
 LL | |     Recursive(Box<WithRecursion>),
-   | |     ----------------------------- the second-largest variant contains at least 0 bytes
+   | |     ----------------------------- the second-largest variant contains at least 4 bytes
 LL | | }
-   | |_^ the entire enum is at least 0 bytes
+   | |_^ the entire enum is at least 516 bytes
    |
 help: consider boxing the large fields to reduce the total size of the enum
    |
 LL |     Large(Box<[u64; 64]>),
    |           ~~~~~~~~~~~~~~
 
-error: aborting due to 17 previous errors
+error: large size difference between variants
+  --> tests/ui/large_enum_variant.rs:168:1
+   |
+LL | / enum LargeEnumWithGenericsAndRecursive {
+LL | |     Ok(),
+   | |     ---- the second-largest variant carries no data at all
+LL | |     Error(WithRecursionAndGenerics<u64>),
+   | |     ------------------------------------ the largest variant contains at least 516 bytes
+LL | | }
+   | |_^ the entire enum is at least 516 bytes
+   |
+help: consider boxing the large fields to reduce the total size of the enum
+   |
+LL |     Error(Box<WithRecursionAndGenerics<u64>>),
+   |           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error: aborting due to 18 previous errors
 
