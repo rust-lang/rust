@@ -58,8 +58,7 @@ LL | |             x: Default::default(),
    | |                ------------------
 LL | |             y: 0,
    | |                - these are the same values the expansion of `#[derive(Default)]` would use
-LL | |         }
-LL | |     }
+...  |
 LL | | }
    | |_^
    |
@@ -76,8 +75,7 @@ LL | |     fn default() -> Self {
 LL | |         E {
 LL | |             x: None,
    | |                ---- this is the same value the expansion of `#[derive(Default)]` would use
-LL | |         }
-LL | |     }
+...  |
 LL | | }
    | |_^
    |
@@ -111,8 +109,7 @@ LL | |     fn default() -> Self {
 LL | |         G {
 LL | |             f: F::Unit,
    | |                ------- this is the same value the expansion of `#[derive(Default)]` would use
-LL | |         }
-LL | |     }
+...  |
 LL | | }
    | |_^
    |
@@ -133,8 +130,7 @@ LL | / impl Default for H {
 LL | |     fn default() -> Self {
 LL | |         H {
 LL | |             x: 1,
-LL | |         }
-LL | |     }
+...  |
 LL | | }
    | |_^
    |
@@ -163,7 +159,6 @@ LL | |     fn default() -> Self {
 LL | |         I {
 LL | |             x: 1,
 ...  |
-LL | |     }
 LL | | }
    | |_^
    |
@@ -180,8 +175,7 @@ LL | |     fn default() -> Self {
 LL | |         J {
 LL | |             x: foo(), // fn call that isn't an assoc fn
    | |                ----- this is the same value the expansion of `#[derive(Default)]` would use
-LL | |         }
-LL | |     }
+...  |
 LL | | }
    | |_^
    |
@@ -198,8 +192,7 @@ LL | |     fn default() -> Self {
 LL | |         L {
 LL | |             x: Vec::new(), // `<Vec as Default>::default()` just calls `Vec::new()`
    | |                ---------- this is the same value the expansion of `#[derive(Default)]` would use
-LL | |         }
-LL | |     }
+...  |
 LL | | }
    | |_^
    |
@@ -216,8 +209,7 @@ LL | |     fn default() -> Self {
 LL | |         M {
 LL | |             x: N_CONST,
    | |                ------- this is the same value the expansion of `#[derive(Default)]` would use
-LL | |         }
-LL | |     }
+...  |
 LL | | }
    | |_^
    |
