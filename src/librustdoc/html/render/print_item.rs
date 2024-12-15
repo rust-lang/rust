@@ -651,7 +651,8 @@ fn item_function(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, f: &clean::
 fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) {
     let tcx = cx.tcx();
     let bounds = bounds(&t.bounds, false, cx);
-    let required_types = t.items.iter().filter(|m| m.is_ty_associated_type()).collect::<Vec<_>>();
+    let required_types =
+        t.items.iter().filter(|m| m.is_required_associated_type()).collect::<Vec<_>>();
     let provided_types = t.items.iter().filter(|m| m.is_associated_type()).collect::<Vec<_>>();
     let required_consts =
         t.items.iter().filter(|m| m.is_required_associated_const()).collect::<Vec<_>>();

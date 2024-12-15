@@ -94,7 +94,7 @@ pub(crate) trait DocFolder: Sized {
             | RequiredAssocConstItem(..)
             | ProvidedAssocConstItem(..)
             | ImplAssocConstItem(..)
-            | TyAssocTypeItem(..)
+            | RequiredAssocTypeItem(..)
             | AssocTypeItem(..)
             | KeywordItem => kind,
         }

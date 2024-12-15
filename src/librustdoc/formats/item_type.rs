@@ -99,7 +99,7 @@ impl<'a> From<&'a clean::Item> for ItemType {
             clean::RequiredAssocConstItem(..)
             | clean::ProvidedAssocConstItem(..)
             | clean::ImplAssocConstItem(..) => ItemType::AssocConst,
-            clean::TyAssocTypeItem(..) | clean::AssocTypeItem(..) => ItemType::AssocType,
+            clean::RequiredAssocTypeItem(..) | clean::AssocTypeItem(..) => ItemType::AssocType,
             clean::ForeignTypeItem => ItemType::ForeignType,
             clean::KeywordItem => ItemType::Keyword,
             clean::TraitAliasItem(..) => ItemType::TraitAlias,

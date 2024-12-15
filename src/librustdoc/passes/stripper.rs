@@ -123,7 +123,7 @@ impl DocFolder for Stripper<'_, '_> {
             // tymethods etc. have no control over privacy
             clean::TyMethodItem(..)
             | clean::RequiredAssocConstItem(..)
-            | clean::TyAssocTypeItem(..) => {}
+            | clean::RequiredAssocTypeItem(..) => {}
 
             // Proc-macros are always public
             clean::ProcMacroItem(..) => {}

@@ -340,7 +340,7 @@ impl DocFolder for CacheBuilder<'_, '_> {
             | clean::RequiredAssocConstItem(..)
             | clean::ProvidedAssocConstItem(..)
             | clean::ImplAssocConstItem(..)
-            | clean::TyAssocTypeItem(..)
+            | clean::RequiredAssocTypeItem(..)
             | clean::AssocTypeItem(..)
             | clean::StrippedItem(..)
             | clean::KeywordItem => {
@@ -454,7 +454,7 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
         }
         clean::TyMethodItem(..)
         | clean::RequiredAssocConstItem(..)
-        | clean::TyAssocTypeItem(..)
+        | clean::RequiredAssocTypeItem(..)
         | clean::StructFieldItem(..)
         | clean::VariantItem(..) => {
             // Don't index if containing module is stripped (i.e., private),

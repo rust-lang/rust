@@ -547,8 +547,8 @@ impl Item {
     pub(crate) fn is_associated_type(&self) -> bool {
         matches!(self.kind, AssocTypeItem(..) | StrippedItem(box AssocTypeItem(..)))
     }
-    pub(crate) fn is_ty_associated_type(&self) -> bool {
-        matches!(self.kind, TyAssocTypeItem(..) | StrippedItem(box TyAssocTypeItem(..)))
+    pub(crate) fn is_required_associated_type(&self) -> bool {
+        matches!(self.kind, RequiredAssocTypeItem(..) | StrippedItem(box RequiredAssocTypeItem(..)))
     }
     pub(crate) fn is_associated_const(&self) -> bool {
         matches!(self.kind, ProvidedAssocConstItem(..) | ImplAssocConstItem(..) | StrippedItem(box (ProvidedAssocConstItem(..) | ImplAssocConstItem(..))))
@@ -705,7 +705,7 @@ impl Item {
             | ProvidedAssocConstItem(..)
             | ImplAssocConstItem(..)
             | AssocTypeItem(..)
-            | TyAssocTypeItem(..)
+            | RequiredAssocTypeItem(..)
             | TyMethodItem(..)
             | MethodItem(..) => {
                 let assoc_item = tcx.associated_item(def_id);
@@ -878,7 +878,7 @@ pub(crate) enum ItemKind {
     /// A required associated type in a trait declaration.
     ///
     /// The bounds may be non-empty if there is a `where` clause.
-    TyAssocTypeItem(Generics, Vec<GenericBound>),
+    RequiredAssocTypeItem(Generics, Vec<GenericBound>),
     /// An associated type in a trait impl or a provided one in a trait declaration.
     AssocTypeItem(Box<TypeAlias>, Vec<GenericBound>),
     /// An item that has been stripped by a rustdoc pass
@@ -921,7 +921,7 @@ impl ItemKind {
             | RequiredAssocConstItem(..)
             | ProvidedAssocConstItem(..)
             | ImplAssocConstItem(..)
-            | TyAssocTypeItem(..)
+            | RequiredAssocTypeItem(..)
             | AssocTypeItem(..)
             | StrippedItem(_)
             | KeywordItem => [].iter(),

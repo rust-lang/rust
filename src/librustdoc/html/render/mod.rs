@@ -1127,7 +1127,7 @@ fn render_assoc_item(
             if parent == ItemType::Trait { 4 } else { 0 },
             cx,
         ),
-        clean::TyAssocTypeItem(ref generics, ref bounds) => assoc_type(
+        clean::RequiredAssocTypeItem(ref generics, ref bounds) => assoc_type(
             w,
             item,
             generics,
@@ -1763,7 +1763,7 @@ fn render_impl(
                 );
                 w.write_str("</h4></section>");
             }
-            clean::TyAssocTypeItem(ref generics, ref bounds) => {
+            clean::RequiredAssocTypeItem(ref generics, ref bounds) => {
                 let source_id = format!("{item_type}.{name}");
                 let id = cx.derive_id(&source_id);
                 write!(w, "<section id=\"{id}\" class=\"{item_type}{in_trait_class}\">");
@@ -1839,7 +1839,7 @@ fn render_impl(
         for trait_item in &impl_.items {
             match trait_item.kind {
                 clean::MethodItem(..) | clean::TyMethodItem(_) => methods.push(trait_item),
-                clean::TyAssocTypeItem(..) | clean::AssocTypeItem(..) => {
+                clean::RequiredAssocTypeItem(..) | clean::AssocTypeItem(..) => {
                     assoc_types.push(trait_item)
                 }
                 clean::RequiredAssocConstItem(..)

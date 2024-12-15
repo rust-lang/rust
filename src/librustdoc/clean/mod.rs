@@ -1259,7 +1259,7 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
             hir::TraitItemKind::Type(bounds, None) => {
                 let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
                 let bounds = bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect();
-                TyAssocTypeItem(generics, bounds)
+                RequiredAssocTypeItem(generics, bounds)
             }
         };
         Item::from_def_id_and_parts(local_did, Some(trait_item.ident.name), inner, cx)
@@ -1493,7 +1493,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                         bounds,
                     )
                 } else {
-                    TyAssocTypeItem(generics, bounds)
+                    RequiredAssocTypeItem(generics, bounds)
                 }
             } else {
                 AssocTypeItem(

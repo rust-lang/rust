@@ -347,7 +347,7 @@ fn from_clean_item(item: clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum {
             type_: ci.type_.into_json(renderer),
             value: Some(ci.kind.expr(renderer.tcx)),
         },
-        TyAssocTypeItem(g, b) => ItemEnum::AssocType {
+        RequiredAssocTypeItem(g, b) => ItemEnum::AssocType {
             generics: g.into_json(renderer),
             bounds: b.into_json(renderer),
             type_: None,

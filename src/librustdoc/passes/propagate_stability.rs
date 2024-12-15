@@ -72,7 +72,7 @@ impl DocFolder for StabilityPropagator<'_, '_> {
                     | ItemKind::RequiredAssocConstItem(..)
                     | ItemKind::ProvidedAssocConstItem(..)
                     | ItemKind::ImplAssocConstItem(..)
-                    | ItemKind::TyAssocTypeItem(..)
+                    | ItemKind::RequiredAssocTypeItem(..)
                     | ItemKind::AssocTypeItem(..)
                     | ItemKind::PrimitiveItem(..)
                     | ItemKind::KeywordItem => own_stability,
