@@ -94,7 +94,7 @@ pub fn f32_nearest(a: f32) -> f32 {
 /// This method is useful when targeting `no_std` and is equivalent to [`std::f32::sqrt()`].
 ///
 /// [`std::f32::sqrt()`]: https://doc.rust-lang.org/std/primitive.f32.html#method.sqrt
-/// [`f32.nearest`]: https://webassembly.github.io/spec/core/syntax/instructions.html#syntax-instr-numeric
+/// [`f32.sqrt`]: https://webassembly.github.io/spec/core/syntax/instructions.html#syntax-instr-numeric
 #[cfg_attr(test, assert_instr(f32.sqrt))]
 #[inline]
 #[must_use = "method returns a new number and does not mutate the original value"]
@@ -165,7 +165,7 @@ pub fn f64_nearest(a: f64) -> f64 {
 /// This method is useful when targeting `no_std` and is equivalent to [`std::f64::sqrt()`].
 ///
 /// [`std::f64::sqrt()`]: https://doc.rust-lang.org/std/primitive.f64.html#method.sqrt
-/// [`f64.nearest`]: https://webassembly.github.io/spec/core/syntax/instructions.html#syntax-instr-numeric
+/// [`f64.sqrt`]: https://webassembly.github.io/spec/core/syntax/instructions.html#syntax-instr-numeric
 #[cfg_attr(test, assert_instr(f64.sqrt))]
 #[inline]
 #[must_use = "method returns a new number and does not mutate the original value"]
