@@ -32,7 +32,7 @@ use self::debuginfo::{FunctionDebugContext, PerLocalVarDebugInfo};
 use self::operand::{OperandRef, OperandValue};
 use self::place::PlaceRef;
 
-const MIN_DANGEROUS_SIZE: u64 = 1024 * 1024 * 1024 * 1; // 1 GB
+const MIN_DANGEROUS_ALLOC_SIZE: u64 = 1024 * 1024 * 1024 * 1; // 1 GB
 
 // Used for tracking the state of generated basic blocks.
 enum CachedLlbb<T> {
