@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::ffi::{OsStr, OsString};
 use std::fs::{self, File, create_dir_all};
 use std::hash::{DefaultHasher, Hash, Hasher};
@@ -1962,16 +1962,18 @@ impl<'test> TestCx<'test> {
         // via `filecheck-flags` or by adding new header directives.
 
         // Because we use custom prefixes, we also have to register the default prefix.
-        filecheck.arg("--check-prefix=CHECK");
+        // Deduplicate these in a set so revisions like `CHECK`, `MSVC`, and `NONMSVC` don't
+        // cause errors.
+        let mut check_prefixes = BTreeSet::from(["CHECK"]);
 
         // Some tests use the current revision name as a check prefix.
         if let Some(rev) = self.revision {
-            filecheck.arg("--check-prefix").arg(rev);
+            check_prefixes.insert(rev);
         }
 
         // Some tests also expect either the MSVC or NONMSVC prefix to be defined.
         let msvc_or_not = if self.config.target.contains("msvc") { "MSVC" } else { "NONMSVC" };
-        filecheck.arg("--check-prefix").arg(msvc_or_not);
+        check_prefixes.insert(msvc_or_not);
 
         // The filecheck tool normally fails if a prefix is defined but not used.
         // However, we define several prefixes globally for all tests.
@@ -1982,6 +1984,11 @@ impl<'test> TestCx<'test> {
 
         // Add custom flags supplied by the `filecheck-flags:` test header.
         filecheck.args(&self.props.filecheck_flags);
+
+        for prefix in check_prefixes {
+            // Set the expected prefixes
+            filecheck.arg("--check-prefix").arg(prefix);
+        }
 
         self.compose_and_run(filecheck, "", None, None)
     }
