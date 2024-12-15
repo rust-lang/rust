@@ -552,7 +552,7 @@ fn debug_print() {
 
     let mut command = Command::new("some-boring-name");
 
-    assert_eq!(format!("{command:?}"), format!(r#""some-boring-name""#));
+    assert_eq!(format!("{command:?}"), format!("some-boring-name"));
 
     assert_eq!(
         format!("{command:#?}"),
@@ -568,7 +568,7 @@ fn debug_print() {
 
     command.args(&["1", "2", "3"]);
 
-    assert_eq!(format!("{command:?}"), format!(r#""some-boring-name" "1" "2" "3""#));
+    assert_eq!(format!("{command:?}"), format!("some-boring-name 1 2 3"));
 
     assert_eq!(
         format!("{command:#?}"),
@@ -587,10 +587,7 @@ fn debug_print() {
 
     crate::os::unix::process::CommandExt::arg0(&mut command, "exciting-name");
 
-    assert_eq!(
-        format!("{command:?}"),
-        format!(r#"["some-boring-name"] "exciting-name" "1" "2" "3""#)
-    );
+    assert_eq!(format!("{command:?}"), format!("[some-boring-name] exciting-name 1 2 3"));
 
     assert_eq!(
         format!("{command:#?}"),
@@ -609,10 +606,7 @@ fn debug_print() {
 
     let mut command_with_env_and_cwd = Command::new("boring-name");
     command_with_env_and_cwd.current_dir("/some/path").env("FOO", "bar");
-    assert_eq!(
-        format!("{command_with_env_and_cwd:?}"),
-        r#"cd "/some/path" && FOO="bar" "boring-name""#
-    );
+    assert_eq!(format!("{command_with_env_and_cwd:?}"), "cd /some/path && FOO=bar boring-name");
     assert_eq!(
         format!("{command_with_env_and_cwd:#?}"),
         format!(
@@ -638,7 +632,7 @@ fn debug_print() {
 
     let mut command_with_removed_env = Command::new("boring-name");
     command_with_removed_env.env_remove("FOO").env_remove("BAR");
-    assert_eq!(format!("{command_with_removed_env:?}"), r#"env -u BAR -u FOO "boring-name""#);
+    assert_eq!(format!("{command_with_removed_env:?}"), "env -u BAR -u FOO boring-name");
     assert_eq!(
         format!("{command_with_removed_env:#?}"),
         format!(
@@ -660,7 +654,7 @@ fn debug_print() {
 
     let mut command_with_cleared_env = Command::new("boring-name");
     command_with_cleared_env.env_clear().env("BAR", "val").env_remove("FOO");
-    assert_eq!(format!("{command_with_cleared_env:?}"), r#"env -i BAR="val" "boring-name""#);
+    assert_eq!(format!("{command_with_cleared_env:?}"), "env -i BAR=val boring-name");
     assert_eq!(
         format!("{command_with_cleared_env:#?}"),
         format!(

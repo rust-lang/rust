@@ -13,17 +13,19 @@ fn main() {
         .linker_flavor(linker)
         .link_arg("a")
         .link_args("b c")
-        .link_args("d e")
-        .link_arg("f")
+        .link_arg("d e")
+        .link_args("f g")
+        .link_arg("h")
         .run_fail()
-        .assert_stderr_contains(r#""a" "b" "c" "d" "e" "f""#);
+        .assert_stderr_contains(r#"a b c "d e" f g h"#);
     rustc()
         .input("empty.rs")
         .linker_flavor(linker)
         .arg("-Zpre-link-arg=a")
         .arg("-Zpre-link-args=b c")
-        .arg("-Zpre-link-args=d e")
-        .arg("-Zpre-link-arg=f")
+        .arg("-Zpre-link-arg=d e")
+        .arg("-Zpre-link-args=f g")
+        .arg("-Zpre-link-arg=h")
         .run_fail()
-        .assert_stderr_contains(r#""a" "b" "c" "d" "e" "f""#);
+        .assert_stderr_contains(r#"a b c "d e" f g h"#);
 }

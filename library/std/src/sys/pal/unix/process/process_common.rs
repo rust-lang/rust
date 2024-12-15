@@ -580,8 +580,56 @@ impl fmt::Debug for Command {
 
             debug_command.finish()
         } else {
+            /// Only escape arguments when necessary, otherwise output it
+            /// unescaped to make the output easier to read.
+            ///
+            /// NOTE: This is best effort only!
+            fn relaxed_escaping(bytes: &[u8], is_arg: bool) -> impl fmt::Display + use<'_> {
+                // Don't escape if all the characters are likely
+                // to not be a problem when copied to the shell.
+                let can_print_safely = move |&c| {
+                    // See: https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_02
+                    match c {
+                        // The documentation linked above says that `=`:
+                        // > may need to be quoted under certain circumstances
+                        //
+                        // Because they may be parsed as a variable assignment.
+                        // But in argument position to a command, they
+                        // shouldn't need escaping.
+                        b'=' if is_arg => true,
+                        // As per documentation linked above:
+                        // > The application shall quote the following characters
+                        b'|' | b'&' | b';' | b'<' | b'>' | b'(' | b')' | b'$' | b'`' | b'\\'
+                        | b'"' | b'\'' | b' ' | b'\t' | b'\n' => false,
+                        // As per documentation linked above:
+                        // > may need to be quoted under certain circumstances
+                        b'*' | b'?' | b'[' | b'#' | b'~' | b'=' | b'%' => false,
+                        // It'd be weird to quote `[` and not quote `]`.
+                        b']' => false,
+                        // ! does history expansion in Bash, require quoting for that as well.
+                        //
+                        // NOTE: This doesn't currently work properly, we'd need to backslash-escape
+                        // `!` as well (which `escape_ascii` doesn't do).
+                        b'!' => false,
+                        // Assume all other printable characters may be output.
+                        0x20..0x7e => true,
+                        // Unprintable or not ASCII.
+                        _ => false,
+                    }
+                };
+                fmt::from_fn(move |f| {
+                    if !bytes.is_empty() && bytes.iter().all(can_print_safely) {
+                        // Unwrap is fine, we've checked above that the bytes only contains ascii.
+                        let ascii = crate::str::from_utf8(bytes).unwrap();
+                        write!(f, "{ascii}")
+                    } else {
+                        write!(f, "\"{}\"", bytes.escape_ascii())
+                    }
+                })
+            }
+
             if let Some(ref cwd) = self.cwd {
-                write!(f, "cd {cwd:?} && ")?;
+                write!(f, "cd {} && ", relaxed_escaping(cwd.to_bytes(), true))?;
             }
             if self.env.does_clear() {
                 write!(f, "env -i ")?;
@@ -595,23 +643,29 @@ impl fmt::Debug for Command {
                             write!(f, "env ")?;
                             any_removed = true;
                         }
-                        write!(f, "-u {} ", key.to_string_lossy())?;
+                        write!(f, "-u {} ", relaxed_escaping(key.as_encoded_bytes(), false))?;
                     }
                 }
             }
             // Altered env vars can just be added in front of the program.
             for (key, value_opt) in self.get_envs() {
                 if let Some(value) = value_opt {
-                    write!(f, "{}={value:?} ", key.to_string_lossy())?;
+                    write!(
+                        f,
+                        "{}={} ",
+                        relaxed_escaping(key.as_encoded_bytes(), false),
+                        relaxed_escaping(value.as_encoded_bytes(), false)
+                    )?;
                 }
             }
             if self.program != self.args[0] {
-                write!(f, "[{:?}] ", self.program)?;
+                write!(f, "[{}] ", relaxed_escaping(self.program.to_bytes(), false))?;
             }
-            write!(f, "{:?}", self.args[0])?;
+
+            write!(f, "{}", relaxed_escaping(self.args[0].to_bytes(), false))?;
 
             for arg in &self.args[1..] {
-                write!(f, " {:?}", arg)?;
+                write!(f, " {}", relaxed_escaping(arg.to_bytes(), true))?;
             }
             Ok(())
         }
