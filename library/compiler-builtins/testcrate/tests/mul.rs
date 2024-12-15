@@ -73,9 +73,10 @@ mod int_overflowing_mul {
         use compiler_builtins::int::mul::{__rust_i128_mulo, __rust_u128_mulo};
 
         fuzz_2(N, |x: u128, y: u128| {
+            let mut o1 = 0;
             let (mul0, o0) = x.overflowing_mul(y);
-            let (mul1, o1) = __rust_u128_mulo(x, y);
-            if mul0 != mul1 || o0 != o1 {
+            let mul1 = __rust_u128_mulo(x, y, &mut o1);
+            if mul0 != mul1 || i32::from(o0) != o1 {
                 panic!(
                     "__rust_u128_mulo({}, {}): std: ({}, {}), builtins: ({}, {})",
                     x, y, mul0, o0, mul1, o1
@@ -84,8 +85,8 @@ mod int_overflowing_mul {
             let x = x as i128;
             let y = y as i128;
             let (mul0, o0) = x.overflowing_mul(y);
-            let (mul1, o1) = __rust_i128_mulo(x, y);
-            if mul0 != mul1 || o0 != o1 {
+            let mul1 = __rust_i128_mulo(x, y, &mut o1);
+            if mul0 != mul1 || i32::from(o0) != o1 {
                 panic!(
                     "__rust_i128_mulo({}, {}): std: ({}, {}), builtins: ({}, {})",
                     x, y, mul0, o0, mul1, o1

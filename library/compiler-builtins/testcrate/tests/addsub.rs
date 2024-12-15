@@ -44,20 +44,22 @@ mod int_addsub {
                     use compiler_builtins::int::addsub::{$fn_add, $fn_sub};
 
                     fuzz_2(N, |x: $i, y: $i| {
-                        let add0 = x.overflowing_add(y);
-                        let sub0 = x.overflowing_sub(y);
-                        let add1: ($i, bool) = $fn_add(x, y);
-                        let sub1: ($i, bool) = $fn_sub(x, y);
-                        if add0.0 != add1.0 || add0.1 != add1.1 {
+                        let (add0, add_o0)= x.overflowing_add(y);
+                        let (sub0, sub_o0)= x.overflowing_sub(y);
+                        let mut add_o1 = 0;
+                        let mut sub_o1 = 0;
+                        let add1: $i = $fn_add(x, y, &mut add_o1);
+                        let sub1: $i = $fn_sub(x, y, &mut sub_o1);
+                        if add0 != add1 || i32::from(add_o0) != add_o1 {
                             panic!(
                                 "{}({}, {}): std: {:?}, builtins: {:?}",
-                                stringify!($fn_add), x, y, add0, add1
+                                stringify!($fn_add), x, y, (add0, add_o0) , (add1, add_o1)
                             );
                         }
-                        if sub0.0 != sub1.0 || sub0.1 != sub1.1 {
+                        if sub0 != sub1 || i32::from(sub_o0) != sub_o1 {
                             panic!(
                                 "{}({}, {}): std: {:?}, builtins: {:?}",
-                                stringify!($fn_sub), x, y, sub0, sub1
+                                stringify!($fn_sub), x, y, (sub0, sub_o0) , (sub1, sub_o1)
                             );
                         }
                     });

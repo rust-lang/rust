@@ -66,31 +66,39 @@ intrinsics! {
         AddSub::add(a,b)
     }
 
-    pub extern "C" fn __rust_i128_addo(a: i128, b: i128) -> (i128, bool) {
-        a.addo(b)
+    pub extern "C" fn __rust_i128_addo(a: i128, b: i128, oflow: &mut i32) -> i128 {
+        let (add, o) = a.addo(b);
+        *oflow = o.into();
+        add
     }
 
     pub extern "C" fn __rust_u128_add(a: u128, b: u128) -> u128 {
         AddSub::add(a,b)
     }
 
-    pub extern "C" fn __rust_u128_addo(a: u128, b: u128) -> (u128, bool) {
-        a.addo(b)
+    pub extern "C" fn __rust_u128_addo(a: u128, b: u128, oflow: &mut i32) -> u128 {
+        let (add, o) = a.addo(b);
+        *oflow = o.into();
+        add
     }
 
     pub extern "C" fn __rust_i128_sub(a: i128, b: i128) -> i128 {
         AddSub::sub(a,b)
     }
 
-    pub extern "C" fn __rust_i128_subo(a: i128, b: i128) -> (i128, bool) {
-        a.subo(b)
+    pub extern "C" fn __rust_i128_subo(a: i128, b: i128, oflow: &mut i32) -> i128 {
+        let (sub, o) = a.subo(b);
+        *oflow = o.into();
+        sub
     }
 
     pub extern "C" fn __rust_u128_sub(a: u128, b: u128) -> u128 {
         AddSub::sub(a,b)
     }
 
-    pub extern "C" fn __rust_u128_subo(a: u128, b: u128) -> (u128, bool) {
-        a.subo(b)
+    pub extern "C" fn __rust_u128_subo(a: u128, b: u128, oflow: &mut i32) -> u128 {
+        let (sub, o) = a.subo(b);
+        *oflow = o.into();
+        sub
     }
 }
