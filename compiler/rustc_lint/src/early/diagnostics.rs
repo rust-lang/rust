@@ -8,6 +8,7 @@ use rustc_errors::{
     Applicability, Diag, DiagArgValue, LintDiagnostic, elided_lifetime_in_path_suggestion,
 };
 use rustc_middle::middle::stability;
+use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::lint::{BuiltinLintDiag, ElidedLifetimeResolution};
 use rustc_span::BytePos;
@@ -18,7 +19,12 @@ use crate::lints::{self, ElidedNamedLifetime};
 
 mod check_cfg;
 
-pub(super) fn decorate_lint(sess: &Session, diagnostic: BuiltinLintDiag, diag: &mut Diag<'_, ()>) {
+pub(super) fn decorate_lint(
+    sess: &Session,
+    tcx: Option<TyCtxt<'_>>,
+    diagnostic: BuiltinLintDiag,
+    diag: &mut Diag<'_, ()>,
+) {
     match diagnostic {
         BuiltinLintDiag::UnicodeTextFlow(comment_span, content) => {
             let spans: Vec<_> = content
@@ -199,10 +205,10 @@ pub(super) fn decorate_lint(sess: &Session, diagnostic: BuiltinLintDiag, diag: &
             .decorate_lint(diag);
         }
         BuiltinLintDiag::UnexpectedCfgName(name, value) => {
-            check_cfg::unexpected_cfg_name(sess, name, value).decorate_lint(diag);
+            check_cfg::unexpected_cfg_name(sess, tcx, name, value).decorate_lint(diag);
         }
         BuiltinLintDiag::UnexpectedCfgValue(name, value) => {
-            check_cfg::unexpected_cfg_value(sess, name, value).decorate_lint(diag);
+            check_cfg::unexpected_cfg_value(sess, tcx, name, value).decorate_lint(diag);
         }
         BuiltinLintDiag::DeprecatedWhereclauseLocation(left_sp, sugg) => {
             let suggestion = match sugg {

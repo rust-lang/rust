@@ -2187,8 +2187,7 @@ pub(crate) struct UnexpectedCfgRustcMacroHelp {
 pub(crate) struct UnexpectedCfgCargoMacroHelp {
     pub macro_kind: &'static str,
     pub macro_name: Symbol,
-    // FIXME: Figure out a way to get the crate name
-    // crate_name: String,
+    pub crate_name: Symbol,
 }
 
 #[derive(LintDiagnostic)]

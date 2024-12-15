@@ -723,6 +723,20 @@ const SPARC_FEATURES: &[(&str, StabilityUncomputed, ImpliedFeatures)] = &[
     // tidy-alphabetical-end
 ];
 
+const M68K_FEATURES: &[(&str, StabilityUncomputed, ImpliedFeatures)] = &[
+    // tidy-alphabetical-start
+    ("isa-68000", unstable(sym::m68k_target_feature), &[]),
+    ("isa-68010", unstable(sym::m68k_target_feature), &["isa-68000"]),
+    ("isa-68020", unstable(sym::m68k_target_feature), &["isa-68010"]),
+    ("isa-68030", unstable(sym::m68k_target_feature), &["isa-68020"]),
+    ("isa-68040", unstable(sym::m68k_target_feature), &["isa-68030", "isa-68882"]),
+    ("isa-68060", unstable(sym::m68k_target_feature), &["isa-68040"]),
+    // FPU
+    ("isa-68881", unstable(sym::m68k_target_feature), &[]),
+    ("isa-68882", unstable(sym::m68k_target_feature), &["isa-68881"]),
+    // tidy-alphabetical-end
+];
+
 /// When rustdoc is running, provide a list of all known features so that all their respective
 /// primitives may be documented.
 ///
@@ -742,6 +756,7 @@ pub fn all_rust_features() -> impl Iterator<Item = (&'static str, StabilityUncom
         .chain(LOONGARCH_FEATURES)
         .chain(IBMZ_FEATURES)
         .chain(SPARC_FEATURES)
+        .chain(M68K_FEATURES)
         .cloned()
         .map(|(f, s, _)| (f, s))
 }
@@ -789,6 +804,7 @@ impl Target {
             "loongarch64" => LOONGARCH_FEATURES,
             "s390x" => IBMZ_FEATURES,
             "sparc" | "sparc64" => SPARC_FEATURES,
+            "m68k" => M68K_FEATURES,
             _ => &[],
         }
     }
@@ -806,7 +822,7 @@ impl Target {
             "sparc" | "sparc64" => SPARC_FEATURES_FOR_CORRECT_VECTOR_ABI,
             "hexagon" => HEXAGON_FEATURES_FOR_CORRECT_VECTOR_ABI,
             "mips" | "mips32r6" | "mips64" | "mips64r6" => MIPS_FEATURES_FOR_CORRECT_VECTOR_ABI,
-            "bpf" => &[], // no vector ABI
+            "bpf" | "m68k" => &[], // no vector ABI
             "csky" => CSKY_FEATURES_FOR_CORRECT_VECTOR_ABI,
             // FIXME: for some tier3 targets, we are overly cautious and always give warnings
             // when passing args in vector registers.
