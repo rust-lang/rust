@@ -3166,7 +3166,7 @@ impl Target {
                 // Note that the `lp64e` is still unstable as it's not (yet) part of the ELF psABI.
                 check_matches!(
                     &*self.llvm_abiname,
-                    "lp64" | "lp64f" | "lp64d" | "lp64q" | "lp64e",
+                    "lp64" | "lp64f" | "lp64d" | "lp64e",
                     "invalid RISC-V ABI name"
                 );
             }

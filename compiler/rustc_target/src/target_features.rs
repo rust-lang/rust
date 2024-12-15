@@ -590,9 +590,72 @@ const RISCV_FEATURES: &[(&str, StabilityUncomputed, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("a", STABLE, &["zaamo", "zalrsc"]),
     ("c", STABLE, &[]),
-    ("d", unstable(sym::riscv_target_feature), &["f"]),
-    ("e", unstable(sym::riscv_target_feature), &[]),
-    ("f", unstable(sym::riscv_target_feature), &[]),
+    (
+        "d",
+        Stability::Unstable {
+            nightly_feature: sym::riscv_target_feature,
+            allow_toggle: |target, enable| match &*target.llvm_abiname {
+                "ilp32d" | "lp64d" if !enable => {
+                    // The ABI requires the `d` feature, so it cannot be disabled.
+                    Err("feature is required by ABI")
+                }
+                "ilp32e" if enable => {
+                    // The `d` feature apparently is incompatible with this ABI.
+                    Err("feature is incompatible with ABI")
+                }
+                _ => Ok(()),
+            },
+        },
+        &["f"],
+    ),
+    (
+        "e",
+        Stability::Unstable {
+            // Given that this is a negative feature, consider this before stabilizing:
+            // does it really make sense to enable this feature in an individual
+            // function with `#[target_feature]`?
+            nightly_feature: sym::riscv_target_feature,
+            allow_toggle: |target, enable| {
+                match &*target.llvm_abiname {
+                    _ if !enable => {
+                        // This is a negative feature, *disabling* it is always okay.
+                        Ok(())
+                    }
+                    "ilp32e" | "lp64e" => {
+                        // Embedded ABIs should already have the feature anyway, it's fine to enable
+                        // it again from an ABI perspective.
+                        Ok(())
+                    }
+                    _ => {
+                        // *Not* an embedded ABI. Enabling `e` is invalid.
+                        Err("feature is incompatible with ABI")
+                    }
+                }
+            },
+        },
+        &[],
+    ),
+    (
+        "f",
+        Stability::Unstable {
+            nightly_feature: sym::riscv_target_feature,
+            allow_toggle: |target, enable| {
+                match &*target.llvm_abiname {
+                    "ilp32f" | "ilp32d" | "lp64f" | "lp64d" if !enable => {
+                        // The ABI requires the `f` feature, so it cannot be disabled.
+                        Err("feature is required by ABI")
+                    }
+                    _ => Ok(()),
+                }
+            },
+        },
+        &[],
+    ),
+    (
+        "forced-atomics",
+        Stability::Forbidden { reason: "unsound because it changes the ABI of atomic operations" },
+        &[],
+    ),
     ("m", STABLE, &[]),
     ("relax", unstable(sym::riscv_target_feature), &[]),
     ("unaligned-scalar-mem", unstable(sym::riscv_target_feature), &[]),
