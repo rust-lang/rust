@@ -33,6 +33,7 @@ pub mod memchr;
 pub mod sort;
 
 mod ascii;
+pub mod byte_pattern;
 mod cmp;
 pub(crate) mod index;
 mod iter;
@@ -45,6 +46,8 @@ pub use ascii::EscapeAscii;
 #[unstable(feature = "str_internals", issue = "none")]
 #[doc(hidden)]
 pub use ascii::is_ascii_simple;
+#[unstable(feature = "byte_search", issue = "134149")]
+pub use byte_pattern::{BytePattern, ByteSearcher, ReverseByteSearcher};
 #[stable(feature = "slice_get_slice", since = "1.28.0")]
 pub use index::SliceIndex;
 #[unstable(feature = "slice_range", issue = "76393")]
@@ -4752,6 +4755,138 @@ impl<T> [T] {
         let end = start.wrapping_add(subslice.len());
 
         if start <= self.len() && end <= self.len() { Some(start..end) } else { None }
+    }
+}
+
+#[cfg(not(test))]
+impl [u8] {
+    /// Returns `true` if the given pattern matches a sub-slice of
+    /// this byte slice.
+    ///
+    /// Returns `false` if it does not.
+    ///
+    /// The [pattern] can be a `&[u8]`, [`u8`], or a
+    /// function or closure that determines if a byte matches.
+    ///
+    /// [`u8`]: prim@u8
+    /// [pattern]: self::byte_pattern
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(byte_search)]
+    ///
+    /// let bananas = b"bananas";
+    ///
+    /// assert!(bananas.contains_bytes(b"nana"));
+    /// assert!(!bananas.contains_bytes(b"apples"));
+    /// ```
+    #[unstable(feature = "byte_search", issue = "134149")]
+    #[inline]
+    pub fn contains_bytes<P: BytePattern>(&self, pat: P) -> bool {
+        pat.is_contained_in(self)
+    }
+
+    /// Returns the byte index of the first byte of this byte slice that
+    /// matches the pattern.
+    ///
+    /// Returns [`None`] if the pattern doesn't match.
+    ///
+    /// The [pattern] can be a `&[u8]`, [`u8`], or a
+    /// function or closure that determines if a byte matches.
+    ///
+    /// [`u8`]: prim@u8
+    /// [pattern]: self::byte_pattern
+    ///
+    /// # Examples
+    ///
+    /// Simple patterns:
+    ///
+    /// ```
+    /// #![feature(byte_search)]
+    ///
+    /// let s = b"Mary had a little lamb";
+    ///
+    /// assert_eq!(s.find_bytes(b'M'), Some(0));
+    /// assert_eq!(s.find_bytes(b'y'), Some(3));
+    /// assert_eq!(s.find_bytes(b"lamb"), Some(18));
+    /// ```
+    ///
+    /// More complex patterns using point-free style and closures:
+    ///
+    /// ```
+    /// #![feature(byte_search)]
+    ///
+    /// assert_eq!([5, 6, 7, 8].find_bytes(u8::is_power_of_two), Some(3));
+    ///
+    /// let s = b"Mary had a little lamb";
+    /// assert_eq!(s.find_bytes(|b: u8| b.is_ascii_whitespace() || b.is_ascii_lowercase()), Some(1));
+    /// ```
+    ///
+    /// Not finding the pattern:
+    ///
+    /// ```
+    /// #![feature(byte_search)]
+    ///
+    /// let s = b"Mary had a little lamb";
+    ///
+    /// assert_eq!(s.find_bytes(|b| b == b'1' || b == b'2'), None);
+    /// ```
+    #[unstable(feature = "byte_search", issue = "134149")]
+    #[inline]
+    pub fn find_bytes<P: BytePattern>(&self, pat: P) -> Option<usize> {
+        pat.into_searcher(self).next_match().map(|(i, _)| i)
+    }
+
+    /// Returns the byte index for the first byte of the last match of the pattern in
+    /// this byte slice.
+    ///
+    /// Returns [`None`] if the pattern doesn't match.
+    ///
+    /// The [pattern] can be a `&[u8]`, [`u8`], or a
+    /// function or closure that determines if a byte matches.
+    ///
+    /// [`u8`]: prim@u8
+    /// [pattern]: self::byte_pattern
+    ///
+    /// # Examples
+    ///
+    /// Simple patterns:
+    ///
+    /// ```
+    /// #![feature(byte_search)]
+    ///
+    /// let s = b"Mary had a little lamb";
+    ///
+    /// assert_eq!(s.rfind_bytes(b'i'), Some(12));
+    /// assert_eq!(s.rfind_bytes(b'b'), Some(21));
+    /// assert_eq!(s.rfind_bytes(b"lamb"), Some(18));
+    /// ```
+    ///
+    /// More complex patterns with closures:
+    ///
+    /// ```
+    /// #![feature(byte_search)]
+    ///
+    /// assert_eq!([5, 6, 7, 8].rfind_bytes(u8::is_power_of_two), Some(3));
+    /// ```
+    ///
+    /// Not finding the pattern:
+    ///
+    /// ```
+    /// #![feature(byte_search)]
+    ///
+    /// let s = b"Mary had a little lamb";
+    ///
+    /// assert_eq!(s.rfind_bytes(|b| b == b'1' || b == b'2'), None);
+    /// ```
+    #[unstable(feature = "byte_search", issue = "134149")]
+    #[inline]
+    pub fn rfind_bytes<P: BytePattern>(&self, pat: P) -> Option<usize>
+    where
+        for<'a> P::ByteSearcher<'a>: ReverseByteSearcher<'a>,
+    {
+        pat.into_searcher(self).next_match_back().map(|(i, _)| i)
     }
 }
 
