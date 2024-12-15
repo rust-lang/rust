@@ -1,4 +1,4 @@
-use std::{fmt, iter};
+use std::{fmt, iter, mem};
 
 use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_hir::lang_items::LangItem;
@@ -6,6 +6,7 @@ use rustc_index::Idx;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
+use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt};
 use rustc_span::DUMMY_SP;
@@ -738,8 +739,13 @@ where
         loop_block
     }
 
-    fn open_drop_for_array(&mut self, ety: Ty<'tcx>, opt_size: Option<u64>) -> BasicBlock {
-        debug!("open_drop_for_array({:?}, {:?})", ety, opt_size);
+    fn open_drop_for_array(
+        &mut self,
+        array_ty: Ty<'tcx>,
+        ety: Ty<'tcx>,
+        opt_size: Option<u64>,
+    ) -> BasicBlock {
+        debug!("open_drop_for_array({:?}, {:?}, {:?})", array_ty, ety, opt_size);
         let tcx = self.tcx();
 
         if let Some(size) = opt_size {
@@ -801,13 +807,50 @@ where
             }
         }
 
-        self.drop_loop_pair(ety)
+        let array_ptr_ty = Ty::new_mut_ptr(tcx, array_ty);
+        let array_ptr = self.new_temp(array_ptr_ty);
+
+        let slice_ty = Ty::new_slice(tcx, ety);
+        let slice_ptr_ty = Ty::new_mut_ptr(tcx, slice_ty);
+        let slice_ptr = self.new_temp(slice_ptr_ty);
+
+        let mut delegate_block = BasicBlockData {
+            statements: vec![
+                self.assign(Place::from(array_ptr), Rvalue::RawPtr(Mutability::Mut, self.place)),
+                self.assign(
+                    Place::from(slice_ptr),
+                    Rvalue::Cast(
+                        CastKind::PointerCoercion(
+                            PointerCoercion::Unsize,
+                            CoercionSource::Implicit,
+                        ),
+                        Operand::Move(Place::from(array_ptr)),
+                        slice_ptr_ty,
+                    ),
+                ),
+            ],
+            is_cleanup: self.unwind.is_cleanup(),
+            terminator: None,
+        };
+
+        let array_place = mem::replace(
+            &mut self.place,
+            Place::from(slice_ptr).project_deeper(&[PlaceElem::Deref], tcx),
+        );
+        let slice_block = self.drop_loop_pair_for_slice(ety);
+        self.place = array_place;
+
+        delegate_block.terminator = Some(Terminator {
+            source_info: self.source_info,
+            kind: TerminatorKind::Goto { target: slice_block },
+        });
+        self.elaborator.patch().new_block(delegate_block)
     }
 
     /// Creates a pair of drop-loops of `place`, which drops its contents, even
     /// in the case of 1 panic.
-    fn drop_loop_pair(&mut self, ety: Ty<'tcx>) -> BasicBlock {
-        debug!("drop_loop_pair({:?})", ety);
+    fn drop_loop_pair_for_slice(&mut self, ety: Ty<'tcx>) -> BasicBlock {
+        debug!("drop_loop_pair_for_slice({:?})", ety);
         let tcx = self.tcx();
         let len = self.new_temp(tcx.types.usize);
         let cur = self.new_temp(tcx.types.usize);
@@ -817,10 +860,24 @@ where
 
         let loop_block = self.drop_loop(self.succ, cur, len, ety, unwind);
 
+        let [PlaceElem::Deref] = self.place.projection.as_slice() else {
+            span_bug!(
+                self.source_info.span,
+                "Expected place for slice drop shim to be *_n, but it's {:?}",
+                self.place,
+            );
+        };
+
         let zero = self.constant_usize(0);
         let block = BasicBlockData {
             statements: vec![
-                self.assign(len.into(), Rvalue::Len(self.place)),
+                self.assign(
+                    len.into(),
+                    Rvalue::UnaryOp(
+                        UnOp::PtrMetadata,
+                        Operand::Copy(Place::from(self.place.local)),
+                    ),
+                ),
                 self.assign(cur.into(), Rvalue::Use(zero)),
             ],
             is_cleanup: unwind.is_cleanup(),
@@ -863,9 +920,9 @@ where
             ty::Dynamic(..) => self.complete_drop(self.succ, self.unwind),
             ty::Array(ety, size) => {
                 let size = size.try_to_target_usize(self.tcx());
-                self.open_drop_for_array(*ety, size)
+                self.open_drop_for_array(ty, *ety, size)
             }
-            ty::Slice(ety) => self.drop_loop_pair(*ety),
+            ty::Slice(ety) => self.drop_loop_pair_for_slice(*ety),
 
             _ => span_bug!(self.source_info.span, "open drop from non-ADT `{:?}`", ty),
         }
