@@ -1,5 +1,5 @@
 //! Logic for rendering the different hover messages
-use std::{mem, ops::Not};
+use std::{env, mem, ops::Not};
 
 use either::Either;
 use hir::{
@@ -28,6 +28,7 @@ use syntax::{algo, ast, match_ast, AstNode, AstToken, Direction, SyntaxToken, T}
 use crate::{
     doc_links::{remove_links, rewrite_links},
     hover::{notable_traits, walk_and_push_ty},
+    interpret::render_const_eval_error,
     HoverAction, HoverConfig, HoverResult, Markup, MemoryLayoutHoverConfig,
     MemoryLayoutHoverRenderKind,
 };
@@ -464,41 +465,77 @@ pub(super) fn definition(
                     Ok(it) => {
                         Some(if it >= 10 { format!("{it} ({it:#X})") } else { format!("{it}") })
                     }
-                    Err(_) => it.value(db).map(|it| format!("{it:?}")),
+                    Err(err) => {
+                        let res = it.value(db).map(|it| format!("{it:?}"));
+                        if env::var_os("RA_DEV").is_some() {
+                            let res = res.as_deref().unwrap_or("");
+                            Some(format!("{res} ({})", render_const_eval_error(db, err, edition)))
+                        } else {
+                            res
+                        }
+                    }
                 }
             } else {
                 None
             }
         }
         Definition::Const(it) => {
-            let body = it.render_eval(db, edition);
-            match body {
-                Ok(it) => Some(it),
-                Err(_) => {
+            let body = it.eval(db);
+            Some(match body {
+                Ok(it) => match it.render_debug(db) {
+                    Ok(it) => it,
+                    Err(err) => {
+                        let it = it.render(db, edition);
+                        if env::var_os("RA_DEV").is_some() {
+                            format!("{it}\n{}", render_const_eval_error(db, err.into(), edition))
+                        } else {
+                            it
+                        }
+                    }
+                },
+                Err(err) => {
                     let source = it.source(db)?;
                     let mut body = source.value.body()?.syntax().clone();
                     if let Some(macro_file) = source.file_id.macro_file() {
                         let span_map = db.expansion_span_map(macro_file);
                         body = prettify_macro_expansion(db, body, &span_map, it.krate(db).into());
                     }
-                    Some(body.to_string())
+                    if env::var_os("RA_DEV").is_some() {
+                        format!("{body}\n{}", render_const_eval_error(db, err, edition))
+                    } else {
+                        body.to_string()
+                    }
                 }
-            }
+            })
         }
         Definition::Static(it) => {
-            let body = it.render_eval(db, edition);
-            match body {
-                Ok(it) => Some(it),
-                Err(_) => {
+            let body = it.eval(db);
+            Some(match body {
+                Ok(it) => match it.render_debug(db) {
+                    Ok(it) => it,
+                    Err(err) => {
+                        let it = it.render(db, edition);
+                        if env::var_os("RA_DEV").is_some() {
+                            format!("{it}\n{}", render_const_eval_error(db, err.into(), edition))
+                        } else {
+                            it
+                        }
+                    }
+                },
+                Err(err) => {
                     let source = it.source(db)?;
                     let mut body = source.value.body()?.syntax().clone();
                     if let Some(macro_file) = source.file_id.macro_file() {
                         let span_map = db.expansion_span_map(macro_file);
                         body = prettify_macro_expansion(db, body, &span_map, it.krate(db).into());
                     }
-                    Some(body.to_string())
+                    if env::var_os("RA_DEV").is_some() {
+                        format!("{body}\n{}", render_const_eval_error(db, err, edition))
+                    } else {
+                        body.to_string()
+                    }
                 }
-            }
+            })
         }
         _ => None,
     };

@@ -1,3 +1,4 @@
+use hir::HasCrate;
 use syntax::{ast, AstNode};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -51,7 +52,10 @@ pub(crate) fn inline_const_as_literal(acc: &mut Assists, ctx: &AssistContext<'_>
             | ast::Expr::MatchExpr(_)
             | ast::Expr::MacroExpr(_)
             | ast::Expr::BinExpr(_)
-            | ast::Expr::CallExpr(_) => konst.eval(ctx.sema.db).ok()?,
+            | ast::Expr::CallExpr(_) => konst
+                .eval(ctx.sema.db)
+                .ok()?
+                .render(ctx.sema.db, konst.krate(ctx.sema.db).edition(ctx.sema.db)),
             _ => return None,
         };
 
