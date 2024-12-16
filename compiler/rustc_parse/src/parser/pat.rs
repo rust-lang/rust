@@ -1371,10 +1371,10 @@ impl<'a> Parser<'a> {
         self.bump();
         let (fields, etc) = self.parse_pat_fields().unwrap_or_else(|mut e| {
             e.span_label(path.span, "while parsing the fields for this pattern");
-            e.emit();
+            let guar = e.emit();
             self.recover_stmt();
             // When recovering, pretend we had `Foo { .. }`, to avoid cascading errors.
-            (ThinVec::new(), PatFieldsRest::Rest)
+            (ThinVec::new(), PatFieldsRest::Recovered(guar))
         });
         self.bump();
         Ok(PatKind::Struct(qself, path, fields, etc))
