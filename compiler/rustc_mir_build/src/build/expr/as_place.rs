@@ -647,13 +647,31 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         match place_ty.kind() {
             ty::Array(_elem_ty, len_const) => {
-                // We know how long an array is, so just use that as a constant
-                // directly -- no locals needed. We do need one statement so
-                // that borrow- and initialization-checking consider it used,
-                // though. FIXME: Do we really *need* to count this as a use?
-                // Could partial array tracking work off something else instead?
-                self.cfg.push_fake_read(block, source_info, FakeReadCause::ForIndex, place);
-                let const_ = Const::from_ty_const(*len_const, usize_ty, self.tcx);
+                let ty_const = if let Some((_, len_ty)) = len_const.try_to_valtree()
+                    && len_ty != self.tcx.types.usize
+                {
+                    // Bad const generics can give us a constant from the type that's
+                    // not actually a `usize`, so in that case give an error instead.
+                    // FIXME: It'd be nice if the type checker made sure this wasn't
+                    // possible, instead.
+                    let err = self.tcx.dcx().span_delayed_bug(
+                        span,
+                        format!(
+                            "Array length should have already been a type error, as it's {len_ty:?}"
+                        ),
+                    );
+                    ty::Const::new_error(self.tcx, err)
+                } else {
+                    // We know how long an array is, so just use that as a constant
+                    // directly -- no locals needed. We do need one statement so
+                    // that borrow- and initialization-checking consider it used,
+                    // though. FIXME: Do we really *need* to count this as a use?
+                    // Could partial array tracking work off something else instead?
+                    self.cfg.push_fake_read(block, source_info, FakeReadCause::ForIndex, place);
+                    *len_const
+                };
+
+                let const_ = Const::from_ty_const(ty_const, usize_ty, self.tcx);
                 Operand::Constant(Box::new(ConstOperand { span, user_ty: None, const_ }))
             }
             ty::Slice(_elem_ty) => {
