@@ -1,7 +1,7 @@
 use std::{
     cell::{Cell, RefCell},
     env, fs,
-    sync::{Once, OnceLock},
+    sync::Once,
     time::Duration,
 };
 
@@ -141,34 +141,15 @@ impl Project<'_> {
     /// file in the config dir after server is run, something where our naive approach comes short.
     /// Using a `prelock` allows us to force a lock when we know we need it.
     pub(crate) fn server_with_lock(self, config_lock: bool) -> Server {
-        static CONFIG_DIR_LOCK: OnceLock<(Utf8PathBuf, Mutex<()>)> = OnceLock::new();
+        static CONFIG_DIR_LOCK: Mutex<()> = Mutex::new(());
 
         let config_dir_guard = if config_lock {
             Some({
-                let (path, mutex) = CONFIG_DIR_LOCK.get_or_init(|| {
-                    let value = TestDir::new().keep().path().to_owned();
-                    env::set_var("__TEST_RA_USER_CONFIG_DIR", &value);
-                    (value, Mutex::new(()))
-                });
-                #[allow(dyn_drop)]
-                (mutex.lock(), {
-                    Box::new({
-                        struct Dropper(Utf8PathBuf);
-                        impl Drop for Dropper {
-                            fn drop(&mut self) {
-                                for entry in fs::read_dir(&self.0).unwrap() {
-                                    let path = entry.unwrap().path();
-                                    if path.is_file() {
-                                        fs::remove_file(path).unwrap();
-                                    } else if path.is_dir() {
-                                        fs::remove_dir_all(path).unwrap();
-                                    }
-                                }
-                            }
-                        }
-                        Dropper(path.clone())
-                    }) as Box<dyn Drop>
-                })
+                let guard = CONFIG_DIR_LOCK.lock();
+                let test_dir = TestDir::new();
+                let value = test_dir.path().to_owned();
+                env::set_var("__TEST_RA_USER_CONFIG_DIR", &value);
+                (guard, test_dir)
             })
         } else {
             None
@@ -311,14 +292,12 @@ pub(crate) struct Server {
     client: Connection,
     /// XXX: remove the tempdir last
     dir: TestDir,
-    #[allow(dyn_drop)]
-    _config_dir_guard: Option<(MutexGuard<'static, ()>, Box<dyn Drop>)>,
+    _config_dir_guard: Option<(MutexGuard<'static, ()>, TestDir)>,
 }
 
 impl Server {
-    #[allow(dyn_drop)]
     fn new(
-        config_dir_guard: Option<(MutexGuard<'static, ()>, Box<dyn Drop>)>,
+        config_dir_guard: Option<(MutexGuard<'static, ()>, TestDir)>,
         dir: TestDir,
         config: Config,
     ) -> Server {
