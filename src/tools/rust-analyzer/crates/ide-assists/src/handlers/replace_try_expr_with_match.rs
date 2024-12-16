@@ -81,7 +81,7 @@ pub(crate) fn replace_try_expr_with_match(
 
             let expr_match = make::expr_match(expr, match_arm_list)
                 .indent(IndentLevel::from_node(qm_kw_parent.syntax()));
-            edit.replace_ast::<ast::Expr>(qm_kw_parent.into(), expr_match);
+            edit.replace_ast::<ast::Expr>(qm_kw_parent.into(), expr_match.into());
         },
     )
 }

@@ -1562,7 +1562,7 @@ impl FlowHandler {
                     make::match_arm(pat, None, none.make_result_handler(None))
                 };
                 let arms = make::match_arm_list(vec![some_arm, none_arm]);
-                make::expr_match(call_expr, arms)
+                make::expr_match(call_expr, arms).into()
             }
             FlowHandler::MatchResult { err } => {
                 let ok_name = "value";
@@ -1583,7 +1583,7 @@ impl FlowHandler {
                     make::match_arm(pat.into(), None, err.make_result_handler(Some(value)))
                 };
                 let arms = make::match_arm_list(vec![ok_arm, err_arm]);
-                make::expr_match(call_expr, arms)
+                make::expr_match(call_expr, arms).into()
             }
         }
     }

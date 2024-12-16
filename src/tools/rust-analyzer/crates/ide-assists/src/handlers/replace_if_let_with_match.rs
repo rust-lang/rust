@@ -129,7 +129,7 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext<'
                 };
                 let arms = cond_bodies.into_iter().map(make_match_arm).chain(iter::once(else_arm));
                 let match_expr = make::expr_match(scrutinee_to_be_expr, make::match_arm_list(arms));
-                match_expr.indent(IndentLevel::from_node(if_expr.syntax()))
+                match_expr.indent(IndentLevel::from_node(if_expr.syntax())).into()
             };
 
             let has_preceding_if_expr =

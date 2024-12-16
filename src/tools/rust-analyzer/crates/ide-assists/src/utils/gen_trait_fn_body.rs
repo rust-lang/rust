@@ -98,7 +98,7 @@ fn gen_clone_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 
             let match_target = make::expr_path(make::ext::ident_path("self"));
             let list = make::match_arm_list(arms).indent(ast::edit::IndentLevel(1));
-            make::expr_match(match_target, list)
+            make::expr_match(match_target, list).into()
         }
         ast::Adt::Struct(strukt) => {
             match strukt.field_list() {
@@ -241,7 +241,7 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
             let list = make::match_arm_list(arms).indent(ast::edit::IndentLevel(1));
             let match_expr = make::expr_match(match_target, list);
 
-            let body = make::block_expr(None, Some(match_expr));
+            let body = make::block_expr(None, Some(match_expr.into()));
             let body = body.indent(ast::edit::IndentLevel(1));
             ted::replace(func.body()?.syntax(), body.clone_for_update().syntax());
             Some(())
@@ -543,7 +543,7 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn, trait_ref: Option<TraitRef>) -
 
                     let match_target = make::expr_tuple([lhs_name, rhs_name]).into();
                     let list = make::match_arm_list(arms).indent(ast::edit::IndentLevel(1));
-                    make::expr_match(match_target, list)
+                    make::expr_match(match_target, list).into()
                 }
             };
 
@@ -607,7 +607,7 @@ fn gen_partial_ord(adt: &ast::Adt, func: &ast::Fn, trait_ref: Option<TraitRef>) 
             make::expr_return(Some(make::expr_path(make::ext::ident_path("ord")))),
         ));
         let list = make::match_arm_list(arms).indent(ast::edit::IndentLevel(1));
-        Some(make::expr_stmt(make::expr_match(match_target, list)).into())
+        Some(make::expr_stmt(make::expr_match(match_target, list).into()).into())
     }
 
     fn gen_partial_cmp_call(lhs: ast::Expr, rhs: ast::Expr) -> ast::Expr {
