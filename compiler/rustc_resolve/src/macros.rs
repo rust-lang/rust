@@ -346,7 +346,11 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     }
 
     fn check_unused_macros(&mut self) {
-        for (_, &(node_id, ident)) in self.unused_macros.iter() {
+        // Make ordering consistent before iteration
+        #[allow(rustc::potential_query_instability)]
+        let mut unused_macros: Vec<_> = self.unused_macros.iter().collect();
+        unused_macros.sort_by_key(|&(_, (key, _))| key);
+        for (_, &(node_id, ident)) in unused_macros {
             self.lint_buffer.buffer_lint(
                 UNUSED_MACROS,
                 node_id,
@@ -356,6 +360,8 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         }
 
         for (&def_id, unused_arms) in self.unused_macro_rules.iter() {
+            // It is already sorted below.
+            #[allow(rustc::potential_query_instability)]
             let mut unused_arms = unused_arms.iter().collect::<Vec<_>>();
             unused_arms.sort_by_key(|&(&arm_i, _)| arm_i);
 

@@ -1085,6 +1085,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     this.add_module_candidates(module, &mut suggestions, filter_fn, None);
                 }
                 Scope::MacroUsePrelude => {
+                    // The suggestions are deterministically sorted at the bottom of this function.
+                    #[allow(rustc::potential_query_instability)]
                     suggestions.extend(this.macro_use_prelude.iter().filter_map(
                         |(name, binding)| {
                             let res = binding.res();
@@ -1103,6 +1105,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                 }
                 Scope::ExternPrelude => {
+                    // The suggestions are deterministically sorted at the bottom of this function.
+                    #[allow(rustc::potential_query_instability)]
                     suggestions.extend(this.extern_prelude.iter().filter_map(|(ident, _)| {
                         let res = Res::Def(DefKind::Mod, CRATE_DEF_ID.to_def_id());
                         filter_fn(res).then_some(TypoSuggestion::typo_from_ident(*ident, res))
@@ -1361,7 +1365,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         );
 
         if lookup_ident.span.at_least_rust_2018() {
-            for ident in self.extern_prelude.clone().into_keys() {
+            // `idents` is sorted before usage so ordering is not important here.
+            #[allow(rustc::potential_query_instability)]
+            let mut idents: Vec<_> = self.extern_prelude.clone().into_keys().collect();
+            idents.sort_by_key(|ident| ident.span);
+
+            for ident in idents {
                 if ident.span.from_expansion() {
                     // Idents are adjusted to the root context before being
                     // resolved in the extern prelude, so reporting this to the
@@ -1466,7 +1475,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return;
         }
 
-        let unused_macro = self.unused_macros.iter().find_map(|(def_id, (_, unused_ident))| {
+        // Make ordering consistent before iteration
+        #[allow(rustc::potential_query_instability)]
+        let mut unused_macros: Vec<_> = self.unused_macros.iter().collect();
+        unused_macros.sort_by_key(|&(_, (key, _))| key);
+        let unused_macro = unused_macros.iter().find_map(|(def_id, (_, unused_ident))| {
             if unused_ident.name == ident.name { Some((def_id, unused_ident)) } else { None }
         });
 
@@ -1964,6 +1977,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ident: Symbol,
         current_module: Module<'ra>,
     ) -> Option<Symbol> {
+        // The candidates are sorted just below.
+        #[allow(rustc::potential_query_instability)]
         let mut candidates = self
             .extern_prelude
             .keys()
@@ -2352,6 +2367,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Sort extern crate names in *reverse* order to get
         // 1) some consistent ordering for emitted diagnostics, and
         // 2) `std` suggestions before `core` suggestions.
+        #[allow(rustc::potential_query_instability)]
         let mut extern_crate_names =
             self.extern_prelude.keys().map(|ident| ident.name).collect::<Vec<_>>();
         extern_crate_names.sort_by(|a, b| b.as_str().partial_cmp(a.as_str()).unwrap());
@@ -2849,6 +2865,8 @@ fn show_candidates(
             } else {
                 // Get the unique item kinds and if there's only one, we use the right kind name
                 // instead of the more generic "items".
+                // Ordering is not important if there's only one element in the set.
+                #[allow(rustc::potential_query_instability)]
                 let mut kinds = accessible_path_strings
                     .iter()
                     .map(|(_, descr, _, _, _)| *descr)

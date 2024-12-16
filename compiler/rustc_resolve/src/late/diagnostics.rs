@@ -1960,6 +1960,8 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let Some(default_trait) = default_trait else {
             return;
         };
+        // The ordering is not important because `any` is used on the iterator.
+        #[allow(rustc::potential_query_instability)]
         if self
             .r
             .extern_crate_map
@@ -2198,6 +2200,8 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         // Items from the prelude
                         if !module.no_implicit_prelude {
                             let extern_prelude = self.r.extern_prelude.clone();
+                            // The names are sorted at the bottom of this function.
+                            #[allow(rustc::potential_query_instability)]
                             names.extend(extern_prelude.iter().flat_map(|(ident, _)| {
                                 self.r
                                     .crate_loader(|c| c.maybe_process_path_extern(ident.name))
