@@ -2,7 +2,6 @@ use std::assert_matches::assert_matches;
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::infer::at::At;
 use rustc_infer::traits::{FromSolverError, Obligation, TraitEngine};
@@ -186,7 +185,7 @@ where
         if ty.has_escaping_bound_vars() {
             let (ty, mapped_regions, mapped_types, mapped_consts) =
                 BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, ty);
-            let result = ensure_sufficient_stack(|| self.normalize_alias_ty(ty))?;
+            let result = self.normalize_alias_ty(ty)?;
             Ok(PlaceholderReplacer::replace_placeholders(
                 infcx,
                 mapped_regions,
@@ -196,7 +195,7 @@ where
                 result,
             ))
         } else {
-            ensure_sufficient_stack(|| self.normalize_alias_ty(ty))
+            self.normalize_alias_ty(ty)
         }
     }
 
@@ -216,7 +215,7 @@ where
         if uv.has_escaping_bound_vars() {
             let (uv, mapped_regions, mapped_types, mapped_consts) =
                 BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, uv);
-            let result = ensure_sufficient_stack(|| self.normalize_unevaluated_const(uv))?;
+            let result = self.normalize_unevaluated_const(uv)?;
             Ok(PlaceholderReplacer::replace_placeholders(
                 infcx,
                 mapped_regions,
@@ -226,7 +225,7 @@ where
                 result,
             ))
         } else {
-            ensure_sufficient_stack(|| self.normalize_unevaluated_const(uv))
+            self.normalize_unevaluated_const(uv)
         }
     }
 }

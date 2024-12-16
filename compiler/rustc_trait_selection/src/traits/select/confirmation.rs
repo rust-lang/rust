@@ -11,7 +11,6 @@ use std::iter;
 use std::ops::ControlFlow;
 
 use rustc_ast::Mutability;
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::{DefineOpaqueTypes, HigherRankedType, InferOk};
 use rustc_infer::traits::ObligationCauseCode;
@@ -455,36 +454,34 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         nested: ty::Binder<'tcx, Vec<Ty<'tcx>>>,
     ) -> PredicateObligations<'tcx> {
         debug!(?nested, "vtable_auto_impl");
-        ensure_sufficient_stack(|| {
-            let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerived);
+        let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerived);
 
-            let poly_trait_ref = obligation.predicate.to_poly_trait_ref();
-            let trait_ref = self.infcx.enter_forall_and_leak_universe(poly_trait_ref);
-            let trait_obligations = self.impl_or_trait_obligations(
-                &cause,
-                obligation.recursion_depth + 1,
-                obligation.param_env,
-                trait_def_id,
-                trait_ref.args,
-                obligation.predicate,
-            );
+        let poly_trait_ref = obligation.predicate.to_poly_trait_ref();
+        let trait_ref = self.infcx.enter_forall_and_leak_universe(poly_trait_ref);
+        let trait_obligations = self.impl_or_trait_obligations(
+            &cause,
+            obligation.recursion_depth + 1,
+            obligation.param_env,
+            trait_def_id,
+            trait_ref.args,
+            obligation.predicate,
+        );
 
-            let mut obligations = self.collect_predicates_for_types(
-                obligation.param_env,
-                cause,
-                obligation.recursion_depth + 1,
-                trait_def_id,
-                nested,
-            );
+        let mut obligations = self.collect_predicates_for_types(
+            obligation.param_env,
+            cause,
+            obligation.recursion_depth + 1,
+            trait_def_id,
+            nested,
+        );
 
-            // Adds the predicates from the trait. Note that this contains a `Self: Trait`
-            // predicate as usual. It won't have any effect since auto traits are coinductive.
-            obligations.extend(trait_obligations);
+        // Adds the predicates from the trait. Note that this contains a `Self: Trait`
+        // predicate as usual. It won't have any effect since auto traits are coinductive.
+        obligations.extend(trait_obligations);
 
-            debug!(?obligations, "vtable_auto_impl");
+        debug!(?obligations, "vtable_auto_impl");
 
-            obligations
-        })
+        obligations
     }
 
     fn confirm_impl_candidate(
@@ -498,16 +495,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // this time not in a probe.
         let args = self.rematch_impl(impl_def_id, obligation);
         debug!(?args, "impl args");
-        ensure_sufficient_stack(|| {
-            self.vtable_impl(
-                impl_def_id,
-                args,
-                &obligation.cause,
-                obligation.recursion_depth + 1,
-                obligation.param_env,
-                obligation.predicate,
-            )
-        })
+        self.vtable_impl(
+            impl_def_id,
+            args,
+            &obligation.cause,
+            obligation.recursion_depth + 1,
+            obligation.param_env,
+            obligation.predicate,
+        )
     }
 
     fn vtable_impl(
@@ -1011,15 +1006,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         );
         // Normalize the obligation and expected trait refs together, because why not
         let Normalized { obligations: nested, value: (obligation_trait_ref, found_trait_ref) } =
-            ensure_sufficient_stack(|| {
-                normalize_with_depth(
-                    self,
-                    obligation.param_env,
-                    obligation.cause.clone(),
-                    obligation.recursion_depth + 1,
-                    (obligation.predicate.trait_ref, found_trait_ref),
-                )
-            });
+            normalize_with_depth(
+                self,
+                obligation.param_env,
+                obligation.cause.clone(),
+                obligation.recursion_depth + 1,
+                (obligation.predicate.trait_ref, found_trait_ref),
+            );
 
         // needed to define opaque types for tests/ui/type-alias-impl-trait/assoc-projection-ice.rs
         self.infcx

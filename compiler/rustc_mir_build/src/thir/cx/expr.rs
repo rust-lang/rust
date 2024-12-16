@@ -1,6 +1,5 @@
 use itertools::Itertools;
 use rustc_abi::{FIRST_VARIANT, FieldIdx};
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_index::Idx;
@@ -27,7 +26,7 @@ use crate::thir::util::UserAnnotatedTyHelpers;
 impl<'tcx> Cx<'tcx> {
     pub(crate) fn mirror_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> ExprId {
         // `mirror_expr` is recursing very deep. Make sure the stack doesn't overflow.
-        ensure_sufficient_stack(|| self.mirror_expr_inner(expr))
+        self.mirror_expr_inner(expr)
     }
 
     pub(crate) fn mirror_exprs(&mut self, exprs: &'tcx [hir::Expr<'tcx>]) -> Box<[ExprId]> {

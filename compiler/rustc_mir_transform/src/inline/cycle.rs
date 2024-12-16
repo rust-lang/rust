@@ -1,5 +1,4 @@
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::mir::TerminatorKind;
 use rustc_middle::ty::{self, GenericArgsRef, InstanceKind, TyCtxt, TypeVisitableExt};
@@ -111,18 +110,16 @@ pub(crate) fn mir_callgraph_reachable<'tcx>(
                 if recursion_limit.value_within_limit(*recursion) {
                     *recursion += 1;
                     stack.push(callee);
-                    let found_recursion = ensure_sufficient_stack(|| {
-                        process(
-                            tcx,
-                            typing_env,
-                            callee,
-                            target,
-                            stack,
-                            seen,
-                            recursion_limiter,
-                            recursion_limit,
-                        )
-                    });
+                    let found_recursion = process(
+                        tcx,
+                        typing_env,
+                        callee,
+                        target,
+                        stack,
+                        seen,
+                        recursion_limiter,
+                        recursion_limit,
+                    );
                     if found_recursion {
                         return true;
                     }

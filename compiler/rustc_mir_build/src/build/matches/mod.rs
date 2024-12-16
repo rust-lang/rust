@@ -7,7 +7,6 @@
 
 use rustc_abi::VariantIdx;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::{BindingMode, ByRef};
 use rustc_middle::bug;
 use rustc_middle::middle::region;
@@ -1667,9 +1666,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         start_block: BasicBlock,
         candidates: &mut [&mut Candidate<'_, 'tcx>],
     ) -> BasicBlock {
-        ensure_sufficient_stack(|| {
-            self.match_candidates_inner(span, scrutinee_span, start_block, candidates)
-        })
+        self.match_candidates_inner(span, scrutinee_span, start_block, candidates)
     }
 
     /// Construct the decision tree for `candidates`. Don't call this, call `match_candidates`

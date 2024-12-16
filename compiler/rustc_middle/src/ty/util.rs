@@ -6,7 +6,6 @@ use rustc_abi::{ExternAbi, Float, Integer, IntegerType, Size};
 use rustc_apfloat::Float as _;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
@@ -1105,9 +1104,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for WeakAliasTypeExpander<'tcx> {
         }
 
         self.depth += 1;
-        ensure_sufficient_stack(|| {
-            self.tcx.type_of(alias.def_id).instantiate(self.tcx, alias.args).fold_with(self)
-        })
+        self.tcx.type_of(alias.def_id).instantiate(self.tcx, alias.args).fold_with(self)
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {

@@ -11,7 +11,6 @@ use std::mem;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sharded::Sharded;
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::{outline, sync};
 use rustc_errors::{Diag, FatalError, StashKey};
@@ -803,7 +802,7 @@ where
 {
     debug_assert!(!qcx.dep_context().dep_graph().is_fully_enabled());
 
-    ensure_sufficient_stack(|| try_execute_query::<Q, Qcx, false>(query, qcx, span, key, None).0)
+    try_execute_query::<Q, Qcx, false>(query, qcx, span, key, None).0
 }
 
 #[inline(always)]
@@ -830,9 +829,7 @@ where
         None
     };
 
-    let (result, dep_node_index) = ensure_sufficient_stack(|| {
-        try_execute_query::<_, _, true>(query, qcx, span, key, dep_node)
-    });
+    let (result, dep_node_index) = try_execute_query::<_, _, true>(query, qcx, span, key, dep_node);
     if let Some(dep_node_index) = dep_node_index {
         qcx.dep_context().dep_graph().read_index(dep_node_index)
     }
@@ -853,7 +850,5 @@ where
 
     debug_assert!(!query.anon());
 
-    ensure_sufficient_stack(|| {
-        try_execute_query::<_, _, true>(query, qcx, DUMMY_SP, key, Some(dep_node))
-    });
+    try_execute_query::<_, _, true>(query, qcx, DUMMY_SP, key, Some(dep_node));
 }

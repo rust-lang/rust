@@ -4,7 +4,6 @@ use std::ops::Range;
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet, StdEntry};
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::tcx::PlaceTy;
@@ -529,7 +528,7 @@ impl<'tcx> Map<'tcx> {
         // We manually iterate instead of using `children` as we need to mutate `self`.
         let mut next_child = self.places[root].first_child;
         while let Some(child) = next_child {
-            ensure_sufficient_stack(|| self.cache_preorder_invoke(child));
+            self.cache_preorder_invoke(child);
             next_child = self.places[child].next_sibling;
         }
 

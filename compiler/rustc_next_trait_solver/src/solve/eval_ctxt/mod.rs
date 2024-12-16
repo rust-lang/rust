@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
-use rustc_type_ir::data_structures::{HashMap, HashSet, ensure_sufficient_stack};
+use rustc_type_ir::data_structures::{HashMap, HashSet};
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_type_ir::inherent::*;
@@ -337,26 +337,24 @@ where
         // Deal with overflow, caching, and coinduction.
         //
         // The actual solver logic happens in `ecx.compute_goal`.
-        let result = ensure_sufficient_stack(|| {
-            search_graph.with_new_goal(
-                cx,
-                canonical_input,
-                &mut canonical_goal_evaluation,
-                |search_graph, canonical_goal_evaluation| {
-                    EvalCtxt::enter_canonical(
-                        cx,
-                        search_graph,
-                        canonical_input,
-                        canonical_goal_evaluation,
-                        |ecx, goal| {
-                            let result = ecx.compute_goal(goal);
-                            ecx.inspect.query_result(result);
-                            result
-                        },
-                    )
-                },
-            )
-        });
+        let result = search_graph.with_new_goal(
+            cx,
+            canonical_input,
+            &mut canonical_goal_evaluation,
+            |search_graph, canonical_goal_evaluation| {
+                EvalCtxt::enter_canonical(
+                    cx,
+                    search_graph,
+                    canonical_input,
+                    canonical_goal_evaluation,
+                    |ecx, goal| {
+                        let result = ecx.compute_goal(goal);
+                        ecx.inspect.query_result(result);
+                        result
+                    },
+                )
+            },
+        );
 
         canonical_goal_evaluation.query_result(result);
         goal_evaluation.canonical_goal_evaluation(canonical_goal_evaluation);
