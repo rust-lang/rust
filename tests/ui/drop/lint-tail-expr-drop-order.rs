@@ -45,7 +45,7 @@ fn should_lint() -> i32 {
     //~| NOTE: up until Edition 2021 `#1` is dropped last but will be dropped earlier in Edition 2024
     //~| WARN: this changes meaning in Rust 2024
     //~| NOTE: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects
-    //~| NOTE: for more information, see issue #123739
+    //~| NOTE: for more information, see
 }
 //~^ NOTE: now the temporary value is dropped here, before the local variables in the block or statement
 
@@ -70,7 +70,7 @@ fn should_lint_in_nested_items() {
         //~| NOTE: up until Edition 2021 `#1` is dropped last but will be dropped earlier in Edition 2024
         //~| WARN: this changes meaning in Rust 2024
         //~| NOTE: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects
-        //~| NOTE: for more information, see issue #123739
+        //~| NOTE: for more information, see
     }
     //~^ NOTE: now the temporary value is dropped here, before the local variables in the block or statement
 }
@@ -97,7 +97,7 @@ fn should_lint_in_nested_block() -> i32 {
     //~| NOTE: up until Edition 2021 `#1` is dropped last but will be dropped earlier in Edition 2024
     //~| WARN: this changes meaning in Rust 2024
     //~| NOTE: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects
-    //~| NOTE: for more information, see issue #123739
+    //~| NOTE: for more information, see
 }
 //~^ NOTE: now the temporary value is dropped here, before the local variables in the block or statement
 
@@ -150,7 +150,7 @@ fn should_lint_into_async_body() -> i32 {
     //~| NOTE: this value will be stored in a temporary; let us call it `#1`
     //~| NOTE: up until Edition 2021 `#1` is dropped last but will be dropped earlier in Edition 2024
     //~| NOTE: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects
-    //~| NOTE: for more information, see issue #123739
+    //~| NOTE: for more information, see
 }
 //~^ NOTE: now the temporary value is dropped here, before the local variables in the block or statement
 
@@ -167,7 +167,7 @@ fn should_lint_generics<T: Default>() -> &'static str {
     //~| NOTE: this value will be stored in a temporary; let us call it `#1`
     //~| NOTE: up until Edition 2021 `#1` is dropped last but will be dropped earlier in Edition 2024
     //~| NOTE: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects
-    //~| NOTE: for more information, see issue #123739
+    //~| NOTE: for more information, see
 }
 //~^ NOTE: now the temporary value is dropped here, before the local variables in the block or statement
 
@@ -181,7 +181,7 @@ fn should_lint_adt() -> i32 {
     //~| NOTE: this value will be stored in a temporary; let us call it `#1`
     //~| NOTE: up until Edition 2021 `#1` is dropped last but will be dropped earlier in Edition 2024
     //~| NOTE: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects
-    //~| NOTE: for more information, see issue #123739
+    //~| NOTE: for more information, see
 }
 //~^ NOTE: now the temporary value is dropped here, before the local variables in the block or statement
 
@@ -225,7 +225,7 @@ fn should_lint_with_dtor_span() -> i32 {
     //~| NOTE: up until Edition 2021 `#1` is dropped last but will be dropped earlier in Edition 2024
     //~| WARN: this changes meaning in Rust 2024
     //~| NOTE: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects
-    //~| NOTE: for more information, see issue #123739
+    //~| NOTE: for more information, see
 }
 //~^ NOTE: now the temporary value is dropped here, before the local variables in the block or statement
 
@@ -238,7 +238,7 @@ fn should_lint_with_transient_drops() {
             //~| NOTE: up until Edition 2021 `#1` is dropped last but will be dropped earlier in Edition 2024
             //~| WARN: this changes meaning in Rust 2024
             //~| NOTE: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects
-            //~| NOTE: for more information, see issue #123739
+            //~| NOTE: for more information, see
         },
         {
             let _x = LoudDropper;

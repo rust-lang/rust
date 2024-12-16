@@ -5,7 +5,7 @@ LL |         unsafe { mem::zeroed() }
    |                  ^^^^^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2024 and in a future release in all editions!
-   = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the type explicitly
    = note: `#[deny(never_type_fallback_flowing_into_unsafe)]` on by default
 help: use `()` annotations to avoid fallback changes
@@ -20,7 +20,7 @@ LL |             core::mem::transmute(Zst)
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2024 and in a future release in all editions!
-   = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the type explicitly
 help: use `()` annotations to avoid fallback changes
    |
@@ -34,7 +34,7 @@ LL |         unsafe { Union { a: () }.b }
    |                  ^^^^^^^^^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2024 and in a future release in all editions!
-   = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the type explicitly
 
 error: never type fallback affects this raw pointer dereference
@@ -44,7 +44,7 @@ LL |         unsafe { *ptr::from_ref(&()).cast() }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2024 and in a future release in all editions!
-   = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the type explicitly
 help: use `()` annotations to avoid fallback changes
    |
@@ -58,7 +58,7 @@ LL |         unsafe { internally_create(x) }
    |                  ^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2024 and in a future release in all editions!
-   = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the type explicitly
 help: use `()` annotations to avoid fallback changes
    |
@@ -72,7 +72,7 @@ LL |         unsafe { zeroed() }
    |                  ^^^^^^^^
    |
    = warning: this changes meaning in Rust 2024 and in a future release in all editions!
-   = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the type explicitly
 help: use `()` annotations to avoid fallback changes
    |
@@ -86,7 +86,7 @@ LL |         let zeroed = mem::zeroed;
    |                      ^^^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2024 and in a future release in all editions!
-   = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the type explicitly
 help: use `()` annotations to avoid fallback changes
    |
@@ -100,7 +100,7 @@ LL |         let f = internally_create;
    |                 ^^^^^^^^^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2024 and in a future release in all editions!
-   = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the type explicitly
 help: use `()` annotations to avoid fallback changes
    |
@@ -114,7 +114,7 @@ LL |             S(marker::PhantomData).create_out_of_thin_air()
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this changes meaning in Rust 2024 and in a future release in all editions!
-   = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the type explicitly
 
 error: never type fallback affects this call to an `unsafe` function
@@ -127,7 +127,7 @@ LL |         msg_send!();
    |         ----------- in this macro invocation
    |
    = warning: this changes meaning in Rust 2024 and in a future release in all editions!
-   = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the type explicitly
    = note: this error originates in the macro `msg_send` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: use `()` annotations to avoid fallback changes
