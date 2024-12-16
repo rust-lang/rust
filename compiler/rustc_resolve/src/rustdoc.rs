@@ -12,6 +12,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::{Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, InnerSpan, Span};
+use thin_vec::ThinVec;
 use tracing::{debug, trace};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -196,9 +197,9 @@ pub fn add_doc_fragment(out: &mut String, frag: &DocFragment) {
 pub fn attrs_to_doc_fragments<'a, A: AttributeExt + Clone + 'a>(
     attrs: impl Iterator<Item = (&'a A, Option<DefId>)>,
     doc_only: bool,
-) -> (Vec<DocFragment>, Vec<A>) {
+) -> (Vec<DocFragment>, ThinVec<A>) {
     let mut doc_fragments = Vec::new();
-    let mut other_attrs = Vec::<A>::new();
+    let mut other_attrs = ThinVec::<A>::new();
     for (attr, item_id) in attrs {
         if let Some((doc_str, comment_kind)) = attr.doc_str_and_comment_kind() {
             let doc = beautify_doc_string(doc_str, comment_kind);

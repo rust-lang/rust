@@ -1150,7 +1150,7 @@ pub struct RenderedLink {
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Attributes {
     pub(crate) doc_strings: Vec<DocFragment>,
-    pub(crate) other_attrs: Vec<hir::Attribute>,
+    pub(crate) other_attrs: ThinVec<hir::Attribute>,
 }
 
 impl Attributes {
