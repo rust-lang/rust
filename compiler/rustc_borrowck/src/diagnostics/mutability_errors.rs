@@ -1500,9 +1500,8 @@ fn suggest_ampmut<'tcx>(
         // if the reference is already mutable then there is nothing we can do
         // here.
         if !is_mut {
-            let span = rhs_span;
             // shrink the span to just after the `&` in `&variable`
-            let span = span.with_lo(span.lo() + BytePos(1)).shrink_to_lo();
+            let span = rhs_span.with_lo(rhs_span.lo() + BytePos(1)).shrink_to_lo();
 
             // FIXME(Ezrashaw): returning is bad because we still might want to
             // update the annotated type, see #106857.
