@@ -85,16 +85,13 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             .cx
             .extract_inference_diagnostics_data(
                 Ty::new_fn_ptr(tcx, expected).into(),
-                Some(expected_highlight),
+                expected_highlight,
             )
             .name;
         let found_highlight = HighlightBuilder::build(found);
         let found = self
             .cx
-            .extract_inference_diagnostics_data(
-                Ty::new_fn_ptr(tcx, found).into(),
-                Some(found_highlight),
-            )
+            .extract_inference_diagnostics_data(Ty::new_fn_ptr(tcx, found).into(), found_highlight)
             .name;
 
         // Get the span of all the used type parameters in the method.
