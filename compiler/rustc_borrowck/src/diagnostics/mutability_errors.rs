@@ -1478,11 +1478,22 @@ fn suggest_ampmut<'tcx>(
         && let Ok(rhs_str) = tcx.sess.source_map().span_to_snippet(rhs_span)
         && let Some(rhs_str_no_amp) = rhs_str.strip_prefix('&')
     {
-        let is_raw_ref = rhs_str_no_amp.trim_start().starts_with("raw ");
-        // We don't support raw refs yet
-        if is_raw_ref {
-            return None;
+        // Suggest changing `&raw const` to `&raw mut` if applicable.
+        if rhs_str_no_amp.trim_start().strip_prefix("raw const").is_some() {
+            let const_idx = rhs_str.find("const").unwrap() as u32;
+            let const_span = rhs_span
+                .with_lo(rhs_span.lo() + BytePos(const_idx))
+                .with_hi(rhs_span.lo() + BytePos(const_idx + "const".len() as u32));
+
+            return Some(AmpMutSugg {
+                has_sugg: true,
+                span: const_span,
+                suggestion: "mut".to_owned(),
+                additional: None,
+            });
         }
+
+        // Figure out if rhs already is `&mut`.
         let is_mut = if let Some(rest) = rhs_str_no_amp.trim_start().strip_prefix("mut") {
             match rest.chars().next() {
                 // e.g. `&mut x`
