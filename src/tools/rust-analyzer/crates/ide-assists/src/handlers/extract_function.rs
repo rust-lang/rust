@@ -1910,7 +1910,7 @@ fn make_body(ctx: &AssistContext<'_>, old_indent: IndentLevel, fun: &Function) -
     match &handler {
         FlowHandler::None => block,
         FlowHandler::Try { kind } => {
-            let block = with_default_tail_expr(block, make::expr_unit());
+            let block = with_default_tail_expr(block, make::ext::expr_unit());
             map_tail_expr(block, |tail_expr| {
                 let constructor = match kind {
                     TryKind::Option => "Some",
@@ -1924,7 +1924,7 @@ fn make_body(ctx: &AssistContext<'_>, old_indent: IndentLevel, fun: &Function) -
         FlowHandler::If { .. } => {
             let controlflow_continue = make::expr_call(
                 make::expr_path(make::path_from_text("ControlFlow::Continue")),
-                make::arg_list(iter::once(make::expr_unit())),
+                make::arg_list([make::ext::expr_unit()]),
             );
             with_tail_expr(block, controlflow_continue)
         }
@@ -2127,17 +2127,17 @@ fn make_rewritten_flow(handler: &FlowHandler, arg_expr: Option<ast::Expr>) -> Op
         FlowHandler::None | FlowHandler::Try { .. } => return None,
         FlowHandler::If { .. } => make::expr_call(
             make::expr_path(make::path_from_text("ControlFlow::Break")),
-            make::arg_list(iter::once(make::expr_unit())),
+            make::arg_list([make::ext::expr_unit()]),
         ),
         FlowHandler::IfOption { .. } => {
-            let expr = arg_expr.unwrap_or_else(|| make::expr_unit());
-            let args = make::arg_list(iter::once(expr));
+            let expr = arg_expr.unwrap_or_else(make::ext::expr_unit);
+            let args = make::arg_list([expr]);
             make::expr_call(make::expr_path(make::ext::ident_path("Some")), args)
         }
         FlowHandler::MatchOption { .. } => make::expr_path(make::ext::ident_path("None")),
         FlowHandler::MatchResult { .. } => {
-            let expr = arg_expr.unwrap_or_else(|| make::expr_unit());
-            let args = make::arg_list(iter::once(expr));
+            let expr = arg_expr.unwrap_or_else(make::ext::expr_unit);
+            let args = make::arg_list([expr]);
             make::expr_call(make::expr_path(make::ext::ident_path("Err")), args)
         }
     };

@@ -550,7 +550,7 @@ mod tests {
             None,
             None,
             make::param_list(None, []),
-            make::block_expr([], Some(make::expr_unit())),
+            make::block_expr([], Some(make::ext::expr_unit())),
             Some(make::ret_type(make::ty_unit())),
             false,
             false,

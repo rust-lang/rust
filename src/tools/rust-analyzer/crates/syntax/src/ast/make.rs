@@ -63,6 +63,9 @@ pub mod ext {
         Some(expr)
     }
 
+    pub fn expr_unit() -> ast::Expr {
+        expr_tuple([]).into()
+    }
     pub fn expr_unreachable() -> ast::Expr {
         expr_from_text("unreachable!()")
     }
@@ -544,10 +547,6 @@ pub fn hacky_block_expr(
     }
     buf += "}";
     ast_from_text(&format!("fn f() {buf}"))
-}
-
-pub fn expr_unit() -> ast::Expr {
-    expr_from_text("()")
 }
 
 pub fn expr_literal(text: &str) -> ast::Literal {

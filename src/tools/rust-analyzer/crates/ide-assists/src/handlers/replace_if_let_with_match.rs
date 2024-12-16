@@ -179,7 +179,7 @@ fn make_else_arm(
             [(Either::Right(_), _)] => make::literal_pat("false").into(),
             _ => make::wildcard_pat().into(),
         };
-        (pattern, make::expr_unit())
+        (pattern, make::ext::expr_unit())
     };
     make::match_arm(iter::once(pattern), None, expr)
 }
