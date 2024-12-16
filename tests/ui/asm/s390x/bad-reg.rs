@@ -9,7 +9,7 @@
 //@[s390x_vector_stable] needs-llvm-components: systemz
 
 #![crate_type = "rlib"]
-#![feature(no_core, rustc_attrs, repr_simd)]
+#![feature(no_core, repr_simd)]
 #![cfg_attr(not(s390x_vector_stable), feature(asm_experimental_reg))]
 #![no_core]
 #![allow(non_camel_case_types)]
