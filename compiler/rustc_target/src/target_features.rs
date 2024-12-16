@@ -39,7 +39,7 @@ pub enum Stability<Toggleability> {
         allow_toggle: Toggleability,
     },
     /// This feature can not be set via `-Ctarget-feature` or `#[target_feature]`, it can only be
-    /// set in the basic target definition. It is never set in `cfg(target_feature)`. Used in
+    /// set in the target spec. It is never set in `cfg(target_feature)`. Used in
     /// particular for features that change the floating-point ABI.
     Forbidden { reason: &'static str },
 }
@@ -590,9 +590,76 @@ const RISCV_FEATURES: &[(&str, StabilityUncomputed, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("a", STABLE, &["zaamo", "zalrsc"]),
     ("c", STABLE, &[]),
-    ("d", unstable(sym::riscv_target_feature), &["f"]),
-    ("e", unstable(sym::riscv_target_feature), &[]),
-    ("f", unstable(sym::riscv_target_feature), &[]),
+    (
+        "d",
+        Stability::Unstable {
+            nightly_feature: sym::riscv_target_feature,
+            allow_toggle: |target, enable| match &*target.llvm_abiname {
+                "ilp32d" | "lp64d" if !enable => {
+                    // The ABI requires the `d` feature, so it cannot be disabled.
+                    Err("feature is required by ABI")
+                }
+                "ilp32e" if enable => {
+                    // ilp32e is incompatible with features that need aligned load/stores > 32 bits,
+                    // like `d`.
+                    Err("feature is incompatible with ABI")
+                }
+                _ => Ok(()),
+            },
+        },
+        &["f"],
+    ),
+    (
+        "e",
+        Stability::Unstable {
+            // Given that this is a negative feature, consider this before stabilizing:
+            // does it really make sense to enable this feature in an individual
+            // function with `#[target_feature]`?
+            nightly_feature: sym::riscv_target_feature,
+            allow_toggle: |target, enable| {
+                match &*target.llvm_abiname {
+                    _ if !enable => {
+                        // Disabling this feature means we can use more registers (x16-x31).
+                        // The "e" ABIs treat them as caller-save, so it is safe to use them only
+                        // in some parts of a program while the rest doesn't know they even exist.
+                        // On other ABIs, the feature is already disabled anyway.
+                        Ok(())
+                    }
+                    "ilp32e" | "lp64e" => {
+                        // Embedded ABIs should already have the feature anyway, it's fine to enable
+                        // it again from an ABI perspective.
+                        Ok(())
+                    }
+                    _ => {
+                        // *Not* an embedded ABI. Enabling `e` is invalid.
+                        Err("feature is incompatible with ABI")
+                    }
+                }
+            },
+        },
+        &[],
+    ),
+    (
+        "f",
+        Stability::Unstable {
+            nightly_feature: sym::riscv_target_feature,
+            allow_toggle: |target, enable| {
+                match &*target.llvm_abiname {
+                    "ilp32f" | "ilp32d" | "lp64f" | "lp64d" if !enable => {
+                        // The ABI requires the `f` feature, so it cannot be disabled.
+                        Err("feature is required by ABI")
+                    }
+                    _ => Ok(()),
+                }
+            },
+        },
+        &[],
+    ),
+    (
+        "forced-atomics",
+        Stability::Forbidden { reason: "unsound because it changes the ABI of atomic operations" },
+        &[],
+    ),
     ("m", STABLE, &[]),
     ("relax", unstable(sym::riscv_target_feature), &[]),
     ("unaligned-scalar-mem", unstable(sym::riscv_target_feature), &[]),
