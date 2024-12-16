@@ -656,7 +656,7 @@ pub fn expr_field(receiver: ast::Expr, field: &str) -> ast::Expr {
 pub fn expr_paren(expr: ast::Expr) -> ast::Expr {
     expr_from_text(&format!("({expr})"))
 }
-pub fn expr_tuple(elements: impl IntoIterator<Item = ast::Expr>) -> ast::Expr {
+pub fn expr_tuple(elements: impl IntoIterator<Item = ast::Expr>) -> ast::TupleExpr {
     let expr = elements.into_iter().format(", ");
     expr_from_text(&format!("({expr})"))
 }

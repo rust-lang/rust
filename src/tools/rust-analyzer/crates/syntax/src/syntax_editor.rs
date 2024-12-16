@@ -344,7 +344,8 @@ mod tests {
                     make::expr_literal("2").into(),
                 ),
                 make::expr_literal("true").into(),
-            ]),
+            ])
+            .into(),
         );
 
         let to_wrap = root.syntax().descendants().find_map(ast::TupleExpr::cast).unwrap();

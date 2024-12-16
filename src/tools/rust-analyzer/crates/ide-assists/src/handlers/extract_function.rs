@@ -1879,7 +1879,7 @@ fn make_body(ctx: &AssistContext<'_>, old_indent: IndentLevel, fun: &Function) -
                             .iter()
                             .map(|var| path_expr_from_local(ctx, var.local, fun.mods.edition));
                         let expr = make::expr_tuple(exprs);
-                        tail_expr = Some(expr);
+                        tail_expr = Some(expr.into());
                     }
                 },
             };
@@ -2130,13 +2130,13 @@ fn make_rewritten_flow(handler: &FlowHandler, arg_expr: Option<ast::Expr>) -> Op
             make::arg_list(iter::once(make::expr_unit())),
         ),
         FlowHandler::IfOption { .. } => {
-            let expr = arg_expr.unwrap_or_else(|| make::expr_tuple(Vec::new()));
+            let expr = arg_expr.unwrap_or_else(|| make::expr_unit());
             let args = make::arg_list(iter::once(expr));
             make::expr_call(make::expr_path(make::ext::ident_path("Some")), args)
         }
         FlowHandler::MatchOption { .. } => make::expr_path(make::ext::ident_path("None")),
         FlowHandler::MatchResult { .. } => {
-            let expr = arg_expr.unwrap_or_else(|| make::expr_tuple(Vec::new()));
+            let expr = arg_expr.unwrap_or_else(|| make::expr_unit());
             let args = make::arg_list(iter::once(expr));
             make::expr_call(make::expr_path(make::ext::ident_path("Err")), args)
         }

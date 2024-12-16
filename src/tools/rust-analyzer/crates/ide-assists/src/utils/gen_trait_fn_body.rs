@@ -541,7 +541,7 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn, trait_ref: Option<TraitRef>) -
                         arms.push(make::match_arm(Some(lhs), None, rhs));
                     }
 
-                    let match_target = make::expr_tuple(vec![lhs_name, rhs_name]);
+                    let match_target = make::expr_tuple([lhs_name, rhs_name]).into();
                     let list = make::match_arm_list(arms).indent(ast::edit::IndentLevel(1));
                     make::expr_match(match_target, list)
                 }
