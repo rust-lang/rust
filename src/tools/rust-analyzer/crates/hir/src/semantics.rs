@@ -38,7 +38,7 @@ use span::{AstIdMap, EditionedFileId, FileId, HirFileIdRepr, SyntaxContextId};
 use stdx::TupleExt;
 use syntax::{
     algo::skip_trivia_token,
-    ast::{self, HasAttrs as _, HasGenericParams, IsString as _},
+    ast::{self, HasAttrs as _, HasGenericParams},
     AstNode, AstToken, Direction, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange,
     TextSize,
 };
@@ -643,8 +643,7 @@ impl<'db> SemanticsImpl<'db> {
         &self,
         string: &ast::String,
     ) -> Option<Vec<(TextRange, Option<Either<PathResolution, InlineAsmOperand>>)>> {
-        let quote = string.open_quote_text_range()?;
-
+        let string_start = string.syntax().text_range().start();
         let token = self.wrap_token_infile(string.syntax().clone()).into_real_file().ok()?;
         self.descend_into_macros_breakable(token, |token, _| {
             (|| {
@@ -658,7 +657,7 @@ impl<'db> SemanticsImpl<'db> {
                     let format_args = self.wrap_node_infile(format_args);
                     let res = source_analyzer
                         .as_format_args_parts(self.db, format_args.as_ref())?
-                        .map(|(range, res)| (range + quote.end(), res.map(Either::Left)))
+                        .map(|(range, res)| (range + string_start, res.map(Either::Left)))
                         .collect();
                     Some(res)
                 } else {
@@ -672,7 +671,7 @@ impl<'db> SemanticsImpl<'db> {
                         .iter()
                         .map(|&(range, index)| {
                             (
-                                range + quote.end(),
+                                range + string_start,
                                 Some(Either::Right(InlineAsmOperand { owner, expr, index })),
                             )
                         })
@@ -690,17 +689,16 @@ impl<'db> SemanticsImpl<'db> {
         original_token: SyntaxToken,
         offset: TextSize,
     ) -> Option<(TextRange, Option<Either<PathResolution, InlineAsmOperand>>)> {
-        let original_string = ast::String::cast(original_token.clone())?;
+        let string_start = original_token.text_range().start();
         let original_token = self.wrap_token_infile(original_token).into_real_file().ok()?;
-        let quote = original_string.open_quote_text_range()?;
         self.descend_into_macros_breakable(original_token, |token, _| {
             (|| {
                 let token = token.value;
                 self.resolve_offset_in_format_args(
                     ast::String::cast(token)?,
-                    offset.checked_sub(quote.end())?,
+                    offset.checked_sub(string_start)?,
                 )
-                .map(|(range, res)| (range + quote.end(), res))
+                .map(|(range, res)| (range + string_start, res))
             })()
             .map_or(ControlFlow::Continue(()), ControlFlow::Break)
         })
