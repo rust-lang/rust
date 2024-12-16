@@ -1816,14 +1816,14 @@ pub(crate) enum AmbiguousWidePointerComparisonsAddrSuggestion<'a> {
 }
 
 #[derive(LintDiagnostic)]
-pub(crate) enum UnpredictableFunctionPointerComparisons<'a> {
+pub(crate) enum UnpredictableFunctionPointerComparisons<'a, 'tcx> {
     #[diag(lint_unpredictable_fn_pointer_comparisons)]
     #[note(lint_note_duplicated_fn)]
     #[note(lint_note_deduplicated_fn)]
     #[note(lint_note_visit_fn_addr_eq)]
     Suggestion {
         #[subdiagnostic]
-        sugg: UnpredictableFunctionPointerComparisonsSuggestion<'a>,
+        sugg: UnpredictableFunctionPointerComparisonsSuggestion<'a, 'tcx>,
     },
     #[diag(lint_unpredictable_fn_pointer_comparisons)]
     #[note(lint_note_duplicated_fn)]
@@ -1833,22 +1833,40 @@ pub(crate) enum UnpredictableFunctionPointerComparisons<'a> {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    lint_fn_addr_eq_suggestion,
-    style = "verbose",
-    applicability = "maybe-incorrect"
-)]
-pub(crate) struct UnpredictableFunctionPointerComparisonsSuggestion<'a> {
-    pub ne: &'a str,
-    pub cast_right: String,
-    pub deref_left: &'a str,
-    pub deref_right: &'a str,
-    #[suggestion_part(code = "{ne}std::ptr::fn_addr_eq({deref_left}")]
-    pub left: Span,
-    #[suggestion_part(code = ", {deref_right}")]
-    pub middle: Span,
-    #[suggestion_part(code = "{cast_right})")]
-    pub right: Span,
+pub(crate) enum UnpredictableFunctionPointerComparisonsSuggestion<'a, 'tcx> {
+    #[multipart_suggestion(
+        lint_fn_addr_eq_suggestion,
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    FnAddrEq {
+        ne: &'a str,
+        deref_left: &'a str,
+        deref_right: &'a str,
+        #[suggestion_part(code = "{ne}std::ptr::fn_addr_eq({deref_left}")]
+        left: Span,
+        #[suggestion_part(code = ", {deref_right}")]
+        middle: Span,
+        #[suggestion_part(code = ")")]
+        right: Span,
+    },
+    #[multipart_suggestion(
+        lint_fn_addr_eq_suggestion,
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    FnAddrEqWithCast {
+        ne: &'a str,
+        deref_left: &'a str,
+        deref_right: &'a str,
+        fn_sig: rustc_middle::ty::PolyFnSig<'tcx>,
+        #[suggestion_part(code = "{ne}std::ptr::fn_addr_eq({deref_left}")]
+        left: Span,
+        #[suggestion_part(code = ", {deref_right}")]
+        middle: Span,
+        #[suggestion_part(code = " as {fn_sig})")]
+        right: Span,
+    },
 }
 
 pub(crate) struct ImproperCTypes<'a> {
