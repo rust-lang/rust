@@ -3,7 +3,7 @@ error: malformed `crate_type` attribute input
    |
 LL | #![crate_type]
    | ^^^^^^^^^^^^^^ malformed input
-help: `crate_type` must specify a value like one of the following:
+help: `crate_type` must specify a value or be of the form:
    |
 LL | #![crate_type = "bin"]
    |
