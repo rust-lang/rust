@@ -537,8 +537,6 @@ fn handle_attr(mod_attr_pending: &mut String, source_info: &mut SourceInfo, edit
         push_to.push('\n');
         // If it's complete, then we can clear the pending content.
         mod_attr_pending.clear();
-    } else if mod_attr_pending.ends_with('\\') {
-        mod_attr_pending.push('n');
     } else {
         mod_attr_pending.push_str("\n");
     }
