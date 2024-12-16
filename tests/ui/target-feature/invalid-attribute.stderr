@@ -192,20 +192,6 @@ LL | impl Quux for u8 {}
 LL |     fn foo();
    |     --------- `foo` from trait
 
-error[E0053]: method `foo` has an incompatible type for trait
-  --> $DIR/invalid-attribute.rs:108:5
-   |
-LL |     fn foo() {}
-   |     ^^^^^^^^ expected safe fn, found unsafe fn
-   |
-note: type in trait
-  --> $DIR/invalid-attribute.rs:99:5
-   |
-LL |     fn foo();
-   |     ^^^^^^^^^
-   = note: expected signature `fn()`
-              found signature `unsafe fn()`
-
 error[E0658]: `#[target_feature(..)]` can only be applied to `unsafe` functions
   --> $DIR/invalid-attribute.rs:104:5
    |
@@ -218,6 +204,20 @@ LL |     fn foo() {}
    = note: see issue #69098 <https://github.com/rust-lang/rust/issues/69098> for more information
    = help: add `#![feature(target_feature_11)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0053]: method `foo` has an incompatible type for trait
+  --> $DIR/invalid-attribute.rs:108:5
+   |
+LL |     fn foo() {}
+   |     ^^^^^^^^ expected safe fn, found unsafe fn
+   |
+note: type in trait
+  --> $DIR/invalid-attribute.rs:99:5
+   |
+LL |     fn foo();
+   |     ^^^^^^^^^
+   = note: expected signature `fn()`
+              found signature `#[target_features] fn()`
 
 error: aborting due to 24 previous errors
 
