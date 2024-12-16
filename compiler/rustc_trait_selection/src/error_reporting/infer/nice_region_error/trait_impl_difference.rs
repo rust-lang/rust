@@ -2,18 +2,19 @@
 
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
-use rustc_hir::def::Res;
+use rustc_hir::def::{Namespace, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::RegionHighlightMode;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
 use rustc_span::Span;
 use tracing::debug;
 
 use crate::error_reporting::infer::nice_region_error::NiceRegionError;
+use crate::error_reporting::infer::nice_region_error::placeholder_error::Highlighted;
 use crate::errors::{ConsiderBorrowingParamHelp, RelationshipHelp, TraitImplDiff};
 use crate::infer::{RegionResolutionError, Subtype, ValuePairs};
 
@@ -81,18 +82,17 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
         let expected_highlight = HighlightBuilder::build(expected);
         let tcx = self.cx.tcx;
-        let expected = self
-            .cx
-            .extract_inference_diagnostics_data(
-                Ty::new_fn_ptr(tcx, expected).into(),
-                expected_highlight,
-            )
-            .name;
+        let expected = Highlighted {
+            highlight: expected_highlight,
+            ns: Namespace::TypeNS,
+            tcx,
+            value: expected,
+        }
+        .to_string();
         let found_highlight = HighlightBuilder::build(found);
-        let found = self
-            .cx
-            .extract_inference_diagnostics_data(Ty::new_fn_ptr(tcx, found).into(), found_highlight)
-            .name;
+        let found =
+            Highlighted { highlight: found_highlight, ns: Namespace::TypeNS, tcx, value: found }
+                .to_string();
 
         // Get the span of all the used type parameters in the method.
         let assoc_item = self.tcx().associated_item(trait_item_def_id);
