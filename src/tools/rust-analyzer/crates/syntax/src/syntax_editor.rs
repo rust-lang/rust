@@ -335,7 +335,7 @@ mod tests {
     #[test]
     fn basic_usage() {
         let root = make::match_arm(
-            [make::wildcard_pat().into()],
+            make::wildcard_pat().into(),
             None,
             make::expr_tuple([
                 make::expr_bin_op(

@@ -114,17 +114,15 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext<'
                 let make_match_arm = |(pat, body): (_, ast::BlockExpr)| {
                     let body = body.reset_indent().indent(IndentLevel(1));
                     match pat {
-                        Either::Left(pat) => {
-                            make::match_arm(iter::once(pat), None, unwrap_trivial_block(body))
-                        }
+                        Either::Left(pat) => make::match_arm(pat, None, unwrap_trivial_block(body)),
                         Either::Right(_) if !pat_seen => make::match_arm(
-                            iter::once(make::literal_pat("true").into()),
+                            make::literal_pat("true").into(),
                             None,
                             unwrap_trivial_block(body),
                         ),
                         Either::Right(expr) => make::match_arm(
-                            iter::once(make::wildcard_pat().into()),
-                            Some(expr),
+                            make::wildcard_pat().into(),
+                            Some(make::match_guard(expr)),
                             unwrap_trivial_block(body),
                         ),
                     }
@@ -181,7 +179,7 @@ fn make_else_arm(
         };
         (pattern, make::ext::expr_unit())
     };
-    make::match_arm(iter::once(pattern), None, expr)
+    make::match_arm(pattern, None, expr)
 }
 
 // Assist: replace_match_with_if_let

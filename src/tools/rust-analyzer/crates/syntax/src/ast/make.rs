@@ -787,15 +787,21 @@ pub fn path_pat(path: ast::Path) -> ast::Pat {
     }
 }
 
-pub fn match_arm(
-    pats: impl IntoIterator<Item = ast::Pat>,
-    guard: Option<ast::Expr>,
-    expr: ast::Expr,
-) -> ast::MatchArm {
-    let pats_str = pats.into_iter().join(" | ");
+/// Returns a `Pat` if the path has just one segment, an `OrPat` otherwise.
+pub fn or_pat(pats: impl IntoIterator<Item = ast::Pat>, leading_pipe: bool) -> ast::Pat {
+    let leading_pipe = if leading_pipe { "| " } else { "" };
+    let pats = pats.into_iter().join(" | ");
+
+    return from_text(&format!("{leading_pipe}{pats}"));
+    fn from_text(text: &str) -> ast::Pat {
+        ast_from_text(&format!("fn f({text}: ())"))
+    }
+}
+
+pub fn match_arm(pat: ast::Pat, guard: Option<ast::MatchGuard>, expr: ast::Expr) -> ast::MatchArm {
     return match guard {
-        Some(guard) => from_text(&format!("{pats_str} if {guard} => {expr}")),
-        None => from_text(&format!("{pats_str} => {expr}")),
+        Some(guard) => from_text(&format!("{pat} {guard} => {expr}")),
+        None => from_text(&format!("{pat} => {expr}")),
     };
 
     fn from_text(text: &str) -> ast::MatchArm {
@@ -813,6 +819,14 @@ pub fn match_arm_with_guard(
 
     fn from_text(text: &str) -> ast::MatchArm {
         ast_from_text(&format!("fn f() {{ match () {{{text}}} }}"))
+    }
+}
+
+pub fn match_guard(condition: ast::Expr) -> ast::MatchGuard {
+    return from_text(&format!("if {condition}"));
+
+    fn from_text(text: &str) -> ast::MatchGuard {
+        ast_from_text(&format!("fn f() {{ match () {{() {text} => () }}"))
     }
 }
 
