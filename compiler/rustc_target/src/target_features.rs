@@ -39,7 +39,7 @@ pub enum Stability<Toggleability> {
         allow_toggle: Toggleability,
     },
     /// This feature can not be set via `-Ctarget-feature` or `#[target_feature]`, it can only be
-    /// set in the basic target definition. It is never set in `cfg(target_feature)`. Used in
+    /// set in the target spec. It is never set in `cfg(target_feature)`. Used in
     /// particular for features that change the floating-point ABI.
     Forbidden { reason: &'static str },
 }
@@ -600,7 +600,8 @@ const RISCV_FEATURES: &[(&str, StabilityUncomputed, ImpliedFeatures)] = &[
                     Err("feature is required by ABI")
                 }
                 "ilp32e" if enable => {
-                    // The `d` feature apparently is incompatible with this ABI.
+                    // ilp32e is incompatible with features that need aligned load/stores > 32 bits,
+                    // like `d`.
                     Err("feature is incompatible with ABI")
                 }
                 _ => Ok(()),
@@ -618,7 +619,10 @@ const RISCV_FEATURES: &[(&str, StabilityUncomputed, ImpliedFeatures)] = &[
             allow_toggle: |target, enable| {
                 match &*target.llvm_abiname {
                     _ if !enable => {
-                        // This is a negative feature, *disabling* it is always okay.
+                        // Disabling this feature means we can use more registers (x16-x31).
+                        // The "e" ABIs treat them as caller-save, so it is safe to use them only
+                        // in some parts of a program while the rest doesn't know they even exist.
+                        // On other ABIs, the feature is already disabled anyway.
                         Ok(())
                     }
                     "ilp32e" | "lp64e" => {
