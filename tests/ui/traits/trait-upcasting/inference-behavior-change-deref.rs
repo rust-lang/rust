@@ -1,6 +1,3 @@
-#![deny(deref_into_dyn_supertrait)]
-#![feature(trait_upcasting)] // remove this and the test compiles
-
 use std::ops::Deref;
 
 trait Bar<T> {}
@@ -32,5 +29,5 @@ fn main() {
     let x: &dyn Foo = &();
     let y = take_dyn(x);
     let z: u32 = y;
-    //~^ ERROR mismatched types
+    //~^ error: mismatched types
 }

@@ -1,5 +1,5 @@
 error[E0606]: casting `*const dyn Trait<u8, u8>` as `*const dyn Trait<u8, u16>` is invalid
-  --> $DIR/upcast_soundness_bug.rs:59:13
+  --> $DIR/upcast_soundness_bug.rs:58:13
    |
 LL |     let p = p as *const dyn Trait<u8, u16>; // <- this is bad!
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
