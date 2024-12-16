@@ -322,7 +322,7 @@ fn do_mir_borrowck<'tcx>(
         body,
         &regioncx,
         &borrow_set,
-        &localized_outlives_constraints,
+        localized_outlives_constraints,
         &opt_closure_req,
     );
 

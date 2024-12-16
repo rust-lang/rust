@@ -18,13 +18,16 @@ pub(crate) fn dump_polonius_mir<'tcx>(
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
-    localized_outlives_constraints: &LocalizedOutlivesConstraintSet,
+    localized_outlives_constraints: Option<LocalizedOutlivesConstraintSet>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
 ) {
     let tcx = infcx.tcx;
     if !tcx.sess.opts.unstable_opts.polonius.is_next_enabled() {
         return;
     }
+
+    let localized_outlives_constraints = localized_outlives_constraints
+        .expect("missing localized constraints with `-Zpolonius=next`");
 
     // We want the NLL extra comments printed by default in NLL MIR dumps (they were removed in
     // #112346). Specifying `-Z mir-include-spans` on the CLI still has priority: for example,
@@ -48,7 +51,7 @@ pub(crate) fn dump_polonius_mir<'tcx>(
                 regioncx,
                 closure_region_requirements,
                 borrow_set,
-                localized_outlives_constraints,
+                &localized_outlives_constraints,
                 pass_where,
                 out,
             )

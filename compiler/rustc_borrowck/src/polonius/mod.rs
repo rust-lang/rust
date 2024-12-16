@@ -40,7 +40,6 @@ pub(crate) use dump::dump_polonius_mir;
 pub(crate) mod legacy;
 
 use rustc_middle::mir::{Body, Location};
-use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::points::PointIndex;
 
 use crate::RegionInferenceContext;
@@ -49,34 +48,31 @@ use crate::region_infer::values::LivenessValues;
 use crate::type_check::Locations;
 use crate::universal_regions::UniversalRegions;
 
-/// When using `-Zpolonius=next`, fills the given constraint set by:
+/// Creates a constraint set for `-Zpolonius=next` by:
 /// - converting NLL typeck constraints to be localized
 /// - encoding liveness constraints
 pub(crate) fn create_localized_constraints<'tcx>(
     regioncx: &mut RegionInferenceContext<'tcx>,
-    tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    localized_outlives_constraints: &mut LocalizedOutlivesConstraintSet,
-) {
-    if !tcx.sess.opts.unstable_opts.polonius.is_next_enabled() {
-        return;
-    }
-
+) -> LocalizedOutlivesConstraintSet {
+    let mut localized_outlives_constraints = LocalizedOutlivesConstraintSet::default();
     convert_typeck_constraints(
         body,
         regioncx.liveness_constraints(),
         regioncx.outlives_constraints(),
-        localized_outlives_constraints,
+        &mut localized_outlives_constraints,
     );
     create_liveness_constraints(
         body,
         regioncx.liveness_constraints(),
         regioncx.universal_regions(),
-        localized_outlives_constraints,
+        &mut localized_outlives_constraints,
     );
 
     // FIXME: here, we can trace loan reachability in the constraint graph and record this as loan
     // liveness for the next step in the chain, the NLL loan scope and active loans computations.
+
+    localized_outlives_constraints
 }
 
 /// Propagate loans throughout the subset graph at a given point (with some subtleties around the
@@ -90,8 +86,9 @@ fn convert_typeck_constraints<'tcx>(
     for outlives_constraint in outlives_constraints {
         match outlives_constraint.locations {
             Locations::All(_) => {
-                // FIXME: for now, turn logical constraints holding at all points into physical
-                // edges at every point in the graph. We can encode this into *traversal* instead.
+                // For now, turn logical constraints holding at all points into physical edges at
+                // every point in the graph.
+                // FIXME: encode this into *traversal* instead.
                 for (block, bb) in body.basic_blocks.iter_enumerated() {
                     let statement_count = bb.statements.len();
                     for statement_index in 0..=statement_count {
@@ -168,9 +165,10 @@ fn propagate_loans_between_points(
     localized_outlives_constraints: &mut LocalizedOutlivesConstraintSet,
 ) {
     // Universal regions are semantically live at all points.
-    // FIXME: We always have universal regions but they're not always (or often) involved in the
-    // subset graph. So for now, we emit this edge, but we only need to emit edges for universal
-    // regions that existential regions can actually reach.
+    // Note: we always have universal regions but they're not always (or often) involved in the
+    // subset graph. For now, we emit all their edges unconditionally, but some of these subgraphs
+    // will be disconnected from the rest of the graph and thus, unnecessary.
+    // FIXME: only emit the edges of universal regions that existential regions can reach.
     for region in universal_regions.universal_regions_iter() {
         localized_outlives_constraints.push(LocalizedOutlivesConstraint {
             source: region,

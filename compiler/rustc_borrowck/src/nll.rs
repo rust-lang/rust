@@ -48,7 +48,7 @@ pub(crate) struct NllOutput<'tcx> {
     pub nll_errors: RegionErrors<'tcx>,
 
     /// When using `-Zpolonius=next`: the localized typeck and liveness constraints.
-    pub localized_outlives_constraints: LocalizedOutlivesConstraintSet,
+    pub localized_outlives_constraints: Option<LocalizedOutlivesConstraintSet>,
 }
 
 /// Rewrites the regions in the MIR to use NLL variables, also scraping out the set of universal
@@ -141,15 +141,12 @@ pub(crate) fn compute_regions<'a, 'tcx>(
 
     // If requested for `-Zpolonius=next`, convert NLL constraints to localized outlives
     // constraints.
-    let mut localized_outlives_constraints = LocalizedOutlivesConstraintSet::default();
-    if infcx.tcx.sess.opts.unstable_opts.polonius.is_next_enabled() {
-        polonius::create_localized_constraints(
-            &mut regioncx,
-            infcx.infcx.tcx,
-            body,
-            &mut localized_outlives_constraints,
-        );
-    }
+    let localized_outlives_constraints =
+        if infcx.tcx.sess.opts.unstable_opts.polonius.is_next_enabled() {
+            Some(polonius::create_localized_constraints(&mut regioncx, body))
+        } else {
+            None
+        };
 
     // If requested: dump NLL facts, and run legacy polonius analysis.
     let polonius_output = all_facts.as_ref().and_then(|all_facts| {
