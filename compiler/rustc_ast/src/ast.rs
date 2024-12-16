@@ -859,6 +859,8 @@ pub enum PatKind {
 pub enum PatFieldsRest {
     /// `module::StructName { field, ..}`
     Rest,
+    /// `module::StructName { field, syntax error }`
+    Recovered(ErrorGuaranteed),
     /// `module::StructName { field }`
     None,
 }
