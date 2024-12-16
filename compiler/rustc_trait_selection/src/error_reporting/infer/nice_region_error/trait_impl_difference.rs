@@ -32,7 +32,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             _,
         ) = error.clone()
             && let (Subtype(sup_trace), Subtype(sub_trace)) = (&sup_origin, &sub_origin)
-            && let ObligationCauseCode::CompareImplItem { trait_item_def_id, .. } =
+            && let &ObligationCauseCode::CompareImplItem { trait_item_def_id, .. } =
                 sub_trace.cause.code()
             && sub_trace.values == sup_trace.values
             && let ValuePairs::PolySigs(ExpectedFound { expected, found }) = sub_trace.values
@@ -50,9 +50,9 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         sp: Span,
         expected: ty::PolyFnSig<'tcx>,
         found: ty::PolyFnSig<'tcx>,
-        trait_def_id: DefId,
+        trait_item_def_id: DefId,
     ) -> ErrorGuaranteed {
-        let trait_sp = self.tcx().def_span(trait_def_id);
+        let trait_sp = self.tcx().def_span(trait_item_def_id);
 
         // Mark all unnamed regions in the type with a number.
         // This diagnostic is called in response to lifetime errors, so be informative.
@@ -98,7 +98,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             .name;
 
         // Get the span of all the used type parameters in the method.
-        let assoc_item = self.tcx().associated_item(trait_def_id);
+        let assoc_item = self.tcx().associated_item(trait_item_def_id);
         let mut visitor = TypeParamSpanVisitor { tcx: self.tcx(), types: vec![] };
         match assoc_item.kind {
             ty::AssocKind::Fn => {
