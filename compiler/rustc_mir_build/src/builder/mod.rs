@@ -1,3 +1,8 @@
+//! This module used to be named `build`, but that was causing GitHub's
+//! "Go to file" feature to silently ignore all files in the module, probably
+//! because it assumes that "build" is a build-output directory.
+//! See <https://github.com/rust-lang/rust/pull/134365>.
+
 use itertools::Itertools;
 use rustc_abi::{ExternAbi, FieldIdx};
 use rustc_apfloat::Float;

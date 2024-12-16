@@ -11,6 +11,9 @@
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
+// The `builder` module used to be named `build`, but that was causing GitHub's
+// "Go to file" feature to silently ignore all files in the module, probably
+// because it assumes that "build" is a build-output directory. See #134365.
 mod builder;
 mod check_tail_calls;
 mod check_unsafety;
