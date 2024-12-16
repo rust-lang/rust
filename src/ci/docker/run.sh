@@ -281,10 +281,13 @@ else
     # Rootless podman creates a separate user namespace, where an inner
     # LOCAL_USER_ID will map to a different subuid range on the host.
     # The "keep-id" mode maps the current UID directly into the container.
+    echo "Running in rootless podman"
     args="$args --env NO_CHANGE_USER=1 --userns=keep-id"
   elif [[ "$id" != 0 ]]; then
+    echo "Running in docker as non-root"
     args="$args --env LOCAL_USER_ID=$id"
   else
+    echo "Running in docker as root. Using id 1001."
     # If we're running as root, we don't want to run the container as root,
     # so we set id `1001` instead of `0`.
     args="$args --env LOCAL_USER_ID=1001"
