@@ -600,8 +600,6 @@ fn register_internals(store: &mut LintStore) {
     store.register_late_mod_pass(|_| Box::new(DefaultHashTypes));
     store.register_lints(&QueryStability::lint_vec());
     store.register_late_mod_pass(|_| Box::new(QueryStability));
-    store.register_lints(&ExistingDocKeyword::lint_vec());
-    store.register_late_mod_pass(|_| Box::new(ExistingDocKeyword));
     store.register_lints(&TyTyKind::lint_vec());
     store.register_late_mod_pass(|_| Box::new(TyTyKind));
     store.register_lints(&TypeIr::lint_vec());
@@ -629,7 +627,6 @@ fn register_internals(store: &mut LintStore) {
         LintId::of(LINT_PASS_IMPL_WITHOUT_MACRO),
         LintId::of(USAGE_OF_QUALIFIED_TY),
         LintId::of(NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT),
-        LintId::of(EXISTING_DOC_KEYWORD),
         LintId::of(BAD_OPT_ACCESS),
         LintId::of(SPAN_USE_EQ_CTXT),
     ]);
