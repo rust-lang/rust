@@ -1203,6 +1203,26 @@ impl<T> Arc<[T]> {
             ))
         }
     }
+
+    /// Converts the reference-counted slice into a reference-counted array.
+    ///
+    /// This operation does not reallocate; the underlying array of the slice is simply reinterpreted as an array type.
+    ///
+    /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
+    #[unstable(feature = "slice_as_array", issue = "133508")]
+    #[inline]
+    #[must_use]
+    pub fn into_array<const N: usize>(self) -> Option<Arc<[T; N]>> {
+        if self.len() == N {
+            let ptr = Self::into_raw(self) as *const [T; N];
+
+            // SAFETY: The underlying array of a slice has the exact same layout as an actual array `[T; N]` if `N` is equal to the slice's length.
+            let me = unsafe { Arc::from_raw(ptr) };
+            Some(me)
+        } else {
+            None
+        }
+    }
 }
 
 impl<T, A: Allocator> Arc<[T], A> {
