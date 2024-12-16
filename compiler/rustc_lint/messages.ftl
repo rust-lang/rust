@@ -813,7 +813,7 @@ lint_unexpected_cfg_doc_cargo = see <https://doc.rust-lang.org/nightly/rustc/che
 lint_unexpected_cfg_doc_rustc = see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 lint_unexpected_cfg_from_external_macro_origin = using a cfg inside a {$macro_kind} will use the cfgs from the destination crate and not the ones from the defining crate
-lint_unexpected_cfg_from_external_macro_refer = try refering to `{$macro_name}` crate for guidance on how handle this unexpected cfg
+lint_unexpected_cfg_from_external_macro_refer = try referring to `{$macro_name}` crate for guidance on how handle this unexpected cfg
 lint_unexpected_cfg_name = unexpected `cfg` condition name: `{$name}`
 lint_unexpected_cfg_name_expected_names = expected names are: {$possibilities}{$and_more ->
         [0] {""}
