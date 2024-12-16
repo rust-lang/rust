@@ -9,7 +9,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::RegionHighlightMode;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitor};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
 use rustc_span::Span;
 use tracing::debug;
 
@@ -39,12 +39,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         {
             // FIXME(compiler-errors): Don't like that this needs `Ty`s, but
             // all of the region highlighting machinery only deals with those.
-            let guar = self.emit_err(
-                var_origin.span(),
-                Ty::new_fn_ptr(self.cx.tcx, expected),
-                Ty::new_fn_ptr(self.cx.tcx, found),
-                *trait_item_def_id,
-            );
+            let guar = self.emit_err(var_origin.span(), expected, found, trait_item_def_id);
             return Some(guar);
         }
         None
@@ -53,8 +48,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     fn emit_err(
         &self,
         sp: Span,
-        expected: Ty<'tcx>,
-        found: Ty<'tcx>,
+        expected: ty::PolyFnSig<'tcx>,
+        found: ty::PolyFnSig<'tcx>,
         trait_def_id: DefId,
     ) -> ErrorGuaranteed {
         let trait_sp = self.tcx().def_span(trait_def_id);
@@ -67,10 +62,10 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         }
 
         impl<'tcx> HighlightBuilder<'tcx> {
-            fn build(ty: Ty<'tcx>) -> RegionHighlightMode<'tcx> {
+            fn build(sig: ty::PolyFnSig<'tcx>) -> RegionHighlightMode<'tcx> {
                 let mut builder =
                     HighlightBuilder { highlight: RegionHighlightMode::default(), counter: 1 };
-                builder.visit_ty(ty);
+                sig.visit_with(&mut builder);
                 builder.highlight
             }
         }
@@ -85,13 +80,22 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         }
 
         let expected_highlight = HighlightBuilder::build(expected);
+        let tcx = self.cx.tcx;
         let expected = self
             .cx
-            .extract_inference_diagnostics_data(expected.into(), Some(expected_highlight))
+            .extract_inference_diagnostics_data(
+                Ty::new_fn_ptr(tcx, expected).into(),
+                Some(expected_highlight),
+            )
             .name;
         let found_highlight = HighlightBuilder::build(found);
-        let found =
-            self.cx.extract_inference_diagnostics_data(found.into(), Some(found_highlight)).name;
+        let found = self
+            .cx
+            .extract_inference_diagnostics_data(
+                Ty::new_fn_ptr(tcx, found).into(),
+                Some(found_highlight),
+            )
+            .name;
 
         // Get the span of all the used type parameters in the method.
         let assoc_item = self.tcx().associated_item(trait_def_id);
