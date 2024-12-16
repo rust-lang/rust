@@ -1720,3 +1720,45 @@ fn function() {
         "#]],
     );
 }
+
+#[test]
+fn intrinsics() {
+    check(
+        r#"
+    //- /core.rs crate:core
+    pub mod intrinsics {
+        extern "rust-intrinsic" {
+            pub fn transmute<Src, Dst>(src: Src) -> Dst;
+        }
+    }
+    pub mod mem {
+        pub use crate::intrinsics::transmute;
+    }
+    //- /main.rs crate:main deps:core
+    fn function() {
+            transmute$0
+    }
+    "#,
+        expect![[r#"
+                fn transmute(…) (use core::mem::transmute) unsafe fn(Src) -> Dst
+            "#]],
+    );
+    check(
+        r#"
+//- /core.rs crate:core
+pub mod intrinsics {
+    extern "rust-intrinsic" {
+        pub fn transmute<Src, Dst>(src: Src) -> Dst;
+    }
+}
+pub mod mem {
+    pub use crate::intrinsics::transmute;
+}
+//- /main.rs crate:main deps:core
+fn function() {
+        mem::transmute$0
+}
+"#,
+        expect![""],
+    );
+}
