@@ -9,8 +9,6 @@
 //@[next] rustc-env:RUST_BACKTRACE=0
 //@ check-pass
 
-#![feature(trait_upcasting)]
-
 trait Super {
     type Assoc;
 }

@@ -6,8 +6,6 @@
 // Check that we are able to instantiate a binder during trait upcasting,
 // and that it doesn't cause any issues with codegen either.
 
-#![feature(trait_upcasting)]
-
 trait Supertrait<'a, 'b> {}
 trait Subtrait<'a, 'b>: Supertrait<'a, 'b> {}
 

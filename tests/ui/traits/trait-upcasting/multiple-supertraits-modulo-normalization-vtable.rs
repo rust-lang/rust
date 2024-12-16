@@ -1,5 +1,4 @@
 #![feature(rustc_attrs)]
-#![feature(trait_upcasting)]
 
 // Test for <https://github.com/rust-lang/rust/issues/135315>.
 
