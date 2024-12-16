@@ -21,6 +21,7 @@ use rustc_span::symbol::{Ident, sym};
 use rustc_span::{BytePos, DUMMY_SP, FileName, Span};
 use tracing::{debug, instrument, warn};
 
+use super::nice_region_error::placeholder_error::Highlighted;
 use crate::error_reporting::TypeErrCtxt;
 use crate::errors::{
     AmbiguousImpl, AmbiguousReturn, AnnotationRequired, InferenceBadError,
@@ -281,6 +282,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         arg: GenericArg<'tcx>,
         highlight: ty::print::RegionHighlightMode<'tcx>,
     ) -> InferenceDiagnosticsData {
+        let tcx = self.tcx;
         match arg.unpack() {
             GenericArgKind::Type(ty) => {
                 if let ty::Infer(ty::TyVar(ty_vid)) = *ty.kind() {
@@ -300,12 +302,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                 }
 
-                let mut printer = ty::print::FmtPrinter::new(self.tcx, Namespace::TypeNS);
-                printer.region_highlight_mode = highlight;
-
-                ty.print(&mut printer).unwrap();
                 InferenceDiagnosticsData {
-                    name: printer.into_buffer(),
+                    name: Highlighted { highlight, ns: Namespace::TypeNS, tcx, value: ty }
+                        .to_string(),
                     span: None,
                     kind: UnderspecifiedArgKind::Type { prefix: ty.prefix_string(self.tcx) },
                     parent: None,
@@ -324,12 +323,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
 
                     debug_assert!(!origin.span.is_dummy());
-                    let mut printer = ty::print::FmtPrinter::new(self.tcx, Namespace::ValueNS);
-                    printer.region_highlight_mode = highlight;
-
-                    ct.print(&mut printer).unwrap();
                     InferenceDiagnosticsData {
-                        name: printer.into_buffer(),
+                        name: Highlighted { highlight, ns: Namespace::ValueNS, tcx, value: ct }
+                            .to_string(),
                         span: Some(origin.span),
                         kind: UnderspecifiedArgKind::Const { is_parameter: false },
                         parent: None,
@@ -341,12 +337,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     // FIXME: Ideally we should look into the generic constant
                     // to figure out which inference var is actually unresolved so that
                     // this path is unreachable.
-                    let mut printer = ty::print::FmtPrinter::new(self.tcx, Namespace::ValueNS);
-                    printer.region_highlight_mode = highlight;
-
-                    ct.print(&mut printer).unwrap();
                     InferenceDiagnosticsData {
-                        name: printer.into_buffer(),
+                        name: Highlighted { highlight, ns: Namespace::ValueNS, tcx, value: ct }
+                            .to_string(),
                         span: None,
                         kind: UnderspecifiedArgKind::Const { is_parameter: false },
                         parent: None,
