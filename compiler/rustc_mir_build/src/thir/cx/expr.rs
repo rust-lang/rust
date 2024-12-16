@@ -25,6 +25,14 @@ use crate::thir::cx::Cx;
 use crate::thir::util::UserAnnotatedTyHelpers;
 
 impl<'tcx> Cx<'tcx> {
+    /// Create a THIR expression for the given HIR expression. This expands all
+    /// adjustments and directly adds the type information from the
+    /// `typeck_results`. See the [dev-guide] for more details.
+    ///
+    /// (The term "mirror" in this case does not refer to "flipped" or
+    /// "reversed".)
+    ///
+    /// [dev-guide]: https://rustc-dev-guide.rust-lang.org/thir.html
     pub(crate) fn mirror_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> ExprId {
         // `mirror_expr` is recursing very deep. Make sure the stack doesn't overflow.
         ensure_sufficient_stack(|| self.mirror_expr_inner(expr))

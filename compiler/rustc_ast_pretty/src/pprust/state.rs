@@ -1654,11 +1654,14 @@ impl<'a> State<'a> {
                     },
                     |f| f.pat.span,
                 );
-                if *etc == ast::PatFieldsRest::Rest {
+                if let ast::PatFieldsRest::Rest | ast::PatFieldsRest::Recovered(_) = etc {
                     if !fields.is_empty() {
                         self.word_space(",");
                     }
                     self.word("..");
+                    if let ast::PatFieldsRest::Recovered(_) = etc {
+                        self.word("/* recovered parse error */");
+                    }
                 }
                 if !empty {
                     self.space();
