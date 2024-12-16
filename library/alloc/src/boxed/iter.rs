@@ -429,6 +429,7 @@ where
     const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "boxed_array_value_iter", since = "CURRENT_RUSTC_VERSION")]
 impl<T: Clone, const N: usize, A: Clone + Allocator> Clone for BoxedArrayIntoIter<T, N, A> {
     fn clone(&self) -> Self {
