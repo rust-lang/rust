@@ -2,6 +2,7 @@
 use std::{
     iter::once,
     mem,
+    ops::Not as _,
     sync::atomic::{AtomicU32, Ordering},
 };
 
@@ -358,9 +359,12 @@ fn completion_item(
         filter_text,
         kind: Some(completion_item_kind(item.kind)),
         text_edit,
-        additional_text_edits: Some(additional_text_edits),
+        additional_text_edits: additional_text_edits
+            .is_empty()
+            .not()
+            .then_some(additional_text_edits),
         documentation,
-        deprecated: Some(item.deprecated),
+        deprecated: item.deprecated.then_some(item.deprecated),
         tags,
         command,
         insert_text_format,
@@ -370,7 +374,7 @@ fn completion_item(
     if config.completion_label_details_support() {
         if fields_to_resolve.resolve_label_details {
             something_to_resolve |= true;
-        } else {
+        } else if item.label_detail.is_some() || item.detail.is_some() {
             lsp_item.label_details = Some(lsp_types::CompletionItemLabelDetails {
                 detail: item.label_detail.as_ref().map(ToString::to_string),
                 description: item.detail.clone(),
