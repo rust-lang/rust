@@ -12,11 +12,11 @@ use rustc_middle::ty::{self, GenericArgsRef, Ty as MiddleTy};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
-use rustc_span::symbol::{Symbol, kw, sym};
+use rustc_span::symbol::sym;
 use tracing::debug;
 
 use crate::lints::{
-    BadOptAccessDiag, DefaultHashTypesDiag, DiagOutOfImpl, LintPassByHand, NonExistentDocKeyword,
+    BadOptAccessDiag, DefaultHashTypesDiag, DiagOutOfImpl, LintPassByHand,
     NonGlobImportTypeIrInherent, QueryInstability, QueryUntracked, SpanUseEqCtxtDiag,
     SymbolInternStringLiteralDiag, TyQualified, TykindDiag, TykindKind, TypeIrInherentUsage,
     UntranslatableDiag,
@@ -368,46 +368,6 @@ impl EarlyLintPass for LintPassImpl {
                             lint_pass.path.span,
                             LintPassByHand,
                         );
-                    }
-                }
-            }
-        }
-    }
-}
-
-declare_tool_lint! {
-    /// The `existing_doc_keyword` lint detects use `#[doc()]` keywords
-    /// that don't exist, e.g. `#[doc(keyword = "..")]`.
-    pub rustc::EXISTING_DOC_KEYWORD,
-    Allow,
-    "Check that documented keywords in std and core actually exist",
-    report_in_external_macro: true
-}
-
-declare_lint_pass!(ExistingDocKeyword => [EXISTING_DOC_KEYWORD]);
-
-fn is_doc_keyword(s: Symbol) -> bool {
-    s <= kw::Union
-}
-
-impl<'tcx> LateLintPass<'tcx> for ExistingDocKeyword {
-    fn check_item(&mut self, cx: &LateContext<'_>, item: &rustc_hir::Item<'_>) {
-        for attr in cx.tcx.hir().attrs(item.hir_id()) {
-            if !attr.has_name(sym::doc) {
-                continue;
-            }
-            if let Some(list) = attr.meta_item_list() {
-                for nested in list {
-                    if nested.has_name(sym::keyword) {
-                        let keyword = nested
-                            .value_str()
-                            .expect("#[doc(keyword = \"...\")] expected a value!");
-                        if is_doc_keyword(keyword) {
-                            return;
-                        }
-                        cx.emit_span_lint(EXISTING_DOC_KEYWORD, attr.span, NonExistentDocKeyword {
-                            keyword,
-                        });
                     }
                 }
             }
