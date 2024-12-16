@@ -7,7 +7,7 @@ LL |     if let Some(_value) = droppy().get() {
    |                           this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see issue #124085 <https://github.com/rust-lang/rust/issues/124085>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-if-let-scope.html>
 help: the value is now dropped here in Edition 2024
   --> $DIR/lint-if-let-rescope.rs:32:5
    |
@@ -42,7 +42,7 @@ LL |     } else if let Some(_value) = droppy().get() {
    |                                  -------- this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see issue #124085 <https://github.com/rust-lang/rust/issues/124085>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-if-let-scope.html>
 help: the value is now dropped here in Edition 2024
   --> $DIR/lint-if-let-rescope.rs:42:5
    |
@@ -74,7 +74,7 @@ LL |     } else if let Some(_value) = droppy().get() {
    |                                  this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see issue #124085 <https://github.com/rust-lang/rust/issues/124085>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-if-let-scope.html>
 help: the value is now dropped here in Edition 2024
   --> $DIR/lint-if-let-rescope.rs:54:5
    |
@@ -100,7 +100,7 @@ LL |     if let Some(1) = { if let Some(_value) = Droppy.get() { Some(1) } else 
    |                                              this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see issue #124085 <https://github.com/rust-lang/rust/issues/124085>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-if-let-scope.html>
 help: the value is now dropped here in Edition 2024
   --> $DIR/lint-if-let-rescope.rs:58:69
    |
@@ -120,7 +120,7 @@ LL |     if (if let Some(_value) = droppy().get() { true } else { false }) {
    |                               this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see issue #124085 <https://github.com/rust-lang/rust/issues/124085>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-if-let-scope.html>
 help: the value is now dropped here in Edition 2024
   --> $DIR/lint-if-let-rescope.rs:72:53
    |
@@ -140,7 +140,7 @@ LL |     } else if (((if let Some(_value) = droppy().get() { true } else { false
    |                                        this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see issue #124085 <https://github.com/rust-lang/rust/issues/124085>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-if-let-scope.html>
 help: the value is now dropped here in Edition 2024
   --> $DIR/lint-if-let-rescope.rs:78:62
    |
@@ -160,7 +160,7 @@ LL |     while (if let Some(_value) = droppy().get() { false } else { true }) {
    |                                  this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see issue #124085 <https://github.com/rust-lang/rust/issues/124085>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-if-let-scope.html>
 help: the value is now dropped here in Edition 2024
   --> $DIR/lint-if-let-rescope.rs:90:57
    |
