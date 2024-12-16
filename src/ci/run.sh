@@ -8,7 +8,9 @@ if [ -n "$CI_JOB_NAME" ]; then
   echo "[CI_JOB_NAME=$CI_JOB_NAME]"
 fi
 
+echo "NO_CHANGE_USER=$NO_CHANGE_USER. LOCAL_USER_ID=$LOCAL_USER_ID"
 if [ "$NO_CHANGE_USER" = "" ]; then
+  echo "can change user"
   if [ "$LOCAL_USER_ID" != "" ]; then
     echo "Starting with UID: $LOCAL_USER_ID"
     id -u user &>/dev/null || useradd --shell /bin/bash -u $LOCAL_USER_ID -o -c "" -m user
