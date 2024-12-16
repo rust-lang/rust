@@ -262,7 +262,7 @@ pub struct UnresolvedAssocItem {
 
 #[derive(Debug)]
 pub struct UnresolvedIdent {
-    pub expr_or_pat: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
+    pub node: InFile<(AstPtr<Either<ast::Expr, ast::Pat>>, Option<TextRange>)>,
 }
 
 #[derive(Debug)]
@@ -550,11 +550,10 @@ impl AnyDiagnostic {
         source_map: &hir_def::body::BodySourceMap,
     ) -> Option<AnyDiagnostic> {
         let expr_syntax = |expr| {
-            source_map.expr_syntax(expr).inspect_err(|_| tracing::error!("synthetic syntax")).ok()
+            source_map.expr_syntax(expr).inspect_err(|_| stdx::never!("synthetic syntax")).ok()
         };
-        let pat_syntax = |pat| {
-            source_map.pat_syntax(pat).inspect_err(|_| tracing::error!("synthetic syntax")).ok()
-        };
+        let pat_syntax =
+            |pat| source_map.pat_syntax(pat).inspect_err(|_| stdx::never!("synthetic syntax")).ok();
         let expr_or_pat_syntax = |id| match id {
             ExprOrPatId::ExprId(expr) => expr_syntax(expr).map(|it| it.map(AstPtr::wrap_left)),
             ExprOrPatId::PatId(pat) => pat_syntax(pat),
@@ -626,8 +625,16 @@ impl AnyDiagnostic {
                 UnresolvedAssocItem { expr_or_pat }.into()
             }
             &InferenceDiagnostic::UnresolvedIdent { id } => {
-                let expr_or_pat = expr_or_pat_syntax(id)?;
-                UnresolvedIdent { expr_or_pat }.into()
+                let node = match id {
+                    ExprOrPatId::ExprId(id) => match source_map.expr_syntax(id) {
+                        Ok(syntax) => syntax.map(|it| (it.wrap_left(), None)),
+                        Err(SyntheticSyntax) => source_map
+                            .format_args_implicit_capture(id)?
+                            .map(|(node, range)| (node.wrap_left(), Some(range))),
+                    },
+                    ExprOrPatId::PatId(id) => pat_syntax(id)?.map(|it| (it, None)),
+                };
+                UnresolvedIdent { node }.into()
             }
             &InferenceDiagnostic::BreakOutsideOfLoop { expr, is_break, bad_value_break } => {
                 let expr = expr_syntax(expr)?;
