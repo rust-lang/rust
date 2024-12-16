@@ -198,7 +198,7 @@ fn wrapper_alias(
     );
 
     ctx.sema.resolve_mod_path(ret_type.syntax(), &wrapper_path).and_then(|def| {
-        def.filter_map(|def| match def.as_module_def()? {
+        def.filter_map(|def| match def.into_module_def() {
             hir::ModuleDef::TypeAlias(alias) => {
                 let enum_ty = alias.ty(ctx.db()).as_adt()?.as_enum()?;
                 (&enum_ty == core_wrapper).then_some(alias)

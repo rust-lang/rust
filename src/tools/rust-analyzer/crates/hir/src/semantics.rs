@@ -39,8 +39,8 @@ use stdx::TupleExt;
 use syntax::{
     algo::skip_trivia_token,
     ast::{self, HasAttrs as _, HasGenericParams},
-    AstNode, AstToken, Direction, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange,
-    TextSize,
+    AstNode, AstToken, Direction, SmolStr, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken,
+    TextRange, TextSize,
 };
 use triomphe::Arc;
 
@@ -1537,6 +1537,21 @@ impl<'db> SemanticsImpl<'db> {
     ) -> Option<impl Iterator<Item = ItemInNs>> {
         let analyze = self.analyze(scope)?;
         let items = analyze.resolver.resolve_module_path_in_items(self.db.upcast(), path);
+        Some(items.iter_items().map(|(item, _)| item.into()))
+    }
+
+    pub fn resolve_mod_path_relative(
+        &self,
+        to: Module,
+        segments: impl IntoIterator<Item = SmolStr>,
+    ) -> Option<impl Iterator<Item = ItemInNs>> {
+        let items = to.id.resolver(self.db.upcast()).resolve_module_path_in_items(
+            self.db.upcast(),
+            &ModPath::from_segments(
+                hir_def::path::PathKind::Plain,
+                segments.into_iter().map(|it| Name::new(&it, SyntaxContextId::ROOT)),
+            ),
+        );
         Some(items.iter_items().map(|(item, _)| item.into()))
     }
 
