@@ -44,7 +44,7 @@ use crate::{
         ResolveMode,
     },
     path::{ImportAlias, ModPath, PathKind},
-    per_ns::PerNs,
+    per_ns::{Item, PerNs},
     tt,
     visibility::{RawVisibility, Visibility},
     AdtId, AstId, AstIdWithPath, ConstLoc, CrateRootModuleId, EnumLoc, EnumVariantLoc,
@@ -523,7 +523,7 @@ impl DefCollector<'_> {
             self.def_map.resolve_path(self.db, DefMap::ROOT, &path, BuiltinShadowMode::Other, None);
 
         match per_ns.types {
-            Some((ModuleDefId::ModuleId(m), _, import)) => {
+            Some(Item { def: ModuleDefId::ModuleId(m), import, .. }) => {
                 // FIXME: This should specifically look for a glob import somehow and record that here
                 self.def_map.prelude = Some((
                     m,
@@ -1069,9 +1069,9 @@ impl DefCollector<'_> {
         //
         // This has been historically allowed, but may be not allowed in future
         // https://github.com/rust-lang/rust/issues/127909
-        if let Some((_, v, it)) = defs.types.as_mut() {
+        if let Some(def) = defs.types.as_mut() {
             let is_extern_crate_reimport_without_prefix = || {
-                let Some(ImportOrExternCrate::ExternCrate(_)) = it else {
+                let Some(ImportOrExternCrate::ExternCrate(_)) = def.import else {
                     return false;
                 };
                 let Some(ImportType::Import(id)) = def_import_type else {
@@ -1086,16 +1086,16 @@ impl DefCollector<'_> {
                 path.segments().len() < 2
             };
             if is_extern_crate_reimport_without_prefix() {
-                *v = vis;
+                def.vis = vis;
             } else {
-                *v = v.min(vis, &self.def_map).unwrap_or(vis);
+                def.vis = def.vis.min(vis, &self.def_map).unwrap_or(vis);
             }
         }
-        if let Some((_, v, _)) = defs.values.as_mut() {
-            *v = v.min(vis, &self.def_map).unwrap_or(vis);
+        if let Some(def) = defs.values.as_mut() {
+            def.vis = def.vis.min(vis, &self.def_map).unwrap_or(vis);
         }
-        if let Some((_, v, _)) = defs.macros.as_mut() {
-            *v = v.min(vis, &self.def_map).unwrap_or(vis);
+        if let Some(def) = defs.macros.as_mut() {
+            def.vis = def.vis.min(vis, &self.def_map).unwrap_or(vis);
         }
 
         let mut changed = false;
@@ -1106,12 +1106,12 @@ impl DefCollector<'_> {
             // Multiple globs may import the same item and they may override visibility from
             // previously resolved globs. Handle overrides here and leave the rest to
             // `ItemScope::push_res_with_import()`.
-            if let Some((def, def_vis, _)) = defs.types {
-                if let Some((prev_def, prev_vis, _)) = prev_defs.types {
-                    if def == prev_def
+            if let Some(def) = defs.types {
+                if let Some(prev_def) = prev_defs.types {
+                    if def.def == prev_def.def
                         && self.from_glob_import.contains_type(module_id, name.clone())
-                        && def_vis != prev_vis
-                        && def_vis.max(prev_vis, &self.def_map) == Some(def_vis)
+                        && def.vis != prev_def.vis
+                        && def.vis.max(prev_def.vis, &self.def_map) == Some(def.vis)
                     {
                         changed = true;
                         // This import is being handled here, don't pass it down to
@@ -1119,41 +1119,41 @@ impl DefCollector<'_> {
                         defs.types = None;
                         self.def_map.modules[module_id]
                             .scope
-                            .update_visibility_types(name, def_vis);
+                            .update_visibility_types(name, def.vis);
                     }
                 }
             }
 
-            if let Some((def, def_vis, _)) = defs.values {
-                if let Some((prev_def, prev_vis, _)) = prev_defs.values {
-                    if def == prev_def
+            if let Some(def) = defs.values {
+                if let Some(prev_def) = prev_defs.values {
+                    if def.def == prev_def.def
                         && self.from_glob_import.contains_value(module_id, name.clone())
-                        && def_vis != prev_vis
-                        && def_vis.max(prev_vis, &self.def_map) == Some(def_vis)
+                        && def.vis != prev_def.vis
+                        && def.vis.max(prev_def.vis, &self.def_map) == Some(def.vis)
                     {
                         changed = true;
                         // See comment above.
                         defs.values = None;
                         self.def_map.modules[module_id]
                             .scope
-                            .update_visibility_values(name, def_vis);
+                            .update_visibility_values(name, def.vis);
                     }
                 }
             }
 
-            if let Some((def, def_vis, _)) = defs.macros {
-                if let Some((prev_def, prev_vis, _)) = prev_defs.macros {
-                    if def == prev_def
+            if let Some(def) = defs.macros {
+                if let Some(prev_def) = prev_defs.macros {
+                    if def.def == prev_def.def
                         && self.from_glob_import.contains_macro(module_id, name.clone())
-                        && def_vis != prev_vis
-                        && def_vis.max(prev_vis, &self.def_map) == Some(def_vis)
+                        && def.vis != prev_def.vis
+                        && def.vis.max(prev_def.vis, &self.def_map) == Some(def.vis)
                     {
                         changed = true;
                         // See comment above.
                         defs.macros = None;
                         self.def_map.modules[module_id]
                             .scope
-                            .update_visibility_macros(name, def_vis);
+                            .update_visibility_macros(name, def.vis);
                     }
                 }
             }
