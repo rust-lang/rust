@@ -108,7 +108,15 @@ impl LateLintPass<'_> for LiteralStringWithFormattingArg {
                     if error.span.end >= current.len() {
                         break;
                     }
-                    current = &current[error.span.end + 1..];
+                    // We find the closest char to where the error location ends.
+                    let pos = current.floor_char_boundary(error.span.end);
+                    // We get the next character.
+                    current = if let Some((next_char_pos, _)) = current[pos..].char_indices().nth(1) {
+                        // We make the parser start from this new location.
+                        &current[pos + next_char_pos..]
+                    } else {
+                        break;
+                    };
                     diff_len = fmt_str.len() - current.len();
                     parser = Parser::new(current, None, None, false, ParseMode::Format);
                 } else if let Piece::NextArgument(arg) = piece {

@@ -30,4 +30,8 @@ fn main() {
     }";
     // Unicode characters escape should not lint either.
     "\u{0052}".to_string();
+
+    // Regression test for <https://github.com/rust-lang/rust-clippy/issues/13838>.
+    let x: Option<usize> = Some(0);
+    x.expect("{…}");
 }
