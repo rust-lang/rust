@@ -99,7 +99,7 @@ pub(super) struct TokenStreamBuilder<S> {
 }
 
 /// pub(super)lic implementation details for the `TokenStream` type, such as iterators.
-pub(super) mod token_stream {
+pub(super) mod token_stream_impls {
 
     use core::fmt;
 
@@ -137,6 +137,7 @@ pub(super) mod token_stream {
         }
     }
 
+    #[allow(clippy::to_string_trait_impl)]
     impl<S> ToString for TokenStream<S> {
         fn to_string(&self) -> String {
             ::tt::pretty(&self.token_trees)
@@ -150,7 +151,7 @@ impl<S> TokenStreamBuilder<S> {
     }
 
     pub(super) fn push(&mut self, stream: TokenStream<S>) {
-        self.acc.extend(stream.into_iter())
+        self.acc.extend(stream)
     }
 
     pub(super) fn build(self) -> TokenStream<S> {

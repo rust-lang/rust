@@ -1,6 +1,5 @@
 //! The edition of the Rust language used in a crate.
-// Ideally this would be defined in the span crate, but the dependency chain is all over the place
-// wrt to span, parser and syntax.
+// This should live in a separate crate because we use it in both actual code and codegen.
 use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

@@ -417,8 +417,10 @@ impl GlobalState {
                     })
                     .collect_vec();
 
-                for (file_id, (_change_kind, vfs_path)) in modified_ratoml_files {
+                for (file_id, (change_kind, vfs_path)) in modified_ratoml_files {
+                    tracing::info!(%vfs_path, ?change_kind, "Processing rust-analyzer.toml changes");
                     if vfs_path.as_path() == user_config_abs_path {
+                        tracing::info!(%vfs_path, ?change_kind, "Use config rust-analyzer.toml changes");
                         change.change_user_config(Some(db.file_text(file_id)));
                         continue;
                     }
@@ -430,12 +432,14 @@ impl GlobalState {
 
                     if !sr.is_library {
                         let entry = if workspace_ratoml_paths.contains(&vfs_path) {
+                            tracing::info!(%vfs_path, ?sr_id, "workspace rust-analyzer.toml changes");
                             change.change_workspace_ratoml(
                                 sr_id,
                                 vfs_path.clone(),
                                 Some(db.file_text(file_id)),
                             )
                         } else {
+                            tracing::info!(%vfs_path, ?sr_id, "crate rust-analyzer.toml changes");
                             change.change_ratoml(
                                 sr_id,
                                 vfs_path.clone(),
@@ -446,7 +450,7 @@ impl GlobalState {
                         if let Some((kind, old_path, old_text)) = entry {
                             // SourceRoot has more than 1 RATOML files. In this case lexicographically smaller wins.
                             if old_path < vfs_path {
-                                span!(Level::ERROR, "Two `rust-analyzer.toml` files were found inside the same crate. {vfs_path} has no effect.");
+                                tracing::error!("Two `rust-analyzer.toml` files were found inside the same crate. {vfs_path} has no effect.");
                                 // Put the old one back in.
                                 match kind {
                                     RatomlFileKind::Crate => {
@@ -459,8 +463,7 @@ impl GlobalState {
                             }
                         }
                     } else {
-                        // Mapping to a SourceRoot should always end up in `Ok`
-                        span!(Level::ERROR, "Mapping to SourceRootId failed.");
+                        tracing::info!(%vfs_path, "Ignoring library rust-analyzer.toml");
                     }
                 }
                 change.change_source_root_parent_map(self.local_roots_parent_map.clone());

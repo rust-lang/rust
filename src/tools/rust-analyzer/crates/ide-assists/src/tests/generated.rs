@@ -933,6 +933,24 @@ enum TheEnum {
 }
 
 #[test]
+fn doctest_extract_constant() {
+    check_doc_test(
+        "extract_constant",
+        r#####"
+fn main() {
+    $0(1 + 2)$0 * 4;
+}
+"#####,
+        r#####"
+fn main() {
+    const $0VAR_NAME: i32 = 1 + 2;
+    VAR_NAME * 4;
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_extract_expressions_from_format_string() {
     check_doc_test(
         "extract_expressions_from_format_string",
@@ -1001,6 +1019,24 @@ mod modname {
 
 fn bar(name: i32) -> i32 {
     name + 2
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_extract_static() {
+    check_doc_test(
+        "extract_static",
+        r#####"
+fn main() {
+    $0(1 + 2)$0 * 4;
+}
+"#####,
+        r#####"
+fn main() {
+    static $0VAR_NAME: i32 = 1 + 2;
+    VAR_NAME * 4;
 }
 "#####,
     )

@@ -13,7 +13,7 @@
 #![cfg(any(feature = "sysroot-abi", rust_analyzer))]
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 #![feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span)]
-#![allow(unreachable_pub, internal_features)]
+#![allow(unreachable_pub, internal_features, clippy::disallowed_types, clippy::print_stderr)]
 
 extern crate proc_macro;
 #[cfg(feature = "in-rust-tree")]
@@ -35,7 +35,6 @@ use std::{
     fs,
     path::{Path, PathBuf},
     thread,
-    time::SystemTime,
 };
 
 use paths::{Utf8Path, Utf8PathBuf};
@@ -53,7 +52,7 @@ use crate::server_impl::TokenStream;
 pub const RUSTC_VERSION_STRING: &str = env!("RUSTC_VERSION");
 
 pub struct ProcMacroSrv<'env> {
-    expanders: HashMap<(Utf8PathBuf, SystemTime), dylib::Expander>,
+    expanders: HashMap<Utf8PathBuf, dylib::Expander>,
     span_mode: SpanMode,
     env: &'env EnvSnapshot,
 }
@@ -66,7 +65,7 @@ impl<'env> ProcMacroSrv<'env> {
 
 const EXPANDER_STACK_SIZE: usize = 8 * 1024 * 1024;
 
-impl<'env> ProcMacroSrv<'env> {
+impl ProcMacroSrv<'_> {
     pub fn set_span_mode(&mut self, span_mode: SpanMode) {
         self.span_mode = span_mode;
     }
@@ -81,10 +80,9 @@ impl<'env> ProcMacroSrv<'env> {
     ) -> Result<(msg::FlatTree, Vec<u32>), msg::PanicMessage> {
         let span_mode = self.span_mode;
         let snapped_env = self.env;
-        let expander = self.expander(lib.as_ref()).map_err(|err| {
-            debug_assert!(false, "should list macros before asking to expand");
-            msg::PanicMessage(format!("failed to load macro: {err}"))
-        })?;
+        let expander = self
+            .expander(lib.as_ref())
+            .map_err(|err| msg::PanicMessage(format!("failed to load macro: {err}")))?;
 
         let prev_env = EnvChange::apply(snapped_env, env, current_dir.as_ref().map(<_>::as_ref));
 
@@ -107,16 +105,20 @@ impl<'env> ProcMacroSrv<'env> {
     }
 
     fn expander(&mut self, path: &Utf8Path) -> Result<&dylib::Expander, String> {
-        let time = fs::metadata(path)
-            .and_then(|it| it.modified())
-            .map_err(|err| format!("Failed to get file metadata for {path}: {err}",))?;
+        let expander = || {
+            dylib::Expander::new(path)
+                .map_err(|err| format!("Cannot create expander for {path}: {err}",))
+        };
 
-        Ok(match self.expanders.entry((path.to_path_buf(), time)) {
-            Entry::Vacant(v) => v.insert(
-                dylib::Expander::new(path)
-                    .map_err(|err| format!("Cannot create expander for {path}: {err}",))?,
-            ),
-            Entry::Occupied(e) => e.into_mut(),
+        Ok(match self.expanders.entry(path.to_path_buf()) {
+            Entry::Vacant(v) => v.insert(expander()?),
+            Entry::Occupied(mut e) => {
+                let time = fs::metadata(path).and_then(|it| it.modified()).ok();
+                if Some(e.get().modified_time()) != time {
+                    e.insert(expander()?);
+                }
+                e.into_mut()
+            }
         })
     }
 }
@@ -246,8 +248,8 @@ pub struct EnvSnapshot {
     vars: HashMap<OsString, OsString>,
 }
 
-impl EnvSnapshot {
-    pub fn new() -> EnvSnapshot {
+impl Default for EnvSnapshot {
+    fn default() -> EnvSnapshot {
         EnvSnapshot { vars: env::vars_os().collect() }
     }
 }
@@ -303,7 +305,7 @@ impl Drop for EnvChange<'_> {
         }
 
         if let Some(dir) = &self.prev_working_dir {
-            if let Err(err) = std::env::set_current_dir(&dir) {
+            if let Err(err) = std::env::set_current_dir(dir) {
                 eprintln!(
                     "Failed to set the current working dir to {}. Error: {:?}",
                     dir.display(),

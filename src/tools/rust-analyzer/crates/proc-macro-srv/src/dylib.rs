@@ -3,12 +3,11 @@
 mod version;
 
 use proc_macro::bridge;
-use std::{fmt, fs::File, io};
+use std::{fmt, fs, io, time::SystemTime};
 
 use libloading::Library;
-use memmap2::Mmap;
 use object::Object;
-use paths::{AbsPath, Utf8Path, Utf8PathBuf};
+use paths::{Utf8Path, Utf8PathBuf};
 use proc_macro_api::ProcMacroKind;
 
 use crate::ProcMacroSrvSpan;
@@ -23,14 +22,9 @@ fn is_derive_registrar_symbol(symbol: &str) -> bool {
     symbol.contains(NEW_REGISTRAR_SYMBOL)
 }
 
-fn find_registrar_symbol(file: &Utf8Path) -> io::Result<Option<String>> {
-    let file = File::open(file)?;
-    let buffer = unsafe { Mmap::map(&file)? };
-
-    Ok(object::File::parse(&*buffer)
-        .map_err(invalid_data_err)?
-        .exports()
-        .map_err(invalid_data_err)?
+fn find_registrar_symbol(obj: &object::File<'_>) -> object::Result<Option<String>> {
+    Ok(obj
+        .exports()?
         .into_iter()
         .map(|export| export.name())
         .filter_map(|sym| String::from_utf8(sym.into()).ok())
@@ -113,17 +107,18 @@ struct ProcMacroLibraryLibloading {
 }
 
 impl ProcMacroLibraryLibloading {
-    fn open(file: &Utf8Path) -> Result<Self, LoadProcMacroDylibError> {
-        let symbol_name = find_registrar_symbol(file)?.ok_or_else(|| {
-            invalid_data_err(format!("Cannot find registrar symbol in file {file}"))
-        })?;
+    fn open(path: &Utf8Path) -> Result<Self, LoadProcMacroDylibError> {
+        let file = fs::File::open(path)?;
+        let file = unsafe { memmap2::Mmap::map(&file) }?;
+        let obj = object::File::parse(&*file)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+        let version_info = version::read_dylib_info(&obj)?;
+        let symbol_name =
+            find_registrar_symbol(&obj).map_err(invalid_data_err)?.ok_or_else(|| {
+                invalid_data_err(format!("Cannot find registrar symbol in file {path}"))
+            })?;
 
-        let abs_file: &AbsPath = file
-            .try_into()
-            .map_err(|_| invalid_data_err(format!("expected an absolute path, got {file}")))?;
-        let version_info = version::read_dylib_info(abs_file)?;
-
-        let lib = load_library(file).map_err(invalid_data_err)?;
+        let lib = load_library(path).map_err(invalid_data_err)?;
         let proc_macros = crate::proc_macros::ProcMacros::from_lib(
             &lib,
             symbol_name,
@@ -133,17 +128,20 @@ impl ProcMacroLibraryLibloading {
     }
 }
 
-pub(crate) struct Expander {
-    inner: ProcMacroLibraryLibloading,
-    path: Utf8PathBuf,
-}
-
-impl Drop for Expander {
+struct RemoveFileOnDrop(Utf8PathBuf);
+impl Drop for RemoveFileOnDrop {
     fn drop(&mut self) {
         #[cfg(windows)]
-        std::fs::remove_file(&self.path).ok();
-        _ = self.path;
+        std::fs::remove_file(&self.0).unwrap();
+        _ = self.0;
     }
+}
+
+// Drop order matters as we can't remove the dylib before the library is unloaded
+pub(crate) struct Expander {
+    inner: ProcMacroLibraryLibloading,
+    _remove_on_drop: RemoveFileOnDrop,
+    modified_time: SystemTime,
 }
 
 impl Expander {
@@ -151,12 +149,12 @@ impl Expander {
         // Some libraries for dynamic loading require canonicalized path even when it is
         // already absolute
         let lib = lib.canonicalize_utf8()?;
+        let modified_time = fs::metadata(&lib).and_then(|it| it.modified())?;
 
         let path = ensure_file_with_lock_free_access(&lib)?;
-
         let library = ProcMacroLibraryLibloading::open(path.as_ref())?;
 
-        Ok(Expander { inner: library, path })
+        Ok(Expander { inner: library, _remove_on_drop: RemoveFileOnDrop(path), modified_time })
     }
 
     pub(crate) fn expand<S: ProcMacroSrvSpan>(
@@ -181,6 +179,10 @@ impl Expander {
     pub(crate) fn list_macros(&self) -> Vec<(String, ProcMacroKind)> {
         self.inner.proc_macros.list_macros()
     }
+
+    pub(crate) fn modified_time(&self) -> SystemTime {
+        self.modified_time
+    }
 }
 
 /// Copy the dylib to temp directory to prevent locking in Windows
@@ -194,20 +196,20 @@ fn ensure_file_with_lock_free_access(path: &Utf8Path) -> io::Result<Utf8PathBuf>
     }
 
     let mut to = Utf8PathBuf::from_path_buf(std::env::temp_dir()).unwrap();
+    to.push("rust-analyzer-proc-macros");
+    _ = fs::create_dir(&to);
 
-    let file_name = path.file_name().ok_or_else(|| {
+    let file_name = path.file_stem().ok_or_else(|| {
         io::Error::new(io::ErrorKind::InvalidInput, format!("File path is invalid: {path}"))
     })?;
 
-    // Generate a unique number by abusing `HashMap`'s hasher.
-    // Maybe this will also "inspire" a libs team member to finally put `rand` in libstd.
-    let t = RandomState::new().build_hasher().finish();
-
-    let mut unique_name = t.to_string();
-    unique_name.push_str(file_name);
-
-    to.push(unique_name);
-    std::fs::copy(path, &to)?;
+    to.push({
+        // Generate a unique number by abusing `HashMap`'s hasher.
+        // Maybe this will also "inspire" a libs team member to finally put `rand` in libstd.
+        let unique_name = RandomState::new().build_hasher().finish();
+        format!("{file_name}-{unique_name}.dll")
+    });
+    fs::copy(path, &to)?;
     Ok(to)
 }
 
