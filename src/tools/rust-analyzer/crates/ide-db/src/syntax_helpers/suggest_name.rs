@@ -377,6 +377,8 @@ fn name_of_type(ty: &hir::Type, db: &RootDatabase, edition: Edition) -> Option<S
             return None;
         }
         name
+    } else if let Some(inner_ty) = ty.remove_ref() {
+        return name_of_type(&inner_ty, db, edition);
     } else {
         return None;
     };
