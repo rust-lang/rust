@@ -430,6 +430,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let mut err = self.r.dcx().struct_span_err(base_error.span, base_error.msg.clone());
         err.code(code);
 
+        self.detect_missing_binding_available_from_pattern(&mut err, path, following_seg);
         self.suggest_at_operator_in_slice_pat_with_range(&mut err, path);
         self.suggest_swapping_misplaced_self_ty_and_trait(&mut err, source, res, base_error.span);
 
@@ -1118,6 +1119,48 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             }
         }
         true
+    }
+
+    fn detect_missing_binding_available_from_pattern(
+        &mut self,
+        err: &mut Diag<'_>,
+        path: &[Segment],
+        following_seg: Option<&Segment>,
+    ) {
+        let [segment] = path else { return };
+        let None = following_seg else { return };
+        for rib in self.ribs[ValueNS].iter().rev() {
+            for (def_id, spans) in &rib.patterns_with_skipped_bindings {
+                if let Some(fields) = self.r.field_idents(*def_id) {
+                    for field in fields {
+                        if field.name == segment.ident.name {
+                            if spans.iter().all(|(_, had_error)| had_error.is_err()) {
+                                // This resolution error will likely be fixed by fixing a
+                                // syntax error in a pattern, so it is irrelevant to the user.
+                                let multispan: MultiSpan =
+                                    spans.iter().map(|(s, _)| *s).collect::<Vec<_>>().into();
+                                err.span_note(
+                                    multispan,
+                                    "this pattern had a recovered parse error which likely lost \
+                                     the expected fields",
+                                );
+                                err.downgrade_to_delayed_bug();
+                            }
+                            let ty = self.r.tcx.item_name(*def_id);
+                            for (span, _) in spans {
+                                err.span_label(
+                                    *span,
+                                    format!(
+                                        "this pattern doesn't include `{field}`, which is \
+                                         available in `{ty}`",
+                                    ),
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     fn suggest_at_operator_in_slice_pat_with_range(
