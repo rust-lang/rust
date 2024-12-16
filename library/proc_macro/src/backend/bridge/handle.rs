@@ -6,7 +6,7 @@ use std::num::NonZero;
 use std::ops::{Index, IndexMut};
 use std::sync::atomic::{AtomicU32, Ordering};
 
-use super::fxhash::FxHashMap;
+use crate::backend::fxhash::FxHashMap;
 
 pub(super) type Handle = NonZero<u32>;
 

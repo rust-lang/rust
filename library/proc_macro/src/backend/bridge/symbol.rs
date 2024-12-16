@@ -127,8 +127,8 @@ impl<S> DecodeMut<'_, '_, S> for Symbol {
 
 thread_local! {
     static INTERNER: RefCell<Interner> = RefCell::new(Interner {
-        arena: arena::Arena::new(),
-        names: fxhash::FxHashMap::default(),
+        arena: crate::backend::arena::Arena::new(),
+        names: crate::backend::fxhash::FxHashMap::default(),
         strings: Vec::new(),
         // Start with a base of 1 to make sure that `NonZero<u32>` works.
         sym_base: NonZero::new(1).unwrap(),
@@ -137,11 +137,11 @@ thread_local! {
 
 /// Basic interner for a `Symbol`, inspired by the one in `rustc_span`.
 struct Interner {
-    arena: arena::Arena,
+    arena: crate::backend::arena::Arena,
     // SAFETY: These `'static` lifetimes are actually references to data owned
     // by the Arena. This is safe, as we never return them as static references
     // from `Interner`.
-    names: fxhash::FxHashMap<&'static str, Symbol>,
+    names: crate::backend::fxhash::FxHashMap<&'static str, Symbol>,
     strings: Vec<&'static str>,
     // The offset to apply to symbol names stored in the interner. This is used
     // to ensure that symbol names are not re-used after the interner is
@@ -194,6 +194,6 @@ impl Interner {
 
         // SAFETY: This is cleared after the names and strings tables are
         // cleared out, so no references into the arena should remain.
-        self.arena = arena::Arena::new();
+        self.arena = crate::backend::arena::Arena::new();
     }
 }

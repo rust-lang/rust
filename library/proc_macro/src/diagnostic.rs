@@ -161,8 +161,10 @@ impl Diagnostic {
     /// Emit the diagnostic.
     #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
     pub fn emit(self) {
-        fn to_internal(diag: Diagnostic) -> crate::bridge::Diagnostic<crate::bridge::client::Span> {
-            crate::bridge::Diagnostic {
+        fn to_internal(
+            diag: Diagnostic,
+        ) -> crate::backend::bridge::Diagnostic<crate::backend::bridge::client::Span> {
+            crate::backend::bridge::Diagnostic {
                 level: diag.level,
                 message: diag.message,
                 spans: diag.spans.into_iter().map(|s| s.0).collect(),
@@ -170,6 +172,6 @@ impl Diagnostic {
             }
         }
 
-        crate::bridge::client::FreeFunctions::emit_diagnostic(to_internal(self));
+        crate::backend::bridge::client::FreeFunctions::emit_diagnostic(to_internal(self));
     }
 }
