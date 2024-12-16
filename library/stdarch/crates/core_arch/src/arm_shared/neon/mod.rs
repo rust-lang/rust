@@ -11,63 +11,15 @@ use crate::{core_arch::simd::*, hint::unreachable_unchecked, intrinsics::simd::*
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
-#[cfg_attr(
-    not(target_arch = "arm"),
-    stable(feature = "neon_intrinsics", since = "1.59.0")
-)]
-#[cfg_attr(
-    target_arch = "arm",
-    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
-)]
-pub trait AsUnsigned {
-    #[cfg_attr(
-        not(target_arch = "arm"),
-        stable(feature = "neon_intrinsics", since = "1.59.0")
-    )]
-    #[cfg_attr(
-        target_arch = "arm",
-        unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
-    )]
+#[unstable(feature = "stdarch_internal", issue = "none")]
+pub(crate) trait AsUnsigned {
     type Unsigned: ?Sized;
-
-    #[cfg_attr(
-        not(target_arch = "arm"),
-        stable(feature = "neon_intrinsics", since = "1.59.0")
-    )]
-    #[cfg_attr(
-        target_arch = "arm",
-        unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
-    )]
     unsafe fn as_unsigned(self) -> Self::Unsigned;
 }
 
-#[cfg_attr(
-    not(target_arch = "arm"),
-    stable(feature = "neon_intrinsics", since = "1.59.0")
-)]
-#[cfg_attr(
-    target_arch = "arm",
-    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
-)]
-pub trait AsSigned {
-    #[cfg_attr(
-        not(target_arch = "arm"),
-        stable(feature = "neon_intrinsics", since = "1.59.0")
-    )]
-    #[cfg_attr(
-        target_arch = "arm",
-        unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
-    )]
+#[unstable(feature = "stdarch_internal", issue = "none")]
+pub(crate) trait AsSigned {
     type Signed: ?Sized;
-
-    #[cfg_attr(
-        not(target_arch = "arm"),
-        stable(feature = "neon_intrinsics", since = "1.59.0")
-    )]
-    #[cfg_attr(
-        target_arch = "arm",
-        unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
-    )]
     unsafe fn as_signed(self) -> Self::Signed;
 }
 
