@@ -1,3 +1,4 @@
+use clippy_utils::msrvs::{self, Msrv};
 use rustc_errors::Diag;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LintContext};
@@ -6,8 +7,8 @@ use rustc_middle::ty::{self, Ty};
 use rustc_span::{Span, sym};
 
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_then};
-use clippy_utils::trait_ref_of_method;
 use clippy_utils::ty::{AdtVariantInfo, approx_ty_size, is_type_diagnostic_item};
+use clippy_utils::{is_no_std_crate, trait_ref_of_method};
 
 use super::{RESULT_LARGE_ERR, RESULT_UNIT_ERR};
 
@@ -34,19 +35,24 @@ fn result_err_ty<'tcx>(
     }
 }
 
-pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &hir::Item<'tcx>, large_err_threshold: u64) {
+pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &hir::Item<'tcx>, large_err_threshold: u64, msrv: &Msrv) {
     if let hir::ItemKind::Fn(ref sig, _generics, _) = item.kind
         && let Some((hir_ty, err_ty)) = result_err_ty(cx, sig.decl, item.owner_id.def_id, item.span)
     {
         if cx.effective_visibilities.is_exported(item.owner_id.def_id) {
             let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
-            check_result_unit_err(cx, err_ty, fn_header_span);
+            check_result_unit_err(cx, err_ty, fn_header_span, msrv);
         }
         check_result_large_err(cx, err_ty, hir_ty.span, large_err_threshold);
     }
 }
 
-pub(super) fn check_impl_item<'tcx>(cx: &LateContext<'tcx>, item: &hir::ImplItem<'tcx>, large_err_threshold: u64) {
+pub(super) fn check_impl_item<'tcx>(
+    cx: &LateContext<'tcx>,
+    item: &hir::ImplItem<'tcx>,
+    large_err_threshold: u64,
+    msrv: &Msrv,
+) {
     // Don't lint if method is a trait's implementation, we can't do anything about those
     if let hir::ImplItemKind::Fn(ref sig, _) = item.kind
         && let Some((hir_ty, err_ty)) = result_err_ty(cx, sig.decl, item.owner_id.def_id, item.span)
@@ -54,26 +60,31 @@ pub(super) fn check_impl_item<'tcx>(cx: &LateContext<'tcx>, item: &hir::ImplItem
     {
         if cx.effective_visibilities.is_exported(item.owner_id.def_id) {
             let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
-            check_result_unit_err(cx, err_ty, fn_header_span);
+            check_result_unit_err(cx, err_ty, fn_header_span, msrv);
         }
         check_result_large_err(cx, err_ty, hir_ty.span, large_err_threshold);
     }
 }
 
-pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &hir::TraitItem<'tcx>, large_err_threshold: u64) {
+pub(super) fn check_trait_item<'tcx>(
+    cx: &LateContext<'tcx>,
+    item: &hir::TraitItem<'tcx>,
+    large_err_threshold: u64,
+    msrv: &Msrv,
+) {
     if let hir::TraitItemKind::Fn(ref sig, _) = item.kind {
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
         if let Some((hir_ty, err_ty)) = result_err_ty(cx, sig.decl, item.owner_id.def_id, item.span) {
             if cx.effective_visibilities.is_exported(item.owner_id.def_id) {
-                check_result_unit_err(cx, err_ty, fn_header_span);
+                check_result_unit_err(cx, err_ty, fn_header_span, msrv);
             }
             check_result_large_err(cx, err_ty, hir_ty.span, large_err_threshold);
         }
     }
 }
 
-fn check_result_unit_err(cx: &LateContext<'_>, err_ty: Ty<'_>, fn_header_span: Span) {
-    if err_ty.is_unit() {
+fn check_result_unit_err(cx: &LateContext<'_>, err_ty: Ty<'_>, fn_header_span: Span, msrv: &Msrv) {
+    if err_ty.is_unit() && (!is_no_std_crate(cx) || msrv.meets(msrvs::ERROR_IN_CORE)) {
         span_lint_and_help(
             cx,
             RESULT_UNIT_ERR,
