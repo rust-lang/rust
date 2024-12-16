@@ -12,8 +12,9 @@ declare_lint! {
     /// The `deref_into_dyn_supertrait` lint is output whenever there is a use of the
     /// `Deref` implementation with a `dyn SuperTrait` type as `Output`.
     ///
-    /// These implementations will become shadowed when the `trait_upcasting` feature is stabilized.
-    /// The `deref` functions will no longer be called implicitly, so there might be behavior change.
+    /// These implementations are shadowed by the `trait_upcasting` feature (stabilized since
+    /// CURRENT_RUSTC_VERSION). The `deref` functions is no longer called implicitly, which might
+    /// be behavior change compared to previous rustc versions.
     ///
     /// ### Example
     ///
@@ -43,11 +44,11 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// The dyn upcasting coercion feature adds new coercion rules, taking priority
-    /// over certain other coercion rules, which will cause some behavior change.
+    /// The dyn upcasting coercion feature added a new coercion rules, taking priority
+    /// over certain other coercion rules, which caused some behavior change.
     pub DEREF_INTO_DYN_SUPERTRAIT,
     Warn,
-    "`Deref` implementation usage with a supertrait trait object for output might be shadowed in the future",
+    "`Deref` implementation usage with a supertrait trait object for output is shadowed by trait upcasting",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseSemanticsChange,
         reference: "issue #89460 <https://github.com/rust-lang/rust/issues/89460>",
