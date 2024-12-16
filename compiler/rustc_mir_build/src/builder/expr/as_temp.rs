@@ -7,8 +7,8 @@ use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use tracing::{debug, instrument};
 
-use crate::build::scope::DropKind;
-use crate::build::{BlockAnd, BlockAndExtension, Builder};
+use crate::builder::scope::DropKind;
+use crate::builder::{BlockAnd, BlockAndExtension, Builder};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr` into a fresh temporary. This is used when building

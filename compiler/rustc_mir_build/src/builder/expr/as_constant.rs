@@ -14,7 +14,7 @@ use rustc_middle::ty::{
 use rustc_middle::{bug, mir, span_bug};
 use tracing::{instrument, trace};
 
-use crate::build::{Builder, parse_float_into_constval};
+use crate::builder::{Builder, parse_float_into_constval};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, yielding a compile-time constant. Assumes that

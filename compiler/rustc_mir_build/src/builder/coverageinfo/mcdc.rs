@@ -9,7 +9,7 @@ use rustc_middle::thir::LogicalOp;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
-use crate::build::Builder;
+use crate::builder::Builder;
 use crate::errors::MCDCExceedsConditionLimit;
 
 /// LLVM uses `i16` to represent condition id. Hence `i16::MAX` is the hard limit for number of
