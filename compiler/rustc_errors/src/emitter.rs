@@ -140,7 +140,14 @@ impl Margin {
 
         if self.computed_right - self.computed_left > self.column_width {
             // Trimming only whitespace isn't enough, let's get craftier.
-            if self.label_right - self.whitespace_left <= self.column_width {
+
+            // Note: self.label_right - self.whitespace_left will overflow in the case that the label
+            //       is addressing whitespace. This happens when a spurious no-breaking-space (\u{a0})
+            //       is present in the whitespace.
+            if let Some(non_whitespace_label_width) =
+                self.label_right.checked_sub(self.whitespace_left)
+                && non_whitespace_label_width <= self.column_width
+            {
                 // Attempt to fit the code window only trimming whitespace.
                 self.computed_left = self.whitespace_left;
                 self.computed_right = self.computed_left + self.column_width;
