@@ -377,15 +377,14 @@ the result cache doesn't unnecessarily shrink again.
 # Incremental Compilation and the Compiler Backend
 
 The compiler backend, the part involving LLVM, is using the query system but
-it is not implemented in terms of queries itself. As a consequence
-it does not automatically partake in dependency tracking. However, the manual
-integration with the tracking system is pretty straight-forward. The compiler
-simply tracks what queries get invoked when generating the initial LLVM version
-of each codegen unit, which results in a dep-node for each of them. In
-subsequent compilation sessions it then tries to mark the dep-node for a CGU as
-green. If it succeeds it knows that the corresponding object and bitcode files
-on disk are still valid. If it doesn't succeed, the entire codegen unit has to
-be recompiled.
+it is not implemented in terms of queries itself. As a consequence it does not
+automatically partake in dependency tracking. However, the manual integration
+with the tracking system is pretty straight-forward. The compiler simply tracks
+what queries get invoked when generating the initial LLVM version of each
+codegen unit (CGU), which results in a dep-node for each CGU. In subsequent
+compilation sessions it then tries to mark the dep-node for a CGU as green. If
+it succeeds, it knows that the corresponding object and bitcode files on disk
+are still valid. If it doesn't succeed, the entire CGU has to be recompiled.
 
 This is the same approach that is used for regular queries. The main differences
 are:
