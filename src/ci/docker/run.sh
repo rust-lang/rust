@@ -39,6 +39,7 @@ root_dir="`dirname $src_dir`"
 source "$ci_dir/shared.sh"
 
 if isCI; then
+    echo "CI detected"
     objdir=$root_dir/obj
 else
     objdir=$root_dir/obj/$image
@@ -53,6 +54,7 @@ fi
 CACHE_DOMAIN="${CACHE_DOMAIN:-ci-caches.rust-lang.org}"
 
 if [ -f "$docker_dir/$image/Dockerfile" ]; then
+    echo "Dockerfile found for $image"
     hash_key=/tmp/.docker-hash-key.txt
     rm -f "${hash_key}"
     echo $image >> $hash_key
@@ -136,6 +138,7 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
           "$context"
     # On auto/try builds, we can also write to the cache.
     else
+        echo "Logging into the Docker registry"
         # Log into the Docker registry, so that we can read/write cache and the final image
         echo ${DOCKER_TOKEN} | docker login ${REGISTRY} \
             --username ${REGISTRY_USERNAME} \
@@ -144,6 +147,7 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
         # Enable a new Docker driver so that --cache-from/to works with a registry backend
         docker buildx create --use --driver docker-container
 
+        echo "Building Docker image with cache"
         # Build the image using registry caching backend
         retry docker \
           buildx \
@@ -156,11 +160,13 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
           --output=type=docker \
           "$context"
 
+        echo "Docker image built"
         # Print images for debugging purposes
         docker images
 
         # Tag the built image and push it to the registry
         docker tag rust-ci "${IMAGE_TAG}"
+        echo "Pushing Docker image to the registry"
         docker push "${IMAGE_TAG}"
 
         # Record the container registry tag/url for reuse, e.g. by rustup.rs builds
@@ -212,6 +218,7 @@ else
     exit 1
 fi
 
+echo "Creating directories"
 mkdir -p $HOME/.cargo
 mkdir -p $objdir/tmp
 mkdir -p $objdir/cores
@@ -267,6 +274,7 @@ args="$args --privileged"
 # `LOCAL_USER_ID` (recognized in `src/ci/run.sh`) to ensure that files are all
 # read/written as the same user as the bare-metal user.
 if [ -f /.dockerenv ]; then
+  echo "Dockerenv detected"
   docker create -v /checkout --name checkout alpine:3.4 /bin/true
   docker cp . checkout:/checkout
   args="$args --volumes-from checkout"
