@@ -309,7 +309,7 @@ pub fn suggest_constraining_type_params<'a>(
         let Some(param) = param else { return false };
 
         {
-            let mut sized_constraints = constraints.extract_if(|(_, def_id, _)| {
+            let mut sized_constraints = constraints.extract_if(.., |(_, def_id, _)| {
                 def_id.is_some_and(|def_id| tcx.is_lang_item(def_id, LangItem::Sized))
             });
             if let Some((_, def_id, _)) = sized_constraints.next() {
