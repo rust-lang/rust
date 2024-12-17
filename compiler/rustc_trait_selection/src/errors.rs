@@ -517,7 +517,7 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                 return false;
             };
 
-            let node = self.tcx.hir_node_by_def_id(anon_reg.def_id);
+            let node = self.tcx.hir_node_by_def_id(anon_reg.scope);
             let is_impl = matches!(&node, hir::Node::ImplItem(_));
             let (generics, parent_generics) = match node {
                 hir::Node::Item(&hir::Item {
@@ -527,7 +527,7 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                 | hir::Node::TraitItem(&hir::TraitItem { ref generics, .. })
                 | hir::Node::ImplItem(&hir::ImplItem { ref generics, .. }) => (
                     generics,
-                    match self.tcx.parent_hir_node(self.tcx.local_def_id_to_hir_id(anon_reg.def_id))
+                    match self.tcx.parent_hir_node(self.tcx.local_def_id_to_hir_id(anon_reg.scope))
                     {
                         hir::Node::Item(hir::Item {
                             kind: hir::ItemKind::Trait(_, _, ref generics, ..),

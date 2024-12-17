@@ -1119,10 +1119,10 @@ impl<'tcx> CommonConsts<'tcx> {
 /// either a `ReEarlyParam` or `ReLateParam`.
 #[derive(Debug)]
 pub struct FreeRegionInfo {
-    /// `LocalDefId` of the free region.
-    pub def_id: LocalDefId,
-    /// the bound region corresponding to free region.
-    pub bound_region: ty::BoundRegionKind,
+    /// `LocalDefId` of the scope.
+    pub scope: LocalDefId,
+    /// the `DefId` of the free region.
+    pub region_def_id: DefId,
     /// checks if bound region is in Impl Item
     pub is_impl_item: bool,
 }
@@ -1960,7 +1960,7 @@ impl<'tcx> TyCtxt<'tcx> {
         generic_param_scope: LocalDefId,
         mut region: Region<'tcx>,
     ) -> Option<FreeRegionInfo> {
-        let (suitable_region_binding_scope, bound_region) = loop {
+        let (suitable_region_binding_scope, region_def_id) = loop {
             let def_id =
                 region.opt_param_def_id(self, generic_param_scope.to_def_id())?.as_local()?;
             let scope = self.local_parent(def_id);
@@ -1970,10 +1970,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 region = self.map_opaque_lifetime_to_parent_lifetime(def_id);
                 continue;
             }
-            break (
-                scope,
-                ty::BoundRegionKind::Named(def_id.into(), self.item_name(def_id.into())),
-            );
+            break (scope, def_id.into());
         };
 
         let is_impl_item = match self.hir_node_by_def_id(suitable_region_binding_scope) {
@@ -1982,7 +1979,7 @@ impl<'tcx> TyCtxt<'tcx> {
             _ => false,
         };
 
-        Some(FreeRegionInfo { def_id: suitable_region_binding_scope, bound_region, is_impl_item })
+        Some(FreeRegionInfo { scope: suitable_region_binding_scope, region_def_id, is_impl_item })
     }
 
     /// Given a `DefId` for an `fn`, return all the `dyn` and `impl` traits in its return type.
