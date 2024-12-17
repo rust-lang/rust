@@ -342,7 +342,7 @@ impl<'a> AstValidator<'a> {
                     sym::forbid,
                     sym::warn,
                 ];
-                !arr.contains(&attr.name_or_empty()) && rustc_attr::is_builtin_attr(*attr)
+                !arr.contains(&attr.name_or_empty()) && rustc_attr_parsing::is_builtin_attr(*attr)
             })
             .for_each(|attr| {
                 if attr.is_doc_comment() {

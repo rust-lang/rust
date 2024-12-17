@@ -4,7 +4,7 @@
 use std::num::NonZero;
 
 use rustc_ast::NodeId;
-use rustc_attr::{
+use rustc_attr_parsing::{
     self as attr, ConstStability, DefaultBodyStability, DeprecatedSince, Deprecation, Stability,
 };
 use rustc_data_structures::unord::UnordMap;
@@ -392,7 +392,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         match stability {
             Some(Stability {
-                level: attr::Unstable { reason, issue, is_soft, implied_by },
+                level: attr::StabilityLevel::Unstable { reason, issue, is_soft, implied_by },
                 feature,
                 ..
             }) => {
@@ -475,7 +475,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         match stability {
             Some(DefaultBodyStability {
-                level: attr::Unstable { reason, issue, is_soft, .. },
+                level: attr::StabilityLevel::Unstable { reason, issue, is_soft, .. },
                 feature,
             }) => {
                 if span.allows_unstable(feature) {

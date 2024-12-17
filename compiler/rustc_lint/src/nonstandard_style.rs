@@ -8,7 +8,7 @@ use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::{Ident, sym};
 use rustc_span::{BytePos, Span};
-use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
+use {rustc_ast as ast, rustc_attr_parsing as attr, rustc_hir as hir};
 
 use crate::lints::{
     NonCamelCaseType, NonCamelCaseTypeSub, NonSnakeCaseDiag, NonSnakeCaseDiagSub,
@@ -342,8 +342,8 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
         let crate_ident = if let Some(name) = &cx.tcx.sess.opts.crate_name {
             Some(Ident::from_str(name))
         } else {
-            attr::find_by_name(cx.tcx.hir().attrs(hir::CRATE_HIR_ID), sym::crate_name).and_then(
-                |attr| {
+            ast::attr::find_by_name(cx.tcx.hir().attrs(hir::CRATE_HIR_ID), sym::crate_name)
+                .and_then(|attr| {
                     if let AttrKind::Normal(n) = &attr.kind
                         && let AttrItem { args: AttrArgs::Eq { eq_span: _, expr: ref lit }, .. } =
                             n.as_ref()
@@ -371,8 +371,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
                     } else {
                         None
                     }
-                },
-            )
+                })
         };
 
         if let Some(ident) = &crate_ident {
@@ -503,7 +502,7 @@ impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
         let attrs = cx.tcx.hir().attrs(it.hir_id());
         match it.kind {
-            hir::ItemKind::Static(..) if !attr::contains_name(attrs, sym::no_mangle) => {
+            hir::ItemKind::Static(..) if !ast::attr::contains_name(attrs, sym::no_mangle) => {
                 NonUpperCaseGlobals::check_upper_case(cx, "static variable", &it.ident);
             }
             hir::ItemKind::Const(..) => {

@@ -4,10 +4,11 @@
 use std::cell::Cell;
 use std::mem;
 
+use rustc_ast::attr::AttributeExt;
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::{self as ast, Crate, Inline, ItemKind, ModKind, NodeId, attr};
 use rustc_ast_pretty::pprust;
-use rustc_attr::{AttributeExt, StabilityLevel};
+use rustc_attr_parsing::StabilityLevel;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, StashKey};

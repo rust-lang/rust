@@ -833,7 +833,8 @@ fn mono_item_visibility<'tcx>(
         return if is_generic
             && (always_export_generics
                 || (can_export_generics
-                    && tcx.codegen_fn_attrs(def_id).inline == rustc_attr::InlineAttr::Never))
+                    && tcx.codegen_fn_attrs(def_id).inline
+                        == rustc_attr_parsing::InlineAttr::Never))
         {
             // If it is an upstream monomorphization and we export generics, we must make
             // it available to downstream crates.
@@ -847,7 +848,7 @@ fn mono_item_visibility<'tcx>(
     if is_generic {
         if always_export_generics
             || (can_export_generics
-                && tcx.codegen_fn_attrs(def_id).inline == rustc_attr::InlineAttr::Never)
+                && tcx.codegen_fn_attrs(def_id).inline == rustc_attr_parsing::InlineAttr::Never)
         {
             if tcx.is_unreachable_local_definition(def_id) {
                 // This instance cannot be used from another crate.

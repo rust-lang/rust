@@ -2982,7 +2982,7 @@ fn add_dynamic_crate(cmd: &mut dyn Linker, sess: &Session, cratepath: &Path) {
 
 fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
     match lib.cfg {
-        Some(ref cfg) => rustc_attr::cfg_matches(cfg, sess, CRATE_NODE_ID, None),
+        Some(ref cfg) => rustc_attr_parsing::cfg_matches(cfg, sess, CRATE_NODE_ID, None),
         None => true,
     }
 }

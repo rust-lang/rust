@@ -12,14 +12,11 @@
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
-mod builtin;
+mod attributes;
 mod session_diagnostics;
 
-pub use IntType::*;
-pub use ReprAttr::*;
-pub use StabilityLevel::*;
-pub use builtin::*;
-pub use rustc_ast::attr::*;
-pub(crate) use rustc_session::HashStableContext;
+pub use attributes::*;
+pub use rustc_attr_data_structures::*;
+pub use util::{find_crate_name, is_builtin_attr, parse_version};
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

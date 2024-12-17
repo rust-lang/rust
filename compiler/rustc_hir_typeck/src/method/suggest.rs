@@ -8,7 +8,7 @@ use std::borrow::Cow;
 
 use hir::Expr;
 use rustc_ast::ast::Mutability;
-use rustc_attr::parse_confusables;
+use rustc_attr_parsing::parse_confusables;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordSet;
