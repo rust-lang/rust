@@ -3615,11 +3615,14 @@ impl<T, A: Allocator> Vec<T, A> {
         Splice { drain: self.drain(range), replace_with: replace_with.into_iter() }
     }
 
-    /// Creates an iterator which uses a closure to determine if an element should be removed.
+    /// Creates an iterator which uses a closure to determine if element in the range should be removed.
     ///
     /// If the closure returns true, then the element is removed and yielded.
     /// If the closure returns false, the element will remain in the vector and will not be yielded
     /// by the iterator.
+    ///
+    /// Only elements that fall in the provided range are considered for extraction, but any elements
+    /// after the range will still have to be moved if any element has been extracted.
     ///
     /// If the returned `ExtractIf` is not exhausted, e.g. because it is dropped without iterating
     /// or the iteration short-circuits, then the remaining elements will be retained.
@@ -3630,10 +3633,12 @@ impl<T, A: Allocator> Vec<T, A> {
     /// Using this method is equivalent to the following code:
     ///
     /// ```
+    /// # use std::cmp::min;
     /// # let some_predicate = |x: &mut i32| { *x == 2 || *x == 3 || *x == 6 };
     /// # let mut vec = vec![1, 2, 3, 4, 5, 6];
-    /// let mut i = 0;
-    /// while i < vec.len() {
+    /// # let range = 1..4;
+    /// let mut i = range.start;
+    /// while i < min(vec.len(), range.end) {
     ///     if some_predicate(&mut vec[i]) {
     ///         let val = vec.remove(i);
     ///         // your code here
@@ -3648,8 +3653,12 @@ impl<T, A: Allocator> Vec<T, A> {
     /// But `extract_if` is easier to use. `extract_if` is also more efficient,
     /// because it can backshift the elements of the array in bulk.
     ///
-    /// Note that `extract_if` also lets you mutate every element in the filter closure,
-    /// regardless of whether you choose to keep or remove it.
+    /// Note that `extract_if` also lets you mutate the elements passed to the filter closure,
+    /// regardless of whether you choose to keep or remove them.
+    ///
+    /// # Panics
+    ///
+    /// If `range` is out of bounds.
     ///
     /// # Examples
     ///
@@ -3659,25 +3668,29 @@ impl<T, A: Allocator> Vec<T, A> {
     /// #![feature(extract_if)]
     /// let mut numbers = vec![1, 2, 3, 4, 5, 6, 8, 9, 11, 13, 14, 15];
     ///
-    /// let evens = numbers.extract_if(|x| *x % 2 == 0).collect::<Vec<_>>();
+    /// let evens = numbers.extract_if(.., |x| *x % 2 == 0).collect::<Vec<_>>();
     /// let odds = numbers;
     ///
     /// assert_eq!(evens, vec![2, 4, 6, 8, 14]);
     /// assert_eq!(odds, vec![1, 3, 5, 9, 11, 13, 15]);
     /// ```
+    ///
+    /// Using the range argument to only process a part of the vector:
+    ///
+    /// ```
+    /// #![feature(extract_if)]
+    /// let mut items = vec![0, 0, 0, 0, 0, 0, 0, 1, 2, 1, 2, 1, 2];
+    /// let ones = items.extract_if(7.., |x| *x == 1).collect::<Vec<_>>();
+    /// assert_eq!(items, vec![0, 0, 0, 0, 0, 0, 0, 2, 2, 2]);
+    /// assert_eq!(ones.len(), 3);
+    /// ```
     #[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
-    pub fn extract_if<F>(&mut self, filter: F) -> ExtractIf<'_, T, F, A>
+    pub fn extract_if<F, R>(&mut self, range: R, filter: F) -> ExtractIf<'_, T, F, A>
     where
         F: FnMut(&mut T) -> bool,
+        R: RangeBounds<usize>,
     {
-        let old_len = self.len();
-
-        // Guard against us getting leaked (leak amplification)
-        unsafe {
-            self.set_len(0);
-        }
-
-        ExtractIf { vec: self, idx: 0, del: 0, old_len, pred: filter }
+        ExtractIf::new(self, filter, range)
     }
 }
 
