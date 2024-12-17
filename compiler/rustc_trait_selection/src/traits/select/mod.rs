@@ -445,7 +445,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // Winnow, but record the exact outcome of evaluation, which
         // is needed for specialization. Propagate overflow if it occurs.
-        let mut candidates = candidates
+        let candidates = candidates
             .into_iter()
             .map(|c| match self.evaluate_candidate(stack, &c) {
                 Ok(eval) if eval.may_apply() => {
@@ -458,40 +458,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .flat_map(Result::transpose)
             .collect::<Result<Vec<_>, _>>()?;
 
-        debug!(?stack, ?candidates, "winnowed to {} candidates", candidates.len());
-
-        let has_non_region_infer = stack.obligation.predicate.has_non_region_infer();
-
-        // If there are STILL multiple candidates, we can further
-        // reduce the list by dropping duplicates -- including
-        // resolving specializations.
-        if candidates.len() > 1 {
-            let mut i = 0;
-            while i < candidates.len() {
-                let should_drop_i = (0..candidates.len()).filter(|&j| i != j).any(|j| {
-                    self.candidate_should_be_dropped_in_favor_of(
-                        &candidates[i],
-                        &candidates[j],
-                        has_non_region_infer,
-                    ) == DropVictim::Yes
-                });
-                if should_drop_i {
-                    debug!(candidate = ?candidates[i], "Dropping candidate #{}/{}", i, candidates.len());
-                    candidates.swap_remove(i);
-                } else {
-                    debug!(candidate = ?candidates[i], "Retaining candidate #{}/{}", i, candidates.len());
-                    i += 1;
-
-                    // If there are *STILL* multiple candidates, give up
-                    // and report ambiguity.
-                    if i > 1 {
-                        debug!("multiple matches, ambig");
-                        return Ok(None);
-                    }
-                }
-            }
-        }
-
+        debug!(?stack, ?candidates, "{} potentially applicable candidates", candidates.len());
         // If there are *NO* candidates, then there are no impls --
         // that we know of, anyway. Note that in the case where there
         // are unbound type variables within the obligation, it might
@@ -508,13 +475,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // to have emitted at least one.
             if stack.obligation.predicate.references_error() {
                 debug!(?stack.obligation.predicate, "found error type in predicate, treating as ambiguous");
-                return Ok(None);
+                Ok(None)
+            } else {
+                Err(Unimplemented)
             }
-            return Err(Unimplemented);
+        } else {
+            let has_non_region_infer = stack.obligation.predicate.has_non_region_infer();
+            if let Some(candidate) = self.winnow_candidates(has_non_region_infer, candidates) {
+                self.filter_reservation_impls(candidate)
+            } else {
+                Ok(None)
+            }
         }
-
-        // Just one candidate left.
-        self.filter_reservation_impls(candidates.pop().unwrap().candidate)
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -1803,18 +1775,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-enum DropVictim {
-    Yes,
-    No,
-}
-
-impl DropVictim {
-    fn drop_if(should_drop: bool) -> DropVictim {
-        if should_drop { DropVictim::Yes } else { DropVictim::No }
-    }
-}
-
 /// ## Winnowing
 ///
 /// Winnowing is the process of attempting to resolve ambiguity by
@@ -1822,61 +1782,149 @@ impl DropVictim {
 /// type variables and then we also attempt to evaluate recursive
 /// bounds to see if they are satisfied.
 impl<'tcx> SelectionContext<'_, 'tcx> {
-    /// Returns `DropVictim::Yes` if `victim` should be dropped in favor of
-    /// `other`. Generally speaking we will drop duplicate
-    /// candidates and prefer where-clause candidates.
+    /// If there are multiple ways to prove a trait goal, we make some
+    /// *fairly arbitrary* choices about which candidate is actually used.
     ///
-    /// See the comment for "SelectionCandidate" for more details.
-    #[instrument(level = "debug", skip(self))]
-    fn candidate_should_be_dropped_in_favor_of(
+    /// For more details, look at the implementation of this method :)
+    #[instrument(level = "debug", skip(self), ret)]
+    fn winnow_candidates(
         &mut self,
-        victim: &EvaluatedCandidate<'tcx>,
-        other: &EvaluatedCandidate<'tcx>,
         has_non_region_infer: bool,
-    ) -> DropVictim {
-        if victim.candidate == other.candidate {
-            return DropVictim::Yes;
+        mut candidates: Vec<EvaluatedCandidate<'tcx>>,
+    ) -> Option<SelectionCandidate<'tcx>> {
+        if candidates.len() == 1 {
+            return Some(candidates.pop().unwrap().candidate);
         }
 
-        // Check if a bound would previously have been removed when normalizing
-        // the param_env so that it can be given the lowest priority. See
-        // #50825 for the motivation for this.
-        let is_global =
-            |cand: ty::PolyTraitPredicate<'tcx>| cand.is_global() && !cand.has_bound_vars();
+        // We prefer trivial builtin candidates, i.e. builtin impls without any nested
+        // requirements, over all others. This is a fix for #53123 and prevents winnowing
+        // from accidentally extending the lifetime of a variable.
+        let mut trivial_builtin = candidates
+            .iter()
+            .filter(|c| matches!(c.candidate, BuiltinCandidate { has_nested: false }));
+        if let Some(_trivial) = trivial_builtin.next() {
+            // There should only ever be a single trivial builtin candidate
+            // as they would otherwise overlap.
+            debug_assert_eq!(trivial_builtin.next(), None);
+            return Some(BuiltinCandidate { has_nested: false });
+        }
 
-        // (*) Prefer `BuiltinCandidate { has_nested: false }`, `PointeeCandidate`,
-        // or `DiscriminantKindCandidate` to anything else.
+        // Before we consider where-bounds, we have to deduplicate them here and also
+        // drop where-bounds in case the same where-bound exists without bound vars.
+        // This is necessary as elaborating super-trait bounds may result in duplicates.
+        'search_victim: loop {
+            for (i, this) in candidates.iter().enumerate() {
+                let ParamCandidate(this) = this.candidate else { continue };
+                for (j, other) in candidates.iter().enumerate() {
+                    if i == j {
+                        continue;
+                    }
+
+                    let ParamCandidate(other) = other.candidate else { continue };
+                    if this == other {
+                        candidates.remove(j);
+                        continue 'search_victim;
+                    }
+
+                    if this.skip_binder().trait_ref == other.skip_binder().trait_ref
+                        && this.skip_binder().polarity == other.skip_binder().polarity
+                        && !this.skip_binder().trait_ref.has_escaping_bound_vars()
+                    {
+                        candidates.remove(j);
+                        continue 'search_victim;
+                    }
+                }
+            }
+
+            break;
+        }
+
+        // The next highest priority is for non-global where-bounds. However, while we don't
+        // prefer global where-clauses here, we do bail with ambiguity when encountering both
+        // a global and a non-global where-clause.
         //
-        // This is a fix for #53123 and prevents winnowing from accidentally extending the
-        // lifetime of a variable.
-        match (&other.candidate, &victim.candidate) {
-            // FIXME(@jswrenn): this should probably be more sophisticated
-            (TransmutabilityCandidate, _) | (_, TransmutabilityCandidate) => DropVictim::No,
+        // Our handling of where-bounds is generally fairly messy but necessary for backwards
+        // compatability, see #50825 for why we need to handle global where-bounds like this.
+        let is_global = |c: ty::PolyTraitPredicate<'tcx>| c.is_global() && !c.has_bound_vars();
+        let param_candidates = candidates
+            .iter()
+            .filter_map(|c| if let ParamCandidate(p) = c.candidate { Some(p) } else { None });
+        let mut has_global_bounds = false;
+        let mut param_candidate = None;
+        for c in param_candidates {
+            if is_global(c) {
+                has_global_bounds = true;
+            } else if param_candidate.replace(c).is_some() {
+                // Ambiguity, two potentially different where-clauses
+                return None;
+            }
+        }
+        if let Some(predicate) = param_candidate {
+            // Ambiguity, a global and a non-global where-bound.
+            if has_global_bounds {
+                return None;
+            } else {
+                return Some(ParamCandidate(predicate));
+            }
+        }
 
-            // (*)
-            (BuiltinCandidate { has_nested: false }, _) => DropVictim::Yes,
-            (_, BuiltinCandidate { has_nested: false }) => DropVictim::No,
+        // Prefer alias-bounds over blanket impls for rigid associated types. This is
+        // fairly arbitrary but once again necessary for backwards compatibility.
+        // If there are multiple applicable candidates which don't affect type inference,
+        // choose the one with the lowest index.
+        let alias_bound = candidates
+            .iter()
+            .filter_map(|c| if let ProjectionCandidate(i) = c.candidate { Some(i) } else { None })
+            .try_reduce(|c1, c2| if has_non_region_infer { None } else { Some(c1.min(c2)) });
+        match alias_bound {
+            Some(Some(index)) => return Some(ProjectionCandidate(index)),
+            Some(None) => {}
+            None => return None,
+        }
 
-            (ParamCandidate(other), ParamCandidate(victim)) => {
-                let same_except_bound_vars = other.skip_binder().trait_ref
-                    == victim.skip_binder().trait_ref
-                    && other.skip_binder().polarity == victim.skip_binder().polarity
-                    && !other.skip_binder().trait_ref.has_escaping_bound_vars();
-                if same_except_bound_vars {
-                    // See issue #84398. In short, we can generate multiple ParamCandidates which are
-                    // the same except for unused bound vars. Just pick the one with the fewest bound vars
-                    // or the current one if tied (they should both evaluate to the same answer). This is
-                    // probably best characterized as a "hack", since we might prefer to just do our
-                    // best to *not* create essentially duplicate candidates in the first place.
-                    DropVictim::drop_if(other.bound_vars().len() <= victim.bound_vars().len())
+        // Need to prioritize builtin trait object impls as `<dyn Any as Any>::type_id`
+        // should use the vtable method and not the method provided by the user-defined
+        // impl `impl<T: ?Sized> Any for T { .. }`. This really shouldn't exist but is
+        // necessary due to #57893. We again arbitrarily prefer the applicable candidate
+        // with the lowest index.
+        let object_bound = candidates
+            .iter()
+            .filter_map(|c| if let ObjectCandidate(i) = c.candidate { Some(i) } else { None })
+            .try_reduce(|c1, c2| if has_non_region_infer { None } else { Some(c1.min(c2)) });
+        match object_bound {
+            Some(Some(index)) => return Some(ObjectCandidate(index)),
+            Some(None) => {}
+            None => return None,
+        }
+
+        // Finally, handle overlapping user-written impls.
+        let impls = candidates.iter().filter_map(|c| {
+            if let ImplCandidate(def_id) = c.candidate {
+                Some((def_id, c.evaluation))
+            } else {
+                None
+            }
+        });
+        let mut impl_candidate = None;
+        for c in impls {
+            if let Some(prev) = impl_candidate.replace(c) {
+                if self.prefer_lhs_over_victim(has_non_region_infer, c, prev) {
+                    // Ok, prefer `c` over the previous entry
+                } else if self.prefer_lhs_over_victim(has_non_region_infer, prev, c) {
+                    // Ok, keep `prev` instead of the new entry
+                    impl_candidate = Some(prev);
                 } else {
-                    DropVictim::No
+                    // Ambiguity, two potentially different where-clauses
+                    return None;
                 }
             }
-
-            (
-                ParamCandidate(other_cand),
-                ImplCandidate(..)
+        }
+        if let Some((def_id, _evaluation)) = impl_candidate {
+            // Don't use impl candidates which overlap with other candidates.
+            // This should pretty much only ever happen with malformed impls.
+            if candidates.iter().all(|c| match c.candidate {
+                BuiltinCandidate { has_nested: _ }
+                | TransmutabilityCandidate
                 | AutoImplCandidate
                 | ClosureCandidate { .. }
                 | AsyncClosureCandidate
@@ -1885,225 +1933,113 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | FutureCandidate
                 | IteratorCandidate
                 | AsyncIteratorCandidate
-                | FnPointerCandidate { .. }
-                | BuiltinObjectCandidate
-                | BuiltinUnsizeCandidate
-                | TraitUpcastingUnsizeCandidate(_)
-                | BuiltinCandidate { .. }
+                | FnPointerCandidate
                 | TraitAliasCandidate
-                | ObjectCandidate(_)
-                | ProjectionCandidate(_),
-            ) => {
-                // We have a where clause so don't go around looking
-                // for impls. Arbitrarily give param candidates priority
-                // over projection and object candidates.
+                | TraitUpcastingUnsizeCandidate(_)
+                | BuiltinObjectCandidate
+                | BuiltinUnsizeCandidate => false,
+                // Non-global param candidates have already been handled, global
+                // where-bounds get ignored.
+                ParamCandidate(_) | ImplCandidate(_) => true,
+                ProjectionCandidate(_) | ObjectCandidate(_) => unreachable!(),
+            }) {
+                return Some(ImplCandidate(def_id));
+            } else {
+                return None;
+            }
+        }
+
+        if candidates.len() == 1 {
+            Some(candidates.pop().unwrap().candidate)
+        } else {
+            // Also try ignoring all global where-bounds and check whether we end
+            // with a unique candidate in this case.
+            let mut not_a_global_where_bound = candidates
+                .into_iter()
+                .filter(|c| !matches!(c.candidate, ParamCandidate(p) if is_global(p)));
+            not_a_global_where_bound
+                .next()
+                .map(|c| c.candidate)
+                .filter(|_| not_a_global_where_bound.next().is_none())
+        }
+    }
+
+    fn prefer_lhs_over_victim(
+        &self,
+        has_non_region_infer: bool,
+        (lhs, lhs_evaluation): (DefId, EvaluationResult),
+        (victim, victim_evaluation): (DefId, EvaluationResult),
+    ) -> bool {
+        let tcx = self.tcx();
+        // See if we can toss out `victim` based on specialization.
+        //
+        // While this requires us to know *for sure* that the `lhs` impl applies
+        // we still use modulo regions here. This is fine as specialization currently
+        // assumes that specializing impls have to be always applicable, meaning that
+        // the only allowed region constraints may be constraints also present on the default impl.
+        if lhs_evaluation.must_apply_modulo_regions() {
+            if tcx.specializes((lhs, victim)) {
+                return true;
+            }
+        }
+
+        match tcx.impls_are_allowed_to_overlap(lhs, victim) {
+            // For #33140 the impl headers must be exactly equal, the trait must not have
+            // any associated items and there are no where-clauses.
+            //
+            // We can just arbitrarily drop one of the impls.
+            Some(ty::ImplOverlapKind::FutureCompatOrderDepTraitObjects) => {
+                assert_eq!(lhs_evaluation, victim_evaluation);
+                true
+            }
+            // For candidates which already reference errors it doesn't really
+            // matter what we do 🤷
+            Some(ty::ImplOverlapKind::Permitted { marker: false }) => {
+                lhs_evaluation.must_apply_considering_regions()
+            }
+            Some(ty::ImplOverlapKind::Permitted { marker: true }) => {
+                // Subtle: If the predicate we are evaluating has inference
+                // variables, do *not* allow discarding candidates due to
+                // marker trait impls.
                 //
-                // Global bounds from the where clause should be ignored
-                // here (see issue #50825).
-                DropVictim::drop_if(!is_global(*other_cand))
-            }
-            (ObjectCandidate(_) | ProjectionCandidate(_), ParamCandidate(victim_cand)) => {
-                // Prefer these to a global where-clause bound
-                // (see issue #50825).
-                if is_global(*victim_cand) { DropVictim::Yes } else { DropVictim::No }
-            }
-            (
-                ImplCandidate(_)
-                | AutoImplCandidate
-                | ClosureCandidate { .. }
-                | AsyncClosureCandidate
-                | AsyncFnKindHelperCandidate
-                | CoroutineCandidate
-                | FutureCandidate
-                | IteratorCandidate
-                | AsyncIteratorCandidate
-                | FnPointerCandidate { .. }
-                | BuiltinObjectCandidate
-                | BuiltinUnsizeCandidate
-                | TraitUpcastingUnsizeCandidate(_)
-                | BuiltinCandidate { has_nested: true }
-                | TraitAliasCandidate,
-                ParamCandidate(victim_cand),
-            ) => {
-                // Prefer these to a global where-clause bound
-                // (see issue #50825).
-                DropVictim::drop_if(
-                    is_global(*victim_cand) && other.evaluation.must_apply_modulo_regions(),
-                )
-            }
-
-            (ProjectionCandidate(i), ProjectionCandidate(j))
-            | (ObjectCandidate(i), ObjectCandidate(j)) => {
-                // Arbitrarily pick the lower numbered candidate for backwards
-                // compatibility reasons. Don't let this affect inference.
-                DropVictim::drop_if(i < j && !has_non_region_infer)
-            }
-            (ObjectCandidate(_), ProjectionCandidate(_))
-            | (ProjectionCandidate(_), ObjectCandidate(_)) => {
-                bug!("Have both object and projection candidate")
-            }
-
-            // Arbitrarily give projection and object candidates priority.
-            (
-                ObjectCandidate(_) | ProjectionCandidate(_),
-                ImplCandidate(..)
-                | AutoImplCandidate
-                | ClosureCandidate { .. }
-                | AsyncClosureCandidate
-                | AsyncFnKindHelperCandidate
-                | CoroutineCandidate
-                | FutureCandidate
-                | IteratorCandidate
-                | AsyncIteratorCandidate
-                | FnPointerCandidate { .. }
-                | BuiltinObjectCandidate
-                | BuiltinUnsizeCandidate
-                | TraitUpcastingUnsizeCandidate(_)
-                | BuiltinCandidate { .. }
-                | TraitAliasCandidate,
-            ) => DropVictim::Yes,
-
-            (
-                ImplCandidate(..)
-                | AutoImplCandidate
-                | ClosureCandidate { .. }
-                | AsyncClosureCandidate
-                | AsyncFnKindHelperCandidate
-                | CoroutineCandidate
-                | FutureCandidate
-                | IteratorCandidate
-                | AsyncIteratorCandidate
-                | FnPointerCandidate { .. }
-                | BuiltinObjectCandidate
-                | BuiltinUnsizeCandidate
-                | TraitUpcastingUnsizeCandidate(_)
-                | BuiltinCandidate { .. }
-                | TraitAliasCandidate,
-                ObjectCandidate(_) | ProjectionCandidate(_),
-            ) => DropVictim::No,
-
-            (&ImplCandidate(other_def), &ImplCandidate(victim_def)) => {
-                // See if we can toss out `victim` based on specialization.
-                // While this requires us to know *for sure* that the `other` impl applies
-                // we still use modulo regions here.
+                // Without this restriction, we could end up accidentally
+                // constraining inference variables based on an arbitrarily
+                // chosen trait impl.
                 //
-                // This is fine as specialization currently assumes that specializing
-                // impls have to be always applicable, meaning that the only allowed
-                // region constraints may be constraints also present on the default impl.
-                let tcx = self.tcx();
-                if other.evaluation.must_apply_modulo_regions()
-                    && tcx.specializes((other_def, victim_def))
-                {
-                    return DropVictim::Yes;
-                }
-
-                match tcx.impls_are_allowed_to_overlap(other_def, victim_def) {
-                    // For #33140 the impl headers must be exactly equal, the trait must not have
-                    // any associated items and there are no where-clauses.
-                    //
-                    // We can just arbitrarily drop one of the impls.
-                    Some(ty::ImplOverlapKind::FutureCompatOrderDepTraitObjects) => {
-                        assert_eq!(other.evaluation, victim.evaluation);
-                        DropVictim::Yes
-                    }
-                    // For candidates which already reference errors it doesn't really
-                    // matter what we do 🤷
-                    Some(ty::ImplOverlapKind::Permitted { marker: false }) => {
-                        DropVictim::drop_if(other.evaluation.must_apply_considering_regions())
-                    }
-                    Some(ty::ImplOverlapKind::Permitted { marker: true }) => {
-                        // Subtle: If the predicate we are evaluating has inference
-                        // variables, do *not* allow discarding candidates due to
-                        // marker trait impls.
-                        //
-                        // Without this restriction, we could end up accidentally
-                        // constraining inference variables based on an arbitrarily
-                        // chosen trait impl.
-                        //
-                        // Imagine we have the following code:
-                        //
-                        // ```rust
-                        // #[marker] trait MyTrait {}
-                        // impl MyTrait for u8 {}
-                        // impl MyTrait for bool {}
-                        // ```
-                        //
-                        // And we are evaluating the predicate `<_#0t as MyTrait>`.
-                        //
-                        // During selection, we will end up with one candidate for each
-                        // impl of `MyTrait`. If we were to discard one impl in favor
-                        // of the other, we would be left with one candidate, causing
-                        // us to "successfully" select the predicate, unifying
-                        // _#0t with (for example) `u8`.
-                        //
-                        // However, we have no reason to believe that this unification
-                        // is correct - we've essentially just picked an arbitrary
-                        // *possibility* for _#0t, and required that this be the *only*
-                        // possibility.
-                        //
-                        // Eventually, we will either:
-                        // 1) Unify all inference variables in the predicate through
-                        // some other means (e.g. type-checking of a function). We will
-                        // then be in a position to drop marker trait candidates
-                        // without constraining inference variables (since there are
-                        // none left to constrain)
-                        // 2) Be left with some unconstrained inference variables. We
-                        // will then correctly report an inference error, since the
-                        // existence of multiple marker trait impls tells us nothing
-                        // about which one should actually apply.
-                        DropVictim::drop_if(
-                            !has_non_region_infer
-                                && other.evaluation.must_apply_considering_regions(),
-                        )
-                    }
-                    None => DropVictim::No,
-                }
+                // Imagine we have the following code:
+                //
+                // ```rust
+                // #[marker] trait MyTrait {}
+                // impl MyTrait for u8 {}
+                // impl MyTrait for bool {}
+                // ```
+                //
+                // And we are evaluating the predicate `<_#0t as MyTrait>`.
+                //
+                // During selection, we will end up with one candidate for each
+                // impl of `MyTrait`. If we were to discard one impl in favor
+                // of the other, we would be left with one candidate, causing
+                // us to "successfully" select the predicate, unifying
+                // _#0t with (for example) `u8`.
+                //
+                // However, we have no reason to believe that this unification
+                // is correct - we've essentially just picked an arbitrary
+                // *possibility* for _#0t, and required that this be the *only*
+                // possibility.
+                //
+                // Eventually, we will either:
+                // 1) Unify all inference variables in the predicate through
+                // some other means (e.g. type-checking of a function). We will
+                // then be in a position to drop marker trait candidates
+                // without constraining inference variables (since there are
+                // none left to constrain)
+                // 2) Be left with some unconstrained inference variables. We
+                // will then correctly report an inference error, since the
+                // existence of multiple marker trait impls tells us nothing
+                // about which one should actually apply.
+                !has_non_region_infer && lhs_evaluation.must_apply_considering_regions()
             }
-
-            (AutoImplCandidate, ImplCandidate(_)) | (ImplCandidate(_), AutoImplCandidate) => {
-                DropVictim::No
-            }
-
-            (AutoImplCandidate, _) | (_, AutoImplCandidate) => {
-                bug!(
-                    "default implementations shouldn't be recorded \
-                    when there are other global candidates: {:?} {:?}",
-                    other,
-                    victim
-                );
-            }
-
-            // Everything else is ambiguous
-            (
-                ImplCandidate(_)
-                | ClosureCandidate { .. }
-                | AsyncClosureCandidate
-                | AsyncFnKindHelperCandidate
-                | CoroutineCandidate
-                | FutureCandidate
-                | IteratorCandidate
-                | AsyncIteratorCandidate
-                | FnPointerCandidate { .. }
-                | BuiltinObjectCandidate
-                | BuiltinUnsizeCandidate
-                | TraitUpcastingUnsizeCandidate(_)
-                | BuiltinCandidate { has_nested: true }
-                | TraitAliasCandidate,
-                ImplCandidate(_)
-                | ClosureCandidate { .. }
-                | AsyncClosureCandidate
-                | AsyncFnKindHelperCandidate
-                | CoroutineCandidate
-                | FutureCandidate
-                | IteratorCandidate
-                | AsyncIteratorCandidate
-                | FnPointerCandidate { .. }
-                | BuiltinObjectCandidate
-                | BuiltinUnsizeCandidate
-                | TraitUpcastingUnsizeCandidate(_)
-                | BuiltinCandidate { has_nested: true }
-                | TraitAliasCandidate,
-            ) => DropVictim::No,
+            None => false,
         }
     }
 }
