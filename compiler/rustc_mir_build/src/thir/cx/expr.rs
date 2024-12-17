@@ -652,7 +652,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 }
             },
 
-            hir::ExprKind::Closure { .. } => {
+            hir::ExprKind::Closure(hir::Closure { .. }) => {
                 let closure_ty = self.typeck_results.expr_ty(expr);
                 let (def_id, args, movability) = match *closure_ty.kind() {
                     ty::Closure(def_id, args) => (def_id, UpvarArgs::Closure(args), None),
@@ -1252,6 +1252,17 @@ impl<'tcx> ThirBuildCx<'tcx> {
 
         match upvar_capture {
             ty::UpvarCapture::ByValue => captured_place_expr,
+            ty::UpvarCapture::ByUse => {
+                let span = captured_place_expr.span;
+                let expr_id = self.thir.exprs.push(captured_place_expr);
+
+                Expr {
+                    temp_lifetime: TempLifetime { temp_lifetime, backwards_incompatible },
+                    ty: upvar_ty,
+                    span: closure_expr.span,
+                    kind: ExprKind::ByUse { expr: expr_id, span },
+                }
+            }
             ty::UpvarCapture::ByRef(upvar_borrow) => {
                 let borrow_kind = match upvar_borrow {
                     ty::BorrowKind::Immutable => BorrowKind::Shared,

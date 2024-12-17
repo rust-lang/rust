@@ -1086,7 +1086,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     );
 
                     match capture_info.capture_kind {
-                        ty::UpvarCapture::ByValue => {
+                        ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => {
                             self.consume_or_copy(&place_with_id, place_with_id.hir_id);
                         }
                         ty::UpvarCapture::ByRef(upvar_borrow) => {

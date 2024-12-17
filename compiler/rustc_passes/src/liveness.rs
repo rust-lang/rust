@@ -706,7 +706,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                             );
                             self.acc(self.exit_ln, var, ACC_READ | ACC_USE);
                         }
-                        ty::UpvarCapture::ByValue => {}
+                        ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => {}
                     }
                 }
             }
@@ -1500,7 +1500,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
         for (&var_hir_id, min_capture_list) in closure_min_captures {
             for captured_place in min_capture_list {
                 match captured_place.info.capture_kind {
-                    ty::UpvarCapture::ByValue => {}
+                    ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => {}
                     ty::UpvarCapture::ByRef(..) => continue,
                 };
                 let span = captured_place.get_capture_kind_span(self.ir.tcx);
