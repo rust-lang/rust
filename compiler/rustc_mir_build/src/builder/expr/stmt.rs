@@ -5,8 +5,8 @@ use rustc_middle::thir::*;
 use rustc_span::source_map::Spanned;
 use tracing::debug;
 
-use crate::build::scope::BreakableTarget;
-use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
+use crate::builder::scope::BreakableTarget;
+use crate::builder::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Builds a block of MIR statements to evaluate the THIR `expr`.

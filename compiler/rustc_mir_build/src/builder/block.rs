@@ -5,9 +5,9 @@ use rustc_middle::{span_bug, ty};
 use rustc_span::Span;
 use tracing::debug;
 
-use crate::build::ForGuard::OutsideGuard;
-use crate::build::matches::{DeclareLetBindings, EmitStorageLive, ScheduleDrops};
-use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
+use crate::builder::ForGuard::OutsideGuard;
+use crate::builder::matches::{DeclareLetBindings, EmitStorageLive, ScheduleDrops};
+use crate::builder::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn ast_block(
