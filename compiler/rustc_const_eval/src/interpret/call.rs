@@ -519,7 +519,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 return M::call_extra_fn(
                     self,
                     extra,
-                    caller_abi,
+                    caller_fn_abi,
                     args,
                     destination,
                     target,
@@ -570,7 +570,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let Some((body, instance)) = M::find_mir_or_eval_fn(
                     self,
                     instance,
-                    caller_abi,
+                    caller_fn_abi,
                     args,
                     destination,
                     target,

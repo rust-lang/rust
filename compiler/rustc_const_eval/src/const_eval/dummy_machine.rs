@@ -1,9 +1,11 @@
 use rustc_middle::mir::interpret::{AllocId, ConstAllocation, InterpResult};
 use rustc_middle::mir::*;
 use rustc_middle::query::TyCtxtAt;
+use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{bug, span_bug, ty};
 use rustc_span::def_id::DefId;
+use rustc_target::callconv::FnAbi;
 
 use crate::interpret::{
     self, HasStaticRootDefId, ImmTy, Immediate, InterpCx, PointerArithmetic, interp_ok,
@@ -86,7 +88,7 @@ impl<'tcx> interpret::Machine<'tcx> for DummyMachine {
     fn find_mir_or_eval_fn(
         _ecx: &mut InterpCx<'tcx, Self>,
         _instance: ty::Instance<'tcx>,
-        _abi: rustc_abi::ExternAbi,
+        _abi: &FnAbi<'tcx, Ty<'tcx>>,
         _args: &[interpret::FnArg<'tcx, Self::Provenance>],
         _destination: &interpret::MPlaceTy<'tcx, Self::Provenance>,
         _target: Option<BasicBlock>,
