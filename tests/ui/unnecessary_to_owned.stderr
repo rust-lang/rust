@@ -519,14 +519,10 @@ error: unnecessary use of `to_vec`
 LL |     for t in file_types.to_vec() {
    |              ^^^^^^^^^^^^^^^^^^^
    |
-help: use
-   |
-LL |     for t in file_types {
-   |              ~~~~~~~~~~
 help: remove any references to the binding
    |
-LL -         let path = match get_file_path(&t) {
-LL +         let path = match get_file_path(t) {
+LL ~     for t in file_types {
+LL ~         let path = match get_file_path(t) {
    |
 
 error: unnecessary use of `to_vec`
