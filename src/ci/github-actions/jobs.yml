@@ -190,7 +190,7 @@ auto:
     <<: *job-linux-4c
 
   - image: dist-powerpc64le-linux
-    <<: *job-linux-4c
+    <<: *job-linux-4c-largedisk
 
   - image: dist-riscv64-linux
     <<: *job-linux-4c
