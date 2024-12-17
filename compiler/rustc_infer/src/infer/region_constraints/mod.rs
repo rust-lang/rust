@@ -466,7 +466,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         }
     }
 
-    pub(super) fn member_constraint(
+    pub(super) fn add_member_constraint(
         &mut self,
         key: ty::OpaqueTypeKey<'tcx>,
         definition_span: Span,
