@@ -14,7 +14,7 @@
 //! to everything owned by `x`, so the result is the same for something
 //! like `x.f = 5` and so on (presuming `x` is not a borrowed pointer to a
 //! struct). These adjustments are performed in
-//! `adjust_upvar_borrow_kind()` (you can trace backwards through the code
+//! `adjust_for_non_move_closure` (you can trace backwards through the code
 //! from there).
 //!
 //! The fact that we are inferring borrow kinds as we go results in a
@@ -1684,8 +1684,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // want to capture by ref to allow precise capture using reborrows.
             //
             // If the data will be moved out of this place, then the place will be truncated
-            // at the first Deref in `adjust_upvar_borrow_kind_for_consume` and then moved into
-            // the closure.
+            // at the first Deref in `adjust_for_move_closure` and then moved into the closure.
             hir::CaptureBy::Value { .. } if !place.deref_tys().any(Ty::is_ref) => {
                 ty::UpvarCapture::ByValue
             }

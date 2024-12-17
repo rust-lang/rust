@@ -216,18 +216,19 @@ pub(crate) struct DocKeywordEmptyMod {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_doc_keyword_not_keyword)]
+#[help]
+pub(crate) struct DocKeywordNotKeyword {
+    #[primary_span]
+    pub span: Span,
+    pub keyword: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_doc_keyword_not_mod)]
 pub(crate) struct DocKeywordNotMod {
     #[primary_span]
     pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_doc_keyword_invalid_ident)]
-pub(crate) struct DocKeywordInvalidIdent {
-    #[primary_span]
-    pub span: Span,
-    pub doc_keyword: Symbol,
 }
 
 #[derive(Diagnostic)]

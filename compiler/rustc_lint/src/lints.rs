@@ -951,13 +951,6 @@ pub(crate) struct NonGlobImportTypeIrInherent {
 pub(crate) struct LintPassByHand;
 
 #[derive(LintDiagnostic)]
-#[diag(lint_non_existent_doc_keyword)]
-#[help]
-pub(crate) struct NonExistentDocKeyword {
-    pub keyword: Symbol,
-}
-
-#[derive(LintDiagnostic)]
 #[diag(lint_diag_out_of_impl)]
 pub(crate) struct DiagOutOfImpl;
 

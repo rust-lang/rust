@@ -22,6 +22,10 @@ impl NodeStats {
     fn new() -> NodeStats {
         NodeStats { count: 0, size: 0 }
     }
+
+    fn accum_size(&self) -> usize {
+        self.count * self.size
+    }
 }
 
 struct Node {
@@ -121,11 +125,9 @@ impl<'k> StatCollector<'k> {
         // We will soon sort, so the initial order does not matter.
         #[allow(rustc::potential_query_instability)]
         let mut nodes: Vec<_> = self.nodes.iter().collect();
-        nodes.sort_by_cached_key(|(label, node)| {
-            (node.stats.count * node.stats.size, label.to_owned())
-        });
+        nodes.sort_by_cached_key(|(label, node)| (node.stats.accum_size(), label.to_owned()));
 
-        let total_size = nodes.iter().map(|(_, node)| node.stats.count * node.stats.size).sum();
+        let total_size = nodes.iter().map(|(_, node)| node.stats.accum_size()).sum();
         let total_count = nodes.iter().map(|(_, node)| node.stats.count).sum();
 
         eprintln!("{prefix} {title}");
@@ -138,7 +140,7 @@ impl<'k> StatCollector<'k> {
         let percent = |m, n| (m * 100) as f64 / n as f64;
 
         for (label, node) in nodes {
-            let size = node.stats.count * node.stats.size;
+            let size = node.stats.accum_size();
             eprintln!(
                 "{} {:<18}{:>10} ({:4.1}%){:>14}{:>14}",
                 prefix,
@@ -152,10 +154,12 @@ impl<'k> StatCollector<'k> {
                 // We will soon sort, so the initial order does not matter.
                 #[allow(rustc::potential_query_instability)]
                 let mut subnodes: Vec<_> = node.subnodes.iter().collect();
-                subnodes.sort_by_key(|(_, subnode)| subnode.count * subnode.size);
+                subnodes.sort_by_cached_key(|(label, subnode)| {
+                    (subnode.accum_size(), label.to_owned())
+                });
 
                 for (label, subnode) in subnodes {
-                    let size = subnode.count * subnode.size;
+                    let size = subnode.accum_size();
                     eprintln!(
                         "{} - {:<18}{:>10} ({:4.1}%){:>14}",
                         prefix,

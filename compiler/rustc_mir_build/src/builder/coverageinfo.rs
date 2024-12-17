@@ -8,8 +8,8 @@ use rustc_middle::thir::{ExprId, ExprKind, Pat, Thir};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::LocalDefId;
 
-use crate::build::coverageinfo::mcdc::MCDCInfoBuilder;
-use crate::build::{Builder, CFG};
+use crate::builder::coverageinfo::mcdc::MCDCInfoBuilder;
+use crate::builder::{Builder, CFG};
 
 mod mcdc;
 
