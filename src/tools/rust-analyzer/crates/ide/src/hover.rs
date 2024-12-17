@@ -6,7 +6,7 @@ mod tests;
 use std::{iter, ops::Not};
 
 use either::Either;
-use hir::{db::DefDatabase, HasCrate, HasSource, LangItem, Semantics};
+use hir::{db::DefDatabase, GenericSubstitution, HasCrate, HasSource, LangItem, Semantics};
 use ide_db::{
     defs::{Definition, IdentClass, NameRefClass, OperatorClass},
     famous_defs::FamousDefs,
@@ -35,6 +35,14 @@ pub struct HoverConfig {
     pub max_trait_assoc_items_count: Option<usize>,
     pub max_fields_count: Option<usize>,
     pub max_enum_variants_count: Option<usize>,
+    pub max_subst_ty_len: SubstTyLen,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SubstTyLen {
+    Unlimited,
+    LimitTo(usize),
+    Hide,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -158,7 +166,8 @@ fn hover_offset(
     if let Some(doc_comment) = token_as_doc_comment(&original_token) {
         cov_mark::hit!(no_highlight_on_comment_hover);
         return doc_comment.get_definition_with_descend_at(sema, offset, |def, node, range| {
-            let res = hover_for_definition(sema, file_id, def, &node, None, false, config, edition);
+            let res =
+                hover_for_definition(sema, file_id, def, None, &node, None, false, config, edition);
             Some(RangeInfo::new(range, res))
         });
     }
@@ -170,6 +179,7 @@ fn hover_offset(
             sema,
             file_id,
             Definition::from(resolution?),
+            None,
             &original_token.parent()?,
             None,
             false,
@@ -217,7 +227,7 @@ fn hover_offset(
                             {
                                 if let Some(macro_) = sema.resolve_macro_call(&macro_call) {
                                     break 'a vec![(
-                                        Definition::Macro(macro_),
+                                        (Definition::Macro(macro_), None),
                                         sema.resolve_macro_call_arm(&macro_call),
                                         false,
                                         node,
@@ -236,7 +246,7 @@ fn hover_offset(
                             decl,
                             ..
                         }) => {
-                            vec![(Definition::ExternCrateDecl(decl), None, false, node)]
+                            vec![((Definition::ExternCrateDecl(decl), None), None, false, node)]
                         }
 
                         class => {
@@ -252,12 +262,13 @@ fn hover_offset(
                     }
                 }
                 .into_iter()
-                .unique_by(|&(def, _, _, _)| def)
-                .map(|(def, macro_arm, hovered_definition, node)| {
+                .unique_by(|&((def, _), _, _, _)| def)
+                .map(|((def, subst), macro_arm, hovered_definition, node)| {
                     hover_for_definition(
                         sema,
                         file_id,
                         def,
+                        subst,
                         &node,
                         macro_arm,
                         hovered_definition,
@@ -381,6 +392,7 @@ pub(crate) fn hover_for_definition(
     sema: &Semantics<'_, RootDatabase>,
     file_id: FileId,
     def: Definition,
+    subst: Option<GenericSubstitution>,
     scope_node: &SyntaxNode,
     macro_arm: Option<u32>,
     hovered_definition: bool,
@@ -408,6 +420,7 @@ pub(crate) fn hover_for_definition(
         _ => None,
     };
     let notable_traits = def_ty.map(|ty| notable_traits(db, &ty)).unwrap_or_default();
+    let subst_types = subst.map(|subst| subst.types(db));
 
     let markup = render::definition(
         sema.db,
@@ -416,6 +429,7 @@ pub(crate) fn hover_for_definition(
         &notable_traits,
         macro_arm,
         hovered_definition,
+        subst_types,
         config,
         edition,
     );

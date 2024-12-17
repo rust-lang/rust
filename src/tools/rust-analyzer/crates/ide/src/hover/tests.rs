@@ -20,6 +20,7 @@ const HOVER_BASE_CONFIG: HoverConfig = HoverConfig {
     max_trait_assoc_items_count: None,
     max_fields_count: Some(5),
     max_enum_variants_count: Some(5),
+    max_subst_ty_len: super::SubstTyLen::Unlimited,
 };
 
 fn check_hover_no_result(ra_fixture: &str) {
@@ -5176,6 +5177,10 @@ fn main() {
 
             ---
 
+            `Self` = `()`
+
+            ---
+
             false
         "#]],
     );
@@ -5205,6 +5210,10 @@ fn main() {
             ```rust
             const B: bool = false
             ```
+
+            ---
+
+            `Self` = `i32`
 
             ---
 
@@ -9498,6 +9507,412 @@ fn main() {
             ---
 
             size = 0, align = 1
+        "#]],
+    );
+}
+
+#[test]
+fn subst_fn() {
+    check(
+        r#"
+struct Foo<T>(T);
+impl<T> Foo<T> {
+    fn foo<U>(v: T, u: U) {}
+}
+
+fn bar() {
+    Foo::fo$0o(123, false);
+}
+        "#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
+            impl<T> Foo<T>
+            fn foo<U>(v: T, u: U)
+            ```
+
+            ---
+
+            `T` = `i32`, `U` = `bool`
+        "#]],
+    );
+    check(
+        r#"
+fn foo<T>(v: T) {}
+
+fn bar() {
+    fo$0o(123);
+}
+        "#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            fn foo<T>(v: T)
+            ```
+
+            ---
+
+            `T` = `i32`
+        "#]],
+    );
+}
+
+#[test]
+fn subst_record_constructor() {
+    check(
+        r#"
+struct Foo<T> { field: T }
+
+fn bar() {
+    let v = $0Foo { field: 123 };
+}
+        "#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Foo<T> {
+                field: T,
+            }
+            ```
+
+            ---
+
+            `T` = `i32`
+        "#]],
+    );
+    check(
+        r#"
+struct Foo<T> { field: T }
+
+fn bar() {
+    let v = Foo { field: 123 };
+    let $0Foo { field: _ } = v;
+}
+        "#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Foo<T> {
+                field: T,
+            }
+            ```
+
+            ---
+
+            `T` = `i32`
+        "#]],
+    );
+}
+
+#[test]
+fn subst_method_call() {
+    check(
+        r#"
+struct Foo<T>(T);
+
+impl<U> Foo<U> {
+    fn bar<T>(self, v: T) {}
+}
+
+fn baz() {
+    Foo(123).bar$0("hello");
+}
+    "#,
+        expect![[r#"
+            *bar*
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
+            impl<U> Foo<U>
+            fn bar<T>(self, v: T)
+            ```
+
+            ---
+
+            `U` = `i32`, `T` = `&str`
+        "#]],
+    );
+}
+
+#[test]
+fn subst_type_alias_do_not_work() {
+    // It is very hard to support subst for type aliases properly in all places because they are eagerly evaluated.
+    // We can show the user the subst for the underlying type instead but that'll be very confusing.
+    check(
+        r#"
+struct Foo<T, U> { a: T, b: U }
+type Alias<T> = Foo<T, i32>;
+
+fn foo() {
+    let _ = Alias$0 { a: true, b: 123 };
+}
+    "#,
+        expect![[r#"
+            *Alias*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            type Alias<T> = Foo<T, i32>
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn subst_self() {
+    check(
+        r#"
+trait Trait<T> {
+    fn foo<U>(&self, v: U) {}
+}
+struct Struct<T>(T);
+impl<T> Trait<i64> for Struct<T> {}
+
+fn bar() {
+    Struct(123).foo$0(true);
+}
+    "#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            ra_test_fixture::Trait
+            ```
+
+            ```rust
+            trait Trait<T>
+            fn foo<U>(&self, v: U)
+            ```
+
+            ---
+
+            `Self` = `Struct<i32>`, `T` = `i64`, `U` = `bool`
+        "#]],
+    );
+}
+
+#[test]
+fn subst_with_lifetimes_and_consts() {
+    check(
+        r#"
+struct Foo<'a, const N: usize, T>(&[T; N]);
+
+impl<'a, T, const N: usize> Foo<'a, N, T> {
+    fn foo<'b, const Z: u32, U>(&self, v: U) {}
+}
+
+fn bar() {
+    Foo(&[1i8]).fo$0o::<456, _>("");
+}
+    "#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
+            impl<'a, T, const N: usize> Foo<'a, N, T>
+            fn foo<'b, const Z: u32, U>(&self, v: U)
+            ```
+
+            ---
+
+            `T` = `i8`, `U` = `&str`
+        "#]],
+    );
+}
+
+#[test]
+fn subst_field() {
+    check(
+        r#"
+struct Foo<T> { field: T }
+
+fn bar() {
+    let v = Foo { $0field: 123 };
+}
+    "#,
+        expect![[r#"
+            *field*
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
+            field: T
+            ```
+
+            ---
+
+            `T` = `i32`
+        "#]],
+    );
+    check(
+        r#"
+struct Foo<T> { field: T }
+
+fn bar() {
+    let field = 123;
+    let v = Foo { field$0 };
+}
+    "#,
+        expect![[r#"
+            *field*
+
+            ```rust
+            let field: i32
+            ```
+            ---
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
+            field: T
+            ```
+
+            ---
+
+            `T` = `i32`
+        "#]],
+    );
+    check(
+        r#"
+struct Foo<T> { field: T }
+
+fn bar() {
+    let v = Foo { field: 123 };
+    let Foo { field$0 } = v;
+}
+    "#,
+        expect![[r#"
+            *field*
+
+            ```rust
+            let field: i32
+            ```
+
+            ---
+
+            size = 4, align = 4
+            ---
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
+            field: T
+            ```
+
+            ---
+
+            `T` = `i32`
+        "#]],
+    );
+    check(
+        r#"
+struct Foo<T> { field: T }
+
+fn bar() {
+    let v = Foo { field: 123 };
+    let Foo { field$0: _ } = v;
+}
+    "#,
+        expect![[r#"
+            *field*
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
+            field: T
+            ```
+
+            ---
+
+            `T` = `i32`
+        "#]],
+    );
+    check(
+        r#"
+struct Foo<T> { field: T }
+
+fn bar() {
+    let v = Foo { field: 123 };
+    let _ = (&v).$0field;
+}
+    "#,
+        expect![[r#"
+            *field*
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
+            field: T
+            ```
+
+            ---
+
+            `T` = `i32`
+        "#]],
+    );
+    check(
+        r#"
+struct Foo<T>(T);
+
+fn bar() {
+    let v = Foo(123);
+    let _ = v.$00;
+}
+    "#,
+        expect![[r#"
+            *0*
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
+            0: T
+            ```
+
+            ---
+
+            `T` = `i32`
         "#]],
     );
 }

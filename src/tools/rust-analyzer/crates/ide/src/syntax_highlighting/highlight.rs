@@ -76,7 +76,7 @@ pub(super) fn name_like(
             Some(IdentClass::NameClass(NameClass::Definition(def))) => {
                 highlight_def(sema, krate, def) | HlMod::Definition
             }
-            Some(IdentClass::NameRefClass(NameRefClass::Definition(def))) => {
+            Some(IdentClass::NameRefClass(NameRefClass::Definition(def, _))) => {
                 highlight_def(sema, krate, def)
             }
             // FIXME: Fallback for 'static and '_, as we do not resolve these yet
@@ -260,7 +260,7 @@ fn highlight_name_ref(
         None => return HlTag::UnresolvedReference.into(),
     };
     let mut h = match name_class {
-        NameRefClass::Definition(def) => {
+        NameRefClass::Definition(def, _) => {
             if let Definition::Local(local) = &def {
                 let name = local.name(db);
                 let shadow_count = bindings_shadow_count.entry(name.clone()).or_default();

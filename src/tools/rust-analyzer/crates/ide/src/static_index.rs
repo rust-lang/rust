@@ -13,11 +13,10 @@ use ide_db::{
 use span::Edition;
 use syntax::{AstNode, SyntaxKind::*, SyntaxNode, TextRange, T};
 
-use crate::inlay_hints::InlayFieldsToResolve;
 use crate::navigation_target::UpmappingResult;
 use crate::{
-    hover::hover_for_definition,
-    inlay_hints::AdjustmentHintsMode,
+    hover::{hover_for_definition, SubstTyLen},
+    inlay_hints::{AdjustmentHintsMode, InlayFieldsToResolve},
     moniker::{def_to_kind, def_to_moniker, MonikerResult, SymbolInformationKind},
     parent_module::crates_for,
     Analysis, Fold, HoverConfig, HoverResult, InlayHint, InlayHintsConfig, TryToNav,
@@ -186,6 +185,7 @@ impl StaticIndex<'_> {
             max_trait_assoc_items_count: None,
             max_fields_count: Some(5),
             max_enum_variants_count: Some(5),
+            max_subst_ty_len: SubstTyLen::Unlimited,
         };
         let tokens = tokens.filter(|token| {
             matches!(
@@ -210,6 +210,7 @@ impl StaticIndex<'_> {
                         &sema,
                         file_id,
                         def,
+                        None,
                         &node,
                         None,
                         false,

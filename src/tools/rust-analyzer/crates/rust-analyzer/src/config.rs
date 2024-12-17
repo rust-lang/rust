@@ -50,6 +50,14 @@ mod patch_old_style;
 //  - Don't use abbreviations unless really necessary
 //  - foo_command = overrides the subcommand, foo_overrideCommand allows full overwriting, extra args only applies for foo_command
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum MaxSubstitutionLength {
+    Hide,
+    #[serde(untagged)]
+    Limit(usize),
+}
+
 // Defines the server-side configuration of the rust-analyzer. We generate
 // *parts* of VS Code's `package.json` config from this. Run `cargo test` to
 // re-generate that file.
@@ -119,6 +127,12 @@ config_data! {
         hover_documentation_keywords_enable: bool  = true,
         /// Use markdown syntax for links on hover.
         hover_links_enable: bool = true,
+        /// Whether to show what types are used as generic arguments in calls etc. on hover, and what is their max length to show such types, beyond it they will be shown with ellipsis.
+        ///
+        /// This can take three values: `null` means "unlimited", the string `"hide"` means to not show generic substitutions at all, and a number means to limit them to X characters.
+        ///
+        /// The default is 20 characters.
+        hover_maxSubstitutionLength: Option<MaxSubstitutionLength> = Some(MaxSubstitutionLength::Limit(20)),
         /// How to render the align information in a memory layout hover.
         hover_memoryLayout_alignment: Option<MemoryLayoutHoverRenderKindDef> = Some(MemoryLayoutHoverRenderKindDef::Hexadecimal),
         /// Whether to show memory layout data on hover.
@@ -1532,6 +1546,11 @@ impl Config {
             max_trait_assoc_items_count: self.hover_show_traitAssocItems().to_owned(),
             max_fields_count: self.hover_show_fields().to_owned(),
             max_enum_variants_count: self.hover_show_enumVariants().to_owned(),
+            max_subst_ty_len: match self.hover_maxSubstitutionLength() {
+                Some(MaxSubstitutionLength::Hide) => ide::SubstTyLen::Hide,
+                Some(MaxSubstitutionLength::Limit(limit)) => ide::SubstTyLen::LimitTo(*limit),
+                None => ide::SubstTyLen::Unlimited,
+            },
         }
     }
 
@@ -3432,6 +3451,20 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 "Do not query sysroot metadata, always use stitched sysroot.",
                 "Use `cargo metadata` to query sysroot metadata."
             ],
+        },
+        "Option<MaxSubstitutionLength>" => set! {
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "string",
+                    "enum": ["hide"]
+                },
+                {
+                    "type": "integer"
+                }
+            ]
         },
         _ => panic!("missing entry for {ty}: {default} (field {field})"),
     }
