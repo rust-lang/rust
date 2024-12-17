@@ -912,6 +912,13 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     fn check_doc_keyword(&self, meta: &MetaItemInner, hir_id: HirId) {
+        fn is_doc_keyword(s: Symbol) -> bool {
+            // FIXME: Once rustdoc can handle URL conflicts on case insensitive file systems, we
+            // can remove the `SelfTy` case here, remove `sym::SelfTy`, and update the
+            // `#[doc(keyword = "SelfTy")` attribute in `library/std/src/keyword_docs.rs`.
+            s <= kw::Union || s == sym::SelfTy
+        }
+
         let doc_keyword = meta.value_str().unwrap_or(kw::Empty);
         if doc_keyword == kw::Empty {
             self.doc_attr_str_error(meta, "keyword");
@@ -933,10 +940,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 return;
             }
         }
-        if !rustc_lexer::is_ident(doc_keyword.as_str()) {
-            self.dcx().emit_err(errors::DocKeywordInvalidIdent {
+        if !is_doc_keyword(doc_keyword) {
+            self.dcx().emit_err(errors::DocKeywordNotKeyword {
                 span: meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
-                doc_keyword,
+                keyword: doc_keyword,
             });
         }
     }
