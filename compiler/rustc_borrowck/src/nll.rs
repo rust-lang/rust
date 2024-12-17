@@ -124,6 +124,7 @@ pub(crate) fn compute_regions<'a, 'tcx>(
         borrow_set,
         move_data,
         &universal_region_relations,
+        &constraints,
     );
 
     let mut regioncx = RegionInferenceContext::new(
