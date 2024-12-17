@@ -17,6 +17,7 @@ pub(crate) struct PointerCheck<'tcx> {
 /// [NonMutatingUseContext::SharedBorrow].
 #[derive(Copy, Clone)]
 pub(crate) enum BorrowCheckMode {
+    IncludeBorrows,
     ExcludeBorrows,
 }
 
@@ -168,7 +169,7 @@ impl<'a, 'tcx> PointerFinder<'a, 'tcx> {
             ) => true,
             PlaceContext::MutatingUse(MutatingUseContext::Borrow)
             | PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow) => {
-                !matches!(self.borrow_check_mode, BorrowCheckMode::ExcludeBorrows)
+                matches!(self.borrow_check_mode, BorrowCheckMode::IncludeBorrows)
             }
             _ => false,
         }

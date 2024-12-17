@@ -17,6 +17,9 @@ middle_assert_gen_resume_after_panic = `gen` fn or block cannot be further itera
 middle_assert_misaligned_ptr_deref =
     misaligned pointer dereference: address must be a multiple of {$required} but is {$found}
 
+middle_assert_null_ptr_deref =
+    null pointer dereference occurred
+
 middle_assert_op_overflow =
     attempt to compute `{$left} {$op} {$right}`, which would overflow
 

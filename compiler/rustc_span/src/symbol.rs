@@ -1476,6 +1476,7 @@ symbols! {
         panic_location,
         panic_misaligned_pointer_dereference,
         panic_nounwind,
+        panic_null_pointer_dereference,
         panic_runtime,
         panic_str_2015,
         panic_unwind,
