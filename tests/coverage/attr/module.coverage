@@ -1,4 +1,3 @@
-   LL|       |#![feature(coverage_attribute)]
    LL|       |//@ edition: 2021
    LL|       |
    LL|       |// Checks that `#[coverage(..)]` can be applied to modules, and is inherited

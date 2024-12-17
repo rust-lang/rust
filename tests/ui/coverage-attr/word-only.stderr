@@ -1,5 +1,5 @@
 error: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:11:1
+  --> $DIR/word-only.rs:10:1
    |
 LL | #[coverage]
    | ^^^^^^^^^^^
@@ -12,7 +12,7 @@ LL | #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:16:5
+  --> $DIR/word-only.rs:15:5
    |
 LL |     #![coverage]
    |     ^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL |     #![coverage(on)]
    |
 
 error: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:20:1
+  --> $DIR/word-only.rs:19:1
    |
 LL | #[coverage]
    | ^^^^^^^^^^^
@@ -38,7 +38,7 @@ LL | #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:28:5
+  --> $DIR/word-only.rs:27:5
    |
 LL |     #[coverage]
    |     ^^^^^^^^^^^
@@ -51,7 +51,7 @@ LL |     #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:25:1
+  --> $DIR/word-only.rs:24:1
    |
 LL | #[coverage]
    | ^^^^^^^^^^^
@@ -64,7 +64,7 @@ LL | #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:38:5
+  --> $DIR/word-only.rs:37:5
    |
 LL |     #[coverage]
    |     ^^^^^^^^^^^
@@ -77,7 +77,7 @@ LL |     #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:43:5
+  --> $DIR/word-only.rs:42:5
    |
 LL |     #[coverage]
    |     ^^^^^^^^^^^
@@ -90,7 +90,7 @@ LL |     #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:34:1
+  --> $DIR/word-only.rs:33:1
    |
 LL | #[coverage]
    | ^^^^^^^^^^^
@@ -103,7 +103,7 @@ LL | #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:52:5
+  --> $DIR/word-only.rs:51:5
    |
 LL |     #[coverage]
    |     ^^^^^^^^^^^
@@ -116,7 +116,7 @@ LL |     #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:57:5
+  --> $DIR/word-only.rs:56:5
    |
 LL |     #[coverage]
    |     ^^^^^^^^^^^
@@ -129,7 +129,7 @@ LL |     #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:49:1
+  --> $DIR/word-only.rs:48:1
    |
 LL | #[coverage]
    | ^^^^^^^^^^^
@@ -142,7 +142,7 @@ LL | #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:63:1
+  --> $DIR/word-only.rs:62:1
    |
 LL | #[coverage]
    | ^^^^^^^^^^^
@@ -155,7 +155,7 @@ LL | #[coverage(on)]
    |
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/word-only.rs:20:1
+  --> $DIR/word-only.rs:19:1
    |
 LL | #[coverage]
    | ^^^^^^^^^^^
@@ -164,7 +164,7 @@ LL | struct MyStruct;
    | ---------------- not a function or closure
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/word-only.rs:34:1
+  --> $DIR/word-only.rs:33:1
    |
 LL |   #[coverage]
    |   ^^^^^^^^^^^
@@ -177,7 +177,7 @@ LL | | }
    | |_- not a function or closure
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/word-only.rs:38:5
+  --> $DIR/word-only.rs:37:5
    |
 LL |     #[coverage]
    |     ^^^^^^^^^^^
@@ -186,7 +186,7 @@ LL |     const X: u32;
    |     ------------- not a function or closure
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/word-only.rs:43:5
+  --> $DIR/word-only.rs:42:5
    |
 LL |     #[coverage]
    |     ^^^^^^^^^^^
@@ -195,7 +195,7 @@ LL |     type T;
    |     ------- not a function or closure
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/word-only.rs:28:5
+  --> $DIR/word-only.rs:27:5
    |
 LL |     #[coverage]
    |     ^^^^^^^^^^^
@@ -204,7 +204,7 @@ LL |     const X: u32 = 7;
    |     ----------------- not a function or closure
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/word-only.rs:52:5
+  --> $DIR/word-only.rs:51:5
    |
 LL |     #[coverage]
    |     ^^^^^^^^^^^
@@ -213,7 +213,7 @@ LL |     const X: u32 = 8;
    |     ----------------- not a function or closure
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/word-only.rs:57:5
+  --> $DIR/word-only.rs:56:5
    |
 LL |     #[coverage]
    |     ^^^^^^^^^^^

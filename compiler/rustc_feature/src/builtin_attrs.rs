@@ -480,10 +480,9 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(List: "address, kcfi, memory, thread"), DuplicatesOk,
         EncodeCrossCrate::No, experimental!(no_sanitize)
     ),
-    gated!(
+    ungated!(
         coverage, Normal, template!(OneOf: &[sym::off, sym::on]),
         ErrorPreceding, EncodeCrossCrate::No,
-        coverage_attribute, experimental!(coverage)
     ),
 
     ungated!(
