@@ -622,7 +622,7 @@ impl<'a> ShouldRun<'a> {
     ///
     /// This differs from [`path`] in that multiple calls to path will end up calling `make_run`
     /// multiple times, whereas a single call to `paths` will only ever generate a single call to
-    /// `paths`.
+    /// `make_run`.
     ///
     /// This is analogous to `all_krates`, although `all_krates` is gone now. Prefer [`path`] where possible.
     ///
