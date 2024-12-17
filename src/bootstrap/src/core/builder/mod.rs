@@ -613,7 +613,9 @@ impl<'a> ShouldRun<'a> {
         self
     }
 
-    // single, non-aliased path
+    /// single, non-aliased path
+    ///
+    /// Must be an on-disk path; use `alias` for names that do not correspond to on-disk paths.
     pub fn path(self, path: &str) -> Self {
         self.paths(&[path])
     }
