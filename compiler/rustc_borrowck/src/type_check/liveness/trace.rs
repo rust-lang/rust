@@ -15,9 +15,9 @@ use rustc_trait_selection::traits::query::type_op::{DropckOutlives, TypeOp, Type
 use tracing::debug;
 
 use crate::location::RichLocation;
+use crate::polonius;
 use crate::region_infer::values::{self, LiveLoans};
 use crate::type_check::liveness::local_use_map::LocalUseMap;
-use crate::type_check::liveness::polonius;
 use crate::type_check::{NormalizeLocation, TypeChecker};
 
 /// This is the heart of the liveness computation. For each variable X
@@ -590,7 +590,13 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
         // the destructor and must be live at this point.
         for &kind in &drop_data.dropck_result.kinds {
             Self::make_all_regions_live(self.elements, self.typeck, kind, live_at);
-            polonius::emit_drop_facts(self.typeck, dropped_local, &kind);
+            polonius::legacy::emit_drop_facts(
+                self.typeck.tcx(),
+                dropped_local,
+                &kind,
+                self.typeck.universal_regions,
+                self.typeck.all_facts,
+            );
         }
     }
 

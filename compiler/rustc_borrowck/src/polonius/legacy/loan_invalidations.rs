@@ -21,22 +21,22 @@ use crate::{
 /// Emit `loan_invalidated_at` facts.
 pub(super) fn emit_loan_invalidations<'tcx>(
     tcx: TyCtxt<'tcx>,
-    all_facts: &mut AllFacts,
-    location_table: &LocationTable,
+    facts: &mut AllFacts,
     body: &Body<'tcx>,
+    location_table: &LocationTable,
     borrow_set: &BorrowSet<'tcx>,
 ) {
     let dominators = body.basic_blocks.dominators();
     let mut visitor =
-        LoanInvalidationsGenerator { all_facts, borrow_set, tcx, location_table, body, dominators };
+        LoanInvalidationsGenerator { facts, borrow_set, tcx, location_table, body, dominators };
     visitor.visit_body(body);
 }
 
 struct LoanInvalidationsGenerator<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    all_facts: &'a mut AllFacts,
-    location_table: &'a LocationTable,
+    facts: &'a mut AllFacts,
     body: &'a Body<'tcx>,
+    location_table: &'a LocationTable,
     dominators: &'a Dominators<BasicBlock>,
     borrow_set: &'a BorrowSet<'tcx>,
 }
@@ -151,7 +151,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'a, 'tcx> {
                 let resume = self.location_table.start_index(resume.start_location());
                 for (i, data) in borrow_set.iter_enumerated() {
                     if borrow_of_local_data(data.borrowed_place) {
-                        self.all_facts.loan_invalidated_at.push((resume, i));
+                        self.facts.loan_invalidated_at.push((resume, i));
                     }
                 }
 
@@ -165,7 +165,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'a, 'tcx> {
                 let start = self.location_table.start_index(location);
                 for (i, data) in borrow_set.iter_enumerated() {
                     if borrow_of_local_data(data.borrowed_place) {
-                        self.all_facts.loan_invalidated_at.push((start, i));
+                        self.facts.loan_invalidated_at.push((start, i));
                     }
                 }
             }
@@ -409,7 +409,7 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
     /// Generates a new `loan_invalidated_at(L, B)` fact.
     fn emit_loan_invalidated_at(&mut self, b: BorrowIndex, l: Location) {
         let lidx = self.location_table.start_index(l);
-        self.all_facts.loan_invalidated_at.push((lidx, b));
+        self.facts.loan_invalidated_at.push((lidx, b));
     }
 
     fn check_activations(&mut self, location: Location) {
