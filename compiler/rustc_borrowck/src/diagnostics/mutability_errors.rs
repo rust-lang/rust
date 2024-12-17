@@ -1474,16 +1474,27 @@ fn suggest_ampmut<'tcx>(
     // let x: &i32 = &'a 5;
     //                ^^ lifetime annotation not allowed
     //
-    if let Some(assignment_rhs_span) = opt_assignment_rhs_span
-        && let Ok(src) = tcx.sess.source_map().span_to_snippet(assignment_rhs_span)
-        && let Some(stripped) = src.strip_prefix('&')
+    if let Some(rhs_span) = opt_assignment_rhs_span
+        && let Ok(rhs_str) = tcx.sess.source_map().span_to_snippet(rhs_span)
+        && let Some(rhs_str_no_amp) = rhs_str.strip_prefix('&')
     {
-        let is_raw_ref = stripped.trim_start().starts_with("raw ");
-        // We don't support raw refs yet
-        if is_raw_ref {
-            return None;
+        // Suggest changing `&raw const` to `&raw mut` if applicable.
+        if rhs_str_no_amp.trim_start().strip_prefix("raw const").is_some() {
+            let const_idx = rhs_str.find("const").unwrap() as u32;
+            let const_span = rhs_span
+                .with_lo(rhs_span.lo() + BytePos(const_idx))
+                .with_hi(rhs_span.lo() + BytePos(const_idx + "const".len() as u32));
+
+            return Some(AmpMutSugg {
+                has_sugg: true,
+                span: const_span,
+                suggestion: "mut".to_owned(),
+                additional: None,
+            });
         }
-        let is_mut = if let Some(rest) = stripped.trim_start().strip_prefix("mut") {
+
+        // Figure out if rhs already is `&mut`.
+        let is_mut = if let Some(rest) = rhs_str_no_amp.trim_start().strip_prefix("mut") {
             match rest.chars().next() {
                 // e.g. `&mut x`
                 Some(c) if c.is_whitespace() => true,
@@ -1500,9 +1511,8 @@ fn suggest_ampmut<'tcx>(
         // if the reference is already mutable then there is nothing we can do
         // here.
         if !is_mut {
-            let span = assignment_rhs_span;
             // shrink the span to just after the `&` in `&variable`
-            let span = span.with_lo(span.lo() + BytePos(1)).shrink_to_lo();
+            let span = rhs_span.with_lo(rhs_span.lo() + BytePos(1)).shrink_to_lo();
 
             // FIXME(Ezrashaw): returning is bad because we still might want to
             // update the annotated type, see #106857.
