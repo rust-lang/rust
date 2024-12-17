@@ -254,6 +254,12 @@ You can also use `--keep-stage 1` when running tests. Something like this:
 - Initial test run: `./x test tests/ui`
 - Subsequent test run: `./x test tests/ui --keep-stage 1`
 
+### Iterating the standard library with `--keep-stage`
+
+If you are making changes to the standard library, you can use `./x build
+--keep-stage 0 library` to iteratively rebuild the standard library without
+rebuilding the compiler.
+
 ## Using incremental compilation
 
 You can further enable the `--incremental` flag to save additional time in
