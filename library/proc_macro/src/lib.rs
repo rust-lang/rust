@@ -35,7 +35,12 @@
 
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[doc(hidden)]
-pub mod backend;
+pub mod bridge {
+    pub use super::backend::bridge::*;
+}
+#[unstable(feature = "proc_macro_internals", issue = "27812")]
+#[doc(hidden)]
+mod backend;
 
 mod diagnostic;
 mod escape;
@@ -69,7 +74,7 @@ use crate::escape::{EscapeOptions, escape_bytes};
 /// inside of a procedural macro, false if invoked from any other binary.
 #[stable(feature = "proc_macro_is_available", since = "1.57.0")]
 pub fn is_available() -> bool {
-    backend::bridge::client::is_available()
+    backend::client::is_available()
 }
 
 /// The main type provided by this crate, representing an abstract stream of
@@ -82,7 +87,7 @@ pub fn is_available() -> bool {
 #[rustc_diagnostic_item = "TokenStream"]
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 #[derive(Clone)]
-pub struct TokenStream(Option<backend::bridge::client::TokenStream>);
+pub struct TokenStream(Option<backend::client::TokenStream>);
 
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl !Send for TokenStream {}
@@ -158,7 +163,7 @@ impl TokenStream {
     #[unstable(feature = "proc_macro_expand", issue = "90765")]
     pub fn expand_expr(&self) -> Result<TokenStream, ExpandError> {
         let stream = self.0.as_ref().ok_or(ExpandError)?;
-        match backend::bridge::client::TokenStream::expand_expr(stream) {
+        match backend::client::TokenStream::expand_expr(stream) {
             Ok(stream) => Ok(TokenStream(Some(stream))),
             Err(_) => Err(ExpandError),
         }
@@ -177,7 +182,7 @@ impl FromStr for TokenStream {
     type Err = LexError;
 
     fn from_str(src: &str) -> Result<TokenStream, LexError> {
-        Ok(TokenStream(Some(backend::bridge::client::TokenStream::from_str(src))))
+        Ok(TokenStream(Some(backend::client::TokenStream::from_str(src))))
     }
 }
 
@@ -224,16 +229,13 @@ pub use quote::{quote, quote_span};
 
 fn tree_to_bridge_tree(
     tree: TokenTree,
-) -> backend::bridge::TokenTree<
-    backend::bridge::client::TokenStream,
-    backend::bridge::client::Span,
-    backend::bridge::client::Symbol,
-> {
+) -> backend::TokenTree<backend::client::TokenStream, backend::client::Span, backend::client::Symbol>
+{
     match tree {
-        TokenTree::Group(tt) => backend::bridge::TokenTree::Group(tt.0),
-        TokenTree::Punct(tt) => backend::bridge::TokenTree::Punct(tt.0),
-        TokenTree::Ident(tt) => backend::bridge::TokenTree::Ident(tt.0),
-        TokenTree::Literal(tt) => backend::bridge::TokenTree::Literal(tt.0),
+        TokenTree::Group(tt) => backend::TokenTree::Group(tt.0),
+        TokenTree::Punct(tt) => backend::TokenTree::Punct(tt.0),
+        TokenTree::Ident(tt) => backend::TokenTree::Ident(tt.0),
+        TokenTree::Literal(tt) => backend::TokenTree::Literal(tt.0),
     }
 }
 
@@ -241,9 +243,7 @@ fn tree_to_bridge_tree(
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl From<TokenTree> for TokenStream {
     fn from(tree: TokenTree) -> TokenStream {
-        TokenStream(Some(backend::bridge::client::TokenStream::from_token_tree(
-            tree_to_bridge_tree(tree),
-        )))
+        TokenStream(Some(backend::client::TokenStream::from_token_tree(tree_to_bridge_tree(tree))))
     }
 }
 
@@ -251,10 +251,10 @@ impl From<TokenTree> for TokenStream {
 /// `Extend<TokenTree>` with less monomorphization in calling crates.
 struct ConcatTreesHelper {
     trees: Vec<
-        backend::bridge::TokenTree<
-            backend::bridge::client::TokenStream,
-            backend::bridge::client::Span,
-            backend::bridge::client::Symbol,
+        backend::TokenTree<
+            backend::client::TokenStream,
+            backend::client::Span,
+            backend::client::Symbol,
         >,
     >,
 }
@@ -272,7 +272,7 @@ impl ConcatTreesHelper {
         if self.trees.is_empty() {
             TokenStream(None)
         } else {
-            TokenStream(Some(backend::bridge::client::TokenStream::concat_trees(None, self.trees)))
+            TokenStream(Some(backend::client::TokenStream::concat_trees(None, self.trees)))
         }
     }
 
@@ -280,15 +280,14 @@ impl ConcatTreesHelper {
         if self.trees.is_empty() {
             return;
         }
-        stream.0 =
-            Some(backend::bridge::client::TokenStream::concat_trees(stream.0.take(), self.trees))
+        stream.0 = Some(backend::client::TokenStream::concat_trees(stream.0.take(), self.trees))
     }
 }
 
 /// Non-generic helper for implementing `FromIterator<TokenStream>` and
 /// `Extend<TokenStream>` with less monomorphization in calling crates.
 struct ConcatStreamsHelper {
-    streams: Vec<backend::bridge::client::TokenStream>,
+    streams: Vec<backend::client::TokenStream>,
 }
 
 impl ConcatStreamsHelper {
@@ -306,10 +305,7 @@ impl ConcatStreamsHelper {
         if self.streams.len() <= 1 {
             TokenStream(self.streams.pop())
         } else {
-            TokenStream(Some(backend::bridge::client::TokenStream::concat_streams(
-                None,
-                self.streams,
-            )))
+            TokenStream(Some(backend::client::TokenStream::concat_streams(None, self.streams)))
         }
     }
 
@@ -321,8 +317,7 @@ impl ConcatStreamsHelper {
         if base.is_none() && self.streams.len() == 1 {
             stream.0 = self.streams.pop();
         } else {
-            stream.0 =
-                Some(backend::bridge::client::TokenStream::concat_streams(base, self.streams));
+            stream.0 = Some(backend::client::TokenStream::concat_streams(base, self.streams));
         }
     }
 }
@@ -373,8 +368,7 @@ impl Extend<TokenStream> for TokenStream {
 /// Public implementation details for the `TokenStream` type, such as iterators.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 pub mod token_stream {
-    use crate::backend::bridge;
-    use crate::{Group, Ident, Literal, Punct, TokenStream, TokenTree};
+    use crate::{Group, Ident, Literal, Punct, TokenStream, TokenTree, backend};
 
     /// An iterator over `TokenStream`'s `TokenTree`s.
     /// The iteration is "shallow", e.g., the iterator doesn't recurse into delimited groups,
@@ -383,10 +377,10 @@ pub mod token_stream {
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub struct IntoIter(
         std::vec::IntoIter<
-            bridge::TokenTree<
-                bridge::client::TokenStream,
-                bridge::client::Span,
-                bridge::client::Symbol,
+            backend::TokenTree<
+                backend::client::TokenStream,
+                backend::client::Span,
+                backend::client::Symbol,
             >,
         >,
     );
@@ -397,10 +391,10 @@ pub mod token_stream {
 
         fn next(&mut self) -> Option<TokenTree> {
             self.0.next().map(|tree| match tree {
-                bridge::TokenTree::Group(tt) => TokenTree::Group(Group(tt)),
-                bridge::TokenTree::Punct(tt) => TokenTree::Punct(Punct(tt)),
-                bridge::TokenTree::Ident(tt) => TokenTree::Ident(Ident(tt)),
-                bridge::TokenTree::Literal(tt) => TokenTree::Literal(Literal(tt)),
+                backend::TokenTree::Group(tt) => TokenTree::Group(Group(tt)),
+                backend::TokenTree::Punct(tt) => TokenTree::Punct(Punct(tt)),
+                backend::TokenTree::Ident(tt) => TokenTree::Ident(Ident(tt)),
+                backend::TokenTree::Literal(tt) => TokenTree::Literal(Literal(tt)),
             })
         }
 
@@ -444,7 +438,7 @@ mod quote;
 /// A region of source code, along with macro expansion information.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 #[derive(Copy, Clone)]
-pub struct Span(backend::bridge::client::Span);
+pub struct Span(backend::client::Span);
 
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl !Send for Span {}
@@ -466,7 +460,7 @@ impl Span {
     /// A span that resolves at the macro definition site.
     #[unstable(feature = "proc_macro_def_site", issue = "54724")]
     pub fn def_site() -> Span {
-        Span(backend::bridge::client::Span::def_site())
+        Span(backend::client::Span::def_site())
     }
 
     /// The span of the invocation of the current procedural macro.
@@ -475,7 +469,7 @@ impl Span {
     /// at the macro call site will be able to refer to them as well.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn call_site() -> Span {
-        Span(backend::bridge::client::Span::call_site())
+        Span(backend::client::Span::call_site())
     }
 
     /// A span that represents `macro_rules` hygiene, and sometimes resolves at the macro
@@ -484,7 +478,7 @@ impl Span {
     /// The span location is taken from the call-site.
     #[stable(feature = "proc_macro_mixed_site", since = "1.45.0")]
     pub fn mixed_site() -> Span {
-        Span(backend::bridge::client::Span::mixed_site())
+        Span(backend::client::Span::mixed_site())
     }
 
     /// The original source file into which this span points.
@@ -593,7 +587,7 @@ impl Span {
     #[doc(hidden)]
     #[unstable(feature = "proc_macro_internals", issue = "27812")]
     pub fn recover_proc_macro_span(id: usize) -> Span {
-        Span(backend::bridge::client::Span::recover_proc_macro_span(id))
+        Span(backend::client::Span::recover_proc_macro_span(id))
     }
 
     diagnostic_method!(error, Level::Error);
@@ -613,7 +607,7 @@ impl fmt::Debug for Span {
 /// The source file of a given `Span`.
 #[unstable(feature = "proc_macro_span", issue = "54725")]
 #[derive(Clone)]
-pub struct SourceFile(backend::bridge::client::SourceFile);
+pub struct SourceFile(backend::client::SourceFile);
 
 impl SourceFile {
     /// Gets the path to this source file.
@@ -786,9 +780,7 @@ impl fmt::Display for TokenTree {
 /// A `Group` internally contains a `TokenStream` which is surrounded by `Delimiter`s.
 #[derive(Clone)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
-pub struct Group(
-    backend::bridge::Group<backend::bridge::client::TokenStream, backend::bridge::client::Span>,
-);
+pub struct Group(backend::Group<backend::client::TokenStream, backend::client::Span>);
 
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl !Send for Group {}
@@ -837,10 +829,10 @@ impl Group {
     /// method below.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn new(delimiter: Delimiter, stream: TokenStream) -> Group {
-        Group(backend::bridge::Group {
+        Group(backend::Group {
             delimiter,
             stream: stream.0,
-            span: backend::bridge::DelimSpan::from_single(Span::call_site().0),
+            span: backend::DelimSpan::from_single(Span::call_site().0),
         })
     }
 
@@ -901,7 +893,7 @@ impl Group {
     /// tokens at the level of the `Group`.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn set_span(&mut self, span: Span) {
-        self.0.span = backend::bridge::DelimSpan::from_single(span.0);
+        self.0.span = backend::DelimSpan::from_single(span.0);
     }
 }
 
@@ -933,7 +925,7 @@ impl fmt::Debug for Group {
 /// forms of `Spacing` returned.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 #[derive(Clone)]
-pub struct Punct(backend::bridge::Punct<backend::bridge::client::Span>);
+pub struct Punct(backend::Punct<backend::client::Span>);
 
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl !Send for Punct {}
@@ -984,7 +976,7 @@ impl Punct {
         if !LEGAL_CHARS.contains(&ch) {
             panic!("unsupported character `{:?}`", ch);
         }
-        Punct(backend::bridge::Punct {
+        Punct(backend::Punct {
             ch: ch as u8,
             joint: spacing == Spacing::Joint,
             span: Span::call_site().0,
@@ -1055,9 +1047,7 @@ impl PartialEq<Punct> for char {
 /// An identifier (`ident`).
 #[derive(Clone)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
-pub struct Ident(
-    backend::bridge::Ident<backend::bridge::client::Span, backend::bridge::client::Symbol>,
-);
+pub struct Ident(backend::Ident<backend::client::Span, backend::client::Symbol>);
 
 impl Ident {
     /// Creates a new `Ident` with the given `string` as well as the specified
@@ -1081,8 +1071,8 @@ impl Ident {
     /// tokens, requires a `Span` to be specified at construction.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn new(string: &str, span: Span) -> Ident {
-        Ident(backend::bridge::Ident {
-            sym: backend::bridge::client::Symbol::new_ident(string, false),
+        Ident(backend::Ident {
+            sym: backend::client::Symbol::new_ident(string, false),
             is_raw: false,
             span: span.0,
         })
@@ -1094,8 +1084,8 @@ impl Ident {
     /// (e.g. `self`, `super`) are not supported, and will cause a panic.
     #[stable(feature = "proc_macro_raw_ident", since = "1.47.0")]
     pub fn new_raw(string: &str, span: Span) -> Ident {
-        Ident(backend::bridge::Ident {
-            sym: backend::bridge::client::Symbol::new_ident(string, true),
+        Ident(backend::Ident {
+            sym: backend::client::Symbol::new_ident(string, true),
             is_raw: true,
             span: span.0,
         })
@@ -1143,9 +1133,7 @@ impl fmt::Debug for Ident {
 /// Boolean literals like `true` and `false` do not belong here, they are `Ident`s.
 #[derive(Clone)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
-pub struct Literal(
-    backend::bridge::Literal<backend::bridge::client::Span, backend::bridge::client::Symbol>,
-);
+pub struct Literal(backend::Literal<backend::client::Span, backend::client::Symbol>);
 
 macro_rules! suffixed_int_literals {
     ($($name:ident => $kind:ident,)*) => ($(
@@ -1162,10 +1150,10 @@ macro_rules! suffixed_int_literals {
         /// below.
         #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
         pub fn $name(n: $kind) -> Literal {
-            Literal(backend::bridge::Literal {
-                kind: backend::bridge::LitKind::Integer,
-                symbol: backend::bridge::client::Symbol::new(&n.to_string()),
-                suffix: Some(backend::bridge::client::Symbol::new(stringify!($kind))),
+            Literal(backend::Literal {
+                kind: backend::LitKind::Integer,
+                symbol: backend::client::Symbol::new(&n.to_string()),
+                suffix: Some(backend::client::Symbol::new(stringify!($kind))),
                 span: Span::call_site().0,
             })
         }
@@ -1189,9 +1177,9 @@ macro_rules! unsuffixed_int_literals {
         /// below.
         #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
         pub fn $name(n: $kind) -> Literal {
-            Literal(backend::bridge::Literal {
-                kind: backend::bridge::LitKind::Integer,
-                symbol: backend::bridge::client::Symbol::new(&n.to_string()),
+            Literal(backend::Literal {
+                kind: backend::LitKind::Integer,
+                symbol: backend::client::Symbol::new(&n.to_string()),
                 suffix: None,
                 span: Span::call_site().0,
             })
@@ -1200,11 +1188,11 @@ macro_rules! unsuffixed_int_literals {
 }
 
 impl Literal {
-    fn new(kind: backend::bridge::LitKind, value: &str, suffix: Option<&str>) -> Self {
-        Literal(backend::bridge::Literal {
+    fn new(kind: backend::LitKind, value: &str, suffix: Option<&str>) -> Self {
+        Literal(backend::Literal {
             kind,
-            symbol: backend::bridge::client::Symbol::new(value),
-            suffix: suffix.map(backend::bridge::client::Symbol::new),
+            symbol: backend::client::Symbol::new(value),
+            suffix: suffix.map(backend::client::Symbol::new),
             span: Span::call_site().0,
         })
     }
@@ -1260,7 +1248,7 @@ impl Literal {
         if !repr.contains('.') {
             repr.push_str(".0");
         }
-        Literal::new(backend::bridge::LitKind::Float, &repr, None)
+        Literal::new(backend::LitKind::Float, &repr, None)
     }
 
     /// Creates a new suffixed floating-point literal.
@@ -1281,7 +1269,7 @@ impl Literal {
         if !n.is_finite() {
             panic!("Invalid float literal {n}");
         }
-        Literal::new(backend::bridge::LitKind::Float, &n.to_string(), Some("f32"))
+        Literal::new(backend::LitKind::Float, &n.to_string(), Some("f32"))
     }
 
     /// Creates a new unsuffixed floating-point literal.
@@ -1305,7 +1293,7 @@ impl Literal {
         if !repr.contains('.') {
             repr.push_str(".0");
         }
-        Literal::new(backend::bridge::LitKind::Float, &repr, None)
+        Literal::new(backend::LitKind::Float, &repr, None)
     }
 
     /// Creates a new suffixed floating-point literal.
@@ -1326,7 +1314,7 @@ impl Literal {
         if !n.is_finite() {
             panic!("Invalid float literal {n}");
         }
-        Literal::new(backend::bridge::LitKind::Float, &n.to_string(), Some("f64"))
+        Literal::new(backend::LitKind::Float, &n.to_string(), Some("f64"))
     }
 
     /// String literal.
@@ -1338,7 +1326,7 @@ impl Literal {
             escape_nonascii: false,
         };
         let repr = escape_bytes(string.as_bytes(), escape);
-        Literal::new(backend::bridge::LitKind::Str, &repr, None)
+        Literal::new(backend::LitKind::Str, &repr, None)
     }
 
     /// Character literal.
@@ -1350,7 +1338,7 @@ impl Literal {
             escape_nonascii: false,
         };
         let repr = escape_bytes(ch.encode_utf8(&mut [0u8; 4]).as_bytes(), escape);
-        Literal::new(backend::bridge::LitKind::Char, &repr, None)
+        Literal::new(backend::LitKind::Char, &repr, None)
     }
 
     /// Byte character literal.
@@ -1362,7 +1350,7 @@ impl Literal {
             escape_nonascii: true,
         };
         let repr = escape_bytes(&[byte], escape);
-        Literal::new(backend::bridge::LitKind::Byte, &repr, None)
+        Literal::new(backend::LitKind::Byte, &repr, None)
     }
 
     /// Byte string literal.
@@ -1374,7 +1362,7 @@ impl Literal {
             escape_nonascii: true,
         };
         let repr = escape_bytes(bytes, escape);
-        Literal::new(backend::bridge::LitKind::ByteStr, &repr, None)
+        Literal::new(backend::LitKind::ByteStr, &repr, None)
     }
 
     /// C string literal.
@@ -1386,7 +1374,7 @@ impl Literal {
             escape_nonascii: false,
         };
         let repr = escape_bytes(string.to_bytes(), escape);
-        Literal::new(backend::bridge::LitKind::CStr, &repr, None)
+        Literal::new(backend::LitKind::CStr, &repr, None)
     }
 
     /// Returns the span encompassing this literal.
@@ -1444,27 +1432,27 @@ impl Literal {
         }
 
         self.with_symbol_and_suffix(|symbol, suffix| match self.0.kind {
-            backend::bridge::LitKind::Byte => f(&["b'", symbol, "'", suffix]),
-            backend::bridge::LitKind::Char => f(&["'", symbol, "'", suffix]),
-            backend::bridge::LitKind::Str => f(&["\"", symbol, "\"", suffix]),
-            backend::bridge::LitKind::StrRaw(n) => {
+            backend::LitKind::Byte => f(&["b'", symbol, "'", suffix]),
+            backend::LitKind::Char => f(&["'", symbol, "'", suffix]),
+            backend::LitKind::Str => f(&["\"", symbol, "\"", suffix]),
+            backend::LitKind::StrRaw(n) => {
                 let hashes = get_hashes_str(n);
                 f(&["r", hashes, "\"", symbol, "\"", hashes, suffix])
             }
-            backend::bridge::LitKind::ByteStr => f(&["b\"", symbol, "\"", suffix]),
-            backend::bridge::LitKind::ByteStrRaw(n) => {
+            backend::LitKind::ByteStr => f(&["b\"", symbol, "\"", suffix]),
+            backend::LitKind::ByteStrRaw(n) => {
                 let hashes = get_hashes_str(n);
                 f(&["br", hashes, "\"", symbol, "\"", hashes, suffix])
             }
-            backend::bridge::LitKind::CStr => f(&["c\"", symbol, "\"", suffix]),
-            backend::bridge::LitKind::CStrRaw(n) => {
+            backend::LitKind::CStr => f(&["c\"", symbol, "\"", suffix]),
+            backend::LitKind::CStrRaw(n) => {
                 let hashes = get_hashes_str(n);
                 f(&["cr", hashes, "\"", symbol, "\"", hashes, suffix])
             }
 
-            backend::bridge::LitKind::Integer
-            | backend::bridge::LitKind::Float
-            | backend::bridge::LitKind::ErrWithGuar => f(&[symbol, suffix]),
+            backend::LitKind::Integer | backend::LitKind::Float | backend::LitKind::ErrWithGuar => {
+                f(&[symbol, suffix])
+            }
         })
     }
 }
@@ -1484,7 +1472,7 @@ impl FromStr for Literal {
     type Err = LexError;
 
     fn from_str(src: &str) -> Result<Self, LexError> {
-        match backend::bridge::client::FreeFunctions::literal_from_str(src) {
+        match backend::client::FreeFunctions::literal_from_str(src) {
             Ok(literal) => Ok(Literal(literal)),
             Err(()) => Err(LexError),
         }
@@ -1533,9 +1521,9 @@ pub mod tracked_env {
     #[unstable(feature = "proc_macro_tracked_env", issue = "99515")]
     pub fn var<K: AsRef<OsStr> + AsRef<str>>(key: K) -> Result<String, VarError> {
         let key: &str = key.as_ref();
-        let value = crate::backend::bridge::client::FreeFunctions::injected_env_var(key)
+        let value = crate::backend::client::FreeFunctions::injected_env_var(key)
             .map_or_else(|| env::var(key), Ok);
-        crate::backend::bridge::client::FreeFunctions::track_env_var(key, value.as_deref().ok());
+        crate::backend::client::FreeFunctions::track_env_var(key, value.as_deref().ok());
         value
     }
 }
@@ -1550,6 +1538,6 @@ pub mod tracked_path {
     #[unstable(feature = "track_path", issue = "99515")]
     pub fn path<P: AsRef<str>>(path: P) {
         let path: &str = path.as_ref();
-        crate::backend::bridge::client::FreeFunctions::track_path(path);
+        crate::backend::client::FreeFunctions::track_path(path);
     }
 }

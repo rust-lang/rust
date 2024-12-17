@@ -1,7 +1,6 @@
+pub(crate) mod arena;
 pub mod bridge;
+pub(crate) mod fxhash;
 
 #[allow(unsafe_code)]
-pub(self) mod arena;
-
-#[forbid(unsafe_code)]
-pub(self) mod fxhash;
+pub use bridge::*;

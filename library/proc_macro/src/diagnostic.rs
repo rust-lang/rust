@@ -163,8 +163,8 @@ impl Diagnostic {
     pub fn emit(self) {
         fn to_internal(
             diag: Diagnostic,
-        ) -> crate::backend::bridge::Diagnostic<crate::backend::bridge::client::Span> {
-            crate::backend::bridge::Diagnostic {
+        ) -> crate::backend::Diagnostic<crate::backend::client::Span> {
+            crate::backend::Diagnostic {
                 level: diag.level,
                 message: diag.message,
                 spans: diag.spans.into_iter().map(|s| s.0).collect(),
@@ -172,6 +172,6 @@ impl Diagnostic {
             }
         }
 
-        crate::backend::bridge::client::FreeFunctions::emit_diagnostic(to_internal(self));
+        crate::backend::client::FreeFunctions::emit_diagnostic(to_internal(self));
     }
 }
