@@ -11,7 +11,6 @@
 #![feature(async_iter_from_iter)]
 #![feature(async_iterator)]
 #![feature(bigint_helper_methods)]
-#![feature(cell_update)]
 #![feature(clone_to_uninit)]
 #![feature(const_black_box)]
 #![feature(const_eval_select)]
