@@ -549,8 +549,6 @@ impl<T: Copy> Cell<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(cell_update)]
-    ///
     /// use std::cell::Cell;
     ///
     /// let c = Cell::new(5);
@@ -558,7 +556,7 @@ impl<T: Copy> Cell<T> {
     /// assert_eq!(c.get(), 6);
     /// ```
     #[inline]
-    #[unstable(feature = "cell_update", issue = "50186")]
+    #[stable(feature = "cell_update", since = "CURRENT_RUSTC_VERSION")]
     pub fn update(&self, f: impl FnOnce(T) -> T) {
         let old = self.get();
         self.set(f(old));
