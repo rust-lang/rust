@@ -13,7 +13,6 @@ fn ergonomic_closure_clone() {
 
     let s3 = use || {
         //~^ ERROR `.use` calls are experimental [E0658]
-        //~| ERROR use of moved value: `s1` [E0382]
         s1
     };
 }

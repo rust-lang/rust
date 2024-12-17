@@ -28,30 +28,6 @@ LL |     let s3 = use || {
    = help: add `#![feature(ergonomic_clones)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0382]: use of moved value: `s1`
-  --> $DIR/feature-gate-ergonomic-clones.rs:14:14
-   |
-LL |     let s1 = String::from("hi!");
-   |         -- move occurs because `s1` has type `String`, which does not implement the `Copy` trait
-LL |
-LL |     let s2 = use || {
-   |              ------ value moved into closure here
-LL |
-LL |         s1
-   |         -- variable moved due to use in closure
-...
-LL |     let s3 = use || {
-   |              ^^^^^^ value used here after move
-...
-LL |         s1
-   |         -- use occurs due to use in closure
-   |
-help: consider cloning the value if the performance cost is acceptable
-   |
-LL |         s1.clone()
-   |           ++++++++
+error: aborting due to 3 previous errors
 
-error: aborting due to 4 previous errors
-
-Some errors have detailed explanations: E0382, E0658.
-For more information about an error, try `rustc --explain E0382`.
+For more information about this error, try `rustc --explain E0658`.

@@ -52,6 +52,9 @@ pub enum UpvarCapture {
     /// depending on inference.
     ByValue,
 
+    /// Upvar is captured by use. This is true when the closure is labeled `use`.
+    ByUse,
+
     /// Upvar is captured by reference.
     ByRef(BorrowKind),
 }
@@ -179,7 +182,7 @@ impl<'tcx> CapturedPlace<'tcx> {
 
     pub fn is_by_ref(&self) -> bool {
         match self.info.capture_kind {
-            ty::UpvarCapture::ByValue => false,
+            ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => false,
             ty::UpvarCapture::ByRef(..) => true,
         }
     }
@@ -215,7 +218,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn closure_captures(self, def_id: LocalDefId) -> &'tcx [&'tcx ty::CapturedPlace<'tcx>] {
         if !self.is_closure_like(def_id.to_def_id()) {
             return &[];
-        };
+        }
         self.closure_typeinfo(def_id).captures
     }
 }
