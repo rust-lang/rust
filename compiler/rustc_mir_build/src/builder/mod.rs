@@ -1,3 +1,8 @@
+//! This module used to be named `build`, but that was causing GitHub's
+//! "Go to file" feature to silently ignore all files in the module, probably
+//! because it assumes that "build" is a build-output directory.
+//! See <https://github.com/rust-lang/rust/pull/134365>.
+
 use itertools::Itertools;
 use rustc_abi::{ExternAbi, FieldIdx};
 use rustc_apfloat::Float;
@@ -23,8 +28,8 @@ use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol};
 
 use super::lints;
-use crate::build::expr::as_place::PlaceBuilder;
-use crate::build::scope::DropKind;
+use crate::builder::expr::as_place::PlaceBuilder;
+use crate::builder::scope::DropKind;
 
 pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
     tcx: TyCtxt<'tcx>,
