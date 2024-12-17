@@ -10,5 +10,5 @@ libc = "0.2.73"
 
 [build-dependencies]
 # tidy-alphabetical-start
-cc = "1.1.23"
+cc = "1.2.4"
 # tidy-alphabetical-end
