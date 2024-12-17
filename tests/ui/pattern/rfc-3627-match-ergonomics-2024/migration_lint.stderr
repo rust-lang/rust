@@ -210,6 +210,7 @@ LL |         (Some(mut x), migration_lint_macros::mixed_edition_pat!(y)) => {
    |               |
    |               requires binding by-value, but the implicit default is by-reference
    |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
    = note: this error originates in the macro `migration_lint_macros::mixed_edition_pat` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: make the implied reference pattern explicit
    |

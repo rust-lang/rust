@@ -105,6 +105,7 @@ error: this pattern relies on behavior which may change in edition 2024
 LL | test_pat_on_type![(&x,): &(&T,)];
    |                    ^ cannot implicitly match against multiple layers of reference
    |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 help: make the implied reference pattern explicit
    |
 LL | test_pat_on_type![&(&x,): &(&T,)];
@@ -116,6 +117,7 @@ error: this pattern relies on behavior which may change in edition 2024
 LL | test_pat_on_type![(&mut x,): &(&mut T,)];
    |                    ^^^^ cannot implicitly match against multiple layers of reference
    |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 help: make the implied reference pattern explicit
    |
 LL | test_pat_on_type![&(&mut x,): &(&mut T,)];
@@ -127,6 +129,7 @@ error: this pattern relies on behavior which may change in edition 2024
 LL | test_pat_on_type![Foo { f: &(x,) }: &Foo];
    |                            ^ cannot implicitly match against multiple layers of reference
    |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 help: make the implied reference pattern explicit
    |
 LL | test_pat_on_type![&Foo { f: &(x,) }: &Foo];
@@ -138,6 +141,7 @@ error: this pattern relies on behavior which may change in edition 2024
 LL | test_pat_on_type![(mut x,): &(T,)];
    |                    ^^^ requires binding by-value, but the implicit default is by-reference
    |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 help: make the implied reference pattern explicit
    |
 LL | test_pat_on_type![&(mut x,): &(T,)];
@@ -149,6 +153,7 @@ error: this pattern relies on behavior which may change in edition 2024
 LL | test_pat_on_type![(ref x,): &(T,)];
    |                    ^^^ cannot override to bind by-reference when that is the implicit default
    |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 help: make the implied reference pattern explicit
    |
 LL | test_pat_on_type![&(ref x,): &(T,)];
@@ -160,6 +165,7 @@ error: this pattern relies on behavior which may change in edition 2024
 LL | test_pat_on_type![(ref mut x,): &mut (T,)];
    |                    ^^^^^^^ cannot override to bind by-reference when that is the implicit default
    |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 help: make the implied reference pattern explicit
    |
 LL | test_pat_on_type![&mut (ref mut x,): &mut (T,)];
@@ -171,6 +177,7 @@ error: this pattern relies on behavior which may change in edition 2024
 LL |         (&x,) => x,
    |          ^ cannot implicitly match against multiple layers of reference
    |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 help: make the implied reference pattern explicit
    |
 LL |         &(&x,) => x,

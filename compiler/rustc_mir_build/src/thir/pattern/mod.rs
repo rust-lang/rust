@@ -70,6 +70,10 @@ pub(super) fn pat_from_hir<'a, 'tcx>(
         if is_hard_error {
             let mut err =
                 tcx.dcx().struct_span_err(spans, fluent::mir_build_rust_2024_incompatible_pat);
+            if let Some(info) = lint::builtin::RUST_2024_INCOMPATIBLE_PAT.future_incompatible {
+                // provide the same reference link as the lint
+                err.note(format!("for more information, see {}", info.reference));
+            }
             err.subdiagnostic(sugg);
             err.emit();
         } else {
