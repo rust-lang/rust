@@ -11,13 +11,14 @@ use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, ConstCodegenMethods, StaticCodegenMethods,
 };
 use rustc_middle::bug;
-use rustc_middle::mir::coverage::MappingKind;
+use rustc_middle::mir::coverage::{
+    CovTerm, CoverageIdsInfo, Expression, FunctionCoverageInfo, Mapping, MappingKind, Op,
+};
 use rustc_middle::ty::{Instance, TyCtxt};
 use rustc_target::spec::HasTargetSpec;
 use tracing::debug;
 
 use crate::common::CodegenCx;
-use crate::coverageinfo::map_data::FunctionCoverage;
 use crate::coverageinfo::mapgen::{GlobalFileTable, VirtualFileMapping, span_file_name};
 use crate::coverageinfo::{ffi, llvm_cov};
 use crate::llvm;
@@ -45,20 +46,25 @@ impl<'tcx> CovfunRecord<'tcx> {
 
 pub(crate) fn prepare_covfun_record<'tcx>(
     tcx: TyCtxt<'tcx>,
-    global_file_table: &GlobalFileTable,
+    global_file_table: &mut GlobalFileTable,
     instance: Instance<'tcx>,
-    function_coverage: &FunctionCoverage<'tcx>,
+    is_used: bool,
 ) -> Option<CovfunRecord<'tcx>> {
+    let fn_cov_info = tcx.instance_mir(instance.def).function_coverage_info.as_deref()?;
+    let ids_info = tcx.coverage_ids_info(instance.def);
+
+    let expressions = prepare_expressions(fn_cov_info, ids_info, is_used);
+
     let mut covfun = CovfunRecord {
         mangled_function_name: tcx.symbol_name(instance).name,
-        source_hash: function_coverage.source_hash(),
-        is_used: function_coverage.is_used(),
+        source_hash: if is_used { fn_cov_info.function_source_hash } else { 0 },
+        is_used,
         virtual_file_mapping: VirtualFileMapping::default(),
-        expressions: function_coverage.counter_expressions().collect::<Vec<_>>(),
+        expressions,
         regions: ffi::Regions::default(),
     };
 
-    fill_region_tables(tcx, global_file_table, function_coverage, &mut covfun);
+    fill_region_tables(tcx, global_file_table, fn_cov_info, ids_info, &mut covfun);
 
     if covfun.regions.has_no_regions() {
         if covfun.is_used {
@@ -72,20 +78,50 @@ pub(crate) fn prepare_covfun_record<'tcx>(
     Some(covfun)
 }
 
+/// Convert the function's coverage-counter expressions into a form suitable for FFI.
+fn prepare_expressions(
+    fn_cov_info: &FunctionCoverageInfo,
+    ids_info: &CoverageIdsInfo,
+    is_used: bool,
+) -> Vec<ffi::CounterExpression> {
+    // If any counters or expressions were removed by MIR opts, replace their
+    // terms with zero.
+    let counter_for_term = |term| {
+        if !is_used || ids_info.is_zero_term(term) {
+            ffi::Counter::ZERO
+        } else {
+            ffi::Counter::from_term(term)
+        }
+    };
+
+    // We know that LLVM will optimize out any unused expressions before
+    // producing the final coverage map, so there's no need to do the same
+    // thing on the Rust side unless we're confident we can do much better.
+    // (See `CounterExpressionsMinimizer` in `CoverageMappingWriter.cpp`.)
+    fn_cov_info
+        .expressions
+        .iter()
+        .map(move |&Expression { lhs, op, rhs }| ffi::CounterExpression {
+            lhs: counter_for_term(lhs),
+            kind: match op {
+                Op::Add => ffi::ExprKind::Add,
+                Op::Subtract => ffi::ExprKind::Subtract,
+            },
+            rhs: counter_for_term(rhs),
+        })
+        .collect::<Vec<_>>()
+}
+
 /// Populates the mapping region tables in the current function's covfun record.
 fn fill_region_tables<'tcx>(
     tcx: TyCtxt<'tcx>,
-    global_file_table: &GlobalFileTable,
-    function_coverage: &FunctionCoverage<'tcx>,
+    global_file_table: &mut GlobalFileTable,
+    fn_cov_info: &'tcx FunctionCoverageInfo,
+    ids_info: &'tcx CoverageIdsInfo,
     covfun: &mut CovfunRecord<'tcx>,
 ) {
-    let counter_regions = function_coverage.counter_regions();
-    if counter_regions.is_empty() {
-        return;
-    }
-
     // Currently a function's mappings must all be in the same file as its body span.
-    let file_name = span_file_name(tcx, function_coverage.function_coverage_info.body_span);
+    let file_name = span_file_name(tcx, fn_cov_info.body_span);
 
     // Look up the global file ID for that filename.
     let global_file_id = global_file_table.global_file_id_for_file_name(file_name);
@@ -99,10 +135,14 @@ fn fill_region_tables<'tcx>(
 
     // For each counter/region pair in this function+file, convert it to a
     // form suitable for FFI.
-    for (mapping_kind, region) in counter_regions {
-        debug!("Adding counter {mapping_kind:?} to map for {region:?}");
-        let span = ffi::CoverageSpan::from_source_region(local_file_id, region);
-        match mapping_kind {
+    let is_zero_term = |term| !covfun.is_used || ids_info.is_zero_term(term);
+    for Mapping { kind, ref source_region } in &fn_cov_info.mappings {
+        // If the mapping refers to counters/expressions that were removed by
+        // MIR opts, replace those occurrences with zero.
+        let kind = kind.map_terms(|term| if is_zero_term(term) { CovTerm::Zero } else { term });
+
+        let span = ffi::CoverageSpan::from_source_region(local_file_id, source_region);
+        match kind {
             MappingKind::Code(term) => {
                 code_regions.push(ffi::CodeRegion { span, counter: ffi::Counter::from_term(term) });
             }
