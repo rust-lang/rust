@@ -99,7 +99,7 @@ LL - test_pat_on_type![Foo { f: (&x,) }: &mut Foo];
 LL + test_pat_on_type![Foo { f: (x,) }: &mut Foo];
    |
 
-error: pattern uses features incompatible with edition 2024
+error: this pattern relies on behavior which may change in edition 2024
   --> $DIR/min_match_ergonomics_fail.rs:24:20
    |
 LL | test_pat_on_type![(&x,): &(&T,)];
@@ -110,7 +110,7 @@ help: make the implied reference pattern explicit
 LL | test_pat_on_type![&(&x,): &(&T,)];
    |                   +
 
-error: pattern uses features incompatible with edition 2024
+error: this pattern relies on behavior which may change in edition 2024
   --> $DIR/min_match_ergonomics_fail.rs:27:20
    |
 LL | test_pat_on_type![(&mut x,): &(&mut T,)];
@@ -121,7 +121,7 @@ help: make the implied reference pattern explicit
 LL | test_pat_on_type![&(&mut x,): &(&mut T,)];
    |                   +
 
-error: pattern uses features incompatible with edition 2024
+error: this pattern relies on behavior which may change in edition 2024
   --> $DIR/min_match_ergonomics_fail.rs:31:28
    |
 LL | test_pat_on_type![Foo { f: &(x,) }: &Foo];
@@ -132,7 +132,7 @@ help: make the implied reference pattern explicit
 LL | test_pat_on_type![&Foo { f: &(x,) }: &Foo];
    |                   +
 
-error: pattern uses features incompatible with edition 2024
+error: this pattern relies on behavior which may change in edition 2024
   --> $DIR/min_match_ergonomics_fail.rs:32:20
    |
 LL | test_pat_on_type![(mut x,): &(T,)];
@@ -143,7 +143,7 @@ help: make the implied reference pattern explicit
 LL | test_pat_on_type![&(mut x,): &(T,)];
    |                   +
 
-error: pattern uses features incompatible with edition 2024
+error: this pattern relies on behavior which may change in edition 2024
   --> $DIR/min_match_ergonomics_fail.rs:33:20
    |
 LL | test_pat_on_type![(ref x,): &(T,)];
@@ -154,7 +154,7 @@ help: make the implied reference pattern explicit
 LL | test_pat_on_type![&(ref x,): &(T,)];
    |                   +
 
-error: pattern uses features incompatible with edition 2024
+error: this pattern relies on behavior which may change in edition 2024
   --> $DIR/min_match_ergonomics_fail.rs:34:20
    |
 LL | test_pat_on_type![(ref mut x,): &mut (T,)];
@@ -165,7 +165,7 @@ help: make the implied reference pattern explicit
 LL | test_pat_on_type![&mut (ref mut x,): &mut (T,)];
    |                   ++++
 
-error: pattern uses features incompatible with edition 2024
+error: this pattern relies on behavior which may change in edition 2024
   --> $DIR/min_match_ergonomics_fail.rs:43:10
    |
 LL |         (&x,) => x,
