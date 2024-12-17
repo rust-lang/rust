@@ -1,3 +1,11 @@
+//! Check that certain positions (listed below) permit *non-macro* attributes.
+//!
+//! - Enum variants
+//! - Struct fields
+//! - Field in a struct pattern
+//! - Match arm
+//! - Field in struct initialization expression
+
 //@ check-pass
 
 enum FooEnum {
@@ -30,7 +38,7 @@ fn main() {
         _ => {}
     }
 
-    let _another_foo_strunct = FooStruct {
+    let _another_foo_struct = FooStruct {
         #[rustfmt::skip]
         bar: 1,
     };
