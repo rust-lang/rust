@@ -8,12 +8,15 @@
 
 #![deny(unsafe_code)]
 
-use std::hash::Hash;
+use std::collections::HashMap;
+use std::hash::{BuildHasherDefault, DefaultHasher, Hash};
 use std::ops::{Bound, Range};
 use std::sync::Once;
 use std::{fmt, marker, mem, panic, thread};
 
 use crate::{Delimiter, Level, Spacing};
+
+type DeterministicHashMap<K, V> = HashMap<K, V, BuildHasherDefault<DefaultHasher>>;
 
 /// Higher-order macro describing the server RPC API, allowing automatic
 /// generation of type-safe Rust APIs, both client-side and server-side.
@@ -154,8 +157,6 @@ mod buffer;
 pub mod client;
 #[allow(unsafe_code)]
 mod closure;
-#[forbid(unsafe_code)]
-mod fxhash;
 #[forbid(unsafe_code)]
 mod handle;
 #[macro_use]

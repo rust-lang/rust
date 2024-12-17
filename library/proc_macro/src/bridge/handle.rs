@@ -6,7 +6,7 @@ use std::num::NonZero;
 use std::ops::{Index, IndexMut};
 use std::sync::atomic::{AtomicU32, Ordering};
 
-use super::fxhash::FxHashMap;
+use super::DeterministicHashMap;
 
 pub(super) type Handle = NonZero<u32>;
 
@@ -56,12 +56,12 @@ impl<T> IndexMut<Handle> for OwnedStore<T> {
 /// Like `OwnedStore`, but avoids storing any value more than once.
 pub(super) struct InternedStore<T: 'static> {
     owned: OwnedStore<T>,
-    interner: FxHashMap<T, Handle>,
+    interner: DeterministicHashMap<T, Handle>,
 }
 
 impl<T: Copy + Eq + Hash> InternedStore<T> {
     pub(super) fn new(counter: &'static AtomicU32) -> Self {
-        InternedStore { owned: OwnedStore::new(counter), interner: FxHashMap::default() }
+        InternedStore { owned: OwnedStore::new(counter), interner: DeterministicHashMap::default() }
     }
 
     pub(super) fn alloc(&mut self, x: T) -> Handle {
