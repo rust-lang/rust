@@ -14,12 +14,12 @@ use crate::places_conflict;
 /// Emit `loan_killed_at` and `cfg_edge` facts at the same time.
 pub(super) fn emit_loan_kills<'tcx>(
     tcx: TyCtxt<'tcx>,
-    all_facts: &mut AllFacts,
-    location_table: &LocationTable,
+    facts: &mut AllFacts,
     body: &Body<'tcx>,
+    location_table: &LocationTable,
     borrow_set: &BorrowSet<'tcx>,
 ) {
-    let mut visitor = LoanKillsGenerator { borrow_set, tcx, location_table, all_facts, body };
+    let mut visitor = LoanKillsGenerator { borrow_set, tcx, location_table, facts, body };
     for (bb, data) in body.basic_blocks.iter_enumerated() {
         visitor.visit_basic_block_data(bb, data);
     }
@@ -27,7 +27,7 @@ pub(super) fn emit_loan_kills<'tcx>(
 
 struct LoanKillsGenerator<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    all_facts: &'a mut AllFacts,
+    facts: &'a mut AllFacts,
     location_table: &'a LocationTable,
     borrow_set: &'a BorrowSet<'tcx>,
     body: &'a Body<'tcx>,
@@ -36,12 +36,12 @@ struct LoanKillsGenerator<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for LoanKillsGenerator<'a, 'tcx> {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         // Also record CFG facts here.
-        self.all_facts.cfg_edge.push((
+        self.facts.cfg_edge.push((
             self.location_table.start_index(location),
             self.location_table.mid_index(location),
         ));
 
-        self.all_facts.cfg_edge.push((
+        self.facts.cfg_edge.push((
             self.location_table.mid_index(location),
             self.location_table.start_index(location.successor_within_block()),
         ));
@@ -63,15 +63,15 @@ impl<'a, 'tcx> Visitor<'tcx> for LoanKillsGenerator<'a, 'tcx> {
 
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         // Also record CFG facts here.
-        self.all_facts.cfg_edge.push((
+        self.facts.cfg_edge.push((
             self.location_table.start_index(location),
             self.location_table.mid_index(location),
         ));
 
         let successor_blocks = terminator.successors();
-        self.all_facts.cfg_edge.reserve(successor_blocks.size_hint().0);
+        self.facts.cfg_edge.reserve(successor_blocks.size_hint().0);
         for successor_block in successor_blocks {
-            self.all_facts.cfg_edge.push((
+            self.facts.cfg_edge.push((
                 self.location_table.mid_index(location),
                 self.location_table.start_index(successor_block.start_location()),
             ));
@@ -128,7 +128,7 @@ impl<'tcx> LoanKillsGenerator<'_, 'tcx> {
 
                         if places_conflict {
                             let location_index = self.location_table.mid_index(location);
-                            self.all_facts.loan_killed_at.push((borrow_index, location_index));
+                            self.facts.loan_killed_at.push((borrow_index, location_index));
                         }
                     }
                 }
@@ -140,9 +140,9 @@ impl<'tcx> LoanKillsGenerator<'_, 'tcx> {
     fn record_killed_borrows_for_local(&mut self, local: Local, location: Location) {
         if let Some(borrow_indices) = self.borrow_set.local_map.get(&local) {
             let location_index = self.location_table.mid_index(location);
-            self.all_facts.loan_killed_at.reserve(borrow_indices.len());
+            self.facts.loan_killed_at.reserve(borrow_indices.len());
             for &borrow_index in borrow_indices {
-                self.all_facts.loan_killed_at.push((borrow_index, location_index));
+                self.facts.loan_killed_at.push((borrow_index, location_index));
             }
         }
     }
