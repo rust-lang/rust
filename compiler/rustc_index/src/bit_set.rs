@@ -1191,6 +1191,14 @@ impl<T: Idx> MixedBitSet<T> {
         }
     }
 
+    #[inline]
+    pub fn clear(&mut self) {
+        match self {
+            MixedBitSet::Small(set) => set.clear(),
+            MixedBitSet::Large(set) => set.clear(),
+        }
+    }
+
     bit_relations_inherent_impls! {}
 }
 
