@@ -174,28 +174,28 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
         compiling_test_count,
         ..
     } = interface::run_compiler(config, |compiler| {
-        compiler.enter(|queries| {
-            let collector = queries.global_ctxt().enter(|tcx| {
-                let crate_name = tcx.crate_name(LOCAL_CRATE).to_string();
-                let crate_attrs = tcx.hir().attrs(CRATE_HIR_ID);
-                let opts = scrape_test_config(crate_name, crate_attrs, args_path);
-                let enable_per_target_ignores = options.enable_per_target_ignores;
+        let krate = rustc_interface::passes::parse(&compiler.sess);
 
-                let mut collector = CreateRunnableDocTests::new(options, opts);
-                let hir_collector = HirCollector::new(
-                    ErrorCodes::from(compiler.sess.opts.unstable_features.is_nightly_build()),
-                    enable_per_target_ignores,
-                    tcx,
-                );
-                let tests = hir_collector.collect_crate();
-                tests.into_iter().for_each(|t| collector.add_test(t));
+        let collector = rustc_interface::create_and_enter_global_ctxt(&compiler, krate, |tcx| {
+            let crate_name = tcx.crate_name(LOCAL_CRATE).to_string();
+            let crate_attrs = tcx.hir().attrs(CRATE_HIR_ID);
+            let opts = scrape_test_config(crate_name, crate_attrs, args_path);
+            let enable_per_target_ignores = options.enable_per_target_ignores;
 
-                collector
-            });
-            compiler.sess.dcx().abort_if_errors();
+            let mut collector = CreateRunnableDocTests::new(options, opts);
+            let hir_collector = HirCollector::new(
+                ErrorCodes::from(compiler.sess.opts.unstable_features.is_nightly_build()),
+                enable_per_target_ignores,
+                tcx,
+            );
+            let tests = hir_collector.collect_crate();
+            tests.into_iter().for_each(|t| collector.add_test(t));
 
             collector
-        })
+        });
+        compiler.sess.dcx().abort_if_errors();
+
+        collector
     });
 
     run_tests(opts, &rustdoc_options, &unused_extern_reports, standalone_tests, mergeable_tests);
