@@ -1,10 +1,11 @@
-use rustc_abi::{ExternAbi, Size};
+use rustc_abi::Size;
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::Single;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::{mir, ty};
 use rustc_span::Symbol;
+use rustc_target::callconv::{Conv, FnAbi};
 
 use self::helpers::bool_to_simd_element;
 use crate::*;
@@ -27,7 +28,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_x86_intrinsic(
         &mut self,
         link_name: Symbol,
-        abi: ExternAbi,
+        abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
@@ -45,8 +46,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     return interp_ok(EmulateItemResult::NotSupported);
                 }
 
-                let [cb_in, a, b] = this.check_shim(abi, ExternAbi::Unadjusted, link_name, args)?;
-
+                let [cb_in, a, b] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let op = if unprefixed_name.starts_with("add") {
                     mir::BinOp::AddWithOverflow
                 } else {
@@ -68,9 +68,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 if is_u64 && this.tcx.sess.target.arch != "x86_64" {
                     return interp_ok(EmulateItemResult::NotSupported);
                 }
-
                 let [c_in, a, b, out] =
-                    this.check_shim(abi, ExternAbi::Unadjusted, link_name, args)?;
+                    this.check_shim(abi, Conv::C, link_name, args)?;
                 let out = this.deref_pointer_as(
                     out,
                     if is_u64 { this.machine.layouts.u64 } else { this.machine.layouts.u32 },
@@ -87,7 +86,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // the instruction behaves like a no-op, so it is always safe to call the
             // intrinsic.
             "sse2.pause" => {
-                let [] = this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                let [] = this.check_shim(abi, Conv::C, link_name, args)?;
                 // Only exhibit the spin-loop hint behavior when SSE2 is enabled.
                 if this.tcx.sess.unstable_target_features.contains(&Symbol::intern("sse2")) {
                     this.yield_active_thread();
@@ -107,7 +106,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
 
                 let [left, right, imm] =
-                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                    this.check_shim(abi, Conv::C, link_name, args)?;
 
                 pclmulqdq(this, left, right, imm, dest, len)?;
             }
