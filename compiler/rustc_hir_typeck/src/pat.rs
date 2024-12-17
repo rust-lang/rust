@@ -2641,12 +2641,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         detailed_label: &str,
     ) {
         // Try to trim the span we're labeling to just the `&` or binding mode that's an issue.
-        // If the subpattern span is a macro call site, no trimming will be done.
+        // If the subpattern's span is is from an expansion, the emitted label will not be trimmed.
         let source_map = self.tcx.sess.source_map();
         let cutoff_span = source_map
             .span_extend_prev_while(cutoff_span, char::is_whitespace)
             .unwrap_or(cutoff_span);
-        let trimmed_span = subpat_span.until(cutoff_span);
+        // Ensure we use the syntax context and thus edition of `subpat_span`; this will be a hard
+        // error if the subpattern is of edition >= 2024.
+        let trimmed_span = subpat_span.until(cutoff_span).with_ctxt(subpat_span.ctxt());
 
         // Only provide a detailed label if the problematic subpattern isn't from an expansion.
         // In the case that it's from a macro, we'll add a more detailed note in the emitter.
