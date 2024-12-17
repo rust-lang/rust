@@ -20,18 +20,26 @@ mod tests;
 
 // The proc macro code for this is in `compiler/rustc_macros/src/symbols.rs`.
 symbols! {
-    // If you modify this list, adjust any relevant `Symbol::{is,can_be}_*` functions and
+    // This list includes things that are definitely keywords (e.g. `if`),
+    // a few things that are definitely not keywords (e.g. the empty symbol,
+    // `{{root}}`) and things where there is disagreement between people and/or
+    // documents (such as the Rust Reference) about whether it is a keyword
+    // (e.g. `_`).
+    //
+    // If you modify this list, adjust any relevant `Symbol::{is,can_be}_*` predicates and
     // `used_keywords`.
     // But this should rarely be necessary if the keywords are kept in alphabetic order.
     Keywords {
         // Special reserved identifiers used internally for elided lifetimes,
         // unnamed method parameters, crate root module, error recovery etc.
+        // Matching predicates: `is_any_keyword`, `is_special`/`is_reserved`
         Empty:              "",
         PathRoot:           "{{root}}",
         DollarCrate:        "$crate",
         Underscore:         "_",
 
         // Keywords that are used in stable Rust.
+        // Matching predicates: `is_any_keyword`, `is_used_keyword_always`/`is_reserved`
         As:                 "as",
         Break:              "break",
         Const:              "const",
@@ -69,6 +77,7 @@ symbols! {
         While:              "while",
 
         // Keywords that are used in unstable Rust or reserved for future use.
+        // Matching predicates: `is_any_keyword`, `is_unused_keyword_always`/`is_reserved`
         Abstract:           "abstract",
         Become:             "become",
         Box:                "box",
@@ -83,19 +92,25 @@ symbols! {
         Yield:              "yield",
 
         // Edition-specific keywords that are used in stable Rust.
+        // Matching predicates: `is_any_keyword`, `is_used_keyword_conditional`/`is_reserved` (if
+        // the edition suffices)
         Async:              "async", // >= 2018 Edition only
         Await:              "await", // >= 2018 Edition only
         Dyn:                "dyn", // >= 2018 Edition only
 
         // Edition-specific keywords that are used in unstable Rust or reserved for future use.
+        // Matching predicates: `is_any_keyword`, `is_unused_keyword_conditional`/`is_reserved` (if
+        // the edition suffices)
         Gen:                "gen", // >= 2024 Edition only
         Try:                "try", // >= 2018 Edition only
 
-        // Special lifetime names
+        // "Lifetime keywords": regular keywords with a leading `'`.
+        // Matching predicates: `is_any_keyword`
         UnderscoreLifetime: "'_",
         StaticLifetime:     "'static",
 
         // Weak keywords, have special meaning only in specific contexts.
+        // Matching predicates: `is_any_keyword`
         Auto:               "auto",
         Builtin:            "builtin",
         Catch:              "catch",
