@@ -4275,7 +4275,6 @@ dependencies = [
  "rustc_fluent_macro",
  "rustc_hir",
  "rustc_index",
- "rustc_lexer",
  "rustc_macros",
  "rustc_middle",
  "rustc_privacy",
