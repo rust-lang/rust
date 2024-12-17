@@ -1980,30 +1980,12 @@ fn open_to_and_set_permissions(
     Ok((writer, writer_metadata))
 }
 
-#[cfg(not(any(target_os = "linux", target_os = "android", target_vendor = "apple")))]
+#[cfg(not(target_vendor = "apple"))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     let (mut reader, reader_metadata) = open_from(from)?;
     let (mut writer, _) = open_to_and_set_permissions(to, reader_metadata)?;
 
     io::copy(&mut reader, &mut writer)
-}
-
-#[cfg(any(target_os = "linux", target_os = "android"))]
-pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
-    let (mut reader, reader_metadata) = open_from(from)?;
-    let max_len = u64::MAX;
-    let (mut writer, _) = open_to_and_set_permissions(to, reader_metadata)?;
-
-    use super::kernel_copy::{CopyResult, copy_regular_files};
-
-    match copy_regular_files(reader.as_raw_fd(), writer.as_raw_fd(), max_len) {
-        CopyResult::Ended(bytes) => Ok(bytes),
-        CopyResult::Error(e, _) => Err(e),
-        CopyResult::Fallback(written) => match io::copy::generic_copy(&mut reader, &mut writer) {
-            Ok(bytes) => Ok(bytes + written),
-            Err(e) => Err(e),
-        },
-    }
 }
 
 #[cfg(target_vendor = "apple")]
