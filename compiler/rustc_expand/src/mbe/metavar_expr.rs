@@ -5,8 +5,7 @@ use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, PResult};
 use rustc_macros::{Decodable, Encodable};
 use rustc_session::parse::ParseSess;
-use rustc_span::symbol::Ident;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Ident, Span, Symbol};
 
 pub(crate) const RAW_IDENT_ERR: &str = "`${concat(..)}` currently does not support raw identifiers";
 pub(crate) const UNSUPPORTED_CONCAT_ELEM_ERR: &str = "expected identifier or string literal";

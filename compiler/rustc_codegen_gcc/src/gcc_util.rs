@@ -96,7 +96,7 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
                     }
                     Some((_, stability, _)) => {
                         if let Err(reason) =
-                            stability.compute_toggleability(&sess.target).allow_toggle()
+                            stability.toggle_allowed(&sess.target, enable_disable == '+')
                         {
                             sess.dcx().emit_warn(ForbiddenCTargetFeature { feature, reason });
                         } else if stability.requires_nightly().is_some() {

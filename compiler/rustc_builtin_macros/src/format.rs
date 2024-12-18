@@ -13,8 +13,7 @@ use rustc_expand::base::*;
 use rustc_lint_defs::builtin::NAMED_ARGUMENTS_USED_POSITIONALLY;
 use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiag, LintId};
 use rustc_parse_format as parse;
-use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::{BytePos, ErrorGuaranteed, InnerSpan, Span};
+use rustc_span::{BytePos, ErrorGuaranteed, Ident, InnerSpan, Span, Symbol};
 
 use crate::errors;
 use crate::util::expr_to_spanned_string;

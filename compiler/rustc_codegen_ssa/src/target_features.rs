@@ -1,16 +1,15 @@
-use rustc_ast::ast;
-use rustc_attr::InstructionSetAttr;
+use rustc_attr_parsing::InstructionSetAttr;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::Applicability;
+use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_middle::middle::codegen_fn_attrs::TargetFeature;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::feature_err;
-use rustc_span::Span;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Span, Symbol, sym};
 use rustc_target::target_features;
 
 use crate::errors;
@@ -19,7 +18,7 @@ use crate::errors;
 /// Enabled target features are added to `target_features`.
 pub(crate) fn from_target_feature_attr(
     tcx: TyCtxt<'_>,
-    attr: &ast::Attribute,
+    attr: &hir::Attribute,
     rust_target_features: &UnordMap<String, target_features::StabilityComputed>,
     target_features: &mut Vec<TargetFeature>,
 ) {
@@ -65,7 +64,7 @@ pub(crate) fn from_target_feature_attr(
 
             // Only allow target features whose feature gates have been enabled
             // and which are permitted to be toggled.
-            if let Err(reason) = stability.allow_toggle() {
+            if let Err(reason) = stability.toggle_allowed(/*enable*/ true) {
                 tcx.dcx().emit_err(errors::ForbiddenTargetFeatureAttr {
                     span: item.span(),
                     feature,
@@ -160,7 +159,7 @@ pub(crate) fn provide(providers: &mut Providers) {
                     .target
                     .rust_target_features()
                     .iter()
-                    .map(|&(a, b, _)| (a.to_string(), b.compute_toggleability(target)))
+                    .map(|(a, b, _)| (a.to_string(), b.compute_toggleability(target)))
                     .collect()
             }
         },

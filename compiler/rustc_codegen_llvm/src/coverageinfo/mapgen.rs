@@ -1,6 +1,6 @@
 use std::iter;
 
-use itertools::Itertools as _;
+use itertools::Itertools;
 use rustc_abi::Align;
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, ConstCodegenMethods, StaticCodegenMethods,
@@ -8,8 +8,8 @@ use rustc_codegen_ssa::traits::{
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::IndexVec;
+use rustc_middle::mir;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_middle::{bug, mir};
 use rustc_session::RemapFileNameExt;
 use rustc_session::config::RemapPathScopeComponents;
 use rustc_span::def_id::DefIdSet;
@@ -18,7 +18,6 @@ use tracing::debug;
 
 use crate::common::CodegenCx;
 use crate::coverageinfo::llvm_cov;
-use crate::coverageinfo::map_data::FunctionCoverage;
 use crate::coverageinfo::mapgen::covfun::prepare_covfun_record;
 use crate::llvm;
 
@@ -49,45 +48,39 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
 
     debug!("Generating coverage map for CodegenUnit: `{}`", cx.codegen_unit.name());
 
-    // In order to show that unused functions have coverage counts of zero (0), LLVM requires the
-    // functions exist. Generate synthetic functions with a (required) single counter, and add the
-    // MIR `Coverage` code regions to the `function_coverage_map`, before calling
-    // `ctx.take_function_coverage_map()`.
-    if cx.codegen_unit.is_code_coverage_dead_code_cgu() {
-        add_unused_functions(cx);
-    }
-
     // FIXME(#132395): Can this be none even when coverage is enabled?
-    let function_coverage_map = match cx.coverage_cx {
-        Some(ref cx) => cx.take_function_coverage_map(),
+    let instances_used = match cx.coverage_cx {
+        Some(ref cx) => cx.instances_used.borrow(),
         None => return,
     };
-    if function_coverage_map.is_empty() {
-        // This CGU has no functions with coverage instrumentation.
-        return;
-    }
 
-    let all_file_names = function_coverage_map
+    // The order of entries in this global file table needs to be deterministic,
+    // and ideally should also be independent of the details of stable-hashing,
+    // because coverage tests snapshots (`.cov-map`) can observe the order and
+    // would need to be re-blessed if it changes. As long as those requirements
+    // are satisfied, the order can be arbitrary.
+    let mut global_file_table = GlobalFileTable::new();
+
+    let mut covfun_records = instances_used
         .iter()
-        .map(|(_, fn_cov)| fn_cov.function_coverage_info.body_span)
-        .map(|span| span_file_name(tcx, span));
-    let global_file_table = GlobalFileTable::new(all_file_names);
-
-    // Encode all filenames referenced by coverage mappings in this CGU.
-    let filenames_buffer = global_file_table.make_filenames_buffer(tcx);
-    // The `llvm-cov` tool uses this hash to associate each covfun record with
-    // its corresponding filenames table, since the final binary will typically
-    // contain multiple covmap records from different compilation units.
-    let filenames_hash = llvm_cov::hash_bytes(&filenames_buffer);
-
-    let mut unused_function_names = Vec::new();
-
-    let covfun_records = function_coverage_map
-        .into_iter()
-        .filter_map(|(instance, function_coverage)| {
-            prepare_covfun_record(tcx, &global_file_table, instance, &function_coverage)
-        })
+        .copied()
+        // Sort by symbol name, so that the global file table is built in an
+        // order that doesn't depend on the stable-hash-based order in which
+        // instances were visited during codegen.
+        .sorted_by_cached_key(|&instance| tcx.symbol_name(instance).name)
+        .filter_map(|instance| prepare_covfun_record(tcx, &mut global_file_table, instance, true))
         .collect::<Vec<_>>();
+
+    // In a single designated CGU, also prepare covfun records for functions
+    // in this crate that were instrumented for coverage, but are unused.
+    if cx.codegen_unit.is_code_coverage_dead_code_cgu() {
+        let mut unused_instances = gather_unused_function_instances(cx);
+        // Sort the unused instances by symbol name, for the same reason as the used ones.
+        unused_instances.sort_by_cached_key(|&instance| tcx.symbol_name(instance).name);
+        covfun_records.extend(unused_instances.into_iter().filter_map(|instance| {
+            prepare_covfun_record(tcx, &mut global_file_table, instance, false)
+        }));
+    }
 
     // If there are no covfun records for this CGU, don't generate a covmap record.
     // Emitting a covmap record without any covfun records causes `llvm-cov` to
@@ -97,6 +90,15 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
     if covfun_records.is_empty() {
         return;
     }
+
+    // Encode all filenames referenced by coverage mappings in this CGU.
+    let filenames_buffer = global_file_table.make_filenames_buffer(tcx);
+    // The `llvm-cov` tool uses this hash to associate each covfun record with
+    // its corresponding filenames table, since the final binary will typically
+    // contain multiple covmap records from different compilation units.
+    let filenames_hash = llvm_cov::hash_bytes(&filenames_buffer);
+
+    let mut unused_function_names = vec![];
 
     for covfun in &covfun_records {
         unused_function_names.extend(covfun.mangled_function_name_if_unused());
@@ -137,22 +139,13 @@ struct GlobalFileTable {
 }
 
 impl GlobalFileTable {
-    fn new(all_file_names: impl IntoIterator<Item = Symbol>) -> Self {
-        // Collect all of the filenames into a set. Filenames usually come in
-        // contiguous runs, so we can dedup adjacent ones to save work.
-        let mut raw_file_table = all_file_names.into_iter().dedup().collect::<FxIndexSet<Symbol>>();
-
-        // Sort the file table by its actual string values, not the arbitrary
-        // ordering of its symbols.
-        raw_file_table.sort_unstable_by(|a, b| a.as_str().cmp(b.as_str()));
-
-        Self { raw_file_table }
+    fn new() -> Self {
+        Self { raw_file_table: FxIndexSet::default() }
     }
 
-    fn global_file_id_for_file_name(&self, file_name: Symbol) -> GlobalFileId {
-        let raw_id = self.raw_file_table.get_index_of(&file_name).unwrap_or_else(|| {
-            bug!("file name not found in prepared global file table: {file_name}");
-        });
+    fn global_file_id_for_file_name(&mut self, file_name: Symbol) -> GlobalFileId {
+        // Ensure the given file has a table entry, and get its index.
+        let (raw_id, _) = self.raw_file_table.insert_full(file_name);
         // The raw file table doesn't include an entry for the working dir
         // (which has ID 0), so add 1 to get the correct ID.
         GlobalFileId::from_usize(raw_id + 1)
@@ -264,39 +257,35 @@ fn generate_covmap_record<'ll>(cx: &CodegenCx<'ll, '_>, version: u32, filenames_
 /// coverage map (in a single designated CGU) so that we still emit coverage mappings for them.
 /// We also end up adding their symbol names to a special global array that LLVM will include in
 /// its embedded coverage data.
-fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
+fn gather_unused_function_instances<'tcx>(cx: &CodegenCx<'_, 'tcx>) -> Vec<ty::Instance<'tcx>> {
     assert!(cx.codegen_unit.is_code_coverage_dead_code_cgu());
 
     let tcx = cx.tcx;
     let usage = prepare_usage_sets(tcx);
 
     let is_unused_fn = |def_id: LocalDefId| -> bool {
-        let def_id = def_id.to_def_id();
-
-        // To be eligible for "unused function" mappings, a definition must:
-        // - Be function-like
+        // Usage sets expect `DefId`, so convert from `LocalDefId`.
+        let d: DefId = LocalDefId::to_def_id(def_id);
+        // To be potentially eligible for "unused function" mappings, a definition must:
+        // - Be eligible for coverage instrumentation
         // - Not participate directly in codegen (or have lost all its coverage statements)
         // - Not have any coverage statements inlined into codegenned functions
-        tcx.def_kind(def_id).is_fn_like()
-            && (!usage.all_mono_items.contains(&def_id)
-                || usage.missing_own_coverage.contains(&def_id))
-            && !usage.used_via_inlining.contains(&def_id)
+        tcx.is_eligible_for_coverage(def_id)
+            && (!usage.all_mono_items.contains(&d) || usage.missing_own_coverage.contains(&d))
+            && !usage.used_via_inlining.contains(&d)
     };
 
-    // Scan for unused functions that were instrumented for coverage.
-    for def_id in tcx.mir_keys(()).iter().copied().filter(|&def_id| is_unused_fn(def_id)) {
-        // Get the coverage info from MIR, skipping functions that were never instrumented.
-        let body = tcx.optimized_mir(def_id);
-        let Some(function_coverage_info) = body.function_coverage_info.as_deref() else { continue };
+    // FIXME(#79651): Consider trying to filter out dummy instantiations of
+    // unused generic functions from library crates, because they can produce
+    // "unused instantiation" in coverage reports even when they are actually
+    // used by some downstream crate in the same binary.
 
-        // FIXME(79651): Consider trying to filter out dummy instantiations of
-        // unused generic functions from library crates, because they can produce
-        // "unused instantiation" in coverage reports even when they are actually
-        // used by some downstream crate in the same binary.
-
-        debug!("generating unused fn: {def_id:?}");
-        add_unused_function_coverage(cx, def_id, function_coverage_info);
-    }
+    tcx.mir_keys(())
+        .iter()
+        .copied()
+        .filter(|&def_id| is_unused_fn(def_id))
+        .map(|def_id| make_dummy_instance(tcx, def_id))
+        .collect::<Vec<_>>()
 }
 
 struct UsageSets<'tcx> {
@@ -361,16 +350,11 @@ fn prepare_usage_sets<'tcx>(tcx: TyCtxt<'tcx>) -> UsageSets<'tcx> {
     UsageSets { all_mono_items, used_via_inlining, missing_own_coverage }
 }
 
-fn add_unused_function_coverage<'tcx>(
-    cx: &CodegenCx<'_, 'tcx>,
-    def_id: LocalDefId,
-    function_coverage_info: &'tcx mir::coverage::FunctionCoverageInfo,
-) {
-    let tcx = cx.tcx;
-    let def_id = def_id.to_def_id();
+fn make_dummy_instance<'tcx>(tcx: TyCtxt<'tcx>, local_def_id: LocalDefId) -> ty::Instance<'tcx> {
+    let def_id = local_def_id.to_def_id();
 
     // Make a dummy instance that fills in all generics with placeholders.
-    let instance = ty::Instance::new(
+    ty::Instance::new(
         def_id,
         ty::GenericArgs::for_item(tcx, def_id, |param, _| {
             if let ty::GenericParamDefKind::Lifetime = param.kind {
@@ -379,9 +363,5 @@ fn add_unused_function_coverage<'tcx>(
                 tcx.mk_param_from_def(param)
             }
         }),
-    );
-
-    // An unused function's mappings will all be rewritten to map to zero.
-    let function_coverage = FunctionCoverage::new_unused(function_coverage_info);
-    cx.coverage_cx().function_coverage_map.borrow_mut().insert(instance, function_coverage);
+    )
 }

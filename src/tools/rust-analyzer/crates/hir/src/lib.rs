@@ -2649,24 +2649,31 @@ impl Const {
         Type::from_value_def(db, self.id)
     }
 
-    /// Evaluate the constant and return the result as a string.
-    ///
-    /// This function is intended for IDE assistance, different from [`Const::render_eval`].
-    pub fn eval(self, db: &dyn HirDatabase) -> Result<String, ConstEvalError> {
-        let c = db.const_eval(self.id.into(), Substitution::empty(Interner), None)?;
-        Ok(format!("{}", c.display(db, self.krate(db).edition(db))))
+    /// Evaluate the constant.
+    pub fn eval(self, db: &dyn HirDatabase) -> Result<EvaluatedConst, ConstEvalError> {
+        db.const_eval(self.id.into(), Substitution::empty(Interner), None)
+            .map(|it| EvaluatedConst { const_: it, def: self.id.into() })
+    }
+}
+
+impl HasVisibility for Const {
+    fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
+        db.const_visibility(self.id)
+    }
+}
+
+pub struct EvaluatedConst {
+    def: DefWithBodyId,
+    const_: hir_ty::Const,
+}
+
+impl EvaluatedConst {
+    pub fn render(&self, db: &dyn HirDatabase, edition: Edition) -> String {
+        format!("{}", self.const_.display(db, edition))
     }
 
-    /// Evaluate the constant and return the result as a string, with more detailed information.
-    ///
-    /// This function is intended for user-facing display.
-    pub fn render_eval(
-        self,
-        db: &dyn HirDatabase,
-        edition: Edition,
-    ) -> Result<String, ConstEvalError> {
-        let c = db.const_eval(self.id.into(), Substitution::empty(Interner), None)?;
-        let data = &c.data(Interner);
+    pub fn render_debug(&self, db: &dyn HirDatabase) -> Result<String, MirEvalError> {
+        let data = self.const_.data(Interner);
         if let TyKind::Scalar(s) = data.ty.kind(Interner) {
             if matches!(s, Scalar::Int(_) | Scalar::Uint(_)) {
                 if let hir_ty::ConstValue::Concrete(c) = &data.value {
@@ -2689,17 +2696,7 @@ impl Const {
                 }
             }
         }
-        if let Ok(s) = mir::render_const_using_debug_impl(db, self.id.into(), &c) {
-            Ok(s)
-        } else {
-            Ok(format!("{}", c.display(db, edition)))
-        }
-    }
-}
-
-impl HasVisibility for Const {
-    fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        db.const_visibility(self.id)
+        mir::render_const_using_debug_impl(db, self.def, &self.const_)
     }
 }
 
@@ -2729,51 +2726,10 @@ impl Static {
         Type::from_value_def(db, self.id)
     }
 
-    /// Evaluate the static and return the result as a string.
-    ///
-    /// This function is intended for IDE assistance, different from [`Static::render_eval`].
-    pub fn eval(self, db: &dyn HirDatabase) -> Result<String, ConstEvalError> {
-        let c = db.const_eval(self.id.into(), Substitution::empty(Interner), None)?;
-        Ok(format!("{}", c.display(db, self.krate(db).edition(db))))
-    }
-
-    /// Evaluate the static and return the result as a string, with more detailed information.
-    ///
-    /// This function is intended for user-facing display.
-    pub fn render_eval(
-        self,
-        db: &dyn HirDatabase,
-        edition: Edition,
-    ) -> Result<String, ConstEvalError> {
-        let c = db.const_eval(self.id.into(), Substitution::empty(Interner), None)?;
-        let data = &c.data(Interner);
-        if let TyKind::Scalar(s) = data.ty.kind(Interner) {
-            if matches!(s, Scalar::Int(_) | Scalar::Uint(_)) {
-                if let hir_ty::ConstValue::Concrete(c) = &data.value {
-                    if let hir_ty::ConstScalar::Bytes(b, _) = &c.interned {
-                        let value = u128::from_le_bytes(mir::pad16(b, false));
-                        let value_signed =
-                            i128::from_le_bytes(mir::pad16(b, matches!(s, Scalar::Int(_))));
-                        let mut result = if let Scalar::Int(_) = s {
-                            value_signed.to_string()
-                        } else {
-                            value.to_string()
-                        };
-                        if value >= 10 {
-                            format_to!(result, " ({value:#X})");
-                            return Ok(result);
-                        } else {
-                            return Ok(result);
-                        }
-                    }
-                }
-            }
-        }
-        if let Ok(s) = mir::render_const_using_debug_impl(db, self.id.into(), &c) {
-            Ok(s)
-        } else {
-            Ok(format!("{}", c.display(db, edition)))
-        }
+    /// Evaluate the static initializer.
+    pub fn eval(self, db: &dyn HirDatabase) -> Result<EvaluatedConst, ConstEvalError> {
+        db.const_eval(self.id.into(), Substitution::empty(Interner), None)
+            .map(|it| EvaluatedConst { const_: it, def: self.id.into() })
     }
 }
 

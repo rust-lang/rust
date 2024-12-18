@@ -35,7 +35,7 @@ extern crate tracing;
 extern crate rustc_abi;
 extern crate rustc_apfloat;
 extern crate rustc_ast;
-extern crate rustc_attr;
+extern crate rustc_attr_parsing;
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
@@ -483,9 +483,9 @@ fn target_features_cfg(
         .rust_target_features()
         .iter()
         .filter(|(_, gate, _)| gate.in_cfg())
-        .filter_map(|&(feature, gate, _)| {
+        .filter_map(|(feature, gate, _)| {
             if sess.is_nightly_build() || allow_unstable || gate.requires_nightly().is_none() {
-                Some(feature)
+                Some(*feature)
             } else {
                 None
             }

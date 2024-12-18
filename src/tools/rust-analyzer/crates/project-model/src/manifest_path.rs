@@ -29,6 +29,12 @@ impl TryFrom<AbsPathBuf> for ManifestPath {
     }
 }
 
+impl From<ManifestPath> for AbsPathBuf {
+    fn from(it: ManifestPath) -> Self {
+        it.file
+    }
+}
+
 impl ManifestPath {
     // Shadow `parent` from `Deref`.
     pub fn parent(&self) -> &AbsPath {

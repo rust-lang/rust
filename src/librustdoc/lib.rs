@@ -36,7 +36,7 @@ extern crate pulldown_cmark;
 extern crate rustc_abi;
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
-extern crate rustc_attr;
+extern crate rustc_attr_parsing;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_errors;
@@ -856,50 +856,41 @@ fn main_args(
             return;
         }
 
-        compiler.enter(|queries| {
-            let mut gcx = queries.global_ctxt();
-            if sess.dcx().has_errors().is_some() {
-                sess.dcx().fatal("Compilation failed, aborting rustdoc");
+        let krate = rustc_interface::passes::parse(sess);
+        if sess.dcx().has_errors().is_some() {
+            sess.dcx().fatal("Compilation failed, aborting rustdoc");
+        }
+
+        rustc_interface::create_and_enter_global_ctxt(&compiler, krate, |tcx| {
+            let (krate, render_opts, mut cache) = sess.time("run_global_ctxt", || {
+                core::run_global_ctxt(tcx, show_coverage, render_options, output_format)
+            });
+            info!("finished with rustc");
+
+            if let Some(options) = scrape_examples_options {
+                return scrape_examples::run(krate, render_opts, cache, tcx, options, bin_crate);
             }
 
-            gcx.enter(|tcx| {
-                let (krate, render_opts, mut cache) = sess.time("run_global_ctxt", || {
-                    core::run_global_ctxt(tcx, show_coverage, render_options, output_format)
-                });
-                info!("finished with rustc");
+            cache.crate_version = crate_version;
 
-                if let Some(options) = scrape_examples_options {
-                    return scrape_examples::run(
-                        krate,
-                        render_opts,
-                        cache,
-                        tcx,
-                        options,
-                        bin_crate,
-                    );
-                }
+            if show_coverage {
+                // if we ran coverage, bail early, we don't need to also generate docs at this point
+                // (also we didn't load in any of the useful passes)
+                return;
+            } else if run_check {
+                // Since we're in "check" mode, no need to generate anything beyond this point.
+                return;
+            }
 
-                cache.crate_version = crate_version;
-
-                if show_coverage {
-                    // if we ran coverage, bail early, we don't need to also generate docs at this point
-                    // (also we didn't load in any of the useful passes)
-                    return;
-                } else if run_check {
-                    // Since we're in "check" mode, no need to generate anything beyond this point.
-                    return;
-                }
-
-                info!("going to format");
-                match output_format {
-                    config::OutputFormat::Html => sess.time("render_html", || {
-                        run_renderer::<html::render::Context<'_>>(krate, render_opts, cache, tcx)
-                    }),
-                    config::OutputFormat::Json => sess.time("render_json", || {
-                        run_renderer::<json::JsonRenderer<'_>>(krate, render_opts, cache, tcx)
-                    }),
-                }
-            })
+            info!("going to format");
+            match output_format {
+                config::OutputFormat::Html => sess.time("render_html", || {
+                    run_renderer::<html::render::Context<'_>>(krate, render_opts, cache, tcx)
+                }),
+                config::OutputFormat::Json => sess.time("render_json", || {
+                    run_renderer::<json::JsonRenderer<'_>>(krate, render_opts, cache, tcx)
+                }),
+            }
         })
     })
 }

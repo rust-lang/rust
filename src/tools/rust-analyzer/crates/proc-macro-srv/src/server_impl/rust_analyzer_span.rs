@@ -498,7 +498,7 @@ mod tests {
                 })),
                 tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                     sym: Symbol::intern("T"),
-                    span: span,
+                    span,
                     is_raw: tt::IdentIsRaw::No,
                 })),
                 tt::TokenTree::Subtree(tt::Subtree {

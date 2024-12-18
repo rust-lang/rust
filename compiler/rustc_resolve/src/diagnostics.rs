@@ -28,8 +28,7 @@ use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::SourceMap;
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{BytePos, Span, SyntaxContext};
+use rustc_span::{BytePos, Ident, Span, Symbol, SyntaxContext, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::debug;
 
@@ -2817,11 +2816,11 @@ fn show_candidates(
         path_strings.sort_by(|a, b| a.0.cmp(&b.0));
         path_strings.dedup_by(|a, b| a.0 == b.0);
         let core_path_strings =
-            path_strings.extract_if(|p| p.0.starts_with("core::")).collect::<Vec<_>>();
+            path_strings.extract_if(.., |p| p.0.starts_with("core::")).collect::<Vec<_>>();
         let std_path_strings =
-            path_strings.extract_if(|p| p.0.starts_with("std::")).collect::<Vec<_>>();
+            path_strings.extract_if(.., |p| p.0.starts_with("std::")).collect::<Vec<_>>();
         let foreign_crate_path_strings =
-            path_strings.extract_if(|p| !p.0.starts_with("crate::")).collect::<Vec<_>>();
+            path_strings.extract_if(.., |p| !p.0.starts_with("crate::")).collect::<Vec<_>>();
 
         // We list the `crate` local paths first.
         // Then we list the `std`/`core` paths.

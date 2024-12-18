@@ -4,8 +4,7 @@
 
 use rustc_hir::def_id::DefId;
 use rustc_hir::{LangItem, lang_items};
-use rustc_span::symbol::Ident;
-use rustc_span::{DesugaringKind, Span, sym};
+use rustc_span::{DesugaringKind, Ident, Span, sym};
 use tracing::debug;
 
 use crate::ty::{AssocItemContainer, GenericArgsRef, Instance, Ty, TyCtxt, TypingEnv};

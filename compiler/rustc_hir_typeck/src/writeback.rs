@@ -15,8 +15,7 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, fold_regions};
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperFoldable};
-use rustc_span::Span;
-use rustc_span::symbol::sym;
+use rustc_span::{Span, sym};
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::solve;
 use tracing::{debug, instrument};
@@ -555,11 +554,13 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             let hidden_type = self.resolve(decl.hidden_type, &decl.hidden_type.span);
             let opaque_type_key = self.resolve(opaque_type_key, &decl.hidden_type.span);
 
-            if let ty::Alias(ty::Opaque, alias_ty) = hidden_type.ty.kind()
-                && alias_ty.def_id == opaque_type_key.def_id.to_def_id()
-                && alias_ty.args == opaque_type_key.args
-            {
-                continue;
+            if !self.fcx.next_trait_solver() {
+                if let ty::Alias(ty::Opaque, alias_ty) = hidden_type.ty.kind()
+                    && alias_ty.def_id == opaque_type_key.def_id.to_def_id()
+                    && alias_ty.args == opaque_type_key.args
+                {
+                    continue;
+                }
             }
 
             // Here we only detect impl trait definition conflicts when they

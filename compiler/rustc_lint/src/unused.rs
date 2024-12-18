@@ -11,8 +11,7 @@ use rustc_hir::{self as hir, LangItem};
 use rustc_infer::traits::util::elaborate;
 use rustc_middle::ty::{self, Ty, adjustment};
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
-use rustc_span::symbol::{Symbol, kw, sym};
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, Span, Symbol, kw, sym};
 use tracing::instrument;
 
 use crate::lints::{

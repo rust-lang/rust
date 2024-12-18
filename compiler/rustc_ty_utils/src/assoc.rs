@@ -6,7 +6,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, ImplTraitInTraitData, TyCtxt};
 use rustc_middle::{bug, span_bug};
-use rustc_span::symbol::kw;
+use rustc_span::kw;
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {

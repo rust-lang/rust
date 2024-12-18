@@ -251,7 +251,6 @@
 #![allow(explicit_outlives_requirements)]
 #![allow(unused_lifetimes)]
 #![allow(internal_features)]
-#![deny(rustc::existing_doc_keyword)]
 #![deny(fuzzy_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(rustdoc::redundant_explicit_links)]
@@ -373,6 +372,7 @@
 #![feature(thin_box)]
 #![feature(try_reserve_kind)]
 #![feature(try_with_capacity)]
+#![feature(unique_rc_arc)]
 #![feature(vec_into_raw_parts)]
 // tidy-alphabetical-end
 //

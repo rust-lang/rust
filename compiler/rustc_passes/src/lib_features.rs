@@ -4,15 +4,14 @@
 //! but are not declared in one single location (unlike lang features), which means we need to
 //! collect them instead.
 
-use rustc_ast::Attribute;
-use rustc_attr::VERSION_PLACEHOLDER;
+use rustc_attr_parsing::VERSION_PLACEHOLDER;
+use rustc_hir::Attribute;
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::lib_features::{FeatureStability, LibFeatures};
 use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::TyCtxt;
-use rustc_span::symbol::Symbol;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, Symbol, sym};
 
 use crate::errors::{FeaturePreviouslyDeclared, FeatureStableTwice};
 

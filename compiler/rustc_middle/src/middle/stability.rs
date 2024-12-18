@@ -4,7 +4,7 @@
 use std::num::NonZero;
 
 use rustc_ast::NodeId;
-use rustc_attr::{
+use rustc_attr_parsing::{
     self as attr, ConstStability, DefaultBodyStability, DeprecatedSince, Deprecation, Stability,
 };
 use rustc_data_structures::unord::UnordMap;
@@ -18,8 +18,7 @@ use rustc_session::Session;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
 use rustc_session::lint::{BuiltinLintDiag, DeprecatedSinceKind, Level, Lint, LintBuffer};
 use rustc_session::parse::feature_err_issue;
-use rustc_span::Span;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
 
 pub use self::StabilityLevel::*;
@@ -392,7 +391,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         match stability {
             Some(Stability {
-                level: attr::Unstable { reason, issue, is_soft, implied_by },
+                level: attr::StabilityLevel::Unstable { reason, issue, is_soft, implied_by },
                 feature,
                 ..
             }) => {
@@ -475,7 +474,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         match stability {
             Some(DefaultBodyStability {
-                level: attr::Unstable { reason, issue, is_soft, .. },
+                level: attr::StabilityLevel::Unstable { reason, issue, is_soft, .. },
                 feature,
             }) => {
                 if span.allows_unstable(feature) {

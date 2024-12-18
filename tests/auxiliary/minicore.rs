@@ -14,7 +14,7 @@
 //! <https://github.com/rust-lang/rust/blob/c0b5cc9003f6464c11ae1c0662c6a7e06f6f5cab/compiler/rustc_codegen_cranelift/example/mini_core.rs>.
 // ignore-tidy-linelength
 
-#![feature(no_core, lang_items, rustc_attrs, decl_macro)]
+#![feature(no_core, lang_items, rustc_attrs, decl_macro, naked_functions)]
 #![allow(unused, improper_ctypes_definitions, internal_features)]
 #![feature(asm_experimental_arch)]
 #![no_std]
@@ -78,5 +78,13 @@ pub struct UnsafeCell<T: ?Sized> {
 
 #[rustc_builtin_macro]
 pub macro asm("assembly template", $(operands,)* $(options($(option),*))?) {
+    /* compiler built-in */
+}
+#[rustc_builtin_macro]
+pub macro naked_asm("assembly template", $(operands,)* $(options($(option),*))?) {
+    /* compiler built-in */
+}
+#[rustc_builtin_macro]
+pub macro global_asm("assembly template", $(operands,)* $(options($(option),*))?) {
     /* compiler built-in */
 }

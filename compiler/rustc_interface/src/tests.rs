@@ -23,8 +23,7 @@ use rustc_session::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
 use rustc_session::{CompilerIO, EarlyDiagCtxt, Session, build_session, filesearch, getopts};
 use rustc_span::edition::{DEFAULT_EDITION, Edition};
 use rustc_span::source_map::{RealFileLoader, SourceMapInputs};
-use rustc_span::symbol::sym;
-use rustc_span::{FileName, SourceFileHashAlgorithm};
+use rustc_span::{FileName, SourceFileHashAlgorithm, sym};
 use rustc_target::spec::{
     CodeModel, FramePointer, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy,
     RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TlsModel, WasmCAbi,

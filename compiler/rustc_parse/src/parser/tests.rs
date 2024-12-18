@@ -18,8 +18,9 @@ use rustc_errors::emitter::{HumanEmitter, OutputTheme};
 use rustc_errors::{DiagCtxt, MultiSpan, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
-use rustc_span::symbol::{Symbol, kw, sym};
-use rustc_span::{BytePos, FileName, Pos, Span, create_default_session_globals_then};
+use rustc_span::{
+    BytePos, FileName, Pos, Span, Symbol, create_default_session_globals_then, kw, sym,
+};
 use termcolor::WriteColor;
 
 use crate::parser::{ForceCollect, Parser};

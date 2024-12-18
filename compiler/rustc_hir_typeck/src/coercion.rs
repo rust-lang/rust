@@ -59,8 +59,7 @@ use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt};
 use rustc_session::parse::feature_err;
-use rustc_span::symbol::sym;
-use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Span};
+use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Span, sym};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
@@ -863,7 +862,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             let outer_universe = self.infcx.universe();
 
             let result = if let ty::FnPtr(_, hdr_b) = b.kind()
-                && let (hir::Safety::Safe, hir::Safety::Unsafe) = (fn_ty_a.safety(), hdr_b.safety)
+                && fn_ty_a.safety().is_safe()
+                && hdr_b.safety.is_unsafe()
             {
                 let unsafe_a = self.tcx.safe_to_unsafe_fn_ty(fn_ty_a);
                 self.unify_and(unsafe_a, b, to_unsafe)
@@ -925,7 +925,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
                     // Safe `#[target_feature]` functions are not assignable to safe fn pointers (RFC 2396).
 
-                    if b_hdr.safety == hir::Safety::Safe
+                    if b_hdr.safety.is_safe()
                         && !self.tcx.codegen_fn_attrs(def_id).target_features.is_empty()
                     {
                         return Err(TypeError::TargetFeatureCast(def_id));

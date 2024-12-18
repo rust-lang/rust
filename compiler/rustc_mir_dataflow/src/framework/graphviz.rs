@@ -16,7 +16,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Symbol, sym};
 use tracing::debug;
 use {rustc_ast as ast, rustc_graphviz as dot};
 

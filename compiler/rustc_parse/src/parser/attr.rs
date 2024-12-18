@@ -1,10 +1,8 @@
-use rustc_ast as ast;
-use rustc_ast::attr;
 use rustc_ast::token::{self, Delimiter};
+use rustc_ast::{self as ast, Attribute, attr};
 use rustc_errors::codes::*;
 use rustc_errors::{Diag, PResult};
-use rustc_span::symbol::kw;
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, Span, kw};
 use thin_vec::ThinVec;
 use tracing::debug;
 
@@ -48,7 +46,7 @@ impl<'a> Parser<'a> {
         let start_pos = self.num_bump_calls;
         loop {
             let attr = if self.check(&token::Pound) {
-                let prev_outer_attr_sp = outer_attrs.last().map(|attr| attr.span);
+                let prev_outer_attr_sp = outer_attrs.last().map(|attr: &Attribute| attr.span);
 
                 let inner_error_reason = if just_parsed_doc_comment {
                     Some(InnerAttrForbiddenReason::AfterOuterDocComment {

@@ -7,8 +7,7 @@ use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_parse::{new_parser_from_file, unwrap_or_emit_fatal, validate_attr};
 use rustc_session::Session;
 use rustc_session::parse::ParseSess;
-use rustc_span::Span;
-use rustc_span::symbol::{Ident, sym};
+use rustc_span::{Ident, Span, sym};
 use thin_vec::ThinVec;
 
 use crate::base::ModuleData;

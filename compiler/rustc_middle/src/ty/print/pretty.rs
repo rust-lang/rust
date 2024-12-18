@@ -16,8 +16,7 @@ use rustc_hir::definitions::{DefKey, DefPathDataName};
 use rustc_macros::{Lift, extension};
 use rustc_session::Limit;
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
-use rustc_span::symbol::{Ident, Symbol, kw};
-use rustc_span::{FileNameDisplayPreference, sym};
+use rustc_span::{FileNameDisplayPreference, Ident, Symbol, kw, sym};
 use rustc_type_ir::{Upcast as _, elaborate};
 use smallvec::SmallVec;
 

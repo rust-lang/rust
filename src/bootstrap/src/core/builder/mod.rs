@@ -613,7 +613,9 @@ impl<'a> ShouldRun<'a> {
         self
     }
 
-    // single, non-aliased path
+    /// single, non-aliased path
+    ///
+    /// Must be an on-disk path; use `alias` for names that do not correspond to on-disk paths.
     pub fn path(self, path: &str) -> Self {
         self.paths(&[path])
     }
@@ -622,7 +624,7 @@ impl<'a> ShouldRun<'a> {
     ///
     /// This differs from [`path`] in that multiple calls to path will end up calling `make_run`
     /// multiple times, whereas a single call to `paths` will only ever generate a single call to
-    /// `paths`.
+    /// `make_run`.
     ///
     /// This is analogous to `all_krates`, although `all_krates` is gone now. Prefer [`path`] where possible.
     ///

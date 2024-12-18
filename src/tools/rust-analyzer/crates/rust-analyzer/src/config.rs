@@ -827,6 +827,7 @@ impl Config {
         let mut should_update = false;
 
         if let Some(change) = change.user_config_change {
+            tracing::info!("updating config from user config toml: {:#}", change);
             if let Ok(table) = toml::from_str(&change) {
                 let mut toml_errors = vec![];
                 validate_toml_table(
@@ -919,7 +920,7 @@ impl Config {
                     RatomlFileKind::Crate => {
                         if let Some(text) = text {
                             let mut toml_errors = vec![];
-                            tracing::info!("updating ra-toml config: {:#}", text);
+                            tracing::info!("updating ra-toml crate config: {:#}", text);
                             match toml::from_str(&text) {
                                 Ok(table) => {
                                     validate_toml_table(
@@ -961,6 +962,7 @@ impl Config {
                     }
                     RatomlFileKind::Workspace => {
                         if let Some(text) = text {
+                            tracing::info!("updating ra-toml workspace config: {:#}", text);
                             let mut toml_errors = vec![];
                             match toml::from_str(&text) {
                                 Ok(table) => {

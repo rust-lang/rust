@@ -4,8 +4,7 @@ use rustc_ast as ast;
 use rustc_ast::visit::visit_opt;
 use rustc_ast::{EnumDef, VariantData, attr};
 use rustc_expand::base::{Annotatable, DummyResult, ExtCtxt};
-use rustc_span::symbol::{Ident, kw, sym};
-use rustc_span::{ErrorGuaranteed, Span};
+use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use smallvec::SmallVec;
 use thin_vec::{ThinVec, thin_vec};
 

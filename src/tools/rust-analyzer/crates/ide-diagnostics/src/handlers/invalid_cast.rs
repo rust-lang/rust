@@ -59,7 +59,7 @@ pub(crate) fn invalid_cast(ctx: &DiagnosticsContext<'_>, d: &hir::InvalidCast) -
             DiagnosticCode::RustcHardError("E0606"),
             format_ty!(
                 ctx,
-                "casting `{}` as `{}` is invalid: needs defererence or removal of unneeded borrow",
+                "casting `{}` as `{}` is invalid: needs dereference or removal of unneeded borrow",
                 d.expr_ty,
                 d.cast_ty
             ),

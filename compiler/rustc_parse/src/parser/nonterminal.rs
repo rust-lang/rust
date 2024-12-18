@@ -9,7 +9,7 @@ use rustc_ast::token::{
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::PResult;
-use rustc_span::symbol::{Ident, kw};
+use rustc_span::{Ident, kw};
 
 use crate::errors::UnexpectedNonterminal;
 use crate::parser::pat::{CommaRecoveryMode, RecoverColon, RecoverComma};

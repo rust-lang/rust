@@ -25,8 +25,7 @@ use rustc_session::Session;
 use rustc_session::config::{
     self, Lto, OutputType, Passes, RemapPathScopeComponents, SplitDwarfKind, SwitchWithOptPath,
 };
-use rustc_span::symbol::sym;
-use rustc_span::{BytePos, InnerSpan, Pos, SpanData, SyntaxContext};
+use rustc_span::{BytePos, InnerSpan, Pos, SpanData, SyntaxContext, sym};
 use rustc_target::spec::{CodeModel, RelocModel, SanitizerSet, SplitDebuginfo, TlsModel};
 use tracing::debug;
 

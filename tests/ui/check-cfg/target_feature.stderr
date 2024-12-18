@@ -118,6 +118,14 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `hvx-length128b`
 `hwdiv`
 `i8mm`
+`isa-68000`
+`isa-68010`
+`isa-68020`
+`isa-68030`
+`isa-68040`
+`isa-68060`
+`isa-68881`
+`isa-68882`
 `jsconv`
 `lahfsahf`
 `lasx`

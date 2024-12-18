@@ -2,8 +2,7 @@ use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use rustc_hir::LangItem;
 use rustc_middle::ty::{AssocKind, GenericArg};
 use rustc_session::config::{EntryFnType, sigpipe};
-use rustc_span::DUMMY_SP;
-use rustc_span::symbol::Ident;
+use rustc_span::{DUMMY_SP, Ident};
 
 use crate::prelude::*;
 

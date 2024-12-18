@@ -13,8 +13,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::{SimplifiedType, TreatParams, simplify_type};
 use rustc_middle::ty::{self, CrateInherentImpls, Ty, TyCtxt};
-use rustc_span::ErrorGuaranteed;
-use rustc_span::symbol::sym;
+use rustc_span::{ErrorGuaranteed, sym};
 
 use crate::errors;
 

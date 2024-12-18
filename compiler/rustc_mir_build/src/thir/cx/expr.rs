@@ -25,6 +25,14 @@ use crate::thir::cx::Cx;
 use crate::thir::util::UserAnnotatedTyHelpers;
 
 impl<'tcx> Cx<'tcx> {
+    /// Create a THIR expression for the given HIR expression. This expands all
+    /// adjustments and directly adds the type information from the
+    /// `typeck_results`. See the [dev-guide] for more details.
+    ///
+    /// (The term "mirror" in this case does not refer to "flipped" or
+    /// "reversed".)
+    ///
+    /// [dev-guide]: https://rustc-dev-guide.rust-lang.org/thir.html
     pub(crate) fn mirror_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> ExprId {
         // `mirror_expr` is recursing very deep. Make sure the stack doesn't overflow.
         ensure_sufficient_stack(|| self.mirror_expr_inner(expr))
@@ -1189,7 +1197,7 @@ impl<'tcx> Cx<'tcx> {
             .temporary_scope(self.region_scope_tree, closure_expr.hir_id.local_id);
         let var_ty = place.base_ty;
 
-        // The result of capture analysis in `rustc_hir_analysis/check/upvar.rs`represents a captured path
+        // The result of capture analysis in `rustc_hir_typeck/src/upvar.rs` represents a captured path
         // as it's seen for use within the closure and not at the time of closure creation.
         //
         // That is we see expect to see it start from a captured upvar and not something that is local

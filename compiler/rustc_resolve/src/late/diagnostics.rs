@@ -27,8 +27,7 @@ use rustc_session::{Session, lint};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use thin_vec::ThinVec;
 use tracing::debug;
 
@@ -430,6 +429,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let mut err = self.r.dcx().struct_span_err(base_error.span, base_error.msg.clone());
         err.code(code);
 
+        self.detect_missing_binding_available_from_pattern(&mut err, path, following_seg);
         self.suggest_at_operator_in_slice_pat_with_range(&mut err, path);
         self.suggest_swapping_misplaced_self_ty_and_trait(&mut err, source, res, base_error.span);
 
@@ -628,7 +628,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         // Try to filter out intrinsics candidates, as long as we have
         // some other candidates to suggest.
         let intrinsic_candidates: Vec<_> = candidates
-            .extract_if(|sugg| {
+            .extract_if(.., |sugg| {
                 let path = path_names_to_string(&sugg.path);
                 path.starts_with("core::intrinsics::") || path.starts_with("std::intrinsics::")
             })
@@ -1118,6 +1118,48 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             }
         }
         true
+    }
+
+    fn detect_missing_binding_available_from_pattern(
+        &mut self,
+        err: &mut Diag<'_>,
+        path: &[Segment],
+        following_seg: Option<&Segment>,
+    ) {
+        let [segment] = path else { return };
+        let None = following_seg else { return };
+        for rib in self.ribs[ValueNS].iter().rev() {
+            for (def_id, spans) in &rib.patterns_with_skipped_bindings {
+                if let Some(fields) = self.r.field_idents(*def_id) {
+                    for field in fields {
+                        if field.name == segment.ident.name {
+                            if spans.iter().all(|(_, had_error)| had_error.is_err()) {
+                                // This resolution error will likely be fixed by fixing a
+                                // syntax error in a pattern, so it is irrelevant to the user.
+                                let multispan: MultiSpan =
+                                    spans.iter().map(|(s, _)| *s).collect::<Vec<_>>().into();
+                                err.span_note(
+                                    multispan,
+                                    "this pattern had a recovered parse error which likely lost \
+                                     the expected fields",
+                                );
+                                err.downgrade_to_delayed_bug();
+                            }
+                            let ty = self.r.tcx.item_name(*def_id);
+                            for (span, _) in spans {
+                                err.span_label(
+                                    *span,
+                                    format!(
+                                        "this pattern doesn't include `{field}`, which is \
+                                         available in `{ty}`",
+                                    ),
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     fn suggest_at_operator_in_slice_pat_with_range(

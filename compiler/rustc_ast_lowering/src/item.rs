@@ -10,8 +10,7 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_span::edit_distance::find_best_match_for_name;
-use rustc_span::symbol::{Ident, kw, sym};
-use rustc_span::{DesugaringKind, Span, Symbol};
+use rustc_span::{DesugaringKind, Ident, Span, Symbol, kw, sym};
 use rustc_target::spec::abi;
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
@@ -176,7 +175,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         id: NodeId,
         hir_id: hir::HirId,
         ident: &mut Ident,
-        attrs: &'hir [Attribute],
+        attrs: &'hir [hir::Attribute],
         vis_span: Span,
         i: &ItemKind,
     ) -> hir::ItemKind<'hir> {
@@ -467,7 +466,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         id: NodeId,
         vis_span: Span,
         ident: &mut Ident,
-        attrs: &'hir [Attribute],
+        attrs: &'hir [hir::Attribute],
     ) -> hir::ItemKind<'hir> {
         let path = &tree.prefix;
         let segments = prefix.segments.iter().chain(path.segments.iter()).cloned().collect();
@@ -1172,9 +1171,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // we can keep the same name for the parameter.
                 // This lets rustdoc render it correctly in documentation.
                 hir::PatKind::Binding(_, _, ident, _) => (ident, false),
-                hir::PatKind::Wild => {
-                    (Ident::with_dummy_span(rustc_span::symbol::kw::Underscore), false)
-                }
+                hir::PatKind::Wild => (Ident::with_dummy_span(rustc_span::kw::Underscore), false),
                 _ => {
                     // Replace the ident for bindings that aren't simple.
                     let name = format!("__arg{index}");
@@ -1392,7 +1389,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    pub(super) fn lower_safety(&mut self, s: Safety, default: hir::Safety) -> hir::Safety {
+    pub(super) fn lower_safety(&self, s: Safety, default: hir::Safety) -> hir::Safety {
         match s {
             Safety::Unsafe(_) => hir::Safety::Unsafe,
             Safety::Default => default,

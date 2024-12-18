@@ -36,11 +36,10 @@ use rustc_session::config::SymbolManglingVersion;
 use rustc_session::cstore::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnIndex, MacroKind, SyntaxContextData};
-use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Span};
+use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Ident, Span, Symbol};
 use rustc_target::spec::{PanicStrategy, TargetTuple};
 use table::TableBuilder;
-use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
+use {rustc_ast as ast, rustc_attr_parsing as attr, rustc_hir as hir};
 
 use crate::creader::CrateMetadataRef;
 
@@ -403,7 +402,7 @@ define_tables! {
     cross_crate_inlinable: Table<DefIndex, bool>,
 
 - optional:
-    attributes: Table<DefIndex, LazyArray<ast::Attribute>>,
+    attributes: Table<DefIndex, LazyArray<hir::Attribute>>,
     // For non-reexported names in a module every name is associated with a separate `DefId`,
     // so we can take their names, visibilities etc from other encoded tables.
     module_children_non_reexports: Table<DefIndex, LazyArray<DefIndex>>,

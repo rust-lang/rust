@@ -25,7 +25,6 @@
 #![feature(hash_set_entry)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
-#![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(read_buf)]
 #![feature(round_char_boundary)]
@@ -68,7 +67,7 @@ mod span_encoding;
 pub use span_encoding::{DUMMY_SP, Span};
 
 pub mod symbol;
-pub use symbol::{Symbol, sym};
+pub use symbol::{Ident, MacroRulesNormalizedIdent, Symbol, kw, sym};
 
 mod analyze_source_file;
 pub mod fatal_error;

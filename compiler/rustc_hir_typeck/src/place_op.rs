@@ -7,8 +7,7 @@ use rustc_middle::ty::adjustment::{
     PointerCoercion,
 };
 use rustc_middle::ty::{self, Ty};
-use rustc_span::Span;
-use rustc_span::symbol::{Ident, sym};
+use rustc_span::{Ident, Span, sym};
 use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
 

@@ -3,22 +3,10 @@
 //@ needs-asm-support
 
 #![crate_type = "rlib"]
-#![feature(no_core, rustc_attrs, lang_items)]
-#![no_core]
 
 // AArch64 test corresponding to arm64ec-sve.rs.
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
-
-impl Copy for f64 {}
-
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
+use std::arch::asm;
 
 fn f(x: f64) {
     unsafe {
