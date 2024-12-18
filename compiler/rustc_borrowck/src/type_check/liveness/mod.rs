@@ -17,7 +17,6 @@ use crate::region_infer::values::LivenessValues;
 use crate::universal_regions::UniversalRegions;
 
 mod local_use_map;
-mod polonius;
 mod trace;
 
 /// Combines liveness analysis with initialization analysis to
@@ -44,8 +43,6 @@ pub(super) fn generate<'a, 'tcx>(
     );
     let (relevant_live_locals, boring_locals) =
         compute_relevant_live_locals(typeck.tcx(), &free_regions, body);
-
-    polonius::emit_access_facts(typeck, body, move_data);
 
     trace::trace(
         typeck,
