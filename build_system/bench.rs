@@ -66,7 +66,7 @@ pub(crate) fn benchmark(dirs: &Dirs, compiler: &Compiler) {
         target_dir = target_dir.display(),
     );
 
-    let bench_compile_markdown = dirs.dist_dir.join("bench_compile.md");
+    let bench_compile_markdown = dirs.build_dir.join("bench_compile.md");
 
     let bench_compile = hyperfine_command(
         0,
@@ -90,7 +90,7 @@ pub(crate) fn benchmark(dirs: &Dirs, compiler: &Compiler) {
 
     eprintln!("[BENCH RUN] ebobby/simple-raytracer");
 
-    let bench_run_markdown = dirs.dist_dir.join("bench_run.md");
+    let bench_run_markdown = dirs.build_dir.join("bench_run.md");
 
     let raytracer_cg_llvm =
         Path::new(".").join(get_file_name(&compiler.rustc, "raytracer_cg_llvm", "bin"));
