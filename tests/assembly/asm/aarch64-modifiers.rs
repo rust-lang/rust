@@ -1,29 +1,17 @@
+//@ add-core-stubs
 //@ assembly-output: emit-asm
 //@ compile-flags: -O -C panic=abort
 //@ compile-flags: --target aarch64-unknown-linux-gnu
 //@ compile-flags: -Zmerge-functions=disabled
 //@ needs-llvm-components: aarch64
 
-#![feature(no_core, lang_items, rustc_attrs)]
+#![feature(no_core)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register)]
 
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! stringify {
-    () => {};
-}
-
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
-
-impl Copy for i32 {}
+extern crate minicore;
+use minicore::*;
 
 macro_rules! check {
     ($func:ident $reg:ident $code:literal) => {
