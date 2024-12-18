@@ -225,8 +225,8 @@ use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::print::{shrunk_instance_name, with_no_trimmed_paths};
 use rustc_middle::ty::{
-    self, GenericArgs, GenericParamDefKind, Instance, InstanceKind, Ty, TyCtxt, TypeFoldable,
-    TypeVisitableExt, VtblEntry,
+    self, GenericArgs, GenericParamDefKind, Instance, InstanceKind, Interner, Ty, TyCtxt,
+    TypeFoldable, TypeVisitableExt, VtblEntry,
 };
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, span_bug};
@@ -965,7 +965,7 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxtAt<'tcx>, instance: Instance<'tcx>) -
     {
         // `#[rustc_force_inline]` items should never be codegened. This should be caught by
         // the MIR validator.
-        return false;
+        tcx.delay_bug("attempt to codegen `#[rustc_force_inline]` item");
     }
 
     if def_id.is_local() {
@@ -1462,7 +1462,9 @@ impl<'v> RootCollector<'_, 'v> {
     fn is_root(&self, def_id: LocalDefId) -> bool {
         !self.tcx.generics_of(def_id).requires_monomorphization(self.tcx)
             && match self.strategy {
-                MonoItemCollectionStrategy::Eager => true,
+                MonoItemCollectionStrategy::Eager => {
+                    !matches!(self.tcx.codegen_fn_attrs(def_id).inline, InlineAttr::Force { .. })
+                }
                 MonoItemCollectionStrategy::Lazy => {
                     self.entry_fn.and_then(|(id, _)| id.as_local()) == Some(def_id)
                         || self.tcx.is_reachable_non_generic(def_id)
