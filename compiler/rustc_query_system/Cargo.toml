@@ -1,7 +1,3 @@
-[package]
-name = "rustc_query_system"
-version = "0.0.0"
-edition = "2021"
 
 [dependencies]
 # tidy-alphabetical-start
