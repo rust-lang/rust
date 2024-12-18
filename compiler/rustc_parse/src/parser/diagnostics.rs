@@ -22,7 +22,7 @@ use rustc_errors::{
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::AllKeywords;
+use rustc_span::symbol::used_keywords;
 use rustc_span::{BytePos, DUMMY_SP, Ident, Span, SpanSnippetError, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, trace};
@@ -811,12 +811,12 @@ impl<'a> Parser<'a> {
             // so that it gets generated only when the diagnostic needs it.
             // Also, it is unlikely that this list is generated multiple times because the
             // parser halts after execution hits this path.
-            let all_keywords = AllKeywords::new().collect_used(|| prev_ident.span.edition());
+            let all_keywords = used_keywords(|| prev_ident.span.edition());
 
             // Otherwise, check the previous token with all the keywords as possible candidates.
             // This handles code like `Struct Human;` and `While a < b {}`.
-            // We check the previous token only when the current token is an identifier to avoid false
-            // positives like suggesting keyword `for` for `extern crate foo {}`.
+            // We check the previous token only when the current token is an identifier to avoid
+            // false positives like suggesting keyword `for` for `extern crate foo {}`.
             if let Some(misspelled_kw) = find_similar_kw(prev_ident, &all_keywords) {
                 err.subdiagnostic(misspelled_kw);
                 // We don't want other suggestions to be added as they are most likely meaningless

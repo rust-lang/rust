@@ -24,9 +24,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::{
     self, Delimiter, IdentIsRaw, InvisibleOrigin, MetaVarKind, Nonterminal, Token, TokenKind,
 };
-use rustc_ast::tokenstream::{
-    AttrsTarget, DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree, TokenTreeCursor,
-};
+use rustc_ast::tokenstream::{AttrsTarget, Spacing, TokenStream, TokenTree};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, AnonConst, AttrArgs, AttrId, ByRef, Const, CoroutineKind, DUMMY_NODE_ID,
@@ -272,21 +270,48 @@ struct CaptureState {
     seen_attrs: IntervalSet<AttrId>,
 }
 
-/// Iterator over a `TokenStream` that produces `Token`s. It's a bit odd that
+#[derive(Clone, Debug)]
+struct TokenTreeCursor {
+    stream: TokenStream,
+    /// Points to the current token tree in the stream. In `TokenCursor::curr`,
+    /// this can be any token tree. In `TokenCursor::stack`, this is always a
+    /// `TokenTree::Delimited`.
+    index: usize,
+}
+
+impl TokenTreeCursor {
+    #[inline]
+    fn new(stream: TokenStream) -> Self {
+        TokenTreeCursor { stream, index: 0 }
+    }
+
+    #[inline]
+    fn curr(&self) -> Option<&TokenTree> {
+        self.stream.get(self.index)
+    }
+
+    #[inline]
+    fn bump(&mut self) {
+        self.index += 1;
+    }
+}
+
+/// A `TokenStream` cursor that produces `Token`s. It's a bit odd that
 /// we (a) lex tokens into a nice tree structure (`TokenStream`), and then (b)
 /// use this type to emit them as a linear sequence. But a linear sequence is
 /// what the parser expects, for the most part.
 #[derive(Clone, Debug)]
 struct TokenCursor {
-    // Cursor for the current (innermost) token stream. The delimiters for this
-    // token stream are found in `self.stack.last()`; when that is `None` then
-    // we are in the outermost token stream which never has delimiters.
-    tree_cursor: TokenTreeCursor,
+    // Cursor for the current (innermost) token stream. The index within the
+    // cursor can point to any token tree in the stream (or one past the end).
+    // The delimiters for this token stream are found in `self.stack.last()`;
+    // if that is `None` we are in the outermost token stream which never has
+    // delimiters.
+    curr: TokenTreeCursor,
 
-    // Token streams surrounding the current one. The delimiters for stack[n]'s
-    // tokens are in `stack[n-1]`. `stack[0]` (when present) has no delimiters
-    // because it's the outermost token stream which never has delimiters.
-    stack: Vec<(TokenTreeCursor, DelimSpan, DelimSpacing, Delimiter)>,
+    // Token streams surrounding the current one. The index within each cursor
+    // always points to a `TokenTree::Delimited`.
+    stack: Vec<TokenTreeCursor>,
 }
 
 impl TokenCursor {
@@ -301,32 +326,33 @@ impl TokenCursor {
             // FIXME: we currently don't return `Delimiter::Invisible` open/close delims. To fix
             // #67062 we will need to, whereupon the `delim != Delimiter::Invisible` conditions
             // below can be removed.
-            if let Some(tree) = self.tree_cursor.next_ref() {
+            if let Some(tree) = self.curr.curr() {
                 match tree {
                     &TokenTree::Token(ref token, spacing) => {
                         debug_assert!(!matches!(
                             token.kind,
                             token::OpenDelim(_) | token::CloseDelim(_)
                         ));
-                        return (token.clone(), spacing);
+                        let res = (token.clone(), spacing);
+                        self.curr.bump();
+                        return res;
                     }
                     &TokenTree::Delimited(sp, spacing, delim, ref tts) => {
-                        let trees = tts.clone().into_trees();
-                        self.stack.push((
-                            mem::replace(&mut self.tree_cursor, trees),
-                            sp,
-                            spacing,
-                            delim,
-                        ));
+                        let trees = TokenTreeCursor::new(tts.clone());
+                        self.stack.push(mem::replace(&mut self.curr, trees));
                         if !delim.skip() {
                             return (Token::new(token::OpenDelim(delim), sp.open), spacing.open);
                         }
                         // No open delimiter to return; continue on to the next iteration.
                     }
                 };
-            } else if let Some((tree_cursor, span, spacing, delim)) = self.stack.pop() {
+            } else if let Some(parent) = self.stack.pop() {
                 // We have exhausted this token stream. Move back to its parent token stream.
-                self.tree_cursor = tree_cursor;
+                let Some(&TokenTree::Delimited(span, spacing, delim, _)) = parent.curr() else {
+                    panic!("parent should be Delimited")
+                };
+                self.curr = parent;
+                self.curr.bump(); // move past the `Delimited`
                 if !delim.skip() {
                     return (Token::new(token::CloseDelim(delim), span.close), spacing.close);
                 }
@@ -465,7 +491,7 @@ impl<'a> Parser<'a> {
             capture_cfg: false,
             restrictions: Restrictions::empty(),
             expected_tokens: Vec::new(),
-            token_cursor: TokenCursor { tree_cursor: stream.into_trees(), stack: Vec::new() },
+            token_cursor: TokenCursor { curr: TokenTreeCursor::new(stream), stack: Vec::new() },
             num_bump_calls: 0,
             break_last_token: 0,
             unmatched_angle_bracket_count: 0,
@@ -1191,7 +1217,7 @@ impl<'a> Parser<'a> {
         if dist == 1 {
             // The index is zero because the tree cursor's index always points
             // to the next token to be gotten.
-            match self.token_cursor.tree_cursor.look_ahead(0) {
+            match self.token_cursor.curr.curr() {
                 Some(tree) => {
                     // Indexing stayed within the current token tree.
                     match tree {
@@ -1201,12 +1227,13 @@ impl<'a> Parser<'a> {
                                 return looker(&Token::new(token::OpenDelim(delim), dspan.open));
                             }
                         }
-                    };
+                    }
                 }
                 None => {
                     // The tree cursor lookahead went (one) past the end of the
                     // current token tree. Try to return a close delimiter.
-                    if let Some(&(_, span, _, delim)) = self.token_cursor.stack.last()
+                    if let Some(last) = self.token_cursor.stack.last()
+                        && let Some(&TokenTree::Delimited(span, _, delim, _)) = last.curr()
                         && !delim.skip()
                     {
                         // We are not in the outermost token stream, so we have
@@ -1398,9 +1425,10 @@ impl<'a> Parser<'a> {
     pub fn parse_token_tree(&mut self) -> TokenTree {
         match self.token.kind {
             token::OpenDelim(..) => {
-                // Grab the tokens within the delimiters.
-                let stream = self.token_cursor.tree_cursor.stream.clone();
-                let (_, span, spacing, delim) = *self.token_cursor.stack.last().unwrap();
+                // Clone the `TokenTree::Delimited` that we are currently
+                // within. That's what we are going to return.
+                let tree = self.token_cursor.stack.last().unwrap().curr().unwrap().clone();
+                debug_assert_matches!(tree, TokenTree::Delimited(..));
 
                 // Advance the token cursor through the entire delimited
                 // sequence. After getting the `OpenDelim` we are *within* the
@@ -1420,7 +1448,7 @@ impl<'a> Parser<'a> {
 
                 // Consume close delimiter
                 self.bump();
-                TokenTree::Delimited(span, spacing, delim, stream)
+                tree
             }
             token::CloseDelim(_) | token::Eof => unreachable!(),
             _ => {

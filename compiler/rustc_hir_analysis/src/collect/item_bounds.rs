@@ -371,10 +371,9 @@ pub(super) fn explicit_item_bounds_with_filter(
                 associated_type_bounds(tcx, def_id, opaque_ty.bounds, opaque_ty.span, filter);
             return ty::EarlyBinder::bind(bounds);
         }
-        Some(ty::ImplTraitInTraitData::Impl { .. }) => span_bug!(
-            tcx.def_span(def_id),
-            "item bounds for RPITIT in impl to be fed on def-id creation"
-        ),
+        Some(ty::ImplTraitInTraitData::Impl { .. }) => {
+            span_bug!(tcx.def_span(def_id), "RPITIT in impl should not have item bounds")
+        }
         None => {}
     }
 

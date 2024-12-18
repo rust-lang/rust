@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: riscv64 riscv32 riscv64-zfhmin riscv32-zfhmin riscv64-zfh riscv32-zfh
 //@ assembly-output: emit-asm
 
@@ -29,39 +30,15 @@
 //@ compile-flags: -C target-feature=+d
 //@ compile-flags: -Zmerge-functions=disabled
 
-#![feature(no_core, lang_items, rustc_attrs, f16)]
+#![feature(no_core, f16)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register)]
 
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! concat {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! stringify {
-    () => {};
-}
-
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 type ptr = *mut u8;
-
-impl Copy for i8 {}
-impl Copy for i16 {}
-impl Copy for f16 {}
-impl Copy for i32 {}
-impl Copy for f32 {}
-impl Copy for i64 {}
-impl Copy for f64 {}
-impl Copy for ptr {}
 
 extern "C" {
     fn extern_func();

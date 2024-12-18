@@ -23,8 +23,8 @@ fn test_concat() {
         let mut eq_res = TokenStream::default();
         eq_res.push_stream(test_fst);
         eq_res.push_stream(test_snd);
-        assert_eq!(test_res.trees().count(), 5);
-        assert_eq!(eq_res.trees().count(), 5);
+        assert_eq!(test_res.iter().count(), 5);
+        assert_eq!(eq_res.iter().count(), 5);
         assert_eq!(test_res.eq_unspanned(&eq_res), true);
     })
 }
@@ -33,7 +33,7 @@ fn test_concat() {
 fn test_to_from_bijection() {
     create_default_session_globals_then(|| {
         let test_start = string_to_ts("foo::bar(baz)");
-        let test_end = test_start.trees().cloned().collect();
+        let test_end = test_start.iter().cloned().collect();
         assert_eq!(test_start, test_end)
     })
 }
@@ -105,6 +105,6 @@ fn test_dotdotdot() {
         stream.push_tree(TokenTree::token_joint(token::Dot, sp(1, 2)));
         stream.push_tree(TokenTree::token_alone(token::Dot, sp(2, 3)));
         assert!(stream.eq_unspanned(&string_to_ts("...")));
-        assert_eq!(stream.trees().count(), 1);
+        assert_eq!(stream.iter().count(), 1);
     })
 }

@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: powerpc powerpc_altivec powerpc_vsx powerpc64 powerpc64_vsx
 //@ assembly-output: emit-asm
 //@[powerpc] compile-flags: --target powerpc-unknown-linux-gnu
@@ -12,10 +13,13 @@
 //@[powerpc64_vsx] needs-llvm-components: powerpc
 //@ compile-flags: -Zmerge-functions=disabled
 
-#![feature(no_core, lang_items, rustc_attrs, repr_simd, asm_experimental_arch)]
+#![feature(no_core, repr_simd, asm_experimental_arch)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]
+
+extern crate minicore;
+use minicore::*;
 
 #[cfg_attr(altivec, cfg(not(target_feature = "altivec")))]
 #[cfg_attr(not(altivec), cfg(target_feature = "altivec"))]
@@ -23,26 +27,6 @@ compile_error!("altivec cfg and target feature mismatch");
 #[cfg_attr(vsx, cfg(not(target_feature = "vsx")))]
 #[cfg_attr(not(vsx), cfg(target_feature = "vsx"))]
 compile_error!("vsx cfg and target feature mismatch");
-
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! concat {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! stringify {
-    () => {};
-}
-
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
-
-impl<T: Copy, const N: usize> Copy for [T; N] {}
 
 type ptr = *const i32;
 
@@ -59,14 +43,6 @@ pub struct f32x4([f32; 4]);
 #[repr(simd)]
 pub struct f64x2([f64; 2]);
 
-impl Copy for i8 {}
-impl Copy for u8 {}
-impl Copy for i16 {}
-impl Copy for i32 {}
-impl Copy for i64 {}
-impl Copy for f32 {}
-impl Copy for f64 {}
-impl Copy for ptr {}
 impl Copy for i8x16 {}
 impl Copy for i16x8 {}
 impl Copy for i32x4 {}
