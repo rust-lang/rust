@@ -40,7 +40,7 @@ input, which contains a declarative configuration of all our CI jobs.
 In essence, all CI jobs run `./x test`, `./x dist` or some other command with
 different configurations, across various operating systems, targets and
 platforms. There are two broad categories of jobs that are executed, `dist` and
-non-`dist` jobs. 
+non-`dist` jobs.
 
 - Dist jobs build a full release of the compiler for a specific platform,
   including all the tools we ship through rustup; Those builds are then uploaded
@@ -392,6 +392,23 @@ More information is available in the [toolstate documentation].
 
 [rust-toolstate]: https://rust-lang-nursery.github.io/rust-toolstate
 [toolstate documentation]: https://forge.rust-lang.org/infra/toolstate.html
+
+## Public CI dashboard
+
+To monitor the Rust CI, you can have a look at the [public dashboard] maintained by the infra-team.
+
+These are some useful panels from the dashboard:
+
+- Pipeline duration: check how long the auto builds takes to run.
+- Top slowest jobs: check which jobs are taking the longest to run.
+- Change in median job duration: check what jobs are slowest than before. Useful
+  to detect regressions.
+- Top failed jobs: check which jobs are failing the most.
+
+To learn more about the dashboard, see the [Datadog CI docs].
+
+[Datadog CI docs]: https://docs.datadoghq.com/continuous_integration/
+[public dashboard]: https://p.datadoghq.com/sb/3a172e20-e9e1-11ed-80e3-da7ad0900002-b5f7bb7e08b664a06b08527da85f7e30
 
 [GitHub Actions]: https://github.com/rust-lang/rust/actions
 [`jobs.yml`]: https://github.com/rust-lang/rust/blob/master/src/ci/github-actions/jobs.yml
