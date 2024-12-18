@@ -306,6 +306,7 @@ symbols! {
         RwLockWriteGuard,
         Saturating,
         SeekFrom,
+        SelfTy,
         Send,
         SeqCst,
         Sized,
@@ -461,6 +462,7 @@ symbols! {
         async_drop_slice,
         async_drop_surface_drop_in_place,
         async_fn,
+        async_fn_in_dyn_trait,
         async_fn_in_trait,
         async_fn_kind_helper,
         async_fn_kind_upvars,
@@ -1189,6 +1191,7 @@ symbols! {
         loongarch_target_feature,
         loop_break_value,
         lt,
+        m68k_target_feature,
         macro_at_most_once_rep,
         macro_attributes_in_derive_output,
         macro_escape,
@@ -2104,6 +2107,7 @@ symbols! {
         unreachable_macro,
         unrestricted_attribute_tokens,
         unsafe_attributes,
+        unsafe_binders,
         unsafe_block_in_unsafe_fn,
         unsafe_cell,
         unsafe_cell_raw_get,
@@ -2127,6 +2131,7 @@ symbols! {
         unwind_attributes,
         unwind_safe_trait,
         unwrap,
+        unwrap_binder,
         unwrap_or,
         use_extern_macros,
         use_nested_groups,
@@ -2185,6 +2190,7 @@ symbols! {
         windows,
         windows_subsystem,
         with_negative_coherence,
+        wrap_binder,
         wrapping_add,
         wrapping_div,
         wrapping_mul,
@@ -2200,6 +2206,7 @@ symbols! {
         writeln_macro,
         x86_amx_intrinsics,
         x87_reg,
+        x87_target_feature,
         xer,
         xmm_reg,
         xop_target_feature,
@@ -2468,13 +2475,6 @@ impl fmt::Debug for Symbol {
 impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self.as_str(), f)
-    }
-}
-
-// takes advantage of `str::to_string` specialization
-impl ToString for Symbol {
-    fn to_string(&self) -> String {
-        self.as_str().to_string()
     }
 }
 

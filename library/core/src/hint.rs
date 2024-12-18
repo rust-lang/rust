@@ -310,12 +310,16 @@ pub fn spin_loop() {
 /// behavior in the calling code. This property makes `black_box` useful for writing code in which
 /// certain optimizations are not desired, such as benchmarks.
 ///
+/// <div class="warning">
+///
 /// Note however, that `black_box` is only (and can only be) provided on a "best-effort" basis. The
 /// extent to which it can block optimisations may vary depending upon the platform and code-gen
 /// backend used. Programs cannot rely on `black_box` for *correctness*, beyond it behaving as the
 /// identity function. As such, it **must not be relied upon to control critical program behavior.**
 /// This also means that this function does not offer any guarantees for cryptographic or security
 /// purposes.
+///
+/// </div>
 ///
 /// [`std::convert::identity`]: crate::convert::identity
 ///
@@ -357,7 +361,7 @@ pub fn spin_loop() {
 /// ```
 /// use std::hint::black_box;
 ///
-/// // Same `contains` function
+/// // Same `contains` function.
 /// fn contains(haystack: &[&str], needle: &str) -> bool {
 ///     haystack.iter().any(|x| x == &needle)
 /// }
@@ -366,8 +370,13 @@ pub fn spin_loop() {
 ///     let haystack = vec!["abc", "def", "ghi", "jkl", "mno"];
 ///     let needle = "ghi";
 ///     for _ in 0..10 {
-///         // Adjust our benchmark loop contents
-///         black_box(contains(black_box(&haystack), black_box(needle)));
+///         // Force the compiler to run `contains`, even though it is a pure function whose
+///         // results are unused.
+///         black_box(contains(
+///             // Prevent the compiler from making assumptions about the input.
+///             black_box(&haystack),
+///             black_box(needle),
+///         ));
 ///     }
 /// }
 /// ```
@@ -382,6 +391,83 @@ pub fn spin_loop() {
 ///
 /// This makes our benchmark much more realistic to how the function would actually be used, where
 /// arguments are usually not known at compile time and the result is used in some way.
+///
+/// # How to use this
+///
+/// In practice, `black_box` serves two purposes:
+///
+/// 1. It prevents the compiler from making optimizations related to the value returned by `black_box`
+/// 2. It forces the value passed to `black_box` to be calculated, even if the return value of `black_box` is unused
+///
+/// ```
+/// use std::hint::black_box;
+///
+/// let zero = 0;
+/// let five = 5;
+///
+/// // The compiler will see this and remove the `* five` call, because it knows that multiplying
+/// // any integer by 0 will result in 0.
+/// let c = zero * five;
+///
+/// // Adding `black_box` here disables the compiler's ability to reason about the first operand in the multiplication.
+/// // It is forced to assume that it can be any possible number, so it cannot remove the `* five`
+/// // operation.
+/// let c = black_box(zero) * five;
+/// ```
+///
+/// While most cases will not be as clear-cut as the above example, it still illustrates how
+/// `black_box` can be used. When benchmarking a function, you usually want to wrap its inputs in
+/// `black_box` so the compiler cannot make optimizations that would be unrealistic in real-life
+/// use.
+///
+/// ```
+/// use std::hint::black_box;
+///
+/// // This is a simple function that increments its input by 1. Note that it is pure, meaning it
+/// // has no side-effects. This function has no effect if its result is unused. (An example of a
+/// // function *with* side-effects is `println!()`.)
+/// fn increment(x: u8) -> u8 {
+///     x + 1
+/// }
+///
+/// // Here, we call `increment` but discard its result. The compiler, seeing this and knowing that
+/// // `increment` is pure, will eliminate this function call entirely. This may not be desired,
+/// // though, especially if we're trying to track how much time `increment` takes to execute.
+/// let _ = increment(black_box(5));
+///
+/// // Here, we force `increment` to be executed. This is because the compiler treats `black_box`
+/// // as if it has side-effects, and thus must compute its input.
+/// let _ = black_box(increment(black_box(5)));
+/// ```
+///
+/// There may be additional situations where you want to wrap the result of a function in
+/// `black_box` to force its execution. This is situational though, and may not have any effect
+/// (such as when the function returns a zero-sized type such as [`()` unit][unit]).
+///
+/// Note that `black_box` has no effect on how its input is treated, only its output. As such,
+/// expressions passed to `black_box` may still be optimized:
+///
+/// ```
+/// use std::hint::black_box;
+///
+/// // The compiler sees this...
+/// let y = black_box(5 * 10);
+///
+/// // ...as this. As such, it will likely simplify `5 * 10` to just `50`.
+/// let _0 = 5 * 10;
+/// let y = black_box(_0);
+/// ```
+///
+/// In the above example, the `5 * 10` expression is considered distinct from the `black_box` call,
+/// and thus is still optimized by the compiler. You can prevent this by moving the multiplication
+/// operation outside of `black_box`:
+///
+/// ```
+/// use std::hint::black_box;
+///
+/// // No assumptions can be made about either operand, so the multiplication is not optimized out.
+/// let y = black_box(5) * black_box(10);
+/// ```
 #[inline]
 #[stable(feature = "bench_black_box", since = "1.66.0")]
 #[rustc_const_unstable(feature = "const_black_box", issue = "none")]

@@ -45,7 +45,7 @@ use rustc_errors::registry::Registry;
 use rustc_errors::{ColorConfig, DiagCtxt, ErrCode, FatalError, PResult, markdown};
 use rustc_feature::find_gated_cfg;
 use rustc_interface::util::{self, get_codegen_backend};
-use rustc_interface::{Linker, Queries, interface, passes};
+use rustc_interface::{Linker, create_and_enter_global_ctxt, interface, passes};
 use rustc_lint::unerased_lint_store;
 use rustc_metadata::creader::MetadataLoader;
 use rustc_metadata::locator;
@@ -112,7 +112,7 @@ pub static DEFAULT_LOCALE_RESOURCES: &[&str] = &[
     crate::DEFAULT_LOCALE_RESOURCE,
     rustc_ast_lowering::DEFAULT_LOCALE_RESOURCE,
     rustc_ast_passes::DEFAULT_LOCALE_RESOURCE,
-    rustc_attr::DEFAULT_LOCALE_RESOURCE,
+    rustc_attr_parsing::DEFAULT_LOCALE_RESOURCE,
     rustc_borrowck::DEFAULT_LOCALE_RESOURCE,
     rustc_builtin_macros::DEFAULT_LOCALE_RESOURCE,
     rustc_codegen_ssa::DEFAULT_LOCALE_RESOURCE,
@@ -158,13 +158,10 @@ pub trait Callbacks {
     /// Called after parsing the crate root. Submodules are not yet parsed when
     /// this callback is called. Return value instructs the compiler whether to
     /// continue the compilation afterwards (defaults to `Compilation::Continue`)
-    #[deprecated = "This callback will likely be removed or stop giving access \
-                    to the TyCtxt in the future. Use either the after_expansion \
-                    or the after_analysis callback instead."]
-    fn after_crate_root_parsing<'tcx>(
+    fn after_crate_root_parsing(
         &mut self,
         _compiler: &interface::Compiler,
-        _queries: &'tcx Queries<'tcx>,
+        _queries: &ast::Crate,
     ) -> Compilation {
         Compilation::Continue
     }
@@ -173,7 +170,7 @@ pub trait Callbacks {
     fn after_expansion<'tcx>(
         &mut self,
         _compiler: &interface::Compiler,
-        _queries: &'tcx Queries<'tcx>,
+        _tcx: TyCtxt<'tcx>,
     ) -> Compilation {
         Compilation::Continue
     }
@@ -350,6 +347,8 @@ fn run_compiler(
 
     callbacks.config(&mut config);
 
+    let registered_lints = config.register_lints.is_some();
+
     interface::run_compiler(config, |compiler| {
         let sess = &compiler.sess;
         let codegen_backend = &*compiler.codegen_backend;
@@ -365,7 +364,7 @@ fn run_compiler(
         // `--help`/`-Zhelp`/`-Chelp`. This is the earliest it can run, because
         // it must happen after lints are registered, during session creation.
         if sess.opts.describe_lints {
-            describe_lints(sess);
+            describe_lints(sess, registered_lints);
             return early_exit();
         }
 
@@ -388,75 +387,69 @@ fn run_compiler(
             return early_exit();
         }
 
-        let linker = compiler.enter(|queries| {
+        // Parse the crate root source code (doesn't parse submodules yet)
+        // Everything else is parsed during macro expansion.
+        let krate = passes::parse(sess);
+
+        // If pretty printing is requested: Figure out the representation, print it and exit
+        if let Some(pp_mode) = sess.opts.pretty {
+            if pp_mode.needs_ast_map() {
+                create_and_enter_global_ctxt(compiler, krate, |tcx| {
+                    tcx.ensure().early_lint_checks(());
+                    pretty::print(sess, pp_mode, pretty::PrintExtra::NeedsAstMap { tcx });
+                    passes::write_dep_info(tcx);
+                });
+            } else {
+                pretty::print(sess, pp_mode, pretty::PrintExtra::AfterParsing { krate: &krate });
+            }
+            trace!("finished pretty-printing");
+            return early_exit();
+        }
+
+        if callbacks.after_crate_root_parsing(compiler, &krate) == Compilation::Stop {
+            return early_exit();
+        }
+
+        if sess.opts.unstable_opts.parse_crate_root_only {
+            return early_exit();
+        }
+
+        let linker = create_and_enter_global_ctxt(compiler, krate, |tcx| {
             let early_exit = || {
                 sess.dcx().abort_if_errors();
                 None
             };
 
-            // Parse the crate root source code (doesn't parse submodules yet)
-            // Everything else is parsed during macro expansion.
-            queries.parse();
-
-            // If pretty printing is requested: Figure out the representation, print it and exit
-            if let Some(pp_mode) = sess.opts.pretty {
-                if pp_mode.needs_ast_map() {
-                    queries.global_ctxt().enter(|tcx| {
-                        tcx.ensure().early_lint_checks(());
-                        pretty::print(sess, pp_mode, pretty::PrintExtra::NeedsAstMap { tcx });
-                        passes::write_dep_info(tcx);
-                    });
-                } else {
-                    let krate = queries.parse();
-                    pretty::print(sess, pp_mode, pretty::PrintExtra::AfterParsing {
-                        krate: &*krate.borrow(),
-                    });
-                }
-                trace!("finished pretty-printing");
-                return early_exit();
-            }
-
-            #[allow(deprecated)]
-            if callbacks.after_crate_root_parsing(compiler, queries) == Compilation::Stop {
-                return early_exit();
-            }
-
-            if sess.opts.unstable_opts.parse_crate_root_only {
-                return early_exit();
-            }
-
             // Make sure name resolution and macro expansion is run.
-            queries.global_ctxt().enter(|tcx| tcx.resolver_for_lowering());
+            let _ = tcx.resolver_for_lowering();
 
             if let Some(metrics_dir) = &sess.opts.unstable_opts.metrics_dir {
-                queries.global_ctxt().enter(|tcxt| dump_feature_usage_metrics(tcxt, metrics_dir));
+                dump_feature_usage_metrics(tcx, metrics_dir);
             }
 
-            if callbacks.after_expansion(compiler, queries) == Compilation::Stop {
+            if callbacks.after_expansion(compiler, tcx) == Compilation::Stop {
                 return early_exit();
             }
 
-            queries.global_ctxt().enter(|tcx| {
-                passes::write_dep_info(tcx);
+            passes::write_dep_info(tcx);
 
-                if sess.opts.output_types.contains_key(&OutputType::DepInfo)
-                    && sess.opts.output_types.len() == 1
-                {
-                    return early_exit();
-                }
+            if sess.opts.output_types.contains_key(&OutputType::DepInfo)
+                && sess.opts.output_types.len() == 1
+            {
+                return early_exit();
+            }
 
-                if sess.opts.unstable_opts.no_analysis {
-                    return early_exit();
-                }
+            if sess.opts.unstable_opts.no_analysis {
+                return early_exit();
+            }
 
-                tcx.ensure().analysis(());
+            tcx.ensure().analysis(());
 
-                if callbacks.after_analysis(compiler, tcx) == Compilation::Stop {
-                    return early_exit();
-                }
+            if callbacks.after_analysis(compiler, tcx) == Compilation::Stop {
+                return early_exit();
+            }
 
-                Some(Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend))
-            })
+            Some(Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend))
         });
 
         // Linking is done outside the `compiler.enter()` so that the
@@ -982,7 +975,7 @@ the command line flag directly.
 }
 
 /// Write to stdout lint command options, together with a list of all available lints
-pub fn describe_lints(sess: &Session) {
+pub fn describe_lints(sess: &Session, registered_lints: bool) {
     safe_println!(
         "
 Available lint options:
@@ -1086,7 +1079,7 @@ Available lint options:
 
     print_lint_groups(builtin_groups, true);
 
-    match (sess.registered_lints, loaded.len(), loaded_groups.len()) {
+    match (registered_lints, loaded.len(), loaded_groups.len()) {
         (false, 0, _) | (false, _, 0) => {
             safe_println!("Lint tools like Clippy can load additional lints and lint groups.");
         }

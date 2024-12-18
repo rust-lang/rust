@@ -132,11 +132,9 @@ pub use ide_db::{
     search::{ReferenceCategory, SearchScope},
     source_change::{FileSystemEdit, SnippetEdit, SourceChange},
     symbol_index::Query,
-    FileId, FilePosition, FileRange, RootDatabase, SymbolKind,
+    FileId, FilePosition, FileRange, RootDatabase, Severity, SymbolKind,
 };
-pub use ide_diagnostics::{
-    Diagnostic, DiagnosticCode, DiagnosticsConfig, ExprFillDefaultMode, Severity,
-};
+pub use ide_diagnostics::{Diagnostic, DiagnosticCode, DiagnosticsConfig, ExprFillDefaultMode};
 pub use ide_ssr::SsrError;
 pub use span::Edition;
 pub use syntax::{TextRange, TextSize};
@@ -301,7 +299,7 @@ impl Analysis {
 
     /// Gets the syntax tree of the file.
     pub fn parse(&self, file_id: FileId) -> Cancellable<SourceFile> {
-        // FIXME editiojn
+        // FIXME edition
         self.with_db(|db| db.parse(EditionedFileId::current_edition(file_id)).tree())
     }
 
@@ -542,7 +540,7 @@ impl Analysis {
     /// Returns URL(s) for the documentation of the symbol under the cursor.
     /// # Arguments
     /// * `position` - Position in the file.
-    /// * `target_dir` - Directory where the build output is storeda.
+    /// * `target_dir` - Directory where the build output is stored.
     pub fn external_docs(
         &self,
         position: FilePosition,

@@ -1053,8 +1053,21 @@ impl HirDisplay for Ty {
                             generic_args_sans_defaults(f, Some(generic_def_id), parameters);
                         assert!(params_len >= parameters.len());
                         let defaults = params_len - parameters.len();
-                        let without_impl =
-                            self_param as usize + type_ + const_ + lifetime - defaults;
+
+                        // Normally, functions cannot have default parameters, but they can,
+                        // for function-like things such as struct names or enum variants.
+                        // The former cannot have defaults but parents, and the later cannot have
+                        // parents but defaults.
+                        // So, if `parent_len` > 0, it have a parent and thus it doesn't have any
+                        // default. Therefore, we shouldn't subtract defaults because those defaults
+                        // are from their parents.
+                        // And if `parent_len` == 0, either parents don't exists or they don't have
+                        // any defaults. Thus, we can - and should - subtract defaults.
+                        let without_impl = if parent_len > 0 {
+                            params_len - parent_len - impl_
+                        } else {
+                            params_len - parent_len - impl_ - defaults
+                        };
                         // parent's params (those from enclosing impl or trait, if any).
                         let (fn_params, parent_params) = parameters.split_at(without_impl + impl_);
 

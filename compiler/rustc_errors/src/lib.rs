@@ -94,8 +94,7 @@ mod styled_buffer;
 mod tests;
 pub mod translation;
 
-pub type PErr<'a> = Diag<'a>;
-pub type PResult<'a, T> = Result<T, PErr<'a>>;
+pub type PResult<'a, T> = Result<T, Diag<'a>>;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
@@ -576,6 +575,10 @@ pub enum StashKey {
     UndeterminedMacroResolution,
     /// Used by `Parser::maybe_recover_trailing_expr`
     ExprInPat,
+    /// If in the parser we detect a field expr with turbofish generic params it's possible that
+    /// it's a method call without parens. If later on in `hir_typeck` we find out that this is
+    /// the case we suppress this message and we give a better suggestion.
+    GenericInFieldExpr,
 }
 
 fn default_track_diagnostic<R>(diag: DiagInner, f: &mut dyn FnMut(DiagInner) -> R) -> R {
@@ -1566,18 +1569,18 @@ impl DiagCtxtInner {
                 debug!(?diagnostic);
                 debug!(?self.emitted_diagnostics);
 
-                let already_emitted_sub = |sub: &mut Subdiag| {
+                let not_yet_emitted = |sub: &mut Subdiag| {
                     debug!(?sub);
                     if sub.level != OnceNote && sub.level != OnceHelp {
-                        return false;
+                        return true;
                     }
                     let mut hasher = StableHasher::new();
                     sub.hash(&mut hasher);
                     let diagnostic_hash = hasher.finish();
                     debug!(?diagnostic_hash);
-                    !self.emitted_diagnostics.insert(diagnostic_hash)
+                    self.emitted_diagnostics.insert(diagnostic_hash)
                 };
-                diagnostic.children.extract_if(already_emitted_sub).for_each(|_| {});
+                diagnostic.children.retain_mut(not_yet_emitted);
                 if already_emitted {
                     let msg = "duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`";
                     diagnostic.sub(Note, msg, MultiSpan::new());

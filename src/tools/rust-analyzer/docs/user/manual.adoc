@@ -580,7 +580,7 @@ Unfortunately, it downloads an old version of `rust-analyzer`, but you can set t
 
 There is a package named `ra_ap_rust_analyzer` available on https://crates.io/crates/ra_ap_rust-analyzer[crates.io], for someone who wants to use it programmatically.
 
-For more details, see https://github.com/rust-lang/rust-analyzer/blob/master/.github/workflows/publish.yml[the publish workflow].
+For more details, see https://github.com/rust-lang/rust-analyzer/blob/master/.github/workflows/autopublish.yaml[the publish workflow].
 
 === Zed
 

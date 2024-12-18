@@ -8,7 +8,7 @@ use rustc_hir::hir_id::{HirId, HirIdMap};
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{
     self as hir, AnonConst, BinOpKind, BindingMode, Body, Expr, ExprKind, FnRetTy, FnSig, GenericArg, ImplItemKind,
-    ItemKind, Lifetime, Mutability, Node, Param, PatKind, QPath, Safety, TraitFn, TraitItem, TraitItemKind, TyKind,
+    ItemKind, Lifetime, Mutability, Node, Param, PatKind, QPath, TraitFn, TraitItem, TraitItemKind, TyKind,
 };
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{Obligation, ObligationCause};
@@ -541,7 +541,7 @@ fn check_mut_from_ref<'tcx>(cx: &LateContext<'tcx>, sig: &FnSig<'_>, body: Optio
             .collect();
         if let Some(args) = args
             && !args.is_empty()
-            && body.is_none_or(|body| sig.header.safety == Safety::Unsafe || contains_unsafe_block(cx, body.value))
+            && body.is_none_or(|body| sig.header.safety.is_unsafe() || contains_unsafe_block(cx, body.value))
         {
             span_lint_and_then(
                 cx,

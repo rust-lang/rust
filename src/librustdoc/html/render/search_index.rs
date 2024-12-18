@@ -201,7 +201,7 @@ pub(crate) fn build_index(
                             // exported from this same module). It's also likely to Do
                             // What I Mean, since if a re-export changes the name, it might
                             // also be a change in semantic meaning.
-                            .filter(|fqp| fqp.last() == fqp.last());
+                            .filter(|this_fqp| this_fqp.last() == fqp.last());
                         Some(insert_into_map(
                             itemid_to_pathid,
                             ItemId::DefId(defid),
@@ -423,6 +423,14 @@ pub(crate) fn build_index(
                     }
                     Some(path)
                 });
+            } else if let Some(parent_idx) = item.parent_idx {
+                let i = <isize as TryInto<usize>>::try_into(parent_idx).unwrap();
+                item.path = {
+                    let p = &crate_paths[i].1;
+                    join_with_double_colon(&p[..p.len() - 1])
+                };
+                item.exact_path =
+                    crate_paths[i].2.as_ref().map(|xp| join_with_double_colon(&xp[..xp.len() - 1]));
             }
 
             // Omit the parent path if it is same to that of the prior item.

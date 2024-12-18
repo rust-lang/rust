@@ -1016,6 +1016,31 @@ impl Rewrite for ast::Ty {
                 let pat = pat.rewrite_result(context, shape)?;
                 Ok(format!("{ty} is {pat}"))
             }
+            ast::TyKind::UnsafeBinder(ref binder) => {
+                let mut result = String::new();
+                if let Some(ref lifetime_str) =
+                    rewrite_bound_params(context, shape, &binder.generic_params)
+                {
+                    result.push_str("unsafe<");
+                    result.push_str(lifetime_str);
+                    result.push_str("> ");
+                }
+
+                let inner_ty_shape = if context.use_block_indent() {
+                    shape
+                        .offset_left(result.len())
+                        .max_width_error(shape.width, self.span())?
+                } else {
+                    shape
+                        .visual_indent(result.len())
+                        .sub_width(result.len())
+                        .max_width_error(shape.width, self.span())?
+                };
+
+                let rewrite = binder.inner_ty.rewrite_result(context, inner_ty_shape)?;
+                result.push_str(&rewrite);
+                Ok(result)
+            }
         }
     }
 }

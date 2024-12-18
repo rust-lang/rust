@@ -1,10 +1,8 @@
 use rustc_ast::MetaItem;
 use rustc_hir::def_id::DefId;
-use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{self, Body, Local, Location};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::Span;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Span, Symbol, sym};
 use tracing::{debug, info};
 
 use crate::errors::{
@@ -254,7 +252,7 @@ impl<'tcx> RustcPeekAt<'tcx> for MaybeLiveLocals {
         &self,
         tcx: TyCtxt<'tcx>,
         place: mir::Place<'tcx>,
-        state: &BitSet<Local>,
+        state: &Self::Domain,
         call: PeekCall,
     ) {
         info!(?place, "peek_at");

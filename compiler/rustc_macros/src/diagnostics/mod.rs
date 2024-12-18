@@ -16,7 +16,7 @@ use synstructure::Structure;
 /// # extern crate rustc_errors;
 /// # use rustc_errors::Applicability;
 /// # extern crate rustc_span;
-/// # use rustc_span::{symbol::Ident, Span};
+/// # use rustc_span::{Ident, Span};
 /// # extern crate rust_middle;
 /// # use rustc_middle::ty::Ty;
 /// #[derive(Diagnostic)]

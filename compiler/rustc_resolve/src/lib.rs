@@ -70,8 +70,7 @@ use rustc_query_system::ich::StableHashingContext;
 use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
 use rustc_session::lint::{BuiltinLintDiag, LintBuffer};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
 use tracing::debug;
 
@@ -190,6 +189,7 @@ impl InvocationParent {
 enum ImplTraitContext {
     Existential,
     Universal,
+    InBinding,
 }
 
 /// Used for tracking import use types which will be used for redundant import checking.
@@ -450,6 +450,7 @@ enum PathResult<'ra> {
         module: Option<ModuleOrUniformRoot<'ra>>,
         /// The segment name of target
         segment_name: Symbol,
+        error_implied_by_parse_error: bool,
     },
 }
 
@@ -458,6 +459,7 @@ impl<'ra> PathResult<'ra> {
         ident: Ident,
         is_error_from_last_segment: bool,
         finalize: bool,
+        error_implied_by_parse_error: bool,
         module: Option<ModuleOrUniformRoot<'ra>>,
         label_and_suggestion: impl FnOnce() -> (String, Option<Suggestion>),
     ) -> PathResult<'ra> {
@@ -470,6 +472,7 @@ impl<'ra> PathResult<'ra> {
             suggestion,
             is_error_from_last_segment,
             module,
+            error_implied_by_parse_error,
         }
     }
 }
@@ -1198,6 +1201,8 @@ pub struct Resolver<'ra, 'tcx> {
     /// This is the `Span` where an `extern crate foo;` suggestion would be inserted, if `foo`
     /// could be a crate that wasn't imported. For diagnostics use only.
     current_crate_outer_attr_insert_span: Span,
+
+    mods_with_parse_errors: FxHashSet<DefId>,
 }
 
 /// This provides memory for the rest of the crate. The `'ra` lifetime that is
@@ -1543,6 +1548,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             impl_unexpanded_invocations: Default::default(),
             impl_binding_keys: Default::default(),
             current_crate_outer_attr_insert_span,
+            mods_with_parse_errors: Default::default(),
         };
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);

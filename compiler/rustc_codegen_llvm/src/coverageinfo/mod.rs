@@ -5,7 +5,7 @@ use rustc_abi::Size;
 use rustc_codegen_ssa::traits::{
     BuilderMethods, ConstCodegenMethods, CoverageInfoBuilderMethods, MiscCodegenMethods,
 };
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::layout::HasTyCtxt;
@@ -13,18 +13,16 @@ use tracing::{debug, instrument};
 
 use crate::builder::Builder;
 use crate::common::CodegenCx;
-use crate::coverageinfo::map_data::FunctionCoverage;
 use crate::llvm;
 
 pub(crate) mod ffi;
 mod llvm_cov;
-pub(crate) mod map_data;
 mod mapgen;
 
 /// Extra per-CGU context/state needed for coverage instrumentation.
 pub(crate) struct CguCoverageContext<'ll, 'tcx> {
     /// Coverage data for each instrumented function identified by DefId.
-    pub(crate) function_coverage_map: RefCell<FxIndexMap<Instance<'tcx>, FunctionCoverage<'tcx>>>,
+    pub(crate) instances_used: RefCell<FxIndexSet<Instance<'tcx>>>,
     pub(crate) pgo_func_name_var_map: RefCell<FxHashMap<Instance<'tcx>, &'ll llvm::Value>>,
     pub(crate) mcdc_condition_bitmap_map: RefCell<FxHashMap<Instance<'tcx>, Vec<&'ll llvm::Value>>>,
 
@@ -34,15 +32,11 @@ pub(crate) struct CguCoverageContext<'ll, 'tcx> {
 impl<'ll, 'tcx> CguCoverageContext<'ll, 'tcx> {
     pub(crate) fn new() -> Self {
         Self {
-            function_coverage_map: Default::default(),
+            instances_used: RefCell::<FxIndexSet<_>>::default(),
             pgo_func_name_var_map: Default::default(),
             mcdc_condition_bitmap_map: Default::default(),
             covfun_section_name: Default::default(),
         }
-    }
-
-    fn take_function_coverage_map(&self) -> FxIndexMap<Instance<'tcx>, FunctionCoverage<'tcx>> {
-        self.function_coverage_map.replace(FxIndexMap::default())
     }
 
     /// LLVM use a temp value to record evaluated mcdc test vector of each decision, which is
@@ -157,12 +151,7 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
         // Mark the instance as used in this CGU, for coverage purposes.
         // This includes functions that were not partitioned into this CGU,
         // but were MIR-inlined into one of this CGU's functions.
-        coverage_cx.function_coverage_map.borrow_mut().entry(instance).or_insert_with(|| {
-            FunctionCoverage::new_used(
-                function_coverage_info,
-                bx.tcx.coverage_ids_info(instance.def),
-            )
-        });
+        coverage_cx.instances_used.borrow_mut().insert(instance);
 
         match *kind {
             CoverageKind::SpanMarker | CoverageKind::BlockMarker { .. } => unreachable!(

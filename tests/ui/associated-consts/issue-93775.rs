@@ -1,3 +1,7 @@
+//@ ignore-windows-msvc
+// FIXME(#132111, #133432): this test is flaky on windows msvc, it sometimes fail but it sometimes
+// passes.
+
 //@ build-pass
 // ignore-tidy-linelength
 

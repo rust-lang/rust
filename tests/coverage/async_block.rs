@@ -1,4 +1,3 @@
-#![feature(coverage_attribute)]
 //@ edition: 2021
 
 //@ aux-build: executor.rs

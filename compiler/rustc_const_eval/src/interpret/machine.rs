@@ -540,10 +540,14 @@ pub trait Machine<'tcx>: Sized {
         interp_ok(ReturnAction::Normal)
     }
 
-    /// Called immediately after an "immediate" local variable is read
+    /// Called immediately after an "immediate" local variable is read in a given frame
     /// (i.e., this is called for reads that do not end up accessing addressable memory).
     #[inline(always)]
-    fn after_local_read(_ecx: &InterpCx<'tcx, Self>, _local: mir::Local) -> InterpResult<'tcx> {
+    fn after_local_read(
+        _ecx: &InterpCx<'tcx, Self>,
+        _frame: &Frame<'tcx, Self::Provenance, Self::FrameExtra>,
+        _local: mir::Local,
+    ) -> InterpResult<'tcx> {
         interp_ok(())
     }
 

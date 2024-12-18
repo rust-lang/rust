@@ -18,8 +18,7 @@ use rustc_parse::parser::Parser;
 use rustc_parse::{new_parser_from_source_str, source_str_to_stream, unwrap_or_emit_fatal};
 use rustc_session::parse::ParseSess;
 use rustc_span::def_id::CrateNum;
-use rustc_span::symbol::{self, Symbol, sym};
-use rustc_span::{BytePos, FileName, Pos, SourceFile, Span};
+use rustc_span::{BytePos, FileName, Pos, SourceFile, Span, Symbol, sym};
 use smallvec::{SmallVec, smallvec};
 
 use crate::base::ExtCtxt;
@@ -230,7 +229,7 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                 })),
 
                 Lifetime(name, is_raw) => {
-                    let ident = symbol::Ident::new(name, span).without_first_quote();
+                    let ident = rustc_span::Ident::new(name, span).without_first_quote();
                     trees.extend([
                         TokenTree::Punct(Punct { ch: b'\'', joint: true, span }),
                         TokenTree::Ident(Ident { sym: ident.name, is_raw: is_raw.into(), span }),

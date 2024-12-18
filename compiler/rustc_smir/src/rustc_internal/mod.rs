@@ -107,6 +107,10 @@ impl<'tcx> Tables<'tcx> {
         stable_mir::ty::CoroutineDef(self.create_def_id(did))
     }
 
+    pub fn coroutine_closure_def(&mut self, did: DefId) -> stable_mir::ty::CoroutineClosureDef {
+        stable_mir::ty::CoroutineClosureDef(self.create_def_id(did))
+    }
+
     pub fn alias_def(&mut self, did: DefId) -> stable_mir::ty::AliasDef {
         stable_mir::ty::AliasDef(self.create_def_id(did))
     }
@@ -314,7 +318,7 @@ macro_rules! run_driver {
     ($args:expr, $callback:expr $(, $with_tcx:ident)?) => {{
         use rustc_driver::{Callbacks, Compilation, RunCompiler};
         use rustc_middle::ty::TyCtxt;
-        use rustc_interface::{interface, Queries};
+        use rustc_interface::interface;
         use stable_mir::CompilerError;
         use std::ops::ControlFlow;
 

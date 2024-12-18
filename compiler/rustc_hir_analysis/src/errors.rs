@@ -6,8 +6,7 @@ use rustc_errors::{
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
-use rustc_span::symbol::Ident;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Ident, Span, Symbol};
 
 use crate::fluent_generated as fluent;
 mod pattern_types;
@@ -1655,6 +1654,24 @@ pub(crate) struct NonConstRange {
     pub span: Span,
 }
 
+#[derive(Subdiagnostic)]
+pub(crate) enum InvalidReceiverTyHint {
+    #[note(hir_analysis_invalid_receiver_ty_help_weak_note)]
+    Weak,
+    #[note(hir_analysis_invalid_receiver_ty_help_nonnull_note)]
+    NonNull,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_invalid_receiver_ty_no_arbitrary_self_types, code = E0307)]
+#[note]
+#[help(hir_analysis_invalid_receiver_ty_help_no_arbitrary_self_types)]
+pub(crate) struct InvalidReceiverTyNoArbitrarySelfTypes<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub receiver_ty: Ty<'tcx>,
+}
+
 #[derive(Diagnostic)]
 #[diag(hir_analysis_invalid_receiver_ty, code = E0307)]
 #[note]
@@ -1663,6 +1680,8 @@ pub(crate) struct InvalidReceiverTy<'tcx> {
     #[primary_span]
     pub span: Span,
     pub receiver_ty: Ty<'tcx>,
+    #[subdiagnostic]
+    pub hint: Option<InvalidReceiverTyHint>,
 }
 
 #[derive(Diagnostic)]

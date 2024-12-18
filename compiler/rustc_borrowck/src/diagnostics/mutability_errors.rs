@@ -15,8 +15,7 @@ use rustc_middle::mir::{
     PlaceRef, ProjectionElem,
 };
 use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt, Upcast};
-use rustc_span::symbol::{Symbol, kw};
-use rustc_span::{BytePos, DesugaringKind, Span, sym};
+use rustc_span::{BytePos, DesugaringKind, Span, Symbol, kw, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits;
@@ -1100,12 +1099,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
         let decl_span = local_decl.source_info.span;
 
-        let label = match *local_decl.local_info() {
+        let amp_mut_sugg = match *local_decl.local_info() {
             LocalInfo::User(mir::BindingForm::ImplicitSelf(_)) => {
                 let suggestion = suggest_ampmut_self(self.infcx.tcx, decl_span);
                 let additional =
                     local_trait.map(|span| (span, suggest_ampmut_self(self.infcx.tcx, span)));
-                Some((true, decl_span, suggestion, additional))
+                Some(AmpMutSugg { has_sugg: true, span: decl_span, suggestion, additional })
             }
 
             LocalInfo::User(mir::BindingForm::Var(mir::VarBindingForm {
@@ -1150,7 +1149,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         None
                     }
                     None => {
-                        let (has_sugg, decl_span, sugg) = if name != kw::SelfLower {
+                        if name != kw::SelfLower {
                             suggest_ampmut(
                                 self.infcx.tcx,
                                 local_decl.ty,
@@ -1165,7 +1164,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                     ..
                                 })) => {
                                     let sugg = suggest_ampmut_self(self.infcx.tcx, decl_span);
-                                    (true, decl_span, sugg)
+                                    Some(AmpMutSugg {
+                                        has_sugg: true,
+                                        span: decl_span,
+                                        suggestion: sugg,
+                                        additional: None,
+                                    })
                                 }
                                 // explicit self (eg `self: &'a Self`)
                                 _ => suggest_ampmut(
@@ -1176,8 +1180,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                     opt_ty_info,
                                 ),
                             }
-                        };
-                        Some((has_sugg, decl_span, sugg, None))
+                        }
                     }
                 }
             }
@@ -1187,15 +1190,24 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 ..
             })) => {
                 let pattern_span: Span = local_decl.source_info.span;
-                suggest_ref_mut(self.infcx.tcx, pattern_span)
-                    .map(|span| (true, span, "mut ".to_owned(), None))
+                suggest_ref_mut(self.infcx.tcx, pattern_span).map(|span| AmpMutSugg {
+                    has_sugg: true,
+                    span,
+                    suggestion: "mut ".to_owned(),
+                    additional: None,
+                })
             }
 
             _ => unreachable!(),
         };
 
-        match label {
-            Some((true, err_help_span, suggested_code, additional)) => {
+        match amp_mut_sugg {
+            Some(AmpMutSugg {
+                has_sugg: true,
+                span: err_help_span,
+                suggestion: suggested_code,
+                additional,
+            }) => {
                 let mut sugg = vec![(err_help_span, suggested_code)];
                 if let Some(s) = additional {
                     sugg.push(s);
@@ -1217,7 +1229,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     );
                 }
             }
-            Some((false, err_label_span, message, _)) => {
+            Some(AmpMutSugg {
+                has_sugg: false, span: err_label_span, suggestion: message, ..
+            }) => {
                 let def_id = self.body.source.def_id();
                 let hir_id = if let Some(local_def_id) = def_id.as_local()
                     && let Some(body) = self.infcx.tcx.hir().maybe_body_owned_by(local_def_id)
@@ -1422,6 +1436,13 @@ fn suggest_ampmut_self<'tcx>(tcx: TyCtxt<'tcx>, span: Span) -> String {
     }
 }
 
+struct AmpMutSugg {
+    has_sugg: bool,
+    span: Span,
+    suggestion: String,
+    additional: Option<(Span, String)>,
+}
+
 // When we want to suggest a user change a local variable to be a `&mut`, there
 // are three potential "obvious" things to highlight:
 //
@@ -1443,7 +1464,7 @@ fn suggest_ampmut<'tcx>(
     decl_span: Span,
     opt_assignment_rhs_span: Option<Span>,
     opt_ty_info: Option<Span>,
-) -> (bool, Span, String) {
+) -> Option<AmpMutSugg> {
     // if there is a RHS and it starts with a `&` from it, then check if it is
     // mutable, and if not, put suggest putting `mut ` to make it mutable.
     // we don't have to worry about lifetime annotations here because they are
@@ -1452,11 +1473,27 @@ fn suggest_ampmut<'tcx>(
     // let x: &i32 = &'a 5;
     //                ^^ lifetime annotation not allowed
     //
-    if let Some(assignment_rhs_span) = opt_assignment_rhs_span
-        && let Ok(src) = tcx.sess.source_map().span_to_snippet(assignment_rhs_span)
-        && let Some(stripped) = src.strip_prefix('&')
+    if let Some(rhs_span) = opt_assignment_rhs_span
+        && let Ok(rhs_str) = tcx.sess.source_map().span_to_snippet(rhs_span)
+        && let Some(rhs_str_no_amp) = rhs_str.strip_prefix('&')
     {
-        let is_mut = if let Some(rest) = stripped.trim_start().strip_prefix("mut") {
+        // Suggest changing `&raw const` to `&raw mut` if applicable.
+        if rhs_str_no_amp.trim_start().strip_prefix("raw const").is_some() {
+            let const_idx = rhs_str.find("const").unwrap() as u32;
+            let const_span = rhs_span
+                .with_lo(rhs_span.lo() + BytePos(const_idx))
+                .with_hi(rhs_span.lo() + BytePos(const_idx + "const".len() as u32));
+
+            return Some(AmpMutSugg {
+                has_sugg: true,
+                span: const_span,
+                suggestion: "mut".to_owned(),
+                additional: None,
+            });
+        }
+
+        // Figure out if rhs already is `&mut`.
+        let is_mut = if let Some(rest) = rhs_str_no_amp.trim_start().strip_prefix("mut") {
             match rest.chars().next() {
                 // e.g. `&mut x`
                 Some(c) if c.is_whitespace() => true,
@@ -1473,13 +1510,17 @@ fn suggest_ampmut<'tcx>(
         // if the reference is already mutable then there is nothing we can do
         // here.
         if !is_mut {
-            let span = assignment_rhs_span;
             // shrink the span to just after the `&` in `&variable`
-            let span = span.with_lo(span.lo() + BytePos(1)).shrink_to_lo();
+            let span = rhs_span.with_lo(rhs_span.lo() + BytePos(1)).shrink_to_lo();
 
             // FIXME(Ezrashaw): returning is bad because we still might want to
             // update the annotated type, see #106857.
-            return (true, span, "mut ".to_owned());
+            return Some(AmpMutSugg {
+                has_sugg: true,
+                span,
+                suggestion: "mut ".to_owned(),
+                additional: None,
+            });
         }
     }
 
@@ -1504,18 +1545,23 @@ fn suggest_ampmut<'tcx>(
         && let Some(ws_pos) = src.find(char::is_whitespace)
     {
         let span = span.with_lo(span.lo() + BytePos(ws_pos as u32)).shrink_to_lo();
-        (true, span, " mut".to_owned())
+        Some(AmpMutSugg { has_sugg: true, span, suggestion: " mut".to_owned(), additional: None })
     // if there is already a binding, we modify it to be `mut`
     } else if binding_exists {
         // shrink the span to just after the `&` in `&variable`
         let span = span.with_lo(span.lo() + BytePos(1)).shrink_to_lo();
-        (true, span, "mut ".to_owned())
+        Some(AmpMutSugg { has_sugg: true, span, suggestion: "mut ".to_owned(), additional: None })
     } else {
         // otherwise, suggest that the user annotates the binding; we provide the
         // type of the local.
         let ty = decl_ty.builtin_deref(true).unwrap();
 
-        (false, span, format!("{}mut {}", if decl_ty.is_ref() { "&" } else { "*" }, ty))
+        Some(AmpMutSugg {
+            has_sugg: false,
+            span,
+            suggestion: format!("{}mut {}", if decl_ty.is_ref() { "&" } else { "*" }, ty),
+            additional: None,
+        })
     }
 }
 

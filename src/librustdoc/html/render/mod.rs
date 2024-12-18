@@ -44,14 +44,15 @@ use std::path::PathBuf;
 use std::{fs, str};
 
 use rinja::Template;
-use rustc_attr::{ConstStability, DeprecatedSince, Deprecation, StabilityLevel, StableSince};
+use rustc_attr_parsing::{
+    ConstStability, DeprecatedSince, Deprecation, RustcVersion, StabilityLevel, StableSince,
+};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::Mutability;
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_session::RustcVersion;
 use rustc_span::symbol::{Symbol, sym};
 use rustc_span::{BytePos, DUMMY_SP, FileName, RealFileName};
 use serde::ser::SerializeMap;

@@ -100,7 +100,7 @@ impl<'tcx> Value<TyCtxt<'tcx>> for Representability {
         }
         for info in &cycle_error.cycle {
             if info.query.dep_kind == dep_kinds::representability_adt_ty
-                && let Some(def_id) = info.query.ty_def_id
+                && let Some(def_id) = info.query.def_id_for_ty_in_cycle
                 && let Some(def_id) = def_id.as_local()
                 && !item_and_field_ids.iter().any(|&(id, _)| id == def_id)
             {
@@ -182,7 +182,7 @@ impl<'tcx, T> Value<TyCtxt<'tcx>> for Result<T, &'_ ty::layout::LayoutError<'_>>
             &cycle_error.cycle,
             |cycle| {
                 if cycle[0].query.dep_kind == dep_kinds::layout_of
-                    && let Some(def_id) = cycle[0].query.ty_def_id
+                    && let Some(def_id) = cycle[0].query.def_id_for_ty_in_cycle
                     && let Some(def_id) = def_id.as_local()
                     && let def_kind = tcx.def_kind(def_id)
                     && matches!(def_kind, DefKind::Closure)
@@ -209,7 +209,7 @@ impl<'tcx, T> Value<TyCtxt<'tcx>> for Result<T, &'_ ty::layout::LayoutError<'_>>
                         if frame.query.dep_kind != dep_kinds::layout_of {
                             continue;
                         }
-                        let Some(frame_def_id) = frame.query.ty_def_id else {
+                        let Some(frame_def_id) = frame.query.def_id_for_ty_in_cycle else {
                             continue;
                         };
                         let Some(frame_coroutine_kind) = tcx.coroutine_kind(frame_def_id) else {

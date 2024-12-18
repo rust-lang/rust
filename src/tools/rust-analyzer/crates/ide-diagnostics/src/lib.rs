@@ -84,12 +84,12 @@ use hir::{db::ExpandDatabase, diagnostics::AnyDiagnostic, Crate, HirFileId, InFi
 use ide_db::{
     assists::{Assist, AssistId, AssistKind, AssistResolveStrategy},
     base_db::SourceDatabase,
-    generated::lints::{LintGroup, CLIPPY_LINT_GROUPS, DEFAULT_LINT_GROUPS},
+    generated::lints::{Lint, LintGroup, CLIPPY_LINT_GROUPS, DEFAULT_LINTS, DEFAULT_LINT_GROUPS},
     imports::insert_use::InsertUseConfig,
     label::Label,
     source_change::SourceChange,
     syntax_helpers::node_ext::parse_tt_as_comma_sep_paths,
-    EditionedFileId, FileId, FileRange, FxHashMap, FxHashSet, RootDatabase, SnippetCap,
+    EditionedFileId, FileId, FileRange, FxHashMap, FxHashSet, RootDatabase, Severity, SnippetCap,
 };
 use itertools::Itertools;
 use syntax::{
@@ -208,14 +208,6 @@ impl Diagnostic {
         self.unused = unused;
         self
     }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum Severity {
-    Error,
-    Warning,
-    WeakWarning,
-    Allow,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -568,26 +560,35 @@ fn handle_diag_from_macros(
 
 // `__RA_EVERY_LINT` is a fake lint group to allow every lint in proc macros
 
-static RUSTC_LINT_GROUPS_DICT: LazyLock<FxHashMap<&str, Vec<&str>>> =
-    LazyLock::new(|| build_group_dict(DEFAULT_LINT_GROUPS, &["warnings", "__RA_EVERY_LINT"], ""));
+struct BuiltLint {
+    lint: &'static Lint,
+    groups: Vec<&'static str>,
+}
 
-static CLIPPY_LINT_GROUPS_DICT: LazyLock<FxHashMap<&str, Vec<&str>>> =
-    LazyLock::new(|| build_group_dict(CLIPPY_LINT_GROUPS, &["__RA_EVERY_LINT"], "clippy::"));
+static RUSTC_LINTS: LazyLock<FxHashMap<&str, BuiltLint>> =
+    LazyLock::new(|| build_lints_map(DEFAULT_LINTS, DEFAULT_LINT_GROUPS, ""));
+
+static CLIPPY_LINTS: LazyLock<FxHashMap<&str, BuiltLint>> = LazyLock::new(|| {
+    build_lints_map(ide_db::generated::lints::CLIPPY_LINTS, CLIPPY_LINT_GROUPS, "clippy::")
+});
 
 // FIXME: Autogenerate this instead of enumerating by hand.
 static LINTS_TO_REPORT_IN_EXTERNAL_MACROS: LazyLock<FxHashSet<&str>> =
     LazyLock::new(|| FxHashSet::from_iter([]));
 
-fn build_group_dict(
+fn build_lints_map(
+    lints: &'static [Lint],
     lint_group: &'static [LintGroup],
-    all_groups: &'static [&'static str],
     prefix: &'static str,
-) -> FxHashMap<&'static str, Vec<&'static str>> {
-    let mut map_with_prefixes: FxHashMap<&str, Vec<&str>> = FxHashMap::default();
+) -> FxHashMap<&'static str, BuiltLint> {
+    let mut map_with_prefixes: FxHashMap<_, _> = lints
+        .iter()
+        .map(|lint| (lint.label, BuiltLint { lint, groups: vec![lint.label, "__RA_EVERY_LINT"] }))
+        .collect();
     for g in lint_group {
         let mut add_children = |label: &'static str| {
             for child in g.children {
-                map_with_prefixes.entry(child).or_default().push(label);
+                map_with_prefixes.get_mut(child).unwrap().groups.push(label);
             }
         };
         add_children(g.lint.label);
@@ -597,17 +598,8 @@ fn build_group_dict(
             add_children("bad_style");
         }
     }
-    for (lint, groups) in map_with_prefixes.iter_mut() {
-        groups.push(lint);
-        groups.extend_from_slice(all_groups);
-    }
     map_with_prefixes.into_iter().map(|(k, v)| (k.strip_prefix(prefix).unwrap(), v)).collect()
 }
-
-/// Thd default severity for lints that are not warn by default.
-// FIXME: Autogenerate this instead of write manually.
-static LINTS_DEFAULT_SEVERITY: LazyLock<FxHashMap<&str, Severity>> =
-    LazyLock::new(|| FxHashMap::from_iter([("unsafe_op_in_unsafe_fn", Severity::Allow)]));
 
 fn handle_lints(
     sema: &Semantics<'_, RootDatabase>,
@@ -618,10 +610,12 @@ fn handle_lints(
 ) {
     for (node, diag) in diagnostics {
         let lint = match diag.code {
-            DiagnosticCode::RustcLint(lint) | DiagnosticCode::Clippy(lint) => lint,
+            DiagnosticCode::RustcLint(lint) => RUSTC_LINTS[lint].lint,
+            DiagnosticCode::Clippy(lint) => CLIPPY_LINTS[lint].lint,
             _ => panic!("non-lint passed to `handle_lints()`"),
         };
-        if let Some(&default_severity) = LINTS_DEFAULT_SEVERITY.get(lint) {
+        let default_severity = default_lint_severity(lint, edition);
+        if !(default_severity == Severity::Allow && diag.severity == Severity::WeakWarning) {
             diag.severity = default_severity;
         }
 
@@ -636,6 +630,16 @@ fn handle_lints(
         if let Some(diag_severity) = diag_severity {
             diag.severity = diag_severity;
         }
+    }
+}
+
+fn default_lint_severity(lint: &Lint, edition: Edition) -> Severity {
+    if lint.deny_since.is_some_and(|e| edition >= e) {
+        Severity::Error
+    } else if lint.warn_since.is_some_and(|e| edition >= e) {
+        Severity::Warning
+    } else {
+        lint.default_severity
     }
 }
 
@@ -654,14 +658,14 @@ fn find_outline_mod_lint_severity(
     let mod_def = sema.to_module_def(&mod_node)?;
     let module_source_file = sema.module_definition_node(mod_def);
     let mut result = None;
-    let lint_groups = lint_groups(&diag.code);
+    let lint_groups = lint_groups(&diag.code, edition);
     lint_attrs(
         sema,
         ast::AnyHasAttrs::cast(module_source_file.value).expect("SourceFile always has attrs"),
         edition,
     )
     .for_each(|(lint, severity)| {
-        if lint_groups.contains(&&*lint) {
+        if lint_groups.contains(&lint) {
             result = Some(severity);
         }
     });
@@ -737,9 +741,9 @@ fn fill_lint_attrs(
                     }
                 });
 
-                let all_matching_groups = lint_groups(&diag.code)
+                let all_matching_groups = lint_groups(&diag.code, edition)
                     .iter()
-                    .filter_map(|lint_group| cached.get(&**lint_group));
+                    .filter_map(|lint_group| cached.get(lint_group));
                 let cached_severity =
                     all_matching_groups.min_by_key(|it| it.depth).map(|it| it.severity);
 
@@ -751,7 +755,7 @@ fn fill_lint_attrs(
             // Insert this node's descendants' attributes into any outline descendant, but not including this node.
             // This must come before inserting this node's own attributes to preserve order.
             collected_lint_attrs.drain().for_each(|(lint, severity)| {
-                if diag_severity.is_none() && lint_groups(&diag.code).contains(&&*lint) {
+                if diag_severity.is_none() && lint_groups(&diag.code, edition).contains(&lint) {
                     diag_severity = Some(severity.severity);
                 }
 
@@ -774,7 +778,7 @@ fn fill_lint_attrs(
             if let Some(ancestor) = ast::AnyHasAttrs::cast(ancestor) {
                 // Insert this node's attributes into any outline descendant, including this node.
                 lint_attrs(sema, ancestor, edition).for_each(|(lint, severity)| {
-                    if diag_severity.is_none() && lint_groups(&diag.code).contains(&&*lint) {
+                    if diag_severity.is_none() && lint_groups(&diag.code, edition).contains(&lint) {
                         diag_severity = Some(severity);
                     }
 
@@ -804,7 +808,7 @@ fn fill_lint_attrs(
             return diag_severity;
         } else if let Some(ancestor) = ast::AnyHasAttrs::cast(ancestor) {
             lint_attrs(sema, ancestor, edition).for_each(|(lint, severity)| {
-                if diag_severity.is_none() && lint_groups(&diag.code).contains(&&*lint) {
+                if diag_severity.is_none() && lint_groups(&diag.code, edition).contains(&lint) {
                     diag_severity = Some(severity);
                 }
 
@@ -905,16 +909,37 @@ fn cfg_attr_lint_attrs(
     }
 }
 
-fn lint_groups(lint: &DiagnosticCode) -> &'static [&'static str] {
-    match lint {
+#[derive(Debug)]
+struct LintGroups {
+    groups: &'static [&'static str],
+    inside_warnings: bool,
+}
+
+impl LintGroups {
+    fn contains(&self, group: &str) -> bool {
+        self.groups.contains(&group) || (self.inside_warnings && group == "warnings")
+    }
+
+    fn iter(&self) -> impl Iterator<Item = &'static str> {
+        self.groups.iter().copied().chain(self.inside_warnings.then_some("warnings"))
+    }
+}
+
+fn lint_groups(lint: &DiagnosticCode, edition: Edition) -> LintGroups {
+    let (groups, inside_warnings) = match lint {
         DiagnosticCode::RustcLint(name) => {
-            RUSTC_LINT_GROUPS_DICT.get(name).map(|it| &**it).unwrap_or_default()
+            let lint = &RUSTC_LINTS[name];
+            let inside_warnings = default_lint_severity(lint.lint, edition) == Severity::Warning;
+            (&lint.groups, inside_warnings)
         }
         DiagnosticCode::Clippy(name) => {
-            CLIPPY_LINT_GROUPS_DICT.get(name).map(|it| &**it).unwrap_or_default()
+            let lint = &CLIPPY_LINTS[name];
+            let inside_warnings = default_lint_severity(lint.lint, edition) == Severity::Warning;
+            (&lint.groups, inside_warnings)
         }
-        _ => &[],
-    }
+        _ => panic!("non-lint passed to `handle_lints()`"),
+    };
+    LintGroups { groups, inside_warnings }
 }
 
 fn fix(id: &'static str, label: &str, source_change: SourceChange, target: TextRange) -> Assist {

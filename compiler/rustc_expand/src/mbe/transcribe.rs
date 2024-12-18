@@ -11,8 +11,9 @@ use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::parser::ParseNtResult;
 use rustc_session::parse::{ParseSess, SymbolGallery};
 use rustc_span::hygiene::{LocalExpnId, Transparency};
-use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent, sym};
-use rustc_span::{Span, Symbol, SyntaxContext, with_metavar_spans};
+use rustc_span::{
+    Ident, MacroRulesNormalizedIdent, Span, Symbol, SyntaxContext, sym, with_metavar_spans,
+};
 use smallvec::{SmallVec, smallvec};
 
 use crate::errors::{

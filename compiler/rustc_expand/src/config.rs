@@ -8,7 +8,7 @@ use rustc_ast::tokenstream::{
 use rustc_ast::{
     self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem, MetaItemInner, NodeId,
 };
-use rustc_attr as attr;
+use rustc_attr_parsing as attr;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_feature::{
     ACCEPTED_LANG_FEATURES, AttributeSafety, EnabledLangFeature, EnabledLibFeature, Features,
@@ -18,8 +18,7 @@ use rustc_lint_defs::BuiltinLintDiag;
 use rustc_parse::validate_attr;
 use rustc_session::Session;
 use rustc_session::parse::feature_err;
-use rustc_span::Span;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Span, Symbol, sym};
 use thin_vec::ThinVec;
 use tracing::instrument;
 
@@ -362,7 +361,7 @@ impl<'a> StripUnconfigured<'a> {
         ));
 
         let tokens = Some(LazyAttrTokenStream::new(AttrTokenStream::new(trees)));
-        let attr = attr::mk_attr_from_item(
+        let attr = ast::attr::mk_attr_from_item(
             &self.sess.psess.attr_id_generator,
             item,
             tokens,

@@ -13,8 +13,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, PResult, StashKey, struct_span_code_err};
 use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, source_map};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, source_map, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::debug;
 
@@ -45,7 +44,7 @@ impl<'a> Parser<'a> {
             let (inner_attrs, items, inner_span) =
                 self.parse_mod(&token::CloseDelim(Delimiter::Brace))?;
             attrs.extend(inner_attrs);
-            ModKind::Loaded(items, Inline::Yes, inner_span)
+            ModKind::Loaded(items, Inline::Yes, inner_span, Ok(()))
         };
         Ok((id, ItemKind::Mod(safety, mod_kind)))
     }

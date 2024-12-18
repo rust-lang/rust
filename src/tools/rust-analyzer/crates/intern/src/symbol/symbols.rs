@@ -307,6 +307,7 @@ define_symbols! {
     module_path,
     mul_assign,
     mul,
+    naked_asm,
     ne,
     neg,
     Neg,

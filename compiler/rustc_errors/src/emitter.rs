@@ -3048,11 +3048,19 @@ impl FileWithAnnotatedLines {
                 // working correctly.
                 let middle = min(ann.line_start + 4, ann.line_end);
                 // We'll show up to 4 lines past the beginning of the multispan start.
-                // We will *not* include the tail of lines that are only whitespace.
+                // We will *not* include the tail of lines that are only whitespace, a comment or
+                // a bare delimiter.
+                let filter = |s: &str| {
+                    let s = s.trim();
+                    // Consider comments as empty, but don't consider docstrings to be empty.
+                    !(s.starts_with("//") && !(s.starts_with("///") || s.starts_with("//!")))
+                        // Consider lines with nothing but whitespace, a single delimiter as empty.
+                        && !["", "{", "}", "(", ")", "[", "]"].contains(&s)
+                };
                 let until = (ann.line_start..middle)
                     .rev()
                     .filter_map(|line| file.get_line(line - 1).map(|s| (line + 1, s)))
-                    .find(|(_, s)| !s.trim().is_empty())
+                    .find(|(_, s)| filter(s))
                     .map(|(line, _)| line)
                     .unwrap_or(ann.line_start);
                 for line in ann.line_start + 1..until {
@@ -3060,7 +3068,8 @@ impl FileWithAnnotatedLines {
                     add_annotation_to_file(&mut output, Lrc::clone(&file), line, ann.as_line());
                 }
                 let line_end = ann.line_end - 1;
-                if middle < line_end {
+                let end_is_empty = file.get_line(line_end - 1).map_or(false, |s| !filter(&s));
+                if middle < line_end && !end_is_empty {
                     add_annotation_to_file(&mut output, Lrc::clone(&file), line_end, ann.as_line());
                 }
             } else {

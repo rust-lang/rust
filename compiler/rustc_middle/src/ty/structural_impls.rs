@@ -224,7 +224,6 @@ TrivialTypeTraversalImpls! {
     ::rustc_ast::InlineAsmOptions,
     ::rustc_ast::InlineAsmTemplatePiece,
     ::rustc_ast::NodeId,
-    ::rustc_span::symbol::Symbol,
     ::rustc_hir::def::Res,
     ::rustc_hir::def_id::LocalDefId,
     ::rustc_hir::ByRef,
@@ -252,8 +251,9 @@ TrivialTypeTraversalImpls! {
     crate::ty::Placeholder<ty::BoundVar>,
     crate::ty::LateParamRegion,
     crate::ty::adjustment::PointerCoercion,
+    ::rustc_span::Ident,
     ::rustc_span::Span,
-    ::rustc_span::symbol::Ident,
+    ::rustc_span::Symbol,
     ty::BoundVar,
     ty::ValTree<'tcx>,
 }

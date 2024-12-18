@@ -151,7 +151,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         node: OwnerNode<'_>,
         bodies: &SortedMap<ItemLocalId, &Body<'_>>,
-        attrs: &SortedMap<ItemLocalId, &[rustc_ast::Attribute]>,
+        attrs: &SortedMap<ItemLocalId, &[Attribute]>,
     ) -> (Option<Fingerprint>, Option<Fingerprint>) {
         if self.needs_crate_hash() {
             self.with_stable_hashing_context(|mut hcx| {

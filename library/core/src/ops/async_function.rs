@@ -4,7 +4,8 @@ use crate::marker::Tuple;
 /// An async-aware version of the [`Fn`](crate::ops::Fn) trait.
 ///
 /// All `async fn` and functions returning futures implement this trait.
-#[unstable(feature = "async_closure", issue = "62290")]
+#[cfg_attr(bootstrap, unstable(feature = "async_closure", issue = "62290"))]
+#[cfg_attr(not(bootstrap), stable(feature = "async_closure", since = "CURRENT_RUSTC_VERSION"))]
 #[rustc_paren_sugar]
 #[fundamental]
 #[must_use = "async closures are lazy and do nothing unless called"]
@@ -18,7 +19,8 @@ pub trait AsyncFn<Args: Tuple>: AsyncFnMut<Args> {
 /// An async-aware version of the [`FnMut`](crate::ops::FnMut) trait.
 ///
 /// All `async fn` and functions returning futures implement this trait.
-#[unstable(feature = "async_closure", issue = "62290")]
+#[cfg_attr(bootstrap, unstable(feature = "async_closure", issue = "62290"))]
+#[cfg_attr(not(bootstrap), stable(feature = "async_closure", since = "CURRENT_RUSTC_VERSION"))]
 #[rustc_paren_sugar]
 #[fundamental]
 #[must_use = "async closures are lazy and do nothing unless called"]
@@ -39,7 +41,8 @@ pub trait AsyncFnMut<Args: Tuple>: AsyncFnOnce<Args> {
 /// An async-aware version of the [`FnOnce`](crate::ops::FnOnce) trait.
 ///
 /// All `async fn` and functions returning futures implement this trait.
-#[unstable(feature = "async_closure", issue = "62290")]
+#[cfg_attr(bootstrap, unstable(feature = "async_closure", issue = "62290"))]
+#[cfg_attr(not(bootstrap), stable(feature = "async_closure", since = "CURRENT_RUSTC_VERSION"))]
 #[rustc_paren_sugar]
 #[fundamental]
 #[must_use = "async closures are lazy and do nothing unless called"]
@@ -64,7 +67,8 @@ mod impls {
     use super::{AsyncFn, AsyncFnMut, AsyncFnOnce};
     use crate::marker::Tuple;
 
-    #[unstable(feature = "async_fn_traits", issue = "none")]
+    #[cfg_attr(bootstrap, unstable(feature = "async_closure", issue = "62290"))]
+    #[cfg_attr(not(bootstrap), stable(feature = "async_closure", since = "CURRENT_RUSTC_VERSION"))]
     impl<A: Tuple, F: ?Sized> AsyncFn<A> for &F
     where
         F: AsyncFn<A>,
@@ -74,7 +78,8 @@ mod impls {
         }
     }
 
-    #[unstable(feature = "async_fn_traits", issue = "none")]
+    #[cfg_attr(bootstrap, unstable(feature = "async_closure", issue = "62290"))]
+    #[cfg_attr(not(bootstrap), stable(feature = "async_closure", since = "CURRENT_RUSTC_VERSION"))]
     impl<A: Tuple, F: ?Sized> AsyncFnMut<A> for &F
     where
         F: AsyncFn<A>,
@@ -89,7 +94,8 @@ mod impls {
         }
     }
 
-    #[unstable(feature = "async_fn_traits", issue = "none")]
+    #[cfg_attr(bootstrap, unstable(feature = "async_closure", issue = "62290"))]
+    #[cfg_attr(not(bootstrap), stable(feature = "async_closure", since = "CURRENT_RUSTC_VERSION"))]
     impl<'a, A: Tuple, F: ?Sized> AsyncFnOnce<A> for &'a F
     where
         F: AsyncFn<A>,
@@ -102,7 +108,8 @@ mod impls {
         }
     }
 
-    #[unstable(feature = "async_fn_traits", issue = "none")]
+    #[cfg_attr(bootstrap, unstable(feature = "async_closure", issue = "62290"))]
+    #[cfg_attr(not(bootstrap), stable(feature = "async_closure", since = "CURRENT_RUSTC_VERSION"))]
     impl<A: Tuple, F: ?Sized> AsyncFnMut<A> for &mut F
     where
         F: AsyncFnMut<A>,
@@ -117,7 +124,8 @@ mod impls {
         }
     }
 
-    #[unstable(feature = "async_fn_traits", issue = "none")]
+    #[cfg_attr(bootstrap, unstable(feature = "async_closure", issue = "62290"))]
+    #[cfg_attr(not(bootstrap), stable(feature = "async_closure", since = "CURRENT_RUSTC_VERSION"))]
     impl<'a, A: Tuple, F: ?Sized> AsyncFnOnce<A> for &'a mut F
     where
         F: AsyncFnMut<A>,

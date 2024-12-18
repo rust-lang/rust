@@ -1,6 +1,5 @@
-use rustc_ast::ast::Attribute;
 use rustc_errors::Applicability;
-use rustc_hir::{Item, ItemKind};
+use rustc_hir::{Attribute, Item, ItemKind};
 use rustc_lint::LateContext;
 
 use clippy_utils::diagnostics::span_lint_and_then;

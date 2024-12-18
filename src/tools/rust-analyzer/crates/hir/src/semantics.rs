@@ -28,7 +28,7 @@ use hir_expand::{
     hygiene::SyntaxContextExt as _,
     inert_attr_macro::find_builtin_attr_idx,
     name::AsName,
-    FileRange, InMacroFile, MacroCallId, MacroFileId, MacroFileIdExt,
+    ExpandResult, FileRange, InMacroFile, MacroCallId, MacroFileId, MacroFileIdExt,
 };
 use intern::Symbol;
 use itertools::Itertools;
@@ -381,7 +381,13 @@ impl<'db> SemanticsImpl<'db> {
         node
     }
 
-    pub fn expand(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
+    pub fn expand(&self, file_id: MacroFileId) -> ExpandResult<SyntaxNode> {
+        let res = self.db.parse_macro_expansion(file_id).map(|it| it.0.syntax_node());
+        self.cache(res.value.clone(), file_id.into());
+        res
+    }
+
+    pub fn expand_macro_call(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
         let sa = self.analyze_no_infer(macro_call.syntax())?;
 
         let macro_call = InFile::new(sa.file_id, macro_call);
@@ -412,7 +418,10 @@ impl<'db> SemanticsImpl<'db> {
 
     /// Expands the macro if it isn't one of the built-in ones that expand to custom syntax or dummy
     /// expansions.
-    pub fn expand_allowed_builtins(&self, macro_call: &ast::MacroCall) -> Option<SyntaxNode> {
+    pub fn expand_allowed_builtins(
+        &self,
+        macro_call: &ast::MacroCall,
+    ) -> Option<ExpandResult<SyntaxNode>> {
         let sa = self.analyze_no_infer(macro_call.syntax())?;
 
         let macro_call = InFile::new(sa.file_id, macro_call);
@@ -434,6 +443,7 @@ impl<'db> SemanticsImpl<'db> {
                     | BuiltinFnLikeExpander::ModulePath
                     | BuiltinFnLikeExpander::Asm
                     | BuiltinFnLikeExpander::GlobalAsm
+                    | BuiltinFnLikeExpander::NakedAsm
                     | BuiltinFnLikeExpander::LogSyntax
                     | BuiltinFnLikeExpander::TraceMacros
                     | BuiltinFnLikeExpander::FormatArgs
@@ -447,15 +457,15 @@ impl<'db> SemanticsImpl<'db> {
             return None;
         }
 
-        let node = self.parse_or_expand(file_id.into());
+        let node = self.expand(file_id);
         Some(node)
     }
 
     /// If `item` has an attribute macro attached to it, expands it.
-    pub fn expand_attr_macro(&self, item: &ast::Item) -> Option<SyntaxNode> {
+    pub fn expand_attr_macro(&self, item: &ast::Item) -> Option<ExpandResult<SyntaxNode>> {
         let src = self.wrap_node_infile(item.clone());
         let macro_call_id = self.with_ctx(|ctx| ctx.item_to_macro_call(src.as_ref()))?;
-        Some(self.parse_or_expand(macro_call_id.as_file()))
+        Some(self.expand(macro_call_id.as_macro_file()))
     }
 
     pub fn expand_derive_as_pseudo_attr_macro(&self, attr: &ast::Attr) -> Option<SyntaxNode> {
@@ -479,15 +489,16 @@ impl<'db> SemanticsImpl<'db> {
         })
     }
 
-    pub fn expand_derive_macro(&self, attr: &ast::Attr) -> Option<Vec<SyntaxNode>> {
+    pub fn expand_derive_macro(&self, attr: &ast::Attr) -> Option<Vec<ExpandResult<SyntaxNode>>> {
         let res: Vec<_> = self
             .derive_macro_calls(attr)?
             .into_iter()
             .flat_map(|call| {
-                let file_id = call?.as_file();
-                let node = self.db.parse_or_expand(file_id);
-                self.cache(node.clone(), file_id);
-                Some(node)
+                let file_id = call?.as_macro_file();
+                let ExpandResult { value, err } = self.db.parse_macro_expansion(file_id);
+                let root_node = value.0.syntax_node();
+                self.cache(root_node.clone(), file_id.into());
+                Some(ExpandResult { value: root_node, err })
             })
             .collect();
         Some(res)
@@ -555,7 +566,7 @@ impl<'db> SemanticsImpl<'db> {
 
     /// Expand the macro call with a different token tree, mapping the `token_to_map` down into the
     /// expansion. `token_to_map` should be a token from the `speculative args` node.
-    pub fn speculative_expand(
+    pub fn speculative_expand_macro_call(
         &self,
         actual_macro_call: &ast::MacroCall,
         speculative_args: &ast::TokenTree,

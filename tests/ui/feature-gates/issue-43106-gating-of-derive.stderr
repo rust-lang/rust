@@ -6,8 +6,6 @@ LL |   #[derive(Debug)]
 LL |
 LL | / mod derive {
 LL | |     mod inner { #![derive(Debug)] }
-LL | |
-LL | |
 ...  |
 LL | |     impl S { }
 LL | | }

@@ -22,7 +22,6 @@ LL | |
 LL | | fn bar() {
 LL | |     fn foo() {
 ...  |
-LL | |
 LL | | fn main() {}
    | |____________^
 
@@ -66,7 +65,6 @@ LL | |
 LL | | fn bar() {
 LL | |     fn foo() {
 ...  |
-LL | |
 LL | | fn main() {}
    | |____________^
 
@@ -124,7 +122,6 @@ LL | |
 LL | | fn bar() {
 LL | |     fn foo() {
 ...  |
-LL | |
 LL | | fn main() {}
    | |____________^
 
@@ -173,7 +170,6 @@ LL | |
 LL | | fn bar() {
 LL | |     fn foo() {
 ...  |
-LL | |
 LL | | fn main() {}
    | |____________^
 

@@ -15,8 +15,7 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, fold_regions};
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperFoldable};
-use rustc_span::Span;
-use rustc_span::symbol::sym;
+use rustc_span::{Span, sym};
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::solve;
 use tracing::{debug, instrument};
@@ -476,7 +475,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             for (local_id, c_ty) in sorted_user_provided_types {
                 let hir_id = HirId { owner: common_hir_owner, local_id };
 
-                if let ty::UserType::TypeOf(_, user_args) = c_ty.value {
+                if let ty::UserTypeKind::TypeOf(_, user_args) = c_ty.value.kind {
                     // This is a unit-testing mechanism.
                     let span = self.tcx().hir().span(hir_id);
                     // We need to buffer the errors in order to guarantee a consistent

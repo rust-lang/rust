@@ -12,8 +12,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::symbol::sym;
-use rustc_span::{Span, Symbol, source_map};
+use rustc_span::{Span, Symbol, source_map, sym};
 use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -483,29 +482,36 @@ fn lint_fn_pointer<'tcx>(
     let middle = l_span.shrink_to_hi().until(r_span.shrink_to_lo());
     let right = r_span.shrink_to_hi().until(e.span.shrink_to_hi());
 
-    // We only check for a right cast as `FnDef` == `FnPtr` is not possible,
-    // only `FnPtr == FnDef` is possible.
-    let cast_right = if !r_ty.is_fn_ptr() {
-        let fn_sig = r_ty.fn_sig(cx.tcx);
-        format!(" as {fn_sig}")
-    } else {
-        String::new()
-    };
+    let sugg =
+        // We only check for a right cast as `FnDef` == `FnPtr` is not possible,
+        // only `FnPtr == FnDef` is possible.
+        if !r_ty.is_fn_ptr() {
+            let fn_sig = r_ty.fn_sig(cx.tcx);
 
-    cx.emit_span_lint(
-        UNPREDICTABLE_FUNCTION_POINTER_COMPARISONS,
-        e.span,
-        UnpredictableFunctionPointerComparisons::Suggestion {
-            sugg: UnpredictableFunctionPointerComparisonsSuggestion {
+            UnpredictableFunctionPointerComparisonsSuggestion::FnAddrEqWithCast {
+                ne,
+                fn_sig,
+                deref_left,
+                deref_right,
+                left,
+                middle,
+                right,
+            }
+        } else {
+            UnpredictableFunctionPointerComparisonsSuggestion::FnAddrEq {
                 ne,
                 deref_left,
                 deref_right,
                 left,
                 middle,
                 right,
-                cast_right,
-            },
-        },
+            }
+        };
+
+    cx.emit_span_lint(
+        UNPREDICTABLE_FUNCTION_POINTER_COMPARISONS,
+        e.span,
+        UnpredictableFunctionPointerComparisons::Suggestion { sugg },
     );
 }
 

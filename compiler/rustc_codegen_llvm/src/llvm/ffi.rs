@@ -17,7 +17,9 @@ use super::debuginfo::{
     DebugEmissionKind, DebugNameTableKind,
 };
 
-pub type Bool = c_uint;
+/// In the LLVM-C API, boolean values are passed as `typedef int LLVMBool`,
+/// which has a different ABI from Rust or C++ `bool`.
+pub type Bool = c_int;
 
 pub const True: Bool = 1 as Bool;
 pub const False: Bool = 0 as Bool;
@@ -2317,7 +2319,7 @@ unsafe extern "C" {
 
     pub fn LLVMRustGetSMDiagnostic<'a>(
         DI: &'a DiagnosticInfo,
-        cookie_out: &mut c_uint,
+        cookie_out: &mut u64,
     ) -> &'a SMDiagnostic;
 
     pub fn LLVMRustUnpackSMDiagnostic(

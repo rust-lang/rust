@@ -255,7 +255,7 @@ fn cycle_revalidate_unchanged_twice() {
     db.set_b_invokes(CycleQuery::A);
 
     assert!(db.cycle_a().is_err());
-    db.set_c_invokes(CycleQuery::A); // force new revisi5on
+    db.set_c_invokes(CycleQuery::A); // force new revision
 
     // on this run
     expect![[r#"

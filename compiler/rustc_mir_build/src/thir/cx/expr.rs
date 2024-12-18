@@ -15,7 +15,6 @@ use rustc_middle::ty::adjustment::{
 };
 use rustc_middle::ty::{
     self, AdtKind, GenericArgs, InlineConstArgs, InlineConstArgsParts, ScalarInt, Ty, UpvarArgs,
-    UserType,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, sym};
@@ -26,6 +25,14 @@ use crate::thir::cx::Cx;
 use crate::thir::util::UserAnnotatedTyHelpers;
 
 impl<'tcx> Cx<'tcx> {
+    /// Create a THIR expression for the given HIR expression. This expands all
+    /// adjustments and directly adds the type information from the
+    /// `typeck_results`. See the [dev-guide] for more details.
+    ///
+    /// (The term "mirror" in this case does not refer to "flipped" or
+    /// "reversed".)
+    ///
+    /// [dev-guide]: https://rustc-dev-guide.rust-lang.org/thir.html
     pub(crate) fn mirror_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> ExprId {
         // `mirror_expr` is recursing very deep. Make sure the stack doesn't overflow.
         ensure_sufficient_stack(|| self.mirror_expr_inner(expr))
@@ -443,7 +450,9 @@ impl<'tcx> Cx<'tcx> {
                         let user_provided_types = self.typeck_results().user_provided_types();
                         let user_ty =
                             user_provided_types.get(fun.hir_id).copied().map(|mut u_ty| {
-                                if let UserType::TypeOf(ref mut did, _) = &mut u_ty.value {
+                                if let ty::UserTypeKind::TypeOf(ref mut did, _) =
+                                    &mut u_ty.value.kind
+                                {
                                     *did = adt_def.did();
                                 }
                                 Box::new(u_ty)
@@ -915,6 +924,11 @@ impl<'tcx> Cx<'tcx> {
                     }
                 }
             }
+
+            hir::ExprKind::UnsafeBinderCast(_kind, _source, _ty) => {
+                unreachable!("unsafe binders are not yet implemented")
+            }
+
             hir::ExprKind::DropTemps(source) => ExprKind::Use { source: self.mirror_expr(source) },
             hir::ExprKind::Array(fields) => ExprKind::Array { fields: self.mirror_exprs(fields) },
             hir::ExprKind::Tup(fields) => ExprKind::Tuple { fields: self.mirror_exprs(fields) },
@@ -1183,7 +1197,7 @@ impl<'tcx> Cx<'tcx> {
             .temporary_scope(self.region_scope_tree, closure_expr.hir_id.local_id);
         let var_ty = place.base_ty;
 
-        // The result of capture analysis in `rustc_hir_analysis/check/upvar.rs`represents a captured path
+        // The result of capture analysis in `rustc_hir_typeck/src/upvar.rs` represents a captured path
         // as it's seen for use within the closure and not at the time of closure creation.
         //
         // That is we see expect to see it start from a captured upvar and not something that is local

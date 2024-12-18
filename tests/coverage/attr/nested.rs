@@ -1,4 +1,4 @@
-#![feature(coverage_attribute, stmt_expr_attributes)]
+#![feature(stmt_expr_attributes)]
 //@ edition: 2021
 
 // Demonstrates the interaction between #[coverage(off)] and various kinds of

@@ -370,6 +370,10 @@ impl HirEqInterExpr<'_, '_, '_> {
                     && self.eq_expr(l_receiver, r_receiver)
                     && self.eq_exprs(l_args, r_args)
             },
+            (&ExprKind::UnsafeBinderCast(lkind, le, None), &ExprKind::UnsafeBinderCast(rkind, re, None)) =>
+                lkind == rkind && self.eq_expr(le, re),
+            (&ExprKind::UnsafeBinderCast(lkind, le, Some(lt)), &ExprKind::UnsafeBinderCast(rkind, re, Some(rt))) =>
+                lkind == rkind && self.eq_expr(le, re) && self.eq_ty(lt, rt),
             (&ExprKind::OffsetOf(l_container, l_fields), &ExprKind::OffsetOf(r_container, r_fields)) => {
                 self.eq_ty(l_container, r_container) && over(l_fields, r_fields, |l, r| l.name == r.name)
             },
@@ -424,6 +428,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                 | &ExprKind::Type(..)
                 | &ExprKind::Unary(..)
                 | &ExprKind::Yield(..)
+                | &ExprKind::UnsafeBinderCast(..)
 
                 // --- Special cases that do not have a positive branch.
 
@@ -1032,6 +1037,13 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 std::mem::discriminant(&lop).hash(&mut self.s);
                 self.hash_expr(le);
             },
+            ExprKind::UnsafeBinderCast(kind, expr, ty) => {
+                std::mem::discriminant(&kind).hash(&mut self.s);
+                self.hash_expr(expr);
+                if let Some(ty) = ty {
+                    self.hash_ty(ty);
+                }
+            }
             ExprKind::Err(_) => {},
         }
     }
@@ -1241,11 +1253,15 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             TyKind::Typeof(anon_const) => {
                 self.hash_body(anon_const.body);
             },
+            TyKind::UnsafeBinder(binder) => {
+                self.hash_ty(binder.inner_ty);
+            }
             TyKind::Err(_)
             | TyKind::Infer
             | TyKind::Never
             | TyKind::InferDelegation(..)
-            | TyKind::OpaqueDef(_) => {},
+            | TyKind::OpaqueDef(_)
+            | TyKind::TraitAscription(_) => {},
         }
     }
 

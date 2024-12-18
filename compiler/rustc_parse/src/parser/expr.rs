@@ -15,7 +15,7 @@ use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_ast::{
     self as ast, AnonConst, Arm, AttrStyle, AttrVec, BinOp, BinOpKind, BlockCheckMode, CaptureBy,
     ClosureBinder, DUMMY_NODE_ID, Expr, ExprField, ExprKind, FnDecl, FnRetTy, Label, MacCall,
-    MetaItemLit, Movability, Param, RangeLimits, StmtKind, Ty, TyKind, UnOp,
+    MetaItemLit, Movability, Param, RangeLimits, StmtKind, Ty, TyKind, UnOp, UnsafeBinderCastKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -26,8 +26,7 @@ use rustc_session::errors::{ExprParenthesesNeeded, report_lit_error};
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_span::source_map::{self, Spanned};
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{BytePos, ErrorGuaranteed, Pos, Span};
+use rustc_span::{BytePos, ErrorGuaranteed, Ident, Pos, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::instrument;
 
@@ -1369,11 +1368,14 @@ impl<'a> Parser<'a> {
             ))
         } else {
             // Field access `expr.f`
+            let span = lo.to(self.prev_token.span);
             if let Some(args) = seg.args {
-                self.dcx().emit_err(errors::FieldExpressionWithGeneric(args.span()));
+                // See `StashKey::GenericInFieldExpr` for more info on why we stash this.
+                self.dcx()
+                    .create_err(errors::FieldExpressionWithGeneric(args.span()))
+                    .stash(seg.ident.span, StashKey::GenericInFieldExpr);
             }
 
-            let span = lo.to(self.prev_token.span);
             Ok(self.mk_expr(span, ExprKind::Field(self_arg, seg.ident)))
         }
     }
@@ -1928,6 +1930,12 @@ impl<'a> Parser<'a> {
             Ok(match ident.name {
                 sym::offset_of => Some(this.parse_expr_offset_of(lo)?),
                 sym::type_ascribe => Some(this.parse_expr_type_ascribe(lo)?),
+                sym::wrap_binder => {
+                    Some(this.parse_expr_unsafe_binder_cast(lo, UnsafeBinderCastKind::Wrap)?)
+                }
+                sym::unwrap_binder => {
+                    Some(this.parse_expr_unsafe_binder_cast(lo, UnsafeBinderCastKind::Unwrap)?)
+                }
                 _ => None,
             })
         })
@@ -2001,6 +2009,17 @@ impl<'a> Parser<'a> {
         let ty = self.parse_ty()?;
         let span = lo.to(self.token.span);
         Ok(self.mk_expr(span, ExprKind::Type(expr, ty)))
+    }
+
+    pub(crate) fn parse_expr_unsafe_binder_cast(
+        &mut self,
+        lo: Span,
+        kind: UnsafeBinderCastKind,
+    ) -> PResult<'a, P<Expr>> {
+        let expr = self.parse_expr()?;
+        let ty = if self.eat(&TokenKind::Comma) { Some(self.parse_ty()?) } else { None };
+        let span = lo.to(self.token.span);
+        Ok(self.mk_expr(span, ExprKind::UnsafeBinderCast(kind, expr, ty)))
     }
 
     /// Returns a string literal if the next token is a string literal.
@@ -2363,10 +2382,7 @@ impl<'a> Parser<'a> {
         };
 
         match coroutine_kind {
-            Some(CoroutineKind::Async { span, .. }) => {
-                // Feature-gate `async ||` closures.
-                self.psess.gated_spans.gate(sym::async_closure, span);
-            }
+            Some(CoroutineKind::Async { .. }) => {}
             Some(CoroutineKind::Gen { span, .. }) | Some(CoroutineKind::AsyncGen { span, .. }) => {
                 // Feature-gate `gen ||` and `async gen ||` closures.
                 // FIXME(gen_blocks): This perhaps should be a different gate.
@@ -4016,7 +4032,9 @@ impl MutVisitor for CondChecker<'_> {
                 mut_visit::walk_expr(self, e);
                 self.forbid_let_reason = forbid_let_reason;
             }
-            ExprKind::Cast(ref mut op, _) | ExprKind::Type(ref mut op, _) => {
+            ExprKind::Cast(ref mut op, _)
+            | ExprKind::Type(ref mut op, _)
+            | ExprKind::UnsafeBinderCast(_, ref mut op, _) => {
                 let forbid_let_reason = self.forbid_let_reason;
                 self.forbid_let_reason = Some(OtherForbidden);
                 self.visit_expr(op);

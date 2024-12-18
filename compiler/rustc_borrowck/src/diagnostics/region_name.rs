@@ -11,8 +11,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_middle::ty::print::RegionHighlightMode;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, RegionVid, Ty};
 use rustc_middle::{bug, span_bug};
-use rustc_span::symbol::{Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, Symbol, kw, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use tracing::{debug, instrument};
 
@@ -459,11 +458,8 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     ) -> RegionNameHighlight {
         let mut highlight = RegionHighlightMode::default();
         highlight.highlighting_region_vid(self.infcx.tcx, needle_fr, counter);
-        let type_name = self
-            .infcx
-            .err_ctxt()
-            .extract_inference_diagnostics_data(ty.into(), Some(highlight))
-            .name;
+        let type_name =
+            self.infcx.err_ctxt().extract_inference_diagnostics_data(ty.into(), highlight).name;
 
         debug!(
             "highlight_if_we_cannot_match_hir_ty: type_name={:?} needle_fr={:?}",
@@ -874,7 +870,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         let type_name = self
             .infcx
             .err_ctxt()
-            .extract_inference_diagnostics_data(yield_ty.into(), Some(highlight))
+            .extract_inference_diagnostics_data(yield_ty.into(), highlight)
             .name;
 
         let yield_span = match tcx.hir_node(self.mir_hir_id()) {

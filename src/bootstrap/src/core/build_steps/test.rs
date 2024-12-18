@@ -471,11 +471,11 @@ impl Miri {
         // We re-use the `cargo` from above.
         cargo.arg("--print-sysroot");
 
-        builder.verbose(|| eprintln!("running: {cargo:?}"));
+        builder.verbose(|| println!("running: {cargo:?}"));
         let stdout = cargo.run_capture_stdout(builder).stdout();
         // Output is "<sysroot>\n".
         let sysroot = stdout.trim_end();
-        builder.verbose(|| eprintln!("`cargo miri setup --print-sysroot` said: {sysroot:?}"));
+        builder.verbose(|| println!("`cargo miri setup --print-sysroot` said: {sysroot:?}"));
         PathBuf::from(sysroot)
     }
 }
@@ -2442,7 +2442,9 @@ impl Step for ErrorIndex {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/error_index_generator")
+        // Also add `error-index` here since that is what appears in the error message
+        // when this fails.
+        run.path("src/tools/error_index_generator").alias("error-index")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -2488,7 +2490,7 @@ fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> 
         }
     }
 
-    builder.verbose(|| eprintln!("doc tests for: {}", markdown.display()));
+    builder.verbose(|| println!("doc tests for: {}", markdown.display()));
     let mut cmd = builder.rustdoc_cmd(compiler);
     builder.add_rust_test_threads(&mut cmd);
     // allow for unstable options such as new editions
