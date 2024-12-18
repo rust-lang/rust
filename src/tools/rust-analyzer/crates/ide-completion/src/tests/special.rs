@@ -87,7 +87,7 @@ pub mod prelude {
         expect![[r#"
             md std
             st Option Option
-            bt u32    u32
+            bt u32       u32
         "#]],
     );
 }
@@ -113,10 +113,10 @@ mod macros {
 }
 "#,
         expect![[r#"
-            fn f()        fn()
+            fn f()                       fn()
             ma concat!(…) macro_rules! concat
             md std
-            bt u32        u32
+            bt u32                        u32
         "#]],
     );
 }
@@ -146,7 +146,7 @@ pub mod prelude {
             md core
             md std
             st String String
-            bt u32    u32
+            bt u32       u32
         "#]],
     );
 }
@@ -174,7 +174,7 @@ pub mod prelude {
         expect![[r#"
             fn f() fn()
             md std
-            bt u32 u32
+            bt u32  u32
         "#]],
     );
 }
@@ -226,9 +226,9 @@ impl S {
 fn foo() { let _ = lib::S::$0 }
 "#,
         expect![[r#"
-            ct PUBLIC_CONST    pub const PUBLIC_CONST: u32
-            fn public_method() fn()
-            ta PublicType      pub type PublicType = u32
+            ct PUBLIC_CONST pub const PUBLIC_CONST: u32
+            fn public_method()                     fn()
+            ta PublicType     pub type PublicType = u32
         "#]],
     );
 }
@@ -317,14 +317,14 @@ trait Sub: Super {
 fn foo<T: Sub>() { T::$0 }
 "#,
         expect![[r#"
-            ct C2 (as Sub)           const C2: ()
-            ct CONST (as Super)      const CONST: u8
-            fn func() (as Super)     fn()
-            fn subfunc() (as Sub)    fn()
-            me method(…) (as Super)  fn(&self)
-            me submethod(…) (as Sub) fn(&self)
+            ct C2 (as Sub)         const C2: ()
+            ct CONST (as Super) const CONST: u8
+            fn func() (as Super)           fn()
+            fn subfunc() (as Sub)          fn()
+            me method(…) (as Super)   fn(&self)
+            me submethod(…) (as Sub)  fn(&self)
             ta SubTy (as Sub)        type SubTy
-            ta Ty (as Super)         type Ty
+            ta Ty (as Super)            type Ty
         "#]],
     );
 }
@@ -357,14 +357,14 @@ impl<T> Sub for Wrap<T> {
 }
 "#,
         expect![[r#"
-            ct C2 (as Sub)           const C2: ()
-            ct CONST (as Super)      const CONST: u8
-            fn func() (as Super)     fn()
-            fn subfunc() (as Sub)    fn()
-            me method(…) (as Super)  fn(&self)
-            me submethod(…) (as Sub) fn(&self)
+            ct C2 (as Sub)         const C2: ()
+            ct CONST (as Super) const CONST: u8
+            fn func() (as Super)           fn()
+            fn subfunc() (as Sub)          fn()
+            me method(…) (as Super)   fn(&self)
+            me submethod(…) (as Sub)  fn(&self)
             ta SubTy (as Sub)        type SubTy
-            ta Ty (as Super)         type Ty
+            ta Ty (as Super)            type Ty
         "#]],
     );
 }
@@ -381,9 +381,9 @@ impl T { fn bar() {} }
 fn main() { T::$0; }
 "#,
         expect![[r#"
-                fn bar() fn()
-                fn foo() fn()
-            "#]],
+            fn bar() fn()
+            fn foo() fn()
+        "#]],
     );
 }
 
@@ -397,7 +397,7 @@ macro_rules! foo { () => {} }
 fn main() { let _ = crate::$0 }
 "#,
         expect![[r#"
-            fn main()  fn()
+            fn main()              fn()
             ma foo!(…) macro_rules! foo
         "#]],
     );
@@ -447,9 +447,9 @@ mod p {
 }
 "#,
         expect![[r#"
-            ct RIGHT_CONST u32
-            fn right_fn()  fn()
-            st RightType   WrongType
+            ct RIGHT_CONST     u32
+            fn right_fn()     fn()
+            st RightType WrongType
         "#]],
     );
 
@@ -495,9 +495,9 @@ fn main() { m!(self::f$0); }
 fn foo() {}
 "#,
         expect![[r#"
-                fn foo()  fn()
-                fn main() fn()
-            "#]],
+            fn foo()  fn()
+            fn main() fn()
+        "#]],
     );
 }
 
@@ -513,9 +513,9 @@ mod m {
 }
 "#,
         expect![[r#"
-                fn z() fn()
-                md z
-            "#]],
+            fn z() fn()
+            md z
+        "#]],
     );
 }
 
@@ -534,8 +534,8 @@ fn foo() {
 }
 "#,
         expect![[r#"
-                fn new() fn() -> HashMap<K, V, RandomState>
-            "#]],
+            fn new() fn() -> HashMap<K, V, RandomState>
+        "#]],
     );
 }
 
@@ -557,8 +557,8 @@ impl Foo {
 "#,
         expect![[r#"
             me foo(…) fn(self)
-            ev Bar    Bar
-            ev Baz    Baz
+            ev Bar         Bar
+            ev Baz         Baz
         "#]],
     );
 }
@@ -578,9 +578,9 @@ fn foo(self) {
 }
 "#,
         expect![[r#"
-                ev Bar Bar
-                ev Baz Baz
-            "#]],
+            ev Bar Bar
+            ev Baz Baz
+        "#]],
     );
 
     check_no_kw(
@@ -598,8 +598,8 @@ enum Foo {
 }
 "#,
         expect![[r#"
-                ev Baz Baz
-            "#]],
+            ev Baz Baz
+        "#]],
     );
 }
 
@@ -623,9 +623,9 @@ impl u8 {
 }
 "#,
         expect![[r#"
-                ct MAX     pub const MAX: Self
-                me func(…) fn(self)
-            "#]],
+            ct MAX pub const MAX: Self
+            me func(…)        fn(self)
+        "#]],
     );
 }
 
@@ -643,8 +643,8 @@ fn main() {
 }
 "#,
         expect![[r#"
-                ev Bar Bar
-            "#]],
+            ev Bar Bar
+        "#]],
     );
 }
 
@@ -723,7 +723,7 @@ fn bar() -> Bar {
 }
 "#,
         expect![[r#"
-            fn bar()          fn()
+            fn bar()                  fn()
             fn foo() (as Foo) fn() -> Self
             ex Bar
             ex bar()
@@ -787,7 +787,7 @@ fn main() {
 }
 "#,
         expect![[r#"
-            me by_macro() (as MyTrait) fn(&self)
+            me by_macro() (as MyTrait)     fn(&self)
             me not_by_macro() (as MyTrait) fn(&self)
         "#]],
     )
@@ -827,7 +827,7 @@ fn main() {
 }
 "#,
         expect![[r#"
-            me by_macro() (as MyTrait) fn(&self)
+            me by_macro() (as MyTrait)     fn(&self)
             me not_by_macro() (as MyTrait) fn(&self)
         "#]],
     )
@@ -885,10 +885,10 @@ fn main() {
 }
 "#,
         expect![[r#"
-            fn main() fn()
-            lc foobar i32
-            ma x!(…)  macro_rules! x
-            bt u32    u32
+            fn main()          fn()
+            lc foobar           i32
+            ma x!(…) macro_rules! x
+            bt u32              u32
         "#]],
     )
 }
@@ -1014,7 +1014,7 @@ fn here_we_go() {
 }
 "#,
         expect![[r#"
-            fn here_we_go()    fn()
+            fn here_we_go()   fn()
             st Foo (alias Bar) Foo
             bt u32             u32
             kw async
@@ -1064,9 +1064,9 @@ fn here_we_go() {
 }
 "#,
         expect![[r#"
-            fn here_we_go()           fn()
+            fn here_we_go()             fn()
             st Foo (alias Bar, Qux, Baz) Foo
-            bt u32                    u32
+            bt u32                       u32
             kw async
             kw const
             kw crate::
@@ -1160,20 +1160,20 @@ fn here_we_go() {
 }
 "#,
         expect![[r#"
-            fd bar               u8
+            fd bar                            u8
             me baz() (alias qux) fn(&self) -> u8
-            sn box               Box::new(expr)
-            sn call              function(expr)
-            sn dbg               dbg!(expr)
-            sn dbgr              dbg!(&expr)
-            sn deref             *expr
-            sn let               let
-            sn letm              let mut
-            sn match             match expr {}
-            sn ref               &expr
-            sn refm              &mut expr
-            sn return            return expr
-            sn unsafe            unsafe {}
+            sn box                Box::new(expr)
+            sn call               function(expr)
+            sn dbg                    dbg!(expr)
+            sn dbgr                  dbg!(&expr)
+            sn deref                       *expr
+            sn let                           let
+            sn letm                      let mut
+            sn match               match expr {}
+            sn ref                         &expr
+            sn refm                    &mut expr
+            sn return                return expr
+            sn unsafe                  unsafe {}
         "#]],
     );
 }
@@ -1189,7 +1189,7 @@ fn bar() { qu$0 }
         expect![[r#"
             fn bar()             fn()
             fn foo() (alias qux) fn()
-            bt u32               u32
+            bt u32                u32
             kw async
             kw const
             kw crate::
@@ -1277,10 +1277,10 @@ fn here_we_go() {
 }
 "#,
         expect![[r#"
-            fn here_we_go()           fn()
+            fn here_we_go()                  fn()
             md foo
             st Bar (alias Qux) (use foo::Bar) Bar
-            bt u32                    u32
+            bt u32                            u32
             kw crate::
             kw false
             kw for
@@ -1315,10 +1315,9 @@ use krate::e;
 fn main() {
     e::$0
 }"#,
-        expect![
-            "fn i_am_public() fn()
-"
-        ],
+        expect![[r#"
+            fn i_am_public() fn()
+        "#]],
     )
 }
 
@@ -1444,8 +1443,8 @@ fn foo() {
 "#,
         Some('_'),
         expect![[r#"
-            fn foo()       fn()
-            bt u32         u32
+            fn foo()  fn()
+            bt u32     u32
             kw async
             kw const
             kw crate::
@@ -1498,7 +1497,7 @@ fn foo(_: a_$0) { }
 "#,
         Some('_'),
         expect![[r#"
-            bt u32     u32
+            bt u32 u32
             kw crate::
             kw self::
         "#]],
@@ -1512,7 +1511,7 @@ fn foo<T>() {
         Some('_'),
         expect![[r#"
             tp T
-            bt u32     u32
+            bt u32 u32
             kw crate::
             kw self::
         "#]],
