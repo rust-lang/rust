@@ -267,7 +267,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
         debug!(?constant, ?location, "visit_const_operand");
 
         self.super_const_operand(constant, location);
-        let ty = self.sanitize_type(constant, constant.const_.ty());
+        let ty = constant.const_.ty();
 
         self.typeck.infcx.tcx.for_each_free_region(&ty, |live_region| {
             let live_region_vid = self.typeck.universal_regions.to_region_vid(live_region);
@@ -387,15 +387,8 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
         }
     }
 
-    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
-        self.super_rvalue(rvalue, location);
-        let rval_ty = rvalue.ty(self.body(), self.tcx());
-        self.sanitize_type(rvalue, rval_ty);
-    }
-
     fn visit_local_decl(&mut self, local: Local, local_decl: &LocalDecl<'tcx>) {
         self.super_local_decl(local, local_decl);
-        self.sanitize_type(local_decl, local_decl.ty);
 
         if let Some(user_ty) = &local_decl.user_ty {
             for (user_ty, span) in user_ty.projections_and_spans() {
@@ -434,7 +427,6 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
     }
 
     fn visit_body(&mut self, body: &Body<'tcx>) {
-        self.sanitize_type(&"return type", body.return_ty());
         // The types of local_decls are checked above which is called in super_body.
         self.super_body(body);
     }
@@ -447,14 +439,6 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.typeck.infcx.tcx
-    }
-
-    fn sanitize_type(&mut self, parent: &dyn fmt::Debug, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if ty.has_escaping_bound_vars() || ty.references_error() {
-            span_mirbug_and_err!(self, parent, "bad type {:?}", ty)
-        } else {
-            ty
-        }
     }
 
     /// Checks that the types internal to the `place` match up with
@@ -642,7 +626,6 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 }
             },
             ProjectionElem::Field(field, fty) => {
-                let fty = self.sanitize_type(place, fty);
                 let fty = self.typeck.normalize(fty, location);
                 match self.field_ty(place, base, field, location) {
                     Ok(ty) => {
@@ -680,7 +663,6 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 bug!("ProjectionElem::Subtype shouldn't exist in borrowck")
             }
             ProjectionElem::OpaqueCast(ty) => {
-                let ty = self.sanitize_type(place, ty);
                 let ty = self.typeck.normalize(ty, location);
                 self.typeck
                     .relate_types(
