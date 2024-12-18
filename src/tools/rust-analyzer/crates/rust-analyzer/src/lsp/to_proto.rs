@@ -373,7 +373,7 @@ fn completion_item(
 
     if config.completion_label_details_support() {
         let has_label_details =
-            item.label.detail_left.is_some() || item.label.detail_left.is_some();
+            item.label.detail_left.is_some() || item.label.detail_right.is_some();
         if fields_to_resolve.resolve_label_details {
             something_to_resolve |= has_label_details;
         } else if has_label_details {
