@@ -206,8 +206,6 @@ pub struct AnnotationRequired<'a> {
     #[note(trait_selection_full_type_written)]
     pub was_written: bool,
     pub path: PathBuf,
-    #[note(trait_selection_type_annotations_needed_error_time)]
-    pub time_version: bool,
 }
 
 // Copy of `AnnotationRequired` for E0283
