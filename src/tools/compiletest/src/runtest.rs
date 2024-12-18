@@ -1958,23 +1958,23 @@ impl<'test> TestCx<'test> {
         let mut filecheck = Command::new(self.config.llvm_filecheck.as_ref().unwrap());
         filecheck.arg("--input-file").arg(output).arg(&self.testpaths.file);
 
-        // FIXME: Consider making some of these prefix flags opt-in per test,
-        // via `filecheck-flags` or by adding new header directives.
-
         // Because we use custom prefixes, we also have to register the default prefix.
         filecheck.arg("--check-prefix=CHECK");
 
-        // Some tests use the current revision name as a check prefix.
+        // FIXME(#134510): auto-registering revision names as check prefix is a bit sketchy, and
+        // that having to pass `--allow-unused-prefix` is an unfortunate side-effect of not knowing
+        // whether the test author actually wanted revision-specific check prefixes or not.
+        //
+        // TL;DR We may not want to conflate `compiletest` revisions and `FileCheck` prefixes.
+
+        // HACK: tests are allowed to use a revision name as a check prefix.
         if let Some(rev) = self.revision {
             filecheck.arg("--check-prefix").arg(rev);
         }
 
-        // Some tests also expect either the MSVC or NONMSVC prefix to be defined.
-        let msvc_or_not = if self.config.target.contains("msvc") { "MSVC" } else { "NONMSVC" };
-        filecheck.arg("--check-prefix").arg(msvc_or_not);
-
-        // The filecheck tool normally fails if a prefix is defined but not used.
-        // However, we define several prefixes globally for all tests.
+        // HACK: the filecheck tool normally fails if a prefix is defined but not used. However,
+        // sometimes revisions are used to specify *compiletest* directives which are not FileCheck
+        // concerns.
         filecheck.arg("--allow-unused-prefixes");
 
         // Provide more context on failures.
