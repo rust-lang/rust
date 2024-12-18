@@ -74,6 +74,8 @@ jobs:
           os: ubuntu-latest
         - tuple: riscv64gc-unknown-linux-gnu
           os: ubuntu-latest
+        - tuple: powerpc-unknown-linux-gnu
+          os: ubuntu-latest
         - tuple: powerpc64le-unknown-linux-gnu
           os: ubuntu-latest
         # MIPS targets disabled since they are dropped to tier 3.
@@ -155,6 +157,10 @@ jobs:
         #    tuple: mipsel-unknown-linux-musl
         #    os: ubuntu-latest
         #  norun: true
+        - target:
+            tuple: powerpc-unknown-linux-gnu
+            os: ubuntu-latest
+          disable_assert_instr: true
         - target:
             tuple: powerpc64le-unknown-linux-gnu
             os: ubuntu-latest
