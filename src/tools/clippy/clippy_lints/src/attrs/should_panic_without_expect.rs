@@ -15,7 +15,7 @@ pub(super) fn check(cx: &EarlyContext<'_>, attr: &Attribute) {
         }
 
         if let AttrArgs::Delimited(args) = &normal_attr.item.args
-            && let mut tt_iter = args.tokens.trees()
+            && let mut tt_iter = args.tokens.iter()
             && let Some(TokenTree::Token(
                 Token {
                     kind: TokenKind::Ident(sym::expected, _),
