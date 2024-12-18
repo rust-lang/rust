@@ -11,89 +11,33 @@ use crate::{core_arch::simd::*, hint::unreachable_unchecked, intrinsics::simd::*
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
-#[unstable(feature = "stdarch_internal", issue = "none")]
 pub(crate) trait AsUnsigned {
     type Unsigned: ?Sized;
-    unsafe fn as_unsigned(self) -> Self::Unsigned;
+    fn as_unsigned(self) -> Self::Unsigned;
 }
 
-#[unstable(feature = "stdarch_internal", issue = "none")]
 pub(crate) trait AsSigned {
     type Signed: ?Sized;
-    unsafe fn as_signed(self) -> Self::Signed;
-}
-
-macro_rules! impl_sign_conversions {
-    ($(($signed:ty, $unsigned:ty))*) => ($(
-        #[cfg_attr(
-            not(target_arch = "arm"),
-            stable(feature = "neon_intrinsics", since = "1.59.0")
-        )]
-        #[cfg_attr(
-            target_arch = "arm",
-            unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
-        )]
-        impl AsUnsigned for $signed {
-            type Unsigned = $unsigned;
-
-            #[inline]
-            unsafe fn as_unsigned(self) -> $unsigned {
-                crate::mem::transmute(self)
-            }
-        }
-
-        #[cfg_attr(
-            not(target_arch = "arm"),
-            stable(feature = "neon_intrinsics", since = "1.59.0")
-        )]
-        #[cfg_attr(
-            target_arch = "arm",
-            unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
-        )]
-        impl AsSigned for $unsigned {
-            type Signed = $signed;
-
-            #[inline]
-            unsafe fn as_signed(self) -> $signed {
-                crate::mem::transmute(self)
-            }
-        }
-    )*)
+    fn as_signed(self) -> Self::Signed;
 }
 
 macro_rules! impl_sign_conversions_neon {
     ($(($signed:ty, $unsigned:ty))*) => ($(
-        #[cfg_attr(
-            not(target_arch = "arm"),
-            stable(feature = "neon_intrinsics", since = "1.59.0")
-        )]
-        #[cfg_attr(
-            target_arch = "arm",
-            unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
-        )]
         impl AsUnsigned for $signed {
             type Unsigned = $unsigned;
 
             #[inline]
-            unsafe fn as_unsigned(self) -> $unsigned {
-                crate::mem::transmute(self)
+            fn as_unsigned(self) -> $unsigned {
+                unsafe { transmute(self) }
             }
         }
 
-        #[cfg_attr(
-            not(target_arch = "arm"),
-            stable(feature = "neon_intrinsics", since = "1.59.0")
-        )]
-        #[cfg_attr(
-            target_arch = "arm",
-            unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
-        )]
         impl AsSigned for $unsigned {
             type Signed = $signed;
 
             #[inline]
-            unsafe fn as_signed(self) -> $signed {
-                crate::mem::transmute(self)
+            fn as_signed(self) -> $signed {
+                unsafe { transmute(self) }
             }
         }
     )*)
@@ -1121,7 +1065,7 @@ pub struct poly64x2x4_t(
     pub poly64x2_t,
 );
 
-impl_sign_conversions! {
+impl_sign_conversions_neon! {
     (i8, u8)
     (i16, u16)
     (i32, u32)
@@ -1150,9 +1094,6 @@ impl_sign_conversions! {
     (uint64x2_t, int64x2_t)
     (uint8x16_t, int8x16_t)
     (uint8x8_t, int8x8_t)
-}
-
-impl_sign_conversions_neon! {
     (int16x4x2_t, uint16x4x2_t)
     (int16x4x3_t, uint16x4x3_t)
     (int16x4x4_t, uint16x4x4_t)

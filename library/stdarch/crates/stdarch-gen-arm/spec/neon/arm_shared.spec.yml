@@ -3687,7 +3687,7 @@ intrinsics:
           links:
             - link: 'llvm.arm.neon.vld4lane.v{neon_type[1].lane}{type[3]}.p0i8'
               arch: arm
-      - FnCall: ['vld4{neon_type[1].lane_nox}', ['a as _', 'b.0', 'b.1', 'b.2', 'b.3', LANE, '{type[4]}']]
+      - FnCall: ['_vld4{neon_type[1].lane_nox}', ['a as _', 'b.0', 'b.1', 'b.2', 'b.3', LANE, '{type[4]}']]
 
   - name: "vld4{neon_type[1].lane_nox}"
     doc: Load multiple 4-element structures to four registers
@@ -4323,7 +4323,7 @@ intrinsics:
           links:
             - link: 'llvm.arm.neon.vst2lane.p0i8.v{neon_type[1].lane}{type[0]}'
               arch: arm
-      - FnCall: ['_vst2{neon_type[1].nox}', ['a as _', 'b.0', 'b.1', 'LANE', "{type[4]}"]]
+      - FnCall: ['_vst2{neon_type[1].lane_nox}', ['a as _', 'b.0', 'b.1', 'LANE', "{type[4]}"]]
 
   - name: "vst3{neon_type[1].nox}"
     doc: "Store multiple 3-element structures from three registers"
@@ -4538,7 +4538,7 @@ intrinsics:
           links:
             - link: 'llvm.arm.neon.vst3lane.p0i8.v{neon_type[1].lane}{type[0]}'
               arch: arm
-      - FnCall: ['_vst3{neon_type[1].nox}', ['a as _', 'b.0', 'b.1', 'b.2', 'LANE', "{type[4]}"]]
+      - FnCall: ['_vst3{neon_type[1].lane_nox}', ['a as _', 'b.0', 'b.1', 'b.2', 'LANE', "{type[4]}"]]
 
   - name: "vst3{neon_type[1].nox}"
     doc: "Store multiple 3-element structures from three registers"
@@ -4820,7 +4820,7 @@ intrinsics:
           links:
             - link: 'llvm.arm.neon.vst4lane.p0i8.v{neon_type[1].lane}{type[0]}'
               arch: arm
-      - FnCall: ['_vst4{neon_type[1].nox}', ['a as _', 'b.0', 'b.1', 'b.2', 'b.3', 'LANE', "{type[4]}"]]
+      - FnCall: ['_vst4{neon_type[1].lane_nox}', ['a as _', 'b.0', 'b.1', 'b.2', 'b.3', 'LANE', "{type[4]}"]]
 
   - name: "vst4{neon_type[1].nox}"
     doc: "Store multiple 4-element structures from four registers"
@@ -6473,8 +6473,8 @@ intrinsics:
       unsafe: [neon]
     types:
       - [int16x8_t, int8x8_t, 'N >= 1 && N <= 8', 'const { int16x8_t([-N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16]) }']
-      - [int32x4_t, int16x4_t, 'N >= 1 && N <= 16', 'const { int16x8_t([-N as i32, -N as i32, -N as i32, -N as i32]) }']
-      - [int64x2_t, int32x2_t, 'N >= 1 && N <= 32', 'const { int16x8_t([-N as i64, -N as i64]) }']
+      - [int32x4_t, int16x4_t, 'N >= 1 && N <= 16', 'const { int32x4_t([-N as i32, -N as i32, -N as i32, -N as i32]) }']
+      - [int64x2_t, int32x2_t, 'N >= 1 && N <= 32', 'const { int64x2_t([-N as i64, -N as i64]) }']
     compose:
       - FnCall: [static_assert!, ["{type[2]}"]]
       - LLVMLink:
@@ -6533,7 +6533,7 @@ intrinsics:
       - [int32x4_t, uint16x4_t, 'N >= 1 && N <= 16', 'const { int32x4_t([-N as i32, -N as i32, -N as i32, -N as i32]) }']
       - [int64x2_t, uint32x2_t, 'N >= 1 && N <= 32', 'const { int64x2_t([-N as i64, -N as i64]) }']
     compose:
-      - FnCall: [static_assert!, ["{type[3]}"]]
+      - FnCall: [static_assert!, ["{type[2]}"]]
       - LLVMLink:
           name: "vqrshrun_n{neon_type[0].noq}"
           arguments:
@@ -6766,9 +6766,9 @@ intrinsics:
     safety:
       unsafe: [neon]
     types:
-      - [uint16x8_t, uint8x8_t, 'N >= 1 && N <= 8', 'const { uint16x8_t([-N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16]) }']
-      - [uint32x4_t, uint16x4_t, 'N >= 1 && N <= 16', 'const { uint32x4_t([-N as u32, -N as u32, -N as u32, -N as u32]) }']
-      - [uint64x2_t, uint32x2_t, 'N >= 1 && N <= 32', 'const { uint64x2_t([-N as u64, -N as u64]) }']
+      - [uint16x8_t, uint8x8_t, 'N >= 1 && N <= 8', 'const { uint16x8_t([-N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16]) }.as_signed()']
+      - [uint32x4_t, uint16x4_t, 'N >= 1 && N <= 16', 'const { uint32x4_t([-N as u32, -N as u32, -N as u32, -N as u32]) }.as_signed()']
+      - [uint64x2_t, uint32x2_t, 'N >= 1 && N <= 32', 'const { uint64x2_t([-N as u64, -N as u64]) }.as_signed()']
     compose:
       - FnCall: [static_assert!, ["{type[2]}"]]
       - LLVMLink:
@@ -6836,7 +6836,7 @@ intrinsics:
           links:
             - link: "llvm.arm.neon.vqshiftnsu.{neon_type[1]}"
               arch: arm
-      - FnCall: ["_vqshrun_n_{neon_type[1]}", [a, "{type[3]}"]]
+      - FnCall: ["_vqshrun_n_{neon_type[0]}", [a, "{type[3]}"]]
 
   - name: "vqshrun_n_{neon_type[0]}"
     doc: "Signed saturating shift right unsigned narrow"
@@ -8784,9 +8784,9 @@ intrinsics:
     safety:
       unsafe: [neon]
     types:
-      - [uint16x8_t, uint8x8_t, '8', 'const { uint16x8_t([-N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16]) }']
-      - [uint32x4_t, uint16x4_t, '16', 'const { uint32x4_t([-N as u32, -N as u32, -N as u32, -N as u32]) }']
-      - [uint64x2_t, uint32x2_t, '32', 'const { uint64x2_t([-N as u64, -N as u64]) }']
+      - [uint16x8_t, uint8x8_t, '8', 'const { uint16x8_t([-N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16]) }.as_signed()']
+      - [uint32x4_t, uint16x4_t, '16', 'const { uint32x4_t([-N as u32, -N as u32, -N as u32, -N as u32]) }.as_signed()']
+      - [uint64x2_t, uint32x2_t, '32', 'const { uint64x2_t([-N as u64, -N as u64]) }.as_signed()']
     compose:
       - FnCall: [static_assert!, ['N >= 1 && N <= {type[2]}']]
       - LLVMLink:
@@ -8797,7 +8797,7 @@ intrinsics:
           links:
             - link: "llvm.arm.neon.vqrshiftnu.{neon_type[1]}"
               arch: arm
-      - FnCall: ["_vqrshrn{neon_type[0].N}", ["a.as_signed()", "{type[3]}"]]
+      - FnCall: ["_vqrshrn_n{neon_type[0].noq}", ["a.as_signed()", "{type[3]}"]]
 
   - name: "vqrshrn_n_{neon_type[0]}"
     doc: "Unsigned signed saturating rounded shift right narrow"

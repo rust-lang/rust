@@ -1,10 +1,11 @@
 [package]
-name = "stdarch-gen2"
+name = "stdarch-gen-arm"
 version = "0.1.0"
 authors = ["Luca Vizzarro <luca.vizzarro@arm.com>",
         "Jamie Cunliffe <Jamie.Cunliffe@arm.com>",
         "Adam Gemmell <Adam.Gemmell@arm.com",
-        "Jacob Bramley <jacob.bramley@arm.com>"]
+        "Jacob Bramley <jacob.bramley@arm.com>",
+        "James Barford-Evans <james.barford-evans@arm.com>"]
 license = "MIT OR Apache-2.0"
 edition = "2021"
 

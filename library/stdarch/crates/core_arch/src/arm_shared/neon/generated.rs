@@ -15227,7 +15227,7 @@ pub unsafe fn vld4_lane_f32<const LANE: i32>(a: *const f32, b: float32x2x4_t) ->
             size: i32,
         ) -> float32x2x4_t;
     }
-    vld4_lane_f32(a as _, b.0, b.1, b.2, b.3, LANE, 4)
+    _vld4_lane_f32(a as _, b.0, b.1, b.2, b.3, LANE, 4)
 }
 
 #[doc = "Load multiple 4-element structures to four registers"]
@@ -15254,7 +15254,7 @@ pub unsafe fn vld4q_lane_f32<const LANE: i32>(a: *const f32, b: float32x4x4_t) -
             size: i32,
         ) -> float32x4x4_t;
     }
-    vld4q_lane_f32(a as _, b.0, b.1, b.2, b.3, LANE, 4)
+    _vld4q_lane_f32(a as _, b.0, b.1, b.2, b.3, LANE, 4)
 }
 
 #[doc = "Load multiple 4-element structures to four registers"]
@@ -15281,7 +15281,7 @@ pub unsafe fn vld4_lane_s8<const LANE: i32>(a: *const i8, b: int8x8x4_t) -> int8
             size: i32,
         ) -> int8x8x4_t;
     }
-    vld4_lane_s8(a as _, b.0, b.1, b.2, b.3, LANE, 1)
+    _vld4_lane_s8(a as _, b.0, b.1, b.2, b.3, LANE, 1)
 }
 
 #[doc = "Load multiple 4-element structures to four registers"]
@@ -15308,7 +15308,7 @@ pub unsafe fn vld4_lane_s16<const LANE: i32>(a: *const i16, b: int16x4x4_t) -> i
             size: i32,
         ) -> int16x4x4_t;
     }
-    vld4_lane_s16(a as _, b.0, b.1, b.2, b.3, LANE, 2)
+    _vld4_lane_s16(a as _, b.0, b.1, b.2, b.3, LANE, 2)
 }
 
 #[doc = "Load multiple 4-element structures to four registers"]
@@ -15335,7 +15335,7 @@ pub unsafe fn vld4q_lane_s16<const LANE: i32>(a: *const i16, b: int16x8x4_t) -> 
             size: i32,
         ) -> int16x8x4_t;
     }
-    vld4q_lane_s16(a as _, b.0, b.1, b.2, b.3, LANE, 2)
+    _vld4q_lane_s16(a as _, b.0, b.1, b.2, b.3, LANE, 2)
 }
 
 #[doc = "Load multiple 4-element structures to four registers"]
@@ -15362,7 +15362,7 @@ pub unsafe fn vld4_lane_s32<const LANE: i32>(a: *const i32, b: int32x2x4_t) -> i
             size: i32,
         ) -> int32x2x4_t;
     }
-    vld4_lane_s32(a as _, b.0, b.1, b.2, b.3, LANE, 4)
+    _vld4_lane_s32(a as _, b.0, b.1, b.2, b.3, LANE, 4)
 }
 
 #[doc = "Load multiple 4-element structures to four registers"]
@@ -15389,7 +15389,7 @@ pub unsafe fn vld4q_lane_s32<const LANE: i32>(a: *const i32, b: int32x4x4_t) -> 
             size: i32,
         ) -> int32x4x4_t;
     }
-    vld4q_lane_s32(a as _, b.0, b.1, b.2, b.3, LANE, 4)
+    _vld4q_lane_s32(a as _, b.0, b.1, b.2, b.3, LANE, 4)
 }
 
 #[doc = "Load multiple 4-element structures to four registers"]
@@ -25928,7 +25928,7 @@ pub unsafe fn vqrshrn_n_s32<const N: i32>(a: int32x4_t) -> int16x4_t {
     }
     _vqrshrn_n_s32(
         a,
-        const { int16x8_t([-N as i32, -N as i32, -N as i32, -N as i32]) },
+        const { int32x4_t([-N as i32, -N as i32, -N as i32, -N as i32]) },
     )
 }
 
@@ -25948,7 +25948,7 @@ pub unsafe fn vqrshrn_n_s64<const N: i32>(a: int64x2_t) -> int32x2_t {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftns.v2i32")]
         fn _vqrshrn_n_s64(a: int64x2_t, n: int64x2_t) -> int32x2_t;
     }
-    _vqrshrn_n_s64(a, const { int16x8_t([-N as i64, -N as i64]) })
+    _vqrshrn_n_s64(a, const { int64x2_t([-N as i64, -N as i64]) })
 }
 
 #[doc = "Signed saturating rounded shift right narrow"]
@@ -26033,15 +26033,17 @@ pub unsafe fn vqrshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftnu.v8i8")]
         fn _vqrshrn_n_u16(a: int16x8_t, n: int16x8_t) -> int8x8_t;
     }
-    _vqrshrnq_n_u16(
+    _vqrshrn_n_u16(
         a.as_signed(),
         const {
             uint16x8_t([
                 -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16,
                 -N as u16,
             ])
-        },
+        }
+        .as_signed(),
     )
+    .as_unsigned()
 }
 
 #[doc = "Unsigned signed saturating rounded shift right narrow"]
@@ -26060,10 +26062,11 @@ pub unsafe fn vqrshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftnu.v4i16")]
         fn _vqrshrn_n_u32(a: int32x4_t, n: int32x4_t) -> int16x4_t;
     }
-    _vqrshrnq_n_u32(
+    _vqrshrn_n_u32(
         a.as_signed(),
-        const { uint32x4_t([-N as u32, -N as u32, -N as u32, -N as u32]) },
+        const { uint32x4_t([-N as u32, -N as u32, -N as u32, -N as u32]) }.as_signed(),
     )
+    .as_unsigned()
 }
 
 #[doc = "Unsigned signed saturating rounded shift right narrow"]
@@ -26082,7 +26085,11 @@ pub unsafe fn vqrshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftnu.v2i32")]
         fn _vqrshrn_n_u64(a: int64x2_t, n: int64x2_t) -> int32x2_t;
     }
-    _vqrshrnq_n_u64(a.as_signed(), const { uint64x2_t([-N as u64, -N as u64]) })
+    _vqrshrn_n_u64(
+        a.as_signed(),
+        const { uint64x2_t([-N as u64, -N as u64]) }.as_signed(),
+    )
+    .as_unsigned()
 }
 
 #[doc = "Unsigned signed saturating rounded shift right narrow"]
@@ -26162,14 +26169,7 @@ pub unsafe fn vqrshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vqrshrun_n_s16<const N: i32>(a: int16x8_t) -> uint8x8_t {
-    static_assert!(
-        const {
-            int16x8_t([
-                -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16, -N as i16,
-                -N as i16,
-            ])
-        }
-    );
+    static_assert!(N >= 1 && N <= 8);
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftnsu.v8i8")]
         fn _vqrshrun_n_s16(a: int16x8_t, n: int16x8_t) -> int8x8_t;
@@ -26197,7 +26197,7 @@ pub unsafe fn vqrshrun_n_s16<const N: i32>(a: int16x8_t) -> uint8x8_t {
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vqrshrun_n_s32<const N: i32>(a: int32x4_t) -> uint16x4_t {
-    static_assert!(const { int32x4_t([-N as i32, -N as i32, -N as i32, -N as i32]) });
+    static_assert!(N >= 1 && N <= 16);
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftnsu.v4i16")]
         fn _vqrshrun_n_s32(a: int32x4_t, n: int32x4_t) -> int16x4_t;
@@ -26220,7 +26220,7 @@ pub unsafe fn vqrshrun_n_s32<const N: i32>(a: int32x4_t) -> uint16x4_t {
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub unsafe fn vqrshrun_n_s64<const N: i32>(a: int64x2_t) -> uint32x2_t {
-    static_assert!(const { int64x2_t([-N as i64, -N as i64]) });
+    static_assert!(N >= 1 && N <= 32);
     extern "unadjusted" {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqrshiftnsu.v2i32")]
         fn _vqrshrun_n_s64(a: int64x2_t, n: int64x2_t) -> int32x2_t;
@@ -27773,7 +27773,8 @@ pub unsafe fn vqshrn_n_u16<const N: i32>(a: uint16x8_t) -> uint8x8_t {
                 -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16,
                 -N as u16,
             ])
-        },
+        }
+        .as_signed(),
     )
     .as_unsigned()
 }
@@ -27796,7 +27797,7 @@ pub unsafe fn vqshrn_n_u32<const N: i32>(a: uint32x4_t) -> uint16x4_t {
     }
     _vqshrn_n_u32(
         a.as_signed(),
-        const { uint32x4_t([-N as u32, -N as u32, -N as u32, -N as u32]) },
+        const { uint32x4_t([-N as u32, -N as u32, -N as u32, -N as u32]) }.as_signed(),
     )
     .as_unsigned()
 }
@@ -27817,7 +27818,11 @@ pub unsafe fn vqshrn_n_u64<const N: i32>(a: uint64x2_t) -> uint32x2_t {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftnu.v2i32")]
         fn _vqshrn_n_u64(a: int64x2_t, n: int64x2_t) -> int32x2_t;
     }
-    _vqshrn_n_u64(a.as_signed(), const { uint64x2_t([-N as u64, -N as u64]) }).as_unsigned()
+    _vqshrn_n_u64(
+        a.as_signed(),
+        const { uint64x2_t([-N as u64, -N as u64]) }.as_signed(),
+    )
+    .as_unsigned()
 }
 
 #[doc = "Unsigned saturating shift right narrow"]
@@ -27902,7 +27907,7 @@ pub unsafe fn vqshrun_n_s16<const N: i32>(a: int16x8_t) -> uint8x8_t {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftnsu.v8i8")]
         fn _vqshrun_n_s16(a: int16x8_t, n: int16x8_t) -> int8x8_t;
     }
-    _vqshrun_n_u8(
+    _vqshrun_n_s16(
         a,
         const {
             int16x8_t([
@@ -27911,6 +27916,7 @@ pub unsafe fn vqshrun_n_s16<const N: i32>(a: int16x8_t) -> uint8x8_t {
             ])
         },
     )
+    .as_unsigned()
 }
 
 #[doc = "Signed saturating shift right unsigned narrow"]
@@ -27929,10 +27935,11 @@ pub unsafe fn vqshrun_n_s32<const N: i32>(a: int32x4_t) -> uint16x4_t {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftnsu.v4i16")]
         fn _vqshrun_n_s32(a: int32x4_t, n: int32x4_t) -> int16x4_t;
     }
-    _vqshrun_n_u16(
+    _vqshrun_n_s32(
         a,
         const { int32x4_t([-N as i32, -N as i32, -N as i32, -N as i32]) },
     )
+    .as_unsigned()
 }
 
 #[doc = "Signed saturating shift right unsigned narrow"]
@@ -27951,7 +27958,7 @@ pub unsafe fn vqshrun_n_s64<const N: i32>(a: int64x2_t) -> uint32x2_t {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqshiftnsu.v2i32")]
         fn _vqshrun_n_s64(a: int64x2_t, n: int64x2_t) -> int32x2_t;
     }
-    _vqshrun_n_u32(a, const { int64x2_t([-N as i64, -N as i64]) })
+    _vqshrun_n_s64(a, const { int64x2_t([-N as i64, -N as i64]) }).as_unsigned()
 }
 
 #[doc = "Signed saturating shift right unsigned narrow"]
@@ -43688,7 +43695,7 @@ pub unsafe fn vst2_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2x2_t) {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst2lane.p0i8.v2f32")]
         fn _vst2_lane_f32(ptr: *mut i8, a: float32x2_t, b: float32x2_t, n: i32, size: i32);
     }
-    _vst2_f32(a as _, b.0, b.1, LANE, 4)
+    _vst2_lane_f32(a as _, b.0, b.1, LANE, 4)
 }
 
 #[doc = "Store multiple 2-element structures from two registers"]
@@ -43707,7 +43714,7 @@ pub unsafe fn vst2q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4x2_t) {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst2lane.p0i8.v4f32")]
         fn _vst2q_lane_f32(ptr: *mut i8, a: float32x4_t, b: float32x4_t, n: i32, size: i32);
     }
-    _vst2q_f32(a as _, b.0, b.1, LANE, 4)
+    _vst2q_lane_f32(a as _, b.0, b.1, LANE, 4)
 }
 
 #[doc = "Store multiple 2-element structures from two registers"]
@@ -43726,7 +43733,7 @@ pub unsafe fn vst2_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8x2_t) {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst2lane.p0i8.v8i8")]
         fn _vst2_lane_s8(ptr: *mut i8, a: int8x8_t, b: int8x8_t, n: i32, size: i32);
     }
-    _vst2_s8(a as _, b.0, b.1, LANE, 1)
+    _vst2_lane_s8(a as _, b.0, b.1, LANE, 1)
 }
 
 #[doc = "Store multiple 2-element structures from two registers"]
@@ -43745,7 +43752,7 @@ pub unsafe fn vst2_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4x2_t) {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst2lane.p0i8.v4i16")]
         fn _vst2_lane_s16(ptr: *mut i8, a: int16x4_t, b: int16x4_t, n: i32, size: i32);
     }
-    _vst2_s16(a as _, b.0, b.1, LANE, 2)
+    _vst2_lane_s16(a as _, b.0, b.1, LANE, 2)
 }
 
 #[doc = "Store multiple 2-element structures from two registers"]
@@ -43764,7 +43771,7 @@ pub unsafe fn vst2q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8x2_t) {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst2lane.p0i8.v8i16")]
         fn _vst2q_lane_s16(ptr: *mut i8, a: int16x8_t, b: int16x8_t, n: i32, size: i32);
     }
-    _vst2q_s16(a as _, b.0, b.1, LANE, 2)
+    _vst2q_lane_s16(a as _, b.0, b.1, LANE, 2)
 }
 
 #[doc = "Store multiple 2-element structures from two registers"]
@@ -43783,7 +43790,7 @@ pub unsafe fn vst2_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2x2_t) {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst2lane.p0i8.v2i32")]
         fn _vst2_lane_s32(ptr: *mut i8, a: int32x2_t, b: int32x2_t, n: i32, size: i32);
     }
-    _vst2_s32(a as _, b.0, b.1, LANE, 4)
+    _vst2_lane_s32(a as _, b.0, b.1, LANE, 4)
 }
 
 #[doc = "Store multiple 2-element structures from two registers"]
@@ -43802,7 +43809,7 @@ pub unsafe fn vst2q_lane_s32<const LANE: i32>(a: *mut i32, b: int32x4x2_t) {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst2lane.p0i8.v4i32")]
         fn _vst2q_lane_s32(ptr: *mut i8, a: int32x4_t, b: int32x4_t, n: i32, size: i32);
     }
-    _vst2q_s32(a as _, b.0, b.1, LANE, 4)
+    _vst2q_lane_s32(a as _, b.0, b.1, LANE, 4)
 }
 
 #[doc = "Store multiple 2-element structures from two registers"]
@@ -44657,7 +44664,7 @@ pub unsafe fn vst3_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2x3_t) {
             size: i32,
         );
     }
-    _vst3_f32(a as _, b.0, b.1, b.2, LANE, 4)
+    _vst3_lane_f32(a as _, b.0, b.1, b.2, LANE, 4)
 }
 
 #[doc = "Store multiple 3-element structures from three registers"]
@@ -44683,7 +44690,7 @@ pub unsafe fn vst3q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4x3_t) {
             size: i32,
         );
     }
-    _vst3q_f32(a as _, b.0, b.1, b.2, LANE, 4)
+    _vst3q_lane_f32(a as _, b.0, b.1, b.2, LANE, 4)
 }
 
 #[doc = "Store multiple 3-element structures from three registers"]
@@ -44702,7 +44709,7 @@ pub unsafe fn vst3_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8x3_t) {
         #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vst3lane.p0i8.v8i8")]
         fn _vst3_lane_s8(ptr: *mut i8, a: int8x8_t, b: int8x8_t, c: int8x8_t, n: i32, size: i32);
     }
-    _vst3_s8(a as _, b.0, b.1, b.2, LANE, 1)
+    _vst3_lane_s8(a as _, b.0, b.1, b.2, LANE, 1)
 }
 
 #[doc = "Store multiple 3-element structures from three registers"]
@@ -44728,7 +44735,7 @@ pub unsafe fn vst3_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4x3_t) {
             size: i32,
         );
     }
-    _vst3_s16(a as _, b.0, b.1, b.2, LANE, 2)
+    _vst3_lane_s16(a as _, b.0, b.1, b.2, LANE, 2)
 }
 
 #[doc = "Store multiple 3-element structures from three registers"]
@@ -44754,7 +44761,7 @@ pub unsafe fn vst3q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8x3_t) {
             size: i32,
         );
     }
-    _vst3q_s16(a as _, b.0, b.1, b.2, LANE, 2)
+    _vst3q_lane_s16(a as _, b.0, b.1, b.2, LANE, 2)
 }
 
 #[doc = "Store multiple 3-element structures from three registers"]
@@ -44780,7 +44787,7 @@ pub unsafe fn vst3_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2x3_t) {
             size: i32,
         );
     }
-    _vst3_s32(a as _, b.0, b.1, b.2, LANE, 4)
+    _vst3_lane_s32(a as _, b.0, b.1, b.2, LANE, 4)
 }
 
 #[doc = "Store multiple 3-element structures from three registers"]
@@ -44806,7 +44813,7 @@ pub unsafe fn vst3q_lane_s32<const LANE: i32>(a: *mut i32, b: int32x4x3_t) {
             size: i32,
         );
     }
-    _vst3q_s32(a as _, b.0, b.1, b.2, LANE, 4)
+    _vst3q_lane_s32(a as _, b.0, b.1, b.2, LANE, 4)
 }
 
 #[doc = "Store multiple 3-element structures from three registers"]
@@ -45865,7 +45872,7 @@ pub unsafe fn vst4_lane_f32<const LANE: i32>(a: *mut f32, b: float32x2x4_t) {
             size: i32,
         );
     }
-    _vst4_f32(a as _, b.0, b.1, b.2, b.3, LANE, 4)
+    _vst4_lane_f32(a as _, b.0, b.1, b.2, b.3, LANE, 4)
 }
 
 #[doc = "Store multiple 4-element structures from four registers"]
@@ -45892,7 +45899,7 @@ pub unsafe fn vst4q_lane_f32<const LANE: i32>(a: *mut f32, b: float32x4x4_t) {
             size: i32,
         );
     }
-    _vst4q_f32(a as _, b.0, b.1, b.2, b.3, LANE, 4)
+    _vst4q_lane_f32(a as _, b.0, b.1, b.2, b.3, LANE, 4)
 }
 
 #[doc = "Store multiple 4-element structures from four registers"]
@@ -45919,7 +45926,7 @@ pub unsafe fn vst4_lane_s8<const LANE: i32>(a: *mut i8, b: int8x8x4_t) {
             size: i32,
         );
     }
-    _vst4_s8(a as _, b.0, b.1, b.2, b.3, LANE, 1)
+    _vst4_lane_s8(a as _, b.0, b.1, b.2, b.3, LANE, 1)
 }
 
 #[doc = "Store multiple 4-element structures from four registers"]
@@ -45946,7 +45953,7 @@ pub unsafe fn vst4_lane_s16<const LANE: i32>(a: *mut i16, b: int16x4x4_t) {
             size: i32,
         );
     }
-    _vst4_s16(a as _, b.0, b.1, b.2, b.3, LANE, 2)
+    _vst4_lane_s16(a as _, b.0, b.1, b.2, b.3, LANE, 2)
 }
 
 #[doc = "Store multiple 4-element structures from four registers"]
@@ -45973,7 +45980,7 @@ pub unsafe fn vst4q_lane_s16<const LANE: i32>(a: *mut i16, b: int16x8x4_t) {
             size: i32,
         );
     }
-    _vst4q_s16(a as _, b.0, b.1, b.2, b.3, LANE, 2)
+    _vst4q_lane_s16(a as _, b.0, b.1, b.2, b.3, LANE, 2)
 }
 
 #[doc = "Store multiple 4-element structures from four registers"]
@@ -46000,7 +46007,7 @@ pub unsafe fn vst4_lane_s32<const LANE: i32>(a: *mut i32, b: int32x2x4_t) {
             size: i32,
         );
     }
-    _vst4_s32(a as _, b.0, b.1, b.2, b.3, LANE, 4)
+    _vst4_lane_s32(a as _, b.0, b.1, b.2, b.3, LANE, 4)
 }
 
 #[doc = "Store multiple 4-element structures from four registers"]
@@ -46027,7 +46034,7 @@ pub unsafe fn vst4q_lane_s32<const LANE: i32>(a: *mut i32, b: int32x4x4_t) {
             size: i32,
         );
     }
-    _vst4q_s32(a as _, b.0, b.1, b.2, b.3, LANE, 4)
+    _vst4q_lane_s32(a as _, b.0, b.1, b.2, b.3, LANE, 4)
 }
 
 #[doc = "Store multiple 4-element structures from four registers"]

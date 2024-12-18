@@ -1089,7 +1089,7 @@ intrinsics:
       - ["u32", "f32", 's_n_f32_u32', 'N >= 1 && N <= 32']
       - ["u64", "f64", 'd_n_f64_u64', 'N >= 1 && N <= 64']
     compose:
-      - FnCall: [static_assert!, ['N >= 1 && N <= 32']]
+      - FnCall: [static_assert!, ["{type[3]}"]]
       - LLVMLink:
           name: "vcvt{type[2]}"
           arguments:
