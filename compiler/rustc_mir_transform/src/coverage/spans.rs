@@ -17,14 +17,13 @@ mod from_mir;
 pub(super) fn extract_refined_covspans(
     mir_body: &mir::Body<'_>,
     hir_info: &ExtractedHirInfo,
-    basic_coverage_blocks: &CoverageGraph,
+    graph: &CoverageGraph,
     code_mappings: &mut impl Extend<mappings::CodeMapping>,
 ) {
-    let ExtractedCovspans { mut covspans } =
-        extract_covspans_from_mir(mir_body, hir_info, basic_coverage_blocks);
+    let ExtractedCovspans { mut covspans } = extract_covspans_from_mir(mir_body, hir_info, graph);
 
     // First, perform the passes that need macro information.
-    covspans.sort_by(|a, b| basic_coverage_blocks.cmp_in_dominator_order(a.bcb, b.bcb));
+    covspans.sort_by(|a, b| graph.cmp_in_dominator_order(a.bcb, b.bcb));
     remove_unwanted_expansion_spans(&mut covspans);
     split_visible_macro_spans(&mut covspans);
 
@@ -34,7 +33,7 @@ pub(super) fn extract_refined_covspans(
     let compare_covspans = |a: &Covspan, b: &Covspan| {
         compare_spans(a.span, b.span)
             // After deduplication, we want to keep only the most-dominated BCB.
-            .then_with(|| basic_coverage_blocks.cmp_in_dominator_order(a.bcb, b.bcb).reverse())
+            .then_with(|| graph.cmp_in_dominator_order(a.bcb, b.bcb).reverse())
     };
     covspans.sort_by(compare_covspans);
 

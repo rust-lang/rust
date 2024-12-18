@@ -80,7 +80,7 @@ pub(super) fn extract_all_mapping_info_from_mir<'tcx>(
     tcx: TyCtxt<'tcx>,
     mir_body: &mir::Body<'tcx>,
     hir_info: &ExtractedHirInfo,
-    basic_coverage_blocks: &CoverageGraph,
+    graph: &CoverageGraph,
 ) -> ExtractedMappings {
     let mut code_mappings = vec![];
     let mut branch_pairs = vec![];
@@ -102,23 +102,23 @@ pub(super) fn extract_all_mapping_info_from_mir<'tcx>(
         }
     } else {
         // Extract coverage spans from MIR statements/terminators as normal.
-        extract_refined_covspans(mir_body, hir_info, basic_coverage_blocks, &mut code_mappings);
+        extract_refined_covspans(mir_body, hir_info, graph, &mut code_mappings);
     }
 
-    branch_pairs.extend(extract_branch_pairs(mir_body, hir_info, basic_coverage_blocks));
+    branch_pairs.extend(extract_branch_pairs(mir_body, hir_info, graph));
 
     extract_mcdc_mappings(
         mir_body,
         tcx,
         hir_info.body_span,
-        basic_coverage_blocks,
+        graph,
         &mut mcdc_bitmap_bits,
         &mut mcdc_degraded_branches,
         &mut mcdc_mappings,
     );
 
     ExtractedMappings {
-        num_bcbs: basic_coverage_blocks.num_nodes(),
+        num_bcbs: graph.num_nodes(),
         code_mappings,
         branch_pairs,
         mcdc_bitmap_bits,
@@ -211,7 +211,7 @@ fn resolve_block_markers(
 pub(super) fn extract_branch_pairs(
     mir_body: &mir::Body<'_>,
     hir_info: &ExtractedHirInfo,
-    basic_coverage_blocks: &CoverageGraph,
+    graph: &CoverageGraph,
 ) -> Vec<BranchPair> {
     let Some(coverage_info_hi) = mir_body.coverage_info_hi.as_deref() else { return vec![] };
 
@@ -228,8 +228,7 @@ pub(super) fn extract_branch_pairs(
             }
             let span = unexpand_into_body_span(raw_span, hir_info.body_span)?;
 
-            let bcb_from_marker =
-                |marker: BlockMarkerId| basic_coverage_blocks.bcb_from_bb(block_markers[marker]?);
+            let bcb_from_marker = |marker: BlockMarkerId| graph.bcb_from_bb(block_markers[marker]?);
 
             let true_bcb = bcb_from_marker(true_marker)?;
             let false_bcb = bcb_from_marker(false_marker)?;
@@ -243,7 +242,7 @@ pub(super) fn extract_mcdc_mappings(
     mir_body: &mir::Body<'_>,
     tcx: TyCtxt<'_>,
     body_span: Span,
-    basic_coverage_blocks: &CoverageGraph,
+    graph: &CoverageGraph,
     mcdc_bitmap_bits: &mut usize,
     mcdc_degraded_branches: &mut impl Extend<MCDCBranch>,
     mcdc_mappings: &mut impl Extend<(MCDCDecision, Vec<MCDCBranch>)>,
@@ -252,8 +251,7 @@ pub(super) fn extract_mcdc_mappings(
 
     let block_markers = resolve_block_markers(coverage_info_hi, mir_body);
 
-    let bcb_from_marker =
-        |marker: BlockMarkerId| basic_coverage_blocks.bcb_from_bb(block_markers[marker]?);
+    let bcb_from_marker = |marker: BlockMarkerId| graph.bcb_from_bb(block_markers[marker]?);
 
     let check_branch_bcb =
         |raw_span: Span, true_marker: BlockMarkerId, false_marker: BlockMarkerId| {
