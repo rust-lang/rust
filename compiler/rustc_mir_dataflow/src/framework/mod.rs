@@ -103,6 +103,9 @@ pub trait Analysis<'tcx> {
     /// The direction of this analysis. Either `Forward` or `Backward`.
     type Direction: Direction = Forward;
 
+    /// Auxiliary data used for analyzing `SwitchInt` terminators, if necessary.
+    type SwitchIntData = !;
+
     /// A descriptive name for this analysis. Used only for debugging.
     ///
     /// This name should be brief and contain no spaces, periods or other characters that are not
@@ -190,25 +193,36 @@ pub trait Analysis<'tcx> {
     ) {
     }
 
-    /// Updates the current dataflow state with the effect of taking a particular branch in a
-    /// `SwitchInt` terminator.
+    /// Used to update the current dataflow state with the effect of taking a particular branch in
+    /// a `SwitchInt` terminator.
     ///
     /// Unlike the other edge-specific effects, which are allowed to mutate `Self::Domain`
-    /// directly, overriders of this method must pass a callback to
-    /// `SwitchIntEdgeEffects::apply`. The callback will be run once for each outgoing edge and
-    /// will have access to the dataflow state that will be propagated along that edge.
+    /// directly, overriders of this method must return a `Self::SwitchIntData` value (wrapped in
+    /// `Some`). The `apply_switch_int_edge_effect` method will then be called once for each
+    /// outgoing edge and will have access to the dataflow state that will be propagated along that
+    /// edge, and also the `Self::SwitchIntData` value.
     ///
     /// This interface is somewhat more complex than the other visitor-like "effect" methods.
     /// However, it is both more ergonomic—callers don't need to recompute or cache information
     /// about a given `SwitchInt` terminator for each one of its edges—and more efficient—the
     /// engine doesn't need to clone the exit state for a block unless
-    /// `SwitchIntEdgeEffects::apply` is actually called.
-    fn apply_switch_int_edge_effects(
+    /// `get_switch_int_data` is actually called.
+    fn get_switch_int_data(
         &mut self,
-        _block: BasicBlock,
+        _block: mir::BasicBlock,
         _discr: &mir::Operand<'tcx>,
-        _apply_edge_effects: &mut impl SwitchIntEdgeEffects<Self::Domain>,
+    ) -> Option<Self::SwitchIntData> {
+        None
+    }
+
+    /// See comments on `get_switch_int_data`.
+    fn apply_switch_int_edge_effect(
+        &mut self,
+        _data: &mut Self::SwitchIntData,
+        _state: &mut Self::Domain,
+        _edge: SwitchIntTarget,
     ) {
+        unreachable!();
     }
 
     /* Extension methods */
@@ -419,13 +433,6 @@ impl EffectIndex {
 pub struct SwitchIntTarget {
     pub value: Option<u128>,
     pub target: BasicBlock,
-}
-
-/// A type that records the edge-specific effects for a `SwitchInt` terminator.
-pub trait SwitchIntEdgeEffects<D> {
-    /// Calls `apply_edge_effect` for each outgoing edge from a `SwitchInt` terminator and
-    /// records the results.
-    fn apply(&mut self, apply_edge_effect: impl FnMut(&mut D, SwitchIntTarget));
 }
 
 #[cfg(test)]

@@ -1,8 +1,6 @@
 use std::ops::RangeInclusive;
 
-use rustc_middle::mir::{
-    self, BasicBlock, CallReturnPlaces, Location, SwitchTargets, TerminatorEdges,
-};
+use rustc_middle::mir::{self, BasicBlock, CallReturnPlaces, Location, TerminatorEdges};
 
 use super::visitor::ResultsVisitor;
 use super::{Analysis, Effect, EffectIndex, Results, SwitchIntTarget};
@@ -78,8 +76,6 @@ impl Direction for Backward {
         for pred in body.basic_blocks.predecessors()[block].iter().copied() {
             match body[pred].terminator().kind {
                 // Apply terminator-specific edge effects.
-                //
-                // FIXME(ecstaticmorse): Avoid cloning the exit state unconditionally.
                 mir::TerminatorKind::Call { destination, target: Some(dest), .. }
                     if dest == block =>
                 {
@@ -115,18 +111,18 @@ impl Direction for Backward {
                 }
 
                 mir::TerminatorKind::SwitchInt { targets: _, ref discr } => {
-                    let mut applier = BackwardSwitchIntEdgeEffectsApplier {
-                        body,
-                        pred,
-                        exit_state,
-                        block,
-                        propagate: &mut propagate,
-                        effects_applied: false,
-                    };
+                    if let Some(mut data) = analysis.get_switch_int_data(block, discr) {
+                        let values = &body.basic_blocks.switch_sources()[&(block, pred)];
+                        let targets =
+                            values.iter().map(|&value| SwitchIntTarget { value, target: block });
 
-                    analysis.apply_switch_int_edge_effects(pred, discr, &mut applier);
-
-                    if !applier.effects_applied {
+                        let mut tmp = analysis.bottom_value(body);
+                        for target in targets {
+                            tmp.clone_from(&exit_state);
+                            analysis.apply_switch_int_edge_effect(&mut data, &mut tmp, target);
+                            propagate(pred, &tmp);
+                        }
+                    } else {
                         propagate(pred, exit_state)
                     }
                 }
@@ -245,37 +241,6 @@ impl Direction for Backward {
     }
 }
 
-struct BackwardSwitchIntEdgeEffectsApplier<'mir, 'tcx, D, F> {
-    body: &'mir mir::Body<'tcx>,
-    pred: BasicBlock,
-    exit_state: &'mir mut D,
-    block: BasicBlock,
-    propagate: &'mir mut F,
-    effects_applied: bool,
-}
-
-impl<D, F> super::SwitchIntEdgeEffects<D> for BackwardSwitchIntEdgeEffectsApplier<'_, '_, D, F>
-where
-    D: Clone,
-    F: FnMut(BasicBlock, &D),
-{
-    fn apply(&mut self, mut apply_edge_effect: impl FnMut(&mut D, SwitchIntTarget)) {
-        assert!(!self.effects_applied);
-
-        let values = &self.body.basic_blocks.switch_sources()[&(self.block, self.pred)];
-        let targets = values.iter().map(|&value| SwitchIntTarget { value, target: self.block });
-
-        let mut tmp = None;
-        for target in targets {
-            let tmp = opt_clone_from_or_clone(&mut tmp, self.exit_state);
-            apply_edge_effect(tmp, target);
-            (self.propagate)(self.pred, tmp);
-        }
-
-        self.effects_applied = true;
-    }
-}
-
 /// Dataflow that runs from the entry of a block (the first statement), to its exit (terminator).
 pub struct Forward;
 
@@ -284,7 +249,7 @@ impl Direction for Forward {
 
     fn apply_effects_in_block<'mir, 'tcx, A>(
         analysis: &mut A,
-        _body: &mir::Body<'tcx>,
+        body: &mir::Body<'tcx>,
         state: &mut A::Domain,
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
@@ -324,23 +289,28 @@ impl Direction for Forward {
                 }
             }
             TerminatorEdges::SwitchInt { targets, discr } => {
-                let mut applier = ForwardSwitchIntEdgeEffectsApplier {
-                    exit_state,
-                    targets,
-                    propagate,
-                    effects_applied: false,
-                };
+                if let Some(mut data) = analysis.get_switch_int_data(block, discr) {
+                    let mut tmp = analysis.bottom_value(body);
+                    for (value, target) in targets.iter() {
+                        tmp.clone_from(&exit_state);
+                        analysis.apply_switch_int_edge_effect(
+                            &mut data,
+                            &mut tmp,
+                            SwitchIntTarget { value: Some(value), target },
+                        );
+                        propagate(target, &tmp);
+                    }
 
-                analysis.apply_switch_int_edge_effects(block, discr, &mut applier);
-
-                let ForwardSwitchIntEdgeEffectsApplier {
-                    exit_state,
-                    mut propagate,
-                    effects_applied,
-                    ..
-                } = applier;
-
-                if !effects_applied {
+                    // Once we get to the final, "otherwise" branch, there is no need to preserve
+                    // `exit_state`, so pass it directly to `apply_switch_int_edge_effect` to save
+                    // a clone of the dataflow state.
+                    let otherwise = targets.otherwise();
+                    analysis.apply_switch_int_edge_effect(&mut data, exit_state, SwitchIntTarget {
+                        value: None,
+                        target: otherwise,
+                    });
+                    propagate(otherwise, exit_state);
+                } else {
                     for target in targets.all_targets() {
                         propagate(*target, exit_state);
                     }
@@ -452,56 +422,5 @@ impl Direction for Forward {
         vis.visit_after_primary_terminator_effect(results, state, term, loc);
 
         vis.visit_block_end(state);
-    }
-}
-
-struct ForwardSwitchIntEdgeEffectsApplier<'mir, D, F> {
-    exit_state: &'mir mut D,
-    targets: &'mir SwitchTargets,
-    propagate: F,
-
-    effects_applied: bool,
-}
-
-impl<D, F> super::SwitchIntEdgeEffects<D> for ForwardSwitchIntEdgeEffectsApplier<'_, D, F>
-where
-    D: Clone,
-    F: FnMut(BasicBlock, &D),
-{
-    fn apply(&mut self, mut apply_edge_effect: impl FnMut(&mut D, SwitchIntTarget)) {
-        assert!(!self.effects_applied);
-
-        let mut tmp = None;
-        for (value, target) in self.targets.iter() {
-            let tmp = opt_clone_from_or_clone(&mut tmp, self.exit_state);
-            apply_edge_effect(tmp, SwitchIntTarget { value: Some(value), target });
-            (self.propagate)(target, tmp);
-        }
-
-        // Once we get to the final, "otherwise" branch, there is no need to preserve `exit_state`,
-        // so pass it directly to `apply_edge_effect` to save a clone of the dataflow state.
-        let otherwise = self.targets.otherwise();
-        apply_edge_effect(self.exit_state, SwitchIntTarget { value: None, target: otherwise });
-        (self.propagate)(otherwise, self.exit_state);
-
-        self.effects_applied = true;
-    }
-}
-
-/// An analogue of `Option::get_or_insert_with` that stores a clone of `val` into `opt`, but uses
-/// the more efficient `clone_from` if `opt` was `Some`.
-///
-/// Returns a mutable reference to the new clone that resides in `opt`.
-//
-// FIXME: Figure out how to express this using `Option::clone_from`, or maybe lift it into the
-// standard library?
-fn opt_clone_from_or_clone<'a, T: Clone>(opt: &'a mut Option<T>, val: &T) -> &'a mut T {
-    if opt.is_some() {
-        let ret = opt.as_mut().unwrap();
-        ret.clone_from(val);
-        ret
-    } else {
-        *opt = Some(val.clone());
-        opt.as_mut().unwrap()
     }
 }
