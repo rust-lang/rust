@@ -3907,7 +3907,7 @@ pub unsafe fn _mm512_mask_cmp_epu16_mask<const IMM8: i32>(
         4 => simd_and(k1, simd_ne(a, b)),
         5 => simd_and(k1, simd_ge(a, b)),
         6 => simd_and(k1, simd_gt(a, b)),
-        _ => i16x32::splat(-1),
+        _ => k1,
     };
     simd_bitmask(r)
 }
@@ -3962,7 +3962,7 @@ pub unsafe fn _mm256_mask_cmp_epu16_mask<const IMM8: i32>(
         4 => simd_and(k1, simd_ne(a, b)),
         5 => simd_and(k1, simd_ge(a, b)),
         6 => simd_and(k1, simd_gt(a, b)),
-        _ => i16x16::splat(-1),
+        _ => k1,
     };
     simd_bitmask(r)
 }
@@ -4017,7 +4017,7 @@ pub unsafe fn _mm_mask_cmp_epu16_mask<const IMM8: i32>(
         4 => simd_and(k1, simd_ne(a, b)),
         5 => simd_and(k1, simd_ge(a, b)),
         6 => simd_and(k1, simd_gt(a, b)),
-        _ => i16x8::splat(-1),
+        _ => k1,
     };
     simd_bitmask(r)
 }
@@ -4072,7 +4072,7 @@ pub unsafe fn _mm512_mask_cmp_epu8_mask<const IMM8: i32>(
         4 => simd_and(k1, simd_ne(a, b)),
         5 => simd_and(k1, simd_ge(a, b)),
         6 => simd_and(k1, simd_gt(a, b)),
-        _ => i8x64::splat(-1),
+        _ => k1,
     };
     simd_bitmask(r)
 }
@@ -4127,7 +4127,7 @@ pub unsafe fn _mm256_mask_cmp_epu8_mask<const IMM8: i32>(
         4 => simd_and(k1, simd_ne(a, b)),
         5 => simd_and(k1, simd_ge(a, b)),
         6 => simd_and(k1, simd_gt(a, b)),
-        _ => i8x32::splat(-1),
+        _ => k1,
     };
     simd_bitmask(r)
 }
@@ -4182,7 +4182,7 @@ pub unsafe fn _mm_mask_cmp_epu8_mask<const IMM8: i32>(
         4 => simd_and(k1, simd_ne(a, b)),
         5 => simd_and(k1, simd_ge(a, b)),
         6 => simd_and(k1, simd_gt(a, b)),
-        _ => i8x16::splat(-1),
+        _ => k1,
     };
     simd_bitmask(r)
 }
@@ -4237,7 +4237,7 @@ pub unsafe fn _mm512_mask_cmp_epi16_mask<const IMM8: i32>(
         4 => simd_and(k1, simd_ne(a, b)),
         5 => simd_and(k1, simd_ge(a, b)),
         6 => simd_and(k1, simd_gt(a, b)),
-        _ => i16x32::splat(-1),
+        _ => k1,
     };
     simd_bitmask(r)
 }
@@ -4292,7 +4292,7 @@ pub unsafe fn _mm256_mask_cmp_epi16_mask<const IMM8: i32>(
         4 => simd_and(k1, simd_ne(a, b)),
         5 => simd_and(k1, simd_ge(a, b)),
         6 => simd_and(k1, simd_gt(a, b)),
-        _ => i16x16::splat(-1),
+        _ => k1,
     };
     simd_bitmask(r)
 }
@@ -4347,7 +4347,7 @@ pub unsafe fn _mm_mask_cmp_epi16_mask<const IMM8: i32>(
         4 => simd_and(k1, simd_ne(a, b)),
         5 => simd_and(k1, simd_ge(a, b)),
         6 => simd_and(k1, simd_gt(a, b)),
-        _ => i16x8::splat(-1),
+        _ => k1,
     };
     simd_bitmask(r)
 }
@@ -4402,7 +4402,7 @@ pub unsafe fn _mm512_mask_cmp_epi8_mask<const IMM8: i32>(
         4 => simd_and(k1, simd_ne(a, b)),
         5 => simd_and(k1, simd_ge(a, b)),
         6 => simd_and(k1, simd_gt(a, b)),
-        _ => i8x64::splat(-1),
+        _ => k1,
     };
     simd_bitmask(r)
 }
@@ -4457,7 +4457,7 @@ pub unsafe fn _mm256_mask_cmp_epi8_mask<const IMM8: i32>(
         4 => simd_and(k1, simd_ne(a, b)),
         5 => simd_and(k1, simd_ge(a, b)),
         6 => simd_and(k1, simd_gt(a, b)),
-        _ => i8x32::splat(-1),
+        _ => k1,
     };
     simd_bitmask(r)
 }
@@ -4512,7 +4512,7 @@ pub unsafe fn _mm_mask_cmp_epi8_mask<const IMM8: i32>(
         4 => simd_and(k1, simd_ne(a, b)),
         5 => simd_and(k1, simd_ge(a, b)),
         6 => simd_and(k1, simd_gt(a, b)),
-        _ => i8x16::splat(-1),
+        _ => k1,
     };
     simd_bitmask(r)
 }

@@ -29722,7 +29722,7 @@ pub unsafe fn _mm512_mask_cmp_epu32_mask<const IMM3: _MM_CMPINT_ENUM>(
         4 => simd_and(k1, simd_ne(a, b)),
         5 => simd_and(k1, simd_ge(a, b)),
         6 => simd_and(k1, simd_gt(a, b)),
-        _ => i32x16::splat(-1),
+        _ => k1,
     };
     simd_bitmask(r)
 }
@@ -29780,7 +29780,7 @@ pub unsafe fn _mm256_mask_cmp_epu32_mask<const IMM3: _MM_CMPINT_ENUM>(
         4 => simd_and(k1, simd_ne(a, b)),
         5 => simd_and(k1, simd_ge(a, b)),
         6 => simd_and(k1, simd_gt(a, b)),
-        _ => i32x8::splat(-1),
+        _ => k1,
     };
     simd_bitmask(r)
 }
@@ -29835,7 +29835,7 @@ pub unsafe fn _mm_mask_cmp_epu32_mask<const IMM3: _MM_CMPINT_ENUM>(
         4 => simd_and(k1, simd_ne(a, b)),
         5 => simd_and(k1, simd_ge(a, b)),
         6 => simd_and(k1, simd_gt(a, b)),
-        _ => i32x4::splat(-1),
+        _ => k1,
     };
     simd_bitmask(r)
 }
@@ -30289,7 +30289,7 @@ pub unsafe fn _mm512_mask_cmp_epi32_mask<const IMM3: _MM_CMPINT_ENUM>(
         4 => simd_and(k1, simd_ne(a, b)),
         5 => simd_and(k1, simd_ge(a, b)),
         6 => simd_and(k1, simd_gt(a, b)),
-        _ => i32x16::splat(-1),
+        _ => k1,
     };
     simd_bitmask(r)
 }
@@ -30347,7 +30347,7 @@ pub unsafe fn _mm256_mask_cmp_epi32_mask<const IMM3: _MM_CMPINT_ENUM>(
         4 => simd_and(k1, simd_ne(a, b)),
         5 => simd_and(k1, simd_ge(a, b)),
         6 => simd_and(k1, simd_gt(a, b)),
-        _ => i32x8::splat(-1),
+        _ => k1,
     };
     simd_bitmask(r)
 }
@@ -30402,7 +30402,7 @@ pub unsafe fn _mm_mask_cmp_epi32_mask<const IMM3: _MM_CMPINT_ENUM>(
         4 => simd_and(k1, simd_ne(a, b)),
         5 => simd_and(k1, simd_ge(a, b)),
         6 => simd_and(k1, simd_gt(a, b)),
-        _ => i32x4::splat(-1),
+        _ => k1,
     };
     simd_bitmask(r)
 }
@@ -30856,7 +30856,7 @@ pub unsafe fn _mm512_mask_cmp_epu64_mask<const IMM3: _MM_CMPINT_ENUM>(
         4 => simd_and(k1, simd_ne(a, b)),
         5 => simd_and(k1, simd_ge(a, b)),
         6 => simd_and(k1, simd_gt(a, b)),
-        _ => i64x8::splat(-1),
+        _ => k1,
     };
     simd_bitmask(r)
 }
@@ -30914,7 +30914,7 @@ pub unsafe fn _mm256_mask_cmp_epu64_mask<const IMM3: _MM_CMPINT_ENUM>(
         4 => simd_and(k1, simd_ne(a, b)),
         5 => simd_and(k1, simd_ge(a, b)),
         6 => simd_and(k1, simd_gt(a, b)),
-        _ => i64x4::splat(-1),
+        _ => k1,
     };
     simd_bitmask(r)
 }
@@ -30969,7 +30969,7 @@ pub unsafe fn _mm_mask_cmp_epu64_mask<const IMM3: _MM_CMPINT_ENUM>(
         4 => simd_and(k1, simd_ne(a, b)),
         5 => simd_and(k1, simd_ge(a, b)),
         6 => simd_and(k1, simd_gt(a, b)),
-        _ => i64x2::splat(-1),
+        _ => k1,
     };
     simd_bitmask(r)
 }
@@ -31423,7 +31423,7 @@ pub unsafe fn _mm512_mask_cmp_epi64_mask<const IMM3: _MM_CMPINT_ENUM>(
         4 => simd_and(k1, simd_ne(a, b)),
         5 => simd_and(k1, simd_ge(a, b)),
         6 => simd_and(k1, simd_gt(a, b)),
-        _ => i64x8::splat(-1),
+        _ => k1,
     };
     simd_bitmask(r)
 }
@@ -31481,7 +31481,7 @@ pub unsafe fn _mm256_mask_cmp_epi64_mask<const IMM3: _MM_CMPINT_ENUM>(
         4 => simd_and(k1, simd_ne(a, b)),
         5 => simd_and(k1, simd_ge(a, b)),
         6 => simd_and(k1, simd_gt(a, b)),
-        _ => i64x4::splat(-1),
+        _ => k1,
     };
     simd_bitmask(r)
 }
@@ -31536,7 +31536,7 @@ pub unsafe fn _mm_mask_cmp_epi64_mask<const IMM3: _MM_CMPINT_ENUM>(
         4 => simd_and(k1, simd_ne(a, b)),
         5 => simd_and(k1, simd_ge(a, b)),
         6 => simd_and(k1, simd_gt(a, b)),
-        _ => i64x2::splat(-1),
+        _ => k1,
     };
     simd_bitmask(r)
 }
