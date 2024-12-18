@@ -1,7 +1,7 @@
 //@ needs-asm-support
 //@ only-x86_64
 
-#![feature(naked_functions, rust_cold_cc)]
+#![feature(rust_cold_cc)]
 
 use std::arch::naked_asm;
 
