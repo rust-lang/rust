@@ -1,6 +1,6 @@
 use std::env;
 use std::ffi::OsString;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
 
@@ -141,7 +141,7 @@ pub(crate) fn extract_cdb_version(full_version_line: &str) -> Option<[u16; 4]> {
 pub(crate) fn analyze_gdb(
     gdb: Option<String>,
     target: &str,
-    android_cross_path: &PathBuf,
+    android_cross_path: &Path,
 ) -> (Option<String>, Option<u32>) {
     #[cfg(not(windows))]
     const GDB_FALLBACK: &str = "gdb";

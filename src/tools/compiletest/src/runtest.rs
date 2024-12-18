@@ -2560,7 +2560,7 @@ impl<'test> TestCx<'test> {
         })
     }
 
-    fn delete_file(&self, file: &PathBuf) {
+    fn delete_file(&self, file: &Path) {
         if !file.exists() {
             // Deleting a nonexistent file would error.
             return;
