@@ -1,3 +1,12 @@
+//! Check that certain positions (listed below) only permit *non-macro* attributes and reject
+//! attribute macros:
+//!
+//! - Enum variants
+//! - Struct fields
+//! - Field in a struct pattern
+//! - Match arm
+//! - Field in struct initialization expression
+
 enum FooEnum {
     #[test]
     //~^ ERROR expected non-macro attribute, found attribute macro
@@ -32,7 +41,7 @@ fn main() {
         _ => {}
     }
 
-    let _another_foo_strunct = FooStruct {
+    let _another_foo_struct = FooStruct {
         #[test]
         //~^ ERROR expected non-macro attribute, found attribute macro
         bar: 1,
