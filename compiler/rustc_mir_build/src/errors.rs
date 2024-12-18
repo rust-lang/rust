@@ -17,6 +17,8 @@ use crate::fluent_generated as fluent;
 pub(crate) struct UnconditionalRecursion {
     #[label]
     pub(crate) span: Span,
+    #[help(mir_build_recursive_default_impl)]
+    pub(crate) default_impl_note: Option<()>,
     #[label(mir_build_unconditional_recursion_call_site_label)]
     pub(crate) call_sites: Vec<Span>,
 }
