@@ -243,22 +243,27 @@ where
             .copied()
     }
 
+    fn bail_with_ambiguity(&mut self, responses: &[CanonicalResponse<I>]) -> CanonicalResponse<I> {
+        debug_assert!(!responses.is_empty());
+        if let Certainty::Maybe(maybe_cause) =
+            responses.iter().fold(Certainty::AMBIGUOUS, |certainty, response| {
+                certainty.unify_with(response.value.certainty)
+            })
+        {
+            self.make_ambiguous_response_no_constraints(maybe_cause)
+        } else {
+            panic!("expected flounder response to be ambiguous")
+        }
+    }
+
     /// If we fail to merge responses we flounder and return overflow or ambiguity.
     #[instrument(level = "trace", skip(self), ret)]
     fn flounder(&mut self, responses: &[CanonicalResponse<I>]) -> QueryResult<I> {
         if responses.is_empty() {
             return Err(NoSolution);
+        } else {
+            Ok(self.bail_with_ambiguity(responses))
         }
-
-        let Certainty::Maybe(maybe_cause) =
-            responses.iter().fold(Certainty::AMBIGUOUS, |certainty, response| {
-                certainty.unify_with(response.value.certainty)
-            })
-        else {
-            panic!("expected flounder response to be ambiguous")
-        };
-
-        Ok(self.make_ambiguous_response_no_constraints(maybe_cause))
     }
 
     /// Normalize a type for when it is structurally matched on.

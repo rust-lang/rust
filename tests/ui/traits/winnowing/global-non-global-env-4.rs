@@ -1,3 +1,6 @@
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
 //@ check-pass
 
 // A regression test for an edge case of candidate selection
