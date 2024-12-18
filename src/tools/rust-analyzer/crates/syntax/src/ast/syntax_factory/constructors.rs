@@ -127,6 +127,32 @@ impl SyntaxFactory {
         ast
     }
 
+    pub fn wildcard_pat(&self) -> ast::WildcardPat {
+        make::wildcard_pat().clone_for_update()
+    }
+
+    pub fn literal_pat(&self, text: &str) -> ast::LiteralPat {
+        make::literal_pat(text).clone_for_update()
+    }
+
+    pub fn tuple_struct_pat(
+        &self,
+        path: ast::Path,
+        fields: impl IntoIterator<Item = ast::Pat>,
+    ) -> ast::TupleStructPat {
+        let (fields, input) = iterator_input(fields);
+        let ast = make::tuple_struct_pat(path.clone(), fields).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(path.syntax().clone(), ast.path().unwrap().syntax().clone());
+            builder.map_children(input.into_iter(), ast.fields().map(|it| it.syntax().clone()));
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
     pub fn block_expr(
         &self,
         statements: impl IntoIterator<Item = ast::Stmt>,
