@@ -6,13 +6,14 @@ use rustc_ast::token::{self, Delimiter, IdentIsRaw, Lit, LitKind, Nonterminal, T
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Diag, DiagCtxtHandle, PResult, pluralize};
 use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::parser::ParseNtResult;
 use rustc_session::parse::{ParseSess, SymbolGallery};
 use rustc_span::hygiene::{LocalExpnId, Transparency};
 use rustc_span::{
-    Ident, MacroRulesNormalizedIdent, Span, Symbol, SyntaxContext, sym, with_metavar_spans,
+    Ident, MacroRulesNormalizedIdent, Span, Symbol, SyntaxContext, sym, with_metavar_spans_mut,
 };
 use smallvec::{SmallVec, smallvec};
 
@@ -282,13 +283,13 @@ pub(super) fn transcribe<'a>(
                         }
                         MatchedSingle(ParseNtResult::Ident(ident, is_raw)) => {
                             marker.visit_span(&mut sp);
-                            with_metavar_spans(|mspans| mspans.insert(ident.span, sp));
+                            with_metavar_spans_mut(|mspans| mspans.insert(ident.span, sp));
                             let kind = token::NtIdent(*ident, *is_raw);
                             TokenTree::token_alone(kind, sp)
                         }
                         MatchedSingle(ParseNtResult::Lifetime(ident, is_raw)) => {
                             marker.visit_span(&mut sp);
-                            with_metavar_spans(|mspans| mspans.insert(ident.span, sp));
+                            with_metavar_spans_mut(|mspans| mspans.insert(ident.span, sp));
                             let kind = token::NtLifetime(*ident, *is_raw);
                             TokenTree::token_alone(kind, sp)
                         }
@@ -298,7 +299,7 @@ pub(super) fn transcribe<'a>(
                             // `Interpolated` is currently used for such groups in rustc parser.
                             marker.visit_span(&mut sp);
                             let use_span = nt.use_span();
-                            with_metavar_spans(|mspans| mspans.insert(use_span, sp));
+                            with_metavar_spans_mut(|mspans| mspans.insert(use_span, sp));
                             TokenTree::token_alone(token::Interpolated(Lrc::clone(nt)), sp)
                         }
                         MatchedSeq(..) => {
@@ -414,16 +415,16 @@ fn maybe_use_metavar_location(
         return orig_tt.clone();
     }
 
-    let insert = |mspans: &mut FxHashMap<_, _>, s, ms| match mspans.try_insert(s, ms) {
+    let insert = |mspans: &mut UnordMap<_, _>, s, ms| match mspans.try_insert(s, ms) {
         Ok(_) => true,
         Err(err) => *err.entry.get() == ms, // Tried to insert the same span, still success
     };
     marker.visit_span(&mut metavar_span);
     let no_collision = match orig_tt {
         TokenTree::Token(token, ..) => {
-            with_metavar_spans(|mspans| insert(mspans, token.span, metavar_span))
+            with_metavar_spans_mut(|mspans| insert(mspans, token.span, metavar_span))
         }
-        TokenTree::Delimited(dspan, ..) => with_metavar_spans(|mspans| {
+        TokenTree::Delimited(dspan, ..) => with_metavar_spans_mut(|mspans| {
             insert(mspans, dspan.open, metavar_span)
                 && insert(mspans, dspan.close, metavar_span)
                 && insert(mspans, dspan.entire(), metavar_span)
@@ -438,13 +439,13 @@ fn maybe_use_metavar_location(
     match orig_tt {
         TokenTree::Token(Token { kind, span }, spacing) => {
             let span = metavar_span.with_ctxt(span.ctxt());
-            with_metavar_spans(|mspans| insert(mspans, span, metavar_span));
+            with_metavar_spans_mut(|mspans| insert(mspans, span, metavar_span));
             TokenTree::Token(Token { kind: kind.clone(), span }, *spacing)
         }
         TokenTree::Delimited(dspan, dspacing, delimiter, tts) => {
             let open = metavar_span.with_ctxt(dspan.open.ctxt());
             let close = metavar_span.with_ctxt(dspan.close.ctxt());
-            with_metavar_spans(|mspans| {
+            with_metavar_spans_mut(|mspans| {
                 insert(mspans, open, metavar_span) && insert(mspans, close, metavar_span)
             });
             let dspan = DelimSpan::from_pair(open, close);

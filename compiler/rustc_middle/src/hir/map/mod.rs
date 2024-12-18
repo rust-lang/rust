@@ -12,7 +12,9 @@ use rustc_hir::*;
 use rustc_hir_pretty as pprust_hir;
 use rustc_middle::hir::nested_filter;
 use rustc_span::def_id::StableCrateId;
-use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
+use rustc_span::{
+    ErrorGuaranteed, Ident, Span, Symbol, freeze_metavar_spans, kw, sym, with_metavar_spans,
+};
 
 use crate::hir::ModuleItems;
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
@@ -1087,6 +1089,9 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
         .map(DebuggerVisualizerFile::path_erased)
         .collect();
 
+    // Freeze metavars since we do not expect any more expansion after this.
+    freeze_metavar_spans();
+
     let crate_hash: Fingerprint = tcx.with_stable_hashing_context(|mut hcx| {
         let mut stable_hasher = StableHasher::new();
         hir_body_hash.hash_stable(&mut hcx, &mut stable_hasher);
@@ -1116,6 +1121,9 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
         // the fly in the resolver, storing only their accumulated hash in `ResolverGlobalCtxt`,
         // and combining it with other hashes here.
         resolutions.visibilities_for_hashing.hash_stable(&mut hcx, &mut stable_hasher);
+        with_metavar_spans(|mspans| {
+            mspans.hash_stable(&mut hcx, &mut stable_hasher);
+        });
         stable_hasher.finish()
     });
 
