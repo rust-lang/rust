@@ -212,8 +212,6 @@ pub struct AsmOptions {
 }
 impl AsmOptions {
     #[inline]
-    pub fn asm_option(&self) -> Option<AsmOption> { support::child(&self.syntax) }
-    #[inline]
     pub fn asm_options(&self) -> AstChildren<AsmOption> { support::children(&self.syntax) }
     #[inline]
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
