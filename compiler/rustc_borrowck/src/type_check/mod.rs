@@ -3,7 +3,7 @@
 use std::rc::Rc;
 use std::{fmt, iter, mem};
 
-use rustc_abi::{FIRST_VARIANT, FieldIdx};
+use rustc_abi::FieldIdx;
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::ErrorGuaranteed;
@@ -273,35 +273,18 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
             | ProjectionElem::Downcast(..) => {}
             ProjectionElem::Field(field, fty) => {
                 let fty = self.typeck.normalize(fty, location);
-                match self.expected_field_ty(base_ty, field, location) {
-                    Ok(ty) => {
-                        let ty = self.typeck.normalize(ty, location);
-                        debug!(?fty, ?ty);
+                let ty = base_ty.field_ty(tcx, field);
+                let ty = self.typeck.normalize(ty, location);
+                debug!(?fty, ?ty);
 
-                        if let Err(terr) = self.typeck.relate_types(
-                            ty,
-                            context.ambient_variance(),
-                            fty,
-                            location.to_locations(),
-                            ConstraintCategory::Boring,
-                        ) {
-                            span_mirbug!(
-                                self,
-                                place,
-                                "bad field access ({:?}: {:?}): {:?}",
-                                ty,
-                                fty,
-                                terr
-                            );
-                        }
-                    }
-                    Err(FieldAccessError::OutOfRange { field_count }) => span_mirbug!(
-                        self,
-                        place,
-                        "accessed field #{} but variant only has {}",
-                        field.index(),
-                        field_count
-                    ),
+                if let Err(terr) = self.typeck.relate_types(
+                    ty,
+                    context.ambient_variance(),
+                    fty,
+                    location.to_locations(),
+                    ConstraintCategory::Boring,
+                ) {
+                    span_mirbug!(self, place, "bad field access ({:?}: {:?}): {:?}", ty, fty, terr);
                 }
             }
             ProjectionElem::OpaqueCast(ty) => {
@@ -587,82 +570,6 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         #[allow(rustc::potential_query_instability)]
         for region in liveness_constraints.live_regions_unordered() {
             self.typeck.constraints.liveness_constraints.add_location(region, location);
-        }
-    }
-
-    fn expected_field_ty(
-        &mut self,
-        base_ty: PlaceTy<'tcx>,
-        field: FieldIdx,
-        location: Location,
-    ) -> Result<Ty<'tcx>, FieldAccessError> {
-        let tcx = self.tcx();
-
-        let (variant, args) = match base_ty {
-            PlaceTy { ty, variant_index: Some(variant_index) } => match *ty.kind() {
-                ty::Adt(adt_def, args) => (adt_def.variant(variant_index), args),
-                ty::Coroutine(def_id, args) => {
-                    let mut variants = args.as_coroutine().state_tys(def_id, tcx);
-                    let Some(mut variant) = variants.nth(variant_index.into()) else {
-                        bug!(
-                            "variant_index of coroutine out of range: {:?}/{:?}",
-                            variant_index,
-                            args.as_coroutine().state_tys(def_id, tcx).count()
-                        );
-                    };
-                    return match variant.nth(field.index()) {
-                        Some(ty) => Ok(ty),
-                        None => Err(FieldAccessError::OutOfRange { field_count: variant.count() }),
-                    };
-                }
-                _ => bug!("can't have downcast of non-adt non-coroutine type"),
-            },
-            PlaceTy { ty, variant_index: None } => match *ty.kind() {
-                ty::Adt(adt_def, args) if !adt_def.is_enum() => {
-                    (adt_def.variant(FIRST_VARIANT), args)
-                }
-                ty::Closure(_, args) => {
-                    return match args.as_closure().upvar_tys().get(field.index()) {
-                        Some(&ty) => Ok(ty),
-                        None => Err(FieldAccessError::OutOfRange {
-                            field_count: args.as_closure().upvar_tys().len(),
-                        }),
-                    };
-                }
-                ty::CoroutineClosure(_, args) => {
-                    return match args.as_coroutine_closure().upvar_tys().get(field.index()) {
-                        Some(&ty) => Ok(ty),
-                        None => Err(FieldAccessError::OutOfRange {
-                            field_count: args.as_coroutine_closure().upvar_tys().len(),
-                        }),
-                    };
-                }
-                ty::Coroutine(_, args) => {
-                    // Only prefix fields (upvars and current state) are
-                    // accessible without a variant index.
-                    return match args.as_coroutine().prefix_tys().get(field.index()) {
-                        Some(ty) => Ok(*ty),
-                        None => Err(FieldAccessError::OutOfRange {
-                            field_count: args.as_coroutine().prefix_tys().len(),
-                        }),
-                    };
-                }
-                ty::Tuple(tys) => {
-                    return match tys.get(field.index()) {
-                        Some(&ty) => Ok(ty),
-                        None => Err(FieldAccessError::OutOfRange { field_count: tys.len() }),
-                    };
-                }
-                _ => {
-                    span_bug!(self.last_span, "can't project out of {:?}", base_ty);
-                }
-            },
-        };
-
-        if let Some(field) = variant.fields.get(field) {
-            Ok(self.typeck.normalize(field.ty(tcx, args), location))
-        } else {
-            Err(FieldAccessError::OutOfRange { field_count: variant.fields.len() })
         }
     }
 }
