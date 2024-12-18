@@ -6,6 +6,7 @@ mod const_to_pat;
 use std::cmp::Ordering;
 
 use rustc_abi::{FieldIdx, Integer};
+use rustc_errors::MultiSpan;
 use rustc_errors::codes::*;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
@@ -34,7 +35,7 @@ struct PatCtxt<'a, 'tcx> {
     typeck_results: &'a ty::TypeckResults<'tcx>,
 
     /// Used by the Rust 2024 migration lint.
-    rust_2024_migration_suggestion: Option<Rust2024IncompatiblePatSugg>,
+    rust_2024_migration_suggestion: Option<Rust2024IncompatiblePatSugg<'a>>,
 }
 
 pub(super) fn pat_from_hir<'a, 'tcx>(
@@ -50,24 +51,36 @@ pub(super) fn pat_from_hir<'a, 'tcx>(
         rust_2024_migration_suggestion: typeck_results
             .rust_2024_migration_desugared_pats()
             .get(pat.hir_id)
-            .map(|&is_hard_error| Rust2024IncompatiblePatSugg {
+            .map(|labels| Rust2024IncompatiblePatSugg {
                 suggestion: Vec::new(),
-                is_hard_error,
+                ref_pattern_count: 0,
+                binding_mode_count: 0,
+                labels: labels.as_slice(),
             }),
     };
     let result = pcx.lower_pattern(pat);
     debug!("pat_from_hir({:?}) = {:?}", pat, result);
     if let Some(sugg) = pcx.rust_2024_migration_suggestion {
-        if sugg.is_hard_error {
+        let mut spans = MultiSpan::from_spans(sugg.labels.iter().map(|(span, _)| *span).collect());
+        for (span, label) in sugg.labels {
+            spans.push_span_label(*span, label.clone());
+        }
+        // If a relevant span is from at least edition 2024, this is a hard error.
+        let is_hard_error = spans.primary_spans().iter().any(|span| span.at_least_rust_2024());
+        if is_hard_error {
             let mut err =
-                tcx.dcx().struct_span_err(pat.span, fluent::mir_build_rust_2024_incompatible_pat);
+                tcx.dcx().struct_span_err(spans, fluent::mir_build_rust_2024_incompatible_pat);
+            if let Some(info) = lint::builtin::RUST_2024_INCOMPATIBLE_PAT.future_incompatible {
+                // provide the same reference link as the lint
+                err.note(format!("for more information, see {}", info.reference));
+            }
             err.subdiagnostic(sugg);
             err.emit();
         } else {
             tcx.emit_node_span_lint(
                 lint::builtin::RUST_2024_INCOMPATIBLE_PAT,
                 pat.hir_id,
-                pat.span,
+                spans,
                 Rust2024IncompatiblePat { sugg },
             );
         }
@@ -133,6 +146,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 })
                 .collect();
             s.suggestion.push((pat.span.shrink_to_lo(), suggestion_str));
+            s.ref_pattern_count += adjustments.len();
         };
 
         adjusted_pat
@@ -371,7 +385,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     s.suggestion.push((
                         pat.span.with_lo(ident.span.lo()).shrink_to_lo(),
                         sugg_str.to_owned(),
-                    ))
+                    ));
+                    s.binding_mode_count += 1;
                 }
 
                 // A ref x pattern is the same node used for x, and as such it has
