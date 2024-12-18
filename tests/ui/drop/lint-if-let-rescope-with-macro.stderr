@@ -2,7 +2,7 @@ error: `if let` assigns a shorter lifetime since Edition 2024
   --> $DIR/lint-if-let-rescope-with-macro.rs:12:12
    |
 LL |           if let $p = $e { $($conseq)* } else { $($alt)* }
-   |              ^^^
+   |              ^^^^^^^^^^^
 ...
 LL | /     edition_2021_if_let! {
 LL | |         Some(_value),

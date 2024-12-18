@@ -282,11 +282,13 @@ pub(super) fn transcribe<'a>(
                         }
                         MatchedSingle(ParseNtResult::Ident(ident, is_raw)) => {
                             marker.visit_span(&mut sp);
+                            with_metavar_spans(|mspans| mspans.insert(ident.span, sp));
                             let kind = token::NtIdent(*ident, *is_raw);
                             TokenTree::token_alone(kind, sp)
                         }
                         MatchedSingle(ParseNtResult::Lifetime(ident, is_raw)) => {
                             marker.visit_span(&mut sp);
+                            with_metavar_spans(|mspans| mspans.insert(ident.span, sp));
                             let kind = token::NtLifetime(*ident, *is_raw);
                             TokenTree::token_alone(kind, sp)
                         }
@@ -295,6 +297,8 @@ pub(super) fn transcribe<'a>(
                             // `Delimiter::Invisible` to maintain parsing priorities.
                             // `Interpolated` is currently used for such groups in rustc parser.
                             marker.visit_span(&mut sp);
+                            let use_span = nt.use_span();
+                            with_metavar_spans(|mspans| mspans.insert(use_span, sp));
                             TokenTree::token_alone(token::Interpolated(Lrc::clone(nt)), sp)
                         }
                         MatchedSeq(..) => {
