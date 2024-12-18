@@ -232,11 +232,9 @@ enum FieldAccessError {
     OutOfRange { field_count: usize },
 }
 
-/// Verifies that MIR types are sane to not crash further checks.
+/// Verifies that MIR types are sane.
 ///
-/// The sanitize_XYZ methods here take an MIR object and compute its
-/// type, calling `span_mirbug` and returning an error type if there
-/// is a problem.
+/// FIXME: This should be merged with the actual `TypeChecker`.
 struct TypeVerifier<'a, 'b, 'tcx> {
     typeck: &'a mut TypeChecker<'b, 'tcx>,
     promoted: &'b IndexSlice<Promoted, Body<'tcx>>,
@@ -251,7 +249,33 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
     }
 
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
-        self.sanitize_place(place, location, context);
+        self.super_place(place, context, location);
+        let tcx = self.tcx();
+        let place_ty = place.ty(self.body(), tcx);
+        if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
+            let trait_ref = ty::TraitRef::new(
+                tcx,
+                tcx.require_lang_item(LangItem::Copy, Some(self.last_span)),
+                [place_ty.ty],
+            );
+
+            // To have a `Copy` operand, the type `T` of the
+            // value must be `Copy`. Note that we prove that `T: Copy`,
+            // rather than using the `is_copy_modulo_regions`
+            // test. This is important because
+            // `is_copy_modulo_regions` ignores the resulting region
+            // obligations and assumes they pass. This can result in
+            // bounds from `Copy` impls being unsoundly ignored (e.g.,
+            // #29149). Note that we decide to use `Copy` before knowing
+            // whether the bounds fully apply: in effect, the rule is
+            // that if a value of some type could implement `Copy`, then
+            // it must.
+            self.typeck.prove_trait_ref(
+                trait_ref,
+                location.to_locations(),
+                ConstraintCategory::CopyBound,
+            );
+        }
     }
 
     fn visit_projection_elem(
@@ -379,7 +403,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                     };
 
                     let promoted_body = &self.promoted[promoted];
-                    self.sanitize_promoted(promoted_body, location);
+                    self.verify_promoted(promoted_body, location);
 
                     let promoted_ty = promoted_body.return_ty();
                     check_err(self, promoted_body, ty, promoted_ty);
@@ -483,40 +507,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         self.typeck.infcx.tcx
     }
 
-    /// Checks that the types internal to the `place` match up with
-    /// what would be expected.
-    #[instrument(level = "debug", skip(self, location), ret)]
-    fn sanitize_place(&mut self, place: &Place<'tcx>, location: Location, context: PlaceContext) {
-        self.super_place(place, context, location);
-        let tcx = self.tcx();
-        let place_ty = place.ty(self.body(), tcx);
-        if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
-            let trait_ref = ty::TraitRef::new(
-                tcx,
-                tcx.require_lang_item(LangItem::Copy, Some(self.last_span)),
-                [place_ty.ty],
-            );
-
-            // To have a `Copy` operand, the type `T` of the
-            // value must be `Copy`. Note that we prove that `T: Copy`,
-            // rather than using the `is_copy_modulo_regions`
-            // test. This is important because
-            // `is_copy_modulo_regions` ignores the resulting region
-            // obligations and assumes they pass. This can result in
-            // bounds from `Copy` impls being unsoundly ignored (e.g.,
-            // #29149). Note that we decide to use `Copy` before knowing
-            // whether the bounds fully apply: in effect, the rule is
-            // that if a value of some type could implement `Copy`, then
-            // it must.
-            self.typeck.prove_trait_ref(
-                trait_ref,
-                location.to_locations(),
-                ConstraintCategory::CopyBound,
-            );
-        }
-    }
-
-    fn sanitize_promoted(&mut self, promoted_body: &'b Body<'tcx>, location: Location) {
+    fn verify_promoted(&mut self, promoted_body: &'b Body<'tcx>, location: Location) {
         // Determine the constraints from the promoted MIR by running the type
         // checker on the promoted MIR, then transfer the constraints back to
         // the main MIR, changing the locations to the provided location.
