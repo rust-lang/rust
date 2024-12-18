@@ -177,7 +177,7 @@ fn check_fn(tcx: TyCtxt<'_>, parent_def_id: LocalDefId) {
         // Lazily compute these two, since they're likely a bit expensive.
         variances: LazyCell::new(|| {
             let mut functional_variances = FunctionalVariances {
-                tcx: tcx,
+                tcx,
                 variances: FxHashMap::default(),
                 ambient_variance: ty::Covariant,
                 generics: tcx.generics_of(parent_def_id),
