@@ -651,7 +651,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
                         if let Err(terr) = self.typeck.relate_types(
                             ty,
-                            self.get_ambient_variance(context),
+                            context.ambient_variance(),
                             fty,
                             location.to_locations(),
                             ConstraintCategory::Boring,
@@ -685,7 +685,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 self.typeck
                     .relate_types(
                         ty,
-                        self.get_ambient_variance(context),
+                        context.ambient_variance(),
                         base.ty,
                         location.to_locations(),
                         ConstraintCategory::TypeAnnotation,
@@ -698,21 +698,6 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
     fn error(&mut self) -> Ty<'tcx> {
         Ty::new_misc_error(self.tcx())
-    }
-
-    fn get_ambient_variance(&self, context: PlaceContext) -> ty::Variance {
-        use rustc_middle::mir::visit::NonMutatingUseContext::*;
-        use rustc_middle::mir::visit::NonUseContext::*;
-
-        match context {
-            PlaceContext::MutatingUse(_) => ty::Invariant,
-            PlaceContext::NonUse(StorageDead | StorageLive | VarDebugInfo) => ty::Invariant,
-            PlaceContext::NonMutatingUse(
-                Inspect | Copy | Move | PlaceMention | SharedBorrow | FakeBorrow | RawBorrow
-                | Projection,
-            ) => ty::Covariant,
-            PlaceContext::NonUse(AscribeUserTy(variance)) => variance,
-        }
     }
 
     fn field_ty(
