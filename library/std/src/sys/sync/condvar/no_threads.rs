@@ -1,4 +1,5 @@
 use crate::sys::sync::Mutex;
+use crate::thread::sleep;
 use crate::time::Duration;
 
 pub struct Condvar {}
@@ -19,7 +20,8 @@ impl Condvar {
         panic!("condvar wait not supported")
     }
 
-    pub unsafe fn wait_timeout(&self, _mutex: &Mutex, _dur: Duration) -> bool {
-        panic!("condvar wait not supported");
+    pub unsafe fn wait_timeout(&self, _mutex: &Mutex, dur: Duration) -> bool {
+        sleep(dur);
+        false
     }
 }
