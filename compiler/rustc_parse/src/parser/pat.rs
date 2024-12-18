@@ -1647,7 +1647,7 @@ impl<'a> Parser<'a> {
                 ident: prev_field,
             })
         } else {
-            self.dcx().create_err(AtInStructPattern { span: span })
+            self.dcx().create_err(AtInStructPattern { span })
         }
     }
 
