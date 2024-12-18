@@ -163,7 +163,7 @@ fn apply_shared_opts(cmd: &mut Command, opts: &SharedOpts) {
     }
 }
 
-fn execute_benchmark(cmd: &mut Command, compiler: &PathBuf) {
+fn execute_benchmark(cmd: &mut Command, compiler: &Path) {
     cmd.arg(compiler);
     println!("Running `rustc-perf` using `{}`", compiler.display());
 

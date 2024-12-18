@@ -1076,7 +1076,7 @@ impl OutputFilenames {
         self.with_directory_and_extension(&self.out_directory, extension)
     }
 
-    pub fn with_directory_and_extension(&self, directory: &PathBuf, extension: &str) -> PathBuf {
+    pub fn with_directory_and_extension(&self, directory: &Path, extension: &str) -> PathBuf {
         let mut path = directory.join(&self.filestem);
         path.set_extension(extension);
         path

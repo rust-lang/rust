@@ -26,7 +26,7 @@ use std::fmt::Write as _;
 use std::fs::{self, File};
 use std::io::{self, IsTerminal, Read, Write};
 use std::panic::{self, PanicHookInfo, catch_unwind};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{self, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, OnceLock};
@@ -460,7 +460,7 @@ fn run_compiler(
     })
 }
 
-fn dump_feature_usage_metrics(tcxt: TyCtxt<'_>, metrics_dir: &PathBuf) {
+fn dump_feature_usage_metrics(tcxt: TyCtxt<'_>, metrics_dir: &Path) {
     let output_filenames = tcxt.output_filenames(());
     let mut metrics_file_name = std::ffi::OsString::from("unstable_feature_usage_metrics-");
     let mut metrics_path = output_filenames.with_directory_and_extension(metrics_dir, "json");
