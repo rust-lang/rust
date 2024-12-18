@@ -118,10 +118,16 @@ fn completion_list_with_config_raw(
     let items = get_all_items(config, ra_fixture, trigger_character);
     items
         .into_iter()
-        .filter(|it| it.kind != CompletionItemKind::BuiltinType || it.label == "u32")
+        .filter(|it| it.kind != CompletionItemKind::BuiltinType || it.label.primary == "u32")
         .filter(|it| include_keywords || it.kind != CompletionItemKind::Keyword)
         .filter(|it| include_keywords || it.kind != CompletionItemKind::Snippet)
-        .sorted_by_key(|it| (it.kind, it.label.clone(), it.detail.as_ref().map(ToOwned::to_owned)))
+        .sorted_by_key(|it| {
+            (
+                it.kind,
+                it.label.primary.clone(),
+                it.label.detail_left.as_ref().map(ToOwned::to_owned),
+            )
+        })
         .collect()
 }
 
@@ -173,27 +179,30 @@ fn render_completion_list(completions: Vec<CompletionItem>) -> String {
     let label_width = completions
         .iter()
         .map(|it| {
-            monospace_width(&it.label)
-                + monospace_width(it.label_detail.as_deref().unwrap_or_default())
+            monospace_width(&it.label.primary)
+                + monospace_width(it.label.detail_left.as_deref().unwrap_or_default())
+                + monospace_width(it.label.detail_right.as_deref().unwrap_or_default())
+                + it.label.detail_left.is_some() as usize
+                + it.label.detail_right.is_some() as usize
         })
         .max()
-        .unwrap_or_default()
-        .min(22);
+        .unwrap_or_default();
     completions
         .into_iter()
         .map(|it| {
             let tag = it.kind.tag();
-            let var_name = format!("{tag} {}", it.label);
-            let mut buf = var_name;
-            if let Some(ref label_detail) = it.label_detail {
-                format_to!(buf, "{label_detail}");
+            let mut buf = format!("{tag} {}", it.label.primary);
+            if let Some(label_detail) = &it.label.detail_left {
+                format_to!(buf, " {label_detail}");
             }
-            if let Some(detail) = it.detail {
-                let width = label_width.saturating_sub(
-                    monospace_width(&it.label)
-                        + monospace_width(&it.label_detail.unwrap_or_default()),
+            if let Some(detail_right) = it.label.detail_right {
+                let pad_with = label_width.saturating_sub(
+                    monospace_width(&it.label.primary)
+                        + monospace_width(it.label.detail_left.as_deref().unwrap_or_default())
+                        + monospace_width(&detail_right)
+                        + it.label.detail_left.is_some() as usize,
                 );
-                format_to!(buf, "{:width$} {}", "", detail, width = width);
+                format_to!(buf, "{:pad_with$}{detail_right}", "",);
             }
             if it.deprecated {
                 format_to!(buf, " DEPRECATED");

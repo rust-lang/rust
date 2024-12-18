@@ -1144,7 +1144,7 @@ pub(crate) fn handle_completion_resolve(
     let Some(corresponding_completion) = completions.into_iter().find(|completion_item| {
         // Avoid computing hashes for items that obviously do not match
         // r-a might append a detail-based suffix to the label, so we cannot check for equality
-        original_completion.label.starts_with(completion_item.label.as_str())
+        original_completion.label.starts_with(completion_item.label.primary.as_str())
             && resolve_data_hash == completion_item_hash(completion_item, resolve_data.for_ref)
     }) else {
         return Ok(original_completion);

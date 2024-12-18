@@ -354,7 +354,7 @@ fn completion_item(
     };
 
     let mut lsp_item = lsp_types::CompletionItem {
-        label: item.label.to_string(),
+        label: item.label.primary.to_string(),
         detail,
         filter_text,
         kind: Some(completion_item_kind(item.kind)),
@@ -374,13 +374,13 @@ fn completion_item(
     if config.completion_label_details_support() {
         if fields_to_resolve.resolve_label_details {
             something_to_resolve |= true;
-        } else if item.label_detail.is_some() || item.detail.is_some() {
+        } else if item.label.detail_left.is_some() || item.label.detail_left.is_some() {
             lsp_item.label_details = Some(lsp_types::CompletionItemLabelDetails {
-                detail: item.label_detail.as_ref().map(ToString::to_string),
-                description: item.detail.clone(),
+                detail: item.label.detail_left.clone(),
+                description: item.label.detail_right.clone(),
             });
         }
-    } else if let Some(label_detail) = &item.label_detail {
+    } else if let Some(label_detail) = &item.label.detail_left {
         lsp_item.label.push_str(label_detail.as_str());
     }
 
