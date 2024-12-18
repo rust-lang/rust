@@ -5,7 +5,6 @@
 
 #![crate_type = "lib"]
 #![feature(c_variadic)]
-#![feature(naked_functions)]
 #![no_std]
 
 #[unsafe(naked)]

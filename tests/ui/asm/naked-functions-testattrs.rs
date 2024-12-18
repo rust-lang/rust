@@ -1,7 +1,6 @@
 //@ needs-asm-support
 //@ compile-flags: --test
 
-#![feature(naked_functions)]
 #![feature(test)]
 #![crate_type = "lib"]
 

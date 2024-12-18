@@ -245,8 +245,6 @@ See the [Clang ControlFlowIntegrity documentation][clang-cfi] for more details.
 ## Example 1: Redirecting control flow using an indirect branch/call to an invalid destination
 
 ```rust,ignore (making doc tests pass cross-platform is hard)
-#![feature(naked_functions)]
-
 use std::arch::naked_asm;
 use std::mem;
 

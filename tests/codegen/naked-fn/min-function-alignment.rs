@@ -2,7 +2,7 @@
 //@ needs-asm-support
 //@ ignore-arm no "ret" mnemonic
 
-#![feature(naked_functions, fn_align)]
+#![feature(fn_align)]
 #![crate_type = "lib"]
 
 // functions without explicit alignment use the global minimum

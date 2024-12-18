@@ -1,6 +1,5 @@
 //@ check-pass
 //@ needs-asm-support
-#![feature(naked_functions)]
 #![crate_type = "lib"]
 
 use std::arch::naked_asm;

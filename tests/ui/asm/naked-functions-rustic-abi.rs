@@ -6,7 +6,7 @@
 //@ build-pass
 //@ needs-asm-support
 
-#![feature(naked_functions, naked_functions_rustic_abi, rust_cold_cc)]
+#![feature(naked_functions_rustic_abi, rust_cold_cc)]
 #![crate_type = "lib"]
 
 use std::arch::{asm, naked_asm};

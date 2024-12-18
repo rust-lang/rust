@@ -1,7 +1,6 @@
-// Checks that #[unsafe(naked)] attribute can be placed on function definitions only.
+// Checks that the #[unsafe(naked)] attribute can be placed on function definitions only.
 //
 //@ needs-asm-support
-#![feature(naked_functions)]
 #![unsafe(naked)] //~ ERROR should be applied to a function definition
 
 use std::arch::naked_asm;
@@ -14,6 +13,7 @@ extern "C" {
 #[unsafe(naked)] //~ ERROR should be applied to a function definition
 #[repr(C)]
 struct S {
+    #[unsafe(naked)] //~ ERROR should be applied to a function definition
     a: u32,
     b: u32,
 }

@@ -1,7 +1,7 @@
 //@ build-pass
 //@ needs-asm-support
 
-#![feature(naked_functions, naked_functions_target_feature)]
+#![feature(naked_functions_target_feature)]
 #![crate_type = "lib"]
 
 use std::arch::{asm, naked_asm};

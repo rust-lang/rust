@@ -3,7 +3,7 @@
 //@ ignore-arm no "ret" mnemonic
 
 #![crate_type = "lib"]
-#![feature(naked_functions, fn_align)]
+#![feature(fn_align)]
 use std::arch::naked_asm;
 
 // CHECK: .balign 16
