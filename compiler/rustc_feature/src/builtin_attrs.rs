@@ -432,6 +432,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(unsafe no_mangle, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No),
     ungated!(used, Normal, template!(Word, List: "compiler|linker"), WarnFollowing, EncodeCrossCrate::No),
     ungated!(link_ordinal, Normal, template!(List: "ordinal"), ErrorPreceding, EncodeCrossCrate::Yes),
+    ungated!(naked, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No),
 
     // Limits:
     ungated!(
@@ -505,12 +506,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
     // Unstable attributes:
     // ==========================================================================
-
-    // Linking:
-    gated!(
-        naked, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No,
-        naked_functions, experimental!(naked)
-    ),
 
     // Testing:
     gated!(

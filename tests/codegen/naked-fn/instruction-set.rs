@@ -5,7 +5,7 @@
 //@ [thumb-mode] needs-llvm-components: arm
 
 #![crate_type = "lib"]
-#![feature(no_core, lang_items, rustc_attrs, naked_functions)]
+#![feature(no_core, lang_items, rustc_attrs)]
 #![no_core]
 
 #[rustc_builtin_macro]
