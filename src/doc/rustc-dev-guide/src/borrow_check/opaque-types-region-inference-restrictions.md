@@ -229,8 +229,8 @@ fn test::{closure#0}(_upvar: &'?8 str) -> Opaque<'?6, '?7> {
 // "hidden type captures lifetime that does not appear in bounds".
 ```
 
-Without this restrictions error messages are consfusing and, more impotantly, there is a risk that
-we accept code the we would likely break in the future because member constraints are super broken
+Without this restrictions error messages are confusing and, more importantly, there is a risk that
+we accept code that would likely break in the future because member constraints are super broken
 in closures.
 
 **Output types:**

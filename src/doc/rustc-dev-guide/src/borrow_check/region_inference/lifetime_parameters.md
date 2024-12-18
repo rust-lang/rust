@@ -29,7 +29,7 @@ various universal regions in scope on a particular function.  We also
 create a [`UniversalRegionRelations`] struct, which tracks their
 relationships to one another. So if you have e.g. `where 'a: 'b`, then
 the [`UniversalRegionRelations`] struct would track that `'a: 'b` is
-known to hold (which could be tested with the [`outlives`] function.
+known to hold (which could be tested with the [`outlives`] function).
 
 [`UniversalRegions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/universal_regions/struct.UniversalRegions.html
 [`UniversalRegionRelations`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/type_check/free_region_relations/struct.UniversalRegionRelations.html

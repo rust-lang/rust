@@ -108,7 +108,7 @@ multiple output places where a `Call` only has a single return place output.
 
 Operands are lowered one more time before being passed to LLVM codegen, this is represented by the [`InlineAsmOperandRef` type][inline_asm_codegen] from `rustc_codegen_ssa`.
 
-The operands are lowered to LLVM operands and constraint codes as follow:
+The operands are lowered to LLVM operands and constraint codes as follows:
 - `out` and the output part of `inout` operands are added first, as required by LLVM. Late output
 operands have a `=` prefix added to their constraint code, non-late output operands have a `=&`
 prefix added to their constraint code.

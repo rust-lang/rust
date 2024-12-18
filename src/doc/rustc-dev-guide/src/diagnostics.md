@@ -413,7 +413,7 @@ contexts:
 some heuristics for verbosity are met)
 - shown as a `help` sub-diagnostic with no content (used for cases where the
 suggestion is obvious from the text, but we still want to let tools to apply
-them))
+them)
 - not shown (used for _very_ obvious cases, but we still want to allow tools to
 apply them)
 

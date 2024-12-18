@@ -24,7 +24,7 @@ Overlap checks are performed for both inherent impls, and for trait impls.
 This uses the same overlap checking code, really done as two separate analyses.
 Overlap checks always consider pairs of implementations, comparing them to each other.
 
-Overlap checking for inherent impl blocks is done through `fn check_item` in coherence/inherent_impls_overlap.rs),
+Overlap checking for inherent impl blocks is done through `fn check_item` (in coherence/inherent_impls_overlap.rs),
 where you can very clearly see that (at least for small `n`), the check really performs `n^2`
 comparisons between impls. 
 

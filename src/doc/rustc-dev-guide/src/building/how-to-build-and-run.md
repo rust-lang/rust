@@ -394,7 +394,7 @@ space, possibly around 100GB. This is compounded if you have a separate build di
 rust-analyzer (e.g. `build-rust-analyzer`). This is easy to hit with dev-desktops which have a [set
 disk
 quota](https://github.com/rust-lang/simpleinfra/blob/8a59e4faeb75a09b072671c74a7cb70160ebef50/ansible/roles/dev-desktop/defaults/main.yml#L7)
-for each user, but this also applies to local development as well. Occassionally, you may need to:
+for each user, but this also applies to local development as well. Occasionally, you may need to:
 
 - Remove `build/` directory.
 - Remove `build-rust-analyzer/` directory (if you have a separate rust-analyzer build directory).

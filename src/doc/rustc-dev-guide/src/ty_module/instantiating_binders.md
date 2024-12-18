@@ -21,7 +21,7 @@ Unlike `EarlyBinder` we typically do not instantiate `Binder` with some concrete
 ## Instantiating with inference variables
 
 We instantiate binders with inference variables when we are trying to infer a possible instantiation of the binder, e.g. calling higher ranked function pointers or attempting to use a higher ranked where-clause to prove some bound. For example, given the `higher_ranked_fn_ptr` from the example above, if we were to call it with `&10_u32` we would: 
-- Instantaite the binder with infer vars yielding a signature of `fn(&'?0 u32) -> &'?0 u32)`
+- Instantiate the binder with infer vars yielding a signature of `fn(&'?0 u32) -> &'?0 u32)`
 - Equate the type of the provided argument `&10_u32` (&'static u32) with the type in the signature, `&'?0 u32`, inferring `'?0 = 'static`
 - The provided arguments were correct as we were successfully able to unify the types of the provided arguments with the types of the arguments in fn ptr signature
 
@@ -50,7 +50,7 @@ Note: in the original example of this chapter it was mentioned that we should no
 
 You may be wondering why we have both of these variants, afterall the data stored in `Placeholder` is effectively equivalent to that of `ReBound`: something to track which binder, and an index to track which parameter the `Binder` introduced. 
 
-The main reason for this is that `Bound` is a more syntactic representation of bound variables wheras `Placeholder` is a more semantic representation. As a concrete example:
+The main reason for this is that `Bound` is a more syntactic representation of bound variables whereas `Placeholder` is a more semantic representation. As a concrete example:
 ```rust
 impl<'a> Other<'a> for &'a u32 { }
 

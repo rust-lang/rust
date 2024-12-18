@@ -263,7 +263,7 @@ What happens with `--tree-callees` is that
   to build up a call tree
 
 The `--tree-min-percent 3` option says "only show me things that take
-more than 3% of the time. Without this, the tree often gets really
+more than 3% of the time". Without this, the tree often gets really
 noisy and includes random stuff like the innards of
 malloc. `--tree-max-depth` can be useful too, it just limits how many
 levels we print.

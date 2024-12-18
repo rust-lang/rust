@@ -30,7 +30,7 @@ notice a change) you can use the `--force-rerun` CLI option.
 
 > **Note on requirements of external dependencies**
 >
-> Some test suites may require external dependecies. This is especially true of
+> Some test suites may require external dependencies. This is especially true of
 > debuginfo tests. Some debuginfo tests require a Python-enabled gdb. You can
 > test if your gdb install supports Python by using the `python` command from
 > within gdb. Once invoked you can type some Python code (e.g. `print("hi")`)
@@ -78,7 +78,7 @@ Likewise, you can test a single file by passing its path:
 ```
 
 `x` doesn't support running a single tool test by passing its path yet. You'll
-have to use the `--test-args` argument as describled
+have to use the `--test-args` argument as described
 [below](#running-an-individual-test).
 
 ```bash

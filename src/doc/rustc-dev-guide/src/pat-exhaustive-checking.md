@@ -88,7 +88,7 @@ That file contains a detailed description of the algorithm.
 ### Constructors and fields
 
 In the value `Pair(Some(0), true)`, `Pair` is called the constructor of the value, and `Some(0)` and
-`true` are its fields. Every matcheable value can be decomposed in this way. Examples of
+`true` are its fields. Every matchable value can be decomposed in this way. Examples of
 constructors are: `Some`, `None`, `(,)` (the 2-tuple constructor), `Foo {..}` (the constructor for
 a struct `Foo`), and `2` (the constructor for the number `2`).
 

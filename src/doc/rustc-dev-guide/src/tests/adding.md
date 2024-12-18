@@ -196,5 +196,5 @@ These comments are very useful to others later on when your test breaks, since
 they often can highlight what the problem is. They are also useful if for some
 reason the tests need to be refactored, since they let others know which parts
 of the test were important. Often a test must be rewritten because it no longer
-tests what is was meant to test, and then it's useful to know what it *was*
+tests what it was meant to test, and then it's useful to know what it *was*
 meant to test exactly.

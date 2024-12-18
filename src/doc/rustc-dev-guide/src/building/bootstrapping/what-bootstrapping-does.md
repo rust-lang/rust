@@ -290,7 +290,7 @@ recently changed.
 When you build a project with `cargo`, the build artifacts for dependencies are
 normally stored in `target/debug/deps`. This only contains dependencies `cargo`
 knows about; in particular, it doesn't have the standard library. Where do `std`
-or `proc_macro` come from? They comes from the **sysroot**, the root of a number
+or `proc_macro` come from? They come from the **sysroot**, the root of a number
 of directories where the compiler loads build artifacts at runtime. The
 `sysroot` doesn't just store the standard library, though - it includes anything
 that needs to be loaded at runtime. That includes (but is not limited to):
