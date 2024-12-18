@@ -1555,16 +1555,22 @@ pub fn write_allocations<'tcx>(
                 write!(w, " (vtable: impl {dyn_ty} for {ty})")?
             }
             Some(GlobalAlloc::Static(did)) if !tcx.is_foreign_item(did) => {
-                match tcx.eval_static_initializer(did) {
-                    Ok(alloc) => {
-                        write!(w, " (static: {}, ", tcx.def_path_str(did))?;
-                        write_allocation_track_relocs(w, alloc)?;
+                write!(w, " (static: {}", tcx.def_path_str(did))?;
+                if body.phase <= MirPhase::Runtime(RuntimePhase::PostCleanup)
+                    && tcx.hir().body_const_context(body.source.def_id()).is_some()
+                {
+                    // Statics may be cyclic and evaluating them too early
+                    // in the MIR pipeline may cause cycle errors even though
+                    // normal compilation is fine.
+                    write!(w, ")")?;
+                } else {
+                    match tcx.eval_static_initializer(did) {
+                        Ok(alloc) => {
+                            write!(w, ", ")?;
+                            write_allocation_track_relocs(w, alloc)?;
+                        }
+                        Err(_) => write!(w, ", error during initializer evaluation)")?,
                     }
-                    Err(_) => write!(
-                        w,
-                        " (static: {}, error during initializer evaluation)",
-                        tcx.def_path_str(did)
-                    )?,
                 }
             }
             Some(GlobalAlloc::Static(did)) => {
