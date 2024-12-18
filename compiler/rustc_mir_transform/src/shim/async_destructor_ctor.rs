@@ -96,7 +96,7 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
             typing_env,
 
             stack: Vec::with_capacity(Self::MAX_STACK_LEN),
-            last_bb: bbs.push(BasicBlockData::new(None)),
+            last_bb: bbs.push(BasicBlockData::new(None, false)),
             top_cleanup_bb: match tcx.sess.panic_strategy() {
                 PanicStrategy::Unwind => {
                     // Don't drop input arg because it's just a pointer

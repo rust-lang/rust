@@ -572,11 +572,13 @@ impl<'tcx> Inliner<'tcx> {
         let return_block = if let Some(block) = target {
             // Prepare a new block for code that should execute when call returns. We don't use
             // target block directly since it might have other predecessors.
-            let mut data = BasicBlockData::new(Some(Terminator {
-                source_info: terminator.source_info,
-                kind: TerminatorKind::Goto { target: block },
-            }));
-            data.is_cleanup = caller_body[block].is_cleanup;
+            let data = BasicBlockData::new(
+                Some(Terminator {
+                    source_info: terminator.source_info,
+                    kind: TerminatorKind::Goto { target: block },
+                }),
+                caller_body[block].is_cleanup,
+            );
             Some(caller_body.basic_blocks_mut().push(data))
         } else {
             None
