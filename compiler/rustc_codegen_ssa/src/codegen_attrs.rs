@@ -627,17 +627,19 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     // enabled. For that reason we also forbid `#[inline(always)]` as it can't be
     // respected.
     //
-    // `#[rustc_force_inline]` doesn't need to be prohibited here, that
-    // is implemented entirely in rustc can attempt to inline and error if it cannot.
+    // `#[rustc_force_inline]` doesn't need to be prohibited here, only
+    // `#[inline(always)]`, as forced inlining is implemented entirely within
+    // rustc (and so the MIR inliner can do any necessary checks for compatible target
+    // features).
+    //
+    // This sidesteps the LLVM blockers in enabling `target_features` +
+    // `inline(always)` to be used together (see rust-lang/rust#116573 and
+    // llvm/llvm-project#70563).
     if !codegen_fn_attrs.target_features.is_empty()
         && matches!(codegen_fn_attrs.inline, InlineAttr::Always)
     {
         if let Some(span) = inline_span {
-            tcx.dcx().span_err(
-                span,
-                "cannot use `#[inline(always)]` with \
-                     `#[target_feature]`",
-            );
+            tcx.dcx().span_err(span, "cannot use `#[inline(always)]` with `#[target_feature]`");
         }
     }
 
