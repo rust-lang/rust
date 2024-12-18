@@ -26,8 +26,8 @@ fn method_1(g: Guard) {
     match method_2(&g.clone()) {
         Ok(other_drop) => {
             // repro needs something else being dropped too.
-        },
-        Err(err) => {},
+        }
+        Err(err) => {}
     }
 }
 
