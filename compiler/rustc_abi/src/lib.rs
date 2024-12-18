@@ -1504,10 +1504,12 @@ impl BackendRepr {
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
 pub enum Variants<FieldIdx: Idx, VariantIdx: Idx> {
+    /// A type with no valid variants. Must be uninhabited.
+    Empty,
+
     /// Single enum variants, structs/tuples, unions, and all non-ADTs.
     Single {
-        /// Always 0 for non-enums/generators.
-        /// For enums without a variant, this is an invalid index!
+        /// Always `0` for types that cannot have multiple variants.
         index: VariantIdx,
     },
 
