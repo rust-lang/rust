@@ -12,10 +12,9 @@ fn method_1(_1: Guard) -> () {
     let _8: OtherDrop;
     let _9: ();
     let mut _10: bool;
-    let mut _11: bool;
+    let mut _11: isize;
     let mut _12: isize;
     let mut _13: isize;
-    let mut _14: isize;
     scope 1 {
         debug other_drop => _8;
     }
@@ -24,7 +23,6 @@ fn method_1(_1: Guard) -> () {
     }
 
     bb0: {
-        _11 = const false;
         _10 = const false;
         StorageLive(_2);
         StorageLive(_3);
@@ -32,15 +30,14 @@ fn method_1(_1: Guard) -> () {
         StorageLive(_5);
         StorageLive(_6);
         _6 = &_1;
-        _5 = <Guard as Clone>::clone(move _6) -> [return: bb1, unwind: bb16];
+        _5 = <Guard as Clone>::clone(move _6) -> [return: bb1, unwind: bb13];
     }
 
     bb1: {
-        _11 = const true;
         StorageDead(_6);
         _4 = &_5;
         _3 = &(*_4);
-        _2 = method_2(move _3) -> [return: bb2, unwind: bb14];
+        _2 = method_2(move _3) -> [return: bb2, unwind: bb12];
     }
 
     bb2: {
@@ -78,20 +75,19 @@ fn method_1(_1: Guard) -> () {
     bb7: {
         backward incompatible drop(_2);
         backward incompatible drop(_5);
-        goto -> bb24;
+        goto -> bb21;
     }
 
     bb8: {
-        drop(_5) -> [return: bb9, unwind: bb16];
+        drop(_5) -> [return: bb9, unwind: bb13];
     }
 
     bb9: {
-        _11 = const false;
         StorageDead(_5);
         StorageDead(_4);
         _10 = const false;
         StorageDead(_2);
-        drop(_1) -> [return: bb10, unwind: bb17];
+        drop(_1) -> [return: bb10, unwind: bb14];
     }
 
     bb10: {
@@ -99,7 +95,7 @@ fn method_1(_1: Guard) -> () {
     }
 
     bb11 (cleanup): {
-        goto -> bb28;
+        goto -> bb25;
     }
 
     bb12 (cleanup): {
@@ -107,77 +103,57 @@ fn method_1(_1: Guard) -> () {
     }
 
     bb13 (cleanup): {
-        goto -> bb15;
+        drop(_1) -> [return: bb14, unwind terminate(cleanup)];
     }
 
     bb14 (cleanup): {
-        drop(_5) -> [return: bb15, unwind terminate(cleanup)];
-    }
-
-    bb15 (cleanup): {
-        goto -> bb30;
-    }
-
-    bb16 (cleanup): {
-        drop(_1) -> [return: bb17, unwind terminate(cleanup)];
-    }
-
-    bb17 (cleanup): {
         resume;
     }
 
-    bb18: {
+    bb15: {
         goto -> bb8;
     }
 
-    bb19 (cleanup): {
+    bb16 (cleanup): {
+        goto -> bb12;
+    }
+
+    bb17 (cleanup): {
+        goto -> bb12;
+    }
+
+    bb18: {
+        goto -> bb15;
+    }
+
+    bb19: {
         goto -> bb15;
     }
 
     bb20 (cleanup): {
-        goto -> bb15;
+        goto -> bb12;
     }
 
     bb21: {
-        goto -> bb18;
+        _11 = discriminant(_2);
+        switchInt(move _11) -> [0: bb18, otherwise: bb19];
     }
 
-    bb22: {
-        goto -> bb18;
+    bb22 (cleanup): {
+        _12 = discriminant(_2);
+        switchInt(move _12) -> [0: bb16, otherwise: bb20];
     }
 
     bb23 (cleanup): {
-        goto -> bb15;
+        goto -> bb12;
     }
 
-    bb24: {
-        _12 = discriminant(_2);
-        switchInt(move _12) -> [0: bb21, otherwise: bb22];
+    bb24 (cleanup): {
+        goto -> bb12;
     }
 
     bb25 (cleanup): {
         _13 = discriminant(_2);
-        switchInt(move _13) -> [0: bb19, otherwise: bb23];
-    }
-
-    bb26 (cleanup): {
-        goto -> bb12;
-    }
-
-    bb27 (cleanup): {
-        goto -> bb12;
-    }
-
-    bb28 (cleanup): {
-        _14 = discriminant(_2);
-        switchInt(move _14) -> [0: bb26, otherwise: bb27];
-    }
-
-    bb29 (cleanup): {
-        drop(_5) -> [return: bb16, unwind terminate(cleanup)];
-    }
-
-    bb30 (cleanup): {
-        switchInt(copy _11) -> [0: bb16, otherwise: bb29];
+        switchInt(move _13) -> [0: bb23, otherwise: bb24];
     }
 }
