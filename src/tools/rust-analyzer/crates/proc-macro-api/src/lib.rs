@@ -9,7 +9,6 @@ pub mod json;
 pub mod msg;
 mod process;
 
-use base_db::Env;
 use paths::{AbsPath, AbsPathBuf};
 use span::Span;
 use std::{fmt, io, sync::Arc};
@@ -148,7 +147,7 @@ impl ProcMacro {
         &self,
         subtree: &tt::Subtree<Span>,
         attr: Option<&tt::Subtree<Span>>,
-        env: Env,
+        env: Vec<(String, String)>,
         def_site: Span,
         call_site: Span,
         mixed_site: Span,
@@ -179,7 +178,7 @@ impl ProcMacro {
                 },
             },
             lib: self.dylib_path.to_path_buf().into(),
-            env: env.into(),
+            env,
             current_dir,
         };
 
