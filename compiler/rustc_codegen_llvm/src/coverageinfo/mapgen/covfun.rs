@@ -10,7 +10,6 @@ use rustc_abi::Align;
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, ConstCodegenMethods, StaticCodegenMethods,
 };
-use rustc_middle::bug;
 use rustc_middle::mir::coverage::{
     CovTerm, CoverageIdsInfo, Expression, FunctionCoverageInfo, Mapping, MappingKind, Op,
 };
@@ -67,12 +66,8 @@ pub(crate) fn prepare_covfun_record<'tcx>(
     fill_region_tables(tcx, global_file_table, fn_cov_info, ids_info, &mut covfun);
 
     if covfun.regions.has_no_regions() {
-        if covfun.is_used {
-            bug!("a used function should have had coverage mapping data but did not: {covfun:?}");
-        } else {
-            debug!(?covfun, "unused function had no coverage mapping data");
-            return None;
-        }
+        debug!(?covfun, "function has no mappings to embed; skipping");
+        return None;
     }
 
     Some(covfun)
