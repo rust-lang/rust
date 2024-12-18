@@ -19,7 +19,7 @@ use rustc_target::spec::HasTargetSpec;
 use tracing::debug;
 
 use crate::common::CodegenCx;
-use crate::coverageinfo::mapgen::{GlobalFileTable, VirtualFileMapping, span_file_name, spans};
+use crate::coverageinfo::mapgen::{GlobalFileTable, VirtualFileMapping, spans};
 use crate::coverageinfo::{ffi, llvm_cov};
 use crate::llvm;
 
@@ -117,16 +117,14 @@ fn fill_region_tables<'tcx>(
     covfun: &mut CovfunRecord<'tcx>,
 ) {
     // Currently a function's mappings must all be in the same file as its body span.
-    let file_name = span_file_name(tcx, fn_cov_info.body_span);
     let source_map = tcx.sess.source_map();
     let source_file = source_map.lookup_source_file(fn_cov_info.body_span.lo());
 
-    // Look up the global file ID for that filename.
-    let global_file_id = global_file_table.global_file_id_for_file_name(file_name);
+    // Look up the global file ID for that file.
+    let global_file_id = global_file_table.global_file_id_for_file(&source_file);
 
     // Associate that global file ID with a local file ID for this function.
     let local_file_id = covfun.virtual_file_mapping.local_id_for_global(global_file_id);
-    debug!("  file id: {local_file_id:?} => {global_file_id:?} = '{file_name:?}'");
 
     let ffi::Regions { code_regions, branch_regions, mcdc_branch_regions, mcdc_decision_regions } =
         &mut covfun.regions;
