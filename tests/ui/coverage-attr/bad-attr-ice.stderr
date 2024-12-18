@@ -1,5 +1,5 @@
 error: malformed `coverage` attribute input
-  --> $DIR/bad-attr-ice.rs:8:1
+  --> $DIR/bad-attr-ice.rs:9:1
    |
 LL | #[coverage]
    | ^^^^^^^^^^^

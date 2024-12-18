@@ -1,4 +1,5 @@
    LL|       |//@ edition: 2021
+   LL|       |//@ reference: attributes.coverage.nesting
    LL|       |
    LL|       |// Demonstrates the interaction of `#[coverage(off)]` and `#[coverage(on)]`
    LL|       |// in nested functions.
