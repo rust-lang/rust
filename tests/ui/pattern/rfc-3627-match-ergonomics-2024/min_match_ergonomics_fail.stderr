@@ -99,61 +99,89 @@ LL - test_pat_on_type![Foo { f: (&x,) }: &mut Foo];
 LL + test_pat_on_type![Foo { f: (x,) }: &mut Foo];
    |
 
-error: patterns are not allowed to reset the default binding mode in edition 2024
-  --> $DIR/min_match_ergonomics_fail.rs:24:19
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/min_match_ergonomics_fail.rs:24:20
    |
 LL | test_pat_on_type![(&x,): &(&T,)];
-   |                   -^^^^
-   |                   |
-   |                   help: desugar the match ergonomics: `&`
+   |                    ^ cannot implicitly match against multiple layers of reference
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the implied reference pattern explicit
+   |
+LL | test_pat_on_type![&(&x,): &(&T,)];
+   |                   +
 
-error: patterns are not allowed to reset the default binding mode in edition 2024
-  --> $DIR/min_match_ergonomics_fail.rs:27:19
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/min_match_ergonomics_fail.rs:27:20
    |
 LL | test_pat_on_type![(&mut x,): &(&mut T,)];
-   |                   -^^^^^^^^
-   |                   |
-   |                   help: desugar the match ergonomics: `&`
+   |                    ^^^^ cannot implicitly match against multiple layers of reference
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the implied reference pattern explicit
+   |
+LL | test_pat_on_type![&(&mut x,): &(&mut T,)];
+   |                   +
 
-error: patterns are not allowed to reset the default binding mode in edition 2024
-  --> $DIR/min_match_ergonomics_fail.rs:31:19
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/min_match_ergonomics_fail.rs:31:28
    |
 LL | test_pat_on_type![Foo { f: &(x,) }: &Foo];
-   |                   -^^^^^^^^^^^^^^^
-   |                   |
-   |                   help: desugar the match ergonomics: `&`
+   |                            ^ cannot implicitly match against multiple layers of reference
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the implied reference pattern explicit
+   |
+LL | test_pat_on_type![&Foo { f: &(x,) }: &Foo];
+   |                   +
 
-error: patterns are not allowed to reset the default binding mode in edition 2024
-  --> $DIR/min_match_ergonomics_fail.rs:32:19
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/min_match_ergonomics_fail.rs:32:20
    |
 LL | test_pat_on_type![(mut x,): &(T,)];
-   |                   -^^^^^^^
-   |                   |
-   |                   help: desugar the match ergonomics: `&`
+   |                    ^^^ requires binding by-value, but the implicit default is by-reference
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the implied reference pattern explicit
+   |
+LL | test_pat_on_type![&(mut x,): &(T,)];
+   |                   +
 
-error: patterns are not allowed to reset the default binding mode in edition 2024
-  --> $DIR/min_match_ergonomics_fail.rs:33:19
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/min_match_ergonomics_fail.rs:33:20
    |
 LL | test_pat_on_type![(ref x,): &(T,)];
-   |                   -^^^^^^^
-   |                   |
-   |                   help: desugar the match ergonomics: `&`
+   |                    ^^^ cannot override to bind by-reference when that is the implicit default
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the implied reference pattern explicit
+   |
+LL | test_pat_on_type![&(ref x,): &(T,)];
+   |                   +
 
-error: patterns are not allowed to reset the default binding mode in edition 2024
-  --> $DIR/min_match_ergonomics_fail.rs:34:19
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/min_match_ergonomics_fail.rs:34:20
    |
 LL | test_pat_on_type![(ref mut x,): &mut (T,)];
-   |                   -^^^^^^^^^^^
-   |                   |
-   |                   help: desugar the match ergonomics: `&mut`
+   |                    ^^^^^^^ cannot override to bind by-reference when that is the implicit default
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the implied reference pattern explicit
+   |
+LL | test_pat_on_type![&mut (ref mut x,): &mut (T,)];
+   |                   ++++
 
-error: patterns are not allowed to reset the default binding mode in edition 2024
-  --> $DIR/min_match_ergonomics_fail.rs:43:9
+error: this pattern relies on behavior which may change in edition 2024
+  --> $DIR/min_match_ergonomics_fail.rs:43:10
    |
 LL |         (&x,) => x,
-   |         -^^^^
-   |         |
-   |         help: desugar the match ergonomics: `&`
+   |          ^ cannot implicitly match against multiple layers of reference
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the implied reference pattern explicit
+   |
+LL |         &(&x,) => x,
+   |         +
 
 error: aborting due to 13 previous errors
 

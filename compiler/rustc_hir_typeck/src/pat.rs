@@ -717,12 +717,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     BindingMode(def_br, Mutability::Mut)
                 } else {
                     // `mut` resets the binding mode on edition <= 2021
-                    *self
-                        .typeck_results
-                        .borrow_mut()
-                        .rust_2024_migration_desugared_pats_mut()
-                        .entry(pat_info.top_info.hir_id)
-                        .or_default() |= pat.span.at_least_rust_2024();
+                    self.add_rust_2024_migration_desugared_pat(
+                        pat_info.top_info.hir_id,
+                        pat.span,
+                        ident.span,
+                        "requires binding by-value, but the implicit default is by-reference",
+                    );
                     BindingMode(ByRef::No, Mutability::Mut)
                 }
             }
@@ -730,12 +730,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             BindingMode(ByRef::Yes(_), _) => {
                 if matches!(def_br, ByRef::Yes(_)) {
                     // `ref`/`ref mut` overrides the binding mode on edition <= 2021
-                    *self
-                        .typeck_results
-                        .borrow_mut()
-                        .rust_2024_migration_desugared_pats_mut()
-                        .entry(pat_info.top_info.hir_id)
-                        .or_default() |= pat.span.at_least_rust_2024();
+                    self.add_rust_2024_migration_desugared_pat(
+                        pat_info.top_info.hir_id,
+                        pat.span,
+                        ident.span,
+                        "cannot override to bind by-reference when that is the implicit default",
+                    );
                 }
                 user_bind_annot
             }
@@ -2265,12 +2265,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Reset binding mode on old editions
             if pat_info.binding_mode != ByRef::No {
                 pat_info.binding_mode = ByRef::No;
-                *self
-                    .typeck_results
-                    .borrow_mut()
-                    .rust_2024_migration_desugared_pats_mut()
-                    .entry(pat_info.top_info.hir_id)
-                    .or_default() |= pat.span.at_least_rust_2024();
+                self.add_rust_2024_migration_desugared_pat(
+                    pat_info.top_info.hir_id,
+                    pat.span,
+                    inner.span,
+                    "cannot implicitly match against multiple layers of reference",
+                )
             }
         }
 
@@ -2628,5 +2628,40 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Slice(..) | ty::Array(..) => (true, ty),
             _ => (false, ty),
         }
+    }
+
+    /// Record a pattern that's invalid under Rust 2024 match ergonomics, along with a problematic
+    /// span, so that the pattern migration lint can desugar it during THIR construction.
+    fn add_rust_2024_migration_desugared_pat(
+        &self,
+        pat_id: HirId,
+        subpat_span: Span,
+        cutoff_span: Span,
+        detailed_label: &str,
+    ) {
+        // Try to trim the span we're labeling to just the `&` or binding mode that's an issue.
+        // If the subpattern's span is is from an expansion, the emitted label will not be trimmed.
+        let source_map = self.tcx.sess.source_map();
+        let cutoff_span = source_map
+            .span_extend_prev_while(cutoff_span, char::is_whitespace)
+            .unwrap_or(cutoff_span);
+        // Ensure we use the syntax context and thus edition of `subpat_span`; this will be a hard
+        // error if the subpattern is of edition >= 2024.
+        let trimmed_span = subpat_span.until(cutoff_span).with_ctxt(subpat_span.ctxt());
+
+        // Only provide a detailed label if the problematic subpattern isn't from an expansion.
+        // In the case that it's from a macro, we'll add a more detailed note in the emitter.
+        let desc = if subpat_span.from_expansion() {
+            "default binding mode is reset within expansion"
+        } else {
+            detailed_label
+        };
+
+        self.typeck_results
+            .borrow_mut()
+            .rust_2024_migration_desugared_pats_mut()
+            .entry(pat_id)
+            .or_default()
+            .push((trimmed_span, desc.to_owned()));
     }
 }
