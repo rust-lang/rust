@@ -247,7 +247,7 @@ fn main() {
             );
         }
         Command::Bench => {
-            build_sysroot::build_sysroot(
+            let compiler = build_sysroot::build_sysroot(
                 &dirs,
                 sysroot_kind,
                 &cg_clif_dylib,
@@ -255,7 +255,7 @@ fn main() {
                 rustup_toolchain_name.as_deref(),
                 target_triple,
             );
-            bench::benchmark(&dirs, &bootstrap_host_compiler);
+            bench::benchmark(&dirs, &compiler);
         }
     }
 }
