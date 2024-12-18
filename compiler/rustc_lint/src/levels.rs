@@ -915,7 +915,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
 
                 let src = LintLevelSource::Node { name, span: sp, reason };
                 for &id in ids {
-                    if self.check_gated_lint(id, attr.span(), false) {
+                    if self.check_gated_lint(id, sp, false) {
                         self.insert_spec(id, (level, src));
                     }
                 }
