@@ -82,11 +82,11 @@ fn is_macro_export(attr: &Attribute) -> bool {
 
 fn contains_unhygienic_crate_reference(tts: &TokenStream) -> Option<Span> {
     let mut prev_is_dollar = false;
-    let mut cursor = tts.trees();
-    while let Some(curr) = cursor.next() {
+    let mut iter = tts.iter();
+    while let Some(curr) = iter.next() {
         if !prev_is_dollar
             && let Some(span) = is_crate_keyword(curr)
-            && let Some(next) = cursor.look_ahead(0)
+            && let Some(next) = iter.peek()
             && is_token(next, &TokenKind::PathSep)
         {
             return Some(span);
