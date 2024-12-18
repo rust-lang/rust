@@ -136,7 +136,7 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
             fx.bcx.ins().jump(destination_block, &[]);
         }
         None => {
-            fx.bcx.ins().trap(TrapCode::user(0 /* unreachable */).unwrap());
+            fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
         }
     }
 }
