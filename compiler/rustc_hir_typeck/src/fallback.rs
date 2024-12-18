@@ -762,7 +762,7 @@ fn compute_unsafe_infer_vars<'a, 'tcx>(
                     if let Some(def_id) = typeck_results.type_dependent_def_id(ex.hir_id)
                         && let method_ty = self.fcx.tcx.type_of(def_id).instantiate_identity()
                         && let sig = method_ty.fn_sig(self.fcx.tcx)
-                        && let hir::Safety::Unsafe = sig.safety()
+                        && sig.safety().is_unsafe()
                     {
                         let mut collector = InferVarCollector {
                             value: (ex.hir_id, ex.span, UnsafeUseReason::Method),
@@ -782,7 +782,7 @@ fn compute_unsafe_infer_vars<'a, 'tcx>(
 
                     if func_ty.is_fn()
                         && let sig = func_ty.fn_sig(self.fcx.tcx)
-                        && let hir::Safety::Unsafe = sig.safety()
+                        && sig.safety().is_unsafe()
                     {
                         let mut collector = InferVarCollector {
                             value: (ex.hir_id, ex.span, UnsafeUseReason::Call),
@@ -813,7 +813,7 @@ fn compute_unsafe_infer_vars<'a, 'tcx>(
                     // `is_fn` excludes closures, but those can't be unsafe.
                     if ty.is_fn()
                         && let sig = ty.fn_sig(self.fcx.tcx)
-                        && let hir::Safety::Unsafe = sig.safety()
+                        && sig.safety().is_unsafe()
                     {
                         let mut collector = InferVarCollector {
                             value: (ex.hir_id, ex.span, UnsafeUseReason::Path),

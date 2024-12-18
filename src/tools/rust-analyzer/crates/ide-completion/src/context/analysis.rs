@@ -1,7 +1,7 @@
 //! Module responsible for analyzing the code surrounding the cursor for completion.
 use std::iter;
 
-use hir::{Semantics, Type, TypeInfo, Variant};
+use hir::{ExpandResult, Semantics, Type, TypeInfo, Variant};
 use ide_db::{active_parameter::ActiveParameter, RootDatabase};
 use itertools::Either;
 use syntax::{
@@ -104,7 +104,10 @@ fn expand(
                 // maybe parent items have attributes, so continue walking the ancestors
                 (None, None) => continue 'ancestors,
                 // successful expansions
-                (Some(actual_expansion), Some((fake_expansion, fake_mapped_token))) => {
+                (
+                    Some(ExpandResult { value: actual_expansion, err: _ }),
+                    Some((fake_expansion, fake_mapped_token)),
+                ) => {
                     let new_offset = fake_mapped_token.text_range().start();
                     if new_offset + relative_offset > actual_expansion.text_range().end() {
                         // offset outside of bounds from the original expansion,
@@ -239,8 +242,8 @@ fn expand(
             };
 
             match (
-                sema.expand(&actual_macro_call),
-                sema.speculative_expand(
+                sema.expand_macro_call(&actual_macro_call),
+                sema.speculative_expand_macro_call(
                     &actual_macro_call,
                     &speculative_args,
                     fake_ident_token.clone(),

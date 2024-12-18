@@ -7,8 +7,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, layout};
-use rustc_span::symbol::Symbol;
-use rustc_span::{DUMMY_SP, sym};
+use rustc_span::{DUMMY_SP, Symbol, sym};
 
 use crate::simplify::simplify_duplicate_switch_targets;
 use crate::take_array;

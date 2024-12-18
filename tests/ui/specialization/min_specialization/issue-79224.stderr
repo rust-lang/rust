@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `B: Clone` is not satisfied
-  --> $DIR/issue-79224.rs:18:29
+  --> $DIR/issue-79224.rs:28:29
    |
 LL | impl<B: ?Sized> Display for Cow<'_, B> {
    |                             ^^^^^^^^^^ the trait `Clone` is not implemented for `B`
@@ -11,7 +11,7 @@ LL | impl<B: ?Sized + std::clone::Clone> Display for Cow<'_, B> {
    |                +++++++++++++++++++
 
 error[E0277]: the trait bound `B: Clone` is not satisfied
-  --> $DIR/issue-79224.rs:20:5
+  --> $DIR/issue-79224.rs:30:5
    |
 LL |     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `B`
@@ -23,7 +23,7 @@ LL | impl<B: ?Sized + std::clone::Clone> Display for Cow<'_, B> {
    |                +++++++++++++++++++
 
 error[E0277]: the trait bound `B: Clone` is not satisfied
-  --> $DIR/issue-79224.rs:20:13
+  --> $DIR/issue-79224.rs:30:13
    |
 LL |     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
    |             ^^^^ the trait `Clone` is not implemented for `B`
@@ -35,7 +35,7 @@ LL | impl<B: ?Sized + std::clone::Clone> Display for Cow<'_, B> {
    |                +++++++++++++++++++
 
 error[E0277]: the trait bound `B: Clone` is not satisfied
-  --> $DIR/issue-79224.rs:20:62
+  --> $DIR/issue-79224.rs:30:62
    |
 LL |       fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
    |  ______________________________________________________________^

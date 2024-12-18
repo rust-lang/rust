@@ -3,8 +3,7 @@ use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::{AttrVec, DUMMY_NODE_ID, Expr, ExprKind, Path, Ty, TyKind};
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacResult, MacroExpanderResult};
-use rustc_span::Span;
-use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::{Ident, Span, Symbol};
 
 use crate::errors;
 

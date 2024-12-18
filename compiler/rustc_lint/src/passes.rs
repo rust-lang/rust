@@ -42,9 +42,9 @@ macro_rules! late_lint_methods {
             fn check_field_def(a: &'tcx rustc_hir::FieldDef<'tcx>);
             fn check_variant(a: &'tcx rustc_hir::Variant<'tcx>);
             fn check_path(a: &rustc_hir::Path<'tcx>, b: rustc_hir::HirId);
-            fn check_attribute(a: &'tcx rustc_ast::Attribute);
-            fn check_attributes(a: &'tcx [rustc_ast::Attribute]);
-            fn check_attributes_post(a: &'tcx [rustc_ast::Attribute]);
+            fn check_attribute(a: &'tcx rustc_hir::Attribute);
+            fn check_attributes(a: &'tcx [rustc_hir::Attribute]);
+            fn check_attributes_post(a: &'tcx [rustc_hir::Attribute]);
         ]);
     )
 }
@@ -136,7 +136,7 @@ macro_rules! early_lint_methods {
     ($macro:path, $args:tt) => (
         $macro!($args, [
             fn check_param(a: &rustc_ast::Param);
-            fn check_ident(a: &rustc_span::symbol::Ident);
+            fn check_ident(a: &rustc_span::Ident);
             fn check_crate(a: &rustc_ast::Crate);
             fn check_crate_post(a: &rustc_ast::Crate);
             fn check_item(a: &rustc_ast::Item);

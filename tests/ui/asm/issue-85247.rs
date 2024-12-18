@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: ropi rwpi
 
 //@ [ropi] compile-flags: --target armv7-unknown-linux-gnueabihf -C relocation-model=ropi
@@ -6,16 +7,12 @@
 //@ [rwpi] needs-llvm-components: arm
 //@ [ropi] build-pass
 
-#![feature(no_core, lang_items, rustc_attrs)]
+#![feature(no_core)]
 #![no_core]
 #![crate_type = "rlib"]
 
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;
 
 // R9 is reserved as the RWPI base register
 fn main() {

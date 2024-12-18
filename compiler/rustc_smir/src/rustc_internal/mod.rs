@@ -318,7 +318,7 @@ macro_rules! run_driver {
     ($args:expr, $callback:expr $(, $with_tcx:ident)?) => {{
         use rustc_driver::{Callbacks, Compilation, RunCompiler};
         use rustc_middle::ty::TyCtxt;
-        use rustc_interface::{interface, Queries};
+        use rustc_interface::interface;
         use stable_mir::CompilerError;
         use std::ops::ControlFlow;
 

@@ -184,7 +184,7 @@ impl<'a> PathTransform<'a> {
                     if let Some(expr) = v.expr() {
                         // FIXME: expressions in curly brackets can cause ambiguity after insertion
                         // (e.g. `N * 2` -> `{1 + 1} * 2`; it's unclear whether `{1 + 1}`
-                        // is a standalone statement or a part of another expresson)
+                        // is a standalone statement or a part of another expression)
                         // and sometimes require slight modifications; see
                         // https://doc.rust-lang.org/reference/statements.html#expression-statements
                         // (default values in curly brackets can cause the same problem)

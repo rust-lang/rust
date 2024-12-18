@@ -11,7 +11,7 @@ pub(super) fn complete_lint(
     existing_lints: &[ast::Path],
     lints_completions: &[Lint],
 ) {
-    for &Lint { label, description } in lints_completions {
+    for &Lint { label, description, .. } in lints_completions {
         let (qual, name) = {
             // FIXME: change `Lint`'s label to not store a path in it but split the prefix off instead?
             let mut parts = label.split("::");

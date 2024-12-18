@@ -3,6 +3,11 @@ error[E0594]: cannot assign to `*ptr`, which is behind a `*const` pointer
    |
 LL |     unsafe { *ptr = 3; }
    |              ^^^^^^^^ `ptr` is a `*const` pointer, so the data it refers to cannot be written
+   |
+help: consider changing this to be a mutable pointer
+   |
+LL |     let ptr = &raw mut val;
+   |                    ~~~
 
 error: aborting due to 1 previous error
 

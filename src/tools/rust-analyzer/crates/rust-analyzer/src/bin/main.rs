@@ -51,7 +51,9 @@ fn actual_main() -> anyhow::Result<ExitCode> {
         }
     }
 
-    setup_logging(flags.log_file.clone())?;
+    if let Err(e) = setup_logging(flags.log_file.clone()) {
+        eprintln!("Failed to setup logging: {e:#}");
+    }
 
     let verbosity = flags.verbosity();
 

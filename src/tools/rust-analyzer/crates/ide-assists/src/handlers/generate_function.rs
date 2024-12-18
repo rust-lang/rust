@@ -2055,7 +2055,7 @@ fn bar(closure: impl Fn(i64) -> i64) {
     }
 
     #[test]
-    fn unresolveable_types_default_to_placeholder() {
+    fn unresolvable_types_default_to_placeholder() {
         check_assist(
             generate_function,
             r"

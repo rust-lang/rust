@@ -16,8 +16,7 @@ use rustc_middle::ty::{
     self, AdtKind, CoroutineArgsExt, Instance, PolyExistentialTraitRef, Ty, TyCtxt, Visibility,
 };
 use rustc_session::config::{self, DebugInfo, Lto};
-use rustc_span::symbol::Symbol;
-use rustc_span::{DUMMY_SP, FileName, FileNameDisplayPreference, SourceFile, hygiene};
+use rustc_span::{DUMMY_SP, FileName, FileNameDisplayPreference, SourceFile, Symbol, hygiene};
 use rustc_symbol_mangling::typeid_for_trait_ref;
 use rustc_target::spec::DebuginfoKind;
 use smallvec::smallvec;

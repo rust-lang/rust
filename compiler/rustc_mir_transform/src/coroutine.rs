@@ -73,9 +73,8 @@ use rustc_mir_dataflow::impls::{
     always_storage_live_locals,
 };
 use rustc_mir_dataflow::{Analysis, Results, ResultsVisitor};
-use rustc_span::Span;
 use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_span::symbol::sym;
+use rustc_span::{Span, sym};
 use rustc_target::spec::PanicStrategy;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::TyCtxtInferExt as _;

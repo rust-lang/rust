@@ -1414,7 +1414,7 @@ fn extract_if_empty() {
     let mut vec: Vec<i32> = vec![];
 
     {
-        let mut iter = vec.extract_if(|_| true);
+        let mut iter = vec.extract_if(.., |_| true);
         assert_eq!(iter.size_hint(), (0, Some(0)));
         assert_eq!(iter.next(), None);
         assert_eq!(iter.size_hint(), (0, Some(0)));
@@ -1431,7 +1431,7 @@ fn extract_if_zst() {
     let initial_len = vec.len();
     let mut count = 0;
     {
-        let mut iter = vec.extract_if(|_| true);
+        let mut iter = vec.extract_if(.., |_| true);
         assert_eq!(iter.size_hint(), (0, Some(initial_len)));
         while let Some(_) = iter.next() {
             count += 1;
@@ -1454,7 +1454,7 @@ fn extract_if_false() {
     let initial_len = vec.len();
     let mut count = 0;
     {
-        let mut iter = vec.extract_if(|_| false);
+        let mut iter = vec.extract_if(.., |_| false);
         assert_eq!(iter.size_hint(), (0, Some(initial_len)));
         for _ in iter.by_ref() {
             count += 1;
@@ -1476,7 +1476,7 @@ fn extract_if_true() {
     let initial_len = vec.len();
     let mut count = 0;
     {
-        let mut iter = vec.extract_if(|_| true);
+        let mut iter = vec.extract_if(.., |_| true);
         assert_eq!(iter.size_hint(), (0, Some(initial_len)));
         while let Some(_) = iter.next() {
             count += 1;
@@ -1493,6 +1493,31 @@ fn extract_if_true() {
 }
 
 #[test]
+fn extract_if_ranges() {
+    let mut vec = vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+    let mut count = 0;
+    let it = vec.extract_if(1..=3, |_| {
+        count += 1;
+        true
+    });
+    assert_eq!(it.collect::<Vec<_>>(), vec![1, 2, 3]);
+    assert_eq!(vec, vec![0, 4, 5, 6, 7, 8, 9, 10]);
+    assert_eq!(count, 3);
+
+    let it = vec.extract_if(1..=3, |_| false);
+    assert_eq!(it.collect::<Vec<_>>(), vec![]);
+    assert_eq!(vec, vec![0, 4, 5, 6, 7, 8, 9, 10]);
+}
+
+#[test]
+#[should_panic]
+fn extract_if_out_of_bounds() {
+    let mut vec = vec![0, 1];
+    let _ = vec.extract_if(5.., |_| true).for_each(drop);
+}
+
+#[test]
 fn extract_if_complex() {
     {
         //                [+xxx++++++xxxxx++++x+x++]
@@ -1501,7 +1526,7 @@ fn extract_if_complex() {
             39,
         ];
 
-        let removed = vec.extract_if(|x| *x % 2 == 0).collect::<Vec<_>>();
+        let removed = vec.extract_if(.., |x| *x % 2 == 0).collect::<Vec<_>>();
         assert_eq!(removed.len(), 10);
         assert_eq!(removed, vec![2, 4, 6, 18, 20, 22, 24, 26, 34, 36]);
 
@@ -1515,7 +1540,7 @@ fn extract_if_complex() {
             2, 4, 6, 7, 9, 11, 13, 15, 17, 18, 20, 22, 24, 26, 27, 29, 31, 33, 34, 35, 36, 37, 39,
         ];
 
-        let removed = vec.extract_if(|x| *x % 2 == 0).collect::<Vec<_>>();
+        let removed = vec.extract_if(.., |x| *x % 2 == 0).collect::<Vec<_>>();
         assert_eq!(removed.len(), 10);
         assert_eq!(removed, vec![2, 4, 6, 18, 20, 22, 24, 26, 34, 36]);
 
@@ -1528,7 +1553,7 @@ fn extract_if_complex() {
         let mut vec =
             vec![2, 4, 6, 7, 9, 11, 13, 15, 17, 18, 20, 22, 24, 26, 27, 29, 31, 33, 34, 35, 36];
 
-        let removed = vec.extract_if(|x| *x % 2 == 0).collect::<Vec<_>>();
+        let removed = vec.extract_if(.., |x| *x % 2 == 0).collect::<Vec<_>>();
         assert_eq!(removed.len(), 10);
         assert_eq!(removed, vec![2, 4, 6, 18, 20, 22, 24, 26, 34, 36]);
 
@@ -1540,7 +1565,7 @@ fn extract_if_complex() {
         //                [xxxxxxxxxx+++++++++++]
         let mut vec = vec![2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19];
 
-        let removed = vec.extract_if(|x| *x % 2 == 0).collect::<Vec<_>>();
+        let removed = vec.extract_if(.., |x| *x % 2 == 0).collect::<Vec<_>>();
         assert_eq!(removed.len(), 10);
         assert_eq!(removed, vec![2, 4, 6, 8, 10, 12, 14, 16, 18, 20]);
 
@@ -1552,7 +1577,7 @@ fn extract_if_complex() {
         //                [+++++++++++xxxxxxxxxx]
         let mut vec = vec![1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20];
 
-        let removed = vec.extract_if(|x| *x % 2 == 0).collect::<Vec<_>>();
+        let removed = vec.extract_if(.., |x| *x % 2 == 0).collect::<Vec<_>>();
         assert_eq!(removed.len(), 10);
         assert_eq!(removed, vec![2, 4, 6, 8, 10, 12, 14, 16, 18, 20]);
 
@@ -1600,7 +1625,7 @@ fn extract_if_consumed_panic() {
             }
             c.index < 6
         };
-        let drain = data.extract_if(filter);
+        let drain = data.extract_if(.., filter);
 
         // NOTE: The ExtractIf is explicitly consumed
         drain.for_each(drop);
@@ -1653,7 +1678,7 @@ fn extract_if_unconsumed_panic() {
             }
             c.index < 6
         };
-        let _drain = data.extract_if(filter);
+        let _drain = data.extract_if(.., filter);
 
         // NOTE: The ExtractIf is dropped without being consumed
     });
@@ -1669,7 +1694,7 @@ fn extract_if_unconsumed_panic() {
 #[test]
 fn extract_if_unconsumed() {
     let mut vec = vec![1, 2, 3, 4];
-    let drain = vec.extract_if(|&mut x| x % 2 != 0);
+    let drain = vec.extract_if(.., |&mut x| x % 2 != 0);
     drop(drain);
     assert_eq!(vec, [1, 2, 3, 4]);
 }

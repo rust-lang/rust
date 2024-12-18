@@ -586,14 +586,47 @@ fn main() {
     }
 
     #[test]
-    fn unsafe_op_in_unsafe_fn_allowed_by_default() {
+    fn unsafe_op_in_unsafe_fn_allowed_by_default_in_edition_2021() {
         check_diagnostics(
             r#"
+//- /lib.rs crate:foo edition:2021
 unsafe fn foo(p: *mut i32) {
     *p = 123;
 }
             "#,
-        )
+        );
+        check_diagnostics(
+            r#"
+//- /lib.rs crate:foo edition:2021
+#![deny(warnings)]
+unsafe fn foo(p: *mut i32) {
+    *p = 123;
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn unsafe_op_in_unsafe_fn_warn_by_default_in_edition_2024() {
+        check_diagnostics(
+            r#"
+//- /lib.rs crate:foo edition:2024
+unsafe fn foo(p: *mut i32) {
+    *p = 123;
+  //^^💡 warn: dereference of raw pointer is unsafe and requires an unsafe function or block
+}
+            "#,
+        );
+        check_diagnostics(
+            r#"
+//- /lib.rs crate:foo edition:2024
+#![deny(warnings)]
+unsafe fn foo(p: *mut i32) {
+    *p = 123;
+  //^^💡 error: dereference of raw pointer is unsafe and requires an unsafe function or block
+}
+            "#,
+        );
     }
 
     #[test]

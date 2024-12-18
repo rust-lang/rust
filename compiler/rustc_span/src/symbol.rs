@@ -306,6 +306,7 @@ symbols! {
         RwLockWriteGuard,
         Saturating,
         SeekFrom,
+        SelfTy,
         Send,
         SeqCst,
         Sized,
@@ -1190,6 +1191,7 @@ symbols! {
         loongarch_target_feature,
         loop_break_value,
         lt,
+        m68k_target_feature,
         macro_at_most_once_rep,
         macro_attributes_in_derive_output,
         macro_escape,
@@ -2473,13 +2475,6 @@ impl fmt::Debug for Symbol {
 impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self.as_str(), f)
-    }
-}
-
-// takes advantage of `str::to_string` specialization
-impl ToString for Symbol {
-    fn to_string(&self) -> String {
-        self.as_str().to_string()
     }
 }
 

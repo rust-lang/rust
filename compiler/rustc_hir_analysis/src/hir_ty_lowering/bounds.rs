@@ -9,8 +9,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::bug;
 use rustc_middle::ty::{self as ty, IsSuggestable, Ty, TyCtxt};
-use rustc_span::symbol::Ident;
-use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
+use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
 use rustc_trait_selection::traits;
 use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use smallvec::SmallVec;
@@ -745,7 +744,7 @@ fn check_assoc_const_binding_type<'tcx>(
     let generics = tcx.generics_of(enclosing_item_owner_id);
     for index in collector.params {
         let param = generics.param_at(index as _, tcx);
-        let is_self_param = param.name == rustc_span::symbol::kw::SelfUpper;
+        let is_self_param = param.name == kw::SelfUpper;
         guar.get_or_insert(cx.dcx().emit_err(crate::errors::ParamInTyOfAssocConstBinding {
             span: assoc_const.span,
             assoc_const,

@@ -4,8 +4,7 @@ use rustc_ast::{
     WhereClause, token,
 };
 use rustc_errors::{Applicability, PResult};
-use rustc_span::Span;
-use rustc_span::symbol::{Ident, kw};
+use rustc_span::{Ident, Span, kw};
 use thin_vec::ThinVec;
 
 use super::{ForceCollect, Parser, Trailing, UsePreAttrPos};

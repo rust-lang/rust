@@ -15,8 +15,7 @@ use rustc_middle::ty::{
     suggest_constraining_type_param,
 };
 use rustc_middle::util::{CallDesugaringKind, CallKind, call_kind};
-use rustc_span::symbol::sym;
-use rustc_span::{BytePos, Pos, Span, Symbol};
+use rustc_span::{BytePos, Pos, Span, Symbol, sym};
 use rustc_trait_selection::traits::SelectionContext;
 use tracing::debug;
 

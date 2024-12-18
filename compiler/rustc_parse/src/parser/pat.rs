@@ -13,8 +13,7 @@ use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diag, DiagArgValue, PResult, StashKey};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::{Spanned, respan};
-use rustc_span::symbol::{Ident, kw, sym};
-use rustc_span::{BytePos, ErrorGuaranteed, Span};
+use rustc_span::{BytePos, ErrorGuaranteed, Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use super::{ForceCollect, Parser, PathStyle, Restrictions, Trailing, UsePreAttrPos};
@@ -1371,10 +1370,10 @@ impl<'a> Parser<'a> {
         self.bump();
         let (fields, etc) = self.parse_pat_fields().unwrap_or_else(|mut e| {
             e.span_label(path.span, "while parsing the fields for this pattern");
-            e.emit();
+            let guar = e.emit();
             self.recover_stmt();
             // When recovering, pretend we had `Foo { .. }`, to avoid cascading errors.
-            (ThinVec::new(), PatFieldsRest::Rest)
+            (ThinVec::new(), PatFieldsRest::Recovered(guar))
         });
         self.bump();
         Ok(PatKind::Struct(qself, path, fields, etc))

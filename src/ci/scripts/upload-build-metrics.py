@@ -9,8 +9,8 @@ It expects the following environment variables:
 - DATADOG_API_KEY: DataDog API token
 - DD_GITHUB_JOB_NAME: Name of the current GitHub Actions job
 
-And it also expects the presence of a binary called `datadog-ci` to be in PATH.
-It can be installed with `npm install -g @datadog/datadog-ci`.
+It expects the presence of a binary called `datadog-ci` inside `node_modules`.
+It can be installed with `npm ci` at `src/ci`.
 
 Usage:
 ```bash
@@ -50,16 +50,14 @@ def upload_datadog_measure(name: str, value: float):
     """
     print(f"Metric {name}: {value:.4f}")
 
-    datadog_cmd = "datadog-ci"
-    if os.getenv("GITHUB_ACTIONS") is not None and sys.platform.lower().startswith(
-        "win"
-    ):
+    cmd = "npx"
+    if os.getenv("GITHUB_ACTIONS") is not None and sys.platform.lower().startswith("win"):
         # Due to weird interaction of MSYS2 and Python, we need to use an absolute path,
         # and also specify the ".cmd" at the end. See https://github.com/rust-lang/rust/pull/125771.
-        datadog_cmd = "C:\\npm\\prefix\\datadog-ci.cmd"
+        cmd = "C:\\Program Files\\nodejs\\npx.cmd"
 
     subprocess.run(
-        [datadog_cmd, "measure", "--level", "job", "--measures", f"{name}:{value}"],
+        [cmd, "datadog-ci", "measure", "--level", "job", "--measures", f"{name}:{value}"],
         check=False,
     )
 

@@ -4380,7 +4380,7 @@ fn test() {
 fn associated_type_in_struct_expr_path() {
     // FIXME: All annotation should be resolvable.
     // For lines marked as unstable, see rust-lang/rust#86935.
-    // FIXME: Remove the comments once stablized.
+    // FIXME: Remove the comments once stabilized.
     check_types(
         r#"
 trait Trait {
@@ -4416,7 +4416,7 @@ impl Trait for () {
 fn associated_type_in_struct_expr_path_enum() {
     // FIXME: All annotation should be resolvable.
     // For lines marked as unstable, see rust-lang/rust#86935.
-    // FIXME: Remove the comments once stablized.
+    // FIXME: Remove the comments once stabilized.
     check_types(
         r#"
 trait Trait {

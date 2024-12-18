@@ -4,9 +4,8 @@ use rustc_ast_pretty::pprust;
 use rustc_feature::Features;
 use rustc_session::Session;
 use rustc_session::parse::feature_err;
-use rustc_span::Span;
 use rustc_span::edition::Edition;
-use rustc_span::symbol::{Ident, kw, sym};
+use rustc_span::{Ident, Span, kw, sym};
 
 use crate::errors;
 use crate::mbe::macro_parser::count_metavar_decls;

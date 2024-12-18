@@ -1,6 +1,6 @@
 //! List of the removed feature gates.
 
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 
 use super::{Feature, to_nonzero};
 

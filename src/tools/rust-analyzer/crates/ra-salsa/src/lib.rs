@@ -291,7 +291,7 @@ pub trait ParallelDatabase: Database + Send {
     /// # Panics
     ///
     /// It is not permitted to create a snapshot from inside of a
-    /// query. Attepting to do so will panic.
+    /// query. Attempting to do so will panic.
     ///
     /// # Deadlock warning
     ///

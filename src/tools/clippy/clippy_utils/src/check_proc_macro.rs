@@ -373,7 +373,7 @@ fn ty_search_pat(ty: &Ty<'_>) -> (Pat, Pat) {
         TyKind::Ptr(MutTy { ty, .. }) => (Pat::Str("*"), ty_search_pat(ty).1),
         TyKind::Ref(_, MutTy { ty, .. }) => (Pat::Str("&"), ty_search_pat(ty).1),
         TyKind::BareFn(bare_fn) => (
-            if bare_fn.safety == Safety::Unsafe {
+            if bare_fn.safety.is_unsafe() {
                 Pat::Str("unsafe")
             } else if bare_fn.abi != Abi::Rust {
                 Pat::Str("extern")

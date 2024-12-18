@@ -45,7 +45,7 @@ use rustc_errors::registry::Registry;
 use rustc_errors::{ColorConfig, DiagCtxt, ErrCode, FatalError, PResult, markdown};
 use rustc_feature::find_gated_cfg;
 use rustc_interface::util::{self, get_codegen_backend};
-use rustc_interface::{Linker, interface, passes};
+use rustc_interface::{Linker, create_and_enter_global_ctxt, interface, passes};
 use rustc_lint::unerased_lint_store;
 use rustc_metadata::creader::MetadataLoader;
 use rustc_metadata::locator;
@@ -112,7 +112,7 @@ pub static DEFAULT_LOCALE_RESOURCES: &[&str] = &[
     crate::DEFAULT_LOCALE_RESOURCE,
     rustc_ast_lowering::DEFAULT_LOCALE_RESOURCE,
     rustc_ast_passes::DEFAULT_LOCALE_RESOURCE,
-    rustc_attr::DEFAULT_LOCALE_RESOURCE,
+    rustc_attr_parsing::DEFAULT_LOCALE_RESOURCE,
     rustc_borrowck::DEFAULT_LOCALE_RESOURCE,
     rustc_builtin_macros::DEFAULT_LOCALE_RESOURCE,
     rustc_codegen_ssa::DEFAULT_LOCALE_RESOURCE,
@@ -387,76 +387,69 @@ fn run_compiler(
             return early_exit();
         }
 
-        let linker = compiler.enter(|queries| {
+        // Parse the crate root source code (doesn't parse submodules yet)
+        // Everything else is parsed during macro expansion.
+        let krate = passes::parse(sess);
+
+        // If pretty printing is requested: Figure out the representation, print it and exit
+        if let Some(pp_mode) = sess.opts.pretty {
+            if pp_mode.needs_ast_map() {
+                create_and_enter_global_ctxt(compiler, krate, |tcx| {
+                    tcx.ensure().early_lint_checks(());
+                    pretty::print(sess, pp_mode, pretty::PrintExtra::NeedsAstMap { tcx });
+                    passes::write_dep_info(tcx);
+                });
+            } else {
+                pretty::print(sess, pp_mode, pretty::PrintExtra::AfterParsing { krate: &krate });
+            }
+            trace!("finished pretty-printing");
+            return early_exit();
+        }
+
+        if callbacks.after_crate_root_parsing(compiler, &krate) == Compilation::Stop {
+            return early_exit();
+        }
+
+        if sess.opts.unstable_opts.parse_crate_root_only {
+            return early_exit();
+        }
+
+        let linker = create_and_enter_global_ctxt(compiler, krate, |tcx| {
             let early_exit = || {
                 sess.dcx().abort_if_errors();
                 None
             };
 
-            // Parse the crate root source code (doesn't parse submodules yet)
-            // Everything else is parsed during macro expansion.
-            queries.parse();
+            // Make sure name resolution and macro expansion is run.
+            let _ = tcx.resolver_for_lowering();
 
-            // If pretty printing is requested: Figure out the representation, print it and exit
-            if let Some(pp_mode) = sess.opts.pretty {
-                if pp_mode.needs_ast_map() {
-                    queries.global_ctxt().enter(|tcx| {
-                        tcx.ensure().early_lint_checks(());
-                        pretty::print(sess, pp_mode, pretty::PrintExtra::NeedsAstMap { tcx });
-                        passes::write_dep_info(tcx);
-                    });
-                } else {
-                    let krate = queries.parse();
-                    pretty::print(sess, pp_mode, pretty::PrintExtra::AfterParsing {
-                        krate: &*krate.borrow(),
-                    });
-                }
-                trace!("finished pretty-printing");
+            if let Some(metrics_dir) = &sess.opts.unstable_opts.metrics_dir {
+                dump_feature_usage_metrics(tcx, metrics_dir);
+            }
+
+            if callbacks.after_expansion(compiler, tcx) == Compilation::Stop {
                 return early_exit();
             }
 
-            if callbacks.after_crate_root_parsing(compiler, &*queries.parse().borrow())
-                == Compilation::Stop
+            passes::write_dep_info(tcx);
+
+            if sess.opts.output_types.contains_key(&OutputType::DepInfo)
+                && sess.opts.output_types.len() == 1
             {
                 return early_exit();
             }
 
-            if sess.opts.unstable_opts.parse_crate_root_only {
+            if sess.opts.unstable_opts.no_analysis {
                 return early_exit();
             }
 
-            queries.global_ctxt().enter(|tcx| {
-                // Make sure name resolution and macro expansion is run.
-                let _ = tcx.resolver_for_lowering();
+            tcx.ensure().analysis(());
 
-                if let Some(metrics_dir) = &sess.opts.unstable_opts.metrics_dir {
-                    dump_feature_usage_metrics(tcx, metrics_dir);
-                }
+            if callbacks.after_analysis(compiler, tcx) == Compilation::Stop {
+                return early_exit();
+            }
 
-                if callbacks.after_expansion(compiler, tcx) == Compilation::Stop {
-                    return early_exit();
-                }
-
-                passes::write_dep_info(tcx);
-
-                if sess.opts.output_types.contains_key(&OutputType::DepInfo)
-                    && sess.opts.output_types.len() == 1
-                {
-                    return early_exit();
-                }
-
-                if sess.opts.unstable_opts.no_analysis {
-                    return early_exit();
-                }
-
-                tcx.ensure().analysis(());
-
-                if callbacks.after_analysis(compiler, tcx) == Compilation::Stop {
-                    return early_exit();
-                }
-
-                Some(Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend))
-            })
+            Some(Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend))
         });
 
         // Linking is done outside the `compiler.enter()` so that the

@@ -18,6 +18,8 @@ ra-ap-rustc_lexer.workspace = true
 limit.workspace = true
 tracing = { workspace = true, optional = true }
 
+edition.workspace = true
+
 [dev-dependencies]
 expect-test = "1.4.0"
 

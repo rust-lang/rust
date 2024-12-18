@@ -3,7 +3,7 @@
 //! and Rust adds some features that do not correspond to LLVM features at all.
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Symbol, sym};
 
 use crate::spec::Target;
 
@@ -20,7 +20,7 @@ pub const RUSTC_SPECIAL_FEATURES: &[&str] = &["backchain"];
 /// `Toggleability` is the type storing whether (un)stable features can be toggled:
 /// this is initially a function since it can depend on `Target`, but for stable hashing
 /// it needs to be something hashable to we have to make the type generic.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum Stability<Toggleability> {
     /// This target feature is stable, it can be used in `#[target_feature]` and
     /// `#[cfg(target_feature)]`.
@@ -39,16 +39,26 @@ pub enum Stability<Toggleability> {
         allow_toggle: Toggleability,
     },
     /// This feature can not be set via `-Ctarget-feature` or `#[target_feature]`, it can only be
-    /// set in the basic target definition. It is never set in `cfg(target_feature)`. Used in
+    /// set in the target spec. It is never set in `cfg(target_feature)`. Used in
     /// particular for features that change the floating-point ABI.
     Forbidden { reason: &'static str },
 }
 
-/// `Stability` where `allow_toggle` has not been computed yet.
 /// Returns `Ok` if the toggle is allowed, `Err` with an explanation of not.
-pub type StabilityUncomputed = Stability<fn(&Target) -> Result<(), &'static str>>;
+/// The `bool` indicates whether the feature is being enabled (`true`) or disabled.
+pub type AllowToggleUncomputed = fn(&Target, bool) -> Result<(), &'static str>;
+
+/// The computed result of whether a feature can be enabled/disabled on the current target.
+#[derive(Debug, Clone)]
+pub struct AllowToggleComputed {
+    enable: Result<(), &'static str>,
+    disable: Result<(), &'static str>,
+}
+
+/// `Stability` where `allow_toggle` has not been computed yet.
+pub type StabilityUncomputed = Stability<AllowToggleUncomputed>;
 /// `Stability` where `allow_toggle` has already been computed.
-pub type StabilityComputed = Stability<Result<(), &'static str>>;
+pub type StabilityComputed = Stability<AllowToggleComputed>;
 
 impl<CTX, Toggleability: HashStable<CTX>> HashStable<CTX> for Stability<Toggleability> {
     #[inline]
@@ -69,11 +79,20 @@ impl<CTX, Toggleability: HashStable<CTX>> HashStable<CTX> for Stability<Toggleab
     }
 }
 
+impl<CTX> HashStable<CTX> for AllowToggleComputed {
+    #[inline]
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        let AllowToggleComputed { enable, disable } = self;
+        enable.hash_stable(hcx, hasher);
+        disable.hash_stable(hcx, hasher);
+    }
+}
+
 impl<Toggleability> Stability<Toggleability> {
     /// Returns whether the feature can be used in `cfg(target_feature)` ever.
     /// (It might still be nightly-only even if this returns `true`, so make sure to also check
     /// `requires_nightly`.)
-    pub fn in_cfg(self) -> bool {
+    pub fn in_cfg(&self) -> bool {
         !matches!(self, Stability::Forbidden { .. })
     }
 
@@ -85,8 +104,8 @@ impl<Toggleability> Stability<Toggleability> {
     /// Before calling this, ensure the feature is even permitted for this use:
     /// - for `#[target_feature]`/`-Ctarget-feature`, check `allow_toggle()`
     /// - for `cfg(target_feature)`, check `in_cfg`
-    pub fn requires_nightly(self) -> Option<Symbol> {
-        match self {
+    pub fn requires_nightly(&self) -> Option<Symbol> {
+        match *self {
             Stability::Unstable { nightly_feature, .. } => Some(nightly_feature),
             Stability::Stable { .. } => None,
             Stability::Forbidden { .. } => panic!("forbidden features should not reach this far"),
@@ -95,14 +114,27 @@ impl<Toggleability> Stability<Toggleability> {
 }
 
 impl StabilityUncomputed {
-    pub fn compute_toggleability(self, target: &Target) -> StabilityComputed {
+    pub fn compute_toggleability(&self, target: &Target) -> StabilityComputed {
         use Stability::*;
-        match self {
-            Stable { allow_toggle } => Stable { allow_toggle: allow_toggle(target) },
+        let compute = |f: AllowToggleUncomputed| AllowToggleComputed {
+            enable: f(target, true),
+            disable: f(target, false),
+        };
+        match *self {
+            Stable { allow_toggle } => Stable { allow_toggle: compute(allow_toggle) },
             Unstable { nightly_feature, allow_toggle } => {
-                Unstable { nightly_feature, allow_toggle: allow_toggle(target) }
+                Unstable { nightly_feature, allow_toggle: compute(allow_toggle) }
             }
             Forbidden { reason } => Forbidden { reason },
+        }
+    }
+
+    pub fn toggle_allowed(&self, target: &Target, enable: bool) -> Result<(), &'static str> {
+        use Stability::*;
+        match *self {
+            Stable { allow_toggle } => allow_toggle(target, enable),
+            Unstable { allow_toggle, .. } => allow_toggle(target, enable),
+            Forbidden { reason } => Err(reason),
         }
     }
 }
@@ -111,19 +143,20 @@ impl StabilityComputed {
     /// Returns whether the feature may be toggled via `#[target_feature]` or `-Ctarget-feature`.
     /// (It might still be nightly-only even if this returns `true`, so make sure to also check
     /// `requires_nightly`.)
-    pub fn allow_toggle(self) -> Result<(), &'static str> {
-        match self {
+    pub fn toggle_allowed(&self, enable: bool) -> Result<(), &'static str> {
+        let allow_toggle = match self {
             Stability::Stable { allow_toggle } => allow_toggle,
             Stability::Unstable { allow_toggle, .. } => allow_toggle,
-            Stability::Forbidden { reason } => Err(reason),
-        }
+            Stability::Forbidden { reason } => return Err(reason),
+        };
+        if enable { allow_toggle.enable } else { allow_toggle.disable }
     }
 }
 
 // Constructors for the list below, defaulting to "always allow toggle".
-const STABLE: StabilityUncomputed = Stability::Stable { allow_toggle: |_target| Ok(()) };
+const STABLE: StabilityUncomputed = Stability::Stable { allow_toggle: |_target, _enable| Ok(()) };
 const fn unstable(nightly_feature: Symbol) -> StabilityUncomputed {
-    Stability::Unstable { nightly_feature, allow_toggle: |_target| Ok(()) }
+    Stability::Unstable { nightly_feature, allow_toggle: |_target, _enable| Ok(()) }
 }
 
 // Here we list target features that rustc "understands": they can be used in `#[target_feature]`
@@ -184,7 +217,7 @@ const ARM_FEATURES: &[(&str, StabilityUncomputed, ImpliedFeatures)] = &[
         "fpregs",
         Stability::Unstable {
             nightly_feature: sym::arm_target_feature,
-            allow_toggle: |target: &Target| {
+            allow_toggle: |target: &Target, _enable| {
                 // Only allow toggling this if the target has `soft-float` set. With `soft-float`,
                 // `fpregs` isn't needed so changing it cannot affect the ABI.
                 if target.has_feature("soft-float") {
@@ -257,6 +290,7 @@ const AARCH64_FEATURES: &[(&str, StabilityUncomputed, ImpliedFeatures)] = &[
     ("flagm", STABLE, &[]),
     // FEAT_FLAGM2
     ("flagm2", unstable(sym::aarch64_unstable_target_feature), &[]),
+    ("fp-armv8", Stability::Forbidden { reason: "Rust ties `fp-armv8` to `neon`" }, &[]),
     // FEAT_FP16
     // Rust ties FP and Neon: https://github.com/rust-lang/rust/pull/91608
     ("fp16", STABLE, &["neon"]),
@@ -292,7 +326,28 @@ const AARCH64_FEATURES: &[(&str, StabilityUncomputed, ImpliedFeatures)] = &[
     // FEAT_MTE & FEAT_MTE2
     ("mte", STABLE, &[]),
     // FEAT_AdvSimd & FEAT_FP
-    ("neon", STABLE, &[]),
+    (
+        "neon",
+        Stability::Stable {
+            allow_toggle: |target, enable| {
+                if target.abi == "softfloat" {
+                    // `neon` has no ABI implications for softfloat targets, we can allow this.
+                    Ok(())
+                } else if enable
+                    && !target.has_neg_feature("fp-armv8")
+                    && !target.has_neg_feature("neon")
+                {
+                    // neon is enabled by default, and has not been disabled, so enabling it again
+                    // is redundant and we can permit it. Forbidding this would be a breaking change
+                    // since this feature is stable.
+                    Ok(())
+                } else {
+                    Err("unsound on hard-float targets because it changes float ABI")
+                }
+            },
+        },
+        &[],
+    ),
     // FEAT_PAUTH (address authentication)
     ("paca", STABLE, &[]),
     // FEAT_PAUTH (generic authentication)
@@ -481,7 +536,7 @@ const X86_FEATURES: &[(&str, StabilityUncomputed, ImpliedFeatures)] = &[
         "x87",
         Stability::Unstable {
             nightly_feature: sym::x87_target_feature,
-            allow_toggle: |target: &Target| {
+            allow_toggle: |target: &Target, _enable| {
                 // Only allow toggling this if the target has `soft-float` set. With `soft-float`,
                 // `fpregs` isn't needed so changing it cannot affect the ABI.
                 if target.has_feature("soft-float") {
@@ -535,9 +590,76 @@ const RISCV_FEATURES: &[(&str, StabilityUncomputed, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("a", STABLE, &["zaamo", "zalrsc"]),
     ("c", STABLE, &[]),
-    ("d", unstable(sym::riscv_target_feature), &["f"]),
-    ("e", unstable(sym::riscv_target_feature), &[]),
-    ("f", unstable(sym::riscv_target_feature), &[]),
+    (
+        "d",
+        Stability::Unstable {
+            nightly_feature: sym::riscv_target_feature,
+            allow_toggle: |target, enable| match &*target.llvm_abiname {
+                "ilp32d" | "lp64d" if !enable => {
+                    // The ABI requires the `d` feature, so it cannot be disabled.
+                    Err("feature is required by ABI")
+                }
+                "ilp32e" if enable => {
+                    // ilp32e is incompatible with features that need aligned load/stores > 32 bits,
+                    // like `d`.
+                    Err("feature is incompatible with ABI")
+                }
+                _ => Ok(()),
+            },
+        },
+        &["f"],
+    ),
+    (
+        "e",
+        Stability::Unstable {
+            // Given that this is a negative feature, consider this before stabilizing:
+            // does it really make sense to enable this feature in an individual
+            // function with `#[target_feature]`?
+            nightly_feature: sym::riscv_target_feature,
+            allow_toggle: |target, enable| {
+                match &*target.llvm_abiname {
+                    _ if !enable => {
+                        // Disabling this feature means we can use more registers (x16-x31).
+                        // The "e" ABIs treat them as caller-save, so it is safe to use them only
+                        // in some parts of a program while the rest doesn't know they even exist.
+                        // On other ABIs, the feature is already disabled anyway.
+                        Ok(())
+                    }
+                    "ilp32e" | "lp64e" => {
+                        // Embedded ABIs should already have the feature anyway, it's fine to enable
+                        // it again from an ABI perspective.
+                        Ok(())
+                    }
+                    _ => {
+                        // *Not* an embedded ABI. Enabling `e` is invalid.
+                        Err("feature is incompatible with ABI")
+                    }
+                }
+            },
+        },
+        &[],
+    ),
+    (
+        "f",
+        Stability::Unstable {
+            nightly_feature: sym::riscv_target_feature,
+            allow_toggle: |target, enable| {
+                match &*target.llvm_abiname {
+                    "ilp32f" | "ilp32d" | "lp64f" | "lp64d" if !enable => {
+                        // The ABI requires the `f` feature, so it cannot be disabled.
+                        Err("feature is required by ABI")
+                    }
+                    _ => Ok(()),
+                }
+            },
+        },
+        &[],
+    ),
+    (
+        "forced-atomics",
+        Stability::Forbidden { reason: "unsound because it changes the ABI of atomic operations" },
+        &[],
+    ),
     ("m", STABLE, &[]),
     ("relax", unstable(sym::riscv_target_feature), &[]),
     ("unaligned-scalar-mem", unstable(sym::riscv_target_feature), &[]),
@@ -668,6 +790,20 @@ const SPARC_FEATURES: &[(&str, StabilityUncomputed, ImpliedFeatures)] = &[
     // tidy-alphabetical-end
 ];
 
+const M68K_FEATURES: &[(&str, StabilityUncomputed, ImpliedFeatures)] = &[
+    // tidy-alphabetical-start
+    ("isa-68000", unstable(sym::m68k_target_feature), &[]),
+    ("isa-68010", unstable(sym::m68k_target_feature), &["isa-68000"]),
+    ("isa-68020", unstable(sym::m68k_target_feature), &["isa-68010"]),
+    ("isa-68030", unstable(sym::m68k_target_feature), &["isa-68020"]),
+    ("isa-68040", unstable(sym::m68k_target_feature), &["isa-68030", "isa-68882"]),
+    ("isa-68060", unstable(sym::m68k_target_feature), &["isa-68040"]),
+    // FPU
+    ("isa-68881", unstable(sym::m68k_target_feature), &[]),
+    ("isa-68882", unstable(sym::m68k_target_feature), &["isa-68881"]),
+    // tidy-alphabetical-end
+];
+
 /// When rustdoc is running, provide a list of all known features so that all their respective
 /// primitives may be documented.
 ///
@@ -687,6 +823,7 @@ pub fn all_rust_features() -> impl Iterator<Item = (&'static str, StabilityUncom
         .chain(LOONGARCH_FEATURES)
         .chain(IBMZ_FEATURES)
         .chain(SPARC_FEATURES)
+        .chain(M68K_FEATURES)
         .cloned()
         .map(|(f, s, _)| (f, s))
 }
@@ -734,6 +871,7 @@ impl Target {
             "loongarch64" => LOONGARCH_FEATURES,
             "s390x" => IBMZ_FEATURES,
             "sparc" | "sparc64" => SPARC_FEATURES,
+            "m68k" => M68K_FEATURES,
             _ => &[],
         }
     }
@@ -751,7 +889,7 @@ impl Target {
             "sparc" | "sparc64" => SPARC_FEATURES_FOR_CORRECT_VECTOR_ABI,
             "hexagon" => HEXAGON_FEATURES_FOR_CORRECT_VECTOR_ABI,
             "mips" | "mips32r6" | "mips64" | "mips64r6" => MIPS_FEATURES_FOR_CORRECT_VECTOR_ABI,
-            "bpf" => &[], // no vector ABI
+            "bpf" | "m68k" => &[], // no vector ABI
             "csky" => CSKY_FEATURES_FOR_CORRECT_VECTOR_ABI,
             // FIXME: for some tier3 targets, we are overly cautious and always give warnings
             // when passing args in vector registers.

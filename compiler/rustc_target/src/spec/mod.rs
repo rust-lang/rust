@@ -46,7 +46,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_fs_util::try_canonicalize;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
-use rustc_span::symbol::{Symbol, kw, sym};
+use rustc_span::{Symbol, kw, sym};
 use serde_json::Value;
 use tracing::debug;
 
@@ -2213,6 +2213,10 @@ pub struct TargetOptions {
     /// `-Ctarget-cpu` but can be overwritten with `-Ctarget-features`.
     /// Corresponds to `llc -mattr=$features`.
     /// Note that these are LLVM feature names, not Rust feature names!
+    ///
+    /// Generally it is a bad idea to use negative target features because they often interact very
+    /// poorly with how `-Ctarget-cpu` works. Instead, try to use a lower "base CPU" and enable the
+    /// features you want to use.
     pub features: StaticCow<str>,
     /// Direct or use GOT indirect to reference external data symbols
     pub direct_access_external_data: Option<bool>,
@@ -2605,15 +2609,11 @@ impl TargetOptions {
     }
 
     pub(crate) fn has_feature(&self, search_feature: &str) -> bool {
-        self.features.split(',').any(|f| {
-            if let Some(f) = f.strip_prefix('+')
-                && f == search_feature
-            {
-                true
-            } else {
-                false
-            }
-        })
+        self.features.split(',').any(|f| f.strip_prefix('+').is_some_and(|f| f == search_feature))
+    }
+
+    pub(crate) fn has_neg_feature(&self, search_feature: &str) -> bool {
+        self.features.split(',').any(|f| f.strip_prefix('-').is_some_and(|f| f == search_feature))
     }
 }
 
@@ -3166,7 +3166,7 @@ impl Target {
                 // Note that the `lp64e` is still unstable as it's not (yet) part of the ELF psABI.
                 check_matches!(
                     &*self.llvm_abiname,
-                    "lp64" | "lp64f" | "lp64d" | "lp64q" | "lp64e",
+                    "lp64" | "lp64f" | "lp64d" | "lp64e",
                     "invalid RISC-V ABI name"
                 );
             }

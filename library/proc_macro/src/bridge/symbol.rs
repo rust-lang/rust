@@ -91,12 +91,6 @@ impl fmt::Debug for Symbol {
     }
 }
 
-impl ToString for Symbol {
-    fn to_string(&self) -> String {
-        self.with(|s| s.to_owned())
-    }
-}
-
 impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.with(|s| fmt::Display::fmt(s, f))

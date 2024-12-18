@@ -14,7 +14,7 @@ use object::read::macho::FatArch;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::memmap::Mmap;
 use rustc_session::Session;
-use rustc_span::symbol::Symbol;
+use rustc_span::Symbol;
 use tempfile::Builder as TempFileBuilder;
 use tracing::trace;
 

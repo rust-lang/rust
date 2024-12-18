@@ -4,7 +4,7 @@ warning[E0133]: call to unsafe function `unsf` is unsafe and requires unsafe blo
 LL |     unsf();
    |     ^^^^^^ call to unsafe function
    |
-   = note: for more information, see issue #71668 <https://github.com/rust-lang/rust/issues/71668>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>
    = note: consult the function's documentation for information on how to avoid undefined behavior
 note: an unsafe function restricts its caller, but its body is safe by default
   --> $DIR/edition-2024-unsafe_op_in_unsafe_fn.rs:8:1

@@ -2442,7 +2442,9 @@ impl Step for ErrorIndex {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/error_index_generator")
+        // Also add `error-index` here since that is what appears in the error message
+        // when this fails.
+        run.path("src/tools/error_index_generator").alias("error-index")
     }
 
     fn make_run(run: RunConfig<'_>) {
