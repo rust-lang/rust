@@ -193,10 +193,19 @@ impl<'a> UnsafeVisitor<'a> {
                 self.resolver.reset_to_guard(guard);
             }
             Expr::Ref { expr, rawness: Rawness::RawPtr, mutability: _ } => {
-                if let Expr::Path(_) = self.body.exprs[*expr] {
+                match self.body.exprs[*expr] {
                     // Do not report unsafe for `addr_of[_mut]!(EXTERN_OR_MUT_STATIC)`,
                     // see https://github.com/rust-lang/rust/pull/125834.
-                    return;
+                    Expr::Path(_) => return,
+                    // https://github.com/rust-lang/rust/pull/129248
+                    // Taking a raw ref to a deref place expr is always safe.
+                    Expr::UnaryOp { expr, op: UnaryOp::Deref } => {
+                        self.body
+                            .walk_child_exprs_without_pats(expr, |child| self.walk_expr(child));
+
+                        return;
+                    }
+                    _ => (),
                 }
             }
             Expr::MethodCall { .. } => {

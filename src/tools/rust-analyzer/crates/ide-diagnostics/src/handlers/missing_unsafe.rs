@@ -778,4 +778,20 @@ fn bar(mut v: Union2) {
             "#,
         )
     }
+
+    #[test]
+    fn raw_ref_reborrow_is_safe() {
+        check_diagnostics(
+            r#"
+fn main() {
+    let ptr: *mut i32;
+    let _addr = &raw const *ptr;
+
+    let local = 1;
+    let ptr = &local as *const i32;
+    let _addr = &raw const *ptr;
+}
+"#,
+        )
+    }
 }
