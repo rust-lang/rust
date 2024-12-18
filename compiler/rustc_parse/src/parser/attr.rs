@@ -2,8 +2,7 @@ use rustc_ast::token::{self, Delimiter};
 use rustc_ast::{self as ast, Attribute, attr};
 use rustc_errors::codes::*;
 use rustc_errors::{Diag, PResult};
-use rustc_span::symbol::kw;
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, Span, kw};
 use thin_vec::ThinVec;
 use tracing::debug;
 

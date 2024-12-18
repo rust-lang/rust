@@ -31,8 +31,7 @@ use rustc_serialize::{Decodable, Decoder};
 use rustc_session::Session;
 use rustc_session::cstore::{CrateSource, ExternCrate};
 use rustc_span::hygiene::HygieneDecodeContext;
-use rustc_span::symbol::kw;
-use rustc_span::{BytePos, DUMMY_SP, Pos, SpanData, SpanDecoder, SyntaxContext};
+use rustc_span::{BytePos, DUMMY_SP, Pos, SpanData, SpanDecoder, SyntaxContext, kw};
 use tracing::debug;
 
 use crate::creader::CStore;
@@ -874,7 +873,7 @@ impl MetadataBlob {
                         let def_key = root.tables.def_keys.get(blob, item).unwrap().decode(blob);
                         #[cfg_attr(not(bootstrap), allow(rustc::symbol_intern_string_literal))]
                         let def_name = if item == CRATE_DEF_INDEX {
-                            rustc_span::symbol::kw::Crate
+                            kw::Crate
                         } else {
                             def_key
                                 .disambiguated_data

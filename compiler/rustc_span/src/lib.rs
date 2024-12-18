@@ -67,7 +67,7 @@ mod span_encoding;
 pub use span_encoding::{DUMMY_SP, Span};
 
 pub mod symbol;
-pub use symbol::{Symbol, sym};
+pub use symbol::{Ident, MacroRulesNormalizedIdent, Symbol, kw, sym};
 
 mod analyze_source_file;
 pub mod fatal_error;

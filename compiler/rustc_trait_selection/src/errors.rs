@@ -14,8 +14,7 @@ use rustc_hir::{FnRetTy, GenericParamKind, Node};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::print::{PrintTraitRefExt as _, TraitRefPrintOnlyTraitPath};
 use rustc_middle::ty::{self, Binder, ClosureKind, FnSig, PolyTraitRef, Region, Ty, TyCtxt};
-use rustc_span::symbol::{Ident, Symbol, kw};
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, Ident, Span, Symbol, kw};
 
 use crate::error_reporting::infer::ObligationCauseAsDiagArg;
 use crate::error_reporting::infer::need_type_info::UnderspecifiedArgKind;

@@ -117,7 +117,7 @@ use rustc_middle::ty::{self, InstanceKind, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_session::CodegenUnits;
 use rustc_session::config::{DumpMonoStatsFormat, SwitchWithOptPath};
-use rustc_span::symbol::Symbol;
+use rustc_span::Symbol;
 use rustc_target::spec::SymbolVisibility;
 use tracing::debug;
 

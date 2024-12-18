@@ -23,9 +23,8 @@ use rustc_session::lint::{
     FutureIncompatibleInfo, Level, Lint, LintBuffer, LintExpectationId, LintId,
 };
 use rustc_session::{LintStoreMarker, Session};
-use rustc_span::Span;
 use rustc_span::edit_distance::find_best_match_for_names;
-use rustc_span::symbol::{Ident, Symbol, sym};
+use rustc_span::{Ident, Span, Symbol, sym};
 use tracing::debug;
 use {rustc_abi as abi, rustc_hir as hir};
 

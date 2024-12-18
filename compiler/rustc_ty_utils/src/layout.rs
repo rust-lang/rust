@@ -23,8 +23,7 @@ use rustc_middle::ty::{
     TypeVisitableExt,
 };
 use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
-use rustc_span::sym;
-use rustc_span::symbol::Symbol;
+use rustc_span::{Symbol, sym};
 use tracing::{debug, instrument, trace};
 use {rustc_abi as abi, rustc_hir as hir};
 

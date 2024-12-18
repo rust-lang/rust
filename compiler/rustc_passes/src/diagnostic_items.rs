@@ -14,7 +14,7 @@ use rustc_hir::{Attribute, OwnerId};
 use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Symbol, sym};
 
 use crate::errors::DuplicateDiagnosticItemInCrate;
 

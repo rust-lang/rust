@@ -10,8 +10,7 @@ use rustc_ast::util::comments::beautify_doc_string;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
-use rustc_span::symbol::{Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, InnerSpan, Span};
+use rustc_span::{DUMMY_SP, InnerSpan, Span, Symbol, kw, sym};
 use thin_vec::ThinVec;
 use tracing::{debug, trace};
 

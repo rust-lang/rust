@@ -5,8 +5,7 @@ use std::iter;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use rustc_index::bit_set::GrowableBitSet;
-use rustc_span::Span;
-use rustc_span::symbol::{Ident, Symbol, sym};
+use rustc_span::{Ident, Span, Symbol, sym};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::{ThinVec, thin_vec};
 

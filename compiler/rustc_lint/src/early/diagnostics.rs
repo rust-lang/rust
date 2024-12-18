@@ -11,8 +11,7 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::lint::{BuiltinLintDiag, ElidedLifetimeResolution};
-use rustc_span::BytePos;
-use rustc_span::symbol::kw;
+use rustc_span::{BytePos, kw};
 use tracing::debug;
 
 use crate::lints::{self, ElidedNamedLifetime};

@@ -1,7 +1,7 @@
 use rustc_ast::attr::{AttributeExt, first_attr_value_str_by_name};
 use rustc_attr_data_structures::RustcVersion;
 use rustc_feature::is_builtin_attr_name;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Symbol, sym};
 
 pub(crate) enum UnsupportedLiteralReason {
     Generic,

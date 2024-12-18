@@ -9,8 +9,7 @@ use rustc_middle::middle::codegen_fn_attrs::TargetFeature;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::feature_err;
-use rustc_span::Span;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Span, Symbol, sym};
 use rustc_target::target_features;
 
 use crate::errors;

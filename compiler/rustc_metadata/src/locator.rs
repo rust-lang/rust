@@ -229,8 +229,7 @@ use rustc_session::cstore::CrateSource;
 use rustc_session::filesearch::FileSearch;
 use rustc_session::search_paths::PathKind;
 use rustc_session::utils::CanonicalizedPath;
-use rustc_span::Span;
-use rustc_span::symbol::Symbol;
+use rustc_span::{Span, Symbol};
 use rustc_target::spec::{Target, TargetTuple};
 use tracing::{debug, info};
 

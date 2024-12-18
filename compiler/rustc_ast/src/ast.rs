@@ -31,8 +31,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 pub use rustc_span::AttrId;
 use rustc_span::source_map::{Spanned, respan};
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 pub use crate::format::*;

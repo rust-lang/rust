@@ -59,8 +59,7 @@ use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt};
 use rustc_session::parse::feature_err;
-use rustc_span::symbol::sym;
-use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Span};
+use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Span, sym};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{

@@ -13,8 +13,7 @@ use rustc_errors::{
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
-use rustc_span::symbol::Ident;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Ident, Span, Symbol};
 
 use crate::fluent_generated as fluent;
 use crate::parser::{ForbiddenLetReason, TokenDescription};

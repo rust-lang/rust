@@ -25,8 +25,7 @@ use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
 use rustc_span::source_map::SourceMap;
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, FileName, Span};
+use rustc_span::{DUMMY_SP, FileName, Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 

@@ -34,8 +34,7 @@ use rustc_session::lint::builtin::{
     PATTERNS_IN_FNS_WITHOUT_BODY,
 };
 use rustc_session::lint::{BuiltinLintDiag, LintBuffer};
-use rustc_span::Span;
-use rustc_span::symbol::{Ident, kw, sym};
+use rustc_span::{Ident, Span, kw, sym};
 use rustc_target::spec::abi;
 use thin_vec::thin_vec;
 

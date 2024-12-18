@@ -29,8 +29,7 @@ use rustc_session::lint::{self, BuiltinLintDiag};
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
 use rustc_span::edition::Edition;
-use rustc_span::symbol::{Ident, Symbol, sym};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
 use rustc_target::spec::{PanicStrategy, Target, TargetTuple};
 use tracing::{debug, info, trace};
 

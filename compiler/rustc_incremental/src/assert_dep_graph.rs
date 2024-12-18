@@ -47,8 +47,7 @@ use rustc_middle::dep_graph::{
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::{bug, span_bug};
-use rustc_span::Span;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
 use {rustc_graphviz as dot, rustc_hir as hir};
 

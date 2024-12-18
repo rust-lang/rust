@@ -33,8 +33,7 @@ use rustc_middle::ty::{
     TyCtxt, TypeVisitableExt,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::ErrorGuaranteed;
-use rustc_span::symbol::{kw, sym};
+use rustc_span::{ErrorGuaranteed, kw, sym};
 use tracing::{debug, instrument};
 
 use crate::BorrowckInferCtxt;

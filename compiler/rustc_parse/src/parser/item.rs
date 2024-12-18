@@ -13,8 +13,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, PResult, StashKey, struct_span_code_err};
 use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, source_map};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, source_map, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::debug;
 

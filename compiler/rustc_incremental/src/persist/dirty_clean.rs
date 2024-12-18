@@ -29,8 +29,7 @@ use rustc_hir::{
 use rustc_middle::dep_graph::{DepNode, DepNodeExt, label_strs};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::Span;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Span, Symbol, sym};
 use thin_vec::ThinVec;
 use tracing::debug;
 

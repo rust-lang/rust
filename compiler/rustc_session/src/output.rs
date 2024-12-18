@@ -4,8 +4,7 @@ use std::path::Path;
 
 use rustc_ast::{self as ast, attr};
 use rustc_errors::FatalError;
-use rustc_span::symbol::sym;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Span, Symbol, sym};
 
 use crate::Session;
 use crate::config::{self, CrateType, Input, OutFileName, OutputFilenames, OutputType};

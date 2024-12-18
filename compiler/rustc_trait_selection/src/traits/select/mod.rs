@@ -31,8 +31,7 @@ use rustc_middle::ty::{
     self, GenericArgsRef, PolyProjectionPredicate, Ty, TyCtxt, TypeFoldable, TypeVisitableExt,
     TypingMode, Upcast,
 };
-use rustc_span::Symbol;
-use rustc_span::symbol::sym;
+use rustc_span::{Symbol, sym};
 use tracing::{debug, instrument, trace};
 
 use self::EvaluationResult::*;

@@ -232,8 +232,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::Limit;
 use rustc_session::config::EntryFnType;
 use rustc_span::source_map::{Spanned, dummy_spanned, respan};
-use rustc_span::symbol::sym;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, sym};
 use tracing::{debug, instrument, trace};
 
 use crate::errors::{self, EncounteredErrorWhileInstantiating, NoOptimizedMir, RecursionLimit};

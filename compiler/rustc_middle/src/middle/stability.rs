@@ -18,8 +18,7 @@ use rustc_session::Session;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
 use rustc_session::lint::{BuiltinLintDiag, DeprecatedSinceKind, Level, Lint, LintBuffer};
 use rustc_session::parse::feature_err_issue;
-use rustc_span::Span;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
 
 pub use self::StabilityLevel::*;

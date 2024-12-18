@@ -29,8 +29,7 @@ use rustc_session::lint::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
 use rustc_session::parse::feature_err;
 use rustc_session::{Limit, Session};
 use rustc_span::hygiene::SyntaxContext;
-use rustc_span::symbol::{Ident, sym};
-use rustc_span::{ErrorGuaranteed, FileName, LocalExpnId, Span};
+use rustc_span::{ErrorGuaranteed, FileName, Ident, LocalExpnId, Span, sym};
 use smallvec::SmallVec;
 
 use crate::base::*;

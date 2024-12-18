@@ -18,8 +18,7 @@ use rustc_lint_defs::BuiltinLintDiag;
 use rustc_parse::validate_attr;
 use rustc_session::Session;
 use rustc_session::parse::feature_err;
-use rustc_span::Span;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Span, Symbol, sym};
 use thin_vec::ThinVec;
 use tracing::instrument;
 

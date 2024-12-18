@@ -13,9 +13,8 @@ use rustc_middle::ty::adjustment::{
 };
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
-use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::symbol::{Ident, sym};
+use rustc_span::{Ident, Span, sym};
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;

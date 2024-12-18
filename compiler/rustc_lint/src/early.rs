@@ -12,8 +12,7 @@ use rustc_feature::Features;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::Session;
 use rustc_session::lint::{BufferedEarlyLint, LintBuffer, LintPass};
-use rustc_span::Span;
-use rustc_span::symbol::Ident;
+use rustc_span::{Ident, Span};
 use tracing::debug;
 
 use crate::context::{EarlyContext, LintContext, LintStore};

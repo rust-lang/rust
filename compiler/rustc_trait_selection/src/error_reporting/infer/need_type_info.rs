@@ -17,8 +17,7 @@ use rustc_middle::ty::{
     self, GenericArg, GenericArgKind, GenericArgsRef, InferConst, IsSuggestable, Ty, TyCtxt,
     TypeFoldable, TypeFolder, TypeSuperFoldable, TypeckResults,
 };
-use rustc_span::symbol::{Ident, sym};
-use rustc_span::{BytePos, DUMMY_SP, FileName, Span};
+use rustc_span::{BytePos, DUMMY_SP, FileName, Ident, Span, sym};
 use tracing::{debug, instrument, warn};
 
 use super::nice_region_error::placeholder_error::Highlighted;

@@ -30,8 +30,7 @@ use rustc_session::lint::builtin::{
     UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
 };
 use rustc_session::parse::feature_err;
-use rustc_span::symbol::{Symbol, kw, sym};
-use rustc_span::{BytePos, DUMMY_SP, Span};
+use rustc_span::{BytePos, DUMMY_SP, Span, Symbol, kw, sym};
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;

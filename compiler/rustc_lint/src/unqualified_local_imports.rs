@@ -1,7 +1,7 @@
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{self as hir};
 use rustc_session::{declare_lint, declare_lint_pass};
-use rustc_span::symbol::kw;
+use rustc_span::kw;
 
 use crate::{LateContext, LateLintPass, LintContext, lints};
 

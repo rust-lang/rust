@@ -17,7 +17,7 @@ use rustc_middle::ty::{
     self, EarlyBinder, FloatTy, GenericArg, GenericArgKind, Instance, IntTy, ReifyReason, Ty,
     TyCtxt, TypeVisitable, TypeVisitableExt, UintTy,
 };
-use rustc_span::symbol::kw;
+use rustc_span::kw;
 
 pub(super) fn mangle<'tcx>(
     tcx: TyCtxt<'tcx>,

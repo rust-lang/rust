@@ -6,7 +6,7 @@ use rustc_ast::{self as ast, MetaItemKind};
 use rustc_attr_data_structures::IntType;
 use rustc_attr_data_structures::ReprAttr::*;
 use rustc_session::Session;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Symbol, sym};
 
 use crate::ReprAttr;
 use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};

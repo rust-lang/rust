@@ -15,8 +15,7 @@ use rustc_hir::def::Namespace;
 use rustc_hir::{HashStableContext, HirId, MissingLifetimeKind};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 pub use rustc_span::edition::Edition;
-use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent};
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol, sym};
 use serde::{Deserialize, Serialize};
 
 pub use self::Level::*;
@@ -932,7 +931,7 @@ macro_rules! declare_lint {
             desc: $desc,
             is_externally_loaded: false,
             $($v: true,)*
-            $(feature_gate: Some(rustc_span::symbol::sym::$gate),)?
+            $(feature_gate: Some(rustc_span::sym::$gate),)?
             $(future_incompatible: Some($crate::FutureIncompatibleInfo {
                 reason: $reason,
                 $($field: $val,)*
@@ -977,7 +976,7 @@ macro_rules! declare_tool_lint {
             report_in_external_macro: $external,
             future_incompatible: None,
             is_externally_loaded: true,
-            $(feature_gate: Some(rustc_span::symbol::sym::$gate),)?
+            $(feature_gate: Some(rustc_span::sym::$gate),)?
             crate_level_only: false,
             $(eval_always: $eval_always,)?
             ..$crate::Lint::default_fields_for_macro()

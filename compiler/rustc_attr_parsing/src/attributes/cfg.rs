@@ -9,8 +9,7 @@ use rustc_session::config::ExpectedValues;
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::UNEXPECTED_CFGS;
 use rustc_session::parse::feature_err;
-use rustc_span::Span;
-use rustc_span::symbol::{Symbol, kw, sym};
+use rustc_span::{Span, Symbol, kw, sym};
 
 use crate::util::UnsupportedLiteralReason;
 use crate::{fluent_generated, parse_version, session_diagnostics};

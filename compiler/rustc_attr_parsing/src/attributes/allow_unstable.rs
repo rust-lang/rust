@@ -1,6 +1,6 @@
 use rustc_ast::attr::{AttributeExt, filter_by_name};
 use rustc_session::Session;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Symbol, sym};
 
 use crate::session_diagnostics;
 

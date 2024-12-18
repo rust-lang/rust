@@ -4,8 +4,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::ExpectedValues;
 use rustc_span::edit_distance::find_best_match_for_name;
-use rustc_span::symbol::Ident;
-use rustc_span::{ExpnKind, Span, Symbol, sym};
+use rustc_span::{ExpnKind, Ident, Span, Symbol, sym};
 
 use crate::lints;
 

@@ -17,10 +17,9 @@ use rustc_session::lint::builtin::{
     AMBIGUOUS_GLOB_REEXPORTS, HIDDEN_GLOB_REEXPORTS, PUB_USE_OF_PRIVATE_EXTERN_CRATE,
     REDUNDANT_IMPORTS, UNUSED_IMPORTS,
 };
-use rustc_span::Span;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::LocalExpnId;
-use rustc_span::symbol::{Ident, Symbol, kw};
+use rustc_span::{Ident, Span, Symbol, kw};
 use smallvec::SmallVec;
 use tracing::debug;
 

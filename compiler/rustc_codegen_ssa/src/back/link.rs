@@ -35,7 +35,7 @@ use rustc_session::utils::NativeLibKind;
 /// For all the linkers we support, and information they might
 /// need out of the shared crate context before we get rid of it.
 use rustc_session::{Session, filesearch};
-use rustc_span::symbol::Symbol;
+use rustc_span::Symbol;
 use rustc_target::spec::crt_objects::CrtObjects;
 use rustc_target::spec::{
     Cc, LinkOutputKind, LinkSelfContainedComponents, LinkSelfContainedDefault, LinkerFeatures,

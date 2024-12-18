@@ -38,8 +38,9 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, ExpnKind, MacroKind, Span};
+use rustc_span::{
+    BytePos, DUMMY_SP, DesugaringKind, ExpnKind, Ident, MacroKind, Span, Symbol, kw, sym,
+};
 use tracing::{debug, instrument};
 
 use super::{

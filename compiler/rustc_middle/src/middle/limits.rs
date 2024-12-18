@@ -12,7 +12,7 @@ use std::num::IntErrorKind;
 
 use rustc_ast::attr::AttributeExt;
 use rustc_session::{Limit, Limits, Session};
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Symbol, sym};
 
 use crate::error::LimitInvalid;
 use crate::query::Providers;

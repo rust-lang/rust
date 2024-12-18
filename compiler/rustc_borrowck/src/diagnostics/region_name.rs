@@ -11,8 +11,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_middle::ty::print::RegionHighlightMode;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, RegionVid, Ty};
 use rustc_middle::{bug, span_bug};
-use rustc_span::symbol::{Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, Symbol, kw, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use tracing::{debug, instrument};
 

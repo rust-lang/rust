@@ -16,8 +16,7 @@ use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, extension};
 use rustc_session::config::OptLevel;
-use rustc_span::symbol::{Symbol, sym};
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{
     HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, PanicStrategy, Target, WasmCAbi, X86Abi,
