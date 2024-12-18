@@ -85,9 +85,9 @@ use std::str::FromStr;
 use std::{fmt, iter};
 
 use md5::{Digest, Md5};
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{Hash64, Hash128, HashStable, StableHasher};
 use rustc_data_structures::sync::{FreezeLock, FreezeWriteGuard, Lock, Lrc};
+use rustc_data_structures::unord::UnordMap;
 use sha1::Sha1;
 use sha2::Sha256;
 
@@ -103,7 +103,7 @@ pub struct SessionGlobals {
     span_interner: Lock<span_encoding::SpanInterner>,
     /// Maps a macro argument token into use of the corresponding metavariable in the macro body.
     /// Collisions are possible and processed in `maybe_use_metavar_location` on best effort basis.
-    metavar_spans: Lock<FxHashMap<Span, Span>>,
+    metavar_spans: FreezeLock<UnordMap<Span, Span>>,
     hygiene_data: Lock<hygiene::HygieneData>,
 
     /// The session's source map, if there is one. This field should only be
@@ -178,8 +178,20 @@ pub fn create_default_session_globals_then<R>(f: impl FnOnce() -> R) -> R {
 scoped_tls::scoped_thread_local!(static SESSION_GLOBALS: SessionGlobals);
 
 #[inline]
-pub fn with_metavar_spans<R>(f: impl FnOnce(&mut FxHashMap<Span, Span>) -> R) -> R {
-    with_session_globals(|session_globals| f(&mut session_globals.metavar_spans.lock()))
+pub fn with_metavar_spans_mut<R>(f: impl FnOnce(&mut UnordMap<Span, Span>) -> R) -> R {
+    with_session_globals(|session_globals| f(&mut session_globals.metavar_spans.write()))
+}
+
+#[inline]
+pub fn with_metavar_spans<R>(f: impl FnOnce(&UnordMap<Span, Span>) -> R) -> R {
+    with_session_globals(|session_globals| f(&session_globals.metavar_spans.read()))
+}
+
+#[inline]
+pub fn freeze_metavar_spans() {
+    with_session_globals(|session_globals| {
+        session_globals.metavar_spans.freeze();
+    });
 }
 
 // FIXME: We should use this enum or something like it to get rid of the
@@ -872,7 +884,7 @@ impl Span {
 
     /// Check if you can select metavar spans for the given spans to get matching contexts.
     fn try_metavars(a: SpanData, b: SpanData, a_orig: Span, b_orig: Span) -> (SpanData, SpanData) {
-        let get = |mspans: &FxHashMap<_, _>, s| mspans.get(&s).copied();
+        let get = |mspans: &UnordMap<_, _>, s| mspans.get(&s).copied();
         match with_metavar_spans(|mspans| (get(mspans, a_orig), get(mspans, b_orig))) {
             (None, None) => {}
             (Some(meta_a), None) => {
