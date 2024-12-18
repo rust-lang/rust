@@ -372,9 +372,11 @@ fn completion_item(
     };
 
     if config.completion_label_details_support() {
+        let has_label_details =
+            item.label.detail_left.is_some() || item.label.detail_left.is_some();
         if fields_to_resolve.resolve_label_details {
-            something_to_resolve |= true;
-        } else if item.label.detail_left.is_some() || item.label.detail_left.is_some() {
+            something_to_resolve |= has_label_details;
+        } else if has_label_details {
             lsp_item.label_details = Some(lsp_types::CompletionItemLabelDetails {
                 detail: item.label.detail_left.clone(),
                 description: item.label.detail_right.clone(),
