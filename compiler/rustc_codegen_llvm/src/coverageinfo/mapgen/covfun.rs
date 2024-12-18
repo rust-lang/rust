@@ -141,21 +141,22 @@ fn fill_region_tables<'tcx>(
         // MIR opts, replace those occurrences with zero.
         let kind = kind.map_terms(|term| if is_zero_term(term) { CovTerm::Zero } else { term });
 
-        let span = ffi::CoverageSpan::from_source_region(local_file_id, source_region);
+        let cov_span = ffi::CoverageSpan::from_source_region(local_file_id, source_region);
         match kind {
             MappingKind::Code(term) => {
-                code_regions.push(ffi::CodeRegion { span, counter: ffi::Counter::from_term(term) });
+                code_regions
+                    .push(ffi::CodeRegion { cov_span, counter: ffi::Counter::from_term(term) });
             }
             MappingKind::Branch { true_term, false_term } => {
                 branch_regions.push(ffi::BranchRegion {
-                    span,
+                    cov_span,
                     true_counter: ffi::Counter::from_term(true_term),
                     false_counter: ffi::Counter::from_term(false_term),
                 });
             }
             MappingKind::MCDCBranch { true_term, false_term, mcdc_params } => {
                 mcdc_branch_regions.push(ffi::MCDCBranchRegion {
-                    span,
+                    cov_span,
                     true_counter: ffi::Counter::from_term(true_term),
                     false_counter: ffi::Counter::from_term(false_term),
                     mcdc_branch_params: ffi::mcdc::BranchParameters::from(mcdc_params),
@@ -163,7 +164,7 @@ fn fill_region_tables<'tcx>(
             }
             MappingKind::MCDCDecision(mcdc_decision_params) => {
                 mcdc_decision_regions.push(ffi::MCDCDecisionRegion {
-                    span,
+                    cov_span,
                     mcdc_decision_params: ffi::mcdc::DecisionParameters::from(mcdc_decision_params),
                 });
             }
