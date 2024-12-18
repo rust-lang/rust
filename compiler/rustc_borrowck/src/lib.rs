@@ -334,35 +334,7 @@ fn do_mir_borrowck<'tcx>(
     mbcx.gather_used_muts(temporary_used_locals, unused_mut_locals);
 
     debug!("mbcx.used_mut: {:?}", mbcx.used_mut);
-    let used_mut = std::mem::take(&mut mbcx.used_mut);
-    for local in mbcx.body.mut_vars_and_args_iter().filter(|local| !used_mut.contains(local)) {
-        let local_decl = &mbcx.body.local_decls[local];
-        let lint_root = match &mbcx.body.source_scopes[local_decl.source_info.scope].local_data {
-            ClearCrossCrate::Set(data) => data.lint_root,
-            _ => continue,
-        };
-
-        // Skip over locals that begin with an underscore or have no name
-        match mbcx.local_names[local] {
-            Some(name) => {
-                if name.as_str().starts_with('_') {
-                    continue;
-                }
-            }
-            None => continue,
-        }
-
-        let span = local_decl.source_info.span;
-        if span.desugaring_kind().is_some() {
-            // If the `mut` arises as part of a desugaring, we should ignore it.
-            continue;
-        }
-
-        let mut_span = tcx.sess.source_map().span_until_non_whitespace(span);
-
-        tcx.emit_node_span_lint(UNUSED_MUT, lint_root, span, VarNeedNotMut { span: mut_span })
-    }
-
+    mbcx.lint_unused_mut();
     let tainted_by_errors = mbcx.emit_errors();
 
     let result = BorrowCheckResult {
@@ -2389,6 +2361,38 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
     fn dominators(&self) -> &Dominators<BasicBlock> {
         // `BasicBlocks` computes dominators on-demand and caches them.
         self.body.basic_blocks.dominators()
+    }
+
+    fn lint_unused_mut(&self) {
+        let tcx = self.infcx.tcx;
+        let body = self.body;
+        for local in body.mut_vars_and_args_iter().filter(|local| !self.used_mut.contains(local)) {
+            let local_decl = &body.local_decls[local];
+            let lint_root = match &body.source_scopes[local_decl.source_info.scope].local_data {
+                ClearCrossCrate::Set(data) => data.lint_root,
+                _ => continue,
+            };
+
+            // Skip over locals that begin with an underscore or have no name
+            match self.local_names[local] {
+                Some(name) => {
+                    if name.as_str().starts_with('_') {
+                        continue;
+                    }
+                }
+                None => continue,
+            }
+
+            let span = local_decl.source_info.span;
+            if span.desugaring_kind().is_some() {
+                // If the `mut` arises as part of a desugaring, we should ignore it.
+                continue;
+            }
+
+            let mut_span = tcx.sess.source_map().span_until_non_whitespace(span);
+
+            tcx.emit_node_span_lint(UNUSED_MUT, lint_root, span, VarNeedNotMut { span: mut_span })
+        }
     }
 }
 
