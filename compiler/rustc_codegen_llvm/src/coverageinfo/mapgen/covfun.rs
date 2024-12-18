@@ -14,11 +14,12 @@ use rustc_middle::mir::coverage::{
     CovTerm, CoverageIdsInfo, Expression, FunctionCoverageInfo, Mapping, MappingKind, Op,
 };
 use rustc_middle::ty::{Instance, TyCtxt};
+use rustc_span::Span;
 use rustc_target::spec::HasTargetSpec;
 use tracing::debug;
 
 use crate::common::CodegenCx;
-use crate::coverageinfo::mapgen::{GlobalFileTable, VirtualFileMapping, span_file_name};
+use crate::coverageinfo::mapgen::{GlobalFileTable, VirtualFileMapping, span_file_name, spans};
 use crate::coverageinfo::{ffi, llvm_cov};
 use crate::llvm;
 
@@ -117,6 +118,8 @@ fn fill_region_tables<'tcx>(
 ) {
     // Currently a function's mappings must all be in the same file as its body span.
     let file_name = span_file_name(tcx, fn_cov_info.body_span);
+    let source_map = tcx.sess.source_map();
+    let source_file = source_map.lookup_source_file(fn_cov_info.body_span.lo());
 
     // Look up the global file ID for that filename.
     let global_file_id = global_file_table.global_file_id_for_file_name(file_name);
@@ -128,15 +131,20 @@ fn fill_region_tables<'tcx>(
     let ffi::Regions { code_regions, branch_regions, mcdc_branch_regions, mcdc_decision_regions } =
         &mut covfun.regions;
 
+    let make_cov_span = |span: Span| {
+        spans::make_coverage_span(local_file_id, source_map, fn_cov_info, &source_file, span)
+    };
+
     // For each counter/region pair in this function+file, convert it to a
     // form suitable for FFI.
     let is_zero_term = |term| !covfun.is_used || ids_info.is_zero_term(term);
-    for Mapping { kind, ref source_region } in &fn_cov_info.mappings {
+    for &Mapping { ref kind, span } in &fn_cov_info.mappings {
         // If the mapping refers to counters/expressions that were removed by
         // MIR opts, replace those occurrences with zero.
         let kind = kind.map_terms(|term| if is_zero_term(term) { CovTerm::Zero } else { term });
 
-        let cov_span = ffi::CoverageSpan::from_source_region(local_file_id, source_region);
+        let Some(cov_span) = make_cov_span(span) else { continue };
+
         match kind {
             MappingKind::Code(term) => {
                 code_regions

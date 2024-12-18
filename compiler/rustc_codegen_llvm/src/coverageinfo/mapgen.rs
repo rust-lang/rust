@@ -22,6 +22,7 @@ use crate::coverageinfo::mapgen::covfun::prepare_covfun_record;
 use crate::llvm;
 
 mod covfun;
+mod spans;
 
 /// Generates and exports the coverage map, which is embedded in special
 /// linker sections in the final binary.
@@ -182,7 +183,7 @@ rustc_index::newtype_index! {
     /// An index into a function's list of global file IDs. That underlying list
     /// of local-to-global mappings will be embedded in the function's record in
     /// the `__llvm_covfun` linker section.
-    pub(crate) struct LocalFileId {}
+    struct LocalFileId {}
 }
 
 /// Holds a mapping from "local" (per-function) file IDs to "global" (per-CGU)
