@@ -1,5 +1,5 @@
 use clippy_config::Conf;
-use clippy_config::types::DisallowedPath;
+use clippy_config::types::{AmendDiag, DisallowedPath};
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::Res;
@@ -89,7 +89,7 @@ impl DisallowedTypes {
             DISALLOWED_TYPES,
             span,
             format!("use of a disallowed type `{path}`"),
-            disallowed_path.diag_amendment(span),
+            |diag| disallowed_path.amend_diag(span, diag),
         );
     }
 }

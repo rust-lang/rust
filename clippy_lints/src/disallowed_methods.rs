@@ -1,5 +1,5 @@
 use clippy_config::Conf;
-use clippy_config::types::{DisallowedPath, create_disallowed_map};
+use clippy_config::types::{AmendDiag, DisallowedPath, create_disallowed_map};
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefIdMap;
@@ -93,7 +93,7 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedMethods {
                 DISALLOWED_METHODS,
                 span,
                 format!("use of a disallowed method `{path}`"),
-                disallowed_path.diag_amendment(span),
+                |diag| disallowed_path.amend_diag(span, diag),
             );
         }
     }

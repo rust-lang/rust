@@ -1,5 +1,5 @@
 use clippy_config::Conf;
-use clippy_config::types::{DisallowedPath, create_disallowed_map};
+use clippy_config::types::{AmendDiag, DisallowedPath, create_disallowed_map};
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::macros::macro_backtrace;
 use rustc_data_structures::fx::FxHashSet;
@@ -92,7 +92,6 @@ impl DisallowedMacros {
 
             if let Some(&(path, disallowed_path)) = self.disallowed.get(&mac.def_id) {
                 let msg = format!("use of a disallowed macro `{path}`");
-                let add_note = disallowed_path.diag_amendment(mac.span);
                 if matches!(mac.kind, MacroKind::Derive)
                     && let Some(derive_src) = derive_src
                 {
@@ -102,10 +101,12 @@ impl DisallowedMacros {
                         cx.tcx.local_def_id_to_hir_id(derive_src.def_id),
                         mac.span,
                         msg,
-                        add_note,
+                        |diag| disallowed_path.amend_diag(mac.span, diag),
                     );
                 } else {
-                    span_lint_and_then(cx, DISALLOWED_MACROS, mac.span, msg, add_note);
+                    span_lint_and_then(cx, DISALLOWED_MACROS, mac.span, msg, |diag| {
+                        disallowed_path.amend_diag(mac.span, diag);
+                    });
                 }
             }
         }
