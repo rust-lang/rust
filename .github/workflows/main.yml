@@ -56,11 +56,12 @@ jobs:
           - os: macos-latest
             env:
               TARGET_TRIPLE: x86_64-apple-darwin
-          # cross-compile from Linux to Windows using mingw
-          - os: ubuntu-latest
-            env:
-              TARGET_TRIPLE: x86_64-pc-windows-gnu
-            apt_deps: gcc-mingw-w64-x86-64 wine-stable
+          # Wine started crashing for whatever reason
+          # # cross-compile from Linux to Windows using mingw
+          # - os: ubuntu-latest
+          #   env:
+          #     TARGET_TRIPLE: x86_64-pc-windows-gnu
+          #   apt_deps: gcc-mingw-w64-x86-64 wine-stable
           - os: ubuntu-latest
             env:
               TARGET_TRIPLE: aarch64-unknown-linux-gnu
