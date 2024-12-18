@@ -1,7 +1,6 @@
 //@ run-pass
 //@ needs-asm-support
 
-#![feature(naked_functions)]
 #![allow(dead_code)]
 
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
