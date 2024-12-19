@@ -1,4 +1,5 @@
    LL|       |//@ edition: 2021
+   LL|       |//@ reference: attributes.coverage.nesting
    LL|       |
    LL|       |// Checks that `#[coverage(..)]` can be applied to modules, and is inherited
    LL|       |// by any enclosed functions.

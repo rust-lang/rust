@@ -1,4 +1,5 @@
 //@ edition: 2021
+//@ reference: attributes.coverage.nesting
 
 // Checks that `#[coverage(..)]` can be applied to modules, and is inherited
 // by any enclosed functions.

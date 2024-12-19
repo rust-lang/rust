@@ -1,4 +1,6 @@
    LL|       |// Enables `coverage(off)` on the entire crate
+   LL|       |//@ reference: attributes.coverage.intro
+   LL|       |//@ reference: attributes.coverage.nesting
    LL|       |
    LL|       |#[coverage(off)]
    LL|       |fn do_not_add_coverage_1() {
