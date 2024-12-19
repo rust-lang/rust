@@ -113,7 +113,7 @@
 //! # fn check(_: i32, _: Expect) {}
 //! #[test]
 //! fn test_division() {
-//!     check(92 / 2, expect![[]])
+//!     check(92 / 2, expect![[""]])
 //! }
 //! ```
 //!
