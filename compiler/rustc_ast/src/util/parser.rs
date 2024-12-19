@@ -1,6 +1,6 @@
 use rustc_span::kw;
 
-use crate::ast::{self, BinOpKind};
+use crate::ast::{self, BinOpKind, RangeLimits};
 use crate::token::{self, BinOpToken, Token};
 
 /// Associative operator.
@@ -14,10 +14,8 @@ pub enum AssocOp {
     Assign,
     /// `as`
     As,
-    /// `..` range
-    DotDot,
-    /// `..=` range
-    DotDotEq,
+    /// `..` or `..=` range
+    Range(RangeLimits),
 }
 
 #[derive(PartialEq, Debug)]
@@ -64,10 +62,9 @@ impl AssocOp {
             token::Ne => Some(Binary(BinOpKind::Ne)),
             token::AndAnd => Some(Binary(BinOpKind::And)),
             token::OrOr => Some(Binary(BinOpKind::Or)),
-            token::DotDot => Some(DotDot),
-            token::DotDotEq => Some(DotDotEq),
+            token::DotDot => Some(Range(RangeLimits::HalfOpen)),
             // DotDotDot is no longer supported, but we need some way to display the error
-            token::DotDotDot => Some(DotDotEq),
+            token::DotDotEq | token::DotDotDot => Some(Range(RangeLimits::Closed)),
             // `<-` should probably be `< -`
             token::LArrow => Some(Binary(BinOpKind::Lt)),
             _ if t.is_keyword(kw::As) => Some(As),
@@ -81,7 +78,7 @@ impl AssocOp {
         match *self {
             As => ExprPrecedence::Cast,
             Binary(bin_op) => bin_op.precedence(),
-            DotDot | DotDotEq => ExprPrecedence::Range,
+            Range(_) => ExprPrecedence::Range,
             Assign | AssignOp(_) => ExprPrecedence::Assign,
         }
     }
@@ -94,7 +91,7 @@ impl AssocOp {
             Assign | AssignOp(_) => Fixity::Right,
             Binary(binop) => binop.fixity(),
             As => Fixity::Left,
-            DotDot | DotDotEq => Fixity::None,
+            Range(_) => Fixity::None,
         }
     }
 
@@ -102,7 +99,7 @@ impl AssocOp {
         use AssocOp::*;
         match *self {
             Binary(binop) => binop.is_comparison(),
-            Assign | AssignOp(_) | As | DotDot | DotDotEq => false,
+            Assign | AssignOp(_) | As | Range(_) => false,
         }
     }
 
@@ -110,7 +107,7 @@ impl AssocOp {
         use AssocOp::*;
         match *self {
             Assign | AssignOp(_) => true,
-            As | Binary(_) | DotDot | DotDotEq => false,
+            As | Binary(_) | Range(_) => false,
         }
     }
 
