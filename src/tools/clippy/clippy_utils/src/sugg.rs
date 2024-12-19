@@ -160,7 +160,7 @@ impl<'a> Sugg<'a> {
                 Sugg::BinOp(AssocOp::AssignOp(op.node), get_snippet(lhs.span), get_snippet(rhs.span))
             },
             ExprKind::Binary(op, lhs, rhs) => Sugg::BinOp(
-                AssocOp::from_ast_binop(op.node),
+                AssocOp::Binary(op.node),
                 get_snippet(lhs.span),
                 get_snippet(rhs.span),
             ),
@@ -249,7 +249,7 @@ impl<'a> Sugg<'a> {
                 snippet(rhs.span),
             ),
             ast::ExprKind::Binary(op, ref lhs, ref rhs) => Sugg::BinOp(
-                AssocOp::from_ast_binop(op.node),
+                AssocOp::Binary(op.node),
                 snippet(lhs.span),
                 snippet(rhs.span),
             ),
@@ -366,30 +366,9 @@ impl<'a> Sugg<'a> {
 /// Generates a string from the operator and both sides.
 fn binop_to_string(op: AssocOp, lhs: &str, rhs: &str) -> String {
     match op {
-        AssocOp::Add
-        | AssocOp::Subtract
-        | AssocOp::Multiply
-        | AssocOp::Divide
-        | AssocOp::Modulus
-        | AssocOp::LAnd
-        | AssocOp::LOr
-        | AssocOp::BitXor
-        | AssocOp::BitAnd
-        | AssocOp::BitOr
-        | AssocOp::ShiftLeft
-        | AssocOp::ShiftRight
-        | AssocOp::Equal
-        | AssocOp::Less
-        | AssocOp::LessEqual
-        | AssocOp::NotEqual
-        | AssocOp::Greater
-        | AssocOp::GreaterEqual => {
-            format!("{lhs} {} {rhs}", op.to_ast_binop().expect("Those are AST ops").as_str())
-        },
+        AssocOp::Binary(op) => format!("{lhs} {} {rhs}", op.as_str()),
         AssocOp::Assign => format!("{lhs} = {rhs}"),
-        AssocOp::AssignOp(op) => {
-            format!("{lhs} {}= {rhs}", op.as_str())
-        },
+        AssocOp::AssignOp(op) => format!("{lhs} {}= {rhs}", op.as_str()),
         AssocOp::As => format!("{lhs} as {rhs}"),
         AssocOp::DotDot => format!("{lhs}..{rhs}"),
         AssocOp::DotDotEq => format!("{lhs}..={rhs}"),
@@ -476,16 +455,17 @@ impl Neg for Sugg<'_> {
 impl<'a> Not for Sugg<'a> {
     type Output = Sugg<'a>;
     fn not(self) -> Sugg<'a> {
-        use AssocOp::{Equal, Greater, GreaterEqual, Less, LessEqual, NotEqual};
+        use AssocOp::Binary;
+        use ast::BinOpKind::{Eq, Gt, Ge, Lt, Le, Ne};
 
         if let Sugg::BinOp(op, lhs, rhs) = self {
             let to_op = match op {
-                Equal => NotEqual,
-                NotEqual => Equal,
-                Less => GreaterEqual,
-                GreaterEqual => Less,
-                Greater => LessEqual,
-                LessEqual => Greater,
+                Binary(Eq) => Binary(Ne),
+                Binary(Ne) => Binary(Eq),
+                Binary(Lt) => Binary(Ge),
+                Binary(Ge) => Binary(Lt),
+                Binary(Gt) => Binary(Le),
+                Binary(Le) => Binary(Gt),
                 _ => return make_unop("!", Sugg::BinOp(op, lhs, rhs)),
             };
             Sugg::BinOp(to_op, lhs, rhs)
@@ -537,7 +517,7 @@ pub fn make_unop(op: &str, expr: Sugg<'_>) -> Sugg<'static> {
 pub fn make_assoc(op: AssocOp, lhs: &Sugg<'_>, rhs: &Sugg<'_>) -> Sugg<'static> {
     /// Returns `true` if the operator is a shift operator `<<` or `>>`.
     fn is_shift(op: AssocOp) -> bool {
-        matches!(op, AssocOp::ShiftLeft | AssocOp::ShiftRight)
+        matches!(op, AssocOp::Binary(ast::BinOpKind::Shl | ast::BinOpKind::Shr))
     }
 
     /// Returns `true` if the operator is an arithmetic operator
@@ -545,7 +525,13 @@ pub fn make_assoc(op: AssocOp, lhs: &Sugg<'_>, rhs: &Sugg<'_>) -> Sugg<'static> 
     fn is_arith(op: AssocOp) -> bool {
         matches!(
             op,
-            AssocOp::Add | AssocOp::Subtract | AssocOp::Multiply | AssocOp::Divide | AssocOp::Modulus
+            AssocOp::Binary(
+                ast::BinOpKind::Add
+                | ast::BinOpKind::Sub
+                | ast::BinOpKind::Mul
+                | ast::BinOpKind::Div
+                | ast::BinOpKind::Rem
+            )
         )
     }
 
@@ -577,9 +563,9 @@ pub fn make_assoc(op: AssocOp, lhs: &Sugg<'_>, rhs: &Sugg<'_>) -> Sugg<'static> 
     Sugg::BinOp(op, lhs.into(), rhs.into())
 }
 
-/// Convenience wrapper around `make_assoc` and `AssocOp::from_ast_binop`.
+/// Convenience wrapper around `make_assoc` and `AssocOp::Binary`.
 pub fn make_binop(op: ast::BinOpKind, lhs: &Sugg<'_>, rhs: &Sugg<'_>) -> Sugg<'static> {
-    make_assoc(AssocOp::from_ast_binop(op), lhs, rhs)
+    make_assoc(AssocOp::Binary(op), lhs, rhs)
 }
 
 #[derive(PartialEq, Eq, Clone, Copy)]
@@ -604,16 +590,15 @@ enum Associativity {
 /// associative.
 #[must_use]
 fn associativity(op: AssocOp) -> Associativity {
-    use rustc_ast::util::parser::AssocOp::{
-        Add, As, Assign, AssignOp, BitAnd, BitOr, BitXor, Divide, DotDot, DotDotEq, Equal, Greater, GreaterEqual, LAnd,
-        LOr, Less, LessEqual, Modulus, Multiply, NotEqual, ShiftLeft, ShiftRight, Subtract,
+    use rustc_ast::util::parser::AssocOp::{As, Assign, AssignOp, Binary, DotDot, DotDotEq};
+    use ast::BinOpKind::{
+        Add, BitAnd, BitOr, BitXor, Div, Eq, Gt, Ge, And, Or, Lt, Le, Rem, Mul, Ne, Shl, Shr, Sub,
     };
 
     match op {
         Assign | AssignOp(_) => Associativity::Right,
-        Add | BitAnd | BitOr | BitXor | LAnd | LOr | Multiply | As => Associativity::Both,
-        Divide | Equal | Greater | GreaterEqual | Less | LessEqual | Modulus | NotEqual | ShiftLeft | ShiftRight
-        | Subtract => Associativity::Left,
+        Binary(Add | BitAnd | BitOr | BitXor | And | Or | Mul) | As => Associativity::Both,
+        Binary(Div | Eq | Gt | Ge | Lt | Le | Rem | Ne | Shl | Shr | Sub) => Associativity::Left,
         DotDot | DotDotEq => Associativity::None,
     }
 }
