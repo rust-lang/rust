@@ -5,8 +5,7 @@ use crate::source::{snippet, snippet_opt, snippet_with_applicability, snippet_wi
 use crate::ty::expr_sig;
 use crate::{get_parent_expr_for_hir, higher};
 use rustc_ast::util::parser::AssocOp;
-use rustc_ast::{ast, token};
-use rustc_ast_pretty::pprust::token_kind_to_string;
+use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::{Closure, ExprKind, HirId, MutTy, TyKind};
@@ -158,7 +157,7 @@ impl<'a> Sugg<'a> {
                 Sugg::BinOp(AssocOp::Assign, get_snippet(lhs.span), get_snippet(rhs.span))
             },
             ExprKind::AssignOp(op, lhs, rhs) => {
-                Sugg::BinOp(hirbinop2assignop(op), get_snippet(lhs.span), get_snippet(rhs.span))
+                Sugg::BinOp(AssocOp::AssignOp(op.node), get_snippet(lhs.span), get_snippet(rhs.span))
             },
             ExprKind::Binary(op, lhs, rhs) => Sugg::BinOp(
                 AssocOp::from_ast_binop(op.node),
@@ -245,7 +244,7 @@ impl<'a> Sugg<'a> {
                 snippet(rhs.span),
             ),
             ast::ExprKind::AssignOp(op, ref lhs, ref rhs) => Sugg::BinOp(
-                astbinop2assignop(op),
+                AssocOp::AssignOp(op.node),
                 snippet(lhs.span),
                 snippet(rhs.span),
             ),
@@ -389,7 +388,7 @@ fn binop_to_string(op: AssocOp, lhs: &str, rhs: &str) -> String {
         },
         AssocOp::Assign => format!("{lhs} = {rhs}"),
         AssocOp::AssignOp(op) => {
-            format!("{lhs} {}= {rhs}", token_kind_to_string(&token::BinOp(op)))
+            format!("{lhs} {}= {rhs}", op.as_str())
         },
         AssocOp::As => format!("{lhs} as {rhs}"),
         AssocOp::DotDot => format!("{lhs}..{rhs}"),
@@ -617,55 +616,6 @@ fn associativity(op: AssocOp) -> Associativity {
         | Subtract => Associativity::Left,
         DotDot | DotDotEq => Associativity::None,
     }
-}
-
-/// Converts a `hir::BinOp` to the corresponding assigning binary operator.
-fn hirbinop2assignop(op: hir::BinOp) -> AssocOp {
-    use rustc_ast::token::BinOpToken::{And, Caret, Minus, Or, Percent, Plus, Shl, Shr, Slash, Star};
-
-    AssocOp::AssignOp(match op.node {
-        hir::BinOpKind::Add => Plus,
-        hir::BinOpKind::BitAnd => And,
-        hir::BinOpKind::BitOr => Or,
-        hir::BinOpKind::BitXor => Caret,
-        hir::BinOpKind::Div => Slash,
-        hir::BinOpKind::Mul => Star,
-        hir::BinOpKind::Rem => Percent,
-        hir::BinOpKind::Shl => Shl,
-        hir::BinOpKind::Shr => Shr,
-        hir::BinOpKind::Sub => Minus,
-
-        hir::BinOpKind::And
-        | hir::BinOpKind::Eq
-        | hir::BinOpKind::Ge
-        | hir::BinOpKind::Gt
-        | hir::BinOpKind::Le
-        | hir::BinOpKind::Lt
-        | hir::BinOpKind::Ne
-        | hir::BinOpKind::Or => panic!("This operator does not exist"),
-    })
-}
-
-/// Converts an `ast::BinOp` to the corresponding assigning binary operator.
-fn astbinop2assignop(op: ast::BinOp) -> AssocOp {
-    use rustc_ast::ast::BinOpKind::{
-        Add, And, BitAnd, BitOr, BitXor, Div, Eq, Ge, Gt, Le, Lt, Mul, Ne, Or, Rem, Shl, Shr, Sub,
-    };
-    use rustc_ast::token::BinOpToken;
-
-    AssocOp::AssignOp(match op.node {
-        Add => BinOpToken::Plus,
-        BitAnd => BinOpToken::And,
-        BitOr => BinOpToken::Or,
-        BitXor => BinOpToken::Caret,
-        Div => BinOpToken::Slash,
-        Mul => BinOpToken::Star,
-        Rem => BinOpToken::Percent,
-        Shl => BinOpToken::Shl,
-        Shr => BinOpToken::Shr,
-        Sub => BinOpToken::Minus,
-        And | Eq | Ge | Gt | Le | Lt | Ne | Or => panic!("This operator does not exist"),
-    })
 }
 
 /// Returns the indentation before `span` if there are nothing but `[ \t]`
