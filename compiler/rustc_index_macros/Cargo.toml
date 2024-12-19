@@ -12,5 +12,4 @@ proc-macro2 = "1"
 quote = "1"
 
 [features]
-default = ["nightly"]
 nightly = []
