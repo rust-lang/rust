@@ -1897,12 +1897,6 @@ impl Step for Assemble {
             });
         }
 
-        let lld_install = if builder.config.lld_enabled {
-            Some(builder.ensure(llvm::Lld { target: target_compiler.host }))
-        } else {
-            None
-        };
-
         let stage = target_compiler.stage;
         let host = target_compiler.host;
         let (host_info, dir_name) = if build_compiler.host == host {
@@ -1963,22 +1957,11 @@ impl Step for Assemble {
 
         copy_codegen_backends_to_sysroot(builder, build_compiler, target_compiler);
 
-        if let Some(lld_install) = lld_install {
-            let src_exe = exe("lld", target_compiler.host);
-            let dst_exe = exe("rust-lld", target_compiler.host);
-            builder.copy_link(&lld_install.join("bin").join(src_exe), &libdir_bin.join(dst_exe));
-            let self_contained_lld_dir = libdir_bin.join("gcc-ld");
-            t!(fs::create_dir_all(&self_contained_lld_dir));
-            let lld_wrapper_exe = builder.ensure(crate::core::build_steps::tool::LldWrapper {
-                compiler: build_compiler,
-                target: target_compiler.host,
+        if builder.config.lld_enabled {
+            builder.ensure(crate::core::build_steps::tool::LldWrapper {
+                build_compiler,
+                target_compiler,
             });
-            for name in crate::LLD_FILE_NAMES {
-                builder.copy_link(
-                    &lld_wrapper_exe,
-                    &self_contained_lld_dir.join(exe(name, target_compiler.host)),
-                );
-            }
         }
 
         if builder.config.llvm_enabled(target_compiler.host) && builder.config.llvm_tools_enabled {
