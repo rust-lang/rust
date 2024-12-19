@@ -250,7 +250,12 @@ pub enum ConstraintCategory<'tcx> {
     CallArgument(#[derive_where(skip)] Option<Ty<'tcx>>),
     CopyBound,
     SizedBound,
-    Assignment,
+    Assignment {
+        /// Whether this assignment is likely to be interesting to refer to in diagnostics.
+        /// Currently, this is true when it's assigning to a projection, when it's assigning from
+        /// the return value of a call, and when it has a user-provided type annotation.
+        has_interesting_ty: bool,
+    },
     /// A constraint that came from a usage of a variable (e.g. in an ADT expression
     /// like `Foo { field: my_val }`)
     Usage,

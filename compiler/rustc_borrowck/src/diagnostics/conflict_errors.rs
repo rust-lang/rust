@@ -2911,7 +2911,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             (
                 name,
                 BorrowExplanation::MustBeValidFor {
-                    category: ConstraintCategory::Assignment,
+                    category: ConstraintCategory::Assignment { .. },
                     from_closure: false,
                     region_name:
                         RegionName {

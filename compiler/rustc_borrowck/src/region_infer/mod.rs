@@ -2034,6 +2034,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     | ConstraintCategory::BoringNoLocation
                     | ConstraintCategory::Internal
                     | ConstraintCategory::Predicate(_)
+                    | ConstraintCategory::Assignment { has_interesting_ty: false }
             ) && constraint.span.desugaring_kind().is_none_or(|kind| {
                 // Try to avoid blaming constraints from desugarings, since they may not clearly
                 // clearly match what users have written. As an exception, allow blaming returns

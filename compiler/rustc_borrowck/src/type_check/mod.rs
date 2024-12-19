@@ -892,7 +892,18 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     Some(l) if !body.local_decls[l].is_user_variable() => {
                         ConstraintCategory::Boring
                     }
-                    _ => ConstraintCategory::Assignment,
+                    Some(l) => ConstraintCategory::Assignment {
+                        has_interesting_ty: body.local_decls[l].user_ty.is_some()
+                            || matches!(
+                                body.local_decls[l].local_info(),
+                                LocalInfo::User(BindingForm::Var(VarBindingForm {
+                                    opt_ty_info: Some(_),
+                                    ..
+                                }))
+                            ),
+                    },
+                    // Assignments to projections should be considered interesting.
+                    _ => ConstraintCategory::Assignment { has_interesting_ty: true },
                 };
                 debug!(
                     "assignment category: {:?} {:?}",
@@ -1226,7 +1237,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     Some(l) if !body.local_decls[l].is_user_variable() => {
                         ConstraintCategory::Boring
                     }
-                    _ => ConstraintCategory::Assignment,
+                    // The return type of a call is interesting for diagnostics.
+                    _ => ConstraintCategory::Assignment { has_interesting_ty: true },
                 };
 
                 let locations = term_location.to_locations();
