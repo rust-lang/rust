@@ -128,7 +128,7 @@ jobs:
           workspace-copy: true
           # NOTE: rustc build was failing on stage2 mysteriously when #131880
           # tried to use ReFS. Trying NTFS here instead.
-          drive-format: NTFS
+          drive-format: ReFS
 
       - if: contains(matrix.os, 'windows')
         name: Delete non-dev drive checkout, to make sure we aren't using it still
