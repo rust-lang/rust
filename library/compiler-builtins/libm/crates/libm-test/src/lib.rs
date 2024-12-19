@@ -1,3 +1,6 @@
+#![allow(clippy::unusual_byte_groupings)] // sometimes we group by sign_exp_sig
+
+mod f8_impl;
 pub mod gen;
 #[cfg(feature = "test-multiprecision")]
 pub mod mpfloat;
@@ -5,6 +8,7 @@ pub mod op;
 mod precision;
 mod test_traits;
 
+pub use f8_impl::f8;
 pub use libm::support::{Float, Int, IntTy};
 pub use op::{BaseName, Identifier, MathOp, OpCFn, OpFTy, OpRustFn, OpRustRet};
 pub use precision::{MaybeOverride, SpecialCase, default_ulp};
