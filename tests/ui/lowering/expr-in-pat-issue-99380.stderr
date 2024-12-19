@@ -1,10 +1,13 @@
-error: arbitrary expressions aren't allowed in patterns
-  --> $DIR/expr-in-pat-issue-99380.rs:10:10
+error: expected pattern, found expression `Some(3)`
+  --> $DIR/expr-in-pat-issue-99380.rs:3:16
    |
+LL |         if let $p = Some(42) {
+   |                ^^ expected pattern
+...
 LL |     foo!(Some(3));
-   |          ^^^^^^^
+   |     ------------- in this macro invocation
    |
-   = note: the `expr` fragment specifier forces the metavariable's content to be an expression
+   = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 

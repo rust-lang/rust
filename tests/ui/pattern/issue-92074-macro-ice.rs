@@ -7,21 +7,19 @@ fn get_usize() -> usize {
 }
 
 macro_rules! force_expr {
-    ($e:expr) => { $e }
+    ($e:expr) => { $e } //~ ERROR expected pattern, found expression `Vec :: new()`
 }
 
 macro_rules! force_pat {
-    ($a:expr, $b:expr) => { $a..=$b }
+    ($a:expr, $b:expr) => { $a..=$b } //~ ERROR expected pattern, found expression `get_usize()`
 }
 
 macro_rules! make_vec {
-    () => { force_expr!(Vec::new()) } //~ ERROR arbitrary expressions aren't allowed
+    () => { force_expr!(Vec::new()) }
 }
 
 macro_rules! make_pat {
     () => { force_pat!(get_usize(), get_usize()) }
-    //~^ ERROR arbitrary expressions aren't allowed
-    //~| ERROR arbitrary expressions aren't allowed
 }
 
 #[allow(unreachable_code)]

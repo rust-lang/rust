@@ -1,0 +1,27 @@
+error: arbitrary expressions aren't allowed in patterns
+  --> $DIR/parse-literal-maybe-minus.rs:57:19
+   |
+LL |         identity!(A) => {}  // FIXME: doesn't compile, probably should
+   |                   ^
+   |
+   = note: the `expr` fragment specifier forces the metavariable's content to be an expression
+
+error: arbitrary expressions aren't allowed in patterns
+  --> $DIR/parse-literal-maybe-minus.rs:51:4
+   |
+LL | m!(A, B, identity!(10));
+   |    ^
+   |
+   = note: the `expr` fragment specifier forces the metavariable's content to be an expression
+
+error: arbitrary expressions aren't allowed in patterns
+  --> $DIR/parse-literal-maybe-minus.rs:51:4
+   |
+LL | m!(A, B, identity!(10));
+   |    ^
+   |
+   = note: the `expr` fragment specifier forces the metavariable's content to be an expression
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 3 previous errors
+
