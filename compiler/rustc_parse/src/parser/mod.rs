@@ -188,9 +188,9 @@ pub struct Parser<'a> {
     recovery: Recovery,
 }
 
-// This type is used a lot, e.g. it's cloned when matching many declarative macro rules with nonterminals. Make sure
-// it doesn't unintentionally get bigger.
-#[cfg(target_pointer_width = "64")]
+// This type is used a lot, e.g. it's cloned when matching many declarative macro rules with
+// nonterminals. Make sure it doesn't unintentionally get bigger.
+#[cfg(all(target_pointer_width = "64", not(target_arch = "s390x")))]
 rustc_data_structures::static_assert_size!(Parser<'_>, 288);
 
 /// Stores span information about a closure.
