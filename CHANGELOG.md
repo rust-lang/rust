@@ -6214,6 +6214,7 @@ Released 2018-09-13
 [`allow-comparison-to-zero`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-comparison-to-zero
 [`allow-dbg-in-tests`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-dbg-in-tests
 [`allow-expect-in-tests`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-expect-in-tests
+[`allow-indexing-slicing-in-tests`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-indexing-slicing-in-tests
 [`allow-mixed-uninlined-format-args`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-mixed-uninlined-format-args
 [`allow-one-hash-in-raw-strings`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-one-hash-in-raw-strings
 [`allow-panic-in-tests`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allow-panic-in-tests
