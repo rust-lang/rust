@@ -10,5 +10,7 @@ libc = "0.2.73"
 
 [build-dependencies]
 # tidy-alphabetical-start
-cc = "1.1.23"
+# Pinned so `cargo update` bumps don't cause breakage. Please also update the
+# pinned `cc` in `rustc_codegen_ssa` if you update `cc` here.
+cc = "=1.2.5"
 # tidy-alphabetical-end
