@@ -11,10 +11,6 @@ pub fn global_fn_name(base: Symbol) -> String {
     format!("__rust_{base}")
 }
 
-pub fn default_fn_name(base: Symbol) -> String {
-    format!("__rdl_{base}")
-}
-
 pub const ALLOC_ERROR_HANDLER: &str = "__rust_alloc_error_handler";
 pub const ALLOC_ERROR_HANDLER_DEFAULT: &str = "__rdl_oom";
 pub const NO_ALLOC_SHIM_IS_UNSTABLE: &str = "__rust_no_alloc_shim_is_unstable_v2";

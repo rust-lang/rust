@@ -12,7 +12,7 @@ unsafe extern "Rust" {
     // These are the magic symbols to call the global allocator. rustc generates
     // them to call the global allocator if there is a `#[global_allocator]` attribute
     // (the code expanding that attribute macro generates those functions), or to call
-    // the default implementations in std (`__rdl_alloc` etc. in `library/std/src/alloc.rs`)
+    // the default implementations in std (weak symbols in `library/std/src/alloc.rs`)
     // otherwise.
     #[rustc_allocator]
     #[rustc_nounwind]

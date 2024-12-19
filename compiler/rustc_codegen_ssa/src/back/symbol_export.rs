@@ -20,7 +20,7 @@ use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{SanitizerSet, TlsModel};
 use tracing::debug;
 
-use crate::base::allocator_kind_for_codegen;
+use crate::base::needs_allocator_shim;
 
 fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
     crates_export_threshold(tcx.crate_types())
@@ -214,7 +214,7 @@ fn exported_symbols_provider_local<'tcx>(
     }
 
     // Mark allocator shim symbols as exported only if they were generated.
-    if allocator_kind_for_codegen(tcx).is_some() {
+    if needs_allocator_shim(tcx) {
         for symbol_name in ALLOCATOR_METHODS
             .iter()
             .map(|method| mangle_internal_symbol(tcx, global_fn_name(method.name).as_str()))
