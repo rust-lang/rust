@@ -531,9 +531,9 @@ fn construct_fn<'tcx>(
     );
 
     let call_site_scope =
-        region::Scope { id: body.id().hir_id.local_id, data: region::ScopeData::CallSite };
+        region::Scope { local_id: body.id().hir_id.local_id, data: region::ScopeData::CallSite };
     let arg_scope =
-        region::Scope { id: body.id().hir_id.local_id, data: region::ScopeData::Arguments };
+        region::Scope { local_id: body.id().hir_id.local_id, data: region::ScopeData::Arguments };
     let source_info = builder.source_info(span);
     let call_site_s = (call_site_scope, source_info);
     let _: BlockAnd<()> = builder.in_scope(call_site_s, LintLevel::Inherited, |builder| {
