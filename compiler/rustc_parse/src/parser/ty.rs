@@ -1,5 +1,5 @@
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, BinOpToken, Delimiter, IdentIsRaw, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, IdentIsRaw, Token, TokenKind};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, BareFnTy, BoundAsyncness, BoundConstness, BoundPolarity, DUMMY_NODE_ID, FnRetTy,
@@ -86,7 +86,7 @@ enum AllowCVariadic {
 /// Types can also be of the form `IDENT(u8, u8) -> u8`, however this assumes
 /// that `IDENT` is not the ident of a fn trait.
 fn can_continue_type_after_non_fn_ident(t: &Token) -> bool {
-    t == &token::PathSep || t == &token::Lt || t == &token::BinOp(token::Shl)
+    t == &token::PathSep || t == &token::Lt || t == &token::Shl
 }
 
 fn can_begin_dyn_bound_in_edition_2015(t: &Token) -> bool {
@@ -392,7 +392,7 @@ impl<'a> Parser<'a> {
         let mut trailing_plus = false;
         let (ts, trailing) = self.parse_paren_comma_seq(|p| {
             let ty = p.parse_ty()?;
-            trailing_plus = p.prev_token == TokenKind::BinOp(token::Plus);
+            trailing_plus = p.prev_token == TokenKind::Plus;
             Ok(ty)
         })?;
 
@@ -686,7 +686,7 @@ impl<'a> Parser<'a> {
         // Always parse bounds greedily for better error recovery.
         let bounds = self.parse_generic_bounds()?;
 
-        *impl_dyn_multi = bounds.len() > 1 || self.prev_token == TokenKind::BinOp(token::Plus);
+        *impl_dyn_multi = bounds.len() > 1 || self.prev_token == TokenKind::Plus;
 
         Ok(TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds))
     }
@@ -698,11 +698,7 @@ impl<'a> Parser<'a> {
         self.expect_lt()?;
         let (args, _, _) = self.parse_seq_to_before_tokens(
             &[exp!(Gt)],
-            &[
-                &TokenKind::Ge,
-                &TokenKind::BinOp(BinOpToken::Shr),
-                &TokenKind::BinOpEq(BinOpToken::Shr),
-            ],
+            &[&TokenKind::Ge, &TokenKind::Shr, &TokenKind::Shr],
             SeqSep::trailing_allowed(exp!(Comma)),
             |self_| {
                 if self_.check_keyword(exp!(SelfUpper)) {
@@ -732,7 +728,7 @@ impl<'a> Parser<'a> {
         self.check_keyword(exp!(Dyn))
             && (self.token.uninterpolated_span().at_least_rust_2018()
                 || self.look_ahead(1, |t| {
-                    (can_begin_dyn_bound_in_edition_2015(t) || *t == TokenKind::BinOp(token::Star))
+                    (can_begin_dyn_bound_in_edition_2015(t) || *t == TokenKind::Star)
                         && !can_continue_type_after_non_fn_ident(t)
                 }))
     }
@@ -754,7 +750,7 @@ impl<'a> Parser<'a> {
 
         // Always parse bounds greedily for better error recovery.
         let bounds = self.parse_generic_bounds()?;
-        *impl_dyn_multi = bounds.len() > 1 || self.prev_token == TokenKind::BinOp(token::Plus);
+        *impl_dyn_multi = bounds.len() > 1 || self.prev_token == TokenKind::Plus;
         Ok(TyKind::TraitObject(bounds, syntax))
     }
 

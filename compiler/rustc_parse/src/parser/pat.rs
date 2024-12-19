@@ -2,7 +2,7 @@ use std::ops::Bound;
 
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, BinOpToken, Delimiter, IdentIsRaw, Token};
+use rustc_ast::token::{self, Delimiter, IdentIsRaw, Token};
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{
@@ -357,7 +357,7 @@ impl<'a> Parser<'a> {
             )
         });
         match (is_end_ahead, &self.token.kind) {
-            (true, token::BinOp(token::Or) | token::OrOr) => {
+            (true, token::Or | token::OrOr) => {
                 // A `|` or possibly `||` token shouldn't be here. Ban it.
                 self.dcx().emit_err(TrailingVertNotAllowed {
                     span: self.token.span,
@@ -431,7 +431,11 @@ impl<'a> Parser<'a> {
         // `[` is included for indexing operations,
         // `[]` is excluded as `a[]` isn't an expression and should be recovered as `a, []` (cf. `tests/ui/parser/pat-lt-bracket-7.rs`),
         // `as` is included for type casts
-        let has_trailing_operator = matches!(self.token.kind, token::BinOp(op) if op != BinOpToken::Or)
+        let has_trailing_operator = matches!(
+                self.token.kind,
+                token::Plus | token::Minus | token::Star | token::Slash | token::Percent
+                | token::Caret | token::And | token::Shl | token::Shr // excludes `Or`
+            )
             || self.token == token::Question
             || (self.token == token::OpenDelim(Delimiter::Bracket)
                 && self.look_ahead(1, |t| *t != token::CloseDelim(Delimiter::Bracket))) // excludes `[]`
@@ -1232,7 +1236,7 @@ impl<'a> Parser<'a> {
             || self.look_ahead(dist, |t| {
                 t.is_path_start() // e.g. `MY_CONST`;
                 || *t == token::Dot // e.g. `.5` for recovery;
-                || matches!(t.kind, token::Literal(..) | token::BinOp(token::Minus))
+                || matches!(t.kind, token::Literal(..) | token::Minus)
                 || t.is_bool_lit()
                 || t.is_whole_expr()
                 || t.is_lifetime() // recover `'a` instead of `'a'`
