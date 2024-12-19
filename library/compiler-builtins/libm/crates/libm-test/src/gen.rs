@@ -2,6 +2,7 @@
 
 use crate::GenerateInput;
 pub mod domain_logspace;
+pub mod edge_cases;
 pub mod random;
 
 /// Helper type to turn any reusable input into a generator.

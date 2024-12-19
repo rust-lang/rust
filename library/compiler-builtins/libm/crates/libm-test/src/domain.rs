@@ -3,7 +3,7 @@
 use std::fmt;
 use std::ops::{self, Bound};
 
-use crate::Float;
+use crate::{Float, FloatExt};
 
 /// Representation of a function's domain.
 #[derive(Clone, Debug)]
@@ -19,7 +19,7 @@ pub struct Domain<T> {
 
 type BoxIter<T> = Box<dyn Iterator<Item = T>>;
 
-impl<F: Float> Domain<F> {
+impl<F: FloatExt> Domain<F> {
     /// The start of this domain, saturating at negative infinity.
     pub fn range_start(&self) -> F {
         match self.start {

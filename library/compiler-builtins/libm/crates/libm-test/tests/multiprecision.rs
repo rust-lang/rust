@@ -3,7 +3,7 @@
 #![cfg(feature = "test-multiprecision")]
 
 use libm_test::domain::HasDomain;
-use libm_test::gen::{CachedInput, domain_logspace, random};
+use libm_test::gen::{CachedInput, domain_logspace, edge_cases, random};
 use libm_test::mpfloat::MpOp;
 use libm_test::{
     CheckBasis, CheckCtx, CheckOutput, GenerateInput, MathOp, OpFTy, OpRustFn, OpRustRet, TupleCall,
@@ -79,6 +79,13 @@ macro_rules! mp_domain_tests {
         attrs: [$($meta:meta)*]
     ) => {
         paste::paste! {
+            #[test]
+            $(#[$meta])*
+            fn [< mp_edge_case_ $fn_name >]() {
+                type Op = libm_test::op::$fn_name::Routine;
+                domain_test_runner::<Op>(edge_cases::get_test_cases::<Op, _>());
+            }
+
             #[test]
             $(#[$meta])*
             fn [< mp_logspace_ $fn_name >]() {
