@@ -1164,6 +1164,8 @@ fn global_allocator_spans(krate: &ast::Crate) -> Vec<Span> {
         fn visit_item(&mut self, item: &'ast ast::Item) {
             if item.ident.name == self.name
                 && attr::contains_name(&item.attrs, sym::rustc_std_internal_symbol)
+                // Ignore the default allocator in libstd with weak linkage
+                && attr::find_by_name(&item.attrs, sym::linkage).is_none()
             {
                 self.spans.push(item.span);
             }

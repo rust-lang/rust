@@ -11,10 +11,6 @@ pub fn global_fn_name(base: Symbol) -> String {
     format!("__rust_{base}")
 }
 
-pub fn default_fn_name(base: Symbol) -> String {
-    format!("__rdl_{base}")
-}
-
 pub fn alloc_error_handler_name(alloc_error_handler_kind: AllocatorKind) -> &'static str {
     match alloc_error_handler_kind {
         AllocatorKind::Global => "__rg_oom",

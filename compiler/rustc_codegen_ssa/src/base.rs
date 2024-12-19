@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 
 use itertools::Itertools;
 use rustc_abi::FIRST_VARIANT;
-use rustc_ast::expand::allocator::{ALLOCATOR_METHODS, AllocatorKind, global_fn_name};
+use rustc_ast::expand::allocator::{ALLOCATOR_METHODS, global_fn_name};
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::{Lrc, par_map};
@@ -585,7 +585,7 @@ pub fn collect_debugger_visualizers_transitive(
 /// Decide allocator kind to codegen. If `Some(_)` this will be the same as
 /// `tcx.allocator_kind`, but it may be `None` in more cases (e.g. if using
 /// allocator definitions from a dylib dependency).
-pub fn allocator_kind_for_codegen(tcx: TyCtxt<'_>) -> Option<AllocatorKind> {
+pub fn needs_allocator_shim(tcx: TyCtxt<'_>) -> bool {
     // If the crate doesn't have an `allocator_kind` set then there's definitely
     // no shim to generate. Otherwise we also check our dependency graph for all
     // our output crate types. If anything there looks like its a `Dynamic`
@@ -596,7 +596,7 @@ pub fn allocator_kind_for_codegen(tcx: TyCtxt<'_>) -> Option<AllocatorKind> {
         use rustc_middle::middle::dependency_format::Linkage;
         list.iter().any(|&linkage| linkage == Linkage::Dynamic)
     });
-    if any_dynamic_crate { None } else { tcx.allocator_kind(()) }
+    if any_dynamic_crate { false } else { tcx.allocator_kind(()).is_some() }
 }
 
 pub fn codegen_crate<B: ExtraBackendMethods>(
@@ -665,14 +665,13 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         start_async_codegen(backend.clone(), tcx, target_cpu, metadata, metadata_module);
 
     // Codegen an allocator shim, if necessary.
-    if let Some(kind) = allocator_kind_for_codegen(tcx) {
+    if needs_allocator_shim(tcx) {
         let llmod_id =
             cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("allocator")).to_string();
         let module_llvm = tcx.sess.time("write_allocator_module", || {
             backend.codegen_allocator(
                 tcx,
                 &llmod_id,
-                kind,
                 // If allocator_kind is Some then alloc_error_handler_kind must
                 // also be Some.
                 tcx.alloc_error_handler_kind(()).unwrap(),
