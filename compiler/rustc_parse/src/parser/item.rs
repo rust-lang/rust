@@ -1293,7 +1293,7 @@ impl<'a> Parser<'a> {
                 if token.is_keyword(kw::Move) {
                     return true;
                 }
-                matches!(token.kind, token::BinOp(token::Or) | token::OrOr)
+                matches!(token.kind, token::Or | token::OrOr)
             })
         } else {
             // `$qual static`
@@ -1814,7 +1814,7 @@ impl<'a> Parser<'a> {
             let attrs = p.parse_outer_attributes()?;
             p.collect_tokens(None, attrs, ForceCollect::No, |p, attrs| {
                 let mut snapshot = None;
-                if p.is_vcs_conflict_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt) {
+                if p.is_vcs_conflict_marker(&TokenKind::Shl, &TokenKind::Lt) {
                     // Account for `<<<<<<<` diff markers. We can't proactively error here because
                     // that can be a valid type start, so we snapshot and reparse only we've
                     // encountered another parse error.
@@ -3011,7 +3011,7 @@ impl<'a> Parser<'a> {
         // else is parsed as a normal function parameter list, so some lookahead is required.
         let eself_lo = self.token.span;
         let (eself, eself_ident, eself_hi) = match self.token.uninterpolate().kind {
-            token::BinOp(token::And) => {
+            token::And => {
                 let eself = if is_isolated_self(self, 1) {
                     // `&self`
                     self.bump();
@@ -3041,12 +3041,12 @@ impl<'a> Parser<'a> {
                 (eself, self_ident, hi)
             }
             // `*self`
-            token::BinOp(token::Star) if is_isolated_self(self, 1) => {
+            token::Star if is_isolated_self(self, 1) => {
                 self.bump();
                 recover_self_ptr(self)?
             }
             // `*mut self` and `*const self`
-            token::BinOp(token::Star)
+            token::Star
                 if self.look_ahead(1, |t| t.is_mutability()) && is_isolated_self(self, 2) =>
             {
                 self.bump();
@@ -3077,7 +3077,7 @@ impl<'a> Parser<'a> {
                 }
                 _ => 0,
             },
-            token::BinOp(token::And) | token::AndAnd => 1,
+            token::And | token::AndAnd => 1,
             _ if self.token.is_keyword(kw::Mut) => 1,
             _ => 0,
         };

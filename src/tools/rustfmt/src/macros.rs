@@ -12,7 +12,7 @@
 use std::collections::HashMap;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
-use rustc_ast::token::{BinOpToken, Delimiter, Token, TokenKind};
+use rustc_ast::token::{Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenStreamIter, TokenTree};
 use rustc_ast::{ast, ptr};
 use rustc_ast_pretty::pprust;
@@ -841,7 +841,7 @@ impl MacroArgParser {
             match tok {
                 TokenTree::Token(
                     Token {
-                        kind: TokenKind::BinOp(BinOpToken::Plus),
+                        kind: TokenKind::Plus,
                         ..
                     },
                     _,
@@ -855,7 +855,7 @@ impl MacroArgParser {
                 )
                 | TokenTree::Token(
                     Token {
-                        kind: TokenKind::BinOp(BinOpToken::Star),
+                        kind: TokenKind::Star,
                         ..
                     },
                     _,
@@ -1090,12 +1090,30 @@ fn force_space_before(tok: &TokenKind) -> bool {
         | TokenKind::OrOr
         | TokenKind::Not
         | TokenKind::Tilde
-        | TokenKind::BinOpEq(_)
+        | TokenKind::PlusEq
+        | TokenKind::MinusEq
+        | TokenKind::StarEq
+        | TokenKind::SlashEq
+        | TokenKind::PercentEq
+        | TokenKind::CaretEq
+        | TokenKind::AndEq
+        | TokenKind::OrEq
+        | TokenKind::ShlEq
+        | TokenKind::ShrEq
         | TokenKind::At
         | TokenKind::RArrow
         | TokenKind::LArrow
         | TokenKind::FatArrow
-        | TokenKind::BinOp(_)
+        | TokenKind::Plus
+        | TokenKind::Minus
+        | TokenKind::Star
+        | TokenKind::Slash
+        | TokenKind::Percent
+        | TokenKind::Caret
+        | TokenKind::And
+        | TokenKind::Or
+        | TokenKind::Shl
+        | TokenKind::Shr
         | TokenKind::Pound
         | TokenKind::Dollar => true,
         _ => false,
@@ -1114,7 +1132,7 @@ fn next_space(tok: &TokenKind) -> SpaceState {
 
     match tok {
         TokenKind::Not
-        | TokenKind::BinOp(BinOpToken::And)
+        | TokenKind::And
         | TokenKind::Tilde
         | TokenKind::At
         | TokenKind::Comma
