@@ -4,15 +4,15 @@ use rustc_data_structures::packed::Pu128;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, struct_span_code_err};
 use rustc_infer::traits::ObligationCauseCode;
+use rustc_middle::bug;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
-use rustc_middle::{bug, span_bug};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
-use rustc_span::{Ident, Span, sym};
+use rustc_span::{Ident, Span, Symbol, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{FulfillmentError, Obligation, ObligationCtxt};
 use tracing::debug;
@@ -49,7 +49,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .lookup_op_method(
                         (lhs, lhs_deref_ty),
                         Some((rhs, rhs_ty)),
-                        Op::Binary(op, IsAssign::Yes),
+                        lang_item_for_binop(self.tcx, op, IsAssign::Yes),
+                        op.span,
                         expected,
                     )
                     .is_ok()
@@ -60,7 +61,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .lookup_op_method(
                             (lhs, lhs_ty),
                             Some((rhs, rhs_ty)),
-                            Op::Binary(op, IsAssign::Yes),
+                            lang_item_for_binop(self.tcx, op, IsAssign::Yes),
+                            op.span,
                             expected,
                         )
                         .is_err()
@@ -242,7 +244,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let result = self.lookup_op_method(
             (lhs_expr, lhs_ty),
             Some((rhs_expr, rhs_ty_var)),
-            Op::Binary(op, is_assign),
+            lang_item_for_binop(self.tcx, op, is_assign),
+            op.span,
             expected,
         );
 
@@ -301,8 +304,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ty::new_misc_error(self.tcx)
             }
             Err(errors) => {
-                let (_, trait_def_id) =
-                    lang_item_for_op(self.tcx, Op::Binary(op, is_assign), op.span);
+                let (_, trait_def_id) = lang_item_for_binop(self.tcx, op, is_assign);
                 let missing_trait = trait_def_id
                     .map(|def_id| with_no_trimmed_paths!(self.tcx.def_path_str(def_id)));
                 let mut path = None;
@@ -409,7 +411,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .lookup_op_method(
                             (lhs_expr, lhs_deref_ty),
                             Some((rhs_expr, rhs_ty)),
-                            Op::Binary(op, is_assign),
+                            lang_item_for_binop(self.tcx, op, is_assign),
+                            op.span,
                             expected,
                         )
                         .is_ok()
@@ -442,7 +445,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .lookup_op_method(
                                 (lhs_expr, lhs_adjusted_ty),
                                 Some((rhs_expr, rhs_adjusted_ty)),
-                                Op::Binary(op, is_assign),
+                                lang_item_for_binop(self.tcx, op, is_assign),
+                                op.span,
                                 expected,
                             )
                             .is_ok()
@@ -499,7 +503,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.lookup_op_method(
                         (lhs_expr, lhs_ty),
                         Some((rhs_expr, rhs_ty)),
-                        Op::Binary(op, is_assign),
+                        lang_item_for_binop(self.tcx, op, is_assign),
+                        op.span,
                         expected,
                     )
                     .is_ok()
@@ -592,7 +597,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .lookup_op_method(
                                 (lhs_expr, lhs_ty),
                                 Some((rhs_expr, rhs_ty)),
-                                Op::Binary(op, is_assign),
+                                lang_item_for_binop(self.tcx, op, is_assign),
+                                op.span,
                                 expected,
                             )
                             .unwrap_err();
@@ -799,7 +805,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         assert!(op.is_by_value());
-        match self.lookup_op_method((ex, operand_ty), None, Op::Unary(op, ex.span), expected) {
+        match self.lookup_op_method(
+            (ex, operand_ty),
+            None,
+            lang_item_for_unop(self.tcx, op),
+            ex.span,
+            expected,
+        ) {
             Ok(method) => {
                 self.write_method_call_and_enforce_effects(ex.hir_id, ex.span, method);
                 method.sig.output()
@@ -898,21 +910,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         (lhs_expr, lhs_ty): (&'tcx hir::Expr<'tcx>, Ty<'tcx>),
         opt_rhs: Option<(&'tcx hir::Expr<'tcx>, Ty<'tcx>)>,
-        op: Op,
+        (opname, trait_did): (Symbol, Option<hir::def_id::DefId>),
+        span: Span,
         expected: Expectation<'tcx>,
     ) -> Result<MethodCallee<'tcx>, Vec<FulfillmentError<'tcx>>> {
-        let span = match op {
-            Op::Binary(op, _) => op.span,
-            Op::Unary(_, span) => span,
-        };
-        let (opname, Some(trait_did)) = lang_item_for_op(self.tcx, op, span) else {
+        let Some(trait_did) = trait_did else {
             // Bail if the operator trait is not defined.
             return Err(vec![]);
         };
 
         debug!(
-            "lookup_op_method(lhs_ty={:?}, op={:?}, opname={:?}, trait_did={:?})",
-            lhs_ty, op, opname, trait_did
+            "lookup_op_method(lhs_ty={:?}, opname={:?}, trait_did={:?})",
+            lhs_ty, opname, trait_did
         );
 
         let opname = Ident::with_dummy_span(opname);
@@ -980,13 +989,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
-fn lang_item_for_op(
+fn lang_item_for_binop(
     tcx: TyCtxt<'_>,
-    op: Op,
-    span: Span,
-) -> (rustc_span::Symbol, Option<hir::def_id::DefId>) {
+    op: hir::BinOp,
+    is_assign: IsAssign,
+) -> (Symbol, Option<hir::def_id::DefId>) {
     let lang = tcx.lang_items();
-    if let Op::Binary(op, IsAssign::Yes) = op {
+    if is_assign == IsAssign::Yes {
         match op.node {
             hir::BinOpKind::Add => (sym::add_assign, lang.add_assign_trait()),
             hir::BinOpKind::Sub => (sym::sub_assign, lang.sub_assign_trait()),
@@ -1006,10 +1015,10 @@ fn lang_item_for_op(
             | hir::BinOpKind::Ne
             | hir::BinOpKind::And
             | hir::BinOpKind::Or => {
-                span_bug!(span, "impossible assignment operation: {}=", op.node.as_str())
+                bug!("impossible assignment operation: {}=", op.node.as_str())
             }
         }
-    } else if let Op::Binary(op, IsAssign::No) = op {
+    } else {
         match op.node {
             hir::BinOpKind::Add => (sym::add, lang.add_trait()),
             hir::BinOpKind::Sub => (sym::sub, lang.sub_trait()),
@@ -1028,15 +1037,18 @@ fn lang_item_for_op(
             hir::BinOpKind::Eq => (sym::eq, lang.eq_trait()),
             hir::BinOpKind::Ne => (sym::ne, lang.eq_trait()),
             hir::BinOpKind::And | hir::BinOpKind::Or => {
-                span_bug!(span, "&& and || are not overloadable")
+                bug!("&& and || are not overloadable")
             }
         }
-    } else if let Op::Unary(hir::UnOp::Not, _) = op {
-        (sym::not, lang.not_trait())
-    } else if let Op::Unary(hir::UnOp::Neg, _) = op {
-        (sym::neg, lang.neg_trait())
-    } else {
-        bug!("lookup_op_method: op not supported: {:?}", op)
+    }
+}
+
+fn lang_item_for_unop(tcx: TyCtxt<'_>, op: hir::UnOp) -> (Symbol, Option<hir::def_id::DefId>) {
+    let lang = tcx.lang_items();
+    match op {
+        hir::UnOp::Not => (sym::not, lang.not_trait()),
+        hir::UnOp::Neg => (sym::neg, lang.neg_trait()),
+        hir::UnOp::Deref => bug!("Deref is not overloadable"),
     }
 }
 
@@ -1095,12 +1107,6 @@ impl BinOpCategory {
 enum IsAssign {
     No,
     Yes,
-}
-
-#[derive(Clone, Copy, Debug)]
-enum Op {
-    Binary(hir::BinOp, IsAssign),
-    Unary(hir::UnOp, Span),
 }
 
 /// Dereferences a single level of immutable referencing.
