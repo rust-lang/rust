@@ -243,6 +243,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             return bx.cx().const_poison(cast_to);
         }
         let (tag_scalar, tag_encoding, tag_field) = match self.layout.variants {
+            Variants::Empty => unreachable!("we already handled uninhabited types"),
             Variants::Single { index } => {
                 let discr_val = self
                     .layout
@@ -365,9 +366,9 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             return;
         }
         match self.layout.variants {
-            Variants::Single { index } => {
-                assert_eq!(index, variant_index);
-            }
+            Variants::Empty => unreachable!("we already handled uninhabited types"),
+            Variants::Single { index } => assert_eq!(index, variant_index),
+
             Variants::Multiple { tag_encoding: TagEncoding::Direct, tag_field, .. } => {
                 let ptr = self.project_field(bx, tag_field);
                 let to =

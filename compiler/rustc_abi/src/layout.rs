@@ -213,8 +213,9 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         &self,
     ) -> LayoutData<FieldIdx, VariantIdx> {
         let dl = self.cx.data_layout();
+        // This is also used for uninhabited enums, so we use `Variants::Empty`.
         LayoutData {
-            variants: Variants::Single { index: VariantIdx::new(0) },
+            variants: Variants::Empty,
             fields: FieldsShape::Primitive,
             backend_repr: BackendRepr::Uninhabited,
             largest_niche: None,
@@ -1004,8 +1005,8 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             Variants::Multiple { tag, tag_encoding, tag_field, .. } => {
                 Variants::Multiple { tag, tag_encoding, tag_field, variants: best_layout.variants }
             }
-            Variants::Single { .. } => {
-                panic!("encountered a single-variant enum during multi-variant layout")
+            Variants::Single { .. } | Variants::Empty => {
+                panic!("encountered a single-variant or empty enum during multi-variant layout")
             }
         };
         Ok(best_layout.layout)
