@@ -80,17 +80,7 @@ pub trait Float:
     /// represented in multiple different ways. This method returns `true` if two NaNs are
     /// compared.
     fn eq_repr(self, rhs: Self) -> bool {
-        let is_nan = |x: Self| -> bool {
-            // }
-            // fn is_nan(x: Self) -> bool {
-            // When using mangled-names, the "real" compiler-builtins might not have the
-            // necessary builtin (__unordtf2) to test whether `f128` is NaN.
-            // FIXME(f16_f128): Remove once the nightly toolchain has the __unordtf2 builtin
-            // x is NaN if all the bits of the exponent are set and the significand is non-0
-            x.to_bits() & Self::EXP_MASK == Self::EXP_MASK
-                && x.to_bits() & Self::SIG_MASK != Self::Int::ZERO
-        };
-        if is_nan(self) && is_nan(rhs) { true } else { self.to_bits() == rhs.to_bits() }
+        if self.is_nan() && rhs.is_nan() { true } else { self.to_bits() == rhs.to_bits() }
     }
 
     /// Returns true if the value is NaN.
