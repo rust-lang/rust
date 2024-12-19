@@ -997,12 +997,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         }
     }
 
-    fn maybe_polonius_borrows_in_scope<'s>(
+    fn borrows_in_scope<'s>(
         &self,
         location: Location,
         state: &'s BorrowckDomain,
     ) -> Cow<'s, BitSet<BorrowIndex>> {
         if let Some(polonius) = &self.polonius_output {
+            // Use polonius output if it has been enabled.
             let location = self.location_table.start_index(location);
             let mut polonius_output = BitSet::new_empty(self.borrow_set.len());
             for &idx in polonius.errors_at(location) {
@@ -1025,8 +1026,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
     ) -> bool {
         let mut error_reported = false;
 
-        // Use polonius output if it has been enabled.
-        let borrows_in_scope = self.maybe_polonius_borrows_in_scope(location, state);
+        let borrows_in_scope = self.borrows_in_scope(location, state);
 
         each_borrow_involving_path(
             self,
@@ -1158,7 +1158,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         let sd = AccessDepth::Drop;
 
         // Use polonius output if it has been enabled.
-        let borrows_in_scope = self.maybe_polonius_borrows_in_scope(location, state);
+        let borrows_in_scope = self.borrows_in_scope(location, state);
 
         // This is a very simplified version of `Self::check_access_for_conflict`.
         // We are here checking on BIDs and specifically still-live borrows of data involving the BIDs.
