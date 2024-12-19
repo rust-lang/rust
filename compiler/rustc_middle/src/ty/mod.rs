@@ -83,7 +83,8 @@ pub use self::predicate::{
     TypeOutlivesPredicate,
 };
 pub use self::region::{
-    BoundRegion, BoundRegionKind, EarlyParamRegion, LateParamRegion, Region, RegionKind, RegionVid,
+    BoundRegion, BoundRegionKind, EarlyParamRegion, LateParamRegion, LateParamRegionKind, Region,
+    RegionKind, RegionVid,
 };
 pub use self::rvalue_scopes::RvalueScopes;
 pub use self::sty::{

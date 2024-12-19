@@ -475,7 +475,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                                                     .def_id,
                                             ),
                                             ty::ReBound(_, r) => r.kind.get_id(),
-                                            ty::ReLateParam(r) => r.bound_region.get_id(),
+                                            ty::ReLateParam(r) => r.kind.get_id(),
                                             ty::ReStatic
                                             | ty::ReVar(_)
                                             | ty::RePlaceholder(_)

@@ -54,13 +54,13 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let param = anon_param_info.param;
         let new_ty = anon_param_info.param_ty;
         let new_ty_span = anon_param_info.param_ty_span;
-        let br = anon_param_info.br;
         let is_first = anon_param_info.is_first;
         let scope_def_id = region_info.scope;
         let is_impl_item = region_info.is_impl_item;
 
-        match br {
-            ty::BoundRegionKind::Named(_, kw::UnderscoreLifetime) | ty::BoundRegionKind::Anon => {}
+        match anon_param_info.kind {
+            ty::LateParamRegionKind::Named(_, kw::UnderscoreLifetime)
+            | ty::LateParamRegionKind::Anon(_) => {}
             _ => {
                 /* not an anonymous region */
                 debug!("try_report_named_anon_conflict: not an anonymous region");

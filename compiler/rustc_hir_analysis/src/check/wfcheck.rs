@@ -2339,8 +2339,11 @@ fn lint_redundant_lifetimes<'tcx>(
     );
     // If we are in a function, add its late-bound lifetimes too.
     if matches!(def_kind, DefKind::Fn | DefKind::AssocFn) {
-        for var in tcx.fn_sig(owner_id).instantiate_identity().bound_vars() {
+        for (idx, var) in
+            tcx.fn_sig(owner_id).instantiate_identity().bound_vars().iter().enumerate()
+        {
             let ty::BoundVariableKind::Region(kind) = var else { continue };
+            let kind = ty::LateParamRegionKind::from_bound(ty::BoundVar::from_usize(idx), kind);
             lifetimes.push(ty::Region::new_late_param(tcx, owner_id.to_def_id(), kind));
         }
     }
