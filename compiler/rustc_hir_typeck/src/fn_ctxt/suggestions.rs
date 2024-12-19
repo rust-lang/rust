@@ -3477,9 +3477,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         lhs_ty: Ty<'tcx>,
         rhs_expr: &'tcx hir::Expr<'tcx>,
         lhs_expr: &'tcx hir::Expr<'tcx>,
-        op: hir::BinOp,
+        op: hir::BinOpKind,
     ) {
-        match op.node {
+        match op {
             hir::BinOpKind::Eq => {
                 if let Some(partial_eq_def_id) = self.infcx.tcx.lang_items().eq_trait()
                     && self
