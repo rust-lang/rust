@@ -126,6 +126,8 @@ impl HirCollector<'_> {
                     })
                     .unwrap_or(DUMMY_SP)
             };
+            // TEST(notriddle): fail if there's more than 5 tests in a single docblock
+            let test_count_before = self.collector.tests.len();
             markdown::find_testable_code(
                 &doc,
                 &mut self.collector,
@@ -133,6 +135,10 @@ impl HirCollector<'_> {
                 self.enable_per_target_ignores,
                 Some(&crate::html::markdown::ExtraInfo::new(self.tcx, def_id, span)),
             );
+            let test_count_after = self.collector.tests.len();
+            if test_count_after - test_count_before > 5 {
+                self.tcx.sess.dcx().fatal(format!("{def_id:?} has more than five doctests"));
+            }
         }
 
         nested(self);
