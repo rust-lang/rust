@@ -1,5 +1,6 @@
 #![allow(clippy::unusual_byte_groupings)] // sometimes we group by sign_exp_sig
 
+pub mod domain;
 mod f8_impl;
 pub mod gen;
 #[cfg(feature = "test-multiprecision")]

@@ -1,6 +1,7 @@
 //! Different generators that can create random or systematic bit patterns.
 
 use crate::GenerateInput;
+pub mod domain_logspace;
 pub mod random;
 
 /// Helper type to turn any reusable input into a generator.
