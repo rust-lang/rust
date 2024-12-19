@@ -241,11 +241,6 @@ pub enum ConstraintCategory<'tcx> {
         unsize_to: Option<Ty<'tcx>>,
     },
 
-    /// A constraint that came from checking the body of a closure.
-    ///
-    /// We try to get the category that the closure used when reporting this.
-    ClosureBounds,
-
     /// Contains the function type if available.
     CallArgument(#[derive_where(skip)] Option<Ty<'tcx>>),
     CopyBound,

@@ -50,7 +50,6 @@ impl<'tcx> ConstraintDescription for ConstraintCategory<'tcx> {
             ConstraintCategory::Cast { is_implicit_coercion: true, .. } => "coercion ",
             ConstraintCategory::CallArgument(_) => "argument ",
             ConstraintCategory::TypeAnnotation => "type annotation ",
-            ConstraintCategory::ClosureBounds => "closure body ",
             ConstraintCategory::SizedBound => "proving this value is `Sized` ",
             ConstraintCategory::CopyBound => "copying this value ",
             ConstraintCategory::OpaqueType => "opaque type ",
