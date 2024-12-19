@@ -982,7 +982,6 @@ pub trait Tuple {}
 )]
 pub trait PointerLike {}
 
-#[cfg(not(bootstrap))]
 marker_impls! {
     #[unstable(feature = "pointer_like_trait", issue = "none")]
     PointerLike for
@@ -1079,7 +1078,6 @@ pub trait FnPtr: Copy + Clone {
 #[rustc_builtin_macro(CoercePointee, attributes(pointee))]
 #[allow_internal_unstable(dispatch_from_dyn, coerce_unsized, unsize)]
 #[unstable(feature = "derive_coerce_pointee", issue = "123430")]
-#[cfg(not(bootstrap))]
 pub macro CoercePointee($item:item) {
     /* compiler built-in */
 }

@@ -198,7 +198,7 @@ fn alias_and_path_for_library() {
         configure("doc", &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]),
     );
     assert_eq!(first(cache.all::<doc::Std>()), &[
-        doc_std!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 0)
+        doc_std!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 1)
     ]);
 }
 
@@ -265,25 +265,6 @@ mod defaults {
     }
 
     #[test]
-    fn build_stage_0() {
-        let config = Config { stage: 0, ..configure("build", &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]) };
-        let mut cache = run_build(&[], config);
-
-        let a = TargetSelection::from_user(TEST_TRIPLE_1);
-        assert_eq!(first(cache.all::<compile::Std>()), &[
-            std!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 0)
-        ]);
-        assert!(!cache.all::<compile::Assemble>().is_empty());
-        assert_eq!(
-            first(cache.all::<tool::Rustdoc>()),
-            // This is the beta rustdoc.
-            // Add an assert here to make sure this is the only rustdoc built.
-            &[tool::Rustdoc { compiler: Compiler { host: a, stage: 0 } }],
-        );
-        assert!(cache.all::<compile::Rustc>().is_empty());
-    }
-
-    #[test]
     fn build_cross_compile() {
         let config = Config {
             stage: 1,
@@ -332,13 +313,13 @@ mod defaults {
         // rustdoc tool.
         assert_eq!(first(cache.all::<doc::ErrorIndex>()), &[doc::ErrorIndex { target: a },]);
         assert_eq!(first(cache.all::<tool::ErrorIndex>()), &[tool::ErrorIndex {
-            compiler: Compiler { host: a, stage: 0 }
+            compiler: Compiler { host: a, stage: 1 }
         }]);
         // docs should be built with the beta compiler, not with the stage0 artifacts.
         // recall that rustdoc is off-by-one: `stage` is the compiler rustdoc is _linked_ to,
         // not the one it was built by.
         assert_eq!(first(cache.all::<tool::Rustdoc>()), &[tool::Rustdoc {
-            compiler: Compiler { host: a, stage: 0 }
+            compiler: Compiler { host: a, stage: 1 }
         },]);
     }
 }

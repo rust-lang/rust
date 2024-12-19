@@ -307,7 +307,7 @@ impl Step for Src {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let config = &run.builder.config;
-        let cond = config.extended && config.tools.as_ref().map_or(true, |t| t.contains("src"));
+        let cond = config.extended && config.tools.as_ref().is_none_or(|t| t.contains("src"));
         run.path("src").default_condition(cond)
     }
 

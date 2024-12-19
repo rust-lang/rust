@@ -257,7 +257,7 @@ auto:
     env:
       IMAGE: i686-gnu-nopt
       DOCKER_SCRIPT: >-
-        python3 ../x.py test --stage 0 --config /config/nopt-std-config.toml library/std &&
+        python3 ../x.py test --stage 1 --config /config/nopt-std-config.toml library/std &&
         python3 ../x.py --stage 2 test
         --skip tests
         --skip coverage-map
