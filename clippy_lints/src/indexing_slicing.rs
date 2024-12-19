@@ -2,7 +2,7 @@ use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::ty::{deref_chain, get_adt_inherent_method};
-use clippy_utils::{higher, is_from_proc_macro};
+use clippy_utils::{higher, is_from_proc_macro, is_in_test};
 use rustc_ast::ast::RangeLimits;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -89,12 +89,14 @@ declare_clippy_lint! {
 impl_lint_pass!(IndexingSlicing => [INDEXING_SLICING, OUT_OF_BOUNDS_INDEXING]);
 
 pub struct IndexingSlicing {
+    allow_indexing_slicing_in_tests: bool,
     suppress_restriction_lint_in_const: bool,
 }
 
 impl IndexingSlicing {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
+            allow_indexing_slicing_in_tests: conf.allow_indexing_slicing_in_tests,
             suppress_restriction_lint_in_const: conf.suppress_restriction_lint_in_const,
         }
     }
@@ -115,6 +117,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
         {
             let note = "the suggestion might not be applicable in constant blocks";
             let ty = cx.typeck_results().expr_ty(array).peel_refs();
+            let allowed_in_tests = self.allow_indexing_slicing_in_tests && is_in_test(cx.tcx, expr.hir_id);
             if let Some(range) = higher::Range::hir(index) {
                 // Ranged indexes, i.e., &x[n..m], &x[n..], &x[..n] and &x[..]
                 if let ty::Array(_, s) = ty.kind() {
@@ -164,6 +167,10 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
                     (None, None) => return, // [..] is ok.
                 };
 
+                if allowed_in_tests {
+                    return;
+                }
+
                 span_lint_and_then(cx, INDEXING_SLICING, expr.span, "slicing may panic", |diag| {
                     diag.help(help_msg);
 
@@ -200,6 +207,10 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
                         // Let rustc's `const_err` lint handle constant `usize` indexing on arrays.
                         return;
                     }
+                }
+
+                if allowed_in_tests {
+                    return;
                 }
 
                 span_lint_and_then(cx, INDEXING_SLICING, expr.span, "indexing may panic", |diag| {
