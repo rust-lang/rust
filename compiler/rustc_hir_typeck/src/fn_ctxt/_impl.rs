@@ -1517,6 +1517,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ty.into(),
                         TypeAnnotationNeeded::E0282,
                         true,
+                        self.param_env,
+                        None,
                     )
                     .emit()
             });

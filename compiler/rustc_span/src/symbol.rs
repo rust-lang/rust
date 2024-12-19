@@ -523,6 +523,7 @@ symbols! {
         bitxor,
         bitxor_assign,
         black_box,
+        blanket_into_impl,
         block,
         bool,
         bool_then,

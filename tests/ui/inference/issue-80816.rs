@@ -50,6 +50,7 @@ pub fn foo() {
     let guard: Guard<Arc<usize>> = s.load();
     //~^ ERROR: type annotations needed
     //~| HELP: try using a fully qualified path to specify the expected types
+    // let guard: Guard<Arc<usize>> = <Arc<ArcSwapAny<Arc<usize>>> as Access<Arc<usize>>>::load(&s);
 }
 
 fn main() {}
