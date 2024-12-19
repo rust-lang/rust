@@ -1,4 +1,5 @@
-#![allow(dead_code)]
+//! Check that `#[inline]` attribute can only be applied to fn-like targets (e.g. function or
+//! closure), and when misapplied to other targets an error is emitted.
 
 #[inline]
 fn f() {}
