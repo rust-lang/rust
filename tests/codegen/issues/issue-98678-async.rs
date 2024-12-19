@@ -1,10 +1,12 @@
-// This test verifies the accuracy of emitted file and line debuginfo metadata for async blocks and
-// async functions.
-//
+// ignore-tidy-linelength
+//! This test verifies the accuracy of emitted file and line debuginfo metadata for async blocks and
+//! async functions.
+
+//@ revisions: MSVC NONMSVC
+//@[MSVC] only-msvc
+//@[NONMSVC] ignore-msvc
 //@ edition:2021
 //@ compile-flags: --crate-type=lib -Copt-level=0 -Cdebuginfo=2 -Zdebug-info-type-line-numbers=true
-
-// ignore-tidy-linelength
 
 // NONMSVC-DAG: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*[/\\]}}issue-98678-async.rs{{".*}})
 // MSVC: ![[#FILE:]] = !DIFile({{.*}}filename:{{.*}}\\issue-98678-async.rs{{".*}})

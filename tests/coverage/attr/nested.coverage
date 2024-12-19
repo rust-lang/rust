@@ -1,5 +1,6 @@
    LL|       |#![feature(stmt_expr_attributes)]
    LL|       |//@ edition: 2021
+   LL|       |//@ reference: attributes.coverage.nesting
    LL|       |
    LL|       |// Demonstrates the interaction between #[coverage(off)] and various kinds of
    LL|       |// nested function.

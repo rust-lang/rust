@@ -1,9 +1,11 @@
-//@ compile-flags: -C debuginfo=2
 // ignore-tidy-linelength
+//! Checks that visibility information is present in the debuginfo for types and their fields.
 
-#![allow(dead_code)]
+//@ revisions: MSVC NONMSVC
+//@[MSVC] only-msvc
+//@[NONMSVC] ignore-msvc
 
-// Checks that visibility information is present in the debuginfo for types and their fields.
+//@ compile-flags: -C debuginfo=2
 
 use std::hint::black_box;
 

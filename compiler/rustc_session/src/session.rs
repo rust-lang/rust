@@ -352,6 +352,11 @@ impl Session {
         self.opts.unstable_opts.coverage_options.no_mir_spans
     }
 
+    /// True if `-Zcoverage-options=discard-all-spans-in-codegen` was passed.
+    pub fn coverage_discard_all_spans_in_codegen(&self) -> bool {
+        self.opts.unstable_opts.coverage_options.discard_all_spans_in_codegen
+    }
+
     pub fn is_sanitizer_cfi_enabled(&self) -> bool {
         self.opts.unstable_opts.sanitizer.contains(SanitizerSet::CFI)
     }
