@@ -1578,7 +1578,7 @@ fn deny_equality_constraints(
                     None => (format!("<{assoc} = {ty}>"), trait_segment.span().shrink_to_hi()),
                 };
                 let removal_span = if generics.where_clause.predicates.len() == 1 {
-                    // We're removing th eonly where bound left, remove the whole thing.
+                    // We're removing the only where bound left, remove the whole thing.
                     generics.where_clause.span
                 } else {
                     let mut span = predicate_span;
