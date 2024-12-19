@@ -264,7 +264,7 @@ impl<'a> Parser<'a> {
 
             let op = op.node;
             // Special cases:
-            if op == AssocOp::As {
+            if op == AssocOp::Cast {
                 lhs = self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Cast)?;
                 continue;
             } else if let AssocOp::Range(limits) = op {
@@ -294,7 +294,7 @@ impl<'a> Parser<'a> {
                     let aopexpr = self.mk_assign_op(source_map::respan(cur_op_span, aop), lhs, rhs);
                     self.mk_expr(span, aopexpr)
                 }
-                AssocOp::As | AssocOp::Range(_) => {
+                AssocOp::Cast | AssocOp::Range(_) => {
                     self.dcx().span_bug(span, "AssocOp should have been handled by special case")
                 }
             };
