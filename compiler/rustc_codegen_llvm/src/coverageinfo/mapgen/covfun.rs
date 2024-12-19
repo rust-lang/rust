@@ -132,6 +132,7 @@ fn fill_region_tables<'tcx>(
     let make_cov_span = |span: Span| {
         spans::make_coverage_span(local_file_id, source_map, fn_cov_info, &source_file, span)
     };
+    let discard_all = tcx.sess.coverage_discard_all_spans_in_codegen();
 
     // For each counter/region pair in this function+file, convert it to a
     // form suitable for FFI.
@@ -141,7 +142,17 @@ fn fill_region_tables<'tcx>(
         // MIR opts, replace those occurrences with zero.
         let kind = kind.map_terms(|term| if is_zero_term(term) { CovTerm::Zero } else { term });
 
+        // Convert the `Span` into coordinates that we can pass to LLVM, or
+        // discard the span if conversion fails. In rare, cases _all_ of a
+        // function's spans are discarded, and the rest of coverage codegen
+        // needs to handle that gracefully to avoid a repeat of #133606.
+        // We don't have a good test case for triggering that organically, so
+        // instead we set `-Zcoverage-options=discard-all-spans-in-codegen`
+        // to force it to occur.
         let Some(cov_span) = make_cov_span(span) else { continue };
+        if discard_all {
+            continue;
+        }
 
         match kind {
             MappingKind::Code(term) => {
