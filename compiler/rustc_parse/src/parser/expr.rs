@@ -171,7 +171,7 @@ impl<'a> Parser<'a> {
                 break;
             }
             // Check for deprecated `...` syntax
-            if self.token == token::DotDotDot && op.node == AssocOp::DotDotEq {
+            if self.token == token::DotDotDot && op.node == AssocOp::Range(RangeLimits::Closed) {
                 self.err_dotdotdot_syntax(self.token.span);
             }
 
@@ -267,10 +267,10 @@ impl<'a> Parser<'a> {
             if op == AssocOp::As {
                 lhs = self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Cast)?;
                 continue;
-            } else if op == AssocOp::DotDot || op == AssocOp::DotDotEq {
+            } else if let AssocOp::Range(limits) = op {
                 // If we didn't have to handle `x..`/`x..=`, it would be pretty easy to
                 // generalise it to the Fixity::None code.
-                lhs = self.parse_expr_range(prec, lhs, op, cur_op_span)?;
+                lhs = self.parse_expr_range(prec, lhs, limits, cur_op_span)?;
                 break;
             }
 
@@ -294,7 +294,7 @@ impl<'a> Parser<'a> {
                     let aopexpr = self.mk_assign_op(source_map::respan(cur_op_span, aop), lhs, rhs);
                     self.mk_expr(span, aopexpr)
                 }
-                AssocOp::As | AssocOp::DotDot | AssocOp::DotDotEq => {
+                AssocOp::As | AssocOp::Range(_) => {
                     self.dcx().span_bug(span, "AssocOp should have been handled by special case")
                 }
             };
@@ -372,8 +372,7 @@ impl<'a> Parser<'a> {
                     AssocOp::Assign
                     | AssocOp::AssignOp(_)
                     | AssocOp::Binary(BinOpKind::BitOr)
-                    | AssocOp::DotDot
-                    | AssocOp::DotDotEq,
+                    | AssocOp::Range(_),
                 ),
                 _,
             ) if self.restrictions.contains(Restrictions::IS_PAT) => {
@@ -414,7 +413,7 @@ impl<'a> Parser<'a> {
         &mut self,
         prec: ExprPrecedence,
         lhs: P<Expr>,
-        op: AssocOp,
+        limits: RangeLimits,
         cur_op_span: Span,
     ) -> PResult<'a, P<Expr>> {
         let rhs = if self.is_at_start_of_range_notation_rhs() {
@@ -430,8 +429,6 @@ impl<'a> Parser<'a> {
         };
         let rhs_span = rhs.as_ref().map_or(cur_op_span, |x| x.span);
         let span = self.mk_expr_sp(&lhs, lhs.span, rhs_span);
-        let limits =
-            if op == AssocOp::DotDot { RangeLimits::HalfOpen } else { RangeLimits::Closed };
         let range = self.mk_range(Some(lhs), rhs, limits);
         Ok(self.mk_expr(span, range))
     }

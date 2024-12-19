@@ -1453,6 +1453,15 @@ pub enum RangeLimits {
     Closed,
 }
 
+impl RangeLimits {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            RangeLimits::HalfOpen => "..",
+            RangeLimits::Closed => "..=",
+        }
+    }
+}
+
 /// A method call (e.g. `x.foo::<Bar, Baz>(a, b, c)`).
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct MethodCall {
