@@ -316,16 +316,6 @@ impl<'tcx> InferCtxt<'tcx> {
             }),
         );
 
-        // ...also include the query member constraints.
-        output_query_region_constraints.member_constraints.extend(
-            query_response
-                .value
-                .region_constraints
-                .member_constraints
-                .iter()
-                .map(|p_c| instantiate_value(self.tcx, &result_args, p_c.clone())),
-        );
-
         let user_result: R =
             query_response.instantiate_projected(self.tcx, &result_args, |q_r| q_r.value.clone());
 
@@ -643,7 +633,7 @@ pub fn make_query_region_constraints<'tcx>(
     outlives_obligations: impl Iterator<Item = (Ty<'tcx>, ty::Region<'tcx>, ConstraintCategory<'tcx>)>,
     region_constraints: &RegionConstraintData<'tcx>,
 ) -> QueryRegionConstraints<'tcx> {
-    let RegionConstraintData { constraints, verifys, member_constraints } = region_constraints;
+    let RegionConstraintData { constraints, verifys } = region_constraints;
 
     assert!(verifys.is_empty());
 
@@ -674,5 +664,5 @@ pub fn make_query_region_constraints<'tcx>(
         }))
         .collect();
 
-    QueryRegionConstraints { outlives, member_constraints: member_constraints.clone() }
+    QueryRegionConstraints { outlives }
 }

@@ -22,7 +22,7 @@ where
     /// Stores the data about each `R0 member of [R1..Rn]` constraint.
     /// These are organized into a linked list, so each constraint
     /// contains the index of the next constraint with the same `R0`.
-    constraints: IndexVec<NllMemberConstraintIndex, NllMemberConstraint<'tcx>>,
+    constraints: IndexVec<NllMemberConstraintIndex, MemberConstraint<'tcx>>,
 
     /// Stores the `R1..Rn` regions for *all* sets. For any given
     /// constraint, we keep two indices so that we can pull out a
@@ -32,7 +32,7 @@ where
 
 /// Represents a `R0 member of [R1..Rn]` constraint
 #[derive(Debug)]
-pub(crate) struct NllMemberConstraint<'tcx> {
+pub(crate) struct MemberConstraint<'tcx> {
     next_constraint: Option<NllMemberConstraintIndex>,
 
     /// The span where the hidden type was instantiated.
@@ -87,7 +87,7 @@ impl<'tcx> MemberConstraintSet<'tcx, ty::RegionVid> {
         let start_index = self.choice_regions.len();
         self.choice_regions.extend(choice_regions);
         let end_index = self.choice_regions.len();
-        let constraint_index = self.constraints.push(NllMemberConstraint {
+        let constraint_index = self.constraints.push(MemberConstraint {
             next_constraint,
             member_region_vid,
             definition_span,
@@ -97,14 +97,6 @@ impl<'tcx> MemberConstraintSet<'tcx, ty::RegionVid> {
             end_index,
         });
         self.first_constraints.insert(member_region_vid, constraint_index);
-    }
-
-    // TODO: removed in the next commit
-    pub(crate) fn push_constraint(
-        &mut self,
-        _: &rustc_middle::infer::MemberConstraint<'tcx>,
-        _: impl FnMut(ty::Region<'tcx>) -> ty::RegionVid,
-    ) {
     }
 }
 
@@ -186,7 +178,7 @@ where
     /// R0 member of [R1..Rn]
     /// ```
     pub(crate) fn choice_regions(&self, pci: NllMemberConstraintIndex) -> &[ty::RegionVid] {
-        let NllMemberConstraint { start_index, end_index, .. } = &self.constraints[pci];
+        let MemberConstraint { start_index, end_index, .. } = &self.constraints[pci];
         &self.choice_regions[*start_index..*end_index]
     }
 }
@@ -195,9 +187,9 @@ impl<'tcx, R> Index<NllMemberConstraintIndex> for MemberConstraintSet<'tcx, R>
 where
     R: Copy + Eq,
 {
-    type Output = NllMemberConstraint<'tcx>;
+    type Output = MemberConstraint<'tcx>;
 
-    fn index(&self, i: NllMemberConstraintIndex) -> &NllMemberConstraint<'tcx> {
+    fn index(&self, i: NllMemberConstraintIndex) -> &MemberConstraint<'tcx> {
         &self.constraints[i]
     }
 }
@@ -219,7 +211,7 @@ where
 /// target_list: A -> B -> C -> D -> E -> F -> (None)
 /// ```
 fn append_list(
-    constraints: &mut IndexSlice<NllMemberConstraintIndex, NllMemberConstraint<'_>>,
+    constraints: &mut IndexSlice<NllMemberConstraintIndex, MemberConstraint<'_>>,
     target_list: NllMemberConstraintIndex,
     source_list: NllMemberConstraintIndex,
 ) {
