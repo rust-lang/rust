@@ -278,7 +278,6 @@ impl ExtraBackendMethods for GccCodegenBackend {
         &self,
         tcx: TyCtxt<'_>,
         module_name: &str,
-        kind: AllocatorKind,
         alloc_error_handler_kind: AllocatorKind,
     ) -> Self::Module {
         let mut mods = GccContext {
@@ -289,7 +288,7 @@ impl ExtraBackendMethods for GccCodegenBackend {
         };
 
         unsafe {
-            allocator::codegen(tcx, &mut mods, module_name, kind, alloc_error_handler_kind);
+            allocator::codegen(tcx, &mut mods, module_name, alloc_error_handler_kind);
         }
         mods
     }

@@ -898,6 +898,7 @@ fn mono_item_visibility<'tcx>(
         //   Removal of these functions can't be done by LLVM but rather must be
         //   done by the linker as it's a non-local decision.
         //
+        // FIXME update comment
         // * Second is "std internal symbols". Currently this is primarily used
         //   for allocator symbols. Allocators are a little weird in their
         //   implementation, but the idea is that the compiler, at the last
