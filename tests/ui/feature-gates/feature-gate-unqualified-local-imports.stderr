@@ -1,8 +1,8 @@
 warning: unknown lint: `unqualified_local_imports`
-  --> $DIR/feature-gate-unqualified-local-imports.rs:3:1
+  --> $DIR/feature-gate-unqualified-local-imports.rs:3:10
    |
 LL | #![allow(unqualified_local_imports)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the `unqualified_local_imports` lint is unstable
    = help: add `#![feature(unqualified_local_imports)]` to the crate attributes to enable
