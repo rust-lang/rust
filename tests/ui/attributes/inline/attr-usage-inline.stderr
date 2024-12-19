@@ -1,5 +1,5 @@
 error[E0518]: attribute should be applied to function or closure
-  --> $DIR/attr-usage-inline.rs:6:1
+  --> $DIR/attr-usage-inline.rs:7:1
    |
 LL | #[inline]
    | ^^^^^^^^^
@@ -7,7 +7,7 @@ LL | struct S;
    | --------- not a function or closure
 
 error[E0518]: attribute should be applied to function or closure
-  --> $DIR/attr-usage-inline.rs:20:1
+  --> $DIR/attr-usage-inline.rs:21:1
    |
 LL | #[inline]
    | ^^^^^^^^^ not a function or closure
