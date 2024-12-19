@@ -84,7 +84,7 @@
 // ^ we use this term instead of saying that the produced reference must
 // be valid, as the validity of a reference is easily confused for the
 // validity of the thing it refers to, and while the two concepts are
-// closly related, they are not identical.
+// closely related, they are not identical.
 //!
 //! These rules apply even if the result is unused!
 //! (The part about being initialized is not yet fully decided, but until
