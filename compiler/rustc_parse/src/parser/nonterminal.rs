@@ -50,14 +50,11 @@ impl<'a> Parser<'a> {
                 NtStmt(_)
                 | NtPat(_)
                 | NtExpr(_)
-                | NtTy(_)
                 | NtLiteral(_) // `true`, `false`
                 | NtMeta(_)
                 | NtPath(_) => true,
 
-                NtItem(_)
-                | NtBlock(_)
-                | NtVis(_) => false,
+                NtItem(_) | NtBlock(_) => false,
             }
         }
 
@@ -87,7 +84,7 @@ impl<'a> Parser<'a> {
             NonterminalKind::Ident => get_macro_ident(token).is_some(),
             NonterminalKind::Literal => token.can_begin_literal_maybe_minus(),
             NonterminalKind::Vis => match token.kind {
-                // The follow-set of :vis + "priv" keyword + interpolated
+                // The follow-set of :vis + "priv" keyword + interpolated/metavar-expansion.
                 token::Comma
                 | token::Ident(..)
                 | token::NtIdent(..)
@@ -101,7 +98,7 @@ impl<'a> Parser<'a> {
                 token::NtLifetime(..) => true,
                 token::Interpolated(nt) => match &**nt {
                     NtBlock(_) | NtStmt(_) | NtExpr(_) | NtLiteral(_) => true,
-                    NtItem(_) | NtPat(_) | NtTy(_) | NtMeta(_) | NtPath(_) | NtVis(_) => false,
+                    NtItem(_) | NtPat(_) | NtMeta(_) | NtPath(_) => false,
                 },
                 token::OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(k))) => match k {
                     MetaVarKind::Block
@@ -188,7 +185,9 @@ impl<'a> Parser<'a> {
                 NtLiteral(self.collect_tokens_no_attrs(|this| this.parse_literal_maybe_minus())?)
             }
             NonterminalKind::Ty => {
-                NtTy(self.collect_tokens_no_attrs(|this| this.parse_ty_no_question_mark_recover())?)
+                return Ok(ParseNtResult::Ty(
+                    self.collect_tokens_no_attrs(|this| this.parse_ty_no_question_mark_recover())?,
+                ));
             }
             // this could be handled like a token, since it is one
             NonterminalKind::Ident => {
@@ -207,8 +206,9 @@ impl<'a> Parser<'a> {
             }
             NonterminalKind::Meta => NtMeta(P(self.parse_attr_item(ForceCollect::Yes)?)),
             NonterminalKind::Vis => {
-                NtVis(P(self
-                    .collect_tokens_no_attrs(|this| this.parse_visibility(FollowedByType::Yes))?))
+                return Ok(ParseNtResult::Vis(P(self.collect_tokens_no_attrs(|this| {
+                    this.parse_visibility(FollowedByType::Yes)
+                })?)));
             }
             NonterminalKind::Lifetime => {
                 // We want to keep `'keyword` parsing, just like `keyword` is still
