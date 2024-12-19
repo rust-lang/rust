@@ -201,7 +201,7 @@ impl<T> TypedArena<T> {
     /// storing the elements in the arena.
     #[inline]
     pub fn alloc_from_iter<I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
-        // Despite the similarlty with `DroplessArena`, we cannot reuse their fast case. The reason
+        // Despite the similarity with `DroplessArena`, we cannot reuse their fast case. The reason
         // is subtle: these arenas are reentrant. In other words, `iter` may very well be holding a
         // reference to `self` and adding elements to the arena during iteration.
         //
