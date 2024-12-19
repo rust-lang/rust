@@ -113,10 +113,7 @@ impl<'a> Sugg<'a> {
     /// function variants of `Sugg`, since these use different snippet functions.
     fn hir_from_snippet(expr: &hir::Expr<'_>, mut get_snippet: impl FnMut(Span) -> Cow<'a, str>) -> Self {
         if let Some(range) = higher::Range::hir(expr) {
-            let op = match range.limits {
-                ast::RangeLimits::HalfOpen => AssocOp::DotDot,
-                ast::RangeLimits::Closed => AssocOp::DotDotEq,
-            };
+            let op = AssocOp::Range(range.limits);
             let start = range.start.map_or("".into(), |expr| get_snippet(expr.span));
             let end = range.end.map_or("".into(), |expr| get_snippet(expr.span));
 
@@ -178,8 +175,6 @@ impl<'a> Sugg<'a> {
         ctxt: SyntaxContext,
         app: &mut Applicability,
     ) -> Self {
-        use rustc_ast::ast::RangeLimits;
-
         let mut snippet = |span: Span| snippet_with_context(cx, span, ctxt, default, app).0;
 
         match expr.kind {
@@ -228,13 +223,8 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::Err(_)
             | ast::ExprKind::Dummy
             | ast::ExprKind::UnsafeBinderCast(..) => Sugg::NonParen(snippet(expr.span)),
-            ast::ExprKind::Range(ref lhs, ref rhs, RangeLimits::HalfOpen) => Sugg::BinOp(
-                AssocOp::DotDot,
-                lhs.as_ref().map_or("".into(), |lhs| snippet(lhs.span)),
-                rhs.as_ref().map_or("".into(), |rhs| snippet(rhs.span)),
-            ),
-            ast::ExprKind::Range(ref lhs, ref rhs, RangeLimits::Closed) => Sugg::BinOp(
-                AssocOp::DotDotEq,
+            ast::ExprKind::Range(ref lhs, ref rhs, limits) => Sugg::BinOp(
+                AssocOp::Range(limits),
                 lhs.as_ref().map_or("".into(), |lhs| snippet(lhs.span)),
                 rhs.as_ref().map_or("".into(), |rhs| snippet(rhs.span)),
             ),
@@ -326,11 +316,8 @@ impl<'a> Sugg<'a> {
 
     /// Convenience method to create the `<lhs>..<rhs>` or `<lhs>...<rhs>`
     /// suggestion.
-    pub fn range(self, end: &Self, limit: ast::RangeLimits) -> Sugg<'static> {
-        match limit {
-            ast::RangeLimits::HalfOpen => make_assoc(AssocOp::DotDot, &self, end),
-            ast::RangeLimits::Closed => make_assoc(AssocOp::DotDotEq, &self, end),
-        }
+    pub fn range(self, end: &Self, limits: ast::RangeLimits) -> Sugg<'static> {
+        make_assoc(AssocOp::Range(limits), &self, end)
     }
 
     /// Adds parentheses to any expression that might need them. Suitable to the
@@ -370,8 +357,7 @@ fn binop_to_string(op: AssocOp, lhs: &str, rhs: &str) -> String {
         AssocOp::Assign => format!("{lhs} = {rhs}"),
         AssocOp::AssignOp(op) => format!("{lhs} {}= {rhs}", op.as_str()),
         AssocOp::As => format!("{lhs} as {rhs}"),
-        AssocOp::DotDot => format!("{lhs}..{rhs}"),
-        AssocOp::DotDotEq => format!("{lhs}..={rhs}"),
+        AssocOp::Range(limits) => format!("{lhs}{}{rhs}", limits.as_str()),
     }
 }
 
@@ -590,7 +576,7 @@ enum Associativity {
 /// associative.
 #[must_use]
 fn associativity(op: AssocOp) -> Associativity {
-    use rustc_ast::util::parser::AssocOp::{As, Assign, AssignOp, Binary, DotDot, DotDotEq};
+    use rustc_ast::util::parser::AssocOp::{As, Assign, AssignOp, Binary, Range};
     use ast::BinOpKind::{
         Add, BitAnd, BitOr, BitXor, Div, Eq, Gt, Ge, And, Or, Lt, Le, Rem, Mul, Ne, Shl, Shr, Sub,
     };
@@ -599,7 +585,7 @@ fn associativity(op: AssocOp) -> Associativity {
         Assign | AssignOp(_) => Associativity::Right,
         Binary(Add | BitAnd | BitOr | BitXor | And | Or | Mul) | As => Associativity::Both,
         Binary(Div | Eq | Gt | Ge | Lt | Le | Rem | Ne | Shl | Shr | Sub) => Associativity::Left,
-        DotDot | DotDotEq => Associativity::None,
+        Range(_) => Associativity::None,
     }
 }
 
