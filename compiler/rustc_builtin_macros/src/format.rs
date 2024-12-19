@@ -12,6 +12,7 @@ use rustc_errors::{Applicability, Diag, MultiSpan, PResult, SingleLabelManySpans
 use rustc_expand::base::*;
 use rustc_lint_defs::builtin::NAMED_ARGUMENTS_USED_POSITIONALLY;
 use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiag, LintId};
+use rustc_parse::exp;
 use rustc_parse_format as parse;
 use rustc_span::{BytePos, ErrorGuaranteed, Ident, InnerSpan, Span, Symbol};
 
@@ -93,12 +94,12 @@ fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, 
     let mut first = true;
 
     while p.token != token::Eof {
-        if !p.eat(&token::Comma) {
+        if !p.eat(exp!(Comma)) {
             if first {
-                p.clear_expected_tokens();
+                p.clear_expected_token_types();
             }
 
-            match p.expect(&token::Comma) {
+            match p.expect(exp!(Comma)) {
                 Err(err) => {
                     match token::TokenKind::Comma.similar_tokens() {
                         Some(tks) if tks.contains(&p.token.kind) => {
@@ -122,7 +123,7 @@ fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, 
         match p.token.ident() {
             Some((ident, _)) if p.look_ahead(1, |t| *t == token::Eq) => {
                 p.bump();
-                p.expect(&token::Eq)?;
+                p.expect(exp!(Eq))?;
                 let expr = p.parse_expr()?;
                 if let Some((_, prev)) = args.by_name(ident.name) {
                     ecx.dcx().emit_err(errors::FormatDuplicateArg {

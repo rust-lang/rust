@@ -2,9 +2,9 @@ use std::iter::once;
 use std::path::{self, Path, PathBuf};
 
 use rustc_ast::ptr::P;
-use rustc_ast::{AttrVec, Attribute, Inline, Item, ModSpans, token};
+use rustc_ast::{AttrVec, Attribute, Inline, Item, ModSpans};
 use rustc_errors::{Diag, ErrorGuaranteed};
-use rustc_parse::{new_parser_from_file, unwrap_or_emit_fatal, validate_attr};
+use rustc_parse::{exp, new_parser_from_file, unwrap_or_emit_fatal, validate_attr};
 use rustc_session::Session;
 use rustc_session::parse::ParseSess;
 use rustc_span::{Ident, Span, sym};
@@ -70,7 +70,7 @@ pub(crate) fn parse_external_mod(
         let mut parser =
             unwrap_or_emit_fatal(new_parser_from_file(&sess.psess, &mp.file_path, Some(span)));
         let (inner_attrs, items, inner_span) =
-            parser.parse_mod(&token::Eof).map_err(|err| ModError::ParserError(err))?;
+            parser.parse_mod(exp!(Eof)).map_err(|err| ModError::ParserError(err))?;
         attrs.extend(inner_attrs);
         (items, inner_span, mp.file_path)
     };

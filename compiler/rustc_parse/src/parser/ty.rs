@@ -18,7 +18,7 @@ use crate::errors::{
     HelpUseLatestEdition, InvalidDynKeyword, LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime,
     NestedCVariadicType, ReturnTypesUseThinArrow,
 };
-use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
+use crate::{exp, maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 
 /// Signals whether parsing a type should allow `+`.
 ///
@@ -203,7 +203,7 @@ impl<'a> Parser<'a> {
         recover_return_sign: RecoverReturnSign,
     ) -> PResult<'a, FnRetTy> {
         let lo = self.prev_token.span;
-        Ok(if self.eat(&token::RArrow) {
+        Ok(if self.eat(exp!(RArrow)) {
             // FIXME(Centril): Can we unconditionally `allow_plus`?
             let ty = self.parse_ty_common(
                 allow_plus,
@@ -251,28 +251,28 @@ impl<'a> Parser<'a> {
 
         let lo = self.token.span;
         let mut impl_dyn_multi = false;
-        let kind = if self.check(&token::OpenDelim(Delimiter::Parenthesis)) {
+        let kind = if self.check(exp!(OpenParen)) {
             self.parse_ty_tuple_or_parens(lo, allow_plus)?
-        } else if self.eat(&token::Not) {
+        } else if self.eat(exp!(Not)) {
             // Never type `!`
             TyKind::Never
-        } else if self.eat(&token::BinOp(token::Star)) {
+        } else if self.eat(exp!(Star)) {
             self.parse_ty_ptr()?
-        } else if self.eat(&token::OpenDelim(Delimiter::Bracket)) {
+        } else if self.eat(exp!(OpenBracket)) {
             self.parse_array_or_slice_ty()?
-        } else if self.check(&token::BinOp(token::And)) || self.check(&token::AndAnd) {
+        } else if self.check(exp!(And)) || self.check(exp!(AndAnd)) {
             // Reference
             self.expect_and()?;
             self.parse_borrowed_pointee()?
         } else if self.eat_keyword_noexpect(kw::Typeof) {
             self.parse_typeof_ty()?
-        } else if self.eat_keyword(kw::Underscore) {
+        } else if self.eat_keyword(exp!(Underscore)) {
             // A type to be inferred `_`
             TyKind::Infer
         } else if self.check_fn_front_matter(false, Case::Sensitive) {
             // Function pointer type
             self.parse_ty_bare_fn(lo, ThinVec::new(), None, recover_return_sign)?
-        } else if self.check_keyword(kw::For) {
+        } else if self.check_keyword(exp!(For)) {
             // Function pointer type or bound list (trait object type) starting with a poly-trait.
             //   `for<'lt> [unsafe] [extern "ABI"] fn (&'lt S) -> T`
             //   `for<'lt> Trait1<'lt> + Trait2 + 'a`
@@ -324,7 +324,7 @@ impl<'a> Parser<'a> {
                     self.parse_remaining_bounds_path(lifetime_defs, path, lo, parse_plus)?
                 }
             }
-        } else if self.eat_keyword(kw::Impl) {
+        } else if self.eat_keyword(exp!(Impl)) {
             self.parse_impl_ty(&mut impl_dyn_multi)?
         } else if self.is_explicit_dyn_type() {
             self.parse_dyn_ty(&mut impl_dyn_multi)?
@@ -336,7 +336,7 @@ impl<'a> Parser<'a> {
             self.parse_path_start_ty(lo, allow_plus, ty_generics)?
         } else if self.can_begin_bound() {
             self.parse_bare_trait_object(lo, allow_plus)?
-        } else if self.eat(&token::DotDotDot) {
+        } else if self.eat(exp!(DotDotDot)) {
             match allow_c_variadic {
                 AllowCVariadic::Yes => TyKind::CVarArgs,
                 AllowCVariadic::No => {
@@ -347,7 +347,7 @@ impl<'a> Parser<'a> {
                     TyKind::Err(guar)
                 }
             }
-        } else if self.check_keyword(kw::Unsafe)
+        } else if self.check_keyword(exp!(Unsafe))
             && self.look_ahead(1, |tok| matches!(tok.kind, token::Lt))
         {
             self.parse_unsafe_binder_ty()?
@@ -374,7 +374,7 @@ impl<'a> Parser<'a> {
 
     fn parse_unsafe_binder_ty(&mut self) -> PResult<'a, TyKind> {
         let lo = self.token.span;
-        assert!(self.eat_keyword(kw::Unsafe));
+        assert!(self.eat_keyword(exp!(Unsafe)));
         self.expect_lt()?;
         let generic_params = self.parse_generic_params()?;
         self.expect_gt()?;
@@ -487,16 +487,16 @@ impl<'a> Parser<'a> {
             Err(err) => return Err(err),
         };
 
-        let ty = if self.eat(&token::Semi) {
+        let ty = if self.eat(exp!(Semi)) {
             let mut length = self.parse_expr_anon_const()?;
-            if let Err(e) = self.expect(&token::CloseDelim(Delimiter::Bracket)) {
+            if let Err(e) = self.expect(exp!(CloseBracket)) {
                 // Try to recover from `X<Y, ...>` when `X::<Y, ...>` works
                 self.check_mistyped_turbofish_with_multiple_type_params(e, &mut length.value)?;
-                self.expect(&token::CloseDelim(Delimiter::Bracket))?;
+                self.expect(exp!(CloseBracket))?;
             }
             TyKind::Array(elt_ty, length)
         } else {
-            self.expect(&token::CloseDelim(Delimiter::Bracket))?;
+            self.expect(exp!(CloseBracket))?;
             TyKind::Slice(elt_ty)
         };
 
@@ -579,9 +579,9 @@ impl<'a> Parser<'a> {
     // Parses the `typeof(EXPR)`.
     // To avoid ambiguity, the type is surrounded by parentheses.
     fn parse_typeof_ty(&mut self) -> PResult<'a, TyKind> {
-        self.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
+        self.expect(exp!(OpenParen))?;
         let expr = self.parse_expr_anon_const()?;
-        self.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
+        self.expect(exp!(CloseParen))?;
         Ok(TyKind::Typeof(expr))
     }
 
@@ -697,15 +697,15 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         self.expect_lt()?;
         let (args, _, _) = self.parse_seq_to_before_tokens(
-            &[&TokenKind::Gt],
+            &[exp!(Gt)],
             &[
                 &TokenKind::Ge,
                 &TokenKind::BinOp(BinOpToken::Shr),
                 &TokenKind::BinOpEq(BinOpToken::Shr),
             ],
-            SeqSep::trailing_allowed(token::Comma),
+            SeqSep::trailing_allowed(exp!(Comma)),
             |self_| {
-                if self_.check_keyword(kw::SelfUpper) {
+                if self_.check_keyword(exp!(SelfUpper)) {
                     self_.bump();
                     Ok(PreciseCapturingArg::Arg(
                         ast::Path::from_ident(self_.prev_token.ident().unwrap().0),
@@ -729,7 +729,7 @@ impl<'a> Parser<'a> {
 
     /// Is a `dyn B0 + ... + Bn` type allowed here?
     fn is_explicit_dyn_type(&mut self) -> bool {
-        self.check_keyword(kw::Dyn)
+        self.check_keyword(exp!(Dyn))
             && (self.token.uninterpolated_span().at_least_rust_2018()
                 || self.look_ahead(1, |t| {
                     (can_begin_dyn_bound_in_edition_2015(t) || *t == TokenKind::BinOp(token::Star))
@@ -745,7 +745,7 @@ impl<'a> Parser<'a> {
         self.bump(); // `dyn`
 
         // parse dyn* types
-        let syntax = if self.eat(&TokenKind::BinOp(token::Star)) {
+        let syntax = if self.eat(exp!(Star)) {
             self.psess.gated_spans.gate(sym::dyn_star, lo.to(self.prev_token.span));
             TraitObjectSyntax::DynStar
         } else {
@@ -772,7 +772,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, TyKind> {
         // Simple path
         let path = self.parse_path_inner(PathStyle::Type, ty_generics)?;
-        if self.eat(&token::Not) {
+        if self.eat(exp!(Not)) {
             // Macro invocation in type position
             Ok(TyKind::MacCall(P(MacCall { path, args: self.parse_delim_args()? })))
         } else if allow_plus == AllowPlus::Yes && self.check_plus() {
@@ -825,14 +825,14 @@ impl<'a> Parser<'a> {
     fn can_begin_bound(&mut self) -> bool {
         self.check_path()
             || self.check_lifetime()
-            || self.check(&token::Not)
-            || self.check(&token::Question)
-            || self.check(&token::Tilde)
-            || self.check_keyword(kw::For)
-            || self.check(&token::OpenDelim(Delimiter::Parenthesis))
-            || self.check_keyword(kw::Const)
-            || self.check_keyword(kw::Async)
-            || self.check_keyword(kw::Use)
+            || self.check(exp!(Not))
+            || self.check(exp!(Question))
+            || self.check(exp!(Tilde))
+            || self.check_keyword(exp!(For))
+            || self.check(exp!(OpenParen))
+            || self.check_keyword(exp!(Const))
+            || self.check_keyword(exp!(Async))
+            || self.check_keyword(exp!(Use))
     }
 
     /// Parses a bound according to the grammar:
@@ -842,11 +842,11 @@ impl<'a> Parser<'a> {
     fn parse_generic_bound(&mut self) -> PResult<'a, GenericBound> {
         let lo = self.token.span;
         let leading_token = self.prev_token.clone();
-        let has_parens = self.eat(&token::OpenDelim(Delimiter::Parenthesis));
+        let has_parens = self.eat(exp!(OpenParen));
 
         let bound = if self.token.is_lifetime() {
             self.parse_generic_lt_bound(lo, has_parens)?
-        } else if self.eat_keyword(kw::Use) {
+        } else if self.eat_keyword(exp!(Use)) {
             // parse precise captures, if any. This is `use<'lt, 'lt, P, P>`; a list of
             // lifetimes and ident params (including SelfUpper). These are validated later
             // for order, duplication, and whether they actually reference params.
@@ -919,7 +919,7 @@ impl<'a> Parser<'a> {
 
     /// Recover on `('lifetime)` with `(` already eaten.
     fn recover_paren_lifetime(&mut self, lo: Span) -> PResult<'a, ()> {
-        self.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
+        self.expect(exp!(CloseParen))?;
         let span = lo.to(self.prev_token.span);
         let sugg = errors::RemoveParens { lo, hi: self.prev_token.span };
 
@@ -940,13 +940,13 @@ impl<'a> Parser<'a> {
     /// See `parse_generic_ty_bound` for the complete grammar of trait bound modifiers.
     fn parse_trait_bound_modifiers(&mut self) -> PResult<'a, TraitBoundModifiers> {
         let modifier_lo = self.token.span;
-        let constness = if self.eat(&token::Tilde) {
+        let constness = if self.eat(exp!(Tilde)) {
             let tilde = self.prev_token.span;
-            self.expect_keyword(kw::Const)?;
+            self.expect_keyword(exp!(Const))?;
             let span = tilde.to(self.prev_token.span);
             self.psess.gated_spans.gate(sym::const_trait_impl, span);
             BoundConstness::Maybe(span)
-        } else if self.eat_keyword(kw::Const) {
+        } else if self.eat_keyword(exp!(Const)) {
             self.psess.gated_spans.gate(sym::const_trait_impl, self.prev_token.span);
             BoundConstness::Always(self.prev_token.span)
         } else {
@@ -954,7 +954,7 @@ impl<'a> Parser<'a> {
         };
 
         let asyncness = if self.token.uninterpolated_span().at_least_rust_2018()
-            && self.eat_keyword(kw::Async)
+            && self.eat_keyword(exp!(Async))
         {
             self.psess.gated_spans.gate(sym::async_trait_bounds, self.prev_token.span);
             BoundAsyncness::Async(self.prev_token.span)
@@ -974,9 +974,9 @@ impl<'a> Parser<'a> {
         };
         let modifier_hi = self.prev_token.span;
 
-        let polarity = if self.eat(&token::Question) {
+        let polarity = if self.eat(exp!(Question)) {
             BoundPolarity::Maybe(self.prev_token.span)
-        } else if self.eat(&token::Not) {
+        } else if self.eat(exp!(Not)) {
             self.psess.gated_spans.gate(sym::negative_bounds, self.prev_token.span);
             BoundPolarity::Negative(self.prev_token.span)
         } else {
@@ -1122,7 +1122,7 @@ impl<'a> Parser<'a> {
             if self.token.is_like_plus() && leading_token.is_keyword(kw::Dyn) {
                 let bounds = vec![];
                 self.parse_remaining_bounds(bounds, true)?;
-                self.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
+                self.expect(exp!(CloseParen))?;
                 self.dcx().emit_err(errors::IncorrectParensTraitBounds {
                     span: vec![lo, self.prev_token.span],
                     sugg: errors::IncorrectParensTraitBoundsSugg {
@@ -1131,7 +1131,7 @@ impl<'a> Parser<'a> {
                     },
                 });
             } else {
-                self.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
+                self.expect(exp!(CloseParen))?;
             }
         }
 
@@ -1176,7 +1176,7 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_late_bound_lifetime_defs(
         &mut self,
     ) -> PResult<'a, (ThinVec<GenericParam>, Option<Span>)> {
-        if self.eat_keyword(kw::For) {
+        if self.eat_keyword(exp!(For)) {
             let lo = self.token.span;
             self.expect_lt()?;
             let params = self.parse_generic_params()?;
@@ -1280,7 +1280,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn check_lifetime(&mut self) -> bool {
-        self.expected_tokens.push(TokenType::Lifetime);
+        self.expected_token_types.insert(TokenType::Lifetime);
         self.token.is_lifetime()
     }
 

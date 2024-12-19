@@ -17,7 +17,7 @@ use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{Parser, Restrictions, TokenType};
 use crate::errors::{PathSingleColon, PathTripleColon};
 use crate::parser::{CommaRecoveryMode, RecoverColon, RecoverComma};
-use crate::{errors, maybe_whole};
+use crate::{errors, exp, maybe_whole};
 
 /// Specifies how to parse a path.
 #[derive(Copy, Clone, PartialEq)]
@@ -80,7 +80,7 @@ impl<'a> Parser<'a> {
         // above). `path_span` has the span of that path, or an empty
         // span in the case of something like `<T>::Bar`.
         let (mut path, path_span);
-        if self.eat_keyword(kw::As) {
+        if self.eat_keyword(exp!(As)) {
             let path_lo = self.token.span;
             path = self.parse_path(PathStyle::Type)?;
             path_span = path_lo.to(self.prev_token.span);
@@ -90,7 +90,7 @@ impl<'a> Parser<'a> {
         }
 
         // See doc comment for `unmatched_angle_bracket_count`.
-        self.expect(&token::Gt)?;
+        self.expect(exp!(Gt))?;
         if self.unmatched_angle_bracket_count > 0 {
             self.unmatched_angle_bracket_count -= 1;
             debug!("parse_qpath: (decrement) count={:?}", self.unmatched_angle_bracket_count);
@@ -98,7 +98,7 @@ impl<'a> Parser<'a> {
 
         let is_import_coupler = self.is_import_coupler();
         if !is_import_coupler && !self.recover_colon_before_qpath_proj() {
-            self.expect(&token::PathSep)?;
+            self.expect(exp!(PathSep))?;
         }
 
         let qself = P(QSelf { ty, path_span, position: path.segments.len() });
@@ -242,7 +242,7 @@ impl<'a> Parser<'a> {
                 // `PathStyle::Expr` is only provided at the root invocation and never in
                 // `parse_path_segment` to recurse and therefore can be checked to maintain
                 // this invariant.
-                self.check_trailing_angle_brackets(&segment, &[&token::PathSep]);
+                self.check_trailing_angle_brackets(&segment, &[exp!(PathSep)]);
             }
             segments.push(segment);
 
@@ -275,7 +275,7 @@ impl<'a> Parser<'a> {
     /// Eat `::` or, potentially, `:::`.
     #[must_use]
     pub(super) fn eat_path_sep(&mut self) -> bool {
-        let result = self.eat(&token::PathSep);
+        let result = self.eat(exp!(PathSep));
         if result && self.may_recover() {
             if self.eat_noexpect(&token::Colon) {
                 self.dcx().emit_err(PathTripleColon { span: self.prev_token.span });
@@ -300,10 +300,8 @@ impl<'a> Parser<'a> {
             )
         };
         let check_args_start = |this: &mut Self| {
-            this.expected_tokens.extend_from_slice(&[
-                TokenType::Token(token::Lt),
-                TokenType::Token(token::OpenDelim(Delimiter::Parenthesis)),
-            ]);
+            this.expected_token_types.insert(TokenType::Lt);
+            this.expected_token_types.insert(TokenType::OpenParen);
             is_args_start(&this.token)
         };
 
@@ -367,7 +365,7 @@ impl<'a> Parser<'a> {
                 {
                     self.bump(); // (
                     self.bump(); // ..
-                    self.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
+                    self.expect(exp!(CloseParen))?;
                     let span = lo.to(self.prev_token.span);
 
                     self.psess.gated_spans.gate(sym::return_type_notation, span);
@@ -661,12 +659,12 @@ impl<'a> Parser<'a> {
         let mut args = ThinVec::new();
         while let Some(arg) = self.parse_angle_arg(ty_generics)? {
             args.push(arg);
-            if !self.eat(&token::Comma) {
+            if !self.eat(exp!(Comma)) {
                 if self.check_noexpect(&TokenKind::Semi)
                     && self.look_ahead(1, |t| t.is_ident() || t.is_lifetime())
                 {
                     // Add `>` to the list of expected tokens.
-                    self.check(&token::Gt);
+                    self.check(exp!(Gt));
                     // Handle `,` to `;` substitution
                     let mut err = self.unexpected().unwrap_err();
                     self.bump();
@@ -705,7 +703,7 @@ impl<'a> Parser<'a> {
                 // is present and then use that info to push the other token onto the tokens list
                 let separated =
                     self.check_noexpect(&token::Colon) || self.check_noexpect(&token::Eq);
-                if separated && (self.check(&token::Colon) | self.check(&token::Eq)) {
+                if separated && (self.check(exp!(Colon)) | self.check(exp!(Eq))) {
                     let arg_span = arg.span();
                     let (binder, ident, gen_args) = match self.get_ident_from_generic_arg(&arg) {
                         Ok(ident_gen_args) => ident_gen_args,
@@ -720,9 +718,9 @@ impl<'a> Parser<'a> {
                             "`for<...>` is not allowed on associated type bounds",
                         ));
                     }
-                    let kind = if self.eat(&token::Colon) {
+                    let kind = if self.eat(exp!(Colon)) {
                         AssocItemConstraintKind::Bound { bounds: self.parse_generic_bounds()? }
-                    } else if self.eat(&token::Eq) {
+                    } else if self.eat(exp!(Eq)) {
                         self.parse_assoc_equality_term(
                             ident,
                             gen_args.as_ref(),
@@ -743,8 +741,8 @@ impl<'a> Parser<'a> {
                     if self.prev_token.is_ident()
                         && (self.token.is_ident() || self.look_ahead(1, |token| token.is_ident()))
                     {
-                        self.check(&token::Colon);
-                        self.check(&token::Eq);
+                        self.check(exp!(Colon));
+                        self.check(exp!(Eq));
                     }
                     Ok(Some(AngleBracketedArg::Arg(arg)))
                 }

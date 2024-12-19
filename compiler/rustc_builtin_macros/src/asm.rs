@@ -1,16 +1,16 @@
 use ast::token::IdentIsRaw;
 use lint::BuiltinLintDiag;
-use rustc_ast::AsmMacro;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter};
 use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::{AsmMacro, token};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::PResult;
 use rustc_expand::base::*;
 use rustc_index::bit_set::GrowableBitSet;
-use rustc_parse::parser::Parser;
+use rustc_parse::exp;
+use rustc_parse::parser::{ExpKeywordPair, Parser};
 use rustc_session::lint;
-use rustc_span::{ErrorGuaranteed, Ident, InnerSpan, Span, Symbol, kw, sym};
+use rustc_span::{ErrorGuaranteed, Ident, InnerSpan, Span, Symbol, kw};
 use rustc_target::asm::InlineAsmArch;
 use smallvec::smallvec;
 use {rustc_ast as ast, rustc_parse_format as parse};
@@ -38,16 +38,16 @@ pub struct AsmArgs {
 /// - `Err(_)` if the current token matches the keyword, but was not expected
 fn eat_operand_keyword<'a>(
     p: &mut Parser<'a>,
-    symbol: Symbol,
+    exp: ExpKeywordPair,
     asm_macro: AsmMacro,
 ) -> PResult<'a, bool> {
     if matches!(asm_macro, AsmMacro::Asm) {
-        Ok(p.eat_keyword(symbol))
+        Ok(p.eat_keyword(exp))
     } else {
         let span = p.token.span;
-        if p.eat_keyword_noexpect(symbol) {
+        if p.eat_keyword_noexpect(exp.kw) {
             // in gets printed as `r#in` otherwise
-            let symbol = if symbol == kw::In { "in" } else { symbol.as_str() };
+            let symbol = if exp.kw == kw::In { "in" } else { exp.kw.as_str() };
             Err(p.dcx().create_err(errors::AsmUnsupportedOperand {
                 span,
                 symbol,
@@ -95,13 +95,13 @@ pub fn parse_asm_args<'a>(
 
     let mut allow_templates = true;
     while p.token != token::Eof {
-        if !p.eat(&token::Comma) {
+        if !p.eat(exp!(Comma)) {
             if allow_templates {
                 // After a template string, we always expect *only* a comma...
                 return Err(dcx.create_err(errors::AsmExpectedComma { span: p.token.span }));
             } else {
                 // ...after that delegate to `expect` to also include the other expected tokens.
-                return Err(p.expect(&token::Comma).err().unwrap());
+                return Err(p.expect(exp!(Comma)).err().unwrap());
             }
         }
         if p.token == token::Eof {
@@ -109,14 +109,14 @@ pub fn parse_asm_args<'a>(
         } // accept trailing commas
 
         // Parse clobber_abi
-        if p.eat_keyword(sym::clobber_abi) {
+        if p.eat_keyword(exp!(ClobberAbi)) {
             parse_clobber_abi(p, &mut args)?;
             allow_templates = false;
             continue;
         }
 
         // Parse options
-        if p.eat_keyword(sym::options) {
+        if p.eat_keyword(exp!(Options)) {
             parse_options(p, &mut args, asm_macro)?;
             allow_templates = false;
             continue;
@@ -128,7 +128,7 @@ pub fn parse_asm_args<'a>(
         let name = if p.token.is_ident() && p.look_ahead(1, |t| *t == token::Eq) {
             let (ident, _) = p.token.ident().unwrap();
             p.bump();
-            p.expect(&token::Eq)?;
+            p.expect(exp!(Eq))?;
             allow_templates = false;
             Some(ident.name)
         } else {
@@ -136,57 +136,57 @@ pub fn parse_asm_args<'a>(
         };
 
         let mut explicit_reg = false;
-        let op = if eat_operand_keyword(p, kw::In, asm_macro)? {
+        let op = if eat_operand_keyword(p, exp!(In), asm_macro)? {
             let reg = parse_reg(p, &mut explicit_reg)?;
-            if p.eat_keyword(kw::Underscore) {
+            if p.eat_keyword(exp!(Underscore)) {
                 let err = dcx.create_err(errors::AsmUnderscoreInput { span: p.token.span });
                 return Err(err);
             }
             let expr = p.parse_expr()?;
             ast::InlineAsmOperand::In { reg, expr }
-        } else if eat_operand_keyword(p, sym::out, asm_macro)? {
+        } else if eat_operand_keyword(p, exp!(Out), asm_macro)? {
             let reg = parse_reg(p, &mut explicit_reg)?;
-            let expr = if p.eat_keyword(kw::Underscore) { None } else { Some(p.parse_expr()?) };
+            let expr = if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
             ast::InlineAsmOperand::Out { reg, expr, late: false }
-        } else if eat_operand_keyword(p, sym::lateout, asm_macro)? {
+        } else if eat_operand_keyword(p, exp!(Lateout), asm_macro)? {
             let reg = parse_reg(p, &mut explicit_reg)?;
-            let expr = if p.eat_keyword(kw::Underscore) { None } else { Some(p.parse_expr()?) };
+            let expr = if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
             ast::InlineAsmOperand::Out { reg, expr, late: true }
-        } else if eat_operand_keyword(p, sym::inout, asm_macro)? {
+        } else if eat_operand_keyword(p, exp!(Inout), asm_macro)? {
             let reg = parse_reg(p, &mut explicit_reg)?;
-            if p.eat_keyword(kw::Underscore) {
+            if p.eat_keyword(exp!(Underscore)) {
                 let err = dcx.create_err(errors::AsmUnderscoreInput { span: p.token.span });
                 return Err(err);
             }
             let expr = p.parse_expr()?;
-            if p.eat(&token::FatArrow) {
+            if p.eat(exp!(FatArrow)) {
                 let out_expr =
-                    if p.eat_keyword(kw::Underscore) { None } else { Some(p.parse_expr()?) };
+                    if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
                 ast::InlineAsmOperand::SplitInOut { reg, in_expr: expr, out_expr, late: false }
             } else {
                 ast::InlineAsmOperand::InOut { reg, expr, late: false }
             }
-        } else if eat_operand_keyword(p, sym::inlateout, asm_macro)? {
+        } else if eat_operand_keyword(p, exp!(Inlateout), asm_macro)? {
             let reg = parse_reg(p, &mut explicit_reg)?;
-            if p.eat_keyword(kw::Underscore) {
+            if p.eat_keyword(exp!(Underscore)) {
                 let err = dcx.create_err(errors::AsmUnderscoreInput { span: p.token.span });
                 return Err(err);
             }
             let expr = p.parse_expr()?;
-            if p.eat(&token::FatArrow) {
+            if p.eat(exp!(FatArrow)) {
                 let out_expr =
-                    if p.eat_keyword(kw::Underscore) { None } else { Some(p.parse_expr()?) };
+                    if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
                 ast::InlineAsmOperand::SplitInOut { reg, in_expr: expr, out_expr, late: true }
             } else {
                 ast::InlineAsmOperand::InOut { reg, expr, late: true }
             }
-        } else if eat_operand_keyword(p, sym::label, asm_macro)? {
+        } else if eat_operand_keyword(p, exp!(Label), asm_macro)? {
             let block = p.parse_block()?;
             ast::InlineAsmOperand::Label { block }
-        } else if p.eat_keyword(kw::Const) {
+        } else if p.eat_keyword(exp!(Const)) {
             let anon_const = p.parse_expr_anon_const()?;
             ast::InlineAsmOperand::Const { anon_const }
-        } else if p.eat_keyword(sym::sym) {
+        } else if p.eat_keyword(exp!(Sym)) {
             let expr = p.parse_expr()?;
             let ast::ExprKind::Path(qself, path) = &expr.kind else {
                 let err = dcx.create_err(errors::AsmSymNoPath { span: expr.span });
@@ -389,31 +389,31 @@ fn parse_options<'a>(
 ) -> PResult<'a, ()> {
     let span_start = p.prev_token.span;
 
-    p.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
+    p.expect(exp!(OpenParen))?;
 
-    while !p.eat(&token::CloseDelim(Delimiter::Parenthesis)) {
-        const OPTIONS: [(Symbol, ast::InlineAsmOptions); ast::InlineAsmOptions::COUNT] = [
-            (sym::pure, ast::InlineAsmOptions::PURE),
-            (sym::nomem, ast::InlineAsmOptions::NOMEM),
-            (sym::readonly, ast::InlineAsmOptions::READONLY),
-            (sym::preserves_flags, ast::InlineAsmOptions::PRESERVES_FLAGS),
-            (sym::noreturn, ast::InlineAsmOptions::NORETURN),
-            (sym::nostack, ast::InlineAsmOptions::NOSTACK),
-            (sym::may_unwind, ast::InlineAsmOptions::MAY_UNWIND),
-            (sym::att_syntax, ast::InlineAsmOptions::ATT_SYNTAX),
-            (kw::Raw, ast::InlineAsmOptions::RAW),
+    while !p.eat(exp!(CloseParen)) {
+        const OPTIONS: [(ExpKeywordPair, ast::InlineAsmOptions); ast::InlineAsmOptions::COUNT] = [
+            (exp!(Pure), ast::InlineAsmOptions::PURE),
+            (exp!(Nomem), ast::InlineAsmOptions::NOMEM),
+            (exp!(Readonly), ast::InlineAsmOptions::READONLY),
+            (exp!(PreservesFlags), ast::InlineAsmOptions::PRESERVES_FLAGS),
+            (exp!(Noreturn), ast::InlineAsmOptions::NORETURN),
+            (exp!(Nostack), ast::InlineAsmOptions::NOSTACK),
+            (exp!(MayUnwind), ast::InlineAsmOptions::MAY_UNWIND),
+            (exp!(AttSyntax), ast::InlineAsmOptions::ATT_SYNTAX),
+            (exp!(Raw), ast::InlineAsmOptions::RAW),
         ];
 
         'blk: {
-            for (symbol, option) in OPTIONS {
+            for (exp, option) in OPTIONS {
                 let kw_matched = if asm_macro.is_supported_option(option) {
-                    p.eat_keyword(symbol)
+                    p.eat_keyword(exp)
                 } else {
-                    p.eat_keyword_noexpect(symbol)
+                    p.eat_keyword_noexpect(exp.kw)
                 };
 
                 if kw_matched {
-                    try_set_option(p, args, asm_macro, symbol, option);
+                    try_set_option(p, args, asm_macro, exp.kw, option);
                     break 'blk;
                 }
             }
@@ -422,10 +422,10 @@ fn parse_options<'a>(
         }
 
         // Allow trailing commas
-        if p.eat(&token::CloseDelim(Delimiter::Parenthesis)) {
+        if p.eat(exp!(CloseParen)) {
             break;
         }
-        p.expect(&token::Comma)?;
+        p.expect(exp!(Comma))?;
     }
 
     let new_span = span_start.to(p.prev_token.span);
@@ -437,14 +437,14 @@ fn parse_options<'a>(
 fn parse_clobber_abi<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> PResult<'a, ()> {
     let span_start = p.prev_token.span;
 
-    p.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
+    p.expect(exp!(OpenParen))?;
 
-    if p.eat(&token::CloseDelim(Delimiter::Parenthesis)) {
+    if p.eat(exp!(CloseParen)) {
         return Err(p.dcx().create_err(errors::NonABI { span: p.token.span }));
     }
 
     let mut new_abis = Vec::new();
-    while !p.eat(&token::CloseDelim(Delimiter::Parenthesis)) {
+    while !p.eat(exp!(CloseParen)) {
         match p.parse_str_lit() {
             Ok(str_lit) => {
                 new_abis.push((str_lit.symbol_unescaped, str_lit.span));
@@ -456,10 +456,10 @@ fn parse_clobber_abi<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> PResult<'a, 
         };
 
         // Allow trailing commas
-        if p.eat(&token::CloseDelim(Delimiter::Parenthesis)) {
+        if p.eat(exp!(CloseParen)) {
             break;
         }
-        p.expect(&token::Comma)?;
+        p.expect(exp!(Comma))?;
     }
 
     let full_span = span_start.to(p.prev_token.span);
@@ -482,7 +482,7 @@ fn parse_reg<'a>(
     p: &mut Parser<'a>,
     explicit_reg: &mut bool,
 ) -> PResult<'a, ast::InlineAsmRegOrRegClass> {
-    p.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
+    p.expect(exp!(OpenParen))?;
     let result = match p.token.uninterpolate().kind {
         token::Ident(name, IdentIsRaw::No) => ast::InlineAsmRegOrRegClass::RegClass(name),
         token::Literal(token::Lit { kind: token::LitKind::Str, symbol, suffix: _ }) => {
@@ -496,7 +496,7 @@ fn parse_reg<'a>(
         }
     };
     p.bump();
-    p.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
+    p.expect(exp!(CloseParen))?;
     Ok(result)
 }
 

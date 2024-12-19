@@ -29,7 +29,8 @@ use tracing::{debug, trace};
 
 use super::pat::Expected;
 use super::{
-    BlockMode, CommaRecoveryMode, Parser, PathStyle, Restrictions, SemiColonMode, SeqSep, TokenType,
+    BlockMode, CommaRecoveryMode, ExpTokenPair, Parser, PathStyle, Restrictions, SemiColonMode,
+    SeqSep, TokenType,
 };
 use crate::errors::{
     AddParen, AmbiguousPlus, AsyncMoveBlockIn2015, AttributeOnParamType, AwaitSuggestion,
@@ -47,7 +48,7 @@ use crate::errors::{
     UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead, WrapType,
 };
 use crate::parser::attr::InnerAttrPolicy;
-use crate::{fluent_generated as fluent, parser};
+use crate::{exp, fluent_generated as fluent};
 
 /// Creates a placeholder argument.
 pub(super) fn dummy_arg(ident: Ident, guar: ErrorGuaranteed) -> Param {
@@ -462,8 +463,8 @@ impl<'a> Parser<'a> {
 
     pub(super) fn expected_one_of_not_found(
         &mut self,
-        edible: &[TokenKind],
-        inedible: &[TokenKind],
+        edible: &[ExpTokenPair<'_>],
+        inedible: &[ExpTokenPair<'_>],
     ) -> PResult<'a, ErrorGuaranteed> {
         debug!("expected_one_of_not_found(edible: {:?}, inedible: {:?})", edible, inedible);
         fn tokens_to_string(tokens: &[TokenType]) -> String {
@@ -483,49 +484,17 @@ impl<'a> Parser<'a> {
             })
         }
 
-        self.expected_tokens.extend(edible.iter().chain(inedible).cloned().map(TokenType::Token));
-        let mut expected = self
-            .expected_tokens
-            .iter()
-            .filter(|token| {
-                // Filter out suggestions that suggest the same token which was found and deemed incorrect.
-                fn is_ident_eq_keyword(found: &TokenKind, expected: &TokenType) -> bool {
-                    if let TokenKind::Ident(current_sym, _) = found
-                        && let TokenType::Keyword(suggested_sym) = expected
-                    {
-                        return current_sym == suggested_sym;
-                    }
-                    false
-                }
-
-                if **token != parser::TokenType::Token(self.token.kind.clone()) {
-                    let eq = is_ident_eq_keyword(&self.token.kind, &token);
-                    // If the suggestion is a keyword and the found token is an ident,
-                    // the content of which are equal to the suggestion's content,
-                    // we can remove that suggestion (see the `return false` below).
-
-                    // If this isn't the case however, and the suggestion is a token the
-                    // content of which is the same as the found token's, we remove it as well.
-                    if !eq {
-                        if let TokenType::Token(kind) = token {
-                            if self.token == *kind {
-                                return false;
-                            }
-                        }
-                        return true;
-                    }
-                }
-                false
-            })
-            .cloned()
-            .collect::<Vec<_>>();
+        for exp in edible.iter().chain(inedible.iter()) {
+            self.expected_token_types.insert(exp.token_type);
+        }
+        let mut expected: Vec<_> = self.expected_token_types.iter().collect();
         expected.sort_by_cached_key(|x| x.to_string());
         expected.dedup();
 
         let sm = self.psess.source_map();
 
         // Special-case "expected `;`" errors.
-        if expected.contains(&TokenType::Token(token::Semi)) {
+        if expected.contains(&TokenType::Semi) {
             // If the user is trying to write a ternary expression, recover it and
             // return an Err to prevent a cascade of irrelevant diagnostics.
             if self.prev_token == token::Question
@@ -577,7 +546,7 @@ impl<'a> Parser<'a> {
                     || (sm.is_multiline(
                         self.prev_token.span.shrink_to_hi().until(self.token.span.shrink_to_lo()),
                     ) && t == &token::Pound)
-            }) && !expected.contains(&TokenType::Token(token::Comma))
+            }) && !expected.contains(&TokenType::Comma)
             {
                 // Missing semicolon typo. This is triggered if the next token could either start a
                 // new statement or is a block close. For example:
@@ -597,7 +566,7 @@ impl<'a> Parser<'a> {
 
         if self.token == TokenKind::EqEq
             && self.prev_token.is_ident()
-            && expected.iter().any(|tok| matches!(tok, TokenType::Token(TokenKind::Eq)))
+            && expected.contains(&TokenType::Eq)
         {
             // Likely typo: `=` → `==` in let expr or enum item
             return Err(self.dcx().create_err(UseEqInstead { span: self.token.span }));
@@ -636,15 +605,8 @@ impl<'a> Parser<'a> {
 
         // Look for usages of '=>' where '>=' was probably intended
         if self.token == token::FatArrow
-            && expected
-                .iter()
-                .any(|tok| matches!(tok, TokenType::Operator | TokenType::Token(TokenKind::Le)))
-            && !expected.iter().any(|tok| {
-                matches!(
-                    tok,
-                    TokenType::Token(TokenKind::FatArrow) | TokenType::Token(TokenKind::Comma)
-                )
-            })
+            && expected.iter().any(|tok| matches!(tok, TokenType::Operator | TokenType::Le))
+            && !expected.iter().any(|tok| matches!(tok, TokenType::FatArrow | TokenType::Comma))
         {
             err.span_suggestion(
                 self.token.span,
@@ -741,7 +703,7 @@ impl<'a> Parser<'a> {
         };
 
         if self.check_too_many_raw_str_terminators(&mut err) {
-            if expected.contains(&TokenType::Token(token::Semi)) && self.eat(&token::Semi) {
+            if expected.contains(&TokenType::Semi) && self.eat(exp!(Semi)) {
                 let guar = err.emit();
                 return Ok(guar);
             } else {
@@ -785,17 +747,15 @@ impl<'a> Parser<'a> {
         let Some((curr_ident, _)) = self.token.ident() else {
             return;
         };
-        let expected_tokens: &[TokenType] =
+        let expected_token_types: &[TokenType] =
             expected.len().checked_sub(10).map_or(&expected, |index| &expected[index..]);
-        let expected_keywords: Vec<Symbol> = expected_tokens
-            .iter()
-            .filter_map(|token| if let TokenType::Keyword(kw) = token { Some(*kw) } else { None })
-            .collect();
+        let expected_keywords: Vec<Symbol> =
+            expected_token_types.iter().filter_map(|token| token.is_keyword()).collect();
 
-        // When there are a few keywords in the last ten elements of `self.expected_tokens` and the current
-        // token is an identifier, it's probably a misspelled keyword.
-        // This handles code like `async Move {}`, misspelled `if` in match guard, misspelled `else` in `if`-`else`
-        // and mispelled `where` in a where clause.
+        // When there are a few keywords in the last ten elements of `self.expected_token_types`
+        // and the current token is an identifier, it's probably a misspelled keyword. This handles
+        // code like `async Move {}`, misspelled `if` in match guard, misspelled `else` in
+        // `if`-`else` and mispelled `where` in a where clause.
         if !expected_keywords.is_empty()
             && !curr_ident.is_used_keyword()
             && let Some(misspelled_kw) = find_similar_kw(curr_ident, &expected_keywords)
@@ -1052,7 +1012,7 @@ impl<'a> Parser<'a> {
                 (Err(snapshot_err), Err(err)) => {
                     // We don't know what went wrong, emit the normal error.
                     snapshot_err.cancel();
-                    self.consume_block(Delimiter::Brace, ConsumeClosingDelim::Yes);
+                    self.consume_block(exp!(OpenBrace), exp!(CloseBrace), ConsumeClosingDelim::Yes);
                     Err(err)
                 }
                 (Ok(_), Ok(mut tail)) => {
@@ -1089,7 +1049,7 @@ impl<'a> Parser<'a> {
                     Applicability::MaybeIncorrect,
                 );
                 let guar = err.emit();
-                self.eat_to_tokens(&[&token::CloseDelim(Delimiter::Brace)]);
+                self.eat_to_tokens(&[exp!(CloseBrace)]);
                 guar
             }
             token::OpenDelim(Delimiter::Parenthesis)
@@ -1097,7 +1057,7 @@ impl<'a> Parser<'a> {
             {
                 // We are within a function call or tuple, we can emit the error
                 // and recover.
-                self.eat_to_tokens(&[&token::CloseDelim(Delimiter::Parenthesis), &token::Comma]);
+                self.eat_to_tokens(&[exp!(CloseParen), exp!(Comma)]);
 
                 err.multipart_suggestion_verbose(
                     "you might have meant to open the body of the closure",
@@ -1124,11 +1084,11 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr_err(lo.to(self.token.span), guar))
     }
 
-    /// Eats and discards tokens until one of `kets` is encountered. Respects token trees,
+    /// Eats and discards tokens until one of `closes` is encountered. Respects token trees,
     /// passes through any errors encountered. Used for error recovery.
-    pub(super) fn eat_to_tokens(&mut self, kets: &[&TokenKind]) {
-        if let Err(err) =
-            self.parse_seq_to_before_tokens(kets, &[], SeqSep::none(), |p| Ok(p.parse_token_tree()))
+    pub(super) fn eat_to_tokens(&mut self, closes: &[ExpTokenPair<'_>]) {
+        if let Err(err) = self
+            .parse_seq_to_before_tokens(closes, &[], SeqSep::none(), |p| Ok(p.parse_token_tree()))
         {
             err.cancel();
         }
@@ -1147,7 +1107,7 @@ impl<'a> Parser<'a> {
     pub(super) fn check_trailing_angle_brackets(
         &mut self,
         segment: &PathSegment,
-        end: &[&TokenKind],
+        end: &[ExpTokenPair<'_>],
     ) -> Option<ErrorGuaranteed> {
         if !self.may_recover() {
             return None;
@@ -1230,7 +1190,7 @@ impl<'a> Parser<'a> {
         // second case.
         if self.look_ahead(position, |t| {
             trace!("check_trailing_angle_brackets: t={:?}", t);
-            end.contains(&&t.kind)
+            end.iter().any(|exp| exp.tok == &t.kind)
         }) {
             // Eat from where we started until the end token so that parsing can continue
             // as if we didn't have those extra angle brackets.
@@ -1298,11 +1258,11 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, ErrorGuaranteed> {
         if let ExprKind::Binary(binop, _, _) = &expr.kind
             && let ast::BinOpKind::Lt = binop.node
-            && self.eat(&token::Comma)
+            && self.eat(exp!(Comma))
         {
             let x = self.parse_seq_to_before_end(
-                &token::Gt,
-                SeqSep::trailing_allowed(token::Comma),
+                exp!(Gt),
+                SeqSep::trailing_allowed(exp!(Comma)),
                 |p| match p.parse_generic_arg(None)? {
                     Some(arg) => Ok(arg),
                     // If we didn't eat a generic arg, then we should error.
@@ -1311,7 +1271,7 @@ impl<'a> Parser<'a> {
             );
             match x {
                 Ok((_, _, Recovered::No)) => {
-                    if self.eat(&token::Gt) {
+                    if self.eat(exp!(Gt)) {
                         // We made sense of it. Improve the error message.
                         e.span_suggestion_verbose(
                             binop.span.shrink_to_lo(),
@@ -1874,7 +1834,7 @@ impl<'a> Parser<'a> {
         ty_span: Span,
         ty: P<Ty>,
     ) -> PResult<'a, P<T>> {
-        self.expect(&token::PathSep)?;
+        self.expect(exp!(PathSep))?;
 
         let mut path = ast::Path { segments: ThinVec::new(), span: DUMMY_SP, tokens: None };
         self.parse_path_segments(&mut path.segments, T::PATH_STYLE, None)?;
@@ -1956,10 +1916,10 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn expect_semi(&mut self) -> PResult<'a, ()> {
-        if self.eat(&token::Semi) || self.recover_colon_as_semi() {
+        if self.eat(exp!(Semi)) || self.recover_colon_as_semi() {
             return Ok(());
         }
-        self.expect(&token::Semi).map(drop) // Error unconditionally
+        self.expect(exp!(Semi)).map(drop) // Error unconditionally
     }
 
     pub(super) fn recover_colon_as_semi(&mut self) -> bool {
@@ -2004,15 +1964,15 @@ impl<'a> Parser<'a> {
     }
 
     fn recover_await_macro(&mut self) -> PResult<'a, (Span, P<Expr>, bool)> {
-        self.expect(&token::Not)?;
-        self.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
+        self.expect(exp!(Not))?;
+        self.expect(exp!(OpenParen))?;
         let expr = self.parse_expr()?;
-        self.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
+        self.expect(exp!(CloseParen))?;
         Ok((self.prev_token.span, expr, false))
     }
 
     fn recover_await_prefix(&mut self, await_sp: Span) -> PResult<'a, (Span, P<Expr>, bool)> {
-        let is_question = self.eat(&token::Question); // Handle `await? <expr>`.
+        let is_question = self.eat(exp!(Question)); // Handle `await? <expr>`.
         let expr = if self.token == token::OpenDelim(Delimiter::Brace) {
             // Handle `await { <expr> }`.
             // This needs to be handled separately from the next arm to avoid
@@ -2074,7 +2034,7 @@ impl<'a> Parser<'a> {
             let try_span = lo.to(self.token.span); //we take the try!( span
             self.bump(); //remove (
             let is_empty = self.token == token::CloseDelim(Delimiter::Parenthesis); //check if the block is empty
-            self.consume_block(Delimiter::Parenthesis, ConsumeClosingDelim::No); //eat the block
+            self.consume_block(exp!(OpenParen), exp!(CloseParen), ConsumeClosingDelim::No); //eat the block
             let hi = self.token.span;
             self.bump(); //remove )
             let mut err = self.dcx().struct_span_err(lo.to(hi), "use of deprecated `try` macro");
@@ -2130,13 +2090,14 @@ impl<'a> Parser<'a> {
 
     pub(super) fn recover_seq_parse_error(
         &mut self,
-        delim: Delimiter,
+        open: ExpTokenPair<'_>,
+        close: ExpTokenPair<'_>,
         lo: Span,
         err: Diag<'a>,
     ) -> P<Expr> {
         let guar = err.emit();
         // Recover from parse error, callers expect the closing delim to be consumed.
-        self.consume_block(delim, ConsumeClosingDelim::Yes);
+        self.consume_block(open, close, ConsumeClosingDelim::Yes);
         self.mk_expr(lo.to(self.prev_token.span), ExprKind::Err(guar))
     }
 
@@ -2225,7 +2186,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn check_for_for_in_in_typo(&mut self, in_span: Span) {
-        if self.eat_keyword(kw::In) {
+        if self.eat_keyword(exp!(In)) {
             // a common typo: `for _ in in bar {}`
             self.dcx().emit_err(InInTypo {
                 span: self.prev_token.span,
@@ -2366,7 +2327,7 @@ impl<'a> Parser<'a> {
 
     pub(super) fn recover_arg_parse(&mut self) -> PResult<'a, (P<ast::Pat>, P<ast::Ty>)> {
         let pat = self.parse_pat_no_top_alt(Some(Expected::ArgumentName), None)?;
-        self.expect(&token::Colon)?;
+        self.expect(exp!(Colon))?;
         let ty = self.parse_ty()?;
 
         self.dcx().emit_err(PatternMethodParamWithoutBody { span: pat.span });
@@ -2384,12 +2345,17 @@ impl<'a> Parser<'a> {
         Ok(param)
     }
 
-    pub(super) fn consume_block(&mut self, delim: Delimiter, consume_close: ConsumeClosingDelim) {
+    pub(super) fn consume_block(
+        &mut self,
+        open: ExpTokenPair<'_>,
+        close: ExpTokenPair<'_>,
+        consume_close: ConsumeClosingDelim,
+    ) {
         let mut brace_depth = 0;
         loop {
-            if self.eat(&token::OpenDelim(delim)) {
+            if self.eat(open) {
                 brace_depth += 1;
-            } else if self.check(&token::CloseDelim(delim)) {
+            } else if self.check(close) {
                 if brace_depth == 0 {
                     if let ConsumeClosingDelim::Yes = consume_close {
                         // Some of the callers of this method expect to be able to parse the
@@ -2545,7 +2511,7 @@ impl<'a> Parser<'a> {
         match self.recover_const_arg(arg.span(), err) {
             Ok(arg) => {
                 args.push(AngleBracketedArg::Arg(arg));
-                if self.eat(&token::Comma) {
+                if self.eat(exp!(Comma)) {
                     return Ok(true); // Continue
                 }
             }
@@ -3016,7 +2982,7 @@ impl<'a> Parser<'a> {
     /// Check for exclusive ranges written as `..<`
     pub(crate) fn maybe_err_dotdotlt_syntax(&self, maybe_lt: Token, mut err: Diag<'a>) -> Diag<'a> {
         if maybe_lt == token::Lt
-            && (self.expected_tokens.contains(&TokenType::Token(token::Gt))
+            && (self.expected_token_types.contains(TokenType::Gt)
                 || matches!(self.token.kind, token::Literal(..)))
         {
             err.span_suggestion(
@@ -3146,9 +3112,9 @@ impl<'a> Parser<'a> {
     /// Parse and throw away a parenthesized comma separated
     /// sequence of patterns until `)` is reached.
     fn skip_pat_list(&mut self) -> PResult<'a, ()> {
-        while !self.check(&token::CloseDelim(Delimiter::Parenthesis)) {
+        while !self.check(exp!(CloseParen)) {
             self.parse_pat_no_top_alt(None, None)?;
-            if !self.eat(&token::Comma) {
+            if !self.eat(exp!(Comma)) {
                 return Ok(());
             }
         }

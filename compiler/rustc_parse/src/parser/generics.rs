@@ -13,6 +13,7 @@ use crate::errors::{
     UnexpectedSelfInGenericParameters, WhereClauseBeforeTupleStructBody,
     WhereClauseBeforeTupleStructBodySugg,
 };
+use crate::exp;
 
 enum PredicateKindOrStructBody {
     PredicateKind(ast::WherePredicateKind),
@@ -52,7 +53,7 @@ impl<'a> Parser<'a> {
 
         // Parse optional colon and param bounds.
         let mut colon_span = None;
-        let bounds = if self.eat(&token::Colon) {
+        let bounds = if self.eat(exp!(Colon)) {
             colon_span = Some(self.prev_token.span);
             // recover from `impl Trait` in type param bound
             if self.token.is_keyword(kw::Impl) {
@@ -89,7 +90,7 @@ impl<'a> Parser<'a> {
             Vec::new()
         };
 
-        let default = if self.eat(&token::Eq) { Some(self.parse_ty()?) } else { None };
+        let default = if self.eat(exp!(Eq)) { Some(self.parse_ty()?) } else { None };
         Ok(GenericParam {
             ident,
             id: ast::DUMMY_NODE_ID,
@@ -107,13 +108,13 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, GenericParam> {
         let const_span = self.token.span;
 
-        self.expect_keyword(kw::Const)?;
+        self.expect_keyword(exp!(Const))?;
         let ident = self.parse_ident()?;
-        self.expect(&token::Colon)?;
+        self.expect(exp!(Colon))?;
         let ty = self.parse_ty()?;
 
         // Parse optional const generics default value.
-        let default = if self.eat(&token::Eq) { Some(self.parse_const_arg()?) } else { None };
+        let default = if self.eat(exp!(Eq)) { Some(self.parse_const_arg()?) } else { None };
 
         Ok(GenericParam {
             ident,
@@ -132,11 +133,11 @@ impl<'a> Parser<'a> {
         mistyped_const_ident: Ident,
     ) -> PResult<'a, GenericParam> {
         let ident = self.parse_ident()?;
-        self.expect(&token::Colon)?;
+        self.expect(exp!(Colon))?;
         let ty = self.parse_ty()?;
 
         // Parse optional const generics default value.
-        let default = if self.eat(&token::Eq) { Some(self.parse_const_arg()?) } else { None };
+        let default = if self.eat(exp!(Eq)) { Some(self.parse_const_arg()?) } else { None };
 
         self.dcx()
             .struct_span_err(
@@ -177,13 +178,13 @@ impl<'a> Parser<'a> {
                         .emit_err(UnexpectedSelfInGenericParameters { span: this.prev_token.span });
 
                     // Eat a trailing comma, if it exists.
-                    let _ = this.eat(&token::Comma);
+                    let _ = this.eat(exp!(Comma));
                 }
 
                 let param = if this.check_lifetime() {
                     let lifetime = this.expect_lifetime();
                     // Parse lifetime parameter.
-                    let (colon_span, bounds) = if this.eat(&token::Colon) {
+                    let (colon_span, bounds) = if this.eat(exp!(Colon)) {
                         (Some(this.prev_token.span), this.parse_lt_param_bounds())
                     } else {
                         (None, Vec::new())
@@ -209,7 +210,7 @@ impl<'a> Parser<'a> {
                         is_placeholder: false,
                         colon_span,
                     })
-                } else if this.check_keyword(kw::Const) {
+                } else if this.check_keyword(exp!(Const)) {
                     // Parse const parameter.
                     Some(this.parse_const_param(attrs)?)
                 } else if this.check_ident() {
@@ -246,7 +247,7 @@ impl<'a> Parser<'a> {
                     return Ok((None, Trailing::No, UsePreAttrPos::No));
                 };
 
-                if !this.eat(&token::Comma) {
+                if !this.eat(exp!(Comma)) {
                     done = true;
                 }
                 // We just ate the comma, so no need to capture the trailing token.
@@ -324,7 +325,7 @@ impl<'a> Parser<'a> {
         };
         let mut tuple_struct_body = None;
 
-        if !self.eat_keyword(kw::Where) {
+        if !self.eat_keyword(exp!(Where)) {
             return Ok((where_clause, None));
         }
         where_clause.has_where_token = true;
@@ -344,7 +345,7 @@ impl<'a> Parser<'a> {
             let kind = if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
                 let lifetime = self.expect_lifetime();
                 // Bounds starting with a colon are mandatory, but possibly empty.
-                self.expect(&token::Colon)?;
+                self.expect(exp!(Colon))?;
                 let bounds = self.parse_lt_param_bounds();
                 ast::WherePredicateKind::RegionPredicate(ast::WhereRegionPredicate {
                     lifetime,
@@ -370,7 +371,7 @@ impl<'a> Parser<'a> {
             });
 
             let prev_token = self.prev_token.span;
-            let ate_comma = self.eat(&token::Comma);
+            let ate_comma = self.eat(exp!(Comma));
 
             if self.eat_keyword_noexpect(kw::Where) {
                 self.dcx().emit_err(MultipleWhereClauses {
@@ -464,7 +465,7 @@ impl<'a> Parser<'a> {
         // Parse type with mandatory colon and (possibly empty) bounds,
         // or with mandatory equality sign and the second type.
         let ty = self.parse_ty_for_where_clause()?;
-        if self.eat(&token::Colon) {
+        if self.eat(exp!(Colon)) {
             let bounds = self.parse_generic_bounds()?;
             Ok(ast::WherePredicateKind::BoundPredicate(ast::WhereBoundPredicate {
                 bound_generic_params: lifetime_defs,
@@ -473,7 +474,7 @@ impl<'a> Parser<'a> {
             }))
         // FIXME: Decide what should be used here, `=` or `==`.
         // FIXME: We are just dropping the binders in lifetime_defs on the floor here.
-        } else if self.eat(&token::Eq) || self.eat(&token::EqEq) {
+        } else if self.eat(exp!(Eq)) || self.eat(exp!(EqEq)) {
             let rhs_ty = self.parse_ty()?;
             Ok(ast::WherePredicateKind::EqPredicate(ast::WhereEqPredicate { lhs_ty: ty, rhs_ty }))
         } else {
