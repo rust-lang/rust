@@ -16,7 +16,7 @@ impl<'tcx> Cx<'tcx> {
         let block = Block {
             targeted_by_break: block.targeted_by_break,
             region_scope: region::Scope {
-                id: block.hir_id.local_id,
+                local_id: block.hir_id.local_id,
                 data: region::ScopeData::Node,
             },
             span: block.span,
@@ -51,7 +51,7 @@ impl<'tcx> Cx<'tcx> {
                         let stmt = Stmt {
                             kind: StmtKind::Expr {
                                 scope: region::Scope {
-                                    id: hir_id.local_id,
+                                    local_id: hir_id.local_id,
                                     data: region::ScopeData::Node,
                                 },
                                 expr: self.mirror_expr(expr),
@@ -65,7 +65,7 @@ impl<'tcx> Cx<'tcx> {
                     }
                     hir::StmtKind::Let(local) => {
                         let remainder_scope = region::Scope {
-                            id: block_id,
+                            local_id: block_id,
                             data: region::ScopeData::Remainder(region::FirstStatementIndex::new(
                                 index,
                             )),
@@ -108,7 +108,7 @@ impl<'tcx> Cx<'tcx> {
                             kind: StmtKind::Let {
                                 remainder_scope,
                                 init_scope: region::Scope {
-                                    id: hir_id.local_id,
+                                    local_id: hir_id.local_id,
                                     data: region::ScopeData::Node,
                                 },
                                 pattern,
