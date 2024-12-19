@@ -605,8 +605,7 @@ impl<'a> State<'a> {
                     fixup.leftmost_subexpression(),
                 );
                 self.space();
-                self.word(op.node.as_str());
-                self.word_space("=");
+                self.word_space(op.node.as_str());
                 self.print_expr_cond_paren(
                     rhs,
                     rhs.precedence() < ExprPrecedence::Assign,
