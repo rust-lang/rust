@@ -1,7 +1,6 @@
 use libc::c_uint;
 use rustc_ast::expand::allocator::{
-    ALLOCATOR_METHODS, AllocatorKind, AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE,
-    alloc_error_handler_name, default_fn_name, global_fn_name,
+    AllocatorKind, NO_ALLOC_SHIM_IS_UNSTABLE, alloc_error_handler_name,
 };
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
@@ -15,7 +14,6 @@ pub(crate) unsafe fn codegen(
     tcx: TyCtxt<'_>,
     module_llvm: &mut ModuleLlvm,
     module_name: &str,
-    kind: AllocatorKind,
     alloc_error_handler_kind: AllocatorKind,
 ) {
     let llcx = &*module_llvm.llcx;
@@ -29,38 +27,6 @@ pub(crate) unsafe fn codegen(
         }
     };
     let i8 = unsafe { llvm::LLVMInt8TypeInContext(llcx) };
-    let i8p = unsafe { llvm::LLVMPointerTypeInContext(llcx, 0) };
-
-    if kind == AllocatorKind::Default {
-        for method in ALLOCATOR_METHODS {
-            let mut args = Vec::with_capacity(method.inputs.len());
-            for input in method.inputs.iter() {
-                match input.ty {
-                    AllocatorTy::Layout => {
-                        args.push(usize); // size
-                        args.push(usize); // align
-                    }
-                    AllocatorTy::Ptr => args.push(i8p),
-                    AllocatorTy::Usize => args.push(usize),
-
-                    AllocatorTy::ResultPtr | AllocatorTy::Unit => panic!("invalid allocator arg"),
-                }
-            }
-            let output = match method.output {
-                AllocatorTy::ResultPtr => Some(i8p),
-                AllocatorTy::Unit => None,
-
-                AllocatorTy::Layout | AllocatorTy::Usize | AllocatorTy::Ptr => {
-                    panic!("invalid allocator output")
-                }
-            };
-
-            let from_name = global_fn_name(method.name);
-            let to_name = default_fn_name(method.name);
-
-            create_wrapper_function(tcx, llcx, llmod, &from_name, &to_name, &args, output, false);
-        }
-    }
 
     // rust alloc error handler
     create_wrapper_function(

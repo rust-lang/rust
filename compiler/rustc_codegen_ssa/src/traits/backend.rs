@@ -104,7 +104,6 @@ pub trait ExtraBackendMethods:
         &self,
         tcx: TyCtxt<'tcx>,
         module_name: &str,
-        kind: AllocatorKind,
         alloc_error_handler_kind: AllocatorKind,
     ) -> Self::Module;
 
