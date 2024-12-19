@@ -1171,7 +1171,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
     ) {
         let sd = AccessDepth::Drop;
 
-        // Use polonius output if it has been enabled.
         let borrows_in_scope = self.borrows_in_scope(location, state);
 
         // This is a very simplified version of `Self::check_access_for_conflict`.
