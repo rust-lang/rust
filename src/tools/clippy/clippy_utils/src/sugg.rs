@@ -163,7 +163,7 @@ impl<'a> Sugg<'a> {
             ),
             ExprKind::Cast(lhs, ty) |
             //FIXME(chenyukang), remove this after type ascription is removed from AST
-            ExprKind::Type(lhs, ty) => Sugg::BinOp(AssocOp::As, get_snippet(lhs.span), get_snippet(ty.span)),
+            ExprKind::Type(lhs, ty) => Sugg::BinOp(AssocOp::Cast, get_snippet(lhs.span), get_snippet(ty.span)),
         }
     }
 
@@ -246,7 +246,7 @@ impl<'a> Sugg<'a> {
             ast::ExprKind::Cast(ref lhs, ref ty) |
             //FIXME(chenyukang), remove this after type ascription is removed from AST
             ast::ExprKind::Type(ref lhs, ref ty) => Sugg::BinOp(
-                AssocOp::As,
+                AssocOp::Cast,
                 snippet(lhs.span),
                 snippet(ty.span),
             ),
@@ -265,7 +265,7 @@ impl<'a> Sugg<'a> {
 
     /// Convenience method to create the `<lhs> as <rhs>` suggestion.
     pub fn as_ty<R: Display>(self, rhs: R) -> Sugg<'static> {
-        make_assoc(AssocOp::As, &self, &Sugg::NonParen(rhs.to_string().into()))
+        make_assoc(AssocOp::Cast, &self, &Sugg::NonParen(rhs.to_string().into()))
     }
 
     /// Convenience method to create the `&<expr>` suggestion.
@@ -356,7 +356,7 @@ fn binop_to_string(op: AssocOp, lhs: &str, rhs: &str) -> String {
         AssocOp::Binary(op) => format!("{lhs} {} {rhs}", op.as_str()),
         AssocOp::Assign => format!("{lhs} = {rhs}"),
         AssocOp::AssignOp(op) => format!("{lhs} {}= {rhs}", op.as_str()),
-        AssocOp::As => format!("{lhs} as {rhs}"),
+        AssocOp::Cast => format!("{lhs} as {rhs}"),
         AssocOp::Range(limits) => format!("{lhs}{}{rhs}", limits.as_str()),
     }
 }
@@ -432,7 +432,7 @@ impl Neg for Sugg<'_> {
     type Output = Sugg<'static>;
     fn neg(self) -> Sugg<'static> {
         match &self {
-            Self::BinOp(AssocOp::As, ..) => Sugg::MaybeParen(format!("-({self})").into()),
+            Self::BinOp(AssocOp::Cast, ..) => Sugg::MaybeParen(format!("-({self})").into()),
             _ => make_unop("-", self),
         }
     }
@@ -576,14 +576,14 @@ enum Associativity {
 /// associative.
 #[must_use]
 fn associativity(op: AssocOp) -> Associativity {
-    use rustc_ast::util::parser::AssocOp::{As, Assign, AssignOp, Binary, Range};
+    use rustc_ast::util::parser::AssocOp::{Assign, AssignOp, Binary, Cast, Range};
     use ast::BinOpKind::{
         Add, BitAnd, BitOr, BitXor, Div, Eq, Gt, Ge, And, Or, Lt, Le, Rem, Mul, Ne, Shl, Shr, Sub,
     };
 
     match op {
         Assign | AssignOp(_) => Associativity::Right,
-        Binary(Add | BitAnd | BitOr | BitXor | And | Or | Mul) | As => Associativity::Both,
+        Binary(Add | BitAnd | BitOr | BitXor | And | Or | Mul) | Cast => Associativity::Both,
         Binary(Div | Eq | Gt | Ge | Lt | Le | Rem | Ne | Shl | Shr | Sub) => Associativity::Left,
         Range(_) => Associativity::None,
     }
