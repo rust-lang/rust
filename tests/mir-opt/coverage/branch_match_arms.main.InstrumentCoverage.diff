@@ -30,12 +30,12 @@
 +     coverage ExpressionId(0) => Expression { lhs: Counter(1), op: Add, rhs: Counter(2) };
 +     coverage ExpressionId(1) => Expression { lhs: Expression(0), op: Add, rhs: Counter(3) };
 +     coverage ExpressionId(2) => Expression { lhs: Counter(0), op: Subtract, rhs: Expression(1) };
-+     coverage Code(Counter(0)) => 13:1 - 14:21;
-+     coverage Code(Counter(1)) => 15:17 - 15:33;
-+     coverage Code(Counter(2)) => 16:17 - 16:33;
-+     coverage Code(Counter(3)) => 17:17 - 17:33;
-+     coverage Code(Expression(2)) => 18:17 - 18:33;
-+     coverage Code(Counter(0)) => 20:1 - 20:2;
++     coverage Code(Counter(0)) => $DIR/branch_match_arms.rs:13:1: 14:21 (#0);
++     coverage Code(Counter(1)) => $DIR/branch_match_arms.rs:15:17: 15:33 (#0);
++     coverage Code(Counter(2)) => $DIR/branch_match_arms.rs:16:17: 16:33 (#0);
++     coverage Code(Counter(3)) => $DIR/branch_match_arms.rs:17:17: 17:33 (#0);
++     coverage Code(Expression(2)) => $DIR/branch_match_arms.rs:18:17: 18:33 (#0);
++     coverage Code(Counter(0)) => $DIR/branch_match_arms.rs:20:2: 20:2 (#0);
 + 
       bb0: {
 +         Coverage::CounterIncrement(0);

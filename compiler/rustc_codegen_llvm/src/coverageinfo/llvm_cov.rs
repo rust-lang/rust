@@ -40,11 +40,10 @@ pub(crate) fn create_pgo_func_name_var<'ll>(
     }
 }
 
-pub(crate) fn write_filenames_to_buffer<'a>(
-    filenames: impl IntoIterator<Item = &'a str>,
-) -> Vec<u8> {
+pub(crate) fn write_filenames_to_buffer(filenames: &[impl AsRef<str>]) -> Vec<u8> {
     let (pointers, lengths) = filenames
         .into_iter()
+        .map(AsRef::as_ref)
         .map(|s: &str| (s.as_c_char_ptr(), s.len()))
         .unzip::<_, _, Vec<_>, Vec<_>>();
 

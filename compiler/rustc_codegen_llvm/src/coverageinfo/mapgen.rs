@@ -1,11 +1,11 @@
-use std::iter;
+use std::sync::Arc;
 
 use itertools::Itertools;
 use rustc_abi::Align;
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, ConstCodegenMethods, StaticCodegenMethods,
 };
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::IndexVec;
 use rustc_middle::mir;
@@ -13,7 +13,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::RemapFileNameExt;
 use rustc_session::config::RemapPathScopeComponents;
 use rustc_span::def_id::DefIdSet;
-use rustc_span::{Span, Symbol};
+use rustc_span::{SourceFile, StableSourceFileId};
 use tracing::debug;
 
 use crate::common::CodegenCx;
@@ -22,6 +22,7 @@ use crate::coverageinfo::mapgen::covfun::prepare_covfun_record;
 use crate::llvm;
 
 mod covfun;
+mod spans;
 
 /// Generates and exports the coverage map, which is embedded in special
 /// linker sections in the final binary.
@@ -131,45 +132,51 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
     generate_covmap_record(cx, covmap_version, &filenames_buffer);
 }
 
-/// Maps "global" (per-CGU) file ID numbers to their underlying filenames.
+/// Maps "global" (per-CGU) file ID numbers to their underlying source files.
 struct GlobalFileTable {
-    /// This "raw" table doesn't include the working dir, so a filename's
+    /// This "raw" table doesn't include the working dir, so a file's
     /// global ID is its index in this set **plus one**.
-    raw_file_table: FxIndexSet<Symbol>,
+    raw_file_table: FxIndexMap<StableSourceFileId, Arc<SourceFile>>,
 }
 
 impl GlobalFileTable {
     fn new() -> Self {
-        Self { raw_file_table: FxIndexSet::default() }
+        Self { raw_file_table: FxIndexMap::default() }
     }
 
-    fn global_file_id_for_file_name(&mut self, file_name: Symbol) -> GlobalFileId {
+    fn global_file_id_for_file(&mut self, file: &Arc<SourceFile>) -> GlobalFileId {
         // Ensure the given file has a table entry, and get its index.
-        let (raw_id, _) = self.raw_file_table.insert_full(file_name);
+        let entry = self.raw_file_table.entry(file.stable_id);
+        let raw_id = entry.index();
+        entry.or_insert_with(|| Arc::clone(file));
+
         // The raw file table doesn't include an entry for the working dir
         // (which has ID 0), so add 1 to get the correct ID.
         GlobalFileId::from_usize(raw_id + 1)
     }
 
     fn make_filenames_buffer(&self, tcx: TyCtxt<'_>) -> Vec<u8> {
+        let mut table = Vec::with_capacity(self.raw_file_table.len() + 1);
+
         // LLVM Coverage Mapping Format version 6 (zero-based encoded as 5)
         // requires setting the first filename to the compilation directory.
         // Since rustc generates coverage maps with relative paths, the
         // compilation directory can be combined with the relative paths
         // to get absolute paths, if needed.
-        use rustc_session::RemapFileNameExt;
-        use rustc_session::config::RemapPathScopeComponents;
-        let working_dir: &str = &tcx
-            .sess
-            .opts
-            .working_dir
-            .for_scope(tcx.sess, RemapPathScopeComponents::MACRO)
-            .to_string_lossy();
+        table.push(
+            tcx.sess
+                .opts
+                .working_dir
+                .for_scope(tcx.sess, RemapPathScopeComponents::MACRO)
+                .to_string_lossy(),
+        );
 
-        // Insert the working dir at index 0, before the other filenames.
-        let filenames =
-            iter::once(working_dir).chain(self.raw_file_table.iter().map(Symbol::as_str));
-        llvm_cov::write_filenames_to_buffer(filenames)
+        // Add the regular entries after the base directory.
+        table.extend(self.raw_file_table.values().map(|file| {
+            file.name.for_scope(tcx.sess, RemapPathScopeComponents::MACRO).to_string_lossy()
+        }));
+
+        llvm_cov::write_filenames_to_buffer(&table)
     }
 }
 
@@ -182,7 +189,7 @@ rustc_index::newtype_index! {
     /// An index into a function's list of global file IDs. That underlying list
     /// of local-to-global mappings will be embedded in the function's record in
     /// the `__llvm_covfun` linker section.
-    pub(crate) struct LocalFileId {}
+    struct LocalFileId {}
 }
 
 /// Holds a mapping from "local" (per-function) file IDs to "global" (per-CGU)
@@ -206,13 +213,6 @@ impl VirtualFileMapping {
         // but it isn't hot or expensive enough to justify the extra unsafety.
         self.local_to_global.iter().map(|&global| GlobalFileId::as_u32(global)).collect()
     }
-}
-
-fn span_file_name(tcx: TyCtxt<'_>, span: Span) -> Symbol {
-    let source_file = tcx.sess.source_map().lookup_source_file(span.lo());
-    let name =
-        source_file.name.for_scope(tcx.sess, RemapPathScopeComponents::MACRO).to_string_lossy();
-    Symbol::intern(&name)
 }
 
 /// Generates the contents of the covmap record for this CGU, which mostly

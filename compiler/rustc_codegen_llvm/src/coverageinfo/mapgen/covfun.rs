@@ -10,16 +10,16 @@ use rustc_abi::Align;
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, ConstCodegenMethods, StaticCodegenMethods,
 };
-use rustc_middle::bug;
 use rustc_middle::mir::coverage::{
     CovTerm, CoverageIdsInfo, Expression, FunctionCoverageInfo, Mapping, MappingKind, Op,
 };
 use rustc_middle::ty::{Instance, TyCtxt};
+use rustc_span::Span;
 use rustc_target::spec::HasTargetSpec;
 use tracing::debug;
 
 use crate::common::CodegenCx;
-use crate::coverageinfo::mapgen::{GlobalFileTable, VirtualFileMapping, span_file_name};
+use crate::coverageinfo::mapgen::{GlobalFileTable, VirtualFileMapping, spans};
 use crate::coverageinfo::{ffi, llvm_cov};
 use crate::llvm;
 
@@ -67,12 +67,8 @@ pub(crate) fn prepare_covfun_record<'tcx>(
     fill_region_tables(tcx, global_file_table, fn_cov_info, ids_info, &mut covfun);
 
     if covfun.regions.has_no_regions() {
-        if covfun.is_used {
-            bug!("a used function should have had coverage mapping data but did not: {covfun:?}");
-        } else {
-            debug!(?covfun, "unused function had no coverage mapping data");
-            return None;
-        }
+        debug!(?covfun, "function has no mappings to embed; skipping");
+        return None;
     }
 
     Some(covfun)
@@ -121,41 +117,58 @@ fn fill_region_tables<'tcx>(
     covfun: &mut CovfunRecord<'tcx>,
 ) {
     // Currently a function's mappings must all be in the same file as its body span.
-    let file_name = span_file_name(tcx, fn_cov_info.body_span);
+    let source_map = tcx.sess.source_map();
+    let source_file = source_map.lookup_source_file(fn_cov_info.body_span.lo());
 
-    // Look up the global file ID for that filename.
-    let global_file_id = global_file_table.global_file_id_for_file_name(file_name);
+    // Look up the global file ID for that file.
+    let global_file_id = global_file_table.global_file_id_for_file(&source_file);
 
     // Associate that global file ID with a local file ID for this function.
     let local_file_id = covfun.virtual_file_mapping.local_id_for_global(global_file_id);
-    debug!("  file id: {local_file_id:?} => {global_file_id:?} = '{file_name:?}'");
 
     let ffi::Regions { code_regions, branch_regions, mcdc_branch_regions, mcdc_decision_regions } =
         &mut covfun.regions;
 
+    let make_cov_span = |span: Span| {
+        spans::make_coverage_span(local_file_id, source_map, fn_cov_info, &source_file, span)
+    };
+    let discard_all = tcx.sess.coverage_discard_all_spans_in_codegen();
+
     // For each counter/region pair in this function+file, convert it to a
     // form suitable for FFI.
     let is_zero_term = |term| !covfun.is_used || ids_info.is_zero_term(term);
-    for Mapping { kind, ref source_region } in &fn_cov_info.mappings {
+    for &Mapping { ref kind, span } in &fn_cov_info.mappings {
         // If the mapping refers to counters/expressions that were removed by
         // MIR opts, replace those occurrences with zero.
         let kind = kind.map_terms(|term| if is_zero_term(term) { CovTerm::Zero } else { term });
 
-        let span = ffi::CoverageSpan::from_source_region(local_file_id, source_region);
+        // Convert the `Span` into coordinates that we can pass to LLVM, or
+        // discard the span if conversion fails. In rare, cases _all_ of a
+        // function's spans are discarded, and the rest of coverage codegen
+        // needs to handle that gracefully to avoid a repeat of #133606.
+        // We don't have a good test case for triggering that organically, so
+        // instead we set `-Zcoverage-options=discard-all-spans-in-codegen`
+        // to force it to occur.
+        let Some(cov_span) = make_cov_span(span) else { continue };
+        if discard_all {
+            continue;
+        }
+
         match kind {
             MappingKind::Code(term) => {
-                code_regions.push(ffi::CodeRegion { span, counter: ffi::Counter::from_term(term) });
+                code_regions
+                    .push(ffi::CodeRegion { cov_span, counter: ffi::Counter::from_term(term) });
             }
             MappingKind::Branch { true_term, false_term } => {
                 branch_regions.push(ffi::BranchRegion {
-                    span,
+                    cov_span,
                     true_counter: ffi::Counter::from_term(true_term),
                     false_counter: ffi::Counter::from_term(false_term),
                 });
             }
             MappingKind::MCDCBranch { true_term, false_term, mcdc_params } => {
                 mcdc_branch_regions.push(ffi::MCDCBranchRegion {
-                    span,
+                    cov_span,
                     true_counter: ffi::Counter::from_term(true_term),
                     false_counter: ffi::Counter::from_term(false_term),
                     mcdc_branch_params: ffi::mcdc::BranchParameters::from(mcdc_params),
@@ -163,7 +176,7 @@ fn fill_region_tables<'tcx>(
             }
             MappingKind::MCDCDecision(mcdc_decision_params) => {
                 mcdc_decision_regions.push(ffi::MCDCDecisionRegion {
-                    span,
+                    cov_span,
                     mcdc_decision_params: ffi::mcdc::DecisionParameters::from(mcdc_decision_params),
                 });
             }
