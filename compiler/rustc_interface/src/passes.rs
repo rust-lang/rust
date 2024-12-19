@@ -884,7 +884,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
             // Run unsafety check because it's responsible for stealing and
             // deallocating THIR.
             tcx.ensure().check_unsafety(def_id);
-            tcx.ensure().mir_borrowck(def_id)
+            tcx.ensure().mir_borrowck(def_id);
         });
     });
     sess.time("MIR_effect_checking", || {
@@ -908,6 +908,11 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                 tcx.typeck_root_def_id(def_id.to_def_id()).expect_local(),
             );
         }
+    });
+    sess.time("ensuring_MIR_drops_elaborated", || {
+        tcx.hir().par_body_owners(|def_id| {
+            tcx.ensure().mir_drops_elaborated_and_const_checked(def_id);
+        });
     });
 
     sess.time("layout_testing", || layout_test::test_layout(tcx));
