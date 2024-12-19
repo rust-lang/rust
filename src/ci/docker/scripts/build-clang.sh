@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -ex
+set -exu
 
 source shared.sh
 
@@ -34,7 +34,7 @@ hide_output \
       -DCOMPILER_RT_BUILD_XRAY=OFF \
       -DCOMPILER_RT_BUILD_MEMPROF=OFF \
       -DCOMPILER_RT_BUILD_CTX_PROFILE=OFF \
-      -DLLVM_TARGETS_TO_BUILD=X86 \
+      -DLLVM_TARGETS_TO_BUILD=$LLVM_BUILD_TARGETS \
       -DLLVM_INCLUDE_BENCHMARKS=OFF \
       -DLLVM_INCLUDE_TESTS=OFF \
       -DLLVM_INCLUDE_EXAMPLES=OFF \
