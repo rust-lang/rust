@@ -585,3 +585,9 @@ fn borrow_checks() {
     HashSet::<i32>::new().foo::<&str>(&"".to_owned());
     HashSet::<String>::new().get(&1.to_string());
 }
+
+fn issue13624() -> impl IntoIterator {
+    let cow: Cow<'_, Vec<String>> = Cow::Owned(vec![String::from("foo")]);
+
+    cow.into_owned().into_iter()
+}
