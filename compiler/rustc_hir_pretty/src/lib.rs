@@ -1586,8 +1586,7 @@ impl<'a> State<'a> {
             hir::ExprKind::AssignOp(op, lhs, rhs) => {
                 self.print_expr_cond_paren(lhs, lhs.precedence() <= ExprPrecedence::Assign);
                 self.space();
-                self.word(op.node.as_str());
-                self.word_space("=");
+                self.word_space(op.node.as_str());
                 self.print_expr_cond_paren(rhs, rhs.precedence() < ExprPrecedence::Assign);
             }
             hir::ExprKind::Field(expr, ident) => {

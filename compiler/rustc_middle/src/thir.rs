@@ -21,7 +21,7 @@ use rustc_index::{IndexVec, newtype_index};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeVisitable};
 use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::AllocId;
-use rustc_middle::mir::{self, BinOp, BorrowKind, FakeReadCause, UnOp};
+use rustc_middle::mir::{self, AssignOp, BinOp, BorrowKind, FakeReadCause, UnOp};
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
@@ -399,7 +399,7 @@ pub enum ExprKind<'tcx> {
     },
     /// A *non-overloaded* operation assignment, e.g. `lhs += rhs`.
     AssignOp {
-        op: BinOp,
+        op: AssignOp,
         lhs: ExprId,
         rhs: ExprId,
     },

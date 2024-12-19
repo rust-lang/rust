@@ -261,10 +261,11 @@ fn check_expr<'tcx>(vis: &mut ReadVisitor<'_, 'tcx>, expr: &'tcx Expr<'_>) -> St
         | ExprKind::Assign(..)
         | ExprKind::Index(..)
         | ExprKind::Repeat(_, _)
-        | ExprKind::Struct(_, _, _) => {
+        | ExprKind::Struct(_, _, _)
+        | ExprKind::AssignOp(_, _, _) => {
             walk_expr(vis, expr);
         },
-        ExprKind::Binary(op, _, _) | ExprKind::AssignOp(op, _, _) => {
+        ExprKind::Binary(op, _, _) => {
             if op.node == BinOpKind::And || op.node == BinOpKind::Or {
                 // x && y and x || y always evaluate x first, so these are
                 // strictly sequenced.

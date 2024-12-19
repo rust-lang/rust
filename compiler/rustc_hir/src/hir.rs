@@ -10,8 +10,9 @@ use rustc_ast::{
     IntTy, Label, LitIntType, LitKind, MetaItemInner, MetaItemLit, TraitObjectSyntax, UintTy,
 };
 pub use rustc_ast::{
-    BinOp, BinOpKind, BindingMode, BorrowKind, BoundConstness, BoundPolarity, ByRef, CaptureBy,
-    ImplPolarity, IsAuto, Movability, Mutability, UnOp, UnsafeBinderCastKind,
+    AssignOp, AssignOpKind, BinOp, BinOpKind, BindingMode, BorrowKind, BoundConstness,
+    BoundPolarity, ByRef, CaptureBy, ImplPolarity, IsAuto, Movability, Mutability, UnOp,
+    UnsafeBinderCastKind,
 };
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
@@ -2468,7 +2469,7 @@ pub enum ExprKind<'hir> {
     /// An assignment with an operator.
     ///
     /// E.g., `a += 1`.
-    AssignOp(BinOp, &'hir Expr<'hir>, &'hir Expr<'hir>),
+    AssignOp(AssignOp, &'hir Expr<'hir>, &'hir Expr<'hir>),
     /// Access of a named (e.g., `obj.foo`) or unnamed (e.g., `obj.0`) struct or tuple field.
     Field(&'hir Expr<'hir>, Ident),
     /// An indexing operation (`foo[2]`).
