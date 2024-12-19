@@ -4,10 +4,9 @@ use std::ops::Index;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_index::{IndexSlice, IndexVec};
-use rustc_middle::infer::MemberConstraint;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
-use tracing::debug;
+use tracing::instrument;
 
 /// Compactly stores a set of `R0 member of [R1...Rn]` constraints,
 /// indexed by the region `R0`.
@@ -70,37 +69,42 @@ impl Default for MemberConstraintSet<'_, ty::RegionVid> {
 }
 
 impl<'tcx> MemberConstraintSet<'tcx, ty::RegionVid> {
+    pub(crate) fn is_empty(&self) -> bool {
+        self.constraints.is_empty()
+    }
+
     /// Pushes a member constraint into the set.
-    ///
-    /// The input member constraint `m_c` is in the form produced by
-    /// the `rustc_middle::infer` code.
-    ///
-    /// The `to_region_vid` callback fn is used to convert the regions
-    /// within into `RegionVid` format -- it typically consults the
-    /// `UniversalRegions` data structure that is known to the caller
-    /// (but which this code is unaware of).
-    pub(crate) fn push_constraint(
+    #[instrument(level = "debug", skip(self))]
+    pub(crate) fn add_member_constraint(
         &mut self,
-        m_c: &MemberConstraint<'tcx>,
-        mut to_region_vid: impl FnMut(ty::Region<'tcx>) -> ty::RegionVid,
+        key: ty::OpaqueTypeKey<'tcx>,
+        hidden_ty: Ty<'tcx>,
+        definition_span: Span,
+        member_region_vid: ty::RegionVid,
+        choice_regions: &[ty::RegionVid],
     ) {
-        debug!("push_constraint(m_c={:?})", m_c);
-        let member_region_vid: ty::RegionVid = to_region_vid(m_c.member_region);
         let next_constraint = self.first_constraints.get(&member_region_vid).cloned();
         let start_index = self.choice_regions.len();
-        let end_index = start_index + m_c.choice_regions.len();
-        debug!("push_constraint: member_region_vid={:?}", member_region_vid);
+        self.choice_regions.extend(choice_regions);
+        let end_index = self.choice_regions.len();
         let constraint_index = self.constraints.push(NllMemberConstraint {
             next_constraint,
             member_region_vid,
-            definition_span: m_c.definition_span,
-            hidden_ty: m_c.hidden_ty,
-            key: m_c.key,
+            definition_span,
+            hidden_ty,
+            key,
             start_index,
             end_index,
         });
         self.first_constraints.insert(member_region_vid, constraint_index);
-        self.choice_regions.extend(m_c.choice_regions.iter().map(|&r| to_region_vid(r)));
+    }
+
+    // TODO: removed in the next commit
+    pub(crate) fn push_constraint(
+        &mut self,
+        _: &rustc_middle::infer::MemberConstraint<'tcx>,
+        _: impl FnMut(ty::Region<'tcx>) -> ty::RegionVid,
+    ) {
     }
 }
 

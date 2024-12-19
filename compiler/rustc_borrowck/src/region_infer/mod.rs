@@ -571,7 +571,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Given a universal region in scope on the MIR, returns the
     /// corresponding index.
     ///
-    /// (Panics if `r` is not a registered universal region.)
+    /// Panics if `r` is not a registered universal region, most notably
+    /// if it is a placeholder. Handling placeholders requires access to the
+    /// `MirTypeckRegionConstraints`.
     pub(crate) fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
         self.universal_regions().to_region_vid(r)
     }

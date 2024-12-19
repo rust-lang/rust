@@ -40,9 +40,7 @@ use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span, sym};
-use rustc_trait_selection::traits::query::type_op::custom::{
-    CustomTypeOp, scrape_region_constraints,
-};
+use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
 use tracing::{debug, instrument, trace};
 
@@ -89,6 +87,7 @@ mod constraint_conversion;
 pub(crate) mod free_region_relations;
 mod input_output;
 pub(crate) mod liveness;
+mod opaque_types;
 mod relate_tys;
 
 /// Type checks the given `mir` in the context of the inference
@@ -179,52 +178,8 @@ pub(crate) fn type_check<'a, 'tcx>(
 
     liveness::generate(&mut typeck, body, &elements, flow_inits, move_data);
 
-    let opaque_type_values = infcx
-        .take_opaque_types()
-        .into_iter()
-        .map(|(opaque_type_key, decl)| {
-            let _: Result<_, ErrorGuaranteed> = typeck.fully_perform_op(
-                Locations::All(body.span),
-                ConstraintCategory::OpaqueType,
-                CustomTypeOp::new(
-                    |ocx| {
-                        ocx.infcx.register_member_constraints(
-                            opaque_type_key,
-                            decl.hidden_type.ty,
-                            decl.hidden_type.span,
-                        );
-                        Ok(())
-                    },
-                    "opaque_type_map",
-                ),
-            );
-            let hidden_type = infcx.resolve_vars_if_possible(decl.hidden_type);
-            trace!("finalized opaque type {:?} to {:#?}", opaque_type_key, hidden_type.ty.kind());
-            if hidden_type.has_non_region_infer() {
-                infcx.dcx().span_bug(
-                    decl.hidden_type.span,
-                    format!("could not resolve {:#?}", hidden_type.ty.kind()),
-                );
-            }
-
-            // Convert all regions to nll vars.
-            let (opaque_type_key, hidden_type) =
-                fold_regions(infcx.tcx, (opaque_type_key, hidden_type), |region, _| {
-                    match region.kind() {
-                        ty::ReVar(_) => region,
-                        ty::RePlaceholder(placeholder) => {
-                            typeck.constraints.placeholder_region(infcx, placeholder)
-                        }
-                        _ => ty::Region::new_var(
-                            infcx.tcx,
-                            typeck.universal_regions.to_region_vid(region),
-                        ),
-                    }
-                });
-
-            (opaque_type_key, hidden_type)
-        })
-        .collect();
+    let opaque_type_values =
+        opaque_types::take_opaques_and_register_member_constraints(&mut typeck);
 
     MirTypeckResults { constraints, universal_region_relations, opaque_type_values }
 }
@@ -953,6 +908,14 @@ impl Locations {
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn body(&self) -> &Body<'tcx> {
         self.body
+    }
+
+    fn to_region_vid(&mut self, r: ty::Region<'tcx>) -> RegionVid {
+        if let ty::RePlaceholder(placeholder) = r.kind() {
+            self.constraints.placeholder_region(self.infcx, placeholder).as_var()
+        } else {
+            self.universal_regions.to_region_vid(r)
+        }
     }
 
     fn unsized_feature_enabled(&self) -> bool {
