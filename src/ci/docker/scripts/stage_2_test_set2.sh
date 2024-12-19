@@ -2,7 +2,7 @@
 
 set -ex
 
-/tmp/add_dummy_commit.sh
+# Run a subset of tests. Used to run tests in parallel in multiple jobs.
 
 ../x.py --stage 2 test \
   --skip tests \

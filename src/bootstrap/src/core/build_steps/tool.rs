@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 use std::{env, fs};
 
-use crate::core::build_steps::compile;
 use crate::core::build_steps::toolstate::ToolState;
+use crate::core::build_steps::{compile, llvm};
 use crate::core::builder;
 use crate::core::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
@@ -722,21 +722,27 @@ impl Step for Cargo {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct LldWrapper {
-    pub compiler: Compiler,
-    pub target: TargetSelection,
+    pub build_compiler: Compiler,
+    pub target_compiler: Compiler,
 }
 
 impl Step for LldWrapper {
-    type Output = PathBuf;
+    type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.never()
     }
 
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
-        builder.ensure(ToolBuild {
-            compiler: self.compiler,
-            target: self.target,
+    fn run(self, builder: &Builder<'_>) {
+        if builder.config.dry_run() {
+            return;
+        }
+
+        let target = self.target_compiler.host;
+
+        let executable = builder.ensure(ToolBuild {
+            compiler: self.build_compiler,
+            target,
             tool: "lld-wrapper",
             mode: Mode::ToolStd,
             path: "src/tools/lld-wrapper",
@@ -744,7 +750,22 @@ impl Step for LldWrapper {
             extra_features: Vec::new(),
             allow_features: "",
             cargo_args: Vec::new(),
-        })
+        });
+
+        let libdir_bin = builder.sysroot_target_bindir(self.target_compiler, target);
+        t!(fs::create_dir_all(&libdir_bin));
+
+        let lld_install = builder.ensure(llvm::Lld { target });
+        let src_exe = exe("lld", target);
+        let dst_exe = exe("rust-lld", target);
+
+        builder.copy_link(&lld_install.join("bin").join(src_exe), &libdir_bin.join(dst_exe));
+        let self_contained_lld_dir = libdir_bin.join("gcc-ld");
+        t!(fs::create_dir_all(&self_contained_lld_dir));
+
+        for name in crate::LLD_FILE_NAMES {
+            builder.copy_link(&executable, &self_contained_lld_dir.join(exe(name, target)));
+        }
     }
 }
 

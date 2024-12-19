@@ -1104,15 +1104,13 @@ fn variant_info_for_adt<'tcx>(
     };
 
     match layout.variants {
+        Variants::Empty => (vec![], None),
+
         Variants::Single { index } => {
-            if !adt_def.variants().is_empty() && layout.fields != FieldsShape::Primitive {
-                debug!("print-type-size `{:#?}` variant {}", layout, adt_def.variant(index).name);
-                let variant_def = &adt_def.variant(index);
-                let fields: Vec<_> = variant_def.fields.iter().map(|f| f.name).collect();
-                (vec![build_variant_info(Some(variant_def.name), &fields, layout)], None)
-            } else {
-                (vec![], None)
-            }
+            debug!("print-type-size `{:#?}` variant {}", layout, adt_def.variant(index).name);
+            let variant_def = &adt_def.variant(index);
+            let fields: Vec<_> = variant_def.fields.iter().map(|f| f.name).collect();
+            (vec![build_variant_info(Some(variant_def.name), &fields, layout)], None)
         }
 
         Variants::Multiple { tag, ref tag_encoding, .. } => {

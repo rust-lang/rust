@@ -89,7 +89,7 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{ExprId, LintLevel};
-use rustc_middle::{bug, span_bug, ty};
+use rustc_middle::{bug, span_bug};
 use rustc_session::lint::Level;
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span};
@@ -1119,10 +1119,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         region_scope: region::Scope,
         local: Local,
     ) {
-        if !self.local_decls[local].ty.has_significant_drop(self.tcx, ty::TypingEnv {
-            typing_mode: ty::TypingMode::non_body_analysis(),
-            param_env: self.param_env,
-        }) {
+        if !self.local_decls[local].ty.has_significant_drop(self.tcx, self.typing_env()) {
             return;
         }
         for scope in self.scopes.scopes.iter_mut().rev() {
