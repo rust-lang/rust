@@ -1,3 +1,7 @@
+# 1.5.1
+
+* Documentation improvements
+
 # 1.5.0
 
 * Make the `data` from an `ExpectFile` accessible ([#43])
