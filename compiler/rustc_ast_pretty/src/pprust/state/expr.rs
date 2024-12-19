@@ -5,7 +5,7 @@ use itertools::{Itertools, Position};
 use rustc_ast::ptr::P;
 use rustc_ast::util::classify;
 use rustc_ast::util::literal::escape_byte_str_symbol;
-use rustc_ast::util::parser::{self, AssocOp, ExprPrecedence, Fixity};
+use rustc_ast::util::parser::{self, ExprPrecedence, Fixity};
 use rustc_ast::{
     self as ast, BlockCheckMode, FormatAlignment, FormatArgPosition, FormatArgsPiece, FormatCount,
     FormatDebugHex, FormatSign, FormatTrait, token,
@@ -279,12 +279,11 @@ impl<'a> State<'a> {
         rhs: &ast::Expr,
         fixup: FixupContext,
     ) {
-        let assoc_op = AssocOp::from_ast_binop(op.node);
-        let binop_prec = assoc_op.precedence();
+        let binop_prec = op.node.precedence();
         let left_prec = lhs.precedence();
         let right_prec = rhs.precedence();
 
-        let (mut left_needs_paren, right_needs_paren) = match assoc_op.fixity() {
+        let (mut left_needs_paren, right_needs_paren) = match op.node.fixity() {
             Fixity::Left => (left_prec < binop_prec, right_prec <= binop_prec),
             Fixity::Right => (left_prec <= binop_prec, right_prec < binop_prec),
             Fixity::None => (left_prec <= binop_prec, right_prec <= binop_prec),
