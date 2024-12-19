@@ -4,7 +4,7 @@ hashbrown
 [![Build Status](https://github.com/rust-lang/hashbrown/actions/workflows/rust.yml/badge.svg)](https://github.com/rust-lang/hashbrown/actions)
 [![Crates.io](https://img.shields.io/crates/v/hashbrown.svg)](https://crates.io/crates/hashbrown)
 [![Documentation](https://docs.rs/hashbrown/badge.svg)](https://docs.rs/hashbrown)
-[![Rust](https://img.shields.io/badge/rust-1.63.0%2B-blue.svg?maxAge=3600)](https://github.com/rust-lang/hashbrown)
+[![Rust](https://img.shields.io/badge/rust-1.65.0%2B-blue.svg?maxAge=3600)](https://github.com/rust-lang/hashbrown)
 
 This crate is a Rust port of Google's high-performance [SwissTable] hash
 map, adapted to make it a drop-in replacement for Rust's standard `HashMap`
