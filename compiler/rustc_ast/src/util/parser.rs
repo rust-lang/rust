@@ -46,8 +46,8 @@ pub enum AssocOp {
     GreaterEqual,
     /// `=`
     Assign,
-    /// `?=` where ? is one of the BinOpToken
-    AssignOp(BinOpToken),
+    /// `?=` where ? is one of the assignable BinOps
+    AssignOp(BinOpKind),
     /// `as`
     As,
     /// `..` range
@@ -71,18 +71,27 @@ impl AssocOp {
     pub fn from_token(t: &Token) -> Option<AssocOp> {
         use AssocOp::*;
         match t.kind {
-            token::BinOpEq(k) => Some(AssignOp(k)),
             token::Eq => Some(Assign),
+            token::BinOpEq(BinOpToken::Plus) => Some(AssignOp(BinOpKind::Add)),
+            token::BinOpEq(BinOpToken::Minus) => Some(AssignOp(BinOpKind::Sub)),
+            token::BinOpEq(BinOpToken::Star) => Some(AssignOp(BinOpKind::Mul)),
+            token::BinOpEq(BinOpToken::Slash) => Some(AssignOp(BinOpKind::Div)),
+            token::BinOpEq(BinOpToken::Percent) => Some(AssignOp(BinOpKind::Rem)),
+            token::BinOpEq(BinOpToken::Caret) => Some(AssignOp(BinOpKind::BitXor)),
+            token::BinOpEq(BinOpToken::And) => Some(AssignOp(BinOpKind::BitAnd)),
+            token::BinOpEq(BinOpToken::Or) => Some(AssignOp(BinOpKind::BitOr)),
+            token::BinOpEq(BinOpToken::Shl) => Some(AssignOp(BinOpKind::Shl)),
+            token::BinOpEq(BinOpToken::Shr) => Some(AssignOp(BinOpKind::Shr)),
+            token::BinOp(BinOpToken::Plus) => Some(Add),
+            token::BinOp(BinOpToken::Minus) => Some(Subtract),
             token::BinOp(BinOpToken::Star) => Some(Multiply),
             token::BinOp(BinOpToken::Slash) => Some(Divide),
             token::BinOp(BinOpToken::Percent) => Some(Modulus),
-            token::BinOp(BinOpToken::Plus) => Some(Add),
-            token::BinOp(BinOpToken::Minus) => Some(Subtract),
+            token::BinOp(BinOpToken::Caret) => Some(BitXor),
+            token::BinOp(BinOpToken::And) => Some(BitAnd),
+            token::BinOp(BinOpToken::Or) => Some(BitOr),
             token::BinOp(BinOpToken::Shl) => Some(ShiftLeft),
             token::BinOp(BinOpToken::Shr) => Some(ShiftRight),
-            token::BinOp(BinOpToken::And) => Some(BitAnd),
-            token::BinOp(BinOpToken::Caret) => Some(BitXor),
-            token::BinOp(BinOpToken::Or) => Some(BitOr),
             token::Lt => Some(Less),
             token::Le => Some(LessEqual),
             token::Ge => Some(GreaterEqual),

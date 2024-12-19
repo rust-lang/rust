@@ -313,19 +313,7 @@ impl<'a> Parser<'a> {
                     self.mk_expr(span, binary)
                 }
                 AssocOp::Assign => self.mk_expr(span, ExprKind::Assign(lhs, rhs, cur_op_span)),
-                AssocOp::AssignOp(k) => {
-                    let aop = match k {
-                        token::Plus => BinOpKind::Add,
-                        token::Minus => BinOpKind::Sub,
-                        token::Star => BinOpKind::Mul,
-                        token::Slash => BinOpKind::Div,
-                        token::Percent => BinOpKind::Rem,
-                        token::Caret => BinOpKind::BitXor,
-                        token::And => BinOpKind::BitAnd,
-                        token::Or => BinOpKind::BitOr,
-                        token::Shl => BinOpKind::Shl,
-                        token::Shr => BinOpKind::Shr,
-                    };
+                AssocOp::AssignOp(aop) => {
                     let aopexpr = self.mk_assign_op(source_map::respan(cur_op_span, aop), lhs, rhs);
                     self.mk_expr(span, aopexpr)
                 }
@@ -395,7 +383,7 @@ impl<'a> Parser<'a> {
                     AssocOp::ShiftRight
                     | AssocOp::Greater
                     | AssocOp::GreaterEqual
-                    | AssocOp::AssignOp(token::BinOpToken::Shr),
+                    | AssocOp::AssignOp(BinOpKind::Shr),
                 ),
                 _,
             ) if self.restrictions.contains(Restrictions::CONST_EXPR) => {
