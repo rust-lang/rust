@@ -239,7 +239,7 @@ jobs:
           npm ci
           python3 scripts/upload-build-metrics.py ../../build/cpu-usage.csv
 
-  # This job isused to tell bors the final status of the build, as there is no practical way to detect
+  # This job is used to tell bors the final status of the build, as there is no practical way to detect
   # when a workflow is successful listening to webhooks only in our current bors implementation (homu).
   outcome:
     name: bors build finished
