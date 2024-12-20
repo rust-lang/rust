@@ -15,7 +15,7 @@ use rustc_ast::CRATE_NODE_ID;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
-use rustc_errors::{DiagCtxtHandle, FatalError};
+use rustc_errors::DiagCtxtHandle;
 use rustc_fs_util::{fix_windows_verbatim_for_gcc, try_canonicalize};
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_metadata::fs::{METADATA_FILENAME, copy_to_stdout, emit_wrapper_file};
@@ -1039,22 +1039,22 @@ fn link_natively(
         Err(e) => {
             let linker_not_found = e.kind() == io::ErrorKind::NotFound;
 
-            if linker_not_found {
-                sess.dcx().emit_err(errors::LinkerNotFound { linker_path, error: e });
+            let err = if linker_not_found {
+                sess.dcx().emit_err(errors::LinkerNotFound { linker_path, error: e })
             } else {
                 sess.dcx().emit_err(errors::UnableToExeLinker {
                     linker_path,
                     error: e,
                     command_formatted: format!("{cmd:?}"),
-                });
-            }
+                })
+            };
 
             if sess.target.is_like_msvc && linker_not_found {
                 sess.dcx().emit_note(errors::MsvcMissingLinker);
                 sess.dcx().emit_note(errors::CheckInstalledVisualStudio);
                 sess.dcx().emit_note(errors::InsufficientVSCodeProduct);
             }
-            FatalError.raise();
+            err.raise_fatal();
         }
     }
 
