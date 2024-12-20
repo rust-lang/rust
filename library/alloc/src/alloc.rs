@@ -421,6 +421,7 @@ pub use std::alloc::handle_alloc_error;
 #[doc(hidden)]
 #[allow(unused_attributes)]
 #[unstable(feature = "alloc_internals", issue = "none")]
+#[cfg(not(bootstrap))]
 pub mod __alloc_error_handler {
     #[rustc_std_internal_symbol]
     #[linkage = "weak"]
@@ -435,6 +436,29 @@ pub mod __alloc_error_handler {
         static __rust_alloc_error_handler_should_panic: u8 = 0;
 
         if __rust_alloc_error_handler_should_panic != 0 {
+            panic!("memory allocation of {size} bytes failed")
+        } else {
+            core::panicking::panic_nounwind_fmt(
+                format_args!("memory allocation of {size} bytes failed"),
+                /* force_no_backtrace */ false,
+            )
+        }
+    }
+}
+
+#[cfg(all(not(no_global_oom_handling), not(test)))]
+#[doc(hidden)]
+#[allow(unused_attributes)]
+#[unstable(feature = "alloc_internals", issue = "none")]
+#[cfg(bootstrap)]
+pub mod __alloc_error_handler {
+    #[rustc_std_internal_symbol]
+    pub unsafe fn __rdl_oom(size: usize, _align: usize) -> ! {
+        extern "Rust" {
+            static __rust_alloc_error_handler_should_panic: u8;
+        }
+
+        if unsafe { __rust_alloc_error_handler_should_panic != 0 } {
             panic!("memory allocation of {size} bytes failed")
         } else {
             core::panicking::panic_nounwind_fmt(
