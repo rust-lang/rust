@@ -138,7 +138,8 @@ pulldown-cmark = { version = "0.9.0", default-features = false }
 rayon = "1.8.0"
 rustc-hash = "2.0.0"
 semver = "1.0.14"
-serde = { version = "1.0.192", features = ["derive"] }
+serde = { version = "1.0.192" }
+serde_derive = { version = "1.0.192" }
 serde_json = "1.0.108"
 smallvec = { version = "1.10.0", features = [
   "const_new",
@@ -157,7 +158,7 @@ tracing-subscriber = { version = "0.3.18", default-features = false, features = 
   "time",
   "tracing-log",
 ] }
-triomphe = { version = "0.1.10", default-features = false, features = ["std"] }
+triomphe = { version = "0.1.14", default-features = false, features = ["std"] }
 url = "2.3.1"
 xshell = "0.2.5"
 

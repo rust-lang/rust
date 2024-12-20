@@ -262,8 +262,9 @@ pub struct MacroFileId {
 /// `MacroCallId` identifies a particular macro invocation, like
 /// `println!("Hello, {}", world)`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct MacroCallId(ra_salsa::InternId);
+pub struct MacroCallId(InternId);
 
+#[cfg(feature = "ra-salsa")]
 impl ra_salsa::InternKey for MacroCallId {
     fn from_intern_id(v: ra_salsa::InternId) -> Self {
         MacroCallId(v)
@@ -362,6 +363,7 @@ mod intern_id_proxy {
     use std::fmt;
     use std::num::NonZeroU32;
 
+    #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub(super) struct InternId {
         value: NonZeroU32,
     }

@@ -14,6 +14,7 @@ doctest = false
 
 [dependencies]
 serde.workspace = true
+serde_derive.workspace = true
 serde_json = { workspace = true, features = ["unbounded_depth"] }
 tracing.workspace = true
 rustc-hash.workspace = true
