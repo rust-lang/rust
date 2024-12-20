@@ -234,8 +234,6 @@ pub fn each_linked_rlib(
     crate_type: Option<CrateType>,
     f: &mut dyn FnMut(CrateNum, &Path),
 ) -> Result<(), errors::LinkRlibError> {
-    let crates = info.used_crates.iter();
-
     let fmts = if let Some(crate_type) = crate_type {
         let Some(fmts) = info.dependency_formats.get(&crate_type) else {
             return Err(errors::LinkRlibError::MissingFormat);
@@ -261,7 +259,8 @@ pub fn each_linked_rlib(
         info.dependency_formats.first().unwrap().1
     };
 
-    for &cnum in crates {
+    let used_dep_crates = info.used_crates.iter();
+    for &cnum in used_dep_crates {
         match fmts.get(cnum) {
             Some(&Linkage::NotLinked | &Linkage::Dynamic | &Linkage::IncludedFromDylib) => continue,
             Some(_) => {}

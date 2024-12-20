@@ -212,7 +212,14 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
     // Collect what we've got so far in the return vector.
     let last_crate = tcx.crates(()).len();
     let mut ret = IndexVec::new();
+
+    // We need to fill in something for LOCAL_CRATE as IndexVec is a dense map.
+    // Linkage::Static semantically the most correct thing to use as the local
+    // crate is always statically linked into the linker output, even when
+    // linking a dylib. Using Linkage::Static also allow avoiding special cases
+    // for LOCAL_CRATE in some places.
     assert_eq!(ret.push(Linkage::Static), LOCAL_CRATE);
+
     for cnum in 1..last_crate + 1 {
         let cnum = CrateNum::new(cnum);
         assert_eq!(
