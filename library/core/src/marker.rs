@@ -990,6 +990,7 @@ pub trait Tuple {}
     message = "`{Self}` needs to have the same ABI as a pointer",
     label = "`{Self}` needs to be a pointer-like type"
 )]
+#[cfg_attr(not(bootstrap), rustc_do_not_implement_via_object)]
 pub trait PointerLike {}
 
 #[cfg(not(bootstrap))]
