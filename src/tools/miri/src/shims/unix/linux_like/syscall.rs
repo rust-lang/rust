@@ -1,5 +1,7 @@
-use rustc_abi::ExternAbi;
+use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
+use rustc_target::callconv::{Conv, FnAbi};
+
 
 use crate::helpers::check_min_arg_count;
 use crate::shims::unix::linux_like::eventfd::EvalContextExt as _;
@@ -9,13 +11,13 @@ use crate::*;
 pub fn syscall<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
     link_name: Symbol,
-    abi: ExternAbi,
+    abi: &FnAbi<'tcx, Ty<'tcx>>,
     args: &[OpTy<'tcx>],
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx> {
     // We do not use `check_shim` here because `syscall` is variadic. The argument
     // count is checked bellow.
-    ecx.check_abi_and_shim_symbol_clash(abi, ExternAbi::C { unwind: false }, link_name)?;
+    ecx.check_abi_and_shim_symbol_clash(abi, Conv::C, link_name)?;
     // The syscall variadic function is legal to call with more arguments than needed,
     // extra arguments are simply ignored. The important check is that when we use an
     // argument, we have to also check all arguments *before* it to ensure that they

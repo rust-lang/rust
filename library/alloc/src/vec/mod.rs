@@ -1824,7 +1824,10 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// # Examples
     ///
-    /// This method can be useful for situations in which the vector
+    /// See [`spare_capacity_mut()`] for an example with safe
+    /// initialization of capacity elements and use of this method.
+    ///
+    /// `set_len()` can be useful for situations in which the vector
     /// is serving as a buffer for other code, particularly over FFI:
     ///
     /// ```no_run
@@ -1884,6 +1887,8 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// Normally, here, one would use [`clear`] instead to correctly drop
     /// the contents and thus not leak memory.
+    ///
+    /// [`spare_capacity_mut()`]: Vec::spare_capacity_mut
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn set_len(&mut self, new_len: usize) {
