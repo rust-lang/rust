@@ -16,7 +16,7 @@ use ide_db::{
 };
 use itertools::Itertools;
 use span::{Edition, TextSize};
-use stdx::{always, format_to};
+use stdx::format_to;
 use syntax::{
     ast::{self, AstNode},
     SmolStr, SyntaxNode, ToSmolStr,
@@ -130,14 +130,7 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
     // In case an expansion creates multiple runnables we want to name them to avoid emitting a bunch of equally named runnables.
     let mut in_macro_expansion = FxHashMap::<hir::HirFileId, Vec<Runnable>>::default();
     let mut add_opt = |runnable: Option<Runnable>, def| {
-        if let Some(runnable) = runnable.filter(|runnable| {
-            always!(
-                runnable.nav.file_id == file_id,
-                "tried adding a runnable pointing to a different file: {:?} for {:?}",
-                runnable.kind,
-                file_id
-            )
-        }) {
+        if let Some(runnable) = runnable.filter(|runnable| runnable.nav.file_id == file_id) {
             if let Some(def) = def {
                 let file_id = match def {
                     Definition::Module(it) => {
@@ -161,13 +154,7 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
             Definition::SelfType(impl_) => runnable_impl(&sema, &impl_),
             _ => None,
         };
-        add_opt(
-            runnable
-                .or_else(|| module_def_doctest(sema.db, def))
-                // #[macro_export] mbe macros are declared in the root, while their definition may reside in a different module
-                .filter(|it| it.nav.file_id == file_id),
-            Some(def),
-        );
+        add_opt(runnable.or_else(|| module_def_doctest(sema.db, def)), Some(def));
         if let Definition::SelfType(impl_) = def {
             impl_.items(db).into_iter().for_each(|assoc| {
                 let runnable = match assoc {
