@@ -988,6 +988,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 return interp_ok(());
             }
 
+            if ["__rust_alloc", "__rust_alloc_zeroed", "__rust_realloc", "__rust_dealloc"]
+                .contains(&link_name.as_str())
+            {
+                let attrs = self.eval_context_ref().tcx.codegen_fn_attrs(instance.def_id());
+                if attrs
+                    .linkage
+                    .map_or(false, |linkage| linkage == rustc_middle::mir::mono::Linkage::WeakAny)
+                    && attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
+                {
+                    // We intentionally intercept the allocator methods even though libstd provides
+                    // default implementations.
+                    return interp_ok(());
+                }
+            }
+
             throw_machine_stop!(TerminationInfo::SymbolShimClashing {
                 link_name,
                 span: body.span.data(),

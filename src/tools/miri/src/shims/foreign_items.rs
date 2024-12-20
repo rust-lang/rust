@@ -1,5 +1,6 @@
 use std::collections::hash_map::Entry;
 use std::io::Write;
+use std::iter;
 use std::path::Path;
 
 use rustc_abi::{Align, AlignFromBytesError, CanonAbi, Size};
@@ -501,49 +502,127 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             // Rust allocation
-            "miri_alloc" => {
+            "__rust_alloc" | "miri_alloc" => {
                 let default = |ecx: &mut MiriInterpCx<'tcx>| {
                     // Only call `check_shim` when `#[global_allocator]` isn't used. When that
                     // macro is used, we act like no shim exists, so that the exported function can run.
-                    let [size, align] = ecx.check_shim(abi, CanonAbi::Rust, link_name, args)?;
+                    let [size, align] = ecx.check_shim(abi, Conv::Rust, link_name, args)?;
                     let size = ecx.read_target_usize(size)?;
                     let align = ecx.read_target_usize(align)?;
 
-                    this.check_rustc_alloc_request(size, align)?;
+                    ecx.check_rustc_alloc_request(size, align)?;
+
+                    let memory_kind = match link_name.as_str() {
+                        "__rust_alloc" => MiriMemoryKind::Rust,
+                        "miri_alloc" => MiriMemoryKind::Miri,
+                        _ => unreachable!(),
+                    };
 
                     let ptr = ecx.allocate_ptr(
                         Size::from_bytes(size),
                         Align::from_bytes(align).unwrap(),
-                        MiriMemoryKind::Miri.into(),
+                        memory_kind.into(),
                         AllocInit::Uninit,
                     )?;
 
                     ecx.write_pointer(ptr, dest)
                 };
 
-                default(this)?;
-                return interp_ok(EmulateItemResult::NeedsReturn);
+                match link_name.as_str() {
+                    "__rust_alloc" => return this.emulate_allocator(default),
+                    "miri_alloc" => {
+                        default(this)?;
+                        return interp_ok(EmulateItemResult::NeedsReturn);
+                    }
+                    _ => unreachable!(),
+                }
             }
-            "miri_dealloc" => {
+            "__rust_alloc_zeroed" => {
+                return this.emulate_allocator(|this| {
+                    // See the comment for `__rust_alloc` why `check_shim` is only called in the
+                    // default case.
+                    let [size, align] = this.check_shim(abi, Conv::Rust, link_name, args)?;
+                    let size = this.read_target_usize(size)?;
+                    let align = this.read_target_usize(align)?;
+
+                    this.check_rustc_alloc_request(size, align)?;
+
+                    let ptr = this.allocate_ptr(
+                        Size::from_bytes(size),
+                        Align::from_bytes(align).unwrap(),
+                        MiriMemoryKind::Rust.into(),
+                        AllocInit::Zero,
+                    )?;
+
+                    // We just allocated this, the access is definitely in-bounds.
+                    this.write_bytes_ptr(
+                        ptr.into(),
+                        iter::repeat(0u8).take(usize::try_from(size).unwrap()),
+                    )
+                    .unwrap();
+                    this.write_pointer(ptr, dest)
+                });
+            }
+            "__rust_dealloc" | "miri_dealloc" => {
                 let default = |ecx: &mut MiriInterpCx<'tcx>| {
                     // See the comment for `__rust_alloc` why `check_shim` is only called in the
                     // default case.
                     let [ptr, old_size, align] =
-                        ecx.check_shim(abi, CanonAbi::Rust, link_name, args)?;
+                        ecx.check_shim(abi, Conv::Rust, link_name, args)?;
                     let ptr = ecx.read_pointer(ptr)?;
                     let old_size = ecx.read_target_usize(old_size)?;
                     let align = ecx.read_target_usize(align)?;
+
+                    let memory_kind = match link_name.as_str() {
+                        "__rust_dealloc" => MiriMemoryKind::Rust,
+                        "miri_dealloc" => MiriMemoryKind::Miri,
+                        _ => unreachable!(),
+                    };
 
                     // No need to check old_size/align; we anyway check that they match the allocation.
                     ecx.deallocate_ptr(
                         ptr,
                         Some((Size::from_bytes(old_size), Align::from_bytes(align).unwrap())),
-                        MiriMemoryKind::Miri.into(),
+                        memory_kind.into(),
                     )
                 };
 
-                default(this)?;
-                return interp_ok(EmulateItemResult::NeedsReturn);
+                match link_name.as_str() {
+                    "__rust_dealloc" => {
+                        return this.emulate_allocator(default);
+                    }
+                    "miri_dealloc" => {
+                        default(this)?;
+                        return interp_ok(EmulateItemResult::NeedsReturn);
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            "__rust_realloc" => {
+                return this.emulate_allocator(|this| {
+                    // See the comment for `__rust_alloc` why `check_shim` is only called in the
+                    // default case.
+                    let [ptr, old_size, align, new_size] =
+                        this.check_shim(abi, Conv::Rust, link_name, args)?;
+                    let ptr = this.read_pointer(ptr)?;
+                    let old_size = this.read_target_usize(old_size)?;
+                    let align = this.read_target_usize(align)?;
+                    let new_size = this.read_target_usize(new_size)?;
+                    // No need to check old_size; we anyway check that they match the allocation.
+
+                    this.check_rustc_alloc_request(new_size, align)?;
+
+                    let align = Align::from_bytes(align).unwrap();
+                    let new_ptr = this.reallocate_ptr(
+                        ptr,
+                        Some((Size::from_bytes(old_size), align)),
+                        Size::from_bytes(new_size),
+                        align,
+                        MiriMemoryKind::Rust.into(),
+                        AllocInit::Uninit,
+                    )?;
+                    this.write_pointer(new_ptr, dest)
+                });
             }
             name if name == this.mangle_internal_symbol("__rust_no_alloc_shim_is_unstable_v2") => {
                 // This is a no-op shim that only exists to prevent making the allocator shims instantly stable.

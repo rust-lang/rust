@@ -9,7 +9,7 @@ LL | ABORT()
    = note: inside `std::sys::pal::PLATFORM::abort_internal` at RUSTLIB/std/src/sys/pal/PLATFORM/mod.rs:LL:CC
    = note: inside `std::process::abort` at RUSTLIB/std/src/process.rs:LL:CC
    = note: inside `std::alloc::rust_oom` at RUSTLIB/std/src/alloc.rs:LL:CC
-   = note: inside `std::alloc::_::__rg_oom` at RUSTLIB/std/src/alloc.rs:LL:CC
+   = note: inside `std::alloc::_::__rust_alloc_error_handler` at RUSTLIB/std/src/alloc.rs:LL:CC
    = note: inside `std::alloc::handle_alloc_error::rt_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
    = note: inside `std::alloc::handle_alloc_error` at RUSTLIB/alloc/src/alloc.rs:LL:CC
 note: inside `main`
