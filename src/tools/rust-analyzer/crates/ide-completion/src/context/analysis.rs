@@ -22,10 +22,14 @@ use crate::context::{
     COMPLETION_MARKER,
 };
 
+#[derive(Debug)]
 struct ExpansionResult {
     original_file: SyntaxNode,
     speculative_file: SyntaxNode,
-    offset: TextSize,
+    /// The offset in the original file.
+    original_offset: TextSize,
+    /// The offset in the speculatively expanded file.
+    speculative_offset: TextSize,
     fake_ident_token: SyntaxToken,
     derive_ctx: Option<(SyntaxNode, SyntaxNode, TextSize, ast::Attr)>,
 }
@@ -36,7 +40,8 @@ pub(super) struct AnalysisResult {
     pub(super) qualifier_ctx: QualifierCtx,
     /// the original token of the expanded file
     pub(super) token: SyntaxToken,
-    pub(super) offset: TextSize,
+    /// The offset in the original file.
+    pub(super) original_offset: TextSize,
 }
 
 pub(super) fn expand_and_analyze(
@@ -54,226 +59,344 @@ pub(super) fn expand_and_analyze(
     // make the offset point to the start of the original token, as that is what the
     // intermediate offsets calculated in expansion always points to
     let offset = offset - relative_offset;
-    let expansion =
-        expand(sema, original_file, speculative_file, offset, fake_ident_token, relative_offset);
+    let expansion = expand(
+        sema,
+        original_file.clone(),
+        speculative_file.clone(),
+        offset,
+        fake_ident_token.clone(),
+        relative_offset,
+    )
+    .unwrap_or(ExpansionResult {
+        original_file,
+        speculative_file,
+        original_offset: offset,
+        speculative_offset: fake_ident_token.text_range().start(),
+        fake_ident_token,
+        derive_ctx: None,
+    });
 
     // add the relative offset back, so that left_biased finds the proper token
-    let offset = expansion.offset + relative_offset;
-    let token = expansion.original_file.token_at_offset(offset).left_biased()?;
+    let original_offset = expansion.original_offset + relative_offset;
+    let token = expansion.original_file.token_at_offset(original_offset).left_biased()?;
 
     analyze(sema, expansion, original_token, &token).map(|(analysis, expected, qualifier_ctx)| {
-        AnalysisResult { analysis, expected, qualifier_ctx, token, offset }
+        AnalysisResult { analysis, expected, qualifier_ctx, token, original_offset }
     })
 }
 
 /// Expand attributes and macro calls at the current cursor position for both the original file
 /// and fake file repeatedly. As soon as one of the two expansions fail we stop so the original
 /// and speculative states stay in sync.
+///
+/// We do this by recursively expanding all macros and picking the best possible match. We cannot just
+/// choose the first expansion each time because macros can expand to something that does not include
+/// our completion marker, e.g.:
+/// ```
+/// macro_rules! helper { ($v:ident) => {} }
+/// macro_rules! my_macro {
+///     ($v:ident) => {
+///         helper!($v);
+///         $v
+///     };
+/// }
+///
+/// my_macro!(complete_me_here)
+/// ```
+/// If we would expand the first thing we encounter only (which in fact this method used to do), we would
+/// be unable to complete here, because we would be walking directly into the void. So we instead try
+/// *every* possible path.
+///
+/// This can also creates discrepancies between the speculative and real expansions: because we insert
+/// tokens, we insert characters, which means if we try the second occurrence it may not be at the same
+/// position in the original and speculative file. We take an educated guess here, and for each token
+/// that we check, we subtract `COMPLETION_MARKER.len()`. This may not be accurate because proc macros
+/// can insert the text of the completion marker in other places while removing the span, but this is
+/// the best we can do.
 fn expand(
     sema: &Semantics<'_, RootDatabase>,
-    mut original_file: SyntaxNode,
-    mut speculative_file: SyntaxNode,
-    mut offset: TextSize,
-    mut fake_ident_token: SyntaxToken,
+    original_file: SyntaxNode,
+    speculative_file: SyntaxNode,
+    original_offset: TextSize,
+    fake_ident_token: SyntaxToken,
     relative_offset: TextSize,
-) -> ExpansionResult {
+) -> Option<ExpansionResult> {
     let _p = tracing::info_span!("CompletionContext::expand").entered();
-    let mut derive_ctx = None;
 
-    'expansion: loop {
-        let parent_item =
-            |item: &ast::Item| item.syntax().ancestors().skip(1).find_map(ast::Item::cast);
-        let ancestor_items = iter::successors(
-            Option::zip(
-                find_node_at_offset::<ast::Item>(&original_file, offset),
-                find_node_at_offset::<ast::Item>(&speculative_file, offset),
+    if !sema.might_be_inside_macro_call(&fake_ident_token)
+        && original_file
+            .token_at_offset(original_offset + relative_offset)
+            .right_biased()
+            .is_some_and(|original_token| !sema.might_be_inside_macro_call(&original_token))
+    {
+        // Recursion base case.
+        return Some(ExpansionResult {
+            original_file,
+            speculative_file,
+            original_offset,
+            speculative_offset: fake_ident_token.text_range().start(),
+            fake_ident_token,
+            derive_ctx: None,
+        });
+    }
+
+    let parent_item =
+        |item: &ast::Item| item.syntax().ancestors().skip(1).find_map(ast::Item::cast);
+    let ancestor_items = iter::successors(
+        Option::zip(
+            find_node_at_offset::<ast::Item>(&original_file, original_offset),
+            find_node_at_offset::<ast::Item>(
+                &speculative_file,
+                fake_ident_token.text_range().start(),
             ),
-            |(a, b)| parent_item(a).zip(parent_item(b)),
-        );
+        ),
+        |(a, b)| parent_item(a).zip(parent_item(b)),
+    );
 
-        // first try to expand attributes as these are always the outermost macro calls
-        'ancestors: for (actual_item, item_with_fake_ident) in ancestor_items {
-            match (
-                sema.expand_attr_macro(&actual_item),
-                sema.speculative_expand_attr_macro(
-                    &actual_item,
-                    &item_with_fake_ident,
-                    fake_ident_token.clone(),
-                ),
-            ) {
-                // maybe parent items have attributes, so continue walking the ancestors
-                (None, None) => continue 'ancestors,
-                // successful expansions
-                (
-                    Some(ExpandResult { value: actual_expansion, err: _ }),
-                    Some((fake_expansion, fake_mapped_token)),
-                ) => {
-                    let new_offset = fake_mapped_token.text_range().start();
-                    if new_offset + relative_offset > actual_expansion.text_range().end() {
-                        // offset outside of bounds from the original expansion,
-                        // stop here to prevent problems from happening
-                        break 'expansion;
-                    }
-                    original_file = actual_expansion;
-                    speculative_file = fake_expansion;
-                    fake_ident_token = fake_mapped_token;
-                    offset = new_offset;
-                    continue 'expansion;
+    // first try to expand attributes as these are always the outermost macro calls
+    'ancestors: for (actual_item, item_with_fake_ident) in ancestor_items {
+        match (
+            sema.expand_attr_macro(&actual_item),
+            sema.speculative_expand_attr_macro(
+                &actual_item,
+                &item_with_fake_ident,
+                fake_ident_token.clone(),
+            ),
+        ) {
+            // maybe parent items have attributes, so continue walking the ancestors
+            (None, None) => continue 'ancestors,
+            // successful expansions
+            (
+                Some(ExpandResult { value: actual_expansion, err: _ }),
+                Some((fake_expansion, fake_mapped_tokens)),
+            ) => {
+                let mut accumulated_offset_from_fake_tokens = 0;
+                let actual_range = actual_expansion.text_range().end();
+                let result = fake_mapped_tokens
+                    .into_iter()
+                    .filter_map(|(fake_mapped_token, rank)| {
+                        let accumulated_offset = accumulated_offset_from_fake_tokens;
+                        if !fake_mapped_token.text().contains(COMPLETION_MARKER) {
+                            // Proc macros can make the same span with different text, we don't
+                            // want them to participate in completion because the macro author probably
+                            // didn't intend them to.
+                            return None;
+                        }
+                        accumulated_offset_from_fake_tokens += COMPLETION_MARKER.len();
+
+                        let new_offset = fake_mapped_token.text_range().start()
+                            - TextSize::new(accumulated_offset as u32);
+                        if new_offset + relative_offset > actual_range {
+                            // offset outside of bounds from the original expansion,
+                            // stop here to prevent problems from happening
+                            return None;
+                        }
+                        let result = expand(
+                            sema,
+                            actual_expansion.clone(),
+                            fake_expansion.clone(),
+                            new_offset,
+                            fake_mapped_token,
+                            relative_offset,
+                        )?;
+                        Some((result, rank))
+                    })
+                    .min_by_key(|(_, rank)| *rank)
+                    .map(|(result, _)| result);
+                if result.is_some() {
+                    return result;
                 }
-                // exactly one expansion failed, inconsistent state so stop expanding completely
-                _ => break 'expansion,
+            }
+            // exactly one expansion failed, inconsistent state so stop expanding completely
+            _ => break 'ancestors,
+        }
+    }
+
+    // No attributes have been expanded, so look for macro_call! token trees or derive token trees
+    let orig_tt = ancestors_at_offset(&original_file, original_offset)
+        .map_while(Either::<ast::TokenTree, ast::Meta>::cast)
+        .last()?;
+    let spec_tt = ancestors_at_offset(&speculative_file, fake_ident_token.text_range().start())
+        .map_while(Either::<ast::TokenTree, ast::Meta>::cast)
+        .last()?;
+
+    let (tts, attrs) = match (orig_tt, spec_tt) {
+        (Either::Left(orig_tt), Either::Left(spec_tt)) => {
+            let attrs = orig_tt
+                .syntax()
+                .parent()
+                .and_then(ast::Meta::cast)
+                .and_then(|it| it.parent_attr())
+                .zip(
+                    spec_tt
+                        .syntax()
+                        .parent()
+                        .and_then(ast::Meta::cast)
+                        .and_then(|it| it.parent_attr()),
+                );
+            (Some((orig_tt, spec_tt)), attrs)
+        }
+        (Either::Right(orig_path), Either::Right(spec_path)) => {
+            (None, orig_path.parent_attr().zip(spec_path.parent_attr()))
+        }
+        _ => return None,
+    };
+
+    // Expand pseudo-derive expansion aka `derive(Debug$0)`
+    if let Some((orig_attr, spec_attr)) = attrs {
+        if let (Some(actual_expansion), Some((fake_expansion, fake_mapped_tokens))) = (
+            sema.expand_derive_as_pseudo_attr_macro(&orig_attr),
+            sema.speculative_expand_derive_as_pseudo_attr_macro(
+                &orig_attr,
+                &spec_attr,
+                fake_ident_token.clone(),
+            ),
+        ) {
+            if let Some((fake_mapped_token, _)) =
+                fake_mapped_tokens.into_iter().min_by_key(|(_, rank)| *rank)
+            {
+                return Some(ExpansionResult {
+                    original_file,
+                    speculative_file,
+                    original_offset,
+                    speculative_offset: fake_ident_token.text_range().start(),
+                    fake_ident_token,
+                    derive_ctx: Some((
+                        actual_expansion,
+                        fake_expansion,
+                        fake_mapped_token.text_range().start(),
+                        orig_attr,
+                    )),
+                });
             }
         }
 
-        // No attributes have been expanded, so look for macro_call! token trees or derive token trees
-        let orig_tt = match ancestors_at_offset(&original_file, offset)
-            .map_while(Either::<ast::TokenTree, ast::Meta>::cast)
-            .last()
+        if let Some(spec_adt) =
+            spec_attr.syntax().ancestors().find_map(ast::Item::cast).and_then(|it| match it {
+                ast::Item::Struct(it) => Some(ast::Adt::Struct(it)),
+                ast::Item::Enum(it) => Some(ast::Adt::Enum(it)),
+                ast::Item::Union(it) => Some(ast::Adt::Union(it)),
+                _ => None,
+            })
         {
-            Some(it) => it,
-            None => break 'expansion,
-        };
-        let spec_tt = match ancestors_at_offset(&speculative_file, offset)
-            .map_while(Either::<ast::TokenTree, ast::Meta>::cast)
-            .last()
-        {
-            Some(it) => it,
-            None => break 'expansion,
-        };
+            // might be the path of derive helper or a token tree inside of one
+            if let Some(helpers) = sema.derive_helper(&orig_attr) {
+                for (_mac, file) in helpers {
+                    if let Some((fake_expansion, fake_mapped_tokens)) = sema.speculative_expand_raw(
+                        file,
+                        spec_adt.syntax(),
+                        fake_ident_token.clone(),
+                    ) {
+                        // we are inside a derive helper token tree, treat this as being inside
+                        // the derive expansion
+                        let actual_expansion = sema.parse_or_expand(file.into());
+                        let mut accumulated_offset_from_fake_tokens = 0;
+                        let actual_range = actual_expansion.text_range().end();
+                        let result = fake_mapped_tokens
+                            .into_iter()
+                            .filter_map(|(fake_mapped_token, rank)| {
+                                let accumulated_offset = accumulated_offset_from_fake_tokens;
+                                if !fake_mapped_token.text().contains(COMPLETION_MARKER) {
+                                    // Proc macros can make the same span with different text, we don't
+                                    // want them to participate in completion because the macro author probably
+                                    // didn't intend them to.
+                                    return None;
+                                }
+                                accumulated_offset_from_fake_tokens += COMPLETION_MARKER.len();
 
-        let (tts, attrs) = match (orig_tt, spec_tt) {
-            (Either::Left(orig_tt), Either::Left(spec_tt)) => {
-                let attrs = orig_tt
-                    .syntax()
-                    .parent()
-                    .and_then(ast::Meta::cast)
-                    .and_then(|it| it.parent_attr())
-                    .zip(
-                        spec_tt
-                            .syntax()
-                            .parent()
-                            .and_then(ast::Meta::cast)
-                            .and_then(|it| it.parent_attr()),
-                    );
-                (Some((orig_tt, spec_tt)), attrs)
-            }
-            (Either::Right(orig_path), Either::Right(spec_path)) => {
-                (None, orig_path.parent_attr().zip(spec_path.parent_attr()))
-            }
-            _ => break 'expansion,
-        };
-
-        // Expand pseudo-derive expansion aka `derive(Debug$0)`
-        if let Some((orig_attr, spec_attr)) = attrs {
-            if let (Some(actual_expansion), Some((fake_expansion, fake_mapped_token))) = (
-                sema.expand_derive_as_pseudo_attr_macro(&orig_attr),
-                sema.speculative_expand_derive_as_pseudo_attr_macro(
-                    &orig_attr,
-                    &spec_attr,
-                    fake_ident_token.clone(),
-                ),
-            ) {
-                derive_ctx = Some((
-                    actual_expansion,
-                    fake_expansion,
-                    fake_mapped_token.text_range().start(),
-                    orig_attr,
-                ));
-                break 'expansion;
-            }
-
-            if let Some(spec_adt) =
-                spec_attr.syntax().ancestors().find_map(ast::Item::cast).and_then(|it| match it {
-                    ast::Item::Struct(it) => Some(ast::Adt::Struct(it)),
-                    ast::Item::Enum(it) => Some(ast::Adt::Enum(it)),
-                    ast::Item::Union(it) => Some(ast::Adt::Union(it)),
-                    _ => None,
-                })
-            {
-                // might be the path of derive helper or a token tree inside of one
-                if let Some(helpers) = sema.derive_helper(&orig_attr) {
-                    for (_mac, file) in helpers {
-                        if let Some((fake_expansion, fake_mapped_token)) = sema
-                            .speculative_expand_raw(
-                                file,
-                                spec_adt.syntax(),
-                                fake_ident_token.clone(),
-                            )
-                        {
-                            // we are inside a derive helper token tree, treat this as being inside
-                            // the derive expansion
-                            let actual_expansion = sema.parse_or_expand(file.into());
-                            let new_offset = fake_mapped_token.text_range().start();
-                            if new_offset + relative_offset > actual_expansion.text_range().end() {
-                                // offset outside of bounds from the original expansion,
-                                // stop here to prevent problems from happening
-                                break 'expansion;
-                            }
-                            original_file = actual_expansion;
-                            speculative_file = fake_expansion;
-                            fake_ident_token = fake_mapped_token;
-                            offset = new_offset;
-                            continue 'expansion;
+                                let new_offset = fake_mapped_token.text_range().start()
+                                    - TextSize::new(accumulated_offset as u32);
+                                if new_offset + relative_offset > actual_range {
+                                    // offset outside of bounds from the original expansion,
+                                    // stop here to prevent problems from happening
+                                    return None;
+                                }
+                                let result = expand(
+                                    sema,
+                                    actual_expansion.clone(),
+                                    fake_expansion.clone(),
+                                    new_offset,
+                                    fake_mapped_token,
+                                    relative_offset,
+                                )?;
+                                Some((result, rank))
+                            })
+                            .min_by_key(|(_, rank)| *rank)
+                            .map(|(result, _)| result);
+                        if result.is_some() {
+                            return result;
                         }
                     }
                 }
             }
-            // at this point we won't have any more successful expansions, so stop
-            break 'expansion;
         }
-
-        // Expand fn-like macro calls
-        let Some((orig_tt, spec_tt)) = tts else { break 'expansion };
-        if let (Some(actual_macro_call), Some(macro_call_with_fake_ident)) = (
-            orig_tt.syntax().parent().and_then(ast::MacroCall::cast),
-            spec_tt.syntax().parent().and_then(ast::MacroCall::cast),
-        ) {
-            let mac_call_path0 = actual_macro_call.path().as_ref().map(|s| s.syntax().text());
-            let mac_call_path1 =
-                macro_call_with_fake_ident.path().as_ref().map(|s| s.syntax().text());
-
-            // inconsistent state, stop expanding
-            if mac_call_path0 != mac_call_path1 {
-                break 'expansion;
-            }
-            let speculative_args = match macro_call_with_fake_ident.token_tree() {
-                Some(tt) => tt,
-                None => break 'expansion,
-            };
-
-            match (
-                sema.expand_macro_call(&actual_macro_call),
-                sema.speculative_expand_macro_call(
-                    &actual_macro_call,
-                    &speculative_args,
-                    fake_ident_token.clone(),
-                ),
-            ) {
-                // successful expansions
-                (Some(actual_expansion), Some((fake_expansion, fake_mapped_token))) => {
-                    let new_offset = fake_mapped_token.text_range().start();
-                    if new_offset + relative_offset > actual_expansion.text_range().end() {
-                        // offset outside of bounds from the original expansion,
-                        // stop here to prevent problems from happening
-                        break 'expansion;
-                    }
-                    original_file = actual_expansion;
-                    speculative_file = fake_expansion;
-                    fake_ident_token = fake_mapped_token;
-                    offset = new_offset;
-                    continue 'expansion;
-                }
-                // at least on expansion failed, we won't have anything to expand from this point
-                // onwards so break out
-                _ => break 'expansion,
-            }
-        }
-
-        // none of our states have changed so stop the loop
-        break 'expansion;
+        // at this point we won't have any more successful expansions, so stop
+        return None;
     }
 
-    ExpansionResult { original_file, speculative_file, offset, fake_ident_token, derive_ctx }
+    // Expand fn-like macro calls
+    let (orig_tt, spec_tt) = tts?;
+    let (actual_macro_call, macro_call_with_fake_ident) = (
+        orig_tt.syntax().parent().and_then(ast::MacroCall::cast)?,
+        spec_tt.syntax().parent().and_then(ast::MacroCall::cast)?,
+    );
+    let mac_call_path0 = actual_macro_call.path().as_ref().map(|s| s.syntax().text());
+    let mac_call_path1 = macro_call_with_fake_ident.path().as_ref().map(|s| s.syntax().text());
+
+    // inconsistent state, stop expanding
+    if mac_call_path0 != mac_call_path1 {
+        return None;
+    }
+    let speculative_args = macro_call_with_fake_ident.token_tree()?;
+
+    match (
+        sema.expand_macro_call(&actual_macro_call),
+        sema.speculative_expand_macro_call(
+            &actual_macro_call,
+            &speculative_args,
+            fake_ident_token.clone(),
+        ),
+    ) {
+        // successful expansions
+        (Some(actual_expansion), Some((fake_expansion, fake_mapped_tokens))) => {
+            let mut accumulated_offset_from_fake_tokens = 0;
+            let actual_range = actual_expansion.text_range().end();
+            fake_mapped_tokens
+                .into_iter()
+                .filter_map(|(fake_mapped_token, rank)| {
+                    let accumulated_offset = accumulated_offset_from_fake_tokens;
+                    if !fake_mapped_token.text().contains(COMPLETION_MARKER) {
+                        // Proc macros can make the same span with different text, we don't
+                        // want them to participate in completion because the macro author probably
+                        // didn't intend them to.
+                        return None;
+                    }
+                    accumulated_offset_from_fake_tokens += COMPLETION_MARKER.len();
+
+                    let new_offset = fake_mapped_token.text_range().start()
+                        - TextSize::new(accumulated_offset as u32);
+                    if new_offset + relative_offset > actual_range {
+                        // offset outside of bounds from the original expansion,
+                        // stop here to prevent problems from happening
+                        return None;
+                    }
+                    let result = expand(
+                        sema,
+                        actual_expansion.clone(),
+                        fake_expansion.clone(),
+                        new_offset,
+                        fake_mapped_token,
+                        relative_offset,
+                    )?;
+                    Some((result, rank))
+                })
+                .min_by_key(|(_, rank)| *rank)
+                .map(|(result, _)| result)
+        }
+        // at least one expansion failed, we won't have anything to expand from this point
+        // onwards so break out
+        _ => None,
+    }
 }
 
 /// Fill the completion context, this is what does semantic reasoning about the surrounding context
@@ -285,8 +408,14 @@ fn analyze(
     self_token: &SyntaxToken,
 ) -> Option<(CompletionAnalysis, (Option<Type>, Option<ast::NameOrNameRef>), QualifierCtx)> {
     let _p = tracing::info_span!("CompletionContext::analyze").entered();
-    let ExpansionResult { original_file, speculative_file, offset, fake_ident_token, derive_ctx } =
-        expansion_result;
+    let ExpansionResult {
+        original_file,
+        speculative_file,
+        original_offset: _,
+        speculative_offset,
+        fake_ident_token,
+        derive_ctx,
+    } = expansion_result;
 
     // Overwrite the path kind for derives
     if let Some((original_file, file_with_fake_ident, offset, origin_attr)) = derive_ctx {
@@ -294,7 +423,8 @@ fn analyze(
             find_node_at_offset(&file_with_fake_ident, offset)
         {
             let parent = name_ref.syntax().parent()?;
-            let (mut nameref_ctx, _) = classify_name_ref(sema, &original_file, name_ref, parent)?;
+            let (mut nameref_ctx, _) =
+                classify_name_ref(sema, &original_file, name_ref, offset, parent)?;
             if let NameRefKind::Path(path_ctx) = &mut nameref_ctx.kind {
                 path_ctx.kind = PathKind::Derive {
                     existing_derives: sema
@@ -314,7 +444,7 @@ fn analyze(
         return None;
     }
 
-    let Some(name_like) = find_node_at_offset(&speculative_file, offset) else {
+    let Some(name_like) = find_node_at_offset(&speculative_file, speculative_offset) else {
         let analysis = if let Some(original) = ast::String::cast(original_token.clone()) {
             CompletionAnalysis::String { original, expanded: ast::String::cast(self_token.clone()) }
         } else {
@@ -350,8 +480,13 @@ fn analyze(
         }
         ast::NameLike::NameRef(name_ref) => {
             let parent = name_ref.syntax().parent()?;
-            let (nameref_ctx, qualifier_ctx) =
-                classify_name_ref(sema, &original_file, name_ref, parent)?;
+            let (nameref_ctx, qualifier_ctx) = classify_name_ref(
+                sema,
+                &original_file,
+                name_ref,
+                expansion_result.original_offset,
+                parent,
+            )?;
 
             if let NameRefContext {
                 kind:
@@ -636,9 +771,10 @@ fn classify_name_ref(
     sema: &Semantics<'_, RootDatabase>,
     original_file: &SyntaxNode,
     name_ref: ast::NameRef,
+    original_offset: TextSize,
     parent: SyntaxNode,
 ) -> Option<(NameRefContext, QualifierCtx)> {
-    let nameref = find_node_at_offset(original_file, name_ref.syntax().text_range().start());
+    let nameref = find_node_at_offset(original_file, original_offset);
 
     let make_res = |kind| (NameRefContext { nameref: nameref.clone(), kind }, Default::default());
 
@@ -760,7 +896,7 @@ fn classify_name_ref(
     // We do not want to generate path completions when we are sandwiched between an item decl signature and its body.
     // ex. trait Foo $0 {}
     // in these cases parser recovery usually kicks in for our inserted identifier, causing it
-    // to either be parsed as an ExprStmt or a MacroCall, depending on whether it is in a block
+    // to either be parsed as an ExprStmt or a ItemRecovery, depending on whether it is in a block
     // expression or an item list.
     // The following code checks if the body is missing, if it is we either cut off the body
     // from the item or it was missing in the first place
@@ -1088,15 +1224,10 @@ fn classify_name_ref(
         PathKind::Type { location: location.unwrap_or(TypeLocation::Other) }
     };
 
-    let mut kind_macro_call = |it: ast::MacroCall| {
-        path_ctx.has_macro_bang = it.excl_token().is_some();
-        let parent = it.syntax().parent()?;
-        // Any path in an item list will be treated as a macro call by the parser
+    let kind_item = |it: &SyntaxNode| {
+        let parent = it.parent()?;
         let kind = match_ast! {
             match parent {
-                ast::MacroExpr(expr) => make_path_kind_expr(expr.into()),
-                ast::MacroPat(it) => PathKind::Pat { pat_ctx: pattern_context_for(sema, original_file, it.into())},
-                ast::MacroType(ty) => make_path_kind_type(ty.into()),
                 ast::ItemList(_) => PathKind::Item { kind: ItemListKind::Module },
                 ast::AssocItemList(_) => PathKind::Item { kind: match parent.parent() {
                     Some(it) => match_ast! {
@@ -1121,6 +1252,23 @@ fn classify_name_ref(
                     }
                 },
                 ast::SourceFile(_) => PathKind::Item { kind: ItemListKind::SourceFile },
+                _ => return None,
+            }
+        };
+        Some(kind)
+    };
+
+    let mut kind_macro_call = |it: ast::MacroCall| {
+        path_ctx.has_macro_bang = it.excl_token().is_some();
+        let parent = it.syntax().parent()?;
+        if let Some(kind) = kind_item(it.syntax()) {
+            return Some(kind);
+        }
+        let kind = match_ast! {
+            match parent {
+                ast::MacroExpr(expr) => make_path_kind_expr(expr.into()),
+                ast::MacroPat(it) => PathKind::Pat { pat_ctx: pattern_context_for(sema, original_file, it.into())},
+                ast::MacroType(ty) => make_path_kind_type(ty.into()),
                 _ => return None,
             }
         };
@@ -1153,94 +1301,98 @@ fn classify_name_ref(
 
     // Infer the path kind
     let parent = path.syntax().parent()?;
-    let kind = match_ast! {
-        match parent {
-            ast::PathType(it) => make_path_kind_type(it.into()),
-            ast::PathExpr(it) => {
-                if let Some(p) = it.syntax().parent() {
-                    let p_kind = p.kind();
-                    // The syntax node of interest, for which we want to check whether
-                    // it is sandwiched between an item decl signature and its body.
-                    let probe = if ast::ExprStmt::can_cast(p_kind) {
-                        Some(p)
-                    } else if ast::StmtList::can_cast(p_kind) {
-                        Some(it.syntax().clone())
-                    } else {
-                        None
-                    };
-                    if let Some(kind) = probe.and_then(inbetween_body_and_decl_check) {
+    let kind = 'find_kind: {
+        if parent.kind() == SyntaxKind::ERROR {
+            if let Some(kind) = inbetween_body_and_decl_check(parent.clone()) {
+                return Some(make_res(NameRefKind::Keyword(kind)));
+            }
+
+            break 'find_kind kind_item(&parent)?;
+        }
+        match_ast! {
+            match parent {
+                ast::PathType(it) => make_path_kind_type(it.into()),
+                ast::PathExpr(it) => {
+                    if let Some(p) = it.syntax().parent() {
+                        let p_kind = p.kind();
+                        // The syntax node of interest, for which we want to check whether
+                        // it is sandwiched between an item decl signature and its body.
+                        let probe = if ast::ExprStmt::can_cast(p_kind) {
+                            Some(p)
+                        } else if ast::StmtList::can_cast(p_kind) {
+                            Some(it.syntax().clone())
+                        } else {
+                            None
+                        };
+                        if let Some(kind) = probe.and_then(inbetween_body_and_decl_check) {
+                            return Some(make_res(NameRefKind::Keyword(kind)));
+                        }
+                    }
+
+                    path_ctx.has_call_parens = it.syntax().parent().map_or(false, |it| ast::CallExpr::can_cast(it.kind()));
+
+                    make_path_kind_expr(it.into())
+                },
+                ast::TupleStructPat(it) => {
+                    path_ctx.has_call_parens = true;
+                    PathKind::Pat { pat_ctx: pattern_context_for(sema, original_file, it.into()) }
+                },
+                ast::RecordPat(it) => {
+                    path_ctx.has_call_parens = true;
+                    PathKind::Pat { pat_ctx: pattern_context_for(sema, original_file, it.into()) }
+                },
+                ast::PathPat(it) => {
+                    PathKind::Pat { pat_ctx: pattern_context_for(sema, original_file, it.into())}
+                },
+                ast::MacroCall(it) => {
+                    kind_macro_call(it)?
+                },
+                ast::Meta(meta) => make_path_kind_attr(meta)?,
+                ast::Visibility(it) => PathKind::Vis { has_in_token: it.in_token().is_some() },
+                ast::UseTree(_) => PathKind::Use,
+                // completing inside a qualifier
+                ast::Path(parent) => {
+                    path_ctx.parent = Some(parent.clone());
+                    let parent = iter::successors(Some(parent), |it| it.parent_path()).last()?.syntax().parent()?;
+                    match_ast! {
+                        match parent {
+                            ast::PathType(it) => make_path_kind_type(it.into()),
+                            ast::PathExpr(it) => {
+                                path_ctx.has_call_parens = it.syntax().parent().map_or(false, |it| ast::CallExpr::can_cast(it.kind()));
+
+                                make_path_kind_expr(it.into())
+                            },
+                            ast::TupleStructPat(it) => {
+                                path_ctx.has_call_parens = true;
+                                PathKind::Pat { pat_ctx: pattern_context_for(sema, original_file, it.into()) }
+                            },
+                            ast::RecordPat(it) => {
+                                path_ctx.has_call_parens = true;
+                                PathKind::Pat { pat_ctx: pattern_context_for(sema, original_file, it.into()) }
+                            },
+                            ast::PathPat(it) => {
+                                PathKind::Pat { pat_ctx: pattern_context_for(sema, original_file, it.into())}
+                            },
+                            ast::MacroCall(it) => {
+                                kind_macro_call(it)?
+                            },
+                            ast::Meta(meta) => make_path_kind_attr(meta)?,
+                            ast::Visibility(it) => PathKind::Vis { has_in_token: it.in_token().is_some() },
+                            ast::UseTree(_) => PathKind::Use,
+                            ast::RecordExpr(it) => make_path_kind_expr(it.into()),
+                            _ => return None,
+                        }
+                    }
+                },
+                ast::RecordExpr(it) => {
+                    // A record expression in this position is usually a result of parsing recovery, so check that
+                    if let Some(kind) = inbetween_body_and_decl_check(it.syntax().clone()) {
                         return Some(make_res(NameRefKind::Keyword(kind)));
                     }
-                }
-
-                path_ctx.has_call_parens = it.syntax().parent().map_or(false, |it| ast::CallExpr::can_cast(it.kind()));
-
-                make_path_kind_expr(it.into())
-            },
-            ast::TupleStructPat(it) => {
-                path_ctx.has_call_parens = true;
-                PathKind::Pat { pat_ctx: pattern_context_for(sema, original_file, it.into()) }
-            },
-            ast::RecordPat(it) => {
-                path_ctx.has_call_parens = true;
-                PathKind::Pat { pat_ctx: pattern_context_for(sema, original_file, it.into()) }
-            },
-            ast::PathPat(it) => {
-                PathKind::Pat { pat_ctx: pattern_context_for(sema, original_file, it.into())}
-            },
-            ast::MacroCall(it) => {
-                // A macro call in this position is usually a result of parsing recovery, so check that
-                if let Some(kind) = inbetween_body_and_decl_check(it.syntax().clone()) {
-                    return Some(make_res(NameRefKind::Keyword(kind)));
-                }
-
-                kind_macro_call(it)?
-            },
-            ast::Meta(meta) => make_path_kind_attr(meta)?,
-            ast::Visibility(it) => PathKind::Vis { has_in_token: it.in_token().is_some() },
-            ast::UseTree(_) => PathKind::Use,
-            // completing inside a qualifier
-            ast::Path(parent) => {
-                path_ctx.parent = Some(parent.clone());
-                let parent = iter::successors(Some(parent), |it| it.parent_path()).last()?.syntax().parent()?;
-                match_ast! {
-                    match parent {
-                        ast::PathType(it) => make_path_kind_type(it.into()),
-                        ast::PathExpr(it) => {
-                            path_ctx.has_call_parens = it.syntax().parent().map_or(false, |it| ast::CallExpr::can_cast(it.kind()));
-
-                            make_path_kind_expr(it.into())
-                        },
-                        ast::TupleStructPat(it) => {
-                            path_ctx.has_call_parens = true;
-                            PathKind::Pat { pat_ctx: pattern_context_for(sema, original_file, it.into()) }
-                        },
-                        ast::RecordPat(it) => {
-                            path_ctx.has_call_parens = true;
-                            PathKind::Pat { pat_ctx: pattern_context_for(sema, original_file, it.into()) }
-                        },
-                        ast::PathPat(it) => {
-                            PathKind::Pat { pat_ctx: pattern_context_for(sema, original_file, it.into())}
-                        },
-                        ast::MacroCall(it) => {
-                            kind_macro_call(it)?
-                        },
-                        ast::Meta(meta) => make_path_kind_attr(meta)?,
-                        ast::Visibility(it) => PathKind::Vis { has_in_token: it.in_token().is_some() },
-                        ast::UseTree(_) => PathKind::Use,
-                        ast::RecordExpr(it) => make_path_kind_expr(it.into()),
-                        _ => return None,
-                    }
-                }
-            },
-            ast::RecordExpr(it) => {
-                // A record expression in this position is usually a result of parsing recovery, so check that
-                if let Some(kind) = inbetween_body_and_decl_check(it.syntax().clone()) {
-                    return Some(make_res(NameRefKind::Keyword(kind)));
-                }
-                make_path_kind_expr(it.into())
-            },
-            _ => return None,
+                    make_path_kind_expr(it.into())
+                },
+                _ => return None,
+            }
         }
     };
 
@@ -1320,9 +1472,7 @@ fn classify_name_ref(
                     }
                 })
             }
-            PathKind::Item { .. } => {
-                parent.ancestors().find(|it| ast::MacroCall::can_cast(it.kind()))
-            }
+            PathKind::Item { .. } => parent.ancestors().find(|it| it.kind() == SyntaxKind::ERROR),
             _ => None,
         };
         if let Some(top) = top_node {
