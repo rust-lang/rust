@@ -982,8 +982,8 @@ pub trait Tuple {}
 
 /// A marker for pointer-like types.
 ///
-/// All types that have the same size and alignment as a `usize` or
-/// `*const ()` automatically implement this trait.
+/// This trait can only be implemented for types that have the same size and alignment
+/// as a `usize` or `*const ()`.
 #[unstable(feature = "pointer_like_trait", issue = "none")]
 #[lang = "pointer_like"]
 #[diagnostic::on_unimplemented(
