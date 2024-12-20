@@ -1,6 +1,6 @@
 use std::collections::hash_map::Entry::*;
 
-use rustc_ast::expand::allocator::{ALLOCATOR_METHODS, NO_ALLOC_SHIM_IS_UNSTABLE};
+use rustc_ast::expand::allocator::NO_ALLOC_SHIM_IS_UNSTABLE;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE, LocalDefId};
@@ -207,10 +207,8 @@ fn exported_symbols_provider_local(
 
     // Mark allocator shim symbols as exported only if they were generated.
     if needs_allocator_shim(tcx) {
-        for symbol_name in ALLOCATOR_METHODS
-            .iter()
-            .map(|method| format!("__rust_{}", method.name))
-            .chain(["__rust_alloc_error_handler".to_string(), OomStrategy::SYMBOL.to_string()])
+        for symbol_name in
+            ["__rust_alloc_error_handler".to_string(), OomStrategy::SYMBOL.to_string()]
         {
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &symbol_name));
 
