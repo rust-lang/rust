@@ -1,9 +1,7 @@
 use std::collections::hash_map::Entry::*;
 
 use rustc_abi::{CanonAbi, X86Call};
-use rustc_ast::expand::allocator::{
-    ALLOC_ERROR_HANDLER, ALLOCATOR_METHODS, NO_ALLOC_SHIM_IS_UNSTABLE, global_fn_name,
-};
+use rustc_ast::expand::allocator::{ALLOC_ERROR_HANDLER, NO_ALLOC_SHIM_IS_UNSTABLE};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE, LocalDefId};
@@ -215,15 +213,11 @@ fn exported_symbols_provider_local<'tcx>(
 
     // Mark allocator shim symbols as exported only if they were generated.
     if needs_allocator_shim(tcx) {
-        for symbol_name in ALLOCATOR_METHODS
-            .iter()
-            .map(|method| mangle_internal_symbol(tcx, global_fn_name(method.name).as_str()))
-            .chain([
-                mangle_internal_symbol(tcx, ALLOC_ERROR_HANDLER),
-                mangle_internal_symbol(tcx, OomStrategy::SYMBOL),
-                mangle_internal_symbol(tcx, NO_ALLOC_SHIM_IS_UNSTABLE),
-            ])
-        {
+        for symbol_name in [
+            mangle_internal_symbol(tcx, ALLOC_ERROR_HANDLER),
+            mangle_internal_symbol(tcx, OomStrategy::SYMBOL),
+            mangle_internal_symbol(tcx, NO_ALLOC_SHIM_IS_UNSTABLE),
+        ] {
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &symbol_name));
 
             symbols.push((

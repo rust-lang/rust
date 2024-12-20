@@ -525,7 +525,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             // Rust allocation
-            name if name == this.mangle_internal_symbol("__rust_alloc") || name == "miri_alloc" => {
+            "miri_alloc" => {
                 let default = |ecx: &mut MiriInterpCx<'tcx>| {
                     // Only call `check_shim` when `#[global_allocator]` isn't used. When that
                     // macro is used, we act like no shim exists, so that the exported function can run.
@@ -533,37 +533,22 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let size = ecx.read_target_usize(size)?;
                     let align = ecx.read_target_usize(align)?;
 
-                    ecx.check_rustc_alloc_request(size, align)?;
-
-                    let memory_kind = match link_name.as_str() {
-                        "miri_alloc" => MiriMemoryKind::Miri,
-                        _ => MiriMemoryKind::Rust,
-                    };
+                    this.check_rustc_alloc_request(size, align)?;
 
                     let ptr = ecx.allocate_ptr(
                         Size::from_bytes(size),
                         Align::from_bytes(align).unwrap(),
-                        memory_kind.into(),
+                        MiriMemoryKind::Miri.into(),
                         AllocInit::Uninit,
                     )?;
 
                     ecx.write_pointer(ptr, dest)
                 };
 
-                match link_name.as_str() {
-                    "miri_alloc" => {
-                        default(this)?;
-                        return interp_ok(EmulateItemResult::NeedsReturn);
-                    }
-                    _ => return this.emulate_allocator(),
-                }
+                default(this)?;
+                return interp_ok(EmulateItemResult::NeedsReturn);
             }
-            name if name == this.mangle_internal_symbol("__rust_alloc_zeroed") => {
-                return this.emulate_allocator();
-            }
-            name if name == this.mangle_internal_symbol("__rust_dealloc")
-                || name == "miri_dealloc" =>
-            {
+            "miri_dealloc" => {
                 let default = |ecx: &mut MiriInterpCx<'tcx>| {
                     // See the comment for `__rust_alloc` why `check_shim` is only called in the
                     // default case.
@@ -573,29 +558,16 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     let old_size = ecx.read_target_usize(old_size)?;
                     let align = ecx.read_target_usize(align)?;
 
-                    let memory_kind = match link_name.as_str() {
-                        "miri_dealloc" => MiriMemoryKind::Miri,
-                        _ => MiriMemoryKind::Rust,
-                    };
-
                     // No need to check old_size/align; we anyway check that they match the allocation.
                     ecx.deallocate_ptr(
                         ptr,
                         Some((Size::from_bytes(old_size), Align::from_bytes(align).unwrap())),
-                        memory_kind.into(),
+                        MiriMemoryKind::Miri.into(),
                     )
                 };
 
-                match link_name.as_str() {
-                    "miri_dealloc" => {
-                        default(this)?;
-                        return interp_ok(EmulateItemResult::NeedsReturn);
-                    }
-                    _ => return this.emulate_allocator(),
-                }
-            }
-            name if name == this.mangle_internal_symbol("__rust_realloc") => {
-                return this.emulate_allocator();
+                default(this)?;
+                return interp_ok(EmulateItemResult::NeedsReturn);
             }
             name if name == this.mangle_internal_symbol("__rust_no_alloc_shim_is_unstable_v2") => {
                 // This is a no-op shim that only exists to prevent making the allocator shims instantly stable.
