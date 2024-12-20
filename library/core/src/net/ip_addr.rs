@@ -527,7 +527,7 @@ impl Ipv4Addr {
     /// ```
     /// use std::net::Ipv4Addr;
     ///
-    /// let addr = Ipv4Addr::from(0x12345678);
+    /// let addr = Ipv4Addr::from_bits(0x12345678);
     /// assert_eq!(Ipv4Addr::new(0x12, 0x34, 0x56, 0x78), addr);
     /// ```
     #[rustc_const_stable(feature = "ip_bits", since = "1.80.0")]
@@ -1294,7 +1294,7 @@ impl Ipv6Addr {
     ///     0x1020, 0x3040, 0x5060, 0x7080,
     ///     0x90A0, 0xB0C0, 0xD0E0, 0xF00D,
     /// );
-    /// assert_eq!(0x102030405060708090A0B0C0D0E0F00D_u128, u128::from(addr));
+    /// assert_eq!(0x102030405060708090A0B0C0D0E0F00D_u128, addr.to_bits());
     /// ```
     ///
     /// ```
@@ -1330,7 +1330,7 @@ impl Ipv6Addr {
     /// ```
     /// use std::net::Ipv6Addr;
     ///
-    /// let addr = Ipv6Addr::from(0x102030405060708090A0B0C0D0E0F00D_u128);
+    /// let addr = Ipv6Addr::from_bits(0x102030405060708090A0B0C0D0E0F00D_u128);
     /// assert_eq!(
     ///     Ipv6Addr::new(
     ///         0x1020, 0x3040, 0x5060, 0x7080,

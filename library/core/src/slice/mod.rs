@@ -4641,7 +4641,7 @@ impl<T> [T] {
 
     /// Returns the index that an element reference points to.
     ///
-    /// Returns `None` if `element` does not point within the slice or if it points between elements.
+    /// Returns `None` if `element` does not point to the start of an element within the slice.
     ///
     /// This method is useful for extending slice iterators like [`slice::split`].
     ///
@@ -4661,9 +4661,9 @@ impl<T> [T] {
     /// let num = &nums[2];
     ///
     /// assert_eq!(num, &1);
-    /// assert_eq!(nums.elem_offset(num), Some(2));
+    /// assert_eq!(nums.element_offset(num), Some(2));
     /// ```
-    /// Returning `None` with an in-between element:
+    /// Returning `None` with an unaligned element:
     /// ```
     /// #![feature(substr_range)]
     ///
@@ -4676,12 +4676,12 @@ impl<T> [T] {
     /// assert_eq!(ok_elm, &[0, 1]);
     /// assert_eq!(weird_elm, &[1, 2]);
     ///
-    /// assert_eq!(arr.elem_offset(ok_elm), Some(0)); // Points to element 0
-    /// assert_eq!(arr.elem_offset(weird_elm), None); // Points between element 0 and 1
+    /// assert_eq!(arr.element_offset(ok_elm), Some(0)); // Points to element 0
+    /// assert_eq!(arr.element_offset(weird_elm), None); // Points between element 0 and 1
     /// ```
     #[must_use]
     #[unstable(feature = "substr_range", issue = "126769")]
-    pub fn elem_offset(&self, element: &T) -> Option<usize> {
+    pub fn element_offset(&self, element: &T) -> Option<usize> {
         if T::IS_ZST {
             panic!("elements are zero-sized");
         }
@@ -4702,7 +4702,8 @@ impl<T> [T] {
 
     /// Returns the range of indices that a subslice points to.
     ///
-    /// Returns `None` if `subslice` does not point within the slice or if it points between elements.
+    /// Returns `None` if `subslice` does not point within the slice or if it is not aligned with the
+    /// elements in the slice.
     ///
     /// This method **does not compare elements**. Instead, this method finds the location in the slice that
     /// `subslice` was obtained from. To find the index of a subslice via comparison, instead use
