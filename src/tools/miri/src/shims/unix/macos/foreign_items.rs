@@ -33,44 +33,37 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // File related shims
             "close$NOCANCEL" => {
-                let [result] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [result] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let result = this.close(result)?;
                 this.write_scalar(result, dest)?;
             }
             "stat" | "stat64" | "stat$INODE64" => {
-                let [path, buf] =
-                this.check_shim(abi, Conv::C, link_name, args)?;
+                let [path, buf] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let result = this.macos_fbsd_solaris_stat(path, buf)?;
                 this.write_scalar(result, dest)?;
             }
             "lstat" | "lstat64" | "lstat$INODE64" => {
-                let [path, buf] =
-                this.check_shim(abi, Conv::C, link_name, args)?;
+                let [path, buf] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let result = this.macos_fbsd_solaris_lstat(path, buf)?;
                 this.write_scalar(result, dest)?;
             }
             "fstat" | "fstat64" | "fstat$INODE64" => {
-                let [fd, buf] =
-                this.check_shim(abi, Conv::C, link_name, args)?;
+                let [fd, buf] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let result = this.macos_fbsd_solaris_fstat(fd, buf)?;
                 this.write_scalar(result, dest)?;
             }
             "opendir$INODE64" => {
-                let [name] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [name] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let result = this.opendir(name)?;
                 this.write_scalar(result, dest)?;
             }
             "readdir_r" | "readdir_r$INODE64" => {
-                let [dirp, entry, result] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [dirp, entry, result] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let result = this.macos_fbsd_readdir_r(dirp, entry, result)?;
                 this.write_scalar(result, dest)?;
             }
             "realpath$DARWIN_EXTSN" => {
-                let [path, resolved_path] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [path, resolved_path] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let result = this.realpath(path, resolved_path)?;
                 this.write_scalar(result, dest)?;
             }
@@ -84,8 +77,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Random data generation
             "CCRandomGenerateBytes" => {
-                let [bytes, count] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [bytes, count] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let bytes = this.read_pointer(bytes)?;
                 let count = this.read_target_usize(count)?;
                 let success = this.eval_libc_i32("kCCSuccess");
@@ -101,8 +93,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             "mach_timebase_info" => {
-                let [info] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [info] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let result = this.mach_timebase_info(info)?;
                 this.write_scalar(result, dest)?;
             }
@@ -117,8 +108,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_pointer(this.machine.argv.expect("machine must be initialized"), dest)?;
             }
             "_NSGetExecutablePath" => {
-                let [buf, bufsize] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [buf, bufsize] = this.check_shim(abi, Conv::C, link_name, args)?;
                 this.check_no_isolation("`_NSGetExecutablePath`")?;
 
                 let buf_ptr = this.read_pointer(buf)?;
@@ -143,8 +133,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Thread-local storage
             "_tlv_atexit" => {
-                let [dtor, data] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [dtor, data] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let dtor = this.read_pointer(dtor)?;
                 let dtor = this.get_ptr_fn(dtor)?.as_instance()?;
                 let data = this.read_scalar(data)?;
@@ -154,15 +143,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Querying system information
             "pthread_get_stackaddr_np" => {
-                let [thread] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [thread] = this.check_shim(abi, Conv::C, link_name, args)?;
                 this.read_target_usize(thread)?;
                 let stack_addr = Scalar::from_uint(this.machine.stack_addr, this.pointer_size());
                 this.write_scalar(stack_addr, dest)?;
             }
             "pthread_get_stacksize_np" => {
-                let [thread] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [thread] = this.check_shim(abi, Conv::C, link_name, args)?;
                 this.read_target_usize(thread)?;
                 let stack_size = Scalar::from_uint(this.machine.stack_size, this.pointer_size());
                 this.write_scalar(stack_size, dest)?;
@@ -170,8 +157,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Threading
             "pthread_setname_np" => {
-                let [name] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [name] = this.check_shim(abi, Conv::C, link_name, args)?;
 
                 // The real implementation has logic in two places:
                 // * in userland at https://github.com/apple-oss-distributions/libpthread/blob/c032e0b076700a0a47db75528a282b8d3a06531a/src/pthread.c#L1178-L1200,
@@ -198,8 +184,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(res, dest)?;
             }
             "pthread_getname_np" => {
-                let [thread, name, len] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [thread, name, len] = this.check_shim(abi, Conv::C, link_name, args)?;
 
                 // The function's behavior isn't portable between platforms.
                 // In case of macOS, a truncated name (due to a too small buffer)
@@ -224,28 +209,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             "os_unfair_lock_lock" => {
-                let [lock_op] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [lock_op] = this.check_shim(abi, Conv::C, link_name, args)?;
                 this.os_unfair_lock_lock(lock_op)?;
             }
             "os_unfair_lock_trylock" => {
-                let [lock_op] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [lock_op] = this.check_shim(abi, Conv::C, link_name, args)?;
                 this.os_unfair_lock_trylock(lock_op, dest)?;
             }
             "os_unfair_lock_unlock" => {
-                let [lock_op] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [lock_op] = this.check_shim(abi, Conv::C, link_name, args)?;
                 this.os_unfair_lock_unlock(lock_op)?;
             }
             "os_unfair_lock_assert_owner" => {
-                let [lock_op] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [lock_op] = this.check_shim(abi, Conv::C, link_name, args)?;
                 this.os_unfair_lock_assert_owner(lock_op)?;
             }
             "os_unfair_lock_assert_not_owner" => {
-                let [lock_op] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [lock_op] = this.check_shim(abi, Conv::C, link_name, args)?;
                 this.os_unfair_lock_assert_not_owner(lock_op)?;
             }
 

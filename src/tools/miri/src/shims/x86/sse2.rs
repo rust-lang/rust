@@ -40,8 +40,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // intermediate signed 32-bit integers. Horizontally add adjacent pairs of
             // intermediate 32-bit integers, and pack the results in `dest`.
             "pmadd.wd" => {
-                let [left, right] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [left, right] = this.check_shim(abi, Conv::C, link_name, args)?;
 
                 let (left, left_len) = this.project_to_simd(left)?;
                 let (right, right_len) = this.project_to_simd(right)?;
@@ -79,8 +78,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             //
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_sad_epu8
             "psad.bw" => {
-                let [left, right] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [left, right] = this.check_shim(abi, Conv::C, link_name, args)?;
 
                 let (left, left_len) = this.project_to_simd(left)?;
                 let (right, right_len) = this.project_to_simd(right)?;
@@ -118,8 +116,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // is copied to remaining bits.
             "psll.w" | "psrl.w" | "psra.w" | "psll.d" | "psrl.d" | "psra.d" | "psll.q"
             | "psrl.q" => {
-                let [left, right] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [left, right] = this.check_shim(abi, Conv::C, link_name, args)?;
 
                 let which = match unprefixed_name {
                     "psll.w" | "psll.d" | "psll.q" => ShiftOp::Left,
@@ -171,8 +168,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Converts two 16-bit integer vectors to a single 8-bit integer
             // vector with signed saturation.
             "packsswb.128" => {
-                let [left, right] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [left, right] = this.check_shim(abi, Conv::C, link_name, args)?;
 
                 packsswb(this, left, right, dest)?;
             }
@@ -180,8 +176,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Converts two 16-bit signed integer vectors to a single 8-bit
             // unsigned integer vector with saturation.
             "packuswb.128" => {
-                let [left, right] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [left, right] = this.check_shim(abi, Conv::C, link_name, args)?;
 
                 packuswb(this, left, right, dest)?;
             }
@@ -189,8 +184,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Converts two 32-bit integer vectors to a single 16-bit integer
             // vector with signed saturation.
             "packssdw.128" => {
-                let [left, right] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [left, right] = this.check_shim(abi, Conv::C, link_name, args)?;
 
                 packssdw(this, left, right, dest)?;
             }
@@ -200,8 +194,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // matches the IEEE min/max operations, while x86 has different
             // semantics.
             "min.sd" | "max.sd" => {
-                let [left, right] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [left, right] = this.check_shim(abi, Conv::C, link_name, args)?;
 
                 let which = match unprefixed_name {
                     "min.sd" => FloatBinOp::Min,
@@ -217,8 +210,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // matches the IEEE min/max operations, while x86 has different
             // semantics.
             "min.pd" | "max.pd" => {
-                let [left, right] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [left, right] = this.check_shim(abi, Conv::C, link_name, args)?;
 
                 let which = match unprefixed_name {
                     "min.pd" => FloatBinOp::Min,
@@ -237,8 +229,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // _mm_cmp{eq,lt,le,gt,ge,neq,nlt,nle,ngt,nge,ord,unord}_sd are SSE2 functions
             // with hard-coded operations.
             "cmp.sd" => {
-                let [left, right, imm] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [left, right, imm] = this.check_shim(abi, Conv::C, link_name, args)?;
 
                 let which =
                     FloatBinOp::cmp_from_imm(this, this.read_scalar(imm)?.to_i8()?, link_name)?;
@@ -254,8 +245,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // _mm_cmp{eq,lt,le,gt,ge,neq,nlt,nle,ngt,nge,ord,unord}_pd are SSE2 functions
             // with hard-coded operations.
             "cmp.pd" => {
-                let [left, right, imm] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [left, right, imm] = this.check_shim(abi, Conv::C, link_name, args)?;
 
                 let which =
                     FloatBinOp::cmp_from_imm(this, this.read_scalar(imm)?.to_i8()?, link_name)?;
@@ -268,8 +258,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "comieq.sd" | "comilt.sd" | "comile.sd" | "comigt.sd" | "comige.sd" | "comineq.sd"
             | "ucomieq.sd" | "ucomilt.sd" | "ucomile.sd" | "ucomigt.sd" | "ucomige.sd"
             | "ucomineq.sd" => {
-                let [left, right] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [left, right] = this.check_shim(abi, Conv::C, link_name, args)?;
 
                 let (left, left_len) = this.project_to_simd(left)?;
                 let (right, right_len) = this.project_to_simd(right)?;
@@ -323,8 +312,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Converts the first f64/f32 from `right` to f32/f64 and copies
             // the remaining elements from `left`
             "cvtsd2ss" | "cvtss2sd" => {
-                let [left, right] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [left, right] = this.check_shim(abi, Conv::C, link_name, args)?;
 
                 let (left, left_len) = this.project_to_simd(left)?;
                 let (right, _) = this.project_to_simd(right)?;

@@ -2,7 +2,6 @@ use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::{Conv, FnAbi};
 
-
 use crate::helpers::check_min_arg_count;
 use crate::shims::unix::linux_like::eventfd::EvalContextExt as _;
 use crate::shims::unix::linux_like::sync::futex;

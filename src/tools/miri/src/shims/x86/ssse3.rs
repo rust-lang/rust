@@ -32,8 +32,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Shuffles bytes from `left` using `right` as pattern.
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_shuffle_epi8
             "pshuf.b.128" => {
-                let [left, right] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [left, right] = this.check_shim(abi, Conv::C, link_name, args)?;
 
                 let (left, left_len) = this.project_to_simd(left)?;
                 let (right, right_len) = this.project_to_simd(right)?;
@@ -62,8 +61,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // integer values in `left` and `right`.
             "phadd.w.128" | "phadd.sw.128" | "phadd.d.128" | "phsub.w.128" | "phsub.sw.128"
             | "phsub.d.128" => {
-                let [left, right] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [left, right] = this.check_shim(abi, Conv::C, link_name, args)?;
 
                 let (which, saturating) = match unprefixed_name {
                     "phadd.w.128" | "phadd.d.128" => (mir::BinOp::Add, false),
@@ -82,8 +80,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // produces the output at index `i`.
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maddubs_epi16
             "pmadd.ub.sw.128" => {
-                let [left, right] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [left, right] = this.check_shim(abi, Conv::C, link_name, args)?;
 
                 let (left, left_len) = this.project_to_simd(left)?;
                 let (right, right_len) = this.project_to_simd(right)?;
@@ -118,8 +115,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // 1 and then taking the bits `1..=16`.
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mulhrs_epi16
             "pmul.hr.sw.128" => {
-                let [left, right] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [left, right] = this.check_shim(abi, Conv::C, link_name, args)?;
 
                 pmulhrsw(this, left, right, dest)?;
             }
@@ -129,8 +125,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // is writen to the corresponding output element.
             // Basically, we multiply `left` with `right.signum()`.
             "psign.b.128" | "psign.w.128" | "psign.d.128" => {
-                let [left, right] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [left, right] = this.check_shim(abi, Conv::C, link_name, args)?;
 
                 psign(this, left, right, dest)?;
             }
