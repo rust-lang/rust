@@ -1,8 +1,8 @@
 error: Undefined Behavior: attempting deallocation using <TAG> at ALLOC, but that tag does not exist in the borrow stack for this location
-  --> RUSTLIB/std/src/sys/alloc/unix.rs:LL:CC
+  --> tests/fail/stacked_borrows/illegal_deALLOC.rs:LL:CC
    |
-LL |         unsafe { libc::free(ptr as *mut libc::c_void) }
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attempting deallocation using <TAG> at ALLOC, but that tag does not exist in the borrow stack for this location
+LL |         dealloc(ptr2, Layout::from_size_align_unchecked(1, 1));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attempting deallocation using <TAG> at ALLOC, but that tag does not exist in the borrow stack for this location
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
@@ -17,13 +17,7 @@ help: <TAG> was later invalidated at offsets [0x0..0x1] by a write access
 LL |         ptr1.write(0);
    |         ^^^^^^^^^^^^^
    = note: BACKTRACE (of the first span):
-   = note: inside `std::sys::alloc::unix::<impl std::alloc::GlobalAlloc for std::alloc::System>::dealloc` at RUSTLIB/std/src/sys/alloc/unix.rs:LL:CC
-   = note: inside `std::alloc::__default_lib_allocator::__rust_dealloc` at RUSTLIB/std/src/alloc.rs:LL:CC
-note: inside `main`
-  --> tests/fail/stacked_borrows/illegal_deALLOC.rs:LL:CC
-   |
-LL |         dealloc(ptr2, Layout::from_size_align_unchecked(1, 1));
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: inside `main` at tests/fail/stacked_borrows/illegal_deALLOC.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

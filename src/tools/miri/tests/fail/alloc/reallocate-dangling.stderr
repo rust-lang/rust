@@ -1,8 +1,8 @@
 error: Undefined Behavior: memory access failed: ALLOC has been freed, so this pointer is dangling
-  --> RUSTLIB/std/src/sys/alloc/unix.rs:LL:CC
+  --> tests/fail/alloc/reallocate-dangling.rs:LL:CC
    |
-LL |             unsafe { libc::realloc(ptr as *mut libc::c_void, new_size) as *mut u8 }
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: ALLOC has been freed, so this pointer is dangling
+LL |         let _z = realloc(x, Layout::from_size_align_unchecked(1, 1), 1);
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: ALLOC has been freed, so this pointer is dangling
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
@@ -17,13 +17,7 @@ help: ALLOC was deallocated here:
 LL |         dealloc(x, Layout::from_size_align_unchecked(1, 1));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: BACKTRACE (of the first span):
-   = note: inside `std::sys::alloc::unix::<impl std::alloc::GlobalAlloc for std::alloc::System>::realloc` at RUSTLIB/std/src/sys/alloc/unix.rs:LL:CC
-   = note: inside `std::alloc::__default_lib_allocator::__rust_realloc` at RUSTLIB/std/src/alloc.rs:LL:CC
-note: inside `main`
-  --> tests/fail/alloc/reallocate-dangling.rs:LL:CC
-   |
-LL |         let _z = realloc(x, Layout::from_size_align_unchecked(1, 1), 1);
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: inside `main` at tests/fail/alloc/reallocate-dangling.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

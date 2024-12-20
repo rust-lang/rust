@@ -16,7 +16,7 @@ LL |         drop(slice1.cmp(slice2));
    |              ^^^^^^^^^^^^^^^^^^
 
 Uninitialized memory occurred at ALLOC[0x4..0x10], in this allocation:
-ALLOC (C heap, size: 32, align: 16) {
+ALLOC (Rust heap, size: 32, align: 8) {
     0x00 │ 41 42 43 44 __ __ __ __ __ __ __ __ __ __ __ __ │ ABCD░░░░░░░░░░░░
     0x10 │ 00 __ __ __ __ __ __ __ __ __ __ __ __ __ __ __ │ .░░░░░░░░░░░░░░░
 }
