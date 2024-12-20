@@ -176,7 +176,7 @@ impl<'a> Parser<'a> {
         let stmt = self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
             let path = this.parse_path(PathStyle::Expr)?;
 
-            if this.eat(exp!(Not)) {
+            if this.eat(exp!(Bang)) {
                 let stmt_mac = this.parse_stmt_mac(lo, attrs, path)?;
                 return Ok((
                     stmt_mac,

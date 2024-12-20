@@ -253,7 +253,7 @@ impl<'a> Parser<'a> {
         let mut impl_dyn_multi = false;
         let kind = if self.check(exp!(OpenParen)) {
             self.parse_ty_tuple_or_parens(lo, allow_plus)?
-        } else if self.eat(exp!(Not)) {
+        } else if self.eat(exp!(Bang)) {
             // Never type `!`
             TyKind::Never
         } else if self.eat(exp!(Star)) {
@@ -768,7 +768,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, TyKind> {
         // Simple path
         let path = self.parse_path_inner(PathStyle::Type, ty_generics)?;
-        if self.eat(exp!(Not)) {
+        if self.eat(exp!(Bang)) {
             // Macro invocation in type position
             Ok(TyKind::MacCall(P(MacCall { path, args: self.parse_delim_args()? })))
         } else if allow_plus == AllowPlus::Yes && self.check_plus() {
@@ -821,7 +821,7 @@ impl<'a> Parser<'a> {
     fn can_begin_bound(&mut self) -> bool {
         self.check_path()
             || self.check_lifetime()
-            || self.check(exp!(Not))
+            || self.check(exp!(Bang))
             || self.check(exp!(Question))
             || self.check(exp!(Tilde))
             || self.check_keyword(exp!(For))
@@ -972,7 +972,7 @@ impl<'a> Parser<'a> {
 
         let polarity = if self.eat(exp!(Question)) {
             BoundPolarity::Maybe(self.prev_token.span)
-        } else if self.eat(exp!(Not)) {
+        } else if self.eat(exp!(Bang)) {
             self.psess.gated_spans.gate(sym::negative_bounds, self.prev_token.span);
             BoundPolarity::Negative(self.prev_token.span)
         } else {

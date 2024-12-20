@@ -742,7 +742,7 @@ impl<'a> Parser<'a> {
             self.recover_dotdotdot_rest_pat(lo)
         } else if let Some(form) = self.parse_range_end() {
             self.parse_pat_range_to(form)? // `..=X`, `...X`, or `..X`.
-        } else if self.eat(exp!(Not)) {
+        } else if self.eat(exp!(Bang)) {
             // Parse `!`
             self.psess.gated_spans.gate(sym::never_patterns, self.prev_token.span);
             PatKind::Never
@@ -798,7 +798,7 @@ impl<'a> Parser<'a> {
             };
             let span = lo.to(self.prev_token.span);
 
-            if qself.is_none() && self.check(exp!(Not)) {
+            if qself.is_none() && self.check(exp!(Bang)) {
                 self.parse_pat_mac_invoc(path)?
             } else if let Some(form) = self.parse_range_end() {
                 let begin = self.mk_expr(span, ExprKind::Path(qself, path));
@@ -1312,7 +1312,7 @@ impl<'a> Parser<'a> {
             | token::OpenDelim(Delimiter::Brace) // A struct pattern.
             | token::DotDotDot | token::DotDotEq | token::DotDot // A range pattern.
             | token::PathSep // A tuple / struct variant pattern.
-            | token::Not)) // A macro expanding to a pattern.
+            | token::Bang)) // A macro expanding to a pattern.
     }
 
     /// Parses `ident` or `ident @ pat`.

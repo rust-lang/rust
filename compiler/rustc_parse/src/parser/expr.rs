@@ -505,7 +505,7 @@ impl<'a> Parser<'a> {
         // Note: when adding new unary operators, don't forget to adjust TokenKind::can_begin_expr()
         match this.token.uninterpolate().kind {
             // `!expr`
-            token::Not => make_it!(this, attrs, |this, _| this.parse_expr_unary(lo, UnOp::Not)),
+            token::Bang => make_it!(this, attrs, |this, _| this.parse_expr_unary(lo, UnOp::Not)),
             // `~expr`
             token::Tilde => make_it!(this, attrs, |this, _| this.recover_tilde_expr(lo)),
             // `-expr`
@@ -1567,7 +1567,7 @@ impl<'a> Parser<'a> {
         };
 
         // `!`, as an operator, is prefix, so we know this isn't that.
-        let (span, kind) = if self.eat(exp!(Not)) {
+        let (span, kind) = if self.eat(exp!(Bang)) {
             // MACRO INVOCATION expression
             if qself.is_some() {
                 self.dcx().emit_err(errors::MacroInvocationWithQualifiedPath(path.span));

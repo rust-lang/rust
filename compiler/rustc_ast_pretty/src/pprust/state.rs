@@ -317,7 +317,7 @@ fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
         (tt1, Tok(Token { kind: Comma | Semi | Dot, .. }, _)) if !is_punct(tt1) => false,
 
         // IDENT + `!`: `println!()`, but `if !x { ... }` needs a space after the `if`
-        (Tok(Token { kind: Ident(sym, is_raw), span }, _), Tok(Token { kind: Not, .. }, _))
+        (Tok(Token { kind: Ident(sym, is_raw), span }, _), Tok(Token { kind: Bang, .. }, _))
             if !Ident::new(*sym, *span).is_reserved() || matches!(is_raw, IdentIsRaw::Yes) =>
         {
             false
@@ -892,7 +892,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             token::Ne => "!=".into(),
             token::Ge => ">=".into(),
             token::Gt => ">".into(),
-            token::Not => "!".into(),
+            token::Bang => "!".into(),
             token::Tilde => "~".into(),
             token::OrOr => "||".into(),
             token::AndAnd => "&&".into(),

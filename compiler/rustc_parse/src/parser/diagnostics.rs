@@ -1957,7 +1957,7 @@ impl<'a> Parser<'a> {
         &mut self,
         await_sp: Span,
     ) -> PResult<'a, P<Expr>> {
-        let (hi, expr, is_question) = if self.token == token::Not {
+        let (hi, expr, is_question) = if self.token == token::Bang {
             // Handle `await!(<expr>)`.
             self.recover_await_macro()?
         } else {
@@ -1969,7 +1969,7 @@ impl<'a> Parser<'a> {
     }
 
     fn recover_await_macro(&mut self) -> PResult<'a, (Span, P<Expr>, bool)> {
-        self.expect(exp!(Not))?;
+        self.expect(exp!(Bang))?;
         self.expect(exp!(OpenParen))?;
         let expr = self.parse_expr()?;
         self.expect(exp!(CloseParen))?;
@@ -2029,7 +2029,7 @@ impl<'a> Parser<'a> {
 
     pub(super) fn try_macro_suggestion(&mut self) -> PResult<'a, P<Expr>> {
         let is_try = self.token.is_keyword(kw::Try);
-        let is_questionmark = self.look_ahead(1, |t| t == &token::Not); //check for !
+        let is_questionmark = self.look_ahead(1, |t| t == &token::Bang); //check for !
         let is_open = self.look_ahead(2, |t| t == &token::OpenDelim(Delimiter::Parenthesis)); //check for (
 
         if is_try && is_questionmark && is_open {

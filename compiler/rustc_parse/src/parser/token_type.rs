@@ -25,7 +25,7 @@ pub enum TokenType {
     Gt,
     AndAnd,
     OrOr,
-    Not,
+    Bang,
     Tilde,
 
     // BinOps
@@ -170,7 +170,7 @@ impl TokenType {
             Gt,
             AndAnd,
             OrOr,
-            Not,
+            Bang,
             Tilde,
 
             Plus,
@@ -360,7 +360,7 @@ impl TokenType {
             TokenType::Gt => "`>`",
             TokenType::AndAnd => "`&&`",
             TokenType::OrOr => "`||`",
-            TokenType::Not => "`!`",
+            TokenType::Bang => "`!`",
             TokenType::Tilde => "`~`",
 
             TokenType::Plus => "`+`",
@@ -473,7 +473,7 @@ macro_rules! exp {
     (Gt)             => { exp!(@tok, Gt) };
     (AndAnd)         => { exp!(@tok, AndAnd) };
     (OrOr)           => { exp!(@tok, OrOr) };
-    (Not)            => { exp!(@tok, Not) };
+    (Bang)           => { exp!(@tok, Bang) };
     (Tilde)          => { exp!(@tok, Tilde) };
     (Plus)           => { exp!(@tok, Plus) };
     (Minus)          => { exp!(@tok, Minus) };

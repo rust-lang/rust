@@ -379,7 +379,7 @@ impl<'a> Parser<'a> {
 
     /// Are we sure this could not possibly be a macro invocation?
     fn isnt_macro_invocation(&mut self) -> bool {
-        self.check_ident() && self.look_ahead(1, |t| *t != token::Not && *t != token::PathSep)
+        self.check_ident() && self.look_ahead(1, |t| *t != token::Bang && *t != token::PathSep)
     }
 
     /// Recover on encountering a struct, enum, or method definition where the user
@@ -477,7 +477,7 @@ impl<'a> Parser<'a> {
     /// Parses an item macro, e.g., `item!();`.
     fn parse_item_macro(&mut self, vis: &Visibility) -> PResult<'a, MacCall> {
         let path = self.parse_path(PathStyle::Mod)?; // `foo::bar`
-        self.expect(exp!(Not))?; // `!`
+        self.expect(exp!(Bang))?; // `!`
         match self.parse_delim_args() {
             // `( .. )` or `[ .. ]` (followed by `;`), or `{ .. }`.
             Ok(args) => {
@@ -537,7 +537,7 @@ impl<'a> Parser<'a> {
 
     fn parse_polarity(&mut self) -> ast::ImplPolarity {
         // Disambiguate `impl !Trait for Type { ... }` and `impl ! { ... }` for the never type.
-        if self.check(exp!(Not)) && self.look_ahead(1, |t| t.can_begin_type()) {
+        if self.check(exp!(Bang)) && self.look_ahead(1, |t| t.can_begin_type()) {
             self.bump(); // `!`
             ast::ImplPolarity::Negative(self.prev_token.span)
         } else {
@@ -1576,7 +1576,7 @@ impl<'a> Parser<'a> {
             }
             let ident = this.parse_field_ident("enum", vlo)?;
 
-            if this.token == token::Not {
+            if this.token == token::Bang {
                 if let Err(err) = this.unexpected() {
                     err.with_note(fluent::parse_macro_expands_to_enum_variant).emit();
                 }
@@ -2031,7 +2031,7 @@ impl<'a> Parser<'a> {
         attrs: AttrVec,
     ) -> PResult<'a, FieldDef> {
         let name = self.parse_field_ident(adt_ty, lo)?;
-        if self.token == token::Not {
+        if self.token == token::Bang {
             if let Err(mut err) = self.unexpected() {
                 // Encounter the macro invocation
                 err.subdiagnostic(MacroExpandsToAdtField { adt_ty });
@@ -2184,7 +2184,7 @@ impl<'a> Parser<'a> {
         if self.check_keyword(exp!(MacroRules)) {
             let macro_rules_span = self.token.span;
 
-            if self.look_ahead(1, |t| *t == token::Not) && self.look_ahead(2, |t| t.is_ident()) {
+            if self.look_ahead(1, |t| *t == token::Bang) && self.look_ahead(2, |t| t.is_ident()) {
                 return IsMacroRulesItem::Yes { has_bang: true };
             } else if self.look_ahead(1, |t| (t.is_ident())) {
                 // macro_rules foo
@@ -2209,11 +2209,11 @@ impl<'a> Parser<'a> {
         self.expect_keyword(exp!(MacroRules))?; // `macro_rules`
 
         if has_bang {
-            self.expect(exp!(Not))?; // `!`
+            self.expect(exp!(Bang))?; // `!`
         }
         let ident = self.parse_ident()?;
 
-        if self.eat(exp!(Not)) {
+        if self.eat(exp!(Bang)) {
             // Handle macro_rules! foo!
             let span = self.prev_token.span;
             self.dcx().emit_err(errors::MacroNameRemoveBang { span });

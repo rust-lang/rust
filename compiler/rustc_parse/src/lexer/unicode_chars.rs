@@ -312,7 +312,7 @@ const ASCII_ARRAY: &[(&str, &str, Option<token::TokenKind>)] = &[
     (",", "Comma", Some(token::Comma)),
     (";", "Semicolon", Some(token::Semi)),
     (":", "Colon", Some(token::Colon)),
-    ("!", "Exclamation Mark", Some(token::Not)),
+    ("!", "Exclamation Mark", Some(token::Bang)),
     ("?", "Question Mark", Some(token::Question)),
     (".", "Period", Some(token::Dot)),
     ("(", "Left Parenthesis", Some(token::OpenDelim(Delimiter::Parenthesis))),

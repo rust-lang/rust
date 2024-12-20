@@ -691,7 +691,7 @@ fn has_compile_error_macro(rhs: &mbe::TokenTree) -> bool {
                     && let TokenKind::Ident(ident, _) = ident.kind
                     && ident == sym::compile_error
                     && let mbe::TokenTree::Token(bang) = bang
-                    && let TokenKind::Not = bang.kind
+                    && let TokenKind::Bang = bang.kind
                     && let mbe::TokenTree::Delimited(.., del) = args
                     && !del.delim.skip()
                 {

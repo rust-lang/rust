@@ -355,7 +355,7 @@ pub enum TokenKind {
     /// `||`
     OrOr,
     /// `!`
-    Not,
+    Bang,
     /// `~`
     Tilde,
     // `+`
@@ -517,7 +517,7 @@ impl TokenKind {
         Some(match (self, n) {
             (Le, 1) => (Lt, Eq),
             (EqEq, 1) => (Eq, Eq),
-            (Ne, 1) => (Not, Eq),
+            (Ne, 1) => (Bang, Eq),
             (Ge, 1) => (Gt, Eq),
             (AndAnd, 1) => (And, And),
             (OrOr, 1) => (Or, Or),
@@ -599,7 +599,7 @@ impl Token {
 
     pub fn is_punct(&self) -> bool {
         match self.kind {
-            Eq | Lt | Le | EqEq | Ne | Ge | Gt | AndAnd | OrOr | Not | Tilde | Plus | Minus
+            Eq | Lt | Le | EqEq | Ne | Ge | Gt | AndAnd | OrOr | Bang | Tilde | Plus | Minus
             | Star | Slash | Percent | Caret | And | Or | Shl | Shr | PlusEq | MinusEq | StarEq
             | SlashEq | PercentEq | CaretEq | AndEq | OrEq | ShlEq | ShrEq | At | Dot | DotDot
             | DotDotDot | DotDotEq | Comma | Semi | Colon | PathSep | RArrow | LArrow
@@ -625,7 +625,7 @@ impl Token {
                 ident_can_begin_expr(name, self.span, is_raw), // value name or keyword
             OpenDelim(Parenthesis | Brace | Bracket) | // tuple, array or block
             Literal(..)                       | // literal
-            Not                               | // operator not
+            Bang                              | // operator not
             Minus                             | // unary minus
             Star                              | // dereference
             Or | OrOr                         | // closure
@@ -701,7 +701,7 @@ impl Token {
                 ident_can_begin_type(name, self.span, is_raw), // type name or keyword
             OpenDelim(Delimiter::Parenthesis) | // tuple
             OpenDelim(Delimiter::Bracket)     | // array
-            Not                               | // never
+            Bang                              | // never
             Star                              | // raw pointer
             And                               | // reference
             AndAnd                            | // double reference
@@ -1007,8 +1007,8 @@ impl Token {
             (Gt, Ge) => ShrEq,
             (Gt, _) => return None,
 
-            (Not, Eq) => Ne,
-            (Not, _) => return None,
+            (Bang, Eq) => Ne,
+            (Bang, _) => return None,
 
             (Plus, Eq) => PlusEq,
             (Plus, _) => return None,
