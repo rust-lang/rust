@@ -1,10 +1,7 @@
 use gccjit::{Context, FunctionType, GlobalKind, ToRValue, Type};
 #[cfg(feature = "master")]
 use gccjit::{FnAttribute, VarAttribute};
-use rustc_ast::expand::allocator::{
-    ALLOC_ERROR_HANDLER, ALLOC_ERROR_HANDLER_DEFAULT, AllocatorKind, NO_ALLOC_SHIM_IS_UNSTABLE,
-};
-use rustc_middle::bug;
+use rustc_ast::expand::allocator::NO_ALLOC_SHIM_IS_UNSTABLE;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::OomStrategy;
 use rustc_symbol_mangling::mangle_internal_symbol;
@@ -13,32 +10,9 @@ use crate::GccContext;
 #[cfg(feature = "master")]
 use crate::base::symbol_visibility_to_gcc;
 
-pub(crate) unsafe fn codegen(
-    tcx: TyCtxt<'_>,
-    mods: &mut GccContext,
-    _module_name: &str,
-    alloc_error_handler_kind: AllocatorKind,
-) {
+pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, _module_name: &str) {
     let context = &mods.context;
-    let usize = match tcx.sess.target.pointer_width {
-        16 => context.new_type::<u16>(),
-        32 => context.new_type::<u32>(),
-        64 => context.new_type::<u64>(),
-        tws => bug!("Unsupported target word size for int: {}", tws),
-    };
     let i8 = context.new_type::<i8>();
-
-    if alloc_error_handler_kind == AllocatorKind::Default {
-        // FIXME(bjorn3): Add noreturn attribute
-        create_wrapper_function(
-            tcx,
-            context,
-            &mangle_internal_symbol(tcx, ALLOC_ERROR_HANDLER),
-            Some(&mangle_internal_symbol(tcx, ALLOC_ERROR_HANDLER_DEFAULT)),
-            &[usize, usize],
-            None,
-        );
-    }
 
     let name = mangle_internal_symbol(tcx, OomStrategy::SYMBOL);
     let global = context.new_global(None, GlobalKind::Exported, i8, name);

@@ -95,7 +95,6 @@ use back::lto::{ThinBuffer, ThinData};
 use gccjit::{CType, Context, OptimizationLevel};
 #[cfg(feature = "master")]
 use gccjit::{TargetInfo, Version};
-use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
 use rustc_codegen_ssa::back::write::{
@@ -277,12 +276,7 @@ fn new_context<'gcc, 'tcx>(tcx: TyCtxt<'tcx>) -> Context<'gcc> {
 }
 
 impl ExtraBackendMethods for GccCodegenBackend {
-    fn codegen_allocator(
-        &self,
-        tcx: TyCtxt<'_>,
-        module_name: &str,
-        alloc_error_handler_kind: AllocatorKind,
-    ) -> Self::Module {
+    fn codegen_allocator(&self, tcx: TyCtxt<'_>, module_name: &str) -> Self::Module {
         let mut mods = GccContext {
             context: Arc::new(SyncContext::new(new_context(tcx))),
             relocation_model: tcx.sess.relocation_model(),
@@ -291,7 +285,7 @@ impl ExtraBackendMethods for GccCodegenBackend {
         };
 
         unsafe {
-            allocator::codegen(tcx, &mut mods, module_name, alloc_error_handler_kind);
+            allocator::codegen(tcx, &mut mods, module_name);
         }
         mods
     }

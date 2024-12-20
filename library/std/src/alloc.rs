@@ -358,9 +358,10 @@ fn default_alloc_error_hook(layout: Layout) {
         // This is the default path taken on OOM, and the only path taken on stable with std.
         // Crucially, it does *not* call any user-defined code, and therefore users do not have to
         // worry about allocation failure causing reentrancy issues. That makes it different from
-        // the default `__rdl_oom` defined in alloc (i.e., the default alloc error handler that is
-        // called when there is no `#[alloc_error_handler]`), which triggers a regular panic and
-        // thus can invoke a user-defined panic hook, executing arbitrary user-defined code.
+        // the default `__rust_alloc_error_handler` defined in alloc (i.e., the default alloc error
+        // handler that is called when there is no `#[alloc_error_handler]`), which triggers a
+        // regular panic and thus can invoke a user-defined panic hook, executing arbitrary
+        // user-defined code.
         rtprintpanic!("memory allocation of {} bytes failed\n", layout.size());
     }
 }

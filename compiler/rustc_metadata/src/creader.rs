@@ -7,7 +7,7 @@ use std::str::FromStr;
 use std::time::Duration;
 use std::{cmp, env, iter};
 
-use rustc_ast::expand::allocator::{ALLOC_ERROR_HANDLER, AllocatorKind, global_fn_name};
+use rustc_ast::expand::allocator::{AllocatorKind, global_fn_name};
 use rustc_ast::{self as ast, *};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::owned_slice::OwnedSlice;
@@ -25,8 +25,8 @@ use rustc_middle::ty::data_structures::IndexSet;
 use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
 use rustc_proc_macro::bridge::client::ProcMacro;
 use rustc_session::config::{
-    self, CrateType, ExtendedTargetModifierInfo, ExternLocation, OptionsTargetModifiers,
-    TargetModifier,
+    self, CrateType, ExtendedTargetModifierInfo, ExternLocation, OomStrategy,
+    OptionsTargetModifiers, TargetModifier,
 };
 use rustc_session::cstore::{CrateDepKind, CrateSource, ExternCrate, ExternCrateSource};
 use rustc_session::lint::{self, BuiltinLintDiag};
@@ -320,10 +320,6 @@ impl CStore {
 
     pub(crate) fn allocator_kind(&self) -> Option<AllocatorKind> {
         self.allocator_kind
-    }
-
-    pub(crate) fn alloc_error_handler_kind(&self) -> Option<AllocatorKind> {
-        self.alloc_error_handler_kind
     }
 
     pub(crate) fn has_global_allocator(&self) -> bool {
@@ -1068,7 +1064,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 spans => !spans.is_empty(),
             };
         self.cstore.has_alloc_error_handler =
-            match &*fn_spans(krate, Symbol::intern(ALLOC_ERROR_HANDLER)) {
+            match &*fn_spans(krate, Symbol::intern(OomStrategy::SYMBOL)) {
                 [span1, span2, ..] => {
                     self.dcx().emit_err(errors::NoMultipleAllocErrorHandler {
                         span2: *span2,

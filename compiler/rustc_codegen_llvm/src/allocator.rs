@@ -1,9 +1,6 @@
 use libc::c_uint;
-use rustc_ast::expand::allocator::{
-    ALLOC_ERROR_HANDLER, ALLOC_ERROR_HANDLER_DEFAULT, AllocatorKind, NO_ALLOC_SHIM_IS_UNSTABLE,
-};
+use rustc_ast::expand::allocator::NO_ALLOC_SHIM_IS_UNSTABLE;
 use rustc_codegen_ssa::traits::BaseTypeCodegenMethods as _;
-use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{DebugInfo, OomStrategy};
 use rustc_symbol_mangling::mangle_internal_symbol;
@@ -13,32 +10,8 @@ use crate::declare::declare_simple_fn;
 use crate::llvm::{self, False, True, Type};
 use crate::{SimpleCx, attributes, debuginfo};
 
-pub(crate) unsafe fn codegen(
-    tcx: TyCtxt<'_>,
-    cx: SimpleCx<'_>,
-    module_name: &str,
-    alloc_error_handler_kind: AllocatorKind,
-) {
-    let usize = match tcx.sess.target.pointer_width {
-        16 => cx.type_i16(),
-        32 => cx.type_i32(),
-        64 => cx.type_i64(),
-        tws => bug!("Unsupported target word size for int: {}", tws),
-    };
+pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, cx: SimpleCx<'_>, module_name: &str) {
     let i8 = cx.type_i8();
-
-    if alloc_error_handler_kind == AllocatorKind::Default {
-        // rust alloc error handler
-        create_wrapper_function(
-            tcx,
-            &cx,
-            &mangle_internal_symbol(tcx, ALLOC_ERROR_HANDLER),
-            Some(&mangle_internal_symbol(tcx, ALLOC_ERROR_HANDLER_DEFAULT)),
-            &[usize, usize], // size, align
-            None,
-            true,
-        );
-    }
 
     unsafe {
         // __rust_alloc_error_handler_should_panic
