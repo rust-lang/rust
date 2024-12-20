@@ -67,8 +67,8 @@ impl PerNs {
         db: &dyn DefDatabase,
         expected: Option<MacroSubNs>,
     ) -> Self {
-        self.macros = self.macros.filter(|&(id, _, _)| {
-            let this = MacroSubNs::from_id(db, id);
+        self.macros = self.macros.filter(|def| {
+            let this = MacroSubNs::from_id(db, def.def);
             sub_namespace_match(Some(this), expected)
         });
 
@@ -411,7 +411,7 @@ impl DefMap {
         original_module: LocalModuleId,
     ) -> ResolvePathResult {
         for (i, segment) in segments {
-            let (curr, vis, imp) = match curr_per_ns.take_types_full() {
+            let curr = match curr_per_ns.take_types_full() {
                 Some(r) => r,
                 None => {
                     // we still have path segments left, but the path so far
@@ -424,7 +424,7 @@ impl DefMap {
             };
             // resolve segment in curr
 
-            curr_per_ns = match curr {
+            curr_per_ns = match curr.def {
                 ModuleDefId::ModuleId(module) => {
                     if module.krate != self.krate {
                         let path = ModPath::from_segments(
@@ -492,7 +492,7 @@ impl DefMap {
                         Some(res) => res,
                         None => {
                             return ResolvePathResult::new(
-                                PerNs::types(e.into(), vis, imp),
+                                PerNs::types(e.into(), curr.vis, curr.import),
                                 ReachedFixedPoint::Yes,
                                 Some(i),
                                 false,
@@ -510,7 +510,7 @@ impl DefMap {
                     );
 
                     return ResolvePathResult::new(
-                        PerNs::types(s, vis, imp),
+                        PerNs::types(s, curr.vis, curr.import),
                         ReachedFixedPoint::Yes,
                         Some(i),
                         false,
