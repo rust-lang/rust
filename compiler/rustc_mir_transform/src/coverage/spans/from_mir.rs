@@ -22,13 +22,13 @@ pub(crate) struct ExtractedCovspans {
 pub(crate) fn extract_covspans_from_mir(
     mir_body: &mir::Body<'_>,
     hir_info: &ExtractedHirInfo,
-    basic_coverage_blocks: &CoverageGraph,
+    graph: &CoverageGraph,
 ) -> ExtractedCovspans {
     let &ExtractedHirInfo { body_span, .. } = hir_info;
 
     let mut covspans = vec![];
 
-    for (bcb, bcb_data) in basic_coverage_blocks.iter_enumerated() {
+    for (bcb, bcb_data) in graph.iter_enumerated() {
         bcb_to_initial_coverage_spans(mir_body, body_span, bcb, bcb_data, &mut covspans);
     }
 

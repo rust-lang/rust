@@ -1744,15 +1744,10 @@ fn for_each_exported_symbols_include_dep<'tcx>(
     crate_type: CrateType,
     mut callback: impl FnMut(ExportedSymbol<'tcx>, SymbolExportInfo, CrateNum),
 ) {
-    for &(symbol, info) in tcx.exported_symbols(LOCAL_CRATE).iter() {
-        callback(symbol, info, LOCAL_CRATE);
-    }
-
     let formats = tcx.dependency_formats(());
     let deps = &formats[&crate_type];
 
-    for (index, dep_format) in deps.iter().enumerate() {
-        let cnum = CrateNum::new(index + 1);
+    for (cnum, dep_format) in deps.iter_enumerated() {
         // For each dependency that we are linking to statically ...
         if *dep_format == Linkage::Static {
             for &(symbol, info) in tcx.exported_symbols(cnum).iter() {
