@@ -129,15 +129,15 @@ auto:
   - image: aarch64-gnu-debug
     <<: *job-linux-8c-aarch64
 
-  - image: dist-aarch64-linux
-    env:
-      CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-linux-8c-aarch64
-
   - image: arm-android
     <<: *job-linux-4c
 
   - image: armhf-gnu
+    <<: *job-linux-4c
+
+  - image: dist-aarch64-linux
+    env:
+      CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-linux-4c
 
   - image: dist-android
