@@ -167,6 +167,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Variants<rustc_abi::FieldIdx, rustc_abi::
             rustc_abi::Variants::Single { index } => {
                 VariantsShape::Single { index: index.stable(tables) }
             }
+            rustc_abi::Variants::Empty => VariantsShape::Empty,
             rustc_abi::Variants::Multiple { tag, tag_encoding, tag_field, variants } => {
                 VariantsShape::Multiple {
                     tag: tag.stable(tables),

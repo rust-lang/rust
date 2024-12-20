@@ -1,19 +1,95 @@
 use std::assert_matches::assert_matches;
 
+use rustc_abi::VariantIdx;
 use rustc_index::Idx;
 use rustc_index::bit_set::{BitSet, MixedBitSet};
 use rustc_middle::bug;
 use rustc_middle::mir::{self, Body, CallReturnPlaces, Location, TerminatorEdges};
+use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{self, TyCtxt};
 use tracing::{debug, instrument};
 
 use crate::elaborate_drops::DropFlagState;
-use crate::framework::SwitchIntEdgeEffects;
+use crate::framework::SwitchIntTarget;
 use crate::move_paths::{HasMoveData, InitIndex, InitKind, LookupResult, MoveData, MovePathIndex};
 use crate::{
     Analysis, GenKill, MaybeReachable, drop_flag_effects, drop_flag_effects_for_function_entry,
     drop_flag_effects_for_location, on_all_children_bits, on_lookup_result_bits,
 };
+
+// Used by both `MaybeInitializedPlaces` and `MaybeUninitializedPlaces`.
+pub struct MaybePlacesSwitchIntData<'tcx> {
+    enum_place: mir::Place<'tcx>,
+    discriminants: Vec<(VariantIdx, Discr<'tcx>)>,
+    index: usize,
+}
+
+impl<'tcx> MaybePlacesSwitchIntData<'tcx> {
+    // The discriminant order in the `SwitchInt` targets should match the order yielded by
+    // `AdtDef::discriminants`. We rely on this to match each discriminant in the targets to its
+    // corresponding variant in linear time.
+    fn next_discr(&mut self, value: u128) -> VariantIdx {
+        // An out-of-bounds abort will occur if the discriminant ordering isn't as described above.
+        loop {
+            let (variant, discr) = self.discriminants[self.index];
+            self.index += 1;
+            if discr.val == value {
+                return variant;
+            }
+        }
+    }
+}
+
+impl<'tcx> MaybePlacesSwitchIntData<'tcx> {
+    fn new(
+        tcx: TyCtxt<'tcx>,
+        body: &Body<'tcx>,
+        block: mir::BasicBlock,
+        discr: &mir::Operand<'tcx>,
+    ) -> Option<Self> {
+        let Some(discr) = discr.place() else { return None };
+
+        // Inspect a `SwitchInt`-terminated basic block to see if the condition of that `SwitchInt`
+        // is an enum discriminant.
+        //
+        // We expect such blocks to have a call to `discriminant` as their last statement like so:
+        // ```text
+        // ...
+        // _42 = discriminant(_1)
+        // SwitchInt(_42, ..)
+        // ```
+        // If the basic block matches this pattern, this function gathers the place corresponding
+        // to the enum (`_1` in the example above) as well as the discriminants.
+        let block_data = &body[block];
+        for statement in block_data.statements.iter().rev() {
+            match statement.kind {
+                mir::StatementKind::Assign(box (lhs, mir::Rvalue::Discriminant(enum_place)))
+                    if lhs == discr =>
+                {
+                    match enum_place.ty(body, tcx).ty.kind() {
+                        ty::Adt(enum_def, _) => {
+                            return Some(MaybePlacesSwitchIntData {
+                                enum_place,
+                                discriminants: enum_def.discriminants(tcx).collect(),
+                                index: 0,
+                            });
+                        }
+
+                        // `Rvalue::Discriminant` is also used to get the active yield point for a
+                        // coroutine, but we do not need edge-specific effects in that case. This
+                        // may change in the future.
+                        ty::Coroutine(..) => break,
+
+                        t => bug!("`discriminant` called on unexpected type {:?}", t),
+                    }
+                }
+                mir::StatementKind::Coverage(_) => continue,
+                _ => break,
+            }
+        }
+        None
+    }
+}
 
 /// `MaybeInitializedPlaces` tracks all places that might be
 /// initialized upon reaching a particular point in the control flow
@@ -247,6 +323,8 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
     /// We use a mixed bitset to avoid paying too high a memory footprint.
     type Domain = MaybeReachable<MixedBitSet<MovePathIndex>>;
 
+    type SwitchIntData = MaybePlacesSwitchIntData<'tcx>;
+
     const NAME: &'static str = "maybe_init";
 
     fn bottom_value(&self, _: &mir::Body<'tcx>) -> Self::Domain {
@@ -293,6 +371,8 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
     ) -> TerminatorEdges<'mir, 'tcx> {
+        // Note: `edges` must be computed first because `drop_flag_effects_for_location` can change
+        // the result of `is_unwind_dead`.
         let mut edges = terminator.edges();
         if self.skip_unreachable_unwind
             && let mir::TerminatorKind::Drop { target, unwind, place, replace: _ } = terminator.kind
@@ -326,46 +406,34 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         });
     }
 
-    fn apply_switch_int_edge_effects(
+    fn get_switch_int_data(
         &mut self,
         block: mir::BasicBlock,
         discr: &mir::Operand<'tcx>,
-        edge_effects: &mut impl SwitchIntEdgeEffects<Self::Domain>,
-    ) {
+    ) -> Option<Self::SwitchIntData> {
         if !self.tcx.sess.opts.unstable_opts.precise_enum_drop_elaboration {
-            return;
+            return None;
         }
 
-        let enum_ = discr.place().and_then(|discr| {
-            switch_on_enum_discriminant(self.tcx, self.body, &self.body[block], discr)
-        });
+        MaybePlacesSwitchIntData::new(self.tcx, self.body, block, discr)
+    }
 
-        let Some((enum_place, enum_def)) = enum_ else {
-            return;
-        };
-
-        let mut discriminants = enum_def.discriminants(self.tcx);
-        edge_effects.apply(|state, edge| {
-            let Some(value) = edge.value else {
-                return;
-            };
-
-            // MIR building adds discriminants to the `values` array in the same order as they
-            // are yielded by `AdtDef::discriminants`. We rely on this to match each
-            // discriminant in `values` to its corresponding variant in linear time.
-            let (variant, _) = discriminants
-                .find(|&(_, discr)| discr.val == value)
-                .expect("Order of `AdtDef::discriminants` differed from `SwitchInt::values`");
-
+    fn apply_switch_int_edge_effect(
+        &mut self,
+        data: &mut Self::SwitchIntData,
+        state: &mut Self::Domain,
+        edge: SwitchIntTarget,
+    ) {
+        if let Some(value) = edge.value {
             // Kill all move paths that correspond to variants we know to be inactive along this
             // particular outgoing edge of a `SwitchInt`.
             drop_flag_effects::on_all_inactive_variants(
-                self.move_data(),
-                enum_place,
-                variant,
+                self.move_data,
+                data.enum_place,
+                data.next_discr(value),
                 |mpi| state.kill(mpi),
             );
-        });
+        }
     }
 }
 
@@ -375,6 +443,8 @@ pub type MaybeUninitializedPlacesDomain = MixedBitSet<MovePathIndex>;
 
 impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     type Domain = MaybeUninitializedPlacesDomain;
+
+    type SwitchIntData = MaybePlacesSwitchIntData<'tcx>;
 
     const NAME: &'static str = "maybe_uninit";
 
@@ -445,50 +515,38 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         });
     }
 
-    fn apply_switch_int_edge_effects(
+    fn get_switch_int_data(
         &mut self,
         block: mir::BasicBlock,
         discr: &mir::Operand<'tcx>,
-        edge_effects: &mut impl SwitchIntEdgeEffects<Self::Domain>,
-    ) {
+    ) -> Option<Self::SwitchIntData> {
         if !self.tcx.sess.opts.unstable_opts.precise_enum_drop_elaboration {
-            return;
+            return None;
         }
 
         if !self.mark_inactive_variants_as_uninit {
-            return;
+            return None;
         }
 
-        let enum_ = discr.place().and_then(|discr| {
-            switch_on_enum_discriminant(self.tcx, self.body, &self.body[block], discr)
-        });
+        MaybePlacesSwitchIntData::new(self.tcx, self.body, block, discr)
+    }
 
-        let Some((enum_place, enum_def)) = enum_ else {
-            return;
-        };
-
-        let mut discriminants = enum_def.discriminants(self.tcx);
-        edge_effects.apply(|state, edge| {
-            let Some(value) = edge.value else {
-                return;
-            };
-
-            // MIR building adds discriminants to the `values` array in the same order as they
-            // are yielded by `AdtDef::discriminants`. We rely on this to match each
-            // discriminant in `values` to its corresponding variant in linear time.
-            let (variant, _) = discriminants
-                .find(|&(_, discr)| discr.val == value)
-                .expect("Order of `AdtDef::discriminants` differed from `SwitchInt::values`");
-
+    fn apply_switch_int_edge_effect(
+        &mut self,
+        data: &mut Self::SwitchIntData,
+        state: &mut Self::Domain,
+        edge: SwitchIntTarget,
+    ) {
+        if let Some(value) = edge.value {
             // Mark all move paths that correspond to variants other than this one as maybe
             // uninitialized (in reality, they are *definitely* uninitialized).
             drop_flag_effects::on_all_inactive_variants(
-                self.move_data(),
-                enum_place,
-                variant,
+                self.move_data,
+                data.enum_place,
+                data.next_discr(value),
                 |mpi| state.gen_(mpi),
             );
-        });
+        }
     }
 }
 
@@ -577,46 +635,4 @@ impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
             state.gen_(*init_index);
         }
     }
-}
-
-/// Inspect a `SwitchInt`-terminated basic block to see if the condition of that `SwitchInt` is
-/// an enum discriminant.
-///
-/// We expect such blocks to have a call to `discriminant` as their last statement like so:
-///
-/// ```text
-/// ...
-/// _42 = discriminant(_1)
-/// SwitchInt(_42, ..)
-/// ```
-///
-/// If the basic block matches this pattern, this function returns the place corresponding to the
-/// enum (`_1` in the example above) as well as the `AdtDef` of that enum.
-fn switch_on_enum_discriminant<'mir, 'tcx>(
-    tcx: TyCtxt<'tcx>,
-    body: &'mir mir::Body<'tcx>,
-    block: &'mir mir::BasicBlockData<'tcx>,
-    switch_on: mir::Place<'tcx>,
-) -> Option<(mir::Place<'tcx>, ty::AdtDef<'tcx>)> {
-    for statement in block.statements.iter().rev() {
-        match &statement.kind {
-            mir::StatementKind::Assign(box (lhs, mir::Rvalue::Discriminant(discriminated)))
-                if *lhs == switch_on =>
-            {
-                match discriminated.ty(body, tcx).ty.kind() {
-                    ty::Adt(def, _) => return Some((*discriminated, *def)),
-
-                    // `Rvalue::Discriminant` is also used to get the active yield point for a
-                    // coroutine, but we do not need edge-specific effects in that case. This may
-                    // change in the future.
-                    ty::Coroutine(..) => return None,
-
-                    t => bug!("`discriminant` called on unexpected type {:?}", t),
-                }
-            }
-            mir::StatementKind::Coverage(_) => continue,
-            _ => return None,
-        }
-    }
-    None
 }

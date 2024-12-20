@@ -599,7 +599,7 @@ pub fn try_evaluate_const<'tcx>(
                 // even though it is not something we should ever actually encounter.
                 //
                 // Array repeat expr counts are allowed to syntactically use generic parameters
-                // but must not actually depend on them in order to evalaute succesfully. This means
+                // but must not actually depend on them in order to evalaute successfully. This means
                 // that it is actually fine to evalaute them in their own environment rather than with
                 // the actually provided generic arguments.
                 tcx.dcx().delayed_bug(

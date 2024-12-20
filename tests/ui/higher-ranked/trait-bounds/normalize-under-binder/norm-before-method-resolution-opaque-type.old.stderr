@@ -1,12 +1,12 @@
 error: item does not constrain `Foo::{opaque#0}`, but has it in its signature
-  --> $DIR/norm-before-method-resolution-opaque-type.rs:15:4
+  --> $DIR/norm-before-method-resolution-opaque-type.rs:16:4
    |
 LL | fn weird_bound<X>(x: &<X as Trait<'static>>::Out<Foo>) -> X
    |    ^^^^^^^^^^^
    |
    = note: consider moving the opaque type's declaration and defining uses into a separate module
 note: this opaque type is in the signature
-  --> $DIR/norm-before-method-resolution-opaque-type.rs:13:12
+  --> $DIR/norm-before-method-resolution-opaque-type.rs:14:12
    |
 LL | type Foo = impl Sized;
    |            ^^^^^^^^^^

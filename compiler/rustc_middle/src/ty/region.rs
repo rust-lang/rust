@@ -69,9 +69,10 @@ impl<'tcx> Region<'tcx> {
     pub fn new_late_param(
         tcx: TyCtxt<'tcx>,
         scope: DefId,
-        bound_region: ty::BoundRegionKind,
+        kind: LateParamRegionKind,
     ) -> Region<'tcx> {
-        tcx.intern_region(ty::ReLateParam(ty::LateParamRegion { scope, bound_region }))
+        let data = LateParamRegion { scope, kind };
+        tcx.intern_region(ty::ReLateParam(data))
     }
 
     #[inline]
@@ -124,8 +125,8 @@ impl<'tcx> Region<'tcx> {
         match kind {
             ty::ReEarlyParam(region) => Region::new_early_param(tcx, region),
             ty::ReBound(debruijn, region) => Region::new_bound(tcx, debruijn, region),
-            ty::ReLateParam(ty::LateParamRegion { scope, bound_region }) => {
-                Region::new_late_param(tcx, scope, bound_region)
+            ty::ReLateParam(ty::LateParamRegion { scope, kind }) => {
+                Region::new_late_param(tcx, scope, kind)
             }
             ty::ReStatic => tcx.lifetimes.re_static,
             ty::ReVar(vid) => Region::new_var(tcx, vid),
@@ -165,7 +166,7 @@ impl<'tcx> Region<'tcx> {
             match *self {
                 ty::ReEarlyParam(ebr) => Some(ebr.name),
                 ty::ReBound(_, br) => br.kind.get_name(),
-                ty::ReLateParam(fr) => fr.bound_region.get_name(),
+                ty::ReLateParam(fr) => fr.kind.get_name(),
                 ty::ReStatic => Some(kw::StaticLifetime),
                 ty::RePlaceholder(placeholder) => placeholder.bound.kind.get_name(),
                 _ => None,
@@ -187,7 +188,7 @@ impl<'tcx> Region<'tcx> {
         match *self {
             ty::ReEarlyParam(ebr) => ebr.has_name(),
             ty::ReBound(_, br) => br.kind.is_named(),
-            ty::ReLateParam(fr) => fr.bound_region.is_named(),
+            ty::ReLateParam(fr) => fr.kind.is_named(),
             ty::ReStatic => true,
             ty::ReVar(..) => false,
             ty::RePlaceholder(placeholder) => placeholder.bound.kind.is_named(),
@@ -310,7 +311,7 @@ impl<'tcx> Region<'tcx> {
                 Some(tcx.generics_of(binding_item).region_param(ebr, tcx).def_id)
             }
             ty::ReLateParam(ty::LateParamRegion {
-                bound_region: ty::BoundRegionKind::Named(def_id, _),
+                kind: ty::LateParamRegionKind::Named(def_id, _),
                 ..
             }) => Some(def_id),
             _ => None,
@@ -358,7 +359,71 @@ impl std::fmt::Debug for EarlyParamRegion {
 /// different parameters apart.
 pub struct LateParamRegion {
     pub scope: DefId,
-    pub bound_region: BoundRegionKind,
+    pub kind: LateParamRegionKind,
+}
+
+/// When liberating bound regions, we map their [`BoundRegionKind`]
+/// to this as we need to track the index of anonymous regions. We
+/// otherwise end up liberating multiple bound regions to the same
+/// late-bound region.
+#[derive(Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Copy)]
+#[derive(HashStable)]
+pub enum LateParamRegionKind {
+    /// An anonymous region parameter for a given fn (&T)
+    ///
+    /// Unlike [`BoundRegionKind::Anon`], this tracks the index of the
+    /// liberated bound region.
+    ///
+    /// We should ideally never liberate anonymous regions, but do so for the
+    /// sake of diagnostics in `FnCtxt::sig_of_closure_with_expectation`.
+    Anon(u32),
+
+    /// Named region parameters for functions (a in &'a T)
+    ///
+    /// The `DefId` is needed to distinguish free regions in
+    /// the event of shadowing.
+    Named(DefId, Symbol),
+
+    /// Anonymous region for the implicit env pointer parameter
+    /// to a closure
+    ClosureEnv,
+}
+
+impl LateParamRegionKind {
+    pub fn from_bound(var: BoundVar, br: BoundRegionKind) -> LateParamRegionKind {
+        match br {
+            BoundRegionKind::Anon => LateParamRegionKind::Anon(var.as_u32()),
+            BoundRegionKind::Named(def_id, name) => LateParamRegionKind::Named(def_id, name),
+            BoundRegionKind::ClosureEnv => LateParamRegionKind::ClosureEnv,
+        }
+    }
+
+    pub fn is_named(&self) -> bool {
+        match *self {
+            LateParamRegionKind::Named(_, name) => {
+                name != kw::UnderscoreLifetime && name != kw::Empty
+            }
+            _ => false,
+        }
+    }
+
+    pub fn get_name(&self) -> Option<Symbol> {
+        if self.is_named() {
+            match *self {
+                LateParamRegionKind::Named(_, name) => return Some(name),
+                _ => unreachable!(),
+            }
+        }
+
+        None
+    }
+
+    pub fn get_id(&self) -> Option<DefId> {
+        match *self {
+            LateParamRegionKind::Named(id, _) => Some(id),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Copy)]

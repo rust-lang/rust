@@ -75,11 +75,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     LocalInfo::BlockTailTemp(tail_info)
                 }
 
-                _ if let Some(Scope { data: ScopeData::IfThenRescope, id }) =
+                _ if let Some(Scope { data: ScopeData::IfThenRescope, local_id }) =
                     temp_lifetime.temp_lifetime =>
                 {
                     LocalInfo::IfThenRescopeTemp {
-                        if_then: HirId { owner: this.hir_id.owner, local_id: id },
+                        if_then: HirId { owner: this.hir_id.owner, local_id },
                     }
                 }
 

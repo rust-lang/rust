@@ -14,7 +14,7 @@
 //! <https://github.com/rust-lang/rust/blob/c0b5cc9003f6464c11ae1c0662c6a7e06f6f5cab/compiler/rustc_codegen_cranelift/example/mini_core.rs>.
 // ignore-tidy-linelength
 
-#![feature(no_core, lang_items, rustc_attrs, decl_macro, naked_functions)]
+#![feature(no_core, lang_items, rustc_attrs, decl_macro, naked_functions, f16, f128)]
 #![allow(unused, improper_ctypes_definitions, internal_features)]
 #![feature(asm_experimental_arch)]
 #![no_std]
@@ -40,7 +40,12 @@ impl<T: ?Sized> LegacyReceiver for &mut T {}
 pub trait Copy: Sized {}
 
 impl_marker_trait!(
-    Copy => [ bool, char, isize, usize, i8, i16, i32, i64, u8, u16, u32, u64, f32, f64 ]
+    Copy => [
+        bool, char,
+        isize, i8, i16, i32, i64, i128,
+        usize, u8, u16, u32, u64, u128,
+        f16, f32, f64, f128,
+    ]
 );
 impl<'a, T: ?Sized> Copy for &'a T {}
 impl<T: ?Sized> Copy for *const T {}
@@ -87,4 +92,19 @@ pub macro naked_asm("assembly template", $(operands,)* $(options($(option),*))?)
 #[rustc_builtin_macro]
 pub macro global_asm("assembly template", $(operands,)* $(options($(option),*))?) {
     /* compiler built-in */
+}
+
+#[rustc_builtin_macro]
+#[macro_export]
+macro_rules! concat {
+    ($($e:expr),* $(,)?) => {
+        /* compiler built-in */
+    };
+}
+#[rustc_builtin_macro]
+#[macro_export]
+macro_rules! stringify {
+    ($($t:tt)*) => {
+        /* compiler built-in */
+    };
 }

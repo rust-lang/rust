@@ -1,34 +1,16 @@
+//@ add-core-stubs
 //@ assembly-output: emit-asm
 //@ compile-flags: --target nvptx64-nvidia-cuda
-//@ compile-flags: --crate-type cdylib
 //@ needs-llvm-components: nvptx
 
-#![feature(no_core, lang_items, rustc_attrs, asm_experimental_arch)]
+#![feature(no_core, asm_experimental_arch)]
+#![crate_type = "rlib"]
 #![no_core]
 
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! concat {
-    () => {};
-}
-
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 type ptr = *mut u8;
-
-impl Copy for i8 {}
-impl Copy for i16 {}
-impl Copy for i32 {}
-impl Copy for f32 {}
-impl Copy for i64 {}
-impl Copy for f64 {}
-impl Copy for ptr {}
 
 // NVPTX does not support static variables
 #[no_mangle]

@@ -1,4 +1,5 @@
 //@ edition: 2021
+//@ reference: attributes.coverage.syntax
 
 // Demonstrates the diagnostics produced when using the syntax
 // `#[coverage = "off"]`, which should not be allowed.

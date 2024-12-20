@@ -2,8 +2,6 @@
 
 set -ex
 
-/tmp/add_dummy_commit.sh
-
 # NOTE: intentionally uses all of `x.py`, `x`, and `x.ps1` to make sure they all work on Linux.
 ../x.py --stage 2 test --skip src/tools/tidy
 

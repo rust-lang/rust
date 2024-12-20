@@ -20,18 +20,26 @@ mod tests;
 
 // The proc macro code for this is in `compiler/rustc_macros/src/symbols.rs`.
 symbols! {
-    // If you modify this list, adjust `is_special`, `is_used_keyword`/`is_unused_keyword`
-    // and `AllKeywords`.
+    // This list includes things that are definitely keywords (e.g. `if`),
+    // a few things that are definitely not keywords (e.g. the empty symbol,
+    // `{{root}}`) and things where there is disagreement between people and/or
+    // documents (such as the Rust Reference) about whether it is a keyword
+    // (e.g. `_`).
+    //
+    // If you modify this list, adjust any relevant `Symbol::{is,can_be}_*` predicates and
+    // `used_keywords`.
     // But this should rarely be necessary if the keywords are kept in alphabetic order.
     Keywords {
         // Special reserved identifiers used internally for elided lifetimes,
         // unnamed method parameters, crate root module, error recovery etc.
+        // Matching predicates: `is_any_keyword`, `is_special`/`is_reserved`
         Empty:              "",
         PathRoot:           "{{root}}",
         DollarCrate:        "$crate",
         Underscore:         "_",
 
         // Keywords that are used in stable Rust.
+        // Matching predicates: `is_any_keyword`, `is_used_keyword_always`/`is_reserved`
         As:                 "as",
         Break:              "break",
         Const:              "const",
@@ -69,6 +77,7 @@ symbols! {
         While:              "while",
 
         // Keywords that are used in unstable Rust or reserved for future use.
+        // Matching predicates: `is_any_keyword`, `is_unused_keyword_always`/`is_reserved`
         Abstract:           "abstract",
         Become:             "become",
         Box:                "box",
@@ -83,23 +92,29 @@ symbols! {
         Yield:              "yield",
 
         // Edition-specific keywords that are used in stable Rust.
+        // Matching predicates: `is_any_keyword`, `is_used_keyword_conditional`/`is_reserved` (if
+        // the edition suffices)
         Async:              "async", // >= 2018 Edition only
         Await:              "await", // >= 2018 Edition only
         Dyn:                "dyn", // >= 2018 Edition only
 
         // Edition-specific keywords that are used in unstable Rust or reserved for future use.
+        // Matching predicates: `is_any_keyword`, `is_unused_keyword_conditional`/`is_reserved` (if
+        // the edition suffices)
+        Gen:                "gen", // >= 2024 Edition only
         Try:                "try", // >= 2018 Edition only
 
-        // Special lifetime names
+        // "Lifetime keywords": regular keywords with a leading `'`.
+        // Matching predicates: `is_any_keyword`
         UnderscoreLifetime: "'_",
         StaticLifetime:     "'static",
 
         // Weak keywords, have special meaning only in specific contexts.
+        // Matching predicates: `is_any_keyword`
         Auto:               "auto",
         Builtin:            "builtin",
         Catch:              "catch",
         Default:            "default",
-        Gen:                "gen",
         MacroRules:         "macro_rules",
         Raw:                "raw",
         Reuse:              "reuse",
@@ -2589,6 +2604,11 @@ pub mod sym {
 }
 
 impl Symbol {
+    /// Don't use this unless you're doing something very loose and heuristic-y.
+    pub fn is_any_keyword(self) -> bool {
+        self >= kw::As && self <= kw::Yeet
+    }
+
     fn is_special(self) -> bool {
         self <= kw::Underscore
     }
@@ -2606,8 +2626,8 @@ impl Symbol {
     }
 
     fn is_unused_keyword_conditional(self, edition: impl Copy + FnOnce() -> Edition) -> bool {
-        self == kw::Try && edition().at_least_rust_2018()
-            || self == kw::Gen && edition().at_least_rust_2024()
+        self == kw::Gen && edition().at_least_rust_2024()
+            || self == kw::Try && edition().at_least_rust_2018()
     }
 
     pub fn is_reserved(self, edition: impl Copy + FnOnce() -> Edition) -> bool {
@@ -2645,6 +2665,11 @@ impl Symbol {
 }
 
 impl Ident {
+    /// Don't use this unless you're doing something very loose and heuristic-y.
+    pub fn is_any_keyword(self) -> bool {
+        self.name.is_any_keyword()
+    }
+
     /// Returns `true` for reserved identifiers used internally for elided lifetimes,
     /// unnamed method parameters, crate root module, error recovery etc.
     pub fn is_special(self) -> bool {
@@ -2683,41 +2708,19 @@ impl Ident {
     }
 }
 
-/// An iterator over all the keywords in Rust.
-#[derive(Copy, Clone)]
-pub struct AllKeywords {
-    curr_idx: u32,
-    end_idx: u32,
-}
-
-impl AllKeywords {
-    /// Initialize a new iterator over all the keywords.
-    ///
-    /// *Note:* Please update this if a new keyword is added beyond the current
-    /// range.
-    pub fn new() -> Self {
-        AllKeywords { curr_idx: kw::Empty.as_u32(), end_idx: kw::Yeet.as_u32() }
-    }
-
-    /// Collect all the keywords in a given edition into a vector.
-    pub fn collect_used(&self, edition: impl Copy + FnOnce() -> Edition) -> Vec<Symbol> {
-        self.filter(|&keyword| {
-            keyword.is_used_keyword_always() || keyword.is_used_keyword_conditional(edition)
+/// Collect all the keywords in a given edition into a vector.
+///
+/// *Note:* Please update this if a new keyword is added beyond the current
+/// range.
+pub fn used_keywords(edition: impl Copy + FnOnce() -> Edition) -> Vec<Symbol> {
+    (kw::Empty.as_u32()..kw::Yeet.as_u32())
+        .filter_map(|kw| {
+            let kw = Symbol::new(kw);
+            if kw.is_used_keyword_always() || kw.is_used_keyword_conditional(edition) {
+                Some(kw)
+            } else {
+                None
+            }
         })
         .collect()
-    }
-}
-
-impl Iterator for AllKeywords {
-    type Item = Symbol;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.curr_idx <= self.end_idx {
-            let keyword = Symbol::new(self.curr_idx);
-            self.curr_idx += 1;
-            Some(keyword)
-        } else {
-            None
-        }
-    }
 }

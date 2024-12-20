@@ -2,13 +2,9 @@
 
 set -ex
 
-/tmp/add_dummy_commit.sh
-
 ##### Test stage 2 #####
 
-../x.py --stage 2 test \
-  --skip compiler \
-  --skip src
+/tmp/stage_2_test_set1.sh
 
 # Run the `mir-opt` tests again but this time for a 32-bit target.
 # This enforces that tests using `// EMIT_MIR_FOR_EACH_BIT_WIDTH` have

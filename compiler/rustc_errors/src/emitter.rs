@@ -2523,7 +2523,7 @@ impl HumanEmitter {
                     buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
                 }
                 [] => {
-                    // FIXME: needed? Doesn't get excercised in any test.
+                    // FIXME: needed? Doesn't get exercised in any test.
                     self.draw_col_separator_no_space(buffer, *row_num, max_line_num_len + 1);
                 }
                 _ => {
