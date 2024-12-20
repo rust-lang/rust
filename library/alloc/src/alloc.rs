@@ -12,12 +12,12 @@ use core::ptr::{self, NonNull};
 
 extern "Rust" {
     // These are the magic symbols to call the global allocator. rustc generates
-    // them to call `__rg_alloc` etc. if there is a `#[global_allocator]` attribute
-    // (the code expanding that attribute macro generates those functions), or to call
+    // them to call `GLOBAL.alloc` etc. if there is a `#[global_allocator]` attribute
+    // (the code expanding that attribute macro generates those functions), or if not
     // the default implementations in std (weak symbols in `library/std/src/alloc.rs`)
-    // otherwise.
-    // The rustc fork of LLVM 14 and earlier also special-cases these function names to be able to optimize them
-    // like `malloc`, `realloc`, and `free`, respectively.
+    // is used otherwise.
+    // The rustc fork of LLVM 14 and earlier also special-cases these function names to
+    // be able to optimize them like `malloc`, `realloc`, and `free`, respectively.
     #[rustc_allocator]
     #[rustc_nounwind]
     fn __rust_alloc(size: usize, align: usize) -> *mut u8;
