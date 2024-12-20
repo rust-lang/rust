@@ -1,7 +1,7 @@
 //! Flycheck provides the functionality needed to run `cargo check` to provide
 //! LSP diagnostics based on the output of the command.
 
-use std::{fmt, io, mem, process::Command, time::Duration};
+use std::{fmt, io, mem, process::Command, sync::Arc, time::Duration};
 
 use cargo_metadata::PackageId;
 use crossbeam_channel::{select_biased, unbounded, Receiver, Sender};
@@ -153,7 +153,7 @@ pub(crate) enum FlycheckMessage {
     /// Request adding a diagnostic with fixes included to a file
     AddDiagnostic {
         id: usize,
-        workspace_root: AbsPathBuf,
+        workspace_root: Arc<AbsPathBuf>,
         diagnostic: Diagnostic,
         package_id: Option<PackageId>,
     },
@@ -161,7 +161,7 @@ pub(crate) enum FlycheckMessage {
     /// Request clearing all outdated diagnostics.
     ClearDiagnostics {
         id: usize,
-        /// The pacakge whose diagnostics to clear, or if unspecified, all diagnostics.
+        /// The package whose diagnostics to clear, or if unspecified, all diagnostics.
         package_id: Option<PackageId>,
     },
 
@@ -219,7 +219,7 @@ struct FlycheckActor {
     manifest_path: Option<AbsPathBuf>,
     /// Either the workspace root of the workspace we are flychecking,
     /// or the project root of the project.
-    root: AbsPathBuf,
+    root: Arc<AbsPathBuf>,
     sysroot_root: Option<AbsPathBuf>,
     /// CargoHandle exists to wrap around the communication needed to be able to
     /// run `cargo check` without blocking. Currently the Rust standard library
@@ -261,7 +261,7 @@ impl FlycheckActor {
             sender,
             config,
             sysroot_root,
-            root: workspace_root,
+            root: Arc::new(workspace_root),
             manifest_path,
             command_handle: None,
             command_receiver: None,
@@ -431,7 +431,7 @@ impl FlycheckActor {
                     cmd.env("RUSTUP_TOOLCHAIN", AsRef::<std::path::Path>::as_ref(sysroot_root));
                 }
                 cmd.arg(command);
-                cmd.current_dir(&self.root);
+                cmd.current_dir(&*self.root);
 
                 match package {
                     Some(pkg) => cmd.arg("-p").arg(pkg),
@@ -473,11 +473,11 @@ impl FlycheckActor {
 
                 match invocation_strategy {
                     InvocationStrategy::Once => {
-                        cmd.current_dir(&self.root);
+                        cmd.current_dir(&*self.root);
                     }
                     InvocationStrategy::PerWorkspace => {
                         // FIXME: cmd.current_dir(&affected_workspace);
-                        cmd.current_dir(&self.root);
+                        cmd.current_dir(&*self.root);
                     }
                 }
 
