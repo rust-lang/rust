@@ -715,6 +715,7 @@ impl GlobalState {
                             error!("FetchWorkspaceError: {e}");
                         }
                         self.wants_to_switch = Some("fetched workspace".to_owned());
+                        self.diagnostics.clear_check_all();
                         (Progress::End, None)
                     }
                 };
