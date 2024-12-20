@@ -9,6 +9,10 @@ if [ -n "$CI_JOB_NAME" ]; then
 fi
 
 echo "whoami: $(whoami). Home: $HOME"
+echo "--- current directory ---"
+pwd
+ls -l
+echo "-------------------------"
 echo "NO_CHANGE_USER=$NO_CHANGE_USER. LOCAL_USER_ID=$LOCAL_USER_ID"
 if [ "$NO_CHANGE_USER" = "" ]; then
   echo "can change user"
