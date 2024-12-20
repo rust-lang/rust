@@ -667,7 +667,7 @@ This flag can be passed multiple times to nest wrappers.
 
 ## Passing arguments to rustc when compiling doctests
 
-You can use the `--doctest-compilation-args` option if you want to add options when compiling the
+You can use the `--doctest-compilation-args` flag if you want to add options when compiling the
 doctest. For example if you have:
 
 ```rust,no_run
