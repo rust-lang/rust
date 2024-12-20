@@ -19,6 +19,7 @@ use derive_setters::Setters;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::{DynSend, IntoDynSyncSend, Lrc};
 use rustc_error_messages::{FluentArgs, SpanLabel};
+use rustc_lexer;
 use rustc_lint_defs::pluralize;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
@@ -1698,9 +1699,14 @@ impl HumanEmitter {
                     if let Some(source_string) =
                         line.line_index.checked_sub(1).and_then(|l| file.get_line(l))
                     {
+                        // Whitespace can only be removed (aka considered leading)
+                        // if the lexer considers it whitespace.
+                        // non-rustc_lexer::is_whitespace() chars are reported as an
+                        // error (ex. no-break-spaces \u{a0}), and thus can't be considered
+                        // for removal during error reporting.
                         let leading_whitespace = source_string
                             .chars()
-                            .take_while(|c| c.is_whitespace())
+                            .take_while(|c| rustc_lexer::is_whitespace(*c))
                             .map(|c| {
                                 match c {
                                     // Tabs are displayed as 4 spaces
@@ -1709,7 +1715,7 @@ impl HumanEmitter {
                                 }
                             })
                             .sum();
-                        if source_string.chars().any(|c| !c.is_whitespace()) {
+                        if source_string.chars().any(|c| !rustc_lexer::is_whitespace(c)) {
                             whitespace_margin = min(whitespace_margin, leading_whitespace);
                         }
                     }
