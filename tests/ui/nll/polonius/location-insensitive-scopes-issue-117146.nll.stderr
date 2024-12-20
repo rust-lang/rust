@@ -1,20 +1,23 @@
-error[E0373]: closure may outlive the current function, but it borrows `a`, which is owned by the current function
-  --> $DIR/location-insensitive-scopes-issue-117146.rs:10:13
+error[E0597]: `a` does not live long enough
+  --> $DIR/location-insensitive-scopes-issue-117146.rs:10:18
    |
+LL |     let a = ();
+   |         - binding `a` declared here
 LL |     let b = |_| &a;
-   |             ^^^  - `a` is borrowed here
-   |             |
-   |             may outlive borrowed value `a`
+   |             --- -^
+   |             |   ||
+   |             |   |borrowed value does not live long enough
+   |             |   returning this value requires that `a` is borrowed for `'static`
+   |             value captured here
+...
+LL | }
+   | - `a` dropped here while still borrowed
    |
-note: function requires argument type to outlive `'static`
-  --> $DIR/location-insensitive-scopes-issue-117146.rs:13:5
+note: due to current limitations in the borrow checker, this implies a `'static` lifetime
+  --> $DIR/location-insensitive-scopes-issue-117146.rs:20:22
    |
-LL |     bad(&b);
-   |     ^^^^^^^
-help: to force the closure to take ownership of `a` (and any other referenced variables), use the `move` keyword
-   |
-LL |     let b = move |_| &a;
-   |             ++++
+LL | fn bad<F: Fn(&()) -> &()>(_: F) {}
+   |                      ^^^
 
 error: implementation of `Fn` is not general enough
   --> $DIR/location-insensitive-scopes-issue-117146.rs:13:5
@@ -36,4 +39,4 @@ LL |     bad(&b);
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0373`.
+For more information about this error, try `rustc --explain E0597`.

@@ -8,8 +8,8 @@
 fn main() {
     let a = ();
     let b = |_| &a;
-    //[nll]~^ ERROR closure may outlive the current function, but it borrows `a`
-    //[polonius]~^^ ERROR closure may outlive the current function, but it borrows `a`
+    //[nll]~^ ERROR `a` does not live long enough
+    //[polonius]~^^ ERROR `a` does not live long enough
     bad(&b);
     //[nll]~^ ERROR implementation of `Fn`
     //[nll]~| ERROR implementation of `FnOnce`

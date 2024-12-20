@@ -3,7 +3,6 @@
 use std::cell::Cell;
 use std::fmt::{self, Debug};
 
-use derive_where::derive_where;
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
@@ -225,7 +224,6 @@ rustc_data_structures::static_assert_size!(ConstraintCategory<'_>, 16);
 /// See also `rustc_const_eval::borrow_check::constraints`.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[derive(TyEncodable, TyDecodable, HashStable, TypeVisitable, TypeFoldable)]
-#[derive_where(PartialOrd, Ord)]
 pub enum ConstraintCategory<'tcx> {
     Return(ReturnConstraint),
     Yield,
@@ -237,12 +235,11 @@ pub enum ConstraintCategory<'tcx> {
         is_implicit_coercion: bool,
         /// Whether this is an unsizing coercion and if yes, this contains the target type.
         /// Region variables are erased to ReErased.
-        #[derive_where(skip)]
         unsize_to: Option<Ty<'tcx>>,
     },
 
     /// Contains the function type if available.
-    CallArgument(#[derive_where(skip)] Option<Ty<'tcx>>),
+    CallArgument(Option<Ty<'tcx>>),
     CopyBound,
     SizedBound,
     Assignment {
@@ -276,7 +273,7 @@ pub enum ConstraintCategory<'tcx> {
     IllegalUniverse,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[derive(TyEncodable, TyDecodable, HashStable, TypeVisitable, TypeFoldable)]
 pub enum ReturnConstraint {
     Normal,

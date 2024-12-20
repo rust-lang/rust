@@ -6,9 +6,12 @@ LL | fn change_lt<'a, 'b>(x: *mut dyn Trait<'a>) -> *mut dyn Trait<'b> {
    |              |
    |              lifetime `'a` defined here
 LL |     x as _
-   |     ^^^^^^ cast requires that `'b` must outlive `'a`
+   |     ^^^^^^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
    |
    = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of a mutable pointer to `dyn Trait<'_>`
+   = note: mutable pointers are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:6:5
@@ -35,9 +38,12 @@ LL | fn change_lt_ab<'a: 'b, 'b>(x: *mut dyn Trait<'a>) -> *mut dyn Trait<'b> {
    |                 |
    |                 lifetime `'a` defined here
 LL |     x as _
-   |     ^^^^^^ cast requires that `'b` must outlive `'a`
+   |     ^^^^^^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
    |
    = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of a mutable pointer to `dyn Trait<'_>`
+   = note: mutable pointers are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:15:5
@@ -85,9 +91,12 @@ LL | fn change_assoc_0<'a, 'b>(
    |                   lifetime `'a` defined here
 ...
 LL |     x as _
-   |     ^^^^^^ cast requires that `'b` must outlive `'a`
+   |     ^^^^^^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
    |
    = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of a mutable pointer to `dyn Assocked<Assoc = dyn Send>`
+   = note: mutable pointers are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:31:5
@@ -118,9 +127,12 @@ LL | fn change_assoc_1<'a, 'b>(
    |                   lifetime `'a` defined here
 ...
 LL |     x as _
-   |     ^^^^^^ cast requires that `'b` must outlive `'a`
+   |     ^^^^^^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
    |
    = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of a mutable pointer to `dyn Assocked<Assoc = dyn Trait<'_>>`
+   = note: mutable pointers are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:38:5

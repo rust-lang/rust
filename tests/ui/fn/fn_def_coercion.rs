@@ -46,8 +46,8 @@ fn j<'a, 'b, 'c: 'a + 'b>(a: &'a (), b: &'b (), c: &'c ()) {
 
 fn k<'a, 'b, 'c: 'a + 'b>(a: &'a (), b: &'b (), c: &'c ()) {
     let x = match true {
-        true => foo::<&'c ()>,
-        false => foo::<&'a ()>, //~ ERROR lifetime may not live long enough
+        true => foo::<&'c ()>, //~ ERROR lifetime may not live long enough
+        false => foo::<&'a ()>,
     };
 
     x(a);
