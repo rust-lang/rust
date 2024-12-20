@@ -722,3 +722,22 @@ test tests/rustdoc-ui/doctest/rustflags.rs - Bar (line 5) ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
 ```
+
+The parsing of arguments works as follows: if it encounters a `"` or a `'`, it will continue
+until it finds the character unescaped (without a prepending `\`). If not inside a string, a
+whitespace character will also split arguments. Example:
+
+```text
+"hello 'a'\" ok" how are   'you today?'
+```
+
+will be split as follows:
+
+```text
+[
+    "hello 'a'\" ok",
+    "how",
+    "are",
+    "you today?",
+]
+```
