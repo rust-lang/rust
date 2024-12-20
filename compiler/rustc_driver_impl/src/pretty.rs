@@ -4,7 +4,6 @@ use std::cell::Cell;
 use std::fmt::Write;
 
 use rustc_ast_pretty::pprust as pprust_ast;
-use rustc_errors::FatalError;
 use rustc_middle::bug;
 use rustc_middle::mir::{write_mir_graphviz, write_mir_pretty};
 use rustc_middle::ty::{self, TyCtxt};
@@ -311,9 +310,7 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
             let tcx = ex.tcx();
             let mut out = String::new();
             rustc_hir_analysis::check_crate(tcx);
-            if tcx.dcx().has_errors().is_some() {
-                FatalError.raise();
-            }
+            tcx.dcx().abort_if_errors();
             debug!("pretty printing THIR tree");
             for did in tcx.hir().body_owners() {
                 let _ = writeln!(out, "{:?}:\n{}\n", did, tcx.thir_tree(did));
@@ -324,9 +321,7 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
             let tcx = ex.tcx();
             let mut out = String::new();
             rustc_hir_analysis::check_crate(tcx);
-            if tcx.dcx().has_errors().is_some() {
-                FatalError.raise();
-            }
+            tcx.dcx().abort_if_errors();
             debug!("pretty printing THIR flat");
             for did in tcx.hir().body_owners() {
                 let _ = writeln!(out, "{:?}:\n{}\n", did, tcx.thir_flat(did));

@@ -186,6 +186,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 [sym::rustc_coinductive, ..]
                 | [sym::rustc_must_implement_one_of, ..]
                 | [sym::rustc_deny_explicit_impl, ..]
+                | [sym::rustc_do_not_implement_via_object, ..]
                 | [sym::const_trait, ..] => self.check_must_be_applied_to_trait(attr, span, target),
                 [sym::collapse_debuginfo, ..] => self.check_collapse_debuginfo(attr, span, target),
                 [sym::must_not_suspend, ..] => self.check_must_not_suspend(attr, span, target),
