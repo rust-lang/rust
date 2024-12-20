@@ -67,11 +67,12 @@ impl DocFolder for StabilityPropagator<'_, '_> {
                     // Don't inherit the parent's stability for these items, because they
                     // are potentially accessible even if the parent is more unstable.
                     ItemKind::ImplItem(..)
-                    | ItemKind::TyMethodItem(..)
+                    | ItemKind::RequiredMethodItem(..)
                     | ItemKind::MethodItem(..)
-                    | ItemKind::TyAssocConstItem(..)
-                    | ItemKind::AssocConstItem(..)
-                    | ItemKind::TyAssocTypeItem(..)
+                    | ItemKind::RequiredAssocConstItem(..)
+                    | ItemKind::ProvidedAssocConstItem(..)
+                    | ItemKind::ImplAssocConstItem(..)
+                    | ItemKind::RequiredAssocTypeItem(..)
                     | ItemKind::AssocTypeItem(..)
                     | ItemKind::PrimitiveItem(..)
                     | ItemKind::KeywordItem => own_stability,

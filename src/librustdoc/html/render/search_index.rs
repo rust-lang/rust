@@ -837,7 +837,7 @@ pub(crate) fn get_function_type_for_search(
         clean::ForeignFunctionItem(ref f, _)
         | clean::FunctionItem(ref f)
         | clean::MethodItem(ref f, _)
-        | clean::TyMethodItem(ref f) => {
+        | clean::RequiredMethodItem(ref f) => {
             get_fn_inputs_and_outputs(f, tcx, impl_or_trait_generics, cache)
         }
         _ => return None,
@@ -1207,10 +1207,11 @@ fn simplify_fn_type<'a, 'tcx>(
                 && let Type::Path { path } = arg
                 && let def_id = path.def_id()
                 && let Some(trait_) = cache.traits.get(&def_id)
-                && trait_.items.iter().any(|at| at.is_ty_associated_type())
+                && trait_.items.iter().any(|at| at.is_required_associated_type())
             {
                 for assoc_ty in &trait_.items {
-                    if let clean::ItemKind::TyAssocTypeItem(_generics, bounds) = &assoc_ty.kind
+                    if let clean::ItemKind::RequiredAssocTypeItem(_generics, bounds) =
+                        &assoc_ty.kind
                         && let Some(name) = assoc_ty.name
                     {
                         let idx = -isize::try_from(rgen.len() + 1).unwrap();

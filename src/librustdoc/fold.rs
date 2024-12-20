@@ -82,7 +82,7 @@ pub(crate) trait DocFolder: Sized {
             | StaticItem(_)
             | ConstantItem(..)
             | TraitAliasItem(_)
-            | TyMethodItem(_)
+            | RequiredMethodItem(_)
             | MethodItem(_, _)
             | StructFieldItem(_)
             | ForeignFunctionItem(..)
@@ -91,9 +91,10 @@ pub(crate) trait DocFolder: Sized {
             | MacroItem(_)
             | ProcMacroItem(_)
             | PrimitiveItem(_)
-            | TyAssocConstItem(..)
-            | AssocConstItem(..)
-            | TyAssocTypeItem(..)
+            | RequiredAssocConstItem(..)
+            | ProvidedAssocConstItem(..)
+            | ImplAssocConstItem(..)
+            | RequiredAssocTypeItem(..)
             | AssocTypeItem(..)
             | KeywordItem => kind,
         }

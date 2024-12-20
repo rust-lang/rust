@@ -334,12 +334,13 @@ impl DocFolder for CacheBuilder<'_, '_> {
             clean::ExternCrateItem { .. }
             | clean::ImportItem(..)
             | clean::ImplItem(..)
-            | clean::TyMethodItem(..)
+            | clean::RequiredMethodItem(..)
             | clean::MethodItem(..)
             | clean::StructFieldItem(..)
-            | clean::TyAssocConstItem(..)
-            | clean::AssocConstItem(..)
-            | clean::TyAssocTypeItem(..)
+            | clean::RequiredAssocConstItem(..)
+            | clean::ProvidedAssocConstItem(..)
+            | clean::ImplAssocConstItem(..)
+            | clean::RequiredAssocTypeItem(..)
             | clean::AssocTypeItem(..)
             | clean::StrippedItem(..)
             | clean::KeywordItem => {
@@ -443,15 +444,17 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
     let item_def_id = item.item_id.as_def_id().unwrap();
     let (parent_did, parent_path) = match item.kind {
         clean::StrippedItem(..) => return,
-        clean::AssocConstItem(..) | clean::AssocTypeItem(..)
+        clean::ProvidedAssocConstItem(..)
+        | clean::ImplAssocConstItem(..)
+        | clean::AssocTypeItem(..)
             if cache.parent_stack.last().is_some_and(|parent| parent.is_trait_impl()) =>
         {
             // skip associated items in trait impls
             return;
         }
-        clean::TyMethodItem(..)
-        | clean::TyAssocConstItem(..)
-        | clean::TyAssocTypeItem(..)
+        clean::RequiredMethodItem(..)
+        | clean::RequiredAssocConstItem(..)
+        | clean::RequiredAssocTypeItem(..)
         | clean::StructFieldItem(..)
         | clean::VariantItem(..) => {
             // Don't index if containing module is stripped (i.e., private),
@@ -467,7 +470,10 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
             let parent_path = &cache.stack[..cache.stack.len() - 1];
             (Some(parent_did), parent_path)
         }
-        clean::MethodItem(..) | clean::AssocConstItem(..) | clean::AssocTypeItem(..) => {
+        clean::MethodItem(..)
+        | clean::ProvidedAssocConstItem(..)
+        | clean::ImplAssocConstItem(..)
+        | clean::AssocTypeItem(..) => {
             let last = cache.parent_stack.last().expect("parent_stack is empty 2");
             let parent_did = match last {
                 // impl Trait for &T { fn method(self); }
