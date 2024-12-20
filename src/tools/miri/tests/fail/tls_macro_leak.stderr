@@ -1,11 +1,17 @@
-error: memory leaked: ALLOC (Rust heap, size: 4, align: 4), allocated here:
+error: memory leaked: ALLOC (C heap, size: 4, align: 4), allocated here:
+  --> RUSTLIB/std/src/sys/alloc/unix.rs:LL:CC
+   |
+LL |             unsafe { libc::malloc(layout.size()) as *mut u8 }
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: BACKTRACE:
+   = note: inside `std::sys::alloc::unix::<impl std::alloc::GlobalAlloc for std::alloc::System>::alloc` at RUSTLIB/std/src/sys/alloc/unix.rs:LL:CC
+   = note: inside `std::alloc::__default_lib_allocator::__rust_alloc` at RUSTLIB/std/src/alloc.rs:LL:CC
+note: inside closure
   --> tests/fail/tls_macro_leak.rs:LL:CC
    |
 LL |             cell.set(Some(Box::leak(Box::new(123))));
    |                                     ^^^^^^^^^^^^^
-   |
-   = note: BACKTRACE:
-   = note: inside closure at tests/fail/tls_macro_leak.rs:LL:CC
    = note: inside `std::thread::LocalKey::<std::cell::Cell<std::option::Option<&i32>>>::try_with::<{closure@tests/fail/tls_macro_leak.rs:LL:CC}, ()>` at RUSTLIB/std/src/thread/local.rs:LL:CC
    = note: inside `std::thread::LocalKey::<std::cell::Cell<std::option::Option<&i32>>>::with::<{closure@tests/fail/tls_macro_leak.rs:LL:CC}, ()>` at RUSTLIB/std/src/thread/local.rs:LL:CC
 note: inside closure

@@ -1,13 +1,8 @@
 error: Undefined Behavior: Data race detected between (1) non-atomic read on thread `unnamed-ID` and (2) deallocation on thread `unnamed-ID` at ALLOC. (2) just happened here
-  --> tests/fail/data_race/dealloc_read_race1.rs:LL:CC
+  --> RUSTLIB/std/src/sys/alloc/unix.rs:LL:CC
    |
-LL | /             __rust_dealloc(
-LL | |
-LL | |                 ptr.0 as *mut _,
-LL | |                 std::mem::size_of::<usize>(),
-LL | |                 std::mem::align_of::<usize>(),
-LL | |             );
-   | |_____________^ Data race detected between (1) non-atomic read on thread `unnamed-ID` and (2) deallocation on thread `unnamed-ID` at ALLOC. (2) just happened here
+LL |         unsafe { libc::free(ptr as *mut libc::c_void) }
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Data race detected between (1) non-atomic read on thread `unnamed-ID` and (2) deallocation on thread `unnamed-ID` at ALLOC. (2) just happened here
    |
 help: and (1) occurred earlier here
   --> tests/fail/data_race/dealloc_read_race1.rs:LL:CC
@@ -17,7 +12,18 @@ LL |             let _val = *ptr.0;
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE (of the first span) on thread `unnamed-ID`:
-   = note: inside closure at tests/fail/data_race/dealloc_read_race1.rs:LL:CC
+   = note: inside `std::sys::alloc::unix::<impl std::alloc::GlobalAlloc for std::alloc::System>::dealloc` at RUSTLIB/std/src/sys/alloc/unix.rs:LL:CC
+   = note: inside `std::alloc::__default_lib_allocator::__rust_dealloc` at RUSTLIB/std/src/alloc.rs:LL:CC
+note: inside closure
+  --> tests/fail/data_race/dealloc_read_race1.rs:LL:CC
+   |
+LL | /             __rust_dealloc(
+LL | |
+LL | |                 ptr.0 as *mut _,
+LL | |                 std::mem::size_of::<usize>(),
+LL | |                 std::mem::align_of::<usize>(),
+LL | |             );
+   | |_____________^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
