@@ -71,16 +71,15 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
     let _span = debug_span!("instrument_function_for_coverage", ?def_id).entered();
 
     let hir_info = extract_hir_info(tcx, def_id.expect_local());
-    let basic_coverage_blocks = CoverageGraph::from_mir(mir_body);
+
+    // Build the coverage graph, which is a simplified view of the MIR control-flow
+    // graph that ignores some details not relevant to coverage instrumentation.
+    let graph = CoverageGraph::from_mir(mir_body);
 
     ////////////////////////////////////////////////////
     // Extract coverage spans and other mapping info from MIR.
-    let extracted_mappings = mappings::extract_all_mapping_info_from_mir(
-        tcx,
-        mir_body,
-        &hir_info,
-        &basic_coverage_blocks,
-    );
+    let extracted_mappings =
+        mappings::extract_all_mapping_info_from_mir(tcx, mir_body, &hir_info, &graph);
 
     ////////////////////////////////////////////////////
     // Create an optimized mix of `Counter`s and `Expression`s for the `CoverageGraph`. Ensure
@@ -94,7 +93,7 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
     }
 
     let coverage_counters =
-        CoverageCounters::make_bcb_counters(&basic_coverage_blocks, &bcbs_with_counter_mappings);
+        CoverageCounters::make_bcb_counters(&graph, &bcbs_with_counter_mappings);
 
     let mappings = create_mappings(&extracted_mappings, &coverage_counters);
     if mappings.is_empty() {
@@ -103,14 +102,9 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
         return;
     }
 
-    inject_coverage_statements(
-        mir_body,
-        &basic_coverage_blocks,
-        &extracted_mappings,
-        &coverage_counters,
-    );
+    inject_coverage_statements(mir_body, &graph, &extracted_mappings, &coverage_counters);
 
-    inject_mcdc_statements(mir_body, &basic_coverage_blocks, &extracted_mappings);
+    inject_mcdc_statements(mir_body, &graph, &extracted_mappings);
 
     let mcdc_num_condition_bitmaps = extracted_mappings
         .mcdc_mappings
@@ -243,7 +237,7 @@ fn create_mappings(
 /// inject any necessary coverage statements into MIR.
 fn inject_coverage_statements<'tcx>(
     mir_body: &mut mir::Body<'tcx>,
-    basic_coverage_blocks: &CoverageGraph,
+    graph: &CoverageGraph,
     extracted_mappings: &ExtractedMappings,
     coverage_counters: &CoverageCounters,
 ) {
@@ -253,12 +247,12 @@ fn inject_coverage_statements<'tcx>(
         // For BCB nodes this is just their first block, but for edges we need
         // to create a new block between the two BCBs, and inject into that.
         let target_bb = match site {
-            Site::Node { bcb } => basic_coverage_blocks[bcb].leader_bb(),
+            Site::Node { bcb } => graph[bcb].leader_bb(),
             Site::Edge { from_bcb, to_bcb } => {
                 // Create a new block between the last block of `from_bcb` and
                 // the first block of `to_bcb`.
-                let from_bb = basic_coverage_blocks[from_bcb].last_bb();
-                let to_bb = basic_coverage_blocks[to_bcb].leader_bb();
+                let from_bb = graph[from_bcb].last_bb();
+                let to_bb = graph[to_bcb].leader_bb();
 
                 let new_bb = inject_edge_counter_basic_block(mir_body, from_bb, to_bb);
                 debug!(
@@ -291,7 +285,7 @@ fn inject_coverage_statements<'tcx>(
         inject_statement(
             mir_body,
             CoverageKind::ExpressionUsed { id: expression_id },
-            basic_coverage_blocks[bcb].leader_bb(),
+            graph[bcb].leader_bb(),
         );
     }
 }
@@ -300,13 +294,13 @@ fn inject_coverage_statements<'tcx>(
 /// For each decision inject statements to update test vector bitmap after it has been evaluated.
 fn inject_mcdc_statements<'tcx>(
     mir_body: &mut mir::Body<'tcx>,
-    basic_coverage_blocks: &CoverageGraph,
+    graph: &CoverageGraph,
     extracted_mappings: &ExtractedMappings,
 ) {
     for (decision, conditions) in &extracted_mappings.mcdc_mappings {
         // Inject test vector update first because `inject_statement` always insert new statement at head.
         for &end in &decision.end_bcbs {
-            let end_bb = basic_coverage_blocks[end].leader_bb();
+            let end_bb = graph[end].leader_bb();
             inject_statement(
                 mir_body,
                 CoverageKind::TestVectorBitmapUpdate {
@@ -327,7 +321,7 @@ fn inject_mcdc_statements<'tcx>(
         } in conditions
         {
             for (index, bcb) in [(false_index, false_bcb), (true_index, true_bcb)] {
-                let bb = basic_coverage_blocks[bcb].leader_bb();
+                let bb = graph[bcb].leader_bb();
                 inject_statement(
                     mir_body,
                     CoverageKind::CondBitmapUpdate {
