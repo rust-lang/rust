@@ -571,7 +571,7 @@ impl<'db> SemanticsImpl<'db> {
         actual_macro_call: &ast::MacroCall,
         speculative_args: &ast::TokenTree,
         token_to_map: SyntaxToken,
-    ) -> Option<(SyntaxNode, SyntaxToken)> {
+    ) -> Option<(SyntaxNode, Vec<(SyntaxToken, u8)>)> {
         let SourceAnalyzer { file_id, resolver, .. } =
             self.analyze_no_infer(actual_macro_call.syntax())?;
         let macro_call = InFile::new(file_id, actual_macro_call);
@@ -592,7 +592,7 @@ impl<'db> SemanticsImpl<'db> {
         macro_file: MacroFileId,
         speculative_args: &SyntaxNode,
         token_to_map: SyntaxToken,
-    ) -> Option<(SyntaxNode, SyntaxToken)> {
+    ) -> Option<(SyntaxNode, Vec<(SyntaxToken, u8)>)> {
         hir_expand::db::expand_speculative(
             self.db.upcast(),
             macro_file.macro_call_id,
@@ -608,7 +608,7 @@ impl<'db> SemanticsImpl<'db> {
         actual_macro_call: &ast::Item,
         speculative_args: &ast::Item,
         token_to_map: SyntaxToken,
-    ) -> Option<(SyntaxNode, SyntaxToken)> {
+    ) -> Option<(SyntaxNode, Vec<(SyntaxToken, u8)>)> {
         let macro_call = self.wrap_node_infile(actual_macro_call.clone());
         let macro_call_id = self.with_ctx(|ctx| ctx.item_to_macro_call(macro_call.as_ref()))?;
         hir_expand::db::expand_speculative(
@@ -624,7 +624,7 @@ impl<'db> SemanticsImpl<'db> {
         actual_macro_call: &ast::Attr,
         speculative_args: &ast::Attr,
         token_to_map: SyntaxToken,
-    ) -> Option<(SyntaxNode, SyntaxToken)> {
+    ) -> Option<(SyntaxNode, Vec<(SyntaxToken, u8)>)> {
         let attr = self.wrap_node_infile(actual_macro_call.clone());
         let adt = actual_macro_call.syntax().parent().and_then(ast::Adt::cast)?;
         let macro_call_id = self.with_ctx(|ctx| {

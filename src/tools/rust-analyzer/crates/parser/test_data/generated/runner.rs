@@ -775,6 +775,10 @@ mod err {
         run_and_expect_errors("test_data/parser/inline/err/missing_fn_param_type.rs");
     }
     #[test]
+    fn path_item_without_excl() {
+        run_and_expect_errors("test_data/parser/inline/err/path_item_without_excl.rs");
+    }
+    #[test]
     fn pointer_type_no_mutability() {
         run_and_expect_errors("test_data/parser/inline/err/pointer_type_no_mutability.rs");
     }

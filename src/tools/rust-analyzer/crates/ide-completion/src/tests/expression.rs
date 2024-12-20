@@ -1320,3 +1320,73 @@ fn main() {
         "#]],
     );
 }
+
+#[test]
+fn macro_that_ignores_completion_marker() {
+    check(
+        r#"
+macro_rules! helper {
+    ($v:ident) => {};
+}
+
+macro_rules! m {
+    ($v:ident) => {{
+        helper!($v);
+        $v
+    }};
+}
+
+fn main() {
+    let variable = "test";
+    m!(v$0);
+}
+    "#,
+        expect![[r#"
+            ct CONST                     Unit
+            en Enum                      Enum
+            fn function()                fn()
+            fn main()                    fn()
+            lc variable                  &str
+            ma helper!(…) macro_rules! helper
+            ma m!(…)           macro_rules! m
+            ma makro!(…)   macro_rules! makro
+            md module
+            sc STATIC                    Unit
+            st Record                  Record
+            st Tuple                    Tuple
+            st Unit                      Unit
+            un Union                    Union
+            ev TupleV(…)          TupleV(u32)
+            bt u32                        u32
+            kw async
+            kw const
+            kw crate::
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw let
+            kw loop
+            kw match
+            kw mod
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+}
