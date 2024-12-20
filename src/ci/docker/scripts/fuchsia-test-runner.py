@@ -588,7 +588,7 @@ class TestEnvironment:
                 "--repo-path",
                 self.repo_dir(),
                 "--repository",
-                self.TEST_REPO_NAME
+                self.TEST_REPO_NAME,
             ],
             env=ffx_env,
             stdout_handler=self.subprocess_logger.debug,
@@ -619,9 +619,7 @@ class TestEnvironment:
     # `facet` statement required for TCP testing via
     # protocol `fuchsia.posix.socket.Provider`. See
     # https://fuchsia.dev/fuchsia-src/development/testing/components/test_runner_framework?hl=en#legacy_non-hermetic_tests
-    CML_TEMPLATE: ClassVar[
-        str
-    ] = """
+    CML_TEMPLATE: ClassVar[str] = """
     {{
         program: {{
             runner: "elf_test_runner",
@@ -994,7 +992,7 @@ class TestEnvironment:
                 "repository",
                 "server",
                 "stop",
-                self.TEST_REPO_NAME
+                self.TEST_REPO_NAME,
             ],
             env=self.ffx_cmd_env(),
             stdout_handler=self.subprocess_logger.debug,

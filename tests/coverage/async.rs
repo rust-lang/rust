@@ -1,6 +1,4 @@
-#![feature(coverage_attribute)]
 #![feature(custom_inner_attributes)] // for #![rustfmt::skip]
-#![feature(noop_waker)]
 #![allow(unused_assignments, dead_code)]
 #![rustfmt::skip]
 //@ edition: 2018

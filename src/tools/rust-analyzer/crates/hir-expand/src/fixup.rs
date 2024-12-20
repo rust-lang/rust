@@ -110,7 +110,8 @@ pub(crate) fn fixup_syntax(
                     }
                 },
                 ast::ExprStmt(it) => {
-                    if it.semicolon_token().is_none() {
+                    let needs_semi = it.semicolon_token().is_none() && it.expr().map_or(false, |e| e.syntax().kind() != SyntaxKind::BLOCK_EXPR);
+                    if needs_semi {
                         append.insert(node.clone().into(), vec![
                             Leaf::Punct(Punct {
                                 char: ';',
@@ -905,6 +906,21 @@ fn foo() {
 "#,
             expect![[r#"
 fn foo () {|| __ra_fixup}
+"#]],
+        );
+    }
+
+    #[test]
+    fn fixup_regression_() {
+        check(
+            r#"
+fn foo() {
+    {}
+    {}
+}
+"#,
+            expect![[r#"
+fn foo () {{} {}}
 "#]],
         );
     }

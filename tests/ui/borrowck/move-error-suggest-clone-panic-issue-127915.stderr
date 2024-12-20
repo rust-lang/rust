@@ -15,7 +15,7 @@ LL | fn test<T, U>(a: i64, b: i64, c: i64, d: i64, e: i64, f: T, g: U) -> i64 {
 ...
 LL |             6, a as f64, b, b as f64, f, c as f64, d, d as f64, e, e as f64, f, g,
    |                                       - you could clone this value
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `Copy`
    |
 LL | fn test<T: Copy, U>(a: i64, b: i64, c: i64, d: i64, e: i64, f: T, g: U) -> i64 {
    |          ++++++

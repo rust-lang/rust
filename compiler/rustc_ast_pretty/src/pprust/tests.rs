@@ -1,6 +1,5 @@
 use rustc_ast as ast;
-use rustc_span::symbol::Ident;
-use rustc_span::{DUMMY_SP, create_default_session_globals_then};
+use rustc_span::{DUMMY_SP, Ident, create_default_session_globals_then};
 use thin_vec::ThinVec;
 
 use super::*;

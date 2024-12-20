@@ -1,0 +1,12 @@
+error[E0277]: the trait bound `T: Step` is not satisfied
+ --> missing-bound.rs:2:14
+  |
+2 |     for _ in t {}
+  |              ^ the trait `Step` is not implemented for `T`
+  |
+  = note: required for `std::ops::Range<T>` to implement `Iterator`
+  = note: required for `std::ops::Range<T>` to implement `IntoIterator`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

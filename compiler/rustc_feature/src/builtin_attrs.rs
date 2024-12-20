@@ -6,7 +6,7 @@ use AttributeDuplicates::*;
 use AttributeGate::*;
 use AttributeType::*;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Symbol, sym};
 
 use crate::{Features, Stability};
 
@@ -480,10 +480,9 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(List: "address, kcfi, memory, thread"), DuplicatesOk,
         EncodeCrossCrate::No, experimental!(no_sanitize)
     ),
-    gated!(
+    ungated!(
         coverage, Normal, template!(OneOf: &[sym::off, sym::on]),
         ErrorPreceding, EncodeCrossCrate::No,
-        coverage_attribute, experimental!(coverage)
     ),
 
     ungated!(
@@ -1104,10 +1103,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(
-        TEST, rustc_polymorphize_error, Normal, template!(Word),
-        WarnFollowing, EncodeCrossCrate::Yes
-    ),
-    rustc_attr!(
         TEST, rustc_def_path, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::No
     ),
@@ -1192,10 +1187,9 @@ pub static BUILTIN_ATTRIBUTE_MAP: LazyLock<FxHashMap<Symbol, &BuiltinAttribute>>
         map
     });
 
-pub fn is_stable_diagnostic_attribute(sym: Symbol, features: &Features) -> bool {
+pub fn is_stable_diagnostic_attribute(sym: Symbol, _features: &Features) -> bool {
     match sym {
-        sym::on_unimplemented => true,
-        sym::do_not_recommend => features.do_not_recommend(),
+        sym::on_unimplemented | sym::do_not_recommend => true,
         _ => false,
     }
 }

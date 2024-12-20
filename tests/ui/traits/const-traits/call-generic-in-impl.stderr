@@ -2,14 +2,19 @@ error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/call-generic-in-impl.rs:10:9
    |
 LL | impl<T: ~const PartialEq> const MyPartialEq for T {
-   |         ^^^^^^
+   |         ^^^^^^ can't be applied to `PartialEq`
+   |
+note: `PartialEq` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
 
 error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/call-generic-in-impl.rs:10:9
    |
 LL | impl<T: ~const PartialEq> const MyPartialEq for T {
-   |         ^^^^^^
+   |         ^^^^^^ can't be applied to `PartialEq`
    |
+note: `PartialEq` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0015]: cannot call non-const fn `<T as PartialEq>::eq` in constant functions

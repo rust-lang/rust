@@ -211,8 +211,9 @@ passes_doc_invalid =
 passes_doc_keyword_empty_mod =
     `#[doc(keyword = "...")]` should be used on empty modules
 
-passes_doc_keyword_invalid_ident =
-    `{$doc_keyword}` is not a valid identifier
+passes_doc_keyword_not_keyword =
+    nonexistent keyword `{$keyword}` used in `#[doc(keyword = "...")]`
+    .help = only existing keywords are allowed in core/std
 
 passes_doc_keyword_not_mod =
     `#[doc(keyword = "...")]` should be used on modules
@@ -355,6 +356,9 @@ passes_ignored_derived_impls =
 
 passes_implied_feature_not_exist =
     feature `{$implied_by}` implying `{$feature}` does not exist
+
+passes_incorrect_do_not_recommend_args =
+    `#[diagnostic::do_not_recommend]` does not expect any arguments
 
 passes_incorrect_do_not_recommend_location =
     `#[diagnostic::do_not_recommend]` can only be placed on trait implementations

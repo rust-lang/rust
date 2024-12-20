@@ -27,8 +27,11 @@ fn main() {
     test_file_sync();
     test_errors();
     test_rename();
-    test_directory();
-    test_canonicalize();
+    // solarish needs to support readdir/readdir64 for these tests.
+    if cfg!(not(any(target_os = "solaris", target_os = "illumos"))) {
+        test_directory();
+        test_canonicalize();
+    }
     test_from_raw_os_error();
     #[cfg(unix)]
     test_pread_pwrite();

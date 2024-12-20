@@ -32,6 +32,8 @@ use std::iter::Peekable;
 use std::ops::{ControlFlow, Range};
 use std::path::PathBuf;
 use std::str::{self, CharIndices};
+use std::sync::atomic::AtomicUsize;
+use std::sync::{Arc, Weak};
 
 use pulldown_cmark::{
     BrokenLink, CodeBlockKind, CowStr, Event, LinkType, Options, Parser, Tag, TagEnd, html,
@@ -342,35 +344,48 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
 }
 
 /// Make headings links with anchor IDs and build up TOC.
-struct LinkReplacer<'a, I: Iterator<Item = Event<'a>>> {
-    inner: I,
+struct LinkReplacerInner<'a> {
     links: &'a [RenderedLink],
     shortcut_link: Option<&'a RenderedLink>,
 }
 
+struct LinkReplacer<'a, I: Iterator<Item = Event<'a>>> {
+    iter: I,
+    inner: LinkReplacerInner<'a>,
+}
+
 impl<'a, I: Iterator<Item = Event<'a>>> LinkReplacer<'a, I> {
     fn new(iter: I, links: &'a [RenderedLink]) -> Self {
-        LinkReplacer { inner: iter, links, shortcut_link: None }
+        LinkReplacer { iter, inner: { LinkReplacerInner { links, shortcut_link: None } } }
     }
 }
 
-impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
-    type Item = Event<'a>;
+// FIXME: Once we have specialized trait impl (for `Iterator` impl on `LinkReplacer`),
+// we can remove this type and move back `LinkReplacerInner` fields into `LinkReplacer`.
+struct SpannedLinkReplacer<'a, I: Iterator<Item = SpannedEvent<'a>>> {
+    iter: I,
+    inner: LinkReplacerInner<'a>,
+}
 
-    fn next(&mut self) -> Option<Self::Item> {
-        let mut event = self.inner.next();
+impl<'a, I: Iterator<Item = SpannedEvent<'a>>> SpannedLinkReplacer<'a, I> {
+    fn new(iter: I, links: &'a [RenderedLink]) -> Self {
+        SpannedLinkReplacer { iter, inner: { LinkReplacerInner { links, shortcut_link: None } } }
+    }
+}
 
+impl<'a> LinkReplacerInner<'a> {
+    fn handle_event(&mut self, event: &mut Event<'a>) {
         // Replace intra-doc links and remove disambiguators from shortcut links (`[fn@f]`).
-        match &mut event {
+        match event {
             // This is a shortcut link that was resolved by the broken_link_callback: `[fn@f]`
             // Remove any disambiguator.
-            Some(Event::Start(Tag::Link {
+            Event::Start(Tag::Link {
                 // [fn@f] or [fn@f][]
                 link_type: LinkType::ShortcutUnknown | LinkType::CollapsedUnknown,
                 dest_url,
                 title,
                 ..
-            })) => {
+            }) => {
                 debug!("saw start of shortcut link to {dest_url} with title {title}");
                 // If this is a shortcut link, it was resolved by the broken_link_callback.
                 // So the URL will already be updated properly.
@@ -387,13 +402,13 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
                 }
             }
             // Now that we're done with the shortcut link, don't replace any more text.
-            Some(Event::End(TagEnd::Link)) if self.shortcut_link.is_some() => {
+            Event::End(TagEnd::Link) if self.shortcut_link.is_some() => {
                 debug!("saw end of shortcut link");
                 self.shortcut_link = None;
             }
             // Handle backticks in inline code blocks, but only if we're in the middle of a shortcut link.
             // [`fn@f`]
-            Some(Event::Code(text)) => {
+            Event::Code(text) => {
                 trace!("saw code {text}");
                 if let Some(link) = self.shortcut_link {
                     // NOTE: this only replaces if the code block is the *entire* text.
@@ -416,7 +431,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
             }
             // Replace plain text in links, but only in the middle of a shortcut link.
             // [fn@f]
-            Some(Event::Text(text)) => {
+            Event::Text(text) => {
                 trace!("saw text {text}");
                 if let Some(link) = self.shortcut_link {
                     // NOTE: same limitations as `Event::Code`
@@ -432,7 +447,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
             }
             // If this is a link, but not a shortcut link,
             // replace the URL, since the broken_link_callback was not called.
-            Some(Event::Start(Tag::Link { dest_url, title, .. })) => {
+            Event::Start(Tag::Link { dest_url, title, .. }) => {
                 if let Some(link) =
                     self.links.iter().find(|&link| *link.original_text == **dest_url)
                 {
@@ -445,9 +460,30 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
             // Anything else couldn't have been a valid Rust path, so no need to replace the text.
             _ => {}
         }
+    }
+}
 
+impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
+    type Item = Event<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut event = self.iter.next();
+        if let Some(ref mut event) = event {
+            self.inner.handle_event(event);
+        }
         // Yield the modified event
         event
+    }
+}
+
+impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Iterator for SpannedLinkReplacer<'a, I> {
+    type Item = SpannedEvent<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let Some((mut event, range)) = self.iter.next() else { return None };
+        self.inner.handle_event(&mut event);
+        // Yield the modified event
+        Some((event, range))
     }
 }
 
@@ -1301,8 +1337,20 @@ impl LangString {
     }
 }
 
-impl Markdown<'_> {
+impl<'a> Markdown<'a> {
     pub fn into_string(self) -> String {
+        // This is actually common enough to special-case
+        if self.content.is_empty() {
+            return String::new();
+        }
+
+        let mut s = String::with_capacity(self.content.len() * 3 / 2);
+        html::push_html(&mut s, self.into_iter());
+
+        s
+    }
+
+    fn into_iter(self) -> CodeBlocks<'a, 'a, impl Iterator<Item = Event<'a>>> {
         let Markdown {
             content: md,
             links,
@@ -1313,32 +1361,72 @@ impl Markdown<'_> {
             heading_offset,
         } = self;
 
-        // This is actually common enough to special-case
-        if md.is_empty() {
-            return String::new();
-        }
-        let mut replacer = |broken_link: BrokenLink<'_>| {
+        let replacer = move |broken_link: BrokenLink<'_>| {
             links
                 .iter()
                 .find(|link| *link.original_text == *broken_link.reference)
                 .map(|link| (link.href.as_str().into(), link.tooltip.as_str().into()))
         };
 
-        let p = Parser::new_with_broken_link_callback(md, main_body_opts(), Some(&mut replacer));
+        let p = Parser::new_with_broken_link_callback(md, main_body_opts(), Some(replacer));
         let p = p.into_offset_iter();
-
-        let mut s = String::with_capacity(md.len() * 3 / 2);
 
         ids.handle_footnotes(|ids, existing_footnotes| {
             let p = HeadingLinks::new(p, None, ids, heading_offset);
+            let p = SpannedLinkReplacer::new(p, links);
             let p = footnotes::Footnotes::new(p, existing_footnotes);
-            let p = LinkReplacer::new(p.map(|(ev, _)| ev), links);
-            let p = TableWrapper::new(p);
-            let p = CodeBlocks::new(p, codes, edition, playground);
-            html::push_html(&mut s, p);
-        });
+            let p = TableWrapper::new(p.map(|(ev, _)| ev));
+            CodeBlocks::new(p, codes, edition, playground)
+        })
+    }
 
-        s
+    /// Convert markdown to (summary, remaining) HTML.
+    ///
+    /// - The summary is the first top-level Markdown element (usually a paragraph, but potentially
+    ///   any block).
+    /// - The remaining docs contain everything after the summary.
+    pub(crate) fn split_summary_and_content(self) -> (Option<String>, Option<String>) {
+        if self.content.is_empty() {
+            return (None, None);
+        }
+        let mut p = self.into_iter();
+
+        let mut event_level = 0;
+        let mut summary_events = Vec::new();
+        let mut get_next_tag = false;
+
+        let mut end_of_summary = false;
+        while let Some(event) = p.next() {
+            match event {
+                Event::Start(_) => event_level += 1,
+                Event::End(kind) => {
+                    event_level -= 1;
+                    if event_level == 0 {
+                        // We're back at the "top" so it means we're done with the summary.
+                        end_of_summary = true;
+                        // We surround tables with `<div>` HTML tags so this is a special case.
+                        get_next_tag = kind == TagEnd::Table;
+                    }
+                }
+                _ => {}
+            }
+            summary_events.push(event);
+            if end_of_summary {
+                if get_next_tag && let Some(event) = p.next() {
+                    summary_events.push(event);
+                }
+                break;
+            }
+        }
+        let mut summary = String::new();
+        html::push_html(&mut summary, summary_events.into_iter());
+        if summary.is_empty() {
+            return (None, None);
+        }
+        let mut content = String::new();
+        html::push_html(&mut content, p);
+
+        if content.is_empty() { (Some(summary), None) } else { (Some(summary), Some(content)) }
     }
 }
 
@@ -1882,7 +1970,7 @@ pub(crate) fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<Rust
 #[derive(Clone, Default, Debug)]
 pub struct IdMap {
     map: FxHashMap<String, usize>,
-    existing_footnotes: usize,
+    existing_footnotes: Arc<AtomicUsize>,
 }
 
 fn is_default_id(id: &str) -> bool {
@@ -1942,7 +2030,7 @@ fn is_default_id(id: &str) -> bool {
 
 impl IdMap {
     pub fn new() -> Self {
-        IdMap { map: FxHashMap::default(), existing_footnotes: 0 }
+        IdMap { map: FxHashMap::default(), existing_footnotes: Arc::new(AtomicUsize::new(0)) }
     }
 
     pub(crate) fn derive<S: AsRef<str> + ToString>(&mut self, candidate: S) -> String {
@@ -1970,15 +2058,17 @@ impl IdMap {
 
     /// Method to handle `existing_footnotes` increment automatically (to prevent forgetting
     /// about it).
-    pub(crate) fn handle_footnotes<F: FnOnce(&mut Self, &mut usize)>(&mut self, closure: F) {
-        let mut existing_footnotes = self.existing_footnotes;
+    pub(crate) fn handle_footnotes<'a, T, F: FnOnce(&'a mut Self, Weak<AtomicUsize>) -> T>(
+        &'a mut self,
+        closure: F,
+    ) -> T {
+        let existing_footnotes = Arc::downgrade(&self.existing_footnotes);
 
-        closure(self, &mut existing_footnotes);
-        self.existing_footnotes = existing_footnotes;
+        closure(self, existing_footnotes)
     }
 
     pub(crate) fn clear(&mut self) {
         self.map.clear();
-        self.existing_footnotes = 0;
+        self.existing_footnotes = Arc::new(AtomicUsize::new(0));
     }
 }

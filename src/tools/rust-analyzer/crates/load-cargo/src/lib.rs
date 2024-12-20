@@ -15,9 +15,7 @@ use ide_db::{
 };
 use itertools::Itertools;
 use proc_macro_api::{MacroDylib, ProcMacroServer};
-use project_model::{
-    CargoConfig, PackageRoot, ProjectManifest, ProjectWorkspace, ProjectWorkspaceKind,
-};
+use project_model::{CargoConfig, PackageRoot, ProjectManifest, ProjectWorkspace};
 use span::Span;
 use vfs::{
     file_set::FileSetConfig,
@@ -123,7 +121,7 @@ pub fn load_workspace(
             .collect()
     };
 
-    let project_folders = ProjectFolders::new(std::slice::from_ref(&ws), &[]);
+    let project_folders = ProjectFolders::new(std::slice::from_ref(&ws), &[], None);
     loader.set_config(vfs::loader::Config {
         load: project_folders.load,
         watch: vec![],
@@ -153,7 +151,11 @@ pub struct ProjectFolders {
 }
 
 impl ProjectFolders {
-    pub fn new(workspaces: &[ProjectWorkspace], global_excludes: &[AbsPathBuf]) -> ProjectFolders {
+    pub fn new(
+        workspaces: &[ProjectWorkspace],
+        global_excludes: &[AbsPathBuf],
+        user_config_dir_path: Option<&AbsPath>,
+    ) -> ProjectFolders {
         let mut res = ProjectFolders::default();
         let mut fsc = FileSetConfig::builder();
         let mut local_filesets = vec![];
@@ -240,6 +242,9 @@ impl ProjectFolders {
                     }
                 }
 
+                if dirs.include.is_empty() {
+                    continue;
+                }
                 vfs::loader::Entry::Directories(dirs)
             };
 
@@ -254,41 +259,20 @@ impl ProjectFolders {
             fsc.add_file_set(file_set_roots)
         }
 
-        // register the workspace manifest as well, note that this currently causes duplicates for
-        // non-virtual cargo workspaces! We ought to fix that
-        for ws in workspaces.iter() {
-            let mut file_set_roots: Vec<VfsPath> = vec![];
-            let mut entries = vec![];
+        if let Some(user_config_path) = user_config_dir_path {
+            let ratoml_path = {
+                let mut p = user_config_path.to_path_buf();
+                p.push("rust-analyzer.toml");
+                p
+            };
 
-            if let Some(manifest) = ws.manifest().map(|it| it.to_path_buf()) {
-                file_set_roots.push(VfsPath::from(manifest.to_owned()));
-                entries.push(manifest.to_owned());
-            }
+            let file_set_roots = vec![VfsPath::from(ratoml_path.to_owned())];
+            let entry = vfs::loader::Entry::Files(vec![ratoml_path]);
 
-            for buildfile in ws.buildfiles() {
-                file_set_roots.push(VfsPath::from(buildfile.to_owned()));
-                entries.push(buildfile.to_owned());
-            }
-
-            // In case of detached files we do **not** look for a rust-analyzer.toml.
-            if !matches!(ws.kind, ProjectWorkspaceKind::DetachedFile { .. }) {
-                let ws_root = ws.workspace_root();
-                let ratoml_path = {
-                    let mut p = ws_root.to_path_buf();
-                    p.push("rust-analyzer.toml");
-                    p
-                };
-                file_set_roots.push(VfsPath::from(ratoml_path.to_owned()));
-                entries.push(ratoml_path.to_owned());
-            }
-
-            if !file_set_roots.is_empty() {
-                let entry = vfs::loader::Entry::Files(entries);
-                res.watch.push(res.load.len());
-                res.load.push(entry);
-                local_filesets.push(fsc.len() as u64);
-                fsc.add_file_set(file_set_roots)
-            }
+            res.watch.push(res.load.len());
+            res.load.push(entry);
+            local_filesets.push(fsc.len() as u64);
+            fsc.add_file_set(file_set_roots)
         }
 
         let fsc = fsc.build();

@@ -9,6 +9,7 @@ use crate::concurrency::data_race::NaReadType;
 use crate::*;
 
 pub mod diagnostics;
+mod foreign_access_skipping;
 mod perms;
 mod tree;
 mod unimap;
@@ -296,7 +297,14 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.machine.current_span(),
         )?;
         // Record the parent-child pair in the tree.
-        tree_borrows.new_child(orig_tag, new_tag, new_perm.initial_state, range, span)?;
+        tree_borrows.new_child(
+            orig_tag,
+            new_tag,
+            new_perm.initial_state,
+            range,
+            span,
+            new_perm.protector.is_some(),
+        )?;
         drop(tree_borrows);
 
         // Also inform the data race model (but only if any bytes are actually affected).
@@ -532,8 +540,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Mark the given tag as exposed. It was found on a pointer with the given AllocId.
-    fn tb_expose_tag(&mut self, alloc_id: AllocId, tag: BorTag) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+    fn tb_expose_tag(&self, alloc_id: AllocId, tag: BorTag) -> InterpResult<'tcx> {
+        let this = self.eval_context_ref();
 
         // Function pointers and dead objects don't have an alloc_extra so we ignore them.
         // This is okay because accessing them is UB anyway, no need for any Tree Borrows checks.

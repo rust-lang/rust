@@ -1,7 +1,7 @@
 //! Module responsible for analyzing the code surrounding the cursor for completion.
 use std::iter;
 
-use hir::{Semantics, Type, TypeInfo, Variant};
+use hir::{ExpandResult, Semantics, Type, TypeInfo, Variant};
 use ide_db::{active_parameter::ActiveParameter, RootDatabase};
 use itertools::Either;
 use syntax::{
@@ -104,7 +104,10 @@ fn expand(
                 // maybe parent items have attributes, so continue walking the ancestors
                 (None, None) => continue 'ancestors,
                 // successful expansions
-                (Some(actual_expansion), Some((fake_expansion, fake_mapped_token))) => {
+                (
+                    Some(ExpandResult { value: actual_expansion, err: _ }),
+                    Some((fake_expansion, fake_mapped_token)),
+                ) => {
                     let new_offset = fake_mapped_token.text_range().start();
                     if new_offset + relative_offset > actual_expansion.text_range().end() {
                         // offset outside of bounds from the original expansion,
@@ -239,8 +242,8 @@ fn expand(
             };
 
             match (
-                sema.expand(&actual_macro_call),
-                sema.speculative_expand(
+                sema.expand_macro_call(&actual_macro_call),
+                sema.speculative_expand_macro_call(
                     &actual_macro_call,
                     &speculative_args,
                     fake_ident_token.clone(),
@@ -562,7 +565,7 @@ fn expected_type_and_name(
 }
 
 fn classify_lifetime(
-    _sema: &Semantics<'_, RootDatabase>,
+    sema: &Semantics<'_, RootDatabase>,
     original_file: &SyntaxNode,
     lifetime: ast::Lifetime,
 ) -> Option<LifetimeContext> {
@@ -571,21 +574,22 @@ fn classify_lifetime(
         return None;
     }
 
+    let lifetime =
+        find_node_at_offset::<ast::Lifetime>(original_file, lifetime.syntax().text_range().start());
     let kind = match_ast! {
         match parent {
-            ast::LifetimeParam(param) => LifetimeKind::LifetimeParam {
-                is_decl: param.lifetime().as_ref() == Some(&lifetime),
-                param
-            },
+            ast::LifetimeParam(_) => LifetimeKind::LifetimeParam,
             ast::BreakExpr(_) => LifetimeKind::LabelRef,
             ast::ContinueExpr(_) => LifetimeKind::LabelRef,
             ast::Label(_) => LifetimeKind::LabelDef,
-            _ => LifetimeKind::Lifetime,
+            _ => {
+                let def = lifetime.as_ref().and_then(|lt| sema.scope(lt.syntax())?.generic_def());
+                LifetimeKind::Lifetime { in_lifetime_param_bound: ast::TypeBound::can_cast(parent.kind()), def }
+            },
         }
     };
-    let lifetime = find_node_at_offset(original_file, lifetime.syntax().text_range().start());
 
-    Some(LifetimeContext { lifetime, kind })
+    Some(LifetimeContext { kind })
 }
 
 fn classify_name(
@@ -1129,7 +1133,22 @@ fn classify_name_ref(
         let is_trailing_outer_attr = kind != AttrKind::Inner
             && non_trivia_sibling(attr.syntax().clone().into(), syntax::Direction::Next).is_none();
         let annotated_item_kind = if is_trailing_outer_attr { None } else { Some(attached.kind()) };
-        Some(PathKind::Attr { attr_ctx: AttrCtx { kind, annotated_item_kind } })
+        let derive_helpers = annotated_item_kind
+            .filter(|kind| {
+                matches!(
+                    kind,
+                    SyntaxKind::STRUCT
+                        | SyntaxKind::ENUM
+                        | SyntaxKind::UNION
+                        | SyntaxKind::VARIANT
+                        | SyntaxKind::TUPLE_FIELD
+                        | SyntaxKind::RECORD_FIELD
+                )
+            })
+            .and_then(|_| nameref.as_ref()?.syntax().ancestors().find_map(ast::Adt::cast))
+            .and_then(|adt| sema.derive_helpers_in_scope(&adt))
+            .unwrap_or_default();
+        Some(PathKind::Attr { attr_ctx: AttrCtx { kind, annotated_item_kind, derive_helpers } })
     };
 
     // Infer the path kind

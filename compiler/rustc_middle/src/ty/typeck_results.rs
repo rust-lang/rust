@@ -74,9 +74,8 @@ pub struct TypeckResults<'tcx> {
     pat_binding_modes: ItemLocalMap<BindingMode>,
 
     /// Top-level patterns whose match ergonomics need to be desugared by the Rust 2021 -> 2024
-    /// migration lint. The boolean indicates whether the emitted diagnostic should be a hard error
-    /// (if any of the incompatible pattern elements are in edition 2024).
-    rust_2024_migration_desugared_pats: ItemLocalMap<bool>,
+    /// migration lint. Problematic subpatterns are stored in the `Vec` for the lint to highlight.
+    rust_2024_migration_desugared_pats: ItemLocalMap<Vec<(Span, String)>>,
 
     /// Stores the types which were implicitly dereferenced in pattern binding modes
     /// for later usage in THIR lowering. For example,
@@ -419,14 +418,18 @@ impl<'tcx> TypeckResults<'tcx> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.pat_adjustments }
     }
 
-    pub fn rust_2024_migration_desugared_pats(&self) -> LocalTableInContext<'_, bool> {
+    pub fn rust_2024_migration_desugared_pats(
+        &self,
+    ) -> LocalTableInContext<'_, Vec<(Span, String)>> {
         LocalTableInContext {
             hir_owner: self.hir_owner,
             data: &self.rust_2024_migration_desugared_pats,
         }
     }
 
-    pub fn rust_2024_migration_desugared_pats_mut(&mut self) -> LocalTableInContextMut<'_, bool> {
+    pub fn rust_2024_migration_desugared_pats_mut(
+        &mut self,
+    ) -> LocalTableInContextMut<'_, Vec<(Span, String)>> {
         LocalTableInContextMut {
             hir_owner: self.hir_owner,
             data: &mut self.rust_2024_migration_desugared_pats,
@@ -700,12 +703,31 @@ pub struct CanonicalUserTypeAnnotation<'tcx> {
 /// Canonical user type annotation.
 pub type CanonicalUserType<'tcx> = Canonical<'tcx, UserType<'tcx>>;
 
+#[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable)]
+#[derive(Eq, Hash, HashStable, TypeFoldable, TypeVisitable)]
+pub struct UserType<'tcx> {
+    pub kind: UserTypeKind<'tcx>,
+    pub bounds: ty::Clauses<'tcx>,
+}
+
+impl<'tcx> UserType<'tcx> {
+    pub fn new(kind: UserTypeKind<'tcx>) -> UserType<'tcx> {
+        UserType { kind, bounds: ty::ListWithCachedTypeInfo::empty() }
+    }
+
+    /// A user type annotation with additional bounds that need to be enforced.
+    /// These bounds are lowered from `impl Trait` in bindings.
+    pub fn new_with_bounds(kind: UserTypeKind<'tcx>, bounds: ty::Clauses<'tcx>) -> UserType<'tcx> {
+        UserType { kind, bounds }
+    }
+}
+
 /// A user-given type annotation attached to a constant. These arise
 /// from constants that are named via paths, like `Foo::<A>::new` and
 /// so forth.
 #[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable)]
 #[derive(Eq, Hash, HashStable, TypeFoldable, TypeVisitable)]
-pub enum UserType<'tcx> {
+pub enum UserTypeKind<'tcx> {
     Ty(Ty<'tcx>),
 
     /// The canonical type is the result of `type_of(def_id)` with the
@@ -721,9 +743,13 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
     /// Returns `true` if this represents the generic parameters of the form `[?0, ?1, ?2]`,
     /// i.e., each thing is mapped to a canonical variable with the same index.
     fn is_identity(&self) -> bool {
-        match self.value {
-            UserType::Ty(_) => false,
-            UserType::TypeOf(_, user_args) => {
+        if !self.value.bounds.is_empty() {
+            return false;
+        }
+
+        match self.value.kind {
+            UserTypeKind::Ty(_) => false,
+            UserTypeKind::TypeOf(_, user_args) => {
                 if user_args.user_self_ty.is_some() {
                     return false;
                 }
@@ -764,6 +790,18 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
 }
 
 impl<'tcx> std::fmt::Display for UserType<'tcx> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.bounds.is_empty() {
+            self.kind.fmt(f)
+        } else {
+            self.kind.fmt(f)?;
+            write!(f, " + ")?;
+            std::fmt::Debug::fmt(&self.bounds, f)
+        }
+    }
+}
+
+impl<'tcx> std::fmt::Display for UserTypeKind<'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Ty(arg0) => {

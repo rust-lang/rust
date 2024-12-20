@@ -327,3 +327,11 @@ impl<'a> Ranker<'a> {
             | ((no_tt_parent as usize) << 3)
     }
 }
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum Severity {
+    Error,
+    Warning,
+    WeakWarning,
+    Allow,
+}

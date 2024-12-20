@@ -18,6 +18,7 @@ use rustc_infer::traits::{
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{self, ToPolyTraitRef, Ty, TypeVisitableExt, TypingMode};
 use rustc_middle::{bug, span_bug};
+use rustc_type_ir::Interner;
 use tracing::{debug, instrument, trace};
 
 use super::SelectionCandidate::*;
@@ -794,6 +795,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Never
                 | ty::Tuple(_)
                 | ty::CoroutineWitness(..) => {
+                    // Only consider auto impls of unsafe traits when there are
+                    // no unsafe fields.
+                    if self.tcx().trait_is_unsafe(def_id) && self_ty.has_unsafe_fields() {
+                        return;
+                    }
+
                     // Only consider auto impls if there are no manual impls for the root of `self_ty`.
                     //
                     // For example, we only consider auto candidates for `&i32: Auto` if no explicit impl

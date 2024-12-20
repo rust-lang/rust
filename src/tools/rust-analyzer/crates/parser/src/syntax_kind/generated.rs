@@ -256,6 +256,7 @@ pub enum SyntaxKind {
     OR_PAT,
     PARAM,
     PARAM_LIST,
+    PARENTHESIZED_ARG_LIST,
     PAREN_EXPR,
     PAREN_PAT,
     PAREN_TYPE,

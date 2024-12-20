@@ -2,9 +2,6 @@ error: this loop never actually loops
   --> tests/ui/never_loop.rs:12:5
    |
 LL | /     loop {
-LL | |
-LL | |
-LL | |         // clippy::never_loop
 ...  |
 LL | |         break;
 LL | |     }
@@ -75,7 +72,6 @@ LL | |
 LL | |         // never loops
 LL | |         match x {
 ...  |
-LL | |         }
 LL | |     }
    | |_____^
    |
@@ -126,7 +122,6 @@ LL | |
 LL | |         'b: {
 LL | |             break 'b 'c: {
 ...  |
-LL | |         }
 LL | |     }
    | |_____^
 

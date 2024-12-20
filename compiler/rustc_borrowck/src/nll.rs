@@ -21,7 +21,7 @@ use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_session::config::MirIncludeSpans;
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 use tracing::{debug, instrument};
 
 use crate::borrow_set::BorrowSet;
@@ -116,7 +116,7 @@ pub(crate) fn compute_regions<'a, 'tcx>(
     let var_origins = infcx.get_region_var_origins();
 
     // If requested, emit legacy polonius facts.
-    polonius::emit_facts(
+    polonius::legacy::emit_facts(
         &mut all_facts,
         infcx.tcx,
         location_table,
@@ -124,6 +124,7 @@ pub(crate) fn compute_regions<'a, 'tcx>(
         borrow_set,
         move_data,
         &universal_region_relations,
+        &constraints,
     );
 
     let mut regioncx = RegionInferenceContext::new(

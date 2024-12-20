@@ -127,6 +127,7 @@ import os.path
 import re
 import shlex
 from collections import namedtuple
+
 try:
     from html.parser import HTMLParser
 except ImportError:
@@ -142,12 +143,28 @@ except ImportError:
     from htmlentitydefs import name2codepoint
 
 # "void elements" (no closing tag) from the HTML Standard section 12.1.2
-VOID_ELEMENTS = {'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'keygen',
-                     'link', 'menuitem', 'meta', 'param', 'source', 'track', 'wbr'}
+VOID_ELEMENTS = {
+    "area",
+    "base",
+    "br",
+    "col",
+    "embed",
+    "hr",
+    "img",
+    "input",
+    "keygen",
+    "link",
+    "menuitem",
+    "meta",
+    "param",
+    "source",
+    "track",
+    "wbr",
+}
 
 # Python 2 -> 3 compatibility
 try:
-    unichr # noqa: B018 FIXME: py2
+    unichr  # noqa: B018 FIXME: py2
 except NameError:
     unichr = chr
 
@@ -158,18 +175,20 @@ channel = os.environ["DOC_RUST_LANG_ORG_CHANNEL"]
 rust_test_path = None
 bless = None
 
+
 class CustomHTMLParser(HTMLParser):
     """simplified HTML parser.
 
     this is possible because we are dealing with very regular HTML from
     rustdoc; we only have to deal with i) void elements and ii) empty
     attributes."""
+
     def __init__(self, target=None):
         HTMLParser.__init__(self)
         self.__builder = target or ET.TreeBuilder()
 
     def handle_starttag(self, tag, attrs):
-        attrs = {k: v or '' for k, v in attrs}
+        attrs = {k: v or "" for k, v in attrs}
         self.__builder.start(tag, attrs)
         if tag in VOID_ELEMENTS:
             self.__builder.end(tag)
@@ -178,7 +197,7 @@ class CustomHTMLParser(HTMLParser):
         self.__builder.end(tag)
 
     def handle_startendtag(self, tag, attrs):
-        attrs = {k: v or '' for k, v in attrs}
+        attrs = {k: v or "" for k, v in attrs}
         self.__builder.start(tag, attrs)
         self.__builder.end(tag)
 
@@ -189,7 +208,7 @@ class CustomHTMLParser(HTMLParser):
         self.__builder.data(unichr(name2codepoint[name]))
 
     def handle_charref(self, name):
-        code = int(name[1:], 16) if name.startswith(('x', 'X')) else int(name, 10)
+        code = int(name[1:], 16) if name.startswith(("x", "X")) else int(name, 10)
         self.__builder.data(unichr(code))
 
     def close(self):
@@ -197,7 +216,7 @@ class CustomHTMLParser(HTMLParser):
         return self.__builder.close()
 
 
-Command = namedtuple('Command', 'negated cmd args lineno context')
+Command = namedtuple("Command", "negated cmd args lineno context")
 
 
 class FailedCheck(Exception):
@@ -216,17 +235,17 @@ def concat_multi_lines(f):
       concatenated."""
     lastline = None  # set to the last line when the last line has a backslash
     firstlineno = None
-    catenated = ''
+    catenated = ""
     for lineno, line in enumerate(f):
-        line = line.rstrip('\r\n')
+        line = line.rstrip("\r\n")
 
         # strip the common prefix from the current line if needed
         if lastline is not None:
             common_prefix = os.path.commonprefix([line, lastline])
-            line = line[len(common_prefix):].lstrip()
+            line = line[len(common_prefix) :].lstrip()
 
         firstlineno = firstlineno or lineno
-        if line.endswith('\\'):
+        if line.endswith("\\"):
             if lastline is None:
                 lastline = line[:-1]
             catenated += line[:-1]
@@ -234,10 +253,10 @@ def concat_multi_lines(f):
             yield firstlineno, catenated + line
             lastline = None
             firstlineno = None
-            catenated = ''
+            catenated = ""
 
     if lastline is not None:
-        print_err(lineno, line, 'Trailing backslash at the end of the file')
+        print_err(lineno, line, "Trailing backslash at the end of the file")
 
 
 def get_known_directive_names():
@@ -253,12 +272,12 @@ def get_known_directive_names():
             "tools/compiletest/src/directive-list.rs",
         ),
         "r",
-        encoding="utf8"
+        encoding="utf8",
     ) as fd:
         content = fd.read()
         return [
-            line.strip().replace('",', '').replace('"', '')
-            for line in content.split('\n')
+            line.strip().replace('",', "").replace('"', "")
+            for line in content.split("\n")
             if filter_line(line)
         ]
 
@@ -269,35 +288,42 @@ def get_known_directive_names():
 #        See <https://github.com/rust-lang/rust/issues/125813#issuecomment-2141953780>.
 KNOWN_DIRECTIVE_NAMES = get_known_directive_names()
 
-LINE_PATTERN = re.compile(r'''
+LINE_PATTERN = re.compile(
+    r"""
     //@\s+
     (?P<negated>!?)(?P<cmd>[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)
     (?P<args>.*)$
-''', re.X | re.UNICODE)
+""",
+    re.X | re.UNICODE,
+)
 
 
 def get_commands(template):
-    with io.open(template, encoding='utf-8') as f:
+    with io.open(template, encoding="utf-8") as f:
         for lineno, line in concat_multi_lines(f):
             m = LINE_PATTERN.search(line)
             if not m:
                 continue
 
-            cmd = m.group('cmd')
-            negated = (m.group('negated') == '!')
+            cmd = m.group("cmd")
+            negated = m.group("negated") == "!"
             if not negated and cmd in KNOWN_DIRECTIVE_NAMES:
                 continue
-            args = m.group('args')
+            args = m.group("args")
             if args and not args[:1].isspace():
-                print_err(lineno, line, 'Invalid template syntax')
+                print_err(lineno, line, "Invalid template syntax")
                 continue
             try:
                 args = shlex.split(args)
             except UnicodeEncodeError:
-                args = [arg.decode('utf-8') for arg in shlex.split(args.encode('utf-8'))]
+                args = [
+                    arg.decode("utf-8") for arg in shlex.split(args.encode("utf-8"))
+                ]
             except Exception as exc:
                 raise Exception("line {}: {}".format(lineno + 1, exc)) from None
-            yield Command(negated=negated, cmd=cmd, args=args, lineno=lineno+1, context=line)
+            yield Command(
+                negated=negated, cmd=cmd, args=args, lineno=lineno + 1, context=line
+            )
 
 
 def _flatten(node, acc):
@@ -312,22 +338,24 @@ def _flatten(node, acc):
 def flatten(node):
     acc = []
     _flatten(node, acc)
-    return ''.join(acc)
+    return "".join(acc)
 
 
 def make_xml(text):
-    xml = ET.XML('<xml>%s</xml>' % text)
+    xml = ET.XML("<xml>%s</xml>" % text)
     return xml
 
 
 def normalize_xpath(path):
     path = path.replace("{{channel}}", channel)
-    if path.startswith('//'):
-        return '.' + path  # avoid warnings
-    elif path.startswith('.//'):
+    if path.startswith("//"):
+        return "." + path  # avoid warnings
+    elif path.startswith(".//"):
         return path
     else:
-        raise InvalidCheck('Non-absolute XPath is not supported due to implementation issues')
+        raise InvalidCheck(
+            "Non-absolute XPath is not supported due to implementation issues"
+        )
 
 
 class CachedFiles(object):
@@ -338,12 +366,12 @@ class CachedFiles(object):
         self.last_path = None
 
     def resolve_path(self, path):
-        if path != '-':
+        if path != "-":
             path = os.path.normpath(path)
             self.last_path = path
             return path
         elif self.last_path is None:
-            raise InvalidCheck('Tried to use the previous path in the first command')
+            raise InvalidCheck("Tried to use the previous path in the first command")
         else:
             return self.last_path
 
@@ -356,10 +384,10 @@ class CachedFiles(object):
             return self.files[path]
 
         abspath = self.get_absolute_path(path)
-        if not(os.path.exists(abspath) and os.path.isfile(abspath)):
-            raise FailedCheck('File does not exist {!r}'.format(path))
+        if not (os.path.exists(abspath) and os.path.isfile(abspath)):
+            raise FailedCheck("File does not exist {!r}".format(path))
 
-        with io.open(abspath, encoding='utf-8') as f:
+        with io.open(abspath, encoding="utf-8") as f:
             data = f.read()
             self.files[path] = data
             return data
@@ -370,15 +398,15 @@ class CachedFiles(object):
             return self.trees[path]
 
         abspath = self.get_absolute_path(path)
-        if not(os.path.exists(abspath) and os.path.isfile(abspath)):
-            raise FailedCheck('File does not exist {!r}'.format(path))
+        if not (os.path.exists(abspath) and os.path.isfile(abspath)):
+            raise FailedCheck("File does not exist {!r}".format(path))
 
-        with io.open(abspath, encoding='utf-8') as f:
+        with io.open(abspath, encoding="utf-8") as f:
             try:
                 tree = ET.fromstringlist(f.readlines(), CustomHTMLParser())
             except Exception as e:
-                raise RuntimeError( # noqa: B904 FIXME: py2
-                    'Cannot parse an HTML file {!r}: {}'.format(path, e)
+                raise RuntimeError(  # noqa: B904 FIXME: py2
+                    "Cannot parse an HTML file {!r}: {}".format(path, e)
                 )
             self.trees[path] = tree
             return self.trees[path]
@@ -386,8 +414,8 @@ class CachedFiles(object):
     def get_dir(self, path):
         path = self.resolve_path(path)
         abspath = self.get_absolute_path(path)
-        if not(os.path.exists(abspath) and os.path.isdir(abspath)):
-            raise FailedCheck('Directory does not exist {!r}'.format(path))
+        if not (os.path.exists(abspath) and os.path.isdir(abspath)):
+            raise FailedCheck("Directory does not exist {!r}".format(path))
 
 
 def check_string(data, pat, regexp):
@@ -397,8 +425,8 @@ def check_string(data, pat, regexp):
     elif regexp:
         return re.search(pat, data, flags=re.UNICODE) is not None
     else:
-        data = ' '.join(data.split())
-        pat = ' '.join(pat.split())
+        data = " ".join(data.split())
+        pat = " ".join(pat.split())
         return pat in data
 
 
@@ -444,19 +472,19 @@ def get_tree_count(tree, path):
 
 
 def check_snapshot(snapshot_name, actual_tree, normalize_to_text):
-    assert rust_test_path.endswith('.rs')
-    snapshot_path = '{}.{}.{}'.format(rust_test_path[:-3], snapshot_name, 'html')
+    assert rust_test_path.endswith(".rs")
+    snapshot_path = "{}.{}.{}".format(rust_test_path[:-3], snapshot_name, "html")
     try:
-        with open(snapshot_path, 'r') as snapshot_file:
+        with open(snapshot_path, "r") as snapshot_file:
             expected_str = snapshot_file.read().replace("{{channel}}", channel)
     except FileNotFoundError:
         if bless:
             expected_str = None
         else:
-            raise FailedCheck('No saved snapshot value') # noqa: B904 FIXME: py2
+            raise FailedCheck("No saved snapshot value")  # noqa: B904 FIXME: py2
 
     if not normalize_to_text:
-        actual_str = ET.tostring(actual_tree).decode('utf-8')
+        actual_str = ET.tostring(actual_tree).decode("utf-8")
     else:
         actual_str = flatten(actual_tree)
 
@@ -464,64 +492,66 @@ def check_snapshot(snapshot_name, actual_tree, normalize_to_text):
     #  1. Is --bless
     #  2. Are actual and expected tree different
     #  3. Are actual and expected text different
-    if not expected_str \
-        or (not normalize_to_text and \
-            not compare_tree(make_xml(actual_str), make_xml(expected_str), stderr)) \
-        or (normalize_to_text and actual_str != expected_str):
-
+    if (
+        not expected_str
+        or (
+            not normalize_to_text
+            and not compare_tree(make_xml(actual_str), make_xml(expected_str), stderr)
+        )
+        or (normalize_to_text and actual_str != expected_str)
+    ):
         if bless:
-            with open(snapshot_path, 'w') as snapshot_file:
+            with open(snapshot_path, "w") as snapshot_file:
                 actual_str = actual_str.replace(channel, "{{channel}}")
                 snapshot_file.write(actual_str)
         else:
-            print('--- expected ---\n')
+            print("--- expected ---\n")
             print(expected_str)
-            print('\n\n--- actual ---\n')
+            print("\n\n--- actual ---\n")
             print(actual_str)
             print()
-            raise FailedCheck('Actual snapshot value is different than expected')
+            raise FailedCheck("Actual snapshot value is different than expected")
 
 
 # Adapted from https://github.com/formencode/formencode/blob/3a1ba9de2fdd494dd945510a4568a3afeddb0b2e/formencode/doctest_xml_compare.py#L72-L120
 def compare_tree(x1, x2, reporter=None):
     if x1.tag != x2.tag:
         if reporter:
-            reporter('Tags do not match: %s and %s' % (x1.tag, x2.tag))
+            reporter("Tags do not match: %s and %s" % (x1.tag, x2.tag))
         return False
     for name, value in x1.attrib.items():
         if x2.attrib.get(name) != value:
             if reporter:
-                reporter('Attributes do not match: %s=%r, %s=%r'
-                         % (name, value, name, x2.attrib.get(name)))
+                reporter(
+                    "Attributes do not match: %s=%r, %s=%r"
+                    % (name, value, name, x2.attrib.get(name))
+                )
             return False
     for name in x2.attrib:
         if name not in x1.attrib:
             if reporter:
-                reporter('x2 has an attribute x1 is missing: %s'
-                         % name)
+                reporter("x2 has an attribute x1 is missing: %s" % name)
             return False
     if not text_compare(x1.text, x2.text):
         if reporter:
-            reporter('text: %r != %r' % (x1.text, x2.text))
+            reporter("text: %r != %r" % (x1.text, x2.text))
         return False
     if not text_compare(x1.tail, x2.tail):
         if reporter:
-            reporter('tail: %r != %r' % (x1.tail, x2.tail))
+            reporter("tail: %r != %r" % (x1.tail, x2.tail))
         return False
     cl1 = list(x1)
     cl2 = list(x2)
     if len(cl1) != len(cl2):
         if reporter:
-            reporter('children length differs, %i != %i'
-                     % (len(cl1), len(cl2)))
+            reporter("children length differs, %i != %i" % (len(cl1), len(cl2)))
         return False
     i = 0
     for c1, c2 in zip(cl1, cl2):
         i += 1
         if not compare_tree(c1, c2, reporter=reporter):
             if reporter:
-                reporter('children %i do not match: %s'
-                         % (i, c1.tag))
+                reporter("children %i do not match: %s" % (i, c1.tag))
             return False
     return True
 
@@ -529,14 +559,14 @@ def compare_tree(x1, x2, reporter=None):
 def text_compare(t1, t2):
     if not t1 and not t2:
         return True
-    if t1 == '*' or t2 == '*':
+    if t1 == "*" or t2 == "*":
         return True
-    return (t1 or '').strip() == (t2 or '').strip()
+    return (t1 or "").strip() == (t2 or "").strip()
 
 
 def stderr(*args):
     if sys.version_info.major < 3:
-        file = codecs.getwriter('utf-8')(sys.stderr)
+        file = codecs.getwriter("utf-8")(sys.stderr)
     else:
         file = sys.stderr
 
@@ -556,21 +586,25 @@ def print_err(lineno, context, err, message=None):
 
 def get_nb_matching_elements(cache, c, regexp, stop_at_first):
     tree = cache.get_tree(c.args[0])
-    pat, sep, attr = c.args[1].partition('/@')
+    pat, sep, attr = c.args[1].partition("/@")
     if sep:  # attribute
         tree = cache.get_tree(c.args[0])
         return check_tree_attr(tree, pat, attr, c.args[2], False)
     else:  # normalized text
         pat = c.args[1]
-        if pat.endswith('/text()'):
+        if pat.endswith("/text()"):
             pat = pat[:-7]
-        return check_tree_text(cache.get_tree(c.args[0]), pat, c.args[2], regexp, stop_at_first)
+        return check_tree_text(
+            cache.get_tree(c.args[0]), pat, c.args[2], regexp, stop_at_first
+        )
 
 
 def check_files_in_folder(c, cache, folder, files):
     files = files.strip()
-    if not files.startswith('[') or not files.endswith(']'):
-        raise InvalidCheck("Expected list as second argument of {} (ie '[]')".format(c.cmd))
+    if not files.startswith("[") or not files.endswith("]"):
+        raise InvalidCheck(
+            "Expected list as second argument of {} (ie '[]')".format(c.cmd)
+        )
 
     folder = cache.get_absolute_path(folder)
 
@@ -592,12 +626,18 @@ def check_files_in_folder(c, cache, folder, files):
 
     error = 0
     if len(files_set) != 0:
-        print_err(c.lineno, c.context, "Entries not found in folder `{}`: `{}`".format(
-            folder, files_set))
+        print_err(
+            c.lineno,
+            c.context,
+            "Entries not found in folder `{}`: `{}`".format(folder, files_set),
+        )
         error += 1
     if len(folder_set) != 0:
-        print_err(c.lineno, c.context, "Extra entries in folder `{}`: `{}`".format(
-            folder, folder_set))
+        print_err(
+            c.lineno,
+            c.context,
+            "Extra entries in folder `{}`: `{}`".format(folder, folder_set),
+        )
         error += 1
     return error == 0
 
@@ -608,11 +648,11 @@ ERR_COUNT = 0
 def check_command(c, cache):
     try:
         cerr = ""
-        if c.cmd in ['has', 'hasraw', 'matches', 'matchesraw']:  # string test
-            regexp = c.cmd.startswith('matches')
+        if c.cmd in ["has", "hasraw", "matches", "matchesraw"]:  # string test
+            regexp = c.cmd.startswith("matches")
 
             # has <path> = file existence
-            if len(c.args) == 1 and not regexp and 'raw' not in c.cmd:
+            if len(c.args) == 1 and not regexp and "raw" not in c.cmd:
                 try:
                     cache.get_file(c.args[0])
                     ret = True
@@ -620,24 +660,24 @@ def check_command(c, cache):
                     cerr = str(err)
                     ret = False
             # hasraw/matchesraw <path> <pat> = string test
-            elif len(c.args) == 2 and 'raw' in c.cmd:
+            elif len(c.args) == 2 and "raw" in c.cmd:
                 cerr = "`PATTERN` did not match"
                 ret = check_string(cache.get_file(c.args[0]), c.args[1], regexp)
             # has/matches <path> <pat> <match> = XML tree test
-            elif len(c.args) == 3 and 'raw' not in c.cmd:
+            elif len(c.args) == 3 and "raw" not in c.cmd:
                 cerr = "`XPATH PATTERN` did not match"
                 ret = get_nb_matching_elements(cache, c, regexp, True) != 0
             else:
-                raise InvalidCheck('Invalid number of {} arguments'.format(c.cmd))
+                raise InvalidCheck("Invalid number of {} arguments".format(c.cmd))
 
-        elif c.cmd == 'files': # check files in given folder
-            if len(c.args) != 2: # files <folder path> <file list>
+        elif c.cmd == "files":  # check files in given folder
+            if len(c.args) != 2:  # files <folder path> <file list>
                 raise InvalidCheck("Invalid number of {} arguments".format(c.cmd))
             elif c.negated:
                 raise InvalidCheck("{} doesn't support negative check".format(c.cmd))
             ret = check_files_in_folder(c, cache, c.args[0], c.args[1])
 
-        elif c.cmd == 'count':  # count test
+        elif c.cmd == "count":  # count test
             if len(c.args) == 3:  # count <path> <pat> <count> = count test
                 expected = int(c.args[2])
                 found = get_tree_count(cache.get_tree(c.args[0]), c.args[1])
@@ -649,15 +689,15 @@ def check_command(c, cache):
                 cerr = "Expected {} occurrences but found {}".format(expected, found)
                 ret = found == expected
             else:
-                raise InvalidCheck('Invalid number of {} arguments'.format(c.cmd))
+                raise InvalidCheck("Invalid number of {} arguments".format(c.cmd))
 
-        elif c.cmd == 'snapshot':  # snapshot test
+        elif c.cmd == "snapshot":  # snapshot test
             if len(c.args) == 3:  # snapshot <snapshot-name> <html-path> <xpath>
                 [snapshot_name, html_path, pattern] = c.args
                 tree = cache.get_tree(html_path)
                 xpath = normalize_xpath(pattern)
                 normalize_to_text = False
-                if xpath.endswith('/text()'):
+                if xpath.endswith("/text()"):
                     xpath = xpath[:-7]
                     normalize_to_text = True
 
@@ -671,13 +711,15 @@ def check_command(c, cache):
                         cerr = str(err)
                         ret = False
                 elif len(subtrees) == 0:
-                    raise FailedCheck('XPATH did not match')
+                    raise FailedCheck("XPATH did not match")
                 else:
-                    raise FailedCheck('Expected 1 match, but found {}'.format(len(subtrees)))
+                    raise FailedCheck(
+                        "Expected 1 match, but found {}".format(len(subtrees))
+                    )
             else:
-                raise InvalidCheck('Invalid number of {} arguments'.format(c.cmd))
+                raise InvalidCheck("Invalid number of {} arguments".format(c.cmd))
 
-        elif c.cmd == 'has-dir':  # has-dir test
+        elif c.cmd == "has-dir":  # has-dir test
             if len(c.args) == 1:  # has-dir <path> = has-dir test
                 try:
                     cache.get_dir(c.args[0])
@@ -686,22 +728,22 @@ def check_command(c, cache):
                     cerr = str(err)
                     ret = False
             else:
-                raise InvalidCheck('Invalid number of {} arguments'.format(c.cmd))
+                raise InvalidCheck("Invalid number of {} arguments".format(c.cmd))
 
-        elif c.cmd == 'valid-html':
-            raise InvalidCheck('Unimplemented valid-html')
+        elif c.cmd == "valid-html":
+            raise InvalidCheck("Unimplemented valid-html")
 
-        elif c.cmd == 'valid-links':
-            raise InvalidCheck('Unimplemented valid-links')
+        elif c.cmd == "valid-links":
+            raise InvalidCheck("Unimplemented valid-links")
 
         else:
-            raise InvalidCheck('Unrecognized {}'.format(c.cmd))
+            raise InvalidCheck("Unrecognized {}".format(c.cmd))
 
         if ret == c.negated:
             raise FailedCheck(cerr)
 
     except FailedCheck as err:
-        message = '{}{} check failed'.format('!' if c.negated else '', c.cmd)
+        message = "{}{} check failed".format("!" if c.negated else "", c.cmd)
         print_err(c.lineno, c.context, str(err), message)
     except InvalidCheck as err:
         print_err(c.lineno, c.context, str(err))
@@ -713,18 +755,18 @@ def check(target, commands):
         check_command(c, cache)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     if len(sys.argv) not in [3, 4]:
-        stderr('Usage: {} <doc dir> <template> [--bless]'.format(sys.argv[0]))
+        stderr("Usage: {} <doc dir> <template> [--bless]".format(sys.argv[0]))
         raise SystemExit(1)
 
     rust_test_path = sys.argv[2]
-    if len(sys.argv) > 3 and sys.argv[3] == '--bless':
+    if len(sys.argv) > 3 and sys.argv[3] == "--bless":
         bless = True
     else:
         # We only support `--bless` at the end of the arguments.
         # This assert is to prevent silent failures.
-        assert '--bless' not in sys.argv
+        assert "--bless" not in sys.argv
         bless = False
     check(sys.argv[1], get_commands(rust_test_path))
     if ERR_COUNT:

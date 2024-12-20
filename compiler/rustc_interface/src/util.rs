@@ -18,7 +18,7 @@ use rustc_session::{EarlyDiagCtxt, Session, filesearch};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMapInputs;
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 use rustc_target::spec::Target;
 use tracing::info;
 
@@ -35,10 +35,10 @@ pub type MakeBackendFn = fn() -> Box<dyn CodegenBackend>;
 pub fn add_configuration(cfg: &mut Cfg, sess: &mut Session, codegen_backend: &dyn CodegenBackend) {
     let tf = sym::target_feature;
 
-    let unstable_target_features = codegen_backend.target_features(sess, true);
+    let unstable_target_features = codegen_backend.target_features_cfg(sess, true);
     sess.unstable_target_features.extend(unstable_target_features.iter().cloned());
 
-    let target_features = codegen_backend.target_features(sess, false);
+    let target_features = codegen_backend.target_features_cfg(sess, false);
     sess.target_features.extend(target_features.iter().cloned());
 
     cfg.extend(target_features.into_iter().map(|feat| (tf, Some(feat))));
@@ -453,7 +453,7 @@ pub fn build_output_filenames(attrs: &[ast::Attribute], sess: &Session) -> Outpu
         .opts
         .crate_name
         .clone()
-        .or_else(|| rustc_attr::find_crate_name(attrs).map(|n| n.to_string()));
+        .or_else(|| rustc_attr_parsing::find_crate_name(attrs).map(|n| n.to_string()));
 
     match sess.io.output_file {
         None => {

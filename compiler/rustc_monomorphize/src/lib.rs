@@ -19,7 +19,6 @@ mod collector;
 mod errors;
 mod mono_checks;
 mod partitioning;
-mod polymorphize;
 mod util;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
@@ -43,13 +42,15 @@ fn custom_coerce_unsize_info<'tcx>(
             ..
         })) => Ok(tcx.coerce_unsized_info(impl_def_id)?.custom_kind.unwrap()),
         impl_source => {
-            bug!("invalid `CoerceUnsized` impl_source: {:?}", impl_source);
+            bug!(
+                "invalid `CoerceUnsized` from {source_ty} to {target_ty}: impl_source: {:?}",
+                impl_source
+            );
         }
     }
 }
 
 pub fn provide(providers: &mut Providers) {
     partitioning::provide(providers);
-    polymorphize::provide(providers);
     mono_checks::provide(providers);
 }

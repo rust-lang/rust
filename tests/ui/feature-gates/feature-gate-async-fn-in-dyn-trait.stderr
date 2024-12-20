@@ -1,0 +1,48 @@
+error[E0038]: the trait `Foo` cannot be made into an object
+  --> $DIR/feature-gate-async-fn-in-dyn-trait.rs:7:30
+   |
+LL | async fn takes_dyn_trait(x: &dyn Foo) {
+   |                              ^^^^^^^ `Foo` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/feature-gate-async-fn-in-dyn-trait.rs:4:14
+   |
+LL | trait Foo {
+   |       --- this trait cannot be made into an object...
+LL |     async fn bar(&self);
+   |              ^^^ ...because method `bar` is `async`
+   = help: consider moving `bar` to another trait
+
+error[E0038]: the trait `Foo` cannot be made into an object
+  --> $DIR/feature-gate-async-fn-in-dyn-trait.rs:9:7
+   |
+LL |     x.bar().await;
+   |       ^^^ `Foo` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/feature-gate-async-fn-in-dyn-trait.rs:4:14
+   |
+LL | trait Foo {
+   |       --- this trait cannot be made into an object...
+LL |     async fn bar(&self);
+   |              ^^^ ...because method `bar` is `async`
+   = help: consider moving `bar` to another trait
+
+error[E0038]: the trait `Foo` cannot be made into an object
+  --> $DIR/feature-gate-async-fn-in-dyn-trait.rs:9:5
+   |
+LL |     x.bar().await;
+   |     ^^^^^^^ `Foo` cannot be made into an object
+   |
+note: for a trait to be "dyn-compatible" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/feature-gate-async-fn-in-dyn-trait.rs:4:14
+   |
+LL | trait Foo {
+   |       --- this trait cannot be made into an object...
+LL |     async fn bar(&self);
+   |              ^^^ ...because method `bar` is `async`
+   = help: consider moving `bar` to another trait
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

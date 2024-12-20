@@ -96,12 +96,14 @@ hir_analysis_coercion_between_struct_same_note = expected coercion between the s
 
 hir_analysis_coercion_between_struct_single_note = expected a single field to be coerced, none found
 
-hir_analysis_const_bound_for_non_const_trait =
-    `{$modifier}` can only be applied to `#[const_trait]` traits
+hir_analysis_const_bound_for_non_const_trait = `{$modifier}` can only be applied to `#[const_trait]` traits
+    .label = can't be applied to `{$trait_name}`
+    .note = `{$trait_name}` can't be used with `{$modifier}` because it isn't annotated with `#[const_trait]`
+    .suggestion = {$suggestion_pre}mark `{$trait_name}` as `#[const_trait]` to allow it to have `const` implementations
 
-hir_analysis_const_impl_for_non_const_trait =
-    const `impl` for trait `{$trait_name}` which is not marked with `#[const_trait]`
-    .suggestion = mark `{$trait_name}` as const
+hir_analysis_const_impl_for_non_const_trait = const `impl` for trait `{$trait_name}` which is not marked with `#[const_trait]`
+    .label = this trait is not `const`
+    .suggestion = {$suggestion_pre}mark `{$trait_name}` as `#[const_trait]` to allow it to have `const` implementations
     .note = marking a trait with `#[const_trait]` ensures all default method bodies are `const`
     .adding = adding a non-const method body in the future would be a breaking change
 
@@ -239,10 +241,22 @@ hir_analysis_invalid_generic_receiver_ty_help =
     use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 
 hir_analysis_invalid_receiver_ty = invalid `self` parameter type: `{$receiver_ty}`
-    .note = type of `self` must be `Self` or a type that dereferences to it
+    .note = type of `self` must be `Self` or some type implementing `Receiver`
 
 hir_analysis_invalid_receiver_ty_help =
+    consider changing to `self`, `&self`, `&mut self`, or a type implementing `Receiver` such as `self: Box<Self>`, `self: Rc<Self>`, or `self: Arc<Self>`
+
+hir_analysis_invalid_receiver_ty_help_no_arbitrary_self_types =
     consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+hir_analysis_invalid_receiver_ty_help_nonnull_note =
+    `NonNull` does not implement `Receiver` because it has methods that may shadow the referent; consider wrapping your `NonNull` in a newtype wrapper for which you implement `Receiver`
+
+hir_analysis_invalid_receiver_ty_help_weak_note =
+    `Weak` does not implement `Receiver` because it has methods that may shadow the referent; consider wrapping your `Weak` in a newtype wrapper for which you implement `Receiver`
+
+hir_analysis_invalid_receiver_ty_no_arbitrary_self_types = invalid `self` parameter type: `{$receiver_ty}`
+    .note = type of `self` must be `Self` or a type that dereferences to it
 
 hir_analysis_invalid_union_field =
     field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union

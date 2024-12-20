@@ -132,12 +132,18 @@ impl HirDisplay for Function {
         } else {
             match &data.types_map[data.ret_type] {
                 TypeRef::ImplTrait(bounds) => match &bounds[0] {
-                    TypeBound::Path(path, _) => Some(
-                        *path.segments().iter().last().unwrap().args_and_bindings.unwrap().bindings
-                            [0]
-                        .type_ref
-                        .as_ref()
-                        .unwrap(),
+                    &TypeBound::Path(path, _) => Some(
+                        *data.types_map[path]
+                            .segments()
+                            .iter()
+                            .last()
+                            .unwrap()
+                            .args_and_bindings
+                            .unwrap()
+                            .bindings[0]
+                            .type_ref
+                            .as_ref()
+                            .unwrap(),
                     ),
                     _ => None,
                 },

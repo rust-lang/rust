@@ -1,8 +1,7 @@
 use std::fmt;
 
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_span::symbol::sym;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Span, Symbol, sym};
 
 #[cfg(test)]
 mod tests;

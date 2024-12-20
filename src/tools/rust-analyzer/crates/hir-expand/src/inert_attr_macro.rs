@@ -237,7 +237,7 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(List: "address, kcfi, memory, thread"), DuplicatesOk,
         experimental!(no_sanitize)
     ),
-    gated!(coverage, Normal, template!(Word, List: "on|off"), WarnFollowing, coverage_attribute, experimental!(coverage)),
+    ungated!(coverage, Normal, template!(Word, List: "on|off"), WarnFollowing),
 
     ungated!(
         doc, Normal, template!(List: "hidden|inline|...", NameValueStr: "string"), DuplicatesOk
@@ -695,7 +695,6 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(List: r#"cfg = "...", module = "...", kind = "...""#), DuplicatesOk,
     ),
     rustc_attr!(TEST, rustc_symbol_name, Normal, template!(Word), WarnFollowing),
-    rustc_attr!(TEST, rustc_polymorphize_error, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_def_path, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_mir, Normal, template!(List: "arg1, arg2, ..."), DuplicatesOk),
     gated!(

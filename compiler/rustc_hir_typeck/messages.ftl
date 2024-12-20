@@ -10,6 +10,12 @@ hir_typeck_address_of_temporary_taken = cannot take address of a temporary
 hir_typeck_arg_mismatch_indeterminate = argument type mismatch was detected, but rustc had trouble determining where
     .note = we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new
 
+hir_typeck_base_expression_double_dot = base expression required after `..`
+hir_typeck_base_expression_double_dot_add_expr = add a base expression here
+hir_typeck_base_expression_double_dot_enable_default_field_values =
+    add `#![feature(default_field_values)]` to the crate attributes to enable default values on `struct` fields
+hir_typeck_base_expression_double_dot_remove = remove the `..` as all the fields are already present
+
 hir_typeck_candidate_trait_note = `{$trait_name}` defines an item `{$item_name}`{$action_or_ty ->
     [NONE] {""}
     [implement] , perhaps you need to implement it

@@ -6,9 +6,7 @@ use std::{fmt, iter};
 
 use arrayvec::ArrayVec;
 use rustc_abi::{ExternAbi, VariantIdx};
-use rustc_ast::MetaItemInner;
-use rustc_ast_pretty::pprust;
-use rustc_attr::{ConstStability, Deprecation, Stability, StableSince};
+use rustc_attr_parsing::{ConstStability, Deprecation, Stability, StableSince};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
@@ -454,14 +452,14 @@ impl Item {
         kind: ItemKind,
         cx: &mut DocContext<'_>,
     ) -> Item {
-        let ast_attrs = cx.tcx.get_attrs_unchecked(def_id);
+        let hir_attrs = cx.tcx.get_attrs_unchecked(def_id);
 
         Self::from_def_id_and_attrs_and_parts(
             def_id,
             name,
             kind,
-            Attributes::from_ast(ast_attrs),
-            ast_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg),
+            Attributes::from_hir(hir_attrs),
+            hir_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg),
         )
     }
 
@@ -547,14 +545,14 @@ impl Item {
     pub(crate) fn is_associated_type(&self) -> bool {
         matches!(self.kind, AssocTypeItem(..) | StrippedItem(box AssocTypeItem(..)))
     }
-    pub(crate) fn is_ty_associated_type(&self) -> bool {
-        matches!(self.kind, TyAssocTypeItem(..) | StrippedItem(box TyAssocTypeItem(..)))
+    pub(crate) fn is_required_associated_type(&self) -> bool {
+        matches!(self.kind, RequiredAssocTypeItem(..) | StrippedItem(box RequiredAssocTypeItem(..)))
     }
     pub(crate) fn is_associated_const(&self) -> bool {
-        matches!(self.kind, AssocConstItem(..) | StrippedItem(box AssocConstItem(..)))
+        matches!(self.kind, ProvidedAssocConstItem(..) | ImplAssocConstItem(..) | StrippedItem(box (ProvidedAssocConstItem(..) | ImplAssocConstItem(..))))
     }
-    pub(crate) fn is_ty_associated_const(&self) -> bool {
-        matches!(self.kind, TyAssocConstItem(..) | StrippedItem(box TyAssocConstItem(..)))
+    pub(crate) fn is_required_associated_const(&self) -> bool {
+        matches!(self.kind, RequiredAssocConstItem(..) | StrippedItem(box RequiredAssocConstItem(..)))
     }
     pub(crate) fn is_method(&self) -> bool {
         self.type_() == ItemType::Method
@@ -671,7 +669,9 @@ impl Item {
                     asyncness: hir::IsAsync::NotAsync,
                 }
             }
-            ItemKind::FunctionItem(_) | ItemKind::MethodItem(_, _) | ItemKind::TyMethodItem(_) => {
+            ItemKind::FunctionItem(_)
+            | ItemKind::MethodItem(_, _)
+            | ItemKind::RequiredMethodItem(_) => {
                 let def_id = self.def_id().unwrap();
                 build_fn_header(def_id, tcx, tcx.asyncness(def_id))
             }
@@ -701,8 +701,13 @@ impl Item {
             // Variants always inherit visibility
             VariantItem(..) | ImplItem(..) => return None,
             // Trait items inherit the trait's visibility
-            AssocConstItem(..) | TyAssocConstItem(..) | AssocTypeItem(..) | TyAssocTypeItem(..)
-            | TyMethodItem(..) | MethodItem(..) => {
+            RequiredAssocConstItem(..)
+            | ProvidedAssocConstItem(..)
+            | ImplAssocConstItem(..)
+            | AssocTypeItem(..)
+            | RequiredAssocTypeItem(..)
+            | RequiredMethodItem(..)
+            | MethodItem(..) => {
                 let assoc_item = tcx.associated_item(def_id);
                 let is_trait_item = match assoc_item.container {
                     ty::AssocItemContainer::Trait => true,
@@ -742,10 +747,10 @@ impl Item {
             .iter()
             .filter_map(|attr| {
                 if keep_as_is {
-                    Some(pprust::attribute_to_string(attr))
+                    Some(rustc_hir_pretty::attribute_to_string(&tcx, attr))
                 } else if ALLOWED_ATTRIBUTES.contains(&attr.name_or_empty()) {
                     Some(
-                        pprust::attribute_to_string(attr)
+                        rustc_hir_pretty::attribute_to_string(&tcx, attr)
                             .replace("\\\n", "")
                             .replace('\n', "")
                             .replace("  ", " "),
@@ -847,10 +852,10 @@ pub(crate) enum ItemKind {
     TraitAliasItem(TraitAlias),
     ImplItem(Box<Impl>),
     /// A required method in a trait declaration meaning it's only a function signature.
-    TyMethodItem(Box<Function>),
+    RequiredMethodItem(Box<Function>),
     /// A method in a trait impl or a provided method in a trait declaration.
     ///
-    /// Compared to [TyMethodItem], it also contains a method body.
+    /// Compared to [RequiredMethodItem], it also contains a method body.
     MethodItem(Box<Function>, Option<hir::Defaultness>),
     StructFieldItem(Type),
     VariantItem(Variant),
@@ -864,14 +869,16 @@ pub(crate) enum ItemKind {
     ProcMacroItem(ProcMacro),
     PrimitiveItem(PrimitiveType),
     /// A required associated constant in a trait declaration.
-    TyAssocConstItem(Generics, Box<Type>),
+    RequiredAssocConstItem(Generics, Box<Type>),
     ConstantItem(Box<Constant>),
-    /// An associated constant in a trait impl or a provided one in a trait declaration.
-    AssocConstItem(Box<Constant>),
+    /// An associated constant in a trait declaration with provided default value.
+    ProvidedAssocConstItem(Box<Constant>),
+    /// An associated constant in an inherent impl or trait impl.
+    ImplAssocConstItem(Box<Constant>),
     /// A required associated type in a trait declaration.
     ///
     /// The bounds may be non-empty if there is a `where` clause.
-    TyAssocTypeItem(Generics, Vec<GenericBound>),
+    RequiredAssocTypeItem(Generics, Vec<GenericBound>),
     /// An associated type in a trait impl or a provided one in a trait declaration.
     AssocTypeItem(Box<TypeAlias>, Vec<GenericBound>),
     /// An item that has been stripped by a rustdoc pass
@@ -902,7 +909,7 @@ impl ItemKind {
             | StaticItem(_)
             | ConstantItem(_)
             | TraitAliasItem(_)
-            | TyMethodItem(_)
+            | RequiredMethodItem(_)
             | MethodItem(_, _)
             | StructFieldItem(_)
             | ForeignFunctionItem(_, _)
@@ -911,9 +918,10 @@ impl ItemKind {
             | MacroItem(_)
             | ProcMacroItem(_)
             | PrimitiveItem(_)
-            | TyAssocConstItem(..)
-            | AssocConstItem(..)
-            | TyAssocTypeItem(..)
+            | RequiredAssocConstItem(..)
+            | ProvidedAssocConstItem(..)
+            | ImplAssocConstItem(..)
+            | RequiredAssocTypeItem(..)
             | AssocTypeItem(..)
             | StrippedItem(_)
             | KeywordItem => [].iter(),
@@ -955,7 +963,7 @@ pub(crate) trait AttributesExt {
     type AttributeIterator<'a>: Iterator<Item = ast::MetaItemInner>
     where
         Self: 'a;
-    type Attributes<'a>: Iterator<Item = &'a ast::Attribute>
+    type Attributes<'a>: Iterator<Item = &'a hir::Attribute>
     where
         Self: 'a;
 
@@ -1009,7 +1017,7 @@ pub(crate) trait AttributesExt {
             // #[doc]
             if attr.doc_str().is_none() && attr.has_name(sym::doc) {
                 // #[doc(...)]
-                if let Some(list) = attr.meta().as_ref().and_then(|mi| mi.meta_item_list()) {
+                if let Some(list) = attr.meta_item_list() {
                     for item in list {
                         // #[doc(hidden)]
                         if !item.has_name(sym::cfg) {
@@ -1042,7 +1050,7 @@ pub(crate) trait AttributesExt {
                     let mut meta = attr.meta_item().unwrap().clone();
                     meta.path = ast::Path::from_ident(Ident::with_dummy_span(sym::target_feature));
 
-                    if let Ok(feat_cfg) = Cfg::parse(&MetaItemInner::MetaItem(meta)) {
+                    if let Ok(feat_cfg) = Cfg::parse(&ast::MetaItemInner::MetaItem(meta)) {
                         cfg &= feat_cfg;
                     }
                 }
@@ -1053,14 +1061,14 @@ pub(crate) trait AttributesExt {
     }
 }
 
-impl AttributesExt for [ast::Attribute] {
+impl AttributesExt for [hir::Attribute] {
     type AttributeIterator<'a> = impl Iterator<Item = ast::MetaItemInner> + 'a;
-    type Attributes<'a> = impl Iterator<Item = &'a ast::Attribute> + 'a;
+    type Attributes<'a> = impl Iterator<Item = &'a hir::Attribute> + 'a;
 
     fn lists(&self, name: Symbol) -> Self::AttributeIterator<'_> {
         self.iter()
             .filter(move |attr| attr.has_name(name))
-            .filter_map(ast::Attribute::meta_item_list)
+            .filter_map(ast::attr::AttributeExt::meta_item_list)
             .flatten()
     }
 
@@ -1069,20 +1077,20 @@ impl AttributesExt for [ast::Attribute] {
     }
 }
 
-impl AttributesExt for [(Cow<'_, ast::Attribute>, Option<DefId>)] {
+impl AttributesExt for [(Cow<'_, hir::Attribute>, Option<DefId>)] {
     type AttributeIterator<'a>
         = impl Iterator<Item = ast::MetaItemInner> + 'a
     where
         Self: 'a;
     type Attributes<'a>
-        = impl Iterator<Item = &'a ast::Attribute> + 'a
+        = impl Iterator<Item = &'a hir::Attribute> + 'a
     where
         Self: 'a;
 
     fn lists(&self, name: Symbol) -> Self::AttributeIterator<'_> {
         AttributesExt::iter(self)
             .filter(move |attr| attr.has_name(name))
-            .filter_map(ast::Attribute::meta_item_list)
+            .filter_map(hir::Attribute::meta_item_list)
             .flatten()
     }
 
@@ -1152,7 +1160,7 @@ pub struct RenderedLink {
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Attributes {
     pub(crate) doc_strings: Vec<DocFragment>,
-    pub(crate) other_attrs: ast::AttrVec,
+    pub(crate) other_attrs: ThinVec<hir::Attribute>,
 }
 
 impl Attributes {
@@ -1180,22 +1188,22 @@ impl Attributes {
         self.has_doc_flag(sym::hidden)
     }
 
-    pub(crate) fn from_ast(attrs: &[ast::Attribute]) -> Attributes {
-        Attributes::from_ast_iter(attrs.iter().map(|attr| (attr, None)), false)
+    pub(crate) fn from_hir(attrs: &[hir::Attribute]) -> Attributes {
+        Attributes::from_hir_iter(attrs.iter().map(|attr| (attr, None)), false)
     }
 
-    pub(crate) fn from_ast_with_additional(
-        attrs: &[ast::Attribute],
-        (additional_attrs, def_id): (&[ast::Attribute], DefId),
+    pub(crate) fn from_hir_with_additional(
+        attrs: &[hir::Attribute],
+        (additional_attrs, def_id): (&[hir::Attribute], DefId),
     ) -> Attributes {
         // Additional documentation should be shown before the original documentation.
         let attrs1 = additional_attrs.iter().map(|attr| (attr, Some(def_id)));
         let attrs2 = attrs.iter().map(|attr| (attr, None));
-        Attributes::from_ast_iter(attrs1.chain(attrs2), false)
+        Attributes::from_hir_iter(attrs1.chain(attrs2), false)
     }
 
-    pub(crate) fn from_ast_iter<'a>(
-        attrs: impl Iterator<Item = (&'a ast::Attribute, Option<DefId>)>,
+    pub(crate) fn from_hir_iter<'a>(
+        attrs: impl Iterator<Item = (&'a hir::Attribute, Option<DefId>)>,
         doc_only: bool,
     ) -> Attributes {
         let (doc_strings, other_attrs) = attrs_to_doc_fragments(attrs, doc_only);
@@ -1240,19 +1248,6 @@ impl Attributes {
         aliases.into_iter().collect::<Vec<_>>().into()
     }
 }
-
-impl PartialEq for Attributes {
-    fn eq(&self, rhs: &Self) -> bool {
-        self.doc_strings == rhs.doc_strings
-            && self
-                .other_attrs
-                .iter()
-                .map(|attr| attr.id)
-                .eq(rhs.other_attrs.iter().map(|attr| attr.id))
-    }
-}
-
-impl Eq for Attributes {}
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum GenericBound {

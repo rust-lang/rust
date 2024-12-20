@@ -72,7 +72,6 @@ LL | |     /// dox
 LL | |     pub fn documented() {}
 LL | |     pub fn undocumented1() {}
 ...  |
-LL | |     }
 LL | | }
    | |_^
 

@@ -17,7 +17,7 @@ use rustc_middle::ty::{
     self, EarlyBinder, FloatTy, GenericArg, GenericArgKind, Instance, IntTy, ReifyReason, Ty,
     TyCtxt, TypeVisitable, TypeVisitableExt, UintTy,
 };
-use rustc_span::symbol::kw;
+use rustc_span::kw;
 
 pub(super) fn mangle<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -256,7 +256,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
         });
 
         // Encode impl generic params if the generic parameters contain non-region parameters
-        // (implying polymorphization is enabled) and this isn't an inherent impl.
+        // and this isn't an inherent impl.
         if impl_trait_ref.is_some() && args.iter().any(|a| a.has_non_region_param()) {
             self.path_generic_args(
                 |this| {
@@ -330,9 +330,8 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             ty::Float(FloatTy::F128) => "C4f128",
             ty::Never => "z",
 
-            // Should only be encountered with polymorphization,
-            // or within the identity-substituted impl header of an
-            // item nested within an impl item.
+            // Should only be encountered within the identity-substituted
+            // impl header of an item nested within an impl item.
             ty::Param(_) => "p",
 
             ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) | ty::Error(_) => bug!(),
@@ -440,7 +439,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 let sig = sig_tys.with(hdr);
                 self.push("F");
                 self.in_binder(&sig, |cx, sig| {
-                    if sig.safety == hir::Safety::Unsafe {
+                    if sig.safety.is_unsafe() {
                         cx.push("U");
                     }
                     match sig.abi {
@@ -558,9 +557,8 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
         let (ct_ty, valtree) = match ct.kind() {
             ty::ConstKind::Value(ty, val) => (ty, val),
 
-            // Should only be encountered with polymorphization,
-            // or within the identity-substituted impl header of an
-            // item nested within an impl item.
+            // Should only be encountered within the identity-substituted
+            // impl header of an item nested within an impl item.
             ty::ConstKind::Param(_) => {
                 // Never cached (single-character).
                 self.push("p");
@@ -774,8 +772,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             | DefPathData::GlobalAsm
             | DefPathData::Impl
             | DefPathData::MacroNs(_)
-            | DefPathData::LifetimeNs(_)
-            | DefPathData::AnonAdt => {
+            | DefPathData::LifetimeNs(_) => {
                 bug!("symbol_names: unexpected DefPathData: {:?}", disambiguated_data.data)
             }
         };

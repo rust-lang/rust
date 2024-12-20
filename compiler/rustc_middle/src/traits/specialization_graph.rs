@@ -2,7 +2,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 
 use crate::error::StrictCoherenceNeedsNegativeCoherence;
 use crate::ty::fast_reject::SimplifiedType;

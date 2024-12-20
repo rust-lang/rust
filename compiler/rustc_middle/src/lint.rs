@@ -9,7 +9,7 @@ use rustc_session::Session;
 use rustc_session::lint::builtin::{self, FORBIDDEN_LINT_GROUPS};
 use rustc_session::lint::{FutureIncompatibilityReason, Level, Lint, LintExpectationId, LintId};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
-use rustc_span::{DUMMY_SP, DesugaringKind, Span, Symbol, symbol};
+use rustc_span::{DUMMY_SP, DesugaringKind, Span, Symbol, kw};
 use tracing::instrument;
 
 use crate::ty::TyCtxt;
@@ -37,7 +37,7 @@ pub enum LintLevelSource {
 impl LintLevelSource {
     pub fn name(&self) -> Symbol {
         match *self {
-            LintLevelSource::Default => symbol::kw::Default,
+            LintLevelSource::Default => kw::Default,
             LintLevelSource::Node { name, .. } => name,
             LintLevelSource::CommandLine(name, _) => name,
         }

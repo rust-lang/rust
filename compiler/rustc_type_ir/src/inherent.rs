@@ -136,6 +136,9 @@ pub trait Ty<I: Interner<Ty = Self>>:
         matches!(self.kind(), ty::FnPtr(..))
     }
 
+    /// Checks whether this type is an ADT that has unsafe fields.
+    fn has_unsafe_fields(self) -> bool;
+
     fn fn_sig(self, interner: I) -> ty::Binder<I, ty::FnSig<I>> {
         match self.kind() {
             ty::FnPtr(sig_tys, hdr) => sig_tys.with(hdr),
@@ -540,7 +543,7 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
 }
 
 pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
-    fn caller_bounds(self) -> impl IntoIterator<Item = I::Clause>;
+    fn caller_bounds(self) -> impl SliceLike<Item = I::Clause>;
 }
 
 pub trait Features<I: Interner>: Copy {

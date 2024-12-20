@@ -20,6 +20,10 @@ use crate::lang_items::Duplicate;
 #[diag(passes_incorrect_do_not_recommend_location)]
 pub(crate) struct IncorrectDoNotRecommendLocation;
 
+#[derive(LintDiagnostic)]
+#[diag(passes_incorrect_do_not_recommend_args)]
+pub(crate) struct DoNotRecommendDoesNotExpectArgs;
+
 #[derive(Diagnostic)]
 #[diag(passes_autodiff_attr)]
 pub(crate) struct AutoDiffAttr {
@@ -216,18 +220,19 @@ pub(crate) struct DocKeywordEmptyMod {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_doc_keyword_not_keyword)]
+#[help]
+pub(crate) struct DocKeywordNotKeyword {
+    #[primary_span]
+    pub span: Span,
+    pub keyword: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_doc_keyword_not_mod)]
 pub(crate) struct DocKeywordNotMod {
     #[primary_span]
     pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_doc_keyword_invalid_ident)]
-pub(crate) struct DocKeywordInvalidIdent {
-    #[primary_span]
-    pub span: Span,
-    pub doc_keyword: Symbol,
 }
 
 #[derive(Diagnostic)]

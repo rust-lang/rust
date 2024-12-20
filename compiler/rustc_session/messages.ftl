@@ -135,5 +135,6 @@ session_unsupported_crate_type_for_target =
 
 session_unsupported_dwarf_version = requested DWARF version {$dwarf_version} is greater than 5
 
+session_unsupported_reg_struct_return_arch = `-Zreg-struct-return` is only supported on x86
 session_unsupported_regparm = `-Zregparm={$regparm}` is unsupported (valid values 0-3)
 session_unsupported_regparm_arch = `-Zregparm=N` is only supported on x86

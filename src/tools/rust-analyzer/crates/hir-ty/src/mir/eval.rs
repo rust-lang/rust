@@ -813,7 +813,7 @@ impl Evaluator<'_> {
                 ProjectionElem::Field(Either::Left(f)) => {
                     let layout = self.layout(&prev_ty)?;
                     let variant_layout = match &layout.variants {
-                        Variants::Single { .. } => &layout,
+                        Variants::Single { .. } | Variants::Empty => &layout,
                         Variants::Multiple { variants, .. } => {
                             &variants[match f.parent {
                                 hir_def::VariantId::EnumVariantId(it) => {
@@ -1638,6 +1638,7 @@ impl Evaluator<'_> {
             return Ok(0);
         };
         match &layout.variants {
+            Variants::Empty => unreachable!(),
             Variants::Single { index } => {
                 let r = self.const_eval_discriminant(self.db.enum_data(e).variants[index.0].0)?;
                 Ok(r)
@@ -1800,7 +1801,7 @@ impl Evaluator<'_> {
         }
         let layout = self.layout_adt(adt, subst)?;
         Ok(match &layout.variants {
-            Variants::Single { .. } => (layout.size.bytes_usize(), layout, None),
+            Variants::Single { .. } | Variants::Empty => (layout.size.bytes_usize(), layout, None),
             Variants::Multiple { variants, tag, tag_encoding, .. } => {
                 let enum_variant_id = match it {
                     VariantId::EnumVariantId(it) => it,

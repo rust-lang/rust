@@ -565,6 +565,12 @@ impl TargetSelection {
         self.ends_with("windows-gnu")
     }
 
+    pub fn is_cygwin(&self) -> bool {
+        self.is_windows() &&
+        // ref. https://cygwin.com/pipermail/cygwin/2022-February/250802.html
+        env::var("OSTYPE").is_ok_and(|v| v.to_lowercase().contains("cygwin"))
+    }
+
     /// Path to the file defining the custom target, if any.
     pub fn filepath(&self) -> Option<&Path> {
         self.file.as_ref().map(Path::new)
@@ -1314,7 +1320,31 @@ impl Config {
 
         // Set flags.
         config.paths = std::mem::take(&mut flags.paths);
-        config.skip = flags.skip.into_iter().chain(flags.exclude).collect();
+        config.skip = flags
+            .skip
+            .into_iter()
+            .chain(flags.exclude)
+            .map(|p| {
+                let p = if cfg!(windows) {
+                    PathBuf::from(p.to_str().unwrap().replace('/', "\\"))
+                } else {
+                    p
+                };
+
+                // Jump to top-level project path to support passing paths
+                // from sub directories.
+                let top_level_path = config.src.join(&p);
+                if !config.src.join(&top_level_path).exists() {
+                    eprintln!("WARNING: '{}' does not exist.", top_level_path.display());
+                }
+
+                // Never return top-level path here as it would break `--skip`
+                // logic on rustc's internal test framework which is utilized
+                // by compiletest.
+                p
+            })
+            .collect();
+
         config.include_default_paths = flags.include_default_paths;
         config.rustc_error_format = flags.rustc_error_format;
         config.json_output = flags.json_output;
@@ -1632,7 +1662,6 @@ impl Config {
         set(&mut config.docs_minification, docs_minification);
         set(&mut config.docs, docs);
         set(&mut config.locked_deps, locked_deps);
-        set(&mut config.vendor, vendor);
         set(&mut config.full_bootstrap, full_bootstrap);
         set(&mut config.extended, extended);
         config.tools = tools;
@@ -1710,6 +1739,12 @@ impl Config {
             GitInfo::new(config.omit_git_hash, &config.src.join("src/tools/enzyme"));
         config.in_tree_llvm_info = GitInfo::new(false, &config.src.join("src/llvm-project"));
         config.in_tree_gcc_info = GitInfo::new(false, &config.src.join("src/gcc"));
+
+        config.vendor = vendor.unwrap_or(
+            config.rust_info.is_from_tarball()
+                && config.src.join("vendor").exists()
+                && config.src.join(".cargo/config.toml").exists(),
+        );
 
         if let Some(rust) = toml.rust {
             let Rust {
@@ -1907,7 +1942,7 @@ impl Config {
                 );
 
                 let channel = config
-                    .read_file_by_commit(&PathBuf::from("src/ci/channel"), commit)
+                    .read_file_by_commit(Path::new("src/ci/channel"), commit)
                     .trim()
                     .to_owned();
 
@@ -2348,12 +2383,10 @@ impl Config {
     /// Return the version it would have used for the given commit.
     pub(crate) fn artifact_version_part(&self, commit: &str) -> String {
         let (channel, version) = if self.rust_info.is_managed_git_subrepository() {
-            let channel = self
-                .read_file_by_commit(&PathBuf::from("src/ci/channel"), commit)
-                .trim()
-                .to_owned();
+            let channel =
+                self.read_file_by_commit(Path::new("src/ci/channel"), commit).trim().to_owned();
             let version =
-                self.read_file_by_commit(&PathBuf::from("src/version"), commit).trim().to_owned();
+                self.read_file_by_commit(Path::new("src/version"), commit).trim().to_owned();
             (channel, version)
         } else {
             let channel = fs::read_to_string(self.src.join("src/ci/channel"));

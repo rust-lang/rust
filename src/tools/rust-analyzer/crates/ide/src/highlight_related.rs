@@ -608,7 +608,7 @@ impl<'a> WalkExpandedExprCtx<'a> {
 
                     if let ast::Expr::MacroExpr(expr) = expr {
                         if let Some(expanded) =
-                            expr.macro_call().and_then(|call| self.sema.expand(&call))
+                            expr.macro_call().and_then(|call| self.sema.expand_macro_call(&call))
                         {
                             match_ast! {
                                 match expanded {

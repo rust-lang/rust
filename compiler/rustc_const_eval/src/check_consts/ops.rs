@@ -15,8 +15,7 @@ use rustc_middle::ty::{
     suggest_constraining_type_param,
 };
 use rustc_middle::util::{CallDesugaringKind, CallKind, call_kind};
-use rustc_span::symbol::sym;
-use rustc_span::{BytePos, Pos, Span, Symbol};
+use rustc_span::{BytePos, Pos, Span, Symbol, sym};
 use rustc_trait_selection::traits::SelectionContext;
 use tracing::debug;
 
@@ -140,7 +139,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                             err,
                             param_ty.name.as_str(),
                             &constraint,
-                            None,
+                            Some(trait_ref.def_id),
                             None,
                         );
                     }

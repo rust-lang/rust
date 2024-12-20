@@ -1,5 +1,3 @@
-#![feature(coverage_attribute)]
-#![feature(noop_waker)]
 //@ edition: 2018
 
 //@ aux-build: executor.rs

@@ -47,7 +47,8 @@ fn main() {
         rustc_args.push("-Zpolonius".to_owned());
         let mut callbacks = CompilerCalls::default();
         // Call the Rust compiler with our callbacks.
-        rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks).run()
+        rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks).run();
+        Ok(())
     });
     std::process::exit(exit_code);
 }

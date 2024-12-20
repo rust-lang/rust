@@ -23,7 +23,7 @@ use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Symbol, sym};
 
 pub(crate) use self::llvm::codegen_llvm_intrinsic_call;
 use crate::cast::clif_intcast;
@@ -1270,8 +1270,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
         }
 
         sym::cold_path => {
-            // This is a no-op. The intrinsic is just a hint to the optimizer.
-            // We still have an impl here to avoid it being turned into a call.
+            fx.bcx.set_cold_block(fx.bcx.current_block().unwrap());
         }
 
         // Unimplemented intrinsics must have a fallback body. The fallback body is obtained

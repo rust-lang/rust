@@ -207,7 +207,7 @@ To do so, the `#[doc(keyword = "...")]` attribute is used. Example:
 #![allow(internal_features)]
 
 /// Some documentation about the keyword.
-#[doc(keyword = "keyword")]
+#[doc(keyword = "break")]
 mod empty_mod {}
 ```
 

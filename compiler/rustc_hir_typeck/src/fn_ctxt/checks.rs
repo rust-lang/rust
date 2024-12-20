@@ -22,8 +22,7 @@ use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::Session;
-use rustc_span::symbol::{Ident, kw};
-use rustc_span::{DUMMY_SP, Span, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, kw, sym};
 use rustc_trait_selection::error_reporting::infer::{FailureCode, ObligationCauseExt};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt, SelectionContext};
@@ -903,6 +902,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
+        let detect_dotdot = |err: &mut Diag<'_>, ty: Ty<'_>, expr: &hir::Expr<'_>| {
+            if let ty::Adt(adt, _) = ty.kind()
+                && self.tcx().lang_items().get(hir::LangItem::RangeFull) == Some(adt.did())
+                && let hir::ExprKind::Struct(
+                    hir::QPath::LangItem(hir::LangItem::RangeFull, _),
+                    [],
+                    _,
+                ) = expr.kind
+            {
+                // We have `Foo(a, .., c)`, where the user might be trying to use the "rest" syntax
+                // from default field values, which is not supported on tuples.
+                let explanation = if self.tcx.features().default_field_values() {
+                    "this is only supported on non-tuple struct literals"
+                } else if self.tcx.sess.is_nightly_build() {
+                    "this is only supported on non-tuple struct literals when \
+                     `#![feature(default_field_values)]` is enabled"
+                } else {
+                    "this is not supported"
+                };
+                let msg = format!(
+                    "you might have meant to use `..` to skip providing a value for \
+                     expected fields, but {explanation}; it is instead interpreted as a \
+                     `std::ops::RangeFull` literal",
+                );
+                err.span_help(expr.span, msg);
+            }
+        };
+
         let mut reported = None;
         errors.retain(|error| {
             let Error::Invalid(provided_idx, expected_idx, Compatibility::Incompatible(Some(e))) =
@@ -936,18 +963,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // can be collated pretty easily if needed.
 
         // Next special case: if there is only one "Incompatible" error, just emit that
-        if let [
+        if let &[
             Error::Invalid(provided_idx, expected_idx, Compatibility::Incompatible(Some(err))),
         ] = &errors[..]
         {
-            let (formal_ty, expected_ty) = formal_and_expected_inputs[*expected_idx];
-            let (provided_ty, provided_arg_span) = provided_arg_tys[*provided_idx];
+            let (formal_ty, expected_ty) = formal_and_expected_inputs[expected_idx];
+            let (provided_ty, provided_arg_span) = provided_arg_tys[provided_idx];
             let trace = mk_trace(provided_arg_span, (formal_ty, expected_ty), provided_ty);
-            let mut err =
-                self.err_ctxt().report_and_explain_type_error(trace, self.param_env, *err);
+            let mut err = self.err_ctxt().report_and_explain_type_error(trace, self.param_env, err);
             self.emit_coerce_suggestions(
                 &mut err,
-                provided_args[*provided_idx],
+                provided_args[provided_idx],
                 provided_ty,
                 Expectation::rvalue_hint(self, expected_ty)
                     .only_has_type(self)
@@ -982,7 +1008,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.suggest_ptr_null_mut(
                 expected_ty,
                 provided_ty,
-                provided_args[*provided_idx],
+                provided_args[provided_idx],
                 &mut err,
             );
 
@@ -992,7 +1018,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 call_ident,
                 expected_ty,
                 provided_ty,
-                provided_args[*provided_idx],
+                provided_args[provided_idx],
                 is_method,
             );
 
@@ -1010,6 +1036,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 tuple_arguments,
             );
             suggest_confusable(&mut err);
+            detect_dotdot(&mut err, provided_ty, provided_args[provided_idx]);
             return err.emit();
         }
 
@@ -1134,6 +1161,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         None,
                         None,
                     );
+                    detect_dotdot(&mut err, provided_ty, provided_args[provided_idx]);
                 }
                 Error::Extra(arg_idx) => {
                     let (provided_ty, provided_span) = provided_arg_tys[arg_idx];
@@ -1217,6 +1245,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         };
                         prev_extra_idx = Some(arg_idx.index())
                     }
+                    detect_dotdot(&mut err, provided_ty, provided_args[arg_idx]);
                 }
                 Error::Missing(expected_idx) => {
                     // If there are multiple missing arguments adjacent to each other,
@@ -1721,10 +1750,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub(in super::super) fn check_decl(&self, decl: Declaration<'tcx>) {
+    pub(in super::super) fn check_decl(&self, decl: Declaration<'tcx>) -> Ty<'tcx> {
         // Determine and write the type which we'll check the pattern against.
         let decl_ty = self.local_ty(decl.span, decl.hir_id);
-        self.write_ty(decl.hir_id, decl_ty);
 
         // Type check the initializer.
         if let Some(ref init) = decl.init {
@@ -1756,11 +1784,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             self.diverges.set(previous_diverges);
         }
+        decl_ty
     }
 
     /// Type check a `let` statement.
     fn check_decl_local(&self, local: &'tcx hir::LetStmt<'tcx>) {
-        self.check_decl(local.into());
+        let ty = self.check_decl(local.into());
+        self.write_ty(local.hir_id, ty);
         if local.pat.is_never_pattern() {
             self.diverges.set(Diverges::Always {
                 span: local.pat.span,

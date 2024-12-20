@@ -41,10 +41,9 @@ use rustc_session::cstore::{
 use rustc_session::lint::LintExpectationId;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::Symbol;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_target::spec::PanicStrategy;
-use {rustc_abi as abi, rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
+use {rustc_abi as abi, rustc_ast as ast, rustc_attr_parsing as attr, rustc_hir as hir};
 
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
@@ -82,7 +81,7 @@ use crate::ty::print::{PrintTraitRefExt, describe_as_module};
 use crate::ty::util::AlwaysRequiresDrop;
 use crate::ty::{
     self, CrateInherentImpls, GenericArg, GenericArgsRef, PseudoCanonicalInput, Ty, TyCtxt,
-    TyCtxtFeed, UnusedGenericParams,
+    TyCtxtFeed,
 };
 use crate::{dep_graph, mir, thir};
 
@@ -276,7 +275,7 @@ rustc_queries! {
     }
 
     /// The root query triggering all analysis passes like typeck or borrowck.
-    query analysis(key: ()) -> Result<(), ErrorGuaranteed> {
+    query analysis(key: ()) {
         eval_always
         desc { "running analysis passes on this crate" }
     }
@@ -581,7 +580,7 @@ rustc_queries! {
     /// Summarizes coverage IDs inserted by the `InstrumentCoverage` MIR pass
     /// (for compiler option `-Cinstrument-coverage`), after MIR optimizations
     /// have had a chance to potentially remove some of them.
-    query coverage_ids_info(key: ty::InstanceKind<'tcx>) -> &'tcx mir::CoverageIdsInfo {
+    query coverage_ids_info(key: ty::InstanceKind<'tcx>) -> &'tcx mir::coverage::CoverageIdsInfo {
         desc { |tcx| "retrieving coverage IDs info from MIR for `{}`", tcx.def_path_str(key.def_id()) }
         arena_cache
     }
@@ -680,7 +679,7 @@ rustc_queries! {
     /// of supertraits that define the given associated type. This is used to avoid
     /// cycles in resolving type-dependent associated item paths like `T::Item`.
     query explicit_supertraits_containing_assoc_item(
-        key: (DefId, rustc_span::symbol::Ident)
+        key: (DefId, rustc_span::Ident)
     ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
         desc { |tcx| "computing the super traits of `{}` with associated type name `{}`",
             tcx.def_path_str(key.0),
@@ -709,7 +708,7 @@ rustc_queries! {
     /// To avoid cycles within the predicates of a single item we compute
     /// per-type-parameter predicates for resolving `T::AssocTy`.
     query type_param_predicates(
-        key: (LocalDefId, LocalDefId, rustc_span::symbol::Ident)
+        key: (LocalDefId, LocalDefId, rustc_span::Ident)
     ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
         desc { |tcx| "computing the bounds for type parameter `{}`", tcx.hir().ty_param_name(key.1) }
     }
@@ -746,7 +745,10 @@ rustc_queries! {
         desc { |tcx| "computing drop-check constraints for `{}`", tcx.def_path_str(key) }
     }
 
-    /// Returns `true` if this is a const fn / const impl.
+    /// Returns the constness of function-like things (tuple struct/variant constructors, functions,
+    /// methods)
+    ///
+    /// Will ICE if used on things that are always const or never const.
     ///
     /// **Do not call this function manually.** It is only meant to cache the base data for the
     /// higher-level functions. Consider using `is_const_fn` or `is_const_trait_impl` instead.
@@ -913,6 +915,12 @@ rustc_queries! {
     /// Unsafety-check this `LocalDefId`.
     query check_unsafety(key: LocalDefId) {
         desc { |tcx| "unsafety-checking `{}`", tcx.def_path_str(key) }
+        cache_on_disk_if { true }
+    }
+
+    /// Checks well-formedness of tail calls (`become f()`).
+    query check_tail_calls(key: LocalDefId) -> Result<(), rustc_errors::ErrorGuaranteed> {
+        desc { |tcx| "tail-call-checking `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { true }
     }
 
@@ -1258,7 +1266,7 @@ rustc_queries! {
     /// Returns the attributes on the item at `def_id`.
     ///
     /// Do not use this directly, use `tcx.get_attrs` instead.
-    query item_attrs(def_id: DefId) -> &'tcx [ast::Attribute] {
+    query attrs_for_def(def_id: DefId) -> &'tcx [hir::Attribute] {
         desc { |tcx| "collecting attributes of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
@@ -1275,7 +1283,7 @@ rustc_queries! {
         desc { |tcx| "computing target features for inline asm of `{}`", tcx.def_path_str(def_id) }
     }
 
-    query fn_arg_names(def_id: DefId) -> &'tcx [rustc_span::symbol::Ident] {
+    query fn_arg_names(def_id: DefId) -> &'tcx [rustc_span::Ident] {
         desc { |tcx| "looking up function parameter names for `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
@@ -2042,15 +2050,6 @@ rustc_queries! {
         desc { "getting codegen unit `{sym}`" }
     }
 
-    query unused_generic_params(key: ty::InstanceKind<'tcx>) -> UnusedGenericParams {
-        cache_on_disk_if { key.def_id().is_local() }
-        desc {
-            |tcx| "determining which generic parameters are unused by `{}`",
-                tcx.def_path_str(key.def_id())
-        }
-        separate_provide_extern
-    }
-
     query backend_optimization_level(_: ()) -> OptLevel {
         desc { "optimization level used by backend" }
     }
@@ -2233,7 +2232,7 @@ rustc_queries! {
     }
 
     /// Returns the Rust target features for the current target. These are not always the same as LLVM target features!
-    query rust_target_features(_: CrateNum) -> &'tcx UnordMap<String, rustc_target::target_features::Stability> {
+    query rust_target_features(_: CrateNum) -> &'tcx UnordMap<String, rustc_target::target_features::StabilityComputed> {
         arena_cache
         eval_always
         desc { "looking up Rust target features" }

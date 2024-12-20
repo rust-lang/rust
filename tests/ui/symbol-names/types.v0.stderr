@@ -502,5 +502,23 @@ error: demangling-alt(<a::b::Type<[_; _]>>)
 LL |     #[rustc_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 84 previous errors
+error: symbol-name(_RMsq_NvCsCRATE_HASH_1a1bINtB<REF>_4TypeAhj0_E)
+  --> $DIR/types.rs:272:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<a[HASH]::b::Type<[u8; 0usize]>>)
+  --> $DIR/types.rs:272:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<a::b::Type<[u8; 0]>>)
+  --> $DIR/types.rs:272:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 87 previous errors
 

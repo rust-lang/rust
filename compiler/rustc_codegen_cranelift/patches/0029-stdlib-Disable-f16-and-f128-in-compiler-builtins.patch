@@ -4,22 +4,23 @@ Date: Fri, 9 Aug 2024 15:44:51 +0000
 Subject: [PATCH] Disable f16 and f128 in compiler-builtins
 
 ---
- library/sysroot/Cargo.toml | 2 +-
+ library/liballoc/Cargo.toml | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/library/sysroot/Cargo.toml b/library/sysroot/Cargo.toml
+diff --git a/library/liballoc/Cargo.toml b/library/liballoc/Cargo.toml
 index 7165c3e48af..968552ad435 100644
---- a/library/sysroot/Cargo.toml
-+++ b/library/sysroot/Cargo.toml
+--- a/library/alloc/Cargo.toml
++++ b/library/alloc/Cargo.toml
 @@ -11,7 +11,7 @@ test = { path = "../test" }
+ edition = "2021"
  
- # Forward features to the `std` crate as necessary
- [features]
--default = ["std_detect_file_io", "std_detect_dlsym_getauxval", "panic-unwind"]
-+default = ["std_detect_file_io", "std_detect_dlsym_getauxval", "panic-unwind", "compiler-builtins-no-f16-f128"]
- backtrace = ["std/backtrace"]
- compiler-builtins-c = ["std/compiler-builtins-c"]
- compiler-builtins-mem = ["std/compiler-builtins-mem"]
+ [dependencies]
+ core = { path = "../core" }
+-compiler_builtins = { version = "=0.1.138", features = ['rustc-dep-of-std'] }
++compiler_builtins = { version = "=0.1.138", features = ['rustc-dep-of-std', 'no-f16-f128'] }
+ 
+ [dev-dependencies]
+ rand = { version = "0.8.5", default-features = false, features = ["alloc"] }
 -- 
 2.34.1
 

@@ -16,7 +16,7 @@ pub(crate) fn target() -> Target {
             description: Some("Thumb2-mode ARMv7-A Linux with NEON, musl 1.2.3".into()),
             tier: Some(3),
             host_tools: Some(false),
-            std: None, // ?
+            std: Some(true),
         },
         pointer_width: 32,
         data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".into(),
@@ -29,6 +29,8 @@ pub(crate) fn target() -> Target {
             features: "+v7,+thumb-mode,+thumb2,+vfp3,+neon".into(),
             max_atomic_width: Some(64),
             mcount: "\u{1}mcount".into(),
+            // FIXME(compiler-team#422): musl targets should be dynamically linked by default.
+            crt_static_default: true,
             ..base::linux_musl::opts()
         },
     }

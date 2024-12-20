@@ -26,7 +26,7 @@ use std::fmt::Write as _;
 use std::fs::{self, File};
 use std::io::{self, IsTerminal, Read, Write};
 use std::panic::{self, PanicHookInfo, catch_unwind};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{self, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, OnceLock};
@@ -42,12 +42,10 @@ use rustc_data_structures::profiling::{
 };
 use rustc_errors::emitter::stderr_destination;
 use rustc_errors::registry::Registry;
-use rustc_errors::{
-    ColorConfig, DiagCtxt, ErrCode, ErrorGuaranteed, FatalError, PResult, markdown,
-};
+use rustc_errors::{ColorConfig, DiagCtxt, ErrCode, FatalError, PResult, markdown};
 use rustc_feature::find_gated_cfg;
 use rustc_interface::util::{self, get_codegen_backend};
-use rustc_interface::{Linker, Queries, interface, passes};
+use rustc_interface::{Linker, create_and_enter_global_ctxt, interface, passes};
 use rustc_lint::unerased_lint_store;
 use rustc_metadata::creader::MetadataLoader;
 use rustc_metadata::locator;
@@ -114,7 +112,7 @@ pub static DEFAULT_LOCALE_RESOURCES: &[&str] = &[
     crate::DEFAULT_LOCALE_RESOURCE,
     rustc_ast_lowering::DEFAULT_LOCALE_RESOURCE,
     rustc_ast_passes::DEFAULT_LOCALE_RESOURCE,
-    rustc_attr::DEFAULT_LOCALE_RESOURCE,
+    rustc_attr_parsing::DEFAULT_LOCALE_RESOURCE,
     rustc_borrowck::DEFAULT_LOCALE_RESOURCE,
     rustc_builtin_macros::DEFAULT_LOCALE_RESOURCE,
     rustc_codegen_ssa::DEFAULT_LOCALE_RESOURCE,
@@ -160,13 +158,10 @@ pub trait Callbacks {
     /// Called after parsing the crate root. Submodules are not yet parsed when
     /// this callback is called. Return value instructs the compiler whether to
     /// continue the compilation afterwards (defaults to `Compilation::Continue`)
-    #[deprecated = "This callback will likely be removed or stop giving access \
-                    to the TyCtxt in the future. Use either the after_expansion \
-                    or the after_analysis callback instead."]
-    fn after_crate_root_parsing<'tcx>(
+    fn after_crate_root_parsing(
         &mut self,
         _compiler: &interface::Compiler,
-        _queries: &'tcx Queries<'tcx>,
+        _queries: &ast::Crate,
     ) -> Compilation {
         Compilation::Continue
     }
@@ -175,7 +170,7 @@ pub trait Callbacks {
     fn after_expansion<'tcx>(
         &mut self,
         _compiler: &interface::Compiler,
-        _queries: &'tcx Queries<'tcx>,
+        _tcx: TyCtxt<'tcx>,
     ) -> Compilation {
         Compilation::Continue
     }
@@ -271,14 +266,14 @@ impl<'a> RunCompiler<'a> {
     }
 
     /// Parse args and run the compiler.
-    pub fn run(self) -> interface::Result<()> {
+    pub fn run(self) {
         run_compiler(
             self.at_args,
             self.callbacks,
             self.file_loader,
             self.make_codegen_backend,
             self.using_internal_features,
-        )
+        );
     }
 }
 
@@ -290,7 +285,7 @@ fn run_compiler(
         Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>,
     >,
     using_internal_features: Arc<std::sync::atomic::AtomicBool>,
-) -> interface::Result<()> {
+) {
     let mut default_early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
     // Throw away the first argument, the name of the binary.
@@ -303,9 +298,11 @@ fn run_compiler(
     // the compiler with @empty_file as argv[0] and no more arguments.
     let at_args = at_args.get(1..).unwrap_or_default();
 
-    let args = args::arg_expand_all(&default_early_dcx, at_args)?;
+    let args = args::arg_expand_all(&default_early_dcx, at_args);
 
-    let Some(matches) = handle_options(&default_early_dcx, &args) else { return Ok(()) };
+    let Some(matches) = handle_options(&default_early_dcx, &args) else {
+        return;
+    };
 
     let sopts = config::build_session_options(&mut default_early_dcx, &matches);
     // fully initialize ice path static once unstable options are available as context
@@ -313,7 +310,7 @@ fn run_compiler(
 
     if let Some(ref code) = matches.opt_str("explain") {
         handle_explain(&default_early_dcx, diagnostics_registry(), code, sopts.color);
-        return Ok(());
+        return;
     }
 
     let (odir, ofile) = make_output(&matches);
@@ -338,7 +335,7 @@ fn run_compiler(
         expanded_args: args,
     };
 
-    let has_input = match make_input(&default_early_dcx, &matches.free)? {
+    let has_input = match make_input(&default_early_dcx, &matches.free) {
         Some(input) => {
             config.input = input;
             true // has input: normal compilation
@@ -350,6 +347,8 @@ fn run_compiler(
 
     callbacks.config(&mut config);
 
+    let registered_lints = config.register_lints.is_some();
+
     interface::run_compiler(config, |compiler| {
         let sess = &compiler.sess;
         let codegen_backend = &*compiler.codegen_backend;
@@ -358,14 +357,14 @@ fn run_compiler(
         // printing some information without compiling, or exiting immediately
         // after parsing, etc.
         let early_exit = || {
-            if let Some(guar) = sess.dcx().has_errors() { Err(guar) } else { Ok(()) }
+            sess.dcx().abort_if_errors();
         };
 
         // This implements `-Whelp`. It should be handled very early, like
         // `--help`/`-Zhelp`/`-Chelp`. This is the earliest it can run, because
         // it must happen after lints are registered, during session creation.
         if sess.opts.describe_lints {
-            describe_lints(sess);
+            describe_lints(sess, registered_lints);
             return early_exit();
         }
 
@@ -388,86 +387,80 @@ fn run_compiler(
             return early_exit();
         }
 
-        let linker = compiler.enter(|queries| {
-            let early_exit = || early_exit().map(|_| None);
+        // Parse the crate root source code (doesn't parse submodules yet)
+        // Everything else is parsed during macro expansion.
+        let krate = passes::parse(sess);
 
-            // Parse the crate root source code (doesn't parse submodules yet)
-            // Everything else is parsed during macro expansion.
-            queries.parse()?;
-
-            // If pretty printing is requested: Figure out the representation, print it and exit
-            if let Some(pp_mode) = sess.opts.pretty {
-                if pp_mode.needs_ast_map() {
-                    queries.global_ctxt()?.enter(|tcx| {
-                        tcx.ensure().early_lint_checks(());
-                        pretty::print(sess, pp_mode, pretty::PrintExtra::NeedsAstMap { tcx });
-                        passes::write_dep_info(tcx);
-                    });
-                } else {
-                    let krate = queries.parse()?;
-                    pretty::print(sess, pp_mode, pretty::PrintExtra::AfterParsing {
-                        krate: &*krate.borrow(),
-                    });
-                }
-                trace!("finished pretty-printing");
-                return early_exit();
+        // If pretty printing is requested: Figure out the representation, print it and exit
+        if let Some(pp_mode) = sess.opts.pretty {
+            if pp_mode.needs_ast_map() {
+                create_and_enter_global_ctxt(compiler, krate, |tcx| {
+                    tcx.ensure().early_lint_checks(());
+                    pretty::print(sess, pp_mode, pretty::PrintExtra::NeedsAstMap { tcx });
+                    passes::write_dep_info(tcx);
+                });
+            } else {
+                pretty::print(sess, pp_mode, pretty::PrintExtra::AfterParsing { krate: &krate });
             }
+            trace!("finished pretty-printing");
+            return early_exit();
+        }
 
-            #[allow(deprecated)]
-            if callbacks.after_crate_root_parsing(compiler, queries) == Compilation::Stop {
-                return early_exit();
-            }
+        if callbacks.after_crate_root_parsing(compiler, &krate) == Compilation::Stop {
+            return early_exit();
+        }
 
-            if sess.opts.unstable_opts.parse_crate_root_only {
-                return early_exit();
-            }
+        if sess.opts.unstable_opts.parse_crate_root_only {
+            return early_exit();
+        }
+
+        let linker = create_and_enter_global_ctxt(compiler, krate, |tcx| {
+            let early_exit = || {
+                sess.dcx().abort_if_errors();
+                None
+            };
 
             // Make sure name resolution and macro expansion is run.
-            queries.global_ctxt()?.enter(|tcx| tcx.resolver_for_lowering());
+            let _ = tcx.resolver_for_lowering();
 
             if let Some(metrics_dir) = &sess.opts.unstable_opts.metrics_dir {
-                queries.global_ctxt()?.enter(|tcxt| dump_feature_usage_metrics(tcxt, metrics_dir));
+                dump_feature_usage_metrics(tcx, metrics_dir);
             }
 
-            if callbacks.after_expansion(compiler, queries) == Compilation::Stop {
+            if callbacks.after_expansion(compiler, tcx) == Compilation::Stop {
                 return early_exit();
             }
 
-            queries.global_ctxt()?.enter(|tcx| {
-                passes::write_dep_info(tcx);
+            passes::write_dep_info(tcx);
 
-                if sess.opts.output_types.contains_key(&OutputType::DepInfo)
-                    && sess.opts.output_types.len() == 1
-                {
-                    return early_exit();
-                }
+            if sess.opts.output_types.contains_key(&OutputType::DepInfo)
+                && sess.opts.output_types.len() == 1
+            {
+                return early_exit();
+            }
 
-                if sess.opts.unstable_opts.no_analysis {
-                    return early_exit();
-                }
+            if sess.opts.unstable_opts.no_analysis {
+                return early_exit();
+            }
 
-                tcx.analysis(())?;
+            tcx.ensure().analysis(());
 
-                if callbacks.after_analysis(compiler, tcx) == Compilation::Stop {
-                    return early_exit();
-                }
+            if callbacks.after_analysis(compiler, tcx) == Compilation::Stop {
+                return early_exit();
+            }
 
-                Ok(Some(Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend)?))
-            })
-        })?;
+            Some(Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend))
+        });
 
         // Linking is done outside the `compiler.enter()` so that the
         // `GlobalCtxt` within `Queries` can be freed as early as possible.
         if let Some(linker) = linker {
-            let _timer = sess.timer("link");
-            linker.link(sess, codegen_backend)?
+            linker.link(sess, codegen_backend);
         }
-
-        Ok(())
     })
 }
 
-fn dump_feature_usage_metrics(tcxt: TyCtxt<'_>, metrics_dir: &PathBuf) {
+fn dump_feature_usage_metrics(tcxt: TyCtxt<'_>, metrics_dir: &Path) {
     let output_filenames = tcxt.output_filenames(());
     let mut metrics_file_name = std::ffi::OsString::from("unstable_feature_usage_metrics-");
     let mut metrics_path = output_filenames.with_directory_and_extension(metrics_dir, "json");
@@ -496,21 +489,17 @@ fn make_output(matches: &getopts::Matches) -> (Option<PathBuf>, Option<OutFileNa
 
 /// Extract input (string or file and optional path) from matches.
 /// This handles reading from stdin if `-` is provided.
-fn make_input(
-    early_dcx: &EarlyDiagCtxt,
-    free_matches: &[String],
-) -> Result<Option<Input>, ErrorGuaranteed> {
+fn make_input(early_dcx: &EarlyDiagCtxt, free_matches: &[String]) -> Option<Input> {
     match free_matches {
-        [] => Ok(None), // no input: we will exit early,
+        [] => None, // no input: we will exit early,
         [ifile] if ifile == "-" => {
             // read from stdin as `Input::Str`
             let mut input = String::new();
             if io::stdin().read_to_string(&mut input).is_err() {
                 // Immediately stop compilation if there was an issue reading
                 // the input (for example if the input stream is not UTF-8).
-                let reported = early_dcx
-                    .early_err("couldn't read from stdin, as it did not contain valid UTF-8");
-                return Err(reported);
+                early_dcx
+                    .early_fatal("couldn't read from stdin, as it did not contain valid UTF-8");
             }
 
             let name = match env::var("UNSTABLE_RUSTDOC_TEST_PATH") {
@@ -526,9 +515,9 @@ fn make_input(
                 Err(_) => FileName::anon_source_code(&input),
             };
 
-            Ok(Some(Input::Str { name, input }))
+            Some(Input::Str { name, input })
         }
-        [ifile] => Ok(Some(Input::File(PathBuf::from(ifile)))),
+        [ifile] => Some(Input::File(PathBuf::from(ifile))),
         [ifile1, ifile2, ..] => early_dcx.early_fatal(format!(
             "multiple input filenames provided (first two filenames are `{}` and `{}`)",
             ifile1, ifile2
@@ -663,9 +652,7 @@ fn process_rlink(sess: &Session, compiler: &interface::Compiler) {
                 };
             }
         };
-        if compiler.codegen_backend.link(sess, codegen_results, &outputs).is_err() {
-            FatalError.raise();
-        }
+        compiler.codegen_backend.link(sess, codegen_results, &outputs);
     } else {
         dcx.emit_fatal(RlinkNotAFile {});
     }
@@ -988,7 +975,7 @@ the command line flag directly.
 }
 
 /// Write to stdout lint command options, together with a list of all available lints
-pub fn describe_lints(sess: &Session) {
+pub fn describe_lints(sess: &Session, registered_lints: bool) {
     safe_println!(
         "
 Available lint options:
@@ -1092,7 +1079,7 @@ Available lint options:
 
     print_lint_groups(builtin_groups, true);
 
-    match (sess.registered_lints, loaded.len(), loaded_groups.len()) {
+    match (registered_lints, loaded.len(), loaded_groups.len()) {
         (false, 0, _) | (false, _, 0) => {
             safe_println!("Lint tools like Clippy can load additional lints and lint groups.");
         }
@@ -1608,7 +1595,8 @@ pub fn main() -> ! {
     let exit_code = catch_with_exit_code(|| {
         RunCompiler::new(&args::raw_args(&early_dcx)?, &mut callbacks)
             .set_using_internal_features(using_internal_features)
-            .run()
+            .run();
+        Ok(())
     });
 
     if let Some(format) = callbacks.time_passes {

@@ -17,7 +17,7 @@ rustc_apfloat = "0.2.0"
 rustc_arena = { path = "../rustc_arena" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_ir = { path = "../rustc_ast_ir" }
-rustc_attr = { path = "../rustc_attr" }
+rustc_attr_parsing = { path = "../rustc_attr_parsing" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_error_messages = { path = "../rustc_error_messages" } # Used for intra-doc links
 rustc_errors = { path = "../rustc_errors" }

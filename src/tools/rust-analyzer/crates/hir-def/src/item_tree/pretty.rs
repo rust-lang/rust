@@ -484,7 +484,7 @@ impl Printer<'_> {
                     w!(self, "!");
                 }
                 if let Some(tr) = target_trait {
-                    self.print_path(&tr.path, types_map);
+                    self.print_path(&types_map[tr.path], types_map);
                     w!(self, " for ");
                 }
                 self.print_type_ref(*self_ty, types_map);
@@ -648,9 +648,9 @@ impl Printer<'_> {
                 let (target, bound) = match pred {
                     WherePredicate::TypeBound { target, bound } => (target, bound),
                     WherePredicate::Lifetime { target, bound } => {
-                        wln!(
+                        w!(
                             this,
-                            "{}: {},",
+                            "{}: {}",
                             target.name.display(self.db.upcast(), edition),
                             bound.name.display(self.db.upcast(), edition)
                         );

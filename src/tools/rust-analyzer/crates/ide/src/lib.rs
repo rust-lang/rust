@@ -132,11 +132,9 @@ pub use ide_db::{
     search::{ReferenceCategory, SearchScope},
     source_change::{FileSystemEdit, SnippetEdit, SourceChange},
     symbol_index::Query,
-    FileId, FilePosition, FileRange, RootDatabase, SymbolKind,
+    FileId, FilePosition, FileRange, RootDatabase, Severity, SymbolKind,
 };
-pub use ide_diagnostics::{
-    Diagnostic, DiagnosticCode, DiagnosticsConfig, ExprFillDefaultMode, Severity,
-};
+pub use ide_diagnostics::{Diagnostic, DiagnosticCode, DiagnosticsConfig, ExprFillDefaultMode};
 pub use ide_ssr::SsrError;
 pub use span::Edition;
 pub use syntax::{TextRange, TextSize};
@@ -301,7 +299,7 @@ impl Analysis {
 
     /// Gets the syntax tree of the file.
     pub fn parse(&self, file_id: FileId) -> Cancellable<SourceFile> {
-        // FIXME editiojn
+        // FIXME edition
         self.with_db(|db| db.parse(EditionedFileId::current_edition(file_id)).tree())
     }
 
@@ -402,6 +400,8 @@ impl Analysis {
         self.with_db(|db| typing::on_enter(db, position))
     }
 
+    pub const SUPPORTED_TRIGGER_CHARS: &'static str = typing::TRIGGER_CHARS;
+
     /// Returns an edit which should be applied after a character was typed.
     ///
     /// This is useful for some on-the-fly fixups, like adding `;` to `let =`
@@ -410,14 +410,16 @@ impl Analysis {
         &self,
         position: FilePosition,
         char_typed: char,
-        autoclose: bool,
+        chars_to_exclude: Option<String>,
     ) -> Cancellable<Option<SourceChange>> {
         // Fast path to not even parse the file.
         if !typing::TRIGGER_CHARS.contains(char_typed) {
             return Ok(None);
         }
-        if char_typed == '<' && !autoclose {
-            return Ok(None);
+        if let Some(chars_to_exclude) = chars_to_exclude {
+            if chars_to_exclude.contains(char_typed) {
+                return Ok(None);
+            }
         }
 
         self.with_db(|db| typing::on_char_typed(db, position, char_typed))
@@ -538,7 +540,7 @@ impl Analysis {
     /// Returns URL(s) for the documentation of the symbol under the cursor.
     /// # Arguments
     /// * `position` - Position in the file.
-    /// * `target_dir` - Directory where the build output is storeda.
+    /// * `target_dir` - Directory where the build output is stored.
     pub fn external_docs(
         &self,
         position: FilePosition,

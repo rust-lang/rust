@@ -3577,34 +3577,44 @@ pub const fn discriminant_value<T>(_v: &T) -> <T as DiscriminantKind>::Discrimin
     unimplemented!()
 }
 
-extern "rust-intrinsic" {
-    /// Rust's "try catch" construct for unwinding. Invokes the function pointer `try_fn` with the
-    /// data pointer `data`, and calls `catch_fn` if unwinding occurs while `try_fn` runs.
-    ///
-    /// `catch_fn` must not unwind.
-    ///
-    /// The third argument is a function called if an unwind occurs (both Rust `panic` and foreign
-    /// unwinds). This function takes the data pointer and a pointer to the target- and
-    /// runtime-specific exception object that was caught.
-    ///
-    /// Note that in the case of a foreign unwinding operation, the exception object data may not be
-    /// safely usable from Rust, and should not be directly exposed via the standard library. To
-    /// prevent unsafe access, the library implementation may either abort the process or present an
-    /// opaque error type to the user.
-    ///
-    /// For more information, see the compiler's source, as well as the documentation for the stable
-    /// version of this intrinsic, `std::panic::catch_unwind`.
-    #[rustc_nounwind]
-    pub fn catch_unwind(try_fn: fn(*mut u8), data: *mut u8, catch_fn: fn(*mut u8, *mut u8)) -> i32;
+/// Rust's "try catch" construct for unwinding. Invokes the function pointer `try_fn` with the
+/// data pointer `data`, and calls `catch_fn` if unwinding occurs while `try_fn` runs.
+///
+/// `catch_fn` must not unwind.
+///
+/// The third argument is a function called if an unwind occurs (both Rust `panic` and foreign
+/// unwinds). This function takes the data pointer and a pointer to the target- and
+/// runtime-specific exception object that was caught.
+///
+/// Note that in the case of a foreign unwinding operation, the exception object data may not be
+/// safely usable from Rust, and should not be directly exposed via the standard library. To
+/// prevent unsafe access, the library implementation may either abort the process or present an
+/// opaque error type to the user.
+///
+/// For more information, see the compiler's source, as well as the documentation for the stable
+/// version of this intrinsic, `std::panic::catch_unwind`.
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn catch_unwind(
+    _try_fn: fn(*mut u8),
+    _data: *mut u8,
+    _catch_fn: fn(*mut u8, *mut u8),
+) -> i32 {
+    unreachable!()
+}
 
-    /// Emits a `nontemporal` store, which gives a hint to the CPU that the data should not be held
-    /// in cache. Except for performance, this is fully equivalent to `ptr.write(val)`.
-    ///
-    /// Not all architectures provide such an operation. For instance, x86 does not: while `MOVNT`
-    /// exists, that operation is *not* equivalent to `ptr.write(val)` (`MOVNT` writes can be reordered
-    /// in ways that are not allowed for regular writes).
-    #[rustc_nounwind]
-    pub fn nontemporal_store<T>(ptr: *mut T, val: T);
+/// Emits a `nontemporal` store, which gives a hint to the CPU that the data should not be held
+/// in cache. Except for performance, this is fully equivalent to `ptr.write(val)`.
+///
+/// Not all architectures provide such an operation. For instance, x86 does not: while `MOVNT`
+/// exists, that operation is *not* equivalent to `ptr.write(val)` (`MOVNT` writes can be reordered
+/// in ways that are not allowed for regular writes).
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+pub unsafe fn nontemporal_store<T>(_ptr: *mut T, _val: T) {
+    unreachable!()
 }
 
 /// See documentation of `<*const T>::offset_from` for details.

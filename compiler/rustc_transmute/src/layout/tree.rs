@@ -338,16 +338,11 @@ pub(crate) mod rustc {
                 };
 
             match layout.variants() {
+                Variants::Empty => Ok(Self::uninhabited()),
                 Variants::Single { index } => {
-                    // Hilariously, `Single` is used even for 0-variant enums;
-                    // `index` is just junk in that case.
-                    if ty.ty_adt_def().unwrap().variants().is_empty() {
-                        Ok(Self::uninhabited())
-                    } else {
-                        // `Variants::Single` on enums with variants denotes that
-                        // the enum delegates its layout to the variant at `index`.
-                        layout_of_variant(*index, None)
-                    }
+                    // `Variants::Single` on enums with variants denotes that
+                    // the enum delegates its layout to the variant at `index`.
+                    layout_of_variant(*index, None)
                 }
                 Variants::Multiple { tag, tag_encoding, tag_field, .. } => {
                     // `Variants::Multiple` denotes an enum with multiple
@@ -500,6 +495,10 @@ pub(crate) mod rustc {
         (ty, layout): (Ty<'tcx>, Layout<'tcx>),
         i: FieldIdx,
     ) -> Ty<'tcx> {
+        // We cannot use `ty_and_layout_field` to retrieve the field type, since
+        // `ty_and_layout_field` erases regions in the returned type. We must
+        // not erase regions here, since we may need to ultimately emit outlives
+        // obligations as a consequence of the transmutability analysis.
         match ty.kind() {
             ty::Adt(def, args) => {
                 match layout.variants {
@@ -507,6 +506,7 @@ pub(crate) mod rustc {
                         let field = &def.variant(index).fields[i];
                         field.ty(cx.tcx(), args)
                     }
+                    Variants::Empty => panic!("there is no field in Variants::Empty types"),
                     // Discriminant field for enums (where applicable).
                     Variants::Multiple { tag, .. } => {
                         assert_eq!(i.as_usize(), 0);

@@ -219,7 +219,7 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
 }
 
 impl<T, F> LazyCell<T, F> {
-    /// Returns a reference to the value if initialized, or `None` if not.
+    /// Returns a mutable reference to the value if initialized, or `None` if not.
     ///
     /// # Examples
     ///
@@ -245,7 +245,7 @@ impl<T, F> LazyCell<T, F> {
         }
     }
 
-    /// Returns a mutable reference to the value if initialized, or `None` if not.
+    /// Returns a reference to the value if initialized, or `None` if not.
     ///
     /// # Examples
     ///

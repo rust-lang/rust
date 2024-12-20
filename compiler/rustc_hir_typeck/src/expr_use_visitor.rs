@@ -341,6 +341,10 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 self.walk_expr(subexpr)?;
             }
 
+            hir::ExprKind::UnsafeBinderCast(_, subexpr, _) => {
+                self.walk_expr(subexpr)?;
+            }
+
             hir::ExprKind::Unary(hir::UnOp::Deref, base) => {
                 // *base
                 self.walk_expr(base)?;
@@ -686,7 +690,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     fn walk_struct_expr<'hir>(
         &self,
         fields: &[hir::ExprField<'_>],
-        opt_with: &Option<&'hir hir::Expr<'_>>,
+        opt_with: &hir::StructTailExpr<'hir>,
     ) -> Result<(), Cx::Error> {
         // Consume the expressions supplying values for each field.
         for field in fields {
@@ -702,8 +706,8 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         }
 
         let with_expr = match *opt_with {
-            Some(w) => &*w,
-            None => {
+            hir::StructTailExpr::Base(w) => &*w,
+            hir::StructTailExpr::DefaultFields(_) | hir::StructTailExpr::None => {
                 return Ok(());
             }
         };
@@ -1360,7 +1364,10 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 self.cat_res(expr.hir_id, expr.span, expr_ty, res)
             }
 
+            // both type ascription and unsafe binder casts don't affect
+            // the place-ness of the subexpression.
             hir::ExprKind::Type(e, _) => self.cat_expr(e),
+            hir::ExprKind::UnsafeBinderCast(_, e, _) => self.cat_expr(e),
 
             hir::ExprKind::AddrOf(..)
             | hir::ExprKind::Call(..)

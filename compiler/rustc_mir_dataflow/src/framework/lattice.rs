@@ -38,10 +38,8 @@
 //! [Hasse diagram]: https://en.wikipedia.org/wiki/Hasse_diagram
 //! [poset]: https://en.wikipedia.org/wiki/Partially_ordered_set
 
-use std::iter;
-
-use rustc_index::bit_set::{BitSet, ChunkedBitSet};
-use rustc_index::{Idx, IndexVec};
+use rustc_index::Idx;
+use rustc_index::bit_set::{BitSet, MixedBitSet};
 
 use crate::framework::BitSetExt;
 
@@ -70,53 +68,6 @@ pub trait HasTop {
     const TOP: Self;
 }
 
-/// A `bool` is a "two-point" lattice with `true` as the top element and `false` as the bottom:
-///
-/// ```text
-///      true
-///        |
-///      false
-/// ```
-impl JoinSemiLattice for bool {
-    fn join(&mut self, other: &Self) -> bool {
-        if let (false, true) = (*self, *other) {
-            *self = true;
-            return true;
-        }
-
-        false
-    }
-}
-
-impl HasBottom for bool {
-    const BOTTOM: Self = false;
-
-    fn is_bottom(&self) -> bool {
-        !self
-    }
-}
-
-impl HasTop for bool {
-    const TOP: Self = true;
-}
-
-/// A tuple (or list) of lattices is itself a lattice whose least upper bound is the concatenation
-/// of the least upper bounds of each element of the tuple (or list).
-///
-/// In other words:
-///     (A₀, A₁, ..., Aₙ) ∨ (B₀, B₁, ..., Bₙ) = (A₀∨B₀, A₁∨B₁, ..., Aₙ∨Bₙ)
-impl<I: Idx, T: JoinSemiLattice> JoinSemiLattice for IndexVec<I, T> {
-    fn join(&mut self, other: &Self) -> bool {
-        assert_eq!(self.len(), other.len());
-
-        let mut changed = false;
-        for (a, b) in iter::zip(self, other) {
-            changed |= a.join(b);
-        }
-        changed
-    }
-}
-
 /// A `BitSet` represents the lattice formed by the powerset of all possible values of
 /// the index type `T` ordered by inclusion. Equivalently, it is a tuple of "two-point" lattices,
 /// one for each possible value of `T`.
@@ -126,7 +77,7 @@ impl<T: Idx> JoinSemiLattice for BitSet<T> {
     }
 }
 
-impl<T: Idx> JoinSemiLattice for ChunkedBitSet<T> {
+impl<T: Idx> JoinSemiLattice for MixedBitSet<T> {
     fn join(&mut self, other: &Self) -> bool {
         self.union(other)
     }
@@ -195,18 +146,6 @@ impl<T> MaybeReachable<T> {
     pub fn is_reachable(&self) -> bool {
         matches!(self, MaybeReachable::Reachable(_))
     }
-}
-
-impl<T> HasBottom for MaybeReachable<T> {
-    const BOTTOM: Self = MaybeReachable::Unreachable;
-
-    fn is_bottom(&self) -> bool {
-        matches!(self, Self::Unreachable)
-    }
-}
-
-impl<T: HasTop> HasTop for MaybeReachable<T> {
-    const TOP: Self = MaybeReachable::Reachable(T::TOP);
 }
 
 impl<S> MaybeReachable<S> {

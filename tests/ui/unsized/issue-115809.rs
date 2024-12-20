@@ -1,4 +1,4 @@
-//@ compile-flags: --emit=link -Zmir-opt-level=2 -Zpolymorphize=on
+//@ compile-flags: --emit=link -Zmir-opt-level=2 -Zvalidate-mir
 
 fn foo<T>() {
     let a: [i32; 0] = [];

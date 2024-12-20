@@ -7,17 +7,15 @@
 use std::cell::Cell;
 use std::collections::hash_map::Entry;
 
-use rustc_ast::{
-    AttrKind, AttrStyle, Attribute, LitKind, MetaItemInner, MetaItemKind, MetaItemLit, ast,
-};
+use rustc_ast::{AttrStyle, LitKind, MetaItemInner, MetaItemKind, MetaItemLit, ast};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey};
 use rustc_feature::{AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
 use rustc_hir::def_id::LocalModDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
-    self as hir, self, AssocItemKind, CRATE_HIR_ID, CRATE_OWNER_ID, FnSig, ForeignItem, HirId,
-    Item, ItemKind, MethodKind, Safety, Target, TraitItem,
+    self as hir, self, AssocItemKind, AttrKind, Attribute, CRATE_HIR_ID, CRATE_OWNER_ID, FnSig,
+    ForeignItem, HirId, Item, ItemKind, MethodKind, Safety, Target, TraitItem,
 };
 use rustc_macros::LintDiagnostic;
 use rustc_middle::hir::nested_filter;
@@ -32,8 +30,7 @@ use rustc_session::lint::builtin::{
     UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
 };
 use rustc_session::parse::feature_err;
-use rustc_span::symbol::{Symbol, kw, sym};
-use rustc_span::{BytePos, DUMMY_SP, Span};
+use rustc_span::{BytePos, DUMMY_SP, Span, Symbol, kw, sym};
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -118,7 +115,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         for attr in attrs {
             match attr.path().as_slice() {
                 [sym::diagnostic, sym::do_not_recommend, ..] => {
-                    self.check_do_not_recommend(attr.span, hir_id, target)
+                    self.check_do_not_recommend(attr.span, hir_id, target, attr, item)
                 }
                 [sym::diagnostic, sym::on_unimplemented, ..] => {
                     self.check_diagnostic_on_unimplemented(attr.span, hir_id, target)
@@ -351,13 +348,34 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if `#[diagnostic::do_not_recommend]` is applied on a trait impl.
-    fn check_do_not_recommend(&self, attr_span: Span, hir_id: HirId, target: Target) {
-        if !matches!(target, Target::Impl) {
+    fn check_do_not_recommend(
+        &self,
+        attr_span: Span,
+        hir_id: HirId,
+        target: Target,
+        attr: &Attribute,
+        item: Option<ItemLike<'_>>,
+    ) {
+        if !matches!(target, Target::Impl)
+            || matches!(
+                item,
+                Some(ItemLike::Item(hir::Item {  kind: hir::ItemKind::Impl(_impl),.. }))
+                    if _impl.of_trait.is_none()
+            )
+        {
             self.tcx.emit_node_span_lint(
                 UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                 hir_id,
                 attr_span,
                 errors::IncorrectDoNotRecommendLocation,
+            );
+        }
+        if !attr.is_word() {
+            self.tcx.emit_node_span_lint(
+                UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                hir_id,
+                attr_span,
+                errors::DoNotRecommendDoesNotExpectArgs,
             );
         }
     }
@@ -715,7 +733,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         attrs: &[Attribute],
     ) {
         match target {
-            Target::Fn => {
+            Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent)
+            | Target::Fn => {
                 // `#[target_feature]` is not allowed in lang items.
                 if let Some((lang_item, _)) = hir::lang_items::extract(attrs)
                     // Calling functions with `#[target_feature]` is
@@ -732,7 +751,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     });
                 }
             }
-            Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => {}
             // FIXME: #[target_feature] was previously erroneously allowed on statements and some
             // crates used this, so only emit a warning.
             Target::Statement => {
@@ -914,6 +932,13 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     fn check_doc_keyword(&self, meta: &MetaItemInner, hir_id: HirId) {
+        fn is_doc_keyword(s: Symbol) -> bool {
+            // FIXME: Once rustdoc can handle URL conflicts on case insensitive file systems, we
+            // can remove the `SelfTy` case here, remove `sym::SelfTy`, and update the
+            // `#[doc(keyword = "SelfTy")` attribute in `library/std/src/keyword_docs.rs`.
+            s <= kw::Union || s == sym::SelfTy
+        }
+
         let doc_keyword = meta.value_str().unwrap_or(kw::Empty);
         if doc_keyword == kw::Empty {
             self.doc_attr_str_error(meta, "keyword");
@@ -935,10 +960,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 return;
             }
         }
-        if !rustc_lexer::is_ident(doc_keyword.as_str()) {
-            self.dcx().emit_err(errors::DocKeywordInvalidIdent {
+        if !is_doc_keyword(doc_keyword) {
+            self.dcx().emit_err(errors::DocKeywordNotKeyword {
                 span: meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
-                doc_keyword,
+                keyword: doc_keyword,
             });
         }
     }
@@ -1176,10 +1201,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         specified_inline: &mut Option<(bool, Span)>,
         aliases: &mut FxHashMap<String, Span>,
     ) {
-        if let Some(mi) = attr.meta()
-            && let Some(list) = mi.meta_item_list()
-        {
-            for meta in list {
+        if let Some(list) = attr.meta_item_list() {
+            for meta in &list {
                 if let Some(i_meta) = meta.meta_item() {
                     match i_meta.name_or_empty() {
                         sym::alias => {
@@ -1279,7 +1302,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                                             AttrStyle::Inner => "!",
                                             AttrStyle::Outer => "",
                                         },
-                                        sugg: (attr.meta().unwrap().span, applicability),
+                                        sugg: (attr.span, applicability),
                                     },
                                 );
                             } else if i_meta.has_name(sym::passes)
@@ -2141,10 +2164,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_confusables(&self, attr: &Attribute, target: Target) {
         match target {
             Target::Method(MethodKind::Inherent) => {
-                let Some(meta) = attr.meta() else {
-                    return;
-                };
-                let ast::MetaItem { kind: MetaItemKind::List(ref metas), .. } = meta else {
+                let Some(metas) = attr.meta_item_list() else {
                     return;
                 };
 
@@ -2602,7 +2622,7 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
 
                     if let AttrKind::Normal(ref p) = attr.kind {
                         tcx.dcx().try_steal_replace_and_emit_err(
-                            p.item.path.span,
+                            p.path.span,
                             StashKey::UndeterminedMacroResolution,
                             err,
                         );

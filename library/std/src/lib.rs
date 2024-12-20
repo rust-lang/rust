@@ -251,7 +251,6 @@
 #![allow(explicit_outlives_requirements)]
 #![allow(unused_lifetimes)]
 #![allow(internal_features)]
-#![deny(rustc::existing_doc_keyword)]
 #![deny(fuzzy_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(rustdoc::redundant_explicit_links)]
@@ -292,6 +291,7 @@
 #![feature(dropck_eyepatch)]
 #![feature(f128)]
 #![feature(f16)]
+#![feature(formatting_options)]
 #![feature(if_let_guard)]
 #![feature(intra_doc_pointers)]
 #![feature(lang_items)]
@@ -347,7 +347,6 @@
 #![feature(pin_coerce_unsized_trait)]
 #![feature(pointer_is_aligned_to)]
 #![feature(portable_simd)]
-#![feature(prelude_2024)]
 #![feature(ptr_as_uninit)]
 #![feature(ptr_mask)]
 #![feature(random)]
@@ -373,6 +372,7 @@
 #![feature(thin_box)]
 #![feature(try_reserve_kind)]
 #![feature(try_with_capacity)]
+#![feature(unique_rc_arc)]
 #![feature(vec_into_raw_parts)]
 // tidy-alphabetical-end
 //
@@ -544,6 +544,8 @@ pub use core::u64;
 #[stable(feature = "i128", since = "1.26.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::u128;
+#[unstable(feature = "unsafe_binders", issue = "130516")]
+pub use core::unsafe_binder;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::usize;

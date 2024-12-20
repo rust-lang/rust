@@ -809,7 +809,7 @@ impl GlobalState {
                 }
             }
             vfs::loader::Message::Progress { n_total, n_done, dir, config_version } => {
-                let _p = span!(Level::INFO, "GlobalState::handle_vfs_mgs/progress").entered();
+                let _p = span!(Level::INFO, "GlobalState::handle_vfs_msg/progress").entered();
                 always!(config_version <= self.vfs_config_version);
 
                 let (n_done, state) = match n_done {

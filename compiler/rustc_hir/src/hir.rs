@@ -1,14 +1,17 @@
 use std::fmt;
 
 use rustc_abi::ExternAbi;
+// ignore-tidy-filelength
+use rustc_ast::attr::AttributeExt;
+use rustc_ast::token::CommentKind;
 use rustc_ast::util::parser::{AssocOp, ExprPrecedence};
 use rustc_ast::{
-    self as ast, Attribute, FloatTy, InlineAsmOptions, InlineAsmTemplatePiece, IntTy, Label,
-    LitKind, TraitObjectSyntax, UintTy,
+    self as ast, AttrId, AttrStyle, DelimArgs, FloatTy, InlineAsmOptions, InlineAsmTemplatePiece,
+    IntTy, Label, LitKind, MetaItemInner, MetaItemLit, TraitObjectSyntax, UintTy,
 };
 pub use rustc_ast::{
     BinOp, BinOpKind, BindingMode, BorrowKind, BoundConstness, BoundPolarity, ByRef, CaptureBy,
-    ImplPolarity, IsAuto, Movability, Mutability, UnOp,
+    ImplPolarity, IsAuto, Movability, Mutability, UnOp, UnsafeBinderCastKind,
 };
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
@@ -17,10 +20,10 @@ use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{BytePos, DUMMY_SP, ErrorGuaranteed, Span};
+use rustc_span::{BytePos, DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use smallvec::SmallVec;
+use thin_vec::ThinVec;
 use tracing::debug;
 
 use crate::LangItem;
@@ -937,6 +940,250 @@ pub struct ParentedNode<'tcx> {
     pub node: Node<'tcx>,
 }
 
+/// Arguments passed to an attribute macro.
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable)]
+pub enum AttrArgs {
+    /// No arguments: `#[attr]`.
+    Empty,
+    /// Delimited arguments: `#[attr()/[]/{}]`.
+    Delimited(DelimArgs),
+    /// Arguments of a key-value attribute: `#[attr = "value"]`.
+    Eq {
+        /// Span of the `=` token.
+        eq_span: Span,
+        /// The "value".
+        expr: MetaItemLit,
+    },
+}
+
+#[derive(Clone, Debug, Encodable, Decodable)]
+pub enum AttrKind {
+    /// A normal attribute.
+    Normal(Box<AttrItem>),
+
+    /// A doc comment (e.g. `/// ...`, `//! ...`, `/** ... */`, `/*! ... */`).
+    /// Doc attributes (e.g. `#[doc="..."]`) are represented with the `Normal`
+    /// variant (which is much less compact and thus more expensive).
+    DocComment(CommentKind, Symbol),
+}
+
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable)]
+pub struct AttrPath {
+    pub segments: Box<[Ident]>,
+    pub span: Span,
+}
+
+#[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable)]
+pub struct AttrItem {
+    pub unsafety: Safety,
+    // Not lowered to hir::Path because we have no NodeId to resolve to.
+    pub path: AttrPath,
+    pub args: AttrArgs,
+}
+
+#[derive(Clone, Debug, Encodable, Decodable)]
+pub struct Attribute {
+    pub kind: AttrKind,
+    pub id: AttrId,
+    /// Denotes if the attribute decorates the following construct (outer)
+    /// or the construct this attribute is contained within (inner).
+    pub style: AttrStyle,
+    pub span: Span,
+}
+
+impl Attribute {
+    pub fn get_normal_item(&self) -> &AttrItem {
+        match &self.kind {
+            AttrKind::Normal(normal) => &normal,
+            AttrKind::DocComment(..) => panic!("unexpected doc comment"),
+        }
+    }
+
+    pub fn unwrap_normal_item(self) -> AttrItem {
+        match self.kind {
+            AttrKind::Normal(normal) => *normal,
+            AttrKind::DocComment(..) => panic!("unexpected doc comment"),
+        }
+    }
+
+    pub fn value_lit(&self) -> Option<&MetaItemLit> {
+        match &self.kind {
+            AttrKind::Normal(n) => match n.as_ref() {
+                AttrItem { args: AttrArgs::Eq { expr, .. }, .. } => Some(expr),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+}
+
+impl AttributeExt for Attribute {
+    fn id(&self) -> AttrId {
+        self.id
+    }
+
+    fn meta_item_list(&self) -> Option<ThinVec<ast::MetaItemInner>> {
+        match &self.kind {
+            AttrKind::Normal(n) => match n.as_ref() {
+                AttrItem { args: AttrArgs::Delimited(d), .. } => {
+                    ast::MetaItemKind::list_from_tokens(d.tokens.clone())
+                }
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    fn value_str(&self) -> Option<Symbol> {
+        self.value_lit().and_then(|x| x.value_str())
+    }
+
+    fn value_span(&self) -> Option<Span> {
+        self.value_lit().map(|i| i.span)
+    }
+
+    /// For a single-segment attribute, returns its name; otherwise, returns `None`.
+    fn ident(&self) -> Option<Ident> {
+        match &self.kind {
+            AttrKind::Normal(n) => {
+                if let [ident] = n.path.segments.as_ref() {
+                    Some(*ident)
+                } else {
+                    None
+                }
+            }
+            AttrKind::DocComment(..) => None,
+        }
+    }
+
+    fn path_matches(&self, name: &[Symbol]) -> bool {
+        match &self.kind {
+            AttrKind::Normal(n) => {
+                n.path.segments.len() == name.len()
+                    && n.path.segments.iter().zip(name).all(|(s, n)| s.name == *n)
+            }
+            AttrKind::DocComment(..) => false,
+        }
+    }
+
+    fn is_doc_comment(&self) -> bool {
+        matches!(self.kind, AttrKind::DocComment(..))
+    }
+
+    fn span(&self) -> Span {
+        self.span
+    }
+
+    fn is_word(&self) -> bool {
+        match &self.kind {
+            AttrKind::Normal(n) => {
+                matches!(n.args, AttrArgs::Empty)
+            }
+            AttrKind::DocComment(..) => false,
+        }
+    }
+
+    fn ident_path(&self) -> Option<SmallVec<[Ident; 1]>> {
+        match &self.kind {
+            AttrKind::Normal(n) => Some(n.path.segments.iter().copied().collect()),
+            AttrKind::DocComment(..) => None,
+        }
+    }
+
+    fn doc_str(&self) -> Option<Symbol> {
+        match &self.kind {
+            AttrKind::DocComment(.., data) => Some(*data),
+            AttrKind::Normal(_) if self.has_name(sym::doc) => self.value_str(),
+            _ => None,
+        }
+    }
+    fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
+        match &self.kind {
+            AttrKind::DocComment(kind, data) => Some((*data, *kind)),
+            AttrKind::Normal(_) if self.name_or_empty() == sym::doc => {
+                self.value_str().map(|s| (s, CommentKind::Line))
+            }
+            _ => None,
+        }
+    }
+
+    fn style(&self) -> AttrStyle {
+        self.style
+    }
+}
+
+// FIXME(fn_delegation): use function delegation instead of manually forwarding
+impl Attribute {
+    pub fn id(&self) -> AttrId {
+        AttributeExt::id(self)
+    }
+
+    pub fn name_or_empty(&self) -> Symbol {
+        AttributeExt::name_or_empty(self)
+    }
+
+    pub fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
+        AttributeExt::meta_item_list(self)
+    }
+
+    pub fn value_str(&self) -> Option<Symbol> {
+        AttributeExt::value_str(self)
+    }
+
+    pub fn value_span(&self) -> Option<Span> {
+        AttributeExt::value_span(self)
+    }
+
+    pub fn ident(&self) -> Option<Ident> {
+        AttributeExt::ident(self)
+    }
+
+    pub fn path_matches(&self, name: &[Symbol]) -> bool {
+        AttributeExt::path_matches(self, name)
+    }
+
+    pub fn is_doc_comment(&self) -> bool {
+        AttributeExt::is_doc_comment(self)
+    }
+
+    #[inline]
+    pub fn has_name(&self, name: Symbol) -> bool {
+        AttributeExt::has_name(self, name)
+    }
+
+    pub fn span(&self) -> Span {
+        AttributeExt::span(self)
+    }
+
+    pub fn is_word(&self) -> bool {
+        AttributeExt::is_word(self)
+    }
+
+    pub fn path(&self) -> SmallVec<[Symbol; 1]> {
+        AttributeExt::path(self)
+    }
+
+    pub fn ident_path(&self) -> Option<SmallVec<[Ident; 1]>> {
+        AttributeExt::ident_path(self)
+    }
+
+    pub fn doc_str(&self) -> Option<Symbol> {
+        AttributeExt::doc_str(self)
+    }
+
+    pub fn is_proc_macro_attr(&self) -> bool {
+        AttributeExt::is_proc_macro_attr(self)
+    }
+
+    pub fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
+        AttributeExt::doc_str_and_comment_kind(self)
+    }
+
+    pub fn style(&self) -> AttrStyle {
+        AttributeExt::style(self)
+    }
+}
+
 /// Attributes owned by a HIR owner.
 #[derive(Debug)]
 pub struct AttributeMap<'tcx> {
@@ -1740,6 +1987,7 @@ impl Expr<'_> {
             | ExprKind::Struct(..)
             | ExprKind::Tup(_)
             | ExprKind::Type(..)
+            | ExprKind::UnsafeBinderCast(..)
             | ExprKind::Err(_) => ExprPrecedence::Unambiguous,
 
             ExprKind::DropTemps(ref expr, ..) => expr.precedence(),
@@ -1768,6 +2016,9 @@ impl Expr<'_> {
             // operand. See:
             // https://github.com/rust-lang/rfcs/blob/master/text/0803-type-ascription.md#type-ascription-and-temporaries
             ExprKind::Type(ref e, _) => e.is_place_expr(allow_projections_from),
+
+            // Unsafe binder cast preserves place-ness of the sub-expression.
+            ExprKind::UnsafeBinderCast(_, e, _) => e.is_place_expr(allow_projections_from),
 
             ExprKind::Unary(UnOp::Deref, _) => true,
 
@@ -1850,14 +2101,20 @@ impl Expr<'_> {
             | ExprKind::Field(base, _)
             | ExprKind::Index(base, _, _)
             | ExprKind::AddrOf(.., base)
-            | ExprKind::Cast(base, _) => {
+            | ExprKind::Cast(base, _)
+            | ExprKind::UnsafeBinderCast(_, base, _) => {
                 // This isn't exactly true for `Index` and all `Unary`, but we are using this
                 // method exclusively for diagnostics and there's a *cultural* pressure against
                 // them being used only for its side-effects.
                 base.can_have_side_effects()
             }
             ExprKind::Struct(_, fields, init) => {
-                fields.iter().map(|field| field.expr).chain(init).any(|e| e.can_have_side_effects())
+                let init_side_effects = match init {
+                    StructTailExpr::Base(init) => init.can_have_side_effects(),
+                    StructTailExpr::DefaultFields(_) | StructTailExpr::None => false,
+                };
+                fields.iter().map(|field| field.expr).any(|e| e.can_have_side_effects())
+                    || init_side_effects
             }
 
             ExprKind::Array(args)
@@ -1926,20 +2183,52 @@ impl Expr<'_> {
                 ExprKind::Path(QPath::Resolved(None, path2)),
             ) => path1.res == path2.res,
             (
-                ExprKind::Struct(QPath::LangItem(LangItem::RangeTo, _), [val1], None),
-                ExprKind::Struct(QPath::LangItem(LangItem::RangeTo, _), [val2], None),
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeTo, _),
+                    [val1],
+                    StructTailExpr::None,
+                ),
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeTo, _),
+                    [val2],
+                    StructTailExpr::None,
+                ),
             )
             | (
-                ExprKind::Struct(QPath::LangItem(LangItem::RangeToInclusive, _), [val1], None),
-                ExprKind::Struct(QPath::LangItem(LangItem::RangeToInclusive, _), [val2], None),
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeToInclusive, _),
+                    [val1],
+                    StructTailExpr::None,
+                ),
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeToInclusive, _),
+                    [val2],
+                    StructTailExpr::None,
+                ),
             )
             | (
-                ExprKind::Struct(QPath::LangItem(LangItem::RangeFrom, _), [val1], None),
-                ExprKind::Struct(QPath::LangItem(LangItem::RangeFrom, _), [val2], None),
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeFrom, _),
+                    [val1],
+                    StructTailExpr::None,
+                ),
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::RangeFrom, _),
+                    [val2],
+                    StructTailExpr::None,
+                ),
             ) => val1.expr.equivalent_for_indexing(val2.expr),
             (
-                ExprKind::Struct(QPath::LangItem(LangItem::Range, _), [val1, val3], None),
-                ExprKind::Struct(QPath::LangItem(LangItem::Range, _), [val2, val4], None),
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::Range, _),
+                    [val1, val3],
+                    StructTailExpr::None,
+                ),
+                ExprKind::Struct(
+                    QPath::LangItem(LangItem::Range, _),
+                    [val2, val4],
+                    StructTailExpr::None,
+                ),
             ) => {
                 val1.expr.equivalent_for_indexing(val2.expr)
                     && val3.expr.equivalent_for_indexing(val4.expr)
@@ -1979,6 +2268,22 @@ pub fn is_range_literal(expr: &Expr<'_>) -> bool {
             matches!(func.kind, ExprKind::Path(QPath::LangItem(LangItem::RangeInclusiveNew, ..)))
         }
 
+        _ => false,
+    }
+}
+
+/// Checks if the specified expression needs parentheses for prefix
+/// or postfix suggestions to be valid.
+/// For example, `a + b` requires parentheses to suggest `&(a + b)`,
+/// but just `a` does not.
+/// Similarly, `(a + b).c()` also requires parentheses.
+/// This should not be used for other types of suggestions.
+pub fn expr_needs_parens(expr: &Expr<'_>) -> bool {
+    match expr.kind {
+        // parenthesize if needed (Issue #46756)
+        ExprKind::Cast(_, _) | ExprKind::Binary(_, _, _) => true,
+        // parenthesize borrows of range literals (Issue #54505)
+        _ if is_range_literal(expr) => true,
         _ => false,
     }
 }
@@ -2096,7 +2401,7 @@ pub enum ExprKind<'hir> {
     ///
     /// E.g., `Foo {x: 1, y: 2}`, or `Foo {x: 1, .. base}`,
     /// where `base` is the `Option<Expr>`.
-    Struct(&'hir QPath<'hir>, &'hir [ExprField<'hir>], Option<&'hir Expr<'hir>>),
+    Struct(&'hir QPath<'hir>, &'hir [ExprField<'hir>], StructTailExpr<'hir>),
 
     /// An array literal constructed from one repeated element.
     ///
@@ -2107,8 +2412,25 @@ pub enum ExprKind<'hir> {
     /// A suspension point for coroutines (i.e., `yield <expr>`).
     Yield(&'hir Expr<'hir>, YieldSource),
 
+    /// Operators which can be used to interconvert `unsafe` binder types.
+    /// e.g. `unsafe<'a> &'a i32` <=> `&i32`.
+    UnsafeBinderCast(UnsafeBinderCastKind, &'hir Expr<'hir>, Option<&'hir Ty<'hir>>),
+
     /// A placeholder for an expression that wasn't syntactically well formed in some way.
     Err(rustc_span::ErrorGuaranteed),
+}
+
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
+pub enum StructTailExpr<'hir> {
+    /// A struct expression where all the fields are explicitly enumerated: `Foo { a, b }`.
+    None,
+    /// A struct expression with a "base", an expression of the same type as the outer struct that
+    /// will be used to populate any fields not explicitly mentioned: `Foo { ..base }`
+    Base(&'hir Expr<'hir>),
+    /// A struct expression with a `..` tail but no "base" expression. The values from the struct
+    /// fields' default values will be used to populate any fields not explicitly mentioned:
+    /// `Foo { .. }`.
+    DefaultFields(Span),
 }
 
 /// Represents an optionally `Self`-qualified value/type path or associated extension.
@@ -2731,6 +3053,12 @@ pub struct BareFnTy<'hir> {
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
+pub struct UnsafeBinderTy<'hir> {
+    pub generic_params: &'hir [GenericParam<'hir>],
+    pub inner_ty: &'hir Ty<'hir>,
+}
+
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct OpaqueTy<'hir> {
     pub hir_id: HirId,
     pub def_id: LocalDefId,
@@ -2828,12 +3156,12 @@ pub enum TyKind<'hir> {
     Ref(&'hir Lifetime, MutTy<'hir>),
     /// A bare function (e.g., `fn(usize) -> bool`).
     BareFn(&'hir BareFnTy<'hir>),
+    /// An unsafe binder type (e.g. `unsafe<'a> Foo<'a>`).
+    UnsafeBinder(&'hir UnsafeBinderTy<'hir>),
     /// The never type (`!`).
     Never,
     /// A tuple (`(A, B, C, D, ...)`).
     Tup(&'hir [Ty<'hir>]),
-    /// An anonymous struct or union type i.e. `struct { foo: Type }` or `union { foo: Type }`
-    AnonAdt(ItemId),
     /// A path to a type definition (`module::module::...::Type`), or an
     /// associated type (e.g., `<Vec<T> as Trait>::Type` or `<T>::Target`).
     ///
@@ -2841,6 +3169,8 @@ pub enum TyKind<'hir> {
     Path(QPath<'hir>),
     /// An opaque type definition itself. This is only used for `impl Trait`.
     OpaqueDef(&'hir OpaqueTy<'hir>),
+    /// A trait ascription type, which is `impl Trait` within a local binding.
+    TraitAscription(GenericBounds<'hir>),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
     TraitObject(&'hir [PolyTraitRef<'hir>], &'hir Lifetime, TraitObjectSyntax),
@@ -3172,6 +3502,7 @@ pub struct FieldDef<'hir> {
     pub def_id: LocalDefId,
     pub ty: &'hir Ty<'hir>,
     pub safety: Safety,
+    pub default: Option<&'hir AnonConst>,
 }
 
 impl FieldDef<'_> {
@@ -3350,6 +3681,19 @@ impl Safety {
             Self::Safe => "",
         }
     }
+
+    #[inline]
+    pub fn is_unsafe(self) -> bool {
+        !self.is_safe()
+    }
+
+    #[inline]
+    pub fn is_safe(self) -> bool {
+        match self {
+            Self::Unsafe => false,
+            Self::Safe => true,
+        }
+    }
 }
 
 impl fmt::Display for Safety {
@@ -3394,7 +3738,7 @@ impl FnHeader {
     }
 
     pub fn is_unsafe(&self) -> bool {
-        matches!(&self.safety, Safety::Unsafe)
+        self.safety.is_unsafe()
     }
 }
 
@@ -3993,9 +4337,7 @@ impl<'hir> Node<'hir> {
                 _ => None,
             },
             Node::TraitItem(ti) => match ti.kind {
-                TraitItemKind::Fn(ref sig, TraitFn::Provided(_)) => {
-                    Some(FnKind::Method(ti.ident, sig))
-                }
+                TraitItemKind::Fn(ref sig, _) => Some(FnKind::Method(ti.ident, sig)),
                 _ => None,
             },
             Node::ImplItem(ii) => match ii.kind {

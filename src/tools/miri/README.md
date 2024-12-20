@@ -68,9 +68,10 @@ Further caveats that Miri users should be aware of:
   not support networking. System API support varies between targets; if you run
   on Windows it is a good idea to use `--target x86_64-unknown-linux-gnu` to get
   better support.
-* Weak memory emulation may [produce weak behaviors](https://github.com/rust-lang/miri/issues/2301)
-  when `SeqCst` fences are used that are not actually permitted by the Rust memory model, and it
-  cannot produce all behaviors possibly observable on real hardware.
+* Weak memory emulation is not complete: there are legal behaviors that Miri will never produce.
+  However, Miri produces many behaviors that are hard to observe on real hardware, so it can help
+  quite a bit in finding weak memory concurrency bugs. To be really sure about complicated atomic
+  code, use specialized tools such as [loom](https://github.com/tokio-rs/loom).
 
 Moreover, Miri fundamentally cannot ensure that your code is *sound*. [Soundness] is the property of
 never causing undefined behavior when invoked from arbitrary safe code, even in combination with

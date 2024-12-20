@@ -4,7 +4,7 @@ error[E0277]: the trait bound `T: Get` is not satisfied
 LL |     fn uhoh<T>(foo: <T as Get>::Value) {}
    |                     ^^^^^^^^^^^^^^^^^ the trait `Get` is not implemented for `T`
    |
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `Get`
    |
 LL |     fn uhoh<T: Get>(foo: <T as Get>::Value) {}
    |              +++++
@@ -15,7 +15,7 @@ error[E0277]: the trait bound `T: Get` is not satisfied
 LL |     fn uhoh<T>(foo: <T as Get>::Value) {}
    |                                        ^^ the trait `Get` is not implemented for `T`
    |
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `Get`
    |
 LL |     fn uhoh<T: Get>(foo: <T as Get>::Value) {}
    |              +++++

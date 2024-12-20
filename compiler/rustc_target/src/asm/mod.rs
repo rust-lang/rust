@@ -35,7 +35,7 @@ macro_rules! def_reg_class {
         impl $arch_regclass {
             pub fn name(self) -> rustc_span::Symbol {
                 match self {
-                    $(Self::$class => rustc_span::symbol::sym::$class,)*
+                    $(Self::$class => rustc_span::sym::$class,)*
                 }
             }
 
@@ -511,7 +511,7 @@ impl InlineAsmRegClass {
             Self::Msp430(r) => r.name(),
             Self::M68k(r) => r.name(),
             Self::CSKY(r) => r.name(),
-            Self::Err => rustc_span::symbol::sym::reg,
+            Self::Err => rustc_span::sym::reg,
         }
     }
 

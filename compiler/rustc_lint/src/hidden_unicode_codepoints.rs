@@ -9,6 +9,7 @@ use crate::lints::{
 use crate::{EarlyContext, EarlyLintPass, LintContext};
 
 declare_lint! {
+    #[allow(text_direction_codepoint_in_literal)]
     /// The `text_direction_codepoint_in_literal` lint detects Unicode codepoints that change the
     /// visual representation of text on screen in a way that does not correspond to their on
     /// memory representation.

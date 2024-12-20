@@ -3,9 +3,8 @@ use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
-use rustc_span::Span;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::Ident;
+use rustc_span::{Ident, Span};
 
 use super::errors::{
     ArbitraryExpressionInPattern, ExtraDoubleDot, MisplacedDoubleDot, SubTupleBinding,
@@ -92,7 +91,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 span: self.lower_span(f.span),
                             }
                         }));
-                        break hir::PatKind::Struct(qpath, fs, *etc == ast::PatFieldsRest::Rest);
+                        break hir::PatKind::Struct(
+                            qpath,
+                            fs,
+                            matches!(
+                                etc,
+                                ast::PatFieldsRest::Rest | ast::PatFieldsRest::Recovered(_)
+                            ),
+                        );
                     }
                     PatKind::Tuple(pats) => {
                         let (pats, ddpos) = self.lower_pat_tuple(pats, "tuple");
@@ -114,6 +120,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             self.lower_range_end(end, e2.is_some()),
                         );
                     }
+                    // FIXME(guard_patterns): lower pattern guards to HIR
+                    PatKind::Guard(inner, _) => pattern = inner,
                     PatKind::Slice(pats) => break self.lower_pat_slice(pats),
                     PatKind::Rest => {
                         // If we reach here the `..` pattern is not semantically allowed.

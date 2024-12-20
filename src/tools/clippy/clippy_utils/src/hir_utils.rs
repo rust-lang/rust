@@ -10,7 +10,7 @@ use rustc_hir::{
     AssocItemConstraint, BinOpKind, BindingMode, Block, BodyId, Closure, ConstArg, ConstArgKind, Expr,
     ExprField, ExprKind, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime,
     LifetimeName, Pat, PatField, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitBoundModifiers, Ty,
-    TyKind,
+    TyKind, StructTailExpr,
 };
 use rustc_lexer::{TokenKind, tokenize};
 use rustc_lint::LateContext;
@@ -370,6 +370,10 @@ impl HirEqInterExpr<'_, '_, '_> {
                     && self.eq_expr(l_receiver, r_receiver)
                     && self.eq_exprs(l_args, r_args)
             },
+            (&ExprKind::UnsafeBinderCast(lkind, le, None), &ExprKind::UnsafeBinderCast(rkind, re, None)) =>
+                lkind == rkind && self.eq_expr(le, re),
+            (&ExprKind::UnsafeBinderCast(lkind, le, Some(lt)), &ExprKind::UnsafeBinderCast(rkind, re, Some(rt))) =>
+                lkind == rkind && self.eq_expr(le, re) && self.eq_ty(lt, rt),
             (&ExprKind::OffsetOf(l_container, l_fields), &ExprKind::OffsetOf(r_container, r_fields)) => {
                 self.eq_ty(l_container, r_container) && over(l_fields, r_fields, |l, r| l.name == r.name)
             },
@@ -380,7 +384,12 @@ impl HirEqInterExpr<'_, '_, '_> {
             (ExprKind::Ret(l), ExprKind::Ret(r)) => both(l.as_ref(), r.as_ref(), |l, r| self.eq_expr(l, r)),
             (&ExprKind::Struct(l_path, lf, ref lo), &ExprKind::Struct(r_path, rf, ref ro)) => {
                 self.eq_qpath(l_path, r_path)
-                    && both(lo.as_ref(), ro.as_ref(), |l, r| self.eq_expr(l, r))
+                    && match (lo, ro) {
+                        (StructTailExpr::Base(l),StructTailExpr::Base(r)) => self.eq_expr(l, r),
+                        (StructTailExpr::None, StructTailExpr::None) => true,
+                        (StructTailExpr::DefaultFields(_), StructTailExpr::DefaultFields(_)) => true,
+                        _ => false,
+                    }
                     && over(lf, rf, |l, r| self.eq_expr_field(l, r))
             },
             (&ExprKind::Tup(l_tup), &ExprKind::Tup(r_tup)) => self.eq_exprs(l_tup, r_tup),
@@ -419,6 +428,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                 | &ExprKind::Type(..)
                 | &ExprKind::Unary(..)
                 | &ExprKind::Yield(..)
+                | &ExprKind::UnsafeBinderCast(..)
 
                 // --- Special cases that do not have a positive branch.
 
@@ -591,7 +601,6 @@ impl HirEqInterExpr<'_, '_, '_> {
             (TyKind::Path(l), TyKind::Path(r)) => self.eq_qpath(l, r),
             (&TyKind::Tup(l), &TyKind::Tup(r)) => over(l, r, |l, r| self.eq_ty(l, r)),
             (&TyKind::Infer, &TyKind::Infer) => true,
-            (TyKind::AnonAdt(l_item_id), TyKind::AnonAdt(r_item_id)) => l_item_id == r_item_id,
             _ => false,
         }
     }
@@ -1017,7 +1026,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_expr(f.expr);
                 }
 
-                if let Some(e) = *expr {
+                if let StructTailExpr::Base(e) = *expr {
                     self.hash_expr(e);
                 }
             },
@@ -1028,6 +1037,13 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 std::mem::discriminant(&lop).hash(&mut self.s);
                 self.hash_expr(le);
             },
+            ExprKind::UnsafeBinderCast(kind, expr, ty) => {
+                std::mem::discriminant(&kind).hash(&mut self.s);
+                self.hash_expr(expr);
+                if let Some(ty) = ty {
+                    self.hash_ty(ty);
+                }
+            }
             ExprKind::Err(_) => {},
         }
     }
@@ -1237,12 +1253,15 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             TyKind::Typeof(anon_const) => {
                 self.hash_body(anon_const.body);
             },
+            TyKind::UnsafeBinder(binder) => {
+                self.hash_ty(binder.inner_ty);
+            }
             TyKind::Err(_)
             | TyKind::Infer
             | TyKind::Never
             | TyKind::InferDelegation(..)
             | TyKind::OpaqueDef(_)
-            | TyKind::AnonAdt(_) => {},
+            | TyKind::TraitAscription(_) => {},
         }
     }
 
