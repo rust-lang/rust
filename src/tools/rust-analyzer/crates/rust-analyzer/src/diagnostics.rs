@@ -15,7 +15,7 @@ use triomphe::Arc;
 use crate::{global_state::GlobalStateSnapshot, lsp, lsp_ext, main_loop::DiagnosticsTaskKind};
 
 pub(crate) type CheckFixes =
-    Arc<IntMap<usize, FxHashMap<Option<PackageId>, IntMap<FileId, Vec<Fix>>>>>;
+    Arc<IntMap<usize, FxHashMap<Option<Arc<PackageId>>, IntMap<FileId, Vec<Fix>>>>>;
 
 #[derive(Debug, Default, Clone)]
 pub struct DiagnosticsMapConfig {
@@ -33,8 +33,10 @@ pub(crate) struct DiagnosticCollection {
     pub(crate) native_syntax: IntMap<FileId, (DiagnosticsGeneration, Vec<lsp_types::Diagnostic>)>,
     pub(crate) native_semantic: IntMap<FileId, (DiagnosticsGeneration, Vec<lsp_types::Diagnostic>)>,
     // FIXME: should be Vec<flycheck::Diagnostic>
-    pub(crate) check:
-        IntMap<usize, FxHashMap<Option<PackageId>, IntMap<FileId, Vec<lsp_types::Diagnostic>>>>,
+    pub(crate) check: IntMap<
+        usize,
+        FxHashMap<Option<Arc<PackageId>>, IntMap<FileId, Vec<lsp_types::Diagnostic>>>,
+    >,
     pub(crate) check_fixes: CheckFixes,
     changes: IntSet<FileId>,
     /// Counter for supplying a new generation number for diagnostics.
@@ -74,7 +76,11 @@ impl DiagnosticCollection {
         self.changes.insert(file_id);
     }
 
-    pub(crate) fn clear_check_for_package(&mut self, flycheck_id: usize, package_id: PackageId) {
+    pub(crate) fn clear_check_for_package(
+        &mut self,
+        flycheck_id: usize,
+        package_id: Arc<PackageId>,
+    ) {
         let Some(check) = self.check.get_mut(&flycheck_id) else {
             return;
         };
@@ -84,7 +90,7 @@ impl DiagnosticCollection {
     pub(crate) fn add_check_diagnostic(
         &mut self,
         flycheck_id: usize,
-        package_id: &Option<PackageId>,
+        package_id: &Option<Arc<PackageId>>,
         file_id: FileId,
         diagnostic: lsp_types::Diagnostic,
         fix: Option<Box<Fix>>,

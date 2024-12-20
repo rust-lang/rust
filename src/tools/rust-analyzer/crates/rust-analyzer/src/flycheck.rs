@@ -1,7 +1,7 @@
 //! Flycheck provides the functionality needed to run `cargo check` to provide
 //! LSP diagnostics based on the output of the command.
 
-use std::{fmt, io, mem, process::Command, sync::Arc, time::Duration};
+use std::{fmt, io, mem, process::Command, time::Duration};
 
 use cargo_metadata::PackageId;
 use crossbeam_channel::{select_biased, unbounded, Receiver, Sender};
@@ -13,6 +13,7 @@ pub(crate) use cargo_metadata::diagnostic::{
     Applicability, Diagnostic, DiagnosticCode, DiagnosticLevel, DiagnosticSpan,
 };
 use toolchain::Tool;
+use triomphe::Arc;
 
 use crate::command::{CommandHandle, ParseFromLine};
 
@@ -155,14 +156,14 @@ pub(crate) enum FlycheckMessage {
         id: usize,
         workspace_root: Arc<AbsPathBuf>,
         diagnostic: Diagnostic,
-        package_id: Option<PackageId>,
+        package_id: Option<Arc<PackageId>>,
     },
 
     /// Request clearing all outdated diagnostics.
     ClearDiagnostics {
         id: usize,
         /// The package whose diagnostics to clear, or if unspecified, all diagnostics.
-        package_id: Option<PackageId>,
+        package_id: Option<Arc<PackageId>>,
     },
 
     /// Request check progress notification to client
@@ -229,7 +230,7 @@ struct FlycheckActor {
     command_handle: Option<CommandHandle<CargoCheckMessage>>,
     /// The receiver side of the channel mentioned above.
     command_receiver: Option<Receiver<CargoCheckMessage>>,
-    package_status: FxHashMap<PackageId, DiagnosticReceived>,
+    package_status: FxHashMap<Arc<PackageId>, DiagnosticReceived>,
 }
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
@@ -370,7 +371,9 @@ impl FlycheckActor {
                             "artifact received"
                         );
                         self.report_progress(Progress::DidCheckCrate(msg.target.name));
-                        self.package_status.entry(msg.package_id).or_insert(DiagnosticReceived::No);
+                        self.package_status
+                            .entry(Arc::new(msg.package_id))
+                            .or_insert(DiagnosticReceived::No);
                     }
                     CargoCheckMessage::Diagnostic { diagnostic, package_id } => {
                         tracing::trace!(
@@ -517,7 +520,7 @@ impl FlycheckActor {
 #[allow(clippy::large_enum_variant)]
 enum CargoCheckMessage {
     CompilerArtifact(cargo_metadata::Artifact),
-    Diagnostic { diagnostic: Diagnostic, package_id: Option<PackageId> },
+    Diagnostic { diagnostic: Diagnostic, package_id: Option<Arc<PackageId>> },
 }
 
 impl ParseFromLine for CargoCheckMessage {
@@ -534,7 +537,7 @@ impl ParseFromLine for CargoCheckMessage {
                     cargo_metadata::Message::CompilerMessage(msg) => {
                         Some(CargoCheckMessage::Diagnostic {
                             diagnostic: msg.message,
-                            package_id: Some(msg.package_id),
+                            package_id: Some(Arc::new(msg.package_id)),
                         })
                     }
                     _ => None,
