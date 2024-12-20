@@ -359,7 +359,7 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
 #[cfg(not(no_global_oom_handling))]
 unsafe extern "Rust" {
     // This is the magic symbol to call the global alloc error handler. rustc generates
-    // it if there is a `#[alloc_error_handler]`, or to the weak implementations below
+    // it if there is an `#[alloc_error_handler]`, or to the weak implementations below
     // is called otherwise.
     #[rustc_std_internal_symbol]
     fn __rust_alloc_error_handler(size: usize, align: usize) -> !;
@@ -424,14 +424,16 @@ pub mod __alloc_error_handler {
     #[rustc_std_internal_symbol]
     #[linkage = "weak"]
     pub unsafe extern "Rust" fn __rust_alloc_error_handler(size: usize, _align: usize) -> ! {
-        unsafe extern "Rust" {
-            // This symbol is emitted by rustc next to __rust_alloc_error_handler.
-            // Its value depends on the -Zoom={panic,abort} compiler option.
-            #[rustc_std_internal_symbol]
-            static __rust_alloc_error_handler_should_panic: u8;
-        }
+        // This symbol is normally overwritten by rustc next to __rust_alloc_error_handler.
+        // However when skipping the allocator handler shim the value here is used which
+        // corresponds to -Zoom=abort.
+        // Its value depends on the -Zoom={panic,abort} compiler option.
+        #[rustc_std_internal_symbol]
+        #[linkage = "weak"]
+        #[allow(non_upper_case_globals)]
+        static __rust_alloc_error_handler_should_panic: u8 = 0;
 
-        if unsafe { __rust_alloc_error_handler_should_panic != 0 } {
+        if __rust_alloc_error_handler_should_panic != 0 {
             panic!("memory allocation of {size} bytes failed")
         } else {
             core::panicking::panic_nounwind_fmt(
