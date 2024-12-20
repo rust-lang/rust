@@ -1,9 +1,10 @@
-//@ compile-flags: -C debuginfo=2
 // ignore-tidy-linelength
+//! Checks that visibility information is present in the debuginfo for super-visibility enums.
 
-#![allow(dead_code)]
-
-// Checks that visibility information is present in the debuginfo for super-visibility enums.
+//@ revisions: MSVC NONMSVC
+//@[MSVC] only-msvc
+//@[NONMSVC] ignore-msvc
+//@ compile-flags: -C debuginfo=2
 
 mod module {
     use std::hint::black_box;

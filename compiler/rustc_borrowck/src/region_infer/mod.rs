@@ -2230,7 +2230,7 @@ impl<'tcx> RegionDefinition<'tcx> {
     fn new(universe: ty::UniverseIndex, rv_origin: RegionVariableOrigin) -> Self {
         // Create a new region definition. Note that, for free
         // regions, the `external_name` field gets updated later in
-        // `init_universal_regions`.
+        // `init_free_and_bound_regions`.
 
         let origin = match rv_origin {
             RegionVariableOrigin::Nll(origin) => origin,

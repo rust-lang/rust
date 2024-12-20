@@ -1,3 +1,5 @@
+//@ reference: attributes.coverage.allowed-positions
+
 #![feature(extern_types)]
 #![feature(impl_trait_in_assoc_type)]
 #![warn(unused_attributes)]

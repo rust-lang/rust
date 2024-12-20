@@ -12,7 +12,7 @@ use rustc_mir_dataflow::impls::{
     EverInitializedPlaces, EverInitializedPlacesDomain, MaybeUninitializedPlaces,
     MaybeUninitializedPlacesDomain,
 };
-use rustc_mir_dataflow::{Analysis, GenKill, JoinSemiLattice, SwitchIntEdgeEffects};
+use rustc_mir_dataflow::{Analysis, GenKill, JoinSemiLattice};
 use tracing::debug;
 
 use crate::{BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext, places_conflict};
@@ -97,16 +97,6 @@ impl<'a, 'tcx> Analysis<'tcx> for Borrowck<'a, 'tcx> {
         _state: &mut Self::Domain,
         _block: BasicBlock,
         _return_places: CallReturnPlaces<'_, 'tcx>,
-    ) {
-        // This is only reachable from `iterate_to_fixpoint`, which this analysis doesn't use.
-        unreachable!();
-    }
-
-    fn apply_switch_int_edge_effects(
-        &mut self,
-        _block: BasicBlock,
-        _discr: &mir::Operand<'tcx>,
-        _apply_edge_effects: &mut impl SwitchIntEdgeEffects<Self::Domain>,
     ) {
         // This is only reachable from `iterate_to_fixpoint`, which this analysis doesn't use.
         unreachable!();

@@ -842,8 +842,9 @@ impl<'tcx> BorrowckInferCtxt<'tcx> {
     {
         let (value, _map) = self.tcx.instantiate_bound_regions(value, |br| {
             debug!(?br);
+            let kind = ty::LateParamRegionKind::from_bound(br.var, br.kind);
             let liberated_region =
-                ty::Region::new_late_param(self.tcx, all_outlive_scope.to_def_id(), br.kind);
+                ty::Region::new_late_param(self.tcx, all_outlive_scope.to_def_id(), kind);
             let region_vid = {
                 let name = match br.kind.get_name() {
                     Some(name) => name,
@@ -941,12 +942,13 @@ fn for_each_late_bound_region_in_item<'tcx>(
         return;
     }
 
-    for bound_var in tcx.late_bound_vars(tcx.local_def_id_to_hir_id(mir_def_id)) {
-        let ty::BoundVariableKind::Region(bound_region) = bound_var else {
-            continue;
-        };
-        let liberated_region =
-            ty::Region::new_late_param(tcx, mir_def_id.to_def_id(), bound_region);
-        f(liberated_region);
+    for (idx, bound_var) in
+        tcx.late_bound_vars(tcx.local_def_id_to_hir_id(mir_def_id)).iter().enumerate()
+    {
+        if let ty::BoundVariableKind::Region(kind) = bound_var {
+            let kind = ty::LateParamRegionKind::from_bound(ty::BoundVar::from_usize(idx), kind);
+            let liberated_region = ty::Region::new_late_param(tcx, mir_def_id.to_def_id(), kind);
+            f(liberated_region);
+        }
     }
 }

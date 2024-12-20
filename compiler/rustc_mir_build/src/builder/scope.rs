@@ -89,7 +89,7 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{ExprId, LintLevel};
-use rustc_middle::{bug, span_bug, ty};
+use rustc_middle::{bug, span_bug};
 use rustc_session::lint::Level;
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span};
@@ -151,15 +151,13 @@ struct DropData {
 
     /// Whether this is a value Drop or a StorageDead.
     kind: DropKind,
-
-    /// Whether this is a backwards-incompatible drop lint
-    backwards_incompatible_lint: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum DropKind {
     Value,
     Storage,
+    ForLint,
 }
 
 #[derive(Debug)]
@@ -248,7 +246,7 @@ impl Scope {
     /// use of optimizations in the MIR coroutine transform.
     fn needs_cleanup(&self) -> bool {
         self.drops.iter().any(|drop| match drop.kind {
-            DropKind::Value => true,
+            DropKind::Value | DropKind::ForLint => true,
             DropKind::Storage => false,
         })
     }
@@ -277,12 +275,8 @@ impl DropTree {
         // represents the block in the tree that should be jumped to once all
         // of the required drops have been performed.
         let fake_source_info = SourceInfo::outermost(DUMMY_SP);
-        let fake_data = DropData {
-            source_info: fake_source_info,
-            local: Local::MAX,
-            kind: DropKind::Storage,
-            backwards_incompatible_lint: false,
-        };
+        let fake_data =
+            DropData { source_info: fake_source_info, local: Local::MAX, kind: DropKind::Storage };
         let drops = IndexVec::from_raw(vec![DropNode { data: fake_data, next: DropIdx::MAX }]);
         Self { drops, entry_points: Vec::new(), existing_drops_map: FxHashMap::default() }
     }
@@ -410,6 +404,27 @@ impl DropTree {
                         replace: false,
                     };
                     cfg.terminate(block, drop_node.data.source_info, terminator);
+                }
+                DropKind::ForLint => {
+                    let stmt = Statement {
+                        source_info: drop_node.data.source_info,
+                        kind: StatementKind::BackwardIncompatibleDropHint {
+                            place: Box::new(drop_node.data.local.into()),
+                            reason: BackwardIncompatibleDropReason::Edition2024,
+                        },
+                    };
+                    cfg.push(block, stmt);
+                    let target = blocks[drop_node.next].unwrap();
+                    if target != block {
+                        // Diagnostics don't use this `Span` but debuginfo
+                        // might. Since we don't want breakpoints to be placed
+                        // here, especially when this is on an unwind path, we
+                        // use `DUMMY_SP`.
+                        let source_info =
+                            SourceInfo { span: DUMMY_SP, ..drop_node.data.source_info };
+                        let terminator = TerminatorKind::Goto { target };
+                        cfg.terminate(block, source_info, terminator);
+                    }
                 }
                 // Root nodes don't correspond to a drop.
                 DropKind::Storage if drop_idx == ROOT_NODE => {}
@@ -770,12 +785,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let local =
                         place.as_local().unwrap_or_else(|| bug!("projection in tail call args"));
 
-                    Some(DropData {
-                        source_info,
-                        local,
-                        kind: DropKind::Value,
-                        backwards_incompatible_lint: false,
-                    })
+                    Some(DropData { source_info, local, kind: DropKind::Value })
                 }
                 Operand::Constant(_) => None,
             })
@@ -821,6 +831,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             replace: false,
                         });
                         block = next;
+                    }
+                    DropKind::ForLint => {
+                        self.cfg.push(block, Statement {
+                            source_info,
+                            kind: StatementKind::BackwardIncompatibleDropHint {
+                                place: Box::new(local.into()),
+                                reason: BackwardIncompatibleDropReason::Edition2024,
+                            },
+                        });
                     }
                     DropKind::Storage => {
                         // Only temps and vars need their storage dead.
@@ -1021,7 +1040,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         drop_kind: DropKind,
     ) {
         let needs_drop = match drop_kind {
-            DropKind::Value => {
+            DropKind::Value | DropKind::ForLint => {
                 if !self.local_decls[local].ty.needs_drop(self.tcx, self.typing_env()) {
                     return;
                 }
@@ -1101,7 +1120,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     source_info: SourceInfo { span: scope_end, scope: scope.source_scope },
                     local,
                     kind: drop_kind,
-                    backwards_incompatible_lint: false,
                 });
 
                 return;
@@ -1119,10 +1137,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         region_scope: region::Scope,
         local: Local,
     ) {
-        if !self.local_decls[local].ty.has_significant_drop(self.tcx, ty::TypingEnv {
-            typing_mode: ty::TypingMode::non_body_analysis(),
-            param_env: self.param_env,
-        }) {
+        if !self.local_decls[local].ty.has_significant_drop(self.tcx, self.typing_env()) {
             return;
         }
         for scope in self.scopes.scopes.iter_mut().rev() {
@@ -1135,8 +1150,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 scope.drops.push(DropData {
                     source_info: SourceInfo { span: scope_end, scope: scope.source_scope },
                     local,
-                    kind: DropKind::Value,
-                    backwards_incompatible_lint: true,
+                    kind: DropKind::ForLint,
                 });
 
                 return;
@@ -1379,12 +1393,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 }
 
 /// Builds drops for `pop_scope` and `leave_top_scope`.
+///
+/// # Parameters
+///
+/// * `unwind_drops`, the drop tree data structure storing what needs to be cleaned up if unwind occurs
+/// * `scope`, describes the drops that will occur on exiting the scope in regular execution
+/// * `block`, the block to branch to once drops are complete (assuming no unwind occurs)
+/// * `unwind_to`, describes the drops that would occur at this point in the code if a
+///   panic occurred (a subset of the drops in `scope`, since we sometimes elide StorageDead and other
+///   instructions on unwinding)
+/// * `storage_dead_on_unwind`, if true, then we should emit `StorageDead` even when unwinding
+/// * `arg_count`, number of MIR local variables corresponding to fn arguments (used to assert that we don't drop those)
 fn build_scope_drops<'tcx>(
     cfg: &mut CFG<'tcx>,
     unwind_drops: &mut DropTree,
     scope: &Scope,
-    mut block: BasicBlock,
-    mut unwind_to: DropIdx,
+    block: BasicBlock,
+    unwind_to: DropIdx,
     storage_dead_on_unwind: bool,
     arg_count: usize,
 ) -> BlockAnd<()> {
@@ -1409,6 +1434,18 @@ fn build_scope_drops<'tcx>(
     // drops for the unwind path should have already been generated by
     // `diverge_cleanup_gen`.
 
+    // `unwind_to` indicates what needs to be dropped should unwinding occur.
+    // This is a subset of what needs to be dropped when exiting the scope.
+    // As we unwind the scope, we will also move `unwind_to` backwards to match,
+    // so that we can use it should a destructor panic.
+    let mut unwind_to = unwind_to;
+
+    // The block that we should jump to after drops complete. We start by building the final drop (`drops[n]`
+    // in the diagram above) and then build the drops (e.g., `drop[1]`, `drop[0]`) that come before it.
+    // block begins as the successor of `drops[n]` and then becomes `drops[n]` so that `drops[n-1]`
+    // will branch to `drops[n]`.
+    let mut block = block;
+
     for drop_data in scope.drops.iter().rev() {
         let source_info = drop_data.source_info;
         let local = drop_data.local;
@@ -1418,6 +1455,9 @@ fn build_scope_drops<'tcx>(
                 // `unwind_to` should drop the value that we're about to
                 // schedule. If dropping this value panics, then we continue
                 // with the *next* value on the unwind path.
+                //
+                // We adjust this BEFORE we create the drop (e.g., `drops[n]`)
+                // because `drops[n]` should unwind to `drops[n-1]`.
                 debug_assert_eq!(unwind_drops.drops[unwind_to].data.local, drop_data.local);
                 debug_assert_eq!(unwind_drops.drops[unwind_to].data.kind, drop_data.kind);
                 unwind_to = unwind_drops.drops[unwind_to].next;
@@ -1430,27 +1470,50 @@ fn build_scope_drops<'tcx>(
                     continue;
                 }
 
-                if drop_data.backwards_incompatible_lint {
-                    cfg.push(block, Statement {
-                        source_info,
-                        kind: StatementKind::BackwardIncompatibleDropHint {
-                            place: Box::new(local.into()),
-                            reason: BackwardIncompatibleDropReason::Edition2024,
-                        },
-                    });
-                } else {
-                    unwind_drops.add_entry_point(block, unwind_to);
-                    let next = cfg.start_new_block();
-                    cfg.terminate(block, source_info, TerminatorKind::Drop {
-                        place: local.into(),
-                        target: next,
-                        unwind: UnwindAction::Continue,
-                        replace: false,
-                    });
-                    block = next;
+                unwind_drops.add_entry_point(block, unwind_to);
+                let next = cfg.start_new_block();
+                cfg.terminate(block, source_info, TerminatorKind::Drop {
+                    place: local.into(),
+                    target: next,
+                    unwind: UnwindAction::Continue,
+                    replace: false,
+                });
+                block = next;
+            }
+            DropKind::ForLint => {
+                // If the operand has been moved, and we are not on an unwind
+                // path, then don't generate the drop. (We only take this into
+                // account for non-unwind paths so as not to disturb the
+                // caching mechanism.)
+                if scope.moved_locals.iter().any(|&o| o == local) {
+                    continue;
                 }
+
+                // As in the `DropKind::Storage` case below:
+                // normally lint-related drops are not emitted for unwind,
+                // so we can just leave `unwind_to` unmodified, but in some
+                // cases we emit things ALSO on the unwind path, so we need to adjust
+                // `unwind_to` in that case.
+                if storage_dead_on_unwind {
+                    debug_assert_eq!(unwind_drops.drops[unwind_to].data.local, drop_data.local);
+                    debug_assert_eq!(unwind_drops.drops[unwind_to].data.kind, drop_data.kind);
+                    unwind_to = unwind_drops.drops[unwind_to].next;
+                }
+
+                cfg.push(block, Statement {
+                    source_info,
+                    kind: StatementKind::BackwardIncompatibleDropHint {
+                        place: Box::new(local.into()),
+                        reason: BackwardIncompatibleDropReason::Edition2024,
+                    },
+                });
             }
             DropKind::Storage => {
+                // Ordinarily, storage-dead nodes are not emitted on unwind, so we don't
+                // need to adjust `unwind_to` on this path. However, in some specific cases
+                // we *do* emit storage-dead nodes on the unwind path, and in that case now that
+                // the storage-dead has completed, we need to adjust the `unwind_to` pointer
+                // so that any future drops we emit will not register storage-dead.
                 if storage_dead_on_unwind {
                     debug_assert_eq!(unwind_drops.drops[unwind_to].data.local, drop_data.local);
                     debug_assert_eq!(unwind_drops.drops[unwind_to].data.kind, drop_data.kind);
@@ -1500,7 +1563,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
                             unwind_indices.push(unwind_indices[drop_node.next]);
                         }
                     }
-                    DropKind::Value => {
+                    DropKind::Value | DropKind::ForLint => {
                         let unwind_drop = self
                             .scopes
                             .unwind_drops

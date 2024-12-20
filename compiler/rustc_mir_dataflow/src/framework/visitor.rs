@@ -35,7 +35,6 @@ where
 {
     fn visit_block_start(&mut self, _state: &A::Domain) {}
 
-    /// // njn: grep for "before", "primary", etc.
     /// Called after the "early" effect of the given statement is applied to `state`.
     fn visit_after_early_statement_effect(
         &mut self,

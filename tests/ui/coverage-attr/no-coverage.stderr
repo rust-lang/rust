@@ -1,5 +1,5 @@
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/no-coverage.rs:6:1
+  --> $DIR/no-coverage.rs:8:1
    |
 LL |   #[coverage(off)]
    |   ^^^^^^^^^^^^^^^^
@@ -12,7 +12,7 @@ LL | | }
    | |_- not a function or closure
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/no-coverage.rs:38:5
+  --> $DIR/no-coverage.rs:40:5
    |
 LL |     #[coverage(off)]
    |     ^^^^^^^^^^^^^^^^
@@ -20,7 +20,7 @@ LL |     let _ = ();
    |     ----------- not a function or closure
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/no-coverage.rs:42:9
+  --> $DIR/no-coverage.rs:44:9
    |
 LL |         #[coverage(off)]
    |         ^^^^^^^^^^^^^^^^
@@ -28,7 +28,7 @@ LL |         () => (),
    |         -------- not a function or closure
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/no-coverage.rs:46:5
+  --> $DIR/no-coverage.rs:48:5
    |
 LL |     #[coverage(off)]
    |     ^^^^^^^^^^^^^^^^
@@ -36,7 +36,7 @@ LL |     return ();
    |     --------- not a function or closure
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/no-coverage.rs:8:5
+  --> $DIR/no-coverage.rs:10:5
    |
 LL |     #[coverage(off)]
    |     ^^^^^^^^^^^^^^^^
@@ -44,7 +44,7 @@ LL |     const X: u32;
    |     ------------- not a function or closure
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/no-coverage.rs:11:5
+  --> $DIR/no-coverage.rs:13:5
    |
 LL |     #[coverage(off)]
    |     ^^^^^^^^^^^^^^^^
@@ -52,7 +52,7 @@ LL |     type T;
    |     ------- not a function or closure
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/no-coverage.rs:21:5
+  --> $DIR/no-coverage.rs:23:5
    |
 LL |     #[coverage(off)]
    |     ^^^^^^^^^^^^^^^^
@@ -60,7 +60,7 @@ LL |     type T = Self;
    |     -------------- not a function or closure
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/no-coverage.rs:24:5
+  --> $DIR/no-coverage.rs:26:5
    |
 LL |     #[coverage(off)]
    |     ^^^^^^^^^^^^^^^^
@@ -68,7 +68,7 @@ LL |     type U = impl Trait;
    |     -------------------- not a function or closure
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/no-coverage.rs:29:5
+  --> $DIR/no-coverage.rs:31:5
    |
 LL |     #[coverage(off)]
    |     ^^^^^^^^^^^^^^^^
@@ -76,7 +76,7 @@ LL |     static X: u32;
    |     -------------- not a function or closure
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/no-coverage.rs:32:5
+  --> $DIR/no-coverage.rs:34:5
    |
 LL |     #[coverage(off)]
    |     ^^^^^^^^^^^^^^^^
@@ -84,7 +84,7 @@ LL |     type T;
    |     ------- not a function or closure
 
 error: unconstrained opaque type
-  --> $DIR/no-coverage.rs:25:14
+  --> $DIR/no-coverage.rs:27:14
    |
 LL |     type U = impl Trait;
    |              ^^^^^^^^^^

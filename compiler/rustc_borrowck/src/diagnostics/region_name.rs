@@ -299,17 +299,17 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 Some(RegionName { name: kw::StaticLifetime, source: RegionNameSource::Static })
             }
 
-            ty::ReLateParam(late_param) => match late_param.bound_region {
-                ty::BoundRegionKind::Named(region_def_id, name) => {
+            ty::ReLateParam(late_param) => match late_param.kind {
+                ty::LateParamRegionKind::Named(region_def_id, name) => {
                     // Get the span to point to, even if we don't use the name.
                     let span = tcx.hir().span_if_local(region_def_id).unwrap_or(DUMMY_SP);
                     debug!(
                         "bound region named: {:?}, is_named: {:?}",
                         name,
-                        late_param.bound_region.is_named()
+                        late_param.kind.is_named()
                     );
 
-                    if late_param.bound_region.is_named() {
+                    if late_param.kind.is_named() {
                         // A named region that is actually named.
                         Some(RegionName {
                             name,
@@ -331,7 +331,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     }
                 }
 
-                ty::BoundRegionKind::ClosureEnv => {
+                ty::LateParamRegionKind::ClosureEnv => {
                     let def_ty = self.regioncx.universal_regions().defining_ty;
 
                     let closure_kind = match def_ty {
@@ -368,7 +368,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     })
                 }
 
-                ty::BoundRegionKind::Anon => None,
+                ty::LateParamRegionKind::Anon(_) => None,
             },
 
             ty::ReBound(..)

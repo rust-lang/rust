@@ -9,9 +9,9 @@ pub(crate) fn expand_trace_macros(
     sp: Span,
     tt: TokenStream,
 ) -> MacroExpanderResult<'static> {
-    let mut cursor = tt.trees();
+    let mut iter = tt.iter();
     let mut err = false;
-    let value = match &cursor.next() {
+    let value = match iter.next() {
         Some(TokenTree::Token(token, _)) if token.is_keyword(kw::True) => true,
         Some(TokenTree::Token(token, _)) if token.is_keyword(kw::False) => false,
         _ => {
@@ -19,7 +19,7 @@ pub(crate) fn expand_trace_macros(
             false
         }
     };
-    err |= cursor.next().is_some();
+    err |= iter.next().is_some();
     if err {
         cx.dcx().emit_err(errors::TraceMacros { span: sp });
     } else {

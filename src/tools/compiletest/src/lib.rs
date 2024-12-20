@@ -598,10 +598,9 @@ pub fn collect_and_make_tests(config: Arc<Config>) -> Vec<test::TestDescAndFn> {
     let mut collector =
         TestCollector { tests: vec![], found_path_stems: HashSet::new(), poisoned: false };
 
-    collect_tests_from_dir(&cx, &mut collector, &cx.config.src_base, &PathBuf::new())
-        .unwrap_or_else(|reason| {
-            panic!("Could not read tests from {}: {reason}", cx.config.src_base.display())
-        });
+    collect_tests_from_dir(&cx, &mut collector, &cx.config.src_base, Path::new("")).unwrap_or_else(
+        |reason| panic!("Could not read tests from {}: {reason}", cx.config.src_base.display()),
+    );
 
     let TestCollector { tests, found_path_stems, poisoned } = collector;
 

@@ -3091,7 +3091,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     return ty::Region::new_late_param(
                         self,
                         new_parent.to_def_id(),
-                        ty::BoundRegionKind::Named(
+                        ty::LateParamRegionKind::Named(
                             lbv.to_def_id(),
                             self.item_name(lbv.to_def_id()),
                         ),

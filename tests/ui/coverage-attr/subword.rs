@@ -1,4 +1,5 @@
 //@ edition: 2021
+//@ reference: attributes.coverage.syntax
 
 // Check that yes/no in `#[coverage(yes)]` and `#[coverage(no)]` must be bare
 // words, not part of a more complicated substructure.
