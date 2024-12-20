@@ -207,17 +207,12 @@ fn exported_symbols_provider_local(
 
     // Mark allocator shim symbols as exported only if they were generated.
     if needs_allocator_shim(tcx) {
-        for symbol_name in
-            ["__rust_alloc_error_handler".to_string(), OomStrategy::SYMBOL.to_string()]
-        {
-            let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &symbol_name));
-
-            symbols.push((exported_symbol, SymbolExportInfo {
-                level: SymbolExportLevel::Rust,
-                kind: SymbolExportKind::Text,
-                used: false,
-            }));
-        }
+        let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &OomStrategy::SYMBOL));
+        symbols.push((exported_symbol, SymbolExportInfo {
+            level: SymbolExportLevel::Rust,
+            kind: SymbolExportKind::Text,
+            used: false,
+        }));
 
         let exported_symbol =
             ExportedSymbol::NoDefId(SymbolName::new(tcx, NO_ALLOC_SHIM_IS_UNSTABLE));

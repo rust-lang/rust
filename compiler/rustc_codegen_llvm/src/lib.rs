@@ -30,7 +30,6 @@ use back::owned_target_machine::OwnedTargetMachine;
 use back::write::{create_informational_target_machine, create_target_machine};
 use errors::{AutoDiffWithoutLTO, ParseTargetMachineConfig};
 pub use llvm_util::target_features_cfg;
-use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
 use rustc_codegen_ssa::back::write::{
@@ -108,15 +107,10 @@ impl Drop for TimeTraceProfiler {
 }
 
 impl ExtraBackendMethods for LlvmCodegenBackend {
-    fn codegen_allocator<'tcx>(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        module_name: &str,
-        alloc_error_handler_kind: AllocatorKind,
-    ) -> ModuleLlvm {
+    fn codegen_allocator<'tcx>(&self, tcx: TyCtxt<'tcx>, module_name: &str) -> ModuleLlvm {
         let mut module_llvm = ModuleLlvm::new_metadata(tcx, module_name);
         unsafe {
-            allocator::codegen(tcx, &mut module_llvm, module_name, alloc_error_handler_kind);
+            allocator::codegen(tcx, &mut module_llvm, module_name);
         }
         module_llvm
     }

@@ -4,7 +4,6 @@ use std::path::Path;
 
 use rustc_abi::{Align, AlignFromBytesError, Size};
 use rustc_apfloat::Float;
-use rustc_ast::expand::allocator::alloc_error_handler_name;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -49,25 +48,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx, Option<(&'tcx mir::Body<'tcx>, ty::Instance<'tcx>)>> {
         let this = self.eval_context_mut();
-
-        // Some shims forward to other MIR bodies.
-        match link_name.as_str() {
-            "__rust_alloc_error_handler" => {
-                // Forward to the right symbol that implements this function.
-                let Some(handler_kind) = this.tcx.alloc_error_handler_kind(()) else {
-                    // in real code, this symbol does not exist without an allocator
-                    throw_unsup_format!(
-                        "`__rust_alloc_error_handler` cannot be called when no alloc error handler is set"
-                    );
-                };
-                let name = alloc_error_handler_name(handler_kind);
-                let handler = this
-                    .lookup_exported_symbol(Symbol::intern(name))?
-                    .expect("missing alloc error handler symbol");
-                return interp_ok(Some(handler));
-            }
-            _ => {}
-        }
 
         // The rest either implements the logic, or falls back to `lookup_exported_symbol`.
         match this.emulate_foreign_item_inner(link_name, abi, args, dest)? {
