@@ -1677,7 +1677,7 @@ declare_lint! {
     "detects patterns whose meaning will change in Rust 2024",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
-        reference: "123076",
+        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>",
     };
 }
 
@@ -2606,7 +2606,7 @@ declare_lint! {
     "unsafe operations in unsafe functions without an explicit unsafe block are deprecated",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
-        reference: "issue #71668 <https://github.com/rust-lang/rust/issues/71668>",
+        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/unsafe-op-in-unsafe-fn.html>",
         explain_reason: false
     };
     @edition Edition2024 => Warn;
@@ -4189,7 +4189,7 @@ declare_lint! {
     "never type fallback affecting unsafe function calls",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionAndFutureReleaseSemanticsChange(Edition::Edition2024),
-        reference: "issue #123748 <https://github.com/rust-lang/rust/issues/123748>",
+        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/never-type-fallback.html>",
     };
     @edition Edition2024 => Deny;
     report_in_external_macro
@@ -4243,7 +4243,7 @@ declare_lint! {
     "never type fallback affecting unsafe function calls",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionAndFutureReleaseError(Edition::Edition2024),
-        reference: "issue #123748 <https://github.com/rust-lang/rust/issues/123748>",
+        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/never-type-fallback.html>",
     };
     report_in_external_macro
 }
@@ -4790,7 +4790,7 @@ declare_lint! {
     "detects unsafe functions being used as safe functions",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
-        reference: "issue #27970 <https://github.com/rust-lang/rust/issues/27970>",
+        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/newly-unsafe-functions.html>",
     };
 }
 
@@ -4826,7 +4826,7 @@ declare_lint! {
     "detects missing unsafe keyword on extern declarations",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
-        reference: "issue #123743 <https://github.com/rust-lang/rust/issues/123743>",
+        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/unsafe-extern.html>",
     };
 }
 
@@ -4867,7 +4867,7 @@ declare_lint! {
     "detects unsafe attributes outside of unsafe",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
-        reference: "issue #123757 <https://github.com/rust-lang/rust/issues/123757>",
+        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/unsafe-attributes.html>",
     };
 }
 
@@ -5069,7 +5069,7 @@ declare_lint! {
     "Detect and warn on significant change in drop order in tail expression location",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
-        reference: "issue #123739 <https://github.com/rust-lang/rust/issues/123739>",
+        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-tail-expr-scope.html>",
     };
 }
 
@@ -5108,7 +5108,7 @@ declare_lint! {
     "will be parsed as a guarded string in Rust 2024",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
-        reference: "issue #123735 <https://github.com/rust-lang/rust/issues/123735>",
+        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/reserved-syntax.html>",
     };
     crate_level_only
 }

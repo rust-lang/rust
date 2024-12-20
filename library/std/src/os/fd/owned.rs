@@ -428,6 +428,14 @@ impl<T: AsFd + ?Sized> AsFd for crate::rc::Rc<T> {
     }
 }
 
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: AsFd + ?Sized> AsFd for crate::rc::UniqueRc<T> {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        (**self).as_fd()
+    }
+}
+
 #[stable(feature = "asfd_ptrs", since = "1.64.0")]
 impl<T: AsFd + ?Sized> AsFd for Box<T> {
     #[inline]

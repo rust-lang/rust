@@ -3,7 +3,7 @@ use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self};
 use rustc_middle::{bug, mir};
-use rustc_span::symbol::Symbol;
+use rustc_span::Symbol;
 use tracing::trace;
 
 use crate::const_eval::{CanAccessMutGlobal, CompileTimeInterpCx, mk_eval_cx_to_read_const_val};

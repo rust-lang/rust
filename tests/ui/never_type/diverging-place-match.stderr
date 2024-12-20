@@ -5,8 +5,7 @@ LL | /     unsafe {
 LL | |
 LL | |         let x: *const ! = 0 as _;
 LL | |         let _: ! = *x;
-LL | |         // Since `*x` "diverges" in HIR, but doesn't count as a read in MIR, this
-LL | |         // is unsound since we act as if it diverges but it doesn't.
+...  |
 LL | |     }
    | |_____^ expected `!`, found `()`
    |

@@ -5,15 +5,15 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::{Body, Promoted};
 use rustc_middle::ty::TyCtxt;
 
+pub use super::borrow_set::{BorrowData, BorrowSet, TwoPhaseActivation};
 pub use super::constraints::OutlivesConstraint;
 pub use super::dataflow::{BorrowIndex, Borrows, calculate_borrows_out_of_scope_at_location};
-pub use super::facts::{AllFacts as PoloniusInput, RustcFacts};
+pub use super::facts::{AllFacts as PoloniusInput, PoloniusRegionVid, RustcFacts};
 pub use super::location::{LocationTable, RichLocation};
 pub use super::nll::PoloniusOutput;
 pub use super::place_ext::PlaceExt;
 pub use super::places_conflict::{PlaceConflictBias, places_conflict};
 pub use super::region_infer::RegionInferenceContext;
-use crate::borrow_set::BorrowSet;
 
 /// Options determining the output behavior of [`get_body_with_borrowck_facts`].
 ///

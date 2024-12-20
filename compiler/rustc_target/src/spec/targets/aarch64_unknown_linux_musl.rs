@@ -12,6 +12,9 @@ pub(crate) fn target() -> Target {
         | SanitizerSet::MEMORY
         | SanitizerSet::THREAD;
 
+    // FIXME(compiler-team#422): musl targets should be dynamically linked by default.
+    base.crt_static_default = true;
+
     Target {
         llvm_target: "aarch64-unknown-linux-musl".into(),
         metadata: crate::spec::TargetMetadata {

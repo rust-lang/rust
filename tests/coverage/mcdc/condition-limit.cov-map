@@ -1,5 +1,5 @@
 Function name: condition_limit::accept_7_conditions
-Raw bytes (147): 0x[01, 01, 08, 01, 05, 05, 09, 09, 0d, 0d, 11, 11, 15, 15, 19, 19, 1d, 01, 1d, 12, 01, 07, 01, 02, 09, 28, 08, 07, 02, 08, 00, 27, 30, 05, 02, 01, 07, 00, 00, 08, 00, 09, 05, 00, 0d, 00, 0e, 30, 09, 06, 07, 06, 00, 00, 0d, 00, 0e, 09, 00, 12, 00, 13, 30, 0d, 0a, 06, 05, 00, 00, 12, 00, 13, 0d, 00, 17, 00, 18, 30, 11, 0e, 05, 04, 00, 00, 17, 00, 18, 11, 00, 1c, 00, 1d, 30, 15, 12, 04, 03, 00, 00, 1c, 00, 1d, 15, 00, 21, 00, 22, 30, 19, 16, 03, 02, 00, 00, 21, 00, 22, 19, 00, 26, 00, 27, 30, 1d, 1a, 02, 00, 00, 00, 26, 00, 27, 1d, 00, 28, 02, 06, 1e, 02, 05, 00, 06, 01, 01, 01, 00, 02]
+Raw bytes (147): 0x[01, 01, 08, 01, 05, 05, 09, 09, 0d, 0d, 11, 11, 15, 15, 19, 19, 1d, 01, 1d, 12, 01, 06, 01, 02, 09, 28, 08, 07, 02, 08, 00, 27, 30, 05, 02, 01, 07, 00, 00, 08, 00, 09, 05, 00, 0d, 00, 0e, 30, 09, 06, 07, 06, 00, 00, 0d, 00, 0e, 09, 00, 12, 00, 13, 30, 0d, 0a, 06, 05, 00, 00, 12, 00, 13, 0d, 00, 17, 00, 18, 30, 11, 0e, 05, 04, 00, 00, 17, 00, 18, 11, 00, 1c, 00, 1d, 30, 15, 12, 04, 03, 00, 00, 1c, 00, 1d, 15, 00, 21, 00, 22, 30, 19, 16, 03, 02, 00, 00, 21, 00, 22, 19, 00, 26, 00, 27, 30, 1d, 1a, 02, 00, 00, 00, 26, 00, 27, 1d, 00, 28, 02, 06, 1e, 02, 05, 00, 06, 01, 01, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 8
@@ -12,7 +12,7 @@ Number of expressions: 8
 - expression 6 operands: lhs = Counter(6), rhs = Counter(7)
 - expression 7 operands: lhs = Counter(0), rhs = Counter(7)
 Number of file 0 mappings: 18
-- Code(Counter(0)) at (prev + 7, 1) to (start + 2, 9)
+- Code(Counter(0)) at (prev + 6, 1) to (start + 2, 9)
 - MCDCDecision { bitmap_idx: 8, conditions_num: 7 } at (prev + 2, 8) to (start + 0, 39)
 - MCDCBranch { true: Counter(1), false: Expression(0, Sub), condition_id: 1, true_next_id: 7, false_next_id: 0 } at (prev + 0, 8) to (start + 0, 9)
     true  = c1

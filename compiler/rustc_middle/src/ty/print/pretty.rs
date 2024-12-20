@@ -16,8 +16,7 @@ use rustc_hir::definitions::{DefKey, DefPathDataName};
 use rustc_macros::{Lift, extension};
 use rustc_session::Limit;
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
-use rustc_span::symbol::{Ident, Symbol, kw};
-use rustc_span::{FileNameDisplayPreference, sym};
+use rustc_span::{FileNameDisplayPreference, Ident, Symbol, kw, sym};
 use rustc_type_ir::{Upcast as _, elaborate};
 use smallvec::SmallVec;
 
@@ -2375,8 +2374,8 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
         match *region {
             ty::ReEarlyParam(ref data) => data.has_name(),
 
+            ty::ReLateParam(ty::LateParamRegion { kind, .. }) => kind.is_named(),
             ty::ReBound(_, ty::BoundRegion { kind: br, .. })
-            | ty::ReLateParam(ty::LateParamRegion { bound_region: br, .. })
             | ty::RePlaceholder(ty::Placeholder {
                 bound: ty::BoundRegion { kind: br, .. }, ..
             }) => {
@@ -2449,8 +2448,13 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                     return Ok(());
                 }
             }
+            ty::ReLateParam(ty::LateParamRegion { kind, .. }) => {
+                if let Some(name) = kind.get_name() {
+                    p!(write("{}", name));
+                    return Ok(());
+                }
+            }
             ty::ReBound(_, ty::BoundRegion { kind: br, .. })
-            | ty::ReLateParam(ty::LateParamRegion { bound_region: br, .. })
             | ty::RePlaceholder(ty::Placeholder {
                 bound: ty::BoundRegion { kind: br, .. }, ..
             }) => {

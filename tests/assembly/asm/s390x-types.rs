@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: s390x s390x_vector
 //@ assembly-output: emit-asm
 //@[s390x] compile-flags: --target s390x-unknown-linux-gnu
@@ -6,31 +7,14 @@
 //@[s390x_vector] needs-llvm-components: systemz
 //@ compile-flags: -Zmerge-functions=disabled
 
-#![feature(no_core, lang_items, rustc_attrs, repr_simd, f128)]
+#![feature(no_core, repr_simd, f128)]
 #![cfg_attr(s390x_vector, feature(asm_experimental_reg))]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]
 
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! concat {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! stringify {
-    () => {};
-}
-
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
-
-impl<T: Copy, const N: usize> Copy for [T; N] {}
+extern crate minicore;
+use minicore::*;
 
 type ptr = *const i32;
 
@@ -47,16 +31,6 @@ pub struct f32x4([f32; 4]);
 #[repr(simd)]
 pub struct f64x2([f64; 2]);
 
-impl Copy for i8 {}
-impl Copy for u8 {}
-impl Copy for i16 {}
-impl Copy for i32 {}
-impl Copy for i64 {}
-impl Copy for i128 {}
-impl Copy for f32 {}
-impl Copy for f64 {}
-impl Copy for f128 {}
-impl Copy for ptr {}
 impl Copy for i8x16 {}
 impl Copy for i16x8 {}
 impl Copy for i32x4 {}

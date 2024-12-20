@@ -32,11 +32,7 @@ error: First Pass analysis includes:
   --> $DIR/wild_patterns.rs:26:5
    |
 LL | /     || {
-LL | |
-LL | |
-LL | |         // FIXME(arora-aman): Change `_x` to `_`
 ...  |
-LL | |
 LL | |     };
    | |_____^
    |
@@ -50,11 +46,7 @@ error: Min Capture analysis includes:
   --> $DIR/wild_patterns.rs:26:5
    |
 LL | /     || {
-LL | |
-LL | |
-LL | |         // FIXME(arora-aman): Change `_x` to `_`
 ...  |
-LL | |
 LL | |     };
    | |_____^
    |
@@ -68,11 +60,7 @@ error: First Pass analysis includes:
   --> $DIR/wild_patterns.rs:45:5
    |
 LL | /     || {
-LL | |
-LL | |
-LL | |         // FIXME(arora-aman): Change `_x` to `_`
 ...  |
-LL | |
 LL | |     };
    | |_____^
    |
@@ -86,11 +74,7 @@ error: Min Capture analysis includes:
   --> $DIR/wild_patterns.rs:45:5
    |
 LL | /     || {
-LL | |
-LL | |
-LL | |         // FIXME(arora-aman): Change `_x` to `_`
 ...  |
-LL | |
 LL | |     };
    | |_____^
    |
@@ -104,11 +88,7 @@ error: First Pass analysis includes:
   --> $DIR/wild_patterns.rs:64:5
    |
 LL | /     || {
-LL | |
-LL | |
-LL | |         // FIXME(arora-aman): Change `_x` to `_`
 ...  |
-LL | |
 LL | |     };
    | |_____^
    |
@@ -122,11 +102,7 @@ error: Min Capture analysis includes:
   --> $DIR/wild_patterns.rs:64:5
    |
 LL | /     || {
-LL | |
-LL | |
-LL | |         // FIXME(arora-aman): Change `_x` to `_`
 ...  |
-LL | |
 LL | |     };
    | |_____^
    |

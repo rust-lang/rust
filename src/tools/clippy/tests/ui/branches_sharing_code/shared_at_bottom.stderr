@@ -115,8 +115,7 @@ error: all if blocks contain the same code at the end
   --> tests/ui/branches_sharing_code/shared_at_bottom.rs:183:5
    |
 LL | /         x << 2
-LL | |
-LL | |
+...  |
 LL | |     };
    | |_____^
    |
@@ -131,8 +130,7 @@ error: all if blocks contain the same code at the end
   --> tests/ui/branches_sharing_code/shared_at_bottom.rs:192:5
    |
 LL | /         x * 4
-LL | |
-LL | |
+...  |
 LL | |     }
    | |_____^
    |

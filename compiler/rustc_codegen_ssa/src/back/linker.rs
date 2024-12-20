@@ -16,7 +16,7 @@ use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, S
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, Lld};
 use tracing::{debug, warn};
 
@@ -1749,7 +1749,7 @@ fn for_each_exported_symbols_include_dep<'tcx>(
     }
 
     let formats = tcx.dependency_formats(());
-    let deps = formats.iter().find_map(|(t, list)| (*t == crate_type).then_some(list)).unwrap();
+    let deps = &formats[&crate_type];
 
     for (index, dep_format) in deps.iter().enumerate() {
         let cnum = CrateNum::new(index + 1);

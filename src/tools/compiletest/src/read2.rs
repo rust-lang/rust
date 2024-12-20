@@ -286,7 +286,7 @@ mod imp {
     impl<'a> Pipe<'a> {
         unsafe fn new<P: IntoRawHandle>(p: P, dst: &'a mut Vec<u8>) -> Pipe<'a> {
             Pipe {
-                dst: dst,
+                dst,
                 pipe: NamedPipe::from_raw_handle(p.into_raw_handle()),
                 overlapped: Overlapped::zero(),
                 done: false,

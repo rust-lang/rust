@@ -28,7 +28,7 @@ mod tests;
 
 use std::num::NonZero;
 
-use rustc_span::symbol::Symbol;
+use rustc_span::Symbol;
 
 #[derive(Debug, Clone)]
 pub struct Feature {

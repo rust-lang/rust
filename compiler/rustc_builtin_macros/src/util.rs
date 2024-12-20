@@ -7,7 +7,7 @@ use rustc_expand::expand::AstFragment;
 use rustc_feature::AttributeTemplate;
 use rustc_lint_defs::BuiltinLintDiag;
 use rustc_lint_defs::builtin::DUPLICATE_MACRO_ATTRIBUTES;
-use rustc_parse::{parser, validate_attr};
+use rustc_parse::{exp, parser, validate_attr};
 use rustc_session::errors::report_lit_error;
 use rustc_span::{BytePos, Span, Symbol};
 
@@ -204,7 +204,7 @@ pub(crate) fn get_single_expr_from_tts(
         Ok(ret) => ret,
         Err(guar) => return ExpandResult::Ready(Err(guar)),
     };
-    let _ = p.eat(&token::Comma);
+    let _ = p.eat(exp!(Comma));
 
     if p.token != token::Eof {
         cx.dcx().emit_err(errors::OnlyOneArgument { span, name });
@@ -237,7 +237,7 @@ pub(crate) fn get_exprs_from_tts(
         let expr = cx.expander().fully_expand_fragment(AstFragment::Expr(expr)).make_expr();
 
         es.push(expr);
-        if p.eat(&token::Comma) {
+        if p.eat(exp!(Comma)) {
             continue;
         }
         if p.token != token::Eof {

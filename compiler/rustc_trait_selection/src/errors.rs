@@ -14,8 +14,7 @@ use rustc_hir::{FnRetTy, GenericParamKind, Node};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::print::{PrintTraitRefExt as _, TraitRefPrintOnlyTraitPath};
 use rustc_middle::ty::{self, Binder, ClosureKind, FnSig, PolyTraitRef, Region, Ty, TyCtxt};
-use rustc_span::symbol::{Ident, Symbol, kw};
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, Ident, Span, Symbol, kw};
 
 use crate::error_reporting::infer::ObligationCauseAsDiagArg;
 use crate::error_reporting::infer::need_type_info::UnderspecifiedArgKind;
@@ -517,7 +516,7 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                 return false;
             };
 
-            let node = self.tcx.hir_node_by_def_id(anon_reg.def_id);
+            let node = self.tcx.hir_node_by_def_id(anon_reg.scope);
             let is_impl = matches!(&node, hir::Node::ImplItem(_));
             let (generics, parent_generics) = match node {
                 hir::Node::Item(&hir::Item {
@@ -527,7 +526,7 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                 | hir::Node::TraitItem(&hir::TraitItem { ref generics, .. })
                 | hir::Node::ImplItem(&hir::ImplItem { ref generics, .. }) => (
                     generics,
-                    match self.tcx.parent_hir_node(self.tcx.local_def_id_to_hir_id(anon_reg.def_id))
+                    match self.tcx.parent_hir_node(self.tcx.local_def_id_to_hir_id(anon_reg.scope))
                     {
                         hir::Node::Item(hir::Item {
                             kind: hir::ItemKind::Trait(_, _, ref generics, ..),

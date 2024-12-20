@@ -4,9 +4,8 @@ use rustc_ast::{NodeId, PatKind, attr, token};
 use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute, Features, GateIssue};
 use rustc_session::Session;
 use rustc_session::parse::{feature_err, feature_err_issue, feature_warn};
-use rustc_span::Span;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Span, Symbol, sym};
 use rustc_target::spec::abi;
 use thin_vec::ThinVec;
 
@@ -560,6 +559,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(return_type_notation, "return type notation is experimental");
     gate_all!(pin_ergonomics, "pinned reference syntax is experimental");
     gate_all!(unsafe_fields, "`unsafe` fields are experimental");
+    gate_all!(unsafe_binders, "unsafe binder types are experimental");
 
     if !visitor.features.never_patterns() {
         if let Some(spans) = spans.get(&sym::never_patterns) {

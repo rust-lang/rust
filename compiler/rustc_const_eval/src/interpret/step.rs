@@ -9,6 +9,7 @@ use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::source_map::Spanned;
+use rustc_span::{DesugaringKind, Span};
 use rustc_target::callconv::FnAbi;
 use tracing::{info, instrument, trace};
 
@@ -80,7 +81,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         use rustc_middle::mir::StatementKind::*;
 
         match &stmt.kind {
-            Assign(box (place, rvalue)) => self.eval_rvalue_into_place(rvalue, *place)?,
+            Assign(box (place, rvalue)) => {
+                self.eval_rvalue_into_place(rvalue, *place, stmt.source_info.span)?
+            }
 
             SetDiscriminant { place, variant_index } => {
                 let dest = self.eval_place(**place)?;
@@ -159,6 +162,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         &mut self,
         rvalue: &mir::Rvalue<'tcx>,
         place: mir::Place<'tcx>,
+        span: Span,
     ) -> InterpResult<'tcx> {
         let dest = self.eval_place(place)?;
         // FIXME: ensure some kind of non-aliasing between LHS and RHS?
@@ -250,8 +254,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let src = self.eval_place(place)?;
                 let place = self.force_allocation(&src)?;
                 let mut val = ImmTy::from_immediate(place.to_ref(self), dest.layout);
-                if !place_base_raw {
+                if !place_base_raw
+                    && span.desugaring_kind() != Some(DesugaringKind::IndexBoundsCheckReborrow)
+                {
                     // If this was not already raw, it needs retagging.
+                    // As a special hack, we exclude the desugared `PtrMetadata(&raw const *_n)`
+                    // from indexing. (Really we should not do any retag on `&raw` but that does not
+                    // currently work with Stacked Borrows.)
                     val = M::retag_ptr_value(self, mir::RetagKind::Raw, &val)?;
                 }
                 self.write_immediate(*val, &dest)?;

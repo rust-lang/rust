@@ -1,7 +1,7 @@
 use std::fmt;
 use std::hash::Hash;
 
-use rustc_attr::InlineAttr;
+use rustc_attr_parsing::InlineAttr;
 use rustc_data_structures::base_n::{BaseNString, CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexMap;
@@ -13,8 +13,7 @@ use rustc_index::Idx;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::config::OptLevel;
-use rustc_span::Span;
-use rustc_span::symbol::Symbol;
+use rustc_span::{Span, Symbol};
 use rustc_target::spec::SymbolVisibility;
 use tracing::debug;
 
@@ -294,10 +293,22 @@ pub enum Linkage {
     Common,
 }
 
+/// Specifies the symbol visibility with regards to dynamic linking.
+///
+/// Visibility doesn't have any effect when linkage is internal.
+///
+/// DSO means dynamic shared object, that is a dynamically linked executable or dylib.
 #[derive(Copy, Clone, PartialEq, Debug, HashStable)]
 pub enum Visibility {
+    /// Export the symbol from the DSO and apply overrides of the symbol by outside DSOs to within
+    /// the DSO if the object file format supports this.
     Default,
+    /// Hide the symbol outside of the defining DSO even when external linkage is used to export it
+    /// from the object file.
     Hidden,
+    /// Export the symbol from the DSO, but don't apply overrides of the symbol by outside DSOs to
+    /// within the DSO. Equivalent to default visibility with object file formats that don't support
+    /// overriding exported symbols by another DSO.
     Protected,
 }
 

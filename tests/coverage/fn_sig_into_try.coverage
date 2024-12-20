@@ -1,4 +1,3 @@
-   LL|       |#![feature(coverage_attribute)]
    LL|       |//@ edition: 2021
    LL|       |
    LL|       |// Regression test for inconsistent handling of function signature spans that

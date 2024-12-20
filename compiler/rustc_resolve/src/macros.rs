@@ -4,10 +4,11 @@
 use std::cell::Cell;
 use std::mem;
 
+use rustc_ast::attr::AttributeExt;
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::{self as ast, Crate, Inline, ItemKind, ModKind, NodeId, attr};
 use rustc_ast_pretty::pprust;
-use rustc_attr::StabilityLevel;
+use rustc_attr_parsing::StabilityLevel;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, StashKey};
@@ -32,8 +33,7 @@ use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{self, AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 
 use crate::Namespace::*;
 use crate::errors::{
@@ -166,7 +166,7 @@ fn soft_custom_inner_attributes_gate(path: &ast::Path, invoc: &Invocation) -> bo
         [seg1, seg2] if seg1.ident.name == sym::rustfmt && seg2.ident.name == sym::skip => {
             if let InvocationKind::Attr { item, .. } = &invoc.kind {
                 if let Annotatable::Item(item) = item {
-                    if let ItemKind::Mod(_, ModKind::Loaded(_, Inline::No, _)) = item.kind {
+                    if let ItemKind::Mod(_, ModKind::Loaded(_, Inline::No, _, _)) = item.kind {
                         return true;
                     }
                 }
@@ -689,8 +689,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             && let [namespace, attribute, ..] = &*path.segments
             && namespace.ident.name == sym::diagnostic
             && !(attribute.ident.name == sym::on_unimplemented
-                || (attribute.ident.name == sym::do_not_recommend
-                    && self.tcx.features().do_not_recommend()))
+                || attribute.ident.name == sym::do_not_recommend)
         {
             let distance =
                 edit_distance(attribute.ident.name.as_str(), sym::on_unimplemented.as_str(), 5);
@@ -1126,7 +1125,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         &mut self,
         macro_def: &ast::MacroDef,
         ident: Ident,
-        attrs: &[ast::Attribute],
+        attrs: &[impl AttributeExt],
         span: Span,
         node_id: NodeId,
         edition: Edition,

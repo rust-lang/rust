@@ -493,15 +493,64 @@ impl Extend<()> for () {
 }
 
 macro_rules! spec_tuple_impl {
-    ( ($ty_name:ident, $var_name:ident, $extend_ty_name: ident, $trait_name:ident, $default_fn_name:ident, $cnt:tt), ) => {
-        spec_tuple_impl!($trait_name, $default_fn_name, #[doc(fake_variadic)] #[doc = "This trait is implemented for tuples up to twelve items long. The `impl`s for 1- and 3- through 12-ary tuples were stabilized after 2-tuples, in RUSTC_CURRENT_VERSION."] => ($ty_name, $var_name, $extend_ty_name, $cnt),);
+    (
+        (
+            $ty_name:ident, $var_name:ident, $extend_ty_name: ident,
+            $trait_name:ident, $default_fn_name:ident, $cnt:tt
+        ),
+    ) => {
+        spec_tuple_impl!(
+            $trait_name,
+            $default_fn_name,
+            #[doc(fake_variadic)]
+            #[doc = "This trait is implemented for tuples up to twelve items long. The `impl`s for \
+                     1- and 3- through 12-ary tuples were stabilized after 2-tuples, in \
+                     CURRENT_RUSTC_VERSION."]
+            => ($ty_name, $var_name, $extend_ty_name, $cnt),
+        );
     };
-    ( ($ty_name:ident, $var_name:ident, $extend_ty_name: ident, $trait_name:ident, $default_fn_name:ident, $cnt:tt), $(($ty_names:ident, $var_names:ident,  $extend_ty_names:ident, $trait_names:ident, $default_fn_names:ident, $cnts:tt),)*) => {
-
-        spec_tuple_impl!($(($ty_names, $var_names, $extend_ty_names, $trait_names, $default_fn_names, $cnts),)*);
-        spec_tuple_impl!($trait_name, $default_fn_name, #[doc(hidden)] => ($ty_name, $var_name, $extend_ty_name, $cnt), $(($ty_names, $var_names, $extend_ty_names, $cnts),)*);
+    (
+        (
+            $ty_name:ident, $var_name:ident, $extend_ty_name: ident,
+            $trait_name:ident, $default_fn_name:ident, $cnt:tt
+        ),
+        $(
+            (
+                $ty_names:ident, $var_names:ident,  $extend_ty_names:ident,
+                $trait_names:ident, $default_fn_names:ident, $cnts:tt
+            ),
+        )*
+    ) => {
+        spec_tuple_impl!(
+            $(
+                (
+                    $ty_names, $var_names, $extend_ty_names,
+                    $trait_names, $default_fn_names, $cnts
+                ),
+            )*
+        );
+        spec_tuple_impl!(
+            $trait_name,
+            $default_fn_name,
+            #[doc(hidden)]
+            => (
+                $ty_name, $var_name, $extend_ty_name, $cnt
+            ),
+            $(
+                (
+                    $ty_names, $var_names, $extend_ty_names, $cnts
+                ),
+            )*
+        );
     };
-    ($trait_name:ident, $default_fn_name:ident, #[$meta:meta] $(#[$doctext:meta])? => $(($ty_names:ident, $var_names:ident, $extend_ty_names:ident, $cnts:tt),)*) => {
+    (
+        $trait_name:ident, $default_fn_name:ident, #[$meta:meta]
+        $(#[$doctext:meta])? => $(
+            (
+                $ty_names:ident, $var_names:ident, $extend_ty_names:ident, $cnts:tt
+            ),
+        )*
+    ) => {
         #[$meta]
         $(#[$doctext])?
         #[stable(feature = "extend_for_tuple", since = "1.56.0")]

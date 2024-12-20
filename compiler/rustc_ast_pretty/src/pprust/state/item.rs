@@ -3,7 +3,7 @@ use itertools::{Itertools, Position};
 use rustc_ast as ast;
 use rustc_ast::ModKind;
 use rustc_ast::ptr::P;
-use rustc_span::symbol::Ident;
+use rustc_span::Ident;
 
 use crate::pp::Breaks::Inconsistent;
 use crate::pprust::state::fixup::FixupContext;

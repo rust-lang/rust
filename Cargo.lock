@@ -2706,7 +2706,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b7cafe60d6cf8e62e1b9b2ea516a089c008945bb5a275416789e7db0bc199dc"
 dependencies = [
  "memchr",
- "thiserror 2.0.8",
+"thiserror 2.0.8",
  "ucd-trie",
 ]
 
@@ -3354,7 +3354,7 @@ dependencies = [
  "itertools",
  "rustc_ast",
  "rustc_ast_pretty",
- "rustc_attr",
+ "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
@@ -3380,12 +3380,31 @@ dependencies = [
 ]
 
 [[package]]
-name = "rustc_attr"
+name = "rustc_attr_data_structures"
 version = "0.0.0"
 dependencies = [
  "rustc_abi",
  "rustc_ast",
  "rustc_ast_pretty",
+ "rustc_data_structures",
+ "rustc_errors",
+ "rustc_feature",
+ "rustc_fluent_macro",
+ "rustc_lexer",
+ "rustc_macros",
+ "rustc_serialize",
+ "rustc_session",
+ "rustc_span",
+]
+
+[[package]]
+name = "rustc_attr_parsing"
+version = "0.0.0"
+dependencies = [
+ "rustc_abi",
+ "rustc_ast",
+ "rustc_ast_pretty",
+ "rustc_attr_data_structures",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
@@ -3441,7 +3460,7 @@ version = "0.0.0"
 dependencies = [
  "rustc_ast",
  "rustc_ast_pretty",
- "rustc_attr",
+ "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_expand",
@@ -3473,7 +3492,7 @@ dependencies = [
  "rustc-demangle",
  "rustc_abi",
  "rustc_ast",
- "rustc_attr",
+ "rustc_attr_parsing",
  "rustc_codegen_ssa",
  "rustc_data_structures",
  "rustc_errors",
@@ -3507,7 +3526,6 @@ dependencies = [
  "cc",
  "either",
  "itertools",
- "jobserver",
  "libc",
  "object 0.36.5",
  "pathdiff",
@@ -3516,12 +3534,13 @@ dependencies = [
  "rustc_arena",
  "rustc_ast",
  "rustc_ast_pretty",
- "rustc_attr",
+ "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fluent_macro",
  "rustc_fs_util",
  "rustc_hir",
+ "rustc_hir_pretty",
  "rustc_incremental",
  "rustc_index",
  "rustc_macros",
@@ -3553,7 +3572,7 @@ dependencies = [
  "rustc_abi",
  "rustc_apfloat",
  "rustc_ast",
- "rustc_attr",
+ "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fluent_macro",
@@ -3620,7 +3639,7 @@ dependencies = [
  "rustc_ast_lowering",
  "rustc_ast_passes",
  "rustc_ast_pretty",
- "rustc_attr",
+ "rustc_attr_parsing",
  "rustc_borrowck",
  "rustc_builtin_macros",
  "rustc_codegen_ssa",
@@ -3724,7 +3743,7 @@ dependencies = [
  "rustc_ast",
  "rustc_ast_passes",
  "rustc_ast_pretty",
- "rustc_attr",
+ "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
@@ -3787,6 +3806,7 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "smallvec",
+ "thin-vec",
  "tracing",
 ]
 
@@ -3798,7 +3818,7 @@ dependencies = [
  "rustc_abi",
  "rustc_arena",
  "rustc_ast",
- "rustc_attr",
+ "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
@@ -3837,7 +3857,7 @@ dependencies = [
  "rustc_abi",
  "rustc_ast",
  "rustc_ast_ir",
- "rustc_attr",
+ "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fluent_macro",
@@ -3926,7 +3946,7 @@ dependencies = [
  "rustc_ast_lowering",
  "rustc_ast_passes",
  "rustc_ast_pretty",
- "rustc_attr",
+ "rustc_attr_parsing",
  "rustc_borrowck",
  "rustc_builtin_macros",
  "rustc_codegen_llvm",
@@ -3982,7 +4002,7 @@ dependencies = [
  "rustc_abi",
  "rustc_ast",
  "rustc_ast_pretty",
- "rustc_attr",
+ "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
@@ -4056,7 +4076,7 @@ dependencies = [
  "odht",
  "rustc_abi",
  "rustc_ast",
- "rustc_attr",
+ "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_expand",
@@ -4093,7 +4113,7 @@ dependencies = [
  "rustc_arena",
  "rustc_ast",
  "rustc_ast_ir",
- "rustc_attr",
+ "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_error_messages",
  "rustc_errors",
@@ -4172,7 +4192,7 @@ dependencies = [
  "rustc_abi",
  "rustc_arena",
  "rustc_ast",
- "rustc_attr",
+ "rustc_attr_parsing",
  "rustc_const_eval",
  "rustc_data_structures",
  "rustc_errors",
@@ -4198,7 +4218,7 @@ name = "rustc_monomorphize"
 version = "0.0.0"
 dependencies = [
  "rustc_abi",
- "rustc_attr",
+ "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fluent_macro",
@@ -4266,7 +4286,7 @@ dependencies = [
  "rustc_abi",
  "rustc_ast",
  "rustc_ast_pretty",
- "rustc_attr",
+ "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_expand",
@@ -4274,7 +4294,6 @@ dependencies = [
  "rustc_fluent_macro",
  "rustc_hir",
  "rustc_index",
- "rustc_lexer",
  "rustc_macros",
  "rustc_middle",
  "rustc_privacy",
@@ -4313,7 +4332,7 @@ name = "rustc_privacy"
 version = "0.0.0"
 dependencies = [
  "rustc_ast",
- "rustc_attr",
+ "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fluent_macro",
@@ -4377,7 +4396,7 @@ dependencies = [
  "rustc_arena",
  "rustc_ast",
  "rustc_ast_pretty",
- "rustc_attr",
+ "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_expand",
@@ -4455,9 +4474,9 @@ version = "0.0.0"
 dependencies = [
  "rustc_abi",
  "rustc_ast",
- "rustc_ast_pretty",
  "rustc_data_structures",
  "rustc_hir",
+ "rustc_hir_pretty",
  "rustc_middle",
  "rustc_session",
  "rustc_span",
@@ -4534,7 +4553,7 @@ dependencies = [
  "rustc_abi",
  "rustc_ast",
  "rustc_ast_ir",
- "rustc_attr",
+ "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fluent_macro",

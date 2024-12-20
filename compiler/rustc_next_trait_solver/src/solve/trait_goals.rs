@@ -5,6 +5,7 @@ use rustc_type_ir::data_structures::IndexSet;
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::solve::CanonicalResponse;
 use rustc_type_ir::visit::TypeVisitableExt as _;
 use rustc_type_ir::{self as ty, Interner, TraitPredicate, TypingMode, Upcast as _, elaborate};
 use tracing::{instrument, trace};
@@ -1147,13 +1148,101 @@ where
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
+}
+
+/// How we've proven this trait goal.
+///
+/// This is used by `NormalizesTo` goals to only normalize
+/// by using the same 'kind of candidate' we've used to prove
+/// its corresponding trait goal. Most notably, we do not
+/// normalize by using an impl if the trait goal has been
+/// proven via a `ParamEnv` candidate.
+///
+/// This is necessary to avoid unnecessary region constraints,
+/// see trait-system-refactor-initiative#125 for more details.
+#[derive(Debug, Clone, Copy)]
+pub(super) enum TraitGoalProvenVia {
+    /// We've proven the trait goal by something which is
+    /// is not a non-global where-bound or an alias-bound.
+    ///
+    /// This means we don't disable any candidates during
+    /// normalization.
+    Misc,
+    ParamEnv,
+    AliasBound,
+}
+
+impl<D, I> EvalCtxt<'_, D>
+where
+    D: SolverDelegate<Interner = I>,
+    I: Interner,
+{
+    pub(super) fn merge_trait_candidates(
+        &mut self,
+        goal: Goal<I, TraitPredicate<I>>,
+        candidates: Vec<Candidate<I>>,
+    ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolution> {
+        if let TypingMode::Coherence = self.typing_mode() {
+            let all_candidates: Vec<_> = candidates.into_iter().map(|c| c.result).collect();
+            return if let Some(response) = self.try_merge_responses(&all_candidates) {
+                Ok((response, Some(TraitGoalProvenVia::Misc)))
+            } else {
+                self.flounder(&all_candidates).map(|r| (r, None))
+            };
+        }
+
+        // FIXME: prefer trivial builtin impls
+
+        // If there are non-global where-bounds, prefer where-bounds
+        // (including global ones) over everything else.
+        let has_non_global_where_bounds = candidates.iter().any(|c| match c.source {
+            CandidateSource::ParamEnv(idx) => {
+                let where_bound = goal.param_env.caller_bounds().get(idx);
+                where_bound.has_bound_vars() || !where_bound.is_global()
+            }
+            _ => false,
+        });
+        if has_non_global_where_bounds {
+            let where_bounds: Vec<_> = candidates
+                .iter()
+                .filter(|c| matches!(c.source, CandidateSource::ParamEnv(_)))
+                .map(|c| c.result)
+                .collect();
+
+            return if let Some(response) = self.try_merge_responses(&where_bounds) {
+                Ok((response, Some(TraitGoalProvenVia::ParamEnv)))
+            } else {
+                Ok((self.bail_with_ambiguity(&where_bounds), None))
+            };
+        }
+
+        if candidates.iter().any(|c| matches!(c.source, CandidateSource::AliasBound)) {
+            let alias_bounds: Vec<_> = candidates
+                .iter()
+                .filter(|c| matches!(c.source, CandidateSource::AliasBound))
+                .map(|c| c.result)
+                .collect();
+            return if let Some(response) = self.try_merge_responses(&alias_bounds) {
+                Ok((response, Some(TraitGoalProvenVia::AliasBound)))
+            } else {
+                Ok((self.bail_with_ambiguity(&alias_bounds), None))
+            };
+        }
+
+        let all_candidates: Vec<_> = candidates.into_iter().map(|c| c.result).collect();
+        if let Some(response) = self.try_merge_responses(&all_candidates) {
+            Ok((response, Some(TraitGoalProvenVia::Misc)))
+        } else {
+            self.flounder(&all_candidates).map(|r| (r, None))
+        }
+    }
 
     #[instrument(level = "trace", skip(self))]
     pub(super) fn compute_trait_goal(
         &mut self,
         goal: Goal<I, TraitPredicate<I>>,
-    ) -> QueryResult<I> {
+    ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolution> {
         let candidates = self.assemble_and_evaluate_candidates(goal);
-        self.merge_candidates(candidates)
+        self.merge_trait_candidates(goal, candidates)
     }
 }

@@ -6,7 +6,7 @@ use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, FloatTy, ScalarInt, Ty};
 use rustc_middle::{bug, mir, span_bug};
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 use tracing::trace;
 
 use super::{ImmTy, InterpCx, Machine, MemPlaceMeta, interp_ok, throw_ub};
@@ -222,7 +222,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let res = ImmTy::from_scalar_int(result, left.layout);
                 return interp_ok(if with_overflow {
                     let overflow = ImmTy::from_bool(overflow, *self.tcx);
-                    ImmTy::from_pair(res, overflow, *self.tcx)
+                    ImmTy::from_pair(res, overflow, self)
                 } else {
                     res
                 });
@@ -279,7 +279,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let res = ImmTy::from_scalar_int(result, left.layout);
                 if with_overflow {
                     let overflow = ImmTy::from_bool(overflow, *self.tcx);
-                    ImmTy::from_pair(res, overflow, *self.tcx)
+                    ImmTy::from_pair(res, overflow, self)
                 } else {
                     res
                 }

@@ -149,12 +149,16 @@ will match these queries:
 * `&mut Read -> Result<Vec<u8>, Error>`
 * `Read -> Result<Vec<u8>, Error>`
 * `Read -> Result<Vec<u8>>`
-* `Read -> u8`
+* `Read -> Vec<u8>`
 
 But it *does not* match `Result<Vec, u8>` or `Result<u8<Vec>>`,
 because those are nested incorrectly, and it does not match
 `Result<Error, Vec<u8>>` or `Result<Error>`, because those are
-in the wrong order.
+in the wrong order. It also does not match `Read -> u8`, because
+only [certain generic wrapper types] can be left out, and `Vec` isn't
+one of them.
+
+[certain generic wrapper types]: #wrappers-that-can-be-omitted
 
 To search for a function that accepts a function as a parameter,
 like `Iterator::all`, wrap the nested signature in parenthesis,
@@ -164,6 +168,18 @@ such as `Iterator<T>, (FnMut(T) -> bool) -> bool`,
 but you need to know which one you want.
 
 [iterator-all]: ../../std/vec/struct.Vec.html?search=Iterator<T>%2C+(T+->+bool)+->+bool&filter-crate=std
+
+### Wrappers that can be omitted
+
+* References
+* Box
+* Rc
+* Arc
+* Option
+* Result
+* From
+* Into
+* Future
 
 ### Primitives with Special Syntax
 
@@ -233,11 +249,6 @@ Most of these limitations should be addressed in future version of Rustdoc.
     as a type parameter even if a matching name is found. If you know
     that you don't want a type parameter, you can force it to match
     something else by giving it a different prefix like `struct:T`.
-
-  * It's impossible to search for references or pointers. The
-    wrapped types can be searched for, so a function that takes `&File` can
-    be found with `File`, but you'll get a parse error when typing an `&`
-    into the search field.
 
   * Searching for lifetimes is not supported.
 

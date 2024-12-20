@@ -6413,7 +6413,7 @@ fn hover_feature() {
             by the codegen backend, but not the MIR inliner.
 
             ```rust
-            #![feature(rustc_attrs)]
+            #![feature(intrinsics)]
             #![allow(internal_features)]
 
             #[rustc_intrinsic]
@@ -6423,7 +6423,7 @@ fn hover_feature() {
             Since these are just regular functions, it is perfectly ok to create the intrinsic twice:
 
             ```rust
-            #![feature(rustc_attrs)]
+            #![feature(intrinsics)]
             #![allow(internal_features)]
 
             #[rustc_intrinsic]
@@ -9458,6 +9458,41 @@ fn main() {
 
             ```rust
             let box_value: fn Box<String>(String, Global) -> Box<String>
+            ```
+
+            ---
+
+            size = 0, align = 1
+        "#]],
+    );
+
+    check(
+        r#"
+//- minicore: eq
+pub struct RandomState;
+pub struct HashMap<K, V, S = RandomState>(K, V, S);
+
+impl<K, V> HashMap<K, V, RandomState> {
+    pub fn new() -> HashMap<K, V, RandomState> {
+        loop {}
+    }
+}
+
+impl<K, V, S> PartialEq for HashMap<K, V, S> {
+    fn eq(&self, other: &HashMap<K, V, S>) -> bool {
+        false
+    }
+}
+
+fn main() {
+    let s$0 = HashMap::<_, u64>::ne;
+}
+"#,
+        expect![[r#"
+            *s*
+
+            ```rust
+            let s: fn ne<HashMap<{unknown}, u64>>(&HashMap<{unknown}, u64>, &HashMap<{unknown}, u64>) -> bool
             ```
 
             ---

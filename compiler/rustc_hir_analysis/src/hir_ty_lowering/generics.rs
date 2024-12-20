@@ -9,7 +9,7 @@ use rustc_middle::ty::{
     self, GenericArgsRef, GenericParamDef, GenericParamDefKind, IsSuggestable, Ty,
 };
 use rustc_session::lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS;
-use rustc_span::symbol::{kw, sym};
+use rustc_span::{kw, sym};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 

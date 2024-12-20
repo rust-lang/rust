@@ -4,7 +4,7 @@ mod tests;
 use crate::cell::UnsafeCell;
 use crate::fmt;
 use crate::marker::PhantomData;
-use crate::mem::{ManuallyDrop, forget};
+use crate::mem::{self, ManuallyDrop, forget};
 use crate::ops::{Deref, DerefMut};
 use crate::ptr::NonNull;
 use crate::sync::{LockResult, PoisonError, TryLockError, TryLockResult, poison};
@@ -224,6 +224,103 @@ impl<T> RwLock<T> {
     pub const fn new(t: T) -> RwLock<T> {
         RwLock { inner: sys::RwLock::new(), poison: poison::Flag::new(), data: UnsafeCell::new(t) }
     }
+
+    /// Returns the contained value by cloning it.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the `RwLock` is poisoned. An
+    /// `RwLock` is poisoned whenever a writer panics while holding an exclusive
+    /// lock.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(lock_value_accessors)]
+    ///
+    /// use std::sync::RwLock;
+    ///
+    /// let mut lock = RwLock::new(7);
+    ///
+    /// assert_eq!(lock.get_cloned().unwrap(), 7);
+    /// ```
+    #[unstable(feature = "lock_value_accessors", issue = "133407")]
+    pub fn get_cloned(&self) -> Result<T, PoisonError<()>>
+    where
+        T: Clone,
+    {
+        match self.read() {
+            Ok(guard) => Ok((*guard).clone()),
+            Err(_) => Err(PoisonError::new(())),
+        }
+    }
+
+    /// Sets the contained value.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error containing the provided `value` if
+    /// the `RwLock` is poisoned. An `RwLock` is poisoned whenever a writer
+    /// panics while holding an exclusive lock.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(lock_value_accessors)]
+    ///
+    /// use std::sync::RwLock;
+    ///
+    /// let mut lock = RwLock::new(7);
+    ///
+    /// assert_eq!(lock.get_cloned().unwrap(), 7);
+    /// lock.set(11).unwrap();
+    /// assert_eq!(lock.get_cloned().unwrap(), 11);
+    /// ```
+    #[unstable(feature = "lock_value_accessors", issue = "133407")]
+    pub fn set(&self, value: T) -> Result<(), PoisonError<T>> {
+        if mem::needs_drop::<T>() {
+            // If the contained value has non-trivial destructor, we
+            // call that destructor after the lock being released.
+            self.replace(value).map(drop)
+        } else {
+            match self.write() {
+                Ok(mut guard) => {
+                    *guard = value;
+
+                    Ok(())
+                }
+                Err(_) => Err(PoisonError::new(value)),
+            }
+        }
+    }
+
+    /// Replaces the contained value with `value`, and returns the old contained value.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error containing the provided `value` if
+    /// the `RwLock` is poisoned. An `RwLock` is poisoned whenever a writer
+    /// panics while holding an exclusive lock.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(lock_value_accessors)]
+    ///
+    /// use std::sync::RwLock;
+    ///
+    /// let mut lock = RwLock::new(7);
+    ///
+    /// assert_eq!(lock.replace(11).unwrap(), 7);
+    /// assert_eq!(lock.get_cloned().unwrap(), 11);
+    /// ```
+    #[unstable(feature = "lock_value_accessors", issue = "133407")]
+    pub fn replace(&self, value: T) -> LockResult<T> {
+        match self.write() {
+            Ok(mut guard) => Ok(mem::replace(&mut *guard, value)),
+            Err(_) => Err(PoisonError::new(value)),
+        }
+    }
 }
 
 impl<T: ?Sized> RwLock<T> {
@@ -244,7 +341,8 @@ impl<T: ?Sized> RwLock<T> {
     /// This function will return an error if the `RwLock` is poisoned. An
     /// `RwLock` is poisoned whenever a writer panics while holding an exclusive
     /// lock. The failure will occur immediately after the lock has been
-    /// acquired.
+    /// acquired. The acquired lock guard will be contained in the returned
+    /// error.
     ///
     /// # Panics
     ///
@@ -292,7 +390,8 @@ impl<T: ?Sized> RwLock<T> {
     /// This function will return the [`Poisoned`] error if the `RwLock` is
     /// poisoned. An `RwLock` is poisoned whenever a writer panics while holding
     /// an exclusive lock. `Poisoned` will only be returned if the lock would
-    /// have otherwise been acquired.
+    /// have otherwise been acquired. An acquired lock guard will be contained
+    /// in the returned error.
     ///
     /// This function will return the [`WouldBlock`] error if the `RwLock` could
     /// not be acquired because it was already locked exclusively.
@@ -337,7 +436,8 @@ impl<T: ?Sized> RwLock<T> {
     ///
     /// This function will return an error if the `RwLock` is poisoned. An
     /// `RwLock` is poisoned whenever a writer panics while holding an exclusive
-    /// lock. An error will be returned when the lock is acquired.
+    /// lock. An error will be returned when the lock is acquired. The acquired
+    /// lock guard will be contained in the returned error.
     ///
     /// # Panics
     ///
@@ -380,7 +480,8 @@ impl<T: ?Sized> RwLock<T> {
     /// This function will return the [`Poisoned`] error if the `RwLock` is
     /// poisoned. An `RwLock` is poisoned whenever a writer panics while holding
     /// an exclusive lock. `Poisoned` will only be returned if the lock would
-    /// have otherwise been acquired.
+    /// have otherwise been acquired. An acquired lock guard will be contained
+    /// in the returned error.
     ///
     /// This function will return the [`WouldBlock`] error if the `RwLock` could
     /// not be acquired because it was already locked exclusively.
@@ -481,10 +582,10 @@ impl<T: ?Sized> RwLock<T> {
     ///
     /// # Errors
     ///
-    /// This function will return an error if the `RwLock` is poisoned. An
-    /// `RwLock` is poisoned whenever a writer panics while holding an exclusive
-    /// lock. An error will only be returned if the lock would have otherwise
-    /// been acquired.
+    /// This function will return an error containing the underlying data if
+    /// the `RwLock` is poisoned. An `RwLock` is poisoned whenever a writer
+    /// panics while holding an exclusive lock. An error will only be returned
+    /// if the lock would have otherwise been acquired.
     ///
     /// # Examples
     ///
@@ -514,10 +615,11 @@ impl<T: ?Sized> RwLock<T> {
     ///
     /// # Errors
     ///
-    /// This function will return an error if the `RwLock` is poisoned. An
-    /// `RwLock` is poisoned whenever a writer panics while holding an exclusive
-    /// lock. An error will only be returned if the lock would have otherwise
-    /// been acquired.
+    /// This function will return an error containing a mutable reference to
+    /// the underlying data if the `RwLock` is poisoned. An `RwLock` is
+    /// poisoned whenever a writer panics while holding an exclusive lock.
+    /// An error will only be returned if the lock would have otherwise been
+    /// acquired.
     ///
     /// # Examples
     ///

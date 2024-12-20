@@ -23,8 +23,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
-use rustc_span::symbol::{Ident, sym};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Ident, Span, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::misc::{
@@ -44,6 +43,7 @@ use {rustc_ast as ast, rustc_hir as hir};
 use crate::autoderef::Autoderef;
 use crate::collect::CollectItemTypesVisitor;
 use crate::constrained_generic_params::{Parameter, identify_constrained_generic_params};
+use crate::errors::InvalidReceiverTyHint;
 use crate::{errors, fluent_generated as fluent};
 
 pub(super) struct WfCheckingCtxt<'a, 'tcx> {
@@ -1748,8 +1748,25 @@ fn check_method_receiver<'tcx>(
             // Report error; would not have worked with `arbitrary_self_types[_pointers]`.
             {
                 match receiver_validity_err {
+                    ReceiverValidityError::DoesNotDeref if arbitrary_self_types_level.is_some() => {
+                        let hint = match receiver_ty
+                            .builtin_deref(false)
+                            .unwrap_or(receiver_ty)
+                            .ty_adt_def()
+                            .and_then(|adt_def| tcx.get_diagnostic_name(adt_def.did()))
+                        {
+                            Some(sym::RcWeak | sym::ArcWeak) => Some(InvalidReceiverTyHint::Weak),
+                            Some(sym::NonNull) => Some(InvalidReceiverTyHint::NonNull),
+                            _ => None,
+                        };
+
+                        tcx.dcx().emit_err(errors::InvalidReceiverTy { span, receiver_ty, hint })
+                    }
                     ReceiverValidityError::DoesNotDeref => {
-                        tcx.dcx().emit_err(errors::InvalidReceiverTy { span, receiver_ty })
+                        tcx.dcx().emit_err(errors::InvalidReceiverTyNoArbitrarySelfTypes {
+                            span,
+                            receiver_ty,
+                        })
                     }
                     ReceiverValidityError::MethodGenericParamUsed => {
                         tcx.dcx().emit_err(errors::InvalidGenericReceiverTy { span, receiver_ty })
@@ -2322,8 +2339,11 @@ fn lint_redundant_lifetimes<'tcx>(
     );
     // If we are in a function, add its late-bound lifetimes too.
     if matches!(def_kind, DefKind::Fn | DefKind::AssocFn) {
-        for var in tcx.fn_sig(owner_id).instantiate_identity().bound_vars() {
+        for (idx, var) in
+            tcx.fn_sig(owner_id).instantiate_identity().bound_vars().iter().enumerate()
+        {
             let ty::BoundVariableKind::Region(kind) = var else { continue };
+            let kind = ty::LateParamRegionKind::from_bound(ty::BoundVar::from_usize(idx), kind);
             lifetimes.push(ty::Region::new_late_param(tcx, owner_id.to_def_id(), kind));
         }
     }

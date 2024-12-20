@@ -64,11 +64,10 @@
 //! This order consistency is required in a few places in rustc, for
 //! example coroutine inference, and possibly also HIR borrowck.
 
+use rustc_ast::Label;
 use rustc_ast::visit::{VisitorResult, try_visit, visit_opt, walk_list};
-use rustc_ast::{Attribute, Label};
-use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::{Ident, Span, Symbol};
 
 use crate::hir::*;
 
@@ -857,6 +856,10 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
         ExprKind::Yield(ref subexpression, _) => {
             try_visit!(visitor.visit_expr(subexpression));
         }
+        ExprKind::UnsafeBinderCast(_kind, expr, ty) => {
+            try_visit!(visitor.visit_expr(expr));
+            visit_opt!(visitor, visit_ty, ty);
+        }
         ExprKind::Lit(_) | ExprKind::Err(_) => {}
     }
     V::Result::output()
@@ -886,11 +889,18 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) -> V::Resul
             walk_list!(visitor, visit_generic_param, function_declaration.generic_params);
             try_visit!(visitor.visit_fn_decl(function_declaration.decl));
         }
+        TyKind::UnsafeBinder(ref unsafe_binder) => {
+            walk_list!(visitor, visit_generic_param, unsafe_binder.generic_params);
+            try_visit!(visitor.visit_ty(unsafe_binder.inner_ty));
+        }
         TyKind::Path(ref qpath) => {
             try_visit!(visitor.visit_qpath(qpath, typ.hir_id, typ.span));
         }
         TyKind::OpaqueDef(opaque) => {
             try_visit!(visitor.visit_opaque_ty(opaque));
+        }
+        TyKind::TraitAscription(bounds) => {
+            walk_list!(visitor, visit_param_bound, bounds);
         }
         TyKind::Array(ref ty, ref length) => {
             try_visit!(visitor.visit_ty(ty));

@@ -1,6 +1,6 @@
 //! List of the accepted feature gates.
 
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 
 use super::{Feature, to_nonzero};
 
@@ -157,6 +157,9 @@ declare_features! (
     (accepted, const_refs_to_static, "1.83.0", Some(119618)),
     /// Allows implementing `Copy` for closures where possible (RFC 2132).
     (accepted, copy_closures, "1.26.0", Some(44490)),
+    /// Allows function attribute `#[coverage(on/off)]`, to control coverage
+    /// instrumentation of that function.
+    (accepted, coverage_attribute, "CURRENT_RUSTC_VERSION", Some(84605)),
     /// Allows `crate` in paths.
     (accepted, crate_in_paths, "1.30.0", Some(45477)),
     /// Allows users to provide classes for fenced code block using `class:classname`.
@@ -175,6 +178,8 @@ declare_features! (
     (accepted, destructuring_assignment, "1.59.0", Some(71126)),
     /// Allows using the `#[diagnostic]` attribute tool namespace
     (accepted, diagnostic_namespace, "1.78.0", Some(111996)),
+    /// Controls errors in trait implementations.
+    (accepted, do_not_recommend, "CURRENT_RUSTC_VERSION", Some(51992)),
     /// Allows `#[doc(alias = "...")]`.
     (accepted, doc_alias, "1.48.0", Some(50146)),
     /// Allows `..` in tuple (struct) patterns.

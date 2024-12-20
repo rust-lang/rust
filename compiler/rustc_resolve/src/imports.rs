@@ -17,10 +17,9 @@ use rustc_session::lint::builtin::{
     AMBIGUOUS_GLOB_REEXPORTS, HIDDEN_GLOB_REEXPORTS, PUB_USE_OF_PRIVATE_EXTERN_CRATE,
     REDUNDANT_IMPORTS, UNUSED_IMPORTS,
 };
-use rustc_span::Span;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::LocalExpnId;
-use rustc_span::symbol::{Ident, Symbol, kw};
+use rustc_span::{Ident, Span, Symbol, kw};
 use smallvec::SmallVec;
 use tracing::debug;
 
@@ -670,9 +669,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn throw_unresolved_import_error(
         &mut self,
-        errors: Vec<(Import<'_>, UnresolvedImportError)>,
+        mut errors: Vec<(Import<'_>, UnresolvedImportError)>,
         glob_error: bool,
     ) {
+        errors.retain(|(_import, err)| match err.module {
+            // Skip `use` errors for `use foo::Bar;` if `foo.rs` has unrecovered parse errors.
+            Some(def_id) if self.mods_with_parse_errors.contains(&def_id) => false,
+            _ => true,
+        });
         if errors.is_empty() {
             return;
         }
@@ -898,6 +902,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 label,
                 suggestion,
                 module,
+                error_implied_by_parse_error: _,
             } => {
                 if no_ambiguity {
                     assert!(import.imported_module.get().is_none());

@@ -4,7 +4,7 @@ macro_rules! uint_impl {
         ActualT = $ActualT:ident,
         SignedT = $SignedT:ident,
 
-        // There are all for use *only* in doc comments.
+        // These are all for use *only* in doc comments.
         // As such, they're all passed as literals -- passing them as a string
         // literal is fine if they need to be multiple code tokens.
         // In non-comments, use the associated constants rather than these.

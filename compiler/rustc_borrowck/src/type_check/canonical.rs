@@ -275,7 +275,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         user_ty: ty::UserType<'tcx>,
         span: Span,
     ) {
-        let ty::UserType::Ty(user_ty) = user_ty else { bug!() };
+        let ty::UserTypeKind::Ty(user_ty) = user_ty.kind else { bug!() };
 
         // A fast path for a common case with closure input/output types.
         if let ty::Infer(_) = user_ty.kind() {

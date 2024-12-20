@@ -110,7 +110,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         ) {
             self.ascribe_user_type_skip_wf(
                 arg_decl.ty,
-                ty::UserType::Ty(user_ty),
+                ty::UserType::new(ty::UserTypeKind::Ty(user_ty)),
                 arg_decl.source_info.span,
             );
         }
@@ -119,7 +119,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let output_decl = &body.local_decls[RETURN_PLACE];
         self.ascribe_user_type_skip_wf(
             output_decl.ty,
-            ty::UserType::Ty(user_provided_sig.output()),
+            ty::UserType::new(ty::UserTypeKind::Ty(user_provided_sig.output())),
             output_decl.source_info.span,
         );
     }

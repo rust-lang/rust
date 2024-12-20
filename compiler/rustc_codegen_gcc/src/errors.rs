@@ -28,6 +28,7 @@ pub(crate) struct UnstableCTargetFeature<'a> {
 #[diag(codegen_gcc_forbidden_ctarget_feature)]
 pub(crate) struct ForbiddenCTargetFeature<'a> {
     pub feature: &'a str,
+    pub reason: &'a str,
 }
 
 #[derive(Subdiagnostic)]

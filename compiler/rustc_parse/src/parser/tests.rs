@@ -18,8 +18,9 @@ use rustc_errors::emitter::{HumanEmitter, OutputTheme};
 use rustc_errors::{DiagCtxt, MultiSpan, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
-use rustc_span::symbol::{Symbol, kw, sym};
-use rustc_span::{BytePos, FileName, Pos, Span, create_default_session_globals_then};
+use rustc_span::{
+    BytePos, FileName, Pos, Span, Symbol, create_default_session_globals_then, kw, sym,
+};
 use termcolor::WriteColor;
 
 use crate::parser::{ForceCollect, Parser};
@@ -2285,7 +2286,7 @@ fn bad_path_expr_1() {
 fn string_to_tts_macro() {
     create_default_session_globals_then(|| {
         let stream = string_to_stream("macro_rules! zip (($a)=>($a))".to_string());
-        let tts = &stream.trees().collect::<Vec<_>>()[..];
+        let tts = &stream.iter().collect::<Vec<_>>()[..];
 
         match tts {
             [
@@ -2297,14 +2298,14 @@ fn string_to_tts_macro() {
                 TokenTree::Token(Token { kind: token::Ident(name_zip, IdentIsRaw::No), .. }, _),
                 TokenTree::Delimited(.., macro_delim, macro_tts),
             ] if name_macro_rules == &kw::MacroRules && name_zip.as_str() == "zip" => {
-                let tts = &macro_tts.trees().collect::<Vec<_>>();
+                let tts = &macro_tts.iter().collect::<Vec<_>>();
                 match &tts[..] {
                     [
                         TokenTree::Delimited(.., first_delim, first_tts),
                         TokenTree::Token(Token { kind: token::FatArrow, .. }, _),
                         TokenTree::Delimited(.., second_delim, second_tts),
                     ] if macro_delim == &Delimiter::Parenthesis => {
-                        let tts = &first_tts.trees().collect::<Vec<_>>();
+                        let tts = &first_tts.iter().collect::<Vec<_>>();
                         match &tts[..] {
                             [
                                 TokenTree::Token(Token { kind: token::Dollar, .. }, _),
@@ -2316,7 +2317,7 @@ fn string_to_tts_macro() {
                             }
                             _ => panic!("value 3: {:?} {:?}", first_delim, first_tts),
                         }
-                        let tts = &second_tts.trees().collect::<Vec<_>>();
+                        let tts = &second_tts.iter().collect::<Vec<_>>();
                         match &tts[..] {
                             [
                                 TokenTree::Token(Token { kind: token::Dollar, .. }, _),
@@ -2544,7 +2545,7 @@ fn ttdelim_span() {
         .unwrap();
 
         let ast::ExprKind::MacCall(mac) = &expr.kind else { panic!("not a macro") };
-        let span = mac.args.tokens.trees().last().unwrap().span();
+        let span = mac.args.tokens.iter().last().unwrap().span();
 
         match psess.source_map().span_to_snippet(span) {
             Ok(s) => assert_eq!(&s[..], "{ body }"),

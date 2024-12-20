@@ -21,6 +21,7 @@ quote = "1.0.20"
 ungrammar = "1.16.1"
 either.workspace = true
 itertools.workspace = true
+edition.workspace = true
 # Avoid adding more dependencies to this crate
 
 [lints]

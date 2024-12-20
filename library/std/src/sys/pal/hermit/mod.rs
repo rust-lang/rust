@@ -85,7 +85,7 @@ pub unsafe extern "C" fn runtime_entry(
     }
 
     // initialize environment
-    os::init_environment(env as *const *const i8);
+    os::init_environment(env);
 
     let result = unsafe { main(argc as isize, argv) };
 

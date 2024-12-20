@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fs::{self, File, create_dir_all};
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::prelude::*;
@@ -410,7 +410,12 @@ impl<'test> TestCx<'test> {
             truncated: Truncated::No,
             cmdline: format!("{cmd:?}"),
         };
-        self.dump_output(&proc_res.stdout, &proc_res.stderr);
+        self.dump_output(
+            self.config.verbose,
+            &cmd.get_program().to_string_lossy(),
+            &proc_res.stdout,
+            &proc_res.stderr,
+        );
 
         proc_res
     }
@@ -1401,7 +1406,12 @@ impl<'test> TestCx<'test> {
             cmdline,
         };
 
-        self.dump_output(&result.stdout, &result.stderr);
+        self.dump_output(
+            self.config.verbose,
+            &command.get_program().to_string_lossy(),
+            &result.stdout,
+            &result.stderr,
+        );
 
         result
     }
@@ -1816,12 +1826,35 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn dump_output(&self, out: &str, err: &str) {
+    fn dump_output(&self, print_output: bool, proc_name: &str, out: &str, err: &str) {
         let revision = if let Some(r) = self.revision { format!("{}.", r) } else { String::new() };
 
         self.dump_output_file(out, &format!("{}out", revision));
         self.dump_output_file(err, &format!("{}err", revision));
-        self.maybe_dump_to_stdout(out, err);
+
+        if !print_output {
+            return;
+        }
+
+        let path = Path::new(proc_name);
+        let proc_name = if path.file_stem().is_some_and(|p| p == "rmake") {
+            OsString::from_iter(
+                path.parent()
+                    .unwrap()
+                    .file_name()
+                    .into_iter()
+                    .chain(Some(OsStr::new("/")))
+                    .chain(path.file_name()),
+            )
+        } else {
+            path.file_name().unwrap().into()
+        };
+        let proc_name = proc_name.to_string_lossy();
+        println!("------{proc_name} stdout------------------------------");
+        println!("{}", out);
+        println!("------{proc_name} stderr------------------------------");
+        println!("{}", err);
+        println!("------------------------------------------");
     }
 
     fn dump_output_file(&self, out: &str, extension: &str) {
@@ -1872,16 +1905,6 @@ impl<'test> TestCx<'test> {
     /// E.g., `/.../relative/testname.revision.mode/testname`.
     fn output_base_name(&self) -> PathBuf {
         output_base_name(self.config, self.testpaths, self.safe_revision())
-    }
-
-    fn maybe_dump_to_stdout(&self, out: &str, err: &str) {
-        if self.config.verbose {
-            println!("------stdout------------------------------");
-            println!("{}", out);
-            println!("------stderr------------------------------");
-            println!("{}", err);
-            println!("------------------------------------------");
-        }
     }
 
     fn error(&self, err: &str) {
@@ -1935,23 +1958,23 @@ impl<'test> TestCx<'test> {
         let mut filecheck = Command::new(self.config.llvm_filecheck.as_ref().unwrap());
         filecheck.arg("--input-file").arg(output).arg(&self.testpaths.file);
 
-        // FIXME: Consider making some of these prefix flags opt-in per test,
-        // via `filecheck-flags` or by adding new header directives.
-
         // Because we use custom prefixes, we also have to register the default prefix.
         filecheck.arg("--check-prefix=CHECK");
 
-        // Some tests use the current revision name as a check prefix.
+        // FIXME(#134510): auto-registering revision names as check prefix is a bit sketchy, and
+        // that having to pass `--allow-unused-prefix` is an unfortunate side-effect of not knowing
+        // whether the test author actually wanted revision-specific check prefixes or not.
+        //
+        // TL;DR We may not want to conflate `compiletest` revisions and `FileCheck` prefixes.
+
+        // HACK: tests are allowed to use a revision name as a check prefix.
         if let Some(rev) = self.revision {
             filecheck.arg("--check-prefix").arg(rev);
         }
 
-        // Some tests also expect either the MSVC or NONMSVC prefix to be defined.
-        let msvc_or_not = if self.config.target.contains("msvc") { "MSVC" } else { "NONMSVC" };
-        filecheck.arg("--check-prefix").arg(msvc_or_not);
-
-        // The filecheck tool normally fails if a prefix is defined but not used.
-        // However, we define several prefixes globally for all tests.
+        // HACK: the filecheck tool normally fails if a prefix is defined but not used. However,
+        // sometimes revisions are used to specify *compiletest* directives which are not FileCheck
+        // concerns.
         filecheck.arg("--allow-unused-prefixes");
 
         // Provide more context on failures.
@@ -2537,7 +2560,7 @@ impl<'test> TestCx<'test> {
         })
     }
 
-    fn delete_file(&self, file: &PathBuf) {
+    fn delete_file(&self, file: &Path) {
         if !file.exists() {
             // Deleting a nonexistent file would error.
             return;

@@ -11,11 +11,10 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::Edition;
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, kw, sym};
 #[allow(clippy::useless_attribute)] // FIXME: following use of `hidden_glob_reexports` incorrectly triggers `useless_attribute` lint.
 #[allow(hidden_glob_reexports)]
-use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::symbol::{kw, sym};
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
+use rustc_span::{Ident, Symbol};
 
 use crate::ast;
 use crate::ptr::P;
@@ -904,7 +903,8 @@ impl Token {
         self.is_non_raw_ident_where(|id| id.name == kw)
     }
 
-    /// Returns `true` if the token is a given keyword, `kw` or if `case` is `Insensitive` and this token is an identifier equal to `kw` ignoring the case.
+    /// Returns `true` if the token is a given keyword, `kw` or if `case` is `Insensitive` and this
+    /// token is an identifier equal to `kw` ignoring the case.
     pub fn is_keyword_case(&self, kw: Symbol, case: Case) -> bool {
         self.is_keyword(kw)
             || (case == Case::Insensitive
@@ -915,6 +915,11 @@ impl Token {
 
     pub fn is_path_segment_keyword(&self) -> bool {
         self.is_non_raw_ident_where(Ident::is_path_segment_keyword)
+    }
+
+    /// Don't use this unless you're doing something very loose and heuristic-y.
+    pub fn is_any_keyword(&self) -> bool {
+        self.is_non_raw_ident_where(Ident::is_any_keyword)
     }
 
     /// Returns true for reserved identifiers used internally for elided lifetimes,

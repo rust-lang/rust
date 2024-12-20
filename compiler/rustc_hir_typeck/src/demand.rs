@@ -9,8 +9,7 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, AssocItem, Ty, TypeFoldable, TypeVisitableExt};
-use rustc_span::symbol::sym;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Ident, Span, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::ObligationCause;
 use tracing::instrument;
@@ -1118,7 +1117,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Constructor,
         }
         let mut maybe_emit_help = |def_id: hir::def_id::DefId,
-                                   callable: rustc_span::symbol::Ident,
+                                   callable: Ident,
                                    args: &[hir::Expr<'_>],
                                    kind: CallableKind| {
             let arg_idx = args.iter().position(|a| a.hir_id == expr.hir_id).unwrap();

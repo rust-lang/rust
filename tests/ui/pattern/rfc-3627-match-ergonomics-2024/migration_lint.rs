@@ -23,22 +23,22 @@ fn main() {
     assert_type_eq(x, &mut 0u8);
 
     let Foo(mut x) = &Foo(0);
-    //~^ ERROR: patterns are not allowed to reset the default binding mode
+    //~^ ERROR: this pattern relies on behavior which may change in edition 2024
     //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(x, 0u8);
 
     let Foo(mut x) = &mut Foo(0);
-    //~^ ERROR: patterns are not allowed to reset the default binding mode
+    //~^ ERROR: this pattern relies on behavior which may change in edition 2024
     //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(x, 0u8);
 
     let Foo(ref x) = &Foo(0);
-    //~^ ERROR: patterns are not allowed to reset the default binding mode
+    //~^ ERROR: this pattern relies on behavior which may change in edition 2024
     //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(x, &0u8);
 
     let Foo(ref x) = &mut Foo(0);
-    //~^ ERROR: patterns are not allowed to reset the default binding mode
+    //~^ ERROR: this pattern relies on behavior which may change in edition 2024
     //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(x, &0u8);
 
@@ -55,22 +55,22 @@ fn main() {
     assert_type_eq(x, &0u8);
 
     let Foo(&x) = &Foo(&0);
-    //~^ ERROR: patterns are not allowed to reset the default binding mode
+    //~^ ERROR: this pattern relies on behavior which may change in edition 2024
     //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(x, 0u8);
 
     let Foo(&mut x) = &Foo(&mut 0);
-    //~^ ERROR: patterns are not allowed to reset the default binding mode
+    //~^ ERROR: this pattern relies on behavior which may change in edition 2024
     //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(x, 0u8);
 
     let Foo(&x) = &mut Foo(&0);
-    //~^ ERROR: patterns are not allowed to reset the default binding mode
+    //~^ ERROR: this pattern relies on behavior which may change in edition 2024
     //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(x, 0u8);
 
     let Foo(&mut x) = &mut Foo(&mut 0);
-    //~^ ERROR: patterns are not allowed to reset the default binding mode
+    //~^ ERROR: this pattern relies on behavior which may change in edition 2024
     //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(x, 0u8);
 
@@ -79,25 +79,25 @@ fn main() {
     }
 
     if let Some(&x) = &&&&&Some(&0u8) {
-        //~^ ERROR: patterns are not allowed to reset the default binding mode
+        //~^ ERROR: this pattern relies on behavior which may change in edition 2024
         //~| WARN: this changes meaning in Rust 2024
         assert_type_eq(x, 0u8);
     }
 
     if let Some(&mut x) = &&&&&Some(&mut 0u8) {
-        //~^ ERROR: patterns are not allowed to reset the default binding mode
+        //~^ ERROR: this pattern relies on behavior which may change in edition 2024
         //~| WARN: this changes meaning in Rust 2024
         assert_type_eq(x, 0u8);
     }
 
     if let Some(&x) = &&&&&mut Some(&0u8) {
-        //~^ ERROR: patterns are not allowed to reset the default binding mode
+        //~^ ERROR: this pattern relies on behavior which may change in edition 2024
         //~| WARN: this changes meaning in Rust 2024
         assert_type_eq(x, 0u8);
     }
 
     if let Some(&mut Some(Some(x))) = &mut Some(&mut Some(&mut Some(0u8))) {
-        //~^ ERROR: patterns are not allowed to reset the default binding mode
+        //~^ ERROR: this pattern relies on behavior which may change in edition 2024
         //~| WARN: this changes meaning in Rust 2024
         assert_type_eq(x, &mut 0u8);
     }
@@ -109,20 +109,20 @@ fn main() {
     }
 
     let Struct { a, mut b, c } = &Struct { a: 0, b: 0, c: 0 };
-    //~^ ERROR: patterns are not allowed to reset the default binding mode
+    //~^ ERROR: this pattern relies on behavior which may change in edition 2024
     //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(a, &0u32);
     assert_type_eq(b, 0u32);
 
     let Struct { a: &a, b, ref c } = &Struct { a: &0, b: &0, c: &0 };
-    //~^ ERROR: patterns are not allowed to reset the default binding mode
+    //~^ ERROR: this pattern relies on behavior which may change in edition 2024
     //~| WARN: this changes meaning in Rust 2024
     assert_type_eq(a, 0u32);
     assert_type_eq(b, &&0u32);
     assert_type_eq(c, &&0u32);
 
     if let Struct { a: &Some(a), b: Some(&b), c: Some(c) } =
-        //~^ ERROR: patterns are not allowed to reset the default binding mode
+        //~^ ERROR: this pattern relies on behavior which may change in edition 2024
         //~| WARN: this changes meaning in Rust 2024
         &(Struct { a: &Some(&0), b: &Some(&0), c: &Some(&0) })
     {
@@ -135,7 +135,7 @@ fn main() {
         // The two patterns are the same syntactically, but because they're defined in different
         // editions they don't mean the same thing.
         (Some(mut x), migration_lint_macros::mixed_edition_pat!(y)) => {
-            //~^ ERROR: patterns are not allowed to reset the default binding mode
+            //~^ ERROR: this pattern relies on behavior which may change in edition 2024
             assert_type_eq(x, 0u32);
             assert_type_eq(y, 0u32);
         }

@@ -2,9 +2,6 @@ error[E0277]: the trait bound `F: MyFn<i32>` is not satisfied
   --> $DIR/false-positive-predicate-entailment-error.rs:36:5
    |
 LL | /     fn autobatch<F>(self) -> impl Trait
-LL | |
-LL | |
-LL | |
 ...  |
 LL | |     where
 LL | |         F: Callback<Self::CallbackArg>,
@@ -52,9 +49,6 @@ error[E0277]: the trait bound `F: MyFn<i32>` is not satisfied
   --> $DIR/false-positive-predicate-entailment-error.rs:36:5
    |
 LL | /     fn autobatch<F>(self) -> impl Trait
-LL | |
-LL | |
-LL | |
 ...  |
 LL | |     where
 LL | |         F: Callback<Self::CallbackArg>,
@@ -105,9 +99,6 @@ error[E0277]: the trait bound `F: MyFn<i32>` is not satisfied
   --> $DIR/false-positive-predicate-entailment-error.rs:36:5
    |
 LL | /     fn autobatch<F>(self) -> impl Trait
-LL | |
-LL | |
-LL | |
 ...  |
 LL | |     where
 LL | |         F: Callback<Self::CallbackArg>,

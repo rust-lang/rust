@@ -78,9 +78,57 @@ fn opt4(x: Option2<u32>, y: Option2<u32>) -> u32 {
     }
 }
 
+// EMIT_MIR early_otherwise_branch.opt5.EarlyOtherwiseBranch.diff
+fn opt5(x: u32, y: u32) -> u32 {
+    // CHECK-LABEL: fn opt5(
+    // CHECK: let mut [[CMP_LOCAL:_.*]]: bool;
+    // CHECK: bb0: {
+    // CHECK: [[CMP_LOCAL]] = Ne(
+    // CHECK: switchInt(move [[CMP_LOCAL]]) -> [
+    // CHECK-NEXT: }
+    match (x, y) {
+        (1, 1) => 4,
+        (2, 2) => 5,
+        (3, 3) => 6,
+        _ => 0,
+    }
+}
+
+// EMIT_MIR early_otherwise_branch.opt5_failed.EarlyOtherwiseBranch.diff
+fn opt5_failed(x: u32, y: u32) -> u32 {
+    // CHECK-LABEL: fn opt5_failed(
+    // CHECK: bb0: {
+    // CHECK-NOT: Ne(
+    // CHECK: switchInt(
+    // CHECK-NEXT: }
+    match (x, y) {
+        (1, 1) => 4,
+        (2, 2) => 5,
+        (3, 2) => 6,
+        _ => 0,
+    }
+}
+
+// EMIT_MIR early_otherwise_branch.opt5_failed_type.EarlyOtherwiseBranch.diff
+fn opt5_failed_type(x: u32, y: u64) -> u32 {
+    // CHECK-LABEL: fn opt5_failed_type(
+    // CHECK: bb0: {
+    // CHECK-NOT: Ne(
+    // CHECK: switchInt(
+    // CHECK-NEXT: }
+    match (x, y) {
+        (1, 1) => 4,
+        (2, 2) => 5,
+        (3, 3) => 6,
+        _ => 0,
+    }
+}
+
 fn main() {
     opt1(None, Some(0));
     opt2(None, Some(0));
     opt3(Option2::None, Option2::Some(false));
     opt4(Option2::None, Option2::Some(0));
+    opt5(0, 0);
+    opt5_failed(0, 0);
 }

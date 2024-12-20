@@ -23,8 +23,7 @@ use rustc_middle::ty::{
     TypeVisitableExt,
 };
 use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
-use rustc_span::sym;
-use rustc_span::symbol::Symbol;
+use rustc_span::{Symbol, sym};
 use tracing::{debug, instrument, trace};
 use {rustc_abi as abi, rustc_hir as hir};
 
@@ -1105,15 +1104,13 @@ fn variant_info_for_adt<'tcx>(
     };
 
     match layout.variants {
+        Variants::Empty => (vec![], None),
+
         Variants::Single { index } => {
-            if !adt_def.variants().is_empty() && layout.fields != FieldsShape::Primitive {
-                debug!("print-type-size `{:#?}` variant {}", layout, adt_def.variant(index).name);
-                let variant_def = &adt_def.variant(index);
-                let fields: Vec<_> = variant_def.fields.iter().map(|f| f.name).collect();
-                (vec![build_variant_info(Some(variant_def.name), &fields, layout)], None)
-            } else {
-                (vec![], None)
-            }
+            debug!("print-type-size `{:#?}` variant {}", layout, adt_def.variant(index).name);
+            let variant_def = &adt_def.variant(index);
+            let fields: Vec<_> = variant_def.fields.iter().map(|f| f.name).collect();
+            (vec![build_variant_info(Some(variant_def.name), &fields, layout)], None)
         }
 
         Variants::Multiple { tag, ref tag_encoding, .. } => {

@@ -410,6 +410,10 @@ fn pretty_aggregate<W: Write>(
             write!(writer, "{{coroutine@{}}}(", def.span().diagnostic())?;
             ")"
         }
+        AggregateKind::CoroutineClosure(def, _) => {
+            write!(writer, "{{coroutine-closure@{}}}(", def.span().diagnostic())?;
+            ")"
+        }
         AggregateKind::RawPtr(ty, mutability) => {
             write!(
                 writer,

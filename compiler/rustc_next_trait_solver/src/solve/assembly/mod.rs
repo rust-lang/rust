@@ -11,6 +11,7 @@ use rustc_type_ir::visit::TypeVisitableExt as _;
 use rustc_type_ir::{self as ty, Interner, TypingMode, Upcast as _, elaborate};
 use tracing::{debug, instrument};
 
+use super::trait_goals::TraitGoalProvenVia;
 use crate::delegate::SolverDelegate;
 use crate::solve::inspect::ProbeKind;
 use crate::solve::{
@@ -337,15 +338,6 @@ where
 
         self.assemble_param_env_candidates(goal, &mut candidates);
 
-        match self.typing_mode() {
-            TypingMode::Coherence => {}
-            TypingMode::Analysis { .. }
-            | TypingMode::PostBorrowckAnalysis { .. }
-            | TypingMode::PostAnalysis => {
-                self.discard_impls_shadowed_by_env(goal, &mut candidates);
-            }
-        }
-
         candidates
     }
 
@@ -500,7 +492,7 @@ where
         goal: Goal<I, G>,
         candidates: &mut Vec<Candidate<I>>,
     ) {
-        for (i, assumption) in goal.param_env.caller_bounds().into_iter().enumerate() {
+        for (i, assumption) in goal.param_env.caller_bounds().iter().enumerate() {
             candidates.extend(G::probe_and_consider_implied_clause(
                 self,
                 CandidateSource::ParamEnv(i),
@@ -733,72 +725,64 @@ where
         })
     }
 
-    /// If there's a where-bound for the current goal, do not use any impl candidates
-    /// to prove the current goal. Most importantly, if there is a where-bound which does
-    /// not specify any associated types, we do not allow normalizing the associated type
-    /// by using an impl, even if it would apply.
+    /// We sadly can't simply take all possible candidates for normalization goals
+    /// and check whether they result in the same constraints. We want to make sure
+    /// that trying to normalize an alias doesn't result in constraints which aren't
+    /// otherwise required.
     ///
-    ///  <https://github.com/rust-lang/trait-system-refactor-initiative/issues/76>
-    // FIXME(@lcnr): The current structure here makes me unhappy and feels ugly. idk how
-    // to improve this however. However, this should make it fairly straightforward to refine
-    // the filtering going forward, so it seems alright-ish for now.
-    #[instrument(level = "debug", skip(self, goal))]
-    fn discard_impls_shadowed_by_env<G: GoalKind<D>>(
-        &mut self,
-        goal: Goal<I, G>,
-        candidates: &mut Vec<Candidate<I>>,
-    ) {
-        let cx = self.cx();
-        let trait_goal: Goal<I, ty::TraitPredicate<I>> =
-            goal.with(cx, goal.predicate.trait_ref(cx));
-
-        let mut trait_candidates_from_env = vec![];
-        self.probe(|_| ProbeKind::ShadowedEnvProbing).enter(|ecx| {
-            ecx.assemble_param_env_candidates(trait_goal, &mut trait_candidates_from_env);
-            ecx.assemble_alias_bound_candidates(trait_goal, &mut trait_candidates_from_env);
-        });
-
-        if !trait_candidates_from_env.is_empty() {
-            let trait_env_result = self.merge_candidates(trait_candidates_from_env);
-            match trait_env_result.unwrap().value.certainty {
-                // If proving the trait goal succeeds by using the env,
-                // we freely drop all impl candidates.
-                //
-                // FIXME(@lcnr): It feels like this could easily hide
-                // a forced ambiguity candidate added earlier.
-                // This feels dangerous.
-                Certainty::Yes => {
-                    candidates.retain(|c| match c.source {
-                        CandidateSource::Impl(_) | CandidateSource::BuiltinImpl(_) => {
-                            debug!(?c, "discard impl candidate");
-                            false
-                        }
-                        CandidateSource::ParamEnv(_) | CandidateSource::AliasBound => true,
-                        CandidateSource::CoherenceUnknowable => panic!("uh oh"),
-                    });
-                }
-                // If it is still ambiguous we instead just force the whole goal
-                // to be ambig and wait for inference constraints. See
-                // tests/ui/traits/next-solver/env-shadows-impls/ambig-env-no-shadow.rs
-                Certainty::Maybe(cause) => {
-                    debug!(?cause, "force ambiguity");
-                    *candidates = self.forced_ambiguity(cause).into_iter().collect();
-                }
-            }
-        }
-    }
-
-    /// If there are multiple ways to prove a trait or projection goal, we have
-    /// to somehow try to merge the candidates into one. If that fails, we return
-    /// ambiguity.
+    /// Most notably, when proving a trait goal by via a where-bound, we should not
+    /// normalize via impls which have stricter region constraints than the where-bound:
+    ///
+    /// ```rust
+    /// trait Trait<'a> {
+    ///     type Assoc;
+    /// }
+    ///
+    /// impl<'a, T: 'a> Trait<'a> for T {
+    ///     type Assoc = u32;
+    /// }
+    ///
+    /// fn with_bound<'a, T: Trait<'a>>(_value: T::Assoc) {}
+    /// ```
+    ///
+    /// The where-bound of `with_bound` doesn't specify the associated type, so we would
+    /// only be able to normalize `<T as Trait<'a>>::Assoc` by using the impl. This impl
+    /// adds a `T: 'a` bound however, which would result in a region error. Given that the
+    /// user explicitly wrote that `T: Trait<'a>` holds, this is undesirable and we instead
+    /// treat the alias as rigid.
+    ///
+    /// See trait-system-refactor-initiative#124 for more details.
     #[instrument(level = "debug", skip(self), ret)]
-    pub(super) fn merge_candidates(&mut self, candidates: Vec<Candidate<I>>) -> QueryResult<I> {
-        // First try merging all candidates. This is complete and fully sound.
-        let responses = candidates.iter().map(|c| c.result).collect::<Vec<_>>();
-        if let Some(result) = self.try_merge_responses(&responses) {
-            return Ok(result);
-        } else {
-            self.flounder(&responses)
-        }
+    pub(super) fn merge_candidates(
+        &mut self,
+        proven_via: Option<TraitGoalProvenVia>,
+        candidates: Vec<Candidate<I>>,
+    ) -> QueryResult<I> {
+        let Some(proven_via) = proven_via else {
+            // We don't care about overflow. If proving the trait goal overflowed, then
+            // it's enough to report an overflow error for that, we don't also have to
+            // overflow during normalization.
+            return Ok(self.make_ambiguous_response_no_constraints(MaybeCause::Ambiguity));
+        };
+
+        let responses: Vec<_> = match proven_via {
+            // Even when a trait bound has been proven using a where-bound, we
+            // still need to consider alias-bounds for normalization, see
+            // tests/ui/next-solver/alias-bound-shadowed-by-env.rs.
+            //
+            // FIXME(const_trait_impl): should this behavior also be used by
+            // constness checking. Doing so is *at least theoretically* breaking,
+            // see github.com/rust-lang/rust/issues/133044#issuecomment-2500709754
+            TraitGoalProvenVia::ParamEnv | TraitGoalProvenVia::AliasBound => candidates
+                .iter()
+                .filter(|c| {
+                    matches!(c.source, CandidateSource::AliasBound | CandidateSource::ParamEnv(_))
+                })
+                .map(|c| c.result)
+                .collect(),
+            TraitGoalProvenVia::Misc => candidates.iter().map(|c| c.result).collect(),
+        };
+
+        self.try_merge_responses(&responses).map_or_else(|| self.flounder(&responses), Ok)
     }
 }
