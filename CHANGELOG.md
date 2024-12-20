@@ -5768,6 +5768,7 @@ Released 2018-09-13
 [`manual_range_contains`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_range_contains
 [`manual_range_patterns`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_range_patterns
 [`manual_rem_euclid`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_rem_euclid
+[`manual_repeat_n`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_repeat_n
 [`manual_retain`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_retain
 [`manual_rotate`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_rotate
 [`manual_saturating_arithmetic`]: https://rust-lang.github.io/rust-clippy/master/index.html#manual_saturating_arithmetic
