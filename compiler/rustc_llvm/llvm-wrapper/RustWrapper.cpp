@@ -1796,56 +1796,6 @@ extern "C" LLVMValueRef LLVMRustBuildMaxNum(LLVMBuilderRef B, LLVMValueRef LHS,
   return wrap(unwrap(B)->CreateMaxNum(unwrap(LHS), unwrap(RHS)));
 }
 
-// This struct contains all necessary info about a symbol exported from a DLL.
-struct LLVMRustCOFFShortExport {
-  const char *name;
-  bool ordinal_present;
-  // The value of `ordinal` is only meaningful if `ordinal_present` is true.
-  uint16_t ordinal;
-};
-
-// Machine must be a COFF machine type, as defined in PE specs.
-extern "C" LLVMRustResult
-LLVMRustWriteImportLibrary(const char *ImportName, const char *Path,
-                           const LLVMRustCOFFShortExport *Exports,
-                           size_t NumExports, uint16_t Machine, bool MinGW) {
-  std::vector<llvm::object::COFFShortExport> ConvertedExports;
-  ConvertedExports.reserve(NumExports);
-
-  for (size_t i = 0; i < NumExports; ++i) {
-    bool ordinal_present = Exports[i].ordinal_present;
-    uint16_t ordinal = ordinal_present ? Exports[i].ordinal : 0;
-    ConvertedExports.push_back(llvm::object::COFFShortExport{
-        Exports[i].name, // Name
-        std::string{},   // ExtName
-        std::string{},   // SymbolName
-        std::string{},   // AliasTarget
-#if LLVM_VERSION_GE(19, 0)
-        std::string{}, // ExportAs
-#endif
-        ordinal,         // Ordinal
-        ordinal_present, // Noname
-        false,           // Data
-        false,           // Private
-        false            // Constant
-    });
-  }
-
-  auto Error = llvm::object::writeImportLibrary(
-      ImportName, Path, ConvertedExports,
-      static_cast<llvm::COFF::MachineTypes>(Machine), MinGW);
-  if (Error) {
-    std::string errorString;
-    auto stream = llvm::raw_string_ostream(errorString);
-    stream << Error;
-    stream.flush();
-    LLVMRustSetLastError(errorString.c_str());
-    return LLVMRustResult::Failure;
-  } else {
-    return LLVMRustResult::Success;
-  }
-}
-
 // Transfers ownership of DiagnosticHandler unique_ptr to the caller.
 extern "C" DiagnosticHandler *
 LLVMRustContextGetDiagnosticHandler(LLVMContextRef C) {
