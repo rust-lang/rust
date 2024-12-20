@@ -1,4 +1,5 @@
 use rustc_abi::{Align, Size};
+use rustc_ast::expand::allocator::AllocatorKind;
 
 use crate::*;
 
@@ -51,6 +52,34 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
         }
         Align::from_bytes(prev_power_of_two(size)).unwrap()
+    }
+
+    /// Emulates calling the internal __rust_* allocator functions
+    fn emulate_allocator(
+        &mut self,
+        default: impl FnOnce(&mut MiriInterpCx<'tcx>) -> InterpResult<'tcx>,
+    ) -> InterpResult<'tcx, EmulateItemResult> {
+        let this = self.eval_context_mut();
+
+        let Some(allocator_kind) = this.tcx.allocator_kind(()) else {
+            // in real code, this symbol does not exist without an allocator
+            return interp_ok(EmulateItemResult::NotSupported);
+        };
+
+        match allocator_kind {
+            AllocatorKind::Global => {
+                // When `#[global_allocator]` is used, `__rust_*` is defined by the macro expansion
+                // of this attribute. As such we have to call an exported Rust function,
+                // and not execute any Miri shim. Somewhat unintuitively doing so is done
+                // by returning `NotSupported`, which triggers the `lookup_exported_symbol`
+                // fallback case in `emulate_foreign_item`.
+                interp_ok(EmulateItemResult::NotSupported)
+            }
+            AllocatorKind::Default => {
+                default(this)?;
+                interp_ok(EmulateItemResult::NeedsReturn)
+            }
+        }
     }
 
     fn malloc(&mut self, size: u64, init: AllocInit) -> InterpResult<'tcx, Pointer> {
