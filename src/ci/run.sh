@@ -8,6 +8,7 @@ if [ -n "$CI_JOB_NAME" ]; then
   echo "[CI_JOB_NAME=$CI_JOB_NAME]"
 fi
 
+echo "whoami: $(whoami)"
 echo "NO_CHANGE_USER=$NO_CHANGE_USER. LOCAL_USER_ID=$LOCAL_USER_ID"
 if [ "$NO_CHANGE_USER" = "" ]; then
   echo "can change user"
@@ -28,7 +29,6 @@ if [ "$NO_CHANGE_USER" = "" ]; then
 
     echo "Switching to user"
     exec su --preserve-environment -c "env PATH=$PATH \"$0\"" user
-    echo "whoami: $(whoami)"
   fi
 fi
 
