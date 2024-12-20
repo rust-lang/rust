@@ -53,16 +53,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         Align::from_bytes(prev_power_of_two(size)).unwrap()
     }
 
-    /// Emulates calling the internal __rust_* allocator functions
-    fn emulate_allocator(&mut self) -> InterpResult<'tcx, EmulateItemResult> {
-        // When `#[global_allocator]` is used, `__rust_*` is defined by the macro expansion
-        // of this attribute. As such we have to call an exported Rust function,
-        // and not execute any Miri shim. Somewhat unintuitively doing so is done
-        // by returning `NotSupported`, which triggers the `lookup_exported_symbol`
-        // fallback case in `emulate_foreign_item`.
-        interp_ok(EmulateItemResult::NotSupported)
-    }
-
     fn malloc(&mut self, size: u64, init: AllocInit) -> InterpResult<'tcx, Pointer> {
         let this = self.eval_context_mut();
         let align = this.malloc_align(size);
