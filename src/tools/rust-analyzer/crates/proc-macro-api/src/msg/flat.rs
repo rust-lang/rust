@@ -39,7 +39,7 @@ use std::collections::VecDeque;
 
 use intern::Symbol;
 use rustc_hash::FxHashMap;
-use serde::{Deserialize, Serialize};
+use serde_derive::{Deserialize, Serialize};
 use span::{EditionedFileId, ErasedFileAstId, Span, SpanAnchor, SyntaxContextId, TextRange};
 
 use crate::msg::EXTENDED_LEAF_DATA;

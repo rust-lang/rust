@@ -1011,24 +1011,25 @@ checksum = "a7a70ba024b9dc04c27ea2f0c0548feb474ec5c54bba33a7f72f873a39d07b24"
 [[package]]
 name = "lsp-server"
 version = "0.7.7"
-dependencies = [
- "crossbeam-channel",
- "ctrlc",
- "log",
- "lsp-types",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "lsp-server"
-version = "0.7.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "550446e84739dcaf6d48a4a093973850669e13e8a34d8f8d64851041be267cd9"
 dependencies = [
  "crossbeam-channel",
  "log",
  "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "lsp-server"
+version = "0.7.8"
+dependencies = [
+ "crossbeam-channel",
+ "ctrlc",
+ "log",
+ "lsp-types",
+ "serde",
+ "serde_derive",
  "serde_json",
 ]
 
@@ -1289,7 +1290,6 @@ name = "paths"
 version = "0.0.0"
 dependencies = [
  "camino",
- "serde",
 ]
 
 [[package]]
@@ -1357,6 +1357,7 @@ dependencies = [
  "paths",
  "rustc-hash 2.0.0",
  "serde",
+ "serde_derive",
  "serde_json",
  "span",
  "stdx",
@@ -1446,6 +1447,7 @@ dependencies = [
  "rustc-hash 2.0.0",
  "semver",
  "serde",
+ "serde_derive",
  "serde_json",
  "span",
  "stdx",
@@ -1674,7 +1676,7 @@ dependencies = [
  "intern",
  "itertools",
  "load-cargo",
- "lsp-server 0.7.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lsp-server 0.7.7",
  "lsp-types",
  "memchr",
  "mimalloc",
@@ -1693,6 +1695,7 @@ dependencies = [
  "scip",
  "semver",
  "serde",
+ "serde_derive",
  "serde_json",
  "stdx",
  "syntax",
@@ -1820,18 +1823,18 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.206"
+version = "1.0.216"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b3e4cd94123dd520a128bcd11e34d9e9e423e7e3e50425cb1b4b1e3549d0284"
+checksum = "0b9781016e935a97e8beecf0c933758c97a5520d32930e460142b4cd80c6338e"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.206"
+version = "1.0.216"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fabfb6138d2383ea8208cf98ccf69cdfb1aff4088460681d84189aa259762f97"
+checksum = "46f859dbbf73865c6627ed570e78961cd3ac92407a2d117204c49232485da55e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1923,12 +1926,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b9b39299b249ad65f3b7e96443bad61c02ca5cd3589f46cb6d610a0fd6c0d6a"
 
 [[package]]
-name = "stable_deref_trait"
-version = "1.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
-
-[[package]]
 name = "stdx"
 version = "0.0.0"
 dependencies = [
@@ -1944,9 +1941,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.74"
+version = "2.0.87"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fceb41e3d546d0bd83421d3409b1460cc7444cd389341a4c880fe7a042cb3d7"
+checksum = "25aa4ce346d03a6dcd68dd8b4010bcb74e54e62c90c573f394c46eae99aba32d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2262,13 +2259,9 @@ dependencies = [
 
 [[package]]
 name = "triomphe"
-version = "0.1.13"
+version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6631e42e10b40c0690bf92f404ebcfe6e1fdb480391d15f17cc8e96eeed5369"
-dependencies = [
- "serde",
- "stable_deref_trait",
-]
+checksum = "ef8f7726da4807b58ea5c96fdc122f80702030edc33b35aff9190a51148ccc85"
 
 [[package]]
 name = "tt"

@@ -6,7 +6,8 @@ use std::{fmt, io, process::Command, time::Duration};
 use crossbeam_channel::{select_biased, unbounded, Receiver, Sender};
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::FxHashMap;
-use serde::Deserialize;
+use serde::Deserialize as _;
+use serde_derive::Deserialize;
 
 pub(crate) use cargo_metadata::diagnostic::{
     Applicability, Diagnostic, DiagnosticCode, DiagnosticLevel, DiagnosticSpan,
