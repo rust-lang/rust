@@ -120,6 +120,15 @@ pub(crate) struct NonExhaustiveWrongLocation {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_non_exaustive_with_default_field_values)]
+pub(crate) struct NonExhaustiveWithDefaultFieldValues {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub defn_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_should_be_applied_to_trait)]
 pub(crate) struct AttrShouldBeAppliedToTrait {
     #[primary_span]
