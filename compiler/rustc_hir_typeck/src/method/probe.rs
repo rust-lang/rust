@@ -1229,23 +1229,16 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 if let Some(by_value_pick) = by_value_pick {
                     if let Ok(by_value_pick) = by_value_pick.as_ref() {
                         if by_value_pick.kind == PickKind::InherentImplPick {
-                            if let Err(e) = self.check_for_shadowed_autorefd_method(
-                                by_value_pick,
-                                step,
-                                self_ty,
-                                hir::Mutability::Not,
-                                track_unstable_candidates,
-                            ) {
-                                return Some(Err(e));
-                            }
-                            if let Err(e) = self.check_for_shadowed_autorefd_method(
-                                by_value_pick,
-                                step,
-                                self_ty,
-                                hir::Mutability::Mut,
-                                track_unstable_candidates,
-                            ) {
-                                return Some(Err(e));
+                            for mutbl in [hir::Mutability::Not, hir::Mutability::Mut] {
+                                if let Err(e) = self.check_for_shadowed_autorefd_method(
+                                    by_value_pick,
+                                    step,
+                                    self_ty,
+                                    mutbl,
+                                    track_unstable_candidates,
+                                ) {
+                                    return Some(Err(e));
+                                }
                             }
                         }
                     }
