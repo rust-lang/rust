@@ -315,7 +315,7 @@ Markdown file, the URL given to `--markdown-playground-url` will take precedence
 `--playground-url` and `#![doc(html_playground_url = "url")]` are present when rendering crate docs,
 the attribute will take precedence.
 
-### `--sort-modules-by-appearance`: control how items on module pages are sorted
+## `--sort-modules-by-appearance`: control how items on module pages are sorted
 
 Using this flag looks like this:
 
@@ -328,7 +328,7 @@ some consideration for their stability, and names that end in a number). Giving 
 `rustdoc` will disable this sorting and instead make it print the items in the order they appear in
 the source.
 
-### `--show-type-layout`: add a section to each type's docs describing its memory layout
+## `--show-type-layout`: add a section to each type's docs describing its memory layout
 
 * Tracking issue: [#113248](https://github.com/rust-lang/rust/issues/113248)
 
@@ -346,7 +346,7 @@ of that type will take in memory.
 Note that most layout information is **completely unstable** and may even differ
 between compilations.
 
-### `--resource-suffix`: modifying the name of CSS/JavaScript in crate docs
+## `--resource-suffix`: modifying the name of CSS/JavaScript in crate docs
 
  * Tracking issue: [#54765](https://github.com/rust-lang/rust/issues/54765)
 
@@ -361,7 +361,7 @@ all these files are linked from every page, changing where they are can be cumbe
 specially cache them. This flag will rename all these files in the output to include the suffix in
 the filename. For example, `light.css` would become `light-suf.css` with the above command.
 
-### `--extern-html-root-url`: control how rustdoc links to non-local crates
+## `--extern-html-root-url`: control how rustdoc links to non-local crates
 
 Using this flag looks like this:
 
@@ -376,7 +376,7 @@ flags to control that behavior. When the `--extern-html-root-url` flag is given 
 one of your dependencies, rustdoc use that URL for those docs. Keep in mind that if those docs exist
 in the output directory, those local docs will still override this flag.
 
-### `-Z force-unstable-if-unmarked`
+## `-Z force-unstable-if-unmarked`
 
 Using this flag looks like this:
 
@@ -389,7 +389,7 @@ This is an internal flag intended for the standard library and compiler that app
 allows `rustdoc` to be able to generate documentation for the compiler crates and the standard
 library, as an equivalent command-line argument is provided to `rustc` when building those crates.
 
-### `--index-page`: provide a top-level landing page for docs
+## `--index-page`: provide a top-level landing page for docs
 
 This feature allows you to generate an index-page with a given markdown file. A good example of it
 is the [rust documentation index](https://doc.rust-lang.org/nightly/index.html).
@@ -398,18 +398,18 @@ With this, you'll have a page which you can customize as much as you want at the
 
 Using `index-page` option enables `enable-index-page` option as well.
 
-### `--enable-index-page`: generate a default index page for docs
+## `--enable-index-page`: generate a default index page for docs
 
 This feature allows the generation of a default index-page which lists the generated crates.
 
-### `--nocapture`: disable output capture for test
+## `--nocapture`: disable output capture for test
 
 When this flag is used with `--test`, the output (stdout and stderr) of your tests won't be
 captured by rustdoc. Instead, the output will be directed to your terminal,
 as if you had run the test executable manually. This is especially useful
 for debugging your tests!
 
-### `--check`: only checks the documentation
+## `--check`: only checks the documentation
 
 When this flag is supplied, rustdoc will type check and lint your code, but will not generate any
 documentation or run your doctests.
@@ -420,7 +420,7 @@ Using this flag looks like:
 rustdoc -Z unstable-options --check src/lib.rs
 ```
 
-### `--static-root-path`: control how static files are loaded in HTML output
+## `--static-root-path`: control how static files are loaded in HTML output
 
 Using this flag looks like this:
 
@@ -435,7 +435,7 @@ JavaScript, and font files in a single location, rather than duplicating it once
 files like the search index will still load from the documentation root, but anything that gets
 renamed with `--resource-suffix` will load from the given path.
 
-### `--persist-doctests`: persist doctest executables after running
+## `--persist-doctests`: persist doctest executables after running
 
  * Tracking issue: [#56925](https://github.com/rust-lang/rust/issues/56925)
 
@@ -449,7 +449,7 @@ This flag allows you to keep doctest executables around after they're compiled o
 Usually, rustdoc will immediately discard a compiled doctest after it's been tested, but
 with this option, you can keep those binaries around for farther testing.
 
-### `--show-coverage`: calculate the percentage of items with documentation
+## `--show-coverage`: calculate the percentage of items with documentation
 
  * Tracking issue: [#58154](https://github.com/rust-lang/rust/issues/58154)
 
@@ -500,7 +500,7 @@ Calculating code examples follows these rules:
   * typedef
 2. If one of the previously listed items has a code example, then it'll be counted.
 
-#### JSON output
+### JSON output
 
 When using `--output-format json` with this option, it will display the coverage information in
 JSON format. For example, here is the JSON for a file with one documented item and one
@@ -522,7 +522,7 @@ Note that the third item is the crate root, which in this case is undocumented.
 If you want the JSON output to be displayed on `stdout` instead of having a file generated, you can
 use `-o -`.
 
-### `-w`/`--output-format`: output format
+## `-w`/`--output-format`: output format
 
 `--output-format json` emits documentation in the experimental
 [JSON format](https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc_json_types/). `--output-format html` has no effect,
@@ -542,7 +542,7 @@ It can also be used with `--show-coverage`. Take a look at its
 [documentation](#--show-coverage-calculate-the-percentage-of-items-with-documentation) for more
 information.
 
-### `--enable-per-target-ignores`: allow `ignore-foo` style filters for doctests
+## `--enable-per-target-ignores`: allow `ignore-foo` style filters for doctests
 
  * Tracking issue: [#64245](https://github.com/rust-lang/rust/issues/64245)
 
@@ -577,7 +577,7 @@ struct Foo;
 In older versions, this will be ignored on all targets, but on newer versions `ignore-gnu` will
 override `ignore`.
 
-### `--runtool`, `--runtool-arg`: program to run tests with; args to pass to it
+## `--runtool`, `--runtool-arg`: program to run tests with; args to pass to it
 
  * Tracking issue: [#64245](https://github.com/rust-lang/rust/issues/64245)
 
@@ -596,7 +596,7 @@ $ rustdoc src/lib.rs -Z unstable-options --runtool valgrind
 
 Another use case would be to run a test inside an emulator, or through a Virtual Machine.
 
-### `--with-examples`: include examples of uses of items as documentation
+## `--with-examples`: include examples of uses of items as documentation
 
  * Tracking issue: [#88791](https://github.com/rust-lang/rust/issues/88791)
 
@@ -625,7 +625,7 @@ crate being documented (`foobar`) and a path to output the calls
 To scrape examples from test code, e.g. functions marked `#[test]`, then
 add the `--scrape-tests` flag.
 
-### `--generate-link-to-definition`: Generate links on types in source code
+## `--generate-link-to-definition`: Generate links on types in source code
 
  * Tracking issue: [#89095](https://github.com/rust-lang/rust/issues/89095)
 
@@ -664,3 +664,80 @@ Similar to cargo `build.rustc-wrapper` option, this flag takes a `rustc` wrapper
 The first argument to the program will be the test builder program.
 
 This flag can be passed multiple times to nest wrappers.
+
+## Passing arguments to rustc when compiling doctests
+
+You can use the `--doctest-compilation-args` flag if you want to add options when compiling the
+doctest. For example if you have:
+
+```rust,no_run
+/// ```
+/// #![deny(warnings)]
+/// #![feature(async_await)]
+///
+/// let x = 12;
+/// ```
+pub struct Bar;
+```
+
+And you run `rustdoc --test` on it, you will get:
+
+```console
+running 1 test
+test foo.rs - Bar (line 1) ... FAILED
+
+failures:
+
+---- foo.rs - Bar (line 1) stdout ----
+error: the feature `async_await` has been stable since 1.39.0 and no longer requires an attribute to enable
+ --> foo.rs:2:12
+  |
+3 | #![feature(async_await)]
+  |            ^^^^^^^^^^^
+  |
+note: the lint level is defined here
+ --> foo.rs:1:9
+  |
+2 | #![deny(warnings)]
+  |         ^^^^^^^^
+  = note: `#[deny(stable_features)]` implied by `#[deny(warnings)]`
+
+error: aborting due to 1 previous error
+
+Couldn't compile the test.
+
+failures:
+    foo.rs - Bar (line 1)
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+```
+
+But if you can limit the lint level to warning by using `--doctest_compilation_args=--cap-lints=warn`:
+
+```console
+$ rustdoc --test --doctest_compilation_args=--cap-lints=warn file.rs
+
+running 1 test
+test tests/rustdoc-ui/doctest/rustflags.rs - Bar (line 5) ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+```
+
+The parsing of arguments works as follows: if it encounters a `"` or a `'`, it will continue
+until it finds the character unescaped (without a prepending `\`). If not inside a string, a
+whitespace character will also split arguments. Example:
+
+```text
+"hello 'a'\" ok" how are   'you today?'
+```
+
+will be split as follows:
+
+```text
+[
+    "hello 'a'\" ok",
+    "how",
+    "are",
+    "you today?",
+]
+```

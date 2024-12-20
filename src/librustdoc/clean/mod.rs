@@ -1222,14 +1222,16 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
     let local_did = trait_item.owner_id.to_def_id();
     cx.with_param_env(local_did, |cx| {
         let inner = match trait_item.kind {
-            hir::TraitItemKind::Const(ty, Some(default)) => AssocConstItem(Box::new(Constant {
-                generics: enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx)),
-                kind: ConstantKind::Local { def_id: local_did, body: default },
-                type_: clean_ty(ty, cx),
-            })),
+            hir::TraitItemKind::Const(ty, Some(default)) => {
+                ProvidedAssocConstItem(Box::new(Constant {
+                    generics: enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx)),
+                    kind: ConstantKind::Local { def_id: local_did, body: default },
+                    type_: clean_ty(ty, cx),
+                }))
+            }
             hir::TraitItemKind::Const(ty, None) => {
                 let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
-                TyAssocConstItem(generics, Box::new(clean_ty(ty, cx)))
+                RequiredAssocConstItem(generics, Box::new(clean_ty(ty, cx)))
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
                 let m = clean_function(cx, sig, trait_item.generics, FunctionArgs::Body(body));
@@ -1237,7 +1239,7 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(names)) => {
                 let m = clean_function(cx, sig, trait_item.generics, FunctionArgs::Names(names));
-                TyMethodItem(m)
+                RequiredMethodItem(m)
             }
             hir::TraitItemKind::Type(bounds, Some(default)) => {
                 let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
@@ -1257,7 +1259,7 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
             hir::TraitItemKind::Type(bounds, None) => {
                 let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
                 let bounds = bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect();
-                TyAssocTypeItem(generics, bounds)
+                RequiredAssocTypeItem(generics, bounds)
             }
         };
         Item::from_def_id_and_parts(local_did, Some(trait_item.ident.name), inner, cx)
@@ -1271,7 +1273,7 @@ pub(crate) fn clean_impl_item<'tcx>(
     let local_did = impl_.owner_id.to_def_id();
     cx.with_param_env(local_did, |cx| {
         let inner = match impl_.kind {
-            hir::ImplItemKind::Const(ty, expr) => AssocConstItem(Box::new(Constant {
+            hir::ImplItemKind::Const(ty, expr) => ImplAssocConstItem(Box::new(Constant {
                 generics: clean_generics(impl_.generics, cx),
                 kind: ConstantKind::Local { def_id: local_did, body: expr },
                 type_: clean_ty(ty, cx),
@@ -1320,18 +1322,23 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
             );
             simplify::move_bounds_to_generic_parameters(&mut generics);
 
-            let provided = match assoc_item.container {
-                ty::AssocItemContainer::Impl => true,
-                ty::AssocItemContainer::Trait => tcx.defaultness(assoc_item.def_id).has_value(),
-            };
-            if provided {
-                AssocConstItem(Box::new(Constant {
+            match assoc_item.container {
+                ty::AssocItemContainer::Impl => ImplAssocConstItem(Box::new(Constant {
                     generics,
                     kind: ConstantKind::Extern { def_id: assoc_item.def_id },
                     type_: ty,
-                }))
-            } else {
-                TyAssocConstItem(generics, Box::new(ty))
+                })),
+                ty::AssocItemContainer::Trait => {
+                    if tcx.defaultness(assoc_item.def_id).has_value() {
+                        ProvidedAssocConstItem(Box::new(Constant {
+                            generics,
+                            kind: ConstantKind::Extern { def_id: assoc_item.def_id },
+                            type_: ty,
+                        }))
+                    } else {
+                        RequiredAssocConstItem(generics, Box::new(ty))
+                    }
+                }
             }
         }
         ty::AssocKind::Fn => {
@@ -1369,7 +1376,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                 };
                 MethodItem(item, defaultness)
             } else {
-                TyMethodItem(item)
+                RequiredMethodItem(item)
             }
         }
         ty::AssocKind::Type => {
@@ -1486,7 +1493,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                         bounds,
                     )
                 } else {
-                    TyAssocTypeItem(generics, bounds)
+                    RequiredAssocTypeItem(generics, bounds)
                 }
             } else {
                 AssocTypeItem(

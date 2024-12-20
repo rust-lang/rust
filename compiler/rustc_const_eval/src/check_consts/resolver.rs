@@ -5,7 +5,7 @@
 use std::fmt;
 use std::marker::PhantomData;
 
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::MixedBitSet;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{
     self, BasicBlock, CallReturnPlaces, Local, Location, Statement, StatementKind, TerminatorEdges,
@@ -246,12 +246,14 @@ where
 }
 
 #[derive(Debug, PartialEq, Eq)]
+/// The state for the `FlowSensitiveAnalysis` dataflow analysis. This domain is likely homogeneous,
+/// and has a big size, so we use a bitset that can be sparse (c.f. issue #134404).
 pub(super) struct State {
     /// Describes whether a local contains qualif.
-    pub qualif: BitSet<Local>,
+    pub qualif: MixedBitSet<Local>,
     /// Describes whether a local's address escaped and it might become qualified as a result an
     /// indirect mutation.
-    pub borrow: BitSet<Local>,
+    pub borrow: MixedBitSet<Local>,
 }
 
 impl Clone for State {
@@ -320,8 +322,8 @@ where
 
     fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
         State {
-            qualif: BitSet::new_empty(body.local_decls.len()),
-            borrow: BitSet::new_empty(body.local_decls.len()),
+            qualif: MixedBitSet::new_empty(body.local_decls.len()),
+            borrow: MixedBitSet::new_empty(body.local_decls.len()),
         }
     }
 

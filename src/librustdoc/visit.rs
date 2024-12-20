@@ -35,7 +35,7 @@ pub(crate) trait DocVisitor<'a>: Sized {
             | StaticItem(_)
             | ConstantItem(..)
             | TraitAliasItem(_)
-            | TyMethodItem(_)
+            | RequiredMethodItem(_)
             | MethodItem(_, _)
             | StructFieldItem(_)
             | ForeignFunctionItem(..)
@@ -44,9 +44,10 @@ pub(crate) trait DocVisitor<'a>: Sized {
             | MacroItem(_)
             | ProcMacroItem(_)
             | PrimitiveItem(_)
-            | TyAssocConstItem(..)
-            | AssocConstItem(..)
-            | TyAssocTypeItem(..)
+            | RequiredAssocConstItem(..)
+            | ProvidedAssocConstItem(..)
+            | ImplAssocConstItem(..)
+            | RequiredAssocTypeItem(..)
             | AssocTypeItem(..)
             | KeywordItem => {}
         }

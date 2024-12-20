@@ -1,5 +1,8 @@
-use rustc_abi::ExternAbi;
+use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
+use rustc_target::callconv::{Conv, FnAbi};
+
+
 
 use crate::shims::unix::android::thread::prctl;
 use crate::shims::unix::linux_like::epoll::EvalContextExt as _;
@@ -16,7 +19,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_foreign_item_inner(
         &mut self,
         link_name: Symbol,
-        abi: ExternAbi,
+        abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
@@ -25,31 +28,31 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // epoll, eventfd
             "epoll_create1" => {
                 let [flag] =
-                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                    this.check_shim(abi, Conv::C, link_name, args)?;
                 let result = this.epoll_create1(flag)?;
                 this.write_scalar(result, dest)?;
             }
             "epoll_ctl" => {
                 let [epfd, op, fd, event] =
-                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                    this.check_shim(abi, Conv::C, link_name, args)?;
                 let result = this.epoll_ctl(epfd, op, fd, event)?;
                 this.write_scalar(result, dest)?;
             }
             "epoll_wait" => {
                 let [epfd, events, maxevents, timeout] =
-                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                    this.check_shim(abi, Conv::C, link_name, args)?;
                 this.epoll_wait(epfd, events, maxevents, timeout, dest)?;
             }
             "eventfd" => {
                 let [val, flag] =
-                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                    this.check_shim(abi, Conv::C, link_name, args)?;
                 let result = this.eventfd(val, flag)?;
                 this.write_scalar(result, dest)?;
             }
 
             // Miscellaneous
             "__errno" => {
-                let [] = this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                let [] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let errno_place = this.last_error_place()?;
                 this.write_scalar(errno_place.to_ref(this).to_scalar(), dest)?;
             }

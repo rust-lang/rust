@@ -545,14 +545,14 @@ impl Item {
     pub(crate) fn is_associated_type(&self) -> bool {
         matches!(self.kind, AssocTypeItem(..) | StrippedItem(box AssocTypeItem(..)))
     }
-    pub(crate) fn is_ty_associated_type(&self) -> bool {
-        matches!(self.kind, TyAssocTypeItem(..) | StrippedItem(box TyAssocTypeItem(..)))
+    pub(crate) fn is_required_associated_type(&self) -> bool {
+        matches!(self.kind, RequiredAssocTypeItem(..) | StrippedItem(box RequiredAssocTypeItem(..)))
     }
     pub(crate) fn is_associated_const(&self) -> bool {
-        matches!(self.kind, AssocConstItem(..) | StrippedItem(box AssocConstItem(..)))
+        matches!(self.kind, ProvidedAssocConstItem(..) | ImplAssocConstItem(..) | StrippedItem(box (ProvidedAssocConstItem(..) | ImplAssocConstItem(..))))
     }
-    pub(crate) fn is_ty_associated_const(&self) -> bool {
-        matches!(self.kind, TyAssocConstItem(..) | StrippedItem(box TyAssocConstItem(..)))
+    pub(crate) fn is_required_associated_const(&self) -> bool {
+        matches!(self.kind, RequiredAssocConstItem(..) | StrippedItem(box RequiredAssocConstItem(..)))
     }
     pub(crate) fn is_method(&self) -> bool {
         self.type_() == ItemType::Method
@@ -669,7 +669,9 @@ impl Item {
                     asyncness: hir::IsAsync::NotAsync,
                 }
             }
-            ItemKind::FunctionItem(_) | ItemKind::MethodItem(_, _) | ItemKind::TyMethodItem(_) => {
+            ItemKind::FunctionItem(_)
+            | ItemKind::MethodItem(_, _)
+            | ItemKind::RequiredMethodItem(_) => {
                 let def_id = self.def_id().unwrap();
                 build_fn_header(def_id, tcx, tcx.asyncness(def_id))
             }
@@ -699,8 +701,13 @@ impl Item {
             // Variants always inherit visibility
             VariantItem(..) | ImplItem(..) => return None,
             // Trait items inherit the trait's visibility
-            AssocConstItem(..) | TyAssocConstItem(..) | AssocTypeItem(..) | TyAssocTypeItem(..)
-            | TyMethodItem(..) | MethodItem(..) => {
+            RequiredAssocConstItem(..)
+            | ProvidedAssocConstItem(..)
+            | ImplAssocConstItem(..)
+            | AssocTypeItem(..)
+            | RequiredAssocTypeItem(..)
+            | RequiredMethodItem(..)
+            | MethodItem(..) => {
                 let assoc_item = tcx.associated_item(def_id);
                 let is_trait_item = match assoc_item.container {
                     ty::AssocItemContainer::Trait => true,
@@ -845,10 +852,10 @@ pub(crate) enum ItemKind {
     TraitAliasItem(TraitAlias),
     ImplItem(Box<Impl>),
     /// A required method in a trait declaration meaning it's only a function signature.
-    TyMethodItem(Box<Function>),
+    RequiredMethodItem(Box<Function>),
     /// A method in a trait impl or a provided method in a trait declaration.
     ///
-    /// Compared to [TyMethodItem], it also contains a method body.
+    /// Compared to [RequiredMethodItem], it also contains a method body.
     MethodItem(Box<Function>, Option<hir::Defaultness>),
     StructFieldItem(Type),
     VariantItem(Variant),
@@ -862,14 +869,16 @@ pub(crate) enum ItemKind {
     ProcMacroItem(ProcMacro),
     PrimitiveItem(PrimitiveType),
     /// A required associated constant in a trait declaration.
-    TyAssocConstItem(Generics, Box<Type>),
+    RequiredAssocConstItem(Generics, Box<Type>),
     ConstantItem(Box<Constant>),
-    /// An associated constant in a trait impl or a provided one in a trait declaration.
-    AssocConstItem(Box<Constant>),
+    /// An associated constant in a trait declaration with provided default value.
+    ProvidedAssocConstItem(Box<Constant>),
+    /// An associated constant in an inherent impl or trait impl.
+    ImplAssocConstItem(Box<Constant>),
     /// A required associated type in a trait declaration.
     ///
     /// The bounds may be non-empty if there is a `where` clause.
-    TyAssocTypeItem(Generics, Vec<GenericBound>),
+    RequiredAssocTypeItem(Generics, Vec<GenericBound>),
     /// An associated type in a trait impl or a provided one in a trait declaration.
     AssocTypeItem(Box<TypeAlias>, Vec<GenericBound>),
     /// An item that has been stripped by a rustdoc pass
@@ -900,7 +909,7 @@ impl ItemKind {
             | StaticItem(_)
             | ConstantItem(_)
             | TraitAliasItem(_)
-            | TyMethodItem(_)
+            | RequiredMethodItem(_)
             | MethodItem(_, _)
             | StructFieldItem(_)
             | ForeignFunctionItem(_, _)
@@ -909,9 +918,10 @@ impl ItemKind {
             | MacroItem(_)
             | ProcMacroItem(_)
             | PrimitiveItem(_)
-            | TyAssocConstItem(..)
-            | AssocConstItem(..)
-            | TyAssocTypeItem(..)
+            | RequiredAssocConstItem(..)
+            | ProvidedAssocConstItem(..)
+            | ImplAssocConstItem(..)
+            | RequiredAssocTypeItem(..)
             | AssocTypeItem(..)
             | StrippedItem(_)
             | KeywordItem => [].iter(),

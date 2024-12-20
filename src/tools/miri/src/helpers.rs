@@ -19,6 +19,7 @@ use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, MaybeResult, TyAndLayout};
 use rustc_middle::ty::{self, FloatTy, IntTy, Ty, TyCtxt, UintTy};
 use rustc_session::config::CrateType;
 use rustc_span::{Span, Symbol};
+use rustc_target::callconv::{Conv, FnAbi};
 
 use crate::*;
 
@@ -920,13 +921,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Check that the ABI is what we expect.
-    fn check_abi<'a>(&self, abi: ExternAbi, exp_abi: ExternAbi) -> InterpResult<'a, ()> {
-        if abi != exp_abi {
+    fn check_abi<'a>(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>, exp_abi: Conv) -> InterpResult<'a, ()> {
+        if fn_abi.conv != exp_abi {
             throw_ub_format!(
-                "calling a function with ABI {} using caller ABI {}",
-                exp_abi.name(),
-                abi.name()
-            )
+                "calling a function with ABI {:?} using caller ABI {:?}",
+                exp_abi, fn_abi.conv);
         }
         interp_ok(())
     }
@@ -956,8 +955,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn check_abi_and_shim_symbol_clash(
         &mut self,
-        abi: ExternAbi,
-        exp_abi: ExternAbi,
+        abi: &FnAbi<'tcx, Ty<'tcx>>,
+        exp_abi: Conv,
         link_name: Symbol,
     ) -> InterpResult<'tcx, ()> {
         self.check_abi(abi, exp_abi)?;
@@ -981,8 +980,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn check_shim<'a, const N: usize>(
         &mut self,
-        abi: ExternAbi,
-        exp_abi: ExternAbi,
+        abi: &FnAbi<'tcx, Ty<'tcx>>,
+        exp_abi: Conv,
         link_name: Symbol,
         args: &'a [OpTy<'tcx>],
     ) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]>
