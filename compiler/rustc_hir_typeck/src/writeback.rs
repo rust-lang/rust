@@ -554,11 +554,13 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             let hidden_type = self.resolve(decl.hidden_type, &decl.hidden_type.span);
             let opaque_type_key = self.resolve(opaque_type_key, &decl.hidden_type.span);
 
-            if let ty::Alias(ty::Opaque, alias_ty) = hidden_type.ty.kind()
-                && alias_ty.def_id == opaque_type_key.def_id.to_def_id()
-                && alias_ty.args == opaque_type_key.args
-            {
-                continue;
+            if !self.fcx.next_trait_solver() {
+                if let ty::Alias(ty::Opaque, alias_ty) = hidden_type.ty.kind()
+                    && alias_ty.def_id == opaque_type_key.def_id.to_def_id()
+                    && alias_ty.args == opaque_type_key.args
+                {
+                    continue;
+                }
             }
 
             // Here we only detect impl trait definition conflicts when they
