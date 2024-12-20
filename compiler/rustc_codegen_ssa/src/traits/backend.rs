@@ -1,7 +1,6 @@
 use std::any::Any;
 use std::hash::Hash;
 
-use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_metadata::EncodedMetadata;
@@ -103,12 +102,7 @@ pub trait CodegenBackend {
 pub trait ExtraBackendMethods:
     CodegenBackend + WriteBackendMethods + Sized + Send + Sync + DynSend + DynSync
 {
-    fn codegen_allocator<'tcx>(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        module_name: &str,
-        alloc_error_handler_kind: AllocatorKind,
-    ) -> Self::Module;
+    fn codegen_allocator<'tcx>(&self, tcx: TyCtxt<'tcx>, module_name: &str) -> Self::Module;
 
     /// This generates the codegen unit and returns it along with
     /// a `u64` giving an estimate of the unit's processing cost.

@@ -432,7 +432,6 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
     provide_cstore_hooks(providers);
     providers.queries = rustc_middle::query::Providers {
         allocator_kind: |tcx, ()| CStore::from_tcx(tcx).allocator_kind(),
-        alloc_error_handler_kind: |tcx, ()| CStore::from_tcx(tcx).alloc_error_handler_kind(),
         is_private_dep: |_tcx, LocalCrate| false,
         native_library: |tcx, id| {
             tcx.native_libraries(id.krate)
