@@ -2165,12 +2165,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         empty_proc_macro!(self);
         let formats = self.tcx.dependency_formats(());
         if let Some(arr) = formats.get(&CrateType::Dylib) {
-            return self.lazy_array(arr.iter().map(|slot| match *slot {
-                Linkage::NotLinked | Linkage::IncludedFromDylib => None,
+            return self.lazy_array(arr.iter().skip(1 /* skip LOCAL_CRATE */).map(
+                |slot| match *slot {
+                    Linkage::NotLinked | Linkage::IncludedFromDylib => None,
 
-                Linkage::Dynamic => Some(LinkagePreference::RequireDynamic),
-                Linkage::Static => Some(LinkagePreference::RequireStatic),
-            }));
+                    Linkage::Dynamic => Some(LinkagePreference::RequireDynamic),
+                    Linkage::Static => Some(LinkagePreference::RequireStatic),
+                },
+            ));
         }
         LazyArray::default()
     }
