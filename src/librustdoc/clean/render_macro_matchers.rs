@@ -140,7 +140,7 @@ fn print_tts(printer: &mut Printer<'_>, tts: &TokenStream) {
                 (DollarParen, token::Plus | token::Star | token::Question) => (false, Other),
                 (DollarParen, _) => (false, DollarParenSep),
                 (DollarParenSep, token::Plus | token::Star) => (false, Other),
-                (Pound, token::Not) => (false, PoundBang),
+                (Pound, token::Bang) => (false, PoundBang),
                 (_, token::Ident(symbol, IdentIsRaw::No))
                     if !usually_needs_space_between_keyword_and_open_delim(*symbol, tt.span) =>
                 {

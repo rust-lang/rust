@@ -1088,7 +1088,7 @@ fn force_space_before(tok: &TokenKind) -> bool {
         | TokenKind::Gt
         | TokenKind::AndAnd
         | TokenKind::OrOr
-        | TokenKind::Not
+        | TokenKind::Bang
         | TokenKind::Tilde
         | TokenKind::PlusEq
         | TokenKind::MinusEq
@@ -1131,7 +1131,7 @@ fn next_space(tok: &TokenKind) -> SpaceState {
     debug!("next_space: {:?}", tok);
 
     match tok {
-        TokenKind::Not
+        TokenKind::Bang
         | TokenKind::And
         | TokenKind::Tilde
         | TokenKind::At

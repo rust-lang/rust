@@ -384,7 +384,7 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                 rustc_lexer::TokenKind::Colon => token::Colon,
                 rustc_lexer::TokenKind::Dollar => token::Dollar,
                 rustc_lexer::TokenKind::Eq => token::Eq,
-                rustc_lexer::TokenKind::Bang => token::Not,
+                rustc_lexer::TokenKind::Bang => token::Bang,
                 rustc_lexer::TokenKind::Lt => token::Lt,
                 rustc_lexer::TokenKind::Gt => token::Gt,
                 rustc_lexer::TokenKind::Minus => token::Minus,
