@@ -45,6 +45,7 @@ unsafe impl Sync for Thread {}
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
         let p = Box::into_raw(Box::new(p));
         let mut native: libc::pthread_t = mem::zeroed();
