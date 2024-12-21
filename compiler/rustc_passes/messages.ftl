@@ -566,6 +566,10 @@ passes_no_sanitize =
     `#[no_sanitize({$attr_str})]` should be applied to {$accepted_kind}
     .label = not {$accepted_kind}
 
+passes_non_exaustive_with_default_field_values =
+    `#[non_exhaustive]` can't be used to annotate items with default field values
+    .label = this struct has default field values
+
 passes_non_exported_macro_invalid_attrs =
     attribute should be applied to function or closure
     .label = not a function or closure
