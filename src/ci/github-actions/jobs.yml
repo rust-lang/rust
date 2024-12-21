@@ -43,7 +43,7 @@ runners:
     os: windows-2022-16core-64gb
     <<: *base-job
 
-  - &job-linux-8c-aarch64
+  - &job-aarch64-linux
     os: ubuntu-22.04-arm64-8core-32gb
 
 envs:
@@ -124,10 +124,10 @@ auto:
   #############################
 
   - image: aarch64-gnu
-    <<: *job-linux-8c-aarch64
+    <<: *job-aarch64-linux
 
   - image: aarch64-gnu-debug
-    <<: *job-linux-8c-aarch64
+    <<: *job-aarch64-linux
 
   - image: arm-android
     <<: *job-linux-4c
@@ -144,7 +144,7 @@ auto:
     <<: *job-linux-4c
 
   - image: dist-arm-linux
-    <<: *job-linux-8c-aarch64
+    <<: *job-linux-8c
 
   - image: dist-armhf-linux
     <<: *job-linux-4c
