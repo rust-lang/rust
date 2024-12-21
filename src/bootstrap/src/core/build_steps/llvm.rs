@@ -397,9 +397,6 @@ impl Step for Llvm {
             || target.contains("apple-watchos")
             || target.contains("apple-visionos")
         {
-            // These two defines prevent CMake from automatically trying to add a MacOSX sysroot, which leads to a compiler error.
-            cfg.define("CMAKE_OSX_SYSROOT", "/");
-            cfg.define("CMAKE_OSX_DEPLOYMENT_TARGET", "");
             // Prevent cmake from adding -bundle to CFLAGS automatically, which leads to a compiler error because "-bitcode_bundle" also gets added.
             cfg.define("LLVM_ENABLE_PLUGINS", "OFF");
             // Zlib fails to link properly, leading to a compiler error.
