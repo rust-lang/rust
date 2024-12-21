@@ -166,7 +166,9 @@ fn main() -> ExitCode {
         let psess = &ParseSess::new(vec![rustc_parse::DEFAULT_LOCALE_RESOURCE]);
 
         for &source_code in EXPRS {
-            let expr = parse_expr(psess, source_code).unwrap();
+            let Some(expr) = parse_expr(psess, source_code) else {
+                panic!("Failed to parse original test case: {source_code}");
+            };
 
             // Check for FALSE POSITIVE: pretty-printer inserting parentheses where not needed.
             // Pseudocode:
