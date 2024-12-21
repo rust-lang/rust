@@ -332,19 +332,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         base: &P,
         name: &str,
     ) -> InterpResult<'tcx, P> {
-        if let Some(field) = self.try_project_field_named(base, name)? {
-            return interp_ok(field);
-        }
-        bug!("No field named {} in type {}", name, base.layout().ty);
-    }
-
-    /// Search if `base` (which must be a struct or union type) contains the `name` field.
-    fn projectable_has_field<P: Projectable<'tcx, Provenance>>(
-        &self,
-        base: &P,
-        name: &str,
-    ) -> bool {
-        self.try_project_field_named(base, name).unwrap().is_some()
+        interp_ok(
+            self.try_project_field_named(base, name)?
+                .unwrap_or_else(|| bug!("no field named {} in type {}", name, base.layout().ty)),
+        )
     }
 
     /// Write an int of the appropriate size to `dest`. The target type may be signed or unsigned,
