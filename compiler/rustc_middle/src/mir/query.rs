@@ -229,7 +229,7 @@ pub enum ConstraintCategory<'tcx> {
     Yield,
     UseAsConst,
     UseAsStatic,
-    TypeAnnotation,
+    TypeAnnotation(AnnotationSource),
     Cast {
         /// Whether this cast is a coercion that was automatically inserted by the compiler.
         is_implicit_coercion: bool,
@@ -278,6 +278,15 @@ pub enum ConstraintCategory<'tcx> {
 pub enum ReturnConstraint {
     Normal,
     ClosureUpvar(FieldIdx),
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(TyEncodable, TyDecodable, HashStable, TypeVisitable, TypeFoldable)]
+pub enum AnnotationSource {
+    Ascription,
+    Declaration,
+    OpaqueCast,
+    GenericArg,
 }
 
 /// The subject of a `ClosureOutlivesRequirement` -- that is, the thing

@@ -298,7 +298,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                         context.ambient_variance(),
                         base_ty.ty,
                         location.to_locations(),
-                        ConstraintCategory::TypeAnnotation,
+                        ConstraintCategory::TypeAnnotation(AnnotationSource::OpaqueCast),
                     )
                     .unwrap();
             }
@@ -333,7 +333,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 ty::Invariant,
                 &UserTypeProjection { base: annotation_index, projs: vec![] },
                 locations,
-                ConstraintCategory::Boring,
+                ConstraintCategory::TypeAnnotation(AnnotationSource::GenericArg),
             ) {
                 let annotation = &self.typeck.user_type_annotations[annotation_index];
                 span_mirbug!(
@@ -455,7 +455,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                     ty::Invariant,
                     user_ty,
                     Locations::All(*span),
-                    ConstraintCategory::TypeAnnotation,
+                    ConstraintCategory::TypeAnnotation(AnnotationSource::Declaration),
                 ) {
                     span_mirbug!(
                         self,
@@ -938,7 +938,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         ty::Invariant,
                         &UserTypeProjection { base: annotation_index, projs: vec![] },
                         location.to_locations(),
-                        ConstraintCategory::Boring,
+                        ConstraintCategory::TypeAnnotation(AnnotationSource::GenericArg),
                     ) {
                         let annotation = &self.user_type_annotations[annotation_index];
                         span_mirbug!(
@@ -973,7 +973,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     *variance,
                     projection,
                     Locations::All(stmt.source_info.span),
-                    ConstraintCategory::TypeAnnotation,
+                    ConstraintCategory::TypeAnnotation(AnnotationSource::Ascription),
                 ) {
                     let annotation = &self.user_type_annotations[projection.base];
                     span_mirbug!(

@@ -13,9 +13,9 @@ use rustc_infer::infer::region_constraints::{GenericKind, VarInfos, VerifyBound,
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin};
 use rustc_middle::bug;
 use rustc_middle::mir::{
-    BasicBlock, Body, ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureOutlivesSubjectTy,
-    ClosureRegionRequirements, ConstraintCategory, Local, Location, ReturnConstraint,
-    TerminatorKind,
+    AnnotationSource, BasicBlock, Body, ClosureOutlivesRequirement, ClosureOutlivesSubject,
+    ClosureOutlivesSubjectTy, ClosureRegionRequirements, ConstraintCategory, Local, Location,
+    ReturnConstraint, TerminatorKind,
 };
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::fold::fold_regions;
@@ -2063,7 +2063,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     // Mimic old logic for this, to minimize false positives in tests.
                     && !path
                         .iter()
-                        .any(|c| matches!(c.category, ConstraintCategory::TypeAnnotation)) =>
+                        .any(|c| matches!(c.category, ConstraintCategory::TypeAnnotation(_))) =>
                 {
                     1
                 }
@@ -2071,7 +2071,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 ConstraintCategory::Yield
                 | ConstraintCategory::UseAsConst
                 | ConstraintCategory::UseAsStatic
-                | ConstraintCategory::TypeAnnotation
+                | ConstraintCategory::TypeAnnotation(
+                    AnnotationSource::Ascription
+                    | AnnotationSource::Declaration
+                    | AnnotationSource::OpaqueCast,
+                )
                 | ConstraintCategory::Cast { .. }
                 | ConstraintCategory::CallArgument(_)
                 | ConstraintCategory::CopyBound
@@ -2082,17 +2086,19 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // Give assignments a lower priority when flagged as less likely to be interesting.
                 // In particular, de-prioritize MIR assignments lowered from argument patterns.
                 ConstraintCategory::Assignment { has_interesting_ty: false } => 3,
+                // Generic arguments are unlikely to be what relates regions together
+                ConstraintCategory::TypeAnnotation(AnnotationSource::GenericArg) => 4,
                 // We handle predicates and opaque types specially; don't prioritize them here.
-                ConstraintCategory::Predicate(_) | ConstraintCategory::OpaqueType => 4,
+                ConstraintCategory::Predicate(_) | ConstraintCategory::OpaqueType => 5,
                 // `Boring` constraints can correspond to user-written code and have useful spans,
                 // but don't provide any other useful information for diagnostics.
-                ConstraintCategory::Boring => 5,
+                ConstraintCategory::Boring => 6,
                 // `BoringNoLocation` constraints can point to user-written code, but are less
                 // specific, and are not used for relations that would make sense to blame.
-                ConstraintCategory::BoringNoLocation => 6,
+                ConstraintCategory::BoringNoLocation => 7,
                 // Do not blame internal constraints.
-                ConstraintCategory::Internal => 7,
-                ConstraintCategory::IllegalUniverse => 8,
+                ConstraintCategory::Internal => 8,
+                ConstraintCategory::IllegalUniverse => 9,
             }
         };
 
