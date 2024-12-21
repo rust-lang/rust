@@ -642,6 +642,15 @@ fn opts() -> Vec<RustcOptGroup> {
             "Includes trait implementations and other crate info from provided path. Only use with --merge=finalize",
             "path/to/doc.parts/<crate-name>",
         ),
+        opt(Unstable, Flag, "", "html-no-source", "Disable HTML source code pages generation", ""),
+        opt(
+            Unstable,
+            Multi,
+            "",
+            "doctest-compilation-args",
+            "",
+            "add arguments to be used when compiling doctests",
+        ),
         // deprecated / removed options
         opt(Unstable, FlagMulti, "", "disable-minification", "removed", ""),
         opt(
@@ -684,7 +693,6 @@ fn opts() -> Vec<RustcOptGroup> {
             "removed, see issue #44136 <https://github.com/rust-lang/rust/issues/44136> for more information",
             "[rust]",
         ),
-        opt(Unstable, Flag, "", "html-no-source", "Disable HTML source code pages generation", ""),
     ]
 }
 
