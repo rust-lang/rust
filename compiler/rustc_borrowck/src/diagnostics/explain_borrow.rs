@@ -331,6 +331,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                 };
 
                 cx.add_placeholder_from_predicate_note(err, &path);
+                cx.add_sized_or_copy_bound_info(err, category, &path);
 
                 if let ConstraintCategory::Cast {
                     is_implicit_coercion: true,

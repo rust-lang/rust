@@ -554,6 +554,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
 
         self.add_placeholder_from_predicate_note(&mut diag, &path);
+        self.add_sized_or_copy_bound_info(&mut diag, category, &path);
 
         self.buffer_error(diag);
     }
