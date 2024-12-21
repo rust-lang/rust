@@ -18,7 +18,7 @@ export RUSTFLAGS="-D warnings"
 export CARGO_INCREMENTAL=0
 export CARGO_EXTRA_FLAGS="--locked"
 
-# Determine configuration for installed build (used by test-cargo-miri).
+# Determine configuration for installed build (used by test-cargo-miri and `./miri bench`).
 echo "Installing release version of Miri"
 time ./miri install
 
@@ -73,7 +73,7 @@ function run_tests {
   fi
   if [ -n "${TEST_BENCH-}" ]; then
     # Check that the benchmarks build and run, but only once.
-    time HYPERFINE="hyperfine -w0 -r1" ./miri bench $TARGET_FLAG
+    time HYPERFINE="hyperfine -w0 -r1 --show-output" ./miri bench $TARGET_FLAG --no-install
   fi
   # Smoke-test `./miri run --dep`.
   ./miri run $TARGET_FLAG --dep tests/pass-dep/getrandom.rs

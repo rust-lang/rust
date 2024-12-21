@@ -311,17 +311,29 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Project to the given *named* field (which must be a struct or union type).
+    fn try_project_field_named<P: Projectable<'tcx, Provenance>>(
+        &self,
+        base: &P,
+        name: &str,
+    ) -> InterpResult<'tcx, Option<P>> {
+        let this = self.eval_context_ref();
+        let adt = base.layout().ty.ty_adt_def().unwrap();
+        for (idx, field) in adt.non_enum_variant().fields.iter().enumerate() {
+            if field.name.as_str() == name {
+                return interp_ok(Some(this.project_field(base, idx)?));
+            }
+        }
+        interp_ok(None)
+    }
+
+    /// Project to the given *named* field (which must be a struct or union type).
     fn project_field_named<P: Projectable<'tcx, Provenance>>(
         &self,
         base: &P,
         name: &str,
     ) -> InterpResult<'tcx, P> {
-        let this = self.eval_context_ref();
-        let adt = base.layout().ty.ty_adt_def().unwrap();
-        for (idx, field) in adt.non_enum_variant().fields.iter().enumerate() {
-            if field.name.as_str() == name {
-                return this.project_field(base, idx);
-            }
+        if let Some(field) = self.try_project_field_named(base, name)? {
+            return interp_ok(field);
         }
         bug!("No field named {} in type {}", name, base.layout().ty);
     }
@@ -332,13 +344,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         base: &P,
         name: &str,
     ) -> bool {
-        let adt = base.layout().ty.ty_adt_def().unwrap();
-        for field in adt.non_enum_variant().fields.iter() {
-            if field.name.as_str() == name {
-                return true;
-            }
-        }
-        false
+        self.try_project_field_named(base, name).unwrap().is_some()
     }
 
     /// Write an int of the appropriate size to `dest`. The target type may be signed or unsigned,
@@ -921,7 +927,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if fn_abi.conv != exp_abi {
             throw_ub_format!(
                 "calling a function with ABI {:?} using caller ABI {:?}",
-                exp_abi, fn_abi.conv);
+                exp_abi,
+                fn_abi.conv
+            );
         }
         interp_ok(())
     }

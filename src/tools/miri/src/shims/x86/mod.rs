@@ -68,8 +68,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 if is_u64 && this.tcx.sess.target.arch != "x86_64" {
                     return interp_ok(EmulateItemResult::NotSupported);
                 }
-                let [c_in, a, b, out] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [c_in, a, b, out] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let out = this.deref_pointer_as(
                     out,
                     if is_u64 { this.machine.layouts.u64 } else { this.machine.layouts.u32 },
@@ -105,8 +104,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     len = 8;
                 }
 
-                let [left, right, imm] =
-                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let [left, right, imm] = this.check_shim(abi, Conv::C, link_name, args)?;
 
                 pclmulqdq(this, left, right, imm, dest, len)?;
             }

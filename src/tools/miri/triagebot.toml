@@ -29,3 +29,6 @@ review_labels = ["S-waiting-on-review"]
 remove_labels = ["S-waiting-on-author"]
 # Those labels are added when PR author requests a review from an assignee
 add_labels = ["S-waiting-on-review"]
+
+# Automatically close and reopen PRs made by bots to run CI on them
+[bot-pull-requests]

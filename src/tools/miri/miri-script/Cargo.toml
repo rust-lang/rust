@@ -25,3 +25,4 @@ dunce = "1.0.4"
 directories = "5"
 serde_json = "1"
 tempfile = "3.13.0"
+clap = { version = "4.5.21", features = ["derive"] }

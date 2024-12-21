@@ -179,7 +179,8 @@ impl Command {
             Command::Doc { flags } => Self::doc(flags),
             Command::Fmt { flags } => Self::fmt(flags),
             Command::Clippy { flags } => Self::clippy(flags),
-            Command::Bench { target, benches } => Self::bench(target, benches),
+            Command::Bench { target, no_install, benches } =>
+                Self::bench(target, no_install, benches),
             Command::Toolchain { flags } => Self::toolchain(flags),
             Command::RustcPull { commit } => Self::rustc_pull(commit.clone()),
             Command::RustcPush { github_user, branch } => Self::rustc_push(github_user, branch),
@@ -378,7 +379,7 @@ impl Command {
         Ok(())
     }
 
-    fn bench(target: Option<String>, benches: Vec<String>) -> Result<()> {
+    fn bench(target: Option<String>, no_install: bool, benches: Vec<String>) -> Result<()> {
         // The hyperfine to use
         let hyperfine = env::var("HYPERFINE");
         let hyperfine = hyperfine.as_deref().unwrap_or("hyperfine -w 1 -m 5 --shell=none");
@@ -386,8 +387,10 @@ impl Command {
         let Some((program_name, args)) = hyperfine.split_first() else {
             bail!("expected HYPERFINE environment variable to be non-empty");
         };
-        // Make sure we have an up-to-date Miri installed and selected the right toolchain.
-        Self::install(vec![])?;
+        if !no_install {
+            // Make sure we have an up-to-date Miri installed and selected the right toolchain.
+            Self::install(vec![])?;
+        }
 
         let sh = Shell::new()?;
         sh.change_dir(miri_dir()?);
@@ -409,6 +412,7 @@ impl Command {
             OsString::new()
         };
         let target_flag = &target_flag;
+        let toolchain = active_toolchain()?;
         // Run the requested benchmarks
         for bench in benches {
             let current_bench = path!(benches_dir / bench / "Cargo.toml");
@@ -416,7 +420,7 @@ impl Command {
             // That seems to make Windows CI happy.
             cmd!(
                 sh,
-                "{program_name} {args...} 'cargo miri run '{target_flag}' --manifest-path \"'{current_bench}'\"'"
+                "{program_name} {args...} 'cargo +'{toolchain}' miri run '{target_flag}' --manifest-path \"'{current_bench}'\"'"
             )
             .run()?;
         }

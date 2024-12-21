@@ -2,8 +2,8 @@ use std::ffi::OsStr;
 use std::str;
 
 use rustc_abi::Size;
-use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::Ty;
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_span::Symbol;
 use rustc_target::callconv::{Conv, FnAbi};
 

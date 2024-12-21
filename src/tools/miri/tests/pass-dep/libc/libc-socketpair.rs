@@ -10,6 +10,8 @@ fn main() {
     test_socketpair();
     test_socketpair_threaded();
     test_race();
+    test_blocking_read();
+    test_blocking_write();
 }
 
 fn test_socketpair() {
@@ -135,4 +137,52 @@ fn test_race() {
     assert_eq!(res, 1);
     thread::yield_now();
     thread1.join().unwrap();
+}
+
+// Test the behaviour of a socketpair getting blocked on read and subsequently unblocked.
+fn test_blocking_read() {
+    let mut fds = [-1, -1];
+    let res = unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) };
+    assert_eq!(res, 0);
+    let thread1 = thread::spawn(move || {
+        // Let this thread block on read.
+        let mut buf: [u8; 3] = [0; 3];
+        let res = unsafe { libc::read(fds[1], buf.as_mut_ptr().cast(), buf.len() as libc::size_t) };
+        assert_eq!(res, 3);
+        assert_eq!(&buf, "abc".as_bytes());
+    });
+    let thread2 = thread::spawn(move || {
+        // Unblock thread1 by doing writing something.
+        let data = "abc".as_bytes().as_ptr();
+        let res = unsafe { libc::write(fds[0], data as *const libc::c_void, 3) };
+        assert_eq!(res, 3);
+    });
+    thread1.join().unwrap();
+    thread2.join().unwrap();
+}
+
+// Test the behaviour of a socketpair getting blocked on write and subsequently unblocked.
+fn test_blocking_write() {
+    let mut fds = [-1, -1];
+    let res = unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) };
+    assert_eq!(res, 0);
+    let arr1: [u8; 212992] = [1; 212992];
+    // Exhaust the space in the buffer so the subsequent write will block.
+    let res = unsafe { libc::write(fds[0], arr1.as_ptr() as *const libc::c_void, 212992) };
+    assert_eq!(res, 212992);
+    let thread1 = thread::spawn(move || {
+        let data = "abc".as_bytes().as_ptr();
+        // The write below will be blocked because the buffer is already full.
+        let res = unsafe { libc::write(fds[0], data as *const libc::c_void, 3) };
+        assert_eq!(res, 3);
+    });
+    let thread2 = thread::spawn(move || {
+        // Unblock thread1 by freeing up some space.
+        let mut buf: [u8; 3] = [0; 3];
+        let res = unsafe { libc::read(fds[1], buf.as_mut_ptr().cast(), buf.len() as libc::size_t) };
+        assert_eq!(res, 3);
+        assert_eq!(buf, [1, 1, 1]);
+    });
+    thread1.join().unwrap();
+    thread2.join().unwrap();
 }
