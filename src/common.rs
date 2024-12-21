@@ -247,7 +247,7 @@ impl<'gcc, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 if !matches!(layout.primitive(), Pointer(_)) {
                     self.const_bitcast(ptr.dereference(None).to_rvalue(), ty)
                 } else {
-                    self.const_bitcast(ptr, ty)
+                    self.context.new_cast(None, ptr, ty)
                 }
             }
         }

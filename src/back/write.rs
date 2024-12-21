@@ -1,6 +1,6 @@
 use std::{env, fs};
 
-use gccjit::OutputKind;
+use gccjit::{Context, OutputKind};
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::write::{BitcodeSection, CodegenContext, EmitObj, ModuleConfig};
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen};
@@ -33,6 +33,11 @@ pub(crate) unsafe fn codegen(
         // now because this requires a particular setup (same gcc/lto1/lto-wrapper commit as libgccjit).
         // TODO: remove this environment variable.
         let fat_lto = env::var("EMBED_LTO_BITCODE").as_deref() == Ok("1");
+
+        if cgcx.msvc_imps_needed {
+            println!("************************************************** Imps needed");
+            create_msvc_imps(cgcx, context);
+        }
 
         let bc_out = cgcx.output_filenames.temp_path(OutputType::Bitcode, module_name);
         let obj_out = cgcx.output_filenames.temp_path(OutputType::Object, module_name);
@@ -194,5 +199,41 @@ pub(crate) fn save_temp_bitcode(
         let cstr = path_to_c_string(&path);
         let llmod = module.module_llvm.llmod();
         llvm::LLVMWriteBitcodeToFile(llmod, cstr.as_ptr());
+    }*/
+}
+
+fn create_msvc_imps<'gcc>(
+    cgcx: &CodegenContext<GccCodegenBackend>,
+    context: &Context<'gcc>,
+) {
+    if !cgcx.msvc_imps_needed {
+        return;
+    }
+    // The x86 ABI seems to require that leading underscores are added to symbol
+    // names, so we need an extra underscore on x86. There's also a leading
+    // '\x01' here which disables LLVM's symbol mangling (e.g., no extra
+    // underscores added in front).
+    let prefix = if cgcx.target_arch == "x86" { "\x01__imp__" } else { "\x01__imp_" };
+
+    /*unsafe {
+        let ptr_ty = Type::ptr_llcx(llcx);
+        let globals = base::iter_globals(llmod)
+            .filter(|&val| {
+                llvm::get_linkage(val) == llvm::Linkage::ExternalLinkage
+                    && llvm::LLVMIsDeclaration(val) == 0
+            })
+            .map(move |(val, name)| {
+                let mut imp_name = prefix.as_bytes().to_vec();
+                imp_name.extend(name);
+                let imp_name = CString::new(imp_name).unwrap();
+                (imp_name, val)
+            })
+            .collect::<Vec<_>>();
+
+        for (imp_name, val) in globals {
+            let imp = llvm::LLVMAddGlobal(llmod, ptr_ty, imp_name.as_ptr());
+            llvm::LLVMSetInitializer(imp, val);
+            llvm::set_linkage(imp, llvm::Linkage::ExternalLinkage);
+        }
     }*/
 }

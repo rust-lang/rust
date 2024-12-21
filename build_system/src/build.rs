@@ -130,6 +130,7 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
     if config.no_default_features {
         rustflags.push_str(" -Csymbol-mangling-version=v0");
     }
+    rustflags.push_str(" --print link-args");
 
     let mut args: Vec<&dyn AsRef<OsStr>> = vec![&"cargo", &"build", &"--target", &config.target];
     for feature in &config.features {
@@ -156,7 +157,19 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
     }
 
     let mut env = env.clone();
+    /*rustflags.push_str(" -C link-arg=-Wl,--verbose");
+    rustflags.push_str(" -C link-arg=-Wl,--warn-ifunc-textrel");
+    rustflags.push_str(" -C link-arg=-Wl,--warn-unresolved-symbols");
+    rustflags.push_str(" -C link-arg=-Wl,--fatal-warnings");
+    rustflags.push_str(" -C link-arg=-Wl,--warn-backrefs");
+    rustflags.push_str(" -C link-arg=-Wl,-znotext");
+    //rustflags.push_str(" -C link-arg=-Wl,--emit-relocs");
+    //rustflags.push_str(" -C link-arg=-Wl,--trace-symbol=memchr::arch::x86_64::memchr::memchr_raw::FN");
+    //rustflags.push_str(" -C link-arg=-Wl,--trace-symbol=_ZN6memchr4arch6x86_646memchr10memchr_raw2FN17haaf621f7b8ca567eE");
+    //rustflags.push_str(" -C link-arg=-Wl,--print-map");
+    //rustflags.push_str(" -C link-arg=-Wl,");
     env.insert("RUSTFLAGS".to_string(), rustflags);
+    env.insert("RUSTC_LOG".to_string(), "rustc_codegen_ssa::back::link=info".to_string());*/
     run_command_with_output_and_env(&args, Some(&start_dir), Some(&env))?;
 
     // Copy files to sysroot
