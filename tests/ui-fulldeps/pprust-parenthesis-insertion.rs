@@ -1,5 +1,7 @@
 //@ run-pass
 //@ ignore-cross-compile
+//@ aux-crate: parser=parser.rs
+//@ edition: 2021
 
 // This test covers the AST pretty-printer's automatic insertion of parentheses
 // into unparenthesized syntax trees according to precedence and various grammar
@@ -31,8 +33,6 @@
 
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
-extern crate rustc_driver;
-extern crate rustc_errors;
 extern crate rustc_parse;
 extern crate rustc_session;
 extern crate rustc_span;
@@ -40,16 +40,12 @@ extern crate rustc_span;
 use std::mem;
 use std::process::ExitCode;
 
-use rustc_ast::ast::{DUMMY_NODE_ID, Expr, ExprKind};
+use parser::parse_expr;
+use rustc_ast::ast::{Expr, ExprKind};
 use rustc_ast::mut_visit::{self, DummyAstNode as _, MutVisitor};
-use rustc_ast::node_id::NodeId;
 use rustc_ast::ptr::P;
-use rustc_ast::token;
 use rustc_ast_pretty::pprust;
-use rustc_errors::Diag;
-use rustc_parse::parser::Recovery;
 use rustc_session::parse::ParseSess;
-use rustc_span::{DUMMY_SP, FileName, Span};
 
 // Every parenthesis in the following expressions is re-inserted by the
 // pretty-printer.
@@ -153,39 +149,6 @@ impl MutVisitor for Unparenthesize {
         }
         mut_visit::walk_expr(self, e);
     }
-}
-
-// Erase Span information that could distinguish between identical expressions
-// parsed from different source strings.
-struct Normalize;
-
-impl MutVisitor for Normalize {
-    const VISIT_TOKENS: bool = true;
-
-    fn visit_id(&mut self, id: &mut NodeId) {
-        *id = DUMMY_NODE_ID;
-    }
-
-    fn visit_span(&mut self, span: &mut Span) {
-        *span = DUMMY_SP;
-    }
-}
-
-fn parse_expr(psess: &ParseSess, source_code: &str) -> Option<P<Expr>> {
-    let parser = rustc_parse::unwrap_or_emit_fatal(rustc_parse::new_parser_from_source_str(
-        psess,
-        FileName::anon_source_code(source_code),
-        source_code.to_owned(),
-    ));
-
-    let mut parser = parser.recovery(Recovery::Forbidden);
-    let mut expr = parser.parse_expr().map_err(Diag::cancel).ok()?;
-    if parser.token != token::Eof {
-        return None;
-    }
-
-    Normalize.visit_expr(&mut expr);
-    Some(expr)
 }
 
 fn main() -> ExitCode {
