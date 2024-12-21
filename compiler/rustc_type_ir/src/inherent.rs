@@ -112,6 +112,8 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_pat(interner: I, ty: Self, pat: I::Pat) -> Self;
 
+    fn new_unsafe_binder(interner: I, ty: ty::Binder<I, I::Ty>) -> Self;
+
     fn tuple_fields(self) -> I::Tys;
 
     fn to_opt_closure_kind(self) -> Option<ty::ClosureKind>;
@@ -185,6 +187,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
             | ty::FnPtr(..)
+            | ty::UnsafeBinder(_)
             | ty::Dynamic(_, _, _)
             | ty::Closure(_, _)
             | ty::CoroutineClosure(_, _)

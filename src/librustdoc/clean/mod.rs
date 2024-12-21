@@ -2255,12 +2255,14 @@ pub(crate) fn clean_middle_ty<'tcx>(
             }
         }
 
+        ty::UnsafeBinder(_) => todo!("FIXME(unsafe_binders)"),
         ty::Closure(..) => panic!("Closure"),
         ty::CoroutineClosure(..) => panic!("CoroutineClosure"),
         ty::Coroutine(..) => panic!("Coroutine"),
         ty::Placeholder(..) => panic!("Placeholder"),
         ty::CoroutineWitness(..) => panic!("CoroutineWitness"),
         ty::Infer(..) => panic!("Infer"),
+
         ty::Error(_) => FatalError.raise(),
     }
 }

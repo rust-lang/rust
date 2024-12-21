@@ -828,6 +828,9 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 // Let the visitor iterate into the argument/return
                 // types appearing in the fn signature.
             }
+            ty::UnsafeBinder(_) => {
+                // FIXME(unsafe_binders): We should also recurse into the binder here.
+            }
 
             ty::Dynamic(data, r, _) => {
                 // WfObject

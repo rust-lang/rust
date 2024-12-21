@@ -574,8 +574,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_expr_index(base, idx, expr, brackets_span)
             }
             ExprKind::Yield(value, _) => self.check_expr_yield(value, expr),
-            ExprKind::UnsafeBinderCast(kind, expr, ty) => {
-                self.check_expr_unsafe_binder_cast(kind, expr, ty, expected)
+            ExprKind::UnsafeBinderCast(kind, inner_expr, ty) => {
+                self.check_expr_unsafe_binder_cast(expr.span, kind, inner_expr, ty, expected)
             }
             ExprKind::Err(guar) => Ty::new_error(tcx, guar),
         }
@@ -1649,14 +1649,94 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_expr_unsafe_binder_cast(
         &self,
-        _kind: hir::UnsafeBinderCastKind,
-        expr: &'tcx hir::Expr<'tcx>,
-        _hir_ty: Option<&'tcx hir::Ty<'tcx>>,
-        _expected: Expectation<'tcx>,
+        span: Span,
+        kind: hir::UnsafeBinderCastKind,
+        inner_expr: &'tcx hir::Expr<'tcx>,
+        hir_ty: Option<&'tcx hir::Ty<'tcx>>,
+        expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        let guar =
-            self.dcx().struct_span_err(expr.span, "unsafe binders are not yet implemented").emit();
-        Ty::new_error(self.tcx, guar)
+        self.dcx().span_err(inner_expr.span, "unsafe binder casts are not fully implemented");
+
+        match kind {
+            hir::UnsafeBinderCastKind::Wrap => {
+                let ascribed_ty =
+                    hir_ty.map(|hir_ty| self.lower_ty_saving_user_provided_ty(hir_ty));
+                let expected_ty = expected.only_has_type(self);
+                let binder_ty = match (ascribed_ty, expected_ty) {
+                    (Some(ascribed_ty), Some(expected_ty)) => {
+                        self.demand_eqtype(inner_expr.span, expected_ty, ascribed_ty);
+                        expected_ty
+                    }
+                    (Some(ty), None) | (None, Some(ty)) => ty,
+                    // This will always cause a structural resolve error, but we do it
+                    // so we don't need to manually report an E0282 both on this codepath
+                    // and in the others; it all happens in `structurally_resolve_type`.
+                    (None, None) => self.next_ty_var(inner_expr.span),
+                };
+
+                let binder_ty = self.structurally_resolve_type(inner_expr.span, binder_ty);
+                let hint_ty = match *binder_ty.kind() {
+                    ty::UnsafeBinder(binder) => self.instantiate_binder_with_fresh_vars(
+                        inner_expr.span,
+                        infer::BoundRegionConversionTime::HigherRankedType,
+                        binder.into(),
+                    ),
+                    ty::Error(e) => Ty::new_error(self.tcx, e),
+                    _ => {
+                        let guar = self
+                            .dcx()
+                            .struct_span_err(
+                                hir_ty.map_or(span, |hir_ty| hir_ty.span),
+                                format!(
+                                    "`wrap_binder!()` can only wrap into unsafe binder, not {}",
+                                    binder_ty.sort_string(self.tcx)
+                                ),
+                            )
+                            .with_note("unsafe binders are the only valid output of wrap")
+                            .emit();
+                        Ty::new_error(self.tcx, guar)
+                    }
+                };
+
+                self.check_expr_has_type_or_error(inner_expr, hint_ty, |_| {});
+
+                binder_ty
+            }
+            hir::UnsafeBinderCastKind::Unwrap => {
+                let ascribed_ty =
+                    hir_ty.map(|hir_ty| self.lower_ty_saving_user_provided_ty(hir_ty));
+                let hint_ty = ascribed_ty.unwrap_or_else(|| self.next_ty_var(inner_expr.span));
+                // FIXME(unsafe_binders): coerce here if needed?
+                let binder_ty = self.check_expr_has_type_or_error(inner_expr, hint_ty, |_| {});
+
+                // Unwrap the binder. This will be ambiguous if it's an infer var, and will error
+                // if it's not an unsafe binder.
+                let binder_ty = self.structurally_resolve_type(inner_expr.span, binder_ty);
+                match *binder_ty.kind() {
+                    ty::UnsafeBinder(binder) => self.instantiate_binder_with_fresh_vars(
+                        inner_expr.span,
+                        infer::BoundRegionConversionTime::HigherRankedType,
+                        binder.into(),
+                    ),
+                    ty::Error(e) => Ty::new_error(self.tcx, e),
+                    _ => {
+                        let guar = self
+                            .dcx()
+                            .struct_span_err(
+                                hir_ty.map_or(inner_expr.span, |hir_ty| hir_ty.span),
+                                format!(
+                                    "expected unsafe binder, found {} as input of \
+                                    `unwrap_binder!()`",
+                                    binder_ty.sort_string(self.tcx)
+                                ),
+                            )
+                            .with_note("only an unsafe binder type can be unwrapped")
+                            .emit();
+                        Ty::new_error(self.tcx, guar)
+                    }
+                }
+            }
+        }
     }
 
     fn check_expr_array(

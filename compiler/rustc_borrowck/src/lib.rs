@@ -1613,6 +1613,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     | ty::CoroutineWitness(..)
                     | ty::Never
                     | ty::Tuple(_)
+                    | ty::UnsafeBinder(_)
                     | ty::Alias(_, _)
                     | ty::Param(_)
                     | ty::Bound(_, _)
@@ -1654,6 +1655,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     | ty::Dynamic(_, _, _)
                     | ty::CoroutineWitness(..)
                     | ty::Never
+                    | ty::UnsafeBinder(_)
                     | ty::Alias(_, _)
                     | ty::Param(_)
                     | ty::Bound(_, _)

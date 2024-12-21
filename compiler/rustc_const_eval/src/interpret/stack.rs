@@ -505,6 +505,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // We don't want to do any queries, so there is not much we can do with ADTs.
                 ty::Adt(..) => false,
 
+                ty::UnsafeBinder(ty) => is_very_trivially_sized(ty.skip_binder()),
+
                 ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) => false,
 
                 ty::Infer(ty::TyVar(_)) => false,
