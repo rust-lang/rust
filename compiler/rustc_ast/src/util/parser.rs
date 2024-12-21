@@ -231,8 +231,7 @@ impl AssocOp {
 
 #[derive(Clone, Copy, PartialEq, PartialOrd)]
 pub enum ExprPrecedence {
-    Closure,
-    // return, break, yield
+    // return, break, yield, closures
     Jump,
     // = += -= *= /= %= &= |= ^= <<= >>=
     Assign,

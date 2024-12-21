@@ -50,9 +50,7 @@ cd ..
 rm -rf gcc-build
 rm -rf gcc-$GCC
 
-if [[ $GCC_BUILD_TARGET == "i686" ]]; then
-    # FIXME: clang doesn't find 32-bit libraries in /rustroot/lib,
-    # but it does look all the way under /rustroot/lib/[...]/32,
-    # so we can link stuff there to help it out.
-    ln /rustroot/lib/*.{a,so} -rst /rustroot/lib/gcc/x86_64-pc-linux-gnu/$GCC/32/
-fi
+# FIXME: clang doesn't find 32-bit libraries in /rustroot/lib,
+# but it does look all the way under /rustroot/lib/[...]/32,
+# so we can link stuff there to help it out.
+ln /rustroot/lib/*.{a,so} -rst /rustroot/lib/gcc/x86_64-pc-linux-gnu/$GCC/32/

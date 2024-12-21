@@ -1329,6 +1329,15 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         mutbl: hir::Mutability,
         track_unstable_candidates: bool,
     ) -> Result<(), MethodError<'tcx>> {
+        // The errors emitted by this function are part of
+        // the arbitrary self types work, and should not impact
+        // other users.
+        if !self.tcx.features().arbitrary_self_types()
+            && !self.tcx.features().arbitrary_self_types_pointers()
+        {
+            return Ok(());
+        }
+
         // We don't want to remember any of the diagnostic hints from this
         // shadow search, but we do need to provide Some/None for the
         // unstable_candidates in order to reflect the behavior of the

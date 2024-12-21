@@ -15,7 +15,7 @@ use rustc_ast::CRATE_NODE_ID;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
-use rustc_errors::{DiagCtxtHandle, FatalError};
+use rustc_errors::DiagCtxtHandle;
 use rustc_fs_util::{fix_windows_verbatim_for_gcc, try_canonicalize};
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_metadata::fs::{METADATA_FILENAME, copy_to_stdout, emit_wrapper_file};
@@ -234,8 +234,6 @@ pub fn each_linked_rlib(
     crate_type: Option<CrateType>,
     f: &mut dyn FnMut(CrateNum, &Path),
 ) -> Result<(), errors::LinkRlibError> {
-    let crates = info.used_crates.iter();
-
     let fmts = if let Some(crate_type) = crate_type {
         let Some(fmts) = info.dependency_formats.get(&crate_type) else {
             return Err(errors::LinkRlibError::MissingFormat);
@@ -261,8 +259,9 @@ pub fn each_linked_rlib(
         info.dependency_formats.first().unwrap().1
     };
 
-    for &cnum in crates {
-        match fmts.get(cnum.as_usize() - 1) {
+    let used_dep_crates = info.used_crates.iter();
+    for &cnum in used_dep_crates {
+        match fmts.get(cnum) {
             Some(&Linkage::NotLinked | &Linkage::Dynamic | &Linkage::IncludedFromDylib) => continue,
             Some(_) => {}
             None => return Err(errors::LinkRlibError::MissingFormat),
@@ -624,7 +623,7 @@ fn link_staticlib(
 
     let mut all_rust_dylibs = vec![];
     for &cnum in crates {
-        match fmts.get(cnum.as_usize() - 1) {
+        match fmts.get(cnum) {
             Some(&Linkage::Dynamic) => {}
             _ => continue,
         }
@@ -1039,22 +1038,22 @@ fn link_natively(
         Err(e) => {
             let linker_not_found = e.kind() == io::ErrorKind::NotFound;
 
-            if linker_not_found {
-                sess.dcx().emit_err(errors::LinkerNotFound { linker_path, error: e });
+            let err = if linker_not_found {
+                sess.dcx().emit_err(errors::LinkerNotFound { linker_path, error: e })
             } else {
                 sess.dcx().emit_err(errors::UnableToExeLinker {
                     linker_path,
                     error: e,
                     command_formatted: format!("{cmd:?}"),
-                });
-            }
+                })
+            };
 
             if sess.target.is_like_msvc && linker_not_found {
                 sess.dcx().emit_note(errors::MsvcMissingLinker);
                 sess.dcx().emit_note(errors::CheckInstalledVisualStudio);
                 sess.dcx().emit_note(errors::InsufficientVSCodeProduct);
             }
-            FatalError.raise();
+            err.raise_fatal();
         }
     }
 
@@ -2361,8 +2360,8 @@ fn linker_with_args(
         .crate_info
         .native_libraries
         .iter()
-        .filter_map(|(cnum, libraries)| {
-            (dependency_linkage[cnum.as_usize() - 1] != Linkage::Static).then_some(libraries)
+        .filter_map(|(&cnum, libraries)| {
+            (dependency_linkage[cnum] != Linkage::Static).then_some(libraries)
         })
         .flatten()
         .collect::<Vec<_>>();
@@ -2754,7 +2753,7 @@ fn add_upstream_rust_crates(
         // (e.g. `libstd` when `-C prefer-dynamic` is used).
         // FIXME: `dependency_formats` can report `profiler_builtins` as `NotLinked` for some
         // reason, it shouldn't do that because `profiler_builtins` should indeed be linked.
-        let linkage = data[cnum.as_usize() - 1];
+        let linkage = data[cnum];
         let link_static_crate = linkage == Linkage::Static
             || (linkage == Linkage::IncludedFromDylib || linkage == Linkage::NotLinked)
                 && (codegen_results.crate_info.compiler_builtins == Some(cnum)

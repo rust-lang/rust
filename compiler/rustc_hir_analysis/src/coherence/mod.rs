@@ -206,7 +206,9 @@ fn check_object_overlap<'tcx>(
                 // so this is valid.
             } else {
                 let mut supertrait_def_ids = tcx.supertrait_def_ids(component_def_id);
-                if supertrait_def_ids.any(|d| d == trait_def_id) {
+                if supertrait_def_ids
+                    .any(|d| d == trait_def_id && tcx.trait_def(d).implement_via_object)
+                {
                     let span = tcx.def_span(impl_def_id);
                     return Err(struct_span_code_err!(
                         tcx.dcx(),
