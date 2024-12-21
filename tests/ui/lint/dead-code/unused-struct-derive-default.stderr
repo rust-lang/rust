@@ -10,14 +10,19 @@ note: the lint level is defined here
 LL | #![deny(dead_code)]
    |         ^^^^^^^^^
 
-error: variant `B` is never constructed
-  --> $DIR/unused-struct-derive-default.rs:13:5
+error: variants `A` and `B` are never constructed
+  --> $DIR/unused-struct-derive-default.rs:12:5
    |
 LL | enum E {
-   |      - variant in this enum
-...
+   |      - variants in this enum
+LL |     #[default]
+LL |     A,
+   |     ^
+LL |
 LL |     B,
    |     ^
+   |
+   = note: `E` has a derived impl for the trait `Default`, but this is intentionally ignored during dead code analysis
 
 error: aborting due to 2 previous errors
 
