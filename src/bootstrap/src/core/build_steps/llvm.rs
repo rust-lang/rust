@@ -657,6 +657,10 @@ fn configure_cmake(
             cfg.define("CMAKE_SYSTEM_NAME", "SunOS");
         } else if target.contains("linux") {
             cfg.define("CMAKE_SYSTEM_NAME", "Linux");
+        } else if target.contains("darwin") {
+            cfg.define("CMAKE_SYSTEM_NAME", "Darwin");
+        } else if target.contains("apple-ios") {
+            cfg.define("CMAKE_SYSTEM_NAME", "iOS");
         } else {
             builder.info(&format!(
                 "could not determine CMAKE_SYSTEM_NAME from the target `{target}`, build may fail",
