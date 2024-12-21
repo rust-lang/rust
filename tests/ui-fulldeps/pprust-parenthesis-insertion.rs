@@ -129,7 +129,6 @@ static EXPRS: &[&str] = &[
     "(0.).to_string()",
     "0. .. 1.",
     */
-    "i as dyn* Trait",
 ];
 
 // Flatten the content of parenthesis nodes into their parent node. For example
