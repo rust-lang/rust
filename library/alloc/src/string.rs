@@ -352,7 +352,7 @@ use crate::vec::Vec;
 ///
 /// # Invariant
 ///
-/// Rust libraries may assume that `String`s are always valid UTF-8, [just like `str`s](str#invariant).
+/// Rust libraries may assume that `String`s are always valid UTF-8, [just like `str`s](prim@str#invariant).
 ///
 /// Constructing a non-UTF-8 `String` is not immediate undefined behavior, but any function
 /// called on a `String` may assume that it is valid UTF-8, which means that a non-UTF-8 `String`

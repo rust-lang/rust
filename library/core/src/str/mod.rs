@@ -313,7 +313,7 @@ impl str {
     /// bytes which are not valid UTF-8. If this constraint is violated, using
     /// the original `str` after the `&mut [u8]` borrow expires may violate memory
     /// safety, as the rest of the standard library [assumes that `str`s are
-    /// valid UTF-8](str#invariant).
+    /// valid UTF-8](prim@str#invariant).
     ///
     /// # Examples
     ///
