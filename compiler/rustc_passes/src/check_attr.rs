@@ -124,7 +124,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 [sym::coverage, ..] => self.check_coverage(attr, span, target),
                 [sym::optimize, ..] => self.check_optimize(hir_id, attr, span, target),
                 [sym::no_sanitize, ..] => self.check_no_sanitize(attr, span, target),
-                [sym::non_exhaustive, ..] => self.check_non_exhaustive(hir_id, attr, span, target),
+                [sym::non_exhaustive, ..] => self.check_non_exhaustive(hir_id, attr, span, target, item),
                 [sym::marker, ..] => self.check_marker(hir_id, attr, span, target),
                 [sym::target_feature, ..] => {
                     self.check_target_feature(hir_id, attr, span, target, attrs)
@@ -685,9 +685,30 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if the `#[non_exhaustive]` attribute on an `item` is valid.
-    fn check_non_exhaustive(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
+    fn check_non_exhaustive(
+        &self,
+        hir_id: HirId,
+        attr: &Attribute,
+        span: Span,
+        target: Target,
+        item: Option<ItemLike<'_>>,
+    ) {
         match target {
-            Target::Struct | Target::Enum | Target::Variant => {}
+            Target::Struct => {
+                if let Some(ItemLike::Item(hir::Item {
+                    kind: hir::ItemKind::Struct(hir::VariantData::Struct { fields, .. }, _),
+                    ..
+                })) = item
+                    && !fields.is_empty()
+                    && fields.iter().any(|f| f.default.is_some())
+                {
+                    self.dcx().emit_err(errors::NonExhaustiveWithDefaultFieldValues {
+                        attr_span: attr.span,
+                        defn_span: span,
+                    });
+                }
+            }
+            Target::Enum | Target::Variant => {}
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
             // `#[non_exhaustive]` attribute with just a lint, because we previously
             // erroneously allowed it and some crates used it accidentally, to be compatible
