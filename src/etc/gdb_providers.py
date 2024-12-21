@@ -480,3 +480,63 @@ class StdHashMapProvider(printer_base):
 
     def display_hint(self):
         return "map" if self._show_values else "array"
+
+
+PTR_CODES = (gdb.TYPE_CODE_PTR, gdb.TYPE_CODE_REF, gdb.TYPE_CODE_RVALUE_REF)
+
+
+class PtrTypeRecognizer:
+    def recognize(self, type: gdb.Type) -> str:
+        if type.code not in PTR_CODES:
+            return None
+
+        name_parts = []
+
+        # "&&" indicates an rval reference. This doesn't technically mean anything in Rust, but the
+        # debug info is generated as such so we can differentiate between "ref-to-ref" (illegal in
+        # TypeSystemClang) and "ref-to-pointer".
+        #
+        # Whenever there is a "&&", we can be sure that the pointer it is pointing to is actually
+        # supposed to be a reference. (e.g. u8 *&& -> &mut &mut u8)
+        was_r_ref: bool = False
+        ptr_type: gdb.Type = type
+        ptee_type: gdb.Type = type.target()
+        i = 0
+
+        while ptr_type.code in PTR_CODES:
+            is_ref: bool = False
+
+            if (
+                was_r_ref
+                or ptr_type.code == gdb.TYPE_CODE_REF
+                or ptr_type.code == gdb.TYPE_CODE_RVALUE_REF
+            ):
+                print("is ref")
+                is_ref = True
+
+            was_r_ref = ptr_type.code == gdb.TYPE_CODE_RVALUE_REF
+
+            if ptee_type.const() == ptee_type:
+                if is_ref:
+                    name_parts.append("&")
+                else:
+                    name_parts.append("*const ")
+            else:
+                if is_ref:
+                    name_parts.append("&mut ")
+                else:
+                    name_parts.append("*mut ")
+
+            ptr_type = ptee_type
+            try:
+                ptee_type = ptee_type.target()
+            except:
+                break
+
+        name_parts.append(ptr_type.unqualified().name)
+        return "".join(name_parts)
+
+
+class PtrTypePrinter(gdb.types.TypePrinter):
+    def instantiate(self):
+        return PtrTypeRecognizer()

@@ -12,5 +12,7 @@ import gdb_lookup
 # current_objfile can be none; even with `gdb foo-app`; sourcing this file after gdb init now works
 try:
     gdb_lookup.register_printers(gdb.current_objfile())
+    gdb_lookup.register_type_printers(gdb.current_objfile())
 except Exception:
     gdb_lookup.register_printers(gdb.selected_inferior().progspace)
+    gdb_lookup.register_type_printers(gdb.selected_inferior().progspace)
