@@ -173,7 +173,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // Wildcard pointer, whatever it points to must be already exposed.
                     continue;
                 };
-                // The first time this happens at a particular location, print a warning.
+                // The first time this happens, print a warning.
                 thread_local! {
                     static HAVE_WARNED: RefCell<bool> = const { RefCell::new(false) };
                 }
