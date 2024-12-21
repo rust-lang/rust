@@ -1584,22 +1584,26 @@ pub(crate) fn code_lens(
                 };
 
                 let lens_config = snap.config.lens();
-                if lens_config.run && client_commands_config.run_single && has_root {
-                    let command = command::run_single(&r, &title);
-                    acc.push(lsp_types::CodeLens {
-                        range: annotation_range,
-                        command: Some(command),
-                        data: None,
-                    })
+
+                if has_root {
+                    if lens_config.run && client_commands_config.run_single {
+                        let command = command::run_single(&r, &title);
+                        acc.push(lsp_types::CodeLens {
+                            range: annotation_range,
+                            command: Some(command),
+                            data: None,
+                        })
+                    }
+                    if lens_config.debug && can_debug && client_commands_config.debug_single {
+                        let command = command::debug_single(&r);
+                        acc.push(lsp_types::CodeLens {
+                            range: annotation_range,
+                            command: Some(command),
+                            data: None,
+                        })
+                    }
                 }
-                if lens_config.debug && can_debug && client_commands_config.debug_single {
-                    let command = command::debug_single(&r);
-                    acc.push(lsp_types::CodeLens {
-                        range: annotation_range,
-                        command: Some(command),
-                        data: None,
-                    })
-                }
+
                 if lens_config.interpret {
                     let command = command::interpret_single(&r);
                     acc.push(lsp_types::CodeLens {
