@@ -12,14 +12,17 @@ impl<T: ?Sized> *mut T {
     /// Therefore, two pointers that are null may still not compare equal to
     /// each other.
     ///
-    /// ## Behavior during const evaluation
+    /// # Panics during const evaluation
     ///
-    /// When this function is used during const evaluation, it may return `false` for pointers
-    /// that turn out to be null at runtime. Specifically, when a pointer to some memory
-    /// is offset beyond its bounds in such a way that the resulting pointer is null,
-    /// the function will still return `false`. There is no way for CTFE to know
-    /// the absolute position of that memory, so we cannot tell if the pointer is
-    /// null or not.
+    /// If this method is used during const evaluation, and `self` is a pointer
+    /// that is offset beyond the bounds of the memory it initially pointed to,
+    /// then there might not be enough information to determine whether the
+    /// pointer is null. This is because the absolute address in memory is not
+    /// known at compile time. If the nullness of the pointer cannot be
+    /// determined, this method will panic.
+    ///
+    /// In-bounds pointers are never null, so the method will never panic for
+    /// such pointers.
     ///
     /// # Examples
     ///
@@ -243,6 +246,13 @@ impl<T: ?Sized> *mut T {
     /// When calling this method, you have to ensure that *either* the pointer is null *or*
     /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
     ///
+    /// # Panics during const evaluation
+    ///
+    /// This method will panic during const evaluation if the pointer cannot be
+    /// determined to be null or not. See [`is_null`] for more information.
+    ///
+    /// [`is_null`]: #method.is_null-1
+    ///
     /// # Examples
     ///
     /// ```
@@ -326,6 +336,13 @@ impl<T: ?Sized> *mut T {
     /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
     /// Note that because the created reference is to `MaybeUninit<T>`, the
     /// source pointer can point to uninitialized memory.
+    ///
+    /// # Panics during const evaluation
+    ///
+    /// This method will panic during const evaluation if the pointer cannot be
+    /// determined to be null or not. See [`is_null`] for more information.
+    ///
+    /// [`is_null`]: #method.is_null-1
     ///
     /// # Examples
     ///
@@ -590,6 +607,12 @@ impl<T: ?Sized> *mut T {
     /// the pointer is null *or*
     /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
     ///
+    /// # Panics during const evaluation
+    ///
+    /// This method will panic during const evaluation if the pointer cannot be
+    /// determined to be null or not. See [`is_null`] for more information.
+    ///
+    /// [`is_null`]: #method.is_null-1
     ///
     /// # Examples
     ///
@@ -673,6 +696,13 @@ impl<T: ?Sized> *mut T {
     ///
     /// When calling this method, you have to ensure that *either* the pointer is null *or*
     /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
+    ///
+    /// # Panics during const evaluation
+    ///
+    /// This method will panic during const evaluation if the pointer cannot be
+    /// determined to be null or not. See [`is_null`] for more information.
+    ///
+    /// [`is_null`]: #method.is_null-1
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
     pub const unsafe fn as_uninit_mut<'a>(self) -> Option<&'a mut MaybeUninit<T>>
@@ -1949,6 +1979,13 @@ impl<T> *mut [T] {
     ///
     /// [valid]: crate::ptr#safety
     /// [allocated object]: crate::ptr#allocated-object
+    ///
+    /// # Panics during const evaluation
+    ///
+    /// This method will panic during const evaluation if the pointer cannot be
+    /// determined to be null or not. See [`is_null`] for more information.
+    ///
+    /// [`is_null`]: #method.is_null-1
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
     pub const unsafe fn as_uninit_slice<'a>(self) -> Option<&'a [MaybeUninit<T>]> {
@@ -2000,6 +2037,13 @@ impl<T> *mut [T] {
     ///
     /// [valid]: crate::ptr#safety
     /// [allocated object]: crate::ptr#allocated-object
+    ///
+    /// # Panics during const evaluation
+    ///
+    /// This method will panic during const evaluation if the pointer cannot be
+    /// determined to be null or not. See [`is_null`] for more information.
+    ///
+    /// [`is_null`]: #method.is_null-1
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
     pub const unsafe fn as_uninit_slice_mut<'a>(self) -> Option<&'a mut [MaybeUninit<T>]> {
