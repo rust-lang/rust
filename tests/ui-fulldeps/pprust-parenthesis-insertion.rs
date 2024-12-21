@@ -44,6 +44,7 @@ use rustc_ast::ast::{DUMMY_NODE_ID, Expr, ExprKind};
 use rustc_ast::mut_visit::{self, DummyAstNode as _, MutVisitor};
 use rustc_ast::node_id::NodeId;
 use rustc_ast::ptr::P;
+use rustc_ast::token;
 use rustc_ast_pretty::pprust;
 use rustc_errors::Diag;
 use rustc_parse::parser::Recovery;
@@ -177,7 +178,12 @@ fn parse_expr(psess: &ParseSess, source_code: &str) -> Option<P<Expr>> {
         source_code.to_owned(),
     ));
 
-    let mut expr = parser.recovery(Recovery::Forbidden).parse_expr().map_err(Diag::cancel).ok()?;
+    let mut parser = parser.recovery(Recovery::Forbidden);
+    let mut expr = parser.parse_expr().map_err(Diag::cancel).ok()?;
+    if parser.token != token::Eof {
+        return None;
+    }
+
     Normalize.visit_expr(&mut expr);
     Some(expr)
 }
