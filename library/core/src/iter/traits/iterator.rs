@@ -2564,7 +2564,7 @@ pub trait Iterator {
     /// # Example
     ///
     /// ```
-    /// let reduced: i32 = (1..10).reduce(|acc, e| acc + e).unwrap();
+    /// let reduced: i32 = (1..10).reduce(|acc, e| acc + e).unwrap_or(0);
     /// assert_eq!(reduced, 45);
     ///
     /// // Which is equivalent to doing it with `fold`:
@@ -3087,7 +3087,7 @@ pub trait Iterator {
     ///     [2.4, f32::NAN, 1.3]
     ///         .into_iter()
     ///         .reduce(f32::max)
-    ///         .unwrap(),
+    ///         .unwrap_or(0.),
     ///     2.4
     /// );
     /// ```
@@ -3123,7 +3123,7 @@ pub trait Iterator {
     ///     [2.4, f32::NAN, 1.3]
     ///         .into_iter()
     ///         .reduce(f32::min)
-    ///         .unwrap(),
+    ///         .unwrap_or(0.),
     ///     1.3
     /// );
     /// ```
