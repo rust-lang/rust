@@ -41,7 +41,7 @@ impl<'tcx> ConstraintDescription for ConstraintCategory<'tcx> {
     fn description(&self) -> &'static str {
         // Must end with a space. Allows for empty names to be provided.
         match self {
-            ConstraintCategory::Assignment { .. } => "assignment ",
+            ConstraintCategory::Assignment => "assignment ",
             ConstraintCategory::Return(_) => "returning this value ",
             ConstraintCategory::Yield => "yielding this value ",
             ConstraintCategory::UseAsConst => "using this value as a constant ",
@@ -481,7 +481,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             (ConstraintCategory::Return(kind), true, false) if self.is_closure_fn_mut(fr) => {
                 self.report_fnmut_error(&errci, kind)
             }
-            (ConstraintCategory::Assignment { .. }, true, false)
+            (ConstraintCategory::Assignment, true, false)
             | (ConstraintCategory::CallArgument(_), true, false) => {
                 let mut db = self.report_escaping_data_error(&errci);
 
@@ -673,7 +673,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         // Revert to the normal error in these cases.
         // Assignments aren't "escapes" in function items.
         if (fr_name_and_span.is_none() && outlived_fr_name_and_span.is_none())
-            || (matches!(category, ConstraintCategory::Assignment { .. })
+            || (*category == ConstraintCategory::Assignment
                 && self.regioncx.universal_regions().defining_ty.is_fn_def())
             || self.regioncx.universal_regions().defining_ty.is_const()
         {

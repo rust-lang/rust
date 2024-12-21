@@ -6,11 +6,9 @@ LL | fn foo<'a>() {
 LL |     let x = 0;
    |         - binding `x` declared here
 LL |     let f = &drop::<&'a i32>;
+   |             ---------------- assignment requires that `x` is borrowed for `'a`
 LL |     f(&x);
-   |     --^^-
-   |     | |
-   |     | borrowed value does not live long enough
-   |     argument requires that `x` is borrowed for `'a`
+   |       ^^ borrowed value does not live long enough
 LL |
 LL | }
    | - `x` dropped here while still borrowed

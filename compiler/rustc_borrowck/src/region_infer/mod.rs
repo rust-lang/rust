@@ -2080,25 +2080,22 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 | ConstraintCategory::CallArgument(_)
                 | ConstraintCategory::CopyBound
                 | ConstraintCategory::SizedBound
-                | ConstraintCategory::Assignment { has_interesting_ty: true }
+                | ConstraintCategory::Assignment
                 | ConstraintCategory::Usage
                 | ConstraintCategory::ClosureUpvar(_) => 2,
-                // Give assignments a lower priority when flagged as less likely to be interesting.
-                // In particular, de-prioritize MIR assignments lowered from argument patterns.
-                ConstraintCategory::Assignment { has_interesting_ty: false } => 3,
                 // Generic arguments are unlikely to be what relates regions together
-                ConstraintCategory::TypeAnnotation(AnnotationSource::GenericArg) => 4,
+                ConstraintCategory::TypeAnnotation(AnnotationSource::GenericArg) => 3,
                 // We handle predicates and opaque types specially; don't prioritize them here.
-                ConstraintCategory::Predicate(_) | ConstraintCategory::OpaqueType => 5,
+                ConstraintCategory::Predicate(_) | ConstraintCategory::OpaqueType => 4,
                 // `Boring` constraints can correspond to user-written code and have useful spans,
                 // but don't provide any other useful information for diagnostics.
-                ConstraintCategory::Boring => 6,
+                ConstraintCategory::Boring => 5,
                 // `BoringNoLocation` constraints can point to user-written code, but are less
                 // specific, and are not used for relations that would make sense to blame.
-                ConstraintCategory::BoringNoLocation => 7,
+                ConstraintCategory::BoringNoLocation => 6,
                 // Do not blame internal constraints.
-                ConstraintCategory::Internal => 8,
-                ConstraintCategory::IllegalUniverse => 9,
+                ConstraintCategory::Internal => 7,
+                ConstraintCategory::IllegalUniverse => 8,
             }
         };
 

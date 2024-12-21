@@ -133,17 +133,20 @@ LL |         true => foo::<&'c ()>,
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/fn_def_coercion.rs:54:5
+  --> $DIR/fn_def_coercion.rs:50:18
    |
 LL | fn k<'a, 'b, 'c: 'a + 'b>(a: &'a (), b: &'b (), c: &'c ()) {
    |      --  -- lifetime `'b` defined here
    |      |
    |      lifetime `'a` defined here
 ...
-LL |     x(b);
-   |     ^^^^ argument requires that `'b` must outlive `'a`
+LL |         false => foo::<&'a ()>,
+   |                  ^^^^^^^^^^^^^ assignment requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of a function pointer to `foo`
+   = note: the function `foo` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 help: the following changes may resolve your lifetime errors
    |

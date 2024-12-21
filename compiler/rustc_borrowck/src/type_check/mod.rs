@@ -892,18 +892,20 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     Some(l) if !body.local_decls[l].is_user_variable() => {
                         ConstraintCategory::Boring
                     }
-                    Some(l) => ConstraintCategory::Assignment {
-                        has_interesting_ty: body.local_decls[l].user_ty.is_some()
-                            || matches!(
-                                body.local_decls[l].local_info(),
-                                LocalInfo::User(BindingForm::Var(VarBindingForm {
-                                    opt_ty_info: Some(_),
-                                    ..
-                                }))
-                            ),
-                    },
-                    // Assignments to projections should be considered interesting.
-                    _ => ConstraintCategory::Assignment { has_interesting_ty: true },
+                    Some(_)
+                        if let Some(body_id) = tcx
+                            .hir_node_by_def_id(body.source.def_id().expect_local())
+                            .body_id()
+                            && let params = tcx.hir().body(body_id).params
+                            && params
+                                .iter()
+                                .any(|param| param.span.contains(stmt.source_info.span)) =>
+                    {
+                        // Assignments generated from lowering argument patterns shouldn't be called
+                        // "assignments" in diagnostics and aren't interesting to blame for errors.
+                        ConstraintCategory::Boring
+                    }
+                    _ => ConstraintCategory::Assignment,
                 };
                 debug!(
                     "assignment category: {:?} {:?}",
@@ -1238,7 +1240,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         ConstraintCategory::Boring
                     }
                     // The return type of a call is interesting for diagnostics.
-                    _ => ConstraintCategory::Assignment { has_interesting_ty: true },
+                    _ => ConstraintCategory::Assignment,
                 };
 
                 let locations = term_location.to_locations();
