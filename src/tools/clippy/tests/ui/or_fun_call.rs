@@ -406,8 +406,8 @@ fn fn_call_in_nested_expr() {
         val: String::from("123"),
     });
 
+    // ok, `String::default()` is now `const`
     let _ = opt_foo.unwrap_or(Foo { val: String::default() });
-    //~^ or_fun_call
 }
 
 mod result_map_or {
