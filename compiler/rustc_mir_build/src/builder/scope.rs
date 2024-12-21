@@ -1131,15 +1131,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     /// Schedule emission of a backwards incompatible drop lint hint.
     /// Applicable only to temporary values for now.
+    #[instrument(level = "debug", skip(self))]
     pub(crate) fn schedule_backwards_incompatible_drop(
         &mut self,
         span: Span,
         region_scope: region::Scope,
         local: Local,
     ) {
-        if !self.local_decls[local].ty.has_significant_drop(self.tcx, self.typing_env()) {
-            return;
-        }
+        // Note that we are *not* gating BIDs here on whether they have significant destructor.
+        // We need to know all of them so that we can capture potential borrow-checking errors.
         for scope in self.scopes.scopes.iter_mut().rev() {
             // Since we are inserting linting MIR statement, we have to invalidate the caches
             scope.invalidate_cache();

@@ -4,7 +4,8 @@
 	shallow = true
 [submodule "src/tools/cargo"]
 	path = src/tools/cargo
-	url = https://github.com/rust-lang/cargo.git
+	url = https://github.com/ehuss/cargo.git
+	branch = "2024-crater"
 	shallow = true
 [submodule "src/doc/reference"]
 	path = src/doc/reference
