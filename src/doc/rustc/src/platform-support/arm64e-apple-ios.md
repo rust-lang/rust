@@ -18,7 +18,7 @@ You can build Rust with support for the targets by adding it to the `target` lis
 
 ```toml
 [build]
-target = [ "arm64e-apple-ios" ]
+target = ["arm64e-apple-ios"]
 ```
 
 ## Building Rust programs
