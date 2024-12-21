@@ -96,6 +96,9 @@ middle_recursion_limit_reached =
 
 middle_requires_lang_item = requires `{$name}` lang_item
 
+middle_multiple_short_backtrace_attrs = multiple `#[rustc_*_short_backtrace]` attributes were used on the same item
+    .note = "attribute used here"
+
 middle_strict_coherence_needs_negative_coherence =
     to use `strict_coherence` on this trait, the `with_negative_coherence` feature must be enabled
     .label = due to this attribute

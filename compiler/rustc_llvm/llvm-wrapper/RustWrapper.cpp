@@ -822,6 +822,31 @@ static DISubprogram::DISPFlags fromRust(LLVMRustDISPFlags SPFlags) {
   return Result;
 }
 
+// These values **must** match debuginfo::ShortBacktrace! They also *happen*
+// to match LLVM, but that isn't required as we do giant sets of
+// matching below. The value shouldn't be directly passed to LLVM.
+enum class LLVMRustShortBacktrace {
+  SkipFrame,
+  StartShortBacktrace,
+  EndShortBacktrace,
+  None,
+};
+
+static std::optional<ShortBacktraceAttr> shortBacktraceFromRust(LLVMRustShortBacktrace backtrace) {
+  switch (backtrace) {
+    case LLVMRustShortBacktrace::SkipFrame:
+      return ShortBacktraceAttr::SkipFrame;
+    case LLVMRustShortBacktrace::StartShortBacktrace:
+      return ShortBacktraceAttr::StartShortBacktrace;
+    case LLVMRustShortBacktrace::EndShortBacktrace:
+      return ShortBacktraceAttr::EndShortBacktrace;
+    case LLVMRustShortBacktrace::None:
+      return std::nullopt;
+    default:
+      report_fatal_error("bad ShortBacktraceAttr.");
+  }
+}
+
 enum class LLVMRustDebugEmissionKind {
   NoDebug,
   FullDebug,
@@ -1015,7 +1040,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFunction(
     LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     size_t NameLen, const char *LinkageName, size_t LinkageNameLen,
     LLVMMetadataRef File, unsigned LineNo, LLVMMetadataRef Ty,
-    unsigned ScopeLine, LLVMRustDIFlags Flags, LLVMRustDISPFlags SPFlags,
+    unsigned ScopeLine, LLVMRustDIFlags Flags, LLVMRustDISPFlags SPFlags, LLVMRustShortBacktrace shortBacktrace,
     LLVMValueRef MaybeFn, LLVMMetadataRef TParam, LLVMMetadataRef Decl) {
   DITemplateParameterArray TParams =
       DITemplateParameterArray(unwrap<MDTuple>(TParam));
@@ -1024,7 +1049,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFunction(
   DISubprogram *Sub = Builder->createFunction(
       unwrapDI<DIScope>(Scope), StringRef(Name, NameLen),
       StringRef(LinkageName, LinkageNameLen), unwrapDI<DIFile>(File), LineNo,
-      unwrapDI<DISubroutineType>(Ty), ScopeLine, llvmFlags, llvmSPFlags,
+      unwrapDI<DISubroutineType>(Ty), ScopeLine, llvmFlags, llvmSPFlags, shortBacktraceFromRust(shortBacktrace),
       TParams, unwrapDIPtr<DISubprogram>(Decl));
   if (MaybeFn)
     unwrap<Function>(MaybeFn)->setSubprogram(Sub);
@@ -1035,7 +1060,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateMethod(
     LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     size_t NameLen, const char *LinkageName, size_t LinkageNameLen,
     LLVMMetadataRef File, unsigned LineNo, LLVMMetadataRef Ty,
-    LLVMRustDIFlags Flags, LLVMRustDISPFlags SPFlags, LLVMMetadataRef TParam) {
+    LLVMRustDIFlags Flags, LLVMRustDISPFlags SPFlags, LLVMRustShortBacktrace shortBacktrace, LLVMMetadataRef TParam) {
   DITemplateParameterArray TParams =
       DITemplateParameterArray(unwrap<MDTuple>(TParam));
   DISubprogram::DISPFlags llvmSPFlags = fromRust(SPFlags);
@@ -1045,7 +1070,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateMethod(
       StringRef(LinkageName, LinkageNameLen), unwrapDI<DIFile>(File), LineNo,
       unwrapDI<DISubroutineType>(Ty), 0, 0,
       nullptr, // VTable params aren't used
-      llvmFlags, llvmSPFlags, TParams);
+      llvmFlags, llvmSPFlags, shortBacktraceFromRust(shortBacktrace), TParams);
   return wrap(Sub);
 }
 

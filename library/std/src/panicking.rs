@@ -8,6 +8,7 @@
 //! * Shims around "try"
 
 #![deny(unsafe_op_in_unsafe_fn)]
+#![cfg_attr(not(bootstrap), rustc_skip_short_backtrace)]
 
 use core::panic::{Location, PanicPayload};
 

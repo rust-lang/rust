@@ -15,7 +15,7 @@ use gimli::write::{
 };
 use gimli::{AArch64, Encoding, Format, LineEncoding, Register, RiscV, RunTimeEndian, X86_64};
 use indexmap::IndexSet;
-use rustc_codegen_ssa::debuginfo::type_names;
+use rustc_codegen_ssa::debuginfo::{DW_AT_short_backtrace, DW_short_backtrace_value, type_names};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefIdMap;
 use rustc_session::Session;
@@ -238,6 +238,16 @@ impl DebugContext {
 
         entry.set(gimli::DW_AT_decl_file, AttributeValue::FileIndex(Some(file_id)));
         entry.set(gimli::DW_AT_decl_line, AttributeValue::Udata(line));
+
+        if let Some(skip) = tcx.codegen_fn_attrs(instance.def_id()).skip_short_backtrace {
+            tracing::info!(
+                "debuginfo {:?}: skip_short_backtrace={:?}",
+                tcx.item_name(instance.def_id()),
+                skip
+            );
+            let attr = AttributeValue::Data1(DW_short_backtrace_value(skip));
+            entry.set(gimli::DwAt(DW_AT_short_backtrace), attr);
+        }
 
         if !fn_abi.ret.is_ignore() {
             let return_dw_ty = self.debug_type(tcx, type_dbg, fn_abi.ret.layout.ty);

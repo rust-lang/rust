@@ -1,7 +1,7 @@
 //! Common code for printing backtraces.
 #![forbid(unsafe_op_in_unsafe_fn)]
 
-use crate::backtrace_rs::{self, BacktraceFmt, BytesOrWideString, PrintFmt};
+use crate::backtrace_rs::{self, BacktraceFmt, BytesOrWideString, PrintFmt, ShortBacktrace};
 use crate::borrow::Cow;
 use crate::io::prelude::*;
 use crate::path::{self, Path, PathBuf};
@@ -51,13 +51,27 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
     let mut print_path = move |fmt: &mut fmt::Formatter<'_>, bows: BytesOrWideString<'_>| {
         output_filename(fmt, bows, print_fmt, cwd.as_ref())
     };
+
+    let write_omitted = |omitted_count: &mut _, bt_fmt: &mut BacktraceFmt<'_, '_>| {
+        if *omitted_count > 0 {
+            debug_assert!(print_fmt == PrintFmt::Short);
+            let _ = writeln!(
+                bt_fmt.formatter(),
+                "      [... omitted {} frame{} ...]",
+                omitted_count,
+                if *omitted_count > 1 { "s" } else { "" }
+            );
+            *omitted_count = 0;
+        }
+    };
+
     writeln!(fmt, "stack backtrace:")?;
     let mut bt_fmt = BacktraceFmt::new(fmt, print_fmt, &mut print_path);
     bt_fmt.add_context()?;
     let mut idx = 0;
     let mut res = Ok(());
     let mut omitted_count: usize = 0;
-    let mut first_omit = true;
+
     // If we're using a short backtrace, ignore all frames until we're told to start printing.
     let mut print = print_fmt != PrintFmt::Short;
     set_image_base();
@@ -71,6 +85,7 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
             let mut hit = false;
             backtrace_rs::resolve_frame_unsynchronized(frame, |symbol| {
                 hit = true;
+                let mut skip = false;
 
                 // `__rust_end_short_backtrace` means we are done hiding symbols
                 // for now. Print until we see `__rust_begin_short_backtrace`.
@@ -78,33 +93,31 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
                     if let Some(sym) = symbol.name().and_then(|s| s.as_str()) {
                         if sym.contains("__rust_end_short_backtrace") {
                             print = true;
-                            return;
+                            skip = true;
                         }
-                        if print && sym.contains("__rust_begin_short_backtrace") {
-                            print = false;
-                            return;
+                        if sym.contains("__rust_begin_short_backtrace") {
+                            print = false
                         }
-                        if !print {
-                            omitted_count += 1;
+                    }
+
+                    if let Some(short_backtrace) = symbol.short_backtrace() {
+                        match short_backtrace {
+                            ShortBacktrace::ThisFrameOnly => skip = true,
+                            ShortBacktrace::Start => print = false,
+                            ShortBacktrace::End => {
+                                print = true;
+                                skip = true;
+                            }
                         }
+                    }
+
+                    if skip || !print {
+                        omitted_count += 1;
                     }
                 }
 
-                if print {
-                    if omitted_count > 0 {
-                        debug_assert!(print_fmt == PrintFmt::Short);
-                        // only print the message between the middle of frames
-                        if !first_omit {
-                            let _ = writeln!(
-                                bt_fmt.formatter(),
-                                "      [... omitted {} frame{} ...]",
-                                omitted_count,
-                                if omitted_count > 1 { "s" } else { "" }
-                            );
-                        }
-                        first_omit = false;
-                        omitted_count = 0;
-                    }
+                if print && !skip {
+                    write_omitted(&mut omitted_count, &mut bt_fmt);
                     res = bt_fmt.frame().symbol(frame, symbol);
                 }
             });
@@ -131,6 +144,7 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
     };
     res?;
     bt_fmt.finish()?;
+    write_omitted(&mut omitted_count, &mut bt_fmt);
     if print_fmt == PrintFmt::Short {
         writeln!(
             fmt,

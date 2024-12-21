@@ -3525,6 +3525,7 @@ dependencies = [
  "bitflags",
  "cc",
  "either",
+ "gimli 0.31.1",
  "itertools",
  "libc",
  "object 0.36.7",

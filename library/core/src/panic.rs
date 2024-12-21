@@ -84,6 +84,7 @@ pub macro panic_2021 {
         #[cold]
         #[track_caller]
         #[inline(never)]
+        #[cfg_attr(not(bootstrap), rustc_skip_short_backtrace)]
         const fn panic_cold_explicit() -> ! {
             $crate::panicking::panic_explicit()
         }

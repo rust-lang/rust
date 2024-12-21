@@ -12,6 +12,7 @@ bitflags = "2.4.1"
 # `cc` in `rustc_llvm` if you update the `cc` here.
 cc = "=1.2.5"
 either = "1.5.0"
+gimli = "0.31.1"
 itertools = "0.12"
 pathdiff = "0.2.0"
 regex = "1.4"

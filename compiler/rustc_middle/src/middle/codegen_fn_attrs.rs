@@ -1,10 +1,11 @@
 use rustc_abi::Align;
 use rustc_attr_parsing::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
-use rustc_span::Symbol;
+use rustc_span::{Symbol, sym};
 use rustc_target::spec::SanitizerSet;
 
 use crate::mir::mono::Linkage;
+use crate::ty::TyCtxt;
 
 #[derive(Clone, TyEncodable, TyDecodable, HashStable, Debug)]
 pub struct CodegenFnAttrs {
@@ -49,6 +50,9 @@ pub struct CodegenFnAttrs {
     /// The `#[patchable_function_entry(...)]` attribute. Indicates how many nops should be around
     /// the function entry.
     pub patchable_function_entry: Option<PatchableFunctionEntry>,
+    /// Whether to generate debuginfo that instructs libstd's panic handler to
+    /// skip this frame when printing short backtraces.
+    pub skip_short_backtrace: Option<SkipShortBacktrace>,
 }
 
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
@@ -80,6 +84,62 @@ impl PatchableFunctionEntry {
     }
     pub fn entry(&self) -> u8 {
         self.entry
+    }
+}
+
+// #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+#[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
+pub enum SkipShortBacktrace {
+    ThisFrameOnly,
+    Start,
+    End,
+}
+
+#[derive(Diagnostic)]
+#[diag(middle_multiple_short_backtrace_attrs)]
+struct MultipleShortBacktraceAttrs {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[note]
+    start: Option<Span>,
+    #[note]
+    end: Option<Span>,
+    #[note]
+    skip: Option<Span>,
+}
+
+impl SkipShortBacktrace {
+    pub fn lookup(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<SkipShortBacktrace> {
+        let skip = tcx.get_attr(def_id, sym::rustc_skip_short_backtrace);
+        let start = tcx.get_attr(def_id, sym::rustc_start_short_backtrace);
+        let end = tcx.get_attr(def_id, sym::rustc_end_short_backtrace);
+
+        // TODO: need to add a visitor somewhere that errors if this is applied other than to a module or function
+
+        let kind = match (skip.is_some(), start.is_some(), end.is_some()) {
+            (true, false, false) => SkipShortBacktrace::ThisFrameOnly,
+            (false, true, false) => SkipShortBacktrace::Start,
+            (false, false, true) => SkipShortBacktrace::End,
+            (false, false, false) => {
+                let parent_mod = tcx.parent_module_from_def_id(def_id);
+                if tcx.get_attr(parent_mod, sym::rustc_skip_short_backtrace).is_some() {
+                    SkipShortBacktrace::ThisFrameOnly
+                } else {
+                    return None;
+                }
+            }
+            _ => {
+                tcx.dcx().emit_err(MultipleShortBacktraceAttrs {
+                    span: tcx.def_span(def_id),
+                    skip: skip.map(|attr| attr.span),
+                    start: start.map(|attr| attr.span),
+                    end: end.map(|attr| attr.span),
+                });
+                return None;
+            }
+        };
+        Some(kind)
     }
 }
 
@@ -156,6 +216,7 @@ impl CodegenFnAttrs {
             instruction_set: None,
             alignment: None,
             patchable_function_entry: None,
+            skip_short_backtrace: None,
         }
     }
 

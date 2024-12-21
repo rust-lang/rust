@@ -34,7 +34,7 @@ use crate::common::{AsCCharPtr, CodegenCx};
 use crate::llvm;
 use crate::llvm::debuginfo::{
     DIArray, DIBuilder, DIFile, DIFlags, DILexicalBlock, DILocation, DISPFlags, DIScope, DIType,
-    DIVariable,
+    DIVariable, ShortBacktraceKind,
 };
 use crate::value::Value;
 
@@ -375,6 +375,16 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             }
         }
 
+        // If appropriate, mark the function as skippable in backtraces.
+        let skip = self.tcx.codegen_fn_attrs(instance.def_id()).skip_short_backtrace;
+        if let Some(s) = skip {
+            tracing::info!(
+                "generate short backtrace {s:?} for {}",
+                tcx.item_name(instance.def_id())
+            );
+        }
+        let skip = ShortBacktraceKind::from_generic(skip);
+
         // When we're adding a method to a type DIE, we only want a DW_AT_declaration there, because
         // LLVM LTO can't unify type definitions when a child DIE is a full subprogram definition.
         // When we use this `decl` below, the subprogram definition gets created at the CU level
@@ -392,6 +402,7 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 function_type_metadata,
                 flags,
                 spflags & !DISPFlags::SPFlagDefinition,
+                skip,
                 template_parameters,
             )
         });
@@ -410,6 +421,7 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 scope_line,
                 flags,
                 spflags,
+                skip,
                 maybe_definition_llfn,
                 template_parameters,
                 decl,

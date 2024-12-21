@@ -9,7 +9,7 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::weak_lang_items::WEAK_LANG_ITEMS;
 use rustc_hir::{self as hir, HirId, LangItem, lang_items};
 use rustc_middle::middle::codegen_fn_attrs::{
-    CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry,
+    CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, SkipShortBacktrace,
 };
 use rustc_middle::mir::mono::Linkage;
 use rustc_middle::query::Providers;
@@ -581,6 +581,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         }
     });
 
+    codegen_fn_attrs.skip_short_backtrace = SkipShortBacktrace::lookup(tcx, did);
+
     // #73631: closures inherit `#[target_feature]` annotations
     //
     // If this closure is marked `#[inline(always)]`, simply skip adding `#[target_feature]`.
@@ -643,6 +645,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     // Additionally weak lang items have predetermined symbol names.
     if WEAK_LANG_ITEMS.iter().any(|&l| tcx.lang_items().get(l) == Some(did.to_def_id())) {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
+        codegen_fn_attrs.skip_short_backtrace = Some(SkipShortBacktrace::ThisFrameOnly);
     }
     if let Some((name, _)) = lang_items::extract(attrs)
         && let Some(lang_item) = LangItem::from_name(name)
