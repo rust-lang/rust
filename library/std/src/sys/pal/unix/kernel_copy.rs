@@ -52,8 +52,8 @@ use crate::cmp::min;
 use crate::fs::{File, Metadata};
 use crate::io::copy::generic_copy;
 use crate::io::{
-    BufRead, BufReader, BufWriter, Error, Read, Result, StderrLock, StdinLock, StdoutLock, Take,
-    Write,
+    BorrowedCursor, BufRead, BufReader, BufWriter, Error, IoSlice, IoSliceMut, Read, Result,
+    StderrLock, StdinLock, StdoutLock, Take, Write,
 };
 use crate::mem::ManuallyDrop;
 use crate::net::TcpStream;
@@ -192,7 +192,7 @@ impl<R: CopyRead, W: CopyWrite> SpecCopy for Copier<'_, '_, R, W> {
         let w_cfg = writer.properties();
 
         // before direct operations on file descriptors ensure that all source and sink buffers are empty
-        let mut flush = || -> crate::io::Result<u64> {
+        let mut flush = || -> Result<u64> {
             let bytes = reader.drain_to(writer, u64::MAX)?;
             // BufWriter buffered bytes have already been accounted for in earlier write() calls
             writer.flush()?;
@@ -534,6 +534,58 @@ impl<T: ?Sized + CopyRead> CopyRead for BufReader<T> {
 impl<T: ?Sized + CopyWrite> CopyWrite for BufWriter<T> {
     fn properties(&self) -> CopyParams {
         self.get_ref().properties()
+    }
+}
+
+pub(crate) struct CachedFileMetadata(pub File, pub Metadata);
+
+impl Read for CachedFileMetadata {
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+        self.0.read(buf)
+    }
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> Result<usize> {
+        self.0.read_vectored(bufs)
+    }
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> Result<()> {
+        self.0.read_buf(cursor)
+    }
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        self.0.is_read_vectored()
+    }
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
+        self.0.read_to_end(buf)
+    }
+    fn read_to_string(&mut self, buf: &mut String) -> Result<usize> {
+        self.0.read_to_string(buf)
+    }
+}
+impl Write for CachedFileMetadata {
+    fn write(&mut self, buf: &[u8]) -> Result<usize> {
+        self.0.write(buf)
+    }
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> Result<usize> {
+        self.0.write_vectored(bufs)
+    }
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        self.0.is_write_vectored()
+    }
+    #[inline]
+    fn flush(&mut self) -> Result<()> {
+        self.0.flush()
+    }
+}
+
+impl CopyRead for CachedFileMetadata {
+    fn properties(&self) -> CopyParams {
+        CopyParams(FdMeta::Metadata(self.1.clone()), Some(self.0.as_raw_fd()))
+    }
+}
+
+impl CopyWrite for CachedFileMetadata {
+    fn properties(&self) -> CopyParams {
+        CopyParams(FdMeta::Metadata(self.1.clone()), Some(self.0.as_raw_fd()))
     }
 }
 
