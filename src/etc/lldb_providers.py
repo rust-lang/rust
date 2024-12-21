@@ -932,8 +932,8 @@ class PtrSyntheticProvider(DefaultSyntheticProvider):
         ptee_type: SBType = type.GetPointeeType()
 
         while ptr_type.is_pointer or ptr_type.is_reference:
-            # remove the `const` modifier as it indicates the const-ness of any pointer/ref pointing *to* it
-            # not its own constness
+            # remove the `const` modifier as it indicates the const-ness of any pointer/ref pointing
+            # *to* it not its own constness
             # For example:
             # const u8 *const * -> &&u8
             # u8 *const * -> &&mut u8
