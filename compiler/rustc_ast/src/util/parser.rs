@@ -153,9 +153,10 @@ impl AssocOp {
         match *self {
             Assign | AssignOp(_) => Fixity::Right,
             As | Multiply | Divide | Modulus | Add | Subtract | ShiftLeft | ShiftRight | BitAnd
-            | BitXor | BitOr | Less | Greater | LessEqual | GreaterEqual | Equal | NotEqual
-            | LAnd | LOr => Fixity::Left,
-            DotDot | DotDotEq => Fixity::None,
+            | BitXor | BitOr | LAnd | LOr => Fixity::Left,
+            Less | Greater | LessEqual | GreaterEqual | Equal | NotEqual | DotDot | DotDotEq => {
+                Fixity::None
+            }
         }
     }
 
