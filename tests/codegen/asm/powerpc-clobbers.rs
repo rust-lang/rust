@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: powerpc powerpc64 powerpc64le aix64
 //@[powerpc] compile-flags: --target powerpc-unknown-linux-gnu
 //@[powerpc] needs-llvm-components: powerpc
@@ -10,16 +11,11 @@
 // ignore-tidy-linelength
 
 #![crate_type = "rlib"]
-#![feature(no_core, rustc_attrs, lang_items, asm_experimental_arch)]
+#![feature(no_core, asm_experimental_arch)]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
+extern crate minicore;
+use minicore::*;
 
 // CHECK-LABEL: @cr_clobber
 // CHECK: call void asm sideeffect "", "~{cr}"()

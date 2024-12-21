@@ -46,11 +46,10 @@ ENV LD_LIBRARY_PATH=/rustroot/lib64:/rustroot/lib32:/rustroot/lib
 ENV PKG_CONFIG_PATH=/rustroot/lib/pkgconfig
 WORKDIR /tmp
 RUN mkdir /home/user
-COPY scripts/shared.sh /tmp/
+COPY host-x86_64/dist-x86_64-linux/shared.sh /tmp/
 
 # Need at least GCC 5.1 to compile LLVM nowadays
-COPY scripts/build-gcc.sh /tmp/
-ENV GCC_BUILD_TARGET=i686
+COPY host-x86_64/dist-x86_64-linux/build-gcc.sh /tmp/
 RUN ./build-gcc.sh && yum remove -y gcc gcc-c++
 
 COPY scripts/cmake.sh /tmp/
@@ -58,8 +57,7 @@ RUN ./cmake.sh
 
 # Now build LLVM+Clang, afterwards configuring further compilations to use the
 # clang/clang++ compilers.
-COPY scripts/build-clang.sh /tmp/
-ENV LLVM_BUILD_TARGETS=X86
+COPY host-x86_64/dist-x86_64-linux/build-clang.sh /tmp/
 RUN ./build-clang.sh
 ENV CC=clang CXX=clang++
 

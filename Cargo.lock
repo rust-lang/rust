@@ -3722,6 +3722,7 @@ dependencies = [
  "rustc_fluent_macro",
  "rustc_hir",
  "rustc_index",
+ "rustc_lexer",
  "rustc_lint_defs",
  "rustc_macros",
  "rustc_serialize",

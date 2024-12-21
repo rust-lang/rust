@@ -56,25 +56,6 @@ pub enum LLVMRustResult {
     Failure,
 }
 
-// Rust version of the C struct with the same name in rustc_llvm/llvm-wrapper/RustWrapper.cpp.
-#[repr(C)]
-pub struct LLVMRustCOFFShortExport {
-    pub name: *const c_char,
-    pub ordinal_present: bool,
-    /// value of `ordinal` only important when `ordinal_present` is true
-    pub ordinal: u16,
-}
-
-impl LLVMRustCOFFShortExport {
-    pub fn new(name: *const c_char, ordinal: Option<u16>) -> LLVMRustCOFFShortExport {
-        LLVMRustCOFFShortExport {
-            name,
-            ordinal_present: ordinal.is_some(),
-            ordinal: ordinal.unwrap_or(0),
-        }
-    }
-}
-
 /// Translation of LLVM's MachineTypes enum, defined in llvm\include\llvm\BinaryFormat\COFF.h.
 ///
 /// We include only architectures supported on Windows.
@@ -2346,15 +2327,6 @@ unsafe extern "C" {
         Child: Option<&ArchiveChild<'a>>,
     ) -> &'a mut RustArchiveMember<'a>;
     pub fn LLVMRustArchiveMemberFree<'a>(Member: &'a mut RustArchiveMember<'a>);
-
-    pub fn LLVMRustWriteImportLibrary(
-        ImportName: *const c_char,
-        Path: *const c_char,
-        Exports: *const LLVMRustCOFFShortExport,
-        NumExports: usize,
-        Machine: u16,
-        MinGW: bool,
-    ) -> LLVMRustResult;
 
     pub fn LLVMRustSetDataLayoutFromTargetMachine<'a>(M: &'a Module, TM: &'a TargetMachine);
 
