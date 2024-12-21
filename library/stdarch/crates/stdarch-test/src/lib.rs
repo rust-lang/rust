@@ -84,7 +84,12 @@ pub fn assert(shim_addr: usize, fnname: &str, expected: &str) {
     // 2. It is a mark, indicating that the instruction will be
     // compiled into other instructions - mainly because of llvm
     // optimization.
-    let found = expected == "nop" || instrs.iter().any(|s| s.contains(expected));
+    let expected = if expected == "unknown" {
+        "<unknown>" // Workaround for rust-lang/stdarch#1674, todo: remove when the issue is fixed
+    } else {
+        expected
+    };
+    let found = expected == "nop" || instrs.iter().any(|s| s.starts_with(expected));
 
     // Look for subroutine call instructions in the disassembly to detect whether
     // inlining failed: all intrinsics are `#[inline(always)]`, so calling one

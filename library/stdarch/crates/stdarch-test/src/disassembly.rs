@@ -140,7 +140,7 @@ fn parse(output: &str) -> HashSet<Function> {
                     .filter(|&x| !x.is_empty())
                     .skip(1)
                     .map(str::to_lowercase)
-                    .skip_while(|s| *s == "lock") // skip x86-specific prefix
+                    .skip_while(|s| matches!(&**s, "lock" | "vex")) // skip x86-specific prefix
                     .collect::<Vec<String>>()
             } else {
                 // objdump with --no-show-raw-insn
@@ -150,8 +150,8 @@ fn parse(output: &str) -> HashSet<Function> {
                 instruction
                     .split_whitespace()
                     .skip(1)
-                    .skip_while(|s| *s == "lock" || *s == "{evex}") // skip x86-specific prefix
-                    .map(std::string::ToString::to_string)
+                    .skip_while(|s| matches!(*s, "lock" | "{evex}" | "{vex}")) // skip x86-specific prefix
+                    .map(ToString::to_string)
                     .collect::<Vec<String>>()
             };
 
