@@ -350,6 +350,14 @@ use crate::vec::Vec;
 ///
 /// Here, there's no need to allocate more memory inside the loop.
 ///
+/// # Invariant
+///
+/// Rust libraries may assume that `String`s are always valid UTF-8, [just like `str`s](str#invariant).
+///
+/// Constructing a non-UTF-8 `String` is not immediate undefined behavior, but any function
+/// called on a `String` may assume that it is valid UTF-8, which means that a non-UTF-8 `String`
+/// can lead to undefined behavior down the road.
+///
 /// [str]: prim@str "str"
 /// [`str`]: prim@str "str"
 /// [`&str`]: prim@str "&str"
@@ -1023,7 +1031,7 @@ impl String {
     /// This function is unsafe because it does not check that the bytes passed
     /// to it are valid UTF-8. If this constraint is violated, it may cause
     /// memory unsafety issues with future users of the `String`, as the rest of
-    /// the standard library assumes that `String`s are valid UTF-8.
+    /// the standard library [assumes that `String`s are valid UTF-8](String#invariant).
     ///
     /// # Examples
     ///
@@ -1775,8 +1783,8 @@ impl String {
     /// This function is unsafe because the returned `&mut Vec` allows writing
     /// bytes which are not valid UTF-8. If this constraint is violated, using
     /// the original `String` after dropping the `&mut Vec` may violate memory
-    /// safety, as the rest of the standard library assumes that `String`s are
-    /// valid UTF-8.
+    /// safety, as the rest of the standard library [assumes that `String`s are
+    /// valid UTF-8](String#invariant).
     ///
     /// # Examples
     ///
