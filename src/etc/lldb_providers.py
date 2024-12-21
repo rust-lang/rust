@@ -1,7 +1,9 @@
 import sys
 
 from lldb import (
+    SBValue,
     SBData,
+    SBType,
     SBError,
     SBValue,
     eBasicTypeLong,
@@ -838,3 +840,77 @@ def StdNonZeroNumberSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
         return str(inner_inner.GetValueAsSigned())
     else:
         return inner_inner.GetValue()
+
+
+class PtrSyntheticProvider(DefaultSyntheticProvider):
+    def get_type_name(self) -> str:
+        type: SBType = self.valobj.GetType()
+        name_parts: list[str] = []
+
+        # "&&" indicates an rval reference. This doesn't technically mean anything in Rust, but the
+        # debug info is generated as such so we can differentiate between "ref-to-ref" (illegal in
+        # TypeSystemClang) and "ref-to-pointer".
+        #
+        # Whenever there is a "&&", we can be sure that the pointer it is pointing to is actually
+        # supposed to be a reference. (e.g. u8 *&& -> &mut &mut u8)
+        was_r_ref: bool = False
+        ptr_type: SBType = type
+        ptee_type: SBType = type.GetPointeeType()
+
+        while ptr_type.is_pointer or ptr_type.is_reference:
+            # remove the `const` modifier as it indicates the const-ness of any pointer/ref pointing
+            # *to* it not its own constness
+            # For example:
+            # const u8 *const * -> &&u8
+            # u8 *const * -> &&mut u8
+            # const u8 ** -> &mut &u8
+            # u8 ** -> &mut &mut u8
+            ptr_name: str = ptr_type.GetName().removesuffix("const")
+            ptee_name: str = ptee_type.GetName()
+
+            is_ref: bool = False
+
+            if was_r_ref or ptr_name[-1] == "&":
+                is_ref = True
+
+            was_r_ref = ptr_name[-2:] == "&&"
+
+            if ptee_type.is_pointer or ptee_type.is_reference:
+                if ptee_name.endswith("const"):
+                    if is_ref:
+                        name_parts.append("&")
+                    else:
+                        name_parts.append("*const ")
+                else:
+                    if is_ref:
+                        name_parts.append("&mut ")
+                    else:
+                        name_parts.append("*mut ")
+
+            else:
+                if ptee_name.startswith("const "):
+                    if is_ref:
+                        name_parts.append("&")
+                    else:
+                        name_parts.append("*const ")
+                else:
+                    if is_ref:
+                        name_parts.append("&mut ")
+                    else:
+                        name_parts.append("*mut ")
+
+            ptr_type = ptee_type
+            ptee_type = ptee_type.GetPointeeType()
+
+        name_parts.append(ptr_type.GetUnqualifiedType().GetName())
+        return "".join(name_parts)
+
+
+def PtrSummaryProvider(valobj: SBValue, dict) -> str:
+    while True:
+        t: SBType = valobj.GetType()
+        if t.is_pointer or t.is_reference:
+            valobj = valobj.Dereference()
+        else:
+            break
+    return valobj.value
