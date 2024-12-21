@@ -745,6 +745,51 @@ impl<'a> Parser<'a> {
         Ok(self.mk_block(stmts, s, lo.to(self.prev_token.span)))
     }
 
+    fn recover_missing_dot(&mut self, err: &mut Diag<'_>) {
+        let Some((ident, _)) = self.token.ident() else {
+            return;
+        };
+        if let Some(c) = ident.name.as_str().chars().next()
+            && c.is_uppercase()
+        {
+            return;
+        }
+        if self.token.is_reserved_ident() && !self.token.is_ident_named(kw::Await) {
+            return;
+        }
+        if self.prev_token.is_reserved_ident() && self.prev_token.is_ident_named(kw::Await) {
+            // Likely `foo.await bar`
+        } else if !self.prev_token.is_reserved_ident() && self.prev_token.is_ident() {
+            // Likely `foo bar`
+        } else if self.prev_token.kind == token::Question {
+            // `foo? bar`
+        } else if self.prev_token.kind == token::CloseDelim(Delimiter::Parenthesis) {
+            // `foo() bar`
+        } else {
+            return;
+        }
+        if self.token.span == self.prev_token.span {
+            // Account for syntax errors in proc-macros.
+            return;
+        }
+        if self.look_ahead(1, |t| [token::Semi, token::Question, token::Dot].contains(&t.kind)) {
+            err.span_suggestion_verbose(
+                self.prev_token.span.between(self.token.span),
+                "you might have meant to write a field access",
+                ".".to_string(),
+                Applicability::MaybeIncorrect,
+            );
+        }
+        if self.look_ahead(1, |t| t.kind == token::OpenDelim(Delimiter::Parenthesis)) {
+            err.span_suggestion_verbose(
+                self.prev_token.span.between(self.token.span),
+                "you might have meant to write a method call",
+                ".".to_string(),
+                Applicability::MaybeIncorrect,
+            );
+        }
+    }
+
     /// Parses a statement, including the trailing semicolon.
     pub fn parse_full_stmt(
         &mut self,
@@ -851,7 +896,8 @@ impl<'a> Parser<'a> {
                             Some(if recover.no() {
                                 res?
                             } else {
-                                res.unwrap_or_else(|e| {
+                                res.unwrap_or_else(|mut e| {
+                                    self.recover_missing_dot(&mut e);
                                     let guar = e.emit();
                                     self.recover_stmt();
                                     guar
@@ -872,7 +918,12 @@ impl<'a> Parser<'a> {
                 // We might be at the `,` in `let x = foo<bar, baz>;`. Try to recover.
                 match &mut local.kind {
                     LocalKind::Init(expr) | LocalKind::InitElse(expr, _) => {
-                        self.check_mistyped_turbofish_with_multiple_type_params(e, expr)?;
+                        self.check_mistyped_turbofish_with_multiple_type_params(e, expr).map_err(
+                            |mut e| {
+                                self.recover_missing_dot(&mut e);
+                                e
+                            },
+                        )?;
                         // We found `foo<bar, baz>`, have we fully recovered?
                         self.expect_semi()?;
                     }

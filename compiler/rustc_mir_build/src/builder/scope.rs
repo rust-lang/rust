@@ -1481,14 +1481,6 @@ fn build_scope_drops<'tcx>(
                 block = next;
             }
             DropKind::ForLint => {
-                // If the operand has been moved, and we are not on an unwind
-                // path, then don't generate the drop. (We only take this into
-                // account for non-unwind paths so as not to disturb the
-                // caching mechanism.)
-                if scope.moved_locals.iter().any(|&o| o == local) {
-                    continue;
-                }
-
                 // As in the `DropKind::Storage` case below:
                 // normally lint-related drops are not emitted for unwind,
                 // so we can just leave `unwind_to` unmodified, but in some
@@ -1498,6 +1490,14 @@ fn build_scope_drops<'tcx>(
                     debug_assert_eq!(unwind_drops.drops[unwind_to].data.local, drop_data.local);
                     debug_assert_eq!(unwind_drops.drops[unwind_to].data.kind, drop_data.kind);
                     unwind_to = unwind_drops.drops[unwind_to].next;
+                }
+
+                // If the operand has been moved, and we are not on an unwind
+                // path, then don't generate the drop. (We only take this into
+                // account for non-unwind paths so as not to disturb the
+                // caching mechanism.)
+                if scope.moved_locals.iter().any(|&o| o == local) {
+                    continue;
                 }
 
                 cfg.push(block, Statement {
@@ -1552,7 +1552,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
             let mut unwind_indices = IndexVec::from_elem_n(unwind_target, 1);
             for (drop_idx, drop_node) in drops.drops.iter_enumerated().skip(1) {
                 match drop_node.data.kind {
-                    DropKind::Storage => {
+                    DropKind::Storage | DropKind::ForLint => {
                         if is_coroutine {
                             let unwind_drop = self
                                 .scopes
@@ -1563,7 +1563,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
                             unwind_indices.push(unwind_indices[drop_node.next]);
                         }
                     }
-                    DropKind::Value | DropKind::ForLint => {
+                    DropKind::Value => {
                         let unwind_drop = self
                             .scopes
                             .unwind_drops
