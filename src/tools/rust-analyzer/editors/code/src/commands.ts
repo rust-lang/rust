@@ -31,6 +31,7 @@ import type { LanguageClient } from "vscode-languageclient/node";
 import { HOVER_REFERENCE_COMMAND } from "./client";
 import type { DependencyId } from "./dependencies_provider";
 import { log } from "./util";
+import type { SyntaxElement } from "./syntax_tree_provider";
 
 export * from "./ast_inspector";
 export * from "./run";
@@ -355,6 +356,38 @@ async function revealParentChain(document: RustDocument, ctx: CtxInit) {
 
 export async function execRevealDependency(e: RustEditor): Promise<void> {
     await vscode.commands.executeCommand("rust-analyzer.revealDependency", e);
+}
+
+export function syntaxTreeReveal(): Cmd {
+    return async (element: SyntaxElement) => {
+        const activeEditor = vscode.window.activeTextEditor;
+
+        if (activeEditor !== undefined) {
+            const start = activeEditor.document.positionAt(element.start);
+            const end = activeEditor.document.positionAt(element.end);
+
+            const newSelection = new vscode.Selection(start, end);
+
+            activeEditor.selection = newSelection;
+            activeEditor.revealRange(newSelection);
+        }
+    };
+}
+
+export function syntaxTreeHideWhitespace(ctx: CtxInit): Cmd {
+    return async () => {
+        if (ctx.syntaxTreeProvider !== undefined) {
+            await ctx.syntaxTreeProvider.toggleWhitespace();
+        }
+    };
+}
+
+export function syntaxTreeShowWhitespace(ctx: CtxInit): Cmd {
+    return async () => {
+        if (ctx.syntaxTreeProvider !== undefined) {
+            await ctx.syntaxTreeProvider.toggleWhitespace();
+        }
+    };
 }
 
 export function ssr(ctx: CtxInit): Cmd {

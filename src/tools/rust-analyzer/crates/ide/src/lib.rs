@@ -56,6 +56,7 @@ mod view_hir;
 mod view_item_tree;
 mod view_memory_layout;
 mod view_mir;
+mod view_syntax_tree;
 
 use std::{iter, panic::UnwindSafe};
 
@@ -337,6 +338,10 @@ impl Analysis {
         text_range: Option<TextRange>,
     ) -> Cancellable<String> {
         self.with_db(|db| syntax_tree::syntax_tree(db, file_id, text_range))
+    }
+
+    pub fn view_syntax_tree(&self, file_id: FileId) -> Cancellable<String> {
+        self.with_db(|db| view_syntax_tree::view_syntax_tree(db, file_id))
     }
 
     pub fn view_hir(&self, position: FilePosition) -> Cancellable<String> {

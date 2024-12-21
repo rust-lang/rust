@@ -148,6 +148,16 @@ pub(crate) fn handle_syntax_tree(
     Ok(res)
 }
 
+pub(crate) fn handle_view_syntax_tree(
+    snap: GlobalStateSnapshot,
+    params: lsp_ext::ViewSyntaxTreeParams,
+) -> anyhow::Result<String> {
+    let _p = tracing::info_span!("handle_view_syntax_tree").entered();
+    let id = from_proto::file_id(&snap, &params.text_document.uri)?;
+    let res = snap.analysis.view_syntax_tree(id)?;
+    Ok(res)
+}
+
 pub(crate) fn handle_view_hir(
     snap: GlobalStateSnapshot,
     params: lsp_types::TextDocumentPositionParams,

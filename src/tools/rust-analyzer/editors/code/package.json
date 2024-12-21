@@ -289,6 +289,24 @@
                 "category": "rust-analyzer"
             },
             {
+                "command": "rust-analyzer.syntaxTreeReveal",
+                "title": "Reveal Syntax Element",
+                "icon": "$(search)",
+                "category": "rust-analyzer (syntax tree)"
+            },
+            {
+                "command": "rust-analyzer.syntaxTreeHideWhitespace",
+                "title": "Hide Whitespace",
+                "icon": "$(filter)",
+                "category": "rust-analyzer (syntax tree)"
+            },
+            {
+                "command": "rust-analyzer.syntaxTreeShowWhitespace",
+                "title": "Show Whitespace",
+                "icon": "$(filter-filled)",
+                "category": "rust-analyzer (syntax tree)"
+            },
+            {
                 "command": "rust-analyzer.viewMemoryLayout",
                 "title": "View Memory Layout",
                 "category": "rust-analyzer"
@@ -342,6 +360,11 @@
                     },
                     "rust-analyzer.showDependenciesExplorer": {
                         "markdownDescription": "Whether to show the dependencies view.",
+                        "default": true,
+                        "type": "boolean"
+                    },
+                    "rust-analyzer.showSyntaxTree": {
+                        "markdownDescription": "Whether to show the syntax tree view.",
                         "default": true,
                         "type": "boolean"
                     },
@@ -3362,6 +3385,18 @@
                 },
                 {
                     "command": "rust-analyzer.openWalkthrough"
+                },
+                {
+                    "command": "rust-analyzer.syntaxTreeReveal",
+                    "when": "false"
+                },
+                {
+                    "command": "rust-analyzer.syntaxTreeHideWhitespace",
+                    "when": "false"
+                },
+                {
+                    "command": "rust-analyzer.syntaxTreeShowWhitespace",
+                    "when": "false"
                 }
             ],
             "editor/context": [
@@ -3375,6 +3410,25 @@
                     "when": "inRustProject && editorTextFocus && editorLangId == rust",
                     "group": "navigation@1001"
                 }
+            ],
+            "view/title": [
+                {
+                    "command": "rust-analyzer.syntaxTreeHideWhitespace",
+                    "group": "navigation",
+                    "when": "view == rustSyntaxTree && !rustSyntaxTree.hideWhitespace"
+                },
+                {
+                    "command": "rust-analyzer.syntaxTreeShowWhitespace",
+                    "group": "navigation",
+                    "when": "view == rustSyntaxTree && rustSyntaxTree.hideWhitespace"
+                }
+            ],
+            "view/item/context": [
+                {
+                    "command": "rust-analyzer.syntaxTreeReveal",
+                    "group": "inline",
+                    "when": "view == rustSyntaxTree"
+                }
             ]
         },
         "views": {
@@ -3383,6 +3437,22 @@
                     "id": "rustDependencies",
                     "name": "Rust Dependencies",
                     "when": "inRustProject && config.rust-analyzer.showDependenciesExplorer"
+                }
+            ],
+            "rustSyntaxTreeContainer": [
+                {
+                    "id": "rustSyntaxTree",
+                    "name": "Rust Syntax Tree",
+                    "when": "inRustProject && config.rust-analyzer.showSyntaxTree"
+                }
+            ]
+        },
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "rustSyntaxTreeContainer",
+                    "title": "Rust Syntax Tree",
+                    "icon": "$(list-tree)"
                 }
             ]
         },

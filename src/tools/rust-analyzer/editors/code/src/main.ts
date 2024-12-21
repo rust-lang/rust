@@ -199,6 +199,9 @@ function createCommands(): Record<string, CommandFactory> {
         rename: { enabled: commands.rename },
         openLogs: { enabled: commands.openLogs },
         revealDependency: { enabled: commands.revealDependency },
+        syntaxTreeReveal: { enabled: commands.syntaxTreeReveal },
+        syntaxTreeHideWhitespace: { enabled: commands.syntaxTreeHideWhitespace },
+        syntaxTreeShowWhitespace: { enabled: commands.syntaxTreeShowWhitespace },
     };
 }
 

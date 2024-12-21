@@ -4,9 +4,9 @@ use syntax::{
     AstNode, NodeOrToken, SourceFile, SyntaxKind::STRING, SyntaxToken, TextRange, TextSize,
 };
 
-// Feature: Show Syntax Tree
+// Feature: Show Debug Syntax Tree
 //
-// Shows the parse tree of the current file. It exists mostly for debugging
+// Shows the textual parse tree of the current file. It exists mostly for debugging
 // rust-analyzer itself.
 //
 // |===
