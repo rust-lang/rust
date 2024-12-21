@@ -61,6 +61,9 @@ static EXPRS: &[&str] = &[
     "(2 + 2) * 2",
     "2 * (2 + 2)",
     "2 + 2 + 2",
+    // Right-associative operator.
+    "2 += 2 += 2",
+    "(2 += 2) += 2",
     // Return has lower precedence than a binary operator.
     "(return 2) + 2",
     "2 + (return 2)", // FIXME: no parenthesis needed.
@@ -89,6 +92,11 @@ static EXPRS: &[&str] = &[
     // allowed, except if the break is also labeled.
     "break 'outer 'inner: loop {} + 2",
     "break ('inner: loop {} + 2)",
+    // Grammar restriction: ranges cannot be the endpoint of another range.
+    "(2..2)..2",
+    "2..(2..2)",
+    "(2..2)..",
+    "..(2..2)",
     // Grammar restriction: the value in let-else is not allowed to end in a
     // curly brace.
     "{ let _ = 1 + 1 else {}; }",
