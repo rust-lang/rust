@@ -44,7 +44,6 @@ ui/associated-consts/issue-58022.rs
 ui/associated-consts/issue-63496.rs
 ui/associated-consts/issue-69020-assoc-const-arith-overflow.rs
 ui/associated-consts/issue-88599-ref-self.rs
-ui/associated-consts/issue-93775.rs
 ui/associated-consts/issue-93835.rs
 ui/associated-inherent-types/issue-104260.rs
 ui/associated-inherent-types/issue-109071.rs
