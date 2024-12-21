@@ -746,7 +746,12 @@ impl<'a> Parser<'a> {
     }
 
     fn recover_missing_dot(&mut self, err: &mut Diag<'_>) {
-        if !self.token.is_ident() {
+        let Some((ident, _)) = self.token.ident() else {
+            return;
+        };
+        if let Some(c) = ident.name.as_str().chars().next()
+            && c.is_uppercase()
+        {
             return;
         }
         if self.token.is_reserved_ident() && !self.token.is_ident_named(kw::Await) {
