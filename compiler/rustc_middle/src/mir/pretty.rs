@@ -23,6 +23,7 @@ pub(crate) const ALIGN: usize = 40;
 
 /// An indication of where we are in the control flow graph. Used for printing
 /// extra information in `dump_mir`
+#[derive(Clone)]
 pub enum PassWhere {
     /// We have not started dumping the control flow graph, but we are about to.
     BeforeCFG,

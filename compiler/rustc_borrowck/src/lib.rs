@@ -202,6 +202,7 @@ fn do_mir_borrowck<'tcx>(
         polonius_output,
         opt_closure_req,
         nll_errors,
+        localized_outlives_constraints,
     } = nll::compute_regions(
         &infcx,
         free_regions,
@@ -314,6 +315,16 @@ fn do_mir_borrowck<'tcx>(
     );
 
     mbcx.report_move_errors();
+
+    // If requested, dump polonius MIR.
+    polonius::dump_polonius_mir(
+        &infcx,
+        body,
+        &regioncx,
+        &borrow_set,
+        localized_outlives_constraints,
+        &opt_closure_req,
+    );
 
     // For each non-user used mutable variable, check if it's been assigned from
     // a user-declared local. If so, then put that local into the used_mut set.
