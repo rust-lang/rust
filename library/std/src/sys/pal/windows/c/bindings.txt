@@ -2295,6 +2295,7 @@ Windows.Win32.Storage.FileSystem.FILE_NAME_OPENED
 Windows.Win32.Storage.FileSystem.FILE_READ_ATTRIBUTES
 Windows.Win32.Storage.FileSystem.FILE_READ_DATA
 Windows.Win32.Storage.FileSystem.FILE_READ_EA
+Windows.Win32.Storage.FileSystem.FILE_RENAME_INFO
 Windows.Win32.Storage.FileSystem.FILE_SHARE_DELETE
 Windows.Win32.Storage.FileSystem.FILE_SHARE_MODE
 Windows.Win32.Storage.FileSystem.FILE_SHARE_NONE
@@ -2603,5 +2604,7 @@ Windows.Win32.System.Threading.WaitForMultipleObjects
 Windows.Win32.System.Threading.WaitForSingleObject
 Windows.Win32.System.Threading.WakeAllConditionVariable
 Windows.Win32.System.Threading.WakeConditionVariable
+Windows.Win32.System.WindowsProgramming.FILE_RENAME_FLAG_POSIX_SEMANTICS
+Windows.Win32.System.WindowsProgramming.FILE_RENAME_FLAG_REPLACE_IF_EXISTS
 Windows.Win32.System.WindowsProgramming.PROGRESS_CONTINUE
 Windows.Win32.UI.Shell.GetUserProfileDirectoryW
