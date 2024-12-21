@@ -2181,7 +2181,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             ty_left,
                             common_ty,
                             location.to_locations(),
-                            ConstraintCategory::Boring,
+                            ConstraintCategory::CallArgument(None),
                         )
                         .unwrap_or_else(|err| {
                             bug!("Could not equate type variable with {:?}: {:?}", ty_left, err)
@@ -2190,7 +2190,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             ty_right,
                             common_ty,
                             location.to_locations(),
-                            ConstraintCategory::Boring,
+                            ConstraintCategory::CallArgument(None),
                         ) {
                             span_mirbug!(
                                 self,
