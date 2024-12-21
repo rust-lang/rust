@@ -501,7 +501,6 @@ class PtrTypeRecognizer:
         was_r_ref: bool = False
         ptr_type: gdb.Type = type
         ptee_type: gdb.Type = type.target()
-        i = 0
 
         while ptr_type.code in PTR_CODES:
             is_ref: bool = False
@@ -511,7 +510,6 @@ class PtrTypeRecognizer:
                 or ptr_type.code == gdb.TYPE_CODE_REF
                 or ptr_type.code == gdb.TYPE_CODE_RVALUE_REF
             ):
-                print("is ref")
                 is_ref = True
 
             was_r_ref = ptr_type.code == gdb.TYPE_CODE_RVALUE_REF

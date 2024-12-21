@@ -17,7 +17,7 @@ def register_printers(objfile):
 
 
 def register_type_printers(objfile):
-    gdb.types.register_type_printer(objfile, PtrTypePrinter(""))
+    gdb.types.register_type_printer(objfile, PtrTypePrinter("ptr"))
 
 
 # BACKCOMPAT: rust 1.35
