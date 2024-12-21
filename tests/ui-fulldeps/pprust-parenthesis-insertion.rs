@@ -97,6 +97,8 @@ static EXPRS: &[&str] = &[
     "2..(2..2)",
     "(2..2)..",
     "..(2..2)",
+    // Grammar restriction: comparison operators cannot be chained (1 < 2 == false).
+    "((1 < 2) == false) as usize",
     // Grammar restriction: the value in let-else is not allowed to end in a
     // curly brace.
     "{ let _ = 1 + 1 else {}; }",
@@ -119,10 +121,6 @@ static EXPRS: &[&str] = &[
     /*
     // FIXME: pretty-printer produces invalid syntax. `if (let _ = () && Struct {}.x) {}`
     "if let _ = () && (Struct {}).x {}",
-    */
-    /*
-    // FIXME: pretty-printer produces invalid syntax. `(1 < 2 == false) as usize`
-    "((1 < 2) == false) as usize",
     */
     /*
     // FIXME: pretty-printer produces invalid syntax. `for _ in 1..{ 2 } {}`
