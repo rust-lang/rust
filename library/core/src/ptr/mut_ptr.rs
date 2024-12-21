@@ -247,6 +247,13 @@ impl<T: ?Sized> *mut T {
     /// When calling this method, you have to ensure that *either* the pointer is null *or*
     /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
     ///
+    /// # Panics during const evaluation
+    ///
+    /// This method will panic during const evaluation if the pointer cannot be
+    /// determined to be null or not. See [`is_null`] for more information.
+    ///
+    /// [`is_null`]: #method.is_null-1
+    ///
     /// # Examples
     ///
     /// ```
@@ -330,6 +337,13 @@ impl<T: ?Sized> *mut T {
     /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
     /// Note that because the created reference is to `MaybeUninit<T>`, the
     /// source pointer can point to uninitialized memory.
+    ///
+    /// # Panics during const evaluation
+    ///
+    /// This method will panic during const evaluation if the pointer cannot be
+    /// determined to be null or not. See [`is_null`] for more information.
+    ///
+    /// [`is_null`]: #method.is_null-1
     ///
     /// # Examples
     ///
@@ -595,6 +609,12 @@ impl<T: ?Sized> *mut T {
     /// the pointer is null *or*
     /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
     ///
+    /// # Panics during const evaluation
+    ///
+    /// This method will panic during const evaluation if the pointer cannot be
+    /// determined to be null or not. See [`is_null`] for more information.
+    ///
+    /// [`is_null`]: #method.is_null-1
     ///
     /// # Examples
     ///
@@ -678,6 +698,13 @@ impl<T: ?Sized> *mut T {
     ///
     /// When calling this method, you have to ensure that *either* the pointer is null *or*
     /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
+    ///
+    /// # Panics during const evaluation
+    ///
+    /// This method will panic during const evaluation if the pointer cannot be
+    /// determined to be null or not. See [`is_null`] for more information.
+    ///
+    /// [`is_null`]: #method.is_null-1
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
     #[rustc_const_unstable(feature = "ptr_as_uninit", issue = "75402")]
@@ -1950,6 +1977,13 @@ impl<T> *mut [T] {
     ///
     /// [valid]: crate::ptr#safety
     /// [allocated object]: crate::ptr#allocated-object
+    ///
+    /// # Panics during const evaluation
+    ///
+    /// This method will panic during const evaluation if the pointer cannot be
+    /// determined to be null or not. See [`is_null`] for more information.
+    ///
+    /// [`is_null`]: #method.is_null-1
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
     #[rustc_const_unstable(feature = "ptr_as_uninit", issue = "75402")]
@@ -2002,6 +2036,13 @@ impl<T> *mut [T] {
     ///
     /// [valid]: crate::ptr#safety
     /// [allocated object]: crate::ptr#allocated-object
+    ///
+    /// # Panics during const evaluation
+    ///
+    /// This method will panic during const evaluation if the pointer cannot be
+    /// determined to be null or not. See [`is_null`] for more information.
+    ///
+    /// [`is_null`]: #method.is_null-1
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
     #[rustc_const_unstable(feature = "ptr_as_uninit", issue = "75402")]
