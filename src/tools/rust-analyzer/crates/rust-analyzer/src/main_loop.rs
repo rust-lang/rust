@@ -408,7 +408,10 @@ impl GlobalState {
         if self.is_quiescent() {
             let became_quiescent = !was_quiescent;
             if became_quiescent {
-                if self.config.check_on_save(None) && self.config.flycheck_workspace(None) {
+                if self.config.check_on_save(None)
+                    && self.config.flycheck_workspace(None)
+                    && !self.fetch_build_data_queue.op_requested()
+                {
                     // Project has loaded properly, kick off initial flycheck
                     self.flycheck.iter().for_each(|flycheck| flycheck.restart_workspace(None));
                 }
@@ -656,8 +659,8 @@ impl GlobalState {
 
     fn update_status_or_notify(&mut self) {
         let status = self.current_status();
-        if self.last_reported_status.as_ref() != Some(&status) {
-            self.last_reported_status = Some(status.clone());
+        if self.last_reported_status != status {
+            self.last_reported_status = status.clone();
 
             if self.config.server_status_notification() {
                 self.send_notification::<lsp_ext::ServerStatusNotification>(status);
