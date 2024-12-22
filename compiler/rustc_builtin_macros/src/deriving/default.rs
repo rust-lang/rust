@@ -42,7 +42,9 @@ pub(crate) fn expand_deriving_default(
                     StaticStruct(_, fields) => {
                         default_struct_substructure(cx, trait_span, substr, fields)
                     }
-                    StaticEnum(enum_def, _) => default_enum_substructure(cx, trait_span, enum_def),
+                    StaticEnum(enum_def, _) => {
+                        default_enum_substructure(cx, trait_span, enum_def, item.span())
+                    }
                     _ => cx.dcx().span_bug(trait_span, "method in `derive(Default)`"),
                 }
             })),
@@ -96,9 +98,10 @@ fn default_enum_substructure(
     cx: &ExtCtxt<'_>,
     trait_span: Span,
     enum_def: &EnumDef,
+    item_span: Span,
 ) -> BlockOrExpr {
     let expr = match try {
-        let default_variant = extract_default_variant(cx, enum_def, trait_span)?;
+        let default_variant = extract_default_variant(cx, enum_def, trait_span, item_span)?;
         validate_default_attribute(cx, default_variant)?;
         default_variant
     } {
@@ -146,6 +149,7 @@ fn extract_default_variant<'a>(
     cx: &ExtCtxt<'_>,
     enum_def: &'a EnumDef,
     trait_span: Span,
+    item_span: Span,
 ) -> Result<&'a rustc_ast::Variant, ErrorGuaranteed> {
     let default_variants: SmallVec<[_; 1]> = enum_def
         .variants
@@ -163,9 +167,10 @@ fn extract_default_variant<'a>(
                 .filter(|variant| !attr::contains_name(&variant.attrs, sym::non_exhaustive));
 
             let suggs = possible_defaults
-                .map(|v| errors::NoDefaultVariantSugg { span: v.span, ident: v.ident })
+                .map(|v| errors::NoDefaultVariantSugg { span: v.span.shrink_to_lo() })
                 .collect();
-            let guar = cx.dcx().emit_err(errors::NoDefaultVariant { span: trait_span, suggs });
+            let guar =
+                cx.dcx().emit_err(errors::NoDefaultVariant { span: trait_span, item_span, suggs });
 
             return Err(guar);
         }
