@@ -10,6 +10,22 @@ use crate::{BaseName, FloatTy, Identifier, test_log};
 /// The environment variable indicating which extensive tests should be run.
 pub const EXTENSIVE_ENV: &str = "LIBM_EXTENSIVE_TESTS";
 
+/// Specify the number of iterations via this environment variable, rather than using the default.
+pub const EXTENSIVE_ITER_ENV: &str = "LIBM_EXTENSIVE_ITERATIONS";
+
+/// Maximum number of iterations to run for a single routine.
+///
+/// The default value of one greater than `u32::MAX` allows testing single-argument `f32` routines
+/// and single- or double-argument `f16` routines exhaustively. `f64` and `f128` can't feasibly
+/// be tested exhaustively; however, [`EXTENSIVE_ITER_ENV`] can be set to run tests for multiple
+/// hours.
+pub static EXTENSIVE_MAX_ITERATIONS: LazyLock<u64> = LazyLock::new(|| {
+    let default = 1 << 32;
+    env::var(EXTENSIVE_ITER_ENV)
+        .map(|v| v.parse().expect("failed to parse iteration count"))
+        .unwrap_or(default)
+});
+
 /// Context passed to [`CheckOutput`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CheckCtx {
@@ -54,6 +70,7 @@ pub enum CheckBasis {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum GeneratorKind {
     Domain,
+    Extensive,
     Random,
 }
 
@@ -171,7 +188,13 @@ pub fn iteration_count(ctx: &CheckCtx, gen_kind: GeneratorKind, argnum: usize) -
     let mut total_iterations = match gen_kind {
         GeneratorKind::Domain => domain_iter_count,
         GeneratorKind::Random => random_iter_count,
+        GeneratorKind::Extensive => *EXTENSIVE_MAX_ITERATIONS,
     };
+
+    // FMA has a huge domain but is reasonably fast to run, so increase iterations.
+    if ctx.base_name == BaseName::Fma {
+        total_iterations *= 4;
+    }
 
     if cfg!(optimizations_enabled) {
         // Always run at least 10,000 tests.
@@ -191,7 +214,7 @@ pub fn iteration_count(ctx: &CheckCtx, gen_kind: GeneratorKind, argnum: usize) -
     let total = ntests.pow(t_env.input_count.try_into().unwrap());
 
     let seed_msg = match gen_kind {
-        GeneratorKind::Domain => String::new(),
+        GeneratorKind::Domain | GeneratorKind::Extensive => String::new(),
         GeneratorKind::Random => {
             format!(" using `{SEED_ENV}={}`", str::from_utf8(SEED.as_slice()).unwrap())
         }
@@ -210,7 +233,7 @@ pub fn iteration_count(ctx: &CheckCtx, gen_kind: GeneratorKind, argnum: usize) -
 }
 
 /// Some tests require that an integer be kept within reasonable limits; generate that here.
-pub fn int_range(ctx: &CheckCtx, argnum: usize) -> RangeInclusive<i32> {
+pub fn int_range(ctx: &CheckCtx, gen_kind: GeneratorKind, argnum: usize) -> RangeInclusive<i32> {
     let t_env = TestEnv::from_env(ctx);
 
     if !matches!(ctx.base_name, BaseName::Jn | BaseName::Yn) {
@@ -221,10 +244,17 @@ pub fn int_range(ctx: &CheckCtx, argnum: usize) -> RangeInclusive<i32> {
 
     // The integer argument to `jn` is an iteration count. Limit this to ensure tests can be
     // completed in a reasonable amount of time.
-    if t_env.slow_platform || !cfg!(optimizations_enabled) {
+    let non_extensive_range = if t_env.slow_platform || !cfg!(optimizations_enabled) {
         (-0xf)..=0xff
     } else {
         (-0xff)..=0xffff
+    };
+
+    let extensive_range = (-0xfff)..=0xfffff;
+
+    match gen_kind {
+        GeneratorKind::Extensive => extensive_range,
+        GeneratorKind::Domain | GeneratorKind::Random => non_extensive_range,
     }
 }
 
@@ -241,7 +271,6 @@ pub fn check_near_count(_ctx: &CheckCtx) -> u64 {
 }
 
 /// Check whether extensive actions should be run or skipped.
-#[expect(dead_code, reason = "extensive tests have not yet been added")]
 pub fn skip_extensive_test(ctx: &CheckCtx) -> bool {
     let t_env = TestEnv::from_env(ctx);
     !t_env.should_run_extensive

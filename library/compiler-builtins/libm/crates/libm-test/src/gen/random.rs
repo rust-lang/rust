@@ -86,7 +86,7 @@ macro_rules! impl_random_input {
             fn get_cases(ctx: &CheckCtx) -> impl ExactSizeIterator<Item = Self> {
                 let count0 = iteration_count(ctx, GeneratorKind::Random, 0);
                 let count1 = iteration_count(ctx, GeneratorKind::Random, 1);
-                let range0 = int_range(ctx, 0);
+                let range0 = int_range(ctx, GeneratorKind::Random, 0);
                 let iter = random_ints(count0, range0)
                     .flat_map(move |f1: i32| random_floats(count1).map(move |f2: $fty| (f1, f2)));
                 KnownSize::new(iter, count0 * count1)
@@ -97,7 +97,7 @@ macro_rules! impl_random_input {
             fn get_cases(ctx: &CheckCtx) -> impl ExactSizeIterator<Item = Self> {
                 let count0 = iteration_count(ctx, GeneratorKind::Random, 0);
                 let count1 = iteration_count(ctx, GeneratorKind::Random, 1);
-                let range1 = int_range(ctx, 1);
+                let range1 = int_range(ctx, GeneratorKind::Random, 1);
                 let iter = random_floats(count0).flat_map(move |f1: $fty| {
                     random_ints(count1, range1.clone()).map(move |f2: i32| (f1, f2))
                 });

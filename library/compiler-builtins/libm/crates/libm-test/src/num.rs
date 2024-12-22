@@ -215,7 +215,7 @@ fn as_ulp_steps<F: Float>(x: F) -> Option<F::SignedInt> {
 /// to logarithmic spacing of their values.
 ///
 /// Note that this tends to skip negative zero, so that needs to be checked explicitly.
-pub fn logspace<F: FloatExt>(start: F, end: F, steps: F::Int) -> impl Iterator<Item = F>
+pub fn logspace<F: FloatExt>(start: F, end: F, steps: F::Int) -> impl Iterator<Item = F> + Clone
 where
     RangeInclusive<F::Int>: Iterator,
 {
