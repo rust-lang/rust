@@ -184,7 +184,7 @@ macro_rules! int_impl {
             }
 
             fn abs_diff(self, other: Self) -> Self {
-                if self < other { other.wrapping_sub(self) } else { self.wrapping_sub(other) }
+                self.abs_diff(other)
             }
 
             int_impl_common!($uty);
@@ -221,7 +221,7 @@ macro_rules! int_impl {
             }
 
             fn abs_diff(self, other: Self) -> $uty {
-                self.wrapping_sub(other).wrapping_abs() as $uty
+                self.abs_diff(other)
             }
 
             int_impl_common!($ity);
