@@ -721,13 +721,11 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         use rustc_middle::ty::cast::IntTy::*;
 
         if self.cast_ty.is_dyn_star() {
-            if fcx.tcx.features().dyn_star() {
-                span_bug!(self.span, "should be handled by `coerce`");
-            } else {
-                // Report "casting is invalid" rather than "non-primitive cast"
-                // if the feature is not enabled.
-                return Err(CastError::IllegalCast);
-            }
+            // This coercion will fail if the feature is not enabled, OR
+            // if the coercion is (currently) illegal (e.g. `dyn* Foo + Send`
+            // to `dyn* Foo`). Report "casting is invalid" rather than
+            // "non-primitive cast".
+            return Err(CastError::IllegalCast);
         }
 
         let (t_from, t_cast) = match (CastTy::from_ty(self.expr_ty), CastTy::from_ty(self.cast_ty))

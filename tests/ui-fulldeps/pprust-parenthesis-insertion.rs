@@ -1,5 +1,7 @@
 //@ run-pass
 //@ ignore-cross-compile
+//@ aux-crate: parser=parser.rs
+//@ edition: 2021
 
 // This test covers the AST pretty-printer's automatic insertion of parentheses
 // into unparenthesized syntax trees according to precedence and various grammar
@@ -31,8 +33,6 @@
 
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
-extern crate rustc_driver;
-extern crate rustc_errors;
 extern crate rustc_parse;
 extern crate rustc_session;
 extern crate rustc_span;
@@ -40,15 +40,12 @@ extern crate rustc_span;
 use std::mem;
 use std::process::ExitCode;
 
-use rustc_ast::ast::{DUMMY_NODE_ID, Expr, ExprKind};
+use parser::parse_expr;
+use rustc_ast::ast::{Expr, ExprKind};
 use rustc_ast::mut_visit::{self, DummyAstNode as _, MutVisitor};
-use rustc_ast::node_id::NodeId;
 use rustc_ast::ptr::P;
 use rustc_ast_pretty::pprust;
-use rustc_errors::Diag;
-use rustc_parse::parser::Recovery;
 use rustc_session::parse::ParseSess;
-use rustc_span::{DUMMY_SP, FileName, Span};
 
 // Every parenthesis in the following expressions is re-inserted by the
 // pretty-printer.
@@ -156,34 +153,6 @@ impl MutVisitor for Unparenthesize {
     }
 }
 
-// Erase Span information that could distinguish between identical expressions
-// parsed from different source strings.
-struct Normalize;
-
-impl MutVisitor for Normalize {
-    const VISIT_TOKENS: bool = true;
-
-    fn visit_id(&mut self, id: &mut NodeId) {
-        *id = DUMMY_NODE_ID;
-    }
-
-    fn visit_span(&mut self, span: &mut Span) {
-        *span = DUMMY_SP;
-    }
-}
-
-fn parse_expr(psess: &ParseSess, source_code: &str) -> Option<P<Expr>> {
-    let parser = rustc_parse::unwrap_or_emit_fatal(rustc_parse::new_parser_from_source_str(
-        psess,
-        FileName::anon_source_code(source_code),
-        source_code.to_owned(),
-    ));
-
-    let mut expr = parser.recovery(Recovery::Forbidden).parse_expr().map_err(Diag::cancel).ok()?;
-    Normalize.visit_expr(&mut expr);
-    Some(expr)
-}
-
 fn main() -> ExitCode {
     let mut status = ExitCode::SUCCESS;
     let mut fail = |description: &str, before: &str, after: &str| {
@@ -199,7 +168,9 @@ fn main() -> ExitCode {
         let psess = &ParseSess::new(vec![rustc_parse::DEFAULT_LOCALE_RESOURCE]);
 
         for &source_code in EXPRS {
-            let expr = parse_expr(psess, source_code).unwrap();
+            let Some(expr) = parse_expr(psess, source_code) else {
+                panic!("Failed to parse original test case: {source_code}");
+            };
 
             // Check for FALSE POSITIVE: pretty-printer inserting parentheses where not needed.
             // Pseudocode:
