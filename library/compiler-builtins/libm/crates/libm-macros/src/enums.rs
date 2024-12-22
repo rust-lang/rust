@@ -5,7 +5,7 @@ use quote::quote;
 use syn::spanned::Spanned;
 use syn::{Fields, ItemEnum, Variant};
 
-use crate::{ALL_FUNCTIONS_FLAT, base_name};
+use crate::{ALL_OPERATIONS, base_name};
 
 /// Implement `#[function_enum]`, see documentation in `lib.rs`.
 pub fn function_enum(
@@ -33,7 +33,7 @@ pub fn function_enum(
     let mut as_str_arms = Vec::new();
     let mut base_arms = Vec::new();
 
-    for func in ALL_FUNCTIONS_FLAT.iter() {
+    for func in ALL_OPERATIONS.iter() {
         let fn_name = func.name;
         let ident = Ident::new(&fn_name.to_upper_camel_case(), Span::call_site());
         let bname_ident = Ident::new(&base_name(fn_name).to_upper_camel_case(), Span::call_site());
@@ -85,8 +85,7 @@ pub fn base_name_enum(
         return Err(syn::Error::new(sp.span(), "no attributes expected"));
     }
 
-    let mut base_names: Vec<_> =
-        ALL_FUNCTIONS_FLAT.iter().map(|func| base_name(func.name)).collect();
+    let mut base_names: Vec<_> = ALL_OPERATIONS.iter().map(|func| base_name(func.name)).collect();
     base_names.sort_unstable();
     base_names.dedup();
 
