@@ -13,7 +13,15 @@
 //! - "Operation" / "Op": Something that relates a routine to a function or is otherwise higher
 //!   level. `Op` is also used as the name for generic parameters since it is terse.
 
+use std::fmt;
+
+pub use shared::{ALL_OPERATIONS, FloatTy, MathOpInfo, Ty};
+
 use crate::{CheckOutput, Float, TupleCall};
+
+mod shared {
+    include!("../../libm-macros/src/shared.rs");
+}
 
 /// An enum representing each possible symbol name (`sin`, `sinf`, `sinl`, etc).
 #[libm_macros::function_enum(BaseName)]
