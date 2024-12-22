@@ -1,3 +1,5 @@
+//! This files contains the declaration of diagnostics kinds for ty and path lowering.
+
 use either::Either;
 use hir_def::type_ref::TypeRefId;
 
@@ -11,7 +13,7 @@ pub struct TyLoweringDiagnostic {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum TyLoweringDiagnosticKind {
-    GenericArgsProhibited { segment: u32, reason: GenericArgsProhibitedReason },
+    PathDiagnostic(PathLoweringDiagnostic),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -20,8 +22,15 @@ pub enum GenericArgsProhibitedReason {
     TyParam,
     SelfTy,
     PrimitiveTy,
+    Const,
+    Static,
     /// When there is a generic enum, within the expression `Enum::Variant`,
     /// either `Enum` or `Variant` are allowed to have generic arguments, but not both.
     // FIXME: This is not used now but it should be.
     EnumVariant,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum PathLoweringDiagnostic {
+    GenericArgsProhibited { segment: u32, reason: GenericArgsProhibitedReason },
 }

@@ -531,7 +531,7 @@ impl InferenceContext<'_> {
                         (params, ret_ty)
                     }
                     None => {
-                        self.result.diagnostics.push(InferenceDiagnostic::ExpectedFunction {
+                        self.push_diagnostic(InferenceDiagnostic::ExpectedFunction {
                             call_expr: tgt_expr,
                             found: callee_ty.clone(),
                         });
@@ -707,7 +707,7 @@ impl InferenceContext<'_> {
                 self.result.standard_types.never.clone()
             }
             Expr::RecordLit { path, fields, spread, .. } => {
-                let (ty, def_id) = self.resolve_variant(path.as_deref(), false);
+                let (ty, def_id) = self.resolve_variant(tgt_expr.into(), path.as_deref(), false);
 
                 if let Some(t) = expected.only_has_type(&mut self.table) {
                     self.unify(&ty, &t);
@@ -1816,9 +1816,10 @@ impl InferenceContext<'_> {
                 if !is_public {
                     if let Either::Left(field) = field_id {
                         // FIXME: Merge this diagnostic into UnresolvedField?
-                        self.result
-                            .diagnostics
-                            .push(InferenceDiagnostic::PrivateField { expr: tgt_expr, field });
+                        self.push_diagnostic(InferenceDiagnostic::PrivateField {
+                            expr: tgt_expr,
+                            field,
+                        });
                     }
                 }
                 ty
@@ -1835,7 +1836,7 @@ impl InferenceContext<'_> {
                     VisibleFromModule::Filter(self.resolver.module()),
                     name,
                 );
-                self.result.diagnostics.push(InferenceDiagnostic::UnresolvedField {
+                self.push_diagnostic(InferenceDiagnostic::UnresolvedField {
                     expr: tgt_expr,
                     receiver: receiver_ty.clone(),
                     name: name.clone(),
@@ -1927,7 +1928,7 @@ impl InferenceContext<'_> {
                     },
                 );
 
-                self.result.diagnostics.push(InferenceDiagnostic::UnresolvedMethodCall {
+                self.push_diagnostic(InferenceDiagnostic::UnresolvedMethodCall {
                     expr: tgt_expr,
                     receiver: receiver_ty.clone(),
                     name: method_name.clone(),
