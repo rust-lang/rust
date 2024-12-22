@@ -55,9 +55,10 @@ pub(crate) struct Fix {
 
 impl DiagnosticCollection {
     pub(crate) fn clear_check(&mut self, flycheck_id: usize) {
-        if let Some(it) = self.check.get_mut(&flycheck_id) {
-            it.clear();
-        }
+        let Some(check) = self.check.get_mut(&flycheck_id) else {
+            return;
+        };
+        self.changes.extend(check.drain().flat_map(|(_, v)| v.into_keys()));
         if let Some(fixes) = Arc::make_mut(&mut self.check_fixes).get_mut(&flycheck_id) {
             fixes.clear();
         }
@@ -70,12 +71,6 @@ impl DiagnosticCollection {
         )
     }
 
-    pub(crate) fn clear_native_for(&mut self, file_id: FileId) {
-        self.native_syntax.remove(&file_id);
-        self.native_semantic.remove(&file_id);
-        self.changes.insert(file_id);
-    }
-
     pub(crate) fn clear_check_for_package(
         &mut self,
         flycheck_id: usize,
@@ -84,7 +79,19 @@ impl DiagnosticCollection {
         let Some(check) = self.check.get_mut(&flycheck_id) else {
             return;
         };
-        check.remove(&Some(package_id));
+        let package_id = Some(package_id);
+        if let Some(checks) = check.remove(&package_id) {
+            self.changes.extend(checks.into_keys());
+        }
+        if let Some(fixes) = Arc::make_mut(&mut self.check_fixes).get_mut(&flycheck_id) {
+            fixes.remove(&package_id);
+        }
+    }
+
+    pub(crate) fn clear_native_for(&mut self, file_id: FileId) {
+        self.native_syntax.remove(&file_id);
+        self.native_semantic.remove(&file_id);
+        self.changes.insert(file_id);
     }
 
     pub(crate) fn add_check_diagnostic(

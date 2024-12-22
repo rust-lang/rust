@@ -22,7 +22,6 @@ use hir_def::{
 
 use crate::{
     db::{HirDatabase, InternedCoroutine},
-    display::HirDisplay,
     from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id,
     generics::generics,
     make_binders, make_single_type_binders,
@@ -823,13 +822,12 @@ pub(crate) fn impl_datum_query(
     let _p = tracing::info_span!("impl_datum_query").entered();
     debug!("impl_datum {:?}", impl_id);
     let impl_: hir_def::ImplId = from_chalk(db, impl_id);
-    impl_def_datum(db, krate, impl_id, impl_)
+    impl_def_datum(db, krate, impl_)
 }
 
 fn impl_def_datum(
     db: &dyn HirDatabase,
     krate: CrateId,
-    chalk_id: ImplId,
     impl_id: hir_def::ImplId,
 ) -> Arc<ImplDatum> {
     let trait_ref = db
@@ -850,13 +848,6 @@ fn impl_def_datum(
     };
     let where_clauses = convert_where_clauses(db, impl_id.into(), &bound_vars);
     let negative = impl_data.is_negative;
-    debug!(
-        "impl {:?}: {}{} where {:?}",
-        chalk_id,
-        if negative { "!" } else { "" },
-        trait_ref.display(db, db.crate_graph()[krate].edition),
-        where_clauses
-    );
 
     let polarity = if negative { rust_ir::Polarity::Negative } else { rust_ir::Polarity::Positive };
 
