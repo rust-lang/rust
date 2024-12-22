@@ -189,7 +189,7 @@ pub(crate) fn handle_did_save_text_document(
         if !state.config.check_on_save(Some(sr)) || run_flycheck(state, vfs_path) {
             return Ok(());
         }
-    } else if state.config.check_on_save(None) {
+    } else if state.config.check_on_save(None) && state.config.flycheck_workspace(None) {
         // No specific flycheck was triggered, so let's trigger all of them.
         for flycheck in state.flycheck.iter() {
             flycheck.restart_workspace(None);
@@ -294,6 +294,7 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
     if let Some(file_id) = file_id {
         let world = state.snapshot();
         let source_root_id = world.analysis.source_root_id(file_id).ok();
+        let may_flycheck_workspace = state.config.flycheck_workspace(None);
         let mut updated = false;
         let task = move || -> std::result::Result<(), ide::Cancelled> {
             // Is the target binary? If so we let flycheck run only for the workspace that contains the crate.
@@ -389,7 +390,7 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                 }
             }
             // No specific flycheck was triggered, so let's trigger all of them.
-            if !updated {
+            if !updated && may_flycheck_workspace {
                 for flycheck in world.flycheck.iter() {
                     flycheck.restart_workspace(saved_file.clone());
                 }
@@ -432,8 +433,10 @@ pub(crate) fn handle_run_flycheck(
         }
     }
     // No specific flycheck was triggered, so let's trigger all of them.
-    for flycheck in state.flycheck.iter() {
-        flycheck.restart_workspace(None);
+    if state.config.flycheck_workspace(None) {
+        for flycheck in state.flycheck.iter() {
+            flycheck.restart_workspace(None);
+        }
     }
     Ok(())
 }
