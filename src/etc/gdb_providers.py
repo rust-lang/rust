@@ -528,7 +528,7 @@ class PtrTypeRecognizer:
             ptr_type = ptee_type
             try:
                 ptee_type = ptee_type.target()
-            except:
+            except RuntimeError:
                 break
 
         name_parts.append(ptr_type.unqualified().name)
