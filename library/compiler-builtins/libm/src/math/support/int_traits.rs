@@ -26,6 +26,10 @@ pub trait MinInt:
     const MAX: Self;
 }
 
+/// Access the associated `OtherSign` type from an int (helper to avoid ambiguous associated
+/// types).
+pub type OtherSign<I> = <I as MinInt>::OtherSign;
+
 /// Trait for some basic operations on integers
 #[allow(dead_code)]
 pub trait Int:
@@ -53,7 +57,7 @@ pub trait Int:
     + CastInto<usize>
     + CastFrom<u8>
 {
-    fn signed(self) -> <Self::Unsigned as MinInt>::OtherSign;
+    fn signed(self) -> OtherSign<Self::Unsigned>;
     fn unsigned(self) -> Self::Unsigned;
     fn from_unsigned(unsigned: Self::Unsigned) -> Self;
     fn abs(self) -> Self;

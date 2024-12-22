@@ -153,6 +153,10 @@ pub trait Float:
     }
 }
 
+/// Access the associated `Int` type from a float (helper to avoid ambiguous associated types).
+#[allow(dead_code)]
+pub type IntTy<F> = <F as Float>::Int;
+
 macro_rules! float_impl {
     ($ty:ident, $ity:ident, $sity:ident, $expty:ident, $bits:expr, $significand_bits:expr) => {
         impl Float for $ty {
