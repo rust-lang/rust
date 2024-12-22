@@ -190,7 +190,7 @@ mod expressions {
         (static async || value);
         (static async move || value);
         || -> u8 { value };
-        1 + (|| {});
+        1 + || {};
     }
 
     /// ExprKind::Block

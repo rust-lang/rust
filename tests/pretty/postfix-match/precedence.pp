@@ -26,7 +26,7 @@ pub fn main() {
         _ => {}
     };
     (4 as usize).match { _ => {} };
-    (return).match { _ => {} };
+    return.match { _ => {} };
     (a = 42).match { _ => {} };
     (|| {}).match { _ => {} };
     (42..101).match { _ => {} };
