@@ -28,6 +28,7 @@ run() {
     docker run \
         --rm \
         --user "$(id -u):$(id -g)" \
+        -e CI \
         -e RUSTFLAGS \
         -e CARGO_HOME=/cargo \
         -e CARGO_TARGET_DIR=/target \
