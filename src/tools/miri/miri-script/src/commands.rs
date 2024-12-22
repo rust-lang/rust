@@ -1,5 +1,7 @@
+use std::collections::HashMap;
 use std::ffi::{OsStr, OsString};
-use std::io::Write;
+use std::fs::File;
+use std::io::{BufReader, BufWriter, Write};
 use std::ops::{Not, Range};
 use std::path::PathBuf;
 use std::time::Duration;
@@ -7,6 +9,8 @@ use std::{env, net, process};
 
 use anyhow::{Context, Result, anyhow, bail};
 use path_macro::path;
+use serde_derive::{Deserialize, Serialize};
+use tempfile::TempDir;
 use walkdir::WalkDir;
 use xshell::{Shell, cmd};
 
@@ -179,8 +183,8 @@ impl Command {
             Command::Doc { flags } => Self::doc(flags),
             Command::Fmt { flags } => Self::fmt(flags),
             Command::Clippy { flags } => Self::clippy(flags),
-            Command::Bench { target, no_install, benches } =>
-                Self::bench(target, no_install, benches),
+            Command::Bench { target, no_install, save_baseline, benches } =>
+                Self::bench(target, no_install, save_baseline, benches),
             Command::Toolchain { flags } => Self::toolchain(flags),
             Command::RustcPull { commit } => Self::rustc_pull(commit.clone()),
             Command::RustcPush { github_user, branch } => Self::rustc_push(github_user, branch),
@@ -379,7 +383,12 @@ impl Command {
         Ok(())
     }
 
-    fn bench(target: Option<String>, no_install: bool, benches: Vec<String>) -> Result<()> {
+    fn bench(
+        target: Option<String>,
+        no_install: bool,
+        save_baseline: Option<String>,
+        benches: Vec<String>,
+    ) -> Result<()> {
         // The hyperfine to use
         let hyperfine = env::var("HYPERFINE");
         let hyperfine = hyperfine.as_deref().unwrap_or("hyperfine -w 1 -m 5 --shell=none");
@@ -391,15 +400,17 @@ impl Command {
             // Make sure we have an up-to-date Miri installed and selected the right toolchain.
             Self::install(vec![])?;
         }
+        let baseline_temp_dir = if save_baseline.is_some() { Some(TempDir::new()?) } else { None };
 
+        let miri_dir = miri_dir()?;
         let sh = Shell::new()?;
-        sh.change_dir(miri_dir()?);
+        sh.change_dir(&miri_dir);
         let benches_dir = "bench-cargo-miri";
-        let benches: Vec<OsString> = if benches.is_empty() {
+        let benches: Vec<String> = if benches.is_empty() {
             sh.read_dir(benches_dir)?
                 .into_iter()
                 .filter(|path| path.is_dir())
-                .map(Into::into)
+                .map(|path| path.into_os_string().into_string().unwrap())
                 .collect()
         } else {
             benches.into_iter().map(Into::into).collect()
@@ -414,16 +425,47 @@ impl Command {
         let target_flag = &target_flag;
         let toolchain = active_toolchain()?;
         // Run the requested benchmarks
-        for bench in benches {
+        for bench in &benches {
             let current_bench = path!(benches_dir / bench / "Cargo.toml");
+            let mut export_json = None;
+            if let Some(baseline_temp_dir) = &baseline_temp_dir {
+                export_json = Some(format!(
+                    "--export-json={}",
+                    path!(baseline_temp_dir / format!("{bench}.bench.json")).display()
+                ));
+            }
             // We don't attempt to escape `current_bench`, but we wrap it in quotes.
             // That seems to make Windows CI happy.
             cmd!(
                 sh,
-                "{program_name} {args...} 'cargo +'{toolchain}' miri run '{target_flag}' --manifest-path \"'{current_bench}'\"'"
+                "{program_name} {args...} {export_json...} 'cargo +'{toolchain}' miri run '{target_flag}' --manifest-path \"'{current_bench}'\"'"
             )
             .run()?;
         }
+
+        // Gather/load results for baseline saving.
+
+        #[derive(Serialize, Deserialize)]
+        struct BenchResult {
+            mean: f64,
+            stddev: f64,
+        }
+
+        if let Some(baseline_file) = save_baseline {
+            let baseline_temp_dir = baseline_temp_dir.unwrap();
+            let mut results: HashMap<&str, BenchResult> = HashMap::new();
+            for bench in &benches {
+                let result = File::open(path!(baseline_temp_dir / format!("{bench}.bench.json")))?;
+                let mut result: serde_json::Value =
+                    serde_json::from_reader(BufReader::new(result))?;
+                let result: BenchResult = serde_json::from_value(result["results"][0].take())?;
+                results.insert(bench, result);
+            }
+
+            let baseline = File::create(baseline_file)?;
+            serde_json::to_writer_pretty(BufWriter::new(baseline), &results)?;
+        }
+
         Ok(())
     }
 
