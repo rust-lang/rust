@@ -2720,12 +2720,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Check field access expressions, this works for both structs and tuples.
     /// Returns the Ty of the field.
     ///
-    /// ```not_rust
-    ///  base.field
-    ///  ^^^^^^^^^^ expr
-    ///  ^^^^       base
-    ///       ^^^^^ field
-    ///  ```
+    /// ```ignore (illustrative)
+    /// base.field
+    /// ^^^^^^^^^^ expr
+    /// ^^^^       base
+    ///      ^^^^^ field
+    /// ```
     fn check_expr_field(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
