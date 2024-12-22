@@ -202,6 +202,8 @@ pub use self::rwlock::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 #[unstable(feature = "mpmc_channel", issue = "126840")]
 pub mod mpmc;
 pub mod mpsc;
+#[unstable(feature = "sync_nonpoison", issue = "134645")]
+pub mod nonpoison;
 
 mod barrier;
 mod condvar;
