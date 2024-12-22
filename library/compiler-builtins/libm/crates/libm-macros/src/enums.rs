@@ -31,6 +31,7 @@ pub fn function_enum(
 
     let enum_name = &item.ident;
     let mut as_str_arms = Vec::new();
+    let mut from_str_arms = Vec::new();
     let mut base_arms = Vec::new();
 
     for func in ALL_OPERATIONS.iter() {
@@ -40,6 +41,7 @@ pub fn function_enum(
 
         // Match arm for `fn as_str(self)` matcher
         as_str_arms.push(quote! { Self::#ident => #fn_name });
+        from_str_arms.push(quote! { #fn_name => Self::#ident });
 
         // Match arm for `fn base_name(self)` matcher
         base_arms.push(quote! { Self::#ident => #base_enum::#bname_ident });
@@ -50,11 +52,18 @@ pub fn function_enum(
         item.variants.push(variant);
     }
 
+    let variants = item.variants.iter();
+
     let res = quote! {
         // Instantiate the enum
         #item
 
         impl #enum_name {
+            /// All variants of this enum.
+            pub const ALL: &[Self] = &[
+                #( Self::#variants, )*
+            ];
+
             /// The stringified version of this function name.
             pub const fn as_str(self) -> &'static str {
                 match self {
@@ -62,11 +71,25 @@ pub fn function_enum(
                 }
             }
 
+            /// If `s` is the name of a function, return it.
+            pub fn from_str(s: &str) -> Option<Self> {
+                let ret = match s {
+                    #( #from_str_arms , )*
+                    _ => return None,
+                };
+                Some(ret)
+            }
+
             /// The base name enum for this function.
             pub const fn base_name(self) -> #base_enum {
                 match self {
                     #( #base_arms, )*
                 }
+            }
+
+            /// Return information about this operation.
+            pub fn math_op(self) -> &'static crate::op::MathOpInfo {
+                crate::op::ALL_OPERATIONS.iter().find(|op| op.name == self.as_str()).unwrap()
             }
         }
     };
