@@ -26,7 +26,7 @@ macro_rules! musl_rand_benches {
 
                 #[cfg(feature = "build-musl")]
                 let musl_extra = MuslExtra {
-                    musl_fn: Some(musl_math_sys::$fn_name as libm_test::CFn<Op>),
+                    musl_fn: Some(musl_math_sys::$fn_name as libm_test::OpCFn<Op>),
                     skip_on_i586: $skip_on_i586
                 };
 
