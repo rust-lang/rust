@@ -150,8 +150,7 @@ pub(crate) fn type_check<'a, 'tcx>(
     debug!(?normalized_inputs_and_output);
 
     let mut polonius_context = if infcx.tcx.sess.opts.unstable_opts.polonius.is_next_enabled() {
-        let num_regions = infcx.num_region_vars();
-        Some(PoloniusContext::new(num_regions))
+        Some(PoloniusContext::new())
     } else {
         None
     };
@@ -186,6 +185,12 @@ pub(crate) fn type_check<'a, 'tcx>(
 
     let opaque_type_values =
         opaque_types::take_opaques_and_register_member_constraints(&mut typeck);
+
+    if let Some(polonius_context) = typeck.polonius_context.as_mut() {
+        let num_regions = infcx.num_region_vars();
+        let points_per_live_region = typeck.constraints.liveness_constraints.points();
+        polonius_context.record_live_regions_per_point(num_regions, points_per_live_region);
+    }
 
     MirTypeckResults {
         constraints,

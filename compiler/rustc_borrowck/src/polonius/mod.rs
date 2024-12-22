@@ -57,7 +57,7 @@ use crate::universal_regions::UniversalRegions;
 pub(crate) struct PoloniusContext {
     /// The set of regions that are live at a given point in the CFG, used to create localized
     /// outlives constraints between regions that are live at connected points in the CFG.
-    live_regions: SparseBitMatrix<PointIndex, RegionVid>,
+    live_regions: Option<SparseBitMatrix<PointIndex, RegionVid>>,
 
     /// The expected edge direction per live region: the kind of directed edge we'll create as
     /// liveness constraints depends on the variance of types with respect to each contained region.
@@ -79,11 +79,8 @@ enum ConstraintDirection {
 }
 
 impl PoloniusContext {
-    pub(crate) fn new(num_regions: usize) -> PoloniusContext {
-        Self {
-            live_region_variances: BTreeMap::new(),
-            live_regions: SparseBitMatrix::new(num_regions),
-        }
+    pub(crate) fn new() -> PoloniusContext {
+        Self { live_region_variances: BTreeMap::new(), live_regions: None }
     }
 
     /// Creates a constraint set for `-Zpolonius=next` by:
