@@ -12,8 +12,8 @@ pub struct Data {
 
 #[stable(feature = "potato", since = "1.27.0")]
 #[rustc_const_unstable(feature = "data_foo", issue = "none")]
-impl const Default for Data {
-    fn default() -> Data {
-        Data { _data: 42 }
+impl const std::fmt::Debug for Data {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        panic!()
     }
 }
