@@ -8,5 +8,5 @@ fn main() {}
 
 fn testing(test: Test) {
     let _ = test.comps.inner.try_lock();
-    //~^ ERROR: field `inner` of struct `Mutex` is private
+    //~^ ERROR: field `inner` of struct `std::sync::Mutex` is private
 }
