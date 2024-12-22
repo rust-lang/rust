@@ -212,6 +212,15 @@ Miri comes with a few benchmarks; you can run `./miri bench` to run them with th
 Miri. Note: this will run `./miri install` as a side-effect. Also requires `hyperfine` to be
 installed (`cargo install hyperfine`).
 
+To compare the benchmark results with a baseline, do the following:
+- Before applying your changes, run `./miri bench --save-baseline=baseline.json`.
+- Then do your changes.
+- Then run `./miri bench --load-baseline=baseline.json`; the results will include
+  a comparison with the baseline.
+
+You can run only some of the benchmarks by listing them, e.g. `./miri bench mse`.
+The names refer to the folders in `bench-cargo-miri`.
+
 ## Configuring `rust-analyzer`
 
 To configure `rust-analyzer` and the IDE for working on Miri, copy one of the provided

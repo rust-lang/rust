@@ -1,4 +1,4 @@
-#![allow(clippy::needless_question_mark)]
+#![allow(clippy::needless_question_mark, rustc::internal)]
 
 mod commands;
 mod coverage;
@@ -117,6 +117,14 @@ pub enum Command {
         /// When `true`, skip the `./miri install` step.
         #[arg(long)]
         no_install: bool,
+        /// Store the benchmark result in the given file, so it can be used
+        /// as the baseline for a future run.
+        #[arg(long)]
+        save_baseline: Option<String>,
+        /// Load previous stored benchmark results as baseline, and print an analysis of how the
+        /// current run compares.
+        #[arg(long)]
+        load_baseline: Option<String>,
         /// List of benchmarks to run (default: run all benchmarks).
         benches: Vec<String>,
     },
