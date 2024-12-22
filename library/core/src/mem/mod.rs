@@ -1241,6 +1241,17 @@ pub trait SizedTypeProperties: Sized {
     #[doc(hidden)]
     #[unstable(feature = "sized_type_properties", issue = "none")]
     const LAYOUT: Layout = Layout::new::<Self>();
+
+    /// The largest safe length for a `[Self]`.
+    ///
+    /// Anything larger than this would make `size_of_val` overflow `isize::MAX`,
+    /// which is never allowed for a single object.
+    #[doc(hidden)]
+    #[unstable(feature = "sized_type_properties", issue = "none")]
+    const MAX_SLICE_LEN: usize = match size_of::<Self>() {
+        0 => usize::MAX,
+        n => (isize::MAX as usize) / n,
+    };
 }
 #[doc(hidden)]
 #[unstable(feature = "sized_type_properties", issue = "none")]
