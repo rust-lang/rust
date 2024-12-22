@@ -100,19 +100,23 @@ pub(crate) fn compute_regions<'a, 'tcx>(
     let elements = Rc::new(DenseLocationMap::new(body));
 
     // Run the MIR type-checker.
-    let MirTypeckResults { constraints, universal_region_relations, opaque_type_values } =
-        type_check::type_check(
-            infcx,
-            body,
-            promoted,
-            universal_regions,
-            location_table,
-            borrow_set,
-            &mut all_facts,
-            flow_inits,
-            move_data,
-            Rc::clone(&elements),
-        );
+    let MirTypeckResults {
+        constraints,
+        universal_region_relations,
+        opaque_type_values,
+        mut polonius_context,
+    } = type_check::type_check(
+        infcx,
+        body,
+        promoted,
+        universal_regions,
+        location_table,
+        borrow_set,
+        &mut all_facts,
+        flow_inits,
+        move_data,
+        Rc::clone(&elements),
+    );
 
     // Create the region inference context, taking ownership of the
     // region inference data that was contained in `infcx`, and the
@@ -141,12 +145,9 @@ pub(crate) fn compute_regions<'a, 'tcx>(
 
     // If requested for `-Zpolonius=next`, convert NLL constraints to localized outlives
     // constraints.
-    let localized_outlives_constraints =
-        if infcx.tcx.sess.opts.unstable_opts.polonius.is_next_enabled() {
-            Some(polonius::create_localized_constraints(&mut regioncx, body))
-        } else {
-            None
-        };
+    let localized_outlives_constraints = polonius_context
+        .as_mut()
+        .map(|polonius_context| polonius_context.create_localized_constraints(&mut regioncx, body));
 
     // If requested: dump NLL facts, and run legacy polonius analysis.
     let polonius_output = all_facts.as_ref().and_then(|all_facts| {

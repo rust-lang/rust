@@ -34,45 +34,84 @@
 //!
 
 mod constraints;
-pub(crate) use constraints::*;
 mod dump;
-pub(crate) use dump::dump_polonius_mir;
 pub(crate) mod legacy;
 
+use std::collections::BTreeMap;
+
+use rustc_index::bit_set::SparseBitMatrix;
 use rustc_middle::mir::{Body, Location};
+use rustc_middle::ty::RegionVid;
 use rustc_mir_dataflow::points::PointIndex;
 
+pub(crate) use self::constraints::*;
+pub(crate) use self::dump::dump_polonius_mir;
 use crate::RegionInferenceContext;
 use crate::constraints::OutlivesConstraint;
 use crate::region_infer::values::LivenessValues;
 use crate::type_check::Locations;
 use crate::universal_regions::UniversalRegions;
 
-/// Creates a constraint set for `-Zpolonius=next` by:
-/// - converting NLL typeck constraints to be localized
-/// - encoding liveness constraints
-pub(crate) fn create_localized_constraints<'tcx>(
-    regioncx: &mut RegionInferenceContext<'tcx>,
-    body: &Body<'tcx>,
-) -> LocalizedOutlivesConstraintSet {
-    let mut localized_outlives_constraints = LocalizedOutlivesConstraintSet::default();
-    convert_typeck_constraints(
-        body,
-        regioncx.liveness_constraints(),
-        regioncx.outlives_constraints(),
-        &mut localized_outlives_constraints,
-    );
-    create_liveness_constraints(
-        body,
-        regioncx.liveness_constraints(),
-        regioncx.universal_regions(),
-        &mut localized_outlives_constraints,
-    );
+/// This struct holds the data needed to create the Polonius localized constraints.
+pub(crate) struct PoloniusContext {
+    /// The set of regions that are live at a given point in the CFG, used to create localized
+    /// outlives constraints between regions that are live at connected points in the CFG.
+    live_regions: SparseBitMatrix<PointIndex, RegionVid>,
 
-    // FIXME: here, we can trace loan reachability in the constraint graph and record this as loan
-    // liveness for the next step in the chain, the NLL loan scope and active loans computations.
+    /// The expected edge direction per live region: the kind of directed edge we'll create as
+    /// liveness constraints depends on the variance of types with respect to each contained region.
+    live_region_variances: BTreeMap<RegionVid, ConstraintDirection>,
+}
 
-    localized_outlives_constraints
+/// The direction a constraint can flow into. Used to create liveness constraints according to
+/// variance.
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+enum ConstraintDirection {
+    /// For covariant cases, we add a forward edge `O at P1 -> O at P2`.
+    Forward,
+
+    /// For contravariant cases, we add a backward edge `O at P2 -> O at P1`
+    Backward,
+
+    /// For invariant cases, we add both the forward and backward edges `O at P1 <-> O at P2`.
+    Bidirectional,
+}
+
+impl PoloniusContext {
+    pub(crate) fn new(num_regions: usize) -> PoloniusContext {
+        Self {
+            live_region_variances: BTreeMap::new(),
+            live_regions: SparseBitMatrix::new(num_regions),
+        }
+    }
+
+    /// Creates a constraint set for `-Zpolonius=next` by:
+    /// - converting NLL typeck constraints to be localized
+    /// - encoding liveness constraints
+    pub(crate) fn create_localized_constraints<'tcx>(
+        &self,
+        regioncx: &RegionInferenceContext<'tcx>,
+        body: &Body<'tcx>,
+    ) -> LocalizedOutlivesConstraintSet {
+        let mut localized_outlives_constraints = LocalizedOutlivesConstraintSet::default();
+        convert_typeck_constraints(
+            body,
+            regioncx.liveness_constraints(),
+            regioncx.outlives_constraints(),
+            &mut localized_outlives_constraints,
+        );
+        create_liveness_constraints(
+            body,
+            regioncx.liveness_constraints(),
+            regioncx.universal_regions(),
+            &mut localized_outlives_constraints,
+        );
+
+        // FIXME: here, we can trace loan reachability in the constraint graph and record this as loan
+        // liveness for the next step in the chain, the NLL loan scope and active loans computations.
+
+        localized_outlives_constraints
+    }
 }
 
 /// Propagate loans throughout the subset graph at a given point (with some subtleties around the
