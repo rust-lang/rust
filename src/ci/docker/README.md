@@ -26,6 +26,10 @@ DEPLOY=1 ./src/ci/docker/run.sh x86_64-gnu
 while locally, to the `obj/$image_name` directory. This is primarily to prevent
 strange linker errors when using multiple Docker images.
 
+## Local Development
+
+Refer to the [dev guide](https://rustc-dev-guide.rust-lang.org/tests/docker.html) for more information on testing locally.
+
 ## Filesystem layout
 
 - Each host architecture has its own `host-{arch}` directory, and those
