@@ -1907,6 +1907,15 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         v2: RValue<'gcc>,
         mask: RValue<'gcc>,
     ) -> RValue<'gcc> {
+        // NOTE: if the `mask` is a constant value, the following code will copy it in many places,
+        // which will make GCC create a lot (+4000) local variables in some cases.
+        // So we assign it to an explicit local variable once to avoid this.
+        let func = self.current_func();
+        let mask_var = func.new_local(self.location, mask.get_type(), "mask");
+        let block = self.block;
+        block.add_assignment(self.location, mask_var, mask);
+        let mask = mask_var.to_rvalue();
+
         // TODO(antoyo): use a recursive unqualified() here.
         let vector_type = v1.get_type().unqualified().dyncast_vector().expect("vector type");
         let element_type = vector_type.get_element_type();
