@@ -1,3 +1,4 @@
+use std::fs::FileType;
 use std::io;
 use std::path::{Path, PathBuf};
 
@@ -6,7 +7,8 @@ use std::path::{Path, PathBuf};
 pub fn copy_symlink(src: impl AsRef<Path>, dst: impl AsRef<Path>) {
     let src = src.as_ref();
     let dst = dst.as_ref();
-    if let Err(e) = copy_symlink_raw(src, dst) {
+    let metadata = symlink_metadata(src);
+    if let Err(e) = copy_symlink_raw(metadata.file_type(), src, dst) {
         panic!("failed to copy symlink from `{}` to `{}`: {e}", src.display(), dst.display(),);
     }
 }
@@ -56,7 +58,7 @@ pub fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) {
             if ty.is_dir() {
                 copy_dir_all_inner(entry.path(), dst.join(entry.file_name()))?;
             } else if ty.is_symlink() {
-                copy_symlink_raw(entry.path(), dst.join(entry.file_name()))?;
+                copy_symlink_raw(ty, entry.path(), dst.join(entry.file_name()))?;
             } else {
                 std::fs::copy(entry.path(), dst.join(entry.file_name()))?;
             }
@@ -79,6 +81,21 @@ pub fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) {
 pub fn read_dir_entries<P: AsRef<Path>, F: FnMut(&Path)>(dir: P, mut callback: F) {
     for entry in read_dir(dir) {
         callback(&entry.unwrap().path());
+    }
+}
+
+/// A wrapper around [`build_helper::fs::recursive_remove`] which includes the file path in the
+/// panic message.
+///
+/// This handles removing symlinks on Windows (e.g. symlink-to-file will be removed via
+/// [`std::fs::remove_file`] while symlink-to-dir will be removed via [`std::fs::remove_dir`]).
+#[track_caller]
+pub fn recursive_remove<P: AsRef<Path>>(path: P) {
+    if let Err(e) = build_helper::fs::recursive_remove(path.as_ref()) {
+        panic!(
+            "failed to recursive remove filesystem entities at `{}`: {e}",
+            path.as_ref().display()
+        );
     }
 }
 
