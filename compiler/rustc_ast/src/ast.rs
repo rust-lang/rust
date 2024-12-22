@@ -1309,11 +1309,20 @@ impl Expr {
     }
 
     pub fn precedence(&self) -> ExprPrecedence {
+        fn prefix_attrs_precedence(attrs: &AttrVec) -> ExprPrecedence {
+            for attr in attrs {
+                if let AttrStyle::Outer = attr.style {
+                    return ExprPrecedence::Prefix;
+                }
+            }
+            ExprPrecedence::Unambiguous
+        }
+
         match &self.kind {
             ExprKind::Closure(closure) => {
                 match closure.fn_decl.output {
                     FnRetTy::Default(_) => ExprPrecedence::Jump,
-                    FnRetTy::Ty(_) => ExprPrecedence::Unambiguous,
+                    FnRetTy::Ty(_) => prefix_attrs_precedence(&self.attrs),
                 }
             }
 
@@ -1345,7 +1354,7 @@ impl Expr {
             | ExprKind::Let(..)
             | ExprKind::Unary(..) => ExprPrecedence::Prefix,
 
-            // Never need parens
+            // Need parens if and only if there are prefix attributes.
             ExprKind::Array(_)
             | ExprKind::Await(..)
             | ExprKind::Block(..)
@@ -1378,7 +1387,7 @@ impl Expr {
             | ExprKind::UnsafeBinderCast(..)
             | ExprKind::While(..)
             | ExprKind::Err(_)
-            | ExprKind::Dummy => ExprPrecedence::Unambiguous,
+            | ExprKind::Dummy => prefix_attrs_precedence(&self.attrs),
         }
     }
 
