@@ -135,10 +135,6 @@ static EXPRS: &[&str] = &[
     "(0.).to_string()",
     "0. .. 1.",
     */
-    /*
-    // FIXME: pretty-printer loses the dyn*. `i as Trait`
-    "i as dyn* Trait",
-    */
 ];
 
 // Flatten the content of parenthesis nodes into their parent node. For example

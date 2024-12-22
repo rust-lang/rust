@@ -821,6 +821,11 @@ pub enum TerminatorKind<'tcx> {
     /// continues at the `resume` basic block, with the second argument written to the `resume_arg`
     /// place. If the coroutine is dropped before then, the `drop` basic block is invoked.
     ///
+    /// Note that coroutines can be (unstably) cloned under certain conditions, which means that
+    /// this terminator can **return multiple times**! MIR optimizations that reorder code into
+    /// different basic blocks needs to be aware of that.
+    /// See <https://github.com/rust-lang/rust/issues/95360>.
+    ///
     /// Not permitted in bodies that are not coroutine bodies, or after coroutine lowering.
     ///
     /// **Needs clarification**: What about the evaluation order of the `resume_arg` and `value`?
