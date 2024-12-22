@@ -174,6 +174,9 @@ fn on_delimited_node_typed(
     kinds: &[fn(SyntaxKind) -> bool],
 ) -> Option<TextEdit> {
     let t = reparsed.syntax().token_at_offset(offset).right_biased()?;
+    if t.prev_token().map_or(false, |t| t.kind().is_any_identifier()) {
+        return None;
+    }
     let (filter, node) = t
         .parent_ancestors()
         .take_while(|n| n.text_range().start() == offset)
@@ -1088,6 +1091,22 @@ fn f() {
             let z = Some((3));
         }
                     "#,
+        );
+    }
+
+    #[test]
+    fn preceding_whitespace_is_significant_for_closing_brackets() {
+        type_char_noop(
+            '(',
+            r#"
+fn f() { a.b$0if true {} }
+"#,
+        );
+        type_char_noop(
+            '(',
+            r#"
+fn f() { foo$0{} }
+"#,
         );
     }
 
