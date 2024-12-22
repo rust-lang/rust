@@ -9,7 +9,6 @@ default = []
 
 # Generate tests which are random inputs and the outputs are calculated with
 # musl libc.
-test-musl-serialized = ["rand"]
 test-multiprecision = ["dep:az", "dep:rug"]
 
 # Build our own musl for testing and benchmarks
