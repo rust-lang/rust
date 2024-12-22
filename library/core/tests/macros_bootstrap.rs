@@ -10,7 +10,7 @@ struct Struct;
 
 impl Trait for Struct {
     cfg_match! {
-        feature = "blah" => {
+        cfg(feature = "blah") => {
             fn blah(&self) {
                 unimplemented!();
             }
@@ -47,21 +47,21 @@ fn matches_leading_pipe() {
 #[test]
 fn cfg_match_basic() {
     cfg_match! {
-        target_pointer_width = "64" => { fn f0_() -> bool { true }}
+        cfg(target_pointer_width = "64") => { fn f0_() -> bool { true }}
     }
 
     cfg_match! {
-        unix => { fn f1_() -> bool { true } }
-        any(target_os = "macos", target_os = "linux") => { fn f1_() -> bool { false }}
+        cfg(unix) => { fn f1_() -> bool { true }}
+        cfg(any(target_os = "macos", target_os = "linux")) => { fn f1_() -> bool { false }}
     }
 
     cfg_match! {
-        target_pointer_width = "32" => { fn f2_() -> bool { false } }
-        target_pointer_width = "64" => { fn f2_() -> bool { true } }
+        cfg(target_pointer_width = "32") => { fn f2_() -> bool { false }}
+        cfg(target_pointer_width = "64") => { fn f2_() -> bool { true }}
     }
 
     cfg_match! {
-        target_pointer_width = "16" => { fn f3_() -> i32 { 1 } }
+        cfg(target_pointer_width = "16") => { fn f3_() -> i32 { 1 }}
         _ => { fn f3_() -> i32 { 2 }}
     }
 
@@ -83,7 +83,7 @@ fn cfg_match_basic() {
 #[test]
 fn cfg_match_debug_assertions() {
     cfg_match! {
-        debug_assertions => {
+        cfg(debug_assertions) => {
             assert!(cfg!(debug_assertions));
             assert_eq!(4, 2+2);
         }
@@ -98,13 +98,13 @@ fn cfg_match_debug_assertions() {
 #[test]
 fn cfg_match_no_duplication_on_64() {
     cfg_match! {
-        windows => {
+        cfg(windows) => {
             fn foo() {}
         }
-        unix => {
+        cfg(unix) => {
             fn foo() {}
         }
-        target_pointer_width = "64" => {
+        cfg(target_pointer_width = "64") => {
             fn foo() {}
         }
     }
@@ -114,7 +114,7 @@ fn cfg_match_no_duplication_on_64() {
 #[test]
 fn cfg_match_options() {
     cfg_match! {
-        test => {
+        cfg(test) => {
             use core::option::Option as Option2;
             fn works1() -> Option2<u32> { Some(1) }
         }
@@ -122,26 +122,26 @@ fn cfg_match_options() {
     }
 
     cfg_match! {
-        feature = "foo" => { fn works2() -> bool { false } }
-        test => { fn works2() -> bool { true } }
+        cfg(feature = "foo") => { fn works2() -> bool { false } }
+        cfg(test) => { fn works2() -> bool { true } }
         _ => { fn works2() -> bool { false } }
     }
 
     cfg_match! {
-        feature = "foo" => { fn works3() -> bool { false } }
+        cfg(feature = "foo") => { fn works3() -> bool { false } }
         _ => { fn works3() -> bool { true } }
     }
 
     cfg_match! {
-        test => {
+        cfg(test) => {
             use core::option::Option as Option3;
             fn works4() -> Option3<u32> { Some(1) }
         }
     }
 
     cfg_match! {
-        feature = "foo" => { fn works5() -> bool { false } }
-        test => { fn works5() -> bool { true } }
+        cfg(feature = "foo") => { fn works5() -> bool { false } }
+        cfg(test) => { fn works5() -> bool { true } }
     }
 
     assert!(works1().is_some());
@@ -154,7 +154,7 @@ fn cfg_match_options() {
 #[test]
 fn cfg_match_two_functions() {
     cfg_match! {
-        target_pointer_width = "64" => {
+        cfg(target_pointer_width = "64") => {
             fn foo1() {}
             fn bar1() {}
         }
@@ -178,29 +178,16 @@ fn cfg_match_two_functions() {
 
 fn _accepts_expressions() -> i32 {
     cfg_match! {
-        unix => { 1 }
+        cfg(unix) => { 1 }
         _ => { 2 }
     }
 }
 
-// The current implementation expands to a macro call, which allows the use of expression
-// statements.
 fn _allows_stmt_expr_attributes() {
     let one = 1;
     let two = 2;
     cfg_match! {
-        unix => { one * two; }
+        cfg(unix) => { one * two; }
         _ => { one + two; }
     }
-}
-
-fn _expression() {
-    let _ = cfg_match!({
-        windows => {
-            " XP"
-        }
-        _ => {
-            ""
-        }
-    });
 }
