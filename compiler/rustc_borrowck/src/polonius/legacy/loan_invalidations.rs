@@ -299,16 +299,11 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
                 self.consume_operand(location, op);
             }
 
-            &(Rvalue::Len(place) | Rvalue::Discriminant(place)) => {
-                let af = match rvalue {
-                    Rvalue::Len(..) => Some(ArtificialField::ArrayLength),
-                    Rvalue::Discriminant(..) => None,
-                    _ => unreachable!(),
-                };
+            &Rvalue::Discriminant(place) => {
                 self.access_place(
                     location,
                     place,
-                    (Shallow(af), Read(ReadKind::Copy)),
+                    (Shallow(None), Read(ReadKind::Copy)),
                     LocalMutationIsAllowed::No,
                 );
             }

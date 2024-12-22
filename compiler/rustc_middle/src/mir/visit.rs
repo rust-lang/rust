@@ -695,14 +695,6 @@ macro_rules! make_mir_visitor {
                         self.visit_place(path, ctx, location);
                     }
 
-                    Rvalue::Len(path) => {
-                        self.visit_place(
-                            path,
-                            PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect),
-                            location
-                        );
-                    }
-
                     Rvalue::Cast(_cast_kind, operand, ty) => {
                         self.visit_operand(operand, location);
                         self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));

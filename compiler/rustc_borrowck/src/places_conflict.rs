@@ -203,8 +203,7 @@ fn place_components_conflict<'tcx>(
             let base_ty = base.ty(body, tcx).ty;
 
             match (elem, base_ty.kind(), access) {
-                (_, _, Shallow(Some(ArtificialField::ArrayLength)))
-                | (_, _, Shallow(Some(ArtificialField::FakeBorrow))) => {
+                (_, _, Shallow(Some(ArtificialField::FakeBorrow))) => {
                     // The array length is like additional fields on the
                     // type; it does not overlap any existing data there.
                     // Furthermore, if cannot actually be a prefix of any

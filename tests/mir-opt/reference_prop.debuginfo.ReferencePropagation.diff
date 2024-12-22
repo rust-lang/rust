@@ -92,7 +92,7 @@
           StorageDead(_7);
 -         StorageDead(_6);
 -         StorageLive(_10);
--         StorageLive(_11);
+          StorageLive(_11);
 -         StorageLive(_12);
           StorageLive(_13);
           _26 = const debuginfo::promoted[0];
@@ -105,9 +105,8 @@
       bb5: {
           StorageDead(_15);
           StorageDead(_13);
--         _11 = &(*_12);
--         _16 = Len((*_11));
-+         _16 = Len((*_12));
+          _11 = &(*_12);
+          _16 = PtrMetadata(copy _11);
           _17 = const 3_usize;
           _18 = Ge(move _16, move _17);
           switchInt(move _18) -> [0: bb7, otherwise: bb6];
@@ -137,7 +136,7 @@
   
       bb8: {
 -         StorageDead(_12);
--         StorageDead(_11);
+          StorageDead(_11);
 -         StorageDead(_10);
           StorageLive(_22);
           StorageLive(_23);
