@@ -1,5 +1,6 @@
-#[derive_const(Default)] //~ ERROR use of unstable library feature
-//~^ ERROR const `impl` for trait `Default` which is not marked with `#[const_trait]`
+#[derive_const(Debug)] //~ ERROR use of unstable library feature
+//~^ ERROR const `impl` for trait `Debug` which is not marked with `#[const_trait]`
+//~| ERROR cannot call non-const method
 pub struct S;
 
 fn main() {}
