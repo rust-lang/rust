@@ -1093,7 +1093,8 @@ where
 {
     /// Converts a `[T; N]` into a `HashSet<T>`.
     ///
-    /// If the array contains any equal values, all but the last instance of each are discarded.
+    /// If the array contains any equal values,
+    /// all but one will be dropped.
     ///
     /// # Examples
     ///

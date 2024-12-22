@@ -1491,7 +1491,8 @@ impl<T: Ord, A: Allocator + Clone> BTreeSet<T, A> {
 impl<T: Ord, const N: usize> From<[T; N]> for BTreeSet<T> {
     /// Converts a `[T; N]` into a `BTreeSet<T>`.
     ///
-    /// If the array contains any equal values, all but the last instance of each are discarded.
+    /// If the array contains any equal values,
+    /// all but one will be dropped.
     ///
     /// # Examples
     ///

@@ -2292,7 +2292,7 @@ impl<K: Ord, V> FromIterator<(K, V)> for BTreeMap<K, V> {
     /// Constructs a `BTreeMap<K, V>` from an iterator of key-value pairs.
     ///
     /// If the iterator produces any pairs with equal keys,
-    /// all but the last value for each such key are discarded.
+    /// all but one of the corresponding values will be dropped.
     fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> BTreeMap<K, V> {
         let mut inputs: Vec<_> = iter.into_iter().collect();
 
@@ -2409,8 +2409,8 @@ where
 impl<K: Ord, V, const N: usize> From<[(K, V); N]> for BTreeMap<K, V> {
     /// Converts a `[(K, V); N]` into a `BTreeMap<K, V>`.
     ///
-    /// If any entries in the array have equal keys, all but the last entry for each such key
-    /// are discarded.
+    /// If any entries in the array have equal keys,
+    /// all but one of the corresponding values will be dropped.
     ///
     /// ```
     /// use std::collections::BTreeMap;

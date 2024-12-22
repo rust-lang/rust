@@ -1448,8 +1448,8 @@ where
 {
     /// Converts a `[(K, V); N]` into a `HashMap<K, V>`.
     ///
-    /// If any entries in the array have equal keys, all but the last entry for each such key
-    /// are discarded.
+    /// If any entries in the array have equal keys,
+    /// all but one of the corresponding values will be dropped.
     ///
     /// # Examples
     ///
@@ -3227,7 +3227,7 @@ where
     /// Constructs a `HashMap<K, V>` from an iterator of key-value pairs.
     ///
     /// If the iterator produces any pairs with equal keys,
-    /// all but the last value for each such key are discarded.
+    /// all but one of the corresponding values will be dropped.
     fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> HashMap<K, V, S> {
         let mut map = HashMap::with_hasher(Default::default());
         map.extend(iter);
