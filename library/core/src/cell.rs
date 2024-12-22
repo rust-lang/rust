@@ -252,7 +252,7 @@
 
 use crate::cmp::Ordering;
 use crate::fmt::{self, Debug, Display};
-use crate::marker::{PhantomData, Unsize};
+use crate::marker::{PhantomData, PointerLike, Unsize};
 use crate::mem;
 use crate::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn};
 use crate::pin::PinCoerceUnsized;
@@ -676,6 +676,9 @@ impl<T: CoerceUnsized<U>, U> CoerceUnsized<Cell<U>> for Cell<T> {}
 // `self: CellWrapper<Self>` becomes possible
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<Cell<U>> for Cell<T> {}
+
+#[unstable(feature = "pointer_like_trait", issue = "none")]
+impl<T: PointerLike> PointerLike for Cell<T> {}
 
 impl<T> Cell<[T]> {
     /// Returns a `&[Cell<T>]` from a `&Cell<[T]>`
@@ -2258,6 +2261,9 @@ impl<T: CoerceUnsized<U>, U> CoerceUnsized<UnsafeCell<U>> for UnsafeCell<T> {}
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<UnsafeCell<U>> for UnsafeCell<T> {}
 
+#[unstable(feature = "pointer_like_trait", issue = "none")]
+impl<T: PointerLike> PointerLike for UnsafeCell<T> {}
+
 /// [`UnsafeCell`], but [`Sync`].
 ///
 /// This is just an `UnsafeCell`, except it implements `Sync`
@@ -2363,6 +2369,9 @@ impl<T: CoerceUnsized<U>, U> CoerceUnsized<SyncUnsafeCell<U>> for SyncUnsafeCell
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 //#[unstable(feature = "sync_unsafe_cell", issue = "95439")]
 impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<SyncUnsafeCell<U>> for SyncUnsafeCell<T> {}
+
+#[unstable(feature = "pointer_like_trait", issue = "none")]
+impl<T: PointerLike> PointerLike for SyncUnsafeCell<T> {}
 
 #[allow(unused)]
 fn assert_coerce_unsized(
