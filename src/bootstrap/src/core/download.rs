@@ -197,8 +197,7 @@ impl Config {
         if !path_is_dylib(fname) {
             // Finally, set the correct .interp for binaries
             let dynamic_linker_path = nix_deps_dir.join("nix-support/dynamic-linker");
-            // FIXME: can we support utf8 here? `args` doesn't accept Vec<u8>, only OsString ...
-            let dynamic_linker = t!(String::from_utf8(t!(fs::read(dynamic_linker_path))));
+            let dynamic_linker = t!(fs::read_to_string(dynamic_linker_path));
             patchelf.args(["--set-interpreter", dynamic_linker.trim_end()]);
         }
 
