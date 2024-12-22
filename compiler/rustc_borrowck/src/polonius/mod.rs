@@ -36,6 +36,7 @@
 mod constraints;
 mod dump;
 pub(crate) mod legacy;
+mod liveness_constraints;
 
 use std::collections::BTreeMap;
 
