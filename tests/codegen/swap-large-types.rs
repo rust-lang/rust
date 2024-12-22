@@ -33,26 +33,16 @@ pub fn swap_basic(x: &mut KeccakBuffer, y: &mut KeccakBuffer) {
 #[no_mangle]
 pub fn swap_std(x: &mut KeccakBuffer, y: &mut KeccakBuffer) {
     // CHECK-NOT: alloca
-    // CHECK: load <{{[0-9]+}} x i64>
-    // CHECK: store <{{[0-9]+}} x i64>
+    // CHECK-COUNT-2: load i512{{.+}}align 8
+    // CHECK-COUNT-2: store i512{{.+}}align 8
+    // CHECK-COUNT-2: load i512{{.+}}align 8
+    // CHECK-COUNT-2: store i512{{.+}}align 8
+    // CHECK-COUNT-2: load i512{{.+}}align 8
+    // CHECK-COUNT-2: store i512{{.+}}align 8
+    // CHECK-COUNT-2: load i64{{.+}}align 8
+    // CHECK-COUNT-2: store i64{{.+}}align 8
     swap(x, y)
 }
-
-// Verify that types with usize alignment are swapped via vectored usizes,
-// not falling back to byte-level code.
-
-// CHECK-LABEL: @swap_slice
-#[no_mangle]
-pub fn swap_slice(x: &mut [KeccakBuffer], y: &mut [KeccakBuffer]) {
-    // CHECK-NOT: alloca
-    // CHECK: load <{{[0-9]+}} x i64>
-    // CHECK: store <{{[0-9]+}} x i64>
-    if x.len() == y.len() {
-        x.swap_with_slice(y);
-    }
-}
-
-// But for a large align-1 type, vectorized byte copying is what we want.
 
 type OneKilobyteBuffer = [u8; 1024];
 
@@ -60,8 +50,25 @@ type OneKilobyteBuffer = [u8; 1024];
 #[no_mangle]
 pub fn swap_1kb_slices(x: &mut [OneKilobyteBuffer], y: &mut [OneKilobyteBuffer]) {
     // CHECK-NOT: alloca
-    // CHECK: load <{{[0-9]+}} x i8>
-    // CHECK: store <{{[0-9]+}} x i8>
+
+    // These are so big that there's only the biggest chunk size used
+
+    // CHECK-NOT: load i256
+    // CHECK-NOT: load i128
+    // CHECK-NOT: load i64
+    // CHECK-NOT: load i32
+    // CHECK-NOT: load i16
+    // CHECK-NOT: load i8
+
+    // CHECK-COUNT-2: load i512{{.+}}align 1
+    // CHECK-COUNT-2: store i512{{.+}}align 1
+
+    // CHECK-NOT: store i256
+    // CHECK-NOT: store i128
+    // CHECK-NOT: store i64
+    // CHECK-NOT: store i32
+    // CHECK-NOT: store i16
+    // CHECK-NOT: store i8
     if x.len() == y.len() {
         x.swap_with_slice(y);
     }
@@ -81,10 +88,12 @@ pub struct BigButHighlyAligned([u8; 64 * 3]);
 // CHECK-LABEL: @swap_big_aligned
 #[no_mangle]
 pub fn swap_big_aligned(x: &mut BigButHighlyAligned, y: &mut BigButHighlyAligned) {
-    // CHECK-NOT: call void @llvm.memcpy
-    // CHECK: call void @llvm.memcpy.{{.+}}(ptr noundef nonnull align 64 dereferenceable(192)
-    // CHECK: call void @llvm.memcpy.{{.+}}(ptr noundef nonnull align 64 dereferenceable(192)
-    // CHECK: call void @llvm.memcpy.{{.+}}(ptr noundef nonnull align 64 dereferenceable(192)
-    // CHECK-NOT: call void @llvm.memcpy
+    // CHECK-NOT: alloca
+    // CHECK-COUNT-2: load i512{{.+}}align 64
+    // CHECK-COUNT-2: store i512{{.+}}align 64
+    // CHECK-COUNT-2: load i512{{.+}}align 64
+    // CHECK-COUNT-2: store i512{{.+}}align 64
+    // CHECK-COUNT-2: load i512{{.+}}align 64
+    // CHECK-COUNT-2: store i512{{.+}}align 64
     swap(x, y)
 }

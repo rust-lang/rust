@@ -504,6 +504,12 @@ pub fn check_intrinsic_type(
             sym::typed_swap_nonoverlapping => {
                 (1, 0, vec![Ty::new_mut_ptr(tcx, param(0)); 2], tcx.types.unit)
             }
+            sym::untyped_swap_nonoverlapping => (
+                1,
+                0,
+                vec![Ty::new_mut_ptr(tcx, Ty::new_maybe_uninit(tcx, param(0))); 2],
+                tcx.types.unit,
+            ),
 
             sym::discriminant_value => {
                 let assoc_items = tcx.associated_item_def_ids(

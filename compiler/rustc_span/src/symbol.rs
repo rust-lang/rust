@@ -2142,6 +2142,7 @@ symbols! {
                           unstable location; did you mean to load this crate \
                           from crates.io via `Cargo.toml` instead?",
         untagged_unions,
+        untyped_swap_nonoverlapping,
         unused_imports,
         unwind,
         unwind_attributes,

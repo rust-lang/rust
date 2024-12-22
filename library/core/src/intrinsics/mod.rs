@@ -66,7 +66,7 @@
 
 use crate::marker::{DiscriminantKind, Tuple};
 use crate::mem::SizedTypeProperties;
-use crate::{ptr, ub_checks};
+use crate::{mem, ptr, ub_checks};
 
 pub mod fallback;
 pub mod mir;
@@ -4003,7 +4003,37 @@ pub use typed_swap as typed_swap_nonoverlapping;
 pub const unsafe fn typed_swap_nonoverlapping<T>(x: *mut T, y: *mut T) {
     // SAFETY: The caller provided single non-overlapping items behind
     // pointers, so swapping them with `count: 1` is fine.
-    unsafe { ptr::swap_nonoverlapping(x, y, 1) };
+    unsafe { crate::swapping::swap_nonoverlapping(x, y, 1) };
+}
+
+/// Swaps the `N` untyped & non-overlapping bytes behind the two pointers.
+///
+/// Split out from `typed_swap` for the internal swaps in `swap_nonoverlapping`
+/// which would otherwise cause cycles between the fallback implementations on
+/// backends where neither is overridden.
+///
+/// # Safety
+///
+/// `x` and `y` are readable and writable as `MaybeUninit<C>` and non-overlapping.
+#[inline]
+#[rustc_nounwind]
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[miri::intrinsic_fallback_is_spec]
+#[rustc_const_stable_indirect]
+pub const unsafe fn untyped_swap_nonoverlapping<C>(
+    x: *mut mem::MaybeUninit<C>,
+    y: *mut mem::MaybeUninit<C>,
+) {
+    // This intentionally uses untyped memory copies, not reads/writes,
+    // to avoid any risk of losing padding in things like (u16, u8).
+    let mut temp = mem::MaybeUninit::<C>::uninit();
+    // SAFETY: Caller promised that x and y are non-overlapping & read/writeable,
+    // and our fresh local is always disjoint from anything otherwise readable.
+    unsafe {
+        (&raw mut temp).copy_from_nonoverlapping(x, 1);
+        x.copy_from_nonoverlapping(y, 1);
+        y.copy_from_nonoverlapping(&raw const temp, 1);
+    }
 }
 
 /// Returns whether we should perform some UB-checking at runtime. This eventually evaluates to
