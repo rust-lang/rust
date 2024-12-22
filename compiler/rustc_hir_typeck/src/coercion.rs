@@ -737,8 +737,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             return Err(TypeError::Mismatch);
         }
 
-        if let ty::Dynamic(a_data, _, _) = a.kind()
-            && let ty::Dynamic(b_data, _, _) = b.kind()
+        // FIXME(dyn_star): We should probably allow things like casting from
+        // `dyn* Foo + Send` to `dyn* Foo`.
+        if let ty::Dynamic(a_data, _, ty::DynStar) = a.kind()
+            && let ty::Dynamic(b_data, _, ty::DynStar) = b.kind()
             && a_data.principal_def_id() == b_data.principal_def_id()
         {
             return self.unify_and(a, b, |_| vec![]);
