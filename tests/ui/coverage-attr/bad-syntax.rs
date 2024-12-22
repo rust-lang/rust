@@ -1,3 +1,4 @@
+#![feature(coverage_attribute)]
 //@ edition: 2021
 //@ reference: attributes.coverage.syntax
 //@ reference: attributes.coverage.duplicates
