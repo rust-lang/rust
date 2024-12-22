@@ -171,7 +171,7 @@ pub fn should_call_clone_as_function(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
     )
 }
 
-/// Returns true if ty has `iter` or `iter_mut` methods
+/// If `ty` is known to have a `iter` or `iter_mut` method, returns a symbol representing the type.
 pub fn has_iter_method(cx: &LateContext<'_>, probably_ref_ty: Ty<'_>) -> Option<Symbol> {
     // FIXME: instead of this hard-coded list, we should check if `<adt>::iter`
     // exists and has the desired signature. Unfortunately FnCtxt is not exported
