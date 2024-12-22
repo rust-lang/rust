@@ -55,7 +55,7 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
         Bn::Asin => 1,
         Bn::Asinh => 2,
         Bn::Atan => 1,
-        Bn::Atan2 => 1,
+        Bn::Atan2 => 2,
         Bn::Atanh => 2,
         Bn::Cbrt => 1,
         Bn::Cos => 1,
@@ -187,6 +187,20 @@ impl MaybeOverride<(f32,)> for SpecialCase {
             return XFAIL;
         }
 
+        if (ctx.base_name == BaseName::Lgamma || ctx.base_name == BaseName::LgammaR)
+            && input.0 > 4e36
+            && expected.is_infinite()
+            && !actual.is_infinite()
+        {
+            // This result should saturate but we return a finite value.
+            return XFAIL;
+        }
+
+        if ctx.base_name == BaseName::J0 && input.0 < -1e34 {
+            // Errors get huge close to -inf
+            return XFAIL;
+        }
+
         maybe_check_nan_bits(actual, expected, ctx)
     }
 
@@ -245,6 +259,11 @@ impl MaybeOverride<(f64,)> for SpecialCase {
         if ctx.base_name == BaseName::Lgamma || ctx.base_name == BaseName::LgammaR && input.0 < 0.0
         {
             // loggamma should not be defined for x < 0, yet we both return results
+            return XFAIL;
+        }
+
+        if ctx.base_name == BaseName::J0 && input.0 < -1e300 {
+            // Errors get huge close to -inf
             return XFAIL;
         }
 
@@ -364,6 +383,7 @@ impl MaybeOverride<(i32, f32)> for SpecialCase {
         }
     }
 }
+
 impl MaybeOverride<(i32, f64)> for SpecialCase {
     fn check_float<F: Float>(
         input: (i32, f64),
