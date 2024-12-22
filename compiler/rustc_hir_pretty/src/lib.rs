@@ -402,8 +402,10 @@ impl<'a> State<'a> {
             }
             hir::TyKind::Path(ref qpath) => self.print_qpath(qpath, false),
             hir::TyKind::TraitObject(bounds, lifetime, syntax) => {
-                if syntax == ast::TraitObjectSyntax::Dyn {
-                    self.word_space("dyn");
+                match syntax {
+                    ast::TraitObjectSyntax::Dyn => self.word_nbsp("dyn"),
+                    ast::TraitObjectSyntax::DynStar => self.word_nbsp("dyn*"),
+                    ast::TraitObjectSyntax::None => {}
                 }
                 let mut first = true;
                 for bound in bounds {
