@@ -369,6 +369,7 @@ impl FlycheckActor {
                         tracing::trace!(
                             flycheck_id = self.id,
                             artifact = msg.target.name,
+                            package_id = msg.package_id.repr,
                             "artifact received"
                         );
                         self.report_progress(Progress::DidCheckCrate(msg.target.name));
@@ -380,6 +381,7 @@ impl FlycheckActor {
                         tracing::trace!(
                             flycheck_id = self.id,
                             message = diagnostic.message,
+                            package_id = package_id.as_ref().map(|it| &it.repr),
                             "diagnostic received"
                         );
                         if let Some(package_id) = &package_id {
