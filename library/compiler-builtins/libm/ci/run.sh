@@ -57,11 +57,6 @@ case "$target" in
     *windows-gnu) extra_flags="$extra_flags --exclude libm-macros" ;;
 esac
 
-if [ "$(uname -a)" = "Linux" ]; then
-    # also run the reference tests when we can. requires a Linux host.
-    extra_flags="$extra_flags --features libm-test/test-musl-serialized"
-fi
-
 # Make sure we can build with overriding features. We test the indibidual
 # features it controls separately.
 cargo check --no-default-features

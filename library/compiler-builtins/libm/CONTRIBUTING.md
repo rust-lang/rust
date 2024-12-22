@@ -6,9 +6,8 @@
   `src/math/mod.rs` accordingly. Also, uncomment the corresponding trait method
   in `src/lib.rs`.
 - Write some simple tests in your module (using `#[test]`)
-- Run `cargo test` to make sure it works
-- Run `cargo test --features libm-test/test-musl-serialized` to compare your
-  implementation against musl's
+- Run `cargo test` to make sure it works. Full tests are only run when enabling
+  features, see [Testing](#testing) below.
 - Send us a pull request! Make sure to run `cargo fmt` on your code before
   sending the PR. Also include "closes #42" in the PR description to close the
   corresponding issue.
@@ -66,12 +65,17 @@ Normal tests can be executed with:
 cargo test
 ```
 
-If you'd like to run tests with randomized inputs that get compared against musl
-itself, you'll need to be on a Linux system and then you can execute:
+If you'd like to run tests with randomized inputs that get compared against
+infinite-precision results, run:
 
 ```sh
-cargo test --features libm-test/test-musl-serialized
+cargo test --features libm-test/test-multiprecision,libm-test/build-musl --release
 ```
 
-Note that you may need to pass `--release` to Cargo if there are errors related
-to integer overflow.
+The multiprecision tests use the [`rug`] crate for bindings to MPFR. MPFR can
+be difficult to build on non-Unix systems, refer to [`gmp_mpfr_sys`] for help.
+
+`build-musl` does not build with MSVC, Wasm, or Thumb.
+
+[`rug`]: https://docs.rs/rug/latest/rug/
+[`gmp_mpfr_sys`]: https://docs.rs/gmp-mpfr-sys/1.6.4/gmp_mpfr_sys/
