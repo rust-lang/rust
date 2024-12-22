@@ -183,8 +183,8 @@ impl Command {
             Command::Doc { flags } => Self::doc(flags),
             Command::Fmt { flags } => Self::fmt(flags),
             Command::Clippy { flags } => Self::clippy(flags),
-            Command::Bench { target, no_install, save_baseline, benches } =>
-                Self::bench(target, no_install, save_baseline, benches),
+            Command::Bench { target, no_install, save_baseline, load_baseline, benches } =>
+                Self::bench(target, no_install, save_baseline, load_baseline, benches),
             Command::Toolchain { flags } => Self::toolchain(flags),
             Command::RustcPull { commit } => Self::rustc_pull(commit.clone()),
             Command::RustcPush { github_user, branch } => Self::rustc_push(github_user, branch),
@@ -387,8 +387,13 @@ impl Command {
         target: Option<String>,
         no_install: bool,
         save_baseline: Option<String>,
+        load_baseline: Option<String>,
         benches: Vec<String>,
     ) -> Result<()> {
+        if save_baseline.is_some() && load_baseline.is_some() {
+            bail!("Only one of `--save-baseline` and `--load-baseline` can be set");
+        }
+
         // The hyperfine to use
         let hyperfine = env::var("HYPERFINE");
         let hyperfine = hyperfine.as_deref().unwrap_or("hyperfine -w 1 -m 5 --shell=none");
@@ -396,11 +401,16 @@ impl Command {
         let Some((program_name, args)) = hyperfine.split_first() else {
             bail!("expected HYPERFINE environment variable to be non-empty");
         };
+
         if !no_install {
             // Make sure we have an up-to-date Miri installed and selected the right toolchain.
             Self::install(vec![])?;
         }
-        let baseline_temp_dir = if save_baseline.is_some() { Some(TempDir::new()?) } else { None };
+        let results_json_dir = if save_baseline.is_some() || load_baseline.is_some() {
+            Some(TempDir::new()?)
+        } else {
+            None
+        };
 
         let miri_dir = miri_dir()?;
         let sh = Shell::new()?;
@@ -428,7 +438,7 @@ impl Command {
         for bench in &benches {
             let current_bench = path!(benches_dir / bench / "Cargo.toml");
             let mut export_json = None;
-            if let Some(baseline_temp_dir) = &baseline_temp_dir {
+            if let Some(baseline_temp_dir) = &results_json_dir {
                 export_json = Some(format!(
                     "--export-json={}",
                     path!(baseline_temp_dir / format!("{bench}.bench.json")).display()
@@ -451,19 +461,47 @@ impl Command {
             stddev: f64,
         }
 
-        if let Some(baseline_file) = save_baseline {
-            let baseline_temp_dir = baseline_temp_dir.unwrap();
-            let mut results: HashMap<&str, BenchResult> = HashMap::new();
+        let gather_results = || -> Result<HashMap<&str, BenchResult>> {
+            let baseline_temp_dir = results_json_dir.unwrap();
+            let mut results = HashMap::new();
             for bench in &benches {
                 let result = File::open(path!(baseline_temp_dir / format!("{bench}.bench.json")))?;
                 let mut result: serde_json::Value =
                     serde_json::from_reader(BufReader::new(result))?;
                 let result: BenchResult = serde_json::from_value(result["results"][0].take())?;
-                results.insert(bench, result);
+                results.insert(bench as &str, result);
             }
+            Ok(results)
+        };
 
+        if let Some(baseline_file) = save_baseline {
+            let results = gather_results()?;
             let baseline = File::create(baseline_file)?;
             serde_json::to_writer_pretty(BufWriter::new(baseline), &results)?;
+        } else if let Some(baseline_file) = load_baseline {
+            let new_results = gather_results()?;
+            let baseline_results: HashMap<String, BenchResult> = {
+                let f = File::open(baseline_file)?;
+                serde_json::from_reader(BufReader::new(f))?
+            };
+            println!(
+                "Comparison with baseline (relative speed, lower is better for the new results):"
+            );
+            for (bench, new_result) in new_results.iter() {
+                let Some(baseline_result) = baseline_results.get(*bench) else { continue };
+
+                // Compare results (inspired by hyperfine)
+                let ratio = new_result.mean / baseline_result.mean;
+                // https://en.wikipedia.org/wiki/Propagation_of_uncertainty#Example_formulae
+                // Covariance asssumed to be 0, i.e. variables are assumed to be independent
+                let ratio_stddev = ratio
+                    * f64::sqrt(
+                        (new_result.stddev / new_result.mean).powi(2)
+                            + (baseline_result.stddev / baseline_result.mean).powi(2),
+                    );
+
+                println!("  {bench}: {ratio:.2} ± {ratio_stddev:.2}");
+            }
         }
 
         Ok(())

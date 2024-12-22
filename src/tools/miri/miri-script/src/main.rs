@@ -121,6 +121,10 @@ pub enum Command {
         /// as the baseline for a future run.
         #[arg(long)]
         save_baseline: Option<String>,
+        /// Load previous stored benchmark results as baseline, and print an analysis of how the
+        /// current run compares.
+        #[arg(long)]
+        load_baseline: Option<String>,
         /// List of benchmarks to run (default: run all benchmarks).
         benches: Vec<String>,
     },
