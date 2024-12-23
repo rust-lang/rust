@@ -404,9 +404,9 @@ dependencies = [
 
 [[package]]
 name = "vex-sdk"
-version = "0.23.0"
+version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cddff1d9785c5e35e031340c0a24afbeb911a654f99fec062c5ec94281c189ed"
+checksum = "be1b586dd8546706564cf20c94bae51c8f9e4891d70360d3fb63d563350df3d1"
 dependencies = [
  "compiler_builtins",
  "rustc-std-workspace-core",
