@@ -3795,7 +3795,7 @@ where
 /// See [`const_eval_select()`] for the rules and requirements around that intrinsic.
 pub(crate) macro const_eval_select {
     (
-        @capture { $($arg:ident : $ty:ty = $val:expr),* $(,)? } $( -> $ret:ty )? :
+        @capture$([$($binders:tt)*])? { $($arg:ident : $ty:ty = $val:expr),* $(,)? } $( -> $ret:ty )? :
         if const
             $(#[$compiletime_attr:meta])* $compiletime:block
         else
@@ -3803,7 +3803,7 @@ pub(crate) macro const_eval_select {
     ) => {
         // Use the `noinline` arm, after adding explicit `inline` attributes
         $crate::intrinsics::const_eval_select!(
-            @capture { $($arg : $ty = $val),* } $(-> $ret)? :
+            @capture$([$($binders)*])? { $($arg : $ty = $val),* } $(-> $ret)? :
             #[noinline]
             if const
                 #[inline] // prevent codegen on this function
@@ -3817,7 +3817,7 @@ pub(crate) macro const_eval_select {
     },
     // With a leading #[noinline], we don't add inline attributes
     (
-        @capture { $($arg:ident : $ty:ty = $val:expr),* $(,)? } $( -> $ret:ty )? :
+        @capture$([$($binders:tt)*])? { $($arg:ident : $ty:ty = $val:expr),* $(,)? } $( -> $ret:ty )? :
         #[noinline]
         if const
             $(#[$compiletime_attr:meta])* $compiletime:block
@@ -3825,12 +3825,12 @@ pub(crate) macro const_eval_select {
             $(#[$runtime_attr:meta])* $runtime:block
     ) => {{
         $(#[$runtime_attr])*
-        fn runtime($($arg: $ty),*) $( -> $ret )? {
+        fn runtime$(<$($binders)*>)?($($arg: $ty),*) $( -> $ret )? {
             $runtime
         }
 
         $(#[$compiletime_attr])*
-        const fn compiletime($($arg: $ty),*) $( -> $ret )? {
+        const fn compiletime$(<$($binders)*>)?($($arg: $ty),*) $( -> $ret )? {
             // Don't warn if one of the arguments is unused.
             $(let _ = $arg;)*
 
@@ -3842,14 +3842,14 @@ pub(crate) macro const_eval_select {
     // We support leaving away the `val` expressions for *all* arguments
     // (but not for *some* arguments, that's too tricky).
     (
-        @capture { $($arg:ident : $ty:ty),* $(,)? } $( -> $ret:ty )? :
+        @capture$([$($binders:tt)*])? { $($arg:ident : $ty:ty),* $(,)? } $( -> $ret:ty )? :
         if const
             $(#[$compiletime_attr:meta])* $compiletime:block
         else
             $(#[$runtime_attr:meta])* $runtime:block
     ) => {
         $crate::intrinsics::const_eval_select!(
-            @capture { $($arg : $ty = $arg),* } $(-> $ret)? :
+            @capture$([$($binders)*])? { $($arg : $ty = $arg),* } $(-> $ret)? :
             if const
                 $(#[$compiletime_attr])* $compiletime
             else

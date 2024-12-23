@@ -860,7 +860,10 @@ fn swap_copy_untyped() {
 }
 
 #[test]
-fn test_const_copy() {
+fn test_const_copy_ptr() {
+    // `copy` and `copy_nonoverlapping` are thin layers on top of intrinsics. Ensure they correctly
+    // deal with pointers even when the pointers cross the boundary from one "element" being copied
+    // to another.
     const {
         let ptr1 = &1;
         let mut ptr2 = &666;
@@ -899,21 +902,61 @@ fn test_const_copy() {
 }
 
 #[test]
-fn test_const_swap() {
-    const {
-        let mut ptr1 = &1;
-        let mut ptr2 = &666;
+fn test_const_swap_ptr() {
+    // The `swap` functions are implemented in the library, they are not primitives.
+    // Only `swap_nonoverlapping` takes a count; pointers that cross multiple elements
+    // are *not* supported.
+    // We put the pointer at an odd offset in the type and copy them as an array of bytes,
+    // which should catch most of the ways that the library implementation can get it wrong.
 
-        // Swap ptr1 and ptr2, bytewise. `swap` does not take a count
-        // so the best we can do is use an array.
-        type T = [u8; mem::size_of::<&i32>()];
+    #[cfg(target_pointer_width = "32")]
+    type HalfPtr = i16;
+    #[cfg(target_pointer_width = "64")]
+    type HalfPtr = i32;
+
+    #[repr(C, packed)]
+    #[allow(unused)]
+    struct S {
+        f1: HalfPtr,
+        // Crucially this field is at an offset that is not a multiple of the pointer size.
+        ptr: &'static i32,
+        // Make sure the entire type does not have a power-of-2 size:
+        // make it 3 pointers in size. This used to hit a bug in `swap_nonoverlapping`.
+        f2: [HalfPtr; 3],
+    }
+
+    // Ensure the entire thing is usize-aligned, so in principle this
+    // looks like it could be eligible for a `usize` copying loop.
+    #[cfg_attr(target_pointer_width = "32", repr(align(4)))]
+    #[cfg_attr(target_pointer_width = "64", repr(align(8)))]
+    struct A(S);
+
+    const {
+        let mut s1 = A(S { ptr: &1, f1: 0, f2: [0; 3] });
+        let mut s2 = A(S { ptr: &666, f1: 0, f2: [0; 3] });
+
+        // Swap ptr1 and ptr2, as an array.
+        type T = [u8; mem::size_of::<A>()];
         unsafe {
-            ptr::swap(ptr::from_mut(&mut ptr1).cast::<T>(), ptr::from_mut(&mut ptr2).cast::<T>());
+            ptr::swap(ptr::from_mut(&mut s1).cast::<T>(), ptr::from_mut(&mut s2).cast::<T>());
         }
 
         // Make sure they still work.
-        assert!(*ptr1 == 666);
-        assert!(*ptr2 == 1);
+        assert!(*s1.0.ptr == 666);
+        assert!(*s2.0.ptr == 1);
+
+        // Swap them back, again as an array.
+        unsafe {
+            ptr::swap_nonoverlapping(
+                ptr::from_mut(&mut s1).cast::<T>(),
+                ptr::from_mut(&mut s2).cast::<T>(),
+                1,
+            );
+        }
+
+        // Make sure they still work.
+        assert!(*s1.0.ptr == 1);
+        assert!(*s2.0.ptr == 666);
     };
 }
 
