@@ -160,14 +160,14 @@ Certain parts of the execution are picked randomly by Miri, such as the exact ba
 allocations are stored at and the interleaving of concurrently executing threads. Sometimes, it can
 be useful to explore multiple different execution, e.g. to make sure that your code does not depend
 on incidental "super-alignment" of new allocations and to test different thread interleavings.
-This can be done with the `--many-seeds` flag:
+This can be done with the `-Zmiri-many-seeds` flag:
 
 ```
-cargo miri test --many-seeds # tries the seeds in 0..64
-cargo miri test --many-seeds=0..16
+MIRIFLAGS="-Zmiri-many-seeds" cargo miri test # tries the seeds in 0..64
+MIRIFLAGS="-Zmiri-many-seeds=0..16" cargo miri test
 ```
 
-The default of 64 different seeds is quite slow, so you probably want to specify a smaller range.
+The default of 64 different seeds can be quite slow, so you often want to specify a smaller range.
 
 ### Running Miri on CI
 
@@ -317,6 +317,12 @@ environment variable. We first document the most relevant and most commonly used
   execution with a "permission denied" error being returned to the program.
   `warn` prints a full backtrace each time that happens; `warn-nobacktrace` is less
   verbose and shown at most once per operation. `hide` hides the warning entirely.
+* `-Zmiri-many-seeds=[<from>]..<to>` runs the program multiple times with different seeds for Miri's
+  RNG. With different seeds, Miri will make different choices to resolve non-determinism such as the
+  order in which concurrent threads are scheduled, or the exact addresses assigned to allocations.
+  This is useful to find bugs that only occur under particular interleavings of concurrent threads,
+  or that otherwise depend on non-determinism. If the `<from>` part is skipped, it defaults to `0`.
+  Can be used without a value; in that case the range defaults to `0..64`.
 * `-Zmiri-num-cpus` states the number of available CPUs to be reported by miri. By default, the
   number of available CPUs is `1`. Note that this flag does not affect how miri handles threads in
   any way.
