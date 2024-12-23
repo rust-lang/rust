@@ -100,7 +100,7 @@ pub const STDIN_BUF_SIZE: usize = 4096;
 pub const STDOUT_BUF_SIZE: usize = 2048;
 
 pub fn is_ebadf(_err: &io::Error) -> bool {
-    true
+    false
 }
 
 pub fn panic_output() -> Option<impl io::Write> {
