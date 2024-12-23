@@ -92,7 +92,7 @@ impl<'tcx> NonConstOp<'tcx> for ConditionallyConstCall<'tcx> {
     }
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        ccx.tcx.sess.create_feature_err(
+        let mut err = ccx.tcx.sess.create_feature_err(
             errors::ConditionallyConstCall {
                 span,
                 def_path_str: ccx.tcx.def_path_str_with_args(self.callee, self.args),
@@ -100,7 +100,15 @@ impl<'tcx> NonConstOp<'tcx> for ConditionallyConstCall<'tcx> {
                 kind: ccx.const_kind(),
             },
             sym::const_trait_impl,
-        )
+        );
+
+        err.note(format!(
+            "calls in {}s are limited to constant functions, \
+             tuple structs and tuple variants",
+            ccx.const_kind(),
+        ));
+
+        err
     }
 }
 
