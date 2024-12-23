@@ -1384,7 +1384,7 @@ fn file_try_clone() {
 }
 
 #[test]
-#[cfg(not(windows))]
+#[cfg(not(target_vendor = "win7"))]
 fn unlink_readonly() {
     let tmpdir = tmpdir();
     let path = tmpdir.join("file");
