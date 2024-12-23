@@ -7,12 +7,12 @@ LL | / trait Trait {
 LL | |     #[coverage(off)]
 LL | |     const X: u32;
 ...  |
-LL | |     type U;
+LL | |     fn g();
 LL | | }
    | |_- not a function or closure
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/no-coverage.rs:41:5
+  --> $DIR/no-coverage.rs:50:5
    |
 LL |     #[coverage(off)]
    |     ^^^^^^^^^^^^^^^^
@@ -20,7 +20,7 @@ LL |     let _ = ();
    |     ----------- not a function or closure
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/no-coverage.rs:45:9
+  --> $DIR/no-coverage.rs:54:9
    |
 LL |         #[coverage(off)]
    |         ^^^^^^^^^^^^^^^^
@@ -28,7 +28,7 @@ LL |         () => (),
    |         -------- not a function or closure
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/no-coverage.rs:49:5
+  --> $DIR/no-coverage.rs:58:5
    |
 LL |     #[coverage(off)]
    |     ^^^^^^^^^^^^^^^^
@@ -52,7 +52,23 @@ LL |     type T;
    |     ------- not a function or closure
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/no-coverage.rs:24:5
+  --> $DIR/no-coverage.rs:19:5
+   |
+LL |     #[coverage(off)]
+   |     ^^^^^^^^^^^^^^^^
+LL |     fn f(&self);
+   |     ------------ not a function or closure
+
+error[E0788]: attribute should be applied to a function definition or closure
+  --> $DIR/no-coverage.rs:22:5
+   |
+LL |     #[coverage(off)]
+   |     ^^^^^^^^^^^^^^^^
+LL |     fn g();
+   |     ------- not a function or closure
+
+error[E0788]: attribute should be applied to a function definition or closure
+  --> $DIR/no-coverage.rs:30:5
    |
 LL |     #[coverage(off)]
    |     ^^^^^^^^^^^^^^^^
@@ -60,7 +76,7 @@ LL |     type T = Self;
    |     -------------- not a function or closure
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/no-coverage.rs:27:5
+  --> $DIR/no-coverage.rs:33:5
    |
 LL |     #[coverage(off)]
    |     ^^^^^^^^^^^^^^^^
@@ -68,7 +84,7 @@ LL |     type U = impl Trait;
    |     -------------------- not a function or closure
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/no-coverage.rs:32:5
+  --> $DIR/no-coverage.rs:41:5
    |
 LL |     #[coverage(off)]
    |     ^^^^^^^^^^^^^^^^
@@ -76,7 +92,7 @@ LL |     static X: u32;
    |     -------------- not a function or closure
 
 error[E0788]: attribute should be applied to a function definition or closure
-  --> $DIR/no-coverage.rs:35:5
+  --> $DIR/no-coverage.rs:44:5
    |
 LL |     #[coverage(off)]
    |     ^^^^^^^^^^^^^^^^
@@ -84,13 +100,13 @@ LL |     type T;
    |     ------- not a function or closure
 
 error: unconstrained opaque type
-  --> $DIR/no-coverage.rs:28:14
+  --> $DIR/no-coverage.rs:34:14
    |
 LL |     type U = impl Trait;
    |              ^^^^^^^^^^
    |
    = note: `U` must be used in combination with a concrete type within the same impl
 
-error: aborting due to 11 previous errors
+error: aborting due to 13 previous errors
 
 For more information about this error, try `rustc --explain E0788`.

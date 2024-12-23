@@ -15,6 +15,12 @@ trait Trait {
     type T;
 
     type U;
+
+    #[coverage(off)] //~ ERROR attribute should be applied to a function definition or closure
+    fn f(&self);
+
+    #[coverage(off)] //~ ERROR attribute should be applied to a function definition or closure
+    fn g();
 }
 
 #[coverage(off)]
@@ -26,6 +32,9 @@ impl Trait for () {
 
     #[coverage(off)] //~ ERROR attribute should be applied to a function definition or closure
     type U = impl Trait; //~ ERROR unconstrained opaque type
+
+    fn f(&self) {}
+    fn g() {}
 }
 
 extern "C" {
