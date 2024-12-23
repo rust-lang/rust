@@ -130,7 +130,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
         let ConstCx { tcx, typing_env, .. } = *ccx;
         let caller = ccx.def_id();
 
-        let diag_trait = |err, self_ty: Ty<'_>, trait_id| {
+        let note_trait_if_possible = |err, self_ty: Ty<'_>, trait_id| {
             let trait_ref = TraitRef::from_method(tcx, trait_id, args);
 
             match self_ty.kind() {
@@ -183,6 +183,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                             span,
                             ty: self_ty,
                             kind: ccx.const_kind(),
+                            non: "non",
                         })
                     };
                 }
@@ -226,9 +227,10 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                     span,
                     kind: ccx.const_kind(),
                     note,
+                    non: "non",
                 });
 
-                diag_trait(&mut err, self_ty, fn_trait_id);
+                note_trait_if_possible(&mut err, self_ty, fn_trait_id);
                 err
             }
             CallKind::Operator { trait_id, self_ty, .. } => {
@@ -237,6 +239,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                         span,
                         kind: ccx.const_kind(),
                         ty: self_ty,
+                        non: "non",
                     })
                 } else {
                     let mut sugg = None;
@@ -282,10 +285,11 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                         span,
                         kind: ccx.const_kind(),
                         sugg,
+                        non: "non",
                     })
                 };
 
-                diag_trait(&mut err, self_ty, trait_id);
+                note_trait_if_possible(&mut err, self_ty, trait_id);
                 err
             }
             CallKind::DerefCoercion { deref_target, deref_target_ty, self_ty } => {
@@ -302,19 +306,21 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                     kind: ccx.const_kind(),
                     target_ty: deref_target_ty,
                     deref_target: target,
+                    non: "non",
                 });
 
-                diag_trait(&mut err, self_ty, tcx.require_lang_item(LangItem::Deref, Some(span)));
+                note_trait_if_possible(&mut err, self_ty, tcx.require_lang_item(LangItem::Deref, Some(span)));
                 err
             }
             _ if tcx.opt_parent(callee) == tcx.get_diagnostic_item(sym::ArgumentMethods) => {
-                ccx.dcx().create_err(errors::NonConstFmtMacroCall { span, kind: ccx.const_kind() })
+                ccx.dcx().create_err(errors::NonConstFmtMacroCall { span, kind: ccx.const_kind(), non: "non" })
             }
             _ => ccx.dcx().create_err(errors::NonConstFnCall {
                 span,
                 def_descr: ccx.tcx.def_descr(callee),
                 def_path_str: ccx.tcx.def_path_str_with_args(callee, args),
                 kind: ccx.const_kind(),
+                non: "non",
             }),
         };
 
