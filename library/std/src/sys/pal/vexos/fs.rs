@@ -498,7 +498,7 @@ fn map_fresult(fresult: vex_sdk::FRESULT) -> io::Result<()> {
         )),
         vex_sdk::FRESULT::FR_INT_ERR => Err(io::Error::new(
             io::ErrorKind::Uncategorized,
-            "assertion failed and an insanity is detected in the internal process",
+            "internal error in filesystem runtime",
         )),
         vex_sdk::FRESULT::FR_NOT_READY => Err(io::Error::new(
             io::ErrorKind::Uncategorized,
