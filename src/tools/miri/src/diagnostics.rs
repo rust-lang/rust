@@ -12,7 +12,7 @@ use crate::*;
 /// Details of premature program termination.
 pub enum TerminationInfo {
     Exit {
-        code: i64,
+        code: i32,
         leak_check: bool,
     },
     Abort(String),
@@ -214,7 +214,7 @@ pub fn prune_stacktrace<'tcx>(
 pub fn report_error<'tcx>(
     ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
     e: InterpErrorInfo<'tcx>,
-) -> Option<(i64, bool)> {
+) -> Option<(i32, bool)> {
     use InterpErrorKind::*;
     use UndefinedBehaviorInfo::*;
 

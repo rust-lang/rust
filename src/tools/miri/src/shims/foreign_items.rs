@@ -428,7 +428,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "exit" => {
                 let [code] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let code = this.read_scalar(code)?.to_i32()?;
-                throw_machine_stop!(TerminationInfo::Exit { code: code.into(), leak_check: false });
+                throw_machine_stop!(TerminationInfo::Exit { code, leak_check: false });
             }
             "abort" => {
                 let [] = this.check_shim(abi, Conv::C, link_name, args)?;
