@@ -6,7 +6,7 @@
 // Ensure that on stable we don't suggest restricting with an unsafe trait and we continue
 // mentioning the rest of the obligation chain.
 
-use run_make_support::{diff, rust_lib_name, rustc};
+use run_make_support::{diff, rustc};
 
 fn main() {
     let out = rustc()
