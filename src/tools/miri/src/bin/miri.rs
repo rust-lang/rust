@@ -29,8 +29,8 @@ use std::num::NonZero;
 use std::ops::Range;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
+use std::sync::atomic::{AtomicI32, Ordering};
+use std::sync::{Arc, Once};
 
 use miri::{
     BacktraceStyle, BorrowTrackerMethod, MiriConfig, ProvenanceMode, RetagFields, ValidationMode,
@@ -335,26 +335,24 @@ fn rustc_logger_config() -> rustc_log::LoggerConfig {
 
 /// The global logger can only be set once per process, so track
 /// whether that already happened.
-static LOGGER_INITED: AtomicBool = AtomicBool::new(false);
+static LOGGER_INITED: Once = Once::new();
 
 fn init_early_loggers(early_dcx: &EarlyDiagCtxt) {
-    // Now for rustc. We only initialize `rustc` if the env var is set (so the user asked for it).
+    // We only initialize `rustc` if the env var is set (so the user asked for it).
     // If it is not set, we avoid initializing now so that we can initialize later with our custom
-    // settings, and *not* log anything for what happens before `miri` gets started.
+    // settings, and *not* log anything for what happens before `miri` starts interpreting.
     if env::var_os("RUSTC_LOG").is_some() {
-        rustc_driver::init_logger(early_dcx, rustc_logger_config());
-        assert!(!LOGGER_INITED.swap(true, Ordering::AcqRel));
+        LOGGER_INITED.call_once(|| {
+            rustc_driver::init_logger(early_dcx, rustc_logger_config());
+        });
     }
 }
 
 fn init_late_loggers(early_dcx: &EarlyDiagCtxt, tcx: TyCtxt<'_>) {
     // If the logger is not yet initialized, initialize it.
-    if !LOGGER_INITED.swap(true, Ordering::AcqRel) {
+    LOGGER_INITED.call_once(|| {
         rustc_driver::init_logger(early_dcx, rustc_logger_config());
-    }
-    // There's a little race condition here in many-seeds mode, where we don't wait for the thread
-    // that is doing the initializing. But if you want to debug things with extended logging you
-    // probably won't use many-seeds mode anyway.
+    });
 
     // If `MIRI_BACKTRACE` is set and `RUSTC_CTFE_BACKTRACE` is not, set `RUSTC_CTFE_BACKTRACE`.
     // Do this late, so we ideally only apply this to Miri's errors.
@@ -742,8 +740,9 @@ fn main() {
     if many_seeds.is_some() && miri_config.seed.is_some() {
         show_error!("Only one of `-Zmiri-seed` and `-Zmiri-many-seeds can be set");
     }
+
+    // Ensure we have parallelism for many-seeds mode.
     if many_seeds.is_some() && !rustc_args.iter().any(|arg| arg.starts_with("-Zthreads=")) {
-        // Ensure we have parallelism for many-seeds mode.
         rustc_args.push(format!(
             "-Zthreads={}",
             std::thread::available_parallelism().map_or(1, |n| n.get())
