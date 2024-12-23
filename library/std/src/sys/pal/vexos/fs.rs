@@ -39,7 +39,7 @@ pub struct OpenOptions {
 }
 
 #[derive(Copy, Clone, Debug, Default)]
-pub struct FileTimes {}
+pub struct FileTimes(());
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FilePermissions;
@@ -50,7 +50,7 @@ pub struct FileType {
 }
 
 #[derive(Debug)]
-pub struct DirBuilder {}
+pub struct DirBuilder(());
 
 impl FileAttr {
     /// Creates a FileAttr by getting data from an opened file.
@@ -217,13 +217,12 @@ impl File {
             // Open in read only mode
             unsafe { vex_sdk::vexFileOpen(path.as_ptr(), c"".as_ptr()) }
         } else if opts.write && opts.append {
-            // Open in read/write and append mode
+            // Open in write and append mode
             unsafe { vex_sdk::vexFileOpenWrite(path.as_ptr()) }
         } else if opts.write && opts.truncate {
-            // Open in read/write mode
+            // Open in write mode
             unsafe { vex_sdk::vexFileOpenCreate(path.as_ptr()) }
         } else if opts.write {
-            // Open in read/write and overwrite mode
             unsafe {
                 // Open in read/write and append mode
                 let fd = vex_sdk::vexFileOpenWrite(path.as_ptr());
