@@ -163,3 +163,4 @@ LL | pub extern "C" fn used_generic5<T>() -> Vec<T> {
    = note: this struct has unspecified layout
 
 error: aborting due to 17 previous errors
+

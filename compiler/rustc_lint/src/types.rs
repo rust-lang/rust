@@ -849,6 +849,17 @@ enum TypeSizedness {
     UnsizedWithMetadata,
 }
 
+/// what type indirection points to a given type
+#[derive(Clone, Copy)]
+enum IndirectionType {
+    /// box (valid non-null pointer, owns pointee)
+    Box,
+    /// ref (valid non-null pointer, borrows pointee)
+    Ref,
+    /// raw pointer (not necessarily non-null or valid. no info on ownership)
+    RawPtr,
+}
+
 /// Is this type unsized because it contains (or is) a foreign type?
 /// (Returns Err if the type happens to be sized after all)
 fn get_type_sizedness<'tcx, 'a>(cx: &'a LateContext<'tcx>, ty: Ty<'tcx>) -> TypeSizedness {
@@ -1261,6 +1272,77 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
     }
 
+    /// Checks if the given indirection (box,ref,pointer) is "ffi-safe"
+    fn check_indirection_for_ffi(
+        &self,
+        acc: &mut CTypesVisitorState<'tcx>,
+        ty: Ty<'tcx>,
+        inner_ty: Ty<'tcx>,
+        indirection_type: IndirectionType,
+    ) -> FfiResult<'tcx> {
+        use FfiResult::*;
+        let tcx = self.cx.tcx;
+        match get_type_sizedness(self.cx, inner_ty) {
+            TypeSizedness::UnsizedWithExternType | TypeSizedness::Definite => {
+                // there's a nuance on what this lint should do for
+                // function definitions (`extern "C" fn fn_name(...) {...}`)
+                // versus declarations (`unsafe extern "C" {fn fn_name(...);}`).
+                // This is touched upon in https://github.com/rust-lang/rust/issues/66220
+                // and https://github.com/rust-lang/rust/pull/72700
+                //
+                // The big question is: what does "ABI safety" mean? if you have something translated to a C pointer
+                // (which has a stable layout) but points to FFI-unsafe type, is it safe?
+                // On one hand, the function's ABI will match that of a similar C-declared function API,
+                // on the other, dereferencing the pointer on the other side of the FFI boundary will be painful.
+                // In this code, the opinion on is split between function declarations and function definitions,
+                // with the idea that at least one side of the FFI boundary needs to treat the pointee as an opaque type.
+                // For declarations, we see this as unsafe, but for definitions, we see this as safe.
+                //
+                // For extern function declarations, the actual definition of the function is written somewhere else,
+                // meaning the declaration is free to express this opaqueness with an extern type (opaque caller-side) or a std::ffi::c_void (opaque callee-side)
+                // For extern function definitions, however, in the case where the type is opaque caller-side, it is not opaque callee-side,
+                // and having the full type information is necessary to compile the function.
+                if matches!(self.mode, CItemKind::Definition) {
+                    return FfiSafe;
+                } else {
+                    let inner_res = self.check_type_for_ffi(acc, inner_ty);
+                    return match inner_res {
+                        FfiSafe => inner_res,
+                        _ => FfiUnsafeWrapper {
+                            ty,
+                            reason: fluent::lint_improper_ctypes_sized_ptr_to_unsafe_type,
+                            wrapped: Box::new(inner_res),
+                            help: None,
+                        },
+                    };
+                }
+            }
+            TypeSizedness::UnsizedWithMetadata => {
+                let help = match inner_ty.kind() {
+                    ty::Str => Some(fluent::lint_improper_ctypes_str_help),
+                    ty::Slice(_) => Some(fluent::lint_improper_ctypes_slice_help),
+                    ty::Adt(def, _)
+                        if matches!(def.adt_kind(), AdtKind::Struct | AdtKind::Union)
+                            && matches!(
+                                tcx.get_diagnostic_name(def.did()),
+                                Some(sym::cstring_type | sym::cstr_type)
+                            )
+                            && !acc.base_ty.is_mutable_ptr() =>
+                    {
+                        Some(fluent::lint_improper_ctypes_cstr_help)
+                    }
+                    _ => None,
+                };
+                let reason = match indirection_type {
+                    IndirectionType::RawPtr => fluent::lint_improper_ctypes_unsized_ptr,
+                    IndirectionType::Ref => fluent::lint_improper_ctypes_unsized_ref,
+                    IndirectionType::Box => fluent::lint_improper_ctypes_unsized_box,
+                };
+                FfiUnsafe { ty, reason, help }
+            }
+        }
+    }
+
     /// Checks if the given type is "ffi-safe" (has a stable, well-defined
     /// representation which can be exported to C code).
     fn check_type_for_ffi(
@@ -1283,48 +1365,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         match *ty.kind() {
             ty::Adt(def, args) => {
                 if let Some(inner_ty) = ty.boxed_ty() {
-                    if let TypeSizedness::UnsizedWithExternType | TypeSizedness::Definite =
-                        get_type_sizedness(self.cx, inner_ty)
-                    {
-                        // discussion on declaration vs definition:
-                        // see the `ty::RawPtr(inner_ty, _) | ty::Ref(_, inner_ty, _)` arm
-                        // of this `match *ty.kind()` block
-                        if matches!(self.mode, CItemKind::Definition) {
-                            return FfiSafe;
-                        } else {
-                            let inner_res = self.check_type_for_ffi(acc, inner_ty);
-                            return match inner_res {
-                                FfiUnsafe { .. } | FfiUnsafeWrapper { .. } => FfiUnsafeWrapper {
-                                    ty,
-                                    reason: fluent::lint_improper_ctypes_sized_ptr_to_unsafe_type,
-                                    wrapped: Box::new(inner_res),
-                                    help: None,
-                                },
-                                _ => inner_res,
-                            };
-                        }
-                    } else {
-                        let help = match inner_ty.kind() {
-                            ty::Str => Some(fluent::lint_improper_ctypes_str_help),
-                            ty::Slice(_) => Some(fluent::lint_improper_ctypes_slice_help),
-                            ty::Adt(def, _)
-                                if matches!(def.adt_kind(), AdtKind::Struct | AdtKind::Union)
-                                    && matches!(
-                                        tcx.get_diagnostic_name(def.did()),
-                                        Some(sym::cstring_type | sym::cstr_type)
-                                    )
-                                    && !acc.base_ty.is_mutable_ptr() =>
-                            {
-                                Some(fluent::lint_improper_ctypes_cstr_help)
-                            }
-                            _ => None,
-                        };
-                        return FfiUnsafe {
-                            ty,
-                            reason: fluent::lint_improper_ctypes_unsized_box,
-                            help,
-                        };
-                    }
+                    return self.check_indirection_for_ffi(acc, ty, inner_ty, IndirectionType::Box);
                 }
                 if def.is_phantom_data() {
                     return FfiPhantom(ty);
@@ -1477,69 +1518,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 FfiSafe
             }
 
-            ty::RawPtr(inner_ty, _) | ty::Ref(_, inner_ty, _) => {
-                if let TypeSizedness::UnsizedWithExternType | TypeSizedness::Definite =
-                    get_type_sizedness(self.cx, inner_ty)
-                {
-                    // there's a nuance on what this lint should do for
-                    // function definitions (`extern "C" fn fn_name(...) {...}`)
-                    // versus declarations (`unsafe extern "C" {fn fn_name(...);}`).
-                    // This is touched upon in https://github.com/rust-lang/rust/issues/66220
-                    // and https://github.com/rust-lang/rust/pull/72700
-                    //
-                    // The big question is: what does "ABI safety" mean? if you have something translated to a C pointer
-                    // (which has a stable layout) but points to FFI-unsafe type, is it safe?
-                    // On one hand, the function's ABI will match that of a similar C-declared function API,
-                    // on the other, dereferencing the pointer on the other side of the FFI boundary will be painful.
-                    // In this code, the opinion on is split between function declarations and function definitions,
-                    // with the idea that at least one side of the FFI boundary needs to treat the pointee as an opaque type.
-                    // For declarations, we see this as unsafe, but for definitions, we see this as safe.
-                    //
-                    // For extern function declarations, the actual definition of the function is written somewhere else,
-                    // meaning the declaration is free to express this opaqueness with an extern type (opaque caller-side) or a std::ffi::c_void (opaque callee-side)
-                    // For extern function definitions, however, in the case where the type is opaque caller-side, it is not opaque callee-side,
-                    // and having the full type information is necessary to compile the function.
-                    if matches!(self.mode, CItemKind::Definition) {
-                        return FfiSafe;
-                    } else if matches!(ty.kind(), ty::RawPtr(..))
-                        && matches!(inner_ty.kind(), ty::Tuple(tuple) if tuple.is_empty())
-                    {
-                        FfiSafe
-                    } else {
-                        let inner_res = self.check_type_for_ffi(acc, inner_ty);
-                        return match inner_res {
-                            FfiSafe => inner_res,
-                            _ => FfiUnsafeWrapper {
-                                ty,
-                                reason: fluent::lint_improper_ctypes_sized_ptr_to_unsafe_type,
-                                wrapped: Box::new(inner_res),
-                                help: None,
-                            },
-                        };
-                    }
-                } else {
-                    let help = match inner_ty.kind() {
-                        ty::Str => Some(fluent::lint_improper_ctypes_str_help),
-                        ty::Slice(_) => Some(fluent::lint_improper_ctypes_slice_help),
-                        ty::Adt(def, _)
-                            if matches!(def.adt_kind(), AdtKind::Struct | AdtKind::Union)
-                                && matches!(
-                                    tcx.get_diagnostic_name(def.did()),
-                                    Some(sym::cstring_type | sym::cstr_type)
-                                )
-                                && !acc.base_ty.is_mutable_ptr() =>
-                        {
-                            Some(fluent::lint_improper_ctypes_cstr_help)
-                        }
-                        _ => None,
-                    };
-                    let reason = match ty.kind() {
-                        ty::RawPtr(..) => fluent::lint_improper_ctypes_unsized_ptr,
-                        ty::Ref(..) => fluent::lint_improper_ctypes_unsized_ref,
-                        _ => unreachable!(),
-                    };
-                    FfiUnsafe { ty, reason, help }
-                }
+            ty::RawPtr(inner_ty, _) => {
+                return self.check_indirection_for_ffi(acc, ty, inner_ty, IndirectionType::RawPtr);
+            }
+            ty::Ref(_, inner_ty, _) => {
+                return self.check_indirection_for_ffi(acc, ty, inner_ty, IndirectionType::Ref);
             }
 
             ty::Array(inner_ty, _) => self.check_type_for_ffi(acc, inner_ty),

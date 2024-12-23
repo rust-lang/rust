@@ -1999,6 +1999,11 @@ impl<'a> Subdiagnostic for ImproperCTypesLayer<'a> {
         if let Some(note) = self.span_note {
             diag.span_note(note, fluent::lint_note);
         };
+
+        diag.remove_arg("ty");
+        if self.inner_ty.is_some() {
+            diag.remove_arg("inner_ty");
+        }
     }
 }
 
