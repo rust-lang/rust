@@ -65,6 +65,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(crate) fn infer_opaque_types(
         &self,
         infcx: &InferCtxt<'tcx>,
+        is_typeck_child: bool,
         opaque_ty_decls: FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>>,
     ) -> FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>> {
         let mut result: FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>> = FxIndexMap::default();
@@ -73,6 +74,17 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         for (opaque_type_key, concrete_type) in opaque_ty_decls {
             debug!(?opaque_type_key, ?concrete_type);
+            if is_typeck_child && opaque_type_key.args.iter().any(|arg| arg.as_region().is_some()) {
+                let guar = infcx.dcx().span_err(
+                    concrete_type.span,
+                    "defining of opaque type in closure involving regions",
+                );
+                result.insert(opaque_type_key.def_id, OpaqueHiddenType {
+                    span: concrete_type.span,
+                    ty: Ty::new_error(infcx.tcx, guar),
+                });
+                continue;
+            }
 
             let mut arg_regions: Vec<(ty::RegionVid, ty::Region<'_>)> =
                 vec![(self.universal_regions().fr_static, infcx.tcx.lifetimes.re_static)];

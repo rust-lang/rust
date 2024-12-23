@@ -179,7 +179,11 @@ pub(crate) fn compute_regions<'a, 'tcx>(
         infcx.set_tainted_by_errors(guar);
     }
 
-    let remapped_opaque_tys = regioncx.infer_opaque_types(infcx, opaque_type_values);
+    let remapped_opaque_tys = regioncx.infer_opaque_types(
+        infcx,
+        infcx.tcx.is_typeck_child(body.source.def_id()),
+        opaque_type_values,
+    );
 
     NllOutput {
         regioncx,
