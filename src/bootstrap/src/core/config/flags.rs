@@ -633,7 +633,14 @@ pub fn get_completion<G: clap_complete::Generator>(shell: G, path: &Path) -> Opt
         })
     };
     let mut buf = Vec::new();
-    clap_complete::generate(shell, &mut cmd, "x.py", &mut buf);
+    let (bin_name, _) = path
+        .file_name()
+        .expect("path should be a regular file")
+        .to_str()
+        .expect("file name should be UTF-8")
+        .rsplit_once('.')
+        .expect("file name should have an extension");
+    clap_complete::generate(shell, &mut cmd, bin_name, &mut buf);
     if buf == current.as_bytes() {
         return None;
     }
