@@ -1944,6 +1944,11 @@ pub(crate) fn rewrite_struct_field(
     shape: Shape,
     lhs_max_width: usize,
 ) -> RewriteResult {
+    // FIXME(default_field_values): Implement formatting.
+    if field.default.is_some() {
+        return Err(RewriteError::Unknown);
+    }
+
     if contains_skip(&field.attrs) {
         return Ok(context.snippet(field.span()).to_owned());
     }
