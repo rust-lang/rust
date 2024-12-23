@@ -2809,29 +2809,6 @@ impl<'test> TestCx<'test> {
             println!("init_incremental_test: incremental_dir={}", incremental_dir.display());
         }
     }
-
-    fn aggressive_rm_rf(&self, path: &Path) -> io::Result<()> {
-        for e in path.read_dir()? {
-            let entry = e?;
-            let path = entry.path();
-            if entry.file_type()?.is_dir() {
-                self.aggressive_rm_rf(&path)?;
-            } else {
-                // Remove readonly files as well on windows (by default we can't)
-                fs::remove_file(&path).or_else(|e| {
-                    if cfg!(windows) && e.kind() == io::ErrorKind::PermissionDenied {
-                        let mut meta = entry.metadata()?.permissions();
-                        meta.set_readonly(false);
-                        fs::set_permissions(&path, meta)?;
-                        fs::remove_file(&path)
-                    } else {
-                        Err(e)
-                    }
-                })?;
-            }
-        }
-        fs::remove_dir(path)
-    }
 }
 
 struct ProcArgs {
