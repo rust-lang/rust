@@ -182,7 +182,7 @@ fn check_clousure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tc
                 // will succeed iff `T: 'static`. But the region of `T` is always erased by `typeck.expr_ty()` when
                 // T is a generic type. For example, return type of `Option<String>::as_deref()` is a generic.
                 // So we have a hack like this.
-                && generic_args.len() > 0
+                && !generic_args.is_empty()
             {
                 return;
             }
