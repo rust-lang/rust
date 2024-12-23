@@ -845,6 +845,8 @@ enum TypeSizedness {
     UnsizedWithExternType,
     /// unsized type for other reasons (slice, string, dyn Trait, closure, ...) (pointers are not C-compatible)
     UnsizedWithMetadata,
+    /// not known, usually for placeholder types (Self in non-impl trait functions, type parameters, aliases, the like)
+    NotYetKnown,
 }
 
 /// what type indirection points to a given type
@@ -863,17 +865,16 @@ enum IndirectionType {
 fn get_type_sizedness<'tcx, 'a>(cx: &'a LateContext<'tcx>, ty: Ty<'tcx>) -> TypeSizedness {
     let tcx = cx.tcx;
 
+    // note that sizedness is unrelated to inhabitedness
     if ty.is_sized(tcx, cx.typing_env()) {
         TypeSizedness::Definite
     } else {
+        // the overall type is !Sized or ?Sized
         match ty.kind() {
             ty::Slice(_) => TypeSizedness::UnsizedWithMetadata,
             ty::Str => TypeSizedness::UnsizedWithMetadata,
             ty::Dynamic(..) => TypeSizedness::UnsizedWithMetadata,
             ty::Foreign(..) => TypeSizedness::UnsizedWithExternType,
-            // While opaque types are checked for earlier, if a projection in a struct field
-            // normalizes to an opaque type, then it will reach this branch.
-            ty::Alias(ty::Opaque, ..) => todo!("We... don't know enough about this type yet?"),
             ty::Adt(def, args) => {
                 // for now assume: boxes and phantoms don't mess with this
                 match def.adt_kind() {
@@ -886,7 +887,13 @@ fn get_type_sizedness<'tcx, 'a>(cx: &'a LateContext<'tcx>, ty: Ty<'tcx>) -> Type
                         {
                             return TypeSizedness::UnsizedWithMetadata;
                         }
-                        // FIXME: how do we deal with non-exhaustive unsized structs/unions?
+
+                        // FIXME: double-check: non-exhaustive structs from other crates are assumed to be ?Sized, right?
+                        let is_non_exhaustive =
+                            def.non_enum_variant().is_field_list_non_exhaustive();
+                        if is_non_exhaustive && !def.did().is_local() {
+                            return TypeSizedness::NotYetKnown;
+                        }
 
                         if def.non_enum_variant().fields.is_empty() {
                             bug!("an empty struct is necessarily sized");
@@ -894,7 +901,7 @@ fn get_type_sizedness<'tcx, 'a>(cx: &'a LateContext<'tcx>, ty: Ty<'tcx>) -> Type
 
                         let variant = def.non_enum_variant();
 
-                        // only the last field may be unsized
+                        // only the last field may be !Sized (or ?Sized in the case of type params)
                         // (also since !ty.is_sized(), we have at least one field)
                         let last_field_i = variant.fields.last_index().unwrap();
                         let last_field = &variant.fields[last_field_i];
@@ -905,7 +912,8 @@ fn get_type_sizedness<'tcx, 'a>(cx: &'a LateContext<'tcx>, ty: Ty<'tcx>) -> Type
                             .unwrap_or(field_ty);
                         match get_type_sizedness(cx, field_ty) {
                             s @ (TypeSizedness::UnsizedWithMetadata
-                            | TypeSizedness::UnsizedWithExternType) => s,
+                            | TypeSizedness::UnsizedWithExternType
+                            | TypeSizedness::NotYetKnown) => s,
                             TypeSizedness::Definite => {
                                 bug!("failed to find the reason why struct `{:?}` is unsized", ty)
                             }
@@ -914,7 +922,7 @@ fn get_type_sizedness<'tcx, 'a>(cx: &'a LateContext<'tcx>, ty: Ty<'tcx>) -> Type
                 }
             }
             ty::Tuple(tuple) => {
-                // only the last field may be unsized
+                // only the last field may be !Sized (or ?Sized in the case of type params)
                 let n_fields = tuple.len();
                 let field_ty: Ty<'tcx> = tuple[n_fields - 1];
                 //let field_ty = last_field.ty(cx.tcx, args);
@@ -924,18 +932,51 @@ fn get_type_sizedness<'tcx, 'a>(cx: &'a LateContext<'tcx>, ty: Ty<'tcx>) -> Type
                     .unwrap_or(field_ty);
                 match get_type_sizedness(cx, field_ty) {
                     s @ (TypeSizedness::UnsizedWithMetadata
-                    | TypeSizedness::UnsizedWithExternType) => s,
+                    | TypeSizedness::UnsizedWithExternType
+                    | TypeSizedness::NotYetKnown) => s,
                     TypeSizedness::Definite => {
                         bug!("failed to find the reason why tuple `{:?}` is unsized", ty)
                     }
                 }
             }
-            ty => {
+
+            ty_kind @ (ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Array(..)
+            | ty::RawPtr(..)
+            | ty::Ref(..)
+            | ty::FnPtr(..)
+            | ty::Never
+            | ty::Pat(..) // these are (for now) numeric types with a range-based restriction
+            ) => {
+                // those types are all sized, right?
                 bug!(
-                    "we shouldn't be trying to determine if this is unsized for a reason or another: `{:?}`",
-                    ty
+                    "This ty_kind (`{:?}`) should be sized, yet we are in a branch of code that deals with unsized types.",
+                    ty_kind,
                 )
             }
+
+            // While opaque types are checked for earlier, if a projection in a struct field
+            // normalizes to an opaque type, then it will reach ty::Alias(ty::Opaque) here.
+            ty::Param(..) | ty::Alias(ty::Opaque | ty::Projection | ty::Inherent, ..) => {
+                return TypeSizedness::NotYetKnown;
+            }
+
+            ty::UnsafeBinder(_) => todo!("FIXME(unsafe_binder)"),
+
+            ty::Alias(ty::Free, ..)
+            | ty::Infer(..)
+            | ty::Bound(..)
+            | ty::Error(_)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..)
+            | ty::Placeholder(..)
+            | ty::FnDef(..) => bug!("unexpected type in foreign function: {:?}", ty),
         }
     }
 }
@@ -1315,6 +1356,26 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     };
                 }
             }
+            TypeSizedness::NotYetKnown => {
+                // types with sizedness NotYetKnown:
+                // - Type params (with `variable: impl Trait` shorthand or not)
+                //   (function definitions only, let's see how this interacts with monomorphisation)
+                // - Self in trait functions/methods
+                //   (FIXME note: function 'declarations' there should be treated as definitions)
+                // - Opaque return types
+                //   (always FFI-unsafe)
+                // - non-exhaustive structs/enums/unions from other crates
+                //   (always FFI-unsafe)
+                // (for the three first, this is unless there is a `+Sized` bound involved)
+                //
+                // FIXME: on a side note, we should separate 'true' declarations (non-rust code),
+                // 'fake' declarations (in traits, needed to be implemented elsewhere), and definitions.
+                // (for instance, definitions should worry about &self with Self:?Sized, but fake declarations shouldn't)
+
+                // wether they are FFI-safe or not does not depend on the indirections involved (&Self, &T, Box<impl Trait>),
+                // so let's not wrap the current context around a potential FfiUnsafe type param.
+                return self.check_type_for_ffi(acc, inner_ty);
+            }
             TypeSizedness::UnsizedWithMetadata => {
                 let help = match inner_ty.kind() {
                     ty::Str => Some(fluent::lint_improper_ctypes_str_help),
@@ -1490,6 +1551,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             // but only the base type is relevant for being representable in FFI.
             ty::Pat(base, ..) => self.check_type_for_ffi(acc, base),
 
+            // FIXME: this should probably be architecture-dependant
+            // same with some ty::Float variants.
             ty::Int(ty::IntTy::I128) | ty::Uint(ty::UintTy::U128) => {
                 FfiUnsafe { ty, reason: fluent::lint_improper_ctypes_128bit, help: None }
             }
@@ -1535,6 +1598,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 return self.check_indirection_for_ffi(acc, ty, inner_ty, IndirectionType::Ref);
             }
 
+            // having arrays as arguments / return values themselves is not FFI safe,
+            // but that is checked elsewhere
+            // if we reach this, we can assume the array is inside a struct, behind an indirection, etc.
             ty::Array(inner_ty, _) => self.check_type_for_ffi(acc, inner_ty),
 
             ty::FnPtr(sig_tys, hdr) => {
