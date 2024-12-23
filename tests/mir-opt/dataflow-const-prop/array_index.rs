@@ -11,9 +11,10 @@ fn main() {
 
     // CHECK:       [[array_lit]] = [const 0_u32, const 1_u32, const 2_u32, const 3_u32];
     // CHECK-NOT:   {{_.*}} = Len(
+    // CHECK-NOT:   {{_.*}} = PtrMetadata(
     // CHECK-NOT:   {{_.*}} = Lt(
     // CHECK-NOT:   assert(move _
-    // CHECK:       {{_.*}} = const 4_usize;
+    // CHECK:       {{_.*}} = const 2_usize;
     // CHECK:       {{_.*}} = const true;
     // CHECK:       assert(const true
     // CHECK:       [[x]] = copy [[array_lit]][2 of 3];

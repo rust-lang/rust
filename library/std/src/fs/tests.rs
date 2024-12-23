@@ -1912,3 +1912,44 @@ fn test_hidden_file_truncation() {
     let metadata = file.metadata().unwrap();
     assert_eq!(metadata.len(), 0);
 }
+
+#[cfg(windows)]
+#[test]
+fn test_rename_file_over_open_file() {
+    // Make sure that std::fs::rename works if the target file is already opened with FILE_SHARE_DELETE. See #123985.
+    let tmpdir = tmpdir();
+
+    // Create source with test data to read.
+    let source_path = tmpdir.join("source_file.txt");
+    fs::write(&source_path, b"source hello world").unwrap();
+
+    // Create target file with test data to read;
+    let target_path = tmpdir.join("target_file.txt");
+    fs::write(&target_path, b"target hello world").unwrap();
+
+    // Open target file
+    let target_file = fs::File::open(&target_path).unwrap();
+
+    // Rename source
+    fs::rename(source_path, &target_path).unwrap();
+
+    core::mem::drop(target_file);
+    assert_eq!(fs::read(target_path).unwrap(), b"source hello world");
+}
+
+#[test]
+#[cfg(windows)]
+fn test_rename_directory_to_non_empty_directory() {
+    // Renaming a directory over a non-empty existing directory should fail on Windows.
+    let tmpdir: TempDir = tmpdir();
+
+    let source_path = tmpdir.join("source_directory");
+    let target_path = tmpdir.join("target_directory");
+
+    fs::create_dir(&source_path).unwrap();
+    fs::create_dir(&target_path).unwrap();
+
+    fs::write(target_path.join("target_file.txt"), b"target hello world").unwrap();
+
+    error!(fs::rename(source_path, target_path), 145); // ERROR_DIR_NOT_EMPTY
+}

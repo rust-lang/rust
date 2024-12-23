@@ -3,6 +3,7 @@ use std::assert_matches::debug_assert_matches;
 use rustc_abi::FieldIdx;
 use rustc_ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::FxIndexSet;
+use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
 use rustc_middle::bug;
 use rustc_middle::ty::{self, FloatTy, IntTy, Ty, TyCtxt, TypeVisitableExt, UintTy};
@@ -19,6 +20,12 @@ pub struct InlineAsmCtxt<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     get_operand_ty: Box<dyn Fn(&'tcx hir::Expr<'tcx>) -> Ty<'tcx> + 'a>,
+}
+
+enum NonAsmTypeReason<'tcx> {
+    UnevaluatedSIMDArrayLength(DefId, ty::Const<'tcx>),
+    Invalid(Ty<'tcx>),
+    InvalidElement(DefId, Ty<'tcx>),
 }
 
 impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
@@ -56,7 +63,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         false
     }
 
-    fn get_asm_ty(&self, ty: Ty<'tcx>) -> Option<InlineAsmType> {
+    fn get_asm_ty(&self, ty: Ty<'tcx>) -> Result<InlineAsmType, NonAsmTypeReason<'tcx>> {
         let asm_ty_isize = match self.tcx.sess.target.pointer_width {
             16 => InlineAsmType::I16,
             32 => InlineAsmType::I32,
@@ -65,64 +72,62 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         };
 
         match *ty.kind() {
-            ty::Int(IntTy::I8) | ty::Uint(UintTy::U8) => Some(InlineAsmType::I8),
-            ty::Int(IntTy::I16) | ty::Uint(UintTy::U16) => Some(InlineAsmType::I16),
-            ty::Int(IntTy::I32) | ty::Uint(UintTy::U32) => Some(InlineAsmType::I32),
-            ty::Int(IntTy::I64) | ty::Uint(UintTy::U64) => Some(InlineAsmType::I64),
-            ty::Int(IntTy::I128) | ty::Uint(UintTy::U128) => Some(InlineAsmType::I128),
-            ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize) => Some(asm_ty_isize),
-            ty::Float(FloatTy::F16) => Some(InlineAsmType::F16),
-            ty::Float(FloatTy::F32) => Some(InlineAsmType::F32),
-            ty::Float(FloatTy::F64) => Some(InlineAsmType::F64),
-            ty::Float(FloatTy::F128) => Some(InlineAsmType::F128),
-            ty::FnPtr(..) => Some(asm_ty_isize),
-            ty::RawPtr(ty, _) if self.is_thin_ptr_ty(ty) => Some(asm_ty_isize),
+            ty::Int(IntTy::I8) | ty::Uint(UintTy::U8) => Ok(InlineAsmType::I8),
+            ty::Int(IntTy::I16) | ty::Uint(UintTy::U16) => Ok(InlineAsmType::I16),
+            ty::Int(IntTy::I32) | ty::Uint(UintTy::U32) => Ok(InlineAsmType::I32),
+            ty::Int(IntTy::I64) | ty::Uint(UintTy::U64) => Ok(InlineAsmType::I64),
+            ty::Int(IntTy::I128) | ty::Uint(UintTy::U128) => Ok(InlineAsmType::I128),
+            ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize) => Ok(asm_ty_isize),
+            ty::Float(FloatTy::F16) => Ok(InlineAsmType::F16),
+            ty::Float(FloatTy::F32) => Ok(InlineAsmType::F32),
+            ty::Float(FloatTy::F64) => Ok(InlineAsmType::F64),
+            ty::Float(FloatTy::F128) => Ok(InlineAsmType::F128),
+            ty::FnPtr(..) => Ok(asm_ty_isize),
+            ty::RawPtr(ty, _) if self.is_thin_ptr_ty(ty) => Ok(asm_ty_isize),
             ty::Adt(adt, args) if adt.repr().simd() => {
                 let fields = &adt.non_enum_variant().fields;
-                let elem_ty = fields[FieldIdx::ZERO].ty(self.tcx, args);
+                let field = &fields[FieldIdx::ZERO];
+                let elem_ty = field.ty(self.tcx, args);
 
                 let (size, ty) = match elem_ty.kind() {
                     ty::Array(ty, len) => {
+                        let len = self.tcx.normalize_erasing_regions(self.typing_env, *len);
                         if let Some(len) = len.try_to_target_usize(self.tcx) {
                             (len, *ty)
                         } else {
-                            return None;
+                            return Err(NonAsmTypeReason::UnevaluatedSIMDArrayLength(
+                                field.did, len,
+                            ));
                         }
                     }
                     _ => (fields.len() as u64, elem_ty),
                 };
 
                 match ty.kind() {
-                    ty::Int(IntTy::I8) | ty::Uint(UintTy::U8) => Some(InlineAsmType::VecI8(size)),
-                    ty::Int(IntTy::I16) | ty::Uint(UintTy::U16) => {
-                        Some(InlineAsmType::VecI16(size))
-                    }
-                    ty::Int(IntTy::I32) | ty::Uint(UintTy::U32) => {
-                        Some(InlineAsmType::VecI32(size))
-                    }
-                    ty::Int(IntTy::I64) | ty::Uint(UintTy::U64) => {
-                        Some(InlineAsmType::VecI64(size))
-                    }
+                    ty::Int(IntTy::I8) | ty::Uint(UintTy::U8) => Ok(InlineAsmType::VecI8(size)),
+                    ty::Int(IntTy::I16) | ty::Uint(UintTy::U16) => Ok(InlineAsmType::VecI16(size)),
+                    ty::Int(IntTy::I32) | ty::Uint(UintTy::U32) => Ok(InlineAsmType::VecI32(size)),
+                    ty::Int(IntTy::I64) | ty::Uint(UintTy::U64) => Ok(InlineAsmType::VecI64(size)),
                     ty::Int(IntTy::I128) | ty::Uint(UintTy::U128) => {
-                        Some(InlineAsmType::VecI128(size))
+                        Ok(InlineAsmType::VecI128(size))
                     }
                     ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize) => {
-                        Some(match self.tcx.sess.target.pointer_width {
+                        Ok(match self.tcx.sess.target.pointer_width {
                             16 => InlineAsmType::VecI16(size),
                             32 => InlineAsmType::VecI32(size),
                             64 => InlineAsmType::VecI64(size),
                             width => bug!("unsupported pointer width: {width}"),
                         })
                     }
-                    ty::Float(FloatTy::F16) => Some(InlineAsmType::VecF16(size)),
-                    ty::Float(FloatTy::F32) => Some(InlineAsmType::VecF32(size)),
-                    ty::Float(FloatTy::F64) => Some(InlineAsmType::VecF64(size)),
-                    ty::Float(FloatTy::F128) => Some(InlineAsmType::VecF128(size)),
-                    _ => None,
+                    ty::Float(FloatTy::F16) => Ok(InlineAsmType::VecF16(size)),
+                    ty::Float(FloatTy::F32) => Ok(InlineAsmType::VecF32(size)),
+                    ty::Float(FloatTy::F64) => Ok(InlineAsmType::VecF64(size)),
+                    ty::Float(FloatTy::F128) => Ok(InlineAsmType::VecF128(size)),
+                    _ => Err(NonAsmTypeReason::InvalidElement(field.did, ty)),
                 }
             }
             ty::Infer(_) => bug!("unexpected infer ty in asm operand"),
-            _ => None,
+            _ => Err(NonAsmTypeReason::Invalid(ty)),
         }
     }
 
@@ -163,17 +168,42 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             }
             _ => self.get_asm_ty(ty),
         };
-        let Some(asm_ty) = asm_ty else {
-            let msg = format!("cannot use value of type `{ty}` for inline assembly");
-            self.tcx
-                .dcx()
-                .struct_span_err(expr.span, msg)
-                .with_note(
-                    "only integers, floats, SIMD vectors, pointers and function pointers \
-                     can be used as arguments for inline assembly",
-                )
-                .emit();
-            return None;
+        let asm_ty = match asm_ty {
+            Ok(asm_ty) => asm_ty,
+            Err(reason) => {
+                match reason {
+                    NonAsmTypeReason::UnevaluatedSIMDArrayLength(did, len) => {
+                        let msg = format!("cannot evaluate SIMD vector length `{len}`");
+                        self.tcx
+                            .dcx()
+                            .struct_span_err(self.tcx.def_span(did), msg)
+                            .with_span_note(
+                                expr.span,
+                                "SIMD vector length needs to be known statically for use in `asm!`",
+                            )
+                            .emit();
+                    }
+                    NonAsmTypeReason::Invalid(ty) => {
+                        let msg = format!("cannot use value of type `{ty}` for inline assembly");
+                        self.tcx.dcx().struct_span_err(expr.span, msg).with_note(
+                            "only integers, floats, SIMD vectors, pointers and function pointers \
+                            can be used as arguments for inline assembly",
+                        ).emit();
+                    }
+                    NonAsmTypeReason::InvalidElement(did, ty) => {
+                        let msg = format!(
+                            "cannot use SIMD vector with element type `{ty}` for inline assembly"
+                        );
+                        self.tcx.dcx()
+                        .struct_span_err(self.tcx.def_span(did), msg).with_span_note(
+                            expr.span,
+                            "only integers, floats, SIMD vectors, pointers and function pointers \
+                            can be used as arguments for inline assembly",
+                        ).emit();
+                    }
+                }
+                return None;
+            }
         };
 
         // Check that the type implements Copy. The only case where this can

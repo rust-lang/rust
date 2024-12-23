@@ -1,5 +1,3 @@
-#![feature(async_closure)]
-
 use std::ops::AsyncFnMut;
 
 pub trait Main {

@@ -7,7 +7,6 @@ LL | |         loop {
 LL | |             if let true = true {
 LL | |                 match Enum::A(String::new()) {
 ...  |
-LL | |         }
 LL | |     };
    | |_____^
    |

@@ -9,7 +9,6 @@ use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::kw;
 
 use crate::definitions::DefPathData;
 use crate::hir;
@@ -256,7 +255,6 @@ impl DefKind {
 
     pub fn def_path_data(self, name: Symbol) -> DefPathData {
         match self {
-            DefKind::Struct | DefKind::Union if name == kw::Empty => DefPathData::AnonAdt,
             DefKind::Mod
             | DefKind::Struct
             | DefKind::Union

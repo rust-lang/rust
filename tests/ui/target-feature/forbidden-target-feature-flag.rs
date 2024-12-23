@@ -4,7 +4,6 @@
 // For now this is just a warning.
 //@ build-pass
 #![feature(no_core, lang_items)]
-#![no_std]
 #![no_core]
 
 #[lang = "sized"]

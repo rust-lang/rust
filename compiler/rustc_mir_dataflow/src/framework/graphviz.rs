@@ -16,7 +16,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Symbol, sym};
 use tracing::debug;
 use {rustc_ast as ast, rustc_graphviz as dot};
 
@@ -724,7 +724,7 @@ where
         }
     }
 
-    fn visit_statement_before_primary_effect(
+    fn visit_after_early_statement_effect(
         &mut self,
         results: &mut Results<'tcx, A>,
         state: &A::Domain,
@@ -737,7 +737,7 @@ where
         }
     }
 
-    fn visit_statement_after_primary_effect(
+    fn visit_after_primary_statement_effect(
         &mut self,
         results: &mut Results<'tcx, A>,
         state: &A::Domain,
@@ -748,7 +748,7 @@ where
         self.prev_state.clone_from(state)
     }
 
-    fn visit_terminator_before_primary_effect(
+    fn visit_after_early_terminator_effect(
         &mut self,
         results: &mut Results<'tcx, A>,
         state: &A::Domain,
@@ -761,7 +761,7 @@ where
         }
     }
 
-    fn visit_terminator_after_primary_effect(
+    fn visit_after_primary_terminator_effect(
         &mut self,
         results: &mut Results<'tcx, A>,
         state: &A::Domain,

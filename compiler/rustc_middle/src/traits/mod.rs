@@ -20,8 +20,7 @@ use rustc_macros::{
     Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
 };
 use rustc_span::def_id::{CRATE_DEF_ID, LocalDefId};
-use rustc_span::symbol::Symbol;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, Symbol};
 // FIXME: Remove this import and import via `solve::`
 pub use rustc_type_ir::solve::BuiltinImplSource;
 use smallvec::{SmallVec, smallvec};
@@ -316,8 +315,8 @@ pub enum ObligationCauseCode<'tcx> {
         span: Option<Span>,
         /// The root expected type induced by a scrutinee or type expression.
         root_ty: Ty<'tcx>,
-        /// Whether the `Span` came from an expression or a type expression.
-        origin_expr: bool,
+        /// Information about the `Span`, if it came from an expression, otherwise `None`.
+        origin_expr: Option<PatternOriginExpr>,
     },
 
     /// Computing common supertype in an if expression
@@ -528,6 +527,25 @@ pub struct MatchExpressionArmCause<'tcx> {
     pub prior_non_diverging_arms: Vec<Span>,
     /// Is the expectation of this match expression an RPIT?
     pub tail_defines_return_position_impl_trait: Option<LocalDefId>,
+}
+
+/// Information about the origin expression of a pattern, relevant to diagnostics.
+/// Fields here refer to the scrutinee of a pattern.
+/// If the scrutinee isn't given in the diagnostic, then this won't exist.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(TypeFoldable, TypeVisitable, HashStable, TyEncodable, TyDecodable)]
+pub struct PatternOriginExpr {
+    /// A span representing the scrutinee expression, with all leading references
+    /// peeled from the expression.
+    /// Only references in the expression are peeled - if the expression refers to a variable
+    /// whose type is a reference, then that reference is kept because it wasn't created
+    /// in the expression.
+    pub peeled_span: Span,
+    /// The number of references that were peeled to produce `peeled_span`.
+    pub peeled_count: usize,
+    /// Does the peeled expression need to be wrapped in parentheses for
+    /// a prefix suggestion (i.e., dereference) to be valid.
+    pub peeled_prefix_suggestion_parentheses: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

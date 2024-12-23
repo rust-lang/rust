@@ -3,7 +3,6 @@
 //@ run-pass
 //@ check-run-results
 
-#![feature(async_closure)]
 #![allow(unused)]
 
 extern crate block_on;

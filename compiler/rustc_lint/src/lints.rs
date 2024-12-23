@@ -16,8 +16,7 @@ use rustc_middle::ty::{Clause, PolyExistentialTraitRef, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_session::lint::AmbiguityErrorDiag;
 use rustc_span::edition::Edition;
-use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent};
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol, kw, sym};
 
 use crate::builtin::{InitError, ShorthandAssocTyCollector, TypeAliasBounds};
 use crate::errors::{OverruledAttributeSub, RequestedLevel};
@@ -951,13 +950,6 @@ pub(crate) struct NonGlobImportTypeIrInherent {
 pub(crate) struct LintPassByHand;
 
 #[derive(LintDiagnostic)]
-#[diag(lint_non_existent_doc_keyword)]
-#[help]
-pub(crate) struct NonExistentDocKeyword {
-    pub keyword: Symbol,
-}
-
-#[derive(LintDiagnostic)]
 #[diag(lint_diag_out_of_impl)]
 pub(crate) struct DiagOutOfImpl;
 
@@ -1816,14 +1808,14 @@ pub(crate) enum AmbiguousWidePointerComparisonsAddrSuggestion<'a> {
 }
 
 #[derive(LintDiagnostic)]
-pub(crate) enum UnpredictableFunctionPointerComparisons<'a> {
+pub(crate) enum UnpredictableFunctionPointerComparisons<'a, 'tcx> {
     #[diag(lint_unpredictable_fn_pointer_comparisons)]
     #[note(lint_note_duplicated_fn)]
     #[note(lint_note_deduplicated_fn)]
     #[note(lint_note_visit_fn_addr_eq)]
     Suggestion {
         #[subdiagnostic]
-        sugg: UnpredictableFunctionPointerComparisonsSuggestion<'a>,
+        sugg: UnpredictableFunctionPointerComparisonsSuggestion<'a, 'tcx>,
     },
     #[diag(lint_unpredictable_fn_pointer_comparisons)]
     #[note(lint_note_duplicated_fn)]
@@ -1833,22 +1825,40 @@ pub(crate) enum UnpredictableFunctionPointerComparisons<'a> {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    lint_fn_addr_eq_suggestion,
-    style = "verbose",
-    applicability = "maybe-incorrect"
-)]
-pub(crate) struct UnpredictableFunctionPointerComparisonsSuggestion<'a> {
-    pub ne: &'a str,
-    pub cast_right: String,
-    pub deref_left: &'a str,
-    pub deref_right: &'a str,
-    #[suggestion_part(code = "{ne}std::ptr::fn_addr_eq({deref_left}")]
-    pub left: Span,
-    #[suggestion_part(code = ", {deref_right}")]
-    pub middle: Span,
-    #[suggestion_part(code = "{cast_right})")]
-    pub right: Span,
+pub(crate) enum UnpredictableFunctionPointerComparisonsSuggestion<'a, 'tcx> {
+    #[multipart_suggestion(
+        lint_fn_addr_eq_suggestion,
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    FnAddrEq {
+        ne: &'a str,
+        deref_left: &'a str,
+        deref_right: &'a str,
+        #[suggestion_part(code = "{ne}std::ptr::fn_addr_eq({deref_left}")]
+        left: Span,
+        #[suggestion_part(code = ", {deref_right}")]
+        middle: Span,
+        #[suggestion_part(code = ")")]
+        right: Span,
+    },
+    #[multipart_suggestion(
+        lint_fn_addr_eq_suggestion,
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    FnAddrEqWithCast {
+        ne: &'a str,
+        deref_left: &'a str,
+        deref_right: &'a str,
+        fn_sig: rustc_middle::ty::PolyFnSig<'tcx>,
+        #[suggestion_part(code = "{ne}std::ptr::fn_addr_eq({deref_left}")]
+        left: Span,
+        #[suggestion_part(code = ", {deref_right}")]
+        middle: Span,
+        #[suggestion_part(code = " as {fn_sig})")]
+        right: Span,
+    },
 }
 
 pub(crate) struct ImproperCTypes<'a> {
@@ -2172,6 +2182,24 @@ impl UnexpectedCfgRustcHelp {
     }
 }
 
+#[derive(Subdiagnostic)]
+#[note(lint_unexpected_cfg_from_external_macro_origin)]
+#[help(lint_unexpected_cfg_from_external_macro_refer)]
+pub(crate) struct UnexpectedCfgRustcMacroHelp {
+    pub macro_kind: &'static str,
+    pub macro_name: Symbol,
+}
+
+#[derive(Subdiagnostic)]
+#[note(lint_unexpected_cfg_from_external_macro_origin)]
+#[help(lint_unexpected_cfg_from_external_macro_refer)]
+#[help(lint_unexpected_cfg_cargo_update)]
+pub(crate) struct UnexpectedCfgCargoMacroHelp {
+    pub macro_kind: &'static str,
+    pub macro_name: Symbol,
+    pub crate_name: Symbol,
+}
+
 #[derive(LintDiagnostic)]
 #[diag(lint_unexpected_cfg_name)]
 pub(crate) struct UnexpectedCfgName {
@@ -2186,8 +2214,7 @@ pub(crate) struct UnexpectedCfgName {
 pub(crate) mod unexpected_cfg_name {
     use rustc_errors::DiagSymbolList;
     use rustc_macros::Subdiagnostic;
-    use rustc_span::symbol::Ident;
-    use rustc_span::{Span, Symbol};
+    use rustc_span::{Ident, Span, Symbol};
 
     #[derive(Subdiagnostic)]
     pub(crate) enum CodeSuggestion {
@@ -2276,10 +2303,17 @@ pub(crate) mod unexpected_cfg_name {
         #[note(lint_unexpected_cfg_doc_cargo)]
         Cargo {
             #[subdiagnostic]
-            sub: Option<super::UnexpectedCfgCargoHelp>,
+            macro_help: Option<super::UnexpectedCfgCargoMacroHelp>,
+            #[subdiagnostic]
+            help: Option<super::UnexpectedCfgCargoHelp>,
         },
         #[note(lint_unexpected_cfg_doc_rustc)]
-        Rustc(#[subdiagnostic] super::UnexpectedCfgRustcHelp),
+        Rustc {
+            #[subdiagnostic]
+            macro_help: Option<super::UnexpectedCfgRustcMacroHelp>,
+            #[subdiagnostic]
+            help: super::UnexpectedCfgRustcHelp,
+        },
     }
 }
 
@@ -2382,9 +2416,19 @@ pub(crate) mod unexpected_cfg_value {
     #[derive(Subdiagnostic)]
     pub(crate) enum InvocationHelp {
         #[note(lint_unexpected_cfg_doc_cargo)]
-        Cargo(#[subdiagnostic] Option<CargoHelp>),
+        Cargo {
+            #[subdiagnostic]
+            help: Option<CargoHelp>,
+            #[subdiagnostic]
+            macro_help: Option<super::UnexpectedCfgCargoMacroHelp>,
+        },
         #[note(lint_unexpected_cfg_doc_rustc)]
-        Rustc(#[subdiagnostic] Option<super::UnexpectedCfgRustcHelp>),
+        Rustc {
+            #[subdiagnostic]
+            help: Option<super::UnexpectedCfgRustcHelp>,
+            #[subdiagnostic]
+            macro_help: Option<super::UnexpectedCfgRustcMacroHelp>,
+        },
     }
 
     #[derive(Subdiagnostic)]
@@ -2643,7 +2687,7 @@ impl<G: EmissionGuarantee> LintDiagnostic<'_, G> for ElidedNamedLifetime {
         //  but currently this lint's suggestions can conflict with those of `clippy::needless_lifetimes`:
         //  https://github.com/rust-lang/rust/pull/129840#issuecomment-2323349119
         // HACK: `'static` suggestions will never sonflict, emit only those for now.
-        if name != rustc_span::symbol::kw::StaticLifetime {
+        if name != kw::StaticLifetime {
             return;
         }
         match kind {

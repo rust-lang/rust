@@ -379,7 +379,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
         (Mod(lu, lmk), Mod(ru, rmk)) => {
             lu == ru
                 && match (lmk, rmk) {
-                    (ModKind::Loaded(litems, linline, _), ModKind::Loaded(ritems, rinline, _)) => {
+                    (ModKind::Loaded(litems, linline, _, _), ModKind::Loaded(ritems, rinline, _, _)) => {
                         linline == rinline && over(litems, ritems, |l, r| eq_item(l, r, eq_item_kind))
                     },
                     (ModKind::Unloaded, ModKind::Unloaded) => true,
@@ -872,8 +872,7 @@ pub fn eq_attr_args(l: &AttrArgs, r: &AttrArgs) -> bool {
     match (l, r) {
         (Empty, Empty) => true,
         (Delimited(la), Delimited(ra)) => eq_delim_args(la, ra),
-        (Eq { value: AttrArgsEq::Ast(le), .. }, Eq{ value: AttrArgsEq::Ast(re), .. }) => eq_expr(le, re),
-        (Eq { value: AttrArgsEq::Hir(ll), .. }, Eq{ value: AttrArgsEq::Hir(rl), .. }) => ll.kind == rl.kind,
+        (Eq { eq_span: _, expr: le }, Eq { eq_span: _, expr: re }) => eq_expr(le, re),
         _ => false,
     }
 }

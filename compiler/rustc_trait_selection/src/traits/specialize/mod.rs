@@ -483,15 +483,19 @@ fn report_negative_positive_conflict<'tcx>(
     negative_impl_def_id: DefId,
     positive_impl_def_id: DefId,
 ) -> ErrorGuaranteed {
-    tcx.dcx()
-        .create_err(NegativePositiveConflict {
-            impl_span: tcx.def_span(local_impl_def_id),
-            trait_desc: overlap.trait_ref,
-            self_ty: overlap.self_ty,
-            negative_impl_span: tcx.span_of_impl(negative_impl_def_id),
-            positive_impl_span: tcx.span_of_impl(positive_impl_def_id),
-        })
-        .emit()
+    let mut diag = tcx.dcx().create_err(NegativePositiveConflict {
+        impl_span: tcx.def_span(local_impl_def_id),
+        trait_desc: overlap.trait_ref,
+        self_ty: overlap.self_ty,
+        negative_impl_span: tcx.span_of_impl(negative_impl_def_id),
+        positive_impl_span: tcx.span_of_impl(positive_impl_def_id),
+    });
+
+    for cause in &overlap.intercrate_ambiguity_causes {
+        cause.add_intercrate_ambiguity_hint(&mut diag);
+    }
+
+    diag.emit()
 }
 
 fn report_conflicting_impls<'tcx>(

@@ -15,7 +15,7 @@ use std::iter::{self, once};
 
 use itertools::Itertools;
 use rustc_abi::ExternAbi;
-use rustc_attr::{ConstStability, StabilityLevel, StableSince};
+use rustc_attr_parsing::{ConstStability, StabilityLevel, StableSince};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
@@ -1626,10 +1626,7 @@ pub(crate) trait PrintWithSpace {
 
 impl PrintWithSpace for hir::Safety {
     fn print_with_space(&self) -> &str {
-        match self {
-            hir::Safety::Unsafe => "unsafe ",
-            hir::Safety::Safe => "",
-        }
+        self.prefix_str()
     }
 }
 

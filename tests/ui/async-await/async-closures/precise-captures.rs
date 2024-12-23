@@ -9,7 +9,6 @@
 // force_once - Force the closure mode to `FnOnce`, so exercising what was fixed
 //   in <https://github.com/rust-lang/rust/pull/123350>.
 
-#![feature(async_closure)]
 #![allow(unused_mut)]
 
 extern crate block_on;

@@ -17,7 +17,6 @@ pub use relate::StructurallyRelateAliases;
 pub use relate::combine::PredicateEmittingRelation;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::{Rollback, UndoLogs};
 use rustc_data_structures::unify as ut;
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed};
@@ -41,8 +40,7 @@ use rustc_middle::ty::{
     GenericParamDefKind, InferConst, IntVid, PseudoCanonicalInput, Ty, TyCtxt, TyVid,
     TypeVisitable, TypingEnv, TypingMode,
 };
-use rustc_span::Span;
-use rustc_span::symbol::Symbol;
+use rustc_span::{Span, Symbol};
 use snapshot::undo_log::InferCtxtUndoLogs;
 use tracing::{debug, instrument};
 use type_variable::TypeVariableOrigin;
@@ -684,26 +682,6 @@ impl<'tcx> InferCtxt<'tcx> {
         b: ty::Region<'tcx>,
     ) {
         self.inner.borrow_mut().unwrap_region_constraints().make_subregion(origin, a, b);
-    }
-
-    /// Require that the region `r` be equal to one of the regions in
-    /// the set `regions`.
-    #[instrument(skip(self), level = "debug")]
-    pub fn member_constraint(
-        &self,
-        key: ty::OpaqueTypeKey<'tcx>,
-        definition_span: Span,
-        hidden_ty: Ty<'tcx>,
-        region: ty::Region<'tcx>,
-        in_regions: Lrc<Vec<ty::Region<'tcx>>>,
-    ) {
-        self.inner.borrow_mut().unwrap_region_constraints().member_constraint(
-            key,
-            definition_span,
-            hidden_ty,
-            region,
-            in_regions,
-        );
     }
 
     /// Processes a `Coerce` predicate from the fulfillment context.

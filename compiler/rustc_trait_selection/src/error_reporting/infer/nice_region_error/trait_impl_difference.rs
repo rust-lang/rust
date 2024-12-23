@@ -2,18 +2,19 @@
 
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
-use rustc_hir::def::Res;
+use rustc_hir::def::{Namespace, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::RegionHighlightMode;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitor};
+use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
 use rustc_span::Span;
 use tracing::debug;
 
 use crate::error_reporting::infer::nice_region_error::NiceRegionError;
+use crate::error_reporting::infer::nice_region_error::placeholder_error::Highlighted;
 use crate::errors::{ConsiderBorrowingParamHelp, RelationshipHelp, TraitImplDiff};
 use crate::infer::{RegionResolutionError, Subtype, ValuePairs};
 
@@ -32,19 +33,14 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             _,
         ) = error.clone()
             && let (Subtype(sup_trace), Subtype(sub_trace)) = (&sup_origin, &sub_origin)
-            && let ObligationCauseCode::CompareImplItem { trait_item_def_id, .. } =
+            && let &ObligationCauseCode::CompareImplItem { trait_item_def_id, .. } =
                 sub_trace.cause.code()
             && sub_trace.values == sup_trace.values
             && let ValuePairs::PolySigs(ExpectedFound { expected, found }) = sub_trace.values
         {
             // FIXME(compiler-errors): Don't like that this needs `Ty`s, but
             // all of the region highlighting machinery only deals with those.
-            let guar = self.emit_err(
-                var_origin.span(),
-                Ty::new_fn_ptr(self.cx.tcx, expected),
-                Ty::new_fn_ptr(self.cx.tcx, found),
-                *trait_item_def_id,
-            );
+            let guar = self.emit_err(var_origin.span(), expected, found, trait_item_def_id);
             return Some(guar);
         }
         None
@@ -53,11 +49,11 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     fn emit_err(
         &self,
         sp: Span,
-        expected: Ty<'tcx>,
-        found: Ty<'tcx>,
-        trait_def_id: DefId,
+        expected: ty::PolyFnSig<'tcx>,
+        found: ty::PolyFnSig<'tcx>,
+        trait_item_def_id: DefId,
     ) -> ErrorGuaranteed {
-        let trait_sp = self.tcx().def_span(trait_def_id);
+        let trait_sp = self.tcx().def_span(trait_item_def_id);
 
         // Mark all unnamed regions in the type with a number.
         // This diagnostic is called in response to lifetime errors, so be informative.
@@ -67,10 +63,10 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         }
 
         impl<'tcx> HighlightBuilder<'tcx> {
-            fn build(ty: Ty<'tcx>) -> RegionHighlightMode<'tcx> {
+            fn build(sig: ty::PolyFnSig<'tcx>) -> RegionHighlightMode<'tcx> {
                 let mut builder =
                     HighlightBuilder { highlight: RegionHighlightMode::default(), counter: 1 };
-                builder.visit_ty(ty);
+                sig.visit_with(&mut builder);
                 builder.highlight
             }
         }
@@ -85,16 +81,21 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         }
 
         let expected_highlight = HighlightBuilder::build(expected);
-        let expected = self
-            .cx
-            .extract_inference_diagnostics_data(expected.into(), Some(expected_highlight))
-            .name;
+        let tcx = self.cx.tcx;
+        let expected = Highlighted {
+            highlight: expected_highlight,
+            ns: Namespace::TypeNS,
+            tcx,
+            value: expected,
+        }
+        .to_string();
         let found_highlight = HighlightBuilder::build(found);
         let found =
-            self.cx.extract_inference_diagnostics_data(found.into(), Some(found_highlight)).name;
+            Highlighted { highlight: found_highlight, ns: Namespace::TypeNS, tcx, value: found }
+                .to_string();
 
         // Get the span of all the used type parameters in the method.
-        let assoc_item = self.tcx().associated_item(trait_def_id);
+        let assoc_item = self.tcx().associated_item(trait_item_def_id);
         let mut visitor = TypeParamSpanVisitor { tcx: self.tcx(), types: vec![] };
         match assoc_item.kind {
             ty::AssocKind::Fn => {

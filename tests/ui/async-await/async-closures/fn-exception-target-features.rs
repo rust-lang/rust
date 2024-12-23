@@ -1,7 +1,7 @@
 //@ edition: 2021
 //@ only-x86_64
 
-#![feature(async_closure, target_feature_11)]
+#![feature(target_feature_11)]
 // `target_feature_11` just to test safe functions w/ target features.
 
 use std::pin::Pin;

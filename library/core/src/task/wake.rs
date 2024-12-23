@@ -322,7 +322,7 @@ impl<'a> ContextBuilder<'a> {
         // SAFETY: LocalWaker is just Waker without thread safety
         let local_waker = unsafe { transmute(waker) };
         Self {
-            waker: waker,
+            waker,
             local_waker,
             ext: ExtData::None(()),
             _marker: PhantomData,

@@ -5,9 +5,8 @@ use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt};
 use rustc_session::lint::builtin::FUNCTION_ITEM_REFERENCES;
-use rustc_span::Span;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::sym;
+use rustc_span::{Span, sym};
 
 use crate::errors;
 

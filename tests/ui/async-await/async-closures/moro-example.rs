@@ -1,8 +1,6 @@
 //@ check-pass
 //@ edition: 2021
 
-#![feature(async_closure)]
-
 use std::future::Future;
 use std::pin::Pin;
 use std::{marker::PhantomData, sync::Mutex};

@@ -10,8 +10,7 @@ use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, Article, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
-use rustc_span::symbol::Ident;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Ident, Span};
 
 use super::{ItemCtxt, bad_placeholder};
 use crate::errors::TypeofReservedKeywordUsed;
@@ -473,7 +472,7 @@ fn infer_placeholder_type<'tcx>(
 fn check_feature_inherent_assoc_ty(tcx: TyCtxt<'_>, span: Span) {
     if !tcx.features().inherent_associated_types() {
         use rustc_session::parse::feature_err;
-        use rustc_span::symbol::sym;
+        use rustc_span::sym;
         feature_err(
             &tcx.sess,
             sym::inherent_associated_types,

@@ -517,14 +517,13 @@ impl TestCx<'_> {
 
         let proc = disable_error_reporting(|| cmd.spawn().expect("failed to spawn `rmake`"));
         let (Output { stdout, stderr, status }, truncated) = self.read2_abbreviated(proc);
+        let stdout = String::from_utf8_lossy(&stdout).into_owned();
+        let stderr = String::from_utf8_lossy(&stderr).into_owned();
+        // This conditions on `status.success()` so we don't print output twice on error.
+        // NOTE: this code is called from a libtest thread, so it's hidden by default unless --nocapture is passed.
+        self.dump_output(status.success(), &cmd.get_program().to_string_lossy(), &stdout, &stderr);
         if !status.success() {
-            let res = ProcRes {
-                status,
-                stdout: String::from_utf8_lossy(&stdout).into_owned(),
-                stderr: String::from_utf8_lossy(&stderr).into_owned(),
-                truncated,
-                cmdline: format!("{:?}", cmd),
-            };
+            let res = ProcRes { status, stdout, stderr, truncated, cmdline: format!("{:?}", cmd) };
             self.fatal_proc_rec("rmake recipe failed to complete", &res);
         }
     }

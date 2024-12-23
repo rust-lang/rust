@@ -5,7 +5,7 @@ LL | fn main() {
    | ^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in Rust 2024 and in a future release in all editions!
-   = note: for more information, see issue #123748 <https://github.com/rust-lang/rust/issues/123748>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the types explicitly
 note: in edition 2024, the requirement `!: Test` will fail
   --> $DIR/diverging-fallback-no-leak.rs:20:23

@@ -4,6 +4,7 @@
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::solve::inspect::ProbeKind;
 use rustc_type_ir::{self as ty, Interner, elaborate};
 use tracing::instrument;
 
@@ -391,6 +392,11 @@ where
         goal: Goal<I, ty::HostEffectPredicate<I>>,
     ) -> QueryResult<I> {
         let candidates = self.assemble_and_evaluate_candidates(goal);
-        self.merge_candidates(candidates)
+        let (_, proven_via) = self.probe(|_| ProbeKind::ShadowedEnvProbing).enter(|ecx| {
+            let trait_goal: Goal<I, ty::TraitPredicate<I>> =
+                goal.with(ecx.cx(), goal.predicate.trait_ref);
+            ecx.compute_trait_goal(trait_goal)
+        })?;
+        self.merge_candidates(proven_via, candidates)
     }
 }

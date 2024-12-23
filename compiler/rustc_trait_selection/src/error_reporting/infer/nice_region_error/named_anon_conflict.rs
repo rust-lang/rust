@@ -3,7 +3,7 @@
 
 use rustc_errors::Diag;
 use rustc_middle::ty;
-use rustc_span::symbol::kw;
+use rustc_span::kw;
 use tracing::debug;
 
 use crate::error_reporting::infer::nice_region_error::NiceRegionError;
@@ -54,13 +54,13 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let param = anon_param_info.param;
         let new_ty = anon_param_info.param_ty;
         let new_ty_span = anon_param_info.param_ty_span;
-        let br = anon_param_info.bound_region;
         let is_first = anon_param_info.is_first;
-        let scope_def_id = region_info.def_id;
+        let scope_def_id = region_info.scope;
         let is_impl_item = region_info.is_impl_item;
 
-        match br {
-            ty::BoundRegionKind::Named(_, kw::UnderscoreLifetime) | ty::BoundRegionKind::Anon => {}
+        match anon_param_info.kind {
+            ty::LateParamRegionKind::Named(_, kw::UnderscoreLifetime)
+            | ty::LateParamRegionKind::Anon(_) => {}
             _ => {
                 /* not an anonymous region */
                 debug!("try_report_named_anon_conflict: not an anonymous region");
@@ -73,7 +73,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             return None;
         }
 
-        if find_anon_type(self.tcx(), self.generic_param_scope, anon, &br).is_some()
+        if find_anon_type(self.tcx(), self.generic_param_scope, anon).is_some()
             && self.is_self_anon(is_first, scope_def_id)
         {
             return None;

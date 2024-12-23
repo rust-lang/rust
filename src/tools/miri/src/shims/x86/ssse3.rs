@@ -1,6 +1,7 @@
-use rustc_abi::ExternAbi;
 use rustc_middle::mir;
+use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
+use rustc_target::callconv::{Conv, FnAbi};
 
 use super::{horizontal_bin_op, int_abs, pmulhrsw, psign};
 use crate::*;
@@ -10,7 +11,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_x86_ssse3_intrinsic(
         &mut self,
         link_name: Symbol,
-        abi: ExternAbi,
+        abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
@@ -23,7 +24,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Used to implement the _mm_abs_epi{8,16,32} functions.
             // Calculates the absolute value of packed 8/16/32-bit integers.
             "pabs.b.128" | "pabs.w.128" | "pabs.d.128" => {
-                let [op] = this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                let [op] = this.check_shim(abi, Conv::C, link_name, args)?;
 
                 int_abs(this, op, dest)?;
             }
@@ -31,8 +32,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Shuffles bytes from `left` using `right` as pattern.
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_shuffle_epi8
             "pshuf.b.128" => {
-                let [left, right] =
-                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                let [left, right] = this.check_shim(abi, Conv::C, link_name, args)?;
 
                 let (left, left_len) = this.project_to_simd(left)?;
                 let (right, right_len) = this.project_to_simd(right)?;
@@ -61,8 +61,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // integer values in `left` and `right`.
             "phadd.w.128" | "phadd.sw.128" | "phadd.d.128" | "phsub.w.128" | "phsub.sw.128"
             | "phsub.d.128" => {
-                let [left, right] =
-                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                let [left, right] = this.check_shim(abi, Conv::C, link_name, args)?;
 
                 let (which, saturating) = match unprefixed_name {
                     "phadd.w.128" | "phadd.d.128" => (mir::BinOp::Add, false),
@@ -81,8 +80,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // produces the output at index `i`.
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maddubs_epi16
             "pmadd.ub.sw.128" => {
-                let [left, right] =
-                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                let [left, right] = this.check_shim(abi, Conv::C, link_name, args)?;
 
                 let (left, left_len) = this.project_to_simd(left)?;
                 let (right, right_len) = this.project_to_simd(right)?;
@@ -117,8 +115,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // 1 and then taking the bits `1..=16`.
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mulhrs_epi16
             "pmul.hr.sw.128" => {
-                let [left, right] =
-                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                let [left, right] = this.check_shim(abi, Conv::C, link_name, args)?;
 
                 pmulhrsw(this, left, right, dest)?;
             }
@@ -128,8 +125,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // is writen to the corresponding output element.
             // Basically, we multiply `left` with `right.signum()`.
             "psign.b.128" | "psign.w.128" | "psign.d.128" => {
-                let [left, right] =
-                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                let [left, right] = this.check_shim(abi, Conv::C, link_name, args)?;
 
                 psign(this, left, right, dest)?;
             }

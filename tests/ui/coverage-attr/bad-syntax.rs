@@ -1,5 +1,6 @@
-#![feature(coverage_attribute)]
 //@ edition: 2021
+//@ reference: attributes.coverage.syntax
+//@ reference: attributes.coverage.duplicates
 
 // Tests the error messages produced (or not produced) by various unusual
 // uses of the `#[coverage(..)]` attribute.

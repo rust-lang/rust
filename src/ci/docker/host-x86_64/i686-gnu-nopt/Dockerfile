@@ -28,4 +28,6 @@ RUN echo "optimize = false" >> /config/nopt-std-config.toml
 
 ENV RUST_CONFIGURE_ARGS --build=i686-unknown-linux-gnu --disable-optimize-tests
 ARG SCRIPT_ARG
-ENV SCRIPT=${SCRIPT_ARG}
+COPY scripts/stage_2_test_set1.sh /scripts/
+COPY scripts/stage_2_test_set2.sh /scripts/
+ENV SCRIPT ${SCRIPT_ARG}

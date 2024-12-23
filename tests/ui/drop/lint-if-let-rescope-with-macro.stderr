@@ -14,7 +14,7 @@ LL | |     };
    | |_____- in this macro invocation
    |
    = warning: this changes meaning in Rust 2024
-   = note: for more information, see issue #124085 <https://github.com/rust-lang/rust/issues/124085>
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-if-let-scope.html>
 help: the value is now dropped here in Edition 2024
   --> $DIR/lint-if-let-rescope-with-macro.rs:12:38
    |

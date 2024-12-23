@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/arg-mismatch.rs:12:11
+  --> $DIR/arg-mismatch.rs:10:11
    |
 LL |         c(2usize).await;
    |         - ^^^^^^ expected `i32`, found `usize`
@@ -7,7 +7,7 @@ LL |         c(2usize).await;
    |         arguments to this function are incorrect
    |
 note: closure parameter defined here
-  --> $DIR/arg-mismatch.rs:10:24
+  --> $DIR/arg-mismatch.rs:8:24
    |
 LL |         let c = async |x| {};
    |                        ^

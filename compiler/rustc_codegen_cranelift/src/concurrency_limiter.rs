@@ -1,8 +1,7 @@
 use std::sync::{Arc, Condvar, Mutex};
 
-use jobserver::HelperThread;
+use rustc_data_structures::jobserver::{self, HelperThread};
 use rustc_errors::DiagCtxtHandle;
-use rustc_session::Session;
 
 // FIXME don't panic when a worker thread panics
 
@@ -14,14 +13,13 @@ pub(super) struct ConcurrencyLimiter {
 }
 
 impl ConcurrencyLimiter {
-    pub(super) fn new(sess: &Session, pending_jobs: usize) -> Self {
+    pub(super) fn new(pending_jobs: usize) -> Self {
         let state = Arc::new(Mutex::new(state::ConcurrencyLimiterState::new(pending_jobs)));
         let available_token_condvar = Arc::new(Condvar::new());
 
         let state_helper = state.clone();
         let available_token_condvar_helper = available_token_condvar.clone();
-        let helper_thread = sess
-            .jobserver
+        let helper_thread = jobserver::client()
             .clone()
             .into_helper_thread(move |token| {
                 let mut state = state_helper.lock().unwrap();
@@ -113,7 +111,7 @@ impl Drop for ConcurrencyLimiterToken {
 }
 
 mod state {
-    use jobserver::Acquired;
+    use rustc_data_structures::jobserver::Acquired;
 
     #[derive(Debug)]
     pub(super) struct ConcurrencyLimiterState {

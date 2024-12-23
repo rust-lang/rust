@@ -391,6 +391,8 @@ mod desc {
     pub(crate) const parse_cfprotection: &str = "`none`|`no`|`n` (default), `branch`, `return`, or `full`|`yes`|`y` (equivalent to `branch` and `return`)";
     pub(crate) const parse_debuginfo: &str = "either an integer (0, 1, 2), `none`, `line-directives-only`, `line-tables-only`, `limited`, or `full`";
     pub(crate) const parse_debuginfo_compression: &str = "one of `none`, `zlib`, or `zstd`";
+    pub(crate) const parse_mir_strip_debuginfo: &str =
+        "one of `none`, `locals-in-tiny-functions`, or `all-locals`";
     pub(crate) const parse_collapse_macro_debuginfo: &str = "one of `no`, `external`, or `yes`";
     pub(crate) const parse_strip: &str = "either `none`, `debuginfo`, or `symbols`";
     pub(crate) const parse_linker_flavor: &str = ::rustc_target::spec::LinkerFlavorCli::one_of();
@@ -925,6 +927,16 @@ pub mod parse {
         true
     }
 
+    pub(crate) fn parse_mir_strip_debuginfo(slot: &mut MirStripDebugInfo, v: Option<&str>) -> bool {
+        match v {
+            Some("none") => *slot = MirStripDebugInfo::None,
+            Some("locals-in-tiny-functions") => *slot = MirStripDebugInfo::LocalsInTinyFunctions,
+            Some("all-locals") => *slot = MirStripDebugInfo::AllLocals,
+            _ => return false,
+        };
+        true
+    }
+
     pub(crate) fn parse_linker_flavor(slot: &mut Option<LinkerFlavorCli>, v: Option<&str>) -> bool {
         match v.and_then(LinkerFlavorCli::from_str) {
             Some(lf) => *slot = Some(lf),
@@ -1025,6 +1037,7 @@ pub mod parse {
                 "condition" => slot.level = CoverageLevel::Condition,
                 "mcdc" => slot.level = CoverageLevel::Mcdc,
                 "no-mir-spans" => slot.no_mir_spans = true,
+                "discard-all-spans-in-codegen" => slot.discard_all_spans_in_codegen = true,
                 _ => return false,
             }
         }
@@ -1893,6 +1906,8 @@ options! {
     #[rustc_lint_opt_deny_field_access("use `Session::mir_opt_level` instead of this field")]
     mir_opt_level: Option<usize> = (None, parse_opt_number, [TRACKED],
         "MIR optimization level (0-4; default: 1 in non optimized builds and 2 in optimized builds)"),
+    mir_strip_debuginfo: MirStripDebugInfo = (MirStripDebugInfo::None, parse_mir_strip_debuginfo, [TRACKED],
+        "Whether to remove some of the MIR debug info from methods.  Default: None"),
     move_size_limit: Option<usize> = (None, parse_opt_number, [TRACKED],
         "the size at which the `large_assignments` lint starts to be emitted"),
     mutable_noalias: bool = (true, parse_bool, [TRACKED],

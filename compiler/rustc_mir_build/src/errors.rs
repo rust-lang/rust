@@ -1,14 +1,13 @@
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level,
-    MultiSpan, SubdiagMessageOp, Subdiagnostic,
+    MultiSpan, SubdiagMessageOp, Subdiagnostic, pluralize,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
 use rustc_pattern_analysis::errors::Uncovered;
 use rustc_pattern_analysis::rustc::RustcPatCtxt;
-use rustc_span::Span;
-use rustc_span::symbol::Symbol;
+use rustc_span::{Span, Symbol};
 
 use crate::fluent_generated as fluent;
 
@@ -1089,18 +1088,20 @@ pub(crate) enum RustcBoxAttrReason {
 
 #[derive(LintDiagnostic)]
 #[diag(mir_build_rust_2024_incompatible_pat)]
-pub(crate) struct Rust2024IncompatiblePat {
+pub(crate) struct Rust2024IncompatiblePat<'a> {
     #[subdiagnostic]
-    pub(crate) sugg: Rust2024IncompatiblePatSugg,
+    pub(crate) sugg: Rust2024IncompatiblePatSugg<'a>,
 }
 
-pub(crate) struct Rust2024IncompatiblePatSugg {
+pub(crate) struct Rust2024IncompatiblePatSugg<'a> {
     pub(crate) suggestion: Vec<(Span, String)>,
-    /// Whether the incompatibility is a hard error because a relevant span is in edition 2024.
-    pub(crate) is_hard_error: bool,
+    pub(crate) ref_pattern_count: usize,
+    pub(crate) binding_mode_count: usize,
+    /// Labeled spans for subpatterns invalid in Rust 2024.
+    pub(crate) labels: &'a [(Span, String)],
 }
 
-impl Subdiagnostic for Rust2024IncompatiblePatSugg {
+impl<'a> Subdiagnostic for Rust2024IncompatiblePatSugg<'a> {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
@@ -1112,6 +1113,16 @@ impl Subdiagnostic for Rust2024IncompatiblePatSugg {
             } else {
                 Applicability::MaybeIncorrect
             };
-        diag.multipart_suggestion("desugar the match ergonomics", self.suggestion, applicability);
+        let plural_derefs = pluralize!(self.ref_pattern_count);
+        let and_modes = if self.binding_mode_count > 0 {
+            format!(" and variable binding mode{}", pluralize!(self.binding_mode_count))
+        } else {
+            String::new()
+        };
+        diag.multipart_suggestion_verbose(
+            format!("make the implied reference pattern{plural_derefs}{and_modes} explicit"),
+            self.suggestion,
+            applicability,
+        );
     }
 }

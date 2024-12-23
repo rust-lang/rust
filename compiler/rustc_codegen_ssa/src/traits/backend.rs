@@ -11,7 +11,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::Session;
 use rustc_session::config::{self, OutputFilenames, PrintRequest};
-use rustc_span::symbol::Symbol;
+use rustc_span::Symbol;
 
 use super::CodegenObject;
 use super::write::WriteBackendMethods;
@@ -45,7 +45,9 @@ pub trait CodegenBackend {
 
     fn print(&self, _req: &PrintRequest, _out: &mut String, _sess: &Session) {}
 
-    fn target_features(&self, _sess: &Session, _allow_unstable: bool) -> Vec<Symbol> {
+    /// Returns the features that should be set in `cfg(target_features)`.
+    /// RUSTC_SPECIFIC_FEATURES should be skipped here, those are handled outside codegen.
+    fn target_features_cfg(&self, _sess: &Session, _allow_unstable: bool) -> Vec<Symbol> {
         vec![]
     }
 

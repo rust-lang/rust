@@ -8,7 +8,6 @@ pub(crate) fn target() -> Target {
     base.cpu = "mips64r2".into();
     base.features = "+mips64r2,+soft-float".into();
     base.max_atomic_width = Some(64);
-    base.crt_static_default = false;
 
     Target {
         // LLVM doesn't recognize "muslabi64" yet.

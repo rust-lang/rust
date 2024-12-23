@@ -279,6 +279,14 @@ impl<T: AsSocket> AsSocket for crate::rc::Rc<T> {
     }
 }
 
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: AsSocket + ?Sized> AsSocket for crate::rc::UniqueRc<T> {
+    #[inline]
+    fn as_socket(&self) -> BorrowedSocket<'_> {
+        (**self).as_socket()
+    }
+}
+
 #[stable(feature = "as_windows_ptrs", since = "1.71.0")]
 impl<T: AsSocket> AsSocket for Box<T> {
     #[inline]

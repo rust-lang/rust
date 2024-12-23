@@ -1,5 +1,6 @@
-use rustc_ast::{MetaItemInner, MetaItemKind, ast, attr};
-use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr, list_contains_name};
+use rustc_ast::attr::list_contains_name;
+use rustc_ast::{MetaItemInner, attr};
+use rustc_attr_parsing::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::codes::*;
 use rustc_errors::{DiagMessage, SubdiagMessage, struct_span_code_err};
@@ -15,8 +16,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{self as ty, TyCtxt};
 use rustc_session::parse::feature_err;
 use rustc_session::{Session, lint};
-use rustc_span::symbol::Ident;
-use rustc_span::{Span, sym};
+use rustc_span::{Ident, Span, sym};
 use rustc_target::spec::{SanitizerSet, abi};
 
 use crate::errors;
@@ -251,7 +251,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             sym::target_feature => {
                 if !tcx.is_closure_like(did.to_def_id())
                     && let Some(fn_sig) = fn_sig()
-                    && fn_sig.skip_binder().safety() == hir::Safety::Safe
+                    && fn_sig.skip_binder().safety().is_safe()
                 {
                     if tcx.sess.target.is_like_wasm || tcx.sess.opts.actually_rustdoc {
                         // The `#[target_feature]` attribute is allowed on
@@ -425,7 +425,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     && let [item] = items.as_slice()
                     && let Some((sym::align, literal)) = item.singleton_lit_list()
                 {
-                    rustc_attr::parse_alignment(&literal.kind)
+                    rustc_attr_parsing::parse_alignment(&literal.kind)
                         .map_err(|msg| {
                             struct_span_code_err!(
                                 tcx.dcx(),
@@ -525,57 +525,59 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         if !attr.has_name(sym::inline) {
             return ia;
         }
-        match attr.meta_kind() {
-            Some(MetaItemKind::Word) => InlineAttr::Hint,
-            Some(MetaItemKind::List(ref items)) => {
-                inline_span = Some(attr.span);
-                if items.len() != 1 {
-                    struct_span_code_err!(tcx.dcx(), attr.span, E0534, "expected one argument")
-                        .emit();
-                    InlineAttr::None
-                } else if list_contains_name(items, sym::always) {
-                    InlineAttr::Always
-                } else if list_contains_name(items, sym::never) {
-                    InlineAttr::Never
-                } else {
-                    struct_span_code_err!(tcx.dcx(), items[0].span(), E0535, "invalid argument")
-                        .with_help("valid inline arguments are `always` and `never`")
-                        .emit();
+        if attr.is_word() {
+            InlineAttr::Hint
+        } else if let Some(ref items) = attr.meta_item_list() {
+            inline_span = Some(attr.span);
+            if items.len() != 1 {
+                struct_span_code_err!(tcx.dcx(), attr.span, E0534, "expected one argument").emit();
+                InlineAttr::None
+            } else if list_contains_name(items, sym::always) {
+                InlineAttr::Always
+            } else if list_contains_name(items, sym::never) {
+                InlineAttr::Never
+            } else {
+                struct_span_code_err!(tcx.dcx(), items[0].span(), E0535, "invalid argument")
+                    .with_help("valid inline arguments are `always` and `never`")
+                    .emit();
 
-                    InlineAttr::None
-                }
+                InlineAttr::None
             }
-            Some(MetaItemKind::NameValue(_)) => ia,
-            None => ia,
+        } else {
+            ia
         }
     });
+
+    // naked function MUST NOT be inlined! This attribute is required for the rust compiler itself,
+    // but not for the code generation backend because at that point the naked function will just be
+    // a declaration, with a definition provided in global assembly.
+    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
+        codegen_fn_attrs.inline = InlineAttr::Never;
+    }
 
     codegen_fn_attrs.optimize = attrs.iter().fold(OptimizeAttr::None, |ia, attr| {
         if !attr.has_name(sym::optimize) {
             return ia;
         }
         let err = |sp, s| struct_span_code_err!(tcx.dcx(), sp, E0722, "{}", s).emit();
-        match attr.meta_kind() {
-            Some(MetaItemKind::Word) => {
+        if attr.is_word() {
+            err(attr.span, "expected one argument");
+            ia
+        } else if let Some(ref items) = attr.meta_item_list() {
+            inline_span = Some(attr.span);
+            if items.len() != 1 {
                 err(attr.span, "expected one argument");
-                ia
+                OptimizeAttr::None
+            } else if list_contains_name(items, sym::size) {
+                OptimizeAttr::Size
+            } else if list_contains_name(items, sym::speed) {
+                OptimizeAttr::Speed
+            } else {
+                err(items[0].span(), "invalid argument");
+                OptimizeAttr::None
             }
-            Some(MetaItemKind::List(ref items)) => {
-                inline_span = Some(attr.span);
-                if items.len() != 1 {
-                    err(attr.span, "expected one argument");
-                    OptimizeAttr::None
-                } else if list_contains_name(items, sym::size) {
-                    OptimizeAttr::Size
-                } else if list_contains_name(items, sym::speed) {
-                    OptimizeAttr::Speed
-                } else {
-                    err(items[0].span(), "invalid argument");
-                    OptimizeAttr::None
-                }
-            }
-            Some(MetaItemKind::NameValue(_)) => ia,
-            None => ia,
+        } else {
+            OptimizeAttr::None
         }
     });
 
@@ -632,10 +634,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 },
             )
         }
-    }
-
-    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
-        codegen_fn_attrs.inline = InlineAttr::Never;
     }
 
     // Weak lang items have the same semantics as "std internal" symbols in the
@@ -727,7 +725,7 @@ fn should_inherit_track_caller(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     false
 }
 
-fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<u16> {
+fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &hir::Attribute) -> Option<u16> {
     use rustc_ast::{LitIntType, LitKind, MetaItemLit};
     let meta_item_list = attr.meta_item_list();
     let meta_item_list = meta_item_list.as_deref();
@@ -792,7 +790,7 @@ struct MixedExportNameAndNoMangleState<'a> {
     export_name: Option<Span>,
     hir_id: Option<HirId>,
     no_mangle: Option<Span>,
-    no_mangle_attr: Option<&'a ast::Attribute>,
+    no_mangle_attr: Option<&'a hir::Attribute>,
 }
 
 impl<'a> MixedExportNameAndNoMangleState<'a> {
@@ -800,7 +798,7 @@ impl<'a> MixedExportNameAndNoMangleState<'a> {
         self.export_name = Some(span);
     }
 
-    fn track_no_mangle(&mut self, span: Span, hir_id: HirId, attr_name: &'a ast::Attribute) {
+    fn track_no_mangle(&mut self, span: Span, hir_id: HirId, attr_name: &'a hir::Attribute) {
         self.no_mangle = Some(span);
         self.hir_id = Some(hir_id);
         self.no_mangle_attr = Some(attr_name);
@@ -821,7 +819,7 @@ impl<'a> MixedExportNameAndNoMangleState<'a> {
                 no_mangle,
                 errors::MixedExportNameAndNoMangle {
                     no_mangle,
-                    no_mangle_attr: rustc_ast_pretty::pprust::attribute_to_string(no_mangle_attr),
+                    no_mangle_attr: rustc_hir_pretty::attribute_to_string(&tcx, no_mangle_attr),
                     export_name,
                     removal_span: no_mangle,
                 },

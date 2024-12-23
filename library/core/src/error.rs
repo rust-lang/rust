@@ -2,7 +2,7 @@
 #![stable(feature = "error_in_core", since = "1.81.0")]
 
 use crate::any::TypeId;
-use crate::fmt::{Debug, Display, Formatter, Result};
+use crate::fmt::{self, Debug, Display, Formatter};
 
 /// `Error` is a trait representing the basic expectations for error values,
 /// i.e., values of type `E` in [`Result<T, E>`].
@@ -857,7 +857,7 @@ impl<'a> Request<'a> {
 
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
 impl<'a> Debug for Request<'a> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_struct("Request").finish_non_exhaustive()
     }
 }
@@ -1076,4 +1076,4 @@ impl Error for crate::time::TryFromFloatSecsError {}
 impl Error for crate::ffi::FromBytesUntilNulError {}
 
 #[unstable(feature = "get_many_mut", issue = "104642")]
-impl<const N: usize> Error for crate::slice::GetManyMutError<N> {}
+impl Error for crate::slice::GetManyMutError {}

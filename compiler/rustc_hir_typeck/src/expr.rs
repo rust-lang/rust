@@ -30,11 +30,10 @@ use rustc_middle::ty::{self, AdtKind, GenericArgsRef, Ty, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_session::parse::feature_err;
-use rustc_span::Span;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
+use rustc_span::{Ident, Span, Symbol, kw, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt};
 use tracing::{debug, instrument, trace};
@@ -72,12 +71,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if self.try_structurally_resolve_type(expr.span, ty).is_never()
             && self.expr_guaranteed_to_constitute_read_for_never(expr)
         {
-            if let Some(_) = self.typeck_results.borrow().adjustments().get(expr.hir_id) {
+            if let Some(adjustments) = self.typeck_results.borrow().adjustments().get(expr.hir_id) {
                 let reported = self.dcx().span_delayed_bug(
                     expr.span,
                     "expression with never type wound up being adjusted",
                 );
-                return Ty::new_error(self.tcx(), reported);
+
+                return if let [Adjustment { kind: Adjust::NeverToAny, target }] = &adjustments[..] {
+                    target.to_owned()
+                } else {
+                    Ty::new_error(self.tcx(), reported)
+                };
             }
 
             let adj_ty = self.next_ty_var(expr.span);
@@ -329,6 +333,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Assignment does call `drop_in_place`, though, but its safety
                     // requirements are not the same.
                     ExprKind::AddrOf(..) | hir::ExprKind::Field(..) => false,
+
+                    // Place-preserving expressions only constitute reads if their
+                    // parent expression constitutes a read.
+                    ExprKind::Type(..) | ExprKind::UnsafeBinderCast(..) => {
+                        self.expr_guaranteed_to_constitute_read_for_never(expr)
+                    }
+
                     ExprKind::Assign(lhs, _, _) => {
                         // Only the LHS does not constitute a read
                         expr.hir_id != lhs.hir_id
@@ -353,7 +364,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     | ExprKind::Binary(_, _, _)
                     | ExprKind::Unary(_, _)
                     | ExprKind::Cast(_, _)
-                    | ExprKind::Type(_, _)
                     | ExprKind::DropTemps(_)
                     | ExprKind::If(_, _, _)
                     | ExprKind::Closure(_)
@@ -564,7 +574,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_expr_index(base, idx, expr, brackets_span)
             }
             ExprKind::Yield(value, _) => self.check_expr_yield(value, expr),
-            hir::ExprKind::Err(guar) => Ty::new_error(tcx, guar),
+            ExprKind::UnsafeBinderCast(kind, expr, ty) => {
+                self.check_expr_unsafe_binder_cast(kind, expr, ty, expected)
+            }
+            ExprKind::Err(guar) => Ty::new_error(tcx, guar),
         }
     }
 
@@ -1634,6 +1647,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    fn check_expr_unsafe_binder_cast(
+        &self,
+        _kind: hir::UnsafeBinderCastKind,
+        expr: &'tcx hir::Expr<'tcx>,
+        _hir_ty: Option<&'tcx hir::Ty<'tcx>>,
+        _expected: Expectation<'tcx>,
+    ) -> Ty<'tcx> {
+        let guar =
+            self.dcx().struct_span_err(expr.span, "unsafe binders are not yet implemented").emit();
+        Ty::new_error(self.tcx, guar)
+    }
+
     fn check_expr_array(
         &self,
         args: &'tcx [hir::Expr<'tcx>],
@@ -2692,32 +2717,45 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         None
     }
 
-    // Check field access expressions
+    /// Check field access expressions, this works for both structs and tuples.
+    /// Returns the Ty of the field.
+    ///
+    /// ```ignore (illustrative)
+    /// base.field
+    /// ^^^^^^^^^^ expr
+    /// ^^^^       base
+    ///      ^^^^^ field
+    /// ```
     fn check_expr_field(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         base: &'tcx hir::Expr<'tcx>,
         field: Ident,
+        // The expected type hint of the field.
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         debug!("check_field(expr: {:?}, base: {:?}, field: {:?})", expr, base, field);
         let base_ty = self.check_expr(base);
         let base_ty = self.structurally_resolve_type(base.span, base_ty);
+
+        // Whether we are trying to access a private field. Used for error reporting.
         let mut private_candidate = None;
+
+        // Field expressions automatically deref
         let mut autoderef = self.autoderef(expr.span, base_ty);
         while let Some((deref_base_ty, _)) = autoderef.next() {
             debug!("deref_base_ty: {:?}", deref_base_ty);
             match deref_base_ty.kind() {
                 ty::Adt(base_def, args) if !base_def.is_enum() => {
                     debug!("struct named {:?}", deref_base_ty);
-                    let body_hir_id = self.tcx.local_def_id_to_hir_id(self.body_id);
-                    let (ident, def_scope) =
-                        self.tcx.adjust_ident_and_get_scope(field, base_def.did(), body_hir_id);
-
                     // we don't care to report errors for a struct if the struct itself is tainted
                     if let Err(guar) = base_def.non_enum_variant().has_errors() {
                         return Ty::new_error(self.tcx(), guar);
                     }
+
+                    let fn_body_hir_id = self.tcx.local_def_id_to_hir_id(self.body_id);
+                    let (ident, def_scope) =
+                        self.tcx.adjust_ident_and_get_scope(field, base_def.did(), fn_body_hir_id);
 
                     if let Some((idx, field)) = self.find_adt_field(*base_def, ident) {
                         self.write_field_index(expr.hir_id, idx);
@@ -2752,6 +2790,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => {}
             }
         }
+        // We failed to check the expression, report an error.
+
+        // Emits an error if we deref an infer variable, like calling `.field` on a base type of &_.
         self.structurally_resolve_type(autoderef.span(), autoderef.final_ty(false));
 
         if let Some((adjustments, did)) = private_candidate {
@@ -2776,6 +2817,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expr.hir_id,
             expected.only_has_type(self),
         ) {
+            // If taking a method instead of calling it
             self.ban_take_value_of_method(expr, base_ty, field)
         } else if !base_ty.is_primitive_ty() {
             self.ban_nonexisting_field(field, base, expr, base_ty)
@@ -3059,7 +3101,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.help("methods are immutable and cannot be assigned to");
         }
 
-        err.emit()
+        // See `StashKey::GenericInFieldExpr` for more info
+        self.dcx().try_steal_replace_and_emit_err(field.span, StashKey::GenericInFieldExpr, err)
     }
 
     fn point_at_param_definition(&self, err: &mut Diag<'_>, param: ty::ParamTy) {

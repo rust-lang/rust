@@ -8,7 +8,6 @@ use std::{env, fmt, io};
 
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
-use rustc_data_structures::jobserver::{self, Client};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
 use rustc_data_structures::sync::{
     DynSend, DynSync, Lock, Lrc, MappedReadGuard, ReadGuard, RwLock,
@@ -154,15 +153,8 @@ pub struct Session {
     /// Data about code being compiled, gathered during compilation.
     pub code_stats: CodeStats,
 
-    /// Loaded up early on in the initialization of this `Session` to avoid
-    /// false positives about a job server in our environment.
-    pub jobserver: Client,
-
     /// This only ever stores a `LintStore` but we don't want a dependency on that type here.
     pub lint_store: Option<Lrc<dyn LintStoreMarker>>,
-
-    /// Should be set if any lints are registered in `lint_store`.
-    pub registered_lints: bool,
 
     /// Cap lint level specified by a driver specifically.
     pub driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
@@ -358,6 +350,11 @@ impl Session {
     /// True if `-Zcoverage-options=no-mir-spans` was passed.
     pub fn coverage_no_mir_spans(&self) -> bool {
         self.opts.unstable_opts.coverage_options.no_mir_spans
+    }
+
+    /// True if `-Zcoverage-options=discard-all-spans-in-codegen` was passed.
+    pub fn coverage_discard_all_spans_in_codegen(&self) -> bool {
+        self.opts.unstable_opts.coverage_options.discard_all_spans_in_codegen
     }
 
     pub fn is_sanitizer_cfi_enabled(&self) -> bool {
@@ -1072,9 +1069,7 @@ pub fn build_session(
         incr_comp_session: RwLock::new(IncrCompSession::NotInitialized),
         prof,
         code_stats: Default::default(),
-        jobserver: jobserver::client(),
         lint_store: None,
-        registered_lints: false,
         driver_lint_caps,
         ctfe_backtrace,
         miri_unleashed_features: Lock::new(Default::default()),

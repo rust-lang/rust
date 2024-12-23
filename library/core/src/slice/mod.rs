@@ -1883,23 +1883,23 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// let v = [1, 2, 3, 4, 5, 6];
+    /// let v = ['a', 'b', 'c'];
     ///
     /// {
     ///    let (left, right) = v.split_at(0);
     ///    assert_eq!(left, []);
-    ///    assert_eq!(right, [1, 2, 3, 4, 5, 6]);
+    ///    assert_eq!(right, ['a', 'b', 'c']);
     /// }
     ///
     /// {
     ///     let (left, right) = v.split_at(2);
-    ///     assert_eq!(left, [1, 2]);
-    ///     assert_eq!(right, [3, 4, 5, 6]);
+    ///     assert_eq!(left, ['a', 'b']);
+    ///     assert_eq!(right, ['c']);
     /// }
     ///
     /// {
-    ///     let (left, right) = v.split_at(6);
-    ///     assert_eq!(left, [1, 2, 3, 4, 5, 6]);
+    ///     let (left, right) = v.split_at(3);
+    ///     assert_eq!(left, ['a', 'b', 'c']);
     ///     assert_eq!(right, []);
     /// }
     /// ```
@@ -1969,23 +1969,23 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// let v = [1, 2, 3, 4, 5, 6];
+    /// let v = ['a', 'b', 'c'];
     ///
     /// unsafe {
     ///    let (left, right) = v.split_at_unchecked(0);
     ///    assert_eq!(left, []);
-    ///    assert_eq!(right, [1, 2, 3, 4, 5, 6]);
+    ///    assert_eq!(right, ['a', 'b', 'c']);
     /// }
     ///
     /// unsafe {
     ///     let (left, right) = v.split_at_unchecked(2);
-    ///     assert_eq!(left, [1, 2]);
-    ///     assert_eq!(right, [3, 4, 5, 6]);
+    ///     assert_eq!(left, ['a', 'b']);
+    ///     assert_eq!(right, ['c']);
     /// }
     ///
     /// unsafe {
-    ///     let (left, right) = v.split_at_unchecked(6);
-    ///     assert_eq!(left, [1, 2, 3, 4, 5, 6]);
+    ///     let (left, right) = v.split_at_unchecked(3);
+    ///     assert_eq!(left, ['a', 'b', 'c']);
     ///     assert_eq!(right, []);
     /// }
     /// ```
@@ -4629,13 +4629,11 @@ impl<T> [T] {
     pub fn get_many_mut<I, const N: usize>(
         &mut self,
         indices: [I; N],
-    ) -> Result<[&mut I::Output; N], GetManyMutError<N>>
+    ) -> Result<[&mut I::Output; N], GetManyMutError>
     where
         I: GetManyMutIndex + SliceIndex<Self>,
     {
-        if !get_many_check_valid(&indices, self.len()) {
-            return Err(GetManyMutError { _private: () });
-        }
+        get_many_check_valid(&indices, self.len())?;
         // SAFETY: The `get_many_check_valid()` call checked that all indices
         // are disjunct and in bounds.
         unsafe { Ok(self.get_many_unchecked_mut(indices)) }
@@ -4643,7 +4641,7 @@ impl<T> [T] {
 
     /// Returns the index that an element reference points to.
     ///
-    /// Returns `None` if `element` does not point within the slice or if it points between elements.
+    /// Returns `None` if `element` does not point to the start of an element within the slice.
     ///
     /// This method is useful for extending slice iterators like [`slice::split`].
     ///
@@ -4663,9 +4661,9 @@ impl<T> [T] {
     /// let num = &nums[2];
     ///
     /// assert_eq!(num, &1);
-    /// assert_eq!(nums.elem_offset(num), Some(2));
+    /// assert_eq!(nums.element_offset(num), Some(2));
     /// ```
-    /// Returning `None` with an in-between element:
+    /// Returning `None` with an unaligned element:
     /// ```
     /// #![feature(substr_range)]
     ///
@@ -4678,12 +4676,12 @@ impl<T> [T] {
     /// assert_eq!(ok_elm, &[0, 1]);
     /// assert_eq!(weird_elm, &[1, 2]);
     ///
-    /// assert_eq!(arr.elem_offset(ok_elm), Some(0)); // Points to element 0
-    /// assert_eq!(arr.elem_offset(weird_elm), None); // Points between element 0 and 1
+    /// assert_eq!(arr.element_offset(ok_elm), Some(0)); // Points to element 0
+    /// assert_eq!(arr.element_offset(weird_elm), None); // Points between element 0 and 1
     /// ```
     #[must_use]
     #[unstable(feature = "substr_range", issue = "126769")]
-    pub fn elem_offset(&self, element: &T) -> Option<usize> {
+    pub fn element_offset(&self, element: &T) -> Option<usize> {
         if T::IS_ZST {
             panic!("elements are zero-sized");
         }
@@ -4704,7 +4702,8 @@ impl<T> [T] {
 
     /// Returns the range of indices that a subslice points to.
     ///
-    /// Returns `None` if `subslice` does not point within the slice or if it points between elements.
+    /// Returns `None` if `subslice` does not point within the slice or if it is not aligned with the
+    /// elements in the slice.
     ///
     /// This method **does not compare elements**. Instead, this method finds the location in the slice that
     /// `subslice` was obtained from. To find the index of a subslice via comparison, instead use
@@ -4978,53 +4977,59 @@ impl<T, const N: usize> SlicePattern for [T; N] {
 /// This will do `binomial(N + 1, 2) = N * (N + 1) / 2 = 0, 1, 3, 6, 10, ..`
 /// comparison operations.
 #[inline]
-fn get_many_check_valid<I: GetManyMutIndex, const N: usize>(indices: &[I; N], len: usize) -> bool {
+fn get_many_check_valid<I: GetManyMutIndex, const N: usize>(
+    indices: &[I; N],
+    len: usize,
+) -> Result<(), GetManyMutError> {
     // NB: The optimizer should inline the loops into a sequence
     // of instructions without additional branching.
-    let mut valid = true;
     for (i, idx) in indices.iter().enumerate() {
-        valid &= idx.is_in_bounds(len);
+        if !idx.is_in_bounds(len) {
+            return Err(GetManyMutError::IndexOutOfBounds);
+        }
         for idx2 in &indices[..i] {
-            valid &= !idx.is_overlapping(idx2);
+            if idx.is_overlapping(idx2) {
+                return Err(GetManyMutError::OverlappingIndices);
+            }
         }
     }
-    valid
+    Ok(())
 }
 
-/// The error type returned by [`get_many_mut<N>`][`slice::get_many_mut`].
+/// The error type returned by [`get_many_mut`][`slice::get_many_mut`].
 ///
 /// It indicates one of two possible errors:
 /// - An index is out-of-bounds.
-/// - The same index appeared multiple times in the array.
+/// - The same index appeared multiple times in the array
+///   (or different but overlapping indices when ranges are provided).
 ///
 /// # Examples
 ///
 /// ```
 /// #![feature(get_many_mut)]
+/// use std::slice::GetManyMutError;
 ///
 /// let v = &mut [1, 2, 3];
-/// assert!(v.get_many_mut([0, 999]).is_err());
-/// assert!(v.get_many_mut([1, 1]).is_err());
+/// assert_eq!(v.get_many_mut([0, 999]), Err(GetManyMutError::IndexOutOfBounds));
+/// assert_eq!(v.get_many_mut([1, 1]), Err(GetManyMutError::OverlappingIndices));
 /// ```
 #[unstable(feature = "get_many_mut", issue = "104642")]
-// NB: The N here is there to be forward-compatible with adding more details
-// to the error type at a later point
-#[derive(Clone, PartialEq, Eq)]
-pub struct GetManyMutError<const N: usize> {
-    _private: (),
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum GetManyMutError {
+    /// An index provided was out-of-bounds for the slice.
+    IndexOutOfBounds,
+    /// Two indices provided were overlapping.
+    OverlappingIndices,
 }
 
 #[unstable(feature = "get_many_mut", issue = "104642")]
-impl<const N: usize> fmt::Debug for GetManyMutError<N> {
+impl fmt::Display for GetManyMutError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("GetManyMutError").finish_non_exhaustive()
-    }
-}
-
-#[unstable(feature = "get_many_mut", issue = "104642")]
-impl<const N: usize> fmt::Display for GetManyMutError<N> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt("an index is out of bounds or appeared multiple times in the array", f)
+        let msg = match self {
+            GetManyMutError::IndexOutOfBounds => "an index is out of bounds",
+            GetManyMutError::OverlappingIndices => "there were overlapping indices",
+        };
+        fmt::Display::fmt(msg, f)
     }
 }
 

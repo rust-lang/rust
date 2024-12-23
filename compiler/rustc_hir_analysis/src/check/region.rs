@@ -129,7 +129,7 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
                     let mut prev_cx = visitor.cx;
 
                     visitor.enter_scope(Scope {
-                        id: blk.hir_id.local_id,
+                        local_id: blk.hir_id.local_id,
                         data: ScopeData::Remainder(FirstStatementIndex::new(i)),
                     });
                     visitor.cx.var_parent = visitor.cx.parent;
@@ -154,7 +154,7 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
                     // the first such subscope, which has the block itself as a
                     // parent.
                     visitor.enter_scope(Scope {
-                        id: blk.hir_id.local_id,
+                        local_id: blk.hir_id.local_id,
                         data: ScopeData::Remainder(FirstStatementIndex::new(i)),
                     });
                     visitor.cx.var_parent = visitor.cx.parent;
@@ -184,7 +184,7 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
                 visitor
                     .scope_tree
                     .backwards_incompatible_scope
-                    .insert(local_id, Scope { id: local_id, data: ScopeData::Node });
+                    .insert(local_id, Scope { local_id, data: ScopeData::Node });
             }
             visitor.visit_expr(tail_expr);
         }
@@ -221,7 +221,7 @@ fn resolve_arm<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, arm: &'tcx hir
 }
 
 fn resolve_pat<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, pat: &'tcx hir::Pat<'tcx>) {
-    visitor.record_child_scope(Scope { id: pat.hir_id.local_id, data: ScopeData::Node });
+    visitor.record_child_scope(Scope { local_id: pat.hir_id.local_id, data: ScopeData::Node });
 
     // If this is a binding then record the lifetime of that binding.
     if let PatKind::Binding(..) = pat.kind {
@@ -485,7 +485,7 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
             } else {
                 ScopeData::IfThen
             };
-            visitor.enter_scope(Scope { id: then.hir_id.local_id, data });
+            visitor.enter_scope(Scope { local_id: then.hir_id.local_id, data });
             visitor.cx.var_parent = visitor.cx.parent;
             visitor.visit_expr(cond);
             visitor.visit_expr(then);
@@ -500,7 +500,7 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
             } else {
                 ScopeData::IfThen
             };
-            visitor.enter_scope(Scope { id: then.hir_id.local_id, data });
+            visitor.enter_scope(Scope { local_id: then.hir_id.local_id, data });
             visitor.cx.var_parent = visitor.cx.parent;
             visitor.visit_expr(cond);
             visitor.visit_expr(then);
@@ -516,7 +516,7 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
 
     if let hir::ExprKind::Yield(_, source) = &expr.kind {
         // Mark this expr's scope and all parent scopes as containing `yield`.
-        let mut scope = Scope { id: expr.hir_id.local_id, data: ScopeData::Node };
+        let mut scope = Scope { local_id: expr.hir_id.local_id, data: ScopeData::Node };
         loop {
             let span = match expr.kind {
                 hir::ExprKind::Yield(expr, hir::YieldSource::Await { .. }) => {
@@ -803,9 +803,9 @@ impl<'tcx> RegionResolutionVisitor<'tcx> {
         // account for the destruction scope representing the scope of
         // the destructors that run immediately after it completes.
         if self.terminating_scopes.contains(&id) {
-            self.enter_scope(Scope { id, data: ScopeData::Destruction });
+            self.enter_scope(Scope { local_id: id, data: ScopeData::Destruction });
         }
-        self.enter_scope(Scope { id, data: ScopeData::Node });
+        self.enter_scope(Scope { local_id: id, data: ScopeData::Node });
     }
 
     fn enter_body(&mut self, hir_id: hir::HirId, f: impl FnOnce(&mut Self)) {
@@ -822,8 +822,8 @@ impl<'tcx> RegionResolutionVisitor<'tcx> {
         let outer_pessimistic_yield = mem::replace(&mut self.pessimistic_yield, false);
         self.terminating_scopes.insert(hir_id.local_id);
 
-        self.enter_scope(Scope { id: hir_id.local_id, data: ScopeData::CallSite });
-        self.enter_scope(Scope { id: hir_id.local_id, data: ScopeData::Arguments });
+        self.enter_scope(Scope { local_id: hir_id.local_id, data: ScopeData::CallSite });
+        self.enter_scope(Scope { local_id: hir_id.local_id, data: ScopeData::Arguments });
 
         f(self);
 

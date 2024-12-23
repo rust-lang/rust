@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fs::{self, File, create_dir_all};
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::prelude::*;
@@ -131,7 +131,7 @@ pub fn run(config: Arc<Config>, testpaths: &TestPaths, revision: Option<&str>) {
 
     if config.verbose {
         // We're going to be dumping a lot of info. Start on a new line.
-        eprintln!("\n");
+        print!("\n\n");
     }
     debug!("running {:?}", testpaths.file.display());
     let mut props = TestProps::from_file(&testpaths.file, revision, &config);
@@ -353,7 +353,7 @@ impl<'test> TestCx<'test> {
                 {
                     self.error(&format!("{} test did not emit an error", self.config.mode));
                     if self.config.mode == crate::common::Mode::Ui {
-                        eprintln!("note: by default, ui tests are expected not to compile");
+                        println!("note: by default, ui tests are expected not to compile");
                     }
                     proc_res.fatal(None, || ());
                 };
@@ -410,7 +410,12 @@ impl<'test> TestCx<'test> {
             truncated: Truncated::No,
             cmdline: format!("{cmd:?}"),
         };
-        self.dump_output(&proc_res.stdout, &proc_res.stderr);
+        self.dump_output(
+            self.config.verbose,
+            &cmd.get_program().to_string_lossy(),
+            &proc_res.stdout,
+            &proc_res.stderr,
+        );
 
         proc_res
     }
@@ -774,20 +779,20 @@ impl<'test> TestCx<'test> {
                 unexpected.len(),
                 not_found.len()
             ));
-            eprintln!("status: {}\ncommand: {}\n", proc_res.status, proc_res.cmdline);
+            println!("status: {}\ncommand: {}\n", proc_res.status, proc_res.cmdline);
             if !unexpected.is_empty() {
-                eprintln!("{}", "--- unexpected errors (from JSON output) ---".green());
+                println!("{}", "--- unexpected errors (from JSON output) ---".green());
                 for error in &unexpected {
-                    eprintln!("{}", error.render_for_expected());
+                    println!("{}", error.render_for_expected());
                 }
-                eprintln!("{}", "---".green());
+                println!("{}", "---".green());
             }
             if !not_found.is_empty() {
-                eprintln!("{}", "--- not found errors (from test file) ---".red());
+                println!("{}", "--- not found errors (from test file) ---".red());
                 for error in &not_found {
-                    eprintln!("{}", error.render_for_expected());
+                    println!("{}", error.render_for_expected());
                 }
-                eprintln!("{}", "---\n".red());
+                println!("{}", "---\n".red());
             }
             panic!("errors differ from expected");
         }
@@ -1401,7 +1406,12 @@ impl<'test> TestCx<'test> {
             cmdline,
         };
 
-        self.dump_output(&result.stdout, &result.stderr);
+        self.dump_output(
+            self.config.verbose,
+            &command.get_program().to_string_lossy(),
+            &result.stdout,
+            &result.stderr,
+        );
 
         result
     }
@@ -1816,12 +1826,35 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn dump_output(&self, out: &str, err: &str) {
+    fn dump_output(&self, print_output: bool, proc_name: &str, out: &str, err: &str) {
         let revision = if let Some(r) = self.revision { format!("{}.", r) } else { String::new() };
 
         self.dump_output_file(out, &format!("{}out", revision));
         self.dump_output_file(err, &format!("{}err", revision));
-        self.maybe_dump_to_stdout(out, err);
+
+        if !print_output {
+            return;
+        }
+
+        let path = Path::new(proc_name);
+        let proc_name = if path.file_stem().is_some_and(|p| p == "rmake") {
+            OsString::from_iter(
+                path.parent()
+                    .unwrap()
+                    .file_name()
+                    .into_iter()
+                    .chain(Some(OsStr::new("/")))
+                    .chain(path.file_name()),
+            )
+        } else {
+            path.file_name().unwrap().into()
+        };
+        let proc_name = proc_name.to_string_lossy();
+        println!("------{proc_name} stdout------------------------------");
+        println!("{}", out);
+        println!("------{proc_name} stderr------------------------------");
+        println!("{}", err);
+        println!("------------------------------------------");
     }
 
     fn dump_output_file(&self, out: &str, extension: &str) {
@@ -1874,20 +1907,10 @@ impl<'test> TestCx<'test> {
         output_base_name(self.config, self.testpaths, self.safe_revision())
     }
 
-    fn maybe_dump_to_stdout(&self, out: &str, err: &str) {
-        if self.config.verbose {
-            eprintln!("------stdout------------------------------");
-            eprintln!("{}", out);
-            eprintln!("------stderr------------------------------");
-            eprintln!("{}", err);
-            eprintln!("------------------------------------------");
-        }
-    }
-
     fn error(&self, err: &str) {
         match self.revision {
-            Some(rev) => eprintln!("\nerror in revision `{}`: {}", rev, err),
-            None => eprintln!("\nerror: {}", err),
+            Some(rev) => println!("\nerror in revision `{}`: {}", rev, err),
+            None => println!("\nerror: {}", err),
         }
     }
 
@@ -1935,23 +1958,23 @@ impl<'test> TestCx<'test> {
         let mut filecheck = Command::new(self.config.llvm_filecheck.as_ref().unwrap());
         filecheck.arg("--input-file").arg(output).arg(&self.testpaths.file);
 
-        // FIXME: Consider making some of these prefix flags opt-in per test,
-        // via `filecheck-flags` or by adding new header directives.
-
         // Because we use custom prefixes, we also have to register the default prefix.
         filecheck.arg("--check-prefix=CHECK");
 
-        // Some tests use the current revision name as a check prefix.
+        // FIXME(#134510): auto-registering revision names as check prefix is a bit sketchy, and
+        // that having to pass `--allow-unused-prefix` is an unfortunate side-effect of not knowing
+        // whether the test author actually wanted revision-specific check prefixes or not.
+        //
+        // TL;DR We may not want to conflate `compiletest` revisions and `FileCheck` prefixes.
+
+        // HACK: tests are allowed to use a revision name as a check prefix.
         if let Some(rev) = self.revision {
             filecheck.arg("--check-prefix").arg(rev);
         }
 
-        // Some tests also expect either the MSVC or NONMSVC prefix to be defined.
-        let msvc_or_not = if self.config.target.contains("msvc") { "MSVC" } else { "NONMSVC" };
-        filecheck.arg("--check-prefix").arg(msvc_or_not);
-
-        // The filecheck tool normally fails if a prefix is defined but not used.
-        // However, we define several prefixes globally for all tests.
+        // HACK: the filecheck tool normally fails if a prefix is defined but not used. However,
+        // sometimes revisions are used to specify *compiletest* directives which are not FileCheck
+        // concerns.
         filecheck.arg("--allow-unused-prefixes");
 
         // Provide more context on failures.
@@ -1972,7 +1995,7 @@ impl<'test> TestCx<'test> {
         if !self.config.has_html_tidy {
             return;
         }
-        eprintln!("info: generating a diff against nightly rustdoc");
+        println!("info: generating a diff against nightly rustdoc");
 
         let suffix =
             self.safe_revision().map_or("nightly".into(), |path| path.to_owned() + "-nightly");
@@ -2082,7 +2105,7 @@ impl<'test> TestCx<'test> {
                 .output()
                 .unwrap();
             assert!(output.status.success());
-            eprintln!("{}", String::from_utf8_lossy(&output.stdout));
+            println!("{}", String::from_utf8_lossy(&output.stdout));
             eprintln!("{}", String::from_utf8_lossy(&output.stderr));
         } else {
             use colored::Colorize;
@@ -2496,7 +2519,7 @@ impl<'test> TestCx<'test> {
                 )"#
             )
             .replace_all(&output, |caps: &Captures<'_>| {
-                eprintln!("{}", &caps[0]);
+                println!("{}", &caps[0]);
                 caps[0].replace(r"\", "/")
             })
             .replace("\r\n", "\n")
@@ -2537,7 +2560,7 @@ impl<'test> TestCx<'test> {
         })
     }
 
-    fn delete_file(&self, file: &PathBuf) {
+    fn delete_file(&self, file: &Path) {
         if !file.exists() {
             // Deleting a nonexistent file would error.
             return;
@@ -2601,14 +2624,14 @@ impl<'test> TestCx<'test> {
         if let Err(err) = fs::write(&actual_path, &actual) {
             self.fatal(&format!("failed to write {stream} to `{actual_path:?}`: {err}",));
         }
-        eprintln!("Saved the actual {stream} to {actual_path:?}");
+        println!("Saved the actual {stream} to {actual_path:?}");
 
         let expected_path =
             expected_output_path(self.testpaths, self.revision, &self.config.compare_mode, stream);
 
         if !self.config.bless {
             if expected.is_empty() {
-                eprintln!("normalized {}:\n{}\n", stream, actual);
+                println!("normalized {}:\n{}\n", stream, actual);
             } else {
                 self.show_diff(
                     stream,
@@ -2631,10 +2654,10 @@ impl<'test> TestCx<'test> {
             if let Err(err) = fs::write(&expected_path, &actual) {
                 self.fatal(&format!("failed to write {stream} to `{expected_path:?}`: {err}"));
             }
-            eprintln!("Blessing the {stream} of {test_name} in {expected_path:?}");
+            println!("Blessing the {stream} of {test_name} in {expected_path:?}");
         }
 
-        eprintln!("\nThe actual {0} differed from the expected {0}.", stream);
+        println!("\nThe actual {0} differed from the expected {0}.", stream);
 
         if self.config.bless { 0 } else { 1 }
     }
@@ -2783,7 +2806,7 @@ impl<'test> TestCx<'test> {
         fs::create_dir_all(&incremental_dir).unwrap();
 
         if self.config.verbose {
-            eprintln!("init_incremental_test: incremental_dir={}", incremental_dir.display());
+            println!("init_incremental_test: incremental_dir={}", incremental_dir.display());
         }
     }
 
@@ -2841,7 +2864,7 @@ impl ProcRes {
             }
         }
 
-        eprintln!(
+        println!(
             "status: {}\ncommand: {}\n{}\n{}\n",
             self.status,
             self.cmdline,
@@ -2852,7 +2875,7 @@ impl ProcRes {
 
     pub fn fatal(&self, err: Option<&str>, on_failure: impl FnOnce()) -> ! {
         if let Some(e) = err {
-            eprintln!("\nerror: {}", e);
+            println!("\nerror: {}", e);
         }
         self.print_info();
         on_failure();

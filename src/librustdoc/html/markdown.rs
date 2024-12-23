@@ -344,35 +344,48 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
 }
 
 /// Make headings links with anchor IDs and build up TOC.
-struct LinkReplacer<'a, I: Iterator<Item = Event<'a>>> {
-    inner: I,
+struct LinkReplacerInner<'a> {
     links: &'a [RenderedLink],
     shortcut_link: Option<&'a RenderedLink>,
 }
 
+struct LinkReplacer<'a, I: Iterator<Item = Event<'a>>> {
+    iter: I,
+    inner: LinkReplacerInner<'a>,
+}
+
 impl<'a, I: Iterator<Item = Event<'a>>> LinkReplacer<'a, I> {
     fn new(iter: I, links: &'a [RenderedLink]) -> Self {
-        LinkReplacer { inner: iter, links, shortcut_link: None }
+        LinkReplacer { iter, inner: { LinkReplacerInner { links, shortcut_link: None } } }
     }
 }
 
-impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
-    type Item = Event<'a>;
+// FIXME: Once we have specialized trait impl (for `Iterator` impl on `LinkReplacer`),
+// we can remove this type and move back `LinkReplacerInner` fields into `LinkReplacer`.
+struct SpannedLinkReplacer<'a, I: Iterator<Item = SpannedEvent<'a>>> {
+    iter: I,
+    inner: LinkReplacerInner<'a>,
+}
 
-    fn next(&mut self) -> Option<Self::Item> {
-        let mut event = self.inner.next();
+impl<'a, I: Iterator<Item = SpannedEvent<'a>>> SpannedLinkReplacer<'a, I> {
+    fn new(iter: I, links: &'a [RenderedLink]) -> Self {
+        SpannedLinkReplacer { iter, inner: { LinkReplacerInner { links, shortcut_link: None } } }
+    }
+}
 
+impl<'a> LinkReplacerInner<'a> {
+    fn handle_event(&mut self, event: &mut Event<'a>) {
         // Replace intra-doc links and remove disambiguators from shortcut links (`[fn@f]`).
-        match &mut event {
+        match event {
             // This is a shortcut link that was resolved by the broken_link_callback: `[fn@f]`
             // Remove any disambiguator.
-            Some(Event::Start(Tag::Link {
+            Event::Start(Tag::Link {
                 // [fn@f] or [fn@f][]
                 link_type: LinkType::ShortcutUnknown | LinkType::CollapsedUnknown,
                 dest_url,
                 title,
                 ..
-            })) => {
+            }) => {
                 debug!("saw start of shortcut link to {dest_url} with title {title}");
                 // If this is a shortcut link, it was resolved by the broken_link_callback.
                 // So the URL will already be updated properly.
@@ -389,13 +402,13 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
                 }
             }
             // Now that we're done with the shortcut link, don't replace any more text.
-            Some(Event::End(TagEnd::Link)) if self.shortcut_link.is_some() => {
+            Event::End(TagEnd::Link) if self.shortcut_link.is_some() => {
                 debug!("saw end of shortcut link");
                 self.shortcut_link = None;
             }
             // Handle backticks in inline code blocks, but only if we're in the middle of a shortcut link.
             // [`fn@f`]
-            Some(Event::Code(text)) => {
+            Event::Code(text) => {
                 trace!("saw code {text}");
                 if let Some(link) = self.shortcut_link {
                     // NOTE: this only replaces if the code block is the *entire* text.
@@ -418,7 +431,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
             }
             // Replace plain text in links, but only in the middle of a shortcut link.
             // [fn@f]
-            Some(Event::Text(text)) => {
+            Event::Text(text) => {
                 trace!("saw text {text}");
                 if let Some(link) = self.shortcut_link {
                     // NOTE: same limitations as `Event::Code`
@@ -434,7 +447,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
             }
             // If this is a link, but not a shortcut link,
             // replace the URL, since the broken_link_callback was not called.
-            Some(Event::Start(Tag::Link { dest_url, title, .. })) => {
+            Event::Start(Tag::Link { dest_url, title, .. }) => {
                 if let Some(link) =
                     self.links.iter().find(|&link| *link.original_text == **dest_url)
                 {
@@ -447,9 +460,30 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
             // Anything else couldn't have been a valid Rust path, so no need to replace the text.
             _ => {}
         }
+    }
+}
 
+impl<'a, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, I> {
+    type Item = Event<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut event = self.iter.next();
+        if let Some(ref mut event) = event {
+            self.inner.handle_event(event);
+        }
         // Yield the modified event
         event
+    }
+}
+
+impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Iterator for SpannedLinkReplacer<'a, I> {
+    type Item = SpannedEvent<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let Some((mut event, range)) = self.iter.next() else { return None };
+        self.inner.handle_event(&mut event);
+        // Yield the modified event
+        Some((event, range))
     }
 }
 
@@ -1339,9 +1373,9 @@ impl<'a> Markdown<'a> {
 
         ids.handle_footnotes(|ids, existing_footnotes| {
             let p = HeadingLinks::new(p, None, ids, heading_offset);
+            let p = SpannedLinkReplacer::new(p, links);
             let p = footnotes::Footnotes::new(p, existing_footnotes);
-            let p = LinkReplacer::new(p.map(|(ev, _)| ev), links);
-            let p = TableWrapper::new(p);
+            let p = TableWrapper::new(p.map(|(ev, _)| ev));
             CodeBlocks::new(p, codes, edition, playground)
         })
     }

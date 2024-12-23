@@ -19,7 +19,7 @@ pub struct Placeholder {
 }
 
 impl Placeholder {
-    #[inline(always)]
+    #[inline]
     pub const fn new(
         position: usize,
         fill: char,
@@ -95,7 +95,7 @@ pub struct Argument<'a> {
 
 #[rustc_diagnostic_item = "ArgumentMethods"]
 impl Argument<'_> {
-    #[inline(always)]
+    #[inline]
     fn new<'a, T>(x: &'a T, f: fn(&T, &mut Formatter<'_>) -> Result) -> Argument<'a> {
         Argument {
             // INVARIANT: this creates an `ArgumentType<'a>` from a `&'a T` and
@@ -109,47 +109,47 @@ impl Argument<'_> {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn new_display<T: Display>(x: &T) -> Argument<'_> {
         Self::new(x, Display::fmt)
     }
-    #[inline(always)]
+    #[inline]
     pub fn new_debug<T: Debug>(x: &T) -> Argument<'_> {
         Self::new(x, Debug::fmt)
     }
-    #[inline(always)]
+    #[inline]
     pub fn new_debug_noop<T: Debug>(x: &T) -> Argument<'_> {
         Self::new(x, |_, _| Ok(()))
     }
-    #[inline(always)]
+    #[inline]
     pub fn new_octal<T: Octal>(x: &T) -> Argument<'_> {
         Self::new(x, Octal::fmt)
     }
-    #[inline(always)]
+    #[inline]
     pub fn new_lower_hex<T: LowerHex>(x: &T) -> Argument<'_> {
         Self::new(x, LowerHex::fmt)
     }
-    #[inline(always)]
+    #[inline]
     pub fn new_upper_hex<T: UpperHex>(x: &T) -> Argument<'_> {
         Self::new(x, UpperHex::fmt)
     }
-    #[inline(always)]
+    #[inline]
     pub fn new_pointer<T: Pointer>(x: &T) -> Argument<'_> {
         Self::new(x, Pointer::fmt)
     }
-    #[inline(always)]
+    #[inline]
     pub fn new_binary<T: Binary>(x: &T) -> Argument<'_> {
         Self::new(x, Binary::fmt)
     }
-    #[inline(always)]
+    #[inline]
     pub fn new_lower_exp<T: LowerExp>(x: &T) -> Argument<'_> {
         Self::new(x, LowerExp::fmt)
     }
-    #[inline(always)]
+    #[inline]
     pub fn new_upper_exp<T: UpperExp>(x: &T) -> Argument<'_> {
         Self::new(x, UpperExp::fmt)
     }
-    #[inline(always)]
+    #[inline]
     pub fn from_usize(x: &usize) -> Argument<'_> {
         Argument { ty: ArgumentType::Count(*x) }
     }
@@ -164,7 +164,7 @@ impl Argument<'_> {
     // it here is an explicit CFI violation.
     #[allow(inline_no_sanitize)]
     #[no_sanitize(cfi, kcfi)]
-    #[inline(always)]
+    #[inline]
     pub(super) unsafe fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         match self.ty {
             // SAFETY:
@@ -180,7 +180,7 @@ impl Argument<'_> {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub(super) fn as_usize(&self) -> Option<usize> {
         match self.ty {
             ArgumentType::Count(count) => Some(count),
@@ -198,7 +198,7 @@ impl Argument<'_> {
     /// let f = format_args!("{}", "a");
     /// println!("{f}");
     /// ```
-    #[inline(always)]
+    #[inline]
     pub fn none() -> [Self; 0] {
         []
     }
@@ -215,7 +215,7 @@ pub struct UnsafeArg {
 impl UnsafeArg {
     /// See documentation where `UnsafeArg` is required to know when it is safe to
     /// create and use `UnsafeArg`.
-    #[inline(always)]
+    #[inline]
     pub unsafe fn new() -> Self {
         Self { _private: () }
     }

@@ -1,7 +1,7 @@
 //@ edition: 2021
 //@ check-pass
 
-#![feature(async_closure, async_fn_traits, unboxed_closures)]
+#![feature(async_fn_traits, unboxed_closures)]
 
 fn bar<F, O>(_: F)
 where

@@ -13,8 +13,7 @@ use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::fold::FnMutDelegate;
 use rustc_middle::ty::relate::combine::{super_combine_consts, super_combine_tys};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
-use rustc_span::symbol::sym;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Span, Symbol, sym};
 use tracing::{debug, instrument};
 
 use crate::constraints::OutlivesConstraint;

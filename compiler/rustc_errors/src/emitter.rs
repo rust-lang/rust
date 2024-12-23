@@ -19,6 +19,7 @@ use derive_setters::Setters;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::{DynSend, IntoDynSyncSend, Lrc};
 use rustc_error_messages::{FluentArgs, SpanLabel};
+use rustc_lexer;
 use rustc_lint_defs::pluralize;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
@@ -1698,9 +1699,14 @@ impl HumanEmitter {
                     if let Some(source_string) =
                         line.line_index.checked_sub(1).and_then(|l| file.get_line(l))
                     {
+                        // Whitespace can only be removed (aka considered leading)
+                        // if the lexer considers it whitespace.
+                        // non-rustc_lexer::is_whitespace() chars are reported as an
+                        // error (ex. no-break-spaces \u{a0}), and thus can't be considered
+                        // for removal during error reporting.
                         let leading_whitespace = source_string
                             .chars()
-                            .take_while(|c| c.is_whitespace())
+                            .take_while(|c| rustc_lexer::is_whitespace(*c))
                             .map(|c| {
                                 match c {
                                     // Tabs are displayed as 4 spaces
@@ -1709,7 +1715,7 @@ impl HumanEmitter {
                                 }
                             })
                             .sum();
-                        if source_string.chars().any(|c| !c.is_whitespace()) {
+                        if source_string.chars().any(|c| !rustc_lexer::is_whitespace(c)) {
                             whitespace_margin = min(whitespace_margin, leading_whitespace);
                         }
                     }
@@ -2523,7 +2529,7 @@ impl HumanEmitter {
                     buffer.puts(*row_num, max_line_num_len + 1, "+ ", Style::Addition);
                 }
                 [] => {
-                    // FIXME: needed? Doesn't get excercised in any test.
+                    // FIXME: needed? Doesn't get exercised in any test.
                     self.draw_col_separator_no_space(buffer, *row_num, max_line_num_len + 1);
                 }
                 _ => {
@@ -3048,11 +3054,19 @@ impl FileWithAnnotatedLines {
                 // working correctly.
                 let middle = min(ann.line_start + 4, ann.line_end);
                 // We'll show up to 4 lines past the beginning of the multispan start.
-                // We will *not* include the tail of lines that are only whitespace.
+                // We will *not* include the tail of lines that are only whitespace, a comment or
+                // a bare delimiter.
+                let filter = |s: &str| {
+                    let s = s.trim();
+                    // Consider comments as empty, but don't consider docstrings to be empty.
+                    !(s.starts_with("//") && !(s.starts_with("///") || s.starts_with("//!")))
+                        // Consider lines with nothing but whitespace, a single delimiter as empty.
+                        && !["", "{", "}", "(", ")", "[", "]"].contains(&s)
+                };
                 let until = (ann.line_start..middle)
                     .rev()
                     .filter_map(|line| file.get_line(line - 1).map(|s| (line + 1, s)))
-                    .find(|(_, s)| !s.trim().is_empty())
+                    .find(|(_, s)| filter(s))
                     .map(|(line, _)| line)
                     .unwrap_or(ann.line_start);
                 for line in ann.line_start + 1..until {
@@ -3060,7 +3074,8 @@ impl FileWithAnnotatedLines {
                     add_annotation_to_file(&mut output, Lrc::clone(&file), line, ann.as_line());
                 }
                 let line_end = ann.line_end - 1;
-                if middle < line_end {
+                let end_is_empty = file.get_line(line_end - 1).map_or(false, |s| !filter(&s));
+                if middle < line_end && !end_is_empty {
                     add_annotation_to_file(&mut output, Lrc::clone(&file), line_end, ann.as_line());
                 }
             } else {

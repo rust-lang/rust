@@ -67,7 +67,7 @@ impl<V: Clone> Clone for StateData<V> {
     }
 }
 
-impl<V: JoinSemiLattice + Clone + HasBottom> JoinSemiLattice for StateData<V> {
+impl<V: JoinSemiLattice + Clone> JoinSemiLattice for StateData<V> {
     fn join(&mut self, other: &Self) -> bool {
         let mut changed = false;
         #[allow(rustc::potential_query_instability)]
@@ -342,7 +342,7 @@ impl<V: Clone + HasBottom> State<V> {
     }
 }
 
-impl<V: JoinSemiLattice + Clone + HasBottom> JoinSemiLattice for State<V> {
+impl<V: JoinSemiLattice + Clone> JoinSemiLattice for State<V> {
     fn join(&mut self, other: &Self) -> bool {
         match (&mut *self, other) {
             (_, State::Unreachable) => false,

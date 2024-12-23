@@ -3,13 +3,12 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::ty::is_copy;
 use clippy_utils::usage::mutated_variables;
 use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
-use clippy_utils::{MaybePath, is_res_lang_ctor, is_trait_method, path_res, path_to_local_id};
+use clippy_utils::{is_res_lang_ctor, is_trait_method, path_res, path_to_local_id};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_lint::LateContext;
-use rustc_middle::query::Key;
 use rustc_middle::ty;
 use rustc_span::sym;
 
@@ -44,7 +43,6 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>, a
             if name == "filter_map"
                 && let hir::ExprKind::Call(expr, args) = body.value.kind
                 && is_res_lang_ctor(cx, path_res(cx, expr), OptionSome)
-                && arg_id.ty_def_id() == args[0].hir_id().ty_def_id()
                 && let hir::ExprKind::Path(_) = args[0].kind
             {
                 span_lint_and_sugg(

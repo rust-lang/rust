@@ -20,6 +20,10 @@ use crate::lang_items::Duplicate;
 #[diag(passes_incorrect_do_not_recommend_location)]
 pub(crate) struct IncorrectDoNotRecommendLocation;
 
+#[derive(LintDiagnostic)]
+#[diag(passes_incorrect_do_not_recommend_args)]
+pub(crate) struct DoNotRecommendDoesNotExpectArgs;
+
 #[derive(Diagnostic)]
 #[diag(passes_autodiff_attr)]
 pub(crate) struct AutoDiffAttr {
@@ -109,6 +113,15 @@ pub(crate) struct TrackedCallerWrongLocation {
 #[derive(Diagnostic)]
 #[diag(passes_should_be_applied_to_struct_enum, code = E0701)]
 pub(crate) struct NonExhaustiveWrongLocation {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub defn_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_non_exaustive_with_default_field_values)]
+pub(crate) struct NonExhaustiveWithDefaultFieldValues {
     #[primary_span]
     pub attr_span: Span,
     #[label]
@@ -216,18 +229,19 @@ pub(crate) struct DocKeywordEmptyMod {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_doc_keyword_not_keyword)]
+#[help]
+pub(crate) struct DocKeywordNotKeyword {
+    #[primary_span]
+    pub span: Span,
+    pub keyword: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_doc_keyword_not_mod)]
 pub(crate) struct DocKeywordNotMod {
     #[primary_span]
     pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_doc_keyword_invalid_ident)]
-pub(crate) struct DocKeywordInvalidIdent {
-    #[primary_span]
-    pub span: Span,
-    pub doc_keyword: Symbol,
 }
 
 #[derive(Diagnostic)]

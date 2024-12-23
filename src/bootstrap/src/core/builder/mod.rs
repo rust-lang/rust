@@ -392,14 +392,14 @@ impl StepDescription {
     fn is_excluded(&self, builder: &Builder<'_>, pathset: &PathSet) -> bool {
         if builder.config.skip.iter().any(|e| pathset.has(e, builder.kind)) {
             if !matches!(builder.config.dry_run, DryRun::SelfCheck) {
-                eprintln!("Skipping {pathset:?} because it is excluded");
+                println!("Skipping {pathset:?} because it is excluded");
             }
             return true;
         }
 
         if !builder.config.skip.is_empty() && !matches!(builder.config.dry_run, DryRun::SelfCheck) {
             builder.verbose(|| {
-                eprintln!(
+                println!(
                     "{:?} not skipped for {:?} -- not in {:?}",
                     pathset, self.name, builder.config.skip
                 )
@@ -613,7 +613,9 @@ impl<'a> ShouldRun<'a> {
         self
     }
 
-    // single, non-aliased path
+    /// single, non-aliased path
+    ///
+    /// Must be an on-disk path; use `alias` for names that do not correspond to on-disk paths.
     pub fn path(self, path: &str) -> Self {
         self.paths(&[path])
     }
@@ -622,7 +624,7 @@ impl<'a> ShouldRun<'a> {
     ///
     /// This differs from [`path`] in that multiple calls to path will end up calling `make_run`
     /// multiple times, whereas a single call to `paths` will only ever generate a single call to
-    /// `paths`.
+    /// `make_run`.
     ///
     /// This is analogous to `all_krates`, although `all_krates` is gone now. Prefer [`path`] where possible.
     ///
@@ -1437,11 +1439,11 @@ impl<'a> Builder<'a> {
                 panic!("{}", out);
             }
             if let Some(out) = self.cache.get(&step) {
-                self.verbose_than(1, || eprintln!("{}c {:?}", "  ".repeat(stack.len()), step));
+                self.verbose_than(1, || println!("{}c {:?}", "  ".repeat(stack.len()), step));
 
                 return out;
             }
-            self.verbose_than(1, || eprintln!("{}> {:?}", "  ".repeat(stack.len()), step));
+            self.verbose_than(1, || println!("{}> {:?}", "  ".repeat(stack.len()), step));
             stack.push(Box::new(step.clone()));
         }
 
@@ -1462,7 +1464,7 @@ impl<'a> Builder<'a> {
             let step_string = format!("{step:?}");
             let brace_index = step_string.find('{').unwrap_or(0);
             let type_string = type_name::<S>();
-            eprintln!(
+            println!(
                 "[TIMING] {} {} -- {}.{:03}",
                 &type_string.strip_prefix("bootstrap::").unwrap_or(type_string),
                 &step_string[brace_index..],
@@ -1479,9 +1481,7 @@ impl<'a> Builder<'a> {
             let cur_step = stack.pop().expect("step stack empty");
             assert_eq!(cur_step.downcast_ref(), Some(&step));
         }
-        self.verbose_than(1, || {
-            eprintln!("{}< {:?}", "  ".repeat(self.stack.borrow().len()), step)
-        });
+        self.verbose_than(1, || println!("{}< {:?}", "  ".repeat(self.stack.borrow().len()), step));
         self.cache.put(step, out.clone());
         out
     }

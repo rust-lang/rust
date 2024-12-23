@@ -12,8 +12,7 @@ LL |       |bar| {
 LL | |
 LL | |
 LL | |         if bar {
-LL | |             yield bar;
-LL | |         }
+...  |
 LL | |     }
    | |_____- return type was inferred to be `{coroutine@$DIR/issue-88653.rs:15:5: 15:10}` here
    |

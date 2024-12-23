@@ -1,17 +1,16 @@
-use rustc_ast::ast;
-use rustc_attr::InstructionSetAttr;
+use rustc_attr_parsing::InstructionSetAttr;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::Applicability;
+use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_middle::middle::codegen_fn_attrs::TargetFeature;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::feature_err;
-use rustc_span::Span;
-use rustc_span::symbol::{Symbol, sym};
-use rustc_target::target_features::{self, Stability};
+use rustc_span::{Span, Symbol, sym};
+use rustc_target::target_features;
 
 use crate::errors;
 
@@ -19,8 +18,8 @@ use crate::errors;
 /// Enabled target features are added to `target_features`.
 pub(crate) fn from_target_feature_attr(
     tcx: TyCtxt<'_>,
-    attr: &ast::Attribute,
-    rust_target_features: &UnordMap<String, target_features::Stability>,
+    attr: &hir::Attribute,
+    rust_target_features: &UnordMap<String, target_features::StabilityComputed>,
     target_features: &mut Vec<TargetFeature>,
 ) {
     let Some(list) = attr.meta_item_list() else { return };
@@ -63,32 +62,24 @@ pub(crate) fn from_target_feature_attr(
                 return None;
             };
 
-            // Only allow target features whose feature gates have been enabled.
-            let allowed = match stability {
-                Stability::Forbidden { .. } => false,
-                Stability::Stable => true,
-                Stability::Unstable(name) => rust_features.enabled(*name),
-            };
-            if !allowed {
-                match stability {
-                    Stability::Stable => unreachable!(),
-                    &Stability::Unstable(lang_feature_name) => {
-                        feature_err(
-                            &tcx.sess,
-                            lang_feature_name,
-                            item.span(),
-                            format!("the target feature `{feature}` is currently unstable"),
-                        )
-                        .emit();
-                    }
-                    Stability::Forbidden { reason } => {
-                        tcx.dcx().emit_err(errors::ForbiddenTargetFeatureAttr {
-                            span: item.span(),
-                            feature,
-                            reason,
-                        });
-                    }
-                }
+            // Only allow target features whose feature gates have been enabled
+            // and which are permitted to be toggled.
+            if let Err(reason) = stability.toggle_allowed(/*enable*/ true) {
+                tcx.dcx().emit_err(errors::ForbiddenTargetFeatureAttr {
+                    span: item.span(),
+                    feature,
+                    reason,
+                });
+            } else if let Some(nightly_feature) = stability.requires_nightly()
+                && !rust_features.enabled(nightly_feature)
+            {
+                feature_err(
+                    &tcx.sess,
+                    nightly_feature,
+                    item.span(),
+                    format!("the target feature `{feature}` is currently unstable"),
+                )
+                .emit();
             }
             Some(Symbol::intern(feature))
         }));
@@ -156,18 +147,19 @@ pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         rust_target_features: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
+            let target = &tcx.sess.target;
             if tcx.sess.opts.actually_rustdoc {
                 // rustdoc needs to be able to document functions that use all the features, so
                 // whitelist them all
                 rustc_target::target_features::all_rust_features()
-                    .map(|(a, b)| (a.to_string(), b))
+                    .map(|(a, b)| (a.to_string(), b.compute_toggleability(target)))
                     .collect()
             } else {
                 tcx.sess
                     .target
                     .rust_target_features()
                     .iter()
-                    .map(|&(a, b, _)| (a.to_string(), b))
+                    .map(|(a, b, _)| (a.to_string(), b.compute_toggleability(target)))
                     .collect()
             }
         },

@@ -4,9 +4,7 @@ error: extern blocks must be unsafe
 LL | / extern "C" {
 LL | |
 LL | |     safe static TEST1: i32;
-LL | |
-LL | |     safe fn test1(i: i32);
-LL | |
+...  |
 LL | | }
    | |_^
 

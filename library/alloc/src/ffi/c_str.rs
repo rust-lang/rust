@@ -1,8 +1,5 @@
 //! [`CString`] and its related types.
 
-#[cfg(test)]
-mod tests;
-
 use core::borrow::Borrow;
 use core::ffi::{CStr, c_char};
 use core::num::NonZero;

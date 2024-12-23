@@ -88,10 +88,17 @@ where
     /// returns `NoSolution`.
     #[instrument(level = "trace", skip(self), ret)]
     fn normalize_at_least_one_step(&mut self, goal: Goal<I, NormalizesTo<I>>) -> QueryResult<I> {
-        match goal.predicate.alias.kind(self.cx()) {
+        let cx = self.cx();
+        match goal.predicate.alias.kind(cx) {
             ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst => {
                 let candidates = self.assemble_and_evaluate_candidates(goal);
-                self.merge_candidates(candidates)
+                let (_, proven_via) =
+                    self.probe(|_| ProbeKind::ShadowedEnvProbing).enter(|ecx| {
+                        let trait_goal: Goal<I, ty::TraitPredicate<I>> =
+                            goal.with(cx, goal.predicate.alias.trait_ref(cx));
+                        ecx.compute_trait_goal(trait_goal)
+                    })?;
+                self.merge_candidates(proven_via, candidates)
             }
             ty::AliasTermKind::InherentTy => self.normalize_inherent_associated_type(goal),
             ty::AliasTermKind::OpaqueTy => self.normalize_opaque_type(goal),
@@ -144,7 +151,7 @@ where
         then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResult<I>,
     ) -> Result<Candidate<I>, NoSolution> {
         if let Some(projection_pred) = assumption.as_projection_clause() {
-            if projection_pred.projection_def_id() == goal.predicate.def_id() {
+            if projection_pred.item_def_id() == goal.predicate.def_id() {
                 let cx = ecx.cx();
                 if !DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
                     goal.predicate.alias.args,
