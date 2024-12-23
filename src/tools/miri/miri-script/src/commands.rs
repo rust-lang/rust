@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::ffi::{OsStr, OsString};
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Write};
-use std::ops::{Not, Range};
+use std::ops::Not;
 use std::path::PathBuf;
 use std::time::Duration;
 use std::{env, net, process};
@@ -178,8 +178,8 @@ impl Command {
             Command::Check { flags } => Self::check(flags),
             Command::Test { bless, flags, target, coverage } =>
                 Self::test(bless, flags, target, coverage),
-            Command::Run { dep, verbose, many_seeds, target, edition, flags } =>
-                Self::run(dep, verbose, many_seeds, target, edition, flags),
+            Command::Run { dep, verbose, target, edition, flags } =>
+                Self::run(dep, verbose, target, edition, flags),
             Command::Doc { flags } => Self::doc(flags),
             Command::Fmt { flags } => Self::fmt(flags),
             Command::Clippy { flags } => Self::clippy(flags),
@@ -586,7 +586,6 @@ impl Command {
     fn run(
         dep: bool,
         verbose: bool,
-        many_seeds: Option<Range<u32>>,
         target: Option<String>,
         edition: Option<String>,
         flags: Vec<String>,
@@ -614,48 +613,34 @@ impl Command {
         early_flags.push("--sysroot".into());
         early_flags.push(miri_sysroot.into());
 
-        // Compute everything needed to run the actual command. Also add MIRIFLAGS.
+        // Compute flags.
         let miri_flags = e.sh.var("MIRIFLAGS").unwrap_or_default();
         let miri_flags = flagsplit(&miri_flags);
         let quiet_flag = if verbose { None } else { Some("--quiet") };
-        // This closure runs the command with the given `seed_flag` added between the MIRIFLAGS and
-        // the `flags` given on the command-line.
-        let run_miri = |e: &MiriEnv, seed_flag: Option<String>| -> Result<()> {
-            // The basic command that executes the Miri driver.
-            let mut cmd = if dep {
-                // We invoke the test suite as that has all the logic for running with dependencies.
-                e.cargo_cmd(".", "test")
-                    .args(&["--test", "ui"])
-                    .args(quiet_flag)
-                    .arg("--")
-                    .args(&["--miri-run-dep-mode"])
-            } else {
-                cmd!(e.sh, "{miri_bin}")
-            };
-            cmd.set_quiet(!verbose);
-            // Add Miri flags
-            let mut cmd = cmd.args(&miri_flags).args(&seed_flag).args(&early_flags).args(&flags);
-            // For `--dep` we also need to set the target in the env var.
-            if dep {
-                if let Some(target) = &target {
-                    cmd = cmd.env("MIRI_TEST_TARGET", target);
-                }
-            }
-            // And run the thing.
-            Ok(cmd.run()?)
-        };
-        // Run the closure once or many times.
-        if let Some(seed_range) = many_seeds {
-            e.run_many_times(seed_range, |e, seed| {
-                eprintln!("Trying seed: {seed}");
-                run_miri(e, Some(format!("-Zmiri-seed={seed}"))).inspect_err(|_| {
-                    eprintln!("FAILING SEED: {seed}");
-                })
-            })?;
+
+        // Run Miri.
+        // The basic command that executes the Miri driver.
+        let mut cmd = if dep {
+            // We invoke the test suite as that has all the logic for running with dependencies.
+            e.cargo_cmd(".", "test")
+                .args(&["--test", "ui"])
+                .args(quiet_flag)
+                .arg("--")
+                .args(&["--miri-run-dep-mode"])
         } else {
-            run_miri(&e, None)?;
+            cmd!(e.sh, "{miri_bin}")
+        };
+        cmd.set_quiet(!verbose);
+        // Add Miri flags
+        let mut cmd = cmd.args(&miri_flags).args(&early_flags).args(&flags);
+        // For `--dep` we also need to set the target in the env var.
+        if dep {
+            if let Some(target) = &target {
+                cmd = cmd.env("MIRI_TEST_TARGET", target);
+            }
         }
-        Ok(())
+        // Finally, run the thing.
+        Ok(cmd.run()?)
     }
 
     fn fmt(flags: Vec<String>) -> Result<()> {

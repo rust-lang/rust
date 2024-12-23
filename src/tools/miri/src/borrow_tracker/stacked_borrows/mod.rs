@@ -5,7 +5,6 @@ pub mod diagnostics;
 mod item;
 mod stack;
 
-use std::cell::RefCell;
 use std::fmt::Write;
 use std::{cmp, mem};
 
@@ -822,16 +821,9 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
         let size = match size {
             Some(size) => size,
             None => {
-                // The first time this happens, show a warning.
-                thread_local! { static WARNING_SHOWN: RefCell<bool> = const { RefCell::new(false) }; }
-                WARNING_SHOWN.with_borrow_mut(|shown| {
-                    if *shown {
-                        return;
-                    }
-                    // Not yet shown. Show it!
-                    *shown = true;
+                if !this.machine.sb_extern_type_warned.replace(true) {
                     this.emit_diagnostic(NonHaltingDiagnostic::ExternTypeReborrow);
-                });
+                }
                 return interp_ok(place.clone());
             }
         };

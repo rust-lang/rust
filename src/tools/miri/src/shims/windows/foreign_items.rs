@@ -552,8 +552,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Miscellaneous
             "ExitProcess" => {
                 let [code] = this.check_shim(abi, sys_conv, link_name, args)?;
-                let code = this.read_scalar(code)?.to_u32()?;
-                throw_machine_stop!(TerminationInfo::Exit { code: code.into(), leak_check: false });
+                // Windows technically uses u32, but we unify everything to a Unix-style i32.
+                let code = this.read_scalar(code)?.to_i32()?;
+                throw_machine_stop!(TerminationInfo::Exit { code, leak_check: false });
             }
             "SystemFunction036" => {
                 // used by getrandom 0.1

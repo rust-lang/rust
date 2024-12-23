@@ -1,5 +1,4 @@
 //! Implements calling functions from a native library.
-use std::cell::RefCell;
 use std::ops::Deref;
 
 use libffi::high::call as ffi;
@@ -174,16 +173,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     continue;
                 };
                 // The first time this happens, print a warning.
-                thread_local! {
-                    static HAVE_WARNED: RefCell<bool> = const { RefCell::new(false) };
+                if !this.machine.native_call_mem_warned.replace(true) {
+                    // Newly set, so first time we get here.
+                    this.emit_diagnostic(NonHaltingDiagnostic::NativeCallSharedMem);
                 }
-                HAVE_WARNED.with_borrow_mut(|have_warned| {
-                    if !*have_warned {
-                        // Newly inserted, so first time we see this span.
-                        this.emit_diagnostic(NonHaltingDiagnostic::NativeCallSharedMem);
-                        *have_warned = true;
-                    }
-                });
 
                 this.prepare_for_native_call(alloc_id, prov)?;
             }
