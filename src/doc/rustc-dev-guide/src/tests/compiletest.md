@@ -244,6 +244,9 @@ the debugger currently being used:
   The "Rust" version of LLDB doesn't exist anymore, so this will always be
   ignored. This should probably be removed.
 
+By passing the `--debugger` option to compiletest, you can specify a single debugger to run tests with.
+For example, `./x test tests/debuginfo -- --debugger gdb` will only test GDB commands.
+
 > **Note on running lldb debuginfo tests locally**
 >
 > If you want to run lldb debuginfo tests locally, then currently on Windows it
