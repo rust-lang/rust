@@ -237,7 +237,7 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(List: "address, kcfi, memory, thread"), DuplicatesOk,
         experimental!(no_sanitize)
     ),
-    ungated!(coverage, Normal, template!(Word, List: "on|off"), WarnFollowing),
+    gated!(coverage, Normal, template!(Word, List: "on|off"), WarnFollowing, coverage_attribute, experimental!(coverage)),
 
     ungated!(
         doc, Normal, template!(List: "hidden|inline|...", NameValueStr: "string"), DuplicatesOk

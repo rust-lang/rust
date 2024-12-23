@@ -1,3 +1,4 @@
+   LL|       |#![feature(coverage_attribute)]
    LL|       |//@ edition: 2021
    LL|       |//@ compile-flags: -Copt-level=0 -Zmir-opt-level=3
    LL|       |
