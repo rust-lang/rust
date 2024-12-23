@@ -89,7 +89,7 @@ static mut STATIC13: SafeStruct =
 
 static mut STATIC14: SafeStruct = SafeStruct {
     field1: SafeEnum::Variant1,
-    field2: SafeEnum::Variant4("str".to_string()), //~ ERROR cannot call non-const fn
+    field2: SafeEnum::Variant4("str".to_string()), //~ ERROR cannot call non-const method
 };
 
 static STATIC15: &'static [Vec<MyOwned>] = &[

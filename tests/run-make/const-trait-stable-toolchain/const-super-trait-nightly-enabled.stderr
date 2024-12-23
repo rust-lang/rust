@@ -32,7 +32,7 @@ help: mark `Bar` as `#[const_trait]` to allow it to have `const` implementations
 LL | #[const_trait] trait Bar: ~const Foo {}
    | ++++++++++++++
 
-error[E0015]: cannot call non-const fn `<T as Foo>::a` in constant functions
+error[E0015]: cannot call non-const method `<T as Foo>::a` in constant functions
   --> const-super-trait.rs:10:7
    |
 LL |     x.a();

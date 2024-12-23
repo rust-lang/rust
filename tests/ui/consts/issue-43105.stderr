@@ -1,4 +1,4 @@
-error[E0015]: cannot call non-const fn `xyz` in constants
+error[E0015]: cannot call non-const function `xyz` in constants
   --> $DIR/issue-43105.rs:3:17
    |
 LL | const NUM: u8 = xyz();

@@ -668,7 +668,7 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
 LL |     type F: std::ops::Fn(_);
    |                          ^ not allowed in type signatures
 
-error[E0015]: cannot call non-const fn `<std::ops::Range<i32> as Iterator>::filter::<{closure@$DIR/typeck_type_placeholder_item.rs:230:29: 230:32}>` in constants
+error[E0015]: cannot call non-const method `<std::ops::Range<i32> as Iterator>::filter::<{closure@$DIR/typeck_type_placeholder_item.rs:230:29: 230:32}>` in constants
   --> $DIR/typeck_type_placeholder_item.rs:230:22
    |
 LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
@@ -676,7 +676,7 @@ LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
    |
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
-error[E0015]: cannot call non-const fn `<Filter<std::ops::Range<i32>, {closure@$DIR/typeck_type_placeholder_item.rs:230:29: 230:32}> as Iterator>::map::<i32, {closure@$DIR/typeck_type_placeholder_item.rs:230:49: 230:52}>` in constants
+error[E0015]: cannot call non-const method `<Filter<std::ops::Range<i32>, {closure@$DIR/typeck_type_placeholder_item.rs:230:29: 230:32}> as Iterator>::map::<i32, {closure@$DIR/typeck_type_placeholder_item.rs:230:49: 230:52}>` in constants
   --> $DIR/typeck_type_placeholder_item.rs:230:45
    |
 LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
