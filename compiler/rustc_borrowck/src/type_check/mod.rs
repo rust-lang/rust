@@ -3,7 +3,7 @@
 use std::rc::Rc;
 use std::{fmt, iter, mem};
 
-use rustc_abi::{FIRST_VARIANT, FieldIdx};
+use rustc_abi::FieldIdx;
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::ErrorGuaranteed;
@@ -70,15 +70,6 @@ macro_rules! span_mirbug {
                 format_args!($($message)*),
             ),
         )
-    })
-}
-
-macro_rules! span_mirbug_and_err {
-    ($context:expr, $elem:expr, $($message:tt)*) => ({
-        {
-            span_mirbug!($context, $elem, $($message)*);
-            $context.error()
-        }
     })
 }
 
@@ -196,11 +187,9 @@ enum FieldAccessError {
     OutOfRange { field_count: usize },
 }
 
-/// Verifies that MIR types are sane to not crash further checks.
+/// Verifies that MIR types are sane.
 ///
-/// The sanitize_XYZ methods here take an MIR object and compute its
-/// type, calling `span_mirbug` and returning an error type if there
-/// is a problem.
+/// FIXME: This should be merged with the actual `TypeChecker`.
 struct TypeVerifier<'a, 'b, 'tcx> {
     typeck: &'a mut TypeChecker<'b, 'tcx>,
     promoted: &'b IndexSlice<Promoted, Body<'tcx>>,
@@ -215,14 +204,91 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
     }
 
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
-        self.sanitize_place(place, location, context);
+        self.super_place(place, context, location);
+        let tcx = self.tcx();
+        let place_ty = place.ty(self.body(), tcx);
+        if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
+            let trait_ref = ty::TraitRef::new(
+                tcx,
+                tcx.require_lang_item(LangItem::Copy, Some(self.last_span)),
+                [place_ty.ty],
+            );
+
+            // To have a `Copy` operand, the type `T` of the
+            // value must be `Copy`. Note that we prove that `T: Copy`,
+            // rather than using the `is_copy_modulo_regions`
+            // test. This is important because
+            // `is_copy_modulo_regions` ignores the resulting region
+            // obligations and assumes they pass. This can result in
+            // bounds from `Copy` impls being unsoundly ignored (e.g.,
+            // #29149). Note that we decide to use `Copy` before knowing
+            // whether the bounds fully apply: in effect, the rule is
+            // that if a value of some type could implement `Copy`, then
+            // it must.
+            self.typeck.prove_trait_ref(
+                trait_ref,
+                location.to_locations(),
+                ConstraintCategory::CopyBound,
+            );
+        }
+    }
+
+    fn visit_projection_elem(
+        &mut self,
+        place: PlaceRef<'tcx>,
+        elem: PlaceElem<'tcx>,
+        context: PlaceContext,
+        location: Location,
+    ) {
+        let tcx = self.tcx();
+        let base_ty = place.ty(self.body(), tcx);
+        match elem {
+            // All these projections don't add any constraints, so there's nothing to
+            // do here. We check their invariants in the MIR validator after all.
+            ProjectionElem::Deref
+            | ProjectionElem::Index(_)
+            | ProjectionElem::ConstantIndex { .. }
+            | ProjectionElem::Subslice { .. }
+            | ProjectionElem::Downcast(..) => {}
+            ProjectionElem::Field(field, fty) => {
+                let fty = self.typeck.normalize(fty, location);
+                let ty = base_ty.field_ty(tcx, field);
+                let ty = self.typeck.normalize(ty, location);
+                debug!(?fty, ?ty);
+
+                if let Err(terr) = self.typeck.relate_types(
+                    ty,
+                    context.ambient_variance(),
+                    fty,
+                    location.to_locations(),
+                    ConstraintCategory::Boring,
+                ) {
+                    span_mirbug!(self, place, "bad field access ({:?}: {:?}): {:?}", ty, fty, terr);
+                }
+            }
+            ProjectionElem::OpaqueCast(ty) => {
+                let ty = self.typeck.normalize(ty, location);
+                self.typeck
+                    .relate_types(
+                        ty,
+                        context.ambient_variance(),
+                        base_ty.ty,
+                        location.to_locations(),
+                        ConstraintCategory::TypeAnnotation,
+                    )
+                    .unwrap();
+            }
+            ProjectionElem::Subtype(_) => {
+                bug!("ProjectionElem::Subtype shouldn't exist in borrowck")
+            }
+        }
     }
 
     fn visit_const_operand(&mut self, constant: &ConstOperand<'tcx>, location: Location) {
         debug!(?constant, ?location, "visit_const_operand");
 
         self.super_const_operand(constant, location);
-        let ty = self.sanitize_type(constant, constant.const_.ty());
+        let ty = constant.const_.ty();
 
         self.typeck.infcx.tcx.for_each_free_region(&ty, |live_region| {
             let live_region_vid = self.typeck.universal_regions.to_region_vid(live_region);
@@ -292,7 +358,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                     };
 
                     let promoted_body = &self.promoted[promoted];
-                    self.sanitize_promoted(promoted_body, location);
+                    self.verify_promoted(promoted_body, location);
 
                     let promoted_ty = promoted_body.return_ty();
                     check_err(self, promoted_body, ty, promoted_ty);
@@ -342,15 +408,8 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
         }
     }
 
-    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
-        self.super_rvalue(rvalue, location);
-        let rval_ty = rvalue.ty(self.body(), self.tcx());
-        self.sanitize_type(rvalue, rval_ty);
-    }
-
     fn visit_local_decl(&mut self, local: Local, local_decl: &LocalDecl<'tcx>) {
         self.super_local_decl(local, local_decl);
-        self.sanitize_type(local_decl, local_decl.ty);
 
         if let Some(user_ty) = &local_decl.user_ty {
             for (user_ty, span) in user_ty.projections_and_spans() {
@@ -389,7 +448,6 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
     }
 
     fn visit_body(&mut self, body: &Body<'tcx>) {
-        self.sanitize_type(&"return type", body.return_ty());
         // The types of local_decls are checked above which is called in super_body.
         self.super_body(body);
     }
@@ -404,64 +462,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         self.typeck.infcx.tcx
     }
 
-    fn sanitize_type(&mut self, parent: &dyn fmt::Debug, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if ty.has_escaping_bound_vars() || ty.references_error() {
-            span_mirbug_and_err!(self, parent, "bad type {:?}", ty)
-        } else {
-            ty
-        }
-    }
-
-    /// Checks that the types internal to the `place` match up with
-    /// what would be expected.
-    #[instrument(level = "debug", skip(self, location), ret)]
-    fn sanitize_place(
-        &mut self,
-        place: &Place<'tcx>,
-        location: Location,
-        context: PlaceContext,
-    ) -> PlaceTy<'tcx> {
-        let mut place_ty = PlaceTy::from_ty(self.body().local_decls[place.local].ty);
-
-        for elem in place.projection.iter() {
-            if place_ty.variant_index.is_none() {
-                if let Err(guar) = place_ty.ty.error_reported() {
-                    return PlaceTy::from_ty(Ty::new_error(self.tcx(), guar));
-                }
-            }
-            place_ty = self.sanitize_projection(place_ty, elem, place, location, context);
-        }
-
-        if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
-            let tcx = self.tcx();
-            let trait_ref = ty::TraitRef::new(
-                tcx,
-                tcx.require_lang_item(LangItem::Copy, Some(self.last_span)),
-                [place_ty.ty],
-            );
-
-            // To have a `Copy` operand, the type `T` of the
-            // value must be `Copy`. Note that we prove that `T: Copy`,
-            // rather than using the `is_copy_modulo_regions`
-            // test. This is important because
-            // `is_copy_modulo_regions` ignores the resulting region
-            // obligations and assumes they pass. This can result in
-            // bounds from `Copy` impls being unsoundly ignored (e.g.,
-            // #29149). Note that we decide to use `Copy` before knowing
-            // whether the bounds fully apply: in effect, the rule is
-            // that if a value of some type could implement `Copy`, then
-            // it must.
-            self.typeck.prove_trait_ref(
-                trait_ref,
-                location.to_locations(),
-                ConstraintCategory::CopyBound,
-            );
-        }
-
-        place_ty
-    }
-
-    fn sanitize_promoted(&mut self, promoted_body: &'b Body<'tcx>, location: Location) {
+    fn verify_promoted(&mut self, promoted_body: &'b Body<'tcx>, location: Location) {
         // Determine the constraints from the promoted MIR by running the type
         // checker on the promoted MIR, then transfer the constraints back to
         // the main MIR, changing the locations to the provided location.
@@ -515,240 +516,6 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         #[allow(rustc::potential_query_instability)]
         for region in liveness_constraints.live_regions_unordered() {
             self.typeck.constraints.liveness_constraints.add_location(region, location);
-        }
-    }
-
-    #[instrument(skip(self, location), ret, level = "debug")]
-    fn sanitize_projection(
-        &mut self,
-        base: PlaceTy<'tcx>,
-        pi: PlaceElem<'tcx>,
-        place: &Place<'tcx>,
-        location: Location,
-        context: PlaceContext,
-    ) -> PlaceTy<'tcx> {
-        let tcx = self.tcx();
-        let base_ty = base.ty;
-        match pi {
-            ProjectionElem::Deref => {
-                let deref_ty = base_ty.builtin_deref(true);
-                PlaceTy::from_ty(deref_ty.unwrap_or_else(|| {
-                    span_mirbug_and_err!(self, place, "deref of non-pointer {:?}", base_ty)
-                }))
-            }
-            ProjectionElem::Index(i) => {
-                let index_ty = Place::from(i).ty(self.body(), tcx).ty;
-                if index_ty != tcx.types.usize {
-                    PlaceTy::from_ty(span_mirbug_and_err!(self, i, "index by non-usize {:?}", i))
-                } else {
-                    PlaceTy::from_ty(base_ty.builtin_index().unwrap_or_else(|| {
-                        span_mirbug_and_err!(self, place, "index of non-array {:?}", base_ty)
-                    }))
-                }
-            }
-            ProjectionElem::ConstantIndex { .. } => {
-                // consider verifying in-bounds
-                PlaceTy::from_ty(base_ty.builtin_index().unwrap_or_else(|| {
-                    span_mirbug_and_err!(self, place, "index of non-array {:?}", base_ty)
-                }))
-            }
-            ProjectionElem::Subslice { from, to, from_end } => {
-                PlaceTy::from_ty(match base_ty.kind() {
-                    ty::Array(inner, _) => {
-                        assert!(!from_end, "array subslices should not use from_end");
-                        Ty::new_array(tcx, *inner, to - from)
-                    }
-                    ty::Slice(..) => {
-                        assert!(from_end, "slice subslices should use from_end");
-                        base_ty
-                    }
-                    _ => span_mirbug_and_err!(self, place, "slice of non-array {:?}", base_ty),
-                })
-            }
-            ProjectionElem::Downcast(maybe_name, index) => match base_ty.kind() {
-                ty::Adt(adt_def, _args) if adt_def.is_enum() => {
-                    if index.as_usize() >= adt_def.variants().len() {
-                        PlaceTy::from_ty(span_mirbug_and_err!(
-                            self,
-                            place,
-                            "cast to variant #{:?} but enum only has {:?}",
-                            index,
-                            adt_def.variants().len()
-                        ))
-                    } else {
-                        PlaceTy { ty: base_ty, variant_index: Some(index) }
-                    }
-                }
-                // We do not need to handle coroutines here, because this runs
-                // before the coroutine transform stage.
-                _ => {
-                    let ty = if let Some(name) = maybe_name {
-                        span_mirbug_and_err!(
-                            self,
-                            place,
-                            "can't downcast {:?} as {:?}",
-                            base_ty,
-                            name
-                        )
-                    } else {
-                        span_mirbug_and_err!(self, place, "can't downcast {:?}", base_ty)
-                    };
-                    PlaceTy::from_ty(ty)
-                }
-            },
-            ProjectionElem::Field(field, fty) => {
-                let fty = self.sanitize_type(place, fty);
-                let fty = self.typeck.normalize(fty, location);
-                match self.field_ty(place, base, field, location) {
-                    Ok(ty) => {
-                        let ty = self.typeck.normalize(ty, location);
-                        debug!(?fty, ?ty);
-
-                        if let Err(terr) = self.typeck.relate_types(
-                            ty,
-                            self.get_ambient_variance(context),
-                            fty,
-                            location.to_locations(),
-                            ConstraintCategory::Boring,
-                        ) {
-                            span_mirbug!(
-                                self,
-                                place,
-                                "bad field access ({:?}: {:?}): {:?}",
-                                ty,
-                                fty,
-                                terr
-                            );
-                        }
-                    }
-                    Err(FieldAccessError::OutOfRange { field_count }) => span_mirbug!(
-                        self,
-                        place,
-                        "accessed field #{} but variant only has {}",
-                        field.index(),
-                        field_count
-                    ),
-                }
-                PlaceTy::from_ty(fty)
-            }
-            ProjectionElem::Subtype(_) => {
-                bug!("ProjectionElem::Subtype shouldn't exist in borrowck")
-            }
-            ProjectionElem::OpaqueCast(ty) => {
-                let ty = self.sanitize_type(place, ty);
-                let ty = self.typeck.normalize(ty, location);
-                self.typeck
-                    .relate_types(
-                        ty,
-                        self.get_ambient_variance(context),
-                        base.ty,
-                        location.to_locations(),
-                        ConstraintCategory::TypeAnnotation,
-                    )
-                    .unwrap();
-                PlaceTy::from_ty(ty)
-            }
-        }
-    }
-
-    fn error(&mut self) -> Ty<'tcx> {
-        Ty::new_misc_error(self.tcx())
-    }
-
-    fn get_ambient_variance(&self, context: PlaceContext) -> ty::Variance {
-        use rustc_middle::mir::visit::NonMutatingUseContext::*;
-        use rustc_middle::mir::visit::NonUseContext::*;
-
-        match context {
-            PlaceContext::MutatingUse(_) => ty::Invariant,
-            PlaceContext::NonUse(StorageDead | StorageLive | VarDebugInfo) => ty::Invariant,
-            PlaceContext::NonMutatingUse(
-                Inspect | Copy | Move | PlaceMention | SharedBorrow | FakeBorrow | RawBorrow
-                | Projection,
-            ) => ty::Covariant,
-            PlaceContext::NonUse(AscribeUserTy(variance)) => variance,
-        }
-    }
-
-    fn field_ty(
-        &mut self,
-        parent: &dyn fmt::Debug,
-        base_ty: PlaceTy<'tcx>,
-        field: FieldIdx,
-        location: Location,
-    ) -> Result<Ty<'tcx>, FieldAccessError> {
-        let tcx = self.tcx();
-
-        let (variant, args) = match base_ty {
-            PlaceTy { ty, variant_index: Some(variant_index) } => match *ty.kind() {
-                ty::Adt(adt_def, args) => (adt_def.variant(variant_index), args),
-                ty::Coroutine(def_id, args) => {
-                    let mut variants = args.as_coroutine().state_tys(def_id, tcx);
-                    let Some(mut variant) = variants.nth(variant_index.into()) else {
-                        bug!(
-                            "variant_index of coroutine out of range: {:?}/{:?}",
-                            variant_index,
-                            args.as_coroutine().state_tys(def_id, tcx).count()
-                        );
-                    };
-                    return match variant.nth(field.index()) {
-                        Some(ty) => Ok(ty),
-                        None => Err(FieldAccessError::OutOfRange { field_count: variant.count() }),
-                    };
-                }
-                _ => bug!("can't have downcast of non-adt non-coroutine type"),
-            },
-            PlaceTy { ty, variant_index: None } => match *ty.kind() {
-                ty::Adt(adt_def, args) if !adt_def.is_enum() => {
-                    (adt_def.variant(FIRST_VARIANT), args)
-                }
-                ty::Closure(_, args) => {
-                    return match args.as_closure().upvar_tys().get(field.index()) {
-                        Some(&ty) => Ok(ty),
-                        None => Err(FieldAccessError::OutOfRange {
-                            field_count: args.as_closure().upvar_tys().len(),
-                        }),
-                    };
-                }
-                ty::CoroutineClosure(_, args) => {
-                    return match args.as_coroutine_closure().upvar_tys().get(field.index()) {
-                        Some(&ty) => Ok(ty),
-                        None => Err(FieldAccessError::OutOfRange {
-                            field_count: args.as_coroutine_closure().upvar_tys().len(),
-                        }),
-                    };
-                }
-                ty::Coroutine(_, args) => {
-                    // Only prefix fields (upvars and current state) are
-                    // accessible without a variant index.
-                    return match args.as_coroutine().prefix_tys().get(field.index()) {
-                        Some(ty) => Ok(*ty),
-                        None => Err(FieldAccessError::OutOfRange {
-                            field_count: args.as_coroutine().prefix_tys().len(),
-                        }),
-                    };
-                }
-                ty::Tuple(tys) => {
-                    return match tys.get(field.index()) {
-                        Some(&ty) => Ok(ty),
-                        None => Err(FieldAccessError::OutOfRange { field_count: tys.len() }),
-                    };
-                }
-                _ => {
-                    return Ok(span_mirbug_and_err!(
-                        self,
-                        parent,
-                        "can't project out of {:?}",
-                        base_ty
-                    ));
-                }
-            },
-        };
-
-        if let Some(field) = variant.fields.get(field) {
-            Ok(self.typeck.normalize(field.ty(tcx, args), location))
-        } else {
-            Err(FieldAccessError::OutOfRange { field_count: variant.fields.len() })
         }
     }
 }
