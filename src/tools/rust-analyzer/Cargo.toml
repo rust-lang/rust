@@ -85,11 +85,11 @@ vfs-notify = { path = "./crates/vfs-notify", version = "0.0.0" }
 vfs = { path = "./crates/vfs", version = "0.0.0" }
 edition = { path = "./crates/edition", version = "0.0.0" }
 
-ra-ap-rustc_lexer = { version = "0.85", default-features = false }
-ra-ap-rustc_parse_format = { version = "0.85", default-features = false }
-ra-ap-rustc_index = { version = "0.85", default-features = false }
-ra-ap-rustc_abi = { version = "0.85", default-features = false }
-ra-ap-rustc_pattern_analysis = { version = "0.85", default-features = false }
+ra-ap-rustc_lexer = { version = "0.87", default-features = false }
+ra-ap-rustc_parse_format = { version = "0.87", default-features = false }
+ra-ap-rustc_index = { version = "0.87", default-features = false }
+ra-ap-rustc_abi = { version = "0.87", default-features = false }
+ra-ap-rustc_pattern_analysis = { version = "0.87", default-features = false }
 
 # local crates that aren't published to crates.io. These should not have versions.
 test-fixture = { path = "./crates/test-fixture" }
@@ -138,7 +138,8 @@ pulldown-cmark = { version = "0.9.0", default-features = false }
 rayon = "1.8.0"
 rustc-hash = "2.0.0"
 semver = "1.0.14"
-serde = { version = "1.0.192", features = ["derive"] }
+serde = { version = "1.0.192" }
+serde_derive = { version = "1.0.192" }
 serde_json = "1.0.108"
 smallvec = { version = "1.10.0", features = [
   "const_new",
@@ -157,7 +158,7 @@ tracing-subscriber = { version = "0.3.18", default-features = false, features = 
   "time",
   "tracing-log",
 ] }
-triomphe = { version = "0.1.10", default-features = false, features = ["std"] }
+triomphe = { version = "0.1.14", default-features = false, features = ["std"] }
 url = "2.3.1"
 xshell = "0.2.5"
 

@@ -21,6 +21,9 @@
 //! `ExpnData::call_site` in rustc, [`MacroCallLoc::call_site`] in rust-analyzer.
 use std::fmt;
 
+#[cfg(not(feature = "ra-salsa"))]
+use crate::InternId;
+#[cfg(feature = "ra-salsa")]
 use ra_salsa::{InternId, InternValue};
 
 use crate::MacroCallId;
@@ -39,6 +42,7 @@ impl fmt::Debug for SyntaxContextId {
     }
 }
 
+#[cfg(feature = "ra-salsa")]
 impl ra_salsa::InternKey for SyntaxContextId {
     fn from_intern_id(v: ra_salsa::InternId) -> Self {
         SyntaxContextId(v)
@@ -92,6 +96,7 @@ pub struct SyntaxContextData {
     pub opaque_and_semitransparent: SyntaxContextId,
 }
 
+#[cfg(feature = "ra-salsa")]
 impl InternValue for SyntaxContextData {
     type Key = (SyntaxContextId, Option<MacroCallId>, Transparency);
 

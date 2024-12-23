@@ -481,27 +481,28 @@ pub(crate) fn handle_document_diagnostics(
     snap: GlobalStateSnapshot,
     params: lsp_types::DocumentDiagnosticParams,
 ) -> anyhow::Result<lsp_types::DocumentDiagnosticReportResult> {
-    const EMPTY: lsp_types::DocumentDiagnosticReportResult =
+    let empty = || {
         lsp_types::DocumentDiagnosticReportResult::Report(
             lsp_types::DocumentDiagnosticReport::Full(
                 lsp_types::RelatedFullDocumentDiagnosticReport {
                     related_documents: None,
                     full_document_diagnostic_report: lsp_types::FullDocumentDiagnosticReport {
-                        result_id: None,
+                        result_id: Some("rust-analyzer".to_owned()),
                         items: vec![],
                     },
                 },
             ),
-        );
+        )
+    };
 
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let source_root = snap.analysis.source_root_id(file_id)?;
     if !snap.analysis.is_local_source_root(source_root)? {
-        return Ok(EMPTY);
+        return Ok(empty());
     }
     let config = snap.config.diagnostics(Some(source_root));
     if !config.enabled {
-        return Ok(EMPTY);
+        return Ok(empty());
     }
     let line_index = snap.file_line_index(file_id)?;
     let supports_related = snap.config.text_document_diagnostic_related_document_support();
@@ -529,7 +530,7 @@ pub(crate) fn handle_document_diagnostics(
     Ok(lsp_types::DocumentDiagnosticReportResult::Report(
         lsp_types::DocumentDiagnosticReport::Full(lsp_types::RelatedFullDocumentDiagnosticReport {
             full_document_diagnostic_report: lsp_types::FullDocumentDiagnosticReport {
-                result_id: None,
+                result_id: Some("rust-analyzer".to_owned()),
                 items: diagnostics.collect(),
             },
             related_documents: related_documents.is_empty().not().then(|| {
@@ -539,7 +540,10 @@ pub(crate) fn handle_document_diagnostics(
                         (
                             to_proto::url(&snap, id),
                             lsp_types::DocumentDiagnosticReportKind::Full(
-                                lsp_types::FullDocumentDiagnosticReport { result_id: None, items },
+                                lsp_types::FullDocumentDiagnosticReport {
+                                    result_id: Some("rust-analyzer".to_owned()),
+                                    items,
+                                },
                             ),
                         )
                     })
@@ -1144,7 +1148,7 @@ pub(crate) fn handle_completion_resolve(
     let Some(corresponding_completion) = completions.into_iter().find(|completion_item| {
         // Avoid computing hashes for items that obviously do not match
         // r-a might append a detail-based suffix to the label, so we cannot check for equality
-        original_completion.label.starts_with(completion_item.label.as_str())
+        original_completion.label.starts_with(completion_item.label.primary.as_str())
             && resolve_data_hash == completion_item_hash(completion_item, resolve_data.for_ref)
     }) else {
         return Ok(original_completion);
@@ -1441,7 +1445,13 @@ pub(crate) fn handle_code_action(
     }
 
     // Fixes from `cargo check`.
-    for fix in snap.check_fixes.values().filter_map(|it| it.get(&frange.file_id)).flatten() {
+    for fix in snap
+        .check_fixes
+        .values()
+        .flat_map(|it| it.values())
+        .filter_map(|it| it.get(&frange.file_id))
+        .flatten()
+    {
         // FIXME: this mapping is awkward and shouldn't exist. Refactor
         // `snap.check_fixes` to not convert to LSP prematurely.
         let intersect_fix_range = fix

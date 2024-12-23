@@ -3,6 +3,7 @@
 use hir::{FileRange, Semantics};
 use ide_db::EditionedFileId;
 use ide_db::{label::Label, FileId, RootDatabase};
+use syntax::Edition;
 use syntax::{
     algo::{self, find_node_at_offset, find_node_at_range},
     AstNode, AstToken, Direction, SourceFile, SyntaxElement, SyntaxKind, SyntaxToken, TextRange,
@@ -92,6 +93,10 @@ impl<'a> AssistContext<'a> {
 
     pub(crate) fn file_id(&self) -> EditionedFileId {
         self.frange.file_id
+    }
+
+    pub(crate) fn edition(&self) -> Edition {
+        self.frange.file_id.edition()
     }
 
     pub(crate) fn has_empty_selection(&self) -> bool {

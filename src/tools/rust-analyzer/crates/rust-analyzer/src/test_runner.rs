@@ -5,7 +5,8 @@ use std::process::Command;
 
 use crossbeam_channel::Sender;
 use paths::AbsPath;
-use serde::Deserialize;
+use serde::Deserialize as _;
+use serde_derive::Deserialize;
 use toolchain::Tool;
 
 use crate::{

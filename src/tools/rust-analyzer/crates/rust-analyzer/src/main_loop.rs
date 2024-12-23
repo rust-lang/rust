@@ -408,7 +408,10 @@ impl GlobalState {
         if self.is_quiescent() {
             let became_quiescent = !was_quiescent;
             if became_quiescent {
-                if self.config.check_on_save(None) {
+                if self.config.check_on_save(None)
+                    && self.config.flycheck_workspace(None)
+                    && !self.fetch_build_data_queue.op_requested()
+                {
                     // Project has loaded properly, kick off initial flycheck
                     self.flycheck.iter().for_each(|flycheck| flycheck.restart_workspace(None));
                 }
@@ -656,8 +659,8 @@ impl GlobalState {
 
     fn update_status_or_notify(&mut self) {
         let status = self.current_status();
-        if self.last_reported_status.as_ref() != Some(&status) {
-            self.last_reported_status = Some(status.clone());
+        if self.last_reported_status != status {
+            self.last_reported_status = status.clone();
 
             if self.config.server_status_notification() {
                 self.send_notification::<lsp_ext::ServerStatusNotification>(status);
@@ -715,6 +718,7 @@ impl GlobalState {
                             error!("FetchWorkspaceError: {e}");
                         }
                         self.wants_to_switch = Some("fetched workspace".to_owned());
+                        self.diagnostics.clear_check_all();
                         (Progress::End, None)
                     }
                 };
@@ -956,7 +960,7 @@ impl GlobalState {
 
     fn handle_flycheck_msg(&mut self, message: FlycheckMessage) {
         match message {
-            FlycheckMessage::AddDiagnostic { id, workspace_root, diagnostic } => {
+            FlycheckMessage::AddDiagnostic { id, workspace_root, diagnostic, package_id } => {
                 let snap = self.snapshot();
                 let diagnostics = crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
                     &self.config.diagnostics_map(None),
@@ -968,6 +972,7 @@ impl GlobalState {
                     match url_to_file_id(&self.vfs.read().0, &diag.url) {
                         Ok(file_id) => self.diagnostics.add_check_diagnostic(
                             id,
+                            &package_id,
                             file_id,
                             diag.diagnostic,
                             diag.fix,
@@ -981,9 +986,12 @@ impl GlobalState {
                     };
                 }
             }
-
-            FlycheckMessage::ClearDiagnostics { id } => self.diagnostics.clear_check(id),
-
+            FlycheckMessage::ClearDiagnostics { id, package_id: None } => {
+                self.diagnostics.clear_check(id)
+            }
+            FlycheckMessage::ClearDiagnostics { id, package_id: Some(package_id) } => {
+                self.diagnostics.clear_check_for_package(id, package_id)
+            }
             FlycheckMessage::Progress { id, progress } => {
                 let (state, message) = match progress {
                     flycheck::Progress::DidStart => (Progress::Begin, None),
@@ -1090,12 +1098,12 @@ impl GlobalState {
             .on_latency_sensitive::<NO_RETRY, lsp_request::SemanticTokensRangeRequest>(handlers::handle_semantic_tokens_range)
             // FIXME: Some of these NO_RETRY could be retries if the file they are interested didn't change.
             // All other request handlers
-            .on_with::<lsp_request::DocumentDiagnosticRequest>(handlers::handle_document_diagnostics, || lsp_types::DocumentDiagnosticReportResult::Report(
+            .on_with_vfs_default::<lsp_request::DocumentDiagnosticRequest>(handlers::handle_document_diagnostics, || lsp_types::DocumentDiagnosticReportResult::Report(
                 lsp_types::DocumentDiagnosticReport::Full(
                     lsp_types::RelatedFullDocumentDiagnosticReport {
                         related_documents: None,
                         full_document_diagnostic_report: lsp_types::FullDocumentDiagnosticReport {
-                            result_id: None,
+                            result_id: Some("rust-analyzer".to_owned()),
                             items: vec![],
                         },
                     },

@@ -347,6 +347,8 @@ export class Ctx implements RustAnalyzerExtensionApi {
         }
         log.info("Disposing language client");
         this.updateCommands("disable");
+        // we give the server 100ms to stop gracefully
+        await this.client?.stop(100).catch((_) => {});
         await this.disposeClient();
     }
 

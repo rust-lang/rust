@@ -15,7 +15,7 @@ use itertools::Itertools;
 use la_arena::ArenaMap;
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
-use serde::Deserialize;
+use serde::Deserialize as _;
 use toolchain::Tool;
 
 use crate::{

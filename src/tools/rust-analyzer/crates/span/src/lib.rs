@@ -1,6 +1,7 @@
 //! File and span related types.
 use std::fmt::{self, Write};
 
+#[cfg(feature = "ra-salsa")]
 use ra_salsa::InternId;
 
 mod ast_id;
@@ -261,8 +262,9 @@ pub struct MacroFileId {
 /// `MacroCallId` identifies a particular macro invocation, like
 /// `println!("Hello, {}", world)`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct MacroCallId(ra_salsa::InternId);
+pub struct MacroCallId(InternId);
 
+#[cfg(feature = "ra-salsa")]
 impl ra_salsa::InternKey for MacroCallId {
     fn from_intern_id(v: ra_salsa::InternId) -> Self {
         MacroCallId(v)
@@ -355,3 +357,72 @@ impl HirFileId {
         }
     }
 }
+
+#[cfg(not(feature = "ra-salsa"))]
+mod intern_id_proxy {
+    use std::fmt;
+    use std::num::NonZeroU32;
+
+    #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    pub(super) struct InternId {
+        value: NonZeroU32,
+    }
+
+    impl InternId {
+        pub(super) const MAX: u32 = 0xFFFF_FF00;
+
+        pub(super) const unsafe fn new_unchecked(value: u32) -> Self {
+            debug_assert!(value < InternId::MAX);
+            let value = unsafe { NonZeroU32::new_unchecked(value + 1) };
+            InternId { value }
+        }
+
+        pub(super) fn as_u32(self) -> u32 {
+            self.value.get() - 1
+        }
+
+        pub(super) fn as_usize(self) -> usize {
+            self.as_u32() as usize
+        }
+    }
+
+    impl From<InternId> for u32 {
+        fn from(raw: InternId) -> u32 {
+            raw.as_u32()
+        }
+    }
+
+    impl From<InternId> for usize {
+        fn from(raw: InternId) -> usize {
+            raw.as_usize()
+        }
+    }
+
+    impl From<u32> for InternId {
+        fn from(id: u32) -> InternId {
+            assert!(id < InternId::MAX);
+            unsafe { InternId::new_unchecked(id) }
+        }
+    }
+
+    impl From<usize> for InternId {
+        fn from(id: usize) -> InternId {
+            assert!(id < (InternId::MAX as usize));
+            unsafe { InternId::new_unchecked(id as u32) }
+        }
+    }
+
+    impl fmt::Debug for InternId {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            self.as_usize().fmt(f)
+        }
+    }
+
+    impl fmt::Display for InternId {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            self.as_usize().fmt(f)
+        }
+    }
+}
+#[cfg(not(feature = "ra-salsa"))]
+use intern_id_proxy::InternId;

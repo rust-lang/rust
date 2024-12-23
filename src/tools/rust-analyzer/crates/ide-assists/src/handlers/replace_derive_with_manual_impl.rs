@@ -78,7 +78,7 @@ pub(crate) fn replace_derive_with_manual_impl(
         NameToImport::exact_case_sensitive(path.segments().last()?.to_string()),
         items_locator::AssocSearchMode::Exclude,
     )
-    .filter_map(|item| match item.as_module_def()? {
+    .filter_map(|item| match item.into_module_def() {
         ModuleDef::Trait(trait_) => Some(trait_),
         _ => None,
     })

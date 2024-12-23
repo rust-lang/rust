@@ -426,3 +426,21 @@ fn f() {
         "should have a binding for `B`",
     );
 }
+
+#[test]
+fn regression_pretty_print_bind_pat() {
+    let (db, body, owner) = lower(
+        r#"
+fn foo() {
+    let v @ u = 123;
+}
+"#,
+    );
+    let printed = body.pretty_print(&db, owner, Edition::CURRENT);
+    assert_eq!(
+        printed,
+        r#"fn foo() -> () {
+    let v @ u = 123;
+}"#
+    );
+}

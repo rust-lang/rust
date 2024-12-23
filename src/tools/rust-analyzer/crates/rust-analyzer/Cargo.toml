@@ -36,6 +36,7 @@ rayon.workspace = true
 rustc-hash.workspace = true
 serde_json = { workspace = true, features = ["preserve_order"] }
 serde.workspace = true
+serde_derive.workspace = true
 tenthash = "0.4.0"
 num_cpus = "1.15.0"
 mimalloc = { version = "0.1.30", default-features = false, optional = true }
