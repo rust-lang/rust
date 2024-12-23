@@ -323,6 +323,8 @@ environment variable. We first document the most relevant and most commonly used
   This is useful to find bugs that only occur under particular interleavings of concurrent threads,
   or that otherwise depend on non-determinism. If the `<from>` part is skipped, it defaults to `0`.
   Can be used without a value; in that case the range defaults to `0..64`.
+* `-Zmiri-many-seeds-keep-going` tells Miri to really try all the seeds in the given range, even if
+  a failing seed has already been found. This is useful to determine which fraction of seeds fails.
 * `-Zmiri-num-cpus` states the number of available CPUs to be reported by miri. By default, the
   number of available CPUs is `1`. Note that this flag does not affect how miri handles threads in
   any way.

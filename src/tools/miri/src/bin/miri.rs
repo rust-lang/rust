@@ -30,7 +30,7 @@ use std::ops::Range;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 
 use miri::{
     BacktraceStyle, BorrowTrackerMethod, MiriConfig, ProvenanceMode, RetagFields, ValidationMode,
@@ -59,11 +59,16 @@ use tracing::debug;
 
 struct MiriCompilerCalls {
     miri_config: Option<MiriConfig>,
-    many_seeds: Option<Range<u32>>,
+    many_seeds: Option<ManySeedsConfig>,
+}
+
+struct ManySeedsConfig {
+    seeds: Range<u32>,
+    keep_going: bool,
 }
 
 impl MiriCompilerCalls {
-    fn new(miri_config: MiriConfig, many_seeds: Option<Range<u32>>) -> Self {
+    fn new(miri_config: MiriConfig, many_seeds: Option<ManySeedsConfig>) -> Self {
         Self { miri_config: Some(miri_config), many_seeds }
     }
 }
@@ -176,7 +181,8 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
 
         if let Some(many_seeds) = self.many_seeds.take() {
             assert!(config.seed.is_none());
-            sync::par_for_each_in(many_seeds, |seed| {
+            let exit_code = sync::IntoDynSyncSend(AtomicI32::new(rustc_driver::EXIT_SUCCESS));
+            sync::par_for_each_in(many_seeds.seeds, |seed| {
                 let mut config = config.clone();
                 config.seed = Some(seed.into());
                 eprintln!("Trying seed: {seed}");
@@ -184,11 +190,15 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                     .unwrap_or(rustc_driver::EXIT_FAILURE);
                 if return_code != rustc_driver::EXIT_SUCCESS {
                     eprintln!("FAILING SEED: {seed}");
-                    tcx.dcx().abort_if_errors(); // exits with a different error message
-                    std::process::exit(return_code);
+                    if !many_seeds.keep_going {
+                        // `abort_if_errors` would actually not stop, since `par_for_each` waits for the
+                        // rest of the to finish, so we just exit immediately.
+                        std::process::exit(return_code);
+                    }
+                    exit_code.store(return_code, Ordering::Relaxed);
                 }
             });
-            std::process::exit(rustc_driver::EXIT_SUCCESS);
+            std::process::exit(exit_code.0.into_inner());
         } else {
             let return_code = miri::eval_entry(tcx, entry_def_id, entry_type, config)
                 .unwrap_or_else(|| {
@@ -500,6 +510,7 @@ fn main() {
 
     // Parse our arguments and split them across `rustc` and `miri`.
     let mut many_seeds: Option<Range<u32>> = None;
+    let mut many_seeds_keep_going = false;
     let mut miri_config = MiriConfig::default();
     miri_config.env = env_snapshot;
 
@@ -611,6 +622,8 @@ fn main() {
             many_seeds = Some(range);
         } else if arg == "-Zmiri-many-seeds" {
             many_seeds = Some(0..64);
+        } else if arg == "-Zmiri-many-seeds-keep-going" {
+            many_seeds_keep_going = true;
         } else if let Some(_param) = arg.strip_prefix("-Zmiri-env-exclude=") {
             show_error!(
                 "`-Zmiri-env-exclude` has been removed; unset env vars before starting Miri instead"
@@ -736,6 +749,8 @@ fn main() {
             std::thread::available_parallelism().map_or(1, |n| n.get())
         ));
     }
+    let many_seeds =
+        many_seeds.map(|seeds| ManySeedsConfig { seeds, keep_going: many_seeds_keep_going });
 
     debug!("rustc arguments: {:?}", rustc_args);
     debug!("crate arguments: {:?}", miri_config.args);
