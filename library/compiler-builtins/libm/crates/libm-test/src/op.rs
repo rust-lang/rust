@@ -71,13 +71,15 @@ pub trait MathOp {
 }
 
 /// Access the associated `FTy` type from an op (helper to avoid ambiguous associated types).
-pub type FTy<Op> = <Op as MathOp>::FTy;
+pub type OpFTy<Op> = <Op as MathOp>::FTy;
+/// Access the associated `FTy::Int` type from an op (helper to avoid ambiguous associated types).
+pub type OpITy<Op> = <<Op as MathOp>::FTy as Float>::Int;
 /// Access the associated `CFn` type from an op (helper to avoid ambiguous associated types).
-pub type CFn<Op> = <Op as MathOp>::CFn;
+pub type OpCFn<Op> = <Op as MathOp>::CFn;
 /// Access the associated `RustFn` type from an op (helper to avoid ambiguous associated types).
-pub type RustFn<Op> = <Op as MathOp>::RustFn;
+pub type OpRustFn<Op> = <Op as MathOp>::RustFn;
 /// Access the associated `RustRet` type from an op (helper to avoid ambiguous associated types).
-pub type RustRet<Op> = <Op as MathOp>::RustRet;
+pub type OpRustRet<Op> = <Op as MathOp>::RustRet;
 
 macro_rules! do_thing {
     // Matcher for unary functions

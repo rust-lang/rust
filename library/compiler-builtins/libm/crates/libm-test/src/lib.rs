@@ -6,7 +6,7 @@ mod precision;
 mod test_traits;
 
 pub use libm::support::{Float, Int, IntTy};
-pub use op::{BaseName, CFn, FTy, Identifier, MathOp, RustFn, RustRet};
+pub use op::{BaseName, Identifier, MathOp, OpCFn, OpFTy, OpRustFn, OpRustRet};
 pub use precision::{MaybeOverride, SpecialCase, default_ulp};
 pub use test_traits::{CheckBasis, CheckCtx, CheckOutput, GenerateInput, Hex, TupleCall};
 
