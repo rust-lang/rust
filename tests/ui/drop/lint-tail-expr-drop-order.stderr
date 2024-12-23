@@ -1,5 +1,5 @@
 error: relative drop order changing in Rust 2024
-  --> $DIR/lint-tail-expr-drop-order.rs:42:15
+  --> $DIR/lint-tail-expr-drop-order.rs:41:15
    |
 LL |     let x = LoudDropper;
    |         -
@@ -19,14 +19,14 @@ LL | }
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-tail-expr-scope.html>
 note: `#1` invokes this custom destructor
-  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+  --> $DIR/lint-tail-expr-drop-order.rs:10:1
    |
 LL | / impl Drop for LoudDropper {
 ...  |
 LL | | }
    | |_^
 note: `x` invokes this custom destructor
-  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+  --> $DIR/lint-tail-expr-drop-order.rs:10:1
    |
 LL | / impl Drop for LoudDropper {
 ...  |
@@ -34,13 +34,13 @@ LL | | }
    | |_^
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
 note: the lint level is defined here
-  --> $DIR/lint-tail-expr-drop-order.rs:7:9
+  --> $DIR/lint-tail-expr-drop-order.rs:6:9
    |
 LL | #![deny(tail_expr_drop_order)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: relative drop order changing in Rust 2024
-  --> $DIR/lint-tail-expr-drop-order.rs:67:19
+  --> $DIR/lint-tail-expr-drop-order.rs:66:19
    |
 LL |         let x = LoudDropper;
    |             -
@@ -60,14 +60,14 @@ LL |     }
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-tail-expr-scope.html>
 note: `#1` invokes this custom destructor
-  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+  --> $DIR/lint-tail-expr-drop-order.rs:10:1
    |
 LL | / impl Drop for LoudDropper {
 ...  |
 LL | | }
    | |_^
 note: `x` invokes this custom destructor
-  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+  --> $DIR/lint-tail-expr-drop-order.rs:10:1
    |
 LL | / impl Drop for LoudDropper {
 ...  |
@@ -76,7 +76,7 @@ LL | | }
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
 
 error: relative drop order changing in Rust 2024
-  --> $DIR/lint-tail-expr-drop-order.rs:94:7
+  --> $DIR/lint-tail-expr-drop-order.rs:93:7
    |
 LL |     let x = LoudDropper;
    |         -
@@ -96,14 +96,14 @@ LL | }
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-tail-expr-scope.html>
 note: `#1` invokes this custom destructor
-  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+  --> $DIR/lint-tail-expr-drop-order.rs:10:1
    |
 LL | / impl Drop for LoudDropper {
 ...  |
 LL | | }
    | |_^
 note: `x` invokes this custom destructor
-  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+  --> $DIR/lint-tail-expr-drop-order.rs:10:1
    |
 LL | / impl Drop for LoudDropper {
 ...  |
@@ -112,7 +112,7 @@ LL | | }
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
 
 error: relative drop order changing in Rust 2024
-  --> $DIR/lint-tail-expr-drop-order.rs:147:5
+  --> $DIR/lint-tail-expr-drop-order.rs:146:5
    |
 LL |     let future = f();
    |         ------
@@ -132,14 +132,14 @@ LL | }
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-tail-expr-scope.html>
 note: `#1` invokes this custom destructor
-  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+  --> $DIR/lint-tail-expr-drop-order.rs:10:1
    |
 LL | / impl Drop for LoudDropper {
 ...  |
 LL | | }
    | |_^
 note: `future` invokes this custom destructor
-  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+  --> $DIR/lint-tail-expr-drop-order.rs:10:1
    |
 LL | / impl Drop for LoudDropper {
 ...  |
@@ -148,7 +148,7 @@ LL | | }
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
 
 error: relative drop order changing in Rust 2024
-  --> $DIR/lint-tail-expr-drop-order.rs:164:14
+  --> $DIR/lint-tail-expr-drop-order.rs:163:14
    |
 LL |     let x = T::default();
    |         -
@@ -170,7 +170,7 @@ LL | }
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
 
 error: relative drop order changing in Rust 2024
-  --> $DIR/lint-tail-expr-drop-order.rs:178:5
+  --> $DIR/lint-tail-expr-drop-order.rs:177:5
    |
 LL |     let x: Result<LoudDropper, ()> = Ok(LoudDropper);
    |         -
@@ -190,14 +190,14 @@ LL | }
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-tail-expr-scope.html>
 note: `#1` invokes this custom destructor
-  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+  --> $DIR/lint-tail-expr-drop-order.rs:10:1
    |
 LL | / impl Drop for LoudDropper {
 ...  |
 LL | | }
    | |_^
 note: `x` invokes this custom destructor
-  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+  --> $DIR/lint-tail-expr-drop-order.rs:10:1
    |
 LL | / impl Drop for LoudDropper {
 ...  |
@@ -206,7 +206,7 @@ LL | | }
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
 
 error: relative drop order changing in Rust 2024
-  --> $DIR/lint-tail-expr-drop-order.rs:222:5
+  --> $DIR/lint-tail-expr-drop-order.rs:221:5
    |
 LL |     let x = LoudDropper2;
    |         -
@@ -226,7 +226,7 @@ LL | }
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-tail-expr-scope.html>
 note: `#1` invokes this custom destructor
-  --> $DIR/lint-tail-expr-drop-order.rs:195:5
+  --> $DIR/lint-tail-expr-drop-order.rs:194:5
    |
 LL | /     impl Drop for LoudDropper3 {
 LL | |
@@ -236,7 +236,7 @@ LL | |         }
 LL | |     }
    | |_____^
 note: `x` invokes this custom destructor
-  --> $DIR/lint-tail-expr-drop-order.rs:207:5
+  --> $DIR/lint-tail-expr-drop-order.rs:206:5
    |
 LL | /     impl Drop for LoudDropper2 {
 LL | |
@@ -248,7 +248,7 @@ LL | |     }
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
 
 error: relative drop order changing in Rust 2024
-  --> $DIR/lint-tail-expr-drop-order.rs:235:13
+  --> $DIR/lint-tail-expr-drop-order.rs:234:13
    |
 LL |             LoudDropper.get()
    |             ^^^^^^^^^^^
@@ -268,14 +268,14 @@ LL |     ));
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-tail-expr-scope.html>
 note: `#1` invokes this custom destructor
-  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+  --> $DIR/lint-tail-expr-drop-order.rs:10:1
    |
 LL | / impl Drop for LoudDropper {
 ...  |
 LL | | }
    | |_^
 note: `_x` invokes this custom destructor
-  --> $DIR/lint-tail-expr-drop-order.rs:11:1
+  --> $DIR/lint-tail-expr-drop-order.rs:10:1
    |
 LL | / impl Drop for LoudDropper {
 ...  |
