@@ -232,6 +232,26 @@ use crate::{fmt, intrinsics, ptr, slice};
 /// remain `#[repr(transparent)]`. That said, `MaybeUninit<T>` will *always* guarantee that it has
 /// the same size, alignment, and ABI as `T`; it's just that the way `MaybeUninit` implements that
 /// guarantee may evolve.
+///
+/// Note that even though `T` and `MaybeUninit<T>` are ABI compatible it is still unsound to
+/// transmute `&mut T` to `&mut MaybeUninit<T>` and expose that to safe code because it would allow
+/// safe code to access uninitialized memory:
+///
+/// ```rust,no_run
+/// use core::mem::MaybeUninit;
+///
+/// fn unsound_transmute<T>(val: &mut T) -> &mut MaybeUninit<T> {
+///     unsafe { core::mem::transmute(val) }
+/// }
+///
+/// fn main() {
+///     let mut code = 0;
+///     let code = &mut code;
+///     let code2 = unsound_transmute(code);
+///     *code2 = MaybeUninit::uninit();
+///     std::process::exit(*code); // UB! Accessing uninitialized memory.
+/// }
+/// ```
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 // Lang item so we can wrap other types in it. This is useful for coroutines.
 #[lang = "maybe_uninit"]

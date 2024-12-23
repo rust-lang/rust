@@ -1003,6 +1003,7 @@ pub trait PointerLike {}
 marker_impls! {
     #[unstable(feature = "pointer_like_trait", issue = "none")]
     PointerLike for
+        isize,
         usize,
         {T} &T,
         {T} &mut T,
