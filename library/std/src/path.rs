@@ -2779,6 +2779,35 @@ impl Path {
         new_path
     }
 
+    /// Creates an owned [`PathBuf`] like `self` but with the extension replaced with given extension.
+    ///
+    /// See [`PathBuf::set_extension`] for more details.
+    ///
+    /// This function is exactly the same as [`Path::with_extension`],
+    /// but its name is ambiguous if the extension will be added or replaced.
+    ///
+    /// Once this function is stabilized, [`Path::with_extension`] will be deprecated.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(path_add_extension)]
+    ///
+    /// use std::path::{Path, PathBuf};
+    ///
+    /// let path = Path::new("foo.rs");
+    /// assert_eq!(path.with_replaced_extension("txt"), PathBuf::from("foo.txt"));
+    ///
+    /// let path = Path::new("foo.tar.gz");
+    /// assert_eq!(path.with_replaced_extension(""), PathBuf::from("foo.tar"));
+    /// assert_eq!(path.with_replaced_extension("xz"), PathBuf::from("foo.tar.xz"));
+    /// assert_eq!(path.with_replaced_extension("").with_replaced_extension("txt"), PathBuf::from("foo.txt"));
+    /// ```
+    #[unstable(feature = "path_add_extension", issue = "127292")]
+    pub fn with_replaced_extension<S: AsRef<OsStr>>(&self, extension: S) -> PathBuf {
+        self.with_extension(extension.as_ref())
+    }
+
     /// Creates an owned [`PathBuf`] like `self` but with the extension added.
     ///
     /// See [`PathBuf::add_extension`] for more details.
