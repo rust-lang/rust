@@ -147,15 +147,11 @@ macro_rules! reverse_decode {
 }
 
 #[allow(unsafe_code)]
-mod arena;
-#[allow(unsafe_code)]
 mod buffer;
 #[deny(unsafe_code)]
 pub mod client;
 #[allow(unsafe_code)]
 mod closure;
-#[forbid(unsafe_code)]
-mod fxhash;
 #[forbid(unsafe_code)]
 mod handle;
 #[macro_use]
