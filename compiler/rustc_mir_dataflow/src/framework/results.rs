@@ -6,7 +6,7 @@ use rustc_middle::mir::{BasicBlock, Body, traversal};
 use super::{Analysis, ResultsCursor, ResultsVisitor, visit_results};
 use crate::framework::cursor::ResultsHandle;
 
-pub type EntrySets<'tcx, A> = IndexVec<BasicBlock, <A as Analysis<'tcx>>::Domain>;
+pub type EntryStates<'tcx, A> = IndexVec<BasicBlock, <A as Analysis<'tcx>>::Domain>;
 
 /// A dataflow analysis that has converged to fixpoint. It only holds the domain values at the
 /// entry of each basic block. Domain values in other parts of the block are recomputed on the fly
@@ -17,7 +17,7 @@ where
     A: Analysis<'tcx>,
 {
     pub analysis: A,
-    pub entry_sets: EntrySets<'tcx, A>,
+    pub entry_states: EntryStates<'tcx, A>,
 }
 
 impl<'tcx, A> Results<'tcx, A>
@@ -40,7 +40,7 @@ where
 
     /// Gets the dataflow state for the given block.
     pub fn entry_set_for_block(&self, block: BasicBlock) -> &A::Domain {
-        &self.entry_sets[block]
+        &self.entry_states[block]
     }
 
     pub fn visit_with<'mir>(

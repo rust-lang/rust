@@ -4,8 +4,6 @@
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
-#![feature(async_closure)]
-
 fn constrain<T: AsyncFnOnce()>(t: T) -> T {
     t
 }

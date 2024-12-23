@@ -224,7 +224,7 @@ pub struct Child {
     /// has been captured. You might find it helpful to do
     ///
     /// ```ignore (incomplete)
-    /// let stdin = child.stdin.take().unwrap();
+    /// let stdin = child.stdin.take().expect("handle present");
     /// ```
     ///
     /// to avoid partially moving the `child` and thus blocking yourself from calling
@@ -236,7 +236,7 @@ pub struct Child {
     /// has been captured. You might find it helpful to do
     ///
     /// ```ignore (incomplete)
-    /// let stdout = child.stdout.take().unwrap();
+    /// let stdout = child.stdout.take().expect("handle present");
     /// ```
     ///
     /// to avoid partially moving the `child` and thus blocking yourself from calling
@@ -248,7 +248,7 @@ pub struct Child {
     /// has been captured. You might find it helpful to do
     ///
     /// ```ignore (incomplete)
-    /// let stderr = child.stderr.take().unwrap();
+    /// let stderr = child.stderr.take().expect("handle present");
     /// ```
     ///
     /// to avoid partially moving the `child` and thus blocking yourself from calling
@@ -1052,14 +1052,14 @@ impl Command {
     /// use std::io::{self, Write};
     /// let output = Command::new("/bin/cat")
     ///     .arg("file.txt")
-    ///     .output()
-    ///     .expect("failed to execute process");
+    ///     .output()?;
     ///
     /// println!("status: {}", output.status);
-    /// io::stdout().write_all(&output.stdout).unwrap();
-    /// io::stderr().write_all(&output.stderr).unwrap();
+    /// io::stdout().write_all(&output.stdout)?;
+    /// io::stderr().write_all(&output.stderr)?;
     ///
     /// assert!(output.status.success());
+    /// # io::Result::Ok(())
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn output(&mut self) -> io::Result<Output> {
@@ -1391,11 +1391,11 @@ impl Stdio {
     /// let output = Command::new("rev")
     ///     .stdin(Stdio::inherit())
     ///     .stdout(Stdio::piped())
-    ///     .output()
-    ///     .expect("Failed to execute command");
+    ///     .output()?;
     ///
     /// print!("You piped in the reverse of: ");
-    /// io::stdout().write_all(&output.stdout).unwrap();
+    /// io::stdout().write_all(&output.stdout)?;
+    /// # io::Result::Ok(())
     /// ```
     #[must_use]
     #[stable(feature = "process", since = "1.0.0")]
@@ -1575,14 +1575,14 @@ impl From<fs::File> for Stdio {
     /// use std::process::Command;
     ///
     /// // With the `foo.txt` file containing "Hello, world!"
-    /// let file = File::open("foo.txt").unwrap();
+    /// let file = File::open("foo.txt")?;
     ///
     /// let reverse = Command::new("rev")
     ///     .stdin(file)  // Implicit File conversion into a Stdio
-    ///     .output()
-    ///     .expect("failed reverse command");
+    ///     .output()?;
     ///
     /// assert_eq!(reverse.stdout, b"!dlrow ,olleH");
+    /// # std::io::Result::Ok(())
     /// ```
     fn from(file: fs::File) -> Stdio {
         Stdio::from_inner(file.into_inner().into())
@@ -2179,7 +2179,7 @@ impl Child {
     /// ```no_run
     /// use std::process::Command;
     ///
-    /// let mut child = Command::new("ls").spawn().unwrap();
+    /// let mut child = Command::new("ls").spawn()?;
     ///
     /// match child.try_wait() {
     ///     Ok(Some(status)) => println!("exited with: {status}"),
@@ -2190,6 +2190,7 @@ impl Child {
     ///     }
     ///     Err(e) => println!("error attempting to wait: {e}"),
     /// }
+    /// # std::io::Result::Ok(())
     /// ```
     #[stable(feature = "process_try_wait", since = "1.18.0")]
     pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {

@@ -6,7 +6,7 @@ use AttributeDuplicates::*;
 use AttributeGate::*;
 use AttributeType::*;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Symbol, sym};
 
 use crate::{Features, Stability};
 
@@ -480,10 +480,9 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(List: "address, kcfi, memory, thread"), DuplicatesOk,
         EncodeCrossCrate::No, experimental!(no_sanitize)
     ),
-    gated!(
+    ungated!(
         coverage, Normal, template!(OneOf: &[sym::off, sym::on]),
         ErrorPreceding, EncodeCrossCrate::No,
-        coverage_attribute, experimental!(coverage)
     ),
 
     ungated!(
@@ -913,10 +912,19 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_deny_explicit_impl,
         AttributeType::Normal,
-        template!(List: "implement_via_object = (true|false)"),
+        template!(Word),
         ErrorFollowing,
         EncodeCrossCrate::No,
         "#[rustc_deny_explicit_impl] enforces that a trait can have no user-provided impls"
+    ),
+    rustc_attr!(
+        rustc_do_not_implement_via_object,
+        AttributeType::Normal,
+        template!(Word),
+        ErrorFollowing,
+        EncodeCrossCrate::No,
+        "#[rustc_do_not_implement_via_object] opts out of the automatic trait impl for trait objects \
+        (`impl Trait for dyn Trait`)"
     ),
     rustc_attr!(
         rustc_has_incoherent_inherent_impls, AttributeType::Normal, template!(Word),
@@ -1188,10 +1196,9 @@ pub static BUILTIN_ATTRIBUTE_MAP: LazyLock<FxHashMap<Symbol, &BuiltinAttribute>>
         map
     });
 
-pub fn is_stable_diagnostic_attribute(sym: Symbol, features: &Features) -> bool {
+pub fn is_stable_diagnostic_attribute(sym: Symbol, _features: &Features) -> bool {
     match sym {
-        sym::on_unimplemented => true,
-        sym::do_not_recommend => features.do_not_recommend(),
+        sym::on_unimplemented | sym::do_not_recommend => true,
         _ => false,
     }
 }

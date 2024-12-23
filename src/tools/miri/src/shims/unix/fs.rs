@@ -1048,10 +1048,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
-    fn linux_readdir64(&mut self, dirp_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
+    fn linux_solarish_readdir64(
+        &mut self,
+        dirent_type: &str,
+        dirp_op: &OpTy<'tcx>,
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        this.assert_target_os("linux", "readdir64");
+        if !matches!(&*this.tcx.sess.target.os, "linux" | "solaris" | "illumos") {
+            panic!("`linux_solaris_readdir64` should not be called on {}", this.tcx.sess.target.os);
+        }
 
         let dirp = this.read_target_usize(dirp_op)?;
 
@@ -1070,9 +1076,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Some(Ok(dir_entry)) => {
                 // Write the directory entry into a newly allocated buffer.
                 // The name is written with write_bytes, while the rest of the
-                // dirent64 struct is written using write_int_fields.
+                // dirent64 (or dirent) struct is written using write_int_fields.
 
                 // For reference:
+                // On Linux:
                 // pub struct dirent64 {
                 //     pub d_ino: ino64_t,
                 //     pub d_off: off64_t,
@@ -1080,19 +1087,29 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 //     pub d_type: c_uchar,
                 //     pub d_name: [c_char; 256],
                 // }
+                //
+                // On Solaris:
+                // pub struct dirent {
+                //     pub d_ino: ino64_t,
+                //     pub d_off: off64_t,
+                //     pub d_reclen: c_ushort,
+                //     pub d_name: [c_char; 3],
+                // }
 
                 let mut name = dir_entry.file_name(); // not a Path as there are no separators!
                 name.push("\0"); // Add a NUL terminator
                 let name_bytes = name.as_encoded_bytes();
                 let name_len = u64::try_from(name_bytes.len()).unwrap();
 
-                let dirent64_layout = this.libc_ty_layout("dirent64");
-                let d_name_offset = dirent64_layout.fields.offset(4 /* d_name */).bytes();
+                let dirent_layout = this.libc_ty_layout(dirent_type);
+                let fields = &dirent_layout.fields;
+                let last_field = fields.count().strict_sub(1);
+                let d_name_offset = fields.offset(last_field).bytes();
                 let size = d_name_offset.strict_add(name_len);
 
                 let entry = this.allocate_ptr(
                     Size::from_bytes(size),
-                    dirent64_layout.align.abi,
+                    dirent_layout.align.abi,
                     MiriMemoryKind::Runtime.into(),
                 )?;
                 let entry: Pointer = entry.into();
@@ -1105,16 +1122,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let ino = 0u64;
 
                 let file_type = this.file_type_to_d_type(dir_entry.file_type())?;
-
                 this.write_int_fields_named(
-                    &[
-                        ("d_ino", ino.into()),
-                        ("d_off", 0),
-                        ("d_reclen", size.into()),
-                        ("d_type", file_type.into()),
-                    ],
-                    &this.ptr_to_mplace(entry, dirent64_layout),
+                    &[("d_ino", ino.into()), ("d_off", 0), ("d_reclen", size.into())],
+                    &this.ptr_to_mplace(entry, dirent_layout),
                 )?;
+
+                if let Some(d_type) = this
+                    .try_project_field_named(&this.ptr_to_mplace(entry, dirent_layout), "d_type")?
+                {
+                    this.write_int(file_type, &d_type)?;
+                }
 
                 let name_ptr = entry.wrapping_offset(Size::from_bytes(d_name_offset), this);
                 this.write_bytes_ptr(name_ptr, name_bytes.iter().copied())?;

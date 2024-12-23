@@ -82,8 +82,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_lint_defs::pluralize;
 use rustc_parse::parser::{ParseNtResult, Parser, token_descr};
-use rustc_span::Span;
-use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent};
+use rustc_span::{Ident, MacroRulesNormalizedIdent, Span};
 
 use crate::mbe::macro_rules::Tracker;
 use crate::mbe::{KleeneOp, TokenTree};

@@ -1,12 +1,33 @@
+use crate::fmt::Debug;
+use crate::ops::FnMut;
+use crate::panic::{self, AssertUnwindSafe};
 use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sync::mpsc::channel;
 use crate::sync::{Arc, Condvar, MappedMutexGuard, Mutex, MutexGuard, TryLockError};
-use crate::thread;
+use crate::{hint, mem, thread};
 
 struct Packet<T>(Arc<(Mutex<T>, Condvar)>);
 
 #[derive(Eq, PartialEq, Debug)]
 struct NonCopy(i32);
+
+#[derive(Eq, PartialEq, Debug)]
+struct NonCopyNeedsDrop(i32);
+
+impl Drop for NonCopyNeedsDrop {
+    fn drop(&mut self) {
+        hint::black_box(());
+    }
+}
+
+#[test]
+fn test_needs_drop() {
+    assert!(!mem::needs_drop::<NonCopy>());
+    assert!(mem::needs_drop::<NonCopyNeedsDrop>());
+}
+
+#[derive(Clone, Eq, PartialEq, Debug)]
+struct Cloneable(i32);
 
 #[test]
 fn smoke() {
@@ -57,6 +78,21 @@ fn try_lock() {
     *m.try_lock().unwrap() = ();
 }
 
+fn new_poisoned_mutex<T>(value: T) -> Mutex<T> {
+    let mutex = Mutex::new(value);
+
+    let catch_unwind_result = panic::catch_unwind(AssertUnwindSafe(|| {
+        let _guard = mutex.lock().unwrap();
+
+        panic!("test panic to poison mutex");
+    }));
+
+    assert!(catch_unwind_result.is_err());
+    assert!(mutex.is_poisoned());
+
+    mutex
+}
+
 #[test]
 fn test_into_inner() {
     let m = Mutex::new(NonCopy(10));
@@ -83,18 +119,28 @@ fn test_into_inner_drop() {
 
 #[test]
 fn test_into_inner_poison() {
-    let m = Arc::new(Mutex::new(NonCopy(10)));
-    let m2 = m.clone();
-    let _ = thread::spawn(move || {
-        let _lock = m2.lock().unwrap();
-        panic!("test panic in inner thread to poison mutex");
-    })
-    .join();
+    let m = new_poisoned_mutex(NonCopy(10));
 
-    assert!(m.is_poisoned());
-    match Arc::try_unwrap(m).unwrap().into_inner() {
+    match m.into_inner() {
         Err(e) => assert_eq!(e.into_inner(), NonCopy(10)),
         Ok(x) => panic!("into_inner of poisoned Mutex is Ok: {x:?}"),
+    }
+}
+
+#[test]
+fn test_get_cloned() {
+    let m = Mutex::new(Cloneable(10));
+
+    assert_eq!(m.get_cloned().unwrap(), Cloneable(10));
+}
+
+#[test]
+fn test_get_cloned_poison() {
+    let m = new_poisoned_mutex(Cloneable(10));
+
+    match m.get_cloned() {
+        Err(e) => assert_eq!(e.into_inner(), ()),
+        Ok(x) => panic!("get of poisoned Mutex is Ok: {x:?}"),
     }
 }
 
@@ -107,19 +153,88 @@ fn test_get_mut() {
 
 #[test]
 fn test_get_mut_poison() {
-    let m = Arc::new(Mutex::new(NonCopy(10)));
-    let m2 = m.clone();
-    let _ = thread::spawn(move || {
-        let _lock = m2.lock().unwrap();
-        panic!("test panic in inner thread to poison mutex");
-    })
-    .join();
+    let mut m = new_poisoned_mutex(NonCopy(10));
 
-    assert!(m.is_poisoned());
-    match Arc::try_unwrap(m).unwrap().get_mut() {
+    match m.get_mut() {
         Err(e) => assert_eq!(*e.into_inner(), NonCopy(10)),
         Ok(x) => panic!("get_mut of poisoned Mutex is Ok: {x:?}"),
     }
+}
+
+#[test]
+fn test_set() {
+    fn inner<T>(mut init: impl FnMut() -> T, mut value: impl FnMut() -> T)
+    where
+        T: Debug + Eq,
+    {
+        let m = Mutex::new(init());
+
+        assert_eq!(*m.lock().unwrap(), init());
+        m.set(value()).unwrap();
+        assert_eq!(*m.lock().unwrap(), value());
+    }
+
+    inner(|| NonCopy(10), || NonCopy(20));
+    inner(|| NonCopyNeedsDrop(10), || NonCopyNeedsDrop(20));
+}
+
+#[test]
+fn test_set_poison() {
+    fn inner<T>(mut init: impl FnMut() -> T, mut value: impl FnMut() -> T)
+    where
+        T: Debug + Eq,
+    {
+        let m = new_poisoned_mutex(init());
+
+        match m.set(value()) {
+            Err(e) => {
+                assert_eq!(e.into_inner(), value());
+                assert_eq!(m.into_inner().unwrap_err().into_inner(), init());
+            }
+            Ok(x) => panic!("set of poisoned Mutex is Ok: {x:?}"),
+        }
+    }
+
+    inner(|| NonCopy(10), || NonCopy(20));
+    inner(|| NonCopyNeedsDrop(10), || NonCopyNeedsDrop(20));
+}
+
+#[test]
+fn test_replace() {
+    fn inner<T>(mut init: impl FnMut() -> T, mut value: impl FnMut() -> T)
+    where
+        T: Debug + Eq,
+    {
+        let m = Mutex::new(init());
+
+        assert_eq!(*m.lock().unwrap(), init());
+        assert_eq!(m.replace(value()).unwrap(), init());
+        assert_eq!(*m.lock().unwrap(), value());
+    }
+
+    inner(|| NonCopy(10), || NonCopy(20));
+    inner(|| NonCopyNeedsDrop(10), || NonCopyNeedsDrop(20));
+}
+
+#[test]
+fn test_replace_poison() {
+    fn inner<T>(mut init: impl FnMut() -> T, mut value: impl FnMut() -> T)
+    where
+        T: Debug + Eq,
+    {
+        let m = new_poisoned_mutex(init());
+
+        match m.replace(value()) {
+            Err(e) => {
+                assert_eq!(e.into_inner(), value());
+                assert_eq!(m.into_inner().unwrap_err().into_inner(), init());
+            }
+            Ok(x) => panic!("replace of poisoned Mutex is Ok: {x:?}"),
+        }
+    }
+
+    inner(|| NonCopy(10), || NonCopy(20));
+    inner(|| NonCopyNeedsDrop(10), || NonCopyNeedsDrop(20));
 }
 
 #[test]
@@ -269,7 +384,7 @@ fn test_mapping_mapped_guard() {
 fn panic_while_mapping_unlocked_poison() {
     let lock = Mutex::new(());
 
-    let _ = crate::panic::catch_unwind(|| {
+    let _ = panic::catch_unwind(|| {
         let guard = lock.lock().unwrap();
         let _guard = MutexGuard::map::<(), _>(guard, |_| panic!());
     });
@@ -282,7 +397,7 @@ fn panic_while_mapping_unlocked_poison() {
         Err(TryLockError::Poisoned(_)) => {}
     }
 
-    let _ = crate::panic::catch_unwind(|| {
+    let _ = panic::catch_unwind(|| {
         let guard = lock.lock().unwrap();
         let _guard = MutexGuard::try_map::<(), _>(guard, |_| panic!());
     });
@@ -295,7 +410,7 @@ fn panic_while_mapping_unlocked_poison() {
         Err(TryLockError::Poisoned(_)) => {}
     }
 
-    let _ = crate::panic::catch_unwind(|| {
+    let _ = panic::catch_unwind(|| {
         let guard = lock.lock().unwrap();
         let guard = MutexGuard::map::<(), _>(guard, |val| val);
         let _guard = MappedMutexGuard::map::<(), _>(guard, |_| panic!());
@@ -309,7 +424,7 @@ fn panic_while_mapping_unlocked_poison() {
         Err(TryLockError::Poisoned(_)) => {}
     }
 
-    let _ = crate::panic::catch_unwind(|| {
+    let _ = panic::catch_unwind(|| {
         let guard = lock.lock().unwrap();
         let guard = MutexGuard::map::<(), _>(guard, |val| val);
         let _guard = MappedMutexGuard::try_map::<(), _>(guard, |_| panic!());

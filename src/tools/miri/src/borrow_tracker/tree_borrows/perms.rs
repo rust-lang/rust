@@ -237,6 +237,10 @@ impl Permission {
     pub fn is_active(&self) -> bool {
         self.inner == Active
     }
+    /// Check if `self` is the never-allow-writes-again state of a pointer (is `Frozen`).
+    pub fn is_frozen(&self) -> bool {
+        self.inner == Frozen
+    }
 
     /// Default initial permission of the root of a new tree at inbounds positions.
     /// Must *only* be used for the root, this is not in general an "initial" permission!

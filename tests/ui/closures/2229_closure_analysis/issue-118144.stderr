@@ -5,6 +5,11 @@ LL |         V(x) = func_arg;
    |         ^^^^   -------- this expression has type `&mut V`
    |         |
    |         expected `&mut V`, found `V`
+   |
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |         V(x) = &*func_arg;
+   |                ~~~~~~~~~~
 
 error: aborting due to 1 previous error
 

@@ -9,7 +9,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::{self, PolyFnSig, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_span::Symbol;
-use {rustc_attr as attr, rustc_hir as hir};
+use {rustc_attr_parsing as attr, rustc_hir as hir};
 
 pub use self::qualifs::Qualif;
 

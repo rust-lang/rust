@@ -179,15 +179,15 @@ where
     /// Advances the cursor to hold the dataflow state at `target` before its "primary" effect is
     /// applied.
     ///
-    /// The "before" effect at the target location *will be* applied.
+    /// The "early" effect at the target location *will be* applied.
     pub fn seek_before_primary_effect(&mut self, target: Location) {
-        self.seek_after(target, Effect::Before)
+        self.seek_after(target, Effect::Early)
     }
 
     /// Advances the cursor to hold the dataflow state at `target` after its "primary" effect is
     /// applied.
     ///
-    /// The "before" effect at the target location will be applied as well.
+    /// The "early" effect at the target location will be applied as well.
     pub fn seek_after_primary_effect(&mut self, target: Location) {
         self.seek_after(target, Effect::Primary)
     }
@@ -222,12 +222,12 @@ where
         #[rustfmt::skip]
         let next_effect = if A::Direction::IS_FORWARD {
             self.pos.curr_effect_index.map_or_else(
-                || Effect::Before.at_index(0),
+                || Effect::Early.at_index(0),
                 EffectIndex::next_in_forward_order,
             )
         } else {
             self.pos.curr_effect_index.map_or_else(
-                || Effect::Before.at_index(block_data.statements.len()),
+                || Effect::Early.at_index(block_data.statements.len()),
                 EffectIndex::next_in_backward_order,
             )
         };

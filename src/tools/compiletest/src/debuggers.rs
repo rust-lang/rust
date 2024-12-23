@@ -1,6 +1,6 @@
 use std::env;
 use std::ffi::OsString;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
 
@@ -20,7 +20,7 @@ pub(crate) fn configure_gdb(config: &Config) -> Option<Arc<Config>> {
     }
 
     if config.remote_test_client.is_some() && !config.target.contains("android") {
-        eprintln!(
+        println!(
             "WARNING: debuginfo tests are not available when \
              testing with remote"
         );
@@ -28,7 +28,7 @@ pub(crate) fn configure_gdb(config: &Config) -> Option<Arc<Config>> {
     }
 
     if config.target.contains("android") {
-        eprintln!(
+        println!(
             "{} debug-info test uses tcp 5039 port.\
              please reserve it",
             config.target
@@ -50,7 +50,7 @@ pub(crate) fn configure_lldb(config: &Config) -> Option<Arc<Config>> {
     config.lldb_python_dir.as_ref()?;
 
     if let Some(350) = config.lldb_version {
-        eprintln!(
+        println!(
             "WARNING: The used version of LLDB (350) has a \
              known issue that breaks debuginfo tests. See \
              issue #32520 for more information. Skipping all \
@@ -141,7 +141,7 @@ pub(crate) fn extract_cdb_version(full_version_line: &str) -> Option<[u16; 4]> {
 pub(crate) fn analyze_gdb(
     gdb: Option<String>,
     target: &str,
-    android_cross_path: &PathBuf,
+    android_cross_path: &Path,
 ) -> (Option<String>, Option<u32>) {
     #[cfg(not(windows))]
     const GDB_FALLBACK: &str = "gdb";

@@ -1,4 +1,3 @@
-#![feature(async_closure)]
 //@ edition: 2021
 
 //@ aux-build: executor.rs

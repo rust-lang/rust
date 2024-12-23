@@ -127,7 +127,7 @@ impl InitializationData<'_, '_> {
         self.uninits.seek_before_primary_effect(loc);
     }
 
-    fn maybe_live_dead(&self, path: MovePathIndex) -> (bool, bool) {
+    fn maybe_init_uninit(&self, path: MovePathIndex) -> (bool, bool) {
         (self.inits.get().contains(path), self.uninits.get().contains(path))
     }
 }
@@ -153,23 +153,23 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for ElaborateDropsCtxt<'a, 'tcx> {
 
     #[instrument(level = "debug", skip(self), ret)]
     fn drop_style(&self, path: Self::Path, mode: DropFlagMode) -> DropStyle {
-        let ((maybe_live, maybe_dead), multipart) = match mode {
-            DropFlagMode::Shallow => (self.init_data.maybe_live_dead(path), false),
+        let ((maybe_init, maybe_uninit), multipart) = match mode {
+            DropFlagMode::Shallow => (self.init_data.maybe_init_uninit(path), false),
             DropFlagMode::Deep => {
-                let mut some_live = false;
-                let mut some_dead = false;
+                let mut some_maybe_init = false;
+                let mut some_maybe_uninit = false;
                 let mut children_count = 0;
                 on_all_children_bits(self.move_data(), path, |child| {
-                    let (live, dead) = self.init_data.maybe_live_dead(child);
-                    debug!("elaborate_drop: state({:?}) = {:?}", child, (live, dead));
-                    some_live |= live;
-                    some_dead |= dead;
+                    let (maybe_init, maybe_uninit) = self.init_data.maybe_init_uninit(child);
+                    debug!("elaborate_drop: state({:?}) = {:?}", child, (maybe_init, maybe_uninit));
+                    some_maybe_init |= maybe_init;
+                    some_maybe_uninit |= maybe_uninit;
                     children_count += 1;
                 });
-                ((some_live, some_dead), children_count != 1)
+                ((some_maybe_init, some_maybe_uninit), children_count != 1)
             }
         };
-        match (maybe_live, maybe_dead, multipart) {
+        match (maybe_init, maybe_uninit, multipart) {
             (false, _, _) => DropStyle::Dead,
             (true, false, _) => DropStyle::Static,
             (true, true, false) => DropStyle::Conditional,
@@ -283,15 +283,15 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
                 LookupResult::Exact(path) => {
                     self.init_data.seek_before(self.body.terminator_loc(bb));
                     on_all_children_bits(self.move_data(), path, |child| {
-                        let (maybe_live, maybe_dead) = self.init_data.maybe_live_dead(child);
+                        let (maybe_init, maybe_uninit) = self.init_data.maybe_init_uninit(child);
                         debug!(
                             "collect_drop_flags: collecting {:?} from {:?}@{:?} - {:?}",
                             child,
                             place,
                             path,
-                            (maybe_live, maybe_dead)
+                            (maybe_init, maybe_uninit)
                         );
-                        if maybe_live && maybe_dead {
+                        if maybe_init && maybe_uninit {
                             self.create_drop_flag(child, terminator.source_info.span)
                         }
                     });
@@ -303,8 +303,8 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
                     }
 
                     self.init_data.seek_before(self.body.terminator_loc(bb));
-                    let (_maybe_live, maybe_dead) = self.init_data.maybe_live_dead(parent);
-                    if maybe_dead {
+                    let (_maybe_init, maybe_uninit) = self.init_data.maybe_init_uninit(parent);
+                    if maybe_uninit {
                         self.tcx.dcx().span_delayed_bug(
                             terminator.source_info.span,
                             format!(

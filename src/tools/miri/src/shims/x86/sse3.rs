@@ -1,6 +1,7 @@
-use rustc_abi::ExternAbi;
 use rustc_middle::mir;
+use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
+use rustc_target::callconv::{Conv, FnAbi};
 
 use super::horizontal_bin_op;
 use crate::*;
@@ -10,7 +11,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_x86_sse3_intrinsic(
         &mut self,
         link_name: Symbol,
-        abi: ExternAbi,
+        abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
@@ -24,8 +25,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Horizontally add/subtract adjacent floating point values
             // in `left` and `right`.
             "hadd.ps" | "hadd.pd" | "hsub.ps" | "hsub.pd" => {
-                let [left, right] =
-                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                let [left, right] = this.check_shim(abi, Conv::C, link_name, args)?;
 
                 let which = match unprefixed_name {
                     "hadd.ps" | "hadd.pd" => mir::BinOp::Add,
@@ -41,8 +41,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // the data crosses a cache line, but for Miri this is just a regular
             // unaligned read.
             "ldu.dq" => {
-                let [src_ptr] =
-                    this.check_shim(abi, ExternAbi::C { unwind: false }, link_name, args)?;
+                let [src_ptr] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let src_ptr = this.read_pointer(src_ptr)?;
                 let dest = dest.force_mplace(this)?;
 

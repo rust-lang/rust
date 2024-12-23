@@ -563,11 +563,11 @@ impl () {}
 /// Note that here the call to [`drop`] is for clarity - it indicates
 /// that we are done with the given value and it should be destroyed.
 ///
-/// ## 3. Create it using `ptr::addr_of!`
+/// ## 3. Create it using `&raw`
 ///
-/// Instead of coercing a reference to a raw pointer, you can use the macros
-/// [`ptr::addr_of!`] (for `*const T`) and [`ptr::addr_of_mut!`] (for `*mut T`).
-/// These macros allow you to create raw pointers to fields to which you cannot
+/// Instead of coercing a reference to a raw pointer, you can use the raw borrow
+/// operators `&raw const` (for `*const T`) and `&raw mut` (for `*mut T`).
+/// These operators allow you to create raw pointers to fields to which you cannot
 /// create a reference (without causing undefined behavior), such as an
 /// unaligned field. This might be necessary if packed structs or uninitialized
 /// memory is involved.
@@ -580,7 +580,7 @@ impl () {}
 ///     unaligned: u32,
 /// }
 /// let s = S::default();
-/// let p = std::ptr::addr_of!(s.unaligned); // not allowed with coercion
+/// let p = &raw const s.unaligned; // not allowed with coercion
 /// ```
 ///
 /// ## 4. Get it from C.

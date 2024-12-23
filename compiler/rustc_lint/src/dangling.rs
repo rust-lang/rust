@@ -4,8 +4,7 @@ use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
 use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, LangItem};
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_session::{declare_lint, impl_lint_pass};
-use rustc_span::Span;
-use rustc_span::symbol::sym;
+use rustc_span::{Span, sym};
 
 use crate::lints::DanglingPointersFromTemporaries;
 use crate::{LateContext, LateLintPass};
@@ -191,6 +190,8 @@ fn is_temporary_rvalue(expr: &Expr<'_>) -> bool {
         | ExprKind::Tup(..)
         | ExprKind::DropTemps(..)
         | ExprKind::Let(..) => false,
+
+        ExprKind::UnsafeBinderCast(..) => false,
 
         // Not applicable
         ExprKind::Type(..) | ExprKind::Err(..) => false,

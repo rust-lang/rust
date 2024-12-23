@@ -391,6 +391,7 @@ impl Builder {
     /// handler.join().unwrap();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn spawn<F, T>(self, f: F) -> io::Result<JoinHandle<T>>
     where
         F: FnOnce() -> T,
@@ -458,6 +459,7 @@ impl Builder {
     ///
     /// [`io::Result`]: crate::io::Result
     #[stable(feature = "thread_spawn_unchecked", since = "1.82.0")]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub unsafe fn spawn_unchecked<F, T>(self, f: F) -> io::Result<JoinHandle<T>>
     where
         F: FnOnce() -> T,
@@ -467,6 +469,7 @@ impl Builder {
         Ok(JoinHandle(unsafe { self.spawn_unchecked_(f, None) }?))
     }
 
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     unsafe fn spawn_unchecked_<'scope, F, T>(
         self,
         f: F,
@@ -721,6 +724,7 @@ impl Builder {
 /// [`join`]: JoinHandle::join
 /// [`Err`]: crate::result::Result::Err
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub fn spawn<F, T>(f: F) -> JoinHandle<T>
 where
     F: FnOnce() -> T,

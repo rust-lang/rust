@@ -12,7 +12,8 @@ pub use crate::marker::{Send, Sized, Sync, Unpin};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use crate::ops::{Drop, Fn, FnMut, FnOnce};
-#[unstable(feature = "async_closure", issue = "62290")]
+#[cfg_attr(bootstrap, unstable(feature = "async_closure", issue = "62290"))]
+#[cfg_attr(not(bootstrap), stable(feature = "async_closure", since = "CURRENT_RUSTC_VERSION"))]
 #[doc(no_inline)]
 pub use crate::ops::{AsyncFn, AsyncFnMut, AsyncFnOnce};
 

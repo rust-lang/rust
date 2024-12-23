@@ -22,8 +22,7 @@ use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::Session;
-use rustc_span::symbol::{Ident, kw};
-use rustc_span::{DUMMY_SP, Span, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, kw, sym};
 use rustc_trait_selection::error_reporting::infer::{FailureCode, ObligationCauseExt};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt, SelectionContext};
@@ -1751,10 +1750,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub(in super::super) fn check_decl(&self, decl: Declaration<'tcx>) {
+    pub(in super::super) fn check_decl(&self, decl: Declaration<'tcx>) -> Ty<'tcx> {
         // Determine and write the type which we'll check the pattern against.
         let decl_ty = self.local_ty(decl.span, decl.hir_id);
-        self.write_ty(decl.hir_id, decl_ty);
 
         // Type check the initializer.
         if let Some(ref init) = decl.init {
@@ -1786,11 +1784,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             self.diverges.set(previous_diverges);
         }
+        decl_ty
     }
 
     /// Type check a `let` statement.
     fn check_decl_local(&self, local: &'tcx hir::LetStmt<'tcx>) {
-        self.check_decl(local.into());
+        let ty = self.check_decl(local.into());
+        self.write_ty(local.hir_id, ty);
         if local.pat.is_never_pattern() {
             self.diverges.set(Diverges::Always {
                 span: local.pat.span,

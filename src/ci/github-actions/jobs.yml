@@ -5,22 +5,22 @@ runners:
     env: { }
 
   - &job-linux-4c
-    os: ubuntu-20.04
+    os: ubuntu-22.04
     # Free some disk space to avoid running out of space during the build.
     free_disk: true
     <<: *base-job
 
   # Large runner used mainly for its bigger disk capacity
   - &job-linux-4c-largedisk
-    os: ubuntu-20.04-4core-16gb
+    os: ubuntu-22.04-4core-16gb
     <<: *base-job
 
   - &job-linux-8c
-    os: ubuntu-20.04-8core-32gb
+    os: ubuntu-22.04-8core-32gb
     <<: *base-job
 
   - &job-linux-16c
-    os: ubuntu-20.04-16core-64gb
+    os: ubuntu-22.04-16core-64gb
     <<: *base-job
 
   - &job-macos-xl
@@ -43,7 +43,7 @@ runners:
     os: windows-2022-16core-64gb
     <<: *base-job
 
-  - &job-linux-8c-aarch64
+  - &job-aarch64-linux
     os: ubuntu-22.04-arm64-8core-32gb
 
 envs:
@@ -57,22 +57,6 @@ envs:
     NO_LLVM_ASSERTIONS: 1
     NO_DEBUG_ASSERTIONS: 1
     NO_OVERFLOW_CHECKS: 1
-
-  # Different set of tests to run tests in parallel in multiple jobs.
-  stage_2_test_set1: &stage_2_test_set1
-    DOCKER_SCRIPT: >-
-      python3 ../x.py --stage 2 test
-      --skip compiler
-      --skip src
-
-  stage_2_test_set2: &stage_2_test_set2
-    DOCKER_SCRIPT: >-
-      python3 ../x.py --stage 2 test
-      --skip tests
-      --skip coverage-map
-      --skip coverage-run
-      --skip library
-      --skip tidyselftest
 
   production:
     &production
@@ -117,6 +101,7 @@ pr:
       ENABLE_GCC_CODEGEN: "1"
       # We are adding (temporarily) a dummy commit on the compiler
       READ_ONLY_SRC: "0"
+      DOCKER_SCRIPT: x86_64-gnu-llvm.sh
     <<: *job-linux-16c
   - image: x86_64-gnu-tools
     <<: *job-linux-16c
@@ -139,10 +124,10 @@ auto:
   #############################
 
   - image: aarch64-gnu
-    <<: *job-linux-8c-aarch64
+    <<: *job-aarch64-linux
 
   - image: aarch64-gnu-debug
-    <<: *job-linux-8c-aarch64
+    <<: *job-aarch64-linux
 
   - image: arm-android
     <<: *job-linux-4c
@@ -159,7 +144,7 @@ auto:
     <<: *job-linux-4c
 
   - image: dist-arm-linux
-    <<: *job-linux-8c-aarch64
+    <<: *job-linux-8c
 
   - image: dist-armhf-linux
     <<: *job-linux-4c
@@ -189,7 +174,7 @@ auto:
     <<: *job-linux-4c
 
   - image: dist-powerpc64le-linux
-    <<: *job-linux-4c
+    <<: *job-linux-4c-largedisk
 
   - image: dist-riscv64-linux
     <<: *job-linux-4c
@@ -233,14 +218,14 @@ auto:
   - image: i686-gnu-1
     env:
       IMAGE: i686-gnu
-      <<: *stage_2_test_set1
+      DOCKER_SCRIPT: stage_2_test_set1.sh
     <<: *job-linux-4c
 
   # Skip tests that run in i686-gnu-1
   - image: i686-gnu-2
     env:
       IMAGE: i686-gnu
-      <<: *stage_2_test_set2
+      DOCKER_SCRIPT: stage_2_test_set2.sh
     <<: *job-linux-4c
 
   # The i686-gnu-nopt job is split into multiple jobs to run tests in parallel.
@@ -248,7 +233,7 @@ auto:
   - image: i686-gnu-nopt-1
     env:
       IMAGE: i686-gnu-nopt
-      <<: *stage_2_test_set1
+      DOCKER_SCRIPT: /scripts/stage_2_test_set1.sh
     <<: *job-linux-4c
 
   # Skip tests that run in i686-gnu-nopt-1
@@ -257,12 +242,7 @@ auto:
       IMAGE: i686-gnu-nopt
       DOCKER_SCRIPT: >-
         python3 ../x.py test --stage 0 --config /config/nopt-std-config.toml library/std &&
-        python3 ../x.py --stage 2 test
-        --skip tests
-        --skip coverage-map
-        --skip coverage-run
-        --skip library
-        --skip tidyselftest
+        /scripts/stage_2_test_set2.sh
     <<: *job-linux-4c
 
   - image: mingw-check
@@ -312,16 +292,58 @@ auto:
   - image: x86_64-gnu-distcheck
     <<: *job-linux-8c
 
-  - image: x86_64-gnu-llvm-19
+  # The x86_64-gnu-llvm-19 job is split into multiple jobs to run tests in parallel.
+  # x86_64-gnu-llvm-19-1 skips tests that run in x86_64-gnu-llvm-19-{2,3}.
+  - image: x86_64-gnu-llvm-19-1
     env:
       RUST_BACKTRACE: 1
-    <<: *job-linux-8c
+      IMAGE: x86_64-gnu-llvm-19
+      DOCKER_SCRIPT: stage_2_test_set1.sh
+    <<: *job-linux-4c
 
-  - image: x86_64-gnu-llvm-18
+  # Skip tests that run in x86_64-gnu-llvm-19-{1,3}
+  - image: x86_64-gnu-llvm-19-2
+    env:
+      RUST_BACKTRACE: 1
+      IMAGE: x86_64-gnu-llvm-19
+      DOCKER_SCRIPT: x86_64-gnu-llvm2.sh
+    <<: *job-linux-4c
+
+  # Skip tests that run in x86_64-gnu-llvm-19-{1,2}
+  - image: x86_64-gnu-llvm-19-3
+    env:
+      RUST_BACKTRACE: 1
+      IMAGE: x86_64-gnu-llvm-19
+      DOCKER_SCRIPT: x86_64-gnu-llvm3.sh
+    <<: *job-linux-4c
+
+  # The x86_64-gnu-llvm-18 job is split into multiple jobs to run tests in parallel.
+  # x86_64-gnu-llvm-18-1 skips tests that run in x86_64-gnu-llvm-18-{2,3}.
+  - image: x86_64-gnu-llvm-18-1
     env:
       RUST_BACKTRACE: 1
       READ_ONLY_SRC: "0"
-    <<: *job-linux-8c
+      IMAGE: x86_64-gnu-llvm-18
+      DOCKER_SCRIPT: stage_2_test_set1.sh
+    <<: *job-linux-4c
+
+  # Skip tests that run in x86_64-gnu-llvm-18-{1,3}
+  - image: x86_64-gnu-llvm-18-2
+    env:
+      RUST_BACKTRACE: 1
+      READ_ONLY_SRC: "0"
+      IMAGE: x86_64-gnu-llvm-18
+      DOCKER_SCRIPT: x86_64-gnu-llvm2.sh
+    <<: *job-linux-4c
+
+  # Skip tests that run in x86_64-gnu-llvm-18-{1,2}
+  - image: x86_64-gnu-llvm-18-3
+    env:
+      RUST_BACKTRACE: 1
+      READ_ONLY_SRC: "0"
+      IMAGE: x86_64-gnu-llvm-18
+      DOCKER_SCRIPT: x86_64-gnu-llvm3.sh
+    <<: *job-linux-4c
 
   - image: x86_64-gnu-nopt
     <<: *job-linux-4c

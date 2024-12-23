@@ -98,6 +98,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `fp8dot2`
 `fp8dot4`
 `fp8fma`
+`fpregs`
 `fpuv2_df`
 `fpuv2_sf`
 `fpuv3_df`
@@ -117,6 +118,14 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `hvx-length128b`
 `hwdiv`
 `i8mm`
+`isa-68000`
+`isa-68010`
+`isa-68020`
+`isa-68030`
+`isa-68040`
+`isa-68060`
+`isa-68881`
+`isa-68882`
 `jsconv`
 `lahfsahf`
 `lasx`
@@ -261,6 +270,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `vsx`
 `wfxt`
 `wide-arithmetic`
+`x87`
 `xop`
 `xsave`
 `xsavec`

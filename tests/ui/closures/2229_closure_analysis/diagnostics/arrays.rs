@@ -12,8 +12,7 @@ fn arrays_1() {
     // c will capture `arr` completely, therefore another index into the
     // array can't be modified here
     arr[1] += 10;
-    //~^ ERROR: cannot use `arr` because it was mutably borrowed
-    //~| ERROR: cannot use `arr[_]` because it was mutably borrowed
+    //~^ ERROR: cannot use `arr[_]` because it was mutably borrowed
     c();
 }
 
@@ -55,8 +54,7 @@ fn arrays_4() {
     // c will capture `arr` completely, therefore we cannot borrow another index
     // into the array.
     println!("{}", arr[3]);
-    //~^ ERROR: cannot use `arr` because it was mutably borrowed
-    //~| ERROR: cannot borrow `arr[_]` as immutable because it is also borrowed as mutable
+    //~^ ERROR: cannot borrow `arr[_]` as immutable because it is also borrowed as mutable
 
     c();
 }

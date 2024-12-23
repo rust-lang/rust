@@ -1,40 +1,19 @@
+//@ add-core-stubs
 //@ assembly-output: emit-asm
 //@ compile-flags: --target loongarch64-unknown-linux-gnu
 //@ compile-flags: -Zmerge-functions=disabled
 //@ needs-llvm-components: loongarch
 
-#![feature(no_core, lang_items, rustc_attrs)]
+#![feature(no_core)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]
 
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! concat {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! stringify {
-    () => {};
-}
-
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 type ptr = *const i32;
 
-impl Copy for i8 {}
-impl Copy for i16 {}
-impl Copy for i32 {}
-impl Copy for i64 {}
-impl Copy for f32 {}
-impl Copy for f64 {}
-impl Copy for ptr {}
 extern "C" {
     fn extern_func();
     static extern_static: u8;

@@ -210,7 +210,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             (Some(ty), _) if self.same_type_modulo_infer(ty, exp_found.found) => match cause.code()
             {
                 ObligationCauseCode::Pattern { span: Some(then_span), origin_expr, .. } => {
-                    origin_expr.then_some(ConsiderAddingAwait::FutureSugg {
+                    origin_expr.is_some().then_some(ConsiderAddingAwait::FutureSugg {
                         span: then_span.shrink_to_hi(),
                     })
                 }

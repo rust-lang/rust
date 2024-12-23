@@ -1,4 +1,3 @@
-#![feature(coverage_attribute)]
 #![coverage(off)]
 //@ edition: 2021
 

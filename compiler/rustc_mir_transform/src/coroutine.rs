@@ -73,9 +73,8 @@ use rustc_mir_dataflow::impls::{
     always_storage_live_locals,
 };
 use rustc_mir_dataflow::{Analysis, Results, ResultsVisitor};
-use rustc_span::Span;
 use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_span::symbol::sym;
+use rustc_span::{Span, sym};
 use rustc_target::spec::PanicStrategy;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::TyCtxtInferExt as _;
@@ -878,7 +877,7 @@ struct StorageConflictVisitor<'a, 'tcx> {
 impl<'a, 'tcx> ResultsVisitor<'a, 'tcx, MaybeRequiresStorage<'a, 'tcx>>
     for StorageConflictVisitor<'a, 'tcx>
 {
-    fn visit_statement_before_primary_effect(
+    fn visit_after_early_statement_effect(
         &mut self,
         _results: &mut Results<'tcx, MaybeRequiresStorage<'a, 'tcx>>,
         state: &BitSet<Local>,
@@ -888,7 +887,7 @@ impl<'a, 'tcx> ResultsVisitor<'a, 'tcx, MaybeRequiresStorage<'a, 'tcx>>
         self.apply_state(state, loc);
     }
 
-    fn visit_terminator_before_primary_effect(
+    fn visit_after_early_terminator_effect(
         &mut self,
         _results: &mut Results<'tcx, MaybeRequiresStorage<'a, 'tcx>>,
         state: &BitSet<Local>,

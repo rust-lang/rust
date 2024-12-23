@@ -1,6 +1,5 @@
 #![allow(clippy::needless_question_mark)]
 
-mod args;
 mod commands;
 mod coverage;
 mod util;
@@ -8,250 +7,191 @@ mod util;
 use std::ops::Range;
 
 use anyhow::{Context, Result, anyhow, bail};
+use clap::{Parser, Subcommand};
 
-#[derive(Clone, Debug)]
+/// Parses a seed range
+///
+/// This function is used for the `--many-seeds` flag. It expects the range in the form
+/// `<from>..<to>`. `<from>` is inclusive, `<to>` is exclusive. `<from>` can be omitted,
+/// in which case it is assumed to be `0`.
+fn parse_range(val: &str) -> anyhow::Result<Range<u32>> {
+    let (from, to) = val
+        .split_once("..")
+        .ok_or_else(|| anyhow!("invalid format for `--many-seeds`: expected `from..to`"))?;
+    let from: u32 = if from.is_empty() {
+        0
+    } else {
+        from.parse().context("invalid `from` in `--many-seeds=from..to")?
+    };
+    let to: u32 = to.parse().context("invalid `to` in `--many-seeds=from..to")?;
+    Ok(from..to)
+}
+
+#[derive(Clone, Debug, Subcommand)]
 pub enum Command {
-    /// Installs the miri driver and cargo-miri.
+    /// Installs the miri driver and cargo-miri to the sysroot of the active toolchain.
+    ///
     /// Sets up the rpath such that the installed binary should work in any
-    /// working directory. Note that the binaries are placed in the `miri` toolchain
-    /// sysroot, to prevent conflicts with other toolchains.
+    /// working directory.
     Install {
         /// Flags that are passed through to `cargo install`.
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         flags: Vec<String>,
     },
-    /// Just build miri.
+    /// Build Miri.
     Build {
         /// Flags that are passed through to `cargo build`.
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         flags: Vec<String>,
     },
-    /// Just check miri.
+    /// Check Miri.
     Check {
         /// Flags that are passed through to `cargo check`.
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         flags: Vec<String>,
     },
-    /// Build miri, set up a sysroot and then run the test suite.
+    /// Check Miri with Clippy.
+    Clippy {
+        /// Flags that are passed through to `cargo clippy`.
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        flags: Vec<String>,
+    },
+    /// Run the Miri test suite.
     Test {
+        /// Update stdout/stderr reference files.
+        #[arg(long)]
         bless: bool,
         /// The cross-interpretation target.
-        /// If none then the host is the target.
+        #[arg(long)]
         target: Option<String>,
-        /// Produce coverage report if set.
+        /// Produce coverage report.
+        #[arg(long)]
         coverage: bool,
         /// Flags that are passed through to the test harness.
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         flags: Vec<String>,
     },
-    /// Build miri, set up a sysroot and then run the driver with the given <flags>.
-    /// (Also respects MIRIFLAGS environment variable.)
+    /// Run the Miri driver.
+    ///
+    /// Also respects MIRIFLAGS environment variable.
     Run {
+        /// Build the program with the dependencies declared in `test_dependencies/Cargo.toml`.
+        #[arg(long)]
         dep: bool,
+        /// Show build progress.
+        #[arg(long, short)]
         verbose: bool,
+        /// Run the driver with the seeds in the given range (`..to` or `from..to`, default: `0..64`).
+        #[arg(long, value_parser = parse_range)]
         many_seeds: Option<Range<u32>>,
+        /// The cross-interpretation target.
+        #[arg(long)]
         target: Option<String>,
+        /// The Rust edition.
+        #[arg(long)]
         edition: Option<String>,
         /// Flags that are passed through to `miri`.
+        ///
+        /// The flags set in `MIRIFLAGS` are added in front of these flags.
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         flags: Vec<String>,
     },
-    /// Build documentation
+    /// Build documentation.
     Doc {
         /// Flags that are passed through to `cargo doc`.
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         flags: Vec<String>,
     },
     /// Format all sources and tests.
     Fmt {
         /// Flags that are passed through to `rustfmt`.
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         flags: Vec<String>,
     },
-    /// Runs clippy on all sources.
-    Clippy {
-        /// Flags that are passed through to `cargo clippy`.
-        flags: Vec<String>,
-    },
-    /// Runs the benchmarks from bench-cargo-miri in hyperfine. hyperfine needs to be installed.
+    /// Runs the benchmarks from bench-cargo-miri in hyperfine.
+    ///
+    /// hyperfine needs to be installed.
     Bench {
+        #[arg(long)]
         target: Option<String>,
-        /// List of benchmarks to run. By default all benchmarks are run.
+        /// When `true`, skip the `./miri install` step.
+        #[arg(long)]
+        no_install: bool,
+        /// List of benchmarks to run (default: run all benchmarks).
         benches: Vec<String>,
     },
-    /// Update and activate the rustup toolchain 'miri' to the commit given in the
-    /// `rust-version` file.
-    /// `rustup-toolchain-install-master` must be installed for this to work. Any extra
-    /// flags are passed to `rustup-toolchain-install-master`.
-    Toolchain { flags: Vec<String> },
-    /// Pull and merge Miri changes from the rustc repo. Defaults to fetching the latest
-    /// rustc commit. The fetched commit is stored in the `rust-version` file, so the
-    /// next `./miri toolchain` will install the rustc that just got pulled.
-    RustcPull { commit: Option<String> },
-    /// Push Miri changes back to the rustc repo. This will pull a copy of the rustc
-    /// history into the Miri repo, unless you set the RUSTC_GIT env var to an existing
-    /// clone of the rustc repo.
-    RustcPush { github_user: String, branch: String },
+    /// Update and activate the rustup toolchain 'miri'.
+    ///
+    /// The `rust-version` file is used to determine the commit that will be intsalled.
+    /// `rustup-toolchain-install-master` must be installed for this to work.
+    Toolchain {
+        /// Flags that are passed through to `rustup-toolchain-install-master`.
+        flags: Vec<String>,
+    },
+    /// Pull and merge Miri changes from the rustc repo.
+    ///
+    /// The fetched commit is stored in the `rust-version` file, so the next `./miri toolchain` will
+    /// install the rustc that just got pulled.
+    RustcPull {
+        /// The commit to fetch (default: latest rustc commit).
+        commit: Option<String>,
+    },
+    /// Push Miri changes back to the rustc repo.
+    ///
+    /// This will pull a copy of the rustc history into the Miri repo, unless you set the RUSTC_GIT
+    /// env var to an existing clone of the rustc repo.
+    RustcPush {
+        /// The Github user that owns the rustc fork to which we should push.
+        github_user: String,
+        /// The branch to push to.
+        #[arg(default_value = "miri-sync")]
+        branch: String,
+    },
 }
 
-const HELP: &str = r#"  COMMANDS
+impl Command {
+    fn add_remainder(&mut self, remainder: Vec<String>) -> Result<()> {
+        if remainder.is_empty() {
+            return Ok(());
+        }
 
-./miri build <flags>:
-Just build miri. <flags> are passed to `cargo build`.
+        match self {
+            Self::Install { flags }
+            | Self::Build { flags }
+            | Self::Check { flags }
+            | Self::Doc { flags }
+            | Self::Fmt { flags }
+            | Self::Toolchain { flags }
+            | Self::Clippy { flags }
+            | Self::Run { flags, .. }
+            | Self::Test { flags, .. } => {
+                flags.extend(remainder);
+                Ok(())
+            }
+            Self::Bench { .. } | Self::RustcPull { .. } | Self::RustcPush { .. } =>
+                bail!("unexpected \"--\" found in arguments"),
+        }
+    }
+}
 
-./miri check <flags>:
-Just check miri. <flags> are passed to `cargo check`.
-
-./miri test [--bless] [--target <target>] <flags>:
-Build miri, set up a sysroot and then run the test suite.
-<flags> are passed to the test harness.
-
-./miri run [--dep] [-v|--verbose] [--many-seeds|--many-seeds=..to|--many-seeds=from..to] <flags>:
-Build miri, set up a sysroot and then run the driver with the given <flags>.
-(Also respects MIRIFLAGS environment variable.)
-If `--many-seeds` is present, Miri is run many times in parallel with different seeds.
-The range defaults to `0..64`.
-
-./miri fmt <flags>:
-Format all sources and tests. <flags> are passed to `rustfmt`.
-
-./miri clippy <flags>:
-Runs clippy on all sources. <flags> are passed to `cargo clippy`.
-
-./miri cargo <flags>:
-Runs just `cargo <flags>` with the Miri-specific environment variables.
-Mainly meant to be invoked by rust-analyzer.
-
-./miri install <flags>:
-Installs the miri driver and cargo-miri. <flags> are passed to `cargo
-install`. Sets up the rpath such that the installed binary should work in any
-working directory. Note that the binaries are placed in the `miri` toolchain
-sysroot, to prevent conflicts with other toolchains.
-
-./miri bench [--target <target>] <benches>:
-Runs the benchmarks from bench-cargo-miri in hyperfine. hyperfine needs to be installed.
-<benches> can explicitly list the benchmarks to run; by default, all of them are run.
-
-./miri toolchain <flags>:
-Update and activate the rustup toolchain 'miri' to the commit given in the
-`rust-version` file.
-`rustup-toolchain-install-master` must be installed for this to work. Any extra
-flags are passed to `rustup-toolchain-install-master`.
-
-./miri rustc-pull <commit>:
-Pull and merge Miri changes from the rustc repo. Defaults to fetching the latest
-rustc commit. The fetched commit is stored in the `rust-version` file, so the
-next `./miri toolchain` will install the rustc that just got pulled.
-
-./miri rustc-push <github user> [<branch>]:
-Push Miri changes back to the rustc repo. This will pull a copy of the rustc
-history into the Miri repo, unless you set the RUSTC_GIT env var to an existing
-clone of the rustc repo. The branch defaults to `miri-sync`.
-
-  ENVIRONMENT VARIABLES
-
-MIRI_SYSROOT:
-If already set, the "sysroot setup" step is skipped.
-
-CARGO_EXTRA_FLAGS:
-Pass extra flags to all cargo invocations. (Ignored by `./miri cargo`.)"#;
+#[derive(Parser)]
+#[command(after_help = "Environment variables:
+  MIRI_SYSROOT: If already set, the \"sysroot setup\" step is skipped
+  CARGO_EXTRA_FLAGS: Pass extra flags to all cargo invocations")]
+pub struct Cli {
+    #[command(subcommand)]
+    pub command: Command,
+}
 
 fn main() -> Result<()> {
-    // We are hand-rolling our own argument parser, since `clap` can't express what we need
-    // (https://github.com/clap-rs/clap/issues/5055).
-    let mut args = args::Args::new();
-    let command = match args.next_raw().as_deref() {
-        Some("build") => Command::Build { flags: args.remainder() },
-        Some("check") => Command::Check { flags: args.remainder() },
-        Some("doc") => Command::Doc { flags: args.remainder() },
-        Some("test") => {
-            let mut target = None;
-            let mut bless = false;
-            let mut flags = Vec::new();
-            let mut coverage = false;
-            loop {
-                if args.get_long_flag("bless")? {
-                    bless = true;
-                } else if args.get_long_flag("coverage")? {
-                    coverage = true;
-                } else if let Some(val) = args.get_long_opt("target")? {
-                    target = Some(val);
-                } else if let Some(flag) = args.get_other() {
-                    flags.push(flag);
-                } else {
-                    break;
-                }
-            }
-            Command::Test { bless, flags, target, coverage }
-        }
-        Some("run") => {
-            let mut dep = false;
-            let mut verbose = false;
-            let mut many_seeds = None;
-            let mut target = None;
-            let mut edition = None;
-            let mut flags = Vec::new();
-            loop {
-                if args.get_long_flag("dep")? {
-                    dep = true;
-                } else if args.get_long_flag("verbose")? || args.get_short_flag('v')? {
-                    verbose = true;
-                } else if let Some(val) = args.get_long_opt_with_default("many-seeds", "0..64")? {
-                    let (from, to) = val.split_once("..").ok_or_else(|| {
-                        anyhow!("invalid format for `--many-seeds`: expected `from..to`")
-                    })?;
-                    let from: u32 = if from.is_empty() {
-                        0
-                    } else {
-                        from.parse().context("invalid `from` in `--many-seeds=from..to")?
-                    };
-                    let to: u32 = to.parse().context("invalid `to` in `--many-seeds=from..to")?;
-                    many_seeds = Some(from..to);
-                } else if let Some(val) = args.get_long_opt("target")? {
-                    target = Some(val);
-                } else if let Some(val) = args.get_long_opt("edition")? {
-                    edition = Some(val);
-                } else if let Some(flag) = args.get_other() {
-                    flags.push(flag);
-                } else {
-                    break;
-                }
-            }
-            Command::Run { dep, verbose, many_seeds, target, edition, flags }
-        }
-        Some("fmt") => Command::Fmt { flags: args.remainder() },
-        Some("clippy") => Command::Clippy { flags: args.remainder() },
-        Some("install") => Command::Install { flags: args.remainder() },
-        Some("bench") => {
-            let mut target = None;
-            let mut benches = Vec::new();
-            loop {
-                if let Some(val) = args.get_long_opt("target")? {
-                    target = Some(val);
-                } else if let Some(flag) = args.get_other() {
-                    benches.push(flag);
-                } else {
-                    break;
-                }
-            }
-            Command::Bench { target, benches }
-        }
-        Some("toolchain") => Command::Toolchain { flags: args.remainder() },
-        Some("rustc-pull") => {
-            let commit = args.next_raw();
-            if args.next_raw().is_some() {
-                bail!("Too many arguments for `./miri rustc-pull`");
-            }
-            Command::RustcPull { commit }
-        }
-        Some("rustc-push") => {
-            let github_user = args.next_raw().ok_or_else(|| {
-                anyhow!("Missing first argument for `./miri rustc-push GITHUB_USER [BRANCH]`")
-            })?;
-            let branch = args.next_raw().unwrap_or_else(|| "miri-sync".into());
-            if args.next_raw().is_some() {
-                bail!("Too many arguments for `./miri rustc-push GITHUB_USER BRANCH`");
-            }
-            Command::RustcPush { github_user, branch }
-        }
-        _ => {
-            eprintln!("Unknown or missing command. Usage:\n\n{HELP}");
-            std::process::exit(1);
-        }
-    };
+    // Split the arguments into the part before the `--` and the part after.
+    // The `--` itself ends up in the second part.
+    let miri_args: Vec<_> = std::env::args().take_while(|x| *x != "--").collect();
+    let remainder: Vec<_> = std::env::args().skip_while(|x| *x != "--").collect();
+
+    let args = Cli::parse_from(miri_args);
+    let mut command = args.command;
+    command.add_remainder(remainder)?;
     command.exec()?;
     Ok(())
 }

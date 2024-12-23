@@ -4,7 +4,7 @@ use std::ops::Bound;
 
 use rustc_errors::DiagArgValue;
 use rustc_hir::def::DefKind;
-use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Mutability, Safety};
+use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Mutability};
 use rustc_middle::middle::codegen_fn_attrs::TargetFeature;
 use rustc_middle::mir::BorrowKind;
 use rustc_middle::span_bug;
@@ -15,10 +15,9 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint::Level;
 use rustc_session::lint::builtin::{DEPRECATED_SAFE_2024, UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
 use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_span::symbol::Symbol;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, Symbol, sym};
 
-use crate::build::ExprCategory;
+use crate::builder::ExprCategory;
 use crate::errors::*;
 
 struct UnsafetyVisitor<'a, 'tcx> {
@@ -342,7 +341,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             PatKind::Leaf { subpatterns, .. } => {
                 if let ty::Adt(adt_def, ..) = pat.ty.kind() {
                     for pat in subpatterns {
-                        if adt_def.non_enum_variant().fields[pat.field].safety == Safety::Unsafe {
+                        if adt_def.non_enum_variant().fields[pat.field].safety.is_unsafe() {
                             self.requires_unsafe(pat.pattern.span, UseOfUnsafeField);
                         }
                     }
@@ -367,7 +366,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             PatKind::Variant { adt_def, args: _, variant_index, subpatterns } => {
                 for pat in subpatterns {
                     let field = &pat.field;
-                    if adt_def.variant(*variant_index).fields[*field].safety == Safety::Unsafe {
+                    if adt_def.variant(*variant_index).fields[*field].safety.is_unsafe() {
                         self.requires_unsafe(pat.pattern.span, UseOfUnsafeField);
                     }
                 }
@@ -479,7 +478,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 return; // don't visit the whole expression
             }
             ExprKind::Call { fun, ty: _, args: _, from_hir_call: _, fn_span: _ } => {
-                if self.thir[fun].ty.fn_sig(self.tcx).safety() == hir::Safety::Unsafe {
+                if self.thir[fun].ty.fn_sig(self.tcx).safety().is_unsafe() {
                     let func_id = if let ty::FnDef(func_id, _) = self.thir[fun].ty.kind() {
                         Some(*func_id)
                     } else {
@@ -623,7 +622,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             ExprKind::Field { lhs, variant_index, name } => {
                 let lhs = &self.thir[lhs];
                 if let ty::Adt(adt_def, _) = lhs.ty.kind() {
-                    if adt_def.variant(variant_index).fields[name].safety == Safety::Unsafe {
+                    if adt_def.variant(variant_index).fields[name].safety.is_unsafe() {
                         self.requires_unsafe(expr.span, UseOfUnsafeField);
                     } else if adt_def.is_union() {
                         if let Some(assigned_ty) = self.assignment_info {
@@ -1112,11 +1111,7 @@ pub(crate) fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
 
     let hir_id = tcx.local_def_id_to_hir_id(def);
     let safety_context = tcx.hir().fn_sig_by_hir_id(hir_id).map_or(SafetyContext::Safe, |fn_sig| {
-        if fn_sig.header.safety == hir::Safety::Unsafe {
-            SafetyContext::UnsafeFn
-        } else {
-            SafetyContext::Safe
-        }
+        if fn_sig.header.safety.is_unsafe() { SafetyContext::UnsafeFn } else { SafetyContext::Safe }
     });
     let body_target_features = &tcx.body_codegen_attrs(def.to_def_id()).target_features;
     let mut warnings = Vec::new();

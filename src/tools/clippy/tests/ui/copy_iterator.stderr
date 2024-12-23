@@ -6,7 +6,6 @@ LL | |
 LL | |
 LL | |     type Item = u8;
 ...  |
-LL | |     }
 LL | | }
    | |_^
    |

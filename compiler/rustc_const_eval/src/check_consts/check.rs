@@ -6,7 +6,7 @@ use std::mem;
 use std::num::NonZero;
 use std::ops::Deref;
 
-use rustc_attr::{ConstStability, StabilityLevel};
+use rustc_attr_parsing::{ConstStability, StabilityLevel};
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
@@ -488,8 +488,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             Rvalue::Use(_)
             | Rvalue::CopyForDeref(..)
             | Rvalue::Repeat(..)
-            | Rvalue::Discriminant(..)
-            | Rvalue::Len(_) => {}
+            | Rvalue::Discriminant(..) => {}
 
             Rvalue::Aggregate(kind, ..) => {
                 if let AggregateKind::Coroutine(def_id, ..) = kind.as_ref()
@@ -573,12 +572,27 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             ) => {}
             Rvalue::ShallowInitBox(_, _) => {}
 
-            Rvalue::UnaryOp(_, operand) => {
+            Rvalue::UnaryOp(op, operand) => {
                 let ty = operand.ty(self.body, self.tcx);
-                if is_int_bool_float_or_char(ty) {
-                    // Int, bool, float, and char operations are fine.
-                } else {
-                    span_bug!(self.span, "non-primitive type in `Rvalue::UnaryOp`: {:?}", ty);
+                match op {
+                    UnOp::Not | UnOp::Neg => {
+                        if is_int_bool_float_or_char(ty) {
+                            // Int, bool, float, and char operations are fine.
+                        } else {
+                            span_bug!(
+                                self.span,
+                                "non-primitive type in `Rvalue::UnaryOp{op:?}`: {ty:?}",
+                            );
+                        }
+                    }
+                    UnOp::PtrMetadata => {
+                        if !ty.is_ref() && !ty.is_unsafe_ptr() {
+                            span_bug!(
+                                self.span,
+                                "non-pointer type in `Rvalue::UnaryOp({op:?})`: {ty:?}",
+                            );
+                        }
+                    }
                 }
             }
 

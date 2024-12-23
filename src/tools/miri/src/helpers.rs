@@ -19,6 +19,7 @@ use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, MaybeResult, TyAndLayout};
 use rustc_middle::ty::{self, FloatTy, IntTy, Ty, TyCtxt, UintTy};
 use rustc_session::config::CrateType;
 use rustc_span::{Span, Symbol};
+use rustc_target::callconv::{Conv, FnAbi};
 
 use crate::*;
 
@@ -149,15 +150,16 @@ pub fn iter_exported_symbols<'tcx>(
     let dependency_formats = tcx.dependency_formats(());
     // Find the dependencies of the executable we are running.
     let dependency_format = dependency_formats
-        .iter()
-        .find(|(crate_type, _)| *crate_type == CrateType::Executable)
+        .get(&CrateType::Executable)
         .expect("interpreting a non-executable crate");
-    for cnum in dependency_format.1.iter().enumerate().filter_map(|(num, &linkage)| {
-        // We add 1 to the number because that's what rustc also does everywhere it
-        // calls `CrateNum::new`...
-        #[expect(clippy::arithmetic_side_effects)]
-        (linkage != Linkage::NotLinked).then_some(CrateNum::new(num + 1))
-    }) {
+    for cnum in dependency_format
+        .iter_enumerated()
+        .filter_map(|(num, &linkage)| (linkage != Linkage::NotLinked).then_some(num))
+    {
+        if cnum == LOCAL_CRATE {
+            continue; // Already handled above
+        }
+
         // We can ignore `_export_info` here: we are a Rust crate, and everything is exported
         // from a Rust crate.
         for &(symbol, _export_info) in tcx.exported_symbols(cnum) {
@@ -309,17 +311,29 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Project to the given *named* field (which must be a struct or union type).
+    fn try_project_field_named<P: Projectable<'tcx, Provenance>>(
+        &self,
+        base: &P,
+        name: &str,
+    ) -> InterpResult<'tcx, Option<P>> {
+        let this = self.eval_context_ref();
+        let adt = base.layout().ty.ty_adt_def().unwrap();
+        for (idx, field) in adt.non_enum_variant().fields.iter().enumerate() {
+            if field.name.as_str() == name {
+                return interp_ok(Some(this.project_field(base, idx)?));
+            }
+        }
+        interp_ok(None)
+    }
+
+    /// Project to the given *named* field (which must be a struct or union type).
     fn project_field_named<P: Projectable<'tcx, Provenance>>(
         &self,
         base: &P,
         name: &str,
     ) -> InterpResult<'tcx, P> {
-        let this = self.eval_context_ref();
-        let adt = base.layout().ty.ty_adt_def().unwrap();
-        for (idx, field) in adt.non_enum_variant().fields.iter().enumerate() {
-            if field.name.as_str() == name {
-                return this.project_field(base, idx);
-            }
+        if let Some(field) = self.try_project_field_named(base, name)? {
+            return interp_ok(field);
         }
         bug!("No field named {} in type {}", name, base.layout().ty);
     }
@@ -330,13 +344,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         base: &P,
         name: &str,
     ) -> bool {
-        let adt = base.layout().ty.ty_adt_def().unwrap();
-        for field in adt.non_enum_variant().fields.iter() {
-            if field.name.as_str() == name {
-                return true;
-            }
-        }
-        false
+        self.try_project_field_named(base, name).unwrap().is_some()
     }
 
     /// Write an int of the appropriate size to `dest`. The target type may be signed or unsigned,
@@ -606,7 +614,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             // `UnsafeCell` action.
                             (self.unsafe_cell_action)(v)
                         }
-                        Variants::Single { .. } => {
+                        Variants::Single { .. } | Variants::Empty => {
                             // Proceed further, try to find where exactly that `UnsafeCell`
                             // is hiding.
                             self.walk_value(v)
@@ -915,13 +923,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Check that the ABI is what we expect.
-    fn check_abi<'a>(&self, abi: ExternAbi, exp_abi: ExternAbi) -> InterpResult<'a, ()> {
-        if abi != exp_abi {
+    fn check_abi<'a>(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>, exp_abi: Conv) -> InterpResult<'a, ()> {
+        if fn_abi.conv != exp_abi {
             throw_ub_format!(
-                "calling a function with ABI {} using caller ABI {}",
-                exp_abi.name(),
-                abi.name()
-            )
+                "calling a function with ABI {:?} using caller ABI {:?}",
+                exp_abi,
+                fn_abi.conv
+            );
         }
         interp_ok(())
     }
@@ -951,8 +959,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn check_abi_and_shim_symbol_clash(
         &mut self,
-        abi: ExternAbi,
-        exp_abi: ExternAbi,
+        abi: &FnAbi<'tcx, Ty<'tcx>>,
+        exp_abi: Conv,
         link_name: Symbol,
     ) -> InterpResult<'tcx, ()> {
         self.check_abi(abi, exp_abi)?;
@@ -976,8 +984,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     fn check_shim<'a, const N: usize>(
         &mut self,
-        abi: ExternAbi,
-        exp_abi: ExternAbi,
+        abi: &FnAbi<'tcx, Ty<'tcx>>,
+        exp_abi: Conv,
         link_name: Symbol,
         args: &'a [OpTy<'tcx>],
     ) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]>

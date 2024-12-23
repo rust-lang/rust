@@ -571,7 +571,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Given a universal region in scope on the MIR, returns the
     /// corresponding index.
     ///
-    /// (Panics if `r` is not a registered universal region.)
+    /// Panics if `r` is not a registered universal region, most notably
+    /// if it is a placeholder. Handling placeholders requires access to the
+    /// `MirTypeckRegionConstraints`.
     pub(crate) fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
         self.universal_regions().to_region_vid(r)
     }
@@ -795,7 +797,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // If the member region lives in a higher universe, we currently choose
         // the most conservative option by leaving it unchanged.
-
         if !self.constraint_sccs().annotation(scc).min_universe().is_root() {
             return;
         }
@@ -823,12 +824,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
         debug!(?choice_regions, "after ub");
 
-        // At this point we can pick any member of `choice_regions`, but to avoid potential
-        // non-determinism we will pick the *unique minimum* choice.
+        // At this point we can pick any member of `choice_regions` and would like to choose
+        // it to be a small as possible. To avoid potential non-determinism we will pick the
+        // smallest such choice.
         //
         // Because universal regions are only partially ordered (i.e, not every two regions are
         // comparable), we will ignore any region that doesn't compare to all others when picking
         // the minimum choice.
+        //
         // For example, consider `choice_regions = ['static, 'a, 'b, 'c, 'd, 'e]`, where
         // `'static: 'a, 'static: 'b, 'a: 'c, 'b: 'c, 'c: 'd, 'c: 'e`.
         // `['d, 'e]` are ignored because they do not compare - the same goes for `['a, 'b]`.
@@ -853,6 +856,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             return;
         };
 
+        // As we require `'scc: 'min_choice`, we have definitely already computed
+        // its `scc_values` at this point.
         let min_choice_scc = self.constraint_sccs.scc(min_choice);
         debug!(?min_choice, ?min_choice_scc);
         if self.scc_values.add_region(scc, min_choice_scc) {
@@ -2224,13 +2229,17 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn scc_representative(&self, scc: ConstraintSccIndex) -> RegionVid {
         self.constraint_sccs.annotation(scc).representative
     }
+
+    pub(crate) fn liveness_constraints(&self) -> &LivenessValues {
+        &self.liveness_constraints
+    }
 }
 
 impl<'tcx> RegionDefinition<'tcx> {
     fn new(universe: ty::UniverseIndex, rv_origin: RegionVariableOrigin) -> Self {
         // Create a new region definition. Note that, for free
         // regions, the `external_name` field gets updated later in
-        // `init_universal_regions`.
+        // `init_free_and_bound_regions`.
 
         let origin = match rv_origin {
             RegionVariableOrigin::Nll(origin) => origin,

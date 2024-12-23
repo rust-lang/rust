@@ -1,12 +1,12 @@
 use rustc_ast::token::{self, Delimiter, IdentIsRaw, NonterminalKind, Token};
+use rustc_ast::tokenstream::TokenStreamIter;
 use rustc_ast::{NodeId, tokenstream};
 use rustc_ast_pretty::pprust;
 use rustc_feature::Features;
 use rustc_session::Session;
 use rustc_session::parse::feature_err;
-use rustc_span::Span;
 use rustc_span::edition::Edition;
-use rustc_span::symbol::{Ident, kw, sym};
+use rustc_span::{Ident, Span, kw, sym};
 
 use crate::errors;
 use crate::mbe::macro_parser::count_metavar_decls;
@@ -49,25 +49,25 @@ pub(super) fn parse(
 
     // For each token tree in `input`, parse the token into a `self::TokenTree`, consuming
     // additional trees if need be.
-    let mut trees = input.trees().peekable();
-    while let Some(tree) = trees.next() {
+    let mut iter = input.iter();
+    while let Some(tree) = iter.next() {
         // Given the parsed tree, if there is a metavar and we are expecting matchers, actually
         // parse out the matcher (i.e., in `$id:ident` this would parse the `:` and `ident`).
-        let tree = parse_tree(tree, &mut trees, parsing_patterns, sess, node_id, features, edition);
+        let tree = parse_tree(tree, &mut iter, parsing_patterns, sess, node_id, features, edition);
         match tree {
             TokenTree::MetaVar(start_sp, ident) if parsing_patterns => {
                 // Not consuming the next token immediately, as it may not be a colon
-                let span = match trees.peek() {
+                let span = match iter.peek() {
                     Some(&tokenstream::TokenTree::Token(
                         Token { kind: token::Colon, span: colon_span },
                         _,
                     )) => {
                         // Consume the colon first
-                        trees.next();
+                        iter.next();
 
                         // It's ok to consume the next tree no matter how,
                         // since if it's not a token then it will be an invalid declaration.
-                        match trees.next() {
+                        match iter.next() {
                             Some(tokenstream::TokenTree::Token(token, _)) => match token.ident() {
                                 Some((fragment, _)) => {
                                     let span = token.span.with_lo(start_sp.lo());
@@ -143,14 +143,14 @@ fn maybe_emit_macro_metavar_expr_concat_feature(features: &Features, sess: &Sess
 /// # Parameters
 ///
 /// - `tree`: the tree we wish to convert.
-/// - `outer_trees`: an iterator over trees. We may need to read more tokens from it in order to finish
+/// - `outer_iter`: an iterator over trees. We may need to read more tokens from it in order to finish
 ///   converting `tree`
 /// - `parsing_patterns`: same as [parse].
 /// - `sess`: the parsing session. Any errors will be emitted to this session.
 /// - `features`: language features so we can do feature gating.
 fn parse_tree<'a>(
     tree: &'a tokenstream::TokenTree,
-    outer_trees: &mut impl Iterator<Item = &'a tokenstream::TokenTree>,
+    outer_iter: &mut TokenStreamIter<'a>,
     parsing_patterns: bool,
     sess: &Session,
     node_id: NodeId,
@@ -163,15 +163,16 @@ fn parse_tree<'a>(
         &tokenstream::TokenTree::Token(Token { kind: token::Dollar, span: dollar_span }, _) => {
             // FIXME: Handle `Invisible`-delimited groups in a more systematic way
             // during parsing.
-            let mut next = outer_trees.next();
-            let mut trees: Box<dyn Iterator<Item = &tokenstream::TokenTree>>;
-            match next {
+            let mut next = outer_iter.next();
+            let mut iter_storage;
+            let mut iter: &mut TokenStreamIter<'_> = match next {
                 Some(tokenstream::TokenTree::Delimited(.., delim, tts)) if delim.skip() => {
-                    trees = Box::new(tts.trees());
-                    next = trees.next();
+                    iter_storage = tts.iter();
+                    next = iter_storage.next();
+                    &mut iter_storage
                 }
-                _ => trees = Box::new(outer_trees),
-            }
+                _ => outer_iter,
+            };
 
             match next {
                 // `tree` is followed by a delimited set of token trees.
@@ -230,7 +231,7 @@ fn parse_tree<'a>(
                     let sequence = parse(tts, parsing_patterns, sess, node_id, features, edition);
                     // Get the Kleene operator and optional separator
                     let (separator, kleene) =
-                        parse_sep_and_kleene_op(&mut trees, delim_span.entire(), sess);
+                        parse_sep_and_kleene_op(&mut iter, delim_span.entire(), sess);
                     // Count the number of captured "names" (i.e., named metavars)
                     let num_captures =
                         if parsing_patterns { count_metavar_decls(&sequence) } else { 0 };
@@ -313,11 +314,11 @@ fn kleene_op(token: &Token) -> Option<KleeneOp> {
 /// - Ok(Ok((op, span))) if the next token tree is a KleeneOp
 /// - Ok(Err(tok, span)) if the next token tree is a token but not a KleeneOp
 /// - Err(span) if the next token tree is not a token
-fn parse_kleene_op<'a>(
-    input: &mut impl Iterator<Item = &'a tokenstream::TokenTree>,
+fn parse_kleene_op(
+    iter: &mut TokenStreamIter<'_>,
     span: Span,
 ) -> Result<Result<(KleeneOp, Span), Token>, Span> {
-    match input.next() {
+    match iter.next() {
         Some(tokenstream::TokenTree::Token(token, _)) => match kleene_op(token) {
             Some(op) => Ok(Ok((op, token.span))),
             None => Ok(Err(token.clone())),
@@ -334,22 +335,22 @@ fn parse_kleene_op<'a>(
 /// itself. Note that here we are parsing the _macro_ itself, rather than trying to match some
 /// stream of tokens in an invocation of a macro.
 ///
-/// This function will take some input iterator `input` corresponding to `span` and a parsing
-/// session `sess`. If the next one (or possibly two) tokens in `input` correspond to a Kleene
+/// This function will take some input iterator `iter` corresponding to `span` and a parsing
+/// session `sess`. If the next one (or possibly two) tokens in `iter` correspond to a Kleene
 /// operator and separator, then a tuple with `(separator, KleeneOp)` is returned. Otherwise, an
 /// error with the appropriate span is emitted to `sess` and a dummy value is returned.
-fn parse_sep_and_kleene_op<'a>(
-    input: &mut impl Iterator<Item = &'a tokenstream::TokenTree>,
+fn parse_sep_and_kleene_op(
+    iter: &mut TokenStreamIter<'_>,
     span: Span,
     sess: &Session,
 ) -> (Option<Token>, KleeneToken) {
     // We basically look at two token trees here, denoted as #1 and #2 below
-    let span = match parse_kleene_op(input, span) {
+    let span = match parse_kleene_op(iter, span) {
         // #1 is a `?`, `+`, or `*` KleeneOp
         Ok(Ok((op, span))) => return (None, KleeneToken::new(op, span)),
 
         // #1 is a separator followed by #2, a KleeneOp
-        Ok(Err(token)) => match parse_kleene_op(input, token.span) {
+        Ok(Err(token)) => match parse_kleene_op(iter, token.span) {
             // #2 is the `?` Kleene op, which does not take a separator (error)
             Ok(Ok((KleeneOp::ZeroOrOne, span))) => {
                 // Error!

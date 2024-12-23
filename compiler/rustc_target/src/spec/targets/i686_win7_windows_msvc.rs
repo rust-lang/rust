@@ -1,10 +1,11 @@
-use crate::spec::{LinkerFlavor, Lld, Target, base};
+use crate::spec::{LinkerFlavor, Lld, SanitizerSet, Target, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::windows_msvc::opts();
+    base.vendor = "win7".into();
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
-    base.vendor = "win7".into();
+    base.supported_sanitizers = SanitizerSet::ADDRESS;
 
     base.add_pre_link_args(LinkerFlavor::Msvc(Lld::No), &[
         // Mark all dynamic libraries and executables as compatible with the larger 4GiB address
@@ -19,7 +20,7 @@ pub(crate) fn target() -> Target {
     Target {
         llvm_target: "i686-pc-windows-msvc".into(),
         metadata: crate::spec::TargetMetadata {
-            description: Some("32-bit Windows 7 support".into()),
+            description: Some("32-bit MSVC (Windows 7+)".into()),
             tier: Some(3),
             host_tools: Some(false),
             std: Some(true),

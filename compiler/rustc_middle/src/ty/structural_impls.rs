@@ -77,7 +77,23 @@ impl fmt::Debug for ty::BoundRegionKind {
 
 impl fmt::Debug for ty::LateParamRegion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ReLateParam({:?}, {:?})", self.scope, self.bound_region)
+        write!(f, "ReLateParam({:?}, {:?})", self.scope, self.kind)
+    }
+}
+
+impl fmt::Debug for ty::LateParamRegionKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            ty::LateParamRegionKind::Anon(idx) => write!(f, "BrAnon({idx})"),
+            ty::LateParamRegionKind::Named(did, name) => {
+                if did.is_crate_root() {
+                    write!(f, "BrNamed({name})")
+                } else {
+                    write!(f, "BrNamed({did:?}, {name})")
+                }
+            }
+            ty::LateParamRegionKind::ClosureEnv => write!(f, "BrEnv"),
+        }
     }
 }
 
@@ -224,7 +240,6 @@ TrivialTypeTraversalImpls! {
     ::rustc_ast::InlineAsmOptions,
     ::rustc_ast::InlineAsmTemplatePiece,
     ::rustc_ast::NodeId,
-    ::rustc_span::symbol::Symbol,
     ::rustc_hir::def::Res,
     ::rustc_hir::def_id::LocalDefId,
     ::rustc_hir::ByRef,
@@ -252,8 +267,9 @@ TrivialTypeTraversalImpls! {
     crate::ty::Placeholder<ty::BoundVar>,
     crate::ty::LateParamRegion,
     crate::ty::adjustment::PointerCoercion,
+    ::rustc_span::Ident,
     ::rustc_span::Span,
-    ::rustc_span::symbol::Ident,
+    ::rustc_span::Symbol,
     ty::BoundVar,
     ty::ValTree<'tcx>,
 }

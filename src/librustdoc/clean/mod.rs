@@ -55,7 +55,7 @@ use rustc_trait_selection::traits::wf::object_region_bounds;
 use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 use utils::*;
-use {rustc_ast as ast, rustc_attr as attr, rustc_hir as hir};
+use {rustc_ast as ast, rustc_hir as hir};
 
 pub(crate) use self::types::*;
 pub(crate) use self::utils::{krate, register_res, synthesize_auto_trait_and_blanket_impls};
@@ -201,7 +201,7 @@ fn generate_item_with_correct_attrs(
     };
 
     let cfg = attrs.cfg(cx.tcx, &cx.cache.hidden_cfg);
-    let attrs = Attributes::from_ast_iter(attrs.iter().map(|(attr, did)| (&**attr, *did)), false);
+    let attrs = Attributes::from_hir_iter(attrs.iter().map(|(attr, did)| (&**attr, *did)), false);
 
     let name = renamed.or(Some(name));
     let mut item = Item::from_def_id_and_attrs_and_parts(def_id, name, kind, attrs, cfg);
@@ -1036,7 +1036,7 @@ fn clean_fn_or_proc_macro<'tcx>(
 /// This is needed to make it more "readable" when documenting functions using
 /// `rustc_legacy_const_generics`. More information in
 /// <https://github.com/rust-lang/rust/issues/83167>.
-fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[ast::Attribute]) {
+fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[hir::Attribute]) {
     for meta_item_list in attrs
         .iter()
         .filter(|a| a.has_name(sym::rustc_legacy_const_generics))
@@ -1222,14 +1222,16 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
     let local_did = trait_item.owner_id.to_def_id();
     cx.with_param_env(local_did, |cx| {
         let inner = match trait_item.kind {
-            hir::TraitItemKind::Const(ty, Some(default)) => AssocConstItem(Box::new(Constant {
-                generics: enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx)),
-                kind: ConstantKind::Local { def_id: local_did, body: default },
-                type_: clean_ty(ty, cx),
-            })),
+            hir::TraitItemKind::Const(ty, Some(default)) => {
+                ProvidedAssocConstItem(Box::new(Constant {
+                    generics: enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx)),
+                    kind: ConstantKind::Local { def_id: local_did, body: default },
+                    type_: clean_ty(ty, cx),
+                }))
+            }
             hir::TraitItemKind::Const(ty, None) => {
                 let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
-                TyAssocConstItem(generics, Box::new(clean_ty(ty, cx)))
+                RequiredAssocConstItem(generics, Box::new(clean_ty(ty, cx)))
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
                 let m = clean_function(cx, sig, trait_item.generics, FunctionArgs::Body(body));
@@ -1237,7 +1239,7 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(names)) => {
                 let m = clean_function(cx, sig, trait_item.generics, FunctionArgs::Names(names));
-                TyMethodItem(m)
+                RequiredMethodItem(m)
             }
             hir::TraitItemKind::Type(bounds, Some(default)) => {
                 let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
@@ -1257,7 +1259,7 @@ fn clean_trait_item<'tcx>(trait_item: &hir::TraitItem<'tcx>, cx: &mut DocContext
             hir::TraitItemKind::Type(bounds, None) => {
                 let generics = enter_impl_trait(cx, |cx| clean_generics(trait_item.generics, cx));
                 let bounds = bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect();
-                TyAssocTypeItem(generics, bounds)
+                RequiredAssocTypeItem(generics, bounds)
             }
         };
         Item::from_def_id_and_parts(local_did, Some(trait_item.ident.name), inner, cx)
@@ -1271,7 +1273,7 @@ pub(crate) fn clean_impl_item<'tcx>(
     let local_did = impl_.owner_id.to_def_id();
     cx.with_param_env(local_did, |cx| {
         let inner = match impl_.kind {
-            hir::ImplItemKind::Const(ty, expr) => AssocConstItem(Box::new(Constant {
+            hir::ImplItemKind::Const(ty, expr) => ImplAssocConstItem(Box::new(Constant {
                 generics: clean_generics(impl_.generics, cx),
                 kind: ConstantKind::Local { def_id: local_did, body: expr },
                 type_: clean_ty(ty, cx),
@@ -1320,18 +1322,23 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
             );
             simplify::move_bounds_to_generic_parameters(&mut generics);
 
-            let provided = match assoc_item.container {
-                ty::AssocItemContainer::Impl => true,
-                ty::AssocItemContainer::Trait => tcx.defaultness(assoc_item.def_id).has_value(),
-            };
-            if provided {
-                AssocConstItem(Box::new(Constant {
+            match assoc_item.container {
+                ty::AssocItemContainer::Impl => ImplAssocConstItem(Box::new(Constant {
                     generics,
                     kind: ConstantKind::Extern { def_id: assoc_item.def_id },
                     type_: ty,
-                }))
-            } else {
-                TyAssocConstItem(generics, Box::new(ty))
+                })),
+                ty::AssocItemContainer::Trait => {
+                    if tcx.defaultness(assoc_item.def_id).has_value() {
+                        ProvidedAssocConstItem(Box::new(Constant {
+                            generics,
+                            kind: ConstantKind::Extern { def_id: assoc_item.def_id },
+                            type_: ty,
+                        }))
+                    } else {
+                        RequiredAssocConstItem(generics, Box::new(ty))
+                    }
+                }
             }
         }
         ty::AssocKind::Fn => {
@@ -1369,7 +1376,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                 };
                 MethodItem(item, defaultness)
             } else {
-                TyMethodItem(item)
+                RequiredMethodItem(item)
             }
         }
         ty::AssocKind::Type => {
@@ -1486,7 +1493,7 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                         bounds,
                     )
                 } else {
-                    TyAssocTypeItem(generics, bounds)
+                    RequiredAssocTypeItem(generics, bounds)
                 }
             } else {
                 AssocTypeItem(
@@ -1839,11 +1846,15 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
             DynTrait(bounds, lifetime)
         }
         TyKind::BareFn(barefn) => BareFunction(Box::new(clean_bare_fn_ty(barefn, cx))),
-        // Rustdoc handles `TyKind::Err`s by turning them into `Type::Infer`s.
-        TyKind::Infer | TyKind::Err(_) | TyKind::Typeof(..) | TyKind::InferDelegation(..) => Infer,
-        TyKind::AnonAdt(..) => {
-            unimplemented!("Anonymous structs or unions are not supported yet")
+        TyKind::UnsafeBinder(..) => {
+            unimplemented!("unsafe binders are not supported yet")
         }
+        // Rustdoc handles `TyKind::Err`s by turning them into `Type::Infer`s.
+        TyKind::Infer
+        | TyKind::Err(_)
+        | TyKind::Typeof(..)
+        | TyKind::InferDelegation(..)
+        | TyKind::TraitAscription(_) => Infer,
     }
 }
 
@@ -2574,7 +2585,7 @@ fn get_all_import_attributes<'hir>(
     import_def_id: LocalDefId,
     target_def_id: DefId,
     is_inline: bool,
-) -> Vec<(Cow<'hir, ast::Attribute>, Option<DefId>)> {
+) -> Vec<(Cow<'hir, hir::Attribute>, Option<DefId>)> {
     let mut attrs = Vec::new();
     let mut first = true;
     for def_id in reexport_chain(cx.tcx, import_def_id, target_def_id)
@@ -2600,7 +2611,7 @@ fn filter_tokens_from_list(
 ) -> Vec<TokenTree> {
     let mut tokens = Vec::with_capacity(args_tokens.len());
     let mut skip_next_comma = false;
-    for token in args_tokens.trees() {
+    for token in args_tokens.iter() {
         match token {
             TokenTree::Token(Token { kind: TokenKind::Comma, .. }, _) if skip_next_comma => {
                 skip_next_comma = false;
@@ -2627,9 +2638,9 @@ fn filter_doc_attr_ident(ident: Symbol, is_inline: bool) -> bool {
 
 /// Remove attributes from `normal` that should not be inherited by `use` re-export.
 /// Before calling this function, make sure `normal` is a `#[doc]` attribute.
-fn filter_doc_attr(normal: &mut ast::NormalAttr, is_inline: bool) {
-    match normal.item.args {
-        ast::AttrArgs::Delimited(ref mut args) => {
+fn filter_doc_attr(args: &mut hir::AttrArgs, is_inline: bool) {
+    match args {
+        hir::AttrArgs::Delimited(ref mut args) => {
             let tokens = filter_tokens_from_list(&args.tokens, |token| {
                 !matches!(
                     token,
@@ -2647,7 +2658,7 @@ fn filter_doc_attr(normal: &mut ast::NormalAttr, is_inline: bool) {
             });
             args.tokens = TokenStream::new(tokens);
         }
-        ast::AttrArgs::Empty | ast::AttrArgs::Eq { .. } => {}
+        hir::AttrArgs::Empty | hir::AttrArgs::Eq { .. } => {}
     }
 }
 
@@ -2672,23 +2683,23 @@ fn filter_doc_attr(normal: &mut ast::NormalAttr, is_inline: bool) {
 /// * `doc(no_inline)`
 /// * `doc(hidden)`
 fn add_without_unwanted_attributes<'hir>(
-    attrs: &mut Vec<(Cow<'hir, ast::Attribute>, Option<DefId>)>,
-    new_attrs: &'hir [ast::Attribute],
+    attrs: &mut Vec<(Cow<'hir, hir::Attribute>, Option<DefId>)>,
+    new_attrs: &'hir [hir::Attribute],
     is_inline: bool,
     import_parent: Option<DefId>,
 ) {
     for attr in new_attrs {
-        if matches!(attr.kind, ast::AttrKind::DocComment(..)) {
+        if matches!(attr.kind, hir::AttrKind::DocComment(..)) {
             attrs.push((Cow::Borrowed(attr), import_parent));
             continue;
         }
         let mut attr = attr.clone();
         match attr.kind {
-            ast::AttrKind::Normal(ref mut normal) => {
-                if let [ident] = &*normal.item.path.segments {
-                    let ident = ident.ident.name;
+            hir::AttrKind::Normal(ref mut normal) => {
+                if let [ident] = &*normal.path.segments {
+                    let ident = ident.name;
                     if ident == sym::doc {
-                        filter_doc_attr(normal, is_inline);
+                        filter_doc_attr(&mut normal.args, is_inline);
                         attrs.push((Cow::Owned(attr), import_parent));
                     } else if is_inline || ident != sym::cfg {
                         // If it's not a `cfg()` attribute, we keep it.
@@ -2891,7 +2902,7 @@ fn clean_extern_crate<'tcx>(
         && attrs.iter().any(|a| {
             a.has_name(sym::doc)
                 && match a.meta_item_list() {
-                    Some(l) => attr::list_contains_name(&l, sym::inline),
+                    Some(l) => ast::attr::list_contains_name(&l, sym::inline),
                     None => false,
                 }
         })
@@ -2996,8 +3007,8 @@ fn clean_use_statement_inner<'tcx>(
             a.has_name(sym::doc)
                 && match a.meta_item_list() {
                     Some(l) => {
-                        attr::list_contains_name(&l, sym::no_inline)
-                            || attr::list_contains_name(&l, sym::hidden)
+                        ast::attr::list_contains_name(&l, sym::no_inline)
+                            || ast::attr::list_contains_name(&l, sym::hidden)
                     }
                     None => false,
                 }

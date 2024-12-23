@@ -153,8 +153,31 @@ impl LocationState {
     ) -> ContinueTraversal {
         if rel_pos.is_foreign() {
             let happening_now = IdempotentForeignAccess::from_foreign(access_kind);
-            let new_access_noop =
+            let mut new_access_noop =
                 self.idempotent_foreign_access.can_skip_foreign_access(happening_now);
+            if self.permission.is_disabled() {
+                // A foreign access to a `Disabled` tag will have almost no observable effect.
+                // It's a theorem that `Disabled` node have no protected initialized children,
+                // and so this foreign access will never trigger any protector.
+                // (Intuition: You're either protected initialized, and thus can't become Disabled
+                // or you're already Disabled protected, but not initialized, and then can't
+                // become initialized since that requires a child access, which Disabled blocks.)
+                // Further, the children will never be able to read or write again, since they
+                // have a `Disabled` parent. So this only affects diagnostics, such that the
+                // blocking write will still be identified directly, just at a different tag.
+                new_access_noop = true;
+            }
+            if self.permission.is_frozen() && access_kind == AccessKind::Read {
+                // A foreign read to a `Frozen` tag will have almost no observable effect.
+                // It's a theorem that `Frozen` nodes have no active children, so all children
+                // already survive foreign reads. Foreign reads in general have almost no
+                // effect, the only further thing they could do is make protected `Reserved`
+                // nodes become conflicted, i.e. make them reject child writes for the further
+                // duration of their protector. But such a child write is already rejected
+                // because this node is frozen. So this only affects diagnostics, but the
+                // blocking read will still be identified directly, just at a different tag.
+                new_access_noop = true;
+            }
             if new_access_noop {
                 // Abort traversal if the new access is indeed guaranteed
                 // to be noop.

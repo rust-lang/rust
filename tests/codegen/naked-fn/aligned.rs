@@ -6,15 +6,12 @@
 #![feature(naked_functions, fn_align)]
 use std::arch::naked_asm;
 
-// CHECK: Function Attrs: naked
-// CHECK-NEXT: define{{.*}}void @naked_empty()
-// CHECK: align 16
+// CHECK: .balign 16
+// CHECK-LABEL: naked_empty:
 #[repr(align(16))]
 #[no_mangle]
 #[naked]
 pub unsafe extern "C" fn naked_empty() {
-    // CHECK-NEXT: start:
-    // CHECK-NEXT: call void asm
-    // CHECK-NEXT: unreachable
+    // CHECK: ret
     naked_asm!("ret");
 }

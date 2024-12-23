@@ -4,10 +4,8 @@
 *.cpp rust
 *.h rust
 *.rs rust diff=rust
-*.fixed linguist-language=Rust -merge
-*.mir linguist-language=Rust -merge
-*.stderr -merge
-*.stdout -merge
+*.fixed linguist-language=Rust
+*.mir linguist-language=Rust
 src/etc/installer/gfx/* binary
 src/vendor/** -text
 Cargo.lock linguist-generated=false

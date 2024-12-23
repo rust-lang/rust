@@ -469,7 +469,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
 
                 let unsafety_flag = match myitem.kind {
                     clean::FunctionItem(_) | clean::ForeignFunctionItem(..)
-                        if myitem.fn_header(tcx).unwrap().safety == hir::Safety::Unsafe =>
+                        if myitem.fn_header(tcx).unwrap().safety.is_unsafe() =>
                     {
                         "<sup title=\"unsafe function\">⚠</sup>"
                     }
@@ -651,9 +651,11 @@ fn item_function(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, f: &clean::
 fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) {
     let tcx = cx.tcx();
     let bounds = bounds(&t.bounds, false, cx);
-    let required_types = t.items.iter().filter(|m| m.is_ty_associated_type()).collect::<Vec<_>>();
+    let required_types =
+        t.items.iter().filter(|m| m.is_required_associated_type()).collect::<Vec<_>>();
     let provided_types = t.items.iter().filter(|m| m.is_associated_type()).collect::<Vec<_>>();
-    let required_consts = t.items.iter().filter(|m| m.is_ty_associated_const()).collect::<Vec<_>>();
+    let required_consts =
+        t.items.iter().filter(|m| m.is_required_associated_const()).collect::<Vec<_>>();
     let provided_consts = t.items.iter().filter(|m| m.is_associated_const()).collect::<Vec<_>>();
     let required_methods = t.items.iter().filter(|m| m.is_ty_method()).collect::<Vec<_>>();
     let provided_methods = t.items.iter().filter(|m| m.is_method()).collect::<Vec<_>>();
@@ -1926,9 +1928,7 @@ fn item_static(
             buffer,
             "{vis}{safe}static {mutability}{name}: {typ}",
             vis = visibility_print_with_space(it, cx),
-            safe = safety
-                .map(|safe| if safe == hir::Safety::Unsafe { "unsafe " } else { "" })
-                .unwrap_or(""),
+            safe = safety.map(|safe| safe.prefix_str()).unwrap_or(""),
             mutability = s.mutability.print_with_space(),
             name = it.name.unwrap(),
             typ = s.type_.print(cx)

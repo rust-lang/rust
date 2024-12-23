@@ -1,4 +1,3 @@
-#![feature(coverage_attribute)]
 #![feature(custom_inner_attributes)] // for #![rustfmt::skip]
 #![allow(unused_assignments, dead_code)]
 #![rustfmt::skip]

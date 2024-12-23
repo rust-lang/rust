@@ -7,8 +7,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, layout};
-use rustc_span::symbol::Symbol;
-use rustc_span::{DUMMY_SP, sym};
+use rustc_span::{DUMMY_SP, Symbol, sym};
 
 use crate::simplify::simplify_duplicate_switch_targets;
 use crate::take_array;
@@ -47,7 +46,6 @@ impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
                         }
                         ctx.simplify_bool_cmp(rvalue);
                         ctx.simplify_ref_deref(rvalue);
-                        ctx.simplify_len(rvalue);
                         ctx.simplify_ptr_aggregate(rvalue);
                         ctx.simplify_cast(rvalue);
                     }
@@ -128,18 +126,6 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
                     local: base.local,
                     projection: self.tcx.mk_place_elems(base.projection),
                 }));
-            }
-        }
-    }
-
-    /// Transform `Len([_; N])` ==> `N`.
-    fn simplify_len(&self, rvalue: &mut Rvalue<'tcx>) {
-        if let Rvalue::Len(ref place) = *rvalue {
-            let place_ty = place.ty(self.local_decls, self.tcx).ty;
-            if let ty::Array(_, len) = *place_ty.kind() {
-                let const_ = Const::from_ty_const(len, self.tcx.types.usize, self.tcx);
-                let constant = ConstOperand { span: DUMMY_SP, const_, user_ty: None };
-                *rvalue = Rvalue::Use(Operand::Constant(Box::new(constant)));
             }
         }
     }

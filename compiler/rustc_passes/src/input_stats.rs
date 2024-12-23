@@ -22,6 +22,10 @@ impl NodeStats {
     fn new() -> NodeStats {
         NodeStats { count: 0, size: 0 }
     }
+
+    fn accum_size(&self) -> usize {
+        self.count * self.size
+    }
 }
 
 struct Node {
@@ -121,11 +125,9 @@ impl<'k> StatCollector<'k> {
         // We will soon sort, so the initial order does not matter.
         #[allow(rustc::potential_query_instability)]
         let mut nodes: Vec<_> = self.nodes.iter().collect();
-        nodes.sort_by_cached_key(|(label, node)| {
-            (node.stats.count * node.stats.size, label.to_owned())
-        });
+        nodes.sort_by_cached_key(|(label, node)| (node.stats.accum_size(), label.to_owned()));
 
-        let total_size = nodes.iter().map(|(_, node)| node.stats.count * node.stats.size).sum();
+        let total_size = nodes.iter().map(|(_, node)| node.stats.accum_size()).sum();
         let total_count = nodes.iter().map(|(_, node)| node.stats.count).sum();
 
         eprintln!("{prefix} {title}");
@@ -138,7 +140,7 @@ impl<'k> StatCollector<'k> {
         let percent = |m, n| (m * 100) as f64 / n as f64;
 
         for (label, node) in nodes {
-            let size = node.stats.count * node.stats.size;
+            let size = node.stats.accum_size();
             eprintln!(
                 "{} {:<18}{:>10} ({:4.1}%){:>14}{:>14}",
                 prefix,
@@ -152,10 +154,12 @@ impl<'k> StatCollector<'k> {
                 // We will soon sort, so the initial order does not matter.
                 #[allow(rustc::potential_query_instability)]
                 let mut subnodes: Vec<_> = node.subnodes.iter().collect();
-                subnodes.sort_by_key(|(_, subnode)| subnode.count * subnode.size);
+                subnodes.sort_by_cached_key(|(label, subnode)| {
+                    (subnode.accum_size(), label.to_owned())
+                });
 
                 for (label, subnode) in subnodes {
-                    let size = subnode.count * subnode.size;
+                    let size = subnode.accum_size();
                     eprintln!(
                         "{} - {:<18}{:>10} ({:4.1}%){:>14}",
                         prefix,
@@ -315,9 +319,40 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
 
     fn visit_expr(&mut self, e: &'v hir::Expr<'v>) {
         record_variants!((self, e, e.kind, Some(e.hir_id), hir, Expr, ExprKind), [
-            ConstBlock, Array, Call, MethodCall, Tup, Binary, Unary, Lit, Cast, Type, DropTemps,
-            Let, If, Loop, Match, Closure, Block, Assign, AssignOp, Field, Index, Path, AddrOf,
-            Break, Continue, Ret, Become, InlineAsm, OffsetOf, Struct, Repeat, Yield, Err
+            ConstBlock,
+            Array,
+            Call,
+            MethodCall,
+            Tup,
+            Binary,
+            Unary,
+            Lit,
+            Cast,
+            Type,
+            DropTemps,
+            Let,
+            If,
+            Loop,
+            Match,
+            Closure,
+            Block,
+            Assign,
+            AssignOp,
+            Field,
+            Index,
+            Path,
+            AddrOf,
+            Break,
+            Continue,
+            Ret,
+            Become,
+            InlineAsm,
+            OffsetOf,
+            Struct,
+            Repeat,
+            Yield,
+            UnsafeBinderCast,
+            Err
         ]);
         hir_visit::walk_expr(self, e)
     }
@@ -335,11 +370,12 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
             Ptr,
             Ref,
             BareFn,
+            UnsafeBinder,
             Never,
             Tup,
-            AnonAdt,
             Path,
             OpaqueDef,
+            TraitAscription,
             TraitObject,
             Typeof,
             Infer,
@@ -468,7 +504,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_assoc_item_constraint(self, constraint)
     }
 
-    fn visit_attribute(&mut self, attr: &'v ast::Attribute) {
+    fn visit_attribute(&mut self, attr: &'v hir::Attribute) {
         self.record("Attribute", None, attr);
     }
 
@@ -572,7 +608,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 If, While, ForLoop, Loop, Match, Closure, Block, Await, TryBlock, Assign,
                 AssignOp, Field, Index, Range, Underscore, Path, AddrOf, Break, Continue, Ret,
                 InlineAsm, FormatArgs, OffsetOf, MacCall, Struct, Repeat, Paren, Try, Yield, Yeet,
-                Become, IncludedBytes, Gen, Err, Dummy
+                Become, IncludedBytes, Gen, UnsafeBinderCast, Err, Dummy
             ]
         );
         ast_visit::walk_expr(self, e)
@@ -586,6 +622,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
             Ref,
             PinnedRef,
             BareFn,
+            UnsafeBinder,
             Never,
             Tup,
             Path,

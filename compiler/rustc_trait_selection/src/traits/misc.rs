@@ -84,7 +84,7 @@ pub fn type_allowed_to_implement_copy<'tcx>(
         return Err(CopyImplementationError::HasDestructor);
     }
 
-    if impl_safety == hir::Safety::Safe && self_type.has_unsafe_fields() {
+    if impl_safety.is_safe() && self_type.has_unsafe_fields() {
         return Err(CopyImplementationError::HasUnsafeFields);
     }
 

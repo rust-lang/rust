@@ -1,10 +1,9 @@
-error: unsupported operation: socketpair/pipe/pipe2 read: blocking isn't supported yet
+error: deadlock: the evaluated program deadlocked
   --> tests/fail-dep/libc/socketpair_read_blocking.rs:LL:CC
    |
 LL |     let _res = unsafe { libc::read(fds[1], buf.as_mut_ptr().cast(), buf.len() as libc::size_t) };
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ socketpair/pipe/pipe2 read: blocking isn't supported yet
+   |                                                                                              ^ the evaluated program deadlocked
    |
-   = help: this is likely not a bug in the program; it indicates that the program performed an operation that Miri does not support
    = note: BACKTRACE:
    = note: inside `main` at tests/fail-dep/libc/socketpair_read_blocking.rs:LL:CC
 

@@ -287,19 +287,14 @@ fn dep_symbol_lookup_fn(
 
     let mut dylib_paths = Vec::new();
 
-    let data = &crate_info
-        .dependency_formats
-        .iter()
-        .find(|(crate_type, _data)| *crate_type == rustc_session::config::CrateType::Executable)
-        .unwrap()
-        .1;
+    let data = &crate_info.dependency_formats[&rustc_session::config::CrateType::Executable].1;
     // `used_crates` is in reverse postorder in terms of dependencies. Reverse the order here to
     // get a postorder which ensures that all dependencies of a dylib are loaded before the dylib
     // itself. This helps the dynamic linker to find dylibs not in the regular dynamic library
     // search path.
     for &cnum in crate_info.used_crates.iter().rev() {
         let src = &crate_info.used_crate_source[&cnum];
-        match data[cnum.as_usize() - 1] {
+        match data[cnum] {
             Linkage::NotLinked | Linkage::IncludedFromDylib => {}
             Linkage::Static => {
                 let name = crate_info.crate_name[&cnum];

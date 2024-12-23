@@ -189,8 +189,7 @@ error[E0308]: mismatched types
 LL |   fn while_never_type() -> ! {
    |                            - expected `!` because of return type
 LL | /     while true {
-LL | |
-LL | |
+...  |
 LL | |     }
    | |_____^ expected `!`, found `()`
    |

@@ -204,6 +204,13 @@ impl<T: ?Sized> NonNull<T> {
 
     /// Creates a new `NonNull` if `ptr` is non-null.
     ///
+    /// # Panics during const evaluation
+    ///
+    /// This method will panic during const evaluation if the pointer cannot be
+    /// determined to be null or not. See [`is_null`] for more information.
+    ///
+    /// [`is_null`]: ../primitive.pointer.html#method.is_null-1
+    ///
     /// # Examples
     ///
     /// ```
@@ -1547,6 +1554,10 @@ impl<T: ?Sized, U: ?Sized> DispatchFromDyn<NonNull<U>> for NonNull<T> where T: U
 
 #[stable(feature = "pin", since = "1.33.0")]
 unsafe impl<T: ?Sized> PinCoerceUnsized for NonNull<T> {}
+
+#[unstable(feature = "pointer_like_trait", issue = "none")]
+#[cfg(not(bootstrap))]
+impl<T> core::marker::PointerLike for NonNull<T> {}
 
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> fmt::Debug for NonNull<T> {

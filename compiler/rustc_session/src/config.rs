@@ -147,18 +147,24 @@ pub enum InstrumentCoverage {
     Yes,
 }
 
-/// Individual flag values controlled by `-Z coverage-options`.
+/// Individual flag values controlled by `-Zcoverage-options`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
 pub struct CoverageOptions {
     pub level: CoverageLevel,
 
-    /// `-Z coverage-options=no-mir-spans`: Don't extract block coverage spans
+    /// `-Zcoverage-options=no-mir-spans`: Don't extract block coverage spans
     /// from MIR statements/terminators, making it easier to inspect/debug
     /// branch and MC/DC coverage mappings.
     ///
     /// For internal debugging only. If other code changes would make it hard
     /// to keep supporting this flag, remove it.
     pub no_mir_spans: bool,
+
+    /// `-Zcoverage-options=discard-all-spans-in-codegen`: During codgen,
+    /// discard all coverage spans as though they were invalid. Needed by
+    /// regression tests for #133606, because we don't have an easy way to
+    /// reproduce it from actual source code.
+    pub discard_all_spans_in_codegen: bool,
 }
 
 /// Controls whether branch coverage or MC/DC coverage is enabled.
@@ -470,6 +476,13 @@ impl ToString for DebugInfoCompression {
         }
         .to_owned()
     }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Hash)]
+pub enum MirStripDebugInfo {
+    None,
+    LocalsInTinyFunctions,
+    AllLocals,
 }
 
 /// Split debug-information is enabled by `-C split-debuginfo`, this enum is only used if split
@@ -1069,7 +1082,7 @@ impl OutputFilenames {
         self.with_directory_and_extension(&self.out_directory, extension)
     }
 
-    pub fn with_directory_and_extension(&self, directory: &PathBuf, extension: &str) -> PathBuf {
+    pub fn with_directory_and_extension(&self, directory: &Path, extension: &str) -> PathBuf {
         let mut path = directory.join(&self.filestem);
         path.set_extension(extension);
         path
@@ -2900,10 +2913,10 @@ pub(crate) mod dep_tracking {
         BranchProtection, CFGuard, CFProtection, CollapseMacroDebuginfo, CoverageOptions,
         CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug, FunctionReturn,
         InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
-        LtoCli, NextSolverConfig, OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes,
-        PatchableFunctionEntry, Polonius, RemapPathScopeComponents, ResolveDocLinks,
-        SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
-        WasiExecModel,
+        LtoCli, MirStripDebugInfo, NextSolverConfig, OomStrategy, OptLevel, OutFileName,
+        OutputType, OutputTypes, PatchableFunctionEntry, Polonius, RemapPathScopeComponents,
+        ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath,
+        SymbolManglingVersion, WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;
@@ -2971,6 +2984,7 @@ pub(crate) mod dep_tracking {
         LtoCli,
         DebugInfo,
         DebugInfoCompression,
+        MirStripDebugInfo,
         CollapseMacroDebuginfo,
         UnstableFeatures,
         NativeLib,

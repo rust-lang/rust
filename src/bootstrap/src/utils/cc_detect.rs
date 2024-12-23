@@ -44,6 +44,16 @@ fn cc2ar(cc: &Path, target: TargetSelection) -> Option<PathBuf> {
         Some(PathBuf::from("ar"))
     } else if target.contains("vxworks") {
         Some(PathBuf::from("wr-ar"))
+    } else if target.contains("-nto-") {
+        if target.starts_with("i586") {
+            Some(PathBuf::from("ntox86-ar"))
+        } else if target.starts_with("aarch64") {
+            Some(PathBuf::from("ntoaarch64-ar"))
+        } else if target.starts_with("x86_64") {
+            Some(PathBuf::from("ntox86_64-ar"))
+        } else {
+            panic!("Unknown architecture, cannot determine archiver for Neutrino QNX");
+        }
     } else if target.contains("android") || target.contains("-wasi") {
         Some(cc.parent().unwrap().join(PathBuf::from("llvm-ar")))
     } else {
@@ -155,15 +165,15 @@ pub fn find_target(build: &Build, target: TargetSelection) {
         build.cxx.borrow_mut().insert(target, compiler);
     }
 
-    build.verbose(|| eprintln!("CC_{} = {:?}", target.triple, build.cc(target)));
-    build.verbose(|| eprintln!("CFLAGS_{} = {cflags:?}", target.triple));
+    build.verbose(|| println!("CC_{} = {:?}", target.triple, build.cc(target)));
+    build.verbose(|| println!("CFLAGS_{} = {cflags:?}", target.triple));
     if let Ok(cxx) = build.cxx(target) {
         let cxxflags = build.cflags(target, GitRepo::Rustc, CLang::Cxx);
-        build.verbose(|| eprintln!("CXX_{} = {cxx:?}", target.triple));
-        build.verbose(|| eprintln!("CXXFLAGS_{} = {cxxflags:?}", target.triple));
+        build.verbose(|| println!("CXX_{} = {cxx:?}", target.triple));
+        build.verbose(|| println!("CXXFLAGS_{} = {cxxflags:?}", target.triple));
     }
     if let Some(ar) = ar {
-        build.verbose(|| eprintln!("AR_{} = {ar:?}", target.triple));
+        build.verbose(|| println!("AR_{} = {ar:?}", target.triple));
         build.ar.borrow_mut().insert(target, ar);
     }
 

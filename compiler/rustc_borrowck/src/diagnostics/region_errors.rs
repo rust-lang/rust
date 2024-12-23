@@ -15,8 +15,7 @@ use rustc_middle::bug;
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::{ConstraintCategory, ReturnConstraint};
 use rustc_middle::ty::{self, GenericArgs, Region, RegionVid, Ty, TyCtxt, TypeVisitor};
-use rustc_span::Span;
-use rustc_span::symbol::{Ident, kw};
+use rustc_span::{Ident, Span, kw};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::infer::nice_region_error::{
     self, HirTraitObjectVisitor, NiceRegionError, TraitObjectVisitor, find_anon_type,
@@ -189,7 +188,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     /// Returns `true` if a closure is inferred to be an `FnMut` closure.
     fn is_closure_fn_mut(&self, fr: RegionVid) -> bool {
         if let Some(ty::ReLateParam(late_param)) = self.to_error_region(fr).as_deref()
-            && let ty::BoundRegionKind::ClosureEnv = late_param.bound_region
+            && let ty::LateParamRegionKind::ClosureEnv = late_param.kind
             && let DefiningTy::Closure(_, args) = self.regioncx.universal_regions().defining_ty
         {
             return args.as_closure().kind() == ty::ClosureKind::FnMut;
@@ -848,7 +847,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 return;
             };
 
-            let fn_returns = self.infcx.tcx.return_type_impl_or_dyn_traits(suitable_region.def_id);
+            let fn_returns = self.infcx.tcx.return_type_impl_or_dyn_traits(suitable_region.scope);
 
             let param = if let Some(param) =
                 find_param_with_region(self.infcx.tcx, self.mir_def_id(), f, outlived_f)
@@ -875,7 +874,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     Some(arg),
                     captures,
                     Some((param.param_ty_span, param.param_ty.to_string())),
-                    Some(suitable_region.def_id),
+                    Some(suitable_region.scope),
                 );
                 return;
             }
@@ -883,7 +882,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             let Some((alias_tys, alias_span, lt_addition_span)) = self
                 .infcx
                 .tcx
-                .return_type_impl_or_dyn_traits_with_type_alias(suitable_region.def_id)
+                .return_type_impl_or_dyn_traits_with_type_alias(suitable_region.scope)
             else {
                 return;
             };
@@ -1018,18 +1017,20 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             return;
         };
 
-        let Some((ty_sub, _)) =
-            self.infcx.tcx.is_suitable_region(self.mir_def_id(), sub).and_then(|anon_reg| {
-                find_anon_type(self.infcx.tcx, self.mir_def_id(), sub, &anon_reg.bound_region)
-            })
+        let Some((ty_sub, _)) = self
+            .infcx
+            .tcx
+            .is_suitable_region(self.mir_def_id(), sub)
+            .and_then(|_| find_anon_type(self.infcx.tcx, self.mir_def_id(), sub))
         else {
             return;
         };
 
-        let Some((ty_sup, _)) =
-            self.infcx.tcx.is_suitable_region(self.mir_def_id(), sup).and_then(|anon_reg| {
-                find_anon_type(self.infcx.tcx, self.mir_def_id(), sup, &anon_reg.bound_region)
-            })
+        let Some((ty_sup, _)) = self
+            .infcx
+            .tcx
+            .is_suitable_region(self.mir_def_id(), sup)
+            .and_then(|_| find_anon_type(self.infcx.tcx, self.mir_def_id(), sup))
         else {
             return;
         };

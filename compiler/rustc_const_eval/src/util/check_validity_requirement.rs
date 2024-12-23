@@ -155,6 +155,7 @@ fn check_validity_requirement_lax<'tcx>(
     }
 
     match &this.variants {
+        Variants::Empty => return Ok(false),
         Variants::Single { .. } => {
             // All fields of this single variant have already been checked above, there is nothing
             // else to do.

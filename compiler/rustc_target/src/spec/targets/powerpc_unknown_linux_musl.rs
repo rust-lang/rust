@@ -6,6 +6,8 @@ pub(crate) fn target() -> Target {
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m32"]);
     base.max_atomic_width = Some(32);
     base.stack_probes = StackProbeType::Inline;
+    // FIXME(compiler-team#422): musl targets should be dynamically linked by default.
+    base.crt_static_default = true;
 
     Target {
         llvm_target: "powerpc-unknown-linux-musl".into(),

@@ -21,8 +21,7 @@ LL | |         12 => 'b',
    | |               --- this is found to be of type `char`
 LL | |         _ => 42,
    | |              ^^ expected `char`, found integer
-LL | |
-LL | |
+...  |
 LL | |     };
    | |_____- `match` arms have incompatible types
 
@@ -40,8 +39,7 @@ LL | |         6 => 'b',
 LL | |
 LL | |         _ => 42,
    | |              ^^ expected `char`, found integer
-LL | |
-LL | |
+...  |
 LL | |     };
    | |_____- `match` arms have incompatible types
 
@@ -55,8 +53,7 @@ LL | |             x
 LL | |         },
 LL | |         None => {}
    | |                 ^^ expected `u32`, found `()`
-LL | |
-LL | |
+...  |
 LL | |     };
    | |_____- `match` arms have incompatible types
 

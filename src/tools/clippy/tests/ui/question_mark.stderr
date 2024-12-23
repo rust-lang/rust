@@ -183,8 +183,7 @@ error: this block may be rewritten with the `?` operator
    |
 LL | /             if a.is_none() {
 LL | |                 return None;
-LL | |                 // do lint here, the outer `try` is not relevant here
-LL | |                 // https://github.com/rust-lang/rust-clippy/pull/11001#issuecomment-1610636867
+...  |
 LL | |             }
    | |_____________^ help: replace it with: `a?;`
 

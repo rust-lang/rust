@@ -16,7 +16,7 @@ use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, S
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, Lld};
 use tracing::{debug, warn};
 
@@ -1694,6 +1694,8 @@ impl<'a> Linker for AixLinker<'a> {
 
     fn pgo_gen(&mut self) {
         self.link_arg("-bdbg:namedsects:ss");
+        self.link_arg("-u");
+        self.link_arg("__llvm_profile_runtime");
     }
 
     fn control_flow_guard(&mut self) {}
@@ -1742,15 +1744,10 @@ fn for_each_exported_symbols_include_dep<'tcx>(
     crate_type: CrateType,
     mut callback: impl FnMut(ExportedSymbol<'tcx>, SymbolExportInfo, CrateNum),
 ) {
-    for &(symbol, info) in tcx.exported_symbols(LOCAL_CRATE).iter() {
-        callback(symbol, info, LOCAL_CRATE);
-    }
-
     let formats = tcx.dependency_formats(());
-    let deps = formats.iter().find_map(|(t, list)| (*t == crate_type).then_some(list)).unwrap();
+    let deps = &formats[&crate_type];
 
-    for (index, dep_format) in deps.iter().enumerate() {
-        let cnum = CrateNum::new(index + 1);
+    for (cnum, dep_format) in deps.iter_enumerated() {
         // For each dependency that we are linking to statically ...
         if *dep_format == Linkage::Static {
             for &(symbol, info) in tcx.exported_symbols(cnum).iter() {

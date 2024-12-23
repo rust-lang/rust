@@ -72,7 +72,7 @@ impl<I: Interner> Elaboratable<I> for ClauseWithSupertraitSpan<I> {
         _parent_trait_pred: crate::Binder<I, crate::TraitPredicate<I>>,
         _index: usize,
     ) -> Self {
-        ClauseWithSupertraitSpan { pred: clause.as_predicate(), supertrait_span: supertrait_span }
+        ClauseWithSupertraitSpan { pred: clause.as_predicate(), supertrait_span }
     }
 }
 

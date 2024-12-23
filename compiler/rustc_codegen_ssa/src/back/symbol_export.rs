@@ -311,7 +311,8 @@ fn exported_symbols_provider_local(
             }
 
             if !tcx.sess.opts.share_generics() {
-                if tcx.codegen_fn_attrs(mono_item.def_id()).inline == rustc_attr::InlineAttr::Never
+                if tcx.codegen_fn_attrs(mono_item.def_id()).inline
+                    == rustc_attr_parsing::InlineAttr::Never
                 {
                     // this is OK, we explicitly allow sharing inline(never) across crates even
                     // without share-generics.
