@@ -174,17 +174,7 @@ pub(crate) struct NonConstFmtMacroCall {
     #[primary_span]
     pub span: Span,
     pub kind: ConstContext,
-    pub non: &'static str,
-}
-
-#[derive(Diagnostic)]
-#[diag(const_eval_conditionally_const_call)]
-pub(crate) struct ConditionallyConstCall {
-    #[primary_span]
-    pub span: Span,
-    pub def_path_str: String,
-    pub def_descr: &'static str,
-    pub kind: ConstContext,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -195,7 +185,7 @@ pub(crate) struct NonConstFnCall {
     pub def_path_str: String,
     pub def_descr: &'static str,
     pub kind: ConstContext,
-    pub non: &'static str,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -302,7 +292,7 @@ pub struct NonConstMatchEq<'tcx> {
     pub span: Span,
     pub ty: Ty<'tcx>,
     pub kind: ConstContext,
-    pub non: &'static str,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -312,7 +302,7 @@ pub struct NonConstForLoopIntoIter<'tcx> {
     pub span: Span,
     pub ty: Ty<'tcx>,
     pub kind: ConstContext,
-    pub non: &'static str,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -322,7 +312,7 @@ pub struct NonConstQuestionBranch<'tcx> {
     pub span: Span,
     pub ty: Ty<'tcx>,
     pub kind: ConstContext,
-    pub non: &'static str,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -332,7 +322,7 @@ pub struct NonConstQuestionFromResidual<'tcx> {
     pub span: Span,
     pub ty: Ty<'tcx>,
     pub kind: ConstContext,
-    pub non: &'static str,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -342,7 +332,7 @@ pub struct NonConstTryBlockFromOutput<'tcx> {
     pub span: Span,
     pub ty: Ty<'tcx>,
     pub kind: ConstContext,
-    pub non: &'static str,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -352,7 +342,7 @@ pub struct NonConstAwait<'tcx> {
     pub span: Span,
     pub ty: Ty<'tcx>,
     pub kind: ConstContext,
-    pub non: &'static str,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -363,7 +353,7 @@ pub struct NonConstClosure {
     pub kind: ConstContext,
     #[subdiagnostic]
     pub note: Option<NonConstClosureNote>,
-    pub non: &'static str,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Subdiagnostic)]
@@ -397,7 +387,7 @@ pub struct NonConstOperator {
     pub kind: ConstContext,
     #[subdiagnostic]
     pub sugg: Option<ConsiderDereferencing>,
-    pub non: &'static str,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -411,7 +401,7 @@ pub struct NonConstDerefCoercion<'tcx> {
     pub target_ty: Ty<'tcx>,
     #[note(const_eval_target_note)]
     pub deref_target: Option<Span>,
-    pub non: &'static str,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Diagnostic)]

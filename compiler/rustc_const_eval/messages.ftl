@@ -21,8 +21,6 @@ const_eval_closure_call =
     closures need an RFC before allowed to be called in {const_eval_const_context}s
 const_eval_closure_fndef_not_const =
     function defined here, but it is not `const`
-const_eval_conditionally_const_call =
-    cannot call conditionally-const {$def_descr} `{$def_path_str}` in {const_eval_const_context}s
 
 const_eval_consider_dereferencing =
     consider dereferencing here
@@ -239,18 +237,18 @@ const_eval_non_const_await =
     cannot convert `{$ty}` into a future in {const_eval_const_context}s
 
 const_eval_non_const_closure =
-    cannot call {$non}-const closure in {const_eval_const_context}s
+    cannot call {$non_or_conditionally}-const closure in {const_eval_const_context}s
 
 const_eval_non_const_deref_coercion =
-    cannot perform {$non}-const deref coercion on `{$ty}` in {const_eval_const_context}s
+    cannot perform {$non_or_conditionally}-const deref coercion on `{$ty}` in {const_eval_const_context}s
     .note = attempting to deref into `{$target_ty}`
     .target_note = deref defined here
 
 const_eval_non_const_fmt_macro_call =
-    cannot call {$non}-const formatting macro in {const_eval_const_context}s
+    cannot call {$non_or_conditionally}-const formatting macro in {const_eval_const_context}s
 
 const_eval_non_const_fn_call =
-    cannot call {$non}-const {$def_descr} `{$def_path_str}` in {const_eval_const_context}s
+    cannot call {$non_or_conditionally}-const {$def_descr} `{$def_path_str}` in {const_eval_const_context}s
 
 const_eval_non_const_for_loop_into_iter =
     cannot use `for` loop on `{$ty}` in {const_eval_const_context}s
@@ -259,13 +257,13 @@ const_eval_non_const_impl =
     impl defined here, but it is not `const`
 
 const_eval_non_const_intrinsic =
-    cannot call {$non}-const intrinsic `{$name}` in {const_eval_const_context}s
+    cannot call non-const intrinsic `{$name}` in {const_eval_const_context}s
 
 const_eval_non_const_match_eq = cannot match on `{$ty}` in {const_eval_const_context}s
     .note = `{$ty}` cannot be compared in compile-time, and therefore cannot be used in `match`es
 
 const_eval_non_const_operator =
-    cannot call {$non}-const operator in {const_eval_const_context}s
+    cannot call {$non_or_conditionally}-const operator in {const_eval_const_context}s
 
 const_eval_non_const_question_branch =
     `?` is not allowed on `{$ty}` in {const_eval_const_context}s
