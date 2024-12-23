@@ -31,7 +31,7 @@ const _: () = {
     let opaque = bar(());
     //[no]~^ ERROR the trait bound `(): const Foo` is not satisfied
     opaque.method();
-    //[no]~^ ERROR the trait bound `impl Foo: const Foo` is not satisfied
+    //[no]~^ ERROR the trait bound `(): const Foo` is not satisfied
     std::mem::forget(opaque);
 };
 

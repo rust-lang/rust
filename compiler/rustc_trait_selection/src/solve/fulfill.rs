@@ -413,6 +413,7 @@ impl<'tcx> BestObligation<'tcx> {
                                     matches!(
                                         nested_goal.source(),
                                         GoalSource::ImplWhereBound
+                                            | GoalSource::AliasBoundConstCondition
                                             | GoalSource::InstantiateHigherRanked
                                             | GoalSource::AliasWellFormed
                                     ) && match self.consider_ambiguities {
@@ -495,7 +496,6 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
         };
 
         let mut impl_where_bound_count = 0;
-        let mut impl_const_condition_bound_count = 0;
         for nested_goal in candidate.instantiate_nested_goals(self.span()) {
             trace!(nested_goal = ?(nested_goal.goal(), nested_goal.source(), nested_goal.result()));
 
@@ -521,21 +521,25 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
                     ));
                     impl_where_bound_count += 1;
                 }
-                (ChildMode::Host(parent_host_pred), GoalSource::ImplWhereBound) => {
+                (
+                    ChildMode::Host(parent_host_pred),
+                    GoalSource::ImplWhereBound | GoalSource::AliasBoundConstCondition,
+                ) => {
                     obligation = make_obligation(derive_host_cause(
                         tcx,
                         candidate.kind(),
                         self.obligation.cause.clone(),
-                        impl_const_condition_bound_count,
+                        impl_where_bound_count,
                         parent_host_pred,
                     ));
-                    impl_const_condition_bound_count += 1;
+                    impl_where_bound_count += 1;
                 }
                 // Skip over a higher-ranked predicate.
                 (_, GoalSource::InstantiateHigherRanked) => {
                     obligation = self.obligation.clone();
                 }
-                (ChildMode::PassThrough, _) | (_, GoalSource::AliasWellFormed) => {
+                (ChildMode::PassThrough, _)
+                | (_, GoalSource::AliasWellFormed | GoalSource::AliasBoundConstCondition) => {
                     obligation = make_obligation(self.obligation.cause.clone());
                 }
             }

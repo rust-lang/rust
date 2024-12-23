@@ -12,7 +12,7 @@ note: required by a bound in `bar`
 LL | const fn bar<T: ~const Foo>(t: T) -> impl ~const Foo {
    |                 ^^^^^^ required by this bound in `bar`
 
-error[E0277]: the trait bound `impl Foo: const Foo` is not satisfied
+error[E0277]: the trait bound `(): const Foo` is not satisfied
   --> $DIR/const-opaque.rs:33:12
    |
 LL |     opaque.method();
