@@ -367,7 +367,7 @@ impl<'a> ExtCtxt<'a> {
                 qself: None,
                 path,
                 fields,
-                rest: ast::StructRest::None,
+                rest: ast::StructRest::None(DUMMY_SP),
             })),
         )
     }

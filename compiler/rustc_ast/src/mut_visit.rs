@@ -1771,7 +1771,7 @@ pub fn walk_expr<T: MutVisitor>(vis: &mut T, Expr { kind, id, span, attrs, token
             match rest {
                 StructRest::Base(expr) => vis.visit_expr(expr),
                 StructRest::Rest(_span) => {}
-                StructRest::None => {}
+                StructRest::None(_span) => {}
             }
         }
         ExprKind::Paren(expr) => {

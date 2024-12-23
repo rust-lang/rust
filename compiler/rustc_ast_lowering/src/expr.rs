@@ -358,7 +358,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let rest = match &se.rest {
                         StructRest::Base(e) => hir::StructTailExpr::Base(self.lower_expr(e)),
                         StructRest::Rest(sp) => hir::StructTailExpr::DefaultFields(*sp),
-                        StructRest::None => hir::StructTailExpr::None,
+                        StructRest::None(sp) => hir::StructTailExpr::None(*sp),
                     };
                     hir::ExprKind::Struct(
                         self.arena.alloc(self.lower_qpath(
@@ -1419,7 +1419,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         true
                     }
                     StructRest::Rest(_) => true,
-                    StructRest::None => false,
+                    StructRest::None(_) => false,
                 };
                 let struct_pat = hir::PatKind::Struct(qpath, field_pats, fields_omitted);
                 return self.pat_without_dbm(lhs.span, struct_pat);
@@ -1530,7 +1530,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::ExprKind::Struct(
             self.arena.alloc(hir::QPath::LangItem(lang_item, self.lower_span(span))),
             fields,
-            hir::StructTailExpr::None,
+            hir::StructTailExpr::None(DUMMY_SP),
         )
     }
 

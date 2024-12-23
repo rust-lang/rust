@@ -43,7 +43,7 @@ declare_lint_pass!(NumberedFields => [INIT_NUMBERED_FIELDS]);
 
 impl<'tcx> LateLintPass<'tcx> for NumberedFields {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-        if let ExprKind::Struct(path, fields @ [field, ..], StructTailExpr::None) = e.kind
+        if let ExprKind::Struct(path, fields @ [field, ..], StructTailExpr::None(_)) = e.kind
             // If the first character of any field is a digit it has to be a tuple.
             && field.ident.as_str().as_bytes().first().is_some_and(u8::is_ascii_digit)
             // Type aliases can't be used as functions.

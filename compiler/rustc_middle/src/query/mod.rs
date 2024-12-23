@@ -1805,6 +1805,7 @@ rustc_queries! {
         desc { "looking up lifetime defaults for generic parameter `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
+
     query late_bound_vars_map(owner_id: hir::OwnerId)
         -> &'tcx SortedMap<ItemLocalId, Vec<ty::BoundVariableKind>> {
         desc { |tcx| "looking up late bound vars inside `{}`", tcx.def_path_str(owner_id) }

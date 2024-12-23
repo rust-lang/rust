@@ -386,7 +386,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                 self.eq_qpath(l_path, r_path)
                     && match (lo, ro) {
                         (StructTailExpr::Base(l),StructTailExpr::Base(r)) => self.eq_expr(l, r),
-                        (StructTailExpr::None, StructTailExpr::None) => true,
+                        (StructTailExpr::None(_), StructTailExpr::None(_)) => true,
                         (StructTailExpr::DefaultFields(_), StructTailExpr::DefaultFields(_)) => true,
                         _ => false,
                     }

@@ -1649,7 +1649,7 @@ fn rewrite_struct_lit<'a>(
     let path_str = rewrite_path(context, PathContext::Expr, qself, path, path_shape)?;
 
     let has_base_or_rest = match struct_rest {
-        ast::StructRest::None if fields.is_empty() => return Ok(format!("{path_str} {{}}")),
+        ast::StructRest::None(_) if fields.is_empty() => return Ok(format!("{path_str} {{}}")),
         ast::StructRest::Rest(_) if fields.is_empty() => {
             return Ok(format!("{path_str} {{ .. }}"));
         }
@@ -1679,7 +1679,7 @@ fn rewrite_struct_lit<'a>(
             match struct_rest {
                 ast::StructRest::Base(expr) => Some(StructLitField::Base(&**expr)),
                 ast::StructRest::Rest(span) => Some(StructLitField::Rest(*span)),
-                ast::StructRest::None => None,
+                ast::StructRest::None(_) => None,
             }
             .into_iter(),
         );

@@ -236,7 +236,7 @@ impl<'a> Range<'a> {
                     limits: ast::RangeLimits::Closed,
                 })
             },
-            ExprKind::Struct(path, fields, StructTailExpr::None) => match (path, fields) {
+            ExprKind::Struct(path, fields, StructTailExpr::None(_)) => match (path, fields) {
                 (QPath::LangItem(hir::LangItem::RangeFull, ..), []) => Some(Range {
                     start: None,
                     end: None,

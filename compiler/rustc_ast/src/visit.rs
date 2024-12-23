@@ -1094,7 +1094,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) -> V
             match rest {
                 StructRest::Base(expr) => try_visit!(visitor.visit_expr(expr)),
                 StructRest::Rest(_span) => {}
-                StructRest::None => {}
+                StructRest::None(_span) => {}
             }
         }
         ExprKind::Tup(subexpressions) => {

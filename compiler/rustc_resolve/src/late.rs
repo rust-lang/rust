@@ -4676,7 +4676,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 match &se.rest {
                     StructRest::Base(expr) => self.visit_expr(expr),
                     StructRest::Rest(_span) => {}
-                    StructRest::None => {}
+                    StructRest::None(_span) => {}
                 }
             }
 

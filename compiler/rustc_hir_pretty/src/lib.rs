@@ -1226,7 +1226,7 @@ impl<'a> State<'a> {
                 self.word("..");
                 self.end();
             }
-            hir::StructTailExpr::None => {
+            hir::StructTailExpr::None(_) => {
                 if !fields.is_empty() {
                     self.word(",");
                 }

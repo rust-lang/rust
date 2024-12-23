@@ -1,0 +1,216 @@
+error: `Default` impl doesn't use the declared default field values
+  --> $DIR/manual-default-impl-could-be-derived.rs:15:1
+   |
+LL | / impl Default for A {
+LL | |     fn default() -> Self {
+LL | |         A {
+LL | |             y: 0,
+   | |                - this field has a default value
+...  |
+LL | | }
+   | |_^
+   |
+note: the lint level is defined here
+  --> $DIR/manual-default-impl-could-be-derived.rs:6:35
+   |
+LL | #![deny(default_could_be_derived, default_overrides_default_fields)]
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: use the default values in the `impl` to avoid them diverging over time
+   |
+LL -             y: 0,
+LL +             x: s(), ..
+   |
+
+error: `Default` impl doesn't use the declared default field values
+  --> $DIR/manual-default-impl-could-be-derived.rs:29:1
+   |
+LL | / impl Default for B {
+LL | |     fn default() -> Self {
+LL | |         B {
+LL | |             x: s(),
+   | |                --- this field has a default value
+LL | |             y: 0,
+   | |                - this field has a default value
+...  |
+LL | | }
+   | |_^
+   |
+note: the lint level is defined here
+  --> $DIR/manual-default-impl-could-be-derived.rs:6:9
+   |
+LL | #![deny(default_could_be_derived, default_overrides_default_fields)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+help: to avoid divergence in behavior between `Struct { .. }` and `<Struct as Default>::default()`, derive the `Default`
+   |
+LL ~ #[derive(Default)] struct B {
+   |
+
+error: `Default` impl doesn't use the declared default field values
+  --> $DIR/manual-default-impl-could-be-derived.rs:44:1
+   |
+LL | / impl Default for C {
+LL | |     fn default() -> Self {
+LL | |         C {
+LL | |             x: s(),
+LL | |             y: 0,
+   | |                - this field has a default value
+...  |
+LL | | }
+   | |_^
+   |
+help: use the default values in the `impl` to avoid them diverging over time
+   |
+LL -             x: s(),
+LL -             y: 0,
+LL +             x: s(),
+   |
+
+error: `Default` impl doesn't use the declared default field values
+  --> $DIR/manual-default-impl-could-be-derived.rs:60:1
+   |
+LL | / impl Default for D {
+LL | |     fn default() -> Self {
+LL | |         D {
+LL | |             y: 0,
+   | |                - this field has a default value
+...  |
+LL | | }
+   | |_^
+   |
+help: use the default values in the `impl` to avoid them diverging over time
+   |
+LL -             y: 0,
+LL +             x: s(),
+   |
+
+error: `Default` impl doesn't use the declared default field values
+  --> $DIR/manual-default-impl-could-be-derived.rs:76:1
+   |
+LL | / impl Default for E {
+LL | |     fn default() -> Self {
+LL | |         E {
+LL | |             y: 0,
+   | |                - this field has a default value
+LL | |             z: 0,
+   | |                - this field has a default value
+...  |
+LL | | }
+   | |_^
+   |
+help: use the default values in the `impl` to avoid them diverging over time
+   |
+LL -             y: 0,
+LL +             x: s(), ..
+   |
+
+error: `Default` impl doesn't use the declared default field values
+  --> $DIR/manual-default-impl-could-be-derived.rs:94:1
+   |
+LL | / impl Default for E2 {
+LL | |     fn default() -> Self {
+LL | |         E2 {
+LL | |             x: s(),
+LL | |             y: i(),
+   | |                --- this field has a default value
+LL | |             z: 0,
+   | |                - this field has a default value
+...  |
+LL | | }
+   | |_^
+   |
+help: use the default values in the `impl` to avoid them diverging over time
+   |
+LL -             x: s(),
+LL -             y: i(),
+LL +             x: s(), ..
+   |
+
+error: `Default` impl doesn't use the declared default field values
+  --> $DIR/manual-default-impl-could-be-derived.rs:114:1
+   |
+LL | / impl Default for F {
+LL | |     fn default() -> Self {
+LL | |         F {
+LL | |             x: g_const(),
+   | |                --------- this value can be used as a default field value
+LL | |             y: 0,
+   | |                - this field has a default value
+...  |
+LL | | }
+   | |_^
+   |
+help: to avoid divergence in behavior between `Struct { .. }` and `<Struct as Default>::default()`, derive the `Default`
+   |
+LL ~ #[derive(Default)] struct F {
+   |
+
+error: `Default` impl doesn't use the declared default field values
+  --> $DIR/manual-default-impl-could-be-derived.rs:142:1
+   |
+LL | / impl Default for H {
+LL | |     fn default() -> Self {
+LL | |         H {
+LL | |             x: i_const(),
+   | |                --------- this value can be used as a default field value
+LL | |             y: 0,
+   | |                - this field has a default value
+...  |
+LL | | }
+   | |_^
+   |
+help: set the default field values of your type to the value used in the `Default` implementation and derive it
+   |
+LL ~ #[derive(Default)] struct H {
+LL ~     x: I = i_const(),
+   |
+
+error: `Default` impl that could be derived
+  --> $DIR/manual-default-impl-could-be-derived.rs:164:1
+   |
+LL | /  impl Default for M {
+LL | |      fn default() -> Self {
+LL | |          M {
+LL | |              x: N_CONST,
+   | |                 ------- this value can be used as a default field value
+LL | |              z: A {
+   | | ________________-
+LL | ||                 x: S(0),
+LL | ||                 y: 0,
+LL | ||             },
+   | ||_____________- this value can be used as a default field value
+...  |
+LL | |  }
+   | |__^
+   |
+help: set the default field values of your type to the value used in the `Default` implementation and derive it
+   |
+LL ~ #[derive(Default)] struct M {
+LL ~     x: N = N_CONST,
+LL |     y: i32 = 1,
+LL ~     z: A = A {
+LL +         x: S(0),
+LL +         y: 0,
+LL ~     },
+   |
+
+error: `Default` impl doesn't use the declared default field values
+  --> $DIR/manual-default-impl-could-be-derived.rs:186:1
+   |
+LL | / impl Default for O {
+LL | |     fn default() -> Self {
+LL | |         O {
+LL | |             x: None,
+   | |                ---- this value can be used as a default field value
+LL | |             y: 1,
+   | |                - this field has a default value
+...  |
+LL | | }
+   | |_^
+   |
+help: to avoid divergence in behavior between `Struct { .. }` and `<Struct as Default>::default()`, derive the `Default`
+   |
+LL ~ #[derive(Default)] struct O {
+   |
+
+error: aborting due to 10 previous errors
+

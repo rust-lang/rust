@@ -600,7 +600,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 bind!(self, qpath, fields);
                 let base = OptionPat::new(match base {
                     StructTailExpr::Base(base) => Some(self.bind("base", base)),
-                    StructTailExpr::None | StructTailExpr::DefaultFields(_) => None,
+                    StructTailExpr::None(_) | StructTailExpr::DefaultFields(_) => None,
                 });
                 kind!("Struct({qpath}, {fields}, {base})");
                 self.qpath(qpath);

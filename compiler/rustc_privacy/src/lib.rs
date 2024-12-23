@@ -994,7 +994,7 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
                 hir::StructTailExpr::DefaultFields(span) => {
                     self.check_expanded_fields(adt, variant, fields, expr.hir_id, span);
                 }
-                hir::StructTailExpr::None => {
+                hir::StructTailExpr::None(_) => {
                     for field in fields {
                         let (hir_id, use_ctxt, span) = (field.hir_id, field.ident.span, field.span);
                         let index = self.typeck_results().field_index(field.hir_id);

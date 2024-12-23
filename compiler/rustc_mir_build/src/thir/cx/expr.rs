@@ -620,7 +620,7 @@ impl<'tcx> Cx<'tcx> {
                                             .collect(),
                                     )
                                 }
-                                hir::StructTailExpr::None => AdtExprBase::None,
+                                hir::StructTailExpr::None(_) => AdtExprBase::None,
                             },
                         }))
                     }
@@ -630,7 +630,7 @@ impl<'tcx> Cx<'tcx> {
                             Res::Def(DefKind::Variant, variant_id) => {
                                 assert!(matches!(
                                     base,
-                                    hir::StructTailExpr::None
+                                    hir::StructTailExpr::None(_)
                                         | hir::StructTailExpr::DefaultFields(_)
                                 ));
 
@@ -659,7 +659,7 @@ impl<'tcx> Cx<'tcx> {
                                         hir::StructTailExpr::Base(base) => {
                                             span_bug!(base.span, "unexpected res: {:?}", res);
                                         }
-                                        hir::StructTailExpr::None => AdtExprBase::None,
+                                        hir::StructTailExpr::None(_) => AdtExprBase::None,
                                     },
                                 }))
                             }

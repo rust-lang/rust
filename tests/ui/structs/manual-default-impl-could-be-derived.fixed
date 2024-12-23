@@ -1,0 +1,147 @@
+// Warn when we encounter a manual `Default` impl that could be derived.
+// Restricted only to types using `default_field_values`.
+//@ run-rustfix
+#![feature(default_field_values)]
+#![allow(dead_code)]
+#![deny(default_could_be_derived, default_overrides_default_fields)]
+struct S(i32);
+fn s() -> S { S(1) }
+
+struct A {
+    x: S,
+    y: i32 = 1,
+}
+
+impl Default for A { //~ ERROR default_overrides_default_fields
+    fn default() -> Self {
+        A {
+            x: s(), ..
+        }
+    }
+}
+
+#[derive(Default)] struct B {
+    x: S = S(3),
+    y: i32 = 1,
+}
+
+
+struct C {
+    x: S,
+    y: i32 = 1,
+    z: i32 = 1,
+}
+
+impl Default for C { //~ ERROR default_overrides_default_fields
+    fn default() -> Self {
+        C {
+            x: s(),
+            ..
+        }
+    }
+}
+
+struct D {
+    x: S,
+    y: i32 = 1,
+    z: i32 = 1,
+}
+
+impl Default for D { //~ ERROR default_overrides_default_fields
+    fn default() -> Self {
+        D {
+            x: s(),
+            ..
+        }
+    }
+}
+
+struct E {
+    x: S,
+    y: i32 = 1,
+    z: i32 = 1,
+}
+
+impl Default for E { //~ ERROR default_overrides_default_fields
+    fn default() -> Self {
+        E {
+            x: s(), ..
+        }
+    }
+}
+
+// Let's ensure that the span for `x` and the span for `y` don't overlap when suggesting their
+// removal in favor of their default field values.
+struct E2 {
+    x: S,
+    y: i32 = 1,
+    z: i32 = 1,
+}
+
+impl Default for E2 { //~ ERROR default_overrides_default_fields
+    fn default() -> Self {
+        E2 {
+            x: s(), ..
+        }
+    }
+}
+
+fn i() -> i32 {
+    1
+}
+
+// Account for a `const fn` being the `Default::default()` of a field's type.
+#[derive(Default)] struct F {
+    x: G,
+    y: i32 = 1,
+}
+
+
+struct G;
+
+impl Default for G { // ok
+    fn default() -> Self {
+        g_const()
+    }
+}
+
+const fn g_const() -> G {
+    G
+}
+
+// Account for a `const fn` being used in `Default::default()`, even if the type doesn't use it as
+// its own `Default`. We suggest setting the default field value in that case.
+#[derive(Default)] struct H {
+    x: I = i_const(),
+    y: i32 = 1,
+}
+
+
+struct I;
+
+const fn i_const() -> I {
+    I
+}
+
+// Account for a `const` and struct literal being the `Default::default()` of a field's type.
+#[derive(Default)] struct M {
+    x: N = N_CONST,
+    y: i32 = 1,
+    z: A = A {
+        x: S(0),
+        y: 0,
+    },
+}
+
+
+struct N;
+
+const N_CONST: N = N;
+
+#[derive(Default)] struct O {
+    x: Option<i32>,
+    y: i32 = 1,
+}
+
+
+fn main() {}

@@ -1455,8 +1455,8 @@ pub enum StructRest {
     Base(P<Expr>),
     /// `..`.
     Rest(Span),
-    /// No trailing `..` or expression.
-    None,
+    /// No trailing `..` or expression. The `Span` points at the trailing `,` or spot before `}`.
+    None(Span),
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]

@@ -1011,7 +1011,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     hir::StructTailExpr::Base(base) => {
                         self.propagate_through_opt_expr(Some(base), succ)
                     }
-                    hir::StructTailExpr::None | hir::StructTailExpr::DefaultFields(_) => succ,
+                    hir::StructTailExpr::None(_) | hir::StructTailExpr::DefaultFields(_) => succ,
                 };
                 fields
                     .iter()

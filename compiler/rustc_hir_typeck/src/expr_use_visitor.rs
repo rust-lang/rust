@@ -707,7 +707,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 
         let with_expr = match *opt_with {
             hir::StructTailExpr::Base(w) => &*w,
-            hir::StructTailExpr::DefaultFields(_) | hir::StructTailExpr::None => {
+            hir::StructTailExpr::DefaultFields(_) | hir::StructTailExpr::None(_) => {
                 return Ok(());
             }
         };

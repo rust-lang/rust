@@ -239,7 +239,7 @@ fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
             !has_drop(cx, cx.typeck_results().expr_ty(expr))
                 && fields.iter().all(|field| has_no_effect(cx, field.expr))
                 && match &base {
-                    StructTailExpr::None | StructTailExpr::DefaultFields(_) => true,
+                    StructTailExpr::None(_)| StructTailExpr::DefaultFields(_) => true,
                     StructTailExpr::Base(base) => has_no_effect(cx, base),
                 }
         },
@@ -347,7 +347,7 @@ fn reduce_expression<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<Vec
             } else {
                 let base = match base {
                     StructTailExpr::Base(base) => Some(base),
-                    StructTailExpr::None | StructTailExpr::DefaultFields(_) => None,
+                    StructTailExpr::None(_)| StructTailExpr::DefaultFields(_) => None,
                 };
                 Some(fields.iter().map(|f| &f.expr).chain(base).map(Deref::deref).collect())
             }

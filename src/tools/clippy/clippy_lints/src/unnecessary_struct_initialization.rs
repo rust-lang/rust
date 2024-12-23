@@ -59,7 +59,7 @@ impl LateLintPass<'_> for UnnecessaryStruct {
         let field_path = same_path_in_all_fields(cx, expr, fields);
 
         let sugg = match (field_path, base) {
-            (Some(&path), StructTailExpr::None | StructTailExpr::DefaultFields(_)) => {
+            (Some(&path), StructTailExpr::None(_)| StructTailExpr::DefaultFields(_)) => {
                 // all fields match, no base given
                 path.span
             },

@@ -3525,7 +3525,8 @@ impl<'a> Parser<'a> {
         ),
     > {
         let mut fields = ThinVec::new();
-        let mut base = ast::StructRest::None;
+        // This would be retained only if the current token is `}`. Otherwise, it's discarded.
+        let mut base = ast::StructRest::None(self.token.span.shrink_to_lo());
         let mut recovered_async = None;
         let in_if_guard = self.restrictions.contains(Restrictions::IN_IF_GUARD);
 
@@ -3652,6 +3653,12 @@ impl<'a> Parser<'a> {
                         // Only include the field if there's no parse error for the field name.
                         fields.push(f);
                     }
+                    let span = if token::Comma == self.prev_token.kind {
+                        self.prev_token.span
+                    } else {
+                        self.prev_token.span.shrink_to_hi()
+                    };
+                    base = ast::StructRest::None(span);
                 }
                 Err(mut e) => {
                     if pth == kw::Async {
@@ -3678,6 +3685,12 @@ impl<'a> Parser<'a> {
                     }
                     self.recover_stmt_(SemiColonMode::Comma, BlockMode::Ignore);
                     let _ = self.eat(exp!(Comma));
+                    let span = if token::Comma == self.prev_token.kind {
+                        self.prev_token.span
+                    } else {
+                        self.prev_token.span.shrink_to_hi()
+                    };
+                    base = ast::StructRest::None(span);
                 }
             }
         }

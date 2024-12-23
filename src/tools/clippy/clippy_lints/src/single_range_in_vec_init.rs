@@ -86,7 +86,7 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
             return;
         };
 
-        let ExprKind::Struct(QPath::LangItem(lang_item, ..), [start, end], StructTailExpr::None) = inner_expr.kind else {
+        let ExprKind::Struct(QPath::LangItem(lang_item, ..), [start, end], StructTailExpr::None(_)) = inner_expr.kind else {
             return;
         };
 

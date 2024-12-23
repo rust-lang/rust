@@ -2116,7 +2116,7 @@ impl Expr<'_> {
             ExprKind::Struct(_, fields, init) => {
                 let init_side_effects = match init {
                     StructTailExpr::Base(init) => init.can_have_side_effects(),
-                    StructTailExpr::DefaultFields(_) | StructTailExpr::None => false,
+                    StructTailExpr::DefaultFields(_) | StructTailExpr::None(_) => false,
                 };
                 fields.iter().map(|field| field.expr).any(|e| e.can_have_side_effects())
                     || init_side_effects
@@ -2191,48 +2191,48 @@ impl Expr<'_> {
                 ExprKind::Struct(
                     QPath::LangItem(LangItem::RangeTo, _),
                     [val1],
-                    StructTailExpr::None,
+                    StructTailExpr::None(_),
                 ),
                 ExprKind::Struct(
                     QPath::LangItem(LangItem::RangeTo, _),
                     [val2],
-                    StructTailExpr::None,
+                    StructTailExpr::None(_),
                 ),
             )
             | (
                 ExprKind::Struct(
                     QPath::LangItem(LangItem::RangeToInclusive, _),
                     [val1],
-                    StructTailExpr::None,
+                    StructTailExpr::None(_),
                 ),
                 ExprKind::Struct(
                     QPath::LangItem(LangItem::RangeToInclusive, _),
                     [val2],
-                    StructTailExpr::None,
+                    StructTailExpr::None(_),
                 ),
             )
             | (
                 ExprKind::Struct(
                     QPath::LangItem(LangItem::RangeFrom, _),
                     [val1],
-                    StructTailExpr::None,
+                    StructTailExpr::None(_),
                 ),
                 ExprKind::Struct(
                     QPath::LangItem(LangItem::RangeFrom, _),
                     [val2],
-                    StructTailExpr::None,
+                    StructTailExpr::None(_),
                 ),
             ) => val1.expr.equivalent_for_indexing(val2.expr),
             (
                 ExprKind::Struct(
                     QPath::LangItem(LangItem::Range, _),
                     [val1, val3],
-                    StructTailExpr::None,
+                    StructTailExpr::None(_),
                 ),
                 ExprKind::Struct(
                     QPath::LangItem(LangItem::Range, _),
                     [val2, val4],
-                    StructTailExpr::None,
+                    StructTailExpr::None(_),
                 ),
             ) => {
                 val1.expr.equivalent_for_indexing(val2.expr)
@@ -2428,7 +2428,7 @@ pub enum ExprKind<'hir> {
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum StructTailExpr<'hir> {
     /// A struct expression where all the fields are explicitly enumerated: `Foo { a, b }`.
-    None,
+    None(Span),
     /// A struct expression with a "base", an expression of the same type as the outer struct that
     /// will be used to populate any fields not explicitly mentioned: `Foo { ..base }`
     Base(&'hir Expr<'hir>),
