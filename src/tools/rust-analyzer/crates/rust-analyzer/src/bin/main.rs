@@ -10,7 +10,7 @@ extern crate rustc_driver as _;
 
 mod rustc_wrapper;
 
-use std::{env, fs, path::PathBuf, process::ExitCode, sync::Arc, thread::sleep};
+use std::{env, fs, path::PathBuf, process::ExitCode, sync::Arc};
 
 use anyhow::Context;
 use lsp_server::Connection;
@@ -100,7 +100,7 @@ fn wait_for_debugger() {
         // SAFETY: WinAPI generated code that is defensively marked `unsafe` but
         // in practice can not be used in an unsafe way.
         while unsafe { IsDebuggerPresent() } == 0 {
-            sleep(std::time::Duration::from_millis(100));
+            std::thread::sleep(std::time::Duration::from_millis(100));
         }
     }
     #[cfg(not(target_os = "windows"))]
@@ -109,7 +109,7 @@ fn wait_for_debugger() {
         let mut d = 4;
         while d == 4 {
             d = 4;
-            sleep(std::time::Duration::from_millis(100));
+            std::thread::sleep(std::time::Duration::from_millis(100));
         }
     }
 }

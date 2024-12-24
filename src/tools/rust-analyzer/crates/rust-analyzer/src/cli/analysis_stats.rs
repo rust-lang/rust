@@ -33,7 +33,10 @@ use itertools::Itertools;
 use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
 use oorandom::Rand32;
 use profile::{Bytes, StopWatch};
-use project_model::{CargoConfig, CfgOverrides, ProjectManifest, ProjectWorkspace, RustLibSource};
+use project_model::{
+    CargoConfig, CargoMetadataConfig, CfgOverrides, ProjectManifest, ProjectWorkspace,
+    RustLibSource,
+};
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{AstNode, SyntaxNode};
@@ -68,7 +71,9 @@ impl flags::AnalysisStats {
             },
             sysroot_query_metadata: match self.no_query_sysroot_metadata {
                 true => project_model::SysrootQueryMetadata::None,
-                false => project_model::SysrootQueryMetadata::CargoMetadata,
+                false => project_model::SysrootQueryMetadata::CargoMetadata(
+                    CargoMetadataConfig::default(),
+                ),
             },
             all_targets: true,
             set_test: !self.no_test,

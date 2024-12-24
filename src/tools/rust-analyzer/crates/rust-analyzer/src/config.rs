@@ -21,8 +21,8 @@ use ide_db::{
 use itertools::Itertools;
 use paths::{Utf8Path, Utf8PathBuf};
 use project_model::{
-    CargoConfig, CargoFeatures, ProjectJson, ProjectJsonData, ProjectJsonFromCommand,
-    ProjectManifest, RustLibSource,
+    CargoConfig, CargoFeatures, CargoMetadataConfig, ProjectJson, ProjectJsonData,
+    ProjectJsonFromCommand, ProjectManifest, RustLibSource,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 use semver::Version;
@@ -1881,7 +1881,12 @@ impl Config {
             sysroot,
             sysroot_query_metadata: match self.cargo_sysrootQueryMetadata(None) {
                 SysrootQueryMetadata::CargoMetadata => {
-                    project_model::SysrootQueryMetadata::CargoMetadata
+                    project_model::SysrootQueryMetadata::CargoMetadata(CargoMetadataConfig {
+                        features: Default::default(),
+                        targets: self.cargo_target(source_root).clone().into_iter().collect(),
+                        extra_args: Default::default(),
+                        extra_env: Default::default(),
+                    })
                 }
                 SysrootQueryMetadata::None => project_model::SysrootQueryMetadata::None,
             },

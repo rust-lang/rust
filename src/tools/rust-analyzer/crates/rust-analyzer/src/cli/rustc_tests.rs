@@ -77,7 +77,7 @@ impl Tester {
         let sysroot = Sysroot::discover(
             tmp_file.parent().unwrap(),
             &cargo_config.extra_env,
-            SysrootQueryMetadata::CargoMetadata,
+            &SysrootQueryMetadata::CargoMetadata(Default::default()),
         );
         let data_layout = target_data_layout::get(
             RustcDataLayoutConfig::Rustc(&sysroot),
