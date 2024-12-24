@@ -24,6 +24,11 @@ declare_clippy_lint! {
     /// ```ignore
     /// Regex::new("(")
     /// ```
+    ///
+    /// Use instead:
+    /// ```ignore
+    /// Regex::new("\(")
+    /// ```
     #[clippy::version = "pre 1.29.0"]
     pub INVALID_REGEX,
     correctness,
@@ -48,6 +53,11 @@ declare_clippy_lint! {
     /// ### Example
     /// ```ignore
     /// Regex::new("^foobar")
+    /// ```
+    ///
+    /// Use instead:
+    /// ```ignore
+    /// str::starts_with("foobar")
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub TRIVIAL_REGEX,
