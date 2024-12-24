@@ -12,7 +12,7 @@ use crate::sys::sync as sys;
 /// A mutual exclusion primitive useful for protecting shared data.
 /// 
 /// For more information about mutexes, check out the documentation for the
-/// poisoning variant of this lock found at [std::sync::poison::Mutex](std::sync::nonpoison::Mutex).
+/// poisoning variant of this lock found at [std::sync::poison::Mutex](std::sync::Mutex).
 ///
 /// # Example
 ///
