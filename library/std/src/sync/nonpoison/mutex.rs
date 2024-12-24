@@ -9,18 +9,15 @@ use crate::ops::{Deref, DerefMut};
 use crate::ptr::NonNull;
 use crate::sys::sync as sys;
 
-/// A mutual exclusion primitive useful for protecting shared data
+/// A mutual exclusion primitive useful for protecting shared data.
+/// 
+/// For more information about mutexes, check out the documentation for the
+/// poisoning variant of this lock found at [std::sync::poison::Mutex](std::sync::nonpoison::Mutex).
 ///
-/// This mutex will block threads waiting for the lock to become available. The
-/// mutex can be created via a [`new`] constructor. Each mutex has a type parameter
-/// which represents the data that it is protecting. The data can only be accessed
-/// through the RAII guards returned from [`lock`] and [`try_lock`], which
-/// guarantees that the data is only ever accessed when the mutex is locked.
-///
-/// # Examples
+/// # Example
 ///
 /// ```
-/// use std::sync::{Arc, Mutex};
+/// use std::sync::{Arc, nonpoison::Mutex};
 /// use std::thread;
 /// use std::sync::mpsc::channel;
 ///
@@ -40,10 +37,8 @@ use crate::sys::sync as sys;
 ///         // The shared state can only be accessed once the lock is held.
 ///         // Our non-atomic increment is safe because we're the only thread
 ///         // which can access the shared state when the lock is held.
-///         //
-///         // We unwrap() the return value to assert that we are not expecting
-///         // threads to ever fail while holding the lock.
-///         let mut data = data.lock().unwrap();
+///         
+///         let mut data = data.lock();
 ///         *data += 1;
 ///         if *data == N {
 ///             tx.send(()).unwrap();
@@ -53,98 +48,6 @@ use crate::sys::sync as sys;
 /// }
 ///
 /// rx.recv().unwrap();
-/// ```
-///
-/// To recover from a poisoned mutex:
-///
-/// ```
-/// use std::sync::{Arc, Mutex};
-/// use std::thread;
-///
-/// let lock = Arc::new(Mutex::new(0_u32));
-/// let lock2 = Arc::clone(&lock);
-///
-/// let _ = thread::spawn(move || -> () {
-///     // This thread will acquire the mutex first, unwrapping the result of
-///     // `lock` because the lock has not been poisoned.
-///     let _guard = lock2.lock().unwrap();
-///
-///     // This panic while holding the lock (`_guard` is in scope) will poison
-///     // the mutex.
-///     panic!();
-/// }).join();
-///
-/// // The lock is poisoned by this point, but the returned result can be
-/// // pattern matched on to return the underlying guard on both branches.
-/// let mut guard = match lock.lock() {
-///     Ok(guard) => guard,
-///     Err(poisoned) => poisoned.into_inner(),
-/// };
-///
-/// *guard += 1;
-/// ```
-///
-/// To unlock a mutex guard sooner than the end of the enclosing scope,
-/// either create an inner scope or drop the guard manually.
-///
-/// ```
-/// use std::sync::{Arc, Mutex};
-/// use std::thread;
-///
-/// const N: usize = 3;
-///
-/// let data_mutex = Arc::new(Mutex::new(vec![1, 2, 3, 4]));
-/// let res_mutex = Arc::new(Mutex::new(0));
-///
-/// let mut threads = Vec::with_capacity(N);
-/// (0..N).for_each(|_| {
-///     let data_mutex_clone = Arc::clone(&data_mutex);
-///     let res_mutex_clone = Arc::clone(&res_mutex);
-///
-///     threads.push(thread::spawn(move || {
-///         // Here we use a block to limit the lifetime of the lock guard.
-///         let result = {
-///             let mut data = data_mutex_clone.lock().unwrap();
-///             // This is the result of some important and long-ish work.
-///             let result = data.iter().fold(0, |acc, x| acc + x * 2);
-///             data.push(result);
-///             result
-///             // The mutex guard gets dropped here, together with any other values
-///             // created in the critical section.
-///         };
-///         // The guard created here is a temporary dropped at the end of the statement, i.e.
-///         // the lock would not remain being held even if the thread did some additional work.
-///         *res_mutex_clone.lock().unwrap() += result;
-///     }));
-/// });
-///
-/// let mut data = data_mutex.lock().unwrap();
-/// // This is the result of some important and long-ish work.
-/// let result = data.iter().fold(0, |acc, x| acc + x * 2);
-/// data.push(result);
-/// // We drop the `data` explicitly because it's not necessary anymore and the
-/// // thread still has work to do. This allows other threads to start working on
-/// // the data immediately, without waiting for the rest of the unrelated work
-/// // to be done here.
-/// //
-/// // It's even more important here than in the threads because we `.join` the
-/// // threads after that. If we had not dropped the mutex guard, a thread could
-/// // be waiting forever for it, causing a deadlock.
-/// // As in the threads, a block could have been used instead of calling the
-/// // `drop` function.
-/// drop(data);
-/// // Here the mutex guard is not assigned to a variable and so, even if the
-/// // scope does not end after this line, the mutex is still released: there is
-/// // no deadlock.
-/// *res_mutex.lock().unwrap() += result;
-///
-/// threads.into_iter().for_each(|thread| {
-///     thread
-///         .join()
-///         .expect("The thread creating or execution failed !")
-/// });
-///
-/// assert_eq!(*res_mutex.lock().unwrap(), 800);
 /// ```
 ///
 #[unstable(feature = "nonpoison_mutex", issue = "134645")]
@@ -233,7 +136,7 @@ impl<T> Mutex<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::Mutex;
+    /// use std::sync::nonpoison::Mutex;
     ///
     /// let mutex = Mutex::new(0);
     /// ```
@@ -256,12 +159,6 @@ impl<T: ?Sized> Mutex<T> {
     /// the lock is left unspecified. However, this function will not return on
     /// the second call (it might panic or deadlock, for example).
     ///
-    /// # Errors
-    ///
-    /// If another user of this mutex panicked while holding the mutex, then
-    /// this call will return an error once the mutex is acquired. The acquired
-    /// mutex guard will be contained in the returned error.
-    ///
     /// # Panics
     ///
     /// This function might panic when called if the lock is already held by
@@ -270,16 +167,16 @@ impl<T: ?Sized> Mutex<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::{Arc, Mutex};
+    /// use std::sync::{Arc, nonpoison::Mutex};
     /// use std::thread;
     ///
     /// let mutex = Arc::new(Mutex::new(0));
     /// let c_mutex = Arc::clone(&mutex);
     ///
     /// thread::spawn(move || {
-    ///     *c_mutex.lock().unwrap() = 10;
+    ///     *c_mutex.lock() = 10;
     /// }).join().expect("thread::spawn failed");
-    /// assert_eq!(*mutex.lock().unwrap(), 10);
+    /// assert_eq!(*mutex.lock(), 10);
     /// ```
     #[unstable(feature = "nonpoison_mutex", issue = "134645")]
     pub fn lock(&self) -> MutexGuard<'_, T> {
@@ -291,7 +188,7 @@ impl<T: ?Sized> Mutex<T> {
 
     /// Attempts to acquire this lock.
     ///
-    /// If the lock could not be acquired at this time, then [`Err`] is returned.
+    /// If the lock could not be acquired at this time, then [`None`] is returned.
     /// Otherwise, an RAII guard is returned. The lock will be unlocked when the
     /// guard is dropped.
     ///
@@ -299,21 +196,13 @@ impl<T: ?Sized> Mutex<T> {
     ///
     /// # Errors
     ///
-    /// If another user of this mutex panicked while holding the mutex, then
-    /// this call will return the [`Poisoned`] error if the mutex would
-    /// otherwise be acquired. An acquired lock guard will be contained
-    /// in the returned error.
-    ///
     /// If the mutex could not be acquired because it is already locked, then
-    /// this call will return the [`WouldBlock`] error.
-    ///
-    /// [`Poisoned`]: TryLockError::Poisoned
-    /// [`WouldBlock`]: TryLockError::WouldBlock
+    /// this call will return [`None`].
     ///
     /// # Examples
     ///
     /// ```
-    /// use std::sync::{Arc, Mutex};
+    /// use std::sync::{Arc, nonpoison::Mutex};
     /// use std::thread;
     ///
     /// let mutex = Arc::new(Mutex::new(0));
@@ -321,13 +210,13 @@ impl<T: ?Sized> Mutex<T> {
     ///
     /// thread::spawn(move || {
     ///     let mut lock = c_mutex.try_lock();
-    ///     if let Ok(ref mut mutex) = lock {
+    ///     if let Some(ref mut mutex) = lock {
     ///         **mutex = 10;
     ///     } else {
     ///         println!("try_lock failed");
     ///     }
     /// }).join().expect("thread::spawn failed");
-    /// assert_eq!(*mutex.lock().unwrap(), 10);
+    /// assert_eq!(*mutex.lock(), 10);
     /// ```
     #[unstable(feature = "nonpoison_mutex", issue = "134645")]
     pub fn try_lock(&self) -> Option<MutexGuard<'_, T>> {
@@ -336,19 +225,13 @@ impl<T: ?Sized> Mutex<T> {
 
     /// Consumes this mutex, returning the underlying data.
     ///
-    /// # Errors
-    ///
-    /// If another user of this mutex panicked while holding the mutex, then
-    /// this call will return an error containing the the underlying data
-    /// instead.
-    ///
     /// # Examples
     ///
     /// ```
-    /// use std::sync::Mutex;
+    /// use std::sync::nonpoison::Mutex;
     ///
     /// let mutex = Mutex::new(0);
-    /// assert_eq!(mutex.into_inner().unwrap(), 0);
+    /// assert_eq!(mutex.into_inner(), 0);
     /// ```
     #[unstable(feature = "nonpoison_mutex", issue = "134645")]
     #[inline]
@@ -364,20 +247,14 @@ impl<T: ?Sized> Mutex<T> {
     /// Since this call borrows the `Mutex` mutably, no actual locking needs to
     /// take place -- the mutable borrow statically guarantees no locks exist.
     ///
-    /// # Errors
-    ///
-    /// If another user of this mutex panicked while holding the mutex, then
-    /// this call will return an error containing a mutable reference to the
-    /// underlying data instead.
-    ///
     /// # Examples
     ///
     /// ```
-    /// use std::sync::Mutex;
+    /// use std::sync::nonpoison::Mutex;
     ///
     /// let mut mutex = Mutex::new(0);
-    /// *mutex.get_mut().unwrap() = 10;
-    /// assert_eq!(*mutex.lock().unwrap(), 10);
+    /// *mutex.get_mut() = 10;
+    /// assert_eq!(*mutex.lock(), 10);
     /// ```
     #[unstable(feature = "nonpoison_mutex", issue = "134645")]
     #[inline]
