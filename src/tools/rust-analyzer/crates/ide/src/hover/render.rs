@@ -5,7 +5,7 @@ use either::Either;
 use hir::{
     db::ExpandDatabase, Adt, AsAssocItem, AsExternAssocItem, AssocItemContainer, CaptureKind,
     DynCompatibilityViolation, HasCrate, HasSource, HirDisplay, Layout, LayoutError,
-    MethodViolationCode, Name, Semantics, Symbol, Trait, Type, TypeInfo,
+    MethodViolationCode, Name, Semantics, Symbol, Trait, Type, TypeInfo, VariantDef,
 };
 use ide_db::{
     base_db::SourceDatabase,
@@ -378,7 +378,18 @@ pub(super) fn process_markup(
 
 fn definition_owner_name(db: &RootDatabase, def: &Definition, edition: Edition) -> Option<String> {
     match def {
-        Definition::Field(f) => Some(f.parent_def(db).name(db)),
+        Definition::Field(f) => {
+            let parent = f.parent_def(db);
+            let parent_name = parent.name(db);
+            let parent_name = parent_name.display(db, edition).to_string();
+            return match parent {
+                VariantDef::Variant(variant) => {
+                    let enum_name = variant.parent_enum(db).name(db);
+                    Some(format!("{}::{parent_name}", enum_name.display(db, edition)))
+                }
+                _ => Some(parent_name),
+            };
+        }
         Definition::Local(l) => l.parent(db).name(db),
         Definition::Variant(e) => Some(e.parent_enum(db).name(db)),
 

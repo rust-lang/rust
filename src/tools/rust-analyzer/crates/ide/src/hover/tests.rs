@@ -7294,7 +7294,7 @@ enum Enum {
             *field*
 
             ```rust
-            ra_test_fixture::RecordV
+            ra_test_fixture::Enum::RecordV
             ```
 
             ```rust
