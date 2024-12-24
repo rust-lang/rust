@@ -192,6 +192,7 @@ pub(crate) struct NonConstFnCall {
     #[primary_span]
     pub span: Span,
     pub def_path_str: String,
+    pub def_descr: &'static str,
     pub kind: ConstContext,
 }
 
