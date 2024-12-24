@@ -426,40 +426,55 @@
                         "default": "openLogs",
                         "markdownDescription": "Action to run when clicking the extension status bar item."
                     },
-                    "rust-analyzer.statusBar.documentSelector": {
-                        "type": [
-                            "array",
-                            "null"
-                        ],
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "language": {
-                                    "type": [
-                                        "string",
-                                        "null"
-                                    ]
-                                },
-                                "pattern": {
-                                    "type": [
-                                        "string",
-                                        "null"
-                                    ]
+                    "rust-analyzer.statusBar.showStatusBar": {
+                        "markdownDescription": "When to show the extension status bar.\n\n`\"always\"` Always show the status bar.\n\n`\"never\"` Never show the status bar.\n\n`{ documentSelector: <DocumentSelector>[] }` Show the status bar if the open file matches any of the given document selectors.\n\nSee [VS Code -- DocumentSelector](https://code.visualstudio.com/api/references/document-selector) for more information.",
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "always",
+                                    "never"
+                                ]
+                            },
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "documentSelector": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "language": {
+                                                    "type": "string"
+                                                },
+                                                "notebookType": {
+                                                    "type": "string"
+                                                },
+                                                "scheme": {
+                                                    "type": "string"
+                                                },
+                                                "pattern": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
-                        },
-                        "default": [
-                            {
-                                "language": "rust"
-                            },
-                            {
-                                "pattern": "**/Cargo.toml"
-                            },
-                            {
-                                "pattern": "**/Cargo.lock"
-                            }
                         ],
-                        "markdownDescription": "Determines when to show the extension status bar item based on the currently open file. Use `{ \"pattern\": \"**\" }` to always show. Use `null` to never show."
+                        "default": {
+                            "documentSelector": [
+                                {
+                                    "language": "rust"
+                                },
+                                {
+                                    "pattern": "**/Cargo.toml"
+                                },
+                                {
+                                    "pattern": "**/Cargo.lock"
+                                }
+                            ]
+                        }
                     }
                 }
             },
