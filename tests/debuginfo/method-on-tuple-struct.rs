@@ -5,7 +5,7 @@
 // gdb-command:run
 
 // STACK BY REF
-// gdb-command:print *self
+// gdb-command:print *&self
 // gdb-check:$1 = method_on_tuple_struct::TupleStruct (100, -100.5)
 // gdb-command:print arg1
 // gdb-check:$2 = -1
@@ -23,7 +23,7 @@
 // gdb-command:continue
 
 // OWNED BY REF
-// gdb-command:print *self
+// gdb-command:print *&self
 // gdb-check:$7 = method_on_tuple_struct::TupleStruct (200, -200.5)
 // gdb-command:print arg1
 // gdb-check:$8 = -5

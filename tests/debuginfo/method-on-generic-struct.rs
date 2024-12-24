@@ -5,7 +5,7 @@
 // gdb-command:run
 
 // STACK BY REF
-// gdb-command:print *self
+// gdb-command:print *&self
 // gdb-check:$1 = method_on_generic_struct::Struct<(u32, i32)> {x: (8888, -8888)}
 // gdb-command:print arg1
 // gdb-check:$2 = -1
@@ -23,7 +23,7 @@
 // gdb-command:continue
 
 // OWNED BY REF
-// gdb-command:print *self
+// gdb-command:print *&self
 // gdb-check:$7 = method_on_generic_struct::Struct<f64> {x: 1234.5}
 // gdb-command:print arg1
 // gdb-check:$8 = -5

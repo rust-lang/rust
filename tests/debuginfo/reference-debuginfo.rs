@@ -7,52 +7,52 @@
 // === GDB TESTS ===================================================================================
 
 // gdb-command:run
-// gdb-command:print *bool_ref
+// gdb-command:print *&bool_ref
 // gdb-check:$1 = true
 
-// gdb-command:print *int_ref
+// gdb-command:print *&int_ref
 // gdb-check:$2 = -1
 
-// gdb-command:print/d *char_ref
+// gdb-command:print/d *&char_ref
 // gdb-check:$3 = 97
 
-// gdb-command:print *i8_ref
+// gdb-command:print *&i8_ref
 // gdb-check:$4 = 68
 
-// gdb-command:print *i16_ref
+// gdb-command:print *&i16_ref
 // gdb-check:$5 = -16
 
-// gdb-command:print *i32_ref
+// gdb-command:print *&i32_ref
 // gdb-check:$6 = -32
 
-// gdb-command:print *i64_ref
+// gdb-command:print *&i64_ref
 // gdb-check:$7 = -64
 
-// gdb-command:print *uint_ref
+// gdb-command:print *&uint_ref
 // gdb-check:$8 = 1
 
-// gdb-command:print *u8_ref
+// gdb-command:print *&u8_ref
 // gdb-check:$9 = 100
 
-// gdb-command:print *u16_ref
+// gdb-command:print *&u16_ref
 // gdb-check:$10 = 16
 
-// gdb-command:print *u32_ref
+// gdb-command:print *&u32_ref
 // gdb-check:$11 = 32
 
-// gdb-command:print *u64_ref
+// gdb-command:print *&u64_ref
 // gdb-check:$12 = 64
 
-// gdb-command:print *f16_ref
+// gdb-command:print *&f16_ref
 // gdb-check:$13 = 1.5
 
-// gdb-command:print *f32_ref
+// gdb-command:print *&f32_ref
 // gdb-check:$14 = 2.5
 
-// gdb-command:print *f64_ref
+// gdb-command:print *&f64_ref
 // gdb-check:$15 = 3.5
 
-// gdb-command:print *f64_double_ref
+// gdb-command:print *&f64_double_ref
 // gdb-check:$16 = 3.5
 
 

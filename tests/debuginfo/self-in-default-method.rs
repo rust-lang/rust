@@ -5,7 +5,7 @@
 // gdb-command:run
 
 // STACK BY REF
-// gdb-command:print *self
+// gdb-command:print *&self
 // gdb-check:$1 = self_in_default_method::Struct {x: 100}
 // gdb-command:print arg1
 // gdb-check:$2 = -1
@@ -23,7 +23,7 @@
 // gdb-command:continue
 
 // OWNED BY REF
-// gdb-command:print *self
+// gdb-command:print *&self
 // gdb-check:$7 = self_in_default_method::Struct {x: 200}
 // gdb-command:print arg1
 // gdb-check:$8 = -5

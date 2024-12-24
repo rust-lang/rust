@@ -10,7 +10,7 @@
 // gdb-command:run
 
 // STACK BY REF
-// gdb-command:print *self
+// gdb-command:print *&self
 // gdb-check:$1 = method_on_enum::Enum::Variant2(117901063)
 // gdb-command:print arg1
 // gdb-check:$2 = -1
@@ -28,7 +28,7 @@
 // gdb-command:continue
 
 // OWNED BY REF
-// gdb-command:print *self
+// gdb-command:print *&self
 // gdb-check:$7 = method_on_enum::Enum::Variant1{x: 1799, y: 1799}
 // gdb-command:print arg1
 // gdb-check:$8 = -5

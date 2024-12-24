@@ -4,25 +4,25 @@
 
 // gdb-command:run
 
-// gdb-command:print *stack_val_ref
+// gdb-command:print *&stack_val_ref
 // gdb-check:$1 = borrowed_struct::SomeStruct {x: 10, y: 23.5}
 
-// gdb-command:print *stack_val_interior_ref_1
+// gdb-command:print *&stack_val_interior_ref_1
 // gdb-check:$2 = 10
 
-// gdb-command:print *stack_val_interior_ref_2
+// gdb-command:print *&stack_val_interior_ref_2
 // gdb-check:$3 = 23.5
 
-// gdb-command:print *ref_to_unnamed
+// gdb-command:print *&ref_to_unnamed
 // gdb-check:$4 = borrowed_struct::SomeStruct {x: 11, y: 24.5}
 
-// gdb-command:print *unique_val_ref
+// gdb-command:print *&unique_val_ref
 // gdb-check:$5 = borrowed_struct::SomeStruct {x: 13, y: 26.5}
 
-// gdb-command:print *unique_val_interior_ref_1
+// gdb-command:print *&unique_val_interior_ref_1
 // gdb-check:$6 = 13
 
-// gdb-command:print *unique_val_interior_ref_2
+// gdb-command:print *&unique_val_interior_ref_2
 // gdb-check:$7 = 26.5
 
 
