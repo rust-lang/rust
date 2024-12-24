@@ -514,8 +514,6 @@ fn main() {
 
     let mut rustc_args = vec![];
     let mut after_dashdash = false;
-    // If user has explicitly enabled/disabled isolation
-    let mut isolation_enabled: Option<bool> = None;
 
     // Note that we require values to be given with `=`, not with a space.
     // This matches how rustc parses `-Z`.
@@ -550,13 +548,6 @@ fn main() {
         } else if arg == "-Zmiri-symbolic-alignment-check" {
             miri_config.check_alignment = miri::AlignmentCheck::Symbolic;
         } else if arg == "-Zmiri-disable-isolation" {
-            if matches!(isolation_enabled, Some(true)) {
-                show_error!(
-                    "-Zmiri-disable-isolation cannot be used along with -Zmiri-isolation-error"
-                );
-            } else {
-                isolation_enabled = Some(false);
-            }
             miri_config.isolated_op = miri::IsolatedOp::Allow;
         } else if arg == "-Zmiri-disable-leak-backtraces" {
             miri_config.collect_leak_backtraces = false;
@@ -565,14 +556,6 @@ fn main() {
         } else if arg == "-Zmiri-track-weak-memory-loads" {
             miri_config.track_outdated_loads = true;
         } else if let Some(param) = arg.strip_prefix("-Zmiri-isolation-error=") {
-            if matches!(isolation_enabled, Some(false)) {
-                show_error!(
-                    "-Zmiri-isolation-error cannot be used along with -Zmiri-disable-isolation"
-                );
-            } else {
-                isolation_enabled = Some(true);
-            }
-
             miri_config.isolated_op = match param {
                 "abort" => miri::IsolatedOp::Reject(miri::RejectOpWith::Abort),
                 "hide" => miri::IsolatedOp::Reject(miri::RejectOpWith::NoWarning),

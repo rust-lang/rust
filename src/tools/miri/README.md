@@ -294,9 +294,10 @@ environment variable. We first document the most relevant and most commonly used
   will always fail and `0.0` means it will never fail. Note that setting it to
   `1.0` will likely cause hangs, since it means programs using
   `compare_exchange_weak` cannot make progress.
-* `-Zmiri-disable-isolation` disables host isolation.  As a consequence,
+* `-Zmiri-disable-isolation` disables host isolation. As a consequence,
   the program has access to host resources such as environment variables, file
   systems, and randomness.
+  This overwrites a previous `-Zmiri-isolation-error`.
 * `-Zmiri-disable-leak-backtraces` disables backtraces reports for memory leaks. By default, a
   backtrace is captured for every allocation when it is created, just in case it leaks. This incurs
   some memory overhead to store data that is almost never used. This flag is implied by
@@ -317,6 +318,7 @@ environment variable. We first document the most relevant and most commonly used
   execution with a "permission denied" error being returned to the program.
   `warn` prints a full backtrace each time that happens; `warn-nobacktrace` is less
   verbose and shown at most once per operation. `hide` hides the warning entirely.
+  This overwrites a previous `-Zmiri-disable-isolation`.
 * `-Zmiri-many-seeds=[<from>]..<to>` runs the program multiple times with different seeds for Miri's
   RNG. With different seeds, Miri will make different choices to resolve non-determinism such as the
   order in which concurrent threads are scheduled, or the exact addresses assigned to allocations.
