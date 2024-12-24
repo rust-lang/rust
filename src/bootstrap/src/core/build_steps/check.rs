@@ -31,8 +31,13 @@ pub struct Std {
 }
 
 impl Std {
-    pub fn new_with_build_kind(target: TargetSelection, kind: Option<Kind>) -> Self {
-        Self { target, crates: vec![], override_build_kind: kind }
+    pub fn new(target: TargetSelection) -> Self {
+        Self { target, crates: vec![], override_build_kind: None }
+    }
+
+    pub fn build_kind(mut self, kind: Option<Kind>) -> Self {
+        self.override_build_kind = kind;
+        self
     }
 }
 
@@ -167,20 +172,17 @@ pub struct Rustc {
 
 impl Rustc {
     pub fn new(target: TargetSelection, builder: &Builder<'_>) -> Self {
-        Self::new_with_build_kind(target, builder, None)
-    }
-
-    pub fn new_with_build_kind(
-        target: TargetSelection,
-        builder: &Builder<'_>,
-        kind: Option<Kind>,
-    ) -> Self {
         let crates = builder
             .in_tree_crates("rustc-main", Some(target))
             .into_iter()
             .map(|krate| krate.name.to_string())
             .collect();
-        Self { target, crates, override_build_kind: kind }
+        Self { target, crates, override_build_kind: None }
+    }
+
+    pub fn build_kind(mut self, build_kind: Option<Kind>) -> Self {
+        self.override_build_kind = build_kind;
+        self
     }
 }
 
@@ -216,7 +218,7 @@ impl Step for Rustc {
             builder.ensure(crate::core::build_steps::compile::Std::new(compiler, compiler.host));
             builder.ensure(crate::core::build_steps::compile::Std::new(compiler, target));
         } else {
-            builder.ensure(Std::new_with_build_kind(target, self.override_build_kind));
+            builder.ensure(Std::new(target).build_kind(self.override_build_kind));
         }
 
         let mut cargo = builder::Cargo::new(
