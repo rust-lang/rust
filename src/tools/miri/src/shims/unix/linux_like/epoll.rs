@@ -499,17 +499,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         dest: MPlaceTy<'tcx>,
                         event: MPlaceTy<'tcx>,
                     }
-                    @unblock = |this| {
-                        return_ready_list(&epfd, &dest, &event, this)?;
-                        interp_ok(())
-                    }
-                    @timeout = |this| {
-                        // Remove the current active thread_id from the blocked thread_id list.
-                        epfd
-                            .blocked_tid.borrow_mut()
-                            .retain(|&id| id != this.active_thread());
-                        this.write_int(0, &dest)?;
-                        interp_ok(())
+                    |this, unblock: UnblockKind| {
+                        match unblock {
+                            UnblockKind::Ready => {
+                                return_ready_list(&epfd, &dest, &event, this)?;
+                                interp_ok(())
+                            },
+                            UnblockKind::TimedOut => {
+                                // Remove the current active thread_id from the blocked thread_id list.
+                                epfd
+                                    .blocked_tid.borrow_mut()
+                                    .retain(|&id| id != this.active_thread());
+                                this.write_int(0, &dest)?;
+                                interp_ok(())
+                            },
+                        }
                     }
                 ),
             );

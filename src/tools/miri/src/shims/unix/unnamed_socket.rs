@@ -162,7 +162,8 @@ fn anonsocket_write<'tcx>(
                         len: usize,
                         dest: MPlaceTy<'tcx>,
                     }
-                    @unblock = |this| {
+                    |this, unblock: UnblockKind| {
+                        assert_eq!(unblock, UnblockKind::Ready);
                         // If we got unblocked, then our peer successfully upgraded its weak
                         // ref to us. That means we can also upgrade our weak ref.
                         let self_ref = weak_self_ref.upgrade().unwrap();
@@ -248,7 +249,8 @@ fn anonsocket_read<'tcx>(
                         ptr: Pointer,
                         dest: MPlaceTy<'tcx>,
                     }
-                    @unblock = |this| {
+                    |this, unblock: UnblockKind| {
+                        assert_eq!(unblock, UnblockKind::Ready);
                         // If we got unblocked, then our peer successfully upgraded its weak
                         // ref to us. That means we can also upgrade our weak ref.
                         let self_ref = weak_self_ref.upgrade().unwrap();

@@ -422,7 +422,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     mutex_ref: MutexRef,
                     retval_dest: Option<(Scalar, MPlaceTy<'tcx>)>,
                 }
-                @unblock = |this| {
+                |this, unblock: UnblockKind| {
+                    assert_eq!(unblock, UnblockKind::Ready);
+
                     assert!(!this.mutex_is_locked(&mutex_ref));
                     this.mutex_lock(&mutex_ref);
 
@@ -538,7 +540,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     retval: Scalar,
                     dest: MPlaceTy<'tcx>,
                 }
-                @unblock = |this| {
+                |this, unblock: UnblockKind| {
+                    assert_eq!(unblock, UnblockKind::Ready);
                     this.rwlock_reader_lock(id);
                     this.write_scalar(retval, &dest)?;
                     interp_ok(())
@@ -623,7 +626,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     retval: Scalar,
                     dest: MPlaceTy<'tcx>,
                 }
-                @unblock = |this| {
+                |this, unblock: UnblockKind| {
+                    assert_eq!(unblock, UnblockKind::Ready);
                     this.rwlock_writer_lock(id);
                     this.write_scalar(retval, &dest)?;
                     interp_ok(())
@@ -677,25 +681,29 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     retval_timeout: Scalar,
                     dest: MPlaceTy<'tcx>,
                 }
-                @unblock = |this| {
-                    // The condvar was signaled. Make sure we get the clock for that.
-                    if let Some(data_race) = &this.machine.data_race {
-                        data_race.acquire_clock(
-                            &this.machine.sync.condvars[condvar].clock,
-                            &this.machine.threads,
-                        );
+                |this, unblock: UnblockKind| {
+                    match unblock {
+                        UnblockKind::Ready => {
+                            // The condvar was signaled. Make sure we get the clock for that.
+                            if let Some(data_race) = &this.machine.data_race {
+                                data_race.acquire_clock(
+                                    &this.machine.sync.condvars[condvar].clock,
+                                    &this.machine.threads,
+                                );
+                            }
+                            // Try to acquire the mutex.
+                            // The timeout only applies to the first wait (until the signal), not for mutex acquisition.
+                            this.condvar_reacquire_mutex(&mutex_ref, retval_succ, dest)
+                        }
+                        UnblockKind::TimedOut => {
+                            // We have to remove the waiter from the queue again.
+                            let thread = this.active_thread();
+                            let waiters = &mut this.machine.sync.condvars[condvar].waiters;
+                            waiters.retain(|waiter| *waiter != thread);
+                            // Now get back the lock.
+                            this.condvar_reacquire_mutex(&mutex_ref, retval_timeout, dest)
+                        }
                     }
-                    // Try to acquire the mutex.
-                    // The timeout only applies to the first wait (until the signal), not for mutex acquisition.
-                    this.condvar_reacquire_mutex(&mutex_ref, retval_succ, dest)
-                }
-                @timeout = |this| {
-                    // We have to remove the waiter from the queue again.
-                    let thread = this.active_thread();
-                    let waiters = &mut this.machine.sync.condvars[condvar].waiters;
-                    waiters.retain(|waiter| *waiter != thread);
-                    // Now get back the lock.
-                    this.condvar_reacquire_mutex(&mutex_ref, retval_timeout, dest)
                 }
             ),
         );
@@ -752,25 +760,29 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     dest: MPlaceTy<'tcx>,
                     errno_timeout: IoError,
                 }
-                @unblock = |this| {
-                    let futex = futex_ref.0.borrow();
-                    // Acquire the clock of the futex.
-                    if let Some(data_race) = &this.machine.data_race {
-                        data_race.acquire_clock(&futex.clock, &this.machine.threads);
+                |this, unblock: UnblockKind| {
+                    match unblock {
+                        UnblockKind::Ready => {
+                            let futex = futex_ref.0.borrow();
+                            // Acquire the clock of the futex.
+                            if let Some(data_race) = &this.machine.data_race {
+                                data_race.acquire_clock(&futex.clock, &this.machine.threads);
+                            }
+                            // Write the return value.
+                            this.write_scalar(retval_succ, &dest)?;
+                            interp_ok(())
+                        },
+                        UnblockKind::TimedOut => {
+                            // Remove the waiter from the futex.
+                            let thread = this.active_thread();
+                            let mut futex = futex_ref.0.borrow_mut();
+                            futex.waiters.retain(|waiter| waiter.thread != thread);
+                            // Set errno and write return value.
+                            this.set_last_error(errno_timeout)?;
+                            this.write_scalar(retval_timeout, &dest)?;
+                            interp_ok(())
+                        },
                     }
-                    // Write the return value.
-                    this.write_scalar(retval_succ, &dest)?;
-                    interp_ok(())
-                }
-                @timeout = |this| {
-                    // Remove the waiter from the futex.
-                    let thread = this.active_thread();
-                    let mut futex = futex_ref.0.borrow_mut();
-                    futex.waiters.retain(|waiter| waiter.thread != thread);
-                    // Set errno and write return value.
-                    this.set_last_error(errno_timeout)?;
-                    this.write_scalar(retval_timeout, &dest)?;
-                    interp_ok(())
                 }
             ),
         );

@@ -1723,3 +1723,87 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         Cow::Borrowed(ecx.machine.union_data_ranges.entry(ty).or_insert_with(compute_range))
     }
 }
+
+/// Trait for callbacks handling asynchronous machine operations.
+pub trait MachineCallback<'tcx, T>: VisitProvenance {
+    /// The function to be invoked when the callback is fired.
+    fn call(
+        self: Box<Self>,
+        ecx: &mut InterpCx<'tcx, MiriMachine<'tcx>>,
+        arg: T,
+    ) -> InterpResult<'tcx>;
+}
+
+/// Type alias for boxed machine callbacks with generic argument type.
+pub type DynMachineCallback<'tcx, T> = Box<dyn MachineCallback<'tcx, T> + 'tcx>;
+
+/// Creates a callback for blocking operations with captured state.
+///
+/// When a thread blocks on a resource (as defined in `enum BlockReason`), this callback
+/// executes once that resource becomes available. The callback captures needed
+/// variables and handles the completion of the blocking operation.
+///
+/// # Example
+/// ```rust
+/// // Block thread until mutex is available
+/// this.block_thread(
+///     BlockReason::Mutex,
+///     None,
+///     callback!(
+///         @capture<'tcx> {
+///             mutex_ref: MutexRef,  
+///             retval: Scalar,
+///             dest: MPlaceTy<'tcx>,
+///         }
+///         |this, unblock: UnblockKind| {
+///             // Verify successful mutex acquisition
+///             assert_eq!(unblock, UnblockKind::Ready);
+///             
+///             // Enter critical section
+///             this.mutex_lock(&mutex_ref);
+///             
+///             // Process protected data and store result
+///             this.write_scalar(retval, &dest)?;
+///             
+///             // Exit critical section implicitly when callback completes
+///             interp_ok(())
+///         }
+///     ),
+/// );
+/// ```
+#[macro_export]
+macro_rules! callback {
+    (@capture<$tcx:lifetime $(,)? $($lft:lifetime),*>
+     { $($name:ident: $type:ty),* $(,)? }
+     |$this:ident, $arg:ident: $arg_ty:ty| $body:expr $(,)?) => {{
+        struct Callback<$tcx, $($lft),*> {
+            $($name: $type,)*
+            _phantom: std::marker::PhantomData<&$tcx ()>,
+        }
+
+        impl<$tcx, $($lft),*> VisitProvenance for Callback<$tcx, $($lft),*> {
+            fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {
+                $(
+                    self.$name.visit_provenance(_visit);
+                )*
+            }
+        }
+
+        impl<$tcx, $($lft),*> MachineCallback<$tcx, $arg_ty> for Callback<$tcx, $($lft),*> {
+            fn call(
+                self: Box<Self>,
+                $this: &mut MiriInterpCx<$tcx>,
+                $arg: $arg_ty
+            ) -> InterpResult<$tcx> {
+                #[allow(unused_variables)]
+                let Callback { $($name,)* _phantom } = *self;
+                $body
+            }
+        }
+
+        Box::new(Callback {
+            $($name,)*
+            _phantom: std::marker::PhantomData
+        })
+    }};
+}
