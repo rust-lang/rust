@@ -43,21 +43,34 @@ pub(super) struct ResolvePathResult {
     pub(super) resolved_def: PerNs,
     pub(super) segment_index: Option<usize>,
     pub(super) reached_fixedpoint: ReachedFixedPoint,
-    pub(super) from_differing_crate: bool,
+    pub(super) prefix_info: ResolvePathResultPrefixInfo,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ResolvePathResultPrefixInfo {
+    None,
+    DifferingCrate,
+    /// Path of the form `Enum::Variant` (and not `Variant` alone).
+    Enum,
 }
 
 impl ResolvePathResult {
     fn empty(reached_fixedpoint: ReachedFixedPoint) -> ResolvePathResult {
-        ResolvePathResult::new(PerNs::none(), reached_fixedpoint, None, false)
+        ResolvePathResult::new(
+            PerNs::none(),
+            reached_fixedpoint,
+            None,
+            ResolvePathResultPrefixInfo::None,
+        )
     }
 
     fn new(
         resolved_def: PerNs,
         reached_fixedpoint: ReachedFixedPoint,
         segment_index: Option<usize>,
-        from_differing_crate: bool,
+        prefix_info: ResolvePathResultPrefixInfo,
     ) -> ResolvePathResult {
-        ResolvePathResult { resolved_def, segment_index, reached_fixedpoint, from_differing_crate }
+        ResolvePathResult { resolved_def, segment_index, reached_fixedpoint, prefix_info }
     }
 }
 
@@ -157,7 +170,17 @@ impl DefMap {
             if result.reached_fixedpoint == ReachedFixedPoint::No {
                 result.reached_fixedpoint = new.reached_fixedpoint;
             }
-            result.from_differing_crate |= new.from_differing_crate;
+            result.prefix_info = match (result.prefix_info, new.prefix_info) {
+                (ResolvePathResultPrefixInfo::None, it) => it,
+                (ResolvePathResultPrefixInfo::DifferingCrate, _) => {
+                    ResolvePathResultPrefixInfo::DifferingCrate
+                }
+                (
+                    ResolvePathResultPrefixInfo::Enum,
+                    ResolvePathResultPrefixInfo::DifferingCrate,
+                ) => ResolvePathResultPrefixInfo::DifferingCrate,
+                (ResolvePathResultPrefixInfo::Enum, _) => ResolvePathResultPrefixInfo::Enum,
+            };
             result.segment_index = match (result.segment_index, new.segment_index) {
                 (Some(idx), None) => Some(idx),
                 (Some(old), Some(new)) => Some(old.max(new)),
@@ -403,14 +426,14 @@ impl DefMap {
 
     fn resolve_remaining_segments<'a>(
         &self,
-        segments: impl Iterator<Item = (usize, &'a Name)>,
+        mut segments: impl Iterator<Item = (usize, &'a Name)>,
         mut curr_per_ns: PerNs,
         path: &ModPath,
         db: &dyn DefDatabase,
         shadow: BuiltinShadowMode,
         original_module: LocalModuleId,
     ) -> ResolvePathResult {
-        for (i, segment) in segments {
+        while let Some((i, segment)) = segments.next() {
             let curr = match curr_per_ns.take_types_full() {
                 Some(r) => r,
                 None => {
@@ -443,7 +466,7 @@ impl DefMap {
                             def,
                             ReachedFixedPoint::Yes,
                             s.map(|s| s + i),
-                            true,
+                            ResolvePathResultPrefixInfo::DifferingCrate,
                         );
                     }
 
@@ -488,17 +511,28 @@ impl DefMap {
                             ),
                         })
                     });
-                    match res {
-                        Some(res) => res,
-                        None => {
-                            return ResolvePathResult::new(
-                                PerNs::types(e.into(), curr.vis, curr.import),
-                                ReachedFixedPoint::Yes,
-                                Some(i),
-                                false,
-                            )
+                    // FIXME: Need to filter visibility here and below? Not sure.
+                    return match res {
+                        Some(res) => {
+                            if segments.next().is_some() {
+                                // Enum variants are in value namespace, segments left => no resolution.
+                                ResolvePathResult::empty(ReachedFixedPoint::No)
+                            } else {
+                                ResolvePathResult::new(
+                                    res,
+                                    ReachedFixedPoint::Yes,
+                                    None,
+                                    ResolvePathResultPrefixInfo::Enum,
+                                )
+                            }
                         }
-                    }
+                        None => ResolvePathResult::new(
+                            PerNs::types(e.into(), curr.vis, curr.import),
+                            ReachedFixedPoint::Yes,
+                            Some(i),
+                            ResolvePathResultPrefixInfo::None,
+                        ),
+                    };
                 }
                 s => {
                     // could be an inherent method call in UFCS form
@@ -513,7 +547,7 @@ impl DefMap {
                         PerNs::types(s, curr.vis, curr.import),
                         ReachedFixedPoint::Yes,
                         Some(i),
-                        false,
+                        ResolvePathResultPrefixInfo::None,
                     );
                 }
             };
@@ -522,7 +556,12 @@ impl DefMap {
                 .filter_visibility(|vis| vis.is_visible_from_def_map(db, self, original_module));
         }
 
-        ResolvePathResult::new(curr_per_ns, ReachedFixedPoint::Yes, None, false)
+        ResolvePathResult::new(
+            curr_per_ns,
+            ReachedFixedPoint::Yes,
+            None,
+            ResolvePathResultPrefixInfo::None,
+        )
     }
 
     fn resolve_name_in_module(
