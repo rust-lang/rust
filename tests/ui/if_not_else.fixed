@@ -9,17 +9,17 @@ fn bla() -> bool {
 }
 
 fn main() {
-    if !bla() {
+    if bla() {
+        println!("Bunny");
+    } else {
         //~^ ERROR: unnecessary boolean `not` operation
         println!("Bugs");
-    } else {
-        println!("Bunny");
     }
-    if 4 != 5 {
+    if 4 == 5 {
+        println!("Bunny");
+    } else {
         //~^ ERROR: unnecessary `!=` operation
         println!("Bugs");
-    } else {
-        println!("Bunny");
     }
     if !foo() {
         println!("Foo");
@@ -29,7 +29,9 @@ fn main() {
         println!("Bunny");
     }
 
-    if !(foo() && bla()) {
+    if (foo() && bla()) {
+        println!("both true");
+    } else {
         #[cfg(not(debug_assertions))]
         println!("not debug");
         #[cfg(debug_assertions)]
@@ -41,33 +43,31 @@ fn main() {
         } else {
             println!("both false");
         }
-    } else {
-        println!("both true");
     }
 }
 
 fn with_comments() {
-    if !foo() {
+    if foo() {
+        println!("foo"); /* foo */
+    } else {
         /* foo is false */
         println!("foo is false");
-    } else {
-        println!("foo"); /* foo */
     }
 
-    if !bla() {
+    if bla() {
+        println!("bla"); // bla
+    } else {
         // bla is false
         println!("bla");
-    } else {
-        println!("bla"); // bla
     }
 }
 
 fn with_annotations() {
     #[cfg(debug_assertions)]
-    if !foo() {
+    if foo() {
+        println!("foo"); /* foo */
+    } else {
         /* foo is false */
         println!("foo is false");
-    } else {
-        println!("foo"); /* foo */
     }
 }
