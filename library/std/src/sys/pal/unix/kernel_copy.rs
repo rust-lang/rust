@@ -52,8 +52,8 @@ use crate::cmp::min;
 use crate::fs::{File, Metadata};
 use crate::io::copy::generic_copy;
 use crate::io::{
-    BorrowedCursor, BufRead, BufReader, BufWriter, Error, IoSlice, IoSliceMut, Read, Result,
-    StderrLock, StdinLock, StdoutLock, Take, Write,
+    BufRead, BufReader, BufWriter, Error, Read, Result, StderrLock, StdinLock, StdoutLock, Take,
+    Write,
 };
 use crate::mem::ManuallyDrop;
 use crate::net::TcpStream;
@@ -65,6 +65,7 @@ use crate::process::{ChildStderr, ChildStdin, ChildStdout};
 use crate::ptr;
 use crate::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use crate::sys::cvt;
+use crate::sys::fs::CachedFileMetadata;
 use crate::sys::weak::syscall;
 
 #[cfg(test)]
@@ -534,46 +535,6 @@ impl<T: ?Sized + CopyRead> CopyRead for BufReader<T> {
 impl<T: ?Sized + CopyWrite> CopyWrite for BufWriter<T> {
     fn properties(&self) -> CopyParams {
         self.get_ref().properties()
-    }
-}
-
-pub(crate) struct CachedFileMetadata(pub File, pub Metadata);
-
-impl Read for CachedFileMetadata {
-    fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
-        self.0.read(buf)
-    }
-    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> Result<usize> {
-        self.0.read_vectored(bufs)
-    }
-    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> Result<()> {
-        self.0.read_buf(cursor)
-    }
-    #[inline]
-    fn is_read_vectored(&self) -> bool {
-        self.0.is_read_vectored()
-    }
-    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
-        self.0.read_to_end(buf)
-    }
-    fn read_to_string(&mut self, buf: &mut String) -> Result<usize> {
-        self.0.read_to_string(buf)
-    }
-}
-impl Write for CachedFileMetadata {
-    fn write(&mut self, buf: &[u8]) -> Result<usize> {
-        self.0.write(buf)
-    }
-    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> Result<usize> {
-        self.0.write_vectored(bufs)
-    }
-    #[inline]
-    fn is_write_vectored(&self) -> bool {
-        self.0.is_write_vectored()
-    }
-    #[inline]
-    fn flush(&mut self) -> Result<()> {
-        self.0.flush()
     }
 }
 
