@@ -549,11 +549,6 @@ fn main() {
             miri_config.check_alignment = miri::AlignmentCheck::None;
         } else if arg == "-Zmiri-symbolic-alignment-check" {
             miri_config.check_alignment = miri::AlignmentCheck::Symbolic;
-        } else if arg == "-Zmiri-disable-abi-check" {
-            eprintln!(
-                "WARNING: the flag `-Zmiri-disable-abi-check` no longer has any effect; \
-                    ABI checks cannot be disabled any more"
-            );
         } else if arg == "-Zmiri-disable-isolation" {
             if matches!(isolation_enabled, Some(true)) {
                 show_error!(
@@ -623,10 +618,6 @@ fn main() {
             many_seeds = Some(0..64);
         } else if arg == "-Zmiri-many-seeds-keep-going" {
             many_seeds_keep_going = true;
-        } else if let Some(_param) = arg.strip_prefix("-Zmiri-env-exclude=") {
-            show_error!(
-                "`-Zmiri-env-exclude` has been removed; unset env vars before starting Miri instead"
-            );
         } else if let Some(param) = arg.strip_prefix("-Zmiri-env-forward=") {
             miri_config.forwarded_env_vars.push(param.to_owned());
         } else if let Some(param) = arg.strip_prefix("-Zmiri-env-set=") {
