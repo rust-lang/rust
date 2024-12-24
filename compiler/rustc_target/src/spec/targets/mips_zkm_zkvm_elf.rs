@@ -22,13 +22,7 @@ pub(crate) fn target() -> Target {
             endian: Endian::Big,
             cpu: "mips32r2".into(),
 
-            // Some crates (*cough* crossbeam) assume you have 64 bit
-            // atomics if the target name is not in a hardcoded list.
-            // Since zkvm is singlethreaded and all operations are
-            // atomic, I guess we can just say we support 64-bit
-            // atomics.
-            max_atomic_width: Some(64),
-            atomic_cas: true,
+            max_atomic_width: Some(32),
 
             features: "+mips32r2,+soft-float,+noabicalls".into(),
             executables: true,
