@@ -76,7 +76,7 @@ vfs.workspace = true
 paths.workspace = true
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.52", features = ["Win32_System_Threading"] }
+windows-sys = { version = "0.52", features = ["Win32_System_Diagnostics_Debug", "Win32_System_Threading"] }
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
 jemallocator = { version = "0.5.0", package = "tikv-jemallocator", optional = true }
