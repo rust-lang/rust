@@ -1,7 +1,9 @@
+//! Tests where the `#[coverage(..)]` attribute can and cannot be used.
+
 //@ reference: attributes.coverage.allowed-positions
 
-#![feature(extern_types)]
 #![feature(coverage_attribute)]
+#![feature(extern_types)]
 #![feature(impl_trait_in_assoc_type)]
 #![warn(unused_attributes)]
 #![coverage(off)]
