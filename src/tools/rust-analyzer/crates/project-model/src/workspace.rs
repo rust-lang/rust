@@ -2,7 +2,7 @@
 //! metadata` or `rust-project.json`) into representation stored in the salsa
 //! database -- `CrateGraph`.
 
-use std::{collections::VecDeque, fmt, fs, iter, sync};
+use std::{collections::VecDeque, fmt, fs, iter, ops::Deref, sync};
 
 use anyhow::Context;
 use base_db::{
@@ -22,12 +22,13 @@ use triomphe::Arc;
 
 use crate::{
     build_dependencies::BuildScriptOutput,
-    cargo_workspace::{DepKind, PackageData, RustLibSource},
+    cargo_workspace::{CargoMetadataConfig, DepKind, PackageData, RustLibSource},
     env::{cargo_config_env, inject_cargo_env, inject_cargo_package_env, inject_rustc_tool_env},
     project_json::{Crate, CrateArrayIdx},
     rustc_cfg::{self, RustcCfgConfig},
     sysroot::{SysrootCrate, SysrootMode},
     target_data_layout::{self, RustcDataLayoutConfig},
+    target_triple::{self, TargetTipleConfig},
     utf8_stdout, CargoConfig, CargoWorkspace, CfgOverrides, InvocationStrategy, ManifestPath,
     Package, ProjectJson, ProjectManifest, Sysroot, TargetData, TargetKind, WorkspaceBuildScripts,
 };
@@ -220,28 +221,31 @@ impl ProjectWorkspace {
                 ProjectWorkspace::load_detached_file(rust_file, config)?
             }
             ProjectManifest::CargoToml(cargo_toml) => {
+                // FIXME: Split sysroot discovery from sysroot loading, as to load the sysroot we
+                // want to pass the analysis target, but to discover the target we need to know the
+                // sysroot location so we know which cargo to use
                 let sysroot = match (&config.sysroot, &config.sysroot_src) {
                     (Some(RustLibSource::Discover), None) => Sysroot::discover(
                         cargo_toml.parent(),
                         &config.extra_env,
-                        config.sysroot_query_metadata,
+                        &config.sysroot_query_metadata,
                     ),
                     (Some(RustLibSource::Discover), Some(sysroot_src)) => {
                         Sysroot::discover_with_src_override(
                             cargo_toml.parent(),
                             &config.extra_env,
                             sysroot_src.clone(),
-                            config.sysroot_query_metadata,
+                            &config.sysroot_query_metadata,
                         )
                     }
                     (Some(RustLibSource::Path(path)), None) => Sysroot::discover_sysroot_src_dir(
                         path.clone(),
-                        config.sysroot_query_metadata,
+                        &config.sysroot_query_metadata,
                     ),
                     (Some(RustLibSource::Path(sysroot)), Some(sysroot_src)) => Sysroot::load(
                         Some(sysroot.clone()),
                         Some(sysroot_src.clone()),
-                        config.sysroot_query_metadata,
+                        &config.sysroot_query_metadata,
                     ),
                     (None, _) => Sysroot::empty(),
                 };
@@ -257,15 +261,22 @@ impl ProjectWorkspace {
                     }
                     None => Err(None),
                 };
-
+                let targets = target_triple::get(
+                    TargetTipleConfig::Cargo(&sysroot, cargo_toml),
+                    config.target.as_deref(),
+                    &config.extra_env,
+                )
+                .unwrap_or_default();
                 let rustc =  rustc_dir.and_then(|rustc_dir| {
                     info!(workspace = %cargo_toml, rustc_dir = %rustc_dir, "Using rustc source");
                     match CargoWorkspace::fetch_metadata(
                         &rustc_dir,
                         cargo_toml.parent(),
-                        &CargoConfig {
+                        &CargoMetadataConfig {
                             features: crate::CargoFeatures::default(),
-                            ..config.clone()
+                            targets: targets.clone(),
+                            extra_args: config.extra_args.clone(),
+                            extra_env: config.extra_env.clone(),
                         },
                         &sysroot,
                         false,
@@ -301,7 +312,7 @@ impl ProjectWorkspace {
                     "cargo ",
                 )?;
                 let rustc_cfg = rustc_cfg::get(
-                    config.target.as_deref(),
+                    targets.first().map(Deref::deref),
                     &config.extra_env,
                     RustcCfgConfig::Cargo(&sysroot, cargo_toml),
                 );
@@ -309,7 +320,7 @@ impl ProjectWorkspace {
                 let cfg_overrides = config.cfg_overrides.clone();
                 let data_layout = target_data_layout::get(
                     RustcDataLayoutConfig::Cargo(&sysroot, cargo_toml),
-                    config.target.as_deref(),
+                    targets.first().map(Deref::deref),
                     &config.extra_env,
                 );
                 if let Err(e) = &data_layout {
@@ -319,7 +330,12 @@ impl ProjectWorkspace {
                 let (meta, error) = CargoWorkspace::fetch_metadata(
                     cargo_toml,
                     cargo_toml.parent(),
-                    config,
+                    &CargoMetadataConfig {
+                        features: config.features.clone(),
+                        targets,
+                        extra_args: config.extra_args.clone(),
+                        extra_env: config.extra_env.clone(),
+                    },
                     &sysroot,
                         false,
                         progress,
@@ -360,7 +376,7 @@ impl ProjectWorkspace {
         let sysroot = Sysroot::load(
             project_json.sysroot.clone(),
             project_json.sysroot_src.clone(),
-            config.sysroot_query_metadata,
+            &config.sysroot_query_metadata,
         );
         let cfg_config = RustcCfgConfig::Rustc(&sysroot);
         let data_layout_config = RustcDataLayoutConfig::Rustc(&sysroot);
@@ -398,10 +414,10 @@ impl ProjectWorkspace {
         let dir = detached_file.parent();
         let sysroot = match &config.sysroot {
             Some(RustLibSource::Path(path)) => {
-                Sysroot::discover_sysroot_src_dir(path.clone(), config.sysroot_query_metadata)
+                Sysroot::discover_sysroot_src_dir(path.clone(), &config.sysroot_query_metadata)
             }
             Some(RustLibSource::Discover) => {
-                Sysroot::discover(dir, &config.extra_env, config.sysroot_query_metadata)
+                Sysroot::discover(dir, &config.extra_env, &config.sysroot_query_metadata)
             }
             None => Sysroot::empty(),
         };
@@ -415,6 +431,12 @@ impl ProjectWorkspace {
                 }
             };
 
+        let targets = target_triple::get(
+            TargetTipleConfig::Cargo(&sysroot, detached_file),
+            config.target.as_deref(),
+            &config.extra_env,
+        )
+        .unwrap_or_default();
         let rustc_cfg = rustc_cfg::get(None, &config.extra_env, RustcCfgConfig::Rustc(&sysroot));
         let data_layout = target_data_layout::get(
             RustcDataLayoutConfig::Rustc(&sysroot),
@@ -422,16 +444,27 @@ impl ProjectWorkspace {
             &config.extra_env,
         );
 
-        let cargo_script =
-            CargoWorkspace::fetch_metadata(detached_file, dir, config, &sysroot, false, &|_| ())
-                .ok()
-                .map(|(ws, error)| {
-                    (
-                        CargoWorkspace::new(ws, detached_file.clone()),
-                        WorkspaceBuildScripts::default(),
-                        error.map(Arc::new),
-                    )
-                });
+        let cargo_script = CargoWorkspace::fetch_metadata(
+            detached_file,
+            dir,
+            &CargoMetadataConfig {
+                features: config.features.clone(),
+                targets,
+                extra_args: config.extra_args.clone(),
+                extra_env: config.extra_env.clone(),
+            },
+            &sysroot,
+            false,
+            &|_| (),
+        )
+        .ok()
+        .map(|(ws, error)| {
+            (
+                CargoWorkspace::new(ws, detached_file.clone()),
+                WorkspaceBuildScripts::default(),
+                error.map(Arc::new),
+            )
+        });
 
         let cargo_config_extra_env = cargo_config_env(detached_file, &config.extra_env, &sysroot);
         Ok(ProjectWorkspace {

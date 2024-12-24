@@ -117,7 +117,7 @@ fn get_fake_sysroot() -> Sysroot {
     // fake sysroot, so we give them both the same path:
     let sysroot_dir = AbsPathBuf::assert(sysroot_path);
     let sysroot_src_dir = sysroot_dir.clone();
-    Sysroot::load(Some(sysroot_dir), Some(sysroot_src_dir), SysrootQueryMetadata::CargoMetadata)
+    Sysroot::load(Some(sysroot_dir), Some(sysroot_src_dir), &SysrootQueryMetadata::default())
 }
 
 fn rooted_project_json(data: ProjectJsonData) -> ProjectJson {
@@ -232,7 +232,7 @@ fn smoke_test_real_sysroot_cargo() {
     let sysroot = Sysroot::discover(
         AbsPath::assert(Utf8Path::new(env!("CARGO_MANIFEST_DIR"))),
         &Default::default(),
-        SysrootQueryMetadata::CargoMetadata,
+        &SysrootQueryMetadata::default(),
     );
     assert!(matches!(sysroot.mode(), SysrootMode::Workspace(_)));
     let project_workspace = ProjectWorkspace {

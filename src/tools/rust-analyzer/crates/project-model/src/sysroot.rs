@@ -14,7 +14,10 @@ use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::FxHashMap;
 use toolchain::{probe_for_binary, Tool};
 
-use crate::{utf8_stdout, CargoConfig, CargoWorkspace, ManifestPath, SysrootQueryMetadata};
+use crate::{
+    cargo_workspace::CargoMetadataConfig, utf8_stdout, CargoWorkspace, ManifestPath,
+    SysrootQueryMetadata,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Sysroot {
@@ -126,7 +129,7 @@ impl Sysroot {
     pub fn discover(
         dir: &AbsPath,
         extra_env: &FxHashMap<String, String>,
-        sysroot_query_metadata: SysrootQueryMetadata,
+        sysroot_query_metadata: &SysrootQueryMetadata,
     ) -> Sysroot {
         let sysroot_dir = discover_sysroot_dir(dir, extra_env);
         let sysroot_src_dir = sysroot_dir.as_ref().ok().map(|sysroot_dir| {
@@ -139,7 +142,7 @@ impl Sysroot {
         current_dir: &AbsPath,
         extra_env: &FxHashMap<String, String>,
         sysroot_src_dir: AbsPathBuf,
-        sysroot_query_metadata: SysrootQueryMetadata,
+        sysroot_query_metadata: &SysrootQueryMetadata,
     ) -> Sysroot {
         let sysroot_dir = discover_sysroot_dir(current_dir, extra_env);
         Sysroot::load_core_check(
@@ -151,7 +154,7 @@ impl Sysroot {
 
     pub fn discover_sysroot_src_dir(
         sysroot_dir: AbsPathBuf,
-        sysroot_query_metadata: SysrootQueryMetadata,
+        sysroot_query_metadata: &SysrootQueryMetadata,
     ) -> Sysroot {
         let sysroot_src_dir = discover_sysroot_src_dir(&sysroot_dir)
             .ok_or_else(|| format_err!("can't find standard library sources in {sysroot_dir}"));
@@ -205,7 +208,7 @@ impl Sysroot {
     pub fn load(
         sysroot_dir: Option<AbsPathBuf>,
         sysroot_src_dir: Option<AbsPathBuf>,
-        sysroot_query_metadata: SysrootQueryMetadata,
+        sysroot_query_metadata: &SysrootQueryMetadata,
     ) -> Sysroot {
         Self::load_core_check(sysroot_dir.map(Ok), sysroot_src_dir.map(Ok), sysroot_query_metadata)
     }
@@ -213,7 +216,7 @@ impl Sysroot {
     fn load_core_check(
         sysroot_dir: Option<Result<AbsPathBuf, anyhow::Error>>,
         sysroot_src_dir: Option<Result<AbsPathBuf, anyhow::Error>>,
-        sysroot_query_metadata: SysrootQueryMetadata,
+        sysroot_query_metadata: &SysrootQueryMetadata,
     ) -> Sysroot {
         let mut sysroot = Self::load_(sysroot_dir, sysroot_src_dir, sysroot_query_metadata);
         if sysroot.error.is_none() {
@@ -241,7 +244,7 @@ impl Sysroot {
     fn load_(
         sysroot_dir: Option<Result<AbsPathBuf, anyhow::Error>>,
         sysroot_src_dir: Option<Result<AbsPathBuf, anyhow::Error>>,
-        sysroot_query_metadata: SysrootQueryMetadata,
+        sysroot_query_metadata: &SysrootQueryMetadata,
     ) -> Sysroot {
         let sysroot_dir = match sysroot_dir {
             Some(Ok(sysroot_dir)) => Some(sysroot_dir),
@@ -274,13 +277,16 @@ impl Sysroot {
                 }
             }
         };
-        if sysroot_query_metadata == SysrootQueryMetadata::CargoMetadata {
+        if let SysrootQueryMetadata::CargoMetadata(cargo_config) = sysroot_query_metadata {
             let library_manifest =
                 ManifestPath::try_from(sysroot_src_dir.join("Cargo.toml")).unwrap();
             if fs::metadata(&library_manifest).is_ok() {
-                if let Some(sysroot) =
-                    Self::load_library_via_cargo(library_manifest, &sysroot_dir, &sysroot_src_dir)
-                {
+                if let Some(sysroot) = Self::load_library_via_cargo(
+                    library_manifest,
+                    &sysroot_dir,
+                    &sysroot_src_dir,
+                    cargo_config,
+                ) {
                     return sysroot;
                 }
             }
@@ -341,9 +347,10 @@ impl Sysroot {
         library_manifest: ManifestPath,
         sysroot_dir: &Option<AbsPathBuf>,
         sysroot_src_dir: &AbsPathBuf,
+        cargo_config: &CargoMetadataConfig,
     ) -> Option<Sysroot> {
         tracing::debug!("Loading library metadata: {library_manifest}");
-        let mut cargo_config = CargoConfig::default();
+        let mut cargo_config = cargo_config.clone();
         // the sysroot uses `public-dependency`, so we make cargo think it's a nightly
         cargo_config.extra_env.insert(
             "__CARGO_TEST_CHANNEL_OVERRIDE_DO_NOT_USE_THIS".to_owned(),

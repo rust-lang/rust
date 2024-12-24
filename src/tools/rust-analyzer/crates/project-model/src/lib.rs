@@ -23,6 +23,7 @@ pub mod project_json;
 mod rustc_cfg;
 mod sysroot;
 pub mod target_data_layout;
+mod target_triple;
 mod workspace;
 
 #[cfg(test)]
@@ -42,8 +43,8 @@ use rustc_hash::FxHashSet;
 pub use crate::{
     build_dependencies::WorkspaceBuildScripts,
     cargo_workspace::{
-        CargoConfig, CargoFeatures, CargoWorkspace, Package, PackageData, PackageDependency,
-        RustLibSource, Target, TargetData, TargetKind,
+        CargoConfig, CargoFeatures, CargoMetadataConfig, CargoWorkspace, Package, PackageData,
+        PackageDependency, RustLibSource, Target, TargetData, TargetKind,
     },
     manifest_path::ManifestPath,
     project_json::{ProjectJson, ProjectJsonData},
@@ -241,9 +242,14 @@ fn parse_cfg(s: &str) -> Result<cfg::CfgAtom, String> {
     Ok(res)
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SysrootQueryMetadata {
-    #[default]
-    CargoMetadata,
+    CargoMetadata(CargoMetadataConfig),
     None,
+}
+
+impl Default for SysrootQueryMetadata {
+    fn default() -> Self {
+        SysrootQueryMetadata::CargoMetadata(Default::default())
+    }
 }
