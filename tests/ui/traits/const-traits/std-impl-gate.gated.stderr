@@ -4,7 +4,7 @@ error[E0635]: unknown feature `const_default_impls`
 LL | #![cfg_attr(gated, feature(const_trait_impl, const_default_impls))]
    |                                              ^^^^^^^^^^^^^^^^^^^
 
-error[E0015]: cannot call non-const fn `<Vec<usize> as Default>::default` in constant functions
+error[E0015]: cannot call non-const associated function `<Vec<usize> as Default>::default` in constant functions
   --> $DIR/std-impl-gate.rs:13:5
    |
 LL |     Default::default()

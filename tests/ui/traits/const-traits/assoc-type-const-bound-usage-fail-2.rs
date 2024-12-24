@@ -1,4 +1,5 @@
-//@ compile-flags: -Znext-solver
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
 
 // Check that `~const` item bounds only hold if the where clauses on the
 // associated type are also const.
@@ -21,9 +22,11 @@ trait Other {}
 
 const fn fails<T: ~const Trait, U: Other>() {
     T::Assoc::<U>::func();
-    //~^ ERROR the trait bound `<T as Trait>::Assoc<U>: ~const Trait` is not satisfied
+    //[current]~^ ERROR the trait bound `U: ~const Other` is not satisfied
+    //[next]~^^ ERROR the trait bound `<T as Trait>::Assoc<U>: ~const Trait` is not satisfied
     <T as Trait>::Assoc::<U>::func();
-    //~^ ERROR the trait bound `<T as Trait>::Assoc<U>: ~const Trait` is not satisfied
+    //[current]~^ ERROR the trait bound `U: ~const Other` is not satisfied
+    //[next]~^^ ERROR the trait bound `<T as Trait>::Assoc<U>: ~const Trait` is not satisfied
 }
 
 const fn works<T: ~const Trait, U: ~const Other>() {
