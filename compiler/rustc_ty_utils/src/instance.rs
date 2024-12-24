@@ -49,7 +49,8 @@ fn resolve_instance_raw<'tcx>(
                     | ty::Adt(..)
                     | ty::Dynamic(..)
                     | ty::Array(..)
-                    | ty::Slice(..) => {}
+                    | ty::Slice(..)
+                    | ty::UnsafeBinder(..) => {}
                     // Drop shims can only be built from ADTs.
                     _ => return Ok(None),
                 }

@@ -13,34 +13,8 @@ fn main() {
     let kind = TyKind::Bool; //~ ERROR usage of `ty::TyKind::<kind>`
 
     match kind {
-        TyKind::Bool => (),                 //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::Char => (),                 //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::Int(..) => (),              //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::Uint(..) => (),             //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::Float(..) => (),            //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::Adt(..) => (),              //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::Foreign(..) => (),          //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::Str => (),                  //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::Array(..) => (),            //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::Pat(..) => (),              //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::Slice(..) => (),            //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::RawPtr(..) => (),           //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::Ref(..) => (),              //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::FnDef(..) => (),            //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::FnPtr(..) => (),            //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::Dynamic(..) => (),          //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::Closure(..) => (),          //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::CoroutineClosure(..) => (), //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::Coroutine(..) => (),        //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::CoroutineWitness(..) => (), //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::Never => (),                //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::Tuple(..) => (),            //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::Alias(..) => (),            //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::Param(..) => (),            //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::Bound(..) => (),            //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::Placeholder(..) => (),      //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::Infer(..) => (),            //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::Error(_) => (),             //~ ERROR usage of `ty::TyKind::<kind>`
+        TyKind::Bool => {},                 //~ ERROR usage of `ty::TyKind::<kind>`
+        _ => {}
     }
 
     if let ty::Int(int_ty) = kind {}

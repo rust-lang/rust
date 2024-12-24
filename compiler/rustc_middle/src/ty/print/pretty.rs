@@ -695,6 +695,10 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 }
             }
             ty::FnPtr(ref sig_tys, hdr) => p!(print(sig_tys.with(hdr))),
+            ty::UnsafeBinder(ref bound_ty) => {
+                // FIXME(unsafe_binders): Make this print `unsafe<>` rather than `for<>`.
+                self.wrap_binder(bound_ty, |ty, cx| cx.pretty_print_type(*ty))?;
+            }
             ty::Infer(infer_ty) => {
                 if self.should_print_verbose() {
                     p!(write("{:?}", ty.kind()));

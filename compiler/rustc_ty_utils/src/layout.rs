@@ -666,6 +666,11 @@ fn layout_of_uncached<'tcx>(
             tcx.mk_layout(layout)
         }
 
+        ty::UnsafeBinder(bound_ty) => {
+            let ty = tcx.instantiate_bound_regions_with_erased(bound_ty.into());
+            cx.layout_of(ty)?.layout
+        }
+
         // Types with no meaningful known layout.
         ty::Alias(..) => {
             // NOTE(eddyb) `layout_of` query should've normalized these away,
