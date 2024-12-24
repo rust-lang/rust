@@ -84,22 +84,22 @@
 // gdb-command:print dd
 // gdb-check:$33 = (40, 41, 42)
 
-// gdb-command:print *ee
+// gdb-command:print *&ee
 // gdb-check:$34 = (43, 44, 45)
 
-// gdb-command:print *ff
+// gdb-command:print *&ff
 // gdb-check:$35 = 46
 
 // gdb-command:print gg
 // gdb-check:$36 = (47, 48)
 
-// gdb-command:print *hh
+// gdb-command:print *&hh
 // gdb-check:$37 = 50
 
 // gdb-command:print ii
 // gdb-check:$38 = 51
 
-// gdb-command:print *jj
+// gdb-command:print *&jj
 // gdb-check:$39 = 52
 
 // gdb-command:print kk
@@ -111,7 +111,7 @@
 // gdb-command:print mm
 // gdb-check:$42 = 55
 
-// gdb-command:print *nn
+// gdb-command:print *&nn
 // gdb-check:$43 = 56
 
 

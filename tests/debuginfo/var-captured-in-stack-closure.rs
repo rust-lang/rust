@@ -10,9 +10,9 @@
 // gdb-check:$2 = 2
 // gdb-command:print a_struct
 // gdb-check:$3 = var_captured_in_stack_closure::Struct {a: -3, b: 4.5, c: 5}
-// gdb-command:print *struct_ref
+// gdb-command:print *&struct_ref
 // gdb-check:$4 = var_captured_in_stack_closure::Struct {a: -3, b: 4.5, c: 5}
-// gdb-command:print *owned
+// gdb-command:print *&owned
 // gdb-check:$5 = 6
 
 // gdb-command:continue
@@ -23,9 +23,9 @@
 // gdb-check:$7 = 2
 // gdb-command:print a_struct
 // gdb-check:$8 = var_captured_in_stack_closure::Struct {a: -3, b: 4.5, c: 5}
-// gdb-command:print *struct_ref
+// gdb-command:print *&struct_ref
 // gdb-check:$9 = var_captured_in_stack_closure::Struct {a: -3, b: 4.5, c: 5}
-// gdb-command:print *owned
+// gdb-command:print *&owned
 // gdb-check:$10 = 6
 
 

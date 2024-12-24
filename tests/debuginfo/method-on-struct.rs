@@ -5,7 +5,7 @@
 // gdb-command:run
 
 // STACK BY REF
-// gdb-command:print *self
+// gdb-command:print *&self
 // gdb-check:$1 = method_on_struct::Struct {x: 100}
 // gdb-command:print arg1
 // gdb-check:$2 = -1
@@ -23,7 +23,7 @@
 // gdb-command:continue
 
 // OWNED BY REF
-// gdb-command:print *self
+// gdb-command:print *&self
 // gdb-check:$7 = method_on_struct::Struct {x: 200}
 // gdb-command:print arg1
 // gdb-check:$8 = -5
@@ -41,7 +41,7 @@
 // gdb-command:continue
 
 // OWNED MOVED
-// gdb-command:print *self
+// gdb-command:print *&self
 // gdb-check:$13 = method_on_struct::Struct {x: 200}
 // gdb-command:print arg1
 // gdb-check:$14 = -9

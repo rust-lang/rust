@@ -41,15 +41,15 @@
 // gdb-check:$14 = 80000
 // gdb-command:print x1
 // gdb-check:$15 = 8000
-// gdb-command:print *y1
+// gdb-command:print *&y1
 // gdb-check:$16 = 80001.5
 // gdb-command:print z1
 // gdb-check:$17 = false
-// gdb-command:print *x2
+// gdb-command:print *&x2
 // gdb-check:$18 = -30000
 // gdb-command:print y2
 // gdb-check:$19 = -300001.5
-// gdb-command:print *z2
+// gdb-command:print *&z2
 // gdb-check:$20 = true
 // gdb-command:print v2
 // gdb-check:$21 = 854237.5

@@ -46,7 +46,7 @@
 
 // gdb-command:print shadowed
 // gdb-check:$15 = 243
-// gdb-command:print *local_to_arm
+// gdb-command:print *&local_to_arm
 // gdb-check:$16 = 244
 // gdb-command:continue
 

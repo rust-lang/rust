@@ -6,13 +6,13 @@
 
 // gdb-command:run
 
-// gdb-command:print *the_a_ref
+// gdb-command:print *&the_a_ref
 // gdb-check:$1 = borrowed_enum::ABC::TheA{x: 0, y: 8970181431921507452}
 
-// gdb-command:print *the_b_ref
+// gdb-command:print *&the_b_ref
 // gdb-check:$2 = borrowed_enum::ABC::TheB(0, 286331153, 286331153)
 
-// gdb-command:print *univariant_ref
+// gdb-command:print *&univariant_ref
 // gdb-check:$3 = borrowed_enum::Univariant::TheOnlyCase(4820353753753434)
 
 

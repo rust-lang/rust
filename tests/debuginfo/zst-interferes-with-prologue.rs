@@ -7,9 +7,9 @@
 // gdb-command:break zst_interferes_with_prologue::Foo::var_return_opt_try
 // gdb-command:run
 
-// gdb-command:print self
+// gdb-command:print &self
 // gdb-command:next
-// gdb-command:print self
+// gdb-command:print &self
 // gdb-command:print $1 == $2
 // gdb-check:true
 

@@ -5,7 +5,7 @@
 
 // gdb-command:run
 
-// gdb-command:print *abc
+// gdb-command:print *&abc
 // gdb-check:$1 = enum_thinlto::ABC::TheA{x: 0, y: 8970181431921507452}
 
 // === LLDB TESTS ==================================================================================

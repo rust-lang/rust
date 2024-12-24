@@ -10,9 +10,9 @@
 // gdb-check:$2 = 10
 // gdb-command:continue
 
-// gdb-command:print *x
+// gdb-command:print *&x
 // gdb-check:$3 = 29
-// gdb-command:print *y
+// gdb-command:print *&y
 // gdb-check:$4 = 110
 // gdb-command:continue
 

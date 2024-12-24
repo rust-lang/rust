@@ -4,16 +4,16 @@
 
 // gdb-command:run
 // gdb-command:print test
-// gdb-check:$1 = captured_fields_1::main::{closure_env#0} {_ref__my_ref__my_field1: 0x[...]}
+// gdb-check:$1 = captured_fields_1::main::{closure_env#0} {_ref__my_ref__my_field1: @0x[...]}
 // gdb-command:continue
 // gdb-command:print test
-// gdb-check:$2 = captured_fields_1::main::{closure_env#1} {_ref__my_ref__my_field2: 0x[...]}
+// gdb-check:$2 = captured_fields_1::main::{closure_env#1} {_ref__my_ref__my_field2: @0x[...]}
 // gdb-command:continue
 // gdb-command:print test
-// gdb-check:$3 = captured_fields_1::main::{closure_env#2} {_ref__my_ref: 0x[...]}
+// gdb-check:$3 = captured_fields_1::main::{closure_env#2} {_ref__my_ref: @0x[...]}
 // gdb-command:continue
 // gdb-command:print test
-// gdb-check:$4 = captured_fields_1::main::{closure_env#3} {my_ref: 0x[...]}
+// gdb-check:$4 = captured_fields_1::main::{closure_env#3} {my_ref: @0x[...]}
 // gdb-command:continue
 // gdb-command:print test
 // gdb-check:$5 = captured_fields_1::main::{closure_env#4} {my_var__my_field2: 22}

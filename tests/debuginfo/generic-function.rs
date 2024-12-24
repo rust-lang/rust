@@ -4,21 +4,21 @@
 
 // gdb-command:run
 
-// gdb-command:print *t0
+// gdb-command:print *&t0
 // gdb-check:$1 = 1
-// gdb-command:print *t1
+// gdb-command:print *&t1
 // gdb-check:$2 = 2.5
 // gdb-command:continue
 
-// gdb-command:print *t0
+// gdb-command:print *&t0
 // gdb-check:$3 = 3.5
-// gdb-command:print *t1
+// gdb-command:print *&t1
 // gdb-check:$4 = 4
 // gdb-command:continue
 
-// gdb-command:print *t0
+// gdb-command:print *&t0
 // gdb-check:$5 = 5
-// gdb-command:print *t1
+// gdb-command:print *&t1
 // gdb-check:$6 = generic_function::Struct {a: 6, b: 7.5}
 // gdb-command:continue
 
