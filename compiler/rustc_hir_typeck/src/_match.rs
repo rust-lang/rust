@@ -77,12 +77,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut prior_non_diverging_arms = vec![]; // Used only for diagnostics.
         let mut prior_arm = None;
         for arm in arms {
+            self.diverges.set(Diverges::Maybe);
+
             if let Some(e) = &arm.guard {
-                self.diverges.set(Diverges::Maybe);
                 self.check_expr_has_type_or_error(e, tcx.types.bool, |_| {});
+
+                // FIXME: If this is the first arm and the pattern is irrefutable,
+                // e.g. `_` or `x`, and the guard diverges, then the whole match
+                // may also be considered to diverge. We should warn on all subsequent
+                // arms, too, just like we do for diverging scrutinees above.
             }
 
-            self.diverges.set(Diverges::Maybe);
+            // N.B. We don't reset diverges here b/c we want to warn in the arm
+            // if the guard diverges, like: `x if { loop {} } => f()`, and we
+            // also want to consider the arm to diverge itself.
 
             let arm_ty = self.check_expr_with_expectation(arm.body, expected);
             all_arms_diverge &= self.diverges.get();
