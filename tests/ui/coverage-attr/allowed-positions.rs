@@ -8,20 +8,20 @@
 #![warn(unused_attributes)]
 #![coverage(off)]
 
-#[coverage(off)] //~ ERROR attribute should be applied to a function definition or closure
+#[coverage(off)] //~ ERROR [E0788]
 trait Trait {
-    #[coverage(off)] //~ ERROR attribute should be applied to a function definition or closure
+    #[coverage(off)] //~ ERROR [E0788]
     const X: u32;
 
-    #[coverage(off)] //~ ERROR attribute should be applied to a function definition or closure
+    #[coverage(off)] //~ ERROR [E0788]
     type T;
 
     type U;
 
-    #[coverage(off)] //~ ERROR attribute should be applied to a function definition or closure
+    #[coverage(off)] //~ ERROR [E0788]
     fn f(&self);
 
-    #[coverage(off)] //~ ERROR attribute should be applied to a function definition or closure
+    #[coverage(off)] //~ ERROR [E0788]
     fn g();
 }
 
@@ -29,10 +29,10 @@ trait Trait {
 impl Trait for () {
     const X: u32 = 0;
 
-    #[coverage(off)] //~ ERROR attribute should be applied to a function definition or closure
+    #[coverage(off)] //~ ERROR [E0788]
     type T = Self;
 
-    #[coverage(off)] //~ ERROR attribute should be applied to a function definition or closure
+    #[coverage(off)] //~ ERROR [E0788]
     type U = impl Trait; //~ ERROR unconstrained opaque type
 
     fn f(&self) {}
@@ -40,23 +40,23 @@ impl Trait for () {
 }
 
 extern "C" {
-    #[coverage(off)] //~ ERROR attribute should be applied to a function definition or closure
+    #[coverage(off)] //~ ERROR [E0788]
     static X: u32;
 
-    #[coverage(off)] //~ ERROR attribute should be applied to a function definition or closure
+    #[coverage(off)] //~ ERROR [E0788]
     type T;
 }
 
 #[coverage(off)]
 fn main() {
-    #[coverage(off)] //~ ERROR attribute should be applied to a function definition or closure
+    #[coverage(off)] //~ ERROR [E0788]
     let _ = ();
 
     match () {
-        #[coverage(off)] //~ ERROR attribute should be applied to a function definition or closure
+        #[coverage(off)] //~ ERROR [E0788]
         () => (),
     }
 
-    #[coverage(off)] //~ ERROR attribute should be applied to a function definition or closure
+    #[coverage(off)] //~ ERROR [E0788]
     return ();
 }
