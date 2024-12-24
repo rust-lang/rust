@@ -539,6 +539,7 @@ fn main() {
             miri_config.borrow_tracker = None;
         } else if arg == "-Zmiri-tree-borrows" {
             miri_config.borrow_tracker = Some(BorrowTrackerMethod::TreeBorrows);
+            miri_config.provenance_mode = ProvenanceMode::Strict;
         } else if arg == "-Zmiri-unique-is-unique" {
             miri_config.unique_is_unique = true;
         } else if arg == "-Zmiri-disable-data-race-detector" {
@@ -728,13 +729,20 @@ fn main() {
             "-Zmiri-unique-is-unique only has an effect when -Zmiri-tree-borrows is also used"
         );
     }
-    // Tree Borrows + permissive provenance does not work.
-    if miri_config.provenance_mode == ProvenanceMode::Permissive
-        && matches!(miri_config.borrow_tracker, Some(BorrowTrackerMethod::TreeBorrows))
-    {
-        show_error!(
-            "Tree Borrows does not support integer-to-pointer casts, and is hence not compatible with permissive provenance"
-        );
+    // Tree Borrows implies strict provenance, and is not compatible with native calls.
+    if matches!(miri_config.borrow_tracker, Some(BorrowTrackerMethod::TreeBorrows)) {
+        if miri_config.provenance_mode != ProvenanceMode::Strict {
+            show_error!(
+                "Tree Borrows does not support integer-to-pointer casts, and hence requires strict provenance"
+            );
+        }
+        if miri_config.native_lib.is_some() {
+            show_error!("Tree Borrows is not compatible with calling native functions");
+        }
+    }
+    // Native calls and strict provenance are not compatible.
+    if miri_config.native_lib.is_some() && miri_config.provenance_mode == ProvenanceMode::Strict {
+        show_error!("strict provenance is not compatible with calling native functions");
     }
     // You can set either one seed or many.
     if many_seeds.is_some() && miri_config.seed.is_some() {

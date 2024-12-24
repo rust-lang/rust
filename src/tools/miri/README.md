@@ -347,8 +347,8 @@ environment variable. We first document the most relevant and most commonly used
   can increase test coverage by running Miri multiple times with different seeds.
 * `-Zmiri-strict-provenance` enables [strict
   provenance](https://github.com/rust-lang/rust/issues/95228) checking in Miri. This means that
-  casting an integer to a pointer yields a result with 'invalid' provenance, i.e., with provenance
-  that cannot be used for any memory access.
+  casting an integer to a pointer will stop execution because the provenance of the pointer
+  cannot be determined.
 * `-Zmiri-symbolic-alignment-check` makes the alignment check more strict.  By default, alignment is
   checked by casting the pointer to an integer, and making sure that is a multiple of the alignment.
   This can lead to cases where a program passes the alignment check by pure chance, because things
@@ -437,6 +437,8 @@ to Miri failing to detect cases of undefined behavior in a program.
   of Rust will be stricter than Tree Borrows. In other words, if you use Tree Borrows,
   even if your code is accepted today, it might be declared UB in the future.
   This is much less likely with Stacked Borrows.
+  Using Tree Borrows currently implies `-Zmiri-strict-provenance` because integer-to-pointer
+  casts are not supported in this mode, but that may change in the future.
 * `-Zmiri-force-page-size=<num>` overrides the default page size for an architecture, in multiples of 1k.
   `4` is default for most targets. This value should always be a power of 2 and nonzero.
 * `-Zmiri-unique-is-unique` performs additional aliasing checks for `core::ptr::Unique` to ensure
