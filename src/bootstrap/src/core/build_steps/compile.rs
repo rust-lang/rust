@@ -57,41 +57,20 @@ impl Std {
         }
     }
 
-    pub fn force_recompile(compiler: Compiler, target: TargetSelection) -> Self {
-        Self {
-            target,
-            compiler,
-            crates: Default::default(),
-            force_recompile: true,
-            extra_rust_args: &[],
-            is_for_mir_opt_tests: false,
-        }
+    pub fn force_recompile(mut self, force_recompile: bool) -> Self {
+        self.force_recompile = force_recompile;
+        self
     }
 
-    pub fn new_for_mir_opt_tests(compiler: Compiler, target: TargetSelection) -> Self {
-        Self {
-            target,
-            compiler,
-            crates: Default::default(),
-            force_recompile: false,
-            extra_rust_args: &[],
-            is_for_mir_opt_tests: true,
-        }
+    #[allow(clippy::wrong_self_convention)]
+    pub fn is_for_mir_opt_tests(mut self, is_for_mir_opt_tests: bool) -> Self {
+        self.is_for_mir_opt_tests = is_for_mir_opt_tests;
+        self
     }
 
-    pub fn new_with_extra_rust_args(
-        compiler: Compiler,
-        target: TargetSelection,
-        extra_rust_args: &'static [&'static str],
-    ) -> Self {
-        Self {
-            target,
-            compiler,
-            crates: Default::default(),
-            force_recompile: false,
-            extra_rust_args,
-            is_for_mir_opt_tests: false,
-        }
+    pub fn extra_rust_args(mut self, extra_rust_args: &'static [&'static str]) -> Self {
+        self.extra_rust_args = extra_rust_args;
+        self
     }
 
     fn copy_extra_objects(
