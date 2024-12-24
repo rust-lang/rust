@@ -2678,7 +2678,14 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateTy
                 "cdylib" => CrateType::Cdylib,
                 "bin" => CrateType::Executable,
                 "proc-macro" => CrateType::ProcMacro,
-                _ => return Err(format!("unknown crate type: `{part}`")),
+                _ => {
+                    return Err(format!(
+                        "unknown crate type: `{part}`, expected one of: {display}",
+                        display =
+                            ["lib", "rlib", "staticlib", "dylib", "cdylib", "bin", "proc-macro"]
+                                .join(", ")
+                    ));
+                }
             };
             if !crate_types.contains(&new_part) {
                 crate_types.push(new_part)
