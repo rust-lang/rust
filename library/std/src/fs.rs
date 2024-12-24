@@ -346,7 +346,14 @@ pub fn read_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
 #[stable(feature = "fs_read_write_bytes", since = "1.26.0")]
 pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result<()> {
     fn inner(path: &Path, contents: &[u8]) -> io::Result<()> {
-        File::create(path)?.write_all(contents)
+        // As an optimization we don't truncate.
+        // Instead we overwrite the existing content and then set the file length
+        // to the number of written bytes (whether or not writing succeeds).
+        let mut f = OpenOptions::new().write(true).create(true).open(path)?;
+        let r = f.write_all(contents);
+        let r2 = f.stream_position().and_then(|pos| f.set_len(pos));
+        // Return the most pertinent error, if any.
+        if r.is_err() { r } else { r2 }
     }
     inner(path.as_ref(), contents.as_ref())
 }
