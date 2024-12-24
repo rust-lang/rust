@@ -316,19 +316,31 @@ impl File {
                 && api::get_last_error() == WinError::ALREADY_EXISTS
             {
                 unsafe {
-                    // This originally used `FileAllocationInfo` instead of
-                    // `FileEndOfFileInfo` but that wasn't supported by WINE.
-                    // It's arguable which fits the semantics of `OpenOptions`
-                    // better so let's just use the more widely supported method.
-                    let eof = c::FILE_END_OF_FILE_INFO { EndOfFile: 0 };
+                    // This first tries `FileAllocationInfo` but falls back to
+                    // `FileEndOfFileInfo` in order to support WINE.
+                    // If WINE gains support for FileAllocationInfo, we should
+                    // remove the fallback.
+                    let alloc = c::FILE_ALLOCATION_INFO { AllocationSize: 0 };
                     let result = c::SetFileInformationByHandle(
                         handle.as_raw_handle(),
                         c::FileEndOfFileInfo,
-                        (&raw const eof).cast::<c_void>(),
-                        mem::size_of::<c::FILE_END_OF_FILE_INFO>() as u32,
+                        (&raw const alloc).cast::<c_void>(),
+                        mem::size_of::<c::FILE_ALLOCATION_INFO>() as u32,
                     );
                     if result == 0 {
-                        return Err(io::Error::last_os_error());
+                        if api::get_last_error().code != 0 {
+                            panic!("FILE_ALLOCATION_INFO failed!!!");
+                        }
+                        let eof = c::FILE_END_OF_FILE_INFO { EndOfFile: 0 };
+                        let result = c::SetFileInformationByHandle(
+                            handle.as_raw_handle(),
+                            c::FileEndOfFileInfo,
+                            (&raw const eof).cast::<c_void>(),
+                            mem::size_of::<c::FILE_END_OF_FILE_INFO>() as u32,
+                        );
+                        if result == 0 {
+                            return Err(io::Error::last_os_error());
+                        }
                     }
                 }
             }
