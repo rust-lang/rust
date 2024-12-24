@@ -800,8 +800,8 @@ impl FunctionBody {
             let local_ref =
                 match name_ref.and_then(|name_ref| NameRefClass::classify(sema, &name_ref)) {
                     Some(
-                        NameRefClass::Definition(Definition::Local(local_ref))
-                        | NameRefClass::FieldShorthand { local_ref, field_ref: _ },
+                        NameRefClass::Definition(Definition::Local(local_ref), _)
+                        | NameRefClass::FieldShorthand { local_ref, field_ref: _, adt_subst: _ },
                     ) => local_ref,
                     _ => return,
                 };

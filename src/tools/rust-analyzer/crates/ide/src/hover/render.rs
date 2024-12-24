@@ -5,7 +5,7 @@ use either::Either;
 use hir::{
     db::ExpandDatabase, Adt, AsAssocItem, AsExternAssocItem, AssocItemContainer, CaptureKind,
     DynCompatibilityViolation, HasCrate, HasSource, HirDisplay, Layout, LayoutError,
-    MethodViolationCode, Name, Semantics, Trait, Type, TypeInfo,
+    MethodViolationCode, Name, Semantics, Symbol, Trait, Type, TypeInfo,
 };
 use ide_db::{
     base_db::SourceDatabase,
@@ -27,7 +27,7 @@ use syntax::{algo, ast, match_ast, AstNode, AstToken, Direction, SyntaxToken, T}
 
 use crate::{
     doc_links::{remove_links, rewrite_links},
-    hover::{notable_traits, walk_and_push_ty},
+    hover::{notable_traits, walk_and_push_ty, SubstTyLen},
     interpret::render_const_eval_error,
     HoverAction, HoverConfig, HoverResult, Markup, MemoryLayoutHoverConfig,
     MemoryLayoutHoverRenderKind,
@@ -274,7 +274,7 @@ pub(super) fn keyword(
     let markup = process_markup(
         sema.db,
         Definition::Module(doc_owner),
-        &markup(Some(docs.into()), description, None, None),
+        &markup(Some(docs.into()), description, None, None, String::new()),
         config,
     );
     Some(HoverResult { markup, actions })
@@ -421,6 +421,7 @@ pub(super) fn definition(
     notable_traits: &[(Trait, Vec<(Option<Type>, Name)>)],
     macro_arm: Option<u32>,
     hovered_definition: bool,
+    subst_types: Option<Vec<(Symbol, Type)>>,
     config: &HoverConfig,
     edition: Edition,
 ) -> Markup {
@@ -604,7 +605,38 @@ pub(super) fn definition(
         desc.push_str(&value);
     }
 
-    markup(docs.map(Into::into), desc, extra.is_empty().not().then_some(extra), mod_path)
+    let subst_types = match config.max_subst_ty_len {
+        SubstTyLen::Hide => String::new(),
+        SubstTyLen::LimitTo(_) | SubstTyLen::Unlimited => {
+            let limit = if let SubstTyLen::LimitTo(limit) = config.max_subst_ty_len {
+                Some(limit)
+            } else {
+                None
+            };
+            subst_types
+                .map(|subst_type| {
+                    subst_type
+                        .iter()
+                        .filter(|(_, ty)| !ty.is_unknown())
+                        .format_with(", ", |(name, ty), fmt| {
+                            fmt(&format_args!(
+                                "`{name}` = `{}`",
+                                ty.display_truncated(db, limit, edition)
+                            ))
+                        })
+                        .to_string()
+                })
+                .unwrap_or_default()
+        }
+    };
+
+    markup(
+        docs.map(Into::into),
+        desc,
+        extra.is_empty().not().then_some(extra),
+        mod_path,
+        subst_types,
+    )
 }
 
 pub(super) fn literal(
@@ -872,6 +904,7 @@ fn markup(
     rust: String,
     extra: Option<String>,
     mod_path: Option<String>,
+    subst_types: String,
 ) -> Markup {
     let mut buf = String::new();
 
@@ -884,6 +917,10 @@ fn markup(
 
     if let Some(extra) = extra {
         buf.push_str(&extra);
+    }
+
+    if !subst_types.is_empty() {
+        format_to!(buf, "\n___\n{subst_types}");
     }
 
     if let Some(doc) = docs {

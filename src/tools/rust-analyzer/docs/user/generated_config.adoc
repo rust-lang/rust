@@ -513,6 +513,15 @@ Whether to show keyword hover popups. Only applies when
 --
 Use markdown syntax for links on hover.
 --
+[[rust-analyzer.hover.maxSubstitutionLength]]rust-analyzer.hover.maxSubstitutionLength (default: `20`)::
++
+--
+Whether to show what types are used as generic arguments in calls etc. on hover, and what is their max length to show such types, beyond it they will be shown with ellipsis.
+
+This can take three values: `null` means "unlimited", the string `"hide"` means to not show generic substitutions at all, and a number means to limit them to X characters.
+
+The default is 20 characters.
+--
 [[rust-analyzer.hover.memoryLayout.alignment]]rust-analyzer.hover.memoryLayout.alignment (default: `"hexadecimal"`)::
 +
 --

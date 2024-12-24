@@ -1548,6 +1548,29 @@
             {
                 "title": "hover",
                 "properties": {
+                    "rust-analyzer.hover.maxSubstitutionLength": {
+                        "markdownDescription": "Whether to show what types are used as generic arguments in calls etc. on hover, and what is their max length to show such types, beyond it they will be shown with ellipsis.\n\nThis can take three values: `null` means \"unlimited\", the string `\"hide\"` means to not show generic substitutions at all, and a number means to limit them to X characters.\n\nThe default is 20 characters.",
+                        "default": 20,
+                        "anyOf": [
+                            {
+                                "type": "null"
+                            },
+                            {
+                                "type": "string",
+                                "enum": [
+                                    "hide"
+                                ]
+                            },
+                            {
+                                "type": "integer"
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                "title": "hover",
+                "properties": {
                     "rust-analyzer.hover.memoryLayout.alignment": {
                         "markdownDescription": "How to render the align information in a memory layout hover.",
                         "default": "hexadecimal",
