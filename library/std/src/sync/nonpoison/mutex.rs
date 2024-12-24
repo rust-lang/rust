@@ -37,7 +37,6 @@ use crate::sys::sync as sys;
 ///         // The shared state can only be accessed once the lock is held.
 ///         // Our non-atomic increment is safe because we're the only thread
 ///         // which can access the shared state when the lock is held.
-///         
 ///         let mut data = data.lock();
 ///         *data += 1;
 ///         if *data == N {
