@@ -1,5 +1,5 @@
 //@ run-pass
-#![feature(const_trait_impl, ptr_alignment_type, ascii_char, f16, f128)]
+#![feature(const_trait_impl, ptr_alignment_type, ascii_char, f16, f128, sync_unsafe_cell)]
 #![allow(dead_code)]
 // core::default
 const UNIT: () = Default::default();
@@ -32,8 +32,13 @@ const ALIGNMENT: std::ptr::Alignment = Default::default();
 // core::slice
 const SLICE: &[()] = Default::default();
 const MUT_SLICE: &mut [()] = Default::default();
-//core::str
+// core::str
 const STR: &str = Default::default();
 const MUT_STR: &mut str = Default::default();
+// core::cell
+const CELL: std::cell::Cell<()> = Default::default();
+const REF_CELL: std::cell::RefCell<()> = Default::default();
+const UNSAFE_CELL: std::cell::UnsafeCell<()> = Default::default();
+const SYNC_UNSAFE_CELL: std::cell::SyncUnsafeCell<()> = Default::default();
 
 fn main() {}
