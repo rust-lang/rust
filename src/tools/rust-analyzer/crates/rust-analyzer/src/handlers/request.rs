@@ -32,7 +32,7 @@ use paths::Utf8PathBuf;
 use project_model::{CargoWorkspace, ManifestPath, ProjectWorkspaceKind, TargetKind};
 use serde_json::json;
 use stdx::{format_to, never};
-use syntax::{algo, ast, AstNode, TextRange, TextSize};
+use syntax::{TextRange, TextSize};
 use triomphe::Arc;
 use vfs::{AbsPath, AbsPathBuf, FileId, VfsPath};
 
@@ -933,39 +933,31 @@ pub(crate) fn handle_runnables(
     let offset = params.position.and_then(|it| from_proto::offset(&line_index, it).ok());
     let target_spec = TargetSpec::for_file(&snap, file_id)?;
 
-    let expect_test = match offset {
-        Some(offset) => {
-            let source_file = snap.analysis.parse(file_id)?;
-            algo::find_node_at_offset::<ast::MacroCall>(source_file.syntax(), offset)
-                .and_then(|it| it.path()?.segment()?.name_ref())
-                .map_or(false, |it| it.text() == "expect" || it.text() == "expect_file")
-        }
-        None => false,
-    };
-
     let mut res = Vec::new();
     for runnable in snap.analysis.runnables(file_id)? {
-        if should_skip_for_offset(&runnable, offset) {
+        if should_skip_for_offset(&runnable, offset)
+            || should_skip_target(&runnable, target_spec.as_ref())
+        {
             continue;
         }
-        if should_skip_target(&runnable, target_spec.as_ref()) {
-            continue;
-        }
+
+        let update_test = runnable.update_test;
         if let Some(mut runnable) = to_proto::runnable(&snap, runnable)? {
-            if expect_test {
-                if let lsp_ext::RunnableArgs::Cargo(r) = &mut runnable.args {
-                    runnable.label = format!("{} + expect", runnable.label);
-                    r.environment.insert("UPDATE_EXPECT".to_owned(), "1".to_owned());
-                    if let Some(TargetSpec::Cargo(CargoTargetSpec {
-                        sysroot_root: Some(sysroot_root),
-                        ..
-                    })) = &target_spec
-                    {
-                        r.environment
-                            .insert("RUSTC_TOOLCHAIN".to_owned(), sysroot_root.to_string());
-                    }
-                }
+            if let Some(runnable) = to_proto::make_update_runnable(&runnable, &update_test.label())
+            {
+                res.push(runnable);
             }
+
+            if let lsp_ext::RunnableArgs::Cargo(r) = &mut runnable.args {
+                if let Some(TargetSpec::Cargo(CargoTargetSpec {
+                    sysroot_root: Some(sysroot_root),
+                    ..
+                })) = &target_spec
+                {
+                    r.environment.insert("RUSTC_TOOLCHAIN".to_owned(), sysroot_root.to_string());
+                }
+            };
+
             res.push(runnable);
         }
     }
@@ -2143,11 +2135,15 @@ fn runnable_action_links(
     }
 
     let client_commands_config = snap.config.client_commands();
-    if !(client_commands_config.run_single || client_commands_config.debug_single) {
+    if !(client_commands_config.run_single
+        || client_commands_config.debug_single
+        || client_commands_config.update_single)
+    {
         return None;
     }
 
     let title = runnable.title();
+    let update_test = runnable.update_test;
     let r = to_proto::runnable(snap, runnable).ok()??;
 
     let mut group = lsp_ext::CommandLinkGroup::default();
@@ -2159,7 +2155,13 @@ fn runnable_action_links(
 
     if hover_actions_config.debug && client_commands_config.debug_single {
         let dbg_command = to_proto::command::debug_single(&r);
-        group.commands.push(to_command_link(dbg_command, r.label));
+        group.commands.push(to_command_link(dbg_command, r.label.clone()));
+    }
+
+    if client_commands_config.update_single {
+        if let Some(update_command) = to_proto::command::update_single(&r, &update_test.label()) {
+            group.commands.push(to_command_link(update_command, r.label.clone()));
+        }
     }
 
     Some(group)
