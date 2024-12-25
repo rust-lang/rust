@@ -119,6 +119,9 @@ config_data! {
         /// Whether to show `Run` action. Only applies when
         /// `#rust-analyzer.hover.actions.enable#` is set.
         hover_actions_run_enable: bool             = true,
+        /// Whether to show `Update Test` action. Only applies when
+        /// `#rust-analyzer.hover.actions.enable#` and `#rust-analyzer.hover.actions.run.enable#` are set.
+        hover_actions_updateTest_enable: bool     = true,
 
         /// Whether to show documentation on hover.
         hover_documentation_enable: bool           = true,
@@ -1227,6 +1230,7 @@ pub struct HoverActionsConfig {
     pub references: bool,
     pub run: bool,
     pub debug: bool,
+    pub update_test: bool,
     pub goto_type_def: bool,
 }
 
@@ -1236,6 +1240,7 @@ impl HoverActionsConfig {
         references: false,
         run: false,
         debug: false,
+        update_test: false,
         goto_type_def: false,
     };
 
@@ -1248,7 +1253,7 @@ impl HoverActionsConfig {
     }
 
     pub fn runnable(&self) -> bool {
-        self.run || self.debug
+        self.run || self.debug || self.update_test
     }
 }
 
@@ -1522,6 +1527,9 @@ impl Config {
             references: enable && self.hover_actions_references_enable().to_owned(),
             run: enable && self.hover_actions_run_enable().to_owned(),
             debug: enable && self.hover_actions_debug_enable().to_owned(),
+            update_test: enable
+                && self.hover_actions_run_enable().to_owned()
+                && self.hover_actions_updateTest_enable().to_owned(),
             goto_type_def: enable && self.hover_actions_gotoTypeDef_enable().to_owned(),
         }
     }

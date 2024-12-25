@@ -2158,7 +2158,7 @@ fn runnable_action_links(
         group.commands.push(to_command_link(dbg_command, r.label.clone()));
     }
 
-    if client_commands_config.update_single {
+    if hover_actions_config.update_test && client_commands_config.update_single {
         if let Some(update_command) = to_proto::command::update_single(&r, &update_test.label()) {
             group.commands.push(to_command_link(update_command, r.label.clone()));
         }

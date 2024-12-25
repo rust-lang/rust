@@ -1523,6 +1523,16 @@
             {
                 "title": "hover",
                 "properties": {
+                    "rust-analyzer.hover.actions.updateTest.enable": {
+                        "markdownDescription": "Whether to show `Update Test` action. Only applies when\n`#rust-analyzer.hover.actions.enable#` and `#rust-analyzer.hover.actions.run.enable#` are set.",
+                        "default": true,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "hover",
+                "properties": {
                     "rust-analyzer.hover.documentation.enable": {
                         "markdownDescription": "Whether to show documentation on hover.",
                         "default": true,
