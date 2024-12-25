@@ -1093,6 +1093,7 @@ symbols! {
         import,
         import_name_type,
         import_shadowing,
+        import_trait_associated_functions,
         imported_main,
         in_band_lifetimes,
         include,
