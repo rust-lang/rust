@@ -20,6 +20,7 @@ use itertools::Itertools;
 use paths::{Utf8Component, Utf8Prefix};
 use semver::VersionReq;
 use serde_json::to_value;
+use syntax::SmolStr;
 use vfs::AbsPath;
 
 use crate::{
@@ -1567,6 +1568,7 @@ pub(crate) fn code_lens(
             let line_index = snap.file_line_index(run.nav.file_id)?;
             let annotation_range = range(&line_index, annotation.range);
 
+            let update_test = run.update_test;
             let title = run.title();
             let can_debug = match run.kind {
                 ide::RunnableKind::DocTest { .. } => false,
@@ -1601,6 +1603,17 @@ pub(crate) fn code_lens(
                             command: Some(command),
                             data: None,
                         })
+                    }
+                    if lens_config.update_test && client_commands_config.run_single {
+                        let label = update_test.label();
+                        if let Some(r) = make_update_runnable(&r, &label) {
+                            let command = command::run_single(&r, label.unwrap().as_str());
+                            acc.push(lsp_types::CodeLens {
+                                range: annotation_range,
+                                command: Some(command),
+                                data: None,
+                            })
+                        }
                     }
                 }
 
@@ -1786,7 +1799,7 @@ pub(crate) mod command {
 
     pub(crate) fn debug_single(runnable: &lsp_ext::Runnable) -> lsp_types::Command {
         lsp_types::Command {
-            title: "Debug".into(),
+            title: "⚙\u{fe0e} Debug".into(),
             command: "rust-analyzer.debugSingle".into(),
             arguments: Some(vec![to_value(runnable).unwrap()]),
         }
@@ -1836,6 +1849,29 @@ pub(crate) mod command {
             arguments: None,
         }
     }
+}
+
+fn make_update_runnable(
+    runnable: &lsp_ext::Runnable,
+    label: &Option<SmolStr>,
+) -> Option<lsp_ext::Runnable> {
+    if !matches!(runnable.args, lsp_ext::RunnableArgs::Cargo(_)) {
+        return None;
+    }
+    let label = label.as_ref()?;
+
+    let mut runnable = runnable.clone();
+    runnable.label = format!("{} + {}", runnable.label, label);
+
+    let lsp_ext::RunnableArgs::Cargo(r) = &mut runnable.args else {
+        unreachable!();
+    };
+
+    let environment_vars =
+        [("UPDATE_EXPECT", "1"), ("INSTA_UPDATE", "always"), ("SNAPSHOTS", "overwrite")];
+    r.environment.extend(environment_vars.into_iter().map(|(k, v)| (k.to_owned(), v.to_owned())));
+
+    Some(runnable)
 }
 
 pub(crate) fn implementation_title(count: usize) -> String {

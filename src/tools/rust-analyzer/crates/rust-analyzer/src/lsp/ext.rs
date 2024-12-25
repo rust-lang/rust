@@ -427,14 +427,14 @@ impl Request for Runnables {
     const METHOD: &'static str = "experimental/runnables";
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct RunnablesParams {
     pub text_document: TextDocumentIdentifier,
     pub position: Option<Position>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Runnable {
     pub label: String,
@@ -444,7 +444,7 @@ pub struct Runnable {
     pub args: RunnableArgs,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 #[serde(untagged)]
 pub enum RunnableArgs {
@@ -452,14 +452,14 @@ pub enum RunnableArgs {
     Shell(ShellRunnableArgs),
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum RunnableKind {
     Cargo,
     Shell,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct CargoRunnableArgs {
     #[serde(skip_serializing_if = "FxHashMap::is_empty")]
@@ -475,7 +475,7 @@ pub struct CargoRunnableArgs {
     pub executable_args: Vec<String>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ShellRunnableArgs {
     #[serde(skip_serializing_if = "FxHashMap::is_empty")]

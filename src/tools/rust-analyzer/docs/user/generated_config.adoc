@@ -808,6 +808,12 @@ Only applies when `#rust-analyzer.lens.enable#` is set.
 Whether to show `Run` lens. Only applies when
 `#rust-analyzer.lens.enable#` is set.
 --
+[[rust-analyzer.lens.update.test.enable]]rust-analyzer.lens.update.test.enable (default: `true`)::
++
+--
+Whether to show `Update Test` lens. Only applies when
+`#rust-analyzer.lens.enable#` and `#rust-analyzer.lens.run.enable#` are set.
+--
 [[rust-analyzer.linkedProjects]]rust-analyzer.linkedProjects (default: `[]`)::
 +
 --

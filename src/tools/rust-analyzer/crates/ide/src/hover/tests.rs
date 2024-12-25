@@ -3213,6 +3213,11 @@ fn foo_$0test() {}
                             },
                         },
                         cfg: None,
+                        update_test: UpdateTest {
+                            expect_test: false,
+                            insta: false,
+                            snapbox: false,
+                        },
                     },
                 ),
             ]
@@ -3230,28 +3235,33 @@ mod tests$0 {
 }
 "#,
         expect![[r#"
-                [
-                    Runnable(
-                        Runnable {
-                            use_name_in_title: false,
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    0,
-                                ),
-                                full_range: 0..46,
-                                focus_range: 4..9,
-                                name: "tests",
-                                kind: Module,
-                                description: "mod tests",
-                            },
-                            kind: TestMod {
-                                path: "tests",
-                            },
-                            cfg: None,
+            [
+                Runnable(
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 0..46,
+                            focus_range: 4..9,
+                            name: "tests",
+                            kind: Module,
+                            description: "mod tests",
                         },
-                    ),
-                ]
-            "#]],
+                        kind: TestMod {
+                            path: "tests",
+                        },
+                        cfg: None,
+                        update_test: UpdateTest {
+                            expect_test: false,
+                            insta: false,
+                            snapbox: false,
+                        },
+                    },
+                ),
+            ]
+        "#]],
     );
 }
 

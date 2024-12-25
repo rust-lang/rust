@@ -243,6 +243,9 @@ config_data! {
         /// Whether to show `Run` lens. Only applies when
         /// `#rust-analyzer.lens.enable#` is set.
         lens_run_enable: bool              = true,
+        /// Whether to show `Update Test` lens. Only applies when
+        /// `#rust-analyzer.lens.enable#` and `#rust-analyzer.lens.run.enable#` are set.
+        lens_update_test_enable: bool = true,
 
         /// Disable project auto-discovery in favor of explicitly specified set
         /// of projects.
@@ -1161,6 +1164,7 @@ pub struct LensConfig {
     // runnables
     pub run: bool,
     pub debug: bool,
+    pub update_test: bool,
     pub interpret: bool,
 
     // implementations
@@ -1196,6 +1200,7 @@ impl LensConfig {
     pub fn any(&self) -> bool {
         self.run
             || self.debug
+            || self.update_test
             || self.implementations
             || self.method_refs
             || self.refs_adt
@@ -1208,7 +1213,7 @@ impl LensConfig {
     }
 
     pub fn runnable(&self) -> bool {
-        self.run || self.debug
+        self.run || self.debug || self.update_test
     }
 
     pub fn references(&self) -> bool {
@@ -2120,6 +2125,9 @@ impl Config {
         LensConfig {
             run: *self.lens_enable() && *self.lens_run_enable(),
             debug: *self.lens_enable() && *self.lens_debug_enable(),
+            update_test: *self.lens_enable()
+                && *self.lens_update_test_enable()
+                && *self.lens_run_enable(),
             interpret: *self.lens_enable() && *self.lens_run_enable() && *self.interpret_tests(),
             implementations: *self.lens_enable() && *self.lens_implementations_enable(),
             method_refs: *self.lens_enable() && *self.lens_references_method_enable(),

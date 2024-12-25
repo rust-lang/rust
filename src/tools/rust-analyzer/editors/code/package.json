@@ -407,6 +407,11 @@
                             "$rustc"
                         ],
                         "markdownDescription": "Problem matchers to use for `rust-analyzer.run` command, eg `[\"$rustc\", \"$rust-panic\"]`."
+                    },
+                    "rust-analyzer.runnables.askBeforeUpdateTest": {
+                        "type": "boolean",
+                        "default": true,
+                        "markdownDescription": "Ask before updating the test when running it."
                     }
                 }
             },
@@ -2290,6 +2295,16 @@
                 "properties": {
                     "rust-analyzer.lens.run.enable": {
                         "markdownDescription": "Whether to show `Run` lens. Only applies when\n`#rust-analyzer.lens.enable#` is set.",
+                        "default": true,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "lens",
+                "properties": {
+                    "rust-analyzer.lens.update.test.enable": {
+                        "markdownDescription": "Whether to show `Update Test` lens. Only applies when\n`#rust-analyzer.lens.enable#` and `#rust-analyzer.lens.run.enable#` are set.",
                         "default": true,
                         "type": "boolean"
                     }
