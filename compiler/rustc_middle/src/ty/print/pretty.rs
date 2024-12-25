@@ -841,6 +841,12 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     p!(
                         " upvar_tys=",
                         print(args.as_coroutine().tupled_upvars_ty()),
+                        " resume_ty=",
+                        print(args.as_coroutine().resume_ty()),
+                        " yield_ty=",
+                        print(args.as_coroutine().yield_ty()),
+                        " return_ty=",
+                        print(args.as_coroutine().return_ty()),
                         " witness=",
                         print(args.as_coroutine().witness())
                     );
