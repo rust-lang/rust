@@ -984,8 +984,8 @@ impl Config {
         let (directive_name, _value) = line.split_once(':')?;
 
         let kind = match directive_name {
-            "normalize-stdout-test" => NormalizeKind::Stdout,
-            "normalize-stderr-test" => NormalizeKind::Stderr,
+            "normalize-stdout" => NormalizeKind::Stdout,
+            "normalize-stderr" => NormalizeKind::Stderr,
             "normalize-stderr-32bit" => NormalizeKind::Stderr32bit,
             "normalize-stderr-64bit" => NormalizeKind::Stderr64bit,
             _ => return None,

@@ -6,7 +6,7 @@
 
 // See also: repr-c-int-dead-variants.rs
 
-//@ normalize-stderr-test: "pref: Align\([1-8] bytes\)" -> "pref: $$SOME_ALIGN"
+//@ normalize-stderr: "pref: Align\([1-8] bytes\)" -> "pref: $$SOME_ALIGN"
 
 // This test depends on the value of the `c_enum_min_bits` target option.
 // As there's no way to actually check it from UI test, we only run this test on a subset of archs.

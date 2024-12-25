@@ -6,8 +6,8 @@
 // windows.
 //
 //@ ignore-windows
-//@ normalize-stderr-test: "os error \d+" -> "os error $$ERR"
-//@ normalize-stderr-test: "commandline-argfile-missing.args:[^(]*" -> "commandline-argfile-missing.args: $$FILE_MISSING "
+//@ normalize-stderr: "os error \d+" -> "os error $$ERR"
+//@ normalize-stderr: "commandline-argfile-missing.args:[^(]*" -> "commandline-argfile-missing.args: $$FILE_MISSING "
 //@ compile-flags: --cfg cmdline_set @{{src-base}}/argfile/commandline-argfile-missing.args
 
 #[cfg(not(cmdline_set))]

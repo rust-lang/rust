@@ -3,8 +3,8 @@
 //@ failure-status: 101
 //@ aux-build:pub_trait.rs
 //@ compile-flags: --test --test-args --test-threads=1
-//@ normalize-stdout-test: "tests/rustdoc-ui/doctest" -> "$$DIR"
-//@ normalize-stdout-test: "finished in \d+\.\d+s" -> "finished in $$TIME"
+//@ normalize-stdout: "tests/rustdoc-ui/doctest" -> "$$DIR"
+//@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
 
 #![doc(test(attr(deny(non_local_definitions))))]
 #![doc(test(attr(allow(dead_code))))]
