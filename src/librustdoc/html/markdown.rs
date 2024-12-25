@@ -480,7 +480,7 @@ impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Iterator for SpannedLinkReplacer<
     type Item = SpannedEvent<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let Some((mut event, range)) = self.iter.next() else { return None };
+        let (mut event, range) = self.iter.next()?;
         self.inner.handle_event(&mut event);
         // Yield the modified event
         Some((event, range))
@@ -2039,7 +2039,7 @@ impl IdMap {
                 let candidate = candidate.to_string();
                 if is_default_id(&candidate) {
                     let id = format!("{}-{}", candidate, 1);
-                    self.map.insert(candidate.into(), 2);
+                    self.map.insert(candidate, 2);
                     id
                 } else {
                     candidate
@@ -2052,7 +2052,7 @@ impl IdMap {
             }
         };
 
-        self.map.insert(id.clone().into(), 1);
+        self.map.insert(id.clone(), 1);
         id
     }
 

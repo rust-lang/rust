@@ -1977,7 +1977,7 @@ fn resolution_failure(
                         }
 
                         if !path_str.contains("::") {
-                            if disambiguator.map_or(true, |d| d.ns() == MacroNS)
+                            if disambiguator.is_none_or(|d| d.ns() == MacroNS)
                                 && collector
                                     .cx
                                     .tcx
