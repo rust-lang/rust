@@ -1,4 +1,4 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target, base};
+use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, StackProbeType, Target, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::linux::opts();
@@ -7,6 +7,7 @@ pub(crate) fn target() -> Target {
     base.stack_probes = StackProbeType::Inline;
     base.linker_flavor = LinkerFlavor::Gnu(Cc::No, Lld::Yes);
     base.linker = Some("rust-lld".into());
+    base.panic_strategy = PanicStrategy::Abort;
 
     Target {
         llvm_target: "x86_64-unknown-linux-none".into(),
@@ -14,7 +15,7 @@ pub(crate) fn target() -> Target {
             description: None,
             tier: None,
             host_tools: None,
-            std: Some(true),
+            std: Some(false),
         },
         pointer_width: 64,
         data_layout:
