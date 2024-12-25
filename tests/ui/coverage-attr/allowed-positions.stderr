@@ -8,15 +8,17 @@ LL |     let _closure_expr = #[coverage(off)] || ();
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0788]: attribute should be applied to a function definition or closure
+error[E0788]: coverage attribute not allowed here
   --> $DIR/allowed-positions.rs:14:1
    |
 LL | #[coverage(off)]
    | ^^^^^^^^^^^^^^^^
 LL | type MyTypeAlias = ();
-   | ---------------------- not a function or closure
+   | ---------------------- not a function, impl block, or module
+   |
+   = help: coverage attribute can be applied to a function (with body), impl block, or module
 
-error[E0788]: attribute should be applied to a function definition or closure
+error[E0788]: coverage attribute not allowed here
   --> $DIR/allowed-positions.rs:17:1
    |
 LL |   #[coverage(off)]
@@ -27,9 +29,11 @@ LL | |     const TRAIT_ASSOC_CONST: u32;
 ...  |
 LL | |     fn trait_assoc_fn();
 LL | | }
-   | |_- not a function or closure
+   | |_- not a function, impl block, or module
+   |
+   = help: coverage attribute can be applied to a function (with body), impl block, or module
 
-error[E0788]: attribute should be applied to a function definition or closure
+error[E0788]: coverage attribute not allowed here
   --> $DIR/allowed-positions.rs:61:1
    |
 LL |   #[coverage(off)]
@@ -38,119 +42,149 @@ LL | / struct MyStruct {
 LL | |     #[coverage(off)]
 LL | |     field: u32,
 LL | | }
-   | |_- not a function or closure
+   | |_- not a function, impl block, or module
+   |
+   = help: coverage attribute can be applied to a function (with body), impl block, or module
 
-error[E0788]: attribute should be applied to a function definition or closure
+error[E0788]: coverage attribute not allowed here
   --> $DIR/allowed-positions.rs:63:5
    |
 LL |     #[coverage(off)]
    |     ^^^^^^^^^^^^^^^^
 LL |     field: u32,
-   |     ---------- not a function or closure
+   |     ---------- not a function, impl block, or module
+   |
+   = help: coverage attribute can be applied to a function (with body), impl block, or module
 
-error[E0788]: attribute should be applied to a function definition or closure
+error[E0788]: coverage attribute not allowed here
   --> $DIR/allowed-positions.rs:88:5
    |
 LL |     #[coverage(off)]
    |     ^^^^^^^^^^^^^^^^
 LL |     let _ = ();
-   |     ----------- not a function or closure
+   |     ----------- not a function, impl block, or module
+   |
+   = help: coverage attribute can be applied to a function (with body), impl block, or module
 
-error[E0788]: attribute should be applied to a function definition or closure
+error[E0788]: coverage attribute not allowed here
   --> $DIR/allowed-positions.rs:94:5
    |
 LL |     #[coverage(off)]
    |     ^^^^^^^^^^^^^^^^
 LL |     let _let_closure = || ();
-   |     ------------------------- not a function or closure
+   |     ------------------------- not a function, impl block, or module
+   |
+   = help: coverage attribute can be applied to a function (with body), impl block, or module
 
-error[E0788]: attribute should be applied to a function definition or closure
+error[E0788]: coverage attribute not allowed here
   --> $DIR/allowed-positions.rs:110:9
    |
 LL |         #[coverage(off)]
    |         ^^^^^^^^^^^^^^^^
 LL |         () => (),
-   |         -------- not a function or closure
+   |         -------- not a function, impl block, or module
+   |
+   = help: coverage attribute can be applied to a function (with body), impl block, or module
 
-error[E0788]: attribute should be applied to a function definition or closure
+error[E0788]: coverage attribute not allowed here
   --> $DIR/allowed-positions.rs:114:5
    |
 LL |     #[coverage(off)]
    |     ^^^^^^^^^^^^^^^^
 LL |     return ();
-   |     --------- not a function or closure
+   |     --------- not a function, impl block, or module
+   |
+   = help: coverage attribute can be applied to a function (with body), impl block, or module
 
-error[E0788]: attribute should be applied to a function definition or closure
+error[E0788]: coverage attribute not allowed here
   --> $DIR/allowed-positions.rs:19:5
    |
 LL |     #[coverage(off)]
    |     ^^^^^^^^^^^^^^^^
 LL |     const TRAIT_ASSOC_CONST: u32;
-   |     ----------------------------- not a function or closure
+   |     ----------------------------- not a function, impl block, or module
+   |
+   = help: coverage attribute can be applied to a function (with body), impl block, or module
 
-error[E0788]: attribute should be applied to a function definition or closure
+error[E0788]: coverage attribute not allowed here
   --> $DIR/allowed-positions.rs:22:5
    |
 LL |     #[coverage(off)]
    |     ^^^^^^^^^^^^^^^^
 LL |     type TraitAssocType;
-   |     -------------------- not a function or closure
+   |     -------------------- not a function, impl block, or module
+   |
+   = help: coverage attribute can be applied to a function (with body), impl block, or module
 
-error[E0788]: attribute should be applied to a function definition or closure
+error[E0788]: coverage attribute not allowed here
   --> $DIR/allowed-positions.rs:25:5
    |
 LL |     #[coverage(off)]
    |     ^^^^^^^^^^^^^^^^
 LL |     fn trait_method(&self);
-   |     ----------------------- not a function or closure
+   |     ----------------------- function has no body
+   |
+   = help: coverage attribute can be applied to a function (with body), impl block, or module
 
-error[E0788]: attribute should be applied to a function definition or closure
+error[E0788]: coverage attribute not allowed here
   --> $DIR/allowed-positions.rs:31:5
    |
 LL |     #[coverage(off)]
    |     ^^^^^^^^^^^^^^^^
 LL |     fn trait_assoc_fn();
-   |     -------------------- not a function or closure
+   |     -------------------- function has no body
+   |
+   = help: coverage attribute can be applied to a function (with body), impl block, or module
 
-error[E0788]: attribute should be applied to a function definition or closure
+error[E0788]: coverage attribute not allowed here
   --> $DIR/allowed-positions.rs:39:5
    |
 LL |     #[coverage(off)]
    |     ^^^^^^^^^^^^^^^^
 LL |     type TraitAssocType = Self;
-   |     --------------------------- not a function or closure
+   |     --------------------------- not a function, impl block, or module
+   |
+   = help: coverage attribute can be applied to a function (with body), impl block, or module
 
-error[E0788]: attribute should be applied to a function definition or closure
+error[E0788]: coverage attribute not allowed here
   --> $DIR/allowed-positions.rs:56:5
    |
 LL |     #[coverage(off)]
    |     ^^^^^^^^^^^^^^^^
 LL |     type T = impl Copy;
-   |     ------------------- not a function or closure
+   |     ------------------- not a function, impl block, or module
+   |
+   = help: coverage attribute can be applied to a function (with body), impl block, or module
 
-error[E0788]: attribute should be applied to a function definition or closure
+error[E0788]: coverage attribute not allowed here
   --> $DIR/allowed-positions.rs:76:5
    |
 LL |     #[coverage(off)]
    |     ^^^^^^^^^^^^^^^^
 LL |     static X: u32;
-   |     -------------- not a function or closure
+   |     -------------- not a function, impl block, or module
+   |
+   = help: coverage attribute can be applied to a function (with body), impl block, or module
 
-error[E0788]: attribute should be applied to a function definition or closure
+error[E0788]: coverage attribute not allowed here
   --> $DIR/allowed-positions.rs:79:5
    |
 LL |     #[coverage(off)]
    |     ^^^^^^^^^^^^^^^^
 LL |     type T;
-   |     ------- not a function or closure
+   |     ------- not a function, impl block, or module
+   |
+   = help: coverage attribute can be applied to a function (with body), impl block, or module
 
-error[E0788]: attribute should be applied to a function definition or closure
+error[E0788]: coverage attribute not allowed here
   --> $DIR/allowed-positions.rs:82:5
    |
 LL |     #[coverage(off)]
    |     ^^^^^^^^^^^^^^^^
 LL |     fn foreign_fn();
-   |     ---------------- not a function or closure
+   |     ---------------- function has no body
+   |
+   = help: coverage attribute can be applied to a function (with body), impl block, or module
 
 error: aborting due to 18 previous errors
 
