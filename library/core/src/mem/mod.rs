@@ -730,7 +730,7 @@ pub unsafe fn uninitialized<T>() -> T {
 pub const fn swap<T>(x: &mut T, y: &mut T) {
     // SAFETY: `&mut` guarantees these are typed readable and writable
     // as well as non-overlapping.
-    unsafe { intrinsics::typed_swap(x, y) }
+    unsafe { intrinsics::typed_swap_nonoverlapping(x, y) }
 }
 
 /// Replaces `dest` with the default value of `T`, returning the previous `dest` value.

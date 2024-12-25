@@ -424,7 +424,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let result = self.raw_eq_intrinsic(&args[0], &args[1])?;
                 self.write_scalar(result, dest)?;
             }
-            sym::typed_swap => {
+            sym::typed_swap_nonoverlapping => {
                 self.typed_swap_intrinsic(&args[0], &args[1])?;
             }
 

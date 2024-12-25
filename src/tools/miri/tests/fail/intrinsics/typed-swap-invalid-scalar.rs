@@ -1,7 +1,7 @@
 #![feature(core_intrinsics)]
 #![feature(rustc_attrs)]
 
-use std::intrinsics::typed_swap;
+use std::intrinsics::typed_swap_nonoverlapping;
 use std::ptr::addr_of_mut;
 
 fn invalid_scalar() {
@@ -10,7 +10,7 @@ fn invalid_scalar() {
     unsafe {
         let a = addr_of_mut!(a).cast::<bool>();
         let b = addr_of_mut!(b).cast::<bool>();
-        typed_swap(a, b); //~ERROR: constructing invalid value
+        typed_swap_nonoverlapping(a, b); //~ERROR: constructing invalid value
     }
 }
 
