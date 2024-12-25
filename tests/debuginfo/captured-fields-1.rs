@@ -13,7 +13,7 @@
 // gdb-check:$3 = captured_fields_1::main::{closure_env#2} {_ref__my_ref: @0x[...]}
 // gdb-command:continue
 // gdb-command:print test
-// gdb-check:$4 = captured_fields_1::main::{closure_env#3} {my_ref: @0x[...]}
+// gdb-check:$4 = captured_fields_1::main::{closure_env#3} {my_ref: @0x[...]: captured_fields_1::MyStruct {my_field1: 11, my_field2: 22}}
 // gdb-command:continue
 // gdb-command:print test
 // gdb-check:$5 = captured_fields_1::main::{closure_env#4} {my_var__my_field2: 22}
