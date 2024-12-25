@@ -11,7 +11,7 @@
 #[coverage(off)]
 mod submod {}
 
-#[coverage(off)] //~ ERROR [E0788]
+#[coverage(off)] //~ ERROR coverage attribute not allowed here [E0788]
 type MyTypeAlias = ();
 
 #[coverage(off)] //~ ERROR [E0788]
