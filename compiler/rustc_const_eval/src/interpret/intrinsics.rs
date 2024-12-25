@@ -649,7 +649,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let kind = MemoryKind::Stack;
         let temp = self.allocate(left.layout, kind)?;
         self.copy_op(&left, &temp)?;
-        self.copy_op(&right, &left)?;
+        self.copy_op(&right, &left)?; // this checks that they are non-overlapping
         self.copy_op(&temp, &right)?;
         self.deallocate_ptr(temp.ptr(), None, kind)?;
         interp_ok(())
