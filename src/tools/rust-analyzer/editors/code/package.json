@@ -2313,7 +2313,7 @@
             {
                 "title": "lens",
                 "properties": {
-                    "rust-analyzer.lens.update.test.enable": {
+                    "rust-analyzer.lens.updateTest.enable": {
                         "markdownDescription": "Whether to show `Update Test` lens. Only applies when\n`#rust-analyzer.lens.enable#` and `#rust-analyzer.lens.run.enable#` are set.",
                         "default": true,
                         "type": "boolean"

@@ -814,7 +814,7 @@ Only applies when `#rust-analyzer.lens.enable#` is set.
 Whether to show `Run` lens. Only applies when
 `#rust-analyzer.lens.enable#` is set.
 --
-[[rust-analyzer.lens.update.test.enable]]rust-analyzer.lens.update.test.enable (default: `true`)::
+[[rust-analyzer.lens.updateTest.enable]]rust-analyzer.lens.updateTest.enable (default: `true`)::
 +
 --
 Whether to show `Update Test` lens. Only applies when

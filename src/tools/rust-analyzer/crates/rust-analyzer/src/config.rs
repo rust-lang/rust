@@ -248,7 +248,7 @@ config_data! {
         lens_run_enable: bool              = true,
         /// Whether to show `Update Test` lens. Only applies when
         /// `#rust-analyzer.lens.enable#` and `#rust-analyzer.lens.run.enable#` are set.
-        lens_update_test_enable: bool = true,
+        lens_updateTest_enable: bool = true,
 
         /// Disable project auto-discovery in favor of explicitly specified set
         /// of projects.
@@ -2134,7 +2134,7 @@ impl Config {
             run: *self.lens_enable() && *self.lens_run_enable(),
             debug: *self.lens_enable() && *self.lens_debug_enable(),
             update_test: *self.lens_enable()
-                && *self.lens_update_test_enable()
+                && *self.lens_updateTest_enable()
                 && *self.lens_run_enable(),
             interpret: *self.lens_enable() && *self.lens_run_enable() && *self.interpret_tests(),
             implementations: *self.lens_enable() && *self.lens_implementations_enable(),
