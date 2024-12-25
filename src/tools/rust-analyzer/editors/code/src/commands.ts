@@ -1155,18 +1155,18 @@ export function runSingle(ctx: CtxInit): Cmd {
 
         if (isUpdatingTest(runnable) && ctx.config.askBeforeUpdateTest) {
             const selection = await vscode.window.showInformationMessage(
-                'rust-analyzer',
-                { detail: 'Do you want to update tests?', modal: true },
-                'Update Now',
-                'Update (and Don\'t ask again)',
+                "rust-analyzer",
+                { detail: "Do you want to update tests?", modal: true },
+                "Update Now",
+                "Update (and Don't ask again)",
             );
 
-            if (selection !== 'Update Now' && selection !== 'Update (and Don\'t ask again)') {
+            if (selection !== "Update Now" && selection !== "Update (and Don't ask again)") {
                 return;
             }
 
-            if (selection === 'Update (and Don\'t ask again)') {
-                ctx.config.setAskBeforeUpdateTest(false);
+            if (selection === "Update (and Don't ask again)") {
+                await ctx.config.setAskBeforeUpdateTest(false);
             }
         }
 
