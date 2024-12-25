@@ -286,8 +286,8 @@
 //@ [mips_unknown_linux_uclibc] compile-flags: --target mips-unknown-linux-uclibc
 //@ [mips_unknown_linux_uclibc] needs-llvm-components: mips
 //@ revisions: mips_zkm_zkvm_elf
-//@ [mips_unknown_linux_uclibc] compile-flags: --target mips-zkm-zkvm-elf
-//@ [mips_unknown_linux_uclibc] needs-llvm-components: mips
+//@ [mips_zkm_zkvm_elf] compile-flags: --target mips-zkm-zkvm-elf
+//@ [mips_zkm_zkvm_elf] needs-llvm-components: mips
 //@ revisions: mipsel_sony_psp
 //@ [mipsel_sony_psp] compile-flags: --target mipsel-sony-psp
 //@ [mipsel_sony_psp] needs-llvm-components: mips
