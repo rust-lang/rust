@@ -111,7 +111,6 @@
 #![feature(array_ptr_get)]
 #![feature(asm_experimental_arch)]
 #![feature(const_eval_select)]
-#![feature(const_typed_swap)]
 #![feature(core_intrinsics)]
 #![feature(coverage_attribute)]
 #![feature(internal_impls_macro)]
