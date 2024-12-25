@@ -145,12 +145,13 @@ impl TestCx<'_> {
                 self.fatal_proc_rec("test run succeeded!", &proc_res);
             }
 
+            let output_to_check = self.get_output(&proc_res);
             if !self.props.error_patterns.is_empty() || !self.props.regex_error_patterns.is_empty()
             {
                 // "// error-pattern" comments
-                let output_to_check = self.get_output(&proc_res);
                 self.check_all_error_patterns(&output_to_check, &proc_res, pm);
             }
+            self.check_forbid_output(&output_to_check, &proc_res)
         }
 
         debug!(
@@ -181,11 +182,12 @@ impl TestCx<'_> {
             );
             self.fatal(&msg);
         }
+        let output_to_check = self.get_output(&proc_res);
         if check_patterns {
             // "// error-pattern" comments
-            let output_to_check = self.get_output(&proc_res);
             self.check_all_error_patterns(&output_to_check, &proc_res, pm);
         }
+        self.check_forbid_output(&output_to_check, &proc_res);
 
         if self.props.run_rustfix && self.config.compare_mode.is_none() {
             // And finally, compile the fixed code and make sure it both
