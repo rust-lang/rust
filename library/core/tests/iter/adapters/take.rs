@@ -255,7 +255,7 @@ fn test_reverse_on_zip() {
 
     let zipped_iter = vec_1.iter().zip(core::iter::repeat(0).take(20));
 
-    // Cannot call rev here for automatic reversed zip constuction
+    // Cannot call rev here for automatic reversed zip construction
     for (&one, zero) in zipped_iter.rev() {
         assert_eq!((1, 0), (one, zero));
     }
