@@ -41,7 +41,7 @@
 // gdb-command:continue
 
 // OWNED MOVED
-// gdb-command:print *&self
+// gdb-command:print *self
 // gdb-check:$13 = method_on_generic_struct::Struct<f64> {x: 1234.5}
 // gdb-command:print arg1
 // gdb-check:$14 = -9

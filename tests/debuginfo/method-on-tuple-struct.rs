@@ -41,7 +41,7 @@
 // gdb-command:continue
 
 // OWNED MOVED
-// gdb-command:print *&self
+// gdb-command:print *self
 // gdb-check:$13 = method_on_tuple_struct::TupleStruct (200, -200.5)
 // gdb-command:print arg1
 // gdb-check:$14 = -9

@@ -46,7 +46,7 @@
 // gdb-command:continue
 
 // OWNED MOVED
-// gdb-command:print *&self
+// gdb-command:print *self
 // gdb-check:$13 = method_on_enum::Enum::Variant1{x: 1799, y: 1799}
 // gdb-command:print arg1
 // gdb-check:$14 = -9

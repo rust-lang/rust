@@ -64,7 +64,7 @@ fn main() {
     let ref_ptr = &const_ptr;
     let ref_mut_ptr = &mut_ptr;
 
-    _zzz(); // break
+    _zzz(); // #break
 }
 
 fn _zzz() {()}

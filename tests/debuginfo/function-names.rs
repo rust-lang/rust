@@ -29,7 +29,7 @@
 // gdb-command:info functions -q function_names::.*::{closure.*
 // gdb-check:[...]static fn function_names::generic_func::{closure#0}<i32>(const function_names::generic_func::{closure_env#0}<i32> &);
 // gdb-check:[...]static fn function_names::main::{closure#0}(const function_names::main::{closure_env#0} &);
-// gdb-check:[...]static fn function_names::{impl#2}::impl_function::{closure#0}<i32, i32>(*const function_names::{impl#2}::impl_function::{closure_env#0}<i32, i32> &);
+// gdb-check:[...]static fn function_names::{impl#2}::impl_function::{closure#0}<i32, i32>(const function_names::{impl#2}::impl_function::{closure_env#0}<i32, i32> &);
 
 // Coroutine
 // Coroutines don't seem to appear in GDB's symbol table.
