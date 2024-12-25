@@ -432,21 +432,34 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
     /// Checks that `#[coverage(..)]` is applied to a function/closure/method,
     /// or to an impl block or module.
-    fn check_coverage(&self, attr: &Attribute, span: Span, target: Target) {
+    fn check_coverage(&self, attr: &Attribute, target_span: Span, target: Target) {
+        let mut not_fn_impl_mod = None;
+        let mut no_body = None;
+
         match target {
             Target::Fn
             | Target::Closure
             | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent)
             | Target::Impl
-            | Target::Mod => {}
+            | Target::Mod => return,
+
+            // These are "functions", but they aren't allowed because they don't
+            // have a body, so the usual explanation would be confusing.
+            Target::Method(MethodKind::Trait { body: false }) | Target::ForeignFn => {
+                no_body = Some(target_span);
+            }
 
             _ => {
-                self.dcx().emit_err(errors::CoverageNotFnOrClosure {
-                    attr_span: attr.span,
-                    defn_span: span,
-                });
+                not_fn_impl_mod = Some(target_span);
             }
         }
+
+        self.dcx().emit_err(errors::CoverageAttributeNotAllowed {
+            attr_span: attr.span,
+            not_fn_impl_mod,
+            no_body,
+            help: (),
+        });
     }
 
     /// Checks that `#[optimize(..)]` is applied to a function/closure/method,
