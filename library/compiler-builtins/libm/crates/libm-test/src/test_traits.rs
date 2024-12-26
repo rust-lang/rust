@@ -22,8 +22,6 @@ pub struct CheckCtx {
     pub base_name: BaseName,
     /// Function name.
     pub fn_name: &'static str,
-    /// Return the unsuffixed version of the function name.
-    pub base_name_str: &'static str,
     /// Source of truth for tests.
     pub basis: CheckBasis,
 }
@@ -36,7 +34,6 @@ impl CheckCtx {
             fn_ident,
             fn_name: fn_ident.as_str(),
             base_name: fn_ident.base_name(),
-            base_name_str: fn_ident.base_name().as_str(),
             basis,
         };
         ret.ulp = crate::default_ulp(&ret);

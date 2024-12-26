@@ -7,7 +7,7 @@ use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
 use super::CachedInput;
-use crate::{CheckCtx, GenerateInput};
+use crate::{BaseName, CheckCtx, GenerateInput};
 
 const SEED: [u8; 32] = *b"3.141592653589793238462643383279";
 
@@ -110,7 +110,6 @@ pub fn get_test_cases<RustArgs>(ctx: &CheckCtx) -> impl Iterator<Item = RustArgs
 where
     CachedInput: GenerateInput<RustArgs>,
 {
-    let inputs =
-        if ctx.fn_name == "jn" || ctx.fn_name == "jnf" { &TEST_CASES_JN } else { &TEST_CASES };
+    let inputs = if ctx.base_name == BaseName::Jn { &TEST_CASES_JN } else { &TEST_CASES };
     inputs.get_cases()
 }
