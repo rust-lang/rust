@@ -291,6 +291,9 @@ define_Conf! {
     /// Whether `expect` should be allowed in test functions or `#[cfg(test)]`
     #[lints(expect_used)]
     allow_expect_in_tests: bool = false,
+    /// Whether `indexing_slicing` should be allowed in test functions or `#[cfg(test)]`
+    #[lints(indexing_slicing)]
+    allow_indexing_slicing_in_tests: bool = false,
     /// Whether to allow mixed uninlined format args, e.g. `format!("{} {}", a, foo.bar)`
     #[lints(uninlined_format_args)]
     allow_mixed_uninlined_format_args: bool = true,

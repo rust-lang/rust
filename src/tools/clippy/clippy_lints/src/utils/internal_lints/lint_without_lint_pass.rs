@@ -3,6 +3,7 @@ use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::{is_lint_allowed, match_def_path, paths};
 use rustc_ast::ast::LitKind;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_hir::intravisit::Visitor;
@@ -13,7 +14,6 @@ use rustc_session::impl_lint_pass;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, sym};
-use {rustc_ast as ast, rustc_hir as hir};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -249,11 +249,11 @@ fn check_invalid_clippy_version_attribute(cx: &LateContext<'_>, item: &'_ Item<'
 pub(super) fn extract_clippy_version_value(cx: &LateContext<'_>, item: &'_ Item<'_>) -> Option<Symbol> {
     let attrs = cx.tcx.hir().attrs(item.hir_id());
     attrs.iter().find_map(|attr| {
-        if let ast::AttrKind::Normal(attr_kind) = &attr.kind
+        if let hir::AttrKind::Normal(attr_kind) = &attr.kind
             // Identify attribute
-            && let [tool_name, attr_name] = &attr_kind.item.path.segments[..]
-            && tool_name.ident.name == sym::clippy
-            && attr_name.ident.name == sym::version
+            && let [tool_name, attr_name] = &attr_kind.path.segments[..]
+            && tool_name.name == sym::clippy
+            && attr_name.name == sym::version
             && let Some(version) = attr.value_str()
         {
             Some(version)
