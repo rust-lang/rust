@@ -365,6 +365,7 @@ _arguments "${_arguments_options[@]}" : \
 '--force-rerun[rerun tests even if the inputs are unchanged]' \
 '--only-modified[only run tests that result has been changed]' \
 '--rustfix-coverage[enable this to generate a Rustfix coverage file, which is saved in \`/<build_base>/rustfix_missing_coverage.txt\`]' \
+'--no-capture[don'\''t capture stdout/stderr of tests]' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
 '-i[use incremental compilation]' \

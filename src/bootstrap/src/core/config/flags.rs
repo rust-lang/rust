@@ -388,6 +388,9 @@ pub enum Subcommand {
         /// enable this to generate a Rustfix coverage file, which is saved in
         /// `/<build_base>/rustfix_missing_coverage.txt`
         rustfix_coverage: bool,
+        #[arg(long)]
+        /// don't capture stdout/stderr of tests
+        no_capture: bool,
     },
     /// Build and run some test suites *in Miri*
     Miri {
@@ -559,6 +562,13 @@ impl Subcommand {
     pub fn force_rerun(&self) -> bool {
         match *self {
             Subcommand::Test { force_rerun, .. } => force_rerun,
+            _ => false,
+        }
+    }
+
+    pub fn no_capture(&self) -> bool {
+        match *self {
+            Subcommand::Test { no_capture, .. } => no_capture,
             _ => false,
         }
     }
