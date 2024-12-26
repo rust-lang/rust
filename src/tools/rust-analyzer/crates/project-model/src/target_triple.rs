@@ -23,11 +23,8 @@ pub(super) fn get(
     let sysroot = match config {
         TargetTipleConfig::Cargo(sysroot, cargo_toml) => {
             match cargo_config_build_target(cargo_toml, extra_env, sysroot) {
-                Ok(it) => return Ok(it),
-                Err(e) => {
-                    tracing::warn!("failed to run `cargo rustc --print cfg`, falling back to invoking rustc directly: {e}");
-                    sysroot
-                }
+                Some(it) => return Ok(it),
+                None => sysroot,
             }
         }
         TargetTipleConfig::Rustc(sysroot) => sysroot,
@@ -58,7 +55,7 @@ fn cargo_config_build_target(
     cargo_toml: &ManifestPath,
     extra_env: &FxHashMap<String, String>,
     sysroot: &Sysroot,
-) -> anyhow::Result<Vec<String>> {
+) -> Option<Vec<String>> {
     let mut cargo_config = sysroot.tool(Tool::Cargo);
     cargo_config.envs(extra_env);
     cargo_config
@@ -68,7 +65,9 @@ fn cargo_config_build_target(
     // if successful we receive `build.target = "target-triple"`
     // or `build.target = ["<target 1>", ..]`
     tracing::debug!("Discovering cargo config target by {:?}", cargo_config);
-    utf8_stdout(cargo_config).and_then(parse_output_cargo_config_build_target)
+    // this might be `error: config value `build.target` is not set` in which case we
+    // don't wanna log the error
+    utf8_stdout(cargo_config).and_then(parse_output_cargo_config_build_target).ok()
 }
 
 fn parse_output_cargo_config_build_target(stdout: String) -> anyhow::Result<Vec<String>> {
