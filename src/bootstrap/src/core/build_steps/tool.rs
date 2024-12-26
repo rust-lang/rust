@@ -5,7 +5,7 @@ use crate::core::build_steps::toolstate::ToolState;
 use crate::core::build_steps::{compile, llvm};
 use crate::core::builder;
 use crate::core::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step};
-use crate::core::config::TargetSelection;
+use crate::core::config::{DebuginfoLevel, TargetSelection};
 use crate::utils::channel::GitInfo;
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{add_dylib_path, exe, t};
@@ -671,6 +671,11 @@ impl Step for Rustdoc {
 
         // don't create a stage0-sysroot/bin directory.
         if target_compiler.stage > 0 {
+            if builder.config.rust_debuginfo_level_tools == DebuginfoLevel::None {
+                // Due to LTO a lot of debug info from C++ dependencies such as jemalloc can make it into
+                // our final binaries
+                compile::strip_debug(builder, target, &tool_rustdoc);
+            }
             let bin_rustdoc = bin_rustdoc();
             builder.copy_link(&tool_rustdoc, &bin_rustdoc);
             bin_rustdoc
