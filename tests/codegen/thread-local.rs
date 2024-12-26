@@ -1,6 +1,6 @@
 //@ compile-flags: -O
 //@ aux-build:thread_local_aux.rs
-//@ ignore-windows FIXME(#84933)
+//@ ignore-windows FIXME(#134939)
 //@ ignore-wasm globals are used instead of thread locals
 //@ ignore-emscripten globals are used instead of thread locals
 //@ ignore-android does not use #[thread_local]
