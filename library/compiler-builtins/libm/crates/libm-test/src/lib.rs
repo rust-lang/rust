@@ -25,7 +25,7 @@ pub use libm::support::{Float, Int, IntTy, MinInt};
 pub use num::{FloatExt, logspace};
 pub use op::{BaseName, FloatTy, Identifier, MathOp, OpCFn, OpFTy, OpRustFn, OpRustRet, Ty};
 pub use precision::{MaybeOverride, SpecialCase, default_ulp};
-pub use run_cfg::{CheckBasis, CheckCtx};
+pub use run_cfg::{CheckBasis, CheckCtx, EXTENSIVE_ENV, GeneratorKind};
 pub use test_traits::{CheckOutput, GenerateInput, Hex, TupleCall};
 
 /// Result type for tests is usually from `anyhow`. Most times there is no success value to

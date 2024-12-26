@@ -12,6 +12,7 @@ use crate::{BaseName, CheckCtx, GenerateInput};
 const SEED: [u8; 32] = *b"3.141592653589793238462643383279";
 
 /// Number of tests to run.
+// FIXME(ntests): clean this up when possible
 const NTESTS: usize = {
     if cfg!(optimizations_enabled) {
         if crate::emulated()
