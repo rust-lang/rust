@@ -160,14 +160,14 @@ Certain parts of the execution are picked randomly by Miri, such as the exact ba
 allocations are stored at and the interleaving of concurrently executing threads. Sometimes, it can
 be useful to explore multiple different execution, e.g. to make sure that your code does not depend
 on incidental "super-alignment" of new allocations and to test different thread interleavings.
-This can be done with the `--many-seeds` flag:
+This can be done with the `-Zmiri-many-seeds` flag:
 
 ```
-cargo miri test --many-seeds # tries the seeds in 0..64
-cargo miri test --many-seeds=0..16
+MIRIFLAGS="-Zmiri-many-seeds" cargo miri test # tries the seeds in 0..64
+MIRIFLAGS="-Zmiri-many-seeds=0..16" cargo miri test
 ```
 
-The default of 64 different seeds is quite slow, so you probably want to specify a smaller range.
+The default of 64 different seeds can be quite slow, so you often want to specify a smaller range.
 
 ### Running Miri on CI
 
@@ -294,9 +294,10 @@ environment variable. We first document the most relevant and most commonly used
   will always fail and `0.0` means it will never fail. Note that setting it to
   `1.0` will likely cause hangs, since it means programs using
   `compare_exchange_weak` cannot make progress.
-* `-Zmiri-disable-isolation` disables host isolation.  As a consequence,
+* `-Zmiri-disable-isolation` disables host isolation. As a consequence,
   the program has access to host resources such as environment variables, file
   systems, and randomness.
+  This overwrites a previous `-Zmiri-isolation-error`.
 * `-Zmiri-disable-leak-backtraces` disables backtraces reports for memory leaks. By default, a
   backtrace is captured for every allocation when it is created, just in case it leaks. This incurs
   some memory overhead to store data that is almost never used. This flag is implied by
@@ -317,6 +318,15 @@ environment variable. We first document the most relevant and most commonly used
   execution with a "permission denied" error being returned to the program.
   `warn` prints a full backtrace each time that happens; `warn-nobacktrace` is less
   verbose and shown at most once per operation. `hide` hides the warning entirely.
+  This overwrites a previous `-Zmiri-disable-isolation`.
+* `-Zmiri-many-seeds=[<from>]..<to>` runs the program multiple times with different seeds for Miri's
+  RNG. With different seeds, Miri will make different choices to resolve non-determinism such as the
+  order in which concurrent threads are scheduled, or the exact addresses assigned to allocations.
+  This is useful to find bugs that only occur under particular interleavings of concurrent threads,
+  or that otherwise depend on non-determinism. If the `<from>` part is skipped, it defaults to `0`.
+  Can be used without a value; in that case the range defaults to `0..64`.
+* `-Zmiri-many-seeds-keep-going` tells Miri to really try all the seeds in the given range, even if
+  a failing seed has already been found. This is useful to determine which fraction of seeds fails.
 * `-Zmiri-num-cpus` states the number of available CPUs to be reported by miri. By default, the
   number of available CPUs is `1`. Note that this flag does not affect how miri handles threads in
   any way.
@@ -339,8 +349,8 @@ environment variable. We first document the most relevant and most commonly used
   can increase test coverage by running Miri multiple times with different seeds.
 * `-Zmiri-strict-provenance` enables [strict
   provenance](https://github.com/rust-lang/rust/issues/95228) checking in Miri. This means that
-  casting an integer to a pointer yields a result with 'invalid' provenance, i.e., with provenance
-  that cannot be used for any memory access.
+  casting an integer to a pointer will stop execution because the provenance of the pointer
+  cannot be determined.
 * `-Zmiri-symbolic-alignment-check` makes the alignment check more strict.  By default, alignment is
   checked by casting the pointer to an integer, and making sure that is a multiple of the alignment.
   This can lead to cases where a program passes the alignment check by pure chance, because things
@@ -429,6 +439,8 @@ to Miri failing to detect cases of undefined behavior in a program.
   of Rust will be stricter than Tree Borrows. In other words, if you use Tree Borrows,
   even if your code is accepted today, it might be declared UB in the future.
   This is much less likely with Stacked Borrows.
+  Using Tree Borrows currently implies `-Zmiri-strict-provenance` because integer-to-pointer
+  casts are not supported in this mode, but that may change in the future.
 * `-Zmiri-force-page-size=<num>` overrides the default page size for an architecture, in multiples of 1k.
   `4` is default for most targets. This value should always be a power of 2 and nonzero.
 * `-Zmiri-unique-is-unique` performs additional aliasing checks for `core::ptr::Unique` to ensure
