@@ -100,7 +100,12 @@ impl TestCx<'_> {
                 )
             });
 
-            errors += self.compare_output("fixed", &fixed_code, &fixed_code, &expected_fixed);
+            if self
+                .compare_output("fixed", &fixed_code, &fixed_code, &expected_fixed)
+                .should_error()
+            {
+                errors += 1;
+            }
         } else if !expected_fixed.is_empty() {
             panic!(
                 "the `//@ run-rustfix` directive wasn't found but a `*.fixed` \
