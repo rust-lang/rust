@@ -294,9 +294,10 @@ environment variable. We first document the most relevant and most commonly used
   will always fail and `0.0` means it will never fail. Note that setting it to
   `1.0` will likely cause hangs, since it means programs using
   `compare_exchange_weak` cannot make progress.
-* `-Zmiri-disable-isolation` disables host isolation.  As a consequence,
+* `-Zmiri-disable-isolation` disables host isolation. As a consequence,
   the program has access to host resources such as environment variables, file
   systems, and randomness.
+  This overwrites a previous `-Zmiri-isolation-error`.
 * `-Zmiri-disable-leak-backtraces` disables backtraces reports for memory leaks. By default, a
   backtrace is captured for every allocation when it is created, just in case it leaks. This incurs
   some memory overhead to store data that is almost never used. This flag is implied by
@@ -317,6 +318,7 @@ environment variable. We first document the most relevant and most commonly used
   execution with a "permission denied" error being returned to the program.
   `warn` prints a full backtrace each time that happens; `warn-nobacktrace` is less
   verbose and shown at most once per operation. `hide` hides the warning entirely.
+  This overwrites a previous `-Zmiri-disable-isolation`.
 * `-Zmiri-many-seeds=[<from>]..<to>` runs the program multiple times with different seeds for Miri's
   RNG. With different seeds, Miri will make different choices to resolve non-determinism such as the
   order in which concurrent threads are scheduled, or the exact addresses assigned to allocations.
@@ -347,8 +349,8 @@ environment variable. We first document the most relevant and most commonly used
   can increase test coverage by running Miri multiple times with different seeds.
 * `-Zmiri-strict-provenance` enables [strict
   provenance](https://github.com/rust-lang/rust/issues/95228) checking in Miri. This means that
-  casting an integer to a pointer yields a result with 'invalid' provenance, i.e., with provenance
-  that cannot be used for any memory access.
+  casting an integer to a pointer will stop execution because the provenance of the pointer
+  cannot be determined.
 * `-Zmiri-symbolic-alignment-check` makes the alignment check more strict.  By default, alignment is
   checked by casting the pointer to an integer, and making sure that is a multiple of the alignment.
   This can lead to cases where a program passes the alignment check by pure chance, because things
@@ -437,6 +439,8 @@ to Miri failing to detect cases of undefined behavior in a program.
   of Rust will be stricter than Tree Borrows. In other words, if you use Tree Borrows,
   even if your code is accepted today, it might be declared UB in the future.
   This is much less likely with Stacked Borrows.
+  Using Tree Borrows currently implies `-Zmiri-strict-provenance` because integer-to-pointer
+  casts are not supported in this mode, but that may change in the future.
 * `-Zmiri-force-page-size=<num>` overrides the default page size for an architecture, in multiples of 1k.
   `4` is default for most targets. This value should always be a power of 2 and nonzero.
 * `-Zmiri-unique-is-unique` performs additional aliasing checks for `core::ptr::Unique` to ensure

@@ -514,8 +514,6 @@ fn main() {
 
     let mut rustc_args = vec![];
     let mut after_dashdash = false;
-    // If user has explicitly enabled/disabled isolation
-    let mut isolation_enabled: Option<bool> = None;
 
     // Note that we require values to be given with `=`, not with a space.
     // This matches how rustc parses `-Z`.
@@ -539,6 +537,7 @@ fn main() {
             miri_config.borrow_tracker = None;
         } else if arg == "-Zmiri-tree-borrows" {
             miri_config.borrow_tracker = Some(BorrowTrackerMethod::TreeBorrows);
+            miri_config.provenance_mode = ProvenanceMode::Strict;
         } else if arg == "-Zmiri-unique-is-unique" {
             miri_config.unique_is_unique = true;
         } else if arg == "-Zmiri-disable-data-race-detector" {
@@ -548,19 +547,7 @@ fn main() {
             miri_config.check_alignment = miri::AlignmentCheck::None;
         } else if arg == "-Zmiri-symbolic-alignment-check" {
             miri_config.check_alignment = miri::AlignmentCheck::Symbolic;
-        } else if arg == "-Zmiri-disable-abi-check" {
-            eprintln!(
-                "WARNING: the flag `-Zmiri-disable-abi-check` no longer has any effect; \
-                    ABI checks cannot be disabled any more"
-            );
         } else if arg == "-Zmiri-disable-isolation" {
-            if matches!(isolation_enabled, Some(true)) {
-                show_error!(
-                    "-Zmiri-disable-isolation cannot be used along with -Zmiri-isolation-error"
-                );
-            } else {
-                isolation_enabled = Some(false);
-            }
             miri_config.isolated_op = miri::IsolatedOp::Allow;
         } else if arg == "-Zmiri-disable-leak-backtraces" {
             miri_config.collect_leak_backtraces = false;
@@ -569,14 +556,6 @@ fn main() {
         } else if arg == "-Zmiri-track-weak-memory-loads" {
             miri_config.track_outdated_loads = true;
         } else if let Some(param) = arg.strip_prefix("-Zmiri-isolation-error=") {
-            if matches!(isolation_enabled, Some(false)) {
-                show_error!(
-                    "-Zmiri-isolation-error cannot be used along with -Zmiri-disable-isolation"
-                );
-            } else {
-                isolation_enabled = Some(true);
-            }
-
             miri_config.isolated_op = match param {
                 "abort" => miri::IsolatedOp::Reject(miri::RejectOpWith::Abort),
                 "hide" => miri::IsolatedOp::Reject(miri::RejectOpWith::NoWarning),
@@ -622,10 +601,6 @@ fn main() {
             many_seeds = Some(0..64);
         } else if arg == "-Zmiri-many-seeds-keep-going" {
             many_seeds_keep_going = true;
-        } else if let Some(_param) = arg.strip_prefix("-Zmiri-env-exclude=") {
-            show_error!(
-                "`-Zmiri-env-exclude` has been removed; unset env vars before starting Miri instead"
-            );
         } else if let Some(param) = arg.strip_prefix("-Zmiri-env-forward=") {
             miri_config.forwarded_env_vars.push(param.to_owned());
         } else if let Some(param) = arg.strip_prefix("-Zmiri-env-set=") {
@@ -728,13 +703,20 @@ fn main() {
             "-Zmiri-unique-is-unique only has an effect when -Zmiri-tree-borrows is also used"
         );
     }
-    // Tree Borrows + permissive provenance does not work.
-    if miri_config.provenance_mode == ProvenanceMode::Permissive
-        && matches!(miri_config.borrow_tracker, Some(BorrowTrackerMethod::TreeBorrows))
-    {
-        show_error!(
-            "Tree Borrows does not support integer-to-pointer casts, and is hence not compatible with permissive provenance"
-        );
+    // Tree Borrows implies strict provenance, and is not compatible with native calls.
+    if matches!(miri_config.borrow_tracker, Some(BorrowTrackerMethod::TreeBorrows)) {
+        if miri_config.provenance_mode != ProvenanceMode::Strict {
+            show_error!(
+                "Tree Borrows does not support integer-to-pointer casts, and hence requires strict provenance"
+            );
+        }
+        if miri_config.native_lib.is_some() {
+            show_error!("Tree Borrows is not compatible with calling native functions");
+        }
+    }
+    // Native calls and strict provenance are not compatible.
+    if miri_config.native_lib.is_some() && miri_config.provenance_mode == ProvenanceMode::Strict {
+        show_error!("strict provenance is not compatible with calling native functions");
     }
     // You can set either one seed or many.
     if many_seeds.is_some() && miri_config.seed.is_some() {
