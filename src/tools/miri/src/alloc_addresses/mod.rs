@@ -9,7 +9,6 @@ use std::cmp::max;
 use rand::Rng;
 use rustc_abi::{Align, Size};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_span::Span;
 
 use self::reuse_pool::ReusePool;
 use crate::concurrency::VClock;
@@ -319,17 +318,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match global_state.provenance_mode {
             ProvenanceMode::Default => {
                 // The first time this happens at a particular location, print a warning.
-                thread_local! {
-                    // `Span` is non-`Send`, so we use a thread-local instead.
-                    static PAST_WARNINGS: RefCell<FxHashSet<Span>> = RefCell::default();
+                let mut int2ptr_warned = this.machine.int2ptr_warned.borrow_mut();
+                let first = int2ptr_warned.is_empty();
+                if int2ptr_warned.insert(this.cur_span()) {
+                    // Newly inserted, so first time we see this span.
+                    this.emit_diagnostic(NonHaltingDiagnostic::Int2Ptr { details: first });
                 }
-                PAST_WARNINGS.with_borrow_mut(|past_warnings| {
-                    let first = past_warnings.is_empty();
-                    if past_warnings.insert(this.cur_span()) {
-                        // Newly inserted, so first time we see this span.
-                        this.emit_diagnostic(NonHaltingDiagnostic::Int2Ptr { details: first });
-                    }
-                });
             }
             ProvenanceMode::Strict => {
                 throw_machine_stop!(TerminationInfo::Int2PtrWithStrictProvenance);

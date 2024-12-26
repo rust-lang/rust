@@ -3,7 +3,7 @@
 
 use std::any::Any;
 use std::borrow::Cow;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::hash_map::Entry;
 use std::path::Path;
 use std::{fmt, process};
@@ -595,6 +595,21 @@ pub struct MiriMachine<'tcx> {
 
     /// A cache of "data range" computations for unions (i.e., the offsets of non-padding bytes).
     union_data_ranges: FxHashMap<Ty<'tcx>, RangeSet>,
+
+    /// Caches the sanity-checks for various pthread primitives.
+    pub(crate) pthread_mutex_sanity: Cell<bool>,
+    pub(crate) pthread_rwlock_sanity: Cell<bool>,
+    pub(crate) pthread_condvar_sanity: Cell<bool>,
+
+    /// Remembers whether we already warned about an extern type with Stacked Borrows.
+    pub(crate) sb_extern_type_warned: Cell<bool>,
+    /// Remember whether we already warned about sharing memory with a native call.
+    #[cfg(unix)]
+    pub(crate) native_call_mem_warned: Cell<bool>,
+    /// Remembers which shims have already shown the warning about erroring in isolation.
+    pub(crate) reject_in_isolation_warned: RefCell<FxHashSet<String>>,
+    /// Remembers which int2ptr casts we have already warned about.
+    pub(crate) int2ptr_warned: RefCell<FxHashSet<Span>>,
 }
 
 impl<'tcx> MiriMachine<'tcx> {
@@ -732,6 +747,14 @@ impl<'tcx> MiriMachine<'tcx> {
             const_cache: RefCell::new(FxHashMap::default()),
             symbolic_alignment: RefCell::new(FxHashMap::default()),
             union_data_ranges: FxHashMap::default(),
+            pthread_mutex_sanity: Cell::new(false),
+            pthread_rwlock_sanity: Cell::new(false),
+            pthread_condvar_sanity: Cell::new(false),
+            sb_extern_type_warned: Cell::new(false),
+            #[cfg(unix)]
+            native_call_mem_warned: Cell::new(false),
+            reject_in_isolation_warned: Default::default(),
+            int2ptr_warned: Default::default(),
         }
     }
 
@@ -844,6 +867,14 @@ impl VisitProvenance for MiriMachine<'_> {
             const_cache: _,
             symbolic_alignment: _,
             union_data_ranges: _,
+            pthread_mutex_sanity: _,
+            pthread_rwlock_sanity: _,
+            pthread_condvar_sanity: _,
+            sb_extern_type_warned: _,
+            #[cfg(unix)]
+            native_call_mem_warned: _,
+            reject_in_isolation_warned: _,
+            int2ptr_warned: _,
         } = self;
 
         threads.visit_provenance(visit);
