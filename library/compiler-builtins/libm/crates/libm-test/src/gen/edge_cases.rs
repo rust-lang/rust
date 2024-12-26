@@ -3,7 +3,7 @@
 use libm::support::Float;
 
 use crate::domain::HasDomain;
-use crate::{FloatExt, MathOp};
+use crate::{CheckCtx, FloatExt, MathOp};
 
 /// Number of values near an interesting point to check.
 // FIXME(ntests): replace this with a more logical algorithm
@@ -14,7 +14,7 @@ const AROUND: usize = 100;
 const MAX_CHECK_POINTS: usize = 10;
 
 /// Create a list of values around interesting points (infinities, zeroes, NaNs).
-pub fn get_test_cases<Op, F>() -> impl Iterator<Item = (F,)>
+pub fn get_test_cases<Op, F>(_ctx: &CheckCtx) -> impl Iterator<Item = (F,)>
 where
     Op: MathOp<FTy = F> + HasDomain<F>,
     F: Float,

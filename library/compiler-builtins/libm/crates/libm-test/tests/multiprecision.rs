@@ -83,21 +83,21 @@ macro_rules! mp_domain_tests {
             $(#[$meta])*
             fn [< mp_edge_case_ $fn_name >]() {
                 type Op = libm_test::op::$fn_name::Routine;
-                domain_test_runner::<Op>(edge_cases::get_test_cases::<Op, _>());
+                domain_test_runner::<Op, _>(edge_cases::get_test_cases::<Op, _>);
             }
 
             #[test]
             $(#[$meta])*
             fn [< mp_logspace_ $fn_name >]() {
                 type Op = libm_test::op::$fn_name::Routine;
-                domain_test_runner::<Op>(domain_logspace::get_test_cases::<Op>());
+                domain_test_runner::<Op, _>(domain_logspace::get_test_cases::<Op>);
             }
         }
     };
 }
 
 /// Test a single routine against domaine-aware inputs.
-fn domain_test_runner<Op>(cases: impl Iterator<Item = (Op::FTy,)>)
+fn domain_test_runner<Op, I>(gen: impl FnOnce(&CheckCtx) -> I)
 where
     // Complicated generics...
     // The operation must take a single float argument (unary only)
@@ -108,9 +108,11 @@ where
     Op: HasDomain<Op::FTy>,
     // The single float argument tuple must be able to call the `RustFn` and return `RustRet`
     (OpFTy<Op>,): TupleCall<OpRustFn<Op>, Output = OpRustRet<Op>>,
+    I: Iterator<Item = (Op::FTy,)>,
 {
     let mut mp_vals = Op::new_mp();
     let ctx = CheckCtx::new(Op::IDENTIFIER, CheckBasis::Mpfr);
+    let cases = gen(&ctx);
 
     for input in cases {
         let mp_res = Op::run(&mut mp_vals, input);
