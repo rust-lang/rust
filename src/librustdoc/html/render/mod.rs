@@ -1974,7 +1974,7 @@ fn render_impl(
             .opt_doc_value()
             .map(|dox| {
                 Markdown {
-                    content: &*dox,
+                    content: &dox,
                     links: &i.impl_item.links(cx),
                     ids: &mut cx.id_map.borrow_mut(),
                     error_codes: cx.shared.codes,

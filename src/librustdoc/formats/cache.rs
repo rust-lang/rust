@@ -413,7 +413,7 @@ impl DocFolder for CacheBuilder<'_, '_> {
             let impl_item = Impl { impl_item: item };
             let impl_did = impl_item.def_id();
             let trait_did = impl_item.trait_did();
-            if trait_did.map_or(true, |d| self.cache.traits.contains_key(&d)) {
+            if trait_did.is_none_or(|d| self.cache.traits.contains_key(&d)) {
                 for did in dids {
                     if self.impl_ids.entry(did).or_default().insert(impl_did) {
                         self.cache.impls.entry(did).or_default().push(impl_item.clone());

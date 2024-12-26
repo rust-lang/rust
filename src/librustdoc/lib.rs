@@ -869,7 +869,7 @@ fn main_args(
             sess.dcx().fatal("Compilation failed, aborting rustdoc");
         }
 
-        rustc_interface::create_and_enter_global_ctxt(&compiler, krate, |tcx| {
+        rustc_interface::create_and_enter_global_ctxt(compiler, krate, |tcx| {
             let (krate, render_opts, mut cache) = sess.time("run_global_ctxt", || {
                 core::run_global_ctxt(tcx, show_coverage, render_options, output_format)
             });

@@ -894,7 +894,7 @@ fn clean_ty_generics<'tcx>(
 
         // Add back a `Sized` bound if there are no *trait* bounds remaining (incl. `?Sized`).
         // Since all potential trait bounds are at the front we can just check the first bound.
-        if bounds.first().map_or(true, |b| !b.is_trait_bound()) {
+        if bounds.first().is_none_or(|b| !b.is_trait_bound()) {
             bounds.insert(0, GenericBound::sized(cx));
         }
 
@@ -1811,7 +1811,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
         }
         TyKind::Slice(ty) => Slice(Box::new(clean_ty(ty, cx))),
         TyKind::Pat(ty, pat) => Type::Pat(Box::new(clean_ty(ty, cx)), format!("{pat:?}").into()),
-        TyKind::Array(ty, ref const_arg) => {
+        TyKind::Array(ty, const_arg) => {
             // NOTE(min_const_generics): We can't use `const_eval_poly` for constants
             // as we currently do not supply the parent generics to anonymous constants
             // but do allow `ConstKind::Param`.
@@ -2337,7 +2337,7 @@ fn clean_middle_opaque_bounds<'tcx>(
 
     // Add back a `Sized` bound if there are no *trait* bounds remaining (incl. `?Sized`).
     // Since all potential trait bounds are at the front we can just check the first bound.
-    if bounds.first().map_or(true, |b| !b.is_trait_bound()) {
+    if bounds.first().is_none_or(|b| !b.is_trait_bound()) {
         bounds.insert(0, GenericBound::sized(cx));
     }
 
