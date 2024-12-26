@@ -381,10 +381,10 @@ fn extend_type_not_partial_eq<'tcx>(
         adts_without_partialeq: FxHashSet<Span>,
         /// The user has written `impl PartialEq for Ty` which means it's non-structual,
         /// but we don't have a span to point at, so we'll just add them as a `note`.
-        manual: Vec<Ty<'tcx>>,
+        manual: FxHashSet<Ty<'tcx>>,
         /// The type has no `PartialEq` implementation, neither manual or derived, but
         /// we don't have a span to point at, so we'll just add them as a `note`.
-        without: Vec<Ty<'tcx>>,
+        without: FxHashSet<Ty<'tcx>>,
     }
 
     impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for UsedParamsNeedInstantiationVisitor<'tcx> {
@@ -408,10 +408,10 @@ fn extend_type_not_partial_eq<'tcx>(
                         self.adts_without_partialeq.insert(ty_def_span);
                     }
                     (true, false, _, _) => {
-                        self.manual.push(ty);
+                        self.manual.insert(ty);
                     }
                     (false, _, _, _) => {
-                        self.without.push(ty);
+                        self.without.insert(ty);
                     }
                     _ => {}
                 };
@@ -424,8 +424,8 @@ fn extend_type_not_partial_eq<'tcx>(
         typing_env,
         adts_with_manual_partialeq: FxHashSet::default(),
         adts_without_partialeq: FxHashSet::default(),
-        manual: vec![],
-        without: vec![],
+        manual: FxHashSet::default(),
+        without: FxHashSet::default(),
     };
     v.visit_ty(ty);
     #[allow(rustc::potential_query_instability)] // Span labels will be sorted by the rendering
@@ -439,11 +439,13 @@ fn extend_type_not_partial_eq<'tcx>(
             "must be annotated with `#[derive(PartialEq)]` to be usable in patterns",
         );
     }
+    #[allow(rustc::potential_query_instability)] // Span labels will be sorted by the rendering
     for ty in v.manual {
         err.note(format!(
             "`{ty}` must be annotated with `#[derive(PartialEq)]` to be usable in patterns, manual `impl`s are not sufficient; see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details"
         ));
     }
+    #[allow(rustc::potential_query_instability)] // Span labels will be sorted by the rendering
     for ty in v.without {
         err.note(format!(
             "`{ty}` must be annotated with `#[derive(PartialEq)]` to be usable in patterns"
