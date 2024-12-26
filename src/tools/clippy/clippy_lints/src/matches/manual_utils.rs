@@ -99,7 +99,7 @@ where
                 });
                 if let ExprKind::Path(QPath::Resolved(None, Path { res: Res::Local(l), .. })) = e.kind {
                     match captures.get(l) {
-                        Some(CaptureKind::Value | CaptureKind::Ref(Mutability::Mut)) => return None,
+                        Some(CaptureKind::Value | CaptureKind::Use | CaptureKind::Ref(Mutability::Mut)) => return None,
                         Some(CaptureKind::Ref(Mutability::Not)) if binding_ref_mutability == Mutability::Mut => {
                             return None;
                         },
