@@ -4,14 +4,15 @@ use std::{path::PathBuf, time::Instant};
 
 use ide::{
     AnalysisHost, LineCol, Moniker, MonikerDescriptorKind, MonikerIdentifier, MonikerResult,
-    StaticIndex, StaticIndexedFile, SymbolInformationKind, TextRange, TokenId, TokenStaticData,
-    VendoredLibrariesConfig,
+    RootDatabase, StaticIndex, StaticIndexedFile, SymbolInformationKind, TextRange, TokenId,
+    TokenStaticData, VendoredLibrariesConfig,
 };
 use ide_db::LineIndexDatabase;
 use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
 use rustc_hash::{FxHashMap, FxHashSet};
-use scip::types as scip_types;
+use scip::types::{self as scip_types, SymbolInformation};
 use tracing::error;
+use vfs::FileId;
 
 use crate::{
     cli::flags,
@@ -84,26 +85,40 @@ impl flags::Scip {
             text_document_encoding: scip_types::TextEncoding::UTF8.into(),
             special_fields: Default::default(),
         };
+
         let mut documents = Vec::new();
 
+        // All TokenIds where an Occurrence has been emitted that references a symbol.
+        let mut token_ids_referenced: FxHashSet<TokenId> = FxHashSet::default();
+        // All TokenIds where the SymbolInformation has been written to the document.
         let mut token_ids_emitted: FxHashSet<TokenId> = FxHashSet::default();
-        let mut global_symbols_emitted: FxHashSet<String> = FxHashSet::default();
-        let mut duplicate_symbols: Vec<(String, String)> = Vec::new();
+        // All FileIds emitted as documents.
+        let mut file_ids_emitted: FxHashSet<FileId> = FxHashSet::default();
+
+        // All non-local symbols encountered, for detecting duplicate symbol errors.
+        let mut nonlocal_symbols_emitted: FxHashSet<String> = FxHashSet::default();
+        // List of (source_location, symbol) for duplicate symbol errors to report.
+        let mut duplicate_symbol_errors: Vec<(String, String)> = Vec::new();
+        // This is called after definitions have been deduplicated by token_ids_emitted. The purpose
+        // is to detect reuse of symbol names because this causes ambiguity about their meaning.
+        let mut record_error_if_symbol_already_used =
+            |symbol: String, relative_path: &str, line_index: &LineIndex, text_range: TextRange| {
+                let is_local = symbol.starts_with("local ");
+                if !is_local && !nonlocal_symbols_emitted.insert(symbol.clone()) {
+                    let source_location =
+                        text_range_to_string(relative_path, line_index, text_range);
+                    duplicate_symbol_errors.push((source_location, symbol));
+                }
+            };
+
+        // Generates symbols from token monikers.
         let mut symbol_generator = SymbolGenerator::new();
 
         for StaticIndexedFile { file_id, tokens, .. } in si.files {
             symbol_generator.clear_document_local_state();
 
-            let relative_path = match get_relative_filepath(&vfs, &root, file_id) {
-                Some(relative_path) => relative_path,
-                None => continue,
-            };
-
-            let line_index = LineIndex {
-                index: db.line_index(file_id),
-                encoding: PositionEncoding::Utf8,
-                endings: LineEndings::Unix,
-            };
+            let Some(relative_path) = get_relative_filepath(&vfs, &root, file_id) else { continue };
+            let line_index = get_line_index(db, file_id);
 
             let mut occurrences = Vec::new();
             let mut symbols = Vec::new();
@@ -120,53 +135,44 @@ impl flags::Scip {
                         ("".to_owned(), None)
                     };
 
-                if !symbol.is_empty() && token_ids_emitted.insert(id) {
-                    if !symbol.starts_with("local ")
-                        && !global_symbols_emitted.insert(symbol.clone())
-                    {
-                        let source_location =
-                            text_range_to_string(relative_path.as_str(), &line_index, text_range);
-                        duplicate_symbols.push((source_location, symbol.clone()));
+                if !symbol.is_empty() {
+                    let is_defined_in_this_document = match token.definition {
+                        Some(def) => def.file_id == file_id,
+                        _ => false,
+                    };
+                    if is_defined_in_this_document {
+                        if token_ids_emitted.insert(id) {
+                            // token_ids_emitted does deduplication. This checks that this results
+                            // in unique emitted symbols, as otherwise references are ambiguous.
+                            record_error_if_symbol_already_used(
+                                symbol.clone(),
+                                relative_path.as_str(),
+                                &line_index,
+                                text_range,
+                            );
+                            symbols.push(compute_symbol_info(
+                                relative_path.clone(),
+                                symbol.clone(),
+                                enclosing_symbol,
+                                token,
+                            ));
+                        }
                     } else {
-                        let documentation = match &token.documentation {
-                            Some(doc) => vec![doc.as_str().to_owned()],
-                            None => vec![],
-                        };
-
-                        let position_encoding =
-                            scip_types::PositionEncoding::UTF8CodeUnitOffsetFromLineStart.into();
-                        let signature_documentation =
-                            token.signature.clone().map(|text| scip_types::Document {
-                                relative_path: relative_path.clone(),
-                                language: "rust".to_owned(),
-                                text,
-                                position_encoding,
-                                ..Default::default()
-                            });
-                        let symbol_info = scip_types::SymbolInformation {
-                            symbol: symbol.clone(),
-                            documentation,
-                            relationships: Vec::new(),
-                            special_fields: Default::default(),
-                            kind: symbol_kind(token.kind).into(),
-                            display_name: token.display_name.clone().unwrap_or_default(),
-                            signature_documentation: signature_documentation.into(),
-                            enclosing_symbol: enclosing_symbol.unwrap_or_default(),
-                        };
-
-                        symbols.push(symbol_info)
+                        token_ids_referenced.insert(id);
                     }
                 }
 
                 // If the range of the def and the range of the token are the same, this must be the definition.
                 // they also must be in the same file. See https://github.com/rust-lang/rust-analyzer/pull/17988
-                let mut symbol_roles = Default::default();
-                match token.definition {
-                    Some(def) if def.file_id == file_id && def.range == text_range => {
-                        symbol_roles |= scip_types::SymbolRole::Definition as i32;
-                    }
-                    _ => {}
+                let is_definition = match token.definition {
+                    Some(def) => def.file_id == file_id && def.range == text_range,
+                    _ => false,
                 };
+
+                let mut symbol_roles = Default::default();
+                if is_definition {
+                    symbol_roles |= scip_types::SymbolRole::Definition as i32;
+                }
 
                 occurrences.push(scip_types::Occurrence {
                     range: text_range_to_scip_range(&line_index, text_range),
@@ -195,18 +201,61 @@ impl flags::Scip {
                 position_encoding,
                 special_fields: Default::default(),
             });
+            if !file_ids_emitted.insert(file_id) {
+                panic!("Invariant violation: file emitted multiple times.");
+            }
+        }
+
+        // Collect all symbols referenced by the files but not defined within them.
+        let mut external_symbols = Vec::new();
+        for id in token_ids_referenced.difference(&token_ids_emitted) {
+            let id = *id;
+            let token = si.tokens.get(id).unwrap();
+
+            let Some(definition) = token.definition else {
+                break;
+            };
+
+            let file_id = definition.file_id;
+            let Some(relative_path) = get_relative_filepath(&vfs, &root, file_id) else { continue };
+            let line_index = get_line_index(db, file_id);
+            let text_range = definition.range;
+            if file_ids_emitted.contains(&file_id) {
+                tracing::error!(
+                    "Bug: definition at {} should have been in an SCIP document but was not.",
+                    text_range_to_string(relative_path.as_str(), &line_index, text_range)
+                );
+                continue;
+            }
+
+            let TokenSymbols { symbol, enclosing_symbol } = symbol_generator
+                .token_symbols(id, token)
+                .expect("To have been referenced, the symbol must be in the cache.");
+
+            record_error_if_symbol_already_used(
+                symbol.clone(),
+                relative_path.as_str(),
+                &line_index,
+                text_range,
+            );
+            external_symbols.push(compute_symbol_info(
+                relative_path.clone(),
+                symbol.clone(),
+                enclosing_symbol,
+                token,
+            ));
         }
 
         let index = scip_types::Index {
             metadata: Some(metadata).into(),
             documents,
-            external_symbols: Vec::new(),
+            external_symbols,
             special_fields: Default::default(),
         };
 
-        if !duplicate_symbols.is_empty() {
+        if !duplicate_symbol_errors.is_empty() {
             eprintln!("{}", DUPLICATE_SYMBOLS_MESSAGE);
-            for (source_location, symbol) in duplicate_symbols {
+            for (source_location, symbol) in duplicate_symbol_errors {
                 eprintln!("{}", source_location);
                 eprintln!("  Duplicate symbol: {}", symbol);
                 eprintln!();
@@ -239,12 +288,51 @@ Known cases that can cause this:
 Duplicate symbols encountered:
 ";
 
+fn compute_symbol_info(
+    relative_path: String,
+    symbol: String,
+    enclosing_symbol: Option<String>,
+    token: &TokenStaticData,
+) -> SymbolInformation {
+    let documentation = match &token.documentation {
+        Some(doc) => vec![doc.as_str().to_owned()],
+        None => vec![],
+    };
+
+    let position_encoding = scip_types::PositionEncoding::UTF8CodeUnitOffsetFromLineStart.into();
+    let signature_documentation = token.signature.clone().map(|text| scip_types::Document {
+        relative_path,
+        language: "rust".to_owned(),
+        text,
+        position_encoding,
+        ..Default::default()
+    });
+    scip_types::SymbolInformation {
+        symbol,
+        documentation,
+        relationships: Vec::new(),
+        special_fields: Default::default(),
+        kind: symbol_kind(token.kind).into(),
+        display_name: token.display_name.clone().unwrap_or_default(),
+        signature_documentation: signature_documentation.into(),
+        enclosing_symbol: enclosing_symbol.unwrap_or_default(),
+    }
+}
+
 fn get_relative_filepath(
     vfs: &vfs::Vfs,
     rootpath: &vfs::AbsPathBuf,
     file_id: ide::FileId,
 ) -> Option<String> {
     Some(vfs.file_path(file_id).as_path()?.strip_prefix(rootpath)?.as_str().to_owned())
+}
+
+fn get_line_index(db: &RootDatabase, file_id: FileId) -> LineIndex {
+    LineIndex {
+        index: db.line_index(file_id),
+        encoding: PositionEncoding::Utf8,
+        endings: LineEndings::Unix,
+    }
 }
 
 // SCIP Ranges have a (very large) optimization that ranges if they are on the same line
