@@ -629,7 +629,7 @@ macro_rules! spec_tuple_impl {
         }
 
         impl<$($ty_names,)* $($extend_ty_names,)* Iter> $trait_name<$($extend_ty_names),*> for Iter
-            where
+        where
             $($extend_ty_names: Extend<$ty_names>,)*
             Iter: Iterator<Item = ($($ty_names,)*)>,
         {
@@ -639,7 +639,7 @@ macro_rules! spec_tuple_impl {
         }
 
         impl<$($ty_names,)* $($extend_ty_names,)* Iter> $trait_name<$($extend_ty_names),*> for Iter
-            where
+        where
             $($extend_ty_names: Extend<$ty_names>,)*
             Iter: TrustedLen<Item = ($($ty_names,)*)>,
         {
@@ -647,29 +647,29 @@ macro_rules! spec_tuple_impl {
                 fn extend<'a, $($ty_names,)*>(
                     $($var_names: &'a mut impl Extend<$ty_names>,)*
                 ) -> impl FnMut((), ($($ty_names,)*)) + 'a {
-                #[allow(non_snake_case)]
-                // SAFETY: We reserve enough space for the `size_hint`, and the iterator is `TrustedLen`
-                // so its `size_hint` is exact.
-                move |(), ($($extend_ty_names,)*)| unsafe {
-                    $($var_names.extend_one_unchecked($extend_ty_names);)*
+                    #[allow(non_snake_case)]
+                    // SAFETY: We reserve enough space for the `size_hint`, and the iterator is
+                    // `TrustedLen` so its `size_hint` is exact.
+                    move |(), ($($extend_ty_names,)*)| unsafe {
+                        $($var_names.extend_one_unchecked($extend_ty_names);)*
+                    }
                 }
+
+                let (lower_bound, upper_bound) = self.size_hint();
+
+                if upper_bound.is_none() {
+                    // We cannot reserve more than `usize::MAX` items, and this is likely to go out of memory anyway.
+                    $default_fn_name(self, $($var_names,)*);
+                    return;
+                }
+
+                if lower_bound > 0 {
+                    $($var_names.extend_reserve(lower_bound);)*
+                }
+
+                self.fold((), extend($($var_names,)*));
             }
-
-            let (lower_bound, upper_bound) = self.size_hint();
-
-            if upper_bound.is_none() {
-                // We cannot reserve more than `usize::MAX` items, and this is likely to go out of memory anyway.
-                $default_fn_name(self, $($var_names,)*);
-                return;
-            }
-
-            if lower_bound > 0 {
-                $($var_names.extend_reserve(lower_bound);)*
-            }
-
-            self.fold((), extend($($var_names,)*));
         }
-    }
 
     };
 }
