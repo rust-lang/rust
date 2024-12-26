@@ -96,6 +96,7 @@ use crate::db::{DefDatabase, HirDatabase};
 pub use crate::{
     attrs::{resolve_doc_path_on, HasAttrs},
     diagnostics::*,
+    display::TraitRefDisplayWrapper,
     has_source::HasSource,
     semantics::{
         PathResolution, Semantics, SemanticsImpl, SemanticsScope, TypeInfo, VisibleTraits,
@@ -148,7 +149,7 @@ pub use {
     hir_ty::{
         consteval::ConstEvalError,
         diagnostics::UnsafetyReason,
-        display::{ClosureStyle, HirDisplay, HirDisplayError, HirWrite},
+        display::{ClosureStyle, HirDisplay, HirDisplayError, HirWrite, TraitRefFormat},
         dyn_compatibility::{DynCompatibilityViolation, MethodViolationCode},
         layout::LayoutError,
         mir::{MirEvalError, MirLowerError},

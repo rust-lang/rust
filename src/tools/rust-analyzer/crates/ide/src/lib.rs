@@ -96,8 +96,8 @@ pub use crate::{
     join_lines::JoinLinesConfig,
     markup::Markup,
     moniker::{
-        MonikerDescriptorKind, MonikerKind, MonikerResult, PackageInformation,
-        SymbolInformationKind,
+        Moniker, MonikerDescriptorKind, MonikerIdentifier, MonikerKind, MonikerResult,
+        PackageInformation, SymbolInformationKind,
     },
     move_item::Direction,
     navigation_target::{NavigationTarget, TryToNav, UpmappingResult},

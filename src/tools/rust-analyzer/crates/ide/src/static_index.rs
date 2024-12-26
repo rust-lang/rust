@@ -48,7 +48,6 @@ pub struct TokenStaticData {
     pub references: Vec<ReferenceData>,
     pub moniker: Option<MonikerResult>,
     pub display_name: Option<String>,
-    pub enclosing_moniker: Option<MonikerResult>,
     pub signature: Option<String>,
     pub kind: SymbolInformationKind,
 }
@@ -225,9 +224,6 @@ impl StaticIndex<'_> {
                     display_name: def
                         .name(self.db)
                         .map(|name| name.display(self.db, edition).to_string()),
-                    enclosing_moniker: current_crate
-                        .zip(def.enclosing_definition(self.db))
-                        .and_then(|(cc, enclosing_def)| def_to_moniker(self.db, enclosing_def, cc)),
                     signature: Some(def.label(self.db, edition)),
                     kind: def_to_kind(self.db, def),
                 });
