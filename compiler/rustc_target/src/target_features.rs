@@ -213,22 +213,7 @@ const ARM_FEATURES: &[(&str, StabilityUncomputed, ImpliedFeatures)] = &[
     ("dotprod", unstable(sym::arm_target_feature), &["neon"]),
     ("dsp", unstable(sym::arm_target_feature), &[]),
     ("fp-armv8", unstable(sym::arm_target_feature), &["vfp4"]),
-    (
-        "fpregs",
-        Stability::Unstable {
-            nightly_feature: sym::arm_target_feature,
-            allow_toggle: |target: &Target, _enable| {
-                // Only allow toggling this if the target has `soft-float` set. With `soft-float`,
-                // `fpregs` isn't needed so changing it cannot affect the ABI.
-                if target.has_feature("soft-float") {
-                    Ok(())
-                } else {
-                    Err("unsound on hard-float targets because it changes float ABI")
-                }
-            },
-        },
-        &[],
-    ),
+    ("fpregs", unstable(sym::arm_target_feature), &[]),
     ("i8mm", unstable(sym::arm_target_feature), &["neon"]),
     ("mclass", unstable(sym::arm_target_feature), &[]),
     ("neon", unstable(sym::arm_target_feature), &["vfp3"]),
@@ -326,28 +311,7 @@ const AARCH64_FEATURES: &[(&str, StabilityUncomputed, ImpliedFeatures)] = &[
     // FEAT_MTE & FEAT_MTE2
     ("mte", STABLE, &[]),
     // FEAT_AdvSimd & FEAT_FP
-    (
-        "neon",
-        Stability::Stable {
-            allow_toggle: |target, enable| {
-                if target.abi == "softfloat" {
-                    // `neon` has no ABI implications for softfloat targets, we can allow this.
-                    Ok(())
-                } else if enable
-                    && !target.has_neg_feature("fp-armv8")
-                    && !target.has_neg_feature("neon")
-                {
-                    // neon is enabled by default, and has not been disabled, so enabling it again
-                    // is redundant and we can permit it. Forbidding this would be a breaking change
-                    // since this feature is stable.
-                    Ok(())
-                } else {
-                    Err("unsound on hard-float targets because it changes float ABI")
-                }
-            },
-        },
-        &[],
-    ),
+    ("neon", STABLE, &[]),
     // FEAT_PAUTH (address authentication)
     ("paca", STABLE, &[]),
     // FEAT_PAUTH (generic authentication)
@@ -532,22 +496,7 @@ const X86_FEATURES: &[(&str, StabilityUncomputed, ImpliedFeatures)] = &[
     ("tbm", unstable(sym::tbm_target_feature), &[]),
     ("vaes", unstable(sym::avx512_target_feature), &["avx2", "aes"]),
     ("vpclmulqdq", unstable(sym::avx512_target_feature), &["avx", "pclmulqdq"]),
-    (
-        "x87",
-        Stability::Unstable {
-            nightly_feature: sym::x87_target_feature,
-            allow_toggle: |target: &Target, _enable| {
-                // Only allow toggling this if the target has `soft-float` set. With `soft-float`,
-                // `fpregs` isn't needed so changing it cannot affect the ABI.
-                if target.has_feature("soft-float") {
-                    Ok(())
-                } else {
-                    Err("unsound on hard-float targets because it changes float ABI")
-                }
-            },
-        },
-        &[],
-    ),
+    ("x87", unstable(sym::x87_target_feature), &[]),
     ("xop", unstable(sym::xop_target_feature), &[/*"fma4", */ "avx", "sse4a"]),
     ("xsave", STABLE, &[]),
     ("xsavec", STABLE, &["xsave"]),
@@ -590,55 +539,8 @@ const RISCV_FEATURES: &[(&str, StabilityUncomputed, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("a", STABLE, &["zaamo", "zalrsc"]),
     ("c", STABLE, &[]),
-    (
-        "d",
-        Stability::Unstable {
-            nightly_feature: sym::riscv_target_feature,
-            allow_toggle: |target, enable| match &*target.llvm_abiname {
-                "ilp32d" | "lp64d" if !enable => {
-                    // The ABI requires the `d` feature, so it cannot be disabled.
-                    Err("feature is required by ABI")
-                }
-                "ilp32e" if enable => {
-                    // ilp32e is incompatible with features that need aligned load/stores > 32 bits,
-                    // like `d`.
-                    Err("feature is incompatible with ABI")
-                }
-                _ => Ok(()),
-            },
-        },
-        &["f"],
-    ),
-    (
-        "e",
-        Stability::Unstable {
-            // Given that this is a negative feature, consider this before stabilizing:
-            // does it really make sense to enable this feature in an individual
-            // function with `#[target_feature]`?
-            nightly_feature: sym::riscv_target_feature,
-            allow_toggle: |target, enable| {
-                match &*target.llvm_abiname {
-                    _ if !enable => {
-                        // Disabling this feature means we can use more registers (x16-x31).
-                        // The "e" ABIs treat them as caller-save, so it is safe to use them only
-                        // in some parts of a program while the rest doesn't know they even exist.
-                        // On other ABIs, the feature is already disabled anyway.
-                        Ok(())
-                    }
-                    "ilp32e" | "lp64e" => {
-                        // Embedded ABIs should already have the feature anyway, it's fine to enable
-                        // it again from an ABI perspective.
-                        Ok(())
-                    }
-                    _ => {
-                        // *Not* an embedded ABI. Enabling `e` is invalid.
-                        Err("feature is incompatible with ABI")
-                    }
-                }
-            },
-        },
-        &[],
-    ),
+    ("d", unstable(sym::riscv_target_feature), &["f"]),
+    ("e", unstable(sym::riscv_target_feature), &[]),
     (
         "f",
         Stability::Unstable {
@@ -904,27 +806,107 @@ impl Target {
         }
     }
 
-    pub fn implied_target_features(
+    pub fn implied_target_features<'a>(
         &self,
-        base_features: impl Iterator<Item = Symbol>,
-    ) -> FxHashSet<Symbol> {
-        let implied_features = self
-            .rust_target_features()
-            .iter()
-            .map(|(f, _, i)| (Symbol::intern(f), i))
-            .collect::<FxHashMap<_, _>>();
+        base_features: impl Iterator<Item = &'a str>,
+    ) -> FxHashSet<&'a str> {
+        let implied_features =
+            self.rust_target_features().iter().map(|(f, _, i)| (f, i)).collect::<FxHashMap<_, _>>();
 
         // implied target features have their own implied target features, so we traverse the
         // map until there are no more features to add
         let mut features = FxHashSet::default();
-        let mut new_features = base_features.collect::<Vec<Symbol>>();
+        let mut new_features = base_features.collect::<Vec<&str>>();
         while let Some(new_feature) = new_features.pop() {
             if features.insert(new_feature) {
                 if let Some(implied_features) = implied_features.get(&new_feature) {
-                    new_features.extend(implied_features.iter().copied().map(Symbol::intern))
+                    new_features.extend(implied_features.iter().copied())
                 }
             }
         }
         features
+    }
+
+    /// Returns two lists of features:
+    /// the first list contains target features that must be enabled for ABI reasons,
+    /// and the second list contains target feature that must be disabled for ABI reasons.
+    ///
+    /// All features enabled/disabled via `-Ctarget-features` and `#[target_features]` are checked
+    /// against this. We also check any implied features, based on the information above. If LLVM
+    /// implicitly enables more implied features than we do, that could bypass this check!
+    pub fn abi_required_features(&self) -> (&'static [&'static str], &'static [&'static str]) {
+        const NOTHING: (&'static [&'static str], &'static [&'static str]) = (&[], &[]);
+        // Some architectures don't have a clean explicit ABI designation; instead, the ABI is
+        // defined by target features. When that is the case, those target features must be
+        // "forbidden" in the list above to ensure that there is a consistent answer to the
+        // questions "which ABI is used".
+        match &*self.arch {
+            "x86" | "x86_64" => {
+                // We support 2 ABIs, hardfloat (default) and softfloat.
+                if self.has_feature("soft-float") {
+                    NOTHING
+                } else {
+                    // Hardfloat ABI. x87 must be enabled.
+                    (&["x87"], &[])
+                }
+            }
+            "arm" => {
+                // We support 2 ABIs, hardfloat (default) and softfloat.
+                if self.has_feature("soft-float") {
+                    NOTHING
+                } else {
+                    // Hardfloat ABI. x87 must be enabled.
+                    (&["fpregs"], &[])
+                }
+            }
+            "aarch64" | "arm64ec" => {
+                match &*self.abi {
+                    "softfloat" => {
+                        // This is not fully correct, LLVM actually doesn't let us enforce the softfloat
+                        // ABI properly... see <https://github.com/rust-lang/rust/issues/134375>.
+                        // FIXME: should be forbid "neon" here? But that would be a breaking change.
+                        NOTHING
+                    }
+                    _ => {
+                        // Everything else is assumed to use a hardfloat ABI. neon and fp-armv8 must be enabled.
+                        // These are Rust feature names and we use "neon" to control both of them.
+                        (&["neon"], &[])
+                    }
+                }
+            }
+            "riscv32" | "riscv64" => {
+                match &*self.llvm_abiname {
+                    "ilp32d" | "lp64d" => {
+                        // Requires d (which implies f), incompatible with e.
+                        (&["d"], &["e"])
+                    }
+                    "ilp32f" | "lp64f" => {
+                        // Requires f, incompatible with e.
+                        (&["f"], &["e"])
+                    }
+                    "ilp32" | "lp64" => {
+                        // Requires nothing, incompatible with e.
+                        (&[], &["e"])
+                    }
+                    "ilp32e" => {
+                        // ilp32e is documented to be incompatible with features that need aligned
+                        // load/stores > 32 bits, like `d`. (One could also just generate more
+                        // complicated code to align the stack when needed, but the RISCV
+                        // architecture manual just explicitly rules out this combination so we
+                        // might as well.)
+                        // Note that the `e` feature is not required: the ABI treats the extra
+                        // registers as caller-save, so it is safe to use them only in some parts of
+                        // a program while the rest doesn't know they even exist.
+                        (&[], &["d"])
+                    }
+                    "lp64e" => {
+                        // As above, `e` is not required.
+                        NOTHING
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            _ => NOTHING,
+        }
     }
 }

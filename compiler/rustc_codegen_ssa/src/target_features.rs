@@ -32,7 +32,7 @@ pub(crate) fn from_target_feature_attr(
             .emit();
     };
     let rust_features = tcx.features();
-    let mut added_target_features = Vec::new();
+    let (_abi_enable, abi_disable) = tcx.sess.target.abi_required_features();
     for item in list {
         // Only `enable = ...` is accepted in the meta-item list.
         if !item.has_name(sym::enable) {
@@ -47,7 +47,7 @@ pub(crate) fn from_target_feature_attr(
         };
 
         // We allow comma separation to enable multiple features.
-        added_target_features.extend(value.as_str().split(',').filter_map(|feature| {
+        for feature in value.as_str().split(',') {
             let Some(stability) = rust_target_features.get(feature) else {
                 let msg = format!("the feature named `{feature}` is not valid for this target");
                 let mut err = tcx.dcx().struct_span_err(item.span(), msg);
@@ -59,7 +59,7 @@ pub(crate) fn from_target_feature_attr(
                     }
                 }
                 err.emit();
-                return None;
+                continue;
             };
 
             // Only allow target features whose feature gates have been enabled
@@ -80,31 +80,25 @@ pub(crate) fn from_target_feature_attr(
                     format!("the target feature `{feature}` is currently unstable"),
                 )
                 .emit();
+            } else {
+                // Add this and the implied features.
+                let feature_sym = Symbol::intern(feature);
+                for &name in tcx.implied_target_features(feature_sym) {
+                    // But ensure the ABI does not forbid enabling this.
+                    // Here we do assume that LLVM doesn't add even more implied features
+                    // we don't know about, at least no features that would have ABI effects!
+                    if abi_disable.contains(&name.as_str()) {
+                        tcx.dcx().emit_err(errors::ForbiddenTargetFeatureAttr {
+                            span: item.span(),
+                            feature: name.as_str(),
+                            reason: "this feature is incompatible with the target ABI",
+                        });
+                    }
+                    target_features.push(TargetFeature { name, implied: name != feature_sym })
+                }
             }
-            Some(Symbol::intern(feature))
-        }));
+        }
     }
-
-    // Add explicit features
-    target_features.extend(
-        added_target_features.iter().copied().map(|name| TargetFeature { name, implied: false }),
-    );
-
-    // Add implied features
-    let mut implied_target_features = UnordSet::new();
-    for feature in added_target_features.iter() {
-        implied_target_features.extend(tcx.implied_target_features(*feature).clone());
-    }
-    for feature in added_target_features.iter() {
-        implied_target_features.remove(feature);
-    }
-    target_features.extend(
-        implied_target_features
-            .into_sorted_stable_ord()
-            .iter()
-            .copied()
-            .map(|name| TargetFeature { name, implied: true }),
-    )
 }
 
 /// Computes the set of target features used in a function for the purposes of
@@ -163,9 +157,13 @@ pub(crate) fn provide(providers: &mut Providers) {
                     .collect()
             }
         },
-        implied_target_features: |tcx, feature| {
+        implied_target_features: |tcx, feature: Symbol| {
+            let feature = feature.as_str();
             UnordSet::from(tcx.sess.target.implied_target_features(std::iter::once(feature)))
                 .into_sorted_stable_ord()
+                .into_iter()
+                .map(|s| Symbol::intern(s))
+                .collect()
         },
         asm_target_features,
         ..*providers
