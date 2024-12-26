@@ -943,7 +943,8 @@ pub(crate) fn handle_runnables(
 
         let update_test = runnable.update_test;
         if let Some(mut runnable) = to_proto::runnable(&snap, runnable)? {
-            if let Some(runnable) = to_proto::make_update_runnable(&runnable, &update_test.label())
+            if let Some(runnable) =
+                to_proto::make_update_runnable(&runnable, &update_test.label(), &update_test.env())
             {
                 res.push(runnable);
             }
@@ -2135,10 +2136,7 @@ fn runnable_action_links(
     }
 
     let client_commands_config = snap.config.client_commands();
-    if !(client_commands_config.run_single
-        || client_commands_config.debug_single
-        || client_commands_config.update_single)
-    {
+    if !(client_commands_config.run_single || client_commands_config.debug_single) {
         return None;
     }
 
@@ -2158,8 +2156,10 @@ fn runnable_action_links(
         group.commands.push(to_command_link(dbg_command, r.label.clone()));
     }
 
-    if hover_actions_config.update_test && client_commands_config.update_single {
-        if let Some(update_command) = to_proto::command::update_single(&r, &update_test.label()) {
+    if hover_actions_config.update_test && client_commands_config.run_single {
+        let label = update_test.label();
+        if let Some(r) = to_proto::make_update_runnable(&r, &label, &update_test.env()) {
+            let update_command = to_proto::command::run_single(&r, label.unwrap().as_str());
             group.commands.push(to_command_link(update_command, r.label.clone()));
         }
     }

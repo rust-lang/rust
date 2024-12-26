@@ -1,4 +1,4 @@
-use std::{fmt, ops::Not};
+use std::fmt;
 
 use ast::HasName;
 use cfg::{CfgAtom, CfgExpr};
@@ -20,7 +20,7 @@ use span::{Edition, TextSize};
 use stdx::format_to;
 use syntax::{
     ast::{self, AstNode},
-    SmolStr, SyntaxNode, ToSmolStr,
+    format_smolstr, SmolStr, SyntaxNode, ToSmolStr,
 };
 
 use crate::{references, FileId, NavigationTarget, ToNav, TryToNav};
@@ -639,7 +639,25 @@ impl UpdateTest {
         }
 
         let res: SmolStr = builder.join(" + ").into();
-        res.is_empty().not().then_some(res)
+        if res.is_empty() {
+            None
+        } else {
+            Some(format_smolstr!("↺\u{fe0e} Update Tests ({res})"))
+        }
+    }
+
+    pub fn env(&self) -> SmallVec<[(&str, &str); 3]> {
+        let mut env = SmallVec::new();
+        if self.expect_test {
+            env.push(("UPDATE_EXPECT", "1"));
+        }
+        if self.insta {
+            env.push(("INSTA_UPDATE", "always"));
+        }
+        if self.snapbox {
+            env.push(("SNAPSHOTS", "overwrite"));
+        }
+        env
     }
 }
 

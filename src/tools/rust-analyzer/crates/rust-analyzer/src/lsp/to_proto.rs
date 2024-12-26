@@ -1606,7 +1606,8 @@ pub(crate) fn code_lens(
                     }
                     if lens_config.update_test && client_commands_config.run_single {
                         let label = update_test.label();
-                        if let Some(r) = make_update_runnable(&r, &label) {
+                        let env = update_test.env();
+                        if let Some(r) = make_update_runnable(&r, &label, &env) {
                             let command = command::run_single(&r, label.unwrap().as_str());
                             acc.push(lsp_types::CodeLens {
                                 range: annotation_range,
@@ -1851,9 +1852,10 @@ pub(crate) mod command {
     }
 }
 
-fn make_update_runnable(
+pub(crate) fn make_update_runnable(
     runnable: &lsp_ext::Runnable,
     label: &Option<SmolStr>,
+    env: &[(&str, &str)],
 ) -> Option<lsp_ext::Runnable> {
     if !matches!(runnable.args, lsp_ext::RunnableArgs::Cargo(_)) {
         return None;
@@ -1867,9 +1869,7 @@ fn make_update_runnable(
         unreachable!();
     };
 
-    let environment_vars =
-        [("UPDATE_EXPECT", "1"), ("INSTA_UPDATE", "always"), ("SNAPSHOTS", "overwrite")];
-    r.environment.extend(environment_vars.into_iter().map(|(k, v)| (k.to_owned(), v.to_owned())));
+    r.environment.extend(env.iter().map(|(k, v)| (k.to_string(), v.to_string())));
 
     Some(runnable)
 }
