@@ -79,6 +79,8 @@ pub fn configure_f16_f128(target: &Target) {
     };
 
     let f128_enabled = match target.arch.as_str() {
+        // Unsupported (libcall is not supported) <https://github.com/llvm/llvm-project/issues/121122>
+        "amdgpu" => false,
         // Unsupported <https://github.com/llvm/llvm-project/issues/94434>
         "arm64ec" => false,
         // Selection failure <https://github.com/llvm/llvm-project/issues/96432>
