@@ -348,9 +348,9 @@ class ExperimentalFeatures implements lc.StaticFeature {
     initialize(
         _capabilities: lc.ServerCapabilities,
         _documentSelector: lc.DocumentSelector | undefined,
-    ): void { }
-    dispose(): void { }
-    clear(): void { }
+    ): void {}
+    dispose(): void {}
+    clear(): void {}
 }
 
 class OverrideFeatures implements lc.StaticFeature {
@@ -368,9 +368,9 @@ class OverrideFeatures implements lc.StaticFeature {
     initialize(
         _capabilities: lc.ServerCapabilities,
         _documentSelector: lc.DocumentSelector | undefined,
-    ): void { }
-    dispose(): void { }
-    clear(): void { }
+    ): void {}
+    dispose(): void {}
+    clear(): void {}
 }
 
 function isCodeActionWithoutEditsAndCommands(value: any): boolean {
@@ -398,8 +398,9 @@ export let HOVER_REFERENCE_COMMAND: ra.CommandLink[] = [];
 
 function renderCommand(cmd: ra.CommandLink): string {
     HOVER_REFERENCE_COMMAND.push(cmd);
-    return `[${cmd.title}](command:rust-analyzer.hoverRefCommandProxy?${HOVER_REFERENCE_COMMAND.length - 1
-        } '${cmd.tooltip}')`;
+    return `[${cmd.title}](command:rust-analyzer.hoverRefCommandProxy?${
+        HOVER_REFERENCE_COMMAND.length - 1
+    } '${cmd.tooltip}')`;
 }
 
 function renderHoverActions(actions: ra.CommandLinkGroup[]): vscode.MarkdownString {

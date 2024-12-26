@@ -1145,7 +1145,7 @@ function isUpdatingTest(runnable: ra.Runnable): boolean {
     }
 
     const env = runnable.args.environment;
-    return env ? ['UPDATE_EXPECT', 'INSTA_UPDATE', 'SNAPSHOTS'].some(key => key in env) : false;
+    return env ? ["UPDATE_EXPECT", "INSTA_UPDATE", "SNAPSHOTS"].some((key) => key in env) : false;
 }
 
 export function runSingle(ctx: CtxInit): Cmd {

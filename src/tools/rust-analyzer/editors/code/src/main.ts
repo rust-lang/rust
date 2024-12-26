@@ -148,7 +148,7 @@ function createCommands(): Record<string, CommandFactory> {
                     health: "stopped",
                 });
             },
-            disabled: (_) => async () => { },
+            disabled: (_) => async () => {},
         },
 
         analyzerStatus: { enabled: commands.analyzerStatus },
@@ -207,10 +207,10 @@ function checkConflictingExtensions() {
         vscode.window
             .showWarningMessage(
                 `You have both the rust-analyzer (rust-lang.rust-analyzer) and Rust (rust-lang.rust) ` +
-                "plugins enabled. These are known to conflict and cause various functions of " +
-                "both plugins to not work correctly. You should disable one of them.",
+                    "plugins enabled. These are known to conflict and cause various functions of " +
+                    "both plugins to not work correctly. You should disable one of them.",
                 "Got it",
             )
-            .then(() => { }, console.error);
+            .then(() => {}, console.error);
     }
 }
