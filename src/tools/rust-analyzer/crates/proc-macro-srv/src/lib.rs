@@ -175,7 +175,7 @@ fn expand_id(
             });
         let res = match thread {
             Ok(handle) => handle.join(),
-            Err(e) => std::panic::resume_unwind(Box::new(e)),
+            Err(e) => return Err(e.to_string()),
         };
 
         match res {
@@ -223,7 +223,7 @@ fn expand_ra_span(
             });
         let res = match thread {
             Ok(handle) => handle.join(),
-            Err(e) => std::panic::resume_unwind(Box::new(e)),
+            Err(e) => return Err(e.to_string()),
         };
 
         match res {
