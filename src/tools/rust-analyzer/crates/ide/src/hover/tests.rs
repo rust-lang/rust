@@ -9926,3 +9926,99 @@ fn bar() {
         "#]],
     );
 }
+
+#[test]
+fn test_runnables_with_snapshot_tests() {
+    check_actions(
+        r#"
+//- /lib.rs crate:foo deps:expect_test,insta,snapbox
+use expect_test::expect;
+use insta::assert_debug_snapshot;
+use snapbox::Assert;
+
+#[test]
+fn test$0() {
+    let actual = "new25";
+    expect!["new25"].assert_eq(&actual);
+    Assert::new()
+        .action_env("SNAPSHOTS")
+        .eq(actual, snapbox::str!["new25"]);
+    assert_debug_snapshot!(actual);
+}
+
+//- /lib.rs crate:expect_test
+struct Expect;
+
+impl Expect {
+    fn assert_eq(&self, actual: &str) {}
+}
+
+#[macro_export]
+macro_rules! expect {
+    ($e:expr) => Expect; // dummy
+}
+
+//- /lib.rs crate:insta
+#[macro_export]
+macro_rules! assert_debug_snapshot {
+    ($e:expr) => {}; // dummy
+}
+
+//- /lib.rs crate:snapbox
+pub struct Assert;
+
+impl Assert {
+    pub fn new() -> Self { Assert }
+
+    pub fn action_env(&self, env: &str) -> &Self { self }
+
+    pub fn eq(&self, actual: &str, expected: &str) {}
+}
+
+#[macro_export]
+macro_rules! str {
+    ($e:expr) => ""; // dummy
+}
+        "#,
+        expect![[r#"
+            [
+                Reference(
+                    FilePositionWrapper {
+                        file_id: FileId(
+                            0,
+                        ),
+                        offset: 92,
+                    },
+                ),
+                Runnable(
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 81..301,
+                            focus_range: 92..96,
+                            name: "test",
+                            kind: Function,
+                        },
+                        kind: Test {
+                            test_id: Path(
+                                "test",
+                            ),
+                            attr: TestAttr {
+                                ignore: false,
+                            },
+                        },
+                        cfg: None,
+                        update_test: UpdateTest {
+                            expect_test: true,
+                            insta: true,
+                            snapbox: true,
+                        },
+                    },
+                ),
+            ]
+        "#]],
+    );
+}

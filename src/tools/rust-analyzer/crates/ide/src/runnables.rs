@@ -657,62 +657,58 @@ impl<'a, 'b> TestDefs<'a, 'b> {
     }
 
     fn expect_test(&self) -> bool {
-        self.find_macro("expect_test:expect") || self.find_macro("expect_test::expect_file")
+        self.find_macro("expect_test", &["expect", "expect_file"])
     }
 
     fn insta(&self) -> bool {
-        self.find_macro("insta:assert_snapshot")
-            || self.find_macro("insta:assert_debug_snapshot")
-            || self.find_macro("insta:assert_display_snapshot")
-            || self.find_macro("insta:assert_json_snapshot")
-            || self.find_macro("insta:assert_yaml_snapshot")
-            || self.find_macro("insta:assert_ron_snapshot")
-            || self.find_macro("insta:assert_toml_snapshot")
-            || self.find_macro("insta:assert_csv_snapshot")
-            || self.find_macro("insta:assert_compact_json_snapshot")
-            || self.find_macro("insta:assert_compact_debug_snapshot")
-            || self.find_macro("insta:assert_binary_snapshot")
+        self.find_macro(
+            "insta",
+            &[
+                "assert_snapshot",
+                "assert_debug_snapshot",
+                "assert_display_snapshot",
+                "assert_json_snapshot",
+                "assert_yaml_snapshot",
+                "assert_ron_snapshot",
+                "assert_toml_snapshot",
+                "assert_csv_snapshot",
+                "assert_compact_json_snapshot",
+                "assert_compact_debug_snapshot",
+                "assert_binary_snapshot",
+            ],
+        )
     }
 
     fn snapbox(&self) -> bool {
-        self.find_macro("snapbox:assert_data_eq")
-            || self.find_macro("snapbox:file")
-            || self.find_macro("snapbox:str")
+        self.find_macro("snapbox", &["assert_data_eq", "file", "str"])
     }
 
-    fn find_macro(&self, path: &str) -> bool {
-        let Some(hir::ScopeDef::ModuleDef(hir::ModuleDef::Macro(it))) = self.find_def(path) else {
-            return false;
-        };
-
-        Definition::Macro(it)
-            .usages(self.0)
-            .in_scope(&SearchScope::file_range(self.2))
-            .at_least_one()
-    }
-
-    fn find_def(&self, path: &str) -> Option<hir::ScopeDef> {
+    fn find_macro(&self, crate_name: &str, paths: &[&str]) -> bool {
         let db = self.0.db;
 
-        let mut path = path.split(':');
-        let item = path.next_back()?;
-        let krate = path.next()?;
-        let dep = self.1.dependencies(db).into_iter().find(|dep| dep.name.eq_ident(krate))?;
+        let Some(dep) =
+            self.1.dependencies(db).into_iter().find(|dep| dep.name.eq_ident(crate_name))
+        else {
+            return false;
+        };
+        let module = dep.krate.root_module();
+        let scope = module.scope(db, None);
 
-        let mut module = dep.krate.root_module();
-        for segment in path {
-            module = module.children(db).find_map(|child| {
-                let name = child.name(db)?;
-                if name.eq_ident(segment) {
-                    Some(child)
-                } else {
-                    None
+        paths
+            .iter()
+            .filter_map(|path| {
+                let (_, def) = scope.iter().find(|(name, _)| name.eq_ident(path))?;
+                match def {
+                    hir::ScopeDef::ModuleDef(hir::ModuleDef::Macro(it)) => Some(it),
+                    _ => None,
                 }
-            })?;
-        }
-
-        let (_, def) = module.scope(db, None).into_iter().find(|(name, _)| name.eq_ident(item))?;
-        Some(def)
+            })
+            .any(|makro| {
+                Definition::Macro(*makro)
+                    .usages(self.0)
+                    .in_scope(&SearchScope::file_range(self.2))
+                    .at_least_one()
+            })
     }
 }
 
