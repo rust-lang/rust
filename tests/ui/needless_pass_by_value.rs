@@ -189,6 +189,13 @@ struct Obj(String);
 
 fn prefix_test(_unused_with_prefix: Obj) {}
 
+// Regression test for <https://github.com/rust-lang/rust-clippy/issues/13744>.
+// It's more idiomatic to write `Option<&T>` rather than `&Option<T>`.
+fn option_inner_ref(x: Option<String>) {
+    //~^ ERROR: this argument is passed by value, but not consumed in the function body
+    assert!(x.is_some());
+}
+
 fn main() {
     // This should not cause an ICE either
     // https://github.com/rust-lang/rust-clippy/issues/3144

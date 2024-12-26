@@ -279,10 +279,18 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                         }
                     }
 
+                    let suggestion = if is_type_diagnostic_item(cx, ty, sym::Option)
+                        && let snip = snippet(cx, input.span, "_")
+                        && let Some((first, rest)) = snip.split_once('<')
+                    {
+                        format!("{first}<&{rest}")
+                    } else {
+                        format!("&{}", snippet(cx, input.span, "_"))
+                    };
                     diag.span_suggestion(
                         input.span,
                         "consider taking a reference instead",
-                        format!("&{}", snippet(cx, input.span, "_")),
+                        suggestion,
                         Applicability::MaybeIncorrect,
                     );
                 };
