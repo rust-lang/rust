@@ -1,6 +1,8 @@
 //@ unset-rustc-env:RUST_BACKTRACE
 //@ compile-flags:-Z treat-err-as-bug=1
 //@ error-pattern:stack backtrace:
+// Verify this is a full backtrace, not a short backtrace.
+//@ error-pattern:__rust_begin_short_backtrace
 //@ failure-status:101
 //@ ignore-msvc
 //@ normalize-stderr-test: "note: .*" -> ""
