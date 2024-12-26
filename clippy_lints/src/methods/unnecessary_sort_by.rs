@@ -1,11 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::is_trait_method;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
+use clippy_utils::{is_trait_method, std_or_core};
 use rustc_errors::Applicability;
 use rustc_hir::{Closure, Expr, ExprKind, Mutability, Param, Pat, PatKind, Path, PathSegment, QPath};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, GenericArgKind};
+use rustc_middle::ty;
+use rustc_middle::ty::GenericArgKind;
 use rustc_span::sym;
 use rustc_span::symbol::Ident;
 use std::iter;
@@ -211,8 +212,10 @@ pub(super) fn check<'tcx>(
                 trigger.vec_name,
                 if is_unstable { "_unstable" } else { "" },
                 trigger.closure_arg,
-                if trigger.reverse {
-                    format!("std::cmp::Reverse({})", trigger.closure_body)
+                if let Some(std_or_core) = std_or_core(cx)
+                    && trigger.reverse
+                {
+                    format!("{}::cmp::Reverse({})", std_or_core, trigger.closure_body)
                 } else {
                     trigger.closure_body.to_string()
                 },

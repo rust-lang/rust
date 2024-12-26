@@ -232,13 +232,13 @@ const APPLICABILITIES_FILTER_DEFAULT = {
     MaybeIncorrect: true,
     HasPlaceholders: true,
 };
-const URL_PARAMS_CORRESPONDANCE = {
+const URL_PARAMS_CORRESPONDENCE = {
     "groups_filter": "groups",
     "levels_filter": "levels",
     "applicabilities_filter": "applicabilities",
     "version_filter": "versions",
 };
-const VERSIONS_CORRESPONDANCE = {
+const VERSIONS_CORRESPONDENCE = {
     "lte": "≤",
     "gte": "≥",
     "eq": "=",
@@ -285,7 +285,7 @@ window.filters = {
         }
         function updateIfNeeded(filterName, obj2) {
             const obj1 = filters[filterName];
-            const name = URL_PARAMS_CORRESPONDANCE[filterName];
+            const name = URL_PARAMS_CORRESPONDENCE[filterName];
             if (!compareObjects(obj1, obj2)) {
                 urlParams.set(
                     name,
@@ -316,9 +316,9 @@ window.filters = {
             versions.push(`lte:${filters.version_filter["≤"]}`);
         }
         if (versions.length !== 0) {
-            urlParams.set(URL_PARAMS_CORRESPONDANCE["version_filter"], versions.join(","));
+            urlParams.set(URL_PARAMS_CORRESPONDENCE["version_filter"], versions.join(","));
         } else {
-            urlParams.delete(URL_PARAMS_CORRESPONDANCE["version_filter"]);
+            urlParams.delete(URL_PARAMS_CORRESPONDENCE["version_filter"]);
         }
 
         let params = urlParams.toString();
@@ -532,7 +532,7 @@ function parseURLFilters() {
     const urlParams = new URLSearchParams(window.location.search);
 
     for (const [key, value] of urlParams.entries()) {
-        for (const [corres_key, corres_value] of Object.entries(URL_PARAMS_CORRESPONDANCE)) {
+        for (const [corres_key, corres_value] of Object.entries(URL_PARAMS_CORRESPONDENCE)) {
             if (corres_value === key) {
                 if (key !== "versions") {
                     const settings  = new Set(value.split(","));
@@ -545,7 +545,7 @@ function parseURLFilters() {
 
                     for (const [kind, value] of settings) {
                         const elem = document.querySelector(
-                            `#version-filter input[data-value="${VERSIONS_CORRESPONDANCE[kind]}"]`);
+                            `#version-filter input[data-value="${VERSIONS_CORRESPONDENCE[kind]}"]`);
                         elem.value = value;
                         updateVersionFilters(elem, true);
                     }
