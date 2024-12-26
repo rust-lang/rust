@@ -385,13 +385,15 @@ fn extend_type_not_partial_eq<'tcx>(
         /// The type has no `PartialEq` implementation, neither manual or derived, but
         /// we don't have a span to point at, so we'll just add them as a `note`.
         without: FxHashSet<Ty<'tcx>>,
+        /// If any of the subtypes has escaping bounds (`for<'a>`), we won't emit a note.
+        has_escaping_bound_vars: bool,
     }
 
     impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for UsedParamsNeedInstantiationVisitor<'tcx> {
         fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
-            if let ty::Adt(def, _args) = ty.kind()
-                && !ty.has_escaping_bound_vars()
-            {
+            if ty.has_escaping_bound_vars() {
+                self.has_escaping_bound_vars = true;
+            } else if let ty::Adt(def, _args) = ty.kind() {
                 let ty_def_id = def.did();
                 let ty_def_span = self.tcx.def_span(ty_def_id);
                 let (impls_partial_eq, derived, structural, impl_def_id) =
@@ -426,8 +428,12 @@ fn extend_type_not_partial_eq<'tcx>(
         adts_without_partialeq: FxHashSet::default(),
         manual: FxHashSet::default(),
         without: FxHashSet::default(),
+        has_escaping_bound_vars: false,
     };
     v.visit_ty(ty);
+    if v.has_escaping_bound_vars {
+        return;
+    }
     #[allow(rustc::potential_query_instability)] // Span labels will be sorted by the rendering
     for span in v.adts_with_manual_partialeq {
         err.span_note(span, "the `PartialEq` trait must be derived, manual `impl`s are not sufficient; see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details");
