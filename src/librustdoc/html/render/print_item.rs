@@ -1420,7 +1420,7 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
             ty: &'a clean::Type,
         ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
             display_fn(move |f| {
-                let v = ty.print(&self.cx);
+                let v = ty.print(self.cx);
                 write!(f, "{v}")
             })
         }
