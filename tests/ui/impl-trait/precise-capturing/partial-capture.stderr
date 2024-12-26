@@ -1,0 +1,58 @@
+error[E0700]: hidden type for `impl Iterator` captures lifetime that does not appear in bounds
+  --> $DIR/partial-capture.rs:29:5
+   |
+LL | fn enumerated_opaque<T>(slice: &[T]) -> impl Iterator + use<> {
+   |                                ----     --------------------- opaque type defined here
+   |                                |
+   |                                hidden type `Enumerate<std::slice::Iter<'_, T>>` captures the anonymous lifetime defined here
+LL |     slice.iter().enumerate()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add `'_` to the `use<...>` bound to explicitly capture it
+   |
+LL | fn enumerated_opaque<T>(slice: &[T]) -> impl Iterator + use<'_> {
+   |                                                             ++
+
+error: `impl Trait` must mention all used type parameters in scope in `use<...>`
+  --> $DIR/partial-capture.rs:34:44
+   |
+LL | fn enumerated_opaque_lt<T>(slice: &[T]) -> impl Iterator + use<'_> {
+   |                         -                  ^^^^^^^^^^^^^^^^^^^^^^^
+   |                         |
+   |                         type parameter is implicitly captured by this `impl Trait`
+
+error: `impl Trait` must mention all used type parameters in scope in `use<...>`
+  --> $DIR/partial-capture.rs:40:34
+   |
+LL | fn enumerated<T>(slice: &[T]) -> impl Iterator<Item = (usize, &T)> + use<> {
+   |               -                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |               |
+   |               type parameter is implicitly captured by this `impl Trait`
+
+error: `impl Trait` must mention all used type parameters in scope in `use<...>`
+  --> $DIR/partial-capture.rs:46:37
+   |
+LL | fn enumerated_lt<T>(slice: &[T]) -> impl Iterator<Item = (usize, &T)> + use<'_> {
+   |                  -                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  |
+   |                  type parameter is implicitly captured by this `impl Trait`
+
+error: `impl Trait` must mention all used type parameters in scope in `use<...>`
+  --> $DIR/partial-capture.rs:52:54
+   |
+LL | fn enumerated_arr<T, const N: usize>(arr: [T; N]) -> impl Iterator<Item = (usize, T)> + use<> {
+   |                   -                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                   |
+   |                   type parameter is implicitly captured by this `impl Trait`
+
+error: `impl Trait` must mention all used const parameters in scope in `use<...>`
+  --> $DIR/partial-capture.rs:52:54
+   |
+LL | fn enumerated_arr<T, const N: usize>(arr: [T; N]) -> impl Iterator<Item = (usize, T)> + use<> {
+   |                      --------------                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                      |
+   |                      const parameter is implicitly captured by this `impl Trait`
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0700`.

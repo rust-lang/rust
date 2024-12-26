@@ -4,7 +4,6 @@ use rustc_span::{Span, Symbol};
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_param_not_captured)]
-#[note]
 pub(crate) struct ParamNotCaptured {
     #[primary_span]
     pub opaque_span: Span,
@@ -15,7 +14,6 @@ pub(crate) struct ParamNotCaptured {
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_self_ty_not_captured)]
-#[note]
 pub(crate) struct SelfTyNotCaptured {
     #[primary_span]
     pub opaque_span: Span,

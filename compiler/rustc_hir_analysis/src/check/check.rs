@@ -660,6 +660,29 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
         }
     }
 
+    // Collect all the param used by the opaque type into `expected_captures`, so that we
+    // can check they must be in the capture list.
+    let mut used_params = UnordSet::default();
+    let generics = tcx.generics_of(opaque_def_id);
+    for generic_arg in tcx.type_of(opaque_def_id).skip_binder().walk() {
+        match generic_arg.unpack() {
+            ty::GenericArgKind::Type(ty_arg)
+                if let &ty::Param(ty::ParamTy { index, .. }) = ty_arg.kind() =>
+            {
+                used_params.insert(generics.param_at(index as usize, tcx).def_id);
+            }
+            ty::GenericArgKind::Const(const_arg)
+                if let ty::ConstKind::Param(ty::ParamConst { index, .. }) = const_arg.kind() =>
+            {
+                used_params.insert(generics.param_at(index as usize, tcx).def_id);
+            }
+            // lifetime params are checked separately
+            ty::GenericArgKind::Lifetime(_)
+            | ty::GenericArgKind::Type(_)
+            | ty::GenericArgKind::Const(_) => {}
+        }
+    }
+
     let variances = tcx.variances_of(opaque_def_id);
     let mut def_id = Some(opaque_def_id.to_def_id());
     while let Some(generics) = def_id {
@@ -679,6 +702,11 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
             // it may or may not be captured as invariant, depending on if it shows
             // up through `Self` or `T::Assoc` syntax.
             if shadowed_captures.contains(&param.def_id) {
+                continue;
+            }
+
+            // If a param is not used by the opaque type, then it need not be captured.
+            if !used_params.contains(&param.def_id) {
                 continue;
             }
 
