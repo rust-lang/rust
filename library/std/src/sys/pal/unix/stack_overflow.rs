@@ -32,6 +32,7 @@ impl Drop for Handler {
     target_os = "macos",
     target_os = "netbsd",
     target_os = "openbsd",
+    target_os = "cygwin",
     target_os = "solaris",
     target_os = "illumos",
 ))]
@@ -583,6 +584,7 @@ mod imp {
     target_os = "macos",
     target_os = "netbsd",
     target_os = "openbsd",
+    target_os = "cygwin",
     target_os = "solaris",
     target_os = "illumos",
 )))]

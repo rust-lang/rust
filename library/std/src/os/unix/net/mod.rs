@@ -21,6 +21,7 @@ mod tests;
     target_os = "openbsd",
     target_os = "nto",
     target_vendor = "apple",
+    target_os = "cygwin"
 ))]
 mod ucred;
 

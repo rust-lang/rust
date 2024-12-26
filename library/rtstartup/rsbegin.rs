@@ -49,7 +49,7 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 // enumerating currently loaded modules via the dl_iterate_phdr() API and
 // finding their ".eh_frame" sections); Others, like Windows, require modules
 // to actively register their unwind info sections via unwinder API.
-#[cfg(all(target_os = "windows", target_arch = "x86", target_env = "gnu"))]
+#[cfg(all(any(target_os = "cygwin", all(target_os = "windows", target_env = "gnu")), target_arch = "x86"))]
 pub mod eh_frames {
     #[no_mangle]
     #[unsafe(link_section = ".eh_frame")]

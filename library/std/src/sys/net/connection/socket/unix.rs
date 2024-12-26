@@ -81,6 +81,7 @@ impl Socket {
                     target_os = "linux",
                     target_os = "netbsd",
                     target_os = "openbsd",
+                    target_os = "cygwin",
                     target_os = "nto",
                     target_os = "solaris",
                 ))] {
@@ -128,6 +129,7 @@ impl Socket {
                     target_os = "hurd",
                     target_os = "netbsd",
                     target_os = "openbsd",
+                    target_os = "cygwin",
                     target_os = "nto",
                 ))] {
                     // Like above, set cloexec atomically
@@ -257,6 +259,7 @@ impl Socket {
                 target_os = "hurd",
                 target_os = "netbsd",
                 target_os = "openbsd",
+                target_os = "cygwin",
             ))] {
                 unsafe {
                     let fd = cvt_r(|| libc::accept4(self.as_raw_fd(), storage, len, libc::SOCK_CLOEXEC))?;
