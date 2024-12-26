@@ -1,4 +1,4 @@
-use rustc_ast::Attribute;
+use rustc_hir::Attribute;
 use rustc_lint::LateContext;
 use rustc_span::{Span, sym};
 

@@ -6,9 +6,7 @@ use clippy_utils::{has_non_exhaustive_attr, is_lint_allowed, match_def_path, pat
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr, walk_fn, walk_item};
-use rustc_hir::{
-    self as hir, BlockCheckMode, BodyId, Expr, ExprKind, FnDecl, Impl, Item, ItemKind, Safety, UnsafeSource,
-};
+use rustc_hir::{self as hir, BlockCheckMode, BodyId, Expr, ExprKind, FnDecl, Impl, Item, ItemKind, UnsafeSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{
@@ -421,7 +419,7 @@ impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
         id: LocalDefId,
     ) -> Self::Result {
         if let Some(header) = kind.header()
-            && header.safety == Safety::Unsafe
+            && header.safety.is_unsafe()
         {
             ControlFlow::Break(())
         } else {
