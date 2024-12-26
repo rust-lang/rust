@@ -152,39 +152,6 @@ pub trait FromIterator<A>: Sized {
     fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self;
 }
 
-/// This implementation turns an iterator of tuples into a tuple of types which implement
-/// [`Default`] and [`Extend`].
-///
-/// This is similar to [`Iterator::unzip`], but is also composable with other [`FromIterator`]
-/// implementations:
-///
-/// ```rust
-/// # fn main() -> Result<(), core::num::ParseIntError> {
-/// let string = "1,2,123,4";
-///
-/// let (numbers, lengths): (Vec<_>, Vec<_>) = string
-///     .split(',')
-///     .map(|s| s.parse().map(|n: u32| (n, s.len())))
-///     .collect::<Result<_, _>>()?;
-///
-/// assert_eq!(numbers, [1, 2, 123, 4]);
-/// assert_eq!(lengths, [1, 1, 3, 1]);
-/// # Ok(()) }
-/// ```
-#[stable(feature = "from_iterator_for_tuple", since = "1.79.0")]
-impl<A, B, AE, BE> FromIterator<(AE, BE)> for (A, B)
-where
-    A: Default + Extend<AE>,
-    B: Default + Extend<BE>,
-{
-    fn from_iter<I: IntoIterator<Item = (AE, BE)>>(iter: I) -> Self {
-        let mut res = <(A, B)>::default();
-        res.extend(iter);
-
-        res
-    }
-}
-
 /// Conversion into an [`Iterator`].
 ///
 /// By implementing `IntoIterator` for a type, you define how it will be
@@ -668,6 +635,41 @@ macro_rules! spec_tuple_impl {
                 }
 
                 self.fold((), extend($($var_names,)*));
+            }
+        }
+
+        /// This implementation turns an iterator of tuples into a tuple of types which implement
+        /// [`Default`] and [`Extend`].
+        ///
+        /// This is similar to [`Iterator::unzip`], but is also composable with other [`FromIterator`]
+        /// implementations:
+        ///
+        /// ```rust
+        /// # fn main() -> Result<(), core::num::ParseIntError> {
+        /// let string = "1,2,123,4";
+        ///
+        /// // Example given for a 2-tuple, but 1- through 12-tuples are supported
+        /// let (numbers, lengths): (Vec<_>, Vec<_>) = string
+        ///     .split(',')
+        ///     .map(|s| s.parse().map(|n: u32| (n, s.len())))
+        ///     .collect::<Result<_, _>>()?;
+        ///
+        /// assert_eq!(numbers, [1, 2, 123, 4]);
+        /// assert_eq!(lengths, [1, 1, 3, 1]);
+        /// # Ok(()) }
+        /// ```
+        #[$meta]
+        $(#[$doctext])?
+        #[stable(feature = "from_iterator_for_tuple", since = "1.79.0")]
+        impl<$($ty_names,)* $($extend_ty_names,)*> FromIterator<($($extend_ty_names,)*)> for ($($ty_names,)*)
+        where
+            $($ty_names: Default + Extend<$extend_ty_names>,)*
+        {
+            fn from_iter<Iter: IntoIterator<Item = ($($extend_ty_names,)*)>>(iter: Iter) -> Self {
+                let mut res = <($($ty_names,)*)>::default();
+                res.extend(iter);
+
+                res
             }
         }
 
