@@ -19,7 +19,7 @@ use crate::errors;
 pub(crate) fn from_target_feature_attr(
     tcx: TyCtxt<'_>,
     attr: &hir::Attribute,
-    rust_target_features: &UnordMap<String, target_features::StabilityComputed>,
+    rust_target_features: &UnordMap<String, target_features::Stability>,
     target_features: &mut Vec<TargetFeature>,
 ) {
     let Some(list) = attr.meta_item_list() else { return };
@@ -64,7 +64,7 @@ pub(crate) fn from_target_feature_attr(
 
             // Only allow target features whose feature gates have been enabled
             // and which are permitted to be toggled.
-            if let Err(reason) = stability.toggle_allowed(/*enable*/ true) {
+            if let Err(reason) = stability.toggle_allowed() {
                 tcx.dcx().emit_err(errors::ForbiddenTargetFeatureAttr {
                     span: item.span(),
                     feature,
@@ -141,19 +141,18 @@ pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         rust_target_features: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
-            let target = &tcx.sess.target;
             if tcx.sess.opts.actually_rustdoc {
                 // rustdoc needs to be able to document functions that use all the features, so
                 // whitelist them all
                 rustc_target::target_features::all_rust_features()
-                    .map(|(a, b)| (a.to_string(), b.compute_toggleability(target)))
+                    .map(|(a, b)| (a.to_string(), b))
                     .collect()
             } else {
                 tcx.sess
                     .target
                     .rust_target_features()
                     .iter()
-                    .map(|(a, b, _)| (a.to_string(), b.compute_toggleability(target)))
+                    .map(|(a, b, _)| (a.to_string(), *b))
                     .collect()
             }
         },

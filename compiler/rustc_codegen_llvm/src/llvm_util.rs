@@ -728,7 +728,7 @@ pub(crate) fn global_llvm_features(
                         sess.dcx().emit_warn(unknown_feature);
                     }
                     Some((_, stability, _)) => {
-                        if let Err(reason) = stability.toggle_allowed(&sess.target, enable) {
+                        if let Err(reason) = stability.toggle_allowed() {
                             sess.dcx().emit_warn(ForbiddenCTargetFeature {
                                 feature,
                                 enabled: if enable { "enabled" } else { "disabled" },
