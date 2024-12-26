@@ -7,8 +7,6 @@
 )]
 #![warn(clippy::unnecessary_to_owned, clippy::redundant_clone)]
 
-//@no-rustfix: need to change the suggestion to a multipart suggestion
-
 use std::borrow::Cow;
 use std::ffi::{CStr, CString, OsStr, OsString};
 use std::ops::Deref;

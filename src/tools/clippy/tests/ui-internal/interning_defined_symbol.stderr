@@ -27,7 +27,7 @@ error: interning a defined symbol
   --> tests/ui-internal/interning_defined_symbol.rs:26:13
    |
 LL |     let _ = Symbol::intern("self");
-   |             ^^^^^^^^^^^^^^^^^^^^^^ help: try: `rustc_span::symbol::kw::SelfLower`
+   |             ^^^^^^^^^^^^^^^^^^^^^^ help: try: `rustc_span::kw::SelfLower`
 
 error: aborting due to 4 previous errors
 

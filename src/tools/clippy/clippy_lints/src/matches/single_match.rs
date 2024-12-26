@@ -129,7 +129,7 @@ fn report_single_pattern(cx: &LateContext<'_>, ex: &Expr<'_>, arm: &Arm<'_>, exp
             PatKind::Lit(Expr {
                 kind: ExprKind::Lit(lit),
                 ..
-            }) if lit.node.is_str() => pat_ref_count + 1,
+            }) if lit.node.is_str() || lit.node.is_bytestr() => pat_ref_count + 1,
             _ => pat_ref_count,
         };
         // References are only implicitly added to the pattern, so no overflow here.
