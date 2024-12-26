@@ -151,7 +151,6 @@ impl flags::Scip {
                                 text_range,
                             );
                             symbols.push(compute_symbol_info(
-                                relative_path.clone(),
                                 symbol.clone(),
                                 enclosing_symbol,
                                 token,
@@ -238,12 +237,7 @@ impl flags::Scip {
                 &line_index,
                 text_range,
             );
-            external_symbols.push(compute_symbol_info(
-                relative_path.clone(),
-                symbol.clone(),
-                enclosing_symbol,
-                token,
-            ));
+            external_symbols.push(compute_symbol_info(symbol.clone(), enclosing_symbol, token));
         }
 
         let index = scip_types::Index {
@@ -289,7 +283,6 @@ Duplicate symbols encountered:
 ";
 
 fn compute_symbol_info(
-    relative_path: String,
     symbol: String,
     enclosing_symbol: Option<String>,
     token: &TokenStaticData,
@@ -301,7 +294,7 @@ fn compute_symbol_info(
 
     let position_encoding = scip_types::PositionEncoding::UTF8CodeUnitOffsetFromLineStart.into();
     let signature_documentation = token.signature.clone().map(|text| scip_types::Document {
-        relative_path,
+        relative_path: "".to_owned(),
         language: "rust".to_owned(),
         text,
         position_encoding,
