@@ -8,7 +8,9 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::Obligation;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::thir::{FieldPat, Pat, PatKind};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypeVisitor, ValTree};
+use rustc_middle::ty::{
+    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitableExt, TypeVisitor, ValTree,
+};
 use rustc_middle::{mir, span_bug};
 use rustc_span::def_id::DefId;
 use rustc_span::{Span, sym};
@@ -387,7 +389,9 @@ fn extend_type_not_partial_eq<'tcx>(
 
     impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for UsedParamsNeedInstantiationVisitor<'tcx> {
         fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
-            if let ty::Adt(def, _args) = ty.kind() {
+            if let ty::Adt(def, _args) = ty.kind()
+                && !ty.has_escaping_bound_vars()
+            {
                 let ty_def_id = def.did();
                 let ty_def_span = self.tcx.def_span(ty_def_id);
                 let (impls_partial_eq, derived, structural, impl_def_id) =
@@ -412,7 +416,6 @@ fn extend_type_not_partial_eq<'tcx>(
                     _ => {}
                 };
             }
-            use rustc_middle::ty::TypeSuperVisitable;
             ty.super_visit_with(self)
         }
     }
@@ -467,6 +470,10 @@ fn type_has_partial_eq_impl<'tcx>(
     // using `PartialEq::eq` in this scenario in the past.)
     let partial_eq_trait_id = tcx.require_lang_item(hir::LangItem::PartialEq, None);
     let structural_partial_eq_trait_id = tcx.require_lang_item(hir::LangItem::StructuralPeq, None);
+
+    if ty.has_escaping_bound_vars() {
+        return (false, false, false, None);
+    }
 
     let partial_eq_obligation = Obligation::new(
         tcx,
