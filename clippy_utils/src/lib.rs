@@ -1960,43 +1960,6 @@ pub fn in_automatically_derived(tcx: TyCtxt<'_>, id: HirId) -> bool {
         })
 }
 
-/// Matches a function call with the given path and returns the arguments.
-///
-/// Usage:
-///
-/// ```rust,ignore
-/// if let Some(args) = match_function_call(cx, cmp_max_call, &paths::CMP_MAX);
-/// ```
-/// This function is deprecated. Use [`match_function_call_with_def_id`].
-pub fn match_function_call<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx Expr<'_>,
-    path: &[&str],
-) -> Option<&'tcx [Expr<'tcx>]> {
-    if let ExprKind::Call(fun, args) = expr.kind
-        && let ExprKind::Path(ref qpath) = fun.kind
-        && let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id()
-        && match_def_path(cx, fun_def_id, path)
-    {
-        return Some(args);
-    };
-    None
-}
-
-pub fn match_function_call_with_def_id<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx Expr<'_>,
-    fun_def_id: DefId,
-) -> Option<&'tcx [Expr<'tcx>]> {
-    if let ExprKind::Call(fun, args) = expr.kind
-        && let ExprKind::Path(ref qpath) = fun.kind
-        && cx.qpath_res(qpath, fun.hir_id).opt_def_id() == Some(fun_def_id)
-    {
-        return Some(args);
-    };
-    None
-}
-
 /// Checks if the given `DefId` matches any of the paths. Returns the index of matching path, if
 /// any.
 ///
@@ -2273,15 +2236,19 @@ pub fn std_or_core(cx: &LateContext<'_>) -> Option<&'static str> {
 }
 
 pub fn is_no_std_crate(cx: &LateContext<'_>) -> bool {
-    cx.tcx.hir().attrs(hir::CRATE_HIR_ID).iter().any(|attr| {
-        attr.name_or_empty() == sym::no_std
-    })
+    cx.tcx
+        .hir()
+        .attrs(hir::CRATE_HIR_ID)
+        .iter()
+        .any(|attr| attr.name_or_empty() == sym::no_std)
 }
 
 pub fn is_no_core_crate(cx: &LateContext<'_>) -> bool {
-    cx.tcx.hir().attrs(hir::CRATE_HIR_ID).iter().any(|attr| {
-        attr.name_or_empty() == sym::no_core
-    })
+    cx.tcx
+        .hir()
+        .attrs(hir::CRATE_HIR_ID)
+        .iter()
+        .any(|attr| attr.name_or_empty() == sym::no_core)
 }
 
 /// Check if parent of a hir node is a trait implementation block.
@@ -2980,12 +2947,18 @@ pub fn span_contains_comment(sm: &SourceMap, span: Span) -> bool {
 ///
 /// Comments are returned wrapped with their relevant delimiters
 pub fn span_extract_comment(sm: &SourceMap, span: Span) -> String {
+    span_extract_comments(sm, span).join("\n")
+}
+
+/// Returns all the comments a given span contains.
+///
+/// Comments are returned wrapped with their relevant delimiters.
+pub fn span_extract_comments(sm: &SourceMap, span: Span) -> Vec<String> {
     let snippet = sm.span_to_snippet(span).unwrap_or_default();
-    let res = tokenize_with_text(&snippet)
+    tokenize_with_text(&snippet)
         .filter(|(t, ..)| matches!(t, TokenKind::BlockComment { .. } | TokenKind::LineComment { .. }))
-        .map(|(_, s, _)| s)
-        .join("\n");
-    res
+        .map(|(_, s, _)| s.to_string())
+        .collect::<Vec<_>>()
 }
 
 pub fn span_find_starting_semi(sm: &SourceMap, span: Span) -> Span {

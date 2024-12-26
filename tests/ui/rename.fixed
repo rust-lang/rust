@@ -15,6 +15,7 @@
 #![allow(clippy::mixed_read_write_in_expression)]
 #![allow(clippy::manual_find_map)]
 #![allow(clippy::manual_filter_map)]
+#![allow(unpredictable_function_pointer_comparisons)]
 #![allow(clippy::useless_conversion)]
 #![allow(clippy::redundant_pattern_matching)]
 #![allow(clippy::match_result_ok)]

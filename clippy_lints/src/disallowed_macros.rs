@@ -43,7 +43,6 @@ declare_clippy_lint! {
     /// ```no_run
     /// use serde::Serialize;
     ///
-    /// // Example code where clippy issues a warning
     /// println!("warns");
     ///
     /// // The diagnostic will contain the message "no serializing"
