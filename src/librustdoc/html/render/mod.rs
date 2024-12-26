@@ -854,14 +854,22 @@ fn assoc_const(
     ty: &clean::Type,
     value: AssocConstValue<'_>,
     link: AssocItemLink<'_>,
-    indent: usize,
+    parent: Option<ItemType>,
     cx: &Context<'_>,
 ) {
     let tcx = cx.tcx();
+    let (indent, indent_str, end_newline) = if parent == Some(ItemType::Trait) {
+        let indent_str = "    ";
+        write!(w, "{}", render_attributes_in_pre(it, indent_str, cx));
+        (4, indent_str, Ending::NoNewline)
+    } else {
+        render_attributes_in_code(w, it, cx);
+        (0, "", Ending::Newline)
+    };
     write!(
         w,
         "{indent}{vis}const <a{href} class=\"constant\">{name}</a>{generics}: {ty}",
-        indent = " ".repeat(indent),
+        indent = indent_str,
         vis = visibility_print_with_space(it, cx),
         href = assoc_href_attr(it, link, cx),
         name = it.name.as_ref().unwrap(),
@@ -883,7 +891,7 @@ fn assoc_const(
             write!(w, " = {}", Escape(&repr));
         }
     }
-    write!(w, "{}", print_where_clause(generics, cx, indent, Ending::NoNewline));
+    write!(w, "{}", print_where_clause(generics, cx, indent, end_newline));
 }
 
 fn assoc_type(
@@ -893,13 +901,21 @@ fn assoc_type(
     bounds: &[clean::GenericBound],
     default: Option<&clean::Type>,
     link: AssocItemLink<'_>,
-    indent: usize,
+    parent: Option<ItemType>,
     cx: &Context<'_>,
 ) {
+    let (indent, indent_str, end_newline) = if parent == Some(ItemType::Trait) {
+        let indent_str = "    ";
+        write!(w, "{}", render_attributes_in_pre(it, indent_str, cx));
+        (4, indent_str, Ending::NoNewline)
+    } else {
+        render_attributes_in_code(w, it, cx);
+        (0, "", Ending::Newline)
+    };
     write!(
         w,
         "{indent}{vis}type <a{href} class=\"associatedtype\">{name}</a>{generics}",
-        indent = " ".repeat(indent),
+        indent = indent_str,
         vis = visibility_print_with_space(it, cx),
         href = assoc_href_attr(it, link, cx),
         name = it.name.as_ref().unwrap(),
@@ -912,7 +928,7 @@ fn assoc_type(
     if let Some(default) = default {
         write!(w, " = {}", default.print(cx))
     }
-    write!(w, "{}", print_where_clause(generics, cx, indent, Ending::NoNewline));
+    write!(w, "{}", print_where_clause(generics, cx, indent, end_newline));
 }
 
 fn assoc_method(
@@ -1098,16 +1114,9 @@ fn render_assoc_item(
         clean::MethodItem(m, _) => {
             assoc_method(w, item, &m.generics, &m.decl, link, parent, cx, render_mode)
         }
-        clean::RequiredAssocConstItem(generics, ty) => assoc_const(
-            w,
-            item,
-            generics,
-            ty,
-            AssocConstValue::None,
-            link,
-            if parent == ItemType::Trait { 4 } else { 0 },
-            cx,
-        ),
+        clean::RequiredAssocConstItem(generics, ty) => {
+            assoc_const(w, item, generics, ty, AssocConstValue::None, link, Some(parent), cx)
+        }
         clean::ProvidedAssocConstItem(ci) => assoc_const(
             w,
             item,
@@ -1115,7 +1124,7 @@ fn render_assoc_item(
             &ci.type_,
             AssocConstValue::TraitDefault(&ci.kind),
             link,
-            if parent == ItemType::Trait { 4 } else { 0 },
+            Some(parent),
             cx,
         ),
         clean::ImplAssocConstItem(ci) => assoc_const(
@@ -1125,19 +1134,12 @@ fn render_assoc_item(
             &ci.type_,
             AssocConstValue::Impl(&ci.kind),
             link,
-            if parent == ItemType::Trait { 4 } else { 0 },
+            Some(parent),
             cx,
         ),
-        clean::RequiredAssocTypeItem(ref generics, ref bounds) => assoc_type(
-            w,
-            item,
-            generics,
-            bounds,
-            None,
-            link,
-            if parent == ItemType::Trait { 4 } else { 0 },
-            cx,
-        ),
+        clean::RequiredAssocTypeItem(ref generics, ref bounds) => {
+            assoc_type(w, item, generics, bounds, None, link, Some(parent), cx)
+        }
         clean::AssocTypeItem(ref ty, ref bounds) => assoc_type(
             w,
             item,
@@ -1145,7 +1147,7 @@ fn render_assoc_item(
             bounds,
             Some(ty.item_type.as_ref().unwrap_or(&ty.type_)),
             link,
-            if parent == ItemType::Trait { 4 } else { 0 },
+            Some(parent),
             cx,
         ),
         _ => panic!("render_assoc_item called on non-associated-item"),
@@ -1167,11 +1169,36 @@ fn render_attributes_in_pre<'a, 'tcx: 'a>(
     })
 }
 
+// When an attribute is rendered inside a `<pre>` tag, it is formatted using
+// a whitespace suffix.
+fn render_attributes_in_pre_same_line<'a, 'tcx: 'a>(
+    it: &'a clean::Item,
+    cx: &'a Context<'tcx>,
+) -> impl fmt::Display + Captures<'a> + Captures<'tcx> {
+    crate::html::format::display_fn(move |f| {
+        for a in it.attributes(cx.tcx(), cx.cache(), false) {
+            write!(f, "{a} ")?;
+        }
+        Ok(())
+    })
+}
+
 // When an attribute is rendered inside a <code> tag, it is formatted using
 // a div to produce a newline after it.
 fn render_attributes_in_code(w: &mut impl fmt::Write, it: &clean::Item, cx: &Context<'_>) {
     for attr in it.attributes(cx.tcx(), cx.cache(), false) {
         write!(w, "<div class=\"code-attribute\">{attr}</div>").unwrap();
+    }
+}
+
+// Same as `render_attributes_in_code()`, but on the same line.
+fn render_attributes_in_code_same_line(
+    w: &mut impl fmt::Write,
+    it: &clean::Item,
+    cx: &Context<'_>,
+) {
+    for attr in it.attributes(cx.tcx(), cx.cache(), false) {
+        write!(w, "<span class=\"code-attribute\">{attr} </span>").unwrap();
     }
 }
 
@@ -1529,7 +1556,7 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
                             &[], // intentionally leaving out bounds
                             Some(&tydef.type_),
                             src_link,
-                            0,
+                            None,
                             cx,
                         );
                         out.push_str(";</div>");
@@ -1733,7 +1760,7 @@ fn render_impl(
                     ty,
                     AssocConstValue::None,
                     link.anchor(if trait_.is_some() { &source_id } else { &id }),
-                    0,
+                    None,
                     cx,
                 );
                 w.write_str("</h4></section>");
@@ -1759,7 +1786,7 @@ fn render_impl(
                         _ => unreachable!(),
                     },
                     link.anchor(if trait_.is_some() { &source_id } else { &id }),
-                    0,
+                    None,
                     cx,
                 );
                 w.write_str("</h4></section>");
@@ -1781,7 +1808,7 @@ fn render_impl(
                     bounds,
                     None,
                     link.anchor(if trait_.is_some() { &source_id } else { &id }),
-                    0,
+                    None,
                     cx,
                 );
                 w.write_str("</h4></section>");
@@ -1803,7 +1830,7 @@ fn render_impl(
                     &[], // intentionally leaving out bounds
                     Some(tydef.item_type.as_ref().unwrap_or(&tydef.type_)),
                     link.anchor(if trait_.is_some() { &source_id } else { &id }),
-                    0,
+                    None,
                     cx,
                 );
                 w.write_str("</h4></section>");
@@ -2100,7 +2127,7 @@ pub(crate) fn render_impl_summary(
                         &[], // intentionally leaving out bounds
                         Some(&tydef.type_),
                         AssocItemLink::Anchor(None),
-                        0,
+                        None,
                         cx,
                     );
                     w.write_str(";</div>");

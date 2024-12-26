@@ -20,8 +20,9 @@ use super::{
     AssocItemLink, AssocItemRender, Context, ImplRenderingParameters, RenderMode,
     collect_paths_for_type, document, ensure_trailing_slash, get_filtered_impls_for_reference,
     item_ty_to_section, notable_traits_button, notable_traits_json, render_all_impls,
-    render_assoc_item, render_assoc_items, render_attributes_in_code, render_attributes_in_pre,
-    render_impl, render_rightside, render_stability_since_raw,
+    render_assoc_item, render_assoc_items, render_attributes_in_code,
+    render_attributes_in_code_same_line, render_attributes_in_pre,
+    render_attributes_in_pre_same_line, render_impl, render_rightside, render_stability_since_raw,
     render_stability_since_raw_with_extra, write_section_heading,
 };
 use crate::clean;
@@ -438,6 +439,19 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                     extra_info_tags(tcx, myitem, item, Some(import_def_id)).to_string()
                 });
 
+                let visibility_and_hidden = match myitem.visibility(tcx) {
+                    Some(ty::Visibility::Restricted(_)) => {
+                        if myitem.is_doc_hidden() {
+                            // Don't separate with a space when there are two of them
+                            "<span title=\"Restricted Visibility\">&nbsp;🔒</span><span title=\"Hidden item\">👻</span> "
+                        } else {
+                            "<span title=\"Restricted Visibility\">&nbsp;🔒</span> "
+                        }
+                    }
+                    _ if myitem.is_doc_hidden() => "<span title=\"Hidden item\">&nbsp;👻</span> ",
+                    _ => "",
+                };
+
                 w.write_str(ITEM_TABLE_ROW_OPEN);
                 let id = match import.kind {
                     clean::ImportKind::Simple(s) => {
@@ -454,6 +468,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                     w,
                     "<div class=\"item-name\"{id}>\
                          <code>{vis}{imp}</code>\
+                         {visibility_and_hidden}\
                      </div>\
                      {stab_tags_before}{stab_tags}{stab_tags_after}",
                     vis = visibility_print_with_space(myitem, cx),
@@ -1445,8 +1460,9 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
 fn print_tuple_struct_fields<'a, 'cx: 'a>(
     cx: &'a Context<'cx>,
     s: &'a [clean::Item],
+    writing_in_pre: bool,
 ) -> impl fmt::Display + 'a + Captures<'cx> {
-    display_fn(|f| {
+    display_fn(move |f| {
         if !s.is_empty()
             && s.iter().all(|field| {
                 matches!(field.kind, clean::StrippedItem(box clean::StructFieldItem(..)))
@@ -1455,13 +1471,22 @@ fn print_tuple_struct_fields<'a, 'cx: 'a>(
             return f.write_str("<span class=\"comment\">/* private fields */</span>");
         }
 
-        for (i, ty) in s.iter().enumerate() {
+        for (i, it) in s.iter().enumerate() {
             if i > 0 {
                 f.write_str(", ")?;
             }
-            match ty.kind {
+            match it.kind {
                 clean::StrippedItem(box clean::StructFieldItem(_)) => f.write_str("_")?,
-                clean::StructFieldItem(ref ty) => write!(f, "{}", ty.print(cx))?,
+                clean::StructFieldItem(ref ty) => {
+                    if it.is_doc_hidden() {
+                        if writing_in_pre {
+                            write!(f, "{}", render_attributes_in_pre_same_line(it, cx))?;
+                        } else {
+                            render_attributes_in_code_same_line(f, it, cx);
+                        }
+                    }
+                    write!(f, "{}", ty.print(cx))?
+                }
                 _ => unreachable!(),
             }
         }
@@ -1472,13 +1497,13 @@ fn print_tuple_struct_fields<'a, 'cx: 'a>(
 fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum) {
     let count_variants = e.variants().count();
     wrap_item(w, |w| {
-        render_attributes_in_code(w, it, cx);
         write!(
             w,
-            "{}enum {}{}",
-            visibility_print_with_space(it, cx),
-            it.name.unwrap(),
-            e.generics.print(cx),
+            "{attrs}{vis}enum {name}{generics}",
+            attrs = render_attributes_in_pre(it, "", cx),
+            vis = visibility_print_with_space(it, cx),
+            name = it.name.unwrap(),
+            generics = e.generics.print(cx),
         );
 
         render_enum_fields(
@@ -1583,6 +1608,7 @@ fn render_enum_fields(
             if v.is_stripped() {
                 continue;
             }
+            write!(w, "{}", render_attributes_in_pre(v, TAB, cx));
             w.write_str(TAB);
             match v.kind {
                 clean::VariantItem(ref var) => match var.kind {
@@ -1596,7 +1622,12 @@ fn render_enum_fields(
                         enum_def_id,
                     ),
                     clean::VariantKind::Tuple(ref s) => {
-                        write!(w, "{}({})", v.name.unwrap(), print_tuple_struct_fields(cx, s));
+                        write!(
+                            w,
+                            "{}({})",
+                            v.name.unwrap(),
+                            print_tuple_struct_fields(cx, s, true)
+                        );
                     }
                     clean::VariantKind::Struct(ref s) => {
                         render_struct(w, v, None, None, &s.fields, TAB, false, cx);
@@ -1651,6 +1682,7 @@ fn item_variants(
             " rightside",
         );
         w.write_str("<h3 class=\"code-header\">");
+        render_attributes_in_code(w, variant, cx);
         if let clean::VariantItem(ref var) = variant.kind
             && let clean::VariantKind::CLike = var.kind
         {
@@ -1670,7 +1702,7 @@ fn item_variants(
         let clean::VariantItem(variant_data) = &variant.kind else { unreachable!() };
 
         if let clean::VariantKind::Tuple(ref s) = variant_data.kind {
-            write!(w, "({})", print_tuple_struct_fields(cx, s));
+            write!(w, "({})", print_tuple_struct_fields(cx, s, false));
         }
         w.write_str("</h3></section>");
 
@@ -1679,6 +1711,7 @@ fn item_variants(
         let heading_and_fields = match &variant_data.kind {
             clean::VariantKind::Struct(s) => {
                 // If there is no field to display, no need to add the heading.
+                // FIXME: this ignore the `--document-hidden-items` unstable flag
                 if s.fields.iter().any(|f| !f.is_doc_hidden()) {
                     Some(("Fields", &s.fields))
                 } else {
@@ -1721,10 +1754,15 @@ fn item_variants(
                             "<div class=\"sub-variant-field\">\
                                  <span id=\"{id}\" class=\"section-header\">\
                                      <a href=\"#{id}\" class=\"anchor field\">§</a>\
-                                     <code>{f}: {t}</code>\
+                                     <code>"
+                        );
+                        render_attributes_in_code(w, it, cx);
+                        write!(
+                            w,
+                            "{}: {}</code>\
                                  </span>",
-                            f = field.name.unwrap(),
-                            t = ty.print(cx),
+                            field.name.unwrap(),
+                            ty.print(cx),
                         );
                         write!(
                             w,
@@ -1743,7 +1781,7 @@ fn item_variants(
 
 fn item_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Macro) {
     wrap_item(w, |w| {
-        // FIXME: Also print `#[doc(hidden)]` for `macro_rules!` if it `is_doc_hidden`.
+        write!(w, "{}", render_attributes_in_pre(it, "", cx));
         if !t.macro_rules {
             write!(w, "{}", visibility_print_with_space(it, cx));
         }
@@ -2197,14 +2235,16 @@ fn render_union<'a, 'cx: 'a>(
             toggle_open(&mut f, format_args!("{count_fields} fields"));
         }
 
+        let prefix = "    ";
         for field in fields {
             if let clean::StructFieldItem(ref ty) = field.kind {
                 writeln!(
                     f,
-                    "    {}{}: {},",
-                    visibility_print_with_space(field, cx),
-                    field.name.unwrap(),
-                    ty.print(cx)
+                    "{attrs}{prefix}{vis}{name}: {ty},",
+                    attrs = render_attributes_in_pre(field, prefix, cx),
+                    vis = visibility_print_with_space(field, cx),
+                    name = field.name.unwrap(),
+                    ty = ty.print(cx)
                 )?;
             }
         }
@@ -2280,11 +2320,13 @@ fn render_struct_fields(
             if toggle {
                 toggle_open(&mut w, format_args!("{count_fields} fields"));
             }
+            let prefix = format!("{tab}    ");
             for field in fields {
                 if let clean::StructFieldItem(ref ty) = field.kind {
                     write!(
                         w,
-                        "\n{tab}    {vis}{name}: {ty},",
+                        "\n{attrs}{prefix}{vis}{name}: {ty},",
+                        attrs = render_attributes_in_pre(field, &prefix, cx),
                         vis = visibility_print_with_space(field, cx),
                         name = field.name.unwrap(),
                         ty = ty.print(cx),
@@ -2321,7 +2363,13 @@ fn render_struct_fields(
                     match field.kind {
                         clean::StrippedItem(box clean::StructFieldItem(..)) => write!(w, "_"),
                         clean::StructFieldItem(ref ty) => {
-                            write!(w, "{}{}", visibility_print_with_space(field, cx), ty.print(cx),)
+                            write!(
+                                w,
+                                "{attrs}{vis}{ty}",
+                                attrs = render_attributes_in_pre_same_line(field, cx),
+                                vis = visibility_print_with_space(field, cx),
+                                ty = ty.print(cx),
+                            )
                         }
                         _ => unreachable!(),
                     }

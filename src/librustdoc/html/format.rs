@@ -1610,14 +1610,7 @@ pub(crate) fn visibility_print_with_space<'a, 'tcx: 'a>(
         }
     };
 
-    let is_doc_hidden = item.is_doc_hidden();
-    display_fn(move |f| {
-        if is_doc_hidden {
-            f.write_str("#[doc(hidden)] ")?;
-        }
-
-        f.write_str(&vis)
-    })
+    display_fn(move |f| f.write_str(&vis))
 }
 
 pub(crate) trait PrintWithSpace {
