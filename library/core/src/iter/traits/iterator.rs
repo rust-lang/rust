@@ -2393,7 +2393,7 @@ pub trait Iterator {
     /// let res = data.iter().try_for_each(|x| writeln!(stdout(), "{x}"));
     /// assert!(res.is_ok());
     ///
-    /// let mut it = data.iter().cloned();
+    /// let mut it = data.into_iter();
     /// let res = it.try_for_each(|x| rename(x, Path::new(x).with_extension("old")));
     /// assert!(res.is_err());
     /// // It short-circuited, so the remaining items are still in the iterator:
