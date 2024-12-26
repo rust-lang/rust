@@ -40,7 +40,7 @@ pub unsafe fn banana() -> u32 {
 
 // CHECK: attributes [[APPLEATTRS]]
 // COMPAT-SAME: "target-features"="+avx,+avx2,{{.*}}"
-// INCOMPAT-SAME: "target-features"="-avx2,-avx,+avx,{{.*}}"
+// INCOMPAT-SAME: "target-features"="-avx2,-avx,+x87,+sse2,+avx,{{.*}}"
 // CHECK: attributes [[BANANAATTRS]]
 // COMPAT-SAME: "target-features"="+avx,+avx2,{{.*}}"
-// INCOMPAT-SAME: "target-features"="-avx2,-avx"
+// INCOMPAT-SAME: "target-features"="-avx2,-avx,+x87,+sse2"

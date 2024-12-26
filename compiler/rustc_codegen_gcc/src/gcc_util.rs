@@ -129,12 +129,18 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
                     });
                 }
             } else {
-                if abi_enable_set.contains(feature) {
-                    sess.dcx().emit_warn(ForbiddenCTargetFeature {
-                        feature,
-                        enabled: "disabled",
-                        reason: "this feature is required by the target ABI",
-                    });
+                // FIXME: we have to request implied features here since
+                // negative features do not handle implied features above.
+                #[allow(rustc::potential_query_instability)] // order does not matter
+                for &required in abi_enable_set.iter() {
+                    let implied = sess.target.implied_target_features(std::iter::once(required));
+                    if implied.contains(feature) {
+                        sess.dcx().emit_warn(ForbiddenCTargetFeature {
+                            feature,
+                            enabled: "disabled",
+                            reason: "this feature is required by the target ABI",
+                        });
+                    }
                 }
             }
 

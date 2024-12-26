@@ -753,13 +753,22 @@ impl Target {
         // "forbidden" in the list above to ensure that there is a consistent answer to the
         // questions "which ABI is used".
         match &*self.arch {
-            "x86" | "x86_64" => {
+            "x86" => {
                 // We support 2 ABIs, hardfloat (default) and softfloat.
                 if self.has_feature("soft-float") {
                     NOTHING
                 } else {
                     // Hardfloat ABI. x87 must be enabled.
                     (&["x87"], &[])
+                }
+            }
+            "x86_64" => {
+                // We support 2 ABIs, hardfloat (default) and softfloat.
+                if self.has_feature("soft-float") {
+                    NOTHING
+                } else {
+                    // Hardfloat ABI. x87 and SSE2 must be enabled.
+                    (&["x87", "sse2"], &[])
                 }
             }
             "arm" => {
