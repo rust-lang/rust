@@ -39,6 +39,7 @@ hide_output \
       -DLLVM_INCLUDE_TESTS=OFF \
       -DLLVM_INCLUDE_EXAMPLES=OFF \
       -DLLVM_ENABLE_PROJECTS="clang;lld;compiler-rt;bolt" \
+      -DLLVM_BINUTILS_INCDIR="/rustroot/lib/gcc/x86_64-pc-linux-gnu/$GCC_VERSION/plugin/include/" \
       -DC_INCLUDE_DIRS="$INC"
 
 hide_output make -j$(nproc)
