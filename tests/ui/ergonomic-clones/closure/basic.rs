@@ -1,10 +1,8 @@
 //@ check-pass
-//@ edition:2018
 
 #![feature(ergonomic_clones)]
 
 use std::marker::UseCloned;
-use std::future::Future;
 
 fn ergonomic_clone_closure_no_captures() -> i32 {
     let cl = use || {
@@ -39,14 +37,6 @@ fn ergonomic_clone_closure_use_cloned() -> Foo {
     };
 
     f
-}
-
-fn ergonomic_clone_async_closures() -> impl Future<Output = String> {
-    let s = String::from("hi");
-
-    async use {
-        s
-    }
 }
 
 fn main() {}
