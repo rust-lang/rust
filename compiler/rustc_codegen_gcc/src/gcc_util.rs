@@ -154,12 +154,12 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
     // we will silently correct them rather than silently producing wrong code.
     // (The target sanity check tries to catch this, but we can't know which features are
     // enabled in GCC by default so we can't be fully sure about that check.)
-    for feature in abi_enable {
-        all_rust_features.push((true, feature));
-    }
-    for feature in abi_disable {
-        all_rust_features.push((false, feature));
-    }
+    // We add these at the beginning of the list so that `-Ctarget-features` can
+    // still override it... that's unsound, but more compatible with past behavior.
+    all_rust_features.splice(
+        0..0,
+        abi_enable.iter().map(|&f| (true, f)).chain(abi_disable.iter().map(|&f| (false, f))),
+    );
 
     // Translate this into GCC features.
     let feats = all_rust_features

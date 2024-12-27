@@ -743,6 +743,9 @@ impl Target {
     /// the first list contains target features that must be enabled for ABI reasons,
     /// and the second list contains target feature that must be disabled for ABI reasons.
     ///
+    /// These features are automatically appended to whatever the target spec sats as default
+    /// features for the target.
+    ///
     /// All features enabled/disabled via `-Ctarget-features` and `#[target_features]` are checked
     /// against this. We also check any implied features, based on the information above. If LLVM
     /// implicitly enables more implied features than we do, that could bypass this check!
