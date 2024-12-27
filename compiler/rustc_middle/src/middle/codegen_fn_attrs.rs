@@ -1,7 +1,8 @@
 use rustc_abi::Align;
 use rustc_attr_parsing::{InlineAttr, InstructionSetAttr, OptimizeAttr};
-use rustc_macros::{HashStable, TyDecodable, TyEncodable};
-use rustc_span::{Symbol, sym};
+use rustc_hir::def_id::LocalDefId;
+use rustc_macros::{Diagnostic, HashStable, TyDecodable, TyEncodable};
+use rustc_span::{Span, Symbol, sym};
 use rustc_target::spec::SanitizerSet;
 
 use crate::mir::mono::Linkage;
