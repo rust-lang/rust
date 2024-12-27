@@ -79,7 +79,7 @@ static EXPRS: &[&str] = &[
     "if let _ = (true && false) {}",
     // Parentheses to call a named field, but not an unnamed field.
     "(self.fun)()",
-    "(self.0)()",  // FIXME: no parenthesis needed.
+    "self.0()",
     // Conditions end at the first curly brace, so struct expressions need to be
     // parenthesized. Except in a match guard, where conditions end at arrow.
     "if let _ = (Struct {}) {}",

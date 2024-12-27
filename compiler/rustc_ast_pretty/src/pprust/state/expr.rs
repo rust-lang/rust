@@ -213,7 +213,9 @@ impl<'a> State<'a> {
 
     fn print_expr_call(&mut self, func: &ast::Expr, args: &[P<ast::Expr>], fixup: FixupContext) {
         let needs_paren = match func.kind {
-            ast::ExprKind::Field(..) => true,
+            // In order to call a named field, needs parens: `(self.fun)()`
+            // But not for an unnamed field: `self.0()`
+            ast::ExprKind::Field(_, name) => !name.is_numeric(),
             _ => func.precedence() < ExprPrecedence::Unambiguous,
         };
 
