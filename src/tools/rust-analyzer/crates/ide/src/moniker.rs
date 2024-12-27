@@ -415,8 +415,7 @@ fn display<T: HirDisplay>(
         Err(_) => {
             let fallback_result = it.display(db, edition).to_string();
             tracing::error!(
-                "display_source_code failed. Falling back to using display, which has result: {}",
-                fallback_result
+                display = %fallback_result, "`display_source_code` failed; falling back to using display"
             );
             fallback_result
         }
