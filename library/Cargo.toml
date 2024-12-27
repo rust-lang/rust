@@ -45,3 +45,4 @@ rustc-demangle.debug = 0
 rustc-std-workspace-core = { path = 'rustc-std-workspace-core' }
 rustc-std-workspace-alloc = { path = 'rustc-std-workspace-alloc' }
 rustc-std-workspace-std = { path = 'rustc-std-workspace-std' }
+gimli = { git = "https://github.com/jyn514/gimli", branch = "shared-attrs", version = "0.31.1" }
