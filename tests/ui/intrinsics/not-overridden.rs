@@ -3,9 +3,9 @@
 #![feature(intrinsics)]
 //@ build-fail
 //@ failure-status:101
-//@ normalize-stderr-test: ".*note: .*\n\n" -> ""
-//@ normalize-stderr-test: "thread 'rustc' panicked.*:\n.*\n" -> ""
-//@ normalize-stderr-test: "internal compiler error:.*: intrinsic const_deallocate " -> ""
+//@ normalize-stderr: ".*note: .*\n\n" -> ""
+//@ normalize-stderr: "thread 'rustc' panicked.*:\n.*\n" -> ""
+//@ normalize-stderr: "internal compiler error:.*: intrinsic const_deallocate " -> ""
 //@ rustc-env:RUST_BACKTRACE=0
 
 #[rustc_intrinsic]

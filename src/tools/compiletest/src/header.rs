@@ -12,7 +12,6 @@ use tracing::*;
 use crate::common::{Config, Debugger, FailMode, Mode, PassMode};
 use crate::debuggers::{extract_cdb_version, extract_gdb_version};
 use crate::header::auxiliary::{AuxProps, parse_and_update_aux};
-use crate::header::cfg::{MatchOutcome, parse_cfg_name_directive};
 use crate::header::needs::CachedNeedsConditions;
 use crate::util::static_regex;
 
@@ -472,11 +471,24 @@ impl TestProps {
 
                     config.set_name_directive(ln, IGNORE_PASS, &mut self.ignore_pass);
 
-                    if let Some(rule) = config.parse_custom_normalization(ln, "normalize-stdout") {
-                        self.normalize_stdout.push(rule);
-                    }
-                    if let Some(rule) = config.parse_custom_normalization(ln, "normalize-stderr") {
-                        self.normalize_stderr.push(rule);
+                    if let Some(NormalizeRule { kind, regex, replacement }) =
+                        config.parse_custom_normalization(ln)
+                    {
+                        let rule_tuple = (regex, replacement);
+                        match kind {
+                            NormalizeKind::Stdout => self.normalize_stdout.push(rule_tuple),
+                            NormalizeKind::Stderr => self.normalize_stderr.push(rule_tuple),
+                            NormalizeKind::Stderr32bit => {
+                                if config.target_cfg().pointer_width == 32 {
+                                    self.normalize_stderr.push(rule_tuple);
+                                }
+                            }
+                            NormalizeKind::Stderr64bit => {
+                                if config.target_cfg().pointer_width == 64 {
+                                    self.normalize_stderr.push(rule_tuple);
+                                }
+                            }
+                        }
                     }
 
                     if let Some(code) = config
@@ -966,20 +978,28 @@ impl Config {
         }
     }
 
-    fn parse_custom_normalization(&self, line: &str, prefix: &str) -> Option<(String, String)> {
-        let parsed = parse_cfg_name_directive(self, line, prefix);
-        if parsed.outcome != MatchOutcome::Match {
-            return None;
-        }
-        let name = parsed.name.expect("successful match always has a name");
+    fn parse_custom_normalization(&self, line: &str) -> Option<NormalizeRule> {
+        // FIXME(Zalathar): Integrate name/value splitting into `DirectiveLine`
+        // instead of doing it here.
+        let (directive_name, _value) = line.split_once(':')?;
 
+        let kind = match directive_name {
+            "normalize-stdout" => NormalizeKind::Stdout,
+            "normalize-stderr" => NormalizeKind::Stderr,
+            "normalize-stderr-32bit" => NormalizeKind::Stderr32bit,
+            "normalize-stderr-64bit" => NormalizeKind::Stderr64bit,
+            _ => return None,
+        };
+
+        // FIXME(Zalathar): The normalize rule parser should only care about
+        // the value part, not the "line" (which isn't even the whole line).
         let Some((regex, replacement)) = parse_normalize_rule(line) else {
             panic!(
                 "couldn't parse custom normalization rule: `{line}`\n\
-                help: expected syntax is: `{prefix}-{name}: \"REGEX\" -> \"REPLACEMENT\"`"
+                help: expected syntax is: `{directive_name}: \"REGEX\" -> \"REPLACEMENT\"`"
             );
         };
-        Some((regex, replacement))
+        Some(NormalizeRule { kind, regex, replacement })
     }
 
     fn parse_name_directive(&self, line: &str, directive: &str) -> bool {
@@ -1103,6 +1123,19 @@ fn expand_variables(mut value: String, config: &Config) -> String {
     }
 
     value
+}
+
+struct NormalizeRule {
+    kind: NormalizeKind,
+    regex: String,
+    replacement: String,
+}
+
+enum NormalizeKind {
+    Stdout,
+    Stderr,
+    Stderr32bit,
+    Stderr64bit,
 }
 
 /// Parses the regex and replacement values of a `//@ normalize-*` header,
