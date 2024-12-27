@@ -3051,6 +3051,7 @@ pub trait Iterator {
     ///
     /// // we can still use `iter`, as there are more elements.
     /// assert_eq!(iter.next(), Some(&-1));
+    /// assert_eq!(iter.next_back(), Some(&3));
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
