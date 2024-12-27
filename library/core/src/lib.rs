@@ -110,6 +110,7 @@
 #![cfg_attr(bootstrap, feature(do_not_recommend))]
 #![feature(array_ptr_get)]
 #![feature(asm_experimental_arch)]
+#![feature(const_carrying_mul_add)]
 #![feature(const_eval_select)]
 #![feature(const_typed_swap)]
 #![feature(core_intrinsics)]
