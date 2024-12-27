@@ -168,7 +168,8 @@ cfg_has_statx! {{
             ) -> c_int
         }
 
-        if STATX_SAVED_STATE.load(Ordering::Relaxed) == STATX_STATE::Unavailable as u8 {
+        let statx_availability = STATX_SAVED_STATE.load(Ordering::Relaxed);
+        if statx_availability == STATX_STATE::Unavailable as u8 {
             return None;
         }
 
@@ -199,6 +200,9 @@ cfg_has_statx! {{
                 STATX_SAVED_STATE.store(STATX_STATE::Unavailable as u8, Ordering::Relaxed);
                 return None;
             }
+        }
+        if statx_availability == STATX_STATE::Unknown as u8 {
+            STATX_SAVED_STATE.store(STATX_STATE::Present as u8, Ordering::Relaxed);
         }
 
         // We cannot fill `stat64` exhaustively because of private padding fields.
