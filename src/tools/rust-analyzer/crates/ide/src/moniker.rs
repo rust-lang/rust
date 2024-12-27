@@ -353,8 +353,7 @@ fn def_to_non_local_moniker(
                         Definition::Module(module) if module.is_crate_root() => {}
                         _ => {
                             tracing::error!(
-                                "Encountered enclosing definition with no name: {:?}",
-                                def
+                                ?def, "Encountered enclosing definition with no name"
                             );
                         }
                     }
