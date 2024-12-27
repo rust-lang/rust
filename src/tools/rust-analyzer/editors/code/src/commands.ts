@@ -288,13 +288,13 @@ export function openCargoToml(ctx: CtxInit): Cmd {
 
 export function revealDependency(ctx: CtxInit): Cmd {
     return async (editor: RustEditor) => {
-        if (!ctx.dependencies?.isInitialized()) {
+        if (!ctx.dependenciesProvider?.isInitialized()) {
             return;
         }
         const documentPath = editor.document.uri.fsPath;
-        const dep = ctx.dependencies?.getDependency(documentPath);
+        const dep = ctx.dependenciesProvider?.getDependency(documentPath);
         if (dep) {
-            await ctx.treeView?.reveal(dep, { select: true, expand: true });
+            await ctx.dependencyTreeView?.reveal(dep, { select: true, expand: true });
         } else {
             await revealParentChain(editor.document, ctx);
         }
@@ -340,10 +340,10 @@ async function revealParentChain(document: RustDocument, ctx: CtxInit) {
             // a open file referencing the old version
             return;
         }
-    } while (!ctx.dependencies?.contains(documentPath));
+    } while (!ctx.dependenciesProvider?.contains(documentPath));
     parentChain.reverse();
     for (const idx in parentChain) {
-        const treeView = ctx.treeView;
+        const treeView = ctx.dependencyTreeView;
         if (!treeView) {
             continue;
         }

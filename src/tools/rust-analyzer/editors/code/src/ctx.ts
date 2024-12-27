@@ -84,8 +84,8 @@ export class Ctx implements RustAnalyzerExtensionApi {
     private commandFactories: Record<string, CommandFactory>;
     private commandDisposables: Disposable[];
     private unlinkedFiles: vscode.Uri[];
-    private _dependencies: RustDependenciesProvider | undefined;
-    private _treeView: vscode.TreeView<Dependency | DependencyFile | DependencyId> | undefined;
+    private _dependenciesProvider: RustDependenciesProvider | undefined;
+    private _dependencyTreeView: vscode.TreeView<Dependency | DependencyFile | DependencyId> | undefined;
     private lastStatus: ServerStatusParams | { health: "stopped" } = { health: "stopped" };
     private _serverVersion: string;
     private statusBarActiveEditorListener: Disposable;
@@ -102,12 +102,12 @@ export class Ctx implements RustAnalyzerExtensionApi {
         return this._client;
     }
 
-    get treeView() {
-        return this._treeView;
+    get dependencyTreeView() {
+        return this._dependencyTreeView;
     }
 
-    get dependencies() {
-        return this._dependencies;
+    get dependenciesProvider() {
+        return this._dependenciesProvider;
     }
 
     constructor(
@@ -285,13 +285,13 @@ export class Ctx implements RustAnalyzerExtensionApi {
             ...this,
             client: client,
         };
-        this._dependencies = new RustDependenciesProvider(ctxInit);
-        this._treeView = vscode.window.createTreeView("rustDependencies", {
-            treeDataProvider: this._dependencies,
+        this._dependenciesProvider = new RustDependenciesProvider(ctxInit);
+        this._dependencyTreeView = vscode.window.createTreeView("rustDependencies", {
+            treeDataProvider: this._dependenciesProvider,
             showCollapseAll: true,
         });
 
-        this.pushExtCleanup(this._treeView);
+        this.pushExtCleanup(this._dependencyTreeView);
         vscode.window.onDidChangeActiveTextEditor(async (e) => {
             // we should skip documents that belong to the current workspace
             if (this.shouldRevealDependency(e)) {
@@ -303,7 +303,7 @@ export class Ctx implements RustAnalyzerExtensionApi {
             }
         });
 
-        this.treeView?.onDidChangeVisibility(async (e) => {
+        this.dependencyTreeView?.onDidChangeVisibility(async (e) => {
             if (e.visible) {
                 const activeEditor = vscode.window.activeTextEditor;
                 if (this.shouldRevealDependency(activeEditor)) {
@@ -322,7 +322,7 @@ export class Ctx implements RustAnalyzerExtensionApi {
             e !== undefined &&
             isRustEditor(e) &&
             !isDocumentInWorkspace(e.document) &&
-            (this.treeView?.visible || false)
+            (this.dependencyTreeView?.visible || false)
         );
     }
 
@@ -423,7 +423,7 @@ export class Ctx implements RustAnalyzerExtensionApi {
                 } else {
                     statusBar.command = "rust-analyzer.openLogs";
                 }
-                this.dependencies?.refresh();
+                this.dependenciesProvider?.refresh();
                 break;
             case "warning":
                 statusBar.color = new vscode.ThemeColor("statusBarItem.warningForeground");
