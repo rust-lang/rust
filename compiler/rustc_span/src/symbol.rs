@@ -1149,6 +1149,7 @@ symbols! {
         iterator,
         iterator_collect_fn,
         kcfi,
+        keylocker_x86,
         keyword,
         kind,
         kreg,
