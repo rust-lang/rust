@@ -14,7 +14,7 @@ pub fn truncf(x: f32) -> f32 {
     let x1p120 = f32::from_bits(0x7b800000); // 0x1p120f === 2 ^ 120
 
     let mut i: u32 = x.to_bits();
-    let mut e: i32 = (i >> 23 & 0xff) as i32 - 0x7f + 9;
+    let mut e: i32 = ((i >> 23) & 0xff) as i32 - 0x7f + 9;
     let m: u32;
 
     if e >= 23 + 9 {

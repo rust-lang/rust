@@ -4,8 +4,8 @@ use core::f32;
 pub fn fmodf(x: f32, y: f32) -> f32 {
     let mut uxi = x.to_bits();
     let mut uyi = y.to_bits();
-    let mut ex = (uxi >> 23 & 0xff) as i32;
-    let mut ey = (uyi >> 23 & 0xff) as i32;
+    let mut ex = ((uxi >> 23) & 0xff) as i32;
+    let mut ey = ((uyi >> 23) & 0xff) as i32;
     let sx = uxi & 0x80000000;
     let mut i;
 

@@ -219,7 +219,7 @@ pub fn sqrt(x: f64) -> f64 {
         ix1 |= sign;
     }
     ix0 += m << 20;
-    f64::from_bits((ix0 as u64) << 32 | ix1.0 as u64)
+    f64::from_bits(((ix0 as u64) << 32) | ix1.0 as u64)
 }
 
 #[cfg(test)]

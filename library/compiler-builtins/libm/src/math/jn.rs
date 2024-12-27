@@ -55,7 +55,7 @@ pub fn jn(n: i32, mut x: f64) -> f64 {
     ix &= 0x7fffffff;
 
     // -lx == !lx + 1
-    if (ix | (lx | ((!lx).wrapping_add(1))) >> 31) > 0x7ff00000 {
+    if ix | ((lx | (!lx).wrapping_add(1)) >> 31) > 0x7ff00000 {
         /* nan */
         return x;
     }
@@ -265,7 +265,7 @@ pub fn yn(n: i32, x: f64) -> f64 {
     ix &= 0x7fffffff;
 
     // -lx == !lx + 1
-    if (ix | (lx | ((!lx).wrapping_add(1))) >> 31) > 0x7ff00000 {
+    if ix | ((lx | (!lx).wrapping_add(1)) >> 31) > 0x7ff00000 {
         /* nan */
         return x;
     }

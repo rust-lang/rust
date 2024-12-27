@@ -4,8 +4,9 @@
 
 #![feature(core_intrinsics)]
 #![allow(internal_features)]
-#![allow(dead_code)]
 #![no_std]
 
+#[allow(dead_code)]
+#[allow(clippy::all)] // We don't get `libm`'s list of `allow`s, so just ignore Clippy.
 #[path = "../../../src/math/mod.rs"]
 pub mod libm;
