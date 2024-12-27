@@ -120,7 +120,6 @@ jobs:
       run: ./ci/download-musl.sh
     - run: |
         cargo clippy --all \
-          --exclude cb \
           --features libm-test/build-musl,libm-test/test-multiprecision \
           --all-targets
 
