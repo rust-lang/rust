@@ -167,10 +167,9 @@ fn anonsocket_write<'tcx>(
                         dest: MPlaceTy<'tcx>,
                     }
                     @unblock = |this| {
-                        let Some(self_ref) = weak_self_ref.upgrade() else {
-                            // FIXME:  We should raise a deadlock error if the self_ref upgrade failed.
-                            throw_unsup_format!("This will be a deadlock error in future")
-                        };
+                        // If we got unblocked, then our peer successfully upgraded its weak
+                        // ref to us. That means we can also upgrade our weak ref.
+                        let self_ref = weak_self_ref.upgrade().unwrap();
                         anonsocket_write(&self_ref, ptr, len, &dest, this)
                     }
                 ),
@@ -257,10 +256,9 @@ fn anonsocket_read<'tcx>(
                         dest: MPlaceTy<'tcx>,
                     }
                     @unblock = |this| {
-                        let Some(self_ref) = weak_self_ref.upgrade() else {
-                            // FIXME:  We should raise a deadlock error if the self_ref upgrade failed.
-                            throw_unsup_format!("This will be a deadlock error in future")
-                        };
+                        // If we got unblocked, then our peer successfully upgraded its weak
+                        // ref to us. That means we can also upgrade our weak ref.
+                        let self_ref = weak_self_ref.upgrade().unwrap();
                         anonsocket_read(&self_ref, len, ptr, &dest, this)
                     }
                 ),
