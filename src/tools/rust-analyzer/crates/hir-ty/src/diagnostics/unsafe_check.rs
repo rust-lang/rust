@@ -99,10 +99,18 @@ fn walk_unsafe(
         }
         Expr::Path(path) => mark_unsafe_path(path, current.into()),
         Expr::Ref { expr, rawness: Rawness::RawPtr, mutability: _ } => {
-            if let Expr::Path(_) = body.exprs[*expr] {
-                // Do not report unsafe for `addr_of[_mut]!(EXTERN_OR_MUT_STATIC)`,
-                // see https://github.com/rust-lang/rust/pull/125834.
-                return;
+            match body.exprs[*expr] {
+                Expr::Path(_) => return,
+                // https://github.com/rust-lang/rust/pull/129248
+                // Taking a raw ref to a deref place expr is always safe.
+                Expr::UnaryOp { expr, op: UnaryOp::Deref } => {
+                    body.walk_child_exprs(expr, |child| {
+                        walk_unsafe(db, infer, body, resolver, def, child, inside_unsafe_block, unsafe_expr_cb);
+                    });
+
+                    return;
+                }
+                _ => (),
             }
         }
         Expr::MethodCall { .. } => {
