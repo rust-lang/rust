@@ -140,6 +140,12 @@ pub(crate) fn type_check<'a, 'tcx>(
         &mut constraints,
     );
 
+    let pre_obligations = infcx.take_registered_region_obligations();
+    assert!(
+        pre_obligations.is_empty(),
+        "there should be no incoming region obligations = {pre_obligations:#?}",
+    );
+
     debug!(?normalized_inputs_and_output);
 
     let mut typeck = TypeChecker {
