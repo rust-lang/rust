@@ -38,9 +38,9 @@ use span::{AstIdMap, EditionedFileId, FileId, HirFileIdRepr, SyntaxContextId};
 use stdx::TupleExt;
 use syntax::{
     algo::skip_trivia_token,
-    ast::{self, HasAttrs as _, HasGenericParams, IsString as _},
-    AstNode, AstToken, Direction, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange,
-    TextSize,
+    ast::{self, HasAttrs as _, HasGenericParams},
+    AstNode, AstToken, Direction, SmolStr, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken,
+    TextRange, TextSize,
 };
 use triomphe::Arc;
 
@@ -571,7 +571,7 @@ impl<'db> SemanticsImpl<'db> {
         actual_macro_call: &ast::MacroCall,
         speculative_args: &ast::TokenTree,
         token_to_map: SyntaxToken,
-    ) -> Option<(SyntaxNode, SyntaxToken)> {
+    ) -> Option<(SyntaxNode, Vec<(SyntaxToken, u8)>)> {
         let SourceAnalyzer { file_id, resolver, .. } =
             self.analyze_no_infer(actual_macro_call.syntax())?;
         let macro_call = InFile::new(file_id, actual_macro_call);
@@ -592,7 +592,7 @@ impl<'db> SemanticsImpl<'db> {
         macro_file: MacroFileId,
         speculative_args: &SyntaxNode,
         token_to_map: SyntaxToken,
-    ) -> Option<(SyntaxNode, SyntaxToken)> {
+    ) -> Option<(SyntaxNode, Vec<(SyntaxToken, u8)>)> {
         hir_expand::db::expand_speculative(
             self.db.upcast(),
             macro_file.macro_call_id,
@@ -608,7 +608,7 @@ impl<'db> SemanticsImpl<'db> {
         actual_macro_call: &ast::Item,
         speculative_args: &ast::Item,
         token_to_map: SyntaxToken,
-    ) -> Option<(SyntaxNode, SyntaxToken)> {
+    ) -> Option<(SyntaxNode, Vec<(SyntaxToken, u8)>)> {
         let macro_call = self.wrap_node_infile(actual_macro_call.clone());
         let macro_call_id = self.with_ctx(|ctx| ctx.item_to_macro_call(macro_call.as_ref()))?;
         hir_expand::db::expand_speculative(
@@ -624,7 +624,7 @@ impl<'db> SemanticsImpl<'db> {
         actual_macro_call: &ast::Attr,
         speculative_args: &ast::Attr,
         token_to_map: SyntaxToken,
-    ) -> Option<(SyntaxNode, SyntaxToken)> {
+    ) -> Option<(SyntaxNode, Vec<(SyntaxToken, u8)>)> {
         let attr = self.wrap_node_infile(actual_macro_call.clone());
         let adt = actual_macro_call.syntax().parent().and_then(ast::Adt::cast)?;
         let macro_call_id = self.with_ctx(|ctx| {
@@ -643,8 +643,7 @@ impl<'db> SemanticsImpl<'db> {
         &self,
         string: &ast::String,
     ) -> Option<Vec<(TextRange, Option<Either<PathResolution, InlineAsmOperand>>)>> {
-        let quote = string.open_quote_text_range()?;
-
+        let string_start = string.syntax().text_range().start();
         let token = self.wrap_token_infile(string.syntax().clone()).into_real_file().ok()?;
         self.descend_into_macros_breakable(token, |token, _| {
             (|| {
@@ -658,7 +657,7 @@ impl<'db> SemanticsImpl<'db> {
                     let format_args = self.wrap_node_infile(format_args);
                     let res = source_analyzer
                         .as_format_args_parts(self.db, format_args.as_ref())?
-                        .map(|(range, res)| (range + quote.end(), res.map(Either::Left)))
+                        .map(|(range, res)| (range + string_start, res.map(Either::Left)))
                         .collect();
                     Some(res)
                 } else {
@@ -672,7 +671,7 @@ impl<'db> SemanticsImpl<'db> {
                         .iter()
                         .map(|&(range, index)| {
                             (
-                                range + quote.end(),
+                                range + string_start,
                                 Some(Either::Right(InlineAsmOperand { owner, expr, index })),
                             )
                         })
@@ -690,17 +689,16 @@ impl<'db> SemanticsImpl<'db> {
         original_token: SyntaxToken,
         offset: TextSize,
     ) -> Option<(TextRange, Option<Either<PathResolution, InlineAsmOperand>>)> {
-        let original_string = ast::String::cast(original_token.clone())?;
+        let string_start = original_token.text_range().start();
         let original_token = self.wrap_token_infile(original_token).into_real_file().ok()?;
-        let quote = original_string.open_quote_text_range()?;
         self.descend_into_macros_breakable(original_token, |token, _| {
             (|| {
                 let token = token.value;
                 self.resolve_offset_in_format_args(
                     ast::String::cast(token)?,
-                    offset.checked_sub(quote.end())?,
+                    offset.checked_sub(string_start)?,
                 )
-                .map(|(range, res)| (range + quote.end(), res))
+                .map(|(range, res)| (range + string_start, res))
             })()
             .map_or(ControlFlow::Continue(()), ControlFlow::Break)
         })
@@ -1539,6 +1537,21 @@ impl<'db> SemanticsImpl<'db> {
     ) -> Option<impl Iterator<Item = ItemInNs>> {
         let analyze = self.analyze(scope)?;
         let items = analyze.resolver.resolve_module_path_in_items(self.db.upcast(), path);
+        Some(items.iter_items().map(|(item, _)| item.into()))
+    }
+
+    pub fn resolve_mod_path_relative(
+        &self,
+        to: Module,
+        segments: impl IntoIterator<Item = SmolStr>,
+    ) -> Option<impl Iterator<Item = ItemInNs>> {
+        let items = to.id.resolver(self.db.upcast()).resolve_module_path_in_items(
+            self.db.upcast(),
+            &ModPath::from_segments(
+                hir_def::path::PathKind::Plain,
+                segments.into_iter().map(|it| Name::new(&it, SyntaxContextId::ROOT)),
+            ),
+        );
         Some(items.iter_items().map(|(item, _)| item.into()))
     }
 

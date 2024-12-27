@@ -1100,7 +1100,8 @@ where
             | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Tuple(_)
-            | ty::Adt(_, _) => {
+            | ty::Adt(_, _)
+            | ty::UnsafeBinder(_) => {
                 let mut disqualifying_impl = None;
                 self.cx().for_each_relevant_impl(
                     goal.predicate.def_id(),

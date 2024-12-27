@@ -64,7 +64,8 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
             | ty::Pat(..)
             | ty::Slice(..)
             | ty::Str
-            | ty::Tuple(..) => t.super_fold_with(self),
+            | ty::Tuple(..)
+            | ty::UnsafeBinder(_) => t.super_fold_with(self),
 
             ty::Bool => {
                 if self.options.contains(EncodeTyOptions::NORMALIZE_INTEGERS) {

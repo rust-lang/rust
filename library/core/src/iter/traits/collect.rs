@@ -152,39 +152,6 @@ pub trait FromIterator<A>: Sized {
     fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self;
 }
 
-/// This implementation turns an iterator of tuples into a tuple of types which implement
-/// [`Default`] and [`Extend`].
-///
-/// This is similar to [`Iterator::unzip`], but is also composable with other [`FromIterator`]
-/// implementations:
-///
-/// ```rust
-/// # fn main() -> Result<(), core::num::ParseIntError> {
-/// let string = "1,2,123,4";
-///
-/// let (numbers, lengths): (Vec<_>, Vec<_>) = string
-///     .split(',')
-///     .map(|s| s.parse().map(|n: u32| (n, s.len())))
-///     .collect::<Result<_, _>>()?;
-///
-/// assert_eq!(numbers, [1, 2, 123, 4]);
-/// assert_eq!(lengths, [1, 1, 3, 1]);
-/// # Ok(()) }
-/// ```
-#[stable(feature = "from_iterator_for_tuple", since = "1.79.0")]
-impl<A, B, AE, BE> FromIterator<(AE, BE)> for (A, B)
-where
-    A: Default + Extend<AE>,
-    B: Default + Extend<BE>,
-{
-    fn from_iter<I: IntoIterator<Item = (AE, BE)>>(iter: I) -> Self {
-        let mut res = <(A, B)>::default();
-        res.extend(iter);
-
-        res
-    }
-}
-
 /// Conversion into an [`Iterator`].
 ///
 /// By implementing `IntoIterator` for a type, you define how it will be
@@ -629,7 +596,7 @@ macro_rules! spec_tuple_impl {
         }
 
         impl<$($ty_names,)* $($extend_ty_names,)* Iter> $trait_name<$($extend_ty_names),*> for Iter
-            where
+        where
             $($extend_ty_names: Extend<$ty_names>,)*
             Iter: Iterator<Item = ($($ty_names,)*)>,
         {
@@ -639,7 +606,7 @@ macro_rules! spec_tuple_impl {
         }
 
         impl<$($ty_names,)* $($extend_ty_names,)* Iter> $trait_name<$($extend_ty_names),*> for Iter
-            where
+        where
             $($extend_ty_names: Extend<$ty_names>,)*
             Iter: TrustedLen<Item = ($($ty_names,)*)>,
         {
@@ -647,29 +614,64 @@ macro_rules! spec_tuple_impl {
                 fn extend<'a, $($ty_names,)*>(
                     $($var_names: &'a mut impl Extend<$ty_names>,)*
                 ) -> impl FnMut((), ($($ty_names,)*)) + 'a {
-                #[allow(non_snake_case)]
-                // SAFETY: We reserve enough space for the `size_hint`, and the iterator is `TrustedLen`
-                // so its `size_hint` is exact.
-                move |(), ($($extend_ty_names,)*)| unsafe {
-                    $($var_names.extend_one_unchecked($extend_ty_names);)*
+                    #[allow(non_snake_case)]
+                    // SAFETY: We reserve enough space for the `size_hint`, and the iterator is
+                    // `TrustedLen` so its `size_hint` is exact.
+                    move |(), ($($extend_ty_names,)*)| unsafe {
+                        $($var_names.extend_one_unchecked($extend_ty_names);)*
+                    }
                 }
+
+                let (lower_bound, upper_bound) = self.size_hint();
+
+                if upper_bound.is_none() {
+                    // We cannot reserve more than `usize::MAX` items, and this is likely to go out of memory anyway.
+                    $default_fn_name(self, $($var_names,)*);
+                    return;
+                }
+
+                if lower_bound > 0 {
+                    $($var_names.extend_reserve(lower_bound);)*
+                }
+
+                self.fold((), extend($($var_names,)*));
             }
-
-            let (lower_bound, upper_bound) = self.size_hint();
-
-            if upper_bound.is_none() {
-                // We cannot reserve more than `usize::MAX` items, and this is likely to go out of memory anyway.
-                $default_fn_name(self, $($var_names,)*);
-                return;
-            }
-
-            if lower_bound > 0 {
-                $($var_names.extend_reserve(lower_bound);)*
-            }
-
-            self.fold((), extend($($var_names,)*));
         }
-    }
+
+        /// This implementation turns an iterator of tuples into a tuple of types which implement
+        /// [`Default`] and [`Extend`].
+        ///
+        /// This is similar to [`Iterator::unzip`], but is also composable with other [`FromIterator`]
+        /// implementations:
+        ///
+        /// ```rust
+        /// # fn main() -> Result<(), core::num::ParseIntError> {
+        /// let string = "1,2,123,4";
+        ///
+        /// // Example given for a 2-tuple, but 1- through 12-tuples are supported
+        /// let (numbers, lengths): (Vec<_>, Vec<_>) = string
+        ///     .split(',')
+        ///     .map(|s| s.parse().map(|n: u32| (n, s.len())))
+        ///     .collect::<Result<_, _>>()?;
+        ///
+        /// assert_eq!(numbers, [1, 2, 123, 4]);
+        /// assert_eq!(lengths, [1, 1, 3, 1]);
+        /// # Ok(()) }
+        /// ```
+        #[$meta]
+        $(#[$doctext])?
+        #[stable(feature = "from_iterator_for_tuple", since = "1.79.0")]
+        impl<$($ty_names,)* $($extend_ty_names,)*> FromIterator<($($extend_ty_names,)*)> for ($($ty_names,)*)
+        where
+            $($ty_names: Default + Extend<$extend_ty_names>,)*
+        {
+            fn from_iter<Iter: IntoIterator<Item = ($($extend_ty_names,)*)>>(iter: Iter) -> Self {
+                let mut res = <($($ty_names,)*)>::default();
+                res.extend(iter);
+
+                res
+            }
+        }
 
     };
 }

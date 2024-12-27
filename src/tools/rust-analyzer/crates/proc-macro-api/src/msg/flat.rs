@@ -39,10 +39,10 @@ use std::collections::VecDeque;
 
 use intern::Symbol;
 use rustc_hash::FxHashMap;
-use serde::{Deserialize, Serialize};
+use serde_derive::{Deserialize, Serialize};
 use span::{EditionedFileId, ErasedFileAstId, Span, SpanAnchor, SyntaxContextId, TextRange};
 
-use crate::msg::EXTENDED_LEAF_DATA;
+use crate::msg::{ENCODE_CLOSE_SPAN_VERSION, EXTENDED_LEAF_DATA};
 
 pub type SpanDataIndexMap =
     indexmap::IndexSet<Span, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
@@ -145,7 +145,11 @@ impl FlatTree {
         w.write(subtree);
 
         FlatTree {
-            subtree: write_vec(w.subtree, SubtreeRepr::write),
+            subtree: if version >= ENCODE_CLOSE_SPAN_VERSION {
+                write_vec(w.subtree, SubtreeRepr::write_with_close_span)
+            } else {
+                write_vec(w.subtree, SubtreeRepr::write)
+            },
             literal: if version >= EXTENDED_LEAF_DATA {
                 write_vec(w.literal, LiteralRepr::write_with_kind)
             } else {
@@ -179,7 +183,11 @@ impl FlatTree {
         w.write(subtree);
 
         FlatTree {
-            subtree: write_vec(w.subtree, SubtreeRepr::write),
+            subtree: if version >= ENCODE_CLOSE_SPAN_VERSION {
+                write_vec(w.subtree, SubtreeRepr::write_with_close_span)
+            } else {
+                write_vec(w.subtree, SubtreeRepr::write)
+            },
             literal: if version >= EXTENDED_LEAF_DATA {
                 write_vec(w.literal, LiteralRepr::write_with_kind)
             } else {
@@ -202,7 +210,11 @@ impl FlatTree {
         span_data_table: &SpanDataIndexMap,
     ) -> tt::Subtree<Span> {
         Reader {
-            subtree: read_vec(self.subtree, SubtreeRepr::read),
+            subtree: if version >= ENCODE_CLOSE_SPAN_VERSION {
+                read_vec(self.subtree, SubtreeRepr::read_with_close_span)
+            } else {
+                read_vec(self.subtree, SubtreeRepr::read)
+            },
             literal: if version >= EXTENDED_LEAF_DATA {
                 read_vec(self.literal, LiteralRepr::read_with_kind)
             } else {
@@ -224,7 +236,11 @@ impl FlatTree {
 
     pub fn to_subtree_unresolved(self, version: u32) -> tt::Subtree<TokenId> {
         Reader {
-            subtree: read_vec(self.subtree, SubtreeRepr::read),
+            subtree: if version >= ENCODE_CLOSE_SPAN_VERSION {
+                read_vec(self.subtree, SubtreeRepr::read_with_close_span)
+            } else {
+                read_vec(self.subtree, SubtreeRepr::read)
+            },
             literal: if version >= EXTENDED_LEAF_DATA {
                 read_vec(self.literal, LiteralRepr::read_with_kind)
             } else {
@@ -257,7 +273,26 @@ fn write_vec<T, F: Fn(T) -> [u32; N], const N: usize>(xs: Vec<T>, f: F) -> Vec<u
 }
 
 impl SubtreeRepr {
-    fn write(self) -> [u32; 5] {
+    fn write(self) -> [u32; 4] {
+        let kind = match self.kind {
+            tt::DelimiterKind::Invisible => 0,
+            tt::DelimiterKind::Parenthesis => 1,
+            tt::DelimiterKind::Brace => 2,
+            tt::DelimiterKind::Bracket => 3,
+        };
+        [self.open.0, kind, self.tt[0], self.tt[1]]
+    }
+    fn read([open, kind, lo, len]: [u32; 4]) -> SubtreeRepr {
+        let kind = match kind {
+            0 => tt::DelimiterKind::Invisible,
+            1 => tt::DelimiterKind::Parenthesis,
+            2 => tt::DelimiterKind::Brace,
+            3 => tt::DelimiterKind::Bracket,
+            other => panic!("bad kind {other}"),
+        };
+        SubtreeRepr { open: TokenId(open), close: TokenId(!0), kind, tt: [lo, len] }
+    }
+    fn write_with_close_span(self) -> [u32; 5] {
         let kind = match self.kind {
             tt::DelimiterKind::Invisible => 0,
             tt::DelimiterKind::Parenthesis => 1,
@@ -266,7 +301,7 @@ impl SubtreeRepr {
         };
         [self.open.0, self.close.0, kind, self.tt[0], self.tt[1]]
     }
-    fn read([open, close, kind, lo, len]: [u32; 5]) -> SubtreeRepr {
+    fn read_with_close_span([open, close, kind, lo, len]: [u32; 5]) -> SubtreeRepr {
         let kind = match kind {
             0 => tt::DelimiterKind::Invisible,
             1 => tt::DelimiterKind::Parenthesis,

@@ -123,8 +123,6 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
             )
         });
 
-        assert_eq!(region_constraints.member_constraints, vec![]);
-
         let mut seen = FxHashSet::default();
         region_constraints
             .outlives

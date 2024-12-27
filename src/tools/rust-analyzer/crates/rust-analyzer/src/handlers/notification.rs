@@ -189,7 +189,7 @@ pub(crate) fn handle_did_save_text_document(
         if !state.config.check_on_save(Some(sr)) || run_flycheck(state, vfs_path) {
             return Ok(());
         }
-    } else if state.config.check_on_save(None) {
+    } else if state.config.check_on_save(None) && state.config.flycheck_workspace(None) {
         // No specific flycheck was triggered, so let's trigger all of them.
         for flycheck in state.flycheck.iter() {
             flycheck.restart_workspace(None);
@@ -293,7 +293,7 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
     let file_id = state.vfs.read().0.file_id(&vfs_path);
     if let Some(file_id) = file_id {
         let world = state.snapshot();
-        let source_root_id = world.analysis.source_root_id(file_id).ok();
+        let may_flycheck_workspace = state.config.flycheck_workspace(None);
         let mut updated = false;
         let task = move || -> std::result::Result<(), ide::Cancelled> {
             // Is the target binary? If so we let flycheck run only for the workspace that contains the crate.
@@ -375,21 +375,22 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
             let saved_file = vfs_path.as_path().map(|p| p.to_owned());
 
             // Find and trigger corresponding flychecks
-            for flycheck in world.flycheck.iter() {
+            'flychecks: for flycheck in world.flycheck.iter() {
                 for (id, package) in workspace_ids.clone() {
                     if id == flycheck.id() {
                         updated = true;
-                        match package.filter(|_| !world.config.flycheck_workspace(source_root_id)) {
-                            Some(package) => flycheck
-                                .restart_for_package(package, target.clone().map(TupleExt::head)),
-                            None => flycheck.restart_workspace(saved_file.clone()),
+                        if may_flycheck_workspace {
+                            flycheck.restart_workspace(saved_file.clone())
+                        } else if let Some(package) = package {
+                            flycheck
+                                .restart_for_package(package, target.clone().map(TupleExt::head))
                         }
-                        continue;
+                        continue 'flychecks;
                     }
                 }
             }
             // No specific flycheck was triggered, so let's trigger all of them.
-            if !updated {
+            if !updated && may_flycheck_workspace {
                 for flycheck in world.flycheck.iter() {
                     flycheck.restart_workspace(saved_file.clone());
                 }
@@ -432,8 +433,10 @@ pub(crate) fn handle_run_flycheck(
         }
     }
     // No specific flycheck was triggered, so let's trigger all of them.
-    for flycheck in state.flycheck.iter() {
-        flycheck.restart_workspace(None);
+    if state.config.flycheck_workspace(None) {
+        for flycheck in state.flycheck.iter() {
+            flycheck.restart_workspace(None);
+        }
     }
     Ok(())
 }

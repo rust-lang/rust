@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
-use rustc_ast::{AttrStyle};
+use rustc_ast::AttrStyle;
 use rustc_errors::Applicability;
+use rustc_hir::{AttrArgs, AttrKind, Attribute};
 use rustc_lint::LateContext;
-use rustc_hir::{Attribute, AttrKind, AttrArgs};
 
 use super::DOC_INCLUDE_WITHOUT_CFG;
 

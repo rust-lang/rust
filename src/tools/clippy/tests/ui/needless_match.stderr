@@ -131,5 +131,17 @@ LL | |             _ => e,
 LL | |         };
    | |_________^ help: replace it with: `e`
 
-error: aborting due to 13 previous errors
+error: this if-let expression is unnecessary
+  --> tests/ui/needless_match.rs:339:9
+   |
+LL | /         if let Some(num) = A {
+LL | |             Some(num)
+LL | |         } else if let Some(num) = A {
+LL | |             Some(num)
+...  |
+LL | |             None
+LL | |         }
+   | |_________^ help: replace it with: `A`
+
+error: aborting due to 14 previous errors
 

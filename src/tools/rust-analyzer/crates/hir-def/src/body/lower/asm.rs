@@ -6,7 +6,7 @@ use syntax::{
     ast::{self, HasName, IsString},
     AstNode, AstPtr, AstToken, T,
 };
-use tt::{TextRange, TextSize};
+use tt::TextRange;
 
 use crate::{
     body::lower::{ExprCollector, FxIndexSet},
@@ -224,7 +224,7 @@ impl ExprCollector<'_> {
                             TextRange::new(
                                 inner_span.start.try_into().unwrap(),
                                 inner_span.end.try_into().unwrap(),
-                            ) - TextSize::from(str_style.map(|it| it + 1).unwrap_or(0) as u32 + 1)
+                            )
                         })
                     };
                     for piece in unverified_pieces {
@@ -268,7 +268,11 @@ impl ExprCollector<'_> {
             Expr::InlineAsm(InlineAsm { operands: operands.into_boxed_slice(), options }),
             syntax_ptr,
         );
-        self.source_map.template_map.get_or_insert_with(Default::default).1.insert(idx, mappings);
+        self.source_map
+            .template_map
+            .get_or_insert_with(Default::default)
+            .asm_to_captures
+            .insert(idx, mappings);
         idx
     }
 }

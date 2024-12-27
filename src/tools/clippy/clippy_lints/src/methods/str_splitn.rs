@@ -129,7 +129,7 @@ fn check_manual_split_once_indirect(
     let ctxt = expr.span.ctxt();
     let mut parents = cx.tcx.hir().parent_iter(expr.hir_id);
     if let (_, Node::LetStmt(local)) = parents.next()?
-        && let PatKind::Binding(BindingMode::MUT, iter_binding_id, iter_ident, None) = local.pat.kind
+        && let PatKind::Binding(BindingMode::MUT, iter_binding_id, _, None) = local.pat.kind
         && let (iter_stmt_id, Node::Stmt(_)) = parents.next()?
         && let (_, Node::Block(enclosing_block)) = parents.next()?
         && let mut stmts = enclosing_block
@@ -162,16 +162,20 @@ fn check_manual_split_once_indirect(
                 UnwrapKind::Unwrap => ".unwrap()",
                 UnwrapKind::QuestionMark => "?",
             };
-            diag.span_suggestion_verbose(
-                local.span,
-                format!("try `{r}split_once`"),
-                format!("let ({lhs}, {rhs}) = {self_snip}.{r}split_once({pat_snip}){unwrap};"),
+
+            // Add a multipart suggestion
+            diag.multipart_suggestion(
+                format!("replace with `{r}split_once`"),
+                vec![
+                    (
+                        local.span,
+                        format!("let ({lhs}, {rhs}) = {self_snip}.{r}split_once({pat_snip}){unwrap};"),
+                    ),
+                    (first.span, String::new()),  // Remove the first usage
+                    (second.span, String::new()), // Remove the second usage
+                ],
                 app,
             );
-
-            let remove_msg = format!("remove the `{iter_ident}` usages");
-            diag.span_suggestion(first.span, remove_msg.clone(), "", app);
-            diag.span_suggestion(second.span, remove_msg, "", app);
         });
     }
 

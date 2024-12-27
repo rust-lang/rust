@@ -549,6 +549,10 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
             Ok(Ty::new_pat(cx, ty, pat))
         }
 
+        (ty::UnsafeBinder(a_binder), ty::UnsafeBinder(b_binder)) => {
+            Ok(Ty::new_unsafe_binder(cx, relation.binders(*a_binder, *b_binder)?))
+        }
+
         _ => Err(TypeError::Sorts(ExpectedFound::new(a, b))),
     }
 }

@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use gimli::{AttributeValue, EndianRcSlice, Reader, RunTimeEndian};
+use gimli::{EndianRcSlice, Reader, RunTimeEndian};
 use object::{Object, ObjectSection};
 use run_make_support::{gimli, object, rfs, rustc};
 

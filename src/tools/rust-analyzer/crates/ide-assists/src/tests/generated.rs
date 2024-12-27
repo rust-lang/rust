@@ -3280,7 +3280,7 @@ fn doctest_unnecessary_async() {
     check_doc_test(
         "unnecessary_async",
         r#####"
-pub async f$0n foo() {}
+pub asy$0nc fn foo() {}
 pub async fn bar() { foo().await }
 "#####,
         r#####"

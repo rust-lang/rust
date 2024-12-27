@@ -4,7 +4,8 @@ pub(crate) mod flat;
 use std::io::{self, BufRead, Write};
 
 use paths::Utf8PathBuf;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::de::DeserializeOwned;
+use serde_derive::{Deserialize, Serialize};
 
 use crate::ProcMacroKind;
 
@@ -123,7 +124,7 @@ impl ExpnGlobals {
     }
 }
 
-pub trait Message: Serialize + DeserializeOwned {
+pub trait Message: serde::Serialize + DeserializeOwned {
     fn read<R: BufRead>(
         from_proto: ProtocolRead<R>,
         inp: &mut R,

@@ -56,25 +56,8 @@ impl ProcMacroProcessSrv {
         match srv.version_check() {
             Ok(v) if v > CURRENT_API_VERSION => Err(io::Error::new(
                 io::ErrorKind::Other,
-                format!(
-                    "The version of the proc-macro server ({v}) in your Rust toolchain \
-                is newer than the version supported by your rust-analyzer ({CURRENT_API_VERSION}).
-\
-                This will prevent proc-macro expansion from working. \
-                Please consider updating your rust-analyzer to ensure compatibility with your \
-                current toolchain."
-                ),
-            )),
-            Ok(v) if v < RUST_ANALYZER_SPAN_SUPPORT => Err(io::Error::new(
-                io::ErrorKind::Other,
-                format!(
-                    "The version of the proc-macro server ({v}) in your Rust toolchain \
-                is too old and no longer supported by your rust-analyzer which requires\
-                version {RUST_ANALYZER_SPAN_SUPPORT} or higher.
-\
-                This will prevent proc-macro expansion from working. \
-                Please consider updating your toolchain or downgrading your rust-analyzer \
-                to ensure compatibility with your current toolchain."
+                format!( "The version of the proc-macro server ({v}) in your Rust toolchain is newer than the version supported by your rust-analyzer ({CURRENT_API_VERSION}).
+            This will prevent proc-macro expansion from working. Please consider updating your rust-analyzer to ensure compatibility with your current toolchain."
                 ),
             )),
             Ok(v) => {
@@ -89,10 +72,10 @@ impl ProcMacroProcessSrv {
                 tracing::info!("Proc-macro server span mode: {:?}", srv.mode);
                 Ok(srv)
             }
-            Err(e) => Err(io::Error::new(
-                io::ErrorKind::Other,
-                format!("Failed to fetch proc-macro server version: {e}"),
-            )),
+            Err(e) => {
+                tracing::info!(%e, "proc-macro version check failed, restarting and assuming version 0");
+                create_srv(false)
+            }
         }
     }
 

@@ -205,7 +205,7 @@ impl S {
 fn foo(s: S) { s.$0 }
 "#,
             expect![[r#"
-                fd foo   u32
+                fd foo         u32
                 me bar() fn(&self)
             "#]],
         );
@@ -259,7 +259,7 @@ impl S {
 "#,
             expect![[r#"
                 fd the_field (u32,)
-                me foo()     fn(self)
+                me foo()   fn(self)
             "#]],
         )
     }
@@ -275,7 +275,7 @@ impl A {
 "#,
             expect![[r#"
                 fd the_field (u32, i32)
-                me foo()     fn(&self)
+                me foo()      fn(&self)
             "#]],
         )
     }
@@ -536,7 +536,7 @@ impl A {
 }
             "#,
             expect![[r#"
-                fd pub_field    u32
+                fd pub_field          u32
                 me pub_method() fn(&self)
             "#]],
         )
@@ -550,7 +550,7 @@ union U { field: u8, other: u16 }
 fn foo(u: U) { u.$0 }
 "#,
             expect![[r#"
-                fd field u8
+                fd field  u8
                 fd other u16
             "#]],
         );
@@ -725,8 +725,8 @@ fn test(a: A) {
 }
 "#,
             expect![[r#"
-                fd another                u32
-                fd field                  u8
+                fd another                                                          u32
+                fd field                                                             u8
                 me deref() (use core::ops::Deref) fn(&self) -> &<Self as Deref>::Target
             "#]],
         );
@@ -748,8 +748,8 @@ fn test(a: A) {
 }
 "#,
             expect![[r#"
-                fd 0                      u8
-                fd 1                      u32
+                fd 0                                                                 u8
+                fd 1                                                                u32
                 me deref() (use core::ops::Deref) fn(&self) -> &<Self as Deref>::Target
             "#]],
         );
@@ -770,8 +770,8 @@ fn test(a: A) {
 }
 "#,
             expect![[r#"
-                fd 0                      u8
-                fd 1                      u32
+                fd 0                                                                 u8
+                fd 1                                                                u32
                 me deref() (use core::ops::Deref) fn(&self) -> &<Self as Deref>::Target
             "#]],
         );
@@ -964,12 +964,12 @@ struct Foo { field: i32 }
 
 impl Foo { fn foo(&self) { $0 } }"#,
             expect![[r#"
-                fd self.field i32
+                fd self.field       i32
                 me self.foo() fn(&self)
-                lc self       &Foo
-                sp Self       Foo
-                st Foo        Foo
-                bt u32        u32
+                lc self            &Foo
+                sp Self             Foo
+                st Foo              Foo
+                bt u32              u32
             "#]],
         );
         check(
@@ -978,12 +978,12 @@ struct Foo(i32);
 
 impl Foo { fn foo(&mut self) { $0 } }"#,
             expect![[r#"
-                fd self.0     i32
+                fd self.0               i32
                 me self.foo() fn(&mut self)
-                lc self       &mut Foo
-                sp Self       Foo
-                st Foo        Foo
-                bt u32        u32
+                lc self            &mut Foo
+                sp Self                 Foo
+                st Foo                  Foo
+                bt u32                  u32
             "#]],
         );
     }
@@ -1106,7 +1106,7 @@ fn test(a: A) {
 }
 "#,
             expect![[r#"
-                fd 0                      u8
+                fd 0                                                                 u8
                 me deref() (use core::ops::Deref) fn(&self) -> &<Self as Deref>::Target
             "#]],
         );
@@ -1162,7 +1162,7 @@ impl<F: core::ops::Deref<Target = impl Bar>> Foo<F> {
 }
 "#,
             expect![[r#"
-                fd foo      &u8
+                fd foo            &u8
                 me foobar() fn(&self)
             "#]],
         );
@@ -1199,8 +1199,8 @@ impl<B: Bar, F: core::ops::Deref<Target = B>> Foo<F> {
 }
 "#,
             expect![[r#"
-            fd foo &u8
-        "#]],
+                fd foo &u8
+            "#]],
         );
     }
 

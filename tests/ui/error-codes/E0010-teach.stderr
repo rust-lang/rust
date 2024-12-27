@@ -7,7 +7,7 @@ LL | const CON: Vec<i32> = vec![1, 2, 3];
    = note: The runtime heap is not yet available at compile-time, so no runtime heap allocations can be created.
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0015]: cannot call non-const fn `slice::<impl [i32]>::into_vec::<std::alloc::Global>` in constants
+error[E0015]: cannot call non-const method `slice::<impl [i32]>::into_vec::<std::alloc::Global>` in constants
   --> $DIR/E0010-teach.rs:5:23
    |
 LL | const CON: Vec<i32> = vec![1, 2, 3];

@@ -823,8 +823,11 @@ impl Request for OnTypeFormatting {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CompletionResolveData {
     pub position: lsp_types::TextDocumentPositionParams,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub imports: Vec<CompletionImport>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub version: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub trigger_character: Option<char>,
     pub for_ref: bool,
     pub hash: String,
@@ -836,6 +839,7 @@ pub struct InlayHintResolveData {
     // This is a string instead of a u64 as javascript can't represent u64 fully
     pub hash: String,
     pub resolve_range: lsp_types::Range,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub version: Option<i32>,
 }
 

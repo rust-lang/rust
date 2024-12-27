@@ -92,7 +92,7 @@ pub(crate) struct GlobalState {
 
     // status
     pub(crate) shutdown_requested: bool,
-    pub(crate) last_reported_status: Option<lsp_ext::ServerStatusParams>,
+    pub(crate) last_reported_status: lsp_ext::ServerStatusParams,
 
     // proc macros
     pub(crate) proc_macro_clients: Arc<[anyhow::Result<ProcMacroServer>]>,
@@ -238,7 +238,11 @@ impl GlobalState {
             mem_docs: MemDocs::default(),
             semantic_tokens_cache: Arc::new(Default::default()),
             shutdown_requested: false,
-            last_reported_status: None,
+            last_reported_status: lsp_ext::ServerStatusParams {
+                health: lsp_ext::Health::Ok,
+                quiescent: true,
+                message: None,
+            },
             source_root_config: SourceRootConfig::default(),
             local_roots_parent_map: Arc::new(FxHashMap::default()),
             config_errors: Default::default(),

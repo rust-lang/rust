@@ -202,6 +202,11 @@ where
                         }
                     }
 
+                    ty::UnsafeBinder(bound_ty) => {
+                        let ty = self.tcx.instantiate_bound_regions_with_erased(bound_ty.into());
+                        queue_type(self, ty);
+                    }
+
                     _ if tcx.type_is_copy_modulo_regions(self.typing_env, component) => {}
 
                     ty::Closure(_, args) => {

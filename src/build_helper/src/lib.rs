@@ -2,6 +2,7 @@
 
 pub mod ci;
 pub mod drop_bomb;
+pub mod fs;
 pub mod git;
 pub mod metrics;
 pub mod stage0_parser;

@@ -1,5 +1,5 @@
 use rustc_ast::attr::AttributeExt;
-use rustc_attr_parsing::{parse_version, RustcVersion};
+use rustc_attr_parsing::{RustcVersion, parse_version};
 use rustc_session::Session;
 use rustc_span::{Symbol, sym};
 use serde::Deserialize;
@@ -19,11 +19,12 @@ macro_rules! msrv_aliases {
 // names may refer to stabilized feature flags or library items
 msrv_aliases! {
     1,83,0 { CONST_EXTERN_FN, CONST_FLOAT_BITS_CONV, CONST_FLOAT_CLASSIFY }
-    1,82,0 { IS_NONE_OR, REPEAT_N }
-    1,81,0 { LINT_REASONS_STABILIZATION }
-    1,80,0 { BOX_INTO_ITER}
+    1,82,0 { IS_NONE_OR, REPEAT_N, RAW_REF_OP }
+    1,81,0 { LINT_REASONS_STABILIZATION, ERROR_IN_CORE }
+    1,80,0 { BOX_INTO_ITER }
     1,77,0 { C_STR_LITERALS }
     1,76,0 { PTR_FROM_REF, OPTION_RESULT_INSPECT }
+    1,74,0 { REPR_RUST }
     1,73,0 { MANUAL_DIV_CEIL }
     1,71,0 { TUPLE_ARRAY_CONVERSIONS, BUILD_HASHER_HASH_ONE }
     1,70,0 { OPTION_RESULT_IS_VARIANT_AND, BINARY_HEAP_RETAIN }

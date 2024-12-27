@@ -202,6 +202,7 @@ fn do_mir_borrowck<'tcx>(
         polonius_output,
         opt_closure_req,
         nll_errors,
+        localized_outlives_constraints,
     } = nll::compute_regions(
         &infcx,
         free_regions,
@@ -314,6 +315,16 @@ fn do_mir_borrowck<'tcx>(
     );
 
     mbcx.report_move_errors();
+
+    // If requested, dump polonius MIR.
+    polonius::dump_polonius_mir(
+        &infcx,
+        body,
+        &regioncx,
+        &borrow_set,
+        localized_outlives_constraints,
+        &opt_closure_req,
+    );
 
     // For each non-user used mutable variable, check if it's been assigned from
     // a user-declared local. If so, then put that local into the used_mut set.
@@ -809,7 +820,6 @@ use self::ReadOrWrite::{Activation, Read, Reservation, Write};
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum ArtificialField {
-    ArrayLength,
     FakeBorrow,
 }
 
@@ -1257,16 +1267,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 );
             }
 
-            &(Rvalue::Len(place) | Rvalue::Discriminant(place)) => {
-                let af = match *rvalue {
-                    Rvalue::Len(..) => Some(ArtificialField::ArrayLength),
-                    Rvalue::Discriminant(..) => None,
-                    _ => unreachable!(),
-                };
+            &Rvalue::Discriminant(place) => {
                 self.access_place(
                     location,
                     (place, span),
-                    (Shallow(af), Read(ReadKind::Copy)),
+                    (Shallow(None), Read(ReadKind::Copy)),
                     LocalMutationIsAllowed::No,
                     state,
                 );
@@ -1602,6 +1607,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     | ty::CoroutineWitness(..)
                     | ty::Never
                     | ty::Tuple(_)
+                    | ty::UnsafeBinder(_)
                     | ty::Alias(_, _)
                     | ty::Param(_)
                     | ty::Bound(_, _)
@@ -1643,6 +1649,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     | ty::Dynamic(_, _, _)
                     | ty::CoroutineWitness(..)
                     | ty::Never
+                    | ty::UnsafeBinder(_)
                     | ty::Alias(_, _)
                     | ty::Param(_)
                     | ty::Bound(_, _)

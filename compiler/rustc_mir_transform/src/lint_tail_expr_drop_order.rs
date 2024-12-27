@@ -285,7 +285,9 @@ fn ty_dtor_span<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Span> {
         | ty::Placeholder(_)
         | ty::Infer(_)
         | ty::Slice(_)
-        | ty::Array(_, _) => None,
+        | ty::Array(_, _)
+        | ty::UnsafeBinder(_) => None,
+
         ty::Adt(adt_def, _) => {
             let did = adt_def.did();
             let try_local_did_span = |did: DefId| {

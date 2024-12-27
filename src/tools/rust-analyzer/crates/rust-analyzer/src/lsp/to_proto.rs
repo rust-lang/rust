@@ -2,6 +2,7 @@
 use std::{
     iter::once,
     mem,
+    ops::Not as _,
     sync::atomic::{AtomicU32, Ordering},
 };
 
@@ -353,14 +354,17 @@ fn completion_item(
     };
 
     let mut lsp_item = lsp_types::CompletionItem {
-        label: item.label.to_string(),
+        label: item.label.primary.to_string(),
         detail,
         filter_text,
         kind: Some(completion_item_kind(item.kind)),
         text_edit,
-        additional_text_edits: Some(additional_text_edits),
+        additional_text_edits: additional_text_edits
+            .is_empty()
+            .not()
+            .then_some(additional_text_edits),
         documentation,
-        deprecated: Some(item.deprecated),
+        deprecated: item.deprecated.then_some(item.deprecated),
         tags,
         command,
         insert_text_format,
@@ -368,15 +372,17 @@ fn completion_item(
     };
 
     if config.completion_label_details_support() {
+        let has_label_details =
+            item.label.detail_left.is_some() || item.label.detail_right.is_some();
         if fields_to_resolve.resolve_label_details {
-            something_to_resolve |= true;
-        } else {
+            something_to_resolve |= has_label_details;
+        } else if has_label_details {
             lsp_item.label_details = Some(lsp_types::CompletionItemLabelDetails {
-                detail: item.label_detail.as_ref().map(ToString::to_string),
-                description: item.detail.clone(),
+                detail: item.label.detail_left.clone(),
+                description: item.label.detail_right.clone(),
             });
         }
-    } else if let Some(label_detail) = &item.label_detail {
+    } else if let Some(label_detail) = &item.label.detail_left {
         lsp_item.label.push_str(label_detail.as_str());
     }
 
@@ -1578,22 +1584,26 @@ pub(crate) fn code_lens(
                 };
 
                 let lens_config = snap.config.lens();
-                if lens_config.run && client_commands_config.run_single && has_root {
-                    let command = command::run_single(&r, &title);
-                    acc.push(lsp_types::CodeLens {
-                        range: annotation_range,
-                        command: Some(command),
-                        data: None,
-                    })
+
+                if has_root {
+                    if lens_config.run && client_commands_config.run_single {
+                        let command = command::run_single(&r, &title);
+                        acc.push(lsp_types::CodeLens {
+                            range: annotation_range,
+                            command: Some(command),
+                            data: None,
+                        })
+                    }
+                    if lens_config.debug && can_debug && client_commands_config.debug_single {
+                        let command = command::debug_single(&r);
+                        acc.push(lsp_types::CodeLens {
+                            range: annotation_range,
+                            command: Some(command),
+                            data: None,
+                        })
+                    }
                 }
-                if lens_config.debug && can_debug && client_commands_config.debug_single {
-                    let command = command::debug_single(&r);
-                    acc.push(lsp_types::CodeLens {
-                        range: annotation_range,
-                        command: Some(command),
-                        data: None,
-                    })
-                }
+
                 if lens_config.interpret {
                     let command = command::interpret_single(&r);
                     acc.push(lsp_types::CodeLens {
