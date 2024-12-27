@@ -33,7 +33,7 @@ fn check_is_sorted<T: Ord + Clone + Debug, S: Sort>(v: &mut [T]) {
             known_good_stable_sort::sort(known_good_sorted_vec.as_mut_slice());
 
             if is_small_test {
-                eprintln!("Orginal:  {:?}", v_orig);
+                eprintln!("Original:  {:?}", v_orig);
                 eprintln!("Expected: {:?}", known_good_sorted_vec);
                 eprintln!("Got:      {:?}", v);
             } else {
