@@ -1453,20 +1453,6 @@ pub enum FpCategory {
     Normal,
 }
 
-macro_rules! from_str_radix_int_impl {
-    ($($t:ty)*) => {$(
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl FromStr for $t {
-            type Err = ParseIntError;
-            #[inline]
-            fn from_str(src: &str) -> Result<Self, ParseIntError> {
-                <$t>::from_str_radix(src, 10)
-            }
-        }
-    )*}
-}
-from_str_radix_int_impl! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 }
-
 /// Determines if a string of text of that length of that radix could be guaranteed to be
 /// stored in the given type T.
 /// Note that if the radix is known to the compiler, it is just the check of digits.len that
@@ -1482,18 +1468,58 @@ pub const fn can_not_overflow<T>(radix: u32, is_signed_ty: bool, digits: &[u8]) 
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[cold]
 #[track_caller]
-const fn from_str_radix_panic(radix: u32) -> ! {
+const fn from_ascii_radix_panic(radix: u32) -> ! {
     const_panic!(
-        "from_str_radix_int: must lie in the range `[2, 36]`",
-        "from_str_radix_int: must lie in the range `[2, 36]` - found {radix}",
+        "from_ascii_radix: radix must lie in the range `[2, 36]`",
+        "from_ascii_radix: radix must lie in the range `[2, 36]` - found {radix}",
         radix: u32 = radix,
     )
 }
 
-macro_rules! from_str_radix {
+macro_rules! from_str_int_impl {
     ($signedness:ident $($int_ty:ty)+) => {$(
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl FromStr for $int_ty {
+            type Err = ParseIntError;
+
+            /// Parses an integer from a string slice with decimal digits.
+            ///
+            /// The characters are expected to be an optional
+            #[doc = sign_dependent_expr!{
+                $signedness ?
+                if signed {
+                    " `+` or `-` "
+                }
+                if unsigned {
+                    " `+` "
+                }
+            }]
+            /// sign followed by only digits. Leading and trailing non-digit characters (including
+            /// whitespace) represent an error. Underscores (which are accepted in Rust literals)
+            /// also represent an error.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            /// ```
+            /// use std::str::FromStr;
+            ///
+            #[doc = concat!("assert_eq!(", stringify!($int_ty), "::from_str(\"+10\"), Ok(10));")]
+            /// ```
+            /// Trailing space returns error:
+            /// ```
+            /// # use std::str::FromStr;
+            /// #
+            #[doc = concat!("assert!(", stringify!($int_ty), "::from_str(\"1 \").is_err());")]
+            /// ```
+            #[inline]
+            fn from_str(src: &str) -> Result<$int_ty, ParseIntError> {
+                <$int_ty>::from_str_radix(src, 10)
+            }
+        }
+
         impl $int_ty {
-            /// Converts a string slice in a given base to an integer.
+            /// Parses an integer from a string slice with digits in a given base.
             ///
             /// The string is expected to be an optional
             #[doc = sign_dependent_expr!{
@@ -1506,7 +1532,7 @@ macro_rules! from_str_radix {
                 }
             }]
             /// sign followed by only digits. Leading and trailing non-digit characters (including
-            /// whitespace) represent an error. Underscores (which are accepted in rust literals)
+            /// whitespace) represent an error. Underscores (which are accepted in Rust literals)
             /// also represent an error.
             ///
             /// Digits are a subset of these characters, depending on `radix`:
@@ -1532,11 +1558,92 @@ macro_rules! from_str_radix {
             #[rustc_const_stable(feature = "const_int_from_str", since = "1.82.0")]
             #[inline]
             pub const fn from_str_radix(src: &str, radix: u32) -> Result<$int_ty, ParseIntError> {
+                <$int_ty>::from_ascii_radix(src.as_bytes(), radix)
+            }
+
+            /// Parses an integer from an ASCII-byte slice with decimal digits.
+            ///
+            /// The characters are expected to be an optional
+            #[doc = sign_dependent_expr!{
+                $signedness ?
+                if signed {
+                    " `+` or `-` "
+                }
+                if unsigned {
+                    " `+` "
+                }
+            }]
+            /// sign followed by only digits. Leading and trailing non-digit characters (including
+            /// whitespace) represent an error. Underscores (which are accepted in Rust literals)
+            /// also represent an error.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            /// ```
+            /// #![feature(int_from_ascii)]
+            ///
+            #[doc = concat!("assert_eq!(", stringify!($int_ty), "::from_ascii(b\"+10\"), Ok(10));")]
+            /// ```
+            /// Trailing space returns error:
+            /// ```
+            /// # #![feature(int_from_ascii)]
+            /// #
+            #[doc = concat!("assert!(", stringify!($int_ty), "::from_ascii(b\"1 \").is_err());")]
+            /// ```
+            #[unstable(feature = "int_from_ascii", issue = "134821")]
+            #[inline]
+            pub const fn from_ascii(src: &[u8]) -> Result<$int_ty, ParseIntError> {
+                <$int_ty>::from_ascii_radix(src, 10)
+            }
+
+            /// Parses an integer from an ASCII-byte slice with digits in a given base.
+            ///
+            /// The characters are expected to be an optional
+            #[doc = sign_dependent_expr!{
+                $signedness ?
+                if signed {
+                    " `+` or `-` "
+                }
+                if unsigned {
+                    " `+` "
+                }
+            }]
+            /// sign followed by only digits. Leading and trailing non-digit characters (including
+            /// whitespace) represent an error. Underscores (which are accepted in Rust literals)
+            /// also represent an error.
+            ///
+            /// Digits are a subset of these characters, depending on `radix`:
+            /// * `0-9`
+            /// * `a-z`
+            /// * `A-Z`
+            ///
+            /// # Panics
+            ///
+            /// This function panics if `radix` is not in the range from 2 to 36.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            /// ```
+            /// #![feature(int_from_ascii)]
+            ///
+            #[doc = concat!("assert_eq!(", stringify!($int_ty), "::from_ascii_radix(b\"A\", 16), Ok(10));")]
+            /// ```
+            /// Trailing space returns error:
+            /// ```
+            /// # #![feature(int_from_ascii)]
+            /// #
+            #[doc = concat!("assert!(", stringify!($int_ty), "::from_ascii_radix(b\"1 \", 10).is_err());")]
+            /// ```
+            #[unstable(feature = "int_from_ascii", issue = "134821")]
+            #[inline]
+            pub const fn from_ascii_radix(src: &[u8], radix: u32) -> Result<$int_ty, ParseIntError> {
                 use self::IntErrorKind::*;
                 use self::ParseIntError as PIE;
 
                 if 2 > radix || radix > 36 {
-                    from_str_radix_panic(radix);
+                    from_ascii_radix_panic(radix);
                 }
 
                 if src.is_empty() {
@@ -1545,12 +1652,6 @@ macro_rules! from_str_radix {
 
                 #[allow(unused_comparisons)]
                 let is_signed_ty = 0 > <$int_ty>::MIN;
-
-                // all valid digits are ascii, so we will just iterate over the utf8 bytes
-                // and cast them to chars. .to_digit() will safely return None for anything
-                // other than a valid ascii digit for the given radix, including the first-byte
-                // of multi-byte sequences
-                let src = src.as_bytes();
 
                 let (is_positive, mut digits) = match src {
                     [b'+' | b'-'] => {
@@ -1627,67 +1728,8 @@ macro_rules! from_str_radix {
                 Ok(result)
             }
         }
-    )+}
+    )*}
 }
 
-from_str_radix! { unsigned u8 u16 u32 u64 u128 }
-from_str_radix! { signed i8 i16 i32 i64 i128 }
-
-// Re-use the relevant implementation of from_str_radix for isize and usize to avoid outputting two
-// identical functions.
-macro_rules! from_str_radix_size_impl {
-    ($($signedness:ident $t:ident $size:ty),*) => {$(
-    impl $size {
-        /// Converts a string slice in a given base to an integer.
-        ///
-        /// The string is expected to be an optional
-        #[doc = sign_dependent_expr!{
-            $signedness ?
-            if signed {
-                " `+` or `-` "
-            }
-            if unsigned {
-                " `+` "
-            }
-        }]
-        /// sign followed by only digits. Leading and trailing non-digit characters (including
-        /// whitespace) represent an error. Underscores (which are accepted in rust literals)
-        /// also represent an error.
-        ///
-        /// Digits are a subset of these characters, depending on `radix`:
-        /// * `0-9`
-        /// * `a-z`
-        /// * `A-Z`
-        ///
-        /// # Panics
-        ///
-        /// This function panics if `radix` is not in the range from 2 to 36.
-        ///
-        /// # Examples
-        ///
-        /// Basic usage:
-        /// ```
-        #[doc = concat!("assert_eq!(", stringify!($size), "::from_str_radix(\"A\", 16), Ok(10));")]
-        /// ```
-        /// Trailing space returns error:
-        /// ```
-        #[doc = concat!("assert!(", stringify!($size), "::from_str_radix(\"1 \", 10).is_err());")]
-        /// ```
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[rustc_const_stable(feature = "const_int_from_str", since = "1.82.0")]
-        #[inline]
-        pub const fn from_str_radix(src: &str, radix: u32) -> Result<$size, ParseIntError> {
-            match <$t>::from_str_radix(src, radix) {
-                Ok(x) => Ok(x as $size),
-                Err(e) => Err(e),
-            }
-        }
-    })*}
-}
-
-#[cfg(target_pointer_width = "16")]
-from_str_radix_size_impl! { signed i16 isize, unsigned u16 usize }
-#[cfg(target_pointer_width = "32")]
-from_str_radix_size_impl! { signed i32 isize, unsigned u32 usize }
-#[cfg(target_pointer_width = "64")]
-from_str_radix_size_impl! { signed i64 isize, unsigned u64 usize }
+from_str_int_impl! { signed isize i8 i16 i32 i64 i128 }
+from_str_int_impl! { unsigned usize u8 u16 u32 u64 u128 }
