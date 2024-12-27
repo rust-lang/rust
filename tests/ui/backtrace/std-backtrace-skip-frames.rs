@@ -3,6 +3,8 @@
    If at all possible, rather than removing the assert that the different
    revisions behave the same, move only the revisions that are failing into a
    separate test, so that the rest are still kept the same.
+
+    TODO: this test is megacursed, either split it into a separate run-make test that looks at the .stderr files or get `compare-mode` working
  */
 
 //@ ignore-android FIXME #17520

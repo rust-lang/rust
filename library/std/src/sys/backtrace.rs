@@ -111,12 +111,15 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
                         }
                     }
 
-                    if skip || !print {
+                    if !print {
+                        skip = true;
+                    }
+                    if skip {
                         omitted_count += 1;
                     }
                 }
 
-                if print && !skip {
+                if !skip {
                     write_omitted(&mut omitted_count, &mut bt_fmt);
                     res = bt_fmt.frame().symbol(frame, symbol);
                 }

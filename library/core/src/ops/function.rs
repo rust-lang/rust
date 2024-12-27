@@ -1,3 +1,5 @@
+#![cfg_attr(not(bootstrap), rustc_skip_short_backtrace)]
+
 use crate::marker::Tuple;
 
 /// The version of the call operator that takes an immutable receiver.
@@ -247,7 +249,6 @@ pub trait FnOnce<Args: Tuple> {
 
     /// Performs the call operation.
     #[unstable(feature = "fn_traits", issue = "29625")]
-    #[cfg_attr(not(bootstrap), rustc_skip_short_backtrace)]
     extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
 }
 
