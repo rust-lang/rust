@@ -6,8 +6,6 @@ use std::ops::{ControlFlow, Deref};
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
-#[cfg(feature = "nightly")]
-use rustc_serialize::Decodable;
 use tracing::instrument;
 
 use crate::data_structures::SsoHashSet;
@@ -69,14 +67,14 @@ macro_rules! impl_binder_encode_decode {
                     self.as_ref().skip_binder().encode(e);
                 }
             }
-            impl<I: Interner, D: crate::TyDecoder<I = I>> Decodable<D> for ty::Binder<I, $t>
+            impl<I: Interner, D: crate::TyDecoder<I = I>> rustc_serialize::Decodable<D> for ty::Binder<I, $t>
             where
                 $t: TypeVisitable<I> + rustc_serialize::Decodable<D>,
                 I::BoundVarKinds: rustc_serialize::Decodable<D>,
             {
                 fn decode(decoder: &mut D) -> Self {
-                    let bound_vars = Decodable::decode(decoder);
-                    ty::Binder::bind_with_vars(<$t>::decode(decoder), bound_vars)
+                    let bound_vars = rustc_serialize::Decodable::decode(decoder);
+                    ty::Binder::bind_with_vars(rustc_serialize::Decodable::decode(decoder), bound_vars)
                 }
             }
         )*

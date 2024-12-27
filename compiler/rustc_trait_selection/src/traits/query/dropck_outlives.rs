@@ -83,7 +83,8 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         | ty::Placeholder(..)
         | ty::Infer(_)
         | ty::Bound(..)
-        | ty::Coroutine(..) => false,
+        | ty::Coroutine(..)
+        | ty::UnsafeBinder(_) => false,
     }
 }
 
@@ -333,6 +334,11 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
 
         // Types that can't be resolved. Pass them forward.
         ty::Alias(..) | ty::Param(..) => {
+            constraints.dtorck_types.push(ty);
+        }
+
+        // Can't instantiate binder here.
+        ty::UnsafeBinder(_) => {
             constraints.dtorck_types.push(ty);
         }
 

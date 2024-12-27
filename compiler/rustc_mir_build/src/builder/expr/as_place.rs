@@ -635,7 +635,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// For arrays it'll be `Operand::Constant` with the actual length;
     /// For slices it'll be `Operand::Move` of a local using `PtrMetadata`.
-    fn len_of_slice_or_array(
+    pub(in crate::builder) fn len_of_slice_or_array(
         &mut self,
         block: BasicBlock,
         place: Place<'tcx>,

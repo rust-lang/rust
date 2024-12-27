@@ -619,6 +619,11 @@ where
                     Some(tail_ty) => Ty::new_projection(cx, metadata_def_id, [tail_ty]),
                 },
 
+                ty::UnsafeBinder(_) => {
+                    // FIXME(unsafe_binder): Figure out how to handle pointee for unsafe binders.
+                    todo!()
+                }
+
                 ty::Infer(
                     ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_),
                 )
@@ -822,6 +827,11 @@ where
             | ty::Tuple(_)
             | ty::Error(_) => self_ty.discriminant_ty(ecx.cx()),
 
+            ty::UnsafeBinder(_) => {
+                // FIXME(unsafe_binders): instantiate this with placeholders?? i guess??
+                todo!("discr subgoal...")
+            }
+
             // We do not call `Ty::discriminant_ty` on alias, param, or placeholder
             // types, which return `<self_ty as DiscriminantKind>::Discriminant`
             // (or ICE in the case of placeholders). Projecting a type to itself
@@ -868,6 +878,11 @@ where
             | ty::Slice(_)
             | ty::Tuple(_)
             | ty::Error(_) => self_ty.async_destructor_ty(ecx.cx()),
+
+            ty::UnsafeBinder(_) => {
+                // FIXME(unsafe_binders): Instantiate the binder with placeholders I guess.
+                todo!()
+            }
 
             // We do not call `Ty::async_destructor_ty` on alias, param, or placeholder
             // types, which return `<self_ty as AsyncDestruct>::AsyncDestructor`

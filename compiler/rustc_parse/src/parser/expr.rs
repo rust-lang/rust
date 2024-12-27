@@ -279,13 +279,9 @@ impl<'a> Parser<'a> {
                 break;
             }
 
-            let fixity = op.fixity();
-            let min_prec = match fixity {
+            let min_prec = match op.fixity() {
                 Fixity::Right => Bound::Included(prec),
-                Fixity::Left => Bound::Excluded(prec),
-                // We currently have no non-associative operators that are not handled above by
-                // the special cases. The code is here only for future convenience.
-                Fixity::None => Bound::Excluded(prec),
+                Fixity::Left | Fixity::None => Bound::Excluded(prec),
             };
             let (rhs, _) = self.with_res(restrictions - Restrictions::STMT_EXPR, |this| {
                 let attrs = this.parse_outer_attributes()?;
@@ -337,10 +333,6 @@ impl<'a> Parser<'a> {
                     self.dcx().span_bug(span, "AssocOp should have been handled by special case")
                 }
             };
-
-            if let Fixity::None = fixity {
-                break;
-            }
         }
 
         Ok((lhs, parsed_something))

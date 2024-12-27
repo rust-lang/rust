@@ -2,7 +2,6 @@
 // This lint is to capture potential change in program semantics
 // due to implementation of RFC 3606 <https://github.com/rust-lang/rfcs/pull/3606>
 //@ edition: 2021
-//@ build-fail
 
 #![deny(tail_expr_drop_order)] //~ NOTE: the lint level is defined here
 #![allow(dropping_copy_types)]

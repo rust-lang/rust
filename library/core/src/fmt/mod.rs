@@ -152,8 +152,9 @@ pub trait Write {
     /// }
     ///
     /// let mut buf = String::new();
-    /// writer(&mut buf, "hola").unwrap();
+    /// writer(&mut buf, "hola")?;
     /// assert_eq!(&buf, "hola");
+    /// # std::fmt::Result::Ok(())
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn write_str(&mut self, s: &str) -> Result;
@@ -179,9 +180,10 @@ pub trait Write {
     /// }
     ///
     /// let mut buf = String::new();
-    /// writer(&mut buf, 'a').unwrap();
-    /// writer(&mut buf, 'b').unwrap();
+    /// writer(&mut buf, 'a')?;
+    /// writer(&mut buf, 'b')?;
     /// assert_eq!(&buf, "ab");
+    /// # std::fmt::Result::Ok(())
     /// ```
     #[stable(feature = "fmt_write_char", since = "1.1.0")]
     fn write_char(&mut self, c: char) -> Result {
@@ -208,8 +210,9 @@ pub trait Write {
     /// }
     ///
     /// let mut buf = String::new();
-    /// writer(&mut buf, "world").unwrap();
+    /// writer(&mut buf, "world")?;
     /// assert_eq!(&buf, "world");
+    /// # std::fmt::Result::Ok(())
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn write_fmt(&mut self, args: Arguments<'_>) -> Result {

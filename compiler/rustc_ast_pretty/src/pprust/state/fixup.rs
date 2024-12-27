@@ -1,7 +1,9 @@
 use rustc_ast::Expr;
 use rustc_ast::util::{classify, parser};
 
-#[derive(Copy, Clone, Debug)]
+// The default amount of fixing is minimal fixing, so all fixups are set to `false` by `Default`.
+// Fixups should be turned on in a targeted fashion where needed.
+#[derive(Copy, Clone, Debug, Default)]
 pub(crate) struct FixupContext {
     /// Print expression such that it can be parsed back as a statement
     /// consisting of the original expression.
@@ -91,20 +93,6 @@ pub(crate) struct FixupContext {
     /// }
     /// ```
     parenthesize_exterior_struct_lit: bool,
-}
-
-/// The default amount of fixing is minimal fixing. Fixups should be turned on
-/// in a targeted fashion where needed.
-impl Default for FixupContext {
-    fn default() -> Self {
-        FixupContext {
-            stmt: false,
-            leftmost_subexpression_in_stmt: false,
-            match_arm: false,
-            leftmost_subexpression_in_match_arm: false,
-            parenthesize_exterior_struct_lit: false,
-        }
-    }
 }
 
 impl FixupContext {

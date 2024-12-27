@@ -43,8 +43,8 @@ impl Context {
             _ => (),
         }
 
-        let (_, r_ty) = (cx.typeck_results().expr_ty(l), cx.typeck_results().expr_ty(r));
-        if r_ty.peel_refs().is_floating_point() && r_ty.peel_refs().is_floating_point() {
+        let (l_ty, r_ty) = (cx.typeck_results().expr_ty(l), cx.typeck_results().expr_ty(r));
+        if l_ty.peel_refs().is_floating_point() && r_ty.peel_refs().is_floating_point() {
             span_lint(cx, FLOAT_ARITHMETIC, expr.span, "floating-point arithmetic detected");
             self.expr_id = Some(expr.hir_id);
         }

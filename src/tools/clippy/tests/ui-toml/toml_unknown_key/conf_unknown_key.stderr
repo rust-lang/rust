@@ -6,6 +6,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            allow-comparison-to-zero
            allow-dbg-in-tests
            allow-expect-in-tests
+           allow-indexing-slicing-in-tests
            allow-mixed-uninlined-format-args
            allow-one-hash-in-raw-strings
            allow-panic-in-tests
@@ -93,6 +94,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            allow-comparison-to-zero
            allow-dbg-in-tests
            allow-expect-in-tests
+           allow-indexing-slicing-in-tests
            allow-mixed-uninlined-format-args
            allow-one-hash-in-raw-strings
            allow-panic-in-tests
@@ -180,6 +182,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            allow-comparison-to-zero
            allow-dbg-in-tests
            allow-expect-in-tests
+           allow-indexing-slicing-in-tests
            allow-mixed-uninlined-format-args
            allow-one-hash-in-raw-strings
            allow-panic-in-tests

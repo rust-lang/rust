@@ -1,4 +1,4 @@
-error[E0015]: cannot call non-const fn `foo` in statics
+error[E0015]: cannot call non-const function `foo` in statics
   --> $DIR/static-vec-repeat-not-constant.rs:3:25
    |
 LL | static a: [isize; 2] = [foo(); 2];

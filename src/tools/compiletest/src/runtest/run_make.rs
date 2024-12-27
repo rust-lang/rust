@@ -2,6 +2,8 @@ use std::path::Path;
 use std::process::{Command, Output, Stdio};
 use std::{env, fs};
 
+use build_helper::fs::{ignore_not_found, recursive_remove};
+
 use super::{ProcRes, TestCx, disable_error_reporting};
 use crate::util::{copy_dir_all, dylib_env_var};
 
@@ -27,9 +29,8 @@ impl TestCx<'_> {
         // are hopefully going away, it seems safer to leave this perilous code
         // as-is until it can all be deleted.
         let tmpdir = cwd.join(self.output_base_name());
-        if tmpdir.exists() {
-            self.aggressive_rm_rf(&tmpdir).unwrap();
-        }
+        ignore_not_found(|| recursive_remove(&tmpdir)).unwrap();
+
         fs::create_dir_all(&tmpdir).unwrap();
 
         let host = &self.config.host;
@@ -218,9 +219,8 @@ impl TestCx<'_> {
         //
         // This setup intentionally diverges from legacy Makefile run-make tests.
         let base_dir = self.output_base_dir();
-        if base_dir.exists() {
-            self.aggressive_rm_rf(&base_dir).unwrap();
-        }
+        ignore_not_found(|| recursive_remove(&base_dir)).unwrap();
+
         let rmake_out_dir = base_dir.join("rmake_out");
         fs::create_dir_all(&rmake_out_dir).unwrap();
 

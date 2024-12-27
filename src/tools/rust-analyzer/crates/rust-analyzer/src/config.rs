@@ -644,7 +644,8 @@ config_data! {
         /// Aliased as `"checkOnSave.targets"`.
         check_targets | checkOnSave_targets | checkOnSave_target: Option<CheckOnSaveTargets> = None,
         /// Whether `--workspace` should be passed to `cargo check`.
-        /// If false, `-p <package>` will be passed instead.
+        /// If false, `-p <package>` will be passed instead if applicable. In case it is not, no
+        /// check will be performed.
         check_workspace: bool = true,
 
         /// These proc-macros will be ignored when trying to expand them.

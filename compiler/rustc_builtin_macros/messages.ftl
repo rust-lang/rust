@@ -249,9 +249,9 @@ builtin_macros_naked_functions_testing_attribute =
     .label = function marked with testing attribute here
     .naked_attribute = `#[naked]` is incompatible with testing attributes
 
-builtin_macros_no_default_variant = no default declared
-    .help = make a unit variant default by placing `#[default]` above it
-    .suggestion = make `{$ident}` default
+builtin_macros_no_default_variant = `#[derive(Default)]` on enum with no `#[default]`
+    .label = this enum needs a unit variant marked with `#[default]`
+    .suggestion = make this unit variant default by placing `#[default]` on it
 
 builtin_macros_non_abi = at least one abi must be provided as an argument to `clobber_abi`
 

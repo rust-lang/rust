@@ -15,7 +15,7 @@ use tracing::{info, instrument, trace};
 
 use super::{
     FnArg, FnVal, ImmTy, Immediate, InterpCx, InterpResult, Machine, MemPlaceMeta, PlaceTy,
-    Projectable, Scalar, interp_ok, throw_ub,
+    Projectable, interp_ok, throw_ub,
 };
 use crate::util;
 
@@ -216,12 +216,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
             Repeat(ref operand, _) => {
                 self.write_repeat(operand, &dest)?;
-            }
-
-            Len(place) => {
-                let src = self.eval_place(place)?;
-                let len = src.len(self)?;
-                self.write_scalar(Scalar::from_target_usize(len, self), &dest)?;
             }
 
             Ref(_, borrow_kind, place) => {

@@ -86,7 +86,7 @@
 //!     // This is fine: `join` synchronizes the code in a way such that the atomic
 //!     // store happens-before the non-atomic write.
 //!     let handle = s.spawn(|| atomic.store(1, Ordering::Relaxed)); // atomic store
-//!     handle.join().unwrap(); // synchronize
+//!     handle.join().expect("thread won't panic"); // synchronize
 //!     s.spawn(|| unsafe { atomic.as_ptr().write(2) }); // non-atomic write
 //! });
 //!
@@ -103,7 +103,7 @@
 //!     // This is fine: `join` synchronizes the code in a way such that
 //!     // the 1-byte store happens-before the 2-byte store.
 //!     let handle = s.spawn(|| atomic.store(1, Ordering::Relaxed));
-//!     handle.join().unwrap();
+//!     handle.join().expect("thread won't panic");
 //!     s.spawn(|| unsafe {
 //!         let differently_sized = transmute::<&AtomicU16, &AtomicU8>(&atomic);
 //!         differently_sized.store(2, Ordering::Relaxed);

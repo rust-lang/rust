@@ -1388,7 +1388,13 @@ pub fn install_ice_hook(
     // opt in to less-verbose backtraces by manually setting "RUST_BACKTRACE"
     // (e.g. `RUST_BACKTRACE=1`)
     if env::var_os("RUST_BACKTRACE").is_none() {
-        panic::set_backtrace_style(panic::BacktraceStyle::Full);
+        // HACK: this check is extremely dumb, but we don't really need it to be smarter since this should only happen in the test suite anyway.
+        let ui_testing = std::env::args().any(|arg| arg == "-Zui-testing");
+        if env!("CFG_RELEASE_CHANNEL") == "dev" && !ui_testing {
+            panic::set_backtrace_style(panic::BacktraceStyle::Short);
+        } else {
+            panic::set_backtrace_style(panic::BacktraceStyle::Full);
+        }
     }
 
     let using_internal_features = Arc::new(std::sync::atomic::AtomicBool::default());

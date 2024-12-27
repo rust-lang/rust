@@ -114,8 +114,11 @@ fn completion_item_hash(item: &CompletionItem, is_ref_completion: bool) -> [u8; 
         u8::from(item.deprecated),
         u8::from(item.trigger_call_info),
     ]);
-    hasher.update(&item.label);
-    if let Some(label_detail) = &item.label_detail {
+    hasher.update(&item.label.primary);
+    if let Some(label_detail) = &item.label.detail_left {
+        hasher.update(label_detail);
+    }
+    if let Some(label_detail) = &item.label.detail_right {
         hasher.update(label_detail);
     }
     // NB: do not hash edits or source range, as those may change between the time the client sends the resolve request

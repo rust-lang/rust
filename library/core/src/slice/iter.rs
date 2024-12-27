@@ -46,11 +46,17 @@ impl<'a, T> IntoIterator for &'a mut [T] {
 /// Basic usage:
 ///
 /// ```
-/// // First, we declare a type which has `iter` method to get the `Iter` struct (`&[usize]` here):
+/// // First, we need a slice to call the `iter` method on:
 /// let slice = &[1, 2, 3];
 ///
-/// // Then, we iterate over it:
+/// // Then we call `iter` on the slice to get the `Iter` struct,
+/// // and iterate over it:
 /// for element in slice.iter() {
+///     println!("{element}");
+/// }
+///
+/// // This for loop actually already works without calling `iter`:
+/// for element in slice {
 ///     println!("{element}");
 /// }
 /// ```
@@ -109,19 +115,25 @@ impl<'a, T> Iter<'a, T> {
     /// Basic usage:
     ///
     /// ```
-    /// // First, we declare a type which has the `iter` method to get the `Iter`
+    /// // First, we need a slice to call the `iter` method on:
     /// // struct (`&[usize]` here):
     /// let slice = &[1, 2, 3];
     ///
-    /// // Then, we get the iterator:
+    /// // Then we call `iter` on the slice to get the `Iter` struct:
     /// let mut iter = slice.iter();
-    /// // So if we print what `as_slice` method returns here, we have "[1, 2, 3]":
+    /// // Here `as_slice` still returns the whole slice, so this prints "[1, 2, 3]":
     /// println!("{:?}", iter.as_slice());
     ///
-    /// // Next, we move to the second element of the slice:
+    /// // Now, we call the `next` method to remove the first element of the iterator:
     /// iter.next();
-    /// // Now `as_slice` returns "[2, 3]":
+    /// // Here the iterator does not contain the first element of the slice any more,
+    /// // so `as_slice` only returns the last two elements of the slice,
+    /// // and so this prints "[2, 3]":
     /// println!("{:?}", iter.as_slice());
+    ///
+    /// // The underlying slice has not been modified and still contains three elements,
+    /// // so this prints "[1, 2, 3]":
+    /// println!("{:?}", slice);
     /// ```
     #[must_use]
     #[stable(feature = "iter_to_slice", since = "1.4.0")]
@@ -166,11 +178,11 @@ impl<T> AsRef<[T]> for Iter<'_, T> {
 /// Basic usage:
 ///
 /// ```
-/// // First, we declare a type which has `iter_mut` method to get the `IterMut`
-/// // struct (`&[usize]` here):
-/// let mut slice = &mut [1, 2, 3];
+/// // First, we need a slice to call the `iter_mut` method on:
+/// let slice = &mut [1, 2, 3];
 ///
-/// // Then, we iterate over it and increment each element value:
+/// // Then we call `iter_mut` on the slice to get the `IterMut` struct,
+/// // iterate over it and increment each element value:
 /// for element in slice.iter_mut() {
 ///     *element += 1;
 /// }
@@ -247,28 +259,21 @@ impl<'a, T> IterMut<'a, T> {
     /// Basic usage:
     ///
     /// ```
-    /// // First, we declare a type which has `iter_mut` method to get the `IterMut`
-    /// // struct (`&[usize]` here):
+    /// // First, we need a slice to call the `iter_mut` method on:
     /// let mut slice = &mut [1, 2, 3];
     ///
-    /// {
-    ///     // Then, we get the iterator:
-    ///     let mut iter = slice.iter_mut();
-    ///     // We move to next element:
-    ///     iter.next();
-    ///     // So if we print what `into_slice` method returns here, we have "[2, 3]":
-    ///     println!("{:?}", iter.into_slice());
-    /// }
-    ///
-    /// // Now let's modify a value of the slice:
-    /// {
-    ///     // First we get back the iterator:
-    ///     let mut iter = slice.iter_mut();
-    ///     // We change the value of the first element of the slice returned by the `next` method:
-    ///     *iter.next().unwrap() += 1;
-    /// }
-    /// // Now slice is "[2, 2, 3]":
-    /// println!("{slice:?}");
+    /// // Then we call `iter_mut` on the slice to get the `IterMut` struct:
+    /// let mut iter = slice.iter_mut();
+    /// // Now, we call the `next` method to remove the first element of the iterator,
+    /// // unwrap and dereference what we get from `next` and increase its value by 1:
+    /// *iter.next().unwrap() += 1;
+    /// // Here the iterator does not contain the first element of the slice any more,
+    /// // so `into_slice` only returns the last two elements of the slice,
+    /// // and so this prints "[2, 3]":
+    /// println!("{:?}", iter.into_slice());
+    /// // The underlying slice still contains three elements, but its first element
+    /// // was increased by 1, so this prints "[2, 2, 3]":
+    /// println!("{:?}", slice);
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "iter_to_slice", since = "1.4.0")]

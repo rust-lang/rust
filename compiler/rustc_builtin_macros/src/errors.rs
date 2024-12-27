@@ -369,26 +369,21 @@ pub(crate) struct DerivePathArgsValue {
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_no_default_variant)]
-#[help]
+#[diag(builtin_macros_no_default_variant, code = E0665)]
 pub(crate) struct NoDefaultVariant {
     #[primary_span]
     pub(crate) span: Span,
+    #[label]
+    pub(crate) item_span: Span,
     #[subdiagnostic]
     pub(crate) suggs: Vec<NoDefaultVariantSugg>,
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion(
-    builtin_macros_suggestion,
-    code = "#[default] {ident}",
-    applicability = "maybe-incorrect",
-    style = "tool-only"
-)]
+#[suggestion(builtin_macros_suggestion, code = "#[default] ", applicability = "maybe-incorrect")]
 pub(crate) struct NoDefaultVariantSugg {
     #[primary_span]
     pub(crate) span: Span,
-    pub(crate) ident: Ident,
 }
 
 #[derive(Diagnostic)]

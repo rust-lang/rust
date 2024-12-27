@@ -304,6 +304,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
             }
             _ => ccx.dcx().create_err(errors::NonConstFnCall {
                 span,
+                def_descr: ccx.tcx.def_descr(callee),
                 def_path_str: ccx.tcx.def_path_str_with_args(callee, args),
                 kind: ccx.const_kind(),
             }),

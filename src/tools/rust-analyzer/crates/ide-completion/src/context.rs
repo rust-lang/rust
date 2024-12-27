@@ -718,7 +718,7 @@ impl<'a> CompletionContext<'a> {
             expected: (expected_type, expected_name),
             qualifier_ctx,
             token,
-            offset,
+            original_offset,
         } = expand_and_analyze(
             &sema,
             original_file.syntax().clone(),
@@ -728,7 +728,7 @@ impl<'a> CompletionContext<'a> {
         )?;
 
         // adjust for macro input, this still fails if there is no token written yet
-        let scope = sema.scope_at_offset(&token.parent()?, offset)?;
+        let scope = sema.scope_at_offset(&token.parent()?, original_offset)?;
 
         let krate = scope.krate();
         let module = scope.module();

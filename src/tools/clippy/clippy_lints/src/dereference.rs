@@ -877,7 +877,8 @@ impl TyCoercionStability {
                 | ty::CoroutineClosure(..)
                 | ty::Never
                 | ty::Tuple(_)
-                | ty::Alias(ty::Projection, _) => Self::Deref,
+                | ty::Alias(ty::Projection, _)
+                | ty::UnsafeBinder(_) => Self::Deref,
             };
         }
     }
@@ -1003,7 +1004,10 @@ fn report<'tcx>(
                     let needs_paren = match cx.tcx.parent_hir_node(data.first_expr.hir_id) {
                         Node::Expr(e) => match e.kind {
                             ExprKind::Call(callee, _) if callee.hir_id != data.first_expr.hir_id => false,
-                            ExprKind::Call(..) => expr.precedence() < ExprPrecedence::Unambiguous || matches!(expr.kind, ExprKind::Field(..)),
+                            ExprKind::Call(..) => {
+                                expr.precedence() < ExprPrecedence::Unambiguous
+                                    || matches!(expr.kind, ExprKind::Field(..))
+                            },
                             _ => expr.precedence() < e.precedence(),
                         },
                         _ => false,
@@ -1016,11 +1020,7 @@ fn report<'tcx>(
                         })
                     );
 
-                    let sugg = if !snip_is_macro
-                        && needs_paren
-                        && !has_enclosing_paren(&snip)
-                        && !is_in_tuple
-                    {
+                    let sugg = if !snip_is_macro && needs_paren && !has_enclosing_paren(&snip) && !is_in_tuple {
                         format!("({snip})")
                     } else {
                         snip.into()

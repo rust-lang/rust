@@ -487,7 +487,7 @@ impl ProcMacroExpander for Expander {
         match self.0.expand(
             subtree,
             attrs,
-            env.clone(),
+            env.clone().into(),
             def_site,
             call_site,
             mixed_site,

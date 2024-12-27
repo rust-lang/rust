@@ -39,10 +39,16 @@ enum AttrOnInnerExpression {
     Baz,
 }
 
-#[derive(Default)] //~ ERROR no default declared
+#[derive(Default)] //~ ERROR `#[derive(Default)]` on enum with no `#[default]`
 enum NoDeclaredDefault {
     Foo,
     Bar,
+}
+
+#[derive(Default)] //~ ERROR `#[derive(Default)]` on enum with no `#[default]`
+enum NoDeclaredDefaultWithoutUnitVariant {
+    Foo(i32),
+    Bar(i32),
 }
 
 #[derive(Default)] //~ ERROR multiple declared defaults

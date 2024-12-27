@@ -263,7 +263,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         &self,
                         negative_impls,
                         span.to(of_trait.as_ref().map_or(span, |t| t.path.span)),
-                        "negative trait bounds are not yet fully implemented; \
+                        "negative trait bounds are not fully implemented; \
                          use marker types for now"
                     );
                 }

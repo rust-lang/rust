@@ -33,7 +33,7 @@ pub struct Foo(#[m$0] i32);
             at cold
             at deny(…)
             at deprecated
-            at derive                 macro derive
+            at derive                                  macro derive
             at derive(…)
             at doc = "…"
             at doc(alias = "…")
@@ -367,9 +367,9 @@ struct Foo;
             at cfg_attr(…)
             at deny(…)
             at deprecated
-            at derive           macro derive
+            at derive             macro derive
             at derive(…)
-            at derive_const     macro derive_const
+            at derive_const macro derive_const
             at doc = "…"
             at doc(alias = "…")
             at doc(hidden)
@@ -790,10 +790,10 @@ mod derive {
 #[derive($0)] struct Test;
 "#,
             expect![[r#"
-                de Clone                  macro Clone
+                de Clone              macro Clone
                 de Clone, Copy
-                de Default                macro Default
-                de PartialEq              macro PartialEq
+                de Default          macro Default
+                de PartialEq      macro PartialEq
                 de PartialEq, Eq
                 de PartialEq, Eq, PartialOrd, Ord
                 de PartialEq, PartialOrd
@@ -812,9 +812,9 @@ mod derive {
 #[derive(serde::Serialize, PartialEq, $0)] struct Test;
 "#,
             expect![[r#"
-                de Clone               macro Clone
+                de Clone     macro Clone
                 de Clone, Copy
-                de Default             macro Default
+                de Default macro Default
                 de Eq
                 de Eq, PartialOrd, Ord
                 de PartialOrd
@@ -833,9 +833,9 @@ mod derive {
 #[derive($0 serde::Serialize, PartialEq)] struct Test;
 "#,
             expect![[r#"
-                de Clone               macro Clone
+                de Clone     macro Clone
                 de Clone, Copy
-                de Default             macro Default
+                de Default macro Default
                 de Eq
                 de Eq, PartialOrd, Ord
                 de PartialOrd
@@ -854,9 +854,9 @@ mod derive {
 #[derive(PartialEq, Eq, Or$0)] struct Test;
 "#,
             expect![[r#"
-                de Clone           macro Clone
+                de Clone     macro Clone
                 de Clone, Copy
-                de Default         macro Default
+                de Default macro Default
                 de PartialOrd
                 de PartialOrd, Ord
                 md core

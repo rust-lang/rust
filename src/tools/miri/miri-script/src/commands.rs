@@ -423,7 +423,7 @@ impl Command {
                 .map(|path| path.into_os_string().into_string().unwrap())
                 .collect()
         } else {
-            benches.into_iter().map(Into::into).collect()
+            benches.into_iter().collect()
         };
         let target_flag = if let Some(target) = target {
             let mut flag = OsString::from("--target=");

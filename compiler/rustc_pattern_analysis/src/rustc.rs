@@ -415,6 +415,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(_, _)
+            | ty::UnsafeBinder(_)
             | ty::Alias(_, _)
             | ty::Param(_)
             | ty::Error(_) => ConstructorSet::Unlistable,

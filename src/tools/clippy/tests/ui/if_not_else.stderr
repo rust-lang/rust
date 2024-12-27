@@ -9,9 +9,17 @@ LL | |         println!("Bunny");
 LL | |     }
    | |_____^
    |
-   = help: remove the `!` and swap the blocks of the `if`/`else`
    = note: `-D clippy::if-not-else` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::if_not_else)]`
+help: try
+   |
+LL ~     if bla() {
+LL +         println!("Bunny");
+LL +     } else {
+LL +
+LL +         println!("Bugs");
+LL +     }
+   |
 
 error: unnecessary `!=` operation
   --> tests/ui/if_not_else.rs:18:5
@@ -24,7 +32,109 @@ LL | |         println!("Bunny");
 LL | |     }
    | |_____^
    |
-   = help: change to `==` and swap the blocks of the `if`/`else`
+help: try
+   |
+LL ~     if 4 == 5 {
+LL +         println!("Bunny");
+LL +     } else {
+LL +
+LL +         println!("Bugs");
+LL +     }
+   |
 
-error: aborting due to 2 previous errors
+error: unnecessary boolean `not` operation
+  --> tests/ui/if_not_else.rs:32:5
+   |
+LL | /     if !(foo() && bla()) {
+LL | |         #[cfg(not(debug_assertions))]
+LL | |         println!("not debug");
+LL | |         #[cfg(debug_assertions)]
+...  |
+LL | |         println!("both true");
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     if (foo() && bla()) {
+LL +         println!("both true");
+LL +     } else {
+LL +         #[cfg(not(debug_assertions))]
+LL +         println!("not debug");
+LL +         #[cfg(debug_assertions)]
+LL +         println!("debug");
+LL +         if foo() {
+LL +             println!("foo");
+LL +         } else if bla() {
+LL +             println!("bla");
+LL +         } else {
+LL +             println!("both false");
+LL +         }
+LL +     }
+   |
+
+error: unnecessary boolean `not` operation
+  --> tests/ui/if_not_else.rs:50:5
+   |
+LL | /     if !foo() {
+LL | |         /* foo is false */
+LL | |         println!("foo is false");
+LL | |     } else {
+LL | |         println!("foo"); /* foo */
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     if foo() {
+LL +         println!("foo"); /* foo */
+LL +     } else {
+LL +         /* foo is false */
+LL +         println!("foo is false");
+LL +     }
+   |
+
+error: unnecessary boolean `not` operation
+  --> tests/ui/if_not_else.rs:57:5
+   |
+LL | /     if !bla() {
+LL | |         // bla is false
+LL | |         println!("bla");
+LL | |     } else {
+LL | |         println!("bla"); // bla
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     if bla() {
+LL +         println!("bla"); // bla
+LL +     } else {
+LL +         // bla is false
+LL +         println!("bla");
+LL +     }
+   |
+
+error: unnecessary boolean `not` operation
+  --> tests/ui/if_not_else.rs:67:5
+   |
+LL | /     if !foo() {
+LL | |         /* foo is false */
+LL | |         println!("foo is false");
+LL | |     } else {
+LL | |         println!("foo"); /* foo */
+LL | |     }
+   | |_____^
+   |
+help: try
+   |
+LL ~     if foo() {
+LL +         println!("foo"); /* foo */
+LL +     } else {
+LL +         /* foo is false */
+LL +         println!("foo is false");
+LL +     }
+   |
+
+error: aborting due to 6 previous errors
 

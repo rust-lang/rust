@@ -193,8 +193,10 @@ enum ImplTraitContext {
 }
 
 /// Used for tracking import use types which will be used for redundant import checking.
+///
 /// ### Used::Scope Example
-///  ```rust,compile_fail
+///
+/// ```rust,compile_fail
 /// #![deny(redundant_imports)]
 /// use std::mem::drop;
 /// fn main() {
@@ -202,6 +204,7 @@ enum ImplTraitContext {
 ///     drop(s);
 /// }
 /// ```
+///
 /// Used::Other is for other situations like module-relative uses.
 #[derive(Clone, Copy, PartialEq, PartialOrd, Debug)]
 enum Used {

@@ -432,6 +432,7 @@ fn push_debuginfo_type_name<'tcx>(
                 push_closure_or_coroutine_name(tcx, def_id, args, qualified, output, visited);
             }
         }
+        ty::UnsafeBinder(_) => todo!("FIXME(unsafe_binders)"),
         ty::Param(_)
         | ty::Error(_)
         | ty::Infer(_)

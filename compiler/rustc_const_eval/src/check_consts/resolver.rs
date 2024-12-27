@@ -197,7 +197,6 @@ where
             | mir::Rvalue::CopyForDeref(..)
             | mir::Rvalue::ThreadLocalRef(..)
             | mir::Rvalue::Repeat(..)
-            | mir::Rvalue::Len(..)
             | mir::Rvalue::BinaryOp(..)
             | mir::Rvalue::NullaryOp(..)
             | mir::Rvalue::UnaryOp(..)
