@@ -62,11 +62,10 @@ impl FileDescription for Event {
             return ecx.set_last_error_and_return(ErrorKind::InvalidInput, dest);
         }
 
-        // eventfd read at the size of u64.
+        // Turn the pointer into a place at the right type.
         let buf_place = ecx.ptr_to_mplace_unaligned(ptr, ty);
 
-        let weak_eventfd = self_ref.downgrade();
-        eventfd_read(buf_place, dest, weak_eventfd, ecx)
+        eventfd_read(buf_place, dest, self_ref, ecx)
     }
 
     /// A write call adds the 8-byte integer value supplied in
@@ -97,18 +96,10 @@ impl FileDescription for Event {
             return ecx.set_last_error_and_return(ErrorKind::InvalidInput, dest);
         }
 
-        // Read the user-supplied value from the pointer.
+        // Turn the pointer into a place at the right type.
         let buf_place = ecx.ptr_to_mplace_unaligned(ptr, ty);
-        let num = ecx.read_scalar(&buf_place)?.to_u64()?;
 
-        // u64::MAX as input is invalid because the maximum value of counter is u64::MAX - 1.
-        if num == u64::MAX {
-            return ecx.set_last_error_and_return(ErrorKind::InvalidInput, dest);
-        }
-        // If the addition does not let the counter to exceed the maximum value, update the counter.
-        // Else, block.
-        let weak_eventfd = self_ref.downgrade();
-        eventfd_write(num, buf_place, dest, weak_eventfd, ecx)
+        eventfd_write(buf_place, dest, self_ref, ecx)
     }
 
     fn as_unix(&self) -> &dyn UnixFileDescription {
@@ -193,19 +184,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 /// Block thread if the value addition will exceed u64::MAX -1,
 /// else just add the user-supplied value to current counter.
 fn eventfd_write<'tcx>(
-    num: u64,
     buf_place: MPlaceTy<'tcx>,
     dest: &MPlaceTy<'tcx>,
-    weak_eventfd: WeakFileDescriptionRef,
+    eventfd_ref: &FileDescriptionRef,
     ecx: &mut MiriInterpCx<'tcx>,
 ) -> InterpResult<'tcx> {
-    let Some(eventfd_ref) = weak_eventfd.upgrade() else {
-        throw_unsup_format!("eventfd FD got closed while blocking.")
-    };
-
     // Since we pass the weak file description ref, it is guaranteed to be
     // an eventfd file description.
     let eventfd = eventfd_ref.downcast::<Event>().unwrap();
+
+    // Figure out which value we should add.
+    let num = ecx.read_scalar(&buf_place)?.to_u64()?;
+    // u64::MAX as input is invalid because the maximum value of counter is u64::MAX - 1.
+    if num == u64::MAX {
+        return ecx.set_last_error_and_return(ErrorKind::InvalidInput, dest);
+    }
 
     match eventfd.counter.get().checked_add(num) {
         Some(new_count @ 0..=MAX_COUNTER) => {
@@ -219,7 +212,7 @@ fn eventfd_write<'tcx>(
 
             // The state changed; we check and update the status of all supported event
             // types for current file description.
-            ecx.check_and_update_readiness(&eventfd_ref)?;
+            ecx.check_and_update_readiness(eventfd_ref)?;
 
             // Unblock *all* threads previously blocked on `read`.
             // We need to take out the blocked thread ids and unblock them together,
@@ -244,6 +237,7 @@ fn eventfd_write<'tcx>(
 
             eventfd.blocked_write_tid.borrow_mut().push(ecx.active_thread());
 
+            let weak_eventfd = eventfd_ref.downgrade();
             ecx.block_thread(
                 BlockReason::Eventfd,
                 None,
@@ -255,8 +249,10 @@ fn eventfd_write<'tcx>(
                         weak_eventfd: WeakFileDescriptionRef,
                     }
                     @unblock = |this| {
-                        // When we get unblocked, try again.
-                        eventfd_write(num, buf_place, &dest, weak_eventfd, this)
+                        // When we get unblocked, try again. We know the ref is still valid,
+                        // otherwise there couldn't be a `write` that unblocks us.
+                        let eventfd_ref = weak_eventfd.upgrade().unwrap();
+                        eventfd_write(buf_place, &dest, &eventfd_ref, this)
                     }
                 ),
             );
@@ -270,13 +266,9 @@ fn eventfd_write<'tcx>(
 fn eventfd_read<'tcx>(
     buf_place: MPlaceTy<'tcx>,
     dest: &MPlaceTy<'tcx>,
-    weak_eventfd: WeakFileDescriptionRef,
+    eventfd_ref: &FileDescriptionRef,
     ecx: &mut MiriInterpCx<'tcx>,
 ) -> InterpResult<'tcx> {
-    let Some(eventfd_ref) = weak_eventfd.upgrade() else {
-        throw_unsup_format!("eventfd FD got closed while blocking.")
-    };
-
     // Since we pass the weak file description ref to the callback function, it is guaranteed to be
     // an eventfd file description.
     let eventfd = eventfd_ref.downcast::<Event>().unwrap();
@@ -293,6 +285,7 @@ fn eventfd_read<'tcx>(
 
         eventfd.blocked_read_tid.borrow_mut().push(ecx.active_thread());
 
+        let weak_eventfd = eventfd_ref.downgrade();
         ecx.block_thread(
             BlockReason::Eventfd,
             None,
@@ -303,8 +296,10 @@ fn eventfd_read<'tcx>(
                     weak_eventfd: WeakFileDescriptionRef,
                 }
                 @unblock = |this| {
-                    // When we get unblocked, try again.
-                    eventfd_read(buf_place, &dest, weak_eventfd, this)
+                    // When we get unblocked, try again. We know the ref is still valid,
+                    // otherwise there couldn't be a `write` that unblocks us.
+                    let eventfd_ref = weak_eventfd.upgrade().unwrap();
+                    eventfd_read(buf_place, &dest, &eventfd_ref, this)
                 }
             ),
         );
@@ -317,7 +312,7 @@ fn eventfd_read<'tcx>(
 
         // The state changed; we check and update the status of all supported event
         // types for current file description.
-        ecx.check_and_update_readiness(&eventfd_ref)?;
+        ecx.check_and_update_readiness(eventfd_ref)?;
 
         // Unblock *all* threads previously blocked on `write`.
         // We need to take out the blocked thread ids and unblock them together,
