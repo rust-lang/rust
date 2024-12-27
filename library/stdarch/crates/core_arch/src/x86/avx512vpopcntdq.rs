@@ -13,9 +13,6 @@ use crate::core_arch::x86::__m256i;
 use crate::core_arch::x86::__m512i;
 use crate::core_arch::x86::__mmask16;
 use crate::core_arch::x86::__mmask8;
-use crate::core_arch::x86::m128iExt;
-use crate::core_arch::x86::m256iExt;
-use crate::core_arch::x86::m512iExt;
 use crate::intrinsics::simd::{simd_ctpop, simd_select_bitmask};
 use crate::mem::transmute;
 

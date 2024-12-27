@@ -1,7 +1,5 @@
 //! `x86` and `x86_64` intrinsics.
 
-#[allow(unused_imports)]
-use crate::marker::Sized;
 use crate::mem::transmute;
 
 #[macro_use]
@@ -512,403 +510,77 @@ mod test;
 #[cfg(test)]
 pub use self::test::*;
 
-#[allow(non_camel_case_types)]
-pub(crate) trait m128iExt: Sized {
-    fn as_m128i(self) -> __m128i;
-
-    #[inline]
-    fn as_u8x16(self) -> crate::core_arch::simd::u8x16 {
-        unsafe { transmute(self.as_m128i()) }
-    }
-
-    #[inline]
-    fn as_u16x8(self) -> crate::core_arch::simd::u16x8 {
-        unsafe { transmute(self.as_m128i()) }
-    }
-
-    #[inline]
-    fn as_u32x4(self) -> crate::core_arch::simd::u32x4 {
-        unsafe { transmute(self.as_m128i()) }
-    }
-
-    #[inline]
-    fn as_u64x2(self) -> crate::core_arch::simd::u64x2 {
-        unsafe { transmute(self.as_m128i()) }
-    }
-
-    #[inline]
-    fn as_i8x16(self) -> crate::core_arch::simd::i8x16 {
-        unsafe { transmute(self.as_m128i()) }
-    }
-
-    #[inline]
-    fn as_i16x8(self) -> crate::core_arch::simd::i16x8 {
-        unsafe { transmute(self.as_m128i()) }
-    }
-
-    #[inline]
-    fn as_i32x4(self) -> crate::core_arch::simd::i32x4 {
-        unsafe { transmute(self.as_m128i()) }
-    }
-
-    #[inline]
-    fn as_i64x2(self) -> crate::core_arch::simd::i64x2 {
-        unsafe { transmute(self.as_m128i()) }
-    }
+macro_rules! as_transmute {
+    ($from:ty => $($name:ident -> $to:ident),* $(,)?) => {
+        impl $from {$(
+            #[inline]
+            pub(crate) fn $name(self) -> crate::core_arch::simd::$to {
+                unsafe { transmute(self) }
+            }
+        )*}
+    };
 }
 
-impl m128iExt for __m128i {
-    #[inline]
-    fn as_m128i(self) -> Self {
-        self
-    }
-}
-
-#[allow(non_camel_case_types)]
-pub(crate) trait m256iExt: Sized {
-    fn as_m256i(self) -> __m256i;
-
-    #[inline]
-    fn as_u8x32(self) -> crate::core_arch::simd::u8x32 {
-        unsafe { transmute(self.as_m256i()) }
-    }
-
-    #[inline]
-    fn as_u16x16(self) -> crate::core_arch::simd::u16x16 {
-        unsafe { transmute(self.as_m256i()) }
-    }
-
-    #[inline]
-    fn as_u32x8(self) -> crate::core_arch::simd::u32x8 {
-        unsafe { transmute(self.as_m256i()) }
-    }
-
-    #[inline]
-    fn as_u64x4(self) -> crate::core_arch::simd::u64x4 {
-        unsafe { transmute(self.as_m256i()) }
-    }
-
-    #[inline]
-    fn as_i8x32(self) -> crate::core_arch::simd::i8x32 {
-        unsafe { transmute(self.as_m256i()) }
-    }
-
-    #[inline]
-    fn as_i16x16(self) -> crate::core_arch::simd::i16x16 {
-        unsafe { transmute(self.as_m256i()) }
-    }
-
-    #[inline]
-    fn as_i32x8(self) -> crate::core_arch::simd::i32x8 {
-        unsafe { transmute(self.as_m256i()) }
-    }
-
-    #[inline]
-    fn as_i64x4(self) -> crate::core_arch::simd::i64x4 {
-        unsafe { transmute(self.as_m256i()) }
-    }
-}
-
-impl m256iExt for __m256i {
-    #[inline]
-    fn as_m256i(self) -> Self {
-        self
-    }
-}
-
-#[allow(non_camel_case_types)]
-pub(crate) trait m128Ext: Sized {
-    fn as_m128(self) -> __m128;
-
-    #[inline]
-    fn as_f32x4(self) -> crate::core_arch::simd::f32x4 {
-        unsafe { transmute(self.as_m128()) }
-    }
-}
-
-impl m128Ext for __m128 {
-    #[inline]
-    fn as_m128(self) -> Self {
-        self
-    }
-}
-
-#[allow(non_camel_case_types)]
-pub(crate) trait m128dExt: Sized {
-    fn as_m128d(self) -> __m128d;
-
-    #[inline]
-    fn as_f64x2(self) -> crate::core_arch::simd::f64x2 {
-        unsafe { transmute(self.as_m128d()) }
-    }
-}
-
-impl m128dExt for __m128d {
-    #[inline]
-    fn as_m128d(self) -> Self {
-        self
-    }
-}
-
-#[allow(non_camel_case_types)]
-pub(crate) trait m256Ext: Sized {
-    fn as_m256(self) -> __m256;
-
-    #[inline]
-    fn as_f32x8(self) -> crate::core_arch::simd::f32x8 {
-        unsafe { transmute(self.as_m256()) }
-    }
-}
-
-impl m256Ext for __m256 {
-    #[inline]
-    fn as_m256(self) -> Self {
-        self
-    }
-}
-
-#[allow(non_camel_case_types)]
-pub(crate) trait m256dExt: Sized {
-    fn as_m256d(self) -> __m256d;
-
-    #[inline]
-    fn as_f64x4(self) -> crate::core_arch::simd::f64x4 {
-        unsafe { transmute(self.as_m256d()) }
-    }
-}
-
-impl m256dExt for __m256d {
-    #[inline]
-    fn as_m256d(self) -> Self {
-        self
-    }
-}
-
-#[allow(non_camel_case_types)]
-pub(crate) trait m512iExt: Sized {
-    fn as_m512i(self) -> __m512i;
-
-    #[inline]
-    fn as_u8x64(self) -> crate::core_arch::simd::u8x64 {
-        unsafe { transmute(self.as_m512i()) }
-    }
-
-    #[inline]
-    fn as_i8x64(self) -> crate::core_arch::simd::i8x64 {
-        unsafe { transmute(self.as_m512i()) }
-    }
-
-    #[inline]
-    fn as_u16x32(self) -> crate::core_arch::simd::u16x32 {
-        unsafe { transmute(self.as_m512i()) }
-    }
-
-    #[inline]
-    fn as_i16x32(self) -> crate::core_arch::simd::i16x32 {
-        unsafe { transmute(self.as_m512i()) }
-    }
-
-    #[inline]
-    fn as_u32x16(self) -> crate::core_arch::simd::u32x16 {
-        unsafe { transmute(self.as_m512i()) }
-    }
-
-    #[inline]
-    fn as_i32x16(self) -> crate::core_arch::simd::i32x16 {
-        unsafe { transmute(self.as_m512i()) }
-    }
-
-    #[inline]
-    fn as_u64x8(self) -> crate::core_arch::simd::u64x8 {
-        unsafe { transmute(self.as_m512i()) }
-    }
-
-    #[inline]
-    fn as_i64x8(self) -> crate::core_arch::simd::i64x8 {
-        unsafe { transmute(self.as_m512i()) }
-    }
-}
-
-impl m512iExt for __m512i {
-    #[inline]
-    fn as_m512i(self) -> Self {
-        self
-    }
-}
-
-#[allow(non_camel_case_types)]
-pub(crate) trait m512Ext: Sized {
-    fn as_m512(self) -> __m512;
-
-    #[inline]
-    fn as_f32x16(self) -> crate::core_arch::simd::f32x16 {
-        unsafe { transmute(self.as_m512()) }
-    }
-}
-
-impl m512Ext for __m512 {
-    #[inline]
-    fn as_m512(self) -> Self {
-        self
-    }
-}
-
-#[allow(non_camel_case_types)]
-pub(crate) trait m512dExt: Sized {
-    fn as_m512d(self) -> __m512d;
-
-    #[inline]
-    fn as_f64x8(self) -> crate::core_arch::simd::f64x8 {
-        unsafe { transmute(self.as_m512d()) }
-    }
-}
-
-impl m512dExt for __m512d {
-    #[inline]
-    fn as_m512d(self) -> Self {
-        self
-    }
-}
-
-#[allow(non_camel_case_types)]
-pub(crate) trait m128bhExt: Sized {
-    fn as_m128bh(self) -> __m128bh;
-
-    #[inline]
-    fn as_u16x8(self) -> crate::core_arch::simd::u16x8 {
-        unsafe { transmute(self.as_m128bh()) }
-    }
-
-    #[inline]
-    fn as_i16x8(self) -> crate::core_arch::simd::i16x8 {
-        unsafe { transmute(self.as_m128bh()) }
-    }
-
-    #[inline]
-    fn as_u32x4(self) -> crate::core_arch::simd::u32x4 {
-        unsafe { transmute(self.as_m128bh()) }
-    }
-
-    #[inline]
-    fn as_i32x4(self) -> crate::core_arch::simd::i32x4 {
-        unsafe { transmute(self.as_m128bh()) }
-    }
-}
-
-impl m128bhExt for __m128bh {
-    #[inline]
-    fn as_m128bh(self) -> Self {
-        self
-    }
-}
-
-#[allow(non_camel_case_types)]
-pub(crate) trait m256bhExt: Sized {
-    fn as_m256bh(self) -> __m256bh;
-
-    #[inline]
-    fn as_u16x16(self) -> crate::core_arch::simd::u16x16 {
-        unsafe { transmute(self.as_m256bh()) }
-    }
-
-    #[inline]
-    fn as_i16x16(self) -> crate::core_arch::simd::i16x16 {
-        unsafe { transmute(self.as_m256bh()) }
-    }
-
-    #[inline]
-    fn as_u32x8(self) -> crate::core_arch::simd::u32x8 {
-        unsafe { transmute(self.as_m256bh()) }
-    }
-
-    #[inline]
-    fn as_i32x8(self) -> crate::core_arch::simd::i32x8 {
-        unsafe { transmute(self.as_m256bh()) }
-    }
-}
-
-impl m256bhExt for __m256bh {
-    #[inline]
-    fn as_m256bh(self) -> Self {
-        self
-    }
-}
-
-#[allow(non_camel_case_types)]
-pub(crate) trait m512bhExt: Sized {
-    fn as_m512bh(self) -> __m512bh;
-
-    #[inline]
-    fn as_u16x32(self) -> crate::core_arch::simd::u16x32 {
-        unsafe { transmute(self.as_m512bh()) }
-    }
-
-    #[inline]
-    fn as_i16x32(self) -> crate::core_arch::simd::i16x32 {
-        unsafe { transmute(self.as_m512bh()) }
-    }
-
-    #[inline]
-    fn as_u32x16(self) -> crate::core_arch::simd::u32x16 {
-        unsafe { transmute(self.as_m512bh()) }
-    }
-
-    #[inline]
-    fn as_i32x16(self) -> crate::core_arch::simd::i32x16 {
-        unsafe { transmute(self.as_m512bh()) }
-    }
-}
-
-impl m512bhExt for __m512bh {
-    #[inline]
-    fn as_m512bh(self) -> Self {
-        self
-    }
-}
-
-#[allow(non_camel_case_types)]
-pub(crate) trait m128hExt: Sized {
-    fn as_m128h(self) -> __m128h;
-
-    #[inline]
-    fn as_f16x8(self) -> crate::core_arch::simd::f16x8 {
-        unsafe { transmute(self.as_m128h()) }
-    }
-}
-
-impl m128hExt for __m128h {
-    #[inline]
-    fn as_m128h(self) -> Self {
-        self
-    }
-}
-
-#[allow(non_camel_case_types)]
-pub(crate) trait m256hExt: Sized {
-    fn as_m256h(self) -> __m256h;
-
-    #[inline]
-    fn as_f16x16(self) -> crate::core_arch::simd::f16x16 {
-        unsafe { transmute(self.as_m256h()) }
-    }
-}
-
-impl m256hExt for __m256h {
-    #[inline]
-    fn as_m256h(self) -> Self {
-        self
-    }
-}
-
-#[allow(non_camel_case_types)]
-pub(crate) trait m512hExt: Sized {
-    fn as_m512h(self) -> __m512h;
-
-    #[inline]
-    fn as_f16x32(self) -> crate::core_arch::simd::f16x32 {
-        unsafe { transmute(self.as_m512h()) }
-    }
-}
+as_transmute!(__m128i =>
+    as_u8x16 -> u8x16,
+    as_u16x8 -> u16x8,
+    as_u32x4 -> u32x4,
+    as_u64x2 -> u64x2,
+    as_i8x16 -> i8x16,
+    as_i16x8 -> i16x8,
+    as_i32x4 -> i32x4,
+    as_i64x2 -> i64x2,
+);
+as_transmute!(__m256i =>
+    as_u8x32 -> u8x32,
+    as_u16x16 -> u16x16,
+    as_u32x8 -> u32x8,
+    as_u64x4 -> u64x4,
+    as_i8x32 -> i8x32,
+    as_i16x16 -> i16x16,
+    as_i32x8 -> i32x8,
+    as_i64x4 -> i64x4,
+);
+as_transmute!(__m512i =>
+    as_u8x64 -> u8x64,
+    as_u16x32 -> u16x32,
+    as_u32x16 -> u32x16,
+    as_u64x8 -> u64x8,
+    as_i8x64 -> i8x64,
+    as_i16x32 -> i16x32,
+    as_i32x16 -> i32x16,
+    as_i64x8 -> i64x8,
+);
+
+as_transmute!(__m128 => as_f32x4 -> f32x4);
+as_transmute!(__m128d => as_f64x2 -> f64x2);
+as_transmute!(__m256 => as_f32x8 -> f32x8);
+as_transmute!(__m256d => as_f64x4 -> f64x4);
+as_transmute!(__m512 => as_f32x16 -> f32x16);
+as_transmute!(__m512d => as_f64x8 -> f64x8);
+
+as_transmute!(__m128bh =>
+    as_u16x8 -> u16x8,
+    as_u32x4 -> u32x4,
+    as_i16x8 -> i16x8,
+    as_i32x4 -> i32x4,
+);
+as_transmute!(__m256bh =>
+    as_u16x16 -> u16x16,
+    as_u32x8 -> u32x8,
+    as_i16x16 -> i16x16,
+    as_i32x8 -> i32x8,
+);
+as_transmute!(__m512bh =>
+    as_u16x32 -> u16x32,
+    as_u32x16 -> u32x16,
+    as_i16x32 -> i16x32,
+    as_i32x16 -> i32x16,
+);
+
+as_transmute!(__m128h => as_f16x8 -> f16x8);
+as_transmute!(__m256h => as_f16x16 -> f16x16);
+as_transmute!(__m512h => as_f16x32 -> f16x32);
 
 mod eflags;
 #[stable(feature = "simd_x86", since = "1.27.0")]
