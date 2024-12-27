@@ -11,7 +11,7 @@ pub fn exp10f(x: f32) -> f32 {
     let (mut y, n) = modff(x);
     let u = n.to_bits();
     /* fabsf(n) < 8 without raising invalid on nan */
-    if (u >> 23 & 0xff) < 0x7f + 3 {
+    if ((u >> 23) & 0xff) < 0x7f + 3 {
         if y == 0.0 {
             return i!(P10, ((n as isize) + 7) as usize);
         }

@@ -12,7 +12,7 @@ pub fn exp10(x: f64) -> f64 {
     let (mut y, n) = modf(x);
     let u: u64 = n.to_bits();
     /* fabs(n) < 16 without raising invalid on nan */
-    if (u >> 52 & 0x7ff) < 0x3ff + 4 {
+    if ((u >> 52) & 0x7ff) < 0x3ff + 4 {
         if y == 0.0 {
             return i!(P10, ((n as isize) + 15) as usize);
         }

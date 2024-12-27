@@ -171,10 +171,10 @@ pub fn y1(x: f64) -> f64 {
     lx = get_low_word(x);
 
     /* y1(nan)=nan, y1(<0)=nan, y1(0)=-inf, y1(inf)=0 */
-    if (ix << 1 | lx) == 0 {
+    if (ix << 1) | lx == 0 {
         return -1.0 / 0.0;
     }
-    if (ix >> 31) != 0 {
+    if ix >> 31 != 0 {
         return 0.0 / 0.0;
     }
     if ix >= 0x7ff00000 {

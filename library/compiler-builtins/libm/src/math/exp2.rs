@@ -341,7 +341,7 @@ pub fn exp2(mut x: f64) -> f64 {
 
     /* Filter out exceptional cases. */
     let ui = f64::to_bits(x);
-    let ix = ui >> 32 & 0x7fffffff;
+    let ix = (ui >> 32) & 0x7fffffff;
     if ix >= 0x408ff000 {
         /* |x| >= 1022 or nan */
         if ix >= 0x40900000 && ui >> 63 == 0 {

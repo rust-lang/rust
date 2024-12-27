@@ -14,7 +14,7 @@ pub fn trunc(x: f64) -> f64 {
     let x1p120 = f64::from_bits(0x4770000000000000); // 0x1p120f === 2 ^ 120
 
     let mut i: u64 = x.to_bits();
-    let mut e: i64 = (i >> 52 & 0x7ff) as i64 - 0x3ff + 12;
+    let mut e: i64 = ((i >> 52) & 0x7ff) as i64 - 0x3ff + 12;
     let m: u64;
 
     if e >= 52 + 12 {

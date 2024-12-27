@@ -2,7 +2,7 @@ pub fn modff(x: f32) -> (f32, f32) {
     let rv2: f32;
     let mut u: u32 = x.to_bits();
     let mask: u32;
-    let e = ((u >> 23 & 0xff) as i32) - 0x7f;
+    let e = (((u >> 23) & 0xff) as i32) - 0x7f;
 
     /* no fractional part */
     if e >= 23 {

@@ -125,7 +125,7 @@ pub fn log1p(x: f64) -> f64 {
         }
         /* reduce u into [sqrt(2)/2, sqrt(2)] */
         hu = (hu & 0x000fffff) + 0x3fe6a09e;
-        ui = (hu as u64) << 32 | (ui & 0xffffffff);
+        ui = ((hu as u64) << 32) | (ui & 0xffffffff);
         f = f64::from_bits(ui) - 1.;
     }
     hfsq = 0.5 * f * f;

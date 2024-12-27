@@ -82,7 +82,7 @@ pub fn fma(x: f64, y: f64, z: f64) -> f64 {
             d -= 64;
             if d == 0 {
             } else if d < 64 {
-                rlo = rhi << (64 - d) | rlo >> d | ((rlo << (64 - d)) != 0) as u64;
+                rlo = (rhi << (64 - d)) | (rlo >> d) | ((rlo << (64 - d)) != 0) as u64;
                 rhi = rhi >> d;
             } else {
                 rlo = 1;
@@ -95,7 +95,7 @@ pub fn fma(x: f64, y: f64, z: f64) -> f64 {
         if d == 0 {
             zlo = nz.m;
         } else if d < 64 {
-            zlo = nz.m >> d | ((nz.m << (64 - d)) != 0) as u64;
+            zlo = (nz.m >> d) | ((nz.m << (64 - d)) != 0) as u64;
         } else {
             zlo = 1;
         }
@@ -127,11 +127,11 @@ pub fn fma(x: f64, y: f64, z: f64) -> f64 {
         e += 64;
         d = rhi.leading_zeros() as i32 - 1;
         /* note: d > 0 */
-        rhi = rhi << d | rlo >> (64 - d) | ((rlo << d) != 0) as u64;
+        rhi = (rhi << d) | (rlo >> (64 - d)) | ((rlo << d) != 0) as u64;
     } else if rlo != 0 {
         d = rlo.leading_zeros() as i32 - 1;
         if d < 0 {
-            rhi = rlo >> 1 | (rlo & 1);
+            rhi = (rlo >> 1) | (rlo & 1);
         } else {
             rhi = rlo << d;
         }
@@ -165,7 +165,7 @@ pub fn fma(x: f64, y: f64, z: f64) -> f64 {
             /* one bit is lost when scaled, add another top bit to
             only round once at conversion if it is inexact */
             if (rhi << 53) != 0 {
-                i = (rhi >> 1 | (rhi & 1) | 1 << 62) as i64;
+                i = ((rhi >> 1) | (rhi & 1) | (1 << 62)) as i64;
                 if sign != 0 {
                     i = -i;
                 }
@@ -182,7 +182,7 @@ pub fn fma(x: f64, y: f64, z: f64) -> f64 {
         } else {
             /* only round once when scaled */
             d = 10;
-            i = ((rhi >> d | ((rhi << (64 - d)) != 0) as u64) << d) as i64;
+            i = (((rhi >> d) | ((rhi << (64 - d)) != 0) as u64) << d) as i64;
             if sign != 0 {
                 i = -i;
             }
