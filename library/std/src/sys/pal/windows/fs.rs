@@ -323,7 +323,7 @@ impl File {
                     let alloc = c::FILE_ALLOCATION_INFO { AllocationSize: 0 };
                     let result = c::SetFileInformationByHandle(
                         handle.as_raw_handle(),
-                        c::FileEndOfFileInfo,
+                        c::FileAllocationInfo,
                         (&raw const alloc).cast::<c_void>(),
                         mem::size_of::<c::FILE_ALLOCATION_INFO>() as u32,
                     );

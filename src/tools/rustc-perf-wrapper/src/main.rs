@@ -1,5 +1,5 @@
 use std::fs::create_dir_all;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use clap::Parser;
@@ -169,7 +169,7 @@ fn execute_benchmark(cmd: &mut Command, compiler: &Path) {
 
     const MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
 
-    let rustc_perf_dir = PathBuf::from(MANIFEST_DIR).join("../rustc-perf");
+    let rustc_perf_dir = Path::new(MANIFEST_DIR).join("../rustc-perf");
 
     // We need to set the working directory to `src/tools/perf`, so that it can find the directory
     // with compile-time benchmarks.

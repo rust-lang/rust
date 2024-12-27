@@ -6,8 +6,6 @@
 //@ compile-flags:-C debuginfo=2
 //@ build-fail
 //@ error-pattern: too big for the target architecture
-//@ normalize-stderr-64bit: "18446744073709551615" -> "SIZE"
-//@ normalize-stderr-32bit: "4294967295" -> "SIZE"
 
 #![crate_type = "rlib"]
 
