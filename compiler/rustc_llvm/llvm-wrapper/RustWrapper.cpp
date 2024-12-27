@@ -1040,8 +1040,9 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFunction(
     LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     size_t NameLen, const char *LinkageName, size_t LinkageNameLen,
     LLVMMetadataRef File, unsigned LineNo, LLVMMetadataRef Ty,
-    unsigned ScopeLine, LLVMRustDIFlags Flags, LLVMRustDISPFlags SPFlags, LLVMRustShortBacktrace shortBacktrace,
-    LLVMValueRef MaybeFn, LLVMMetadataRef TParam, LLVMMetadataRef Decl) {
+    unsigned ScopeLine, LLVMRustDIFlags Flags, LLVMRustDISPFlags SPFlags,
+    LLVMRustShortBacktrace shortBacktrace, LLVMValueRef MaybeFn, LLVMMetadataRef TParam,
+    LLVMMetadataRef Decl) {
   DITemplateParameterArray TParams =
       DITemplateParameterArray(unwrap<MDTuple>(TParam));
   DISubprogram::DISPFlags llvmSPFlags = fromRust(SPFlags);
@@ -1049,8 +1050,9 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFunction(
   DISubprogram *Sub = Builder->createFunction(
       unwrapDI<DIScope>(Scope), StringRef(Name, NameLen),
       StringRef(LinkageName, LinkageNameLen), unwrapDI<DIFile>(File), LineNo,
-      unwrapDI<DISubroutineType>(Ty), ScopeLine, llvmFlags, llvmSPFlags, shortBacktraceFromRust(shortBacktrace),
-      TParams, unwrapDIPtr<DISubprogram>(Decl));
+      unwrapDI<DISubroutineType>(Ty), ScopeLine, llvmFlags,
+      llvmSPFlags, shortBacktraceFromRust(shortBacktrace), TParams,
+      unwrapDIPtr<DISubprogram>(Decl));
   if (MaybeFn)
     unwrap<Function>(MaybeFn)->setSubprogram(Sub);
   return wrap(Sub);
@@ -1060,7 +1062,8 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateMethod(
     LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     size_t NameLen, const char *LinkageName, size_t LinkageNameLen,
     LLVMMetadataRef File, unsigned LineNo, LLVMMetadataRef Ty,
-    LLVMRustDIFlags Flags, LLVMRustDISPFlags SPFlags, LLVMRustShortBacktrace shortBacktrace, LLVMMetadataRef TParam) {
+    LLVMRustDIFlags Flags, LLVMRustDISPFlags SPFlags, LLVMRustShortBacktrace shortBacktrace,
+    LLVMMetadataRef TParam) {
   DITemplateParameterArray TParams =
       DITemplateParameterArray(unwrap<MDTuple>(TParam));
   DISubprogram::DISPFlags llvmSPFlags = fromRust(SPFlags);

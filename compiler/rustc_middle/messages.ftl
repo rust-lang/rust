@@ -83,6 +83,9 @@ middle_limit_invalid =
     `limit` must be a non-negative integer
     .label = {$error_str}
 
+middle_multiple_short_backtrace_attrs = multiple `#[rustc_*_short_backtrace]` attributes were used on the same item
+    .note = "attribute used here"
+
 middle_opaque_hidden_type_mismatch =
     concrete type differs from previous defining opaque type use
     .label = expected `{$self_ty}`, got `{$other_ty}`
@@ -95,9 +98,6 @@ middle_recursion_limit_reached =
     .help = consider increasing the recursion limit by adding a `#![recursion_limit = "{$suggested_limit}"]`
 
 middle_requires_lang_item = requires `{$name}` lang_item
-
-middle_multiple_short_backtrace_attrs = multiple `#[rustc_*_short_backtrace]` attributes were used on the same item
-    .note = "attribute used here"
 
 middle_strict_coherence_needs_negative_coherence =
     to use `strict_coherence` on this trait, the `with_negative_coherence` feature must be enabled

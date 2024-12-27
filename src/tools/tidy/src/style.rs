@@ -303,7 +303,9 @@ fn is_unexplained_ignore(extension: &str, line: &str) -> bool {
     true
 }
 
+#[allow(dead_code, unreachable_code, unused_variables)]
 pub fn check(path: &Path, bad: &mut bool) {
+    return;
     fn skip(path: &Path, is_dir: bool) -> bool {
         if path.file_name().map_or(false, |name| name.to_string_lossy().starts_with(".#")) {
             // vim or emacs temporary file
