@@ -41143,13 +41143,9 @@ extern "C" {
 
     #[link_name = "llvm.x86.avx512.cvtsi2ss32"]
     fn vcvtsi2ss(a: f32x4, b: i32, rounding: i32) -> f32x4;
-    #[link_name = "llvm.x86.avx512.cvtsi2sd64"]
-    fn vcvtsi2sd(a: f64x2, b: i64, rounding: i32) -> f64x2;
 
     #[link_name = "llvm.x86.avx512.cvtusi2ss"]
     fn vcvtusi2ss(a: f32x4, b: u32, rounding: i32) -> f32x4;
-    #[link_name = "llvm.x86.avx512.cvtusi642sd"]
-    fn vcvtusi2sd(a: f64x2, b: u64, rounding: i32) -> f64x2;
 
     #[link_name = "llvm.x86.avx512.cvttss2si"]
     fn vcvttss2si(a: f32x4, rounding: i32) -> i32;
