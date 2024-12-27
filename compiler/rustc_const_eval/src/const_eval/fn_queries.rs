@@ -15,20 +15,14 @@ fn parent_impl_constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Constness 
     }
 }
 
-/// Checks whether an item is considered to be `const`. If it is a constructor, it is const.
-/// If it is an assoc method or function,
-/// return if it has a `const` modifier. If it is an intrinsic, report whether said intrinsic
-/// has a `rustc_const_{un,}stable` attribute. Otherwise, panic.
+/// Checks whether a function-like definition is considered to be `const`.
 fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Constness {
     let node = tcx.hir_node_by_def_id(def_id);
 
     match node {
-        hir::Node::Ctor(hir::VariantData::Tuple(..))
-        | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(..), .. }) => {
-            hir::Constness::Const
-        }
-        hir::Node::ForeignItem(_) => {
-            // Foreign items cannot be evaluated at compile-time.
+        hir::Node::Ctor(hir::VariantData::Tuple(..)) => hir::Constness::Const,
+        hir::Node::ForeignItem(item) if let hir::ForeignItemKind::Fn(..) = item.kind => {
+            // Foreign functions cannot be evaluated at compile-time.
             hir::Constness::NotConst
         }
         hir::Node::Expr(e) if let hir::ExprKind::Closure(c) = e.kind => c.constness,
