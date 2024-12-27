@@ -349,11 +349,11 @@ fn check_and_warn(cx: &EarlyContext<'_>, expr: &ast::Expr) {
         for (i, stmt) in loop_block.stmts.iter().enumerate() {
             with_if_expr(stmt, |if_expr, cond, then_block, else_expr| {
                 let data = &LintData {
-                    stmt_idx: i,
                     if_expr,
                     if_cond: cond,
                     if_block: then_block,
                     else_expr,
+                    stmt_idx: i,
                     loop_block,
                 };
                 if needless_continue_in_else(else_expr, label) {

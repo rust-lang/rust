@@ -1,21 +1,24 @@
 error: struct constructor field order is inconsistent with struct definition field order
-  --> tests/ui/inconsistent_struct_constructor.rs:36:9
+  --> tests/ui/inconsistent_struct_constructor.rs:36:15
    |
 LL |         Foo { y, x, z };
-   |         ^^^^^^^^^^^^^^^ help: try: `Foo { x, y, z }`
+   |               ^^^^^^^ help: try: `x, y, z`
    |
    = note: `-D clippy::inconsistent-struct-constructor` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::inconsistent_struct_constructor)]`
 
 error: struct constructor field order is inconsistent with struct definition field order
-  --> tests/ui/inconsistent_struct_constructor.rs:63:9
+  --> tests/ui/inconsistent_struct_constructor.rs:64:13
    |
-LL | /         Foo {
-LL | |             z,
+LL | /             z,
 LL | |             x,
-LL | |             ..Default::default()
-LL | |         };
-   | |_________^ help: try: `Foo { x, z, ..Default::default() }`
+   | |_____________^
+   |
+help: try
+   |
+LL ~             x,
+LL ~             z,
+   |
 
 error: aborting due to 2 previous errors
 
