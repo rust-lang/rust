@@ -213,7 +213,7 @@ fn remove_and_create_dir_all(path: &Path) {
     fs::create_dir_all(path).unwrap();
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 struct TestCx<'test> {
     config: &'test Config,
     props: &'test TestProps,
@@ -2318,31 +2318,46 @@ impl<'test> TestCx<'test> {
         match output_kind {
             TestOutput::Compile => {
                 if !self.props.dont_check_compiler_stdout {
-                    errors += self.compare_output(
+                    if self
+                        .compare_output(
+                            stdout_kind,
+                            &normalized_stdout,
+                            &proc_res.stdout,
+                            &expected_stdout,
+                        )
+                        .should_error()
+                    {
+                        errors += 1;
+                    }
+                }
+                if !self.props.dont_check_compiler_stderr {
+                    if self
+                        .compare_output(stderr_kind, &normalized_stderr, &stderr, &expected_stderr)
+                        .should_error()
+                    {
+                        errors += 1;
+                    }
+                }
+            }
+            TestOutput::Run => {
+                if self
+                    .compare_output(
                         stdout_kind,
                         &normalized_stdout,
                         &proc_res.stdout,
                         &expected_stdout,
-                    );
+                    )
+                    .should_error()
+                {
+                    errors += 1;
                 }
-                if !self.props.dont_check_compiler_stderr {
-                    errors += self.compare_output(
-                        stderr_kind,
-                        &normalized_stderr,
-                        &stderr,
-                        &expected_stderr,
-                    );
+
+                if self
+                    .compare_output(stderr_kind, &normalized_stderr, &stderr, &expected_stderr)
+                    .should_error()
+                {
+                    errors += 1;
                 }
-            }
-            TestOutput::Run => {
-                errors += self.compare_output(
-                    stdout_kind,
-                    &normalized_stdout,
-                    &proc_res.stdout,
-                    &expected_stdout,
-                );
-                errors +=
-                    self.compare_output(stderr_kind, &normalized_stderr, &stderr, &expected_stderr);
             }
         }
         errors
@@ -2576,7 +2591,14 @@ impl<'test> TestCx<'test> {
         actual: &str,
         actual_unnormalized: &str,
         expected: &str,
-    ) -> usize {
+    ) -> CompareOutcome {
+        let expected_path =
+            expected_output_path(self.testpaths, self.revision, &self.config.compare_mode, stream);
+
+        if self.config.bless && actual.is_empty() && expected_path.exists() {
+            self.delete_file(&expected_path);
+        }
+
         let are_different = match (self.force_color_svg(), expected.find('\n'), actual.find('\n')) {
             // FIXME: We ignore the first line of SVG files
             // because the width parameter is non-deterministic.
@@ -2584,7 +2606,7 @@ impl<'test> TestCx<'test> {
             _ => expected != actual,
         };
         if !are_different {
-            return 0;
+            return CompareOutcome::Same;
         }
 
         // Wrapper tools set by `runner` might provide extra output on failure,
@@ -2600,7 +2622,7 @@ impl<'test> TestCx<'test> {
             used.retain(|line| actual_lines.contains(line));
             // check if `expected` contains a subset of the lines of `actual`
             if used.len() == expected_lines.len() && (expected.is_empty() == actual.is_empty()) {
-                return 0;
+                return CompareOutcome::Same;
             }
             if expected_lines.is_empty() {
                 // if we have no lines to check, force a full overwite
@@ -2626,9 +2648,6 @@ impl<'test> TestCx<'test> {
         }
         println!("Saved the actual {stream} to {actual_path:?}");
 
-        let expected_path =
-            expected_output_path(self.testpaths, self.revision, &self.config.compare_mode, stream);
-
         if !self.config.bless {
             if expected.is_empty() {
                 println!("normalized {}:\n{}\n", stream, actual);
@@ -2651,15 +2670,17 @@ impl<'test> TestCx<'test> {
                 self.delete_file(&old);
             }
 
-            if let Err(err) = fs::write(&expected_path, &actual) {
-                self.fatal(&format!("failed to write {stream} to `{expected_path:?}`: {err}"));
+            if !actual.is_empty() {
+                if let Err(err) = fs::write(&expected_path, &actual) {
+                    self.fatal(&format!("failed to write {stream} to `{expected_path:?}`: {err}"));
+                }
+                println!("Blessing the {stream} of {test_name} in {expected_path:?}");
             }
-            println!("Blessing the {stream} of {test_name} in {expected_path:?}");
         }
 
         println!("\nThe actual {0} differed from the expected {0}.", stream);
 
-        if self.config.bless { 0 } else { 1 }
+        if self.config.bless { CompareOutcome::Blessed } else { CompareOutcome::Differed }
     }
 
     /// Returns whether to show the full stderr/stdout.
@@ -2884,4 +2905,22 @@ enum AuxType {
     Lib,
     Dylib,
     ProcMacro,
+}
+
+/// Outcome of comparing a stream to a blessed file,
+/// e.g. `.stderr` and `.fixed`.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum CompareOutcome {
+    /// Expected and actual outputs are the same
+    Same,
+    /// Outputs differed but were blessed
+    Blessed,
+    /// Outputs differed and an error should be emitted
+    Differed,
+}
+
+impl CompareOutcome {
+    fn should_error(&self) -> bool {
+        matches!(self, CompareOutcome::Differed)
+    }
 }

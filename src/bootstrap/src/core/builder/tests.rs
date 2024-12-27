@@ -637,6 +637,7 @@ mod dist {
             run: None,
             only_modified: false,
             extra_checks: None,
+            no_capture: false,
         };
 
         let build = Build::new(config);
@@ -702,6 +703,7 @@ mod dist {
             run: None,
             only_modified: false,
             extra_checks: None,
+            no_capture: false,
         };
         // Make sure rustfmt binary not being found isn't an error.
         config.channel = "beta".to_string();

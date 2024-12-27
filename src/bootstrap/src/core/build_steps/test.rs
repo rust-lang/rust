@@ -1829,6 +1829,10 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             cmd.arg("--force-rerun");
         }
 
+        if builder.config.cmd.no_capture() {
+            cmd.arg("--no-capture");
+        }
+
         let compare_mode =
             builder.config.cmd.compare_mode().or_else(|| {
                 if builder.config.test_compare_mode { self.compare_mode } else { None }

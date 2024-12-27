@@ -19,6 +19,7 @@
 #![feature(const_swap_nonoverlapping)]
 #![feature(const_trait_impl)]
 #![feature(core_intrinsics)]
+#![feature(core_intrinsics_fallbacks)]
 #![feature(core_io_borrowed_buf)]
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
