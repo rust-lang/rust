@@ -819,7 +819,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         candidates.vec.push(AutoImplCandidate)
                     }
                 }
-                ty::Error(_) => {} // do not add an auto trait impl for `ty::Error` for now.
+                ty::Error(_) => {
+                    candidates.vec.push(AutoImplCandidate);
+                }
             }
         }
     }
