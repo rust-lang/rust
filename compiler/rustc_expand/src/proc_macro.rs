@@ -152,7 +152,7 @@ impl MultiItemModifier for DeriveProcMacro {
                 // FIXME(pr-time): Is this the correct way to check for incremental compilation (as
                 // well)?
                 if tcx.sess.opts.incremental.is_some()
-                    && tcx.sess.opts.unstable_opts.cache_all_derive_macros
+                    && tcx.sess.opts.unstable_opts.cache_proc_macros
                 {
                     tcx.derive_macro_expansion(key).cloned()
                 } else {
