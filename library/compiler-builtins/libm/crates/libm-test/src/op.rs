@@ -96,6 +96,8 @@ pub type OpFTy<Op> = <Op as MathOp>::FTy;
 pub type OpITy<Op> = <<Op as MathOp>::FTy as Float>::Int;
 /// Access the associated `CFn` type from an op (helper to avoid ambiguous associated types).
 pub type OpCFn<Op> = <Op as MathOp>::CFn;
+/// Access the associated `CRet` type from an op (helper to avoid ambiguous associated types).
+pub type OpCRet<Op> = <Op as MathOp>::CRet;
 /// Access the associated `RustFn` type from an op (helper to avoid ambiguous associated types).
 pub type OpRustFn<Op> = <Op as MathOp>::RustFn;
 /// Access the associated `RustRet` type from an op (helper to avoid ambiguous associated types).
