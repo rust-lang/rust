@@ -671,6 +671,7 @@ fn issue_13024() {
     // SAFETY: good
     just_a_simple_variable_with_a_very_long_name_that_has_seventy_eight_characters =
         unsafe { here_is_another_variable_with_long_name };
+    //~^ undocumented_unsafe_blocks
 }
 
 fn main() {}
