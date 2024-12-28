@@ -16,22 +16,22 @@ pub(super) fn provide_derive_macro_expansion<'tcx>(
 ) -> Result<&'tcx TokenStream, ()> {
     let (invoc_id, _macro_crate_hash, input) = key;
 
-    let res = with_context(|(ecx, client)| {
-        let span = invoc_id.expn_data().call_site;
+    with_context(|(ecx, client)| {
+        let invoc_expn_data = invoc_id.expn_data();
+        let span = invoc_expn_data.call_site;
+        let event_arg = invoc_expn_data.kind.descr();
         let _timer = tcx.sess.prof.generic_activity_with_arg_recorder(
             "expand_derive_proc_macro_inner",
             |recorder| {
-                recorder.record_arg_with_span(
-                    tcx.sess.source_map(),
-                    invoc_id.expn_data().kind.descr(),
-                    span,
-                );
+                recorder.record_arg_with_span(tcx.sess.source_map(), event_arg.clone(), span);
             },
         );
+
         let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
         let strategy = crate::proc_macro::exec_strategy(tcx.sess);
         let server = crate::proc_macro_server::Rustc::new(ecx);
-        let res = match client.run(&strategy, server, input.clone(), proc_macro_backtrace) {
+
+        match client.run(&strategy, server, input.clone(), proc_macro_backtrace) {
             Ok(stream) => Ok(tcx.arena.alloc(stream) as &TokenStream),
             Err(e) => {
                 tcx.dcx().emit_err({
@@ -44,11 +44,8 @@ pub(super) fn provide_derive_macro_expansion<'tcx>(
                 });
                 Err(())
             }
-        };
-        res
-    });
-
-    res
+        }
+    })
 }
 
 type CLIENT = pm::bridge::client::Client<pm::TokenStream, pm::TokenStream>;
