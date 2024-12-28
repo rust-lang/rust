@@ -140,7 +140,8 @@ Sometimes these built-in normalizations are not enough. In such cases, you may
 provide custom normalization rules using `normalize-*` directives, e.g.
 
 ```rust,ignore
-//@ normalize-stdout-test: "foo" -> "bar"
+//@ normalize-stdout: "foo" -> "bar"
+//@ normalize-stderr: "foo" -> "bar"
 //@ normalize-stderr-32bit: "fn\(\) \(32 bits\)" -> "fn\(\) \($$PTR bits\)"
 //@ normalize-stderr-64bit: "fn\(\) \(64 bits\)" -> "fn\(\) \($$PTR bits\)"
 ```
@@ -166,11 +167,6 @@ usage example.
 
 [mrs]: https://github.com/rust-lang/rust/blob/master/tests/ui/transmute/main.rs
 [`main.stderr`]: https://github.com/rust-lang/rust/blob/master/tests/ui/transmute/main.stderr
-
-Besides `normalize-stderr-32bit` and `-64bit`, one may use any target
-information or stage supported by [`ignore-X`](directives.md#ignoring-tests) here
-as well (e.g. `normalize-stderr-windows` or simply `normalize-stderr-test` for
-unconditional replacement).
 
 ## Error annotations
 
