@@ -33,6 +33,14 @@ See the [Adding new tests](adding.md) and [Best practies](best-practices.md)
 chapters for a tutorial on creating a new test and advice on writing a good
 test, and the [Running tests](running.md) chapter on how to run the test suite.
 
+Arguments can be passed to compiletest using `--test-args` or by placing them after `--`, e.g.
+- `x test --test-args --force-rerun`
+- `x test -- --force-rerun`
+
+Additionally, bootstrap accepts several common arguments directly, e.g.
+
+`x test --no-capture --force-rerun --run --pass`.
+
 Compiletest itself tries to avoid running tests when the artifacts that are
 involved (mainly the compiler) haven't changed. You can use `x test --test-args
 --force-rerun` to rerun a test even when none of the inputs have changed.
