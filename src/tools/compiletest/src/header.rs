@@ -1156,7 +1156,9 @@ fn parse_normalize_rule(raw_value: &str) -> Option<(String, String)> {
     .captures(raw_value)?;
     let regex = captures["regex"].to_owned();
     let replacement = captures["replacement"].to_owned();
-    // FIXME: Support escaped new-line in strings.
+    // A `\n` sequence in the replacement becomes an actual newline.
+    // FIXME: Do unescaping in a less ad-hoc way, and perhaps support escaped
+    // backslashes and double-quotes.
     let replacement = replacement.replace("\\n", "\n");
     Some((regex, replacement))
 }
