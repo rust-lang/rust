@@ -143,26 +143,27 @@ impl MultiItemModifier for DeriveProcMacro {
             let invoc_id = ecx.current_expansion.id;
             let invoc_expn_data = invoc_id.expn_data();
 
-            // FIXME(pr-time): Just using the crate hash to notice when the proc-macro code has
-            // changed. How to *correctly* depend on exactly the macro definition?
-            // I.e., depending on the crate hash is just a HACK, and ideally the dependency would be
-            // more narrow.
-            let macro_def_id = invoc_expn_data.macro_def_id.unwrap();
-            let proc_macro_crate_hash = tcx.crate_hash(macro_def_id.krate);
-
             assert_eq!(invoc_expn_data.call_site, span);
 
-            let key = (invoc_id, proc_macro_crate_hash, input);
-
             // FIXME(pr-time): Is this the correct way to check for incremental compilation (as
-            // well)?
+            // well as for `cache_proc_macros`)?
             if tcx.sess.opts.incremental.is_some() && tcx.sess.opts.unstable_opts.cache_proc_macros
             {
+                // FIXME(pr-time): Just using the crate hash to notice when the proc-macro code has
+                // changed. How to *correctly* depend on exactly the macro definition?
+                // I.e., depending on the crate hash is just a HACK, and ideally the dependency would be
+                // more narrow.
+                let macro_def_id = invoc_expn_data.macro_def_id.unwrap();
+                let proc_macro_crate_hash = tcx.crate_hash(macro_def_id.krate);
+
+                let key = (invoc_id, proc_macro_crate_hash, input);
+
                 enter_context((ecx, self.client), move || tcx.derive_macro_expansion(key).cloned())
             } else {
-                provide_derive_macro_expansion(tcx, key).cloned()
+                expand_derive_macro(tcx, invoc_id, input, ecx, self.client).cloned()
             }
         });
+
         let Ok(output) = res else {
             // error will already have been emitted
             return ExpandResult::Ready(vec![]);
@@ -204,39 +205,47 @@ pub(super) fn provide_derive_macro_expansion<'tcx>(
 ) -> Result<&'tcx TokenStream, ()> {
     let (invoc_id, _macro_crate_hash, input) = key;
 
-    with_context(|(ecx, client)| {
-        let invoc_expn_data = invoc_id.expn_data();
-        let span = invoc_expn_data.call_site;
-        let event_arg = invoc_expn_data.kind.descr();
-        let _timer = tcx.sess.prof.generic_activity_with_arg_recorder(
-            "expand_derive_proc_macro_inner",
-            |recorder| {
-                recorder.record_arg_with_span(tcx.sess.source_map(), event_arg.clone(), span);
-            },
-        );
-
-        let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
-        let strategy = crate::proc_macro::exec_strategy(tcx.sess);
-        let server = crate::proc_macro_server::Rustc::new(ecx);
-
-        match client.run(&strategy, server, input.clone(), proc_macro_backtrace) {
-            Ok(stream) => Ok(tcx.arena.alloc(stream) as &TokenStream),
-            Err(e) => {
-                tcx.dcx().emit_err({
-                    errors::ProcMacroDerivePanicked {
-                        span,
-                        message: e.as_str().map(|message| errors::ProcMacroDerivePanickedHelp {
-                            message: message.into(),
-                        }),
-                    }
-                });
-                Err(())
-            }
-        }
-    })
+    with_context(|(ecx, client)| expand_derive_macro(tcx, invoc_id, input, ecx, *client))
 }
 
 type CLIENT = pm::bridge::client::Client<pm::TokenStream, pm::TokenStream>;
+
+fn expand_derive_macro<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    invoc_id: LocalExpnId,
+    input: &'tcx TokenStream,
+    ecx: &mut ExtCtxt<'_>,
+    client: CLIENT,
+) -> Result<&'tcx TokenStream, ()> {
+    let invoc_expn_data = invoc_id.expn_data();
+    let span = invoc_expn_data.call_site;
+    let event_arg = invoc_expn_data.kind.descr();
+    let _timer = tcx.sess.prof.generic_activity_with_arg_recorder(
+        "expand_derive_proc_macro_inner",
+        |recorder| {
+            recorder.record_arg_with_span(tcx.sess.source_map(), event_arg.clone(), span);
+        },
+    );
+
+    let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
+    let strategy = crate::proc_macro::exec_strategy(tcx.sess);
+    let server = crate::proc_macro_server::Rustc::new(ecx);
+
+    match client.run(&strategy, server, input.clone(), proc_macro_backtrace) {
+        Ok(stream) => Ok(tcx.arena.alloc(stream) as &TokenStream),
+        Err(e) => {
+            tcx.dcx().emit_err({
+                errors::ProcMacroDerivePanicked {
+                    span,
+                    message: e.as_str().map(|message| errors::ProcMacroDerivePanickedHelp {
+                        message: message.into(),
+                    }),
+                }
+            });
+            Err(())
+        }
+    }
+}
 
 // based on rust/compiler/rustc_middle/src/ty/context/tls.rs
 thread_local! {
