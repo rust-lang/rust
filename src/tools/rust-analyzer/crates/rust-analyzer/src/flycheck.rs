@@ -345,6 +345,7 @@ impl FlycheckActor {
                         );
                     }
                     if self.package_status.is_empty() {
+                        tracing::trace!(flycheck_id = self.id, "clearing diagnostics");
                         // We finished without receiving any diagnostics.
                         // That means all of them are stale.
                         self.send(FlycheckMessage::ClearDiagnostics {
@@ -354,6 +355,11 @@ impl FlycheckActor {
                     } else {
                         for (package_id, status) in mem::take(&mut self.package_status) {
                             if let DiagnosticReceived::No = status {
+                                tracing::trace!(
+                                    flycheck_id = self.id,
+                                    package_id = package_id.repr,
+                                    "clearing diagnostics"
+                                );
                                 self.send(FlycheckMessage::ClearDiagnostics {
                                     id: self.id,
                                     package_id: Some(package_id),
@@ -385,9 +391,15 @@ impl FlycheckActor {
                             "diagnostic received"
                         );
                         if let Some(package_id) = &package_id {
-                            if !self.package_status.contains_key(package_id) {
-                                self.package_status
-                                    .insert(package_id.clone(), DiagnosticReceived::Yes);
+                            if let None | Some(DiagnosticReceived::No) = self
+                                .package_status
+                                .insert(package_id.clone(), DiagnosticReceived::Yes)
+                            {
+                                tracing::trace!(
+                                    flycheck_id = self.id,
+                                    package_id = package_id.repr,
+                                    "clearing diagnostics"
+                                );
                                 self.send(FlycheckMessage::ClearDiagnostics {
                                     id: self.id,
                                     package_id: Some(package_id.clone()),
