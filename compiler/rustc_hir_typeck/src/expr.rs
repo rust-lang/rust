@@ -2138,13 +2138,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             if !self.tcx.features().default_field_values() {
+                let sugg = self.tcx.crate_level_attribute_injection_span(expr.hir_id);
                 self.dcx().emit_err(BaseExpressionDoubleDot {
                     span: span.shrink_to_hi(),
                     // We only mention enabling the feature if this is a nightly rustc *and* the
                     // expression would make sense with the feature enabled.
-                    default_field_values: if self.tcx.sess.is_nightly_build()
+                    default_field_values_suggestion: if self.tcx.sess.is_nightly_build()
                         && missing_mandatory_fields.is_empty()
                         && !missing_optional_fields.is_empty()
+                        && sugg.is_some()
+                    {
+                        sugg
+                    } else {
+                        None
+                    },
+                    default_field_values_help: if self.tcx.sess.is_nightly_build()
+                        && missing_mandatory_fields.is_empty()
+                        && !missing_optional_fields.is_empty()
+                        && sugg.is_none()
                     {
                         Some(BaseExpressionDoubleDotEnableDefaultFieldValues)
                     } else {
