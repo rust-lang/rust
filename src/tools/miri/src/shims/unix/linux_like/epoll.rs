@@ -142,12 +142,6 @@ impl EpollReadyEvents {
     }
 }
 
-impl Epoll {
-    fn get_ready_list(&self) -> Rc<ReadyList> {
-        Rc::clone(&self.ready_list)
-    }
-}
-
 impl FileDescription for Epoll {
     fn name(&self) -> &'static str {
         "epoll"
@@ -345,30 +339,34 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             }
 
-            // Create an epoll_interest.
-            let interest = Rc::new(RefCell::new(EpollEventInterest {
-                fd_num: fd,
-                events,
-                data,
-                ready_list: Rc::clone(ready_list),
-                weak_epfd: FileDescriptionRef::downgrade(&epoll_file_description),
-            }));
-
             if op == epoll_ctl_add {
+                // Create an epoll_interest.
+                let interest = Rc::new(RefCell::new(EpollEventInterest {
+                    fd_num: fd,
+                    events,
+                    data,
+                    ready_list: Rc::clone(ready_list),
+                    weak_epfd: FileDescriptionRef::downgrade(&epoll_file_description),
+                }));
+                // Notification will be returned for current epfd if there is event in the file
+                // descriptor we registered.
+                check_and_update_one_event_interest(&fd_ref, &interest, id, this)?;
+
                 // Insert an epoll_interest to global epoll_interest list.
                 this.machine.epoll_interests.insert_epoll_interest(id, Rc::downgrade(&interest));
-                interest_list.insert(epoll_key, Rc::clone(&interest));
+                interest_list.insert(epoll_key, interest);
             } else {
-                // Directly modify the epoll_interest so the global epoll_event_interest table
-                // will be updated too.
-                let mut epoll_interest = interest_list.get_mut(&epoll_key).unwrap().borrow_mut();
-                epoll_interest.events = events;
-                epoll_interest.data = data;
+                // Modify the existing interest.
+                let epoll_interest = interest_list.get_mut(&epoll_key).unwrap();
+                {
+                    let mut epoll_interest = epoll_interest.borrow_mut();
+                    epoll_interest.events = events;
+                    epoll_interest.data = data;
+                }
+                // Updating an FD interest triggers events.
+                check_and_update_one_event_interest(&fd_ref, epoll_interest, id, this)?;
             }
 
-            // Notification will be returned for current epfd if there is event in the file
-            // descriptor we registered.
-            check_and_update_one_event_interest(&fd_ref, &interest, id, this)?;
             interp_ok(Scalar::from_i32(0))
         } else if op == epoll_ctl_del {
             let epoll_key = (id, fd);
@@ -587,7 +585,7 @@ fn ready_list_next(
 /// notification to only one epoll instance.
 fn check_and_update_one_event_interest<'tcx>(
     fd_ref: &DynFileDescriptionRef,
-    interest: &Rc<RefCell<EpollEventInterest>>,
+    interest: &RefCell<EpollEventInterest>,
     id: FdId,
     ecx: &MiriInterpCx<'tcx>,
 ) -> InterpResult<'tcx, bool> {
@@ -623,9 +621,7 @@ fn return_ready_list<'tcx>(
     events: &MPlaceTy<'tcx>,
     ecx: &mut MiriInterpCx<'tcx>,
 ) -> InterpResult<'tcx> {
-    let ready_list = epfd.get_ready_list();
-
-    let mut ready_list = ready_list.mapping.borrow_mut();
+    let mut ready_list = epfd.ready_list.mapping.borrow_mut();
     let mut num_of_events: i32 = 0;
     let mut array_iter = ecx.project_array_fields(events)?;
 
