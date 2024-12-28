@@ -1948,7 +1948,7 @@ fn open_from(from: &Path) -> io::Result<(crate::fs::File, crate::fs::Metadata)> 
 #[cfg(target_os = "espidf")]
 fn open_to_and_set_permissions(
     to: &Path,
-    _reader_metadata: crate::fs::Metadata,
+    _reader_metadata: &crate::fs::Metadata,
 ) -> io::Result<(crate::fs::File, crate::fs::Metadata)> {
     use crate::fs::OpenOptions;
     let writer = OpenOptions::new().open(to)?;
@@ -1959,7 +1959,7 @@ fn open_to_and_set_permissions(
 #[cfg(not(target_os = "espidf"))]
 fn open_to_and_set_permissions(
     to: &Path,
-    reader_metadata: crate::fs::Metadata,
+    reader_metadata: &crate::fs::Metadata,
 ) -> io::Result<(crate::fs::File, crate::fs::Metadata)> {
     use crate::fs::OpenOptions;
     use crate::os::unix::fs::{OpenOptionsExt, PermissionsExt};
@@ -1984,30 +1984,63 @@ fn open_to_and_set_permissions(
     Ok((writer, writer_metadata))
 }
 
-#[cfg(not(any(target_os = "linux", target_os = "android", target_vendor = "apple")))]
-pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
-    let (mut reader, reader_metadata) = open_from(from)?;
-    let (mut writer, _) = open_to_and_set_permissions(to, reader_metadata)?;
+mod cfm {
+    use crate::fs::{File, Metadata};
+    use crate::io::{BorrowedCursor, IoSlice, IoSliceMut, Read, Result, Write};
 
-    io::copy(&mut reader, &mut writer)
-}
+    #[allow(dead_code)]
+    pub struct CachedFileMetadata(pub File, pub Metadata);
 
-#[cfg(any(target_os = "linux", target_os = "android"))]
-pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
-    let (mut reader, reader_metadata) = open_from(from)?;
-    let max_len = u64::MAX;
-    let (mut writer, _) = open_to_and_set_permissions(to, reader_metadata)?;
-
-    use super::kernel_copy::{CopyResult, copy_regular_files};
-
-    match copy_regular_files(reader.as_raw_fd(), writer.as_raw_fd(), max_len) {
-        CopyResult::Ended(bytes) => Ok(bytes),
-        CopyResult::Error(e, _) => Err(e),
-        CopyResult::Fallback(written) => match io::copy::generic_copy(&mut reader, &mut writer) {
-            Ok(bytes) => Ok(bytes + written),
-            Err(e) => Err(e),
-        },
+    impl Read for CachedFileMetadata {
+        fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+            self.0.read(buf)
+        }
+        fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> Result<usize> {
+            self.0.read_vectored(bufs)
+        }
+        fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> Result<()> {
+            self.0.read_buf(cursor)
+        }
+        #[inline]
+        fn is_read_vectored(&self) -> bool {
+            self.0.is_read_vectored()
+        }
+        fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
+            self.0.read_to_end(buf)
+        }
+        fn read_to_string(&mut self, buf: &mut String) -> Result<usize> {
+            self.0.read_to_string(buf)
+        }
     }
+    impl Write for CachedFileMetadata {
+        fn write(&mut self, buf: &[u8]) -> Result<usize> {
+            self.0.write(buf)
+        }
+        fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> Result<usize> {
+            self.0.write_vectored(bufs)
+        }
+        #[inline]
+        fn is_write_vectored(&self) -> bool {
+            self.0.is_write_vectored()
+        }
+        #[inline]
+        fn flush(&mut self) -> Result<()> {
+            self.0.flush()
+        }
+    }
+}
+#[cfg(any(target_os = "linux", target_os = "android"))]
+pub(crate) use cfm::CachedFileMetadata;
+
+#[cfg(not(target_vendor = "apple"))]
+pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
+    let (reader, reader_metadata) = open_from(from)?;
+    let (writer, writer_metadata) = open_to_and_set_permissions(to, &reader_metadata)?;
+
+    io::copy(
+        &mut cfm::CachedFileMetadata(reader, reader_metadata),
+        &mut cfm::CachedFileMetadata(writer, writer_metadata),
+    )
 }
 
 #[cfg(target_vendor = "apple")]
@@ -2044,7 +2077,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     }
 
     // Fall back to using `fcopyfile` if `fclonefileat` does not succeed.
-    let (writer, writer_metadata) = open_to_and_set_permissions(to, reader_metadata)?;
+    let (writer, writer_metadata) = open_to_and_set_permissions(to, &reader_metadata)?;
 
     // We ensure that `FreeOnDrop` never contains a null pointer so it is
     // always safe to call `copyfile_state_free`
