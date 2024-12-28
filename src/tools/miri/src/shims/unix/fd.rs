@@ -88,7 +88,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // If old_fd and new_fd point to the same description, then `dup_fd` ensures we keep the underlying file description alive.
             if let Some(old_new_fd) = this.machine.fds.fds.insert(new_fd_num, fd) {
                 // Ignore close error (not interpreter's) according to dup2() doc.
-                old_new_fd.close(this.machine.communicate(), this)?.ok();
+                old_new_fd.close_ref(this.machine.communicate(), this)?.ok();
             }
         }
         interp_ok(Scalar::from_i32(new_fd_num))
@@ -122,7 +122,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         let result = fd.as_unix().flock(this.machine.communicate(), parsed_op)?;
-        drop(fd);
         // return `0` if flock is successful
         let result = result.map(|()| 0i32);
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
@@ -198,7 +197,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let Some(fd) = this.machine.fds.remove(fd_num) else {
             return this.set_last_error_and_return_i32(LibcError("EBADF"));
         };
-        let result = fd.close(this.machine.communicate(), this)?;
+        let result = fd.close_ref(this.machine.communicate(), this)?;
         // return `0` if close is successful
         let result = result.map(|()| 0i32);
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
@@ -246,7 +245,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // `usize::MAX` because it is bounded by the host's `isize`.
 
         match offset {
-            None => fd.read(&fd, communicate, buf, count, dest, this)?,
+            None => fd.read(communicate, buf, count, dest, this)?,
             Some(offset) => {
                 let Ok(offset) = u64::try_from(offset) else {
                     return this.set_last_error_and_return(LibcError("EINVAL"), dest);
@@ -286,7 +285,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         };
 
         match offset {
-            None => fd.write(&fd, communicate, buf, count, dest, this)?,
+            None => fd.write(communicate, buf, count, dest, this)?,
             Some(offset) => {
                 let Ok(offset) = u64::try_from(offset) else {
                     return this.set_last_error_and_return(LibcError("EINVAL"), dest);
