@@ -24,6 +24,13 @@ fn check_closure_captures(ra_fixture: &str, expect: Expect) {
 
     let mut captures_info = Vec::new();
     for def in defs {
+        let def = match def {
+            hir_def::ModuleDefId::FunctionId(it) => it.into(),
+            hir_def::ModuleDefId::EnumVariantId(it) => it.into(),
+            hir_def::ModuleDefId::ConstId(it) => it.into(),
+            hir_def::ModuleDefId::StaticId(it) => it.into(),
+            _ => continue,
+        };
         let infer = db.infer(def);
         let db = &db;
         captures_info.extend(infer.closure_info.iter().flat_map(|(closure_id, (captures, _))| {

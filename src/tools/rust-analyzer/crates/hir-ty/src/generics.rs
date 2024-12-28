@@ -132,6 +132,14 @@ impl Generics {
         self.params.len()
     }
 
+    pub(crate) fn len_self_lifetimes(&self) -> usize {
+        self.params.len_lifetimes()
+    }
+
+    pub(crate) fn has_trait_self(&self) -> bool {
+        self.params.trait_self_param().is_some()
+    }
+
     /// (parent total, self param, type params, const params, impl trait list, lifetimes)
     pub(crate) fn provenance_split(&self) -> (usize, bool, usize, usize, usize, usize) {
         let mut self_param = false;

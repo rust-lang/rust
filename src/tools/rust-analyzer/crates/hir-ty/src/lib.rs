@@ -50,6 +50,7 @@ pub mod traits;
 mod test_db;
 #[cfg(test)]
 mod tests;
+mod variance;
 
 use std::hash::Hash;
 
