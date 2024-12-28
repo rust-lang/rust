@@ -8,7 +8,7 @@
 
 //@ aux-build:derive_nothing.rs
 //@ revisions:cfail1 cfail2
-//@ compile-flags: -Z query-dep-graph -Zcache-all-derive-macros=true
+//@ compile-flags: -Z query-dep-graph -Zcache-proc-macros=true
 //@ build-pass
 
 #![feature(rustc_attrs)]
@@ -20,7 +20,7 @@
 // #![rustc_partition_codegened(module="proc_macro_unchanged-foo", cfg="cfail2")]
 
 // `foo::nothing_mod` is created by the derive macro and doesn't change
-// BUG: this yields the same result with `-Zcache-all-derive-macros=false` (i.e., uncached),
+// BUG: this yields the same result with `-Zcache-proc-macros=false` (i.e., uncached),
 // not sure how to do this correctly.
 #![rustc_partition_reused(module="proc_macro_unchanged-foo-nothing_mod", cfg="cfail2")]
 
