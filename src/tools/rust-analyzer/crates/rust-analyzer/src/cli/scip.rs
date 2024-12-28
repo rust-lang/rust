@@ -271,13 +271,13 @@ Encountered duplicate scip symbols, indicating an internal rust-analyzer bug. Th
 included in the output, but this causes information lookup to be ambiguous and so information about
 these symbols presented by downstream tools may be incorrect.
 
-Known cases that can cause this:
+Known rust-analyzer bugs that can cause this:
 
   * Definitions in crate example binaries which have the same symbol as definitions in the library
-  or some other example.
+    or some other example.
 
-  * When a struct/enum/const/static/impl is defined with a function, it erroneously appears to be
-  defined at the same level as the function.
+  * Struct/enum/const/static/impl definitions nested in a function do not mention the function name.
+    See #18771.
 
 Duplicate symbols encountered:
 ";
