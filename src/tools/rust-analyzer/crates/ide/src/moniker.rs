@@ -249,29 +249,20 @@ pub(crate) fn def_to_kind(db: &RootDatabase, def: Definition) -> SymbolInformati
 
 /// Computes a `MonikerResult` for a definition. Result cases:
 ///
-/// `Some(MonikerResult::Moniker(_))` provides a unique `Moniker` which refers to a definition.
+/// * `Some(MonikerResult::Moniker(_))` provides a unique `Moniker` which refers to a definition.
 ///
-/// `Some(MonikerResult::Local { .. })` provides a `Moniker` for the definition enclosing a local.
+/// * `Some(MonikerResult::Local { .. })` provides a `Moniker` for the definition enclosing a local.
 ///
-/// `None` is returned in the following cases:
-///
-/// * Inherent impl definitions, as they cannot be uniquely identified (multiple are allowed for the
-///   same type).
-///
-/// * Definitions which are not in a module: `BuiltinAttr`, `BuiltinType`, `BuiltinLifetime`,
-///   `TupleField`, `ToolModule`, and `InlineAsmRegOrRegClass`. TODO: it might be sensible to
-///   provide monikers that refer to some non-existent crate of compiler builtin definitions.
+/// * `None` is returned for definitions which are not in a module: `BuiltinAttr`, `BuiltinType`,
+///   `BuiltinLifetime`, `TupleField`, `ToolModule`, and `InlineAsmRegOrRegClass`. TODO: it might be
+///   sensible to provide monikers that refer to some non-existent crate of compiler builtin
+///   definitions.
 pub(crate) fn def_to_moniker(
     db: &RootDatabase,
     definition: Definition,
     from_crate: Crate,
 ) -> Option<MonikerResult> {
     match definition {
-        // Not possible to give sensible unique symbols for inherent impls, as multiple can be
-        // defined for the same type.
-        Definition::SelfType(impl_) if impl_.trait_(db).is_none() => {
-            return None;
-        }
         Definition::Local(_) | Definition::Label(_) | Definition::GenericParam(_) => {
             return Some(MonikerResult::Local {
                 enclosing_moniker: enclosing_def_to_moniker(db, definition, from_crate),
@@ -352,9 +343,7 @@ fn def_to_non_local_moniker(
                     match def {
                         Definition::Module(module) if module.is_crate_root() => {}
                         _ => {
-                            tracing::error!(
-                                ?def, "Encountered enclosing definition with no name"
-                            );
+                            tracing::error!(?def, "Encountered enclosing definition with no name");
                         }
                     }
                 }

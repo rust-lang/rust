@@ -102,12 +102,26 @@ impl flags::Scip {
         // This is called after definitions have been deduplicated by token_ids_emitted. The purpose
         // is to detect reuse of symbol names because this causes ambiguity about their meaning.
         let mut record_error_if_symbol_already_used =
-            |symbol: String, relative_path: &str, line_index: &LineIndex, text_range: TextRange| {
+            |symbol: String,
+             is_inherent_impl: bool,
+             relative_path: &str,
+             line_index: &LineIndex,
+             text_range: TextRange| {
                 let is_local = symbol.starts_with("local ");
                 if !is_local && !nonlocal_symbols_emitted.insert(symbol.clone()) {
-                    let source_location =
-                        text_range_to_string(relative_path, line_index, text_range);
-                    duplicate_symbol_errors.push((source_location, symbol));
+                    // See #18772. Duplicate SymbolInformation for inherent impls is omitted.
+                    if is_inherent_impl {
+                        false
+                    } else {
+                        let source_location =
+                            text_range_to_string(relative_path, line_index, text_range);
+                        duplicate_symbol_errors.push((source_location, symbol));
+                        // Keep duplicate SymbolInformation. This behavior is preferred over
+                        // omitting so that the issue might be visible within downstream tools.
+                        true
+                    }
+                } else {
+                    true
                 }
             };
 
@@ -126,13 +140,13 @@ impl flags::Scip {
             tokens.into_iter().for_each(|(text_range, id)| {
                 let token = si.tokens.get(id).unwrap();
 
-                let (symbol, enclosing_symbol) =
-                    if let Some(TokenSymbols { symbol, enclosing_symbol }) =
+                let (symbol, enclosing_symbol, is_inherent_impl) =
+                    if let Some(TokenSymbols { symbol, enclosing_symbol, is_inherent_impl }) =
                         symbol_generator.token_symbols(id, token)
                     {
-                        (symbol, enclosing_symbol)
+                        (symbol, enclosing_symbol, is_inherent_impl)
                     } else {
-                        ("".to_owned(), None)
+                        ("".to_owned(), None, false)
                     };
 
                 if !symbol.is_empty() {
@@ -144,17 +158,20 @@ impl flags::Scip {
                         if token_ids_emitted.insert(id) {
                             // token_ids_emitted does deduplication. This checks that this results
                             // in unique emitted symbols, as otherwise references are ambiguous.
-                            record_error_if_symbol_already_used(
+                            let should_emit = record_error_if_symbol_already_used(
                                 symbol.clone(),
+                                is_inherent_impl,
                                 relative_path.as_str(),
                                 &line_index,
                                 text_range,
                             );
-                            symbols.push(compute_symbol_info(
-                                symbol.clone(),
-                                enclosing_symbol,
-                                token,
-                            ));
+                            if should_emit {
+                                symbols.push(compute_symbol_info(
+                                    symbol.clone(),
+                                    enclosing_symbol,
+                                    token,
+                                ));
+                            }
                         }
                     } else {
                         token_ids_referenced.insert(id);
@@ -227,12 +244,13 @@ impl flags::Scip {
                 continue;
             }
 
-            let TokenSymbols { symbol, enclosing_symbol } = symbol_generator
+            let TokenSymbols { symbol, enclosing_symbol, .. } = symbol_generator
                 .token_symbols(id, token)
                 .expect("To have been referenced, the symbol must be in the cache.");
 
             record_error_if_symbol_already_used(
                 symbol.clone(),
+                false,
                 relative_path.as_str(),
                 &line_index,
                 text_range,
@@ -395,6 +413,9 @@ struct TokenSymbols {
     symbol: String,
     /// Definition that contains this one. Only set when `symbol` is local.
     enclosing_symbol: Option<String>,
+    /// True if this symbol is for an inherent impl. This is used to only emit `SymbolInformation`
+    /// for a struct's first inherent impl, since their symbol names are not disambiguated.
+    is_inherent_impl: bool,
 }
 
 struct SymbolGenerator {
@@ -421,6 +442,14 @@ impl SymbolGenerator {
                     MonikerResult::Moniker(moniker) => TokenSymbols {
                         symbol: scip::symbol::format_symbol(moniker_to_symbol(moniker)),
                         enclosing_symbol: None,
+                        is_inherent_impl: moniker
+                            .identifier
+                            .description
+                            .get(moniker.identifier.description.len() - 2)
+                            .map_or(false, |descriptor| {
+                                descriptor.desc == MonikerDescriptorKind::Type
+                                    && descriptor.name == "impl"
+                            }),
                     },
                     MonikerResult::Local { enclosing_moniker } => {
                         let local_symbol = scip::types::Symbol::new_local(local_count);
@@ -431,6 +460,7 @@ impl SymbolGenerator {
                                 .as_ref()
                                 .map(moniker_to_symbol)
                                 .map(scip::symbol::format_symbol),
+                            is_inherent_impl: false,
                         }
                     }
                 })
