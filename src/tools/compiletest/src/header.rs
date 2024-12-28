@@ -978,10 +978,10 @@ impl Config {
         }
     }
 
-    fn parse_custom_normalization(&self, line: &str) -> Option<NormalizeRule> {
+    fn parse_custom_normalization(&self, raw_directive: &str) -> Option<NormalizeRule> {
         // FIXME(Zalathar): Integrate name/value splitting into `DirectiveLine`
         // instead of doing it here.
-        let (directive_name, _value) = line.split_once(':')?;
+        let (directive_name, raw_value) = raw_directive.split_once(':')?;
 
         let kind = match directive_name {
             "normalize-stdout" => NormalizeKind::Stdout,
@@ -991,11 +991,9 @@ impl Config {
             _ => return None,
         };
 
-        // FIXME(Zalathar): The normalize rule parser should only care about
-        // the value part, not the "line" (which isn't even the whole line).
-        let Some((regex, replacement)) = parse_normalize_rule(line) else {
+        let Some((regex, replacement)) = parse_normalize_rule(raw_value) else {
             panic!(
-                "couldn't parse custom normalization rule: `{line}`\n\
+                "couldn't parse custom normalization rule: `{raw_directive}`\n\
                 help: expected syntax is: `{directive_name}: \"REGEX\" -> \"REPLACEMENT\"`"
             );
         };
@@ -1141,24 +1139,26 @@ enum NormalizeKind {
 /// Parses the regex and replacement values of a `//@ normalize-*` header,
 /// in the format:
 /// ```text
-/// normalize-*: "REGEX" -> "REPLACEMENT"
+/// "REGEX" -> "REPLACEMENT"
 /// ```
-fn parse_normalize_rule(header: &str) -> Option<(String, String)> {
+fn parse_normalize_rule(raw_value: &str) -> Option<(String, String)> {
     // FIXME: Support escaped double-quotes in strings.
     let captures = static_regex!(
         r#"(?x) # (verbose mode regex)
         ^
-        [^:\s]+:\s*             # (header name followed by colon)
+        \s*                     # (leading whitespace)
         "(?<regex>[^"]*)"       # "REGEX"
         \s+->\s+                # ->
         "(?<replacement>[^"]*)" # "REPLACEMENT"
         $
         "#
     )
-    .captures(header)?;
+    .captures(raw_value)?;
     let regex = captures["regex"].to_owned();
     let replacement = captures["replacement"].to_owned();
-    // FIXME: Support escaped new-line in strings.
+    // A `\n` sequence in the replacement becomes an actual newline.
+    // FIXME: Do unescaping in a less ad-hoc way, and perhaps support escaped
+    // backslashes and double-quotes.
     let replacement = replacement.replace("\\n", "\n");
     Some((regex, replacement))
 }
