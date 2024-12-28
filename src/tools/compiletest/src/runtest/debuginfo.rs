@@ -59,14 +59,8 @@ impl TestCx<'_> {
             return;
         }
 
-        let prefixes = {
-            static PREFIXES: &[&str] = &["cdb", "cdbg"];
-            // No "native rust support" variation for CDB yet.
-            PREFIXES
-        };
-
         // Parse debugger commands etc from test files
-        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, self.config, prefixes)
+        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, self.config, &["cdb"])
             .unwrap_or_else(|e| self.fatal(&e));
 
         // https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/debugger-commands
