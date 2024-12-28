@@ -213,7 +213,9 @@ impl<'a> State<'a> {
 
     fn print_expr_call(&mut self, func: &ast::Expr, args: &[P<ast::Expr>], fixup: FixupContext) {
         let needs_paren = match func.kind {
-            ast::ExprKind::Field(..) => true,
+            // In order to call a named field, needs parens: `(self.fun)()`
+            // But not for an unnamed field: `self.0()`
+            ast::ExprKind::Field(_, name) => !name.is_numeric(),
             _ => func.precedence() < ExprPrecedence::Unambiguous,
         };
 
@@ -245,19 +247,21 @@ impl<'a> State<'a> {
         base_args: &[P<ast::Expr>],
         fixup: FixupContext,
     ) {
-        // Unlike in `print_expr_call`, no change to fixup here because
+        // The fixup here is different than in `print_expr_call` because
         // statement boundaries never occur in front of a `.` (or `?`) token.
         //
-        //     match () { _ => f }.method();
+        // Needs parens:
         //
-        // Parenthesizing only for precedence and not with regard to statement
-        // boundaries, `$receiver.method()` can be parsed back as a statement
-        // containing an expression if and only if `$receiver` can be parsed as
-        // a statement containing an expression.
+        //     (loop { break x; })();
+        //
+        // Does not need parens:
+        //
+        //     loop { break x; }.method();
+        //
         self.print_expr_cond_paren(
             receiver,
             receiver.precedence() < ExprPrecedence::Unambiguous,
-            fixup,
+            fixup.leftmost_subexpression_with_dot(),
         );
 
         self.word(".");
@@ -503,7 +507,7 @@ impl<'a> State<'a> {
                         self.print_expr_cond_paren(
                             expr,
                             expr.precedence() < ExprPrecedence::Unambiguous,
-                            fixup,
+                            fixup.leftmost_subexpression_with_dot(),
                         );
                         self.word_nbsp(".match");
                     }
@@ -567,7 +571,7 @@ impl<'a> State<'a> {
                 self.print_expr_cond_paren(
                     expr,
                     expr.precedence() < ExprPrecedence::Unambiguous,
-                    fixup,
+                    fixup.leftmost_subexpression_with_dot(),
                 );
                 self.word(".await");
             }
@@ -606,7 +610,7 @@ impl<'a> State<'a> {
                 self.print_expr_cond_paren(
                     expr,
                     expr.precedence() < ExprPrecedence::Unambiguous,
-                    fixup,
+                    fixup.leftmost_subexpression_with_dot(),
                 );
                 self.word(".");
                 self.print_ident(*ident);
@@ -763,7 +767,11 @@ impl<'a> State<'a> {
                 }
             }
             ast::ExprKind::Try(e) => {
-                self.print_expr_cond_paren(e, e.precedence() < ExprPrecedence::Unambiguous, fixup);
+                self.print_expr_cond_paren(
+                    e,
+                    e.precedence() < ExprPrecedence::Unambiguous,
+                    fixup.leftmost_subexpression_with_dot(),
+                );
                 self.word("?")
             }
             ast::ExprKind::TryBlock(blk) => {

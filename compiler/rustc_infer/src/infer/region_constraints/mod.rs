@@ -299,10 +299,6 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         self.storage.var_infos.len()
     }
 
-    pub fn region_constraint_data(&self) -> &RegionConstraintData<'tcx> {
-        &self.storage.data
-    }
-
     /// Takes (and clears) the current set of constraints. Note that
     /// the set of variables remains intact, but all relationships
     /// between them are reset. This is used during NLL checking to

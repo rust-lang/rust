@@ -2708,6 +2708,12 @@ impl Ident {
     pub fn is_raw_guess(self) -> bool {
         self.name.can_be_raw() && self.is_reserved()
     }
+
+    /// Whether this would be the identifier for a tuple field like `self.0`, as
+    /// opposed to a named field like `self.thing`.
+    pub fn is_numeric(self) -> bool {
+        !self.name.is_empty() && self.as_str().bytes().all(|b| b.is_ascii_digit())
+    }
 }
 
 /// Collect all the keywords in a given edition into a vector.
