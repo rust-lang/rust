@@ -194,6 +194,32 @@ mod issue_4077 {
                 }
             }
         }
+
+        for _ in 0..10 {
+            match "foo".parse::<i32>() {
+                Ok(_) => do_something(),
+                Err(_) => {
+                    println!("bar-10");
+                    continue;
+                },
+            }
+        }
+
+        loop {
+            if true {
+            } else {
+                // redundant `else`
+                continue; // redundant `continue`
+            }
+        }
+
+        loop {
+            if some_expr() {
+                continue;
+            } else {
+                do_something();
+            }
+        }
     }
 
     // The contents of these functions are irrelevant, the purpose of this file is

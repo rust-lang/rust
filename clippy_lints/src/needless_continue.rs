@@ -78,14 +78,16 @@ declare_clippy_lint! {
     /// ```
     ///
     /// ```rust
-    /// fn foo() -> std::io::ErrorKind { std::io::ErrorKind::NotFound }
+    /// # use std::io::ErrorKind;
+    ///
+    /// fn foo() -> ErrorKind { ErrorKind::NotFound }
     /// for _ in 0..10 {
     ///     match foo() {
-    ///         std::io::ErrorKind::NotFound => {
+    ///         ErrorKind::NotFound => {
     ///             eprintln!("not found");
     ///             continue
     ///         }
-    ///         std::io::ErrorKind::TimedOut => {
+    ///         ErrorKind::TimedOut => {
     ///             eprintln!("timeout");
     ///             continue
     ///         }
@@ -100,13 +102,15 @@ declare_clippy_lint! {
     ///
     ///
     /// ```rust
-    /// fn foo() -> std::io::ErrorKind { std::io::ErrorKind::NotFound }
+    /// # use std::io::ErrorKind;
+    ///
+    /// fn foo() -> ErrorKind { ErrorKind::NotFound }
     /// for _ in 0..10 {
     ///     match foo() {
-    ///         std::io::ErrorKind::NotFound => {
+    ///         ErrorKind::NotFound => {
     ///             eprintln!("not found");
     ///         }
-    ///         std::io::ErrorKind::TimedOut => {
+    ///         ErrorKind::TimedOut => {
     ///             eprintln!("timeout");
     ///         }
     ///         _ => {
@@ -422,9 +426,10 @@ fn check_and_warn(cx: &EarlyContext<'_>, expr: &ast::Expr) {
                 );
             }
         };
-        check_last_stmt_in_block(loop_block, &p);
 
-        for (i, stmt) in loop_block.stmts.iter().enumerate() {
+        let stmts = &loop_block.stmts;
+        for (i, stmt) in stmts.iter().enumerate() {
+            let mut maybe_emitted_in_if = false;
             with_if_expr(stmt, |if_expr, cond, then_block, else_expr| {
                 let data = &LintData {
                     if_expr,
@@ -434,6 +439,8 @@ fn check_and_warn(cx: &EarlyContext<'_>, expr: &ast::Expr) {
                     stmt_idx: i,
                     loop_block,
                 };
+
+                maybe_emitted_in_if = true;
                 if needless_continue_in_else(else_expr, label) {
                     emit_warning(
                         cx,
@@ -443,8 +450,14 @@ fn check_and_warn(cx: &EarlyContext<'_>, expr: &ast::Expr) {
                     );
                 } else if is_first_block_stmt_continue(then_block, label) {
                     emit_warning(cx, data, DROP_ELSE_BLOCK_MSG, LintType::ContinueInsideThenBlock);
+                } else {
+                    maybe_emitted_in_if = false;
                 }
             });
+
+            if i == stmts.len() - 1 && !maybe_emitted_in_if {
+                check_last_stmt_in_block(loop_block, &p);
+            }
         }
     });
 }

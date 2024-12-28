@@ -168,5 +168,47 @@ LL |                     continue 'inner;
    |
    = help: consider dropping the `continue` expression
 
-error: aborting due to 12 previous errors
+error: this `continue` expression is redundant
+  --> tests/ui/needless_continue.rs:203:21
+   |
+LL |                     continue;
+   |                     ^^^^^^^^
+   |
+   = help: consider dropping the `continue` expression
+
+error: this `else` block is redundant
+  --> tests/ui/needless_continue.rs:210:20
+   |
+LL |               } else {
+   |  ____________________^
+LL | |                 // redundant `else`
+LL | |                 continue; // redundant `continue`
+LL | |             }
+   | |_____________^
+   |
+   = help: consider dropping the `else` clause and merging the code that follows (in the loop) with the `if` block
+                       if true {
+           // merged code follows:
+           
+                       }
+
+error: there is no need for an explicit `else` block for this `if` expression
+  --> tests/ui/needless_continue.rs:217:13
+   |
+LL | /             if some_expr() {
+LL | |                 continue;
+LL | |             } else {
+LL | |                 do_something();
+LL | |             }
+   | |_____________^
+   |
+   = help: consider dropping the `else` clause
+                       if some_expr() {
+                           continue;
+                       }
+                       {
+                           do_something();
+                       }
+
+error: aborting due to 15 previous errors
 
