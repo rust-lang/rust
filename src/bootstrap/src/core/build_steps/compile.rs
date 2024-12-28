@@ -396,7 +396,7 @@ fn copy_self_contained_objects(
 /// Resolves standard library crates for `Std::run_make` for any build kind (like check, build, clippy, etc.).
 pub fn std_crates_for_run_make(run: &RunConfig<'_>) -> Vec<String> {
     // FIXME: Extend builder tests to cover the `crates` field of `Std` instances.
-    if cfg!(feature = "bootstrap-self-test") {
+    if cfg!(test) {
         return vec![];
     }
 

@@ -444,14 +444,14 @@ impl Config {
         cargo_clippy
     }
 
-    #[cfg(feature = "bootstrap-self-test")]
+    #[cfg(test)]
     pub(crate) fn maybe_download_rustfmt(&self) -> Option<PathBuf> {
         None
     }
 
     /// NOTE: rustfmt is a completely different toolchain than the bootstrap compiler, so it can't
     /// reuse target directories or artifacts
-    #[cfg(not(feature = "bootstrap-self-test"))]
+    #[cfg(not(test))]
     pub(crate) fn maybe_download_rustfmt(&self) -> Option<PathBuf> {
         use build_helper::stage0_parser::VersionMetadata;
 
@@ -534,10 +534,10 @@ impl Config {
         );
     }
 
-    #[cfg(feature = "bootstrap-self-test")]
+    #[cfg(test)]
     pub(crate) fn download_beta_toolchain(&self) {}
 
-    #[cfg(not(feature = "bootstrap-self-test"))]
+    #[cfg(not(test))]
     pub(crate) fn download_beta_toolchain(&self) {
         self.verbose(|| println!("downloading stage0 beta artifacts"));
 
@@ -714,10 +714,10 @@ download-rustc = false
         self.unpack(&tarball, &bin_root, prefix);
     }
 
-    #[cfg(feature = "bootstrap-self-test")]
+    #[cfg(test)]
     pub(crate) fn maybe_download_ci_llvm(&self) {}
 
-    #[cfg(not(feature = "bootstrap-self-test"))]
+    #[cfg(not(test))]
     pub(crate) fn maybe_download_ci_llvm(&self) {
         use build_helper::exit;
 
@@ -789,7 +789,7 @@ download-rustc = false
         };
     }
 
-    #[cfg(not(feature = "bootstrap-self-test"))]
+    #[cfg(not(test))]
     fn download_ci_llvm(&self, llvm_sha: &str) {
         let llvm_assertions = self.llvm_assertions;
 

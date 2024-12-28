@@ -3152,9 +3152,8 @@ impl Step for Bootstrap {
 
         let mut cmd = command(&builder.initial_cargo);
         cmd.arg("test")
-            .args(["--features", "bootstrap-self-test"])
             .current_dir(builder.src.join("src/bootstrap"))
-            .env("RUSTFLAGS", "-Cdebuginfo=2")
+            .env("RUSTFLAGS", "--cfg test -Cdebuginfo=2")
             .env("CARGO_TARGET_DIR", builder.out.join("bootstrap"))
             .env("RUSTC_BOOTSTRAP", "1")
             .env("RUSTDOC", builder.rustdoc(compiler))
