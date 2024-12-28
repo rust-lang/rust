@@ -1139,7 +1139,7 @@ pub struct Resolver<'ra, 'tcx> {
     proc_macro_stubs: FxHashSet<LocalDefId>,
     /// Traces collected during macro resolution and validated when it's complete.
     single_segment_macro_resolutions:
-        Vec<(Ident, MacroKind, ParentScope<'ra>, Option<NameBinding<'ra>>)>,
+        Vec<(Ident, MacroKind, ParentScope<'ra>, Option<NameBinding<'ra>>, Option<Span>)>,
     multi_segment_macro_resolutions:
         Vec<(Vec<Segment>, Span, MacroKind, ParentScope<'ra>, Option<Res>, Namespace)>,
     builtin_attrs: Vec<(Ident, ParentScope<'ra>)>,
