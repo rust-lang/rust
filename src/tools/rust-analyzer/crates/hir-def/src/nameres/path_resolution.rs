@@ -46,12 +46,11 @@ pub(super) struct ResolvePathResult {
     pub(super) prefix_info: ResolvePathResultPrefixInfo,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ResolvePathResultPrefixInfo {
-    None,
-    DifferingCrate,
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct ResolvePathResultPrefixInfo {
+    pub(crate) differing_crate: bool,
     /// Path of the form `Enum::Variant` (and not `Variant` alone).
-    Enum,
+    pub enum_variant: bool,
 }
 
 impl ResolvePathResult {
@@ -60,7 +59,7 @@ impl ResolvePathResult {
             PerNs::none(),
             reached_fixedpoint,
             None,
-            ResolvePathResultPrefixInfo::None,
+            ResolvePathResultPrefixInfo::default(),
         )
     }
 
@@ -170,17 +169,8 @@ impl DefMap {
             if result.reached_fixedpoint == ReachedFixedPoint::No {
                 result.reached_fixedpoint = new.reached_fixedpoint;
             }
-            result.prefix_info = match (result.prefix_info, new.prefix_info) {
-                (ResolvePathResultPrefixInfo::None, it) => it,
-                (ResolvePathResultPrefixInfo::DifferingCrate, _) => {
-                    ResolvePathResultPrefixInfo::DifferingCrate
-                }
-                (
-                    ResolvePathResultPrefixInfo::Enum,
-                    ResolvePathResultPrefixInfo::DifferingCrate,
-                ) => ResolvePathResultPrefixInfo::DifferingCrate,
-                (ResolvePathResultPrefixInfo::Enum, _) => ResolvePathResultPrefixInfo::Enum,
-            };
+            result.prefix_info.differing_crate |= new.prefix_info.differing_crate;
+            result.prefix_info.enum_variant |= new.prefix_info.enum_variant;
             result.segment_index = match (result.segment_index, new.segment_index) {
                 (Some(idx), None) => Some(idx),
                 (Some(old), Some(new)) => Some(old.max(new)),
@@ -460,13 +450,22 @@ impl DefMap {
                         // because `macro_use` and other preludes should be taken into account. At
                         // this point, we know we're resolving a multi-segment path so macro kind
                         // expectation is discarded.
-                        let (def, s) =
-                            defp_map.resolve_path(db, module.local_id, &path, shadow, None);
+                        let resolution = defp_map.resolve_path_fp_with_macro(
+                            db,
+                            ResolveMode::Other,
+                            module.local_id,
+                            &path,
+                            shadow,
+                            None,
+                        );
                         return ResolvePathResult::new(
-                            def,
+                            resolution.resolved_def,
                             ReachedFixedPoint::Yes,
-                            s.map(|s| s + i),
-                            ResolvePathResultPrefixInfo::DifferingCrate,
+                            resolution.segment_index.map(|s| s + i),
+                            ResolvePathResultPrefixInfo {
+                                differing_crate: true,
+                                enum_variant: resolution.prefix_info.enum_variant,
+                            },
                         );
                     }
 
@@ -522,7 +521,10 @@ impl DefMap {
                                     res,
                                     ReachedFixedPoint::Yes,
                                     None,
-                                    ResolvePathResultPrefixInfo::Enum,
+                                    ResolvePathResultPrefixInfo {
+                                        enum_variant: true,
+                                        ..ResolvePathResultPrefixInfo::default()
+                                    },
                                 )
                             }
                         }
@@ -530,7 +532,7 @@ impl DefMap {
                             PerNs::types(e.into(), curr.vis, curr.import),
                             ReachedFixedPoint::Yes,
                             Some(i),
-                            ResolvePathResultPrefixInfo::None,
+                            ResolvePathResultPrefixInfo::default(),
                         ),
                     };
                 }
@@ -547,7 +549,7 @@ impl DefMap {
                         PerNs::types(s, curr.vis, curr.import),
                         ReachedFixedPoint::Yes,
                         Some(i),
-                        ResolvePathResultPrefixInfo::None,
+                        ResolvePathResultPrefixInfo::default(),
                     );
                 }
             };
@@ -560,7 +562,7 @@ impl DefMap {
             curr_per_ns,
             ReachedFixedPoint::Yes,
             None,
-            ResolvePathResultPrefixInfo::None,
+            ResolvePathResultPrefixInfo::default(),
         )
     }
 

@@ -32,7 +32,7 @@ use hir_def::{
         WherePredicateTypeTarget,
     },
     lang_item::LangItem,
-    nameres::{MacroSubNs, ResolvePathResultPrefixInfo},
+    nameres::MacroSubNs,
     path::{GenericArg, GenericArgs, ModPath, Path, PathKind, PathSegment, PathSegments},
     resolver::{HasResolver, LifetimeNs, ResolveValueResult, Resolver, TypeNs, ValueNs},
     type_ref::{
@@ -826,7 +826,7 @@ impl<'a> TyLoweringContext<'a> {
                 (segments.take(unresolved_segment - 1), None)
             }
             ResolveValueResult::ValueNs(ValueNs::EnumVariantId(_), _)
-                if prefix_info == ResolvePathResultPrefixInfo::Enum =>
+                if prefix_info.enum_variant =>
             {
                 (segments.strip_last_two(), segments.len().checked_sub(2))
             }

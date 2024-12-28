@@ -579,4 +579,29 @@ fn bar() {
         "#,
         );
     }
+
+    #[test]
+    fn regression_18768() {
+        check_diagnostics(
+            r#"
+//- minicore: result
+//- /foo.rs crate:foo edition:2018
+pub mod lib {
+    mod core {
+        pub use core::*;
+    }
+    pub use self::core::result;
+}
+
+pub mod __private {
+    pub use crate::lib::result::Result::{self, Err, Ok};
+}
+
+//- /bar.rs crate:bar deps:foo edition:2018
+fn bar() {
+    _ = foo::__private::Result::<(), ()>::Ok;
+}
+        "#,
+        );
+    }
 }

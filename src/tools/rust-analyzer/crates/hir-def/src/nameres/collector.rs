@@ -38,7 +38,7 @@ use crate::{
         attr_resolution::{attr_macro_as_call_id, derive_macro_as_call_id},
         diagnostics::DefDiagnostic,
         mod_resolution::ModDir,
-        path_resolution::{ReachedFixedPoint, ResolvePathResultPrefixInfo},
+        path_resolution::ReachedFixedPoint,
         proc_macro::{parse_macro_name_and_helper_attrs, ProcMacroDef, ProcMacroKind},
         sub_namespace_match, BuiltinShadowMode, DefMap, MacroSubNs, ModuleData, ModuleOrigin,
         ResolveMode,
@@ -797,7 +797,7 @@ impl DefCollector<'_> {
             return PartialResolvedImport::Unresolved;
         }
 
-        if let ResolvePathResultPrefixInfo::DifferingCrate = res.prefix_info {
+        if res.prefix_info.differing_crate {
             return PartialResolvedImport::Resolved(
                 def.filter_visibility(|v| matches!(v, Visibility::Public)),
             );
