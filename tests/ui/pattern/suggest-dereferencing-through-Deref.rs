@@ -1,0 +1,29 @@
+//@ run-rustfix
+#![allow(dead_code)]
+
+enum A {
+    V1(u8),
+    V2(u32),
+}
+
+fn foo() {
+    let a = Some(Box::new(A::V1(1u8)));
+    
+    if let Some(b) = a.as_ref() {
+        if let A::V1(v) = b { //~ ERROR mismatched types
+            println!("{:?}", v);
+        }
+    }
+}
+
+fn bar() {
+    let a = Some(Box::new(A::V1(1u8)));
+    
+    if let Some(b) = a.as_ref() {
+        if let A::V1(v) = *b { //~ ERROR mismatched types
+            println!("{:?}", v);
+        }
+    }
+}
+
+fn main() {}

@@ -1,0 +1,33 @@
+error[E0308]: mismatched types
+  --> $DIR/suggest-dereferencing-through-Deref.rs:13:16
+   |
+LL |         if let A::V1(v) = b {
+   |                ^^^^^^^^   - this expression has type `&Box<A>`
+   |                |
+   |                expected `Box<A>`, found `A`
+   |
+   = note: expected struct `Box<A>`
+                found enum `A`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |         if let A::V1(v) = &**b {
+   |                           ~~~~
+
+error[E0308]: mismatched types
+  --> $DIR/suggest-dereferencing-through-Deref.rs:23:16
+   |
+LL |         if let A::V1(v) = *b {
+   |                ^^^^^^^^   -- this expression has type `Box<A>`
+   |                |
+   |                expected `Box<A>`, found `A`
+   |
+   = note: expected struct `Box<A>`
+                found enum `A`
+help: consider dereferencing the boxed value
+   |
+LL |         if let A::V1(v) = **b {
+   |                           ~~~
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
