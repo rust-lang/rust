@@ -18,7 +18,6 @@
 extern crate proc_macro as pm;
 
 mod build;
-mod derive_macro_expansion;
 mod errors;
 // FIXME(Nilstrieb) Translate macro_rules diagnostics
 #[allow(rustc::untranslatable_diagnostic)]
@@ -36,7 +35,7 @@ pub mod module;
 pub mod proc_macro;
 
 pub fn provide(providers: &mut rustc_middle::util::Providers) {
-    providers.derive_macro_expansion = derive_macro_expansion::provide_derive_macro_expansion;
+    providers.derive_macro_expansion = proc_macro::provide_derive_macro_expansion;
 }
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
