@@ -111,6 +111,7 @@ pub enum Command {
     /// `rustup-toolchain-install-master` must be installed for this to work.
     Toolchain {
         /// Flags that are passed through to `rustup-toolchain-install-master`.
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         flags: Vec<String>,
     },
     /// Pull and merge Miri changes from the rustc repo.
