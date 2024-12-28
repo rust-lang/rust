@@ -5,7 +5,9 @@ use std::rc::{Rc, Weak};
 use std::time::Duration;
 
 use crate::concurrency::VClock;
-use crate::shims::files::{FdId, FileDescription, FileDescriptionRef, WeakFileDescriptionRef};
+use crate::shims::files::{
+    DynFileDescriptionRef, FdId, FileDescription, FileDescriptionRef, WeakFileDescriptionRef,
+};
 use crate::shims::unix::UnixFileDescription;
 use crate::*;
 
@@ -68,7 +70,7 @@ pub struct EpollEventInterest {
     /// Ready list of the epoll instance under which this EpollEventInterest is registered.
     ready_list: Rc<ReadyList>,
     /// The epoll file description that this EpollEventInterest is registered under.
-    weak_epfd: WeakFileDescriptionRef,
+    weak_epfd: WeakFileDescriptionRef<Epoll>,
 }
 
 /// EpollReadyEvents reflects the readiness of a file description.
@@ -146,7 +148,7 @@ impl FileDescription for Epoll {
     }
 
     fn close<'tcx>(
-        self: Box<Self>,
+        self,
         _communicate_allowed: bool,
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, io::Result<()>> {
@@ -281,7 +283,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let Some(fd_ref) = this.machine.fds.get(fd) else {
             return this.set_last_error_and_return_i32(LibcError("EBADF"));
         };
-        let id = fd_ref.get_id();
+        let id = fd_ref.id();
 
         if op == epoll_ctl_add || op == epoll_ctl_mod {
             // Read event bitmask and data from epoll_event passed by caller.
@@ -343,7 +345,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 events,
                 data,
                 ready_list: Rc::clone(ready_list),
-                weak_epfd: epfd.downgrade(),
+                weak_epfd: FileDescriptionRef::downgrade(&epoll_file_description),
             }));
 
             if op == epoll_ctl_add {
@@ -452,18 +454,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let Some(epfd) = this.machine.fds.get(epfd_value) else {
             return this.set_last_error_and_return(LibcError("EBADF"), dest);
         };
+        let epoll_file_description = epfd
+            .downcast::<Epoll>()
+            .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_wait`"))?;
         // Create a weak ref of epfd and pass it to callback so we will make sure that epfd
         // is not close after the thread unblocks.
-        let weak_epfd = epfd.downgrade();
+        let weak_epfd = FileDescriptionRef::downgrade(&epoll_file_description);
 
         // We just need to know if the ready list is empty and borrow the thread_ids out.
         // The whole logic is wrapped inside a block so we don't need to manually drop epfd later.
         let ready_list_empty;
         let mut thread_ids;
         {
-            let epoll_file_description = epfd
-                .downcast::<Epoll>()
-                .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_wait`"))?;
             ready_list_empty = epoll_file_description.ready_list.mapping.borrow().is_empty();
             thread_ids = epoll_file_description.thread_id.borrow_mut();
         }
@@ -492,7 +494,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 callback!(
                     @capture<'tcx> {
                         epfd_value: i32,
-                        weak_epfd: WeakFileDescriptionRef,
+                        weak_epfd: WeakFileDescriptionRef<Epoll>,
                         dest: MPlaceTy<'tcx>,
                         event: MPlaceTy<'tcx>,
                     }
@@ -506,8 +508,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             throw_unsup_format!("epoll FD {epfd_value} got closed while blocking.")
                         };
                         // Remove the current active thread_id from the blocked thread_id list.
-                        epfd.downcast::<Epoll>()
-                            .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_wait`"))?
+                        epfd
                             .thread_id.borrow_mut()
                             .retain(|&id| id != this.active_thread());
                         this.write_int(0, &dest)?;
@@ -528,17 +529,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// do not call this function when an FD didn't have anything happen to it!
     fn check_and_update_readiness(
         &mut self,
-        fd_ref: &FileDescriptionRef,
+        fd_ref: DynFileDescriptionRef,
     ) -> InterpResult<'tcx, ()> {
         let this = self.eval_context_mut();
-        let id = fd_ref.get_id();
+        let id = fd_ref.id();
         let mut waiter = Vec::new();
         // Get a list of EpollEventInterest that is associated to a specific file description.
         if let Some(epoll_interests) = this.machine.epoll_interests.get_epoll_interest(id) {
             for weak_epoll_interest in epoll_interests {
                 if let Some(epoll_interest) = weak_epoll_interest.upgrade() {
                     let is_updated = check_and_update_one_event_interest(
-                        fd_ref,
+                        &fd_ref,
                         epoll_interest.clone(),
                         id,
                         this,
@@ -553,10 +554,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         // holds a strong ref to epoll_interest.
                         let epfd = epoll_interest.borrow().weak_epfd.upgrade().unwrap();
                         // FIXME: We can randomly pick a thread to unblock.
-
-                        let epoll = epfd.downcast::<Epoll>().unwrap();
-
-                        if let Some(thread_id) = epoll.thread_id.borrow_mut().pop() {
+                        if let Some(thread_id) = epfd.thread_id.borrow_mut().pop() {
                             waiter.push(thread_id);
                         };
                     }
@@ -595,7 +593,7 @@ fn ready_list_next(
 /// notification was added/updated. Unlike check_and_update_readiness, this function sends a
 /// notification to only one epoll instance.
 fn check_and_update_one_event_interest<'tcx>(
-    fd_ref: &FileDescriptionRef,
+    fd_ref: &DynFileDescriptionRef,
     interest: Rc<RefCell<EpollEventInterest>>,
     id: FdId,
     ecx: &MiriInterpCx<'tcx>,
@@ -628,7 +626,7 @@ fn check_and_update_one_event_interest<'tcx>(
 /// and the number of returned events into `dest`.
 fn return_ready_list<'tcx>(
     epfd_value: i32,
-    weak_epfd: WeakFileDescriptionRef,
+    weak_epfd: WeakFileDescriptionRef<Epoll>,
     dest: &MPlaceTy<'tcx>,
     events: &MPlaceTy<'tcx>,
     ecx: &mut MiriInterpCx<'tcx>,
@@ -637,11 +635,7 @@ fn return_ready_list<'tcx>(
         throw_unsup_format!("epoll FD {epfd_value} got closed while blocking.")
     };
 
-    let epoll_file_description = epfd
-        .downcast::<Epoll>()
-        .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_wait`"))?;
-
-    let ready_list = epoll_file_description.get_ready_list();
+    let ready_list = epfd.get_ready_list();
 
     let mut ready_list = ready_list.mapping.borrow_mut();
     let mut num_of_events: i32 = 0;
