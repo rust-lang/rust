@@ -18,19 +18,23 @@ pub(super) fn provide_derive_macro_expansion<'tcx>(
 
     let res = with_context(|(ecx, client)| {
         let span = invoc_id.expn_data().call_site;
-        let _timer = ecx.sess.prof.generic_activity_with_arg_recorder(
+        let _timer = tcx.sess.prof.generic_activity_with_arg_recorder(
             "expand_derive_proc_macro_inner",
             |recorder| {
-                recorder.record_arg_with_span(ecx.sess.source_map(), ecx.expansion_descr(), span);
+                recorder.record_arg_with_span(
+                    tcx.sess.source_map(),
+                    invoc_id.expn_data().kind.descr(),
+                    span,
+                );
             },
         );
         let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
-        let strategy = crate::proc_macro::exec_strategy(ecx);
+        let strategy = crate::proc_macro::exec_strategy(tcx.sess);
         let server = crate::proc_macro_server::Rustc::new(ecx);
         let res = match client.run(&strategy, server, input.clone(), proc_macro_backtrace) {
             Ok(stream) => Ok(tcx.arena.alloc(stream) as &TokenStream),
             Err(e) => {
-                ecx.dcx().emit_err({
+                tcx.dcx().emit_err({
                     errors::ProcMacroDerivePanicked {
                         span,
                         message: e.as_str().map(|message| errors::ProcMacroDerivePanickedHelp {

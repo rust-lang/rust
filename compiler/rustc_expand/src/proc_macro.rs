@@ -4,6 +4,7 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::ErrorGuaranteed;
 use rustc_middle::ty;
 use rustc_parse::parser::{ForceCollect, Parser};
+use rustc_session::Session;
 use rustc_session::config::ProcMacroExecutionStrategy;
 use rustc_span::Span;
 use rustc_span::profiling::SpannedEventArgRecorder;
@@ -32,9 +33,9 @@ impl<T> pm::bridge::server::MessagePipe<T> for MessagePipe<T> {
     }
 }
 
-pub fn exec_strategy(ecx: &ExtCtxt<'_>) -> impl pm::bridge::server::ExecutionStrategy + 'static {
+pub fn exec_strategy(sess: &Session) -> impl pm::bridge::server::ExecutionStrategy + 'static {
     pm::bridge::server::MaybeCrossThread::<MessagePipe<_>>::new(
-        ecx.sess.opts.unstable_opts.proc_macro_execution_strategy
+        sess.opts.unstable_opts.proc_macro_execution_strategy
             == ProcMacroExecutionStrategy::CrossThread,
     )
 }
@@ -56,7 +57,7 @@ impl base::BangProcMacro for BangProcMacro {
             });
 
         let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
-        let strategy = exec_strategy(ecx);
+        let strategy = exec_strategy(ecx.sess);
         let server = proc_macro_server::Rustc::new(ecx);
         self.client.run(&strategy, server, input, proc_macro_backtrace).map_err(|e| {
             ecx.dcx().emit_err(errors::ProcMacroPanicked {
@@ -87,7 +88,7 @@ impl base::AttrProcMacro for AttrProcMacro {
             });
 
         let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
-        let strategy = exec_strategy(ecx);
+        let strategy = exec_strategy(ecx.sess);
         let server = proc_macro_server::Rustc::new(ecx);
         self.client.run(&strategy, server, annotation, annotated, proc_macro_backtrace).map_err(
             |e| {
