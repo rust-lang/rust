@@ -141,27 +141,25 @@ impl MultiItemModifier for DeriveProcMacro {
 
             // FIXME(pr-time): Just using the crate hash to notice when the proc-macro code has
             // changed. How to *correctly* depend on exactly the macro definition?
-            // I.e., depending on the crate hash is just a HACK (and leaves garbage in the
-            // incremental compilation dir).
+            // I.e., depending on the crate hash is just a HACK, and ideally the dependency would be
+            // more narrow.
             let macro_def_id = invoc_expn_data.macro_def_id.unwrap();
             let proc_macro_crate_hash = tcx.crate_hash(macro_def_id.krate);
 
             assert_eq!(invoc_expn_data.call_site, span);
 
-            let res = crate::derive_macro_expansion::enter_context((ecx, self.client), move || {
-                let key = (invoc_id, proc_macro_crate_hash, input);
-                // FIXME(pr-time): Is this the correct way to check for incremental compilation (as
-                // well)?
-                if tcx.sess.opts.incremental.is_some()
-                    && tcx.sess.opts.unstable_opts.cache_proc_macros
-                {
-                    tcx.derive_macro_expansion(key).cloned()
-                } else {
-                    crate::derive_macro_expansion::provide_derive_macro_expansion(tcx, key).cloned()
-                }
-            });
+            let key = (invoc_id, proc_macro_crate_hash, input);
 
-            res
+            // FIXME(pr-time): Is this the correct way to check for incremental compilation (as
+            // well)?
+            if tcx.sess.opts.incremental.is_some() && tcx.sess.opts.unstable_opts.cache_proc_macros
+            {
+                crate::derive_macro_expansion::enter_context((ecx, self.client), move || {
+                    tcx.derive_macro_expansion(key).cloned()
+                })
+            } else {
+                crate::derive_macro_expansion::provide_derive_macro_expansion(tcx, key).cloned()
+            }
         });
         let Ok(output) = res else {
             // error will already have been emitted
