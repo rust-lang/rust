@@ -501,6 +501,9 @@ tool_check_step!(
 );
 
 tool_check_step!(Bootstrap, "bootstrap", "src/bootstrap", SourceType::InTree, false);
+// Compiletest is implicitly "checked" when it gets built in order to run tests,
+// so this is mainly for people working on compiletest to run locally.
+tool_check_step!(Compiletest, "compiletest", "src/tools/compiletest", SourceType::InTree, false);
 
 /// Cargo's output path for the standard library in a given stage, compiled
 /// by a particular compiler for the specified target.
