@@ -170,21 +170,6 @@ impl Variance {
 #[derive(Copy, Clone, Debug)]
 struct InferredIndex(usize);
 
-#[derive(Clone)]
-enum VarianceTerm {
-    ConstantTerm(Variance),
-    TransformTerm(Box<VarianceTerm>, Box<VarianceTerm>),
-}
-
-impl fmt::Debug for VarianceTerm {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            VarianceTerm::ConstantTerm(c1) => write!(f, "{c1:?}"),
-            VarianceTerm::TransformTerm(v1, v2) => write!(f, "({v1:?} \u{00D7} {v2:?})"),
-        }
-    }
-}
-
 struct Context<'db> {
     db: &'db dyn HirDatabase,
     def: GenericDefId,
@@ -200,7 +185,7 @@ struct Context<'db> {
 #[derive(Clone)]
 struct Constraint {
     inferred: InferredIndex,
-    variance: VarianceTerm,
+    variance: Variance,
 }
 
 impl Context<'_> {
@@ -213,7 +198,7 @@ impl Context<'_> {
                     for (_, field) in db.field_types(variant).iter() {
                         self.add_constraints_from_ty(
                             &field.clone().substitute(Interner, &subst),
-                            &VarianceTerm::ConstantTerm(Variance::Covariant),
+                            Variance::Covariant,
                         );
                     }
                 };
@@ -235,37 +220,22 @@ impl Context<'_> {
                         .callable_item_signature(f.into())
                         .substitute(Interner, &subst)
                         .params_and_return,
-                    &VarianceTerm::ConstantTerm(Variance::Covariant),
+                    Variance::Covariant,
                 );
             }
             _ => {}
         }
     }
 
-    fn contravariant(&mut self, variance: &VarianceTerm) -> VarianceTerm {
-        self.xform(variance, &VarianceTerm::ConstantTerm(Variance::Contravariant))
+    fn contravariant(&mut self, variance: Variance) -> Variance {
+        variance.xform(Variance::Contravariant)
     }
 
-    fn invariant(&mut self, variance: &VarianceTerm) -> VarianceTerm {
-        self.xform(variance, &VarianceTerm::ConstantTerm(Variance::Invariant))
+    fn invariant(&mut self, variance: Variance) -> Variance {
+        variance.xform(Variance::Invariant)
     }
 
-    fn xform(&mut self, v1: &VarianceTerm, v2: &VarianceTerm) -> VarianceTerm {
-        match (v1, v2) {
-            // Applying a "covariant" transform is always a no-op
-            (_, VarianceTerm::ConstantTerm(Variance::Covariant)) => v1.clone(),
-            (VarianceTerm::ConstantTerm(c1), VarianceTerm::ConstantTerm(c2)) => {
-                VarianceTerm::ConstantTerm(c1.xform(*c2))
-            }
-            _ => VarianceTerm::TransformTerm(Box::new(v1.clone()), Box::new(v2.clone())),
-        }
-    }
-
-    fn add_constraints_from_invariant_args(
-        &mut self,
-        args: &[GenericArg],
-        variance: &VarianceTerm,
-    ) {
+    fn add_constraints_from_invariant_args(&mut self, args: &[GenericArg], variance: Variance) {
         tracing::debug!(
             "add_constraints_from_invariant_args(args={:?}, variance={:?})",
             args,
@@ -275,9 +245,9 @@ impl Context<'_> {
 
         for k in args {
             match k.data(Interner) {
-                GenericArgData::Lifetime(lt) => self.add_constraints_from_region(lt, &variance_i),
-                GenericArgData::Ty(ty) => self.add_constraints_from_ty(ty, &variance_i),
-                GenericArgData::Const(val) => self.add_constraints_from_const(val, &variance_i),
+                GenericArgData::Lifetime(lt) => self.add_constraints_from_region(lt, variance_i),
+                GenericArgData::Ty(ty) => self.add_constraints_from_ty(ty, variance_i),
+                GenericArgData::Const(val) => self.add_constraints_from_const(val, variance_i),
             }
         }
     }
@@ -285,7 +255,7 @@ impl Context<'_> {
     /// Adds constraints appropriate for an instance of `ty` appearing
     /// in a context with the generics defined in `generics` and
     /// ambient variance `variance`
-    fn add_constraints_from_ty(&mut self, ty: &Ty, variance: &VarianceTerm) {
+    fn add_constraints_from_ty(&mut self, ty: &Ty, variance: Variance) {
         tracing::debug!("add_constraints_from_ty(ty={:?}, variance={:?})", ty, variance);
         match ty.kind(Interner) {
             TyKind::Scalar(_) | TyKind::Never | TyKind::Str | TyKind::Foreign(..) => {
@@ -390,7 +360,7 @@ impl Context<'_> {
                     InferredIndex(self.len_self + index)
                 };
                 tracing::debug!("add_constraint(index={:?}, variance={:?})", inferred, variance);
-                self.constraints.push(Constraint { inferred, variance: variance.clone() });
+                self.constraints.push(Constraint { inferred, variance });
             }
             TyKind::Function(f) => {
                 self.add_constraints_from_sig(f, variance);
@@ -413,7 +383,7 @@ impl Context<'_> {
         &mut self,
         def_id: GenericDefId,
         args: &[GenericArg],
-        variance: &VarianceTerm,
+        variance: Variance,
     ) {
         tracing::debug!(
             "add_constraints_from_args(def_id={:?}, args={:?}, variance={:?})",
@@ -429,13 +399,13 @@ impl Context<'_> {
         if def_id == self.def {
             // HACK: Workaround for the trivial cycle salsa case (see
             // recursive_one_bivariant_more_non_bivariant_params test)
-            let variance_i = self.xform(variance, &VarianceTerm::ConstantTerm(Variance::Bivariant));
+            let variance_i = variance.xform(Variance::Bivariant);
             for k in args {
                 match k.data(Interner) {
                     GenericArgData::Lifetime(lt) => {
-                        self.add_constraints_from_region(lt, &variance_i)
+                        self.add_constraints_from_region(lt, variance_i)
                     }
-                    GenericArgData::Ty(ty) => self.add_constraints_from_ty(ty, &variance_i),
+                    GenericArgData::Ty(ty) => self.add_constraints_from_ty(ty, variance_i),
                     GenericArgData::Const(val) => self.add_constraints_from_const(val, variance),
                 }
             }
@@ -445,13 +415,12 @@ impl Context<'_> {
             };
 
             for (i, k) in args.iter().enumerate() {
-                let variance_decl = &VarianceTerm::ConstantTerm(variances[i]);
-                let variance_i = self.xform(variance, variance_decl);
+                let variance_i = variance.xform(variances[i]);
                 match k.data(Interner) {
                     GenericArgData::Lifetime(lt) => {
-                        self.add_constraints_from_region(lt, &variance_i)
+                        self.add_constraints_from_region(lt, variance_i)
                     }
-                    GenericArgData::Ty(ty) => self.add_constraints_from_ty(ty, &variance_i),
+                    GenericArgData::Ty(ty) => self.add_constraints_from_ty(ty, variance_i),
                     GenericArgData::Const(val) => self.add_constraints_from_const(val, variance),
                 }
             }
@@ -460,7 +429,7 @@ impl Context<'_> {
 
     /// Adds constraints appropriate for a const expression `val`
     /// in a context with ambient variance `variance`
-    fn add_constraints_from_const(&mut self, c: &Const, variance: &VarianceTerm) {
+    fn add_constraints_from_const(&mut self, c: &Const, variance: Variance) {
         match &c.data(Interner).value {
             chalk_ir::ConstValue::Concrete(c) => {
                 if let ConstScalar::UnevaluatedConst(_, subst) = &c.interned {
@@ -473,27 +442,27 @@ impl Context<'_> {
 
     /// Adds constraints appropriate for a function with signature
     /// `sig` appearing in a context with ambient variance `variance`
-    fn add_constraints_from_sig(&mut self, sig: &FnPointer, variance: &VarianceTerm) {
+    fn add_constraints_from_sig(&mut self, sig: &FnPointer, variance: Variance) {
         let contra = self.contravariant(variance);
         let mut tys = sig.substitution.0.iter(Interner).filter_map(move |p| p.ty(Interner));
         self.add_constraints_from_ty(tys.next_back().unwrap(), variance);
         for input in tys {
-            self.add_constraints_from_ty(input, &contra);
+            self.add_constraints_from_ty(input, contra);
         }
     }
 
-    fn add_constraints_from_sig2(&mut self, sig: &[Ty], variance: &VarianceTerm) {
+    fn add_constraints_from_sig2(&mut self, sig: &[Ty], variance: Variance) {
         let contra = self.contravariant(variance);
         let mut tys = sig.iter();
         self.add_constraints_from_ty(tys.next_back().unwrap(), variance);
         for input in tys {
-            self.add_constraints_from_ty(input, &contra);
+            self.add_constraints_from_ty(input, contra);
         }
     }
 
     /// Adds constraints appropriate for a region appearing in a
     /// context with ambient variance `variance`
-    fn add_constraints_from_region(&mut self, region: &Lifetime, variance: &VarianceTerm) {
+    fn add_constraints_from_region(&mut self, region: &Lifetime, variance: Variance) {
         match region.data(Interner) {
             // FIXME: chalk has no params?
             LifetimeData::Placeholder(index) => {
@@ -532,11 +501,11 @@ impl Context<'_> {
 
     /// Adds constraints appropriate for a mutability-type pair
     /// appearing in a context with ambient variance `variance`
-    fn add_constraints_from_mt(&mut self, ty: &Ty, mt: Mutability, variance: &VarianceTerm) {
+    fn add_constraints_from_mt(&mut self, ty: &Ty, mt: Mutability, variance: Variance) {
         match mt {
             Mutability::Mut => {
                 let invar = self.invariant(variance);
-                self.add_constraints_from_ty(ty, &invar);
+                self.add_constraints_from_ty(ty, invar);
             }
 
             Mutability::Not => {
@@ -559,13 +528,12 @@ impl Context<'_> {
             changed = false;
 
             for constraint in &self.constraints {
-                let Constraint { inferred, variance: term } = constraint;
+                let &Constraint { inferred, variance } = constraint;
                 let InferredIndex(inferred) = inferred;
-                let variance = Self::evaluate(term);
-                let old_value = solutions[*inferred];
+                let old_value = solutions[inferred];
                 let new_value = variance.glb(old_value);
                 if old_value != new_value {
-                    solutions[*inferred] = new_value;
+                    solutions[inferred] = new_value;
                     changed = true;
                 }
             }
@@ -589,17 +557,6 @@ impl Context<'_> {
         }
 
         solutions
-    }
-
-    fn evaluate(term: &VarianceTerm) -> Variance {
-        match term {
-            VarianceTerm::ConstantTerm(v) => *v,
-            VarianceTerm::TransformTerm(t1, t2) => {
-                let v1 = Self::evaluate(t1);
-                let v2 = Self::evaluate(t2);
-                v1.xform(v2)
-            }
-        }
     }
 }
 
