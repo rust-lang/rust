@@ -101,7 +101,6 @@ pub use crate::{
         PathResolution, Semantics, SemanticsImpl, SemanticsScope, TypeInfo, VisibleTraits,
     },
 };
-pub use hir_ty::method_resolution::TyFingerprint;
 
 // Be careful with these re-exports.
 //
@@ -151,8 +150,9 @@ pub use {
         display::{ClosureStyle, HirDisplay, HirDisplayError, HirWrite},
         dyn_compatibility::{DynCompatibilityViolation, MethodViolationCode},
         layout::LayoutError,
+        method_resolution::TyFingerprint,
         mir::{MirEvalError, MirLowerError},
-        CastError, FnAbi, PointerCast, Safety,
+        CastError, FnAbi, PointerCast, Safety, Variance,
     },
     // FIXME: Properly encapsulate mir
     hir_ty::{mir, Interner as ChalkTyInterner},
@@ -3956,6 +3956,22 @@ impl GenericParam {
             GenericParam::ConstParam(it) => it.id.parent().into(),
             GenericParam::LifetimeParam(it) => it.id.parent.into(),
         }
+    }
+
+    pub fn variance(self, db: &dyn HirDatabase) -> Option<Variance> {
+        let parent = match self {
+            GenericParam::TypeParam(it) => it.id.parent(),
+            // const parameters are always invariant
+            GenericParam::ConstParam(_) => return None,
+            GenericParam::LifetimeParam(it) => it.id.parent,
+        };
+        let generics = hir_ty::generics::generics(db.upcast(), parent);
+        let index = match self {
+            GenericParam::TypeParam(it) => generics.type_or_const_param_idx(it.id.into())?,
+            GenericParam::ConstParam(_) => return None,
+            GenericParam::LifetimeParam(it) => generics.lifetime_idx(it.id)?,
+        };
+        db.variances_of(parent)?.get(index).copied()
     }
 }
 

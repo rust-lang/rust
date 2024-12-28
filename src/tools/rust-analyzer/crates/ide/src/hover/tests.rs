@@ -4721,7 +4721,7 @@ fn hover_type_param_sized_bounds() {
 //- minicore: sized
 trait Trait {}
 struct Foo<T>(T);
-impl<T: Trait> Foo<T$0> {}
+impl<T$0: Trait> Foo<T> {}
 "#,
         expect![[r#"
             *T*
@@ -4736,7 +4736,7 @@ impl<T: Trait> Foo<T$0> {}
 //- minicore: sized
 trait Trait {}
 struct Foo<T>(T);
-impl<T: Trait + ?Sized> Foo<T$0> {}
+impl<T$0: Trait + ?Sized> Foo<T> {}
 "#,
         expect![[r#"
             *T*
@@ -4764,6 +4764,10 @@ fn foo<T$0>() {}
                 ```rust
                 T
                 ```
+
+                ---
+
+                invariant
             "#]],
         );
     }
@@ -4781,6 +4785,10 @@ fn foo<T$0: Sized>() {}
                 ```rust
                 T
                 ```
+
+                ---
+
+                invariant
             "#]],
         );
     }
@@ -4798,6 +4806,10 @@ fn foo<T$0: ?Sized>() {}
                 ```rust
                 T: ?Sized
                 ```
+
+                ---
+
+                invariant
             "#]],
         );
     }
@@ -4816,6 +4828,10 @@ fn foo<T$0: Trait>() {}
                 ```rust
                 T: Trait
                 ```
+
+                ---
+
+                invariant
             "#]],
         );
     }
@@ -4834,6 +4850,10 @@ fn foo<T$0: Trait + Sized>() {}
                 ```rust
                 T: Trait
                 ```
+
+                ---
+
+                invariant
             "#]],
         );
     }
@@ -4852,6 +4872,10 @@ fn foo<T$0: Trait + ?Sized>() {}
                 ```rust
                 T: Trait + ?Sized
                 ```
+
+                ---
+
+                invariant
             "#]],
         );
     }
@@ -4869,6 +4893,10 @@ fn foo<T$0: ?Sized + Sized + Sized>() {}
                 ```rust
                 T
                 ```
+
+                ---
+
+                invariant
             "#]],
         );
     }
@@ -4887,6 +4915,10 @@ fn foo<T$0: Sized + ?Sized + Sized + Trait>() {}
                 ```rust
                 T: Trait
                 ```
+
+                ---
+
+                invariant
             "#]],
         );
     }

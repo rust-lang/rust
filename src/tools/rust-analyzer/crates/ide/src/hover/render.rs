@@ -594,11 +594,20 @@ pub(super) fn definition(
         _ => None,
     };
 
+    let variance_info = || match def {
+        Definition::GenericParam(it) => it.variance(db).as_ref().map(ToString::to_string),
+        _ => None,
+    };
+
     let mut extra = String::new();
     if hovered_definition {
         if let Some(notable_traits) = render_notable_trait(db, notable_traits, edition) {
             extra.push_str("\n___\n");
             extra.push_str(&notable_traits);
+        }
+        if let Some(variance_info) = variance_info() {
+            extra.push_str("\n___\n");
+            extra.push_str(&variance_info);
         }
         if let Some(layout_info) = layout_info() {
             extra.push_str("\n___\n");
