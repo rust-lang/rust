@@ -43,7 +43,7 @@ rustdocs][rustdocs].
 To build a local static HTML site, install [`mdbook`](https://github.com/rust-lang/mdBook) with:
 
 ```
-> cargo install mdbook mdbook-linkcheck mdbook-toc mdbook-mermaid
+> cargo install mdbook mdbook-linkcheck2 mdbook-toc mdbook-mermaid
 ```
 
 and execute the following command in the root of the repository:
@@ -56,7 +56,7 @@ The build files are found in the `book/html` directory.
 
 ### Link Validations
 
-We use `mdbook-linkcheck` to validate URLs included in our documentation.
+We use `mdbook-linkcheck2` to validate URLs included in our documentation.
 `linkcheck` will be run automatically when you build with the instructions in the section above.
 
 ### Table of Contents
