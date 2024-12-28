@@ -464,6 +464,12 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             err_span,
         );
     }
+
+    fn crate_inject_span(&self) -> Option<Span> {
+        self.tcx.hir_crate_items(()).definitions().next().and_then(|id| {
+            self.tcx.crate_level_attribute_injection_span(self.tcx.local_def_id_to_hir_id(id))
+        })
+    }
 }
 
 impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
@@ -819,17 +825,11 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             feature,
                             ..
                         }) => {
-                            let suggestion =
-                                tcx.hir_crate_items(()).definitions().next().and_then(|id| {
-                                    tcx.crate_level_attribute_injection_span(
-                                        tcx.local_def_id_to_hir_id(id),
-                                    )
-                                });
                             self.check_op(ops::IntrinsicUnstable {
                                 name: intrinsic.name,
                                 feature,
                                 const_stable_indirect: is_const_stable,
-                                suggestion,
+                                suggestion: self.crate_inject_span(),
                             });
                         }
                         Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }) => {
@@ -923,18 +923,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         // Even if the feature is enabled, we still need check_op to double-check
                         // this if the callee is not safe to expose on stable.
                         if !feature_enabled || !callee_safe_to_expose_on_stable {
-                            let suggestion_span =
-                                tcx.hir_crate_items(()).definitions().next().and_then(|id| {
-                                    tcx.crate_level_attribute_injection_span(
-                                        tcx.local_def_id_to_hir_id(id),
-                                    )
-                                });
                             self.check_op(ops::FnCallUnstable {
                                 def_id: callee,
                                 feature,
                                 feature_enabled,
                                 safe_to_expose_on_stable: callee_safe_to_expose_on_stable,
-                                suggestion_span,
+                                suggestion_span: self.crate_inject_span(),
                             });
                         }
                     }
