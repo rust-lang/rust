@@ -805,8 +805,8 @@ fn is_inherent_impl_coherent(
         | TyKind::Scalar(_) => def_map.is_rustc_coherence_is_core(),
 
         &TyKind::Adt(AdtId(adt), _) => adt.module(db.upcast()).krate() == def_map.krate(),
-        TyKind::Dyn(it) => it.principal().map_or(false, |trait_ref| {
-            from_chalk_trait_id(trait_ref.trait_id).module(db.upcast()).krate() == def_map.krate()
+        TyKind::Dyn(it) => it.principal_id().map_or(false, |trait_id| {
+            from_chalk_trait_id(trait_id).module(db.upcast()).krate() == def_map.krate()
         }),
 
         _ => true,
@@ -834,9 +834,8 @@ fn is_inherent_impl_coherent(
                     .contains(StructFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPL),
                 hir_def::AdtId::EnumId(it) => db.enum_data(it).rustc_has_incoherent_inherent_impls,
             },
-            TyKind::Dyn(it) => it.principal().map_or(false, |trait_ref| {
-                db.trait_data(from_chalk_trait_id(trait_ref.trait_id))
-                    .rustc_has_incoherent_inherent_impls
+            TyKind::Dyn(it) => it.principal_id().map_or(false, |trait_id| {
+                db.trait_data(from_chalk_trait_id(trait_id)).rustc_has_incoherent_inherent_impls
             }),
 
             _ => false,
@@ -896,8 +895,8 @@ pub fn check_orphan_rules(db: &dyn HirDatabase, impl_: ImplId) -> bool {
         match unwrap_fundamental(ty).kind(Interner) {
             &TyKind::Adt(AdtId(id), _) => is_local(id.module(db.upcast()).krate()),
             TyKind::Error => true,
-            TyKind::Dyn(it) => it.principal().map_or(false, |trait_ref| {
-                is_local(from_chalk_trait_id(trait_ref.trait_id).module(db.upcast()).krate())
+            TyKind::Dyn(it) => it.principal_id().map_or(false, |trait_id| {
+                is_local(from_chalk_trait_id(trait_id).module(db.upcast()).krate())
             }),
             _ => false,
         }
