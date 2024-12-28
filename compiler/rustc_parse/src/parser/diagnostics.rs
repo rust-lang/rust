@@ -1336,7 +1336,7 @@ impl<'a> Parser<'a> {
     ) -> bool {
         if let ExprKind::Binary(op, l1, r1) = &inner_op.kind {
             if let ExprKind::Field(_, ident) = l1.kind
-                && ident.as_str().parse::<i32>().is_err()
+                && !ident.is_numeric()
                 && !matches!(r1.kind, ExprKind::Lit(_))
             {
                 // The parser has encountered `foo.bar<baz`, the likelihood of the turbofish
