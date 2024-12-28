@@ -28,8 +28,6 @@ pub(super) fn provide_derive_macro_expansion<'tcx>(
         let strategy = crate::proc_macro::exec_strategy(ecx);
         let server = crate::proc_macro_server::Rustc::new(ecx);
         let res = match client.run(&strategy, server, input.clone(), proc_macro_backtrace) {
-            // FIXME(pr-time): without flattened some (weird) tests fail, but no idea if it's correct/enough
-            // -> removed the flattened for now, gonna see what CI says.
             Ok(stream) => Ok(tcx.arena.alloc(stream) as &TokenStream),
             Err(e) => {
                 ecx.dcx().emit_err({
