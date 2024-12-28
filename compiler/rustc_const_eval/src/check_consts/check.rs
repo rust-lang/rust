@@ -819,10 +819,17 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             feature,
                             ..
                         }) => {
+                            let suggestion =
+                                tcx.hir_crate_items(()).definitions().next().and_then(|id| {
+                                    tcx.crate_level_attribute_injection_span(
+                                        tcx.local_def_id_to_hir_id(id),
+                                    )
+                                });
                             self.check_op(ops::IntrinsicUnstable {
                                 name: intrinsic.name,
                                 feature,
                                 const_stable_indirect: is_const_stable,
+                                suggestion,
                             });
                         }
                         Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }) => {

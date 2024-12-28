@@ -447,6 +447,7 @@ pub(crate) struct IntrinsicUnstable {
     pub name: Symbol,
     pub feature: Symbol,
     pub const_stable_indirect: bool,
+    pub suggestion: Option<Span>,
 }
 
 impl<'tcx> NonConstOp<'tcx> for IntrinsicUnstable {
@@ -466,6 +467,8 @@ impl<'tcx> NonConstOp<'tcx> for IntrinsicUnstable {
             span,
             name: self.name,
             feature: self.feature,
+            suggestion: self.suggestion,
+            help: self.suggestion.is_none(),
         })
     }
 }
