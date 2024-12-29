@@ -50,8 +50,14 @@ impl<T: ?Sized> FileDescriptionRef<T> {
 }
 
 /// Holds a weak reference to the actual file description.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct WeakFileDescriptionRef<T: ?Sized>(Weak<FdIdWith<T>>);
+
+impl<T: ?Sized> Clone for WeakFileDescriptionRef<T> {
+    fn clone(&self) -> Self {
+        WeakFileDescriptionRef(self.0.clone())
+    }
+}
 
 impl<T: ?Sized> FileDescriptionRef<T> {
     pub fn downgrade(this: &Self) -> WeakFileDescriptionRef<T> {
