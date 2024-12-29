@@ -6,6 +6,10 @@ on:
   pull_request:
   merge_group:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   CARGO_INCREMENTAL: 0
   CARGO_NET_RETRY: 10
@@ -103,7 +107,7 @@ jobs:
       - name: Run analysis-stats on the rust standard libraries
         if: matrix.os == 'ubuntu-latest'
         env:
-            RUSTC_BOOTSTRAP: 1
+          RUSTC_BOOTSTRAP: 1
         run: target/${{ matrix.target }}/debug/rust-analyzer analysis-stats --with-deps --no-sysroot --no-test $(rustc --print sysroot)/lib/rustlib/src/rust/library/
 
       - name: clippy
