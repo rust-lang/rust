@@ -268,7 +268,7 @@ fn clean_poly_trait_ref_with_constraints<'tcx>(
     )
 }
 
-fn clean_lifetime(lifetime: &hir::Lifetime, cx: &mut DocContext<'_>) -> Lifetime {
+fn clean_lifetime(lifetime: &hir::Lifetime, cx: &DocContext<'_>) -> Lifetime {
     if let Some(
         rbv::ResolvedArg::EarlyBound(did)
         | rbv::ResolvedArg::LateBound(_, _, did)
@@ -362,9 +362,9 @@ pub(crate) fn clean_predicate<'tcx>(
     let bound_predicate = predicate.kind();
     match bound_predicate.skip_binder() {
         ty::ClauseKind::Trait(pred) => clean_poly_trait_predicate(bound_predicate.rebind(pred), cx),
-        ty::ClauseKind::RegionOutlives(pred) => clean_region_outlives_predicate(pred),
+        ty::ClauseKind::RegionOutlives(pred) => Some(clean_region_outlives_predicate(pred)),
         ty::ClauseKind::TypeOutlives(pred) => {
-            clean_type_outlives_predicate(bound_predicate.rebind(pred), cx)
+            Some(clean_type_outlives_predicate(bound_predicate.rebind(pred), cx))
         }
         ty::ClauseKind::Projection(pred) => {
             Some(clean_projection_predicate(bound_predicate.rebind(pred), cx))
@@ -396,32 +396,30 @@ fn clean_poly_trait_predicate<'tcx>(
     })
 }
 
-fn clean_region_outlives_predicate(
-    pred: ty::RegionOutlivesPredicate<'_>,
-) -> Option<WherePredicate> {
+fn clean_region_outlives_predicate(pred: ty::RegionOutlivesPredicate<'_>) -> WherePredicate {
     let ty::OutlivesPredicate(a, b) = pred;
 
-    Some(WherePredicate::RegionPredicate {
+    WherePredicate::RegionPredicate {
         lifetime: clean_middle_region(a).expect("failed to clean lifetime"),
         bounds: vec![GenericBound::Outlives(
             clean_middle_region(b).expect("failed to clean bounds"),
         )],
-    })
+    }
 }
 
 fn clean_type_outlives_predicate<'tcx>(
     pred: ty::Binder<'tcx, ty::TypeOutlivesPredicate<'tcx>>,
     cx: &mut DocContext<'tcx>,
-) -> Option<WherePredicate> {
+) -> WherePredicate {
     let ty::OutlivesPredicate(ty, lt) = pred.skip_binder();
 
-    Some(WherePredicate::BoundPredicate {
+    WherePredicate::BoundPredicate {
         ty: clean_middle_ty(pred.rebind(ty), cx, None, None),
         bounds: vec![GenericBound::Outlives(
             clean_middle_region(lt).expect("failed to clean lifetimes"),
         )],
         bound_params: Vec::new(),
-    })
+    }
 }
 
 fn clean_middle_term<'tcx>(
@@ -1860,7 +1858,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
 
 /// Returns `None` if the type could not be normalized
 fn normalize<'tcx>(
-    cx: &mut DocContext<'tcx>,
+    cx: &DocContext<'tcx>,
     ty: ty::Binder<'tcx, Ty<'tcx>>,
 ) -> Option<ty::Binder<'tcx, Ty<'tcx>>> {
     // HACK: low-churn fix for #79459 while we wait for a trait normalization fix
