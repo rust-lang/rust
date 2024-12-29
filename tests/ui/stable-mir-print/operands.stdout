@@ -250,6 +250,13 @@ fn closures::{closure#0}(_1: {closure@$DIR/operands.rs:47:5: 47:19}, _2: bool) -
         return;
     }
 }
+fn Ctors::Unit() -> Ctors {
+    let mut _0: Ctors;
+    bb0: {
+        _0 = Ctors::Unit;
+        return;
+    }
+}
 fn Ctors::TupLike(_1: bool) -> Ctors {
     let mut _0: Ctors;
     bb0: {

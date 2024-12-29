@@ -27,7 +27,7 @@ const CRATE_NAME: &str = "input";
 /// This function uses the Stable MIR APIs to get information about the test crate.
 fn test_item_kind() -> ControlFlow<()> {
     let items = stable_mir::all_local_items();
-    assert_eq!(items.len(), 4);
+    assert_eq!(items.len(), 5);
     // Constructor item.
     for item in items {
         let expected_kind = match item.name().as_str() {

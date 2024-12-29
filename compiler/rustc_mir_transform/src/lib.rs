@@ -21,7 +21,7 @@ use rustc_const_eval::util;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::steal::Steal;
 use rustc_hir as hir;
-use rustc_hir::def::{CtorKind, DefKind};
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::IndexVec;
 use rustc_middle::mir::{
@@ -324,7 +324,7 @@ fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
     for item in tcx.hir_crate_items(()).free_items() {
         if let DefKind::Struct | DefKind::Enum = tcx.def_kind(item.owner_id) {
             for variant in tcx.adt_def(item.owner_id).variants() {
-                if let Some((CtorKind::Fn, ctor_def_id)) = variant.ctor {
+                if let Some((_, ctor_def_id)) = variant.ctor {
                     set.insert(ctor_def_id.expect_local());
                 }
             }
