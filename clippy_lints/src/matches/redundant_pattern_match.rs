@@ -1,6 +1,6 @@
 use super::REDUNDANT_PATTERN_MATCHING;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::source::{snippet, walk_span_to_context};
+use clippy_utils::source::walk_span_to_context;
 use clippy_utils::sugg::{Sugg, make_unop};
 use clippy_utils::ty::{is_type_diagnostic_item, needs_ordered_drop};
 use clippy_utils::visitors::{any_temporaries_need_ordered_drop, for_each_expr_without_closures};
@@ -274,7 +274,9 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
                 ExprKind::AddrOf(_, _, borrowed) => borrowed,
                 _ => op,
             };
-            let mut sugg = format!("{}.{good_method}", snippet(cx, result_expr.span, "_"));
+            let mut app = Applicability::MachineApplicable;
+            let receiver_sugg = Sugg::hir_with_applicability(cx, result_expr, "_", &mut app).maybe_par();
+            let mut sugg = format!("{receiver_sugg}.{good_method}");
 
             if let Some(guard) = maybe_guard {
                 // wow, the HIR for match guards in `PAT if let PAT = expr && expr => ...` is annoying!
@@ -307,7 +309,7 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
                 format!("redundant pattern matching, consider using `{good_method}`"),
                 "try",
                 sugg,
-                Applicability::MachineApplicable,
+                app,
             );
         }
     }
