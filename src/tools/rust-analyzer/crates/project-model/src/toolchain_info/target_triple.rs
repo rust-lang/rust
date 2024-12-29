@@ -32,7 +32,7 @@ fn rustc_discover_host_triple(
     extra_env: &FxHashMap<String, String>,
     sysroot: &Sysroot,
 ) -> anyhow::Result<String> {
-    let mut cmd = sysroot.tool(Tool::Rustc);
+    let mut cmd = sysroot.tool(Tool::Rustc, &std::env::current_dir()?);
     cmd.envs(extra_env);
     cmd.arg("-vV");
     let stdout = utf8_stdout(&mut cmd)
@@ -52,7 +52,7 @@ fn cargo_config_build_target(
     extra_env: &FxHashMap<String, String>,
     sysroot: &Sysroot,
 ) -> Option<Vec<String>> {
-    let mut cmd = sysroot.tool(Tool::Cargo);
+    let mut cmd = sysroot.tool(Tool::Cargo, cargo_toml.parent());
     cmd.envs(extra_env);
     cmd.current_dir(cargo_toml.parent()).env("RUSTC_BOOTSTRAP", "1");
     cmd.args(["-Z", "unstable-options", "config", "get", "build.target"]);

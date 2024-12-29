@@ -21,9 +21,9 @@ pub fn get(
     };
     let sysroot = match config {
         QueryConfig::Cargo(sysroot, cargo_toml) => {
-            let mut cmd = sysroot.tool(Tool::Cargo);
+            let mut cmd = sysroot.tool(Tool::Cargo, cargo_toml.parent());
             cmd.envs(extra_env);
-            cmd.current_dir(cargo_toml.parent()).env("RUSTC_BOOTSTRAP", "1");
+            cmd.env("RUSTC_BOOTSTRAP", "1");
             cmd.args(["rustc", "-Z", "unstable-options"]).args(RUSTC_ARGS).args([
                 "--",
                 "-Z",
@@ -43,7 +43,7 @@ pub fn get(
         QueryConfig::Rustc(sysroot) => sysroot,
     };
 
-    let mut cmd = Sysroot::tool(sysroot, Tool::Rustc);
+    let mut cmd = Sysroot::tool(sysroot, Tool::Rustc, &std::env::current_dir()?);
     cmd.envs(extra_env)
         .env("RUSTC_BOOTSTRAP", "1")
         .args(["-Z", "unstable-options"])

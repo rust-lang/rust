@@ -744,7 +744,8 @@ impl GlobalState {
                             DiscoverProjectParam::Path(it) => DiscoverArgument::Path(it),
                         };
 
-                        let handle = discover.spawn(arg).unwrap();
+                        let handle =
+                            discover.spawn(arg, &std::env::current_dir().unwrap()).unwrap();
                         self.discover_handle = Some(handle);
                     }
                 }

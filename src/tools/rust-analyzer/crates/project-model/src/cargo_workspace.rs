@@ -294,7 +294,7 @@ impl CargoWorkspace {
         no_deps: bool,
         progress: &dyn Fn(String),
     ) -> anyhow::Result<(cargo_metadata::Metadata, Option<anyhow::Error>)> {
-        let cargo = sysroot.tool(Tool::Cargo);
+        let cargo = sysroot.tool(Tool::Cargo, current_dir);
         let mut meta = MetadataCommand::new();
         meta.cargo_path(cargo.get_program());
         cargo.get_envs().for_each(|(var, val)| _ = meta.env(var, val.unwrap_or_default()));

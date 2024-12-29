@@ -45,9 +45,9 @@ fn rustc_print_cfg(
     const RUSTC_ARGS: [&str; 3] = ["--print", "cfg", "-O"];
     let sysroot = match config {
         QueryConfig::Cargo(sysroot, cargo_toml) => {
-            let mut cmd = sysroot.tool(Tool::Cargo);
+            let mut cmd = sysroot.tool(Tool::Cargo, cargo_toml.parent());
             cmd.envs(extra_env);
-            cmd.current_dir(cargo_toml.parent()).env("RUSTC_BOOTSTRAP", "1");
+            cmd.env("RUSTC_BOOTSTRAP", "1");
             cmd.args(["rustc", "-Z", "unstable-options"]).args(RUSTC_ARGS);
             if let Some(target) = target {
                 cmd.args(["--target", target]);
@@ -67,7 +67,7 @@ fn rustc_print_cfg(
         QueryConfig::Rustc(sysroot) => sysroot,
     };
 
-    let mut cmd = sysroot.tool(Tool::Rustc);
+    let mut cmd = sysroot.tool(Tool::Rustc, &std::env::current_dir()?);
     cmd.envs(extra_env);
     cmd.args(RUSTC_ARGS);
     if let Some(target) = target {

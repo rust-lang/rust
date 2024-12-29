@@ -7,6 +7,8 @@
 //! a specific rustup toolchain: this allows testing against older ABIs (e.g.
 //! 1.58) and future ABIs (stage1, nightly)
 
+#![allow(clippy::disallowed_methods)]
+
 use std::{
     env,
     path::{Path, PathBuf},

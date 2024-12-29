@@ -176,9 +176,9 @@ fn get_toolchain_version(
     prefix: &str,
 ) -> Result<Option<Version>, anyhow::Error> {
     let cargo_version = utf8_stdout(&mut {
-        let mut cmd = Sysroot::tool(sysroot, tool);
+        let mut cmd = Sysroot::tool(sysroot, tool, current_dir);
         cmd.envs(extra_env);
-        cmd.arg("--version").current_dir(current_dir);
+        cmd.arg("--version");
         cmd
     })
     .with_context(|| format!("Failed to query rust toolchain version at {current_dir}, is your toolchain setup correctly?"))?;
