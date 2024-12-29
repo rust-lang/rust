@@ -96,8 +96,8 @@ impl InferenceContext<'_> {
                     .map(|b| b.into_value_and_skipped_binders().0);
                 self.deduce_closure_kind_from_predicate_clauses(clauses)
             }
-            TyKind::Dyn(dyn_ty) => dyn_ty.principal().and_then(|trait_ref| {
-                self.fn_trait_kind_from_trait_id(from_chalk_trait_id(trait_ref.trait_id))
+            TyKind::Dyn(dyn_ty) => dyn_ty.principal_id().and_then(|trait_id| {
+                self.fn_trait_kind_from_trait_id(from_chalk_trait_id(trait_id))
             }),
             TyKind::InferenceVar(ty, chalk_ir::TyVariableKind::General) => {
                 let clauses = self.clauses_for_self_ty(*ty);

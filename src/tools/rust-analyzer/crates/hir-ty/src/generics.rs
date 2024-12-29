@@ -26,14 +26,14 @@ use triomphe::Arc;
 
 use crate::{db::HirDatabase, lt_to_placeholder_idx, to_placeholder_idx, Interner, Substitution};
 
-pub(crate) fn generics(db: &dyn DefDatabase, def: GenericDefId) -> Generics {
+pub fn generics(db: &dyn DefDatabase, def: GenericDefId) -> Generics {
     let parent_generics = parent_generic_def(db, def).map(|def| Box::new(generics(db, def)));
     let params = db.generic_params(def);
     let has_trait_self_param = params.trait_self_param().is_some();
     Generics { def, params, parent_generics, has_trait_self_param }
 }
 #[derive(Clone, Debug)]
-pub(crate) struct Generics {
+pub struct Generics {
     def: GenericDefId,
     params: Arc<GenericParams>,
     parent_generics: Option<Box<Generics>>,
@@ -153,7 +153,7 @@ impl Generics {
         (parent_len, self_param, type_params, const_params, impl_trait_params, lifetime_params)
     }
 
-    pub(crate) fn type_or_const_param_idx(&self, param: TypeOrConstParamId) -> Option<usize> {
+    pub fn type_or_const_param_idx(&self, param: TypeOrConstParamId) -> Option<usize> {
         self.find_type_or_const_param(param)
     }
 
@@ -174,7 +174,7 @@ impl Generics {
         }
     }
 
-    pub(crate) fn lifetime_idx(&self, lifetime: LifetimeParamId) -> Option<usize> {
+    pub fn lifetime_idx(&self, lifetime: LifetimeParamId) -> Option<usize> {
         self.find_lifetime(lifetime)
     }
 

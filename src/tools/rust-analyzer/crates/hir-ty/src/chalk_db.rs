@@ -950,11 +950,18 @@ pub(crate) fn fn_def_datum_query(db: &dyn HirDatabase, fn_def_id: FnDefId) -> Ar
 
 pub(crate) fn fn_def_variance_query(db: &dyn HirDatabase, fn_def_id: FnDefId) -> Variances {
     let callable_def: CallableDefId = from_chalk(db, fn_def_id);
-    let generic_params =
-        generics(db.upcast(), GenericDefId::from_callable(db.upcast(), callable_def));
     Variances::from_iter(
         Interner,
-        std::iter::repeat(chalk_ir::Variance::Invariant).take(generic_params.len()),
+        db.variances_of(GenericDefId::from_callable(db.upcast(), callable_def))
+            .as_deref()
+            .unwrap_or_default()
+            .iter()
+            .map(|v| match v {
+                crate::variance::Variance::Covariant => chalk_ir::Variance::Covariant,
+                crate::variance::Variance::Invariant => chalk_ir::Variance::Invariant,
+                crate::variance::Variance::Contravariant => chalk_ir::Variance::Contravariant,
+                crate::variance::Variance::Bivariant => chalk_ir::Variance::Invariant,
+            }),
     )
 }
 
@@ -962,10 +969,14 @@ pub(crate) fn adt_variance_query(
     db: &dyn HirDatabase,
     chalk_ir::AdtId(adt_id): AdtId,
 ) -> Variances {
-    let generic_params = generics(db.upcast(), adt_id.into());
     Variances::from_iter(
         Interner,
-        std::iter::repeat(chalk_ir::Variance::Invariant).take(generic_params.len()),
+        db.variances_of(adt_id.into()).as_deref().unwrap_or_default().iter().map(|v| match v {
+            crate::variance::Variance::Covariant => chalk_ir::Variance::Covariant,
+            crate::variance::Variance::Invariant => chalk_ir::Variance::Invariant,
+            crate::variance::Variance::Contravariant => chalk_ir::Variance::Contravariant,
+            crate::variance::Variance::Bivariant => chalk_ir::Variance::Invariant,
+        }),
     )
 }
 
