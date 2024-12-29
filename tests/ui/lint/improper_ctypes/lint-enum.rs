@@ -55,7 +55,6 @@ enum I128 {
     B,
     C,
 }
-
 #[repr(transparent)]
 struct TransparentStruct<T>(T, std::marker::PhantomData<Z>);
 
