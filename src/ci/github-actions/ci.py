@@ -27,13 +27,18 @@ JOBS_YAML_PATH = Path(__file__).absolute().parent / "jobs.yml"
 Job = Dict[str, Any]
 
 
-def name_jobs(jobs: List[Dict], prefix: str) -> List[Job]:
+def add_job_properties(jobs: List[Dict], prefix: str) -> List[Job]:
     """
-    Add a `name` attribute to each job, based on its image and the given `prefix`.
+    Modify the `name` attribute of each job, based on its base name and the given `prefix`.
+    Add an `image` attribute to each job, base don its image.
     """
+    modified_jobs = []
     for job in jobs:
-        job["name"] = f"{prefix} - {job['image']}"
-    return jobs
+        job = dict(job)
+        job["image"] = get_job_image(job)
+        job["name"] = f"{prefix} - {job['name']}"
+        modified_jobs.append(job)
+    return modified_jobs
 
 
 def add_base_env(jobs: List[Job], environment: Dict[str, str]) -> List[Job]:
@@ -118,7 +123,7 @@ def find_run_type(ctx: GitHubCtx) -> Optional[WorkflowRunType]:
 
 def calculate_jobs(run_type: WorkflowRunType, job_data: Dict[str, Any]) -> List[Job]:
     if isinstance(run_type, PRRunType):
-        return add_base_env(name_jobs(job_data["pr"], "PR"), job_data["envs"]["pr"])
+        return add_base_env(add_job_properties(job_data["pr"], "PR"), job_data["envs"]["pr"])
     elif isinstance(run_type, TryRunType):
         jobs = job_data["try"]
         custom_jobs = run_type.custom_jobs
@@ -132,7 +137,7 @@ def calculate_jobs(run_type: WorkflowRunType, job_data: Dict[str, Any]) -> List[
             jobs = []
             unknown_jobs = []
             for custom_job in custom_jobs:
-                job = [j for j in job_data["auto"] if j["image"] == custom_job]
+                job = [j for j in job_data["auto"] if j["name"] == custom_job]
                 if not job:
                     unknown_jobs.append(custom_job)
                     continue
@@ -142,10 +147,10 @@ def calculate_jobs(run_type: WorkflowRunType, job_data: Dict[str, Any]) -> List[
                     f"Custom job(s) `{unknown_jobs}` not found in auto jobs"
                 )
 
-        return add_base_env(name_jobs(jobs, "try"), job_data["envs"]["try"])
+        return add_base_env(add_job_properties(jobs, "try"), job_data["envs"]["try"])
     elif isinstance(run_type, AutoRunType):
         return add_base_env(
-            name_jobs(job_data["auto"], "auto"), job_data["envs"]["auto"]
+            add_job_properties(job_data["auto"], "auto"), job_data["envs"]["auto"]
         )
 
     return []
@@ -183,27 +188,34 @@ def format_run_type(run_type: WorkflowRunType) -> str:
         raise AssertionError()
 
 
+def get_job_image(job) -> str:
+    """
+    By default, the Docker image of a job is based on its name.
+    However, it can be overridden by its IMAGE environment variable.
+    """
+    return job.get("env", {}).get("IMAGE", job["name"])
+
+
 def run_workflow_locally(job_data: Dict[str, Any], job_name: str):
     DOCKER_DIR = Path(__file__).absolute().parent.parent / "docker"
 
     jobs = list(job_data["auto"])
     jobs.extend(job_data["pr"])
 
-    jobs = [job for job in jobs if job.get("image") == job_name]
+    jobs = [job for job in jobs if job.get("name") == job_name]
     if len(jobs) == 0:
         raise Exception(f"Job `{job_name}` not found")
     job = jobs[0]
     if "ubuntu" not in job["os"]:
         raise Exception("Only Linux jobs can be executed locally")
 
-    image = job.get("env", {}).get("IMAGE", job["image"])
     custom_env = {}
     custom_env["DEPLOY"] = "1"
     custom_env.update({k: str(v) for (k, v) in job.get("env", {}).items()})
 
     args = [
         str(DOCKER_DIR / "run.sh"),
-        image
+        get_job_image(job)
     ]
     env_formatted = [f"{k}={v}" for (k, v) in sorted(custom_env.items())]
     print(f"Executing `{' '.join(env_formatted)} {' '.join(args)}`")
