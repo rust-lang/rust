@@ -62,22 +62,26 @@ esac
 cargo check --no-default-features
 cargo check --features "force-soft-floats"
 
+# Always enable `unstable-float` since it expands available API but does not
+# change any implementations.
+extra_flags="$extra_flags --features unstable-float"
+
 if [ "${BUILD_ONLY:-}" = "1" ]; then
     cmd="cargo build --target $target --package libm"
     $cmd
-    $cmd --features "unstable-intrinsics"
+    $cmd --features unstable-intrinsics
 
     echo "can't run tests on $target; skipping"
 else
     cmd="cargo test --all --target $target $extra_flags"
 
-    # stable by default
+    # Test without intrinsics
     $cmd
     $cmd --release
 
-    # unstable with a feature
-    $cmd --features "unstable-intrinsics"
-    $cmd --release --features "unstable-intrinsics"
+    # Test with intrinsic use
+    $cmd --features unstable-intrinsics
+    $cmd --release --features unstable-intrinsics
 
     # Make sure benchmarks have correct results
     $cmd --benches

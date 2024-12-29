@@ -38,6 +38,7 @@ pub trait Float:
     const MAX: Self;
     const MIN: Self;
     const PI: Self;
+    const NEG_PI: Self;
     const FRAC_PI_2: Self;
 
     /// The bitwidth of the float type
@@ -71,23 +72,15 @@ pub trait Float:
     fn to_bits(self) -> Self::Int;
 
     /// Returns `self` transmuted to `Self::SignedInt`
-    fn to_bits_signed(self) -> Self::SignedInt;
+    fn to_bits_signed(self) -> Self::SignedInt {
+        self.to_bits().signed()
+    }
 
     /// Checks if two floats have the same bit representation. *Except* for NaNs! NaN can be
     /// represented in multiple different ways. This method returns `true` if two NaNs are
     /// compared.
     fn eq_repr(self, rhs: Self) -> bool {
-        let is_nan = |x: Self| -> bool {
-            // }
-            // fn is_nan(x: Self) -> bool {
-            // When using mangled-names, the "real" compiler-builtins might not have the
-            // necessary builtin (__unordtf2) to test whether `f128` is NaN.
-            // FIXME(f16_f128): Remove once the nightly toolchain has the __unordtf2 builtin
-            // x is NaN if all the bits of the exponent are set and the significand is non-0
-            x.to_bits() & Self::EXP_MASK == Self::EXP_MASK
-                && x.to_bits() & Self::SIG_MASK != Self::Int::ZERO
-        };
-        if is_nan(self) && is_nan(rhs) { true } else { self.to_bits() == rhs.to_bits() }
+        if self.is_nan() && rhs.is_nan() { true } else { self.to_bits() == rhs.to_bits() }
     }
 
     /// Returns true if the value is NaN.
@@ -158,7 +151,15 @@ pub trait Float:
 pub type IntTy<F> = <F as Float>::Int;
 
 macro_rules! float_impl {
-    ($ty:ident, $ity:ident, $sity:ident, $expty:ident, $bits:expr, $significand_bits:expr) => {
+    (
+        $ty:ident,
+        $ity:ident,
+        $sity:ident,
+        $expty:ident,
+        $bits:expr,
+        $significand_bits:expr,
+        $from_bits:path
+    ) => {
         impl Float for $ty {
             type Int = $ity;
             type SignedInt = $sity;
@@ -173,13 +174,10 @@ macro_rules! float_impl {
             const NAN: Self = Self::NAN;
             const MAX: Self = -Self::MIN;
             // Sign bit set, saturated mantissa, saturated exponent with last bit zeroed
-            // FIXME(msrv): just use `from_bits` when available
-            // SAFETY: POD cast with no preconditions
-            const MIN: Self = unsafe {
-                mem::transmute::<Self::Int, Self>(Self::Int::MAX & !(1 << Self::SIG_BITS))
-            };
+            const MIN: Self = $from_bits(Self::Int::MAX & !(1 << Self::SIG_BITS));
 
             const PI: Self = core::$ty::consts::PI;
+            const NEG_PI: Self = -Self::PI;
             const FRAC_PI_2: Self = core::$ty::consts::FRAC_PI_2;
 
             const BITS: u32 = $bits;
@@ -192,9 +190,6 @@ macro_rules! float_impl {
 
             fn to_bits(self) -> Self::Int {
                 self.to_bits()
-            }
-            fn to_bits_signed(self) -> Self::SignedInt {
-                self.to_bits() as Self::SignedInt
             }
             fn is_nan(self) -> bool {
                 self.is_nan()
@@ -220,8 +215,22 @@ macro_rules! float_impl {
 }
 
 #[cfg(f16_enabled)]
-float_impl!(f16, u16, i16, i8, 16, 10);
-float_impl!(f32, u32, i32, i16, 32, 23);
-float_impl!(f64, u64, i64, i16, 64, 52);
+float_impl!(f16, u16, i16, i8, 16, 10, f16::from_bits);
+float_impl!(f32, u32, i32, i16, 32, 23, f32_from_bits);
+float_impl!(f64, u64, i64, i16, 64, 52, f64_from_bits);
 #[cfg(f128_enabled)]
-float_impl!(f128, u128, i128, i16, 128, 112);
+float_impl!(f128, u128, i128, i16, 128, 112, f128::from_bits);
+
+/* FIXME(msrv): vendor some things that are not const stable at our MSRV */
+
+/// `f32::from_bits`
+pub const fn f32_from_bits(bits: u32) -> f32 {
+    // SAFETY: POD cast with no preconditions
+    unsafe { mem::transmute::<u32, f32>(bits) }
+}
+
+/// `f64::from_bits`
+pub const fn f64_from_bits(bits: u64) -> f64 {
+    // SAFETY: POD cast with no preconditions
+    unsafe { mem::transmute::<u64, f64>(bits) }
+}

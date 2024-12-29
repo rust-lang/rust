@@ -2,6 +2,8 @@
 
 #![allow(dead_code)] // FIXME: remove once this gets used
 
+use super::{f32_from_bits, f64_from_bits};
+
 /// Construct a 32-bit float from hex float representation (C-style)
 pub const fn hf32(s: &str) -> f32 {
     f32_from_bits(parse_any(s, 32, 23) as u32)
@@ -158,16 +160,6 @@ const fn hex_digit(c: u8) -> u8 {
 }
 
 /* FIXME(msrv): vendor some things that are not const stable at our MSRV */
-
-/// `f32::from_bits`
-const fn f32_from_bits(v: u32) -> f32 {
-    unsafe { core::mem::transmute(v) }
-}
-
-/// `f64::from_bits`
-const fn f64_from_bits(v: u64) -> f64 {
-    unsafe { core::mem::transmute(v) }
-}
 
 /// `u128::ilog2`
 const fn u128_ilog2(v: u128) -> u32 {
