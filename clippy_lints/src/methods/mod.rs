@@ -3514,7 +3514,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.73.0"]
     pub FORMAT_COLLECT,
-    perf,
+    pedantic,
     "`format!`ing every element in a collection, then collecting the strings into a new `String`"
 }
 

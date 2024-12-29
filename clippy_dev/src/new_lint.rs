@@ -255,6 +255,7 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
     let name_camel = to_camel_case(lint.name);
     let name_upper = lint_name.to_uppercase();
 
+    #[expect(clippy::format_push_string)]
     result.push_str(&if enable_msrv {
         formatdoc!(
             r"
@@ -279,6 +280,7 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
 
     let _: fmt::Result = writeln!(result, "{}", get_lint_declaration(&name_upper, category));
 
+    #[expect(clippy::format_push_string)]
     result.push_str(&if enable_msrv {
         formatdoc!(
             r"

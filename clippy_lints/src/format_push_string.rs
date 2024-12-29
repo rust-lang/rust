@@ -35,7 +35,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.62.0"]
     pub FORMAT_PUSH_STRING,
-    restriction,
+    pedantic,
     "`format!(..)` appended to existing `String`"
 }
 declare_lint_pass!(FormatPushString => [FORMAT_PUSH_STRING]);
