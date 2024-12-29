@@ -3,9 +3,16 @@
 set -e
 set -o pipefail
 
+LINKCHECK_BINARY=mdbook-linkcheck2
+
 set_github_token() {
   jq '.config.output.linkcheck."http-headers"."github\\.com" = ["Authorization: Bearer $GITHUB_TOKEN"]'
 }
+
+if [ ! -z "$SKIP_LINKCHECK" ] ; then
+  echo "Skipping link check."
+  exit 0
+fi
 
 # https://docs.github.com/en/actions/reference/environment-variables
 if [ "$GITHUB_EVENT_NAME" = "schedule" ] ; then # running in scheduled job
@@ -32,10 +39,10 @@ else # running locally
   echo "Checking files changed in $COMMIT_RANGE: $CHANGED_FILES"
 fi
 
-echo "exec mdbook-linkcheck2 $FLAGS"
+echo "exec $LINKCHECK_BINARY $FLAGS"
 if [ "$USE_TOKEN" = 1 ]; then
   config=$(set_github_token)
-  exec mdbook-linkcheck2 $FLAGS <<<"$config"
+  exec $LINKCHECK_BINARY $FLAGS <<<"$config"
 else
-  exec mdbook-linkcheck2 $FLAGS
+  exec $LINKCHECK_BINARY $FLAGS
 fi
