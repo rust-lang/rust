@@ -293,7 +293,7 @@ impl Resolver {
                         },
                         None,
                     ),
-                    ResolvePathResultPrefixInfo::None,
+                    ResolvePathResultPrefixInfo::default(),
                 ))
             }
             Path::LangItem(l, Some(_)) => {
@@ -310,7 +310,7 @@ impl Resolver {
                 };
                 return Some((
                     ResolveValueResult::Partial(type_ns, 1, None),
-                    ResolvePathResultPrefixInfo::None,
+                    ResolvePathResultPrefixInfo::default(),
                 ));
             }
         };
@@ -346,7 +346,7 @@ impl Resolver {
                                     ValueNs::LocalBinding(e.binding()),
                                     None,
                                 ),
-                                ResolvePathResultPrefixInfo::None,
+                                ResolvePathResultPrefixInfo::default(),
                             ));
                         }
                     }
@@ -370,7 +370,7 @@ impl Resolver {
                             let val = ValueNs::GenericParam(id);
                             return Some((
                                 ResolveValueResult::ValueNs(val, None),
-                                ResolvePathResultPrefixInfo::None,
+                                ResolvePathResultPrefixInfo::default(),
                             ));
                         }
                     }
@@ -378,7 +378,7 @@ impl Resolver {
                         if *first_name == sym::Self_.clone() {
                             return Some((
                                 ResolveValueResult::ValueNs(ValueNs::ImplSelf(impl_), None),
-                                ResolvePathResultPrefixInfo::None,
+                                ResolvePathResultPrefixInfo::default(),
                             ));
                         }
                     }
@@ -400,7 +400,7 @@ impl Resolver {
                             let ty = TypeNs::GenericParam(id);
                             return Some((
                                 ResolveValueResult::Partial(ty, 1, None),
-                                ResolvePathResultPrefixInfo::None,
+                                ResolvePathResultPrefixInfo::default(),
                             ));
                         }
                     }
@@ -408,7 +408,7 @@ impl Resolver {
                         if *first_name == sym::Self_.clone() {
                             return Some((
                                 ResolveValueResult::Partial(TypeNs::SelfType(impl_), 1, None),
-                                ResolvePathResultPrefixInfo::None,
+                                ResolvePathResultPrefixInfo::default(),
                             ));
                         }
                     }
@@ -417,7 +417,7 @@ impl Resolver {
                             let ty = TypeNs::AdtSelfType(*adt);
                             return Some((
                                 ResolveValueResult::Partial(ty, 1, None),
-                                ResolvePathResultPrefixInfo::None,
+                                ResolvePathResultPrefixInfo::default(),
                             ));
                         }
                     }
@@ -441,7 +441,7 @@ impl Resolver {
             if let Some(builtin) = BuiltinType::by_name(first_name) {
                 return Some((
                     ResolveValueResult::Partial(TypeNs::BuiltinType(builtin), 1, None),
-                    ResolvePathResultPrefixInfo::None,
+                    ResolvePathResultPrefixInfo::default(),
                 ));
             }
         }
