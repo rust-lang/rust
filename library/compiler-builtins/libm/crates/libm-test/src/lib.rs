@@ -13,6 +13,13 @@ mod precision;
 mod run_cfg;
 mod test_traits;
 
+use std::env;
+use std::fs::File;
+use std::io::Write;
+use std::path::PathBuf;
+use std::sync::LazyLock;
+use std::time::SystemTime;
+
 pub use f8_impl::f8;
 pub use libm::support::{Float, Int, IntTy, MinInt};
 pub use num::{FloatExt, logspace};
@@ -40,5 +47,51 @@ pub const fn ci() -> bool {
         Some(s) if s.is_empty() => false,
         None => false,
         Some(_) => true,
+    }
+}
+
+/// Print to stderr and additionally log it to `target/test-log.txt`. This is useful for saving
+/// output that would otherwise be consumed by the test harness.
+pub fn test_log(s: &str) {
+    // Handle to a file opened in append mode, unless a suitable path can't be determined.
+    static OUTFILE: LazyLock<Option<File>> = LazyLock::new(|| {
+        // If the target directory is overridden, use that environment variable. Otherwise, save
+        // at the default path `{workspace_root}/target`.
+        let target_dir = match env::var("CARGO_TARGET_DIR") {
+            Ok(s) => PathBuf::from(s),
+            Err(_) => {
+                let Ok(x) = env::var("CARGO_MANIFEST_DIR") else {
+                    return None;
+                };
+
+                PathBuf::from(x).parent().unwrap().parent().unwrap().join("target")
+            }
+        };
+        let outfile = target_dir.join("test-log.txt");
+
+        let mut f = File::options()
+            .create(true)
+            .append(true)
+            .open(outfile)
+            .expect("failed to open logfile");
+        let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
+
+        writeln!(f, "\n\nTest run at {}", now.as_secs()).unwrap();
+        writeln!(f, "arch: {}", env::consts::ARCH).unwrap();
+        writeln!(f, "os: {}", env::consts::OS).unwrap();
+        writeln!(f, "bits: {}", usize::BITS).unwrap();
+        writeln!(f, "emulated: {}", emulated()).unwrap();
+        writeln!(f, "ci: {}", ci()).unwrap();
+        writeln!(f, "cargo features: {}", env!("CFG_CARGO_FEATURES")).unwrap();
+        writeln!(f, "opt level: {}", env!("CFG_OPT_LEVEL")).unwrap();
+        writeln!(f, "target features: {}", env!("CFG_TARGET_FEATURES")).unwrap();
+
+        Some(f)
+    });
+
+    eprintln!("{s}");
+
+    if let Some(mut f) = OUTFILE.as_ref() {
+        writeln!(f, "{s}").unwrap();
     }
 }

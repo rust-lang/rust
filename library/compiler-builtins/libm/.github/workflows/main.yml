@@ -113,6 +113,11 @@ jobs:
         rustup target add x86_64-unknown-linux-musl
         cargo generate-lockfile && ./ci/run-docker.sh ${{ matrix.target }}
 
+    - name: Print test logs if available
+      if: always()
+      run: if [ -f "target/test-log.txt" ]; then cat target/test-log.txt; fi
+      shell: bash
+
   clippy:
     name: Clippy
     runs-on: ubuntu-24.04
