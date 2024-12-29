@@ -316,7 +316,8 @@ mod imp {
         target_os = "netbsd",
         target_os = "hurd",
         target_os = "linux",
-        target_os = "l4re"
+        target_os = "l4re",
+        target_os = "cygwin"
     ))]
     unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
         let mut ret = None;
@@ -371,7 +372,7 @@ mod imp {
             // this way someone on any unix-y OS can check that all these compile
             if cfg!(all(target_os = "linux", not(target_env = "musl"))) {
                 install_main_guard_linux(page_size)
-            } else if cfg!(all(target_os = "linux", target_env = "musl")) {
+            } else if cfg!(any(all(target_os = "linux", target_env = "musl"), target_os = "cygwin")) {
                 install_main_guard_linux_musl(page_size)
             } else if cfg!(target_os = "freebsd") {
                 install_main_guard_freebsd(page_size)
@@ -511,7 +512,8 @@ mod imp {
         target_os = "hurd",
         target_os = "linux",
         target_os = "netbsd",
-        target_os = "l4re"
+        target_os = "l4re",
+        target_os = "cygwin"
     ))]
     // FIXME: I am probably not unsafe.
     unsafe fn current_guard() -> Option<Range<usize>> {

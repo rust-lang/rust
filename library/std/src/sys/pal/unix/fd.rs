@@ -75,6 +75,7 @@ const fn max_iov() -> usize {
     target_os = "horizon",
     target_os = "vita",
     target_vendor = "apple",
+    target_os = "cygwin",
 )))]
 const fn max_iov() -> usize {
     16 // The minimum value required by POSIX.
