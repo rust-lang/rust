@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:meh
+//@ check-run-results:meh
 //@ ignore-emscripten no processes
 
 fn main() {

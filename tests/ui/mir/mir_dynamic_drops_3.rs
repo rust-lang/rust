@@ -1,9 +1,9 @@
 //@ run-fail
 //@ needs-unwind
-//@ error-pattern:unwind happens
-//@ error-pattern:drop 3
-//@ error-pattern:drop 2
-//@ error-pattern:drop 1
+//@ check-run-results:unwind happens
+//@ check-run-results:drop 3
+//@ check-run-results:drop 2
+//@ check-run-results:drop 1
 //@ ignore-emscripten no processes
 
 /// Structure which will not allow to be dropped twice.

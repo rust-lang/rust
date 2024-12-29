@@ -1,0 +1,3 @@
+thread 'main' panicked at $DIR/assert-macro-fmt.rs:7:5:
+test-assert-fmt 42 rust
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

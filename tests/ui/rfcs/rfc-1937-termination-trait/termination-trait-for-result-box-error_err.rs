@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:returned Box<Error> from main()
+//@ check-run-results:returned Box<Error> from main()
 //@ failure-status: 1
 //@ ignore-emscripten no processes
 

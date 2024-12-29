@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:overflow
+//@ check-run-results:overflow
 //@ ignore-emscripten no processes
 
 use std::time::{Instant, Duration};

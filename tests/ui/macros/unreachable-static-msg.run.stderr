@@ -1,0 +1,3 @@
+thread 'main' panicked at $DIR/unreachable-static-msg.rs:6:5:
+internal error: entered unreachable code: uhoh
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:stop
+//@ check-run-results:stop
 //@ ignore-emscripten no processes
 
 // #18576

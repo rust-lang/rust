@@ -1,6 +1,7 @@
 //@ run-fail
 //@ error-pattern:capacity overflow
 //@ ignore-emscripten no processes
+//@ compile-flags: --remap-path-prefix={{rust-src-base}}=remapped
 
 use std::collections::hash_map::HashMap;
 use std::mem::size_of;

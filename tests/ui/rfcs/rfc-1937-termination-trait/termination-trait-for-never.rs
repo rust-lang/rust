@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:oh, dear
+//@ check-run-results:oh, dear
 //@ ignore-emscripten no processes
 
 fn main() -> ! {

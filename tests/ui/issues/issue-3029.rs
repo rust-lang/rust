@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:so long
+//@ check-run-results:so long
 //@ ignore-emscripten no processes
 
 #![allow(unreachable_code)]

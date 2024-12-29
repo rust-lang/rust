@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:returned Box<dyn Error> from main()
+//@ check-run-results:returned Box<dyn Error> from main()
 //@ failure-status: 1
 //@ ignore-emscripten no processes
 

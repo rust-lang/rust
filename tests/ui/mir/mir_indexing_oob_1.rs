@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:index out of bounds: the len is 5 but the index is 10
+//@ check-run-results:index out of bounds: the len is 5 but the index is 10
 //@ ignore-emscripten no processes
 
 const C: [u32; 5] = [0; 5];
