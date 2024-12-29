@@ -14,3 +14,5 @@ pub(crate) mod metrics;
 pub(crate) mod render_tests;
 pub(crate) mod shared_helpers;
 pub(crate) mod tarball;
+#[cfg(test)]
+mod tests;
