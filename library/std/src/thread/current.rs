@@ -136,7 +136,7 @@ pub(crate) fn set_current(thread: Thread) -> Result<(), Thread> {
 /// one thread and is guaranteed not to call the global allocator.
 #[inline]
 pub(crate) fn current_id() -> ThreadId {
-    // If accessing the persistant thread ID takes multiple TLS accesses, try
+    // If accessing the persistent thread ID takes multiple TLS accesses, try
     // to retrieve it from the current thread handle, which will only take one
     // TLS access.
     if !id::CHEAP {
