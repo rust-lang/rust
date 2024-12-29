@@ -1,4 +1,4 @@
-use rustc_hir as hir;
+use rustc_hir::{self as hir, LangItem};
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes};
 use rustc_infer::traits::{
     ImplDerivedHostCause, ImplSource, Obligation, ObligationCauseCode, PredicateObligation,
@@ -43,6 +43,12 @@ pub fn evaluate_host_effect_obligation<'tcx>(
     }
 
     match evaluate_host_effect_from_item_bounds(selcx, obligation) {
+        Ok(result) => return Ok(result),
+        Err(EvaluationFailure::Ambiguous) => return Err(EvaluationFailure::Ambiguous),
+        Err(EvaluationFailure::NoSolution) => {}
+    }
+
+    match evaluate_host_effect_from_builtin_impls(selcx, obligation) {
         Ok(result) => return Ok(result),
         Err(EvaluationFailure::Ambiguous) => return Err(EvaluationFailure::Ambiguous),
         Err(EvaluationFailure::NoSolution) => {}
@@ -226,6 +232,104 @@ fn evaluate_host_effect_from_item_bounds<'tcx>(
     } else {
         Err(EvaluationFailure::NoSolution)
     }
+}
+
+fn evaluate_host_effect_from_builtin_impls<'tcx>(
+    selcx: &mut SelectionContext<'_, 'tcx>,
+    obligation: &HostEffectObligation<'tcx>,
+) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
+    match selcx.tcx().as_lang_item(obligation.predicate.def_id()) {
+        Some(LangItem::Destruct) => evaluate_host_effect_for_destruct_goal(selcx, obligation),
+        _ => Err(EvaluationFailure::NoSolution),
+    }
+}
+
+// NOTE: Keep this in sync with `const_conditions_for_destruct` in the new solver.
+fn evaluate_host_effect_for_destruct_goal<'tcx>(
+    selcx: &mut SelectionContext<'_, 'tcx>,
+    obligation: &HostEffectObligation<'tcx>,
+) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
+    let tcx = selcx.tcx();
+    let destruct_def_id = tcx.require_lang_item(LangItem::Destruct, None);
+    let self_ty = obligation.predicate.self_ty();
+
+    let const_conditions = match *self_ty.kind() {
+        // An ADT is `~const Destruct` only if all of the fields are,
+        // *and* if there is a `Drop` impl, that `Drop` impl is also `~const`.
+        ty::Adt(adt_def, args) => {
+            let mut const_conditions: ThinVec<_> = adt_def
+                .all_fields()
+                .map(|field| ty::TraitRef::new(tcx, destruct_def_id, [field.ty(tcx, args)]))
+                .collect();
+            match adt_def.destructor(tcx).map(|dtor| dtor.constness) {
+                // `Drop` impl exists, but it's not const. Type cannot be `~const Destruct`.
+                Some(hir::Constness::NotConst) => return Err(EvaluationFailure::NoSolution),
+                // `Drop` impl exists, and it's const. Require `Ty: ~const Drop` to hold.
+                Some(hir::Constness::Const) => {
+                    let drop_def_id = tcx.require_lang_item(LangItem::Drop, None);
+                    let drop_trait_ref = ty::TraitRef::new(tcx, drop_def_id, [self_ty]);
+                    const_conditions.push(drop_trait_ref);
+                }
+                // No `Drop` impl, no need to require anything else.
+                None => {}
+            }
+            const_conditions
+        }
+
+        ty::Array(ty, _) | ty::Pat(ty, _) | ty::Slice(ty) => {
+            thin_vec![ty::TraitRef::new(tcx, destruct_def_id, [ty])]
+        }
+
+        ty::Tuple(tys) => {
+            tys.iter().map(|field_ty| ty::TraitRef::new(tcx, destruct_def_id, [field_ty])).collect()
+        }
+
+        // Trivially implement `~const Destruct`
+        ty::Bool
+        | ty::Char
+        | ty::Int(..)
+        | ty::Uint(..)
+        | ty::Float(..)
+        | ty::Str
+        | ty::RawPtr(..)
+        | ty::Ref(..)
+        | ty::FnDef(..)
+        | ty::FnPtr(..)
+        | ty::Never
+        | ty::Infer(ty::InferTy::FloatVar(_) | ty::InferTy::IntVar(_))
+        | ty::Error(_) => thin_vec![],
+
+        // Coroutines and closures could implement `~const Drop`,
+        // but they don't really need to right now.
+        ty::Closure(_, _)
+        | ty::CoroutineClosure(_, _)
+        | ty::Coroutine(_, _)
+        | ty::CoroutineWitness(_, _) => return Err(EvaluationFailure::NoSolution),
+
+        // FIXME(unsafe_binders): Unsafe binders could implement `~const Drop`
+        // if their inner type implements it.
+        ty::UnsafeBinder(_) => return Err(EvaluationFailure::NoSolution),
+
+        ty::Dynamic(..) | ty::Param(_) | ty::Alias(..) | ty::Placeholder(_) | ty::Foreign(_) => {
+            return Err(EvaluationFailure::NoSolution);
+        }
+
+        ty::Bound(..)
+        | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+            panic!("unexpected type `{self_ty:?}`")
+        }
+    };
+
+    Ok(const_conditions
+        .into_iter()
+        .map(|trait_ref| {
+            obligation.with(
+                tcx,
+                ty::Binder::dummy(trait_ref)
+                    .to_host_effect_clause(tcx, obligation.predicate.constness),
+            )
+        })
+        .collect())
 }
 
 fn evaluate_host_effect_from_selection_candiate<'tcx>(
