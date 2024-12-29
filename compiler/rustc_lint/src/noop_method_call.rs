@@ -1,6 +1,7 @@
 use rustc_hir::def::DefKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_middle::ty;
+use rustc_middle::ty::ClauseKind;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::sym;
@@ -124,14 +125,48 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
         let orig_ty = expr_ty.peel_refs();
 
         if receiver_ty == expr_ty {
+            let mut non_clone_ty = orig_ty;
+
             let suggest_derive = match orig_ty.kind() {
-                ty::Adt(def, _) => Some(cx.tcx.def_span(def.did()).shrink_to_lo()),
+                ty::Adt(def, args) => {
+                    if def.did().is_local() {
+                        Some(cx.tcx.def_span(def.did()).shrink_to_lo())
+                    } else if let Some(trait_impl_id) = cx.tcx.impl_of_method(i.def_id()) {
+                        // If the type is generic over `T`, implements `Clone` if `T` does
+                        // and the concrete `T` is local, suggest deriving `Clone` for `T` rather than the type.
+                        let predicates = cx.tcx.predicates_of(trait_impl_id);
+
+                        if predicates.predicates.into_iter().all(|&(predicate, _)| {
+                            let ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder()
+                            else {
+                                return true;
+                            };
+                            cx.tcx.is_diagnostic_item(sym::Clone, trait_predicate.trait_ref.def_id)
+                        }) {
+                            args.iter().find_map(|arg| {
+                                let ty = arg.as_type()?;
+                                let did = ty.ty_adt_def()?.did();
+                                if did.is_local() {
+                                    non_clone_ty = ty;
+                                    Some(cx.tcx.def_span(did))
+                                } else {
+                                    None
+                                }
+                            })
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                }
                 _ => None,
             };
             cx.emit_span_lint(NOOP_METHOD_CALL, span, NoopMethodCallDiag {
                 method: call.ident.name,
                 orig_ty,
                 trait_,
+                non_clone_ty,
                 label: span,
                 suggest_derive,
             });

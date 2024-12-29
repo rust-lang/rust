@@ -1,7 +1,11 @@
 //@ check-pass
+//@ aux-build:non_clone_types.rs
 
 #![feature(rustc_attrs)]
 #![allow(unused)]
+
+extern crate non_clone_types;
+use non_clone_types::*;
 
 use std::borrow::Borrow;
 use std::ops::Deref;
@@ -60,4 +64,28 @@ impl Clone for DiagnosticClone {
 
 fn with_other_diagnostic_item(x: DiagnosticClone) {
     x.clone();
+}
+
+fn with_foreign_type(v: &NotClone) {
+    v.clone();
+    //~^ WARN call to `.clone()` on a reference in this situation does nothing
+}
+
+fn with_foreign_generic_type(v: &ConditionalClone<PlainType<u32>>) {
+    v.clone();
+    //~^ WARN call to `.clone()` on a reference in this situation does nothing
+}
+
+fn with_only_foreign_types_1(v: &ConditionalClone<NotClone>) {
+    v.clone();
+    //~^ WARN call to `.clone()` on a reference in this situation does nothing
+}
+
+fn with_only_foreign_types_2(v: &ConditionalClone<IsClone>) {
+    v.clone();
+}
+
+fn different_impl_bound(v: &DifferentlyConditionalClone<PlainType<u8>>) {
+    v.clone();
+    //~^ WARN call to `.clone()` on a reference in this situation does nothing
 }

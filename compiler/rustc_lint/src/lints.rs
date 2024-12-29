@@ -1346,6 +1346,7 @@ pub(crate) struct NoopMethodCallDiag<'a> {
     pub method: Symbol,
     pub orig_ty: Ty<'a>,
     pub trait_: Symbol,
+    pub non_clone_ty: Ty<'a>,
     #[suggestion(code = "", applicability = "machine-applicable")]
     pub label: Span,
     #[suggestion(
