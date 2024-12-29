@@ -15,15 +15,14 @@
 //!   procedural macros).
 //! * Lowering of concrete model to a [`base_db::CrateGraph`]
 
+pub mod project_json;
+pub mod toolchain_info;
+
 mod build_dependencies;
 mod cargo_workspace;
 mod env;
 mod manifest_path;
-pub mod project_json;
-mod rustc_cfg;
 mod sysroot;
-pub mod target_data_layout;
-mod target_triple;
 mod workspace;
 
 #[cfg(test)]
@@ -182,7 +181,7 @@ impl fmt::Display for ProjectManifest {
     }
 }
 
-fn utf8_stdout(mut cmd: Command) -> anyhow::Result<String> {
+fn utf8_stdout(cmd: &mut Command) -> anyhow::Result<String> {
     let output = cmd.output().with_context(|| format!("{cmd:?} failed"))?;
     if !output.status.success() {
         match String::from_utf8(output.stderr) {

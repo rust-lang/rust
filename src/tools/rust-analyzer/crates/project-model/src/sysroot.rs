@@ -440,7 +440,7 @@ fn discover_sysroot_dir(
     rustc.envs(extra_env);
     rustc.current_dir(current_dir).args(["--print", "sysroot"]);
     tracing::debug!("Discovering sysroot by {:?}", rustc);
-    let stdout = utf8_stdout(rustc)?;
+    let stdout = utf8_stdout(&mut rustc)?;
     Ok(AbsPathBuf::assert(Utf8PathBuf::from(stdout)))
 }
 
@@ -472,7 +472,7 @@ fn discover_sysroot_src_dir_or_add_component(
             rustup.envs(extra_env);
             rustup.current_dir(current_dir).args(["component", "add", "rust-src"]);
             tracing::info!("adding rust-src component by {:?}", rustup);
-            utf8_stdout(rustup).ok()?;
+            utf8_stdout(&mut rustup).ok()?;
             get_rust_src(sysroot_path)
         })
         .ok_or_else(|| {

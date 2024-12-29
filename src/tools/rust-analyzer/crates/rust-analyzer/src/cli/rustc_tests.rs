@@ -10,10 +10,10 @@ use ide::{AnalysisHost, DiagnosticCode, DiagnosticsConfig};
 use itertools::Either;
 use paths::Utf8PathBuf;
 use profile::StopWatch;
-use project_model::target_data_layout::RustcDataLayoutConfig;
+use project_model::toolchain_info::{target_data_layout, QueryConfig};
 use project_model::{
-    target_data_layout, CargoConfig, ManifestPath, ProjectWorkspace, ProjectWorkspaceKind,
-    RustLibSource, Sysroot, SysrootQueryMetadata,
+    CargoConfig, ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, RustLibSource, Sysroot,
+    SysrootQueryMetadata,
 };
 
 use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
@@ -79,11 +79,8 @@ impl Tester {
             &cargo_config.extra_env,
             &SysrootQueryMetadata::CargoMetadata(Default::default()),
         );
-        let data_layout = target_data_layout::get(
-            RustcDataLayoutConfig::Rustc(&sysroot),
-            None,
-            &cargo_config.extra_env,
-        );
+        let data_layout =
+            target_data_layout::get(QueryConfig::Rustc(&sysroot), None, &cargo_config.extra_env);
 
         let workspace = ProjectWorkspace {
             kind: ProjectWorkspaceKind::DetachedFile {

@@ -1,33 +1,29 @@
-//! Runs `rustc --print -vV` to get the host target.
 use anyhow::Context;
 use rustc_hash::FxHashMap;
 use toolchain::Tool;
 
-use crate::{utf8_stdout, ManifestPath, Sysroot};
+use crate::{toolchain_info::QueryConfig, utf8_stdout, ManifestPath, Sysroot};
 
-pub(super) enum TargetTipleConfig<'a> {
-    #[expect(dead_code)]
-    Rustc(&'a Sysroot),
-    Cargo(&'a Sysroot, &'a ManifestPath),
-}
-
-pub(super) fn get(
-    config: TargetTipleConfig<'_>,
+/// For cargo, runs `cargo -Zunstable-options config get build.target` to get the configured project target(s).
+/// For rustc, runs `rustc --print -vV` to get the host target.
+pub fn get(
+    config: QueryConfig<'_>,
     target: Option<&str>,
     extra_env: &FxHashMap<String, String>,
 ) -> anyhow::Result<Vec<String>> {
+    let _p = tracing::info_span!("target_triple::get").entered();
     if let Some(target) = target {
         return Ok(vec![target.to_owned()]);
     }
 
     let sysroot = match config {
-        TargetTipleConfig::Cargo(sysroot, cargo_toml) => {
+        QueryConfig::Cargo(sysroot, cargo_toml) => {
             match cargo_config_build_target(cargo_toml, extra_env, sysroot) {
                 Some(it) => return Ok(it),
                 None => sysroot,
             }
         }
-        TargetTipleConfig::Rustc(sysroot) => sysroot,
+        QueryConfig::Rustc(sysroot) => sysroot,
     };
     rustc_discover_host_triple(extra_env, sysroot).map(|it| vec![it])
 }
@@ -36,11 +32,11 @@ fn rustc_discover_host_triple(
     extra_env: &FxHashMap<String, String>,
     sysroot: &Sysroot,
 ) -> anyhow::Result<String> {
-    let mut rustc = sysroot.tool(Tool::Rustc);
-    rustc.envs(extra_env);
-    rustc.arg("-vV");
-    tracing::debug!("Discovering host platform by {:?}", rustc);
-    let stdout = utf8_stdout(rustc).context("Failed to discover host platform")?;
+    let mut cmd = sysroot.tool(Tool::Rustc);
+    cmd.envs(extra_env);
+    cmd.arg("-vV");
+    let stdout = utf8_stdout(&mut cmd)
+        .with_context(|| format!("unable to discover host platform via `{cmd:?}`"))?;
     let field = "host: ";
     let target = stdout.lines().find_map(|l| l.strip_prefix(field));
     if let Some(target) = target {
@@ -56,20 +52,18 @@ fn cargo_config_build_target(
     extra_env: &FxHashMap<String, String>,
     sysroot: &Sysroot,
 ) -> Option<Vec<String>> {
-    let mut cargo_config = sysroot.tool(Tool::Cargo);
-    cargo_config.envs(extra_env);
-    cargo_config
-        .current_dir(cargo_toml.parent())
-        .args(["-Z", "unstable-options", "config", "get", "build.target"])
-        .env("RUSTC_BOOTSTRAP", "1");
+    let mut cmd = sysroot.tool(Tool::Cargo);
+    cmd.envs(extra_env);
+    cmd.current_dir(cargo_toml.parent()).env("RUSTC_BOOTSTRAP", "1");
+    cmd.args(["-Z", "unstable-options", "config", "get", "build.target"]);
     // if successful we receive `build.target = "target-triple"`
     // or `build.target = ["<target 1>", ..]`
-    tracing::debug!("Discovering cargo config target by {:?}", cargo_config);
     // this might be `error: config value `build.target` is not set` in which case we
     // don't wanna log the error
-    utf8_stdout(cargo_config).and_then(parse_output_cargo_config_build_target).ok()
+    utf8_stdout(&mut cmd).and_then(parse_output_cargo_config_build_target).ok()
 }
 
+// Parses `"build.target = [target-triple, target-triple, ...]"` or `"build.target = "target-triple"`
 fn parse_output_cargo_config_build_target(stdout: String) -> anyhow::Result<Vec<String>> {
     let trimmed = stdout.trim_start_matches("build.target = ").trim_matches('"');
 

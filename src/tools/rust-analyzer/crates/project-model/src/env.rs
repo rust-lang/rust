@@ -85,7 +85,7 @@ pub(crate) fn cargo_config_env(
     }
     // if successful we receive `env.key.value = "value" per entry
     tracing::debug!("Discovering cargo config env by {:?}", cargo_config);
-    utf8_stdout(cargo_config)
+    utf8_stdout(&mut cargo_config)
         .map(parse_output_cargo_config_env)
         .inspect(|env| {
             tracing::debug!("Discovered cargo config env: {:?}", env);

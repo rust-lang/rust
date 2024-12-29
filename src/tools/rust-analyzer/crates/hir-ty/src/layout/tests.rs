@@ -1,7 +1,7 @@
 use chalk_ir::{AdtId, TyKind};
 use either::Either;
 use hir_def::db::DefDatabase;
-use project_model::{target_data_layout::RustcDataLayoutConfig, Sysroot};
+use project_model::{toolchain_info::QueryConfig, Sysroot};
 use rustc_hash::FxHashMap;
 use syntax::ToSmolStr;
 use test_fixture::WithFixture;
@@ -17,8 +17,8 @@ use crate::{
 mod closure;
 
 fn current_machine_data_layout() -> String {
-    project_model::target_data_layout::get(
-        RustcDataLayoutConfig::Rustc(&Sysroot::empty()),
+    project_model::toolchain_info::target_data_layout::get(
+        QueryConfig::Rustc(&Sysroot::empty()),
         None,
         &FxHashMap::default(),
     )

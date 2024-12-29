@@ -178,13 +178,13 @@ impl WorkspaceBuildScripts {
                     .current_dir(current_dir)
                     .args(["rustc", "-Z", "unstable-options", "--print", "target-libdir"])
                     .env("RUSTC_BOOTSTRAP", "1");
-                if let Ok(it) = utf8_stdout(cargo_config) {
+                if let Ok(it) = utf8_stdout(&mut cargo_config) {
                     return Ok(it);
                 }
                 let mut cmd = sysroot.tool(Tool::Rustc);
                 cmd.envs(extra_env);
                 cmd.args(["--print", "target-libdir"]);
-                utf8_stdout(cmd)
+                utf8_stdout(&mut cmd)
             })()?;
 
             let target_libdir = AbsPathBuf::try_from(Utf8PathBuf::from(target_libdir))

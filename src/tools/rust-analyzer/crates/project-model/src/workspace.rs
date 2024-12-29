@@ -25,10 +25,8 @@ use crate::{
     cargo_workspace::{CargoMetadataConfig, DepKind, PackageData, RustLibSource},
     env::{cargo_config_env, inject_cargo_env, inject_cargo_package_env, inject_rustc_tool_env},
     project_json::{Crate, CrateArrayIdx},
-    rustc_cfg::{self, RustcCfgConfig},
     sysroot::{SysrootCrate, SysrootMode},
-    target_data_layout::{self, RustcDataLayoutConfig},
-    target_triple::{self, TargetTipleConfig},
+    toolchain_info::{rustc_cfg, target_data_layout, target_triple, QueryConfig},
     utf8_stdout, CargoConfig, CargoWorkspace, CfgOverrides, InvocationStrategy, ManifestPath,
     Package, ProjectJson, ProjectManifest, Sysroot, TargetData, TargetKind, WorkspaceBuildScripts,
 };
@@ -177,7 +175,7 @@ fn get_toolchain_version(
     extra_env: &FxHashMap<String, String>,
     prefix: &str,
 ) -> Result<Option<Version>, anyhow::Error> {
-    let cargo_version = utf8_stdout({
+    let cargo_version = utf8_stdout(&mut {
         let mut cmd = Sysroot::tool(sysroot, tool);
         cmd.envs(extra_env);
         cmd.arg("--version").current_dir(current_dir);
@@ -262,7 +260,7 @@ impl ProjectWorkspace {
                     None => Err(None),
                 };
                 let targets = target_triple::get(
-                    TargetTipleConfig::Cargo(&sysroot, cargo_toml),
+                    QueryConfig::Cargo(&sysroot, cargo_toml),
                     config.target.as_deref(),
                     &config.extra_env,
                 )
@@ -312,14 +310,14 @@ impl ProjectWorkspace {
                     "cargo ",
                 )?;
                 let rustc_cfg = rustc_cfg::get(
+                    QueryConfig::Cargo(&sysroot, cargo_toml),
                     targets.first().map(Deref::deref),
                     &config.extra_env,
-                    RustcCfgConfig::Cargo(&sysroot, cargo_toml),
                 );
 
                 let cfg_overrides = config.cfg_overrides.clone();
                 let data_layout = target_data_layout::get(
-                    RustcDataLayoutConfig::Cargo(&sysroot, cargo_toml),
+                    QueryConfig::Cargo(&sysroot, cargo_toml),
                     targets.first().map(Deref::deref),
                     &config.extra_env,
                 );
@@ -378,8 +376,8 @@ impl ProjectWorkspace {
             project_json.sysroot_src.clone(),
             &config.sysroot_query_metadata,
         );
-        let cfg_config = RustcCfgConfig::Rustc(&sysroot);
-        let data_layout_config = RustcDataLayoutConfig::Rustc(&sysroot);
+        let cfg_config = QueryConfig::Rustc(&sysroot);
+        let data_layout_config = QueryConfig::Rustc(&sysroot);
         let toolchain = match get_toolchain_version(
             project_json.path(),
             &sysroot,
@@ -395,7 +393,7 @@ impl ProjectWorkspace {
         };
 
         let target = config.target.as_deref();
-        let rustc_cfg = rustc_cfg::get(target, &config.extra_env, cfg_config);
+        let rustc_cfg = rustc_cfg::get(cfg_config, target, &config.extra_env);
         let data_layout = target_data_layout::get(data_layout_config, target, &config.extra_env);
         ProjectWorkspace {
             kind: ProjectWorkspaceKind::Json(project_json),
@@ -432,17 +430,14 @@ impl ProjectWorkspace {
             };
 
         let targets = target_triple::get(
-            TargetTipleConfig::Cargo(&sysroot, detached_file),
+            QueryConfig::Cargo(&sysroot, detached_file),
             config.target.as_deref(),
             &config.extra_env,
         )
         .unwrap_or_default();
-        let rustc_cfg = rustc_cfg::get(None, &config.extra_env, RustcCfgConfig::Rustc(&sysroot));
-        let data_layout = target_data_layout::get(
-            RustcDataLayoutConfig::Rustc(&sysroot),
-            None,
-            &config.extra_env,
-        );
+        let rustc_cfg = rustc_cfg::get(QueryConfig::Rustc(&sysroot), None, &config.extra_env);
+        let data_layout =
+            target_data_layout::get(QueryConfig::Rustc(&sysroot), None, &config.extra_env);
 
         let cargo_script = CargoWorkspace::fetch_metadata(
             detached_file,
@@ -954,7 +949,7 @@ fn project_json_to_crate_graph(
 
                 let target_cfgs = match target.as_deref() {
                     Some(target) => cfg_cache.entry(target).or_insert_with(|| {
-                        rustc_cfg::get(Some(target), extra_env, RustcCfgConfig::Rustc(sysroot))
+                        rustc_cfg::get(QueryConfig::Rustc(sysroot), Some(target), extra_env)
                     }),
                     None => &rustc_cfg,
                 };
