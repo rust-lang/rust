@@ -94,7 +94,10 @@ fn getrandom(mut bytes: &mut [u8], insecure: bool) {
 
             let flags = if insecure {
                 if GRND_INSECURE_AVAILABLE.load(Relaxed) {
-                    libc::GRND_INSECURE
+                    #[cfg(target_os = "cygwin")]
+                    { libc::GRND_NONBLOCK }
+                    #[cfg(not(target_os = "cygwin"))]
+                    { libc::GRND_INSECURE }
                 } else {
                     libc::GRND_NONBLOCK
                 }
@@ -110,6 +113,7 @@ fn getrandom(mut bytes: &mut [u8], insecure: bool) {
                     libc::EINTR => continue,
                     // `GRND_INSECURE` is not available, try
                     // `GRND_NONBLOCK`.
+                    #[cfg(not(target_os = "cygwin"))]
                     libc::EINVAL if flags == libc::GRND_INSECURE => {
                         GRND_INSECURE_AVAILABLE.store(false, Relaxed);
                         continue;
