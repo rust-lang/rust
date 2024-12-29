@@ -1,6 +1,6 @@
 cfg_if::cfg_if! {
     // Tier 1
-    if #[cfg(any(target_os = "linux", target_os = "android"))] {
+    if #[cfg(any(target_os = "linux", target_os = "android", target_os = "cygwin"))] {
         mod linux;
         pub use linux::{fill_bytes, hashmap_random_keys};
     } else if #[cfg(target_os = "windows")] {
@@ -88,6 +88,7 @@ cfg_if::cfg_if! {
     target_os = "android",
     all(target_family = "wasm", target_os = "unknown"),
     target_os = "xous",
+    target_os = "cygwin",
 )))]
 pub fn hashmap_random_keys() -> (u64, u64) {
     let mut buf = [0; 16];

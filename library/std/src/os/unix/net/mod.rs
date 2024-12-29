@@ -45,6 +45,7 @@ pub use self::stream::*;
     target_os = "openbsd",
     target_os = "nto",
     target_vendor = "apple",
+    target_os = "cygwin",
 ))]
 #[unstable(feature = "peer_credentials_unix_socket", issue = "42839", reason = "unstable")]
 pub use self::ucred::*;
