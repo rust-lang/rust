@@ -15,8 +15,8 @@ use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::query::type_op::{DropckOutlives, TypeOp, TypeOpOutput};
 use tracing::debug;
 
-use crate::location::RichLocation;
 use crate::polonius;
+use crate::polonius::legacy::RichLocation;
 use crate::region_infer::values::{self, LiveLoans};
 use crate::type_check::liveness::local_use_map::LocalUseMap;
 use crate::type_check::{NormalizeLocation, TypeChecker};
