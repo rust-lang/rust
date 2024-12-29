@@ -68,15 +68,14 @@ thread 'main' panicked at $DIR/std-backtrace-skip-frames.rs:LL:CC:
 explicit panic
 stack backtrace:
       [... omitted N frames ...]
-   0: std_backtrace_skip_frames::check_all_panics
-             at $DIR/std-backtrace-skip-frames.rs:LL:CC
-   1: std_backtrace_skip_frames::main::{{closure}}
+   0: std_backtrace_skip_frames::check_all_panics::{{closure}}
              at $DIR/std-backtrace-skip-frames.rs:LL:CC
       [... omitted N frames ...]
-   2: std::panic::catch_unwind
+   1: std::panic::catch_unwind
              at $SRC_DIR/std/src/panic.rs:LL:COL
+   2: std_backtrace_skip_frames::check_all_panics
+             at $DIR/std-backtrace-skip-frames.rs:LL:CC
    3: std_backtrace_skip_frames::main
              at $DIR/std-backtrace-skip-frames.rs:LL:CC
       [... omitted N frames ...]
 note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
-finished all checks
