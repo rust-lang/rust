@@ -1,0 +1,6 @@
+thread 'main' panicked at $DIR/mir_dynamic_drops_3.rs:23:5:
+unwind happens
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+drop 3
+drop 2
+drop 1

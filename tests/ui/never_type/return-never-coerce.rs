@@ -1,7 +1,7 @@
 // Test that ! coerces to other types.
 
 //@ run-fail
-//@ error-pattern:aah!
+//@ check-run-results:aah!
 //@ ignore-emscripten no processes
 
 fn call_another_fn<T, F: FnOnce() -> T>(f: F) -> T {

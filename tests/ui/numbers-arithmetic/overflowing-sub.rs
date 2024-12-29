@@ -1,6 +1,6 @@
 //@ run-fail
-//@ error-pattern:thread 'main' panicked
-//@ error-pattern:attempt to subtract with overflow
+//@ check-run-results:thread 'main' panicked
+//@ check-run-results:attempt to subtract with overflow
 //@ ignore-emscripten no processes
 //@ compile-flags: -C debug-assertions
 

@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:assertion failed: false
+//@ check-run-results:assertion failed: false
 //@ ignore-emscripten no processes
 
 fn main() {

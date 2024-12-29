@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:attempt to divide by zero
+//@ check-run-results:attempt to divide by zero
 //@ ignore-emscripten no processes
 
 #[allow(unconditional_panic)]

@@ -1,6 +1,6 @@
 //@ run-fail
 //@ compile-flags: -Copt-level=3 -Cdebug-assertions=no -Zub-checks=yes
-//@ error-pattern: unsafe precondition(s) violated: ptr::replace requires
+//@ check-run-results: unsafe precondition(s) violated: ptr::replace requires
 //@ revisions: null misaligned
 
 use std::ptr;

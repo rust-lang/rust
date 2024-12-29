@@ -1,7 +1,7 @@
 #![allow(while_true)]
 
 //@ run-fail
-//@ error-pattern:giraffe
+//@ check-run-results:giraffe
 //@ ignore-emscripten no processes
 
 fn main() {

@@ -1,7 +1,7 @@
 //@ run-fail
-//@ error-pattern:complex called
-//@ error-pattern:dropped
-//@ error-pattern:exit
+//@ check-run-results:complex called
+//@ check-run-results:dropped
+//@ check-run-results:exit
 //@ ignore-emscripten no processes
 
 struct Droppable;

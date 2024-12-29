@@ -2,7 +2,7 @@
 // certain positions
 
 //@ run-fail
-//@ error-pattern:oops
+//@ check-run-results:oops
 //@ ignore-emscripten no processes
 
 fn bigpanic() {

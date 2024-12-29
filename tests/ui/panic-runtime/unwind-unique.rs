@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:explicit panic
+//@ check-run-results:explicit panic
 //@ ignore-emscripten no processes
 
 fn failfn() {

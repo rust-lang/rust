@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:panic 1
+//@ check-run-results:panic 1
 //@ ignore-emscripten no processes
 
 fn main() {
