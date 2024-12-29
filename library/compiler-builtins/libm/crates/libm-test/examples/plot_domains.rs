@@ -14,7 +14,7 @@ use std::{env, fs};
 
 use libm_test::domain::HasDomain;
 use libm_test::gen::{domain_logspace, edge_cases};
-use libm_test::{MathOp, op};
+use libm_test::{CheckBasis, CheckCtx, MathOp, op};
 
 const JL_PLOT: &str = "examples/plot_file.jl";
 
@@ -54,30 +54,32 @@ fn plot_one_operator<Op>(out_dir: &Path, config: &mut String)
 where
     Op: MathOp<FTy = f32> + HasDomain<f32>,
 {
+    let ctx = CheckCtx::new(Op::IDENTIFIER, CheckBasis::Mpfr);
     plot_one_generator(
         out_dir,
-        Op::BASE_NAME.as_str(),
+        &ctx,
         "logspace",
         config,
-        domain_logspace::get_test_cases::<Op>(),
+        domain_logspace::get_test_cases::<Op>(&ctx),
     );
     plot_one_generator(
         out_dir,
-        Op::BASE_NAME.as_str(),
+        &ctx,
         "edge_cases",
         config,
-        edge_cases::get_test_cases::<Op, _>(),
+        edge_cases::get_test_cases::<Op, _>(&ctx),
     );
 }
 
 /// Plot the output of a single generator.
 fn plot_one_generator(
     out_dir: &Path,
-    fn_name: &str,
+    ctx: &CheckCtx,
     gen_name: &str,
     config: &mut String,
     gen: impl Iterator<Item = (f32,)>,
 ) {
+    let fn_name = ctx.base_name_str;
     let text_file = out_dir.join(format!("input-{fn_name}-{gen_name}.txt"));
 
     let f = fs::File::create(&text_file).unwrap();

@@ -4,7 +4,7 @@ use libm::support::{IntTy, MinInt};
 
 use crate::domain::HasDomain;
 use crate::op::OpITy;
-use crate::{MathOp, logspace};
+use crate::{CheckCtx, MathOp, logspace};
 
 /// Number of tests to run.
 // FIXME(ntests): replace this with a more logical algorithm
@@ -30,7 +30,7 @@ const NTESTS: usize = {
 ///
 /// This allows us to get reasonably thorough coverage without wasting time on values that are
 /// NaN or out of range. Random tests will still cover values that are excluded here.
-pub fn get_test_cases<Op>() -> impl Iterator<Item = (Op::FTy,)>
+pub fn get_test_cases<Op>(_ctx: &CheckCtx) -> impl Iterator<Item = (Op::FTy,)>
 where
     Op: MathOp + HasDomain<Op::FTy>,
     IntTy<Op::FTy>: TryFrom<usize>,
