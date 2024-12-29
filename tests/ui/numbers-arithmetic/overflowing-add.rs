@@ -1,6 +1,6 @@
 //@ run-fail
-//@ error-pattern:thread 'main' panicked
-//@ error-pattern:attempt to add with overflow
+//@ check-run-results:thread 'main' panicked
+//@ check-run-results:attempt to add with overflow
 //@ compile-flags: -C debug-assertions
 //@ ignore-emscripten no processes
 

@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:nonzero
+//@ check-run-results:nonzero
 //@ exec-env:RUST_NEWRT=1
 //@ ignore-wasm32 no processes
 

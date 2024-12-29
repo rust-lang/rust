@@ -1,0 +1,5 @@
+thread 'main' panicked at $DIR/assert-eq-macro-msg.rs:8:5:
+assertion `left == right` failed: 1 + 1 definitely should be 3
+  left: 2
+ right: 3
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

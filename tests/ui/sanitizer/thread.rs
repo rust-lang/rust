@@ -16,9 +16,9 @@
 //@ compile-flags: -Z sanitizer=thread -O
 //
 //@ run-fail
-//@ error-pattern: WARNING: ThreadSanitizer: data race
-//@ error-pattern: Location is heap block of size 4
-//@ error-pattern: allocated by main thread
+//@ check-run-results: WARNING: ThreadSanitizer: data race
+//@ check-run-results: Location is heap block of size 4
+//@ check-run-results: allocated by main thread
 
 #![feature(rustc_private)]
 extern crate libc;

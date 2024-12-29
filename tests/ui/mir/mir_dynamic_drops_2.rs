@@ -1,5 +1,5 @@
 //@ run-fail
-//@ error-pattern:drop 1
+//@ check-run-results:drop 1
 //@ ignore-emscripten no processes
 
 /// Structure which will not allow to be dropped twice.

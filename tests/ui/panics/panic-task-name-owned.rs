@@ -1,6 +1,6 @@
 //@ run-fail
-//@ error-pattern:thread 'owned name' panicked
-//@ error-pattern:test
+//@ check-run-results:thread 'owned name' panicked
+//@ check-run-results:test
 //@ needs-threads
 
 use std::thread::Builder;
