@@ -15,7 +15,7 @@ use span::Edition;
 use toolchain::Tool;
 
 use crate::{CfgOverrides, InvocationStrategy};
-use crate::{ManifestPath, Sysroot, SysrootQueryMetadata};
+use crate::{ManifestPath, Sysroot};
 
 /// [`CargoWorkspace`] represents the logical structure of, well, a Cargo
 /// workspace. It pretty closely mirrors `cargo metadata` output.
@@ -89,8 +89,6 @@ pub struct CargoConfig {
     pub target: Option<String>,
     /// Sysroot loading behavior
     pub sysroot: Option<RustLibSource>,
-    /// How to query metadata for the sysroot crate.
-    pub sysroot_query_metadata: SysrootQueryMetadata,
     pub sysroot_src: Option<AbsPathBuf>,
     /// rustc private crate source
     pub rustc_source: Option<RustLibSource>,

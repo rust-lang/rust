@@ -13,7 +13,7 @@ use profile::StopWatch;
 use project_model::toolchain_info::{target_data_layout, QueryConfig};
 use project_model::{
     CargoConfig, ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, RustLibSource, Sysroot,
-    SysrootQueryMetadata,
+    SysrootSourceWorkspaceConfig,
 };
 
 use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
@@ -74,11 +74,8 @@ impl Tester {
             ..Default::default()
         };
 
-        let sysroot = Sysroot::discover(
-            tmp_file.parent().unwrap(),
-            &cargo_config.extra_env,
-            &SysrootQueryMetadata::CargoMetadata(Default::default()),
-        );
+        let mut sysroot = Sysroot::discover(tmp_file.parent().unwrap(), &cargo_config.extra_env);
+        sysroot.load_workspace(&SysrootSourceWorkspaceConfig::default_cargo());
         let data_layout = target_data_layout::get(
             QueryConfig::Rustc(&sysroot, tmp_file.parent().unwrap().as_ref()),
             None,

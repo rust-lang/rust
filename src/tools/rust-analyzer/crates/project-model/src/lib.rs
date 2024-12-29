@@ -259,13 +259,19 @@ fn parse_cfg(s: &str) -> Result<cfg::CfgAtom, String> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum SysrootQueryMetadata {
+pub enum SysrootSourceWorkspaceConfig {
     CargoMetadata(CargoMetadataConfig),
-    None,
+    Stitched,
 }
 
-impl Default for SysrootQueryMetadata {
+impl Default for SysrootSourceWorkspaceConfig {
     fn default() -> Self {
-        SysrootQueryMetadata::CargoMetadata(Default::default())
+        SysrootSourceWorkspaceConfig::default_cargo()
+    }
+}
+
+impl SysrootSourceWorkspaceConfig {
+    pub fn default_cargo() -> Self {
+        SysrootSourceWorkspaceConfig::CargoMetadata(Default::default())
     }
 }
