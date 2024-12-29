@@ -19,7 +19,7 @@ pub fn get(
                 anyhow::format_err!("could not parse target-spec-json from command output")
             })
     };
-    let sysroot = match config {
+    let (sysroot, current_dir) = match config {
         QueryConfig::Cargo(sysroot, cargo_toml) => {
             let mut cmd = sysroot.tool(Tool::Cargo, cargo_toml.parent());
             cmd.envs(extra_env);
@@ -36,14 +36,14 @@ pub fn get(
                 Ok(output) => return process(output),
                 Err(e) => {
                     tracing::warn!(%e, "failed to run `{cmd:?}`, falling back to invoking rustc directly");
-                    sysroot
+                    (sysroot, cargo_toml.parent().as_ref())
                 }
             }
         }
-        QueryConfig::Rustc(sysroot) => sysroot,
+        QueryConfig::Rustc(sysroot, current_dir) => (sysroot, current_dir),
     };
 
-    let mut cmd = Sysroot::tool(sysroot, Tool::Rustc, &std::env::current_dir()?);
+    let mut cmd = Sysroot::tool(sysroot, Tool::Rustc, current_dir);
     cmd.envs(extra_env)
         .env("RUSTC_BOOTSTRAP", "1")
         .args(["-Z", "unstable-options"])

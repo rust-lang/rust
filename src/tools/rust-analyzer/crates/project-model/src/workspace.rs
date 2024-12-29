@@ -373,8 +373,7 @@ impl ProjectWorkspace {
             project_json.sysroot_src.clone(),
             &config.sysroot_query_metadata,
         );
-        let cfg_config = QueryConfig::Rustc(&sysroot);
-        let data_layout_config = QueryConfig::Rustc(&sysroot);
+        let query_config = QueryConfig::Rustc(&sysroot, project_json.path().as_ref());
         let toolchain = match get_toolchain_version(
             project_json.path(),
             &sysroot,
@@ -390,8 +389,8 @@ impl ProjectWorkspace {
         };
 
         let target = config.target.as_deref();
-        let rustc_cfg = rustc_cfg::get(cfg_config, target, &config.extra_env);
-        let data_layout = target_data_layout::get(data_layout_config, target, &config.extra_env);
+        let rustc_cfg = rustc_cfg::get(query_config, target, &config.extra_env);
+        let data_layout = target_data_layout::get(query_config, target, &config.extra_env);
         ProjectWorkspace {
             kind: ProjectWorkspaceKind::Json(project_json),
             sysroot,
@@ -432,9 +431,9 @@ impl ProjectWorkspace {
             &config.extra_env,
         )
         .unwrap_or_default();
-        let rustc_cfg = rustc_cfg::get(QueryConfig::Rustc(&sysroot), None, &config.extra_env);
-        let data_layout =
-            target_data_layout::get(QueryConfig::Rustc(&sysroot), None, &config.extra_env);
+        let query_config = QueryConfig::Rustc(&sysroot, dir.as_ref());
+        let rustc_cfg = rustc_cfg::get(query_config, None, &config.extra_env);
+        let data_layout = target_data_layout::get(query_config, None, &config.extra_env);
 
         let cargo_script = CargoWorkspace::fetch_metadata(
             detached_file,
@@ -946,7 +945,11 @@ fn project_json_to_crate_graph(
 
                 let target_cfgs = match target.as_deref() {
                     Some(target) => cfg_cache.entry(target).or_insert_with(|| {
-                        rustc_cfg::get(QueryConfig::Rustc(sysroot), Some(target), extra_env)
+                        rustc_cfg::get(
+                            QueryConfig::Rustc(sysroot, project.project_root().as_ref()),
+                            Some(target),
+                            extra_env,
+                        )
                     }),
                     None => &rustc_cfg,
                 };

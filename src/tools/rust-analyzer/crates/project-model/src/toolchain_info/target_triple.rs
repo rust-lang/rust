@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use anyhow::Context;
 use rustc_hash::FxHashMap;
 use toolchain::Tool;
@@ -16,23 +18,24 @@ pub fn get(
         return Ok(vec![target.to_owned()]);
     }
 
-    let sysroot = match config {
+    let (sysroot, current_dir) = match config {
         QueryConfig::Cargo(sysroot, cargo_toml) => {
             match cargo_config_build_target(cargo_toml, extra_env, sysroot) {
                 Some(it) => return Ok(it),
-                None => sysroot,
+                None => (sysroot, cargo_toml.parent().as_ref()),
             }
         }
-        QueryConfig::Rustc(sysroot) => sysroot,
+        QueryConfig::Rustc(sysroot, current_dir) => (sysroot, current_dir),
     };
-    rustc_discover_host_triple(extra_env, sysroot).map(|it| vec![it])
+    rustc_discover_host_triple(extra_env, sysroot, current_dir).map(|it| vec![it])
 }
 
 fn rustc_discover_host_triple(
     extra_env: &FxHashMap<String, String>,
     sysroot: &Sysroot,
+    current_dir: &Path,
 ) -> anyhow::Result<String> {
-    let mut cmd = sysroot.tool(Tool::Rustc, &std::env::current_dir()?);
+    let mut cmd = sysroot.tool(Tool::Rustc, current_dir);
     cmd.envs(extra_env);
     cmd.arg("-vV");
     let stdout = utf8_stdout(&mut cmd)

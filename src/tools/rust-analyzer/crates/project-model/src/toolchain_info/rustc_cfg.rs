@@ -43,7 +43,7 @@ fn rustc_print_cfg(
     config: QueryConfig<'_>,
 ) -> anyhow::Result<String> {
     const RUSTC_ARGS: [&str; 3] = ["--print", "cfg", "-O"];
-    let sysroot = match config {
+    let (sysroot, current_dir) = match config {
         QueryConfig::Cargo(sysroot, cargo_toml) => {
             let mut cmd = sysroot.tool(Tool::Cargo, cargo_toml.parent());
             cmd.envs(extra_env);
@@ -60,14 +60,14 @@ fn rustc_print_cfg(
                         %e,
                         "failed to run `{cmd:?}`, falling back to invoking rustc directly"
                     );
-                    sysroot
+                    (sysroot, cargo_toml.parent().as_ref())
                 }
             }
         }
-        QueryConfig::Rustc(sysroot) => sysroot,
+        QueryConfig::Rustc(sysroot, current_dir) => (sysroot, current_dir),
     };
 
-    let mut cmd = sysroot.tool(Tool::Rustc, &std::env::current_dir()?);
+    let mut cmd = sysroot.tool(Tool::Rustc, current_dir);
     cmd.envs(extra_env);
     cmd.args(RUSTC_ARGS);
     if let Some(target) = target {

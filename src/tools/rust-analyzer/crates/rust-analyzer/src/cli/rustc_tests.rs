@@ -79,8 +79,11 @@ impl Tester {
             &cargo_config.extra_env,
             &SysrootQueryMetadata::CargoMetadata(Default::default()),
         );
-        let data_layout =
-            target_data_layout::get(QueryConfig::Rustc(&sysroot), None, &cargo_config.extra_env);
+        let data_layout = target_data_layout::get(
+            QueryConfig::Rustc(&sysroot, tmp_file.parent().unwrap().as_ref()),
+            None,
+            &cargo_config.extra_env,
+        );
 
         let workspace = ProjectWorkspace {
             kind: ProjectWorkspaceKind::DetachedFile {

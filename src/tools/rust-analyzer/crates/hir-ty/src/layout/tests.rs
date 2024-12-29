@@ -18,7 +18,7 @@ mod closure;
 
 fn current_machine_data_layout() -> String {
     project_model::toolchain_info::target_data_layout::get(
-        QueryConfig::Rustc(&Sysroot::empty()),
+        QueryConfig::Rustc(&Sysroot::empty(), &std::env::current_dir().unwrap()),
         None,
         &FxHashMap::default(),
     )
