@@ -26,14 +26,12 @@ pub struct CpuidResult {
 }
 
 /// Returns the result of the `cpuid` instruction for a given `leaf` (`EAX`)
-/// and
-/// `sub_leaf` (`ECX`).
+/// and `sub_leaf` (`ECX`).
 ///
 /// The highest-supported leaf value is returned by the first tuple argument of
-/// [`__get_cpuid_max(0)`](fn.__get_cpuid_max.html). For leaves containung
+/// [`__get_cpuid_max(0)`](fn.__get_cpuid_max.html). For leaves containing
 /// sub-leaves, the second tuple argument returns the highest-supported
-/// sub-leaf
-/// value.
+/// sub-leaf value.
 ///
 /// The [CPUID Wikipedia page][wiki_cpuid] contains how to query which
 /// information using the `EAX` and `ECX` registers, and the interpretation of
