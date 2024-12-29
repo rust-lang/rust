@@ -1154,7 +1154,6 @@ define_config! {
         debuginfo_level_tests: Option<DebuginfoLevel> = "debuginfo-level-tests",
         backtrace: Option<bool> = "backtrace",
         incremental: Option<bool> = "incremental",
-        parallel_compiler: Option<bool> = "parallel-compiler",
         default_linker: Option<String> = "default-linker",
         channel: Option<String> = "channel",
         description: Option<String> = "description",
@@ -1755,7 +1754,6 @@ impl Config {
                 debuginfo_level_tests: debuginfo_level_tests_toml,
                 backtrace,
                 incremental,
-                parallel_compiler,
                 randomize_layout,
                 default_linker,
                 channel: _, // already handled above
@@ -1864,13 +1862,6 @@ impl Config {
 
             config.rust_randomize_layout = randomize_layout.unwrap_or_default();
             config.llvm_tools_enabled = llvm_tools.unwrap_or(true);
-
-            // FIXME: Remove this option at the end of 2024.
-            if parallel_compiler.is_some() {
-                println!(
-                    "WARNING: The `rust.parallel-compiler` option is deprecated and does nothing. The parallel compiler (with one thread) is now the default"
-                );
-            }
 
             config.llvm_enzyme =
                 llvm_enzyme.unwrap_or(config.channel == "dev" || config.channel == "nightly");
@@ -3213,7 +3204,6 @@ fn check_incompatible_options_for_ci_rustc(
         debuginfo_level_tools: _,
         debuginfo_level_tests: _,
         backtrace: _,
-        parallel_compiler: _,
         musl_root: _,
         verbose_tests: _,
         optimize_tests: _,
