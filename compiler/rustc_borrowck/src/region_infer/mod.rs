@@ -1950,8 +1950,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         target_test: impl Fn(RegionVid) -> bool,
     ) -> (BlameConstraint<'tcx>, Vec<ExtraConstraintInfo>) {
         // Find all paths
-        let (path, target_region) =
-            self.find_constraint_paths_between_regions(from_region, target_test).unwrap();
+        let (path, target_region) = self
+            .find_constraint_paths_between_regions(from_region, target_test)
+            .or_else(|| {
+                self.find_constraint_paths_between_regions(from_region, |r| {
+                    self.cannot_name_placeholder(from_region, r)
+                })
+            })
+            .unwrap();
         debug!(
             "path={:#?}",
             path.iter()
