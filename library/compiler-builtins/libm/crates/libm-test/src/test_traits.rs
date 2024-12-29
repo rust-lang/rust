@@ -1,8 +1,7 @@
 //! Traits related to testing.
 //!
-//! There are three main traits in this module:
+//! There are two main traits in this module:
 //!
-//! - `GenerateInput`: implemented on any types that create test cases.
 //! - `TupleCall`: implemented on tuples to allow calling them as function arguments.
 //! - `CheckOutput`: implemented on anything that is an output type for validation against an
 //!   expected value.
@@ -12,11 +11,6 @@ use std::fmt;
 use anyhow::{Context, bail, ensure};
 
 use crate::{CheckCtx, Float, Int, MaybeOverride, SpecialCase, TestResult};
-
-/// Implement this on types that can generate a sequence of tuples for test input.
-pub trait GenerateInput<TupleArgs> {
-    fn get_cases(&self) -> impl Iterator<Item = TupleArgs>;
-}
 
 /// Trait for calling a function with a tuple as arguments.
 ///

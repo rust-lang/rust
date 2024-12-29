@@ -1,8 +1,10 @@
 //! Configuration for how tests get run.
 
-use std::env;
+use std::ops::RangeInclusive;
 use std::sync::LazyLock;
+use std::{env, str};
 
+use crate::gen::random::{SEED, SEED_ENV};
 use crate::{BaseName, FloatTy, Identifier, test_log};
 
 /// The environment variable indicating which extensive tests should be run.
@@ -188,9 +190,16 @@ pub fn iteration_count(ctx: &CheckCtx, gen_kind: GeneratorKind, argnum: usize) -
     };
     let total = ntests.pow(t_env.input_count.try_into().unwrap());
 
+    let seed_msg = match gen_kind {
+        GeneratorKind::Domain => String::new(),
+        GeneratorKind::Random => {
+            format!(" using `{SEED_ENV}={}`", str::from_utf8(SEED.as_slice()).unwrap())
+        }
+    };
+
     test_log(&format!(
         "{gen_kind:?} {basis:?} {fn_ident} arg {arg}/{args}: {ntests} iterations \
-         ({total} total)",
+         ({total} total){seed_msg}",
         basis = ctx.basis,
         fn_ident = ctx.fn_ident,
         arg = argnum + 1,
@@ -198,6 +207,25 @@ pub fn iteration_count(ctx: &CheckCtx, gen_kind: GeneratorKind, argnum: usize) -
     ));
 
     ntests
+}
+
+/// Some tests require that an integer be kept within reasonable limits; generate that here.
+pub fn int_range(ctx: &CheckCtx, argnum: usize) -> RangeInclusive<i32> {
+    let t_env = TestEnv::from_env(ctx);
+
+    if !matches!(ctx.base_name, BaseName::Jn | BaseName::Yn) {
+        return i32::MIN..=i32::MAX;
+    }
+
+    assert_eq!(argnum, 0, "For `jn`/`yn`, only the first argument takes an integer");
+
+    // The integer argument to `jn` is an iteration count. Limit this to ensure tests can be
+    // completed in a reasonable amount of time.
+    if t_env.slow_platform || !cfg!(optimizations_enabled) {
+        (-0xf)..=0xff
+    } else {
+        (-0xff)..=0xffff
+    }
 }
 
 /// For domain tests, limit how many asymptotes or specified check points we test.
