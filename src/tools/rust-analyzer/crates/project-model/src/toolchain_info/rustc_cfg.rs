@@ -24,7 +24,26 @@ pub fn get(
         }
     };
 
-    let rustc_cfgs = rustc_cfgs.lines().map(crate::parse_cfg).collect::<Result<Vec<_>, _>>();
+    // These are unstable but the standard libraries gate on them.
+    let unstable = vec![
+        r#"target_has_atomic_equal_alignment="8""#,
+        r#"target_has_atomic_equal_alignment="16""#,
+        r#"target_has_atomic_equal_alignment="32""#,
+        r#"target_has_atomic_equal_alignment="64""#,
+        r#"target_has_atomic_equal_alignment="128""#,
+        r#"target_has_atomic_equal_alignment="ptr""#,
+        r#"target_has_atomic_load_store"#,
+        r#"target_has_atomic_load_store="8""#,
+        r#"target_has_atomic_load_store="16""#,
+        r#"target_has_atomic_load_store="32""#,
+        r#"target_has_atomic_load_store="64""#,
+        r#"target_has_atomic_load_store="128""#,
+        r#"target_has_atomic_load_store="ptr""#,
+        r#"target_thread_local"#,
+        r#"target_has_atomic"#,
+    ];
+    let rustc_cfgs =
+        rustc_cfgs.lines().chain(unstable).map(crate::parse_cfg).collect::<Result<Vec<_>, _>>();
     match rustc_cfgs {
         Ok(rustc_cfgs) => {
             tracing::debug!(?rustc_cfgs, "rustc cfgs found");
@@ -42,13 +61,14 @@ fn rustc_print_cfg(
     extra_env: &FxHashMap<String, String>,
     config: QueryConfig<'_>,
 ) -> anyhow::Result<String> {
-    const RUSTC_ARGS: [&str; 3] = ["--print", "cfg", "-O"];
+    const RUSTC_ARGS: [&str; 2] = ["--print", "cfg"];
     let (sysroot, current_dir) = match config {
         QueryConfig::Cargo(sysroot, cargo_toml) => {
             let mut cmd = sysroot.tool(Tool::Cargo, cargo_toml.parent());
             cmd.envs(extra_env);
             cmd.env("RUSTC_BOOTSTRAP", "1");
             cmd.args(["rustc", "-Z", "unstable-options"]).args(RUSTC_ARGS);
+            cmd.args(["--", "-O"]);
             if let Some(target) = target {
                 cmd.args(["--target", target]);
             }
@@ -70,6 +90,7 @@ fn rustc_print_cfg(
     let mut cmd = sysroot.tool(Tool::Rustc, current_dir);
     cmd.envs(extra_env);
     cmd.args(RUSTC_ARGS);
+    cmd.arg("-O");
     if let Some(target) = target {
         cmd.args(["--target", target]);
     }
