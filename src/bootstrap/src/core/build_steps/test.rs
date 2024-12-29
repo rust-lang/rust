@@ -1133,69 +1133,21 @@ fn testdir(builder: &Builder<'_>, host: TargetSelection) -> PathBuf {
     builder.out.join(host).join("test")
 }
 
-macro_rules! default_test {
-    ($name:ident { path: $path:expr, mode: $mode:expr, suite: $suite:expr }) => {
-        test!($name { path: $path, mode: $mode, suite: $suite, default: true, host: false });
-    };
-}
-
-macro_rules! default_test_with_compare_mode {
-    ($name:ident { path: $path:expr, mode: $mode:expr, suite: $suite:expr,
-                   compare_mode: $compare_mode:expr }) => {
-        test_with_compare_mode!($name {
-            path: $path,
-            mode: $mode,
-            suite: $suite,
-            default: true,
-            host: false,
-            compare_mode: $compare_mode
-        });
-    };
-}
-
-macro_rules! host_test {
-    ($name:ident { path: $path:expr, mode: $mode:expr, suite: $suite:expr }) => {
-        test!($name { path: $path, mode: $mode, suite: $suite, default: true, host: true });
-    };
-}
-
+/// Declares a test step that invokes compiletest on a particular test suite.
 macro_rules! test {
-    ($name:ident { path: $path:expr, mode: $mode:expr, suite: $suite:expr, default: $default:expr,
-                   host: $host:expr }) => {
-        test_definitions!($name {
-            path: $path,
-            mode: $mode,
-            suite: $suite,
-            default: $default,
-            host: $host,
-            compare_mode: None
-        });
-    };
-}
-
-macro_rules! test_with_compare_mode {
-    ($name:ident { path: $path:expr, mode: $mode:expr, suite: $suite:expr, default: $default:expr,
-                   host: $host:expr, compare_mode: $compare_mode:expr }) => {
-        test_definitions!($name {
-            path: $path,
-            mode: $mode,
-            suite: $suite,
-            default: $default,
-            host: $host,
-            compare_mode: Some($compare_mode)
-        });
-    };
-}
-
-macro_rules! test_definitions {
-    ($name:ident {
-        path: $path:expr,
-        mode: $mode:expr,
-        suite: $suite:expr,
-        default: $default:expr,
-        host: $host:expr,
-        compare_mode: $compare_mode:expr
-    }) => {
+    (
+        $( #[$attr:meta] )* // allow docstrings and attributes
+        $name:ident {
+            path: $path:expr,
+            mode: $mode:expr,
+            suite: $suite:expr,
+            default: $default:expr
+            $( , only_hosts: $only_hosts:expr )? // default: false
+            $( , compare_mode: $compare_mode:expr )? // default: None
+            $( , )? // optional trailing comma
+        }
+    ) => {
+        $( #[$attr] )*
         #[derive(Debug, Clone, PartialEq, Eq, Hash)]
         pub struct $name {
             pub compiler: Compiler,
@@ -1205,7 +1157,12 @@ macro_rules! test_definitions {
         impl Step for $name {
             type Output = ();
             const DEFAULT: bool = $default;
-            const ONLY_HOSTS: bool = $host;
+            const ONLY_HOSTS: bool = (const {
+                #[allow(unused_assignments, unused_mut)]
+                let mut value = false;
+                $( value = $only_hosts; )?
+                value
+            });
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 run.suite_path($path)
@@ -1224,7 +1181,12 @@ macro_rules! test_definitions {
                     mode: $mode,
                     suite: $suite,
                     path: $path,
-                    compare_mode: $compare_mode,
+                    compare_mode: (const {
+                        #[allow(unused_assignments, unused_mut)]
+                        let mut value = None;
+                        $( value = $compare_mode; )?
+                        value
+                    }),
                 })
             }
         }
@@ -1232,13 +1194,18 @@ macro_rules! test_definitions {
 }
 
 /// Declares an alias for running the [`Coverage`] tests in only one mode.
-/// Adapted from [`test_definitions`].
+/// Adapted from [`test`].
 macro_rules! coverage_test_alias {
-    ($name:ident {
-        alias_and_mode: $alias_and_mode:expr, // &'static str
-        default: $default:expr, // bool
-        only_hosts: $only_hosts:expr $(,)? // bool
-    }) => {
+    (
+        $( #[$attr:meta] )* // allow docstrings and attributes
+        $name:ident {
+            alias_and_mode: $alias_and_mode:expr, // &'static str
+            default: $default:expr, // bool
+            only_hosts: $only_hosts:expr // bool
+            $( , )? // optional trailing comma
+        }
+    ) => {
+        $( #[$attr] )*
         #[derive(Debug, Clone, PartialEq, Eq, Hash)]
         pub struct $name {
             pub compiler: Compiler,
@@ -1410,37 +1377,74 @@ impl Step for CrateBuildHelper {
     }
 }
 
-default_test!(Ui { path: "tests/ui", mode: "ui", suite: "ui" });
+test!(Ui { path: "tests/ui", mode: "ui", suite: "ui", default: true });
 
-default_test!(Crashes { path: "tests/crashes", mode: "crashes", suite: "crashes" });
+test!(Crashes { path: "tests/crashes", mode: "crashes", suite: "crashes", default: true });
 
-default_test!(Codegen { path: "tests/codegen", mode: "codegen", suite: "codegen" });
+test!(Codegen { path: "tests/codegen", mode: "codegen", suite: "codegen", default: true });
 
-default_test!(CodegenUnits {
+test!(CodegenUnits {
     path: "tests/codegen-units",
     mode: "codegen-units",
-    suite: "codegen-units"
+    suite: "codegen-units",
+    default: true,
 });
 
-default_test!(Incremental { path: "tests/incremental", mode: "incremental", suite: "incremental" });
+test!(Incremental {
+    path: "tests/incremental",
+    mode: "incremental",
+    suite: "incremental",
+    default: true,
+});
 
-default_test_with_compare_mode!(Debuginfo {
+test!(Debuginfo {
     path: "tests/debuginfo",
     mode: "debuginfo",
     suite: "debuginfo",
-    compare_mode: "split-dwarf"
+    default: true,
+    compare_mode: Some("split-dwarf"),
 });
 
-host_test!(UiFullDeps { path: "tests/ui-fulldeps", mode: "ui", suite: "ui-fulldeps" });
+test!(UiFullDeps {
+    path: "tests/ui-fulldeps",
+    mode: "ui",
+    suite: "ui-fulldeps",
+    default: true,
+    only_hosts: true,
+});
 
-host_test!(Rustdoc { path: "tests/rustdoc", mode: "rustdoc", suite: "rustdoc" });
-host_test!(RustdocUi { path: "tests/rustdoc-ui", mode: "ui", suite: "rustdoc-ui" });
+test!(Rustdoc {
+    path: "tests/rustdoc",
+    mode: "rustdoc",
+    suite: "rustdoc",
+    default: true,
+    only_hosts: true,
+});
+test!(RustdocUi {
+    path: "tests/rustdoc-ui",
+    mode: "ui",
+    suite: "rustdoc-ui",
+    default: true,
+    only_hosts: true,
+});
 
-host_test!(RustdocJson { path: "tests/rustdoc-json", mode: "rustdoc-json", suite: "rustdoc-json" });
+test!(RustdocJson {
+    path: "tests/rustdoc-json",
+    mode: "rustdoc-json",
+    suite: "rustdoc-json",
+    default: true,
+    only_hosts: true,
+});
 
-host_test!(Pretty { path: "tests/pretty", mode: "pretty", suite: "pretty" });
+test!(Pretty {
+    path: "tests/pretty",
+    mode: "pretty",
+    suite: "pretty",
+    default: true,
+    only_hosts: true,
+});
 
-/// Special-handling is needed for `run-make`, so don't use `default_test` for defining `RunMake`
+/// Special-handling is needed for `run-make`, so don't use `test!` for defining `RunMake`
 /// tests.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct RunMake {
@@ -1475,7 +1479,7 @@ impl Step for RunMake {
     }
 }
 
-default_test!(Assembly { path: "tests/assembly", mode: "assembly", suite: "assembly" });
+test!(Assembly { path: "tests/assembly", mode: "assembly", suite: "assembly", default: true });
 
 /// Coverage tests are a bit more complicated than other test suites, because
 /// we want to run the same set of test files in multiple different modes,
@@ -1552,27 +1556,33 @@ impl Step for Coverage {
     }
 }
 
-// Runs `tests/coverage` in "coverage-map" mode only.
-// Used by `x test` and `x test coverage-map`.
-coverage_test_alias!(CoverageMap {
-    alias_and_mode: "coverage-map",
-    default: true,
-    only_hosts: false,
-});
-// Runs `tests/coverage` in "coverage-run" mode only.
-// Used by `x test` and `x test coverage-run`.
-coverage_test_alias!(CoverageRun {
-    alias_and_mode: "coverage-run",
-    default: true,
-    // Compiletest knows how to automatically skip these tests when cross-compiling,
-    // but skipping the whole step here makes it clearer that they haven't run at all.
-    only_hosts: true,
-});
+coverage_test_alias! {
+    /// Runs the `tests/coverage` test suite in "coverage-map" mode only.
+    /// Used by `x test` and `x test coverage-map`.
+    CoverageMap {
+        alias_and_mode: "coverage-map",
+        default: true,
+        only_hosts: false,
+    }
+}
+coverage_test_alias! {
+    /// Runs the `tests/coverage` test suite in "coverage-run" mode only.
+    /// Used by `x test` and `x test coverage-run`.
+    CoverageRun {
+        alias_and_mode: "coverage-run",
+        default: true,
+        // Compiletest knows how to automatically skip these tests when cross-compiling,
+        // but skipping the whole step here makes it clearer that they haven't run at all.
+        only_hosts: true,
+    }
+}
 
-host_test!(CoverageRunRustdoc {
+test!(CoverageRunRustdoc {
     path: "tests/coverage-run-rustdoc",
     mode: "coverage-run",
-    suite: "coverage-run-rustdoc"
+    suite: "coverage-run-rustdoc",
+    default: true,
+    only_hosts: true,
 });
 
 // For the mir-opt suite we do not use macros, as we need custom behavior when blessing.
