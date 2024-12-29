@@ -130,7 +130,7 @@ extern "C" fn all_ty_kinds<'a,const N:usize,T>(
   // also Tuple
   (p2, p3):(u8, u8), //~ ERROR: uses type `(u8, u8)`
   // Pat
-  nz: pattern_type!(u32 is 1..), //~ ERROR: uses type `(u32) is 1..=`
+  nz: pattern_type!(u32 is 1..),
   // Struct
   SomeStruct{b:p4,..}: SomeStruct,
   // Union
@@ -180,7 +180,7 @@ fn all_ty_kinds_in_ptr(
   // deactivated here, because this is a function *declaration* (pattern unacceptable)
   // (p2, p3):(*const u8, *const u8),
   // Pat
-  nz: *const pattern_type!(u32 is 1..), //~ ERROR: uses type `(u32) is 1..=`
+  nz: *const pattern_type!(u32 is 1..),
   // deactivated here, because this is a function *declaration* (pattern unacceptable)
   //SomeStruct{b: ref p4,..}: & SomeStruct,
   // Ptr[Union]
