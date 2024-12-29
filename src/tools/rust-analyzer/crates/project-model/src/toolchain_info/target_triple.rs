@@ -1,3 +1,4 @@
+//! Functionality to discover the current build target(s).
 use std::path::Path;
 
 use anyhow::Context;
