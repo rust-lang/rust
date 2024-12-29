@@ -16,56 +16,56 @@ jobs:
       matrix:
         include:
         - target: aarch64-apple-darwin
-          os: macos-latest
+          os: macos-15
         - target: aarch64-unknown-linux-gnu
-          os: ubuntu-latest
+          os: ubuntu-24.04
         - target: aarch64-pc-windows-msvc
-          os: windows-latest
+          os: windows-2025
           build_only: 1 # Can't run on x86 hosts
         - target: arm-unknown-linux-gnueabi
-          os: ubuntu-latest
+          os: ubuntu-24.04
         - target: arm-unknown-linux-gnueabihf
-          os: ubuntu-latest
+          os: ubuntu-24.04
         - target: armv7-unknown-linux-gnueabihf
-          os: ubuntu-latest
+          os: ubuntu-24.04
         - target: i586-unknown-linux-gnu
-          os: ubuntu-latest
+          os: ubuntu-24.04
         - target: i686-unknown-linux-gnu
-          os: ubuntu-latest
+          os: ubuntu-24.04
         - target: loongarch64-unknown-linux-gnu
-          os: ubuntu-latest
+          os: ubuntu-24.04
         - target: powerpc-unknown-linux-gnu
-          os: ubuntu-latest
+          os: ubuntu-24.04
         - target: powerpc64-unknown-linux-gnu
-          os: ubuntu-latest
+          os: ubuntu-24.04
         - target: powerpc64le-unknown-linux-gnu
-          os: ubuntu-latest
+          os: ubuntu-24.04
         - target: riscv64gc-unknown-linux-gnu
-          os: ubuntu-latest
+          os: ubuntu-24.04
         - target: thumbv6m-none-eabi
-          os: ubuntu-latest
+          os: ubuntu-24.04
         - target: thumbv7em-none-eabi
-          os: ubuntu-latest
+          os: ubuntu-24.04
         - target: thumbv7em-none-eabihf
-          os: ubuntu-latest
+          os: ubuntu-24.04
         - target: thumbv7m-none-eabi
-          os: ubuntu-latest
+          os: ubuntu-24.04
         - target: x86_64-unknown-linux-gnu
-          os: ubuntu-latest
+          os: ubuntu-24.04
         - target: x86_64-apple-darwin
           os: macos-13
         - target: wasm32-unknown-unknown
-          os: ubuntu-latest
+          os: ubuntu-24.04
           build_only: 1
         - target: i686-pc-windows-msvc
-          os: windows-latest
+          os: windows-2025
         - target: x86_64-pc-windows-msvc
-          os: windows-latest
+          os: windows-2025
         - target: i686-pc-windows-gnu
-          os: windows-latest
+          os: windows-2025
           channel: nightly-i686-gnu
         - target: x86_64-pc-windows-gnu
-          os: windows-latest
+          os: windows-2025
           channel: nightly-x86_64-gnu
     runs-on: ${{ matrix.os }}
     env:
@@ -94,20 +94,20 @@ jobs:
 
     # Non-linux tests just use our raw script
     - name: Run locally
-      if: matrix.os != 'ubuntu-latest' || contains(matrix.target, 'wasm')
+      if: matrix.os != 'ubuntu-24.04' || contains(matrix.target, 'wasm')
       shell: bash
       run: ./ci/run.sh ${{ matrix.target }}
 
     # Otherwise we use our docker containers to run builds
     - name: Run in Docker
-      if: matrix.os == 'ubuntu-latest' && !contains(matrix.target, 'wasm')
+      if: matrix.os == 'ubuntu-24.04' && !contains(matrix.target, 'wasm')
       run: |
         rustup target add x86_64-unknown-linux-musl
         cargo generate-lockfile && ./ci/run-docker.sh ${{ matrix.target }}
 
   clippy:
     name: Clippy
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@master
     - name: Install Rust
@@ -125,7 +125,7 @@ jobs:
 
   builtins:
     name: Check use with compiler-builtins
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@master
     - name: Install Rust
@@ -135,7 +135,7 @@ jobs:
 
   benchmarks:
     name: Benchmarks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@master
     - name: Install Rust
@@ -147,7 +147,7 @@ jobs:
 
   msrv:
     name: Check MSRV
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       RUSTFLAGS: # No need to check warnings on old MSRV, unset `-Dwarnings`
     steps:
@@ -163,7 +163,7 @@ jobs:
 
   rustfmt:
     name: Rustfmt
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@master
     - name: Install Rust
@@ -180,7 +180,7 @@ jobs:
       - benchmarks
       - msrv
       - rustfmt
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # GitHub branch protection is exceedingly silly and treats "jobs skipped because a dependency
     # failed" as success. So we have to do some contortions to ensure the job fails if any of its
     # dependencies fails.
