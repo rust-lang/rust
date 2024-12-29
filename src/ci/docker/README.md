@@ -26,6 +26,12 @@ DEPLOY=1 ./src/ci/docker/run.sh x86_64-gnu
 while locally, to the `obj/$image_name` directory. This is primarily to prevent
 strange linker errors when using multiple Docker images.
 
+For some Linux workflows (for example `x86_64-gnu-llvm-18-N`), the process is more involved. You will need to see which script is executed for the given workflow inside the [`jobs.yml`](../github-actions/jobs.yml) file and pass it through the `DOCKER_SCRIPT` environment variable. For example, to reproduce the `x86_64-gnu-llvm-18-3` workflow, you can run the following script:
+
+```
+DOCKER_SCRIPT=x86_64-gnu-llvm3.sh ./src/ci/docker/run.sh x86_64-gnu-llvm-18
+```
+
 ## Local Development
 
 Refer to the [dev guide](https://rustc-dev-guide.rust-lang.org/tests/docker.html) for more information on testing locally.
