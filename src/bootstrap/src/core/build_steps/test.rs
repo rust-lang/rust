@@ -1136,6 +1136,7 @@ fn testdir(builder: &Builder<'_>, host: TargetSelection) -> PathBuf {
 /// Declares a test step that invokes compiletest on a particular test suite.
 macro_rules! test {
     (
+        $( #[$attr:meta] )* // allow docstrings and attributes
         $name:ident {
             path: $path:expr,
             mode: $mode:expr,
@@ -1146,6 +1147,7 @@ macro_rules! test {
             $( , )? // optional trailing comma
         }
     ) => {
+        $( #[$attr] )*
         #[derive(Debug, Clone, PartialEq, Eq, Hash)]
         pub struct $name {
             pub compiler: Compiler,
@@ -1194,11 +1196,16 @@ macro_rules! test {
 /// Declares an alias for running the [`Coverage`] tests in only one mode.
 /// Adapted from [`test`].
 macro_rules! coverage_test_alias {
-    ($name:ident {
-        alias_and_mode: $alias_and_mode:expr, // &'static str
-        default: $default:expr, // bool
-        only_hosts: $only_hosts:expr $(,)? // bool
-    }) => {
+    (
+        $( #[$attr:meta] )* // allow docstrings and attributes
+        $name:ident {
+            alias_and_mode: $alias_and_mode:expr, // &'static str
+            default: $default:expr, // bool
+            only_hosts: $only_hosts:expr // bool
+            $( , )? // optional trailing comma
+        }
+    ) => {
+        $( #[$attr] )*
         #[derive(Debug, Clone, PartialEq, Eq, Hash)]
         pub struct $name {
             pub compiler: Compiler,
@@ -1549,22 +1556,26 @@ impl Step for Coverage {
     }
 }
 
-// Runs `tests/coverage` in "coverage-map" mode only.
-// Used by `x test` and `x test coverage-map`.
-coverage_test_alias!(CoverageMap {
-    alias_and_mode: "coverage-map",
-    default: true,
-    only_hosts: false,
-});
-// Runs `tests/coverage` in "coverage-run" mode only.
-// Used by `x test` and `x test coverage-run`.
-coverage_test_alias!(CoverageRun {
-    alias_and_mode: "coverage-run",
-    default: true,
-    // Compiletest knows how to automatically skip these tests when cross-compiling,
-    // but skipping the whole step here makes it clearer that they haven't run at all.
-    only_hosts: true,
-});
+coverage_test_alias! {
+    /// Runs the `tests/coverage` test suite in "coverage-map" mode only.
+    /// Used by `x test` and `x test coverage-map`.
+    CoverageMap {
+        alias_and_mode: "coverage-map",
+        default: true,
+        only_hosts: false,
+    }
+}
+coverage_test_alias! {
+    /// Runs the `tests/coverage` test suite in "coverage-run" mode only.
+    /// Used by `x test` and `x test coverage-run`.
+    CoverageRun {
+        alias_and_mode: "coverage-run",
+        default: true,
+        // Compiletest knows how to automatically skip these tests when cross-compiling,
+        // but skipping the whole step here makes it clearer that they haven't run at all.
+        only_hosts: true,
+    }
+}
 
 test!(CoverageRunRustdoc {
     path: "tests/coverage-run-rustdoc",
