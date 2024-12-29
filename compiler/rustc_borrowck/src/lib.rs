@@ -120,11 +120,10 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def: LocalDefId) -> &BorrowCheckResult<'_> {
         return tcx.arena.alloc(result);
     }
 
-    let promoted: &IndexSlice<_, _> = &promoted.borrow();
-    let opt_closure_req = do_mir_borrowck(tcx, input_body, promoted, None).0;
+    let borrowck_result = do_mir_borrowck(tcx, input_body, &*promoted.borrow(), None).0;
     debug!("mir_borrowck done");
 
-    tcx.arena.alloc(opt_closure_req)
+    tcx.arena.alloc(borrowck_result)
 }
 
 /// Perform the actual borrow checking.
@@ -215,7 +214,7 @@ fn do_mir_borrowck<'tcx>(
         consumer_options,
     );
 
-    // Dump MIR results into a file, if that is enabled. This let us
+    // Dump MIR results into a file, if that is enabled. This lets us
     // write unit-tests, as well as helping with debugging.
     nll::dump_nll_mir(&infcx, body, &regioncx, &opt_closure_req, &borrow_set);
 
