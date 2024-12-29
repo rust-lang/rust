@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
 
 """
-This script serves for generating a matrix of jobs that should
-be executed on CI.
+This script contains CI functionality.
+It can be used to generate a matrix of jobs that should
+be executed on CI, or run a specific CI job locally.
 
-It reads job definitions from `src/ci/github-actions/jobs.yml`
-and filters them based on the event that happened on CI.
+It reads job definitions from `src/ci/github-actions/jobs.yml`.
 """
 
+import argparse
 import dataclasses
 import json
 import logging
 import os
 import re
+import subprocess
 import typing
 from pathlib import Path
 from typing import List, Dict, Any, Optional
@@ -181,30 +183,76 @@ def format_run_type(run_type: WorkflowRunType) -> str:
         raise AssertionError()
 
 
+def run_workflow_locally(job_data: Dict[str, Any], job_name: str):
+    DOCKER_DIR = Path(__file__).absolute().parent.parent / "docker"
+
+    jobs = list(job_data["auto"])
+    jobs.extend(job_data["pr"])
+
+    jobs = [job for job in jobs if job.get("image") == job_name]
+    if len(jobs) == 0:
+        raise Exception(f"Job `{job_name}` not found")
+    job = jobs[0]
+    if "ubuntu" not in job["os"]:
+        raise Exception("Only Linux jobs can be executed locally")
+
+    image = job.get("env", {}).get("IMAGE", job["image"])
+    custom_env = {}
+    custom_env["DEPLOY"] = "1"
+    custom_env.update({k: str(v) for (k, v) in job.get("env", {}).items()})
+
+    args = [
+        str(DOCKER_DIR / "run.sh"),
+        image
+    ]
+    env_formatted = [f"{k}={v}" for (k, v) in sorted(custom_env.items())]
+    print(f"Executing `{' '.join(env_formatted)} {' '.join(args)}`")
+
+    env = os.environ.copy()
+    env.update(custom_env)
+    subprocess.run(args, env=env)
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     with open(JOBS_YAML_PATH) as f:
         data = yaml.safe_load(f)
 
-    github_ctx = get_github_ctx()
+    parser = argparse.ArgumentParser(
+        prog="ci.py",
+        description="Generate or run CI workflows"
+    )
+    generate_matrix = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(help="Command to execute", dest="command", required=True)
+    subparsers.add_parser("calculate-job-matrix")
+    run_parser = subparsers.add_parser("run-local")
+    run_parser.add_argument("job_name", help="CI job that should be executed")
+    args = parser.parse_args()
 
-    run_type = find_run_type(github_ctx)
-    logging.info(f"Job type: {run_type}")
+    if args.command == "calculate-job-matrix":
+        github_ctx = get_github_ctx()
 
-    with open(CI_DIR / "channel") as f:
-        channel = f.read().strip()
+        run_type = find_run_type(github_ctx)
+        logging.info(f"Job type: {run_type}")
 
-    jobs = []
-    if run_type is not None:
-        jobs = calculate_jobs(run_type, data)
-    jobs = skip_jobs(jobs, channel)
+        with open(CI_DIR / "channel") as f:
+            channel = f.read().strip()
 
-    if not jobs:
-        raise Exception("Scheduled job list is empty, this is an error")
+        jobs = []
+        if run_type is not None:
+            jobs = calculate_jobs(run_type, data)
+        jobs = skip_jobs(jobs, channel)
 
-    run_type = format_run_type(run_type)
+        if not jobs:
+            raise Exception("Scheduled job list is empty, this is an error")
 
-    logging.info(f"Output:\n{yaml.dump(dict(jobs=jobs, run_type=run_type), indent=4)}")
-    print(f"jobs={json.dumps(jobs)}")
-    print(f"run_type={run_type}")
+        run_type = format_run_type(run_type)
+
+        logging.info(f"Output:\n{yaml.dump(dict(jobs=jobs, run_type=run_type), indent=4)}")
+        print(f"jobs={json.dumps(jobs)}")
+        print(f"run_type={run_type}")
+    elif args.command == "run-local":
+        run_workflow_locally(data, args.job_name)
+    else:
+        raise Exception(f"Unknown command {args.command}")

@@ -56,7 +56,7 @@ jobs:
       - name: Calculate the CI job matrix
         env:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
-        run: python3 src/ci/github-actions/ci.py >> $GITHUB_OUTPUT
+        run: python3 src/ci/github-actions/ci.py calculate-job-matrix >> $GITHUB_OUTPUT
         id: jobs
   job:
     name: ${{ matrix.name }}
