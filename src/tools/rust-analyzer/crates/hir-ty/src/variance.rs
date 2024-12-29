@@ -2,6 +2,16 @@
 //! chapter for more info.
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/variance.html
+//!
+//! The implementation here differs from rustc. Rustc does a crate wide fixpoint resolution
+//! as the algorithm for determining variance is a fixpoint computation with potential cycles that
+//! need to be resolved. rust-analyzer does not want a crate-wide analysis though as that would hurt
+//! incrementality too much and as such our query is based on a per item basis.
+//!
+//! This does unfortunately run into the issue that we can run into query cycles which salsa
+//! currently does not allow to be resolved via a fixpoint computation. This will likely be resolved
+//! by the next salsa version. If not, we will likely have to adapt and go with the rustc approach
+//! while installing firewall per item queries to prevent invalidation issues.
 
 use crate::db::HirDatabase;
 use crate::generics::{generics, Generics};
@@ -371,33 +381,19 @@ impl Context<'_> {
         if args.is_empty() {
             return;
         }
-        if def_id == self.generics.def() {
-            // HACK: Workaround for the trivial cycle salsa case (see
-            // recursive_one_bivariant_more_non_bivariant_params test)
-            for k in args {
-                match k.data(Interner) {
-                    GenericArgData::Lifetime(lt) => {
-                        self.add_constraints_from_region(lt, Variance::Bivariant)
-                    }
-                    GenericArgData::Ty(ty) => self.add_constraints_from_ty(ty, Variance::Bivariant),
-                    GenericArgData::Const(val) => self.add_constraints_from_const(val, variance),
-                }
-            }
-        } else {
-            let Some(variances) = self.db.variances_of(def_id) else {
-                return;
-            };
+        let Some(variances) = self.db.variances_of(def_id) else {
+            return;
+        };
 
-            for (i, k) in args.iter().enumerate() {
-                match k.data(Interner) {
-                    GenericArgData::Lifetime(lt) => {
-                        self.add_constraints_from_region(lt, variance.xform(variances[i]))
-                    }
-                    GenericArgData::Ty(ty) => {
-                        self.add_constraints_from_ty(ty, variance.xform(variances[i]))
-                    }
-                    GenericArgData::Const(val) => self.add_constraints_from_const(val, variance),
+        for (i, k) in args.iter().enumerate() {
+            match k.data(Interner) {
+                GenericArgData::Lifetime(lt) => {
+                    self.add_constraints_from_region(lt, variance.xform(variances[i]))
                 }
+                GenericArgData::Ty(ty) => {
+                    self.add_constraints_from_ty(ty, variance.xform(variances[i]))
+                }
+                GenericArgData::Const(val) => self.add_constraints_from_const(val, variance),
             }
         }
     }
@@ -956,22 +952,17 @@ struct S3<T>(S<T, T>);
     }
 
     #[test]
-    fn recursive_one_bivariant_more_non_bivariant_params() {
-        // FIXME: This is wrong, this should be `BivariantPartialIndirect[T: bivariant, U: covariant]` (likewise for Wrapper)
+    fn prove_fixedpoint() {
+        // FIXME: This is wrong, this should be `FixedPoint[T: covariant, U: covariant, V: covariant]`
         // This is a limitation of current salsa where a cycle may only set a fallback value to the
-        // query result which is not what we want! We want to treat the cycle call as fallback
-        // without setting the query result to the fallback.
-        // `BivariantPartial` works as we workaround for the trivial case of being self-referential
+        // query result, but we need to solve a fixpoint here. The new salsa will have this
+        // fortunately.
         check(
             r#"
-struct BivariantPartial<T, U>(*const BivariantPartial<T, U>, U);
-struct Wrapper<T, U>(BivariantPartialIndirect<T, U>);
-struct BivariantPartialIndirect<T, U>(*const Wrapper<T, U>, U);
+struct FixedPoint<T, U, V>(&'static FixedPoint<(), T, U>, V);
 "#,
             expect![[r#"
-                BivariantPartial[T: bivariant, U: covariant]
-                Wrapper[T: bivariant, U: bivariant]
-                BivariantPartialIndirect[T: bivariant, U: bivariant]
+                FixedPoint[T: bivariant, U: bivariant, V: bivariant]
             "#]],
         );
     }
