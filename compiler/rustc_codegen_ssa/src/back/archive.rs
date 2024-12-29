@@ -493,6 +493,7 @@ impl<'a> ArArchiveBuilder<'a> {
                 perms: 0o644,
             })
         }
+
         // Write to a temporary file first before atomically renaming to the final name.
         // This prevents programs (including rustc) from attempting to read a partial archive.
         // It also enables writing an archive with the same filename as a dependency on Windows as
@@ -510,6 +511,7 @@ impl<'a> ArArchiveBuilder<'a> {
         let archive_tmpfile_path = archive_tmpdir.path().join("tmp.a");
         let archive_tmpfile = File::create_new(&archive_tmpfile_path)
             .map_err(|err| io_error_context("couldn't create the temp file", err))?;
+
         let mut archive_tmpfile = BufWriter::new(archive_tmpfile);
         write_archive_to_stream(
             &mut archive_tmpfile,
@@ -520,6 +522,7 @@ impl<'a> ArArchiveBuilder<'a> {
         )?;
         archive_tmpfile.flush()?;
         drop(archive_tmpfile);
+
         let any_entries = !entries.is_empty();
         drop(entries);
         // Drop src_archives to unmap all input archives, which is necessary if we want to write the
