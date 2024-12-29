@@ -246,6 +246,6 @@ impl FactCell for RegionVid {
 
 impl FactCell for LocationIndex {
     fn to_string(&self, location_table: &LocationTable) -> String {
-        format!("{:?}", location_table.to_location(*self))
+        format!("{:?}", location_table.to_rich_location(*self))
     }
 }
