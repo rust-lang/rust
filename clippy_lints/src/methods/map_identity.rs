@@ -1,8 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{is_expr_untyped_identity_function, is_trait_method};
+use clippy_utils::{is_expr_untyped_identity_function, is_trait_method, path_to_local};
+use rustc_ast::BindingMode;
 use rustc_errors::Applicability;
-use rustc_hir as hir;
+use rustc_hir::{self as hir, Node, PatKind};
 use rustc_lint::LateContext;
 use rustc_span::{Span, sym};
 
@@ -24,6 +25,16 @@ pub(super) fn check(
         && is_expr_untyped_identity_function(cx, map_arg)
         && let Some(sugg_span) = expr.span.trim_start(caller.span)
     {
+        // If the result of `.map(identity)` is used as a mutable reference,
+        // the caller must not be an immutable binding.
+        if cx.typeck_results().expr_ty_adjusted(expr).is_mutable_ptr()
+            && let Some(hir_id) = path_to_local(caller)
+            && let Node::Pat(pat) = cx.tcx.hir_node(hir_id)
+            && !matches!(pat.kind, PatKind::Binding(BindingMode::MUT, ..))
+        {
+            return;
+        }
+
         span_lint_and_sugg(
             cx,
             MAP_IDENTITY,
