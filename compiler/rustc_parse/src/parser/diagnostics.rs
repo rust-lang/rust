@@ -755,7 +755,7 @@ impl<'a> Parser<'a> {
         // When there are a few keywords in the last ten elements of `self.expected_token_types`
         // and the current token is an identifier, it's probably a misspelled keyword. This handles
         // code like `async Move {}`, misspelled `if` in match guard, misspelled `else` in
-        // `if`-`else` and mispelled `where` in a where clause.
+        // `if`-`else` and misspelled `where` in a where clause.
         if !expected_keywords.is_empty()
             && !curr_ident.is_used_keyword()
             && let Some(misspelled_kw) = find_similar_kw(curr_ident, &expected_keywords)
