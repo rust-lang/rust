@@ -43,3 +43,15 @@ impl Idx for u32 {
         self as usize
     }
 }
+
+impl Idx for u8 {
+    #[inline]
+    fn new(idx: usize) -> Self {
+        assert!(idx <= u8::MAX as usize);
+        idx as u8
+    }
+    #[inline]
+    fn index(self) -> usize {
+        self as usize
+    }
+}

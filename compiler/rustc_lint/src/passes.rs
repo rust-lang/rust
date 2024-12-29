@@ -75,7 +75,11 @@ impl LateLintPass<'_> for HardwiredLints {}
 #[macro_export]
 macro_rules! expand_combined_late_lint_pass_method {
     ([$($pass:ident),*], $self: ident, $name: ident, $params:tt) => ({
-        $($self.$pass.$name $params;)*
+        $(
+            if $self.enabled_passes.contains(EnabledPasses::$pass as u8) {
+                $self.$pass.$name $params;
+            }
+        )*
     })
 }
 
@@ -96,15 +100,37 @@ macro_rules! expand_combined_late_lint_pass_methods {
 #[macro_export]
 macro_rules! declare_combined_late_lint_pass {
     ([$v:vis $name:ident, [$($pass:ident: $constructor:expr,)*]], $methods:tt) => (
+        #[repr(u8)]
+        enum EnabledPasses {
+            $($pass,)*
+        }
+
         #[allow(non_snake_case)]
         $v struct $name {
+            enabled_passes: rustc_index::bit_set::DenseBitSet<u8>,
             $($pass: $pass,)*
         }
 
         impl $name {
-            $v fn new() -> Self {
+            #[allow(non_snake_case)]
+            $v fn new<'tcx>(tcx: TyCtxt<'tcx>) -> Self {
+                let mut enabled_passes = rustc_index::bit_set::DenseBitSet::new_filled(${count($pass)});
+                let lints_that_dont_need_to_run = tcx.lints_that_dont_need_to_run(());
+                $(
+                    let $pass = $constructor;
+                    {
+                        let lints = $pass.get_lints();
+                        // If the pass doesn't have a single needed lint, omit it.
+                        if !lints.is_empty()
+                            && lints.iter().all(|lint| lints_that_dont_need_to_run.contains(&LintId::of(lint)))
+                        {
+                            enabled_passes.remove(EnabledPasses::$pass as u8);
+                        }
+                    }
+                )*
                 Self {
-                    $($pass: $constructor,)*
+                    enabled_passes,
+                    $($pass,)*
                 }
             }
 

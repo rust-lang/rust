@@ -30,6 +30,7 @@
 #![feature(if_let_guard)]
 #![feature(iter_order_by)]
 #![feature(let_chains)]
+#![feature(macro_metavar_expr)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 #![feature(trait_upcasting)]
@@ -146,7 +147,7 @@ pub fn provide(providers: &mut Providers) {
 }
 
 fn lint_mod(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
-    late_lint_mod(tcx, module_def_id, BuiltinCombinedModuleLateLintPass::new());
+    late_lint_mod(tcx, module_def_id, BuiltinCombinedModuleLateLintPass::new(tcx));
 }
 
 early_lint_methods!(
