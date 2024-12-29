@@ -25,10 +25,8 @@ use crate::{
     cargo_workspace::{CargoMetadataConfig, DepKind, PackageData, RustLibSource},
     env::{cargo_config_env, inject_cargo_env, inject_cargo_package_env, inject_rustc_tool_env},
     project_json::{Crate, CrateArrayIdx},
-    rustc_cfg::{self, RustcCfgConfig},
     sysroot::{SysrootCrate, SysrootMode},
-    target_data_layout::{self, RustcDataLayoutConfig},
-    target_triple::{self, TargetTipleConfig},
+    toolchain_info::{rustc_cfg, target_data_layout, target_triple, QueryConfig},
     utf8_stdout, CargoConfig, CargoWorkspace, CfgOverrides, InvocationStrategy, ManifestPath,
     Package, ProjectJson, ProjectManifest, Sysroot, TargetData, TargetKind, WorkspaceBuildScripts,
 };
@@ -177,10 +175,10 @@ fn get_toolchain_version(
     extra_env: &FxHashMap<String, String>,
     prefix: &str,
 ) -> Result<Option<Version>, anyhow::Error> {
-    let cargo_version = utf8_stdout({
-        let mut cmd = Sysroot::tool(sysroot, tool);
+    let cargo_version = utf8_stdout(&mut {
+        let mut cmd = Sysroot::tool(sysroot, tool, current_dir);
         cmd.envs(extra_env);
-        cmd.arg("--version").current_dir(current_dir);
+        cmd.arg("--version");
         cmd
     })
     .with_context(|| format!("Failed to query rust toolchain version at {current_dir}, is your toolchain setup correctly?"))?;
@@ -221,155 +219,152 @@ impl ProjectWorkspace {
                 ProjectWorkspace::load_detached_file(rust_file, config)?
             }
             ProjectManifest::CargoToml(cargo_toml) => {
-                // FIXME: Split sysroot discovery from sysroot loading, as to load the sysroot we
-                // want to pass the analysis target, but to discover the target we need to know the
-                // sysroot location so we know which cargo to use
-                let sysroot = match (&config.sysroot, &config.sysroot_src) {
-                    (Some(RustLibSource::Discover), None) => Sysroot::discover(
-                        cargo_toml.parent(),
-                        &config.extra_env,
-                        &config.sysroot_query_metadata,
-                    ),
-                    (Some(RustLibSource::Discover), Some(sysroot_src)) => {
-                        Sysroot::discover_with_src_override(
-                            cargo_toml.parent(),
-                            &config.extra_env,
-                            sysroot_src.clone(),
-                            &config.sysroot_query_metadata,
-                        )
-                    }
-                    (Some(RustLibSource::Path(path)), None) => Sysroot::discover_sysroot_src_dir(
-                        path.clone(),
-                        &config.sysroot_query_metadata,
-                    ),
-                    (Some(RustLibSource::Path(sysroot)), Some(sysroot_src)) => Sysroot::load(
-                        Some(sysroot.clone()),
-                        Some(sysroot_src.clone()),
-                        &config.sysroot_query_metadata,
-                    ),
-                    (None, _) => Sysroot::empty(),
-                };
-                tracing::info!(workspace = %cargo_toml, src_root = ?sysroot.src_root(), root = ?sysroot.root(), "Using sysroot");
-
-                let rustc_dir = match &config.rustc_source {
-                    Some(RustLibSource::Path(path)) => ManifestPath::try_from(path.clone())
-                        .map_err(|p| Some(format!("rustc source path is not absolute: {p}"))),
-                    Some(RustLibSource::Discover) => {
-                        sysroot.discover_rustc_src().ok_or_else(|| {
-                            Some("Failed to discover rustc source for sysroot.".to_owned())
-                        })
-                    }
-                    None => Err(None),
-                };
-                let targets = target_triple::get(
-                    TargetTipleConfig::Cargo(&sysroot, cargo_toml),
-                    config.target.as_deref(),
-                    &config.extra_env,
-                )
-                .unwrap_or_default();
-                let rustc =  rustc_dir.and_then(|rustc_dir| {
-                    info!(workspace = %cargo_toml, rustc_dir = %rustc_dir, "Using rustc source");
-                    match CargoWorkspace::fetch_metadata(
-                        &rustc_dir,
-                        cargo_toml.parent(),
-                        &CargoMetadataConfig {
-                            features: crate::CargoFeatures::default(),
-                            targets: targets.clone(),
-                            extra_args: config.extra_args.clone(),
-                            extra_env: config.extra_env.clone(),
-                        },
-                        &sysroot,
-                        false,
-                        progress,
-                    ) {
-                        Ok((meta, _error)) => {
-                            let workspace = CargoWorkspace::new(meta, cargo_toml.clone());
-                            let buildscripts = WorkspaceBuildScripts::rustc_crates(
-                                &workspace,
-                                cargo_toml.parent(),
-                                &config.extra_env,
-                                &sysroot
-                            );
-                            Ok(Box::new((workspace, buildscripts)))
-                        }
-                        Err(e) => {
-                            tracing::error!(
-                                %e,
-                                "Failed to read Cargo metadata from rustc source at {rustc_dir}",
-                            );
-                            Err(Some(format!(
-                                "Failed to read Cargo metadata from rustc source at {rustc_dir}: {e}"
-                            )))
-                        }
-                    }
-                });
-
-                let toolchain = get_toolchain_version(
-                    cargo_toml.parent(),
-                    &sysroot,
-                    Tool::Cargo,
-                    &config.extra_env,
-                    "cargo ",
-                )?;
-                let rustc_cfg = rustc_cfg::get(
-                    targets.first().map(Deref::deref),
-                    &config.extra_env,
-                    RustcCfgConfig::Cargo(&sysroot, cargo_toml),
-                );
-
-                let cfg_overrides = config.cfg_overrides.clone();
-                let data_layout = target_data_layout::get(
-                    RustcDataLayoutConfig::Cargo(&sysroot, cargo_toml),
-                    targets.first().map(Deref::deref),
-                    &config.extra_env,
-                );
-                if let Err(e) = &data_layout {
-                    tracing::error!(%e, "failed fetching data layout for {cargo_toml:?} workspace");
-                }
-
-                let (meta, error) = CargoWorkspace::fetch_metadata(
-                    cargo_toml,
-                    cargo_toml.parent(),
-                    &CargoMetadataConfig {
-                        features: config.features.clone(),
-                        targets,
-                        extra_args: config.extra_args.clone(),
-                        extra_env: config.extra_env.clone(),
-                    },
-                    &sysroot,
-                        false,
-                        progress,
-                )
-                .with_context(|| {
-                    format!(
-                        "Failed to read Cargo metadata from Cargo.toml file {cargo_toml}, {toolchain:?}",
-                    )
-                })?;
-                let cargo = CargoWorkspace::new(meta, cargo_toml.clone());
-
-                let cargo_config_extra_env =
-                    cargo_config_env(cargo_toml, &config.extra_env, &sysroot);
-                ProjectWorkspace {
-                    kind: ProjectWorkspaceKind::Cargo {
-                        cargo,
-                        build_scripts: WorkspaceBuildScripts::default(),
-                        rustc,
-                        cargo_config_extra_env,
-                        error: error.map(Arc::new),
-                        set_test: config.set_test,
-                    },
-                    sysroot,
-                    rustc_cfg,
-                    cfg_overrides,
-                    toolchain,
-                    target_layout: data_layout
-                        .map(Arc::from)
-                        .map_err(|it| Arc::from(it.to_string())),
-                }
+                ProjectWorkspace::load_cargo(cargo_toml, config, progress)?
             }
         };
 
         Ok(res)
+    }
+
+    fn load_cargo(
+        cargo_toml: &ManifestPath,
+        config: &CargoConfig,
+        progress: &dyn Fn(String),
+    ) -> Result<ProjectWorkspace, anyhow::Error> {
+        // FIXME: Split sysroot discovery from sysroot loading, as to load the sysroot we
+        // want to pass the analysis target, but to discover the target we need to know the
+        // sysroot location so we know which cargo to use
+        let sysroot = match (&config.sysroot, &config.sysroot_src) {
+            (Some(RustLibSource::Discover), None) => Sysroot::discover(
+                cargo_toml.parent(),
+                &config.extra_env,
+                &config.sysroot_query_metadata,
+            ),
+            (Some(RustLibSource::Discover), Some(sysroot_src)) => {
+                Sysroot::discover_with_src_override(
+                    cargo_toml.parent(),
+                    &config.extra_env,
+                    sysroot_src.clone(),
+                    &config.sysroot_query_metadata,
+                )
+            }
+            (Some(RustLibSource::Path(path)), None) => {
+                Sysroot::discover_sysroot_src_dir(path.clone(), &config.sysroot_query_metadata)
+            }
+            (Some(RustLibSource::Path(sysroot)), Some(sysroot_src)) => Sysroot::load(
+                Some(sysroot.clone()),
+                Some(sysroot_src.clone()),
+                &config.sysroot_query_metadata,
+            ),
+            (None, _) => Sysroot::empty(),
+        };
+        tracing::info!(workspace = %cargo_toml, src_root = ?sysroot.src_root(), root = ?sysroot.root(), "Using sysroot");
+        let rustc_dir = match &config.rustc_source {
+            Some(RustLibSource::Path(path)) => ManifestPath::try_from(path.clone())
+                .map_err(|p| Some(format!("rustc source path is not absolute: {p}"))),
+            Some(RustLibSource::Discover) => sysroot
+                .discover_rustc_src()
+                .ok_or_else(|| Some("Failed to discover rustc source for sysroot.".to_owned())),
+            None => Err(None),
+        };
+        let targets = target_triple::get(
+            QueryConfig::Cargo(&sysroot, cargo_toml),
+            config.target.as_deref(),
+            &config.extra_env,
+        )
+        .unwrap_or_default();
+        let rustc = rustc_dir.and_then(|rustc_dir| {
+            info!(workspace = %cargo_toml, rustc_dir = %rustc_dir, "Using rustc source");
+            match CargoWorkspace::fetch_metadata(
+                &rustc_dir,
+                cargo_toml.parent(),
+                &CargoMetadataConfig {
+                    features: crate::CargoFeatures::default(),
+                    targets: targets.clone(),
+                    extra_args: config.extra_args.clone(),
+                    extra_env: config.extra_env.clone(),
+                },
+                &sysroot,
+                false,
+                progress,
+            ) {
+                Ok((meta, _error)) => {
+                    let workspace = CargoWorkspace::new(meta, cargo_toml.clone());
+                    let buildscripts = WorkspaceBuildScripts::rustc_crates(
+                        &workspace,
+                        cargo_toml.parent(),
+                        &config.extra_env,
+                        &sysroot,
+                    );
+                    Ok(Box::new((workspace, buildscripts)))
+                }
+                Err(e) => {
+                    tracing::error!(
+                        %e,
+                        "Failed to read Cargo metadata from rustc source at {rustc_dir}",
+                    );
+                    Err(Some(format!(
+                        "Failed to read Cargo metadata from rustc source at {rustc_dir}: {e}"
+                    )))
+                }
+            }
+        });
+        let toolchain = get_toolchain_version(
+            cargo_toml.parent(),
+            &sysroot,
+            Tool::Cargo,
+            &config.extra_env,
+            "cargo ",
+        )?;
+        let rustc_cfg = rustc_cfg::get(
+            QueryConfig::Cargo(&sysroot, cargo_toml),
+            targets.first().map(Deref::deref),
+            &config.extra_env,
+        );
+        let cfg_overrides = config.cfg_overrides.clone();
+        let data_layout = target_data_layout::get(
+            QueryConfig::Cargo(&sysroot, cargo_toml),
+            targets.first().map(Deref::deref),
+            &config.extra_env,
+        );
+        if let Err(e) = &data_layout {
+            tracing::error!(%e, "failed fetching data layout for {cargo_toml:?} workspace");
+        }
+        let (meta, error) = CargoWorkspace::fetch_metadata(
+            cargo_toml,
+            cargo_toml.parent(),
+            &CargoMetadataConfig {
+                features: config.features.clone(),
+                targets,
+                extra_args: config.extra_args.clone(),
+                extra_env: config.extra_env.clone(),
+            },
+            &sysroot,
+            false,
+            progress,
+        )
+        .with_context(|| {
+            format!(
+                "Failed to read Cargo metadata from Cargo.toml file {cargo_toml}, {toolchain:?}",
+            )
+        })?;
+        let cargo = CargoWorkspace::new(meta, cargo_toml.clone());
+        let cargo_config_extra_env = cargo_config_env(cargo_toml, &config.extra_env, &sysroot);
+        Ok(ProjectWorkspace {
+            kind: ProjectWorkspaceKind::Cargo {
+                cargo,
+                build_scripts: WorkspaceBuildScripts::default(),
+                rustc,
+                cargo_config_extra_env,
+                error: error.map(Arc::new),
+                set_test: config.set_test,
+            },
+            sysroot,
+            rustc_cfg,
+            cfg_overrides,
+            toolchain,
+            target_layout: data_layout.map(Arc::from).map_err(|it| Arc::from(it.to_string())),
+        })
     }
 
     pub fn load_inline(project_json: ProjectJson, config: &CargoConfig) -> ProjectWorkspace {
@@ -378,8 +373,7 @@ impl ProjectWorkspace {
             project_json.sysroot_src.clone(),
             &config.sysroot_query_metadata,
         );
-        let cfg_config = RustcCfgConfig::Rustc(&sysroot);
-        let data_layout_config = RustcDataLayoutConfig::Rustc(&sysroot);
+        let query_config = QueryConfig::Rustc(&sysroot, project_json.path().as_ref());
         let toolchain = match get_toolchain_version(
             project_json.path(),
             &sysroot,
@@ -395,8 +389,8 @@ impl ProjectWorkspace {
         };
 
         let target = config.target.as_deref();
-        let rustc_cfg = rustc_cfg::get(target, &config.extra_env, cfg_config);
-        let data_layout = target_data_layout::get(data_layout_config, target, &config.extra_env);
+        let rustc_cfg = rustc_cfg::get(query_config, target, &config.extra_env);
+        let data_layout = target_data_layout::get(query_config, target, &config.extra_env);
         ProjectWorkspace {
             kind: ProjectWorkspaceKind::Json(project_json),
             sysroot,
@@ -432,17 +426,14 @@ impl ProjectWorkspace {
             };
 
         let targets = target_triple::get(
-            TargetTipleConfig::Cargo(&sysroot, detached_file),
+            QueryConfig::Cargo(&sysroot, detached_file),
             config.target.as_deref(),
             &config.extra_env,
         )
         .unwrap_or_default();
-        let rustc_cfg = rustc_cfg::get(None, &config.extra_env, RustcCfgConfig::Rustc(&sysroot));
-        let data_layout = target_data_layout::get(
-            RustcDataLayoutConfig::Rustc(&sysroot),
-            None,
-            &config.extra_env,
-        );
+        let query_config = QueryConfig::Rustc(&sysroot, dir.as_ref());
+        let rustc_cfg = rustc_cfg::get(query_config, None, &config.extra_env);
+        let data_layout = target_data_layout::get(query_config, None, &config.extra_env);
 
         let cargo_script = CargoWorkspace::fetch_metadata(
             detached_file,
@@ -954,7 +945,11 @@ fn project_json_to_crate_graph(
 
                 let target_cfgs = match target.as_deref() {
                     Some(target) => cfg_cache.entry(target).or_insert_with(|| {
-                        rustc_cfg::get(Some(target), extra_env, RustcCfgConfig::Rustc(sysroot))
+                        rustc_cfg::get(
+                            QueryConfig::Rustc(sysroot, project.project_root().as_ref()),
+                            Some(target),
+                            extra_env,
+                        )
                     }),
                     None => &rustc_cfg,
                 };

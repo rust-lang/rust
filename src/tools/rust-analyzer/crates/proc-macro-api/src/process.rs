@@ -202,6 +202,7 @@ fn mk_child(
     env: impl IntoIterator<Item = (impl AsRef<std::ffi::OsStr>, impl AsRef<std::ffi::OsStr>)>,
     null_stderr: bool,
 ) -> io::Result<Child> {
+    #[allow(clippy::disallowed_methods)]
     let mut cmd = Command::new(path);
     cmd.envs(env)
         .env("RUST_ANALYZER_INTERNALS_DO_NOT_USE", "this is unstable")

@@ -74,10 +74,9 @@ pub(crate) fn cargo_config_env(
     extra_env: &FxHashMap<String, String>,
     sysroot: &Sysroot,
 ) -> FxHashMap<String, String> {
-    let mut cargo_config = sysroot.tool(Tool::Cargo);
+    let mut cargo_config = sysroot.tool(Tool::Cargo, manifest.parent());
     cargo_config.envs(extra_env);
     cargo_config
-        .current_dir(manifest.parent())
         .args(["-Z", "unstable-options", "config", "get", "env"])
         .env("RUSTC_BOOTSTRAP", "1");
     if manifest.is_rust_manifest() {
@@ -85,7 +84,7 @@ pub(crate) fn cargo_config_env(
     }
     // if successful we receive `env.key.value = "value" per entry
     tracing::debug!("Discovering cargo config env by {:?}", cargo_config);
-    utf8_stdout(cargo_config)
+    utf8_stdout(&mut cargo_config)
         .map(parse_output_cargo_config_env)
         .inspect(|env| {
             tracing::debug!("Discovered cargo config env: {:?}", env);

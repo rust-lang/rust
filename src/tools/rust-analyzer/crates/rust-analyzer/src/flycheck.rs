@@ -444,12 +444,11 @@ impl FlycheckActor {
     ) -> Option<Command> {
         match &self.config {
             FlycheckConfig::CargoCommand { command, options, ansi_color_output } => {
-                let mut cmd = Command::new(Tool::Cargo.path());
+                let mut cmd = toolchain::command(Tool::Cargo.path(), &*self.root);
                 if let Some(sysroot_root) = &self.sysroot_root {
                     cmd.env("RUSTUP_TOOLCHAIN", AsRef::<std::path::Path>::as_ref(sysroot_root));
                 }
                 cmd.arg(command);
-                cmd.current_dir(&*self.root);
 
                 match package {
                     Some(pkg) => cmd.arg("-p").arg(pkg),
@@ -486,18 +485,15 @@ impl FlycheckActor {
                 Some(cmd)
             }
             FlycheckConfig::CustomCommand { command, args, extra_env, invocation_strategy } => {
-                let mut cmd = Command::new(command);
-                cmd.envs(extra_env);
-
-                match invocation_strategy {
-                    InvocationStrategy::Once => {
-                        cmd.current_dir(&*self.root);
-                    }
+                let root = match invocation_strategy {
+                    InvocationStrategy::Once => &*self.root,
                     InvocationStrategy::PerWorkspace => {
-                        // FIXME: cmd.current_dir(&affected_workspace);
-                        cmd.current_dir(&*self.root);
+                        // FIXME: &affected_workspace
+                        &*self.root
                     }
-                }
+                };
+                let mut cmd = toolchain::command(command, root);
+                cmd.envs(extra_env);
 
                 // If the custom command has a $saved_file placeholder, and
                 // we're saving a file, replace the placeholder in the arguments.

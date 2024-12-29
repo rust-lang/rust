@@ -4,7 +4,7 @@
 //! but we can't process `.rlib` and need source code instead. The source code
 //! is typically installed with `rustup component add rust-src` command.
 
-use std::{env, fs, ops, process::Command};
+use std::{env, fs, ops, path::Path, process::Command};
 
 use anyhow::{format_err, Result};
 use base_db::CrateName;
@@ -170,7 +170,7 @@ impl Sysroot {
     }
 
     /// Returns a command to run a tool preferring the cargo proxies if the sysroot exists.
-    pub fn tool(&self, tool: Tool) -> Command {
+    pub fn tool(&self, tool: Tool, current_dir: impl AsRef<Path>) -> Command {
         match self.root() {
             Some(root) => {
                 // special case rustc, we can look that up directly in the sysroot's bin folder
@@ -179,15 +179,15 @@ impl Sysroot {
                     if let Some(path) =
                         probe_for_binary(root.join("bin").join(Tool::Rustc.name()).into())
                     {
-                        return Command::new(path);
+                        return toolchain::command(path, current_dir);
                     }
                 }
 
-                let mut cmd = Command::new(tool.prefer_proxy());
+                let mut cmd = toolchain::command(tool.prefer_proxy(), current_dir);
                 cmd.env("RUSTUP_TOOLCHAIN", AsRef::<std::path::Path>::as_ref(root));
                 cmd
             }
-            _ => Command::new(tool.path()),
+            _ => toolchain::command(tool.path(), current_dir),
         }
     }
 
@@ -436,11 +436,11 @@ fn discover_sysroot_dir(
     current_dir: &AbsPath,
     extra_env: &FxHashMap<String, String>,
 ) -> Result<AbsPathBuf> {
-    let mut rustc = Command::new(Tool::Rustc.path());
+    let mut rustc = toolchain::command(Tool::Rustc.path(), current_dir);
     rustc.envs(extra_env);
     rustc.current_dir(current_dir).args(["--print", "sysroot"]);
     tracing::debug!("Discovering sysroot by {:?}", rustc);
-    let stdout = utf8_stdout(rustc)?;
+    let stdout = utf8_stdout(&mut rustc)?;
     Ok(AbsPathBuf::assert(Utf8PathBuf::from(stdout)))
 }
 
@@ -468,11 +468,11 @@ fn discover_sysroot_src_dir_or_add_component(
 ) -> Result<AbsPathBuf> {
     discover_sysroot_src_dir(sysroot_path)
         .or_else(|| {
-            let mut rustup = Command::new(Tool::Rustup.prefer_proxy());
+            let mut rustup = toolchain::command(Tool::Rustup.prefer_proxy(), current_dir);
             rustup.envs(extra_env);
-            rustup.current_dir(current_dir).args(["component", "add", "rust-src"]);
+            rustup.args(["component", "add", "rust-src"]);
             tracing::info!("adding rust-src component by {:?}", rustup);
-            utf8_stdout(rustup).ok()?;
+            utf8_stdout(&mut rustup).ok()?;
             get_rust_src(sysroot_path)
         })
         .ok_or_else(|| {

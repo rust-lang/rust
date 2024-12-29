@@ -15,15 +15,31 @@
 //!   procedural macros).
 //! * Lowering of concrete model to a [`base_db::CrateGraph`]
 
+pub mod project_json;
+pub mod toolchain_info {
+    pub mod rustc_cfg;
+    pub mod target_data_layout;
+    pub mod target_triple;
+
+    use std::path::Path;
+
+    use crate::{ManifestPath, Sysroot};
+
+    #[derive(Copy, Clone)]
+    pub enum QueryConfig<'a> {
+        /// Directly invoke `rustc` to query the desired information.
+        Rustc(&'a Sysroot, &'a Path),
+        /// Attempt to use cargo to query the desired information, honoring cargo configurations.
+        /// If this fails, falls back to invoking `rustc` directly.
+        Cargo(&'a Sysroot, &'a ManifestPath),
+    }
+}
+
 mod build_dependencies;
 mod cargo_workspace;
 mod env;
 mod manifest_path;
-pub mod project_json;
-mod rustc_cfg;
 mod sysroot;
-pub mod target_data_layout;
-mod target_triple;
 mod workspace;
 
 #[cfg(test)]
@@ -182,7 +198,7 @@ impl fmt::Display for ProjectManifest {
     }
 }
 
-fn utf8_stdout(mut cmd: Command) -> anyhow::Result<String> {
+fn utf8_stdout(cmd: &mut Command) -> anyhow::Result<String> {
     let output = cmd.output().with_context(|| format!("{cmd:?} failed"))?;
     if !output.status.success() {
         match String::from_utf8(output.stderr) {
