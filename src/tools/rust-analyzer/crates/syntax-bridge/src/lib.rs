@@ -1058,7 +1058,7 @@ where
         // We don't do what rustc does exactly, rustc does something clever when the spans have different syntax contexts
         // but this runs afoul of our separation between `span` and `hir-expand`.
         SpanData {
-            range: if a.ctx == b.ctx {
+            range: if a.ctx == b.ctx && a.anchor == b.anchor {
                 TextRange::new(
                     std::cmp::min(a.range.start(), b.range.start()),
                     std::cmp::max(a.range.end(), b.range.end()),
