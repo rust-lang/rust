@@ -13,17 +13,37 @@
 //! - "Operation" / "Op": Something that relates a routine to a function or is otherwise higher
 //!   level. `Op` is also used as the name for generic parameters since it is terse.
 
+use std::fmt;
+
+pub use shared::{ALL_OPERATIONS, FloatTy, MathOpInfo, Ty};
+
 use crate::{CheckOutput, Float, TupleCall};
+
+mod shared {
+    include!("../../libm-macros/src/shared.rs");
+}
 
 /// An enum representing each possible symbol name (`sin`, `sinf`, `sinl`, etc).
 #[libm_macros::function_enum(BaseName)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Identifier {}
+
+impl fmt::Display for Identifier {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
 
 /// The name without any type specifier, e.g. `sin` and `sinf` both become `sin`.
 #[libm_macros::base_name_enum]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum BaseName {}
+
+impl fmt::Display for BaseName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
 
 /// Attributes ascribed to a `libm` routine including signature, type information,
 /// and naming.

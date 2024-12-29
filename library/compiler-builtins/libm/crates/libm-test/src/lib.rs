@@ -13,7 +13,7 @@ mod test_traits;
 pub use f8_impl::f8;
 pub use libm::support::{Float, Int, IntTy, MinInt};
 pub use num::{FloatExt, logspace};
-pub use op::{BaseName, Identifier, MathOp, OpCFn, OpFTy, OpRustFn, OpRustRet};
+pub use op::{BaseName, FloatTy, Identifier, MathOp, OpCFn, OpFTy, OpRustFn, OpRustRet, Ty};
 pub use precision::{MaybeOverride, SpecialCase, default_ulp};
 pub use test_traits::{CheckBasis, CheckCtx, CheckOutput, GenerateInput, Hex, TupleCall};
 
