@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::macro_backtrace;
+use clippy_utils::paths::CONCAT;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::{match_def_path, tokenize_with_text};
 use rustc_ast::LitKind;
@@ -42,7 +43,7 @@ impl LateLintPass<'_> for UselessConcat {
             // Get the direct parent of the expression.
             && let Some(macro_call) = macro_backtrace(expr.span).next()
             // Check if the `concat` macro from the `core` library.
-            && match_def_path(cx, macro_call.def_id, &["core", "macros", "builtin", "concat"])
+            && match_def_path(cx, macro_call.def_id, &CONCAT)
             // We get the original code to parse it.
             && let Some(original_code) = snippet_opt(cx, macro_call.span)
             // This check allows us to ensure that the code snippet:
