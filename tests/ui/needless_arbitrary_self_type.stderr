@@ -37,5 +37,17 @@ error: the type of the `self` parameter does not need to be arbitrary
 LL |     pub fn mut_ref_bad_with_lifetime<'a>(self: &'a mut Self) {
    |                                          ^^^^^^^^^^^^^^^^^^ help: consider to change this parameter to: `&'a mut self`
 
-error: aborting due to 6 previous errors
+error: the type of the `self` parameter does not need to be arbitrary
+  --> tests/ui/needless_arbitrary_self_type.rs:68:11
+   |
+LL |     fn f1(self: &'r#struct Self) {}
+   |           ^^^^^^^^^^^^^^^^^^^^^ help: consider to change this parameter to: `&'r#struct self`
+
+error: the type of the `self` parameter does not need to be arbitrary
+  --> tests/ui/needless_arbitrary_self_type.rs:69:11
+   |
+LL |     fn f2(self: &'r#struct mut Self) {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider to change this parameter to: `&'r#struct mut self`
+
+error: aborting due to 8 previous errors
 
