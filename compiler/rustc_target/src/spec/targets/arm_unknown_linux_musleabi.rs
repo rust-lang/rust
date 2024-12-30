@@ -1,4 +1,4 @@
-use crate::spec::{Target, TargetOptions, base};
+use crate::spec::{FloatAbi, Target, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -17,6 +17,7 @@ pub(crate) fn target() -> Target {
         arch: "arm".into(),
         options: TargetOptions {
             abi: "eabi".into(),
+            llvm_floatabi: Some(FloatAbi::Soft),
             // Most of these settings are copied from the arm_unknown_linux_gnueabi
             // target.
             features: "+strict-align,+v6".into(),

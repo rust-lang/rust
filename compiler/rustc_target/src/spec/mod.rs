@@ -3194,7 +3194,8 @@ impl Target {
             );
         }
 
-        // Check that RISC-V targets always specify which ABI they use.
+        // Check that RISC-V targets always specify which ABI they use,
+        // and that ARM targets specify their float ABI.
         match &*self.arch {
             "riscv32" => {
                 check_matches!(
@@ -3210,6 +3211,9 @@ impl Target {
                     "lp64" | "lp64f" | "lp64d" | "lp64e",
                     "invalid RISC-V ABI name"
                 );
+            }
+            "arm" => {
+                check!(self.llvm_floatabi.is_some(), "ARM targets must specify their float ABI",)
             }
             _ => {}
         }

@@ -1,6 +1,6 @@
 // Targets the Cortex-M3 processor (ARMv7-M)
 
-use crate::spec::{Target, TargetOptions, base};
+use crate::spec::{FloatAbi, Target, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -17,6 +17,7 @@ pub(crate) fn target() -> Target {
 
         options: TargetOptions {
             abi: "eabi".into(),
+            llvm_floatabi: Some(FloatAbi::Soft),
             max_atomic_width: Some(32),
             ..base::thumb::opts()
         },

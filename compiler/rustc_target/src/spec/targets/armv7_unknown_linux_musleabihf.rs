@@ -1,4 +1,4 @@
-use crate::spec::{Target, TargetOptions, base};
+use crate::spec::{FloatAbi, Target, TargetOptions, base};
 
 // This target is for musl Linux on ARMv7 without thumb-mode or NEON.
 
@@ -22,6 +22,7 @@ pub(crate) fn target() -> Target {
         // target.
         options: TargetOptions {
             abi: "eabihf".into(),
+            llvm_floatabi: Some(FloatAbi::Hard),
             features: "+v7,+vfp3,-d32,+thumb2,-neon".into(),
             max_atomic_width: Some(64),
             mcount: "\u{1}mcount".into(),
