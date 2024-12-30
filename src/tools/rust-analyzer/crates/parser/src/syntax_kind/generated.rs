@@ -331,6 +331,331 @@ pub enum SyntaxKind {
 }
 use self::SyntaxKind::*;
 impl SyntaxKind {
+    #[allow(unreachable_patterns)]
+    pub const fn text(self) -> &'static str {
+        match self {
+            TOMBSTONE
+            | EOF
+            | __LAST
+            | BYTE
+            | BYTE_STRING
+            | CHAR
+            | C_STRING
+            | FLOAT_NUMBER
+            | INT_NUMBER
+            | RAW_BYTE_STRING
+            | RAW_C_STRING
+            | RAW_STRING
+            | STRING
+            | ABI
+            | ADT
+            | ARG_LIST
+            | ARRAY_EXPR
+            | ARRAY_TYPE
+            | ASM_CLOBBER_ABI
+            | ASM_CONST
+            | ASM_DIR_SPEC
+            | ASM_EXPR
+            | ASM_LABEL
+            | ASM_OPERAND
+            | ASM_OPERAND_EXPR
+            | ASM_OPERAND_NAMED
+            | ASM_OPTION
+            | ASM_OPTIONS
+            | ASM_PIECE
+            | ASM_REG_OPERAND
+            | ASM_REG_SPEC
+            | ASM_SYM
+            | ASSOC_ITEM
+            | ASSOC_ITEM_LIST
+            | ASSOC_TYPE_ARG
+            | ATTR
+            | AWAIT_EXPR
+            | BECOME_EXPR
+            | BIN_EXPR
+            | BLOCK_EXPR
+            | BOX_PAT
+            | BREAK_EXPR
+            | CALL_EXPR
+            | CAST_EXPR
+            | CLOSURE_BINDER
+            | CLOSURE_EXPR
+            | CONST
+            | CONST_ARG
+            | CONST_BLOCK_PAT
+            | CONST_PARAM
+            | CONTINUE_EXPR
+            | DYN_TRAIT_TYPE
+            | ENUM
+            | EXPR
+            | EXPR_STMT
+            | EXTERN_BLOCK
+            | EXTERN_CRATE
+            | EXTERN_ITEM
+            | EXTERN_ITEM_LIST
+            | FIELD_EXPR
+            | FIELD_LIST
+            | FN
+            | FN_PTR_TYPE
+            | FORMAT_ARGS_ARG
+            | FORMAT_ARGS_EXPR
+            | FOR_EXPR
+            | FOR_TYPE
+            | GENERIC_ARG
+            | GENERIC_ARG_LIST
+            | GENERIC_PARAM
+            | GENERIC_PARAM_LIST
+            | IDENT_PAT
+            | IF_EXPR
+            | IMPL
+            | IMPL_TRAIT_TYPE
+            | INDEX_EXPR
+            | INFER_TYPE
+            | ITEM
+            | ITEM_LIST
+            | LABEL
+            | LET_ELSE
+            | LET_EXPR
+            | LET_STMT
+            | LIFETIME
+            | LIFETIME_ARG
+            | LIFETIME_PARAM
+            | LITERAL
+            | LITERAL_PAT
+            | LOOP_EXPR
+            | MACRO_CALL
+            | MACRO_DEF
+            | MACRO_EXPR
+            | MACRO_ITEMS
+            | MACRO_PAT
+            | MACRO_RULES
+            | MACRO_STMTS
+            | MACRO_TYPE
+            | MATCH_ARM
+            | MATCH_ARM_LIST
+            | MATCH_EXPR
+            | MATCH_GUARD
+            | META
+            | METHOD_CALL_EXPR
+            | MODULE
+            | NAME
+            | NAME_REF
+            | NEVER_TYPE
+            | OFFSET_OF_EXPR
+            | OR_PAT
+            | PARAM
+            | PARAM_LIST
+            | PARENTHESIZED_ARG_LIST
+            | PAREN_EXPR
+            | PAREN_PAT
+            | PAREN_TYPE
+            | PAT
+            | PATH
+            | PATH_EXPR
+            | PATH_PAT
+            | PATH_SEGMENT
+            | PATH_TYPE
+            | PREFIX_EXPR
+            | PTR_TYPE
+            | RANGE_EXPR
+            | RANGE_PAT
+            | RECORD_EXPR
+            | RECORD_EXPR_FIELD
+            | RECORD_EXPR_FIELD_LIST
+            | RECORD_FIELD
+            | RECORD_FIELD_LIST
+            | RECORD_PAT
+            | RECORD_PAT_FIELD
+            | RECORD_PAT_FIELD_LIST
+            | REF_EXPR
+            | REF_PAT
+            | REF_TYPE
+            | RENAME
+            | REST_PAT
+            | RETURN_EXPR
+            | RETURN_TYPE_SYNTAX
+            | RET_TYPE
+            | SELF_PARAM
+            | SLICE_PAT
+            | SLICE_TYPE
+            | SOURCE_FILE
+            | STATIC
+            | STMT
+            | STMT_LIST
+            | STRUCT
+            | TOKEN_TREE
+            | TRAIT
+            | TRAIT_ALIAS
+            | TRY_EXPR
+            | TUPLE_EXPR
+            | TUPLE_FIELD
+            | TUPLE_FIELD_LIST
+            | TUPLE_PAT
+            | TUPLE_STRUCT_PAT
+            | TUPLE_TYPE
+            | TYPE
+            | TYPE_ALIAS
+            | TYPE_ARG
+            | TYPE_BOUND
+            | TYPE_BOUND_LIST
+            | TYPE_PARAM
+            | UNDERSCORE_EXPR
+            | UNION
+            | USE
+            | USE_BOUND_GENERIC_ARG
+            | USE_BOUND_GENERIC_ARGS
+            | USE_TREE
+            | USE_TREE_LIST
+            | VARIANT
+            | VARIANT_LIST
+            | VISIBILITY
+            | WHERE_CLAUSE
+            | WHERE_PRED
+            | WHILE_EXPR
+            | WILDCARD_PAT
+            | YEET_EXPR
+            | YIELD_EXPR
+            | COMMENT
+            | ERROR
+            | IDENT
+            | LIFETIME_IDENT
+            | NEWLINE
+            | SHEBANG
+            | WHITESPACE => panic!("no text for these `SyntaxKind`s"),
+            DOLLAR => "$",
+            SEMICOLON => ";",
+            COMMA => ",",
+            L_PAREN => "(",
+            R_PAREN => ")",
+            L_CURLY => "{",
+            R_CURLY => "}",
+            L_BRACK => "[",
+            R_BRACK => "]",
+            L_ANGLE => "<",
+            R_ANGLE => ">",
+            AT => "@",
+            POUND => "#",
+            TILDE => "~",
+            QUESTION => "?",
+            AMP => "&",
+            PIPE => "|",
+            PLUS => "+",
+            STAR => "*",
+            SLASH => "/",
+            CARET => "^",
+            PERCENT => "%",
+            UNDERSCORE => "_",
+            DOT => ".",
+            DOT2 => "..",
+            DOT3 => "...",
+            DOT2EQ => "..=",
+            COLON => ":",
+            COLON2 => "::",
+            EQ => "=",
+            EQ2 => "==",
+            FAT_ARROW => "=>",
+            BANG => "!",
+            NEQ => "!=",
+            MINUS => "-",
+            THIN_ARROW => "->",
+            LTEQ => "<=",
+            GTEQ => ">=",
+            PLUSEQ => "+=",
+            MINUSEQ => "-=",
+            PIPEEQ => "|=",
+            AMPEQ => "&=",
+            CARETEQ => "^=",
+            SLASHEQ => "/=",
+            STAREQ => "*=",
+            PERCENTEQ => "%=",
+            AMP2 => "&&",
+            PIPE2 => "||",
+            SHL => "<<",
+            SHR => ">>",
+            SHLEQ => "<<=",
+            SHREQ => ">>=",
+            SELF_TYPE_KW => "Self",
+            ABSTRACT_KW => "abstract",
+            AS_KW => "as",
+            BECOME_KW => "become",
+            BOX_KW => "box",
+            BREAK_KW => "break",
+            CONST_KW => "const",
+            CONTINUE_KW => "continue",
+            CRATE_KW => "crate",
+            DO_KW => "do",
+            ELSE_KW => "else",
+            ENUM_KW => "enum",
+            EXTERN_KW => "extern",
+            FALSE_KW => "false",
+            FINAL_KW => "final",
+            FN_KW => "fn",
+            FOR_KW => "for",
+            IF_KW => "if",
+            IMPL_KW => "impl",
+            IN_KW => "in",
+            LET_KW => "let",
+            LOOP_KW => "loop",
+            MACRO_KW => "macro",
+            MATCH_KW => "match",
+            MOD_KW => "mod",
+            MOVE_KW => "move",
+            MUT_KW => "mut",
+            OVERRIDE_KW => "override",
+            PRIV_KW => "priv",
+            PUB_KW => "pub",
+            REF_KW => "ref",
+            RETURN_KW => "return",
+            SELF_KW => "self",
+            STATIC_KW => "static",
+            STRUCT_KW => "struct",
+            SUPER_KW => "super",
+            TRAIT_KW => "trait",
+            TRUE_KW => "true",
+            TYPE_KW => "type",
+            TYPEOF_KW => "typeof",
+            UNSAFE_KW => "unsafe",
+            UNSIZED_KW => "unsized",
+            USE_KW => "use",
+            VIRTUAL_KW => "virtual",
+            WHERE_KW => "where",
+            WHILE_KW => "while",
+            YIELD_KW => "yield",
+            ASM_KW => "asm",
+            ATT_SYNTAX_KW => "att_syntax",
+            AUTO_KW => "auto",
+            BUILTIN_KW => "builtin",
+            CLOBBER_ABI_KW => "clobber_abi",
+            DEFAULT_KW => "default",
+            DYN_KW => "dyn",
+            FORMAT_ARGS_KW => "format_args",
+            INLATEOUT_KW => "inlateout",
+            INOUT_KW => "inout",
+            LABEL_KW => "label",
+            LATEOUT_KW => "lateout",
+            MACRO_RULES_KW => "macro_rules",
+            MAY_UNWIND_KW => "may_unwind",
+            NOMEM_KW => "nomem",
+            NORETURN_KW => "noreturn",
+            NOSTACK_KW => "nostack",
+            OFFSET_OF_KW => "offset_of",
+            OPTIONS_KW => "options",
+            OUT_KW => "out",
+            PRESERVES_FLAGS_KW => "preserves_flags",
+            PURE_KW => "pure",
+            RAW_KW => "raw",
+            READONLY_KW => "readonly",
+            SAFE_KW => "safe",
+            SYM_KW => "sym",
+            UNION_KW => "union",
+            YEET_KW => "yeet",
+            ASYNC_KW => "async",
+            AWAIT_KW => "await",
+            DYN_KW => "dyn",
+            GEN_KW => "gen",
+            TRY_KW => "try",
+        }
+    }
     #[doc = r" Checks whether this syntax kind is a strict keyword for the given edition."]
     #[doc = r" Strict keywords are identifiers that are always considered keywords."]
     pub fn is_strict_keyword(self, edition: Edition) -> bool {
