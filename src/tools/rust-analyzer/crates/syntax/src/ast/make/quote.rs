@@ -28,6 +28,19 @@ macro_rules! quote_impl_ {
     };
 
     ( @append $children:ident
+        [ $token_kind:ident $token_text:expr ]
+        $($rest:tt)*
+    ) => {
+        $children.push($crate::ast::make::quote::NodeOrToken::Token(
+            $crate::ast::make::quote::GreenToken::new(
+                $crate::ast::make::quote::RSyntaxKind($crate::SyntaxKind::$token_kind as u16),
+                &$token_text,
+            ),
+        ));
+        $crate::ast::make::quote::quote_impl!( @append $children $($rest)* );
+    };
+
+    ( @append $children:ident
         [$($token:tt)+]
         $($rest:tt)*
     ) => {
@@ -115,7 +128,9 @@ pub(crate) use quote_impl_ as quote_impl;
 /// A `quote!`-like API for crafting AST nodes.
 ///
 /// Syntax: AST nodes are created with `Node { children }`, where `Node` is the node name in `ast` (`ast::Node`).
-/// Tokens are creates with their syntax enclosed by brackets, e.g. `[::]` or `['{']`. Whitespaces can be added
+/// Tokens are creates with their syntax enclosed by brackets, e.g. `[::]` or `['{']`. Alternatively, tokens can
+/// be created with the syntax `[token_kind token_text]`, where `token_kind` is a variant of `SyntaxKind` (e.g.
+/// `IDENT`) and `token_text` is an expression producing `String` or `&str`. Whitespaces can be added
 /// as string literals (i.e. `"\n    "` is a whitespace token). Interpolation is allowed with `#` (`#variable`),
 /// from `AstNode`s and `Option`s of them. Repetition is also supported, with only one repeating variable
 /// and no separator (`#("\n" #variable [>])*`), for any `IntoIterator`. Note that `Option`s are also `IntoIterator`,
@@ -126,6 +141,7 @@ pub(crate) use quote_impl_ as quote_impl;
 /// Be careful to closely match the Ungrammar AST, there is no validation for this!
 macro_rules! quote_ {
     ( $root:ident { $($tree:tt)* } ) => {{
+        #[allow(unused_mut)]
         let mut root = ::std::vec::Vec::<$crate::ast::make::quote::NodeOrToken<
             $crate::ast::make::quote::GreenNode,
             $crate::ast::make::quote::GreenToken,
@@ -146,7 +162,7 @@ pub(crate) trait ToNodeChild {
 
 impl<N: AstNode> ToNodeChild for N {
     fn append_node_child(self, children: &mut Vec<NodeOrToken<GreenNode, GreenToken>>) {
-        children.push(self.syntax().clone_subtree().green().to_owned().into());
+        children.push((*self.syntax().clone_subtree().green()).to_owned().into());
     }
 }
 
@@ -156,6 +172,11 @@ impl<C: ToNodeChild> ToNodeChild for Option<C> {
             child.append_node_child(children);
         }
     }
+}
+
+// This is useful when you want conditionally, based on some `bool`, to emit some code.
+impl ToNodeChild for () {
+    fn append_node_child(self, _children: &mut Vec<NodeOrToken<GreenNode, GreenToken>>) {}
 }
 
 pub(crate) const fn verify_only_whitespaces(text: &str) {

@@ -85,7 +85,6 @@ pub(crate) fn generate_fn_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>)
 
                 let is_unsafe = func_node.unsafe_token().is_some();
                 let ty = make::ty_fn_ptr(
-                    None,
                     is_unsafe,
                     func_node.abi(),
                     fn_params_vec.into_iter(),
