@@ -743,18 +743,9 @@ impl HirDisplay for Static {
     }
 }
 
-pub struct TraitRefDisplayWrapper {
-    pub trait_ref: TraitRef,
-    pub format: hir_ty::display::TraitRefFormat,
-}
-
-impl HirDisplay for TraitRefDisplayWrapper {
+impl HirDisplay for TraitRef {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
-        hir_ty::display::TraitRefDisplayWrapper {
-            format: self.format,
-            trait_ref: self.trait_ref.trait_ref.clone(),
-        }
-        .hir_fmt(f)
+        self.trait_ref.hir_fmt(f)
     }
 }
 

@@ -474,7 +474,9 @@ impl HirDisplay for ProjectionTy {
 
         let trait_ref = self.trait_ref(f.db);
         write!(f, "<")?;
-        fmt_trait_ref(f, &trait_ref, TraitRefFormat::SelfAsTrait)?;
+        trait_ref.self_type_parameter(Interner).hir_fmt(f)?;
+        write!(f, " as ")?;
+        trait_ref.hir_fmt(f)?;
         write!(
             f,
             ">::{}",
@@ -1775,50 +1777,14 @@ fn write_bounds_like_dyn_trait(
     Ok(())
 }
 
-#[derive(Clone, Copy)]
-pub enum TraitRefFormat {
-    SelfAsTrait,
-    SelfImplementsTrait,
-    OnlyTrait,
-}
-
-fn fmt_trait_ref(
-    f: &mut HirFormatter<'_>,
-    tr: &TraitRef,
-    format: TraitRefFormat,
-) -> Result<(), HirDisplayError> {
-    if f.should_truncate() {
-        return write!(f, "{TYPE_HINT_TRUNCATION}");
-    }
-
-    match format {
-        TraitRefFormat::SelfAsTrait => {
-            tr.self_type_parameter(Interner).hir_fmt(f)?;
-            write!(f, " as ")?;
-        }
-        TraitRefFormat::SelfImplementsTrait => {
-            tr.self_type_parameter(Interner).hir_fmt(f)?;
-            write!(f, ": ")?;
-        }
-        TraitRefFormat::OnlyTrait => {}
-    }
-
-    let trait_ = tr.hir_trait_id();
-    f.start_location_link(trait_.into());
-    write!(f, "{}", f.db.trait_data(trait_).name.display(f.db.upcast(), f.edition()))?;
-    f.end_location_link();
-    let substs = tr.substitution.as_slice(Interner);
-    hir_fmt_generics(f, &substs[1..], None, substs[0].ty(Interner))
-}
-
-pub struct TraitRefDisplayWrapper {
-    pub trait_ref: TraitRef,
-    pub format: TraitRefFormat,
-}
-
-impl HirDisplay for TraitRefDisplayWrapper {
+impl HirDisplay for TraitRef {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
-        fmt_trait_ref(f, &self.trait_ref, self.format)
+        let trait_ = self.hir_trait_id();
+        f.start_location_link(trait_.into());
+        write!(f, "{}", f.db.trait_data(trait_).name.display(f.db.upcast(), f.edition()))?;
+        f.end_location_link();
+        let substs = self.substitution.as_slice(Interner);
+        hir_fmt_generics(f, &substs[1..], None, substs[0].ty(Interner))
     }
 }
 
@@ -1830,11 +1796,16 @@ impl HirDisplay for WhereClause {
 
         match self {
             WhereClause::Implemented(trait_ref) => {
-                fmt_trait_ref(f, trait_ref, TraitRefFormat::SelfImplementsTrait)?;
+                trait_ref.self_type_parameter(Interner).hir_fmt(f)?;
+                write!(f, ": ")?;
+                trait_ref.hir_fmt(f)?;
             }
             WhereClause::AliasEq(AliasEq { alias: AliasTy::Projection(projection_ty), ty }) => {
                 write!(f, "<")?;
-                fmt_trait_ref(f, &projection_ty.trait_ref(f.db), TraitRefFormat::SelfAsTrait)?;
+                let trait_ref = &projection_ty.trait_ref(f.db);
+                trait_ref.self_type_parameter(Interner).hir_fmt(f)?;
+                write!(f, " as ")?;
+                trait_ref.hir_fmt(f)?;
                 write!(f, ">::",)?;
                 let type_alias = from_assoc_type_id(projection_ty.associated_ty_id);
                 f.start_location_link(type_alias.into());

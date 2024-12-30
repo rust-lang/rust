@@ -3,10 +3,7 @@
 
 use core::fmt;
 
-use hir::{
-    Adt, AsAssocItem, Crate, HirDisplay, MacroKind, Semantics, TraitRefDisplayWrapper,
-    TraitRefFormat,
-};
+use hir::{Adt, AsAssocItem, Crate, HirDisplay, MacroKind, Semantics};
 use ide_db::{
     base_db::{CrateOrigin, LangCrateOrigin},
     defs::{Definition, IdentClass},
@@ -312,15 +309,13 @@ fn def_to_non_local_moniker(
         match def {
             Definition::SelfType(impl_) => {
                 if let Some(trait_ref) = impl_.trait_ref(db) {
-                    // Trait impls use `trait_type` constraint syntax for the 2nd parameter.
-                    let trait_ref_for_display =
-                        TraitRefDisplayWrapper { trait_ref, format: TraitRefFormat::OnlyTrait };
+                    // Trait impls use the trait type for the 2nd parameter.
                     reverse_description.push(MonikerDescriptor {
-                        name: display(db, edition, module, trait_ref_for_display),
+                        name: display(db, edition, module, trait_ref),
                         desc: MonikerDescriptorKind::TypeParameter,
                     });
                 }
-                // Both inherent and trait impls use `self_type` as the first parameter.
+                // Both inherent and trait impls use the self type for the first parameter.
                 reverse_description.push(MonikerDescriptor {
                     name: display(db, edition, module, impl_.self_ty(db)),
                     desc: MonikerDescriptorKind::TypeParameter,
