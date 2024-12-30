@@ -9,7 +9,7 @@ set_github_token() {
   jq '.config.output.linkcheck."http-headers"."github\\.com" = ["Authorization: Bearer $GITHUB_TOKEN"]'
 }
 
-if [ ! -z "$SKIP_LINKCHECK" ] ; then
+if [ -z "$ENABLE_LINKCHECK" ] ; then
   echo "Skipping link check."
   exit 0
 fi

@@ -57,7 +57,7 @@ jobs:
           cargo install mdbook-mermaid --version ${{ env.MDBOOK_MERMAID_VERSION }}
 
       - name: Check build
-        run: mdbook build
+        run: ENABLE_LINKCHECK=1 mdbook build
 
       - name: Deploy to gh-pages
         if: github.event_name == 'push'
