@@ -439,7 +439,8 @@ impl<T: ?Sized> *mut T {
 
         ub_checks::assert_unsafe_precondition!(
             check_language_ub,
-            "ptr::offset requires the address calculation to not overflow",
+            "ptr::offset requires the address calculation to not overflow \
+            (self:{this:?}, count:{count}, size:{size})",
             (
                 this: *const () = self as *const (),
                 count: isize = count,
@@ -1045,7 +1046,8 @@ impl<T: ?Sized> *mut T {
         #[cfg(debug_assertions)] // Expensive, and doesn't catch much in the wild.
         ub_checks::assert_unsafe_precondition!(
             check_language_ub,
-            "ptr::add requires that the address calculation does not overflow",
+            "ptr::add requires that the address calculation does not overflow \
+            (self:{this:?}, count:{count}, size:{size})",
             (
                 this: *const () = self as *const (),
                 count: usize = count,
@@ -1150,7 +1152,8 @@ impl<T: ?Sized> *mut T {
         #[cfg(debug_assertions)] // Expensive, and doesn't catch much in the wild.
         ub_checks::assert_unsafe_precondition!(
             check_language_ub,
-            "ptr::sub requires that the address calculation does not overflow",
+            "ptr::sub requires that the address calculation does not overflow \
+            (self:{this:?}, count:{count}, size:{size})",
             (
                 this: *const () = self as *const (),
                 count: usize = count,

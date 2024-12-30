@@ -4421,7 +4421,8 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
     ub_checks::assert_unsafe_precondition!(
         check_language_ub,
         "ptr::copy_nonoverlapping requires that both pointer arguments are aligned and non-null \
-        and the specified memory ranges do not overlap",
+        and the specified memory ranges do not overlap \
+        (src:{src:?}, dst:{dst:?}, size:{size}, align:{align}, count:{count})",
         (
             src: *const () = src as *const (),
             dst: *mut () = dst as *mut (),
@@ -4530,7 +4531,8 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
     unsafe {
         ub_checks::assert_unsafe_precondition!(
             check_language_ub,
-            "ptr::copy requires that both pointer arguments are aligned and non-null",
+            "ptr::copy requires that both pointer arguments are aligned and non-null \
+            (src:{src:?}, dst:{dst:?}, align:{align})",
             (
                 src: *const () = src as *const (),
                 dst: *mut () = dst as *mut (),
@@ -4617,7 +4619,8 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
     unsafe {
         ub_checks::assert_unsafe_precondition!(
             check_language_ub,
-            "ptr::write_bytes requires that the destination pointer is aligned and non-null",
+            "ptr::write_bytes requires that the destination pointer is aligned and non-null \
+            (dst:{addr:?}, align:{align})",
             (
                 addr: *const () = dst as *const (),
                 align: usize = align_of::<T>(),
