@@ -15,22 +15,16 @@ extend-exclude = [
 # Add exclusions here, lines should be like `x = "x"`, where `x` is excluded word.
 #
 # Also see docs: https://github.com/crate-ci/typos/blob/v1.28.2/docs/reference.md
-thir = "thir"
-padd = "padd"
 rplace = "rplace"
 arange = "arange"
-rela = "rela"
 unstalled = "unstalled"
 taits = "taits"
 Datas = "Datas"
 splitted = "splitted"
 leafs = "leafs"
-Lits = "Lits"
 makro = "makro"
 optin = "optin"
-parm = "parm"
 unparseable = "unparseable"
-matcheable = "matcheable"
 smove = "smove"
 childs = "childs"
 filetimes = "filetimes"
@@ -38,8 +32,11 @@ misformed = "misformed"
 targetting = "targetting"
 publically = "publically"
 
+# this can be valid word, depends on dictionary edition
+#matcheable = "matcheable"
+
 [default.extend-identifiers]
-# Entries goes here if typo is part of some existing ident
+# An entry goes here if the typo is part of some existing ident
 # where you want to keep it, but don't want to allow
 # such typos everywhere.
 #
@@ -53,13 +50,12 @@ ERROR_DS_NOT_AUTHORITIVE_FOR_DST_NC = "ERROR_DS_NOT_AUTHORITIVE_FOR_DST_NC"
 ERROR_MCA_OCCURED = "ERROR_MCA_OCCURED"
 ERRNO_ACCES = "ERRNO_ACCES"
 tolen = "tolen"
-pard = "pard"
 numer = "numer"
 
 [default]
 extend-ignore-words-re = [
-    # words with length <= 3 chars is likely noise
-    "^[a-zA-Z]{1,3}$",
+    # words with length <= 4 chars is likely noise
+    "^[a-zA-Z]{1,4}$",
 ]
 
 extend-ignore-re = [
