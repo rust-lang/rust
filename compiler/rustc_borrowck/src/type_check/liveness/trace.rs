@@ -5,6 +5,7 @@ use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::for_liveness;
 use rustc_middle::mir::{BasicBlock, Body, ConstraintCategory, Local, Location};
 use rustc_middle::traits::query::DropckOutlivesResult;
+use rustc_middle::ty::relate::Relate;
 use rustc_middle::ty::{Ty, TyCtxt, TypeVisitable, TypeVisitableExt};
 use rustc_mir_dataflow::ResultsCursor;
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
@@ -532,11 +533,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
 
     /// Stores the result that all regions in `value` are live for the
     /// points `live_at`.
-    fn add_use_live_facts_for(
-        &mut self,
-        value: impl TypeVisitable<TyCtxt<'tcx>>,
-        live_at: &IntervalSet<PointIndex>,
-    ) {
+    fn add_use_live_facts_for(&mut self, value: Ty<'tcx>, live_at: &IntervalSet<PointIndex>) {
         debug!("add_use_live_facts_for(value={:?})", value);
         Self::make_all_regions_live(self.elements, self.typeck, value, live_at);
     }
@@ -603,7 +600,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
     fn make_all_regions_live(
         elements: &DenseLocationMap,
         typeck: &mut TypeChecker<'_, 'tcx>,
-        value: impl TypeVisitable<TyCtxt<'tcx>>,
+        value: impl TypeVisitable<TyCtxt<'tcx>> + Relate<TyCtxt<'tcx>>,
         live_at: &IntervalSet<PointIndex>,
     ) {
         debug!("make_all_regions_live(value={:?})", value);
@@ -621,6 +618,15 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
                 typeck.constraints.liveness_constraints.add_points(live_region_vid, live_at);
             },
         });
+
+        // When using `-Zpolonius=next`, we record the variance of each live region.
+        if let Some(polonius_context) = typeck.polonius_context {
+            polonius_context.record_live_region_variance(
+                typeck.infcx.tcx,
+                typeck.universal_regions,
+                value,
+            );
+        }
     }
 
     fn compute_drop_data(typeck: &TypeChecker<'_, 'tcx>, dropped_ty: Ty<'tcx>) -> DropData<'tcx> {

@@ -50,6 +50,7 @@ use crate::diagnostics::UniverseInfo;
 use crate::facts::AllFacts;
 use crate::location::LocationTable;
 use crate::member_constraints::MemberConstraintSet;
+use crate::polonius::PoloniusContext;
 use crate::region_infer::TypeTest;
 use crate::region_infer::values::{LivenessValues, PlaceholderIndex, PlaceholderIndices};
 use crate::renumber::RegionCtxt;
@@ -148,6 +149,12 @@ pub(crate) fn type_check<'a, 'tcx>(
 
     debug!(?normalized_inputs_and_output);
 
+    let mut polonius_context = if infcx.tcx.sess.opts.unstable_opts.polonius.is_next_enabled() {
+        Some(PoloniusContext::new())
+    } else {
+        None
+    };
+
     let mut typeck = TypeChecker {
         infcx,
         last_span: body.span,
@@ -162,6 +169,7 @@ pub(crate) fn type_check<'a, 'tcx>(
         all_facts,
         borrow_set,
         constraints: &mut constraints,
+        polonius_context: &mut polonius_context,
     };
 
     typeck.check_user_type_annotations();
@@ -178,7 +186,18 @@ pub(crate) fn type_check<'a, 'tcx>(
     let opaque_type_values =
         opaque_types::take_opaques_and_register_member_constraints(&mut typeck);
 
-    MirTypeckResults { constraints, universal_region_relations, opaque_type_values }
+    if let Some(polonius_context) = typeck.polonius_context.as_mut() {
+        let num_regions = infcx.num_region_vars();
+        let points_per_live_region = typeck.constraints.liveness_constraints.points();
+        polonius_context.record_live_regions_per_point(num_regions, points_per_live_region);
+    }
+
+    MirTypeckResults {
+        constraints,
+        universal_region_relations,
+        opaque_type_values,
+        polonius_context,
+    }
 }
 
 #[track_caller]
@@ -546,6 +565,8 @@ struct TypeChecker<'a, 'tcx> {
     all_facts: &'a mut Option<AllFacts>,
     borrow_set: &'a BorrowSet<'tcx>,
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
+    /// When using `-Zpolonius=next`, the helper data used to create polonius constraints.
+    polonius_context: &'a mut Option<PoloniusContext>,
 }
 
 /// Holder struct for passing results from MIR typeck to the rest of the non-lexical regions
@@ -554,6 +575,7 @@ pub(crate) struct MirTypeckResults<'tcx> {
     pub(crate) constraints: MirTypeckRegionConstraints<'tcx>,
     pub(crate) universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
     pub(crate) opaque_type_values: FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>>,
+    pub(crate) polonius_context: Option<PoloniusContext>,
 }
 
 /// A collection of region constraints that must be satisfied for the

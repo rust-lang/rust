@@ -34,45 +34,88 @@
 //!
 
 mod constraints;
-pub(crate) use constraints::*;
 mod dump;
-pub(crate) use dump::dump_polonius_mir;
 pub(crate) mod legacy;
+mod liveness_constraints;
 
+use std::collections::BTreeMap;
+
+use rustc_index::bit_set::SparseBitMatrix;
 use rustc_middle::mir::{Body, Location};
+use rustc_middle::ty::RegionVid;
 use rustc_mir_dataflow::points::PointIndex;
 
+pub(crate) use self::constraints::*;
+pub(crate) use self::dump::dump_polonius_mir;
+use self::liveness_constraints::create_liveness_constraints;
 use crate::RegionInferenceContext;
 use crate::constraints::OutlivesConstraint;
 use crate::region_infer::values::LivenessValues;
 use crate::type_check::Locations;
-use crate::universal_regions::UniversalRegions;
 
-/// Creates a constraint set for `-Zpolonius=next` by:
-/// - converting NLL typeck constraints to be localized
-/// - encoding liveness constraints
-pub(crate) fn create_localized_constraints<'tcx>(
-    regioncx: &mut RegionInferenceContext<'tcx>,
-    body: &Body<'tcx>,
-) -> LocalizedOutlivesConstraintSet {
-    let mut localized_outlives_constraints = LocalizedOutlivesConstraintSet::default();
-    convert_typeck_constraints(
-        body,
-        regioncx.liveness_constraints(),
-        regioncx.outlives_constraints(),
-        &mut localized_outlives_constraints,
-    );
-    create_liveness_constraints(
-        body,
-        regioncx.liveness_constraints(),
-        regioncx.universal_regions(),
-        &mut localized_outlives_constraints,
-    );
+/// This struct holds the data needed to create the Polonius localized constraints.
+pub(crate) struct PoloniusContext {
+    /// The set of regions that are live at a given point in the CFG, used to create localized
+    /// outlives constraints between regions that are live at connected points in the CFG.
+    live_regions: Option<SparseBitMatrix<PointIndex, RegionVid>>,
 
-    // FIXME: here, we can trace loan reachability in the constraint graph and record this as loan
-    // liveness for the next step in the chain, the NLL loan scope and active loans computations.
+    /// The expected edge direction per live region: the kind of directed edge we'll create as
+    /// liveness constraints depends on the variance of types with respect to each contained region.
+    live_region_variances: BTreeMap<RegionVid, ConstraintDirection>,
+}
 
-    localized_outlives_constraints
+/// The direction a constraint can flow into. Used to create liveness constraints according to
+/// variance.
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+enum ConstraintDirection {
+    /// For covariant cases, we add a forward edge `O at P1 -> O at P2`.
+    Forward,
+
+    /// For contravariant cases, we add a backward edge `O at P2 -> O at P1`
+    Backward,
+
+    /// For invariant cases, we add both the forward and backward edges `O at P1 <-> O at P2`.
+    Bidirectional,
+}
+
+impl PoloniusContext {
+    pub(crate) fn new() -> PoloniusContext {
+        Self { live_region_variances: BTreeMap::new(), live_regions: None }
+    }
+
+    /// Creates a constraint set for `-Zpolonius=next` by:
+    /// - converting NLL typeck constraints to be localized
+    /// - encoding liveness constraints
+    pub(crate) fn create_localized_constraints<'tcx>(
+        &self,
+        regioncx: &RegionInferenceContext<'tcx>,
+        body: &Body<'tcx>,
+    ) -> LocalizedOutlivesConstraintSet {
+        let mut localized_outlives_constraints = LocalizedOutlivesConstraintSet::default();
+        convert_typeck_constraints(
+            body,
+            regioncx.liveness_constraints(),
+            regioncx.outlives_constraints(),
+            &mut localized_outlives_constraints,
+        );
+
+        let live_regions = self.live_regions.as_ref().expect(
+            "live regions per-point data should have been created at the end of MIR typeck",
+        );
+        create_liveness_constraints(
+            body,
+            regioncx.liveness_constraints(),
+            live_regions,
+            &self.live_region_variances,
+            regioncx.universal_regions(),
+            &mut localized_outlives_constraints,
+        );
+
+        // FIXME: here, we can trace loan reachability in the constraint graph and record this as loan
+        // liveness for the next step in the chain, the NLL loan scope and active loans computations.
+
+        localized_outlives_constraints
+    }
 }
 
 /// Propagate loans throughout the subset graph at a given point (with some subtleties around the
@@ -107,74 +150,5 @@ fn convert_typeck_constraints<'tcx>(
 
             _ => {}
         }
-    }
-}
-
-/// Propagate loans throughout the CFG: for each statement in the MIR, create localized outlives
-/// constraints for loans that are propagated to the next statements.
-pub(crate) fn create_liveness_constraints<'tcx>(
-    body: &Body<'tcx>,
-    liveness: &LivenessValues,
-    universal_regions: &UniversalRegions<'tcx>,
-    localized_outlives_constraints: &mut LocalizedOutlivesConstraintSet,
-) {
-    for (block, bb) in body.basic_blocks.iter_enumerated() {
-        let statement_count = bb.statements.len();
-        for statement_index in 0..=statement_count {
-            let current_location = Location { block, statement_index };
-            let current_point = liveness.point_from_location(current_location);
-
-            if statement_index < statement_count {
-                // Intra-block edges, straight line constraints from each point to its successor
-                // within the same block.
-                let next_location = Location { block, statement_index: statement_index + 1 };
-                let next_point = liveness.point_from_location(next_location);
-                propagate_loans_between_points(
-                    current_point,
-                    next_point,
-                    liveness,
-                    universal_regions,
-                    localized_outlives_constraints,
-                );
-            } else {
-                // Inter-block edges, from the block's terminator to each successor block's entry
-                // point.
-                for successor_block in bb.terminator().successors() {
-                    let next_location = Location { block: successor_block, statement_index: 0 };
-                    let next_point = liveness.point_from_location(next_location);
-                    propagate_loans_between_points(
-                        current_point,
-                        next_point,
-                        liveness,
-                        universal_regions,
-                        localized_outlives_constraints,
-                    );
-                }
-            }
-        }
-    }
-}
-
-/// Propagate loans within a region between two points in the CFG, if that region is live at both
-/// the source and target points.
-fn propagate_loans_between_points(
-    current_point: PointIndex,
-    next_point: PointIndex,
-    _liveness: &LivenessValues,
-    universal_regions: &UniversalRegions<'_>,
-    localized_outlives_constraints: &mut LocalizedOutlivesConstraintSet,
-) {
-    // Universal regions are semantically live at all points.
-    // Note: we always have universal regions but they're not always (or often) involved in the
-    // subset graph. For now, we emit all their edges unconditionally, but some of these subgraphs
-    // will be disconnected from the rest of the graph and thus, unnecessary.
-    // FIXME: only emit the edges of universal regions that existential regions can reach.
-    for region in universal_regions.universal_regions_iter() {
-        localized_outlives_constraints.push(LocalizedOutlivesConstraint {
-            source: region,
-            from: current_point,
-            target: region,
-            to: next_point,
-        });
     }
 }

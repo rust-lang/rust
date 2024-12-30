@@ -179,7 +179,12 @@ impl<T: Idx> BitSet<T> {
     /// Insert `elem`. Returns whether the set has changed.
     #[inline]
     pub fn insert(&mut self, elem: T) -> bool {
-        assert!(elem.index() < self.domain_size);
+        assert!(
+            elem.index() < self.domain_size,
+            "inserting element at index {} but domain size is {}",
+            elem.index(),
+            self.domain_size,
+        );
         let (word_index, mask) = word_index_and_mask(elem);
         let word_ref = &mut self.words[word_index];
         let word = *word_ref;
