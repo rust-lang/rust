@@ -359,6 +359,11 @@ impl CheckCfg {
 
         ins!(sym::proc_macro, no_values);
 
+        // cfg(bootstrap)
+        // this is needed because `panic!()` calls a function that uses cfg(bootstrap).
+        // ideally we wouldn't warn on macros, but i'm not sure how to set that up.
+        ins!(sym::bootstrap, no_values);
+
         ins!(sym::relocation_model, empty_values).extend(RelocModel::all());
 
         let sanitize_values = SanitizerSet::all()

@@ -526,6 +526,7 @@ symbols! {
         block,
         bool,
         bool_then,
+        bootstrap,
         borrowck_graphviz_format,
         borrowck_graphviz_postflow,
         box_new,

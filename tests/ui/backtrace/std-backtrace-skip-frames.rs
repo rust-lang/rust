@@ -21,8 +21,7 @@
 //@ exec-env:RUST_BACKTRACE=1
 //@ unset-exec-env:RUST_LIB_BACKTRACE
 //@ edition:2021
-//@ rustc-env:SOURCE_DIR={{src-base}}
-//@ compile-flags:-Cstrip=none -Cdebug-assertions=true --check-cfg=cfg(bootstrap)
+//@ compile-flags:-Cstrip=none -Cdebug-assertions=true
 //@ revisions:line-tables limited full no-split packed unpacked
 //@[no-split] ignore-msvc
 //@[unpacked] ignore-msvc
