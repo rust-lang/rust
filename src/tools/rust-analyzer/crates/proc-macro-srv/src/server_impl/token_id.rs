@@ -13,7 +13,7 @@ use crate::server_impl::{
     token_stream::TokenStreamBuilder,
 };
 mod tt {
-    pub use proc_macro_api::msg::TokenId;
+    pub use span::TokenId;
 
     pub use tt::*;
 

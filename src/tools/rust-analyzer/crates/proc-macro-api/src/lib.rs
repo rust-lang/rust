@@ -13,18 +13,16 @@ use paths::{AbsPath, AbsPathBuf};
 use span::Span;
 use std::{fmt, io, sync::Arc};
 
-use serde::{Deserialize, Serialize};
-
 use crate::{
     msg::{
         deserialize_span_data_index_map, flat::serialize_span_data_index_map, ExpandMacro,
         ExpnGlobals, FlatTree, PanicMessage, SpanDataIndexMap, HAS_GLOBAL_SPANS,
         RUST_ANALYZER_SPAN_SUPPORT,
     },
-    process::ProcMacroProcessSrv,
+    process::ProcMacroServerProcess,
 };
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, serde_derive::Serialize, serde_derive::Deserialize)]
 pub enum ProcMacroKind {
     CustomDerive,
     Attr,
@@ -37,12 +35,12 @@ pub enum ProcMacroKind {
 /// A handle to an external process which load dylibs with macros (.so or .dll)
 /// and runs actual macro expansion functions.
 #[derive(Debug)]
-pub struct ProcMacroServer {
+pub struct ProcMacroClient {
     /// Currently, the proc macro process expands all procedural macros sequentially.
     ///
     /// That means that concurrent salsa requests may block each other when expanding proc macros,
     /// which is unfortunate, but simple and good enough for the time being.
-    process: Arc<ProcMacroProcessSrv>,
+    process: Arc<ProcMacroServerProcess>,
     path: AbsPathBuf,
 }
 
@@ -62,7 +60,7 @@ impl MacroDylib {
 /// we share a single expander process for all macros.
 #[derive(Debug, Clone)]
 pub struct ProcMacro {
-    process: Arc<ProcMacroProcessSrv>,
+    process: Arc<ProcMacroServerProcess>,
     dylib_path: Arc<AbsPathBuf>,
     name: Box<str>,
     kind: ProcMacroKind,
@@ -95,15 +93,15 @@ impl fmt::Display for ServerError {
     }
 }
 
-impl ProcMacroServer {
+impl ProcMacroClient {
     /// Spawns an external process as the proc macro server and returns a client connected to it.
     pub fn spawn(
         process_path: &AbsPath,
         env: impl IntoIterator<Item = (impl AsRef<std::ffi::OsStr>, impl AsRef<std::ffi::OsStr>)>
             + Clone,
-    ) -> io::Result<ProcMacroServer> {
-        let process = ProcMacroProcessSrv::run(process_path, env)?;
-        Ok(ProcMacroServer { process: Arc::new(process), path: process_path.to_owned() })
+    ) -> io::Result<ProcMacroClient> {
+        let process = ProcMacroServerProcess::run(process_path, env)?;
+        Ok(ProcMacroClient { process: Arc::new(process), path: process_path.to_owned() })
     }
 
     pub fn path(&self) -> &AbsPath {

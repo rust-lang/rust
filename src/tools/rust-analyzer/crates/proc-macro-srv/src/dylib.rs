@@ -8,9 +8,8 @@ use std::{fmt, fs, io, time::SystemTime};
 use libloading::Library;
 use object::Object;
 use paths::{Utf8Path, Utf8PathBuf};
-use proc_macro_api::ProcMacroKind;
 
-use crate::ProcMacroSrvSpan;
+use crate::{proc_macros::ProcMacroKind, ProcMacroSrvSpan};
 
 const NEW_REGISTRAR_SYMBOL: &str = "_rustc_proc_macro_decls_";
 

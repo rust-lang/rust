@@ -40,7 +40,9 @@ use std::collections::VecDeque;
 use intern::Symbol;
 use rustc_hash::FxHashMap;
 use serde_derive::{Deserialize, Serialize};
-use span::{EditionedFileId, ErasedFileAstId, Span, SpanAnchor, SyntaxContextId, TextRange};
+use span::{
+    EditionedFileId, ErasedFileAstId, Span, SpanAnchor, SyntaxContextId, TextRange, TokenId,
+};
 
 use crate::msg::{ENCODE_CLOSE_SPAN_VERSION, EXTENDED_LEAF_DATA};
 
@@ -76,15 +78,6 @@ pub fn deserialize_span_data_index_map(map: &[u32]) -> SpanDataIndexMap {
             }
         })
         .collect()
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TokenId(pub u32);
-
-impl std::fmt::Debug for TokenId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]

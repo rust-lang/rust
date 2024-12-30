@@ -1375,7 +1375,6 @@ dependencies = [
  "memmap2",
  "object 0.33.0",
  "paths",
- "proc-macro-api",
  "proc-macro-test",
  "ra-ap-rustc_lexer",
  "span",

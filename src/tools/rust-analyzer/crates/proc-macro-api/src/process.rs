@@ -17,7 +17,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub(crate) struct ProcMacroProcessSrv {
+pub(crate) struct ProcMacroServerProcess {
     /// The state of the proc-macro server process, the protocol is currently strictly sequential
     /// hence the lock on the state.
     state: Mutex<ProcessSrvState>,
@@ -34,17 +34,17 @@ struct ProcessSrvState {
     stdout: BufReader<ChildStdout>,
 }
 
-impl ProcMacroProcessSrv {
+impl ProcMacroServerProcess {
     pub(crate) fn run(
         process_path: &AbsPath,
         env: impl IntoIterator<Item = (impl AsRef<std::ffi::OsStr>, impl AsRef<std::ffi::OsStr>)>
             + Clone,
-    ) -> io::Result<ProcMacroProcessSrv> {
+    ) -> io::Result<ProcMacroServerProcess> {
         let create_srv = |null_stderr| {
             let mut process = Process::run(process_path, env.clone(), null_stderr)?;
             let (stdin, stdout) = process.stdio().expect("couldn't access child stdio");
 
-            io::Result::Ok(ProcMacroProcessSrv {
+            io::Result::Ok(ProcMacroServerProcess {
                 state: Mutex::new(ProcessSrvState { process, stdin, stdout }),
                 version: 0,
                 mode: SpanMode::Id,

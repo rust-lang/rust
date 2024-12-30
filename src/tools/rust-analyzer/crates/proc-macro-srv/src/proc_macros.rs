@@ -1,11 +1,17 @@
 //! Proc macro ABI
 
 use proc_macro::bridge;
-use proc_macro_api::ProcMacroKind;
 
 use libloading::Library;
 
 use crate::{dylib::LoadProcMacroDylibError, ProcMacroSrvSpan};
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum ProcMacroKind {
+    CustomDerive,
+    Attr,
+    Bang,
+}
 
 pub(crate) struct ProcMacros {
     exported_macros: Vec<bridge::client::ProcMacro>,
