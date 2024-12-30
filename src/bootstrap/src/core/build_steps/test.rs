@@ -2637,7 +2637,7 @@ fn prepare_cargo_test(
 ) -> BootstrapCommand {
     let mut cargo = cargo.into();
 
-    // Propegate `--bless` if it has not already been set/unset
+    // Propagate `--bless` if it has not already been set/unset
     // Any tools that want to use this should bless if `RUSTC_BLESS` is set to
     // anything other than `0`.
     if builder.config.cmd.bless() && !cargo.get_envs().any(|v| v.0 == "RUSTC_BLESS") {
