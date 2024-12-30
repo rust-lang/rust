@@ -2710,8 +2710,6 @@ ui/limits/issue-75158-64.rs
 ui/link-native-libs/issue-109144.rs
 ui/link-native-libs/issue-43925.rs
 ui/link-native-libs/issue-43926.rs
-ui/link-native-libs/issue-70093/issue-70093-link-directives.rs
-ui/link-native-libs/issue-70093/issue-70093.rs
 ui/linkage-attr/auxiliary/issue-12133-dylib.rs
 ui/linkage-attr/auxiliary/issue-12133-dylib2.rs
 ui/linkage-attr/auxiliary/issue-12133-rlib.rs
