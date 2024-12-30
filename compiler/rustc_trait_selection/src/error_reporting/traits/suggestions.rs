@@ -33,8 +33,9 @@ use rustc_middle::ty::print::{
 };
 use rustc_middle::ty::{
     self, AdtKind, GenericArgs, InferTy, IsSuggestable, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable,
-    TypeFolder, TypeSuperFoldable, TypeVisitableExt, TypeckResults, Upcast,
-    suggest_arbitrary_trait_bound, suggest_constraining_type_param,
+    TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitableExt, TypeVisitor,
+    TypeckResults, Upcast, UpcastFrom, suggest_arbitrary_trait_bound,
+    suggest_constraining_type_param,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
@@ -260,6 +261,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             _ => (false, None),
         };
 
+        let mut v = ParamFinder { params: vec![] };
+        // Get all type parameters from the predicate. If the predicate references a type parameter
+        // at all, then we can only suggestion a bound on an item that has access to that parameter.
+        v.visit_predicate(UpcastFrom::upcast_from(trait_pred, self.tcx));
+
         // FIXME: Add check for trait bound that is already present, particularly `?Sized` so we
         //        don't suggest `T: Sized + ?Sized`.
         loop {
@@ -327,6 +333,40 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     );
                     return;
                 }
+
+                hir::Node::TraitItem(hir::TraitItem {
+                    generics,
+                    kind: hir::TraitItemKind::Fn(fn_sig, ..),
+                    ..
+                })
+                | hir::Node::ImplItem(hir::ImplItem {
+                    generics,
+                    kind: hir::ImplItemKind::Fn(fn_sig, ..),
+                    ..
+                }) if projection.is_none()
+                    && !param_ty
+                    && generics.params.iter().any(|param| {
+                        v.params.iter().any(|p| p.name == param.name.ident().name)
+                    }) =>
+                {
+                    // This associated function has a generic type parameter that matches a
+                    // parameter from the trait predicate, which means that we should suggest
+                    // constraining the complex type here, and not at the trait/impl level (if
+                    // it doesn't have that type parameter). This can be something like
+                    // `Type: From<Param>`.
+                    suggest_restriction(
+                        self.tcx,
+                        body_id,
+                        generics,
+                        "the type",
+                        err,
+                        Some(fn_sig),
+                        projection,
+                        trait_pred,
+                        None,
+                    );
+                }
+
                 hir::Node::Item(hir::Item {
                     kind:
                         hir::ItemKind::Trait(_, _, generics, ..)
@@ -425,7 +465,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         | hir::ItemKind::Const(_, generics, _)
                         | hir::ItemKind::TraitAlias(generics, _),
                     ..
-                }) if !param_ty => {
+                }) if !param_ty
+                    && (generics.params.iter().any(|param| {
+                        v.params.iter().any(|p| p.name == param.name.ident().name)
+                    }) || v.params.is_empty()) =>
+                {
                     // Missing generic type parameter bound.
                     if suggest_arbitrary_trait_bound(
                         self.tcx,
@@ -5437,6 +5481,23 @@ fn get_deref_type_and_refs(mut ty: Ty<'_>) -> (Ty<'_>, Vec<hir::Mutability>) {
     }
 
     (ty, refs)
+}
+
+/// Look for type parameters.
+struct ParamFinder {
+    params: Vec<ty::ParamTy>,
+}
+
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ParamFinder {
+    fn visit_ty(&mut self, t: Ty<'tcx>) {
+        match t.kind() {
+            ty::Param(param) if param.name != kw::SelfUpper => {
+                self.params.push(*param);
+            }
+            _ => {}
+        }
+        t.super_visit_with(self)
+    }
 }
 
 /// Look for type `param` in an ADT being used only through a reference to confirm that suggesting

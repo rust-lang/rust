@@ -1,0 +1,14 @@
+error[E0277]: the trait bound `B: From<T>` is not satisfied
+  --> $DIR/suggest-restriction-involving-type-param.rs:20:33
+   |
+LL |         B { x: v.iter().map(|e| B::from(e.clone()).x).collect::<Vec<String>>().join(" ") }
+   |                                 ^ the trait `From<T>` is not implemented for `B`
+   |
+help: consider further restricting the type
+   |
+LL |     pub fn from_many<T: Into<B> + Clone>(v: Vec<T>) -> Self where B: From<T> {
+   |                                                             ++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.
