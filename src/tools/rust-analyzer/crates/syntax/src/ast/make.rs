@@ -10,13 +10,15 @@
 //! `parse(format!())` we use internally is an implementation detail -- long
 //! term, it will be replaced with direct tree manipulation.
 
+mod quote;
+
 use itertools::Itertools;
 use parser::{Edition, T};
 use rowan::NodeOrToken;
 use stdx::{format_to, format_to_acc, never};
 
 use crate::{
-    ast::{self, Param},
+    ast::{self, make::quote::quote, Param},
     utils::is_raw_identifier,
     AstNode, SourceFile, SyntaxKind, SyntaxToken,
 };
@@ -480,15 +482,16 @@ pub fn block_expr(
     stmts: impl IntoIterator<Item = ast::Stmt>,
     tail_expr: Option<ast::Expr>,
 ) -> ast::BlockExpr {
-    let mut buf = "{\n".to_owned();
-    for stmt in stmts.into_iter() {
-        format_to!(buf, "    {stmt}\n");
+    quote! {
+        BlockExpr {
+            StmtList {
+                ['{'] "\n"
+                #("    " #stmts "\n")*
+                #("    " #tail_expr "\n")*
+                ['}']
+            }
+        }
     }
-    if let Some(tail_expr) = tail_expr {
-        format_to!(buf, "    {tail_expr}\n");
-    }
-    buf += "}";
-    ast_from_text(&format!("fn f() {buf}"))
 }
 
 pub fn async_move_block_expr(
