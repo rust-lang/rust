@@ -945,7 +945,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
     /// Clone the list of variable regions. This is used only during NLL processing
     /// to put the set of region variables into the NLL region context.
-    pub fn get_region_var_origins(&self) -> VarInfos {
+    pub fn get_region_var_infos(&self) -> VarInfos {
         let inner = self.inner.borrow();
         assert!(!UndoLogs::<UndoLog<'_>>::in_snapshot(&inner.undo_log));
         let storage = inner.region_constraint_storage.as_ref().expect("regions already resolved");

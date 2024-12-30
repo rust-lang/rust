@@ -65,7 +65,7 @@ impl LocationTable {
         LocationIndex::from_usize(start_index + statement_index * 2 + 1)
     }
 
-    pub fn to_location(&self, index: LocationIndex) -> RichLocation {
+    pub fn to_rich_location(&self, index: LocationIndex) -> RichLocation {
         let point_index = index.index();
 
         // Find the basic block. We have a vector with the
@@ -95,6 +95,13 @@ impl LocationTable {
             RichLocation::Start(Location { block, statement_index })
         } else {
             RichLocation::Mid(Location { block, statement_index })
+        }
+    }
+
+    pub fn to_location(&self, index: LocationIndex) -> Location {
+        match self.to_rich_location(index) {
+            RichLocation::Start(location) => location,
+            RichLocation::Mid(location) => location,
         }
     }
 }
