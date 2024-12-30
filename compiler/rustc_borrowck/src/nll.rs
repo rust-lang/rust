@@ -26,7 +26,7 @@ use tracing::{debug, instrument};
 
 use crate::borrow_set::BorrowSet;
 use crate::consumers::ConsumerOptions;
-use crate::diagnostics::RegionErrors;
+use crate::diagnostics::{BorrowckDiags, RegionErrors};
 use crate::polonius::LocalizedOutlivesConstraintSet;
 use crate::polonius::legacy::{AllFacts, AllFactsExt, LocationTable, PoloniusOutput};
 use crate::region_infer::RegionInferenceContext;
@@ -298,7 +298,7 @@ pub(super) fn dump_annotation<'tcx, 'infcx>(
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
     opaque_type_values: &FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>,
-    diags: &mut crate::diags::BorrowckDiags<'infcx, 'tcx>,
+    diags: &mut BorrowckDiags<'infcx, 'tcx>,
 ) {
     let tcx = infcx.tcx;
     let base_def_id = tcx.typeck_root_def_id(body.source.def_id());

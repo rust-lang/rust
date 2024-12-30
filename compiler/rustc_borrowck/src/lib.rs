@@ -16,14 +16,13 @@
 // tidy-alphabetical-end
 
 use std::cell::RefCell;
-use std::collections::BTreeMap;
 use std::marker::PhantomData;
 use std::ops::Deref;
 
+use diagnostics::BorrowckDiags;
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_errors::Diag;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::{BitSet, MixedBitSet};
@@ -41,7 +40,7 @@ use rustc_mir_dataflow::impls::{
     EverInitializedPlaces, MaybeInitializedPlaces, MaybeUninitializedPlaces,
 };
 use rustc_mir_dataflow::move_paths::{
-    InitIndex, InitLocation, LookupResult, MoveData, MoveOutIndex, MovePathIndex,
+    InitIndex, InitLocation, LookupResult, MoveData, MovePathIndex,
 };
 use rustc_mir_dataflow::{Analysis, EntryStates, Results, ResultsVisitor, visit_results};
 use rustc_session::lint::builtin::UNUSED_MUT;
@@ -217,7 +216,7 @@ fn do_mir_borrowck<'tcx>(
 
     // We also have a `#[rustc_regions]` annotation that causes us to dump
     // information.
-    let diags = &mut diags::BorrowckDiags::new();
+    let diags = &mut BorrowckDiags::new();
     nll::dump_annotation(&infcx, body, &regioncx, &opt_closure_req, &opaque_type_values, diags);
 
     let movable_coroutine =
@@ -566,7 +565,7 @@ struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
     /// Results of Polonius analysis.
     polonius_output: Option<Box<PoloniusOutput>>,
 
-    diags: &'a mut diags::BorrowckDiags<'infcx, 'tcx>,
+    diags: &'a mut BorrowckDiags<'infcx, 'tcx>,
     move_errors: Vec<MoveError<'tcx>>,
 }
 
@@ -2395,146 +2394,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             let mut_span = tcx.sess.source_map().span_until_non_whitespace(span);
 
             tcx.emit_node_span_lint(UNUSED_MUT, lint_root, span, VarNeedNotMut { span: mut_span })
-        }
-    }
-}
-
-mod diags {
-    use rustc_errors::ErrorGuaranteed;
-
-    use super::*;
-
-    enum BufferedDiag<'infcx> {
-        Error(Diag<'infcx>),
-        NonError(Diag<'infcx, ()>),
-    }
-
-    impl<'infcx> BufferedDiag<'infcx> {
-        fn sort_span(&self) -> Span {
-            match self {
-                BufferedDiag::Error(diag) => diag.sort_span,
-                BufferedDiag::NonError(diag) => diag.sort_span,
-            }
-        }
-    }
-
-    pub(crate) struct BorrowckDiags<'infcx, 'tcx> {
-        /// This field keeps track of move errors that are to be reported for given move indices.
-        ///
-        /// There are situations where many errors can be reported for a single move out (see
-        /// #53807) and we want only the best of those errors.
-        ///
-        /// The `report_use_of_moved_or_uninitialized` function checks this map and replaces the
-        /// diagnostic (if there is one) if the `Place` of the error being reported is a prefix of
-        /// the `Place` of the previous most diagnostic. This happens instead of buffering the
-        /// error. Once all move errors have been reported, any diagnostics in this map are added
-        /// to the buffer to be emitted.
-        ///
-        /// `BTreeMap` is used to preserve the order of insertions when iterating. This is necessary
-        /// when errors in the map are being re-added to the error buffer so that errors with the
-        /// same primary span come out in a consistent order.
-        buffered_move_errors: BTreeMap<Vec<MoveOutIndex>, (PlaceRef<'tcx>, Diag<'infcx>)>,
-
-        buffered_mut_errors: FxIndexMap<Span, (Diag<'infcx>, usize)>,
-
-        /// Buffer of diagnostics to be reported. A mixture of error and non-error diagnostics.
-        buffered_diags: Vec<BufferedDiag<'infcx>>,
-    }
-
-    impl<'infcx, 'tcx> BorrowckDiags<'infcx, 'tcx> {
-        pub(crate) fn new() -> Self {
-            BorrowckDiags {
-                buffered_move_errors: BTreeMap::new(),
-                buffered_mut_errors: Default::default(),
-                buffered_diags: Default::default(),
-            }
-        }
-
-        pub(crate) fn buffer_error(&mut self, diag: Diag<'infcx>) {
-            self.buffered_diags.push(BufferedDiag::Error(diag));
-        }
-
-        pub(crate) fn buffer_non_error(&mut self, diag: Diag<'infcx, ()>) {
-            self.buffered_diags.push(BufferedDiag::NonError(diag));
-        }
-    }
-
-    impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
-        pub(crate) fn buffer_error(&mut self, diag: Diag<'infcx>) {
-            self.diags.buffer_error(diag);
-        }
-
-        pub(crate) fn buffer_non_error(&mut self, diag: Diag<'infcx, ()>) {
-            self.diags.buffer_non_error(diag);
-        }
-
-        pub(crate) fn buffer_move_error(
-            &mut self,
-            move_out_indices: Vec<MoveOutIndex>,
-            place_and_err: (PlaceRef<'tcx>, Diag<'infcx>),
-        ) -> bool {
-            if let Some((_, diag)) =
-                self.diags.buffered_move_errors.insert(move_out_indices, place_and_err)
-            {
-                // Cancel the old diagnostic so we don't ICE
-                diag.cancel();
-                false
-            } else {
-                true
-            }
-        }
-
-        pub(crate) fn get_buffered_mut_error(
-            &mut self,
-            span: Span,
-        ) -> Option<(Diag<'infcx>, usize)> {
-            // FIXME(#120456) - is `swap_remove` correct?
-            self.diags.buffered_mut_errors.swap_remove(&span)
-        }
-
-        pub(crate) fn buffer_mut_error(&mut self, span: Span, diag: Diag<'infcx>, count: usize) {
-            self.diags.buffered_mut_errors.insert(span, (diag, count));
-        }
-
-        pub(crate) fn emit_errors(&mut self) -> Option<ErrorGuaranteed> {
-            let mut res = self.infcx.tainted_by_errors();
-
-            // Buffer any move errors that we collected and de-duplicated.
-            for (_, (_, diag)) in std::mem::take(&mut self.diags.buffered_move_errors) {
-                // We have already set tainted for this error, so just buffer it.
-                self.diags.buffer_error(diag);
-            }
-            for (_, (mut diag, count)) in std::mem::take(&mut self.diags.buffered_mut_errors) {
-                if count > 10 {
-                    #[allow(rustc::diagnostic_outside_of_impl)]
-                    #[allow(rustc::untranslatable_diagnostic)]
-                    diag.note(format!("...and {} other attempted mutable borrows", count - 10));
-                }
-                self.diags.buffer_error(diag);
-            }
-
-            if !self.diags.buffered_diags.is_empty() {
-                self.diags.buffered_diags.sort_by_key(|buffered_diag| buffered_diag.sort_span());
-                for buffered_diag in self.diags.buffered_diags.drain(..) {
-                    match buffered_diag {
-                        BufferedDiag::Error(diag) => res = Some(diag.emit()),
-                        BufferedDiag::NonError(diag) => diag.emit(),
-                    }
-                }
-            }
-
-            res
-        }
-
-        pub(crate) fn has_buffered_diags(&self) -> bool {
-            self.diags.buffered_diags.is_empty()
-        }
-
-        pub(crate) fn has_move_error(
-            &self,
-            move_out_indices: &[MoveOutIndex],
-        ) -> Option<&(PlaceRef<'tcx>, Diag<'infcx>)> {
-            self.diags.buffered_move_errors.get(move_out_indices)
         }
     }
 }
