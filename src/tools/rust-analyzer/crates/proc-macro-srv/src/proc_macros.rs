@@ -4,18 +4,10 @@ use proc_macro::bridge;
 
 use libloading::Library;
 
-use crate::{dylib::LoadProcMacroDylibError, ProcMacroSrvSpan};
+use crate::{dylib::LoadProcMacroDylibError, ProcMacroKind, ProcMacroSrvSpan};
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub enum ProcMacroKind {
-    CustomDerive,
-    Attr,
-    Bang,
-}
-
-pub(crate) struct ProcMacros {
-    exported_macros: Vec<bridge::client::ProcMacro>,
-}
+#[repr(transparent)]
+pub(crate) struct ProcMacros([bridge::client::ProcMacro]);
 
 impl From<bridge::PanicMessage> for crate::PanicMessage {
     fn from(p: bridge::PanicMessage) -> Self {
@@ -33,18 +25,17 @@ impl ProcMacros {
     /// *`info` - RustCInfo about the compiler that was used to compile the
     ///           macro crate. This is the information we use to figure out
     ///           which ABI to return
-    pub(crate) fn from_lib(
-        lib: &Library,
+    pub(crate) fn from_lib<'l>(
+        lib: &'l Library,
         symbol_name: String,
         version_string: &str,
-    ) -> Result<ProcMacros, LoadProcMacroDylibError> {
-        if version_string == crate::RUSTC_VERSION_STRING {
-            let macros =
-                unsafe { lib.get::<&&[bridge::client::ProcMacro]>(symbol_name.as_bytes()) }?;
-
-            return Ok(Self { exported_macros: macros.to_vec() });
+    ) -> Result<&'l ProcMacros, LoadProcMacroDylibError> {
+        if version_string != crate::RUSTC_VERSION_STRING {
+            return Err(LoadProcMacroDylibError::AbiMismatch(version_string.to_owned()));
         }
-        Err(LoadProcMacroDylibError::AbiMismatch(version_string.to_owned()))
+        unsafe { lib.get::<&'l &'l ProcMacros>(symbol_name.as_bytes()) }
+            .map(|it| **it)
+            .map_err(Into::into)
     }
 
     pub(crate) fn expand<S: ProcMacroSrvSpan>(
@@ -63,7 +54,7 @@ impl ProcMacros {
                 crate::server_impl::TokenStream::with_subtree(attr)
             });
 
-        for proc_macro in &self.exported_macros {
+        for proc_macro in &self.0 {
             match proc_macro {
                 bridge::client::ProcMacro::CustomDerive { trait_name, client, .. }
                     if *trait_name == macro_name =>
@@ -109,7 +100,7 @@ impl ProcMacros {
     }
 
     pub(crate) fn list_macros(&self) -> Vec<(String, ProcMacroKind)> {
-        self.exported_macros
+        self.0
             .iter()
             .map(|proc_macro| match proc_macro {
                 bridge::client::ProcMacro::CustomDerive { trait_name, .. } => {

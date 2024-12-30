@@ -43,7 +43,12 @@ use span::{Span, TokenId};
 
 use crate::server_impl::TokenStream;
 
-pub use crate::proc_macros::ProcMacroKind;
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum ProcMacroKind {
+    CustomDerive,
+    Attr,
+    Bang,
+}
 
 pub const RUSTC_VERSION_STRING: &str = env!("RUSTC_VERSION");
 
