@@ -24,6 +24,8 @@ const MP_DEFAULT_ULP: u32 = 1;
 pub fn default_ulp(ctx: &CheckCtx) -> u32 {
     match (&ctx.basis, ctx.fn_ident) {
         // Overrides that apply to either basis
+        // FMA is expected to be infinite precision.
+        (_, Id::Fma | Id::Fmaf) => 0,
         (_, Id::J0 | Id::J0f | Id::J1 | Id::J1f) => {
             // Results seem very target-dependent
             if cfg!(target_arch = "x86_64") { 4000 } else { 800_000 }
