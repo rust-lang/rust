@@ -8,7 +8,10 @@
 //! Keep in mind that `from_text` functions should be kept private. The public
 //! API should require to assemble every node piecewise. The trick of
 //! `parse(format!())` we use internally is an implementation detail -- long
-//! term, it will be replaced with direct tree manipulation.
+//! term, it will be replaced with `quote!`. Do not add more usages to `from_text` -
+//! use `quote!` instead.
+
+mod quote;
 
 use itertools::Itertools;
 use parser::{Edition, T};
@@ -16,7 +19,7 @@ use rowan::NodeOrToken;
 use stdx::{format_to, format_to_acc, never};
 
 use crate::{
-    ast::{self, Param},
+    ast::{self, make::quote::quote, Param},
     utils::is_raw_identifier,
     AstNode, SourceFile, SyntaxKind, SyntaxToken,
 };
@@ -118,7 +121,11 @@ pub fn name(name: &str) -> ast::Name {
 }
 pub fn name_ref(name_ref: &str) -> ast::NameRef {
     let raw_escape = raw_ident_esc(name_ref);
-    ast_from_text(&format!("fn f() {{ {raw_escape}{name_ref}; }}"))
+    quote! {
+        NameRef {
+            [IDENT format!("{raw_escape}{name_ref}")]
+        }
+    }
 }
 fn raw_ident_esc(ident: &str) -> &'static str {
     if is_raw_identifier(ident, Edition::CURRENT) {
@@ -135,7 +142,11 @@ pub fn lifetime(text: &str) -> ast::Lifetime {
         tmp = format!("'{text}");
         text = &tmp;
     }
-    ast_from_text(&format!("fn f<{text}>() {{ }}"))
+    quote! {
+        Lifetime {
+            [LIFETIME_IDENT text]
+        }
+    }
 }
 
 // FIXME: replace stringly-typed constructor with a family of typed ctors, a-la
@@ -175,63 +186,37 @@ pub fn ty_alias(
     where_clause: Option<ast::WhereClause>,
     assignment: Option<(ast::Type, Option<ast::WhereClause>)>,
 ) -> ast::TypeAlias {
-    let mut s = String::new();
-    s.push_str(&format!("type {ident}"));
-
-    if let Some(list) = generic_param_list {
-        s.push_str(&list.to_string());
-    }
-
-    if let Some(list) = type_param_bounds {
-        s.push_str(&format!(" : {list}"));
-    }
-
-    if let Some(cl) = where_clause {
-        s.push_str(&format!(" {cl}"));
-    }
-
-    if let Some(exp) = assignment {
-        if let Some(cl) = exp.1 {
-            s.push_str(&format!(" = {} {cl}", exp.0));
-        } else {
-            s.push_str(&format!(" = {}", exp.0));
+    let (assignment_ty, assignment_where) = assignment.unzip();
+    let assignment_where = assignment_where.flatten();
+    quote! {
+        TypeAlias {
+            [type] " "
+                Name { [IDENT ident] }
+                #generic_param_list
+                #(" " [:] " " #type_param_bounds)*
+                #(" " #where_clause)*
+                #(" " [=] " " #assignment_ty)*
+                #(" " #assignment_where)*
+            [;]
         }
     }
-
-    s.push(';');
-    ast_from_text(&s)
 }
 
 pub fn ty_fn_ptr<I: Iterator<Item = Param>>(
-    for_lifetime_list: Option<ast::GenericParamList>,
     is_unsafe: bool,
     abi: Option<ast::Abi>,
-    params: I,
+    mut params: I,
     ret_type: Option<ast::RetType>,
 ) -> ast::FnPtrType {
-    let mut s = String::from("type __ = ");
-
-    if let Some(list) = for_lifetime_list {
-        format_to!(s, "for{} ", list);
+    let is_unsafe = is_unsafe.then_some(());
+    let first_param = params.next();
+    quote! {
+        FnPtrType {
+            #(#is_unsafe [unsafe] " ")* #(#abi " ")* [fn]
+                ['('] #first_param #([,] " " #params)* [')']
+                #(" " #ret_type)*
+        }
     }
-
-    if is_unsafe {
-        s.push_str("unsafe ");
-    }
-
-    if let Some(abi) = abi {
-        format_to!(s, "{} ", abi)
-    }
-
-    s.push_str("fn");
-
-    format_to!(s, "({})", params.map(|p| p.to_string()).join(", "));
-
-    if let Some(ret_type) = ret_type {
-        format_to!(s, " {}", ret_type);
-    }
-
-    ast_from_text(&s)
 }
 
 pub fn assoc_item_list() -> ast::AssocItemList {
@@ -480,15 +465,16 @@ pub fn block_expr(
     stmts: impl IntoIterator<Item = ast::Stmt>,
     tail_expr: Option<ast::Expr>,
 ) -> ast::BlockExpr {
-    let mut buf = "{\n".to_owned();
-    for stmt in stmts.into_iter() {
-        format_to!(buf, "    {stmt}\n");
+    quote! {
+        BlockExpr {
+            StmtList {
+                ['{'] "\n"
+                #("    " #stmts "\n")*
+                #("    " #tail_expr "\n")*
+                ['}']
+            }
+        }
     }
-    if let Some(tail_expr) = tail_expr {
-        format_to!(buf, "    {tail_expr}\n");
-    }
-    buf += "}";
-    ast_from_text(&format!("fn f() {buf}"))
 }
 
 pub fn async_move_block_expr(

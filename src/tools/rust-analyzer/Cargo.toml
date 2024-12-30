@@ -203,6 +203,8 @@ new_ret_no_self = "allow"
 useless_asref = "allow"
 # Has false positives
 assigning_clones = "allow"
+# Does not work with macros
+vec_init_then_push = "allow"
 
 ## Following lints should be tackled at some point
 too_many_arguments = "allow"
