@@ -246,59 +246,59 @@ impl<DB: HirDatabase> Semantics<'_, DB> {
     }
 
     pub fn to_adt_def(&self, a: &ast::Adt) -> Option<Adt> {
-        self.imp.to_def(a).map(Adt::from)
+        self.imp.to_def(a)
     }
 
     pub fn to_const_def(&self, c: &ast::Const) -> Option<Const> {
-        self.imp.to_def(c).map(Const::from)
+        self.imp.to_def(c)
     }
 
     pub fn to_enum_def(&self, e: &ast::Enum) -> Option<Enum> {
-        self.imp.to_def(e).map(Enum::from)
+        self.imp.to_def(e)
     }
 
     pub fn to_enum_variant_def(&self, v: &ast::Variant) -> Option<Variant> {
-        self.imp.to_def(v).map(Variant::from)
+        self.imp.to_def(v)
     }
 
     pub fn to_fn_def(&self, f: &ast::Fn) -> Option<Function> {
-        self.imp.to_def(f).map(Function::from)
+        self.imp.to_def(f)
     }
 
     pub fn to_impl_def(&self, i: &ast::Impl) -> Option<Impl> {
-        self.imp.to_def(i).map(Impl::from)
+        self.imp.to_def(i)
     }
 
     pub fn to_macro_def(&self, m: &ast::Macro) -> Option<Macro> {
-        self.imp.to_def(m).map(Macro::from)
+        self.imp.to_def(m)
     }
 
     pub fn to_module_def(&self, m: &ast::Module) -> Option<Module> {
-        self.imp.to_def(m).map(Module::from)
+        self.imp.to_def(m)
     }
 
     pub fn to_static_def(&self, s: &ast::Static) -> Option<Static> {
-        self.imp.to_def(s).map(Static::from)
+        self.imp.to_def(s)
     }
 
     pub fn to_struct_def(&self, s: &ast::Struct) -> Option<Struct> {
-        self.imp.to_def(s).map(Struct::from)
+        self.imp.to_def(s)
     }
 
     pub fn to_trait_alias_def(&self, t: &ast::TraitAlias) -> Option<TraitAlias> {
-        self.imp.to_def(t).map(TraitAlias::from)
+        self.imp.to_def(t)
     }
 
     pub fn to_trait_def(&self, t: &ast::Trait) -> Option<Trait> {
-        self.imp.to_def(t).map(Trait::from)
+        self.imp.to_def(t)
     }
 
     pub fn to_type_alias_def(&self, t: &ast::TypeAlias) -> Option<TypeAlias> {
-        self.imp.to_def(t).map(TypeAlias::from)
+        self.imp.to_def(t)
     }
 
     pub fn to_union_def(&self, u: &ast::Union) -> Option<Union> {
-        self.imp.to_def(u).map(Union::from)
+        self.imp.to_def(u)
     }
 }
 
