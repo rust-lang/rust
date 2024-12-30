@@ -109,8 +109,10 @@ impl flags::Scip {
              text_range: TextRange| {
                 let is_local = symbol.starts_with("local ");
                 if !is_local && !nonlocal_symbols_emitted.insert(symbol.clone()) {
-                    // See #18772. Duplicate SymbolInformation for inherent impls is omitted.
                     if is_inherent_impl {
+                        // FIXME: See #18772. Duplicate SymbolInformation for inherent impls is
+                        // omitted. It would be preferable to emit them with numbers with
+                        // disambiguation, but this is more complex to implement.
                         false
                     } else {
                         let source_location =
@@ -283,7 +285,7 @@ impl flags::Scip {
     }
 }
 
-// TODO: Fix the known buggy cases described here.
+// FIXME: Known buggy cases are described here.
 const DUPLICATE_SYMBOLS_MESSAGE: &str = "
 Encountered duplicate scip symbols, indicating an internal rust-analyzer bug. These duplicates are
 included in the output, but this causes information lookup to be ambiguous and so information about
@@ -802,7 +804,7 @@ pub mod example_mod {
         );
     }
 
-    // TODO: This test represents current misbehavior.
+    // FIXME: This test represents current misbehavior.
     #[test]
     fn symbol_for_nested_function() {
         check_symbol(
@@ -813,12 +815,12 @@ pub mod example_mod {
     }
     "#,
             "rust-analyzer cargo main . inner_func().",
-            // TODO: This should be a local:
+            // FIXME: This should be a local:
             // "local enclosed by rust-analyzer cargo main . func().",
         );
     }
 
-    // TODO: This test represents current misbehavior.
+    // FIXME: This test represents current misbehavior.
     #[test]
     fn symbol_for_struct_in_function() {
         check_symbol(
@@ -829,12 +831,12 @@ pub mod example_mod {
     }
     "#,
             "rust-analyzer cargo main . SomeStruct#",
-            // TODO: This should be a local:
+            // FIXME: This should be a local:
             // "local enclosed by rust-analyzer cargo main . func().",
         );
     }
 
-    // TODO: This test represents current misbehavior.
+    // FIXME: This test represents current misbehavior.
     #[test]
     fn symbol_for_const_in_function() {
         check_symbol(
@@ -845,12 +847,12 @@ pub mod example_mod {
     }
     "#,
             "rust-analyzer cargo main . SOME_CONST.",
-            // TODO: This should be a local:
+            // FIXME: This should be a local:
             // "local enclosed by rust-analyzer cargo main . func().",
         );
     }
 
-    // TODO: This test represents current misbehavior.
+    // FIXME: This test represents current misbehavior.
     #[test]
     fn symbol_for_static_in_function() {
         check_symbol(
@@ -861,7 +863,7 @@ pub mod example_mod {
     }
     "#,
             "rust-analyzer cargo main . SOME_STATIC.",
-            // TODO: This should be a local:
+            // FIXME: This should be a local:
             // "local enclosed by rust-analyzer cargo main . func().",
         );
     }
