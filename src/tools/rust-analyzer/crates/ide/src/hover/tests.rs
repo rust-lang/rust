@@ -8157,7 +8157,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 🦀🦀\A
+            value of literal: ` 🦀🦀\A `
         "#]],
     );
     check(
@@ -8173,7 +8173,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 🦀\u{1f980}\\\x41
+            value of literal: ` 🦀\u{1f980}\\\x41 `
         "#]],
     );
     check(
@@ -8195,7 +8195,7 @@ fsdghs";
             ```
             ___
 
-            value of literal (truncated up to newline): 🦀\u{1f980}\\\x41
+            value of literal (truncated up to newline): ` 🦀\u{1f980}\\\x41 `
         "#]],
     );
 }
@@ -8215,7 +8215,41 @@ fn main() {
             ```
             ___
 
-            value of literal: 🦀🦀\A
+            value of literal: ` 🦀🦀\A `
+        "#]],
+    );
+}
+
+#[test]
+fn rawstring_literal() {
+    check(
+        r#"
+fn main() {
+    $0r"`[^`]*`";
+}"#,
+        expect![[r#"
+            *r"`[^`]*`"*
+            ```rust
+            &str
+            ```
+            ___
+
+            value of literal: ```` `[^`]*` ````
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $0r"`";
+}"#,
+        expect![[r#"
+            *r"`"*
+            ```rust
+            &str
+            ```
+            ___
+
+            value of literal: `` ` ``
         "#]],
     );
 }
@@ -8235,7 +8269,7 @@ fn main() {
             ```
             ___
 
-            value of literal: [240, 159, 166, 128, 92]
+            value of literal: ` [240, 159, 166, 128, 92] `
         "#]],
     );
     check(
@@ -8251,7 +8285,7 @@ fn main() {
             ```
             ___
 
-            value of literal: [92, 120, 70, 48, 92, 120, 57, 70, 92, 120, 65, 54, 92, 120, 56, 48, 92, 92]
+            value of literal: ` [92, 120, 70, 48, 92, 120, 57, 70, 92, 120, 65, 54, 92, 120, 56, 48, 92, 92] `
         "#]],
     );
 }
@@ -8271,7 +8305,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 0xF0
+            value of literal: ` 0xF0 `
         "#]],
     );
     check(
@@ -8287,7 +8321,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 0x5C
+            value of literal: ` 0x5C `
         "#]],
     );
 }
@@ -8307,7 +8341,7 @@ fn main() {
             ```
             ___
 
-            value of literal: A
+            value of literal: ` A `
         "#]],
     );
     check(
@@ -8323,7 +8357,7 @@ fn main() {
             ```
             ___
 
-            value of literal: \
+            value of literal: ` \ `
         "#]],
     );
     check(
@@ -8339,7 +8373,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 🦀
+            value of literal: ` 🦀 `
         "#]],
     );
 }
@@ -8359,7 +8393,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 1 (bits: 0x3FF0000000000000)
+            value of literal: ` 1 (bits: 0x3FF0000000000000) `
         "#]],
     );
     check(
@@ -8375,7 +8409,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 1 (bits: 0x3C00)
+            value of literal: ` 1 (bits: 0x3C00) `
         "#]],
     );
     check(
@@ -8391,7 +8425,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 1 (bits: 0x3F800000)
+            value of literal: ` 1 (bits: 0x3F800000) `
         "#]],
     );
     check(
@@ -8407,7 +8441,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 1 (bits: 0x3FFF0000000000000000000000000000)
+            value of literal: ` 1 (bits: 0x3FFF0000000000000000000000000000) `
         "#]],
     );
     check(
@@ -8423,7 +8457,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 134000000000000 (bits: 0x42DE77D399980000)
+            value of literal: ` 134000000000000 (bits: 0x42DE77D399980000) `
         "#]],
     );
     check(
@@ -8439,7 +8473,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 1523527134274733600000000 (bits: 0x44F429E9249F629B)
+            value of literal: ` 1523527134274733600000000 (bits: 0x44F429E9249F629B) `
         "#]],
     );
     check(
@@ -8475,7 +8509,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 34325236457856836345234 (0x744C659178614489D92|0b111010001001100011001011001000101111000011000010100010010001001110110010010)
+            value of literal: ` 34325236457856836345234 (0x744C659178614489D92|0b111010001001100011001011001000101111000011000010100010010001001110110010010) `
         "#]],
     );
     check(
@@ -8491,7 +8525,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 13412342421 (0x31F701A95|0b1100011111011100000001101010010101)
+            value of literal: ` 13412342421 (0x31F701A95|0b1100011111011100000001101010010101) `
         "#]],
     );
     check(
@@ -8507,7 +8541,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 306328611 (0x12423423|0b10010010000100011010000100011)
+            value of literal: ` 306328611 (0x12423423|0b10010010000100011010000100011) `
         "#]],
     );
     check(
@@ -8523,7 +8557,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 255 (0xFF|0b11111111)
+            value of literal: ` 255 (0xFF|0b11111111) `
         "#]],
     );
     check(
@@ -8539,7 +8573,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 5349 (0x14E5|0b1010011100101)
+            value of literal: ` 5349 (0x14E5|0b1010011100101) `
         "#]],
     );
     check(

@@ -715,10 +715,17 @@ pub(super) fn literal(
     let mut s = format!("```rust\n{ty}\n```\n___\n\n");
     match value {
         Ok(value) => {
+            let backtick_len = value.chars().filter(|c| *c == '`').count();
+            let backticks = "`".repeat(backtick_len + 1);
+
             if let Some(newline) = value.find('\n') {
-                format_to!(s, "value of literal (truncated up to newline): {}", &value[..newline])
+                format_to!(
+                    s,
+                    "value of literal (truncated up to newline): {backticks} {} {backticks}",
+                    &value[..newline]
+                )
             } else {
-                format_to!(s, "value of literal: {value}")
+                format_to!(s, "value of literal: {backticks} {value} {backticks}")
             }
         }
         Err(error) => format_to!(s, "invalid literal: {error}"),
