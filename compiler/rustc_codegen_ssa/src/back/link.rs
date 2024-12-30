@@ -2776,7 +2776,7 @@ fn add_upstream_rust_crates(
 
     if sess.target.is_like_aix {
         // Unlike ELF linkers, AIX doesn't feature `DT_SONAME` to override
-        // the dependency name when outputing a shared library. Thus, `ld` will
+        // the dependency name when outputting a shared library. Thus, `ld` will
         // use the full path to shared libraries as the dependency if passed it
         // by default unless `noipath` is passed.
         // https://www.ibm.com/docs/en/aix/7.3?topic=l-ld-command.
