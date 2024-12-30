@@ -8,6 +8,38 @@
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
+/*! ABI handling for rustc
+
+## What is an "ABI"?
+
+Literally, "application binary interface", which means it is everything about how code interacts,
+at the machine level, with other code. This means it technically covers all of the following:
+- object binary format for e.g. relocations or offset tables
+- in-memory layout of types
+- procedure calling conventions
+
+When we discuss "ABI" in the context of rustc, we are probably discussing calling conventions.
+To describe those `rustc_abi` also covers type layout, as it must for values passed on the stack.
+Despite `rustc_abi` being about calling conventions, it is good to remember these usages exist.
+You will encounter all of them and more if you study target-specific codegen enough!
+Even in general conversation, when someone says "the Rust ABI is unstable", it may allude to
+either or both of
+- `repr(Rust)` types have a mostly-unspecified layout
+- `extern "Rust" fn(A) -> R` has an unspecified calling convention
+
+## Crate Goal
+
+ABI is a foundational concept, so the `rustc_abi` crate serves as an equally foundational crate.
+It cannot carry all details relevant to an ABI: those permeate code generation and linkage.
+Instead, `rustc_abi` is intended to provide the interface for reasoning about the binary interface.
+It should contain traits and types that other crates then use in their implementation.
+For example, a platform's `extern "C" fn` calling convention will be implemented in `rustc_target`
+but `rustc_abi` contains the types for calculating layout and describing register-passing.
+This makes it easier to describe things in the same way across targets, codegen backends, and
+even other Rust compilers, such as rust-analyzer!
+
+*/
+
 use std::fmt;
 #[cfg(feature = "nightly")]
 use std::iter::Step;
