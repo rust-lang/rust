@@ -1,4 +1,3 @@
-#![feature(coverage_attribute)]
 // Enables `coverage(off)` on the entire crate
 //@ reference: attributes.coverage.intro
 //@ reference: attributes.coverage.nesting

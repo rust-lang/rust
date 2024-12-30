@@ -1,4 +1,3 @@
-   LL|       |#![feature(coverage_attribute)]
    LL|       |// Checks that `#[coverage(..)]` in a trait method is not inherited in an
    LL|       |// implementation.
    LL|       |//@ edition: 2021

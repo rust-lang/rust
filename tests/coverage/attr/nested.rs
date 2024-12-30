@@ -1,4 +1,4 @@
-#![feature(coverage_attribute, stmt_expr_attributes)]
+#![feature(stmt_expr_attributes)]
 //@ edition: 2021
 //@ reference: attributes.coverage.nesting
 

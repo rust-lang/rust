@@ -1,4 +1,3 @@
-   LL|       |#![feature(coverage_attribute)]
    LL|       |//@ edition: 2021
    LL|       |//@ compile-flags: -Zcoverage-options=branch,no-mir-spans
    LL|       |//@ llvm-cov-flags: --show-branches=count

@@ -1,20 +1,20 @@
 Function name: fn_sig_into_try::a
-Raw bytes (9): 0x[01, 01, 00, 01, 01, 0a, 01, 05, 02]
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 09, 01, 05, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Counter(0)) at (prev + 10, 1) to (start + 5, 2)
+- Code(Counter(0)) at (prev + 9, 1) to (start + 5, 2)
 Highest counter ID seen: c0
 
 Function name: fn_sig_into_try::b
-Raw bytes (26): 0x[01, 01, 01, 01, 00, 04, 01, 11, 01, 03, 0f, 00, 03, 0f, 00, 10, 02, 01, 05, 00, 0c, 01, 01, 01, 00, 02]
+Raw bytes (26): 0x[01, 01, 01, 01, 00, 04, 01, 10, 01, 03, 0f, 00, 03, 0f, 00, 10, 02, 01, 05, 00, 0c, 01, 01, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 1
 - expression 0 operands: lhs = Counter(0), rhs = Zero
 Number of file 0 mappings: 4
-- Code(Counter(0)) at (prev + 17, 1) to (start + 3, 15)
+- Code(Counter(0)) at (prev + 16, 1) to (start + 3, 15)
 - Code(Zero) at (prev + 3, 15) to (start + 0, 16)
 - Code(Expression(0, Sub)) at (prev + 1, 5) to (start + 0, 12)
     = (c0 - Zero)
@@ -22,13 +22,13 @@ Number of file 0 mappings: 4
 Highest counter ID seen: c0
 
 Function name: fn_sig_into_try::c
-Raw bytes (26): 0x[01, 01, 01, 01, 00, 04, 01, 18, 01, 03, 17, 00, 03, 17, 00, 18, 02, 01, 05, 00, 0c, 01, 01, 01, 00, 02]
+Raw bytes (26): 0x[01, 01, 01, 01, 00, 04, 01, 17, 01, 03, 17, 00, 03, 17, 00, 18, 02, 01, 05, 00, 0c, 01, 01, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 1
 - expression 0 operands: lhs = Counter(0), rhs = Zero
 Number of file 0 mappings: 4
-- Code(Counter(0)) at (prev + 24, 1) to (start + 3, 23)
+- Code(Counter(0)) at (prev + 23, 1) to (start + 3, 23)
 - Code(Zero) at (prev + 3, 23) to (start + 0, 24)
 - Code(Expression(0, Sub)) at (prev + 1, 5) to (start + 0, 12)
     = (c0 - Zero)
@@ -36,13 +36,13 @@ Number of file 0 mappings: 4
 Highest counter ID seen: c0
 
 Function name: fn_sig_into_try::d
-Raw bytes (26): 0x[01, 01, 01, 01, 00, 04, 01, 1f, 01, 04, 0f, 00, 04, 0f, 00, 10, 02, 01, 05, 00, 0c, 01, 01, 01, 00, 02]
+Raw bytes (26): 0x[01, 01, 01, 01, 00, 04, 01, 1e, 01, 04, 0f, 00, 04, 0f, 00, 10, 02, 01, 05, 00, 0c, 01, 01, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 1
 - expression 0 operands: lhs = Counter(0), rhs = Zero
 Number of file 0 mappings: 4
-- Code(Counter(0)) at (prev + 31, 1) to (start + 4, 15)
+- Code(Counter(0)) at (prev + 30, 1) to (start + 4, 15)
 - Code(Zero) at (prev + 4, 15) to (start + 0, 16)
 - Code(Expression(0, Sub)) at (prev + 1, 5) to (start + 0, 12)
     = (c0 - Zero)

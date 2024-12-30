@@ -1,4 +1,3 @@
-#![feature(coverage_attribute)]
 // Checks that `#[coverage(..)]` in a trait method is not inherited in an
 // implementation.
 //@ edition: 2021
