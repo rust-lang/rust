@@ -43,7 +43,7 @@ use std::collections::BTreeMap;
 
 use rustc_index::bit_set::SparseBitMatrix;
 use rustc_middle::mir::Body;
-use rustc_middle::ty::RegionVid;
+use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_mir_dataflow::points::PointIndex;
 
 pub(crate) use self::constraints::*;
@@ -87,14 +87,17 @@ impl PoloniusContext {
     /// - encoding liveness constraints
     pub(crate) fn create_localized_constraints<'tcx>(
         &self,
+        tcx: TyCtxt<'tcx>,
         regioncx: &RegionInferenceContext<'tcx>,
         body: &Body<'tcx>,
     ) -> LocalizedOutlivesConstraintSet {
         let mut localized_outlives_constraints = LocalizedOutlivesConstraintSet::default();
         convert_typeck_constraints(
+            tcx,
             body,
             regioncx.liveness_constraints(),
             regioncx.outlives_constraints(),
+            regioncx.universal_regions(),
             &mut localized_outlives_constraints,
         );
 
