@@ -5,8 +5,10 @@
 //! is used to provide basic infrastructure for communication between two
 //! processes: Client (RA itself), Server (the external program)
 
-pub mod json;
-pub mod msg;
+pub mod legacy_protocol {
+    pub mod json;
+    pub mod msg;
+}
 mod process;
 
 use paths::{AbsPath, AbsPathBuf};
@@ -14,10 +16,10 @@ use span::Span;
 use std::{fmt, io, sync::Arc};
 
 use crate::{
-    msg::{
+    legacy_protocol::msg::{
         deserialize_span_data_index_map, flat::serialize_span_data_index_map, ExpandMacro,
-        ExpnGlobals, FlatTree, PanicMessage, SpanDataIndexMap, HAS_GLOBAL_SPANS,
-        RUST_ANALYZER_SPAN_SUPPORT,
+        ExpandMacroData, ExpnGlobals, FlatTree, PanicMessage, Request, Response, SpanDataIndexMap,
+        HAS_GLOBAL_SPANS, RUST_ANALYZER_SPAN_SUPPORT,
     },
     process::ProcMacroServerProcess,
 };
@@ -54,10 +56,10 @@ impl MacroDylib {
     }
 }
 
-/// A handle to a specific macro (a `#[proc_macro]` annotated function).
+/// A handle to a specific proc-macro (a `#[proc_macro]` annotated function).
 ///
-/// It exists within a context of a specific [`ProcMacroProcess`] -- currently
-/// we share a single expander process for all macros.
+/// It exists within the context of a specific proc-macro server -- currently
+/// we share a single expander process for all macros within a workspace.
 #[derive(Debug, Clone)]
 pub struct ProcMacro {
     process: Arc<ProcMacroServerProcess>,
@@ -104,10 +106,11 @@ impl ProcMacroClient {
         Ok(ProcMacroClient { process: Arc::new(process), path: process_path.to_owned() })
     }
 
-    pub fn path(&self) -> &AbsPath {
+    pub fn server_path(&self) -> &AbsPath {
         &self.path
     }
 
+    /// Loads a proc-macro dylib into the server process returning a list of `ProcMacro`s loaded.
     pub fn load_dylib(&self, dylib: MacroDylib) -> Result<Vec<ProcMacro>, ServerError> {
         let _p = tracing::info_span!("ProcMacroServer::load_dylib").entered();
         let macros = self.process.find_proc_macros(&dylib.path)?;
@@ -158,7 +161,7 @@ impl ProcMacro {
         let call_site = span_data_table.insert_full(call_site).0;
         let mixed_site = span_data_table.insert_full(mixed_site).0;
         let task = ExpandMacro {
-            data: msg::ExpandMacroData {
+            data: ExpandMacroData {
                 macro_body: FlatTree::new(subtree, version, &mut span_data_table),
                 macro_name: self.name.to_string(),
                 attributes: attr
@@ -180,13 +183,13 @@ impl ProcMacro {
             current_dir,
         };
 
-        let response = self.process.send_task(msg::Request::ExpandMacro(Box::new(task)))?;
+        let response = self.process.send_task(Request::ExpandMacro(Box::new(task)))?;
 
         match response {
-            msg::Response::ExpandMacro(it) => {
+            Response::ExpandMacro(it) => {
                 Ok(it.map(|tree| FlatTree::to_subtree_resolved(tree, version, &span_data_table)))
             }
-            msg::Response::ExpandMacroExtended(it) => Ok(it.map(|resp| {
+            Response::ExpandMacroExtended(it) => Ok(it.map(|resp| {
                 FlatTree::to_subtree_resolved(
                     resp.tree,
                     version,

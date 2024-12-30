@@ -1,7 +1,7 @@
 //! The main loop of the proc-macro server.
 use std::io;
 
-use proc_macro_api::{
+use proc_macro_api::legacy_protocol::{
     json::{read_json, write_json},
     msg::{
         self, deserialize_span_data_index_map, serialize_span_data_index_map, ExpandMacroData,

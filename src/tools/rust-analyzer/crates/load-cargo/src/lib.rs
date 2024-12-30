@@ -82,7 +82,7 @@ pub fn load_workspace(
     };
     match &proc_macro_server {
         Ok(server) => {
-            tracing::info!(path=%server.path(), "Proc-macro server started")
+            tracing::info!(path=%server.server_path(), "Proc-macro server started")
         }
         Err((e, _)) => {
             tracing::info!(%e, "Failed to start proc-macro server")

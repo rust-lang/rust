@@ -9,7 +9,7 @@ use serde_derive::{Deserialize, Serialize};
 
 use crate::ProcMacroKind;
 
-pub use crate::msg::flat::{
+pub use self::flat::{
     deserialize_span_data_index_map, serialize_span_data_index_map, FlatTree, SpanDataIndexMap,
 };
 pub use span::TokenId;

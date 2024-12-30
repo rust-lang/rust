@@ -44,7 +44,7 @@ use span::{
     EditionedFileId, ErasedFileAstId, Span, SpanAnchor, SyntaxContextId, TextRange, TokenId,
 };
 
-use crate::msg::{ENCODE_CLOSE_SPAN_VERSION, EXTENDED_LEAF_DATA};
+use crate::legacy_protocol::msg::{ENCODE_CLOSE_SPAN_VERSION, EXTENDED_LEAF_DATA};
 
 pub type SpanDataIndexMap =
     indexmap::IndexSet<Span, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
