@@ -934,6 +934,9 @@ fn iter_header(
 
 impl Config {
     fn parse_and_update_revisions(&self, testfile: &Path, line: &str, existing: &mut Vec<String>) {
+        const FORBIDDEN_REVISION_NAMES: [&str; 9] =
+            ["CHECK", "COM", "NEXT", "SAME", "EMPTY", "NOT", "COUNT", "DAG", "LABEL"];
+
         if let Some(raw) = self.parse_name_value_directive(line, "revisions") {
             if self.mode == Mode::RunMake {
                 panic!("`run-make` tests do not support revisions: {}", testfile.display());
@@ -944,6 +947,13 @@ impl Config {
                 if !duplicates.insert(revision.clone()) {
                     panic!(
                         "duplicate revision: `{}` in line `{}`: {}",
+                        revision,
+                        raw,
+                        testfile.display()
+                    );
+                } else if FORBIDDEN_REVISION_NAMES.contains(&revision.as_str()) {
+                    panic!(
+                        "invalid revision: `{}` in line `{}`: {}",
                         revision,
                         raw,
                         testfile.display()

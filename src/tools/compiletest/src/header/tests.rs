@@ -554,6 +554,21 @@ fn test_duplicate_revisions() {
 }
 
 #[test]
+fn test_forbidden_revisions() {
+    let config: Config = cfg().build();
+    let revisions = ["CHECK", "COM", "NEXT", "SAME", "EMPTY", "NOT", "COUNT", "DAG", "LABEL"];
+    for rev in revisions {
+        let res = std::panic::catch_unwind(|| {
+            parse_rs(&config, format!("//@ revisions: {rev}").as_str());
+        });
+        assert!(res.is_err());
+        if let Some(msg) = res.unwrap_err().downcast_ref::<String>() {
+            assert!(msg.contains(format!("invalid revision: `{rev}` in line ` {rev}`").as_str()))
+        }
+    }
+}
+
+#[test]
 fn ignore_arch() {
     let archs = [
         ("x86_64-unknown-linux-gnu", "x86_64"),
