@@ -163,6 +163,13 @@ fn generate_nodes(kinds: KindsSrc, grammar: &AstSrc) -> String {
                 quote! {
                     impl AstNode for #name {
                         #[inline]
+                        fn kind() -> SyntaxKind
+                        where
+                            Self: Sized
+                        {
+                            #kind
+                        }
+                        #[inline]
                         fn can_cast(kind: SyntaxKind) -> bool {
                             kind == #kind
                         }
