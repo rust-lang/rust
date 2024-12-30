@@ -561,6 +561,7 @@ macro_rules! uint_impl {
             assert_unsafe_precondition!(
                 check_language_ub,
                 concat!(stringify!($SelfT), "::unchecked_add cannot overflow"),
+                // FIXME: concat! prevents adding formatting
                 (
                     lhs: $SelfT = self,
                     rhs: $SelfT = rhs,
@@ -751,6 +752,7 @@ macro_rules! uint_impl {
             assert_unsafe_precondition!(
                 check_language_ub,
                 concat!(stringify!($SelfT), "::unchecked_sub cannot overflow"),
+                // FIXME: concat! prevents adding formatting
                 (
                     lhs: $SelfT = self,
                     rhs: $SelfT = rhs,
@@ -934,6 +936,7 @@ macro_rules! uint_impl {
             assert_unsafe_precondition!(
                 check_language_ub,
                 concat!(stringify!($SelfT), "::unchecked_mul cannot overflow"),
+                // FIXME: concat! prevents adding formatting
                 (
                     lhs: $SelfT = self,
                     rhs: $SelfT = rhs,
@@ -1504,6 +1507,7 @@ macro_rules! uint_impl {
             assert_unsafe_precondition!(
                 check_language_ub,
                 concat!(stringify!($SelfT), "::unchecked_shl cannot overflow"),
+                // FIXME: concat! prevents adding formatting
                 (
                     rhs: u32 = rhs,
                 ) => rhs < <$ActualT>::BITS,
@@ -1625,6 +1629,7 @@ macro_rules! uint_impl {
             assert_unsafe_precondition!(
                 check_language_ub,
                 concat!(stringify!($SelfT), "::unchecked_shr cannot overflow"),
+                // FIXME: concat! prevents adding formatting
                 (
                     rhs: u32 = rhs,
                 ) => rhs < <$ActualT>::BITS,

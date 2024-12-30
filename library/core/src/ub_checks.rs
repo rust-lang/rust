@@ -63,12 +63,17 @@ macro_rules! assert_unsafe_precondition {
             #[rustc_no_mir_inline]
             #[inline]
             #[rustc_nounwind]
+            #[rustc_allow_const_fn_unstable(const_eval_select)]
             const fn precondition_check($($name:$ty),*) {
-                if !$e {
-                    ::core::panicking::panic_nounwind(
-                        concat!("unsafe precondition(s) violated: ", $message)
-                    );
-                }
+                if $e { return; }
+                crate::intrinsics::const_eval_select!(
+                    @capture { $($name: $ty),* }:
+                    if const {
+                        ::core::panicking::panic_nounwind($message);
+                    } else #[allow(unused)] {
+                        ::core::panicking::panic_nounwind_fmt(format_args!($message), false);
+                    }
+                )
             }
 
             if ::core::ub_checks::$kind() {
