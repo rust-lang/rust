@@ -4821,7 +4821,8 @@ impl<T, const N: usize> [[T; N]] {
     /// assert_eq!(array, [[6, 7, 8], [9, 10, 11], [12, 13, 14]]);
     /// ```
     #[stable(feature = "slice_flatten", since = "1.80.0")]
-    pub fn as_flattened_mut(&mut self) -> &mut [T] {
+    #[rustc_const_unstable(feature = "const_slice_flatten", issue = "95629")]
+    pub const fn as_flattened_mut(&mut self) -> &mut [T] {
         let len = if T::IS_ZST {
             self.len().checked_mul(N).expect("slice len overflow")
         } else {
