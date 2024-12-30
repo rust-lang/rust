@@ -7,10 +7,7 @@ pub(crate) fn target() -> Target {
     // Most of these settings are copied from the armv7_unknown_linux_gnueabi
     // target.
     Target {
-        // It's important we use "gnueabi" and not "musleabi" here. LLVM uses it
-        // to determine the calling convention and float ABI, and it doesn't
-        // support the "musleabi" value.
-        llvm_target: "armv7-unknown-linux-gnueabi".into(),
+        llvm_target: "armv7-unknown-linux-musleabi".into(),
         metadata: crate::spec::TargetMetadata {
             description: Some("Armv7-A Linux with musl 1.2.3".into()),
             tier: Some(2),

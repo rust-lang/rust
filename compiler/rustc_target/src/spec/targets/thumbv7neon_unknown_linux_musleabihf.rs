@@ -8,10 +8,7 @@ use crate::spec::{FloatAbi, Target, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
-        // It's important we use "gnueabihf" and not "musleabihf" here. LLVM
-        // uses it to determine the calling convention and float ABI, and LLVM
-        // doesn't support the "musleabihf" value.
-        llvm_target: "armv7-unknown-linux-gnueabihf".into(),
+        llvm_target: "armv7-unknown-linux-musleabihf".into(),
         metadata: crate::spec::TargetMetadata {
             description: Some("Thumb2-mode ARMv7-A Linux with NEON, musl 1.2.3".into()),
             tier: Some(3),

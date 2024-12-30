@@ -2,11 +2,7 @@ use crate::spec::{FloatAbi, Target, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
-        // FIXME: this comment below does not seem applicable?
-        // It's important we use "gnueabihf" and not "musleabihf" here. LLVM
-        // uses it to determine the calling convention and float ABI, and LLVM
-        // doesn't support the "musleabihf" value.
-        llvm_target: "armv5te-unknown-linux-gnueabi".into(),
+        llvm_target: "armv5te-unknown-linux-musleabi".into(),
         metadata: crate::spec::TargetMetadata {
             description: Some("Armv5TE Linux with musl 1.2.3".into()),
             tier: Some(2),
