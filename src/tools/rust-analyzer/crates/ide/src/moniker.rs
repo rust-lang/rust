@@ -289,15 +289,6 @@ fn def_to_non_local_moniker(
     definition: Definition,
     from_crate: Crate,
 ) -> Option<Moniker> {
-    match definition {
-        // Not possible to give sensible unique symbols for inherent impls, as multiple can be
-        // defined for the same type.
-        Definition::SelfType(impl_) if impl_.trait_(db).is_none() => {
-            return None;
-        }
-        _ => {}
-    }
-
     let module = definition.module(db)?;
     let krate = module.krate();
     let edition = krate.edition(db);
