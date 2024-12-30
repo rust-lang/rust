@@ -3969,6 +3969,21 @@ pub const fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
     false
 }
 
+#[rustc_nounwind]
+#[inline]
+#[rustc_intrinsic]
+#[rustc_intrinsic_const_stable_indirect]
+#[rustc_allow_const_fn_unstable(const_swap_nonoverlapping)] // this is anyway not called since CTFE implements the intrinsic
+#[cfg(bootstrap)]
+pub const unsafe fn typed_swap<T>(x: *mut T, y: *mut T) {
+    // SAFETY: The caller provided single non-overlapping items behind
+    // pointers, so swapping them with `count: 1` is fine.
+    unsafe { ptr::swap_nonoverlapping(x, y, 1) };
+}
+
+#[cfg(bootstrap)]
+pub use typed_swap as typed_swap_nonoverlapping;
+
 /// Non-overlapping *typed* swap of a single value.
 ///
 /// The codegen backends will replace this with a better implementation when
@@ -3982,9 +3997,10 @@ pub const fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
 #[rustc_nounwind]
 #[inline]
 #[rustc_intrinsic]
-// Const-unstable because `swap_nonoverlapping` is const-unstable.
-#[rustc_const_unstable(feature = "const_typed_swap", issue = "none")]
-pub const unsafe fn typed_swap<T>(x: *mut T, y: *mut T) {
+#[rustc_intrinsic_const_stable_indirect]
+#[rustc_allow_const_fn_unstable(const_swap_nonoverlapping)] // this is anyway not called since CTFE implements the intrinsic
+#[cfg(not(bootstrap))]
+pub const unsafe fn typed_swap_nonoverlapping<T>(x: *mut T, y: *mut T) {
     // SAFETY: The caller provided single non-overlapping items behind
     // pointers, so swapping them with `count: 1` is fine.
     unsafe { ptr::swap_nonoverlapping(x, y, 1) };

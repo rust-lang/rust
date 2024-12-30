@@ -1594,7 +1594,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::swap`]: crate::ptr::swap()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+    #[rustc_const_stable(feature = "const_swap", since = "CURRENT_RUSTC_VERSION")]
     #[inline(always)]
     pub const unsafe fn swap(self, with: *mut T)
     where
