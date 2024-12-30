@@ -1,8 +1,7 @@
 //! utils used in proc-macro tests
 
 use expect_test::Expect;
-use proc_macro_api::msg::TokenId;
-use span::{EditionedFileId, ErasedFileAstId, FileId, Span, SpanAnchor, SyntaxContextId};
+use span::{EditionedFileId, ErasedFileAstId, FileId, Span, SpanAnchor, SyntaxContextId, TokenId};
 use tt::TextRange;
 
 use crate::{dylib, proc_macro_test_dylib_path, EnvSnapshot, ProcMacroSrv};
