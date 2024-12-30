@@ -1,18 +1,11 @@
 use rustc_abi::FieldIdx;
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_middle::mir::{BasicBlock, Body, BorrowKind, Location, Place, PlaceRef, ProjectionElem};
+use rustc_middle::mir::{BasicBlock, Body, Location, Place, PlaceRef, ProjectionElem};
 use rustc_middle::ty::TyCtxt;
 use tracing::debug;
 
 use crate::borrow_set::{BorrowData, BorrowSet, TwoPhaseActivation};
 use crate::{AccessDepth, BorrowIndex, places_conflict};
-
-/// Returns `true` if the borrow represented by `kind` is
-/// allowed to be split into separate Reservation and
-/// Activation phases.
-pub(super) fn allow_two_phase_borrow(kind: BorrowKind) -> bool {
-    kind.allows_two_phase_borrow()
-}
 
 /// Control for the path borrow checking code
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
