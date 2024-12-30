@@ -97,23 +97,31 @@ impl Definition {
     }
 
     pub fn enclosing_definition(&self, db: &RootDatabase) -> Option<Definition> {
+        fn container_to_definition(container: ItemContainer) -> Option<Definition> {
+            match container {
+                ItemContainer::Trait(it) => Some(it.into()),
+                ItemContainer::Impl(it) => Some(it.into()),
+                ItemContainer::Module(it) => Some(it.into()),
+                ItemContainer::ExternBlock() | ItemContainer::Crate(_) => None,
+            }
+        }
         match self {
             Definition::Macro(it) => Some(it.module(db).into()),
             Definition::Module(it) => it.parent(db).map(Definition::Module),
             Definition::Field(it) => Some(it.parent_def(db).into()),
-            Definition::Function(it) => it.container(db).try_into().ok(),
+            Definition::Function(it) => container_to_definition(it.container(db)),
             Definition::Adt(it) => Some(it.module(db).into()),
-            Definition::Const(it) => it.container(db).try_into().ok(),
-            Definition::Static(it) => it.container(db).try_into().ok(),
-            Definition::Trait(it) => it.container(db).try_into().ok(),
-            Definition::TraitAlias(it) => it.container(db).try_into().ok(),
-            Definition::TypeAlias(it) => it.container(db).try_into().ok(),
+            Definition::Const(it) => container_to_definition(it.container(db)),
+            Definition::Static(it) => container_to_definition(it.container(db)),
+            Definition::Trait(it) => container_to_definition(it.container(db)),
+            Definition::TraitAlias(it) => container_to_definition(it.container(db)),
+            Definition::TypeAlias(it) => container_to_definition(it.container(db)),
             Definition::Variant(it) => Some(Adt::Enum(it.parent_enum(db)).into()),
             Definition::SelfType(it) => Some(it.module(db).into()),
             Definition::Local(it) => it.parent(db).try_into().ok(),
             Definition::GenericParam(it) => Some(it.parent().into()),
             Definition::Label(it) => it.parent(db).try_into().ok(),
-            Definition::ExternCrateDecl(it) => it.container(db).try_into().ok(),
+            Definition::ExternCrateDecl(it) => container_to_definition(it.container(db)),
             Definition::DeriveHelper(it) => Some(it.derive().module(db).into()),
             Definition::InlineAsmOperand(it) => it.parent(db).try_into().ok(),
             Definition::BuiltinAttr(_)
@@ -951,18 +959,6 @@ impl TryFrom<DefWithBody> for Definition {
             DefWithBody::Const(it) => Ok(it.into()),
             DefWithBody::Variant(it) => Ok(it.into()),
             DefWithBody::InTypeConst(_) => Err(()),
-        }
-    }
-}
-
-impl TryFrom<ItemContainer> for Definition {
-    type Error = ();
-    fn try_from(container: ItemContainer) -> Result<Self, Self::Error> {
-        match container {
-            ItemContainer::Trait(it) => Ok(it.into()),
-            ItemContainer::Impl(it) => Ok(it.into()),
-            ItemContainer::Module(it) => Ok(it.into()),
-            ItemContainer::ExternBlock() | ItemContainer::Crate(_) => Err(()),
         }
     }
 }
