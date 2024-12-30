@@ -729,6 +729,363 @@ fn foo(x: Result<i32, ()>) {
     }
 
     #[test]
+    fn test_if_let_with_match_variant_nested_or_literal() {
+        check_assist(
+            replace_if_let_with_match,
+            r#"
+//- minicore: result
+fn foo(x: Result<&[i32], ()>) {
+    let foo: Result<&[_], ()> = Ok(&[0, 1, 2]);
+    $0if let Ok([]) = foo {
+        ()
+    } else {
+        ()
+    }
+}
+        "#,
+            r#"
+fn foo(x: Result<&[i32], ()>) {
+    let foo: Result<&[_], ()> = Ok(&[0, 1, 2]);
+    match foo {
+        Ok([]) => (),
+        _ => (),
+    }
+}
+        "#,
+        );
+
+        check_assist(
+            replace_if_let_with_match,
+            r#"
+//- minicore: result
+fn foo(x: Result<&'static str, ()>) {
+    let bar: Result<&_, ()> = Ok("bar");
+    $0if let Ok("foo") = bar {
+        ()
+    } else {
+        ()
+    }
+}
+"#,
+            r#"
+fn foo(x: Result<&'static str, ()>) {
+    let bar: Result<&_, ()> = Ok("bar");
+    match bar {
+        Ok("foo") => (),
+        _ => (),
+    }
+}
+"#,
+        );
+
+        check_assist(
+            replace_if_let_with_match,
+            r#"
+//- minicore: result
+fn foo(x: Result<[&'static str; 2], ()>) {
+    let foobar: Result<_, ()> = Ok(["foo", "bar"]);
+    $0if let Ok([_, "bar"]) = foobar {
+        ()
+    } else {
+        ()
+    }
+}
+"#,
+            r#"
+fn foo(x: Result<[&'static str; 2], ()>) {
+    let foobar: Result<_, ()> = Ok(["foo", "bar"]);
+    match foobar {
+        Ok([_, "bar"]) => (),
+        _ => (),
+    }
+}
+"#,
+        );
+
+        check_assist(
+            replace_if_let_with_match,
+            r#"
+//- minicore: result
+fn foo(x: Result<Option<[&'static str; 2]>, ()>) {
+    let foobar: Result<_, ()> = Ok(Some(["foo", "bar"]));
+    $0if let Ok(Some([_, "bar"])) = foobar {
+        ()
+    } else {
+        ()
+    }
+}
+"#,
+            r#"
+fn foo(x: Result<Option<[&'static str; 2]>, ()>) {
+    let foobar: Result<_, ()> = Ok(Some(["foo", "bar"]));
+    match foobar {
+        Ok(Some([_, "bar"])) => (),
+        _ => (),
+    }
+}
+"#,
+        );
+
+        check_assist(
+            replace_if_let_with_match,
+            r#"
+//- minicore: result
+fn foo(x: Result<(i32, i32, i32), ()>) {
+    let bar: Result<(i32, i32, i32), ()> = Ok((1, 2, 3));
+    $0if let Ok((1, second, third)) = bar {
+        ()
+    } else {
+        ()
+    }
+}
+"#,
+            r#"
+fn foo(x: Result<(i32, i32, i32), ()>) {
+    let bar: Result<(i32, i32, i32), ()> = Ok((1, 2, 3));
+    match bar {
+        Ok((1, second, third)) => (),
+        _ => (),
+    }
+}
+"#,
+        );
+
+        check_assist(
+            replace_if_let_with_match,
+            r#"
+//- minicore: result
+fn foo(x: Result<i32, ()>) {
+    let bar: Result<i32, ()> = Ok(1);
+    $0if let Ok(1 | 2) = bar {
+        ()
+    } else {
+        ()
+    }
+}
+"#,
+            r#"
+fn foo(x: Result<i32, ()>) {
+    let bar: Result<i32, ()> = Ok(1);
+    match bar {
+        Ok(1 | 2) => (),
+        _ => (),
+    }
+}
+"#,
+        );
+
+        check_assist(
+            replace_if_let_with_match,
+            r#"
+//- minicore: result
+fn foo(x: Result<i32, ()>) {
+    let bar: Result<i32, ()> = Ok(1);
+    $0if let Ok(1..2) = bar {
+        ()
+    } else {
+        ()
+    }
+}
+"#,
+            r#"
+fn foo(x: Result<i32, ()>) {
+    let bar: Result<i32, ()> = Ok(1);
+    match bar {
+        Ok(1..2) => (),
+        _ => (),
+    }
+}
+"#,
+        );
+
+        check_assist(
+            replace_if_let_with_match,
+            r#"
+//- minicore: result
+fn foo(x: Result<(i32, i32), ()>) {
+    let bar: Result<(i32, i32), ()> = Ok((1, 1));
+    $0if let Ok(((1, 2))) = bar {
+        ()
+    } else {
+        ()
+    }
+}
+"#,
+            r#"
+fn foo(x: Result<(i32, i32), ()>) {
+    let bar: Result<(i32, i32), ()> = Ok((1, 1));
+    match bar {
+        Ok(((1, 2))) => (),
+        _ => (),
+    }
+}
+"#,
+        );
+
+        check_assist(
+            replace_if_let_with_match,
+            r#"
+//- minicore: result
+fn foo(x: Result<(i32, i32), ()>) {
+    let bar: Result<(i32, i32), ()> = Ok((1, 1));
+    $0if let Ok(((a, b))) = bar {
+        ()
+    } else {
+        ()
+    }
+}
+"#,
+            r#"
+fn foo(x: Result<(i32, i32), ()>) {
+    let bar: Result<(i32, i32), ()> = Ok((1, 1));
+    match bar {
+        Ok(((a, b))) => (),
+        Err(_) => (),
+    }
+}
+"#,
+        );
+
+        check_assist(
+            replace_if_let_with_match,
+            r#"
+//- minicore: result
+fn foo(x: Result<i32, ()>) {
+    macro_rules! is_42 {
+        () => {
+            42
+        };
+    }
+
+    let bar: Result<i32, ()> = Ok(1);
+    $0if let Ok(is_42!()) = bar {
+        ()
+    } else {
+        ()
+    }
+}
+"#,
+            r#"
+fn foo(x: Result<i32, ()>) {
+    macro_rules! is_42 {
+        () => {
+            42
+        };
+    }
+
+    let bar: Result<i32, ()> = Ok(1);
+    match bar {
+        Ok(is_42!()) => (),
+        _ => (),
+    }
+}
+"#,
+        );
+
+        check_assist(
+            replace_if_let_with_match,
+            r#"
+//- minicore: result
+enum MyEnum {
+    Foo,
+    Bar,
+}
+
+fn foo(x: Result<MyEnum, ()>) {
+    let bar: Result<MyEnum, ()> = Ok(MyEnum::Foo);
+    $0if let Ok(MyEnum::Foo) = bar {
+        ()
+    } else {
+        ()
+    }
+}
+"#,
+            r#"
+enum MyEnum {
+    Foo,
+    Bar,
+}
+
+fn foo(x: Result<MyEnum, ()>) {
+    let bar: Result<MyEnum, ()> = Ok(MyEnum::Foo);
+    match bar {
+        Ok(MyEnum::Foo) => (),
+        _ => (),
+    }
+}
+"#,
+        );
+
+        check_assist(
+            replace_if_let_with_match,
+            r#"
+//- minicore: result
+struct MyStruct {
+    foo: i32,
+    bar: i32,
+}
+
+fn foo(x: Result<MyStruct, ()>) {
+    let bar: Result<MyStruct, ()> = Ok(MyStruct { foo: 1, bar: 2 });
+    $0if let Ok(MyStruct { foo, bar }) = bar {
+        ()
+    } else {
+        ()
+    }
+}
+"#,
+            r#"
+struct MyStruct {
+    foo: i32,
+    bar: i32,
+}
+
+fn foo(x: Result<MyStruct, ()>) {
+    let bar: Result<MyStruct, ()> = Ok(MyStruct { foo: 1, bar: 2 });
+    match bar {
+        Ok(MyStruct { foo, bar }) => (),
+        Err(_) => (),
+    }
+}
+"#,
+        );
+
+        check_assist(
+            replace_if_let_with_match,
+            r#"
+//- minicore: result
+struct MyStruct {
+    foo: i32,
+    bar: i32,
+}
+
+fn foo(x: Result<MyStruct, ()>) {
+    let bar: Result<MyStruct, ()> = Ok(MyStruct { foo: 1, bar: 2 });
+    $0if let Ok(MyStruct { foo, bar: 12 }) = bar {
+        ()
+    } else {
+        ()
+    }
+}
+"#,
+            r#"
+struct MyStruct {
+    foo: i32,
+    bar: i32,
+}
+
+fn foo(x: Result<MyStruct, ()>) {
+    let bar: Result<MyStruct, ()> = Ok(MyStruct { foo: 1, bar: 2 });
+    match bar {
+        Ok(MyStruct { foo, bar: 12 }) => (),
+        _ => (),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn test_replace_match_with_if_let_unwraps_simple_expressions() {
         check_assist(
             replace_match_with_if_let,
