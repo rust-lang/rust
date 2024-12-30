@@ -1,10 +1,11 @@
-use std::fmt;
+use std::{fmt, sync::OnceLock};
 
+use arrayvec::ArrayVec;
 use ast::HasName;
 use cfg::{CfgAtom, CfgExpr};
 use hir::{
     db::HirDatabase, sym, AsAssocItem, AttrsWithOwner, HasAttrs, HasCrate, HasSource, HirFileIdExt,
-    Semantics,
+    ModPath, Name, PathKind, Semantics, Symbol,
 };
 use ide_assists::utils::{has_test_related_attribute, test_related_attribute_syn};
 use ide_db::{
@@ -336,7 +337,7 @@ pub(crate) fn runnable_fn(
         }
     };
 
-    let fn_source = def.source(sema.db)?;
+    let fn_source = sema.source(def)?;
     let nav = NavigationTarget::from_named(
         sema.db,
         fn_source.as_ref().map(|it| it as &dyn ast::HasName),
@@ -345,7 +346,8 @@ pub(crate) fn runnable_fn(
     .call_site();
 
     let file_range = fn_source.syntax().original_file_range_with_macro_call_body(sema.db);
-    let update_test = TestDefs::new(sema, def.krate(sema.db), file_range).update_test();
+    let update_test =
+        UpdateTest::find_snapshot_macro(sema, &fn_source.file_syntax(sema.db), file_range);
 
     let cfg = def.attrs(sema.db).cfg();
     Some(Runnable { use_name_in_title: false, nav, kind, cfg, update_test })
@@ -374,13 +376,13 @@ pub(crate) fn runnable_mod(
     let cfg = attrs.cfg();
     let nav = NavigationTarget::from_module_to_decl(sema.db, def).call_site();
 
-    let file_range = {
-        let src = def.definition_source(sema.db);
-        let file_id = src.file_id.original_file(sema.db);
-        let range = src.file_syntax(sema.db).text_range();
-        hir::FileRange { file_id, range }
+    let module_source = sema.module_definition_node(def);
+    let module_syntax = module_source.file_syntax(sema.db);
+    let file_range = hir::FileRange {
+        file_id: module_source.file_id.original_file(sema.db),
+        range: module_syntax.text_range(),
     };
-    let update_test = TestDefs::new(sema, def.krate(), file_range).update_test();
+    let update_test = UpdateTest::find_snapshot_macro(sema, &module_syntax, file_range);
 
     Some(Runnable {
         use_name_in_title: false,
@@ -414,9 +416,11 @@ pub(crate) fn runnable_impl(
     test_id.retain(|c| c != ' ');
     let test_id = TestId::Path(test_id);
 
-    let impl_source =
-        def.source(sema.db)?.syntax().original_file_range_with_macro_call_body(sema.db);
-    let update_test = TestDefs::new(sema, def.krate(sema.db), impl_source).update_test();
+    let impl_source = sema.source(*def)?;
+    let impl_syntax = impl_source.syntax();
+    let file_range = impl_syntax.original_file_range_with_macro_call_body(sema.db);
+    let update_test =
+        UpdateTest::find_snapshot_macro(sema, &impl_syntax.file_syntax(sema.db), file_range);
 
     Some(Runnable {
         use_name_in_title: false,
@@ -456,13 +460,13 @@ fn runnable_mod_outline_definition(
     let attrs = def.attrs(sema.db);
     let cfg = attrs.cfg();
 
-    let file_range = {
-        let src = def.definition_source(sema.db);
-        let file_id = src.file_id.original_file(sema.db);
-        let range = src.file_syntax(sema.db).text_range();
-        hir::FileRange { file_id, range }
+    let mod_source = sema.module_definition_node(def);
+    let mod_syntax = mod_source.file_syntax(sema.db);
+    let file_range = hir::FileRange {
+        file_id: mod_source.file_id.original_file(sema.db),
+        range: mod_syntax.text_range(),
     };
-    let update_test = TestDefs::new(sema, def.krate(), file_range).update_test();
+    let update_test = UpdateTest::find_snapshot_macro(sema, &mod_syntax, file_range);
 
     Some(Runnable {
         use_name_in_title: false,
@@ -616,8 +620,6 @@ fn has_test_function_or_multiple_test_submodules(
     number_of_test_submodules > 1
 }
 
-struct TestDefs<'a, 'b>(&'a Semantics<'b, RootDatabase>, hir::Crate, hir::FileRange);
-
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct UpdateTest {
     pub expect_test: bool,
@@ -625,7 +627,86 @@ pub struct UpdateTest {
     pub snapbox: bool,
 }
 
+static SNAPSHOT_TEST_MACROS: OnceLock<FxHashMap<&str, Vec<ModPath>>> = OnceLock::new();
+
 impl UpdateTest {
+    const EXPECT_CRATE: &str = "expect_test";
+    const EXPECT_MACROS: &[&str] = &["expect", "expect_file"];
+
+    const INSTA_CRATE: &str = "insta";
+    const INSTA_MACROS: &[&str] = &[
+        "assert_snapshot",
+        "assert_debug_snapshot",
+        "assert_display_snapshot",
+        "assert_json_snapshot",
+        "assert_yaml_snapshot",
+        "assert_ron_snapshot",
+        "assert_toml_snapshot",
+        "assert_csv_snapshot",
+        "assert_compact_json_snapshot",
+        "assert_compact_debug_snapshot",
+        "assert_binary_snapshot",
+    ];
+
+    const SNAPBOX_CRATE: &str = "snapbox";
+    const SNAPBOX_MACROS: &[&str] = &["assert_data_eq", "file", "str"];
+
+    fn find_snapshot_macro(
+        sema: &Semantics<'_, RootDatabase>,
+        scope: &SyntaxNode,
+        file_range: hir::FileRange,
+    ) -> Self {
+        fn init<'a>(
+            krate_name: &'a str,
+            paths: &[&str],
+            map: &mut FxHashMap<&'a str, Vec<ModPath>>,
+        ) {
+            let mut res = Vec::with_capacity(paths.len());
+            let krate = Name::new_symbol_root(Symbol::intern(krate_name));
+            for path in paths {
+                let segments = [krate.clone(), Name::new_symbol_root(Symbol::intern(path))];
+                let mod_path = ModPath::from_segments(PathKind::Abs, segments);
+                res.push(mod_path);
+            }
+            map.insert(krate_name, res);
+        }
+
+        let mod_paths = SNAPSHOT_TEST_MACROS.get_or_init(|| {
+            let mut map = FxHashMap::default();
+            init(Self::EXPECT_CRATE, Self::EXPECT_MACROS, &mut map);
+            init(Self::INSTA_CRATE, Self::INSTA_MACROS, &mut map);
+            init(Self::SNAPBOX_CRATE, Self::SNAPBOX_MACROS, &mut map);
+            map
+        });
+
+        let search_scope = SearchScope::file_range(file_range);
+        let find_macro = |paths: &[ModPath]| {
+            for path in paths {
+                let Some(items) = sema.resolve_mod_path(scope, path) else {
+                    continue;
+                };
+                for item in items {
+                    if let hir::ItemInNs::Macros(makro) = item {
+                        if Definition::Macro(makro)
+                            .usages(sema)
+                            .in_scope(&search_scope)
+                            .at_least_one()
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+            false
+        };
+
+        UpdateTest {
+            expect_test: find_macro(mod_paths.get(Self::EXPECT_CRATE).unwrap()),
+            insta: find_macro(mod_paths.get(Self::INSTA_CRATE).unwrap()),
+            snapbox: find_macro(mod_paths.get(Self::SNAPBOX_CRATE).unwrap()),
+        }
+    }
+
     pub fn label(&self) -> Option<SmolStr> {
         let mut builder: SmallVec<[_; 3]> = SmallVec::new();
         if self.expect_test {
@@ -646,8 +727,8 @@ impl UpdateTest {
         }
     }
 
-    pub fn env(&self) -> SmallVec<[(&str, &str); 3]> {
-        let mut env = SmallVec::new();
+    pub fn env(&self) -> ArrayVec<(&str, &str), 3> {
+        let mut env = ArrayVec::new();
         if self.expect_test {
             env.push(("UPDATE_EXPECT", "1"));
         }
@@ -658,75 +739,6 @@ impl UpdateTest {
             env.push(("SNAPSHOTS", "overwrite"));
         }
         env
-    }
-}
-
-impl<'a, 'b> TestDefs<'a, 'b> {
-    fn new(
-        sema: &'a Semantics<'b, RootDatabase>,
-        current_krate: hir::Crate,
-        file_range: hir::FileRange,
-    ) -> Self {
-        Self(sema, current_krate, file_range)
-    }
-
-    fn update_test(&self) -> UpdateTest {
-        UpdateTest { expect_test: self.expect_test(), insta: self.insta(), snapbox: self.snapbox() }
-    }
-
-    fn expect_test(&self) -> bool {
-        self.find_macro("expect_test", &["expect", "expect_file"])
-    }
-
-    fn insta(&self) -> bool {
-        self.find_macro(
-            "insta",
-            &[
-                "assert_snapshot",
-                "assert_debug_snapshot",
-                "assert_display_snapshot",
-                "assert_json_snapshot",
-                "assert_yaml_snapshot",
-                "assert_ron_snapshot",
-                "assert_toml_snapshot",
-                "assert_csv_snapshot",
-                "assert_compact_json_snapshot",
-                "assert_compact_debug_snapshot",
-                "assert_binary_snapshot",
-            ],
-        )
-    }
-
-    fn snapbox(&self) -> bool {
-        self.find_macro("snapbox", &["assert_data_eq", "file", "str"])
-    }
-
-    fn find_macro(&self, crate_name: &str, paths: &[&str]) -> bool {
-        let db = self.0.db;
-
-        let Some(dep) =
-            self.1.dependencies(db).into_iter().find(|dep| dep.name.eq_ident(crate_name))
-        else {
-            return false;
-        };
-        let module = dep.krate.root_module();
-        let scope = module.scope(db, None);
-
-        paths
-            .iter()
-            .filter_map(|path| {
-                let (_, def) = scope.iter().find(|(name, _)| name.eq_ident(path))?;
-                match def {
-                    hir::ScopeDef::ModuleDef(hir::ModuleDef::Macro(it)) => Some(it),
-                    _ => None,
-                }
-            })
-            .any(|makro| {
-                Definition::Macro(*makro)
-                    .usages(self.0)
-                    .in_scope(&SearchScope::file_range(self.2))
-                    .at_least_one()
-            })
     }
 }
 
