@@ -1227,7 +1227,7 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// A public `use` declaration should not be used to publicly re-export a
+    /// A public `use` declaration should not be used to publically re-export a
     /// private `extern crate`. `pub extern crate` should be used instead.
     ///
     /// This was historically allowed, but is not the intended behavior
@@ -4521,7 +4521,7 @@ declare_lint! {
     ///
     /// `refining_impl_trait` is a lint group composed of two lints:
     ///
-    /// * `refining_impl_trait_reachable`, for refinements that are publicly
+    /// * `refining_impl_trait_reachable`, for refinements that are publically
     ///   reachable outside a crate, and
     /// * `refining_impl_trait_internal`, for refinements that are only visible
     ///    within a crate.
@@ -4577,7 +4577,7 @@ declare_lint! {
     ///
     /// `refining_impl_trait` is a lint group composed of two lints:
     ///
-    /// * `refining_impl_trait_reachable`, for refinements that are publicly
+    /// * `refining_impl_trait_reachable`, for refinements that are publically
     ///   reachable outside a crate, and
     /// * `refining_impl_trait_internal`, for refinements that are only visible
     ///    within a crate.
