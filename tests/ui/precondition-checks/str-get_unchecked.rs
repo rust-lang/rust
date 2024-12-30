@@ -1,6 +1,6 @@
 //@ run-fail
 //@ compile-flags: -Copt-level=3 -Cdebug-assertions=no -Zub-checks=yes
-//@ error-pattern: unsafe precondition(s) violated: str::get_unchecked requires
+//@ error-pattern: str::get_unchecked requires
 //@ revisions: range range_to range_from backwards_range
 
 fn main() {
