@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use rustc_abi::FieldIdx;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_middle::mir::{BasicBlock, Body, Location, Place, PlaceRef, ProjectionElem};
@@ -6,13 +8,6 @@ use tracing::debug;
 
 use crate::borrow_set::{BorrowData, BorrowSet, TwoPhaseActivation};
 use crate::{AccessDepth, BorrowIndex, places_conflict};
-
-/// Control for the path borrow checking code
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub(super) enum Control {
-    Continue,
-    Break,
-}
 
 /// Encapsulates the idea of iterating over every borrow that involves a particular path
 pub(super) fn each_borrow_involving_path<'tcx, F, I, S>(
@@ -24,7 +19,7 @@ pub(super) fn each_borrow_involving_path<'tcx, F, I, S>(
     is_candidate: I,
     mut op: F,
 ) where
-    F: FnMut(&mut S, BorrowIndex, &BorrowData<'tcx>) -> Control,
+    F: FnMut(&mut S, BorrowIndex, &BorrowData<'tcx>) -> ControlFlow<()>,
     I: Fn(BorrowIndex) -> bool,
 {
     let (access, place) = access_place;
@@ -55,7 +50,7 @@ pub(super) fn each_borrow_involving_path<'tcx, F, I, S>(
                 i, borrowed, place, access
             );
             let ctrl = op(s, i, borrowed);
-            if ctrl == Control::Break {
+            if matches!(ctrl, ControlFlow::Break(_)) {
                 return;
             }
         }
