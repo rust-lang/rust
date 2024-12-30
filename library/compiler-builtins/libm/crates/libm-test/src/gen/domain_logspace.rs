@@ -1,5 +1,7 @@
 //! A generator that produces logarithmically spaced values within domain bounds.
 
+use std::ops::RangeInclusive;
+
 use libm::support::{IntTy, MinInt};
 
 use crate::domain::HasDomain;
@@ -34,6 +36,7 @@ pub fn get_test_cases<Op>(_ctx: &CheckCtx) -> impl Iterator<Item = (Op::FTy,)>
 where
     Op: MathOp + HasDomain<Op::FTy>,
     IntTy<Op::FTy>: TryFrom<usize>,
+    RangeInclusive<IntTy<Op::FTy>>: Iterator,
 {
     let domain = Op::DOMAIN;
     let start = domain.range_start();

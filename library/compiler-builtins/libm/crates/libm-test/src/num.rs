@@ -1,8 +1,9 @@
 //! Helpful numeric operations.
 
 use std::cmp::min;
+use std::ops::RangeInclusive;
 
-use libm::support::{CastInto, Float};
+use libm::support::Float;
 
 use crate::{Int, MinInt};
 
@@ -214,7 +215,10 @@ fn as_ulp_steps<F: Float>(x: F) -> Option<F::SignedInt> {
 /// to logarithmic spacing of their values.
 ///
 /// Note that this tends to skip negative zero, so that needs to be checked explicitly.
-pub fn logspace<F: FloatExt>(start: F, end: F, steps: F::Int) -> impl Iterator<Item = F> {
+pub fn logspace<F: FloatExt>(start: F, end: F, steps: F::Int) -> impl Iterator<Item = F>
+where
+    RangeInclusive<F::Int>: Iterator,
+{
     assert!(!start.is_nan());
     assert!(!end.is_nan());
     assert!(end >= start);
@@ -225,7 +229,7 @@ pub fn logspace<F: FloatExt>(start: F, end: F, steps: F::Int) -> impl Iterator<I
     steps = steps.min(between); // At maximum, one step per ULP
 
     let mut x = start;
-    (0..=steps.cast()).map(move |_| {
+    (F::Int::ZERO..=steps).map(move |_| {
         let ret = x;
         x = x.n_up(spacing);
         ret
