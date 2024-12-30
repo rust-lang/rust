@@ -117,11 +117,11 @@ impl<'infcx, 'tcx> BorrowckDiagnosticsBuffer<'infcx, 'tcx> {
 
 impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     pub(crate) fn buffer_error(&mut self, diag: Diag<'infcx>) {
-        self.diags.buffered_diags.push(BufferedDiag::Error(diag));
+        self.diags_buffer.buffered_diags.push(BufferedDiag::Error(diag));
     }
 
     pub(crate) fn buffer_non_error(&mut self, diag: Diag<'infcx, ()>) {
-        self.diags.buffer_non_error(diag);
+        self.diags_buffer.buffer_non_error(diag);
     }
 
     pub(crate) fn buffer_move_error(
@@ -130,7 +130,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         place_and_err: (PlaceRef<'tcx>, Diag<'infcx>),
     ) -> bool {
         if let Some((_, diag)) =
-            self.diags.buffered_move_errors.insert(move_out_indices, place_and_err)
+            self.diags_buffer.buffered_move_errors.insert(move_out_indices, place_and_err)
         {
             // Cancel the old diagnostic so we don't ICE
             diag.cancel();
@@ -142,22 +142,22 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
     pub(crate) fn get_buffered_mut_error(&mut self, span: Span) -> Option<(Diag<'infcx>, usize)> {
         // FIXME(#120456) - is `swap_remove` correct?
-        self.diags.buffered_mut_errors.swap_remove(&span)
+        self.diags_buffer.buffered_mut_errors.swap_remove(&span)
     }
 
     pub(crate) fn buffer_mut_error(&mut self, span: Span, diag: Diag<'infcx>, count: usize) {
-        self.diags.buffered_mut_errors.insert(span, (diag, count));
+        self.diags_buffer.buffered_mut_errors.insert(span, (diag, count));
     }
 
     pub(crate) fn emit_errors(&mut self) -> Option<ErrorGuaranteed> {
         let mut res = self.infcx.tainted_by_errors();
 
         // Buffer any move errors that we collected and de-duplicated.
-        for (_, (_, diag)) in std::mem::take(&mut self.diags.buffered_move_errors) {
+        for (_, (_, diag)) in std::mem::take(&mut self.diags_buffer.buffered_move_errors) {
             // We have already set tainted for this error, so just buffer it.
             self.buffer_error(diag);
         }
-        for (_, (mut diag, count)) in std::mem::take(&mut self.diags.buffered_mut_errors) {
+        for (_, (mut diag, count)) in std::mem::take(&mut self.diags_buffer.buffered_mut_errors) {
             if count > 10 {
                 #[allow(rustc::diagnostic_outside_of_impl)]
                 #[allow(rustc::untranslatable_diagnostic)]
@@ -166,9 +166,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             self.buffer_error(diag);
         }
 
-        if !self.diags.buffered_diags.is_empty() {
-            self.diags.buffered_diags.sort_by_key(|buffered_diag| buffered_diag.sort_span());
-            for buffered_diag in self.diags.buffered_diags.drain(..) {
+        if !self.diags_buffer.buffered_diags.is_empty() {
+            self.diags_buffer.buffered_diags.sort_by_key(|buffered_diag| buffered_diag.sort_span());
+            for buffered_diag in self.diags_buffer.buffered_diags.drain(..) {
                 match buffered_diag {
                     BufferedDiag::Error(diag) => res = Some(diag.emit()),
                     BufferedDiag::NonError(diag) => diag.emit(),
@@ -180,14 +180,14 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     }
 
     pub(crate) fn has_buffered_diags(&self) -> bool {
-        self.diags.buffered_diags.is_empty()
+        self.diags_buffer.buffered_diags.is_empty()
     }
 
     pub(crate) fn has_move_error(
         &self,
         move_out_indices: &[MoveOutIndex],
     ) -> Option<&(PlaceRef<'tcx>, Diag<'infcx>)> {
-        self.diags.buffered_move_errors.get(move_out_indices)
+        self.diags_buffer.buffered_move_errors.get(move_out_indices)
     }
 }
 

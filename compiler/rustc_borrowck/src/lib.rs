@@ -217,8 +217,15 @@ fn do_mir_borrowck<'tcx>(
 
     // We also have a `#[rustc_regions]` annotation that causes us to dump
     // information.
-    let diags = &mut BorrowckDiagnosticsBuffer::default();
-    nll::dump_annotation(&infcx, body, &regioncx, &opt_closure_req, &opaque_type_values, diags);
+    let diags_buffer = &mut BorrowckDiagnosticsBuffer::default();
+    nll::dump_annotation(
+        &infcx,
+        body,
+        &regioncx,
+        &opt_closure_req,
+        &opaque_type_values,
+        diags_buffer,
+    );
 
     let movable_coroutine =
         // The first argument is the coroutine type passed by value
@@ -257,7 +264,7 @@ fn do_mir_borrowck<'tcx>(
             next_region_name: RefCell::new(1),
             polonius_output: None,
             move_errors: Vec::new(),
-            diags,
+            diags_buffer,
         };
         MoveVisitor { ctxt: &mut promoted_mbcx }.visit_body(promoted_body);
         promoted_mbcx.report_move_errors();
@@ -296,7 +303,7 @@ fn do_mir_borrowck<'tcx>(
         next_region_name: RefCell::new(1),
         polonius_output,
         move_errors: Vec::new(),
-        diags,
+        diags_buffer,
     };
 
     // Compute and report region errors, if any.
@@ -566,7 +573,7 @@ struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
     /// Results of Polonius analysis.
     polonius_output: Option<Box<PoloniusOutput>>,
 
-    diags: &'a mut BorrowckDiagnosticsBuffer<'infcx, 'tcx>,
+    diags_buffer: &'a mut BorrowckDiagnosticsBuffer<'infcx, 'tcx>,
     move_errors: Vec<MoveError<'tcx>>,
 }
 
