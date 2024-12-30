@@ -85,7 +85,8 @@ impl<'infcx> BufferedDiag<'infcx> {
     }
 }
 
-pub(crate) struct BorrowckDiags<'infcx, 'tcx> {
+#[derive(Default)]
+pub(crate) struct BorrowckDiagnosticsBuffer<'infcx, 'tcx> {
     /// This field keeps track of move errors that are to be reported for given move indices.
     ///
     /// There are situations where many errors can be reported for a single move out (see
@@ -108,19 +109,7 @@ pub(crate) struct BorrowckDiags<'infcx, 'tcx> {
     buffered_diags: Vec<BufferedDiag<'infcx>>,
 }
 
-impl<'infcx, 'tcx> BorrowckDiags<'infcx, 'tcx> {
-    pub(crate) fn new() -> Self {
-        BorrowckDiags {
-            buffered_move_errors: BTreeMap::new(),
-            buffered_mut_errors: Default::default(),
-            buffered_diags: Default::default(),
-        }
-    }
-
-    pub(crate) fn buffer_error(&mut self, diag: Diag<'infcx>) {
-        self.buffered_diags.push(BufferedDiag::Error(diag));
-    }
-
+impl<'infcx, 'tcx> BorrowckDiagnosticsBuffer<'infcx, 'tcx> {
     pub(crate) fn buffer_non_error(&mut self, diag: Diag<'infcx, ()>) {
         self.buffered_diags.push(BufferedDiag::NonError(diag));
     }
@@ -128,7 +117,7 @@ impl<'infcx, 'tcx> BorrowckDiags<'infcx, 'tcx> {
 
 impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     pub(crate) fn buffer_error(&mut self, diag: Diag<'infcx>) {
-        self.diags.buffer_error(diag);
+        self.diags.buffered_diags.push(BufferedDiag::Error(diag));
     }
 
     pub(crate) fn buffer_non_error(&mut self, diag: Diag<'infcx, ()>) {
@@ -166,7 +155,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         // Buffer any move errors that we collected and de-duplicated.
         for (_, (_, diag)) in std::mem::take(&mut self.diags.buffered_move_errors) {
             // We have already set tainted for this error, so just buffer it.
-            self.diags.buffer_error(diag);
+            self.buffer_error(diag);
         }
         for (_, (mut diag, count)) in std::mem::take(&mut self.diags.buffered_mut_errors) {
             if count > 10 {
@@ -174,7 +163,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 #[allow(rustc::untranslatable_diagnostic)]
                 diag.note(format!("...and {} other attempted mutable borrows", count - 10));
             }
-            self.diags.buffer_error(diag);
+            self.buffer_error(diag);
         }
 
         if !self.diags.buffered_diags.is_empty() {

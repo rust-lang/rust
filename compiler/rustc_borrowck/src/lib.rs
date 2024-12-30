@@ -19,7 +19,6 @@ use std::cell::RefCell;
 use std::marker::PhantomData;
 use std::ops::Deref;
 
-use diagnostics::BorrowckDiags;
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
@@ -51,7 +50,9 @@ use tracing::{debug, instrument};
 use crate::borrow_set::{BorrowData, BorrowSet};
 use crate::consumers::{BodyWithBorrowckFacts, ConsumerOptions};
 use crate::dataflow::{BorrowIndex, Borrowck, BorrowckDomain, Borrows};
-use crate::diagnostics::{AccessKind, IllegalMoveOriginKind, MoveError, RegionName};
+use crate::diagnostics::{
+    AccessKind, BorrowckDiagnosticsBuffer, IllegalMoveOriginKind, MoveError, RegionName,
+};
 use crate::path_utils::*;
 use crate::place_ext::PlaceExt;
 use crate::places_conflict::{PlaceConflictBias, places_conflict};
@@ -216,7 +217,7 @@ fn do_mir_borrowck<'tcx>(
 
     // We also have a `#[rustc_regions]` annotation that causes us to dump
     // information.
-    let diags = &mut BorrowckDiags::new();
+    let diags = &mut BorrowckDiagnosticsBuffer::default();
     nll::dump_annotation(&infcx, body, &regioncx, &opt_closure_req, &opaque_type_values, diags);
 
     let movable_coroutine =
@@ -565,7 +566,7 @@ struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
     /// Results of Polonius analysis.
     polonius_output: Option<Box<PoloniusOutput>>,
 
-    diags: &'a mut BorrowckDiags<'infcx, 'tcx>,
+    diags: &'a mut BorrowckDiagnosticsBuffer<'infcx, 'tcx>,
     move_errors: Vec<MoveError<'tcx>>,
 }
 
