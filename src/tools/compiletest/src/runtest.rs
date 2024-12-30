@@ -960,7 +960,7 @@ impl<'test> TestCx<'test> {
     }
 
     fn exec_compiled_test(&self) -> ProcRes {
-        self.exec_compiled_test_general(&[], true)
+        self.exec_compiled_test_general(&[], false)
     }
 
     fn exec_compiled_test_general(
