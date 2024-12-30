@@ -568,10 +568,6 @@ impl GetOptsOptions {
                 if let Some(ref file_lines) = matches.opt_str("file-lines") {
                     options.file_lines = file_lines.parse()?;
                 }
-                if let Some(ref edition_str) = matches.opt_str("style-edition") {
-                    options.style_edition =
-                        Some(style_edition_from_style_edition_str(edition_str)?);
-                }
             } else {
                 let mut unstable_options = vec![];
                 if matches.opt_present("skip-children") {
@@ -582,9 +578,6 @@ impl GetOptsOptions {
                 }
                 if matches.opt_present("file-lines") {
                     unstable_options.push("`--file-lines`");
-                }
-                if matches.opt_present("style-edition") {
-                    unstable_options.push("`--style-edition`");
                 }
                 if !unstable_options.is_empty() {
                     let s = if unstable_options.len() == 1 { "" } else { "s" };
@@ -659,6 +652,10 @@ impl GetOptsOptions {
                 Ok(color) => options.color = Some(color),
                 _ => return Err(format_err!("Invalid color: {}", color)),
             }
+        }
+
+        if let Some(ref edition_str) = matches.opt_str("style-edition") {
+            options.style_edition = Some(style_edition_from_style_edition_str(edition_str)?);
         }
 
         Ok(options)
