@@ -13,7 +13,6 @@ use tracing::debug;
 
 use crate::borrow_set::BorrowSet;
 use crate::constraints::OutlivesConstraint;
-use crate::facts::{AllFacts, PoloniusRegionVid};
 use crate::type_check::MirTypeckRegionConstraints;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::universal_regions::UniversalRegions;
@@ -23,6 +22,8 @@ mod loan_invalidations;
 mod loan_kills;
 mod location;
 pub use self::location::*;
+mod facts;
+pub use self::facts::*;
 
 /// When requested, emit most of the facts needed by polonius:
 /// - moves and assignments

@@ -4,17 +4,19 @@ use std::fs::{self, File};
 use std::io::Write;
 use std::path::Path;
 
-use polonius_engine::{AllFacts as PoloniusFacts, Atom};
+use polonius_engine::{AllFacts as PoloniusFacts, Atom, Output};
 use rustc_macros::extension;
 use rustc_middle::mir::Local;
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_mir_dataflow::move_paths::MovePathIndex;
 
+use super::{LocationIndex, LocationTable};
 use crate::BorrowIndex;
-use crate::polonius::legacy::{LocationIndex, LocationTable};
 
 #[derive(Copy, Clone, Debug)]
 pub struct RustcFacts;
+
+pub type PoloniusOutput = Output<RustcFacts>;
 
 rustc_index::newtype_index! {
     /// A (kinda) newtype of `RegionVid` so we can implement `Atom` on it.

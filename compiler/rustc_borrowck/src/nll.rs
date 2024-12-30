@@ -27,15 +27,12 @@ use tracing::{debug, instrument};
 use crate::borrow_set::BorrowSet;
 use crate::consumers::ConsumerOptions;
 use crate::diagnostics::RegionErrors;
-use crate::facts::{AllFacts, AllFactsExt, RustcFacts};
 use crate::polonius::LocalizedOutlivesConstraintSet;
-use crate::polonius::legacy::LocationTable;
+use crate::polonius::legacy::{AllFacts, AllFactsExt, LocationTable, PoloniusOutput};
 use crate::region_infer::RegionInferenceContext;
 use crate::type_check::{self, MirTypeckResults};
 use crate::universal_regions::UniversalRegions;
 use crate::{BorrowckInferCtxt, polonius, renumber};
-
-pub type PoloniusOutput = Output<RustcFacts>;
 
 /// The output of `nll::compute_regions`. This includes the computed `RegionInferenceContext`, any
 /// closure requirements to propagate, and any generated errors.
