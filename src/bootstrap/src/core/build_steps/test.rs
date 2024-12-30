@@ -24,8 +24,8 @@ use crate::core::config::flags::{Subcommand, get_completion};
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{
-    self, LldThreads, add_link_lib_path, add_rustdoc_cargo_linker_args, dylib_path, dylib_path_var,
-    linker_args, linker_flags, t, target_supports_cranelift_backend, up_to_date,
+    self, LldThreads, add_rustdoc_cargo_linker_args, dylib_path, dylib_path_var, linker_args,
+    linker_flags, t, target_supports_cranelift_backend, up_to_date,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
 use crate::{CLang, DocTests, GitRepo, Mode, PathSet, envify};
@@ -1975,11 +1975,17 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             // Tests that use compiler libraries may inherit the `-lLLVM` link
             // requirement, but the `-L` library path is not propagated across
             // separate compilations. We can add LLVM's library path to the
-            // platform-specific environment variable as a workaround.
+            // rustc args as a workaround.
             if !builder.config.dry_run() && suite.ends_with("fulldeps") {
                 let llvm_libdir =
                     command(&llvm_config).arg("--libdir").run_capture_stdout(builder).stdout();
-                add_link_lib_path(vec![llvm_libdir.trim().into()], &mut cmd);
+                let mut rustflags = env::var("RUSTFLAGS").unwrap_or_default();
+                if target.is_msvc() {
+                    rustflags.push_str(&format!("-Clink-arg=-LIBPATH:{llvm_libdir}"));
+                } else {
+                    rustflags.push_str(&format!("-Clink-arg=-L{llvm_libdir}"));
+                }
+                cmd.env("RUSTFLAGS", rustflags);
             }
 
             if !builder.config.dry_run() && matches!(mode, "run-make" | "coverage-run") {

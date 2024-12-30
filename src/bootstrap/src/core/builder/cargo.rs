@@ -8,9 +8,7 @@ use crate::core::build_steps::{compile, test};
 use crate::core::config::SplitDebuginfo;
 use crate::core::config::flags::Color;
 use crate::utils::build_stamp;
-use crate::utils::helpers::{
-    self, LldThreads, add_link_lib_path, check_cfg_arg, linker_args, linker_flags,
-};
+use crate::utils::helpers::{self, LldThreads, check_cfg_arg, linker_args, linker_flags};
 use crate::{
     BootstrapCommand, CLang, Compiler, DocTests, DryRun, EXTRA_CHECK_CFGS, GitRepo, Mode,
     TargetSelection, command, prepare_behaviour_dump_dir, t,
@@ -947,12 +945,16 @@ impl Builder<'_> {
         // Tools that use compiler libraries may inherit the `-lLLVM` link
         // requirement, but the `-L` library path is not propagated across
         // separate Cargo projects. We can add LLVM's library path to the
-        // platform-specific environment variable as a workaround.
+        // rustc args as a workaround.
         if mode == Mode::ToolRustc || mode == Mode::Codegen {
             if let Some(llvm_config) = self.llvm_config(target) {
                 let llvm_libdir =
                     command(llvm_config).arg("--libdir").run_capture_stdout(self).stdout();
-                add_link_lib_path(vec![llvm_libdir.trim().into()], &mut cargo);
+                if target.is_msvc() {
+                    rustflags.arg(&format!("-Clink-arg=-LIBPATH:{llvm_libdir}"));
+                } else {
+                    rustflags.arg(&format!("-Clink-arg=-L{llvm_libdir}"));
+                }
             }
         }
 
