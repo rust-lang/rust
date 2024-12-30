@@ -40,7 +40,7 @@ use crate::errors::{
     WithLlvmError, WriteBytecode,
 };
 use crate::llvm::diagnostic::OptimizationDiagnosticKind::*;
-use crate::llvm::{self, DiagnosticInfo, PassManager};
+use crate::llvm::{self, DiagnosticInfo, FloatAbi, PassManager};
 use crate::type_::Type;
 use crate::{LlvmCodegenBackend, ModuleLlvm, base, common, llvm_util};
 
@@ -189,12 +189,12 @@ pub(crate) fn target_machine_factory(
     let reloc_model = to_llvm_relocation_model(sess.relocation_model());
 
     let (opt_level, _) = to_llvm_opt_settings(optlvl);
-    let use_softfp = if sess.target.arch == "arm" {
-        sess.opts.cg.soft_float
+    let float_abi = if sess.target.arch == "arm" && sess.opts.cg.soft_float {
+        FloatAbi::Soft
     } else {
         // `validate_commandline_args_with_session_available` has already warned about this being
         // ignored. Let's make sure LLVM doesn't suddenly start using this flag on more targets.
-        false
+        FloatAbi::Default
     };
 
     let ffunction_sections =
@@ -290,7 +290,7 @@ pub(crate) fn target_machine_factory(
             code_model,
             reloc_model,
             opt_level,
-            use_softfp,
+            float_abi,
             ffunction_sections,
             fdata_sections,
             funique_section_names,

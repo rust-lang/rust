@@ -308,6 +308,24 @@ static Reloc::Model fromRust(LLVMRustRelocModel RustReloc) {
   report_fatal_error("Bad RelocModel.");
 }
 
+enum class LLVMRustFloatABI {
+  Default,
+  Soft,
+  Hard,
+};
+
+static FloatABI::ABIType fromRust(LLVMRustFloatABI RustFloatAbi) {
+  switch (RustFloatAbi) {
+  case LLVMRustFloatABI::Default:
+    return FloatABI::Default;
+  case LLVMRustFloatABI::Soft:
+    return FloatABI::Soft;
+  case LLVMRustFloatABI::Hard:
+    return FloatABI::Hard;
+  }
+  report_fatal_error("Bad FloatABI.");
+}
+
 /// getLongestEntryLength - Return the length of the longest entry in the table.
 template <typename KV> static size_t getLongestEntryLength(ArrayRef<KV> Table) {
   size_t MaxLen = 0;
@@ -358,7 +376,7 @@ extern "C" const char *LLVMRustGetHostCPUName(size_t *OutLen) {
 extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     const char *TripleStr, const char *CPU, const char *Feature,
     const char *ABIStr, LLVMRustCodeModel RustCM, LLVMRustRelocModel RustReloc,
-    LLVMRustCodeGenOptLevel RustOptLevel, bool UseSoftFloat,
+    LLVMRustCodeGenOptLevel RustOptLevel, LLVMRustFloatABI RustFloatABIType,
     bool FunctionSections, bool DataSections, bool UniqueSectionNames,
     bool TrapUnreachable, bool Singlethread, bool VerboseAsm,
     bool EmitStackSizeSection, bool RelaxELFRelocations, bool UseInitArray,
@@ -369,6 +387,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   auto OptLevel = fromRust(RustOptLevel);
   auto RM = fromRust(RustReloc);
   auto CM = fromRust(RustCM);
+  auto FloatABIType = fromRust(RustFloatABIType);
 
   std::string Error;
   auto Trip = Triple(Triple::normalize(TripleStr));
@@ -381,10 +400,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
 
   TargetOptions Options = codegen::InitTargetOptionsFromCodeGenFlags(Trip);
 
-  Options.FloatABIType = FloatABI::Default;
-  if (UseSoftFloat) {
-    Options.FloatABIType = FloatABI::Soft;
-  }
+  Options.FloatABIType = FloatABIType;
   Options.DataSections = DataSections;
   Options.FunctionSections = FunctionSections;
   Options.UniqueSectionNames = UniqueSectionNames;
