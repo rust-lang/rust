@@ -432,7 +432,7 @@ pub(super) fn definition(
     notable_traits: &[(Trait, Vec<(Option<Type>, Name)>)],
     macro_arm: Option<u32>,
     hovered_definition: bool,
-    subst_types: Option<Vec<(Symbol, Type)>>,
+    subst_types: Option<&Vec<(Symbol, Type)>>,
     config: &HoverConfig,
     edition: Edition,
 ) -> Markup {

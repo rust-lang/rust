@@ -429,7 +429,7 @@ pub(crate) fn hover_for_definition(
         &notable_traits,
         macro_arm,
         hovered_definition,
-        subst_types,
+        subst_types.as_ref(),
         config,
         edition,
     );
@@ -439,7 +439,7 @@ pub(crate) fn hover_for_definition(
             show_fn_references_action(sema.db, def),
             show_implementations_action(sema.db, def),
             runnable_action(sema, def, file_id),
-            goto_type_action_for_def(sema.db, def, &notable_traits, edition),
+            goto_type_action_for_def(sema.db, def, &notable_traits, subst_types, edition),
         ]
         .into_iter()
         .flatten()
@@ -531,6 +531,7 @@ fn goto_type_action_for_def(
     db: &RootDatabase,
     def: Definition,
     notable_traits: &[(hir::Trait, Vec<(Option<hir::Type>, hir::Name)>)],
+    subst_types: Option<Vec<(hir::Symbol, hir::Type)>>,
     edition: Edition,
 ) -> Option<HoverAction> {
     let mut targets: Vec<hir::ModuleDef> = Vec::new();
@@ -566,6 +567,12 @@ fn goto_type_action_for_def(
         };
 
         walk_and_push_ty(db, &ty, &mut push_new_def);
+    }
+
+    if let Some(subst_types) = subst_types {
+        for (_, ty) in subst_types {
+            walk_and_push_ty(db, &ty, &mut push_new_def);
+        }
     }
 
     HoverAction::goto_type_from_targets(db, targets, edition)
