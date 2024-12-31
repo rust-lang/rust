@@ -1694,7 +1694,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     pub fn prohibit_generic_args<'a>(
         &self,
         segments: impl Iterator<Item = &'a hir::PathSegment<'a>> + Clone,
-        err_extend: GenericsArgsErrExtend<'_>,
+        err_extend: GenericsArgsErrExtend<'a>,
     ) -> Result<(), ErrorGuaranteed> {
         let args_visitors = segments.clone().flat_map(|segment| segment.args().args);
         let mut result = Ok(());
@@ -1911,7 +1911,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     path.segments.iter().enumerate().filter_map(|(index, seg)| {
                         if !indices.contains(&index) { Some(seg) } else { None }
                     }),
-                    GenericsArgsErrExtend::DefVariant,
+                    GenericsArgsErrExtend::DefVariant(&path.segments),
                 );
 
                 let GenericPathSegment(def_id, index) = generic_segments.last().unwrap();
