@@ -650,6 +650,68 @@ impl<'a> Request<'a> {
         self.provide_with::<tags::Ref<tags::MaybeSizedValue<T>>>(fulfil)
     }
 
+    /// Provides a mutable reference. The referee type must be bounded by `'static`,
+    /// but may be unsized.
+    ///
+    /// # Examples
+    ///
+    /// Provides a mutable reference to a field as a `&mut str`.
+    ///
+    /// ```rust
+    /// #![feature(context_provider)]
+    ///
+    /// use core::error::Request;
+    ///
+    /// #[derive(Debug)]
+    /// struct SomeConcreteType { field: String }
+    ///
+    /// impl std::task::Provider for SomeConcreteType {
+    ///     fn provide_mut<'a>(&'a mut self, request: &mut Request<'a>) {
+    ///         request.provide_mut::<str>(&mut self.field);
+    ///     }
+    /// }
+    /// ```
+    #[unstable(feature = "context_provider", issue = "none")]
+    pub fn provide_mut<T: ?Sized + 'static>(&mut self, value: &'a mut T) -> &mut Self {
+        self.provide::<tags::RefMut<tags::MaybeSizedValue<T>>>(value)
+    }
+
+    /// Provides a mutable reference computed using a closure. The referee type
+    /// must be bounded by `'static`, but may be unsized.
+    ///
+    /// # Examples
+    ///
+    /// Provides a reference to a field as a `&mut str`.
+    ///
+    /// ```rust
+    /// #![feature(context_provider)]
+    ///
+    /// use core::error::Request;
+    ///
+    /// #[derive(Debug)]
+    /// struct SomeConcreteType { business: String, party: String }
+    /// fn today_is_a_weekday() -> bool { true }
+    ///
+    /// impl std::task::Provider for SomeConcreteType {
+    ///     fn provide_mut<'a>(&'a mut self, request: &mut Request<'a>) {
+    ///         request.provide_mut_with::<str>(|| {
+    ///             if today_is_a_weekday() {
+    ///                 &mut self.business
+    ///             } else {
+    ///                 &mut self.party
+    ///             }
+    ///         });
+    ///     }
+    /// }
+    /// ```
+    #[unstable(feature = "context_provider", issue = "none")]
+    pub fn provide_mut_with<T: ?Sized + 'static>(
+        &mut self,
+        fulfil: impl FnOnce() -> &'a mut T,
+    ) -> &mut Self {
+        self.provide_with::<tags::RefMut<tags::MaybeSizedValue<T>>>(fulfil)
+    }
+
     /// Provides a value with the given `Type` tag.
     fn provide<I>(&mut self, value: I::Reified) -> &mut Self
     where
@@ -922,6 +984,15 @@ pub(crate) mod tags {
     impl<'a, I: MaybeSizedType<'a>> Type<'a> for Ref<I> {
         type Reified = &'a I::Reified;
     }
+
+    /// Type-based tag for mutable reference types (`&'a mut T`, where T is represented by
+    /// `<I as MaybeSizedType<'a>>::Reified`.
+    #[derive(Debug)]
+    pub(crate) struct RefMut<I>(PhantomData<I>);
+
+    impl<'a, I: MaybeSizedType<'a>> Type<'a> for RefMut<I> {
+        type Reified = &'a mut I::Reified;
+    }
 }
 
 /// An `Option` with a type tag `I`.
@@ -948,9 +1019,9 @@ unsafe trait Erased<'a>: 'a {}
 
 unsafe impl<'a, I: tags::Type<'a>> Erased<'a> for TaggedOption<'a, I> {}
 
-struct Tagged<E: ?Sized> {
-    tag_id: TypeId,
-    value: E,
+pub(crate) struct Tagged<E: ?Sized> {
+    pub tag_id: TypeId,
+    pub value: E,
 }
 
 impl<'a> Tagged<dyn Erased<'a> + 'a> {

@@ -1,5 +1,6 @@
+use std::error::Request;
 use std::ptr;
-use std::task::{RawWaker, RawWakerVTable, Waker};
+use std::task::{ContextBuilder, Provider, RawWaker, RawWakerVTable, Waker};
 
 #[test]
 fn test_waker_getters() {
@@ -11,6 +12,40 @@ fn test_waker_getters() {
     let waker2 = waker.clone();
     assert_eq!(waker2.data() as usize, 43);
     assert!(ptr::eq(waker2.vtable(), &WAKER_VTABLE));
+}
+
+// Test the `Request` API.
+#[derive(Debug)]
+struct SomeConcreteType {
+    some_string: String,
+}
+
+impl Provider for SomeConcreteType {
+    fn provide<'a>(&'a self, request: &mut Request<'a>) {
+        request
+            .provide_ref::<String>(&self.some_string)
+            .provide_ref::<str>(&self.some_string)
+            .provide_value_with::<String>(|| "bye".to_owned());
+    }
+
+    fn provide_mut<'a>(&'a mut self, request: &mut Request<'a>) {
+        request.provide_mut::<String>(&mut self.some_string);
+    }
+}
+
+#[test]
+fn test_context_provider() {
+    let obj = &mut SomeConcreteType { some_string: "hello".to_owned() };
+    let builder = ContextBuilder::from_waker(Waker::noop()).provider(obj);
+    let mut cx = builder.build();
+
+    assert_eq!(cx.request_ref::<String>().unwrap(), "hello");
+    assert_eq!(cx.request_value::<String>().unwrap(), "bye");
+    assert_eq!(cx.request_value::<u8>(), None);
+
+    cx.request_mut::<String>().unwrap().push_str(" world");
+
+    assert_eq!(obj.some_string, "hello world");
 }
 
 static WAKER_VTABLE: RawWakerVTable = RawWakerVTable::new(
