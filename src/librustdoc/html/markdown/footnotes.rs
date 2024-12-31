@@ -38,7 +38,7 @@ impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Footnotes<'a, I> {
         let key = key.to_owned();
         let FootnoteDef { content, id } =
             self.footnotes.entry(key).or_insert(FootnoteDef { content: Vec::new(), id: new_id });
-        // Don't allow changing the ID of existing entrys, but allow changing the contents.
+        // Don't allow changing the ID of existing entries, but allow changing the contents.
         (content, *id)
     }
 
@@ -82,7 +82,7 @@ impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Iterator for Footnotes<'a, I> {
                     return Some((self.handle_footnote_reference(reference), range));
                 }
                 Some((Event::Start(Tag::FootnoteDefinition(def)), _)) => {
-                    // When we see a footnote definition, collect the assocated content, and store
+                    // When we see a footnote definition, collect the associated content, and store
                     // that for rendering later.
                     let content = self.collect_footnote_def();
                     let (entry_content, _) = self.get_entry(&def);

@@ -220,8 +220,14 @@ fn check_impl(
     if spellcheck_all || spellcheck_fix {
         let config_path = root_path.join("typos.toml");
         // sync target files with .github/workflows/ci.yml
-        let mut args =
-            vec!["-c", config_path.as_os_str().to_str().unwrap(), "./compiler", "./library"];
+        let mut args = vec![
+            "-c",
+            config_path.as_os_str().to_str().unwrap(),
+            "./compiler",
+            "./library",
+            "./src/bootstrap",
+            "./src/librustdoc",
+        ];
 
         if spellcheck_all {
             eprintln!("spellcheck files");
