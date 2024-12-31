@@ -18,8 +18,8 @@ help: use `.insert()` to insert a value into a `HashMap<&str, String>`, `.get_mu
    |
 LL |     map.insert("peter", "0".to_string());
    |        ~~~~~~~~       ~                +
-LL |     map.get_mut("peter").map(|val| { *val = "0".to_string(); });
-   |        ~~~~~~~~~       ~~~~~~~~~~~~~~~~~~                  ++++
+LL |     if let Some(val) = map.get_mut("peter") { *val = "0".to_string(); };
+   |     ++++++++++++++++++    ~~~~~~~~~       ~~~~~~~~                  +++
 LL |     let val = map.entry("peter").or_insert("0".to_string());
    |     +++++++++    ~~~~~~~       ~~~~~~~~~~~~               +
 

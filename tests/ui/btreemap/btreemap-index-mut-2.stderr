@@ -9,8 +9,8 @@ help: use `.insert()` to insert a value into a `BTreeMap<u32, u32>`, `.get_mut()
    |
 LL |         map.insert(&0, 1);
    |            ~~~~~~~~  ~  +
-LL |         map.get_mut(&0).map(|val| { *val = 1; });
-   |            ~~~~~~~~~  ~~~~~~~~~~~~~~~~~~    ++++
+LL |         if let Some(val) = map.get_mut(&0) { *val = 1; };
+   |         ++++++++++++++++++    ~~~~~~~~~  ~~~~~~~~    +++
 LL |         let val = map.entry(&0).or_insert(1);
    |         +++++++++    ~~~~~~~  ~~~~~~~~~~~~ +
 
