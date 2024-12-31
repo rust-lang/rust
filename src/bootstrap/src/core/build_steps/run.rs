@@ -196,7 +196,7 @@ impl Step for CollectLicenseMetadata {
 pub struct GenerateCopyright;
 
 impl Step for GenerateCopyright {
-    type Output = PathBuf;
+    type Output = Vec<PathBuf>;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -220,7 +220,7 @@ impl Step for GenerateCopyright {
         cmd.env("CARGO", &builder.initial_cargo);
         cmd.run(builder);
 
-        dest
+        vec![dest, dest_libstd]
     }
 }
 
