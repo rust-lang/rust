@@ -505,6 +505,7 @@ impl CrateGraph {
         mut other: CrateGraph,
         proc_macros: &mut ProcMacroPaths,
     ) -> FxHashMap<CrateId, CrateId> {
+        self.sort_deps();
         let topo = other.crates_in_topological_order();
         let mut id_map: FxHashMap<CrateId, CrateId> = FxHashMap::default();
         for topo in topo {
@@ -513,7 +514,9 @@ impl CrateGraph {
             crate_data.dependencies.iter_mut().for_each(|dep| dep.crate_id = id_map[&dep.crate_id]);
             crate_data.dependencies.sort_by_key(|dep| dep.crate_id);
 
-            let new_id = self.arena.alloc(crate_data.clone());
+            let find = self.arena.iter().find(|(_, v)| *v == crate_data);
+            let new_id =
+                if let Some((k, _)) = find { k } else { self.arena.alloc(crate_data.clone()) };
             id_map.insert(topo, new_id);
         }
 
