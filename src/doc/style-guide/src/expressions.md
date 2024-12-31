@@ -328,31 +328,6 @@ foo_bar
 Prefer line-breaking at an assignment operator (either `=` or `+=`, etc.) rather
 than at other binary operators.
 
-If line-breaking an assignment operator where the left-hand side spans multiple
-lines, use the base indentation of the *last* line of the left-hand side, and
-indent the right-hand side relative to that:
-
-```rust
-impl SomeType {
-    fn method(&mut self) {
-        self.array[array_index as usize]
-            .as_mut()
-            .expect("thing must exist")
-            .extra_info =
-                long_long_long_long_long_long_long_long_long_long_long_long_long_long_long;
-
-        self.array[array_index as usize]
-            .as_mut()
-            .expect("thing must exist")
-            .extra_info = Some(ExtraInfo {
-                parent,
-                count: count as u16,
-                children: children.into_boxed_slice(),
-            });
-    }
-}
-```
-
 ### Casts (`as`)
 
 Format `as` casts like a binary operator. In particular, always include spaces
