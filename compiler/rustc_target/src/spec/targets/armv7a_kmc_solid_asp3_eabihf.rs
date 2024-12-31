@@ -1,4 +1,4 @@
-use crate::spec::{RelocModel, Target, TargetOptions, base};
+use crate::spec::{FloatAbi, RelocModel, Target, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     let base = base::solid::opts("asp3");
@@ -15,6 +15,7 @@ pub(crate) fn target() -> Target {
         arch: "arm".into(),
         options: TargetOptions {
             abi: "eabihf".into(),
+            llvm_floatabi: Some(FloatAbi::Hard),
             linker: Some("arm-kmc-eabi-gcc".into()),
             features: "+v7,+vfp3,-d32,+thumb2,-neon".into(),
             relocation_model: RelocModel::Static,

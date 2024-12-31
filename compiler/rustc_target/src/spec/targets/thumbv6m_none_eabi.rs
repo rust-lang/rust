@@ -1,6 +1,6 @@
 // Targets the Cortex-M0, Cortex-M0+ and Cortex-M1 processors (ARMv6-M architecture)
 
-use crate::spec::{Target, TargetOptions, base};
+use crate::spec::{FloatAbi, Target, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -17,6 +17,7 @@ pub(crate) fn target() -> Target {
 
         options: TargetOptions {
             abi: "eabi".into(),
+            llvm_floatabi: Some(FloatAbi::Soft),
             // The ARMv6-M architecture doesn't support unaligned loads/stores so we disable them
             // with +strict-align.
             // Also force-enable 32-bit atomics, which allows the use of atomic load/store only.
