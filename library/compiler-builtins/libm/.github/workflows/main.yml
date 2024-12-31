@@ -96,6 +96,10 @@ jobs:
       run: ./ci/download-musl.sh
       shell: bash
 
+    - name: Verify API list
+      if: matrix.os == 'ubuntu-24.04'
+      run: python3 etc/update-api-list.py --check
+
     # Non-linux tests just use our raw script
     - name: Run locally
       if: matrix.os != 'ubuntu-24.04' || contains(matrix.target, 'wasm')
