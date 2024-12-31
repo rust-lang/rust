@@ -28,13 +28,12 @@ fn load_cargo_with_overrides(
     let meta: Metadata = get_test_json_file(file);
     let manifest_path =
         ManifestPath::try_from(AbsPathBuf::try_from(meta.workspace_root.clone()).unwrap()).unwrap();
-    let cargo_workspace = CargoWorkspace::new(meta, manifest_path);
+    let cargo_workspace = CargoWorkspace::new(meta, manifest_path, Default::default());
     let project_workspace = ProjectWorkspace {
         kind: ProjectWorkspaceKind::Cargo {
             cargo: cargo_workspace,
             build_scripts: WorkspaceBuildScripts::default(),
             rustc: Err(None),
-            cargo_config_extra_env: Default::default(),
             error: None,
             set_test: true,
         },
@@ -228,7 +227,7 @@ fn smoke_test_real_sysroot_cargo() {
     let meta: Metadata = get_test_json_file("hello-world-metadata.json");
     let manifest_path =
         ManifestPath::try_from(AbsPathBuf::try_from(meta.workspace_root.clone()).unwrap()).unwrap();
-    let cargo_workspace = CargoWorkspace::new(meta, manifest_path);
+    let cargo_workspace = CargoWorkspace::new(meta, manifest_path, Default::default());
     let sysroot = Sysroot::discover(
         AbsPath::assert(Utf8Path::new(env!("CARGO_MANIFEST_DIR"))),
         &Default::default(),
@@ -240,7 +239,6 @@ fn smoke_test_real_sysroot_cargo() {
             cargo: cargo_workspace,
             build_scripts: WorkspaceBuildScripts::default(),
             rustc: Err(None),
-            cargo_config_extra_env: Default::default(),
             error: None,
             set_test: true,
         },

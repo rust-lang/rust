@@ -73,7 +73,7 @@ pub(crate) fn cargo_config_env(
     manifest: &ManifestPath,
     extra_env: &FxHashMap<String, String>,
     sysroot: &Sysroot,
-) -> FxHashMap<String, String> {
+) -> Env {
     let mut cargo_config = sysroot.tool(Tool::Cargo, manifest.parent());
     cargo_config.envs(extra_env);
     cargo_config
@@ -95,7 +95,7 @@ pub(crate) fn cargo_config_env(
         .unwrap_or_default()
 }
 
-fn parse_output_cargo_config_env(stdout: String) -> FxHashMap<String, String> {
+fn parse_output_cargo_config_env(stdout: String) -> Env {
     stdout
         .lines()
         .filter_map(|l| l.strip_prefix("env."))

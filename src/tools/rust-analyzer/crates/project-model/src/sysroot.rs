@@ -422,7 +422,7 @@ impl Sysroot {
             res.packages.remove(idx);
         });
 
-        let cargo_workspace = CargoWorkspace::new(res, library_manifest);
+        let cargo_workspace = CargoWorkspace::new(res, library_manifest, Default::default());
         Some(Sysroot {
             root: sysroot_dir.clone(),
             src_root: Some(sysroot_src_dir.clone()),

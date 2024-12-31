@@ -89,7 +89,6 @@ impl Tester {
             kind: ProjectWorkspaceKind::DetachedFile {
                 file: ManifestPath::try_from(tmp_file).unwrap(),
                 cargo: None,
-                cargo_config_extra_env: Default::default(),
                 set_test: true,
             },
             sysroot,

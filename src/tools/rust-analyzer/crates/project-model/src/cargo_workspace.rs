@@ -4,6 +4,7 @@ use std::ops;
 use std::str::from_utf8;
 
 use anyhow::Context;
+use base_db::Env;
 use cargo_metadata::{CargoOpt, MetadataCommand};
 use la_arena::{Arena, Idx};
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
@@ -34,6 +35,8 @@ pub struct CargoWorkspace {
     target_directory: AbsPathBuf,
     manifest_path: ManifestPath,
     is_virtual_workspace: bool,
+    /// Environment variables set in the `.cargo/config` file.
+    config_env: Env,
 }
 
 impl ops::Index<Package> for CargoWorkspace {
@@ -395,6 +398,7 @@ impl CargoWorkspace {
     pub fn new(
         mut meta: cargo_metadata::Metadata,
         ws_manifest_path: ManifestPath,
+        cargo_config_env: Env,
     ) -> CargoWorkspace {
         let mut pkg_by_id = FxHashMap::default();
         let mut packages = Arena::default();
@@ -516,6 +520,7 @@ impl CargoWorkspace {
             target_directory,
             manifest_path: ws_manifest_path,
             is_virtual_workspace,
+            config_env: cargo_config_env,
         }
     }
 
@@ -601,5 +606,9 @@ impl CargoWorkspace {
 
     pub fn is_virtual_workspace(&self) -> bool {
         self.is_virtual_workspace
+    }
+
+    pub fn env(&self) -> &Env {
+        &self.config_env
     }
 }

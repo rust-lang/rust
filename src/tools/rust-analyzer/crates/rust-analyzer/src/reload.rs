@@ -630,13 +630,10 @@ impl GlobalState {
                 };
 
                 let env: FxHashMap<_, _> = match &ws.kind {
-                    ProjectWorkspaceKind::Cargo { cargo_config_extra_env, .. }
-                    | ProjectWorkspaceKind::DetachedFile {
-                        cargo: Some(_),
-                        cargo_config_extra_env,
-                        ..
-                    } => cargo_config_extra_env
-                        .iter()
+                    ProjectWorkspaceKind::Cargo { cargo, .. }
+                    | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, ..)), .. } => cargo
+                        .env()
+                        .into_iter()
                         .chain(self.config.extra_env(None))
                         .map(|(a, b)| (a.clone(), b.clone()))
                         .chain(
