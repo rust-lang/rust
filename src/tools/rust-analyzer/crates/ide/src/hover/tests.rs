@@ -2323,6 +2323,53 @@ fn foo(Foo { b$0ar }: &Foo) {}
 }
 
 #[test]
+fn test_hover_show_type_def_for_subst() {
+    check_actions(
+        r#"
+fn f<T>(t: T) {
+
+}
+
+struct S;
+
+fn test() {
+    let a = S;
+    f$0(a);
+}
+"#,
+        expect![[r#"
+            [
+                Reference(
+                    FilePositionWrapper {
+                        file_id: FileId(
+                            0,
+                        ),
+                        offset: 3,
+                    },
+                ),
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "ra_test_fixture::S",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 20..29,
+                                focus_range: 27..28,
+                                name: "S",
+                                kind: Struct,
+                                description: "struct S",
+                            },
+                        },
+                    ],
+                ),
+            ]
+        "#]],
+    );
+}
+
+#[test]
 fn test_hover_non_ascii_space_doc() {
     check(
         "
