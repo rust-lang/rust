@@ -1154,7 +1154,6 @@ define_config! {
         debuginfo_level_tests: Option<DebuginfoLevel> = "debuginfo-level-tests",
         backtrace: Option<bool> = "backtrace",
         incremental: Option<bool> = "incremental",
-        parallel_compiler: Option<bool> = "parallel-compiler",
         default_linker: Option<String> = "default-linker",
         channel: Option<String> = "channel",
         description: Option<String> = "description",
@@ -1325,23 +1324,14 @@ impl Config {
             .into_iter()
             .chain(flags.exclude)
             .map(|p| {
-                let p = if cfg!(windows) {
-                    PathBuf::from(p.to_str().unwrap().replace('/', "\\"))
-                } else {
-                    p
-                };
-
-                // Jump to top-level project path to support passing paths
-                // from sub directories.
-                let top_level_path = config.src.join(&p);
-                if !config.src.join(&top_level_path).exists() {
-                    eprintln!("WARNING: '{}' does not exist.", top_level_path.display());
-                }
-
                 // Never return top-level path here as it would break `--skip`
                 // logic on rustc's internal test framework which is utilized
                 // by compiletest.
-                p
+                if cfg!(windows) {
+                    PathBuf::from(p.to_str().unwrap().replace('/', "\\"))
+                } else {
+                    p
+                }
             })
             .collect();
 
@@ -1441,7 +1431,7 @@ impl Config {
         // Give a hard error if `--config` or `RUST_BOOTSTRAP_CONFIG` are set to a missing path,
         // but not if `config.toml` hasn't been created.
         let mut toml = if !using_default_path || toml_path.exists() {
-            config.config = Some(if cfg!(not(feature = "bootstrap-self-test")) {
+            config.config = Some(if cfg!(not(test)) {
                 toml_path.canonicalize().unwrap()
             } else {
                 toml_path.clone()
@@ -1764,7 +1754,6 @@ impl Config {
                 debuginfo_level_tests: debuginfo_level_tests_toml,
                 backtrace,
                 incremental,
-                parallel_compiler,
                 randomize_layout,
                 default_linker,
                 channel: _, // already handled above
@@ -1873,13 +1862,6 @@ impl Config {
 
             config.rust_randomize_layout = randomize_layout.unwrap_or_default();
             config.llvm_tools_enabled = llvm_tools.unwrap_or(true);
-
-            // FIXME: Remove this option at the end of 2024.
-            if parallel_compiler.is_some() {
-                println!(
-                    "WARNING: The `rust.parallel-compiler` option is deprecated and does nothing. The parallel compiler (with one thread) is now the default"
-                );
-            }
 
             config.llvm_enzyme =
                 llvm_enzyme.unwrap_or(config.channel == "dev" || config.channel == "nightly");
@@ -2793,11 +2775,11 @@ impl Config {
         }
     }
 
-    #[cfg(feature = "bootstrap-self-test")]
+    #[cfg(test)]
     pub fn check_stage0_version(&self, _program_path: &Path, _component_name: &'static str) {}
 
     /// check rustc/cargo version is same or lower with 1 apart from the building one
-    #[cfg(not(feature = "bootstrap-self-test"))]
+    #[cfg(not(test))]
     pub fn check_stage0_version(&self, program_path: &Path, component_name: &'static str) {
         use build_helper::util::fail;
 
@@ -2939,7 +2921,7 @@ impl Config {
             }
 
             // Fetching the LLVM submodule is unnecessary for self-tests.
-            #[cfg(not(feature = "bootstrap-self-test"))]
+            #[cfg(not(test))]
             self.update_submodule("src/llvm-project");
 
             // Check for untracked changes in `src/llvm-project`.
@@ -3014,7 +2996,7 @@ impl Config {
 
 /// Compares the current `Llvm` options against those in the CI LLVM builder and detects any incompatible options.
 /// It does this by destructuring the `Llvm` instance to make sure every `Llvm` field is covered and not missing.
-#[cfg(not(feature = "bootstrap-self-test"))]
+#[cfg(not(test))]
 pub(crate) fn check_incompatible_options_for_ci_llvm(
     current_config_toml: TomlConfig,
     ci_config_toml: TomlConfig,
@@ -3222,7 +3204,6 @@ fn check_incompatible_options_for_ci_rustc(
         debuginfo_level_tools: _,
         debuginfo_level_tests: _,
         backtrace: _,
-        parallel_compiler: _,
         musl_root: _,
         verbose_tests: _,
         optimize_tests: _,

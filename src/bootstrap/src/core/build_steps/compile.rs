@@ -396,7 +396,7 @@ fn copy_self_contained_objects(
 /// Resolves standard library crates for `Std::run_make` for any build kind (like check, build, clippy, etc.).
 pub fn std_crates_for_run_make(run: &RunConfig<'_>) -> Vec<String> {
     // FIXME: Extend builder tests to cover the `crates` field of `Std` instances.
-    if cfg!(feature = "bootstrap-self-test") {
+    if cfg!(test) {
         return vec![];
     }
 
@@ -984,6 +984,7 @@ impl Step for Rustc {
             true, // Only ship rustc_driver.so and .rmeta files, not all intermediate .rlib files.
         );
 
+        let target_root_dir = stamp.parent().unwrap();
         // When building `librustc_driver.so` (like `libLLVM.so`) on linux, it can contain
         // unexpected debuginfo from dependencies, for example from the C++ standard library used in
         // our LLVM wrapper. Unless we're explicitly requesting `librustc_driver` to be built with
@@ -992,9 +993,14 @@ impl Step for Rustc {
         if builder.config.rust_debuginfo_level_rustc == DebuginfoLevel::None
             && builder.config.rust_debuginfo_level_tools == DebuginfoLevel::None
         {
-            let target_root_dir = stamp.parent().unwrap();
             let rustc_driver = target_root_dir.join("librustc_driver.so");
             strip_debug(builder, target, &rustc_driver);
+        }
+
+        if builder.config.rust_debuginfo_level_rustc == DebuginfoLevel::None {
+            // Due to LTO a lot of debug info from C++ dependencies such as jemalloc can make it into
+            // our final binaries
+            strip_debug(builder, target, &target_root_dir.join("rustc-main"));
         }
 
         builder.ensure(RustcLink::from_rustc(

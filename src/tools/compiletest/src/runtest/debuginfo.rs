@@ -59,14 +59,8 @@ impl TestCx<'_> {
             return;
         }
 
-        let prefixes = {
-            static PREFIXES: &[&str] = &["cdb", "cdbg"];
-            // No "native rust support" variation for CDB yet.
-            PREFIXES
-        };
-
         // Parse debugger commands etc from test files
-        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, self.config, prefixes)
+        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, self.config, "cdb")
             .unwrap_or_else(|e| self.fatal(&e));
 
         // https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/debugger-commands
@@ -137,7 +131,7 @@ impl TestCx<'_> {
     }
 
     fn run_debuginfo_gdb_test_no_opt(&self) {
-        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, self.config, &["gdb"])
+        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, self.config, "gdb")
             .unwrap_or_else(|e| self.fatal(&e));
         let mut cmds = dbg_cmds.commands.join("\n");
 
@@ -403,7 +397,7 @@ impl TestCx<'_> {
         }
 
         // Parse debugger commands etc from test files
-        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, self.config, &["lldb"])
+        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, self.config, "lldb")
             .unwrap_or_else(|e| self.fatal(&e));
 
         // Write debugger script:

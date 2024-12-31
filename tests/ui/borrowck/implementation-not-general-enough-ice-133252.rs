@@ -1,4 +1,4 @@
-//@ known-bug: #133252
+// Regression test for borrowck ICE #133252
 //@ edition:2021
 use std::future::Future;
 
@@ -7,6 +7,8 @@ fn ice() -> impl Future<Output = &'static dyn Owned> {
     async {
         let not_static = 0;
         force_send(async_load(&not_static));
+        //~^ ERROR implementation of `LoadQuery` is not general enough
+        //~| ERROR `not_static` does not live long enough
         loop {}
     }
 }
@@ -41,3 +43,5 @@ impl Future for SimpleFuture {
         loop {}
     }
 }
+
+fn main() {}

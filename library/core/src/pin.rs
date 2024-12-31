@@ -595,7 +595,7 @@
 //! [drop-impl]: self#implementing-drop-for-types-with-address-sensitive-states
 //!
 //! The [`drop`] function takes [`&mut self`], but this is called *even if that `self` has been
-//! pinned*! Implementing [`Drop`] for a type with address-sensitive states, because if `self` was
+//! pinned*! Implementing [`Drop`] for a type with address-sensitive states requires some care, because if `self` was
 //! indeed in an address-sensitive state before [`drop`] was called, it is as if the compiler
 //! automatically called [`Pin::get_unchecked_mut`].
 //!

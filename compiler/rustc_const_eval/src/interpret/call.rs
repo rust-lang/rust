@@ -883,19 +883,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 .local_to_op(mir::RETURN_PLACE, None)
                 .expect("return place should always be live");
             let dest = self.frame().return_place.clone();
-            let res = if self.stack().len() == 1 {
-                // The initializer of constants and statics will get validated separately
-                // after the constant has been fully evaluated. While we could fall back to the default
-                // code path, that will cause -Zenforce-validity to cycle on static initializers.
-                // Reading from a static's memory is not allowed during its evaluation, and will always
-                // trigger a cycle error. Validation must read from the memory of the current item.
-                // For Miri this means we do not validate the root frame return value,
-                // but Miri anyway calls `read_target_isize` on that so separate validation
-                // is not needed.
-                self.copy_op_no_dest_validation(&op, &dest)
-            } else {
-                self.copy_op_allow_transmute(&op, &dest)
-            };
+            let res = self.copy_op_allow_transmute(&op, &dest);
             trace!("return value: {:?}", self.dump_place(&dest.into()));
             // We delay actually short-circuiting on this error until *after* the stack frame is
             // popped, since we want this error to be attributed to the caller, whose type defines

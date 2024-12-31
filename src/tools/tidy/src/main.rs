@@ -95,7 +95,7 @@ fn main() {
         check!(target_specific_tests, &tests_path);
 
         // Checks that are done on the cargo workspace.
-        check!(deps, &root_path, &cargo);
+        check!(deps, &root_path, &cargo, bless);
         check!(extdeps, &root_path);
 
         // Checks over tests.

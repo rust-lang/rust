@@ -538,7 +538,7 @@ fn handle_attr(mod_attr_pending: &mut String, source_info: &mut SourceInfo, edit
         // If it's complete, then we can clear the pending content.
         mod_attr_pending.clear();
     } else {
-        mod_attr_pending.push_str("\n");
+        mod_attr_pending.push('\n');
     }
 }
 

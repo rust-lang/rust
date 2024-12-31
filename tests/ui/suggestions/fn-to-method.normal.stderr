@@ -1,5 +1,5 @@
 error[E0425]: cannot find function `cmp` in this scope
-  --> $DIR/fn-to-method.rs:8:13
+  --> $DIR/fn-to-method.rs:12:13
    |
 LL |     let x = cmp(&1, &2);
    |             ^^^ not found in this scope
@@ -10,7 +10,7 @@ LL |     let x = (&1).cmp(&2);
    |             ~  ~~~~~~~~~
 
 error[E0425]: cannot find function `len` in this scope
-  --> $DIR/fn-to-method.rs:12:13
+  --> $DIR/fn-to-method.rs:16:13
    |
 LL |     let y = len([1, 2, 3]);
    |             ^^^ not found in this scope
@@ -22,7 +22,7 @@ LL +     let y = [1, 2, 3].len();
    |
 
 error[E0425]: cannot find function `bar` in this scope
-  --> $DIR/fn-to-method.rs:16:13
+  --> $DIR/fn-to-method.rs:20:13
    |
 LL |     let z = bar(Foo);
    |             ^^^ not found in this scope

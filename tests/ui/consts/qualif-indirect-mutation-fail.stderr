@@ -1,5 +1,5 @@
 error[E0493]: destructor of `Option<String>` cannot be evaluated at compile-time
-  --> $DIR/qualif-indirect-mutation-fail.rs:13:9
+  --> $DIR/qualif-indirect-mutation-fail.rs:12:9
    |
 LL |     let mut x = None;
    |         ^^^^^ the destructor for this type cannot be evaluated in constants
@@ -19,13 +19,13 @@ note: inside `std::ptr::drop_in_place::<String> - shim(Some(String))`
 note: inside `std::ptr::drop_in_place::<Option<String>> - shim(Some(Option<String>))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `A1`
-  --> $DIR/qualif-indirect-mutation-fail.rs:19:1
+  --> $DIR/qualif-indirect-mutation-fail.rs:18:1
    |
 LL | };
    | ^
 
 error[E0493]: destructor of `Option<String>` cannot be evaluated at compile-time
-  --> $DIR/qualif-indirect-mutation-fail.rs:29:9
+  --> $DIR/qualif-indirect-mutation-fail.rs:28:9
    |
 LL |     let _z = x;
    |         ^^ the destructor for this type cannot be evaluated in constants
@@ -44,13 +44,13 @@ note: inside `std::ptr::drop_in_place::<String> - shim(Some(String))`
 note: inside `std::ptr::drop_in_place::<Option<String>> - shim(Some(Option<String>))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `A2`
-  --> $DIR/qualif-indirect-mutation-fail.rs:30:1
+  --> $DIR/qualif-indirect-mutation-fail.rs:29:1
    |
 LL | };
    | ^
 
 error[E0493]: destructor of `(u32, Option<String>)` cannot be evaluated at compile-time
-  --> $DIR/qualif-indirect-mutation-fail.rs:7:9
+  --> $DIR/qualif-indirect-mutation-fail.rs:6:9
    |
 LL |     let mut a: (u32, Option<String>) = (0, None);
    |         ^^^^^ the destructor for this type cannot be evaluated in constant functions
@@ -59,7 +59,7 @@ LL | }
    | - value is dropped here
 
 error[E0493]: destructor of `Option<T>` cannot be evaluated at compile-time
-  --> $DIR/qualif-indirect-mutation-fail.rs:34:9
+  --> $DIR/qualif-indirect-mutation-fail.rs:33:9
    |
 LL |     let x: Option<T> = None;
    |         ^ the destructor for this type cannot be evaluated in constant functions
@@ -68,7 +68,7 @@ LL | }
    | - value is dropped here
 
 error[E0493]: destructor of `Option<T>` cannot be evaluated at compile-time
-  --> $DIR/qualif-indirect-mutation-fail.rs:42:9
+  --> $DIR/qualif-indirect-mutation-fail.rs:41:9
    |
 LL |     let _y = x;
    |         ^^ the destructor for this type cannot be evaluated in constant functions
@@ -76,7 +76,7 @@ LL | }
    | - value is dropped here
 
 error[E0493]: destructor of `Option<String>` cannot be evaluated at compile-time
-  --> $DIR/qualif-indirect-mutation-fail.rs:50:9
+  --> $DIR/qualif-indirect-mutation-fail.rs:49:9
    |
 LL |     let mut y: Option<String> = None;
    |         ^^^^^ the destructor for this type cannot be evaluated in constant functions
@@ -85,7 +85,7 @@ LL | }
    | - value is dropped here
 
 error[E0493]: destructor of `Option<String>` cannot be evaluated at compile-time
-  --> $DIR/qualif-indirect-mutation-fail.rs:47:9
+  --> $DIR/qualif-indirect-mutation-fail.rs:46:9
    |
 LL |     let mut x: Option<String> = None;
    |         ^^^^^ the destructor for this type cannot be evaluated in constant functions
@@ -94,7 +94,7 @@ LL | }
    | - value is dropped here
 
 error[E0493]: destructor of `Option<String>` cannot be evaluated at compile-time
-  --> $DIR/qualif-indirect-mutation-fail.rs:60:9
+  --> $DIR/qualif-indirect-mutation-fail.rs:59:9
    |
 LL |     let y: Option<String> = None;
    |         ^ the destructor for this type cannot be evaluated in constant functions
@@ -103,7 +103,7 @@ LL | }
    | - value is dropped here
 
 error[E0493]: destructor of `Option<String>` cannot be evaluated at compile-time
-  --> $DIR/qualif-indirect-mutation-fail.rs:57:9
+  --> $DIR/qualif-indirect-mutation-fail.rs:56:9
    |
 LL |     let x: Option<String> = None;
    |         ^ the destructor for this type cannot be evaluated in constant functions

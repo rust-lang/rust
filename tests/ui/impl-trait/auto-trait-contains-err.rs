@@ -1,9 +1,9 @@
-//@ known-bug: #131050
 //@ compile-flags: --edition=2021
 
 use std::future::Future;
 
 fn invalid_future() -> impl Future {}
+//~^ ERROR `()` is not a future
 
 fn create_complex_future() -> impl Future<Output = impl ReturnsSend> {
     async { &|| async { invalid_future().await } }
@@ -21,3 +21,5 @@ where
     R: Send,
 {
 }
+
+fn main() {}

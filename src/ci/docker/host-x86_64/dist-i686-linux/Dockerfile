@@ -50,6 +50,7 @@ COPY host-x86_64/dist-x86_64-linux/shared.sh /tmp/
 
 # Need at least GCC 5.1 to compile LLVM nowadays
 COPY host-x86_64/dist-x86_64-linux/build-gcc.sh /tmp/
+ENV GCC_VERSION=9.5.0
 RUN ./build-gcc.sh && yum remove -y gcc gcc-c++
 
 COPY scripts/cmake.sh /tmp/

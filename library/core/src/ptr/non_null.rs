@@ -1146,7 +1146,7 @@ impl<T: ?Sized> NonNull<T> {
     /// [`ptr::swap`]: crate::ptr::swap()
     #[inline(always)]
     #[stable(feature = "non_null_convenience", since = "1.80.0")]
-    #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+    #[rustc_const_stable(feature = "const_swap", since = "CURRENT_RUSTC_VERSION")]
     pub const unsafe fn swap(self, with: NonNull<T>)
     where
         T: Sized,
