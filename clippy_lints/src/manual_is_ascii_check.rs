@@ -114,7 +114,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualIsAsciiCheck {
             && !matches!(cx.typeck_results().expr_ty(arg).peel_refs().kind(), ty::Param(_))
         {
             let arg = peel_ref_operators(cx, arg);
-            let ty_sugg = get_ty_sugg(cx, arg, start);
+            let ty_sugg = get_ty_sugg(cx, arg);
             let range = check_range(start, end);
             check_is_ascii(cx, expr.span, arg, &range, ty_sugg);
         }
@@ -123,10 +123,9 @@ impl<'tcx> LateLintPass<'tcx> for ManualIsAsciiCheck {
     extract_msrv_attr!(LateContext);
 }
 
-fn get_ty_sugg(cx: &LateContext<'_>, arg: &Expr<'_>, bound_expr: &Expr<'_>) -> Option<(Span, String)> {
-    if let ExprKind::Lit(_) = bound_expr.kind
-        && let local_hid = path_to_local(arg)?
-        && let Node::Param(Param { ty_span, span, .. }) = cx.tcx.parent_hir_node(local_hid)
+fn get_ty_sugg(cx: &LateContext<'_>, arg: &Expr<'_>) -> Option<(Span, String)> {
+    let local_hid = path_to_local(arg)?;
+    if let Node::Param(Param { ty_span, span, .. }) = cx.tcx.parent_hir_node(local_hid)
         // `ty_span` and `span` are the same for inferred type, thus a type suggestion must be given
         && ty_span == span
     {
