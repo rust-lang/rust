@@ -154,6 +154,9 @@ fn check_impl(
             args.insert(0, "--diff".as_ref());
             let _ = py_runner(py_path.as_ref().unwrap(), true, None, "ruff", &args);
         }
+        if res.is_err() && !bless {
+            eprintln!("rerun tidy with `--extra-checks=py:fmt --bless` to reformat Python code");
+        }
         // Rethrow error
         let _ = res?;
     }
