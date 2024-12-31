@@ -1,5 +1,6 @@
 //! Cargo-like environment variables injection.
 use base_db::Env;
+use paths::Utf8Path;
 use rustc_hash::FxHashMap;
 use toolchain::Tool;
 
@@ -85,7 +86,7 @@ pub(crate) fn cargo_config_env(
     // if successful we receive `env.key.value = "value" per entry
     tracing::debug!("Discovering cargo config env by {:?}", cargo_config);
     utf8_stdout(&mut cargo_config)
-        .map(parse_output_cargo_config_env)
+        .map(|stdout| parse_output_cargo_config_env(manifest, stdout))
         .inspect(|env| {
             tracing::debug!("Discovered cargo config env: {:?}", env);
         })
@@ -95,18 +96,38 @@ pub(crate) fn cargo_config_env(
         .unwrap_or_default()
 }
 
-fn parse_output_cargo_config_env(stdout: String) -> Env {
-    stdout
-        .lines()
-        .filter_map(|l| l.strip_prefix("env."))
-        .filter_map(|l| l.split_once(" = "))
-        .filter_map(|(k, v)| {
-            if k.contains('.') {
-                k.strip_suffix(".value").zip(Some(v))
-            } else {
-                Some((k, v))
+fn parse_output_cargo_config_env(manifest: &ManifestPath, stdout: String) -> Env {
+    let mut env = Env::default();
+    let mut relatives = vec![];
+    for (key, val) in
+        stdout.lines().filter_map(|l| l.strip_prefix("env.")).filter_map(|l| l.split_once(" = "))
+    {
+        let val = val.trim_matches('"').to_owned();
+        if let Some((key, modifier)) = key.split_once('.') {
+            match modifier {
+                "relative" => relatives.push((key, val)),
+                "value" => _ = env.insert(key, val),
+                _ => {
+                    tracing::warn!(
+                        "Unknown modifier in cargo config env: {}, expected `relative` or `value`",
+                        modifier
+                    );
+                    continue;
+                }
             }
-        })
-        .map(|(key, value)| (key.to_owned(), value.trim_matches('"').to_owned()))
-        .collect()
+        } else {
+            env.insert(key, val);
+        }
+    }
+    // FIXME: The base here should be the parent of the `.cargo/config` file, not the manifest.
+    // But cargo does not provide this information.
+    let base = <_ as AsRef<Utf8Path>>::as_ref(manifest.parent());
+    for (key, val) in relatives {
+        if let Some(val) = env.get(&val) {
+            env.insert(key, base.join(val).to_string());
+        } else {
+            env.insert(key, base.to_string());
+        }
+    }
+    env
 }
