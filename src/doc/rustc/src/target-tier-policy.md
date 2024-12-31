@@ -119,7 +119,7 @@ To propose addition of a new target, open a pull request on [`rust-lang/rust`]:
   Link to the created description page.
 - Ensure the pull request is assigned to a member of the [Rust compiler team][rust_compiler_team] by commenting:
   ```text
-  r? compiler-team
+  r? compiler
   ```
 
 [tier3example]: https://github.com/rust-lang/rust/pull/94872
