@@ -30,7 +30,7 @@ Job = Dict[str, Any]
 def add_job_properties(jobs: List[Dict], prefix: str) -> List[Job]:
     """
     Modify the `name` attribute of each job, based on its base name and the given `prefix`.
-    Add an `image` attribute to each job, base don its image.
+    Add an `image` attribute to each job, based on its image.
     """
     modified_jobs = []
     for job in jobs:
@@ -196,15 +196,14 @@ def get_job_image(job) -> str:
     return job.get("env", {}).get("IMAGE", job["name"])
 
 
-def run_workflow_locally(job_data: Dict[str, Any], job_name: str):
+def run_workflow_locally(job_data: Dict[str, Any], job_name: str, pr_jobs: bool):
     DOCKER_DIR = Path(__file__).absolute().parent.parent / "docker"
 
-    jobs = list(job_data["auto"])
-    jobs.extend(job_data["pr"])
-
+    jobs = job_data["pr"] if pr_jobs else job_data["auto"]
     jobs = [job for job in jobs if job.get("name") == job_name]
     if len(jobs) == 0:
-        raise Exception(f"Job `{job_name}` not found")
+        raise Exception(f"Job `{job_name}` not found in {'pr' if pr_jobs else 'auto'} jobs")
+    assert len(jobs) == 1
     job = jobs[0]
     if "ubuntu" not in job["os"]:
         raise Exception("Only Linux jobs can be executed locally")
@@ -222,7 +221,12 @@ def run_workflow_locally(job_data: Dict[str, Any], job_name: str):
 
     env = os.environ.copy()
     env.update(custom_env)
-    subprocess.run(args, env=env)
+
+    process = subprocess.Popen(args, env=env)
+    try:
+        process.wait()
+    except KeyboardInterrupt:
+        process.kill()
 
 
 if __name__ == "__main__":
@@ -239,7 +243,16 @@ if __name__ == "__main__":
     subparsers = parser.add_subparsers(help="Command to execute", dest="command", required=True)
     subparsers.add_parser("calculate-job-matrix")
     run_parser = subparsers.add_parser("run-local")
-    run_parser.add_argument("job_name", help="CI job that should be executed")
+    run_parser.add_argument(
+        "job_name",
+        help="CI job that should be executed. By default, a merge (auto) "
+             "job with the given name will be executed"
+    )
+    run_parser.add_argument(
+        "--pr",
+        action="store_true",
+        help="Run a PR job instead of an auto job"
+    )
     args = parser.parse_args()
 
     if args.command == "calculate-job-matrix":
@@ -265,6 +278,6 @@ if __name__ == "__main__":
         print(f"jobs={json.dumps(jobs)}")
         print(f"run_type={run_type}")
     elif args.command == "run-local":
-        run_workflow_locally(data, args.job_name)
+        run_workflow_locally(data, args.job_name, args.pr)
     else:
         raise Exception(f"Unknown command {args.command}")
