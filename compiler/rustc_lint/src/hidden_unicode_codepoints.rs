@@ -101,14 +101,28 @@ impl EarlyLintPass for HiddenUnicodeCodepoints {
                 if !contains_text_flow_control_chars(text.as_str()) {
                     return;
                 }
-                let padding = match token_lit.kind {
+                let (padding, point_at_inner_spans) = match token_lit.kind {
                     // account for `"` or `'`
-                    ast::token::LitKind::Str | ast::token::LitKind::Char => 1,
+                    ast::token::LitKind::Str | ast::token::LitKind::Char => (1, true),
+                    // account for `c"`
+                    ast::token::LitKind::CStr => (2, true),
                     // account for `r###"`
-                    ast::token::LitKind::StrRaw(n) => n as u32 + 2,
-                    _ => return,
+                    ast::token::LitKind::StrRaw(n) => (n as u32 + 2, true),
+                    // account for `cr###"`
+                    ast::token::LitKind::CStrRaw(n) => (n as u32 + 3, true),
+                    // suppress bad literals.
+                    ast::token::LitKind::Err(_) => return,
+                    // Be conservative just in case new literals do support these.
+                    _ => (0, false),
                 };
-                self.lint_text_direction_codepoint(cx, text, expr.span, padding, true, "literal");
+                self.lint_text_direction_codepoint(
+                    cx,
+                    text,
+                    expr.span,
+                    padding,
+                    point_at_inner_spans,
+                    "literal",
+                );
             }
             _ => {}
         };
