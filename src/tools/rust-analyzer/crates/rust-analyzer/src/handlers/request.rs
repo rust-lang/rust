@@ -1826,6 +1826,7 @@ pub(crate) fn handle_call_hierarchy_outgoing(
     let doc = TextDocumentIdentifier::new(item.uri);
     let frange = from_proto::file_range(&snap, &doc, item.selection_range)?;
     let fpos = FilePosition { file_id: frange.file_id, offset: frange.range.start() };
+    let line_index = snap.file_line_index(fpos.file_id)?;
 
     let config = snap.config.call_hierarchy();
     let call_items = match snap.analysis.outgoing_calls(config, fpos)? {
@@ -1836,8 +1837,6 @@ pub(crate) fn handle_call_hierarchy_outgoing(
     let mut res = vec![];
 
     for call_item in call_items.into_iter() {
-        let file_id = call_item.target.file_id;
-        let line_index = snap.file_line_index(file_id)?;
         let item = to_proto::call_hierarchy_item(&snap, call_item.target)?;
         res.push(CallHierarchyOutgoingCall {
             to: item,
