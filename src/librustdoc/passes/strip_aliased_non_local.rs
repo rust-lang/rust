@@ -42,7 +42,7 @@ struct NonLocalStripper<'tcx> {
 impl DocFolder for NonLocalStripper<'_> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         // If not local, we want to respect the original visibility of
-        // the field and not the one given by the user for the currrent crate.
+        // the field and not the one given by the user for the current crate.
         //
         // FIXME(#125009): Not-local should probably consider same Cargo workspace
         if let Some(def_id) = i.def_id()
