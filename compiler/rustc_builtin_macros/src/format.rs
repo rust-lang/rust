@@ -17,7 +17,7 @@ use rustc_parse_format as parse;
 use rustc_span::{BytePos, ErrorGuaranteed, Ident, InnerSpan, Span, Symbol};
 
 use crate::errors;
-use crate::util::expr_to_spanned_string;
+use crate::util::{ExprToSpannedString, expr_to_spanned_string};
 
 // The format_args!() macro is expanded in three steps:
 //  1. First, `parse_args` will parse the `(literal, arg, arg, name=arg, name=arg)` syntax,
@@ -166,13 +166,18 @@ fn make_format_args(
 
     let MacroInput { fmtstr: efmt, mut args, is_direct_literal } = input;
 
-    let (fmt_str, fmt_style, fmt_span) = {
+    let ExprToSpannedString {
+        symbol: fmt_str,
+        span: fmt_span,
+        style: fmt_style,
+        uncooked_symbol: uncooked_fmt_str,
+    } = {
         let ExpandResult::Ready(mac) = expr_to_spanned_string(ecx, efmt.clone(), msg) else {
             return ExpandResult::Retry(());
         };
         match mac {
             Ok(mut fmt) if append_newline => {
-                fmt.0 = Symbol::intern(&format!("{}\n", fmt.0));
+                fmt.symbol = Symbol::intern(&format!("{}\n", fmt.symbol));
                 fmt
             }
             Ok(fmt) => fmt,
@@ -584,7 +589,12 @@ fn make_format_args(
         }
     }
 
-    ExpandResult::Ready(Ok(FormatArgs { span: fmt_span, template, arguments: args }))
+    ExpandResult::Ready(Ok(FormatArgs {
+        span: fmt_span,
+        template,
+        arguments: args,
+        uncooked_fmt_str,
+    }))
 }
 
 fn invalid_placeholder_type_error(
