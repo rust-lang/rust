@@ -16,12 +16,12 @@ use crate::ty::{self, GenericArgs, TyCtxt};
 impl<'tcx> TyCtxt<'tcx> {
     /// Evaluates a constant without providing any generic parameters. This is useful to evaluate consts
     /// that can't take any generic arguments like const items or enum discriminants. If a
-    /// generic parameter is used within the constant `ErrorHandled::ToGeneric` will be returned.
+    /// generic parameter is used within the constant `ErrorHandled::TooGeneric` will be returned.
     #[instrument(skip(self), level = "debug")]
     pub fn const_eval_poly(self, def_id: DefId) -> EvalToConstValueResult<'tcx> {
         // In some situations def_id will have generic parameters within scope, but they aren't allowed
         // to be used. So we can't use `Instance::mono`, instead we feed unresolved generic parameters
-        // into `const_eval` which will return `ErrorHandled::ToGeneric` if any of them are
+        // into `const_eval` which will return `ErrorHandled::TooGeneric` if any of them are
         // encountered.
         let args = GenericArgs::identity_for_item(self, def_id);
         let instance = ty::Instance::new(def_id, args);
@@ -32,12 +32,12 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Evaluates a constant without providing any generic parameters. This is useful to evaluate consts
     /// that can't take any generic arguments like const items or enum discriminants. If a
-    /// generic parameter is used within the constant `ErrorHandled::ToGeneric` will be returned.
+    /// generic parameter is used within the constant `ErrorHandled::TooGeneric` will be returned.
     #[instrument(skip(self), level = "debug")]
     pub fn const_eval_poly_to_alloc(self, def_id: DefId) -> EvalToAllocationRawResult<'tcx> {
         // In some situations def_id will have generic parameters within scope, but they aren't allowed
         // to be used. So we can't use `Instance::mono`, instead we feed unresolved generic parameters
-        // into `const_eval` which will return `ErrorHandled::ToGeneric` if any of them are
+        // into `const_eval` which will return `ErrorHandled::TooGeneric` if any of them are
         // encountered.
         let args = GenericArgs::identity_for_item(self, def_id);
         let instance = ty::Instance::new(def_id, args);
@@ -201,12 +201,12 @@ impl<'tcx> TyCtxt<'tcx> {
 impl<'tcx> TyCtxtEnsure<'tcx> {
     /// Evaluates a constant without providing any generic parameters. This is useful to evaluate consts
     /// that can't take any generic arguments like const items or enum discriminants. If a
-    /// generic parameter is used within the constant `ErrorHandled::ToGeneric` will be returned.
+    /// generic parameter is used within the constant `ErrorHandled::TooGeneric` will be returned.
     #[instrument(skip(self), level = "debug")]
     pub fn const_eval_poly(self, def_id: DefId) {
         // In some situations def_id will have generic parameters within scope, but they aren't allowed
         // to be used. So we can't use `Instance::mono`, instead we feed unresolved generic parameters
-        // into `const_eval` which will return `ErrorHandled::ToGeneric` if any of them are
+        // into `const_eval` which will return `ErrorHandled::TooGeneric` if any of them are
         // encountered.
         let args = GenericArgs::identity_for_item(self.tcx, def_id);
         let instance = ty::Instance::new(def_id, self.tcx.erase_regions(args));
