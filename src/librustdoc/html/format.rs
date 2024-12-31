@@ -282,7 +282,8 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
 
                     match pred {
                         clean::WherePredicate::BoundPredicate { ty, bounds, bound_params } => {
-                            print_higher_ranked_params_with_space(bound_params, cx).fmt(f)?;
+                            print_higher_ranked_params_with_space(bound_params, cx, "for")
+                                .fmt(f)?;
                             ty.print(cx).fmt(f)?;
                             f.write_str(":")?;
                             if !bounds.is_empty() {
@@ -386,7 +387,7 @@ impl clean::ConstantKind {
 impl clean::PolyTrait {
     fn print<'a, 'tcx: 'a>(&'a self, cx: &'a Context<'tcx>) -> impl Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
-            print_higher_ranked_params_with_space(&self.generic_params, cx).fmt(f)?;
+            print_higher_ranked_params_with_space(&self.generic_params, cx, "for").fmt(f)?;
             self.trait_.print(cx).fmt(f)
         })
     }
@@ -968,10 +969,12 @@ fn tybounds<'a, 'tcx: 'a>(
 fn print_higher_ranked_params_with_space<'a, 'tcx: 'a>(
     params: &'a [clean::GenericParamDef],
     cx: &'a Context<'tcx>,
+    keyword: &'static str,
 ) -> impl Display + 'a + Captures<'tcx> {
     display_fn(move |f| {
         if !params.is_empty() {
-            f.write_str(if f.alternate() { "for<" } else { "for&lt;" })?;
+            f.write_str(keyword)?;
+            f.write_str(if f.alternate() { "<" } else { "&lt;" })?;
             comma_sep(params.iter().map(|lt| lt.print(cx)), true).fmt(f)?;
             f.write_str(if f.alternate() { "> " } else { "&gt; " })?;
         }
@@ -1027,7 +1030,7 @@ fn fmt_type(
             primitive_link(f, prim, format_args!("{}", prim.as_sym().as_str()), cx)
         }
         clean::BareFunction(ref decl) => {
-            print_higher_ranked_params_with_space(&decl.generic_params, cx).fmt(f)?;
+            print_higher_ranked_params_with_space(&decl.generic_params, cx, "for").fmt(f)?;
             decl.safety.print_with_space().fmt(f)?;
             print_abi_with_space(decl.abi).fmt(f)?;
             if f.alternate() {
@@ -1036,6 +1039,10 @@ fn fmt_type(
                 primitive_link(f, PrimitiveType::Fn, format_args!("fn"), cx)?;
             }
             decl.decl.print(cx).fmt(f)
+        }
+        clean::UnsafeBinder(ref binder) => {
+            print_higher_ranked_params_with_space(&binder.generic_params, cx, "unsafe").fmt(f)?;
+            binder.ty.print(cx).fmt(f)
         }
         clean::Tuple(ref typs) => match &typs[..] {
             &[] => primitive_link(f, PrimitiveType::Unit, format_args!("()"), cx),
@@ -1354,7 +1361,7 @@ impl clean::Impl {
             // Hardcoded anchor library/core/src/primitive_docs.rs
             // Link should match `# Trait implementations`
 
-            print_higher_ranked_params_with_space(&bare_fn.generic_params, cx).fmt(f)?;
+            print_higher_ranked_params_with_space(&bare_fn.generic_params, cx, "for").fmt(f)?;
             bare_fn.safety.print_with_space().fmt(f)?;
             print_abi_with_space(bare_fn.abi).fmt(f)?;
             let ellipsis = if bare_fn.decl.c_variadic { ", ..." } else { "" };
