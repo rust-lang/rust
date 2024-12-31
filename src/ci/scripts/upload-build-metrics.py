@@ -51,13 +51,23 @@ def upload_datadog_measure(name: str, value: float):
     print(f"Metric {name}: {value:.4f}")
 
     cmd = "npx"
-    if os.getenv("GITHUB_ACTIONS") is not None and sys.platform.lower().startswith("win"):
+    if os.getenv("GITHUB_ACTIONS") is not None and sys.platform.lower().startswith(
+        "win"
+    ):
         # Due to weird interaction of MSYS2 and Python, we need to use an absolute path,
         # and also specify the ".cmd" at the end. See https://github.com/rust-lang/rust/pull/125771.
         cmd = "C:\\Program Files\\nodejs\\npx.cmd"
 
     subprocess.run(
-        [cmd, "datadog-ci", "measure", "--level", "job", "--measures", f"{name}:{value}"],
+        [
+            cmd,
+            "datadog-ci",
+            "measure",
+            "--level",
+            "job",
+            "--measures",
+            f"{name}:{value}",
+        ],
         check=False,
     )
 
