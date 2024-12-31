@@ -323,7 +323,7 @@ impl File {
                     let alloc = c::FILE_ALLOCATION_INFO { AllocationSize: 0 };
                     let result = c::SetFileInformationByHandle(
                         handle.as_raw_handle(),
-                        c::FileEndOfFileInfo,
+                        c::FileAllocationInfo,
                         (&raw const alloc).cast::<c_void>(),
                         mem::size_of::<c::FILE_ALLOCATION_INFO>() as u32,
                     );
@@ -1295,15 +1295,18 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
             } else {
                 // SAFETY: The struct has been initialized by GetFileInformationByHandleEx
                 let file_attribute_tag_info = unsafe { file_attribute_tag_info.assume_init() };
+                let file_type = FileType::new(
+                    file_attribute_tag_info.FileAttributes,
+                    file_attribute_tag_info.ReparseTag,
+                );
 
-                if file_attribute_tag_info.FileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0
-                    && file_attribute_tag_info.ReparseTag != c::IO_REPARSE_TAG_MOUNT_POINT
-                {
-                    // The file is not a mount point: Reopen the file without inhibiting reparse point behavior.
-                    None
-                } else {
-                    // The file is a mount point: Don't reopen the file so that the mount point gets renamed.
+                if file_type.is_symlink() {
+                    // The file is a mount point, junction point or symlink so
+                    // don't reopen the file so that the link gets renamed.
                     Some(Ok(handle))
+                } else {
+                    // Otherwise reopen the file without inhibiting reparse point behavior.
+                    None
                 }
             }
         }

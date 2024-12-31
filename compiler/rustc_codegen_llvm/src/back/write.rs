@@ -189,7 +189,7 @@ pub(crate) fn target_machine_factory(
     let reloc_model = to_llvm_relocation_model(sess.relocation_model());
 
     let (opt_level, _) = to_llvm_opt_settings(optlvl);
-    let use_softfp = if sess.target.arch == "arm" && sess.target.abi == "eabihf" {
+    let use_softfp = if sess.target.arch == "arm" {
         sess.opts.cg.soft_float
     } else {
         // `validate_commandline_args_with_session_available` has already warned about this being

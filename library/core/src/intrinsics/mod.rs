@@ -68,6 +68,7 @@ use crate::marker::{DiscriminantKind, Tuple};
 use crate::mem::SizedTypeProperties;
 use crate::{ptr, ub_checks};
 
+pub mod fallback;
 pub mod mir;
 pub mod simd;
 
@@ -3305,6 +3306,34 @@ pub const fn mul_with_overflow<T: Copy>(_x: T, _y: T) -> (T, bool) {
     unimplemented!()
 }
 
+/// Performs full-width multiplication and addition with a carry:
+/// `multiplier * multiplicand + addend + carry`.
+///
+/// This is possible without any overflow.  For `uN`:
+///    MAX * MAX + MAX + MAX
+/// => (2ⁿ-1) × (2ⁿ-1) + (2ⁿ-1) + (2ⁿ-1)
+/// => (2²ⁿ - 2ⁿ⁺¹ + 1) + (2ⁿ⁺¹ - 2)
+/// => 2²ⁿ - 1
+///
+/// For `iN`, the upper bound is MIN * MIN + MAX + MAX => 2²ⁿ⁻² + 2ⁿ - 2,
+/// and the lower bound is MAX * MIN + MIN + MIN => -2²ⁿ⁻² - 2ⁿ + 2ⁿ⁺¹.
+///
+/// This currently supports unsigned integers *only*, no signed ones.
+/// The stabilized versions of this intrinsic are available on integers.
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_const_unstable(feature = "const_carrying_mul_add", issue = "85532")]
+#[rustc_nounwind]
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[cfg_attr(not(bootstrap), miri::intrinsic_fallback_is_spec)]
+pub const fn carrying_mul_add<T: ~const fallback::CarryingMulAdd<Unsigned = U>, U>(
+    multiplier: T,
+    multiplicand: T,
+    addend: T,
+    carry: T,
+) -> (U, T) {
+    multiplier.carrying_mul_add(multiplicand, addend, carry)
+}
+
 /// Performs an exact division, resulting in undefined behavior where
 /// `x % y != 0` or `y == 0` or `x == T::MIN && y == -1`
 ///
@@ -3940,6 +3969,21 @@ pub const fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
     false
 }
 
+#[rustc_nounwind]
+#[inline]
+#[rustc_intrinsic]
+#[rustc_intrinsic_const_stable_indirect]
+#[rustc_allow_const_fn_unstable(const_swap_nonoverlapping)] // this is anyway not called since CTFE implements the intrinsic
+#[cfg(bootstrap)]
+pub const unsafe fn typed_swap<T>(x: *mut T, y: *mut T) {
+    // SAFETY: The caller provided single non-overlapping items behind
+    // pointers, so swapping them with `count: 1` is fine.
+    unsafe { ptr::swap_nonoverlapping(x, y, 1) };
+}
+
+#[cfg(bootstrap)]
+pub use typed_swap as typed_swap_nonoverlapping;
+
 /// Non-overlapping *typed* swap of a single value.
 ///
 /// The codegen backends will replace this with a better implementation when
@@ -3953,9 +3997,10 @@ pub const fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
 #[rustc_nounwind]
 #[inline]
 #[rustc_intrinsic]
-// Const-unstable because `swap_nonoverlapping` is const-unstable.
-#[rustc_const_unstable(feature = "const_typed_swap", issue = "none")]
-pub const unsafe fn typed_swap<T>(x: *mut T, y: *mut T) {
+#[rustc_intrinsic_const_stable_indirect]
+#[rustc_allow_const_fn_unstable(const_swap_nonoverlapping)] // this is anyway not called since CTFE implements the intrinsic
+#[cfg(not(bootstrap))]
+pub const unsafe fn typed_swap_nonoverlapping<T>(x: *mut T, y: *mut T) {
     // SAFETY: The caller provided single non-overlapping items behind
     // pointers, so swapping them with `count: 1` is fine.
     unsafe { ptr::swap_nonoverlapping(x, y, 1) };
@@ -4364,13 +4409,11 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `src` must be [valid] for reads of `count * size_of::<T>()` bytes, and must remain valid even
-///   when `dst` is written for `count * size_of::<T>()` bytes. (This means if the memory ranges
-///   overlap, the two pointers must not be subject to aliasing restrictions relative to each
-///   other.)
+/// * `src` must be [valid] for reads of `count * size_of::<T>()` bytes.
 ///
 /// * `dst` must be [valid] for writes of `count * size_of::<T>()` bytes, and must remain valid even
-///   when `src` is read for `count * size_of::<T>()` bytes.
+///   when `src` is read for `count * size_of::<T>()` bytes. (This means if the memory ranges
+///   overlap, the `dst` pointer must not be invalidated by `src` reads.)
 ///
 /// * Both `src` and `dst` must be properly aligned.
 ///

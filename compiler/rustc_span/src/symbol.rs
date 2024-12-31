@@ -555,6 +555,7 @@ symbols! {
         call_ref_future,
         caller_location,
         capture_disjoint_fields,
+        carrying_mul_add,
         catch_unwind,
         cause,
         cdylib,
@@ -1092,6 +1093,7 @@ symbols! {
         import,
         import_name_type,
         import_shadowing,
+        import_trait_associated_functions,
         imported_main,
         in_band_lifetimes,
         include,
@@ -2058,7 +2060,7 @@ symbols! {
         type_macros,
         type_name,
         type_privacy_lints,
-        typed_swap,
+        typed_swap_nonoverlapping,
         u128,
         u128_legacy_const_max,
         u128_legacy_const_min,
@@ -2706,6 +2708,12 @@ impl Ident {
     /// How was it written originally? Did it use the raw form? Let's try to guess.
     pub fn is_raw_guess(self) -> bool {
         self.name.can_be_raw() && self.is_reserved()
+    }
+
+    /// Whether this would be the identifier for a tuple field like `self.0`, as
+    /// opposed to a named field like `self.thing`.
+    pub fn is_numeric(self) -> bool {
+        !self.name.is_empty() && self.as_str().bytes().all(|b| b.is_ascii_digit())
     }
 }
 

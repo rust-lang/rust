@@ -30,7 +30,7 @@ use crate::constraints::{ConstraintSccIndex, OutlivesConstraint, OutlivesConstra
 use crate::dataflow::BorrowIndex;
 use crate::diagnostics::{RegionErrorKind, RegionErrors, UniverseInfo};
 use crate::member_constraints::{MemberConstraintSet, NllMemberConstraintIndex};
-use crate::nll::PoloniusOutput;
+use crate::polonius::legacy::PoloniusOutput;
 use crate::region_infer::reverse_sccs::ReverseSccGraph;
 use crate::region_infer::values::{LivenessValues, RegionElement, RegionValues, ToElementIndex};
 use crate::type_check::free_region_relations::UniversalRegionRelations;
@@ -1950,8 +1950,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         target_test: impl Fn(RegionVid) -> bool,
     ) -> (BlameConstraint<'tcx>, Vec<ExtraConstraintInfo>) {
         // Find all paths
-        let (path, target_region) =
-            self.find_constraint_paths_between_regions(from_region, target_test).unwrap();
+        let (path, target_region) = self
+            .find_constraint_paths_between_regions(from_region, target_test)
+            .or_else(|| {
+                self.find_constraint_paths_between_regions(from_region, |r| {
+                    self.cannot_name_placeholder(from_region, r)
+                })
+            })
+            .unwrap();
         debug!(
             "path={:#?}",
             path.iter()

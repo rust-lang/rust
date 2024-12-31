@@ -84,21 +84,43 @@ fn is_console(handle: c::HANDLE) -> bool {
     unsafe { c::GetConsoleMode(handle, &mut mode) != 0 }
 }
 
+/// Returns true if the attached console's code page is currently UTF-8.
+#[cfg(not(target_vendor = "win7"))]
+fn is_utf8_console() -> bool {
+    unsafe { c::GetConsoleOutputCP() == c::CP_UTF8 }
+}
+
+#[cfg(target_vendor = "win7")]
+fn is_utf8_console() -> bool {
+    // Windows 7 has a fun "feature" where WriteFile on a console handle will return
+    // the number of UTF-16 code units written and not the number of bytes from the input string.
+    // So we always claim the console isn't UTF-8 to trigger the WriteConsole fallback code.
+    false
+}
+
 fn write(handle_id: u32, data: &[u8], incomplete_utf8: &mut IncompleteUtf8) -> io::Result<usize> {
     if data.is_empty() {
         return Ok(0);
     }
 
     let handle = get_handle(handle_id)?;
-    if !is_console(handle) {
+    if !is_console(handle) || is_utf8_console() {
         unsafe {
             let handle = Handle::from_raw_handle(handle);
             let ret = handle.write(data);
             let _ = handle.into_raw_handle(); // Don't close the handle
             return ret;
         }
+    } else {
+        write_console_utf16(data, incomplete_utf8, handle)
     }
+}
 
+fn write_console_utf16(
+    data: &[u8],
+    incomplete_utf8: &mut IncompleteUtf8,
+    handle: c::HANDLE,
+) -> io::Result<usize> {
     if incomplete_utf8.len > 0 {
         assert!(
             incomplete_utf8.len < 4,

@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-set -ex
+set -eux
 
 source shared.sh
 
 # Note: in the future when bumping to version 10.1.0, also take care of the sed block below.
-GCC=9.5.0
+# This version is specified in the Dockerfile
+GCC=$GCC_VERSION
 
 curl https://ftp.gnu.org/gnu/gcc/gcc-$GCC/gcc-$GCC.tar.xz | xzcat | tar xf -
 cd gcc-$GCC

@@ -337,7 +337,7 @@ impl<'tcx> UniversalRegions<'tcx> {
         self.indices.indices.iter().map(|(&r, &v)| (r, v))
     }
 
-    /// See `UniversalRegionIndices::to_region_vid`.
+    /// See [UniversalRegionIndices::to_region_vid].
     pub(crate) fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
         self.indices.to_region_vid(r)
     }

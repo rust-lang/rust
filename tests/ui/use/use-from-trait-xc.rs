@@ -3,13 +3,13 @@
 extern crate use_from_trait_xc;
 
 use use_from_trait_xc::Trait::foo;
-//~^ ERROR `foo` is not directly importable
+//~^ ERROR `use` associated items of traits is unstable [E0658]
 
 use use_from_trait_xc::Trait::Assoc;
 //~^ ERROR `Assoc` is not directly importable
 
 use use_from_trait_xc::Trait::CONST;
-//~^ ERROR `CONST` is not directly importable
+//~^ ERROR `use` associated items of traits is unstable [E0658]
 
 use use_from_trait_xc::Foo::new; //~ ERROR struct `Foo` is private
 //~^ ERROR unresolved import `use_from_trait_xc::Foo`

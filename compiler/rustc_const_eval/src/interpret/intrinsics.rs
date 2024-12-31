@@ -424,8 +424,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let result = self.raw_eq_intrinsic(&args[0], &args[1])?;
                 self.write_scalar(result, dest)?;
             }
-            sym::typed_swap => {
-                self.typed_swap_intrinsic(&args[0], &args[1])?;
+            sym::typed_swap_nonoverlapping => {
+                self.typed_swap_nonoverlapping_intrinsic(&args[0], &args[1])?;
             }
 
             sym::vtable_size => {
@@ -638,19 +638,35 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     }
 
     /// Does a *typed* swap of `*left` and `*right`.
-    fn typed_swap_intrinsic(
+    fn typed_swap_nonoverlapping_intrinsic(
         &mut self,
         left: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
         right: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
     ) -> InterpResult<'tcx> {
         let left = self.deref_pointer(left)?;
         let right = self.deref_pointer(right)?;
-        debug_assert_eq!(left.layout, right.layout);
+        assert_eq!(left.layout, right.layout);
+        assert!(left.layout.is_sized());
         let kind = MemoryKind::Stack;
         let temp = self.allocate(left.layout, kind)?;
-        self.copy_op(&left, &temp)?;
-        self.copy_op(&right, &left)?;
-        self.copy_op(&temp, &right)?;
+        self.copy_op(&left, &temp)?; // checks alignment of `left`
+
+        // We want to always enforce non-overlapping, even if this is a scalar type.
+        // Therefore we directly use the underlying `mem_copy` here.
+        self.mem_copy(right.ptr(), left.ptr(), left.layout.size, /*nonoverlapping*/ true)?;
+        // This means we also need to do the validation of the value that used to be in `right`
+        // ourselves. This value is now in `left.` The one that started out in `left` already got
+        // validated by the copy above.
+        if M::enforce_validity(self, left.layout) {
+            self.validate_operand(
+                &left.clone().into(),
+                M::enforce_validity_recursively(self, left.layout),
+                /*reset_provenance_and_padding*/ true,
+            )?;
+        }
+
+        self.copy_op(&temp, &right)?; // checks alignment of `right`
+
         self.deallocate_ptr(temp.ptr(), None, kind)?;
         interp_ok(())
     }

@@ -748,7 +748,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                 &shared.layout,
                 &page,
                 "",
-                scrape_examples_help(&shared),
+                scrape_examples_help(shared),
                 &shared.style_files,
             );
             shared.fs.write(scrape_examples_help_file, v)?;

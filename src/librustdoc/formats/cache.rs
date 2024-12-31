@@ -305,6 +305,7 @@ impl DocFolder for CacheBuilder<'_, '_> {
             | clean::MacroItem(..)
             | clean::ProcMacroItem(..)
             | clean::VariantItem(..) => {
+                use rustc_data_structures::fx::IndexEntry as Entry;
                 if !self.cache.stripped_mod {
                     // Re-exported items mean that the same id can show up twice
                     // in the rustdoc ast that we're looking at. We know,
@@ -313,15 +314,15 @@ impl DocFolder for CacheBuilder<'_, '_> {
                     // paths map if there was already an entry present and we're
                     // not a public item.
                     let item_def_id = item.item_id.expect_def_id();
-                    if !self.cache.paths.contains_key(&item_def_id)
-                        || self
-                            .cache
-                            .effective_visibilities
-                            .is_directly_public(self.tcx, item_def_id)
-                    {
-                        self.cache
-                            .paths
-                            .insert(item_def_id, (self.cache.stack.clone(), item.type_()));
+                    match self.cache.paths.entry(item_def_id) {
+                        Entry::Vacant(entry) => {
+                            entry.insert((self.cache.stack.clone(), item.type_()));
+                        }
+                        Entry::Occupied(mut entry) => {
+                            if entry.get().0.len() > self.cache.stack.len() {
+                                entry.insert((self.cache.stack.clone(), item.type_()));
+                            }
+                        }
                     }
                 }
             }
@@ -413,7 +414,7 @@ impl DocFolder for CacheBuilder<'_, '_> {
             let impl_item = Impl { impl_item: item };
             let impl_did = impl_item.def_id();
             let trait_did = impl_item.trait_did();
-            if trait_did.map_or(true, |d| self.cache.traits.contains_key(&d)) {
+            if trait_did.is_none_or(|d| self.cache.traits.contains_key(&d)) {
                 for did in dids {
                     if self.impl_ids.entry(did).or_default().insert(impl_did) {
                         self.cache.impls.entry(did).or_default().push(impl_item.clone());

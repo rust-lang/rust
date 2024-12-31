@@ -1953,3 +1953,32 @@ fn test_rename_directory_to_non_empty_directory() {
 
     error!(fs::rename(source_path, target_path), 145); // ERROR_DIR_NOT_EMPTY
 }
+
+#[test]
+fn test_rename_symlink() {
+    let tmpdir = tmpdir();
+    let original = tmpdir.join("original");
+    let dest = tmpdir.join("dest");
+    let not_exist = Path::new("does not exist");
+
+    symlink_file(not_exist, &original).unwrap();
+    fs::rename(&original, &dest).unwrap();
+    // Make sure that renaming `original` to `dest` preserves the symlink.
+    assert_eq!(fs::read_link(&dest).unwrap().as_path(), not_exist);
+}
+
+#[test]
+#[cfg(windows)]
+fn test_rename_junction() {
+    let tmpdir = tmpdir();
+    let original = tmpdir.join("original");
+    let dest = tmpdir.join("dest");
+    let not_exist = Path::new("does not exist");
+
+    junction_point(&not_exist, &original).unwrap();
+    fs::rename(&original, &dest).unwrap();
+
+    // Make sure that renaming `original` to `dest` preserves the junction point.
+    // Junction links are always absolute so we just check the file name is correct.
+    assert_eq!(fs::read_link(&dest).unwrap().file_name(), Some(not_exist.as_os_str()));
+}

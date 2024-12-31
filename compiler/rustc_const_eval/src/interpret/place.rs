@@ -775,31 +775,13 @@ where
 
     /// Copies the data from an operand to a place.
     /// The layouts of the `src` and `dest` may disagree.
-    /// Does not perform validation of the destination.
-    /// The only known use case for this function is checking the return
-    /// value of a static during stack frame popping.
-    #[inline(always)]
-    pub(super) fn copy_op_no_dest_validation(
-        &mut self,
-        src: &impl Projectable<'tcx, M::Provenance>,
-        dest: &impl Writeable<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx> {
-        self.copy_op_inner(
-            src, dest, /* allow_transmute */ true, /* validate_dest */ false,
-        )
-    }
-
-    /// Copies the data from an operand to a place.
-    /// The layouts of the `src` and `dest` may disagree.
     #[inline(always)]
     pub fn copy_op_allow_transmute(
         &mut self,
         src: &impl Projectable<'tcx, M::Provenance>,
         dest: &impl Writeable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
-        self.copy_op_inner(
-            src, dest, /* allow_transmute */ true, /* validate_dest */ true,
-        )
+        self.copy_op_inner(src, dest, /* allow_transmute */ true)
     }
 
     /// Copies the data from an operand to a place.
@@ -810,9 +792,7 @@ where
         src: &impl Projectable<'tcx, M::Provenance>,
         dest: &impl Writeable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
-        self.copy_op_inner(
-            src, dest, /* allow_transmute */ false, /* validate_dest */ true,
-        )
+        self.copy_op_inner(src, dest, /* allow_transmute */ false)
     }
 
     /// Copies the data from an operand to a place.
@@ -824,22 +804,21 @@ where
         src: &impl Projectable<'tcx, M::Provenance>,
         dest: &impl Writeable<'tcx, M::Provenance>,
         allow_transmute: bool,
-        validate_dest: bool,
     ) -> InterpResult<'tcx> {
         // These are technically *two* typed copies: `src` is a not-yet-loaded value,
-        // so we're going a typed copy at `src` type from there to some intermediate storage.
+        // so we're doing a typed copy at `src` type from there to some intermediate storage.
         // And then we're doing a second typed copy from that intermediate storage to `dest`.
         // But as an optimization, we only make a single direct copy here.
 
         // Do the actual copy.
         self.copy_op_no_validate(src, dest, allow_transmute)?;
 
-        if validate_dest && M::enforce_validity(self, dest.layout()) {
+        if M::enforce_validity(self, dest.layout()) {
             let dest = dest.to_place();
             // Given that there were two typed copies, we have to ensure this is valid at both types,
             // and we have to ensure this loses provenance and padding according to both types.
             // But if the types are identical, we only do one pass.
-            if allow_transmute && src.layout().ty != dest.layout().ty {
+            if src.layout().ty != dest.layout().ty {
                 self.validate_operand(
                     &dest.transmute(src.layout(), self)?,
                     M::enforce_validity_recursively(self, src.layout()),
