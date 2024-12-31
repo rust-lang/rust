@@ -13,10 +13,10 @@ use either::Either;
 use hir::{
     Adt, AsAssocItem, AsExternAssocItem, AssocItem, AttributeTemplate, BuiltinAttr, BuiltinType,
     Const, Crate, DefWithBody, DeriveHelper, DocLinkDef, ExternAssocItem, ExternCrateDecl, Field,
-    Function, GenericParam, GenericSubstitution, HasVisibility, HirDisplay, Impl, InlineAsmOperand,
-    Label, Local, Macro, Module, ModuleDef, Name, PathResolution, Semantics, Static,
-    StaticLifetime, Struct, ToolModule, Trait, TraitAlias, TupleField, TypeAlias, Variant,
-    VariantDef, Visibility,
+    Function, GenericDef, GenericParam, GenericSubstitution, HasContainer, HasVisibility,
+    HirDisplay, Impl, InlineAsmOperand, ItemContainer, Label, Local, Macro, Module, ModuleDef,
+    Name, PathResolution, Semantics, Static, StaticLifetime, Struct, ToolModule, Trait, TraitAlias,
+    TupleField, TypeAlias, Variant, VariantDef, Visibility,
 };
 use span::Edition;
 use stdx::{format_to, impl_from};
@@ -97,9 +97,39 @@ impl Definition {
     }
 
     pub fn enclosing_definition(&self, db: &RootDatabase) -> Option<Definition> {
+        fn container_to_definition(container: ItemContainer) -> Option<Definition> {
+            match container {
+                ItemContainer::Trait(it) => Some(it.into()),
+                ItemContainer::Impl(it) => Some(it.into()),
+                ItemContainer::Module(it) => Some(it.into()),
+                ItemContainer::ExternBlock() | ItemContainer::Crate(_) => None,
+            }
+        }
         match self {
+            Definition::Macro(it) => Some(it.module(db).into()),
+            Definition::Module(it) => it.parent(db).map(Definition::Module),
+            Definition::Field(it) => Some(it.parent_def(db).into()),
+            Definition::Function(it) => container_to_definition(it.container(db)),
+            Definition::Adt(it) => Some(it.module(db).into()),
+            Definition::Const(it) => container_to_definition(it.container(db)),
+            Definition::Static(it) => container_to_definition(it.container(db)),
+            Definition::Trait(it) => container_to_definition(it.container(db)),
+            Definition::TraitAlias(it) => container_to_definition(it.container(db)),
+            Definition::TypeAlias(it) => container_to_definition(it.container(db)),
+            Definition::Variant(it) => Some(Adt::Enum(it.parent_enum(db)).into()),
+            Definition::SelfType(it) => Some(it.module(db).into()),
             Definition::Local(it) => it.parent(db).try_into().ok(),
-            _ => None,
+            Definition::GenericParam(it) => Some(it.parent().into()),
+            Definition::Label(it) => it.parent(db).try_into().ok(),
+            Definition::ExternCrateDecl(it) => container_to_definition(it.container(db)),
+            Definition::DeriveHelper(it) => Some(it.derive().module(db).into()),
+            Definition::InlineAsmOperand(it) => it.parent(db).try_into().ok(),
+            Definition::BuiltinAttr(_)
+            | Definition::BuiltinType(_)
+            | Definition::BuiltinLifetime(_)
+            | Definition::TupleField(_)
+            | Definition::ToolModule(_)
+            | Definition::InlineAsmRegOrRegClass(_) => None,
         }
     }
 
@@ -929,6 +959,20 @@ impl TryFrom<DefWithBody> for Definition {
             DefWithBody::Const(it) => Ok(it.into()),
             DefWithBody::Variant(it) => Ok(it.into()),
             DefWithBody::InTypeConst(_) => Err(()),
+        }
+    }
+}
+
+impl From<GenericDef> for Definition {
+    fn from(def: GenericDef) -> Self {
+        match def {
+            GenericDef::Function(it) => it.into(),
+            GenericDef::Adt(it) => it.into(),
+            GenericDef::Trait(it) => it.into(),
+            GenericDef::TraitAlias(it) => it.into(),
+            GenericDef::TypeAlias(it) => it.into(),
+            GenericDef::Impl(it) => it.into(),
+            GenericDef::Const(it) => it.into(),
         }
     }
 }

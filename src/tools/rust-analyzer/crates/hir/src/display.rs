@@ -22,7 +22,7 @@ use itertools::Itertools;
 use crate::{
     Adt, AsAssocItem, AssocItem, AssocItemContainer, Const, ConstParam, Enum, ExternCrateDecl,
     Field, Function, GenericParam, HasCrate, HasVisibility, Impl, LifetimeParam, Macro, Module,
-    SelfParam, Static, Struct, Trait, TraitAlias, TupleField, TyBuilder, Type, TypeAlias,
+    SelfParam, Static, Struct, Trait, TraitAlias, TraitRef, TupleField, TyBuilder, Type, TypeAlias,
     TypeOrConstParam, TypeParam, Union, Variant,
 };
 
@@ -740,6 +740,12 @@ impl HirDisplay for Static {
         write!(f, "{}: ", data.name.display(f.db.upcast(), f.edition()))?;
         data.type_ref.hir_fmt(f, &data.types_map)?;
         Ok(())
+    }
+}
+
+impl HirDisplay for TraitRef {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
+        self.trait_ref.hir_fmt(f)
     }
 }
 
