@@ -922,13 +922,17 @@ impl<'a> Builder<'a> {
                 test::Incremental,
                 test::Debuginfo,
                 test::UiFullDeps,
-                test::CodegenCranelift,
-                test::CodegenGCC,
                 test::Rustdoc,
                 test::CoverageRunRustdoc,
                 test::Pretty,
                 test::Crate,
                 test::CrateLibrustc,
+                // The cranelift and gcc tests need to be listed after the
+                // compiler unit tests (CrateLibrustc) so that they don't
+                // hijack the whole `compiler` directory during path matching.
+                // <https://github.com/rust-lang/rust/pull/134919>
+                test::CodegenCranelift,
+                test::CodegenGCC,
                 test::CrateRustdoc,
                 test::CrateRustdocJsonTypes,
                 test::CrateBootstrap,
