@@ -402,10 +402,9 @@ impl Step for RustAnalyzer {
 macro_rules! tool_check_step {
     (
         $name:ident,
-        $path:literal,
-        $($alias:literal, )*
-        $source_type:path
-        $(, $default:literal )?
+        $path:literal
+        $(, alt_path: $alt_path:literal )*
+        $(, default: $default:literal )?
     ) => {
         #[derive(Debug, Clone, PartialEq, Eq, Hash)]
         pub struct $name {
@@ -415,11 +414,11 @@ macro_rules! tool_check_step {
         impl Step for $name {
             type Output = ();
             const ONLY_HOSTS: bool = true;
-            /// don't ever check out-of-tree tools by default, they'll fail when toolstate is broken
-            const DEFAULT: bool = matches!($source_type, SourceType::InTree) $( && $default )?;
+            /// Most of the tool-checks using this macro are run by default.
+            const DEFAULT: bool = true $( && $default )?;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                run.paths(&[ $path, $($alias),* ])
+                run.paths(&[ $path, $( $alt_path ),* ])
             }
 
             fn make_run(run: RunConfig<'_>) {
@@ -428,7 +427,7 @@ macro_rules! tool_check_step {
 
             fn run(self, builder: &Builder<'_>) {
                 let Self { target } = self;
-                run_tool_check_step(builder, target, stringify!($name), $path, $source_type);
+                run_tool_check_step(builder, target, stringify!($name), $path);
             }
         }
     }
@@ -440,7 +439,6 @@ fn run_tool_check_step(
     target: TargetSelection,
     step_type_name: &str,
     path: &str,
-    source_type: SourceType,
 ) {
     let display_name = path.rsplit('/').next().unwrap();
     let compiler = builder.compiler(builder.top_stage, builder.config.build);
@@ -454,7 +452,11 @@ fn run_tool_check_step(
         target,
         builder.kind,
         path,
-        source_type,
+        // Currently, all of the tools that use this macro/function are in-tree.
+        // If support for out-of-tree tools is re-added in the future, those
+        // steps should probably be marked non-default so that the default
+        // checks aren't affected by toolstate being broken.
+        SourceType::InTree,
         &[],
     );
 
@@ -472,23 +474,23 @@ fn run_tool_check_step(
     run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
 }
 
-tool_check_step!(Rustdoc, "src/tools/rustdoc", "src/librustdoc", SourceType::InTree);
+tool_check_step!(Rustdoc, "src/tools/rustdoc", alt_path: "src/librustdoc");
 // Clippy, miri and Rustfmt are hybrids. They are external tools, but use a git subtree instead
 // of a submodule. Since the SourceType only drives the deny-warnings
 // behavior, treat it as in-tree so that any new warnings in clippy will be
 // rejected.
-tool_check_step!(Clippy, "src/tools/clippy", SourceType::InTree);
-tool_check_step!(Miri, "src/tools/miri", SourceType::InTree);
-tool_check_step!(CargoMiri, "src/tools/miri/cargo-miri", SourceType::InTree);
-tool_check_step!(Rls, "src/tools/rls", SourceType::InTree);
-tool_check_step!(Rustfmt, "src/tools/rustfmt", SourceType::InTree);
-tool_check_step!(MiroptTestTools, "src/tools/miropt-test-tools", SourceType::InTree);
-tool_check_step!(TestFloatParse, "src/etc/test-float-parse", SourceType::InTree);
+tool_check_step!(Clippy, "src/tools/clippy");
+tool_check_step!(Miri, "src/tools/miri");
+tool_check_step!(CargoMiri, "src/tools/miri/cargo-miri");
+tool_check_step!(Rls, "src/tools/rls");
+tool_check_step!(Rustfmt, "src/tools/rustfmt");
+tool_check_step!(MiroptTestTools, "src/tools/miropt-test-tools");
+tool_check_step!(TestFloatParse, "src/etc/test-float-parse");
 
-tool_check_step!(Bootstrap, "src/bootstrap", SourceType::InTree, false);
+tool_check_step!(Bootstrap, "src/bootstrap", default: false);
 // Compiletest is implicitly "checked" when it gets built in order to run tests,
 // so this is mainly for people working on compiletest to run locally.
-tool_check_step!(Compiletest, "src/tools/compiletest", SourceType::InTree, false);
+tool_check_step!(Compiletest, "src/tools/compiletest", default: false);
 
 /// Cargo's output path for the standard library in a given stage, compiled
 /// by a particular compiler for the specified target.
