@@ -241,15 +241,15 @@ impl AngleBracketedArg {
     }
 }
 
-impl Into<P<GenericArgs>> for AngleBracketedArgs {
-    fn into(self) -> P<GenericArgs> {
-        P(GenericArgs::AngleBracketed(self))
+impl From<AngleBracketedArgs> for P<GenericArgs> {
+    fn from(val: AngleBracketedArgs) -> Self {
+        P(GenericArgs::AngleBracketed(val))
     }
 }
 
-impl Into<P<GenericArgs>> for ParenthesizedArgs {
-    fn into(self) -> P<GenericArgs> {
-        P(GenericArgs::Parenthesized(self))
+impl From<ParenthesizedArgs> for P<GenericArgs> {
+    fn from(val: ParenthesizedArgs) -> Self {
+        P(GenericArgs::Parenthesized(val))
     }
 }
 

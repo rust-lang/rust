@@ -303,9 +303,9 @@ pub(crate) struct RawDefId {
     index: u32,
 }
 
-impl Into<RawDefId> for DefId {
-    fn into(self) -> RawDefId {
-        RawDefId { krate: self.krate.as_u32(), index: self.index.as_u32() }
+impl From<DefId> for RawDefId {
+    fn from(val: DefId) -> Self {
+        RawDefId { krate: val.krate.as_u32(), index: val.index.as_u32() }
     }
 }
 
