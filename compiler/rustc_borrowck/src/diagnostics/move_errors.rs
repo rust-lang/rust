@@ -1,9 +1,10 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
 
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{CaptureBy, ExprKind, HirId, Node};
+use rustc_hir::{self as hir, CaptureBy, ExprKind, HirId, Node};
 use rustc_middle::bug;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty};
@@ -683,48 +684,126 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     }
 
     fn add_move_error_suggestions(&self, err: &mut Diag<'_>, binds_to: &[Local]) {
-        let mut suggestions: Vec<(Span, String, String)> = Vec::new();
+        /// A HIR visitor to associate each binding with a `&` or `&mut` that could be removed to
+        /// make it bind by reference instead (if possible)
+        struct BindingFinder<'tcx> {
+            typeck_results: &'tcx ty::TypeckResults<'tcx>,
+            hir: rustc_middle::hir::map::Map<'tcx>,
+            /// Input: the span of the pattern we're finding bindings in
+            pat_span: Span,
+            /// Input: the spans of the bindings we're providing suggestions for
+            binding_spans: Vec<Span>,
+            /// Internal state: have we reached the pattern we're finding bindings in?
+            found_pat: bool,
+            /// Internal state: the innermost `&` or `&mut` "above" the visitor
+            ref_pat: Option<&'tcx hir::Pat<'tcx>>,
+            /// Internal state: could removing a `&` give bindings unexpected types?
+            has_adjustments: bool,
+            /// Output: for each input binding, the `&` or `&mut` to remove to make it by-ref
+            ref_pat_for_binding: Vec<(Span, Option<&'tcx hir::Pat<'tcx>>)>,
+            /// Output: ref patterns that can't be removed straightforwardly
+            cannot_remove: FxHashSet<HirId>,
+        }
+        impl<'tcx> Visitor<'tcx> for BindingFinder<'tcx> {
+            type NestedFilter = rustc_middle::hir::nested_filter::OnlyBodies;
+
+            fn nested_visit_map(&mut self) -> Self::Map {
+                self.hir
+            }
+
+            fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) -> Self::Result {
+                // Don't walk into const patterns or anything else that might confuse this
+                if !self.found_pat {
+                    hir::intravisit::walk_expr(self, ex)
+                }
+            }
+
+            fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) {
+                if p.span == self.pat_span {
+                    self.found_pat = true;
+                }
+
+                let parent_has_adjustments = self.has_adjustments;
+                self.has_adjustments |=
+                    self.typeck_results.pat_adjustments().contains_key(p.hir_id);
+
+                // Track the innermost `&` or `&mut` enclosing bindings, to suggest removing it.
+                let parent_ref_pat = self.ref_pat;
+                if let hir::PatKind::Ref(..) = p.kind {
+                    self.ref_pat = Some(p);
+                    // To avoid edition-dependent logic to figure out how many refs this `&` can
+                    // peel off, simply don't remove the "parent" `&`.
+                    self.cannot_remove.extend(parent_ref_pat.map(|r| r.hir_id));
+                    if self.has_adjustments {
+                        // Removing this `&` could give child bindings unexpected types, so don't.
+                        self.cannot_remove.insert(p.hir_id);
+                        // As long the `&` stays, child patterns' types should be as expected.
+                        self.has_adjustments = false;
+                    }
+                }
+
+                if let hir::PatKind::Binding(_, _, ident, _) = p.kind {
+                    // the spans in `binding_spans` encompass both the ident and binding mode
+                    if let Some(&bind_sp) =
+                        self.binding_spans.iter().find(|bind_sp| bind_sp.contains(ident.span))
+                    {
+                        self.ref_pat_for_binding.push((bind_sp, self.ref_pat));
+                    } else {
+                        // we've encountered a binding that we're not reporting a move error for.
+                        // we don't want to change its type, so don't remove the surrounding `&`.
+                        if let Some(ref_pat) = self.ref_pat {
+                            self.cannot_remove.insert(ref_pat.hir_id);
+                        }
+                    }
+                }
+
+                hir::intravisit::walk_pat(self, p);
+                self.ref_pat = parent_ref_pat;
+                self.has_adjustments = parent_has_adjustments;
+            }
+        }
+        let mut pat_span = None;
+        let mut binding_spans = Vec::new();
         for local in binds_to {
             let bind_to = &self.body.local_decls[*local];
-            if let LocalInfo::User(BindingForm::Var(VarBindingForm { pat_span, .. })) =
+            if let LocalInfo::User(BindingForm::Var(VarBindingForm { pat_span: pat_sp, .. })) =
                 *bind_to.local_info()
             {
-                let Ok(pat_snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(pat_span)
-                else {
-                    continue;
-                };
-                let Some(stripped) = pat_snippet.strip_prefix('&') else {
-                    suggestions.push((
-                        bind_to.source_info.span.shrink_to_lo(),
-                        "consider borrowing the pattern binding".to_string(),
-                        "ref ".to_string(),
-                    ));
-                    continue;
-                };
-                let inner_pat_snippet = stripped.trim_start();
-                let (pat_span, suggestion, to_remove) = if inner_pat_snippet.starts_with("mut")
-                    && inner_pat_snippet["mut".len()..].starts_with(rustc_lexer::is_whitespace)
-                {
-                    let inner_pat_snippet = inner_pat_snippet["mut".len()..].trim_start();
-                    let pat_span = pat_span.with_hi(
-                        pat_span.lo()
-                            + BytePos((pat_snippet.len() - inner_pat_snippet.len()) as u32),
-                    );
-                    (pat_span, String::new(), "mutable borrow")
-                } else {
-                    let pat_span = pat_span.with_hi(
-                        pat_span.lo()
-                            + BytePos(
-                                (pat_snippet.len() - inner_pat_snippet.trim_start().len()) as u32,
-                            ),
-                    );
-                    (pat_span, String::new(), "borrow")
-                };
-                suggestions.push((
-                    pat_span,
-                    format!("consider removing the {to_remove}"),
-                    suggestion,
-                ));
+                pat_span = Some(pat_sp);
+                binding_spans.push(bind_to.source_info.span);
+            }
+        }
+        let Some(pat_span) = pat_span else { return };
+
+        let hir = self.infcx.tcx.hir();
+        let Some(body) = hir.maybe_body_owned_by(self.mir_def_id()) else { return };
+        let typeck_results = self.infcx.tcx.typeck(self.mir_def_id());
+        let mut finder = BindingFinder {
+            typeck_results,
+            hir,
+            pat_span,
+            binding_spans,
+            found_pat: false,
+            ref_pat: None,
+            has_adjustments: false,
+            ref_pat_for_binding: Vec::new(),
+            cannot_remove: FxHashSet::default(),
+        };
+        finder.visit_body(body);
+
+        let mut suggestions = Vec::new();
+        for (binding_span, opt_ref_pat) in finder.ref_pat_for_binding {
+            if let Some(ref_pat) = opt_ref_pat
+                && !finder.cannot_remove.contains(&ref_pat.hir_id)
+                && let hir::PatKind::Ref(subpat, mutbl) = ref_pat.kind
+                && let Some(ref_span) = ref_pat.span.trim_end(subpat.span)
+            {
+                let mutable_str = if mutbl.is_mut() { "mutable " } else { "" };
+                let msg = format!("consider removing the {mutable_str}borrow");
+                suggestions.push((ref_span, msg, "".to_string()));
+            } else {
+                let msg = "consider borrowing the pattern binding".to_string();
+                suggestions.push((binding_span.shrink_to_lo(), msg, "ref ".to_string()));
             }
         }
         suggestions.sort_unstable_by_key(|&(span, _, _)| span);
