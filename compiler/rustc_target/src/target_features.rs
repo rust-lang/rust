@@ -5,7 +5,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_span::{Symbol, sym};
 
-use crate::spec::Target;
+use crate::spec::{FloatAbi, Target};
 
 /// Features that control behaviour of rustc, rather than the codegen.
 /// These exist globally and are not in the target-specific lists below.
@@ -148,7 +148,6 @@ const ARM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("neon", Unstable(sym::arm_target_feature), &["vfp3"]),
     ("rclass", Unstable(sym::arm_target_feature), &[]),
     ("sha2", Unstable(sym::arm_target_feature), &["neon"]),
-    ("soft-float", Stability::Forbidden { reason: "unsound because it changes float ABI" }, &[]),
     // This is needed for inline assembly, but shouldn't be stabilized as-is
     // since it should be enabled per-function using #[instruction_set], not
     // #[target_feature].
@@ -204,6 +203,7 @@ const AARCH64_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("flagm", Stable, &[]),
     // FEAT_FLAGM2
     ("flagm2", Unstable(sym::aarch64_unstable_target_feature), &[]),
+    // We forbid directly toggling just `fp-armv8`; it must be toggled with `neon`.
     ("fp-armv8", Stability::Forbidden { reason: "Rust ties `fp-armv8` to `neon`" }, &[]),
     // FEAT_FP16
     // Rust ties FP and Neon: https://github.com/rust-lang/rust/pull/91608
@@ -758,6 +758,7 @@ impl Target {
         match &*self.arch {
             "x86" => {
                 // We support 2 ABIs, hardfloat (default) and softfloat.
+                // x86 has no sane ABI indicator so we have to use the target feature.
                 if self.has_feature("soft-float") {
                     NOTHING
                 } else {
@@ -767,6 +768,7 @@ impl Target {
             }
             "x86_64" => {
                 // We support 2 ABIs, hardfloat (default) and softfloat.
+                // x86 has no sane ABI indicator so we have to use the target feature.
                 if self.has_feature("soft-float") {
                     NOTHING
                 } else {
@@ -775,20 +777,27 @@ impl Target {
                 }
             }
             "arm" => {
-                // We support 2 ABIs, hardfloat (default) and softfloat.
-                if self.has_feature("soft-float") {
-                    NOTHING
-                } else {
-                    // Hardfloat ABI. x87 must be enabled.
-                    (&["fpregs"], &[])
+                // On ARM, ABI handling is reasonably sane; we use `llvm_floatabi` to indicate
+                // to LLVM which ABI we are going for.
+                match self.llvm_floatabi.unwrap() {
+                    FloatAbi::Soft => {
+                        // Nothing special required, will use soft-float ABI throughout.
+                        NOTHING
+                    }
+                    FloatAbi::Hard => {
+                        // Must have `fpregs` and must not have `soft-float`.
+                        (&["fpregs"], &["soft-float"])
+                    }
                 }
             }
             "aarch64" | "arm64ec" => {
+                // Aarch64 has no sane ABI specifier, and LLVM doesn't even have a way to force
+                // the use of soft-float, so all we can do here is some crude hacks.
                 match &*self.abi {
                     "softfloat" => {
                         // This is not fully correct, LLVM actually doesn't let us enforce the softfloat
                         // ABI properly... see <https://github.com/rust-lang/rust/issues/134375>.
-                        // FIXME: should be forbid "neon" here? But that would be a breaking change.
+                        // FIXME: should we forbid "neon" here? But that would be a breaking change.
                         NOTHING
                     }
                     _ => {
@@ -799,6 +808,8 @@ impl Target {
                 }
             }
             "riscv32" | "riscv64" => {
+                // RISC-V handles ABI in a very sane way, being fully explicit via `llvm_abiname`
+                // about what the intended ABI is.
                 match &*self.llvm_abiname {
                     "ilp32d" | "lp64d" => {
                         // Requires d (which implies f), incompatible with e.
