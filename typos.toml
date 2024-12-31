@@ -66,4 +66,5 @@ extend-ignore-re = [
     "\\.arg\\(\"Oh no, a tpyo!\"\\)",
     # string used in benches
     "\"core::iter::adapters::Copie\"",
+    "-Ccontrol-flow-guard",
 ]
