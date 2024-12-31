@@ -7,10 +7,12 @@ LL |     let object2 = Object;
 LL |     object = object2;
    |              ^^^^^^^ expected `&Object`, found `Object`
    |
-help: consider borrowing here
+help: you might have meant to mutate the pointed at value being passed in, instead of changing the reference in the local binding
    |
-LL |     object = &object2;
-   |              +
+LL ~ fn change_object(object: &mut Object) {
+LL |     let object2 = Object;
+LL ~     *object = object2;
+   |
 
 error: value assigned to `object` is never read
   --> $DIR/mut-arg-of-borrowed-type-meant-to-be-arg-of-mut-borrow.rs:11:5
