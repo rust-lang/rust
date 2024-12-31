@@ -1739,8 +1739,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         trait_ref: ty::TraitRef<'tcx>,
     ) -> traits::SelectionResult<'tcx, traits::Selection<'tcx>> {
-        let cause = traits::ObligationCause::misc(self.span, self.body_id);
-        let obligation = traits::Obligation::new(self.tcx, cause, self.param_env, trait_ref);
+        let obligation =
+            traits::Obligation::new(self.tcx, self.misc(self.span), self.param_env, trait_ref);
         traits::SelectionContext::new(self).select(&obligation)
     }
 
@@ -1841,7 +1841,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                                 self.scope_expr_id,
                                 idx,
                             );
-                            ObligationCause::new(self.span, self.body_id, code)
+                            self.cause(self.span, code)
                         },
                         self.param_env,
                         impl_bounds,
