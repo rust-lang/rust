@@ -1362,12 +1362,10 @@ fn add_target_crate_root(
     let mut env = cargo.env().clone();
     inject_cargo_package_env(&mut env, pkg);
     inject_cargo_env(&mut env);
-    inject_rustc_tool_env(&mut env, cargo, cargo_name, kind);
+    inject_rustc_tool_env(&mut env, cargo_name, kind);
 
     if let Some(envs) = build_data.map(|(it, _)| &it.envs) {
-        for (k, v) in envs {
-            env.set(k, v.clone());
-        }
+        env.extend_from_other(envs);
     }
     let crate_id = crate_graph.add_crate_root(
         file_id,
