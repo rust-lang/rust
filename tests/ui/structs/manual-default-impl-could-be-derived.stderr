@@ -31,7 +31,10 @@ LL | |             y: 0,
 LL | | }
    | |_^
    |
-   = help: to avoid divergence in behavior between `Struct { .. }` and `<Struct as Default>::default()`, derive the `Default`
+help: to avoid divergence in behavior between `Struct { .. }` and `<Struct as Default>::default()`, derive the `Default`
+   |
+LL ~ #[derive(Default)] struct B {
+   |
 
 error: `Default` impl doesn't use the declared default field values
   --> $DIR/manual-default-impl-could-be-derived.rs:43:1
