@@ -70,7 +70,7 @@ TODO: write about _how_ these regions are computed.
 
 [`UniversalRegions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/universal_regions/struct.UniversalRegions.html
 
-<a name="region-variables"></a>
+<a id="region-variables"></a>
 
 ## Region variables
 

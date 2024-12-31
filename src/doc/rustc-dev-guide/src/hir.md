@@ -74,7 +74,7 @@ the compiler a chance to observe that you accessed the data for
 
 [`&rustc_hir::Item`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Item.html
 
-<a name="hir-id"></a>
+<a id="hir-id"></a>
 
 ## Identifiers in the HIR
 

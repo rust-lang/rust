@@ -3,7 +3,7 @@ chapter covers [formatting](#formatting), [coding for correctness](#cc),
 [using crates from crates.io](#cio), and some tips on
 [structuring your PR for easy review](#er).
 
-<a name="formatting"></a>
+<a id="formatting"></a>
 
 # Formatting and the tidy script
 
@@ -40,7 +40,7 @@ When modifying that code, use this command to format it:
 This uses a pinned version of `clang-format`, to avoid relying on the local
 environment.
 
-<a name="copyright"></a>
+<a id="copyright"></a>
 
 <!-- REUSE-IgnoreStart -->
 <!-- Prevent REUSE from interpreting the heading as a copyright notice -->
@@ -71,7 +71,7 @@ that case, you can add a comment towards the top of the file like so:
 
 Prefer 4-space indent.
 
-<a name="cc"></a>
+<a id="cc"></a>
 
 # Coding for correctness
 
@@ -113,13 +113,13 @@ if foo {
 }
 ```
 
-<a name="cio"></a>
+<a id="cio"></a>
 
 # Using crates from crates.io
 
 See the [crates.io dependencies][crates] section.
 
-<a name="er"></a>
+<a id="er"></a>
 
 # How to structure your PR
 

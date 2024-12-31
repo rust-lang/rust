@@ -47,7 +47,7 @@ In terms of code, these types are defined in
 [traits_mod]: https://github.com/rust-lang/rust/blob/master/compiler/rustc_middle/src/traits/mod.rs
 [chalk_ir]: https://github.com/rust-lang/chalk/blob/master/chalk-ir/src/lib.rs
 
-<a name="domain-goals"></a>
+<a id="domain-goals"></a>
 
 ## Domain goals
 
@@ -63,7 +63,7 @@ forall<K1, ..., Kn> { DomainGoal :- Goal }
 hence domain goals are in fact clauses' LHS. That is, at the most granular level,
 domain goals are what the trait solver will end up trying to prove.
 
-<a name="trait-ref"></a>
+<a id="trait-ref"></a>
 
 To define the set of domain goals in our system, we need to first
 introduce a few simple formulations. A **trait reference** consists of
@@ -78,7 +78,7 @@ IntoIterator`. Note that Rust surface syntax also permits some extra
 things, like associated type bindings (`Vec<T>: IntoIterator<Item =
 T>`), that are not part of a trait reference.
 
-<a name="projection"></a>
+<a id="projection"></a>
 
 A **projection** consists of an associated item reference along with
 its inputs P0..Pm:
@@ -205,7 +205,7 @@ e.g. `Outlives(&'a str: 'b)`, `Outlives('a: 'static)`
 
 True if the given type or region on the left outlives the right-hand region.
 
-<a name="coinductive"></a>
+<a id="coinductive"></a>
 
 ## Coinductive goals
 

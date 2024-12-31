@@ -227,7 +227,7 @@ that we use for unstable features:
 Ideally, breaking changes should have landed on the **stable branch** of the
 compiler before they are finalized.
 
-<a name="guide">
+<a id="guide">
 
 ### Removing a lint
 

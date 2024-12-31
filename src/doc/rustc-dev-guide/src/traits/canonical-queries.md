@@ -95,7 +95,7 @@ Rc<?T>: Clone
 
 After all, `Rc<?T>` is true **no matter what type `?T` is**.
 
-<a name="query-response"></a>
+<a id="query-response"></a>
 
 ## A trait query in rustc
 

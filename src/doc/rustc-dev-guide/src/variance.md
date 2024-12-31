@@ -143,7 +143,7 @@ will wind up being considered green after it is re-evaluated.
 
 [rga]: ./queries/incremental-compilation.html
 
-<a name="addendum"></a>
+<a id="addendum"></a>
 
 ## Addendum: Variance on traits
 

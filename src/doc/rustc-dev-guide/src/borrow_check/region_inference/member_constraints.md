@@ -171,7 +171,7 @@ This choice is consistent with the general 'flow' of region
 propagation, which always aims to compute a minimal value for the
 region being inferred. However, it is somewhat arbitrary.
 
-<a name="collecting"></a>
+<a id="collecting"></a>
 
 ### Collecting upper bounds in the implementation
 

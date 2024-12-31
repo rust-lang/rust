@@ -4,7 +4,7 @@ This section covers a numbers of common compiler terms that arise in
 this guide. We try to give the general definition while providing some
 Rust-specific context.
 
-<a name="cfg"></a>
+<a id="cfg"></a>
 
 ## What is a control-flow graph?
 
@@ -100,7 +100,7 @@ When using a control-flow graph, a loop simply appears as a cycle in
 the graph, and the `break` keyword translates into a path out of that
 cycle.
 
-<a name="dataflow"></a>
+<a id="dataflow"></a>
 
 ## What is a dataflow analysis?
 
@@ -186,7 +186,7 @@ useful. For example, rather than starting from block (A) and moving forwards,
 we might have started with the usage of `x` and moved backwards to try to find
 its initialization.
 
-<a name="quantified"></a>
+<a id="quantified"></a>
 
 ## What is "universally quantified"? What about "existentially quantified"?
 
@@ -233,7 +233,7 @@ fn foo(_: dyn Debug)
 This function claims that there exists some type `T` that implements `Debug`
 such that the function is well-typed: `∃ T:  (T: Debug) and well_typed(foo)`.
 
-<a name="variance"></a>
+<a id="variance"></a>
 
 ## What is a de Bruijn Index?
 
@@ -268,7 +268,7 @@ Check out the subtyping chapter from the
 See the [variance](../variance.html) chapter of this guide for more info on how
 the type checker handles variance.
 
-<a name="free-vs-bound"></a>
+<a id="free-vs-bound"></a>
 
 ## What is a "free region" or a "free variable"? What about "bound region"?
 

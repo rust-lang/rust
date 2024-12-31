@@ -92,7 +92,7 @@ Try-mark-green works as follows:
     - Otherwise, **all** of the nodes in `reads(Q)` must be **green**. In that
       case, we can color Q as **green** and return.
 
-<a name="dag"></a>
+<a id="dag"></a>
 
 ### The query DAG
 

@@ -325,7 +325,7 @@ As a consequence, all decoding of `ValTree` must happen by matching on the type 
 decisions depending on that. The value itself gives no useful information without the type that
 belongs to it.
 
-<a name="promoted"></a>
+<a id="promoted"></a>
 
 ### Promoted constants
 

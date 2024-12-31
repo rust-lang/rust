@@ -43,7 +43,7 @@ particularly those of **middle priority**:
   can accumulate over time, and the role of the notification group is
   to try and stop that from happening!
 
-<a name="join"></a>
+<a id="join"></a>
 
 ## Joining a notification group
 

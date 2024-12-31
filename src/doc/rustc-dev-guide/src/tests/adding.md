@@ -180,7 +180,7 @@ if the new output makes sense.
 
 You may also need to re-bless the output with the `--bless` flag.
 
-<a name="explanatory_comment"></a>
+<a id="explanatory_comment"></a>
 
 ## Comment explaining what the test is about
 
