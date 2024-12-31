@@ -402,7 +402,6 @@ impl Step for RustAnalyzer {
 macro_rules! tool_check_step {
     (
         $name:ident,
-        $display_name:literal,
         $path:literal,
         $($alias:literal, )*
         $source_type:path
@@ -429,7 +428,7 @@ macro_rules! tool_check_step {
 
             fn run(self, builder: &Builder<'_>) {
                 let Self { target } = self;
-                run_tool_check_step(builder, target, stringify!($name), $display_name, $path, $source_type);
+                run_tool_check_step(builder, target, stringify!($name), $path, $source_type);
             }
         }
     }
@@ -440,10 +439,10 @@ fn run_tool_check_step(
     builder: &Builder<'_>,
     target: TargetSelection,
     step_type_name: &str,
-    display_name: &str,
     path: &str,
     source_type: SourceType,
 ) {
+    let display_name = path.rsplit('/').next().unwrap();
     let compiler = builder.compiler(builder.top_stage, builder.config.build);
 
     builder.ensure(Rustc::new(target, builder));
@@ -473,33 +472,23 @@ fn run_tool_check_step(
     run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
 }
 
-tool_check_step!(Rustdoc, "rustdoc", "src/tools/rustdoc", "src/librustdoc", SourceType::InTree);
+tool_check_step!(Rustdoc, "src/tools/rustdoc", "src/librustdoc", SourceType::InTree);
 // Clippy, miri and Rustfmt are hybrids. They are external tools, but use a git subtree instead
 // of a submodule. Since the SourceType only drives the deny-warnings
 // behavior, treat it as in-tree so that any new warnings in clippy will be
 // rejected.
-tool_check_step!(Clippy, "clippy", "src/tools/clippy", SourceType::InTree);
-tool_check_step!(Miri, "miri", "src/tools/miri", SourceType::InTree);
-tool_check_step!(CargoMiri, "cargo-miri", "src/tools/miri/cargo-miri", SourceType::InTree);
-tool_check_step!(Rls, "rls", "src/tools/rls", SourceType::InTree);
-tool_check_step!(Rustfmt, "rustfmt", "src/tools/rustfmt", SourceType::InTree);
-tool_check_step!(
-    MiroptTestTools,
-    "miropt-test-tools",
-    "src/tools/miropt-test-tools",
-    SourceType::InTree
-);
-tool_check_step!(
-    TestFloatParse,
-    "test-float-parse",
-    "src/etc/test-float-parse",
-    SourceType::InTree
-);
+tool_check_step!(Clippy, "src/tools/clippy", SourceType::InTree);
+tool_check_step!(Miri, "src/tools/miri", SourceType::InTree);
+tool_check_step!(CargoMiri, "src/tools/miri/cargo-miri", SourceType::InTree);
+tool_check_step!(Rls, "src/tools/rls", SourceType::InTree);
+tool_check_step!(Rustfmt, "src/tools/rustfmt", SourceType::InTree);
+tool_check_step!(MiroptTestTools, "src/tools/miropt-test-tools", SourceType::InTree);
+tool_check_step!(TestFloatParse, "src/etc/test-float-parse", SourceType::InTree);
 
-tool_check_step!(Bootstrap, "bootstrap", "src/bootstrap", SourceType::InTree, false);
+tool_check_step!(Bootstrap, "src/bootstrap", SourceType::InTree, false);
 // Compiletest is implicitly "checked" when it gets built in order to run tests,
 // so this is mainly for people working on compiletest to run locally.
-tool_check_step!(Compiletest, "compiletest", "src/tools/compiletest", SourceType::InTree, false);
+tool_check_step!(Compiletest, "src/tools/compiletest", SourceType::InTree, false);
 
 /// Cargo's output path for the standard library in a given stage, compiled
 /// by a particular compiler for the specified target.
