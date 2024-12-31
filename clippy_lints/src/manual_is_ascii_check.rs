@@ -123,18 +123,15 @@ impl<'tcx> LateLintPass<'tcx> for ManualIsAsciiCheck {
     extract_msrv_attr!(LateContext);
 }
 
-fn get_ty_sugg(cx: &LateContext<'_>, arg: &Expr<'_>, bound_expr: &Expr<'_>) -> Option<(Span, &'static str)> {
-    if let ExprKind::Lit(lit) = bound_expr.kind
+fn get_ty_sugg(cx: &LateContext<'_>, arg: &Expr<'_>, bound_expr: &Expr<'_>) -> Option<(Span, String)> {
+    if let ExprKind::Lit(_) = bound_expr.kind
         && let local_hid = path_to_local(arg)?
         && let Node::Param(Param { ty_span, span, .. }) = cx.tcx.parent_hir_node(local_hid)
         // `ty_span` and `span` are the same for inferred type, thus a type suggestion must be given
         && ty_span == span
     {
-        let ty_str = match lit.node {
-            Char(_) => "char",
-            Byte(_) => "u8",
-            _ => return None,
-        };
+        let arg_type = cx.typeck_results().expr_ty(arg);
+        let ty_str = arg_type.to_string();
         return Some((*ty_span, ty_str));
     }
     None
@@ -145,7 +142,7 @@ fn check_is_ascii(
     span: Span,
     recv: &Expr<'_>,
     range: &CharRange,
-    ty_sugg: Option<(Span, &'_ str)>,
+    ty_sugg: Option<(Span, String)>,
 ) {
     let sugg = match range {
         CharRange::UpperChar => "is_ascii_uppercase",
