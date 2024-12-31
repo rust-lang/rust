@@ -14,7 +14,7 @@ LL |     map["peter"] = "0".to_string();
    |     ^^^^^^^^^^^^ cannot assign
    |
    = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `HashMap<&str, String>`
-help: to modify a `HashMap<&str, String>`, use `.get_mut()`, `.insert()` or the entry API
+help: use `.insert()` to insert a value into a `HashMap<&str, String>`, `.get_mut()` to modify it, or the entry API for more flexibility
    |
 LL |     map.insert("peter", "0".to_string());
    |        ~~~~~~~~       ~                +
