@@ -624,7 +624,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         self.suggested = true;
                     } else if let hir::ExprKind::MethodCall(_path, receiver, _, sp) = expr.kind
                         && let hir::ExprKind::Index(val, index, _) = receiver.kind
-                        && expr.span == self.assign_span
+                        && receiver.span == self.assign_span
                     {
                         // val[index].path(args..);
                         self.err.multipart_suggestion(
@@ -639,7 +639,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                     index.span.shrink_to_hi().with_hi(receiver.span.hi()),
                                     ") { val".to_string(),
                                 ),
-                                (sp.shrink_to_hi(), "); }".to_string()),
+                                (sp.shrink_to_hi(), "; }".to_string()),
                             ],
                             Applicability::MachineApplicable,
                         );
