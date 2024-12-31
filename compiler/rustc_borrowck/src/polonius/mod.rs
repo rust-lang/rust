@@ -98,7 +98,7 @@ impl PoloniusContext {
     pub(crate) fn compute_loan_liveness<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
-        regioncx: &RegionInferenceContext<'tcx>,
+        regioncx: &mut RegionInferenceContext<'tcx>,
         body: &Body<'tcx>,
         borrow_set: &BorrowSet<'tcx>,
     ) -> LocalizedOutlivesConstraintSet {
@@ -126,15 +126,14 @@ impl PoloniusContext {
 
         // Now that we have a complete graph, we can compute reachability to trace the liveness of
         // loans for the next step in the chain, the NLL loan scope and active loans computations.
-        let _live_loans = compute_loan_liveness(
+        let live_loans = compute_loan_liveness(
             tcx,
             body,
             regioncx.liveness_constraints(),
             borrow_set,
             &localized_outlives_constraints,
         );
-        // FIXME: record the live loans in the regioncx's liveness constraints, where the
-        // location-insensitive variant's data is stored.
+        regioncx.record_live_loans(live_loans);
 
         localized_outlives_constraints
     }
