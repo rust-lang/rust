@@ -1451,13 +1451,7 @@ impl DefCollector<'_> {
         depth: usize,
         container: ItemContainerId,
     ) {
-        let recursion_limit = self.def_map.recursion_limit() as usize;
-        let recursion_limit = Limit::new(if cfg!(test) {
-            // Without this, `body::tests::your_stack_belongs_to_me` stack-overflows in debug
-            std::cmp::min(32, recursion_limit)
-        } else {
-            recursion_limit
-        });
+        let recursion_limit = Limit::new(self.def_map.recursion_limit() as usize);
         if recursion_limit.check(depth).is_err() {
             cov_mark::hit!(macro_expansion_overflow);
             tracing::warn!("macro expansion is too deep");
