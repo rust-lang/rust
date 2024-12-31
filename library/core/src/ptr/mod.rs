@@ -1403,8 +1403,6 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 /// whether `T` is [`Copy`]. If `T` is not [`Copy`], using both the returned
 /// value and the value at `*src` can [violate memory safety][read-ownership].
 ///
-/// Note that even if `T` has size `0`, the pointer must be non-null.
-///
 /// [read-ownership]: read#ownership-of-the-returned-value
 /// [valid]: self#safety
 ///
@@ -1610,8 +1608,6 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 /// Behavior is undefined if any of the following conditions are violated:
 ///
 /// * `dst` must be [valid] for writes.
-///
-/// Note that even if `T` has size `0`, the pointer must be non-null.
 ///
 /// [valid]: self#safety
 ///
