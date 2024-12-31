@@ -538,23 +538,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
 
                     ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(predicate)) => {
-                        // FIXME(const_trait_impl): We should recompute the predicate with `~const`
-                        // if it's `const`, and if it holds, explain that this bound only
-                        // *conditionally* holds. If that fails, we should also do selection
-                        // to drill this down to an impl or built-in source, so we can
-                        // point at it and explain that while the trait *is* implemented,
-                        // that implementation is not const.
-                        let err_msg = self.get_standard_error_message(
-                            bound_predicate.rebind(ty::TraitPredicate {
-                                trait_ref: predicate.trait_ref,
-                                polarity: ty::PredicatePolarity::Positive,
-                            }),
-                            None,
-                            Some(predicate.constness),
-                            None,
-                            String::new(),
-                        );
-                        struct_span_code_err!(self.dcx(), span, E0277, "{}", err_msg)
+                        self.report_host_effect_error(bound_predicate.rebind(predicate), obligation.param_env, span)
                     }
 
                     ty::PredicateKind::Subtype(predicate) => {
@@ -761,6 +745,41 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
 
         applied_do_not_recommend
+    }
+
+    fn report_host_effect_error(
+        &self,
+        predicate: ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>,
+        param_env: ty::ParamEnv<'tcx>,
+        span: Span,
+    ) -> Diag<'a> {
+        // FIXME(const_trait_impl): We should recompute the predicate with `~const`
+        // if it's `const`, and if it holds, explain that this bound only
+        // *conditionally* holds. If that fails, we should also do selection
+        // to drill this down to an impl or built-in source, so we can
+        // point at it and explain that while the trait *is* implemented,
+        // that implementation is not const.
+        let trait_ref = predicate.map_bound(|predicate| ty::TraitPredicate {
+            trait_ref: predicate.trait_ref,
+            polarity: ty::PredicatePolarity::Positive,
+        });
+        let err_msg = self.get_standard_error_message(
+            trait_ref,
+            None,
+            Some(predicate.constness()),
+            None,
+            String::new(),
+        );
+        let mut diag = struct_span_code_err!(self.dcx(), span, E0277, "{}", err_msg);
+        if !self.predicate_may_hold(&Obligation::new(
+            self.tcx,
+            ObligationCause::dummy(),
+            param_env,
+            trait_ref,
+        )) {
+            diag.downgrade_to_delayed_bug();
+        }
+        diag
     }
 
     fn emit_specialized_closure_kind_error(
