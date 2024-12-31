@@ -26,11 +26,9 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
         // Overrides that apply to either basis
         // FMA is expected to be infinite precision.
         (_, Id::Fma | Id::Fmaf) => 0,
-        (_, Id::J0 | Id::J0f | Id::J1 | Id::J1f) => {
-            // Results seem very target-dependent
-            if cfg!(target_arch = "x86_64") { 4000 } else { 800_000 }
-        }
-        (_, Id::Jn | Id::Jnf) => 1000,
+        (_, Id::J0 | Id::J0f | Id::J1 | Id::J1f | Id::Y0 | Id::Y0f | Id::Y1 | Id::Y1f) => 800_000,
+        (_, Id::Jn | Id::Jnf | Id::Yn | Id::Ynf) => 1000,
+        (_, Id::Erfc | Id::Erfcf) => 4,
 
         // Overrides for musl
         #[cfg(x86_no_sse)]
@@ -297,7 +295,7 @@ impl MaybeOverride<(i32, f32)> for SpecialCase {
             (Musl, _) => bessel_prec_dropoff(input, ulp, ctx),
 
             // We return +0.0, MPFR returns -0.0
-            (Mpfr, BaseName::Jn)
+            (Mpfr, BaseName::Jn | BaseName::Yn)
                 if input.1 == f32::NEG_INFINITY && actual == F::ZERO && expected == F::ZERO =>
             {
                 XFAIL
@@ -319,7 +317,7 @@ impl MaybeOverride<(i32, f64)> for SpecialCase {
             (Musl, _) => bessel_prec_dropoff(input, ulp, ctx),
 
             // We return +0.0, MPFR returns -0.0
-            (Mpfr, BaseName::Jn)
+            (Mpfr, BaseName::Jn | BaseName::Yn)
                 if input.1 == f64::NEG_INFINITY && actual == F::ZERO && expected == F::ZERO =>
             {
                 XFAIL
@@ -336,7 +334,7 @@ fn bessel_prec_dropoff<F: Float>(
     ulp: &mut u32,
     ctx: &CheckCtx,
 ) -> Option<TestResult> {
-    if ctx.base_name == BaseName::Jn {
+    if ctx.base_name == BaseName::Jn || ctx.base_name == BaseName::Yn {
         if input.0 > 4000 {
             return XFAIL;
         } else if input.0 > 2000 {

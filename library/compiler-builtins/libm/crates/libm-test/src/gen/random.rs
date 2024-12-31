@@ -110,6 +110,10 @@ pub fn get_test_cases<RustArgs>(ctx: &CheckCtx) -> impl Iterator<Item = RustArgs
 where
     CachedInput: GenerateInput<RustArgs>,
 {
-    let inputs = if ctx.base_name == BaseName::Jn { &TEST_CASES_JN } else { &TEST_CASES };
+    let inputs = if ctx.base_name == BaseName::Jn || ctx.base_name == BaseName::Yn {
+        &TEST_CASES_JN
+    } else {
+        &TEST_CASES
+    };
     inputs.get_cases()
 }
