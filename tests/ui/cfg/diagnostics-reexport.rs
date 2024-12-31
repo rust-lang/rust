@@ -1,7 +1,7 @@
 pub mod inner {
-    #[cfg(false)] //~ NOTE the item is gated here
+    #[cfg(false)]
     mod gone {
-        pub fn uwu() {} //~ NOTE found an item that was configured out
+        pub fn uwu() {}
     }
 
     #[cfg(false)] //~ NOTE the item is gated here

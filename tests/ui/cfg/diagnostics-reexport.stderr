@@ -51,16 +51,6 @@ LL |     inner::uwu();
    |            ^^^ not found in `inner`
    |
 note: found an item that was configured out
-  --> $DIR/diagnostics-reexport.rs:4:16
-   |
-LL |         pub fn uwu() {}
-   |                ^^^
-note: the item is gated here
-  --> $DIR/diagnostics-reexport.rs:2:11
-   |
-LL |     #[cfg(false)]
-   |           ^^^^^
-note: found an item that was configured out
   --> $DIR/diagnostics-reexport.rs:8:20
    |
 LL |     pub use super::uwu;
