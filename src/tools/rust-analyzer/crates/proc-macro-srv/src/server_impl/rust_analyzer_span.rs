@@ -12,7 +12,7 @@ use std::{
 
 use intern::Symbol;
 use proc_macro::bridge::{self, server};
-use span::{Span, FIXUP_ERASED_FILE_AST_ID_MARKER};
+use span::{FileId, Span, FIXUP_ERASED_FILE_AST_ID_MARKER};
 use tt::{TextRange, TextSize};
 
 use crate::server_impl::{
@@ -32,8 +32,10 @@ mod tt {
 
 type TokenStream = crate::server_impl::TokenStream<Span>;
 
-#[derive(Clone)]
-pub struct SourceFile;
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub struct SourceFile {
+    file_id: FileId,
+}
 pub struct FreeFunctions;
 
 pub struct RaSpanServer {
@@ -291,9 +293,8 @@ impl server::TokenStream for RaSpanServer {
 }
 
 impl server::SourceFile for RaSpanServer {
-    fn eq(&mut self, _file1: &Self::SourceFile, _file2: &Self::SourceFile) -> bool {
-        // FIXME
-        true
+    fn eq(&mut self, file1: &Self::SourceFile, file2: &Self::SourceFile) -> bool {
+        file1 == file2
     }
     fn path(&mut self, _file: &Self::SourceFile) -> String {
         // FIXME
@@ -308,9 +309,8 @@ impl server::Span for RaSpanServer {
     fn debug(&mut self, span: Self::Span) -> String {
         format!("{:?}", span)
     }
-    fn source_file(&mut self, _span: Self::Span) -> Self::SourceFile {
-        // FIXME stub, requires db
-        SourceFile {}
+    fn source_file(&mut self, span: Self::Span) -> Self::SourceFile {
+        SourceFile { file_id: span.anchor.file_id.file_id() }
     }
     fn save_span(&mut self, _span: Self::Span) -> usize {
         // FIXME, quote is incompatible with third-party tools
