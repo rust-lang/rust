@@ -531,6 +531,7 @@ fn expand_preparsed_asm(
             symbol: template_str,
             style: template_style,
             span: template_span,
+            ..
         } = {
             let ExpandResult::Ready(mac) = expr_to_spanned_string(ecx, template_expr, msg) else {
                 return ExpandResult::Retry(());

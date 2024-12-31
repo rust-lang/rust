@@ -32,6 +32,9 @@ fn main() {
     //~^ ERROR unicode codepoint changing visible direction of text present in literal
     let _ = cr#"‮"#;
     //~^ ERROR unicode codepoint changing visible direction of text present in literal
+
+    println!("{{‮}}");
+    //~^ ERROR unicode codepoint changing visible direction of text present in format string
 }
 
 //"/*‮ } ⁦if isAdmin⁩ ⁦ begin admins only */"

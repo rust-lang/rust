@@ -166,7 +166,12 @@ fn make_format_args(
 
     let MacroInput { fmtstr: efmt, mut args, is_direct_literal } = input;
 
-    let ExprToSpannedString { symbol: fmt_str, span: fmt_span, style: fmt_style } = {
+    let ExprToSpannedString {
+        symbol: fmt_str,
+        span: fmt_span,
+        style: fmt_style,
+        uncooked_symbol: uncooked_fmt_str,
+    } = {
         let ExpandResult::Ready(mac) = expr_to_spanned_string(ecx, efmt.clone(), msg) else {
             return ExpandResult::Retry(());
         };
@@ -584,7 +589,12 @@ fn make_format_args(
         }
     }
 
-    ExpandResult::Ready(Ok(FormatArgs { span: fmt_span, template, arguments: args }))
+    ExpandResult::Ready(Ok(FormatArgs {
+        span: fmt_span,
+        template,
+        arguments: args,
+        uncooked_fmt_str,
+    }))
 }
 
 fn invalid_placeholder_type_error(

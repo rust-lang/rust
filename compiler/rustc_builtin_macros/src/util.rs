@@ -63,6 +63,10 @@ pub(crate) struct ExprToSpannedString {
     pub symbol: Symbol,
     pub style: ast::StrStyle,
     pub span: Span,
+    /// The raw string literal, with no escaping or processing.
+    ///
+    /// Generally only useful for lints that care about the raw bytes the user wrote.
+    pub uncooked_symbol: (ast::token::LitKind, Symbol),
 }
 
 /// - `Ok` is returned when the conversion to a string literal is unsuccessful,
@@ -100,6 +104,7 @@ pub(crate) fn expr_to_spanned_string<'a>(
                     symbol: s,
                     style,
                     span: expr.span,
+                    uncooked_symbol: (token_lit.kind, token_lit.symbol),
                 }));
             }
             Ok(ast::LitKind::ByteStr(..)) => {
