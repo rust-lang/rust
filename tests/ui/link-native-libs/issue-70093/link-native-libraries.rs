@@ -1,3 +1,6 @@
+// Ensure that rust does not pass native libraries to the linker when
+// `-Zlink-native-libraries=no` is used.
+
 //@ run-pass
 //@ compile-flags: -Zlink-native-libraries=no -Cdefault-linker-libraries=yes
 //@ ignore-fuchsia - missing __libc_start_main for some reason (#84733)
@@ -14,6 +17,9 @@
 //@[msvc] compile-flags: -Clink-arg=msvcrt.lib
 //@[msvc] only-msvc
 
+// Usually these `#[link]` attribute would cause `libsome-random-non-existent-library`
+// to be passed to the linker, causing it to fail because the file doesn't exist.
+// However, -Zlink-native-libraries=no disables that.
 #[link(name = "some-random-non-existent-library", kind = "static")]
 extern "C" {}
 
