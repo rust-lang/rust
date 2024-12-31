@@ -19,5 +19,5 @@ jobs:
         uses: crate-ci/typos@v1.28.2
         with:
           # sync target files with src/tools/tidy/src/ext_tool_checks.rs
-          files: ./compiler ./library
+          files: ./compiler ./library ./src/bootstrap ./src/librustdoc
           config: ./typos.toml
