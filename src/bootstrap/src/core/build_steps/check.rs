@@ -428,53 +428,49 @@ macro_rules! tool_check_step {
             }
 
             fn run(self, builder: &Builder<'_>) {
-                let compiler = builder.compiler(builder.top_stage, builder.config.build);
-                let target = self.target;
-
-                builder.ensure(Rustc::new(target, builder));
-
-                let mut cargo = prepare_tool_cargo(
-                    builder,
-                    compiler,
-                    Mode::ToolRustc,
-                    target,
-                    builder.kind,
-                    $path,
-                    $source_type,
-                    &[],
-                );
-
-                // For ./x.py clippy, don't run with --all-targets because
-                // linting tests and benchmarks can produce very noisy results
-                if builder.kind != Kind::Clippy {
-                    cargo.arg("--all-targets");
-                }
-
-                let _guard = builder.msg_check(&format!("{} artifacts", $display_name), target);
-                run_cargo(
-                    builder,
-                    cargo,
-                    builder.config.free_args.clone(),
-                    &stamp(builder, compiler, target),
-                    vec![],
-                    true,
-                    false,
-                );
-
-                /// Cargo's output path in a given stage, compiled by a particular
-                /// compiler for the specified target.
-                fn stamp(
-                    builder: &Builder<'_>,
-                    compiler: Compiler,
-                    target: TargetSelection,
-                ) -> PathBuf {
-                    builder
-                        .cargo_out(compiler, Mode::ToolRustc, target)
-                        .join(format!(".{}-check.stamp", stringify!($name).to_lowercase()))
-                }
+                let Self { target } = self;
+                run_tool_check_step(builder, target, stringify!($name), $display_name, $path, $source_type);
             }
         }
-    };
+    }
+}
+
+/// Used by the implementation of `Step::run` in `tool_check_step!`.
+fn run_tool_check_step(
+    builder: &Builder<'_>,
+    target: TargetSelection,
+    step_type_name: &str,
+    display_name: &str,
+    path: &str,
+    source_type: SourceType,
+) {
+    let compiler = builder.compiler(builder.top_stage, builder.config.build);
+
+    builder.ensure(Rustc::new(target, builder));
+
+    let mut cargo = prepare_tool_cargo(
+        builder,
+        compiler,
+        Mode::ToolRustc,
+        target,
+        builder.kind,
+        path,
+        source_type,
+        &[],
+    );
+
+    // For ./x.py clippy, don't run with --all-targets because
+    // linting tests and benchmarks can produce very noisy results
+    if builder.kind != Kind::Clippy {
+        cargo.arg("--all-targets");
+    }
+
+    let stamp = builder
+        .cargo_out(compiler, Mode::ToolRustc, target)
+        .join(format!(".{}-check.stamp", step_type_name.to_lowercase()));
+
+    let _guard = builder.msg_check(format!("{display_name} artifacts"), target);
+    run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
 }
 
 tool_check_step!(Rustdoc, "rustdoc", "src/tools/rustdoc", "src/librustdoc", SourceType::InTree);
