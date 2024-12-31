@@ -573,7 +573,7 @@ impl FromClean<clean::Type> for Type {
     fn from_clean(ty: clean::Type, renderer: &JsonRenderer<'_>) -> Self {
         use clean::Type::{
             Array, BareFunction, BorrowedRef, Generic, ImplTrait, Infer, Primitive, QPath,
-            RawPointer, SelfTy, Slice, Tuple,
+            RawPointer, SelfTy, Slice, Tuple, UnsafeBinder,
         };
 
         match ty {
@@ -613,6 +613,8 @@ impl FromClean<clean::Type> for Type {
                 self_type: Box::new(self_type.into_json(renderer)),
                 trait_: trait_.map(|trait_| trait_.into_json(renderer)),
             },
+            // FIXME(unsafe_binder): Implement rustdoc-json.
+            UnsafeBinder(_) => todo!(),
         }
     }
 }
