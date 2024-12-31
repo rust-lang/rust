@@ -526,7 +526,7 @@ pub struct SanitizerOptions {
     pub sanitize_kernel_address_recover: bool,
 }
 
-/// LLVMRelocMode
+/// LLVMRustRelocModel
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
 pub enum RelocModel {
@@ -536,6 +536,15 @@ pub enum RelocModel {
     ROPI,
     RWPI,
     ROPI_RWPI,
+}
+
+/// LLVMRustFloatABI
+#[derive(Copy, Clone, PartialEq)]
+#[repr(C)]
+pub enum FloatAbi {
+    Default,
+    Soft,
+    Hard,
 }
 
 /// LLVMRustCodeModel
@@ -2192,7 +2201,7 @@ unsafe extern "C" {
         Model: CodeModel,
         Reloc: RelocModel,
         Level: CodeGenOptLevel,
-        UseSoftFP: bool,
+        FloatABIType: FloatAbi,
         FunctionSections: bool,
         DataSections: bool,
         UniqueSectionNames: bool,

@@ -26,7 +26,7 @@ use rustc_session::config::{
     self, Lto, OutputType, Passes, RemapPathScopeComponents, SplitDwarfKind, SwitchWithOptPath,
 };
 use rustc_span::{BytePos, InnerSpan, Pos, SpanData, SyntaxContext, sym};
-use rustc_target::spec::{CodeModel, RelocModel, SanitizerSet, SplitDebuginfo, TlsModel};
+use rustc_target::spec::{CodeModel, FloatAbi, RelocModel, SanitizerSet, SplitDebuginfo, TlsModel};
 use tracing::debug;
 
 use crate::back::lto::ThinBuffer;
@@ -181,6 +181,14 @@ pub(crate) fn to_llvm_code_model(code_model: Option<CodeModel>) -> llvm::CodeMod
     }
 }
 
+fn to_llvm_float_abi(float_abi: Option<FloatAbi>) -> llvm::FloatAbi {
+    match float_abi {
+        None => llvm::FloatAbi::Default,
+        Some(FloatAbi::Soft) => llvm::FloatAbi::Soft,
+        Some(FloatAbi::Hard) => llvm::FloatAbi::Hard,
+    }
+}
+
 pub(crate) fn target_machine_factory(
     sess: &Session,
     optlvl: config::OptLevel,
@@ -189,12 +197,12 @@ pub(crate) fn target_machine_factory(
     let reloc_model = to_llvm_relocation_model(sess.relocation_model());
 
     let (opt_level, _) = to_llvm_opt_settings(optlvl);
-    let use_softfp = if sess.target.arch == "arm" {
-        sess.opts.cg.soft_float
+    let float_abi = if sess.target.arch == "arm" && sess.opts.cg.soft_float {
+        llvm::FloatAbi::Soft
     } else {
         // `validate_commandline_args_with_session_available` has already warned about this being
         // ignored. Let's make sure LLVM doesn't suddenly start using this flag on more targets.
-        false
+        to_llvm_float_abi(sess.target.llvm_floatabi)
     };
 
     let ffunction_sections =
@@ -290,7 +298,7 @@ pub(crate) fn target_machine_factory(
             code_model,
             reloc_model,
             opt_level,
-            use_softfp,
+            float_abi,
             ffunction_sections,
             fdata_sections,
             funique_section_names,
