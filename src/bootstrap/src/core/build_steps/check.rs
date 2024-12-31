@@ -401,10 +401,13 @@ impl Step for RustAnalyzer {
 
 macro_rules! tool_check_step {
     (
-        $name:ident,
-        $path:literal
-        $(, alt_path: $alt_path:literal )*
-        $(, default: $default:literal )?
+        $name:ident {
+            // The part of this path after the final '/' is also used as a display name.
+            path: $path:literal
+            $(, alt_path: $alt_path:literal )*
+            $(, default: $default:literal )?
+            $( , )?
+        }
     ) => {
         #[derive(Debug, Clone, PartialEq, Eq, Hash)]
         pub struct $name {
@@ -474,23 +477,23 @@ fn run_tool_check_step(
     run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
 }
 
-tool_check_step!(Rustdoc, "src/tools/rustdoc", alt_path: "src/librustdoc");
+tool_check_step!(Rustdoc { path: "src/tools/rustdoc", alt_path: "src/librustdoc" });
 // Clippy, miri and Rustfmt are hybrids. They are external tools, but use a git subtree instead
 // of a submodule. Since the SourceType only drives the deny-warnings
 // behavior, treat it as in-tree so that any new warnings in clippy will be
 // rejected.
-tool_check_step!(Clippy, "src/tools/clippy");
-tool_check_step!(Miri, "src/tools/miri");
-tool_check_step!(CargoMiri, "src/tools/miri/cargo-miri");
-tool_check_step!(Rls, "src/tools/rls");
-tool_check_step!(Rustfmt, "src/tools/rustfmt");
-tool_check_step!(MiroptTestTools, "src/tools/miropt-test-tools");
-tool_check_step!(TestFloatParse, "src/etc/test-float-parse");
+tool_check_step!(Clippy { path: "src/tools/clippy" });
+tool_check_step!(Miri { path: "src/tools/miri" });
+tool_check_step!(CargoMiri { path: "src/tools/miri/cargo-miri" });
+tool_check_step!(Rls { path: "src/tools/rls" });
+tool_check_step!(Rustfmt { path: "src/tools/rustfmt" });
+tool_check_step!(MiroptTestTools { path: "src/tools/miropt-test-tools" });
+tool_check_step!(TestFloatParse { path: "src/etc/test-float-parse" });
 
-tool_check_step!(Bootstrap, "src/bootstrap", default: false);
+tool_check_step!(Bootstrap { path: "src/bootstrap", default: false });
 // Compiletest is implicitly "checked" when it gets built in order to run tests,
 // so this is mainly for people working on compiletest to run locally.
-tool_check_step!(Compiletest, "src/tools/compiletest", default: false);
+tool_check_step!(Compiletest { path: "src/tools/compiletest", default: false });
 
 /// Cargo's output path for the standard library in a given stage, compiled
 /// by a particular compiler for the specified target.
