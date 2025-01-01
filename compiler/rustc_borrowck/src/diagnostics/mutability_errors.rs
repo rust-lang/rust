@@ -575,7 +575,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         // ---------- place
                         self.err.multipart_suggestions(
                             format!(
-                                "to modify a `{}`, use `.get_mut()`, `.insert()` or the entry API",
+                                "use `.insert()` to insert a value into a `{}`, `.get_mut()` \
+                                to modify it, or the entry API for more flexibility",
                                 self.ty,
                             ),
                             vec![
@@ -592,16 +593,17 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                     (rv.span.shrink_to_hi(), ")".to_string()),
                                 ],
                                 vec![
-                                    // val.get_mut(index).map(|v| { *v = rv; });
+                                    // if let Some(v) = val.get_mut(index) { *v = rv; }
+                                    (val.span.shrink_to_lo(), "if let Some(val) = ".to_string()),
                                     (
                                         val.span.shrink_to_hi().with_hi(index.span.lo()),
                                         ".get_mut(".to_string(),
                                     ),
                                     (
                                         index.span.shrink_to_hi().with_hi(place.span.hi()),
-                                        ").map(|val| { *val".to_string(),
+                                        ") { *val".to_string(),
                                     ),
-                                    (rv.span.shrink_to_hi(), "; })".to_string()),
+                                    (rv.span.shrink_to_hi(), "; }".to_string()),
                                 ],
                                 vec![
                                     // let x = val.entry(index).or_insert(rv);
@@ -622,21 +624,22 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         self.suggested = true;
                     } else if let hir::ExprKind::MethodCall(_path, receiver, _, sp) = expr.kind
                         && let hir::ExprKind::Index(val, index, _) = receiver.kind
-                        && expr.span == self.assign_span
+                        && receiver.span == self.assign_span
                     {
                         // val[index].path(args..);
                         self.err.multipart_suggestion(
                             format!("to modify a `{}` use `.get_mut()`", self.ty),
                             vec![
+                                (val.span.shrink_to_lo(), "if let Some(val) = ".to_string()),
                                 (
                                     val.span.shrink_to_hi().with_hi(index.span.lo()),
                                     ".get_mut(".to_string(),
                                 ),
                                 (
                                     index.span.shrink_to_hi().with_hi(receiver.span.hi()),
-                                    ").map(|val| val".to_string(),
+                                    ") { val".to_string(),
                                 ),
-                                (sp.shrink_to_hi(), ")".to_string()),
+                                (sp.shrink_to_hi(), "; }".to_string()),
                             ],
                             Applicability::MachineApplicable,
                         );
