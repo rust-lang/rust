@@ -32,4 +32,22 @@ fn main() {
         }
     }
     let _ = SimpleIterator.last();
+
+    // Should not apply to custom implementations of last()
+    struct CustomLast;
+    impl Iterator for CustomLast {
+        type Item = ();
+        fn next(&mut self) -> Option<Self::Item> {
+            Some(())
+        }
+        fn last(self) -> Option<Self::Item> {
+            Some(())
+        }
+    }
+    impl DoubleEndedIterator for CustomLast {
+        fn next_back(&mut self) -> Option<Self::Item> {
+            Some(())
+        }
+    }
+    let _ = CustomLast.last();
 }
