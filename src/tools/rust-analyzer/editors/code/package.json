@@ -407,6 +407,11 @@
                             "$rustc"
                         ],
                         "markdownDescription": "Problem matchers to use for `rust-analyzer.run` command, eg `[\"$rustc\", \"$rust-panic\"]`."
+                    },
+                    "rust-analyzer.runnables.askBeforeUpdateTest": {
+                        "type": "boolean",
+                        "default": true,
+                        "markdownDescription": "Ask before updating the test when running it."
                     }
                 }
             },
@@ -1518,6 +1523,16 @@
             {
                 "title": "hover",
                 "properties": {
+                    "rust-analyzer.hover.actions.updateTest.enable": {
+                        "markdownDescription": "Whether to show `Update Test` action. Only applies when\n`#rust-analyzer.hover.actions.enable#` and `#rust-analyzer.hover.actions.run.enable#` are set.",
+                        "default": true,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "hover",
+                "properties": {
                     "rust-analyzer.hover.documentation.enable": {
                         "markdownDescription": "Whether to show documentation on hover.",
                         "default": true,
@@ -2290,6 +2305,16 @@
                 "properties": {
                     "rust-analyzer.lens.run.enable": {
                         "markdownDescription": "Whether to show `Run` lens. Only applies when\n`#rust-analyzer.lens.enable#` is set.",
+                        "default": true,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "lens",
+                "properties": {
+                    "rust-analyzer.lens.updateTest.enable": {
+                        "markdownDescription": "Whether to show `Update Test` lens. Only applies when\n`#rust-analyzer.lens.enable#` and `#rust-analyzer.lens.run.enable#` are set.",
                         "default": true,
                         "type": "boolean"
                     }

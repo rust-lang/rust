@@ -497,6 +497,12 @@ Whether to show `References` action. Only applies when
 Whether to show `Run` action. Only applies when
 `#rust-analyzer.hover.actions.enable#` is set.
 --
+[[rust-analyzer.hover.actions.updateTest.enable]]rust-analyzer.hover.actions.updateTest.enable (default: `true`)::
++
+--
+Whether to show `Update Test` action. Only applies when
+`#rust-analyzer.hover.actions.enable#` and `#rust-analyzer.hover.actions.run.enable#` are set.
+--
 [[rust-analyzer.hover.documentation.enable]]rust-analyzer.hover.documentation.enable (default: `true`)::
 +
 --
@@ -807,6 +813,12 @@ Only applies when `#rust-analyzer.lens.enable#` is set.
 --
 Whether to show `Run` lens. Only applies when
 `#rust-analyzer.lens.enable#` is set.
+--
+[[rust-analyzer.lens.updateTest.enable]]rust-analyzer.lens.updateTest.enable (default: `true`)::
++
+--
+Whether to show `Update Test` lens. Only applies when
+`#rust-analyzer.lens.enable#` and `#rust-analyzer.lens.run.enable#` are set.
 --
 [[rust-analyzer.linkedProjects]]rust-analyzer.linkedProjects (default: `[]`)::
 +

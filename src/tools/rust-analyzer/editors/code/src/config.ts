@@ -362,6 +362,13 @@ export class Config {
     get initializeStopped() {
         return this.get<boolean>("initializeStopped");
     }
+
+    get askBeforeUpdateTest() {
+        return this.get<boolean>("runnables.askBeforeUpdateTest");
+    }
+    async setAskBeforeUpdateTest(value: boolean) {
+        await this.cfg.update("runnables.askBeforeUpdateTest", value, true);
+    }
 }
 
 export function prepareVSCodeConfig<T>(resp: T): T {
