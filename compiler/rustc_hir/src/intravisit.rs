@@ -928,8 +928,8 @@ pub fn walk_generic_param<'v, V: Visitor<'v>>(
 ) -> V::Result {
     try_visit!(visitor.visit_id(param.hir_id));
     match param.name {
-        ParamName::Plain(ident) => try_visit!(visitor.visit_ident(ident)),
-        ParamName::Error | ParamName::Fresh => {}
+        ParamName::Plain(ident) | ParamName::Error(ident) => try_visit!(visitor.visit_ident(ident)),
+        ParamName::Fresh => {}
     }
     match param.kind {
         GenericParamKind::Lifetime { .. } => {}

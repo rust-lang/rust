@@ -52,6 +52,13 @@ pub enum ParamName {
     /// Some user-given name like `T` or `'x`.
     Plain(Ident),
 
+    /// Indicates an illegal name was given and an error has been
+    /// reported (so we should squelch other derived errors).
+    ///
+    /// Occurs when, e.g., `'_` is used in the wrong place, or a
+    /// lifetime name is duplicated.
+    Error(Ident),
+
     /// Synthetic name generated when user elided a lifetime in an impl header.
     ///
     /// E.g., the lifetimes in cases like these:
@@ -67,18 +74,13 @@ pub enum ParamName {
     /// where `'f` is something like `Fresh(0)`. The indices are
     /// unique per impl, but not necessarily continuous.
     Fresh,
-
-    /// Indicates an illegal name was given and an error has been
-    /// reported (so we should squelch other derived errors). Occurs
-    /// when, e.g., `'_` is used in the wrong place.
-    Error,
 }
 
 impl ParamName {
     pub fn ident(&self) -> Ident {
         match *self {
-            ParamName::Plain(ident) => ident,
-            ParamName::Fresh | ParamName::Error => Ident::with_dummy_span(kw::UnderscoreLifetime),
+            ParamName::Plain(ident) | ParamName::Error(ident) => ident,
+            ParamName::Fresh => Ident::with_dummy_span(kw::UnderscoreLifetime),
         }
     }
 }
