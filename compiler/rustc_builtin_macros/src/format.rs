@@ -321,6 +321,13 @@ fn make_format_args(
                     e.sugg_ = Some(errors::InvalidFormatStringSuggestion::RemoveRawIdent { span })
                 }
             }
+            parse::Suggestion::ReorderFormatParameter(span, replacement) => {
+                let span = fmt_span.from_inner(InnerSpan::new(span.start, span.end));
+                e.sugg_ = Some(errors::InvalidFormatStringSuggestion::ReorderFormatParameter {
+                    span,
+                    replacement,
+                });
+            }
         }
         let guar = ecx.dcx().emit_err(e);
         return ExpandResult::Ready(Err(guar));
