@@ -1024,24 +1024,15 @@ macro_rules! tool_extended {
 
         impl Step for $name {
             type Output = PathBuf;
-            const DEFAULT: bool = true; // Overwritten below
+            const DEFAULT: bool = true; // Overridden by `should_run_tool_build_step`
             const ONLY_HOSTS: bool = true;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                let builder = run.builder;
-                run.path($path).default_condition(
-                    builder.config.extended
-                        && builder.config.tools.as_ref().map_or(
-                            // By default, on nightly/dev enable all tools, else only
-                            // build stable tools.
-                            $stable || builder.build.unstable_features(),
-                            // If `tools` is set, search list for this tool.
-                            |tools| {
-                                tools.iter().any(|tool| match tool.as_ref() {
-                                    "clippy" => $tool_name == "clippy-driver",
-                                    x => $tool_name == x,
-                            })
-                        }),
+                should_run_tool_build_step(
+                    run,
+                    $tool_name,
+                    $path,
+                    $stable,
                 )
             }
 
@@ -1065,6 +1056,30 @@ macro_rules! tool_extended {
             }
         }
     }
+}
+
+fn should_run_tool_build_step<'a>(
+    run: ShouldRun<'a>,
+    tool_name: &'static str,
+    path: &'static str,
+    stable: bool,
+) -> ShouldRun<'a> {
+    let builder = run.builder;
+    run.path(path).default_condition(
+        builder.config.extended
+            && builder.config.tools.as_ref().map_or(
+                // By default, on nightly/dev enable all tools, else only
+                // build stable tools.
+                stable || builder.build.unstable_features(),
+                // If `tools` is set, search list for this tool.
+                |tools| {
+                    tools.iter().any(|tool| match tool.as_ref() {
+                        "clippy" => tool_name == "clippy-driver",
+                        x => tool_name == x,
+                    })
+                },
+            ),
+    )
 }
 
 fn run_tool_build_step(
