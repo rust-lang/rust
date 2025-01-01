@@ -7,7 +7,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId, LangItem};
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::infer;
-use rustc_infer::traits::{self, Obligation, ObligationCause, ObligationCauseCode};
+use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
@@ -512,7 +512,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.register_bound(
                     ty,
                     self.tcx.require_lang_item(hir::LangItem::Tuple, Some(sp)),
-                    traits::ObligationCause::new(sp, self.body_id, ObligationCauseCode::RustCall),
+                    self.cause(sp, ObligationCauseCode::RustCall),
                 );
                 self.require_type_is_sized(ty, sp, ObligationCauseCode::RustCall);
             } else {
