@@ -22,6 +22,7 @@ use syntax::{
 };
 
 use crate::{
+    config::AutoImportExclusionType,
     context::analysis::{expand_and_analyze, AnalysisResult},
     CompletionConfig,
 };
@@ -466,7 +467,7 @@ pub(crate) struct CompletionContext<'a> {
     /// importing those traits.
     ///
     /// Note the trait *themselves* are not excluded, only their methods are.
-    pub(crate) exclude_flyimport_traits: FxHashSet<hir::Trait>,
+    pub(crate) exclude_flyimport: FxHashMap<ModuleDef, AutoImportExclusionType>,
     /// Traits whose methods should always be excluded, even when in scope (compare `exclude_flyimport_traits`).
     /// They will *not* be excluded, however, if they are available as a generic bound.
     ///
@@ -780,22 +781,20 @@ impl<'a> CompletionContext<'a> {
             })
             .collect();
 
-        let mut exclude_flyimport_traits: FxHashSet<_> = config
-            .exclude_flyimport_traits
+        let mut exclude_flyimport: FxHashMap<_, _> = config
+            .exclude_flyimport
             .iter()
-            .filter_map(|path| {
+            .flat_map(|(path, kind)| {
                 scope
                     .resolve_mod_path(&ModPath::from_segments(
                         hir::PathKind::Plain,
                         path.split("::").map(Symbol::intern).map(Name::new_symbol_root),
                     ))
-                    .find_map(|it| match it {
-                        hir::ItemInNs::Types(ModuleDef::Trait(t)) => Some(t),
-                        _ => None,
-                    })
+                    .map(|it| (it.into_module_def(), *kind))
             })
             .collect();
-        exclude_flyimport_traits.extend(exclude_traits.iter().copied());
+        exclude_flyimport
+            .extend(exclude_traits.iter().map(|&t| (t.into(), AutoImportExclusionType::Always)));
 
         let complete_semicolon = if config.add_semicolon_to_unit {
             let inside_closure_ret = token.parent_ancestors().try_for_each(|ancestor| {
@@ -861,7 +860,7 @@ impl<'a> CompletionContext<'a> {
             qualifier_ctx,
             locals,
             depth_from_crate_root,
-            exclude_flyimport_traits,
+            exclude_flyimport,
             exclude_traits,
             complete_semicolon,
         };

@@ -85,7 +85,7 @@ pub(crate) const TEST_CONFIG: CompletionConfig<'_> = CompletionConfig {
     snippets: Vec::new(),
     limit: None,
     fields_to_resolve: CompletionFieldsToResolve::empty(),
-    exclude_flyimport_traits: &[],
+    exclude_flyimport: vec![],
     exclude_traits: &[],
 };
 

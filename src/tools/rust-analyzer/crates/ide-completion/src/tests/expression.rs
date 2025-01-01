@@ -2,6 +2,7 @@
 use expect_test::{expect, Expect};
 
 use crate::{
+    config::AutoImportExclusionType,
     tests::{
         check_edit, check_empty, completion_list, completion_list_with_config, BASE_ITEMS_FIXTURE,
         TEST_CONFIG,
@@ -1605,7 +1606,10 @@ fn foo() {
 fn flyimport_excluded_trait_method_is_excluded_from_flyimport() {
     check_with_config(
         CompletionConfig {
-            exclude_flyimport_traits: &["test::module2::ExcludedTrait".to_owned()],
+            exclude_flyimport: vec![(
+                "test::module2::ExcludedTrait".to_owned(),
+                AutoImportExclusionType::Methods,
+            )],
             ..TEST_CONFIG
         },
         r#"

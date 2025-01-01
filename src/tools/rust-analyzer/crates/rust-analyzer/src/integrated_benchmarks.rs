@@ -174,7 +174,7 @@ fn integrated_completion_benchmark() {
             limit: None,
             add_semicolon_to_unit: true,
             fields_to_resolve: CompletionFieldsToResolve::empty(),
-            exclude_flyimport_traits: &[],
+            exclude_flyimport: vec![],
             exclude_traits: &[],
         };
         let position =
@@ -224,7 +224,7 @@ fn integrated_completion_benchmark() {
             limit: None,
             add_semicolon_to_unit: true,
             fields_to_resolve: CompletionFieldsToResolve::empty(),
-            exclude_flyimport_traits: &[],
+            exclude_flyimport: vec![],
             exclude_traits: &[],
         };
         let position =
@@ -272,7 +272,7 @@ fn integrated_completion_benchmark() {
             limit: None,
             add_semicolon_to_unit: true,
             fields_to_resolve: CompletionFieldsToResolve::empty(),
-            exclude_flyimport_traits: &[],
+            exclude_flyimport: vec![],
             exclude_traits: &[],
         };
         let position =

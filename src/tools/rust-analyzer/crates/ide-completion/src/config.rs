@@ -28,8 +28,14 @@ pub struct CompletionConfig<'a> {
     pub snippets: Vec<Snippet>,
     pub limit: Option<usize>,
     pub fields_to_resolve: CompletionFieldsToResolve,
-    pub exclude_flyimport_traits: &'a [String],
+    pub exclude_flyimport: Vec<(String, AutoImportExclusionType)>,
     pub exclude_traits: &'a [String],
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum AutoImportExclusionType {
+    Always,
+    Methods,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

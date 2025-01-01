@@ -440,22 +440,27 @@ config_data! {
         /// Toggles the additional completions that automatically add imports when completed.
         /// Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
         completion_autoimport_enable: bool       = true,
-        /// A list of full paths to traits to exclude from flyimport.
+        /// A list of full paths to items to exclude from auto-importing completions.
         ///
         /// Traits in this list won't have their methods suggested in completions unless the trait
         /// is in scope.
         ///
+        /// You can either specify a string path which defaults to type "always" or use the more verbose
+        /// form `{ "path": "path::to::item", type: "always" }`.
+        ///
+        /// For traits the type "methods" can be used to only exclude the methods but not the trait itself.
+        ///
         /// This setting also inherits `#rust-analyzer.completion.excludeTraits#`.
-        completion_autoimport_excludeTraits: Vec<String> = vec![
-            "core::borrow::Borrow".to_owned(),
-            "core::borrow::BorrowMut".to_owned(),
+        completion_autoimport_exclude: Vec<AutoImportExclusion> = vec![
+            AutoImportExclusion::Verbose { path: "core::borrow::Borrow".to_owned(), r#type: AutoImportExclusionType::Methods },
+            AutoImportExclusion::Verbose { path: "core::borrow::BorrowMut".to_owned(), r#type: AutoImportExclusionType::Methods },
         ],
         /// Toggles the additional completions that automatically show method calls and field accesses
         /// with `self` prefixed to them when inside a method.
         completion_autoself_enable: bool        = true,
         /// Whether to add parenthesis and argument snippets when completing function.
         completion_callable_snippets: CallableCompletionDef  = CallableCompletionDef::FillArguments,
-        /// A list of full paths to traits to exclude from completion.
+        /// A list of full paths to traits whose methods to exclude from completion.
         ///
         /// Methods from these traits won't be completed, even if the trait is in scope. However, they will still be suggested on expressions whose type is `dyn Trait`, `impl Trait` or `T where T: Trait`.
         ///
@@ -1478,7 +1483,26 @@ impl Config {
             } else {
                 CompletionFieldsToResolve::from_client_capabilities(&client_capability_fields)
             },
-            exclude_flyimport_traits: self.completion_autoimport_excludeTraits(source_root),
+            exclude_flyimport: self
+                .completion_autoimport_exclude(source_root)
+                .iter()
+                .map(|it| match it {
+                    AutoImportExclusion::Path(path) => {
+                        (path.clone(), ide_completion::AutoImportExclusionType::Always)
+                    }
+                    AutoImportExclusion::Verbose { path, r#type } => (
+                        path.clone(),
+                        match r#type {
+                            AutoImportExclusionType::Always => {
+                                ide_completion::AutoImportExclusionType::Always
+                            }
+                            AutoImportExclusionType::Methods => {
+                                ide_completion::AutoImportExclusionType::Methods
+                            }
+                        },
+                    ),
+                })
+                .collect(),
             exclude_traits: self.completion_excludeTraits(source_root),
         }
     }
@@ -2417,6 +2441,21 @@ where
 enum ExprFillDefaultDef {
     Todo,
     Default,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(untagged)]
+#[serde(rename_all = "snake_case")]
+pub enum AutoImportExclusion {
+    Path(String),
+    Verbose { path: String, r#type: AutoImportExclusionType },
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+pub enum AutoImportExclusionType {
+    Always,
+    Methods,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -3489,6 +3528,32 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                     "type": "integer"
                 }
             ]
+        },
+        "Vec<AutoImportExclusion>" => set! {
+            "type": "array",
+            "items": {
+                "anyOf": [
+                    {
+                        "type": "string",
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "path": {
+                                "type": "string",
+                            },
+                            "type": {
+                                "type": "string",
+                                "enum": ["always", "methods"],
+                                "enumDescriptions": [
+                                    "Do not show this item or its methods (if it is a trait) in auto-import completions.",
+                                    "Do not show this traits methods in auto-import completions."
+                                ],
+                            },
+                        }
+                    }
+                ]
+             }
         },
         _ => panic!("missing entry for {ty}: {default} (field {field})"),
     }

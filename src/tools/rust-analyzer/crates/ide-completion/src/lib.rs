@@ -31,7 +31,7 @@ use crate::{
 };
 
 pub use crate::{
-    config::{CallableSnippets, CompletionConfig},
+    config::{AutoImportExclusionType, CallableSnippets, CompletionConfig},
     item::{
         CompletionItem, CompletionItemKind, CompletionRelevance, CompletionRelevancePostfixMatch,
         CompletionRelevanceReturnType, CompletionRelevanceTypeMatch,
