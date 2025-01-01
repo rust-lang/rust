@@ -442,50 +442,13 @@ config_data! {
         completion_autoimport_enable: bool       = true,
         /// A list of full paths to traits to exclude from flyimport.
         ///
-        /// Traits in this list won't be suggested to be imported by flyimport for their methods. Methods from them won't be available in flyimport completion. They will still be available if in scope.
-        ///
-        /// Note that the trait themselves can still be suggested by flyimport.
+        /// Traits in this list won't have their methods suggested in completions unless the trait
+        /// is in scope.
         ///
         /// This setting also inherits `#rust-analyzer.completion.excludeTraits#`.
-        ///
-        /// This setting defaults to:
-        ///
-        ///  - [`core::borrow::Borrow`](https://doc.rust-lang.org/nightly/core/borrow/trait.Borrow.html)
-        ///  - [`core::borrow::BorrowMut`](https://doc.rust-lang.org/nightly/core/borrow/trait.BorrowMut.html)
-        ///  - [`core::cmp::PartialEq`](https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html)
-        ///  - All operator traits (in [`core::ops`](https://doc.rust-lang.org/nightly/core/ops))
-        ///
-        /// Note that if you override this setting, those traits won't be automatically inserted, so you may want to insert them manually.
         completion_autoimport_excludeTraits: Vec<String> = vec![
             "core::borrow::Borrow".to_owned(),
             "core::borrow::BorrowMut".to_owned(),
-            "core::cmp::PartialEq".to_owned(),
-            "core::ops::Add".to_owned(),
-            "core::ops::AddAssign".to_owned(),
-            "core::ops::BitAnd".to_owned(),
-            "core::ops::BitAndAssign".to_owned(),
-            "core::ops::BitOr".to_owned(),
-            "core::ops::BitOrAssign".to_owned(),
-            "core::ops::BitXor".to_owned(),
-            "core::ops::BitXorAssign".to_owned(),
-            "core::ops::Div".to_owned(),
-            "core::ops::DivAssign".to_owned(),
-            "core::ops::Mul".to_owned(),
-            "core::ops::MulAssign".to_owned(),
-            "core::ops::Rem".to_owned(),
-            "core::ops::RemAssign".to_owned(),
-            "core::ops::Shl".to_owned(),
-            "core::ops::ShlAssign".to_owned(),
-            "core::ops::Shr".to_owned(),
-            "core::ops::ShrAssign".to_owned(),
-            "core::ops::Sub".to_owned(),
-            "core::ops::SubAssign".to_owned(),
-            "core::ops::Neg".to_owned(),
-            "core::ops::Not".to_owned(),
-            "core::ops::Index".to_owned(),
-            "core::ops::IndexMut".to_owned(),
-            "core::ops::Deref".to_owned(),
-            "core::ops::DerefMut".to_owned(),
         ],
         /// Toggles the additional completions that automatically show method calls and field accesses
         /// with `self` prefixed to them when inside a method.

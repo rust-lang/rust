@@ -1430,19 +1430,22 @@ fn foo() {
 }
         "#,
         expect![[r#"
-            me inherent() fn(&self)
-            sn box        Box::new(expr)
-            sn call       function(expr)
-            sn dbg        dbg!(expr)
-            sn dbgr       dbg!(&expr)
-            sn deref      *expr
-            sn let        let
-            sn letm       let mut
-            sn match      match expr {}
-            sn ref        &expr
-            sn refm       &mut expr
-            sn return     return expr
-            sn unsafe     unsafe {}
+            me bar() (as ExcludedTrait) fn(&self)
+            me baz() (as ExcludedTrait) fn(&self)
+            me foo() (as ExcludedTrait) fn(&self)
+            me inherent()               fn(&self)
+            sn box                 Box::new(expr)
+            sn call                function(expr)
+            sn dbg                     dbg!(expr)
+            sn dbgr                   dbg!(&expr)
+            sn deref                        *expr
+            sn let                            let
+            sn letm                       let mut
+            sn match                match expr {}
+            sn ref                          &expr
+            sn refm                     &mut expr
+            sn return                 return expr
+            sn unsafe                   unsafe {}
         "#]],
     );
 }
@@ -1468,18 +1471,18 @@ fn foo(v: &dyn ExcludedTrait) {
             me bar() (as ExcludedTrait) fn(&self)
             me baz() (as ExcludedTrait) fn(&self)
             me foo() (as ExcludedTrait) fn(&self)
-            sn box                    Box::new(expr)
-            sn call                   function(expr)
-            sn dbg                    dbg!(expr)
+            sn box                 Box::new(expr)
+            sn call                function(expr)
+            sn dbg                     dbg!(expr)
             sn dbgr                   dbg!(&expr)
-            sn deref                  *expr
-            sn let                    let
-            sn letm                   let mut
-            sn match                  match expr {}
-            sn ref                    &expr
-            sn refm                   &mut expr
+            sn deref                        *expr
+            sn let                            let
+            sn letm                       let mut
+            sn match                match expr {}
+            sn ref                          &expr
+            sn refm                     &mut expr
             sn return                 return expr
-            sn unsafe                 unsafe {}
+            sn unsafe                   unsafe {}
         "#]],
     );
     check_with_config(
@@ -1501,18 +1504,18 @@ fn foo(v: impl ExcludedTrait) {
             me bar() (as ExcludedTrait) fn(&self)
             me baz() (as ExcludedTrait) fn(&self)
             me foo() (as ExcludedTrait) fn(&self)
-            sn box                    Box::new(expr)
-            sn call                   function(expr)
-            sn dbg                    dbg!(expr)
+            sn box                 Box::new(expr)
+            sn call                function(expr)
+            sn dbg                     dbg!(expr)
             sn dbgr                   dbg!(&expr)
-            sn deref                  *expr
-            sn let                    let
-            sn letm                   let mut
-            sn match                  match expr {}
-            sn ref                    &expr
-            sn refm                   &mut expr
+            sn deref                        *expr
+            sn let                            let
+            sn letm                       let mut
+            sn match                match expr {}
+            sn ref                          &expr
+            sn refm                     &mut expr
             sn return                 return expr
-            sn unsafe                 unsafe {}
+            sn unsafe                   unsafe {}
         "#]],
     );
     check_with_config(
@@ -1534,18 +1537,18 @@ fn foo<T: ExcludedTrait>(v: T) {
             me bar() (as ExcludedTrait) fn(&self)
             me baz() (as ExcludedTrait) fn(&self)
             me foo() (as ExcludedTrait) fn(&self)
-            sn box                    Box::new(expr)
-            sn call                   function(expr)
-            sn dbg                    dbg!(expr)
+            sn box                 Box::new(expr)
+            sn call                function(expr)
+            sn dbg                     dbg!(expr)
             sn dbgr                   dbg!(&expr)
-            sn deref                  *expr
-            sn let                    let
-            sn letm                   let mut
-            sn match                  match expr {}
-            sn ref                    &expr
-            sn refm                   &mut expr
+            sn deref                        *expr
+            sn let                            let
+            sn letm                       let mut
+            sn match                match expr {}
+            sn ref                          &expr
+            sn refm                     &mut expr
             sn return                 return expr
-            sn unsafe                 unsafe {}
+            sn unsafe                   unsafe {}
         "#]],
     );
 }
@@ -1578,19 +1581,22 @@ fn foo() {
 }
         "#,
         expect![[r#"
-            me inherent() fn(&self)
-            sn box        Box::new(expr)
-            sn call       function(expr)
-            sn dbg        dbg!(expr)
-            sn dbgr       dbg!(&expr)
-            sn deref      *expr
-            sn let        let
-            sn letm       let mut
-            sn match      match expr {}
-            sn ref        &expr
-            sn refm       &mut expr
-            sn return     return expr
-            sn unsafe     unsafe {}
+            me bar() (use module2::ExcludedTrait) fn(&self)
+            me baz() (use module2::ExcludedTrait) fn(&self)
+            me foo() (use module2::ExcludedTrait) fn(&self)
+            me inherent()                         fn(&self)
+            sn box                           Box::new(expr)
+            sn call                          function(expr)
+            sn dbg                               dbg!(expr)
+            sn dbgr                             dbg!(&expr)
+            sn deref                                  *expr
+            sn let                                      let
+            sn letm                                 let mut
+            sn match                          match expr {}
+            sn ref                                    &expr
+            sn refm                               &mut expr
+            sn return                           return expr
+            sn unsafe                             unsafe {}
         "#]],
     );
 }
@@ -1623,19 +1629,22 @@ fn foo() {
 }
         "#,
         expect![[r#"
-            me inherent() fn(&self)
-            sn box        Box::new(expr)
-            sn call       function(expr)
-            sn dbg        dbg!(expr)
-            sn dbgr       dbg!(&expr)
-            sn deref      *expr
-            sn let        let
-            sn letm       let mut
-            sn match      match expr {}
-            sn ref        &expr
-            sn refm       &mut expr
-            sn return     return expr
-            sn unsafe     unsafe {}
+            me bar() (use module2::ExcludedTrait) fn(&self)
+            me baz() (use module2::ExcludedTrait) fn(&self)
+            me foo() (use module2::ExcludedTrait) fn(&self)
+            me inherent()                         fn(&self)
+            sn box                           Box::new(expr)
+            sn call                          function(expr)
+            sn dbg                               dbg!(expr)
+            sn dbgr                             dbg!(&expr)
+            sn deref                                  *expr
+            sn let                                      let
+            sn letm                                 let mut
+            sn match                          match expr {}
+            sn ref                                    &expr
+            sn refm                               &mut expr
+            sn return                           return expr
+            sn unsafe                             unsafe {}
         "#]],
     );
 }
@@ -1663,8 +1672,11 @@ fn foo() {
 }
         "#,
         expect![[r#"
-                me inherent(…) fn(&self)
-            "#]],
+            me bar(…) (as ExcludedTrait) fn(&self)
+            me baz(…) (as ExcludedTrait) fn(&self)
+            me foo(…) (as ExcludedTrait) fn(&self)
+            me inherent(…)               fn(&self)
+        "#]],
     );
 }
 

@@ -293,52 +293,15 @@ Default:
 ----
 [
   "core::borrow::Borrow",
-  "core::borrow::BorrowMut",
-  "core::cmp::PartialEq",
-  "core::ops::Add",
-  "core::ops::AddAssign",
-  "core::ops::BitAnd",
-  "core::ops::BitAndAssign",
-  "core::ops::BitOr",
-  "core::ops::BitOrAssign",
-  "core::ops::BitXor",
-  "core::ops::BitXorAssign",
-  "core::ops::Div",
-  "core::ops::DivAssign",
-  "core::ops::Mul",
-  "core::ops::MulAssign",
-  "core::ops::Rem",
-  "core::ops::RemAssign",
-  "core::ops::Shl",
-  "core::ops::ShlAssign",
-  "core::ops::Shr",
-  "core::ops::ShrAssign",
-  "core::ops::Sub",
-  "core::ops::SubAssign",
-  "core::ops::Neg",
-  "core::ops::Not",
-  "core::ops::Index",
-  "core::ops::IndexMut",
-  "core::ops::Deref",
-  "core::ops::DerefMut"
+  "core::borrow::BorrowMut"
 ]
 ----
 A list of full paths to traits to exclude from flyimport.
 
-Traits in this list won't be suggested to be imported by flyimport for their methods. Methods from them won't be available in flyimport completion. They will still be available if in scope.
-
-Note that the trait themselves can still be suggested by flyimport.
+Traits in this list won't have their methods suggested in completions unless the trait
+is in scope.
 
 This setting also inherits `#rust-analyzer.completion.excludeTraits#`.
-
-This setting defaults to:
-
- - [`core::borrow::Borrow`](https://doc.rust-lang.org/nightly/core/borrow/trait.Borrow.html)
- - [`core::borrow::BorrowMut`](https://doc.rust-lang.org/nightly/core/borrow/trait.BorrowMut.html)
- - [`core::cmp::PartialEq`](https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html)
- - All operator traits (in [`core::ops`](https://doc.rust-lang.org/nightly/core/ops))
-
-Note that if you override this setting, those traits won't be automatically inserted, so you may want to insert them manually.
 
 --
 [[rust-analyzer.completion.autoself.enable]]rust-analyzer.completion.autoself.enable (default: `true`)::
