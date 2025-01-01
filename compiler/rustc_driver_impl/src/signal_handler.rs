@@ -2,7 +2,7 @@
 //! Primarily used to extract a backtrace from stack overflow
 
 use std::alloc::{Layout, alloc};
-use std::{fmt, mem, ptr};
+use std::{fmt, mem, ptr, slice};
 
 use rustc_interface::util::{DEFAULT_STACK_SIZE, STACK_SIZE};
 
@@ -35,20 +35,22 @@ macro raw_errln($tokens:tt) {
 }
 
 /// Signal handler installed for SIGSEGV
-// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
-#[allow(static_mut_refs)]
-extern "C" fn print_stack_trace(_: libc::c_int) {
+///
+/// # Safety
+///
+/// Caller must ensure that this function is not re-entered.
+unsafe extern "C" fn print_stack_trace(_: libc::c_int) {
     const MAX_FRAMES: usize = 256;
-    // Reserve data segment so we don't have to malloc in a signal handler, which might fail
-    // in incredibly undesirable and unexpected ways due to e.g. the allocator deadlocking
-    static mut STACK_TRACE: [*mut libc::c_void; MAX_FRAMES] = [ptr::null_mut(); MAX_FRAMES];
     let stack = unsafe {
+        // Reserve data segment so we don't have to malloc in a signal handler, which might fail
+        // in incredibly undesirable and unexpected ways due to e.g. the allocator deadlocking
+        static mut STACK_TRACE: [*mut libc::c_void; MAX_FRAMES] = [ptr::null_mut(); MAX_FRAMES];
         // Collect return addresses
-        let depth = libc::backtrace(STACK_TRACE.as_mut_ptr(), MAX_FRAMES as i32);
+        let depth = libc::backtrace(&raw mut STACK_TRACE as _, MAX_FRAMES as i32);
         if depth == 0 {
             return;
         }
-        &STACK_TRACE.as_slice()[0..(depth as _)]
+        slice::from_raw_parts(&raw const STACK_TRACE as _, depth as _)
     };
 
     // Just a stack trace is cryptic. Explain what we're doing.
