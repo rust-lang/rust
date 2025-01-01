@@ -1051,43 +1051,61 @@ macro_rules! tool_extended {
                 });
             }
 
-            #[allow(unused_mut)]
             fn run(self, builder: &Builder<'_>) -> PathBuf {
                 let Self { compiler, target } = self;
-                let tool = builder.ensure(ToolBuild {
+                run_tool_build_step(
+                    builder,
                     compiler,
                     target,
-                    tool: $tool_name,
-                    mode: Mode::ToolRustc,
-                    path: $path,
-                    extra_features: vec![],
-                    source_type: SourceType::InTree,
-                    allow_features: "",
-                    cargo_args: vec![]
-                });
-
-                if (false $(|| !$add_bins_to_sysroot.is_empty())?) && compiler.stage > 0 {
-                    let bindir = builder.sysroot(compiler).join("bin");
-                    t!(fs::create_dir_all(&bindir));
-
-                    #[allow(unused_variables)]
-                    let tools_out = builder
-                        .cargo_out(compiler, Mode::ToolRustc, target);
-
-                    $(for add_bin in $add_bins_to_sysroot {
-                        let bin_source = tools_out.join(exe(add_bin, target));
-                        let bin_destination = bindir.join(exe(add_bin, compiler.host));
-                        builder.copy_link(&bin_source, &bin_destination);
-                    })?
-
-                    let tool = bindir.join(exe($tool_name, compiler.host));
-                    tool
-                } else {
-                    tool
-                }
+                    $tool_name,
+                    $path,
+                    None $( .or(Some(&$add_bins_to_sysroot)) )?,
+                )
             }
         }
         )+
+    }
+}
+
+fn run_tool_build_step(
+    builder: &Builder<'_>,
+    compiler: Compiler,
+    target: TargetSelection,
+    tool_name: &'static str,
+    path: &'static str,
+    add_bins_to_sysroot: Option<&[&str]>,
+) -> PathBuf {
+    let tool = builder.ensure(ToolBuild {
+        compiler,
+        target,
+        tool: tool_name,
+        mode: Mode::ToolRustc,
+        path,
+        extra_features: vec![],
+        source_type: SourceType::InTree,
+        allow_features: "",
+        cargo_args: vec![],
+    });
+
+    // FIXME: This should just be an if-let-chain, but those are unstable.
+    if let Some(add_bins_to_sysroot) =
+        add_bins_to_sysroot.filter(|bins| !bins.is_empty() && compiler.stage > 0)
+    {
+        let bindir = builder.sysroot(compiler).join("bin");
+        t!(fs::create_dir_all(&bindir));
+
+        let tools_out = builder.cargo_out(compiler, Mode::ToolRustc, target);
+
+        for add_bin in add_bins_to_sysroot {
+            let bin_source = tools_out.join(exe(add_bin, target));
+            let bin_destination = bindir.join(exe(add_bin, compiler.host));
+            builder.copy_link(&bin_source, &bin_destination);
+        }
+
+        // Return a path into the bin dir.
+        bindir.join(exe(tool_name, compiler.host))
+    } else {
+        tool
     }
 }
 
