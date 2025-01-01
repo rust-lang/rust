@@ -175,7 +175,7 @@ impl UselessVec {
                 }
             },
             higher::VecArgs::Vec(args) => {
-                let args_span = if let Some(last) = args.iter().last() {
+                let args_span = if let Some(last) = args.iter().next_back() {
                     if args.len() as u64 * size_of(cx, last) > self.too_large_for_stack {
                         return;
                     }

@@ -227,7 +227,7 @@ fn check_gaps(cx: &LateContext<'_>, gaps: &[Gap<'_>]) -> bool {
     span_lint_and_then(
         cx,
         lint,
-        first_gap.prev_stop.span.to(empty_lines().last().unwrap()),
+        first_gap.prev_stop.span.to(empty_lines().next_back().unwrap()),
         format!("empty {lines} after {kind_desc}"),
         |diag| {
             if let Some(owner) = cx.last_node_with_lint_attrs.as_owner() {

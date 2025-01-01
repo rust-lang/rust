@@ -228,7 +228,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'_>) {
         // we need both a let-binding stmt and an expr
         if let Some(retexpr) = block.expr
-            && let Some(stmt) = block.stmts.iter().last()
+            && let Some(stmt) = block.stmts.iter().next_back()
             && let StmtKind::Let(local) = &stmt.kind
             && local.ty.is_none()
             && cx.tcx.hir().attrs(local.hir_id).is_empty()
@@ -315,7 +315,7 @@ fn check_block_return<'tcx>(cx: &LateContext<'tcx>, expr_kind: &ExprKind<'tcx>, 
     if let ExprKind::Block(block, _) = expr_kind {
         if let Some(block_expr) = block.expr {
             check_final_expr(cx, block_expr, semi_spans, RetReplacement::Empty, None);
-        } else if let Some(stmt) = block.stmts.iter().last() {
+        } else if let Some(stmt) = block.stmts.iter().next_back() {
             match stmt.kind {
                 StmtKind::Expr(expr) => {
                     check_final_expr(cx, expr, semi_spans, RetReplacement::Empty, None);

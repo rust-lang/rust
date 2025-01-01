@@ -110,7 +110,7 @@ fn check_collapsible_maybe_if_let(cx: &EarlyContext<'_>, then_span: Span, else_:
         // Prevent "elseif"
         // Check that the "else" is followed by whitespace
         let up_to_else = then_span.between(block.span);
-        let requires_space = if let Some(c) = snippet(cx, up_to_else, "..").chars().last() {
+        let requires_space = if let Some(c) = snippet(cx, up_to_else, "..").chars().next_back() {
             !c.is_whitespace()
         } else {
             false

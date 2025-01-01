@@ -78,7 +78,7 @@ fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Exp
                 .filter_map(|arg| {
                     if let ExprKind::Block(block, _) = arg.kind
                         && block.expr.is_none()
-                        && let Some(last_stmt) = block.stmts.iter().last()
+                        && let Some(last_stmt) = block.stmts.iter().next_back()
                         && let StmtKind::Semi(last_expr) = last_stmt.kind
                         && let Some(snip) = last_expr.span.get_source_text(cx)
                     {
