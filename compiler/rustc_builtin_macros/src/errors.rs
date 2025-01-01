@@ -618,6 +618,17 @@ pub(crate) enum InvalidFormatStringSuggestion {
         #[primary_span]
         span: Span,
     },
+    #[suggestion(
+        builtin_macros_format_reorder_format_parameter,
+        code = "{replacement}",
+        style = "verbose",
+        applicability = "machine-applicable"
+    )]
+    ReorderFormatParameter {
+        #[primary_span]
+        span: Span,
+        replacement: String,
+    },
 }
 
 #[derive(Diagnostic)]
