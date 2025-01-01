@@ -89,7 +89,7 @@ fn check_word(cx: &LateContext<'_>, word: &str, span: Span, code_level: isize, b
 
         let s = if let Some(prefix) = s.strip_suffix("es")
             && prefix.chars().all(|c| c.is_ascii_uppercase())
-            && matches!(prefix.chars().next_back(), Some('S' | 'X'))
+            && matches!(prefix.chars().last(), Some('S' | 'X'))
         {
             prefix
         } else if let Some(prefix) = s.strip_suffix("ified")

@@ -149,7 +149,7 @@ fn check_assign<'tcx>(
     block: &'tcx hir::Block<'_>,
 ) -> Option<&'tcx hir::Expr<'tcx>> {
     if block.expr.is_none()
-        && let Some(expr) = block.stmts.iter().next_back()
+        && let Some(expr) = block.stmts.iter().last()
         && let hir::StmtKind::Semi(expr) = expr.kind
         && let hir::ExprKind::Assign(var, value, _) = expr.kind
         && path_to_local_id(var, decl)

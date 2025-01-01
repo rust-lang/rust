@@ -66,7 +66,7 @@ pub(super) fn check(cx: &EarlyContext<'_>, item_span: Span, attrs: &[Attribute])
 
 fn lint_mixed_attrs(cx: &EarlyContext<'_>, attrs: &[Attribute]) {
     let mut attrs_iter = attrs.iter().filter(|attr| !attr.span.from_expansion());
-    let span = if let (Some(first), Some(last)) = (attrs_iter.next(), attrs_iter.next_back()) {
+    let span = if let (Some(first), Some(last)) = (attrs_iter.next(), attrs_iter.last()) {
         first.span.with_hi(last.span.hi())
     } else {
         return;
