@@ -168,15 +168,16 @@ enum AdjustMode {
     Pass,
 }
 
-/// `ref mut` patterns (explicit or match-ergonomics)
-/// are not allowed behind an `&` reference.
+/// `ref mut` bindings (explicit or match-ergonomics) are not allowed behind an `&` reference.
+/// Normally, the borrow checker enforces this, but for (currently experimental) match ergonomics,
+/// we track this when typing patterns for two purposes:
 ///
-/// This includes explicit `ref mut` behind `&` patterns
-/// that match against `&mut` references,
-/// where the code would have compiled
-/// had the pattern been written as `&mut`.
-/// However, the borrow checker will not catch
-/// this last case, so we need to throw an error ourselves.
+/// - For RFC 3627's Rule 3, when this would prevent us from binding with `ref mut`, we limit the
+///   default binding mode to be by shared `ref` when it would otherwise be `ref mut`.
+///
+/// - For RFC 3627's Rule 5, we allow `&` patterns to match against `&mut` references, treating them
+///   as if they were shared references. Since the scrutinee is mutable in this case, the borrow
+///   checker won't catch if we bind with `ref mut`, so we need to throw an error ourselves.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum MutblCap {
     /// Mutability restricted to immutable.
@@ -477,9 +478,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if features.ref_pat_eat_one_layer_2024() || features.ref_pat_eat_one_layer_2024_structural()
         {
             def_br = def_br.cap_ref_mutability(max_ref_mutbl.as_mutbl());
-            if def_br == ByRef::Yes(Mutability::Not) {
-                max_ref_mutbl = MutblCap::Not;
-            }
+        }
+        if def_br == ByRef::Yes(Mutability::Not) {
+            max_ref_mutbl = MutblCap::Not;
         }
 
         if !pat_adjustments.is_empty() {
@@ -2292,7 +2293,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if (no_ref_mut_behind_and && r_mutbl >= pat_mutbl)
                             || r_mutbl == pat_mutbl =>
                     {
-                        if no_ref_mut_behind_and && r_mutbl == Mutability::Not {
+                        if r_mutbl == Mutability::Not {
                             pat_info.max_ref_mutbl = MutblCap::Not;
                         }
 
