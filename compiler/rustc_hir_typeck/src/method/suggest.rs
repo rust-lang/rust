@@ -105,8 +105,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         };
         let trait_ref = ty::TraitRef::new(self.tcx, into_iterator_trait, [ty]);
-        let cause = ObligationCause::new(span, self.body_id, ObligationCauseCode::Misc);
-        let obligation = Obligation::new(self.tcx, cause, self.param_env, trait_ref);
+        let obligation = Obligation::new(self.tcx, self.misc(span), self.param_env, trait_ref);
         if !self.predicate_must_hold_modulo_regions(&obligation) {
             return false;
         }
@@ -3489,7 +3488,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let pred = ty::TraitRef::new(self.tcx, unpin_trait, [*rcvr_ty]);
                 let unpin = self.predicate_must_hold_considering_regions(&Obligation::new(
                     self.tcx,
-                    ObligationCause::misc(rcvr.span, self.body_id),
+                    self.misc(rcvr.span),
                     self.param_env,
                     pred,
                 ));
