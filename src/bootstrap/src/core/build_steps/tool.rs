@@ -1012,8 +1012,6 @@ macro_rules! tool_extended {
        $path:expr,
        $tool_name:expr,
        stable = $stable:expr
-       $(,tool_std = $tool_std:literal)?
-       $(,allow_features = $allow_features:expr)?
        $(,add_bins_to_sysroot = $add_bins_to_sysroot:expr)?
        ;)+) => {
         $(
@@ -1059,11 +1057,11 @@ macro_rules! tool_extended {
                     compiler: $sel.compiler,
                     target: $sel.target,
                     tool: $tool_name,
-                    mode: if false $(|| $tool_std)? { Mode::ToolStd } else { Mode::ToolRustc },
+                    mode: Mode::ToolRustc,
                     path: $path,
                     extra_features: vec![],
                     source_type: SourceType::InTree,
-                    allow_features: concat!($($allow_features)*),
+                    allow_features: "",
                     cargo_args: vec![]
                 });
 
