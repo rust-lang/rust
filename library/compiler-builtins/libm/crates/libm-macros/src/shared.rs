@@ -11,9 +11,9 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
         None,
         &[
             "acosf", "acoshf", "asinf", "asinhf", "atanf", "atanhf", "cbrtf", "ceilf", "cosf",
-            "coshf", "erff", "exp10f", "exp2f", "expf", "expm1f", "fabsf", "floorf", "j0f", "j1f",
-            "lgammaf", "log10f", "log1pf", "log2f", "logf", "rintf", "roundf", "sinf", "sinhf",
-            "sqrtf", "tanf", "tanhf", "tgammaf", "truncf",
+            "coshf", "erff", "erfcf", "exp10f", "exp2f", "expf", "expm1f", "fabsf", "floorf",
+            "j0f", "j1f", "lgammaf", "log10f", "log1pf", "log2f", "logf", "rintf", "roundf",
+            "sinf", "sinhf", "sqrtf", "tanf", "tanhf", "tgammaf", "truncf", "y0f", "y1f",
         ],
     ),
     (
@@ -23,9 +23,9 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
         None,
         &[
             "acos", "acosh", "asin", "asinh", "atan", "atanh", "cbrt", "ceil", "cos", "cosh",
-            "erf", "exp10", "exp2", "exp", "expm1", "fabs", "floor", "j0", "j1", "lgamma", "log10",
-            "log1p", "log2", "log", "rint", "round", "sin", "sinh", "sqrt", "tan", "tanh",
-            "tgamma", "trunc",
+            "erf", "erfc", "exp10", "exp2", "exp", "expm1", "fabs", "floor", "j0", "j1", "lgamma",
+            "log10", "log1p", "log2", "log", "rint", "round", "sin", "sinh", "sqrt", "tan", "tanh",
+            "tgamma", "trunc", "y0", "y1",
         ],
     ),
     (
@@ -97,14 +97,14 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
         FloatTy::F32,
         Signature { args: &[Ty::I32, Ty::F32], returns: &[Ty::F32] },
         None,
-        &["jnf"],
+        &["jnf", "ynf"],
     ),
     (
         // `(i32, f64) -> f64`
         FloatTy::F64,
         Signature { args: &[Ty::I32, Ty::F64], returns: &[Ty::F64] },
         None,
-        &["jn"],
+        &["jn", "yn"],
     ),
     (
         // `(f32, i32) -> f32`

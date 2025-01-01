@@ -282,5 +282,6 @@ functions! {
     musl_y0f: y0f(a: f32) -> f32;
     musl_y1: y1(a: f64) -> f64;
     musl_y1f: y1f(a: f32) -> f32;
+    musl_yn: yn(a: c_int, b: f64) -> f64;
     musl_ynf: ynf(a: c_int, b: f32) -> f32;
 }

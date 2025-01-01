@@ -130,7 +130,7 @@ libm_macros::for_each_function! {
         fabsf, ceilf, copysignf, floorf, rintf, roundf, truncf,
         fmod, fmodf, frexp, frexpf, ilogb, ilogbf, jn, jnf, ldexp, ldexpf,
         lgamma_r, lgammaf_r, modf, modff, nextafter, nextafterf, pow,powf,
-        remquo, remquof, scalbn, scalbnf, sincos, sincosf,
+        remquo, remquof, scalbn, scalbnf, sincos, sincosf, yn, ynf,
     ],
     fn_extra: match MACRO_FN_NAME {
         // Remap function names that are different between mpfr and libm
@@ -264,6 +264,21 @@ macro_rules! impl_op_for_ty {
                         prep_retval::<Self::FTy>(&mut this.0, sord),
                         prep_retval::<Self::FTy>(&mut this.1, cord)
                     )
+                }
+            }
+
+            impl MpOp for crate::op::[<yn $suffix>]::Routine {
+                type MpTy = (i32, MpFloat);
+
+                fn new_mp() -> Self::MpTy {
+                    (0, new_mpfloat::<Self::FTy>())
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    this.0 = input.0;
+                    this.1.assign(input.1);
+                    let ord = this.1.yn_round(this.0, Nearest);
+                    prep_retval::<Self::FTy>(&mut this.1, ord)
                 }
             }
         }

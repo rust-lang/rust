@@ -147,6 +147,7 @@ impl_has_domain! {
     cos => TRIG;
     cosh => UNBOUNDED;
     erf => UNBOUNDED;
+    erfc => UNBOUNDED;
     exp => UNBOUNDED;
     exp10 => UNBOUNDED;
     exp2 => UNBOUNDED;
@@ -173,6 +174,8 @@ impl_has_domain! {
     tanh => UNBOUNDED;
     tgamma => GAMMA;
     trunc => UNBOUNDED;
+    y0 => UNBOUNDED;
+    y1 => UNBOUNDED;
 }
 
 /* Manual implementations, these functions don't follow `foo`->`foof` naming */

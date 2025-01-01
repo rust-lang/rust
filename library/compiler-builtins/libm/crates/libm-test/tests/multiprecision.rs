@@ -48,7 +48,7 @@ libm_macros::for_each_function! {
     attributes: [
         // Also an assertion failure on i686: at `MPFR_ASSERTN (! mpfr_erangeflag_p ())`
         #[ignore = "large values are infeasible in MPFR"]
-        [jn, jnf],
+        [jn, jnf, yn, ynf],
     ],
     skip: [
         // FIXME: MPFR tests needed
@@ -157,6 +157,8 @@ libm_macros::for_each_function! {
         remquof,
         scalbn,
         scalbnf,
+        yn,
+        ynf,
 
         // FIXME: MPFR tests needed
         frexp,
