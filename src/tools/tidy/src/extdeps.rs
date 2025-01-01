@@ -8,6 +8,8 @@ const ALLOWED_SOURCES: &[&str] = &[
     r#""registry+https://github.com/rust-lang/crates.io-index""#,
     // This is `rust_team_data` used by `site` in src/tools/rustc-perf,
     r#""git+https://github.com/rust-lang/team#a5260e76d3aa894c64c56e6ddc8545b9a98043ec""#,
+    // This is temporarily used to bootstrap the `armv7a_vex_v5` target until cc-rs has it in its generated target list.
+    r#""git+https://github.com/rust-lang/cc-rs?rev=6fe995c675dc1178f570752fa8f6de82913a91dc#6fe995c675dc1178f570752fa8f6de82913a91dc""#,
 ];
 
 /// Checks for external package sources. `root` is the path to the directory that contains the
