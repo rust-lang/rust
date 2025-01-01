@@ -95,7 +95,7 @@ bitflags! {
         // Other flags can still inhibit reordering and thus randomization.
         // The seed stored in `ReprOptions.field_shuffle_seed`.
         const RANDOMIZE_LAYOUT   = 1 << 4;
-        // Any of these flags being set prevent field reordering optimisation.
+        // Any of these flags being set prevent field reordering optimization.
         const FIELD_ORDER_UNOPTIMIZABLE   = ReprFlags::IS_C.bits()
                                  | ReprFlags::IS_SIMD.bits()
                                  | ReprFlags::IS_LINEAR.bits();
@@ -204,7 +204,7 @@ impl ReprOptions {
         !self.inhibit_struct_field_reordering() && self.flags.contains(ReprFlags::RANDOMIZE_LAYOUT)
     }
 
-    /// Returns `true` if this `#[repr()]` should inhibit union ABI optimisations.
+    /// Returns `true` if this `#[repr()]` should inhibit union ABI optimizations.
     pub fn inhibits_union_abi_opt(&self) -> bool {
         self.c()
     }

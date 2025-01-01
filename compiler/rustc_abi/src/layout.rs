@@ -636,7 +636,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     // same ABI as the scalar variant with the reserved niche.
                     BackendRepr::Scalar(_) => BackendRepr::Scalar(niche_scalar),
                     BackendRepr::ScalarPair(first, second) => {
-                        // Only the niche is guaranteed to be initialised,
+                        // Only the niche is guaranteed to be initialized,
                         // so use union layouts for the other primitive.
                         if niche_offset == Size::ZERO {
                             BackendRepr::ScalarPair(niche_scalar, second.to_union())
@@ -777,7 +777,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             panic!(
                 "layout decided on a larger discriminant type ({min_ity:?}) than typeck ({typeck_ity:?})"
             );
-            // However, it is fine to make discr type however large (as an optimisation)
+            // However, it is fine to make discr type however large (as an optimization)
             // after this point – we’ll just truncate the value we load in codegen.
         }
 
@@ -883,7 +883,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                         break;
                     }
                     // This is pretty conservative. We could go fancier
-                    // by realising that (u8, u8) could just cohabit with
+                    // by realizing that (u8, u8) could just cohabit with
                     // u16 or even u32.
                     let new_prim = match (old_prim, prim) {
                         // Allow all identical primitives.
