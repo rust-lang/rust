@@ -18,7 +18,7 @@
 //!
 //!
 //! See the full discussion : <https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/Eager.20expansion.20of.20built-in.20macros>
-use base_db::CrateId;
+use base_db::Crate;
 use span::SyntaxContextId;
 use syntax::{ted, Parse, SyntaxElement, SyntaxNode, TextSize, WalkEvent};
 use syntax_bridge::DocCommentDesugarMode;
@@ -34,7 +34,7 @@ use crate::{
 
 pub fn expand_eager_macro_input(
     db: &dyn ExpandDatabase,
-    krate: CrateId,
+    krate: Crate,
     macro_call: &ast::MacroCall,
     ast_id: AstId<ast::MacroCall>,
     def: MacroDefId,
@@ -115,7 +115,7 @@ fn lazy_expand(
     def: &MacroDefId,
     macro_call: &ast::MacroCall,
     ast_id: AstId<ast::MacroCall>,
-    krate: CrateId,
+    krate: Crate,
     call_site: SyntaxContextId,
 ) -> ExpandResult<(InFile<Parse<SyntaxNode>>, Arc<ExpansionSpanMap>)> {
     let expand_to = ExpandTo::from_call_site(macro_call);
@@ -137,7 +137,7 @@ fn eager_macro_recur(
     expanded_map: &mut ExpansionSpanMap,
     mut offset: TextSize,
     curr: InFile<SyntaxNode>,
-    krate: CrateId,
+    krate: Crate,
     call_site: SyntaxContextId,
     macro_resolver: &dyn Fn(&ModPath) -> Option<MacroDefId>,
 ) -> ExpandResult<Option<(SyntaxNode, TextSize)>> {
@@ -176,7 +176,7 @@ fn eager_macro_recur(
             Some(path) => match macro_resolver(&path) {
                 Some(def) => def,
                 None => {
-                    let edition = db.crate_graph()[krate].edition;
+                    let edition = krate.data(db).edition;
                     error = Some(ExpandError::other(
                         span_map.span_at(call.syntax().text_range().start()),
                         format!("unresolved macro {}", path.display(db, edition)),

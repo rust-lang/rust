@@ -1,17 +1,16 @@
 //! Defines a unit of change that can applied to the database to get the next
 //! state. Changes are transactional.
-use base_db::{CrateGraph, CrateId, CrateWorkspaceData, FileChange, SourceRoot};
-use rustc_hash::FxHashMap;
+use base_db::{CrateGraphBuilder, FileChange, SourceRoot};
 use salsa::Durability;
 use span::FileId;
 use triomphe::Arc;
 
-use crate::{db::ExpandDatabase, proc_macro::ProcMacros};
+use crate::{db::ExpandDatabase, proc_macro::ProcMacrosBuilder};
 
 #[derive(Debug, Default)]
 pub struct ChangeWithProcMacros {
     pub source_change: FileChange,
-    pub proc_macros: Option<ProcMacros>,
+    pub proc_macros: Option<ProcMacrosBuilder>,
 }
 
 impl ChangeWithProcMacros {
@@ -20,8 +19,13 @@ impl ChangeWithProcMacros {
     }
 
     pub fn apply(self, db: &mut impl ExpandDatabase) {
-        self.source_change.apply(db);
+        let crates_id_map = self.source_change.apply(db);
         if let Some(proc_macros) = self.proc_macros {
+            let proc_macros = proc_macros.build(
+                crates_id_map
+                    .as_ref()
+                    .expect("cannot set proc macros without setting the crate graph too"),
+            );
             db.set_proc_macros_with_durability(Arc::new(proc_macros), Durability::HIGH);
         }
     }
@@ -30,16 +34,11 @@ impl ChangeWithProcMacros {
         self.source_change.change_file(file_id, new_text)
     }
 
-    pub fn set_crate_graph(
-        &mut self,
-        graph: CrateGraph,
-        ws_data: FxHashMap<CrateId, Arc<CrateWorkspaceData>>,
-    ) {
+    pub fn set_crate_graph(&mut self, graph: CrateGraphBuilder) {
         self.source_change.set_crate_graph(graph);
-        self.source_change.set_ws_data(ws_data);
     }
 
-    pub fn set_proc_macros(&mut self, proc_macros: ProcMacros) {
+    pub fn set_proc_macros(&mut self, proc_macros: ProcMacrosBuilder) {
         self.proc_macros = Some(proc_macros);
     }
 

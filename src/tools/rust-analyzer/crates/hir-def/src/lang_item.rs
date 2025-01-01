@@ -8,7 +8,7 @@ use rustc_hash::FxHashMap;
 use triomphe::Arc;
 
 use crate::{
-    db::DefDatabase, path::Path, AdtId, AssocItemId, AttrDefId, CrateId, EnumId, EnumVariantId,
+    db::DefDatabase, path::Path, AdtId, AssocItemId, AttrDefId, Crate, EnumId, EnumVariantId,
     FunctionId, ImplId, ModuleDefId, StaticId, StructId, TraitId, TypeAliasId, UnionId,
 };
 
@@ -96,7 +96,7 @@ impl LangItems {
     /// Salsa query. This will look for lang items in a specific crate.
     pub(crate) fn crate_lang_items_query(
         db: &dyn DefDatabase,
-        krate: CrateId,
+        krate: Crate,
     ) -> Option<Arc<LangItems>> {
         let _p = tracing::info_span!("crate_lang_items_query").entered();
 
@@ -175,7 +175,7 @@ impl LangItems {
     /// traversing its dependencies.
     pub(crate) fn lang_item_query(
         db: &dyn DefDatabase,
-        start_crate: CrateId,
+        start_crate: Crate,
         item: LangItem,
     ) -> Option<LangItemTarget> {
         let _p = tracing::info_span!("lang_item_query").entered();
@@ -184,10 +184,7 @@ impl LangItems {
         {
             return Some(target);
         }
-        db.crate_graph()[start_crate]
-            .dependencies
-            .iter()
-            .find_map(|dep| db.lang_item(dep.crate_id, item))
+        start_crate.data(db).dependencies.iter().find_map(|dep| db.lang_item(dep.crate_id, item))
     }
 
     fn collect_lang_item<T>(
@@ -209,19 +206,14 @@ pub(crate) fn lang_attr(db: &dyn DefDatabase, item: AttrDefId) -> Option<LangIte
     db.attrs(item).lang_item()
 }
 
-pub(crate) fn notable_traits_in_deps(
-    db: &dyn DefDatabase,
-    krate: CrateId,
-) -> Arc<[Arc<[TraitId]>]> {
+pub(crate) fn notable_traits_in_deps(db: &dyn DefDatabase, krate: Crate) -> Arc<[Arc<[TraitId]>]> {
     let _p = tracing::info_span!("notable_traits_in_deps", ?krate).entered();
-    let crate_graph = db.crate_graph();
-
     Arc::from_iter(
-        crate_graph.transitive_deps(krate).filter_map(|krate| db.crate_notable_traits(krate)),
+        db.transitive_deps(krate).into_iter().filter_map(|krate| db.crate_notable_traits(krate)),
     )
 }
 
-pub(crate) fn crate_notable_traits(db: &dyn DefDatabase, krate: CrateId) -> Option<Arc<[TraitId]>> {
+pub(crate) fn crate_notable_traits(db: &dyn DefDatabase, krate: Crate) -> Option<Arc<[TraitId]>> {
     let _p = tracing::info_span!("crate_notable_traits", ?krate).entered();
 
     let mut traits = Vec::new();
@@ -290,17 +282,12 @@ impl LangItem {
         Self::from_symbol(name.symbol())
     }
 
-    pub fn path(&self, db: &dyn DefDatabase, start_crate: CrateId) -> Option<Path> {
+    pub fn path(&self, db: &dyn DefDatabase, start_crate: Crate) -> Option<Path> {
         let t = db.lang_item(start_crate, *self)?;
         Some(Path::LangItem(t, None))
     }
 
-    pub fn ty_rel_path(
-        &self,
-        db: &dyn DefDatabase,
-        start_crate: CrateId,
-        seg: Name,
-    ) -> Option<Path> {
+    pub fn ty_rel_path(&self, db: &dyn DefDatabase, start_crate: Crate, seg: Name) -> Option<Path> {
         let t = db.lang_item(start_crate, *self)?;
         Some(Path::LangItem(t, Some(seg)))
     }

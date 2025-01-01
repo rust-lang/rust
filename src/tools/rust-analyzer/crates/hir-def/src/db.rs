@@ -1,5 +1,5 @@
 //! Defines database & queries for name resolution.
-use base_db::{CrateId, RootQueryDb, SourceDatabase, Upcast};
+use base_db::{Crate, RootQueryDb, SourceDatabase, Upcast};
 use either::Either;
 use hir_expand::{db::ExpandDatabase, HirFileId, MacroDefId};
 use intern::sym;
@@ -20,7 +20,7 @@ use crate::{
     import_map::ImportMap,
     item_tree::{AttrOwner, ItemTree, ItemTreeSourceMaps},
     lang_item::{self, LangItem, LangItemTarget, LangItems},
-    nameres::{diagnostics::DefDiagnostics, DefMap},
+    nameres::{diagnostics::DefDiagnostics, DefMap, LocalDefMap},
     tt,
     type_ref::TypesSourceMap,
     visibility::{self, Visibility},
@@ -130,8 +130,11 @@ pub trait DefDatabase:
         block_id: BlockId,
     ) -> (Arc<ItemTree>, Arc<ItemTreeSourceMaps>);
 
-    #[salsa::invoke(DefMap::crate_def_map_query)]
-    fn crate_def_map(&self, krate: CrateId) -> Arc<DefMap>;
+    #[salsa::invoke_actual(DefMap::crate_local_def_map_query)]
+    fn crate_local_def_map(&self, krate: Crate) -> (Arc<DefMap>, Arc<LocalDefMap>);
+
+    #[salsa::invoke_actual(DefMap::crate_def_map_query)]
+    fn crate_def_map(&self, krate: Crate) -> Arc<DefMap>;
 
     /// Computes the block-level `DefMap`.
     #[salsa::invoke_actual(DefMap::block_def_map_query)]
@@ -258,10 +261,10 @@ pub trait DefDatabase:
     // endregion:attrs
 
     #[salsa::invoke(LangItems::lang_item_query)]
-    fn lang_item(&self, start_crate: CrateId, item: LangItem) -> Option<LangItemTarget>;
+    fn lang_item(&self, start_crate: Crate, item: LangItem) -> Option<LangItemTarget>;
 
-    #[salsa::invoke(ImportMap::import_map_query)]
-    fn import_map(&self, krate: CrateId) -> Arc<ImportMap>;
+    #[salsa::invoke_actual(ImportMap::import_map_query)]
+    fn import_map(&self, krate: Crate) -> Arc<ImportMap>;
 
     // region:visibilities
 
@@ -277,23 +280,25 @@ pub trait DefDatabase:
 
     // endregion:visibilities
 
-    #[salsa::invoke(LangItems::crate_lang_items_query)]
-    fn crate_lang_items(&self, krate: CrateId) -> Option<Arc<LangItems>>;
+    #[salsa::invoke_actual(LangItems::crate_lang_items_query)]
+    fn crate_lang_items(&self, krate: Crate) -> Option<Arc<LangItems>>;
 
-    #[salsa::invoke(crate::lang_item::notable_traits_in_deps)]
-    fn notable_traits_in_deps(&self, krate: CrateId) -> Arc<[Arc<[TraitId]>]>;
-    #[salsa::invoke(crate::lang_item::crate_notable_traits)]
-    fn crate_notable_traits(&self, krate: CrateId) -> Option<Arc<[TraitId]>>;
+    #[salsa::invoke_actual(crate::lang_item::notable_traits_in_deps)]
+    fn notable_traits_in_deps(&self, krate: Crate) -> Arc<[Arc<[TraitId]>]>;
+    #[salsa::invoke_actual(crate::lang_item::crate_notable_traits)]
+    fn crate_notable_traits(&self, krate: Crate) -> Option<Arc<[TraitId]>>;
 
-    fn crate_supports_no_std(&self, crate_id: CrateId) -> bool;
+    #[salsa::invoke_actual(crate_supports_no_std)]
+    fn crate_supports_no_std(&self, crate_id: Crate) -> bool;
 
-    fn include_macro_invoc(&self, crate_id: CrateId) -> Arc<[(MacroCallId, EditionedFileId)]>;
+    #[salsa::invoke_actual(include_macro_invoc)]
+    fn include_macro_invoc(&self, crate_id: Crate) -> Arc<[(MacroCallId, EditionedFileId)]>;
 }
 
 // return: macro call id and include file id
 fn include_macro_invoc(
     db: &dyn DefDatabase,
-    krate: CrateId,
+    krate: Crate,
 ) -> Arc<[(MacroCallId, EditionedFileId)]> {
     db.crate_def_map(krate)
         .modules
@@ -307,8 +312,8 @@ fn include_macro_invoc(
         .collect()
 }
 
-fn crate_supports_no_std(db: &dyn DefDatabase, crate_id: CrateId) -> bool {
-    let file = db.crate_graph()[crate_id].root_file_id();
+fn crate_supports_no_std(db: &dyn DefDatabase, crate_id: Crate) -> bool {
+    let file = crate_id.data(db).root_file_id();
     let item_tree = db.file_item_tree(file.into());
     let attrs = item_tree.raw_attrs(AttrOwner::TopLevel);
     for attr in &**attrs {

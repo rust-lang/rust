@@ -11,7 +11,7 @@ use tracing::debug;
 use chalk_ir::{cast::Caster, fold::shift::Shift, CanonicalVarKinds};
 use chalk_solve::rust_ir::{self, OpaqueTyDatumBound, WellKnownTrait};
 
-use base_db::CrateId;
+use base_db::Crate;
 use hir_def::{
     data::{adt::StructFlags, TraitFlags},
     hir::Movability,
@@ -523,7 +523,7 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
 
 impl ChalkContext<'_> {
     fn edition(&self) -> Edition {
-        self.db.crate_graph()[self.krate].edition
+        self.krate.data(self.db).edition
     }
 
     fn for_trait_impls(
@@ -593,7 +593,7 @@ impl chalk_ir::UnificationDatabase<Interner> for &dyn HirDatabase {
 
 pub(crate) fn program_clauses_for_chalk_env_query(
     db: &dyn HirDatabase,
-    krate: CrateId,
+    krate: Crate,
     block: Option<BlockId>,
     environment: chalk_ir::Environment<Interner>,
 ) -> chalk_ir::ProgramClauses<Interner> {
@@ -665,7 +665,7 @@ pub(crate) fn associated_ty_data_query(
 
 pub(crate) fn trait_datum_query(
     db: &dyn HirDatabase,
-    krate: CrateId,
+    krate: Crate,
     trait_id: TraitId,
 ) -> Arc<TraitDatum> {
     debug!("trait_datum {:?}", trait_id);
@@ -750,7 +750,7 @@ fn lang_item_from_well_known_trait(trait_: WellKnownTrait) -> LangItem {
 
 pub(crate) fn adt_datum_query(
     db: &dyn HirDatabase,
-    krate: CrateId,
+    krate: Crate,
     chalk_ir::AdtId(adt_id): AdtId,
 ) -> Arc<AdtDatum> {
     debug!("adt_datum {:?}", adt_id);
@@ -824,7 +824,7 @@ pub(crate) fn adt_datum_query(
 
 pub(crate) fn impl_datum_query(
     db: &dyn HirDatabase,
-    krate: CrateId,
+    krate: Crate,
     impl_id: ImplId,
 ) -> Arc<ImplDatum> {
     let _p = tracing::info_span!("impl_datum_query").entered();
@@ -833,11 +833,7 @@ pub(crate) fn impl_datum_query(
     impl_def_datum(db, krate, impl_)
 }
 
-fn impl_def_datum(
-    db: &dyn HirDatabase,
-    krate: CrateId,
-    impl_id: hir_def::ImplId,
-) -> Arc<ImplDatum> {
+fn impl_def_datum(db: &dyn HirDatabase, krate: Crate, impl_id: hir_def::ImplId) -> Arc<ImplDatum> {
     let trait_ref = db
         .impl_trait(impl_id)
         // ImplIds for impls where the trait ref can't be resolved should never reach Chalk
@@ -887,7 +883,7 @@ fn impl_def_datum(
 
 pub(crate) fn associated_ty_value_query(
     db: &dyn HirDatabase,
-    krate: CrateId,
+    krate: Crate,
     id: AssociatedTyValueId,
 ) -> Arc<AssociatedTyValue> {
     let type_alias: TypeAliasAsValue = from_chalk(db, id);
@@ -896,7 +892,7 @@ pub(crate) fn associated_ty_value_query(
 
 fn type_alias_associated_ty_value(
     db: &dyn HirDatabase,
-    _krate: CrateId,
+    _krate: Crate,
     type_alias: TypeAliasId,
 ) -> Arc<AssociatedTyValue> {
     let type_alias_data = db.type_alias_data(type_alias);

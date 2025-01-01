@@ -7,7 +7,7 @@ use std::{
     mem,
 };
 
-use base_db::CrateId;
+use base_db::Crate;
 use chalk_ir::{BoundVar, Safety, TyKind};
 use either::Either;
 use hir_def::{
@@ -339,7 +339,7 @@ pub trait HirDisplay {
 }
 
 impl HirFormatter<'_> {
-    pub fn krate(&self) -> CrateId {
+    pub fn krate(&self) -> Crate {
         self.display_target.krate
     }
 
@@ -408,13 +408,13 @@ impl HirFormatter<'_> {
 
 #[derive(Debug, Clone, Copy)]
 pub struct DisplayTarget {
-    krate: CrateId,
+    krate: Crate,
     pub edition: Edition,
 }
 
 impl DisplayTarget {
-    pub fn from_crate(db: &dyn HirDatabase, krate: CrateId) -> Self {
-        let edition = db.crate_graph()[krate].edition;
+    pub fn from_crate(db: &dyn HirDatabase, krate: Crate) -> Self {
+        let edition = krate.data(db).edition;
         Self { krate, edition }
     }
 }
@@ -1711,7 +1711,7 @@ fn fn_traits(db: &dyn DefDatabase, trait_: TraitId) -> impl Iterator<Item = Trai
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum SizedByDefault {
     NotSized,
-    Sized { anchor: CrateId },
+    Sized { anchor: Crate },
 }
 
 impl SizedByDefault {
@@ -2266,8 +2266,8 @@ impl HirDisplayWithTypesMap for Path {
                 // Resolve `$crate` to the crate's display name.
                 // FIXME: should use the dependency name instead if available, but that depends on
                 // the crate invoking `HirDisplay`
-                let crate_graph = f.db.crate_graph();
-                let name = crate_graph[*id]
+                let crate_data = id.extra_data(f.db);
+                let name = crate_data
                     .display_name
                     .as_ref()
                     .map(|name| name.canonical_name())

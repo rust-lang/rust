@@ -868,15 +868,15 @@ fn main() {
 //- minicore: fn
 fn main() {
     let x = || 2;
-      //^ {closure#26624}
+      //^ {closure#25600}
     let y = |t: i32| x() + t;
-      //^ {closure#26625}
+      //^ {closure#25601}
     let mut t = 5;
           //^ i32
     let z = |k: i32| { t += k; };
-      //^ {closure#26626}
+      //^ {closure#25602}
     let p = (y, z);
-      //^ ({closure#26625}, {closure#26626})
+      //^ ({closure#25601}, {closure#25602})
 }
             "#,
         );

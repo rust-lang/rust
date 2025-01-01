@@ -1,6 +1,6 @@
 use hir::{db::DefDatabase, Semantics};
 use ide_db::{
-    base_db::{CrateId, RootQueryDb, Upcast},
+    base_db::{Crate, RootQueryDb, Upcast},
     FileId, FilePosition, RootDatabase,
 };
 use itertools::Itertools;
@@ -53,7 +53,7 @@ pub(crate) fn parent_module(db: &RootDatabase, position: FilePosition) -> Vec<Na
 }
 
 /// This returns `Vec` because a module may be included from several places.
-pub(crate) fn crates_for(db: &RootDatabase, file_id: FileId) -> Vec<CrateId> {
+pub(crate) fn crates_for(db: &RootDatabase, file_id: FileId) -> Vec<Crate> {
     let root_db = Upcast::<dyn RootQueryDb>::upcast(db);
     root_db
         .relevant_crates(file_id)

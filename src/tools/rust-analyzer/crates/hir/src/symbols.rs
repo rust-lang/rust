@@ -77,10 +77,7 @@ impl<'a> SymbolCollector<'a> {
             symbols: Default::default(),
             work: Default::default(),
             current_container_name: None,
-            display_target: DisplayTarget::from_crate(
-                db,
-                *db.crate_graph().crates_in_topological_order().last().unwrap(),
-            ),
+            display_target: DisplayTarget::from_crate(db, *db.all_crates().last().unwrap()),
         }
     }
 

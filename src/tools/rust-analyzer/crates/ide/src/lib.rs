@@ -57,7 +57,7 @@ mod view_memory_layout;
 mod view_mir;
 mod view_syntax_tree;
 
-use std::{iter, panic::UnwindSafe};
+use std::panic::UnwindSafe;
 
 use cfg::CfgOptions;
 use fetch_crates::CrateInfo;
@@ -125,7 +125,7 @@ pub use ide_completion::{
 };
 pub use ide_db::text_edit::{Indel, TextEdit};
 pub use ide_db::{
-    base_db::{CrateGraph, CrateId, FileChange, SourceRoot, SourceRootId},
+    base_db::{Crate, CrateGraphBuilder, FileChange, SourceRoot, SourceRootId},
     documentation::Documentation,
     label::Label,
     line_index::{LineCol, LineIndex},
@@ -239,7 +239,7 @@ impl Analysis {
 
         let mut change = ChangeWithProcMacros::new();
         change.set_roots(vec![source_root]);
-        let mut crate_graph = CrateGraph::default();
+        let mut crate_graph = CrateGraphBuilder::default();
         // FIXME: cfg options
         // Default to enable test for single file.
         let mut cfg_options = CfgOptions::default();
@@ -255,16 +255,13 @@ impl Analysis {
             CrateOrigin::Local { repo: None, name: None },
             false,
             None,
-        );
-        change.change_file(file_id, Some(text));
-        let ws_data = crate_graph
-            .iter()
-            .zip(iter::repeat(Arc::new(CrateWorkspaceData {
+            Arc::new(CrateWorkspaceData {
                 data_layout: Err("fixture has no layout".into()),
                 toolchain: None,
-            })))
-            .collect();
-        change.set_crate_graph(crate_graph, ws_data);
+            }),
+        );
+        change.change_file(file_id, Some(text));
+        change.set_crate_graph(crate_graph);
 
         host.apply_change(change);
         (host.analysis(), file_id)
@@ -372,7 +369,7 @@ impl Analysis {
         self.with_db(|db| test_explorer::discover_tests_in_crate_by_test_id(db, crate_id))
     }
 
-    pub fn discover_tests_in_crate(&self, crate_id: CrateId) -> Cancellable<Vec<TestItem>> {
+    pub fn discover_tests_in_crate(&self, crate_id: Crate) -> Cancellable<Vec<TestItem>> {
         self.with_db(|db| test_explorer::discover_tests_in_crate(db, crate_id))
     }
 
@@ -602,17 +599,17 @@ impl Analysis {
     }
 
     /// Returns crates that this file belongs to.
-    pub fn crates_for(&self, file_id: FileId) -> Cancellable<Vec<CrateId>> {
+    pub fn crates_for(&self, file_id: FileId) -> Cancellable<Vec<Crate>> {
         self.with_db(|db| parent_module::crates_for(db, file_id))
     }
 
     /// Returns crates that this file belongs to.
-    pub fn transitive_rev_deps(&self, crate_id: CrateId) -> Cancellable<Vec<CrateId>> {
-        self.with_db(|db| db.crate_graph().transitive_rev_deps(crate_id).collect())
+    pub fn transitive_rev_deps(&self, crate_id: Crate) -> Cancellable<Vec<Crate>> {
+        self.with_db(|db| Vec::from_iter(db.transitive_rev_deps(crate_id)))
     }
 
     /// Returns crates that this file *might* belong to.
-    pub fn relevant_crates_for(&self, file_id: FileId) -> Cancellable<Vec<CrateId>> {
+    pub fn relevant_crates_for(&self, file_id: FileId) -> Cancellable<Vec<Crate>> {
         self.with_db(|db| {
             let db = Upcast::<dyn RootQueryDb>::upcast(db);
             db.relevant_crates(file_id).iter().copied().collect()
@@ -620,18 +617,23 @@ impl Analysis {
     }
 
     /// Returns the edition of the given crate.
-    pub fn crate_edition(&self, crate_id: CrateId) -> Cancellable<Edition> {
-        self.with_db(|db| db.crate_graph()[crate_id].edition)
+    pub fn crate_edition(&self, crate_id: Crate) -> Cancellable<Edition> {
+        self.with_db(|db| crate_id.data(db).edition)
+    }
+
+    /// Returns whether the given crate is a proc macro.
+    pub fn is_proc_macro_crate(&self, crate_id: Crate) -> Cancellable<bool> {
+        self.with_db(|db| crate_id.data(db).is_proc_macro)
     }
 
     /// Returns true if this crate has `no_std` or `no_core` specified.
-    pub fn is_crate_no_std(&self, crate_id: CrateId) -> Cancellable<bool> {
+    pub fn is_crate_no_std(&self, crate_id: Crate) -> Cancellable<bool> {
         self.with_db(|db| hir::db::DefDatabase::crate_def_map(db, crate_id).is_no_std())
     }
 
     /// Returns the root file of the given crate.
-    pub fn crate_root(&self, crate_id: CrateId) -> Cancellable<FileId> {
-        self.with_db(|db| db.crate_graph()[crate_id].root_file_id)
+    pub fn crate_root(&self, crate_id: Crate) -> Cancellable<FileId> {
+        self.with_db(|db| crate_id.data(db).root_file_id)
     }
 
     /// Returns the set of possible targets to run for the current file.

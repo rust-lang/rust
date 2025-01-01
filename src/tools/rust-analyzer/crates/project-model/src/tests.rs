@@ -1,4 +1,4 @@
-use base_db::{CrateGraph, ProcMacroPaths};
+use base_db::{CrateGraphBuilder, ProcMacroPaths};
 use cargo_metadata::Metadata;
 use cfg::{CfgAtom, CfgDiff};
 use expect_test::{expect_file, ExpectFile};
@@ -15,7 +15,7 @@ use crate::{
     Sysroot, WorkspaceBuildScripts,
 };
 
-fn load_cargo(file: &str) -> (CrateGraph, ProcMacroPaths) {
+fn load_cargo(file: &str) -> (CrateGraphBuilder, ProcMacroPaths) {
     let project_workspace = load_workspace_from_metadata(file);
     to_crate_graph(project_workspace, &mut Default::default())
 }
@@ -23,7 +23,7 @@ fn load_cargo(file: &str) -> (CrateGraph, ProcMacroPaths) {
 fn load_cargo_with_overrides(
     file: &str,
     cfg_overrides: CfgOverrides,
-) -> (CrateGraph, ProcMacroPaths) {
+) -> (CrateGraphBuilder, ProcMacroPaths) {
     let project_workspace =
         ProjectWorkspace { cfg_overrides, ..load_workspace_from_metadata(file) };
     to_crate_graph(project_workspace, &mut Default::default())
@@ -51,7 +51,7 @@ fn load_workspace_from_metadata(file: &str) -> ProjectWorkspace {
     }
 }
 
-fn load_rust_project(file: &str) -> (CrateGraph, ProcMacroPaths) {
+fn load_rust_project(file: &str) -> (CrateGraphBuilder, ProcMacroPaths) {
     let data = get_test_json_file(file);
     let project = rooted_project_json(data);
     let sysroot = get_fake_sysroot();
@@ -142,7 +142,7 @@ fn rooted_project_json(data: ProjectJsonData) -> ProjectJson {
 fn to_crate_graph(
     project_workspace: ProjectWorkspace,
     file_map: &mut FxHashMap<AbsPathBuf, FileId>,
-) -> (CrateGraph, ProcMacroPaths) {
+) -> (CrateGraphBuilder, ProcMacroPaths) {
     project_workspace.to_crate_graph(
         &mut {
             |path| {
@@ -154,7 +154,7 @@ fn to_crate_graph(
     )
 }
 
-fn check_crate_graph(crate_graph: CrateGraph, expect: ExpectFile) {
+fn check_crate_graph(crate_graph: CrateGraphBuilder, expect: ExpectFile) {
     let mut crate_graph = format!("{crate_graph:#?}");
 
     replace_root(&mut crate_graph, false);

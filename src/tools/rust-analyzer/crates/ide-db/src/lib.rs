@@ -51,9 +51,8 @@ use salsa::Durability;
 use std::{fmt, mem::ManuallyDrop};
 
 use base_db::{
-    query_group::{self},
-    FileSourceRootInput, FileText, Files, RootQueryDb, SourceDatabase, SourceRoot, SourceRootId,
-    SourceRootInput, Upcast,
+    query_group, CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, Files, RootQueryDb,
+    SourceDatabase, SourceRoot, SourceRootId, SourceRootInput, Upcast,
 };
 use hir::{
     db::{DefDatabase, ExpandDatabase, HirDatabase},
@@ -85,6 +84,7 @@ pub struct RootDatabase {
     // compile times of all `ide_*` and downstream crates suffer greatly.
     storage: ManuallyDrop<salsa::Storage<Self>>,
     files: Arc<Files>,
+    crates_map: Arc<CratesMap>,
 }
 
 impl std::panic::RefUnwindSafe for RootDatabase {}
@@ -102,7 +102,11 @@ impl Drop for RootDatabase {
 
 impl Clone for RootDatabase {
     fn clone(&self) -> Self {
-        Self { storage: self.storage.clone(), files: self.files.clone() }
+        Self {
+            storage: self.storage.clone(),
+            files: self.files.clone(),
+            crates_map: self.crates_map.clone(),
+        }
     }
 }
 
@@ -194,6 +198,10 @@ impl SourceDatabase for RootDatabase {
         let files = Arc::clone(&self.files);
         files.set_file_source_root_with_durability(self, id, source_root_id, durability);
     }
+
+    fn crates_map(&self) -> Arc<CratesMap> {
+        self.crates_map.clone()
+    }
 }
 
 impl Default for RootDatabase {
@@ -207,8 +215,11 @@ impl RootDatabase {
         let mut db = RootDatabase {
             storage: ManuallyDrop::new(salsa::Storage::default()),
             files: Default::default(),
+            crates_map: Default::default(),
         };
-        db.set_crate_graph_with_durability(Default::default(), Durability::HIGH);
+        // This needs to be here otherwise `CrateGraphBuilder` will panic.
+        db.set_all_crates(Arc::new(Box::new([])));
+        CrateGraphBuilder::default().set_in_db(&mut db);
         db.set_proc_macros_with_durability(Default::default(), Durability::HIGH);
         db.set_local_roots_with_durability(Default::default(), Durability::HIGH);
         db.set_library_roots_with_durability(Default::default(), Durability::HIGH);
@@ -258,7 +269,11 @@ impl RootDatabase {
     }
 
     pub fn snapshot(&self) -> Self {
-        Self { storage: self.storage.clone(), files: self.files.clone() }
+        Self {
+            storage: self.storage.clone(),
+            files: self.files.clone(),
+            crates_map: self.crates_map.clone(),
+        }
     }
 }
 

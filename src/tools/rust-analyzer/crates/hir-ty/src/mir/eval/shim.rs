@@ -569,7 +569,7 @@ impl Evaluator<'_> {
                     }
                     String::from_utf8_lossy(&name_buf)
                 };
-                let value = self.db.crate_graph()[self.crate_id].env.get(&name);
+                let value = self.crate_id.env(self.db).get(&name);
                 match value {
                     None => {
                         // Write null as fail

@@ -2,7 +2,7 @@
 
 use std::cell::OnceCell;
 
-use base_db::CrateId;
+use base_db::Crate;
 use cfg::CfgOptions;
 use drop_bomb::DropBomb;
 use hir_expand::{
@@ -44,7 +44,7 @@ impl Expander {
             module,
             recursion_depth: 0,
             recursion_limit,
-            cfg_options: db.crate_graph()[module.krate].cfg_options.clone(),
+            cfg_options: Arc::clone(module.krate.cfg_options(db)),
             span_map: OnceCell::new(),
         }
     }
@@ -53,7 +53,7 @@ impl Expander {
         self.span_map.get_or_init(|| db.span_map(self.current_file_id))
     }
 
-    pub fn krate(&self) -> CrateId {
+    pub fn krate(&self) -> Crate {
         self.module.krate
     }
 

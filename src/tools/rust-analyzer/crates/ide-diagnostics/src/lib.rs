@@ -389,9 +389,9 @@ pub fn semantic_diagnostics(
         module.and_then(|m| db.toolchain_channel(m.krate().into())),
         Some(ReleaseChannel::Nightly) | None
     );
-    let krate = module.map(|module| module.krate()).unwrap_or_else(|| {
-        (*db.crate_graph().crates_in_topological_order().last().unwrap()).into()
-    });
+    let krate = module
+        .map(|module| module.krate())
+        .unwrap_or_else(|| (*db.all_crates().last().unwrap()).into());
     let display_target = krate.to_display_target(db);
     let ctx = DiagnosticsContext { config, sema, resolve, edition, is_nightly, display_target };
 

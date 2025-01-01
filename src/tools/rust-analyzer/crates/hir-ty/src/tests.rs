@@ -15,7 +15,7 @@ mod type_alias_impl_traits;
 use std::env;
 use std::sync::LazyLock;
 
-use base_db::{CrateId, SourceDatabase};
+use base_db::{Crate, SourceDatabase};
 use expect_test::Expect;
 use hir_def::{
     db::DefDatabase,
@@ -124,7 +124,7 @@ fn check_impl(
     }
     assert!(had_annotations || allow_none, "no `//^` annotations found");
 
-    let mut defs: Vec<(DefWithBodyId, CrateId)> = Vec::new();
+    let mut defs: Vec<(DefWithBodyId, Crate)> = Vec::new();
     for file_id in files {
         let module = db.module_for_file_opt(file_id);
         let module = match module {
@@ -302,7 +302,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
     let mut infer_def = |inference_result: Arc<InferenceResult>,
                          body: Arc<Body>,
                          body_source_map: Arc<BodySourceMap>,
-                         krate: CrateId| {
+                         krate: Crate| {
         let display_target = DisplayTarget::from_crate(&db, krate);
         let mut types: Vec<(InFile<SyntaxNode>, &Ty)> = Vec::new();
         let mut mismatches: Vec<(InFile<SyntaxNode>, &TypeMismatch)> = Vec::new();
@@ -391,7 +391,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
     let module = db.module_for_file(file_id);
     let def_map = module.def_map(&db);
 
-    let mut defs: Vec<(DefWithBodyId, CrateId)> = Vec::new();
+    let mut defs: Vec<(DefWithBodyId, Crate)> = Vec::new();
     visit_module(&db, &def_map, module.local_id, &mut |it| {
         let def = match it {
             ModuleDefId::FunctionId(it) => it.into(),

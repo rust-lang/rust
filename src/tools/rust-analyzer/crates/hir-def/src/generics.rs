@@ -23,7 +23,7 @@ use crate::{
     expander::Expander,
     item_tree::{AttrOwner, FileItemTreeId, GenericModItem, GenericsItemTreeNode, ItemTree},
     lower::LowerCtx,
-    nameres::{DefMap, MacroSubNs},
+    nameres::{DefMap, LocalDefMap, MacroSubNs},
     path::{AssociatedTypeBinding, GenericArg, GenericArgs, NormalPath, Path},
     type_ref::{
         ArrayType, ConstRef, FnType, LifetimeRef, PathId, RefType, TypeBound, TypeRef, TypeRefId,
@@ -313,8 +313,7 @@ impl GenericParams {
         let _p = tracing::info_span!("generic_params_query").entered();
 
         let krate = def.krate(db);
-        let cfg_options = db.crate_graph();
-        let cfg_options = &cfg_options[krate].cfg_options;
+        let cfg_options = &krate.cfg_options(db);
 
         // Returns the generic parameters that are enabled under the current `#[cfg]` options
         let enabled_params =
@@ -413,7 +412,12 @@ impl GenericParams {
                             &mut types_source_maps,
                             &mut expander,
                             &mut || {
-                                (module.def_map(db), Expander::new(db, loc.id.file_id(), module))
+                                let (def_map, local_def_map) = module.local_def_map(db);
+                                (
+                                    def_map,
+                                    local_def_map,
+                                    Expander::new(db, loc.id.file_id(), module),
+                                )
                             },
                             param,
                             &item.types_map,
@@ -626,8 +630,8 @@ impl GenericParamsCollector {
         generics_types_map: &mut TypesMap,
         generics_types_source_map: &mut TypesSourceMap,
         // FIXME: Change this back to `LazyCell` if https://github.com/rust-lang/libs-team/issues/429 is accepted.
-        exp: &mut Option<(Arc<DefMap>, Expander)>,
-        exp_fill: &mut dyn FnMut() -> (Arc<DefMap>, Expander),
+        exp: &mut Option<(Arc<DefMap>, Arc<LocalDefMap>, Expander)>,
+        exp_fill: &mut dyn FnMut() -> (Arc<DefMap>, Arc<LocalDefMap>, Expander),
         type_ref: TypeRefId,
         types_map: &TypesMap,
         types_source_map: &TypesSourceMap,
@@ -657,12 +661,13 @@ impl GenericParamsCollector {
 
             if let TypeRef::Macro(mc) = type_ref {
                 let macro_call = mc.to_node(db.upcast());
-                let (def_map, expander) = exp.get_or_insert_with(&mut *exp_fill);
+                let (def_map, local_def_map, expander) = exp.get_or_insert_with(&mut *exp_fill);
 
                 let module = expander.module.local_id;
                 let resolver = |path: &_| {
                     def_map
                         .resolve_path(
+                            local_def_map,
                             db,
                             module,
                             path,
@@ -690,7 +695,7 @@ impl GenericParamsCollector {
                         &macro_types_map,
                         &macro_types_source_map,
                     );
-                    exp.get_or_insert_with(&mut *exp_fill).1.exit(mark);
+                    exp.get_or_insert_with(&mut *exp_fill).2.exit(mark);
                 }
             }
         });

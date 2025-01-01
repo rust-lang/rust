@@ -11,7 +11,7 @@ use crate::{
     name::{AsName, Name},
     tt,
 };
-use base_db::CrateId;
+use base_db::Crate;
 use intern::sym;
 use smallvec::SmallVec;
 use span::{Edition, SyntaxContextId};
@@ -33,7 +33,7 @@ pub enum PathKind {
     Abs,
     // FIXME: Can we remove this somehow?
     /// `$crate` from macro expansion
-    DollarCrate(CrateId),
+    DollarCrate(Crate),
 }
 
 impl PathKind {
@@ -333,7 +333,7 @@ fn convert_path_tt(db: &dyn ExpandDatabase, tt: tt::TokenTreesView<'_>) -> Optio
     Some(ModPath { kind, segments })
 }
 
-pub fn resolve_crate_root(db: &dyn ExpandDatabase, mut ctxt: SyntaxContextId) -> Option<CrateId> {
+pub fn resolve_crate_root(db: &dyn ExpandDatabase, mut ctxt: SyntaxContextId) -> Option<Crate> {
     // When resolving `$crate` from a `macro_rules!` invoked in a `macro`,
     // we don't want to pretend that the `macro_rules!` definition is in the `macro`
     // as described in `SyntaxContextId::apply_mark`, so we ignore prepended opaque marks.

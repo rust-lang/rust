@@ -307,7 +307,7 @@ impl CapturedItem {
                 }
             }
         }
-        if is_raw_identifier(&result, db.crate_graph()[owner.module(db.upcast()).krate()].edition) {
+        if is_raw_identifier(&result, owner.module(db.upcast()).krate().data(db).edition) {
             result.insert_str(0, "r#");
         }
         result
@@ -316,7 +316,7 @@ impl CapturedItem {
     pub fn display_place_source_code(&self, owner: DefWithBodyId, db: &dyn HirDatabase) -> String {
         let body = db.body(owner);
         let krate = owner.krate(db.upcast());
-        let edition = db.crate_graph()[krate].edition;
+        let edition = krate.data(db).edition;
         let mut result = body[self.place.local].name.display(db.upcast(), edition).to_string();
         for proj in &self.place.projections {
             match proj {
@@ -368,7 +368,7 @@ impl CapturedItem {
     pub fn display_place(&self, owner: DefWithBodyId, db: &dyn HirDatabase) -> String {
         let body = db.body(owner);
         let krate = owner.krate(db.upcast());
-        let edition = db.crate_graph()[krate].edition;
+        let edition = krate.data(db).edition;
         let mut result = body[self.place.local].name.display(db.upcast(), edition).to_string();
         let mut field_need_paren = false;
         for proj in &self.place.projections {

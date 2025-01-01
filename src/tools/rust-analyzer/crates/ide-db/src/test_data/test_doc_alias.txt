@@ -2,7 +2,9 @@
     (
         Module {
             id: ModuleId {
-                krate: Idx::<CrateData>(0),
+                krate: Crate {
+                    [salsa id]: Id(2c00),
+                },
                 block: None,
                 local_id: Idx::<ModuleData>(0),
             },

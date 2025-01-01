@@ -2,7 +2,7 @@
 
 use std::{borrow::Cow, cell::RefCell, fmt::Write, iter, mem, ops::Range};
 
-use base_db::CrateId;
+use base_db::Crate;
 use chalk_ir::{cast::Cast, Mutability};
 use either::Either;
 use hir_def::{
@@ -186,7 +186,7 @@ pub struct Evaluator<'a> {
     cached_fn_trait_func: Option<FunctionId>,
     cached_fn_mut_trait_func: Option<FunctionId>,
     cached_fn_once_trait_func: Option<FunctionId>,
-    crate_id: CrateId,
+    crate_id: Crate,
     // FIXME: This is a workaround, see the comment on `interpret_mir`
     assert_placeholder_ty_is_unused: bool,
     /// A general limit on execution, to prevent non terminating programs from breaking r-a main process
@@ -2785,7 +2785,7 @@ impl Evaluator<'_> {
                 let db = self.db.upcast();
                 let loc = variant.lookup(db);
                 let enum_loc = loc.parent.lookup(db);
-                let edition = self.db.crate_graph()[self.crate_id].edition;
+                let edition = self.crate_id.data(self.db).edition;
                 let name = format!(
                     "{}::{}",
                     enum_loc.id.item_tree(db)[enum_loc.id.value].name.display(db.upcast(), edition),

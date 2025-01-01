@@ -1,6 +1,6 @@
 //! Defines database & queries for macro expansion.
 
-use base_db::{CrateId, RootQueryDb};
+use base_db::{Crate, RootQueryDb};
 use either::Either;
 use mbe::MatchedArmIndex;
 use rustc_hash::FxHashSet;
@@ -23,7 +23,7 @@ use crate::{
         span_with_call_site_ctxt, span_with_def_site_ctxt, span_with_mixed_site_ctxt,
         SyntaxContextExt as _,
     },
-    proc_macro::{CustomProcMacroExpander, ProcMacros},
+    proc_macro::{CrateProcMacros, CustomProcMacroExpander, ProcMacros},
     span_map::{ExpansionSpanMap, RealSpanMap, SpanMap, SpanMapRef},
     tt, AstId, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerCallInfo,
     EagerExpander, ExpandError, ExpandResult, ExpandTo, MacroCallKind, MacroCallLoc, MacroDefId,
@@ -57,9 +57,12 @@ pub enum TokenExpander {
 
 #[query_group::query_group]
 pub trait ExpandDatabase: RootQueryDb {
-    /// The proc macros.
+    /// The proc macros. Do not use this! Use `proc_macros_for_crate()` instead.
     #[salsa::input]
     fn proc_macros(&self) -> Arc<ProcMacros>;
+
+    #[salsa::invoke_actual(crate::proc_macro::proc_macros_for_crate)]
+    fn proc_macros_for_crate(&self, krate: Crate) -> Option<Arc<CrateProcMacros>>;
 
     fn ast_id_map(&self, file_id: HirFileId) -> Arc<AstIdMap>;
 
@@ -120,7 +123,7 @@ pub trait ExpandDatabase: RootQueryDb {
     #[salsa::invoke(DeclarativeMacroExpander::expander)]
     fn decl_macro_expander(
         &self,
-        def_crate: CrateId,
+        def_crate: Crate,
         id: AstId<ast::Macro>,
     ) -> Arc<DeclarativeMacroExpander>;
 

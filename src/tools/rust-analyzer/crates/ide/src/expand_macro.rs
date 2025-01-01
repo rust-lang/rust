@@ -1,8 +1,8 @@
 use hir::db::ExpandDatabase;
 use hir::{ExpandResult, InFile, MacroFileIdExt, Semantics};
-use ide_db::base_db::CrateId;
 use ide_db::{
-    helpers::pick_best_token, syntax_helpers::prettify_macro_expansion, FileId, RootDatabase,
+    base_db::Crate, helpers::pick_best_token, syntax_helpers::prettify_macro_expansion, FileId,
+    RootDatabase,
 };
 use span::{Edition, SpanMap, SyntaxContextId, TextRange, TextSize};
 use stdx::format_to;
@@ -208,7 +208,7 @@ fn format(
     file_id: FileId,
     expanded: SyntaxNode,
     span_map: &SpanMap<SyntaxContextId>,
-    krate: CrateId,
+    krate: Crate,
 ) -> String {
     let expansion = prettify_macro_expansion(db, expanded, span_map, krate).to_string();
 
@@ -249,7 +249,7 @@ fn _format(
 
     let upcast_db = ide_db::base_db::Upcast::<dyn ide_db::base_db::RootQueryDb>::upcast(db);
     let &crate_id = upcast_db.relevant_crates(file_id).iter().next()?;
-    let edition = upcast_db.crate_graph()[crate_id].edition;
+    let edition = crate_id.data(upcast_db).edition;
 
     #[allow(clippy::disallowed_methods)]
     let mut cmd = std::process::Command::new(toolchain::Tool::Rustfmt.path());

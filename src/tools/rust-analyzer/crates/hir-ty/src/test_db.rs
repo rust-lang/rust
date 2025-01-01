@@ -3,8 +3,8 @@
 use std::{fmt, panic, sync::Mutex};
 
 use base_db::{
-    FileSourceRootInput, FileText, RootQueryDb, SourceDatabase, SourceRoot, SourceRootId,
-    SourceRootInput, Upcast,
+    CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, RootQueryDb, SourceDatabase,
+    SourceRoot, SourceRootId, SourceRootInput, Upcast,
 };
 
 use hir_def::{db::DefDatabase, ModuleId};
@@ -21,6 +21,7 @@ use triomphe::Arc;
 pub(crate) struct TestDB {
     storage: salsa::Storage<Self>,
     files: Arc<base_db::Files>,
+    crates_map: Arc<CratesMap>,
     events: Arc<Mutex<Option<Vec<salsa::Event>>>>,
 }
 
@@ -30,8 +31,12 @@ impl Default for TestDB {
             storage: Default::default(),
             events: Default::default(),
             files: Default::default(),
+            crates_map: Default::default(),
         };
         this.set_expand_proc_attr_macros_with_durability(true, Durability::HIGH);
+        // This needs to be here otherwise `CrateGraphBuilder` panics.
+        this.set_all_crates(Arc::new(Box::new([])));
+        CrateGraphBuilder::default().set_in_db(&mut this);
         this
     }
 }
@@ -115,6 +120,10 @@ impl SourceDatabase for TestDB {
         let files = Arc::clone(&self.files);
         files.set_file_source_root_with_durability(self, id, source_root_id, durability);
     }
+
+    fn crates_map(&self) -> Arc<CratesMap> {
+        self.crates_map.clone()
+    }
 }
 
 #[salsa::db]
@@ -151,8 +160,7 @@ impl TestDB {
         &self,
     ) -> FxHashMap<EditionedFileId, Vec<(TextRange, String)>> {
         let mut files = Vec::new();
-        let crate_graph = self.crate_graph();
-        for krate in crate_graph.iter() {
+        for &krate in self.all_crates().iter() {
             let crate_def_map = self.crate_def_map(krate);
             for (module_id, _) in crate_def_map.modules() {
                 let file_id = crate_def_map[module_id].origin.file_id();

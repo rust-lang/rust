@@ -158,7 +158,7 @@ impl HasChildSource<LocalFieldId> for VariantId {
         let mut map = ArenaMap::new();
         match &src.value {
             ast::StructKind::Tuple(fl) => {
-                let cfg_options = &db.crate_graph()[container.krate].cfg_options;
+                let cfg_options = container.krate.cfg_options(db);
                 let mut idx = 0;
                 for (i, fd) in fl.fields().enumerate() {
                     let attrs = item_tree.attrs(
@@ -177,7 +177,7 @@ impl HasChildSource<LocalFieldId> for VariantId {
                 }
             }
             ast::StructKind::Record(fl) => {
-                let cfg_options = &db.crate_graph()[container.krate].cfg_options;
+                let cfg_options = container.krate.cfg_options(db);
                 let mut idx = 0;
                 for (i, fd) in fl.fields().enumerate() {
                     let attrs = item_tree.attrs(

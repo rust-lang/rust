@@ -3,8 +3,8 @@
 use std::{fmt, panic, sync::Mutex};
 
 use base_db::{
-    CrateId, FileSourceRootInput, FileText, RootQueryDb, SourceDatabase, SourceRoot, SourceRootId,
-    SourceRootInput, Upcast,
+    Crate, CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, RootQueryDb,
+    SourceDatabase, SourceRoot, SourceRootId, SourceRootInput, Upcast,
 };
 use hir_expand::{db::ExpandDatabase, files::FilePosition, InFile};
 use salsa::{AsDynDatabase, Durability};
@@ -24,6 +24,7 @@ use crate::{
 pub(crate) struct TestDB {
     storage: salsa::Storage<Self>,
     files: Arc<base_db::Files>,
+    crates_map: Arc<CratesMap>,
     events: Arc<Mutex<Option<Vec<salsa::Event>>>>,
 }
 
@@ -33,8 +34,12 @@ impl Default for TestDB {
             storage: Default::default(),
             events: Default::default(),
             files: Default::default(),
+            crates_map: Default::default(),
         };
         this.set_expand_proc_attr_macros_with_durability(true, Durability::HIGH);
+        // This needs to be here otherwise `CrateGraphBuilder` panics.
+        this.set_all_crates(Arc::new(Box::new([])));
+        CrateGraphBuilder::default().set_in_db(&mut this);
         this
     }
 }
@@ -133,20 +138,23 @@ impl SourceDatabase for TestDB {
         let files = Arc::clone(&self.files);
         files.set_file_source_root_with_durability(self, id, source_root_id, durability);
     }
+
+    fn crates_map(&self) -> Arc<CratesMap> {
+        self.crates_map.clone()
+    }
 }
 
 impl TestDB {
-    pub(crate) fn fetch_test_crate(&self) -> CrateId {
-        let crate_graph = self.crate_graph();
-        let it = crate_graph
+    pub(crate) fn fetch_test_crate(&self) -> Crate {
+        let all_crates = self.all_crates();
+        all_crates
             .iter()
-            .find(|&idx| {
-                crate_graph[idx].display_name.as_ref().map(|it| it.canonical_name().as_str())
+            .copied()
+            .find(|&krate| {
+                krate.extra_data(self).display_name.as_ref().map(|it| it.canonical_name().as_str())
                     == Some("ra_test_fixture")
             })
-            .or_else(|| crate_graph.iter().next())
-            .unwrap();
-        it
+            .unwrap_or(*all_crates.last().unwrap())
     }
 
     pub(crate) fn module_for_file(&self, file_id: FileId) -> ModuleId {

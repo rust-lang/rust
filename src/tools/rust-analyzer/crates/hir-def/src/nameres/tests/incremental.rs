@@ -1,5 +1,11 @@
-use base_db::SourceDatabase;
+use base_db::{
+    CrateDisplayName, CrateGraphBuilder, CrateName, CrateOrigin, CrateWorkspaceData,
+    DependencyBuilder, Env, RootQueryDb, SourceDatabase,
+};
+use intern::Symbol;
+use span::Edition;
 use test_fixture::WithFixture;
+use triomphe::Arc;
 
 use crate::{db::DefDatabase, nameres::tests::TestDB, AdtId, ModuleDefId};
 
@@ -20,6 +26,73 @@ fn check_def_map_is_not_recomputed(ra_fixture_initial: &str, ra_fixture_change: 
         });
         assert!(!format!("{events:?}").contains("crate_def_map"), "{events:#?}")
     }
+}
+
+#[test]
+fn crate_metadata_changes_should_not_invalidate_unrelated_def_maps() {
+    let (mut db, files) = TestDB::with_many_files(
+        r#"
+//- /a.rs crate:a
+pub fn foo() {}
+
+//- /b.rs crate:b
+pub struct Bar;
+
+//- /c.rs crate:c deps:b
+pub const BAZ: u32 = 0;
+    "#,
+    );
+
+    for &krate in db.all_crates().iter() {
+        db.crate_def_map(krate);
+    }
+
+    let all_crates_before = db.all_crates();
+
+    {
+        // Add a dependency a -> b.
+        let mut new_crate_graph = CrateGraphBuilder::default();
+        let mut add_crate = |crate_name, root_file_idx: usize| {
+            new_crate_graph.add_crate_root(
+                files[root_file_idx].file_id(),
+                Edition::CURRENT,
+                Some(CrateDisplayName::from_canonical_name(crate_name)),
+                None,
+                Arc::default(),
+                None,
+                Env::default(),
+                CrateOrigin::Local { repo: None, name: Some(Symbol::intern(crate_name)) },
+                false,
+                None,
+                Arc::new(CrateWorkspaceData { data_layout: Err("".into()), toolchain: None }),
+            )
+        };
+        let a = add_crate("a", 0);
+        let b = add_crate("b", 1);
+        let c = add_crate("c", 2);
+        new_crate_graph
+            .add_dep(c, DependencyBuilder::new(CrateName::new("b").unwrap(), b))
+            .unwrap();
+        new_crate_graph
+            .add_dep(b, DependencyBuilder::new(CrateName::new("a").unwrap(), a))
+            .unwrap();
+        new_crate_graph.set_in_db(&mut db);
+    }
+
+    let all_crates_after = db.all_crates();
+    assert!(
+        Arc::ptr_eq(&all_crates_before, &all_crates_after),
+        "the all_crates list should not have been invalidated"
+    );
+
+    let events = db.log_executed(|| {
+        for &krate in db.all_crates().iter() {
+            db.crate_def_map(krate);
+        }
+    });
+    let invalidated_def_maps =
+        events.iter().filter(|event| event.contains("crate_def_map")).count();
+    assert_eq!(invalidated_def_maps, 1, "{events:#?}")
 }
 
 #[test]

@@ -2418,6 +2418,7 @@ dependencies = [
  "span",
  "stdx",
  "test-utils",
+ "triomphe",
  "tt",
 ]
 

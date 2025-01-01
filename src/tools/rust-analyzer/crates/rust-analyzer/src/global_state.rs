@@ -8,7 +8,7 @@ use std::{ops::Not as _, time::Instant};
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use hir::ChangeWithProcMacros;
 use ide::{Analysis, AnalysisHost, Cancellable, FileId, SourceRootId};
-use ide_db::base_db::{CrateId, ProcMacroPaths, SourceDatabase};
+use ide_db::base_db::{Crate, ProcMacroPaths, SourceDatabase};
 use itertools::Itertools;
 use load_cargo::SourceRootConfig;
 use lsp_types::{SemanticTokens, Url};
@@ -158,7 +158,7 @@ pub(crate) struct GlobalState {
     // op queues
     pub(crate) fetch_workspaces_queue: OpQueue<FetchWorkspaceRequest, FetchWorkspaceResponse>,
     pub(crate) fetch_build_data_queue: OpQueue<(), FetchBuildDataResponse>,
-    pub(crate) fetch_proc_macros_queue: OpQueue<Vec<ProcMacroPaths>, bool>,
+    pub(crate) fetch_proc_macros_queue: OpQueue<(ChangeWithProcMacros, Vec<ProcMacroPaths>), bool>,
     pub(crate) prime_caches_queue: OpQueue,
     pub(crate) discover_workspace_queue: OpQueue,
 
@@ -714,7 +714,7 @@ impl GlobalStateSnapshot {
         self.vfs_read().file_path(file_id).clone()
     }
 
-    pub(crate) fn target_spec_for_crate(&self, crate_id: CrateId) -> Option<TargetSpec> {
+    pub(crate) fn target_spec_for_crate(&self, crate_id: Crate) -> Option<TargetSpec> {
         let file_id = self.analysis.crate_root(crate_id).ok()?;
         let path = self.vfs_read().file_path(file_id).clone();
         let path = path.as_path()?;

@@ -11,7 +11,7 @@ use itertools::Itertools;
 use salsa::{Cancelled, Database};
 
 use crate::{
-    base_db::{CrateId, RootQueryDb},
+    base_db::{Crate, RootQueryDb},
     symbol_index::SymbolsDatabase,
     FxIndexMap, RootDatabase,
 };
@@ -35,20 +35,22 @@ pub fn parallel_prime_caches(
 ) {
     let _p = tracing::info_span!("parallel_prime_caches").entered();
 
-    let graph = db.crate_graph();
     let mut crates_to_prime = {
+        // FIXME: We already have the crate list topologically sorted (but without the things
+        // `TopologicalSortIter` gives us). Maybe there is a way to avoid using it and rip it out
+        // of the codebase?
         let mut builder = topologic_sort::TopologicalSortIter::builder();
 
-        for crate_id in graph.iter() {
-            builder.add(crate_id, graph[crate_id].dependencies.iter().map(|d| d.crate_id));
+        for &crate_id in db.all_crates().iter() {
+            builder.add(crate_id, crate_id.data(db).dependencies.iter().map(|d| d.crate_id));
         }
 
         builder.build()
     };
 
     enum ParallelPrimeCacheWorkerProgress {
-        BeginCrate { crate_id: CrateId, crate_name: Symbol },
-        EndCrate { crate_id: CrateId },
+        BeginCrate { crate_id: Crate, crate_name: Symbol },
+        EndCrate { crate_id: Crate },
     }
 
     // We split off def map computation from other work,
@@ -108,16 +110,14 @@ pub fn parallel_prime_caches(
     while crates_done < crates_total {
         db.unwind_if_revision_cancelled();
 
-        for crate_id in &mut crates_to_prime {
-            let krate = &graph[crate_id];
-            let name = krate
-                .display_name
-                .as_deref()
-                .cloned()
-                .unwrap_or_else(|| Symbol::integer(crate_id.into_raw().into_u32() as usize));
-            if krate.origin.is_lang() {
-                additional_phases.push((crate_id, name.clone(), PrimingPhase::ImportMap));
-            } else if krate.origin.is_local() {
+        for krate in &mut crates_to_prime {
+            let name = krate.extra_data(db).display_name.as_deref().cloned().unwrap_or_else(|| {
+                Symbol::integer(salsa::plumbing::AsId::as_id(&krate).as_u32() as usize)
+            });
+            let origin = &krate.data(db).origin;
+            if origin.is_lang() {
+                additional_phases.push((krate, name.clone(), PrimingPhase::ImportMap));
+            } else if origin.is_local() {
                 // Compute the symbol search index.
                 // This primes the cache for `ide_db::symbol_index::world_symbols()`.
                 //
@@ -127,10 +127,10 @@ pub fn parallel_prime_caches(
                 // FIXME: We should do it unconditionally if the configuration is set to default to
                 // searching dependencies (rust-analyzer.workspace.symbol.search.scope), but we
                 // would need to pipe that configuration information down here.
-                additional_phases.push((crate_id, name.clone(), PrimingPhase::CrateSymbols));
+                additional_phases.push((krate, name.clone(), PrimingPhase::CrateSymbols));
             }
 
-            work_sender.send((crate_id, name, PrimingPhase::DefMap)).ok();
+            work_sender.send((krate, name, PrimingPhase::DefMap)).ok();
         }
 
         // recv_timeout is somewhat a hack, we need a way to from this thread check to see if the current salsa revision

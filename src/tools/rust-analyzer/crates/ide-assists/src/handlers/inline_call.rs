@@ -7,7 +7,7 @@ use hir::{
     sym, FileRange, PathResolution, Semantics, TypeInfo,
 };
 use ide_db::{
-    base_db::CrateId,
+    base_db::Crate,
     defs::Definition,
     imports::insert_use::remove_path_if_in_use_stmt,
     path_transform::PathTransform,
@@ -251,11 +251,11 @@ struct CallInfo {
     node: ast::CallableExpr,
     arguments: Vec<ast::Expr>,
     generic_arg_list: Option<ast::GenericArgList>,
-    krate: CrateId,
+    krate: Crate,
 }
 
 impl CallInfo {
-    fn from_name_ref(name_ref: ast::NameRef, krate: CrateId) -> Option<CallInfo> {
+    fn from_name_ref(name_ref: ast::NameRef, krate: Crate) -> Option<CallInfo> {
         let parent = name_ref.syntax().parent()?;
         if let Some(call) = ast::MethodCallExpr::cast(parent.clone()) {
             let receiver = call.receiver()?;

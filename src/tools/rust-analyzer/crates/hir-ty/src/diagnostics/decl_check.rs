@@ -288,7 +288,7 @@ impl<'a> DeclValidator<'a> {
 
     fn edition(&self, id: impl HasModule) -> span::Edition {
         let krate = id.krate(self.db.upcast());
-        self.db.crate_graph()[krate].edition
+        krate.data(self.db).edition
     }
 
     fn validate_struct(&mut self, struct_id: StructId) {

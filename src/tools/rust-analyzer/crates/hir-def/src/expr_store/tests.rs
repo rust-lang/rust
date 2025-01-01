@@ -293,7 +293,7 @@ impl SsrError {
     assert_eq!(db.body_with_source_map(def).1.diagnostics(), &[]);
     expect![[r#"
         fn main() -> () {
-            _ = $crate::error::SsrError::new(
+            _ = ra_test_fixture::error::SsrError::new(
                 builtin#lang(Arguments::new_v1_formatted)(
                     &[
                         "Failed to resolve path `", "`",
@@ -353,7 +353,7 @@ fn f(a: i32, b: u32) -> String {
     expect![[r#"
         fn f(a: i32, b: u32) -> String {
             {
-                $crate::panicking::panic_fmt(
+                core::panicking::panic_fmt(
                     builtin#lang(Arguments::new_v1_formatted)(
                         &[
                             "cc",
