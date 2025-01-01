@@ -14,6 +14,7 @@ mod clone_on_copy;
 mod clone_on_ref_ptr;
 mod cloned_instead_of_copied;
 mod collapsible_str_replace;
+mod double_ended_iterator_last;
 mod drain_collect;
 mod err_expect;
 mod expect_fun_call;
@@ -4284,6 +4285,32 @@ declare_clippy_lint! {
     "map of a trivial closure (not dependent on parameter) over a range"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    ///
+    /// Checks for `Iterator::last` being called on a  `DoubleEndedIterator`, which can be replaced
+    /// with `DoubleEndedIterator::next_back`.
+    ///
+    /// ### Why is this bad?
+    ///
+    /// `Iterator::last` is implemented by consuming the iterator, which is unnecessary if
+    /// the iterator is a `DoubleEndedIterator`. Since Rust traits do not allow specialization,
+    /// `Iterator::last` cannot be optimized for `DoubleEndedIterator`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let last_arg = "echo hello world".split(' ').last();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let last_arg = "echo hello world".split(' ').next_back();
+    /// ```
+    #[clippy::version = "1.85.0"]
+    pub DOUBLE_ENDED_ITERATOR_LAST,
+    perf,
+    "using `Iterator::last` on a `DoubleEndedIterator`"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -4449,6 +4476,7 @@ impl_lint_pass!(Methods => [
     MAP_ALL_ANY_IDENTITY,
     MAP_WITH_UNUSED_ARGUMENT_OVER_RANGES,
     UNNECESSARY_MAP_OR,
+    DOUBLE_ENDED_ITERATOR_LAST,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4931,6 +4959,7 @@ impl Methods {
                             false,
                         );
                     }
+                    double_ended_iterator_last::check(cx, expr, recv, call_span);
                 },
                 ("len", []) => {
                     if let Some(("as_bytes", prev_recv, [], _, _)) = method_call(recv) {
