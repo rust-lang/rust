@@ -796,7 +796,7 @@ impl<T: Clone> Clone for Reverse<T> {
 /// }
 ///
 /// impl Ord for Character {
-///     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+///     fn cmp(&self, other: &Self) -> Ordering {
 ///         self.experience
 ///             .cmp(&other.experience)
 ///             .then(self.health.cmp(&other.health))
