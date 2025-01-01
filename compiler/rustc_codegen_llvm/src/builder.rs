@@ -2,6 +2,8 @@ use std::borrow::Cow;
 use std::ops::Deref;
 use std::{iter, ptr};
 
+pub(crate) mod autodiff;
+
 use libc::{c_char, c_uint};
 use rustc_abi as abi;
 use rustc_abi::{Align, Size, WrappingRange};

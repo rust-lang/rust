@@ -604,7 +604,14 @@ pub(crate) fn run_pass_manager(
     debug!("running the pass manager");
     let opt_stage = if thin { llvm::OptStage::ThinLTO } else { llvm::OptStage::FatLTO };
     let opt_level = config.opt_level.unwrap_or(config::OptLevel::No);
-    unsafe { write::llvm_optimize(cgcx, dcx, module, config, opt_level, opt_stage) }?;
+
+    // If this rustc version was build with enzyme/autodiff enabled, and if users applied the
+    // `#[autodiff]` macro at least once, then we will later call llvm_optimize a second time.
+    let first_run = true;
+    debug!("running llvm pm opt pipeline");
+    unsafe {
+        write::llvm_optimize(cgcx, dcx, module, config, opt_level, opt_stage, first_run)?;
+    }
     debug!("lto done");
     Ok(())
 }

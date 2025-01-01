@@ -27,7 +27,7 @@ use rustc_session::config::{
 };
 use rustc_span::{BytePos, InnerSpan, Pos, SpanData, SyntaxContext, sym};
 use rustc_target::spec::{CodeModel, FloatAbi, RelocModel, SanitizerSet, SplitDebuginfo, TlsModel};
-use tracing::debug;
+use tracing::{debug, trace};
 
 use crate::back::lto::ThinBuffer;
 use crate::back::owned_target_machine::OwnedTargetMachine;
@@ -537,9 +537,35 @@ pub(crate) unsafe fn llvm_optimize(
     config: &ModuleConfig,
     opt_level: config::OptLevel,
     opt_stage: llvm::OptStage,
+    skip_size_increasing_opts: bool,
 ) -> Result<(), FatalError> {
-    let unroll_loops =
-        opt_level != config::OptLevel::Size && opt_level != config::OptLevel::SizeMin;
+    // Enzyme:
+    // The whole point of compiler based AD is to differentiate optimized IR instead of unoptimized
+    // source code. However, benchmarks show that optimizations increasing the code size
+    // tend to reduce AD performance. Therefore deactivate them before AD, then differentiate the code
+    // and finally re-optimize the module, now with all optimizations available.
+    // FIXME(ZuseZ4): In a future update we could figure out how to only optimize individual functions getting
+    // differentiated.
+
+    let unroll_loops;
+    let vectorize_slp;
+    let vectorize_loop;
+
+    // When we build rustc with enzyme/autodiff support, we want to postpone size-increasing
+    // optimizations until after differentiation. FIXME(ZuseZ4): Before shipping on nightly,
+    // we should make this more granular, or at least check that the user has at least one autodiff
+    // call in their code, to justify altering the compilation pipeline.
+    if skip_size_increasing_opts && cfg!(llvm_enzyme) {
+        unroll_loops = false;
+        vectorize_slp = false;
+        vectorize_loop = false;
+    } else {
+        unroll_loops =
+            opt_level != config::OptLevel::Size && opt_level != config::OptLevel::SizeMin;
+        vectorize_slp = config.vectorize_slp;
+        vectorize_loop = config.vectorize_loop;
+    }
+    trace!(?unroll_loops, ?vectorize_slp, ?vectorize_loop);
     let using_thin_buffers = opt_stage == llvm::OptStage::PreLinkThinLTO || config.bitcode_needed();
     let pgo_gen_path = get_pgo_gen_path(config);
     let pgo_use_path = get_pgo_use_path(config);
@@ -603,8 +629,8 @@ pub(crate) unsafe fn llvm_optimize(
             using_thin_buffers,
             config.merge_functions,
             unroll_loops,
-            config.vectorize_slp,
-            config.vectorize_loop,
+            vectorize_slp,
+            vectorize_loop,
             config.no_builtins,
             config.emit_lifetime_markers,
             sanitizer_options.as_ref(),
@@ -648,6 +674,8 @@ pub(crate) unsafe fn optimize(
         unsafe { llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr()) };
     }
 
+    // FIXME(ZuseZ4): support SanitizeHWAddress and prevent illegal/unsupported opts
+
     if let Some(opt_level) = config.opt_level {
         let opt_stage = match cgcx.lto {
             Lto::Fat => llvm::OptStage::PreLinkFatLTO,
@@ -655,7 +683,20 @@ pub(crate) unsafe fn optimize(
             _ if cgcx.opts.cg.linker_plugin_lto.enabled() => llvm::OptStage::PreLinkThinLTO,
             _ => llvm::OptStage::PreLinkNoLTO,
         };
-        return unsafe { llvm_optimize(cgcx, dcx, module, config, opt_level, opt_stage) };
+
+        // If we know that we will later run AD, then we disable vectorization and loop unrolling
+        let skip_size_increasing_opts = cfg!(llvm_enzyme);
+        return unsafe {
+            llvm_optimize(
+                cgcx,
+                dcx,
+                module,
+                config,
+                opt_level,
+                opt_stage,
+                skip_size_increasing_opts,
+            )
+        };
     }
     Ok(())
 }
