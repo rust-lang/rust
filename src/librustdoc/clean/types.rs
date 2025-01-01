@@ -406,7 +406,7 @@ impl Item {
             // were never supposed to work at all.
             let stab = self.stability(tcx)?;
             if let rustc_attr_parsing::StabilityLevel::Stable {
-                allowed_through_unstable_modules: true,
+                allowed_through_unstable_modules: Some(_),
                 ..
             } = stab.level
             {
