@@ -913,7 +913,7 @@ pub fn iterate_path_candidates(
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
-    callback: &mut dyn FnMut(AssocItemId) -> ControlFlow<()>,
+    callback: &mut dyn MethodCandidateCallback,
 ) -> ControlFlow<()> {
     iterate_method_candidates_dyn(
         ty,
@@ -924,7 +924,7 @@ pub fn iterate_path_candidates(
         name,
         LookupMode::Path,
         // the adjustments are not relevant for path lookup
-        &mut |_, id, _| callback(id),
+        callback,
     )
 }
 
@@ -936,7 +936,7 @@ pub fn iterate_method_candidates_dyn(
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
     mode: LookupMode,
-    callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
+    callback: &mut dyn MethodCandidateCallback,
 ) -> ControlFlow<()> {
     let _p = tracing::info_span!(
         "iterate_method_candidates_dyn",
@@ -1006,7 +1006,7 @@ fn iterate_method_candidates_with_autoref(
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
-    mut callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
+    callback: &mut dyn MethodCandidateCallback,
 ) -> ControlFlow<()> {
     if receiver_ty.value.is_general_var(Interner, &receiver_ty.binders) {
         // don't try to resolve methods on unknown types
@@ -1021,7 +1021,7 @@ fn iterate_method_candidates_with_autoref(
             traits_in_scope,
             visible_from_module,
             name,
-            &mut callback,
+            callback,
         )
     };
 
@@ -1051,6 +1051,45 @@ fn iterate_method_candidates_with_autoref(
     iterate_method_candidates_by_receiver(ref_muted, first_adjustment.with_autoref(Mutability::Mut))
 }
 
+pub trait MethodCandidateCallback {
+    fn on_inherent_method(
+        &mut self,
+        adjustments: ReceiverAdjustments,
+        item: AssocItemId,
+        is_visible: bool,
+    ) -> ControlFlow<()>;
+
+    fn on_trait_method(
+        &mut self,
+        adjustments: ReceiverAdjustments,
+        item: AssocItemId,
+        is_visible: bool,
+    ) -> ControlFlow<()>;
+}
+
+impl<F> MethodCandidateCallback for F
+where
+    F: FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
+{
+    fn on_inherent_method(
+        &mut self,
+        adjustments: ReceiverAdjustments,
+        item: AssocItemId,
+        is_visible: bool,
+    ) -> ControlFlow<()> {
+        self(adjustments, item, is_visible)
+    }
+
+    fn on_trait_method(
+        &mut self,
+        adjustments: ReceiverAdjustments,
+        item: AssocItemId,
+        is_visible: bool,
+    ) -> ControlFlow<()> {
+        self(adjustments, item, is_visible)
+    }
+}
+
 #[tracing::instrument(skip_all, fields(name = ?name))]
 fn iterate_method_candidates_by_receiver(
     table: &mut InferenceTable<'_>,
@@ -1059,7 +1098,7 @@ fn iterate_method_candidates_by_receiver(
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
-    mut callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
+    callback: &mut dyn MethodCandidateCallback,
 ) -> ControlFlow<()> {
     let receiver_ty = table.instantiate_canonical(receiver_ty);
     // We're looking for methods with *receiver* type receiver_ty. These could
@@ -1075,7 +1114,9 @@ fn iterate_method_candidates_by_receiver(
                 Some(&receiver_ty),
                 Some(receiver_adjustments.clone()),
                 visible_from_module,
-                &mut callback,
+                &mut |adjustments, item, is_visible| {
+                    callback.on_inherent_method(adjustments, item, is_visible)
+                },
             )?
         }
         ControlFlow::Continue(())
@@ -1095,7 +1136,9 @@ fn iterate_method_candidates_by_receiver(
                 name,
                 Some(&receiver_ty),
                 Some(receiver_adjustments.clone()),
-                &mut callback,
+                &mut |adjustments, item, is_visible| {
+                    callback.on_trait_method(adjustments, item, is_visible)
+                },
             )?
         }
         ControlFlow::Continue(())
@@ -1110,7 +1153,7 @@ fn iterate_method_candidates_for_self_ty(
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
-    mut callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
+    callback: &mut dyn MethodCandidateCallback,
 ) -> ControlFlow<()> {
     let mut table = InferenceTable::new(db, env);
     let self_ty = table.instantiate_canonical(self_ty.clone());
@@ -1121,7 +1164,9 @@ fn iterate_method_candidates_for_self_ty(
         None,
         None,
         visible_from_module,
-        &mut callback,
+        &mut |adjustments, item, is_visible| {
+            callback.on_inherent_method(adjustments, item, is_visible)
+        },
     )?;
     iterate_trait_method_candidates(
         &self_ty,
@@ -1130,7 +1175,9 @@ fn iterate_method_candidates_for_self_ty(
         name,
         None,
         None,
-        callback,
+        &mut |adjustments, item, is_visible| {
+            callback.on_trait_method(adjustments, item, is_visible)
+        },
     )
 }
 

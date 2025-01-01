@@ -286,6 +286,35 @@ In `match` arms it completes a comma instead.
 Toggles the additional completions that automatically add imports when completed.
 Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
 --
+[[rust-analyzer.completion.autoimport.exclude]]rust-analyzer.completion.autoimport.exclude::
++
+--
+Default:
+----
+[
+  {
+    "path": "core::borrow::Borrow",
+    "type": "methods"
+  },
+  {
+    "path": "core::borrow::BorrowMut",
+    "type": "methods"
+  }
+]
+----
+A list of full paths to items to exclude from auto-importing completions.
+
+Traits in this list won't have their methods suggested in completions unless the trait
+is in scope.
+
+You can either specify a string path which defaults to type "always" or use the more verbose
+form `{ "path": "path::to::item", type: "always" }`.
+
+For traits the type "methods" can be used to only exclude the methods but not the trait itself.
+
+This setting also inherits `#rust-analyzer.completion.excludeTraits#`.
+
+--
 [[rust-analyzer.completion.autoself.enable]]rust-analyzer.completion.autoself.enable (default: `true`)::
 +
 --
@@ -296,6 +325,15 @@ with `self` prefixed to them when inside a method.
 +
 --
 Whether to add parenthesis and argument snippets when completing function.
+--
+[[rust-analyzer.completion.excludeTraits]]rust-analyzer.completion.excludeTraits (default: `[]`)::
++
+--
+A list of full paths to traits whose methods to exclude from completion.
+
+Methods from these traits won't be completed, even if the trait is in scope. However, they will still be suggested on expressions whose type is `dyn Trait`, `impl Trait` or `T where T: Trait`.
+
+Note that the trait themselves can still be completed.
 --
 [[rust-analyzer.completion.fullFunctionSignatures.enable]]rust-analyzer.completion.fullFunctionSignatures.enable (default: `false`)::
 +

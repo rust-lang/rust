@@ -1147,6 +1147,51 @@
             {
                 "title": "completion",
                 "properties": {
+                    "rust-analyzer.completion.autoimport.exclude": {
+                        "markdownDescription": "A list of full paths to items to exclude from auto-importing completions.\n\nTraits in this list won't have their methods suggested in completions unless the trait\nis in scope.\n\nYou can either specify a string path which defaults to type \"always\" or use the more verbose\nform `{ \"path\": \"path::to::item\", type: \"always\" }`.\n\nFor traits the type \"methods\" can be used to only exclude the methods but not the trait itself.\n\nThis setting also inherits `#rust-analyzer.completion.excludeTraits#`.",
+                        "default": [
+                            {
+                                "path": "core::borrow::Borrow",
+                                "type": "methods"
+                            },
+                            {
+                                "path": "core::borrow::BorrowMut",
+                                "type": "methods"
+                            }
+                        ],
+                        "type": "array",
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "path": {
+                                            "type": "string"
+                                        },
+                                        "type": {
+                                            "type": "string",
+                                            "enum": [
+                                                "always",
+                                                "methods"
+                                            ],
+                                            "enumDescriptions": [
+                                                "Do not show this item or its methods (if it is a trait) in auto-import completions.",
+                                                "Do not show this traits methods in auto-import completions."
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                "title": "completion",
+                "properties": {
                     "rust-analyzer.completion.autoself.enable": {
                         "markdownDescription": "Toggles the additional completions that automatically show method calls and field accesses\nwith `self` prefixed to them when inside a method.",
                         "default": true,
@@ -1171,6 +1216,19 @@
                             "Add call parentheses.",
                             "Do no snippet completions for callables."
                         ]
+                    }
+                }
+            },
+            {
+                "title": "completion",
+                "properties": {
+                    "rust-analyzer.completion.excludeTraits": {
+                        "markdownDescription": "A list of full paths to traits whose methods to exclude from completion.\n\nMethods from these traits won't be completed, even if the trait is in scope. However, they will still be suggested on expressions whose type is `dyn Trait`, `impl Trait` or `T where T: Trait`.\n\nNote that the trait themselves can still be completed.",
+                        "default": [],
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
                     }
                 }
             },
