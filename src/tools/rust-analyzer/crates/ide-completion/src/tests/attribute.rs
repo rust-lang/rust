@@ -713,6 +713,28 @@ struct Foo;
     );
 }
 
+#[test]
+fn issue_17479() {
+    check(
+        r#"
+//- proc_macros: issue_17479
+fn main() {
+    proc_macros::issue_17479!("te$0");
+}
+"#,
+        expect![""],
+    );
+    check(
+        r#"
+//- proc_macros: issue_17479
+fn main() {
+    proc_macros::issue_17479!("$0");
+}
+"#,
+        expect![""],
+    )
+}
+
 mod cfg {
     use super::*;
 

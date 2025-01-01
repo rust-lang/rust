@@ -376,7 +376,7 @@ impl ChangeFixture {
     }
 }
 
-fn default_test_proc_macros() -> [(String, ProcMacro); 7] {
+fn default_test_proc_macros() -> [(String, ProcMacro); 8] {
     [
         (
             r#"
@@ -480,6 +480,21 @@ pub fn issue_18840(_attr: TokenStream, _item: TokenStream) -> TokenStream {
                 name: Symbol::intern("issue_18840"),
                 kind: ProcMacroKind::Attr,
                 expander: sync::Arc::new(Issue18840ProcMacroExpander),
+                disabled: false,
+            },
+        ),
+        (
+            r#"
+#[proc_macro]
+pub fn issue_17479(input: TokenStream) -> TokenStream {
+    input
+}
+"#
+            .into(),
+            ProcMacro {
+                name: Symbol::intern("issue_17479"),
+                kind: ProcMacroKind::Bang,
+                expander: sync::Arc::new(Issue17479ProcMacroExpander),
                 disabled: false,
             },
         ),
@@ -759,5 +774,30 @@ impl ProcMacroExpander for ShortenProcMacroExpander {
                 }
             }
         }
+    }
+}
+
+// Reads ident type within string quotes, for issue #17479.
+#[derive(Debug)]
+struct Issue17479ProcMacroExpander;
+impl ProcMacroExpander for Issue17479ProcMacroExpander {
+    fn expand(
+        &self,
+        subtree: &TopSubtree,
+        _: Option<&TopSubtree>,
+        _: &Env,
+        _: Span,
+        _: Span,
+        _: Span,
+        _: Option<String>,
+    ) -> Result<TopSubtree, ProcMacroExpansionError> {
+        let TokenTree::Leaf(Leaf::Literal(lit)) = &subtree.0[1] else {
+            return Err(ProcMacroExpansionError::Panic("incorrect Input".into()));
+        };
+        let symbol = &lit.symbol;
+        let span = lit.span;
+        Ok(quote! { span =>
+            #symbol()
+        })
     }
 }
