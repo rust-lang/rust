@@ -2848,7 +2848,7 @@ class DocSearch {
          *     - Limit checks that Ty matches Vec<Ty>,
          *       but not Vec<ParamEnvAnd<WithInfcx<ConstTy<Interner<Ty=Ty>>>>>
          *
-         * @return {[FunctionType]|null} - Returns highlighed results if a match, null otherwise.
+         * @return {[FunctionType]|null} - Returns highlighted results if a match, null otherwise.
          */
         function unifyFunctionTypes(
             fnTypesIn,
@@ -3148,7 +3148,7 @@ class DocSearch {
          *     - Limit checks that Ty matches Vec<Ty>,
          *       but not Vec<ParamEnvAnd<WithInfcx<ConstTy<Interner<Ty=Ty>>>>>
          *
-         * @return {[FunctionType]|null} - Returns highlighed results if a match, null otherwise.
+         * @return {[FunctionType]|null} - Returns highlighted results if a match, null otherwise.
          */
         function unifyGenericTypes(
             fnTypesIn,
