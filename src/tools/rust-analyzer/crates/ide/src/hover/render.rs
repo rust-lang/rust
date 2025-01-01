@@ -890,12 +890,11 @@ fn closure_ty(
     } else {
         String::new()
     };
-    let mut markup = format!("```rust\n{}", c.display_with_id(sema.db, edition));
+    let mut markup = format!("```rust\n{}\n```", c.display_with_impl(sema.db, edition));
 
     if let Some(trait_) = c.fn_trait(sema.db).get_id(sema.db, original.krate(sema.db).into()) {
         push_new_def(hir::Trait::from(trait_).into())
     }
-    format_to!(markup, "\n{}\n```", c.display_with_impl(sema.db, edition),);
     if let Some(layout) =
         render_memory_layout(config.memory_layout, || original.layout(sema.db), |_| None, |_| None)
     {
