@@ -370,7 +370,7 @@ impl File {
                     // we have to calculate the offset from the end of the file ourselves.
                     map_fresult(vex_sdk::vexFileSeek(
                         self.fd.0,
-                        try_convert_offset(self.file_attr().size + offset)?,
+                        try_convert_offset(self.file_attr()?.size as i64 + offset)?,
                         SEEK_SET,
                     ))?
                 }
@@ -412,7 +412,7 @@ impl File {
 
 impl DirBuilder {
     pub fn new() -> DirBuilder {
-        DirBuilder {}
+        DirBuilder(())
     }
 
     pub fn mkdir(&self, _p: &Path) -> io::Result<()> {
