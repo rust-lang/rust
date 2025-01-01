@@ -1021,7 +1021,6 @@ macro_rules! tool_extended {
         pub struct $name {
             pub compiler: Compiler,
             pub target: TargetSelection,
-            pub extra_features: Vec<String>,
         }
 
         impl Step for $name {
@@ -1051,7 +1050,6 @@ macro_rules! tool_extended {
                 run.builder.ensure($name {
                     compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
                     target: run.target,
-                    extra_features: Vec::new(),
                 });
             }
 
@@ -1063,7 +1061,7 @@ macro_rules! tool_extended {
                     tool: $tool_name,
                     mode: if false $(|| $tool_std)? { Mode::ToolStd } else { Mode::ToolRustc },
                     path: $path,
-                    extra_features: $sel.extra_features,
+                    extra_features: vec![],
                     source_type: SourceType::InTree,
                     allow_features: concat!($($allow_features)*),
                     cargo_args: vec![]
