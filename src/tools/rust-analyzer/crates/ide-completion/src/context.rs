@@ -7,7 +7,7 @@ mod tests;
 use std::{iter, ops::ControlFlow};
 
 use hir::{
-    db::DefDatabase, HasAttrs, Local, ModuleSource, Name, PathResolution, ScopeDef, Semantics,
+    HasAttrs, Local, ModPath, ModuleDef, ModuleSource, Name, PathResolution, ScopeDef, Semantics,
     SemanticsScope, Symbol, Type, TypeInfo,
 };
 use ide_db::{
@@ -758,15 +758,43 @@ impl<'a> CompletionContext<'a> {
         });
 
         let depth_from_crate_root = iter::successors(Some(module), |m| m.parent(db))
-            // `BlockExpr` modules are not count as module depth
+            // `BlockExpr` modules do not count towards module depth
             .filter(|m| !matches!(m.definition_source(db).value, ModuleSource::BlockExpr(_)))
             .count()
             // exclude `m` itself
             .saturating_sub(1);
 
-        let exclude_traits = resolve_exclude_traits_list(db, config.exclude_traits);
-        let mut exclude_flyimport_traits =
-            resolve_exclude_traits_list(db, config.exclude_flyimport_traits);
+        let exclude_traits: FxHashSet<_> = config
+            .exclude_traits
+            .iter()
+            .filter_map(|path| {
+                scope
+                    .resolve_mod_path(&ModPath::from_segments(
+                        hir::PathKind::Plain,
+                        path.split("::").map(Symbol::intern).map(Name::new_symbol_root),
+                    ))
+                    .find_map(|it| match it {
+                        hir::ItemInNs::Types(ModuleDef::Trait(t)) => Some(t),
+                        _ => None,
+                    })
+            })
+            .collect();
+
+        let mut exclude_flyimport_traits: FxHashSet<_> = config
+            .exclude_flyimport_traits
+            .iter()
+            .filter_map(|path| {
+                scope
+                    .resolve_mod_path(&ModPath::from_segments(
+                        hir::PathKind::Plain,
+                        path.split("::").map(Symbol::intern).map(Name::new_symbol_root),
+                    ))
+                    .find_map(|it| match it {
+                        hir::ItemInNs::Types(ModuleDef::Trait(t)) => Some(t),
+                        _ => None,
+                    })
+            })
+            .collect();
         exclude_flyimport_traits.extend(exclude_traits.iter().copied());
 
         let complete_semicolon = if config.add_semicolon_to_unit {
@@ -839,71 +867,6 @@ impl<'a> CompletionContext<'a> {
         };
         Some((ctx, analysis))
     }
-}
-
-fn resolve_exclude_traits_list(db: &RootDatabase, traits: &[String]) -> FxHashSet<hir::Trait> {
-    let _g = tracing::debug_span!("resolve_exclude_trait_list", ?traits).entered();
-    let crate_graph = db.crate_graph();
-    let mut crate_name_to_def_map = FxHashMap::default();
-    let mut result = FxHashSet::default();
-    'process_traits: for trait_ in traits {
-        let mut segments = trait_.split("::").peekable();
-        let Some(crate_name) = segments.next() else {
-            tracing::error!(
-                ?trait_,
-                "error resolving trait from traits exclude list: invalid path"
-            );
-            continue;
-        };
-        let Some(def_map) = crate_name_to_def_map.entry(crate_name).or_insert_with(|| {
-            let krate = crate_graph
-                .iter()
-                .find(|&krate| crate_graph[krate].display_name.as_deref() == Some(crate_name));
-            let def_map = krate.map(|krate| db.crate_def_map(krate));
-            if def_map.is_none() {
-                tracing::error!(
-                    "error resolving `{trait_}` from trait exclude lists: crate could not be found"
-                );
-            }
-            def_map
-        }) else {
-            // Do not report more than one error for the same crate.
-            continue;
-        };
-        let mut module = &def_map[hir::DefMap::ROOT];
-        let trait_name = 'lookup_mods: {
-            while let Some(segment) = segments.next() {
-                if segments.peek().is_none() {
-                    break 'lookup_mods segment;
-                }
-
-                let Some(&inner) =
-                    module.children.get(&Name::new_symbol_root(hir::Symbol::intern(segment)))
-                else {
-                    tracing::error!(
-                        "error resolving `{trait_}` from trait exclude lists: could not find module `{segment}`"
-                    );
-                    continue 'process_traits;
-                };
-                module = &def_map[inner];
-            }
-
-            tracing::error!("error resolving `{trait_}` from trait exclude lists: invalid path");
-            continue 'process_traits;
-        };
-        let resolved_trait = module
-            .scope
-            .trait_by_name(&Name::new_symbol_root(hir::Symbol::intern(trait_name)))
-            .map(hir::Trait::from);
-        let Some(resolved_trait) = resolved_trait else {
-            tracing::error!(
-                "error resolving `{trait_}` from trait exclude lists: trait could not be found"
-            );
-            continue;
-        };
-        result.insert(resolved_trait);
-    }
-    result
 }
 
 const OP_TRAIT_LANG_NAMES: &[&str] = &[
