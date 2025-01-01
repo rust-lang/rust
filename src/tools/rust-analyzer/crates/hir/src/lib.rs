@@ -5219,49 +5219,25 @@ impl Type {
         traits_in_scope: &FxHashSet<TraitId>,
         with_local_impls: Option<Module>,
         name: Option<&Name>,
-        callback: impl FnMut(Function) -> Option<T>,
+        mut callback: impl FnMut(Function) -> Option<T>,
     ) -> Option<T> {
-        struct Callback<T, F> {
-            f: F,
-            slot: Option<T>,
-        }
-        impl<T, F> MethodCandidateCallback for &'_ mut Callback<T, F>
-        where
-            F: FnMut(Function) -> Option<T>,
-        {
-            fn on_inherent_method(&mut self, f: Function) -> ControlFlow<()> {
-                match (self.f)(f) {
-                    it @ Some(_) => {
-                        self.slot = it;
-                        ControlFlow::Break(())
-                    }
-                    None => ControlFlow::Continue(()),
-                }
-            }
-
-            fn on_trait_method(&mut self, f: Function) -> ControlFlow<()> {
-                match (self.f)(f) {
-                    it @ Some(_) => {
-                        self.slot = it;
-                        ControlFlow::Break(())
-                    }
-                    None => ControlFlow::Continue(()),
-                }
-            }
-        }
-
         let _p = tracing::info_span!("iterate_method_candidates_with_traits").entered();
-        let mut callback = Callback { slot: None, f: callback };
-
+        let mut slot = None;
         self.iterate_method_candidates_split_inherent(
             db,
             scope,
             traits_in_scope,
             with_local_impls,
             name,
-            &mut callback,
+            |f| match callback(f) {
+                it @ Some(_) => {
+                    slot = it;
+                    ControlFlow::Break(())
+                }
+                None => ControlFlow::Continue(()),
+            },
         );
-        callback.slot
+        slot
     }
 
     pub fn iterate_method_candidates<T>(
@@ -5361,39 +5337,10 @@ impl Type {
         traits_in_scope: &FxHashSet<TraitId>,
         with_local_impls: Option<Module>,
         name: Option<&Name>,
-        callback: impl FnMut(AssocItem) -> Option<T>,
+        mut callback: impl FnMut(AssocItem) -> Option<T>,
     ) -> Option<T> {
-        struct Callback<T, F> {
-            f: F,
-            slot: Option<T>,
-        }
-        impl<T, F> PathCandidateCallback for &'_ mut Callback<T, F>
-        where
-            F: FnMut(AssocItem) -> Option<T>,
-        {
-            fn on_inherent_item(&mut self, item: AssocItem) -> ControlFlow<()> {
-                match (self.f)(item) {
-                    it @ Some(_) => {
-                        self.slot = it;
-                        ControlFlow::Break(())
-                    }
-                    None => ControlFlow::Continue(()),
-                }
-            }
-
-            fn on_trait_item(&mut self, item: AssocItem) -> ControlFlow<()> {
-                match (self.f)(item) {
-                    it @ Some(_) => {
-                        self.slot = it;
-                        ControlFlow::Break(())
-                    }
-                    None => ControlFlow::Continue(()),
-                }
-            }
-        }
-
         let _p = tracing::info_span!("iterate_path_candidates").entered();
-        let mut callback = Callback { slot: None, f: callback };
+        let mut slot = None;
 
         self.iterate_path_candidates_split_inherent(
             db,
@@ -5401,9 +5348,15 @@ impl Type {
             traits_in_scope,
             with_local_impls,
             name,
-            &mut callback,
+            |item| match callback(item) {
+                it @ Some(_) => {
+                    slot = it;
+                    ControlFlow::Break(())
+                }
+                None => ControlFlow::Continue(()),
+            },
         );
-        callback.slot
+        slot
     }
 
     /// Iterates over inherent methods.
@@ -6167,8 +6120,34 @@ pub trait MethodCandidateCallback {
     fn on_trait_method(&mut self, f: Function) -> ControlFlow<()>;
 }
 
+impl<F> MethodCandidateCallback for F
+where
+    F: FnMut(Function) -> ControlFlow<()>,
+{
+    fn on_inherent_method(&mut self, f: Function) -> ControlFlow<()> {
+        self(f)
+    }
+
+    fn on_trait_method(&mut self, f: Function) -> ControlFlow<()> {
+        self(f)
+    }
+}
+
 pub trait PathCandidateCallback {
     fn on_inherent_item(&mut self, item: AssocItem) -> ControlFlow<()>;
 
     fn on_trait_item(&mut self, item: AssocItem) -> ControlFlow<()>;
+}
+
+impl<F> PathCandidateCallback for F
+where
+    F: FnMut(AssocItem) -> ControlFlow<()>,
+{
+    fn on_inherent_item(&mut self, item: AssocItem) -> ControlFlow<()> {
+        self(item)
+    }
+
+    fn on_trait_item(&mut self, item: AssocItem) -> ControlFlow<()> {
+        self(item)
+    }
 }

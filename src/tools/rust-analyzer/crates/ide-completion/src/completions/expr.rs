@@ -30,7 +30,6 @@ where
         ControlFlow::Continue(())
     }
 
-    #[allow(unstable_name_collisions)] // FIXME: Remove this when `is_none_or()` reaches stable.
     fn on_trait_item(&mut self, item: hir::AssocItem) -> ControlFlow<()> {
         // The excluded check needs to come before the `seen` test, so that if we see the same method twice,
         // once as inherent and once not, we will include it.
