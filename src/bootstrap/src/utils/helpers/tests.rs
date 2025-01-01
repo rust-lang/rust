@@ -3,8 +3,8 @@ use std::io::Write;
 use std::path::PathBuf;
 
 use crate::utils::helpers::{
-    check_cfg_arg, extract_beta_rev, hex_encode, make, program_out_of_date, set_file_times,
-    symlink_dir,
+    check_cfg_arg, extract_beta_rev, hex_encode, is_path_in_submodule, make, program_out_of_date,
+    set_file_times, symlink_dir,
 };
 use crate::{Config, Flags};
 
@@ -114,4 +114,19 @@ fn test_set_file_times_sanity_check() {
     let found_metadata = fs::metadata(tempfile).unwrap();
     assert_eq!(found_metadata.accessed().unwrap(), unix_epoch);
     assert_eq!(found_metadata.modified().unwrap(), unix_epoch)
+}
+
+#[test]
+fn test_is_path_in_submodule() {
+    let config = Config::parse_inner(Flags::parse(&["build".into(), "--dry-run".into()]), |&_| {
+        Ok(Default::default())
+    });
+
+    let build = crate::Build::new(config.clone());
+    let builder = crate::core::builder::Builder::new(&build);
+    assert!(!is_path_in_submodule(&builder, "invalid/path"));
+    assert!(is_path_in_submodule(&builder, "src/tools/cargo"));
+    assert!(is_path_in_submodule(&builder, "src/llvm-project"));
+    // Make sure subdirs are handled properly
+    assert!(is_path_in_submodule(&builder, "src/tools/cargo/random-subdir"));
 }

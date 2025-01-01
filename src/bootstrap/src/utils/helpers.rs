@@ -60,6 +60,12 @@ pub fn is_dylib(path: &Path) -> bool {
     })
 }
 
+/// Returns `true` if the given path is part of a submodule.
+pub fn is_path_in_submodule(builder: &Builder<'_>, path: &str) -> bool {
+    let submodule_paths = build_helper::util::parse_gitmodules(&builder.src);
+    submodule_paths.iter().any(|submodule_path| path.starts_with(submodule_path))
+}
+
 fn is_aix_shared_archive(path: &Path) -> bool {
     let file = match fs::File::open(path) {
         Ok(file) => file,
