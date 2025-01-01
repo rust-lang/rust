@@ -2216,13 +2216,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let pat_prefix_span =
             inner.span.find_ancestor_inside(pat.span).map(|end| pat.span.until(end));
 
-        if no_ref_mut_behind_and {
-            if pat_mutbl == Mutability::Not {
-                // Prevent the inner pattern from binding with `ref mut`.
-                pat_info.max_ref_mutbl = pat_info.max_ref_mutbl.cap_to_weakly_not(pat_prefix_span);
-            }
-        } else {
-            pat_info.max_ref_mutbl = MutblCap::Mut;
+        if no_ref_mut_behind_and && pat_mutbl == Mutability::Not {
+            // Prevent the inner pattern from binding with `ref mut`.
+            pat_info.max_ref_mutbl = pat_info.max_ref_mutbl.cap_to_weakly_not(pat_prefix_span);
         }
 
         expected = self.try_structurally_resolve_type(pat.span, expected);
