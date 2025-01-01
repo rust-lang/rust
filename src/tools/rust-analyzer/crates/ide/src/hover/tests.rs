@@ -348,7 +348,6 @@ fn main() {
         expect![[r#"
             *|*
             ```rust
-            {closure#0}
             impl Fn(i32) -> i32
             ```
             ___
@@ -372,7 +371,6 @@ fn main() {
         expect![[r#"
             *|*
             ```rust
-            {closure#0}
             impl Fn(i32) -> i32
             ```
             ___
@@ -407,7 +405,6 @@ fn main() {
         expect![[r#"
             *|*
             ```rust
-            {closure#0}
             impl FnOnce()
             ```
             ___
@@ -437,7 +434,6 @@ fn main() {
         expect![[r#"
             *|*
             ```rust
-            {closure#0}
             impl FnMut()
             ```
             ___
@@ -463,7 +459,6 @@ fn main() {
 "#,
         expect![[r#"
             ```rust
-            {closure#0}
             impl FnOnce() -> S2
             ```
             ___
@@ -3017,7 +3012,6 @@ fn main() {
         expect![[r#"
             *|*
             ```rust
-            {closure#0}
             impl Fn(i32) -> i32
             ```
 
