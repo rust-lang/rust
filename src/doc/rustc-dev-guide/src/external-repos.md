@@ -6,9 +6,11 @@ There are three main ways we use dependencies:
 2. As a git (e.g. `clippy`) or a [josh] (e.g. `miri`) subtree
 3. As a git submodule (e.g. `cargo`)
 
-As a general rule, use crates.io for libraries that could be useful for others in the ecosystem; use
-subtrees for tools that depend on compiler internals and need to be updated if there are breaking
-changes; and use submodules for tools that are independent of the compiler.
+As a general rule:
+- Use crates.io for libraries that could be useful for others in the ecosystem
+- Use subtrees for tools that depend on compiler internals and need to be updated if there are breaking
+changes
+- Use submodules for tools that are independent of the compiler
 
 ## External Dependencies (subtrees)
 
