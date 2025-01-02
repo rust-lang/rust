@@ -1,5 +1,8 @@
 # Normalization in the new solver
 
+> **NOTE**: FIXME: The content of this chapter has some been changed quite
+significantly since it was written.
+
 With the new solver we've made some fairly significant changes to normalization when compared
 to the existing implementation.
 
@@ -52,12 +55,14 @@ before assigning the resulting rigid type to an inference variable. This is used
 This has to be used whenever we match on the value of some type, both inside
 and outside of the trait solver.
 
+<!--
 FIXME: structure, maybe we should have an "alias handling" chapter instead as
 talking about normalization without explaining that doesn't make too much
 sense.
 
 FIXME: it is likely that this will subtly change again by mostly moving structural
 normalization into `NormalizesTo`.
+-->
 
 [structural_norm]: https://github.com/rust-lang/rust/blob/2627e9f3012a97d3136b3e11bf6bd0853c38a534/compiler/rustc_trait_selection/src/solve/alias_relate.rs#L140-L175
 [structural-relate]: https://github.com/rust-lang/rust/blob/a0569fa8f91b5271e92d2f73fd252de7d3d05b9c/compiler/rustc_trait_selection/src/solve/alias_relate.rs#L88-L107
@@ -72,11 +77,13 @@ possible. However, this only works for aliases referencing bound variables if th
 not ambiguous as we're unable to replace the alias with a corresponding inference
 variable without leaking universes.
 
+<!--
 FIXME: we previously had to also be careful about instantiating the new inference
 variable with another normalizeable alias. Due to our recent changes to generalization,
 this should not be the case anymore. Equating an inference variable with an alias
 now always uses `AliasRelate` to fully normalize the alias before instantiating the
 inference variable: [source][generalize-no-alias]
+-->
 
 [generalize-no-alias]: https://github.com/rust-lang/rust/blob/a0569fa8f91b5271e92d2f73fd252de7d3d05b9c/compiler/rustc_infer/src/infer/relate/generalize.rs#L353-L358
 

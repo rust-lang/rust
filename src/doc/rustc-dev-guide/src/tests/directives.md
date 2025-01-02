@@ -2,7 +2,9 @@
 
 <!-- toc -->
 
-> **FIXME(jieyouxu)** completely revise this chapter.
+<!--
+FIXME(jieyouxu) completely revise this chapter.
+-->
 
 Directives are special comments that tell compiletest how to build and interpret
 a test. They must appear before the Rust source in the test. They may also
@@ -248,10 +250,11 @@ Consider writing the test as a proper incremental test instead.
 |-------------|--------------------------------------------------------------|------------------------------------------|---------------------------|
 | `doc-flags` | Flags passed to `rustdoc` when building the test or aux file | `rustdoc`, `js-doc-test`, `rustdoc-json` | Any valid `rustdoc` flags |
 
-> **FIXME(rustdoc)**: what does `check-test-line-numbers-match` do?
->
-> Asked in
-> <https://rust-lang.zulipchat.com/#narrow/stream/266220-t-rustdoc/topic/What.20is.20the.20.60check-test-line-numbers-match.60.20directive.3F>.
+<!--
+**FIXME(rustdoc)**: what does `check-test-line-numbers-match` do?
+Asked in
+<https://rust-lang.zulipchat.com/#narrow/stream/266220-t-rustdoc/topic/What.20is.20the.20.60check-test-line-numbers-match.60.20directive.3F>.
+-->
 
 ### Pretty printing
 

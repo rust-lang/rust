@@ -60,6 +60,7 @@ Finally, we check whether the item bounds of the opaque hold for the expected ty
 [eq-prev]: https://github.com/rust-lang/rust/blob/384d26fc7e3bdd7687cc17b2662b091f6017ec2a/compiler/rustc_trait_selection/src/solve/normalizes_to/opaque_types.rs#L51-L59
 [insert-storage]: https://github.com/rust-lang/rust/blob/384d26fc7e3bdd7687cc17b2662b091f6017ec2a/compiler/rustc_trait_selection/src/solve/normalizes_to/opaque_types.rs#L68
 [item-bounds-ck]: https://github.com/rust-lang/rust/blob/384d26fc7e3bdd7687cc17b2662b091f6017ec2a/compiler/rustc_trait_selection/src/solve/normalizes_to/opaque_types.rs#L69-L74
+
 [^1]: FIXME: this should ideally only result in a unique candidate given that we require the args to be placeholders and regions are always inference vars
 [^2]: FIXME: why do we check whether the expected type is rigid for this.
 
@@ -101,6 +102,7 @@ The handling of member constraints does not change in the new solver. See the
 
 FIXME: We need to continue to support calling methods on still unconstrained
 opaque types in their defining scope. It's unclear how to best do this.
+
 ```rust
 use std::future::Future;
 use futures::FutureExt;
