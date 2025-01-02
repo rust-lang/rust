@@ -2821,7 +2821,9 @@ impl Target {
             Abi::System { unwind } if self.is_like_windows && self.arch == "x86" && !c_variadic => {
                 Abi::Stdcall { unwind }
             }
-            Abi::System { unwind } if self.is_like_vexos && !c_variadic => Abi::Aapcs { unwind },
+            Abi::System { unwind } if self.is_like_vexos && self.arch == "arm" && !c_variadic => {
+                Abi::Aapcs { unwind }
+            }
             Abi::System { unwind } => Abi::C { unwind },
             Abi::EfiApi if self.arch == "arm" => Abi::Aapcs { unwind: false },
             Abi::EfiApi if self.arch == "x86_64" => Abi::Win64 { unwind: false },
