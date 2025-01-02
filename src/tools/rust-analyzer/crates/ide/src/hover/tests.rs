@@ -10035,6 +10035,40 @@ fn bar() {
 }
 
 #[test]
+fn i128_max() {
+    check(
+        r#"
+//- /core.rs library crate:core
+#![rustc_coherence_is_core]
+impl u128 {
+    pub const MAX: Self = 340_282_366_920_938_463_463_374_607_431_768_211_455u128;
+}
+impl i128 {
+    pub const MAX: Self = (u128::MAX >> 1) as Self;
+}
+
+//- /foo.rs crate:foo deps:core
+fn foo() {
+    let _ = i128::MAX$0;
+}
+        "#,
+        expect![
+            r#"
+            *MAX*
+
+            ```rust
+            core
+            ```
+
+            ```rust
+            pub const MAX: Self = 170141183460469231731687303715884105727 (0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
+            ```
+        "#
+        ],
+    );
+}
+
+#[test]
 fn test_runnables_with_snapshot_tests() {
     check_actions(
         r#"
