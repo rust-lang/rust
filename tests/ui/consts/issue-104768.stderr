@@ -15,10 +15,12 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
   --> $DIR/issue-104768.rs:1:11
    |
 LL | const A: &_ = 0_u32;
-   |          -^
-   |          ||
-   |          |not allowed in type signatures
-   |          help: replace with the correct type: `u32`
+   |           ^ not allowed in type signatures
+   |
+help: replace this with a fully-specified type
+   |
+LL | const A: u32 = 0_u32;
+   |          ~~~
 
 error: aborting due to 2 previous errors
 

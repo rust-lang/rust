@@ -31,10 +31,7 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
   --> $DIR/issue-69396-const-no-type-in-macro.rs:4:20
    |
 LL |               const A = "A".$fn();
-   |                      ^
-   |                      |
-   |                      not allowed in type signatures
-   |                      help: replace with the correct type: `bool`
+   |                      ^ not allowed in type signatures
 ...
 LL | / suite! {
 LL | |     len;
@@ -43,6 +40,10 @@ LL | | }
    | |_- in this macro invocation
    |
    = note: this error originates in the macro `suite` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: replace this with a fully-specified type
+   |
+LL |             const Abool = "A".$fn();
+   |                    ++++
 
 error: aborting due to 3 previous errors
 

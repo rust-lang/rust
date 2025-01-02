@@ -467,9 +467,9 @@ fn infer_placeholder_type<'tcx>(
 
             if !ty.references_error() {
                 if let Some(ty) = ty.make_suggestable(tcx, false, None) {
-                    diag.span_suggestion(
+                    diag.span_suggestion_verbose(
                         span,
-                        "replace with the correct type",
+                        "replace this with a fully-specified type",
                         ty,
                         Applicability::MachineApplicable,
                     );
