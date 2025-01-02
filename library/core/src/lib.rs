@@ -122,6 +122,7 @@
 #![feature(internal_impls_macro)]
 #![feature(ip)]
 #![feature(is_ascii_octdigit)]
+#![feature(iter_contains)]
 #![feature(lazy_get)]
 #![feature(link_cfg)]
 #![feature(non_null_from_ref)]
