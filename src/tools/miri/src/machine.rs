@@ -1737,44 +1737,26 @@ pub trait MachineCallback<'tcx, T>: VisitProvenance {
 /// Type alias for boxed machine callbacks with generic argument type.
 pub type DynMachineCallback<'tcx, T> = Box<dyn MachineCallback<'tcx, T> + 'tcx>;
 
-/// Creates a callback for blocking operations with captured state.
+/// Creates a `DynMachineCallback`:
 ///
-/// When a thread blocks on a resource (as defined in `enum BlockReason`), this callback
-/// executes once that resource becomes available. The callback captures needed
-/// variables and handles the completion of the blocking operation.
-///
-/// # Example
 /// ```rust
-/// // Block thread until mutex is available
-/// this.block_thread(
-///     BlockReason::Mutex,
-///     None,
-///     callback!(
-///         @capture<'tcx> {
-///             mutex_ref: MutexRef,  
-///             retval: Scalar,
-///             dest: MPlaceTy<'tcx>,
-///         }
-///         |this, unblock: UnblockKind| {
-///             // Verify successful mutex acquisition
-///             assert_eq!(unblock, UnblockKind::Ready);
-///             
-///             // Enter critical section
-///             this.mutex_lock(&mutex_ref);
-///             
-///             // Process protected data and store result
-///             this.write_scalar(retval, &dest)?;
-///             
-///             // Exit critical section implicitly when callback completes
-///             interp_ok(())
-///         }
-///     ),
-/// );
+/// callback!(
+///     @capture<'tcx> {
+///         var1: Ty1,
+///         var2: Ty2<'tcx>,
+///     }
+///     |this, arg: ArgTy| {
+///         // Implement the callback here.
+///         todo!()
+///     }
+/// )
 /// ```
+///
+/// All the argument types must implement `VisitProvenance`.
 #[macro_export]
 macro_rules! callback {
     (@capture<$tcx:lifetime $(,)? $($lft:lifetime),*>
-     { $($name:ident: $type:ty),* $(,)? }
+        { $($name:ident: $type:ty),* $(,)? }
      |$this:ident, $arg:ident: $arg_ty:ty| $body:expr $(,)?) => {{
         struct Callback<$tcx, $($lft),*> {
             $($name: $type,)*

@@ -19,7 +19,7 @@ use crate::concurrency::data_race;
 use crate::shims::tls;
 use crate::*;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum SchedulingAction {
     /// Execute step on the active thread.
     ExecuteStep,
@@ -30,6 +30,7 @@ enum SchedulingAction {
 }
 
 /// What to do with TLS allocations from terminated threads
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum TlsAllocAction {
     /// Deallocate backing memory of thread-local statics as usual
     Deallocate,
@@ -39,7 +40,7 @@ pub enum TlsAllocAction {
 }
 
 /// The argument type for the "unblock" callback, indicating why the thread got unblocked.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum UnblockKind {
     /// Operation completed successfully, thread continues normal execution.
     Ready,
@@ -47,7 +48,8 @@ pub enum UnblockKind {
     TimedOut,
 }
 
-/// Type alias for unblock callbacks using UnblockKind argument.
+/// Type alias for unblock callbacks, i.e. machine callbacks invoked when
+/// a thread gets unblocked.
 pub type DynUnblockCallback<'tcx> = DynMachineCallback<'tcx, UnblockKind>;
 
 /// A thread identifier.
