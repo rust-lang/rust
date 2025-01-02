@@ -111,7 +111,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     pending_place: MPlaceTy<'tcx>,
                     dest: MPlaceTy<'tcx>,
                 }
-                @unblock = |this| {
+                |this, unblock: UnblockKind| {
+                    assert_eq!(unblock, UnblockKind::Ready);
                     let ret = this.init_once_try_begin(id, &pending_place, &dest)?;
                     assert!(ret, "we were woken up but init_once_try_begin still failed");
                     interp_ok(())

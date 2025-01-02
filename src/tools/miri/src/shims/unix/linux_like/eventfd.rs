@@ -242,7 +242,8 @@ fn eventfd_write<'tcx>(
                         dest: MPlaceTy<'tcx>,
                         weak_eventfd: WeakFileDescriptionRef<EventFd>,
                     }
-                    @unblock = |this| {
+                    |this, unblock: UnblockKind| {
+                        assert_eq!(unblock, UnblockKind::Ready);
                         // When we get unblocked, try again. We know the ref is still valid,
                         // otherwise there couldn't be a `write` that unblocks us.
                         let eventfd_ref = weak_eventfd.upgrade().unwrap();
@@ -285,7 +286,8 @@ fn eventfd_read<'tcx>(
                     dest: MPlaceTy<'tcx>,
                     weak_eventfd: WeakFileDescriptionRef<EventFd>,
                 }
-                @unblock = |this| {
+                |this, unblock: UnblockKind| {
+                    assert_eq!(unblock, UnblockKind::Ready);
                     // When we get unblocked, try again. We know the ref is still valid,
                     // otherwise there couldn't be a `write` that unblocks us.
                     let eventfd_ref = weak_eventfd.upgrade().unwrap();
