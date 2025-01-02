@@ -32,7 +32,7 @@ for SEARCH_PYTHON in py python3 python python2; do
         else
             extra_arg=""
         fi
-        exec "$python" $extra_arg "$xpy" "$@"
+        exec "$python" "$extra_arg" "$xpy" "$@"
     fi
 done
 
