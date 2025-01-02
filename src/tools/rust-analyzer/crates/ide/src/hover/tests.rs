@@ -8303,6 +8303,37 @@ fn main() {
             value of literal: `` ` ``
         "#]],
     );
+    check(
+        r#"
+fn main() {
+    $0r"    ";
+}"#,
+        expect![[r#"
+            *r"    "*
+            ```rust
+            &str
+            ```
+            ___
+
+            value of literal: `    `
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $0r" Hello World ";
+
+}"#,
+        expect![[r#"
+            *r" Hello World "*
+            ```rust
+            &str
+            ```
+            ___
+
+            value of literal: `  Hello World  `
+"#]],
+    )
 }
 
 #[test]
