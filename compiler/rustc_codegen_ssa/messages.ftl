@@ -30,6 +30,8 @@ codegen_ssa_copy_path = could not copy {$from} to {$to}: {$error}
 
 codegen_ssa_copy_path_buf = unable to copy {$source_file} to {$output_path}: {$error}
 
+codegen_ssa_cpu_required = target requires explicitly specifying a cpu with `-C target-cpu`
+
 codegen_ssa_create_temp_dir = couldn't create a temp dir: {$error}
 
 codegen_ssa_dlltool_fail_import_library =

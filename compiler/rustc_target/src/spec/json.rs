@@ -546,6 +546,7 @@ impl Target {
         key!(link_env_remove, list);
         key!(asm_args, list);
         key!(cpu);
+        key!(need_explicit_cpu, bool);
         key!(features);
         key!(dynamic_linking, bool);
         key!(direct_access_external_data, Option<bool>);
@@ -720,6 +721,7 @@ impl ToJson for Target {
         target_option_val!(link_env_remove);
         target_option_val!(asm_args);
         target_option_val!(cpu);
+        target_option_val!(need_explicit_cpu);
         target_option_val!(features);
         target_option_val!(dynamic_linking);
         target_option_val!(direct_access_external_data);
