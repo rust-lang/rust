@@ -5,6 +5,24 @@ pub(super) use rustc_target::spec::apple::OSVersion;
 #[cfg(test)]
 mod tests;
 
+/// The lowercase, canonical name of the desired SDK for a given target.
+pub(super) fn sdk_name(target: &Target) -> &'static str {
+    match (&*target.os, &*target.abi) {
+        ("macos", "") => "macosx",
+        ("ios", "") => "iphoneos",
+        ("ios", "sim") => "iphonesimulator",
+        // Mac Catalyst uses the macOS SDK
+        ("ios", "macabi") => "macosx",
+        ("tvos", "") => "appletvos",
+        ("tvos", "sim") => "appletvsimulator",
+        ("visionos", "") => "xros",
+        ("visionos", "sim") => "xrsimulator",
+        ("watchos", "") => "watchos",
+        ("watchos", "sim") => "watchsimulator",
+        (os, abi) => unreachable!("invalid os '{os}' / abi '{abi}' combination for Apple target"),
+    }
+}
+
 pub(super) fn macho_platform(target: &Target) -> u32 {
     match (&*target.os, &*target.abi) {
         ("macos", _) => object::macho::PLATFORM_MACOS,
