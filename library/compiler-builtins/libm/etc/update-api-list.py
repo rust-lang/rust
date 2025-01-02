@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, TypeAlias
 
 ETC_DIR = Path(__file__).parent
+ROOT_DIR = ETC_DIR.parent
 
 IndexTy: TypeAlias = dict[str, dict[str, Any]]
 """Type of the `index` item in rustdoc's JSON output"""
@@ -56,10 +57,12 @@ class Crate:
                 "--edition=2021",
                 "--document-private-items",
                 "--output-format=json",
+                "--cfg=f16_enabled",
+                "--cfg=f128_enabled",
                 "-Zunstable-options",
                 "-o-",
             ],
-            cwd=ETC_DIR.parent,
+            cwd=ROOT_DIR,
             text=True,
         )
         j = json.loads(j)
@@ -105,8 +108,8 @@ class Crate:
 
         # A lot of the `arch` module is often configured out so doesn't show up in docs. Use
         # string matching as a fallback.
-        for fname in glob("src/math/arch/**.rs", root_dir=ETC_DIR.parent):
-            contents = Path(fname).read_text()
+        for fname in glob("src/math/arch/**.rs", root_dir=ROOT_DIR):
+            contents = (ROOT_DIR.joinpath(fname)).read_text()
 
             for name in self.public_functions:
                 if f"fn {name}" in contents:
