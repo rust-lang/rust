@@ -353,19 +353,7 @@ impl FlycheckActor {
                             package_id: None,
                         });
                     } else {
-                        for (package_id, status) in mem::take(&mut self.package_status) {
-                            if let DiagnosticReceived::No = status {
-                                tracing::trace!(
-                                    flycheck_id = self.id,
-                                    package_id = package_id.repr,
-                                    "clearing diagnostics"
-                                );
-                                self.send(FlycheckMessage::ClearDiagnostics {
-                                    id: self.id,
-                                    package_id: Some(package_id),
-                                });
-                            }
-                        }
+                        self.send_clear_diagnostics();
                     }
 
                     self.report_progress(Progress::DidFinish(res));
@@ -429,7 +417,23 @@ impl FlycheckActor {
             command_handle.cancel();
             self.command_receiver.take();
             self.report_progress(Progress::DidCancel);
-            self.package_status.clear();
+            self.send_clear_diagnostics();
+        }
+    }
+
+    fn send_clear_diagnostics(&mut self) {
+        for (package_id, status) in mem::take(&mut self.package_status) {
+            if let DiagnosticReceived::No = status {
+                tracing::trace!(
+                    flycheck_id = self.id,
+                    package_id = package_id.repr,
+                    "clearing diagnostics"
+                );
+                self.send(FlycheckMessage::ClearDiagnostics {
+                    id: self.id,
+                    package_id: Some(package_id),
+                });
+            }
         }
     }
 
