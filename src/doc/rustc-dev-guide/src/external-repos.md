@@ -3,7 +3,7 @@
 The `rust-lang/rust` git repository depends on several other repos in the `rust-lang` organization.
 There are three main ways we use dependencies:
 1. As a Cargo dependency through crates.io (e.g. `rustc-rayon`)
-2. As a git (e.g. `clippy`) or a [josh][josh] (e.g. `miri`) subtree
+2. As a git (e.g. `clippy`) or a [josh] (e.g. `miri`) subtree
 3. As a git submodule (e.g. `cargo`)
 
 As a general rule, use crates.io for libraries that could be useful for others in the ecosystem; use
@@ -33,11 +33,11 @@ implement a new tool feature or test, that should happen in one collective rustc
   * `clippy` ([sync guide](https://doc.rust-lang.org/nightly/clippy/development/infrastructure/sync.html#performing-the-sync-from-rust-langrust-to-clippy))
   * `rustfmt`
   * `rustc_codegen_cranelift` ([sync script](https://github.com/rust-lang/rustc_codegen_cranelift/blob/113af154d459e41b3dc2c5d7d878e3d3a8f33c69/scripts/rustup.sh#L7))
-* Using the [josh][josh] tool
+* Using the [josh] tool
   * `miri` ([sync guide](https://github.com/rust-lang/miri/blob/master/CONTRIBUTING.md#advanced-topic-syncing-with-the-rustc-repo))
   * `rust-analyzer` ([sync script](https://github.com/rust-lang/rust-analyzer/blob/2e13684be123eca7181aa48e043e185d8044a84a/xtask/src/release.rs#L147))
 
-The [josh][josh] tool is an alternative to git subtrees, which manages git history in a different way and scales better to larger repositories. Specific tooling is required to work with josh, you can check out the `miri` or `rust-analyzer` scripts linked above for inspiration. If you want to migrate a subtree from `git subtree` to josh, you can check out [this guide](https://hackmd.io/7pOuxnkdQDaL1Y1FQr65xg).
+The [josh] tool is an alternative to git subtrees, which manages git history in a different way and scales better to larger repositories. Specific tooling is required to work with josh, you can check out the `miri` or `rust-analyzer` scripts linked above for inspiration. If you want to migrate a subtree from `git subtree` to josh, you can check out [this guide](https://hackmd.io/7pOuxnkdQDaL1Y1FQr65xg).
 
 Below you can find a guide on how to perform push and pull synchronization with the main rustc repo using `git subtree`, although these instructions might differ repo from repo.
 
