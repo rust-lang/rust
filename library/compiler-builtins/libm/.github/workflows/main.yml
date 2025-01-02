@@ -14,7 +14,7 @@ env:
 jobs:
   test:
     name: Build and test
-    timeout-minutes: 20
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -186,6 +186,62 @@ jobs:
         rustup component add rustfmt
     - run: cargo fmt -- --check
 
+  # Determine which extensive tests should be run based on changed files.
+  calculate_extensive_matrix:
+    name: Calculate job matrix
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.script.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 100
+      - name: Fetch pull request ref
+        run: git fetch origin "$GITHUB_REF:$GITHUB_REF"
+      - run: python3 ci/calculate-exhaustive-matrix.py >> "$GITHUB_OUTPUT"
+        id: script
+
+  extensive:
+    name: Extensive tests for ${{ matrix.ty }}
+    needs:
+      # Wait on `clippy` so we have some confidence that the crate will build
+      - clippy
+      - calculate_extensive_matrix
+    runs-on: ubuntu-24.04
+    timeout-minutes: 80
+    strategy:
+      matrix:
+        # Use the output from `calculate_extensive_matrix` to calculate the matrix
+        # FIXME: it would be better to run all jobs (i.e. all types) but mark those that
+        # didn't change as skipped, rather than completely excluding the job. However,
+        # this is not currently possible https://github.com/actions/runner/issues/1985.
+        include: ${{ fromJSON(needs.calculate_extensive_matrix.outputs.matrix).matrix }}
+    env:
+      CHANGED: ${{ matrix.changed }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        run: |
+          rustup update nightly --no-self-update
+          rustup default nightly
+      - uses: Swatinem/rust-cache@v2
+      - name: Download musl source
+        run: ./ci/download-musl.sh
+      - name: Run extensive tests
+        run: |
+          echo "Changed: '$CHANGED'"
+          if [ -z "$CHANGED" ]; then
+            echo "No tests to run, exiting."
+            exit
+          fi
+
+          LIBM_EXTENSIVE_TESTS="$CHANGED" cargo t \
+            --features test-multiprecision,unstable \
+            --release -- extensive
+      - name: Print test logs if available
+        run: if [ -f "target/test-log.txt" ]; then cat target/test-log.txt; fi
+        shell: bash
+
   success:
     needs:
       - test
@@ -193,6 +249,7 @@ jobs:
       - benchmarks
       - msrv
       - rustfmt
+      - extensive
     runs-on: ubuntu-24.04
     # GitHub branch protection is exceedingly silly and treats "jobs skipped because a dependency
     # failed" as success. So we have to do some contortions to ensure the job fails if any of its
