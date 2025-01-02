@@ -1,4 +1,6 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions};
+use crate::spec::{
+    Cc, FloatAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions,
+};
 
 const LINK_SCRIPT: &str = include_str!("./armv7a_vex_v5_linker_script.ld");
 
@@ -15,6 +17,7 @@ pub(crate) fn target() -> Target {
         data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".into(),
         arch: "arm".into(),
         options: TargetOptions {
+            llvm_floatabi: Some(FloatAbi::Hard),
             os: "vexos".into(),
             is_like_vexos: true,
             vendor: "vex".into(),
