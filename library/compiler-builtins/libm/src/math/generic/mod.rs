@@ -1,5 +1,5 @@
-mod abs;
 mod copysign;
+mod fabs;
 
-pub use abs::abs;
 pub use copysign::copysign;
+pub use fabs::fabs;

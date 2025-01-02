@@ -9,7 +9,7 @@ pub fn fabs(x: f64) -> f64 {
         args: x,
     }
 
-    super::generic::abs(x)
+    super::generic::fabs(x)
 }
 
 #[cfg(test)]
