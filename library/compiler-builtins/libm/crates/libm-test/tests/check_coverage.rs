@@ -8,6 +8,7 @@ use std::process::Command;
 macro_rules! callback {
     (
         fn_name: $name:ident,
+        attrs: [$($attr:meta),*],
         extra: [$set:ident],
     ) => {
         let name = stringify!($name);

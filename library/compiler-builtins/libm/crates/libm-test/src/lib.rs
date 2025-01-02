@@ -1,3 +1,5 @@
+#![cfg_attr(f16_enabled, feature(f16))]
+#![cfg_attr(f128_enabled, feature(f128))]
 #![allow(clippy::unusual_byte_groupings)] // sometimes we group by sign_exp_sig
 
 pub mod domain;

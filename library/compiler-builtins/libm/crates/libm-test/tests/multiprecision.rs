@@ -13,11 +13,11 @@ use libm_test::{
 macro_rules! mp_rand_tests {
     (
         fn_name: $fn_name:ident,
-        attrs: [$($meta:meta)*]
+        attrs: [$($attr:meta),*],
     ) => {
         paste::paste! {
             #[test]
-            $(#[$meta])*
+            $(#[$attr])*
             fn [< mp_random_ $fn_name >]() {
                 test_one_random::<libm_test::op::$fn_name::Routine>();
             }
@@ -76,18 +76,18 @@ libm_macros::for_each_function! {
 macro_rules! mp_domain_tests {
     (
         fn_name: $fn_name:ident,
-        attrs: [$($meta:meta)*]
+        attrs: [$($attr:meta),*],
     ) => {
         paste::paste! {
             #[test]
-            $(#[$meta])*
+            $(#[$attr])*
             fn [< mp_edge_case_ $fn_name >]() {
                 type Op = libm_test::op::$fn_name::Routine;
                 domain_test_runner::<Op, _>(edge_cases::get_test_cases::<Op, _>);
             }
 
             #[test]
-            $(#[$meta])*
+            $(#[$attr])*
             fn [< mp_logspace_ $fn_name >]() {
                 type Op = libm_test::op::$fn_name::Routine;
                 domain_test_runner::<Op, _>(domain_logspace::get_test_cases::<Op>);

@@ -15,11 +15,11 @@ use libm_test::{CheckBasis, CheckCtx, CheckOutput, GenerateInput, MathOp, TupleC
 macro_rules! musl_rand_tests {
     (
         fn_name: $fn_name:ident,
-        attrs: [$($meta:meta)*]
+        attrs: [$($attr:meta),*],
     ) => {
         paste::paste! {
             #[test]
-            $(#[$meta])*
+            $(#[$attr])*
             fn [< musl_random_ $fn_name >]() {
                 test_one::<libm_test::op::$fn_name::Routine>(musl_math_sys::$fn_name);
             }

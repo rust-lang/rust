@@ -18,9 +18,11 @@ struct MuslExtra<F> {
 macro_rules! musl_rand_benches {
     (
         fn_name: $fn_name:ident,
+        attrs: [$($attr:meta),*],
         fn_extra: $skip_on_i586:expr,
     ) => {
         paste::paste! {
+            $(#[$attr])*
             fn [< musl_bench_ $fn_name >](c: &mut Criterion) {
                 type Op = libm_test::op::$fn_name::Routine;
 
@@ -113,9 +115,11 @@ libm_macros::for_each_function! {
 macro_rules! run_callback {
     (
         fn_name: $fn_name:ident,
+        attrs: [$($attr:meta),*],
         extra: [$criterion:ident],
     ) => {
         paste::paste! {
+            $(#[$attr])*
             [< musl_bench_ $fn_name >](&mut $criterion)
         }
     };

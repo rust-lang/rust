@@ -50,9 +50,11 @@ macro_rules! impl_mp_op {
     (
         fn_name: $fn_name:ident,
         RustFn: fn($_fty:ty,) -> $_ret:ty,
+        attrs: [$($attr:meta),*],
         fn_extra: $fn_name_normalized:expr,
     ) => {
         paste::paste! {
+            $(#[$attr])*
             impl MpOp for crate::op::$fn_name::Routine {
                 type MpTy = MpFloat;
 
@@ -72,9 +74,11 @@ macro_rules! impl_mp_op {
     (
         fn_name: $fn_name:ident,
         RustFn: fn($_fty:ty, $_fty2:ty,) -> $_ret:ty,
+        attrs: [$($attr:meta),*],
         fn_extra: $fn_name_normalized:expr,
     ) => {
         paste::paste! {
+            $(#[$attr])*
             impl MpOp for crate::op::$fn_name::Routine {
                 type MpTy = (MpFloat, MpFloat);
 
@@ -95,9 +99,11 @@ macro_rules! impl_mp_op {
     (
         fn_name: $fn_name:ident,
         RustFn: fn($_fty:ty, $_fty2:ty, $_fty3:ty,) -> $_ret:ty,
+        attrs: [$($attr:meta),*],
         fn_extra: $fn_name_normalized:expr,
     ) => {
         paste::paste! {
+            $(#[$attr])*
             impl MpOp for crate::op::$fn_name::Routine {
                 type MpTy = (MpFloat, MpFloat, MpFloat);
 

@@ -112,8 +112,11 @@ macro_rules! do_thing {
         RustFn: $RustFn:ty,
         RustArgs: $RustArgs:ty,
         RustRet: $RustRet:ty,
+        attrs: [$($attr:meta),*],
+
     ) => {
         paste::paste! {
+            $(#[$attr])*
             pub mod $fn_name {
                 use super::*;
                 pub struct Routine;
