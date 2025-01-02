@@ -1240,6 +1240,7 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: ExternAbi) 
         PtxKernel
         | Msp430Interrupt
         | X86Interrupt
+        | AmdgpuKernel
         | EfiApi
         | AvrInterrupt
         | AvrNonBlockingInterrupt

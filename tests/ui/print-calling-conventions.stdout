@@ -5,6 +5,7 @@ C-unwind
 Rust
 aapcs
 aapcs-unwind
+amdgpu-kernel
 avr-interrupt
 avr-non-blocking-interrupt
 cdecl

@@ -472,6 +472,7 @@ impl RustcInternal for Abi {
             Abi::PtxKernel => rustc_abi::ExternAbi::PtxKernel,
             Abi::Msp430Interrupt => rustc_abi::ExternAbi::Msp430Interrupt,
             Abi::X86Interrupt => rustc_abi::ExternAbi::X86Interrupt,
+            Abi::AmdgpuKernel => rustc_abi::ExternAbi::AmdgpuKernel,
             Abi::EfiApi => rustc_abi::ExternAbi::EfiApi,
             Abi::AvrInterrupt => rustc_abi::ExternAbi::AvrInterrupt,
             Abi::AvrNonBlockingInterrupt => rustc_abi::ExternAbi::AvrNonBlockingInterrupt,

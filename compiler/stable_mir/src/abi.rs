@@ -442,6 +442,8 @@ pub enum CallConvention {
 
     PtxKernel,
 
+    AmdgpuKernel,
+
     X86Fastcall,
     X86Intr,
     X86Stdcall,

@@ -39,8 +39,6 @@ declare_features! (
     // (But not all features below do this properly; many indicate the
     // version they got originally added in.)
 
-    /// Allows using the `amdgpu-kernel` ABI.
-    (removed, abi_amdgpu_kernel, "1.77.0", Some(51575), None),
     (removed, advanced_slice_patterns, "1.0.0", Some(62254),
      Some("merged into `#![feature(slice_patterns)]`")),
     (removed, allocator, "1.0.0", None, None),

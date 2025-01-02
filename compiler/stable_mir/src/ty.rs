@@ -1077,6 +1077,7 @@ pub enum Abi {
     PtxKernel,
     Msp430Interrupt,
     X86Interrupt,
+    AmdgpuKernel,
     EfiApi,
     AvrInterrupt,
     AvrNonBlockingInterrupt,

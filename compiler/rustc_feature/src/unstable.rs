@@ -355,6 +355,8 @@ declare_features! (
     // feature-group-start: actual feature gates
     // -------------------------------------------------------------------------
 
+    /// Allows `extern "amdgpu-kernel" fn()`.
+    (unstable, abi_amdgpu_kernel, "CURRENT_RUSTC_VERSION", Some(135024)),
     /// Allows `extern "avr-interrupt" fn()` and `extern "avr-non-blocking-interrupt" fn()`.
     (unstable, abi_avr_interrupt, "1.45.0", Some(69664)),
     /// Allows `extern "C-cmse-nonsecure-call" fn()`.
