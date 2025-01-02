@@ -110,8 +110,7 @@ fn merge_stability(
     } else if let Some(mut own_stab) = own_stability
         && let StabilityLevel::Stable { since, allowed_through_unstable_modules: true } =
             own_stab.level
-        && let Some(parent_stab) = parent_stability
-        && parent_stab.is_stable()
+        && parent_stability.is_some_and(|stab| stab.is_stable())
     {
         // this property does not apply transitively through re-exports
         own_stab.level = StabilityLevel::Stable { since, allowed_through_unstable_modules: false };
