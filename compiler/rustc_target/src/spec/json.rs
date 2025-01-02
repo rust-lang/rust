@@ -571,6 +571,7 @@ impl Target {
         key!(is_like_msvc, bool);
         key!(is_like_wasm, bool);
         key!(is_like_android, bool);
+        key!(is_like_vexos, bool);
         key!(default_dwarf_version, u32);
         key!(allows_weak_linkage, bool);
         key!(has_rpath, bool);
@@ -746,6 +747,7 @@ impl ToJson for Target {
         target_option_val!(is_like_msvc);
         target_option_val!(is_like_wasm);
         target_option_val!(is_like_android);
+        target_option_val!(is_like_vexos);
         target_option_val!(default_dwarf_version);
         target_option_val!(allows_weak_linkage);
         target_option_val!(has_rpath);
