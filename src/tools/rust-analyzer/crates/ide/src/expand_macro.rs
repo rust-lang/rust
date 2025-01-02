@@ -574,7 +574,7 @@ struct Foo {}
 "#,
             expect![[r#"
                 Clone
-                impl < >core::clone::Clone for Foo< >where {
+                impl <>core::clone::Clone for Foo< >where {
                     fn clone(&self) -> Self {
                         match self {
                             Foo{}
@@ -600,7 +600,7 @@ struct Foo {}
 "#,
             expect![[r#"
                 Copy
-                impl < >core::marker::Copy for Foo< >where{}"#]],
+                impl <>core::marker::Copy for Foo< >where{}"#]],
         );
     }
 
@@ -615,7 +615,7 @@ struct Foo {}
 "#,
             expect![[r#"
                 Copy
-                impl < >core::marker::Copy for Foo< >where{}"#]],
+                impl <>core::marker::Copy for Foo< >where{}"#]],
         );
         check(
             r#"
@@ -626,7 +626,7 @@ struct Foo {}
 "#,
             expect![[r#"
                 Clone
-                impl < >core::clone::Clone for Foo< >where {
+                impl <>core::clone::Clone for Foo< >where {
                     fn clone(&self) -> Self {
                         match self {
                             Foo{}

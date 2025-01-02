@@ -17,6 +17,7 @@
 //!     builtin_impls:
 //!     cell: copy, drop
 //!     clone: sized
+//!     coerce_pointee: derive, sized, unsize, coerce_unsized, dispatch_from_dyn
 //!     coerce_unsized: unsize
 //!     concat:
 //!     copy: clone
@@ -157,6 +158,14 @@ pub mod marker {
         type Discriminant;
     }
     // endregion:discriminant
+
+    // region:coerce_pointee
+    #[rustc_builtin_macro(CoercePointee, attributes(pointee))]
+    #[allow_internal_unstable(dispatch_from_dyn, coerce_unsized, unsize)]
+    pub macro CoercePointee($item:item) {
+        /* compiler built-in */
+    }
+    // endregion:coerce_pointee
 }
 
 // region:default
