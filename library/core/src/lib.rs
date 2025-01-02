@@ -110,6 +110,8 @@
 #![feature(array_ptr_get)]
 #![feature(asm_experimental_arch)]
 #![feature(bigint_helper_methods)]
+#![feature(bstr)]
+#![feature(bstr_internals)]
 #![feature(const_carrying_mul_add)]
 #![feature(const_eval_select)]
 #![feature(core_intrinsics)]
@@ -335,6 +337,8 @@ pub mod ascii;
 pub mod asserting;
 #[unstable(feature = "async_iterator", issue = "79024")]
 pub mod async_iter;
+#[unstable(feature = "bstr", issue = "134915")]
+pub mod bstr;
 pub mod cell;
 pub mod char;
 pub mod ffi;
