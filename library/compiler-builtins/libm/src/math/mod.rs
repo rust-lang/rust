@@ -339,6 +339,26 @@ pub use self::tgammaf::tgammaf;
 pub use self::trunc::trunc;
 pub use self::truncf::truncf;
 
+cfg_if! {
+    if #[cfg(f16_enabled)] {
+        mod copysignf16;
+        mod fabsf16;
+
+        pub use self::copysignf16::copysignf16;
+        pub use self::fabsf16::fabsf16;
+    }
+}
+
+cfg_if! {
+    if #[cfg(f128_enabled)] {
+        mod copysignf128;
+        mod fabsf128;
+
+        pub use self::copysignf128::copysignf128;
+        pub use self::fabsf128::fabsf128;
+    }
+}
+
 #[inline]
 fn get_high_word(x: f64) -> u32 {
     (x.to_bits() >> 32) as u32
