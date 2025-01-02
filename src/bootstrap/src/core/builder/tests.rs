@@ -108,13 +108,17 @@ fn test_intersection() {
     };
     let library_set = set(&["library/core", "library/alloc", "library/std"]);
     let mut command_paths = vec![
-        PathBuf::from("library/core"),
-        PathBuf::from("library/alloc"),
-        PathBuf::from("library/stdarch"),
+        CLIStepPath::from(PathBuf::from("library/core")),
+        CLIStepPath::from(PathBuf::from("library/alloc")),
+        CLIStepPath::from(PathBuf::from("library/stdarch")),
     ];
     let subset = library_set.intersection_removing_matches(&mut command_paths, Kind::Build);
     assert_eq!(subset, set(&["library/core", "library/alloc"]),);
-    assert_eq!(command_paths, vec![PathBuf::from("library/stdarch")]);
+    assert_eq!(command_paths, vec![
+        CLIStepPath::from(PathBuf::from("library/core")).will_be_executed(true),
+        CLIStepPath::from(PathBuf::from("library/alloc")).will_be_executed(true),
+        CLIStepPath::from(PathBuf::from("library/stdarch")).will_be_executed(false),
+    ]);
 }
 
 #[test]
