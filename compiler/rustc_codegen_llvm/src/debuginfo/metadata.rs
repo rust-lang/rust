@@ -1500,6 +1500,18 @@ fn build_vtable_type_di_node<'ll, 'tcx>(
     .di_node
 }
 
+fn find_vtable_behind_cast<'ll>(vtable: &'ll Value) -> &'ll Value {
+    // The vtable is a global variable, which may be behind an addrspacecast.
+    unsafe {
+        if let Some(c) = llvm::LLVMIsAConstantExpr(vtable) {
+            if llvm::LLVMGetConstOpcode(c) == llvm::Opcode::AddrSpaceCast {
+                return llvm::LLVMGetOperand(c, 0).unwrap();
+            }
+        }
+    }
+    vtable
+}
+
 pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     ty: Ty<'tcx>,
@@ -1520,6 +1532,7 @@ pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
 
     let Some(trait_ref) = trait_ref else { return };
 
+    let vtable = find_vtable_behind_cast(vtable);
     let trait_ref_self = trait_ref.with_self_ty(cx.tcx, ty);
     let trait_ref_self = cx.tcx.erase_regions(trait_ref_self);
     let trait_def_id = trait_ref_self.def_id();
@@ -1592,6 +1605,8 @@ pub(crate) fn create_vtable_di_node<'ll, 'tcx>(
     if cx.sess().opts.debuginfo != DebugInfo::Full {
         return;
     }
+
+    let vtable = find_vtable_behind_cast(vtable);
 
     // When full debuginfo is enabled, we want to try and prevent vtables from being
     // merged. Otherwise debuggers will have a hard time mapping from dyn pointer

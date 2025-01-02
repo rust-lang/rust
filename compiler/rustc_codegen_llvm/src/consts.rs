@@ -210,6 +210,10 @@ impl<'ll> CodegenCx<'ll, '_> {
         unsafe { llvm::LLVMConstBitCast(val, ty) }
     }
 
+    pub(crate) fn const_pointercast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
+        unsafe { llvm::LLVMConstPointerCast(val, ty) }
+    }
+
     pub(crate) fn static_addr_of_mut(
         &self,
         cv: &'ll Value,
@@ -230,6 +234,31 @@ impl<'ll> CodegenCx<'ll, '_> {
         unsafe { llvm::LLVMSetInitializer(gv, cv) };
         set_global_alignment(self, gv, align);
         llvm::SetUnnamedAddress(gv, llvm::UnnamedAddr::Global);
+        gv
+    }
+
+    pub(crate) fn static_addr_of_impl(
+        &self,
+        cv: &'ll Value,
+        align: Align,
+        kind: Option<&str>,
+    ) -> &'ll Value {
+        if let Some(&gv) = self.const_globals.borrow().get(&cv) {
+            unsafe {
+                // Upgrade the alignment in cases where the same constant is used with different
+                // alignment requirements
+                let llalign = align.bytes() as u32;
+                if llalign > llvm::LLVMGetAlignment(gv) {
+                    llvm::LLVMSetAlignment(gv, llalign);
+                }
+            }
+            return gv;
+        }
+        let gv = self.static_addr_of_mut(cv, align, kind);
+        unsafe {
+            llvm::LLVMSetGlobalConstant(gv, True);
+        }
+        self.const_globals.borrow_mut().insert(cv, gv);
         gv
     }
 
@@ -506,23 +535,8 @@ impl<'ll> CodegenCx<'ll, '_> {
 
 impl<'ll> StaticCodegenMethods for CodegenCx<'ll, '_> {
     fn static_addr_of(&self, cv: &'ll Value, align: Align, kind: Option<&str>) -> &'ll Value {
-        if let Some(&gv) = self.const_globals.borrow().get(&cv) {
-            unsafe {
-                // Upgrade the alignment in cases where the same constant is used with different
-                // alignment requirements
-                let llalign = align.bytes() as u32;
-                if llalign > llvm::LLVMGetAlignment(gv) {
-                    llvm::LLVMSetAlignment(gv, llalign);
-                }
-            }
-            return gv;
-        }
-        let gv = self.static_addr_of_mut(cv, align, kind);
-        unsafe {
-            llvm::LLVMSetGlobalConstant(gv, True);
-        }
-        self.const_globals.borrow_mut().insert(cv, gv);
-        gv
+        let gv = self.static_addr_of_impl(cv, align, kind);
+        self.const_pointercast(gv, self.type_ptr())
     }
 
     fn codegen_static(&self, def_id: DefId) {
