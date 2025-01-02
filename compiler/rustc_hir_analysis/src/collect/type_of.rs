@@ -4,6 +4,7 @@ use rustc_errors::{Applicability, StashKey, Suggestions};
 use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::intravisit::Visitor;
 use rustc_middle::query::plumbing::CyclePlaceholder;
 use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
@@ -12,7 +13,7 @@ use rustc_middle::ty::{self, Article, IsSuggestable, Ty, TyCtxt, TypeVisitableEx
 use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Ident, Span};
 
-use super::{ItemCtxt, bad_placeholder};
+use super::{HirPlaceholderCollector, ItemCtxt, bad_placeholder};
 use crate::errors::TypeofReservedKeywordUsed;
 use crate::hir_ty_lowering::HirTyLowerer;
 
@@ -447,7 +448,15 @@ fn infer_placeholder_type<'tcx>(
             }
         })
         .unwrap_or_else(|| {
-            let mut diag = bad_placeholder(cx, vec![span], kind);
+            let mut visitor = HirPlaceholderCollector::default();
+            if let Some(ty) = tcx.hir_node_by_def_id(def_id).ty() {
+                visitor.visit_ty(ty);
+            }
+            // If we didn't find any infer tys, then just fallback to `span``.
+            if visitor.0.is_empty() {
+                visitor.0.push(span);
+            }
+            let mut diag = bad_placeholder(cx, visitor.0, kind);
 
             if !ty.references_error() {
                 if let Some(ty) = ty.make_suggestable(tcx, false, None) {

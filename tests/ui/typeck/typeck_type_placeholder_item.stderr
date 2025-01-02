@@ -82,12 +82,13 @@ LL | static TEST4: _ = 145;
    |               help: replace with the correct type: `i32`
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
-  --> $DIR/typeck_type_placeholder_item.rs:19:15
+  --> $DIR/typeck_type_placeholder_item.rs:19:16
    |
 LL | static TEST5: (_, _) = (1, 2);
-   |               ^^^^^^
-   |               |
-   |               not allowed in type signatures
+   |               -^--^-
+   |               ||  |
+   |               ||  not allowed in type signatures
+   |               |not allowed in type signatures
    |               help: replace with the correct type: `(i32, i32)`
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
@@ -229,12 +230,12 @@ LL |     static B: _ = 42;
    |               help: replace with the correct type: `i32`
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
-  --> $DIR/typeck_type_placeholder_item.rs:77:15
+  --> $DIR/typeck_type_placeholder_item.rs:77:22
    |
 LL |     static C: Option<_> = Some(42);
-   |               ^^^^^^^^^
-   |               |
-   |               not allowed in type signatures
+   |               -------^-
+   |               |      |
+   |               |      not allowed in type signatures
    |               help: replace with the correct type: `Option<i32>`
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
@@ -275,12 +276,13 @@ LL |     static FN_TEST4: _ = 145;
    |                      help: replace with the correct type: `i32`
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
-  --> $DIR/typeck_type_placeholder_item.rs:91:22
+  --> $DIR/typeck_type_placeholder_item.rs:91:23
    |
 LL |     static FN_TEST5: (_, _) = (1, 2);
-   |                      ^^^^^^
-   |                      |
-   |                      not allowed in type signatures
+   |                      -^--^-
+   |                      ||  |
+   |                      ||  not allowed in type signatures
+   |                      |not allowed in type signatures
    |                      help: replace with the correct type: `(i32, i32)`
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
@@ -578,12 +580,12 @@ LL | fn value() -> Option<&'static _> {
    |               help: replace with the correct return type: `Option<&'static u8>`
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
-  --> $DIR/typeck_type_placeholder_item.rs:222:10
+  --> $DIR/typeck_type_placeholder_item.rs:222:17
    |
 LL | const _: Option<_> = map(value);
-   |          ^^^^^^^^^
-   |          |
-   |          not allowed in type signatures
+   |          -------^-
+   |          |      |
+   |          |      not allowed in type signatures
    |          help: replace with the correct type: `Option<u8>`
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
