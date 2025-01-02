@@ -1343,16 +1343,9 @@ impl<'a> Builder<'a> {
         }
 
         let build_compiler = self.compiler(run_compiler.stage - 1, self.build.build);
-        self.ensure(tool::Clippy {
-            compiler: build_compiler,
-            target: self.build.build,
-            extra_features: vec![],
-        });
-        let cargo_clippy = self.ensure(tool::CargoClippy {
-            compiler: build_compiler,
-            target: self.build.build,
-            extra_features: vec![],
-        });
+        self.ensure(tool::Clippy { compiler: build_compiler, target: self.build.build });
+        let cargo_clippy =
+            self.ensure(tool::CargoClippy { compiler: build_compiler, target: self.build.build });
         let mut dylib_path = helpers::dylib_path();
         dylib_path.insert(0, self.sysroot(run_compiler).join("lib"));
 
@@ -1367,16 +1360,9 @@ impl<'a> Builder<'a> {
         let build_compiler = self.compiler(run_compiler.stage - 1, self.build.build);
 
         // Prepare the tools
-        let miri = self.ensure(tool::Miri {
-            compiler: build_compiler,
-            target: self.build.build,
-            extra_features: Vec::new(),
-        });
-        let cargo_miri = self.ensure(tool::CargoMiri {
-            compiler: build_compiler,
-            target: self.build.build,
-            extra_features: Vec::new(),
-        });
+        let miri = self.ensure(tool::Miri { compiler: build_compiler, target: self.build.build });
+        let cargo_miri =
+            self.ensure(tool::CargoMiri { compiler: build_compiler, target: self.build.build });
         // Invoke cargo-miri, make sure it can find miri and cargo.
         let mut cmd = command(cargo_miri);
         cmd.env("MIRI", &miri);

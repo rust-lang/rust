@@ -1007,43 +1007,32 @@ impl Step for LibcxxVersionTool {
 }
 
 macro_rules! tool_extended {
-    (($sel:ident, $builder:ident),
-       $($name:ident,
-       $path:expr,
-       $tool_name:expr,
-       stable = $stable:expr
-       $(,tool_std = $tool_std:literal)?
-       $(,allow_features = $allow_features:expr)?
-       $(,add_bins_to_sysroot = $add_bins_to_sysroot:expr)?
-       ;)+) => {
-        $(
-            #[derive(Debug, Clone, Hash, PartialEq, Eq)]
+    (
+        $name:ident {
+            path: $path:expr,
+            tool_name: $tool_name:expr,
+            stable: $stable:expr
+            $( , add_bins_to_sysroot: $add_bins_to_sysroot:expr )?
+            $( , )?
+        }
+    ) => {
+        #[derive(Debug, Clone, Hash, PartialEq, Eq)]
         pub struct $name {
             pub compiler: Compiler,
             pub target: TargetSelection,
-            pub extra_features: Vec<String>,
         }
 
         impl Step for $name {
             type Output = PathBuf;
-            const DEFAULT: bool = true; // Overwritten below
+            const DEFAULT: bool = true; // Overridden by `should_run_tool_build_step`
             const ONLY_HOSTS: bool = true;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                let builder = run.builder;
-                run.path($path).default_condition(
-                    builder.config.extended
-                        && builder.config.tools.as_ref().map_or(
-                            // By default, on nightly/dev enable all tools, else only
-                            // build stable tools.
-                            $stable || builder.build.unstable_features(),
-                            // If `tools` is set, search list for this tool.
-                            |tools| {
-                                tools.iter().any(|tool| match tool.as_ref() {
-                                    "clippy" => $tool_name == "clippy-driver",
-                                    x => $tool_name == x,
-                            })
-                        }),
+                should_run_tool_build_step(
+                    run,
+                    $tool_name,
+                    $path,
+                    $stable,
                 )
             }
 
@@ -1051,58 +1040,117 @@ macro_rules! tool_extended {
                 run.builder.ensure($name {
                     compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
                     target: run.target,
-                    extra_features: Vec::new(),
                 });
             }
 
-            #[allow(unused_mut)]
-            fn run(mut $sel, $builder: &Builder<'_>) -> PathBuf {
-                let tool = $builder.ensure(ToolBuild {
-                    compiler: $sel.compiler,
-                    target: $sel.target,
-                    tool: $tool_name,
-                    mode: if false $(|| $tool_std)? { Mode::ToolStd } else { Mode::ToolRustc },
-                    path: $path,
-                    extra_features: $sel.extra_features,
-                    source_type: SourceType::InTree,
-                    allow_features: concat!($($allow_features)*),
-                    cargo_args: vec![]
-                });
-
-                if (false $(|| !$add_bins_to_sysroot.is_empty())?) && $sel.compiler.stage > 0 {
-                    let bindir = $builder.sysroot($sel.compiler).join("bin");
-                    t!(fs::create_dir_all(&bindir));
-
-                    #[allow(unused_variables)]
-                    let tools_out = $builder
-                        .cargo_out($sel.compiler, Mode::ToolRustc, $sel.target);
-
-                    $(for add_bin in $add_bins_to_sysroot {
-                        let bin_source = tools_out.join(exe(add_bin, $sel.target));
-                        let bin_destination = bindir.join(exe(add_bin, $sel.compiler.host));
-                        $builder.copy_link(&bin_source, &bin_destination);
-                    })?
-
-                    let tool = bindir.join(exe($tool_name, $sel.compiler.host));
-                    tool
-                } else {
-                    tool
-                }
+            fn run(self, builder: &Builder<'_>) -> PathBuf {
+                let Self { compiler, target } = self;
+                run_tool_build_step(
+                    builder,
+                    compiler,
+                    target,
+                    $tool_name,
+                    $path,
+                    None $( .or(Some(&$add_bins_to_sysroot)) )?,
+                )
             }
         }
-        )+
     }
 }
 
-tool_extended!((self, builder),
-    Cargofmt, "src/tools/rustfmt", "cargo-fmt", stable=true;
-    CargoClippy, "src/tools/clippy", "cargo-clippy", stable=true;
-    Clippy, "src/tools/clippy", "clippy-driver", stable=true, add_bins_to_sysroot = ["clippy-driver", "cargo-clippy"];
-    Miri, "src/tools/miri", "miri", stable=false, add_bins_to_sysroot = ["miri"];
-    CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri", stable=false, add_bins_to_sysroot = ["cargo-miri"];
-    Rls, "src/tools/rls", "rls", stable=true;
-    Rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, add_bins_to_sysroot = ["rustfmt", "cargo-fmt"];
-);
+fn should_run_tool_build_step<'a>(
+    run: ShouldRun<'a>,
+    tool_name: &'static str,
+    path: &'static str,
+    stable: bool,
+) -> ShouldRun<'a> {
+    let builder = run.builder;
+    run.path(path).default_condition(
+        builder.config.extended
+            && builder.config.tools.as_ref().map_or(
+                // By default, on nightly/dev enable all tools, else only
+                // build stable tools.
+                stable || builder.build.unstable_features(),
+                // If `tools` is set, search list for this tool.
+                |tools| {
+                    tools.iter().any(|tool| match tool.as_ref() {
+                        "clippy" => tool_name == "clippy-driver",
+                        x => tool_name == x,
+                    })
+                },
+            ),
+    )
+}
+
+fn run_tool_build_step(
+    builder: &Builder<'_>,
+    compiler: Compiler,
+    target: TargetSelection,
+    tool_name: &'static str,
+    path: &'static str,
+    add_bins_to_sysroot: Option<&[&str]>,
+) -> PathBuf {
+    let tool = builder.ensure(ToolBuild {
+        compiler,
+        target,
+        tool: tool_name,
+        mode: Mode::ToolRustc,
+        path,
+        extra_features: vec![],
+        source_type: SourceType::InTree,
+        allow_features: "",
+        cargo_args: vec![],
+    });
+
+    // FIXME: This should just be an if-let-chain, but those are unstable.
+    if let Some(add_bins_to_sysroot) =
+        add_bins_to_sysroot.filter(|bins| !bins.is_empty() && compiler.stage > 0)
+    {
+        let bindir = builder.sysroot(compiler).join("bin");
+        t!(fs::create_dir_all(&bindir));
+
+        let tools_out = builder.cargo_out(compiler, Mode::ToolRustc, target);
+
+        for add_bin in add_bins_to_sysroot {
+            let bin_source = tools_out.join(exe(add_bin, target));
+            let bin_destination = bindir.join(exe(add_bin, compiler.host));
+            builder.copy_link(&bin_source, &bin_destination);
+        }
+
+        // Return a path into the bin dir.
+        bindir.join(exe(tool_name, compiler.host))
+    } else {
+        tool
+    }
+}
+
+tool_extended!(Cargofmt { path: "src/tools/rustfmt", tool_name: "cargo-fmt", stable: true });
+tool_extended!(CargoClippy { path: "src/tools/clippy", tool_name: "cargo-clippy", stable: true });
+tool_extended!(Clippy {
+    path: "src/tools/clippy",
+    tool_name: "clippy-driver",
+    stable: true,
+    add_bins_to_sysroot: ["clippy-driver", "cargo-clippy"]
+});
+tool_extended!(Miri {
+    path: "src/tools/miri",
+    tool_name: "miri",
+    stable: false,
+    add_bins_to_sysroot: ["miri"]
+});
+tool_extended!(CargoMiri {
+    path: "src/tools/miri/cargo-miri",
+    tool_name: "cargo-miri",
+    stable: false,
+    add_bins_to_sysroot: ["cargo-miri"]
+});
+tool_extended!(Rls { path: "src/tools/rls", tool_name: "rls", stable: true });
+tool_extended!(Rustfmt {
+    path: "src/tools/rustfmt",
+    tool_name: "rustfmt",
+    stable: true,
+    add_bins_to_sysroot: ["rustfmt", "cargo-fmt"]
+});
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TestFloatParse {

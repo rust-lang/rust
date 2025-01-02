@@ -409,7 +409,7 @@ impl Step for Rustfmt {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        builder.ensure(tool::Rustfmt { compiler, target: self.host, extra_features: Vec::new() });
+        builder.ensure(tool::Rustfmt { compiler, target: self.host });
 
         let mut cargo = tool::prepare_tool_cargo(
             builder,
@@ -511,17 +511,9 @@ impl Step for Miri {
         let host_compiler = builder.compiler(stage - 1, host);
 
         // Build our tools.
-        let miri = builder.ensure(tool::Miri {
-            compiler: host_compiler,
-            target: host,
-            extra_features: Vec::new(),
-        });
+        let miri = builder.ensure(tool::Miri { compiler: host_compiler, target: host });
         // the ui tests also assume cargo-miri has been built
-        builder.ensure(tool::CargoMiri {
-            compiler: host_compiler,
-            target: host,
-            extra_features: Vec::new(),
-        });
+        builder.ensure(tool::CargoMiri { compiler: host_compiler, target: host });
 
         // We also need sysroots, for Miri and for the host (the latter for build scripts).
         // This is for the tests so everything is done with the target compiler.
@@ -740,7 +732,7 @@ impl Step for Clippy {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        builder.ensure(tool::Clippy { compiler, target: self.host, extra_features: Vec::new() });
+        builder.ensure(tool::Clippy { compiler, target: self.host });
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
