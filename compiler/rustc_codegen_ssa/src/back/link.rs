@@ -1104,14 +1104,14 @@ fn link_natively(
         let stripcmd = "rust-objcopy";
         match (strip, crate_type) {
             (Strip::Debuginfo, _) => {
-                strip_symbols_with_external_utility(sess, stripcmd, out_filename, &["-S"])
+                strip_with_external_utility(sess, stripcmd, out_filename, &["--strip-debug"])
             }
             // Per the manpage, `-x` is the maximum safe strip level for dynamic libraries. (#93988)
             (Strip::Symbols, CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro) => {
-                strip_symbols_with_external_utility(sess, stripcmd, out_filename, &["-x"])
+                strip_with_external_utility(sess, stripcmd, out_filename, &["-x"])
             }
             (Strip::Symbols, _) => {
-                strip_symbols_with_external_utility(sess, stripcmd, out_filename, &[])
+                strip_with_external_utility(sess, stripcmd, out_filename, &["--strip-all"])
             }
             (Strip::None, _) => {}
         }
@@ -1127,9 +1127,7 @@ fn link_natively(
         let stripcmd = if !sess.host.is_like_solaris { "rust-objcopy" } else { "/usr/bin/strip" };
         match strip {
             // Always preserve the symbol table (-x).
-            Strip::Debuginfo => {
-                strip_symbols_with_external_utility(sess, stripcmd, out_filename, &["-x"])
-            }
+            Strip::Debuginfo => strip_with_external_utility(sess, stripcmd, out_filename, &["-x"]),
             // Strip::Symbols is handled via the --strip-all linker option.
             Strip::Symbols => {}
             Strip::None => {}
@@ -1145,15 +1143,11 @@ fn link_natively(
         match strip {
             Strip::Debuginfo => {
                 // FIXME: AIX's strip utility only offers option to strip line number information.
-                strip_symbols_with_external_utility(sess, stripcmd, out_filename, &[
-                    "-X32_64", "-l",
-                ])
+                strip_with_external_utility(sess, stripcmd, out_filename, &["-X32_64", "-l"])
             }
             Strip::Symbols => {
                 // Must be noted this option might remove symbol __aix_rust_metadata and thus removes .info section which contains metadata.
-                strip_symbols_with_external_utility(sess, stripcmd, out_filename, &[
-                    "-X32_64", "-r",
-                ])
+                strip_with_external_utility(sess, stripcmd, out_filename, &["-X32_64", "-r"])
             }
             Strip::None => {}
         }
@@ -1166,12 +1160,7 @@ fn link_natively(
     }
 }
 
-fn strip_symbols_with_external_utility(
-    sess: &Session,
-    util: &str,
-    out_filename: &Path,
-    options: &[&str],
-) {
+fn strip_with_external_utility(sess: &Session, util: &str, out_filename: &Path, options: &[&str]) {
     let mut cmd = Command::new(util);
     cmd.args(options);
 
