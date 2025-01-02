@@ -3,24 +3,22 @@
 The `rust-lang/rust` git repository depends on several other repos in the `rust-lang` organization.
 There are three main ways we use dependencies:
 1. As a Cargo dependency through crates.io (e.g. `rustc-rayon`)
-2. As a git subtree (e.g. `clippy`)
+2. As a git (e.g. `clippy`) or a [josh][josh] (e.g. `miri`) subtree
 3. As a git submodule (e.g. `cargo`)
 
 As a general rule, use crates.io for libraries that could be useful for others in the ecosystem; use
 subtrees for tools that depend on compiler internals and need to be updated if there are breaking
 changes; and use submodules for tools that are independent of the compiler.
 
-## External Dependencies (subtree)
+## External Dependencies (subtrees)
 
-As a developer to this repository, you don't have to treat the following external projects
-differently from other crates that are directly in this repo:
+The following external projects are managed using some form of a `subtree`:
 
-* [Clippy](https://github.com/rust-lang/rust-clippy)
-* [Miri]
+* [clippy](https://github.com/rust-lang/rust-clippy)
+* [miri](https://github.com/rust-lang/miri)
 * [rustfmt](https://github.com/rust-lang/rustfmt)
 * [rust-analyzer](https://github.com/rust-lang/rust-analyzer)
-
-[Miri]: https://github.com/rust-lang/miri
+* [rustc_codegen_cranelift](https://github.com/rust-lang/rustc_codegen_cranelift)
 
 In contrast to `submodule` dependencies
 (see below for those), the `subtree` dependencies are just regular files and directories which can
@@ -28,6 +26,20 @@ be updated in tree. However, if possible, enhancements, bug fixes, etc. specific
 to these tools should be filed against the tools directly in their respective
 upstream repositories. The exception is that when rustc changes are required to
 implement a new tool feature or test, that should happen in one collective rustc PR.
+
+`subtree` dependencies are currently managed by two distinct approaches:
+
+* Using `git subtree`
+  * `clippy` ([sync guide](https://doc.rust-lang.org/nightly/clippy/development/infrastructure/sync.html#performing-the-sync-from-rust-langrust-to-clippy))
+  * `rustfmt`
+  * `rustc_codegen_cranelift` ([sync script](https://github.com/rust-lang/rustc_codegen_cranelift/blob/113af154d459e41b3dc2c5d7d878e3d3a8f33c69/scripts/rustup.sh#L7))
+* Using the [josh][josh] tool
+  * `miri` ([sync guide](https://github.com/rust-lang/miri/blob/master/CONTRIBUTING.md#advanced-topic-syncing-with-the-rustc-repo))
+  * `rust-analyzer` ([sync script](https://github.com/rust-lang/rust-analyzer/blob/2e13684be123eca7181aa48e043e185d8044a84a/xtask/src/release.rs#L147))
+
+The [josh][josh] tool is an alternative to git subtrees, which manages git history in a different way and scales better to larger repositories. Specific tooling is required to work with josh, you can check out the `miri` or `rust-analyzer` scripts linked above for inspiration. If you want to migrate a subtree from `git subtree` to josh, you can check out [this guide](https://hackmd.io/7pOuxnkdQDaL1Y1FQr65xg).
+
+Below you can find a guide on how to perform push and pull synchronization with the main rustc repo using `git subtree`, although these instructions might differ repo from repo.
 
 ### Synchronizing a subtree
 
@@ -84,7 +96,6 @@ Now you're done, the `src/tools/clippy` directory behaves as if Clippy were
 part of the rustc monorepo, so no one but you (or others that synchronize
 subtrees) actually needs to use `git subtree`.
 
-
 ## External Dependencies (submodules)
 
 Building Rust will also use external git repositories tracked using [git
@@ -111,3 +122,4 @@ the week leading up to the beta cut.
 [The Rust Reference]: https://github.com/rust-lang/reference/
 [toolstate website]: https://rust-lang-nursery.github.io/rust-toolstate/
 [Toolstate chapter]: https://forge.rust-lang.org/infra/toolstate.html
+[josh]: https://josh-project.github.io/josh/intro.html
