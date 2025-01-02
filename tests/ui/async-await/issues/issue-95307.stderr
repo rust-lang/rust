@@ -3,11 +3,6 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
    |
 LL |     async fn new() -> [u8; _];
    |                            ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL |     async fn new<T>() -> [u8; T];
-   |                 +++           ~
 
 error[E0658]: using `_` for array lengths is unstable
   --> $DIR/issue-95307.rs:7:28

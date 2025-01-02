@@ -453,16 +453,17 @@ fn infer_placeholder_type<'tcx>(
                 visitor.visit_ty(ty);
             }
             // If we have just one span, let's try to steal a const `_` feature error.
-            let try_steal_span = if !tcx.features().generic_arg_infer() && visitor.0.len() == 1 {
-                visitor.0.first().copied()
+            let try_steal_span = if !tcx.features().generic_arg_infer() && visitor.spans.len() == 1
+            {
+                visitor.spans.first().copied()
             } else {
                 None
             };
-            // If we didn't find any infer tys, then just fallback to `span``.
-            if visitor.0.is_empty() {
-                visitor.0.push(span);
+            // If we didn't find any infer tys, then just fallback to `span`.
+            if visitor.spans.is_empty() {
+                visitor.spans.push(span);
             }
-            let mut diag = bad_placeholder(cx, visitor.0, kind);
+            let mut diag = bad_placeholder(cx, visitor.spans, kind);
 
             if !ty.references_error() {
                 if let Some(ty) = ty.make_suggestable(tcx, false, None) {
