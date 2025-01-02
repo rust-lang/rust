@@ -150,7 +150,7 @@ fn typeck_with_fallback<'tcx>(
     let mut fcx = FnCtxt::new(&root_ctxt, param_env, def_id);
 
     if let Some(hir::FnSig { header, decl, .. }) = node.fn_sig() {
-        let fn_sig = if decl.output.get_infer_ret_ty().is_some() {
+        let fn_sig = if decl.output.is_suggestable_infer_ty().is_some() {
             fcx.lowerer().lower_fn_ty(id, header.safety, header.abi, decl, None, None)
         } else {
             tcx.fn_sig(def_id).instantiate_identity()

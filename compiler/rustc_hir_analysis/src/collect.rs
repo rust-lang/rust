@@ -1371,7 +1371,7 @@ fn lower_fn_sig_recovering_infer_ret_ty<'tcx>(
     generics: &'tcx hir::Generics<'tcx>,
     def_id: LocalDefId,
 ) -> ty::PolyFnSig<'tcx> {
-    if let Some(infer_ret_ty) = sig.decl.output.get_infer_ret_ty() {
+    if let Some(infer_ret_ty) = sig.decl.output.is_suggestable_infer_ty() {
         return recover_infer_ret_ty(icx, infer_ret_ty, generics, def_id);
     }
 
