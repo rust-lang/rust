@@ -933,11 +933,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "#[rustc_has_incoherent_inherent_impls] allows the addition of incoherent inherent impls for \
          the given type by annotating all impl items with #[rustc_allow_incoherent_impl]."
     ),
-    rustc_attr!(
-        rustc_box, AttributeType::Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::No,
-        "#[rustc_box] allows creating boxes \
-        and it is only intended to be used in `alloc`."
-    ),
 
     BuiltinAttribute {
         name: sym::rustc_diagnostic_item,
