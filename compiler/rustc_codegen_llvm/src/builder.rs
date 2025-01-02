@@ -421,7 +421,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unsafe {
             let alloca = llvm::LLVMBuildAlloca(bx.llbuilder, ty, UNNAMED);
             llvm::LLVMSetAlignment(alloca, align.bytes() as c_uint);
-            alloca
+            // Cast to default addrspace if necessary
+            llvm::LLVMBuildPointerCast(bx.llbuilder, alloca, self.cx().type_ptr(), UNNAMED)
         }
     }
 
@@ -430,7 +431,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             let alloca =
                 llvm::LLVMBuildArrayAlloca(self.llbuilder, self.cx().type_i8(), size, UNNAMED);
             llvm::LLVMSetAlignment(alloca, align.bytes() as c_uint);
-            alloca
+            // Cast to default addrspace if necessary
+            llvm::LLVMBuildPointerCast(self.llbuilder, alloca, self.cx().type_ptr(), UNNAMED)
         }
     }
 
