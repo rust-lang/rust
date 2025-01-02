@@ -449,7 +449,8 @@ fn infer_placeholder_type<'tcx>(
         })
         .unwrap_or_else(|| {
             let mut visitor = HirPlaceholderCollector::default();
-            if let Some(ty) = tcx.hir_node_by_def_id(def_id).ty() {
+            let node = tcx.hir_node_by_def_id(def_id);
+            if let Some(ty) = node.ty() {
                 visitor.visit_ty(ty);
             }
             // If we have just one span, let's try to steal a const `_` feature error.
@@ -465,7 +466,15 @@ fn infer_placeholder_type<'tcx>(
             }
             let mut diag = bad_placeholder(cx, visitor.spans, kind);
 
-            if !ty.references_error() {
+            // HACK(#69396): Stashing and stealing diagnostics does not interact
+            // well with macros which may delay more than one diagnostic on the
+            // same span. If this happens, we will fall through to this arm, so
+            // we need to suppress the suggestion since it's invalid. Ideally we
+            // would suppress the duplicated error too, but that's really hard.
+            if span.is_empty() && span.from_expansion() {
+                // An approximately better primary message + no suggestion...
+                diag.primary_message("missing type for item");
+            } else if !ty.references_error() {
                 if let Some(ty) = ty.make_suggestable(tcx, false, None) {
                     diag.span_suggestion_verbose(
                         span,
