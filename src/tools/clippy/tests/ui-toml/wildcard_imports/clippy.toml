@@ -1,4 +1,0 @@
-warn-on-all-wildcard-imports = true
-
-# This should be ignored since `warn-on-all-wildcard-imports` has higher precedence
-allowed-wildcard-imports = ["utils"]

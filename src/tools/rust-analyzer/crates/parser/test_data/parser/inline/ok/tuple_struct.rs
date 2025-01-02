@@ -1,1 +1,0 @@
-struct S(String, usize);

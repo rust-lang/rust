@@ -1,4 +1,0 @@
-await-holding-invalid-types = [
-    { path = "std::string::String", reason = "strings are bad" },
-    "std::net::Ipv4Addr",
-]

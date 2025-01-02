@@ -1,4 +1,0 @@
-fn foo() {
-    || .. .method();
-    || .. .field;
-}

@@ -1,1 +1,0 @@
-Running doctests of `proc-macro` crates is not currently supported by Miri.

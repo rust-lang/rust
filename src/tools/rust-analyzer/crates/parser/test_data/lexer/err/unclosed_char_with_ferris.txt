@@ -1,1 +1,0 @@
-CHAR "'🦀" error: Missing trailing `'` symbol to terminate the character literal

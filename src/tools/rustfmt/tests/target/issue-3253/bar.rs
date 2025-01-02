@@ -1,2 +1,0 @@
-// Empty
-fn empty() {}

@@ -1,4 +1,0 @@
-// Empty
-   fn empty()     {
-
-}

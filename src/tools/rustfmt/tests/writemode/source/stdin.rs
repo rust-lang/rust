@@ -1,6 +1,0 @@
-
-fn
- some( )
-{
-}
-fn main () {}

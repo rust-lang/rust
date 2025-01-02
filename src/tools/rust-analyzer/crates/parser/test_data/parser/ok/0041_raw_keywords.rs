@@ -1,1 +1,0 @@
-fn foo() { let r#struct = 92; let r#trait = r#struct * 2; }

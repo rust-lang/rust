@@ -1,5 +1,0 @@
-/*/
-struct Error{
-    message: String,
-}
-*/

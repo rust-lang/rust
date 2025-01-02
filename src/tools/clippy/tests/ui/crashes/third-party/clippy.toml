@@ -1,3 +1,0 @@
-# this is ignored by Clippy, but allowed for other tools like clippy-service
-[third-party]
-clippy-feature = "nightly"
