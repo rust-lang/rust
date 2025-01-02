@@ -113,6 +113,7 @@ impl ToJson for crate::abi::call::Conv {
             Self::X86VectorCall => "X86VectorCall",
             Self::X86_64SysV => "X86_64SysV",
             Self::X86_64Win64 => "X86_64Win64",
+            Self::GpuKernel => "GpuKernel",
             Self::AvrInterrupt => "AvrInterrupt",
             Self::AvrNonBlockingInterrupt => "AvrNonBlockingInterrupt",
             Self::RiscvInterrupt { kind } => {
