@@ -30,13 +30,19 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
   --> $DIR/in-signature.rs:22:15
    |
 LL | const ARR_CT: [u8; _] = [0; 3];
-   |               ^^^^^^^ not allowed in type signatures
+   |               ^^^^^^^
+   |               |
+   |               not allowed in type signatures
+   |               help: replace with the correct type: `[u8; 3]`
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
   --> $DIR/in-signature.rs:24:20
    |
 LL | static ARR_STATIC: [u8; _] = [0; 3];
-   |                    ^^^^^^^ not allowed in type signatures
+   |                    ^^^^^^^
+   |                    |
+   |                    not allowed in type signatures
+   |                    help: replace with the correct type: `[u8; 3]`
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
   --> $DIR/in-signature.rs:26:14

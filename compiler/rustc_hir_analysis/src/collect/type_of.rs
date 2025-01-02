@@ -412,7 +412,7 @@ fn infer_placeholder_type<'tcx>(
     kind: &'static str,
 ) -> Ty<'tcx> {
     let tcx = cx.tcx();
-    let ty = tcx.diagnostic_only_typeck(def_id).node_type(body_id.hir_id);
+    let ty = tcx.typeck(def_id).node_type(body_id.hir_id);
 
     // If this came from a free `const` or `static mut?` item,
     // then the user may have written e.g. `const A = 42;`.
