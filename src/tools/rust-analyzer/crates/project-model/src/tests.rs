@@ -232,7 +232,6 @@ fn rust_project_is_proc_macro_has_proc_macro_dep() {
 #[test]
 fn crate_graph_dedup_identical() {
     let (mut crate_graph, proc_macros) = load_cargo("regex-metadata.json");
-    crate_graph.sort_deps();
 
     let (d_crate_graph, mut d_proc_macros) = (crate_graph.clone(), proc_macros.clone());
 
@@ -253,7 +252,6 @@ fn crate_graph_dedup() {
     let (regex_crate_graph, mut regex_proc_macros) = to_crate_graph(regex_workspace, &mut file_map);
     assert_eq!(regex_crate_graph.iter().count(), 50);
 
-    crate_graph.sort_deps();
     crate_graph.extend(regex_crate_graph, &mut regex_proc_macros);
     assert_eq!(crate_graph.iter().count(), 108);
 }

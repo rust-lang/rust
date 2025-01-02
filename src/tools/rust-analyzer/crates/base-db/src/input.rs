@@ -490,19 +490,11 @@ impl CrateGraph {
         }
     }
 
-    pub fn sort_deps(&mut self) {
-        self.arena
-            .iter_mut()
-            .for_each(|(_, data)| data.dependencies.sort_by_key(|dep| dep.crate_id));
-    }
-
     /// Extends this crate graph by adding a complete second crate
     /// graph and adjust the ids in the [`ProcMacroPaths`] accordingly.
     ///
     /// This will deduplicate the crates of the graph where possible.
-    /// Note that for deduplication to fully work, `self`'s crate dependencies must be sorted by crate id.
-    /// If the crate dependencies were sorted, the resulting graph from this `extend` call will also
-    /// have the crate dependencies sorted.
+    /// Furthermore dependencies are sorted by crate id to make deduplication easier.
     ///
     /// Returns a map mapping `other`'s IDs to the new IDs in `self`.
     pub fn extend(
@@ -510,6 +502,12 @@ impl CrateGraph {
         mut other: CrateGraph,
         proc_macros: &mut ProcMacroPaths,
     ) -> FxHashMap<CrateId, CrateId> {
+        // Sorting here is a bit pointless because the input is likely already sorted.
+        // However, the overhead is small and it makes the `extend` method harder to misuse.
+        self.arena
+            .iter_mut()
+            .for_each(|(_, data)| data.dependencies.sort_by_key(|dep| dep.crate_id));
+
         let m = self.len();
         let topo = other.crates_in_topological_order();
         let mut id_map: FxHashMap<CrateId, CrateId> = FxHashMap::default();
