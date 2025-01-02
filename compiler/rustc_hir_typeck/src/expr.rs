@@ -1774,7 +1774,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let Some((
             _,
             hir::Node::LetStmt(hir::LetStmt { ty: Some(ty), .. })
-            | hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(ty, _, _), .. }),
         )) = parent_node
         else {
             return;
