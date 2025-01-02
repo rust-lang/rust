@@ -363,6 +363,13 @@ where
             return;
         }
 
+        if alias_ty.has_non_region_infer() {
+            self.tcx
+                .dcx()
+                .span_delayed_bug(origin.span(), "an alias has infers during region solving");
+            return;
+        }
+
         // This case is thorny for inference. The fundamental problem is
         // that there are many cases where we have choice, and inference
         // doesn't like choice (the current region inference in
@@ -408,7 +415,7 @@ where
         let is_opaque = alias_ty.kind(self.tcx) == ty::Opaque;
         if approx_env_bounds.is_empty()
             && trait_bounds.is_empty()
-            && (alias_ty.has_infer() || is_opaque)
+            && (alias_ty.has_infer_regions() || is_opaque)
         {
             debug!("no declared bounds");
             let opt_variances = is_opaque.then(|| self.tcx.variances_of(alias_ty.def_id));
