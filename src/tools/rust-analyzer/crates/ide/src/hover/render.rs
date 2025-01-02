@@ -716,16 +716,21 @@ pub(super) fn literal(
     match value {
         Ok(value) => {
             let backtick_len = value.chars().filter(|c| *c == '`').count();
+            let spaces_len = value.chars().filter(|c| *c == ' ').count();
             let backticks = "`".repeat(backtick_len + 1);
+            let space_char = if spaces_len == value.len() { "" } else { " " };
 
             if let Some(newline) = value.find('\n') {
                 format_to!(
                     s,
-                    "value of literal (truncated up to newline): {backticks} {} {backticks}",
+                    "value of literal (truncated up to newline): {backticks}{space_char}{}{space_char}{backticks}",
                     &value[..newline]
                 )
             } else {
-                format_to!(s, "value of literal: {backticks} {value} {backticks}")
+                format_to!(
+                    s,
+                    "value of literal: {backticks}{space_char}{value}{space_char}{backticks}"
+                )
             }
         }
         Err(error) => format_to!(s, "invalid literal: {error}"),
