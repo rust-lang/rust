@@ -3,7 +3,7 @@ mod cargo;
 use std::any::{Any, type_name};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
-use std::fmt::{Debug, Write};
+use std::fmt::{self, Debug, Write};
 use std::hash::Hash;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
@@ -271,12 +271,12 @@ impl PathSet {
     /// This is used for `StepDescription::krate`, which passes all matching crates at once to
     /// `Step::make_run`, rather than calling it many times with a single crate.
     /// See `tests.rs` for examples.
-    fn intersection_removing_matches(&self, needles: &mut Vec<PathBuf>, module: Kind) -> PathSet {
+    fn intersection_removing_matches(&self, needles: &mut [CLIStepPath], module: Kind) -> PathSet {
         let mut check = |p| {
-            for (i, n) in needles.iter().enumerate() {
-                let matched = Self::check(p, n, module);
+            for n in needles.iter_mut() {
+                let matched = Self::check(p, &n.path, module);
                 if matched {
-                    needles.remove(i);
+                    n.will_be_executed = true;
                     return true;
                 }
             }
@@ -359,6 +359,24 @@ fn remap_paths(paths: &mut Vec<PathBuf>) {
         paths.remove(idx);
     }
     paths.append(&mut add);
+}
+
+#[derive(Clone, PartialEq)]
+struct CLIStepPath {
+    path: PathBuf,
+    will_be_executed: bool,
+}
+
+impl Debug for CLIStepPath {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.path.display())
+    }
+}
+
+impl From<PathBuf> for CLIStepPath {
+    fn from(path: PathBuf) -> Self {
+        Self { path, will_be_executed: false }
+    }
 }
 
 impl StepDescription {
@@ -478,7 +496,8 @@ impl StepDescription {
             return;
         }
 
-        let mut path_lookup: Vec<(PathBuf, bool)> =
+        let mut paths: Vec<CLIStepPath> = paths.into_iter().map(|p| p.into()).collect();
+        let mut path_lookup: Vec<(CLIStepPath, bool)> =
             paths.clone().into_iter().map(|p| (p, false)).collect();
 
         // List of `(usize, &StepDescription, Vec<PathSet>)` where `usize` is the closest index of a path
@@ -518,8 +537,10 @@ impl StepDescription {
             }
         }
 
+        paths.retain(|p| !p.will_be_executed);
+
         if !paths.is_empty() {
-            eprintln!("ERROR: no `{}` rules matched {:?}", builder.kind.as_str(), paths,);
+            eprintln!("ERROR: no `{}` rules matched {:?}", builder.kind.as_str(), paths);
             eprintln!(
                 "HELP: run `x.py {} --help --verbose` to show a list of available paths",
                 builder.kind.as_str()
@@ -682,7 +703,7 @@ impl<'a> ShouldRun<'a> {
     /// (for now, just `all_krates` and `paths`, but we may want to add an `aliases` function in the future?)
     fn pathset_for_paths_removing_matches(
         &self,
-        paths: &mut Vec<PathBuf>,
+        paths: &mut [CLIStepPath],
         kind: Kind,
     ) -> Vec<PathSet> {
         let mut sets = vec![];
