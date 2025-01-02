@@ -107,6 +107,15 @@ fn merge_stability(
             || parent_stab.stable_since().is_some_and(|parent_since| parent_since > own_since))
     {
         parent_stability
+    } else if let Some(mut own_stab) = own_stability
+        && let StabilityLevel::Stable { since, allowed_through_unstable_modules: true } =
+            own_stab.level
+        && let Some(parent_stab) = parent_stability
+        && parent_stab.is_stable()
+    {
+        // this property does not apply transitively through re-exports
+        own_stab.level = StabilityLevel::Stable { since, allowed_through_unstable_modules: false };
+        Some(own_stab)
     } else {
         own_stability
     }
