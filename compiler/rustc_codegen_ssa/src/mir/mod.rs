@@ -502,14 +502,25 @@ fn find_cold_blocks<'tcx>(
     for (bb, bb_data) in traversal::postorder(mir) {
         let terminator = bb_data.terminator();
 
-        // If a BB ends with a call to a cold function, mark it as cold.
-        if let mir::TerminatorKind::Call { ref func, .. } = terminator.kind
-            && let ty::FnDef(def_id, ..) = *func.ty(local_decls, tcx).kind()
-            && let attrs = tcx.codegen_fn_attrs(def_id)
-            && attrs.flags.contains(CodegenFnAttrFlags::COLD)
-        {
-            cold_blocks[bb] = true;
-            continue;
+        match terminator.kind {
+            // If a BB ends with a call to a cold function, mark it as cold.
+            mir::TerminatorKind::Call { ref func, .. }
+            | mir::TerminatorKind::TailCall { ref func, .. }
+                if let ty::FnDef(def_id, ..) = *func.ty(local_decls, tcx).kind()
+                    && let attrs = tcx.codegen_fn_attrs(def_id)
+                    && attrs.flags.contains(CodegenFnAttrFlags::COLD) =>
+            {
+                cold_blocks[bb] = true;
+                continue;
+            }
+
+            // If a BB ends with an `unreachable`, also mark it as cold.
+            mir::TerminatorKind::Unreachable => {
+                cold_blocks[bb] = true;
+                continue;
+            }
+
+            _ => {}
         }
 
         // If all successors of a BB are cold and there's at least one of them, mark this BB as cold
