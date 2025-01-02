@@ -482,11 +482,13 @@ fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, generics: &'tcx Generics<'_
     false
 }
 
+#[allow(clippy::struct_excessive_bools)]
 struct Usage {
     lifetime: Lifetime,
     in_where_predicate: bool,
     in_bounded_ty: bool,
     in_generics_arg: bool,
+    lifetime_elision_impossible: bool,
 }
 
 struct LifetimeChecker<'cx, 'tcx, F> {
@@ -495,6 +497,7 @@ struct LifetimeChecker<'cx, 'tcx, F> {
     where_predicate_depth: usize,
     bounded_ty_depth: usize,
     generic_args_depth: usize,
+    lifetime_elision_impossible: bool,
     phantom: std::marker::PhantomData<F>,
 }
 
@@ -519,6 +522,7 @@ where
             where_predicate_depth: 0,
             bounded_ty_depth: 0,
             generic_args_depth: 0,
+            lifetime_elision_impossible: false,
             phantom: std::marker::PhantomData,
         }
     }
@@ -560,6 +564,7 @@ where
                 in_where_predicate: self.where_predicate_depth != 0,
                 in_bounded_ty: self.bounded_ty_depth != 0,
                 in_generics_arg: self.generic_args_depth != 0,
+                lifetime_elision_impossible: self.lifetime_elision_impossible,
             });
         }
     }
@@ -586,8 +591,41 @@ where
         self.generic_args_depth -= 1;
     }
 
+    fn visit_fn_decl(&mut self, fd: &'tcx FnDecl<'tcx>) -> Self::Result {
+        self.lifetime_elision_impossible = !is_candidate_for_elision(fd);
+        walk_fn_decl(self, fd);
+        self.lifetime_elision_impossible = false;
+    }
+
     fn nested_visit_map(&mut self) -> Self::Map {
         self.cx.tcx.hir()
+    }
+}
+
+/// Check if `fd` supports function elision with an anonymous (or elided) lifetime,
+/// and has a lifetime somewhere in its output type.
+fn is_candidate_for_elision(fd: &FnDecl<'_>) -> bool {
+    struct V;
+
+    impl Visitor<'_> for V {
+        type Result = ControlFlow<bool>;
+
+        fn visit_lifetime(&mut self, lifetime: &Lifetime) -> Self::Result {
+            ControlFlow::Break(lifetime.is_elided() || lifetime.is_anonymous())
+        }
+    }
+
+    if fd.lifetime_elision_allowed
+        && let Return(ret_ty) = fd.output
+        && walk_ty(&mut V, ret_ty).is_break()
+    {
+        // The first encountered input lifetime will either be one on `self`, or will be the only lifetime.
+        fd.inputs
+            .iter()
+            .find_map(|ty| walk_ty(&mut V, ty).break_value())
+            .unwrap()
+    } else {
+        false
     }
 }
 
@@ -656,6 +694,7 @@ fn report_elidable_impl_lifetimes<'tcx>(
                 Usage {
                     lifetime,
                     in_where_predicate: false,
+                    lifetime_elision_impossible: false,
                     ..
                 },
             ] = usages.as_slice()

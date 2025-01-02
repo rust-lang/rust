@@ -576,4 +576,85 @@ mod issue13749bis {
     impl<'a, T: 'a> Generic<T> {}
 }
 
+mod issue13923 {
+    struct Py<'py> {
+        data: &'py str,
+    }
+
+    enum Content<'t, 'py> {
+        Py(Py<'py>),
+        T1(&'t str),
+        T2(&'t str),
+    }
+
+    enum ContentString<'t> {
+        T1(&'t str),
+        T2(&'t str),
+    }
+
+    impl<'t, 'py> ContentString<'t> {
+        // `'py` cannot be elided
+        fn map_content1(self, f: impl FnOnce(&'t str) -> &'t str) -> Content<'t, 'py> {
+            match self {
+                Self::T1(content) => Content::T1(f(content)),
+                Self::T2(content) => Content::T2(f(content)),
+            }
+        }
+    }
+
+    impl<'t, 'py> ContentString<'t> {
+        // `'py` can be elided because of `&self`
+        fn map_content2(&self, f: impl FnOnce(&'t str) -> &'t str) -> Content<'t, 'py> {
+            match self {
+                Self::T1(content) => Content::T1(f(content)),
+                Self::T2(content) => Content::T2(f(content)),
+            }
+        }
+    }
+
+    impl<'t, 'py> ContentString<'t> {
+        // `'py` can be elided because of `&'_ self`
+        fn map_content3(&'_ self, f: impl FnOnce(&'t str) -> &'t str) -> Content<'t, 'py> {
+            match self {
+                Self::T1(content) => Content::T1(f(content)),
+                Self::T2(content) => Content::T2(f(content)),
+            }
+        }
+    }
+
+    impl<'t, 'py> ContentString<'t> {
+        // `'py` should not be elided as the default lifetime, even if working, could be named as `'t`
+        fn map_content4(self, f: impl FnOnce(&'t str) -> &'t str, o: &'t str) -> Content<'t, 'py> {
+            match self {
+                Self::T1(content) => Content::T1(f(content)),
+                Self::T2(_) => Content::T2(o),
+            }
+        }
+    }
+
+    impl<'t, 'py> ContentString<'t> {
+        // `'py` can be elided because of `&Self`
+        fn map_content5(
+            self: std::pin::Pin<&Self>,
+            f: impl FnOnce(&'t str) -> &'t str,
+            o: &'t str,
+        ) -> Content<'t, 'py> {
+            match *self {
+                Self::T1(content) => Content::T1(f(content)),
+                Self::T2(_) => Content::T2(o),
+            }
+        }
+    }
+
+    struct Cx<'a, 'b> {
+        a: &'a u32,
+        b: &'b u32,
+    }
+
+    // `'c` cannot be elided because we have several input lifetimes
+    fn one_explicit<'b>(x: Cx<'_, 'b>) -> &'b u32 {
+        &x.b
+    }
+}
+
 fn main() {}
