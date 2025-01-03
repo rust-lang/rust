@@ -28,7 +28,7 @@ macro_rules! register_builtin {
         }
 
         impl BuiltinDeriveExpander {
-            pub fn expander(&self) -> fn(Span, &tt::Subtree) -> ExpandResult<tt::Subtree>  {
+            pub fn expander(&self) -> fn(Span, &tt::TopSubtree) -> ExpandResult<tt::TopSubtree>  {
                 match *self {
                     $( BuiltinDeriveExpander::$trait => $expand, )*
                 }
@@ -50,9 +50,9 @@ impl BuiltinDeriveExpander {
         &self,
         db: &dyn ExpandDatabase,
         id: MacroCallId,
-        tt: &tt::Subtree,
+        tt: &tt::TopSubtree,
         span: Span,
-    ) -> ExpandResult<tt::Subtree> {
+    ) -> ExpandResult<tt::TopSubtree> {
         let span = span_with_def_site_ctxt(db, span, id);
         self.expander()(span, tt)
     }
@@ -85,7 +85,7 @@ fn tuple_field_iterator(span: Span, n: usize) -> impl Iterator<Item = tt::Ident>
 }
 
 impl VariantShape {
-    fn as_pattern(&self, path: tt::Subtree, span: Span) -> tt::Subtree {
+    fn as_pattern(&self, path: tt::TopSubtree, span: Span) -> tt::TopSubtree {
         self.as_pattern_map(path, span, |it| quote!(span => #it))
     }
 
@@ -99,10 +99,10 @@ impl VariantShape {
 
     fn as_pattern_map(
         &self,
-        path: tt::Subtree,
+        path: tt::TopSubtree,
         span: Span,
-        field_map: impl Fn(&tt::Ident) -> tt::Subtree,
-    ) -> tt::Subtree {
+        field_map: impl Fn(&tt::Ident) -> tt::TopSubtree,
+    ) -> tt::TopSubtree {
         match self {
             VariantShape::Struct(fields) => {
                 let fields = fields.iter().map(|it| {
@@ -154,7 +154,7 @@ enum AdtShape {
 }
 
 impl AdtShape {
-    fn as_pattern(&self, span: Span, name: &tt::Ident) -> Vec<tt::Subtree> {
+    fn as_pattern(&self, span: Span, name: &tt::Ident) -> Vec<tt::TopSubtree> {
         self.as_pattern_map(name, |it| quote!(span =>#it), span)
     }
 
@@ -176,9 +176,9 @@ impl AdtShape {
     fn as_pattern_map(
         &self,
         name: &tt::Ident,
-        field_map: impl Fn(&tt::Ident) -> tt::Subtree,
+        field_map: impl Fn(&tt::Ident) -> tt::TopSubtree,
         span: Span,
-    ) -> Vec<tt::Subtree> {
+    ) -> Vec<tt::TopSubtree> {
         match self {
             AdtShape::Struct(s) => {
                 vec![s.as_pattern_map(quote! {span => #name }, span, field_map)]
@@ -203,12 +203,12 @@ struct BasicAdtInfo {
     /// first field is the name, and
     /// second field is `Some(ty)` if it's a const param of type `ty`, `None` if it's a type param.
     /// third fields is where bounds, if any
-    param_types: Vec<(tt::Subtree, Option<tt::Subtree>, Option<tt::Subtree>)>,
-    where_clause: Vec<tt::Subtree>,
-    associated_types: Vec<tt::Subtree>,
+    param_types: Vec<(tt::TopSubtree, Option<tt::TopSubtree>, Option<tt::TopSubtree>)>,
+    where_clause: Vec<tt::TopSubtree>,
+    associated_types: Vec<tt::TopSubtree>,
 }
 
-fn parse_adt(tt: &tt::Subtree, call_site: Span) -> Result<BasicAdtInfo, ExpandError> {
+fn parse_adt(tt: &tt::TopSubtree, call_site: Span) -> Result<BasicAdtInfo, ExpandError> {
     let (parsed, tm) = &syntax_bridge::token_tree_to_syntax_node(
         tt,
         syntax_bridge::TopEntryPoint::MacroItems,
@@ -276,7 +276,7 @@ fn parse_adt(tt: &tt::Subtree, call_site: Span) -> Result<BasicAdtInfo, ExpandEr
                         )
                     }
                     None => {
-                        tt::Subtree::empty(::tt::DelimSpan { open: call_site, close: call_site })
+                        tt::TopSubtree::empty(::tt::DelimSpan { open: call_site, close: call_site })
                     }
                 }
             };
@@ -303,7 +303,7 @@ fn parse_adt(tt: &tt::Subtree, call_site: Span) -> Result<BasicAdtInfo, ExpandEr
                         )
                     })
                     .unwrap_or_else(|| {
-                        tt::Subtree::empty(::tt::DelimSpan { open: call_site, close: call_site })
+                        tt::TopSubtree::empty(::tt::DelimSpan { open: call_site, close: call_site })
                     });
                 Some(ty)
             } else {
@@ -413,15 +413,15 @@ fn name_to_token(
 /// therefore does not get bound by the derived trait.
 fn expand_simple_derive(
     invoc_span: Span,
-    tt: &tt::Subtree,
-    trait_path: tt::Subtree,
-    make_trait_body: impl FnOnce(&BasicAdtInfo) -> tt::Subtree,
-) -> ExpandResult<tt::Subtree> {
+    tt: &tt::TopSubtree,
+    trait_path: tt::TopSubtree,
+    make_trait_body: impl FnOnce(&BasicAdtInfo) -> tt::TopSubtree,
+) -> ExpandResult<tt::TopSubtree> {
     let info = match parse_adt(tt, invoc_span) {
         Ok(info) => info,
         Err(e) => {
             return ExpandResult::new(
-                tt::Subtree::empty(tt::DelimSpan { open: invoc_span, close: invoc_span }),
+                tt::TopSubtree::empty(tt::DelimSpan { open: invoc_span, close: invoc_span }),
                 e,
             )
         }
@@ -460,12 +460,12 @@ fn expand_simple_derive(
     ExpandResult::ok(expanded)
 }
 
-fn copy_expand(span: Span, tt: &tt::Subtree) -> ExpandResult<tt::Subtree> {
+fn copy_expand(span: Span, tt: &tt::TopSubtree) -> ExpandResult<tt::TopSubtree> {
     let krate = dollar_crate(span);
     expand_simple_derive(span, tt, quote! {span => #krate::marker::Copy }, |_| quote! {span =>})
 }
 
-fn clone_expand(span: Span, tt: &tt::Subtree) -> ExpandResult<tt::Subtree> {
+fn clone_expand(span: Span, tt: &tt::TopSubtree) -> ExpandResult<tt::TopSubtree> {
     let krate = dollar_crate(span);
     expand_simple_derive(span, tt, quote! {span => #krate::clone::Clone }, |adt| {
         if matches!(adt.shape, AdtShape::Union) {
@@ -505,18 +505,18 @@ fn clone_expand(span: Span, tt: &tt::Subtree) -> ExpandResult<tt::Subtree> {
 }
 
 /// This function exists since `quote! {span => => }` doesn't work.
-fn fat_arrow(span: Span) -> tt::Subtree {
+fn fat_arrow(span: Span) -> tt::TopSubtree {
     let eq = tt::Punct { char: '=', spacing: ::tt::Spacing::Joint, span };
     quote! {span => #eq> }
 }
 
 /// This function exists since `quote! {span => && }` doesn't work.
-fn and_and(span: Span) -> tt::Subtree {
+fn and_and(span: Span) -> tt::TopSubtree {
     let and = tt::Punct { char: '&', spacing: ::tt::Spacing::Joint, span };
     quote! {span => #and& }
 }
 
-fn default_expand(span: Span, tt: &tt::Subtree) -> ExpandResult<tt::Subtree> {
+fn default_expand(span: Span, tt: &tt::TopSubtree) -> ExpandResult<tt::TopSubtree> {
     let krate = &dollar_crate(span);
     expand_simple_derive(span, tt, quote! {span => #krate::default::Default }, |adt| {
         let body = match &adt.shape {
@@ -555,7 +555,7 @@ fn default_expand(span: Span, tt: &tt::Subtree) -> ExpandResult<tt::Subtree> {
     })
 }
 
-fn debug_expand(span: Span, tt: &tt::Subtree) -> ExpandResult<tt::Subtree> {
+fn debug_expand(span: Span, tt: &tt::TopSubtree) -> ExpandResult<tt::TopSubtree> {
     let krate = &dollar_crate(span);
     expand_simple_derive(span, tt, quote! {span => #krate::fmt::Debug }, |adt| {
         let for_variant = |name: String, v: &VariantShape| match v {
@@ -627,7 +627,7 @@ fn debug_expand(span: Span, tt: &tt::Subtree) -> ExpandResult<tt::Subtree> {
     })
 }
 
-fn hash_expand(span: Span, tt: &tt::Subtree) -> ExpandResult<tt::Subtree> {
+fn hash_expand(span: Span, tt: &tt::TopSubtree) -> ExpandResult<tt::TopSubtree> {
     let krate = &dollar_crate(span);
     expand_simple_derive(span, tt, quote! {span => #krate::hash::Hash }, |adt| {
         if matches!(adt.shape, AdtShape::Union) {
@@ -674,12 +674,12 @@ fn hash_expand(span: Span, tt: &tt::Subtree) -> ExpandResult<tt::Subtree> {
     })
 }
 
-fn eq_expand(span: Span, tt: &tt::Subtree) -> ExpandResult<tt::Subtree> {
+fn eq_expand(span: Span, tt: &tt::TopSubtree) -> ExpandResult<tt::TopSubtree> {
     let krate = dollar_crate(span);
     expand_simple_derive(span, tt, quote! {span => #krate::cmp::Eq }, |_| quote! {span =>})
 }
 
-fn partial_eq_expand(span: Span, tt: &tt::Subtree) -> ExpandResult<tt::Subtree> {
+fn partial_eq_expand(span: Span, tt: &tt::TopSubtree) -> ExpandResult<tt::TopSubtree> {
     let krate = dollar_crate(span);
     expand_simple_derive(span, tt, quote! {span => #krate::cmp::PartialEq }, |adt| {
         if matches!(adt.shape, AdtShape::Union) {
@@ -731,7 +731,7 @@ fn self_and_other_patterns(
     adt: &BasicAdtInfo,
     name: &tt::Ident,
     span: Span,
-) -> (Vec<tt::Subtree>, Vec<tt::Subtree>) {
+) -> (Vec<tt::TopSubtree>, Vec<tt::TopSubtree>) {
     let self_patterns = adt.shape.as_pattern_map(
         name,
         |it| {
@@ -751,16 +751,16 @@ fn self_and_other_patterns(
     (self_patterns, other_patterns)
 }
 
-fn ord_expand(span: Span, tt: &tt::Subtree) -> ExpandResult<tt::Subtree> {
+fn ord_expand(span: Span, tt: &tt::TopSubtree) -> ExpandResult<tt::TopSubtree> {
     let krate = &dollar_crate(span);
     expand_simple_derive(span, tt, quote! {span => #krate::cmp::Ord }, |adt| {
         fn compare(
             krate: &tt::Ident,
-            left: tt::Subtree,
-            right: tt::Subtree,
-            rest: tt::Subtree,
+            left: tt::TopSubtree,
+            right: tt::TopSubtree,
+            rest: tt::TopSubtree,
             span: Span,
-        ) -> tt::Subtree {
+        ) -> tt::TopSubtree {
             let fat_arrow1 = fat_arrow(span);
             let fat_arrow2 = fat_arrow(span);
             quote! {span =>
@@ -809,16 +809,16 @@ fn ord_expand(span: Span, tt: &tt::Subtree) -> ExpandResult<tt::Subtree> {
     })
 }
 
-fn partial_ord_expand(span: Span, tt: &tt::Subtree) -> ExpandResult<tt::Subtree> {
+fn partial_ord_expand(span: Span, tt: &tt::TopSubtree) -> ExpandResult<tt::TopSubtree> {
     let krate = &dollar_crate(span);
     expand_simple_derive(span, tt, quote! {span => #krate::cmp::PartialOrd }, |adt| {
         fn compare(
             krate: &tt::Ident,
-            left: tt::Subtree,
-            right: tt::Subtree,
-            rest: tt::Subtree,
+            left: tt::TopSubtree,
+            right: tt::TopSubtree,
+            rest: tt::TopSubtree,
             span: Span,
-        ) -> tt::Subtree {
+        ) -> tt::TopSubtree {
             let fat_arrow1 = fat_arrow(span);
             let fat_arrow2 = fat_arrow(span);
             quote! {span =>

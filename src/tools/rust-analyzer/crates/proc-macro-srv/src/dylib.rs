@@ -9,7 +9,7 @@ use libloading::Library;
 use object::Object;
 use paths::{Utf8Path, Utf8PathBuf};
 
-use crate::{proc_macros::ProcMacros, ProcMacroKind, ProcMacroSrvSpan};
+use crate::{proc_macros::ProcMacros, server_impl::TopSubtree, ProcMacroKind, ProcMacroSrvSpan};
 
 /// Loads dynamic library in platform dependent manner.
 ///
@@ -125,12 +125,12 @@ impl Expander {
     pub(crate) fn expand<S: ProcMacroSrvSpan>(
         &self,
         macro_name: &str,
-        macro_body: tt::Subtree<S>,
-        attributes: Option<tt::Subtree<S>>,
+        macro_body: TopSubtree<S>,
+        attributes: Option<TopSubtree<S>>,
         def_site: S,
         call_site: S,
         mixed_site: S,
-    ) -> Result<tt::Subtree<S>, String>
+    ) -> Result<TopSubtree<S>, String>
     where
         <S::Server as bridge::server::Types>::TokenStream: Default,
     {

@@ -2214,8 +2214,8 @@ impl ModCollector<'_, '_> {
 
         let is_export = export_attr.exists();
         let local_inner = if is_export {
-            export_attr.tt_values().flat_map(|it| it.token_trees.iter()).any(|it| match it {
-                tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => ident.sym == sym::local_inner_macros,
+            export_attr.tt_values().flat_map(|it| it.iter()).any(|it| match it {
+                tt::TtElement::Leaf(tt::Leaf::Ident(ident)) => ident.sym == sym::local_inner_macros,
                 _ => false,
             })
         } else {
@@ -2234,7 +2234,7 @@ impl ModCollector<'_, '_> {
                 None => {
                     let explicit_name =
                         attrs.by_key(&sym::rustc_builtin_macro).tt_values().next().and_then(|tt| {
-                            match tt.token_trees.first() {
+                            match tt.token_trees().flat_tokens().first() {
                                 Some(tt::TokenTree::Leaf(tt::Leaf::Ident(name))) => Some(name),
                                 _ => None,
                             }
@@ -2304,9 +2304,7 @@ impl ModCollector<'_, '_> {
                     // NOTE: The item *may* have both `#[rustc_builtin_macro]` and `#[proc_macro_derive]`,
                     // in which case rustc ignores the helper attributes from the latter, but it
                     // "doesn't make sense in practice" (see rust-lang/rust#87027).
-                    if let Some((name, helpers)) =
-                        parse_macro_name_and_helper_attrs(&attr.token_trees)
-                    {
+                    if let Some((name, helpers)) = parse_macro_name_and_helper_attrs(attr) {
                         // NOTE: rustc overrides the name if the macro name if it's different from the
                         // macro name, but we assume it isn't as there's no such case yet. FIXME if
                         // the following assertion fails.

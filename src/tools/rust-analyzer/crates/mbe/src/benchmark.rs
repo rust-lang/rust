@@ -53,11 +53,11 @@ fn benchmark_expand_macro_rules() {
             .map(|(id, tt)| {
                 let res = rules[&id].expand(&tt, |_| (), DUMMY, Edition::CURRENT);
                 assert!(res.err.is_none());
-                res.value.0.token_trees.len()
+                res.value.0 .0.len()
             })
             .sum()
     };
-    assert_eq!(hash, 65720);
+    assert_eq!(hash, 450144);
 }
 
 fn macro_rules_fixtures() -> FxHashMap<String, DeclarativeMacro> {
@@ -68,7 +68,7 @@ fn macro_rules_fixtures() -> FxHashMap<String, DeclarativeMacro> {
         .collect()
 }
 
-fn macro_rules_fixtures_tt() -> FxHashMap<String, tt::Subtree<Span>> {
+fn macro_rules_fixtures_tt() -> FxHashMap<String, tt::TopSubtree<Span>> {
     let fixture = bench_fixture::numerous_macro_rules();
     let source_file = ast::SourceFile::parse(&fixture, span::Edition::CURRENT).ok().unwrap();
 
@@ -92,7 +92,7 @@ fn macro_rules_fixtures_tt() -> FxHashMap<String, tt::Subtree<Span>> {
 /// Generate random invocation fixtures from rules
 fn invocation_fixtures(
     rules: &FxHashMap<String, DeclarativeMacro>,
-) -> Vec<(String, tt::Subtree<Span>)> {
+) -> Vec<(String, tt::TopSubtree<Span>)> {
     let mut seed = 123456789;
     let mut res = Vec::new();
 
@@ -112,19 +112,16 @@ fn invocation_fixtures(
                 // So we just skip any error cases and try again
                 let mut try_cnt = 0;
                 loop {
-                    let mut token_trees = Vec::new();
+                    let mut builder = tt::TopSubtreeBuilder::new(tt::Delimiter {
+                        open: DUMMY,
+                        close: DUMMY,
+                        kind: tt::DelimiterKind::Invisible,
+                    });
                     for op in rule.lhs.iter() {
-                        collect_from_op(op, &mut token_trees, &mut seed);
+                        collect_from_op(op, &mut builder, &mut seed);
                     }
+                    let subtree = builder.build();
 
-                    let subtree = tt::Subtree {
-                        delimiter: tt::Delimiter {
-                            open: DUMMY,
-                            close: DUMMY,
-                            kind: tt::DelimiterKind::Invisible,
-                        },
-                        token_trees: token_trees.into_boxed_slice(),
-                    };
                     if it.expand(&subtree, |_| (), DUMMY, Edition::CURRENT).err.is_none() {
                         res.push((name.clone(), subtree));
                         break;
@@ -139,43 +136,41 @@ fn invocation_fixtures(
     }
     return res;
 
-    fn collect_from_op(op: &Op, token_trees: &mut Vec<tt::TokenTree<Span>>, seed: &mut usize) {
+    fn collect_from_op(op: &Op, builder: &mut tt::TopSubtreeBuilder<Span>, seed: &mut usize) {
         return match op {
             Op::Var { kind, .. } => match kind.as_ref() {
-                Some(MetaVarKind::Ident) => token_trees.push(make_ident("foo")),
-                Some(MetaVarKind::Ty) => token_trees.push(make_ident("Foo")),
-                Some(MetaVarKind::Tt) => token_trees.push(make_ident("foo")),
-                Some(MetaVarKind::Vis) => token_trees.push(make_ident("pub")),
-                Some(MetaVarKind::Pat) => token_trees.push(make_ident("foo")),
-                Some(MetaVarKind::Path) => token_trees.push(make_ident("foo")),
-                Some(MetaVarKind::Literal) => token_trees.push(make_literal("1")),
-                Some(MetaVarKind::Expr(_)) => token_trees.push(make_ident("foo")),
+                Some(MetaVarKind::Ident) => builder.push(make_ident("foo")),
+                Some(MetaVarKind::Ty) => builder.push(make_ident("Foo")),
+                Some(MetaVarKind::Tt) => builder.push(make_ident("foo")),
+                Some(MetaVarKind::Vis) => builder.push(make_ident("pub")),
+                Some(MetaVarKind::Pat) => builder.push(make_ident("foo")),
+                Some(MetaVarKind::Path) => builder.push(make_ident("foo")),
+                Some(MetaVarKind::Literal) => builder.push(make_literal("1")),
+                Some(MetaVarKind::Expr(_)) => builder.push(make_ident("foo")),
                 Some(MetaVarKind::Lifetime) => {
-                    token_trees.push(make_punct('\''));
-                    token_trees.push(make_ident("a"));
+                    builder.push(make_punct('\''));
+                    builder.push(make_ident("a"));
                 }
-                Some(MetaVarKind::Block) => {
-                    token_trees.push(make_subtree(tt::DelimiterKind::Brace, None))
-                }
+                Some(MetaVarKind::Block) => make_subtree(tt::DelimiterKind::Brace, builder),
                 Some(MetaVarKind::Item) => {
-                    token_trees.push(make_ident("fn"));
-                    token_trees.push(make_ident("foo"));
-                    token_trees.push(make_subtree(tt::DelimiterKind::Parenthesis, None));
-                    token_trees.push(make_subtree(tt::DelimiterKind::Brace, None));
+                    builder.push(make_ident("fn"));
+                    builder.push(make_ident("foo"));
+                    make_subtree(tt::DelimiterKind::Parenthesis, builder);
+                    make_subtree(tt::DelimiterKind::Brace, builder);
                 }
                 Some(MetaVarKind::Meta) => {
-                    token_trees.push(make_ident("foo"));
-                    token_trees.push(make_subtree(tt::DelimiterKind::Parenthesis, None));
+                    builder.push(make_ident("foo"));
+                    make_subtree(tt::DelimiterKind::Parenthesis, builder);
                 }
 
                 None => (),
                 Some(kind) => panic!("Unhandled kind {kind:?}"),
             },
-            Op::Literal(it) => token_trees.push(tt::Leaf::from(it.clone()).into()),
-            Op::Ident(it) => token_trees.push(tt::Leaf::from(it.clone()).into()),
+            Op::Literal(it) => builder.push(tt::Leaf::from(it.clone())),
+            Op::Ident(it) => builder.push(tt::Leaf::from(it.clone())),
             Op::Punct(puncts) => {
                 for punct in puncts.as_slice() {
-                    token_trees.push(tt::Leaf::from(*punct).into());
+                    builder.push(tt::Leaf::from(*punct));
                 }
             }
             Op::Repeat { tokens, kind, separator } => {
@@ -187,20 +182,18 @@ fn invocation_fixtures(
                 };
                 for i in 0..cnt {
                     for it in tokens.iter() {
-                        collect_from_op(it, token_trees, seed);
+                        collect_from_op(it, builder, seed);
                     }
                     if i + 1 != cnt {
                         if let Some(sep) = separator {
                             match &**sep {
                                 Separator::Literal(it) => {
-                                    token_trees.push(tt::Leaf::Literal(it.clone()).into())
+                                    builder.push(tt::Leaf::Literal(it.clone()))
                                 }
-                                Separator::Ident(it) => {
-                                    token_trees.push(tt::Leaf::Ident(it.clone()).into())
-                                }
+                                Separator::Ident(it) => builder.push(tt::Leaf::Ident(it.clone())),
                                 Separator::Puncts(puncts) => {
                                     for it in puncts {
-                                        token_trees.push(tt::Leaf::Punct(*it).into())
+                                        builder.push(tt::Leaf::Punct(*it))
                                     }
                                 }
                             };
@@ -209,15 +202,9 @@ fn invocation_fixtures(
                 }
             }
             Op::Subtree { tokens, delimiter } => {
-                let mut subtree = Vec::new();
-                tokens.iter().for_each(|it| {
-                    collect_from_op(it, &mut subtree, seed);
-                });
-
-                let subtree =
-                    tt::Subtree { delimiter: *delimiter, token_trees: subtree.into_boxed_slice() };
-
-                token_trees.push(subtree.into());
+                builder.open(delimiter.kind, delimiter.open);
+                tokens.iter().for_each(|it| collect_from_op(it, builder, seed));
+                builder.close(delimiter.close);
             }
             Op::Ignore { .. }
             | Op::Index { .. }
@@ -233,35 +220,27 @@ fn invocation_fixtures(
             *seed = usize::wrapping_add(usize::wrapping_mul(*seed, a), c);
             *seed
         }
-        fn make_ident(ident: &str) -> tt::TokenTree<Span> {
+        fn make_ident(ident: &str) -> tt::Leaf<Span> {
             tt::Leaf::Ident(tt::Ident {
                 span: DUMMY,
                 sym: Symbol::intern(ident),
                 is_raw: tt::IdentIsRaw::No,
             })
-            .into()
         }
-        fn make_punct(char: char) -> tt::TokenTree<Span> {
-            tt::Leaf::Punct(tt::Punct { span: DUMMY, char, spacing: tt::Spacing::Alone }).into()
+        fn make_punct(char: char) -> tt::Leaf<Span> {
+            tt::Leaf::Punct(tt::Punct { span: DUMMY, char, spacing: tt::Spacing::Alone })
         }
-        fn make_literal(lit: &str) -> tt::TokenTree<Span> {
+        fn make_literal(lit: &str) -> tt::Leaf<Span> {
             tt::Leaf::Literal(tt::Literal {
                 span: DUMMY,
                 symbol: Symbol::intern(lit),
                 kind: tt::LitKind::Str,
                 suffix: None,
             })
-            .into()
         }
-        fn make_subtree(
-            kind: tt::DelimiterKind,
-            token_trees: Option<Vec<tt::TokenTree<Span>>>,
-        ) -> tt::TokenTree<Span> {
-            tt::Subtree {
-                delimiter: tt::Delimiter { open: DUMMY, close: DUMMY, kind },
-                token_trees: token_trees.map(Vec::into_boxed_slice).unwrap_or_default(),
-            }
-            .into()
+        fn make_subtree(kind: tt::DelimiterKind, builder: &mut tt::TopSubtreeBuilder<Span>) {
+            builder.open(kind, DUMMY);
+            builder.close(DUMMY);
         }
     }
 }

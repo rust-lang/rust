@@ -1389,6 +1389,7 @@ version = "0.0.0"
 dependencies = [
  "proc-macro-api",
  "proc-macro-srv",
+ "tt",
 ]
 
 [[package]]

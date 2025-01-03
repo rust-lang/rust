@@ -13,16 +13,18 @@ use hir_expand::{
     proc_macro::{
         ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind, ProcMacrosBuilder,
     },
-    quote, FileRange,
+    quote,
+    tt::{Leaf, TokenTree, TopSubtree, TopSubtreeBuilder, TtElement, TtIter},
+    FileRange,
 };
 use intern::Symbol;
 use rustc_hash::FxHashMap;
 use span::{Edition, EditionedFileId, FileId, Span};
+use stdx::itertools::Itertools;
 use test_utils::{
     extract_range_or_offset, Fixture, FixtureWithProjectMeta, RangeOrOffset, CURSOR_MARKER,
     ESCAPED_CURSOR_MARKER,
 };
-use tt::{Leaf, Subtree, TokenTree};
 
 pub const WORKSPACE: base_db::SourceRootId = base_db::SourceRootId(0);
 
@@ -580,14 +582,14 @@ struct IdentityProcMacroExpander;
 impl ProcMacroExpander for IdentityProcMacroExpander {
     fn expand(
         &self,
-        subtree: &Subtree<Span>,
-        _: Option<&Subtree<Span>>,
+        subtree: &TopSubtree,
+        _: Option<&TopSubtree>,
         _: &Env,
         _: Span,
         _: Span,
         _: Span,
         _: Option<String>,
-    ) -> Result<Subtree<Span>, ProcMacroExpansionError> {
+    ) -> Result<TopSubtree, ProcMacroExpansionError> {
         Ok(subtree.clone())
     }
 }
@@ -598,15 +600,17 @@ struct Issue18089ProcMacroExpander;
 impl ProcMacroExpander for Issue18089ProcMacroExpander {
     fn expand(
         &self,
-        subtree: &Subtree<Span>,
-        _: Option<&Subtree<Span>>,
+        subtree: &TopSubtree,
+        _: Option<&TopSubtree>,
         _: &Env,
         _: Span,
         call_site: Span,
         _: Span,
         _: Option<String>,
-    ) -> Result<Subtree<Span>, ProcMacroExpansionError> {
-        let macro_name = &subtree.token_trees[1];
+    ) -> Result<TopSubtree, ProcMacroExpansionError> {
+        let tt::TokenTree::Leaf(macro_name) = &subtree.0[2] else {
+            return Err(ProcMacroExpansionError::Panic("incorrect input".to_owned()));
+        };
         Ok(quote! { call_site =>
             #[macro_export]
             macro_rules! my_macro___ {
@@ -627,14 +631,14 @@ struct AttributeInputReplaceProcMacroExpander;
 impl ProcMacroExpander for AttributeInputReplaceProcMacroExpander {
     fn expand(
         &self,
-        _: &Subtree<Span>,
-        attrs: Option<&Subtree<Span>>,
+        _: &TopSubtree,
+        attrs: Option<&TopSubtree>,
         _: &Env,
         _: Span,
         _: Span,
         _: Span,
         _: Option<String>,
-    ) -> Result<Subtree<Span>, ProcMacroExpansionError> {
+    ) -> Result<TopSubtree, ProcMacroExpansionError> {
         attrs
             .cloned()
             .ok_or_else(|| ProcMacroExpansionError::Panic("Expected attribute input".into()))
@@ -646,26 +650,29 @@ struct MirrorProcMacroExpander;
 impl ProcMacroExpander for MirrorProcMacroExpander {
     fn expand(
         &self,
-        input: &Subtree<Span>,
-        _: Option<&Subtree<Span>>,
+        input: &TopSubtree,
+        _: Option<&TopSubtree>,
         _: &Env,
         _: Span,
         _: Span,
         _: Span,
         _: Option<String>,
-    ) -> Result<Subtree<Span>, ProcMacroExpansionError> {
-        fn traverse(input: &Subtree<Span>) -> Subtree<Span> {
-            let mut token_trees = vec![];
-            for tt in input.token_trees.iter().rev() {
-                let tt = match tt {
-                    tt::TokenTree::Leaf(leaf) => tt::TokenTree::Leaf(leaf.clone()),
-                    tt::TokenTree::Subtree(sub) => tt::TokenTree::Subtree(traverse(sub)),
-                };
-                token_trees.push(tt);
+    ) -> Result<TopSubtree, ProcMacroExpansionError> {
+        fn traverse(builder: &mut TopSubtreeBuilder, iter: TtIter<'_>) {
+            for tt in iter.collect_vec().into_iter().rev() {
+                match tt {
+                    TtElement::Leaf(leaf) => builder.push(leaf.clone()),
+                    TtElement::Subtree(subtree, subtree_iter) => {
+                        builder.open(subtree.delimiter.kind, subtree.delimiter.open);
+                        traverse(builder, subtree_iter);
+                        builder.close(subtree.delimiter.close);
+                    }
+                }
             }
-            Subtree { delimiter: input.delimiter, token_trees: token_trees.into_boxed_slice() }
         }
-        Ok(traverse(input))
+        let mut builder = TopSubtreeBuilder::new(input.top_subtree().delimiter);
+        traverse(&mut builder, input.iter());
+        Ok(builder.build())
     }
 }
 
@@ -677,31 +684,24 @@ struct ShortenProcMacroExpander;
 impl ProcMacroExpander for ShortenProcMacroExpander {
     fn expand(
         &self,
-        input: &Subtree<Span>,
-        _: Option<&Subtree<Span>>,
+        input: &TopSubtree,
+        _: Option<&TopSubtree>,
         _: &Env,
         _: Span,
         _: Span,
         _: Span,
         _: Option<String>,
-    ) -> Result<Subtree<Span>, ProcMacroExpansionError> {
-        return Ok(traverse(input));
-
-        fn traverse(input: &Subtree<Span>) -> Subtree<Span> {
-            let token_trees = input
-                .token_trees
-                .iter()
-                .map(|it| match it {
-                    TokenTree::Leaf(leaf) => tt::TokenTree::Leaf(modify_leaf(leaf)),
-                    TokenTree::Subtree(subtree) => tt::TokenTree::Subtree(traverse(subtree)),
-                })
-                .collect();
-            Subtree { delimiter: input.delimiter, token_trees }
+    ) -> Result<TopSubtree, ProcMacroExpansionError> {
+        let mut result = input.0.clone();
+        for it in &mut result {
+            if let TokenTree::Leaf(leaf) = it {
+                modify_leaf(leaf)
+            }
         }
+        return Ok(tt::TopSubtree(result));
 
-        fn modify_leaf(leaf: &Leaf<Span>) -> Leaf<Span> {
-            let mut leaf = leaf.clone();
-            match &mut leaf {
+        fn modify_leaf(leaf: &mut Leaf) {
+            match leaf {
                 Leaf::Literal(it) => {
                     // XXX Currently replaces any literals with an empty string, but supporting
                     // "shortening" other literals would be nice.
@@ -712,7 +712,6 @@ impl ProcMacroExpander for ShortenProcMacroExpander {
                     it.sym = Symbol::intern(&it.sym.as_str().chars().take(1).collect::<String>());
                 }
             }
-            leaf
         }
     }
 }
