@@ -7,7 +7,7 @@ use std::path::PathBuf;
 
 use crate::Mode;
 use crate::core::build_steps::dist::distdir;
-use crate::core::build_steps::test;
+use crate::core::build_steps::test::build_miri_sysroot;
 use crate::core::build_steps::tool::{self, SourceType, Tool};
 use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
@@ -132,7 +132,7 @@ impl Step for Miri {
         let host_compiler = builder.compiler(stage - 1, host);
 
         // Get a target sysroot for Miri.
-        let miri_sysroot = test::Miri::build_miri_sysroot(builder, target_compiler, target);
+        let miri_sysroot = build_miri_sysroot(builder, target_compiler, target);
 
         // # Run miri.
         // Running it via `cargo run` as that figures out the right dylib path.

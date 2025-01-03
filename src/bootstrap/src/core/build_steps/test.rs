@@ -437,47 +437,44 @@ pub struct Miri {
     target: TargetSelection,
 }
 
-impl Miri {
-    /// Run `cargo miri setup` for the given target, return where the Miri sysroot was put.
-    pub fn build_miri_sysroot(
-        builder: &Builder<'_>,
-        compiler: Compiler,
-        target: TargetSelection,
-    ) -> PathBuf {
-        let miri_sysroot = builder.out.join(compiler.host).join("miri-sysroot");
-        let mut cargo = builder::Cargo::new(
-            builder,
-            compiler,
-            Mode::Std,
-            SourceType::Submodule,
-            target,
-            Kind::MiriSetup,
-        );
+/// Run `cargo miri setup` for the given target, return where the Miri sysroot was put.
+pub(crate) fn build_miri_sysroot(
+    builder: &Builder<'_>,
+    compiler: Compiler,
+    target: TargetSelection,
+) -> PathBuf {
+    let miri_sysroot = builder.out.join(compiler.host).join("miri-sysroot");
+    let mut cargo = builder::Cargo::new(
+        builder,
+        compiler,
+        Mode::Std,
+        SourceType::Submodule,
+        target,
+        Kind::MiriSetup,
+    );
 
-        // Tell `cargo miri setup` where to find the sources.
-        cargo.env("MIRI_LIB_SRC", builder.src.join("library"));
-        // Tell it where to put the sysroot.
-        cargo.env("MIRI_SYSROOT", &miri_sysroot);
+    // Tell `cargo miri setup` where to find the sources.
+    cargo.env("MIRI_LIB_SRC", builder.src.join("library"));
+    // Tell it where to put the sysroot.
+    cargo.env("MIRI_SYSROOT", &miri_sysroot);
 
-        let mut cargo = BootstrapCommand::from(cargo);
-        let _guard =
-            builder.msg(Kind::Build, compiler.stage, "miri sysroot", compiler.host, target);
-        cargo.run(builder);
+    let mut cargo = BootstrapCommand::from(cargo);
+    let _guard = builder.msg(Kind::Build, compiler.stage, "miri sysroot", compiler.host, target);
+    cargo.run(builder);
 
-        // # Determine where Miri put its sysroot.
-        // To this end, we run `cargo miri setup --print-sysroot` and capture the output.
-        // (We do this separately from the above so that when the setup actually
-        // happens we get some output.)
-        // We re-use the `cargo` from above.
-        cargo.arg("--print-sysroot");
+    // # Determine where Miri put its sysroot.
+    // To this end, we run `cargo miri setup --print-sysroot` and capture the output.
+    // (We do this separately from the above so that when the setup actually
+    // happens we get some output.)
+    // We re-use the `cargo` from above.
+    cargo.arg("--print-sysroot");
 
-        builder.verbose(|| println!("running: {cargo:?}"));
-        let stdout = cargo.run_capture_stdout(builder).stdout();
-        // Output is "<sysroot>\n".
-        let sysroot = stdout.trim_end();
-        builder.verbose(|| println!("`cargo miri setup --print-sysroot` said: {sysroot:?}"));
-        PathBuf::from(sysroot)
-    }
+    builder.verbose(|| println!("running: {cargo:?}"));
+    let stdout = cargo.run_capture_stdout(builder).stdout();
+    // Output is "<sysroot>\n".
+    let sysroot = stdout.trim_end();
+    builder.verbose(|| println!("`cargo miri setup --print-sysroot` said: {sysroot:?}"));
+    PathBuf::from(sysroot)
 }
 
 impl Step for Miri {
@@ -517,7 +514,7 @@ impl Step for Miri {
 
         // We also need sysroots, for Miri and for the host (the latter for build scripts).
         // This is for the tests so everything is done with the target compiler.
-        let miri_sysroot = Miri::build_miri_sysroot(builder, target_compiler, target);
+        let miri_sysroot = build_miri_sysroot(builder, target_compiler, target);
         builder.ensure(compile::Std::new(target_compiler, host));
         let host_sysroot = builder.sysroot(target_compiler);
 
