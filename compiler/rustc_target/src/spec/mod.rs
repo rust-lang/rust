@@ -1085,6 +1085,35 @@ impl ToJson for CodeModel {
     }
 }
 
+/// The float ABI setting to be configured in the LLVM target machine.
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum FloatAbi {
+    Soft,
+    Hard,
+}
+
+impl FromStr for FloatAbi {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<FloatAbi, ()> {
+        Ok(match s {
+            "soft" => FloatAbi::Soft,
+            "hard" => FloatAbi::Hard,
+            _ => return Err(()),
+        })
+    }
+}
+
+impl ToJson for FloatAbi {
+    fn to_json(&self) -> Json {
+        match *self {
+            FloatAbi::Soft => "soft",
+            FloatAbi::Hard => "hard",
+        }
+        .to_json()
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum TlsModel {
     GeneralDynamic,
@@ -2150,6 +2179,8 @@ pub struct TargetOptions {
     pub env: StaticCow<str>,
     /// ABI name to distinguish multiple ABIs on the same OS and architecture. For instance, `"eabi"`
     /// or `"eabihf"`. Defaults to "".
+    /// This field is *not* forwarded directly to LLVM; its primary purpose is `cfg(target_abi)`.
+    /// However, parts of the backend do check this field for specific values to enable special behavior.
     pub abi: StaticCow<str>,
     /// Vendor name to use for conditional compilation (`target_vendor`). Defaults to "unknown".
     pub vendor: StaticCow<str>,
@@ -2446,7 +2477,16 @@ pub struct TargetOptions {
     pub llvm_mcount_intrinsic: Option<StaticCow<str>>,
 
     /// LLVM ABI name, corresponds to the '-mabi' parameter available in multilib C compilers
+    /// and the `-target-abi` flag in llc. In the LLVM API this is `MCOptions.ABIName`.
     pub llvm_abiname: StaticCow<str>,
+
+    /// Control the float ABI to use, for architectures that support it. The only architecture we
+    /// currently use this for is ARM. Corresponds to the `-float-abi` flag in llc. In the LLVM API
+    /// this is `FloatABIType`. (clang's `-mfloat-abi` is similar but more complicated since it
+    /// can also affect the `soft-float` target feature.)
+    ///
+    /// If not provided, LLVM will infer the float ABI from the target triple (`llvm_target`).
+    pub llvm_floatabi: Option<FloatAbi>,
 
     /// Whether or not RelaxElfRelocation flag will be passed to the linker
     pub relax_elf_relocations: bool,
@@ -2719,6 +2759,7 @@ impl Default for TargetOptions {
             mcount: "mcount".into(),
             llvm_mcount_intrinsic: None,
             llvm_abiname: "".into(),
+            llvm_floatabi: None,
             relax_elf_relocations: false,
             llvm_args: cvs![],
             use_ctors_section: false,
@@ -3153,7 +3194,8 @@ impl Target {
             );
         }
 
-        // Check that RISC-V targets always specify which ABI they use.
+        // Check that RISC-V targets always specify which ABI they use,
+        // and that ARM targets specify their float ABI.
         match &*self.arch {
             "riscv32" => {
                 check_matches!(
@@ -3169,6 +3211,9 @@ impl Target {
                     "lp64" | "lp64f" | "lp64d" | "lp64e",
                     "invalid RISC-V ABI name"
                 );
+            }
+            "arm" => {
+                check!(self.llvm_floatabi.is_some(), "ARM targets must specify their float ABI",)
             }
             _ => {}
         }

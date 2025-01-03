@@ -5,7 +5,10 @@ LL |     map["peter"].clear();
    |     ^^^^^^^^^^^^ cannot borrow as mutable
    |
    = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `HashMap<&str, String>`
-   = help: to modify a `HashMap<&str, String>`, use `.get_mut()`, `.insert()` or the entry API
+help: to modify a `HashMap<&str, String>` use `.get_mut()`
+   |
+LL |     if let Some(val) = map.get_mut("peter") { val.clear(); };
+   |     ++++++++++++++++++    ~~~~~~~~~       ~~~~~~~        +++
 
 error[E0594]: cannot assign to data in an index of `HashMap<&str, String>`
   --> $DIR/index-mut-help.rs:11:5
@@ -14,12 +17,12 @@ LL |     map["peter"] = "0".to_string();
    |     ^^^^^^^^^^^^ cannot assign
    |
    = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `HashMap<&str, String>`
-help: to modify a `HashMap<&str, String>`, use `.get_mut()`, `.insert()` or the entry API
+help: use `.insert()` to insert a value into a `HashMap<&str, String>`, `.get_mut()` to modify it, or the entry API for more flexibility
    |
 LL |     map.insert("peter", "0".to_string());
    |        ~~~~~~~~       ~                +
-LL |     map.get_mut("peter").map(|val| { *val = "0".to_string(); });
-   |        ~~~~~~~~~       ~~~~~~~~~~~~~~~~~~                  ++++
+LL |     if let Some(val) = map.get_mut("peter") { *val = "0".to_string(); };
+   |     ++++++++++++++++++    ~~~~~~~~~       ~~~~~~~~                  +++
 LL |     let val = map.entry("peter").or_insert("0".to_string());
    |     +++++++++    ~~~~~~~       ~~~~~~~~~~~~               +
 

@@ -146,13 +146,13 @@ hir-stats Variant                  144 ( 1.6%)             2            72
 hir-stats GenericBound             256 ( 2.9%)             4            64
 hir-stats - Trait                    256 ( 2.9%)             4
 hir-stats Block                    288 ( 3.2%)             6            48
-hir-stats GenericParam             360 ( 4.0%)             5            72
 hir-stats Pat                      360 ( 4.0%)             5            72
 hir-stats - Struct                    72 ( 0.8%)             1
 hir-stats - Wild                      72 ( 0.8%)             1
 hir-stats - Binding                  216 ( 2.4%)             3
-hir-stats Generics                 560 ( 6.3%)            10            56
-hir-stats Ty                       720 ( 8.1%)            15            48
+hir-stats GenericParam             400 ( 4.5%)             5            80
+hir-stats Generics                 560 ( 6.2%)            10            56
+hir-stats Ty                       720 ( 8.0%)            15            48
 hir-stats - Ptr                       48 ( 0.5%)             1
 hir-stats - Ref                       48 ( 0.5%)             1
 hir-stats - Path                     624 ( 7.0%)            13
@@ -171,8 +171,8 @@ hir-stats - Impl                      88 ( 1.0%)             1
 hir-stats - Trait                     88 ( 1.0%)             1
 hir-stats - Fn                       176 ( 2.0%)             2
 hir-stats - Use                      352 ( 3.9%)             4
-hir-stats Path                   1_240 (13.9%)            31            40
-hir-stats PathSegment            1_920 (21.5%)            40            48
+hir-stats Path                   1_240 (13.8%)            31            40
+hir-stats PathSegment            1_920 (21.4%)            40            48
 hir-stats ----------------------------------------------------------------
-hir-stats Total                  8_936                   180
+hir-stats Total                  8_976                   180
 hir-stats

@@ -76,10 +76,7 @@ static STABLE_TOOLS: &[(&str, &str)] = &[
 // We do require that we checked whether they build or not on the tools builder,
 // though, as otherwise we will be unable to file an issue if they start
 // failing.
-static NIGHTLY_TOOLS: &[(&str, &str)] = &[
-    ("embedded-book", "src/doc/embedded-book"),
-    // ("rustc-dev-guide", "src/doc/rustc-dev-guide"),
-];
+static NIGHTLY_TOOLS: &[(&str, &str)] = &[("embedded-book", "src/doc/embedded-book")];
 
 fn print_error(tool: &str, submodule: &str) {
     eprintln!();

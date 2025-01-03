@@ -1045,6 +1045,8 @@ impl<T: ?Sized> Box<T> {
     /// memory problems. For example, a double-free may occur if the
     /// function is called twice on the same raw pointer.
     ///
+    /// The raw pointer must point to a block of memory allocated by the global allocator.
+    ///
     /// The safety conditions are described in the [memory layout] section.
     ///
     /// # Examples
@@ -1148,6 +1150,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// memory problems. For example, a double-free may occur if the
     /// function is called twice on the same raw pointer.
     ///
+    /// The raw pointer must point to a block of memory allocated by `alloc`
     ///
     /// # Examples
     ///

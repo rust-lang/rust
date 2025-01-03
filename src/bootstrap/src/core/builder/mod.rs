@@ -1,5 +1,3 @@
-mod cargo;
-
 use std::any::{Any, type_name};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
@@ -24,6 +22,8 @@ use crate::utils::cache::Cache;
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{self, LldThreads, add_dylib_path, exe, libdir, linker_args, t};
 use crate::{Build, Crate};
+
+mod cargo;
 
 #[cfg(test)]
 mod tests;
@@ -825,8 +825,12 @@ impl<'a> Builder<'a> {
         match kind {
             Kind::Build => describe!(
                 compile::Std,
-                compile::Rustc,
+                // FIXME(#135022): `compile::Assemble` **must** come before `compile::Rustc` after
+                // `PathSet` also permits prefix-matching, because `compile::Rustc` can consume the
+                // `"compiler"` path filter first, causing `compile::Assemble` to no longer run when
+                // the user writes `./x build compiler --stage 0`.
                 compile::Assemble,
+                compile::Rustc,
                 compile::CodegenBackend,
                 compile::StartupObjects,
                 tool::BuildManifest,
@@ -922,13 +926,17 @@ impl<'a> Builder<'a> {
                 test::Incremental,
                 test::Debuginfo,
                 test::UiFullDeps,
-                test::CodegenCranelift,
-                test::CodegenGCC,
                 test::Rustdoc,
                 test::CoverageRunRustdoc,
                 test::Pretty,
                 test::Crate,
                 test::CrateLibrustc,
+                // The cranelift and gcc tests need to be listed after the
+                // compiler unit tests (CrateLibrustc) so that they don't
+                // hijack the whole `compiler` directory during path matching.
+                // <https://github.com/rust-lang/rust/pull/134919>
+                test::CodegenCranelift,
+                test::CodegenGCC,
                 test::CrateRustdoc,
                 test::CrateRustdocJsonTypes,
                 test::CrateBootstrap,
@@ -947,7 +955,6 @@ impl<'a> Builder<'a> {
                 test::UnstableBook,
                 test::RustcBook,
                 test::LintDocs,
-                test::RustcGuide,
                 test::EmbeddedBook,
                 test::EditionGuide,
                 test::Rustfmt,
@@ -1336,16 +1343,9 @@ impl<'a> Builder<'a> {
         }
 
         let build_compiler = self.compiler(run_compiler.stage - 1, self.build.build);
-        self.ensure(tool::Clippy {
-            compiler: build_compiler,
-            target: self.build.build,
-            extra_features: vec![],
-        });
-        let cargo_clippy = self.ensure(tool::CargoClippy {
-            compiler: build_compiler,
-            target: self.build.build,
-            extra_features: vec![],
-        });
+        self.ensure(tool::Clippy { compiler: build_compiler, target: self.build.build });
+        let cargo_clippy =
+            self.ensure(tool::CargoClippy { compiler: build_compiler, target: self.build.build });
         let mut dylib_path = helpers::dylib_path();
         dylib_path.insert(0, self.sysroot(run_compiler).join("lib"));
 
@@ -1360,16 +1360,9 @@ impl<'a> Builder<'a> {
         let build_compiler = self.compiler(run_compiler.stage - 1, self.build.build);
 
         // Prepare the tools
-        let miri = self.ensure(tool::Miri {
-            compiler: build_compiler,
-            target: self.build.build,
-            extra_features: Vec::new(),
-        });
-        let cargo_miri = self.ensure(tool::CargoMiri {
-            compiler: build_compiler,
-            target: self.build.build,
-            extra_features: Vec::new(),
-        });
+        let miri = self.ensure(tool::Miri { compiler: build_compiler, target: self.build.build });
+        let cargo_miri =
+            self.ensure(tool::CargoMiri { compiler: build_compiler, target: self.build.build });
         // Invoke cargo-miri, make sure it can find miri and cargo.
         let mut cmd = command(cargo_miri);
         cmd.env("MIRI", &miri);

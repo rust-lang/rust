@@ -17,7 +17,7 @@
 // `__rust_{begin,end}_short_backtrace` markers, which only appear in full
 // backtraces. The rest of the backtrace is filtered out.
 //
-// Ignored on msvc becaue the `__rust_{begin,end}_short_backtrace` symbols
+// Ignored on msvc because the `__rust_{begin,end}_short_backtrace` symbols
 // aren't reliable.
 
 fn main() { missing_ident; }

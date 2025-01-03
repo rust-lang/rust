@@ -52,6 +52,13 @@ pub enum ParamName {
     /// Some user-given name like `T` or `'x`.
     Plain(Ident),
 
+    /// Indicates an illegal name was given and an error has been
+    /// reported (so we should squelch other derived errors).
+    ///
+    /// Occurs when, e.g., `'_` is used in the wrong place, or a
+    /// lifetime name is duplicated.
+    Error(Ident),
+
     /// Synthetic name generated when user elided a lifetime in an impl header.
     ///
     /// E.g., the lifetimes in cases like these:
@@ -67,18 +74,13 @@ pub enum ParamName {
     /// where `'f` is something like `Fresh(0)`. The indices are
     /// unique per impl, but not necessarily continuous.
     Fresh,
-
-    /// Indicates an illegal name was given and an error has been
-    /// reported (so we should squelch other derived errors). Occurs
-    /// when, e.g., `'_` is used in the wrong place.
-    Error,
 }
 
 impl ParamName {
     pub fn ident(&self) -> Ident {
         match *self {
-            ParamName::Plain(ident) => ident,
-            ParamName::Fresh | ParamName::Error => Ident::with_dummy_span(kw::UnderscoreLifetime),
+            ParamName::Plain(ident) | ParamName::Error(ident) => ident,
+            ParamName::Fresh => Ident::with_dummy_span(kw::UnderscoreLifetime),
         }
     }
 }
@@ -4072,33 +4074,33 @@ impl<'hir> OwnerNode<'hir> {
     }
 }
 
-impl<'hir> Into<OwnerNode<'hir>> for &'hir Item<'hir> {
-    fn into(self) -> OwnerNode<'hir> {
-        OwnerNode::Item(self)
+impl<'hir> From<&'hir Item<'hir>> for OwnerNode<'hir> {
+    fn from(val: &'hir Item<'hir>) -> Self {
+        OwnerNode::Item(val)
     }
 }
 
-impl<'hir> Into<OwnerNode<'hir>> for &'hir ForeignItem<'hir> {
-    fn into(self) -> OwnerNode<'hir> {
-        OwnerNode::ForeignItem(self)
+impl<'hir> From<&'hir ForeignItem<'hir>> for OwnerNode<'hir> {
+    fn from(val: &'hir ForeignItem<'hir>) -> Self {
+        OwnerNode::ForeignItem(val)
     }
 }
 
-impl<'hir> Into<OwnerNode<'hir>> for &'hir ImplItem<'hir> {
-    fn into(self) -> OwnerNode<'hir> {
-        OwnerNode::ImplItem(self)
+impl<'hir> From<&'hir ImplItem<'hir>> for OwnerNode<'hir> {
+    fn from(val: &'hir ImplItem<'hir>) -> Self {
+        OwnerNode::ImplItem(val)
     }
 }
 
-impl<'hir> Into<OwnerNode<'hir>> for &'hir TraitItem<'hir> {
-    fn into(self) -> OwnerNode<'hir> {
-        OwnerNode::TraitItem(self)
+impl<'hir> From<&'hir TraitItem<'hir>> for OwnerNode<'hir> {
+    fn from(val: &'hir TraitItem<'hir>) -> Self {
+        OwnerNode::TraitItem(val)
     }
 }
 
-impl<'hir> Into<Node<'hir>> for OwnerNode<'hir> {
-    fn into(self) -> Node<'hir> {
-        match self {
+impl<'hir> From<OwnerNode<'hir>> for Node<'hir> {
+    fn from(val: OwnerNode<'hir>) -> Self {
+        match val {
             OwnerNode::Item(n) => Node::Item(n),
             OwnerNode::ForeignItem(n) => Node::ForeignItem(n),
             OwnerNode::ImplItem(n) => Node::ImplItem(n),

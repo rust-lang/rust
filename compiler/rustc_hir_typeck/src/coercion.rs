@@ -580,11 +580,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let mut selcx = traits::SelectionContext::new(self);
 
         // Create an obligation for `Source: CoerceUnsized<Target>`.
-        let cause =
-            ObligationCause::new(self.cause.span, self.body_id, ObligationCauseCode::Coercion {
-                source,
-                target,
-            });
+        let cause = self.cause(self.cause.span, ObligationCauseCode::Coercion { source, target });
 
         // Use a FIFO queue for this custom fulfillment procedure.
         //

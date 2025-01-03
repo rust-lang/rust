@@ -1,9 +1,11 @@
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::Diag;
+use rustc_errors::{Applicability, Diag};
 use rustc_hir as hir;
 use rustc_middle::ty;
+use rustc_middle::ty::TyCtxt;
 use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::Symbol;
+use rustc_span::def_id::DefId;
 use rustc_span::symbol::sym;
 
 use crate::{LateContext, LateLintPass};
@@ -149,13 +151,16 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
         let hir_id = cx.tcx.local_def_id_to_hir_id(local);
         let hir::Node::Item(item) = cx.tcx.hir_node(hir_id) else { return };
         cx.tcx.node_span_lint(DEFAULT_OVERRIDES_DEFAULT_FIELDS, hir_id, item.span, |diag| {
-            mk_lint(diag, orig_fields, fields);
+            mk_lint(cx.tcx, diag, type_def_id, parent, orig_fields, fields);
         });
     }
 }
 
 fn mk_lint(
+    tcx: TyCtxt<'_>,
     diag: &mut Diag<'_, ()>,
+    type_def_id: DefId,
+    impl_def_id: DefId,
     orig_fields: FxHashMap<Symbol, &hir::FieldDef<'_>>,
     fields: &[hir::ExprField<'_>],
 ) {
@@ -175,11 +180,24 @@ fn mk_lint(
         }
     }
 
-    diag.help(if removed_all_fields {
-        "to avoid divergence in behavior between `Struct { .. }` and \
-         `<Struct as Default>::default()`, derive the `Default`"
+    if removed_all_fields {
+        let msg = "to avoid divergence in behavior between `Struct { .. }` and \
+                   `<Struct as Default>::default()`, derive the `Default`";
+        if let Some(hir::Node::Item(impl_)) = tcx.hir().get_if_local(impl_def_id) {
+            diag.multipart_suggestion_verbose(
+                msg,
+                vec![
+                    (tcx.def_span(type_def_id).shrink_to_lo(), "#[derive(Default)] ".to_string()),
+                    (impl_.span, String::new()),
+                ],
+                Applicability::MachineApplicable,
+            );
+        } else {
+            diag.help(msg);
+        }
     } else {
-        "use the default values in the `impl` with `Struct { mandatory_field, .. }` to avoid them \
-         diverging over time"
-    });
+        let msg = "use the default values in the `impl` with `Struct { mandatory_field, .. }` to \
+                   avoid them diverging over time";
+        diag.help(msg);
+    }
 }

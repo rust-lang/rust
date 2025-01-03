@@ -601,7 +601,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                     self.call_expr.hir_id,
                     idx,
                 );
-                traits::ObligationCause::new(self.span, self.body_id, code)
+                self.cause(self.span, code)
             },
             self.param_env,
             method_predicates,

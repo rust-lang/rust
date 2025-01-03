@@ -15,8 +15,8 @@
 //! The precise rules for validity are not determined yet. The guarantees that are
 //! provided at this point are very minimal:
 //!
-//! * For operations of [size zero][zst], *every* pointer is valid, including the [null] pointer.
-//!   The following points are only concerned with non-zero-sized accesses.
+//! * For memory accesses of [size zero][zst], *every* pointer is valid, including the [null]
+//!   pointer. The following points are only concerned with non-zero-sized accesses.
 //! * A [null] pointer is *never* valid.
 //! * For a pointer to be valid, it is necessary, but not always sufficient, that the pointer be
 //!   *dereferenceable*. The [provenance] of the pointer is used to determine which [allocated
@@ -1403,8 +1403,6 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 /// whether `T` is [`Copy`]. If `T` is not [`Copy`], using both the returned
 /// value and the value at `*src` can [violate memory safety][read-ownership].
 ///
-/// Note that even if `T` has size `0`, the pointer must be non-null.
-///
 /// [read-ownership]: read#ownership-of-the-returned-value
 /// [valid]: self#safety
 ///
@@ -1610,8 +1608,6 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 /// Behavior is undefined if any of the following conditions are violated:
 ///
 /// * `dst` must be [valid] for writes.
-///
-/// Note that even if `T` has size `0`, the pointer must be non-null.
 ///
 /// [valid]: self#safety
 ///

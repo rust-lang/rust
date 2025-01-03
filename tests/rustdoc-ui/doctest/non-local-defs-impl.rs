@@ -21,7 +21,7 @@
 /// }
 /// ```
 ///
-/// But this shoudln't produce a warning:
+/// But this shouldn't produce a warning:
 /// ```rust,no_run
 /// # extern crate pub_trait;
 /// # use pub_trait::Trait;

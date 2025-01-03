@@ -1845,11 +1845,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             GenericParamKind::Lifetime => {
                 // AST resolution emitted an error on those parameters, so we lower them using
                 // `ParamName::Error`.
+                let ident = self.lower_ident(param.ident);
                 let param_name =
                     if let Some(LifetimeRes::Error) = self.resolver.get_lifetime_res(param.id) {
-                        ParamName::Error
+                        ParamName::Error(ident)
                     } else {
-                        let ident = self.lower_ident(param.ident);
                         ParamName::Plain(ident)
                     };
                 let kind =

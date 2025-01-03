@@ -1,4 +1,4 @@
-use crate::spec::{SanitizerSet, Target, TargetOptions, base};
+use crate::spec::{FloatAbi, SanitizerSet, Target, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -14,6 +14,7 @@ pub(crate) fn target() -> Target {
         arch: "arm".into(),
         options: TargetOptions {
             abi: "eabi".into(),
+            llvm_floatabi: Some(FloatAbi::Soft),
             // https://developer.android.com/ndk/guides/abis.html#armeabi
             features: "+strict-align,+v5te".into(),
             supported_sanitizers: SanitizerSet::ADDRESS,

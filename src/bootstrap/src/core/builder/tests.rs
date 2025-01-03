@@ -786,3 +786,21 @@ mod sysroot_target_dirs {
         );
     }
 }
+
+/// Regression test for <https://github.com/rust-lang/rust/issues/134916>.
+///
+/// The command `./x test compiler` should invoke the step that runs unit tests
+/// for (most) compiler crates; it should not be hijacked by the cg_clif or
+/// cg_gcc tests instead.
+#[test]
+fn test_test_compiler() {
+    let cmd = &["test", "compiler"].map(str::to_owned);
+    let config = configure_with_args(cmd, &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
+    let cache = run_build(&config.paths.clone(), config);
+
+    let compiler = cache.contains::<test::CrateLibrustc>();
+    let cranelift = cache.contains::<test::CodegenCranelift>();
+    let gcc = cache.contains::<test::CodegenGCC>();
+
+    assert_eq!((compiler, cranelift, gcc), (true, false, false));
+}

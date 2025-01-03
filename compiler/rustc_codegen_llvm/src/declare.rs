@@ -32,7 +32,7 @@ use crate::{attributes, llvm};
 ///
 /// If there’s a value with the same name already declared, the function will
 /// update the declaration and return existing Value instead.
-fn declare_raw_fn<'ll>(
+pub(crate) fn declare_raw_fn<'ll>(
     cx: &CodegenCx<'ll, '_>,
     name: &str,
     callconv: llvm::CallConv,
