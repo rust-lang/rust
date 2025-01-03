@@ -16,7 +16,7 @@ use smallvec::smallvec;
 use {rustc_ast as ast, rustc_parse_format as parse};
 
 use crate::errors;
-use crate::util::expr_to_spanned_string;
+use crate::util::{ExprToSpannedString, expr_to_spanned_string};
 
 pub struct AsmArgs {
     pub templates: Vec<P<ast::Expr>>,
@@ -527,7 +527,12 @@ fn expand_preparsed_asm(
         let msg = "asm template must be a string literal";
         let template_sp = template_expr.span;
         let template_is_mac_call = matches!(template_expr.kind, ast::ExprKind::MacCall(_));
-        let (template_str, template_style, template_span) = {
+        let ExprToSpannedString {
+            symbol: template_str,
+            style: template_style,
+            span: template_span,
+            ..
+        } = {
             let ExpandResult::Ready(mac) = expr_to_spanned_string(ecx, template_expr, msg) else {
                 return ExpandResult::Retry(());
             };

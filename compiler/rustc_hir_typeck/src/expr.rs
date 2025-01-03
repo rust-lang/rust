@@ -22,7 +22,6 @@ use rustc_hir::{ExprKind, HirId, QPath};
 use rustc_hir_analysis::hir_ty_lowering::{FeedConstTy, HirTyLowerer as _};
 use rustc_infer::infer;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
-use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
@@ -1174,9 +1173,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for err in errors {
             let cause = &mut err.obligation.cause;
             if let ObligationCauseCode::OpaqueReturnType(None) = cause.code() {
-                let new_cause = ObligationCause::new(
+                let new_cause = self.cause(
                     cause.span,
-                    cause.body_id,
                     ObligationCauseCode::OpaqueReturnType(Some((return_expr_ty, hir_id))),
                 );
                 *cause = new_cause;
@@ -3856,7 +3854,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     // Enums are anyway always sized. But just to safeguard against future
                     // language extensions, let's double-check.
-                    self.require_type_is_sized(field_ty, expr.span, ObligationCauseCode::Misc);
+                    self.require_type_is_sized(
+                        field_ty,
+                        expr.span,
+                        ObligationCauseCode::FieldSized {
+                            adt_kind: AdtKind::Enum,
+                            span: self.tcx.def_span(field.did),
+                            last: false,
+                        },
+                    );
 
                     if field.vis.is_accessible_from(sub_def_scope, self.tcx) {
                         self.tcx.check_stability(field.did, Some(expr.hir_id), expr.span, None);
@@ -3884,11 +3890,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let field_ty = self.field_ty(expr.span, field, args);
 
                         if self.tcx.features().offset_of_slice() {
-                            self.require_type_has_static_alignment(
-                                field_ty,
-                                expr.span,
-                                ObligationCauseCode::Misc,
-                            );
+                            self.require_type_has_static_alignment(field_ty, expr.span);
                         } else {
                             self.require_type_is_sized(
                                 field_ty,
@@ -3917,11 +3919,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     {
                         if let Some(&field_ty) = tys.get(index) {
                             if self.tcx.features().offset_of_slice() {
-                                self.require_type_has_static_alignment(
-                                    field_ty,
-                                    expr.span,
-                                    ObligationCauseCode::Misc,
-                                );
+                                self.require_type_has_static_alignment(field_ty, expr.span);
                             } else {
                                 self.require_type_is_sized(
                                     field_ty,
