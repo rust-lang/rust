@@ -38,7 +38,7 @@ fn cmp<F: Float>(a: F, b: F) -> Result {
 
     let sign_bit = F::SIGN_MASK as F::Int;
     let abs_mask = sign_bit - one;
-    let exponent_mask = F::EXPONENT_MASK;
+    let exponent_mask = F::EXP_MASK;
     let inf_rep = exponent_mask;
 
     let a_rep = a.to_bits();
@@ -87,7 +87,7 @@ fn unord<F: Float>(a: F, b: F) -> bool {
 
     let sign_bit = F::SIGN_MASK as F::Int;
     let abs_mask = sign_bit - one;
-    let exponent_mask = F::EXPONENT_MASK;
+    let exponent_mask = F::EXP_MASK;
     let inf_rep = exponent_mask;
 
     let a_rep = a.to_bits();

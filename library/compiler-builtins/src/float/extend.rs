@@ -15,19 +15,19 @@ where
     let src_zero = F::Int::ZERO;
     let src_one = F::Int::ONE;
     let src_bits = F::BITS;
-    let src_sign_bits = F::SIGNIFICAND_BITS;
-    let src_exp_bias = F::EXPONENT_BIAS;
+    let src_sign_bits = F::SIG_BITS;
+    let src_exp_bias = F::EXP_BIAS;
     let src_min_normal = F::IMPLICIT_BIT;
-    let src_infinity = F::EXPONENT_MASK;
+    let src_infinity = F::EXP_MASK;
     let src_sign_mask = F::SIGN_MASK as F::Int;
     let src_abs_mask = src_sign_mask - src_one;
-    let src_qnan = F::SIGNIFICAND_MASK;
+    let src_qnan = F::SIG_MASK;
     let src_nan_code = src_qnan - src_one;
 
     let dst_bits = R::BITS;
-    let dst_sign_bits = R::SIGNIFICAND_BITS;
-    let dst_inf_exp = R::EXPONENT_MAX;
-    let dst_exp_bias = R::EXPONENT_BIAS;
+    let dst_sign_bits = R::SIG_BITS;
+    let dst_inf_exp = R::EXP_SAT;
+    let dst_exp_bias = R::EXP_BIAS;
     let dst_min_normal = R::IMPLICIT_BIT;
 
     let sign_bits_delta = dst_sign_bits - src_sign_bits;

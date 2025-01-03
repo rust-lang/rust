@@ -105,16 +105,16 @@ where
     let hw = F::BITS / 2;
     let lo_mask = F::Int::MAX >> hw;
 
-    let significand_bits = F::SIGNIFICAND_BITS;
+    let significand_bits = F::SIG_BITS;
     // Saturated exponent, representing infinity
-    let exponent_sat: F::Int = F::EXPONENT_MAX.cast();
+    let exponent_sat: F::Int = F::EXP_SAT.cast();
 
-    let exponent_bias = F::EXPONENT_BIAS;
+    let exponent_bias = F::EXP_BIAS;
     let implicit_bit = F::IMPLICIT_BIT;
-    let significand_mask = F::SIGNIFICAND_MASK;
+    let significand_mask = F::SIG_MASK;
     let sign_bit = F::SIGN_MASK;
     let abs_mask = sign_bit - one;
-    let exponent_mask = F::EXPONENT_MASK;
+    let exponent_mask = F::EXP_MASK;
     let inf_rep = exponent_mask;
     let quiet_bit = implicit_bit >> 1;
     let qnan_rep = exponent_mask | quiet_bit;
@@ -261,7 +261,7 @@ where
         let c_hw = c_hw::<F>();
 
         // Check that the top bit is set, i.e. value is within `[1, 2)`.
-        debug_assert!(b_uq1_hw & one_hw << (HalfRep::<F>::BITS - 1) > zero_hw);
+        debug_assert!(b_uq1_hw & (one_hw << (HalfRep::<F>::BITS - 1)) > zero_hw);
 
         // b >= 1, thus an upper bound for 3/4 + 1/sqrt(2) - b/2 is about 0.9572,
         // so x0 fits to UQ0.HW without wrapping.

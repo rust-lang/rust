@@ -111,7 +111,7 @@ where
         let mut x = T::from(c);
         let mut i = 1;
         while i < mem::size_of::<T>() {
-            x = x << 8 | T::from(c);
+            x = (x << 8) | T::from(c);
             i += 1;
         }
 

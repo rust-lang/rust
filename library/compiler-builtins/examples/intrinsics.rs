@@ -640,7 +640,7 @@ fn run() {
 fn something_with_a_dtor(f: &dyn Fn()) {
     struct A<'a>(&'a (dyn Fn() + 'a));
 
-    impl<'a> Drop for A<'a> {
+    impl Drop for A<'_> {
         fn drop(&mut self) {
             (self.0)();
         }
