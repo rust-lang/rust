@@ -48,9 +48,7 @@ macro_rules! vec {
     );
     ($($x:expr),+ $(,)?) => (
         <[_]>::into_vec(
-            // Using the intrinsic produces a dramatic improvement in compile
-            // time when constructing arrays with many elements.
-            $crate::boxed::box_new([$($x),+])
+            $crate::boxed::Box::new([$($x),+])
         )
     );
 }
