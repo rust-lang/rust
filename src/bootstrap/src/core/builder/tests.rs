@@ -185,10 +185,10 @@ fn test_exclude() {
     let cache = run_build(&[], config);
 
     // Ensure we have really excluded tidy
-    assert!(!cache.contains::<test::Tidy>());
+    assert!(!cache.contains::<test::InvokeTidy>());
 
     // Ensure other tests are not affected.
-    assert!(cache.contains::<test::RustdocUi>());
+    assert!(cache.contains::<test::SuiteRustdocUi>());
 }
 
 #[test]
@@ -197,10 +197,10 @@ fn test_exclude_kind() {
 
     let mut config = configure("test", &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
     // Ensure our test is valid, and `test::Rustc` would be run without the exclude.
-    assert!(run_build(&[], config.clone()).contains::<test::CrateLibrustc>());
+    assert!(run_build(&[], config.clone()).contains::<test::SelftestCompilerCrates>());
     // Ensure tests for rustc are not skipped.
     config.skip = vec![path.clone()];
-    assert!(run_build(&[], config.clone()).contains::<test::CrateLibrustc>());
+    assert!(run_build(&[], config.clone()).contains::<test::SelftestCompilerCrates>());
     // Ensure builds for rustc are not skipped.
     assert!(run_build(&[], config).contains::<compile::Rustc>());
 }
@@ -669,18 +669,21 @@ mod dist {
 
         let host = TargetSelection::from_user(TEST_TRIPLE_1);
 
-        builder.run_step_descriptions(&[StepDescription::from::<test::Crate>(Kind::Test)], &[
-            "library/std".into(),
-        ]);
+        builder.run_step_descriptions(
+            &[StepDescription::from::<test::SelftestLibraryOrOtherCrates>(Kind::Test)],
+            &["library/std".into()],
+        );
 
         // Ensure we don't build any compiler artifacts.
         assert!(!builder.cache.contains::<compile::Rustc>());
-        assert_eq!(first(builder.cache.all::<test::Crate>()), &[test::Crate {
-            compiler: Compiler { host, stage: 0 },
-            target: host,
-            mode: crate::Mode::Std,
-            crates: vec!["std".to_owned()],
-        },]);
+        assert_eq!(first(builder.cache.all::<test::SelftestLibraryOrOtherCrates>()), &[
+            test::SelftestLibraryOrOtherCrates {
+                compiler: Compiler { host, stage: 0 },
+                target: host,
+                mode: crate::Mode::Std,
+                crates: vec!["std".to_owned()],
+            },
+        ]);
     }
 
     #[test]
@@ -822,9 +825,9 @@ fn test_test_compiler() {
     let config = configure_with_args(cmd, &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
     let cache = run_build(&config.paths.clone(), config);
 
-    let compiler = cache.contains::<test::CrateLibrustc>();
-    let cranelift = cache.contains::<test::CodegenCranelift>();
-    let gcc = cache.contains::<test::CodegenGCC>();
+    let compiler = cache.contains::<test::SelftestCompilerCrates>();
+    let cranelift = cache.contains::<test::SelftestCodegenCranelift>();
+    let gcc = cache.contains::<test::SelftestCodegenGCC>();
 
     assert_eq!((compiler, cranelift, gcc), (true, false, false));
 }

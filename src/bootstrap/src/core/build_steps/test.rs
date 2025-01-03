@@ -2,6 +2,18 @@
 //!
 //! `./x.py test` (aka [`Kind::Test`]) is currently allowed to reach build steps in other modules.
 //! However, this contains ~all test parts we expect people to be able to build and run locally.
+//!
+//! ## Test step naming convention
+//!
+//! Many of the test steps fit into one of these major categories:
+//!
+//! - `Selftest` steps run `cargo test` on one or more library/compiler/tool crates.
+//! - `Suite` steps run compiletest on one of the test suites in `tests/`.
+//! - `Booktest` steps perform some kind of test on one of the books.
+//!
+//! There are also some test steps that invoke a particular tool to perform
+//! tests as part of its execution, and some internal test steps that are
+//! implementation details of other test steps.
 
 use std::collections::HashSet;
 use std::ffi::{OsStr, OsString};
@@ -32,12 +44,12 @@ use crate::{CLang, DocTests, GitRepo, Mode, envify};
 const ADB_TEST_DIR: &str = "/data/local/tmp/work";
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct CrateBootstrap {
+pub struct SelftestMiscBootstrapTools {
     path: PathBuf,
     host: TargetSelection,
 }
 
-impl Step for CrateBootstrap {
+impl Step for SelftestMiscBootstrapTools {
     type Output = ();
     const ONLY_HOSTS: bool = true;
     const DEFAULT: bool = true;
@@ -52,7 +64,7 @@ impl Step for CrateBootstrap {
     fn make_run(run: RunConfig<'_>) {
         for path in run.paths {
             let path = path.assert_single_path().path.clone();
-            run.builder.ensure(CrateBootstrap { host: run.target, path });
+            run.builder.ensure(SelftestMiscBootstrapTools { host: run.target, path });
         }
     }
 
@@ -258,16 +270,16 @@ impl Step for Cargotest {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Cargo {
+pub struct SelftestCargo {
     stage: u32,
     host: TargetSelection,
 }
 
-impl Cargo {
+impl SelftestCargo {
     const CRATE_PATH: &str = "src/tools/cargo";
 }
 
-impl Step for Cargo {
+impl Step for SelftestCargo {
     type Output = ();
     const ONLY_HOSTS: bool = true;
 
@@ -276,7 +288,7 @@ impl Step for Cargo {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Cargo { stage: run.builder.top_stage, host: run.target });
+        run.builder.ensure(SelftestCargo { stage: run.builder.top_stage, host: run.target });
     }
 
     /// Runs `cargo test` for `cargo` packaged with Rust.
@@ -327,12 +339,12 @@ impl Step for Cargo {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RustAnalyzer {
+pub struct SelftestRustAnalyzer {
     stage: u32,
     host: TargetSelection,
 }
 
-impl Step for RustAnalyzer {
+impl Step for SelftestRustAnalyzer {
     type Output = ();
     const ONLY_HOSTS: bool = true;
     const DEFAULT: bool = true;
@@ -386,12 +398,12 @@ impl Step for RustAnalyzer {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Rustfmt {
+pub struct SelftestRustfmt {
     stage: u32,
     host: TargetSelection,
 }
 
-impl Step for Rustfmt {
+impl Step for SelftestRustfmt {
     type Output = ();
     const ONLY_HOSTS: bool = true;
 
@@ -400,7 +412,7 @@ impl Step for Rustfmt {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Rustfmt { stage: run.builder.top_stage, host: run.target });
+        run.builder.ensure(SelftestRustfmt { stage: run.builder.top_stage, host: run.target });
     }
 
     /// Runs `cargo test` for rustfmt.
@@ -433,12 +445,12 @@ impl Step for Rustfmt {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Miri {
+pub struct SelftestMiri {
     target: TargetSelection,
 }
 
 /// Run `cargo miri setup` for the given target, return where the Miri sysroot was put.
-pub(crate) fn build_miri_sysroot(
+pub fn build_miri_sysroot(
     builder: &Builder<'_>,
     compiler: Compiler,
     target: TargetSelection,
@@ -477,7 +489,7 @@ pub(crate) fn build_miri_sysroot(
     PathBuf::from(sysroot)
 }
 
-impl Step for Miri {
+impl Step for SelftestMiri {
     type Output = ();
     const ONLY_HOSTS: bool = false;
 
@@ -486,7 +498,7 @@ impl Step for Miri {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Miri { target: run.target });
+        run.builder.ensure(SelftestMiri { target: run.target });
     }
 
     /// Runs `cargo test` for miri.
@@ -655,11 +667,11 @@ impl Step for CargoMiri {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct CompiletestTest {
+pub struct SelftestCompiletest {
     host: TargetSelection,
 }
 
-impl Step for CompiletestTest {
+impl Step for SelftestCompiletest {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -667,7 +679,7 @@ impl Step for CompiletestTest {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(CompiletestTest { host: run.target });
+        run.builder.ensure(SelftestCompiletest { host: run.target });
     }
 
     /// Runs `cargo test` for compiletest.
@@ -705,12 +717,12 @@ impl Step for CompiletestTest {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Clippy {
+pub struct SelftestClippy {
     stage: u32,
     host: TargetSelection,
 }
 
-impl Step for Clippy {
+impl Step for SelftestClippy {
     type Output = ();
     const ONLY_HOSTS: bool = true;
     const DEFAULT: bool = false;
@@ -720,7 +732,7 @@ impl Step for Clippy {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Clippy { stage: run.builder.top_stage, host: run.target });
+        run.builder.ensure(SelftestClippy { stage: run.builder.top_stage, host: run.target });
     }
 
     /// Runs `cargo test` for clippy.
@@ -810,11 +822,11 @@ impl Step for RustdocTheme {
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct RustdocJSStd {
+pub struct SuiteRustdocJSStd {
     pub target: TargetSelection,
 }
 
-impl Step for RustdocJSStd {
+impl Step for SuiteRustdocJSStd {
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -825,7 +837,7 @@ impl Step for RustdocJSStd {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(RustdocJSStd { target: run.target });
+        run.builder.ensure(SuiteRustdocJSStd { target: run.target });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -869,12 +881,12 @@ impl Step for RustdocJSStd {
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct RustdocJSNotStd {
+pub struct SuiteRustdocJSNotStd {
     pub target: TargetSelection,
     pub compiler: Compiler,
 }
 
-impl Step for RustdocJSNotStd {
+impl Step for SuiteRustdocJSNotStd {
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -886,11 +898,11 @@ impl Step for RustdocJSNotStd {
 
     fn make_run(run: RunConfig<'_>) {
         let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
-        run.builder.ensure(RustdocJSNotStd { target: run.target, compiler });
+        run.builder.ensure(SuiteRustdocJSNotStd { target: run.target, compiler });
     }
 
     fn run(self, builder: &Builder<'_>) {
-        builder.ensure(Compiletest {
+        builder.ensure(InternalRunCompiletest {
             compiler: self.compiler,
             target: self.target,
             mode: "js-doc-test",
@@ -924,12 +936,12 @@ fn get_browser_ui_test_version(builder: &Builder<'_>, npm: &Path) -> Option<Stri
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct RustdocGUI {
+pub struct SuiteRustdocGUI {
     pub target: TargetSelection,
     pub compiler: Compiler,
 }
 
-impl Step for RustdocGUI {
+impl Step for SuiteRustdocGUI {
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -951,7 +963,7 @@ impl Step for RustdocGUI {
 
     fn make_run(run: RunConfig<'_>) {
         let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
-        run.builder.ensure(RustdocGUI { target: run.target, compiler });
+        run.builder.ensure(SuiteRustdocGUI { target: run.target, compiler });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -1018,9 +1030,9 @@ impl Step for RustdocGUI {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Tidy;
+pub struct InvokeTidy;
 
-impl Step for Tidy {
+impl Step for InvokeTidy {
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -1114,7 +1126,7 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Tidy);
+        run.builder.ensure(InvokeTidy);
     }
 }
 
@@ -1164,7 +1176,7 @@ macro_rules! test {
             }
 
             fn run(self, builder: &Builder<'_>) {
-                builder.ensure(Compiletest {
+                builder.ensure(InternalRunCompiletest {
                     compiler: self.compiler,
                     target: self.target,
                     mode: $mode,
@@ -1223,7 +1235,7 @@ macro_rules! coverage_test_alias {
             }
 
             fn run(self, builder: &Builder<'_>) {
-                Coverage::run_coverage_tests(builder, self.compiler, self.target, Self::MODE);
+                SuiteCoverage::run_coverage_tests(builder, self.compiler, self.target, Self::MODE);
             }
         }
     };
@@ -1275,11 +1287,11 @@ impl Step for RunMakeSupport {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct CrateRunMakeSupport {
+pub struct SelftestRunMakeSupport {
     host: TargetSelection,
 }
 
-impl Step for CrateRunMakeSupport {
+impl Step for SelftestRunMakeSupport {
     type Output = ();
     const ONLY_HOSTS: bool = true;
 
@@ -1288,7 +1300,7 @@ impl Step for CrateRunMakeSupport {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(CrateRunMakeSupport { host: run.target });
+        run.builder.ensure(SelftestRunMakeSupport { host: run.target });
     }
 
     /// Runs `cargo test` for run-make-support.
@@ -1321,11 +1333,11 @@ impl Step for CrateRunMakeSupport {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct CrateBuildHelper {
+pub struct SelftestBuildHelper {
     host: TargetSelection,
 }
 
-impl Step for CrateBuildHelper {
+impl Step for SelftestBuildHelper {
     type Output = ();
     const ONLY_HOSTS: bool = true;
 
@@ -1334,7 +1346,7 @@ impl Step for CrateBuildHelper {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(CrateBuildHelper { host: run.target });
+        run.builder.ensure(SelftestBuildHelper { host: run.target });
     }
 
     /// Runs `cargo test` for build_helper.
@@ -1366,27 +1378,27 @@ impl Step for CrateBuildHelper {
     }
 }
 
-test!(Ui { path: "tests/ui", mode: "ui", suite: "ui", default: true });
+test!(SuiteUi { path: "tests/ui", mode: "ui", suite: "ui", default: true });
 
-test!(Crashes { path: "tests/crashes", mode: "crashes", suite: "crashes", default: true });
+test!(SuiteCrashes { path: "tests/crashes", mode: "crashes", suite: "crashes", default: true });
 
-test!(Codegen { path: "tests/codegen", mode: "codegen", suite: "codegen", default: true });
+test!(SuiteCodegen { path: "tests/codegen", mode: "codegen", suite: "codegen", default: true });
 
-test!(CodegenUnits {
+test!(SuiteCodegenUnits {
     path: "tests/codegen-units",
     mode: "codegen-units",
     suite: "codegen-units",
     default: true,
 });
 
-test!(Incremental {
+test!(SuiteIncremental {
     path: "tests/incremental",
     mode: "incremental",
     suite: "incremental",
     default: true,
 });
 
-test!(Debuginfo {
+test!(SuiteDebuginfo {
     path: "tests/debuginfo",
     mode: "debuginfo",
     suite: "debuginfo",
@@ -1394,7 +1406,7 @@ test!(Debuginfo {
     compare_mode: Some("split-dwarf"),
 });
 
-test!(UiFullDeps {
+test!(SuiteUiFullDeps {
     path: "tests/ui-fulldeps",
     mode: "ui",
     suite: "ui-fulldeps",
@@ -1402,14 +1414,14 @@ test!(UiFullDeps {
     only_hosts: true,
 });
 
-test!(Rustdoc {
+test!(SuiteRustdoc {
     path: "tests/rustdoc",
     mode: "rustdoc",
     suite: "rustdoc",
     default: true,
     only_hosts: true,
 });
-test!(RustdocUi {
+test!(SuiteRustdocUi {
     path: "tests/rustdoc-ui",
     mode: "ui",
     suite: "rustdoc-ui",
@@ -1417,7 +1429,7 @@ test!(RustdocUi {
     only_hosts: true,
 });
 
-test!(RustdocJson {
+test!(SuiteRustdocJson {
     path: "tests/rustdoc-json",
     mode: "rustdoc-json",
     suite: "rustdoc-json",
@@ -1425,7 +1437,7 @@ test!(RustdocJson {
     only_hosts: true,
 });
 
-test!(Pretty {
+test!(SuitePretty {
     path: "tests/pretty",
     mode: "pretty",
     suite: "pretty",
@@ -1436,12 +1448,12 @@ test!(Pretty {
 /// Special-handling is needed for `run-make`, so don't use `test!` for defining `RunMake`
 /// tests.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct RunMake {
+pub struct SuiteRunMake {
     pub compiler: Compiler,
     pub target: TargetSelection,
 }
 
-impl Step for RunMake {
+impl Step for SuiteRunMake {
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = false;
@@ -1453,11 +1465,11 @@ impl Step for RunMake {
     fn make_run(run: RunConfig<'_>) {
         let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
         run.builder.ensure(RunMakeSupport { compiler, target: run.build_triple() });
-        run.builder.ensure(RunMake { compiler, target: run.target });
+        run.builder.ensure(SuiteRunMake { compiler, target: run.target });
     }
 
     fn run(self, builder: &Builder<'_>) {
-        builder.ensure(Compiletest {
+        builder.ensure(InternalRunCompiletest {
             compiler: self.compiler,
             target: self.target,
             mode: "run-make",
@@ -1468,7 +1480,7 @@ impl Step for RunMake {
     }
 }
 
-test!(Assembly { path: "tests/assembly", mode: "assembly", suite: "assembly", default: true });
+test!(SuiteAssembly { path: "tests/assembly", mode: "assembly", suite: "assembly", default: true });
 
 /// Coverage tests are a bit more complicated than other test suites, because
 /// we want to run the same set of test files in multiple different modes,
@@ -1485,12 +1497,12 @@ test!(Assembly { path: "tests/assembly", mode: "assembly", suite: "assembly", de
 /// (Each individual mode also has its own step that will run the tests in
 /// just that mode.)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Coverage {
+pub struct SuiteCoverage {
     pub compiler: Compiler,
     pub target: TargetSelection,
 }
 
-impl Coverage {
+impl SuiteCoverage {
     const PATH: &'static str = "tests/coverage";
     const SUITE: &'static str = "coverage";
 
@@ -1508,7 +1520,7 @@ impl Coverage {
     ) {
         // Like many other test steps, we delegate to a `Compiletest` step to
         // actually run the tests. (See `test_definitions!`.)
-        builder.ensure(Compiletest {
+        builder.ensure(InternalRunCompiletest {
             compiler,
             target,
             mode,
@@ -1519,7 +1531,7 @@ impl Coverage {
     }
 }
 
-impl Step for Coverage {
+impl Step for SuiteCoverage {
     type Output = ();
     /// We rely on the individual CoverageMap/CoverageRun steps to run themselves.
     const DEFAULT: bool = false;
@@ -1535,20 +1547,20 @@ impl Step for Coverage {
     fn make_run(run: RunConfig<'_>) {
         let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
 
-        run.builder.ensure(Coverage { compiler, target: run.target });
+        run.builder.ensure(SuiteCoverage { compiler, target: run.target });
     }
 
     fn run(self, builder: &Builder<'_>) {
         // Run the specified coverage tests (possibly all of them) in both modes.
-        Self::run_coverage_tests(builder, self.compiler, self.target, CoverageMap::MODE);
-        Self::run_coverage_tests(builder, self.compiler, self.target, CoverageRun::MODE);
+        Self::run_coverage_tests(builder, self.compiler, self.target, SuiteCoverageMap::MODE);
+        Self::run_coverage_tests(builder, self.compiler, self.target, SuiteCoverageRun::MODE);
     }
 }
 
 coverage_test_alias! {
     /// Runs the `tests/coverage` test suite in "coverage-map" mode only.
     /// Used by `x test` and `x test coverage-map`.
-    CoverageMap {
+    SuiteCoverageMap {
         alias_and_mode: "coverage-map",
         default: true,
         only_hosts: false,
@@ -1557,7 +1569,7 @@ coverage_test_alias! {
 coverage_test_alias! {
     /// Runs the `tests/coverage` test suite in "coverage-run" mode only.
     /// Used by `x test` and `x test coverage-run`.
-    CoverageRun {
+    SuiteCoverageRun {
         alias_and_mode: "coverage-run",
         default: true,
         // Compiletest knows how to automatically skip these tests when cross-compiling,
@@ -1566,7 +1578,7 @@ coverage_test_alias! {
     }
 }
 
-test!(CoverageRunRustdoc {
+test!(SuiteCoverageRunRustdoc {
     path: "tests/coverage-run-rustdoc",
     mode: "coverage-run",
     suite: "coverage-run-rustdoc",
@@ -1576,12 +1588,12 @@ test!(CoverageRunRustdoc {
 
 // For the mir-opt suite we do not use macros, as we need custom behavior when blessing.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct MirOpt {
+pub struct SuiteMirOpt {
     pub compiler: Compiler,
     pub target: TargetSelection,
 }
 
-impl Step for MirOpt {
+impl Step for SuiteMirOpt {
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = false;
@@ -1592,12 +1604,12 @@ impl Step for MirOpt {
 
     fn make_run(run: RunConfig<'_>) {
         let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
-        run.builder.ensure(MirOpt { compiler, target: run.target });
+        run.builder.ensure(SuiteMirOpt { compiler, target: run.target });
     }
 
     fn run(self, builder: &Builder<'_>) {
         let run = |target| {
-            builder.ensure(Compiletest {
+            builder.ensure(InternalRunCompiletest {
                 compiler: self.compiler,
                 target,
                 mode: "mir-opt",
@@ -1633,8 +1645,9 @@ impl Step for MirOpt {
     }
 }
 
+/// Internal helper step used by `Suite*` steps to run compiletest on a test suite.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct Compiletest {
+struct InternalRunCompiletest {
     compiler: Compiler,
     target: TargetSelection,
     mode: &'static str,
@@ -1643,7 +1656,7 @@ struct Compiletest {
     compare_mode: Option<&'static str>,
 }
 
-impl Step for Compiletest {
+impl Step for InternalRunCompiletest {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -2202,8 +2215,9 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
     }
 }
 
+/// Internal helper step used by the steps declared by `test_book!`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct BookTest {
+struct InternalBookTest {
     compiler: Compiler,
     path: PathBuf,
     name: &'static str,
@@ -2211,7 +2225,7 @@ struct BookTest {
     dependencies: Vec<&'static str>,
 }
 
-impl Step for BookTest {
+impl Step for InternalBookTest {
     type Output = ();
     const ONLY_HOSTS: bool = true;
 
@@ -2240,7 +2254,7 @@ impl Step for BookTest {
     }
 }
 
-impl BookTest {
+impl InternalBookTest {
     /// This runs the equivalent of `mdbook test` (via the rustbook wrapper)
     /// which in turn runs `rustdoc --test` on each file in the book.
     fn run_ext_doc(self, builder: &Builder<'_>) {
@@ -2409,7 +2423,7 @@ macro_rules! test_book {
                         }
                     )?
 
-                    builder.ensure(BookTest {
+                    builder.ensure(InternalBookTest {
                         compiler: self.compiler,
                         path: PathBuf::from($path),
                         name: $book_name,
@@ -2423,15 +2437,15 @@ macro_rules! test_book {
 }
 
 test_book!(
-    Nomicon, "src/doc/nomicon", "nomicon", default=false, submodules=["src/doc/nomicon"];
-    Reference, "src/doc/reference", "reference", default=false, submodules=["src/doc/reference"];
-    RustdocBook, "src/doc/rustdoc", "rustdoc", default=true;
-    RustcBook, "src/doc/rustc", "rustc", default=true;
-    RustByExample, "src/doc/rust-by-example", "rust-by-example", default=false, submodules=["src/doc/rust-by-example"];
-    EmbeddedBook, "src/doc/embedded-book", "embedded-book", default=false, submodules=["src/doc/embedded-book"];
-    TheBook, "src/doc/book", "book", default=false, submodules=["src/doc/book"], dependencies=["src/doc/book/packages/trpl"];
-    UnstableBook, "src/doc/unstable-book", "unstable-book", default=true;
-    EditionGuide, "src/doc/edition-guide", "edition-guide", default=false, submodules=["src/doc/edition-guide"];
+    BooktestNomicon, "src/doc/nomicon", "nomicon", default=false, submodules=["src/doc/nomicon"];
+    BooktestReference, "src/doc/reference", "reference", default=false, submodules=["src/doc/reference"];
+    BooktestRustdocBook, "src/doc/rustdoc", "rustdoc", default=true;
+    BooktestRustcBook, "src/doc/rustc", "rustc", default=true;
+    BooktestRustByExample, "src/doc/rust-by-example", "rust-by-example", default=false, submodules=["src/doc/rust-by-example"];
+    BooktestEmbeddedBook, "src/doc/embedded-book", "embedded-book", default=false, submodules=["src/doc/embedded-book"];
+    BooktestTheBook, "src/doc/book", "book", default=false, submodules=["src/doc/book"], dependencies=["src/doc/book/packages/trpl"];
+    BooktestUnstableBook, "src/doc/unstable-book", "unstable-book", default=true;
+    BooktestEditionGuide, "src/doc/edition-guide", "edition-guide", default=false, submodules=["src/doc/edition-guide"];
 );
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2515,13 +2529,13 @@ fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> 
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct CrateLibrustc {
+pub struct SelftestCompilerCrates {
     compiler: Compiler,
     target: TargetSelection,
     crates: Vec<String>,
 }
 
-impl Step for CrateLibrustc {
+impl Step for SelftestCompilerCrates {
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -2536,13 +2550,13 @@ impl Step for CrateLibrustc {
         let compiler = builder.compiler_for(builder.top_stage, host, host);
         let crates = run.make_run_crates(Alias::Compiler);
 
-        builder.ensure(CrateLibrustc { compiler, target: run.target, crates });
+        builder.ensure(SelftestCompilerCrates { compiler, target: run.target, crates });
     }
 
     fn run(self, builder: &Builder<'_>) {
         builder.ensure(compile::Std::new(self.compiler, self.target));
 
-        builder.ensure(Crate {
+        builder.ensure(SelftestLibraryOrOtherCrates {
             compiler: self.compiler,
             target: self.target,
             mode: Mode::Rustc,
@@ -2667,15 +2681,18 @@ fn prepare_cargo_test(
     cargo
 }
 
+/// FIXME(Zalathar): As a user-facing step, this is directly responsible for
+/// running `cargo test` on standard library crates, but it is also used as an
+/// implementation detail for testing *compiler* crates.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Crate {
+pub struct SelftestLibraryOrOtherCrates {
     pub compiler: Compiler,
     pub target: TargetSelection,
     pub mode: Mode,
     pub crates: Vec<String>,
 }
 
-impl Step for Crate {
+impl Step for SelftestLibraryOrOtherCrates {
     type Output = ();
     const DEFAULT: bool = true;
 
@@ -2693,7 +2710,12 @@ impl Step for Crate {
             .map(|p| builder.crate_paths[&p.assert_single_path().path].clone())
             .collect();
 
-        builder.ensure(Crate { compiler, target: run.target, mode: Mode::Std, crates });
+        builder.ensure(SelftestLibraryOrOtherCrates {
+            compiler,
+            target: run.target,
+            mode: Mode::Std,
+            crates,
+        });
     }
 
     /// Runs all unit tests plus documentation tests for a given crate defined
@@ -2807,13 +2829,13 @@ impl Step for Crate {
     }
 }
 
-/// Rustdoc is special in various ways, which is why this step is different from `Crate`.
+/// Rustdoc is special in various ways, which is why this step is different from `SelftestLibraryOrOtherCrate`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct CrateRustdoc {
+pub struct SelftestRustdoc {
     host: TargetSelection,
 }
 
-impl Step for CrateRustdoc {
+impl Step for SelftestRustdoc {
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -2825,7 +2847,7 @@ impl Step for CrateRustdoc {
     fn make_run(run: RunConfig<'_>) {
         let builder = run.builder;
 
-        builder.ensure(CrateRustdoc { host: run.target });
+        builder.ensure(SelftestRustdoc { host: run.target });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -2910,11 +2932,11 @@ impl Step for CrateRustdoc {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct CrateRustdocJsonTypes {
+pub struct SelftestRustdocJsonTypes {
     host: TargetSelection,
 }
 
-impl Step for CrateRustdocJsonTypes {
+impl Step for SelftestRustdocJsonTypes {
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -2926,7 +2948,7 @@ impl Step for CrateRustdocJsonTypes {
     fn make_run(run: RunConfig<'_>) {
         let builder = run.builder;
 
-        builder.ensure(CrateRustdocJsonTypes { host: run.target });
+        builder.ensure(SelftestRustdocJsonTypes { host: run.target });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -3092,9 +3114,9 @@ impl Step for Distcheck {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Bootstrap;
+pub struct SelftestBootstrap;
 
-impl Step for Bootstrap {
+impl Step for SelftestBootstrap {
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -3144,7 +3166,7 @@ impl Step for Bootstrap {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Bootstrap);
+        run.builder.ensure(SelftestBootstrap);
     }
 }
 
@@ -3353,12 +3375,12 @@ impl Step for TestHelpers {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct CodegenCranelift {
+pub struct SelftestCodegenCranelift {
     compiler: Compiler,
     target: TargetSelection,
 }
 
-impl Step for CodegenCranelift {
+impl Step for SelftestCodegenCranelift {
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -3396,7 +3418,7 @@ impl Step for CodegenCranelift {
             return;
         }
 
-        builder.ensure(CodegenCranelift { compiler, target: run.target });
+        builder.ensure(SelftestCodegenCranelift { compiler, target: run.target });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -3477,12 +3499,12 @@ impl Step for CodegenCranelift {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct CodegenGCC {
+pub struct SelftestCodegenGCC {
     compiler: Compiler,
     target: TargetSelection,
 }
 
-impl Step for CodegenGCC {
+impl Step for SelftestCodegenGCC {
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -3523,7 +3545,7 @@ impl Step for CodegenGCC {
             return;
         }
 
-        builder.ensure(CodegenGCC { compiler, target: run.target });
+        builder.ensure(SelftestCodegenGCC { compiler, target: run.target });
     }
 
     fn run(self, builder: &Builder<'_>) {
