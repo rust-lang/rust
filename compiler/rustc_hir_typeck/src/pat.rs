@@ -243,8 +243,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn downgrade_mut_inside_shared(&self) -> bool {
         // NB: RFC 3627 proposes stabilizing Rule 3 in all editions. If we adopt the same behavior
         // across all editions, this may be removed.
-        self.tcx.features().ref_pat_eat_one_layer_2024()
-            || self.tcx.features().ref_pat_eat_one_layer_2024_structural()
+        self.tcx.features().ref_pat_eat_one_layer_2024_structural()
     }
 
     /// Experimental pattern feature: when do reference patterns match against inherited references?
@@ -425,7 +424,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         max_ref_mutbl: MutblCap,
     ) -> (Ty<'tcx>, ByRef, MutblCap) {
         #[cfg(debug_assertions)]
-        if def_br == ByRef::Yes(Mutability::Mut) && max_ref_mutbl != MutblCap::Mut {
+        if def_br == ByRef::Yes(Mutability::Mut)
+            && max_ref_mutbl != MutblCap::Mut
+            && self.downgrade_mut_inside_shared()
+        {
             span_bug!(pat.span, "Pattern mutability cap violated!");
         }
         match adjust_mode {

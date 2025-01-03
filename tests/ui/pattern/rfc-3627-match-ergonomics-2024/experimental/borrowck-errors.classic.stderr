@@ -19,7 +19,13 @@ error[E0596]: cannot borrow data in a `&` reference as mutable
 LL |     let &ref mut x = &0;
    |          ^^^^^^^^^ cannot borrow as mutable
 
-error: aborting due to 2 previous errors
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/borrowck-errors.rs:17:23
+   |
+LL |     if let &Some(Some(x)) = &Some(&mut Some(0)) {
+   |                       ^ cannot borrow as mutable
+
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0507, E0596.
 For more information about an error, try `rustc --explain E0507`.

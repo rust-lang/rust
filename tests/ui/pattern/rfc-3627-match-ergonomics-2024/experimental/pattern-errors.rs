@@ -29,13 +29,13 @@ pub fn main() {
         //~^ ERROR: mismatched types
     }
     if let Some(&Some(&mut _)) = &Some(&mut Some(0)) {
-        //~^ ERROR: mismatched types
+        //[structural]~^ ERROR: mismatched types
     }
     if let Some(&Some(&mut _)) = &mut Some(&Some(0)) {
         //~^ ERROR: mismatched types
     }
     if let Some(&Some(Some((&mut _)))) = &Some(Some(&mut Some(0))) {
-        //~^ ERROR: mismatched types
+        //[structural]~^ ERROR: mismatched types
     }
     if let Some(&mut Some(x)) = &Some(Some(0)) {
         //~^ ERROR: mismatched types

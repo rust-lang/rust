@@ -13,4 +13,9 @@ pub fn main() {
 
     let &ref mut x = &0;
     //~^ cannot borrow data in a `&` reference as mutable [E0596]
+
+    if let &Some(Some(x)) = &Some(&mut Some(0)) {
+        //[classic]~^ ERROR: cannot borrow data in a `&` reference as mutable
+        let _: &u32 = x;
+    }
 }
