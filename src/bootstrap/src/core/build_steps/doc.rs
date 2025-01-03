@@ -632,6 +632,10 @@ impl Step for Std {
             DocumentationFormat::Json => vec!["--output-format", "json"],
         };
 
+        for arg in builder.config.args() {
+            extra_args.push(arg);
+        }
+
         if !builder.config.docs_minification {
             extra_args.push("--disable-minification");
         }

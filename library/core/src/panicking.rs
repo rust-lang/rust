@@ -27,6 +27,7 @@
     reason = "internal details of the implementation of the `panic!` and related macros",
     issue = "none"
 )]
+#![cfg_attr(not(bootstrap), rustc_skip_short_backtrace)]
 
 use crate::fmt;
 use crate::intrinsics::const_eval_select;

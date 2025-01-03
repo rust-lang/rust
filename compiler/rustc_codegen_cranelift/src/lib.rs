@@ -27,6 +27,7 @@ extern crate rustc_metadata;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
+extern crate tracing;
 
 // This prevents duplicating functions and statics that are already part of the host rustc process.
 #[allow(unused_extern_crates)]

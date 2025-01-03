@@ -5,6 +5,7 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::ptr;
 
+use debuginfo::ShortBacktraceKind;
 use libc::{c_char, c_int, c_uint, c_ulonglong, c_void, size_t};
 use rustc_macros::TryFromU32;
 use rustc_target::spec::SymbolVisibility;
@@ -716,6 +717,7 @@ pub type InlineAsmDiagHandlerTy = unsafe extern "C" fn(&SMDiagnostic, *const c_v
 
 pub mod debuginfo {
     use bitflags::bitflags;
+    use rustc_middle::middle::codegen_fn_attrs::SkipShortBacktrace;
 
     use super::{InvariantOpaque, Metadata};
 
@@ -781,6 +783,27 @@ pub mod debuginfo {
             const SPFlagDefinition        = (1 << 3);
             const SPFlagOptimized         = (1 << 4);
             const SPFlagMainSubprogram    = (1 << 5);
+        }
+    }
+
+    /// LLVMRustDebugEmissionKind
+    #[derive(Copy, Clone, Debug)]
+    #[repr(C)]
+    pub enum ShortBacktraceKind {
+        SkipFrame,
+        StartShortBacktrace,
+        EndShortBacktrace,
+        None,
+    }
+
+    impl ShortBacktraceKind {
+        pub fn from_generic(opt: Option<SkipShortBacktrace>) -> Self {
+            match opt {
+                None => ShortBacktraceKind::None,
+                Some(SkipShortBacktrace::ThisFrameOnly) => ShortBacktraceKind::SkipFrame,
+                Some(SkipShortBacktrace::Start) => ShortBacktraceKind::StartShortBacktrace,
+                Some(SkipShortBacktrace::End) => ShortBacktraceKind::EndShortBacktrace,
+            }
         }
     }
 
@@ -1900,6 +1923,7 @@ unsafe extern "C" {
         ScopeLine: c_uint,
         Flags: DIFlags,
         SPFlags: DISPFlags,
+        ShortBacktrace: ShortBacktraceKind,
         MaybeFn: Option<&'a Value>,
         TParam: &'a DIArray,
         Decl: Option<&'a DIDescriptor>,
@@ -1917,6 +1941,7 @@ unsafe extern "C" {
         Ty: &'a DIType,
         Flags: DIFlags,
         SPFlags: DISPFlags,
+        ShortBacktrace: ShortBacktraceKind,
         TParam: &'a DIArray,
     ) -> &'a DISubprogram;
 

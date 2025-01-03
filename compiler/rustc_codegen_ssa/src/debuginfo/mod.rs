@@ -6,6 +6,25 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 // FIXME(eddyb) find a place for this (or a way to replace it).
 pub mod type_names;
 
+#[allow(non_upper_case_globals)]
+mod short_backtraces {
+    use rustc_middle::middle::codegen_fn_attrs::SkipShortBacktrace;
+
+    // This is effectively public API. Don't change it.
+    pub const DW_AT_short_backtrace: u16 = 0x3c00;
+    pub const DW_FORM_short_backtrace: u16 = gimli::constants::DW_FORM_data1.0;
+
+    #[allow(non_snake_case)]
+    pub fn DW_short_backtrace_value(fn_attr: SkipShortBacktrace) -> u8 {
+        match fn_attr {
+            SkipShortBacktrace::ThisFrameOnly => 0,
+            SkipShortBacktrace::Start => 1,
+            SkipShortBacktrace::End => 2,
+        }
+    }
+}
+pub use short_backtraces::*;
+
 /// Returns true if we want to generate a DW_TAG_enumeration_type description for
 /// this instead of a DW_TAG_struct_type with DW_TAG_variant_part.
 ///

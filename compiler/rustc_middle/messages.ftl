@@ -83,6 +83,9 @@ middle_limit_invalid =
     `limit` must be a non-negative integer
     .label = {$error_str}
 
+middle_multiple_short_backtrace_attrs = multiple `#[rustc_*_short_backtrace]` attributes were used on the same item
+    .note = "attribute used here"
+
 middle_opaque_hidden_type_mismatch =
     concrete type differs from previous defining opaque type use
     .label = expected `{$self_ty}`, got `{$other_ty}`

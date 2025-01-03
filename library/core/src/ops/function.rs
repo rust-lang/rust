@@ -1,3 +1,5 @@
+#![cfg_attr(not(bootstrap), rustc_skip_short_backtrace)]
+
 use crate::marker::Tuple;
 
 /// The version of the call operator that takes an immutable receiver.

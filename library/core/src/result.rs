@@ -1700,6 +1700,7 @@ impl<T, E> Result<Result<T, E>, E> {
 #[inline(never)]
 #[cold]
 #[track_caller]
+#[cfg_attr(not(bootstrap), rustc_skip_short_backtrace)]
 fn unwrap_failed(msg: &str, error: &dyn fmt::Debug) -> ! {
     panic!("{msg}: {error:?}")
 }

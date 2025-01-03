@@ -2011,6 +2011,7 @@ impl<T, E> Option<Result<T, E>> {
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[cold]
 #[track_caller]
+#[cfg_attr(not(bootstrap), rustc_skip_short_backtrace)]
 const fn unwrap_failed() -> ! {
     panic("called `Option::unwrap()` on a `None` value")
 }
@@ -2020,6 +2021,7 @@ const fn unwrap_failed() -> ! {
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[cold]
 #[track_caller]
+#[cfg_attr(not(bootstrap), rustc_skip_short_backtrace)]
 const fn expect_failed(msg: &str) -> ! {
     panic_display(&msg)
 }
