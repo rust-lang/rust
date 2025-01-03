@@ -6,7 +6,7 @@
 //@ [empty_cfg]compile-flags: --check-cfg=cfg()
 //@ [without_names]compile-flags: --check-cfg=cfg(any())
 
-#[cfg(test = "value")]
+#[cfg(unix = "value")]
 //~^ WARNING unexpected `cfg` condition value
 pub fn f() {}
 

@@ -89,7 +89,7 @@
 //! Check out the Rust contribution guidelines [here](
 //! https://rustc-dev-guide.rust-lang.org/contributing.html#writing-documentation).
 //! The source for this documentation can be found on
-//! [GitHub](https://github.com/rust-lang/rust).
+//! [GitHub](https://github.com/rust-lang/rust) in the 'library/std/' directory.
 //! To contribute changes, make sure you read the guidelines first, then submit
 //! pull-requests for your suggested changes.
 //!

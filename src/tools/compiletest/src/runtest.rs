@@ -506,8 +506,9 @@ impl<'test> TestCx<'test> {
             // Generate `cfg(FALSE, REV1, ..., REVN)` (for all possible revisions)
             //
             // For compatibility reason we consider the `FALSE` cfg to be expected
-            // since it is extensively used in the testsuite.
-            check_cfg.push_str("cfg(FALSE");
+            // since it is extensively used in the testsuite, as well as the `test`
+            // cfg since we have tests that uses it.
+            check_cfg.push_str("cfg(test,FALSE");
             for revision in &self.props.revisions {
                 check_cfg.push(',');
                 check_cfg.push_str(&normalize_revision(revision));
