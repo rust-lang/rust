@@ -1822,9 +1822,6 @@ impl<'tcx> Visitor<'tcx> for EnsureCoroutineFieldAssignmentsNeverAlias<'_> {
 fn check_suspend_tys<'tcx>(tcx: TyCtxt<'tcx>, layout: &CoroutineLayout<'tcx>, body: &Body<'tcx>) {
     let mut linted_tys = FxHashSet::default();
 
-    // We want a user-facing param-env.
-    let param_env = tcx.param_env(body.source.def_id());
-
     for (variant, yield_source_info) in
         layout.variant_fields.iter().zip(&layout.variant_source_info)
     {
@@ -1838,7 +1835,7 @@ fn check_suspend_tys<'tcx>(tcx: TyCtxt<'tcx>, layout: &CoroutineLayout<'tcx>, bo
                     continue;
                 };
 
-                check_must_not_suspend_ty(tcx, decl.ty, hir_id, param_env, SuspendCheckData {
+                check_must_not_suspend_ty(tcx, decl.ty, hir_id, SuspendCheckData {
                     source_span: decl.source_info.span,
                     yield_span: yield_source_info.span,
                     plural_len: 1,
@@ -1868,7 +1865,6 @@ fn check_must_not_suspend_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
     hir_id: hir::HirId,
-    param_env: ty::ParamEnv<'tcx>,
     data: SuspendCheckData<'_>,
 ) -> bool {
     if ty.is_unit() {
@@ -1883,16 +1879,13 @@ fn check_must_not_suspend_ty<'tcx>(
         ty::Adt(_, args) if ty.is_box() => {
             let boxed_ty = args.type_at(0);
             let allocator_ty = args.type_at(1);
-            check_must_not_suspend_ty(tcx, boxed_ty, hir_id, param_env, SuspendCheckData {
+            check_must_not_suspend_ty(tcx, boxed_ty, hir_id, SuspendCheckData {
                 descr_pre: &format!("{}boxed ", data.descr_pre),
                 ..data
-            }) || check_must_not_suspend_ty(
-                tcx,
-                allocator_ty,
-                hir_id,
-                param_env,
-                SuspendCheckData { descr_pre: &format!("{}allocator ", data.descr_pre), ..data },
-            )
+            }) || check_must_not_suspend_ty(tcx, allocator_ty, hir_id, SuspendCheckData {
+                descr_pre: &format!("{}allocator ", data.descr_pre),
+                ..data
+            })
         }
         ty::Adt(def, _) => check_must_not_suspend_def(tcx, def.did(), hir_id, data),
         // FIXME: support adding the attribute to TAITs
@@ -1937,7 +1930,7 @@ fn check_must_not_suspend_ty<'tcx>(
             let mut has_emitted = false;
             for (i, ty) in fields.iter().enumerate() {
                 let descr_post = &format!(" in tuple element {i}");
-                if check_must_not_suspend_ty(tcx, ty, hir_id, param_env, SuspendCheckData {
+                if check_must_not_suspend_ty(tcx, ty, hir_id, SuspendCheckData {
                     descr_post,
                     ..data
                 }) {
@@ -1948,7 +1941,7 @@ fn check_must_not_suspend_ty<'tcx>(
         }
         ty::Array(ty, len) => {
             let descr_pre = &format!("{}array{} of ", data.descr_pre, plural_suffix);
-            check_must_not_suspend_ty(tcx, ty, hir_id, param_env, SuspendCheckData {
+            check_must_not_suspend_ty(tcx, ty, hir_id, SuspendCheckData {
                 descr_pre,
                 // FIXME(must_not_suspend): This is wrong. We should handle printing unevaluated consts.
                 plural_len: len.try_to_target_usize(tcx).unwrap_or(0) as usize + 1,
@@ -1959,10 +1952,7 @@ fn check_must_not_suspend_ty<'tcx>(
         // may not be considered live across the await point.
         ty::Ref(_region, ty, _mutability) => {
             let descr_pre = &format!("{}reference{} to ", data.descr_pre, plural_suffix);
-            check_must_not_suspend_ty(tcx, ty, hir_id, param_env, SuspendCheckData {
-                descr_pre,
-                ..data
-            })
+            check_must_not_suspend_ty(tcx, ty, hir_id, SuspendCheckData { descr_pre, ..data })
         }
         _ => false,
     }
