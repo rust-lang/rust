@@ -43,7 +43,7 @@ use base_db::{CrateDisplayName, CrateId, CrateOrigin};
 use either::Either;
 use hir_def::{
     body::BodyDiagnostic,
-    data::adt::VariantData,
+    data::{adt::VariantData, TraitFlags},
     generics::{LifetimeParamData, TypeOrConstParamData, TypeParamProvenance},
     hir::{BindingAnnotation, BindingId, ExprId, ExprOrPatId, LabelId, Pat},
     item_tree::{AttrOwner, FieldParent, ItemTreeFieldId, ItemTreeNode},
@@ -2778,11 +2778,11 @@ impl Trait {
     }
 
     pub fn is_auto(self, db: &dyn HirDatabase) -> bool {
-        db.trait_data(self.id).is_auto
+        db.trait_data(self.id).flags.contains(TraitFlags::IS_AUTO)
     }
 
     pub fn is_unsafe(&self, db: &dyn HirDatabase) -> bool {
-        db.trait_data(self.id).is_unsafe
+        db.trait_data(self.id).flags.contains(TraitFlags::IS_UNSAFE)
     }
 
     pub fn type_or_const_param_count(

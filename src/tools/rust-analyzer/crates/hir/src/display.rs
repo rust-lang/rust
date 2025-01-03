@@ -1,7 +1,10 @@
 //! HirDisplay implementations for various hir types.
 use either::Either;
 use hir_def::{
-    data::adt::{StructKind, VariantData},
+    data::{
+        adt::{StructKind, VariantData},
+        TraitFlags,
+    },
     generics::{
         GenericParams, TypeOrConstParamData, TypeParamProvenance, WherePredicate,
         WherePredicateTypeTarget,
@@ -791,10 +794,10 @@ impl HirDisplay for Trait {
 fn write_trait_header(trait_: &Trait, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
     write_visibility(trait_.module(f.db).id, trait_.visibility(f.db), f)?;
     let data = f.db.trait_data(trait_.id);
-    if data.is_unsafe {
+    if data.flags.contains(TraitFlags::IS_UNSAFE) {
         f.write_str("unsafe ")?;
     }
-    if data.is_auto {
+    if data.flags.contains(TraitFlags::IS_AUTO) {
         f.write_str("auto ")?;
     }
     write!(f, "trait {}", data.name.display(f.db.upcast(), f.edition()))?;

@@ -7,7 +7,7 @@ use std::ops::ControlFlow;
 use base_db::CrateId;
 use chalk_ir::{cast::Cast, UniverseIndex, WithKind};
 use hir_def::{
-    data::{adt::StructFlags, ImplData},
+    data::{adt::StructFlags, ImplData, TraitFlags},
     nameres::DefMap,
     AssocItemId, BlockId, ConstId, FunctionId, HasModule, ImplId, ItemContainerId, Lookup,
     ModuleId, TraitId,
@@ -419,11 +419,17 @@ pub fn def_crates(
         }
         TyKind::Dyn(_) => {
             let trait_id = ty.dyn_trait()?;
-            Some(if db.trait_data(trait_id).rustc_has_incoherent_inherent_impls {
-                db.incoherent_inherent_impl_crates(cur_crate, TyFingerprint::Dyn(trait_id))
-            } else {
-                smallvec![trait_id.module(db.upcast()).krate()]
-            })
+            Some(
+                if db
+                    .trait_data(trait_id)
+                    .flags
+                    .contains(TraitFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS)
+                {
+                    db.incoherent_inherent_impl_crates(cur_crate, TyFingerprint::Dyn(trait_id))
+                } else {
+                    smallvec![trait_id.module(db.upcast()).krate()]
+                },
+            )
         }
         // for primitives, there may be impls in various places (core and alloc
         // mostly). We just check the whole crate graph for crates with impls
@@ -835,7 +841,9 @@ fn is_inherent_impl_coherent(
                 hir_def::AdtId::EnumId(it) => db.enum_data(it).rustc_has_incoherent_inherent_impls,
             },
             TyKind::Dyn(it) => it.principal_id().map_or(false, |trait_id| {
-                db.trait_data(from_chalk_trait_id(trait_id)).rustc_has_incoherent_inherent_impls
+                db.trait_data(from_chalk_trait_id(trait_id))
+                    .flags
+                    .contains(TraitFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS)
             }),
 
             _ => false,
@@ -1204,7 +1212,7 @@ fn iterate_trait_method_candidates(
         // 2021.
         // This is to make `[a].into_iter()` not break code with the new `IntoIterator` impl for
         // arrays.
-        if data.skip_array_during_method_dispatch
+        if data.flags.contains(TraitFlags::SKIP_ARRAY_DURING_METHOD_DISPATCH)
             && matches!(self_ty.kind(Interner), TyKind::Array(..))
         {
             // FIXME: this should really be using the edition of the method name's span, in case it
@@ -1213,7 +1221,7 @@ fn iterate_trait_method_candidates(
                 continue;
             }
         }
-        if data.skip_boxed_slice_during_method_dispatch
+        if data.flags.contains(TraitFlags::SKIP_BOXED_SLICE_DURING_METHOD_DISPATCH)
             && matches!(
                 self_ty.kind(Interner), TyKind::Adt(AdtId(def), subst)
                 if is_box(table.db, *def)

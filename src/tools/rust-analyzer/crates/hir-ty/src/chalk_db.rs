@@ -13,7 +13,7 @@ use chalk_solve::rust_ir::{self, OpaqueTyDatumBound, WellKnownTrait};
 
 use base_db::CrateId;
 use hir_def::{
-    data::adt::StructFlags,
+    data::{adt::StructFlags, TraitFlags},
     hir::Movability,
     lang_item::{LangItem, LangItemTarget},
     AssocItemId, BlockId, CallableDefId, GenericDefId, HasModule, ItemContainerId, Lookup,
@@ -675,13 +675,13 @@ pub(crate) fn trait_datum_query(
     let generic_params = generics(db.upcast(), trait_.into());
     let bound_vars = generic_params.bound_vars_subst(db, DebruijnIndex::INNERMOST);
     let flags = rust_ir::TraitFlags {
-        auto: trait_data.is_auto,
+        auto: trait_data.flags.contains(TraitFlags::IS_AUTO),
         upstream: trait_.lookup(db.upcast()).container.krate() != krate,
         non_enumerable: true,
         coinductive: false, // only relevant for Chalk testing
         // FIXME: set these flags correctly
         marker: false,
-        fundamental: trait_data.fundamental,
+        fundamental: trait_data.flags.contains(TraitFlags::IS_FUNDAMENTAL),
     };
     let where_clauses = convert_where_clauses(db, trait_.into(), &bound_vars);
     let associated_ty_ids = trait_data.associated_types().map(to_assoc_type_id).collect();
