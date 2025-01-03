@@ -2966,12 +2966,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     "required for the cast from `{source}` to `{target}`",
                 )));
             }
-            ObligationCauseCode::RepeatElementCopy {
-                is_constable,
-                elt_type: _,
-                elt_span,
-                elt_stmt_span: _,
-            } => {
+            ObligationCauseCode::RepeatElementCopy { is_constable, elt_span } => {
                 err.note(
                     "the `Copy` trait is required because this value will be copied for each element of the array",
                 );

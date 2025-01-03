@@ -1907,21 +1907,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let lang_item = self.tcx.require_lang_item(LangItem::Copy, None);
-        let code = traits::ObligationCauseCode::RepeatElementCopy {
-            is_constable,
-            elt_type: element_ty,
-            elt_span: element.span,
-            elt_stmt_span: self
-                .tcx
-                .hir()
-                .parent_iter(element.hir_id)
-                .find_map(|(_, node)| match node {
-                    hir::Node::Item(it) => Some(it.span),
-                    hir::Node::Stmt(stmt) => Some(stmt.span),
-                    _ => None,
-                })
-                .expect("array repeat expressions must be inside an item or statement"),
-        };
+        let code =
+            traits::ObligationCauseCode::RepeatElementCopy { is_constable, elt_span: element.span };
         self.require_type_meets(element_ty, element.span, code, lang_item);
     }
 

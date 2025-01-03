@@ -247,11 +247,11 @@ pub enum ObligationCauseCode<'tcx> {
         /// If element is a `const fn` or const ctor we display a help message suggesting
         /// to move it to a new `const` item while saying that `T` doesn't implement `Copy`.
         is_constable: IsConstable,
-        elt_type: Ty<'tcx>,
+
+        /// Span of the repeat element.
+        ///
+        /// This is used to suggest wrapping it in a `const { ... }` block.
         elt_span: Span,
-        /// Span of the statement/item in which the repeat expression occurs. We can use this to
-        /// place a `const` declaration before it
-        elt_stmt_span: Span,
     },
 
     /// Types of fields (other than the last, except for packed structs) in a struct must be sized.
