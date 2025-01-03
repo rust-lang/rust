@@ -909,6 +909,7 @@ impl<'a> Builder<'a> {
                 check::RustAnalyzer,
                 check::TestFloatParse,
                 check::Bootstrap,
+                check::RunMakeSupport,
                 check::Compiletest,
             ),
             Kind::Test => describe!(
