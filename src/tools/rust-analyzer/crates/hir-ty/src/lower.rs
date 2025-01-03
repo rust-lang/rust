@@ -25,7 +25,7 @@ use either::Either;
 use hir_def::{
     body::HygieneId,
     builtin_type::BuiltinType,
-    data::adt::StructKind,
+    data::{adt::StructKind, TraitFlags},
     expander::Expander,
     generics::{
         GenericParamDataRef, TypeOrConstParamData, TypeParamProvenance, WherePredicate,
@@ -1567,9 +1567,17 @@ impl<'a> TyLoweringContext<'a> {
                 match (lhs.skip_binders(), rhs.skip_binders()) {
                     (WhereClause::Implemented(lhs), WhereClause::Implemented(rhs)) => {
                         let lhs_id = lhs.trait_id;
-                        let lhs_is_auto = ctx.db.trait_data(from_chalk_trait_id(lhs_id)).is_auto;
+                        let lhs_is_auto = ctx
+                            .db
+                            .trait_data(from_chalk_trait_id(lhs_id))
+                            .flags
+                            .contains(TraitFlags::IS_AUTO);
                         let rhs_id = rhs.trait_id;
-                        let rhs_is_auto = ctx.db.trait_data(from_chalk_trait_id(rhs_id)).is_auto;
+                        let rhs_is_auto = ctx
+                            .db
+                            .trait_data(from_chalk_trait_id(rhs_id))
+                            .flags
+                            .contains(TraitFlags::IS_AUTO);
 
                         if !lhs_is_auto && !rhs_is_auto {
                             multiple_regular_traits = true;

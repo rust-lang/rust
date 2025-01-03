@@ -229,20 +229,24 @@ impl TypeAliasData {
     }
 }
 
+bitflags::bitflags! {
+    #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
+    pub struct TraitFlags: u8 {
+        const IS_AUTO = 1 << 0;
+        const IS_UNSAFE = 1 << 1;
+        const IS_FUNDAMENTAL = 1 << 2;
+        const RUSTC_HAS_INCOHERENT_INHERENT_IMPLS = 1 << 3;
+        const SKIP_ARRAY_DURING_METHOD_DISPATCH = 1 << 4;
+        const SKIP_BOXED_SLICE_DURING_METHOD_DISPATCH = 1 << 5;
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TraitData {
     pub name: Name,
     pub items: Vec<(Name, AssocItemId)>,
-    pub is_auto: bool,
-    pub is_unsafe: bool,
-    pub rustc_has_incoherent_inherent_impls: bool,
-    pub skip_array_during_method_dispatch: bool,
-    pub skip_boxed_slice_during_method_dispatch: bool,
-    pub fundamental: bool,
+    pub flags: TraitFlags,
     pub visibility: RawVisibility,
-    /// Whether the trait has `#[rust_skip_array_during_method_dispatch]`. `hir_ty` will ignore
-    /// method calls to this trait's methods when the receiver is an array and the crate edition is
-    /// 2015 or 2018.
     // box it as the vec is usually empty anyways
     pub macro_calls: Option<Box<Vec<(AstId<ast::Item>, MacroCallId)>>>,
 }
@@ -261,10 +265,24 @@ impl TraitData {
         let item_tree = tree_id.item_tree(db);
         let tr_def = &item_tree[tree_id.value];
         let name = tr_def.name.clone();
-        let is_auto = tr_def.is_auto;
-        let is_unsafe = tr_def.is_unsafe;
         let visibility = item_tree[tr_def.visibility].clone();
         let attrs = item_tree.attrs(db, module_id.krate(), ModItem::from(tree_id.value).into());
+
+        let mut flags = TraitFlags::empty();
+
+        if tr_def.is_auto {
+            flags |= TraitFlags::IS_AUTO;
+        }
+        if tr_def.is_unsafe {
+            flags |= TraitFlags::IS_UNSAFE;
+        }
+        if attrs.by_key(&sym::fundamental).exists() {
+            flags |= TraitFlags::IS_FUNDAMENTAL;
+        }
+        if attrs.by_key(&sym::rustc_has_incoherent_inherent_impls).exists() {
+            flags |= TraitFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS;
+        }
+
         let mut skip_array_during_method_dispatch =
             attrs.by_key(&sym::rustc_skip_array_during_method_dispatch).exists();
         let mut skip_boxed_slice_during_method_dispatch = false;
@@ -276,27 +294,21 @@ impl TraitData {
                 }
             }
         }
-        let rustc_has_incoherent_inherent_impls =
-            attrs.by_key(&sym::rustc_has_incoherent_inherent_impls).exists();
-        let fundamental = attrs.by_key(&sym::fundamental).exists();
+
+        if skip_array_during_method_dispatch {
+            flags |= TraitFlags::SKIP_ARRAY_DURING_METHOD_DISPATCH;
+        }
+        if skip_boxed_slice_during_method_dispatch {
+            flags |= TraitFlags::SKIP_BOXED_SLICE_DURING_METHOD_DISPATCH;
+        }
+
         let mut collector =
             AssocItemCollector::new(db, module_id, tree_id.file_id(), ItemContainerId::TraitId(tr));
         collector.collect(&item_tree, tree_id.tree_id(), &tr_def.items);
         let (items, macro_calls, diagnostics) = collector.finish();
 
         (
-            Arc::new(TraitData {
-                name,
-                macro_calls,
-                items,
-                is_auto,
-                is_unsafe,
-                visibility,
-                skip_array_during_method_dispatch,
-                skip_boxed_slice_during_method_dispatch,
-                rustc_has_incoherent_inherent_impls,
-                fundamental,
-            }),
+            Arc::new(TraitData { name, macro_calls, items, visibility, flags }),
             DefDiagnostics::new(diagnostics),
         )
     }
