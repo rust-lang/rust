@@ -2,6 +2,10 @@
 // an associated type in an impl with unconstrained non-lifetime params.
 // (This time in a function signature)
 
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+
 struct Thing;
 
 pub trait Every {
