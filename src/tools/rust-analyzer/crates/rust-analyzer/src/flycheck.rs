@@ -1,10 +1,11 @@
 //! Flycheck provides the functionality needed to run `cargo check` to provide
 //! LSP diagnostics based on the output of the command.
 
-use std::{fmt, io, mem, process::Command, time::Duration};
+use std::{fmt, io, process::Command, time::Duration};
 
 use cargo_metadata::PackageId;
 use crossbeam_channel::{select_biased, unbounded, Receiver, Sender};
+use ide_db::FxHashSet;
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::FxHashMap;
 use serde::Deserialize as _;
@@ -231,13 +232,7 @@ struct FlycheckActor {
     command_handle: Option<CommandHandle<CargoCheckMessage>>,
     /// The receiver side of the channel mentioned above.
     command_receiver: Option<Receiver<CargoCheckMessage>>,
-    package_status: FxHashMap<Arc<PackageId>, DiagnosticReceived>,
-}
-
-#[derive(PartialEq, Eq, Copy, Clone, Debug)]
-enum DiagnosticReceived {
-    Yes,
-    No,
+    diagnostics_cleared_for: FxHashSet<Arc<PackageId>>,
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -267,7 +262,7 @@ impl FlycheckActor {
             manifest_path,
             command_handle: None,
             command_receiver: None,
-            package_status: FxHashMap::default(),
+            diagnostics_cleared_for: Default::default(),
         }
     }
 
@@ -344,16 +339,16 @@ impl FlycheckActor {
                             error
                         );
                     }
-                    if self.package_status.is_empty() {
+                    if self.diagnostics_cleared_for.is_empty() {
                         tracing::trace!(flycheck_id = self.id, "clearing diagnostics");
                         // We finished without receiving any diagnostics.
-                        // That means all of them are stale.
+                        // Clear everything for good measure
                         self.send(FlycheckMessage::ClearDiagnostics {
                             id: self.id,
                             package_id: None,
                         });
                     } else {
-                        self.send_clear_diagnostics();
+                        self.diagnostics_cleared_for.clear();
                     }
 
                     self.report_progress(Progress::DidFinish(res));
@@ -367,9 +362,18 @@ impl FlycheckActor {
                             "artifact received"
                         );
                         self.report_progress(Progress::DidCheckCrate(msg.target.name));
-                        self.package_status
-                            .entry(Arc::new(msg.package_id))
-                            .or_insert(DiagnosticReceived::No);
+                        let package_id = Arc::new(msg.package_id);
+                        if self.diagnostics_cleared_for.insert(package_id.clone()) {
+                            tracing::trace!(
+                                flycheck_id = self.id,
+                                package_id = package_id.repr,
+                                "clearing diagnostics"
+                            );
+                            self.send(FlycheckMessage::ClearDiagnostics {
+                                id: self.id,
+                                package_id: Some(package_id),
+                            });
+                        }
                     }
                     CargoCheckMessage::Diagnostic { diagnostic, package_id } => {
                         tracing::trace!(
@@ -379,10 +383,7 @@ impl FlycheckActor {
                             "diagnostic received"
                         );
                         if let Some(package_id) = &package_id {
-                            if let None | Some(DiagnosticReceived::No) = self
-                                .package_status
-                                .insert(package_id.clone(), DiagnosticReceived::Yes)
-                            {
+                            if self.diagnostics_cleared_for.insert(package_id.clone()) {
                                 tracing::trace!(
                                     flycheck_id = self.id,
                                     package_id = package_id.repr,
@@ -417,23 +418,7 @@ impl FlycheckActor {
             command_handle.cancel();
             self.command_receiver.take();
             self.report_progress(Progress::DidCancel);
-            self.send_clear_diagnostics();
-        }
-    }
-
-    fn send_clear_diagnostics(&mut self) {
-        for (package_id, status) in mem::take(&mut self.package_status) {
-            if let DiagnosticReceived::No = status {
-                tracing::trace!(
-                    flycheck_id = self.id,
-                    package_id = package_id.repr,
-                    "clearing diagnostics"
-                );
-                self.send(FlycheckMessage::ClearDiagnostics {
-                    id: self.id,
-                    package_id: Some(package_id),
-                });
-            }
+            self.diagnostics_cleared_for.clear();
         }
     }
 
