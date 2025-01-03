@@ -8,40 +8,44 @@ use std::path::Path;
 
 use crate::{fs, regex};
 
-fn print<'a, 'e, A: AsRef<str>, E: AsRef<str>>(
-    assertion_kind: &str,
-    haystack: &'a A,
-    needle: &'e E,
-) -> (&'a str, &'e str) {
-    let haystack = haystack.as_ref();
-    let needle = needle.as_ref();
-    eprintln!("{assertion_kind}:");
-    eprintln!("=== HAYSTACK ===");
-    eprintln!("{}", haystack);
-    eprintln!("=== NEEDLE ===");
-    eprintln!("{}", needle);
-    (haystack, needle)
-}
-
 /// Assert that `actual` is equal to `expected`.
 #[track_caller]
 pub fn assert_equals<A: AsRef<str>, E: AsRef<str>>(actual: A, expected: E) {
     let actual = actual.as_ref();
     let expected = expected.as_ref();
-    eprintln!("=== ACTUAL TEXT ===");
-    eprintln!("{}", actual);
-    eprintln!("=== EXPECTED ===");
-    eprintln!("{}", expected);
+
     if actual != expected {
-        panic!("expected text was not found in actual text");
+        eprintln!("=== ACTUAL TEXT ===");
+        eprintln!("{}", actual);
+        eprintln!("=== EXPECTED ===");
+        eprintln!("{}", expected);
+        panic!("expected text does not match actual text");
+    }
+}
+
+struct SearchDetails<'assertion_name, 'haystack, 'needle> {
+    assertion_name: &'assertion_name str,
+    haystack: &'haystack str,
+    needle: &'needle str,
+}
+
+impl<'assertion_name, 'haystack, 'needle> SearchDetails<'assertion_name, 'haystack, 'needle> {
+    fn dump(&self) {
+        eprintln!("{}:", self.assertion_name);
+        eprintln!("=== HAYSTACK ===");
+        eprintln!("{}", self.haystack);
+        eprintln!("=== NEEDLE ===");
+        eprintln!("{}", self.needle);
     }
 }
 
 /// Assert that `haystack` contains `needle`.
 #[track_caller]
 pub fn assert_contains<H: AsRef<str>, N: AsRef<str>>(haystack: H, needle: N) {
-    let (haystack, needle) = print("assert_contains", &haystack, &needle);
+    let haystack = haystack.as_ref();
+    let needle = needle.as_ref();
     if !haystack.contains(needle) {
+        SearchDetails { assertion_name: "assert_contains", haystack, needle }.dump();
         panic!("needle was not found in haystack");
     }
 }
@@ -49,42 +53,63 @@ pub fn assert_contains<H: AsRef<str>, N: AsRef<str>>(haystack: H, needle: N) {
 /// Assert that `haystack` does not contain `needle`.
 #[track_caller]
 pub fn assert_not_contains<H: AsRef<str>, N: AsRef<str>>(haystack: H, needle: N) {
-    let (haystack, needle) = print("assert_not_contains", &haystack, &needle);
+    let haystack = haystack.as_ref();
+    let needle = needle.as_ref();
     if haystack.contains(needle) {
+        SearchDetails { assertion_name: "assert_not_contains", haystack, needle }.dump();
         panic!("needle was unexpectedly found in haystack");
     }
 }
 
-/// Assert that `haystack` contains the regex pattern `needle`.
+/// Assert that `haystack` contains the regex `needle`.
 #[track_caller]
 pub fn assert_contains_regex<H: AsRef<str>, N: AsRef<str>>(haystack: H, needle: N) {
-    let (haystack, needle) = print("assert_contains_regex", &haystack, &needle);
+    let haystack = haystack.as_ref();
+    let needle = needle.as_ref();
     let re = regex::Regex::new(needle).unwrap();
     if !re.is_match(haystack) {
-        panic!("needle was not found in haystack");
+        SearchDetails { assertion_name: "assert_contains_regex", haystack, needle }.dump();
+        panic!("regex was not found in haystack");
     }
 }
 
-/// Assert that `haystack` does not contain the regex pattern `needle`.
+/// Assert that `haystack` does not contain the regex `needle`.
 #[track_caller]
 pub fn assert_not_contains_regex<H: AsRef<str>, N: AsRef<str>>(haystack: H, needle: N) {
-    let (haystack, needle) = print("assert_not_contains_regex", &haystack, &needle);
+    let haystack = haystack.as_ref();
+    let needle = needle.as_ref();
     let re = regex::Regex::new(needle).unwrap();
     if re.is_match(haystack) {
-        panic!("needle was unexpectedly found in haystack");
+        SearchDetails { assertion_name: "assert_not_contains_regex", haystack, needle }.dump();
+        panic!("regex was unexpectedly found in haystack");
     }
 }
 
-/// Assert that `haystack` contains `needle` a `count` number of times.
+/// Assert that `haystack` contains regex `needle` an `expected_count` number of times.
 #[track_caller]
-pub fn assert_count_is<H: AsRef<str>, N: AsRef<str>>(count: usize, haystack: H, needle: N) {
-    let (haystack, needle) = print("assert_count_is", &haystack, &needle);
-    if count != haystack.matches(needle).count() {
-        panic!("needle did not appear {count} times in haystack");
+pub fn assert_count_is<H: AsRef<str>, N: AsRef<str>>(
+    expected_count: usize,
+    haystack: H,
+    needle: N,
+) {
+    let haystack = haystack.as_ref();
+    let needle = needle.as_ref();
+
+    let actual_count = haystack.matches(needle).count();
+    if expected_count != actual_count {
+        let count_fmt = format!(
+            "assert_count_is (expected_count = {expected_count}, actual_count = {actual_count})"
+        );
+        SearchDetails { assertion_name: &count_fmt, haystack, needle }.dump();
+        panic!(
+            "regex did not appear {expected_count} times in haystack (expected_count = \
+            {expected_count}, actual_count = {actual_count})"
+        );
     }
 }
 
 /// Assert that all files in `dir1` exist and have the same content in `dir2`
+// FIXME(#135037): not robust against symlinks, lacks sanity test coverage.
 pub fn assert_dirs_are_equal(dir1: impl AsRef<Path>, dir2: impl AsRef<Path>) {
     let dir2 = dir2.as_ref();
     fs::read_dir_entries(dir1, |entry_path| {
