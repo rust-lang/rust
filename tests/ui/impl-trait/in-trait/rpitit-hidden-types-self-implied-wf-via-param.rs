@@ -4,9 +4,9 @@ trait Extend {
 
 impl Extend for () {
     fn extend<'a: 'a>(s: &'a str) -> (Option<&'static &'a ()>, &'static str)
-    //~^ ERROR in type `&'static &'a ()`, reference has a longer lifetime than the data it references
     where
         'a: 'static,
+        //~^ impl has stricter requirements than trait
     {
         (None, s)
     }
