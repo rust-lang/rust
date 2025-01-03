@@ -910,10 +910,17 @@ impl Config {
 
                 patch_old_style::patch_json_for_outdated_configs(&mut json);
 
+                let mut json_errors = vec![];
+                let snips = get_field_json::<FxHashMap<String, SnippetDef>>(
+                    &mut json,
+                    &mut json_errors,
+                    "completion_snippets_custom",
+                    None,
+                )
+                .unwrap_or(self.completion_snippets_custom().to_owned());
+
                 // IMPORTANT : This holds as long as ` completion_snippets_custom` is declared `client`.
                 config.snippets.clear();
-
-                let snips = self.completion_snippets_custom().to_owned();
 
                 for (name, def) in snips.iter() {
                     if def.prefix.is_empty() && def.postfix.is_empty() {
