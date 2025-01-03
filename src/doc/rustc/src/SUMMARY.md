@@ -62,6 +62,7 @@
     - [m68k-unknown-linux-gnu](platform-support/m68k-unknown-linux-gnu.md)
     - [mips64-openwrt-linux-musl](platform-support/mips64-openwrt-linux-musl.md)
     - [mipsel-sony-psx](platform-support/mipsel-sony-psx.md)
+    - [mips\*-mti-none-elf](platform-support/mips-mti-none-elf.md)
     - [mipsisa\*r6\*-unknown-linux-gnu\*](platform-support/mips-release-6.md)
     - [nvptx64-nvidia-cuda](platform-support/nvptx64-nvidia-cuda.md)
     - [powerpc-unknown-openbsd](platform-support/powerpc-unknown-openbsd.md)
