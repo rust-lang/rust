@@ -554,16 +554,54 @@ fn test_duplicate_revisions() {
 }
 
 #[test]
-fn test_forbidden_revisions() {
-    let config: Config = cfg().build();
+#[should_panic(
+    expected = "revision name `CHECK` is not permitted in a test suite that uses `FileCheck` annotations"
+)]
+fn test_assembly_mode_forbidden_revisions() {
+    let config = cfg().mode("assembly").build();
+    parse_rs(&config, "//@ revisions: CHECK");
+}
+
+#[test]
+#[should_panic(
+    expected = "revision name `CHECK` is not permitted in a test suite that uses `FileCheck` annotations"
+)]
+fn test_codegen_mode_forbidden_revisions() {
+    let config = cfg().mode("codegen").build();
+    parse_rs(&config, "//@ revisions: CHECK");
+}
+
+#[test]
+#[should_panic(
+    expected = "revision name `CHECK` is not permitted in a test suite that uses `FileCheck` annotations"
+)]
+fn test_miropt_mode_forbidden_revisions() {
+    let config = cfg().mode("mir-opt").build();
+    parse_rs(&config, "//@ revisions: CHECK");
+}
+
+#[test]
+fn test_forbidden_revisions_allowed_in_non_filecheck_dir() {
     let revisions = ["CHECK", "COM", "NEXT", "SAME", "EMPTY", "NOT", "COUNT", "DAG", "LABEL"];
+    let modes = [
+        "pretty",
+        "debuginfo",
+        "rustdoc",
+        "rustdoc-json",
+        "codegen-units",
+        "incremental",
+        "ui",
+        "js-doc-test",
+        "coverage-map",
+        "coverage-run",
+        "crashes",
+    ];
+
     for rev in revisions {
-        let res = std::panic::catch_unwind(|| {
-            parse_rs(&config, format!("//@ revisions: {rev}").as_str());
-        });
-        assert!(res.is_err());
-        if let Some(msg) = res.unwrap_err().downcast_ref::<String>() {
-            assert!(msg.contains(format!("invalid revision: `{rev}` in line ` {rev}`").as_str()))
+        let content = format!("//@ revisions: {rev}");
+        for mode in modes {
+            let config = cfg().mode(mode).build();
+            parse_rs(&config, &content);
         }
     }
 }

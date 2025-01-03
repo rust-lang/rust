@@ -951,10 +951,12 @@ impl Config {
                         raw,
                         testfile.display()
                     );
-                } else if FORBIDDEN_REVISION_NAMES.contains(&revision.as_str()) {
+                } else if matches!(self.mode, Mode::Assembly | Mode::Codegen | Mode::MirOpt)
+                    && FORBIDDEN_REVISION_NAMES.contains(&revision.as_str())
+                {
                     panic!(
-                        "invalid revision: `{}` in line `{}`: {}",
-                        revision,
+                        "revision name `{revision}` is not permitted in a test suite that uses `FileCheck` annotations\n\
+                         as it is confusing when used as custom `FileCheck` prefix: `{revision}` in line `{}`: {}",
                         raw,
                         testfile.display()
                     );
