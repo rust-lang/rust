@@ -19,6 +19,8 @@ ceil
 ceilf
 copysign
 copysignf
+copysignf128
+copysignf16
 cos
 cosf
 cosh
@@ -37,6 +39,8 @@ expm1
 expm1f
 fabs
 fabsf
+fabsf128
+fabsf16
 fdim
 fdimf
 floor

@@ -157,6 +157,9 @@ pub trait MaybeOverride<Input> {
     }
 }
 
+#[cfg(f16_enabled)]
+impl MaybeOverride<(f16,)> for SpecialCase {}
+
 impl MaybeOverride<(f32,)> for SpecialCase {
     fn check_float<F: Float>(
         input: (f32,),
@@ -290,6 +293,9 @@ impl MaybeOverride<(f64,)> for SpecialCase {
     }
 }
 
+#[cfg(f128_enabled)]
+impl MaybeOverride<(f128,)> for SpecialCase {}
+
 /// Check NaN bits if the function requires it
 fn maybe_check_nan_bits<F: Float>(actual: F, expected: F, ctx: &CheckCtx) -> Option<TestResult> {
     if !(ctx.base_name == BaseName::Fabs || ctx.base_name == BaseName::Copysign) {
@@ -317,6 +323,19 @@ fn maybe_check_nan_bits<F: Float>(actual: F, expected: F, ctx: &CheckCtx) -> Opt
     }
 }
 
+#[cfg(f16_enabled)]
+impl MaybeOverride<(f16, f16)> for SpecialCase {
+    fn check_float<F: Float>(
+        input: (f16, f16),
+        _actual: F,
+        expected: F,
+        _ulp: &mut u32,
+        ctx: &CheckCtx,
+    ) -> Option<TestResult> {
+        maybe_skip_binop_nan(input, expected, ctx)
+    }
+}
+
 impl MaybeOverride<(f32, f32)> for SpecialCase {
     fn check_float<F: Float>(
         input: (f32, f32),
@@ -332,6 +351,19 @@ impl MaybeOverride<(f32, f32)> for SpecialCase {
 impl MaybeOverride<(f64, f64)> for SpecialCase {
     fn check_float<F: Float>(
         input: (f64, f64),
+        _actual: F,
+        expected: F,
+        _ulp: &mut u32,
+        ctx: &CheckCtx,
+    ) -> Option<TestResult> {
+        maybe_skip_binop_nan(input, expected, ctx)
+    }
+}
+
+#[cfg(f128_enabled)]
+impl MaybeOverride<(f128, f128)> for SpecialCase {
+    fn check_float<F: Float>(
+        input: (f128, f128),
         _actual: F,
         expected: F,
         _ulp: &mut u32,

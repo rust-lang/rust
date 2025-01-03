@@ -20,7 +20,7 @@ macro_rules! musl_rand_benches {
     (
         fn_name: $fn_name:ident,
         attrs: [$($attr:meta),*],
-        fn_extra: $skip_on_i586:expr,
+        fn_extra: ($skip_on_i586:expr, $musl_fn:expr),
     ) => {
         paste::paste! {
             $(#[$attr])*
@@ -28,15 +28,15 @@ macro_rules! musl_rand_benches {
                 type Op = libm_test::op::$fn_name::Routine;
 
                 #[cfg(feature = "build-musl")]
-                let musl_extra = MuslExtra {
-                    musl_fn: Some(musl_math_sys::$fn_name as libm_test::OpCFn<Op>),
-                    skip_on_i586: $skip_on_i586
+                let musl_extra = MuslExtra::<libm_test::OpCFn<Op>> {
+                    musl_fn: $musl_fn,
+                    skip_on_i586: $skip_on_i586,
                 };
 
                 #[cfg(not(feature = "build-musl"))]
                 let musl_extra = MuslExtra {
                     musl_fn: None,
-                    skip_on_i586: $skip_on_i586
+                    skip_on_i586: $skip_on_i586,
                 };
 
                 bench_one::<Op>(c, musl_extra);
@@ -67,7 +67,10 @@ where
             break;
         }
 
-        let musl_res = input.call(musl_extra.musl_fn.unwrap());
+        let Some(musl_fn) = musl_extra.musl_fn else {
+            continue;
+        };
+        let musl_res = input.call(musl_fn);
         let crate_res = input.call(Op::ROUTINE);
 
         crate_res.validate(musl_res, input, &ctx).context(name).unwrap();
@@ -91,15 +94,16 @@ where
     // Don't test against musl if it is not available
     #[cfg(feature = "build-musl")]
     {
-        let musl_fn = musl_extra.musl_fn.unwrap();
-        group.bench_function("musl", |b| {
-            b.iter(|| {
-                let f = black_box(musl_fn);
-                for input in benchvec.iter().copied() {
-                    input.call(f);
-                }
-            })
-        });
+        if let Some(musl_fn) = musl_extra.musl_fn {
+            group.bench_function("musl", |b| {
+                b.iter(|| {
+                    let f = black_box(musl_fn);
+                    for input in benchvec.iter().copied() {
+                        input.call(f);
+                    }
+                })
+            });
+        }
     }
 }
 
@@ -107,9 +111,16 @@ libm_macros::for_each_function! {
     callback: musl_rand_benches,
     skip: [],
     fn_extra: match MACRO_FN_NAME {
-        // FIXME(correctness): wrong result on i586
-        exp10 | exp10f | exp2 | exp2f => true,
-        _ => false
+        // We pass a tuple of `(skip_on_i586, musl_fn)`
+
+        // FIXME(correctness): exp functions have the wrong result on i586
+        exp10 | exp10f | exp2 | exp2f => (true, Some(musl_math_sys::MACRO_FN_NAME)),
+
+        // Musl does not provide `f16` and `f128` functions
+        copysignf16 | copysignf128 | fabsf16 | fabsf128 => (false, None),
+
+        // By default we never skip (false) and always have a musl function available
+        _ => (false, Some(musl_math_sys::MACRO_FN_NAME))
     }
 }
 

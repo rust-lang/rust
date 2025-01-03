@@ -138,8 +138,12 @@ macro_rules! impl_extensive_input {
     };
 }
 
+#[cfg(f16_enabled)]
+impl_extensive_input!(f16);
 impl_extensive_input!(f32);
 impl_extensive_input!(f64);
+#[cfg(f128_enabled)]
+impl_extensive_input!(f128);
 
 /// Create a test case iterator for extensive inputs.
 pub fn get_test_cases<Op>(

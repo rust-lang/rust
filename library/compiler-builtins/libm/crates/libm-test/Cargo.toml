@@ -8,7 +8,7 @@ publish = false
 default = ["unstable-float"]
 
 # Propagated from libm because this affects which functions we test.
-unstable-float = ["libm/unstable-float"]
+unstable-float = ["libm/unstable-float", "rug?/nightly-float"]
 
 # Generate tests which are random inputs and the outputs are calculated with
 # musl libc.

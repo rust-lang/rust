@@ -5,6 +5,13 @@ use std::sync::LazyLock;
 
 const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])] = &[
     (
+        // `fn(f16) -> f16`
+        FloatTy::F16,
+        Signature { args: &[Ty::F16], returns: &[Ty::F16] },
+        None,
+        &["fabsf16"],
+    ),
+    (
         // `fn(f32) -> f32`
         FloatTy::F32,
         Signature { args: &[Ty::F32], returns: &[Ty::F32] },
@@ -27,6 +34,20 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
             "log10", "log1p", "log2", "log", "rint", "round", "sin", "sinh", "sqrt", "tan", "tanh",
             "tgamma", "trunc", "y0", "y1",
         ],
+    ),
+    (
+        // `fn(f128) -> f128`
+        FloatTy::F128,
+        Signature { args: &[Ty::F128], returns: &[Ty::F128] },
+        None,
+        &["fabsf128"],
+    ),
+    (
+        // `(f16, f16) -> f16`
+        FloatTy::F16,
+        Signature { args: &[Ty::F16, Ty::F16], returns: &[Ty::F16] },
+        None,
+        &["copysignf16"],
     ),
     (
         // `(f32, f32) -> f32`
@@ -63,6 +84,13 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
             "pow",
             "remainder",
         ],
+    ),
+    (
+        // `(f128, f128) -> f128`
+        FloatTy::F128,
+        Signature { args: &[Ty::F128, Ty::F128], returns: &[Ty::F128] },
+        None,
+        &["copysignf128"],
     ),
     (
         // `(f32, f32, f32) -> f32`

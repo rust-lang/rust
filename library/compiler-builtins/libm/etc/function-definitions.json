@@ -136,6 +136,20 @@
         ],
         "type": "f32"
     },
+    "copysignf128": {
+        "sources": [
+            "src/math/copysignf128.rs",
+            "src/math/generic/copysign.rs"
+        ],
+        "type": "f128"
+    },
+    "copysignf16": {
+        "sources": [
+            "src/math/copysignf16.rs",
+            "src/math/generic/copysign.rs"
+        ],
+        "type": "f16"
+    },
     "cos": {
         "sources": [
             "src/libm_helper.rs",
@@ -257,6 +271,20 @@
             "src/math/generic/fabs.rs"
         ],
         "type": "f32"
+    },
+    "fabsf128": {
+        "sources": [
+            "src/math/fabsf128.rs",
+            "src/math/generic/fabs.rs"
+        ],
+        "type": "f128"
+    },
+    "fabsf16": {
+        "sources": [
+            "src/math/fabsf16.rs",
+            "src/math/generic/fabs.rs"
+        ],
+        "type": "f16"
     },
     "fdim": {
         "sources": [

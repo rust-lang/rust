@@ -303,6 +303,12 @@ where
 
 impl_float!(f32, f64);
 
+#[cfg(f16_enabled)]
+impl_float!(f16);
+
+#[cfg(f128_enabled)]
+impl_float!(f128);
+
 /* trait implementations for compound types */
 
 /// Implement `CheckOutput` for combinations of types.

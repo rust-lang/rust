@@ -137,6 +137,7 @@ libm_macros::for_each_function! {
         fmod, fmodf, frexp, frexpf, ilogb, ilogbf, jn, jnf, ldexp, ldexpf,
         lgamma_r, lgammaf_r, modf, modff, nextafter, nextafterf, pow,powf,
         remquo, remquof, scalbn, scalbnf, sincos, sincosf, yn, ynf,
+        copysignf16, copysignf128, fabsf16, fabsf128,
     ],
     fn_extra: match MACRO_FN_NAME {
         // Remap function names that are different between mpfr and libm
@@ -157,10 +158,8 @@ libm_macros::for_each_function! {
 /// Implement unary functions that don't have a `_round` version
 macro_rules! impl_no_round {
     // Unary matcher
-    ($($fn_name:ident, $rug_name:ident;)*) => {
+    ($($fn_name:ident => $rug_name:ident;)*) => {
         paste::paste! {
-            // Implement for both f32 and f64
-            $( impl_no_round!{ @inner_unary [< $fn_name f >], $rug_name } )*
             $( impl_no_round!{ @inner_unary $fn_name, $rug_name } )*
         }
     };
@@ -183,33 +182,34 @@ macro_rules! impl_no_round {
 }
 
 impl_no_round! {
-    fabs, abs_mut;
-    ceil, ceil_mut;
-    floor, floor_mut;
-    rint, round_even_mut; // FIXME: respect rounding mode
-    round, round_mut;
-    trunc, trunc_mut;
+    ceil => ceil_mut;
+    ceilf => ceil_mut;
+    fabs => abs_mut;
+    fabsf => abs_mut;
+    floor => floor_mut;
+    floorf => floor_mut;
+    rint => round_even_mut; // FIXME: respect rounding mode
+    rintf => round_even_mut; // FIXME: respect rounding mode
+    round => round_mut;
+    roundf => round_mut;
+    trunc => trunc_mut;
+    truncf => trunc_mut;
+}
+
+#[cfg(f16_enabled)]
+impl_no_round! {
+    fabsf16 => abs_mut;
+}
+
+#[cfg(f128_enabled)]
+impl_no_round! {
+    fabsf128 => abs_mut;
 }
 
 /// Some functions are difficult to do in a generic way. Implement them here.
 macro_rules! impl_op_for_ty {
     ($fty:ty, $suffix:literal) => {
         paste::paste! {
-            impl MpOp for crate::op::[<copysign $suffix>]::Routine {
-                type MpTy = (MpFloat, MpFloat);
-
-                fn new_mp() -> Self::MpTy {
-                    (new_mpfloat::<Self::FTy>(), new_mpfloat::<Self::FTy>())
-                }
-
-                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
-                    this.0.assign(input.0);
-                    this.1.assign(input.1);
-                    this.0.copysign_mut(&this.1);
-                    prep_retval::<Self::RustRet>(&mut this.0, Ordering::Equal)
-                }
-            }
-
             impl MpOp for crate::op::[<modf $suffix>]::Routine {
                 type MpTy = (MpFloat, MpFloat);
 
@@ -379,8 +379,37 @@ macro_rules! impl_op_for_ty {
     };
 }
 
+/// Version of `impl_op_for_ty` with only functions that have `f16` and `f128` implementations.
+macro_rules! impl_op_for_ty_all {
+    ($fty:ty, $suffix:literal) => {
+        paste::paste! {
+            impl MpOp for crate::op::[<copysign $suffix>]::Routine {
+                type MpTy = (MpFloat, MpFloat);
+
+                fn new_mp() -> Self::MpTy {
+                    (new_mpfloat::<Self::FTy>(), new_mpfloat::<Self::FTy>())
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    this.0.assign(input.0);
+                    this.1.assign(input.1);
+                    this.0.copysign_mut(&this.1);
+                    prep_retval::<Self::RustRet>(&mut this.0, Ordering::Equal)
+                }
+            }
+        }
+    };
+}
+
 impl_op_for_ty!(f32, "f");
 impl_op_for_ty!(f64, "");
+
+#[cfg(f16_enabled)]
+impl_op_for_ty_all!(f16, "f16");
+impl_op_for_ty_all!(f32, "f");
+impl_op_for_ty_all!(f64, "");
+#[cfg(f128_enabled)]
+impl_op_for_ty_all!(f128, "f128");
 
 // `lgamma_r` is not a simple suffix so we can't use the above macro.
 impl MpOp for crate::op::lgamma_r::Routine {
