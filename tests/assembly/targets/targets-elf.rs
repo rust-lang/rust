@@ -261,6 +261,9 @@
 //@ revisions: m68k_unknown_linux_gnu
 //@ [m68k_unknown_linux_gnu] compile-flags: --target m68k-unknown-linux-gnu
 //@ [m68k_unknown_linux_gnu] needs-llvm-components: m68k
+//@ revisions: m68k_unknown_none_elf
+//@ [m68k_unknown_none_elf] compile-flags: --target m68k-unknown-none-elf
+//@ [m68k_unknown_none_elf] needs-llvm-components: m68k
 //@ revisions: mips64_openwrt_linux_musl
 //@ [mips64_openwrt_linux_musl] compile-flags: --target mips64-openwrt-linux-musl
 //@ [mips64_openwrt_linux_musl] needs-llvm-components: mips

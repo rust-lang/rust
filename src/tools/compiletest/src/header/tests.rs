@@ -617,6 +617,7 @@ fn is_big_endian() {
         ("x86_64-unknown-linux-gnu", false),
         ("bpfeb-unknown-none", true),
         ("m68k-unknown-linux-gnu", true),
+        ("m68k-unknown-none-elf", true),
         ("aarch64_be-unknown-linux-gnu", true),
         ("powerpc64-unknown-linux-gnu", true),
     ];
