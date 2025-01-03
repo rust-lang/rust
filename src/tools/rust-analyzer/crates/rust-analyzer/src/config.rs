@@ -2126,7 +2126,10 @@ impl Config {
     fn target_dir_from_config(&self, source_root: Option<SourceRootId>) -> Option<Utf8PathBuf> {
         self.cargo_targetDir(source_root).as_ref().and_then(|target_dir| match target_dir {
             TargetDirectory::UseSubdirectory(true) => {
-                Some(Utf8PathBuf::from("target/rust-analyzer"))
+                let env_var = env::var("CARGO_TARGET_DIR").ok();
+                let mut path = Utf8PathBuf::from(env_var.as_deref().unwrap_or("target"));
+                path.push("rust-analyzer");
+                Some(path)
             }
             TargetDirectory::UseSubdirectory(false) => None,
             TargetDirectory::Directory(dir) => Some(dir.clone()),
