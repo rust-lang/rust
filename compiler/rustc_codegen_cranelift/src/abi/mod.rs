@@ -67,7 +67,7 @@ pub(crate) fn conv_to_call_conv(sess: &Session, c: Conv, default_call_conv: Call
 
         Conv::Msp430Intr
         | Conv::PtxKernel
-        | Conv::AmdgpuKernel
+        | Conv::GpuKernel
         | Conv::AvrInterrupt
         | Conv::AvrNonBlockingInterrupt => {
             unreachable!("tried to use {c:?} call conv which only exists on an unsupported target");

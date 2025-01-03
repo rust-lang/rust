@@ -19,7 +19,7 @@
     abi_ptx,
     abi_msp430_interrupt,
     abi_avr_interrupt,
-    abi_amdgpu_kernel,
+    abi_gpu_kernel,
     abi_x86_interrupt,
     abi_riscv_interrupt,
     abi_c_cmse_nonsecure_call,
@@ -40,7 +40,7 @@ fn ptx_ptr(f: extern "ptx-kernel" fn()) {
 }
 extern "ptx-kernel" {}
 //~^ ERROR is not a supported ABI
-extern "amdgpu-kernel" fn amdgpu() {}
+extern "gpu-kernel" fn gpu() {}
 //~^ ERROR is not a supported ABI
 
 extern "aapcs" fn aapcs() {}

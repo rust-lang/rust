@@ -45,7 +45,9 @@ pub enum ExternAbi {
     PtxKernel,
     Msp430Interrupt,
     X86Interrupt,
-    AmdgpuKernel,
+    /// An entry-point function called by the GPU's host
+    // FIXME: should not be callable from Rust on GPU targets, is for host's use only
+    GpuKernel,
     EfiApi,
     AvrInterrupt,
     AvrNonBlockingInterrupt,
@@ -123,7 +125,7 @@ const AbiDatas: &[AbiData] = &[
     AbiData { abi: Abi::PtxKernel, name: "ptx-kernel" },
     AbiData { abi: Abi::Msp430Interrupt, name: "msp430-interrupt" },
     AbiData { abi: Abi::X86Interrupt, name: "x86-interrupt" },
-    AbiData { abi: Abi::AmdgpuKernel, name: "amdgpu-kernel" },
+    AbiData { abi: Abi::GpuKernel, name: "gpu-kernel" },
     AbiData { abi: Abi::EfiApi, name: "efiapi" },
     AbiData { abi: Abi::AvrInterrupt, name: "avr-interrupt" },
     AbiData { abi: Abi::AvrNonBlockingInterrupt, name: "avr-non-blocking-interrupt" },
@@ -237,9 +239,9 @@ pub fn is_stable(name: &str) -> Result<(), AbiDisabled> {
             feature: sym::abi_x86_interrupt,
             explain: "x86-interrupt ABI is experimental and subject to change",
         }),
-        "amdgpu-kernel" => Err(AbiDisabled::Unstable {
-            feature: sym::abi_amdgpu_kernel,
-            explain: "amdgpu-kernel ABI is experimental and subject to change",
+        "gpu-kernel" => Err(AbiDisabled::Unstable {
+            feature: sym::abi_gpu_kernel,
+            explain: "gpu-kernel ABI is experimental and subject to change",
         }),
         "avr-interrupt" | "avr-non-blocking-interrupt" => Err(AbiDisabled::Unstable {
             feature: sym::abi_avr_interrupt,
@@ -295,7 +297,7 @@ impl Abi {
             PtxKernel => 19,
             Msp430Interrupt => 20,
             X86Interrupt => 21,
-            AmdgpuKernel => 22,
+            GpuKernel => 22,
             EfiApi => 23,
             AvrInterrupt => 24,
             AvrNonBlockingInterrupt => 25,

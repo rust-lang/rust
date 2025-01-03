@@ -5,7 +5,6 @@ C-unwind
 Rust
 aapcs
 aapcs-unwind
-amdgpu-kernel
 avr-interrupt
 avr-non-blocking-interrupt
 cdecl
@@ -13,6 +12,7 @@ cdecl-unwind
 efiapi
 fastcall
 fastcall-unwind
+gpu-kernel
 msp430-interrupt
 ptx-kernel
 riscv-interrupt-m

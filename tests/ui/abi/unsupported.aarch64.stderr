@@ -15,7 +15,7 @@ LL | extern "ptx-kernel" {}
    | ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: the calling convention "aapcs" is not supported on this target
-  --> $DIR/unsupported.rs:49:17
+  --> $DIR/unsupported.rs:52:17
    |
 LL | fn aapcs_ptr(f: extern "aapcs" fn()) {
    |                 ^^^^^^^^^^^^^^^^^^^
@@ -24,7 +24,7 @@ LL | fn aapcs_ptr(f: extern "aapcs" fn()) {
    = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
 
 error[E0570]: `"aapcs"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:62:1
+  --> $DIR/unsupported.rs:65:1
    |
 LL | extern "aapcs" {}
    | ^^^^^^^^^^^^^^^^^
@@ -144,16 +144,16 @@ LL | extern "C-cmse-nonsecure-entry" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: `"ptx-kernel"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:36:1
+  --> $DIR/unsupported.rs:34:1
    |
 LL | extern "ptx-kernel" fn ptx() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0570]: `"amdgpu-kernel"` is not a supported ABI for the current target
+error[E0570]: `"gpu-kernel"` is not a supported ABI for the current target
   --> $DIR/unsupported.rs:43:1
    |
-LL | extern "amdgpu-kernel" fn amdgpu() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | extern "gpu-kernel" fn gpu() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: `"aapcs"` is not a supported ABI for the current target
   --> $DIR/unsupported.rs:46:1

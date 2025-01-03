@@ -104,11 +104,11 @@ error[E0570]: `"ptx-kernel"` is not a supported ABI for the current target
 LL | extern "ptx-kernel" fn ptx() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0570]: `"amdgpu-kernel"` is not a supported ABI for the current target
+error[E0570]: `"gpu-kernel"` is not a supported ABI for the current target
   --> $DIR/unsupported.rs:43:1
    |
-LL | extern "amdgpu-kernel" fn amdgpu() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | extern "gpu-kernel" fn gpu() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: `"aapcs"` is not a supported ABI for the current target
   --> $DIR/unsupported.rs:46:1

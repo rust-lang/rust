@@ -547,7 +547,7 @@ pub enum Conv {
 
     PtxKernel,
 
-    AmdgpuKernel,
+    GpuKernel,
 
     X86Fastcall,
     X86Intr,
@@ -868,7 +868,7 @@ impl FromStr for Conv {
             "X86VectorCall" => Ok(Conv::X86VectorCall),
             "X86_64SysV" => Ok(Conv::X86_64SysV),
             "X86_64Win64" => Ok(Conv::X86_64Win64),
-            "AmdgpuKernel" => Ok(Conv::AmdgpuKernel),
+            "GpuKernel" => Ok(Conv::GpuKernel),
             "AvrInterrupt" => Ok(Conv::AvrInterrupt),
             "AvrNonBlockingInterrupt" => Ok(Conv::AvrNonBlockingInterrupt),
             "RiscvInterrupt(machine)" => {
