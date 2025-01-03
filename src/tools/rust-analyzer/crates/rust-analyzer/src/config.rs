@@ -2129,8 +2129,7 @@ impl Config {
                 Some(Utf8PathBuf::from("target/rust-analyzer"))
             }
             TargetDirectory::UseSubdirectory(false) => None,
-            TargetDirectory::Directory(dir) if dir.is_relative() => Some(dir.clone()),
-            TargetDirectory::Directory(_) => None,
+            TargetDirectory::Directory(dir) => Some(dir.clone()),
         })
     }
 
