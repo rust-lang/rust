@@ -42,12 +42,12 @@ fn test_fmt_debug_of_raw_pointers() {
     check_fmt(plain as *const i32, "$HEX");
 
     let slice = &mut [200, 300, 400][..];
-    check_fmt(slice as *mut [i32], "$HEX");
-    check_fmt(slice as *const [i32], "$HEX");
+    check_fmt(slice as *mut [i32], "Pointer { addr: $HEX, metadata: 3 }");
+    check_fmt(slice as *const [i32], "Pointer { addr: $HEX, metadata: 3 }");
 
     let vtable = &mut 500 as &mut dyn Debug;
-    check_fmt(vtable as *mut dyn Debug, "$HEX");
-    check_fmt(vtable as *const dyn Debug, "$HEX");
+    check_fmt(vtable as *mut dyn Debug, "Pointer { addr: $HEX, metadata: DynMetadata($HEX) }");
+    check_fmt(vtable as *const dyn Debug, "Pointer { addr: $HEX, metadata: DynMetadata($HEX) }");
 }
 
 #[test]
