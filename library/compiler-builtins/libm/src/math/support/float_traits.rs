@@ -123,22 +123,13 @@ pub trait Float:
         )
     }
 
-    fn abs(self) -> Self {
-        let abs_mask = !Self::SIGN_MASK;
-        Self::from_bits(self.to_bits() & abs_mask)
-    }
+    fn abs(self) -> Self;
+
+    /// Returns a number composed of the magnitude of self and the sign of sign.
+    fn copysign(self, other: Self) -> Self;
 
     /// Returns (normalized exponent, normalized significand)
     fn normalize(significand: Self::Int) -> (i32, Self::Int);
-
-    /// Returns a number composed of the magnitude of self and the sign of sign.
-    fn copysign(self, other: Self) -> Self {
-        let mut x = self.to_bits();
-        let y = other.to_bits();
-        x &= !Self::SIGN_MASK;
-        x |= y & Self::SIGN_MASK;
-        Self::from_bits(x)
-    }
 
     /// Returns a number that represents the sign of self.
     fn signum(self) -> Self {
@@ -205,6 +196,26 @@ macro_rules! float_impl {
             }
             fn from_bits(a: Self::Int) -> Self {
                 Self::from_bits(a)
+            }
+            fn abs(self) -> Self {
+                cfg_if! {
+                    // FIXME(msrv): `abs` is available in `core` starting with 1.85.
+                    if #[cfg(feature = "unstable-intrinsics")] {
+                        self.abs()
+                    } else {
+                        super::super::generic::fabs(self)
+                    }
+                }
+            }
+            fn copysign(self, other: Self) -> Self {
+                cfg_if! {
+                    // FIXME(msrv): `copysign` is available in `core` starting with 1.85.
+                    if #[cfg(feature = "unstable-intrinsics")] {
+                        self.copysign(other)
+                    } else {
+                        super::super::generic::copysign(self, other)
+                    }
+                }
             }
             fn normalize(significand: Self::Int) -> (i32, Self::Int) {
                 let shift = significand.leading_zeros().wrapping_sub(Self::EXP_BITS);

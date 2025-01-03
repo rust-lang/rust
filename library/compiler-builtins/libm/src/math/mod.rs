@@ -83,11 +83,18 @@ pub mod support;
 #[cfg(not(feature = "unstable-test-support"))]
 mod support;
 
+cfg_if! {
+    if #[cfg(feature = "unstable-test-support")] {
+        pub mod generic;
+    } else {
+        mod generic;
+    }
+}
+
 // Private modules
 mod arch;
 mod expo2;
 mod fenv;
-mod generic;
 mod k_cos;
 mod k_cosf;
 mod k_expo2;

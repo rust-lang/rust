@@ -70,6 +70,14 @@ impl Float for f8 {
         Self(a)
     }
 
+    fn abs(self) -> Self {
+        libm::generic::fabs(self)
+    }
+
+    fn copysign(self, other: Self) -> Self {
+        libm::generic::copysign(self, other)
+    }
+
     fn normalize(_significand: Self::Int) -> (i32, Self::Int) {
         unimplemented!()
     }
