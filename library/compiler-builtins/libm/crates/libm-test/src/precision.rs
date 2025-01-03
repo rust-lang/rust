@@ -4,57 +4,109 @@
 use core::f32;
 
 use CheckBasis::{Mpfr, Musl};
-use Identifier as Id;
+use {BaseName as Bn, Identifier as Id};
 
 use crate::{BaseName, CheckBasis, CheckCtx, Float, Identifier, Int, TestResult};
 
 /// Type implementing [`IgnoreCase`].
 pub struct SpecialCase;
 
-/// Default ULP allowed to differ from musl (note that musl itself may not be accurate).
-const MUSL_DEFAULT_ULP: u32 = 2;
-
-/// Default ULP allowed to differ from multiprecision (i.e. infinite) results.
-const MP_DEFAULT_ULP: u32 = 1;
-
 /// ULP allowed to differ from the results returned by a test basis.
 ///
 /// Note that these results were obtained using 400M rounds of random inputs, which
 /// is not a value used by default.
 pub fn default_ulp(ctx: &CheckCtx) -> u32 {
-    match (&ctx.basis, ctx.fn_ident) {
-        // Overrides that apply to either basis
-        // FMA is expected to be infinite precision.
-        (_, Id::Fma | Id::Fmaf) => 0,
-        (_, Id::J0 | Id::J0f | Id::J1 | Id::J1f | Id::Y0 | Id::Y0f | Id::Y1 | Id::Y1f) => 800_000,
-        (_, Id::Jn | Id::Jnf | Id::Yn | Id::Ynf) => 1000,
-        (_, Id::Erfc | Id::Erfcf) => 4,
+    // ULP compared to the infinite (MPFR) result.
+    let mut ulp = match ctx.base_name {
+        // Operations that require exact results. This list should correlate with what we
+        // have documented at <https://doc.rust-lang.org/std/primitive.f32.html>.
+        Bn::Ceil
+        | Bn::Copysign
+        | Bn::Fabs
+        | Bn::Fdim
+        | Bn::Floor
+        | Bn::Fma
+        | Bn::Fmax
+        | Bn::Fmin
+        | Bn::Fmod
+        | Bn::Frexp
+        | Bn::Ldexp
+        | Bn::Modf
+        | Bn::Nextafter
+        | Bn::Remainder
+        | Bn::Remquo
+        | Bn::Rint
+        | Bn::Round
+        | Bn::Scalbn
+        | Bn::Sqrt
+        | Bn::Trunc => 0,
 
-        // Overrides for musl
-        #[cfg(x86_no_sse)]
-        (Musl, Id::Asinh | Id::Asinhf) => 6,
-        #[cfg(not(target_pointer_width = "64"))]
-        (Musl, Id::Exp10 | Id::Exp10f) => 4,
-        (Musl, Id::Lgamma | Id::LgammaR | Id::Lgammaf | Id::LgammafR) => 400,
-        (Musl, Id::Sincosf) => 500,
-        (Musl, Id::Tanh | Id::Tanhf) => 4,
-        (Musl, Id::Tgamma) => 20,
+        // Operations that aren't required to be exact, but our implementations are.
+        Bn::Cbrt if ctx.fn_ident != Id::Cbrt => 0,
+        Bn::Ilogb => 0,
+        Bn::Tgamma if ctx.fn_ident != Id::Tgamma => 0,
 
-        // Overrides for MPFR
-        (Mpfr, Id::Acosh) => 4,
-        (Mpfr, Id::Acoshf) => 4,
-        (Mpfr, Id::Asinh | Id::Asinhf) => 2,
-        (Mpfr, Id::Atanh | Id::Atanhf) => 2,
-        (Mpfr, Id::Exp10 | Id::Exp10f) => 6,
-        (Mpfr, Id::Lgamma | Id::LgammaR | Id::Lgammaf | Id::LgammafR) => 16,
-        (Mpfr, Id::Sinh | Id::Sinhf) => 2,
-        (Mpfr, Id::Tanh | Id::Tanhf) => 2,
-        (Mpfr, Id::Tgamma) => 20,
+        // Bessel functions have large inaccuracies.
+        Bn::J0 | Bn::J1 | Bn::Y0 | Bn::Y1 => 8_000_000,
+        Bn::Jn | Bn::Yn => 1_000,
 
-        // Defaults
-        (Musl, _) => MUSL_DEFAULT_ULP,
-        (Mpfr, _) => MP_DEFAULT_ULP,
+        // For all other operations, specify our implementation's worst case precision.
+        Bn::Acos => 1,
+        Bn::Acosh => 4,
+        Bn::Asin => 1,
+        Bn::Asinh => 2,
+        Bn::Atan => 1,
+        Bn::Atan2 => 1,
+        Bn::Atanh => 2,
+        Bn::Cbrt => 1,
+        Bn::Cos => 1,
+        Bn::Cosh => 1,
+        Bn::Erf => 1,
+        Bn::Erfc => 4,
+        Bn::Exp => 1,
+        Bn::Exp10 => 6,
+        Bn::Exp2 => 1,
+        Bn::Expm1 => 1,
+        Bn::Hypot => 1,
+        Bn::Lgamma | Bn::LgammaR => 16,
+        Bn::Log => 1,
+        Bn::Log10 => 1,
+        Bn::Log1p => 1,
+        Bn::Log2 => 1,
+        Bn::Pow => 1,
+        Bn::Sin => 1,
+        Bn::Sincos => 1,
+        Bn::Sinh => 2,
+        Bn::Tan => 1,
+        Bn::Tanh => 2,
+        Bn::Tgamma => 20,
+    };
+
+    // There are some cases where musl's approximation is less accurate than ours. For these
+    // cases, increase the ULP.
+    if ctx.basis == Musl {
+        match ctx.base_name {
+            Bn::Cosh => ulp = 2,
+            Bn::Exp10 if usize::BITS < 64 => ulp = 4,
+            Bn::Lgamma | Bn::LgammaR => ulp = 400,
+            Bn::Tanh => ulp = 4,
+            _ if ctx.fn_ident == Id::Sincosf => ulp = 500,
+            _ if ctx.fn_ident == Id::Tgamma => ulp = 20,
+            _ => (),
+        }
     }
+
+    // In some cases, our implementation is less accurate than musl on i586.
+    if cfg!(x86_no_sse) {
+        match ctx.fn_ident {
+            Id::Log1p | Id::Log1pf => ulp = 2,
+            Id::Round => ulp = 1,
+            Id::Tan => ulp = 2,
+            _ => (),
+        }
+    }
+
+    ulp
 }
 
 /// Don't run further validation on this test case.
