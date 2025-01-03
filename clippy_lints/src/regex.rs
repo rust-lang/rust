@@ -97,7 +97,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
-    #[clippy::version = "1.83.0"]
+    #[clippy::version = "1.84.0"]
     pub REGEX_CREATION_IN_LOOPS,
     perf,
     "regular expression compilation performed in a loop"
