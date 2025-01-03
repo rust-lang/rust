@@ -1771,12 +1771,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let parent_node = self.tcx.hir().parent_iter(expr.hir_id).find(|(_, node)| {
             !matches!(node, hir::Node::Expr(hir::Expr { kind: hir::ExprKind::AddrOf(..), .. }))
         });
-        let Some((
-            _,
-            hir::Node::LetStmt(hir::LetStmt { ty: Some(ty), .. })
-            | hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(ty, _, _), .. }),
-        )) = parent_node
-        else {
+        let Some((_, hir::Node::LetStmt(hir::LetStmt { ty: Some(ty), .. }))) = parent_node else {
             return;
         };
         if let hir::TyKind::Array(_, ct) = ty.peel_refs().kind {
