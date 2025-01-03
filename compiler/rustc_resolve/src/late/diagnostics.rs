@@ -3039,6 +3039,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         &mut self,
         lifetime_refs: Vec<MissingLifetime>,
         function_param_lifetimes: Option<(Vec<MissingLifetime>, Vec<ElisionFnParameter>)>,
+        in_precise_capture: bool,
     ) -> ErrorGuaranteed {
         let num_lifetimes: usize = lifetime_refs.iter().map(|lt| lt.count).sum();
         let spans: Vec<_> = lifetime_refs.iter().map(|lt| lt.span).collect();
@@ -3050,14 +3051,22 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             "missing lifetime specifier{}",
             pluralize!(num_lifetimes)
         );
-        self.add_missing_lifetime_specifiers_label(
-            &mut err,
-            lifetime_refs,
-            function_param_lifetimes,
-        );
+        if in_precise_capture {
+            err.note(
+                "cannot capture elided lifetime with `use<'_>` when there is no lifetime in scope \
+                 to capture",
+            );
+        } else {
+            self.add_missing_lifetime_specifiers_label(
+                &mut err,
+                lifetime_refs,
+                function_param_lifetimes,
+            );
+        }
         err.emit()
     }
 
+    #[tracing::instrument(skip(self, err), level = "info")]
     fn add_missing_lifetime_specifiers_label(
         &mut self,
         err: &mut Diag<'_>,
