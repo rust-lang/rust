@@ -1,5 +1,8 @@
 //! Collection of assertions and assertion-related helpers.
 
+#[cfg(test)]
+mod tests;
+
 use std::panic;
 use std::path::Path;
 
