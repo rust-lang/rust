@@ -854,12 +854,8 @@ impl<'a> Builder<'a> {
         match kind {
             Kind::Build => describe!(
                 compile::Std,
-                // FIXME(#135022): `compile::Assemble` **must** come before `compile::Rustc` after
-                // `PathSet` also permits prefix-matching, because `compile::Rustc` can consume the
-                // `"compiler"` path filter first, causing `compile::Assemble` to no longer run when
-                // the user writes `./x build compiler --stage 0`.
-                compile::Assemble,
                 compile::Rustc,
+                compile::Assemble,
                 compile::CodegenBackend,
                 compile::StartupObjects,
                 tool::BuildManifest,
