@@ -154,7 +154,7 @@ where
         // not all zero so that the result is correctly rounded below.
         let sticky = product_low << (bits - shift) != zero;
         product_low =
-            product_high << (bits - shift) | product_low >> shift | (sticky as u32).cast();
+            (product_high << (bits - shift)) | (product_low >> shift) | (sticky as u32).cast();
         product_high >>= shift;
     } else {
         // Result is normal before rounding; insert the exponent.

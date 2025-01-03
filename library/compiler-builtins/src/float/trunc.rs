@@ -96,7 +96,7 @@ where
             } else {
                 src_zero
             };
-            let denormalized_significand: F::Int = significand >> shift | sticky;
+            let denormalized_significand: F::Int = (significand >> shift) | sticky;
             abs_result = (denormalized_significand >> (F::SIG_BITS - R::SIG_BITS)).cast();
             let round_bits = denormalized_significand & round_mask;
             // Round to nearest

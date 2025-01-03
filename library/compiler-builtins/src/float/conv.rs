@@ -42,7 +42,7 @@ mod int_to_float {
     fn m_adj<F: Float>(m_base: F::Int, dropped_bits: F::Int) -> F::Int {
         // Branchlessly extract a `1` if rounding up should happen, 0 otherwise
         // This accounts for rounding to even.
-        let adj = (dropped_bits - (dropped_bits >> (F::BITS - 1) & !m_base)) >> (F::BITS - 1);
+        let adj = (dropped_bits - ((dropped_bits >> (F::BITS - 1)) & !m_base)) >> (F::BITS - 1);
 
         // Add one when we need to round up. Break ties to even.
         m_base + adj
@@ -129,7 +129,7 @@ mod int_to_float {
         let m_base: u32 = (i_m >> shift_f_lt_i::<u64, f32>()) as u32;
         // The entire lower half of `i` will be truncated (masked portion), plus the
         // next `EXP_BITS` bits.
-        let adj = (i_m >> f32::EXP_BITS | i_m & 0xFFFF) as u32;
+        let adj = ((i_m >> f32::EXP_BITS) | i_m & 0xFFFF) as u32;
         let m = m_adj::<f32>(m_base, adj);
         let e = if i == 0 { 0 } else { exp::<u64, f32>(n) - 1 };
         repr::<f32>(e, m)
@@ -187,7 +187,7 @@ mod int_to_float {
         let m_base: u64 = (i_m >> shift_f_lt_i::<u128, f64>()) as u64;
         // The entire lower half of `i` will be truncated (masked portion), plus the
         // next `EXP_BITS` bits.
-        let adj = (i_m >> f64::EXP_BITS | i_m & 0xFFFF_FFFF) as u64;
+        let adj = ((i_m >> f64::EXP_BITS) | i_m & 0xFFFF_FFFF) as u64;
         let m = m_adj::<f64>(m_base, adj);
         let e = if i == 0 { 0 } else { exp::<u128, f64>(n) - 1 };
         repr::<f64>(e, m)
@@ -377,7 +377,7 @@ where
         };
 
         // Set the implicit 1-bit.
-        let m: I::UnsignedInt = I::UnsignedInt::ONE << (I::BITS - 1) | m_base;
+        let m: I::UnsignedInt = (I::UnsignedInt::ONE << (I::BITS - 1)) | m_base;
 
         // Shift based on the exponent and bias.
         let s: u32 = (foobar) - u32::cast_from(fbits >> F::SIG_BITS);

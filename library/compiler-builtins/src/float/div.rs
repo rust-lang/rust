@@ -261,7 +261,7 @@ where
         let c_hw = c_hw::<F>();
 
         // Check that the top bit is set, i.e. value is within `[1, 2)`.
-        debug_assert!(b_uq1_hw & one_hw << (HalfRep::<F>::BITS - 1) > zero_hw);
+        debug_assert!(b_uq1_hw & (one_hw << (HalfRep::<F>::BITS - 1)) > zero_hw);
 
         // b >= 1, thus an upper bound for 3/4 + 1/sqrt(2) - b/2 is about 0.9572,
         // so x0 fits to UQ0.HW without wrapping.

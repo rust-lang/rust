@@ -143,9 +143,9 @@ where
 
         // If the addition carried up, we need to right-shift the result and
         // adjust the exponent:
-        if a_significand & implicit_bit << 4 != MinInt::ZERO {
+        if a_significand & (implicit_bit << 4) != MinInt::ZERO {
             let sticky = F::Int::from_bool(a_significand & one != MinInt::ZERO);
-            a_significand = a_significand >> 1 | sticky;
+            a_significand = (a_significand >> 1) | sticky;
             a_exponent += 1;
         }
     }
@@ -161,7 +161,7 @@ where
         let shift = (1 - a_exponent).cast();
         let sticky =
             F::Int::from_bool((a_significand << bits.wrapping_sub(shift).cast()) != MinInt::ZERO);
-        a_significand = a_significand >> shift.cast() | sticky;
+        a_significand = (a_significand >> shift.cast()) | sticky;
         a_exponent = 0;
     }
 
@@ -170,7 +170,7 @@ where
     let round_guard_sticky: i32 = a_significand_i32 & 0x7;
 
     // Shift the significand into place, and mask off the implicit bit.
-    let mut result = a_significand >> 3 & significand_mask;
+    let mut result = (a_significand >> 3) & significand_mask;
 
     // Insert the exponent and sign.
     result |= a_exponent.cast() << significand_bits;
