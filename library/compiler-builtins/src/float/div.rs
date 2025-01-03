@@ -107,7 +107,7 @@ where
 
     let significand_bits = F::SIG_BITS;
     // Saturated exponent, representing infinity
-    let exponent_sat: F::Int = F::EXP_MAX.cast();
+    let exponent_sat: F::Int = F::EXP_SAT.cast();
 
     let exponent_bias = F::EXP_BIAS;
     let implicit_bit = F::IMPLICIT_BIT;

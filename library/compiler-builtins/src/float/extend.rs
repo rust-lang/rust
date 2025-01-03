@@ -26,7 +26,7 @@ where
 
     let dst_bits = R::BITS;
     let dst_sign_bits = R::SIG_BITS;
-    let dst_inf_exp = R::EXP_MAX;
+    let dst_inf_exp = R::EXP_SAT;
     let dst_exp_bias = R::EXP_BIAS;
     let dst_min_normal = R::IMPLICIT_BIT;
 

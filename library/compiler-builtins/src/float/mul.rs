@@ -14,7 +14,7 @@ where
 
     let bits = F::BITS;
     let significand_bits = F::SIG_BITS;
-    let max_exponent = F::EXP_MAX;
+    let max_exponent = F::EXP_SAT;
 
     let exponent_bias = F::EXP_BIAS;
 

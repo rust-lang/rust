@@ -29,7 +29,7 @@ where
     let dst_zero = R::Int::ZERO;
     let dst_one = R::Int::ONE;
     let dst_bits = R::BITS;
-    let dst_inf_exp = R::EXP_MAX;
+    let dst_inf_exp = R::EXP_SAT;
     let dst_exp_bias = R::EXP_BIAS;
 
     let underflow_exponent: F::Int = (src_exp_bias + 1 - dst_exp_bias).cast();

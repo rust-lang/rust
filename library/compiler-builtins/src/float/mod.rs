@@ -51,11 +51,14 @@ pub(crate) trait Float:
     /// The bitwidth of the exponent.
     const EXP_BITS: u32 = Self::BITS - Self::SIG_BITS - 1;
 
-    /// The saturated value of the exponent (infinite representation), in the rightmost postiion.
-    const EXP_MAX: u32 = (1 << Self::EXP_BITS) - 1;
+    /// The saturated (maximum bitpattern) value of the exponent, i.e. the infinite
+    /// representation.
+    ///
+    /// This is in the rightmost position, use `EXP_MASK` for the shifted value.
+    const EXP_SAT: u32 = (1 << Self::EXP_BITS) - 1;
 
     /// The exponent bias value.
-    const EXP_BIAS: u32 = Self::EXP_MAX >> 1;
+    const EXP_BIAS: u32 = Self::EXP_SAT >> 1;
 
     /// A mask for the sign bit.
     const SIGN_MASK: Self::Int;

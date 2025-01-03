@@ -14,7 +14,7 @@ where
 
     let bits = F::BITS.cast();
     let significand_bits = F::SIG_BITS;
-    let max_exponent = F::EXP_MAX;
+    let max_exponent = F::EXP_SAT;
 
     let implicit_bit = F::IMPLICIT_BIT;
     let significand_mask = F::SIG_MASK;
