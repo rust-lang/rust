@@ -292,6 +292,34 @@ macro_rules! impl_op_for_ty {
                 }
             }
 
+            // `ldexp` and `scalbn` are the same for binary floating point, so just forward all
+            // methods.
+            impl MpOp for crate::op::[<ldexp $suffix>]::Routine {
+                type MpTy = <crate::op::[<scalbn $suffix>]::Routine as MpOp>::MpTy;
+
+                fn new_mp() -> Self::MpTy {
+                    <crate::op::[<scalbn $suffix>]::Routine as MpOp>::new_mp()
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    <crate::op::[<scalbn $suffix>]::Routine as MpOp>::run(this, input)
+                }
+            }
+
+            impl MpOp for crate::op::[<scalbn $suffix>]::Routine {
+                type MpTy = MpFloat;
+
+                fn new_mp() -> Self::MpTy {
+                    new_mpfloat::<Self::FTy>()
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    this.assign(input.0);
+                    *this <<= input.1;
+                    prep_retval::<Self::FTy>(this, Ordering::Equal)
+                }
+            }
+
             impl MpOp for crate::op::[<sincos $suffix>]::Routine {
                 type MpTy = (MpFloat, MpFloat);
 

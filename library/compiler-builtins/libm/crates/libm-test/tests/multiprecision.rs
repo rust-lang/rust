@@ -54,12 +54,8 @@ libm_macros::for_each_function! {
         // FIXME: MPFR tests needed
         ilogb,
         ilogbf,
-        ldexp,
-        ldexpf,
         remquo,
         remquof,
-        scalbn,
-        scalbnf,
 
         // FIXME: test needed, see
         // https://github.com/rust-lang/libm/pull/311#discussion_r1818273392
