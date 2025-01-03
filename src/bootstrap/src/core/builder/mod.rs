@@ -273,14 +273,15 @@ impl PathSet {
     /// See `tests.rs` for examples.
     fn intersection_removing_matches(&self, needles: &mut [CLIStepPath], module: Kind) -> PathSet {
         let mut check = |p| {
+            let mut result = false;
             for n in needles.iter_mut() {
                 let matched = Self::check(p, &n.path, module);
                 if matched {
                     n.will_be_executed = true;
-                    return true;
+                    result = true;
                 }
             }
-            false
+            result
         };
         match self {
             PathSet::Set(set) => PathSet::Set(set.iter().filter(|&p| check(p)).cloned().collect()),
