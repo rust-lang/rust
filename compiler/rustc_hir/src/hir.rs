@@ -3387,7 +3387,7 @@ impl<'hir> FnRetTy<'hir> {
         }
     }
 
-    pub fn get_infer_ret_ty(&self) -> Option<&'hir Ty<'hir>> {
+    pub fn is_suggestable_infer_ty(&self) -> Option<&'hir Ty<'hir>> {
         if let Self::Return(ty) = self {
             if ty.is_suggestable_infer_ty() {
                 return Some(*ty);
