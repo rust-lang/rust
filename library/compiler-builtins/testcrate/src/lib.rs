@@ -178,18 +178,18 @@ fn fuzz_float_step<F: Float>(rng: &mut Xoshiro128StarStar, f: &mut F) {
     let sign = (rng32 & 1) != 0;
 
     // exponent fuzzing. Only 4 bits for the selector needed.
-    let ones = (F::Int::ONE << F::EXPONENT_BITS) - F::Int::ONE;
-    let r0 = (rng32 >> 1) % F::EXPONENT_BITS;
-    let r1 = (rng32 >> 5) % F::EXPONENT_BITS;
+    let ones = (F::Int::ONE << F::EXP_BITS) - F::Int::ONE;
+    let r0 = (rng32 >> 1) % F::EXP_BITS;
+    let r1 = (rng32 >> 5) % F::EXP_BITS;
     // custom rotate shift. Note that `F::Int` is unsigned, so we can shift right without smearing
     // the sign bit.
     let mask = if r1 == 0 {
         ones.wrapping_shr(r0)
     } else {
         let tmp = ones.wrapping_shr(r0);
-        (tmp.wrapping_shl(r1) | tmp.wrapping_shr(F::EXPONENT_BITS - r1)) & ones
+        (tmp.wrapping_shl(r1) | tmp.wrapping_shr(F::EXP_BITS - r1)) & ones
     };
-    let mut exp = (f.to_bits() & F::EXPONENT_MASK) >> F::SIGNIFICAND_BITS;
+    let mut exp = (f.to_bits() & F::EXP_MASK) >> F::SIG_BITS;
     match (rng32 >> 9) % 4 {
         0 => exp |= mask,
         1 => exp &= mask,
@@ -197,9 +197,9 @@ fn fuzz_float_step<F: Float>(rng: &mut Xoshiro128StarStar, f: &mut F) {
     }
 
     // significand fuzzing
-    let mut sig = f.to_bits() & F::SIGNIFICAND_MASK;
+    let mut sig = f.to_bits() & F::SIG_MASK;
     fuzz_step(rng, &mut sig);
-    sig &= F::SIGNIFICAND_MASK;
+    sig &= F::SIG_MASK;
 
     *f = F::from_parts(sign, exp, sig);
 }
@@ -209,22 +209,22 @@ macro_rules! float_edge_cases {
         for exponent in [
             F::Int::ZERO,
             F::Int::ONE,
-            F::Int::ONE << (F::EXPONENT_BITS / 2),
-            (F::Int::ONE << (F::EXPONENT_BITS - 1)) - F::Int::ONE,
-            F::Int::ONE << (F::EXPONENT_BITS - 1),
-            (F::Int::ONE << (F::EXPONENT_BITS - 1)) + F::Int::ONE,
-            (F::Int::ONE << F::EXPONENT_BITS) - F::Int::ONE,
+            F::Int::ONE << (F::EXP_BITS / 2),
+            (F::Int::ONE << (F::EXP_BITS - 1)) - F::Int::ONE,
+            F::Int::ONE << (F::EXP_BITS - 1),
+            (F::Int::ONE << (F::EXP_BITS - 1)) + F::Int::ONE,
+            (F::Int::ONE << F::EXP_BITS) - F::Int::ONE,
         ]
         .iter()
         {
             for significand in [
                 F::Int::ZERO,
                 F::Int::ONE,
-                F::Int::ONE << (F::SIGNIFICAND_BITS / 2),
-                (F::Int::ONE << (F::SIGNIFICAND_BITS - 1)) - F::Int::ONE,
-                F::Int::ONE << (F::SIGNIFICAND_BITS - 1),
-                (F::Int::ONE << (F::SIGNIFICAND_BITS - 1)) + F::Int::ONE,
-                (F::Int::ONE << F::SIGNIFICAND_BITS) - F::Int::ONE,
+                F::Int::ONE << (F::SIG_BITS / 2),
+                (F::Int::ONE << (F::SIG_BITS - 1)) - F::Int::ONE,
+                F::Int::ONE << (F::SIG_BITS - 1),
+                (F::Int::ONE << (F::SIG_BITS - 1)) + F::Int::ONE,
+                (F::Int::ONE << F::SIG_BITS) - F::Int::ONE,
             ]
             .iter()
             {

@@ -19,8 +19,8 @@ macro_rules! pow {
                 use compiler_builtins::float::Float;
                 fuzz_float_2(N, |x: $f, y: $f| {
                     if !(Float::is_subnormal(x) || Float::is_subnormal(y) || x.is_nan()) {
-                        let n = y.to_bits() & !<$f as Float>::SIGNIFICAND_MASK;
-                        let n = (n as <$f as Float>::SignedInt) >> <$f as Float>::SIGNIFICAND_BITS;
+                        let n = y.to_bits() & !<$f as Float>::SIG_MASK;
+                        let n = (n as <$f as Float>::SignedInt) >> <$f as Float>::SIG_BITS;
                         let n = n as i32;
                         let tmp0: $f = x.powi(n);
                         let tmp1: $f = $fn(x, n);

@@ -13,20 +13,20 @@ where
     let zero = F::Int::ZERO;
 
     let bits = F::BITS;
-    let significand_bits = F::SIGNIFICAND_BITS;
-    let max_exponent = F::EXPONENT_MAX;
+    let significand_bits = F::SIG_BITS;
+    let max_exponent = F::EXP_MAX;
 
-    let exponent_bias = F::EXPONENT_BIAS;
+    let exponent_bias = F::EXP_BIAS;
 
     let implicit_bit = F::IMPLICIT_BIT;
-    let significand_mask = F::SIGNIFICAND_MASK;
-    let sign_bit = F::SIGN_MASK as F::Int;
+    let significand_mask = F::SIG_MASK;
+    let sign_bit = F::SIGN_MASK;
     let abs_mask = sign_bit - one;
-    let exponent_mask = F::EXPONENT_MASK;
+    let exponent_mask = F::EXP_MASK;
     let inf_rep = exponent_mask;
     let quiet_bit = implicit_bit >> 1;
     let qnan_rep = exponent_mask | quiet_bit;
-    let exponent_bits = F::EXPONENT_BITS;
+    let exponent_bits = F::EXP_BITS;
 
     let a_rep = a.to_bits();
     let b_rep = b.to_bits();

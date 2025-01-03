@@ -32,7 +32,7 @@ mod int_to_float {
     /// Usually 1 is subtracted from this function's result, so that a mantissa with the implicit
     /// bit set can be added back later.
     fn exp<I: Int, F: Float<Int: CastFrom<u32>>>(n: u32) -> F::Int {
-        F::Int::cast_from(F::EXPONENT_BIAS - 1 + I::BITS - n)
+        F::Int::cast_from(F::EXP_BIAS - 1 + I::BITS - n)
     }
 
     /// Adjust a mantissa with dropped bits to perform correct rounding.
@@ -54,17 +54,17 @@ mod int_to_float {
     /// value to cancel it out.
     fn repr<F: Float>(e: F::Int, m: F::Int) -> F::Int {
         // + rather than | so the mantissa can overflow into the exponent
-        (e << F::SIGNIFICAND_BITS) + m
+        (e << F::SIG_BITS) + m
     }
 
     /// Shift distance from a left-aligned integer to a smaller float.
     fn shift_f_lt_i<I: Int, F: Float>() -> u32 {
-        (I::BITS - F::BITS) + F::EXPONENT_BITS
+        (I::BITS - F::BITS) + F::EXP_BITS
     }
 
     /// Shift distance from an integer with `n` leading zeros to a smaller float.
     fn shift_f_gt_i<I: Int, F: Float>(n: u32) -> u32 {
-        F::SIGNIFICAND_BITS - I::BITS + 1 + n
+        F::SIG_BITS - I::BITS + 1 + n
     }
 
     /// Perform a signed operation as unsigned, then add the sign back.
@@ -85,9 +85,9 @@ mod int_to_float {
         }
         let n = i.leading_zeros();
         // Mantissa with implicit bit set (significant bits)
-        let m_base = (i << n) >> f32::EXPONENT_BITS;
+        let m_base = (i << n) >> f32::EXP_BITS;
         // Bits that will be dropped (insignificant bits)
-        let adj = (i << n) << (f32::SIGNIFICAND_BITS + 1);
+        let adj = (i << n) << (f32::SIG_BITS + 1);
         let m = m_adj::<f32>(m_base, adj);
         let e = exp::<u32, f32>(n) - 1;
         repr::<f32>(e, m)
@@ -116,7 +116,7 @@ mod int_to_float {
         let m = (i as u64) << (shift_f_gt_i::<u32, f128>(n) - 64);
         let e = exp::<u32, f128>(n) as u64 - 1;
         // High 64 bits of f128 representation.
-        let h = (e << (f128::SIGNIFICAND_BITS - 64)) + m;
+        let h = (e << (f128::SIG_BITS - 64)) + m;
 
         // Shift back to the high bits, the rest of the mantissa will always be 0.
         (h as u128) << 64
@@ -128,8 +128,8 @@ mod int_to_float {
         // Mantissa with implicit bit set
         let m_base: u32 = (i_m >> shift_f_lt_i::<u64, f32>()) as u32;
         // The entire lower half of `i` will be truncated (masked portion), plus the
-        // next `EXPONENT_BITS` bits.
-        let adj = (i_m >> f32::EXPONENT_BITS | i_m & 0xFFFF) as u32;
+        // next `EXP_BITS` bits.
+        let adj = (i_m >> f32::EXP_BITS | i_m & 0xFFFF) as u32;
         let m = m_adj::<f32>(m_base, adj);
         let e = if i == 0 { 0 } else { exp::<u64, f32>(n) - 1 };
         repr::<f32>(e, m)
@@ -141,8 +141,8 @@ mod int_to_float {
         }
         let n = i.leading_zeros();
         // Mantissa with implicit bit set
-        let m_base = (i << n) >> f64::EXPONENT_BITS;
-        let adj = (i << n) << (f64::SIGNIFICAND_BITS + 1);
+        let m_base = (i << n) >> f64::EXP_BITS;
+        let adj = (i << n) << (f64::SIG_BITS + 1);
         let m = m_adj::<f64>(m_base, adj);
         let e = exp::<u64, f64>(n) - 1;
         repr::<f64>(e, m)
@@ -167,7 +167,7 @@ mod int_to_float {
 
         // Within the upper `F::BITS`, everything except for the signifcand
         // gets truncated
-        let d1: u32 = (i_m >> (u128::BITS - f32::BITS - f32::SIGNIFICAND_BITS - 1)).cast();
+        let d1: u32 = (i_m >> (u128::BITS - f32::BITS - f32::SIG_BITS - 1)).cast();
 
         // The entire rest of `i_m` gets truncated. Zero the upper `F::BITS` then just
         // check if it is nonzero.
@@ -186,8 +186,8 @@ mod int_to_float {
         // Mantissa with implicit bit set
         let m_base: u64 = (i_m >> shift_f_lt_i::<u128, f64>()) as u64;
         // The entire lower half of `i` will be truncated (masked portion), plus the
-        // next `EXPONENT_BITS` bits.
-        let adj = (i_m >> f64::EXPONENT_BITS | i_m & 0xFFFF_FFFF) as u64;
+        // next `EXP_BITS` bits.
+        let adj = (i_m >> f64::EXP_BITS | i_m & 0xFFFF_FFFF) as u64;
         let m = m_adj::<f64>(m_base, adj);
         let e = if i == 0 { 0 } else { exp::<u128, f64>(n) - 1 };
         repr::<f64>(e, m)
@@ -200,8 +200,8 @@ mod int_to_float {
         }
         let n = i.leading_zeros();
         // Mantissa with implicit bit set
-        let m_base = (i << n) >> f128::EXPONENT_BITS;
-        let adj = (i << n) << (f128::SIGNIFICAND_BITS + 1);
+        let m_base = (i << n) >> f128::EXP_BITS;
+        let adj = (i << n) << (f128::SIG_BITS + 1);
         let m = m_adj::<f128>(m_base, adj);
         let e = exp::<u128, f128>(n) - 1;
         repr::<f128>(e, m)
@@ -362,29 +362,29 @@ where
     F::Int: CastFrom<u32>,
     u32: CastFrom<F::Int>,
 {
-    let int_max_exp = F::EXPONENT_BIAS + I::MAX.ilog2() + 1;
-    let foobar = F::EXPONENT_BIAS + I::UnsignedInt::BITS - 1;
+    let int_max_exp = F::EXP_BIAS + I::MAX.ilog2() + 1;
+    let foobar = F::EXP_BIAS + I::UnsignedInt::BITS - 1;
 
     if fbits < F::ONE.to_bits() {
         // < 0 gets rounded to 0
         I::ZERO
-    } else if fbits < F::Int::cast_from(int_max_exp) << F::SIGNIFICAND_BITS {
+    } else if fbits < F::Int::cast_from(int_max_exp) << F::SIG_BITS {
         // >= 1, < integer max
         let m_base = if I::UnsignedInt::BITS >= F::Int::BITS {
-            I::UnsignedInt::cast_from(fbits) << (I::BITS - F::SIGNIFICAND_BITS - 1)
+            I::UnsignedInt::cast_from(fbits) << (I::BITS - F::SIG_BITS - 1)
         } else {
-            I::UnsignedInt::cast_from(fbits >> (F::SIGNIFICAND_BITS - I::BITS + 1))
+            I::UnsignedInt::cast_from(fbits >> (F::SIG_BITS - I::BITS + 1))
         };
 
         // Set the implicit 1-bit.
         let m: I::UnsignedInt = I::UnsignedInt::ONE << (I::BITS - 1) | m_base;
 
         // Shift based on the exponent and bias.
-        let s: u32 = (foobar) - u32::cast_from(fbits >> F::SIGNIFICAND_BITS);
+        let s: u32 = (foobar) - u32::cast_from(fbits >> F::SIG_BITS);
 
         let unsigned = m >> s;
         map_inbounds(I::from_unsigned(unsigned))
-    } else if fbits <= F::EXPONENT_MASK {
+    } else if fbits <= F::EXP_MASK {
         // >= max (incl. inf)
         out_of_bounds()
     } else {
