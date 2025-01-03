@@ -20,6 +20,37 @@ fn test_pointer_formats_data_pointer() {
 }
 
 #[test]
+fn test_fmt_debug_of_raw_pointers() {
+    use core::fmt::Debug;
+
+    fn check_fmt<T: Debug>(t: T, expected: &str) {
+        use std::sync::LazyLock;
+
+        use regex::Regex;
+
+        static ADDR_REGEX: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(r"0x[0-9a-fA-F]+").unwrap());
+
+        let formatted = format!("{:?}", t);
+        let normalized = ADDR_REGEX.replace_all(&formatted, "$$HEX");
+
+        assert_eq!(normalized, expected);
+    }
+
+    let plain = &mut 100;
+    check_fmt(plain as *mut i32, "$HEX");
+    check_fmt(plain as *const i32, "$HEX");
+
+    let slice = &mut [200, 300, 400][..];
+    check_fmt(slice as *mut [i32], "$HEX");
+    check_fmt(slice as *const [i32], "$HEX");
+
+    let vtable = &mut 500 as &mut dyn Debug;
+    check_fmt(vtable as *mut dyn Debug, "$HEX");
+    check_fmt(vtable as *const dyn Debug, "$HEX");
+}
+
+#[test]
 fn test_estimated_capacity() {
     assert_eq!(format_args!("").estimated_capacity(), 0);
     assert_eq!(format_args!("{}", { "" }).estimated_capacity(), 0);
