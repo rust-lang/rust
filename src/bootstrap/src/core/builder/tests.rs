@@ -122,6 +122,26 @@ fn test_intersection() {
 }
 
 #[test]
+fn test_resolve_parent_and_subpaths() {
+    let set = |paths: &[&str]| {
+        PathSet::Set(paths.into_iter().map(|p| TaskPath { path: p.into(), kind: None }).collect())
+    };
+
+    let mut command_paths = vec![
+        CLIStepPath::from(PathBuf::from("src/tools/miri")),
+        CLIStepPath::from(PathBuf::from("src/tools/miri/cargo-miri")),
+    ];
+
+    let library_set = set(&["src/tools/miri", "src/tools/miri/cargo-miri"]);
+    library_set.intersection_removing_matches(&mut command_paths, Kind::Build);
+
+    assert_eq!(command_paths, vec![
+        CLIStepPath::from(PathBuf::from("src/tools/miri")).will_be_executed(true),
+        CLIStepPath::from(PathBuf::from("src/tools/miri/cargo-miri")).will_be_executed(true),
+    ]);
+}
+
+#[test]
 fn validate_path_remap() {
     let build = Build::new(configure("test", &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]));
 
