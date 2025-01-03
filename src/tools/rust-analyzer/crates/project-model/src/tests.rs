@@ -18,18 +18,25 @@ use crate::{
 };
 
 fn load_cargo(file: &str) -> (CrateGraph, ProcMacroPaths) {
-    load_cargo_with_overrides(file, CfgOverrides::default())
+    let project_workspace = load_workspace_from_metadata(file);
+    to_crate_graph(project_workspace, &mut Default::default())
 }
 
 fn load_cargo_with_overrides(
     file: &str,
     cfg_overrides: CfgOverrides,
 ) -> (CrateGraph, ProcMacroPaths) {
+    let project_workspace =
+        ProjectWorkspace { cfg_overrides, ..load_workspace_from_metadata(file) };
+    to_crate_graph(project_workspace, &mut Default::default())
+}
+
+fn load_workspace_from_metadata(file: &str) -> ProjectWorkspace {
     let meta: Metadata = get_test_json_file(file);
     let manifest_path =
         ManifestPath::try_from(AbsPathBuf::try_from(meta.workspace_root.clone()).unwrap()).unwrap();
     let cargo_workspace = CargoWorkspace::new(meta, manifest_path, Default::default());
-    let project_workspace = ProjectWorkspace {
+    ProjectWorkspace {
         kind: ProjectWorkspaceKind::Cargo {
             cargo: cargo_workspace,
             build_scripts: WorkspaceBuildScripts::default(),
@@ -37,13 +44,12 @@ fn load_cargo_with_overrides(
             error: None,
             set_test: true,
         },
-        cfg_overrides,
+        cfg_overrides: Default::default(),
         sysroot: Sysroot::empty(),
         rustc_cfg: Vec::new(),
         toolchain: None,
         target_layout: Err("target_data_layout not loaded".into()),
-    };
-    to_crate_graph(project_workspace)
+    }
 }
 
 fn load_rust_project(file: &str) -> (CrateGraph, ProcMacroPaths) {
@@ -58,7 +64,7 @@ fn load_rust_project(file: &str) -> (CrateGraph, ProcMacroPaths) {
         target_layout: Err(Arc::from("test has no data layout")),
         cfg_overrides: Default::default(),
     };
-    to_crate_graph(project_workspace)
+    to_crate_graph(project_workspace, &mut Default::default())
 }
 
 fn get_test_json_file<T: DeserializeOwned>(file: &str) -> T {
@@ -127,13 +133,15 @@ fn rooted_project_json(data: ProjectJsonData) -> ProjectJson {
     ProjectJson::new(None, base, data)
 }
 
-fn to_crate_graph(project_workspace: ProjectWorkspace) -> (CrateGraph, ProcMacroPaths) {
+fn to_crate_graph(
+    project_workspace: ProjectWorkspace,
+    file_map: &mut FxHashMap<AbsPathBuf, FileId>,
+) -> (CrateGraph, ProcMacroPaths) {
     project_workspace.to_crate_graph(
         &mut {
-            let mut counter = 0;
-            move |_path| {
-                counter += 1;
-                Some(FileId::from_raw(counter))
+            |path| {
+                let len = file_map.len() + 1;
+                Some(*file_map.entry(path.to_path_buf()).or_insert(FileId::from_raw(len as u32)))
             }
         },
         &Default::default(),
@@ -219,6 +227,33 @@ fn rust_project_is_proc_macro_has_proc_macro_dep() {
     // Assert that the project crate with `is_proc_macro` has a dependency
     // on the proc_macro sysroot crate.
     crate_data.dependencies.iter().find(|&dep| dep.name.deref() == "proc_macro").unwrap();
+}
+
+#[test]
+fn crate_graph_dedup_identical() {
+    let (mut crate_graph, proc_macros) = load_cargo("regex-metadata.json");
+
+    let (d_crate_graph, mut d_proc_macros) = (crate_graph.clone(), proc_macros.clone());
+
+    crate_graph.extend(d_crate_graph.clone(), &mut d_proc_macros);
+    assert!(crate_graph.iter().eq(d_crate_graph.iter()));
+    assert_eq!(proc_macros, d_proc_macros);
+}
+
+#[test]
+fn crate_graph_dedup() {
+    let mut file_map = Default::default();
+
+    let ripgrep_workspace = load_workspace_from_metadata("ripgrep-metadata.json");
+    let (mut crate_graph, _proc_macros) = to_crate_graph(ripgrep_workspace, &mut file_map);
+    assert_eq!(crate_graph.iter().count(), 71);
+
+    let regex_workspace = load_workspace_from_metadata("regex-metadata.json");
+    let (regex_crate_graph, mut regex_proc_macros) = to_crate_graph(regex_workspace, &mut file_map);
+    assert_eq!(regex_crate_graph.iter().count(), 50);
+
+    crate_graph.extend(regex_crate_graph, &mut regex_proc_macros);
+    assert_eq!(crate_graph.iter().count(), 108);
 }
 
 #[test]
