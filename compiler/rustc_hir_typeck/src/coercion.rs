@@ -666,7 +666,12 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
                 // Dyn-compatibility violations or miscellaneous.
                 Err(err) => {
-                    self.err_ctxt().report_selection_error(obligation.clone(), &obligation, &err);
+                    let guar = self.err_ctxt().report_selection_error(
+                        obligation.clone(),
+                        &obligation,
+                        &err,
+                    );
+                    self.fcx.set_tainted_by_errors(guar);
                     // Treat this like an obligation and follow through
                     // with the unsizing - the lack of a coercion should
                     // be silent, as it causes a type mismatch later.
