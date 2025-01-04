@@ -339,7 +339,7 @@ unsafe impl Allocator for Global {
     }
 }
 
-/// The allocator for unique pointers.
+/// The allocator for `Box`.
 #[cfg(all(not(no_global_oom_handling), not(test)))]
 #[lang = "exchange_malloc"]
 #[inline]
