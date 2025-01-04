@@ -1005,11 +1005,25 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         if let Some(source_scope) = scope {
             self.source_scope = source_scope;
         }
+
         if self.tcx.intrinsic(self.def_id).is_some_and(|i| i.must_be_overridden) {
             let source_info = self.source_info(rustc_span::DUMMY_SP);
             self.cfg.terminate(block, source_info, TerminatorKind::Unreachable);
             self.cfg.start_new_block().unit()
         } else {
+            // Ensure we don't silently codegen functions with fake bodies.
+            match self.tcx.hir_node(self.hir_id) {
+                hir::Node::Item(hir::Item {
+                    kind: hir::ItemKind::Fn { has_body: false, .. },
+                    ..
+                }) => {
+                    self.tcx.dcx().span_delayed_bug(
+                        expr_span,
+                        format!("fn item without body has reached MIR building: {:?}", self.def_id),
+                    );
+                }
+                _ => {}
+            }
             self.expr_into_dest(Place::return_place(), block, expr_id)
         }
     }

@@ -920,7 +920,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ItemKind::Fn(box Fn { defaultness, sig, generics, body }) => {
                 self.check_defaultness(item.span, *defaultness);
 
-                if body.is_none() {
+                let is_intrinsic =
+                    item.attrs.iter().any(|a| a.name_or_empty() == sym::rustc_intrinsic);
+                if body.is_none() && !is_intrinsic {
                     self.dcx().emit_err(errors::FnWithoutBody {
                         span: item.span,
                         replace_span: self.ending_semi_or_hi(item.span),

@@ -795,7 +795,7 @@ fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
             }
         }
 
-        hir::ItemKind::Fn(..) => {
+        hir::ItemKind::Fn { .. } => {
             tcx.ensure().generics_of(def_id);
             tcx.ensure().type_of(def_id);
             tcx.ensure().predicates_of(def_id);
@@ -1325,7 +1325,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, ty::PolyFn
             generics,
             ..
         })
-        | Item(hir::Item { kind: ItemKind::Fn(sig, generics, _), .. }) => {
+        | Item(hir::Item { kind: ItemKind::Fn { sig, generics, .. }, .. }) => {
             lower_fn_sig_recovering_infer_ret_ty(&icx, sig, generics, def_id)
         }
 

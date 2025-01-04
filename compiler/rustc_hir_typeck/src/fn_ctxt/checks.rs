@@ -2041,7 +2041,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn parent_item_span(&self, id: HirId) -> Option<Span> {
         let node = self.tcx.hir_node_by_def_id(self.tcx.hir().get_parent_item(id).def_id);
         match node {
-            Node::Item(&hir::Item { kind: hir::ItemKind::Fn(_, _, body_id), .. })
+            Node::Item(&hir::Item { kind: hir::ItemKind::Fn { body: body_id, .. }, .. })
             | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(_, body_id), .. }) => {
                 let body = self.tcx.hir().body(body_id);
                 if let ExprKind::Block(block, _) = &body.value.kind {
@@ -2189,7 +2189,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 }
                             }
                             hir::Node::Item(item) => {
-                                if let hir::ItemKind::Fn(..) = item.kind {
+                                if let hir::ItemKind::Fn { .. } = item.kind {
                                     break;
                                 }
                             }

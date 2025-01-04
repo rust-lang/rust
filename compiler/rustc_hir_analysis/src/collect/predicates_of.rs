@@ -969,7 +969,7 @@ pub(super) fn const_conditions<'tcx>(
     {
         Node::Item(item) => match item.kind {
             hir::ItemKind::Impl(impl_) => (impl_.generics, None, false),
-            hir::ItemKind::Fn(_, generics, _) => (generics, None, false),
+            hir::ItemKind::Fn { generics, .. } => (generics, None, false),
             hir::ItemKind::Trait(_, _, generics, supertraits, _) => {
                 (generics, Some((item.owner_id.def_id, supertraits)), false)
             }

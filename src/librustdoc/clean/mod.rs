@@ -2810,7 +2810,7 @@ fn clean_maybe_renamed_item<'tcx>(
             }),
             ItemKind::Macro(_, macro_kind) => clean_proc_macro(item, &mut name, macro_kind, cx),
             // proc macros can have a name set by attributes
-            ItemKind::Fn(ref sig, generics, body_id) => {
+            ItemKind::Fn { ref sig, generics, body: body_id, .. } => {
                 clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
             }
             ItemKind::Trait(_, _, generics, bounds, item_ids) => {

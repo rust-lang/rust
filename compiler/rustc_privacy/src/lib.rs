@@ -654,7 +654,7 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
             }
             hir::ItemKind::Const(..)
             | hir::ItemKind::Static(..)
-            | hir::ItemKind::Fn(..)
+            | hir::ItemKind::Fn { .. }
             | hir::ItemKind::TyAlias(..) => {
                 if let Some(item_ev) = item_ev {
                     self.reach(item.owner_id.def_id, item_ev).generics().predicates().ty();

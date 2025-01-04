@@ -630,7 +630,7 @@ impl<T> Trait<T> for X {
         let callable_scope = matches!(
             body_owner,
             Some(
-                hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(..), .. })
+                hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { .. }, .. })
                     | hir::Node::TraitItem(hir::TraitItem { kind: hir::TraitItemKind::Fn(..), .. })
                     | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }),
             )
