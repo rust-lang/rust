@@ -336,6 +336,24 @@ pub fn path_segment(name_ref: ast::NameRef) -> ast::PathSegment {
     ast_from_text(&format!("type __ = {name_ref};"))
 }
 
+/// Type and expressions/patterns path differ in whether they require `::` before generic arguments.
+/// Type paths allow them but they are often omitted, while expression/pattern paths require them.
+pub fn generic_ty_path_segment(
+    name_ref: ast::NameRef,
+    generic_args: impl IntoIterator<Item = ast::GenericArg>,
+) -> ast::PathSegment {
+    let mut generic_args = generic_args.into_iter();
+    let first_generic_arg = generic_args.next();
+    quote! {
+        PathSegment {
+            #name_ref
+            GenericArgList {
+                [<] #first_generic_arg #([,] " " #generic_args)* [>]
+            }
+        }
+    }
+}
+
 pub fn path_segment_ty(type_ref: ast::Type, trait_ref: Option<ast::PathType>) -> ast::PathSegment {
     let text = match trait_ref {
         Some(trait_ref) => format!("fn f(x: <{type_ref} as {trait_ref}>) {{}}"),
@@ -814,7 +832,7 @@ pub fn match_arm_list(arms: impl IntoIterator<Item = ast::MatchArm>) -> ast::Mat
 }
 
 pub fn where_pred(
-    path: ast::Path,
+    path: ast::Type,
     bounds: impl IntoIterator<Item = ast::TypeBound>,
 ) -> ast::WherePred {
     let bounds = bounds.into_iter().join(" + ");
