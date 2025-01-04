@@ -10,7 +10,7 @@ document.
 
 ## Rust 1.84
 
-Current stable, released 2024-01-09
+Current stable, released 2025-01-09
 
 [View all 84 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2024-10-03T21%3A23%3A58Z..2024-11-14T17%3A41%3A37Z+base%3Amaster)
 
