@@ -1397,7 +1397,7 @@ pub fn get_enclosing_block<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Optio
     enclosing_node.and_then(|node| match node {
         Node::Block(block) => Some(block),
         Node::Item(&Item {
-            kind: ItemKind::Fn(_, _, eid),
+            kind: ItemKind::Fn { body: eid, .. },
             ..
         })
         | Node::ImplItem(&ImplItem {
@@ -2565,7 +2565,7 @@ pub fn is_in_test_function(tcx: TyCtxt<'_>, id: HirId) -> bool {
             // function scope
             .any(|(_id, node)| {
                 if let Node::Item(item) = node {
-                    if let ItemKind::Fn(_, _, _) = item.kind {
+                    if let ItemKind::Fn { .. } = item.kind {
                         // Note that we have sorted the item names in the visitor,
                         // so the binary_search gets the same as `contains`, but faster.
                         return names.binary_search(&item.ident.name).is_ok();
@@ -2722,7 +2722,7 @@ impl<'tcx> ExprUseCtxt<'tcx> {
             }) => ExprUseNode::ConstStatic(owner_id),
 
             Node::Item(&Item {
-                kind: ItemKind::Fn(..),
+                kind: ItemKind::Fn { .. },
                 owner_id,
                 ..
             })

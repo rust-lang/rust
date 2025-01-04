@@ -634,7 +634,7 @@ impl<'a> State<'a> {
                 self.word(";");
                 self.end(); // end the outer cbox
             }
-            hir::ItemKind::Fn(ref sig, generics, body) => {
+            hir::ItemKind::Fn { sig, generics, body, .. } => {
                 self.head("");
                 self.print_fn(
                     sig.decl,

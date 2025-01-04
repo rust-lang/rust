@@ -253,7 +253,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
                     HirItem::Const(..) => ("ItemConst", LABELS_CONST),
 
                     // A function declaration
-                    HirItem::Fn(..) => ("ItemFn", LABELS_FN),
+                    HirItem::Fn { .. } => ("ItemFn", LABELS_FN),
 
                     // // A module
                     HirItem::Mod(..) => ("ItemMod", LABELS_HIR_ONLY),

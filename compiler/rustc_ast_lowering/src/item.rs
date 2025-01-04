@@ -233,7 +233,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         header: this.lower_fn_header(*header, hir::Safety::Safe),
                         span: this.lower_span(*fn_sig_span),
                     };
-                    hir::ItemKind::Fn(sig, generics, body_id)
+                    hir::ItemKind::Fn { sig, generics, body: body_id }
                 })
             }
             ItemKind::Mod(_, mod_kind) => match mod_kind {
@@ -435,11 +435,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             ItemKind::Delegation(box delegation) => {
                 let delegation_results = self.lower_delegation(delegation, id);
-                hir::ItemKind::Fn(
-                    delegation_results.sig,
-                    delegation_results.generics,
-                    delegation_results.body_id,
-                )
+                hir::ItemKind::Fn {
+                    sig: delegation_results.sig,
+                    generics: delegation_results.generics,
+                    body: delegation_results.body_id,
+                }
             }
             ItemKind::MacCall(..) | ItemKind::DelegationMac(..) => {
                 panic!("macros should have been expanded by now")

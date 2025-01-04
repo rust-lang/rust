@@ -1646,7 +1646,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         };
 
         let Some(ItemLike::Item(Item {
-            kind: ItemKind::Fn(FnSig { decl, .. }, generics, _), ..
+            kind: ItemKind::Fn { sig: FnSig { decl, .. }, generics, .. },
+            ..
         })) = item
         else {
             bug!("should be a function item");

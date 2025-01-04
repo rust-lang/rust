@@ -464,7 +464,7 @@ fn convert_module_item_kind(value: &ItemKind<'_>) -> SourceItemOrderingModuleIte
         ItemKind::Use(..) => Use,
         ItemKind::Static(..) => Static,
         ItemKind::Const(..) => Const,
-        ItemKind::Fn(..) => Fn,
+        ItemKind::Fn{ .. } => Fn,
         ItemKind::Macro(..) => Macro,
         ItemKind::Mod(..) => Mod,
         ItemKind::ForeignMod { .. } => ForeignMod,

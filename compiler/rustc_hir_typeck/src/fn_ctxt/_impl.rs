@@ -891,7 +891,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.tcx.hir().get_fn_id_for_return_block(blk_id).and_then(|item_id| {
             match self.tcx.hir_node(item_id) {
                 Node::Item(&hir::Item {
-                    kind: hir::ItemKind::Fn(ref sig, ..), owner_id, ..
+                    kind: hir::ItemKind::Fn { sig, .. }, owner_id, ..
                 }) => Some((owner_id.def_id, sig.decl)),
                 Node::TraitItem(&hir::TraitItem {
                     kind: hir::TraitItemKind::Fn(ref sig, ..),
@@ -920,7 +920,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         )) => {
                             let (sig, owner_id) = match self.tcx.parent_hir_node(hir_id) {
                                 Node::Item(&hir::Item {
-                                    kind: hir::ItemKind::Fn(ref sig, ..),
+                                    kind: hir::ItemKind::Fn { ref sig, .. },
                                     owner_id,
                                     ..
                                 }) => (sig, owner_id),
