@@ -53,6 +53,7 @@
     - [\*-unknown-fuchsia](platform-support/fuchsia.md)
     - [\*-unknown-trusty](platform-support/trusty.md)
     - [\*-kmc-solid_\*](platform-support/kmc-solid.md)
+    - [bpf\*-unknown-none](platform-support/bpf-unknown-none.md)
     - [csky-unknown-linux-gnuabiv2\*](platform-support/csky-unknown-linux-gnuabiv2.md)
     - [hexagon-unknown-linux-musl](platform-support/hexagon-unknown-linux-musl.md)
     - [hexagon-unknown-none-elf](platform-support/hexagon-unknown-none-elf.md)
