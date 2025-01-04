@@ -15,8 +15,8 @@ fn test_format_flags() {
 fn test_pointer_formats_data_pointer() {
     let b: &[u8] = b"";
     let s: &str = "";
-    assert_eq!(format!("{s:p}"), format!("{:p}", s.as_ptr()));
-    assert_eq!(format!("{b:p}"), format!("{:p}", b.as_ptr()));
+    assert_eq!(format!("{s:p}"), format!("{:p}", s as *const _));
+    assert_eq!(format!("{b:p}"), format!("{:p}", b as *const _));
 }
 
 #[test]
