@@ -32,13 +32,13 @@ LL |         [5; Self::HOST_SIZE] == [6; 0]
    = help: the following other types implement trait `PartialEq<Rhs>`:
              `&[T]` implements `PartialEq<Vec<U, A>>`
              `&[T]` implements `PartialEq<[U; N]>`
+             `&[u8; N]` implements `PartialEq<ByteStr>`
+             `&[u8; N]` implements `PartialEq<ByteString>`
+             `&[u8]` implements `PartialEq<ByteStr>`
+             `&[u8]` implements `PartialEq<ByteString>`
              `&mut [T]` implements `PartialEq<Vec<U, A>>`
              `&mut [T]` implements `PartialEq<[U; N]>`
-             `[T; N]` implements `PartialEq<&[U]>`
-             `[T; N]` implements `PartialEq<&mut [U]>`
-             `[T; N]` implements `PartialEq<[U; N]>`
-             `[T; N]` implements `PartialEq<[U]>`
-           and 3 others
+           and 11 others
 
 error: aborting due to 4 previous errors
 
