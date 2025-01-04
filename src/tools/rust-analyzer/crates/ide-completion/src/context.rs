@@ -754,6 +754,11 @@ impl<'a> CompletionContext<'a> {
         let mut locals = FxHashMap::default();
         scope.process_all_names(&mut |name, scope| {
             if let ScopeDef::Local(local) = scope {
+                // synthetic names currently leak out as we lack synthetic hygiene, so filter them
+                // out here
+                if name.as_str().starts_with('<') {
+                    return;
+                }
                 locals.insert(name, local);
             }
         });

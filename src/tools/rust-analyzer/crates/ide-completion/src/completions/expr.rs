@@ -293,9 +293,17 @@ pub(crate) fn complete_expr_path(
                         [..] => acc.add_path_resolution(ctx, path_ctx, name, def, doc_aliases),
                     }
                 }
+                // synthetic names currently leak out as we lack synthetic hygiene, so filter them
+                // out here
+                ScopeDef::Local(_) => {
+                    if !name.as_str().starts_with('<') {
+                        acc.add_path_resolution(ctx, path_ctx, name, def, doc_aliases)
+                    }
+                }
                 _ if scope_def_applicable(def) => {
                     acc.add_path_resolution(ctx, path_ctx, name, def, doc_aliases)
                 }
+
                 _ => (),
             });
 
