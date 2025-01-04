@@ -7,7 +7,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::cmp::Ordering::{self, Equal, Greater, Less};
-use crate::intrinsics::{exact_div, select_unpredictable, unchecked_sub};
+use crate::intrinsics::{exact_div, unchecked_sub};
 use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZero;
 use crate::ops::{Bound, OneSidedRange, Range, RangeBounds, RangeInclusive};
@@ -2835,7 +2835,7 @@ impl<T> [T] {
             // Binary search interacts poorly with branch prediction, so force
             // the compiler to use conditional moves if supported by the target
             // architecture.
-            base = select_unpredictable(cmp == Greater, base, mid);
+            base = (cmp == Greater).select_unpredictable(base, mid);
 
             // This is imprecise in the case where `size` is odd and the
             // comparison returns Greater: the mid element still gets included
