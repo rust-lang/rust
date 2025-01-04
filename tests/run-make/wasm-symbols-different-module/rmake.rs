@@ -22,7 +22,7 @@ fn test_file(file: &str, expected_imports: &[(&str, &[&str])]) {
 fn test(file: &str, args: &[&str], expected_imports: &[(&str, &[&str])]) {
     println!("test {file:?} {args:?} for {expected_imports:?}");
 
-    rustc().input(file).target("wasm32-wasip1").args(args).run();
+    rustc().input(file).target("wasm32-wasip1").args(args).arg("-Zub-checks=no").run();
 
     let file = rfs::read(Path::new(file).with_extension("wasm"));
 
@@ -46,5 +46,5 @@ fn test(file: &str, args: &[&str], expected_imports: &[(&str, &[&str])]) {
             assert!(names.contains(name));
         }
     }
-    assert!(imports.is_empty());
+    assert!(imports.is_empty(), "unexpected imports: {:?}", imports);
 }
