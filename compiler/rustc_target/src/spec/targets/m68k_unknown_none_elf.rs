@@ -11,6 +11,8 @@ pub(crate) fn target() -> Target {
         panic_strategy: PanicStrategy::Abort,
         code_model: Some(CodeModel::Medium),
         has_rpath: false,
+        // should be soft-float
+        llvm_floatabi: None,
         ..Default::default()
     };
 

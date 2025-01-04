@@ -2,7 +2,7 @@
 
 **Tier: 3**
 
-Motorola 680x0 Linux
+Bare metal Motorola 680x0
 
 ## Designated Developers
 
@@ -12,15 +12,15 @@ Motorola 680x0 Linux
 
 ## Requirements
 
-This target requires am m68k build environment for cross-compilation which
-is available on Debian and Debian-based systems, openSUSE and other distributions.
+This target requires an m68k build environment for cross-compilation which
+is available on Debian, Debian-based systems, openSUSE, and other distributions.
 
-On Debian, it should be sufficient to install a g++ cross-compiler for the m68k
+On Debian-based systems, it should be sufficient to install a g++ cross-compiler for the m68k
 architecture which will automatically pull in additional dependencies such as
 the glibc cross development package:
 
-```text
-# apt install g++-m68k-linux-gnu
+```sh
+apt install g++-m68k-linux-gnu
 ```
 
 Binaries can be run using QEMU user emulation. On Debian-based systems, it should be
@@ -83,10 +83,10 @@ Currently there is no support to run the rustc test suite for this target.
 Recommended `.cargo/config.toml`:
 ```toml
 [unstable]
-build-std = ["panic_abort","core", "alloc"]
+build-std = ["panic_abort", "core", "alloc"]
 
 [target.m68k-unknown-none-elf]
-# there is no easily available non-linux m68k linker, so just use the linux one
+# as we're building for ELF, the m68k-linux linker should be adequate
 linker = "m68k-linux-gnu-ld"
 
 # the mold linker also supports m68k, remove the above line and uncomment the
@@ -97,14 +97,14 @@ linker = "m68k-linux-gnu-ld"
 
 Rust programs can be built for this target using:
 
-```text
+```sh
 cargo build --target m68k-unknown-none-elf
 ```
 
 Very simple programs can be run using the `qemu-m68k-static` program:
 
-```text
-$ qemu-m68k-static your-code
+```sh
+qemu-m68k-static your-code
 ```
 
 For more complex applications, a chroot or native m68k system is required for testing.
