@@ -691,30 +691,67 @@ fn transcribe_metavar_expr<'a>(
         MetaVarExpr::Concat(ref elements) => {
             let mut concatenated = String::new();
             for element in elements.into_iter() {
-                let symbol = match element {
-                    MetaVarExprConcatElem::Ident(elem) => elem.name,
-                    MetaVarExprConcatElem::Literal(elem) => *elem,
+                match element {
+                    MetaVarExprConcatElem::Ident(elem) => {
+                        concatenated.push_str(elem.name.as_str());
+                    }
+                    MetaVarExprConcatElem::Literal(elem) => {
+                        concatenated.push_str(elem.as_str());
+                    }
                     MetaVarExprConcatElem::Var(ident) => {
-                        match matched_from_ident(dcx, *ident, interp)? {
-                            NamedMatch::MatchedSeq(named_matches) => {
-                                let Some((curr_idx, _)) = repeats.last() else {
-                                    return Err(dcx.struct_span_err(sp.entire(), "invalid syntax"));
-                                };
-                                match &named_matches[*curr_idx] {
-                                    // FIXME(c410-f3r) Nested repetitions are unimplemented
-                                    MatchedSeq(_) => unimplemented!(),
-                                    MatchedSingle(pnr) => {
-                                        extract_symbol_from_pnr(dcx, pnr, ident.span)?
-                                    }
+                        fn manage_nested<'a>(
+                            concatenated: &mut String,
+                            dcx: DiagCtxtHandle<'a>,
+                            depth: usize,
+                            ident_span: Span,
+                            named_matches: &[NamedMatch],
+                            repeats: &[(usize, usize)],
+                            sp: &DelimSpan,
+                        ) -> PResult<'a, ()> {
+                            let Some((curr_idx, _)) = repeats.get(depth) else {
+                                return Err(dcx.struct_span_err(sp.entire(), "invalid syntax"));
+                            };
+                            match &named_matches[*curr_idx] {
+                                MatchedSeq(named_matches) => {
+                                    manage_nested(
+                                        concatenated,
+                                        dcx,
+                                        depth + 1,
+                                        ident_span,
+                                        &named_matches,
+                                        repeats,
+                                        sp,
+                                    )?;
+                                }
+                                MatchedSingle(pnr) => {
+                                    concatenated.push_str(
+                                        extract_symbol_from_pnr(dcx, pnr, ident_span)?.as_str(),
+                                    );
                                 }
                             }
+                            Ok(())
+                        }
+
+                        match matched_from_ident(dcx, *ident, interp)? {
+                            NamedMatch::MatchedSeq(named_matches) => {
+                                manage_nested(
+                                    &mut concatenated,
+                                    dcx,
+                                    0,
+                                    ident.span,
+                                    &named_matches,
+                                    repeats,
+                                    sp,
+                                )?;
+                            }
                             NamedMatch::MatchedSingle(pnr) => {
-                                extract_symbol_from_pnr(dcx, pnr, ident.span)?
+                                concatenated.push_str(
+                                    extract_symbol_from_pnr(dcx, pnr, ident.span)?.as_str(),
+                                );
                             }
                         }
                     }
-                };
-                concatenated.push_str(symbol.as_str());
+                }
             }
             let symbol = nfc_normalize(&concatenated);
             let concatenated_span = visited_span();
