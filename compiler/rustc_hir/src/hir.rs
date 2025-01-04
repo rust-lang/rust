@@ -3640,7 +3640,7 @@ impl<'hir> Item<'hir> {
             ItemKind::Const(ty, generics, body), (ty, generics, *body);
 
         expect_fn, (&FnSig<'hir>, &'hir Generics<'hir>, BodyId),
-            ItemKind::Fn { sig, generics, body }, (sig, generics, *body);
+            ItemKind::Fn { sig, generics, body, .. }, (sig, generics, *body);
 
         expect_macro, (&ast::MacroDef, MacroKind), ItemKind::Macro(def, mk), (def, *mk);
 
@@ -3768,7 +3768,15 @@ pub enum ItemKind<'hir> {
     /// A `const` item.
     Const(&'hir Ty<'hir>, &'hir Generics<'hir>, BodyId),
     /// A function declaration.
-    Fn { sig: FnSig<'hir>, generics: &'hir Generics<'hir>, body: BodyId },
+    Fn {
+        sig: FnSig<'hir>,
+        generics: &'hir Generics<'hir>,
+        body: BodyId,
+        /// Whether this function actually has a body.
+        /// For functions without a body, `body` is synthesized (to avoid ICEs all over the
+        /// compiler), but that code should never be translated.
+        has_body: bool,
+    },
     /// A MBE macro definition (`macro_rules!` or `macro`).
     Macro(&'hir ast::MacroDef, MacroKind),
     /// A module.

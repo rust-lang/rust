@@ -1013,7 +1013,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     gated!(
         rustc_intrinsic, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes, intrinsics,
-        "the `#[rustc_intrinsic]` attribute is used to declare intrinsics with function bodies",
+        "the `#[rustc_intrinsic]` attribute is used to declare intrinsics as function items",
     ),
     gated!(
         rustc_intrinsic_must_be_overridden, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes, intrinsics,

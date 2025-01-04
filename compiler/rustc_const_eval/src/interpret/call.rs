@@ -566,7 +566,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             | ty::InstanceKind::ThreadLocalShim(..)
             | ty::InstanceKind::AsyncDropGlueCtorShim(..)
             | ty::InstanceKind::Item(_) => {
-                // We need MIR for this fn
+                // We need MIR for this fn.
+                // Note that this can be an intrinsic, if we are executing its fallback body.
                 let Some((body, instance)) = M::find_mir_or_eval_fn(
                     self,
                     instance,
