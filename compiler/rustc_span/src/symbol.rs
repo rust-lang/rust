@@ -1696,7 +1696,6 @@ symbols! {
         rustc_as_ptr,
         rustc_attrs,
         rustc_autodiff,
-        rustc_box,
         rustc_builtin_macro,
         rustc_capture_analysis,
         rustc_clean,

@@ -287,11 +287,6 @@ mir_build_privately_uninhabited = pattern `{$witness_1}` is currently uninhabite
 
 mir_build_rust_2024_incompatible_pat = this pattern relies on behavior which may change in edition 2024
 
-mir_build_rustc_box_attribute_error = `#[rustc_box]` attribute used incorrectly
-    .attributes = no other attributes may be applied
-    .not_box = `#[rustc_box]` may only be applied to a `Box::new()` call
-    .missing_box = `#[rustc_box]` requires the `owned_box` lang item
-
 mir_build_static_in_pattern = statics cannot be referenced in patterns
     .label = can't be used in patterns
 mir_build_static_in_pattern_def = `static` defined here

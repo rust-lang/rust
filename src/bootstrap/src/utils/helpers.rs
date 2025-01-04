@@ -440,7 +440,7 @@ fn lld_flag_no_threads(builder: &Builder<'_>, lld_mode: LldMode, is_windows: boo
 }
 
 pub fn dir_is_empty(dir: &Path) -> bool {
-    t!(std::fs::read_dir(dir)).next().is_none()
+    t!(std::fs::read_dir(dir), dir).next().is_none()
 }
 
 /// Extract the beta revision from the full version string.
