@@ -362,7 +362,7 @@ impl AccessType {
 
         if let Some(size) = size {
             if size == Size::ZERO {
-                // In this case there were multiple read accesss with different sizes and then a write.
+                // In this case there were multiple read access with different sizes and then a write.
                 // We will be reporting *one* of the other reads, but we don't have enough information
                 // to determine which one had which size.
                 assert!(self == AccessType::AtomicLoad);
@@ -1355,7 +1355,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
         this.check_ptr_align(place.ptr(), align)?;
         // Ensure the allocation is mutable. Even failing (read-only) compare_exchange need mutable
-        // memory on many targets (i.e., they segfault if taht memory is mapped read-only), and
+        // memory on many targets (i.e., they segfault if that memory is mapped read-only), and
         // atomic loads can be implemented via compare_exchange on some targets. There could
         // possibly be some very specific exceptions to this, see
         // <https://github.com/rust-lang/miri/pull/2464#discussion_r939636130> for details.

@@ -73,7 +73,7 @@ fn retagx_retagy_retx_writey_rety() {
         fn as_mut(x: &mut u8, b: (usize, Arc<Barrier>)) -> *mut u8 {
             synchronized!(b, "retag y (&mut, protect)");
             synchronized!(b, "location where spurious read of x would happen in the target");
-            // This is ensuring taht we have UB *without* the spurious read,
+            // This is ensuring that we have UB *without* the spurious read,
             // so we don't read here.
             synchronized!(b, "ret x");
             synchronized!(b, "write y");

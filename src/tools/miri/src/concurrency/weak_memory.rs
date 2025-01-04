@@ -77,7 +77,7 @@
 // (https://github.com/ChrisLidbury/tsan11/blob/ecbd6b81e9b9454e01cba78eb9d88684168132c7/lib/tsan/rtl/tsan_relaxed.cc#L160-L167)
 // and here.
 //
-// 4. W_SC ; R_SC case requires the SC load to ignore all but last store maked SC (stores not marked SC are not
+// 4. W_SC ; R_SC case requires the SC load to ignore all but last store marked SC (stores not marked SC are not
 // affected). But this rule is applied to all loads in ReadsFromSet from the paper (last two lines of code), not just SC load.
 // This is implemented correctly in tsan11
 // (https://github.com/ChrisLidbury/tsan11/blob/ecbd6b81e9b9454e01cba78eb9d88684168132c7/lib/tsan/rtl/tsan_relaxed.cc#L295)
@@ -371,7 +371,7 @@ impl<'tcx> StoreBuffer {
             })
             .filter(|&store_elem| {
                 if is_seqcst && store_elem.is_seqcst {
-                    // An SC load needs to ignore all but last store maked SC (stores not marked SC are not
+                    // An SC load needs to ignore all but last store marked SC (stores not marked SC are not
                     // affected)
                     let include = !found_sc;
                     found_sc = true;

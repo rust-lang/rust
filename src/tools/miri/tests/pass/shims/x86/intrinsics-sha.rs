@@ -152,7 +152,7 @@ unsafe fn test_sha256() {
     // This is the content that's being hashed - you can feed it to sha256sum and it'll output
     // the same hash (beware of newlines though).
     let first_block = *b"Rust is awesome!Rust is awesome!Rust is awesome!Rust is awesome!";
-    // sha256 is fianlized by appending 0x80, then zeros and finally the data lenght at the
+    // sha256 is fianlized by appending 0x80, then zeros and finally the data length at the
     // end.
     let mut final_block = [0; 64];
     final_block[0] = 0x80;
