@@ -529,6 +529,26 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     let infcx = &tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(infcx);
 
+    // Check that the where clauses of the impl are satisfied by the hybrid param env.
+    // You might ask -- what does this have to do with RPITIT inference? Nothing.
+    // We check these because if the where clauses of the signatures do not match
+    // up, then we don't want to give spurious other errors that point at the RPITITs.
+    // They're not necessary to check, though, because we already check them in
+    // `compare_method_predicate_entailment`.
+    let impl_m_own_bounds = tcx.predicates_of(impl_m_def_id).instantiate_own_identity();
+    for (predicate, span) in impl_m_own_bounds {
+        let normalize_cause = traits::ObligationCause::misc(span, impl_m_def_id);
+        let predicate = ocx.normalize(&normalize_cause, param_env, predicate);
+
+        let cause =
+            ObligationCause::new(span, impl_m_def_id, ObligationCauseCode::CompareImplItem {
+                impl_item_def_id: impl_m_def_id,
+                trait_item_def_id: trait_m.def_id,
+                kind: impl_m.kind,
+            });
+        ocx.register_obligation(traits::Obligation::new(tcx, cause, param_env, predicate));
+    }
+
     // Normalize the impl signature with fresh variables for lifetime inference.
     let misc_cause = ObligationCause::misc(return_span, impl_m_def_id);
     let impl_sig = ocx.normalize(
