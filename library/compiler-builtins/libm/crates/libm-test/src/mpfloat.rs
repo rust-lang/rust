@@ -258,6 +258,25 @@ macro_rules! impl_op_for_ty {
                 }
             }
 
+            impl MpOp for crate::op::[<frexp $suffix>]::Routine {
+                type MpTy = MpFloat;
+
+                fn new_mp() -> Self::MpTy {
+                    new_mpfloat::<Self::FTy>()
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    // Implementation taken from `rug::Float::to_f32_exp`.
+                    this.assign(input.0);
+                    let exp = this.get_exp().unwrap_or(0);
+                    if exp != 0 {
+                        *this >>= exp;
+                    }
+
+                    (prep_retval::<Self::FTy>(this, Ordering::Equal), exp)
+                }
+            }
+
             impl MpOp for crate::op::[<jn $suffix>]::Routine {
                 type MpTy = MpFloat;
 
