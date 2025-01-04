@@ -1337,6 +1337,20 @@ fn test_collect_after_iterator_clone() {
     assert_eq!(v, [1, 1, 1, 1, 1]);
     assert!(v.len() <= v.capacity());
 }
+
+// regression test for #135103, similar to the one above Flatten/FlatMap had an unsound InPlaceIterable
+// implementation.
+#[test]
+fn test_flatten_clone() {
+    const S: String = String::new();
+
+    let v = vec![[S, "Hello World!".into()], [S, S]];
+    let mut i = v.into_iter().flatten();
+    let _ = i.next();
+    let result: Vec<String> = i.clone().collect();
+    assert_eq!(result, ["Hello World!", "", ""]);
+}
+
 #[test]
 fn test_cow_from() {
     let borrowed: &[_] = &["borrowed", "(slice)"];
