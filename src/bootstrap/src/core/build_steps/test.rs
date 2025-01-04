@@ -1893,7 +1893,6 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
         let mut targetflags = flags;
         targetflags.push(format!("-Lnative={}", builder.test_helpers_out(target).display()));
-        targetflags.extend(linker_flags(builder, compiler.host, LldThreads::No));
         for flag in targetflags {
             cmd.arg("--target-rustcflags").arg(flag);
         }
