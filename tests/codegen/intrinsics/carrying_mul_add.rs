@@ -84,7 +84,7 @@ pub unsafe fn cma_u128(a: u128, b: u128, c: u128, d: u128) -> (u128, u128) {
     // RAW: [[PAIR0:%.+]] = insertvalue { i128, i128 } poison, i128 [[LOW]], 0
     // RAW: [[PAIR1:%.+]] = insertvalue { i128, i128 } [[PAIR0]], i128 [[HIGH]], 1
     // OPT: store i128 [[LOW]], ptr %_0
-    // OPT: [[P1:%.+]] = getelementptr inbounds i8, ptr %_0, {{i32|i64}} 16
+    // OPT: [[P1:%.+]] = getelementptr inbounds{{( nuw)?}} i8, ptr %_0, {{i32|i64}} 16
     // OPT: store i128 [[HIGH]], ptr [[P1]]
     // CHECK: ret void
     carrying_mul_add(a, b, c, d)
@@ -111,7 +111,7 @@ pub unsafe fn cma_i128(a: i128, b: i128, c: i128, d: i128) -> (u128, i128) {
     // RAW: [[PAIR0:%.+]] = insertvalue { i128, i128 } poison, i128 [[LOW]], 0
     // RAW: [[PAIR1:%.+]] = insertvalue { i128, i128 } [[PAIR0]], i128 [[HIGH]], 1
     // OPT: store i128 [[LOW]], ptr %_0
-    // OPT: [[P1:%.+]] = getelementptr inbounds i8, ptr %_0, {{i32|i64}} 16
+    // OPT: [[P1:%.+]] = getelementptr inbounds{{( nuw)?}} i8, ptr %_0, {{i32|i64}} 16
     // OPT: store i128 [[HIGH]], ptr [[P1]]
     // CHECK: ret void
     carrying_mul_add(a, b, c, d)

@@ -491,6 +491,10 @@ fn type_has_partial_eq_impl<'tcx>(
     // `PartialEq` for some lifetime but *not* for `'static`? If this ever becomes a problem
     // we'll need to leave some sort of trace of this requirement in the MIR so that borrowck
     // can ensure that the type really implements `PartialEq`.
+    // We also do *not* require `const PartialEq`, not even in `const fn`. This violates the model
+    // that patterns can only do things that the code could also do without patterns, but it is
+    // needed for backwards compatibility. The actual pattern matching compares primitive values,
+    // `PartialEq::eq` never gets invoked, so there's no risk of us running non-const code.
     (
         infcx.predicate_must_hold_modulo_regions(&partial_eq_obligation),
         automatically_derived,
