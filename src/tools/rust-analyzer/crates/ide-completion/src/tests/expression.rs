@@ -1785,3 +1785,75 @@ fn foo<T: ExcludedTrait>() {
         "#]],
     );
 }
+
+#[test]
+fn hide_ragennew_synthetic_identifiers() {
+    check_empty(
+        r#"
+//- minicore: iterator
+fn bar() {
+    for i in [0; 10] {
+        r$0
+    }
+}
+        "#,
+        expect![[r#"
+            en Option                             Option<{unknown}>
+            en Result                  Result<{unknown}, {unknown}>
+            fn bar()                                           fn()
+            lc i                                                i32
+            ma const_format_args!(…) macro_rules! const_format_args
+            ma format_args!(…)             macro_rules! format_args
+            ma format_args_nl!(…)       macro_rules! format_args_nl
+            ma panic!(…)                         macro_rules! panic
+            ma print!(…)                         macro_rules! print
+            md core
+            md result (use core::result)
+            md rust_2015 (use core::prelude::rust_2015)
+            md rust_2018 (use core::prelude::rust_2018)
+            md rust_2021 (use core::prelude::rust_2021)
+            tt Clone
+            tt Copy
+            tt IntoIterator
+            tt Iterator
+            ta Result (use core::fmt::Result)
+            ev Err(…)                                        Err(E)
+            ev None                                            None
+            ev Ok(…)                                          Ok(T)
+            ev Some(…)                                      Some(T)
+            bt u32                                              u32
+            kw async
+            kw break
+            kw const
+            kw continue
+            kw crate::
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw let
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+}
