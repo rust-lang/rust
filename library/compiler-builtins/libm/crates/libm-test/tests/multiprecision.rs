@@ -58,8 +58,6 @@ libm_macros::for_each_function! {
         ilogbf,
         ldexp,
         ldexpf,
-        modf,
-        modff,
         remquo,
         remquof,
         scalbn,
@@ -165,7 +163,5 @@ libm_macros::for_each_function! {
         frexpf,
         ilogb,
         ilogbf,
-        modf,
-        modff,
     ],
 }

@@ -210,6 +210,24 @@ macro_rules! impl_op_for_ty {
                 }
             }
 
+            impl MpOp for crate::op::[<modf $suffix>]::Routine {
+                type MpTy = (MpFloat, MpFloat);
+
+                fn new_mp() -> Self::MpTy {
+                    (new_mpfloat::<Self::FTy>(), new_mpfloat::<Self::FTy>())
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    this.0.assign(input.0);
+                    this.1.assign(&this.0);
+                    let (ord0, ord1) = this.0.trunc_fract_round(&mut this.1, Nearest);
+                    (
+                        prep_retval::<Self::FTy>(&mut this.1, ord0),
+                        prep_retval::<Self::FTy>(&mut this.0, ord1),
+                    )
+                }
+            }
+
             impl MpOp for crate::op::[<pow $suffix>]::Routine {
                 type MpTy = (MpFloat, MpFloat);
 
