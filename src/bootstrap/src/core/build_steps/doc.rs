@@ -18,7 +18,7 @@ use crate::core::builder::{
     self, Alias, Builder, Compiler, Kind, RunConfig, ShouldRun, Step, crate_description,
 };
 use crate::core::config::{Config, TargetSelection};
-use crate::helpers::{is_path_in_submodule, symlink_dir, t, up_to_date};
+use crate::helpers::{submodule_path_of, symlink_dir, t, up_to_date};
 
 macro_rules! book {
     ($($name:ident, $path:expr, $book_name:expr, $lang:expr ;)+) => {
@@ -44,8 +44,8 @@ macro_rules! book {
             }
 
             fn run(self, builder: &Builder<'_>) {
-                if is_path_in_submodule(&builder, $path) {
-                    builder.require_submodule($path, None);
+                if let Some(submodule_path) = submodule_path_of(&builder, $path) {
+                    builder.require_submodule(&submodule_path, None)
                 }
 
                 builder.ensure(RustbookSrc {
@@ -933,9 +933,9 @@ macro_rules! tool_doc {
             fn run(self, builder: &Builder<'_>) {
                 let mut source_type = SourceType::InTree;
 
-                if is_path_in_submodule(&builder, $path) {
+                if let Some(submodule_path) = submodule_path_of(&builder, $path) {
                     source_type = SourceType::Submodule;
-                    builder.require_submodule($path, None);
+                    builder.require_submodule(&submodule_path, None);
                 }
 
                 let stage = builder.top_stage;
