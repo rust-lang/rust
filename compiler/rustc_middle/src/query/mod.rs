@@ -1716,6 +1716,11 @@ rustc_queries! {
         ensure_forwards_result_if_red
     }
 
+    query enforce_impl_non_lifetime_params_are_constrained(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
+        desc { |tcx| "checking that `{}`'s generics are constrained by the impl header", tcx.def_path_str(key) }
+        ensure_forwards_result_if_red
+    }
+
     // The `DefId`s of all non-generic functions and statics in the given crate
     // that can be reached from outside the crate.
     //

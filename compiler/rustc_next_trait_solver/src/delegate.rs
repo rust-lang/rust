@@ -95,7 +95,10 @@ pub trait SolverDelegate: Deref<Target = <Self as SolverDelegate>::Infcx> + Size
         goal_trait_ref: ty::TraitRef<Self::Interner>,
         trait_assoc_def_id: <Self::Interner as Interner>::DefId,
         impl_def_id: <Self::Interner as Interner>::DefId,
-    ) -> Result<Option<<Self::Interner as Interner>::DefId>, NoSolution>;
+    ) -> Result<
+        Option<<Self::Interner as Interner>::DefId>,
+        <Self::Interner as Interner>::ErrorGuaranteed,
+    >;
 
     fn is_transmutable(
         &self,
