@@ -30,6 +30,7 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
         | Bn::Fmin
         | Bn::Fmod
         | Bn::Frexp
+        | Bn::Ilogb
         | Bn::Ldexp
         | Bn::Modf
         | Bn::Nextafter
@@ -43,7 +44,6 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
 
         // Operations that aren't required to be exact, but our implementations are.
         Bn::Cbrt if ctx.fn_ident != Id::Cbrt => 0,
-        Bn::Ilogb => 0,
         Bn::Tgamma if ctx.fn_ident != Id::Tgamma => 0,
 
         // Bessel functions have large inaccuracies.
