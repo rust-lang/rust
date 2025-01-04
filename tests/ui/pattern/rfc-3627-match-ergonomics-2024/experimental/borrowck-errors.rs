@@ -18,4 +18,20 @@ pub fn main() {
         //[classic]~^ ERROR: cannot borrow data in a `&` reference as mutable
         let _: &u32 = x;
     }
+
+    let &[x] = &&mut [0];
+    //[classic]~^ ERROR: cannot borrow data in a `&` reference as mutable
+    let _: &u32 = x;
+
+    let [&x] = &[&mut 0];
+    //[classic]~^ ERROR: cannot move out of type
+    let _: &u32 = x;
+
+    #[cfg(classic)] // TODO: this should pass on `structural` but doesn't
+    let [&x] = &mut [&mut 0]; //[classic]~ ERROR: cannot move out of type
+    let _: &u32 = x;
+
+    let [&mut x] = &mut [&mut 0];
+    //[classic]~^ ERROR: cannot move out of type
+    let _: &mut u32 = x;
 }

@@ -38,6 +38,14 @@ LL |     let &(ref mut a, ref mut b) = &mut (true, false);
    |         |
    |         help: replace this `&` with `&mut`: `&mut`
 
-error: aborting due to 5 previous errors
+error[E0596]: cannot borrow as mutable inside an `&` pattern
+  --> $DIR/ref-mut-inside-shared-ref-pat.rs:34:11
+   |
+LL |     let &[x] = &mut &mut [0];
+   |         - ^
+   |         |
+   |         help: replace this `&` with `&mut`: `&mut`
+
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0596`.

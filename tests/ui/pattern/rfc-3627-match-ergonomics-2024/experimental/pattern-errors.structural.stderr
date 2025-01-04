@@ -84,6 +84,321 @@ LL |     if let Some(&mut Some(x)) = &Some(Some(0)) {
    = note:           expected enum `Option<{integer}>`
            found mutable reference `&mut _`
 
-error: aborting due to 7 previous errors
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:50:11
+   |
+LL |     let &[&mut x] = &&mut [0];
+   |           ^^^^^^    --------- this expression has type `&&mut [{integer}; 1]`
+   |           |
+   |           expected integer, found `&mut _`
+   |
+   = note:           expected type `{integer}`
+           found mutable reference `&mut _`
+note: to declare a mutable binding use: `mut x`
+  --> $DIR/pattern-errors.rs:50:11
+   |
+LL |     let &[&mut x] = &&mut [0];
+   |           ^^^^^^
+help: consider removing `&mut` from the pattern
+   |
+LL -     let &[&mut x] = &&mut [0];
+LL +     let &[x] = &&mut [0];
+   |
 
-For more information about this error, try `rustc --explain E0308`.
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:52:18
+   |
+LL |     let _: u32 = x;
+   |            ---   ^ expected `u32`, found `&_`
+   |            |
+   |            expected due to this
+   |
+   = note:   expected type `u32`
+           found reference `&_`
+help: consider dereferencing the borrow
+   |
+LL |     let _: u32 = *x;
+   |                  +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:55:11
+   |
+LL |     let &[&mut x] = &mut &mut [0];
+   |           ^^^^^^    ------------- this expression has type `&mut &mut [{integer}; 1]`
+   |           |
+   |           expected integer, found `&mut _`
+   |
+   = note:           expected type `{integer}`
+           found mutable reference `&mut _`
+note: to declare a mutable binding use: `mut x`
+  --> $DIR/pattern-errors.rs:55:11
+   |
+LL |     let &[&mut x] = &mut &mut [0];
+   |           ^^^^^^
+help: consider removing `&mut` from the pattern
+   |
+LL -     let &[&mut x] = &mut &mut [0];
+LL +     let &[x] = &mut &mut [0];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:57:18
+   |
+LL |     let _: u32 = x;
+   |            ---   ^ expected `u32`, found `&_`
+   |            |
+   |            expected due to this
+   |
+   = note:   expected type `u32`
+           found reference `&_`
+help: consider dereferencing the borrow
+   |
+LL |     let _: u32 = *x;
+   |                  +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:60:11
+   |
+LL |     let &[&mut ref x] = &&mut [0];
+   |           ^^^^^^^^^^    --------- this expression has type `&&mut [{integer}; 1]`
+   |           |
+   |           expected integer, found `&mut _`
+   |
+   = note:           expected type `{integer}`
+           found mutable reference `&mut _`
+note: to declare a mutable binding use: `mut x`
+  --> $DIR/pattern-errors.rs:60:11
+   |
+LL |     let &[&mut ref x] = &&mut [0];
+   |           ^^^^^^^^^^
+help: consider removing `&mut` from the pattern
+   |
+LL -     let &[&mut ref x] = &&mut [0];
+LL +     let &[ref x] = &&mut [0];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:64:11
+   |
+LL |     let &[&mut ref x] = &mut &mut [0];
+   |           ^^^^^^^^^^    ------------- this expression has type `&mut &mut [{integer}; 1]`
+   |           |
+   |           expected integer, found `&mut _`
+   |
+   = note:           expected type `{integer}`
+           found mutable reference `&mut _`
+note: to declare a mutable binding use: `mut x`
+  --> $DIR/pattern-errors.rs:64:11
+   |
+LL |     let &[&mut ref x] = &mut &mut [0];
+   |           ^^^^^^^^^^
+help: consider removing `&mut` from the pattern
+   |
+LL -     let &[&mut ref x] = &mut &mut [0];
+LL +     let &[ref x] = &mut &mut [0];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:68:11
+   |
+LL |     let &[&mut mut x] = &&mut [0];
+   |           ^^^^^^^^^^    --------- this expression has type `&&mut [{integer}; 1]`
+   |           |
+   |           expected integer, found `&mut _`
+   |
+   = note:           expected type `{integer}`
+           found mutable reference `&mut _`
+note: to declare a mutable binding use: `mut x`
+  --> $DIR/pattern-errors.rs:68:11
+   |
+LL |     let &[&mut mut x] = &&mut [0];
+   |           ^^^^^^^^^^
+help: consider removing `&mut` from the pattern
+   |
+LL -     let &[&mut mut x] = &&mut [0];
+LL +     let &[mut x] = &&mut [0];
+   |
+
+error[E0658]: binding cannot be both mutable and by-reference
+  --> $DIR/pattern-errors.rs:68:16
+   |
+LL |     let &[&mut mut x] = &&mut [0];
+   |                ^^^^
+   |
+   = note: see issue #123076 <https://github.com/rust-lang/rust/issues/123076> for more information
+   = help: add `#![feature(mut_ref)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:71:18
+   |
+LL |     let _: u32 = x;
+   |            ---   ^ expected `u32`, found `&_`
+   |            |
+   |            expected due to this
+   |
+   = note:   expected type `u32`
+           found reference `&_`
+help: consider dereferencing the borrow
+   |
+LL |     let _: u32 = *x;
+   |                  +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:74:11
+   |
+LL |     let &[&mut mut x] = &mut &mut [0];
+   |           ^^^^^^^^^^    ------------- this expression has type `&mut &mut [{integer}; 1]`
+   |           |
+   |           expected integer, found `&mut _`
+   |
+   = note:           expected type `{integer}`
+           found mutable reference `&mut _`
+note: to declare a mutable binding use: `mut x`
+  --> $DIR/pattern-errors.rs:74:11
+   |
+LL |     let &[&mut mut x] = &mut &mut [0];
+   |           ^^^^^^^^^^
+help: consider removing `&mut` from the pattern
+   |
+LL -     let &[&mut mut x] = &mut &mut [0];
+LL +     let &[mut x] = &mut &mut [0];
+   |
+
+error[E0658]: binding cannot be both mutable and by-reference
+  --> $DIR/pattern-errors.rs:74:16
+   |
+LL |     let &[&mut mut x] = &mut &mut [0];
+   |                ^^^^
+   |
+   = note: see issue #123076 <https://github.com/rust-lang/rust/issues/123076> for more information
+   = help: add `#![feature(mut_ref)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:77:18
+   |
+LL |     let _: u32 = x;
+   |            ---   ^ expected `u32`, found `&_`
+   |            |
+   |            expected due to this
+   |
+   = note:   expected type `u32`
+           found reference `&_`
+help: consider dereferencing the borrow
+   |
+LL |     let _: u32 = *x;
+   |                  +
+
+error[E0658]: binding cannot be both mutable and by-reference
+  --> $DIR/pattern-errors.rs:82:12
+   |
+LL |     let [&(mut x)] = &[&0];
+   |            ^^^^
+   |
+   = note: see issue #123076 <https://github.com/rust-lang/rust/issues/123076> for more information
+   = help: add `#![feature(mut_ref)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: binding cannot be both mutable and by-reference
+  --> $DIR/pattern-errors.rs:86:12
+   |
+LL |     let [&(mut x)] = &mut [&0];
+   |            ^^^^
+   |
+   = note: see issue #123076 <https://github.com/rust-lang/rust/issues/123076> for more information
+   = help: add `#![feature(mut_ref)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:93:11
+   |
+LL |     let [&&mut x] = &[&mut 0];
+   |           ^^^^^^    --------- this expression has type `&[&mut {integer}; 1]`
+   |           |
+   |           expected integer, found `&mut _`
+   |
+   = note:           expected type `{integer}`
+           found mutable reference `&mut _`
+help: consider removing `&mut` from the pattern
+   |
+LL -     let [&&mut x] = &[&mut 0];
+LL +     let [&x] = &[&mut 0];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:95:18
+   |
+LL |     let _: u32 = x;
+   |            ---   ^ expected `u32`, found `&_`
+   |            |
+   |            expected due to this
+   |
+   = note:   expected type `u32`
+           found reference `&_`
+help: consider dereferencing the borrow
+   |
+LL |     let _: u32 = *x;
+   |                  +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:101:11
+   |
+LL |     let [&&mut ref x] = &[&mut 0];
+   |           ^^^^^^^^^^    --------- this expression has type `&[&mut {integer}; 1]`
+   |           |
+   |           expected integer, found `&mut _`
+   |
+   = note:           expected type `{integer}`
+           found mutable reference `&mut _`
+help: consider removing `&mut` from the pattern
+   |
+LL -     let [&&mut ref x] = &[&mut 0];
+LL +     let [&ref x] = &[&mut 0];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:108:11
+   |
+LL |     let [&&mut mut x] = &[&mut 0];
+   |           ^^^^^^^^^^    --------- this expression has type `&[&mut {integer}; 1]`
+   |           |
+   |           expected integer, found `&mut _`
+   |
+   = note:           expected type `{integer}`
+           found mutable reference `&mut _`
+help: consider removing `&mut` from the pattern
+   |
+LL -     let [&&mut mut x] = &[&mut 0];
+LL +     let [&mut x] = &[&mut 0];
+   |
+
+error[E0658]: binding cannot be both mutable and by-reference
+  --> $DIR/pattern-errors.rs:108:16
+   |
+LL |     let [&&mut mut x] = &[&mut 0];
+   |                ^^^^
+   |
+   = note: see issue #123076 <https://github.com/rust-lang/rust/issues/123076> for more information
+   = help: add `#![feature(mut_ref)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0308]: mismatched types
+  --> $DIR/pattern-errors.rs:111:18
+   |
+LL |     let _: u32 = x;
+   |            ---   ^ expected `u32`, found `&_`
+   |            |
+   |            expected due to this
+   |
+   = note:   expected type `u32`
+           found reference `&_`
+help: consider dereferencing the borrow
+   |
+LL |     let _: u32 = *x;
+   |                  +
+
+error: aborting due to 27 previous errors
+
+Some errors have detailed explanations: E0308, E0658.
+For more information about an error, try `rustc --explain E0308`.

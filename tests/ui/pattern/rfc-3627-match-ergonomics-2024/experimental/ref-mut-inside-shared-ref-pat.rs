@@ -30,4 +30,8 @@ pub fn main() {
     //~| ERROR: cannot borrow as mutable inside an `&` pattern
     let _: &mut bool = a;
     let _: &mut bool = b;
+
+    let &[x] = &mut &mut [0];
+    //[classic]~^ ERROR: cannot borrow as mutable inside an `&` pattern
+    let _: &u32 = x;
 }
