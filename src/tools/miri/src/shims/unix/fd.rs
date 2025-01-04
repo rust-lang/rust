@@ -6,7 +6,7 @@ use std::io::ErrorKind;
 
 use rustc_abi::Size;
 
-use crate::helpers::check_min_arg_count;
+use crate::helpers::check_min_vararg_count;
 use crate::shims::files::FileDescription;
 use crate::shims::unix::linux_like::epoll::EpollReadyEvents;
 use crate::shims::unix::*;
@@ -127,10 +127,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
     }
 
-    fn fcntl(&mut self, args: &[OpTy<'tcx>]) -> InterpResult<'tcx, Scalar> {
+    fn fcntl(
+        &mut self,
+        fd_num: &OpTy<'tcx>,
+        cmd: &OpTy<'tcx>,
+        varargs: &[OpTy<'tcx>],
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
-
-        let [fd_num, cmd] = check_min_arg_count("fcntl", args)?;
 
         let fd_num = this.read_scalar(fd_num)?.to_i32()?;
         let cmd = this.read_scalar(cmd)?.to_i32()?;
@@ -163,7 +166,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "fcntl(fd, F_DUPFD_CLOEXEC, ...)"
                 };
 
-                let [_, _, start] = check_min_arg_count(cmd_name, args)?;
+                let [start] = check_min_vararg_count(cmd_name, varargs)?;
                 let start = this.read_scalar(start)?.to_i32()?;
 
                 if let Some(fd) = this.machine.fds.get(fd_num) {
