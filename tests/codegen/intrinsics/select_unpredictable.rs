@@ -31,9 +31,12 @@ pub fn test_struct(p: bool, a: Large, b: Large) -> Large {
     core::intrinsics::select_unpredictable(p, a, b)
 }
 
+// ZSTs should not need a `select` expression.
 #[no_mangle]
 pub fn test_zst(p: bool, a: (), b: ()) -> () {
     // CHECK-LABEL: define{{.*}} @test_zst
+    // CHECK-NEXT: start:
+    // CHECK-NEXT: ret void
     core::intrinsics::select_unpredictable(p, a, b)
 }
 
@@ -63,5 +66,7 @@ pub fn test_struct2(p: bool, a: Large, b: Large) -> Large {
 #[no_mangle]
 pub fn test_zst2(p: bool, a: (), b: ()) -> () {
     // CHECK-LABEL: define{{.*}} @test_zst2
+    // CHECK-NEXT: start:
+    // CHECK-NEXT: ret void
     p.select_unpredictable(a, b)
 }
