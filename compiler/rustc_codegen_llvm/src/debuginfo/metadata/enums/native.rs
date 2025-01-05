@@ -366,10 +366,10 @@ fn build_discr_member_di_node<'ll, 'tcx>(
             let (size, align) = cx.size_and_align_of(tag_base_type);
 
             unsafe {
-                Some(llvm::LLVMRustDIBuilderCreateMemberType(
+                Some(llvm::LLVMDIBuilderCreateMemberType(
                     DIB(cx),
                     containing_scope,
-                    tag_name.as_c_char_ptr(),
+                    tag_name.as_ptr(),
                     tag_name.len(),
                     unknown_file_metadata(cx),
                     UNKNOWN_LINE_NUMBER,
