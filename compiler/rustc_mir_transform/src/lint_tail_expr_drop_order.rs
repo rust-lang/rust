@@ -351,6 +351,11 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
     {
         return;
     }
+
+    // FIXME(typing_env): This should be able to reveal the opaques local to the
+    // body using the typeck results.
+    let typing_env = ty::TypingEnv::non_body_analysis(tcx, def_id);
+
     // ## About BIDs in blocks ##
     // Track the set of blocks that contain a backwards-incompatible drop (BID)
     // and, for each block, the vector of locations.
@@ -358,7 +363,7 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
     // We group them per-block because they tend to scheduled in the same drop ladder block.
     let mut bid_per_block = IndexMap::default();
     let mut bid_places = UnordSet::new();
-    let typing_env = ty::TypingEnv::post_analysis(tcx, def_id);
+
     let mut ty_dropped_components = UnordMap::default();
     for (block, data) in body.basic_blocks.iter_enumerated() {
         for (statement_index, stmt) in data.statements.iter().enumerate() {
