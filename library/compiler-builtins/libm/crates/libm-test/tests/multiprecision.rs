@@ -50,10 +50,6 @@ libm_macros::for_each_function! {
         [jn, jnf, yn, ynf],
     ],
     skip: [
-        // FIXME: MPFR tests needed
-        remquo,
-        remquof,
-
         // FIXME: test needed, see
         // https://github.com/rust-lang/libm/pull/311#discussion_r1818273392
         nextafter,

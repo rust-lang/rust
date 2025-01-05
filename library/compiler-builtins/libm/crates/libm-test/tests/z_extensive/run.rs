@@ -48,10 +48,6 @@ fn register_all_tests() -> Vec<Trial> {
         callback: mp_extensive_tests,
         extra: [all_tests],
         skip: [
-            // FIXME: MPFR tests needed
-            remquo,
-            remquof,
-
             // FIXME: test needed, see
             // https://github.com/rust-lang/libm/pull/311#discussion_r1818273392
             nextafter,

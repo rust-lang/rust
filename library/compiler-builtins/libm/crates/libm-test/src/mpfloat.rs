@@ -4,10 +4,13 @@
 //! a struct named `Operation` that implements [`MpOp`].
 
 use std::cmp::Ordering;
+use std::ffi::{c_int, c_long};
 
 use az::Az;
+use gmp_mpfr_sys::mpfr::rnd_t;
 use rug::Assign;
 pub use rug::Float as MpFloat;
+use rug::float::Round;
 use rug::float::Round::Nearest;
 use rug::ops::{PowAssignRound, RemAssignRound};
 
@@ -361,6 +364,32 @@ macro_rules! impl_op_for_ty {
                 }
             }
 
+            impl MpOp for crate::op::[<remquo $suffix>]::Routine {
+                type MpTy = (MpFloat, MpFloat, MpFloat);
+
+                fn new_mp() -> Self::MpTy {
+                    (
+                        new_mpfloat::<Self::FTy>(),
+                        new_mpfloat::<Self::FTy>(),
+                        new_mpfloat::<Self::FTy>()
+                    )
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    this.0.assign(input.0);
+                    this.1.assign(input.1);
+                    let (ord, ql) = mpfr_remquo(&mut this.2, &this.0, &this.1, Nearest);
+
+                    // `remquo` integer results are sign-magnitude representation. Transfer the
+                    // sign bit from the long result to the int result.
+                    let clear = !(1 << (c_int::BITS - 1));
+                    let sign = ((ql >> (c_long::BITS - 1)) as i32) << (c_int::BITS - 1);
+                    let q = (ql as i32) & clear | sign;
+
+                    (prep_retval::<Self::FTy>(&mut this.2, ord), q)
+                }
+            }
+
             impl MpOp for crate::op::[<yn $suffix>]::Routine {
                 type MpTy = MpFloat;
 
@@ -440,4 +469,25 @@ impl MpOp for crate::op::lgammaf_r::Routine {
         let ret = prep_retval::<Self::FTy>(this, ord);
         (ret, sign as i32)
     }
+}
+
+/// `rug` does not provide `remquo` so this exposes `mpfr_remquo`. See rug#76.
+fn mpfr_remquo(r: &mut MpFloat, x: &MpFloat, y: &MpFloat, round: Round) -> (Ordering, c_long) {
+    let r = r.as_raw_mut();
+    let x = x.as_raw();
+    let y = y.as_raw();
+    let mut q: c_long = 0;
+
+    let round = match round {
+        Round::Nearest => rnd_t::RNDN,
+        Round::Zero => rnd_t::RNDZ,
+        Round::Up => rnd_t::RNDU,
+        Round::Down => rnd_t::RNDD,
+        Round::AwayZero => rnd_t::RNDA,
+        _ => unreachable!(),
+    };
+
+    // SAFETY: mutable and const pointers are valid and do not alias, by Rust's rules.
+    let ord = unsafe { gmp_mpfr_sys::mpfr::remquo(r, &mut q, x, y, round) };
+    (ord.cmp(&0), q)
 }

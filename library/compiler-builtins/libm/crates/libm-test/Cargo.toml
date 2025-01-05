@@ -35,7 +35,7 @@ paste = "1.0.15"
 rand = "0.8.5"
 rand_chacha = "0.3.1"
 rayon = "1.10.0"
-rug = { version = "1.26.1", optional = true, default-features = false, features = ["float", "std"] }
+rug = { version = "1.26.1", optional = true, default-features = false, features = ["float", "integer", "std"] }
 
 [target.'cfg(target_family = "wasm")'.dependencies]
 # Enable randomness on WASM
