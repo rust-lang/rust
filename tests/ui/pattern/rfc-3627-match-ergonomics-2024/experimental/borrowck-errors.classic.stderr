@@ -46,7 +46,7 @@ LL |     let [&ref x] = &[&mut 0];
    |           +++
 
 error[E0508]: cannot move out of type `[&mut u32; 1]`, a non-copy array
-  --> $DIR/borrowck-errors.rs:31:16
+  --> $DIR/borrowck-errors.rs:30:16
    |
 LL |     let [&x] = &mut [&mut 0];
    |           -    ^^^^^^^^^^^^^ cannot move out of here

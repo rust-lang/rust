@@ -2344,7 +2344,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 InheritedRefMatchRule::EatInner => {
                     if let ty::Ref(_, _, r_mutbl) = *expected.kind() {
                         // Match against the reference type; don't consume the inherited ref.
-                        pat_info.binding_mode = pat_info.binding_mode.cap_ref_mutability(r_mutbl);
+                        // NB: For RFC 3627's Rule 3, we limit the default binding mode's ref
+                        // mutability to `pat_info.max_ref_mutbl`. If we implement a pattern typing
+                        // ruleset with Rule 4 but not Rule 3, we'll need to check that here.
+                        debug_assert!(self.downgrade_mut_inside_shared());
+                        let mutbl_cap = cmp::min(r_mutbl, pat_info.max_ref_mutbl.as_mutbl());
+                        pat_info.binding_mode = pat_info.binding_mode.cap_ref_mutability(mutbl_cap);
                     } else {
                         // The expected type isn't a reference, so match against the inherited ref.
                         if pat_mutbl > inh_mut {
