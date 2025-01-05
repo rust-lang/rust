@@ -31,7 +31,7 @@ const STR_SENTINEL: u8 = 0xC1;
 /// a `finish` method that finishes up encoding. If the encoder is fallible,
 /// `finish` should return a `Result` that indicates success or failure.
 ///
-/// This current does not support `f32` nor `f64`, as they're not needed in any
+/// This currently does not support `f32` nor `f64`, as they're not needed in any
 /// serialized data structures. That could be changed, but consider whether it
 /// really makes sense to store floating-point values at all.
 /// (If you need it, revert <https://github.com/rust-lang/rust/pull/109984>.)
@@ -81,7 +81,7 @@ pub trait Encoder {
 // infallibility made things faster and lots of code a little simpler and more
 // concise.
 ///
-/// This current does not support `f32` nor `f64`, as they're not needed in any
+/// This currently does not support `f32` nor `f64`, as they're not needed in any
 /// serialized data structures. That could be changed, but consider whether it
 /// really makes sense to store floating-point values at all.
 /// (If you need it, revert <https://github.com/rust-lang/rust/pull/109984>.)
