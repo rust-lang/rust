@@ -87,6 +87,7 @@
     - [*-unknown-openbsd](platform-support/openbsd.md)
     - [*-unknown-redox](platform-support/redox.md)
     - [\*-unknown-uefi](platform-support/unknown-uefi.md)
+    - [\*-uwp-windows-msvc](platform-support/uwp-windows-msvc.md)
     - [\*-wrs-vxworks](platform-support/vxworks.md)
     - [wasm32-wasip1](platform-support/wasm32-wasip1.md)
     - [wasm32-wasip1-threads](platform-support/wasm32-wasip1-threads.md)
