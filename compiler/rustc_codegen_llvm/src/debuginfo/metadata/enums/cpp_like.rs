@@ -12,12 +12,13 @@ use rustc_middle::ty::{self, AdtDef, CoroutineArgs, CoroutineArgsExt, Ty};
 use smallvec::smallvec;
 
 use crate::common::{AsCCharPtr, CodegenCx};
+use crate::debuginfo::dwarf_const::DW_TAG_const_type;
 use crate::debuginfo::metadata::enums::DiscrResult;
 use crate::debuginfo::metadata::type_map::{self, Stub, UniqueTypeId};
 use crate::debuginfo::metadata::{
-    DINodeCreationResult, DW_TAG_const_type, NO_GENERICS, NO_SCOPE_METADATA, SmallVec,
-    UNKNOWN_LINE_NUMBER, build_field_di_node, file_metadata, file_metadata_from_def_id,
-    size_and_align_of, type_di_node, unknown_file_metadata, visibility_di_flags,
+    DINodeCreationResult, NO_GENERICS, NO_SCOPE_METADATA, SmallVec, UNKNOWN_LINE_NUMBER,
+    build_field_di_node, file_metadata, file_metadata_from_def_id, size_and_align_of, type_di_node,
+    unknown_file_metadata, visibility_di_flags,
 };
 use crate::debuginfo::utils::DIB;
 use crate::llvm::debuginfo::{DIFile, DIFlags, DIType};
