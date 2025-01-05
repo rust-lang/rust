@@ -1,5 +1,5 @@
 use crate::abi::Endian;
-use crate::spec::{CodeModel, PanicStrategy, Target, TargetOptions};
+use crate::spec::{CodeModel, PanicStrategy, RelocModel, Target, TargetOptions};
 
 pub(crate) fn target() -> Target {
     let options = TargetOptions {
@@ -13,6 +13,7 @@ pub(crate) fn target() -> Target {
         has_rpath: false,
         // should be soft-float
         llvm_floatabi: None,
+        relocation_model: RelocModel::Static,
         ..Default::default()
     };
 
