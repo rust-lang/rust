@@ -2,7 +2,7 @@
 
 **Tier: 3**
 
-MIPS32r2 baremetal softfloat, Big Endian or Little Enedian.
+MIPS32r2 baremetal softfloat, Big Endian or Little Endian.
 
 - mips-mti-none-elf
 - mipsel-mti-none-elf
