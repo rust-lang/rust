@@ -244,20 +244,7 @@ where
                     .map(|pred| goal.with(cx, pred)),
             );
 
-            // In case the associated item is hidden due to specialization, we have to
-            // return ambiguity this would otherwise be incomplete, resulting in
-            // unsoundness during coherence (#105782).
-            let Some(target_item_def_id) = ecx.fetch_eligible_assoc_item(
-                goal_trait_ref,
-                goal.predicate.def_id(),
-                impl_def_id,
-            )?
-            else {
-                return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
-            };
-
-            let error_response = |ecx: &mut EvalCtxt<'_, D>, msg: &str| {
-                let guar = cx.delay_bug(msg);
+            let error_response = |ecx: &mut EvalCtxt<'_, D>, guar| {
                 let error_term = match goal.predicate.alias.kind(cx) {
                     ty::AliasTermKind::ProjectionTy => Ty::new_error(cx, guar).into(),
                     ty::AliasTermKind::ProjectionConst => Const::new_error(cx, guar).into(),
@@ -267,8 +254,24 @@ where
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             };
 
+            // In case the associated item is hidden due to specialization, we have to
+            // return ambiguity this would otherwise be incomplete, resulting in
+            // unsoundness during coherence (#105782).
+            let target_item_def_id = match ecx.fetch_eligible_assoc_item(
+                goal_trait_ref,
+                goal.predicate.def_id(),
+                impl_def_id,
+            ) {
+                Ok(Some(target_item_def_id)) => target_item_def_id,
+                Ok(None) => {
+                    return ecx
+                        .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
+                }
+                Err(guar) => return error_response(ecx, guar),
+            };
+
             if !cx.has_item_definition(target_item_def_id) {
-                return error_response(ecx, "missing item");
+                return error_response(ecx, cx.delay_bug("missing item"));
             }
 
             let target_container_def_id = cx.parent(target_item_def_id);
@@ -292,7 +295,10 @@ where
             )?;
 
             if !cx.check_args_compatible(target_item_def_id, target_args) {
-                return error_response(ecx, "associated item has mismatched arguments");
+                return error_response(
+                    ecx,
+                    cx.delay_bug("associated item has mismatched arguments"),
+                );
             }
 
             // Finally we construct the actual value of the associated type.

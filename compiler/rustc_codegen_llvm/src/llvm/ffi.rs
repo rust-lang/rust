@@ -2008,6 +2008,12 @@ unsafe extern "C" {
         AlignInBits: u32,
     ) -> &'a DIDerivedType;
 
+    pub fn LLVMRustDIBuilderCreateQualifiedType<'a>(
+        Builder: &DIBuilder<'a>,
+        Tag: c_uint,
+        Type: &'a DIType,
+    ) -> &'a DIDerivedType;
+
     pub fn LLVMRustDIBuilderCreateLexicalBlock<'a>(
         Builder: &DIBuilder<'a>,
         Scope: &'a DIScope,

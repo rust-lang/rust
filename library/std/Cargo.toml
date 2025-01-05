@@ -30,8 +30,8 @@ std_detect = { path = "../stdarch/crates/std_detect", default-features = false, 
 rustc-demangle = { version = "0.1.24", features = ['rustc-dep-of-std'] }
 
 [target.'cfg(not(all(windows, target_env = "msvc", not(target_vendor = "uwp"))))'.dependencies]
-miniz_oxide = { version = "0.7.0", optional = true, default-features = false }
-addr2line = { version = "0.22.0", optional = true, default-features = false }
+miniz_oxide = { version = "0.8.0", optional = true, default-features = false }
+addr2line = { version = "0.24.0", optional = true, default-features = false }
 
 [target.'cfg(not(all(windows, target_env = "msvc")))'.dependencies]
 libc = { version = "0.2.169", default-features = false, features = [

@@ -491,6 +491,11 @@ tool_check_step!(MiroptTestTools { path: "src/tools/miropt-test-tools" });
 tool_check_step!(TestFloatParse { path: "src/etc/test-float-parse" });
 
 tool_check_step!(Bootstrap { path: "src/bootstrap", default: false });
+
+// `run-make-support` will be built as part of suitable run-make compiletest test steps, but support
+// check to make it easier to work on.
+tool_check_step!(RunMakeSupport { path: "src/tools/run-make-support", default: false });
+
 // Compiletest is implicitly "checked" when it gets built in order to run tests,
 // so this is mainly for people working on compiletest to run locally.
 tool_check_step!(Compiletest { path: "src/tools/compiletest", default: false });

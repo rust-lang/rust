@@ -26,7 +26,7 @@ fn equate_intrinsic_type<'tcx>(
     sig: ty::PolyFnSig<'tcx>,
 ) {
     let (generics, span) = match tcx.hir_node_by_def_id(def_id) {
-        hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. })
+        hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { generics, .. }, .. })
         | hir::Node::ForeignItem(hir::ForeignItem {
             kind: hir::ForeignItemKind::Fn(_, _, generics),
             ..
@@ -86,6 +86,7 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
         | sym::assert_inhabited
         | sym::assert_zero_valid
         | sym::assert_mem_uninitialized_valid
+        | sym::box_new
         | sym::breakpoint
         | sym::size_of
         | sym::min_align_of
@@ -605,6 +606,8 @@ pub fn check_intrinsic_type(
             sym::ptr_metadata => (2, 0, vec![Ty::new_imm_ptr(tcx, param(0))], param(1)),
 
             sym::ub_checks => (0, 0, Vec::new(), tcx.types.bool),
+
+            sym::box_new => (1, 0, vec![param(0)], Ty::new_box(tcx, param(0))),
 
             sym::simd_eq
             | sym::simd_ne

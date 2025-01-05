@@ -57,22 +57,24 @@ pub(crate) fn check_impl_wf(
     tcx: TyCtxt<'_>,
     impl_def_id: LocalDefId,
 ) -> Result<(), ErrorGuaranteed> {
-    let min_specialization = tcx.features().min_specialization();
-    let mut res = Ok(());
     debug_assert_matches!(tcx.def_kind(impl_def_id), DefKind::Impl { .. });
-    res = res.and(enforce_impl_params_are_constrained(tcx, impl_def_id));
-    if min_specialization {
+
+    // Check that the args are constrained. We queryfied the check for ty/const params
+    // since unconstrained type/const params cause ICEs in projection, so we want to
+    // detect those specifically and project those to `TyKind::Error`.
+    let mut res = tcx.ensure().enforce_impl_non_lifetime_params_are_constrained(impl_def_id);
+    res = res.and(enforce_impl_lifetime_params_are_constrained(tcx, impl_def_id));
+
+    if tcx.features().min_specialization() {
         res = res.and(check_min_specialization(tcx, impl_def_id));
     }
-
     res
 }
 
-fn enforce_impl_params_are_constrained(
+pub(crate) fn enforce_impl_lifetime_params_are_constrained(
     tcx: TyCtxt<'_>,
     impl_def_id: LocalDefId,
 ) -> Result<(), ErrorGuaranteed> {
-    // Every lifetime used in an associated type must be constrained.
     let impl_self_ty = tcx.type_of(impl_def_id).instantiate_identity();
     if impl_self_ty.references_error() {
         // Don't complain about unconstrained type params when self ty isn't known due to errors.
@@ -88,6 +90,7 @@ fn enforce_impl_params_are_constrained(
         // Compilation must continue in order for other important diagnostics to keep showing up.
         return Ok(());
     }
+
     let impl_generics = tcx.generics_of(impl_def_id);
     let impl_predicates = tcx.predicates_of(impl_def_id);
     let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).map(ty::EarlyBinder::instantiate_identity);
@@ -123,20 +126,97 @@ fn enforce_impl_params_are_constrained(
 
     let mut res = Ok(());
     for param in &impl_generics.own_params {
+        match param.kind {
+            ty::GenericParamDefKind::Lifetime => {
+                let param_lt = cgp::Parameter::from(param.to_early_bound_region_data());
+                if lifetimes_in_associated_types.contains(&param_lt) // (*)
+                    && !input_parameters.contains(&param_lt)
+                {
+                    let mut diag = tcx.dcx().create_err(UnconstrainedGenericParameter {
+                        span: tcx.def_span(param.def_id),
+                        param_name: param.name,
+                        param_def_kind: tcx.def_descr(param.def_id),
+                        const_param_note: false,
+                        const_param_note2: false,
+                    });
+                    diag.code(E0207);
+                    res = Err(diag.emit());
+                }
+                // (*) This is a horrible concession to reality. I think it'd be
+                // better to just ban unconstrained lifetimes outright, but in
+                // practice people do non-hygienic macros like:
+                //
+                // ```
+                // macro_rules! __impl_slice_eq1 {
+                //   ($Lhs: ty, $Rhs: ty, $Bound: ident) => {
+                //     impl<'a, 'b, A: $Bound, B> PartialEq<$Rhs> for $Lhs where A: PartialEq<B> {
+                //        ....
+                //     }
+                //   }
+                // }
+                // ```
+                //
+                // In a concession to backwards compatibility, we continue to
+                // permit those, so long as the lifetimes aren't used in
+                // associated types. I believe this is sound, because lifetimes
+                // used elsewhere are not projected back out.
+            }
+            ty::GenericParamDefKind::Type { .. } | ty::GenericParamDefKind::Const { .. } => {
+                // Enforced in `enforce_impl_non_lifetime_params_are_constrained`.
+            }
+        }
+    }
+    res
+}
+
+pub(crate) fn enforce_impl_non_lifetime_params_are_constrained(
+    tcx: TyCtxt<'_>,
+    impl_def_id: LocalDefId,
+) -> Result<(), ErrorGuaranteed> {
+    let impl_self_ty = tcx.type_of(impl_def_id).instantiate_identity();
+    if impl_self_ty.references_error() {
+        // Don't complain about unconstrained type params when self ty isn't known due to errors.
+        // (#36836)
+        tcx.dcx().span_delayed_bug(
+            tcx.def_span(impl_def_id),
+            format!(
+                "potentially unconstrained type parameters weren't evaluated: {impl_self_ty:?}",
+            ),
+        );
+        // This is super fishy, but our current `rustc_hir_analysis::check_crate` pipeline depends on
+        // `type_of` having been called much earlier, and thus this value being read from cache.
+        // Compilation must continue in order for other important diagnostics to keep showing up.
+        return Ok(());
+    }
+    let impl_generics = tcx.generics_of(impl_def_id);
+    let impl_predicates = tcx.predicates_of(impl_def_id);
+    let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).map(ty::EarlyBinder::instantiate_identity);
+
+    impl_trait_ref.error_reported()?;
+
+    let mut input_parameters = cgp::parameters_for_impl(tcx, impl_self_ty, impl_trait_ref);
+    cgp::identify_constrained_generic_params(
+        tcx,
+        impl_predicates,
+        impl_trait_ref,
+        &mut input_parameters,
+    );
+
+    let mut res = Ok(());
+    for param in &impl_generics.own_params {
         let err = match param.kind {
             // Disallow ANY unconstrained type parameters.
             ty::GenericParamDefKind::Type { .. } => {
                 let param_ty = ty::ParamTy::for_def(param);
                 !input_parameters.contains(&cgp::Parameter::from(param_ty))
             }
-            ty::GenericParamDefKind::Lifetime => {
-                let param_lt = cgp::Parameter::from(param.to_early_bound_region_data());
-                lifetimes_in_associated_types.contains(&param_lt) && // (*)
-                    !input_parameters.contains(&param_lt)
-            }
             ty::GenericParamDefKind::Const { .. } => {
                 let param_ct = ty::ParamConst::for_def(param);
                 !input_parameters.contains(&cgp::Parameter::from(param_ct))
+            }
+            ty::GenericParamDefKind::Lifetime => {
+                // Enforced in `enforce_impl_type_params_are_constrained`.
+                false
             }
         };
         if err {
@@ -153,23 +233,4 @@ fn enforce_impl_params_are_constrained(
         }
     }
     res
-
-    // (*) This is a horrible concession to reality. I think it'd be
-    // better to just ban unconstrained lifetimes outright, but in
-    // practice people do non-hygienic macros like:
-    //
-    // ```
-    // macro_rules! __impl_slice_eq1 {
-    //     ($Lhs: ty, $Rhs: ty, $Bound: ident) => {
-    //         impl<'a, 'b, A: $Bound, B> PartialEq<$Rhs> for $Lhs where A: PartialEq<B> {
-    //            ....
-    //         }
-    //     }
-    // }
-    // ```
-    //
-    // In a concession to backwards compatibility, we continue to
-    // permit those, so long as the lifetimes aren't used in
-    // associated types. I believe this is sound, because lifetimes
-    // used elsewhere are not projected back out.
 }

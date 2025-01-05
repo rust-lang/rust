@@ -253,7 +253,11 @@ fn is_empty_body(cx: &LateContext<'_>, body: BodyId) -> bool {
 
 impl<'tcx> LateLintPass<'tcx> for ExtraUnusedTypeParameters {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
-        if let ItemKind::Fn(_, generics, body_id) = item.kind
+        if let ItemKind::Fn {
+            generics,
+            body: body_id,
+            ..
+        } = item.kind
             && !generics.params.is_empty()
             && !is_empty_body(cx, body_id)
             && (!self.avoid_breaking_exported_api || !cx.effective_visibilities.is_exported(item.owner_id.def_id))

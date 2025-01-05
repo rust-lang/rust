@@ -69,10 +69,10 @@ impl<'tcx> Ty<'tcx> {
     /// description in error messages. This is used in the primary span label. Beyond what
     /// `is_simple_ty` includes, it also accepts ADTs with no type arguments and references to
     /// ADTs with no type arguments.
-    pub fn is_simple_text(self, tcx: TyCtxt<'tcx>) -> bool {
+    pub fn is_simple_text(self) -> bool {
         match self.kind() {
             Adt(_, args) => args.non_erasable_generics().next().is_none(),
-            Ref(_, ty, _) => ty.is_simple_text(tcx),
+            Ref(_, ty, _) => ty.is_simple_text(),
             _ => self.is_simple_ty(),
         }
     }

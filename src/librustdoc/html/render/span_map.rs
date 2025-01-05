@@ -245,7 +245,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
         match item.kind {
             ItemKind::Static(_, _, _)
             | ItemKind::Const(_, _, _)
-            | ItemKind::Fn(_, _, _)
+            | ItemKind::Fn { .. }
             | ItemKind::Macro(_, _)
             | ItemKind::TyAlias(_, _)
             | ItemKind::Enum(_, _)

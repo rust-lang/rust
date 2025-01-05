@@ -18,7 +18,7 @@ const LICENSES: &[&str] = &[
     // tidy-alphabetical-start
     "(MIT OR Apache-2.0) AND Unicode-3.0",                 // unicode_ident (1.0.14)
     "(MIT OR Apache-2.0) AND Unicode-DFS-2016",            // unicode_ident (1.0.12)
-    "0BSD OR MIT OR Apache-2.0",                           // adler license
+    "0BSD OR MIT OR Apache-2.0",                           // adler2 license
     "0BSD",
     "Apache-2.0 / MIT",
     "Apache-2.0 OR ISC OR MIT",
@@ -462,7 +462,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
 const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     // tidy-alphabetical-start
     "addr2line",
-    "adler",
+    "adler2",
     "allocator-api2",
     "cc",
     "cfg-if",

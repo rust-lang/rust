@@ -9,8 +9,7 @@
 //@ rustc-env:RUST_BACKTRACE=0
 
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
-pub const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {}
+pub const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize);
 
 fn main() {
     unsafe { const_deallocate(std::ptr::null_mut(), 0, 0) }

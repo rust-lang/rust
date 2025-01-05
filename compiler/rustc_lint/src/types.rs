@@ -1561,7 +1561,7 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDefinitions {
                 );
             }
             // See `check_fn`..
-            hir::ItemKind::Fn(..) => {}
+            hir::ItemKind::Fn { .. } => {}
             // See `check_field_def`..
             hir::ItemKind::Union(..) | hir::ItemKind::Struct(..) | hir::ItemKind::Enum(..) => {}
             // Doesn't define something that can contain a external type to be checked.

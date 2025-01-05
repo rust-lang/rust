@@ -10,10 +10,8 @@ fn foo<const N: usize>(_: [u8; N]) -> [u8; N] {
 fn bar() {
     let _x: [u8; 3] = [0; _];
     //[normal]~^ ERROR: using `_` for array lengths is unstable
-    //[normal]~| ERROR: in expressions, `_` can only be used on the left-hand side of an assignment
     let _y: [u8; _] = [0; 3];
     //[normal]~^ ERROR: using `_` for array lengths is unstable
-    //[normal]~| ERROR: in expressions, `_` can only be used on the left-hand side of an assignment
 }
 
 fn main() {

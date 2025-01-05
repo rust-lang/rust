@@ -1,4 +1,5 @@
 // should-fail
+const FILTER_CRATE = "std";
 const EXPECTED = [
     {
         // Keep this test case identical to `transmute`, except the
@@ -7,7 +8,7 @@ const EXPECTED = [
         'others': [
             { 'path': 'std::intrinsics::simd', 'name': 'simd_as' },
             { 'path': 'std::intrinsics::simd', 'name': 'simd_cast' },
-            { 'path': 'std::intrinsics', 'name': 'transmute' },
+            { 'path': 'std::mem', 'name': 'transmute' },
         ],
     },
 ];

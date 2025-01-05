@@ -87,21 +87,7 @@ fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &UnordSet<LocalDef
 }
 
 fn typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
-    let fallback = move || tcx.type_of(def_id.to_def_id()).instantiate_identity();
-    typeck_with_fallback(tcx, def_id, fallback, None)
-}
-
-/// Used only to get `TypeckResults` for type inference during error recovery.
-/// Currently only used for type inference of `static`s and `const`s to avoid type cycle errors.
-fn diagnostic_only_typeck<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
-) -> &'tcx ty::TypeckResults<'tcx> {
-    let fallback = move || {
-        let span = tcx.hir().span(tcx.local_def_id_to_hir_id(def_id));
-        Ty::new_error_with_message(tcx, span, "diagnostic only typeck table used")
-    };
-    typeck_with_fallback(tcx, def_id, fallback, None)
+    typeck_with_fallback(tcx, def_id, None)
 }
 
 /// Same as `typeck` but `inspect` is invoked on evaluation of each root obligation.
@@ -113,15 +99,13 @@ pub fn inspect_typeck<'tcx>(
     def_id: LocalDefId,
     inspect: ObligationInspector<'tcx>,
 ) -> &'tcx ty::TypeckResults<'tcx> {
-    let fallback = move || tcx.type_of(def_id.to_def_id()).instantiate_identity();
-    typeck_with_fallback(tcx, def_id, fallback, Some(inspect))
+    typeck_with_fallback(tcx, def_id, Some(inspect))
 }
 
-#[instrument(level = "debug", skip(tcx, fallback, inspector), ret)]
+#[instrument(level = "debug", skip(tcx, inspector), ret)]
 fn typeck_with_fallback<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-    fallback: impl Fn() -> Ty<'tcx> + 'tcx,
     inspector: Option<ObligationInspector<'tcx>>,
 ) -> &'tcx ty::TypeckResults<'tcx> {
     // Closures' typeck results come from their outermost function,
@@ -150,7 +134,11 @@ fn typeck_with_fallback<'tcx>(
     let mut fcx = FnCtxt::new(&root_ctxt, param_env, def_id);
 
     if let Some(hir::FnSig { header, decl, .. }) = node.fn_sig() {
-        let fn_sig = if decl.output.get_infer_ret_ty().is_some() {
+        let fn_sig = if decl.output.is_suggestable_infer_ty().is_some() {
+            // In the case that we're recovering `fn() -> W<_>` or some other return
+            // type that has an infer in it, lower the type directly so that it'll
+            // be correctly filled with infer. We'll use this inference to provide
+            // a suggestion later on.
             fcx.lowerer().lower_fn_ty(id, header.safety, header.abi, decl, None, None)
         } else {
             tcx.fn_sig(def_id).instantiate_identity()
@@ -164,8 +152,19 @@ fn typeck_with_fallback<'tcx>(
 
         check_fn(&mut fcx, fn_sig, None, decl, def_id, body, tcx.features().unsized_fn_params());
     } else {
-        let expected_type = infer_type_if_missing(&fcx, node);
-        let expected_type = expected_type.unwrap_or_else(fallback);
+        let expected_type = if let Some(infer_ty) = infer_type_if_missing(&fcx, node) {
+            infer_ty
+        } else if let Some(ty) = node.ty()
+            && ty.is_suggestable_infer_ty()
+        {
+            // In the case that we're recovering `const X: [T; _]` or some other
+            // type that has an infer in it, lower the type directly so that it'll
+            // be correctly filled with infer. We'll use this inference to provide
+            // a suggestion later on.
+            fcx.lowerer().lower_ty(ty)
+        } else {
+            tcx.type_of(def_id).instantiate_identity()
+        };
 
         let expected_type = fcx.normalize(body.value.span, expected_type);
 
@@ -506,5 +505,5 @@ fn fatally_break_rust(tcx: TyCtxt<'_>, span: Span) -> ! {
 
 pub fn provide(providers: &mut Providers) {
     method::provide(providers);
-    *providers = Providers { typeck, diagnostic_only_typeck, used_trait_imports, ..*providers };
+    *providers = Providers { typeck, used_trait_imports, ..*providers };
 }

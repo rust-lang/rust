@@ -131,19 +131,25 @@ pub struct ItemCtxt<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 
 #[derive(Default)]
-pub(crate) struct HirPlaceholderCollector(pub(crate) Vec<Span>);
+pub(crate) struct HirPlaceholderCollector {
+    pub spans: Vec<Span>,
+    // If any of the spans points to a const infer var, then suppress any messages
+    // that may try to turn that const infer into a type parameter.
+    pub may_contain_const_infer: bool,
+}
 
 impl<'v> Visitor<'v> for HirPlaceholderCollector {
     fn visit_ty(&mut self, t: &'v hir::Ty<'v>) {
         if let hir::TyKind::Infer = t.kind {
-            self.0.push(t.span);
+            self.spans.push(t.span);
         }
         intravisit::walk_ty(self, t)
     }
     fn visit_generic_arg(&mut self, generic_arg: &'v hir::GenericArg<'v>) {
         match generic_arg {
             hir::GenericArg::Infer(inf) => {
-                self.0.push(inf.span);
+                self.spans.push(inf.span);
+                self.may_contain_const_infer = true;
                 intravisit::walk_inf(self, inf);
             }
             hir::GenericArg::Type(t) => self.visit_ty(t),
@@ -152,7 +158,8 @@ impl<'v> Visitor<'v> for HirPlaceholderCollector {
     }
     fn visit_const_arg(&mut self, const_arg: &'v hir::ConstArg<'v>) {
         if let hir::ConstArgKind::Infer(span) = const_arg.kind {
-            self.0.push(span);
+            self.may_contain_const_infer = true;
+            self.spans.push(span);
         }
         intravisit::walk_const_arg(self, const_arg)
     }
@@ -277,8 +284,8 @@ fn reject_placeholder_type_signatures_in_item<'tcx>(
     placeholder_type_error(
         icx.lowerer(),
         Some(generics),
-        visitor.0,
-        suggest,
+        visitor.spans,
+        suggest && !visitor.may_contain_const_infer,
         None,
         item.kind.descr(),
     );
@@ -607,16 +614,16 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
             hir::FnRetTy::DefaultReturn(..) => tcx.types.unit,
         };
 
-        if !(visitor.0.is_empty() && infer_replacements.is_empty()) {
+        if !(visitor.spans.is_empty() && infer_replacements.is_empty()) {
             // We check for the presence of
             // `ident_span` to not emit an error twice when we have `fn foo(_: fn() -> _)`.
 
             let mut diag = crate::collect::placeholder_type_error_diag(
                 self,
                 generics,
-                visitor.0,
+                visitor.spans,
                 infer_replacements.iter().map(|(s, _)| *s).collect(),
-                true,
+                !visitor.may_contain_const_infer,
                 hir_ty,
                 "function",
             );
@@ -712,7 +719,7 @@ fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
                         placeholder_type_error(
                             icx.lowerer(),
                             None,
-                            visitor.0,
+                            visitor.spans,
                             false,
                             None,
                             "static variable",
@@ -780,7 +787,7 @@ fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
                 placeholder_type_error(
                     icx.lowerer(),
                     None,
-                    visitor.0,
+                    visitor.spans,
                     false,
                     None,
                     it.kind.descr(),
@@ -788,7 +795,7 @@ fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
             }
         }
 
-        hir::ItemKind::Fn(..) => {
+        hir::ItemKind::Fn { .. } => {
             tcx.ensure().generics_of(def_id);
             tcx.ensure().type_of(def_id);
             tcx.ensure().predicates_of(def_id);
@@ -822,7 +829,7 @@ fn lower_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
                 placeholder_type_error(
                     icx.lowerer(),
                     None,
-                    visitor.0,
+                    visitor.spans,
                     false,
                     None,
                     "associated constant",
@@ -837,7 +844,14 @@ fn lower_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
             // Account for `type T = _;`.
             let mut visitor = HirPlaceholderCollector::default();
             visitor.visit_trait_item(trait_item);
-            placeholder_type_error(icx.lowerer(), None, visitor.0, false, None, "associated type");
+            placeholder_type_error(
+                icx.lowerer(),
+                None,
+                visitor.spans,
+                false,
+                None,
+                "associated type",
+            );
         }
 
         hir::TraitItemKind::Type(_, None) => {
@@ -848,7 +862,14 @@ fn lower_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
             let mut visitor = HirPlaceholderCollector::default();
             visitor.visit_trait_item(trait_item);
 
-            placeholder_type_error(icx.lowerer(), None, visitor.0, false, None, "associated type");
+            placeholder_type_error(
+                icx.lowerer(),
+                None,
+                visitor.spans,
+                false,
+                None,
+                "associated type",
+            );
         }
     };
 
@@ -872,7 +893,14 @@ fn lower_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
             let mut visitor = HirPlaceholderCollector::default();
             visitor.visit_impl_item(impl_item);
 
-            placeholder_type_error(icx.lowerer(), None, visitor.0, false, None, "associated type");
+            placeholder_type_error(
+                icx.lowerer(),
+                None,
+                visitor.spans,
+                false,
+                None,
+                "associated type",
+            );
         }
         hir::ImplItemKind::Const(ty, _) => {
             // Account for `const T: _ = ..;`
@@ -882,7 +910,7 @@ fn lower_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
                 placeholder_type_error(
                     icx.lowerer(),
                     None,
-                    visitor.0,
+                    visitor.spans,
                     false,
                     None,
                     "associated constant",
@@ -1297,7 +1325,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, ty::PolyFn
             generics,
             ..
         })
-        | Item(hir::Item { kind: ItemKind::Fn(sig, generics, _), .. }) => {
+        | Item(hir::Item { kind: ItemKind::Fn { sig, generics, .. }, .. }) => {
             lower_fn_sig_recovering_infer_ret_ty(&icx, sig, generics, def_id)
         }
 
@@ -1371,7 +1399,7 @@ fn lower_fn_sig_recovering_infer_ret_ty<'tcx>(
     generics: &'tcx hir::Generics<'tcx>,
     def_id: LocalDefId,
 ) -> ty::PolyFnSig<'tcx> {
-    if let Some(infer_ret_ty) = sig.decl.output.get_infer_ret_ty() {
+    if let Some(infer_ret_ty) = sig.decl.output.is_suggestable_infer_ty() {
         return recover_infer_ret_ty(icx, infer_ret_ty, generics, def_id);
     }
 
@@ -1422,7 +1450,7 @@ fn recover_infer_ret_ty<'tcx>(
     let mut visitor = HirPlaceholderCollector::default();
     visitor.visit_ty(infer_ret_ty);
 
-    let mut diag = bad_placeholder(icx.lowerer(), visitor.0, "return type");
+    let mut diag = bad_placeholder(icx.lowerer(), visitor.spans, "return type");
     let ret_ty = fn_sig.output();
 
     // Don't leak types into signatures unless they're nameable!

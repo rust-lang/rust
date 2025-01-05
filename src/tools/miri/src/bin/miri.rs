@@ -242,7 +242,7 @@ impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
                             let is_reachable_non_generic = matches!(
                                 tcx.hir_node_by_def_id(local_def_id),
                                 Node::Item(&hir::Item {
-                                    kind: hir::ItemKind::Static(..) | hir::ItemKind::Fn(..),
+                                    kind: hir::ItemKind::Static(..) | hir::ItemKind::Fn{ .. },
                                     ..
                                 }) | Node::ImplItem(&hir::ImplItem {
                                     kind: hir::ImplItemKind::Fn(..),

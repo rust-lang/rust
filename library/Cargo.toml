@@ -32,7 +32,7 @@ codegen-units = 10000
 [profile.release.package]
 addr2line.debug = 0
 addr2line.opt-level = "s"
-adler.debug = 0
+adler2.debug = 0
 gimli.debug = 0
 gimli.opt-level = "s"
 miniz_oxide.debug = 0

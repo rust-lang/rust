@@ -5,8 +5,9 @@
 #[cfg(test)]
 mod tests;
 
-use super::api::{self, WinError};
-use super::to_u16s;
+#[cfg(not(target_vendor = "uwp"))]
+use super::api::WinError;
+use super::{api, to_u16s};
 use crate::error::Error as StdError;
 use crate::ffi::{OsStr, OsString};
 use crate::os::windows::ffi::EncodeWide;

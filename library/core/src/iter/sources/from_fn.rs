@@ -3,6 +3,8 @@ use crate::fmt;
 /// Creates a new iterator where each iteration calls the provided closure
 /// `F: FnMut() -> Option<T>`.
 ///
+/// The iterator will yield the `T`s returned from the closure.
+///
 /// This allows creating a custom iterator with any behavior
 /// without using the more verbose syntax of creating a dedicated type
 /// and implementing the [`Iterator`] trait for it.

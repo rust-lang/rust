@@ -93,7 +93,7 @@ impl Step for Std {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.crate_or_deps("sysroot").path("library")
+        run.crate_or_deps("sysroot").path("library").alias("core")
     }
 
     fn make_run(run: RunConfig<'_>) {

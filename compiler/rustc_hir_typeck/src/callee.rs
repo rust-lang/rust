@@ -705,7 +705,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             for id in self.tcx.hir().items() {
                 if let Some(node) = self.tcx.hir().get_if_local(id.owner_id.into())
                     && let hir::Node::Item(item) = node
-                    && let hir::ItemKind::Fn(..) = item.kind
+                    && let hir::ItemKind::Fn { .. } = item.kind
                     && item.ident.name == segment.ident.name
                 {
                     err.span_label(

@@ -20,7 +20,6 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, sym};
 use tracing::{debug, info, instrument, trace};
 
-use crate::errors;
 use crate::thir::cx::Cx;
 use crate::thir::util::UserAnnotatedTyHelpers;
 
@@ -380,45 +379,25 @@ impl<'tcx> Cx<'tcx> {
                         from_hir_call: true,
                         fn_span: expr.span,
                     }
-                } else {
-                    let attrs = tcx.hir().attrs(expr.hir_id);
-                    if attrs.iter().any(|a| a.name_or_empty() == sym::rustc_box) {
-                        if attrs.len() != 1 {
-                            tcx.dcx().emit_err(errors::RustcBoxAttributeError {
-                                span: attrs[0].span,
-                                reason: errors::RustcBoxAttrReason::Attributes,
-                            });
-                        } else if let Some(box_item) = tcx.lang_items().owned_box() {
-                            if let hir::ExprKind::Path(hir::QPath::TypeRelative(ty, fn_path)) =
-                                fun.kind
-                                && let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = ty.kind
-                                && path.res.opt_def_id().is_some_and(|did| did == box_item)
-                                && fn_path.ident.name == sym::new
-                                && let [value] = args
-                            {
-                                return Expr {
-                                    temp_lifetime: TempLifetime {
-                                        temp_lifetime,
-                                        backwards_incompatible,
-                                    },
-                                    ty: expr_ty,
-                                    span: expr.span,
-                                    kind: ExprKind::Box { value: self.mirror_expr(value) },
-                                };
-                            } else {
-                                tcx.dcx().emit_err(errors::RustcBoxAttributeError {
-                                    span: expr.span,
-                                    reason: errors::RustcBoxAttrReason::NotBoxNew,
-                                });
-                            }
-                        } else {
-                            tcx.dcx().emit_err(errors::RustcBoxAttributeError {
-                                span: attrs[0].span,
-                                reason: errors::RustcBoxAttrReason::MissingBox,
-                            });
-                        }
+                } else if let ty::FnDef(def_id, _) = self.typeck_results().expr_ty(fun).kind()
+                    && let Some(intrinsic) = self.tcx.intrinsic(def_id)
+                    && intrinsic.name == sym::box_new
+                {
+                    // We don't actually evaluate `fun` here, so make sure that doesn't miss any side-effects.
+                    if !matches!(fun.kind, hir::ExprKind::Path(_)) {
+                        span_bug!(
+                            expr.span,
+                            "`box_new` intrinsic can only be called via path expression"
+                        );
                     }
-
+                    let value = &args[0];
+                    return Expr {
+                        temp_lifetime: TempLifetime { temp_lifetime, backwards_incompatible },
+                        ty: expr_ty,
+                        span: expr.span,
+                        kind: ExprKind::Box { value: self.mirror_expr(value) },
+                    };
+                } else {
                     // Tuple-like ADTs are represented as ExprKind::Call. We convert them here.
                     let adt_data = if let hir::ExprKind::Path(ref qpath) = fun.kind
                         && let Some(adt_def) = expr_ty.ty_adt_def()
