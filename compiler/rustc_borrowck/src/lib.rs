@@ -1166,10 +1166,18 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
     fn check_backward_incompatible_drop(
         &mut self,
         location: Location,
-        place_span: (Place<'tcx>, Span),
+        (place, place_span): (Place<'tcx>, Span),
         state: &BorrowckDomain,
     ) {
-        let sd = AccessDepth::Drop;
+        let tcx = self.infcx.tcx;
+        // If this type does not need `Drop`, then treat it like a `StorageDead`.
+        // This is needed because we track the borrows of refs to thread locals,
+        // and we'll ICE because we don't track borrows behind shared references.
+        let sd = if place.ty(self.body, tcx).ty.needs_drop(tcx, self.body.typing_env(tcx)) {
+            AccessDepth::Drop
+        } else {
+            AccessDepth::Shallow(None)
+        };
 
         let borrows_in_scope = self.borrows_in_scope(location, state);
 
@@ -1179,7 +1187,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             self,
             self.infcx.tcx,
             self.body,
-            (sd, place_span.0),
+            (sd, place),
             self.borrow_set,
             |borrow_index| borrows_in_scope.contains(borrow_index),
             |this, _borrow_index, borrow| {
@@ -1190,7 +1198,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 this.infcx.tcx.emit_node_span_lint(
                     TAIL_EXPR_DROP_ORDER,
                     CRATE_HIR_ID,
-                    place_span.1,
+                    place_span,
                     session_diagnostics::TailExprDropOrder { borrowed },
                 );
                 // We may stop at the first case
