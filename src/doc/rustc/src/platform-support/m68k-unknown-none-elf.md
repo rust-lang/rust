@@ -7,8 +7,6 @@ Bare metal Motorola 680x0
 ## Designated Developers
 
 * [@knickish](https://github.com/knickish)
-* [@glaubitz](https://github.com/glaubitz)
-* [@ricky26](https://github.com/ricky26)
 
 ## Requirements
 
