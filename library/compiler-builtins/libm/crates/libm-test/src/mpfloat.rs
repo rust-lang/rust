@@ -241,17 +241,17 @@ macro_rules! impl_op_for_ty {
             }
 
             impl MpOp for crate::op::[<jn $suffix>]::Routine {
-                type MpTy = (i32, MpFloat);
+                type MpTy = MpFloat;
 
                 fn new_mp() -> Self::MpTy {
-                    (0, new_mpfloat::<Self::FTy>())
+                    new_mpfloat::<Self::FTy>()
                 }
 
                 fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
-                    this.0 = input.0;
-                    this.1.assign(input.1);
-                    let ord = this.1.jn_round(this.0, Nearest);
-                    prep_retval::<Self::FTy>(&mut this.1, ord)
+                    let (n, x) = input;
+                    this.assign(x);
+                    let ord = this.jn_round(n, Nearest);
+                    prep_retval::<Self::FTy>(this, ord)
                 }
             }
 
@@ -274,17 +274,17 @@ macro_rules! impl_op_for_ty {
             }
 
             impl MpOp for crate::op::[<yn $suffix>]::Routine {
-                type MpTy = (i32, MpFloat);
+                type MpTy = MpFloat;
 
                 fn new_mp() -> Self::MpTy {
-                    (0, new_mpfloat::<Self::FTy>())
+                    new_mpfloat::<Self::FTy>()
                 }
 
                 fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
-                    this.0 = input.0;
-                    this.1.assign(input.1);
-                    let ord = this.1.yn_round(this.0, Nearest);
-                    prep_retval::<Self::FTy>(&mut this.1, ord)
+                    let (n, x) = input;
+                    this.assign(x);
+                    let ord = this.yn_round(n, Nearest);
+                    prep_retval::<Self::FTy>(this, ord)
                 }
             }
         }
