@@ -422,68 +422,8 @@ Just a few things to keep in mind:
 
 ## Issue triage
 
-Sometimes, an issue will stay open, even though the bug has been fixed.
-And sometimes, the original bug may go stale because something has changed in the meantime.
+Please see <https://forge.rust-lang.org/release/issue-triaging.html>.
 
-It can be helpful to go through older bug reports and make sure that they are still valid.
-Load up an older issue, double check that it's still true,
-and leave a comment letting us know if it is or is not.
-The [least recently updated sort][lru] is good for finding issues like this.
-
-[Thanks to `@rustbot`][rustbot], anyone can help triage issues by adding
-appropriate labels to issues that haven't been triaged yet:
-
-[lru]: https://github.com/rust-lang/rust/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-asc
-[rustbot]: ./rustbot.md
-
-<style>
-.label-color {
-    border-radius:0.5em;
-}
-table td:nth-child(2) {
-    white-space: nowrap;
-}
-
-</style>
-
-| Labels | Color | Description |
-|--------|-------|-------------|
-| [A-]   | <span class="label-color" style="background-color:#f7e101;">&#x2003;</span>&nbsp;Yellow | The **area** of the project an issue relates to. |
-| [B-]   | <span class="label-color" style="background-color:#d304cb;">&#x2003;</span>&nbsp;Magenta | Issues which are **blockers**. |
-| [beta-] | <span class="label-color" style="background-color:#1e76d9;">&#x2003;</span>&nbsp;Dark Blue | Tracks changes which need to be [backported to beta][beta-backport] |
-| [C-] | <span class="label-color" style="background-color:#f5f1fd;">&#x2003;</span>&nbsp;Light Purple | The **category** of an issue. |
-| [D-] | <span class="label-color" style="background-color:#c9f7a3;">&#x2003;</span>&nbsp;Mossy Green | Issues for **diagnostics**. |
-| [E-] | <span class="label-color" style="background-color:#02e10c;">&#x2003;</span>&nbsp;Green | The **experience** level necessary to fix an issue. |
-| [F-] | <span class="label-color" style="background-color:#f9c0cc;">&#x2003;</span>&nbsp;Peach | Issues for **nightly features**. |
-| [I-] | <span class="label-color" style="background-color:#e10c02;">&#x2003;</span>&nbsp;Red | The **importance** of the issue. |
-| [I-\*-nominated] | <span class="label-color" style="background-color:#e10c02;">&#x2003;</span>&nbsp;Red | The issue has been nominated for discussion at the next meeting of the corresponding team. |
-| [I-prioritize] | <span class="label-color" style="background-color:#e10c02;">&#x2003;</span>&nbsp;Red | The issue has been nominated for prioritization by the team tagged with a **T**-prefixed label. |
-| [L-] | <span class="label-color" style="background-color:#64E9CF;">&#x2003;</span>&nbsp;Teal | The relevant **lint**. |
-| [metabug] | <span class="label-color" style="background-color:#5319e7;">&#x2003;</span>&nbsp;Purple | Bugs that collect other bugs. |
-| [O-] | <span class="label-color" style="background-color:#6e6ec0;">&#x2003;</span>&nbsp;Purple Grey | The **operating system** or platform that the issue is specific to. |
-| [P-] | <span class="label-color" style="background-color:#eb6420;">&#x2003;</span>&nbsp;Orange | The issue **priority**.  These labels can be assigned by anyone that understand the issue and is able to  prioritize it, and remove the [I-prioritize] label. |
-| [regression-] | <span class="label-color" style="background-color:#e4008a;">&#x2003;</span>&nbsp;Pink | Tracks regressions from a stable release. |
-| [relnotes] | <span class="label-color" style="background-color:#fad8c7;">&#x2003;</span>&nbsp;Light Orange | Changes that should be documented in the release notes of the next release. |
-| [S-] | <span class="label-color" style="background-color:#d3dddd;">&#x2003;</span>&nbsp;Gray | Tracks the **status** of pull requests. |
-| [S-tracking-] | <span class="label-color" style="background-color:#4682b4;">&#x2003;</span>&nbsp;Steel Blue | Tracks the **status** of [tracking issues]. |
-| [stable-] | <span class="label-color" style="background-color:#00229c;">&#x2003;</span>&nbsp;Dark Blue | Tracks changes which need to be [backported to stable][stable-backport] in anticipation of a point release. |
-| [T-] | <span class="label-color" style="background-color:#bfd4f2;">&#x2003;</span>&nbsp;Blue | Denotes which **team** the issue belongs to. |
-| [WG-] | <span class="label-color" style="background-color:#c2e0c6;">&#x2003;</span>&nbsp;Green | Denotes which **working group** the issue belongs to. |
-
-
-[A-]: https://github.com/rust-lang/rust/labels?q=A
-[B-]: https://github.com/rust-lang/rust/labels?q=B
-[C-]: https://github.com/rust-lang/rust/labels?q=C
-[D-]: https://github.com/rust-lang/rust/labels?q=D
-[E-]: https://github.com/rust-lang/rust/labels?q=E
-[F-]: https://github.com/rust-lang/rust/labels?q=F
-[I-]: https://github.com/rust-lang/rust/labels?q=I
-[L-]: https://github.com/rust-lang/rust/labels?q=L
-[O-]: https://github.com/rust-lang/rust/labels?q=O
-[P-]: https://github.com/rust-lang/rust/labels?q=P
-[S-]: https://github.com/rust-lang/rust/labels?q=S
-[T-]: https://github.com/rust-lang/rust/labels?q=T
-[WG-]: https://github.com/rust-lang/rust/labels?q=WG
 [stable-]: https://github.com/rust-lang/rust/labels?q=stable
 [beta-]: https://github.com/rust-lang/rust/labels?q=beta
 [I-\*-nominated]: https://github.com/rust-lang/rust/labels?q=nominated
