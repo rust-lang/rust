@@ -234,7 +234,7 @@ pub(crate) struct CrateNameEmpty {
 }
 
 #[derive(Diagnostic)]
-#[diag(session_invalid_character_in_create_name)]
+#[diag(session_invalid_character_in_crate_name)]
 pub(crate) struct InvalidCharacterInCrateName {
     #[primary_span]
     pub(crate) span: Option<Span>,
@@ -246,7 +246,7 @@ pub(crate) struct InvalidCharacterInCrateName {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum InvalidCrateNameHelp {
-    #[help(session_invalid_character_in_create_name_help)]
+    #[help(session_invalid_character_in_crate_name_help)]
     AddCrateName,
 }
 
