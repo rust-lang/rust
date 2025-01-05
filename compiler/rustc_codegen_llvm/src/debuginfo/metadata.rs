@@ -22,6 +22,7 @@ use rustc_target::spec::DebuginfoKind;
 use smallvec::smallvec;
 use tracing::{debug, instrument};
 
+pub(crate) use self::type_map::TypeMap;
 use self::type_map::{DINodeCreationResult, Stub, UniqueTypeId};
 use super::CodegenUnitDebugContext;
 use super::namespace::mangled_name_of_instance;
@@ -30,6 +31,7 @@ use super::utils::{
     DIB, create_DIArray, debug_context, get_namespace_for_item, is_node_local_to_unit,
 };
 use crate::common::{AsCCharPtr, CodegenCx};
+use crate::debuginfo::dwarf_const;
 use crate::debuginfo::metadata::type_map::build_type_with_children;
 use crate::debuginfo::utils::{WidePtrKind, wide_pointer_kind};
 use crate::llvm::debuginfo::{
@@ -59,23 +61,6 @@ impl fmt::Debug for llvm::Metadata {
     }
 }
 
-// From DWARF 5.
-// See http://www.dwarfstd.org/ShowIssue.php?issue=140129.1.
-const DW_LANG_RUST: c_uint = 0x1c;
-#[allow(non_upper_case_globals)]
-const DW_ATE_boolean: c_uint = 0x02;
-#[allow(non_upper_case_globals)]
-const DW_ATE_float: c_uint = 0x04;
-#[allow(non_upper_case_globals)]
-const DW_ATE_signed: c_uint = 0x05;
-#[allow(non_upper_case_globals)]
-const DW_ATE_unsigned: c_uint = 0x07;
-#[allow(non_upper_case_globals)]
-const DW_ATE_UTF: c_uint = 0x10;
-
-#[allow(non_upper_case_globals)]
-const DW_TAG_const_type: c_uint = 0x26;
-
 pub(super) const UNKNOWN_LINE_NUMBER: c_uint = 0;
 pub(super) const UNKNOWN_COLUMN_NUMBER: c_uint = 0;
 
@@ -89,8 +74,6 @@ type SmallVec<T> = smallvec::SmallVec<[T; 16]>;
 
 mod enums;
 mod type_map;
-
-pub(crate) use type_map::TypeMap;
 
 /// Returns from the enclosing function if the type debuginfo node with the given
 /// unique ID can be found in the type map.
@@ -522,7 +505,7 @@ fn recursion_marker_type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) -> &'ll D
                 name.as_c_char_ptr(),
                 name.len(),
                 cx.tcx.data_layout.pointer_size.bits(),
-                DW_ATE_unsigned,
+                dwarf_const::DW_ATE_unsigned,
             )
         }
     })
@@ -781,6 +764,8 @@ fn build_basic_type_di_node<'ll, 'tcx>(
     // .natvis visualizers (and perhaps other existing native debuggers?)
     let cpp_like_debuginfo = cpp_like_debuginfo(cx.tcx);
 
+    use dwarf_const::{DW_ATE_UTF, DW_ATE_boolean, DW_ATE_float, DW_ATE_signed, DW_ATE_unsigned};
+
     let (name, encoding) = match t.kind() {
         ty::Never => ("!", DW_ATE_unsigned),
         ty::Tuple(elements) if elements.is_empty() => {
@@ -961,7 +946,7 @@ pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
 
         let unit_metadata = llvm::LLVMRustDIBuilderCreateCompileUnit(
             debug_context.builder,
-            DW_LANG_RUST,
+            dwarf_const::DW_LANG_Rust,
             compile_unit_file,
             producer.as_c_char_ptr(),
             producer.len(),

@@ -1,0 +1,29 @@
+//! Definitions of various DWARF-related constants.
+
+use libc::c_uint;
+
+/// Helper macro to let us redeclare gimli's constants as our own constants
+/// with a different type, with less risk of copy-paste errors.
+macro_rules! declare_constant {
+    (
+        $name:ident : $type:ty
+    ) => {
+        #[allow(non_upper_case_globals)]
+        pub(crate) const $name: $type = ::gimli::constants::$name.0 as $type;
+
+        // Assert that as-cast probably hasn't changed the value.
+        const _: () = assert!($name as i128 == ::gimli::constants::$name.0 as i128);
+    };
+}
+
+declare_constant!(DW_TAG_const_type: c_uint);
+
+// DWARF languages.
+declare_constant!(DW_LANG_Rust: c_uint);
+
+// DWARF attribute type encodings.
+declare_constant!(DW_ATE_boolean: c_uint);
+declare_constant!(DW_ATE_float: c_uint);
+declare_constant!(DW_ATE_signed: c_uint);
+declare_constant!(DW_ATE_unsigned: c_uint);
+declare_constant!(DW_ATE_UTF: c_uint);

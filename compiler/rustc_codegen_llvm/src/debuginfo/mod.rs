@@ -39,6 +39,7 @@ use crate::llvm::debuginfo::{
 use crate::value::Value;
 
 mod create_scope_map;
+mod dwarf_const;
 mod gdb;
 pub(crate) mod metadata;
 mod namespace;
