@@ -19,25 +19,29 @@ extern crate std;
 extern crate proc_macro;
 
 fn main() {
-    [crate::TokenStream::from(crate::TokenTree::Ident(crate::Ident::new("let",
-                                    crate::Span::recover_proc_macro_span(0)))),
-                        crate::TokenStream::from(crate::TokenTree::Ident(crate::Ident::new("hello",
-                                    crate::Span::recover_proc_macro_span(1)))),
-                        crate::TokenStream::from(crate::TokenTree::Punct(crate::Punct::new('=',
-                                    crate::Spacing::Alone))),
-                        crate::TokenStream::from(crate::TokenTree::Literal({
-                                    let mut iter =
-                                        "\"world\"".parse::<crate::TokenStream>().unwrap().into_iter();
-                                    if let (Some(crate::TokenTree::Literal(mut lit)), None) =
-                                                (iter.next(), iter.next()) {
-                                            lit.set_span(crate::Span::recover_proc_macro_span(2));
-                                            lit
-                                        } else {
-                                           ::core::panicking::panic("internal error: entered unreachable code")
-                                       }
-                                })),
-                        crate::TokenStream::from(crate::TokenTree::Punct(crate::Punct::new(';',
-                                    crate::Spacing::Alone)))].iter().cloned().collect::<crate::TokenStream>()
+    {
+        let mut ts = crate::TokenStream::new();
+        crate::ToTokens::to_tokens(&crate::TokenTree::Ident(crate::Ident::new("let",
+                        crate::Span::recover_proc_macro_span(0))), &mut ts);
+        crate::ToTokens::to_tokens(&crate::TokenTree::Ident(crate::Ident::new("hello",
+                        crate::Span::recover_proc_macro_span(1))), &mut ts);
+        crate::ToTokens::to_tokens(&crate::TokenTree::Punct(crate::Punct::new('=',
+                        crate::Spacing::Alone)), &mut ts);
+        crate::ToTokens::to_tokens(&crate::TokenTree::Literal({
+                        let mut iter =
+                            "\"world\"".parse::<crate::TokenStream>().unwrap().into_iter();
+                        if let (Some(crate::TokenTree::Literal(mut lit)), None) =
+                                    (iter.next(), iter.next()) {
+                                lit.set_span(crate::Span::recover_proc_macro_span(2));
+                                lit
+                            } else {
+                               ::core::panicking::panic("internal error: entered unreachable code")
+                           }
+                    }), &mut ts);
+        crate::ToTokens::to_tokens(&crate::TokenTree::Punct(crate::Punct::new(';',
+                        crate::Spacing::Alone)), &mut ts);
+        ts
+    }
 }
 const _: () =
     {

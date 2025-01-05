@@ -4,7 +4,9 @@
 //! This quasiquoter uses macros 2.0 hygiene to reliably access
 //! items from `proc_macro`, to build a `proc_macro::TokenStream`.
 
-use crate::{Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
+use crate::{
+    Delimiter, Group, Ident, Literal, Punct, Spacing, Span, ToTokens, TokenStream, TokenTree,
+};
 
 macro_rules! minimal_quote_tt {
     (($($t:tt)*)) => { Group::new(Delimiter::Parenthesis, minimal_quote!($($t)*)) };
@@ -24,16 +26,15 @@ macro_rules! minimal_quote_tt {
 macro_rules! minimal_quote_ts {
     ((@ $($t:tt)*)) => { $($t)* };
     (::) => {
-        [
-            TokenTree::from(Punct::new(':', Spacing::Joint)),
-            TokenTree::from(Punct::new(':', Spacing::Alone)),
-        ].iter()
-            .cloned()
-            .map(|mut x| {
-                x.set_span(Span::def_site());
-                x
-            })
-            .collect::<TokenStream>()
+        {
+            let mut c = (
+                TokenTree::from(Punct::new(':', Spacing::Joint)),
+                TokenTree::from(Punct::new(':', Spacing::Alone))
+            );
+            c.0.set_span(Span::def_site());
+            c.1.set_span(Span::def_site());
+            [c.0, c.1].into_iter().collect::<TokenStream>()
+        }
     };
     ($t:tt) => { TokenTree::from(minimal_quote_tt!($t)) };
 }
@@ -47,11 +48,13 @@ macro_rules! minimal_quote_ts {
 /// Note: supported tokens are a subset of the real `quote!`, but
 /// unquoting is different: instead of `$x`, this uses `(@ expr)`.
 macro_rules! minimal_quote {
-    () => { TokenStream::new() };
     ($($t:tt)*) => {
-        [
-            $(TokenStream::from(minimal_quote_ts!($t)),)*
-        ].iter().cloned().collect::<TokenStream>()
+        {
+            #[allow(unused_mut)] // In case the expansion is empty
+            let mut ts = TokenStream::new();
+            $(ToTokens::to_tokens(&minimal_quote_ts!($t), &mut ts);)*
+            ts
+        }
     };
 }
 
@@ -66,35 +69,39 @@ pub fn quote(stream: TokenStream) -> TokenStream {
     }
     let proc_macro_crate = minimal_quote!(crate);
     let mut after_dollar = false;
-    let tokens = stream
-        .into_iter()
-        .filter_map(|tree| {
-            if after_dollar {
-                after_dollar = false;
-                match tree {
-                    TokenTree::Ident(_) => {
-                        return Some(minimal_quote!(Into::<crate::TokenStream>::into(
-                        Clone::clone(&(@ tree))),));
-                    }
-                    TokenTree::Punct(ref tt) if tt.as_char() == '$' => {}
-                    _ => panic!("`$` must be followed by an ident or `$` in `quote!`"),
-                }
-            } else if let TokenTree::Punct(ref tt) = tree {
-                if tt.as_char() == '$' {
-                    after_dollar = true;
-                    return None;
-                }
-            }
 
-            Some(minimal_quote!(crate::TokenStream::from((@ match tree {
-                TokenTree::Punct(tt) => minimal_quote!(crate::TokenTree::Punct(crate::Punct::new(
+    let mut tokens = crate::TokenStream::new();
+    for tree in stream {
+        if after_dollar {
+            after_dollar = false;
+            match tree {
+                TokenTree::Ident(_) => {
+                    minimal_quote!(crate::ToTokens::to_tokens(&(@ tree), &mut ts);)
+                        .to_tokens(&mut tokens);
+                    continue;
+                }
+                TokenTree::Punct(ref tt) if tt.as_char() == '$' => {}
+                _ => panic!("`$` must be followed by an ident or `$` in `quote!`"),
+            }
+        } else if let TokenTree::Punct(ref tt) = tree {
+            if tt.as_char() == '$' {
+                after_dollar = true;
+                continue;
+            }
+        }
+
+        match tree {
+            TokenTree::Punct(tt) => {
+                minimal_quote!(crate::ToTokens::to_tokens(&crate::TokenTree::Punct(crate::Punct::new(
                     (@ TokenTree::from(Literal::character(tt.as_char()))),
                     (@ match tt.spacing() {
                         Spacing::Alone => minimal_quote!(crate::Spacing::Alone),
                         Spacing::Joint => minimal_quote!(crate::Spacing::Joint),
                     }),
-                ))),
-                TokenTree::Group(tt) => minimal_quote!(crate::TokenTree::Group(crate::Group::new(
+                )), &mut ts);)
+            }
+            TokenTree::Group(tt) => {
+                minimal_quote!(crate::ToTokens::to_tokens(&crate::TokenTree::Group(crate::Group::new(
                     (@ match tt.delimiter() {
                         Delimiter::Parenthesis => minimal_quote!(crate::Delimiter::Parenthesis),
                         Delimiter::Brace => minimal_quote!(crate::Delimiter::Brace),
@@ -102,12 +109,16 @@ pub fn quote(stream: TokenStream) -> TokenStream {
                         Delimiter::None => minimal_quote!(crate::Delimiter::None),
                     }),
                     (@ quote(tt.stream())),
-                ))),
-                TokenTree::Ident(tt) => minimal_quote!(crate::TokenTree::Ident(crate::Ident::new(
+                )), &mut ts);)
+            }
+            TokenTree::Ident(tt) => {
+                minimal_quote!(crate::ToTokens::to_tokens(&crate::TokenTree::Ident(crate::Ident::new(
                     (@ TokenTree::from(Literal::string(&tt.to_string()))),
                     (@ quote_span(proc_macro_crate.clone(), tt.span())),
-                ))),
-                TokenTree::Literal(tt) => minimal_quote!(crate::TokenTree::Literal({
+                )), &mut ts);)
+            }
+            TokenTree::Literal(tt) => {
+                minimal_quote!(crate::ToTokens::to_tokens(&crate::TokenTree::Literal({
                     let mut iter = (@ TokenTree::from(Literal::string(&tt.to_string())))
                         .parse::<crate::TokenStream>()
                         .unwrap()
@@ -120,16 +131,22 @@ pub fn quote(stream: TokenStream) -> TokenStream {
                     } else {
                         unreachable!()
                     }
-                }))
-            })),))
-        })
-        .collect::<TokenStream>();
-
+                }), &mut ts);)
+            }
+        }
+        .to_tokens(&mut tokens);
+    }
     if after_dollar {
         panic!("unexpected trailing `$` in `quote!`");
     }
 
-    minimal_quote!([(@ tokens)].iter().cloned().collect::<crate::TokenStream>())
+    minimal_quote! {
+        {
+            let mut ts = crate::TokenStream::new();
+            (@ tokens)
+            ts
+        }
+    }
 }
 
 /// Quote a `Span` into a `TokenStream`.
