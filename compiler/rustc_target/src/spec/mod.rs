@@ -3242,8 +3242,8 @@ impl Target {
                 }
             }
             // Check that we don't mis-set any of the ABI-relevant features.
-            let (abi_enable, abi_disable) = self.abi_required_features();
-            for feat in abi_enable {
+            let abi_feature_constraints = self.abi_required_features();
+            for feat in abi_feature_constraints.required {
                 // The feature might be enabled by default so we can't *require* it to show up.
                 // But it must not be *disabled*.
                 if features_disabled.contains(feat) {
@@ -3252,8 +3252,8 @@ impl Target {
                     ));
                 }
             }
-            for feat in abi_disable {
-                // The feature might be disable by default so we can't *require* it to show up.
+            for feat in abi_feature_constraints.incompatible {
+                // The feature might be disabled by default so we can't *require* it to show up.
                 // But it must not be *enabled*.
                 if features_enabled.contains(feat) {
                     return Err(format!(

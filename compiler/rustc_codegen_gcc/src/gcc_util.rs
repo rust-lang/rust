@@ -47,9 +47,9 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
 
     // Ensure that all ABI-required features are enabled, and the ABI-forbidden ones
     // are disabled.
-    let (abi_enable, abi_disable) = sess.target.abi_required_features();
-    let abi_enable_set = FxHashSet::from_iter(abi_enable.iter().copied());
-    let abi_disable_set = FxHashSet::from_iter(abi_disable.iter().copied());
+    let abi_feature_constraints = sess.target.abi_required_features();
+    let abi_incompatible_set =
+        FxHashSet::from_iter(abi_feature_constraints.incompatible.iter().copied());
 
     // Compute implied features
     let mut all_rust_features = vec![];
@@ -72,7 +72,7 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
             }
         }
     }
-    // Remove features that are meant for rustc, not LLVM.
+    // Remove features that are meant for rustc, not codegen.
     all_rust_features.retain(|(_, feature)| {
         // Retain if it is not a rustc feature
         !RUSTC_SPECIFIC_FEATURES.contains(feature)
@@ -121,7 +121,7 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
 
             // Ensure that the features we enable/disable are compatible with the ABI.
             if enable {
-                if abi_disable_set.contains(feature) {
+                if abi_incompatible_set.contains(feature) {
                     sess.dcx().emit_warn(ForbiddenCTargetFeature {
                         feature,
                         enabled: "enabled",
@@ -131,8 +131,7 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
             } else {
                 // FIXME: we have to request implied features here since
                 // negative features do not handle implied features above.
-                #[allow(rustc::potential_query_instability)] // order does not matter
-                for &required in abi_enable_set.iter() {
+                for &required in abi_feature_constraints.required.iter() {
                     let implied = sess.target.implied_target_features(std::iter::once(required));
                     if implied.contains(feature) {
                         sess.dcx().emit_warn(ForbiddenCTargetFeature {
@@ -158,7 +157,11 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
     // still override it... that's unsound, but more compatible with past behavior.
     all_rust_features.splice(
         0..0,
-        abi_enable.iter().map(|&f| (true, f)).chain(abi_disable.iter().map(|&f| (false, f))),
+        abi_feature_constraints
+            .required
+            .iter()
+            .map(|&f| (true, f))
+            .chain(abi_feature_constraints.incompatible.iter().map(|&f| (false, f))),
     );
 
     // Translate this into GCC features.

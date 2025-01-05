@@ -32,7 +32,7 @@ pub(crate) fn from_target_feature_attr(
             .emit();
     };
     let rust_features = tcx.features();
-    let (_abi_enable, abi_disable) = tcx.sess.target.abi_required_features();
+    let abi_feature_constraints = tcx.sess.target.abi_required_features();
     for item in list {
         // Only `enable = ...` is accepted in the meta-item list.
         if !item.has_name(sym::enable) {
@@ -87,7 +87,7 @@ pub(crate) fn from_target_feature_attr(
                     // But ensure the ABI does not forbid enabling this.
                     // Here we do assume that LLVM doesn't add even more implied features
                     // we don't know about, at least no features that would have ABI effects!
-                    if abi_disable.contains(&name.as_str()) {
+                    if abi_feature_constraints.incompatible.contains(&name.as_str()) {
                         tcx.dcx().emit_err(errors::ForbiddenTargetFeatureAttr {
                             span: item.span(),
                             feature: name.as_str(),

@@ -669,6 +669,14 @@ const CSKY_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(
 const LOONGARCH_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] =
     &[(128, "lsx"), (256, "lasx")];
 
+#[derive(Copy, Clone, Debug)]
+pub struct FeatureConstraints {
+    /// Features that must be enabled.
+    pub required: &'static [&'static str],
+    /// Features that must be disabled.
+    pub incompatible: &'static [&'static str],
+}
+
 impl Target {
     pub fn rust_target_features(&self) -> &'static [(&'static str, Stability, ImpliedFeatures)] {
         match &*self.arch {
@@ -749,8 +757,8 @@ impl Target {
     /// All features enabled/disabled via `-Ctarget-features` and `#[target_features]` are checked
     /// against this. We also check any implied features, based on the information above. If LLVM
     /// implicitly enables more implied features than we do, that could bypass this check!
-    pub fn abi_required_features(&self) -> (&'static [&'static str], &'static [&'static str]) {
-        const NOTHING: (&'static [&'static str], &'static [&'static str]) = (&[], &[]);
+    pub fn abi_required_features(&self) -> FeatureConstraints {
+        const NOTHING: FeatureConstraints = FeatureConstraints { required: &[], incompatible: &[] };
         // Some architectures don't have a clean explicit ABI designation; instead, the ABI is
         // defined by target features. When that is the case, those target features must be
         // "forbidden" in the list above to ensure that there is a consistent answer to the
@@ -763,7 +771,7 @@ impl Target {
                     NOTHING
                 } else {
                     // Hardfloat ABI. x87 must be enabled.
-                    (&["x87"], &[])
+                    FeatureConstraints { required: &["x87"], incompatible: &[] }
                 }
             }
             "x86_64" => {
@@ -773,7 +781,7 @@ impl Target {
                     NOTHING
                 } else {
                     // Hardfloat ABI. x87 and SSE2 must be enabled.
-                    (&["x87", "sse2"], &[])
+                    FeatureConstraints { required: &["x87", "sse2"], incompatible: &[] }
                 }
             }
             "arm" => {
@@ -786,7 +794,7 @@ impl Target {
                     }
                     FloatAbi::Hard => {
                         // Must have `fpregs` and must not have `soft-float`.
-                        (&["fpregs"], &["soft-float"])
+                        FeatureConstraints { required: &["fpregs"], incompatible: &["soft-float"] }
                     }
                 }
             }
@@ -803,7 +811,7 @@ impl Target {
                     _ => {
                         // Everything else is assumed to use a hardfloat ABI. neon and fp-armv8 must be enabled.
                         // These are Rust feature names and we use "neon" to control both of them.
-                        (&["neon"], &[])
+                        FeatureConstraints { required: &["neon"], incompatible: &[] }
                     }
                 }
             }
@@ -813,15 +821,15 @@ impl Target {
                 match &*self.llvm_abiname {
                     "ilp32d" | "lp64d" => {
                         // Requires d (which implies f), incompatible with e.
-                        (&["d"], &["e"])
+                        FeatureConstraints { required: &["d"], incompatible: &["e"] }
                     }
                     "ilp32f" | "lp64f" => {
                         // Requires f, incompatible with e.
-                        (&["f"], &["e"])
+                        FeatureConstraints { required: &["f"], incompatible: &["e"] }
                     }
                     "ilp32" | "lp64" => {
                         // Requires nothing, incompatible with e.
-                        (&[], &["e"])
+                        FeatureConstraints { required: &[], incompatible: &["e"] }
                     }
                     "ilp32e" => {
                         // ilp32e is documented to be incompatible with features that need aligned
@@ -832,7 +840,7 @@ impl Target {
                         // Note that the `e` feature is not required: the ABI treats the extra
                         // registers as caller-save, so it is safe to use them only in some parts of
                         // a program while the rest doesn't know they even exist.
-                        (&[], &["d"])
+                        FeatureConstraints { required: &[], incompatible: &["d"] }
                     }
                     "lp64e" => {
                         // As above, `e` is not required.
