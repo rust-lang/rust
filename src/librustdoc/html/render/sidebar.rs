@@ -357,7 +357,7 @@ fn sidebar_type_alias<'a>(
     deref_id_map: &'a DefIdMap<String>,
 ) {
     if let Some(inner_type) = &t.inner_type {
-        items.push(LinkBlock::forced(Link::new("aliased-type", "Aliased type"), "type"));
+        items.push(LinkBlock::forced(Link::new("aliased-type", "Aliased Type"), "type"));
         match inner_type {
             clean::TypeAliasInnerType::Enum { variants, is_non_exhaustive: _ } => {
                 let mut variants = variants
