@@ -67,4 +67,5 @@ extend-ignore-re = [
     # string used in benches
     "\"core::iter::adapters::Copie\"",
     "-Ccontrol-flow-guard",
+    "concat!\\(\"CURRENT_RUSTC_VERSIO\", \"N\"\\)",
 ]

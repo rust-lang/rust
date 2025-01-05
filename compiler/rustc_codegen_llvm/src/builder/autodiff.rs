@@ -238,7 +238,7 @@ fn generate_enzyme_call<'ll>(
         let call = builder.call(enzyme_ty, ad_fn, &args, None);
 
         // This part is a bit iffy. LLVM requires that a call to an inlineable function has some
-        // metadata attachted to it, but we just created this code oota. Given that the
+        // metadata attached to it, but we just created this code oota. Given that the
         // differentiated function already has partly confusing metadata, and given that this
         // affects nothing but the auttodiff IR, we take a shortcut and just steal metadata from the
         // dummy code which we inserted at a higher level.

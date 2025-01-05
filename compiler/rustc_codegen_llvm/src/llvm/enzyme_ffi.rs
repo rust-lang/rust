@@ -16,7 +16,7 @@ extern "C" {
 
     pub fn LLVMGetFunctionCallConv(F: &Value) -> c_uint;
     pub fn LLVMGetReturnType(T: &Type) -> &Type;
-    pub fn LLVMGetParams(Fnc: &Value, parms: *mut &Value);
+    pub fn LLVMGetParams(Fnc: &Value, params: *mut &Value);
     pub fn LLVMGetNamedFunction(M: &Module, Name: *const c_char) -> Option<&Value>;
 }
 
