@@ -1,7 +1,7 @@
 use std::any::{Any, type_name};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
-use std::fmt::{Debug, Write};
+use std::fmt::{self, Debug, Write};
 use std::hash::Hash;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
@@ -271,16 +271,17 @@ impl PathSet {
     /// This is used for `StepDescription::krate`, which passes all matching crates at once to
     /// `Step::make_run`, rather than calling it many times with a single crate.
     /// See `tests.rs` for examples.
-    fn intersection_removing_matches(&self, needles: &mut Vec<PathBuf>, module: Kind) -> PathSet {
+    fn intersection_removing_matches(&self, needles: &mut [CLIStepPath], module: Kind) -> PathSet {
         let mut check = |p| {
-            for (i, n) in needles.iter().enumerate() {
-                let matched = Self::check(p, n, module);
+            let mut result = false;
+            for n in needles.iter_mut() {
+                let matched = Self::check(p, &n.path, module);
                 if matched {
-                    needles.remove(i);
-                    return true;
+                    n.will_be_executed = true;
+                    result = true;
                 }
             }
-            false
+            result
         };
         match self {
             PathSet::Set(set) => PathSet::Set(set.iter().filter(|&p| check(p)).cloned().collect()),
@@ -359,6 +360,32 @@ fn remap_paths(paths: &mut Vec<PathBuf>) {
         paths.remove(idx);
     }
     paths.append(&mut add);
+}
+
+#[derive(Clone, PartialEq)]
+struct CLIStepPath {
+    path: PathBuf,
+    will_be_executed: bool,
+}
+
+#[cfg(test)]
+impl CLIStepPath {
+    fn will_be_executed(mut self, will_be_executed: bool) -> Self {
+        self.will_be_executed = will_be_executed;
+        self
+    }
+}
+
+impl Debug for CLIStepPath {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.path.display())
+    }
+}
+
+impl From<PathBuf> for CLIStepPath {
+    fn from(path: PathBuf) -> Self {
+        Self { path, will_be_executed: false }
+    }
 }
 
 impl StepDescription {
@@ -478,7 +505,8 @@ impl StepDescription {
             return;
         }
 
-        let mut path_lookup: Vec<(PathBuf, bool)> =
+        let mut paths: Vec<CLIStepPath> = paths.into_iter().map(|p| p.into()).collect();
+        let mut path_lookup: Vec<(CLIStepPath, bool)> =
             paths.clone().into_iter().map(|p| (p, false)).collect();
 
         // List of `(usize, &StepDescription, Vec<PathSet>)` where `usize` is the closest index of a path
@@ -518,8 +546,10 @@ impl StepDescription {
             }
         }
 
+        paths.retain(|p| !p.will_be_executed);
+
         if !paths.is_empty() {
-            eprintln!("ERROR: no `{}` rules matched {:?}", builder.kind.as_str(), paths,);
+            eprintln!("ERROR: no `{}` rules matched {:?}", builder.kind.as_str(), paths);
             eprintln!(
                 "HELP: run `x.py {} --help --verbose` to show a list of available paths",
                 builder.kind.as_str()
@@ -682,7 +712,7 @@ impl<'a> ShouldRun<'a> {
     /// (for now, just `all_krates` and `paths`, but we may want to add an `aliases` function in the future?)
     fn pathset_for_paths_removing_matches(
         &self,
-        paths: &mut Vec<PathBuf>,
+        paths: &mut [CLIStepPath],
         kind: Kind,
     ) -> Vec<PathSet> {
         let mut sets = vec![];
@@ -825,12 +855,8 @@ impl<'a> Builder<'a> {
         match kind {
             Kind::Build => describe!(
                 compile::Std,
-                // FIXME(#135022): `compile::Assemble` **must** come before `compile::Rustc` after
-                // `PathSet` also permits prefix-matching, because `compile::Rustc` can consume the
-                // `"compiler"` path filter first, causing `compile::Assemble` to no longer run when
-                // the user writes `./x build compiler --stage 0`.
-                compile::Assemble,
                 compile::Rustc,
+                compile::Assemble,
                 compile::CodegenBackend,
                 compile::StartupObjects,
                 tool::BuildManifest,
@@ -909,6 +935,7 @@ impl<'a> Builder<'a> {
                 check::RustAnalyzer,
                 check::TestFloatParse,
                 check::Bootstrap,
+                check::RunMakeSupport,
                 check::Compiletest,
             ),
             Kind::Test => describe!(
@@ -929,14 +956,10 @@ impl<'a> Builder<'a> {
                 test::Rustdoc,
                 test::CoverageRunRustdoc,
                 test::Pretty,
-                test::Crate,
-                test::CrateLibrustc,
-                // The cranelift and gcc tests need to be listed after the
-                // compiler unit tests (CrateLibrustc) so that they don't
-                // hijack the whole `compiler` directory during path matching.
-                // <https://github.com/rust-lang/rust/pull/134919>
                 test::CodegenCranelift,
                 test::CodegenGCC,
+                test::Crate,
+                test::CrateLibrustc,
                 test::CrateRustdoc,
                 test::CrateRustdocJsonTypes,
                 test::CrateBootstrap,

@@ -1204,22 +1204,16 @@ fn test_from_iter_specialization_with_iterator_adapters() {
 #[test]
 fn test_in_place_specialization_step_up_down() {
     fn assert_in_place_trait<T: InPlaceIterable>(_: &T) {}
-    let src = vec![[0u8; 4]; 256];
-    let srcptr = src.as_ptr();
-    let src_cap = src.capacity();
-    let iter = src.into_iter().flatten();
-    assert_in_place_trait(&iter);
-    let sink = iter.collect::<Vec<_>>();
-    let sinkptr = sink.as_ptr();
-    assert_eq!(srcptr as *const u8, sinkptr);
-    assert_eq!(src_cap * 4, sink.capacity());
 
-    let iter = sink.into_iter().array_chunks::<4>();
+    let src = vec![0u8; 1024];
+    let srcptr = src.as_ptr();
+    let src_bytes = src.capacity();
+    let iter = src.into_iter().array_chunks::<4>();
     assert_in_place_trait(&iter);
     let sink = iter.collect::<Vec<_>>();
     let sinkptr = sink.as_ptr();
-    assert_eq!(srcptr, sinkptr);
-    assert_eq!(src_cap, sink.capacity());
+    assert_eq!(srcptr.addr(), sinkptr.addr());
+    assert_eq!(src_bytes, sink.capacity() * 4);
 
     let mut src: Vec<u8> = Vec::with_capacity(17);
     let src_bytes = src.capacity();
@@ -1236,13 +1230,6 @@ fn test_in_place_specialization_step_up_down() {
     let sink: Vec<[u8; 2]> = iter.collect();
     assert_eq!(sink.len(), 8);
     assert!(sink.capacity() <= 25);
-
-    let src = vec![[0u8; 4]; 256];
-    let srcptr = src.as_ptr();
-    let iter = src.into_iter().flat_map(|a| a.into_iter().map(|b| b.wrapping_add(1)));
-    assert_in_place_trait(&iter);
-    let sink = iter.collect::<Vec<_>>();
-    assert_eq!(srcptr as *const u8, sink.as_ptr());
 }
 
 #[test]
@@ -1350,6 +1337,20 @@ fn test_collect_after_iterator_clone() {
     assert_eq!(v, [1, 1, 1, 1, 1]);
     assert!(v.len() <= v.capacity());
 }
+
+// regression test for #135103, similar to the one above Flatten/FlatMap had an unsound InPlaceIterable
+// implementation.
+#[test]
+fn test_flatten_clone() {
+    const S: String = String::new();
+
+    let v = vec![[S, "Hello World!".into()], [S, S]];
+    let mut i = v.into_iter().flatten();
+    let _ = i.next();
+    let result: Vec<String> = i.clone().collect();
+    assert_eq!(result, ["Hello World!", "", ""]);
+}
+
 #[test]
 fn test_cow_from() {
     let borrowed: &[_] = &["borrowed", "(slice)"];

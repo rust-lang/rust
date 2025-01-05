@@ -133,7 +133,7 @@ fn expr_ty_matches_p_ty(cx: &LateContext<'_>, expr: &Expr<'_>, p_expr: &Expr<'_>
         },
         // compare match_expr ty with RetTy in `fn foo() -> RetTy`
         Node::Item(item) => {
-            if let ItemKind::Fn(..) = item.kind {
+            if let ItemKind::Fn{ .. } = item.kind {
                 let output = cx
                     .tcx
                     .fn_sig(item.owner_id)

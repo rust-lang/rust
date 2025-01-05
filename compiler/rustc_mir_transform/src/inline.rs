@@ -190,7 +190,8 @@ impl<'tcx> Inliner<'tcx> {
 
         // Intrinsic fallback bodies are automatically made cross-crate inlineable,
         // but at this stage we don't know whether codegen knows the intrinsic,
-        // so just conservatively don't inline it.
+        // so just conservatively don't inline it. This also ensures that we do not
+        // accidentally inline the body of an intrinsic that *must* be overridden.
         if self.tcx.has_attr(callsite.callee.def_id(), sym::rustc_intrinsic) {
             return Err("Callee is an intrinsic, do not inline fallback bodies");
         }

@@ -1030,7 +1030,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
             }
         };
         match it.kind {
-            hir::ItemKind::Fn(.., generics, _) => {
+            hir::ItemKind::Fn { generics, .. } => {
                 if let Some(no_mangle_attr) = attr::find_by_name(attrs, sym::no_mangle) {
                     check_no_mangle_on_generic_fn(no_mangle_attr, None, generics, it.span);
                 }

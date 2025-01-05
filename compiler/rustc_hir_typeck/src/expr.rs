@@ -1127,7 +1127,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let encl_item_id = self.tcx.hir().get_parent_item(expr.hir_id);
 
         if let hir::Node::Item(hir::Item {
-            kind: hir::ItemKind::Fn(..), span: encl_fn_span, ..
+            kind: hir::ItemKind::Fn { .. },
+            span: encl_fn_span,
+            ..
         })
         | hir::Node::TraitItem(hir::TraitItem {
             kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)),
@@ -1771,12 +1773,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let parent_node = self.tcx.hir().parent_iter(expr.hir_id).find(|(_, node)| {
             !matches!(node, hir::Node::Expr(hir::Expr { kind: hir::ExprKind::AddrOf(..), .. }))
         });
-        let Some((
-            _,
-            hir::Node::LetStmt(hir::LetStmt { ty: Some(ty), .. })
-            | hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(ty, _, _), .. }),
-        )) = parent_node
-        else {
+        let Some((_, hir::Node::LetStmt(hir::LetStmt { ty: Some(ty), .. }))) = parent_node else {
             return;
         };
         if let hir::TyKind::Array(_, ct) = ty.peel_refs().kind {
@@ -1907,21 +1904,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let lang_item = self.tcx.require_lang_item(LangItem::Copy, None);
-        let code = traits::ObligationCauseCode::RepeatElementCopy {
-            is_constable,
-            elt_type: element_ty,
-            elt_span: element.span,
-            elt_stmt_span: self
-                .tcx
-                .hir()
-                .parent_iter(element.hir_id)
-                .find_map(|(_, node)| match node {
-                    hir::Node::Item(it) => Some(it.span),
-                    hir::Node::Stmt(stmt) => Some(stmt.span),
-                    _ => None,
-                })
-                .expect("array repeat expressions must be inside an item or statement"),
-        };
+        let code =
+            traits::ObligationCauseCode::RepeatElementCopy { is_constable, elt_span: element.span };
         self.require_type_meets(element_ty, element.span, code, lang_item);
     }
 

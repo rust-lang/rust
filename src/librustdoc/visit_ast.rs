@@ -499,7 +499,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             hir::ItemKind::Mod(m) => {
                 self.enter_mod(item.owner_id.def_id, m, name, renamed, import_id);
             }
-            hir::ItemKind::Fn(..)
+            hir::ItemKind::Fn { .. }
             | hir::ItemKind::ExternCrate(..)
             | hir::ItemKind::Enum(..)
             | hir::ItemKind::Struct(..)

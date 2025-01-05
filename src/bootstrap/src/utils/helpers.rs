@@ -60,10 +60,12 @@ pub fn is_dylib(path: &Path) -> bool {
     })
 }
 
-/// Returns `true` if the given path is part of a submodule.
-pub fn is_path_in_submodule(builder: &Builder<'_>, path: &str) -> bool {
+/// Return the path to the containing submodule if available.
+pub fn submodule_path_of(builder: &Builder<'_>, path: &str) -> Option<String> {
     let submodule_paths = build_helper::util::parse_gitmodules(&builder.src);
-    submodule_paths.iter().any(|submodule_path| path.starts_with(submodule_path))
+    submodule_paths.iter().find_map(|submodule_path| {
+        if path.starts_with(submodule_path) { Some(submodule_path.to_string()) } else { None }
+    })
 }
 
 fn is_aix_shared_archive(path: &Path) -> bool {
@@ -438,7 +440,7 @@ fn lld_flag_no_threads(builder: &Builder<'_>, lld_mode: LldMode, is_windows: boo
 }
 
 pub fn dir_is_empty(dir: &Path) -> bool {
-    t!(std::fs::read_dir(dir)).next().is_none()
+    t!(std::fs::read_dir(dir), dir).next().is_none()
 }
 
 /// Extract the beta revision from the full version string.
@@ -481,7 +483,20 @@ pub fn linker_flags(
 ) -> Vec<String> {
     let mut args = vec![];
     if !builder.is_lld_direct_linker(target) && builder.config.lld_mode.is_used() {
-        args.push(String::from("-Clink-arg=-fuse-ld=lld"));
+        match builder.config.lld_mode {
+            LldMode::External => {
+                args.push("-Clinker-flavor=gnu-lld-cc".to_string());
+                // FIXME(kobzol): remove this flag once MCP510 gets stabilized
+                args.push("-Zunstable-options".to_string());
+            }
+            LldMode::SelfContained => {
+                args.push("-Clinker-flavor=gnu-lld-cc".to_string());
+                args.push("-Clink-self-contained=+linker".to_string());
+                // FIXME(kobzol): remove this flag once MCP510 gets stabilized
+                args.push("-Zunstable-options".to_string());
+            }
+            LldMode::Unused => unreachable!(),
+        };
 
         if matches!(lld_threads, LldThreads::No) {
             args.push(format!(

@@ -1778,9 +1778,16 @@ pub fn intrinsic_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::Intrinsi
         && (matches!(tcx.fn_sig(def_id).skip_binder().abi(), ExternAbi::RustIntrinsic)
             || tcx.has_attr(def_id, sym::rustc_intrinsic))
     {
+        let must_be_overridden = tcx.has_attr(def_id, sym::rustc_intrinsic_must_be_overridden)
+            || match tcx.hir_node_by_def_id(def_id) {
+                hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { has_body, .. }, .. }) => {
+                    !has_body
+                }
+                _ => true,
+            };
         Some(ty::IntrinsicDef {
             name: tcx.item_name(def_id.into()),
-            must_be_overridden: tcx.has_attr(def_id, sym::rustc_intrinsic_must_be_overridden),
+            must_be_overridden,
             const_stable: tcx.has_attr(def_id, sym::rustc_intrinsic_const_stable_indirect),
         })
     } else {

@@ -67,25 +67,36 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
   --> $DIR/typeck_type_placeholder_item.rs:13:15
    |
 LL | static TEST3: _ = "test";
-   |               ^
-   |               |
-   |               not allowed in type signatures
-   |               help: replace with the correct type: `&str`
+   |               ^ not allowed in type signatures
+   |
+help: replace this with a fully-specified type
+   |
+LL | static TEST3: &str = "test";
+   |               ~~~~
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
   --> $DIR/typeck_type_placeholder_item.rs:16:15
    |
 LL | static TEST4: _ = 145;
-   |               ^
-   |               |
-   |               not allowed in type signatures
-   |               help: replace with the correct type: `i32`
+   |               ^ not allowed in type signatures
+   |
+help: replace this with a fully-specified type
+   |
+LL | static TEST4: i32 = 145;
+   |               ~~~
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
-  --> $DIR/typeck_type_placeholder_item.rs:19:15
+  --> $DIR/typeck_type_placeholder_item.rs:19:16
    |
 LL | static TEST5: (_, _) = (1, 2);
-   |               ^^^^^^ not allowed in type signatures
+   |                ^  ^ not allowed in type signatures
+   |                |
+   |                not allowed in type signatures
+   |
+help: replace this with a fully-specified type
+   |
+LL | static TEST5: (i32, i32) = (1, 2);
+   |               ~~~~~~~~~~
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
   --> $DIR/typeck_type_placeholder_item.rs:22:13
@@ -220,16 +231,23 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
   --> $DIR/typeck_type_placeholder_item.rs:75:15
    |
 LL |     static B: _ = 42;
-   |               ^
-   |               |
-   |               not allowed in type signatures
-   |               help: replace with the correct type: `i32`
+   |               ^ not allowed in type signatures
+   |
+help: replace this with a fully-specified type
+   |
+LL |     static B: i32 = 42;
+   |               ~~~
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
-  --> $DIR/typeck_type_placeholder_item.rs:77:15
+  --> $DIR/typeck_type_placeholder_item.rs:77:22
    |
 LL |     static C: Option<_> = Some(42);
-   |               ^^^^^^^^^ not allowed in type signatures
+   |                      ^ not allowed in type signatures
+   |
+help: replace this with a fully-specified type
+   |
+LL |     static C: Option<i32> = Some(42);
+   |               ~~~~~~~~~~~
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
   --> $DIR/typeck_type_placeholder_item.rs:79:21
@@ -254,25 +272,36 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
   --> $DIR/typeck_type_placeholder_item.rs:85:22
    |
 LL |     static FN_TEST3: _ = "test";
-   |                      ^
-   |                      |
-   |                      not allowed in type signatures
-   |                      help: replace with the correct type: `&str`
+   |                      ^ not allowed in type signatures
+   |
+help: replace this with a fully-specified type
+   |
+LL |     static FN_TEST3: &str = "test";
+   |                      ~~~~
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
   --> $DIR/typeck_type_placeholder_item.rs:88:22
    |
 LL |     static FN_TEST4: _ = 145;
-   |                      ^
-   |                      |
-   |                      not allowed in type signatures
-   |                      help: replace with the correct type: `i32`
+   |                      ^ not allowed in type signatures
+   |
+help: replace this with a fully-specified type
+   |
+LL |     static FN_TEST4: i32 = 145;
+   |                      ~~~
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
-  --> $DIR/typeck_type_placeholder_item.rs:91:22
+  --> $DIR/typeck_type_placeholder_item.rs:91:23
    |
 LL |     static FN_TEST5: (_, _) = (1, 2);
-   |                      ^^^^^^ not allowed in type signatures
+   |                       ^  ^ not allowed in type signatures
+   |                       |
+   |                       not allowed in type signatures
+   |
+help: replace this with a fully-specified type
+   |
+LL |     static FN_TEST5: (i32, i32) = (1, 2);
+   |                      ~~~~~~~~~~
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
   --> $DIR/typeck_type_placeholder_item.rs:94:20
@@ -539,10 +568,12 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
   --> $DIR/typeck_type_placeholder_item.rs:194:14
    |
 LL |     const D: _ = 42;
-   |              ^
-   |              |
-   |              not allowed in type signatures
-   |              help: replace with the correct type: `i32`
+   |              ^ not allowed in type signatures
+   |
+help: replace this with a fully-specified type
+   |
+LL |     const D: i32 = 42;
+   |              ~~~
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
   --> $DIR/typeck_type_placeholder_item.rs:209:14
@@ -569,16 +600,18 @@ LL | fn value() -> Option<&'static _> {
    |               help: replace with the correct return type: `Option<&'static u8>`
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
-  --> $DIR/typeck_type_placeholder_item.rs:222:10
+  --> $DIR/typeck_type_placeholder_item.rs:222:17
    |
 LL | const _: Option<_> = map(value);
-   |          ^^^^^^^^^
-   |          |
-   |          not allowed in type signatures
-   |          help: replace with the correct type: `Option<u8>`
+   |                 ^ not allowed in type signatures
+   |
+help: replace this with a fully-specified type
+   |
+LL | const _: Option<u8> = map(value);
+   |          ~~~~~~~~~~
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
-  --> $DIR/typeck_type_placeholder_item.rs:225:31
+  --> $DIR/typeck_type_placeholder_item.rs:226:31
    |
 LL | fn evens_squared(n: usize) -> _ {
    |                               ^
@@ -587,13 +620,13 @@ LL | fn evens_squared(n: usize) -> _ {
    |                               help: replace with an appropriate return type: `impl Iterator<Item = usize>`
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
-  --> $DIR/typeck_type_placeholder_item.rs:230:10
+  --> $DIR/typeck_type_placeholder_item.rs:231:10
    |
 LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
    |          ^ not allowed in type signatures
    |
-note: however, the inferred type `Map<Filter<Range<i32>, {closure@typeck_type_placeholder_item.rs:230:29}>, {closure@typeck_type_placeholder_item.rs:230:49}>` cannot be named
-  --> $DIR/typeck_type_placeholder_item.rs:230:14
+note: however, the inferred type `Map<Filter<Range<i32>, {closure@typeck_type_placeholder_item.rs:231:29}>, {closure@typeck_type_placeholder_item.rs:231:49}>` cannot be named
+  --> $DIR/typeck_type_placeholder_item.rs:231:14
    |
 LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -668,23 +701,31 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
 LL |     type F: std::ops::Fn(_);
    |                          ^ not allowed in type signatures
 
-error[E0015]: cannot call non-const method `<std::ops::Range<i32> as Iterator>::filter::<{closure@$DIR/typeck_type_placeholder_item.rs:230:29: 230:32}>` in constants
-  --> $DIR/typeck_type_placeholder_item.rs:230:22
+error[E0015]: cannot call non-const function `map::<u8>` in constants
+  --> $DIR/typeck_type_placeholder_item.rs:222:22
+   |
+LL | const _: Option<_> = map(value);
+   |                      ^^^^^^^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+
+error[E0015]: cannot call non-const method `<std::ops::Range<i32> as Iterator>::filter::<{closure@$DIR/typeck_type_placeholder_item.rs:231:29: 231:32}>` in constants
+  --> $DIR/typeck_type_placeholder_item.rs:231:22
    |
 LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
    |                      ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
-error[E0015]: cannot call non-const method `<Filter<std::ops::Range<i32>, {closure@$DIR/typeck_type_placeholder_item.rs:230:29: 230:32}> as Iterator>::map::<i32, {closure@$DIR/typeck_type_placeholder_item.rs:230:49: 230:52}>` in constants
-  --> $DIR/typeck_type_placeholder_item.rs:230:45
+error[E0015]: cannot call non-const method `<Filter<std::ops::Range<i32>, {closure@$DIR/typeck_type_placeholder_item.rs:231:29: 231:32}> as Iterator>::map::<i32, {closure@$DIR/typeck_type_placeholder_item.rs:231:49: 231:52}>` in constants
+  --> $DIR/typeck_type_placeholder_item.rs:231:45
    |
 LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
    |                                             ^^^^^^^^^^^^^^
    |
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
-error: aborting due to 74 previous errors
+error: aborting due to 75 previous errors
 
 Some errors have detailed explanations: E0015, E0046, E0121, E0282, E0403.
 For more information about an error, try `rustc --explain E0015`.

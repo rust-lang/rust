@@ -21,7 +21,7 @@ pub(super) fn is_lint_level(symbol: Symbol, attr_id: AttrId) -> bool {
 }
 
 pub(super) fn is_relevant_item(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
-    if let ItemKind::Fn(_, _, eid) = item.kind {
+    if let ItemKind::Fn { body: eid, .. } = item.kind {
         is_relevant_expr(cx, cx.tcx.typeck_body(eid), cx.tcx.hir().body(eid).value)
     } else {
         true

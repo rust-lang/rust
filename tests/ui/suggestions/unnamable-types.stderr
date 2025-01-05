@@ -8,10 +8,12 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
   --> $DIR/unnamable-types.rs:10:11
    |
 LL | static B: _ = "abc";
-   |           ^
-   |           |
-   |           not allowed in type signatures
-   |           help: replace with the correct type: `&str`
+   |           ^ not allowed in type signatures
+   |
+help: replace this with a fully-specified type
+   |
+LL | static B: &str = "abc";
+   |           ~~~~
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
   --> $DIR/unnamable-types.rs:17:10

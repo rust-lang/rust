@@ -4,6 +4,7 @@ use rustc_errors::{Applicability, StashKey, Suggestions};
 use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::intravisit::Visitor;
 use rustc_middle::query::plumbing::CyclePlaceholder;
 use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
@@ -12,7 +13,7 @@ use rustc_middle::ty::{self, Article, IsSuggestable, Ty, TyCtxt, TypeVisitableEx
 use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Ident, Span};
 
-use super::{ItemCtxt, bad_placeholder};
+use super::{HirPlaceholderCollector, ItemCtxt, bad_placeholder};
 use crate::errors::TypeofReservedKeywordUsed;
 use crate::hir_ty_lowering::HirTyLowerer;
 
@@ -293,7 +294,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 }
                 _ => icx.lower_ty(*self_ty),
             },
-            ItemKind::Fn(..) => {
+            ItemKind::Fn { .. } => {
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
                 Ty::new_fn_def(tcx, def_id.to_def_id(), args)
             }
@@ -412,7 +413,7 @@ fn infer_placeholder_type<'tcx>(
     kind: &'static str,
 ) -> Ty<'tcx> {
     let tcx = cx.tcx();
-    let ty = tcx.diagnostic_only_typeck(def_id).node_type(body_id.hir_id);
+    let ty = tcx.typeck(def_id).node_type(body_id.hir_id);
 
     // If this came from a free `const` or `static mut?` item,
     // then the user may have written e.g. `const A = 42;`.
@@ -447,13 +448,37 @@ fn infer_placeholder_type<'tcx>(
             }
         })
         .unwrap_or_else(|| {
-            let mut diag = bad_placeholder(cx, vec![span], kind);
+            let mut visitor = HirPlaceholderCollector::default();
+            let node = tcx.hir_node_by_def_id(def_id);
+            if let Some(ty) = node.ty() {
+                visitor.visit_ty(ty);
+            }
+            // If we have just one span, let's try to steal a const `_` feature error.
+            let try_steal_span = if !tcx.features().generic_arg_infer() && visitor.spans.len() == 1
+            {
+                visitor.spans.first().copied()
+            } else {
+                None
+            };
+            // If we didn't find any infer tys, then just fallback to `span`.
+            if visitor.spans.is_empty() {
+                visitor.spans.push(span);
+            }
+            let mut diag = bad_placeholder(cx, visitor.spans, kind);
 
-            if !ty.references_error() {
+            // HACK(#69396): Stashing and stealing diagnostics does not interact
+            // well with macros which may delay more than one diagnostic on the
+            // same span. If this happens, we will fall through to this arm, so
+            // we need to suppress the suggestion since it's invalid. Ideally we
+            // would suppress the duplicated error too, but that's really hard.
+            if span.is_empty() && span.from_expansion() {
+                // An approximately better primary message + no suggestion...
+                diag.primary_message("missing type for item");
+            } else if !ty.references_error() {
                 if let Some(ty) = ty.make_suggestable(tcx, false, None) {
-                    diag.span_suggestion(
+                    diag.span_suggestion_verbose(
                         span,
-                        "replace with the correct type",
+                        "replace this with a fully-specified type",
                         ty,
                         Applicability::MachineApplicable,
                     );
@@ -464,7 +489,16 @@ fn infer_placeholder_type<'tcx>(
                     ));
                 }
             }
-            diag.emit()
+
+            if let Some(try_steal_span) = try_steal_span {
+                cx.dcx().try_steal_replace_and_emit_err(
+                    try_steal_span,
+                    StashKey::UnderscoreForArrayLengths,
+                    diag,
+                )
+            } else {
+                diag.emit()
+            }
         });
     Ty::new_error(tcx, guar)
 }

@@ -913,7 +913,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
         let hir_id = self.tcx.local_def_id_to_hir_id(obligation.cause.body_id);
         let body_id = match self.tcx.hir_node(hir_id) {
-            hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body_id), .. }) => body_id,
+            hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Fn { body: body_id, .. }, ..
+            }) => body_id,
             _ => return false,
         };
         let ControlFlow::Break(expr) = (FindMethodSubexprOfTry { search_span: span })
@@ -2910,7 +2912,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     })
                     .collect::<Option<Vec<ArgKind>>>()?,
             ),
-            Node::Item(&hir::Item { kind: hir::ItemKind::Fn(ref sig, ..), .. })
+            Node::Item(&hir::Item { kind: hir::ItemKind::Fn { ref sig, .. }, .. })
             | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(ref sig, _), .. })
             | Node::TraitItem(&hir::TraitItem {
                 kind: hir::TraitItemKind::Fn(ref sig, _), ..

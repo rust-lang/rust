@@ -981,7 +981,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
             let arg = match hir.get_if_local(callee_def_id) {
                 Some(
-                    hir::Node::Item(hir::Item { ident, kind: hir::ItemKind::Fn(sig, ..), .. })
+                    hir::Node::Item(hir::Item {
+                        ident, kind: hir::ItemKind::Fn { sig, .. }, ..
+                    })
                     | hir::Node::TraitItem(hir::TraitItem {
                         ident,
                         kind: hir::TraitItemKind::Fn(sig, _),
@@ -1020,7 +1022,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             // ...otherwise we are probably in the tail expression of the function, point at the
             // return type.
             match self.infcx.tcx.hir_node_by_def_id(hir.get_parent_item(fn_call_id).def_id) {
-                hir::Node::Item(hir::Item { ident, kind: hir::ItemKind::Fn(sig, ..), .. })
+                hir::Node::Item(hir::Item {
+                    ident, kind: hir::ItemKind::Fn { sig, .. }, ..
+                })
                 | hir::Node::TraitItem(hir::TraitItem {
                     ident,
                     kind: hir::TraitItemKind::Fn(sig, _),
