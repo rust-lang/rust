@@ -441,6 +441,46 @@ $ COMPILETEST_FORCE_STAGE0=1 x test --stage 0 tests/run-make/<test-name>
 
 Of course, some tests will not successfully *run* in this way.
 
+#### Using rust-analyzer with `rmake.rs`
+
+Like other test programs, the `rmake.rs` scripts used by run-make tests do not
+have rust-analyzer integration by default.
+
+To work around this when working on a particular test, temporarily create a
+`Cargo.toml` file in the test's directory
+(e.g. `tests/run-make/sysroot-crates-are-unstable/Cargo.toml`)
+with these contents:
+
+<div class="warning">
+Be careful not to add this `Cargo.toml` or its `Cargo.lock` to your actual PR!
+</div>
+
+```toml
+# Convince cargo that this isn't part of an enclosing workspace.
+[workspace]
+
+[package]
+name = "rmake"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+run_make_support = { path = "../../../src/tools/run-make-support" }
+
+[[bin]]
+name = "rmake"
+path = "rmake.rs"
+```
+
+Then add a corresponding entry to `"rust-analyzer.linkedProjects"`
+(e.g. in `.vscode/settings.json`):
+
+```json
+"rust-analyzer.linkedProjects": [
+  "tests/run-make/sysroot-crates-are-unstable/Cargo.toml"
+],
+```
+
 #### Using Makefiles (legacy)
 
 <div class="warning">
