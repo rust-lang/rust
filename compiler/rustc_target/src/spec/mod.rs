@@ -2653,10 +2653,6 @@ impl TargetOptions {
     pub(crate) fn has_feature(&self, search_feature: &str) -> bool {
         self.features.split(',').any(|f| f.strip_prefix('+').is_some_and(|f| f == search_feature))
     }
-
-    pub(crate) fn has_neg_feature(&self, search_feature: &str) -> bool {
-        self.features.split(',').any(|f| f.strip_prefix('-').is_some_and(|f| f == search_feature))
-    }
 }
 
 impl Default for TargetOptions {
@@ -3203,7 +3199,8 @@ impl Target {
                 check_matches!(
                     &*self.llvm_abiname,
                     "ilp32" | "ilp32f" | "ilp32d" | "ilp32e",
-                    "invalid RISC-V ABI name"
+                    "invalid RISC-V ABI name: {}",
+                    self.llvm_abiname,
                 );
             }
             "riscv64" => {
@@ -3211,7 +3208,8 @@ impl Target {
                 check_matches!(
                     &*self.llvm_abiname,
                     "lp64" | "lp64f" | "lp64d" | "lp64e",
-                    "invalid RISC-V ABI name"
+                    "invalid RISC-V ABI name: {}",
+                    self.llvm_abiname,
                 );
             }
             "arm" => {
@@ -3242,6 +3240,26 @@ impl Target {
                 } else {
                     return Err(format!(
                         "target feature `{feat}` is invalid, must start with `+` or `-`"
+                    ));
+                }
+            }
+            // Check that we don't mis-set any of the ABI-relevant features.
+            let abi_feature_constraints = self.abi_required_features();
+            for feat in abi_feature_constraints.required {
+                // The feature might be enabled by default so we can't *require* it to show up.
+                // But it must not be *disabled*.
+                if features_disabled.contains(feat) {
+                    return Err(format!(
+                        "target feature `{feat}` is required by the ABI but gets disabled in target spec"
+                    ));
+                }
+            }
+            for feat in abi_feature_constraints.incompatible {
+                // The feature might be disabled by default so we can't *require* it to show up.
+                // But it must not be *enabled*.
+                if features_enabled.contains(feat) {
+                    return Err(format!(
+                        "target feature `{feat}` is incompatible with the ABI but gets enabled in target spec"
                     ));
                 }
             }
