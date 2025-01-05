@@ -33,23 +33,3 @@ pub(crate) fn get_bool(name: &str) -> bool {
         true
     }
 }
-
-pub(crate) fn get_value(name: &str) -> Option<String> {
-    let values = load_config_file()
-        .into_iter()
-        .filter(|(key, _)| key == name)
-        .map(|(_, val)| val)
-        .collect::<Vec<_>>();
-    if values.is_empty() {
-        None
-    } else if values.len() == 1 {
-        if values[0].is_none() {
-            eprintln!("Config `{}` missing value", name);
-            process::exit(1);
-        }
-        values.into_iter().next().unwrap()
-    } else {
-        eprintln!("Config `{}` given multiple values: {:?}", name, values);
-        process::exit(1);
-    }
-}
