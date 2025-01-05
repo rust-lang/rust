@@ -277,6 +277,29 @@ macro_rules! impl_op_for_ty {
                 }
             }
 
+            impl MpOp for crate::op::[<ilogb $suffix>]::Routine {
+                type MpTy = MpFloat;
+
+                fn new_mp() -> Self::MpTy {
+                    new_mpfloat::<Self::FTy>()
+                }
+
+                fn run(this: &mut Self::MpTy, input: Self::RustArgs) -> Self::RustRet {
+                    this.assign(input.0);
+
+                    // `get_exp` follows `frexp` for `0.5 <= |m| < 1.0`. Adjust the exponent by
+                    // one to scale the significand to `1.0 <= |m| < 2.0`.
+                    this.get_exp().map(|v| v - 1).unwrap_or_else(|| {
+                        if this.is_infinite() {
+                            i32::MAX
+                        } else {
+                            // Zero or NaN
+                            i32::MIN
+                        }
+                    })
+                }
+            }
+
             impl MpOp for crate::op::[<jn $suffix>]::Routine {
                 type MpTy = MpFloat;
 

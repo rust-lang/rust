@@ -51,8 +51,6 @@ libm_macros::for_each_function! {
     ],
     skip: [
         // FIXME: MPFR tests needed
-        ilogb,
-        ilogbf,
         remquo,
         remquof,
 
@@ -150,9 +148,5 @@ libm_macros::for_each_function! {
         scalbnf,
         yn,
         ynf,
-
-        // FIXME: MPFR tests needed
-        ilogb,
-        ilogbf,
     ],
 }
