@@ -48,6 +48,10 @@ mod utils;
 use self::create_scope_map::compute_mir_scopes;
 pub(crate) use self::metadata::build_global_var_di_node;
 
+// FIXME(Zalathar): These `DW_TAG_*` constants are fake values that were
+// removed from LLVM in 2015, and are only used by our own `RustWrapper.cpp`
+// to decide which C++ API to call. Instead, we should just have two separate
+// FFI functions and choose the correct one on the Rust side.
 #[allow(non_upper_case_globals)]
 const DW_TAG_auto_variable: c_uint = 0x100;
 #[allow(non_upper_case_globals)]
