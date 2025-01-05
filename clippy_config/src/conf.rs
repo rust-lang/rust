@@ -438,6 +438,7 @@ define_Conf! {
         linkedlist,
         needless_pass_by_ref_mut,
         option_option,
+        owned_cow,
         rc_buffer,
         rc_mutex,
         redundant_allocation,

@@ -745,6 +745,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::types::BOX_COLLECTION_INFO,
     crate::types::LINKEDLIST_INFO,
     crate::types::OPTION_OPTION_INFO,
+    crate::types::OWNED_COW_INFO,
     crate::types::RC_BUFFER_INFO,
     crate::types::RC_MUTEX_INFO,
     crate::types::REDUNDANT_ALLOCATION_INFO,
