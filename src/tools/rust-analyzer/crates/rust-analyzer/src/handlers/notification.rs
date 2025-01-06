@@ -10,7 +10,6 @@ use lsp_types::{
     DidOpenTextDocumentParams, DidSaveTextDocumentParams, WorkDoneProgressCancelParams,
 };
 use paths::Utf8PathBuf;
-use stdx::TupleExt;
 use triomphe::Arc;
 use vfs::{AbsPathBuf, ChangeKind, VfsPath};
 
@@ -75,7 +74,6 @@ pub(crate) fn handle_did_open_text_document(
             tracing::error!("duplicate DidOpenTextDocument: {}", path);
         }
 
-        tracing::info!("New file content set {:?}", params.text_document.text);
         state.vfs.write().0.set_file_contents(path, Some(params.text_document.text.into_bytes()));
         if state.config.discover_workspace_config().is_some() {
             tracing::debug!("queuing task");
@@ -296,12 +294,11 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
         let may_flycheck_workspace = state.config.flycheck_workspace(None);
         let mut updated = false;
         let task = move || -> std::result::Result<(), ide::Cancelled> {
-            // Is the target binary? If so we let flycheck run only for the workspace that contains the crate.
             let target = TargetSpec::for_file(&world, file_id)?.and_then(|it| {
                 let tgt_kind = it.target_kind();
-                let (tgt_name, crate_id) = match it {
-                    TargetSpec::Cargo(c) => (c.target, c.crate_id),
-                    TargetSpec::ProjectJson(p) => (p.label, p.crate_id),
+                let (tgt_name, root, package) = match it {
+                    TargetSpec::Cargo(c) => (c.target, c.workspace_root, c.package),
+                    _ => return None,
                 };
 
                 let tgt = match tgt_kind {
@@ -309,28 +306,50 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                     project_model::TargetKind::Example => Target::Example(tgt_name),
                     project_model::TargetKind::Test => Target::Test(tgt_name),
                     project_model::TargetKind::Bench => Target::Benchmark(tgt_name),
-                    _ => return None,
+                    _ => return Some((None, root, package)),
                 };
 
-                Some((tgt, crate_id))
+                Some((Some(tgt), root, package))
             });
-
-            let crate_ids = match target {
-                // Trigger flychecks for the only crate which the target belongs to
-                Some((_, krate)) => vec![krate],
-                None => {
-                    // Trigger flychecks for all workspaces that depend on the saved file
-                    // Crates containing or depending on the saved file
-                    world
-                        .analysis
-                        .crates_for(file_id)?
-                        .into_iter()
-                        .flat_map(|id| world.analysis.transitive_rev_deps(id))
-                        .flatten()
-                        .unique()
-                        .collect::<Vec<_>>()
+            tracing::debug!(?target, "flycheck target");
+            // we have a specific non-library target, attempt to only check that target, nothing
+            // else will be affected
+            if let Some((target, root, package)) = target {
+                // trigger a package check if we have a non-library target as that can't affect
+                // anything else in the workspace OR if we're not allowed to check the workspace as
+                // the user opted into package checks then
+                let package_check_allowed = target.is_some() || !may_flycheck_workspace;
+                if package_check_allowed {
+                    let workspace =
+                        world.workspaces.iter().enumerate().find(|(_, ws)| match &ws.kind {
+                            project_model::ProjectWorkspaceKind::Cargo { cargo, .. }
+                            | project_model::ProjectWorkspaceKind::DetachedFile {
+                                cargo: Some((cargo, _, _)),
+                                ..
+                            } => *cargo.workspace_root() == root,
+                            _ => false,
+                        });
+                    if let Some((idx, _)) = workspace {
+                        world.flycheck[idx].restart_for_package(package, target);
+                    }
                 }
-            };
+            }
+
+            if !may_flycheck_workspace {
+                return Ok(());
+            }
+
+            // Trigger flychecks for all workspaces that depend on the saved file
+            // Crates containing or depending on the saved file
+            let crate_ids = world
+                .analysis
+                .crates_for(file_id)?
+                .into_iter()
+                .flat_map(|id| world.analysis.transitive_rev_deps(id))
+                .flatten()
+                .unique()
+                .collect::<Vec<_>>();
+            tracing::debug!(?crate_ids, "flycheck crate ids");
             let crate_root_paths: Vec<_> = crate_ids
                 .iter()
                 .filter_map(|&crate_id| {
@@ -344,53 +363,41 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                 })
                 .collect::<ide::Cancellable<_>>()?;
             let crate_root_paths: Vec<_> = crate_root_paths.iter().map(Deref::deref).collect();
+            tracing::debug!(?crate_root_paths, "flycheck crate roots");
 
             // Find all workspaces that have at least one target containing the saved file
-            let workspace_ids = world.workspaces.iter().enumerate().filter_map(|(idx, ws)| {
-                let package = match &ws.kind {
+            let workspace_ids =
+                world.workspaces.iter().enumerate().filter(|(_, ws)| match &ws.kind {
                     project_model::ProjectWorkspaceKind::Cargo { cargo, .. }
                     | project_model::ProjectWorkspaceKind::DetachedFile {
                         cargo: Some((cargo, _, _)),
                         ..
-                    } => cargo.packages().find_map(|pkg| {
-                        let has_target_with_root = cargo[pkg]
+                    } => cargo.packages().any(|pkg| {
+                        cargo[pkg]
                             .targets
                             .iter()
-                            .any(|&it| crate_root_paths.contains(&cargo[it].root.as_path()));
-                        has_target_with_root.then(|| cargo.package_flag(&cargo[pkg]))
+                            .any(|&it| crate_root_paths.contains(&cargo[it].root.as_path()))
                     }),
-                    project_model::ProjectWorkspaceKind::Json(project) => {
-                        if !project.crates().any(|(_, krate)| {
-                            crate_root_paths.contains(&krate.root_module.as_path())
-                        }) {
-                            return None;
-                        }
-                        None
-                    }
-                    project_model::ProjectWorkspaceKind::DetachedFile { .. } => return None,
-                };
-                Some((idx, package))
-            });
+                    project_model::ProjectWorkspaceKind::Json(project) => project
+                        .crates()
+                        .any(|(_, krate)| crate_root_paths.contains(&krate.root_module.as_path())),
+                    project_model::ProjectWorkspaceKind::DetachedFile { .. } => false,
+                });
 
             let saved_file = vfs_path.as_path().map(|p| p.to_owned());
 
             // Find and trigger corresponding flychecks
             'flychecks: for flycheck in world.flycheck.iter() {
-                for (id, package) in workspace_ids.clone() {
+                for (id, _) in workspace_ids.clone() {
                     if id == flycheck.id() {
                         updated = true;
-                        if may_flycheck_workspace {
-                            flycheck.restart_workspace(saved_file.clone())
-                        } else if let Some(package) = package {
-                            flycheck
-                                .restart_for_package(package, target.clone().map(TupleExt::head))
-                        }
+                        flycheck.restart_workspace(saved_file.clone());
                         continue 'flychecks;
                     }
                 }
             }
             // No specific flycheck was triggered, so let's trigger all of them.
-            if !updated && may_flycheck_workspace {
+            if !updated {
                 for flycheck in world.flycheck.iter() {
                     flycheck.restart_workspace(saved_file.clone());
                 }
