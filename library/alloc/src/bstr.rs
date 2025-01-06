@@ -1,5 +1,8 @@
 //! The `ByteStr` and `ByteString` types and trait implementations.
 
+// This could be more fine-grained.
+#![cfg(not(no_global_oom_handling))]
+
 use core::borrow::{Borrow, BorrowMut};
 #[unstable(feature = "bstr", issue = "134915")]
 pub use core::bstr::ByteStr;
@@ -17,8 +20,10 @@ use core::{fmt, hash};
 use crate::borrow::{Cow, ToOwned};
 #[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
 use crate::boxed::Box;
+#[cfg(not(no_rc))]
 use crate::rc::Rc;
 use crate::string::String;
+#[cfg(all(not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
 use crate::sync::Arc;
 use crate::vec::Vec;
 
@@ -649,6 +654,7 @@ impl From<Box<ByteStr>> for Box<[u8]> {
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
+#[cfg(not(no_rc))]
 impl From<Rc<[u8]>> for Rc<ByteStr> {
     #[inline]
     fn from(s: Rc<[u8]>) -> Rc<ByteStr> {
@@ -658,6 +664,7 @@ impl From<Rc<[u8]>> for Rc<ByteStr> {
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
+#[cfg(not(no_rc))]
 impl From<Rc<ByteStr>> for Rc<[u8]> {
     #[inline]
     fn from(s: Rc<ByteStr>) -> Rc<[u8]> {
@@ -667,6 +674,7 @@ impl From<Rc<ByteStr>> for Rc<[u8]> {
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
+#[cfg(all(not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
 impl From<Arc<[u8]>> for Arc<ByteStr> {
     #[inline]
     fn from(s: Arc<[u8]>) -> Arc<ByteStr> {
@@ -676,6 +684,7 @@ impl From<Arc<[u8]>> for Arc<ByteStr> {
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
+#[cfg(all(not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
 impl From<Arc<ByteStr>> for Arc<[u8]> {
     #[inline]
     fn from(s: Arc<ByteStr>) -> Arc<[u8]> {
