@@ -81,7 +81,7 @@ fn emit_lint(cx: &LateContext<'_>, expr: &Expr<'_>, spans: &[(Span, Option<Strin
 
 impl LateLintPass<'_> for LiteralStringWithFormattingArg {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
-        if expr.span.from_expansion() {
+        if expr.span.from_expansion() || expr.span.is_dummy() {
             return;
         }
         if let ExprKind::Lit(lit) = expr.kind {

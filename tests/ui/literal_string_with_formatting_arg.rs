@@ -1,6 +1,24 @@
 #![warn(clippy::literal_string_with_formatting_args)]
 #![allow(clippy::unnecessary_literal_unwrap)]
 
+// Regression test for <https://github.com/rust-lang/rust-clippy/issues/13885>.
+// It's not supposed to emit the lint in this case (in `assert!` expansion).
+fn compiler_macro() {
+    fn parse(_: &str) -> Result<(), i32> {
+        unimplemented!()
+    }
+
+    assert!(
+        parse(
+            #[allow(clippy::literal_string_with_formatting_args)]
+            "foo {:}"
+        )
+        .is_err()
+    );
+    let value = 0;
+    assert!(format!("{value}").is_ascii());
+}
+
 fn main() {
     let x: Option<usize> = None;
     let y = "hello";
@@ -13,6 +31,7 @@ fn main() {
     x.expect(r"{y:?}  {y:?} "); //~ literal_string_with_formatting_args
     x.expect(r"{y:?} y:?}"); //~ literal_string_with_formatting_args
     x.expect(r##" {y:?} {y:?} "##); //~ literal_string_with_formatting_args
+    assert!("{y}".is_ascii()); //~ literal_string_with_formatting_args
     // Ensure that it doesn't try to go in the middle of a unicode character.
     x.expect("———{:?}"); //~ literal_string_with_formatting_args
 
