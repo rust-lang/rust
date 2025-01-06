@@ -233,6 +233,7 @@ struct FlycheckActor {
     /// The receiver side of the channel mentioned above.
     command_receiver: Option<Receiver<CargoCheckMessage>>,
     diagnostics_cleared_for: FxHashSet<Arc<PackageId>>,
+    diagnostics_received: bool,
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -263,6 +264,7 @@ impl FlycheckActor {
             command_handle: None,
             command_receiver: None,
             diagnostics_cleared_for: Default::default(),
+            diagnostics_received: false,
         }
     }
 
@@ -339,7 +341,7 @@ impl FlycheckActor {
                             error
                         );
                     }
-                    if self.diagnostics_cleared_for.is_empty() {
+                    if !self.diagnostics_received {
                         tracing::trace!(flycheck_id = self.id, "clearing diagnostics");
                         // We finished without receiving any diagnostics.
                         // Clear everything for good measure
@@ -347,8 +349,6 @@ impl FlycheckActor {
                             id: self.id,
                             package_id: None,
                         });
-                    } else {
-                        self.diagnostics_cleared_for.clear();
                     }
 
                     self.report_progress(Progress::DidFinish(res));
@@ -382,6 +382,7 @@ impl FlycheckActor {
                             package_id = package_id.as_ref().map(|it| &it.repr),
                             "diagnostic received"
                         );
+                        self.diagnostics_received = true;
                         if let Some(package_id) = &package_id {
                             if self.diagnostics_cleared_for.insert(package_id.clone()) {
                                 tracing::trace!(
@@ -419,6 +420,7 @@ impl FlycheckActor {
             self.command_receiver.take();
             self.report_progress(Progress::DidCancel);
             self.diagnostics_cleared_for.clear();
+            self.diagnostics_received = false;
         }
     }
 
