@@ -98,6 +98,7 @@
     - [wasm32-unknown-unknown](platform-support/wasm32-unknown-unknown.md)
     - [wasm32v1-none](platform-support/wasm32v1-none.md)
     - [wasm64-unknown-unknown](platform-support/wasm64-unknown-unknown.md)
+    - [\*-win7-windows-gnu](platform-support/win7-windows-gnu.md)
     - [\*-win7-windows-msvc](platform-support/win7-windows-msvc.md)
     - [x86_64-fortanix-unknown-sgx](platform-support/x86_64-fortanix-unknown-sgx.md)
     - [x86_64-pc-solaris](platform-support/solaris.md)
