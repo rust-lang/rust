@@ -498,6 +498,11 @@ trigger_files = [
     "src/tools/compiletest"
 ]
 
+[autolabel."A-rustc-dev-guide"]
+trigger_files = [
+    "src/doc/rustc-dev-guide",
+]
+
 [notify-zulip."I-prioritize"]
 zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
 topic = "#{number} {title}"
