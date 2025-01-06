@@ -424,7 +424,8 @@ impl Step for Rustfmt {
 
         let dir = testdir(builder, compiler.host);
         t!(fs::create_dir_all(&dir));
-        cargo.env("RUSTFMT_TEST_DIR", dir);
+        cargo.env("RUSTFMT_TEST_DIR", &dir);
+        eprintln!("RUSTFMT_TEST_DIR = {:?}", dir.display());
 
         cargo.add_rustc_lib_path(builder);
 

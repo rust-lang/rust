@@ -1018,7 +1018,8 @@ fn make_temp_file(file_name: &'static str) -> TempFile {
     let target_dir = var("RUSTFMT_TEST_DIR").unwrap_or_else(|_| ".".to_owned());
     let path = Path::new(&target_dir).join(file_name);
 
-    let mut file = File::create(&path).expect("couldn't create temp file");
+    let msg = format!("couldn't create temp file @ path = {:?}", path);
+    let mut file = File::create(&path).expect(&msg);
     let content = "fn main() {}\n";
     file.write_all(content.as_bytes())
         .expect("couldn't write temp file");
