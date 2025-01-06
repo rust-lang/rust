@@ -1,5 +1,5 @@
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Command;
 
 use crate::ci::CiEnv;
 
@@ -11,11 +11,14 @@ pub struct GitConfig<'a> {
 
 /// Runs a command and returns the output
 pub fn output_result(cmd: &mut Command) -> Result<String, String> {
-    let output = match cmd.stderr(Stdio::inherit()).output() {
+    let output = match cmd.output() {
         Ok(status) => status,
         Err(e) => return Err(format!("failed to run command: {:?}: {}", cmd, e)),
     };
     if !output.status.success() {
+        eprintln!("[DEBUG] stdout:\n{}\n\n", String::from_utf8(output.stdout.clone()).unwrap());
+        eprintln!("[DEBUG] stderr:\n{}\n\n", String::from_utf8(output.stderr.clone()).unwrap());
+
         return Err(format!(
             "command did not execute successfully: {:?}\n\
              expected success, got: {}\n{}",
@@ -107,8 +110,10 @@ fn git_upstream_merge_base(
     git_dir: Option<&Path>,
 ) -> Result<String, String> {
     let updated_master = updated_master_branch(config, git_dir)?;
+    eprintln!("updated_master = {:?}", updated_master);
     let mut git = Command::new("git");
     if let Some(git_dir) = git_dir {
+        eprintln!("git_dir = {:?}", git_dir);
         git.current_dir(git_dir);
     }
     Ok(output_result(git.arg("merge-base").arg(&updated_master).arg("HEAD"))?.trim().to_owned())
@@ -131,7 +136,10 @@ pub fn get_closest_merge_commit(
 
     let merge_base = {
         if CiEnv::is_ci() {
-            git_upstream_merge_base(config, git_dir).unwrap()
+            match git_upstream_merge_base(config, git_dir) {
+                Ok(b) => b,
+                Err(e) => { eprintln!("merge_base failed: {e}"); return Err(e); }
+            }
         } else {
             // For non-CI environments, ignore rust-lang/rust upstream as it usually gets
             // outdated very quickly.
