@@ -419,9 +419,9 @@ impl FlycheckActor {
             command_handle.cancel();
             self.command_receiver.take();
             self.report_progress(Progress::DidCancel);
-            self.diagnostics_cleared_for.clear();
-            self.diagnostics_received = false;
         }
+        self.diagnostics_cleared_for.clear();
+        self.diagnostics_received = false;
     }
 
     /// Construct a `Command` object for checking the user's code. If the user
