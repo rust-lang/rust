@@ -106,7 +106,11 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
         match ctx.fn_ident {
             Id::Asinh => ulp = 3,
             Id::Asinhf => ulp = 3,
+            Id::Exp10 | Id::Exp10f => ulp = 1_000_000,
+            Id::Exp2 | Id::Exp2f => ulp = 10_000_000,
+            Id::Fmaf => ulp = 1,
             Id::Log1p | Id::Log1pf => ulp = 2,
+            Id::Rint => ulp = 100_000,
             Id::Round => ulp = 1,
             Id::Tan => ulp = 2,
             _ => (),
@@ -267,6 +271,24 @@ impl MaybeOverride<(f64,)> for SpecialCase {
 
         if ctx.base_name == BaseName::J0 && input.0 < -1e300 {
             // Errors get huge close to -inf
+            return XFAIL;
+        }
+
+        if (ctx.fn_ident == Identifier::Ceil || ctx.fn_ident == Identifier::Floor)
+            && cfg!(x86_no_sse)
+            && expected.eq_repr(F::NEG_ZERO)
+            && actual.eq_repr(F::ZERO)
+        {
+            // FIXME: the x87 implementations do not keep the distinction between -0.0 and 0.0.
+            // See https://github.com/rust-lang/libm/pull/404#issuecomment-2572399955
+            return XFAIL;
+        }
+
+        if (ctx.fn_ident == Identifier::Exp10 || ctx.fn_ident == Identifier::Exp2)
+            && cfg!(x86_no_sse)
+        {
+            // FIXME: i586 has very imprecise results with ULP > u32::MAX for these
+            // operations so we can't reasonably provide a limit.
             return XFAIL;
         }
 

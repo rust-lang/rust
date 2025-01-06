@@ -23,7 +23,9 @@ use std::time::SystemTime;
 pub use f8_impl::f8;
 pub use libm::support::{Float, Int, IntTy, MinInt};
 pub use num::{FloatExt, logspace};
-pub use op::{BaseName, FloatTy, Identifier, MathOp, OpCFn, OpFTy, OpRustFn, OpRustRet, Ty};
+pub use op::{
+    BaseName, FloatTy, Identifier, MathOp, OpCFn, OpCRet, OpFTy, OpRustFn, OpRustRet, Ty,
+};
 pub use precision::{MaybeOverride, SpecialCase, default_ulp};
 use run_cfg::EXTENSIVE_MAX_ITERATIONS;
 pub use run_cfg::{CheckBasis, CheckCtx, EXTENSIVE_ENV, GeneratorKind, skip_extensive_test};
