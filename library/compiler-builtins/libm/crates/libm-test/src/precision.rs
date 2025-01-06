@@ -270,6 +270,16 @@ impl MaybeOverride<(f64,)> for SpecialCase {
             return XFAIL;
         }
 
+        if (ctx.fn_ident == Identifier::Ceil || ctx.fn_ident == Identifier::Floor)
+            && expected.eq_repr(F::NEG_ZERO)
+            && actual.eq_repr(F::ZERO)
+            && cfg!(x86_no_sse)
+        {
+            // FIXME: the x87 implementations do not keep the distinction between -0.0 and 0.0.
+            // See https://github.com/rust-lang/libm/pull/404#issuecomment-2572399955
+            return XFAIL;
+        }
+
         maybe_check_nan_bits(actual, expected, ctx)
     }
 
