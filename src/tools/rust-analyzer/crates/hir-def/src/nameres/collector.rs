@@ -1316,6 +1316,7 @@ impl DefCollector<'_> {
                     // being cfg'ed out).
                     // Ideally we will just expand them to nothing here. But we are only collecting macro calls,
                     // not expanding them, so we have no way to do that.
+                    // If you add an ignored attribute here, also add it to `Semantics::might_be_inside_macro_call()`.
                     if matches!(
                         def.kind,
                         MacroDefKind::BuiltInAttr(_, expander)
