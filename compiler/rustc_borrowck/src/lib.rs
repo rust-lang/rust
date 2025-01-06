@@ -24,6 +24,7 @@ use std::ops::{ControlFlow, Deref};
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
+use rustc_errors::LintDiagnostic;
 use rustc_hir as hir;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::LocalDefId;
@@ -1192,17 +1193,25 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             |borrow_index| borrows_in_scope.contains(borrow_index),
             |this, _borrow_index, borrow| {
                 if matches!(borrow.kind, BorrowKind::Fake(_)) {
-                    return Control::Continue;
+                    return ControlFlow::Continue(());
                 }
                 let borrowed = this.retrieve_borrow_spans(borrow).var_or_use_path_span();
-                this.infcx.tcx.emit_node_span_lint(
+                let explain = this.explain_why_borrow_contains_point(
+                    location,
+                    borrow,
+                    Some((WriteKind::StorageDeadOrDrop, place)),
+                );
+                this.infcx.tcx.node_span_lint(
                     TAIL_EXPR_DROP_ORDER,
                     CRATE_HIR_ID,
-                    place_span,
-                    session_diagnostics::TailExprDropOrder { borrowed },
+                    borrowed,
+                    |diag| {
+                        session_diagnostics::TailExprDropOrder { borrowed }.decorate_lint(diag);
+                        explain.add_explanation_to_diagnostic(&this, diag, "", None, None);
+                    },
                 );
                 // We may stop at the first case
-                Control::Break
+                ControlFlow::Break(())
             },
         );
     }
