@@ -50,7 +50,7 @@ cfg_if! {
         #[unstable(feature = "stdarch_mips_feature_detection", issue = "111188")]
         pub use mips64::*;
     } else if #[cfg(target_arch = "loongarch64")] {
-        #[unstable(feature = "stdarch_loongarch_feature_detection", issue = "117425")]
+        #[stable(feature = "stdarch_loongarch_feature", since = "1.89.0")]
         pub use loongarch::*;
     } else if #[cfg(target_arch = "s390x")] {
         #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")]
