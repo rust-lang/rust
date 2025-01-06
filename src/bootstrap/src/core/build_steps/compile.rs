@@ -627,7 +627,7 @@ impl Step for StdLink {
         let target_compiler = self.target_compiler;
         let target = self.target;
 
-        // NOTE: intentionally does *not* check `target == builder.build` to avoid having to add the same check in `test::Crate`.
+        // NOTE: intentionally does *not* check `target == builder.build` to avoid having to add the same check in `test::SelftestLibraryOrOtherCrate`.
         let (libdir, hostdir) = if self.force_recompile && builder.download_rustc() {
             // NOTE: copies part of `sysroot_libdir` to avoid having to add a new `force_recompile` argument there too
             let lib = builder.sysroot_libdir_relative(self.compiler);
