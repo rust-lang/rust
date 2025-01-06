@@ -213,8 +213,9 @@ borrowck_suggest_create_fresh_reborrow =
 borrowck_suggest_iterate_over_slice =
     consider iterating over a slice of the `{$ty}`'s content to avoid moving into the `for` loop
 
-borrowck_tail_expr_drop_order = a temporary value will be dropped here before the execution exits the block in Edition 2024, which will raise borrow checking error
-    .label = consider using a `let` binding to create a longer lived value; or replacing the `{"{"} .. {"}"}` block with curly brackets `( .. )`; or folding the rest of the expression into the surrounding `unsafe {"{"} .. {"}"}`
+borrowck_tail_expr_drop_order = relative drop order changing in Rust 2024
+    .label = this temporary value will be dropped at the end of the block
+    .note = consider using a `let` binding to ensure the value will live long enough
 
 borrowck_ty_no_impl_copy =
     {$is_partial_move ->

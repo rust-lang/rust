@@ -7,18 +7,20 @@
 
 fn should_lint_with_potential_borrowck_err() {
     let _ = { String::new().as_str() }.len();
-    //~^ ERROR: a temporary value will be dropped here
+    //~^ ERROR: relative drop order changing
     //~| WARN: this changes meaning in Rust 2024
-    //~| NOTE: consider using a `let` binding
+    //~| NOTE: this temporary value will be dropped at the end of the block
+    //~| borrow later used by call
     //~| NOTE: for more information, see
 }
 
 fn should_lint_with_unsafe_block() {
     fn f(_: usize) {}
     f(unsafe { String::new().as_str() }.len());
-    //~^ ERROR: a temporary value will be dropped here
+    //~^ ERROR: relative drop order changing
     //~| WARN: this changes meaning in Rust 2024
-    //~| NOTE: consider using a `let` binding
+    //~| NOTE: this temporary value will be dropped at the end of the block
+    //~| borrow later used by call
     //~| NOTE: for more information, see
 }
 
@@ -27,11 +29,23 @@ fn should_lint_with_big_block() {
     fn f<T>(_: T) {}
     f({
         &mut || 0
-        //~^ ERROR: a temporary value will be dropped here
+        //~^ ERROR: relative drop order changing
         //~| WARN: this changes meaning in Rust 2024
-        //~| NOTE: consider using a `let` binding
+        //~| NOTE: this temporary value will be dropped at the end of the block
+        //~| borrow later used here
         //~| NOTE: for more information, see
     })
+}
+
+fn another_temp_that_is_copy_in_arg() {
+    fn f() {}
+    fn g(_: &()) {}
+    g({ &f() });
+    //~^ ERROR: relative drop order changing
+    //~| WARN: this changes meaning in Rust 2024
+    //~| NOTE: this temporary value will be dropped at the end of the block
+    //~| borrow later used by call
+    //~| NOTE: for more information, see
 }
 
 fn main() {}
