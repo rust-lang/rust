@@ -560,7 +560,7 @@ fn has_runnable_doc_test(attrs: &hir::Attrs) -> bool {
     const RUSTDOC_CODE_BLOCK_ATTRIBUTES_RUNNABLE: &[&str] =
         &["", "rust", "should_panic", "edition2015", "edition2018", "edition2021"];
 
-    docs_from_attrs(attrs).map_or(false, |doc| {
+    docs_from_attrs(attrs).is_some_and(|doc| {
         let mut in_code_block = false;
 
         for line in doc.lines() {

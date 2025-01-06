@@ -2751,14 +2751,14 @@ fn fallback_bound_vars<T: TypeFoldable<Interner> + HasInterner<Interner = Intern
     crate::fold_free_vars(
         s,
         |bound, binders| {
-            if bound.index_if_innermost().map_or(true, is_allowed) {
+            if bound.index_if_innermost().is_none_or(is_allowed) {
                 bound.shifted_in_from(binders).to_ty(Interner)
             } else {
                 TyKind::Error.intern(Interner)
             }
         },
         |ty, bound, binders| {
-            if bound.index_if_innermost().map_or(true, is_allowed) {
+            if bound.index_if_innermost().is_none_or(is_allowed) {
                 bound.shifted_in_from(binders).to_const(Interner, ty)
             } else {
                 unknown_const(ty)

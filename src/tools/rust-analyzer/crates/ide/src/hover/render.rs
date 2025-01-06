@@ -336,8 +336,8 @@ pub(super) fn try_for_lint(attr: &ast::Attr, token: &SyntaxToken) -> Option<Hove
                 .and_then(|t| algo::non_trivia_sibling(t, Direction::Prev))
                 .filter(|t| t.kind() == T![:])
                 .and_then(|t| algo::non_trivia_sibling(t, Direction::Prev))
-                .map_or(false, |t| {
-                    t.kind() == T![ident] && t.into_token().map_or(false, |t| t.text() == "clippy")
+                .is_some_and(|t| {
+                    t.kind() == T![ident] && t.into_token().is_some_and(|t| t.text() == "clippy")
                 });
             if is_clippy {
                 (true, CLIPPY_LINTS)
@@ -969,7 +969,7 @@ fn find_std_module(
     let std_crate = famous_defs.std()?;
     let std_root_module = std_crate.root_module();
     std_root_module.children(db).find(|module| {
-        module.name(db).map_or(false, |module| module.display(db, edition).to_string() == name)
+        module.name(db).is_some_and(|module| module.display(db, edition).to_string() == name)
     })
 }
 

@@ -1356,12 +1356,12 @@ fn is_name_ref_in_import(name_ref: &ast::NameRef) -> bool {
         .parent()
         .and_then(ast::PathSegment::cast)
         .and_then(|it| it.parent_path().top_path().syntax().parent())
-        .map_or(false, |it| it.kind() == SyntaxKind::USE_TREE)
+        .is_some_and(|it| it.kind() == SyntaxKind::USE_TREE)
 }
 
 fn is_name_ref_in_test(sema: &Semantics<'_, RootDatabase>, name_ref: &ast::NameRef) -> bool {
     name_ref.syntax().ancestors().any(|node| match ast::Fn::cast(node) {
-        Some(it) => sema.to_def(&it).map_or(false, |func| func.is_test(sema.db)),
+        Some(it) => sema.to_def(&it).is_some_and(|func| func.is_test(sema.db)),
         None => false,
     })
 }

@@ -220,7 +220,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                 .arms()
                 .find(|arm| matches!(arm.pat(), Some(ast::Pat::WildcardPat(_))));
             if let Some(arm) = catch_all_arm {
-                let is_empty_expr = arm.expr().map_or(true, |e| match e {
+                let is_empty_expr = arm.expr().is_none_or(|e| match e {
                     ast::Expr::BlockExpr(b) => {
                         b.statements().next().is_none() && b.tail_expr().is_none()
                     }

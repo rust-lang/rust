@@ -135,7 +135,7 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext<'
             };
 
             let has_preceding_if_expr =
-                if_expr.syntax().parent().map_or(false, |it| ast::IfExpr::can_cast(it.kind()));
+                if_expr.syntax().parent().is_some_and(|it| ast::IfExpr::can_cast(it.kind()));
             let expr = if has_preceding_if_expr {
                 // make sure we replace the `else if let ...` with a block so we don't end up with `else expr`
                 make::block_expr(None, Some(match_expr)).into()
@@ -241,7 +241,7 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext<'
         ast::Pat::LiteralPat(p)
             if p.literal()
                 .map(|it| it.token().kind())
-                .map_or(false, |it| it == T![true] || it == T![false]) =>
+                .is_some_and(|it| it == T![true] || it == T![false]) =>
         {
             ""
         }
@@ -265,12 +265,12 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext<'
 
             let condition = match if_let_pat {
                 ast::Pat::LiteralPat(p)
-                    if p.literal().map_or(false, |it| it.token().kind() == T![true]) =>
+                    if p.literal().is_some_and(|it| it.token().kind() == T![true]) =>
                 {
                     scrutinee
                 }
                 ast::Pat::LiteralPat(p)
-                    if p.literal().map_or(false, |it| it.token().kind() == T![false]) =>
+                    if p.literal().is_some_and(|it| it.token().kind() == T![false]) =>
                 {
                     make::expr_prefix(T![!], scrutinee)
                 }
@@ -339,10 +339,10 @@ fn binds_name(sema: &hir::Semantics<'_, RootDatabase>, pat: &ast::Pat) -> bool {
         ast::Pat::TupleStructPat(it) => it.fields().any(binds_name_v),
         ast::Pat::RecordPat(it) => it
             .record_pat_field_list()
-            .map_or(false, |rpfl| rpfl.fields().flat_map(|rpf| rpf.pat()).any(binds_name_v)),
-        ast::Pat::RefPat(pat) => pat.pat().map_or(false, binds_name_v),
-        ast::Pat::BoxPat(pat) => pat.pat().map_or(false, binds_name_v),
-        ast::Pat::ParenPat(pat) => pat.pat().map_or(false, binds_name_v),
+            .is_some_and(|rpfl| rpfl.fields().flat_map(|rpf| rpf.pat()).any(binds_name_v)),
+        ast::Pat::RefPat(pat) => pat.pat().is_some_and(binds_name_v),
+        ast::Pat::BoxPat(pat) => pat.pat().is_some_and(binds_name_v),
+        ast::Pat::ParenPat(pat) => pat.pat().is_some_and(binds_name_v),
         _ => false,
     }
 }
@@ -350,7 +350,7 @@ fn binds_name(sema: &hir::Semantics<'_, RootDatabase>, pat: &ast::Pat) -> bool {
 fn is_sad_pat(sema: &hir::Semantics<'_, RootDatabase>, pat: &ast::Pat) -> bool {
     sema.type_of_pat(pat)
         .and_then(|ty| TryEnum::from_ty(sema, &ty.adjusted()))
-        .map_or(false, |it| does_pat_match_variant(pat, &it.sad_pattern()))
+        .is_some_and(|it| does_pat_match_variant(pat, &it.sad_pattern()))
 }
 
 #[cfg(test)]

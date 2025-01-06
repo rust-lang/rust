@@ -949,7 +949,7 @@ impl SourceAnalyzer {
                     .map(|it| (it, None)),
             };
         }
-        if parent().map_or(false, |it| ast::Visibility::can_cast(it.kind())) {
+        if parent().is_some_and(|it| ast::Visibility::can_cast(it.kind())) {
             // No substitution because only modules can be inside visibilities, and those have no generics.
             resolve_hir_path_qualifier(db, &self.resolver, &hir_path, &types_map)
                 .map(|it| (it, None))

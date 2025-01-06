@@ -301,7 +301,7 @@ impl flags::RustcTests {
                     continue;
                 }
             }
-            if p.extension().map_or(true, |x| x != "rs") {
+            if p.extension().is_none_or(|x| x != "rs") {
                 continue;
             }
             if let Err(e) = std::panic::catch_unwind({

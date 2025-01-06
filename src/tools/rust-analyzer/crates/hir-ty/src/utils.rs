@@ -376,7 +376,7 @@ impl OpaqueInternableThing for InTypeConstIdMetadata {
     }
 
     fn dyn_eq(&self, other: &dyn OpaqueInternableThing) -> bool {
-        other.as_any().downcast_ref::<Self>().map_or(false, |x| self == x)
+        other.as_any().downcast_ref::<Self>() == Some(self)
     }
 
     fn dyn_clone(&self) -> Box<dyn OpaqueInternableThing> {

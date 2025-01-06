@@ -335,7 +335,7 @@ fn find_std_module(
     let std_crate = famous_defs.std()?;
     let std_root_module = std_crate.root_module();
     std_root_module.children(db).find(|module| {
-        module.name(db).map_or(false, |module| module.display(db, edition).to_string() == name)
+        module.name(db).is_some_and(|module| module.display(db, edition).to_string() == name)
     })
 }
 

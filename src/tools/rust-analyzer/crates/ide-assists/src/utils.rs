@@ -321,8 +321,8 @@ pub(crate) fn does_pat_variant_nested_or_literal(ctx: &AssistContext<'_>, pat: &
 }
 
 fn check_pat_variant_from_enum(ctx: &AssistContext<'_>, pat: &ast::Pat) -> bool {
-    ctx.sema.type_of_pat(pat).map_or(true, |ty: hir::TypeInfo| {
-        ty.adjusted().as_adt().map_or(false, |adt| matches!(adt, hir::Adt::Enum(_)))
+    ctx.sema.type_of_pat(pat).is_none_or(|ty: hir::TypeInfo| {
+        ty.adjusted().as_adt().is_some_and(|adt| matches!(adt, hir::Adt::Enum(_)))
     })
 }
 
@@ -345,10 +345,10 @@ fn check_pat_variant_nested_or_literal_with_depth(
         | ast::Pat::BoxPat(_)
         | ast::Pat::ConstBlockPat(_) => true,
 
-        ast::Pat::IdentPat(ident_pat) => ident_pat.pat().map_or(false, |pat| {
+        ast::Pat::IdentPat(ident_pat) => ident_pat.pat().is_some_and(|pat| {
             check_pat_variant_nested_or_literal_with_depth(ctx, &pat, depth_after_refutable)
         }),
-        ast::Pat::ParenPat(paren_pat) => paren_pat.pat().map_or(true, |pat| {
+        ast::Pat::ParenPat(paren_pat) => paren_pat.pat().is_none_or(|pat| {
             check_pat_variant_nested_or_literal_with_depth(ctx, &pat, depth_after_refutable)
         }),
         ast::Pat::TuplePat(tuple_pat) => tuple_pat.fields().any(|pat| {
@@ -357,9 +357,9 @@ fn check_pat_variant_nested_or_literal_with_depth(
         ast::Pat::RecordPat(record_pat) => {
             let adjusted_next_depth =
                 depth_after_refutable + if check_pat_variant_from_enum(ctx, pat) { 1 } else { 0 };
-            record_pat.record_pat_field_list().map_or(true, |pat| {
+            record_pat.record_pat_field_list().is_none_or(|pat| {
                 pat.fields().any(|pat| {
-                    pat.pat().map_or(true, |pat| {
+                    pat.pat().is_none_or(|pat| {
                         check_pat_variant_nested_or_literal_with_depth(
                             ctx,
                             &pat,
@@ -381,8 +381,8 @@ fn check_pat_variant_nested_or_literal_with_depth(
         }
         ast::Pat::SlicePat(slice_pat) => {
             let mut pats = slice_pat.pats();
-            pats.next() // Edge case for `[..]`
-                .map_or(true, |pat| !matches!(pat, ast::Pat::RestPat(_)) || pats.next().is_some())
+            pats.next()
+                .is_none_or(|pat| !matches!(pat, ast::Pat::RestPat(_)) || pats.next().is_some())
         }
     }
 }

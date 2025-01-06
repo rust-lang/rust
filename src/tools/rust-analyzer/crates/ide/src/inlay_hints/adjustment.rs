@@ -313,7 +313,7 @@ fn needs_parens_for_adjustment_hints(expr: &ast::Expr, postfix: bool) -> (bool, 
     // - `dummy_expr` is the original expression wrapped in the operator we want (`*`/`.*`)
     // - `expr`       is the clone of the original expression (with `dummy_expr` as the parent)
 
-    let needs_outer_parens = parent.map_or(false, |p| dummy_expr.needs_parens_in(p));
+    let needs_outer_parens = parent.is_some_and(|p| dummy_expr.needs_parens_in(p));
     let needs_inner_parens = expr.needs_parens_in(dummy_expr.syntax().clone());
 
     (needs_outer_parens, needs_inner_parens)

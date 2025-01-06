@@ -992,7 +992,7 @@ impl InferenceContext<'_> {
                 },
             },
         }
-        if self.result.pat_adjustments.get(&p).map_or(false, |it| !it.is_empty()) {
+        if self.result.pat_adjustments.get(&p).is_some_and(|it| !it.is_empty()) {
             for_mut = BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture };
         }
         self.body.walk_pats_shallow(p, |p| self.walk_pat_inner(p, update_result, for_mut));

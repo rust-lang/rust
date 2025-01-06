@@ -500,7 +500,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
 fn rustc_code_description(code: Option<&str>) -> Option<lsp_types::CodeDescription> {
     code.filter(|code| {
         let mut chars = code.chars();
-        chars.next().map_or(false, |c| c == 'E')
+        chars.next() == Some('E')
             && chars.by_ref().take(4).all(|c| c.is_ascii_digit())
             && chars.next().is_none()
     })

@@ -107,8 +107,8 @@ impl RawAttrs {
                     .chain(b.slice.iter().map(|it| {
                         let mut it = it.clone();
                         it.id.id = (it.id.ast_index() as u32 + last_ast_index)
-                            | (it.id.cfg_attr_index().unwrap_or(0) as u32)
-                                << AttrId::AST_INDEX_BITS;
+                            | ((it.id.cfg_attr_index().unwrap_or(0) as u32)
+                                << AttrId::AST_INDEX_BITS);
                         it
                     }))
                     .collect::<Vec<_>>();
@@ -122,7 +122,7 @@ impl RawAttrs {
     pub fn filter(self, db: &dyn ExpandDatabase, krate: CrateId) -> RawAttrs {
         let has_cfg_attrs = self
             .iter()
-            .any(|attr| attr.path.as_ident().map_or(false, |name| *name == sym::cfg_attr.clone()));
+            .any(|attr| attr.path.as_ident().is_some_and(|name| *name == sym::cfg_attr.clone()));
         if !has_cfg_attrs {
             return self;
         }
@@ -132,7 +132,7 @@ impl RawAttrs {
             self.iter()
                 .flat_map(|attr| -> SmallVec<[_; 1]> {
                     let is_cfg_attr =
-                        attr.path.as_ident().map_or(false, |name| *name == sym::cfg_attr.clone());
+                        attr.path.as_ident().is_some_and(|name| *name == sym::cfg_attr.clone());
                     if !is_cfg_attr {
                         return smallvec![attr.clone()];
                     }
@@ -202,7 +202,7 @@ impl AttrId {
     }
 
     pub fn with_cfg_attr(self, idx: usize) -> AttrId {
-        AttrId { id: self.id | (idx as u32) << Self::AST_INDEX_BITS | Self::CFG_ATTR_SET_BITS }
+        AttrId { id: self.id | ((idx as u32) << Self::AST_INDEX_BITS) | Self::CFG_ATTR_SET_BITS }
     }
 }
 
