@@ -9,7 +9,7 @@ use crate::RustcVersion;
 /// `since` field of the `#[stable]` attribute.
 ///
 /// For more, see [this pull request](https://github.com/rust-lang/rust/pull/100591).
-pub const VERSION_PLACEHOLDER: &str = "CURRENT_RUSTC_VERSION";
+pub const VERSION_PLACEHOLDER: &str = "1.85.0";
 
 /// Represents the following attributes:
 ///

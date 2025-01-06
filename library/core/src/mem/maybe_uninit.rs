@@ -507,7 +507,7 @@ impl<T> MaybeUninit<T> {
     /// ```
     #[inline(always)]
     #[stable(feature = "maybe_uninit_write", since = "1.55.0")]
-    #[rustc_const_stable(feature = "const_maybe_uninit_write", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_maybe_uninit_write", since = "1.85.0")]
     pub const fn write(&mut self, val: T) -> &mut T {
         *self = MaybeUninit::new(val);
         // SAFETY: We just initialized this value.

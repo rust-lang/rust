@@ -835,7 +835,7 @@ impl f64 {
     /// ```
     #[must_use = "this returns the result of the operation, without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_methods", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn recip(self) -> f64 {
         1.0 / self
@@ -853,7 +853,7 @@ impl f64 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_methods", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn to_degrees(self) -> f64 {
         // The division here is correctly rounded with respect to the true
@@ -874,7 +874,7 @@ impl f64 {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_methods", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn to_radians(self) -> f64 {
         const RADS_PER_DEG: f64 = consts::PI / 180.0;
@@ -896,7 +896,7 @@ impl f64 {
     /// ```
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_methods", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn max(self, other: f64) -> f64 {
         intrinsics::maxnumf64(self, other)
@@ -917,7 +917,7 @@ impl f64 {
     /// ```
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_methods", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn min(self, other: f64) -> f64 {
         intrinsics::minnumf64(self, other)
@@ -1006,8 +1006,8 @@ impl f64 {
     /// assert_eq!((-5.5f64).midpoint(8.0), 1.25);
     /// ```
     #[inline]
-    #[stable(feature = "num_midpoint", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "num_midpoint", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "num_midpoint", since = "1.85.0")]
+    #[rustc_const_stable(feature = "num_midpoint", since = "1.85.0")]
     pub const fn midpoint(self, other: f64) -> f64 {
         const LO: f64 = f64::MIN_POSITIVE * 2.;
         const HI: f64 = f64::MAX / 2.;
@@ -1396,7 +1396,7 @@ impl f64 {
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "clamp", since = "1.50.0")]
-    #[rustc_const_stable(feature = "const_float_methods", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn clamp(mut self, min: f64, max: f64) -> f64 {
         const_assert!(
@@ -1433,7 +1433,7 @@ impl f64 {
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_methods", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn abs(self) -> f64 {
         // SAFETY: this is actually a safe intrinsic
@@ -1458,7 +1458,7 @@ impl f64 {
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_float_methods", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn signum(self) -> f64 {
         if self.is_nan() { Self::NAN } else { 1.0_f64.copysign(self) }
@@ -1492,7 +1492,7 @@ impl f64 {
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "copysign", since = "1.35.0")]
-    #[rustc_const_stable(feature = "const_float_methods", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_float_methods", since = "1.85.0")]
     #[inline]
     pub const fn copysign(self, sign: f64) -> f64 {
         // SAFETY: this is actually a safe intrinsic
