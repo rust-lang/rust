@@ -1,8 +1,13 @@
+use crate::ffi::OsString;
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
 use crate::sys::unsupported;
 use crate::time::Duration;
+
+pub fn gethostname() -> crate::io::Result<OsString> {
+    unsupported()
+}
 
 pub struct TcpStream(!);
 
