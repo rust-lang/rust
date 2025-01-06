@@ -52,7 +52,7 @@ pub(super) fn convert_typeck_constraints<'tcx>(
                 // this information better in MIR typeck instead, for example with a new `Locations`
                 // variant that contains which node is crossing over between entry and exit.
                 let point = liveness.point_from_location(location);
-                let (from, to) = if let Some(stmt) =
+                let localized_constraint = if let Some(stmt) =
                     body[location.block].statements.get(location.statement_index)
                 {
                     localize_statement_constraint(
@@ -78,19 +78,14 @@ pub(super) fn convert_typeck_constraints<'tcx>(
                         universal_regions,
                     )
                 };
-                localized_outlives_constraints.push(LocalizedOutlivesConstraint {
-                    source: outlives_constraint.sup,
-                    from,
-                    target: outlives_constraint.sub,
-                    to,
-                });
+                localized_outlives_constraints.push(localized_constraint);
             }
         }
     }
 }
 
-/// For a given outlives constraint arising from a MIR statement, computes the CFG `from`-`to`
-/// intra-block nodes to localize the constraint.
+/// For a given outlives constraint arising from a MIR statement, localize the constraint with the
+/// needed CFG `from`-`to` intra-block nodes.
 fn localize_statement_constraint<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
@@ -100,7 +95,7 @@ fn localize_statement_constraint<'tcx>(
     current_location: Location,
     current_point: PointIndex,
     universal_regions: &UniversalRegions<'tcx>,
-) -> (PointIndex, PointIndex) {
+) -> LocalizedOutlivesConstraint {
     match &stmt.kind {
         StatementKind::Assign(box (lhs, rhs)) => {
             // To create localized outlives constraints without midpoints, we rely on the property
@@ -157,13 +152,18 @@ fn localize_statement_constraint<'tcx>(
         }
         _ => {
             // For the other cases, we localize an outlives constraint to where it arises.
-            (current_point, current_point)
+            LocalizedOutlivesConstraint {
+                source: outlives_constraint.sup,
+                from: current_point,
+                target: outlives_constraint.sub,
+                to: current_point,
+            }
         }
     }
 }
 
-/// For a given outlives constraint arising from a MIR terminator, computes the CFG `from`-`to`
-/// inter-block nodes to localize the constraint.
+/// For a given outlives constraint arising from a MIR terminator, localize the constraint with the
+/// needed CFG `from`-`to` inter-block nodes.
 fn localize_terminator_constraint<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
@@ -172,7 +172,7 @@ fn localize_terminator_constraint<'tcx>(
     outlives_constraint: &OutlivesConstraint<'tcx>,
     current_point: PointIndex,
     universal_regions: &UniversalRegions<'tcx>,
-) -> (PointIndex, PointIndex) {
+) -> LocalizedOutlivesConstraint {
     // FIXME: check if other terminators need the same handling as `Call`s, in particular
     // Assert/Yield/Drop. A handful of tests are failing with Drop related issues, as well as some
     // coroutine tests, and that may be why.
@@ -198,14 +198,19 @@ fn localize_terminator_constraint<'tcx>(
             // Typeck constraints guide loans between regions at the current point, so we do that in
             // the general case, and liveness will take care of making them flow to the terminator's
             // successors.
-            (current_point, current_point)
+            LocalizedOutlivesConstraint {
+                source: outlives_constraint.sup,
+                from: current_point,
+                target: outlives_constraint.sub,
+                to: current_point,
+            }
         }
     }
 }
-
-/// For a given constraint, returns the `from`-`to` edge according to whether the constraint flows
-/// to or from a free region in the given `value`, some kind of result for an effectful operation,
-/// like the LHS of an assignment.
+/// For a given outlives constraint and CFG edge, returns the localized constraint with the
+/// appropriate `from`-`to` direction. This is computed according to whether the constraint flows to
+/// or from a free region in the given `value`, some kind of result for an effectful operation, like
+/// the LHS of an assignment.
 fn compute_constraint_direction<'tcx>(
     tcx: TyCtxt<'tcx>,
     outlives_constraint: &OutlivesConstraint<'tcx>,
@@ -213,7 +218,7 @@ fn compute_constraint_direction<'tcx>(
     current_point: PointIndex,
     successor_point: PointIndex,
     universal_regions: &UniversalRegions<'tcx>,
-) -> (PointIndex, PointIndex) {
+) -> LocalizedOutlivesConstraint {
     let mut to = current_point;
     let mut from = current_point;
     tcx.for_each_free_region(value, |region| {
@@ -227,5 +232,10 @@ fn compute_constraint_direction<'tcx>(
         }
     });
 
-    (from, to)
+    LocalizedOutlivesConstraint {
+        source: outlives_constraint.sup,
+        from,
+        target: outlives_constraint.sub,
+        to,
+    }
 }
