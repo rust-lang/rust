@@ -85,5 +85,17 @@ error: manually reimplementing `div_ceil`
 LL |     let _ = (1_000_000 + 6u32 - 1) / 6u32;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.div_ceil()`: `1_000_000_u32.div_ceil(6u32)`
 
-error: aborting due to 14 previous errors
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil.rs:56:13
+   |
+LL |     let _ = (x + 7) / 8;
+   |             ^^^^^^^^^^^ help: consider using `.div_ceil()`: `x.div_ceil(8)`
+
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil.rs:57:13
+   |
+LL |     let _ = (7 + x) / 8;
+   |             ^^^^^^^^^^^ help: consider using `.div_ceil()`: `x.div_ceil(8)`
+
+error: aborting due to 16 previous errors
 
