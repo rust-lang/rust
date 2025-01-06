@@ -21,6 +21,7 @@ The following external projects are managed using some form of a `subtree`:
 * [rustfmt](https://github.com/rust-lang/rustfmt)
 * [rust-analyzer](https://github.com/rust-lang/rust-analyzer)
 * [rustc_codegen_cranelift](https://github.com/rust-lang/rustc_codegen_cranelift)
+* [rustc-dev-guide](https://github.com/rust-lang/rustc-dev-guide)
 
 In contrast to `submodule` dependencies
 (see below for those), the `subtree` dependencies are just regular files and directories which can
@@ -38,8 +39,9 @@ implement a new tool feature or test, that should happen in one collective rustc
 * Using the [josh] tool
   * `miri` ([sync guide](https://github.com/rust-lang/miri/blob/master/CONTRIBUTING.md#advanced-topic-syncing-with-the-rustc-repo))
   * `rust-analyzer` ([sync script](https://github.com/rust-lang/rust-analyzer/blob/2e13684be123eca7181aa48e043e185d8044a84a/xtask/src/release.rs#L147))
+  * `rustc-dev-guide` ([sync guide](https://github.com/rust-lang/rustc-dev-guide#synchronizing-josh-subtree-with-rustc))
 
-The [josh] tool is an alternative to git subtrees, which manages git history in a different way and scales better to larger repositories. Specific tooling is required to work with josh, you can check out the `miri` or `rust-analyzer` scripts linked above for inspiration. If you want to migrate a subtree from `git subtree` to josh, you can check out [this guide](https://hackmd.io/7pOuxnkdQDaL1Y1FQr65xg).
+The [josh] tool is an alternative to git subtrees, which manages git history in a different way and scales better to larger repositories. Specific tooling is required to work with josh, you can check out the `miri` or `rust-analyzer` scripts linked above for inspiration. If you want to migrate a repository dependency from `git subtree` or `git submodule` to josh, you can check out [this guide](https://hackmd.io/7pOuxnkdQDaL1Y1FQr65xg).
 
 Below you can find a guide on how to perform push and pull synchronization with the main rustc repo using `git subtree`, although these instructions might differ repo from repo.
 
