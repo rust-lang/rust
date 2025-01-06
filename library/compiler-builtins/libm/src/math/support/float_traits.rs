@@ -200,7 +200,7 @@ macro_rules! float_impl {
             fn abs(self) -> Self {
                 cfg_if! {
                     // FIXME(msrv): `abs` is available in `core` starting with 1.85.
-                    if #[cfg(feature = "unstable-intrinsics")] {
+                    if #[cfg(intrinsics_enabled)] {
                         self.abs()
                     } else {
                         super::super::generic::fabs(self)
@@ -210,7 +210,7 @@ macro_rules! float_impl {
             fn copysign(self, other: Self) -> Self {
                 cfg_if! {
                     // FIXME(msrv): `copysign` is available in `core` starting with 1.85.
-                    if #[cfg(feature = "unstable-intrinsics")] {
+                    if #[cfg(intrinsics_enabled)] {
                         self.copysign(other)
                     } else {
                         super::super::generic::copysign(self, other)

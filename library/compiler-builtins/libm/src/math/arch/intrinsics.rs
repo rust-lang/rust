@@ -12,13 +12,11 @@ pub fn ceilf(x: f32) -> f32 {
 }
 
 pub fn fabs(x: f64) -> f64 {
-    // SAFETY: safe intrinsic with no preconditions
-    unsafe { core::intrinsics::fabsf64(x) }
+    x.abs()
 }
 
 pub fn fabsf(x: f32) -> f32 {
-    // SAFETY: safe intrinsic with no preconditions
-    unsafe { core::intrinsics::fabsf32(x) }
+    x.abs()
 }
 
 pub fn floor(x: f64) -> f64 {
