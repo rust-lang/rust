@@ -376,7 +376,7 @@ impl ChangeFixture {
     }
 }
 
-fn default_test_proc_macros() -> [(String, ProcMacro); 6] {
+fn default_test_proc_macros() -> [(String, ProcMacro); 7] {
     [
         (
             r#"
@@ -465,6 +465,21 @@ pub fn issue_18089(_attr: TokenStream, _item: TokenStream) -> TokenStream {
                 name: Symbol::intern("issue_18089"),
                 kind: ProcMacroKind::Attr,
                 expander: sync::Arc::new(Issue18089ProcMacroExpander),
+                disabled: false,
+            },
+        ),
+        (
+            r#"
+#[proc_macro_attribute]
+pub fn issue_18840(_attr: TokenStream, _item: TokenStream) -> TokenStream {
+    loop {}
+}
+"#
+            .into(),
+            ProcMacro {
+                name: Symbol::intern("issue_18840"),
+                kind: ProcMacroKind::Attr,
+                expander: sync::Arc::new(Issue18840ProcMacroExpander),
                 disabled: false,
             },
         ),
@@ -642,6 +657,37 @@ impl ProcMacroExpander for AttributeInputReplaceProcMacroExpander {
         attrs
             .cloned()
             .ok_or_else(|| ProcMacroExpansionError::Panic("Expected attribute input".into()))
+    }
+}
+
+#[derive(Debug)]
+struct Issue18840ProcMacroExpander;
+impl ProcMacroExpander for Issue18840ProcMacroExpander {
+    fn expand(
+        &self,
+        fn_: &TopSubtree,
+        _: Option<&TopSubtree>,
+        _: &Env,
+        def_site: Span,
+        _: Span,
+        _: Span,
+        _: Option<String>,
+    ) -> Result<TopSubtree, ProcMacroExpansionError> {
+        // Input:
+        // ```
+        // #[issue_18840]
+        // fn foo() { let loop {} }
+        // ```
+
+        // The span that was created by the fixup infra.
+        let fixed_up_span = fn_.token_trees().flat_tokens()[5].first_span();
+        let mut result =
+            quote! {fixed_up_span => ::core::compile_error! { "my cool compile_error!" } };
+        // Make it so we won't remove the top subtree when reversing fixups.
+        let top_subtree_delimiter_mut = result.top_subtree_delimiter_mut();
+        top_subtree_delimiter_mut.open = def_site;
+        top_subtree_delimiter_mut.close = def_site;
+        Ok(result)
     }
 }
 

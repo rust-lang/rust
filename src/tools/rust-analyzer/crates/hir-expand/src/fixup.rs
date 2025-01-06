@@ -388,6 +388,7 @@ pub(crate) fn reverse_fixups(tt: &mut TopSubtree, undo_info: &SyntaxFixupUndoInf
     reverse_fixups_(tt, undo_info);
 }
 
+#[derive(Debug)]
 enum TransformTtAction<'a> {
     Keep,
     ReplaceWith(tt::TokenTreesView<'a>),
@@ -399,27 +400,40 @@ impl TransformTtAction<'_> {
     }
 }
 
+/// This function takes a token tree, and calls `callback` with each token tree in it.
+/// Then it does what the callback says: keeps the tt or replaces it with a (possibly empty)
+/// tts view.
 fn transform_tt<'a, 'b>(
     tt: &'a mut Vec<tt::TokenTree>,
     mut callback: impl FnMut(&mut tt::TokenTree) -> TransformTtAction<'b>,
 ) {
+    // We need to keep a stack of the currently open subtrees, because we need to update
+    // them if we change the number of items in them.
     let mut subtrees_stack = Vec::new();
     let mut i = 0;
     while i < tt.len() {
-        while let Some(&subtree_idx) = subtrees_stack.last() {
+        'pop_finished_subtrees: while let Some(&subtree_idx) = subtrees_stack.last() {
             let tt::TokenTree::Subtree(subtree) = &tt[subtree_idx] else {
                 unreachable!("non-subtree on subtrees stack");
             };
-            if subtree_idx + 1 + subtree.usize_len() == i {
+            if i >= subtree_idx + 1 + subtree.usize_len() {
                 subtrees_stack.pop();
             } else {
-                break;
+                break 'pop_finished_subtrees;
             }
         }
 
         let action = callback(&mut tt[i]);
         match action {
-            TransformTtAction::Keep => {}
+            TransformTtAction::Keep => {
+                // This cannot be shared with the replaced case, because then we may push the same subtree
+                // twice, and will update it twice which will lead to errors.
+                if let tt::TokenTree::Subtree(_) = &tt[i] {
+                    subtrees_stack.push(i);
+                }
+
+                i += 1;
+            }
             TransformTtAction::ReplaceWith(replacement) => {
                 let old_len = 1 + match &tt[i] {
                     tt::TokenTree::Leaf(_) => 0,
@@ -427,23 +441,17 @@ fn transform_tt<'a, 'b>(
                 };
                 let len_diff = replacement.len() as i64 - old_len as i64;
                 tt.splice(i..i + old_len, replacement.flat_tokens().iter().cloned());
-                i = i.checked_add_signed(len_diff as isize).unwrap();
+                // `+1` for the loop.
+                i = i.checked_add_signed(len_diff as isize + 1).unwrap();
 
                 for &subtree_idx in &subtrees_stack {
                     let tt::TokenTree::Subtree(subtree) = &mut tt[subtree_idx] else {
                         unreachable!("non-subtree on subtrees stack");
                     };
-                    subtree.len = (subtree.len as i64 + len_diff).try_into().unwrap();
+                    subtree.len = (i64::from(subtree.len) + len_diff).try_into().unwrap();
                 }
             }
         }
-
-        // `tt[i]` might have been removed.
-        if let Some(tt::TokenTree::Subtree(_)) = tt.get(i) {
-            subtrees_stack.push(i);
-        }
-
-        i += 1;
     }
 }
 
