@@ -315,13 +315,7 @@ impl InferenceContext<'_> {
                     }
 
                     AssocItemId::ConstId(konst) => {
-                        if self
-                            .db
-                            .const_data(konst)
-                            .name
-                            .as_ref()
-                            .map_or(false, |n| n == segment.name)
-                        {
+                        if self.db.const_data(konst).name.as_ref() == Some(segment.name) {
                             Some(AssocItemId::ConstId(konst))
                         } else {
                             None

@@ -2113,7 +2113,7 @@ impl Evaluator<'_> {
         while self.heap.len() % align != 0 {
             self.heap.push(0);
         }
-        if size.checked_add(self.heap.len()).map_or(true, |x| x > self.memory_limit) {
+        if size.checked_add(self.heap.len()).is_none_or(|x| x > self.memory_limit) {
             return Err(MirEvalError::Panic(format!("Memory allocation of {size} bytes failed")));
         }
         let pos = self.heap.len();

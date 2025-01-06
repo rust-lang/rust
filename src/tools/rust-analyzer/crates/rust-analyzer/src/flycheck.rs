@@ -464,7 +464,7 @@ impl FlycheckActor {
                 if let Some(manifest_path) = &self.manifest_path {
                     cmd.arg("--manifest-path");
                     cmd.arg(manifest_path);
-                    if manifest_path.extension().map_or(false, |ext| ext == "rs") {
+                    if manifest_path.extension() == Some("rs") {
                         cmd.arg("-Zscript");
                     }
                 }

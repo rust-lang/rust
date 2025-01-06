@@ -884,7 +884,7 @@ fn lower_separated_list(
     if !matches!(
         repeat.as_slice(),
         [comma, nt_]
-            if trailing_sep.map_or(true, |it| comma == &**it) && match (nt, nt_) {
+            if trailing_sep.is_none_or(|it| comma == &**it) && match (nt, nt_) {
                 (Either::Left(node), Rule::Node(nt_)) => node == nt_,
                 (Either::Right(token), Rule::Token(nt_)) => token == nt_,
                 _ => false,

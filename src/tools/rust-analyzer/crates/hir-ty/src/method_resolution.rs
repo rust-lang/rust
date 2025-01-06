@@ -377,7 +377,7 @@ pub(crate) fn incoherent_inherent_impl_crates(
 
     for krate in crate_graph.transitive_deps(krate) {
         let impls = db.inherent_impls_in_crate(krate);
-        if impls.map.get(&fp).map_or(false, |v| !v.is_empty()) {
+        if impls.map.get(&fp).is_some_and(|v| !v.is_empty()) {
             res.push(krate);
         }
     }
@@ -811,7 +811,7 @@ fn is_inherent_impl_coherent(
         | TyKind::Scalar(_) => def_map.is_rustc_coherence_is_core(),
 
         &TyKind::Adt(AdtId(adt), _) => adt.module(db.upcast()).krate() == def_map.krate(),
-        TyKind::Dyn(it) => it.principal_id().map_or(false, |trait_id| {
+        TyKind::Dyn(it) => it.principal_id().is_some_and(|trait_id| {
             from_chalk_trait_id(trait_id).module(db.upcast()).krate() == def_map.krate()
         }),
 
@@ -840,7 +840,7 @@ fn is_inherent_impl_coherent(
                     .contains(StructFlags::IS_RUSTC_HAS_INCOHERENT_INHERENT_IMPL),
                 hir_def::AdtId::EnumId(it) => db.enum_data(it).rustc_has_incoherent_inherent_impls,
             },
-            TyKind::Dyn(it) => it.principal_id().map_or(false, |trait_id| {
+            TyKind::Dyn(it) => it.principal_id().is_some_and(|trait_id| {
                 db.trait_data(from_chalk_trait_id(trait_id))
                     .flags
                     .contains(TraitFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS)
@@ -903,7 +903,7 @@ pub fn check_orphan_rules(db: &dyn HirDatabase, impl_: ImplId) -> bool {
         match unwrap_fundamental(ty).kind(Interner) {
             &TyKind::Adt(AdtId(id), _) => is_local(id.module(db.upcast()).krate()),
             TyKind::Error => true,
-            TyKind::Dyn(it) => it.principal_id().map_or(false, |trait_id| {
+            TyKind::Dyn(it) => it.principal_id().is_some_and(|trait_id| {
                 is_local(from_chalk_trait_id(trait_id).module(db.upcast()).krate())
             }),
             _ => false,
@@ -1481,7 +1481,7 @@ fn is_valid_impl_method_candidate(
         AssocItemId::ConstId(c) => {
             let db = table.db;
             check_that!(receiver_ty.is_none());
-            check_that!(name.map_or(true, |n| db.const_data(c).name.as_ref() == Some(n)));
+            check_that!(name.is_none_or(|n| db.const_data(c).name.as_ref() == Some(n)));
 
             if let Some(from_module) = visible_from_module {
                 if !db.const_visibility(c).is_visible_from(db.upcast(), from_module) {
@@ -1519,7 +1519,7 @@ fn is_valid_trait_method_candidate(
         AssocItemId::FunctionId(fn_id) => {
             let data = db.function_data(fn_id);
 
-            check_that!(name.map_or(true, |n| n == &data.name));
+            check_that!(name.is_none_or(|n| n == &data.name));
 
             table.run_in_snapshot(|table| {
                 let impl_subst = TyBuilder::subst_for_def(db, trait_id, None)
@@ -1548,7 +1548,7 @@ fn is_valid_trait_method_candidate(
         }
         AssocItemId::ConstId(c) => {
             check_that!(receiver_ty.is_none());
-            check_that!(name.map_or(true, |n| db.const_data(c).name.as_ref() == Some(n)));
+            check_that!(name.is_none_or(|n| db.const_data(c).name.as_ref() == Some(n)));
 
             IsValidCandidate::Yes
         }
@@ -1569,7 +1569,7 @@ fn is_valid_impl_fn_candidate(
     let db = table.db;
     let data = db.function_data(fn_id);
 
-    check_that!(name.map_or(true, |n| n == &data.name));
+    check_that!(name.is_none_or(|n| n == &data.name));
     if let Some(from_module) = visible_from_module {
         if !db.function_visibility(fn_id).is_visible_from(db.upcast(), from_module) {
             cov_mark::hit!(autoderef_candidate_not_visible);

@@ -456,7 +456,7 @@ fn analyze(
                 && p.ancestors().any(|it| it.kind() == SyntaxKind::META)
             {
                 let colon_prefix = previous_non_trivia_token(self_token.clone())
-                    .map_or(false, |it| T![:] == it.kind());
+                    .is_some_and(|it| T![:] == it.kind());
 
                 CompletionAnalysis::UnexpandedAttrTT {
                     fake_attribute_under_caret: fake_ident_token
@@ -643,7 +643,7 @@ fn expected_type_and_name(
                 // match foo { $0 }
                 // match foo { ..., pat => $0 }
                 ast::MatchExpr(it) => {
-                    let on_arrow = previous_non_trivia_token(token.clone()).map_or(false, |it| T![=>] == it.kind());
+                    let on_arrow = previous_non_trivia_token(token.clone()).is_some_and(|it| T![=>] == it.kind());
 
                     let ty = if on_arrow {
                         // match foo { ..., pat => $0 }
@@ -780,7 +780,7 @@ fn classify_name_ref(
 
     if let Some(record_field) = ast::RecordExprField::for_field_name(&name_ref) {
         let dot_prefix = previous_non_trivia_token(name_ref.syntax().clone())
-            .map_or(false, |it| T![.] == it.kind());
+            .is_some_and(|it| T![.] == it.kind());
 
         return find_node_in_file_compensated(
             sema,
@@ -814,7 +814,7 @@ fn classify_name_ref(
                 let receiver_is_ambiguous_float_literal = match &receiver {
                     Some(ast::Expr::Literal(l)) => matches! {
                         l.kind(),
-                        ast::LiteralKind::FloatNumber { .. } if l.syntax().last_token().map_or(false, |it| it.text().ends_with('.'))
+                        ast::LiteralKind::FloatNumber { .. } if l.syntax().last_token().is_some_and(|it| it.text().ends_with('.'))
                     },
                     _ => false,
                 };
@@ -846,7 +846,7 @@ fn classify_name_ref(
                 let receiver = find_opt_node_in_file(original_file, method.receiver());
                 let kind = NameRefKind::DotAccess(DotAccess {
                     receiver_ty: receiver.as_ref().and_then(|it| sema.type_of_expr(it)),
-                    kind: DotAccessKind::Method { has_parens: method.arg_list().map_or(false, |it| it.l_paren_token().is_some()) },
+                    kind: DotAccessKind::Method { has_parens: method.arg_list().is_some_and(|it| it.l_paren_token().is_some()) },
                     receiver,
                     ctx: DotAccessExprCtx { in_block_expr: is_in_block(method.syntax()), in_breakable: is_in_breakable(method.syntax()) }
                 });
@@ -1193,13 +1193,13 @@ fn classify_name_ref(
         let incomplete_let = it
             .parent()
             .and_then(ast::LetStmt::cast)
-            .map_or(false, |it| it.semicolon_token().is_none());
+            .is_some_and(|it| it.semicolon_token().is_none());
         let impl_ = fetch_immediate_impl(sema, original_file, expr.syntax());
 
         let in_match_guard = match it.parent().and_then(ast::MatchArm::cast) {
             Some(arm) => arm
                 .fat_arrow_token()
-                .map_or(true, |arrow| it.text_range().start() < arrow.text_range().start()),
+                .is_none_or(|arrow| it.text_range().start() < arrow.text_range().start()),
             None => false,
         };
 
@@ -1329,7 +1329,7 @@ fn classify_name_ref(
                         }
                     }
 
-                    path_ctx.has_call_parens = it.syntax().parent().map_or(false, |it| ast::CallExpr::can_cast(it.kind()));
+                    path_ctx.has_call_parens = it.syntax().parent().is_some_and(|it| ast::CallExpr::can_cast(it.kind()));
 
                     make_path_kind_expr(it.into())
                 },
@@ -1358,7 +1358,7 @@ fn classify_name_ref(
                         match parent {
                             ast::PathType(it) => make_path_kind_type(it.into()),
                             ast::PathExpr(it) => {
-                                path_ctx.has_call_parens = it.syntax().parent().map_or(false, |it| ast::CallExpr::can_cast(it.kind()));
+                                path_ctx.has_call_parens = it.syntax().parent().is_some_and(|it| ast::CallExpr::can_cast(it.kind()));
 
                                 make_path_kind_expr(it.into())
                             },
@@ -1612,8 +1612,7 @@ fn pattern_context_for(
             &pat,
             ast::Pat::IdentPat(it)
                 if it.syntax()
-                .parent()
-                .map_or(false, |node| {
+                .parent().is_some_and(|node| {
                     let kind = node.kind();
                     ast::LetStmt::can_cast(kind) || ast::Param::can_cast(kind)
                 })

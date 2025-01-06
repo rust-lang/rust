@@ -48,7 +48,7 @@ pub fn callable_for_token(
     let parent = token.parent()?;
     let calling_node = parent.ancestors().filter_map(ast::CallableExpr::cast).find(|it| {
         it.arg_list()
-            .map_or(false, |it| it.syntax().text_range().contains(token.text_range().start()))
+            .is_some_and(|it| it.syntax().text_range().contains(token.text_range().start()))
     })?;
 
     callable_for_node(sema, &calling_node, &token)
@@ -136,7 +136,7 @@ pub fn generic_def_for_node(
     let first_arg_is_non_lifetime = generic_arg_list
         .generic_args()
         .next()
-        .map_or(false, |arg| !matches!(arg, ast::GenericArg::LifetimeArg(_)));
+        .is_some_and(|arg| !matches!(arg, ast::GenericArg::LifetimeArg(_)));
 
     Some((def, active_param, first_arg_is_non_lifetime, variant))
 }

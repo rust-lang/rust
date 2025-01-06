@@ -206,7 +206,7 @@ impl InferenceContext<'_> {
                     path,
                     self.body.expr_path_hygiene(expr),
                 )
-                .map_or(true, |res| matches!(res, ValueNs::LocalBinding(_) | ValueNs::StaticId(_))),
+                .is_none_or(|res| matches!(res, ValueNs::LocalBinding(_) | ValueNs::StaticId(_))),
             Expr::Underscore => true,
             Expr::UnaryOp { op: UnaryOp::Deref, .. } => true,
             Expr::Field { .. } | Expr::Index { .. } => true,
@@ -499,7 +499,7 @@ impl InferenceContext<'_> {
                 // if the function is unresolved, we use is_varargs=true to
                 // suppress the arg count diagnostic here
                 let is_varargs =
-                    derefed_callee.callable_sig(self.db).map_or(false, |sig| sig.is_varargs)
+                    derefed_callee.callable_sig(self.db).is_some_and(|sig| sig.is_varargs)
                         || res.is_none();
                 let (param_tys, ret_ty) = match res {
                     Some((func, params, ret_ty)) => {
@@ -2043,7 +2043,7 @@ impl InferenceContext<'_> {
                     continue;
                 }
 
-                while skip_indices.peek().map_or(false, |i| *i < idx as u32) {
+                while skip_indices.peek().is_some_and(|i| *i < idx as u32) {
                     skip_indices.next();
                 }
                 if skip_indices.peek().copied() == Some(idx as u32) {

@@ -205,14 +205,14 @@ fn retain_adt_literal_usages(
                     reference
                         .name
                         .as_name_ref()
-                        .map_or(false, |name_ref| is_enum_lit_name_ref(sema, enum_, name_ref))
+                        .is_some_and(|name_ref| is_enum_lit_name_ref(sema, enum_, name_ref))
                 })
             });
             usages.references.retain(|_, it| !it.is_empty());
         }
         Definition::Adt(_) | Definition::Variant(_) => {
             refs.for_each(|it| {
-                it.retain(|reference| reference.name.as_name_ref().map_or(false, is_lit_name_ref))
+                it.retain(|reference| reference.name.as_name_ref().is_some_and(is_lit_name_ref))
             });
             usages.references.retain(|_, it| !it.is_empty());
         }

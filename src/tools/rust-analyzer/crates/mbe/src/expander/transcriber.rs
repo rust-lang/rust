@@ -390,7 +390,7 @@ fn expand_var(
                     let mut span = id;
                     marker(&mut span);
                     let wrap_in_parens = !matches!(sub.flat_tokens(), [tt::TokenTree::Leaf(_)])
-                        && sub.try_into_subtree().map_or(true, |it| {
+                        && sub.try_into_subtree().is_none_or(|it| {
                             it.top_subtree().delimiter.kind == tt::DelimiterKind::Invisible
                         });
                     if wrap_in_parens {

@@ -99,7 +99,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
 
     let parent = to_extract.syntax().parent().and_then(ast::Expr::cast);
     // Any expression that autoderefs may need adjustment.
-    let mut needs_adjust = parent.as_ref().map_or(false, |it| match it {
+    let mut needs_adjust = parent.as_ref().is_some_and(|it| match it {
         ast::Expr::FieldExpr(_)
         | ast::Expr::MethodCallExpr(_)
         | ast::Expr::CallExpr(_)

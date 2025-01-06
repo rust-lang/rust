@@ -1206,7 +1206,6 @@ impl<'db> SemanticsImpl<'db> {
         node.original_file_range_opt(self.db.upcast())
             .filter(|(_, ctx)| ctx.is_root())
             .map(TupleExt::head)
-            .map(Into::into)
     }
 
     /// Attempts to map the node out of macro expanded files.
@@ -1500,7 +1499,7 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn is_proc_macro_call(&self, macro_call: &ast::MacroCall) -> bool {
         self.resolve_macro_call(macro_call)
-            .map_or(false, |m| matches!(m.id, MacroId::ProcMacroId(..)))
+            .is_some_and(|m| matches!(m.id, MacroId::ProcMacroId(..)))
     }
 
     pub fn resolve_macro_call_arm(&self, macro_call: &ast::MacroCall) -> Option<u32> {

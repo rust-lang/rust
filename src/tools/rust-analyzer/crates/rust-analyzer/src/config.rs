@@ -895,7 +895,7 @@ impl Config {
         if let Some(mut json) = change.client_config_change {
             tracing::info!("updating config from JSON: {:#}", json);
 
-            if !(json.is_null() || json.as_object().map_or(false, |it| it.is_empty())) {
+            if !(json.is_null() || json.as_object().is_some_and(|it| it.is_empty())) {
                 let mut json_errors = vec![];
                 let detached_files = get_field_json::<Vec<Utf8PathBuf>>(
                     &mut json,

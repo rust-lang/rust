@@ -571,7 +571,7 @@ impl<'attr> AttrQuery<'attr> {
 
     pub fn attrs(self) -> impl Iterator<Item = &'attr Attr> + Clone {
         let key = self.key;
-        self.attrs.iter().filter(move |attr| attr.path.as_ident().map_or(false, |s| *s == *key))
+        self.attrs.iter().filter(move |attr| attr.path.as_ident().is_some_and(|s| *s == *key))
     }
 
     /// Find string value for a specific key inside token tree

@@ -448,7 +448,7 @@ impl SymbolGenerator {
                             .identifier
                             .description
                             .get(moniker.identifier.description.len() - 2)
-                            .map_or(false, |descriptor| {
+                            .is_some_and(|descriptor| {
                                 descriptor.desc == MonikerDescriptorKind::Type
                                     && descriptor.name == "impl"
                             }),

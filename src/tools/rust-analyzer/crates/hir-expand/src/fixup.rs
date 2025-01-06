@@ -109,7 +109,7 @@ pub(crate) fn fixup_syntax(
                     }
                 },
                 ast::ExprStmt(it) => {
-                    let needs_semi = it.semicolon_token().is_none() && it.expr().map_or(false, |e| e.syntax().kind() != SyntaxKind::BLOCK_EXPR);
+                    let needs_semi = it.semicolon_token().is_none() && it.expr().is_some_and(|e| e.syntax().kind() != SyntaxKind::BLOCK_EXPR);
                     if needs_semi {
                         append.insert(node.clone().into(), vec![
                             Leaf::Punct(Punct {

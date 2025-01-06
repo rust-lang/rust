@@ -227,8 +227,7 @@ fn find_definitions(
                 ast::NameLike::Name(name)
                     if name
                         .syntax()
-                        .parent()
-                        .map_or(false, |it| ast::Rename::can_cast(it.kind()))
+                        .parent().is_some_and(|it| ast::Rename::can_cast(it.kind()))
                         // FIXME: uncomment this once we resolve to usages to extern crate declarations
                         // && name
                         //     .syntax()
@@ -264,8 +263,7 @@ fn find_definitions(
                         .and_then(|def| {
                             // if the name differs from the definitions name it has to be an alias
                             if def
-                                .name(sema.db)
-                                .map_or(false, |it| !it.eq_ident(name_ref.text().as_str()))
+                                .name(sema.db).is_some_and(|it| !it.eq_ident(name_ref.text().as_str()))
                             {
                                 Err(format_err!("Renaming aliases is currently unsupported"))
                             } else {

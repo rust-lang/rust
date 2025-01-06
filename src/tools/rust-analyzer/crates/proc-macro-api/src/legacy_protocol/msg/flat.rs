@@ -450,13 +450,13 @@ impl<'a, S: InternableSpan> Writer<'a, '_, S> {
                             }),
                             suffix,
                         });
-                        idx << 2 | 0b01
+                        (idx << 2) | 0b01
                     }
                     tt::Leaf::Punct(punct) => {
                         let idx = self.punct.len() as u32;
                         let id = self.token_id_of(punct.span);
                         self.punct.push(PunctRepr { char: punct.char, spacing: punct.spacing, id });
-                        idx << 2 | 0b10
+                        (idx << 2) | 0b10
                     }
                     tt::Leaf::Ident(ident) => {
                         let idx = self.ident.len() as u32;
@@ -469,7 +469,7 @@ impl<'a, S: InternableSpan> Writer<'a, '_, S> {
                             self.intern(ident.sym.as_str())
                         };
                         self.ident.push(IdentRepr { id, text, is_raw: ident.is_raw.yes() });
-                        idx << 2 | 0b11
+                        (idx << 2) | 0b11
                     }
                 },
             };
