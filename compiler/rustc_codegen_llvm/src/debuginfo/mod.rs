@@ -39,6 +39,7 @@ use crate::llvm::debuginfo::{
 use crate::value::Value;
 
 mod create_scope_map;
+mod dwarf_const;
 mod gdb;
 pub(crate) mod metadata;
 mod namespace;
@@ -47,6 +48,10 @@ mod utils;
 use self::create_scope_map::compute_mir_scopes;
 pub(crate) use self::metadata::build_global_var_di_node;
 
+// FIXME(Zalathar): These `DW_TAG_*` constants are fake values that were
+// removed from LLVM in 2015, and are only used by our own `RustWrapper.cpp`
+// to decide which C++ API to call. Instead, we should just have two separate
+// FFI functions and choose the correct one on the Rust side.
 #[allow(non_upper_case_globals)]
 const DW_TAG_auto_variable: c_uint = 0x100;
 #[allow(non_upper_case_globals)]
@@ -152,29 +157,26 @@ impl<'ll> DebugInfoBuilderMethods for Builder<'_, 'll, '_> {
         indirect_offsets: &[Size],
         fragment: Option<Range<Size>>,
     ) {
+        use dwarf_const::{DW_OP_LLVM_fragment, DW_OP_deref, DW_OP_plus_uconst};
+
         // Convert the direct and indirect offsets and fragment byte range to address ops.
-        // FIXME(eddyb) use `const`s instead of getting the values via FFI,
-        // the values should match the ones in the DWARF standard anyway.
-        let op_deref = || unsafe { llvm::LLVMRustDIBuilderCreateOpDeref() };
-        let op_plus_uconst = || unsafe { llvm::LLVMRustDIBuilderCreateOpPlusUconst() };
-        let op_llvm_fragment = || unsafe { llvm::LLVMRustDIBuilderCreateOpLLVMFragment() };
         let mut addr_ops = SmallVec::<[u64; 8]>::new();
 
         if direct_offset.bytes() > 0 {
-            addr_ops.push(op_plus_uconst());
+            addr_ops.push(DW_OP_plus_uconst);
             addr_ops.push(direct_offset.bytes() as u64);
         }
         for &offset in indirect_offsets {
-            addr_ops.push(op_deref());
+            addr_ops.push(DW_OP_deref);
             if offset.bytes() > 0 {
-                addr_ops.push(op_plus_uconst());
+                addr_ops.push(DW_OP_plus_uconst);
                 addr_ops.push(offset.bytes() as u64);
             }
         }
         if let Some(fragment) = fragment {
             // `DW_OP_LLVM_fragment` takes as arguments the fragment's
             // offset and size, both of them in bits.
-            addr_ops.push(op_llvm_fragment());
+            addr_ops.push(DW_OP_LLVM_fragment);
             addr_ops.push(fragment.start.bits() as u64);
             addr_ops.push((fragment.end - fragment.start).bits() as u64);
         }
