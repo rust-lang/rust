@@ -111,6 +111,8 @@ Compatibility Notes
 - [The syntax `&pin (mut|const) T` is now parsed as a type which in theory could affect macro expansion results in some edge cases](https://github.com/rust-lang/rust/pull/130635#issuecomment-2375462821)
 - [Legacy syntax for calling `std::arch` functions is no longer permitted to declare items or bodies (such as closures, inline consts, or async blocks).](https://github.com/rust-lang/rust/pull/130443#issuecomment-2445678945)
 - The `wasm32-unknown-emscripten` target's binary release of the standard library is now [built with the latest emsdk 3.1.68](https://github.com/rust-lang/rust/pull/131533), which fixes an ABI-incompatibility with Emscripten >= 3.1.42. If you are locally using a version of emsdk with an incompatible ABI (e.g. before 3.1.42 or a future one), you should build your code with `-Zbuild-std` to ensure that `std` uses the correct ABI.
+- [Declaring functions with a calling convention not supported on the current target now triggers a hard error](https://github.com/rust-lang/rust/pull/129935)
+- [The next-generation trait solver is now enabled for coherence, fixing multiple soundness issues](https://github.com/rust-lang/rust/pull/130654)
 
 Version 1.83.0 (2024-11-28)
 ==========================
