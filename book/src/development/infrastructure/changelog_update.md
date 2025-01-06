@@ -83,7 +83,12 @@ As section headers, we use:
 
 ```
 ### New Lints
+* Added [`LINT`] to `GROUP`
+
 ### Moves and Deprecations
+* Moved [`LINT`] to `GROUP` (From `GROUP`, now LEVEL-by-default)
+* Renamed `LINT` to [`LINT`]
+
 ### Enhancements
 ### False Positive Fixes
 ### Suggestion Fixes/Improvements
