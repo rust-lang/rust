@@ -218,6 +218,9 @@ impl Step for GenerateCopyright {
         cmd.env("DEST_LIBSTD", &dest_libstd);
         cmd.env("OUT_DIR", &builder.out);
         cmd.env("CARGO", &builder.initial_cargo);
+        // it is important that generate-copyright runs from the root of the
+        // source tree, because it uses relative paths
+        cmd.current_dir(&builder.src);
         cmd.run(builder);
 
         vec![dest, dest_libstd]

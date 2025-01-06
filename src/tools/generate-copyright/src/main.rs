@@ -8,7 +8,10 @@ mod cargo_metadata;
 
 /// The entry point to the binary.
 ///
-/// You should probably let `bootstrap` execute this program instead of running it directly.
+/// You should probably let `bootstrap` execute this program instead of running
+/// it directly. It assumes that the current working directory is the root of a
+/// Rust git repository checkout, and constructs a bunch of relative paths based
+/// on that assumption.
 ///
 /// Run `x.py run generate-copyright`
 fn main() -> Result<(), Error> {
