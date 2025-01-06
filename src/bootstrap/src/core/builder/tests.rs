@@ -828,3 +828,36 @@ fn test_test_compiler() {
 
     assert_eq!((compiler, cranelift, gcc), (true, false, false));
 }
+
+#[test]
+fn test_test_coverage() {
+    struct Case {
+        cmd: &'static [&'static str],
+        expected: &'static [&'static str],
+    }
+    let cases = &[
+        Case { cmd: &["test"], expected: &["coverage-map", "coverage-run"] },
+        Case { cmd: &["test", "coverage"], expected: &["coverage-map", "coverage-run"] },
+        Case { cmd: &["test", "coverage-map"], expected: &["coverage-map"] },
+        Case { cmd: &["test", "coverage-run"], expected: &["coverage-run"] },
+        Case { cmd: &["test", "coverage", "--skip=coverage"], expected: &[] },
+        Case { cmd: &["test", "coverage", "--skip=tests/coverage"], expected: &[] },
+        Case { cmd: &["test", "coverage", "--skip=coverage-map"], expected: &["coverage-run"] },
+        Case { cmd: &["test", "coverage", "--skip=coverage-run"], expected: &["coverage-map"] },
+        Case { cmd: &["test", "--skip=coverage-map", "--skip=coverage-run"], expected: &[] },
+        Case { cmd: &["test", "coverage", "--skip=tests"], expected: &[] },
+    ];
+
+    for &Case { cmd, expected } in cases {
+        // Print each test case so that if one fails, the most recently printed
+        // case is the one that failed.
+        println!("Testing case: {cmd:?}");
+        let cmd = cmd.iter().copied().map(str::to_owned).collect::<Vec<_>>();
+        let config = configure_with_args(&cmd, &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
+        let mut cache = run_build(&config.paths.clone(), config);
+
+        let modes =
+            cache.all::<test::Coverage>().iter().map(|(step, ())| step.mode).collect::<Vec<_>>();
+        assert_eq!(modes, expected);
+    }
+}
