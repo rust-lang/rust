@@ -76,15 +76,15 @@ macro_rules! div {
 
 // `support` may be public for testing
 #[macro_use]
-#[cfg(feature = "unstable-test-support")]
+#[cfg(feature = "unstable-public-internals")]
 pub mod support;
 
 #[macro_use]
-#[cfg(not(feature = "unstable-test-support"))]
+#[cfg(not(feature = "unstable-public-internals"))]
 mod support;
 
 cfg_if! {
-    if #[cfg(feature = "unstable-test-support")] {
+    if #[cfg(feature = "unstable-public-internals")] {
         pub mod generic;
     } else {
         mod generic;

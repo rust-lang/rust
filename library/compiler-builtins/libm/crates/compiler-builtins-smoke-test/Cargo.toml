@@ -9,14 +9,6 @@ publish = false
 test = false
 bench = false
 
-[features]
-# Duplicated from libm's Cargo.toml
-unstable = []
-unstable-intrinsics = []
-unstable-test-support = []
-checked = []
-force-soft-floats = []
-
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = [
   "cfg(arch_enabled)",
@@ -24,4 +16,9 @@ unexpected_cfgs = { level = "warn", check-cfg = [
   "cfg(f128_enabled)",
   "cfg(f16_enabled)",
   "cfg(intrinsics_enabled)",
+  'cfg(feature, values("checked"))',
+  'cfg(feature, values("force-soft-floats"))',
+  'cfg(feature, values("unstable"))',
+  'cfg(feature, values("unstable-intrinsics"))',
+  'cfg(feature, values("unstable-public-internals"))',
 ] }

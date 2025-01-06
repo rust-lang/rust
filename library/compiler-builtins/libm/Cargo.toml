@@ -27,7 +27,7 @@ unstable = ["unstable-intrinsics", "unstable-float"]
 unstable-intrinsics = []
 
 # Make some internal things public for testing.
-unstable-test-support = []
+unstable-public-internals = []
 
 # Enable the nightly-only `f16` and `f128`.
 unstable-float = []
