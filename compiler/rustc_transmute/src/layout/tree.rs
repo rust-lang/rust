@@ -197,6 +197,7 @@ pub(crate) mod rustc {
             match err {
                 LayoutError::Unknown(..)
                 | LayoutError::ReferencesError(..)
+                | LayoutError::TooGeneric(..)
                 | LayoutError::NormalizationFailure(..) => Self::UnknownLayout,
                 LayoutError::SizeOverflow(..) => Self::SizeOverflow,
                 LayoutError::Cycle(err) => Self::TypeError(*err),
