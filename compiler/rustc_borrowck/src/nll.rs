@@ -94,7 +94,7 @@ pub(crate) fn compute_regions<'a, 'tcx>(
     let mut all_facts =
         (polonius_input || AllFacts::enabled(infcx.tcx)).then_some(AllFacts::default());
 
-    let elements = Rc::new(DenseLocationMap::new(body));
+    let location_map = Rc::new(DenseLocationMap::new(body));
 
     // Run the MIR type-checker.
     let MirTypeckResults {
@@ -112,7 +112,7 @@ pub(crate) fn compute_regions<'a, 'tcx>(
         &mut all_facts,
         flow_inits,
         move_data,
-        Rc::clone(&elements),
+        Rc::clone(&location_map),
     );
 
     // Create the region inference context, taking ownership of the
@@ -137,7 +137,7 @@ pub(crate) fn compute_regions<'a, 'tcx>(
         var_infos,
         constraints,
         universal_region_relations,
-        elements,
+        location_map,
     );
 
     // If requested for `-Zpolonius=next`, convert NLL constraints to localized outlives

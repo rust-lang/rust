@@ -103,7 +103,7 @@ mod relate_tys;
 /// - `all_facts` -- when using Polonius, this is the generated set of Polonius facts
 /// - `flow_inits` -- results of a maybe-init dataflow analysis
 /// - `move_data` -- move-data constructed when performing the maybe-init dataflow analysis
-/// - `elements` -- MIR region map
+/// - `location_map` -- map between MIR `Location` and `PointIndex`
 pub(crate) fn type_check<'a, 'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
@@ -114,13 +114,13 @@ pub(crate) fn type_check<'a, 'tcx>(
     all_facts: &mut Option<AllFacts>,
     flow_inits: ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
-    elements: Rc<DenseLocationMap>,
+    location_map: Rc<DenseLocationMap>,
 ) -> MirTypeckResults<'tcx> {
     let implicit_region_bound = ty::Region::new_var(infcx.tcx, universal_regions.fr_fn_body);
     let mut constraints = MirTypeckRegionConstraints {
         placeholder_indices: PlaceholderIndices::default(),
         placeholder_index_to_region: IndexVec::default(),
-        liveness_constraints: LivenessValues::with_specific_points(Rc::clone(&elements)),
+        liveness_constraints: LivenessValues::with_specific_points(Rc::clone(&location_map)),
         outlives_constraints: OutlivesConstraintSet::default(),
         member_constraints: MemberConstraintSet::default(),
         type_tests: Vec::default(),
@@ -180,7 +180,7 @@ pub(crate) fn type_check<'a, 'tcx>(
     typeck.equate_inputs_and_outputs(body, &normalized_inputs_and_output);
     typeck.check_signature_annotation(body);
 
-    liveness::generate(&mut typeck, body, &elements, flow_inits, move_data);
+    liveness::generate(&mut typeck, body, &location_map, flow_inits, move_data);
 
     let opaque_type_values =
         opaque_types::take_opaques_and_register_member_constraints(&mut typeck);
