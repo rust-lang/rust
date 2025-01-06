@@ -2318,22 +2318,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // (RFC 3627, Rule 5). If we implement a pattern typing ruleset with Rule 4E
                         // but not Rule 5, we'll need to check that here.
                         debug_assert!(ref_pat_matches_mut_ref);
-                        let err_msg = "mismatched types";
-                        let err = if let Some(span) = pat_prefix_span {
-                            let mut err = self.dcx().struct_span_err(span, err_msg);
-                            err.code(E0308);
-                            err.note("cannot match inherited `&` with `&mut` pattern");
-                            err.span_suggestion_verbose(
-                                span,
-                                "replace this `&mut` pattern with `&`",
-                                "&",
-                                Applicability::MachineApplicable,
-                            );
-                            err
-                        } else {
-                            self.dcx().struct_span_err(pat.span, err_msg)
-                        };
-                        err.emit();
+                        self.error_inherited_ref_mutability_mismatch(pat, pat_prefix_span);
                     }
 
                     pat_info.binding_mode = ByRef::No;
@@ -2353,22 +2338,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     } else {
                         // The expected type isn't a reference, so match against the inherited ref.
                         if pat_mutbl > inh_mut {
-                            // We can't match an inherited shared reference with `&mut`. This will
-                            // be a type error later, since we're matching a reference pattern
-                            // against a non-reference type.
+                            // We can't match an inherited shared reference with `&mut`.
                             // NB: This assumes that `&` patterns can match against mutable
                             // references (RFC 3627, Rule 5). If we implement a pattern typing
                             // ruleset with Rule 4 but not Rule 5, we'll need to check that here.
                             debug_assert!(ref_pat_matches_mut_ref);
-                        } else {
-                            pat_info.binding_mode = ByRef::No;
-                            self.typeck_results
-                                .borrow_mut()
-                                .skipped_ref_pats_mut()
-                                .insert(pat.hir_id);
-                            self.check_pat(inner, expected, pat_info);
-                            return expected;
+                            self.error_inherited_ref_mutability_mismatch(pat, pat_prefix_span);
                         }
+
+                        pat_info.binding_mode = ByRef::No;
+                        self.typeck_results.borrow_mut().skipped_ref_pats_mut().insert(pat.hir_id);
+                        self.check_pat(inner, expected, pat_info);
+                        return expected;
                     }
                 }
                 InheritedRefMatchRule::EatBoth => {
@@ -2440,6 +2421,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn new_ref_ty(&self, span: Span, mutbl: Mutability, ty: Ty<'tcx>) -> Ty<'tcx> {
         let region = self.next_region_var(infer::PatternRegion(span));
         Ty::new_ref(self.tcx, region, ty, mutbl)
+    }
+
+    fn error_inherited_ref_mutability_mismatch(
+        &self,
+        pat: &'tcx Pat<'tcx>,
+        pat_prefix_span: Option<Span>,
+    ) -> ErrorGuaranteed {
+        let err_msg = "mismatched types";
+        let err = if let Some(span) = pat_prefix_span {
+            let mut err = self.dcx().struct_span_err(span, err_msg);
+            err.code(E0308);
+            err.note("cannot match inherited `&` with `&mut` pattern");
+            err.span_suggestion_verbose(
+                span,
+                "replace this `&mut` pattern with `&`",
+                "&",
+                Applicability::MachineApplicable,
+            );
+            err
+        } else {
+            self.dcx().struct_span_err(pat.span, err_msg)
+        };
+        err.emit()
     }
 
     fn try_resolve_slice_ty_to_array_ty(

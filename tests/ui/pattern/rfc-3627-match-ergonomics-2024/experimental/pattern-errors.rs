@@ -45,37 +45,36 @@ pub fn main() {
     }
 }
 
-// TODO: these should be mutability mismatches on `structural`
 fn structural_errors_0() {
     let &[&mut x] = &&mut [0];
     //[structural]~^ ERROR: mismatched types
+    //[structural]~| cannot match inherited `&` with `&mut` pattern
     let _: u32 = x;
-    //[structural]~^ ERROR: mismatched types
 
     let &[&mut x] = &mut &mut [0];
     //[structural]~^ ERROR: mismatched types
+    //[structural]~| cannot match inherited `&` with `&mut` pattern
     let _: u32 = x;
-    //[structural]~^ ERROR: mismatched types
 
     let &[&mut ref x] = &&mut [0];
     //[structural]~^ ERROR: mismatched types
+    //[structural]~| cannot match inherited `&` with `&mut` pattern
     let _: &u32 = x;
 
     let &[&mut ref x] = &mut &mut [0];
     //[structural]~^ ERROR: mismatched types
+    //[structural]~| cannot match inherited `&` with `&mut` pattern
     let _: &u32 = x;
 
     let &[&mut mut x] = &&mut [0];
     //[structural]~^ ERROR: mismatched types
-    //[structural]~| ERROR: binding cannot be both mutable and by-reference
+    //[structural]~| cannot match inherited `&` with `&mut` pattern
     let _: u32 = x;
-    //[structural]~^ ERROR: mismatched types
 
     let &[&mut mut x] = &mut &mut [0];
     //[structural]~^ ERROR: mismatched types
-    //[structural]~| ERROR: binding cannot be both mutable and by-reference
+    //[structural]~| cannot match inherited `&` with `&mut` pattern
     let _: u32 = x;
-    //[structural]~^ ERROR: mismatched types
 }
 
 fn structural_errors_1() {
@@ -88,37 +87,36 @@ fn structural_errors_1() {
     let _: &u32 = x;
 }
 
-// TODO: these should be mutability mismatches on `structural`
 fn structural_errors_2() {
     let [&&mut x] = &[&mut 0];
     //[structural]~^ ERROR: mismatched types
+    //[structural]~| cannot match inherited `&` with `&mut` pattern
     let _: u32 = x;
-    //[structural]~^ ERROR: mismatched types
 
     let [&&mut x] = &mut [&mut 0];
     //[structural]~^ ERROR: mismatched types
+    //[structural]~| cannot match inherited `&` with `&mut` pattern
     let _: u32 = x;
-    //[structural]~^ ERROR: mismatched types
 
     let [&&mut ref x] = &[&mut 0];
     //[structural]~^ ERROR: mismatched types
+    //[structural]~| cannot match inherited `&` with `&mut` pattern
     let _: &u32 = x;
 
     let [&&mut ref x] = &mut [&mut 0];
     //[structural]~^ ERROR: mismatched types
+    //[structural]~| cannot match inherited `&` with `&mut` pattern
     let _: &u32 = x;
 
     let [&&mut mut x] = &[&mut 0];
-    //[structural]~^ ERROR: binding cannot be both mutable and by-reference
-    //[structural]~| ERROR: mismatched types
-    let _: u32 = x;
     //[structural]~^ ERROR: mismatched types
+    //[structural]~| cannot match inherited `&` with `&mut` pattern
+    let _: u32 = x;
 
     let [&&mut mut x] = &mut [&mut 0];
-    //[structural]~^ ERROR: binding cannot be both mutable and by-reference
-    //[structural]~| ERROR: mismatched types
-    let _: u32 = x;
     //[structural]~^ ERROR: mismatched types
+    //[structural]~| cannot match inherited `&` with `&mut` pattern
+    let _: u32 = x;
 }
 
 fn classic_errors_0() {
