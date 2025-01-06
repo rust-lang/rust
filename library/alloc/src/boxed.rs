@@ -2029,7 +2029,7 @@ impl<Args: Tuple, F: Fn<Args> + ?Sized, A: Allocator> Fn<Args> for Box<F, A> {
 }
 
 #[cfg_attr(bootstrap, unstable(feature = "async_closure", issue = "62290"))]
-#[cfg_attr(not(bootstrap), stable(feature = "async_closure", since = "CURRENT_RUSTC_VERSION"))]
+#[cfg_attr(not(bootstrap), stable(feature = "async_closure", since = "1.85.0"))]
 impl<Args: Tuple, F: AsyncFnOnce<Args> + ?Sized, A: Allocator> AsyncFnOnce<Args> for Box<F, A> {
     type Output = F::Output;
     type CallOnceFuture = F::CallOnceFuture;
@@ -2040,7 +2040,7 @@ impl<Args: Tuple, F: AsyncFnOnce<Args> + ?Sized, A: Allocator> AsyncFnOnce<Args>
 }
 
 #[cfg_attr(bootstrap, unstable(feature = "async_closure", issue = "62290"))]
-#[cfg_attr(not(bootstrap), stable(feature = "async_closure", since = "CURRENT_RUSTC_VERSION"))]
+#[cfg_attr(not(bootstrap), stable(feature = "async_closure", since = "1.85.0"))]
 impl<Args: Tuple, F: AsyncFnMut<Args> + ?Sized, A: Allocator> AsyncFnMut<Args> for Box<F, A> {
     type CallRefFuture<'a>
         = F::CallRefFuture<'a>
@@ -2053,7 +2053,7 @@ impl<Args: Tuple, F: AsyncFnMut<Args> + ?Sized, A: Allocator> AsyncFnMut<Args> f
 }
 
 #[cfg_attr(bootstrap, unstable(feature = "async_closure", issue = "62290"))]
-#[cfg_attr(not(bootstrap), stable(feature = "async_closure", since = "CURRENT_RUSTC_VERSION"))]
+#[cfg_attr(not(bootstrap), stable(feature = "async_closure", since = "1.85.0"))]
 impl<Args: Tuple, F: AsyncFn<Args> + ?Sized, A: Allocator> AsyncFn<Args> for Box<F, A> {
     extern "rust-call" fn async_call(&self, args: Args) -> Self::CallRefFuture<'_> {
         F::async_call(self, args)
