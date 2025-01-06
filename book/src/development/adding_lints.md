@@ -301,8 +301,8 @@ either [`EarlyLintPass`][early_lint_pass] or [`LateLintPass`][late_lint_pass].
 
 In short, the `EarlyLintPass` runs before type checking and
 [HIR](https://rustc-dev-guide.rust-lang.org/hir.html) lowering and the `LateLintPass`
-has access to type information. Consider using the `LateLintPass` unless you need
-something specific from the `EarlyLintPass`.
+has access to type information. Consider using the `EarlyLintPass` unless you need
+something specific from the `LateLintPass`.
 
 Since we don't need type information for checking the function name, we used
 `--pass=early` when running the new lint automation and all the imports were
