@@ -10,9 +10,9 @@ use rustc_infer::traits::{
     self, FromSolverError, MismatchedProjectionTypes, Obligation, ObligationCause,
     ObligationCauseCode, PredicateObligation, PredicateObligations, SelectionError, TraitEngine,
 };
-use rustc_middle::bug;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_next_trait_solver::solve::{GenerateProofTree, HasChanged, SolverDelegateEvalExt as _};
 use tracing::{instrument, trace};
 
@@ -257,6 +257,23 @@ fn fulfillment_error_for_no_solution<'tcx>(
                 // FIXME: This could be a `Sorts` if the term is a type
                 MismatchedProjectionTypes { err: TypeError::Mismatch },
             )
+        }
+        ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, expected_ty)) => {
+            let ct_ty = match ct.kind() {
+                ty::ConstKind::Unevaluated(uv) => {
+                    infcx.tcx.type_of(uv.def).instantiate(infcx.tcx, uv.args)
+                }
+                ty::ConstKind::Param(param_ct) => param_ct.find_ty_from_env(obligation.param_env),
+                _ => span_bug!(
+                    obligation.cause.span,
+                    "ConstArgHasWrongType failed but we don't know how to compute type"
+                ),
+            };
+            FulfillmentErrorCode::Select(SelectionError::ConstArgHasWrongType {
+                ct,
+                ct_ty,
+                expected_ty,
+            })
         }
         ty::PredicateKind::NormalizesTo(..) => {
             FulfillmentErrorCode::Project(MismatchedProjectionTypes { err: TypeError::Mismatch })
