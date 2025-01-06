@@ -946,7 +946,42 @@ unsafe fn aggregate_struct_then_transmute(id: u16) {
     let c = Err::<Never, u16>(id);
     opaque(std::intrinsics::transmute::<_, u16>(c));
 
-    enum Never {}
+    // CHECK: [[TEMP1:_[0-9]+]] = Option::<u16>::Some(copy _1);
+    // CHECK: [[TEMP2:_[0-9]+]] = copy [[TEMP1]] as u32 (Transmute);
+    // CHECK: opaque::<u32>(move [[TEMP2]])
+    let d = Some(id);
+    opaque(std::intrinsics::transmute::<_, u32>(d));
+
+    // Still need the transmute, but the aggregate can be skipped
+    // CHECK: [[TEMP:_[0-9]+]] = copy _1 as i16 (Transmute);
+    // CHECK: opaque::<i16>(move [[TEMP]])
+    let e = MyId(id);
+    opaque(std::intrinsics::transmute::<_, i16>(e));
+
+    // CHECK: [[PAIR:_[0-9]+]] = Pair(copy _1, copy _1);
+    // CHECK: [[TEMP:_[0-9]+]] = copy [[PAIR]] as u32 (Transmute);
+    // CHECK: opaque::<u32>(move [[TEMP]])
+    struct Pair(u16, u16);
+    let f = Pair(id, id);
+    opaque(std::intrinsics::transmute::<_, u32>(f));
+
+    // CHECK: [[TEMP:_[0-9]+]] = copy [[PAIR]] as u16 (Transmute);
+    // CHECK: opaque::<u16>(move [[TEMP]])
+    let g = Pair(id, id);
+    opaque(std::intrinsics::transmute_unchecked::<_, u16>(g));
+}
+
+unsafe fn transmute_then_transmute_again(a: u32, c: char) {
+    // CHECK: [[TEMP1:_[0-9]+]] = copy _1 as char (Transmute);
+    // CHECK: [[TEMP2:_[0-9]+]] = copy [[TEMP1]] as i32 (Transmute);
+    // CHECK: opaque::<i32>(move [[TEMP2]])
+    let x = std::intrinsics::transmute::<u32, char>(a);
+    opaque(std::intrinsics::transmute::<char, i32>(x));
+
+    // CHECK: [[TEMP:_[0-9]+]] = copy _2 as i32 (Transmute);
+    // CHECK: opaque::<i32>(move [[TEMP]])
+    let x = std::intrinsics::transmute::<char, u32>(c);
+    opaque(std::intrinsics::transmute::<u32, i32>(x));
 }
 
 // Transmuting can skip a pointer cast so long as it wasn't a fat-to-thin cast.
@@ -1050,6 +1085,8 @@ struct MyId(u16);
 #[repr(transparent)]
 struct TypedId<T>(u16, PhantomData<T>);
 
+enum Never {}
+
 // EMIT_MIR gvn.subexpression_elimination.GVN.diff
 // EMIT_MIR gvn.wrap_unwrap.GVN.diff
 // EMIT_MIR gvn.repeated_index.GVN.diff
@@ -1083,6 +1120,7 @@ struct TypedId<T>(u16, PhantomData<T>);
 // EMIT_MIR gvn.generic_cast_metadata.GVN.diff
 // EMIT_MIR gvn.cast_pointer_eq.GVN.diff
 // EMIT_MIR gvn.aggregate_struct_then_transmute.GVN.diff
+// EMIT_MIR gvn.transmute_then_transmute_again.GVN.diff
 // EMIT_MIR gvn.cast_pointer_then_transmute.GVN.diff
 // EMIT_MIR gvn.transmute_then_cast_pointer.GVN.diff
 // EMIT_MIR gvn.remove_casts_must_change_both_sides.GVN.diff

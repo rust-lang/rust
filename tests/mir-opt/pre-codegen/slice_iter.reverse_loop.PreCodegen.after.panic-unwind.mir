@@ -65,11 +65,13 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         StorageLive(_11);
         StorageLive(_3);
         StorageLive(_6);
-        StorageLive(_5);
+        StorageLive(_4);
         _3 = PtrMetadata(copy _1);
         _4 = &raw const (*_1);
+        StorageLive(_5);
         _5 = copy _4 as *const T (PtrToPtr);
-        _6 = NonNull::<T> { pointer: copy _5 };
+        _6 = NonNull::<T> { pointer: move _5 };
+        StorageDead(_5);
         StorageLive(_9);
         switchInt(const <T as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb1, otherwise: bb2];
     }
@@ -96,7 +98,7 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         _11 = std::slice::Iter::<'_, T> { ptr: copy _6, end_or_len: move _10, _marker: const ZeroSized: PhantomData<&T> };
         StorageDead(_10);
         StorageDead(_9);
-        StorageDead(_5);
+        StorageDead(_4);
         StorageDead(_6);
         StorageDead(_3);
         _12 = Rev::<std::slice::Iter<'_, T>> { iter: copy _11 };

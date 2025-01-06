@@ -1366,110 +1366,112 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             return self.new_opaque();
         }
 
-        let mut was_updated = false;
+        let mut was_ever_updated = false;
+        loop {
+            let mut was_updated_this_iteration = false;
 
-        // Transmuting `*const T` <=> `*mut T` is just a pointer cast,
-        // which we might be able to merge with other ones later.
-        if let Transmute = kind
-            && let ty::RawPtr(from_pointee, _) = from.kind()
-            && let ty::RawPtr(to_pointee, _) = to.kind()
-            && from_pointee == to_pointee
-        {
-            *kind = PtrToPtr;
-            was_updated = true;
-        }
-
-        // If a cast just casts away the metadata again, then we can get it by
-        // casting the original thin pointer passed to `from_raw_parts`
-        if let PtrToPtr = kind
-            && let Value::Aggregate(AggregateTy::RawPtr { data_pointer_ty, .. }, _, fields) =
-                self.get(value)
-            && let ty::RawPtr(to_pointee, _) = to.kind()
-            && to_pointee.is_sized(self.tcx, self.typing_env())
-        {
-            from = *data_pointer_ty;
-            value = fields[0];
-            was_updated = true;
-            if *data_pointer_ty == to {
-                return Some(fields[0]);
+            // Transmuting `*const T` <=> `*mut T` is just a pointer cast,
+            // which we might be able to merge with other ones later.
+            if let Transmute = kind
+                && let ty::RawPtr(from_pointee, _) = from.kind()
+                && let ty::RawPtr(to_pointee, _) = to.kind()
+                && from_pointee == to_pointee
+            {
+                *kind = PtrToPtr;
+                was_updated_this_iteration = true;
             }
-        }
 
-        // PtrToPtr-then-PtrToPtr can skip the intermediate step
-        if let PtrToPtr = kind
-            && let Value::Cast { kind: inner_kind, value: inner_value, from: inner_from, to: _ } =
-                *self.get(value)
-            && let PtrToPtr = inner_kind
-        {
-            from = inner_from;
-            value = inner_value;
-            was_updated = true;
-            if inner_from == to {
-                return Some(inner_value);
+            // If a cast just casts away the metadata again, then we can get it by
+            // casting the original thin pointer passed to `from_raw_parts`
+            if let PtrToPtr = kind
+                && let Value::Aggregate(AggregateTy::RawPtr { data_pointer_ty, .. }, _, fields) =
+                    self.get(value)
+                && let ty::RawPtr(to_pointee, _) = to.kind()
+                && to_pointee.is_sized(self.tcx, self.typing_env())
+            {
+                from = *data_pointer_ty;
+                value = fields[0];
+                was_updated_this_iteration = true;
+                if *data_pointer_ty == to {
+                    return Some(fields[0]);
+                }
             }
-        }
 
-        // Aggregate-then-Transmute can just transmute the original field value,
-        // so long as the bytes of a value from only from a single field.
-        if let Transmute = kind
-            && let Value::Aggregate(
-                AggregateTy::Def(aggregate_did, aggregate_args),
-                variant_idx,
-                field_values,
-            ) = self.get(value)
-            && let aggregate_ty =
-                self.tcx.type_of(aggregate_did).instantiate(self.tcx, aggregate_args)
-            && let Some((field_idx, field_ty)) =
-                self.value_is_all_in_one_field(aggregate_ty, *variant_idx)
-        {
-            from = field_ty;
-            value = field_values[field_idx.as_usize()];
-            was_updated = true;
-            if field_ty == to {
-                return Some(value);
+            // Aggregate-then-Transmute can just transmute the original field value,
+            // so long as the bytes of a value from only from a single field.
+            if let Transmute = kind
+                && let Value::Aggregate(
+                    AggregateTy::Def(aggregate_did, aggregate_args),
+                    variant_idx,
+                    field_values,
+                ) = self.get(value)
+                && let aggregate_ty =
+                    self.tcx.type_of(aggregate_did).instantiate(self.tcx, aggregate_args)
+                && let Some((field_idx, field_ty)) =
+                    self.value_is_all_in_one_field(aggregate_ty, *variant_idx)
+            {
+                from = field_ty;
+                value = field_values[field_idx.as_usize()];
+                was_updated_this_iteration = true;
+                if field_ty == to {
+                    return Some(value);
+                }
             }
-        }
 
-        // PtrToPtr-then-Transmute can just transmute the original, so long as the
-        // PtrToPtr didn't change metadata (and thus the size of the pointer)
-        if let Transmute = kind
-            && let Value::Cast {
-                kind: PtrToPtr,
+            // Various cast-then-cast cases can be simplified.
+            if let Value::Cast {
+                kind: inner_kind,
                 value: inner_value,
                 from: inner_from,
                 to: inner_to,
             } = *self.get(value)
-            && self.pointers_have_same_metadata(inner_from, inner_to)
-        {
-            from = inner_from;
-            value = inner_value;
-            was_updated = true;
-            if inner_from == to {
-                return Some(inner_value);
+            {
+                let new_kind = match (inner_kind, *kind) {
+                    // Even if there's a narrowing cast in here that's fine, because
+                    // things like `*mut [i32] -> *mut i32 -> *const i32` and
+                    // `*mut [i32] -> *const [i32] -> *const i32` can skip the middle in MIR.
+                    (PtrToPtr, PtrToPtr) => Some(PtrToPtr),
+                    // PtrToPtr-then-Transmute is fine so long as the pointer cast is identity:
+                    // `*const T -> *mut T -> NonNull<T>` is fine, but we need to check for narrowing
+                    // to skip things like `*const [i32] -> *const i32 -> NonNull<T>`.
+                    (PtrToPtr, Transmute)
+                        if self.pointers_have_same_metadata(inner_from, inner_to) =>
+                    {
+                        Some(Transmute)
+                    }
+                    // Similarly, for Transmute-then-PtrToPtr. Note that we need to check different
+                    // variables for their metadata, and thus this can't merge with the previous arm.
+                    (Transmute, PtrToPtr) if self.pointers_have_same_metadata(from, to) => {
+                        Some(Transmute)
+                    }
+                    // If would be legal to always do this, but we don't want to hide information
+                    // from the backend that it'd otherwise be able to use for optimizations.
+                    (Transmute, Transmute)
+                        if !self.type_may_have_niche_of_interest_to_backend(inner_to) =>
+                    {
+                        Some(Transmute)
+                    }
+                    _ => None,
+                };
+                if let Some(new_kind) = new_kind {
+                    *kind = new_kind;
+                    from = inner_from;
+                    value = inner_value;
+                    was_updated_this_iteration = true;
+                    if inner_from == to {
+                        return Some(inner_value);
+                    }
+                }
+            }
+
+            if was_updated_this_iteration {
+                was_ever_updated = true;
+            } else {
+                break;
             }
         }
 
-        // Transmute-then-PtrToPtr can just transmute the original, so long as the
-        // PtrToPtr won't change metadata (and thus the size of the pointer)
-        if let PtrToPtr = kind
-            && let Value::Cast {
-                kind: Transmute,
-                value: inner_value,
-                from: inner_from,
-                to: _inner_to,
-            } = *self.get(value)
-            && self.pointers_have_same_metadata(from, to)
-        {
-            *kind = Transmute;
-            from = inner_from;
-            value = inner_value;
-            was_updated = true;
-            if inner_from == to {
-                return Some(inner_value);
-            }
-        }
-
-        if was_updated && let Some(op) = self.try_as_operand(value, location) {
+        if was_ever_updated && let Some(op) = self.try_as_operand(value, location) {
             *operand = op;
         }
 
@@ -1489,6 +1491,28 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             left == right
         } else {
             false
+        }
+    }
+
+    /// Returns `false` if we know for sure that this type has no interesting niche,
+    /// and thus we can skip transmuting through it without worrying.
+    ///
+    /// The backend will emit `assume`s when transmuting between types with niches,
+    /// so we want to preserve `i32 -> char -> u32` so that that data is around,
+    /// but it's fine to skip whole-range-is-value steps like `A -> u32 -> B`.
+    fn type_may_have_niche_of_interest_to_backend(&self, ty: Ty<'tcx>) -> bool {
+        let Ok(layout) = self.ecx.layout_of(ty) else {
+            // If it's too generic or something, then assume it might be interesting later.
+            return true;
+        };
+
+        match layout.backend_repr {
+            BackendRepr::Uninhabited => true,
+            BackendRepr::Scalar(a) => !a.is_always_valid(&self.ecx),
+            BackendRepr::ScalarPair(a, b) => {
+                !a.is_always_valid(&self.ecx) || !b.is_always_valid(&self.ecx)
+            }
+            BackendRepr::Vector { .. } | BackendRepr::Memory { .. } => false,
         }
     }
 

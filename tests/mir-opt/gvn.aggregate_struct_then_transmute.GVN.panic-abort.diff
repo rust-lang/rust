@@ -17,15 +17,49 @@
       let mut _14: u16;
       let _15: ();
       let mut _16: u16;
-      let mut _17: std::result::Result<aggregate_struct_then_transmute::Never, u16>;
+      let mut _17: std::result::Result<Never, u16>;
+      let mut _19: u16;
+      let _20: ();
+      let mut _21: u32;
+      let mut _22: std::option::Option<u16>;
+      let mut _24: u16;
+      let _25: ();
+      let mut _26: i16;
+      let mut _27: MyId;
+      let mut _29: u16;
+      let mut _30: u16;
+      let _31: ();
+      let mut _32: u32;
+      let mut _33: aggregate_struct_then_transmute::Pair;
+      let mut _35: u16;
+      let mut _36: u16;
+      let _37: ();
+      let mut _38: u16;
+      let mut _39: aggregate_struct_then_transmute::Pair;
       scope 1 {
           debug a => _2;
           let _7: TypedId<std::string::String>;
           scope 2 {
               debug b => _7;
-              let _13: std::result::Result<aggregate_struct_then_transmute::Never, u16>;
+              let _13: std::result::Result<Never, u16>;
               scope 3 {
                   debug c => _13;
+                  let _18: std::option::Option<u16>;
+                  scope 4 {
+                      debug d => _18;
+                      let _23: MyId;
+                      scope 5 {
+                          debug e => _23;
+                          let _28: aggregate_struct_then_transmute::Pair;
+                          scope 6 {
+                              debug f => _28;
+                              let _34: aggregate_struct_then_transmute::Pair;
+                              scope 7 {
+                                  debug g => _34;
+                              }
+                          }
+                      }
+                  }
               }
           }
       }
@@ -101,10 +135,103 @@
       bb3: {
           StorageDead(_16);
           StorageDead(_15);
+-         StorageLive(_18);
++         nop;
+          StorageLive(_19);
+          _19 = copy _1;
+-         _18 = Option::<u16>::Some(move _19);
++         _18 = Option::<u16>::Some(copy _1);
+          StorageDead(_19);
+          StorageLive(_20);
+          StorageLive(_21);
+          StorageLive(_22);
+          _22 = copy _18;
+-         _21 = move _22 as u32 (Transmute);
++         _21 = copy _18 as u32 (Transmute);
+          StorageDead(_22);
+          _20 = opaque::<u32>(move _21) -> [return: bb4, unwind unreachable];
+      }
+  
+      bb4: {
+          StorageDead(_21);
+          StorageDead(_20);
+          StorageLive(_23);
+          StorageLive(_24);
+          _24 = copy _1;
+-         _23 = MyId(move _24);
++         _23 = copy _2;
+          StorageDead(_24);
+          StorageLive(_25);
+          StorageLive(_26);
+          StorageLive(_27);
+-         _27 = move _23;
+-         _26 = move _27 as i16 (Transmute);
++         _27 = copy _2;
++         _26 = copy _1 as i16 (Transmute);
+          StorageDead(_27);
+          _25 = opaque::<i16>(move _26) -> [return: bb5, unwind unreachable];
+      }
+  
+      bb5: {
+          StorageDead(_26);
+          StorageDead(_25);
+-         StorageLive(_28);
++         nop;
+          StorageLive(_29);
+          _29 = copy _1;
+          StorageLive(_30);
+          _30 = copy _1;
+-         _28 = Pair(move _29, move _30);
++         _28 = Pair(copy _1, copy _1);
+          StorageDead(_30);
+          StorageDead(_29);
+          StorageLive(_31);
+          StorageLive(_32);
+          StorageLive(_33);
+-         _33 = move _28;
+-         _32 = move _33 as u32 (Transmute);
++         _33 = copy _28;
++         _32 = copy _28 as u32 (Transmute);
+          StorageDead(_33);
+          _31 = opaque::<u32>(move _32) -> [return: bb6, unwind unreachable];
+      }
+  
+      bb6: {
+          StorageDead(_32);
+          StorageDead(_31);
+          StorageLive(_34);
+          StorageLive(_35);
+          _35 = copy _1;
+          StorageLive(_36);
+          _36 = copy _1;
+-         _34 = Pair(move _35, move _36);
++         _34 = copy _28;
+          StorageDead(_36);
+          StorageDead(_35);
+          StorageLive(_37);
+          StorageLive(_38);
+          StorageLive(_39);
+-         _39 = move _34;
+-         _38 = move _39 as u16 (Transmute);
++         _39 = copy _28;
++         _38 = copy _28 as u16 (Transmute);
+          StorageDead(_39);
+          _37 = opaque::<u16>(move _38) -> [return: bb7, unwind unreachable];
+      }
+  
+      bb7: {
+          StorageDead(_38);
+          StorageDead(_37);
           _0 = const ();
+          StorageDead(_34);
+-         StorageDead(_28);
++         nop;
+          StorageDead(_23);
+-         StorageDead(_18);
 -         StorageDead(_13);
 -         StorageDead(_7);
 -         StorageDead(_2);
++         nop;
 +         nop;
 +         nop;
 +         nop;
