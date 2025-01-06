@@ -30,7 +30,7 @@ macro_rules! libm_helper {
         }
     };
 
-    ({$($func:tt);*}) => {
+    ({$($func:tt;)*}) => {
         $(
             libm_helper! { $func }
         )*
@@ -103,7 +103,7 @@ libm_helper! {
         (fn trunc(x: f32) -> (f32);                 => truncf);
         (fn y0(x: f32) -> (f32);                    => y0f);
         (fn y1(x: f32) -> (f32);                    => y1f);
-        (fn yn(n: i32, x: f32) -> (f32);            => ynf)
+        (fn yn(n: i32, x: f32) -> (f32);            => ynf);
     }
 }
 
@@ -166,6 +166,24 @@ libm_helper! {
         (fn trunc(x: f64) -> (f64);                 => trunc);
         (fn y0(x: f64) -> (f64);                    => y0);
         (fn y1(x: f64) -> (f64);                    => y1);
-        (fn yn(n: i32, x: f64) -> (f64);            => yn)
+        (fn yn(n: i32, x: f64) -> (f64);            => yn);
+    }
+}
+
+#[cfg(f16_enabled)]
+libm_helper! {
+    f16,
+    funcs: {
+        (fn copysign(x: f16, y: f16) -> (f16);      => copysignf16);
+        (fn fabs(x: f16) -> (f16);                  => fabsf16);
+    }
+}
+
+#[cfg(f128_enabled)]
+libm_helper! {
+    f128,
+    funcs: {
+        (fn copysign(x: f128, y: f128) -> (f128);   => copysignf128);
+        (fn fabs(x: f128) -> (f128);                => fabsf128);
     }
 }

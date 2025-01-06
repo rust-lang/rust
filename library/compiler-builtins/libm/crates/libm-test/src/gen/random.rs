@@ -107,8 +107,12 @@ macro_rules! impl_random_input {
     };
 }
 
+#[cfg(f16_enabled)]
+impl_random_input!(f16);
 impl_random_input!(f32);
 impl_random_input!(f64);
+#[cfg(f128_enabled)]
+impl_random_input!(f128);
 
 /// Create a test case iterator.
 pub fn get_test_cases<RustArgs: RandomInput>(
