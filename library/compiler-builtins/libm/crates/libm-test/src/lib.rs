@@ -25,7 +25,8 @@ pub use libm::support::{Float, Int, IntTy, MinInt};
 pub use num::{FloatExt, logspace};
 pub use op::{BaseName, FloatTy, Identifier, MathOp, OpCFn, OpFTy, OpRustFn, OpRustRet, Ty};
 pub use precision::{MaybeOverride, SpecialCase, default_ulp};
-pub use run_cfg::{CheckBasis, CheckCtx, EXTENSIVE_ENV, GeneratorKind};
+use run_cfg::EXTENSIVE_MAX_ITERATIONS;
+pub use run_cfg::{CheckBasis, CheckCtx, EXTENSIVE_ENV, GeneratorKind, skip_extensive_test};
 pub use test_traits::{CheckOutput, Hex, TupleCall};
 
 /// Result type for tests is usually from `anyhow`. Most times there is no success value to
@@ -85,6 +86,7 @@ pub fn test_log(s: &str) {
         writeln!(f, "cargo features: {}", env!("CFG_CARGO_FEATURES")).unwrap();
         writeln!(f, "opt level: {}", env!("CFG_OPT_LEVEL")).unwrap();
         writeln!(f, "target features: {}", env!("CFG_TARGET_FEATURES")).unwrap();
+        writeln!(f, "extensive iterations {}", *EXTENSIVE_MAX_ITERATIONS).unwrap();
 
         Some(f)
     });

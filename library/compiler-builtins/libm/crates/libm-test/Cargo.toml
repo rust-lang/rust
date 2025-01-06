@@ -26,12 +26,14 @@ short-benchmarks = []
 [dependencies]
 anyhow = "1.0.90"
 az = { version = "1.2.1", optional = true }
+indicatif = { version = "0.17.9", default-features = false }
 libm = { path = "../..", features = ["unstable-public-internals"] }
 libm-macros = { path = "../libm-macros" }
 musl-math-sys = { path = "../musl-math-sys", optional = true }
 paste = "1.0.15"
 rand = "0.8.5"
 rand_chacha = "0.3.1"
+rayon = "1.10.0"
 rug = { version = "1.26.1", optional = true, default-features = false, features = ["float", "std"] }
 
 [target.'cfg(target_family = "wasm")'.dependencies]
@@ -43,9 +45,16 @@ rand = { version = "0.8.5", optional = true }
 
 [dev-dependencies]
 criterion = { version = "0.5.1", default-features = false, features = ["cargo_bench_support"] }
+libtest-mimic = "0.8.1"
 
 [[bench]]
 name = "random"
+harness = false
+
+[[test]]
+# No harness so that we can skip tests at runtime based on env. Prefixed with
+# `z` so these tests get run last.
+name = "z_extensive"
 harness = false
 
 [lints.rust]
