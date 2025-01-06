@@ -14,12 +14,9 @@ fn main() {
     configure_check_cfg();
     configure_f16_f128(&target);
 
-    println!("cargo:compiler-rt={}", cwd.join("compiler-rt").display());
+    configure_libm(&target);
 
-    // Activate libm's unstable features to make full use of Nightly.
-    println!("cargo::rustc-check-cfg=cfg(feature, values(\"unstable\", \"force-soft-floats\"))");
-    println!("cargo:rustc-cfg=feature=\"unstable\"");
-    println!("cargo:rustc-cfg=feature=\"force-soft-floats\"");
+    println!("cargo:compiler-rt={}", cwd.join("compiler-rt").display());
 
     // Emscripten's runtime includes all the builtins
     if target.os == "emscripten" {
@@ -102,6 +99,48 @@ fn main() {
     if llvm_target[0].starts_with("aarch64") {
         generate_aarch64_outlined_atomics();
     }
+}
+
+/// Run configuration for `libm` since it is included directly.
+///
+/// Much of this is copied from `libm/configure.rs`.
+fn configure_libm(target: &Target) {
+    println!("cargo:rustc-check-cfg=cfg(intrinsics_enabled)");
+    println!("cargo:rustc-check-cfg=cfg(arch_enabled)");
+    println!("cargo:rustc-check-cfg=cfg(optimizations_enabled)");
+    println!("cargo:rustc-check-cfg=cfg(feature, values(\"unstable-public-internals\"))");
+
+    // Always use intrinsics
+    println!("cargo:rustc-cfg=intrinsics_enabled");
+
+    // The arch module may contain assembly.
+    if cfg!(feature = "no-asm") {
+        println!("cargo:rustc-cfg=feature=\"force-soft-floats\"");
+    } else {
+        println!("cargo:rustc-cfg=arch_enabled");
+    }
+
+    println!("cargo:rustc-check-cfg=cfg(optimizations_enabled)");
+    if target.opt_level >= 2 {
+        println!("cargo:rustc-cfg=optimizations_enabled");
+    }
+
+    // Config shorthands
+    println!("cargo:rustc-check-cfg=cfg(x86_no_sse)");
+    if target.arch == "x86" && !target.features.iter().any(|f| f == "sse") {
+        // Shorthand to detect i586 targets
+        println!("cargo:rustc-cfg=x86_no_sse");
+    }
+
+    println!(
+        "cargo:rustc-env=CFG_CARGO_FEATURES={:?}",
+        target.cargo_features
+    );
+    println!("cargo:rustc-env=CFG_OPT_LEVEL={}", target.opt_level);
+    println!("cargo:rustc-env=CFG_TARGET_FEATURES={:?}", target.features);
+
+    // Activate libm's unstable features to make full use of Nightly.
+    println!("cargo:rustc-cfg=feature=\"unstable-intrinsics\"");
 }
 
 fn aarch64_symbol(ordering: Ordering) -> &'static str {

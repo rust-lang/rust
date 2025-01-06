@@ -6,6 +6,8 @@ use std::env;
 #[allow(dead_code)]
 pub struct Target {
     pub triple: String,
+    pub opt_level: u8,
+    pub cargo_features: Vec<String>,
     pub os: String,
     pub arch: String,
     pub vendor: String,
@@ -22,10 +24,16 @@ impl Target {
             "big" => false,
             x => panic!("unknown endian {x}"),
         };
+        let cargo_features = env::vars()
+            .filter_map(|(name, _value)| name.strip_prefix("CARGO_FEATURE_").map(ToOwned::to_owned))
+            .map(|s| s.to_lowercase().replace("_", "-"))
+            .collect();
 
         Self {
             triple: env::var("TARGET").unwrap(),
             os: env::var("CARGO_CFG_TARGET_OS").unwrap(),
+            opt_level: env::var("OPT_LEVEL").unwrap().parse().unwrap(),
+            cargo_features,
             arch: env::var("CARGO_CFG_TARGET_ARCH").unwrap(),
             vendor: env::var("CARGO_CFG_TARGET_VENDOR").unwrap(),
             env: env::var("CARGO_CFG_TARGET_ENV").unwrap(),
