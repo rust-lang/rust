@@ -1,7 +1,5 @@
 //! Architecture-specific support for x86-32 and x86-64 with SSE2
 
-#![cfg(not(feature = "force-soft-floats"))]
-
 #[cfg(target_arch = "x86")]
 use core::arch::x86::*;
 #[cfg(target_arch = "x86_64")]
