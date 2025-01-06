@@ -374,7 +374,7 @@ pub fn suggest_new_region_bound(
                     }
                 }
             }
-            TyKind::TraitObject(_, lt, _) => {
+            TyKind::TraitObject(_, lt) => {
                 if let LifetimeName::ImplicitObjectLifetimeDefault = lt.res {
                     err.span_suggestion_verbose(
                         fn_return.span.shrink_to_hi(),
@@ -592,11 +592,9 @@ pub struct HirTraitObjectVisitor<'a>(pub &'a mut Vec<Span>, pub DefId);
 
 impl<'a, 'tcx> Visitor<'tcx> for HirTraitObjectVisitor<'a> {
     fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) {
-        if let TyKind::TraitObject(
-            poly_trait_refs,
-            Lifetime { res: LifetimeName::ImplicitObjectLifetimeDefault, .. },
-            _,
-        ) = t.kind
+        if let TyKind::TraitObject(poly_trait_refs, lifetime_ptr) = t.kind
+            && let Lifetime { res: LifetimeName::ImplicitObjectLifetimeDefault, .. } =
+                lifetime_ptr.pointer()
         {
             for ptr in poly_trait_refs {
                 if Some(self.1) == ptr.trait_ref.trait_def_id() {

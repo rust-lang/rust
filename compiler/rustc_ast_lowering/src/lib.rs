@@ -47,6 +47,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::tagged_ptr::CovariantCopyTaggedPtr;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle, StashKey};
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId};
@@ -1157,7 +1158,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let lifetime_bound = this.elided_dyn_bound(t.span);
                 (bounds, lifetime_bound)
             });
-            let kind = hir::TyKind::TraitObject(bounds, lifetime_bound, TraitObjectSyntax::None);
+            let kind = hir::TyKind::TraitObject(
+                bounds,
+                CovariantCopyTaggedPtr::new(lifetime_bound, TraitObjectSyntax::None),
+            );
             return hir::Ty { kind, span: self.lower_span(t.span), hir_id: self.next_id() };
         }
 
@@ -1308,7 +1312,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         lifetime_bound.unwrap_or_else(|| this.elided_dyn_bound(t.span));
                     (bounds, lifetime_bound)
                 });
-                hir::TyKind::TraitObject(bounds, lifetime_bound, *kind)
+                hir::TyKind::TraitObject(bounds, CovariantCopyTaggedPtr::new(lifetime_bound, *kind))
             }
             TyKind::ImplTrait(def_node_id, bounds) => {
                 let span = t.span;
@@ -2364,8 +2368,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         hir_id = self.next_id();
                         hir::TyKind::TraitObject(
                             arena_vec![self; principal],
-                            self.elided_dyn_bound(span),
-                            TraitObjectSyntax::None,
+                            CovariantCopyTaggedPtr::new(
+                                self.elided_dyn_bound(span),
+                                TraitObjectSyntax::None,
+                            ),
                         )
                     }
                     _ => hir::TyKind::Path(hir::QPath::Resolved(None, path)),

@@ -23,10 +23,12 @@ use std::sync::Arc;
 use crate::aligned::Aligned;
 
 mod copy;
+mod covariant;
 mod drop;
 mod impl_tag;
 
 pub use copy::CopyTaggedPtr;
+pub use covariant::CovariantCopyTaggedPtr;
 pub use drop::TaggedPtr;
 
 /// This describes the pointer type encapsulated by [`TaggedPtr`] and

@@ -810,7 +810,9 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     intravisit::walk_ty(this, ty);
                 });
             }
-            hir::TyKind::TraitObject(bounds, lifetime, _) => {
+            hir::TyKind::TraitObject(bounds, lifetime) => {
+                let lifetime = lifetime.pointer();
+
                 debug!(?bounds, ?lifetime, "TraitObject");
                 let scope = Scope::TraitRefBoundary { s: self.scope };
                 self.with(scope, |this| {
@@ -827,7 +829,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                         // use the object lifetime defaulting
                         // rules. So e.g., `Box<dyn Debug>` becomes
                         // `Box<dyn Debug + 'static>`.
-                        self.resolve_object_lifetime_default(lifetime)
+                        self.resolve_object_lifetime_default(&*lifetime)
                     }
                     LifetimeName::Infer => {
                         // If the user writes `'_`, we use the *ordinary* elision
@@ -838,7 +840,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     }
                     LifetimeName::Param(..) | LifetimeName::Static => {
                         // If the user wrote an explicit name, use that.
-                        self.visit_lifetime(lifetime);
+                        self.visit_lifetime(&*lifetime);
                     }
                     LifetimeName::Error => {}
                 }
