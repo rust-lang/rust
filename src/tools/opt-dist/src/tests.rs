@@ -108,7 +108,12 @@ llvm-config = "{llvm_config}"
     for test_path in env.skipped_tests() {
         args.extend(["--skip", test_path]);
     }
-    cmd(&args).env("COMPILETEST_FORCE_STAGE0", "1").run().context("Cannot execute tests")
+    cmd(&args)
+        .env("COMPILETEST_FORCE_STAGE0", "1")
+        // Also run dist-only tests
+        .env("COMPILETEST_ENABLE_DIST_TESTS", "1")
+        .run()
+        .context("Cannot execute tests")
 }
 
 /// Tries to find the version of the dist artifacts (either nightly, beta, or 1.XY.Z).
