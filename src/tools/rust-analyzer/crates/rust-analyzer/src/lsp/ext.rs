@@ -108,21 +108,6 @@ impl Request for RebuildProcMacros {
     const METHOD: &'static str = "rust-analyzer/rebuildProcMacros";
 }
 
-pub enum SyntaxTree {}
-
-impl Request for SyntaxTree {
-    type Params = SyntaxTreeParams;
-    type Result = String;
-    const METHOD: &'static str = "rust-analyzer/syntaxTree";
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct SyntaxTreeParams {
-    pub text_document: TextDocumentIdentifier,
-    pub range: Option<Range>,
-}
-
 pub enum ViewSyntaxTree {}
 
 impl Request for ViewSyntaxTree {

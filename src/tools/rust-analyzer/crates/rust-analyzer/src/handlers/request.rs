@@ -136,18 +136,6 @@ pub(crate) fn handle_memory_usage(state: &mut GlobalState, _: ()) -> anyhow::Res
     Ok(out)
 }
 
-pub(crate) fn handle_syntax_tree(
-    snap: GlobalStateSnapshot,
-    params: lsp_ext::SyntaxTreeParams,
-) -> anyhow::Result<String> {
-    let _p = tracing::info_span!("handle_syntax_tree").entered();
-    let id = from_proto::file_id(&snap, &params.text_document.uri)?;
-    let line_index = snap.file_line_index(id)?;
-    let text_range = params.range.and_then(|r| from_proto::text_range(&line_index, r).ok());
-    let res = snap.analysis.syntax_tree(id, text_range)?;
-    Ok(res)
-}
-
 pub(crate) fn handle_view_syntax_tree(
     snap: GlobalStateSnapshot,
     params: lsp_ext::ViewSyntaxTreeParams,

@@ -109,11 +109,6 @@
         ],
         "commands": [
             {
-                "command": "rust-analyzer.syntaxTree",
-                "title": "Show Syntax Tree",
-                "category": "rust-analyzer (debug command)"
-            },
-            {
                 "command": "rust-analyzer.viewHir",
                 "title": "View Hir",
                 "category": "rust-analyzer (debug command)"
@@ -2969,17 +2964,6 @@
                 "pattern": "$rustc"
             }
         ],
-        "colors": [
-            {
-                "id": "rust_analyzer.syntaxTreeBorder",
-                "description": "Color of the border displayed in the Rust source code for the selected syntax node (see \"Show Syntax Tree\" command)",
-                "defaults": {
-                    "dark": "#ffffff",
-                    "light": "#b700ff",
-                    "highContrast": "#b700ff"
-                }
-            }
-        ],
         "semanticTokenTypes": [
             {
                 "id": "angle",
@@ -3299,10 +3283,6 @@
         ],
         "menus": {
             "commandPalette": [
-                {
-                    "command": "rust-analyzer.syntaxTree",
-                    "when": "inRustProject"
-                },
                 {
                     "command": "rust-analyzer.viewHir",
                     "when": "inRustProject"

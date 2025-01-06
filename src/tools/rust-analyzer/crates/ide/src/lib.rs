@@ -48,7 +48,6 @@ mod ssr;
 mod static_index;
 mod status;
 mod syntax_highlighting;
-mod syntax_tree;
 mod test_explorer;
 mod typing;
 mod view_crate_graph;
@@ -328,16 +327,6 @@ impl Analysis {
             let file = parse.tree();
             matching_brace::matching_brace(&file, position.offset)
         })
-    }
-
-    /// Returns a syntax tree represented as `String`, for debug purposes.
-    // FIXME: use a better name here.
-    pub fn syntax_tree(
-        &self,
-        file_id: FileId,
-        text_range: Option<TextRange>,
-    ) -> Cancellable<String> {
-        self.with_db(|db| syntax_tree::syntax_tree(db, file_id, text_range))
     }
 
     pub fn view_syntax_tree(&self, file_id: FileId) -> Cancellable<String> {
