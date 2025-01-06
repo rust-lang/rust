@@ -12,7 +12,7 @@ unstable-float = ["libm/unstable-float", "rug?/nightly-float"]
 
 # Generate tests which are random inputs and the outputs are calculated with
 # musl libc.
-test-multiprecision = ["dep:az", "dep:rug"]
+test-multiprecision = ["dep:az", "dep:rug", "dep:gmp-mpfr-sys"]
 
 # Build our own musl for testing and benchmarks
 build-musl = ["dep:musl-math-sys"]
@@ -26,6 +26,7 @@ short-benchmarks = []
 [dependencies]
 anyhow = "1.0.90"
 az = { version = "1.2.1", optional = true }
+gmp-mpfr-sys = { version = "1.6.4", optional = true, default-features = false, features = ["mpfr"] }
 indicatif = { version = "0.17.9", default-features = false }
 libm = { path = "../..", features = ["unstable-public-internals"] }
 libm-macros = { path = "../libm-macros" }

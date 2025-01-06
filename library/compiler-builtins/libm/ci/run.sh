@@ -45,8 +45,8 @@ case "$target" in
     # FIXME(ci): we should be able to enable aarch64 Linux here once GHA
     # support rolls out.
     x86_64*) extra_flags="$extra_flags --features libm-test/test-multiprecision" ;;
-    # i686 works fine, i586 does not
     i686*) extra_flags="$extra_flags --features libm-test/test-multiprecision" ;;
+    i586*) extra_flags="$extra_flags --features libm-test/test-multiprecision --features gmp-mpfr-sys/force-cross" ;;
     # Apple aarch64 is native
     aarch64*apple*) extra_flags="$extra_flags --features libm-test/test-multiprecision" ;;
 esac
