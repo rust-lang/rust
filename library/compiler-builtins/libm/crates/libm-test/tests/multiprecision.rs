@@ -3,11 +3,10 @@
 #![cfg(feature = "test-multiprecision")]
 
 use libm_test::domain::HasDomain;
-use libm_test::gen::{CachedInput, domain_logspace, edge_cases, random};
+use libm_test::gen::random::RandomInput;
+use libm_test::gen::{domain_logspace, edge_cases, random};
 use libm_test::mpfloat::MpOp;
-use libm_test::{
-    CheckBasis, CheckCtx, CheckOutput, GenerateInput, MathOp, OpFTy, OpRustFn, OpRustRet, TupleCall,
-};
+use libm_test::{CheckBasis, CheckCtx, CheckOutput, MathOp, OpFTy, OpRustFn, OpRustRet, TupleCall};
 
 /// Test against MPFR with random inputs.
 macro_rules! mp_rand_tests {
@@ -29,7 +28,7 @@ macro_rules! mp_rand_tests {
 fn test_one_random<Op>()
 where
     Op: MathOp + MpOp,
-    CachedInput: GenerateInput<Op::RustArgs>,
+    Op::RustArgs: RandomInput,
 {
     let mut mp_vals = Op::new_mp();
     let ctx = CheckCtx::new(Op::IDENTIFIER, CheckBasis::Mpfr);

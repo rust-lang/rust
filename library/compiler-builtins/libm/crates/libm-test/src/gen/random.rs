@@ -1,119 +1,118 @@
-//! A simple generator that produces deterministic random input, caching to use the same
-//! inputs for all functions.
-
+use std::env;
+use std::ops::RangeInclusive;
 use std::sync::LazyLock;
 
+use libm::support::Float;
+use rand::distributions::{Alphanumeric, Standard};
+use rand::prelude::Distribution;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
-use super::CachedInput;
-use crate::{BaseName, CheckCtx, GenerateInput};
+use super::KnownSize;
+use crate::run_cfg::{int_range, iteration_count};
+use crate::{CheckCtx, GeneratorKind};
 
-const SEED: [u8; 32] = *b"3.141592653589793238462643383279";
+pub(crate) const SEED_ENV: &str = "LIBM_SEED";
 
-/// Number of tests to run.
-const NTESTS: usize = {
-    if cfg!(optimizations_enabled) {
-        if crate::emulated()
-            || !cfg!(target_pointer_width = "64")
-            || cfg!(all(target_arch = "x86_64", target_vendor = "apple"))
-        {
-            // Tests are pretty slow on non-64-bit targets, x86 MacOS, and targets that run
-            // in QEMU.
-            100_000
-        } else {
-            5_000_000
-        }
-    } else {
-        // Without optimizations just run a quick check
-        800
-    }
-};
+pub(crate) static SEED: LazyLock<[u8; 32]> = LazyLock::new(|| {
+    let s = env::var(SEED_ENV).unwrap_or_else(|_| {
+        let mut rng = rand::thread_rng();
+        (0..32).map(|_| rng.sample(Alphanumeric) as char).collect()
+    });
 
-/// Tested inputs.
-static TEST_CASES: LazyLock<CachedInput> = LazyLock::new(|| make_test_cases(NTESTS));
-
-/// The first argument to `jn` and `jnf` is the number of iterations. Make this a reasonable
-/// value so tests don't run forever.
-static TEST_CASES_JN: LazyLock<CachedInput> = LazyLock::new(|| {
-    // Start with regular test cases
-    let mut cases = (*TEST_CASES).clone();
-
-    // These functions are extremely slow, limit them
-    let ntests_jn = (NTESTS / 1000).max(80);
-    cases.inputs_i32.truncate(ntests_jn);
-    cases.inputs_f32.truncate(ntests_jn);
-    cases.inputs_f64.truncate(ntests_jn);
-
-    // It is easy to overflow the stack with these in debug mode
-    let max_iterations = if cfg!(optimizations_enabled) && cfg!(target_pointer_width = "64") {
-        0xffff
-    } else if cfg!(windows) {
-        0x00ff
-    } else {
-        0x0fff
-    };
-
-    let mut rng = ChaCha8Rng::from_seed(SEED);
-
-    for case in cases.inputs_i32.iter_mut() {
-        case.0 = rng.gen_range(3..=max_iterations);
-    }
-
-    cases
+    s.as_bytes().try_into().unwrap_or_else(|_| {
+        panic!("Seed must be 32 characters, got `{s}`");
+    })
 });
 
-fn make_test_cases(ntests: usize) -> CachedInput {
-    let mut rng = ChaCha8Rng::from_seed(SEED);
-
-    // make sure we include some basic cases
-    let mut inputs_i32 = vec![(0, 0, 0), (1, 1, 1), (-1, -1, -1)];
-    let mut inputs_f32 = vec![
-        (0.0, 0.0, 0.0),
-        (f32::EPSILON, f32::EPSILON, f32::EPSILON),
-        (f32::INFINITY, f32::INFINITY, f32::INFINITY),
-        (f32::NEG_INFINITY, f32::NEG_INFINITY, f32::NEG_INFINITY),
-        (f32::MAX, f32::MAX, f32::MAX),
-        (f32::MIN, f32::MIN, f32::MIN),
-        (f32::MIN_POSITIVE, f32::MIN_POSITIVE, f32::MIN_POSITIVE),
-        (f32::NAN, f32::NAN, f32::NAN),
-    ];
-    let mut inputs_f64 = vec![
-        (0.0, 0.0, 0.0),
-        (f64::EPSILON, f64::EPSILON, f64::EPSILON),
-        (f64::INFINITY, f64::INFINITY, f64::INFINITY),
-        (f64::NEG_INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY),
-        (f64::MAX, f64::MAX, f64::MAX),
-        (f64::MIN, f64::MIN, f64::MIN),
-        (f64::MIN_POSITIVE, f64::MIN_POSITIVE, f64::MIN_POSITIVE),
-        (f64::NAN, f64::NAN, f64::NAN),
-    ];
-
-    inputs_i32.extend((0..(ntests - inputs_i32.len())).map(|_| rng.gen::<(i32, i32, i32)>()));
-
-    // Generate integers to get a full range of bitpatterns, then convert back to
-    // floats.
-    inputs_f32.extend((0..(ntests - inputs_f32.len())).map(|_| {
-        let ints = rng.gen::<(u32, u32, u32)>();
-        (f32::from_bits(ints.0), f32::from_bits(ints.1), f32::from_bits(ints.2))
-    }));
-    inputs_f64.extend((0..(ntests - inputs_f64.len())).map(|_| {
-        let ints = rng.gen::<(u64, u64, u64)>();
-        (f64::from_bits(ints.0), f64::from_bits(ints.1), f64::from_bits(ints.2))
-    }));
-
-    CachedInput { inputs_f32, inputs_f64, inputs_i32 }
+/// Generate a sequence of random values of this type.
+pub trait RandomInput {
+    fn get_cases(ctx: &CheckCtx) -> impl ExactSizeIterator<Item = Self>;
 }
 
-/// Create a test case iterator.
-pub fn get_test_cases<RustArgs>(ctx: &CheckCtx) -> impl Iterator<Item = RustArgs>
+/// Generate a sequence of deterministically random floats.
+fn random_floats<F: Float>(count: u64) -> impl Iterator<Item = F>
 where
-    CachedInput: GenerateInput<RustArgs>,
+    Standard: Distribution<F::Int>,
 {
-    let inputs = if ctx.base_name == BaseName::Jn || ctx.base_name == BaseName::Yn {
-        &TEST_CASES_JN
-    } else {
-        &TEST_CASES
+    let mut rng = ChaCha8Rng::from_seed(*SEED);
+
+    // Generate integers to get a full range of bitpatterns (including NaNs), then convert back
+    // to the float type.
+    (0..count).map(move |_| F::from_bits(rng.gen::<F::Int>()))
+}
+
+/// Generate a sequence of deterministically random `i32`s within a specified range.
+fn random_ints(count: u64, range: RangeInclusive<i32>) -> impl Iterator<Item = i32> {
+    let mut rng = ChaCha8Rng::from_seed(*SEED);
+    (0..count).map(move |_| rng.gen_range::<i32, _>(range.clone()))
+}
+
+macro_rules! impl_random_input {
+    ($fty:ty) => {
+        impl RandomInput for ($fty,) {
+            fn get_cases(ctx: &CheckCtx) -> impl ExactSizeIterator<Item = Self> {
+                let count = iteration_count(ctx, GeneratorKind::Random, 0);
+                let iter = random_floats(count).map(|f: $fty| (f,));
+                KnownSize::new(iter, count)
+            }
+        }
+
+        impl RandomInput for ($fty, $fty) {
+            fn get_cases(ctx: &CheckCtx) -> impl ExactSizeIterator<Item = Self> {
+                let count0 = iteration_count(ctx, GeneratorKind::Random, 0);
+                let count1 = iteration_count(ctx, GeneratorKind::Random, 1);
+                let iter = random_floats(count0)
+                    .flat_map(move |f1: $fty| random_floats(count1).map(move |f2: $fty| (f1, f2)));
+                KnownSize::new(iter, count0 * count1)
+            }
+        }
+
+        impl RandomInput for ($fty, $fty, $fty) {
+            fn get_cases(ctx: &CheckCtx) -> impl ExactSizeIterator<Item = Self> {
+                let count0 = iteration_count(ctx, GeneratorKind::Random, 0);
+                let count1 = iteration_count(ctx, GeneratorKind::Random, 1);
+                let count2 = iteration_count(ctx, GeneratorKind::Random, 2);
+                let iter = random_floats(count0).flat_map(move |f1: $fty| {
+                    random_floats(count1).flat_map(move |f2: $fty| {
+                        random_floats(count2).map(move |f3: $fty| (f1, f2, f3))
+                    })
+                });
+                KnownSize::new(iter, count0 * count1 * count2)
+            }
+        }
+
+        impl RandomInput for (i32, $fty) {
+            fn get_cases(ctx: &CheckCtx) -> impl ExactSizeIterator<Item = Self> {
+                let count0 = iteration_count(ctx, GeneratorKind::Random, 0);
+                let count1 = iteration_count(ctx, GeneratorKind::Random, 1);
+                let range0 = int_range(ctx, 0);
+                let iter = random_ints(count0, range0)
+                    .flat_map(move |f1: i32| random_floats(count1).map(move |f2: $fty| (f1, f2)));
+                KnownSize::new(iter, count0 * count1)
+            }
+        }
+
+        impl RandomInput for ($fty, i32) {
+            fn get_cases(ctx: &CheckCtx) -> impl ExactSizeIterator<Item = Self> {
+                let count0 = iteration_count(ctx, GeneratorKind::Random, 0);
+                let count1 = iteration_count(ctx, GeneratorKind::Random, 1);
+                let range1 = int_range(ctx, 1);
+                let iter = random_floats(count0).flat_map(move |f1: $fty| {
+                    random_ints(count1, range1.clone()).map(move |f2: i32| (f1, f2))
+                });
+                KnownSize::new(iter, count0 * count1)
+            }
+        }
     };
-    inputs.get_cases()
+}
+
+impl_random_input!(f32);
+impl_random_input!(f64);
+
+/// Create a test case iterator.
+pub fn get_test_cases<RustArgs: RandomInput>(
+    ctx: &CheckCtx,
+) -> impl Iterator<Item = RustArgs> + use<'_, RustArgs> {
+    RustArgs::get_cases(ctx)
 }

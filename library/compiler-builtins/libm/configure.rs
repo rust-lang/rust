@@ -8,6 +8,7 @@ pub struct Config {
     pub manifest_dir: PathBuf,
     pub out_dir: PathBuf,
     pub opt_level: u8,
+    pub cargo_features: Vec<String>,
     pub target_arch: String,
     pub target_env: String,
     pub target_family: Option<String>,
@@ -22,11 +23,16 @@ impl Config {
         let target_features = env::var("CARGO_CFG_TARGET_FEATURE")
             .map(|feats| feats.split(',').map(ToOwned::to_owned).collect())
             .unwrap_or_default();
+        let cargo_features = env::vars()
+            .filter_map(|(name, _value)| name.strip_prefix("CARGO_FEATURE_").map(ToOwned::to_owned))
+            .map(|s| s.to_lowercase().replace("_", "-"))
+            .collect();
 
         Self {
             manifest_dir: PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()),
             out_dir: PathBuf::from(env::var("OUT_DIR").unwrap()),
             opt_level: env::var("OPT_LEVEL").unwrap().parse().unwrap(),
+            cargo_features,
             target_arch: env::var("CARGO_CFG_TARGET_ARCH").unwrap(),
             target_env: env::var("CARGO_CFG_TARGET_ENV").unwrap(),
             target_family: env::var("CARGO_CFG_TARGET_FAMILY").ok(),
@@ -45,6 +51,7 @@ pub fn emit_libm_config(cfg: &Config) {
     emit_arch_cfg();
     emit_optimization_cfg(cfg);
     emit_cfg_shorthands(cfg);
+    emit_cfg_env(cfg);
     emit_f16_f128_cfg(cfg);
 }
 
@@ -53,6 +60,7 @@ pub fn emit_libm_config(cfg: &Config) {
 pub fn emit_test_config(cfg: &Config) {
     emit_optimization_cfg(cfg);
     emit_cfg_shorthands(cfg);
+    emit_cfg_env(cfg);
     emit_f16_f128_cfg(cfg);
 }
 
@@ -95,6 +103,13 @@ fn emit_cfg_shorthands(cfg: &Config) {
         // Shorthand to detect i586 targets
         println!("cargo:rustc-cfg=x86_no_sse");
     }
+}
+
+/// Reemit config that we make use of for test logging.
+fn emit_cfg_env(cfg: &Config) {
+    println!("cargo:rustc-env=CFG_CARGO_FEATURES={:?}", cfg.cargo_features);
+    println!("cargo:rustc-env=CFG_OPT_LEVEL={}", cfg.opt_level);
+    println!("cargo:rustc-env=CFG_TARGET_FEATURES={:?}", cfg.target_features);
 }
 
 /// Configure whether or not `f16` and `f128` support should be enabled.

@@ -9,8 +9,9 @@
 // There are some targets we can't build musl for
 #![cfg(feature = "build-musl")]
 
-use libm_test::gen::{CachedInput, random};
-use libm_test::{CheckBasis, CheckCtx, CheckOutput, GenerateInput, MathOp, TupleCall};
+use libm_test::gen::random;
+use libm_test::gen::random::RandomInput;
+use libm_test::{CheckBasis, CheckCtx, CheckOutput, MathOp, TupleCall};
 
 macro_rules! musl_rand_tests {
     (
@@ -21,16 +22,16 @@ macro_rules! musl_rand_tests {
             #[test]
             $(#[$attr])*
             fn [< musl_random_ $fn_name >]() {
-                test_one::<libm_test::op::$fn_name::Routine>(musl_math_sys::$fn_name);
+                test_one_random::<libm_test::op::$fn_name::Routine>(musl_math_sys::$fn_name);
             }
         }
     };
 }
 
-fn test_one<Op>(musl_fn: Op::CFn)
+fn test_one_random<Op>(musl_fn: Op::CFn)
 where
     Op: MathOp,
-    CachedInput: GenerateInput<Op::RustArgs>,
+    Op::RustArgs: RandomInput,
 {
     let ctx = CheckCtx::new(Op::IDENTIFIER, CheckBasis::Musl);
     let cases = random::get_test_cases::<Op::RustArgs>(&ctx);

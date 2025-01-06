@@ -2,8 +2,9 @@ use std::hint::black_box;
 use std::time::Duration;
 
 use criterion::{Criterion, criterion_main};
-use libm_test::gen::{CachedInput, random};
-use libm_test::{CheckBasis, CheckCtx, GenerateInput, MathOp, TupleCall};
+use libm_test::gen::random;
+use libm_test::gen::random::RandomInput;
+use libm_test::{CheckBasis, CheckCtx, MathOp, TupleCall};
 
 /// Benchmark with this many items to get a variety
 const BENCH_ITER_ITEMS: usize = if cfg!(feature = "short-benchmarks") { 50 } else { 500 };
@@ -47,7 +48,7 @@ macro_rules! musl_rand_benches {
 fn bench_one<Op>(c: &mut Criterion, musl_extra: MuslExtra<Op::CFn>)
 where
     Op: MathOp,
-    CachedInput: GenerateInput<Op::RustArgs>,
+    Op::RustArgs: RandomInput,
 {
     let name = Op::NAME;
 

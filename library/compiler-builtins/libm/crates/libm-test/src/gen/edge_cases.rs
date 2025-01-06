@@ -3,18 +3,11 @@
 use libm::support::Float;
 
 use crate::domain::HasDomain;
+use crate::run_cfg::{check_near_count, check_point_count};
 use crate::{CheckCtx, FloatExt, MathOp};
 
-/// Number of values near an interesting point to check.
-// FIXME(ntests): replace this with a more logical algorithm
-const AROUND: usize = 100;
-
-/// Functions have infinite asymptotes, limit how many we check.
-// FIXME(ntests): replace this with a more logical algorithm
-const MAX_CHECK_POINTS: usize = 10;
-
 /// Create a list of values around interesting points (infinities, zeroes, NaNs).
-pub fn get_test_cases<Op, F>(_ctx: &CheckCtx) -> impl Iterator<Item = (F,)>
+pub fn get_test_cases<Op, F>(ctx: &CheckCtx) -> impl Iterator<Item = (F,)>
 where
     Op: MathOp<FTy = F> + HasDomain<F>,
     F: Float,
@@ -25,23 +18,26 @@ where
     let domain_start = domain.range_start();
     let domain_end = domain.range_end();
 
+    let check_points = check_point_count(ctx);
+    let near_points = check_near_count(ctx);
+
     // Check near some notable constants
-    count_up(F::ONE, values);
-    count_up(F::ZERO, values);
-    count_up(F::NEG_ONE, values);
-    count_down(F::ONE, values);
-    count_down(F::ZERO, values);
-    count_down(F::NEG_ONE, values);
+    count_up(F::ONE, near_points, values);
+    count_up(F::ZERO, near_points, values);
+    count_up(F::NEG_ONE, near_points, values);
+    count_down(F::ONE, near_points, values);
+    count_down(F::ZERO, near_points, values);
+    count_down(F::NEG_ONE, near_points, values);
     values.push(F::NEG_ZERO);
 
     // Check values near the extremes
-    count_up(F::NEG_INFINITY, values);
-    count_down(F::INFINITY, values);
-    count_down(domain_end, values);
-    count_up(domain_start, values);
-    count_down(domain_start, values);
-    count_up(domain_end, values);
-    count_down(domain_end, values);
+    count_up(F::NEG_INFINITY, near_points, values);
+    count_down(F::INFINITY, near_points, values);
+    count_down(domain_end, near_points, values);
+    count_up(domain_start, near_points, values);
+    count_down(domain_start, near_points, values);
+    count_up(domain_end, near_points, values);
+    count_down(domain_end, near_points, values);
 
     // Check some special values that aren't included in the above ranges
     values.push(F::NAN);
@@ -50,9 +46,9 @@ where
     // Check around asymptotes
     if let Some(f) = domain.check_points {
         let iter = f();
-        for x in iter.take(MAX_CHECK_POINTS) {
-            count_up(x, values);
-            count_down(x, values);
+        for x in iter.take(check_points) {
+            count_up(x, near_points, values);
+            count_down(x, near_points, values);
         }
     }
 
@@ -65,11 +61,11 @@ where
 
 /// Add `AROUND` values starting at and including `x` and counting up. Uses the smallest possible
 /// increments (1 ULP).
-fn count_up<F: Float>(mut x: F, values: &mut Vec<F>) {
+fn count_up<F: Float>(mut x: F, points: u64, values: &mut Vec<F>) {
     assert!(!x.is_nan());
 
     let mut count = 0;
-    while x < F::INFINITY && count < AROUND {
+    while x < F::INFINITY && count < points {
         values.push(x);
         x = x.next_up();
         count += 1;
@@ -78,11 +74,11 @@ fn count_up<F: Float>(mut x: F, values: &mut Vec<F>) {
 
 /// Add `AROUND` values starting at and including `x` and counting down. Uses the smallest possible
 /// increments (1 ULP).
-fn count_down<F: Float>(mut x: F, values: &mut Vec<F>) {
+fn count_down<F: Float>(mut x: F, points: u64, values: &mut Vec<F>) {
     assert!(!x.is_nan());
 
     let mut count = 0;
-    while x > F::NEG_INFINITY && count < AROUND {
+    while x > F::NEG_INFINITY && count < points {
         values.push(x);
         x = x.next_down();
         count += 1;

@@ -90,8 +90,15 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
             Bn::Exp10 if usize::BITS < 64 => ulp = 4,
             Bn::Lgamma | Bn::LgammaR => ulp = 400,
             Bn::Tanh => ulp = 4,
-            _ if ctx.fn_ident == Id::Sincosf => ulp = 500,
-            _ if ctx.fn_ident == Id::Tgamma => ulp = 20,
+            _ => (),
+        }
+
+        match ctx.fn_ident {
+            // FIXME(#401): musl has an incorrect result here.
+            Id::Fdim => ulp = 2,
+            Id::Jnf | Id::Ynf => ulp = 4000,
+            Id::Sincosf => ulp = 500,
+            Id::Tgamma => ulp = 20,
             _ => (),
         }
     }
@@ -99,6 +106,8 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
     // In some cases, our implementation is less accurate than musl on i586.
     if cfg!(x86_no_sse) {
         match ctx.fn_ident {
+            Id::Asinh => ulp = 3,
+            Id::Asinhf => ulp = 3,
             Id::Log1p | Id::Log1pf => ulp = 2,
             Id::Round => ulp = 1,
             Id::Tan => ulp = 2,
