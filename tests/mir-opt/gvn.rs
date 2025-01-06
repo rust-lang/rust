@@ -933,7 +933,7 @@ fn cast_pointer_eq(p1: *mut u8, p2: *mut u32, p3: *mut u32, p4: *mut [u32]) {
     // CHECK: _0 = const ();
 }
 
-unsafe fn aggregate_struct_then_transmute(id: u16) {
+unsafe fn aggregate_struct_then_transmute(id: u16, thin: *const u8) {
     // CHECK: opaque::<u16>(copy _1)
     let a = MyId(id);
     opaque(std::intrinsics::transmute::<_, u16>(a));
@@ -969,6 +969,18 @@ unsafe fn aggregate_struct_then_transmute(id: u16) {
     // CHECK: opaque::<u16>(move [[TEMP]])
     let g = Pair(id, id);
     opaque(std::intrinsics::transmute_unchecked::<_, u16>(g));
+
+    // CHECK: opaque::<u16>(copy _1)
+    let h = (id,);
+    opaque(std::intrinsics::transmute::<_, u16>(h));
+
+    // CHECK: opaque::<u16>(copy _1)
+    let i = [id];
+    opaque(std::intrinsics::transmute::<_, u16>(i));
+
+    // CHECK: opaque::<*const u8>(copy _2)
+    let j: *const i32 = std::intrinsics::aggregate_raw_ptr(thin, ());
+    opaque(std::intrinsics::transmute::<_, *const u8>(j));
 }
 
 unsafe fn transmute_then_transmute_again(a: u32, c: char) {

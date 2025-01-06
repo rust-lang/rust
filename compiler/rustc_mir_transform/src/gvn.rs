@@ -1370,12 +1370,14 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         loop {
             let mut was_updated_this_iteration = false;
 
-            // Transmuting `*const T` <=> `*mut T` is just a pointer cast,
-            // which we might be able to merge with other ones later.
+            // Transmuting between raw pointers is just a pointer cast so long as
+            // they have the same metadata type (like `*const i32` <=> `*mut u64`
+            // or `*mut [i32]` <=> `*const [u64]`), including the common special
+            // case of `*const T` <=> `*mut T`.
             if let Transmute = kind
-                && let ty::RawPtr(from_pointee, _) = from.kind()
-                && let ty::RawPtr(to_pointee, _) = to.kind()
-                && from_pointee == to_pointee
+                && from.is_unsafe_ptr()
+                && to.is_unsafe_ptr()
+                && self.pointers_have_same_metadata(from, to)
             {
                 *kind = PtrToPtr;
                 was_updated_this_iteration = true;
@@ -1400,15 +1402,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             // Aggregate-then-Transmute can just transmute the original field value,
             // so long as the bytes of a value from only from a single field.
             if let Transmute = kind
-                && let Value::Aggregate(
-                    AggregateTy::Def(aggregate_did, aggregate_args),
-                    variant_idx,
-                    field_values,
-                ) = self.get(value)
-                && let aggregate_ty =
-                    self.tcx.type_of(aggregate_did).instantiate(self.tcx, aggregate_args)
+                && let Value::Aggregate(_aggregate_ty, variant_idx, field_values) = self.get(value)
                 && let Some((field_idx, field_ty)) =
-                    self.value_is_all_in_one_field(aggregate_ty, *variant_idx)
+                    self.value_is_all_in_one_field(from, *variant_idx)
             {
                 from = field_ty;
                 value = field_values[field_idx.as_usize()];
