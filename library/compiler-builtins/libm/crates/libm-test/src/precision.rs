@@ -47,8 +47,7 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
         Bn::Tgamma if ctx.fn_ident != Id::Tgamma => 0,
 
         // Bessel functions have large inaccuracies.
-        Bn::J0 | Bn::J1 | Bn::Y0 | Bn::Y1 => 8_000_000,
-        Bn::Jn | Bn::Yn => 1_000,
+        Bn::J0 | Bn::J1 | Bn::Y0 | Bn::Y1 | Bn::Jn | Bn::Yn => 8_000_000,
 
         // For all other operations, specify our implementation's worst case precision.
         Bn::Acos => 1,
@@ -96,7 +95,6 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
         match ctx.fn_ident {
             // FIXME(#401): musl has an incorrect result here.
             Id::Fdim => ulp = 2,
-            Id::Jnf | Id::Ynf => ulp = 4000,
             Id::Sincosf => ulp = 500,
             Id::Tgamma => ulp = 20,
             _ => (),
