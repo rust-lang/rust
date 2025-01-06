@@ -6,7 +6,9 @@ use std::{fmt, iter};
 
 use arrayvec::ArrayVec;
 use rustc_abi::{ExternAbi, VariantIdx};
-use rustc_attr_parsing::{ConstStability, Deprecation, Stability, StableSince};
+use rustc_attr_parsing::{
+    AllowedThroughUnstableModules, ConstStability, Deprecation, Stability, StableSince,
+};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
@@ -406,15 +408,19 @@ impl Item {
             // were never supposed to work at all.
             let stab = self.stability(tcx)?;
             if let rustc_attr_parsing::StabilityLevel::Stable {
-                allowed_through_unstable_modules: Some(_),
+                allowed_through_unstable_modules: Some(note),
                 ..
             } = stab.level
             {
+                let note = match note {
+                    AllowedThroughUnstableModules::WithDeprecation(note) => Some(note),
+                    // FIXME: Would be better to say *something* here about the *path* being
+                    // deprecated rather than the item.
+                    AllowedThroughUnstableModules::WithoutDeprecation => None,
+                };
                 Some(Deprecation {
-                    // FIXME(#131676, #135003): when a note is added to this stability tag,
-                    // translate it here
                     since: rustc_attr_parsing::DeprecatedSince::Unspecified,
-                    note: None,
+                    note,
                     suggestion: None,
                 })
             } else {
