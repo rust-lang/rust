@@ -17,6 +17,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt};
+use rustc_middle::util::CallKind;
 use rustc_span::{DesugaringKind, Span, Symbol, kw, sym};
 use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
 use tracing::{debug, instrument};
@@ -634,6 +635,39 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             UseSpans::ClosureUse { capture_kind_span, path_span, .. } => {
                 // Used in a closure.
                 (LaterUseKind::ClosureCapture, capture_kind_span, Some(path_span))
+            }
+            // In the case that the borrowed value (probably a temporary)
+            // overlaps with the method's receiver, then point at the method.
+            UseSpans::FnSelfUse {
+                var_span: span,
+                kind: CallKind::Normal { desugaring: None, .. },
+                ..
+            } if span
+                .overlaps(self.body.local_decls[borrow.assigned_place.local].source_info.span) =>
+            {
+                if let TerminatorKind::Call { func, call_source: CallSource::Normal, .. } =
+                    &self.body.basic_blocks[location.block].terminator().kind
+                {
+                    // Just point to the function, to reduce the chance of overlapping spans.
+                    let function_span = match func {
+                        Operand::Constant(c) => c.span,
+                        Operand::Copy(place) | Operand::Move(place) => {
+                            if let Some(l) = place.as_local() {
+                                let local_decl = &self.body.local_decls[l];
+                                if self.local_names[l].is_none() {
+                                    local_decl.source_info.span
+                                } else {
+                                    span
+                                }
+                            } else {
+                                span
+                            }
+                        }
+                    };
+                    (LaterUseKind::Call, function_span, None)
+                } else {
+                    (LaterUseKind::Other, span, None)
+                }
             }
             UseSpans::PatUse(span)
             | UseSpans::OtherUse(span)
