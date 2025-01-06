@@ -76,7 +76,7 @@ pub(crate) fn cargo_config_env(
     // if successful we receive `env.key.value = "value" per entry
     tracing::debug!("Discovering cargo config env by {:?}", cargo_config);
     utf8_stdout(&mut cargo_config)
-        .map(|stdout| parse_output_cargo_config_env(manifest, stdout))
+        .map(|stdout| parse_output_cargo_config_env(manifest, &stdout))
         .inspect(|env| {
             tracing::debug!("Discovered cargo config env: {:?}", env);
         })
@@ -86,7 +86,7 @@ pub(crate) fn cargo_config_env(
         .unwrap_or_default()
 }
 
-fn parse_output_cargo_config_env(manifest: &ManifestPath, stdout: String) -> Env {
+fn parse_output_cargo_config_env(manifest: &ManifestPath, stdout: &str) -> Env {
     let mut env = Env::default();
     let mut relatives = vec![];
     for (key, val) in
@@ -112,12 +112,35 @@ fn parse_output_cargo_config_env(manifest: &ManifestPath, stdout: String) -> Env
     // FIXME: The base here should be the parent of the `.cargo/config` file, not the manifest.
     // But cargo does not provide this information.
     let base = <_ as AsRef<Utf8Path>>::as_ref(manifest.parent());
-    for (key, val) in relatives {
-        if let Some(val) = env.get(&val) {
-            env.insert(key, base.join(val).to_string());
-        } else {
-            env.insert(key, base.to_string());
+    for (key, relative) in relatives {
+        if relative != "true" {
+            continue;
+        }
+        if let Some(suffix) = env.get(key) {
+            env.insert(key, base.join(suffix).to_string());
         }
     }
     env
+}
+
+#[test]
+fn parse_output_cargo_config_env_works() {
+    let stdout = r#"
+env.CARGO_WORKSPACE_DIR.relative = true
+env.CARGO_WORKSPACE_DIR.value = ""
+env.RELATIVE.relative = true
+env.RELATIVE.value = "../relative"
+env.INVALID.relative = invalidbool
+env.INVALID.value = "../relative"
+env.TEST.value = "test"
+"#
+    .trim();
+    let cwd = paths::Utf8PathBuf::try_from(std::env::current_dir().unwrap()).unwrap();
+    let manifest = paths::AbsPathBuf::assert(cwd.join("Cargo.toml"));
+    let manifest = ManifestPath::try_from(manifest).unwrap();
+    let env = parse_output_cargo_config_env(&manifest, stdout);
+    assert_eq!(env.get("CARGO_WORKSPACE_DIR").as_deref(), Some(cwd.join("").as_str()));
+    assert_eq!(env.get("RELATIVE").as_deref(), Some(cwd.join("../relative").as_str()));
+    assert_eq!(env.get("INVALID").as_deref(), Some("../relative"));
+    assert_eq!(env.get("TEST").as_deref(), Some("test"));
 }
