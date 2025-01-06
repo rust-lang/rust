@@ -4,12 +4,6 @@
 /// by direct manipulation of the bit representation of `x`.
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn fabsf16(x: f16) -> f16 {
-    select_implementation! {
-        name: fabsf,
-        use_intrinsic: target_arch = "wasm32",
-        args: x,
-    }
-
     super::generic::fabs(x)
 }
 
