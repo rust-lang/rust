@@ -198,6 +198,7 @@ jobs:
           fetch-depth: 100
       - name: Fetch pull request ref
         run: git fetch origin "$GITHUB_REF:$GITHUB_REF"
+        if: github.event_name == 'pull_request'
       - run: python3 ci/calculate-exhaustive-matrix.py >> "$GITHUB_OUTPUT"
         id: script
 
