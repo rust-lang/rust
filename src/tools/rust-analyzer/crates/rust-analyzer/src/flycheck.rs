@@ -233,6 +233,7 @@ struct FlycheckActor {
     /// The receiver side of the channel mentioned above.
     command_receiver: Option<Receiver<CargoCheckMessage>>,
     diagnostics_cleared_for: FxHashSet<Arc<PackageId>>,
+    diagnostics_cleared_for_all: bool,
     diagnostics_received: bool,
 }
 
@@ -264,6 +265,7 @@ impl FlycheckActor {
             command_handle: None,
             command_receiver: None,
             diagnostics_cleared_for: Default::default(),
+            diagnostics_cleared_for_all: false,
             diagnostics_received: false,
         }
     }
@@ -350,6 +352,7 @@ impl FlycheckActor {
                             package_id: None,
                         });
                     }
+                    self.clear_diagnostics_state();
 
                     self.report_progress(Progress::DidFinish(res));
                 }
@@ -395,6 +398,14 @@ impl FlycheckActor {
                                     package_id: Some(package_id.clone()),
                                 });
                             }
+                        } else {
+                            if !self.diagnostics_cleared_for_all {
+                                self.diagnostics_cleared_for_all = true;
+                                self.send(FlycheckMessage::ClearDiagnostics {
+                                    id: self.id,
+                                    package_id: None,
+                                });
+                            }
                         }
                         self.send(FlycheckMessage::AddDiagnostic {
                             id: self.id,
@@ -420,7 +431,12 @@ impl FlycheckActor {
             self.command_receiver.take();
             self.report_progress(Progress::DidCancel);
         }
+        self.clear_diagnostics_state();
+    }
+
+    fn clear_diagnostics_state(&mut self) {
         self.diagnostics_cleared_for.clear();
+        self.diagnostics_cleared_for_all = false;
         self.diagnostics_received = false;
     }
 
