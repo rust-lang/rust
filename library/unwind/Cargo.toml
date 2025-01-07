@@ -37,4 +37,4 @@ system-llvm-libunwind = []
 
 [lints.rust.unexpected_cfgs]
 level = "warn"
-check-cfg = []
+check-cfg = ['cfg(emscripten_wasm_eh)']
