@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.141](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.140...compiler_builtins-v0.1.141) - 2025-01-07
+
+### Other
+
+- Update the `libm` submodule
+- Fix new `clippy::precedence` errors
+- Rename `EXP_MAX` to `EXP_SAT`
+- Shorten prefixes for float constants
+
 ## [0.1.140](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.139...compiler_builtins-v0.1.140) - 2024-12-26
 
 ### Other
