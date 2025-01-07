@@ -44,7 +44,6 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
 
         // Operations that aren't required to be exact, but our implementations are.
         Bn::Cbrt if ctx.fn_ident != Id::Cbrt => 0,
-        Bn::Tgamma if ctx.fn_ident != Id::Tgamma => 0,
 
         // Bessel functions have large inaccuracies.
         Bn::J0 | Bn::J1 | Bn::Y0 | Bn::Y1 | Bn::Jn | Bn::Yn => 8_000_000,
@@ -78,6 +77,8 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
         Bn::Sinh => 2,
         Bn::Tan => 1,
         Bn::Tanh => 2,
+        // tgammaf has higher accuracy than tgamma.
+        Bn::Tgamma if ctx.fn_ident != Id::Tgamma => 1,
         Bn::Tgamma => 20,
     };
 
