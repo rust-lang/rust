@@ -398,14 +398,12 @@ impl FlycheckActor {
                                     package_id: Some(package_id.clone()),
                                 });
                             }
-                        } else {
-                            if !self.diagnostics_cleared_for_all {
-                                self.diagnostics_cleared_for_all = true;
-                                self.send(FlycheckMessage::ClearDiagnostics {
-                                    id: self.id,
-                                    package_id: None,
-                                });
-                            }
+                        } else if !self.diagnostics_cleared_for_all {
+                            self.diagnostics_cleared_for_all = true;
+                            self.send(FlycheckMessage::ClearDiagnostics {
+                                id: self.id,
+                                package_id: None,
+                            });
                         }
                         self.send(FlycheckMessage::AddDiagnostic {
                             id: self.id,
