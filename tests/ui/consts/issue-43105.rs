@@ -1,7 +1,7 @@
 fn xyz() -> u8 { 42 }
 
 const NUM: u8 = xyz();
-//~^ ERROR cannot call non-const fn
+//~^ ERROR cannot call non-const function
 
 fn main() {
     match 1 {

@@ -1845,11 +1845,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             GenericParamKind::Lifetime => {
                 // AST resolution emitted an error on those parameters, so we lower them using
                 // `ParamName::Error`.
+                let ident = self.lower_ident(param.ident);
                 let param_name =
                     if let Some(LifetimeRes::Error) = self.resolver.get_lifetime_res(param.id) {
-                        ParamName::Error
+                        ParamName::Error(ident)
                     } else {
-                        let ident = self.lower_ident(param.ident);
                         ParamName::Plain(ident)
                     };
                 let kind =
@@ -2031,11 +2031,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_array_length_to_const_arg(&mut self, c: &AnonConst) -> &'hir hir::ConstArg<'hir> {
         match c.value.kind {
             ExprKind::Underscore => {
-                if self.tcx.features().generic_arg_infer() {
-                    let ct_kind = hir::ConstArgKind::Infer(self.lower_span(c.value.span));
-                    self.arena
-                        .alloc(hir::ConstArg { hir_id: self.lower_node_id(c.id), kind: ct_kind })
-                } else {
+                if !self.tcx.features().generic_arg_infer() {
                     feature_err(
                         &self.tcx.sess,
                         sym::generic_arg_infer,
@@ -2043,8 +2039,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         fluent_generated::ast_lowering_underscore_array_length_unstable,
                     )
                     .stash(c.value.span, StashKey::UnderscoreForArrayLengths);
-                    self.lower_anon_const_to_const_arg(c)
                 }
+                let ct_kind = hir::ConstArgKind::Infer(self.lower_span(c.value.span));
+                self.arena.alloc(hir::ConstArg { hir_id: self.lower_node_id(c.id), kind: ct_kind })
             }
             _ => self.lower_anon_const_to_const_arg(c),
         }

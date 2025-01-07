@@ -76,8 +76,9 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
     # Include cache version. Can be used to manually bust the Docker cache.
     echo "2" >> $hash_key
 
-    echo "Image input"
+    echo "::group::Image checksum input"
     cat $hash_key
+    echo "::endgroup::"
 
     cksum=$(sha512sum $hash_key | \
     awk '{print $1}')

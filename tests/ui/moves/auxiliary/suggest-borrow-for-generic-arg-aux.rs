@@ -1,4 +1,4 @@
-//! auxiliary definitons for suggest-borrow-for-generic-arg.rs, to ensure the suggestion works on
+//! auxiliary definitions for suggest-borrow-for-generic-arg.rs, to ensure the suggestion works on
 //! functions defined in other crates.
 
 use std::io::{self, Read, Write};

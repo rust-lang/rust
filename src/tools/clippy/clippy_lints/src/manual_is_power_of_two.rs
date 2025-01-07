@@ -43,21 +43,21 @@ impl LateLintPass<'_> for ManualIsPowerOfTwo {
             && bin_op.node == BinOpKind::Eq
         {
             // a.count_ones() == 1
-            if let ExprKind::MethodCall(method_name, reciever, [], _) = left.kind
+            if let ExprKind::MethodCall(method_name, receiver, [], _) = left.kind
                 && method_name.ident.as_str() == "count_ones"
-                && let &Uint(_) = cx.typeck_results().expr_ty(reciever).kind()
+                && let &Uint(_) = cx.typeck_results().expr_ty(receiver).kind()
                 && check_lit(right, 1)
             {
-                build_sugg(cx, expr, reciever, &mut applicability);
+                build_sugg(cx, expr, receiver, &mut applicability);
             }
 
             // 1 == a.count_ones()
-            if let ExprKind::MethodCall(method_name, reciever, [], _) = right.kind
+            if let ExprKind::MethodCall(method_name, receiver, [], _) = right.kind
                 && method_name.ident.as_str() == "count_ones"
-                && let &Uint(_) = cx.typeck_results().expr_ty(reciever).kind()
+                && let &Uint(_) = cx.typeck_results().expr_ty(receiver).kind()
                 && check_lit(left, 1)
             {
-                build_sugg(cx, expr, reciever, &mut applicability);
+                build_sugg(cx, expr, receiver, &mut applicability);
             }
 
             // a & (a - 1) == 0
@@ -115,8 +115,8 @@ impl LateLintPass<'_> for ManualIsPowerOfTwo {
     }
 }
 
-fn build_sugg(cx: &LateContext<'_>, expr: &Expr<'_>, reciever: &Expr<'_>, applicability: &mut Applicability) {
-    let snippet = snippet_with_applicability(cx, reciever.span, "..", applicability);
+fn build_sugg(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, applicability: &mut Applicability) {
+    let snippet = snippet_with_applicability(cx, receiver.span, "..", applicability);
 
     span_lint_and_sugg(
         cx,

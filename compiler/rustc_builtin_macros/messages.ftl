@@ -197,6 +197,8 @@ builtin_macros_format_redundant_args = redundant {$n ->
 
 builtin_macros_format_remove_raw_ident = remove the `r#`
 
+builtin_macros_format_reorder_format_parameter = did you mean `{$replacement}`?
+
 builtin_macros_format_requires_string = requires at least a format string argument
 
 builtin_macros_format_string_invalid = invalid format string: {$desc}

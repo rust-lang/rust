@@ -253,7 +253,7 @@ const_eval_non_const_fmt_macro_call =
     cannot call non-const formatting macro in {const_eval_const_context}s
 
 const_eval_non_const_fn_call =
-    cannot call non-const fn `{$def_path_str}` in {const_eval_const_context}s
+    cannot call non-const {$def_descr} `{$def_path_str}` in {const_eval_const_context}s
 
 const_eval_non_const_impl =
     impl defined here, but it is not `const`

@@ -817,7 +817,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     pat.walk(&mut find_compatible_candidates);
                 }
 
-                hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body), .. })
+                hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { body, .. }, .. })
                 | hir::Node::ImplItem(hir::ImplItem {
                     kind: hir::ImplItemKind::Fn(_, body), ..
                 })

@@ -755,7 +755,7 @@ impl<'a> Parser<'a> {
         // When there are a few keywords in the last ten elements of `self.expected_token_types`
         // and the current token is an identifier, it's probably a misspelled keyword. This handles
         // code like `async Move {}`, misspelled `if` in match guard, misspelled `else` in
-        // `if`-`else` and mispelled `where` in a where clause.
+        // `if`-`else` and misspelled `where` in a where clause.
         if !expected_keywords.is_empty()
             && !curr_ident.is_used_keyword()
             && let Some(misspelled_kw) = find_similar_kw(curr_ident, &expected_keywords)
@@ -1336,7 +1336,7 @@ impl<'a> Parser<'a> {
     ) -> bool {
         if let ExprKind::Binary(op, l1, r1) = &inner_op.kind {
             if let ExprKind::Field(_, ident) = l1.kind
-                && ident.as_str().parse::<i32>().is_err()
+                && !ident.is_numeric()
                 && !matches!(r1.kind, ExprKind::Lit(_))
             {
                 // The parser has encountered `foo.bar<baz`, the likelihood of the turbofish

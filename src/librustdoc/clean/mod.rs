@@ -268,7 +268,7 @@ fn clean_poly_trait_ref_with_constraints<'tcx>(
     )
 }
 
-fn clean_lifetime(lifetime: &hir::Lifetime, cx: &mut DocContext<'_>) -> Lifetime {
+fn clean_lifetime(lifetime: &hir::Lifetime, cx: &DocContext<'_>) -> Lifetime {
     if let Some(
         rbv::ResolvedArg::EarlyBound(did)
         | rbv::ResolvedArg::LateBound(_, _, did)
@@ -362,9 +362,9 @@ pub(crate) fn clean_predicate<'tcx>(
     let bound_predicate = predicate.kind();
     match bound_predicate.skip_binder() {
         ty::ClauseKind::Trait(pred) => clean_poly_trait_predicate(bound_predicate.rebind(pred), cx),
-        ty::ClauseKind::RegionOutlives(pred) => clean_region_outlives_predicate(pred),
+        ty::ClauseKind::RegionOutlives(pred) => Some(clean_region_outlives_predicate(pred)),
         ty::ClauseKind::TypeOutlives(pred) => {
-            clean_type_outlives_predicate(bound_predicate.rebind(pred), cx)
+            Some(clean_type_outlives_predicate(bound_predicate.rebind(pred), cx))
         }
         ty::ClauseKind::Projection(pred) => {
             Some(clean_projection_predicate(bound_predicate.rebind(pred), cx))
@@ -396,32 +396,30 @@ fn clean_poly_trait_predicate<'tcx>(
     })
 }
 
-fn clean_region_outlives_predicate(
-    pred: ty::RegionOutlivesPredicate<'_>,
-) -> Option<WherePredicate> {
+fn clean_region_outlives_predicate(pred: ty::RegionOutlivesPredicate<'_>) -> WherePredicate {
     let ty::OutlivesPredicate(a, b) = pred;
 
-    Some(WherePredicate::RegionPredicate {
+    WherePredicate::RegionPredicate {
         lifetime: clean_middle_region(a).expect("failed to clean lifetime"),
         bounds: vec![GenericBound::Outlives(
             clean_middle_region(b).expect("failed to clean bounds"),
         )],
-    })
+    }
 }
 
 fn clean_type_outlives_predicate<'tcx>(
     pred: ty::Binder<'tcx, ty::TypeOutlivesPredicate<'tcx>>,
     cx: &mut DocContext<'tcx>,
-) -> Option<WherePredicate> {
+) -> WherePredicate {
     let ty::OutlivesPredicate(ty, lt) = pred.skip_binder();
 
-    Some(WherePredicate::BoundPredicate {
+    WherePredicate::BoundPredicate {
         ty: clean_middle_ty(pred.rebind(ty), cx, None, None),
         bounds: vec![GenericBound::Outlives(
             clean_middle_region(lt).expect("failed to clean lifetimes"),
         )],
         bound_params: Vec::new(),
-    })
+    }
 }
 
 fn clean_middle_term<'tcx>(
@@ -894,7 +892,7 @@ fn clean_ty_generics<'tcx>(
 
         // Add back a `Sized` bound if there are no *trait* bounds remaining (incl. `?Sized`).
         // Since all potential trait bounds are at the front we can just check the first bound.
-        if bounds.first().map_or(true, |b| !b.is_trait_bound()) {
+        if bounds.first().is_none_or(|b| !b.is_trait_bound()) {
             bounds.insert(0, GenericBound::sized(cx));
         }
 
@@ -1811,7 +1809,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
         }
         TyKind::Slice(ty) => Slice(Box::new(clean_ty(ty, cx))),
         TyKind::Pat(ty, pat) => Type::Pat(Box::new(clean_ty(ty, cx)), format!("{pat:?}").into()),
-        TyKind::Array(ty, ref const_arg) => {
+        TyKind::Array(ty, const_arg) => {
             // NOTE(min_const_generics): We can't use `const_eval_poly` for constants
             // as we currently do not supply the parent generics to anonymous constants
             // but do allow `ConstKind::Param`.
@@ -1846,8 +1844,8 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
             DynTrait(bounds, lifetime)
         }
         TyKind::BareFn(barefn) => BareFunction(Box::new(clean_bare_fn_ty(barefn, cx))),
-        TyKind::UnsafeBinder(..) => {
-            unimplemented!("unsafe binders are not supported yet")
+        TyKind::UnsafeBinder(unsafe_binder_ty) => {
+            UnsafeBinder(Box::new(clean_unsafe_binder_ty(unsafe_binder_ty, cx)))
         }
         // Rustdoc handles `TyKind::Err`s by turning them into `Type::Infer`s.
         TyKind::Infer
@@ -1860,7 +1858,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
 
 /// Returns `None` if the type could not be normalized
 fn normalize<'tcx>(
-    cx: &mut DocContext<'tcx>,
+    cx: &DocContext<'tcx>,
     ty: ty::Binder<'tcx, Ty<'tcx>>,
 ) -> Option<ty::Binder<'tcx, Ty<'tcx>>> {
     // HACK: low-churn fix for #79459 while we wait for a trait normalization fix
@@ -2077,6 +2075,11 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 abi: sig.abi(),
             }))
         }
+        ty::UnsafeBinder(inner) => {
+            let generic_params = clean_bound_vars(inner.bound_vars());
+            let ty = clean_middle_ty(inner.into(), cx, None, None);
+            UnsafeBinder(Box::new(UnsafeBinderTy { generic_params, ty }))
+        }
         ty::Adt(def, args) => {
             let did = def.did();
             let kind = match def.adt_kind() {
@@ -2261,6 +2264,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
         ty::Placeholder(..) => panic!("Placeholder"),
         ty::CoroutineWitness(..) => panic!("CoroutineWitness"),
         ty::Infer(..) => panic!("Infer"),
+
         ty::Error(_) => FatalError.raise(),
     }
 }
@@ -2335,7 +2339,7 @@ fn clean_middle_opaque_bounds<'tcx>(
 
     // Add back a `Sized` bound if there are no *trait* bounds remaining (incl. `?Sized`).
     // Since all potential trait bounds are at the front we can just check the first bound.
-    if bounds.first().map_or(true, |b| !b.is_trait_bound()) {
+    if bounds.first().is_none_or(|b| !b.is_trait_bound()) {
         bounds.insert(0, GenericBound::sized(cx));
     }
 
@@ -2562,6 +2566,21 @@ fn clean_bare_fn_ty<'tcx>(
         (generic_params, decl)
     });
     BareFunctionDecl { safety: bare_fn.safety, abi: bare_fn.abi, decl, generic_params }
+}
+
+fn clean_unsafe_binder_ty<'tcx>(
+    unsafe_binder_ty: &hir::UnsafeBinderTy<'tcx>,
+    cx: &mut DocContext<'tcx>,
+) -> UnsafeBinderTy {
+    // NOTE: generics must be cleaned before args
+    let generic_params = unsafe_binder_ty
+        .generic_params
+        .iter()
+        .filter(|p| !is_elided_lifetime(p))
+        .map(|x| clean_generic_param(cx, None, x))
+        .collect();
+    let ty = clean_ty(unsafe_binder_ty.inner_ty, cx);
+    UnsafeBinderTy { generic_params, ty }
 }
 
 pub(crate) fn reexport_chain(
@@ -2791,7 +2810,7 @@ fn clean_maybe_renamed_item<'tcx>(
             }),
             ItemKind::Macro(_, macro_kind) => clean_proc_macro(item, &mut name, macro_kind, cx),
             // proc macros can have a name set by attributes
-            ItemKind::Fn(ref sig, generics, body_id) => {
+            ItemKind::Fn { ref sig, generics, body: body_id, .. } => {
                 clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
             }
             ItemKind::Trait(_, _, generics, bounds, item_ids) => {

@@ -312,15 +312,15 @@ fn from_clean_item(item: clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum {
         StructFieldItem(f) => ItemEnum::StructField(f.into_json(renderer)),
         EnumItem(e) => ItemEnum::Enum(e.into_json(renderer)),
         VariantItem(v) => ItemEnum::Variant(v.into_json(renderer)),
-        FunctionItem(f) => ItemEnum::Function(from_function(f, true, header.unwrap(), renderer)),
+        FunctionItem(f) => ItemEnum::Function(from_function(*f, true, header.unwrap(), renderer)),
         ForeignFunctionItem(f, _) => {
-            ItemEnum::Function(from_function(f, false, header.unwrap(), renderer))
+            ItemEnum::Function(from_function(*f, false, header.unwrap(), renderer))
         }
         TraitItem(t) => ItemEnum::Trait((*t).into_json(renderer)),
         TraitAliasItem(t) => ItemEnum::TraitAlias(t.into_json(renderer)),
-        MethodItem(m, _) => ItemEnum::Function(from_function(m, true, header.unwrap(), renderer)),
+        MethodItem(m, _) => ItemEnum::Function(from_function(*m, true, header.unwrap(), renderer)),
         RequiredMethodItem(m) => {
-            ItemEnum::Function(from_function(m, false, header.unwrap(), renderer))
+            ItemEnum::Function(from_function(*m, false, header.unwrap(), renderer))
         }
         ImplItem(i) => ItemEnum::Impl((*i).into_json(renderer)),
         StaticItem(s) => ItemEnum::Static(convert_static(s, rustc_hir::Safety::Safe, renderer)),
@@ -573,7 +573,7 @@ impl FromClean<clean::Type> for Type {
     fn from_clean(ty: clean::Type, renderer: &JsonRenderer<'_>) -> Self {
         use clean::Type::{
             Array, BareFunction, BorrowedRef, Generic, ImplTrait, Infer, Primitive, QPath,
-            RawPointer, SelfTy, Slice, Tuple,
+            RawPointer, SelfTy, Slice, Tuple, UnsafeBinder,
         };
 
         match ty {
@@ -613,6 +613,8 @@ impl FromClean<clean::Type> for Type {
                 self_type: Box::new(self_type.into_json(renderer)),
                 trait_: trait_.map(|trait_| trait_.into_json(renderer)),
             },
+            // FIXME(unsafe_binder): Implement rustdoc-json.
+            UnsafeBinder(_) => todo!(),
         }
     }
 }
@@ -730,12 +732,11 @@ impl FromClean<clean::Impl> for Impl {
 }
 
 pub(crate) fn from_function(
-    function: Box<clean::Function>,
+    clean::Function { decl, generics }: clean::Function,
     has_body: bool,
     header: rustc_hir::FnHeader,
     renderer: &JsonRenderer<'_>,
 ) -> Function {
-    let clean::Function { decl, generics } = *function;
     Function {
         sig: decl.into_json(renderer),
         generics: generics.into_json(renderer),

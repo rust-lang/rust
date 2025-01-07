@@ -1,1 +1,1 @@
-int_module!(i128);
+int_module!(i128, u128);

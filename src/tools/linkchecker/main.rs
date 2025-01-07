@@ -8,7 +8,7 @@
 //!
 //! Currently uses a combination of HTML parsing to
 //! extract the `href` and `id` attributes,
-//! and regex search on the orignal markdown to handle intra-doc links.
+//! and regex search on the original markdown to handle intra-doc links.
 //!
 //! These values are then translated to file URLs if possible and then the
 //! destination is asserted to exist.

@@ -45,12 +45,12 @@ pub enum TypeAnnotationNeeded {
     E0284,
 }
 
-impl Into<ErrCode> for TypeAnnotationNeeded {
-    fn into(self) -> ErrCode {
-        match self {
-            Self::E0282 => E0282,
-            Self::E0283 => E0283,
-            Self::E0284 => E0284,
+impl From<TypeAnnotationNeeded> for ErrCode {
+    fn from(val: TypeAnnotationNeeded) -> Self {
+        match val {
+            TypeAnnotationNeeded::E0282 => E0282,
+            TypeAnnotationNeeded::E0283 => E0283,
+            TypeAnnotationNeeded::E0284 => E0284,
         }
     }
 }

@@ -225,7 +225,8 @@ pub(crate) fn orphan_check_impl(
             | ty::FnDef(..)
             | ty::FnPtr(..)
             | ty::Never
-            | ty::Tuple(..) => (LocalImpl::Allow, NonlocalImpl::DisallowOther),
+            | ty::Tuple(..)
+            | ty::UnsafeBinder(_) => (LocalImpl::Allow, NonlocalImpl::DisallowOther),
 
             ty::Closure(..)
             | ty::CoroutineClosure(..)

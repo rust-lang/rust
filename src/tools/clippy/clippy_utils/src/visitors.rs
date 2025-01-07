@@ -7,7 +7,7 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::intravisit::{self, Visitor, walk_block, walk_expr};
 use rustc_hir::{
     AnonConst, Arm, Block, BlockCheckMode, Body, BodyId, Expr, ExprKind, HirId, ItemId, ItemKind, LetExpr, Pat, QPath,
-    Stmt, UnOp, UnsafeSource, StructTailExpr,
+    Stmt, StructTailExpr, UnOp, UnsafeSource,
 };
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
@@ -677,6 +677,9 @@ pub fn for_each_unconsumed_temporary<'tcx, B>(
             ExprKind::Type(e, _) => {
                 helper(typeck, consume, e, f)?;
             },
+            ExprKind::UnsafeBinderCast(_, e, _) => {
+                helper(typeck, consume, e, f)?;
+            },
 
             // Either drops temporaries, jumps out of the current expression, or has no sub expression.
             ExprKind::DropTemps(_)
@@ -694,7 +697,6 @@ pub fn for_each_unconsumed_temporary<'tcx, B>(
             | ExprKind::Continue(_)
             | ExprKind::InlineAsm(_)
             | ExprKind::OffsetOf(..)
-            | ExprKind::UnsafeBinderCast(..)
             | ExprKind::Err(_) => (),
         }
         ControlFlow::Continue(())

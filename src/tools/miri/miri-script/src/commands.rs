@@ -1,12 +1,16 @@
+use std::collections::HashMap;
 use std::ffi::{OsStr, OsString};
-use std::io::Write;
-use std::ops::{Not, Range};
+use std::fs::File;
+use std::io::{BufReader, BufWriter, Write};
+use std::ops::Not;
 use std::path::PathBuf;
 use std::time::Duration;
 use std::{env, net, process};
 
 use anyhow::{Context, Result, anyhow, bail};
 use path_macro::path;
+use serde_derive::{Deserialize, Serialize};
+use tempfile::TempDir;
 use walkdir::WalkDir;
 use xshell::{Shell, cmd};
 
@@ -174,13 +178,13 @@ impl Command {
             Command::Check { flags } => Self::check(flags),
             Command::Test { bless, flags, target, coverage } =>
                 Self::test(bless, flags, target, coverage),
-            Command::Run { dep, verbose, many_seeds, target, edition, flags } =>
-                Self::run(dep, verbose, many_seeds, target, edition, flags),
+            Command::Run { dep, verbose, target, edition, flags } =>
+                Self::run(dep, verbose, target, edition, flags),
             Command::Doc { flags } => Self::doc(flags),
             Command::Fmt { flags } => Self::fmt(flags),
             Command::Clippy { flags } => Self::clippy(flags),
-            Command::Bench { target, no_install, benches } =>
-                Self::bench(target, no_install, benches),
+            Command::Bench { target, no_install, save_baseline, load_baseline, benches } =>
+                Self::bench(target, no_install, save_baseline, load_baseline, benches),
             Command::Toolchain { flags } => Self::toolchain(flags),
             Command::RustcPull { commit } => Self::rustc_pull(commit.clone()),
             Command::RustcPush { github_user, branch } => Self::rustc_push(github_user, branch),
@@ -379,7 +383,17 @@ impl Command {
         Ok(())
     }
 
-    fn bench(target: Option<String>, no_install: bool, benches: Vec<String>) -> Result<()> {
+    fn bench(
+        target: Option<String>,
+        no_install: bool,
+        save_baseline: Option<String>,
+        load_baseline: Option<String>,
+        benches: Vec<String>,
+    ) -> Result<()> {
+        if save_baseline.is_some() && load_baseline.is_some() {
+            bail!("Only one of `--save-baseline` and `--load-baseline` can be set");
+        }
+
         // The hyperfine to use
         let hyperfine = env::var("HYPERFINE");
         let hyperfine = hyperfine.as_deref().unwrap_or("hyperfine -w 1 -m 5 --shell=none");
@@ -387,19 +401,26 @@ impl Command {
         let Some((program_name, args)) = hyperfine.split_first() else {
             bail!("expected HYPERFINE environment variable to be non-empty");
         };
+
         if !no_install {
             // Make sure we have an up-to-date Miri installed and selected the right toolchain.
             Self::install(vec![])?;
         }
+        let results_json_dir = if save_baseline.is_some() || load_baseline.is_some() {
+            Some(TempDir::new()?)
+        } else {
+            None
+        };
 
+        let miri_dir = miri_dir()?;
         let sh = Shell::new()?;
-        sh.change_dir(miri_dir()?);
+        sh.change_dir(&miri_dir);
         let benches_dir = "bench-cargo-miri";
-        let benches: Vec<OsString> = if benches.is_empty() {
+        let benches: Vec<String> = if benches.is_empty() {
             sh.read_dir(benches_dir)?
                 .into_iter()
                 .filter(|path| path.is_dir())
-                .map(Into::into)
+                .map(|path| path.into_os_string().into_string().unwrap())
                 .collect()
         } else {
             benches.into_iter().map(Into::into).collect()
@@ -414,16 +435,75 @@ impl Command {
         let target_flag = &target_flag;
         let toolchain = active_toolchain()?;
         // Run the requested benchmarks
-        for bench in benches {
+        for bench in &benches {
             let current_bench = path!(benches_dir / bench / "Cargo.toml");
+            let mut export_json = None;
+            if let Some(baseline_temp_dir) = &results_json_dir {
+                export_json = Some(format!(
+                    "--export-json={}",
+                    path!(baseline_temp_dir / format!("{bench}.bench.json")).display()
+                ));
+            }
             // We don't attempt to escape `current_bench`, but we wrap it in quotes.
             // That seems to make Windows CI happy.
             cmd!(
                 sh,
-                "{program_name} {args...} 'cargo +'{toolchain}' miri run '{target_flag}' --manifest-path \"'{current_bench}'\"'"
+                "{program_name} {args...} {export_json...} 'cargo +'{toolchain}' miri run '{target_flag}' --manifest-path \"'{current_bench}'\"'"
             )
             .run()?;
         }
+
+        // Gather/load results for baseline saving.
+
+        #[derive(Serialize, Deserialize)]
+        struct BenchResult {
+            mean: f64,
+            stddev: f64,
+        }
+
+        let gather_results = || -> Result<HashMap<&str, BenchResult>> {
+            let baseline_temp_dir = results_json_dir.unwrap();
+            let mut results = HashMap::new();
+            for bench in &benches {
+                let result = File::open(path!(baseline_temp_dir / format!("{bench}.bench.json")))?;
+                let mut result: serde_json::Value =
+                    serde_json::from_reader(BufReader::new(result))?;
+                let result: BenchResult = serde_json::from_value(result["results"][0].take())?;
+                results.insert(bench as &str, result);
+            }
+            Ok(results)
+        };
+
+        if let Some(baseline_file) = save_baseline {
+            let results = gather_results()?;
+            let baseline = File::create(baseline_file)?;
+            serde_json::to_writer_pretty(BufWriter::new(baseline), &results)?;
+        } else if let Some(baseline_file) = load_baseline {
+            let new_results = gather_results()?;
+            let baseline_results: HashMap<String, BenchResult> = {
+                let f = File::open(baseline_file)?;
+                serde_json::from_reader(BufReader::new(f))?
+            };
+            println!(
+                "Comparison with baseline (relative speed, lower is better for the new results):"
+            );
+            for (bench, new_result) in new_results.iter() {
+                let Some(baseline_result) = baseline_results.get(*bench) else { continue };
+
+                // Compare results (inspired by hyperfine)
+                let ratio = new_result.mean / baseline_result.mean;
+                // https://en.wikipedia.org/wiki/Propagation_of_uncertainty#Example_formulae
+                // Covariance asssumed to be 0, i.e. variables are assumed to be independent
+                let ratio_stddev = ratio
+                    * f64::sqrt(
+                        (new_result.stddev / new_result.mean).powi(2)
+                            + (baseline_result.stddev / baseline_result.mean).powi(2),
+                    );
+
+                println!("  {bench}: {ratio:.2} ± {ratio_stddev:.2}");
+            }
+        }
+
         Ok(())
     }
 
@@ -506,7 +586,6 @@ impl Command {
     fn run(
         dep: bool,
         verbose: bool,
-        many_seeds: Option<Range<u32>>,
         target: Option<String>,
         edition: Option<String>,
         flags: Vec<String>,
@@ -534,48 +613,34 @@ impl Command {
         early_flags.push("--sysroot".into());
         early_flags.push(miri_sysroot.into());
 
-        // Compute everything needed to run the actual command. Also add MIRIFLAGS.
+        // Compute flags.
         let miri_flags = e.sh.var("MIRIFLAGS").unwrap_or_default();
         let miri_flags = flagsplit(&miri_flags);
         let quiet_flag = if verbose { None } else { Some("--quiet") };
-        // This closure runs the command with the given `seed_flag` added between the MIRIFLAGS and
-        // the `flags` given on the command-line.
-        let run_miri = |e: &MiriEnv, seed_flag: Option<String>| -> Result<()> {
-            // The basic command that executes the Miri driver.
-            let mut cmd = if dep {
-                // We invoke the test suite as that has all the logic for running with dependencies.
-                e.cargo_cmd(".", "test")
-                    .args(&["--test", "ui"])
-                    .args(quiet_flag)
-                    .arg("--")
-                    .args(&["--miri-run-dep-mode"])
-            } else {
-                cmd!(e.sh, "{miri_bin}")
-            };
-            cmd.set_quiet(!verbose);
-            // Add Miri flags
-            let mut cmd = cmd.args(&miri_flags).args(&seed_flag).args(&early_flags).args(&flags);
-            // For `--dep` we also need to set the target in the env var.
-            if dep {
-                if let Some(target) = &target {
-                    cmd = cmd.env("MIRI_TEST_TARGET", target);
-                }
-            }
-            // And run the thing.
-            Ok(cmd.run()?)
-        };
-        // Run the closure once or many times.
-        if let Some(seed_range) = many_seeds {
-            e.run_many_times(seed_range, |e, seed| {
-                eprintln!("Trying seed: {seed}");
-                run_miri(e, Some(format!("-Zmiri-seed={seed}"))).inspect_err(|_| {
-                    eprintln!("FAILING SEED: {seed}");
-                })
-            })?;
+
+        // Run Miri.
+        // The basic command that executes the Miri driver.
+        let mut cmd = if dep {
+            // We invoke the test suite as that has all the logic for running with dependencies.
+            e.cargo_cmd(".", "test")
+                .args(&["--test", "ui"])
+                .args(quiet_flag)
+                .arg("--")
+                .args(&["--miri-run-dep-mode"])
         } else {
-            run_miri(&e, None)?;
+            cmd!(e.sh, "{miri_bin}")
+        };
+        cmd.set_quiet(!verbose);
+        // Add Miri flags
+        let mut cmd = cmd.args(&miri_flags).args(&early_flags).args(&flags);
+        // For `--dep` we also need to set the target in the env var.
+        if dep {
+            if let Some(target) = &target {
+                cmd = cmd.env("MIRI_TEST_TARGET", target);
+            }
         }
-        Ok(())
+        // Finally, run the thing.
+        Ok(cmd.run()?)
     }
 
     fn fmt(flags: Vec<String>) -> Result<()> {

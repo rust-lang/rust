@@ -1,4 +1,4 @@
-//@ normalize-stderr-test: "\d+ bits" -> "$$BITS bits"
+//@ normalize-stderr: "\d+ bits" -> "$$BITS bits"
 
 // Regression test for issue #124031
 // Checks that we don't ICE when the tail

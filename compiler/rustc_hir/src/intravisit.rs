@@ -509,7 +509,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             try_visit!(visitor.visit_generics(generics));
             try_visit!(visitor.visit_nested_body(body));
         }
-        ItemKind::Fn(ref sig, ref generics, body_id) => {
+        ItemKind::Fn { sig, generics, body: body_id, .. } => {
             try_visit!(visitor.visit_id(item.hir_id()));
             try_visit!(visitor.visit_fn(
                 FnKind::ItemFn(item.ident, generics, sig.header),
@@ -928,8 +928,8 @@ pub fn walk_generic_param<'v, V: Visitor<'v>>(
 ) -> V::Result {
     try_visit!(visitor.visit_id(param.hir_id));
     match param.name {
-        ParamName::Plain(ident) => try_visit!(visitor.visit_ident(ident)),
-        ParamName::Error | ParamName::Fresh => {}
+        ParamName::Plain(ident) | ParamName::Error(ident) => try_visit!(visitor.visit_ident(ident)),
+        ParamName::Fresh => {}
     }
     match param.kind {
         GenericParamKind::Lifetime { .. } => {}

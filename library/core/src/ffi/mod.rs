@@ -12,10 +12,10 @@
 #[doc(inline)]
 #[stable(feature = "core_c_str", since = "1.64.0")]
 pub use self::c_str::CStr;
-#[doc(no_inline)]
+#[doc(inline)]
 #[stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]
 pub use self::c_str::FromBytesUntilNulError;
-#[doc(no_inline)]
+#[doc(inline)]
 #[stable(feature = "core_c_str", since = "1.64.0")]
 pub use self::c_str::FromBytesWithNulError;
 use crate::fmt;

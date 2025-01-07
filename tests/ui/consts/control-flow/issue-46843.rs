@@ -8,7 +8,7 @@ fn non_const() -> Thing {
 }
 
 pub const Q: i32 = match non_const() {
-    //~^ ERROR cannot call non-const fn
+    //~^ ERROR cannot call non-const function
     Thing::This => 1,
     Thing::That => 0
 };

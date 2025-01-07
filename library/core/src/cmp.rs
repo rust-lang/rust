@@ -348,7 +348,7 @@ pub trait Eq: PartialEq<Self> {
 #[rustc_builtin_macro]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow_internal_unstable(core_intrinsics, derive_eq, structural_match)]
-#[cfg_attr(bootstrap, allow_internal_unstable(coverage_attribute))]
+#[allow_internal_unstable(coverage_attribute)]
 pub macro Eq($item:item) {
     /* compiler built-in */
 }
@@ -796,7 +796,7 @@ impl<T: Clone> Clone for Reverse<T> {
 /// }
 ///
 /// impl Ord for Character {
-///     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+///     fn cmp(&self, other: &Self) -> Ordering {
 ///         self.experience
 ///             .cmp(&other.experience)
 ///             .then(self.health.cmp(&other.health))

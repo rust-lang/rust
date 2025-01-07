@@ -2,7 +2,7 @@
 #![feature(pattern_type_macro)]
 #![allow(incomplete_features)]
 
-//@ normalize-stderr-test: "pref: Align\([1-8] bytes\)" -> "pref: $$SOME_ALIGN"
+//@ normalize-stderr: "pref: Align\([1-8] bytes\)" -> "pref: $$SOME_ALIGN"
 
 use std::pat::pattern_type;
 

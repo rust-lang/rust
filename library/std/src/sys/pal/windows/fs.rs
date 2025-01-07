@@ -316,19 +316,31 @@ impl File {
                 && api::get_last_error() == WinError::ALREADY_EXISTS
             {
                 unsafe {
-                    // This originally used `FileAllocationInfo` instead of
-                    // `FileEndOfFileInfo` but that wasn't supported by WINE.
-                    // It's arguable which fits the semantics of `OpenOptions`
-                    // better so let's just use the more widely supported method.
-                    let eof = c::FILE_END_OF_FILE_INFO { EndOfFile: 0 };
+                    // This first tries `FileAllocationInfo` but falls back to
+                    // `FileEndOfFileInfo` in order to support WINE.
+                    // If WINE gains support for FileAllocationInfo, we should
+                    // remove the fallback.
+                    let alloc = c::FILE_ALLOCATION_INFO { AllocationSize: 0 };
                     let result = c::SetFileInformationByHandle(
                         handle.as_raw_handle(),
-                        c::FileEndOfFileInfo,
-                        (&raw const eof).cast::<c_void>(),
-                        mem::size_of::<c::FILE_END_OF_FILE_INFO>() as u32,
+                        c::FileAllocationInfo,
+                        (&raw const alloc).cast::<c_void>(),
+                        mem::size_of::<c::FILE_ALLOCATION_INFO>() as u32,
                     );
                     if result == 0 {
-                        return Err(io::Error::last_os_error());
+                        if api::get_last_error().code != 0 {
+                            panic!("FILE_ALLOCATION_INFO failed!!!");
+                        }
+                        let eof = c::FILE_END_OF_FILE_INFO { EndOfFile: 0 };
+                        let result = c::SetFileInformationByHandle(
+                            handle.as_raw_handle(),
+                            c::FileEndOfFileInfo,
+                            (&raw const eof).cast::<c_void>(),
+                            mem::size_of::<c::FILE_END_OF_FILE_INFO>() as u32,
+                        );
+                        if result == 0 {
+                            return Err(io::Error::last_os_error());
+                        }
                     }
                 }
             }
@@ -1283,15 +1295,18 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
             } else {
                 // SAFETY: The struct has been initialized by GetFileInformationByHandleEx
                 let file_attribute_tag_info = unsafe { file_attribute_tag_info.assume_init() };
+                let file_type = FileType::new(
+                    file_attribute_tag_info.FileAttributes,
+                    file_attribute_tag_info.ReparseTag,
+                );
 
-                if file_attribute_tag_info.FileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0
-                    && file_attribute_tag_info.ReparseTag != c::IO_REPARSE_TAG_MOUNT_POINT
-                {
-                    // The file is not a mount point: Reopen the file without inhibiting reparse point behavior.
-                    None
-                } else {
-                    // The file is a mount point: Don't reopen the file so that the mount point gets renamed.
+                if file_type.is_symlink() {
+                    // The file is a mount point, junction point or symlink so
+                    // don't reopen the file so that the link gets renamed.
                     Some(Ok(handle))
+                } else {
+                    // Otherwise reopen the file without inhibiting reparse point behavior.
+                    None
                 }
             }
         }

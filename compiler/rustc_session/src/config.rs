@@ -168,9 +168,10 @@ pub struct CoverageOptions {
 }
 
 /// Controls whether branch coverage or MC/DC coverage is enabled.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
 pub enum CoverageLevel {
     /// Instrument for coverage at the MIR block level.
+    #[default]
     Block,
     /// Also instrument branch points (includes block coverage).
     Branch,
@@ -193,12 +194,6 @@ pub enum CoverageLevel {
     /// Instrument for MC/DC. Mostly a superset of condition coverage, but might
     /// differ in some corner cases.
     Mcdc,
-}
-
-impl Default for CoverageLevel {
-    fn default() -> Self {
-        Self::Block
-    }
 }
 
 /// Settings for `-Z instrument-xray` flag.

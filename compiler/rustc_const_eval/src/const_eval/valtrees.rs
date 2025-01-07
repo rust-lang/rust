@@ -178,7 +178,8 @@ fn const_to_valtree_inner<'tcx>(
         | ty::Closure(..)
         | ty::CoroutineClosure(..)
         | ty::Coroutine(..)
-        | ty::CoroutineWitness(..) => Err(ValTreeCreationError::NonSupportedType(ty)),
+        | ty::CoroutineWitness(..)
+        | ty::UnsafeBinder(_) => Err(ValTreeCreationError::NonSupportedType(ty)),
     }
 }
 
@@ -358,7 +359,10 @@ pub fn valtree_to_const_value<'tcx>(
         | ty::FnPtr(..)
         | ty::Str
         | ty::Slice(_)
-        | ty::Dynamic(..) => bug!("no ValTree should have been created for type {:?}", ty.kind()),
+        | ty::Dynamic(..)
+        | ty::UnsafeBinder(_) => {
+            bug!("no ValTree should have been created for type {:?}", ty.kind())
+        }
     }
 }
 

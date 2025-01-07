@@ -103,7 +103,7 @@ where
                 |ecx| {
                     // Const conditions must hold for the implied const bound to hold.
                     ecx.add_goals(
-                        GoalSource::Misc,
+                        GoalSource::AliasBoundConstCondition,
                         cx.const_conditions(alias_ty.def_id)
                             .iter_instantiated(cx, alias_ty.args)
                             .map(|trait_ref| {
@@ -353,7 +353,7 @@ where
 
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
             ecx.add_goals(
-                GoalSource::Misc,
+                GoalSource::AliasBoundConstCondition,
                 const_conditions.into_iter().map(|trait_ref| {
                     goal.with(
                         cx,

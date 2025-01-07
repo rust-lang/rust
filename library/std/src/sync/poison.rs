@@ -1,3 +1,78 @@
+//! Synchronization objects that employ poisoning.
+//!
+//! # Poisoning
+//!
+//! All synchronization objects in this module implement a strategy called "poisoning"
+//! where if a thread panics while holding the exclusive access granted by the primitive,
+//! the state of the primitive is set to "poisoned".
+//! This information is then propagated to all other threads
+//! to signify that the data protected by this primitive is likely tainted
+//! (some invariant is not being upheld).
+//!
+//! The specifics of how this "poisoned" state affects other threads
+//! depend on the primitive. See [#Overview] bellow.
+//!
+//! For the alternative implementations that do not employ poisoning,
+//! see `std::sys::nonpoisoning`.
+//!
+//! # Overview
+//!
+//! Below is a list of synchronization objects provided by this module
+//! with a high-level overview for each object and a description
+//! of how it employs "poisoning".
+//!
+//! - [`Condvar`]: Condition Variable, providing the ability to block
+//!   a thread while waiting for an event to occur.
+//!
+//!   Condition variables are typically associated with
+//!   a boolean predicate (a condition) and a mutex.
+//!   This implementation is associated with [`poison::Mutex`](Mutex),
+//!   which employs poisoning.
+//!   For this reason, [`Condvar::wait()`] will return a [`LockResult`],
+//!   just like [`poison::Mutex::lock()`](Mutex::lock) does.
+//!
+//! - [`Mutex`]: Mutual Exclusion mechanism, which ensures that at
+//!   most one thread at a time is able to access some data.
+//!
+//!   [`Mutex::lock()`] returns a [`LockResult`],
+//!   providing a way to deal with the poisoned state.
+//!   See [`Mutex`'s documentation](Mutex#poisoning) for more.
+//!
+//! - [`Once`]: A thread-safe way to run a piece of code only once.
+//!   Mostly useful for implementing one-time global initialization.
+//!
+//!   [`Once`] is poisoned if the piece of code passed to
+//!   [`Once::call_once()`] or [`Once::call_once_force()`] panics.
+//!   When in poisoned state, subsequent calls to [`Once::call_once()`] will panic too.
+//!   [`Once::call_once_force()`] can be used to clear the poisoned state.
+//!
+//! - [`RwLock`]: Provides a mutual exclusion mechanism which allows
+//!   multiple readers at the same time, while allowing only one
+//!   writer at a time. In some cases, this can be more efficient than
+//!   a mutex.
+//!
+//!   This implementation, like [`Mutex`], will become poisoned on a panic.
+//!   Note, however, that an `RwLock` may only be poisoned if a panic occurs
+//!   while it is locked exclusively (write mode). If a panic occurs in any reader,
+//!   then the lock will not be poisoned.
+
+// FIXME(sync_nonpoison) add links to sync::nonpoison to the doc comment above.
+
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use self::condvar::{Condvar, WaitTimeoutResult};
+#[unstable(feature = "mapped_lock_guards", issue = "117108")]
+pub use self::mutex::MappedMutexGuard;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use self::mutex::{Mutex, MutexGuard};
+#[stable(feature = "rust1", since = "1.0.0")]
+#[expect(deprecated)]
+pub use self::once::ONCE_INIT;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use self::once::{Once, OnceState};
+#[unstable(feature = "mapped_lock_guards", issue = "117108")]
+pub use self::rwlock::{MappedRwLockReadGuard, MappedRwLockWriteGuard};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use self::rwlock::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use crate::error::Error;
 use crate::fmt;
 #[cfg(panic = "unwind")]
@@ -5,7 +80,13 @@ use crate::sync::atomic::{AtomicBool, Ordering};
 #[cfg(panic = "unwind")]
 use crate::thread;
 
-pub struct Flag {
+mod condvar;
+#[stable(feature = "rust1", since = "1.0.0")]
+mod mutex;
+pub(crate) mod once;
+mod rwlock;
+
+pub(crate) struct Flag {
     #[cfg(panic = "unwind")]
     failed: AtomicBool,
 }
@@ -78,7 +159,7 @@ impl Flag {
 }
 
 #[derive(Clone)]
-pub struct Guard {
+pub(crate) struct Guard {
     #[cfg(panic = "unwind")]
     panicking: bool,
 }
@@ -316,7 +397,7 @@ impl<T> Error for TryLockError<T> {
     }
 }
 
-pub fn map_result<T, U, F>(result: LockResult<T>, f: F) -> LockResult<U>
+pub(crate) fn map_result<T, U, F>(result: LockResult<T>, f: F) -> LockResult<U>
 where
     F: FnOnce(T) -> U,
 {

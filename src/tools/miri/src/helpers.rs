@@ -1,6 +1,4 @@
-use std::collections::BTreeSet;
 use std::num::NonZero;
-use std::sync::Mutex;
 use std::time::Duration;
 use std::{cmp, iter};
 
@@ -332,19 +330,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         base: &P,
         name: &str,
     ) -> InterpResult<'tcx, P> {
-        if let Some(field) = self.try_project_field_named(base, name)? {
-            return interp_ok(field);
-        }
-        bug!("No field named {} in type {}", name, base.layout().ty);
-    }
-
-    /// Search if `base` (which must be a struct or union type) contains the `name` field.
-    fn projectable_has_field<P: Projectable<'tcx, Provenance>>(
-        &self,
-        base: &P,
-        name: &str,
-    ) -> bool {
-        self.try_project_field_named(base, name).unwrap().is_some()
+        interp_ok(
+            self.try_project_field_named(base, name)?
+                .unwrap_or_else(|| bug!("no field named {} in type {}", name, base.layout().ty)),
+        )
     }
 
     /// Write an int of the appropriate size to `dest`. The target type may be signed or unsigned,
@@ -650,11 +639,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match reject_with {
             RejectOpWith::Abort => isolation_abort_error(op_name),
             RejectOpWith::WarningWithoutBacktrace => {
-                // This exists to reduce verbosity; make sure we emit the warning at most once per
-                // operation.
-                static EMITTED_WARNINGS: Mutex<BTreeSet<String>> = Mutex::new(BTreeSet::new());
-
-                let mut emitted_warnings = EMITTED_WARNINGS.lock().unwrap();
+                let mut emitted_warnings = this.machine.reject_in_isolation_warned.borrow_mut();
                 if !emitted_warnings.contains(op_name) {
                     // First time we are seeing this.
                     emitted_warnings.insert(op_name.to_owned());
@@ -662,6 +647,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         .dcx()
                         .warn(format!("{op_name} was made to return an error due to isolation"));
                 }
+
                 interp_ok(())
             }
             RejectOpWith::Warning => {

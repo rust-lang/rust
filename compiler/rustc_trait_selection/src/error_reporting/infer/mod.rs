@@ -1496,8 +1496,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     ValuePairs::Terms(ExpectedFound { expected, found }) => {
                         match (expected.unpack(), found.unpack()) {
                             (ty::TermKind::Ty(expected), ty::TermKind::Ty(found)) => {
-                                let is_simple_err = expected.is_simple_text(self.tcx)
-                                    && found.is_simple_text(self.tcx);
+                                let is_simple_err =
+                                    expected.is_simple_text() && found.is_simple_text();
                                 OpaqueTypesVisitor::visit_expected_found(
                                     self.tcx, expected, found, span,
                                 )
@@ -1736,8 +1736,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         (true, _) => format!(" ({})", ty.sort_string(self.tcx)),
                         (false, _) => "".to_string(),
                     };
-                    if !(values.expected.is_simple_text(self.tcx)
-                        && values.found.is_simple_text(self.tcx))
+                    if !(values.expected.is_simple_text() && values.found.is_simple_text())
                         || (exp_found.is_some_and(|ef| {
                             // This happens when the type error is a subset of the expectation,
                             // like when you have two references but one is `usize` and the other
@@ -1978,7 +1977,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return None;
         };
         let tykind = match self.tcx.hir_node_by_def_id(trace.cause.body_id) {
-            hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body_id), .. }) => {
+            hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Fn { body: body_id, .. }, ..
+            }) => {
                 let body = hir.body(*body_id);
                 struct LetVisitor {
                     span: Span,

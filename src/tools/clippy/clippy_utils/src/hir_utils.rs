@@ -7,10 +7,10 @@ use rustc_data_structures::fx::FxHasher;
 use rustc_hir::MatchSource::TryDesugar;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{
-    AssocItemConstraint, BinOpKind, BindingMode, Block, BodyId, Closure, ConstArg, ConstArgKind, Expr,
-    ExprField, ExprKind, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime,
-    LifetimeName, Pat, PatField, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitBoundModifiers, Ty,
-    TyKind, StructTailExpr,
+    AssocItemConstraint, BinOpKind, BindingMode, Block, BodyId, Closure, ConstArg, ConstArgKind, Expr, ExprField,
+    ExprKind, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime, LifetimeName,
+    Pat, PatField, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, StructTailExpr, TraitBoundModifiers, Ty,
+    TyKind,
 };
 use rustc_lexer::{TokenKind, tokenize};
 use rustc_lint::LateContext;
@@ -386,7 +386,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                 self.eq_qpath(l_path, r_path)
                     && match (lo, ro) {
                         (StructTailExpr::Base(l),StructTailExpr::Base(r)) => self.eq_expr(l, r),
-                        (StructTailExpr::None, StructTailExpr::None) => true,
+                        (StructTailExpr::None, StructTailExpr::None) |
                         (StructTailExpr::DefaultFields(_), StructTailExpr::DefaultFields(_)) => true,
                         _ => false,
                     }
@@ -473,10 +473,10 @@ impl HirEqInterExpr<'_, '_, '_> {
             (ConstArgKind::Anon(l_an), ConstArgKind::Anon(r_an)) => self.eq_body(l_an.body, r_an.body),
             (ConstArgKind::Infer(..), ConstArgKind::Infer(..)) => true,
             // Use explicit match for now since ConstArg is undergoing flux.
-            (ConstArgKind::Path(..), ConstArgKind::Anon(..)) | (ConstArgKind::Anon(..), ConstArgKind::Path(..))
-            | (ConstArgKind::Infer(..), _) | (_, ConstArgKind::Infer(..)) => {
-                false
-            },
+            (ConstArgKind::Path(..), ConstArgKind::Anon(..))
+            | (ConstArgKind::Anon(..), ConstArgKind::Path(..))
+            | (ConstArgKind::Infer(..), _)
+            | (_, ConstArgKind::Infer(..)) => false,
         }
     }
 
@@ -1043,7 +1043,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 if let Some(ty) = ty {
                     self.hash_ty(ty);
                 }
-            }
+            },
             ExprKind::Err(_) => {},
         }
     }
@@ -1255,7 +1255,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             },
             TyKind::UnsafeBinder(binder) => {
                 self.hash_ty(binder.inner_ty);
-            }
+            },
             TyKind::Err(_)
             | TyKind::Infer
             | TyKind::Never

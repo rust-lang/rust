@@ -1,31 +1,11 @@
-#![allow(clippy::needless_question_mark)]
+#![allow(clippy::needless_question_mark, rustc::internal)]
 
 mod commands;
 mod coverage;
 mod util;
 
-use std::ops::Range;
-
-use anyhow::{Context, Result, anyhow, bail};
+use anyhow::{Result, bail};
 use clap::{Parser, Subcommand};
-
-/// Parses a seed range
-///
-/// This function is used for the `--many-seeds` flag. It expects the range in the form
-/// `<from>..<to>`. `<from>` is inclusive, `<to>` is exclusive. `<from>` can be omitted,
-/// in which case it is assumed to be `0`.
-fn parse_range(val: &str) -> anyhow::Result<Range<u32>> {
-    let (from, to) = val
-        .split_once("..")
-        .ok_or_else(|| anyhow!("invalid format for `--many-seeds`: expected `from..to`"))?;
-    let from: u32 = if from.is_empty() {
-        0
-    } else {
-        from.parse().context("invalid `from` in `--many-seeds=from..to")?
-    };
-    let to: u32 = to.parse().context("invalid `to` in `--many-seeds=from..to")?;
-    Ok(from..to)
-}
 
 #[derive(Clone, Debug, Subcommand)]
 pub enum Command {
@@ -81,9 +61,6 @@ pub enum Command {
         /// Show build progress.
         #[arg(long, short)]
         verbose: bool,
-        /// Run the driver with the seeds in the given range (`..to` or `from..to`, default: `0..64`).
-        #[arg(long, value_parser = parse_range)]
-        many_seeds: Option<Range<u32>>,
         /// The cross-interpretation target.
         #[arg(long)]
         target: Option<String>,
@@ -117,6 +94,14 @@ pub enum Command {
         /// When `true`, skip the `./miri install` step.
         #[arg(long)]
         no_install: bool,
+        /// Store the benchmark result in the given file, so it can be used
+        /// as the baseline for a future run.
+        #[arg(long)]
+        save_baseline: Option<String>,
+        /// Load previous stored benchmark results as baseline, and print an analysis of how the
+        /// current run compares.
+        #[arg(long)]
+        load_baseline: Option<String>,
         /// List of benchmarks to run (default: run all benchmarks).
         benches: Vec<String>,
     },
