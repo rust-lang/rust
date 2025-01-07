@@ -486,6 +486,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             InlineAttr::Always
         } else if item.has_name(sym::never) {
             InlineAttr::Never
+        } else if item.has_name(sym::usually) {
+            InlineAttr::Usually
         } else {
             tcx.dcx().emit_err(errors::InvalidArgument { span: items[0].span() });
 
