@@ -44,8 +44,8 @@ use crate::{
             FormatPlaceholder, FormatSign, FormatTrait,
         },
         Array, Binding, BindingAnnotation, BindingId, BindingProblems, CaptureBy, ClosureKind,
-        Expr, ExprId, Item, Label, LabelId, Literal, LiteralOrConst, MatchArm, Movability,
-        OffsetOf, Pat, PatId, RecordFieldPat, RecordLitField, Statement,
+        Expr, ExprId, Item, Label, LabelId, Literal, MatchArm, Movability, OffsetOf, Pat, PatId,
+        RecordFieldPat, RecordLitField, Statement,
     },
     item_scope::BuiltinShadowMode,
     lang_item::LangItem,
@@ -1802,10 +1802,15 @@ impl ExprCollector<'_> {
                                     ptr,
                                 ))
                             }
-                            pat @ (ast::Pat::IdentPat(_) | ast::Pat::PathPat(_)) => {
-                                // let subpat = self.collect_pat(pat.clone(), binding_list);
-                                // Some(Box::new(LiteralOrConst::Const(subpat)))
-                                // TODO
+                            ast::Pat::IdentPat(_) => Some(self.missing_expr()),
+                            ast::Pat::PathPat(p) => {
+                                if let Some(path) = p.path() {
+                                    if let Some(parsed) = self.parse_path(path) {
+                                        return Some(
+                                            self.alloc_expr_from_pat(Expr::Path(parsed), ptr),
+                                        );
+                                    }
+                                }
                                 Some(self.missing_expr())
                             }
                             _ => None,

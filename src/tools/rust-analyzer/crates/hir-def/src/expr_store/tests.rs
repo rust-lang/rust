@@ -460,3 +460,46 @@ async fn foo(a: (), b: i32) -> u32 {
     expect!["fn foo(�: (), �: i32) -> impl ::core::future::Future::<Output = u32> �"]
         .assert_eq(&printed);
 }
+
+fn abc() {
+    let (db, body, owner) = lower(
+        r#"
+pub const L: i32 = 6;
+mod x {
+    pub const R: i32 = 100;
+}
+const fn f(x: i32) -> i32 {
+    match x {
+        -1..=5 => x * 10,
+        L..=x::R => x * 100,
+        _ => x,
+    }
+}"#,
+    );
+
+    for (pat_id, pat) in body.pats.iter() {
+        match pat {
+            Pat::Range { start, end } => {
+                let pretty = body.pretty_print_pat(&db, owner, pat_id, false, Edition::Edition2021);
+                eprintln!("RANGE {}", pretty);
+
+                if let Some(start) = start {
+                    eprintln!("START");
+                    let expr = body.exprs[*start].clone();
+                    dbg!(expr);
+                } else {
+                    eprintln!("START is None");
+                }
+
+                if let Some(end) = end {
+                    eprintln!("END");
+                    let expr = body.exprs[*end].clone();
+                    dbg!(expr);
+                } else {
+                    eprintln!("END is None");
+                }
+            }
+            _ => {}
+        }
+    }
+}
