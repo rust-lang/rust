@@ -141,14 +141,6 @@ impl EraseType for Result<rustc_abi::TyAndLayout<'_, Ty<'_>>, &ty::layout::Layou
     >()];
 }
 
-impl EraseType for Result<ty::Const<'_>, mir::interpret::LitToConstError> {
-    type Result = [u8; size_of::<Result<ty::Const<'static>, mir::interpret::LitToConstError>>()];
-}
-
-impl EraseType for Result<mir::Const<'_>, mir::interpret::LitToConstError> {
-    type Result = [u8; size_of::<Result<mir::Const<'static>, mir::interpret::LitToConstError>>()];
-}
-
 impl EraseType for Result<mir::ConstAlloc<'_>, mir::interpret::ErrorHandled> {
     type Result = [u8; size_of::<Result<mir::ConstAlloc<'static>, mir::interpret::ErrorHandled>>()];
 }
@@ -296,7 +288,6 @@ trivial! {
     rustc_middle::mir::interpret::AllocId,
     rustc_middle::mir::interpret::CtfeProvenance,
     rustc_middle::mir::interpret::ErrorHandled,
-    rustc_middle::mir::interpret::LitToConstError,
     rustc_middle::thir::ExprId,
     rustc_middle::traits::CodegenObligationError,
     rustc_middle::traits::EvaluationResult,

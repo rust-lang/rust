@@ -35,7 +35,7 @@ use rustc_hir::{self as hir, AnonConst, GenericArg, GenericArgs, HirId};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::middle::stability::AllowUnstable;
-use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
+use rustc_middle::mir::interpret::LitToConstInput;
 use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::print::PrintPolyTraitRefExt as _;
 use rustc_middle::ty::{
@@ -2269,7 +2269,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // Allow the `ty` to be an alias type, though we cannot handle it here, we just go through
             // the more expensive anon const code path.
             if !lit_input.ty.has_aliases() {
-                return Some(tcx.at(expr.span).lit_to_const(lit_input).unwrap());
+                return Some(tcx.at(expr.span).lit_to_const(lit_input));
             }
         }
 
@@ -2447,10 +2447,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 hir::PatExprKind::Lit { lit, negated } => {
                                     let lit_input =
                                         LitToConstInput { lit: &lit.node, ty, neg: negated };
-                                    let ct = match tcx.lit_to_const(lit_input) {
-                                        Ok(c) => c,
-                                        Err(LitToConstError::TypeError) => todo!(),
-                                    };
+                                    let ct = tcx.lit_to_const(lit_input);
                                     (ct, ty)
                                 }
 
