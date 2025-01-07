@@ -464,7 +464,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
             // Get the root obligation, since the leaf obligation we have may be unhelpful (#87437)
             let mut real_trait_pred = trait_pred;
-            while let Some((parent_code, parent_trait_pred)) = code.parent() {
+            while let Some((parent_code, parent_trait_pred)) = code.parent_with_predicate() {
                 code = parent_code;
                 if let Some(parent_trait_pred) = parent_trait_pred {
                     real_trait_pred = parent_trait_pred;
@@ -1447,7 +1447,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let mut span = obligation.cause.span;
         let mut trait_pred = trait_pred;
         let mut code = obligation.cause.code();
-        while let Some((c, Some(parent_trait_pred))) = code.parent() {
+        while let Some((c, Some(parent_trait_pred))) = code.parent_with_predicate() {
             // We want the root obligation, in order to detect properly handle
             // `for _ in &mut &mut vec![] {}`.
             code = c;
@@ -3462,6 +3462,59 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         body_id,
                         err,
                         parent_predicate,
+                        param_env,
+                        &data.parent_code,
+                        obligated_types,
+                        seen_requirements,
+                        long_ty_file,
+                    )
+                });
+            }
+            ObligationCauseCode::ImplDerivedHost(ref data) => {
+                let self_ty =
+                    self.resolve_vars_if_possible(data.derived.parent_host_pred.self_ty());
+                let msg = format!(
+                    "required for `{self_ty}` to implement `{} {}`",
+                    data.derived.parent_host_pred.skip_binder().constness,
+                    data.derived
+                        .parent_host_pred
+                        .map_bound(|pred| pred.trait_ref)
+                        .print_only_trait_path(),
+                );
+                match tcx.hir().get_if_local(data.impl_def_id) {
+                    Some(Node::Item(hir::Item {
+                        kind: hir::ItemKind::Impl(hir::Impl { of_trait, self_ty, .. }),
+                        ..
+                    })) => {
+                        let mut spans = vec![self_ty.span];
+                        spans.extend(of_trait.as_ref().map(|t| t.path.span));
+                        let mut spans: MultiSpan = spans.into();
+                        spans.push_span_label(data.span, "unsatisfied trait bound introduced here");
+                        err.span_note(spans, msg);
+                    }
+                    _ => {
+                        err.note(msg);
+                    }
+                }
+                ensure_sufficient_stack(|| {
+                    self.note_obligation_cause_code(
+                        body_id,
+                        err,
+                        data.derived.parent_host_pred,
+                        param_env,
+                        &data.derived.parent_code,
+                        obligated_types,
+                        seen_requirements,
+                        long_ty_file,
+                    )
+                });
+            }
+            ObligationCauseCode::BuiltinDerivedHost(ref data) => {
+                ensure_sufficient_stack(|| {
+                    self.note_obligation_cause_code(
+                        body_id,
+                        err,
+                        data.parent_host_pred,
                         param_env,
                         &data.parent_code,
                         obligated_types,
