@@ -56,7 +56,7 @@ fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) ->
 
     let (ident, vdata, fields) = match substr.fields {
         Struct(vdata, fields) => (substr.type_ident, *vdata, fields),
-        EnumMatching(_, v, fields) => (v.ident, &v.data, fields),
+        EnumMatching(v, fields) => (v.ident, &v.data, fields),
         AllFieldlessEnum(enum_def) => return show_fieldless_enum(cx, span, enum_def, substr),
         EnumDiscr(..) | StaticStruct(..) | StaticEnum(..) => {
             cx.dcx().span_bug(span, "nonsensical .fields in `#[derive(Debug)]`")

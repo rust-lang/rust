@@ -42,7 +42,7 @@ pub(crate) fn expand_deriving_default(
                     StaticStruct(_, fields) => {
                         default_struct_substructure(cx, trait_span, substr, fields)
                     }
-                    StaticEnum(enum_def, _) => {
+                    StaticEnum(enum_def) => {
                         default_enum_substructure(cx, trait_span, enum_def, item.span())
                     }
                     _ => cx.dcx().span_bug(trait_span, "method in `derive(Default)`"),
