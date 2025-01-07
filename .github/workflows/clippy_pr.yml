@@ -30,7 +30,9 @@ jobs:
         persist-credentials: false
 
     - name: Install toolchain
-      run: rustup show active-toolchain
+      run: |
+        # Use a way compatible with Rustup pre-1.28.0 and Rustup 1.28.0
+        rustup show active-toolchain || rustup toolchain install
 
     # Run
     - name: Build

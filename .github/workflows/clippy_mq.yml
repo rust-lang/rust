@@ -78,7 +78,8 @@ jobs:
     - name: Install toolchain
       run: |
         rustup set default-host ${{ matrix.host }}
-        rustup show active-toolchain
+        # Use a way compatible with Rustup pre-1.28.0 and Rustup 1.28.0
+        rustup show active-toolchain || rustup toolchain install
 
     # Run
     - name: Build
@@ -129,7 +130,9 @@ jobs:
         persist-credentials: false
 
     - name: Install toolchain
-      run: rustup show active-toolchain
+      run: |
+        # Use a way compatible with Rustup pre-1.28.0 and Rustup 1.28.0
+        rustup show active-toolchain || rustup toolchain install
 
     - name: Test metadata collection
       run: cargo collect-metadata
@@ -146,7 +149,9 @@ jobs:
         persist-credentials: false
 
     - name: Install toolchain
-      run: rustup show active-toolchain
+      run: |
+        # Use a way compatible with Rustup pre-1.28.0 and Rustup 1.28.0
+        rustup show active-toolchain || rustup toolchain install
 
     # Run
     - name: Build Integration Test
@@ -200,7 +205,9 @@ jobs:
         persist-credentials: false
 
     - name: Install toolchain
-      run: rustup show active-toolchain
+      run: |
+        # Use a way compatible with Rustup pre-1.28.0 and Rustup 1.28.0
+        rustup show active-toolchain || rustup toolchain install
 
     # Download
     - name: Download target dir
@@ -215,7 +222,7 @@ jobs:
     # Run
     - name: Test ${{ matrix.integration }}
       run: |
-          TOOLCHAIN=$(rustup show active-toolchain | cut -f1 -d' ')
+          TOOLCHAIN=$(rustup show active-toolchain | head -n 1 | cut -f1 -d' ')
           rustup run $TOOLCHAIN $CARGO_TARGET_DIR/debug/integration --show-output
       env:
         INTEGRATION: ${{ matrix.integration }}
