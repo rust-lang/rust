@@ -118,6 +118,12 @@ mir_build_extern_static_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
     .note = extern statics are not controlled by the Rust type system: invalid data, aliasing violations or data races will cause undefined behavior
     .label = use of extern static
 
+mir_build_force_inline =
+    `{$callee}` is incompatible with `#[rustc_force_inline]`
+    .attr = annotation here
+    .callee = `{$callee}` defined here
+    .note = incompatible due to: {$reason}
+
 mir_build_inform_irrefutable = `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
 
 mir_build_initializing_type_with_requires_unsafe =

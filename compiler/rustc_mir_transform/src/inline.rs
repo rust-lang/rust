@@ -10,13 +10,12 @@ use rustc_hir::def_id::DefId;
 use rustc_index::Idx;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::bug;
-use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt, TypeFlags, TypeVisitableExt};
 use rustc_session::config::{DebugInfo, OptLevel};
 use rustc_span::source_map::Spanned;
-use rustc_span::sym;
 use tracing::{debug, instrument, trace, trace_span};
 
 use crate::cost_checker::CostChecker;
@@ -120,7 +119,6 @@ trait Inliner<'tcx> {
         callsite: &CallSite<'tcx>,
         callee_body: &Body<'tcx>,
         callee_attrs: &CodegenFnAttrs,
-        cross_crate_inlinable: bool,
     ) -> Result<(), &'static str>;
 
     // How many callsites in a body are we allowed to inline? We need to limit this in order
@@ -196,7 +194,6 @@ impl<'tcx> Inliner<'tcx> for ForceInliner<'tcx> {
         _: &CallSite<'tcx>,
         callee_body: &Body<'tcx>,
         callee_attrs: &CodegenFnAttrs,
-        _: bool,
     ) -> Result<(), &'static str> {
         if callee_body.tainted_by_errors.is_some() {
             return Err("body has errors");
@@ -215,14 +212,6 @@ impl<'tcx> Inliner<'tcx> for ForceInliner<'tcx> {
             // inline-asm is detected. LLVM will still possibly do an inline later on
             // if the no-attribute function ends up with the same instruction set anyway.
             Err("cannot move inline-asm across instruction sets")
-        } else if callee_body
-            .basic_blocks
-            .iter()
-            .any(|bb| matches!(bb.terminator().kind, TerminatorKind::TailCall { .. }))
-        {
-            // FIXME(explicit_tail_calls): figure out how exactly functions containing tail
-            // calls can be inlined (and if they even should)
-            Err("can't inline functions with tail calls")
         } else {
             Ok(())
         }
@@ -348,7 +337,6 @@ impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
         callsite: &CallSite<'tcx>,
         callee_body: &Body<'tcx>,
         callee_attrs: &CodegenFnAttrs,
-        cross_crate_inlinable: bool,
     ) -> Result<(), &'static str> {
         let tcx = self.tcx();
 
@@ -358,7 +346,7 @@ impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
 
         let mut threshold = if self.caller_is_inline_forwarder {
             tcx.sess.opts.unstable_opts.inline_mir_forwarder_threshold.unwrap_or(30)
-        } else if cross_crate_inlinable {
+        } else if tcx.cross_crate_inlinable(callsite.callee.def_id()) {
             tcx.sess.opts.unstable_opts.inline_mir_hint_threshold.unwrap_or(100)
         } else {
             tcx.sess.opts.unstable_opts.inline_mir_threshold.unwrap_or(50)
@@ -587,16 +575,8 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
     check_mir_is_available(inliner, caller_body, callsite.callee)?;
 
     let callee_attrs = tcx.codegen_fn_attrs(callsite.callee.def_id());
-    let cross_crate_inlinable = tcx.cross_crate_inlinable(callsite.callee.def_id());
-    check_codegen_attributes(inliner, callsite, callee_attrs, cross_crate_inlinable)?;
-
-    // Intrinsic fallback bodies are automatically made cross-crate inlineable,
-    // but at this stage we don't know whether codegen knows the intrinsic,
-    // so just conservatively don't inline it. This also ensures that we do not
-    // accidentally inline the body of an intrinsic that *must* be overridden.
-    if tcx.has_attr(callsite.callee.def_id(), sym::rustc_intrinsic) {
-        return Err("callee is an intrinsic");
-    }
+    rustc_mir_build::check_inline::is_inline_valid_on_fn(tcx, callsite.callee.def_id())?;
+    check_codegen_attributes(inliner, callsite, callee_attrs)?;
 
     let terminator = caller_body[callsite.block].terminator.as_ref().unwrap();
     let TerminatorKind::Call { args, destination, .. } = &terminator.kind else { bug!() };
@@ -610,7 +590,8 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
     }
 
     let callee_body = try_instance_mir(tcx, callsite.callee.def)?;
-    inliner.check_callee_mir_body(callsite, callee_body, callee_attrs, cross_crate_inlinable)?;
+    rustc_mir_build::check_inline::is_inline_valid_on_body(tcx, callee_body)?;
+    inliner.check_callee_mir_body(callsite, callee_body, callee_attrs)?;
 
     let Ok(callee_body) = callsite.callee.try_instantiate_mir_and_normalize_erasing_regions(
         tcx,
@@ -775,36 +756,17 @@ fn check_codegen_attributes<'tcx, I: Inliner<'tcx>>(
     inliner: &I,
     callsite: &CallSite<'tcx>,
     callee_attrs: &CodegenFnAttrs,
-    cross_crate_inlinable: bool,
 ) -> Result<(), &'static str> {
     let tcx = inliner.tcx();
-    if tcx.has_attr(callsite.callee.def_id(), sym::rustc_no_mir_inline) {
-        return Err("#[rustc_no_mir_inline]");
-    }
-
     if let InlineAttr::Never = callee_attrs.inline {
         return Err("never inline attribute");
-    }
-
-    // FIXME(#127234): Coverage instrumentation currently doesn't handle inlined
-    // MIR correctly when Modified Condition/Decision Coverage is enabled.
-    if tcx.sess.instrument_coverage_mcdc() {
-        return Err("incompatible with MC/DC coverage");
     }
 
     // Reachability pass defines which functions are eligible for inlining. Generally inlining
     // other functions is incorrect because they could reference symbols that aren't exported.
     let is_generic = callsite.callee.args.non_erasable_generics().next().is_some();
-    if !is_generic && !cross_crate_inlinable {
+    if !is_generic && !tcx.cross_crate_inlinable(callsite.callee.def_id()) {
         return Err("not exported");
-    }
-
-    if callsite.fn_sig.c_variadic() {
-        return Err("C variadic");
-    }
-
-    if callee_attrs.flags.contains(CodegenFnAttrFlags::COLD) {
-        return Err("cold");
     }
 
     let codegen_fn_attrs = tcx.codegen_fn_attrs(inliner.caller_def_id());
