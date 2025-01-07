@@ -737,7 +737,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     applied_do_not_recommend = true;
                 }
             }
-            if let Some((parent_cause, _parent_pred)) = base_cause.parent() {
+            if let Some(parent_cause) = base_cause.parent() {
                 base_cause = parent_cause.clone();
             } else {
                 break;
@@ -797,7 +797,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 trait_ref.skip_binder().args.type_at(1).to_opt_closure_kind()
             && !found_kind.extends(expected_kind)
         {
-            if let Some((_, Some(parent))) = obligation.cause.code().parent() {
+            if let Some((_, Some(parent))) = obligation.cause.code().parent_with_predicate() {
                 // If we have a derived obligation, then the parent will be a `AsyncFn*` goal.
                 trait_ref = parent.to_poly_trait_ref();
             } else if let &ObligationCauseCode::FunctionArg { arg_hir_id, .. } =
@@ -945,7 +945,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let Some(typeck) = &self.typeck_results else {
             return false;
         };
-        let Some((ObligationCauseCode::QuestionMark, Some(y))) = obligation.cause.code().parent()
+        let Some((ObligationCauseCode::QuestionMark, Some(y))) =
+            obligation.cause.code().parent_with_predicate()
         else {
             return false;
         };
@@ -1198,7 +1199,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let mut code = obligation.cause.code();
         let mut pred = obligation.predicate.as_trait_clause();
-        while let Some((next_code, next_pred)) = code.parent() {
+        while let Some((next_code, next_pred)) = code.parent_with_predicate() {
             if let Some(pred) = pred {
                 self.enter_forall(pred, |pred| {
                     diag.note(format!(
@@ -2114,7 +2115,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let mut code = obligation.cause.code();
         let mut trait_pred = trait_predicate;
         let mut peeled = false;
-        while let Some((parent_code, parent_trait_pred)) = code.parent() {
+        while let Some((parent_code, parent_trait_pred)) = code.parent_with_predicate() {
             code = parent_code;
             if let Some(parent_trait_pred) = parent_trait_pred {
                 trait_pred = parent_trait_pred;
