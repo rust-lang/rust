@@ -623,7 +623,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         (args, arg_count)
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "debug", skip(self))]
     pub fn lower_generic_args_of_assoc_item(
         &self,
         span: Span,
@@ -631,7 +631,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         item_segment: &hir::PathSegment<'tcx>,
         parent_args: GenericArgsRef<'tcx>,
     ) -> GenericArgsRef<'tcx> {
-        debug!(?span, ?item_def_id, ?item_segment);
         let (args, _) =
             self.lower_generic_args_of_path(span, item_def_id, parent_args, item_segment, None);
         if let Some(c) = item_segment.args().constraints.first() {
@@ -2230,7 +2229,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self), ret)]
     pub fn lower_const_assoc_path(
         &self,
         hir_ref_id: HirId,
@@ -2279,7 +2278,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .collect::<Vec<_>>();
             match &candidates[..] {
                 [] => {}
-                [assoc] => return self.lower_assoc_const(span, assoc.def_id, assoc_segment),
+                [assoc] => {
+                    // FIXME: this is not necessarily correct.
+                    // adapted from other code that also had a fixme about it being temporary.
+                    let parent_args =
+                        ty::GenericArgs::identity_for_item(tcx, tcx.parent(assoc.def_id));
+                    return self.lower_assoc_const(span, assoc.def_id, assoc_segment, parent_args);
+                }
                 [..] => {
                     return Const::new_error_with_message(tcx, span, "ambiguous assoc const path");
                 }
@@ -2338,7 +2343,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let assoc_const = self
             .probe_assoc_item(assoc_ident, ty::AssocKind::Const, hir_ref_id, span, trait_did)
             .expect("failed to find associated const");
-        self.lower_assoc_const(span, assoc_const.def_id, assoc_segment)
+        // TODO: don't use no_bound_vars probably
+        let trait_ref_args = bound.no_bound_vars().unwrap().args;
+        self.lower_assoc_const(span, assoc_const.def_id, assoc_segment, trait_ref_args)
     }
 
     fn lower_assoc_const(
@@ -2346,11 +2353,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         span: Span,
         item_def_id: DefId,
         item_segment: &hir::PathSegment<'tcx>,
+        parent_args: GenericArgsRef<'tcx>,
     ) -> Const<'tcx> {
         let tcx = self.tcx();
-        // FIXME: this is not necessarily correct.
-        // adapted from other code that also had a fixme about it being temporary.
-        let parent_args = ty::GenericArgs::identity_for_item(tcx, tcx.parent(item_def_id));
         let args =
             self.lower_generic_args_of_assoc_item(span, item_def_id, item_segment, parent_args);
         let uv = ty::UnevaluatedConst::new(item_def_id, args);
