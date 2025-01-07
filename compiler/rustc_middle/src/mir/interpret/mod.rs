@@ -16,7 +16,6 @@ use rustc_abi::{AddressSpace, Align, Endian, HasDataLayout, Size};
 use rustc_ast::{LitKind, Mutability};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
-use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
@@ -91,7 +90,6 @@ pub enum LitToConstError {
     /// This is used for graceful error handling (`span_delayed_bug`) in
     /// type checking (`Const::from_anon_const`).
     TypeError,
-    Reported(ErrorGuaranteed),
 }
 
 #[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]

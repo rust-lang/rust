@@ -671,7 +671,6 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let lit_input = LitToConstInput { lit: &lit.node, ty: ct_ty, neg };
         match self.tcx.at(expr.span).lit_to_const(lit_input) {
             Ok(constant) => self.const_to_pat(constant, ct_ty, expr.hir_id, lit.span).kind,
-            Err(LitToConstError::Reported(e)) => PatKind::Error(e),
             Err(LitToConstError::TypeError) => bug!("lower_lit: had type error"),
         }
     }

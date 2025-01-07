@@ -2456,9 +2456,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                         LitToConstInput { lit: &lit.node, ty, neg: negated };
                                     let ct = match tcx.lit_to_const(lit_input) {
                                         Ok(c) => c,
-                                        Err(LitToConstError::Reported(err)) => {
-                                            ty::Const::new_error(tcx, err)
-                                        }
                                         Err(LitToConstError::TypeError) => todo!(),
                                     };
                                     (ct, ty)
