@@ -7,7 +7,7 @@ use rustc_arena::DroplessArena;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Arm, Expr, PatExprKind, HirId, HirIdMap, HirIdMapEntry, HirIdSet, Pat, PatKind, RangeEnd};
+use rustc_hir::{Arm, Expr, HirId, HirIdMap, HirIdMapEntry, HirIdSet, Pat, PatExprKind, PatKind, RangeEnd};
 use rustc_lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty;
@@ -311,9 +311,9 @@ impl<'a> NormalizedPat<'a> {
                 );
                 Self::Tuple(None, pats)
             },
-            PatKind::Lit(e) => match &e.kind {
+            PatKind::Expr(e) => match &e.kind {
                 // TODO: Handle negative integers. They're currently treated as a wild match.
-                PatExprKind::Lit{ lit, negated: false } => match lit.node {
+                PatExprKind::Lit { lit, negated: false } => match lit.node {
                     LitKind::Str(sym, _) => Self::LitStr(sym),
                     LitKind::ByteStr(ref bytes, _) | LitKind::CStr(ref bytes, _) => Self::LitBytes(bytes),
                     LitKind::Byte(val) => Self::LitInt(val.into()),

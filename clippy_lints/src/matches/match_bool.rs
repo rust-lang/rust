@@ -21,7 +21,7 @@ pub(crate) fn check(cx: &LateContext<'_>, scrutinee: &Expr<'_>, arms: &[Arm<'_>]
             move |diag| {
                 if arms.len() == 2 {
                     // no guards
-                    let exprs = if let PatKind::Lit(arm_bool) = arms[0].pat.kind {
+                    let exprs = if let PatKind::Expr(arm_bool) = arms[0].pat.kind {
                         if let PatExprKind::Lit { lit, .. } = arm_bool.kind {
                             match lit.node {
                                 LitKind::Bool(true) => Some((arms[0].body, arms[1].body)),

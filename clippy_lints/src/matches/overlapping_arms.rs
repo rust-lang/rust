@@ -57,7 +57,7 @@ fn all_ranges<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], ty: Ty<'tcx>)
                     });
                 }
 
-                if let PatKind::Lit(value) = pat.kind {
+                if let PatKind::Expr(value) = pat.kind {
                     let value = ConstEvalCtxt::new(cx)
                         .eval_pat_expr(value)?
                         .int_value(cx.tcx, cx.typeck_results().node_type(pat.hir_id))?;

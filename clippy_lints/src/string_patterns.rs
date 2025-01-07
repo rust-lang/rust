@@ -171,7 +171,7 @@ fn check_manual_pattern_char_comparison(cx: &LateContext<'_>, method_arg: &Expr<
                         return ControlFlow::Break(());
                     }
                     if arm.pat.walk_short(|pat| match pat.kind {
-                        PatKind::Lit(expr) if let PatExprKind::Lit { lit, negated: false } = expr.kind => {
+                        PatKind::Expr(expr) if let PatExprKind::Lit { lit, negated: false } = expr.kind => {
                             if let LitKind::Char(_) = lit.node {
                                 set_char_spans.push(lit.span);
                             }
