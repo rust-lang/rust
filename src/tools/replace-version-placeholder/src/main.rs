@@ -11,12 +11,7 @@ fn main() {
     let version_str = version_str.trim();
     walk::walk_many(
         &[&root_path.join("compiler"), &root_path.join("library")],
-        |path, _is_dir| {
-            walk::filter_dirs(path)
-                // We exempt these as they require the placeholder
-                // for their operation
-                || path.ends_with("compiler/rustc_attr/src/builtin.rs")
-        },
+        |path, _is_dir| walk::filter_dirs(path),
         &mut |entry, contents| {
             if !contents.contains(VERSION_PLACEHOLDER) {
                 return;
