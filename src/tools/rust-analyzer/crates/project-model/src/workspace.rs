@@ -26,7 +26,7 @@ use crate::{
     env::{cargo_config_env, inject_cargo_env, inject_cargo_package_env, inject_rustc_tool_env},
     project_json::{Crate, CrateArrayIdx},
     sysroot::{SysrootCrate, SysrootWorkspace},
-    toolchain_info::{rustc_cfg, target_data_layout, target_triple, QueryConfig},
+    toolchain_info::{rustc_cfg, target_data_layout, target_tuple, QueryConfig},
     utf8_stdout, CargoConfig, CargoWorkspace, CfgOverrides, InvocationStrategy, ManifestPath,
     Package, ProjectJson, ProjectManifest, Sysroot, SysrootSourceWorkspaceConfig, TargetData,
     TargetKind, WorkspaceBuildScripts,
@@ -242,7 +242,7 @@ impl ProjectWorkspace {
                 .ok_or_else(|| Some("Failed to discover rustc source for sysroot.".to_owned())),
             None => Err(None),
         };
-        let targets = target_triple::get(
+        let targets = target_tuple::get(
             QueryConfig::Cargo(&sysroot, cargo_toml),
             config.target.as_deref(),
             &config.extra_env,
@@ -397,7 +397,7 @@ impl ProjectWorkspace {
                 }
             };
 
-        let targets = target_triple::get(
+        let targets = target_tuple::get(
             QueryConfig::Cargo(&sysroot, detached_file),
             config.target.as_deref(),
             &config.extra_env,

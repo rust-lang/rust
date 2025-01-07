@@ -19,7 +19,7 @@ pub mod project_json;
 pub mod toolchain_info {
     pub mod rustc_cfg;
     pub mod target_data_layout;
-    pub mod target_triple;
+    pub mod target_tuple;
 
     use std::path::Path;
 

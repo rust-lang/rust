@@ -888,7 +888,7 @@
                 "title": "cargo",
                 "properties": {
                     "rust-analyzer.cargo.target": {
-                        "markdownDescription": "Compilation target override (target triple).",
+                        "markdownDescription": "Compilation target override (target tuple).",
                         "default": null,
                         "type": [
                             "null",

@@ -769,7 +769,7 @@ interface Crate {
     /// The set of cfgs activated for a given crate, like
     /// `["unix", "feature=\"foo\"", "feature=\"bar\""]`.
     cfg: string[];
-    /// Target triple for this Crate.
+    /// Target tuple for this Crate.
     ///
     /// Used when running `rustc --print cfg`
     /// to get target-specific cfgs.
