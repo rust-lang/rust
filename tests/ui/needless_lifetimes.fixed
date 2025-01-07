@@ -1,6 +1,6 @@
 //@aux-build:proc_macros.rs
 
-#![warn(clippy::needless_lifetimes)]
+#![warn(clippy::needless_lifetimes, clippy::elidable_lifetime_names)]
 #![allow(
     unused,
     clippy::boxed_local,
@@ -101,44 +101,6 @@ where
     Ok(x)
 }
 
-type Ref<'r> = &'r u8;
-
-// No error; same lifetime on two params.
-fn lifetime_param_1<'a>(_x: Ref<'a>, _y: &'a u8) {}
-
-fn lifetime_param_2(_x: Ref<'_>, _y: &u8) {}
-//~^ needless_lifetimes
-
-// No error; bounded lifetime.
-fn lifetime_param_3<'a, 'b: 'a>(_x: Ref<'a>, _y: &'b u8) {}
-
-// No error; bounded lifetime.
-fn lifetime_param_4<'a, 'b>(_x: Ref<'a>, _y: &'b u8)
-where
-    'b: 'a,
-{
-}
-
-struct Lt<'a, I: 'static> {
-    x: &'a I,
-}
-
-// No error; fn bound references `'a`.
-fn fn_bound<'a, F, I>(_m: Lt<'a, I>, _f: F) -> Lt<'a, I>
-where
-    F: Fn(Lt<'a, I>) -> Lt<'a, I>,
-{
-    unreachable!()
-}
-
-fn fn_bound_2<F, I>(_m: Lt<'_, I>, _f: F) -> Lt<'_, I>
-//~^ needless_lifetimes
-where
-    for<'x> F: Fn(Lt<'x, I>) -> Lt<'x, I>,
-{
-    unreachable!()
-}
-
 // No error; see below.
 fn fn_bound_3<'a, F: FnOnce(&'a i32)>(x: &'a i32, f: F) {
     f(x);
@@ -203,30 +165,6 @@ fn already_elided<'a>(_: &u8, _: &'a u8) -> &'a u8 {
     unimplemented!()
 }
 
-fn struct_with_lt(_foo: Foo<'_>) -> &str {
-    //~^ needless_lifetimes
-    unimplemented!()
-}
-
-// No warning; two input lifetimes (named on the reference, anonymous on `Foo`).
-fn struct_with_lt2<'a>(_foo: &'a Foo) -> &'a str {
-    unimplemented!()
-}
-
-// No warning; two input lifetimes (anonymous on the reference, named on `Foo`).
-fn struct_with_lt3<'a>(_foo: &Foo<'a>) -> &'a str {
-    unimplemented!()
-}
-
-// Warning; two input lifetimes, but the output lifetime is not elided, i.e., the following is
-// valid:
-//   fn struct_with_lt4a<'a>(_foo: &'a Foo<'_>) -> &'a str
-//                                         ^^
-fn struct_with_lt4a<'a>(_foo: &'a Foo<'_>) -> &'a str {
-    //~^ needless_lifetimes
-    unimplemented!()
-}
-
 // Warning; two input lifetimes, but the output lifetime is not elided, i.e., the following is
 // valid:
 //   fn struct_with_lt4b<'b>(_foo: &Foo<'b>) -> &'b str
@@ -253,30 +191,6 @@ fn trait_obj_elided2(_arg: &dyn Drop) -> &str {
 }
 
 type FooAlias<'a> = Foo<'a>;
-
-fn alias_with_lt(_foo: FooAlias<'_>) -> &str {
-    //~^ needless_lifetimes
-    unimplemented!()
-}
-
-// No warning; two input lifetimes (named on the reference, anonymous on `FooAlias`).
-fn alias_with_lt2<'a>(_foo: &'a FooAlias) -> &'a str {
-    unimplemented!()
-}
-
-// No warning; two input lifetimes (anonymous on the reference, named on `FooAlias`).
-fn alias_with_lt3<'a>(_foo: &FooAlias<'a>) -> &'a str {
-    unimplemented!()
-}
-
-// Warning; two input lifetimes, but the output lifetime is not elided, i.e., the following is
-// valid:
-//   fn alias_with_lt4a<'a>(_foo: &'a FooAlias<'_>) -> &'a str
-//                                             ^^
-fn alias_with_lt4a<'a>(_foo: &'a FooAlias<'_>) -> &'a str {
-    //~^ needless_lifetimes
-    unimplemented!()
-}
 
 // Warning; two input lifetimes, but the output lifetime is not elided, i.e., the following is
 // valid:
@@ -329,15 +243,6 @@ fn test<'a>(x: &'a [u8]) -> u8 {
     *y
 }
 
-// Issue #3284: give hint regarding lifetime in return type.
-struct Cow<'a> {
-    x: &'a str,
-}
-fn out_return_type_lts(e: &str) -> Cow<'_> {
-    //~^ needless_lifetimes
-    unimplemented!()
-}
-
 // Make sure we still warn on implementations
 mod issue4291 {
     trait BadTrait {
@@ -348,23 +253,6 @@ mod issue4291 {
     impl BadTrait for () {
         fn needless_lt(_x: &u8) {}
         //~^ needless_lifetimes
-    }
-}
-
-mod issue2944 {
-    trait Foo {}
-    struct Bar;
-    struct Baz<'a> {
-        bar: &'a Bar,
-    }
-
-    impl Foo for Baz<'_> {}
-    //~^ needless_lifetimes
-    impl Bar {
-        fn baz(&self) -> impl Foo + '_ {
-            //~^ needless_lifetimes
-            Baz { bar: self }
-        }
     }
 }
 
@@ -644,91 +532,6 @@ mod issue13749bis {
     // Non elidable lifetime
     #[expect(clippy::extra_unused_lifetimes)]
     impl<'a, T: 'a> Generic<T> {}
-}
-
-mod issue13923 {
-    struct Py<'py> {
-        data: &'py str,
-    }
-
-    enum Content<'t, 'py> {
-        Py(Py<'py>),
-        T1(&'t str),
-        T2(&'t str),
-    }
-
-    enum ContentString<'t> {
-        T1(&'t str),
-        T2(&'t str),
-    }
-
-    impl<'t, 'py> ContentString<'t> {
-        // `'py` cannot be elided
-        fn map_content1(self, f: impl FnOnce(&'t str) -> &'t str) -> Content<'t, 'py> {
-            match self {
-                Self::T1(content) => Content::T1(f(content)),
-                Self::T2(content) => Content::T2(f(content)),
-            }
-        }
-    }
-
-    impl<'t> ContentString<'t> {
-        //~^ needless_lifetimes
-        // `'py` can be elided because of `&self`
-        fn map_content2(&self, f: impl FnOnce(&'t str) -> &'t str) -> Content<'t, '_> {
-            match self {
-                Self::T1(content) => Content::T1(f(content)),
-                Self::T2(content) => Content::T2(f(content)),
-            }
-        }
-    }
-
-    impl<'t> ContentString<'t> {
-        //~^ needless_lifetimes
-        // `'py` can be elided because of `&'_ self`
-        fn map_content3(&'_ self, f: impl FnOnce(&'t str) -> &'t str) -> Content<'t, '_> {
-            match self {
-                Self::T1(content) => Content::T1(f(content)),
-                Self::T2(content) => Content::T2(f(content)),
-            }
-        }
-    }
-
-    impl<'t, 'py> ContentString<'t> {
-        // `'py` should not be elided as the default lifetime, even if working, could be named as `'t`
-        fn map_content4(self, f: impl FnOnce(&'t str) -> &'t str, o: &'t str) -> Content<'t, 'py> {
-            match self {
-                Self::T1(content) => Content::T1(f(content)),
-                Self::T2(_) => Content::T2(o),
-            }
-        }
-    }
-
-    impl<'t> ContentString<'t> {
-        //~^ needless_lifetimes
-        // `'py` can be elided because of `&Self`
-        fn map_content5(
-            self: std::pin::Pin<&Self>,
-            f: impl FnOnce(&'t str) -> &'t str,
-            o: &'t str,
-        ) -> Content<'t, '_> {
-            match *self {
-                Self::T1(content) => Content::T1(f(content)),
-                Self::T2(_) => Content::T2(o),
-            }
-        }
-    }
-
-    struct Cx<'a, 'b> {
-        a: &'a u32,
-        b: &'b u32,
-    }
-
-    // `'c` cannot be elided because we have several input lifetimes
-    fn one_explicit<'b>(x: Cx<'_, 'b>) -> &'b u32 {
-        x.b
-        //~^ needless_borrow
-    }
 }
 
 fn main() {}
