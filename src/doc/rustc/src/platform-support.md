@@ -260,6 +260,7 @@ target | std | host | notes
 [`aarch64-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | ARM64 NetBSD
 [`aarch64-unknown-nto-qnx700`](platform-support/nto-qnx.md) | ? |  | ARM64 QNX Neutrino 7.0 RTOS |
 [`aarch64-unknown-nto-qnx710`](platform-support/nto-qnx.md) | ✓ |  | ARM64 QNX Neutrino 7.1 RTOS |
+[`aarch64-unknown-nuttx`](platform-support/nuttx.md) | * |  | ARM64 with NuttX
 [`aarch64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | ARM64 OpenBSD
 [`aarch64-unknown-redox`](platform-support/redox.md) | ✓ |  | ARM64 Redox OS
 [`aarch64-unknown-teeos`](platform-support/aarch64-unknown-teeos.md) | ? |  | ARM64 TEEOS |
@@ -295,6 +296,8 @@ target | std | host | notes
 [`armv7k-apple-watchos`](platform-support/apple-watchos.md) | ✓ |  | Armv7-A Apple WatchOS
 [`armv7s-apple-ios`](platform-support/apple-ios.md) | ✓ |  | Armv7-A Apple-A6 Apple iOS
 [`armv8r-none-eabihf`](platform-support/armv8r-none-eabihf.md) | * |  | Bare Armv8-R, hardfloat
+[`armv7a-nuttx-eabi`](platform-support/nuttx.md) | * |  | ARMv7-A with NuttX
+[`armv7a-nuttx-eabihf`](platform-support/nuttx.md) | * |  | ARMv7-A with NuttX, hardfloat
 `avr-unknown-gnu-atmega328` | * |  | AVR. Requires `-Z build-std=core`
 `bpfeb-unknown-none` | * |  | BPF (big endian)
 `bpfel-unknown-none` | * |  | BPF (little endian)
@@ -389,6 +392,8 @@ target | std | host | notes
 [`thumbv6m-nuttx-eabi`](platform-support/nuttx.md) | * |  | ARMv6M with NuttX
 `thumbv7a-pc-windows-msvc` |  |  |
 [`thumbv7a-uwp-windows-msvc`](platform-support/uwp-windows-msvc.md) |  |  |
+[`thumbv7a-nuttx-eabi`](platform-support/nuttx.md) | * |  | ARMv7-A with NuttX
+[`thumbv7a-nuttx-eabihf`](platform-support/nuttx.md) | * |  | ARMv7-A with NuttX, hardfloat
 [`thumbv7em-nuttx-eabi`](platform-support/nuttx.md) | * |  | ARMv7EM with NuttX
 [`thumbv7em-nuttx-eabihf`](platform-support/nuttx.md) | * |  | ARMv7EM with NuttX, hardfloat
 [`thumbv7m-nuttx-eabi`](platform-support/nuttx.md) | * |  | ARMv7M with NuttX
