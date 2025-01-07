@@ -462,11 +462,6 @@ fn expand_repeat(
 
         counter += 1;
         if counter == limit {
-            tracing::warn!(
-                "expand_tt in repeat pattern exceed limit => {:#?}\n{:#?}",
-                template,
-                ctx
-            );
             err = Some(ExpandError::new(ctx.call_site, ExpandErrorKind::LimitExceeded));
             break;
         }
