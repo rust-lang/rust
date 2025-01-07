@@ -7,7 +7,7 @@ use std::path::PathBuf;
 pub struct Config {
     pub manifest_dir: PathBuf,
     pub out_dir: PathBuf,
-    pub opt_level: u8,
+    pub opt_level: String,
     pub cargo_features: Vec<String>,
     pub target_arch: String,
     pub target_env: String,
@@ -31,7 +31,7 @@ impl Config {
         Self {
             manifest_dir: PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()),
             out_dir: PathBuf::from(env::var("OUT_DIR").unwrap()),
-            opt_level: env::var("OPT_LEVEL").unwrap().parse().unwrap(),
+            opt_level: env::var("OPT_LEVEL").unwrap(),
             cargo_features,
             target_arch: env::var("CARGO_CFG_TARGET_ARCH").unwrap(),
             target_env: env::var("CARGO_CFG_TARGET_ENV").unwrap(),
@@ -91,7 +91,7 @@ fn emit_arch_cfg() {
 fn emit_optimization_cfg(cfg: &Config) {
     println!("cargo:rustc-check-cfg=cfg(optimizations_enabled)");
 
-    if cfg.opt_level >= 2 {
+    if !matches!(cfg.opt_level.as_str(), "0" | "1") {
         println!("cargo:rustc-cfg=optimizations_enabled");
     }
 }
