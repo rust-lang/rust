@@ -142,7 +142,7 @@ impl SourceAnalyzer {
     fn pat_id(&self, pat: &ast::Pat) -> Option<PatId> {
         // FIXME: macros, see `expr_id`
         let src = InFile { file_id: self.file_id, value: pat };
-        self.body_source_map()?.node_pat(src)
+        self.body_source_map()?.node_pat(src).and_then(ExprOrPatId::as_pat)
     }
 
     fn binding_id_of_pat(&self, pat: &ast::IdentPat) -> Option<BindingId> {

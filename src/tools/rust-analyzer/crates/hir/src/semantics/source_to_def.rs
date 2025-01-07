@@ -352,7 +352,7 @@ impl SourceToDefCtx<'_, '_> {
         let src = src.cloned().map(ast::Pat::from);
         let pat_id = source_map.node_pat(src.as_ref())?;
         // the pattern could resolve to a constant, verify that this is not the case
-        if let crate::Pat::Bind { id, .. } = body[pat_id] {
+        if let crate::Pat::Bind { id, .. } = body[pat_id.as_pat()?] {
             Some((container, id))
         } else {
             None
