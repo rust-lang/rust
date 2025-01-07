@@ -20,6 +20,7 @@ pub mod toolchain_info {
     pub mod rustc_cfg;
     pub mod target_data_layout;
     pub mod target_tuple;
+    pub mod version;
 
     use std::path::Path;
 
