@@ -230,6 +230,14 @@ impl fmt::Display for AccessError {
 #[stable(feature = "thread_local_try_with", since = "1.26.0")]
 impl Error for AccessError {}
 
+// This ensures the panicking code is outlined from `with` for `LocalKey`.
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[track_caller]
+#[cold]
+fn panic_access_error(err: AccessError) -> ! {
+    panic!("cannot access a Thread Local Storage value during or after destruction: {err:?}")
+}
+
 impl<T: 'static> LocalKey<T> {
     #[doc(hidden)]
     #[unstable(
@@ -269,10 +277,10 @@ impl<T: 'static> LocalKey<T> {
     where
         F: FnOnce(&T) -> R,
     {
-        self.try_with(f).expect(
-            "cannot access a Thread Local Storage value \
-             during or after destruction",
-        )
+        match self.try_with(f) {
+            Ok(r) => r,
+            Err(err) => panic_access_error(err),
+        }
     }
 
     /// Acquires a reference to the value in this TLS key.
@@ -327,10 +335,10 @@ impl<T: 'static> LocalKey<T> {
         let mut init = Some(init);
 
         let reference = unsafe {
-            (self.inner)(Some(&mut init)).as_ref().expect(
-                "cannot access a Thread Local Storage value \
-                 during or after destruction",
-            )
+            match (self.inner)(Some(&mut init)).as_ref() {
+                Some(r) => r,
+                None => panic_access_error(AccessError),
+            }
         };
 
         f(init, reference)
