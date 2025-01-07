@@ -448,10 +448,9 @@ pub(crate) fn encode_ty<'tcx>(
             if let Some(cfi_encoding) = tcx.get_attr(def_id, sym::cfi_encoding) {
                 // Use user-defined CFI encoding for type
                 if let Some(value_str) = cfi_encoding.value_str() {
-                    let value_str = value_str.to_string();
-                    let str = value_str.trim();
-                    if !str.is_empty() {
-                        s.push_str(str);
+                    let value_str = value_str.as_str().trim();
+                    if !value_str.is_empty() {
+                        s.push_str(value_str);
                         // Don't compress user-defined builtin types (see
                         // https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangling-builtin and
                         // https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangling-compression).
@@ -459,7 +458,7 @@ pub(crate) fn encode_ty<'tcx>(
                             "v", "w", "b", "c", "a", "h", "s", "t", "i", "j", "l", "m", "x", "y",
                             "n", "o", "f", "d", "e", "g", "z", "Dh",
                         ];
-                        if !builtin_types.contains(&str) {
+                        if !builtin_types.contains(&value_str) {
                             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
                         }
                     } else {
