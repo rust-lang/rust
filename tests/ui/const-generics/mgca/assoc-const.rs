@@ -12,4 +12,3 @@ fn mk_array<T: Tr>(_x: T) -> [(); T::SIZE] {
 }
 
 fn main() {}
-
