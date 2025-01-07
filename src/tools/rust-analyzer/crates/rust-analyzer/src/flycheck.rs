@@ -28,7 +28,7 @@ pub(crate) enum InvocationStrategy {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct CargoOptions {
-    pub(crate) target_triples: Vec<String>,
+    pub(crate) target_tuples: Vec<String>,
     pub(crate) all_targets: bool,
     pub(crate) no_default_features: bool,
     pub(crate) all_features: bool,
@@ -49,7 +49,7 @@ pub(crate) enum Target {
 
 impl CargoOptions {
     pub(crate) fn apply_on_command(&self, cmd: &mut Command) {
-        for target in &self.target_triples {
+        for target in &self.target_tuples {
             cmd.args(["--target", target.as_str()]);
         }
         if self.all_targets {

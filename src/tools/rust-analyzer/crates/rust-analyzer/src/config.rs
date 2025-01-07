@@ -600,7 +600,7 @@ config_data! {
         ///
         /// This option does not take effect until rust-analyzer is restarted.
         cargo_sysrootSrc: Option<String>    = None,
-        /// Compilation target override (target triple).
+        /// Compilation target override (target tuple).
         // FIXME(@poliorcetics): move to multiple targets here too, but this will need more work
         // than `checkOnSave_target`
         cargo_target: Option<String>     = None,
@@ -2041,7 +2041,7 @@ impl Config {
 
     pub(crate) fn cargo_test_options(&self, source_root: Option<SourceRootId>) -> CargoOptions {
         CargoOptions {
-            target_triples: self.cargo_target(source_root).clone().into_iter().collect(),
+            target_tuples: self.cargo_target(source_root).clone().into_iter().collect(),
             all_targets: false,
             no_default_features: *self.cargo_noDefaultFeatures(source_root),
             all_features: matches!(self.cargo_features(source_root), CargoFeaturesDef::All),
@@ -2076,7 +2076,7 @@ impl Config {
             Some(_) | None => FlycheckConfig::CargoCommand {
                 command: self.check_command(source_root).clone(),
                 options: CargoOptions {
-                    target_triples: self
+                    target_tuples: self
                         .check_targets(source_root)
                         .clone()
                         .and_then(|targets| match &targets.0[..] {

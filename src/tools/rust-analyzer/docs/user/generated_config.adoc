@@ -146,7 +146,7 @@ This option does not take effect until rust-analyzer is restarted.
 [[rust-analyzer.cargo.target]]rust-analyzer.cargo.target (default: `null`)::
 +
 --
-Compilation target override (target triple).
+Compilation target override (target tuple).
 --
 [[rust-analyzer.cargo.targetDir]]rust-analyzer.cargo.targetDir (default: `null`)::
 +

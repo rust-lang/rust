@@ -55,3 +55,29 @@ pub fn get(
         .with_context(|| format!("unable to fetch target-data-layout via `{cmd:?}`"))
         .and_then(process)
 }
+
+#[cfg(test)]
+mod tests {
+    use paths::{AbsPathBuf, Utf8PathBuf};
+
+    use crate::{ManifestPath, Sysroot};
+
+    use super::*;
+
+    #[test]
+    fn cargo() {
+        let manifest_path = concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml");
+        let sysroot = Sysroot::empty();
+        let manifest_path =
+            ManifestPath::try_from(AbsPathBuf::assert(Utf8PathBuf::from(manifest_path))).unwrap();
+        let cfg = QueryConfig::Cargo(&sysroot, &manifest_path);
+        assert!(get(cfg, None, &FxHashMap::default()).is_ok());
+    }
+
+    #[test]
+    fn rustc() {
+        let sysroot = Sysroot::empty();
+        let cfg = QueryConfig::Rustc(&sysroot, env!("CARGO_MANIFEST_DIR").as_ref());
+        assert!(get(cfg, None, &FxHashMap::default()).is_ok());
+    }
+}

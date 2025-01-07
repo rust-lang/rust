@@ -66,12 +66,11 @@ fn rustc_print_cfg(
         QueryConfig::Cargo(sysroot, cargo_toml) => {
             let mut cmd = sysroot.tool(Tool::Cargo, cargo_toml.parent());
             cmd.envs(extra_env);
-            cmd.env("RUSTC_BOOTSTRAP", "1");
-            cmd.args(["rustc", "-Z", "unstable-options"]).args(RUSTC_ARGS);
-            cmd.args(["--", "-O"]);
+            cmd.args(["rustc"]).args(RUSTC_ARGS);
             if let Some(target) = target {
                 cmd.args(["--target", target]);
             }
+            cmd.args(["--", "-O"]);
 
             match utf8_stdout(&mut cmd) {
                 Ok(it) => return Ok(it),
@@ -96,4 +95,30 @@ fn rustc_print_cfg(
     }
 
     utf8_stdout(&mut cmd).with_context(|| format!("unable to fetch cfgs via `{cmd:?}`"))
+}
+
+#[cfg(test)]
+mod tests {
+    use paths::{AbsPathBuf, Utf8PathBuf};
+
+    use crate::{ManifestPath, Sysroot};
+
+    use super::*;
+
+    #[test]
+    fn cargo() {
+        let manifest_path = concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml");
+        let sysroot = Sysroot::empty();
+        let manifest_path =
+            ManifestPath::try_from(AbsPathBuf::assert(Utf8PathBuf::from(manifest_path))).unwrap();
+        let cfg = QueryConfig::Cargo(&sysroot, &manifest_path);
+        assert_ne!(get(cfg, None, &FxHashMap::default()), vec![]);
+    }
+
+    #[test]
+    fn rustc() {
+        let sysroot = Sysroot::empty();
+        let cfg = QueryConfig::Rustc(&sysroot, env!("CARGO_MANIFEST_DIR").as_ref());
+        assert_ne!(get(cfg, None, &FxHashMap::default()), vec![]);
+    }
 }

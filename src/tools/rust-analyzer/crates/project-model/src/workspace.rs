@@ -16,7 +16,6 @@ use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashMap;
 use semver::Version;
 use span::{Edition, FileId};
-use toolchain::Tool;
 use tracing::instrument;
 use triomphe::Arc;
 
@@ -26,10 +25,10 @@ use crate::{
     env::{cargo_config_env, inject_cargo_env, inject_cargo_package_env, inject_rustc_tool_env},
     project_json::{Crate, CrateArrayIdx},
     sysroot::{SysrootCrate, SysrootWorkspace},
-    toolchain_info::{rustc_cfg, target_data_layout, target_triple, QueryConfig},
-    utf8_stdout, CargoConfig, CargoWorkspace, CfgOverrides, InvocationStrategy, ManifestPath,
-    Package, ProjectJson, ProjectManifest, Sysroot, SysrootSourceWorkspaceConfig, TargetData,
-    TargetKind, WorkspaceBuildScripts,
+    toolchain_info::{rustc_cfg, target_data_layout, target_tuple, version, QueryConfig},
+    CargoConfig, CargoWorkspace, CfgOverrides, InvocationStrategy, ManifestPath, Package,
+    ProjectJson, ProjectManifest, Sysroot, SysrootSourceWorkspaceConfig, TargetData, TargetKind,
+    WorkspaceBuildScripts,
 };
 use tracing::{debug, error, info};
 
@@ -151,27 +150,6 @@ impl fmt::Debug for ProjectWorkspace {
     }
 }
 
-fn get_toolchain_version(
-    current_dir: &AbsPath,
-    sysroot: &Sysroot,
-    tool: Tool,
-    extra_env: &FxHashMap<String, String>,
-    prefix: &str,
-) -> Result<Option<Version>, anyhow::Error> {
-    let cargo_version = utf8_stdout(&mut {
-        let mut cmd = Sysroot::tool(sysroot, tool, current_dir);
-        cmd.envs(extra_env);
-        cmd.arg("--version");
-        cmd
-    })
-    .with_context(|| format!("Failed to query rust toolchain version at {current_dir}, is your toolchain setup correctly?"))?;
-    anyhow::Ok(
-        cargo_version
-            .get(prefix.len()..)
-            .and_then(|it| Version::parse(it.split_whitespace().next()?).ok()),
-    )
-}
-
 impl ProjectWorkspace {
     pub fn load(
         manifest: ProjectManifest,
@@ -242,16 +220,35 @@ impl ProjectWorkspace {
                 .ok_or_else(|| Some("Failed to discover rustc source for sysroot.".to_owned())),
             None => Err(None),
         };
-        let targets = target_triple::get(
-            QueryConfig::Cargo(&sysroot, cargo_toml),
-            config.target.as_deref(),
+
+        tracing::info!(workspace = %cargo_toml, src_root = ?sysroot.src_root(), root = ?sysroot.root(), "Using sysroot");
+        let toolchain_config = QueryConfig::Cargo(&sysroot, cargo_toml);
+        let targets =
+            target_tuple::get(toolchain_config, config.target.as_deref(), &config.extra_env)
+                .unwrap_or_default();
+        let toolchain = version::get(toolchain_config, &config.extra_env)
+            .inspect_err(|e| {
+                tracing::error!(%e,
+                    "failed fetching toolchain version for {cargo_toml:?} workspace"
+                )
+            })
+            .ok()
+            .flatten();
+        let rustc_cfg =
+            rustc_cfg::get(toolchain_config, targets.first().map(Deref::deref), &config.extra_env);
+        let cfg_overrides = config.cfg_overrides.clone();
+        let data_layout = target_data_layout::get(
+            toolchain_config,
+            targets.first().map(Deref::deref),
             &config.extra_env,
-        )
-        .unwrap_or_default();
+        );
+        if let Err(e) = &data_layout {
+            tracing::error!(%e, "failed fetching data layout for {cargo_toml:?} workspace");
+        }
         sysroot.load_workspace(&SysrootSourceWorkspaceConfig::CargoMetadata(
             sysroot_metadata_config(&config.extra_env, &targets),
         ));
-        tracing::info!(workspace = %cargo_toml, src_root = ?sysroot.src_root(), root = ?sysroot.root(), "Using sysroot");
+
         let rustc = rustc_dir.and_then(|rustc_dir| {
             info!(workspace = %cargo_toml, rustc_dir = %rustc_dir, "Using rustc source");
             match CargoWorkspace::fetch_metadata(
@@ -288,27 +285,7 @@ impl ProjectWorkspace {
                 }
             }
         });
-        let toolchain = get_toolchain_version(
-            cargo_toml.parent(),
-            &sysroot,
-            Tool::Cargo,
-            &config.extra_env,
-            "cargo ",
-        )?;
-        let rustc_cfg = rustc_cfg::get(
-            QueryConfig::Cargo(&sysroot, cargo_toml),
-            targets.first().map(Deref::deref),
-            &config.extra_env,
-        );
-        let cfg_overrides = config.cfg_overrides.clone();
-        let data_layout = target_data_layout::get(
-            QueryConfig::Cargo(&sysroot, cargo_toml),
-            targets.first().map(Deref::deref),
-            &config.extra_env,
-        );
-        if let Err(e) = &data_layout {
-            tracing::error!(%e, "failed fetching data layout for {cargo_toml:?} workspace");
-        }
+
         let (meta, error) = CargoWorkspace::fetch_metadata(
             cargo_toml,
             cargo_toml.parent(),
@@ -329,6 +306,7 @@ impl ProjectWorkspace {
         })?;
         let cargo_config_extra_env = cargo_config_env(cargo_toml, &config.extra_env, &sysroot);
         let cargo = CargoWorkspace::new(meta, cargo_toml.clone(), cargo_config_extra_env);
+
         Ok(ProjectWorkspace {
             kind: ProjectWorkspaceKind::Cargo {
                 cargo,
@@ -350,19 +328,7 @@ impl ProjectWorkspace {
             Sysroot::new(project_json.sysroot.clone(), project_json.sysroot_src.clone());
         sysroot.load_workspace(&SysrootSourceWorkspaceConfig::Stitched);
         let query_config = QueryConfig::Rustc(&sysroot, project_json.path().as_ref());
-        let toolchain = match get_toolchain_version(
-            project_json.path(),
-            &sysroot,
-            Tool::Rustc,
-            &config.extra_env,
-            "rustc ",
-        ) {
-            Ok(it) => it,
-            Err(e) => {
-                tracing::error!("{e}");
-                None
-            }
-        };
+        let toolchain = version::get(query_config, &config.extra_env).ok().flatten();
 
         let target = config.target.as_deref();
         let rustc_cfg = rustc_cfg::get(query_config, target, &config.extra_env);
@@ -388,28 +354,15 @@ impl ProjectWorkspace {
             None => Sysroot::empty(),
         };
 
-        let toolchain =
-            match get_toolchain_version(dir, &sysroot, Tool::Rustc, &config.extra_env, "rustc ") {
-                Ok(it) => it,
-                Err(e) => {
-                    tracing::error!("{e}");
-                    None
-                }
-            };
-
-        let targets = target_triple::get(
-            QueryConfig::Cargo(&sysroot, detached_file),
-            config.target.as_deref(),
-            &config.extra_env,
-        )
-        .unwrap_or_default();
-
+        let query_config = QueryConfig::Cargo(&sysroot, detached_file);
+        let toolchain = version::get(query_config, &config.extra_env).ok().flatten();
+        let targets = target_tuple::get(query_config, config.target.as_deref(), &config.extra_env)
+            .unwrap_or_default();
+        let rustc_cfg = rustc_cfg::get(query_config, None, &config.extra_env);
+        let data_layout = target_data_layout::get(query_config, None, &config.extra_env);
         sysroot.load_workspace(&SysrootSourceWorkspaceConfig::CargoMetadata(
             sysroot_metadata_config(&config.extra_env, &targets),
         ));
-        let query_config = QueryConfig::Rustc(&sysroot, dir.as_ref());
-        let rustc_cfg = rustc_cfg::get(query_config, None, &config.extra_env);
-        let data_layout = target_data_layout::get(query_config, None, &config.extra_env);
 
         let cargo_script = CargoWorkspace::fetch_metadata(
             detached_file,
