@@ -550,7 +550,7 @@ impl<K, V> IterMut<'_, K, V> {
     }
 }
 
-impl<K, V> IntoIter<K, V> {
+impl<K, V, A: Allocator> IntoIter<K, V, A> {
     /// Returns a iterator of references over the remaining items.
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn rustc_iter(&self) -> Iter<'_, K, V> {
@@ -558,7 +558,7 @@ impl<K, V> IntoIter<K, V> {
     }
 }
 
-impl<K, V> Drain<'_, K, V> {
+impl<K, V, A: Allocator> Drain<'_, K, V, A> {
     /// Returns a iterator of references over the remaining items.
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn rustc_iter(&self) -> Iter<'_, K, V> {
