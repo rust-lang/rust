@@ -5,14 +5,14 @@
 //! is used when calling the function directly. This helps anyone who uses `libm` directly, as
 //! well as improving things when these routines are called as part of other implementations.
 
-#[cfg(intrinsics_enabled)]
-pub mod intrinsics;
-
 // Most implementations should be defined here, to ensure they are not made available when
 // soft floats are required.
 #[cfg(arch_enabled)]
 cfg_if! {
-    if #[cfg(target_feature = "sse2")] {
+    if #[cfg(all(target_arch = "wasm32", intrinsics_enabled))] {
+        mod wasm32;
+        pub use wasm32::{ceil, ceilf, fabs, fabsf, floor, floorf, sqrt, sqrtf, trunc, truncf};
+    } else if #[cfg(target_feature = "sse2")] {
         mod i686;
         pub use i686::{sqrt, sqrtf};
     }

@@ -10,8 +10,8 @@ const TOINT: f64 = 1. / f64::EPSILON;
 pub fn floor(x: f64) -> f64 {
     select_implementation! {
         name: floor,
+        use_arch: all(target_arch = "wasm32", intrinsics_enabled),
         use_arch_required: all(target_arch = "x86", not(target_feature = "sse2")),
-        use_intrinsic: target_arch = "wasm32",
         args: x,
     }
 

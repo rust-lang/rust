@@ -1,5 +1,7 @@
-// Config is needed for times when this module is available but we don't call everything
-#![allow(dead_code)]
+//! Wasm asm is not stable; just use intrinsics for operations that have asm routine equivalents.
+//!
+//! Note that we need to be absolutely certain that everything here lowers to assembly operations,
+//! otherwise libcalls will be recursive.
 
 pub fn ceil(x: f64) -> f64 {
     // SAFETY: safe intrinsic with no preconditions

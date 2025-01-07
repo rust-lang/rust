@@ -18,8 +18,10 @@
 pub fn sqrtf(x: f32) -> f32 {
     select_implementation! {
         name: sqrtf,
-        use_arch: target_feature = "sse2",
-        use_intrinsic: target_arch = "wasm32",
+        use_arch: any(
+            all(target_arch = "wasm32", intrinsics_enabled),
+            target_feature = "sse2"
+        ),
         args: x,
     }
 

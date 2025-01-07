@@ -7,7 +7,7 @@ use core::f64;
 pub fn trunc(x: f64) -> f64 {
     select_implementation! {
         name: trunc,
-        use_intrinsic: target_arch = "wasm32",
+        use_arch: all(target_arch = "wasm32", intrinsics_enabled),
         args: x,
     }
 

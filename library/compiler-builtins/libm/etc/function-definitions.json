@@ -108,14 +108,14 @@
         "sources": [
             "src/libm_helper.rs",
             "src/math/arch/i586.rs",
-            "src/math/arch/intrinsics.rs",
+            "src/math/arch/wasm32.rs",
             "src/math/ceil.rs"
         ],
         "type": "f64"
     },
     "ceilf": {
         "sources": [
-            "src/math/arch/intrinsics.rs",
+            "src/math/arch/wasm32.rs",
             "src/math/ceilf.rs"
         ],
         "type": "f32"
@@ -258,7 +258,7 @@
     "fabs": {
         "sources": [
             "src/libm_helper.rs",
-            "src/math/arch/intrinsics.rs",
+            "src/math/arch/wasm32.rs",
             "src/math/fabs.rs",
             "src/math/generic/fabs.rs"
         ],
@@ -266,7 +266,7 @@
     },
     "fabsf": {
         "sources": [
-            "src/math/arch/intrinsics.rs",
+            "src/math/arch/wasm32.rs",
             "src/math/fabsf.rs",
             "src/math/generic/fabs.rs"
         ],
@@ -303,14 +303,14 @@
         "sources": [
             "src/libm_helper.rs",
             "src/math/arch/i586.rs",
-            "src/math/arch/intrinsics.rs",
+            "src/math/arch/wasm32.rs",
             "src/math/floor.rs"
         ],
         "type": "f64"
     },
     "floorf": {
         "sources": [
-            "src/math/arch/intrinsics.rs",
+            "src/math/arch/wasm32.rs",
             "src/math/floorf.rs"
         ],
         "type": "f32"
@@ -683,7 +683,7 @@
         "sources": [
             "src/libm_helper.rs",
             "src/math/arch/i686.rs",
-            "src/math/arch/intrinsics.rs",
+            "src/math/arch/wasm32.rs",
             "src/math/sqrt.rs"
         ],
         "type": "f64"
@@ -691,7 +691,7 @@
     "sqrtf": {
         "sources": [
             "src/math/arch/i686.rs",
-            "src/math/arch/intrinsics.rs",
+            "src/math/arch/wasm32.rs",
             "src/math/sqrtf.rs"
         ],
         "type": "f32"
@@ -738,14 +738,14 @@
     "trunc": {
         "sources": [
             "src/libm_helper.rs",
-            "src/math/arch/intrinsics.rs",
+            "src/math/arch/wasm32.rs",
             "src/math/trunc.rs"
         ],
         "type": "f64"
     },
     "truncf": {
         "sources": [
-            "src/math/arch/intrinsics.rs",
+            "src/math/arch/wasm32.rs",
             "src/math/truncf.rs"
         ],
         "type": "f32"

@@ -7,7 +7,7 @@ use core::f32;
 pub fn truncf(x: f32) -> f32 {
     select_implementation! {
         name: truncf,
-        use_intrinsic: target_arch = "wasm32",
+        use_arch: all(target_arch = "wasm32", intrinsics_enabled),
         args: x,
     }
 

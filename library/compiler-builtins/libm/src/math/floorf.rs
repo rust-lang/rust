@@ -7,7 +7,7 @@ use core::f32;
 pub fn floorf(x: f32) -> f32 {
     select_implementation! {
         name: floorf,
-        use_intrinsic: target_arch = "wasm32",
+        use_arch: all(target_arch = "wasm32", intrinsics_enabled),
         args: x,
     }
 

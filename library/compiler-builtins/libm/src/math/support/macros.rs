@@ -39,13 +39,8 @@ macro_rules! cfg_if {
     (@__identity $($tokens:tt)*) => { $($tokens)* };
 }
 
-/// Choose among using an intrinsic, an arch-specific implementation, and the function body.
-/// Returns directly if the intrinsic or arch is used, otherwise continue with the rest of the
-/// function.
-///
-/// Specify a `use_intrinsic` meta field if the intrinsic is (1) available on the platforms (i.e.
-/// LLVM lowers it without libcalls that may recurse), (2) it is likely to be more performant.
-/// Intrinsics require wrappers in the `math::arch::intrinsics` module.
+/// Choose between using an arch-specific implementation and the function body. Returns directly
+/// if the arch implementation is used, otherwise continue with the rest of the function.
 ///
 /// Specify a `use_arch` meta field if an architecture-specific implementation is provided.
 /// These live in the `math::arch::some_target_arch` module.
@@ -53,8 +48,7 @@ macro_rules! cfg_if {
 /// Specify a `use_arch_required` meta field if something architecture-specific must be used
 /// regardless of feature configuration (`force-soft-floats`).
 ///
-/// The passed meta options do not need to account for relevant Cargo features
-/// (`unstable-intrinsics`, `arch`, `force-soft-floats`), this macro handles that part.
+/// The passed meta options do not need to account for the `arch` target feature.
 macro_rules! select_implementation {
     (
         name: $fn_name:ident,
@@ -64,15 +58,12 @@ macro_rules! select_implementation {
         // Configuration meta for when to use the arch module regardless of whether softfloats
         // have been requested.
         $( use_arch_required: $use_arch_required:meta, )?
-        // Configuration meta for when to call intrinsics and let LLVM figure it out
-        $( use_intrinsic: $use_intrinsic:meta, )?
         args: $($arg:ident),+ ,
     ) => {
         // FIXME: these use paths that are a pretty fragile (`super`). We should figure out
         // something better w.r.t. how this is vendored into compiler-builtins.
 
         // However, we do need a few things from `arch` that are used even with soft floats.
-        //
         select_implementation! {
             @cfg $($use_arch_required)?;
             if true {
@@ -87,16 +78,6 @@ macro_rules! select_implementation {
             // Wrap in `if true` to avoid unused warnings
             if true {
                 return  super::arch::$fn_name( $($arg),+ );
-            }
-        }
-
-        // Never use intrinsics if we are forcing soft floats, and only enable with the
-        // `unstable-intrinsics` feature.
-        #[cfg(intrinsics_enabled)]
-        select_implementation! {
-            @cfg $( $use_intrinsic )?;
-            if true {
-                return  super::arch::intrinsics::$fn_name( $($arg),+ );
             }
         }
     };
