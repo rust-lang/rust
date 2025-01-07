@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.142](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.141...compiler_builtins-v0.1.142) - 2025-01-07
+
+### Other
+
+- Account for optimization levels other than numbers
+
 ## [0.1.141](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.140...compiler_builtins-v0.1.141) - 2025-01-07
 
 ### Other
