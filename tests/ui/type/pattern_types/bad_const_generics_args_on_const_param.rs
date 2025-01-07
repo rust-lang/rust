@@ -6,5 +6,6 @@ type Pat<const START: u32, const END: u32> =
 //~^ ERROR type and const arguments are not allowed on const parameter `START`
 //~| ERROR generic arguments are not allowed on const parameter `END`
 //~| ERROR associated item constraints are not allowed here
+//~| ERROR `_` is not allowed within types on item signatures for type aliases
 
 fn main() {}

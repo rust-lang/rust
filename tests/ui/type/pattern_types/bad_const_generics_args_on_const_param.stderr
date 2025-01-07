@@ -32,7 +32,13 @@ error[E0229]: associated item constraints are not allowed here
 LL |     std::pat::pattern_type!(u32 is START::<(), i32, 2>..=END::<_, Assoc = ()>);
    |                                                                   ^^^^^^^^^^ associated item constraint not allowed here
 
-error: aborting due to 3 previous errors
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for type aliases
+  --> $DIR/bad_const_generics_args_on_const_param.rs:5:64
+   |
+LL |     std::pat::pattern_type!(u32 is START::<(), i32, 2>..=END::<_, Assoc = ()>);
+   |                                                                ^ not allowed in type signatures
 
-Some errors have detailed explanations: E0109, E0229.
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0109, E0121, E0229.
 For more information about an error, try `rustc --explain E0109`.
