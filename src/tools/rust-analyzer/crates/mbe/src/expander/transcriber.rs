@@ -38,7 +38,10 @@ impl<'t> Bindings<'t> {
             nesting_state.hit = true;
             b = match b {
                 Binding::Fragment(_) => break,
-                Binding::Missing(_) => break,
+                Binding::Missing(_) => {
+                    nesting_state.at_end = true;
+                    break;
+                }
                 Binding::Nested(bs) => bs.get(nesting_state.idx).ok_or_else(|| {
                     nesting_state.at_end = true;
                     binding_err!("could not find nested binding `{name}`")

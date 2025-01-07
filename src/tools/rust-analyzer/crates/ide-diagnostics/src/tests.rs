@@ -1,5 +1,7 @@
 #![allow(clippy::print_stderr)]
 
+mod overly_long_real_world_cases;
+
 use ide_db::{
     assists::AssistResolveStrategy, base_db::SourceDatabase, LineIndexDatabase, RootDatabase,
 };
