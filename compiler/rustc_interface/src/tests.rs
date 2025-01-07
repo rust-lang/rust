@@ -782,6 +782,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(dwarf_version, Some(5));
     tracked!(embed_source, true);
     tracked!(emit_thin_lto, false);
+    tracked!(emscripten_wasm_eh, true);
     tracked!(export_executable_symbols, true);
     tracked!(fewer_names, Some(true));
     tracked!(fixed_x18, true);
