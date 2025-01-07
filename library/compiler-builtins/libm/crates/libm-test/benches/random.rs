@@ -4,7 +4,7 @@ use std::time::Duration;
 use criterion::{Criterion, criterion_main};
 use libm_test::gen::random;
 use libm_test::gen::random::RandomInput;
-use libm_test::{CheckBasis, CheckCtx, MathOp, TupleCall};
+use libm_test::{CheckBasis, CheckCtx, GeneratorKind, MathOp, TupleCall};
 
 /// Benchmark with this many items to get a variety
 const BENCH_ITER_ITEMS: usize = if cfg!(feature = "short-benchmarks") { 50 } else { 500 };
@@ -52,7 +52,7 @@ where
 {
     let name = Op::NAME;
 
-    let ctx = CheckCtx::new(Op::IDENTIFIER, CheckBasis::Musl);
+    let ctx = CheckCtx::new(Op::IDENTIFIER, CheckBasis::Musl, GeneratorKind::Random);
     let benchvec: Vec<_> =
         random::get_test_cases::<Op::RustArgs>(&ctx).take(BENCH_ITER_ITEMS).collect();
 

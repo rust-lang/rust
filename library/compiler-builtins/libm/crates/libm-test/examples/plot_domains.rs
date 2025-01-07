@@ -12,9 +12,9 @@ use std::path::Path;
 use std::process::Command;
 use std::{env, fs};
 
-use libm_test::domain::HasDomain;
-use libm_test::gen::{domain_logspace, edge_cases};
-use libm_test::{CheckBasis, CheckCtx, MathOp, op};
+use libm_test::gen::spaced::SpacedInput;
+use libm_test::gen::{edge_cases, spaced};
+use libm_test::{CheckBasis, CheckCtx, GeneratorKind, MathOp, op};
 
 const JL_PLOT: &str = "examples/plot_file.jl";
 
@@ -52,23 +52,13 @@ fn main() {
 /// Run multiple generators for a single operator.
 fn plot_one_operator<Op>(out_dir: &Path, config: &mut String)
 where
-    Op: MathOp<FTy = f32> + HasDomain<f32>,
+    Op: MathOp<FTy = f32, RustArgs = (f32,)>,
+    Op::RustArgs: SpacedInput<Op>,
 {
-    let ctx = CheckCtx::new(Op::IDENTIFIER, CheckBasis::Mpfr);
-    plot_one_generator(
-        out_dir,
-        &ctx,
-        "logspace",
-        config,
-        domain_logspace::get_test_cases::<Op>(&ctx),
-    );
-    plot_one_generator(
-        out_dir,
-        &ctx,
-        "edge_cases",
-        config,
-        edge_cases::get_test_cases::<Op, _>(&ctx),
-    );
+    let mut ctx = CheckCtx::new(Op::IDENTIFIER, CheckBasis::Mpfr, GeneratorKind::QuickSpaced);
+    plot_one_generator(out_dir, &ctx, "logspace", config, spaced::get_test_cases::<Op>(&ctx).0);
+    ctx.gen_kind = GeneratorKind::EdgeCases;
+    plot_one_generator(out_dir, &ctx, "edge_cases", config, edge_cases::get_test_cases::<Op>(&ctx));
 }
 
 /// Plot the output of a single generator.

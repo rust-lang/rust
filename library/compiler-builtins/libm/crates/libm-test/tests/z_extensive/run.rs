@@ -6,13 +6,18 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use indicatif::{ProgressBar, ProgressStyle};
-use libm_test::gen::extensive::{self, ExtensiveInput};
+use libm_test::gen::spaced;
 use libm_test::mpfloat::MpOp;
 use libm_test::{
-    CheckBasis, CheckCtx, CheckOutput, MathOp, TestResult, TupleCall, skip_extensive_test,
+    CheckBasis, CheckCtx, CheckOutput, GeneratorKind, MathOp, TestResult, TupleCall,
+    skip_extensive_test,
 };
 use libtest_mimic::{Arguments, Trial};
 use rayon::prelude::*;
+use spaced::SpacedInput;
+
+const BASIS: CheckBasis = CheckBasis::Mpfr;
+const GEN_KIND: GeneratorKind = GeneratorKind::Extensive;
 
 /// Run the extensive test suite.
 pub fn run() {
@@ -62,10 +67,10 @@ fn register_all_tests() -> Vec<Trial> {
 fn register_single_test<Op>(all: &mut Vec<Trial>)
 where
     Op: MathOp + MpOp,
-    Op::RustArgs: ExtensiveInput<Op> + Send,
+    Op::RustArgs: SpacedInput<Op> + Send,
 {
     let test_name = format!("mp_extensive_{}", Op::NAME);
-    let ctx = CheckCtx::new(Op::IDENTIFIER, CheckBasis::Mpfr);
+    let ctx = CheckCtx::new(Op::IDENTIFIER, BASIS, GEN_KIND);
     let skip = skip_extensive_test(&ctx);
 
     let runner = move || {
@@ -73,7 +78,7 @@ where
             panic!("extensive tests should be run with --release");
         }
 
-        let res = run_single_test::<Op>();
+        let res = run_single_test::<Op>(&ctx);
         let e = match res {
             Ok(()) => return Ok(()),
             Err(e) => e,
@@ -91,18 +96,17 @@ where
 }
 
 /// Test runner for a signle routine.
-fn run_single_test<Op>() -> TestResult
+fn run_single_test<Op>(ctx: &CheckCtx) -> TestResult
 where
     Op: MathOp + MpOp,
-    Op::RustArgs: ExtensiveInput<Op> + Send,
+    Op::RustArgs: SpacedInput<Op> + Send,
 {
     // Small delay before printing anything so other output from the runner has a chance to flush.
     std::thread::sleep(Duration::from_millis(500));
     eprintln!();
 
     let completed = AtomicU64::new(0);
-    let ctx = CheckCtx::new(Op::IDENTIFIER, CheckBasis::Mpfr);
-    let (ref mut cases, total) = extensive::get_test_cases::<Op>(&ctx);
+    let (ref mut cases, total) = spaced::get_test_cases::<Op>(ctx);
     let pb = Progress::new(Op::NAME, total);
 
     let test_single_chunk = |mp_vals: &mut Op::MpTy, input_vec: Vec<Op::RustArgs>| -> TestResult {
@@ -110,7 +114,7 @@ where
             // Test the input.
             let mp_res = Op::run(mp_vals, input);
             let crate_res = input.call(Op::ROUTINE);
-            crate_res.validate(mp_res, input, &ctx)?;
+            crate_res.validate(mp_res, input, ctx)?;
 
             let completed = completed.fetch_add(1, Ordering::Relaxed) + 1;
             pb.update(completed, input);

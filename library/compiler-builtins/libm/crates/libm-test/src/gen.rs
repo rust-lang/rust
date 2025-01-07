@@ -1,9 +1,8 @@
 //! Different generators that can create random or systematic bit patterns.
 
-pub mod domain_logspace;
 pub mod edge_cases;
-pub mod extensive;
 pub mod random;
+pub mod spaced;
 
 /// A wrapper to turn any iterator into an `ExactSizeIterator`. Asserts the final result to ensure
 /// the provided size was correct.
