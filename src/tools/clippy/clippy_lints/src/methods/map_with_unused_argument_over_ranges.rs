@@ -19,7 +19,7 @@ fn extract_count_with_applicability(
 ) -> Option<String> {
     let start = range.start?;
     let end = range.end?;
-    // TODO: This doens't handle if either the start or end are negative literals, or if the start is
+    // TODO: This doesn't handle if either the start or end are negative literals, or if the start is
     // not a literal. In the first case, we need to be careful about how we handle computing the
     // count to avoid overflows. In the second, we may need to add parenthesis to make the
     // suggestion correct.

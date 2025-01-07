@@ -75,10 +75,15 @@ warning: taking a mutable reference to a `const` item
   --> $DIR/lint-const-item-mutation.rs:42:5
    |
 LL |     (&mut MY_STRUCT).use_mut();
-   |     ^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: each usage of a `const` item creates a new temporary
    = note: the mutable reference will refer to this temporary, not the original `const` item
+note: mutable reference created due to call to this method
+  --> $DIR/lint-const-item-mutation.rs:9:5
+   |
+LL |     fn use_mut(&mut self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^
 note: `const` item defined here
   --> $DIR/lint-const-item-mutation.rs:27:1
    |

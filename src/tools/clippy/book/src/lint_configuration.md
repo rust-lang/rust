@@ -81,6 +81,16 @@ Whether `expect` should be allowed in test functions or `#[cfg(test)]`
 * [`expect_used`](https://rust-lang.github.io/rust-clippy/master/index.html#expect_used)
 
 
+## `allow-indexing-slicing-in-tests`
+Whether `indexing_slicing` should be allowed in test functions or `#[cfg(test)]`
+
+**Default Value:** `false`
+
+---
+**Affected lints:**
+* [`indexing_slicing`](https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing)
+
+
 ## `allow-mixed-uninlined-format-args`
 Whether to allow mixed uninlined format args, e.g. `format!("{} {}", a, foo.bar)`
 

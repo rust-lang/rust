@@ -128,6 +128,8 @@ pub fn provide(providers: &mut Providers) {
     hir_wf_check::provide(providers);
     *providers = Providers {
         inherit_sig_for_delegation_item: delegation::inherit_sig_for_delegation_item,
+        enforce_impl_non_lifetime_params_are_constrained:
+            impl_wf_check::enforce_impl_non_lifetime_params_are_constrained,
         ..*providers
     };
 }

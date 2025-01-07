@@ -1,5 +1,5 @@
 error[E0261]: use of undeclared lifetime name `'missing`
-  --> $DIR/lifetime-resolution.rs:8:28
+  --> $DIR/lifetime-resolution.rs:7:28
    |
 LL |     let missing: unsafe<> &'missing ();
    |                            ^^^^^^^^ undeclared lifetime
@@ -15,7 +15,7 @@ LL | fn foo<'missing, 'a>() {
    |        +++++++++
 
 error[E0401]: can't use generic parameters from outer item
-  --> $DIR/lifetime-resolution.rs:13:30
+  --> $DIR/lifetime-resolution.rs:11:30
    |
 LL | fn foo<'a>() {
    |        -- lifetime parameter from outer item
@@ -41,25 +41,7 @@ LL | #![feature(unsafe_binders)]
    = note: see issue #130516 <https://github.com/rust-lang/rust/issues/130516> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error: unsafe binders are not yet implemented
-  --> $DIR/lifetime-resolution.rs:5:15
-   |
-LL |     let good: unsafe<'b> &'a &'b ();
-   |               ^^^^^^^^^^^^^^^^^^^^^
-
-error: unsafe binders are not yet implemented
-  --> $DIR/lifetime-resolution.rs:8:18
-   |
-LL |     let missing: unsafe<> &'missing ();
-   |                  ^^^^^^^^^^^^^^^^^^^^^
-
-error: unsafe binders are not yet implemented
-  --> $DIR/lifetime-resolution.rs:13:20
-   |
-LL |         let outer: unsafe<> &'a &'b ();
-   |                    ^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 5 previous errors; 1 warning emitted
+error: aborting due to 2 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0261, E0401.
 For more information about an error, try `rustc --explain E0261`.

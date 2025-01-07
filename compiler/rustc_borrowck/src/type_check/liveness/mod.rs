@@ -3,6 +3,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir::visit::{TyContext, Visitor};
 use rustc_middle::mir::{Body, Local, Location, SourceInfo};
 use rustc_middle::span_bug;
+use rustc_middle::ty::relate::Relate;
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{GenericArgsRef, Region, RegionVid, Ty, TyCtxt};
 use rustc_mir_dataflow::ResultsCursor;
@@ -13,6 +14,7 @@ use tracing::debug;
 
 use super::TypeChecker;
 use crate::constraints::OutlivesConstraintSet;
+use crate::polonius::PoloniusContext;
 use crate::region_infer::values::LivenessValues;
 use crate::universal_regions::UniversalRegions;
 
@@ -56,7 +58,13 @@ pub(super) fn generate<'a, 'tcx>(
 
     // Mark regions that should be live where they appear within rvalues or within a call: like
     // args, regions, and types.
-    record_regular_live_regions(typeck.tcx(), &mut typeck.constraints.liveness_constraints, body);
+    record_regular_live_regions(
+        typeck.tcx(),
+        &mut typeck.constraints.liveness_constraints,
+        &typeck.universal_regions,
+        &mut typeck.polonius_context,
+        body,
+    );
 }
 
 // The purpose of `compute_relevant_live_locals` is to define the subset of `Local`
@@ -130,9 +138,12 @@ fn regions_that_outlive_free_regions<'tcx>(
 fn record_regular_live_regions<'tcx>(
     tcx: TyCtxt<'tcx>,
     liveness_constraints: &mut LivenessValues,
+    universal_regions: &UniversalRegions<'tcx>,
+    polonius_context: &mut Option<PoloniusContext>,
     body: &Body<'tcx>,
 ) {
-    let mut visitor = LiveVariablesVisitor { tcx, liveness_constraints };
+    let mut visitor =
+        LiveVariablesVisitor { tcx, liveness_constraints, universal_regions, polonius_context };
     for (bb, data) in body.basic_blocks.iter_enumerated() {
         visitor.visit_basic_block_data(bb, data);
     }
@@ -142,6 +153,8 @@ fn record_regular_live_regions<'tcx>(
 struct LiveVariablesVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     liveness_constraints: &'a mut LivenessValues,
+    universal_regions: &'a UniversalRegions<'tcx>,
+    polonius_context: &'a mut Option<PoloniusContext>,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for LiveVariablesVisitor<'a, 'tcx> {
@@ -184,12 +197,17 @@ impl<'a, 'tcx> LiveVariablesVisitor<'a, 'tcx> {
     /// all regions appearing in the type of `value` must be live at `location`.
     fn record_regions_live_at<T>(&mut self, value: T, location: Location)
     where
-        T: TypeVisitable<TyCtxt<'tcx>>,
+        T: TypeVisitable<TyCtxt<'tcx>> + Relate<TyCtxt<'tcx>>,
     {
         debug!("record_regions_live_at(value={:?}, location={:?})", value, location);
         self.tcx.for_each_free_region(&value, |live_region| {
             let live_region_vid = live_region.as_var();
             self.liveness_constraints.add_location(live_region_vid, location);
         });
+
+        // When using `-Zpolonius=next`, we record the variance of each live region.
+        if let Some(polonius_context) = self.polonius_context {
+            polonius_context.record_live_region_variance(self.tcx, self.universal_regions, value);
+        }
     }
 }

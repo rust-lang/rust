@@ -357,9 +357,9 @@ impl From<Cow<'static, str>> for DiagMessage {
 /// subdiagnostic derive refers to typed identifiers that are `DiagMessage`s, so need to be
 /// able to convert between these, as much as they'll be converted back into `DiagMessage`
 /// using `with_subdiagnostic_message` eventually. Don't use this other than for the derive.
-impl Into<SubdiagMessage> for DiagMessage {
-    fn into(self) -> SubdiagMessage {
-        match self {
+impl From<DiagMessage> for SubdiagMessage {
+    fn from(val: DiagMessage) -> Self {
+        match val {
             DiagMessage::Str(s) => SubdiagMessage::Str(s),
             DiagMessage::Translated(s) => SubdiagMessage::Translated(s),
             DiagMessage::FluentIdentifier(id, None) => SubdiagMessage::FluentIdentifier(id),

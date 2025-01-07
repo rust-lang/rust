@@ -6,9 +6,8 @@ use rustc_middle::mir::{
 use rustc_middle::ty::TyCtxt;
 use tracing::debug;
 
+use super::{AllFacts, LocationTable};
 use crate::borrow_set::BorrowSet;
-use crate::facts::AllFacts;
-use crate::location::LocationTable;
 use crate::places_conflict;
 
 /// Emit `loan_killed_at` and `cfg_edge` facts at the same time.

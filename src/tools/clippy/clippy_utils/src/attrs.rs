@@ -133,11 +133,7 @@ fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[impl AttributeExt], name:
     }
 }
 
-pub fn get_unique_attr<'a, A: AttributeExt>(
-    sess: &'a Session,
-    attrs: &'a [A],
-    name: &'static str,
-) -> Option<&'a A> {
+pub fn get_unique_attr<'a, A: AttributeExt>(sess: &'a Session, attrs: &'a [A], name: &'static str) -> Option<&'a A> {
     let mut unique_attr: Option<&A> = None;
     for attr in get_attr(sess, attrs, name) {
         if let Some(duplicate) = unique_attr {

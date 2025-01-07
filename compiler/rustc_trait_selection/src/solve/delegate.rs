@@ -190,9 +190,8 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         goal_trait_ref: ty::TraitRef<'tcx>,
         trait_assoc_def_id: DefId,
         impl_def_id: DefId,
-    ) -> Result<Option<DefId>, NoSolution> {
-        let node_item = specialization_graph::assoc_def(self.tcx, impl_def_id, trait_assoc_def_id)
-            .map_err(|ErrorGuaranteed { .. }| NoSolution)?;
+    ) -> Result<Option<DefId>, ErrorGuaranteed> {
+        let node_item = specialization_graph::assoc_def(self.tcx, impl_def_id, trait_assoc_def_id)?;
 
         let eligible = if node_item.is_final() {
             // Non-specializable items are always projectable.

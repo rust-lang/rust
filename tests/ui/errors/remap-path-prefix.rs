@@ -5,7 +5,7 @@
 // no-remap-src-base: Manually remap, so the remapped path remains in .stderr file.
 
 // The remapped paths are not normalized by compiletest.
-//@ normalize-stderr-test: "\\(errors)" -> "/$1"
+//@ normalize-stderr: "\\(errors)" -> "/$1"
 
 // The remapped paths aren't recognized by compiletest, so we
 // cannot use line-specific patterns.

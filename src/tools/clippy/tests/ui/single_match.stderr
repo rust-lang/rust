@@ -19,15 +19,6 @@ LL ~     };
    |
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> tests/ui/single_match.rs:23:5
-   |
-LL | /     match x {
-...  |
-LL | |         _ => (),
-LL | |     }
-   | |_____^ help: try: `if let Some(y) = x { println!("{:?}", y) }`
-
-error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
   --> tests/ui/single_match.rs:32:5
    |
 LL | /     match z {
@@ -213,8 +204,17 @@ LL | |         None | Some(_) => {},
 LL | |     }
    | |_____^ help: try: `if let Some(A | B) = &Some(A) { println!() }`
 
+error: you seem to be trying to use `match` for an equality check. Consider using `if`
+  --> tests/ui/single_match.rs:365:5
+   |
+LL | /     match &s[0..3] {
+LL | |         b"foo" => println!(),
+LL | |         _ => {},
+LL | |     }
+   | |_____^ help: try: `if &s[0..3] == b"foo" { println!() }`
+
 error: this pattern is irrefutable, `match` is useless
-  --> tests/ui/single_match.rs:371:5
+  --> tests/ui/single_match.rs:378:5
    |
 LL | /     match DATA {
 LL | |         DATA => println!(),
@@ -223,7 +223,7 @@ LL | |     }
    | |_____^ help: try: `println!();`
 
 error: this pattern is irrefutable, `match` is useless
-  --> tests/ui/single_match.rs:376:5
+  --> tests/ui/single_match.rs:383:5
    |
 LL | /     match CONST_I32 {
 LL | |         CONST_I32 => println!(),
@@ -232,7 +232,7 @@ LL | |     }
    | |_____^ help: try: `println!();`
 
 error: this pattern is irrefutable, `match` is useless
-  --> tests/ui/single_match.rs:382:5
+  --> tests/ui/single_match.rs:389:5
    |
 LL | /     match i {
 LL | |         i => {
@@ -252,7 +252,7 @@ LL +     }
    |
 
 error: this pattern is irrefutable, `match` is useless
-  --> tests/ui/single_match.rs:390:5
+  --> tests/ui/single_match.rs:397:5
    |
 LL | /     match i {
 LL | |         i => {},
@@ -261,7 +261,7 @@ LL | |     }
    | |_____^ help: `match` expression can be removed
 
 error: this pattern is irrefutable, `match` is useless
-  --> tests/ui/single_match.rs:395:5
+  --> tests/ui/single_match.rs:402:5
    |
 LL | /     match i {
 LL | |         i => (),
@@ -270,13 +270,13 @@ LL | |     }
    | |_____^ help: `match` expression can be removed
 
 error: this pattern is irrefutable, `match` is useless
-  --> tests/ui/single_match.rs:400:5
+  --> tests/ui/single_match.rs:407:5
    |
 LL | /     match CONST_I32 {
 LL | |         CONST_I32 => println!(),
 LL | |         _ => {},
 LL | |     }
-   | |_____^ help: try: `println!()`
+   | |_____^ help: try: `println!();`
 
 error: aborting due to 26 previous errors
 

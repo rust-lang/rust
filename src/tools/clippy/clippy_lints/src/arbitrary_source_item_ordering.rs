@@ -126,7 +126,7 @@ declare_clippy_lint! {
     ///
     /// [cargo-pgo]: https://github.com/Kobzol/cargo-pgo/blob/main/README.md
     ///
-    #[clippy::version = "1.82.0"]
+    #[clippy::version = "1.84.0"]
     pub ARBITRARY_SOURCE_ITEM_ORDERING,
     restriction,
     "arbitrary source item ordering"
@@ -464,7 +464,7 @@ fn convert_module_item_kind(value: &ItemKind<'_>) -> SourceItemOrderingModuleIte
         ItemKind::Use(..) => Use,
         ItemKind::Static(..) => Static,
         ItemKind::Const(..) => Const,
-        ItemKind::Fn(..) => Fn,
+        ItemKind::Fn{ .. } => Fn,
         ItemKind::Macro(..) => Macro,
         ItemKind::Mod(..) => Mod,
         ItemKind::ForeignMod { .. } => ForeignMod,

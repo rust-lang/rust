@@ -57,7 +57,17 @@ pub(crate) fn warn_on_duplicate_attribute(ecx: &ExtCtxt<'_>, item: &Annotatable,
 
 /// `Ok` represents successfully retrieving the string literal at the correct
 /// position, e.g., `println("abc")`.
-type ExprToSpannedStringResult<'a> = Result<(Symbol, ast::StrStyle, Span), UnexpectedExprKind<'a>>;
+pub(crate) type ExprToSpannedStringResult<'a> = Result<ExprToSpannedString, UnexpectedExprKind<'a>>;
+
+pub(crate) struct ExprToSpannedString {
+    pub symbol: Symbol,
+    pub style: ast::StrStyle,
+    pub span: Span,
+    /// The raw string literal, with no escaping or processing.
+    ///
+    /// Generally only useful for lints that care about the raw bytes the user wrote.
+    pub uncooked_symbol: (ast::token::LitKind, Symbol),
+}
 
 /// - `Ok` is returned when the conversion to a string literal is unsuccessful,
 /// but another type of expression is obtained instead.
@@ -90,7 +100,12 @@ pub(crate) fn expr_to_spanned_string<'a>(
     ExpandResult::Ready(Err(match expr.kind {
         ast::ExprKind::Lit(token_lit) => match ast::LitKind::from_token_lit(token_lit) {
             Ok(ast::LitKind::Str(s, style)) => {
-                return ExpandResult::Ready(Ok((s, style, expr.span)));
+                return ExpandResult::Ready(Ok(ExprToSpannedString {
+                    symbol: s,
+                    style,
+                    span: expr.span,
+                    uncooked_symbol: (token_lit.kind, token_lit.symbol),
+                }));
             }
             Ok(ast::LitKind::ByteStr(..)) => {
                 let mut err = cx.dcx().struct_span_err(expr.span, err_msg);
@@ -128,7 +143,7 @@ pub(crate) fn expr_to_string(
             Ok((err, _)) => err.emit(),
             Err(guar) => guar,
         })
-        .map(|(symbol, style, _)| (symbol, style))
+        .map(|ExprToSpannedString { symbol, style, .. }| (symbol, style))
     })
 }
 
@@ -183,7 +198,7 @@ pub(crate) fn get_single_str_spanned_from_tts(
             Ok((err, _)) => err.emit(),
             Err(guar) => guar,
         })
-        .map(|(symbol, _style, span)| (symbol, span))
+        .map(|ExprToSpannedString { symbol, span, .. }| (symbol, span))
     })
 }
 

@@ -159,7 +159,9 @@ pub fn parse_config(args: Vec<String>) -> Config {
         )
         .optflag("", "force-rerun", "rerun tests even if the inputs are unchanged")
         .optflag("", "only-modified", "only run tests that result been modified")
+        // FIXME: Temporarily retained so we can point users to `--no-capture`
         .optflag("", "nocapture", "")
+        .optflag("", "no-capture", "don't capture stdout/stderr of tests")
         .optflag("", "profiler-runtime", "is the profiler runtime enabled for this target")
         .optflag("h", "help", "show this message")
         .reqopt("", "channel", "current Rust channel", "CHANNEL")
@@ -288,6 +290,10 @@ pub fn parse_config(args: Vec<String>) -> Config {
             );
         })
     });
+    if matches.opt_present("nocapture") {
+        panic!("`--nocapture` is deprecated; please use `--no-capture`");
+    }
+
     Config {
         bless: matches.opt_present("bless"),
         compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
@@ -385,7 +391,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         target_cfgs: OnceLock::new(),
         builtin_cfg_names: OnceLock::new(),
 
-        nocapture: matches.opt_present("nocapture"),
+        nocapture: matches.opt_present("no-capture"),
 
         git_repository: matches.opt_str("git-repository").unwrap(),
         nightly_branch: matches.opt_str("nightly-branch").unwrap(),

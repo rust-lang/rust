@@ -520,7 +520,7 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
             let is_impl = matches!(&node, hir::Node::ImplItem(_));
             let (generics, parent_generics) = match node {
                 hir::Node::Item(&hir::Item {
-                    kind: hir::ItemKind::Fn(_, ref generics, ..),
+                    kind: hir::ItemKind::Fn { ref generics, .. },
                     ..
                 })
                 | hir::Node::TraitItem(&hir::TraitItem { ref generics, .. })

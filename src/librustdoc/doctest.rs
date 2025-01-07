@@ -220,7 +220,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
     } = interface::run_compiler(config, |compiler| {
         let krate = rustc_interface::passes::parse(&compiler.sess);
 
-        let collector = rustc_interface::create_and_enter_global_ctxt(&compiler, krate, |tcx| {
+        let collector = rustc_interface::create_and_enter_global_ctxt(compiler, krate, |tcx| {
             let crate_name = tcx.crate_name(LOCAL_CRATE).to_string();
             let crate_attrs = tcx.hir().attrs(CRATE_HIR_ID);
             let opts = scrape_test_config(crate_name, crate_attrs, args_path);

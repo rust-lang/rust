@@ -1,5 +1,5 @@
 error: relative drop order changing in Rust 2024
-  --> $DIR/tail_expr_drop_order-on-coroutine-unwind.rs:20:15
+  --> $DIR/tail_expr_drop_order-on-coroutine-unwind.rs:19:15
    |
 LL |         match func().await {
    |               ^^^^^^^-----
@@ -21,21 +21,21 @@ LL |     }
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-tail-expr-scope.html>
 note: `#2` invokes this custom destructor
-  --> $DIR/tail_expr_drop_order-on-coroutine-unwind.rs:10:1
+  --> $DIR/tail_expr_drop_order-on-coroutine-unwind.rs:9:1
    |
 LL | / impl std::ops::Drop for Drop {
 LL | |     fn drop(&mut self) {}
 LL | | }
    | |_^
 note: `#1` invokes this custom destructor
-  --> $DIR/tail_expr_drop_order-on-coroutine-unwind.rs:10:1
+  --> $DIR/tail_expr_drop_order-on-coroutine-unwind.rs:9:1
    |
 LL | / impl std::ops::Drop for Drop {
 LL | |     fn drop(&mut self) {}
 LL | | }
    | |_^
 note: `e` invokes this custom destructor
-  --> $DIR/tail_expr_drop_order-on-coroutine-unwind.rs:10:1
+  --> $DIR/tail_expr_drop_order-on-coroutine-unwind.rs:9:1
    |
 LL | / impl std::ops::Drop for Drop {
 LL | |     fn drop(&mut self) {}
@@ -43,7 +43,7 @@ LL | | }
    | |_^
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
 note: the lint level is defined here
-  --> $DIR/tail_expr_drop_order-on-coroutine-unwind.rs:7:9
+  --> $DIR/tail_expr_drop_order-on-coroutine-unwind.rs:6:9
    |
 LL | #![deny(tail_expr_drop_order)]
    |         ^^^^^^^^^^^^^^^^^^^^

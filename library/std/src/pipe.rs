@@ -97,7 +97,7 @@ impl PipeReader {
     /// let mut jobs = vec![];
     /// let (reader, mut writer) = std::pipe::pipe()?;
     ///
-    /// // Write NUM_SLOT characters the the pipe.
+    /// // Write NUM_SLOT characters the pipe.
     /// writer.write_all(&[b'|'; NUM_SLOT as usize])?;
     ///
     /// // Spawn several processes that read a character from the pipe, do some work, then

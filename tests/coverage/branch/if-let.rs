@@ -1,4 +1,4 @@
-#![feature(let_chains)]
+#![feature(coverage_attribute, let_chains)]
 //@ edition: 2021
 //@ compile-flags: -Zcoverage-options=branch
 //@ llvm-cov-flags: --show-branches=count

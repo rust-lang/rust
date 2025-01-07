@@ -82,7 +82,36 @@ impl HiddenUnicodeCodepoints {
             sub,
         });
     }
+
+    fn check_literal(
+        &mut self,
+        cx: &EarlyContext<'_>,
+        text: Symbol,
+        lit_kind: ast::token::LitKind,
+        span: Span,
+        label: &'static str,
+    ) {
+        if !contains_text_flow_control_chars(text.as_str()) {
+            return;
+        }
+        let (padding, point_at_inner_spans) = match lit_kind {
+            // account for `"` or `'`
+            ast::token::LitKind::Str | ast::token::LitKind::Char => (1, true),
+            // account for `c"`
+            ast::token::LitKind::CStr => (2, true),
+            // account for `r###"`
+            ast::token::LitKind::StrRaw(n) => (n as u32 + 2, true),
+            // account for `cr###"`
+            ast::token::LitKind::CStrRaw(n) => (n as u32 + 3, true),
+            // suppress bad literals.
+            ast::token::LitKind::Err(_) => return,
+            // Be conservative just in case new literals do support these.
+            _ => (0, false),
+        };
+        self.lint_text_direction_codepoint(cx, text, span, padding, point_at_inner_spans, label);
+    }
 }
+
 impl EarlyLintPass for HiddenUnicodeCodepoints {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &ast::Attribute) {
         if let ast::AttrKind::DocComment(_, comment) = attr.kind {
@@ -97,18 +126,11 @@ impl EarlyLintPass for HiddenUnicodeCodepoints {
         // byte strings are already handled well enough by `EscapeError::NonAsciiCharInByteString`
         match &expr.kind {
             ast::ExprKind::Lit(token_lit) => {
-                let text = token_lit.symbol;
-                if !contains_text_flow_control_chars(text.as_str()) {
-                    return;
-                }
-                let padding = match token_lit.kind {
-                    // account for `"` or `'`
-                    ast::token::LitKind::Str | ast::token::LitKind::Char => 1,
-                    // account for `r###"`
-                    ast::token::LitKind::StrRaw(n) => n as u32 + 2,
-                    _ => return,
-                };
-                self.lint_text_direction_codepoint(cx, text, expr.span, padding, true, "literal");
+                self.check_literal(cx, token_lit.symbol, token_lit.kind, expr.span, "literal");
+            }
+            ast::ExprKind::FormatArgs(args) => {
+                let (lit_kind, text) = args.uncooked_fmt_str;
+                self.check_literal(cx, text, lit_kind, args.span, "format string");
             }
             _ => {}
         };

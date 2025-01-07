@@ -12,6 +12,6 @@ impl Foo for () {
 
 fn main() {
     (const || { (()).foo() })();
-    //~^ ERROR: cannot call non-const fn `<() as Foo>::foo` in constant functions
+    //~^ ERROR: cannot call non-const method `<() as Foo>::foo` in constant functions
     // FIXME(const_trait_impl) this should probably say constant closures
 }

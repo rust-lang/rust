@@ -1,11 +1,14 @@
 use std::ffi::CString;
 use std::sync::Arc;
 
+use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_data_structures::memmap::Mmap;
 use rustc_errors::FatalError;
+use rustc_middle::ty::TyCtxt;
 
 use super::write::CodegenContext;
 use crate::ModuleCodegen;
+use crate::back::write::ModuleConfig;
 use crate::traits::*;
 
 pub struct ThinModule<B: WriteBackendMethods> {
@@ -80,6 +83,24 @@ impl<B: WriteBackendMethods> LtoModuleCodegen<B> {
             LtoModuleCodegen::Fat(_) => 0,
             LtoModuleCodegen::Thin(ref m) => m.cost(),
         }
+    }
+
+    /// Run autodiff on Fat LTO module
+    pub unsafe fn autodiff(
+        self,
+        cgcx: &CodegenContext<B>,
+        tcx: TyCtxt<'_>,
+        diff_fncs: Vec<AutoDiffItem>,
+        config: &ModuleConfig,
+    ) -> Result<LtoModuleCodegen<B>, FatalError> {
+        match &self {
+            LtoModuleCodegen::Fat(module) => {
+                B::autodiff(cgcx, tcx, &module, diff_fncs, config)?;
+            }
+            _ => panic!("autodiff called with non-fat LTO module"),
+        }
+
+        Ok(self)
     }
 }
 

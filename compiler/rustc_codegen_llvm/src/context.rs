@@ -1,6 +1,6 @@
 use std::borrow::Borrow;
 use std::cell::{Cell, RefCell};
-use std::ffi::{CStr, c_uint};
+use std::ffi::{CStr, c_char, c_uint};
 use std::str;
 
 use rustc_abi::{HasDataLayout, TargetDataLayout, VariantIdx};
@@ -599,6 +599,31 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             llvm::set_linkage(g, llvm::Linkage::AppendingLinkage);
             llvm::set_section(g, c"llvm.metadata");
         }
+    }
+
+    pub(crate) fn get_metadata_value(&self, metadata: &'ll Metadata) -> &'ll Value {
+        unsafe { llvm::LLVMMetadataAsValue(self.llcx, metadata) }
+    }
+
+    pub(crate) fn get_function(&self, name: &str) -> Option<&'ll Value> {
+        let name = SmallCStr::new(name);
+        unsafe { llvm::LLVMGetNamedFunction(self.llmod, name.as_ptr()) }
+    }
+
+    pub(crate) fn get_md_kind_id(&self, name: &str) -> u32 {
+        unsafe {
+            llvm::LLVMGetMDKindIDInContext(
+                self.llcx,
+                name.as_ptr() as *const c_char,
+                name.len() as c_uint,
+            )
+        }
+    }
+
+    pub(crate) fn create_metadata(&self, name: String) -> Option<&'ll Metadata> {
+        Some(unsafe {
+            llvm::LLVMMDStringInContext2(self.llcx, name.as_ptr() as *const c_char, name.len())
+        })
     }
 }
 

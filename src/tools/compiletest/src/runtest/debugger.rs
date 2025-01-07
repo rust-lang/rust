@@ -19,15 +19,9 @@ pub(super) struct DebuggerCommands {
 }
 
 impl DebuggerCommands {
-    pub fn parse_from(
-        file: &Path,
-        config: &Config,
-        debugger_prefixes: &[&str],
-    ) -> Result<Self, String> {
-        let directives = debugger_prefixes
-            .iter()
-            .map(|prefix| (format!("{prefix}-command"), format!("{prefix}-check")))
-            .collect::<Vec<_>>();
+    pub fn parse_from(file: &Path, config: &Config, debugger_prefix: &str) -> Result<Self, String> {
+        let command_directive = format!("{debugger_prefix}-command");
+        let check_directive = format!("{debugger_prefix}-check");
 
         let mut breakpoint_lines = vec![];
         let mut commands = vec![];
@@ -48,14 +42,11 @@ impl DebuggerCommands {
                 continue;
             };
 
-            for &(ref command_directive, ref check_directive) in &directives {
-                config
-                    .parse_name_value_directive(&line, command_directive)
-                    .map(|cmd| commands.push(cmd));
-
-                config
-                    .parse_name_value_directive(&line, check_directive)
-                    .map(|cmd| check_lines.push((line_no, cmd)));
+            if let Some(command) = config.parse_name_value_directive(&line, &command_directive) {
+                commands.push(command);
+            }
+            if let Some(pattern) = config.parse_name_value_directive(&line, &check_directive) {
+                check_lines.push((line_no, pattern));
             }
         }
 

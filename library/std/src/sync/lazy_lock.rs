@@ -1,4 +1,4 @@
-use super::once::ExclusiveState;
+use super::poison::once::ExclusiveState;
 use crate::cell::UnsafeCell;
 use crate::mem::ManuallyDrop;
 use crate::ops::Deref;
@@ -63,6 +63,7 @@ union Data<T, F> {
 /// ```
 #[stable(feature = "lazy_cell", since = "1.80.0")]
 pub struct LazyLock<T, F = fn() -> T> {
+    // FIXME(nonpoison_once): if possible, switch to nonpoison version once it is available
     once: Once,
     data: UnsafeCell<Data<T, F>>,
 }

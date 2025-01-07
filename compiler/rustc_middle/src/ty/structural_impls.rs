@@ -393,6 +393,7 @@ impl<'tcx> TypeSuperFoldable<TyCtxt<'tcx>> for Ty<'tcx> {
             ty::Tuple(ts) => ty::Tuple(ts.try_fold_with(folder)?),
             ty::FnDef(def_id, args) => ty::FnDef(def_id, args.try_fold_with(folder)?),
             ty::FnPtr(sig_tys, hdr) => ty::FnPtr(sig_tys.try_fold_with(folder)?, hdr),
+            ty::UnsafeBinder(f) => ty::UnsafeBinder(f.try_fold_with(folder)?),
             ty::Ref(r, ty, mutbl) => {
                 ty::Ref(r.try_fold_with(folder)?, ty.try_fold_with(folder)?, mutbl)
             }
@@ -443,6 +444,7 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
             ty::Tuple(ts) => ts.visit_with(visitor),
             ty::FnDef(_, args) => args.visit_with(visitor),
             ty::FnPtr(ref sig_tys, _) => sig_tys.visit_with(visitor),
+            ty::UnsafeBinder(ref f) => f.visit_with(visitor),
             ty::Ref(r, ty, _) => {
                 try_visit!(r.visit_with(visitor));
                 ty.visit_with(visitor)

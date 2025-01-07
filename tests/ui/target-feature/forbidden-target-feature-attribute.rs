@@ -7,5 +7,5 @@
 pub trait Sized {}
 
 #[target_feature(enable = "soft-float")]
-//~^ERROR: cannot be toggled with
+//~^ERROR: cannot be enabled with
 pub unsafe fn my_fun() {}

@@ -143,6 +143,7 @@ pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
             | (sym::target_has_atomic_load_store, Some(_))
             | (sym::target_thread_local, None) => disallow(cfg, "--target"),
             (sym::fmt_debug, None | Some(_)) => disallow(cfg, "-Z fmt-debug"),
+            (sym::emscripten_wasm_eh, None | Some(_)) => disallow(cfg, "-Z emscripten_wasm_eh"),
             _ => {}
         }
     }
@@ -295,6 +296,10 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
         ins_none!(sym::ub_checks);
     }
 
+    // Nightly-only implementation detail for the `panic_unwind` and `unwind` crates.
+    if sess.is_nightly_build() && sess.opts.unstable_opts.emscripten_wasm_eh {
+        ins_none!(sym::emscripten_wasm_eh);
+    }
     ret
 }
 
@@ -331,6 +336,11 @@ impl CheckCfg {
         // NOTE: This should be kept in sync with `default_configuration`.
         // Note that symbols inserted conditionally in `default_configuration`
         // are inserted unconditionally here.
+        //
+        // One exception is the `test` cfg which is consider to be a "user-space"
+        // cfg, despite being also set by in `default_configuration` above.
+        // It allows the build system to "deny" using the config by not marking it
+        // as expected (e.g. `lib.test = false` for Cargo).
         //
         // When adding a new config here you should also update
         // `tests/ui/check-cfg/well-known-values.rs` (in order to test the
@@ -452,8 +462,6 @@ impl CheckCfg {
         }
 
         ins!(sym::target_thread_local, no_values);
-
-        ins!(sym::test, no_values);
 
         ins!(sym::ub_checks, no_values);
 

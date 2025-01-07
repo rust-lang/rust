@@ -112,9 +112,11 @@ passes_coroutine_on_non_closure =
     attribute should be applied to closures
     .label = not a closure
 
-passes_coverage_not_fn_or_closure =
-    attribute should be applied to a function definition or closure
-    .label = not a function or closure
+passes_coverage_attribute_not_allowed =
+    coverage attribute not allowed here
+    .not_fn_impl_mod = not a function, impl block, or module
+    .no_body = function has no body
+    .help = coverage attribute can be applied to a function (with body), impl block, or module
 
 passes_dead_codes =
     { $multiple ->

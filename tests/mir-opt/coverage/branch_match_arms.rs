@@ -1,3 +1,4 @@
+#![feature(coverage_attribute)]
 //@ test-mir-pass: InstrumentCoverage
 //@ compile-flags: -Cinstrument-coverage -Zno-profiler-runtime -Zcoverage-options=branch
 // skip-filecheck

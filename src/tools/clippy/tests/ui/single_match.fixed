@@ -17,7 +17,13 @@ fn single_match() {
     };
 
     let x = Some(1u8);
-    if let Some(y) = x { println!("{:?}", y) }
+    match x {
+        // Note the missing block braces.
+        // We suggest `if let Some(y) = x { .. }` because the macro
+        // is expanded before we can do anything.
+        Some(y) => println!("{:?}", y),
+        _ => (),
+    }
 
     let z = (1u8, 1u8);
     if let (2..=3, 7..=9) = z { dummy() };
@@ -297,6 +303,10 @@ fn issue11365() {
     if let Some(A | B) = &Some(A) { println!() }
 }
 
+fn issue12758(s: &[u8]) {
+    if &s[0..3] == b"foo" { println!() }
+}
+
 #[derive(Eq, PartialEq)]
 pub struct Data([u8; 4]);
 
@@ -318,5 +328,25 @@ fn irrefutable_match() {
 
     
 
-    println!()
+    println!();
+
+    let mut x = vec![1i8];
+
+    // Should not lint.
+    match x.pop() {
+        // bla
+        Some(u) => println!("{u}"),
+        // more comments!
+        None => {},
+    }
+    // Should not lint.
+    match x.pop() {
+        // bla
+        Some(u) => {
+            // bla
+            println!("{u}");
+        },
+        // bla
+        None => {},
+    }
 }

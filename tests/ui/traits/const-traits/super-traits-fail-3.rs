@@ -35,7 +35,7 @@ const fn foo<T: ~const Bar>(x: &T) {
     //[nyy,nyn,nny,nnn]~^^^ ERROR: const trait impls are experimental
     x.a();
     //[yyn]~^ ERROR: the trait bound `T: ~const Foo` is not satisfied
-    //[ynn,yny,nny,nnn]~^^ ERROR: cannot call non-const fn `<T as Foo>::a` in constant functions
+    //[ynn,yny,nny,nnn]~^^ ERROR: cannot call non-const method `<T as Foo>::a` in constant functions
     //[nyy,nyn]~^^^ ERROR: cannot call conditionally-const method `<T as Foo>::a` in constant functions
 }
 

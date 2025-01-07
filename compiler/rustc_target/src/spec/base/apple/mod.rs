@@ -2,8 +2,8 @@ use std::borrow::Cow;
 use std::env;
 
 use crate::spec::{
-    Cc, DebuginfoKind, FramePointer, LinkerFlavor, Lld, SplitDebuginfo, StackProbeType, StaticCow,
-    TargetOptions, cvs,
+    Cc, DebuginfoKind, FloatAbi, FramePointer, LinkerFlavor, Lld, SplitDebuginfo, StackProbeType,
+    StaticCow, TargetOptions, cvs,
 };
 
 #[cfg(test)]
@@ -105,6 +105,7 @@ pub(crate) fn base(
 ) -> (TargetOptions, StaticCow<str>, StaticCow<str>) {
     let opts = TargetOptions {
         abi: abi.target_abi().into(),
+        llvm_floatabi: Some(FloatAbi::Hard),
         os: os.into(),
         cpu: arch.target_cpu(abi).into(),
         link_env_remove: link_env_remove(os),

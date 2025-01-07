@@ -555,6 +555,7 @@ symbols! {
         call_ref_future,
         caller_location,
         capture_disjoint_fields,
+        carrying_mul_add,
         catch_unwind,
         cause,
         cdylib,
@@ -569,6 +570,7 @@ symbols! {
         cfg_autodiff_fallback,
         cfg_boolean_literals,
         cfg_doctest,
+        cfg_emscripten_wasm_eh,
         cfg_eval,
         cfg_fmt_debug,
         cfg_hide,
@@ -822,6 +824,7 @@ symbols! {
         emit_enum_variant_arg,
         emit_struct,
         emit_struct_field,
+        emscripten_wasm_eh,
         enable,
         encode,
         end,
@@ -1695,7 +1698,6 @@ symbols! {
         rustc_as_ptr,
         rustc_attrs,
         rustc_autodiff,
-        rustc_box,
         rustc_builtin_macro,
         rustc_capture_analysis,
         rustc_clean,
@@ -2058,7 +2060,7 @@ symbols! {
         type_macros,
         type_name,
         type_privacy_lints,
-        typed_swap,
+        typed_swap_nonoverlapping,
         u128,
         u128_legacy_const_max,
         u128_legacy_const_min,
@@ -2148,6 +2150,7 @@ symbols! {
         unwrap,
         unwrap_binder,
         unwrap_or,
+        unwrap_unsafe_binder,
         use_extern_macros,
         use_nested_groups,
         used,
@@ -2705,6 +2708,12 @@ impl Ident {
     /// How was it written originally? Did it use the raw form? Let's try to guess.
     pub fn is_raw_guess(self) -> bool {
         self.name.can_be_raw() && self.is_reserved()
+    }
+
+    /// Whether this would be the identifier for a tuple field like `self.0`, as
+    /// opposed to a named field like `self.thing`.
+    pub fn is_numeric(self) -> bool {
+        !self.name.is_empty() && self.as_str().bytes().all(|b| b.is_ascii_digit())
     }
 }
 

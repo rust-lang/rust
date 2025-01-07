@@ -11,10 +11,11 @@
 // ENABLE_SVE: attributes #0 = { {{.*}} "target-features"="{{((\+outline-atomics,?)|(\+v8a,?)|(\+fpmr,?)?|(\+sve,?)|(\+neon,?)|(\+fp-armv8,?))*}}" }
 
 //@ [DISABLE_SVE] compile-flags: -C target-feature=-sve -Copt-level=0
-// DISABLE_SVE: attributes #0 = { {{.*}} "target-features"="{{((\+outline-atomics,?)|(\+v8a,?)|(\+fpmr,?)?|(-sve,?)|(\+neon,?))*}}" }
+// DISABLE_SVE: attributes #0 = { {{.*}} "target-features"="{{((\+outline-atomics,?)|(\+v8a,?)|(\+fpmr,?)?|(-sve,?)|(\+neon,?)|(\+fp-armv8,?))*}}" }
 
 //@ [DISABLE_NEON] compile-flags: -C target-feature=-neon -Copt-level=0
-// DISABLE_NEON: attributes #0 = { {{.*}} "target-features"="{{((\+outline-atomics,?)|(\+v8a,?)|(\+fpmr,?)?|(-fp-armv8,?)|(-neon,?))*}}" }
+// `neon` and `fp-armv8` get enabled as target base features, but then disabled again at the end of the list.
+// DISABLE_NEON: attributes #0 = { {{.*}} "target-features"="{{((\+outline-atomics,?)|(\+v8a,?)|(\+fp-armv8,?)|(\+neon,?))*}},-neon,-fp-armv8{{(,\+fpmr)?}}" }
 
 //@ [ENABLE_NEON] compile-flags: -C target-feature=+neon -Copt-level=0
 // ENABLE_NEON: attributes #0 = { {{.*}} "target-features"="{{((\+outline-atomics,?)|(\+v8a,?)|(\+fpmr,?)?|(\+fp-armv8,?)|(\+neon,?))*}}" }

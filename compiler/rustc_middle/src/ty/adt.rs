@@ -249,9 +249,9 @@ pub enum AdtKind {
     Enum,
 }
 
-impl Into<DataTypeKind> for AdtKind {
-    fn into(self) -> DataTypeKind {
-        match self {
+impl From<AdtKind> for DataTypeKind {
+    fn from(val: AdtKind) -> Self {
+        match val {
             AdtKind::Struct => DataTypeKind::Struct,
             AdtKind::Union => DataTypeKind::Union,
             AdtKind::Enum => DataTypeKind::Enum,

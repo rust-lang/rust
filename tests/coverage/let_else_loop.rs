@@ -1,3 +1,4 @@
+#![feature(coverage_attribute)]
 //@ edition: 2021
 
 // Regression test for <https://github.com/rust-lang/rust/issues/122738>.

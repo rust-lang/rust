@@ -1,4 +1,6 @@
 //@ check-pass
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 
 #![feature(coroutines, coroutine_trait)]
 

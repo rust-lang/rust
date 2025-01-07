@@ -191,6 +191,7 @@ impl<'tcx> Ty<'tcx> {
                 _ => "fn item".into(),
             },
             ty::FnPtr(..) => "fn pointer".into(),
+            ty::UnsafeBinder(_) => "unsafe binder".into(),
             ty::Dynamic(..) => "trait object".into(),
             ty::Closure(..) | ty::CoroutineClosure(..) => "closure".into(),
             ty::Coroutine(def_id, ..) => {

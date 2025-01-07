@@ -88,10 +88,10 @@ impl ReportedErrorInfo {
     }
 }
 
-impl Into<ErrorGuaranteed> for ReportedErrorInfo {
+impl From<ReportedErrorInfo> for ErrorGuaranteed {
     #[inline]
-    fn into(self) -> ErrorGuaranteed {
-        self.error
+    fn from(val: ReportedErrorInfo) -> Self {
+        val.error
     }
 }
 

@@ -14,7 +14,6 @@ impl<T> Allocator for DefaultAllocator {
 type A = impl Fn(<DefaultAllocator as Allocator>::Buffer);
 
 fn foo() -> A {
-    //~^ ERROR: type annotations needed
     |_| ()
 }
 

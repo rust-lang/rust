@@ -245,7 +245,7 @@ fn item_search_pat(item: &Item<'_>) -> (Pat, Pat) {
         ItemKind::ExternCrate(_) => (Pat::Str("extern"), Pat::Str(";")),
         ItemKind::Static(..) => (Pat::Str("static"), Pat::Str(";")),
         ItemKind::Const(..) => (Pat::Str("const"), Pat::Str(";")),
-        ItemKind::Fn(sig, ..) => (fn_header_search_pat(sig.header), Pat::Str("")),
+        ItemKind::Fn { sig, .. } => (fn_header_search_pat(sig.header), Pat::Str("")),
         ItemKind::ForeignMod { .. } => (Pat::Str("extern"), Pat::Str("}")),
         ItemKind::TyAlias(..) => (Pat::Str("type"), Pat::Str(";")),
         ItemKind::Enum(..) => (Pat::Str("enum"), Pat::Str("}")),

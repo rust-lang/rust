@@ -291,6 +291,7 @@ fn characteristic_def_id_of_type_cached<'a>(
         | ty::Uint(_)
         | ty::Str
         | ty::FnPtr(..)
+        | ty::UnsafeBinder(_)
         | ty::Alias(..)
         | ty::Placeholder(..)
         | ty::Param(_)
