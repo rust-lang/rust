@@ -737,11 +737,7 @@ pub(crate) unsafe fn optimize_thin_module(
         {
             let _timer =
                 cgcx.prof.generic_activity_with_arg("LLVM_thin_lto_rename", thin_module.name());
-            if unsafe {
-                !llvm::LLVMRustPrepareThinLTORename(thin_module.shared.data.0, llmod, target)
-            } {
-                return Err(write::llvm_err(dcx, LlvmError::PrepareThinLtoModule));
-            }
+            unsafe { llvm::LLVMRustPrepareThinLTORename(thin_module.shared.data.0, llmod, target) };
             save_temp_bitcode(cgcx, &module, "thin-lto-after-rename");
         }
 
