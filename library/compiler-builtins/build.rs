@@ -121,7 +121,7 @@ fn configure_libm(target: &Target) {
     }
 
     println!("cargo:rustc-check-cfg=cfg(optimizations_enabled)");
-    if target.opt_level >= 2 {
+    if !matches!(target.opt_level.as_str(), "0" | "1") {
         println!("cargo:rustc-cfg=optimizations_enabled");
     }
 

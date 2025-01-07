@@ -6,7 +6,7 @@ use std::env;
 #[allow(dead_code)]
 pub struct Target {
     pub triple: String,
-    pub opt_level: u8,
+    pub opt_level: String,
     pub cargo_features: Vec<String>,
     pub os: String,
     pub arch: String,
@@ -32,7 +32,7 @@ impl Target {
         Self {
             triple: env::var("TARGET").unwrap(),
             os: env::var("CARGO_CFG_TARGET_OS").unwrap(),
-            opt_level: env::var("OPT_LEVEL").unwrap().parse().unwrap(),
+            opt_level: env::var("OPT_LEVEL").unwrap(),
             cargo_features,
             arch: env::var("CARGO_CFG_TARGET_ARCH").unwrap(),
             vendor: env::var("CARGO_CFG_TARGET_VENDOR").unwrap(),
