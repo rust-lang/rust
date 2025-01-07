@@ -245,27 +245,10 @@ impl ProjectWorkspace {
         if let Err(e) = &data_layout {
             tracing::error!(%e, "failed fetching data layout for {cargo_toml:?} workspace");
         }
+        sysroot.load_workspace(&SysrootSourceWorkspaceConfig::CargoMetadata(
+            sysroot_metadata_config(&config.extra_env, &targets),
+        ));
 
-        let (meta, error) = CargoWorkspace::fetch_metadata(
-            cargo_toml,
-            cargo_toml.parent(),
-            &CargoMetadataConfig {
-                features: config.features.clone(),
-                targets: targets.clone(),
-                extra_args: config.extra_args.clone(),
-                extra_env: config.extra_env.clone(),
-            },
-            &sysroot,
-            false,
-            progress,
-        )
-        .with_context(|| {
-            format!(
-                "Failed to read Cargo metadata from Cargo.toml file {cargo_toml}, {toolchain:?}",
-            )
-        })?;
-        let cargo_config_extra_env = cargo_config_env(cargo_toml, &config.extra_env, &sysroot);
-        let cargo = CargoWorkspace::new(meta, cargo_toml.clone(), cargo_config_extra_env);
         let rustc = rustc_dir.and_then(|rustc_dir| {
             info!(workspace = %cargo_toml, rustc_dir = %rustc_dir, "Using rustc source");
             match CargoWorkspace::fetch_metadata(
@@ -302,9 +285,28 @@ impl ProjectWorkspace {
                 }
             }
         });
-        sysroot.load_workspace(&SysrootSourceWorkspaceConfig::CargoMetadata(
-            sysroot_metadata_config(&config.extra_env, &targets),
-        ));
+
+        let (meta, error) = CargoWorkspace::fetch_metadata(
+            cargo_toml,
+            cargo_toml.parent(),
+            &CargoMetadataConfig {
+                features: config.features.clone(),
+                targets,
+                extra_args: config.extra_args.clone(),
+                extra_env: config.extra_env.clone(),
+            },
+            &sysroot,
+            false,
+            progress,
+        )
+        .with_context(|| {
+            format!(
+                "Failed to read Cargo metadata from Cargo.toml file {cargo_toml}, {toolchain:?}",
+            )
+        })?;
+        let cargo_config_extra_env = cargo_config_env(cargo_toml, &config.extra_env, &sysroot);
+        let cargo = CargoWorkspace::new(meta, cargo_toml.clone(), cargo_config_extra_env);
+
         Ok(ProjectWorkspace {
             kind: ProjectWorkspaceKind::Cargo {
                 cargo,
