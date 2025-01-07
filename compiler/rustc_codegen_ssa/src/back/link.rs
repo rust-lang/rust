@@ -1117,14 +1117,14 @@ fn link_natively(
         let stripcmd = "rust-objcopy";
         match (strip, crate_type) {
             (Strip::Debuginfo, _) => {
-                strip_symbols_with_external_utility(sess, stripcmd, out_filename, Some("-S"))
+                strip_symbols_with_external_utility(sess, stripcmd, out_filename, Some("--strip-debug"))
             }
             // Per the manpage, `-x` is the maximum safe strip level for dynamic libraries. (#93988)
             (Strip::Symbols, CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro) => {
                 strip_symbols_with_external_utility(sess, stripcmd, out_filename, Some("-x"))
             }
             (Strip::Symbols, _) => {
-                strip_symbols_with_external_utility(sess, stripcmd, out_filename, None)
+                strip_symbols_with_external_utility(sess, stripcmd, out_filename, Some("--strip-all"))
             }
             (Strip::None, _) => {}
         }
