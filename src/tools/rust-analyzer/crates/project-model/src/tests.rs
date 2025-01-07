@@ -12,9 +12,9 @@ use span::FileId;
 use triomphe::Arc;
 
 use crate::{
-    sysroot::SysrootMode, workspace::ProjectWorkspaceKind, CargoWorkspace, CfgOverrides,
-    ManifestPath, ProjectJson, ProjectJsonData, ProjectWorkspace, Sysroot, SysrootQueryMetadata,
-    WorkspaceBuildScripts,
+    sysroot::SysrootWorkspace, workspace::ProjectWorkspaceKind, CargoWorkspace, CfgOverrides,
+    ManifestPath, ProjectJson, ProjectJsonData, ProjectWorkspace, Sysroot,
+    SysrootSourceWorkspaceConfig, WorkspaceBuildScripts,
 };
 
 fn load_cargo(file: &str) -> (CrateGraph, ProcMacroPaths) {
@@ -122,7 +122,9 @@ fn get_fake_sysroot() -> Sysroot {
     // fake sysroot, so we give them both the same path:
     let sysroot_dir = AbsPathBuf::assert(sysroot_path);
     let sysroot_src_dir = sysroot_dir.clone();
-    Sysroot::load(Some(sysroot_dir), Some(sysroot_src_dir), &SysrootQueryMetadata::default())
+    let mut sysroot = Sysroot::new(Some(sysroot_dir), Some(sysroot_src_dir));
+    sysroot.load_workspace(&SysrootSourceWorkspaceConfig::default_cargo());
+    sysroot
 }
 
 fn rooted_project_json(data: ProjectJsonData) -> ProjectJson {
@@ -263,12 +265,12 @@ fn smoke_test_real_sysroot_cargo() {
     let manifest_path =
         ManifestPath::try_from(AbsPathBuf::try_from(meta.workspace_root.clone()).unwrap()).unwrap();
     let cargo_workspace = CargoWorkspace::new(meta, manifest_path, Default::default());
-    let sysroot = Sysroot::discover(
+    let mut sysroot = Sysroot::discover(
         AbsPath::assert(Utf8Path::new(env!("CARGO_MANIFEST_DIR"))),
         &Default::default(),
-        &SysrootQueryMetadata::default(),
     );
-    assert!(matches!(sysroot.mode(), SysrootMode::Workspace(_)));
+    sysroot.load_workspace(&SysrootSourceWorkspaceConfig::default_cargo());
+    assert!(matches!(sysroot.workspace(), SysrootWorkspace::Workspace(_)));
     let project_workspace = ProjectWorkspace {
         kind: ProjectWorkspaceKind::Cargo {
             cargo: cargo_workspace,

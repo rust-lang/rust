@@ -4,7 +4,12 @@
 //! but we can't process `.rlib` and need source code instead. The source code
 //! is typically installed with `rustup component add rust-src` command.
 
-use std::{env, fs, ops, path::Path, process::Command};
+use std::{
+    env, fs,
+    ops::{self, Not},
+    path::Path,
+    process::Command,
+};
 
 use anyhow::{format_err, Result};
 use base_db::CrateName;
@@ -12,23 +17,24 @@ use itertools::Itertools;
 use la_arena::{Arena, Idx};
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::FxHashMap;
+use stdx::format_to;
 use toolchain::{probe_for_binary, Tool};
 
 use crate::{
     cargo_workspace::CargoMetadataConfig, utf8_stdout, CargoWorkspace, ManifestPath,
-    SysrootQueryMetadata,
+    SysrootSourceWorkspaceConfig,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Sysroot {
     root: Option<AbsPathBuf>,
     src_root: Option<AbsPathBuf>,
-    mode: SysrootMode,
+    workspace: SysrootWorkspace,
     error: Option<String>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub(crate) enum SysrootMode {
+pub(crate) enum SysrootWorkspace {
     Workspace(CargoWorkspace),
     Stitched(Stitched),
     Empty,
@@ -82,7 +88,7 @@ pub(crate) struct SysrootCrateData {
 
 impl Sysroot {
     pub const fn empty() -> Sysroot {
-        Sysroot { root: None, src_root: None, mode: SysrootMode::Empty, error: None }
+        Sysroot { root: None, src_root: None, workspace: SysrootWorkspace::Empty, error: None }
     }
 
     /// Returns sysroot "root" directory, where `bin/`, `etc/`, `lib/`, `libexec/`
@@ -99,10 +105,10 @@ impl Sysroot {
     }
 
     pub fn is_empty(&self) -> bool {
-        match &self.mode {
-            SysrootMode::Workspace(ws) => ws.packages().next().is_none(),
-            SysrootMode::Stitched(stitched) => stitched.crates.is_empty(),
-            SysrootMode::Empty => true,
+        match &self.workspace {
+            SysrootWorkspace::Workspace(ws) => ws.packages().next().is_none(),
+            SysrootWorkspace::Stitched(stitched) => stitched.crates.is_empty(),
+            SysrootWorkspace::Empty => true,
         }
     }
 
@@ -111,62 +117,49 @@ impl Sysroot {
     }
 
     pub fn num_packages(&self) -> usize {
-        match &self.mode {
-            SysrootMode::Workspace(ws) => ws.packages().count(),
-            SysrootMode::Stitched(c) => c.crates().count(),
-            SysrootMode::Empty => 0,
+        match &self.workspace {
+            SysrootWorkspace::Workspace(ws) => ws.packages().count(),
+            SysrootWorkspace::Stitched(c) => c.crates().count(),
+            SysrootWorkspace::Empty => 0,
         }
     }
 
-    pub(crate) fn mode(&self) -> &SysrootMode {
-        &self.mode
+    pub(crate) fn workspace(&self) -> &SysrootWorkspace {
+        &self.workspace
     }
 }
 
-// FIXME: Expose a builder api as loading the sysroot got way too modular and complicated.
 impl Sysroot {
     /// Attempts to discover the toolchain's sysroot from the given `dir`.
-    pub fn discover(
-        dir: &AbsPath,
-        extra_env: &FxHashMap<String, String>,
-        sysroot_query_metadata: &SysrootQueryMetadata,
-    ) -> Sysroot {
+    pub fn discover(dir: &AbsPath, extra_env: &FxHashMap<String, String>) -> Sysroot {
         let sysroot_dir = discover_sysroot_dir(dir, extra_env);
         let sysroot_src_dir = sysroot_dir.as_ref().ok().map(|sysroot_dir| {
             discover_sysroot_src_dir_or_add_component(sysroot_dir, dir, extra_env)
         });
-        Sysroot::load_core_check(Some(sysroot_dir), sysroot_src_dir, sysroot_query_metadata)
+        Sysroot::assemble(Some(sysroot_dir), sysroot_src_dir)
     }
 
     pub fn discover_with_src_override(
         current_dir: &AbsPath,
         extra_env: &FxHashMap<String, String>,
         sysroot_src_dir: AbsPathBuf,
-        sysroot_query_metadata: &SysrootQueryMetadata,
     ) -> Sysroot {
         let sysroot_dir = discover_sysroot_dir(current_dir, extra_env);
-        Sysroot::load_core_check(
-            Some(sysroot_dir),
-            Some(Ok(sysroot_src_dir)),
-            sysroot_query_metadata,
-        )
+        Sysroot::assemble(Some(sysroot_dir), Some(Ok(sysroot_src_dir)))
     }
 
-    pub fn discover_sysroot_src_dir(
-        sysroot_dir: AbsPathBuf,
-        sysroot_query_metadata: &SysrootQueryMetadata,
-    ) -> Sysroot {
+    pub fn discover_sysroot_src_dir(sysroot_dir: AbsPathBuf) -> Sysroot {
         let sysroot_src_dir = discover_sysroot_src_dir(&sysroot_dir)
             .ok_or_else(|| format_err!("can't find standard library sources in {sysroot_dir}"));
-        Sysroot::load_core_check(
-            Some(Ok(sysroot_dir)),
-            Some(sysroot_src_dir),
-            sysroot_query_metadata,
-        )
+        Sysroot::assemble(Some(Ok(sysroot_dir)), Some(sysroot_src_dir))
     }
 
     pub fn discover_rustc_src(&self) -> Option<ManifestPath> {
         get_rustc_src(self.root()?)
+    }
+
+    pub fn new(sysroot_dir: Option<AbsPathBuf>, sysroot_src_dir: Option<AbsPathBuf>) -> Sysroot {
+        Self::assemble(sysroot_dir.map(Ok), sysroot_src_dir.map(Ok))
     }
 
     /// Returns a command to run a tool preferring the cargo proxies if the sysroot exists.
@@ -205,93 +198,51 @@ impl Sysroot {
             })
     }
 
-    pub fn load(
-        sysroot_dir: Option<AbsPathBuf>,
-        sysroot_src_dir: Option<AbsPathBuf>,
-        sysroot_query_metadata: &SysrootQueryMetadata,
-    ) -> Sysroot {
-        Self::load_core_check(sysroot_dir.map(Ok), sysroot_src_dir.map(Ok), sysroot_query_metadata)
-    }
-
-    fn load_core_check(
+    fn assemble(
         sysroot_dir: Option<Result<AbsPathBuf, anyhow::Error>>,
         sysroot_src_dir: Option<Result<AbsPathBuf, anyhow::Error>>,
-        sysroot_query_metadata: &SysrootQueryMetadata,
     ) -> Sysroot {
-        let mut sysroot = Self::load_(sysroot_dir, sysroot_src_dir, sysroot_query_metadata);
-        if sysroot.error.is_none() {
-            if let Some(src_root) = &sysroot.src_root {
-                let has_core = match &sysroot.mode {
-                    SysrootMode::Workspace(ws) => ws.packages().any(|p| ws[p].name == "core"),
-                    SysrootMode::Stitched(stitched) => stitched.by_name("core").is_some(),
-                    SysrootMode::Empty => true,
-                };
-                if !has_core {
-                    let var_note = if env::var_os("RUST_SRC_PATH").is_some() {
-                        " (env var `RUST_SRC_PATH` is set and may be incorrect, try unsetting it)"
-                    } else {
-                        ", try running `rustup component add rust-src` to possibly fix this"
-                    };
-                    sysroot.error = Some(format!(
-                        "sysroot at `{src_root}` is missing a `core` library{var_note}",
-                    ));
-                }
-            }
-        }
-        sysroot
-    }
-
-    fn load_(
-        sysroot_dir: Option<Result<AbsPathBuf, anyhow::Error>>,
-        sysroot_src_dir: Option<Result<AbsPathBuf, anyhow::Error>>,
-        sysroot_query_metadata: &SysrootQueryMetadata,
-    ) -> Sysroot {
-        let sysroot_dir = match sysroot_dir {
+        let mut errors = String::new();
+        let root = match sysroot_dir {
             Some(Ok(sysroot_dir)) => Some(sysroot_dir),
             Some(Err(e)) => {
-                return Sysroot {
-                    root: None,
-                    src_root: None,
-                    mode: SysrootMode::Empty,
-                    error: Some(e.to_string()),
-                }
+                format_to!(errors, "{e}\n");
+                None
             }
             None => None,
         };
-        let sysroot_src_dir = match sysroot_src_dir {
-            Some(Ok(sysroot_src_dir)) => sysroot_src_dir,
+        let src_root = match sysroot_src_dir {
+            Some(Ok(sysroot_src_dir)) => Some(sysroot_src_dir),
             Some(Err(e)) => {
-                return Sysroot {
-                    root: sysroot_dir,
-                    src_root: None,
-                    mode: SysrootMode::Empty,
-                    error: Some(e.to_string()),
-                }
+                format_to!(errors, "{e}\n");
+                None
             }
-            None => {
-                return Sysroot {
-                    root: sysroot_dir,
-                    src_root: None,
-                    mode: SysrootMode::Empty,
-                    error: None,
-                }
-            }
+            None => None,
         };
-        if let SysrootQueryMetadata::CargoMetadata(cargo_config) = sysroot_query_metadata {
-            let library_manifest =
-                ManifestPath::try_from(sysroot_src_dir.join("Cargo.toml")).unwrap();
+        Sysroot {
+            root,
+            src_root,
+            workspace: SysrootWorkspace::Empty,
+            error: errors.is_empty().not().then_some(errors),
+        }
+    }
+
+    pub fn load_workspace(&mut self, sysroot_source_config: &SysrootSourceWorkspaceConfig) {
+        assert!(matches!(self.workspace, SysrootWorkspace::Empty), "workspace already loaded");
+        let Self { root: _, src_root: Some(src_root), workspace, error: _ } = self else { return };
+        if let SysrootSourceWorkspaceConfig::CargoMetadata(cargo_config) = sysroot_source_config {
+            let library_manifest = ManifestPath::try_from(src_root.join("Cargo.toml")).unwrap();
             if fs::metadata(&library_manifest).is_ok() {
-                if let Some(sysroot) = Self::load_library_via_cargo(
-                    library_manifest,
-                    &sysroot_dir,
-                    &sysroot_src_dir,
-                    cargo_config,
-                ) {
-                    return sysroot;
+                if let Some(loaded) =
+                    Self::load_library_via_cargo(library_manifest, src_root, cargo_config)
+                {
+                    *workspace = loaded;
+                    self.load_core_check();
+                    return;
                 }
             }
         }
-        tracing::debug!("Stitching sysroot library: {sysroot_src_dir}");
+        tracing::debug!("Stitching sysroot library: {src_root}");
 
         let mut stitched = Stitched { crates: Arena::default() };
 
@@ -299,7 +250,7 @@ impl Sysroot {
             let name = path.split('/').last().unwrap();
             let root = [format!("{path}/src/lib.rs"), format!("lib{path}/lib.rs")]
                 .into_iter()
-                .map(|it| sysroot_src_dir.join(it))
+                .map(|it| src_root.join(it))
                 .filter_map(|it| ManifestPath::try_from(it).ok())
                 .find(|it| fs::metadata(it).is_ok());
 
@@ -335,20 +286,37 @@ impl Sysroot {
                 }
             }
         }
-        Sysroot {
-            root: sysroot_dir,
-            src_root: Some(sysroot_src_dir),
-            mode: SysrootMode::Stitched(stitched),
-            error: None,
+        *workspace = SysrootWorkspace::Stitched(stitched);
+        self.load_core_check();
+    }
+
+    fn load_core_check(&mut self) {
+        if self.error.is_none() {
+            if let Some(src_root) = &self.src_root {
+                let has_core = match &self.workspace {
+                    SysrootWorkspace::Workspace(ws) => ws.packages().any(|p| ws[p].name == "core"),
+                    SysrootWorkspace::Stitched(stitched) => stitched.by_name("core").is_some(),
+                    SysrootWorkspace::Empty => true,
+                };
+                if !has_core {
+                    let var_note = if env::var_os("RUST_SRC_PATH").is_some() {
+                        " (env var `RUST_SRC_PATH` is set and may be incorrect, try unsetting it)"
+                    } else {
+                        ", try running `rustup component add rust-src` to possibly fix this"
+                    };
+                    self.error = Some(format!(
+                        "sysroot at `{src_root}` is missing a `core` library{var_note}",
+                    ));
+                }
+            }
         }
     }
 
     fn load_library_via_cargo(
         library_manifest: ManifestPath,
-        sysroot_dir: &Option<AbsPathBuf>,
         sysroot_src_dir: &AbsPathBuf,
         cargo_config: &CargoMetadataConfig,
-    ) -> Option<Sysroot> {
+    ) -> Option<SysrootWorkspace> {
         tracing::debug!("Loading library metadata: {library_manifest}");
         let mut cargo_config = cargo_config.clone();
         // the sysroot uses `public-dependency`, so we make cargo think it's a nightly
@@ -423,12 +391,7 @@ impl Sysroot {
         });
 
         let cargo_workspace = CargoWorkspace::new(res, library_manifest, Default::default());
-        Some(Sysroot {
-            root: sysroot_dir.clone(),
-            src_root: Some(sysroot_src_dir.clone()),
-            mode: SysrootMode::Workspace(cargo_workspace),
-            error: None,
-        })
+        Some(SysrootWorkspace::Workspace(cargo_workspace))
     }
 }
 
