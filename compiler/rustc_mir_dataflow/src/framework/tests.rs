@@ -84,13 +84,13 @@ impl<D: Direction> MockAnalysis<'_, D> {
 
     /// The entry set for each `BasicBlock` is the ID of that block offset by a fixed amount to
     /// avoid colliding with the statement/terminator effects.
-    fn mock_entry_set(&self, bb: BasicBlock) -> BitSet<usize> {
+    fn mock_entry_set(&self, bb: BasicBlock) -> DenseBitSet<usize> {
         let mut ret = self.bottom_value(self.body);
         ret.insert(Self::BASIC_BLOCK_OFFSET + bb.index());
         ret
     }
 
-    fn mock_entry_states(&self) -> IndexVec<BasicBlock, BitSet<usize>> {
+    fn mock_entry_states(&self) -> IndexVec<BasicBlock, DenseBitSet<usize>> {
         let empty = self.bottom_value(self.body);
         let mut ret = IndexVec::from_elem(empty, &self.body.basic_blocks);
 
@@ -121,7 +121,7 @@ impl<D: Direction> MockAnalysis<'_, D> {
     /// For example, the expected state when calling
     /// `seek_before_primary_effect(Location { block: 2, statement_index: 2 })`
     /// would be `[102, 0, 1, 2, 3, 4]`.
-    fn expected_state_at_target(&self, target: SeekTarget) -> BitSet<usize> {
+    fn expected_state_at_target(&self, target: SeekTarget) -> DenseBitSet<usize> {
         let block = target.block();
         let mut ret = self.bottom_value(self.body);
         ret.insert(Self::BASIC_BLOCK_OFFSET + block.index());
@@ -155,13 +155,13 @@ impl<D: Direction> MockAnalysis<'_, D> {
 }
 
 impl<'tcx, D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
-    type Domain = BitSet<usize>;
+    type Domain = DenseBitSet<usize>;
     type Direction = D;
 
     const NAME: &'static str = "mock";
 
     fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
-        BitSet::new_empty(Self::BASIC_BLOCK_OFFSET + body.basic_blocks.len())
+        DenseBitSet::new_empty(Self::BASIC_BLOCK_OFFSET + body.basic_blocks.len())
     }
 
     fn initialize_start_block(&self, _: &mir::Body<'tcx>, _: &mut Self::Domain) {

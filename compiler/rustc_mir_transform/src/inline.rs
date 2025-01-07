@@ -8,7 +8,7 @@ use rustc_attr_parsing::InlineAttr;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_index::Idx;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir::visit::*;
@@ -369,7 +369,7 @@ impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
 
         // Traverse the MIR manually so we can account for the effects of inlining on the CFG.
         let mut work_list = vec![START_BLOCK];
-        let mut visited = BitSet::new_empty(callee_body.basic_blocks.len());
+        let mut visited = DenseBitSet::new_empty(callee_body.basic_blocks.len());
         while let Some(bb) = work_list.pop() {
             if !visited.insert(bb.index()) {
                 continue;
@@ -885,7 +885,7 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
         in_cleanup_block: false,
         return_block,
         tcx,
-        always_live_locals: BitSet::new_filled(callee_body.local_decls.len()),
+        always_live_locals: DenseBitSet::new_filled(callee_body.local_decls.len()),
     };
 
     // Map all `Local`s, `SourceScope`s and `BasicBlock`s to new ones
@@ -1127,7 +1127,7 @@ struct Integrator<'a, 'tcx> {
     in_cleanup_block: bool,
     return_block: Option<BasicBlock>,
     tcx: TyCtxt<'tcx>,
-    always_live_locals: BitSet<Local>,
+    always_live_locals: DenseBitSet<Local>,
 }
 
 impl Integrator<'_, '_> {

@@ -9,7 +9,7 @@ use rustc_abi::{
     HasDataLayout, Layout, LayoutCalculatorError, LayoutData, Niche, ReprOptions, Scalar, Size,
     StructKind, TagEncoding, VariantIdx, Variants, WrappingRange,
 };
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::bug;
 use rustc_middle::mir::{CoroutineLayout, CoroutineSavedLocal};
@@ -724,7 +724,7 @@ enum SavedLocalEligibility {
 /// Compute the eligibility and assignment of each local.
 fn coroutine_saved_local_eligibility(
     info: &CoroutineLayout<'_>,
-) -> (BitSet<CoroutineSavedLocal>, IndexVec<CoroutineSavedLocal, SavedLocalEligibility>) {
+) -> (DenseBitSet<CoroutineSavedLocal>, IndexVec<CoroutineSavedLocal, SavedLocalEligibility>) {
     use SavedLocalEligibility::*;
 
     let mut assignments: IndexVec<CoroutineSavedLocal, SavedLocalEligibility> =
@@ -732,7 +732,7 @@ fn coroutine_saved_local_eligibility(
 
     // The saved locals not eligible for overlap. These will get
     // "promoted" to the prefix of our coroutine.
-    let mut ineligible_locals = BitSet::new_empty(info.field_tys.len());
+    let mut ineligible_locals = DenseBitSet::new_empty(info.field_tys.len());
 
     // Figure out which of our saved locals are fields in only
     // one variant. The rest are deemed ineligible for overlap.
@@ -792,7 +792,7 @@ fn coroutine_saved_local_eligibility(
     // lay them out with the other locals in the prefix and eliminate
     // unnecessary padding bytes.
     {
-        let mut used_variants = BitSet::new_empty(info.variant_fields.len());
+        let mut used_variants = DenseBitSet::new_empty(info.variant_fields.len());
         for assignment in &assignments {
             if let Assigned(idx) = assignment {
                 used_variants.insert(*idx);

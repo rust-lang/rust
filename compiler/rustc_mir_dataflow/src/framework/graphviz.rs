@@ -9,7 +9,7 @@ use std::{io, ops, str};
 
 use regex::Regex;
 use rustc_hir::def_id::DefId;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::{
     self, BasicBlock, Body, Location, create_dump_file, dump_enabled, graphviz_safe_def_name,
     traversal,
@@ -205,7 +205,7 @@ where
     // the operations that involve the mutation, i.e. within the `borrow_mut`.
     cursor: RefCell<ResultsCursor<'mir, 'tcx, A>>,
     style: OutputStyle,
-    reachable: BitSet<BasicBlock>,
+    reachable: DenseBitSet<BasicBlock>,
 }
 
 impl<'mir, 'tcx, A> Formatter<'mir, 'tcx, A>

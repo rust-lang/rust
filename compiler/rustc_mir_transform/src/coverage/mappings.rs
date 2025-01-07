@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::graph::DirectedGraph;
 use rustc_index::IndexVec;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::coverage::{
     BlockMarkerId, BranchSpan, ConditionId, ConditionInfo, CoverageInfoHi, CoverageKind,
 };
@@ -128,7 +128,7 @@ pub(super) fn extract_all_mapping_info_from_mir<'tcx>(
 }
 
 impl ExtractedMappings {
-    pub(super) fn all_bcbs_with_counter_mappings(&self) -> BitSet<BasicCoverageBlock> {
+    pub(super) fn all_bcbs_with_counter_mappings(&self) -> DenseBitSet<BasicCoverageBlock> {
         // Fully destructure self to make sure we don't miss any fields that have mappings.
         let Self {
             num_bcbs,
@@ -140,7 +140,7 @@ impl ExtractedMappings {
         } = self;
 
         // Identify which BCBs have one or more mappings.
-        let mut bcbs_with_counter_mappings = BitSet::new_empty(*num_bcbs);
+        let mut bcbs_with_counter_mappings = DenseBitSet::new_empty(*num_bcbs);
         let mut insert = |bcb| {
             bcbs_with_counter_mappings.insert(bcb);
         };
@@ -172,8 +172,8 @@ impl ExtractedMappings {
     }
 
     /// Returns the set of BCBs that have one or more `Code` mappings.
-    pub(super) fn bcbs_with_ordinary_code_mappings(&self) -> BitSet<BasicCoverageBlock> {
-        let mut bcbs = BitSet::new_empty(self.num_bcbs);
+    pub(super) fn bcbs_with_ordinary_code_mappings(&self) -> DenseBitSet<BasicCoverageBlock> {
+        let mut bcbs = DenseBitSet::new_empty(self.num_bcbs);
         for &CodeMapping { span: _, bcb } in &self.code_mappings {
             bcbs.insert(bcb);
         }

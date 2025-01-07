@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{IndexSlice, IndexVec};
 
 use super::{DirectedGraph, StartNode, Successors};
@@ -78,7 +78,7 @@ where
 {
     graph: G,
     stack: Vec<G::Node>,
-    visited: BitSet<G::Node>,
+    visited: DenseBitSet<G::Node>,
 }
 
 impl<G> DepthFirstSearch<G>
@@ -86,7 +86,7 @@ where
     G: DirectedGraph + Successors,
 {
     pub fn new(graph: G) -> Self {
-        Self { stack: vec![], visited: BitSet::new_empty(graph.num_nodes()), graph }
+        Self { stack: vec![], visited: DenseBitSet::new_empty(graph.num_nodes()), graph }
     }
 
     /// Version of `push_start_node` that is convenient for chained
@@ -207,8 +207,8 @@ where
 {
     graph: &'graph G,
     stack: Vec<Event<G::Node>>,
-    visited: BitSet<G::Node>,
-    settled: BitSet<G::Node>,
+    visited: DenseBitSet<G::Node>,
+    settled: DenseBitSet<G::Node>,
 }
 
 impl<'graph, G> TriColorDepthFirstSearch<'graph, G>
@@ -219,8 +219,8 @@ where
         TriColorDepthFirstSearch {
             graph,
             stack: vec![],
-            visited: BitSet::new_empty(graph.num_nodes()),
-            settled: BitSet::new_empty(graph.num_nodes()),
+            visited: DenseBitSet::new_empty(graph.num_nodes()),
+            settled: DenseBitSet::new_empty(graph.num_nodes()),
         }
     }
 
