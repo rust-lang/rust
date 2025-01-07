@@ -738,10 +738,10 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 kind!("Guard({pat}, {cond})");
                 self.pat(pat);
                 self.expr(cond);
-            }
-            PatKind::Lit(lit_expr) => {
+            },
+            PatKind::Expr(lit_expr) => {
                 bind!(self, lit_expr);
-                kind!("Lit({lit_expr})");
+                kind!("Expr({lit_expr})");
                 self.pat_expr(lit_expr);
             },
             PatKind::Range(start, end, end_kind) => {

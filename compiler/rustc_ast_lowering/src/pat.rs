@@ -38,8 +38,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             lower_sub,
                         );
                     }
-                    PatKind::Lit(e) => {
-                        break hir::PatKind::Lit(self.lower_expr_within_pat(e, false));
+                    PatKind::Expr(e) => {
+                        break hir::PatKind::Expr(self.lower_expr_within_pat(e, false));
                     }
                     PatKind::TupleStruct(qself, path, pats) => {
                         let qpath = self.lower_qpath(

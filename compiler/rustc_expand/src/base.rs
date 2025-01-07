@@ -522,7 +522,7 @@ impl MacResult for MacEager {
                 return Some(P(ast::Pat {
                     id: ast::DUMMY_NODE_ID,
                     span: e.span,
-                    kind: PatKind::Lit(e),
+                    kind: PatKind::Expr(e),
                     tokens: None,
                 }));
             }

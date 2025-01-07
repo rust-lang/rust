@@ -89,7 +89,7 @@ impl LateLintPass<'_> for ManualRangePatterns {
             let mut ranges_found = Vec::new();
 
             for pat in pats {
-                if let PatKind::Lit(lit) = pat.kind
+                if let PatKind::Expr(lit) = pat.kind
                     && let Some(num) = Num::new(lit)
                 {
                     numbers_found.insert(num.val);

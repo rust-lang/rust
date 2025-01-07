@@ -1980,7 +1980,7 @@ impl<'a> State<'a> {
                     self.pclose();
                 }
             }
-            PatKind::Lit(e) => self.print_pat_expr(e),
+            PatKind::Expr(e) => self.print_pat_expr(e),
             PatKind::Range(begin, end, end_kind) => {
                 if let Some(expr) = begin {
                     self.print_pat_expr(expr);

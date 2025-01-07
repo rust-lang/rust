@@ -42,7 +42,7 @@ fn is_short_pattern_inner(pat: &ast::Pat) -> bool {
         | ast::PatKind::Never
         | ast::PatKind::Wild
         | ast::PatKind::Err(_)
-        | ast::PatKind::Lit(_) => true,
+        | ast::PatKind::Expr(_) => true,
         ast::PatKind::Ident(_, _, ref pat) => pat.is_none(),
         ast::PatKind::Struct(..)
         | ast::PatKind::MacCall(..)
@@ -293,7 +293,7 @@ impl Rewrite for Pat {
                 let path_str = rewrite_path(context, PathContext::Expr, q_self, path, shape)?;
                 rewrite_tuple_pat(pat_vec, Some(path_str), self.span, context, shape)
             }
-            PatKind::Lit(ref expr) => expr.rewrite_result(context, shape),
+            PatKind::Expr(ref expr) => expr.rewrite_result(context, shape),
             PatKind::Slice(ref slice_pat)
                 if context.config.style_edition() <= StyleEdition::Edition2021 =>
             {
@@ -530,7 +530,7 @@ pub(crate) fn can_be_overflowed_pat(
             ast::PatKind::Ref(ref p, _) | ast::PatKind::Box(ref p) => {
                 can_be_overflowed_pat(context, &TuplePatField::Pat(p), len)
             }
-            ast::PatKind::Lit(ref expr) => can_be_overflowed_expr(context, expr, len),
+            ast::PatKind::Expr(ref expr) => can_be_overflowed_expr(context, expr, len),
             _ => false,
         },
         TuplePatField::Dotdot(..) => false,

@@ -485,7 +485,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | hir::PatKind::Box(_)
             | hir::PatKind::Ref(_, _)
             | hir::PatKind::Deref(_)
-            | hir::PatKind::Lit(_)
+            | hir::PatKind::Expr(_)
             | hir::PatKind::Range(_, _, _)
             | hir::PatKind::Slice(_, _, _)
             | hir::PatKind::Err(_) => true,

@@ -224,7 +224,7 @@ impl<'tcx> Visitor<'tcx> for NumericFallbackVisitor<'_, 'tcx> {
 
     fn visit_pat(&mut self, pat: &'tcx Pat<'_>) {
         match pat.kind {
-            PatKind::Lit(&PatExpr {
+            PatKind::Expr(&PatExpr {
                 hir_id,
                 kind: PatExprKind::Lit { lit, .. },
                 ..
