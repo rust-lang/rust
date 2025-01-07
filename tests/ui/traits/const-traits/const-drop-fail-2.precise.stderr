@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `ConstDropImplWithBounds<NonTrivialDrop>: const Destruct` is not satisfied
+error[E0277]: the trait bound `NonTrivialDrop: const A` is not satisfied
   --> $DIR/const-drop-fail-2.rs:31:23
    |
 LL | const _: () = check::<ConstDropImplWithBounds<NonTrivialDrop>>(
