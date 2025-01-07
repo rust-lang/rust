@@ -125,9 +125,12 @@
 //! ## Stack size
 //!
 //! The default stack size is platform-dependent and subject to change.
-//! Currently, it is 2 MiB on all Tier-1 platforms.
+//! Currently, it is 2 MiB on all Tier-1 platforms to make programs behave more consistently
+//! cross-platform (notably Windows would otherwise default to 1MiB stacks).
 //!
-//! There are two ways to manually specify the stack size for spawned threads:
+//! You can overload Rust's default stack size with one of the two following methods.
+//! Passing 0 to either of them will be treated as a request to instead use the
+//! platform's "normal" default stack size (e.g. reverting Windows back to 1MiB stacks).
 //!
 //! * Build the thread with [`Builder`] and pass the desired stack size to [`Builder::stack_size`].
 //! * Set the `RUST_MIN_STACK` environment variable to an integer representing the desired stack
@@ -495,7 +498,11 @@ impl Builder {
                 .unwrap_or(imp::DEFAULT_MIN_STACK_SIZE);
 
             // 0 is our sentinel value, so ensure that we'll never see 0 after
-            // initialization has run
+            // initialization has run even if RUST_MIN_STACK=0.
+            //
+            // Note that a stack size of 0 is actually a meaningful input, as each platform's
+            // thread implementation is expected to use it as a signal to use the
+            // platform's "normal" default thread size instead of Rust's preferred one.
             MIN.store(amt + 1, Ordering::Relaxed);
             amt
         });
