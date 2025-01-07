@@ -267,8 +267,10 @@ fn fn_sig_for_fn_abi<'tcx>(
 
 #[inline]
 fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: ExternAbi, c_variadic: bool) -> Conv {
+    let target = &tcx.sess.target;
+
     use rustc_abi::ExternAbi::*;
-    match tcx.sess.target.adjust_abi(abi, c_variadic) {
+    match target.adjust_abi(abi, c_variadic) {
         RustIntrinsic | Rust | RustCall => Conv::Rust,
 
         // This is intentionally not using `Conv::Cold`, as that has to preserve
@@ -279,10 +281,37 @@ fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: ExternAbi, c_variadic: bool) -> Conv
         System { .. } => bug!("system abi should be selected elsewhere"),
         EfiApi => bug!("eficall abi should be selected elsewhere"),
 
-        Stdcall { .. } => Conv::X86Stdcall,
-        Fastcall { .. } => Conv::X86Fastcall,
-        Vectorcall { .. } => Conv::X86VectorCall,
-        Thiscall { .. } => Conv::X86ThisCall,
+        // See commentary in `is_abi_supported`: we map these to "C" on targets
+        // where they do not make sense.
+        Stdcall { .. } => {
+            if target.arch == "x86" {
+                Conv::X86Stdcall
+            } else {
+                Conv::C
+            }
+        }
+        Fastcall { .. } => {
+            if target.arch == "x86" {
+                Conv::X86Fastcall
+            } else {
+                Conv::C
+            }
+        }
+        Vectorcall { .. } => {
+            if ["x86", "x86_64"].contains(&&target.arch[..]) {
+                Conv::X86VectorCall
+            } else {
+                Conv::C
+            }
+        }
+        Thiscall { .. } => {
+            if target.arch == "x86" {
+                Conv::X86ThisCall
+            } else {
+                Conv::C
+            }
+        }
+
         C { .. } => Conv::C,
         Unadjusted => Conv::C,
         Win64 { .. } => Conv::X86_64Win64,
