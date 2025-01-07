@@ -18,16 +18,10 @@ LL | fn generic<T, U>(v: Foo<T, U>, f: fn(<Foo<T, U> as WithAssoc>::Output) -> i
    |                                                                                +++++++++++++++++++++
 
 error[E0277]: `Foo<T, U>` cannot be sent between threads safely
-  --> $DIR/issue-83857-ub.rs:21:80
+  --> $DIR/issue-83857-ub.rs:21:35
    |
-LL |   fn generic<T, U>(v: Foo<T, U>, f: fn(<Foo<T, U> as WithAssoc>::Output) -> i32) {
-   |  ________________________________________________________________________________^
-LL | |
-LL | |
-LL | |     f(foo(v));
-LL | |
-LL | | }
-   | |_^ `Foo<T, U>` cannot be sent between threads safely
+LL | fn generic<T, U>(v: Foo<T, U>, f: fn(<Foo<T, U> as WithAssoc>::Output) -> i32) {
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Foo<T, U>` cannot be sent between threads safely
    |
    = help: the trait `Send` is not implemented for `Foo<T, U>`
 note: required for `Foo<T, U>` to implement `WithAssoc`
