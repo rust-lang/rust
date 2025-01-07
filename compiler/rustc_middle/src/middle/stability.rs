@@ -613,7 +613,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ) {
         // This should work pretty much exactly like the function stability logic in
         // `compiler/rustc_const_eval/src/check_consts/check.rs`.
-        // FIXME: Find some way to not duplicate that logic.
+        // FIXME(const_trait_impl): Find some way to not duplicate that logic.
         let Some(ConstStability {
             level: attr::StabilityLevel::Unstable { implied_by: implied_feature, .. },
             feature,
@@ -623,14 +623,11 @@ impl<'tcx> TyCtxt<'tcx> {
             return;
         };
 
-        let unstable_feature_allowed = span.allows_unstable(feature)
-            || implied_feature.is_some_and(|f| span.allows_unstable(f));
-
         let feature_enabled = trait_def_id.is_local()
             || self.features().enabled(feature)
             || implied_feature.is_some_and(|f| self.features().enabled(f));
 
-        if !unstable_feature_allowed && !feature_enabled {
+        if !feature_enabled {
             let mut diag = self.dcx().create_err(crate::error::UnstableConstTrait {
                 span,
                 def_path: self.def_path_str(trait_def_id),
