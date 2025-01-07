@@ -656,11 +656,11 @@ impl Printer<'_> {
             }
             Pat::Range { start, end } => {
                 if let Some(start) = start {
-                    self.print_literal_or_const(start);
+                    self.print_expr(*start);
                 }
                 w!(self, "..=");
                 if let Some(end) = end {
-                    self.print_literal_or_const(end);
+                    self.print_expr(*end);
                 }
             }
             Pat::Slice { prefix, slice, suffix } => {

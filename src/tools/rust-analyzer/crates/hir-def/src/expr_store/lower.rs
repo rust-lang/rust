@@ -1784,23 +1784,32 @@ impl ExprCollector<'_> {
                         self.collect_macro_call(call, macro_ptr, true, |this, expanded_pat| {
                             this.collect_pat_opt(expanded_pat, binding_list)
                         });
-                    self.source_map.pat_map.insert(src, pat);
+                    self.source_map.pat_map.insert(src, pat.into());
                     return pat;
                 }
                 None => Pat::Missing,
             },
             // FIXME: implement in a way that also builds source map and calculates assoc resolutions in type inference.
             ast::Pat::RangePat(p) => {
-                let mut range_part_lower = |p: Option<ast::Pat>| {
-                    p.and_then(|it| match &it {
-                        ast::Pat::LiteralPat(it) => {
-                            Some(Box::new(LiteralOrConst::Literal(pat_literal_to_hir(it)?.0)))
+                let mut range_part_lower = |p: Option<ast::Pat>| -> Option<ExprId> {
+                    p.and_then(|it| {
+                        let ptr = PatPtr::new(&it);
+                        match &it {
+                            ast::Pat::LiteralPat(it) => {
+                                // Some(Box::new(LiteralOrConst::Literal(pat_literal_to_hir(it)?.0)))
+                                Some(self.alloc_expr_from_pat(
+                                    Expr::Literal(pat_literal_to_hir(it)?.0),
+                                    ptr,
+                                ))
+                            }
+                            pat @ (ast::Pat::IdentPat(_) | ast::Pat::PathPat(_)) => {
+                                // let subpat = self.collect_pat(pat.clone(), binding_list);
+                                // Some(Box::new(LiteralOrConst::Const(subpat)))
+                                // TODO
+                                Some(self.missing_expr())
+                            }
+                            _ => None,
                         }
-                        pat @ (ast::Pat::IdentPat(_) | ast::Pat::PathPat(_)) => {
-                            let subpat = self.collect_pat(pat.clone(), binding_list);
-                            Some(Box::new(LiteralOrConst::Const(subpat)))
-                        }
-                        _ => None,
                     })
                 };
                 let start = range_part_lower(p.start());
@@ -1863,7 +1872,7 @@ impl ExprCollector<'_> {
                             }
                         });
                     if let Some(pat) = pat.left() {
-                        self.source_map.pat_map.insert(src, pat);
+                        self.source_map.pat_map.insert(src, pat.into());
                     }
                     pat
                 }
@@ -2490,7 +2499,7 @@ impl ExprCollector<'_> {
     fn alloc_expr(&mut self, expr: Expr, ptr: ExprPtr) -> ExprId {
         let src = self.expander.in_file(ptr);
         let id = self.store.exprs.alloc(expr);
-        self.source_map.expr_map_back.insert(id, src);
+        self.source_map.expr_map_back.insert(id, src.map(AstPtr::wrap_left));
         self.source_map.expr_map.insert(src, id.into());
         id
     }
@@ -2502,7 +2511,7 @@ impl ExprCollector<'_> {
     fn alloc_expr_desugared_with_ptr(&mut self, expr: Expr, ptr: ExprPtr) -> ExprId {
         let src = self.expander.in_file(ptr);
         let id = self.store.exprs.alloc(expr);
-        self.source_map.expr_map_back.insert(id, src);
+        self.source_map.expr_map_back.insert(id, src.map(AstPtr::wrap_left));
         // We intentionally don't fill this as it could overwrite a non-desugared entry
         // self.source_map.expr_map.insert(src, id);
         id
@@ -2526,11 +2535,20 @@ impl ExprCollector<'_> {
         self.source_map.pat_map_back.insert(id, src.map(AstPtr::wrap_left));
         id
     }
+
+    fn alloc_expr_from_pat(&mut self, expr: Expr, ptr: PatPtr) -> ExprId {
+        let src = self.expander.in_file(ptr);
+        let id = self.body.exprs.alloc(expr);
+        self.source_map.pat_map.insert(src, id.into());
+        self.source_map.expr_map_back.insert(id, src.map(AstPtr::wrap_right));
+        id
+    }
+
     fn alloc_pat(&mut self, pat: Pat, ptr: PatPtr) -> PatId {
         let src = self.expander.in_file(ptr);
         let id = self.store.pats.alloc(pat);
         self.source_map.pat_map_back.insert(id, src.map(AstPtr::wrap_right));
-        self.source_map.pat_map.insert(src, id);
+        self.source_map.pat_map.insert(src, id.into());
         id
     }
     // FIXME: desugared pats don't have ptr, that's wrong and should be fixed somehow.

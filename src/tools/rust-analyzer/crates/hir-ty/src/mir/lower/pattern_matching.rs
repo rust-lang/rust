@@ -234,10 +234,12 @@ impl MirLowerCtx<'_> {
                 };
                 if mode == MatchingMode::Check {
                     if let Some(start) = start {
-                        add_check(start, BinOp::Le)?;
+                        // TODO
+                        // add_check(start, BinOp::Le)?;
                     }
                     if let Some(end) = end {
-                        add_check(end, BinOp::Ge)?;
+                        // TODO
+                        // add_check(end, BinOp::Ge)?;
                     }
                 }
                 (current, current_else)
