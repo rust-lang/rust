@@ -13,7 +13,7 @@ fn fun2(foo: &mut Vec<SomeDerives>, bar: &[SomeDerives]) {
 }
 
 // Try and fail to reproduce the issue without vec.
-// No idea why it doesnt reproduce the issue but its still a useful test case.
+// No idea why it doesn't reproduce the issue but its still a useful test case.
 struct Object<T, A>(T, A);
 impl<T: Clone, A: Default> Object<T, A> {
     fn use_clone(&self) {}

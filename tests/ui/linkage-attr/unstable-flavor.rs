@@ -1,4 +1,4 @@
-// Even though this test only checks 2 of the 10 or so unstable linker flavors, it exercizes the
+// Even though this test only checks 2 of the 10 or so unstable linker flavors, it exercises the
 // unique codepath checking all unstable options (see `LinkerFlavorCli::is_unstable` and its
 // caller). If it passes, all the other unstable options are rejected as well.
 //

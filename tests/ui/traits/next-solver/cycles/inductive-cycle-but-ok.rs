@@ -11,7 +11,7 @@
 //     - candidate: overflow-impl
 //       - `Root: Trait` (inductive cycle ~> OVERFLOW)
 //     - candidate: trivial-impl ~> YES
-//     - merge respones ~> YES
+//     - merge response ~> YES
 //   - `MultipleCandidates: Trait` (in provisional cache ~> OVERFLOW)
 //
 // We previously incorrectly treated the `MultipleCandidates: Trait` as

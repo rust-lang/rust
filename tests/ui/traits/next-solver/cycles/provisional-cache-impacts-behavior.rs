@@ -43,7 +43,7 @@
 //
 // Theoretically, this can result in observable behavior differences
 // due to incompleteness. However, this would require a very convoluted
-// example and would still be sound. The difference is determinstic
+// example and would still be sound. The difference is deterministic
 // and can not be observed outside of the cycle itself as we don't move
 // non-root cycle participants into the global cache.
 //
