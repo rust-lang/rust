@@ -83,15 +83,6 @@ pub struct LitToConstInput<'tcx> {
     pub neg: bool,
 }
 
-/// Error type for `tcx.lit_to_const`.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, HashStable)]
-pub enum LitToConstError {
-    /// The literal's inferred type did not match the expected `ty` in the input.
-    /// This is used for graceful error handling (`span_delayed_bug`) in
-    /// type checking (`Const::from_anon_const`).
-    TypeError,
-}
-
 #[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct AllocId(pub NonZero<u64>);
 
