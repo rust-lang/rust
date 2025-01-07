@@ -8,6 +8,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::print::{PrettyPrinter, Print, PrintError, Printer};
 use rustc_middle::ty::{
     self, GenericArg, GenericArgKind, Instance, ReifyReason, Ty, TyCtxt, TypeVisitableExt,
+    TypingEnv,
 };
 use tracing::debug;
 
@@ -383,14 +384,26 @@ impl<'tcx> Printer<'tcx> for SymbolPrinter<'tcx> {
         &mut self,
         impl_def_id: DefId,
         args: &'tcx [GenericArg<'tcx>],
-        mut self_ty: Ty<'tcx>,
-        mut impl_trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<(), PrintError> {
-        let mut typing_env = ty::TypingEnv::post_analysis(self.tcx, impl_def_id);
-        if !args.is_empty() {
-            typing_env.param_env =
-                ty::EarlyBinder::bind(typing_env.param_env).instantiate(self.tcx, args);
-        }
+        let self_ty = self.tcx.type_of(impl_def_id);
+        let impl_trait_ref = self.tcx.impl_trait_ref(impl_def_id);
+        let (typing_env, mut self_ty, mut impl_trait_ref) =
+            if self.tcx.generics_of(impl_def_id).count() <= args.len() {
+                (
+                    TypingEnv::fully_monomorphized(),
+                    self_ty.instantiate(self.tcx, args),
+                    impl_trait_ref.map(|impl_trait_ref| impl_trait_ref.instantiate(self.tcx, args)),
+                )
+            } else {
+                // We are probably printing a nested item inside of an impl.
+                // Use the identity substitutions for the impl. We also need
+                // a well-formed param-env, so let's use post-analysis.
+                (
+                    TypingEnv::post_analysis(self.tcx, impl_def_id),
+                    self_ty.instantiate_identity(),
+                    impl_trait_ref.map(|impl_trait_ref| impl_trait_ref.instantiate_identity()),
+                )
+            };
 
         match &mut impl_trait_ref {
             Some(impl_trait_ref) => {
@@ -403,7 +416,7 @@ impl<'tcx> Printer<'tcx> for SymbolPrinter<'tcx> {
             }
         }
 
-        self.default_print_impl_path(impl_def_id, args, self_ty, impl_trait_ref)
+        self.default_print_impl_path(impl_def_id, self_ty, impl_trait_ref)
     }
 }
 
