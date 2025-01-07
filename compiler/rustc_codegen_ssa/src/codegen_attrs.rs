@@ -551,6 +551,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 InlineAttr::None
             } else if list_contains_name(items, sym::always) {
                 InlineAttr::Always
+            } else if list_contains_name(items, sym::usually) {
+                InlineAttr::Usually
             } else if list_contains_name(items, sym::never) {
                 InlineAttr::Never
             } else {
