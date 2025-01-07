@@ -2312,7 +2312,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 assoc_ident,
                 span,
             ),
-            _ => panic!("handle errors here"), // TODO: do this
+            _ => panic!("handle errors here"), // FIXME: do this
         };
         let bound = match bound_result {
             Ok(b) => b,
@@ -2323,7 +2323,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let assoc_const = self
             .probe_assoc_item(assoc_ident, ty::AssocKind::Const, hir_ref_id, span, trait_did)
             .expect("failed to find associated const");
-        // TODO: don't use no_bound_vars probably
+        // FIXME: don't use no_bound_vars probably
         let trait_ref_args = bound.no_bound_vars().unwrap().args;
         self.lower_assoc_const(span, assoc_const.def_id, assoc_segment, trait_ref_args)
     }
