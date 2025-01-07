@@ -2265,18 +2265,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         if let Some(lit_input) = lit_input {
             // If an error occurred, ignore that it's a literal and leave reporting the error up to
             // mir.
-            match tcx.at(expr.span).lit_to_const(lit_input) {
-                Ok(c) => return Some(c),
-                Err(_) if lit_input.ty.has_aliases() => {
-                    // allow the `ty` to be an alias type, though we cannot handle it here
-                    return None;
-                }
-                Err(e) => {
-                    tcx.dcx().span_delayed_bug(
-                        expr.span,
-                        format!("try_lower_anon_const_lit: couldn't lit_to_const {e:?}"),
-                    );
-                }
+
+            // Allow the `ty` to be an alias type, though we cannot handle it here, we just go through
+            // the more expensive anon const code path.
+            if !lit_input.ty.has_aliases() {
+                return Some(tcx.at(expr.span).lit_to_const(lit_input).unwrap());
             }
         }
 
