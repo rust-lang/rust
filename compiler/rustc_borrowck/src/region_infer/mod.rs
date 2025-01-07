@@ -978,7 +978,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         propagated_outlives_requirements: &mut Vec<ClosureOutlivesRequirement<'tcx>>,
     ) -> bool {
         let tcx = infcx.tcx;
-        let TypeTest { generic_kind, lower_bound, span: blame_span, ref verify_bound } = *type_test;
+        let TypeTest { generic_kind, lower_bound, span: blame_span, verify_bound: _ } = *type_test;
 
         let generic_ty = generic_kind.to_ty(tcx);
         let Some(subject) = self.try_promote_type_test_subject(infcx, generic_ty) else {
@@ -1016,25 +1016,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // For each region outlived by lower_bound find a non-local,
         // universal region (it may be the same region) and add it to
         // `ClosureOutlivesRequirement`.
+        let mut found_outlived_universal_region = false;
         for ur in self.scc_values.universal_regions_outlived_by(r_scc) {
+            found_outlived_universal_region = true;
             debug!("universal_region_outlived_by ur={:?}", ur);
-            // Check whether we can already prove that the "subject" outlives `ur`.
-            // If so, we don't have to propagate this requirement to our caller.
-            //
-            // To continue the example from the function, if we are trying to promote
-            // a requirement that `T: 'X`, and we know that `'X = '1 + '2` (i.e., the union
-            // `'1` and `'2`), then in this loop `ur` will be `'1` (and `'2`). So here
-            // we check whether `T: '1` is something we *can* prove. If so, no need
-            // to propagate that requirement.
-            //
-            // This is needed because -- particularly in the case
-            // where `ur` is a local bound -- we are sometimes in a
-            // position to prove things that our caller cannot. See
-            // #53570 for an example.
-            if self.eval_verify_bound(infcx, generic_ty, ur, &verify_bound) {
-                continue;
-            }
-
             let non_local_ub = self.universal_region_relations.non_local_upper_bounds(ur);
             debug!(?non_local_ub);
 
@@ -1056,6 +1041,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 propagated_outlives_requirements.push(requirement);
             }
         }
+        // If we succeed to promote the subject, i.e. it only contains non-local regions,
+        // and fail to prove the type test inside of the closure, the `lower_bound` has to
+        // also be at least as large as some universal region, as the type test is otherwise
+        // trivial.
+        assert!(found_outlived_universal_region);
         true
     }
 
