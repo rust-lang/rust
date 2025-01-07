@@ -2110,11 +2110,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let opt_self_ty = maybe_qself.as_ref().map(|qself| self.lower_ty(qself));
                 self.lower_const_path_resolved(opt_self_ty, path, hir_id)
             }
-            hir::ConstArgKind::Path(qpath) => ty::Const::new_error_with_message(
-                tcx,
-                qpath.span(),
-                format!("Const::lower_const_arg: invalid qpath {qpath:?}"),
-            ),
+            hir::ConstArgKind::Path(hir::QPath::TypeRelative(qself, segment)) => {
+                debug!(?qself, ?segment);
+                let ty = self.lower_ty(qself);
+                self.lower_const_assoc_path(hir_id, const_arg.span(), ty, qself, segment)
+            }
+            hir::ConstArgKind::Path(qpath @ hir::QPath::LangItem(..)) => {
+                ty::Const::new_error_with_message(
+                    tcx,
+                    qpath.span(),
+                    format!("Const::lower_const_arg: invalid qpath {qpath:?}"),
+                )
+            }
             hir::ConstArgKind::Anon(anon) => self.lower_anon_const(anon),
             hir::ConstArgKind::Infer(span, ()) => self.ct_infer(None, span),
         }
@@ -2203,8 +2210,134 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
     }
 
-    /// Literals and const generic parameters are eagerly converted to a constant, everything else
-    /// becomes `Unevaluated`.
+    #[instrument(level = "debug", skip(self))]
+    pub fn lower_const_assoc_path(
+        &self,
+        hir_ref_id: HirId,
+        span: Span,
+        qself_ty: Ty<'tcx>,
+        qself: &'tcx hir::Ty<'tcx>,
+        assoc_segment: &'tcx hir::PathSegment<'tcx>,
+    ) -> Const<'tcx> {
+        debug!(%qself_ty, ?assoc_segment.ident);
+        let tcx = self.tcx();
+
+        let assoc_ident = assoc_segment.ident;
+
+        // Check if we have an enum variant or an inherent associated const.
+        // FIXME(min_generic_const_args): handle assoc fns once we support those
+        if let Some(adt_def) = self.probe_adt(span, qself_ty) {
+            if adt_def.is_enum() {
+                let variant_def = adt_def
+                    .variants()
+                    .iter()
+                    .find(|vd| tcx.hygienic_eq(assoc_ident, vd.ident(tcx), adt_def.did()));
+                if let Some(variant_def) = variant_def {
+                    tcx.check_stability(variant_def.def_id, Some(hir_ref_id), span, None);
+                    let _ = self.prohibit_generic_args(
+                        slice::from_ref(assoc_segment).iter(),
+                        GenericsArgsErrExtend::EnumVariant { qself, assoc_segment, adt_def },
+                    );
+                    let uv = ty::UnevaluatedConst::new(variant_def.def_id, ty::List::empty());
+                    return Const::new_unevaluated(tcx, uv);
+                }
+            }
+
+            // FIXME(min_generic_const_args): Support self types other than ADTs.
+            let candidates = tcx
+                .inherent_impls(adt_def.did())
+                .iter()
+                .filter_map(|&impl_| {
+                    self.probe_assoc_item(
+                        assoc_ident,
+                        ty::AssocKind::Const,
+                        hir_ref_id,
+                        span,
+                        impl_,
+                    )
+                })
+                .collect::<Vec<_>>();
+            match &candidates[..] {
+                [] => {}
+                [assoc] => return self.lower_assoc_const(span, assoc.def_id, assoc_segment),
+                [..] => {
+                    return Const::new_error_with_message(tcx, span, "ambiguous assoc const path");
+                }
+            }
+        }
+
+        let qself_res = if let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = &qself.kind {
+            path.res
+        } else {
+            Res::Err
+        };
+
+        // Find the type of the associated item, and the trait where the associated
+        // item is declared.
+        let bound_result = match (qself_ty.kind(), qself_res) {
+            (_, Res::SelfTyAlias { alias_to: impl_def_id, is_trait_impl: true, .. }) => {
+                // `Self` in an impl of a trait -- we have a concrete self type and a
+                // trait reference.
+                let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) else {
+                    // A cycle error occurred, most likely.
+                    self.dcx().span_bug(span, "expected cycle error");
+                };
+
+                self.probe_single_bound_for_assoc_item(
+                    || {
+                        traits::supertraits(
+                            tcx,
+                            ty::Binder::dummy(trait_ref.instantiate_identity()),
+                        )
+                    },
+                    AssocItemQSelf::SelfTyAlias,
+                    ty::AssocKind::Const,
+                    assoc_ident,
+                    span,
+                    None,
+                )
+            }
+            (
+                &ty::Param(_),
+                Res::SelfTyParam { trait_: param_did } | Res::Def(DefKind::TyParam, param_did),
+            ) => self.probe_single_ty_param_bound_for_assoc_item(
+                param_did.expect_local(),
+                qself.span,
+                ty::AssocKind::Const,
+                assoc_ident,
+                span,
+            ),
+            _ => panic!("handle errors here"), // TODO: do this
+        };
+        let bound = match bound_result {
+            Ok(b) => b,
+            Err(reported) => return Const::new_error(tcx, reported),
+        };
+
+        let trait_did = bound.def_id();
+        let assoc_const = self
+            .probe_assoc_item(assoc_ident, ty::AssocKind::Const, hir_ref_id, span, trait_did)
+            .expect("failed to find associated const");
+        self.lower_assoc_const(span, assoc_const.def_id, assoc_segment)
+    }
+
+    fn lower_assoc_const(
+        &self,
+        span: Span,
+        item_def_id: DefId,
+        item_segment: &hir::PathSegment<'tcx>,
+    ) -> Const<'tcx> {
+        let tcx = self.tcx();
+        // FIXME: this is not necessarily correct.
+        // adapted from other code that also had a fixme about it being temporary.
+        let parent_args = ty::GenericArgs::identity_for_item(tcx, tcx.parent(item_def_id));
+        let args =
+            self.lower_generic_args_of_assoc_item(span, item_def_id, item_segment, parent_args);
+        let uv = ty::UnevaluatedConst::new(item_def_id, args);
+        Const::new_unevaluated(tcx, uv)
+    }
+
+    /// Literals are eagerly converted to a constant, everything else becomes `Unevaluated`.
     #[instrument(skip(self), level = "debug")]
     fn lower_anon_const(&self, anon: &AnonConst) -> Const<'tcx> {
         let tcx = self.tcx();
