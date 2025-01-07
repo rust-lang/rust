@@ -5,6 +5,7 @@
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
+mod check_instance_wf;
 mod codegen;
 mod dropck_outlives;
 mod evaluate_obligation;
@@ -25,4 +26,5 @@ pub fn provide(p: &mut Providers) {
     normalize_erasing_regions::provide(p);
     type_op::provide(p);
     p.codegen_select_candidate = codegen::codegen_select_candidate;
+    p.check_instance_wf = check_instance_wf::check_instance_wf;
 }

@@ -2483,6 +2483,12 @@ rustc_queries! {
         cache_on_disk_if { true }
     }
 
+    // UwU
+    query check_instance_wf(key: ty::Instance<'tcx>) {
+        desc { "monomorphization-time checking of where-clauses" }
+        cache_on_disk_if { true }
+    }
+
     /// Builds the set of functions that should be skipped for the move-size check.
     query skip_move_check_fns(_: ()) -> &'tcx FxIndexSet<DefId> {
         arena_cache
