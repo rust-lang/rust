@@ -712,6 +712,12 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 kind!("Ref({pat}, Mutability::{muta:?})");
                 self.pat(pat);
             },
+            PatKind::Guard(pat, cond) => {
+                bind!(self, pat, cond);
+                kind!("Guard({pat}, {cond})");
+                self.pat(pat);
+                self.expr(cond);
+            }
             PatKind::Lit(lit_expr) => {
                 bind!(self, lit_expr);
                 kind!("Lit({lit_expr})");
