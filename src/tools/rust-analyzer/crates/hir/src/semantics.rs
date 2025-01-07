@@ -30,7 +30,7 @@ use hir_expand::{
     name::AsName,
     ExpandResult, FileRange, InMacroFile, MacroCallId, MacroFileId, MacroFileIdExt,
 };
-use intern::Symbol;
+use intern::{sym, Symbol};
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
@@ -811,10 +811,37 @@ impl<'db> SemanticsImpl<'db> {
             item.attrs().any(|attr| {
                 let Some(meta) = attr.meta() else { return false };
                 let Some(path) = meta.path() else { return false };
-                let Some(attr_name) = path.as_single_name_ref() else { return true };
-                let attr_name = attr_name.text();
-                let attr_name = attr_name.as_str();
-                attr_name == "derive" || find_builtin_attr_idx(&Symbol::intern(attr_name)).is_none()
+                if let Some(attr_name) = path.as_single_name_ref() {
+                    let attr_name = attr_name.text();
+                    let attr_name = Symbol::intern(attr_name.as_str());
+                    if attr_name == sym::derive {
+                        return true;
+                    }
+                    // We ignore `#[test]` and friends in the def map, so we cannot expand them.
+                    // FIXME: We match by text. This is both hacky and incorrect (people can, and do, create
+                    // other macros named `test`). We cannot fix that unfortunately because we use this method
+                    // for speculative expansion in completion, which we cannot analyze. Fortunately, most macros
+                    // named `test` are test-like, meaning their expansion is not terribly important for IDE.
+                    if attr_name == sym::test
+                        || attr_name == sym::bench
+                        || attr_name == sym::test_case
+                        || find_builtin_attr_idx(&attr_name).is_some()
+                    {
+                        return false;
+                    }
+                }
+                let mut segments = path.segments();
+                let mut next_segment_text = || segments.next().and_then(|it| it.name_ref());
+                // `#[core::prelude::rust_2024::test]` or `#[std::prelude::rust_2024::test]`.
+                if next_segment_text().is_some_and(|it| matches!(&*it.text(), "core" | "std"))
+                    && next_segment_text().is_some_and(|it| it.text() == "prelude")
+                    && next_segment_text().is_some()
+                    && next_segment_text()
+                        .is_some_and(|it| matches!(&*it.text(), "test" | "bench" | "test_case"))
+                {
+                    return false;
+                }
+                true
             })
         })
     }
