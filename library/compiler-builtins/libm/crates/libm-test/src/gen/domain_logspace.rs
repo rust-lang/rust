@@ -27,5 +27,5 @@ where
     let start = domain.range_start();
     let end = domain.range_end();
     let steps = OpITy::<Op>::try_from(ntests).unwrap_or(OpITy::<Op>::MAX);
-    logspace(start, end, steps).map(|v| (v,))
+    logspace(start, end, steps).0.map(|v| (v,))
 }

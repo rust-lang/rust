@@ -106,8 +106,7 @@ where
 
     let completed = AtomicU64::new(0);
     let ctx = CheckCtx::new(Op::IDENTIFIER, CheckBasis::Mpfr);
-    let cases = &mut extensive::get_test_cases::<Op>(&ctx);
-    let total: u64 = cases.len().try_into().unwrap();
+    let (ref mut cases, total) = extensive::get_test_cases::<Op>(&ctx);
     let pb = Progress::new(Op::NAME, total);
 
     let test_single_chunk = |mp_vals: &mut Op::MpTy, input_vec: Vec<Op::RustArgs>| -> TestResult {

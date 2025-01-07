@@ -215,7 +215,13 @@ fn as_ulp_steps<F: Float>(x: F) -> Option<F::SignedInt> {
 /// to logarithmic spacing of their values.
 ///
 /// Note that this tends to skip negative zero, so that needs to be checked explicitly.
-pub fn logspace<F: FloatExt>(start: F, end: F, steps: F::Int) -> impl Iterator<Item = F> + Clone
+///
+/// Returns `(iterator, iterator_length)`.
+pub fn logspace<F: FloatExt>(
+    start: F,
+    end: F,
+    steps: F::Int,
+) -> (impl Iterator<Item = F> + Clone, F::Int)
 where
     RangeInclusive<F::Int>: Iterator,
 {
@@ -223,17 +229,42 @@ where
     assert!(!end.is_nan());
     assert!(end >= start);
 
-    let mut steps = steps.checked_sub(F::Int::ONE).expect("`steps` must be at least 2");
+    let steps = steps.checked_sub(F::Int::ONE).expect("`steps` must be at least 2");
     let between = ulp_between(start, end).expect("`start` or `end` is NaN");
     let spacing = (between / steps).max(F::Int::ONE);
-    steps = steps.min(between); // At maximum, one step per ULP
+    let steps = steps.min(between); // At maximum, one step per ULP
 
     let mut x = start;
-    (F::Int::ZERO..=steps).map(move |_| {
-        let ret = x;
-        x = x.n_up(spacing);
-        ret
-    })
+    (
+        (F::Int::ZERO..=steps).map(move |_| {
+            let ret = x;
+            x = x.n_up(spacing);
+            ret
+        }),
+        steps + F::Int::ONE,
+    )
+}
+
+/// Returns an iterator of up to `steps` integers evenly distributed.
+pub fn linear_ints(
+    range: RangeInclusive<i32>,
+    steps: u64,
+) -> (impl Iterator<Item = i32> + Clone, u64) {
+    let steps = steps.checked_sub(1).unwrap();
+    let between = u64::from(range.start().abs_diff(*range.end()));
+    let spacing = i32::try_from((between / steps).max(1)).unwrap();
+    let steps = steps.min(between);
+    let mut x: i32 = *range.start();
+    (
+        (0..=steps).map(move |_| {
+            let res = x;
+            // Wrapping add to avoid panic on last item (where `x` could overflow past i32::MAX as
+            // there is no next item).
+            x = x.wrapping_add(spacing);
+            res
+        }),
+        steps + 1,
+    )
 }
 
 #[cfg(test)]
@@ -422,19 +453,55 @@ mod tests {
 
     #[test]
     fn test_logspace() {
-        let ls: Vec<_> = logspace(f8::from_bits(0x0), f8::from_bits(0x4), 2).collect();
+        let (ls, count) = logspace(f8::from_bits(0x0), f8::from_bits(0x4), 2);
+        let ls: Vec<_> = ls.collect();
         let exp = [f8::from_bits(0x0), f8::from_bits(0x4)];
         assert_eq!(ls, exp);
+        assert_eq!(ls.len(), usize::from(count));
 
-        let ls: Vec<_> = logspace(f8::from_bits(0x0), f8::from_bits(0x4), 3).collect();
+        let (ls, count) = logspace(f8::from_bits(0x0), f8::from_bits(0x4), 3);
+        let ls: Vec<_> = ls.collect();
         let exp = [f8::from_bits(0x0), f8::from_bits(0x2), f8::from_bits(0x4)];
         assert_eq!(ls, exp);
+        assert_eq!(ls.len(), usize::from(count));
 
         // Check that we include all values with no repeats if `steps` exceeds the maximum number
         // of steps.
-        let ls: Vec<_> = logspace(f8::from_bits(0x0), f8::from_bits(0x3), 10).collect();
+        let (ls, count) = logspace(f8::from_bits(0x0), f8::from_bits(0x3), 10);
+        let ls: Vec<_> = ls.collect();
         let exp = [f8::from_bits(0x0), f8::from_bits(0x1), f8::from_bits(0x2), f8::from_bits(0x3)];
         assert_eq!(ls, exp);
+        assert_eq!(ls.len(), usize::from(count));
+    }
+
+    #[test]
+    fn test_linear_ints() {
+        let (ints, count) = linear_ints(0..=4, 2);
+        let ints: Vec<_> = ints.collect();
+        let exp = [0, 4];
+        assert_eq!(ints, exp);
+        assert_eq!(ints.len(), usize::try_from(count).unwrap());
+
+        let (ints, count) = linear_ints(0..=4, 3);
+        let ints: Vec<_> = ints.collect();
+        let exp = [0, 2, 4];
+        assert_eq!(ints, exp);
+        assert_eq!(ints.len(), usize::try_from(count).unwrap());
+
+        // Check that we include all values with no repeats if `steps` exceeds the maximum number
+        // of steps.
+        let (ints, count) = linear_ints(0x0..=0x3, 10);
+        let ints: Vec<_> = ints.collect();
+        let exp = [0, 1, 2, 3];
+        assert_eq!(ints, exp);
+        assert_eq!(ints.len(), usize::try_from(count).unwrap());
+
+        // Check that there are no panics around `i32::MAX`.
+        let (ints, count) = linear_ints(i32::MAX - 1..=i32::MAX, 5);
+        let ints: Vec<_> = ints.collect();
+        let exp = [i32::MAX - 1, i32::MAX];
+        assert_eq!(ints, exp);
+        assert_eq!(ints.len(), usize::try_from(count).unwrap());
     }
 
     #[test]
