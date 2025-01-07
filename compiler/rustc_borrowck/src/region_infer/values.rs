@@ -544,12 +544,12 @@ fn pretty_print_region_elements(elements: impl IntoIterator<Item = RegionElement
 
     return result;
 
-    fn push_location_range(str: &mut String, location1: Location, location2: Location) {
+    fn push_location_range(s: &mut String, location1: Location, location2: Location) {
         if location1 == location2 {
-            str.push_str(&format!("{location1:?}"));
+            s.push_str(&format!("{location1:?}"));
         } else {
             assert_eq!(location1.block, location2.block);
-            str.push_str(&format!(
+            s.push_str(&format!(
                 "{:?}[{}..={}]",
                 location1.block, location1.statement_index, location2.statement_index
             ));
