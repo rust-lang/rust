@@ -26,7 +26,7 @@ macro_rules! impl_sign_conversions_neon {
         impl AsUnsigned for $signed {
             type Unsigned = $unsigned;
 
-            #[inline]
+            #[inline(always)]
             fn as_unsigned(self) -> $unsigned {
                 unsafe { transmute(self) }
             }
@@ -35,7 +35,7 @@ macro_rules! impl_sign_conversions_neon {
         impl AsSigned for $unsigned {
             type Signed = $signed;
 
-            #[inline]
+            #[inline(always)]
             fn as_signed(self) -> $signed {
                 unsafe { transmute(self) }
             }
