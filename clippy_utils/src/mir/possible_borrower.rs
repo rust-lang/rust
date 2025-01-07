@@ -2,7 +2,7 @@ use super::possible_origin::PossibleOriginVisitor;
 use super::transitive_relation::TransitiveRelation;
 use crate::ty::is_copy;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_lint::LateContext;
 use rustc_middle::mir::visit::Visitor as _;
 use rustc_middle::mir::{self, Mutability};
@@ -21,14 +21,14 @@ struct PossibleBorrowerVisitor<'a, 'b, 'tcx> {
     possible_borrower: TransitiveRelation,
     body: &'b mir::Body<'tcx>,
     cx: &'a LateContext<'tcx>,
-    possible_origin: FxHashMap<mir::Local, BitSet<mir::Local>>,
+    possible_origin: FxHashMap<mir::Local, DenseBitSet<mir::Local>>,
 }
 
 impl<'a, 'b, 'tcx> PossibleBorrowerVisitor<'a, 'b, 'tcx> {
     fn new(
         cx: &'a LateContext<'tcx>,
         body: &'b mir::Body<'tcx>,
-        possible_origin: FxHashMap<mir::Local, BitSet<mir::Local>>,
+        possible_origin: FxHashMap<mir::Local, DenseBitSet<mir::Local>>,
     ) -> Self {
         Self {
             possible_borrower: TransitiveRelation::default(),
@@ -56,7 +56,7 @@ impl<'a, 'b, 'tcx> PossibleBorrowerVisitor<'a, 'b, 'tcx> {
             }
         }
 
-        let bs = BitSet::new_empty(self.body.local_decls.len());
+        let bs = DenseBitSet::new_empty(self.body.local_decls.len());
         PossibleBorrowerMap {
             map,
             maybe_live,
@@ -119,7 +119,7 @@ impl<'tcx> mir::visit::Visitor<'tcx> for PossibleBorrowerVisitor<'_, '_, 'tcx> {
             let mut mutable_variables: Vec<mir::Local> = mutable_borrowers
                 .iter()
                 .filter_map(|r| self.possible_origin.get(r))
-                .flat_map(BitSet::iter)
+                .flat_map(DenseBitSet::iter)
                 .collect();
 
             if ContainsRegion.visit_ty(self.body.local_decls[*dest].ty).is_break() {
@@ -171,10 +171,10 @@ fn rvalue_locals(rvalue: &mir::Rvalue<'_>, mut visit: impl FnMut(mir::Local)) {
 #[allow(clippy::module_name_repetitions)]
 pub struct PossibleBorrowerMap<'b, 'tcx> {
     /// Mapping `Local -> its possible borrowers`
-    pub map: FxHashMap<mir::Local, BitSet<mir::Local>>,
+    pub map: FxHashMap<mir::Local, DenseBitSet<mir::Local>>,
     maybe_live: ResultsCursor<'b, 'tcx, MaybeStorageLive<'tcx>>,
-    // Caches to avoid allocation of `BitSet` on every query
-    pub bitset: (BitSet<mir::Local>, BitSet<mir::Local>),
+    // Caches to avoid allocation of `DenseBitSet` on every query
+    pub bitset: (DenseBitSet<mir::Local>, DenseBitSet<mir::Local>),
 }
 
 impl<'b, 'tcx> PossibleBorrowerMap<'b, 'tcx> {
@@ -184,7 +184,7 @@ impl<'b, 'tcx> PossibleBorrowerMap<'b, 'tcx> {
             vis.visit_body(mir);
             vis.into_map(cx)
         };
-        let maybe_storage_live_result = MaybeStorageLive::new(Cow::Owned(BitSet::new_empty(mir.local_decls.len())))
+        let maybe_storage_live_result = MaybeStorageLive::new(Cow::Owned(DenseBitSet::new_empty(mir.local_decls.len())))
             .iterate_to_fixpoint(cx.tcx, mir, Some("redundant_clone"))
             .into_results_cursor(mir);
         let mut vis = PossibleBorrowerVisitor::new(cx, mir, possible_origin);
