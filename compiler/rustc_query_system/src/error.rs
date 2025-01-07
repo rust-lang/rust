@@ -82,9 +82,9 @@ pub(crate) struct IncrementCompilation {
 #[diag(query_system_query_overflow)]
 pub struct QueryOverflow {
     #[primary_span]
-    pub span: Option<Span>,
+    pub span: Span,
     #[subdiagnostic]
-    pub note: Option<QueryOverflowNote>,
+    pub note: QueryOverflowNote,
     pub suggested_limit: Limit,
     pub crate_name: Symbol,
 }

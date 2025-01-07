@@ -136,18 +136,18 @@ impl QueryJobId {
 
     #[cold]
     #[inline(never)]
-    pub fn try_find_dep_kind_root(&self, query_map: QueryMap) -> Option<(QueryJobInfo, usize)> {
+    pub fn find_dep_kind_root(&self, query_map: QueryMap) -> (QueryJobInfo, usize) {
         let mut depth = 1;
         let info = query_map.get(&self).unwrap();
         let dep_kind = info.query.dep_kind;
         let mut current_id = info.job.parent;
-        let mut last_layout = Some((info.clone(), depth));
+        let mut last_layout = (info.clone(), depth);
 
         while let Some(id) = current_id {
             let info = query_map.get(&id).unwrap();
             if info.query.dep_kind == dep_kind {
                 depth += 1;
-                last_layout = Some((info.clone(), depth));
+                last_layout = (info.clone(), depth);
             }
             current_id = info.job.parent;
         }
