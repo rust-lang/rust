@@ -290,6 +290,12 @@
                 "category": "rust-analyzer (syntax tree)"
             },
             {
+                "command": "rust-analyzer.syntaxTreeCopy",
+                "title": "Copy",
+                "icon": "$(copy)",
+                "category": "rust-analyzer (syntax tree)"
+            },
+            {
                 "command": "rust-analyzer.syntaxTreeHideWhitespace",
                 "title": "Hide Whitespace",
                 "icon": "$(filter)",
@@ -3371,6 +3377,10 @@
                     "when": "false"
                 },
                 {
+                    "command": "rust-analyzer.syntaxTreeCopy",
+                    "when": "false"
+                },
+                {
                     "command": "rust-analyzer.syntaxTreeHideWhitespace",
                     "when": "false"
                 },
@@ -3404,6 +3414,11 @@
                 }
             ],
             "view/item/context": [
+                {
+                    "command": "rust-analyzer.syntaxTreeCopy",
+                    "group": "inline",
+                    "when": "view == rustSyntaxTree"
+                },
                 {
                     "command": "rust-analyzer.syntaxTreeReveal",
                     "group": "inline",

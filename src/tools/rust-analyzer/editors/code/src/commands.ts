@@ -372,6 +372,45 @@ export function syntaxTreeReveal(): Cmd {
     };
 }
 
+function elementToString(
+    activeDocument: vscode.TextDocument,
+    element: SyntaxElement,
+    depth: number = 0,
+): string {
+    let result = "  ".repeat(depth);
+    const start = element.istart ?? element.start;
+    const end = element.iend ?? element.end;
+
+    result += `${element.kind}@${start}..${end}`;
+
+    if (element.type === "Token") {
+        const startPosition = activeDocument.positionAt(element.start);
+        const endPosition = activeDocument.positionAt(element.end);
+        const text = activeDocument.getText(new vscode.Range(startPosition, endPosition));
+        // JSON.stringify quotes and escapes the string for us.
+        result += ` ${JSON.stringify(text)}\n`;
+    } else {
+        result += "\n";
+        for (const child of element.children) {
+            result += elementToString(activeDocument, child, depth + 1);
+        }
+    }
+
+    return result;
+}
+
+export function syntaxTreeCopy(): Cmd {
+    return async (element: SyntaxElement) => {
+        const activeDocument = vscode.window.activeTextEditor?.document;
+        if (!activeDocument) {
+            return;
+        }
+
+        const result = elementToString(activeDocument, element);
+        await vscode.env.clipboard.writeText(result);
+    };
+}
+
 export function syntaxTreeHideWhitespace(ctx: CtxInit): Cmd {
     return async () => {
         if (ctx.syntaxTreeProvider !== undefined) {
