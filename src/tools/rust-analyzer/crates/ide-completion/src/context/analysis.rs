@@ -417,6 +417,15 @@ fn analyze(
         derive_ctx,
     } = expansion_result;
 
+    if original_token.kind() != self_token.kind()
+        // FIXME: This check can be removed once we use speculative database forking for completions
+        && !(original_token.kind().is_punct() || original_token.kind().is_trivia())
+        && !(SyntaxKind::is_any_identifier(original_token.kind())
+            && SyntaxKind::is_any_identifier(self_token.kind()))
+    {
+        return None;
+    }
+
     // Overwrite the path kind for derives
     if let Some((original_file, file_with_fake_ident, offset, origin_attr)) = derive_ctx {
         if let Some(ast::NameLike::NameRef(name_ref)) =
