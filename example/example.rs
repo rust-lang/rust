@@ -81,12 +81,16 @@ pub fn use_size_of() -> usize {
 }
 
 pub unsafe fn use_copy_intrinsic(src: *const u8, dst: *mut u8) {
-    intrinsics::copy::<u8>(src, dst, 1);
+    unsafe {
+        intrinsics::copy::<u8>(src, dst, 1);
+    }
 }
 
 pub unsafe fn use_copy_intrinsic_ref(src: *const u8, dst: *mut u8) {
-    let copy2 = &intrinsics::copy::<u8>;
-    copy2(src, dst, 1);
+    unsafe {
+        let copy2 = &intrinsics::copy::<u8>;
+        copy2(src, dst, 1);
+    }
 }
 
 pub const ABC: u8 = 6 * 7;
@@ -130,11 +134,11 @@ pub fn eq_char(a: char, b: char) -> bool {
 }
 
 pub unsafe fn transmute(c: char) -> u32 {
-    intrinsics::transmute(c)
+    unsafe { intrinsics::transmute(c) }
 }
 
 pub unsafe fn deref_str_ptr(s: *const str) -> &'static str {
-    &*s
+    unsafe { &*s }
 }
 
 pub fn use_array(arr: [u8; 3]) -> u8 {
@@ -150,7 +154,7 @@ pub fn array_as_slice(arr: &[u8; 3]) -> &[u8] {
 }
 
 pub unsafe fn use_ctlz_nonzero(a: u16) -> u32 {
-    intrinsics::ctlz_nonzero(a)
+    unsafe { intrinsics::ctlz_nonzero(a) }
 }
 
 pub fn ptr_as_usize(ptr: *const u8) -> usize {

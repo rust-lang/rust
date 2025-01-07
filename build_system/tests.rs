@@ -89,15 +89,7 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
     TestCase::build_bin_and_run("aot.issue-72793", "example/issue-72793.rs", &[]),
     TestCase::build_bin("aot.issue-59326", "example/issue-59326.rs"),
     TestCase::build_bin_and_run("aot.neon", "example/neon.rs", &[]),
-    TestCase::custom("aot.gen_block_iterate", &|runner| {
-        runner.run_rustc([
-            "example/gen_block_iterate.rs",
-            "--edition",
-            "2024",
-            "-Zunstable-options",
-        ]);
-        runner.run_out_command("gen_block_iterate", &[]);
-    }),
+    TestCase::build_bin_and_run("aot.gen_block_iterate", "example/gen_block_iterate.rs", &[]),
     TestCase::build_bin_and_run("aot.raw-dylib", "example/raw-dylib.rs", &[]),
     TestCase::custom("test.sysroot", &|runner| {
         apply_patches(
@@ -423,6 +415,7 @@ impl<'a> TestRunner<'a> {
             cmd.arg("-Cpanic=abort");
         }
         cmd.arg("--check-cfg=cfg(jit)");
+        cmd.arg("--edition=2024");
         cmd.args(args);
         cmd
     }
