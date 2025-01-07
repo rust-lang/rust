@@ -1202,7 +1202,7 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
                 if let TyKind::Path(None, ref path) = ty.kind
                     // We cannot disambiguate multi-segment paths right now as that requires type
                     // checking.
-                    && path.is_potential_trivial_const_arg()
+                    && path.is_potential_trivial_const_arg(false)
                 {
                     let mut check_ns = |ns| {
                         self.maybe_resolve_ident_in_lexical_scope(path.segments[0].ident, ns)
@@ -4630,11 +4630,12 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             constant, anon_const_kind
         );
 
-        self.resolve_anon_const_manual(
-            constant.value.is_potential_trivial_const_arg(),
-            anon_const_kind,
-            |this| this.resolve_expr(&constant.value, None),
-        )
+        let is_trivial_const_arg = constant
+            .value
+            .is_potential_trivial_const_arg(self.r.tcx.features().min_generic_const_args());
+        self.resolve_anon_const_manual(is_trivial_const_arg, anon_const_kind, |this| {
+            this.resolve_expr(&constant.value, None)
+        })
     }
 
     /// There are a few places that we need to resolve an anon const but we did not parse an
@@ -4794,8 +4795,11 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     // Constant arguments need to be treated as AnonConst since
                     // that is how they will be later lowered to HIR.
                     if const_args.contains(&idx) {
+                        let is_trivial_const_arg = argument.is_potential_trivial_const_arg(
+                            self.r.tcx.features().min_generic_const_args(),
+                        );
                         self.resolve_anon_const_manual(
-                            argument.is_potential_trivial_const_arg(),
+                            is_trivial_const_arg,
                             AnonConstKind::ConstArg(IsRepeatExpr::No),
                             |this| this.resolve_expr(argument, None),
                         );

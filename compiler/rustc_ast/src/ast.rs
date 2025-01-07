@@ -124,10 +124,19 @@ impl Path {
         self.segments.first().is_some_and(|segment| segment.ident.name == kw::PathRoot)
     }
 
-    /// If this path is a single identifier with no arguments, does not ensure
-    /// that the path resolves to a const param, the caller should check this.
-    pub fn is_potential_trivial_const_arg(&self) -> bool {
-        matches!(self.segments[..], [PathSegment { args: None, .. }])
+    /// Check if this path is potentially a trivial const arg, i.e., one that can _potentially_
+    /// be represented without an anon const in the HIR.
+    ///
+    /// If `allow_mgca_arg` is true (as should be the case in most situations when
+    /// `#![feature(min_generic_const_args)]` is enabled), then this always returns true
+    /// because all paths are valid.
+    ///
+    /// Otherwise, it returns true iff the path has exactly one segment, and it has no generic args
+    /// (i.e., it is _potentially_ a const parameter).
+    #[tracing::instrument(level = "debug", ret)]
+    pub fn is_potential_trivial_const_arg(&self, allow_mgca_arg: bool) -> bool {
+        allow_mgca_arg
+            || self.segments.len() == 1 && self.segments.iter().all(|seg| seg.args.is_none())
     }
 }
 
@@ -1208,22 +1217,31 @@ pub struct Expr {
 }
 
 impl Expr {
-    /// Could this expr be either `N`, or `{ N }`, where `N` is a const parameter.
+    /// Check if this expression is potentially a trivial const arg, i.e., one that can _potentially_
+    /// be represented without an anon const in the HIR.
     ///
-    /// If this is not the case, name resolution does not resolve `N` when using
-    /// `min_const_generics` as more complex expressions are not supported.
+    /// This will unwrap at most one block level (curly braces). After that, if the expression
+    /// is a path, it mostly dispatches to [`Path::is_potential_trivial_const_arg`].
+    /// See there for more info about `allow_mgca_arg`.
     ///
-    /// Does not ensure that the path resolves to a const param, the caller should check this.
+    /// The only additional thing to note is that when `allow_mgca_arg` is false, this function
+    /// will only allow paths with no qself, before dispatching to the `Path` function of
+    /// the same name.
+    ///
+    /// Does not ensure that the path resolves to a const param/item, the caller should check this.
     /// This also does not consider macros, so it's only correct after macro-expansion.
-    pub fn is_potential_trivial_const_arg(&self) -> bool {
+    pub fn is_potential_trivial_const_arg(&self, allow_mgca_arg: bool) -> bool {
         let this = self.maybe_unwrap_block();
-
-        if let ExprKind::Path(None, path) = &this.kind
-            && path.is_potential_trivial_const_arg()
-        {
-            true
+        if allow_mgca_arg {
+            matches!(this.kind, ExprKind::Path(..))
         } else {
-            false
+            if let ExprKind::Path(None, path) = &this.kind
+                && path.is_potential_trivial_const_arg(allow_mgca_arg)
+            {
+                true
+            } else {
+                false
+            }
         }
     }
 

@@ -2174,7 +2174,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 let result = self
                     .lowerer()
-                    .lower_assoc_path(hir_id, path_span, ty.raw, qself, segment, true);
+                    .lower_assoc_path_ty(hir_id, path_span, ty.raw, qself, segment, true);
                 let ty = result
                     .map(|(ty, _, _)| ty)
                     .unwrap_or_else(|guar| Ty::new_error(self.tcx(), guar));
