@@ -24,26 +24,37 @@
 
 use std::iter;
 
-use span::{MacroCallId, Span, SyntaxContextData, SyntaxContextId};
+use span::{Edition, MacroCallId, Span, SyntaxContextData, SyntaxContextId};
 
 use crate::db::{ExpandDatabase, InternSyntaxContextQuery};
 
 pub use span::Transparency;
 
-pub fn span_with_def_site_ctxt(db: &dyn ExpandDatabase, span: Span, expn_id: MacroCallId) -> Span {
-    span_with_ctxt_from_mark(db, span, expn_id, Transparency::Opaque)
+pub fn span_with_def_site_ctxt(
+    db: &dyn ExpandDatabase,
+    span: Span,
+    expn_id: MacroCallId,
+    edition: Edition,
+) -> Span {
+    span_with_ctxt_from_mark(db, span, expn_id, Transparency::Opaque, edition)
 }
 
-pub fn span_with_call_site_ctxt(db: &dyn ExpandDatabase, span: Span, expn_id: MacroCallId) -> Span {
-    span_with_ctxt_from_mark(db, span, expn_id, Transparency::Transparent)
+pub fn span_with_call_site_ctxt(
+    db: &dyn ExpandDatabase,
+    span: Span,
+    expn_id: MacroCallId,
+    edition: Edition,
+) -> Span {
+    span_with_ctxt_from_mark(db, span, expn_id, Transparency::Transparent, edition)
 }
 
 pub fn span_with_mixed_site_ctxt(
     db: &dyn ExpandDatabase,
     span: Span,
     expn_id: MacroCallId,
+    edition: Edition,
 ) -> Span {
-    span_with_ctxt_from_mark(db, span, expn_id, Transparency::SemiTransparent)
+    span_with_ctxt_from_mark(db, span, expn_id, Transparency::SemiTransparent, edition)
 }
 
 fn span_with_ctxt_from_mark(
@@ -51,8 +62,12 @@ fn span_with_ctxt_from_mark(
     span: Span,
     expn_id: MacroCallId,
     transparency: Transparency,
+    edition: Edition,
 ) -> Span {
-    Span { ctx: apply_mark(db, SyntaxContextId::ROOT, expn_id, transparency), ..span }
+    Span {
+        ctx: apply_mark(db, SyntaxContextId::root(edition), expn_id, transparency, edition),
+        ..span
+    }
 }
 
 pub(super) fn apply_mark(
@@ -60,9 +75,10 @@ pub(super) fn apply_mark(
     ctxt: SyntaxContextId,
     call_id: MacroCallId,
     transparency: Transparency,
+    edition: Edition,
 ) -> SyntaxContextId {
     if transparency == Transparency::Opaque {
-        return apply_mark_internal(db, ctxt, call_id, transparency);
+        return apply_mark_internal(db, ctxt, call_id, transparency, edition);
     }
 
     let call_site_ctxt = db.lookup_intern_macro_call(call_id).ctxt;
@@ -73,7 +89,7 @@ pub(super) fn apply_mark(
     };
 
     if call_site_ctxt.is_root() {
-        return apply_mark_internal(db, ctxt, call_id, transparency);
+        return apply_mark_internal(db, ctxt, call_id, transparency, edition);
     }
 
     // Otherwise, `expn_id` is a macros 1.0 definition and the call site is in a
@@ -86,9 +102,9 @@ pub(super) fn apply_mark(
     //
     // See the example at `test/ui/hygiene/legacy_interaction.rs`.
     for (call_id, transparency) in ctxt.marks(db) {
-        call_site_ctxt = apply_mark_internal(db, call_site_ctxt, call_id, transparency);
+        call_site_ctxt = apply_mark_internal(db, call_site_ctxt, call_id, transparency, edition);
     }
-    apply_mark_internal(db, call_site_ctxt, call_id, transparency)
+    apply_mark_internal(db, call_site_ctxt, call_id, transparency, edition)
 }
 
 fn apply_mark_internal(
@@ -96,6 +112,7 @@ fn apply_mark_internal(
     ctxt: SyntaxContextId,
     call_id: MacroCallId,
     transparency: Transparency,
+    edition: Edition,
 ) -> SyntaxContextId {
     use base_db::ra_salsa;
 
@@ -108,13 +125,14 @@ fn apply_mark_internal(
     if transparency >= Transparency::Opaque {
         let parent = opaque;
         opaque = ra_salsa::plumbing::get_query_table::<InternSyntaxContextQuery>(db).get_or_insert(
-            (parent, call_id, transparency),
+            (parent, call_id, transparency, edition),
             |new_opaque| SyntaxContextData {
                 outer_expn: call_id,
                 outer_transparency: transparency,
                 parent,
                 opaque: new_opaque,
                 opaque_and_semitransparent: new_opaque,
+                edition,
             },
         );
     }
@@ -123,13 +141,14 @@ fn apply_mark_internal(
         let parent = opaque_and_semitransparent;
         opaque_and_semitransparent =
             ra_salsa::plumbing::get_query_table::<InternSyntaxContextQuery>(db).get_or_insert(
-                (parent, call_id, transparency),
+                (parent, call_id, transparency, edition),
                 |new_opaque_and_semitransparent| SyntaxContextData {
                     outer_expn: call_id,
                     outer_transparency: transparency,
                     parent,
                     opaque,
                     opaque_and_semitransparent: new_opaque_and_semitransparent,
+                    edition,
                 },
             );
     }
@@ -141,6 +160,7 @@ fn apply_mark_internal(
         parent,
         opaque,
         opaque_and_semitransparent,
+        edition,
     })
 }
 

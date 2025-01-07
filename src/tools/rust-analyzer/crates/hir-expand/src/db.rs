@@ -5,7 +5,7 @@ use either::Either;
 use limit::Limit;
 use mbe::MatchedArmIndex;
 use rustc_hash::FxHashSet;
-use span::{AstIdMap, EditionedFileId, Span, SyntaxContextData, SyntaxContextId};
+use span::{AstIdMap, Edition, EditionedFileId, Span, SyntaxContextData, SyntaxContextId};
 use syntax::{ast, AstNode, Parse, SyntaxElement, SyntaxError, SyntaxNode, SyntaxToken, T};
 use syntax_bridge::{syntax_node_to_token_tree, DocCommentDesugarMode};
 use triomphe::Arc;
@@ -136,12 +136,12 @@ pub trait ExpandDatabase: SourceDatabase {
         macro_call: MacroCallId,
     ) -> Option<Arc<ExpandResult<Arc<[SyntaxError]>>>>;
     #[ra_salsa::transparent]
-    fn syntax_context(&self, file: HirFileId) -> SyntaxContextId;
+    fn syntax_context(&self, file: HirFileId, edition: Edition) -> SyntaxContextId;
 }
 
-fn syntax_context(db: &dyn ExpandDatabase, file: HirFileId) -> SyntaxContextId {
+fn syntax_context(db: &dyn ExpandDatabase, file: HirFileId, edition: Edition) -> SyntaxContextId {
     match file.repr() {
-        HirFileIdRepr::FileId(_) => SyntaxContextId::ROOT,
+        HirFileIdRepr::FileId(_) => SyntaxContextId::root(edition),
         HirFileIdRepr::MacroFile(m) => {
             db.macro_arg_considering_derives(m.macro_call_id, &m.macro_call_id.lookup(db).kind)
                 .2
@@ -273,9 +273,9 @@ pub fn expand_speculative(
                 loc.krate,
                 &tt,
                 attr_arg.as_ref(),
-                span_with_def_site_ctxt(db, span, actual_macro_call),
-                span_with_call_site_ctxt(db, span, actual_macro_call),
-                span_with_mixed_site_ctxt(db, span, actual_macro_call),
+                span_with_def_site_ctxt(db, span, actual_macro_call, loc.def.edition),
+                span_with_call_site_ctxt(db, span, actual_macro_call, loc.def.edition),
+                span_with_mixed_site_ctxt(db, span, actual_macro_call, loc.def.edition),
             )
         }
         MacroDefKind::BuiltInAttr(_, it) if it.is_derive() => {
@@ -300,7 +300,7 @@ pub fn expand_speculative(
 
     fixup::reverse_fixups(&mut speculative_expansion.value, &undo_info);
     let (node, rev_tmap) =
-        token_tree_to_syntax_node(&speculative_expansion.value, expand_to, loc.def.edition);
+        token_tree_to_syntax_node(db, &speculative_expansion.value, expand_to, loc.def.edition);
 
     let syntax_node = node.syntax_node();
     let token = rev_tmap
@@ -346,6 +346,7 @@ fn parse_macro_expansion(
         macro_expand(db, macro_file.macro_call_id, loc);
 
     let (parse, mut rev_token_map) = token_tree_to_syntax_node(
+        db,
         match &tt {
             CowArc::Arc(it) => it,
             CowArc::Owned(it) => it,
@@ -699,9 +700,9 @@ fn expand_proc_macro(
             loc.krate,
             &macro_arg,
             attr_arg,
-            span_with_def_site_ctxt(db, span, id),
-            span_with_call_site_ctxt(db, span, id),
-            span_with_mixed_site_ctxt(db, span, id),
+            span_with_def_site_ctxt(db, span, id, loc.def.edition),
+            span_with_call_site_ctxt(db, span, id, loc.def.edition),
+            span_with_mixed_site_ctxt(db, span, id, loc.def.edition),
         )
     };
 
@@ -715,7 +716,8 @@ fn expand_proc_macro(
     ExpandResult { value: Arc::new(tt), err }
 }
 
-fn token_tree_to_syntax_node(
+pub(crate) fn token_tree_to_syntax_node(
+    db: &dyn ExpandDatabase,
     tt: &tt::TopSubtree,
     expand_to: ExpandTo,
     edition: parser::Edition,
@@ -727,7 +729,12 @@ fn token_tree_to_syntax_node(
         ExpandTo::Type => syntax_bridge::TopEntryPoint::Type,
         ExpandTo::Expr => syntax_bridge::TopEntryPoint::Expr,
     };
-    syntax_bridge::token_tree_to_syntax_node(tt, entry_point, edition)
+    syntax_bridge::token_tree_to_syntax_node(
+        tt,
+        entry_point,
+        &mut |ctx| ctx.lookup(db).edition,
+        edition,
+    )
 }
 
 fn check_tt_count(tt: &tt::TopSubtree) -> Result<(), ExpandResult<()>> {
@@ -751,5 +758,7 @@ fn check_tt_count(tt: &tt::TopSubtree) -> Result<(), ExpandResult<()>> {
 }
 
 fn setup_syntax_context_root(db: &dyn ExpandDatabase) {
-    db.intern_syntax_context(SyntaxContextData::root());
+    for edition in Edition::iter() {
+        db.intern_syntax_context(SyntaxContextData::root(edition));
+    }
 }

@@ -225,7 +225,7 @@ mod tests {
     use ::tt::IdentIsRaw;
     use expect_test::expect;
     use intern::Symbol;
-    use span::{SpanAnchor, SyntaxContextId, ROOT_ERASED_FILE_AST_ID};
+    use span::{Edition, SpanAnchor, SyntaxContextId, ROOT_ERASED_FILE_AST_ID};
     use syntax::{TextRange, TextSize};
 
     use super::quote;
@@ -239,7 +239,7 @@ mod tests {
             ),
             ast_id: ROOT_ERASED_FILE_AST_ID,
         },
-        ctx: SyntaxContextId::ROOT,
+        ctx: SyntaxContextId::root(Edition::CURRENT),
     };
 
     #[test]
@@ -276,8 +276,8 @@ mod tests {
         assert_eq!(quoted.to_string(), "hello");
         let t = format!("{quoted:#?}");
         expect![[r#"
-            SUBTREE $$ 937550:0@0..0#0 937550:0@0..0#0
-              IDENT   hello 937550:0@0..0#0"#]]
+            SUBTREE $$ 937550:0@0..0#2 937550:0@0..0#2
+              IDENT   hello 937550:0@0..0#2"#]]
         .assert_eq(&t);
     }
 

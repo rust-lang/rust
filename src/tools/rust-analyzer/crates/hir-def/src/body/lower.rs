@@ -2460,7 +2460,7 @@ impl ExprCollector<'_> {
             None => HygieneId::ROOT,
             Some(span_map) => {
                 let ctx = span_map.span_at(span_start).ctx;
-                HygieneId(self.db.lookup_intern_syntax_context(ctx).opaque_and_semitransparent)
+                HygieneId::new(self.db.lookup_intern_syntax_context(ctx).opaque_and_semitransparent)
             }
         }
     }

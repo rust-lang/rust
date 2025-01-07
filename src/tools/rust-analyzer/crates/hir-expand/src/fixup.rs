@@ -380,7 +380,7 @@ pub(crate) fn reverse_fixups(tt: &mut TopSubtree, undo_info: &SyntaxFixupUndoInf
         let span = |file_id| Span {
             range: TextRange::empty(TextSize::new(0)),
             anchor: SpanAnchor { file_id, ast_id: ROOT_ERASED_FILE_AST_ID },
-            ctx: SyntaxContextId::ROOT,
+            ctx: SyntaxContextId::root(span::Edition::Edition2015),
         };
         delimiter.open = span(delimiter.open.anchor.file_id);
         delimiter.close = span(delimiter.close.anchor.file_id);
@@ -554,6 +554,7 @@ mod tests {
         let (parse, _) = syntax_bridge::token_tree_to_syntax_node(
             &tt,
             syntax_bridge::TopEntryPoint::MacroItems,
+            &mut |_| parser::Edition::CURRENT,
             parser::Edition::CURRENT,
         );
         assert!(

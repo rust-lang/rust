@@ -74,7 +74,7 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, def_map: DefMap, tree_id: TreeI
 
     let proc_macros = if krate.is_proc_macro {
         db.proc_macros()
-            .for_crate(def_map.krate, db.syntax_context(tree_id.file_id()))
+            .for_crate(def_map.krate, db.syntax_context(tree_id.file_id(), krate.edition))
             .unwrap_or_default()
     } else {
         Default::default()

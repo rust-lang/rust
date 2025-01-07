@@ -83,7 +83,7 @@ use itertools::Itertools;
 use nameres::diagnostics::DefDiagnosticKind;
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
-use span::{Edition, EditionedFileId, FileId, MacroCallId, SyntaxContextId};
+use span::{Edition, EditionedFileId, FileId, MacroCallId};
 use stdx::{format_to, impl_from, never};
 use syntax::{
     ast::{self, HasAttrs as _, HasGenericParams, HasName},
@@ -4824,7 +4824,7 @@ impl Type {
         let iterator_trait = db.lang_item(self.env.krate, LangItem::Iterator)?.as_trait()?;
         let iterator_item = db
             .trait_data(iterator_trait)
-            .associated_type_by_name(&Name::new_symbol(sym::Item.clone(), SyntaxContextId::ROOT))?;
+            .associated_type_by_name(&Name::new_symbol_root(sym::Item.clone()))?;
         self.normalize_trait_assoc_type(db, &[], iterator_item.into())
     }
 
