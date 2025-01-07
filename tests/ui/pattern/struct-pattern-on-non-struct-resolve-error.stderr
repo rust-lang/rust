@@ -1,0 +1,28 @@
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/struct-pattern-on-non-struct-resolve-error.rs:5:9
+   |
+LL |         x
+   |         ^ not found in this scope
+
+error[E0223]: ambiguous associated type
+  --> $DIR/struct-pattern-on-non-struct-resolve-error.rs:4:12
+   |
+LL |     if let Iterator::Item { .. } = 1 {
+   |            ^^^^^^^^^^^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL |     if let <Ancestors<'_> as Iterator>::Item { .. } = 1 {
+   |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |     if let <Args as Iterator>::Item { .. } = 1 {
+   |            ~~~~~~~~~~~~~~~~~~~~~~~~
+LL |     if let <ArgsOs as Iterator>::Item { .. } = 1 {
+   |            ~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |     if let <CharIndices<'_> as Iterator>::Item { .. } = 1 {
+   |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     and 71 other candidates
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0223, E0425.
+For more information about an error, try `rustc --explain E0223`.
