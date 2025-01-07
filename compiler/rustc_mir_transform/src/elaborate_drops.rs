@@ -236,8 +236,8 @@ struct ElaborateDropsCtxt<'a, 'tcx> {
 }
 
 impl fmt::Debug for ElaborateDropsCtxt<'_, '_> {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Ok(())
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ElaborateDropsCtxt").finish_non_exhaustive()
     }
 }
 
