@@ -440,17 +440,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let node = loop {
             match &pattern.kind {
                 PatKind::Range(e1, e2, Spanned { node: end, .. }) => {
+                    // FIXME(pattern_types): remove this closure and call `lower_const_arg` instead.
+                    // That requires first modifying the AST to have const args here.
                     let mut lower_expr = |e: &Expr| -> &_ {
-                        let kind = if let ExprKind::Path(qself, path) = &e.kind {
-                            hir::ConstArgKind::Path(self.lower_qpath(
-                                e.id,
-                                qself,
-                                path,
-                                ParamMode::Optional,
-                                AllowReturnTypeNotation::No,
-                                ImplTraitContext::Disallowed(ImplTraitPosition::Path),
-                                None,
-                            ))
+                        if let ExprKind::Path(None, path) = &e.kind
+                            && let Some(res) = self
+                                .resolver
+                                .get_partial_res(e.id)
+                                .and_then(|partial_res| partial_res.full_res())
+                        {
+                            self.lower_const_path_to_const_arg(path, res, e.id, e.span)
                         } else {
                             let node_id = self.next_node_id();
                             let def_id = self.create_def(
@@ -467,9 +466,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 body: self.lower_const_body(pattern.span, Some(e)),
                                 span: self.lower_span(pattern.span),
                             });
-                            hir::ConstArgKind::Anon(ac)
-                        };
-                        self.arena.alloc(hir::ConstArg { hir_id: self.next_id(), kind })
+                            self.arena.alloc(hir::ConstArg {
+                                hir_id: self.next_id(),
+                                kind: hir::ConstArgKind::Anon(ac),
+                            })
+                        }
                     };
                     break hir::TyPatKind::Range(
                         e1.as_deref().map(|e| lower_expr(e)),
