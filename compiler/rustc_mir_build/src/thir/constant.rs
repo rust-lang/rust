@@ -69,7 +69,7 @@ pub(crate) fn lit_to_const<'tcx>(
         }
         (ast::LitKind::Char(c), ty::Char) => ty::ValTree::from_scalar_int((*c).into()),
         (ast::LitKind::Err(guar), _) => return Ok(ty::Const::new_error(tcx, *guar)),
-        _ => return Err(LitToConstError::TypeError),
+        _ => return Ok(ty::Const::new_misc_error(tcx)),
     };
 
     Ok(ty::Const::new_value(tcx, valtree, ty))
