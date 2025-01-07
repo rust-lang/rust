@@ -161,6 +161,12 @@ fn make_opts() -> Options {
         "Set options from command line. These settings take priority over .rustfmt.toml",
         "[key1=val1,key2=val2...]",
     );
+    opts.optopt(
+        "",
+        "style-edition",
+        "The edition of the Style Guide.",
+        "[2015|2018|2021|2024]",
+    );
 
     if is_nightly {
         opts.optflag(
@@ -185,12 +191,6 @@ fn make_opts() -> Options {
             "",
             "skip-children",
             "Don't reformat child modules (unstable).",
-        );
-        opts.optopt(
-            "",
-            "style-edition",
-            "The edition of the Style Guide (unstable).",
-            "[2015|2018|2021|2024]",
         );
     }
 

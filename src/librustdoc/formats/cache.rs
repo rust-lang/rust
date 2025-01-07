@@ -1,5 +1,6 @@
 use std::mem;
 
+use rustc_attr_parsing::StabilityLevel;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet};
 use rustc_middle::ty::{self, TyCtxt};
@@ -306,7 +307,12 @@ impl DocFolder for CacheBuilder<'_, '_> {
             | clean::ProcMacroItem(..)
             | clean::VariantItem(..) => {
                 use rustc_data_structures::fx::IndexEntry as Entry;
-                if !self.cache.stripped_mod {
+                if !self.cache.stripped_mod
+                    && !matches!(
+                        item.stability.map(|stab| stab.level),
+                        Some(StabilityLevel::Stable { allowed_through_unstable_modules: true, .. })
+                    )
+                {
                     // Re-exported items mean that the same id can show up twice
                     // in the rustdoc ast that we're looking at. We know,
                     // however, that a re-exported item doesn't show up in the

@@ -456,6 +456,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Does not constitute a read.
             hir::PatKind::Wild => false,
 
+            // Might not constitute a read, since the condition might be false.
+            hir::PatKind::Guard(_, _) => true,
+
             // This is unnecessarily restrictive when the pattern that doesn't
             // constitute a read is unreachable.
             //

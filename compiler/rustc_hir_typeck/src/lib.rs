@@ -147,8 +147,23 @@ fn typeck_with_fallback<'tcx>(
         check_abi(tcx, span, fn_sig.abi());
 
         // Compute the function signature from point of view of inside the fn.
-        let fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
-        let fn_sig = fcx.normalize(body.value.span, fn_sig);
+        let mut fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
+
+        // Normalize the input and output types one at a time, using a different
+        // `WellFormedLoc` for each. We cannot call `normalize_associated_types`
+        // on the entire `FnSig`, since this would use the same `WellFormedLoc`
+        // for each type, preventing the HIR wf check from generating
+        // a nice error message.
+        let arg_span =
+            |idx| decl.inputs.get(idx).map_or(decl.output.span(), |arg: &hir::Ty<'_>| arg.span);
+
+        fn_sig.inputs_and_output = tcx.mk_type_list_from_iter(
+            fn_sig
+                .inputs_and_output
+                .iter()
+                .enumerate()
+                .map(|(idx, ty)| fcx.normalize(arg_span(idx), ty)),
+        );
 
         check_fn(&mut fcx, fn_sig, None, decl, def_id, body, tcx.features().unsized_fn_params());
     } else {
