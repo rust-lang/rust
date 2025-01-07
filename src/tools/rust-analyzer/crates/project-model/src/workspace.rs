@@ -606,18 +606,18 @@ impl ProjectWorkspace {
             ProjectWorkspaceKind::Json(project) => project
                 .crates()
                 .map(|(_, krate)| {
-                    let build_files = project
-                        .crates()
-                        .filter_map(|(_, krate)| {
-                            krate.build.as_ref().map(|build| build.build_file.clone())
-                        })
-                        // FIXME: PackageRoots dont allow specifying files, only directories
-                        .filter_map(|build_file| {
-                            self.workspace_root().join(build_file).parent().map(ToOwned::to_owned)
-                        });
+                    // FIXME: PackageRoots dont allow specifying files, only directories
+                    let build_file = krate
+                        .build
+                        .as_ref()
+                        .map(|build| self.workspace_root().join(&build.build_file))
+                        .as_deref()
+                        .and_then(AbsPath::parent)
+                        .map(ToOwned::to_owned);
+
                     PackageRoot {
                         is_local: krate.is_workspace_member,
-                        include: krate.include.iter().cloned().chain(build_files).collect(),
+                        include: krate.include.iter().cloned().chain(build_file).collect(),
                         exclude: krate.exclude.clone(),
                     }
                 })
