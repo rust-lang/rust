@@ -2640,7 +2640,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         detailed_label: &str,
     ) {
         // Try to trim the span we're labeling to just the `&` or binding mode that's an issue.
-        // If the subpattern's span is is from an expansion, the emitted label will not be trimmed.
+        // If the subpattern's span is from an expansion, the emitted label will not be trimmed.
         let source_map = self.tcx.sess.source_map();
         let cutoff_span = source_map
             .span_extend_prev_while(cutoff_span, char::is_whitespace)

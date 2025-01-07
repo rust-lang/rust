@@ -33,7 +33,7 @@ For opaque types in the defining scope and in the implicit-negative coherence mo
 always done in two steps. Outside of the defining scope `normalizes-to` for opaques always
 returns `Err(NoSolution)`.
 
-We start by trying to to assign the expected type as a hidden type.
+We start by trying to assign the expected type as a hidden type.
 
 In the implicit-negative coherence mode, this currently always results in ambiguity without
 interacting with the opaque types storage. We could instead add allow 'defining' all opaque types,

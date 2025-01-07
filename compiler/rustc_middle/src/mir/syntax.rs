@@ -74,7 +74,7 @@ pub enum MirPhase {
     ///  - Unwinding: in analysis MIR, unwinding from a function which may not unwind aborts. In runtime
     ///    MIR, this is UB.
     ///  - Retags: If `-Zmir-emit-retag` is enabled, analysis MIR has "implicit" retags in the same way
-    ///    that Rust itself has them. Where exactly these are is generally subject to change, and so we
+    ///    that Rust itself has them. Where exactly these are generally subject to change, and so we
     ///    don't document this here. Runtime MIR has most retags explicit (though implicit retags
     ///    can still occur at `Rvalue::{Ref,AddrOf}`).
     ///  - Coroutine bodies: In analysis MIR, locals may actually be behind a pointer that user code has
