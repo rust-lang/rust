@@ -11,7 +11,6 @@ use rustc_mir_dataflow::move_paths::MoveData;
 use tracing::debug;
 
 use crate::BorrowIndex;
-use crate::path_utils::allow_two_phase_borrow;
 use crate::place_ext::PlaceExt;
 
 pub struct BorrowSet<'tcx> {
@@ -350,7 +349,7 @@ impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
             start_location, assigned_place, borrow_index,
         );
 
-        if !allow_two_phase_borrow(kind) {
+        if !kind.allows_two_phase_borrow() {
             debug!("  -> {:?}", start_location);
             return;
         }

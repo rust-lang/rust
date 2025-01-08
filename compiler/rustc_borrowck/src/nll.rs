@@ -142,9 +142,9 @@ pub(crate) fn compute_regions<'a, 'tcx>(
 
     // If requested for `-Zpolonius=next`, convert NLL constraints to localized outlives
     // constraints.
-    let localized_outlives_constraints = polonius_context
-        .as_mut()
-        .map(|polonius_context| polonius_context.create_localized_constraints(&mut regioncx, body));
+    let localized_outlives_constraints = polonius_context.as_mut().map(|polonius_context| {
+        polonius_context.create_localized_constraints(infcx.tcx, &regioncx, body)
+    });
 
     // If requested: dump NLL facts, and run legacy polonius analysis.
     let polonius_output = all_facts.as_ref().and_then(|all_facts| {
