@@ -4,10 +4,14 @@ error: relative drop order changing in Rust 2024
 LL |         match func().await {
    |               ^^^^^^^-----
    |               |      |
+   |               |      this value will be stored in a temporary; let us call it `#3`
+   |               |      up until Edition 2021 `#3` is dropped last but will be dropped earlier in Edition 2024
    |               |      this value will be stored in a temporary; let us call it `#1`
    |               |      `#1` will be dropped later as of Edition 2024
    |               this value will be stored in a temporary; let us call it `#2`
    |               up until Edition 2021 `#2` is dropped last but will be dropped earlier in Edition 2024
+   |               `__awaitee` calls a custom destructor
+   |               `__awaitee` will be dropped later as of Edition 2024
 ...
 LL |             Err(e) => {}
    |                 -

@@ -2,13 +2,13 @@
 
 use std::{collections::hash_map::Entry, str::FromStr};
 
-use hir::Semantics;
+use hir::{Semantics, SemanticsScope};
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use stdx::to_lower_snake_case;
 use syntax::{
     ast::{self, HasName},
-    match_ast, AstNode, Edition, SmolStr, SmolStrBuilder,
+    match_ast, AstNode, Edition, SmolStr, SmolStrBuilder, ToSmolStr,
 };
 
 use crate::RootDatabase;
@@ -100,6 +100,19 @@ impl NameGenerator {
         generator
     }
 
+    pub fn new_from_scope_locals(scope: Option<SemanticsScope<'_>>) -> Self {
+        let mut generator = Self::new();
+        if let Some(scope) = scope {
+            scope.process_all_names(&mut |name, scope| {
+                if let hir::ScopeDef::Local(_) = scope {
+                    generator.insert(name.as_str());
+                }
+            });
+        }
+
+        generator
+    }
+
     /// Suggest a name without conflicts. If the name conflicts with existing names,
     /// it will try to resolve the conflict by adding a numeric suffix.
     pub fn suggest_name(&mut self, name: &str) -> SmolStr {
@@ -162,6 +175,59 @@ impl NameGenerator {
         self.suggest_name(&c.to_string())
     }
 
+    /// Suggest name of variable for given expression
+    ///
+    /// In current implementation, the function tries to get the name from
+    /// the following sources:
+    ///
+    /// * if expr is an argument to function/method, use parameter name
+    /// * if expr is a function/method call, use function name
+    /// * expression type name if it exists (E.g. `()`, `fn() -> ()` or `!` do not have names)
+    /// * fallback: `var_name`
+    ///
+    /// It also applies heuristics to filter out less informative names
+    ///
+    /// Currently it sticks to the first name found.
+    pub fn for_variable(
+        &mut self,
+        expr: &ast::Expr,
+        sema: &Semantics<'_, RootDatabase>,
+    ) -> SmolStr {
+        // `from_param` does not benefit from stripping it need the largest
+        // context possible so we check firstmost
+        if let Some(name) = from_param(expr, sema) {
+            return self.suggest_name(&name);
+        }
+
+        let mut next_expr = Some(expr.clone());
+        while let Some(expr) = next_expr {
+            let name = from_call(&expr)
+                .or_else(|| from_type(&expr, sema))
+                .or_else(|| from_field_name(&expr));
+            if let Some(name) = name {
+                return self.suggest_name(&name);
+            }
+
+            match expr {
+                ast::Expr::RefExpr(inner) => next_expr = inner.expr(),
+                ast::Expr::AwaitExpr(inner) => next_expr = inner.expr(),
+                // ast::Expr::BlockExpr(block) => expr = block.tail_expr(),
+                ast::Expr::CastExpr(inner) => next_expr = inner.expr(),
+                ast::Expr::MethodCallExpr(method) if is_useless_method(&method) => {
+                    next_expr = method.receiver();
+                }
+                ast::Expr::ParenExpr(inner) => next_expr = inner.expr(),
+                ast::Expr::TryExpr(inner) => next_expr = inner.expr(),
+                ast::Expr::PrefixExpr(prefix) if prefix.op_kind() == Some(ast::UnaryOp::Deref) => {
+                    next_expr = prefix.expr()
+                }
+                _ => break,
+            }
+        }
+
+        self.suggest_name("var_name")
+    }
+
     /// Insert a name into the pool
     fn insert(&mut self, name: &str) {
         let (prefix, suffix) = Self::split_numeric_suffix(name);
@@ -191,63 +257,8 @@ impl NameGenerator {
     }
 }
 
-/// Suggest name of variable for given expression
-///
-/// **NOTE**: it is caller's responsibility to guarantee uniqueness of the name.
-/// I.e. it doesn't look for names in scope.
-///
-/// # Current implementation
-///
-/// In current implementation, the function tries to get the name from
-/// the following sources:
-///
-/// * if expr is an argument to function/method, use parameter name
-/// * if expr is a function/method call, use function name
-/// * expression type name if it exists (E.g. `()`, `fn() -> ()` or `!` do not have names)
-/// * fallback: `var_name`
-///
-/// It also applies heuristics to filter out less informative names
-///
-/// Currently it sticks to the first name found.
-// FIXME: Microoptimize and return a `SmolStr` here.
-pub fn for_variable(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>) -> String {
-    // `from_param` does not benefit from stripping
-    // it need the largest context possible
-    // so we check firstmost
-    if let Some(name) = from_param(expr, sema) {
-        return name;
-    }
-
-    let mut next_expr = Some(expr.clone());
-    while let Some(expr) = next_expr {
-        let name =
-            from_call(&expr).or_else(|| from_type(&expr, sema)).or_else(|| from_field_name(&expr));
-        if let Some(name) = name {
-            return name;
-        }
-
-        match expr {
-            ast::Expr::RefExpr(inner) => next_expr = inner.expr(),
-            ast::Expr::AwaitExpr(inner) => next_expr = inner.expr(),
-            // ast::Expr::BlockExpr(block) => expr = block.tail_expr(),
-            ast::Expr::CastExpr(inner) => next_expr = inner.expr(),
-            ast::Expr::MethodCallExpr(method) if is_useless_method(&method) => {
-                next_expr = method.receiver();
-            }
-            ast::Expr::ParenExpr(inner) => next_expr = inner.expr(),
-            ast::Expr::TryExpr(inner) => next_expr = inner.expr(),
-            ast::Expr::PrefixExpr(prefix) if prefix.op_kind() == Some(ast::UnaryOp::Deref) => {
-                next_expr = prefix.expr()
-            }
-            _ => break,
-        }
-    }
-
-    "var_name".to_owned()
-}
-
-fn normalize(name: &str) -> Option<String> {
-    let name = to_lower_snake_case(name);
+fn normalize(name: &str) -> Option<SmolStr> {
+    let name = to_lower_snake_case(name).to_smolstr();
 
     if USELESS_NAMES.contains(&name.as_str()) {
         return None;
@@ -280,11 +291,11 @@ fn is_useless_method(method: &ast::MethodCallExpr) -> bool {
     }
 }
 
-fn from_call(expr: &ast::Expr) -> Option<String> {
+fn from_call(expr: &ast::Expr) -> Option<SmolStr> {
     from_func_call(expr).or_else(|| from_method_call(expr))
 }
 
-fn from_func_call(expr: &ast::Expr) -> Option<String> {
+fn from_func_call(expr: &ast::Expr) -> Option<SmolStr> {
     let call = match expr {
         ast::Expr::CallExpr(call) => call,
         _ => return None,
@@ -297,7 +308,7 @@ fn from_func_call(expr: &ast::Expr) -> Option<String> {
     normalize(ident.text())
 }
 
-fn from_method_call(expr: &ast::Expr) -> Option<String> {
+fn from_method_call(expr: &ast::Expr) -> Option<SmolStr> {
     let method = match expr {
         ast::Expr::MethodCallExpr(call) => call,
         _ => return None,
@@ -319,7 +330,7 @@ fn from_method_call(expr: &ast::Expr) -> Option<String> {
     normalize(name)
 }
 
-fn from_param(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>) -> Option<String> {
+fn from_param(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>) -> Option<SmolStr> {
     let arg_list = expr.syntax().parent().and_then(ast::ArgList::cast)?;
     let args_parent = arg_list.syntax().parent()?;
     let func = match_ast! {
@@ -338,7 +349,7 @@ fn from_param(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>) -> Option<St
     let param = func.params().into_iter().nth(idx)?;
     let pat = sema.source(param)?.value.right()?.pat()?;
     let name = var_name_from_pat(&pat)?;
-    normalize(&name.to_string())
+    normalize(&name.to_smolstr())
 }
 
 fn var_name_from_pat(pat: &ast::Pat) -> Option<ast::Name> {
@@ -350,7 +361,7 @@ fn var_name_from_pat(pat: &ast::Pat) -> Option<ast::Name> {
     }
 }
 
-fn from_type(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>) -> Option<String> {
+fn from_type(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>) -> Option<SmolStr> {
     let ty = sema.type_of_expr(expr)?.adjusted();
     let ty = ty.remove_ref().unwrap_or(ty);
     let edition = sema.scope(expr.syntax())?.krate().edition(sema.db);
@@ -358,7 +369,7 @@ fn from_type(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>) -> Option<Str
     name_of_type(&ty, sema.db, edition)
 }
 
-fn name_of_type(ty: &hir::Type, db: &RootDatabase, edition: Edition) -> Option<String> {
+fn name_of_type(ty: &hir::Type, db: &RootDatabase, edition: Edition) -> Option<SmolStr> {
     let name = if let Some(adt) = ty.as_adt() {
         let name = adt.name(db).display(db, edition).to_string();
 
@@ -393,7 +404,7 @@ fn trait_name(trait_: &hir::Trait, db: &RootDatabase, edition: Edition) -> Optio
     Some(name)
 }
 
-fn from_field_name(expr: &ast::Expr) -> Option<String> {
+fn from_field_name(expr: &ast::Expr) -> Option<SmolStr> {
     let field = match expr {
         ast::Expr::FieldExpr(field) => field,
         _ => return None,
@@ -424,7 +435,7 @@ mod tests {
             frange.range,
             "selection is not an expression(yet contained in one)"
         );
-        let name = for_variable(&expr, &sema);
+        let name = NameGenerator::new().for_variable(&expr, &sema);
         assert_eq!(&name, expected);
     }
 

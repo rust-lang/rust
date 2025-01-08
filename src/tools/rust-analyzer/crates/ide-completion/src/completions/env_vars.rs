@@ -43,7 +43,7 @@ pub(crate) fn complete_cargo_env_vars(
         .sema
         .hir_file_for(&expanded.syntax().parent()?)
         .macro_file()
-        .map_or(false, |it| it.is_env_or_option_env(ctx.sema.db));
+        .is_some_and(|it| it.is_env_or_option_env(ctx.sema.db));
     if !is_in_env_expansion {
         let call = macro_call_for_string_token(expanded)?;
         let makro = ctx.sema.resolve_macro_call(&call)?;

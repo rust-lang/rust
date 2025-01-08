@@ -10,6 +10,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, BindingMode, ByRef, Node};
 use rustc_middle::bug;
 use rustc_middle::hir::place::PlaceBase;
+use rustc_middle::mir::visit::PlaceContext;
 use rustc_middle::mir::{
     self, BindingForm, Local, LocalDecl, LocalInfo, LocalKind, Location, Mutability, Place,
     PlaceRef, ProjectionElem,
@@ -22,7 +23,6 @@ use rustc_trait_selection::traits;
 use tracing::debug;
 
 use crate::diagnostics::BorrowedContentSource;
-use crate::util::FindAssignments;
 use crate::{MirBorrowckCtxt, session_diagnostics};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -1088,6 +1088,38 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
     }
 
+    /// Finds all statements that assign directly to local (i.e., X = ...) and returns their
+    /// locations.
+    fn find_assignments(&self, local: Local) -> Vec<Location> {
+        use rustc_middle::mir::visit::Visitor;
+
+        struct FindLocalAssignmentVisitor {
+            needle: Local,
+            locations: Vec<Location>,
+        }
+
+        impl<'tcx> Visitor<'tcx> for FindLocalAssignmentVisitor {
+            fn visit_local(
+                &mut self,
+                local: Local,
+                place_context: PlaceContext,
+                location: Location,
+            ) {
+                if self.needle != local {
+                    return;
+                }
+
+                if place_context.is_place_assignment() {
+                    self.locations.push(location);
+                }
+            }
+        }
+
+        let mut visitor = FindLocalAssignmentVisitor { needle: local, locations: vec![] };
+        visitor.visit_body(self.body);
+        visitor.locations
+    }
+
     fn suggest_make_local_mut(&self, err: &mut Diag<'_>, local: Local, name: Symbol) {
         let local_decl = &self.body.local_decls[local];
 
@@ -1121,7 +1153,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             })) => {
                 // check if the RHS is from desugaring
                 let opt_assignment_rhs_span =
-                    self.body.find_assignments(local).first().map(|&location| {
+                    self.find_assignments(local).first().map(|&location| {
                         if let Some(mir::Statement {
                             source_info: _,
                             kind:

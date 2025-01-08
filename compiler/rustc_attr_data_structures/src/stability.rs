@@ -9,7 +9,12 @@ use crate::RustcVersion;
 /// `since` field of the `#[stable]` attribute.
 ///
 /// For more, see [this pull request](https://github.com/rust-lang/rust/pull/100591).
-pub const VERSION_PLACEHOLDER: &str = "CURRENT_RUSTC_VERSION";
+pub const VERSION_PLACEHOLDER: &str = concat!("CURRENT_RUSTC_VERSIO", "N");
+// Note that the `concat!` macro above prevents `src/tools/replace-version-placeholder` from
+// replacing the constant with the current version. Hardcoding the tool to skip this file doesn't
+// work as the file can (and at some point will) be moved around.
+//
+// Turning the `concat!` macro into a string literal will make Pietro cry. That'd be sad :(
 
 /// Represents the following attributes:
 ///

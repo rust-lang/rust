@@ -1,13 +1,13 @@
-//! Serialization-friendly representation of `tt::Subtree`.
+//! Serialization-friendly representation of `tt::TopSubtree`.
 //!
-//! It is possible to serialize `Subtree` as is, as a tree, but using
+//! It is possible to serialize `TopSubtree` recursively, as a tree, but using
 //! arbitrary-nested trees in JSON is problematic, as they can cause the JSON
 //! parser to overflow the stack.
 //!
 //! Additionally, such implementation would be pretty verbose, and we do care
 //! about performance here a bit.
 //!
-//! So what this module does is dumping a `tt::Subtree` into a bunch of flat
+//! So what this module does is dumping a `tt::TopSubtree` into a bunch of flat
 //! array of numbers. See the test in the parent module to get an example
 //! output.
 //!
@@ -40,9 +40,11 @@ use std::collections::VecDeque;
 use intern::Symbol;
 use rustc_hash::FxHashMap;
 use serde_derive::{Deserialize, Serialize};
-use span::{EditionedFileId, ErasedFileAstId, Span, SpanAnchor, SyntaxContextId, TextRange};
+use span::{
+    EditionedFileId, ErasedFileAstId, Span, SpanAnchor, SyntaxContextId, TextRange, TokenId,
+};
 
-use crate::msg::{ENCODE_CLOSE_SPAN_VERSION, EXTENDED_LEAF_DATA};
+use crate::legacy_protocol::msg::{ENCODE_CLOSE_SPAN_VERSION, EXTENDED_LEAF_DATA};
 
 pub type SpanDataIndexMap =
     indexmap::IndexSet<Span, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
@@ -76,15 +78,6 @@ pub fn deserialize_span_data_index_map(map: &[u32]) -> SpanDataIndexMap {
             }
         })
         .collect()
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TokenId(pub u32);
-
-impl std::fmt::Debug for TokenId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -125,7 +118,7 @@ struct IdentRepr {
 
 impl FlatTree {
     pub fn new(
-        subtree: &tt::Subtree<Span>,
+        subtree: tt::SubtreeView<'_, Span>,
         version: u32,
         span_data_table: &mut SpanDataIndexMap,
     ) -> FlatTree {
@@ -166,7 +159,7 @@ impl FlatTree {
         }
     }
 
-    pub fn new_raw(subtree: &tt::Subtree<TokenId>, version: u32) -> FlatTree {
+    pub fn new_raw(subtree: tt::SubtreeView<'_, TokenId>, version: u32) -> FlatTree {
         let mut w = Writer {
             string_table: FxHashMap::default(),
             work: VecDeque::new(),
@@ -208,7 +201,7 @@ impl FlatTree {
         self,
         version: u32,
         span_data_table: &SpanDataIndexMap,
-    ) -> tt::Subtree<Span> {
+    ) -> tt::TopSubtree<Span> {
         Reader {
             subtree: if version >= ENCODE_CLOSE_SPAN_VERSION {
                 read_vec(self.subtree, SubtreeRepr::read_with_close_span)
@@ -234,7 +227,7 @@ impl FlatTree {
         .read()
     }
 
-    pub fn to_subtree_unresolved(self, version: u32) -> tt::Subtree<TokenId> {
+    pub fn to_subtree_unresolved(self, version: u32) -> tt::TopSubtree<TokenId> {
         Reader {
             subtree: if version >= ENCODE_CLOSE_SPAN_VERSION {
                 read_vec(self.subtree, SubtreeRepr::read_with_close_span)
@@ -388,7 +381,7 @@ impl InternableSpan for Span {
 }
 
 struct Writer<'a, 'span, S: InternableSpan> {
-    work: VecDeque<(usize, &'a tt::Subtree<S>)>,
+    work: VecDeque<(usize, tt::iter::TtIter<'a, S>)>,
     string_table: FxHashMap<std::borrow::Cow<'a, str>, u32>,
     span_data_table: &'span mut S::Table,
     version: u32,
@@ -402,8 +395,9 @@ struct Writer<'a, 'span, S: InternableSpan> {
 }
 
 impl<'a, S: InternableSpan> Writer<'a, '_, S> {
-    fn write(&mut self, root: &'a tt::Subtree<S>) {
-        self.enqueue(root);
+    fn write(&mut self, root: tt::SubtreeView<'a, S>) {
+        let subtree = root.top_subtree();
+        self.enqueue(subtree, root.iter());
         while let Some((idx, subtree)) = self.work.pop_front() {
             self.subtree(idx, subtree);
         }
@@ -413,20 +407,20 @@ impl<'a, S: InternableSpan> Writer<'a, '_, S> {
         S::token_id_of(self.span_data_table, span)
     }
 
-    fn subtree(&mut self, idx: usize, subtree: &'a tt::Subtree<S>) {
+    fn subtree(&mut self, idx: usize, subtree: tt::iter::TtIter<'a, S>) {
         let mut first_tt = self.token_tree.len();
-        let n_tt = subtree.token_trees.len();
+        let n_tt = subtree.clone().count(); // FIXME: `count()` walks over the entire iterator.
         self.token_tree.resize(first_tt + n_tt, !0);
 
         self.subtree[idx].tt = [first_tt as u32, (first_tt + n_tt) as u32];
 
-        for child in subtree.token_trees.iter() {
+        for child in subtree {
             let idx_tag = match child {
-                tt::TokenTree::Subtree(it) => {
-                    let idx = self.enqueue(it);
+                tt::iter::TtElement::Subtree(subtree, subtree_iter) => {
+                    let idx = self.enqueue(subtree, subtree_iter);
                     idx << 2
                 }
-                tt::TokenTree::Leaf(leaf) => match leaf {
+                tt::iter::TtElement::Leaf(leaf) => match leaf {
                     tt::Leaf::Literal(lit) => {
                         let idx = self.literal.len() as u32;
                         let id = self.token_id_of(lit.span);
@@ -456,13 +450,13 @@ impl<'a, S: InternableSpan> Writer<'a, '_, S> {
                             }),
                             suffix,
                         });
-                        idx << 2 | 0b01
+                        (idx << 2) | 0b01
                     }
                     tt::Leaf::Punct(punct) => {
                         let idx = self.punct.len() as u32;
                         let id = self.token_id_of(punct.span);
                         self.punct.push(PunctRepr { char: punct.char, spacing: punct.spacing, id });
-                        idx << 2 | 0b10
+                        (idx << 2) | 0b10
                     }
                     tt::Leaf::Ident(ident) => {
                         let idx = self.ident.len() as u32;
@@ -475,7 +469,7 @@ impl<'a, S: InternableSpan> Writer<'a, '_, S> {
                             self.intern(ident.sym.as_str())
                         };
                         self.ident.push(IdentRepr { id, text, is_raw: ident.is_raw.yes() });
-                        idx << 2 | 0b11
+                        (idx << 2) | 0b11
                     }
                 },
             };
@@ -484,13 +478,13 @@ impl<'a, S: InternableSpan> Writer<'a, '_, S> {
         }
     }
 
-    fn enqueue(&mut self, subtree: &'a tt::Subtree<S>) -> u32 {
+    fn enqueue(&mut self, subtree: &'a tt::Subtree<S>, contents: tt::iter::TtIter<'a, S>) -> u32 {
         let idx = self.subtree.len();
         let open = self.token_id_of(subtree.delimiter.open);
         let close = self.token_id_of(subtree.delimiter.close);
         let delimiter_kind = subtree.delimiter.kind;
         self.subtree.push(SubtreeRepr { open, close, kind: delimiter_kind, tt: [!0, !0] });
-        self.work.push_back((idx, subtree));
+        self.work.push_back((idx, contents));
         idx as u32
     }
 
@@ -525,103 +519,110 @@ struct Reader<'span, S: InternableSpan> {
 }
 
 impl<S: InternableSpan> Reader<'_, S> {
-    pub(crate) fn read(self) -> tt::Subtree<S> {
-        let mut res: Vec<Option<tt::Subtree<S>>> = vec![None; self.subtree.len()];
+    pub(crate) fn read(self) -> tt::TopSubtree<S> {
+        let mut res: Vec<Option<(tt::Delimiter<S>, Vec<tt::TokenTree<S>>)>> =
+            vec![None; self.subtree.len()];
         let read_span = |id| S::span_for_token_id(self.span_data_table, id);
         for i in (0..self.subtree.len()).rev() {
             let repr = &self.subtree[i];
             let token_trees = &self.token_tree[repr.tt[0] as usize..repr.tt[1] as usize];
-            let s = tt::Subtree {
-                delimiter: tt::Delimiter {
-                    open: read_span(repr.open),
-                    close: read_span(repr.close),
-                    kind: repr.kind,
-                },
-                token_trees: token_trees
-                    .iter()
-                    .copied()
-                    .map(|idx_tag| {
-                        let tag = idx_tag & 0b11;
-                        let idx = (idx_tag >> 2) as usize;
-                        match tag {
-                            // XXX: we iterate subtrees in reverse to guarantee
-                            // that this unwrap doesn't fire.
-                            0b00 => res[idx].take().unwrap().into(),
-                            0b01 => {
-                                use tt::LitKind::*;
-                                let repr = &self.literal[idx];
-                                let text = self.text[repr.text as usize].as_str();
-                                let span = read_span(repr.id);
-                                tt::Leaf::Literal(if self.version >= EXTENDED_LEAF_DATA {
-                                    tt::Literal {
-                                        symbol: Symbol::intern(text),
-                                        span,
-                                        kind: match u16::to_le_bytes(repr.kind) {
-                                            [0, _] => Err(()),
-                                            [1, _] => Byte,
-                                            [2, _] => Char,
-                                            [3, _] => Integer,
-                                            [4, _] => Float,
-                                            [5, _] => Str,
-                                            [6, r] => StrRaw(r),
-                                            [7, _] => ByteStr,
-                                            [8, r] => ByteStrRaw(r),
-                                            [9, _] => CStr,
-                                            [10, r] => CStrRaw(r),
-                                            _ => unreachable!(),
-                                        },
-                                        suffix: if repr.suffix != !0 {
-                                            Some(Symbol::intern(
-                                                self.text[repr.suffix as usize].as_str(),
-                                            ))
-                                        } else {
-                                            None
-                                        },
-                                    }
-                                } else {
-                                    tt::token_to_literal(text, span)
-                                })
-                                .into()
-                            }
-                            0b10 => {
-                                let repr = &self.punct[idx];
-                                tt::Leaf::Punct(tt::Punct {
-                                    char: repr.char,
-                                    spacing: repr.spacing,
-                                    span: read_span(repr.id),
-                                })
-                                .into()
-                            }
-                            0b11 => {
-                                let repr = &self.ident[idx];
-                                let text = self.text[repr.text as usize].as_str();
-                                let (is_raw, text) = if self.version >= EXTENDED_LEAF_DATA {
-                                    (
-                                        if repr.is_raw {
-                                            tt::IdentIsRaw::Yes
-                                        } else {
-                                            tt::IdentIsRaw::No
-                                        },
-                                        text,
-                                    )
-                                } else {
-                                    tt::IdentIsRaw::split_from_symbol(text)
-                                };
-                                tt::Leaf::Ident(tt::Ident {
-                                    sym: Symbol::intern(text),
-                                    span: read_span(repr.id),
-                                    is_raw,
-                                })
-                                .into()
-                            }
-                            other => panic!("bad tag: {other}"),
-                        }
-                    })
-                    .collect(),
+            let delimiter = tt::Delimiter {
+                open: read_span(repr.open),
+                close: read_span(repr.close),
+                kind: repr.kind,
             };
-            res[i] = Some(s);
+            let mut s = Vec::new();
+            for &idx_tag in token_trees {
+                let tag = idx_tag & 0b11;
+                let idx = (idx_tag >> 2) as usize;
+                match tag {
+                    // XXX: we iterate subtrees in reverse to guarantee
+                    // that this unwrap doesn't fire.
+                    0b00 => {
+                        let (delimiter, subtree) = res[idx].take().unwrap();
+                        s.push(tt::TokenTree::Subtree(tt::Subtree {
+                            delimiter,
+                            len: subtree.len() as u32,
+                        }));
+                        s.extend(subtree)
+                    }
+                    0b01 => {
+                        use tt::LitKind::*;
+                        let repr = &self.literal[idx];
+                        let text = self.text[repr.text as usize].as_str();
+                        let span = read_span(repr.id);
+                        s.push(
+                            tt::Leaf::Literal(if self.version >= EXTENDED_LEAF_DATA {
+                                tt::Literal {
+                                    symbol: Symbol::intern(text),
+                                    span,
+                                    kind: match u16::to_le_bytes(repr.kind) {
+                                        [0, _] => Err(()),
+                                        [1, _] => Byte,
+                                        [2, _] => Char,
+                                        [3, _] => Integer,
+                                        [4, _] => Float,
+                                        [5, _] => Str,
+                                        [6, r] => StrRaw(r),
+                                        [7, _] => ByteStr,
+                                        [8, r] => ByteStrRaw(r),
+                                        [9, _] => CStr,
+                                        [10, r] => CStrRaw(r),
+                                        _ => unreachable!(),
+                                    },
+                                    suffix: if repr.suffix != !0 {
+                                        Some(Symbol::intern(
+                                            self.text[repr.suffix as usize].as_str(),
+                                        ))
+                                    } else {
+                                        None
+                                    },
+                                }
+                            } else {
+                                tt::token_to_literal(text, span)
+                            })
+                            .into(),
+                        )
+                    }
+                    0b10 => {
+                        let repr = &self.punct[idx];
+                        s.push(
+                            tt::Leaf::Punct(tt::Punct {
+                                char: repr.char,
+                                spacing: repr.spacing,
+                                span: read_span(repr.id),
+                            })
+                            .into(),
+                        )
+                    }
+                    0b11 => {
+                        let repr = &self.ident[idx];
+                        let text = self.text[repr.text as usize].as_str();
+                        let (is_raw, text) = if self.version >= EXTENDED_LEAF_DATA {
+                            (
+                                if repr.is_raw { tt::IdentIsRaw::Yes } else { tt::IdentIsRaw::No },
+                                text,
+                            )
+                        } else {
+                            tt::IdentIsRaw::split_from_symbol(text)
+                        };
+                        s.push(
+                            tt::Leaf::Ident(tt::Ident {
+                                sym: Symbol::intern(text),
+                                span: read_span(repr.id),
+                                is_raw,
+                            })
+                            .into(),
+                        )
+                    }
+                    other => panic!("bad tag: {other}"),
+                }
+            }
+            res[i] = Some((delimiter, s));
         }
 
-        res[0].take().unwrap()
+        let (delimiter, mut res) = res[0].take().unwrap();
+        res.insert(0, tt::TokenTree::Subtree(tt::Subtree { delimiter, len: res.len() as u32 }));
+        tt::TopSubtree(res.into_boxed_slice())
     }
 }

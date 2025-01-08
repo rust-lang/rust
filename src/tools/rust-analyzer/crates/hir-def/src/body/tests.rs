@@ -52,6 +52,7 @@ fn your_stack_belongs_to_me() {
     cov_mark::check!(your_stack_belongs_to_me);
     lower(
         r#"
+#![recursion_limit = "32"]
 macro_rules! n_nuple {
     ($e:tt) => ();
     ($($rest:tt)*) => {{
@@ -68,6 +69,7 @@ fn your_stack_belongs_to_me2() {
     cov_mark::check!(overflow_but_not_me);
     lower(
         r#"
+#![recursion_limit = "32"]
 macro_rules! foo {
     () => {{ foo!(); foo!(); }}
 }
@@ -78,8 +80,6 @@ fn main() { foo!(); }
 
 #[test]
 fn recursion_limit() {
-    cov_mark::check!(your_stack_belongs_to_me);
-
     lower(
         r#"
 #![recursion_limit = "2"]

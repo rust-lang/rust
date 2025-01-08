@@ -388,7 +388,8 @@ pub(crate) fn build_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 // exceptions. This means that the VM does the unwinding for
 // us
 pub fn wants_wasm_eh(sess: &Session) -> bool {
-    sess.target.is_like_wasm && sess.target.os != "emscripten"
+    sess.target.is_like_wasm
+        && (sess.target.os != "emscripten" || sess.opts.unstable_opts.emscripten_wasm_eh)
 }
 
 /// Returns `true` if this session's target will use SEH-based unwinding.

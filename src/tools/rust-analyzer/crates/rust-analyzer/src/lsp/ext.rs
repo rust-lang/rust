@@ -1,5 +1,9 @@
 //! rust-analyzer extensions to the LSP.
 
+// Note when adding new resolve payloads, add a #[serde(default)] on boolean fields as some clients
+// might strip `false` values from the JSON payload due to their reserialization logic turning false
+// into null which will then cause them to be omitted in the resolve request. See https://github.com/rust-lang/rust-analyzer/issues/18767
+
 #![allow(clippy::disallowed_types)]
 
 use std::ops;
@@ -427,14 +431,14 @@ impl Request for Runnables {
     const METHOD: &'static str = "experimental/runnables";
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct RunnablesParams {
     pub text_document: TextDocumentIdentifier,
     pub position: Option<Position>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Runnable {
     pub label: String,
@@ -444,7 +448,7 @@ pub struct Runnable {
     pub args: RunnableArgs,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 #[serde(untagged)]
 pub enum RunnableArgs {
@@ -452,14 +456,14 @@ pub enum RunnableArgs {
     Shell(ShellRunnableArgs),
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum RunnableKind {
     Cargo,
     Shell,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct CargoRunnableArgs {
     #[serde(skip_serializing_if = "FxHashMap::is_empty")]
@@ -475,7 +479,7 @@ pub struct CargoRunnableArgs {
     pub executable_args: Vec<String>,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ShellRunnableArgs {
     #[serde(skip_serializing_if = "FxHashMap::is_empty")]
@@ -829,6 +833,7 @@ pub struct CompletionResolveData {
     pub version: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub trigger_character: Option<char>,
+    #[serde(default)]
     pub for_ref: bool,
     pub hash: String,
 }

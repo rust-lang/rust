@@ -24,7 +24,7 @@ use ide_db::{
 use itertools::Itertools;
 use load_cargo::{load_proc_macro, ProjectFolders};
 use lsp_types::FileSystemWatcher;
-use proc_macro_api::ProcMacroServer;
+use proc_macro_api::ProcMacroClient;
 use project_model::{ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, WorkspaceBuildScripts};
 use stdx::{format_to, thread::ThreadIntent};
 use triomphe::Arc;
@@ -630,13 +630,10 @@ impl GlobalState {
                 };
 
                 let env: FxHashMap<_, _> = match &ws.kind {
-                    ProjectWorkspaceKind::Cargo { cargo_config_extra_env, .. }
-                    | ProjectWorkspaceKind::DetachedFile {
-                        cargo: Some(_),
-                        cargo_config_extra_env,
-                        ..
-                    } => cargo_config_extra_env
-                        .iter()
+                    ProjectWorkspaceKind::Cargo { cargo, .. }
+                    | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, ..)), .. } => cargo
+                        .env()
+                        .into_iter()
                         .chain(self.config.extra_env(None))
                         .map(|(a, b)| (a.clone(), b.clone()))
                         .chain(
@@ -650,7 +647,7 @@ impl GlobalState {
                 };
                 info!("Using proc-macro server at {path}");
 
-                ProcMacroServer::spawn(&path, &env).map_err(|err| {
+                ProcMacroClient::spawn(&path, &env).map_err(|err| {
                     tracing::error!(
                         "Failed to run proc-macro server from path {path}, error: {err:?}",
                     );

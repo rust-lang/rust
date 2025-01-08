@@ -550,7 +550,7 @@ impl OsString {
         OsStr::from_inner_mut(self.inner.leak())
     }
 
-    /// Truncate the the `OsString` to the specified length.
+    /// Truncate the `OsString` to the specified length.
     ///
     /// # Panics
     /// Panics if `len` does not lie on a valid `OsStr` boundary

@@ -114,7 +114,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         //
                         // We rely on a few heuristics to identify cases where this root
                         // obligation is more important than the leaf obligation:
-                        let (main_trait_predicate, o) = if let ty::PredicateKind::Clause(
+                        let (main_trait_predicate, main_obligation) = if let ty::PredicateKind::Clause(
                             ty::ClauseKind::Trait(root_pred)
                         ) = root_obligation.predicate.kind().skip_binder()
                             && !leaf_trait_predicate.self_ty().skip_binder().has_escaping_bound_vars()
@@ -199,7 +199,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             notes,
                             parent_label,
                             append_const_msg,
-                        } = self.on_unimplemented_note(main_trait_predicate, o, &mut long_ty_file);
+                        } = self.on_unimplemented_note(main_trait_predicate, main_obligation, &mut long_ty_file);
 
                         let have_alt_message = message.is_some() || label.is_some();
                         let is_try_conversion = self.is_try_conversion(span, main_trait_ref.def_id());
@@ -538,23 +538,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
 
                     ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(predicate)) => {
-                        // FIXME(const_trait_impl): We should recompute the predicate with `~const`
-                        // if it's `const`, and if it holds, explain that this bound only
-                        // *conditionally* holds. If that fails, we should also do selection
-                        // to drill this down to an impl or built-in source, so we can
-                        // point at it and explain that while the trait *is* implemented,
-                        // that implementation is not const.
-                        let err_msg = self.get_standard_error_message(
-                            bound_predicate.rebind(ty::TraitPredicate {
-                                trait_ref: predicate.trait_ref,
-                                polarity: ty::PredicatePolarity::Positive,
-                            }),
-                            None,
-                            Some(predicate.constness),
-                            None,
-                            String::new(),
-                        );
-                        struct_span_code_err!(self.dcx(), span, E0277, "{}", err_msg)
+                        self.report_host_effect_error(bound_predicate.rebind(predicate), obligation.param_env, span)
                     }
 
                     ty::PredicateKind::Subtype(predicate) => {
@@ -753,7 +737,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     applied_do_not_recommend = true;
                 }
             }
-            if let Some((parent_cause, _parent_pred)) = base_cause.parent() {
+            if let Some(parent_cause) = base_cause.parent() {
                 base_cause = parent_cause.clone();
             } else {
                 break;
@@ -761,6 +745,41 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
 
         applied_do_not_recommend
+    }
+
+    fn report_host_effect_error(
+        &self,
+        predicate: ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>,
+        param_env: ty::ParamEnv<'tcx>,
+        span: Span,
+    ) -> Diag<'a> {
+        // FIXME(const_trait_impl): We should recompute the predicate with `~const`
+        // if it's `const`, and if it holds, explain that this bound only
+        // *conditionally* holds. If that fails, we should also do selection
+        // to drill this down to an impl or built-in source, so we can
+        // point at it and explain that while the trait *is* implemented,
+        // that implementation is not const.
+        let trait_ref = predicate.map_bound(|predicate| ty::TraitPredicate {
+            trait_ref: predicate.trait_ref,
+            polarity: ty::PredicatePolarity::Positive,
+        });
+        let err_msg = self.get_standard_error_message(
+            trait_ref,
+            None,
+            Some(predicate.constness()),
+            None,
+            String::new(),
+        );
+        let mut diag = struct_span_code_err!(self.dcx(), span, E0277, "{}", err_msg);
+        if !self.predicate_may_hold(&Obligation::new(
+            self.tcx,
+            ObligationCause::dummy(),
+            param_env,
+            trait_ref,
+        )) {
+            diag.downgrade_to_delayed_bug();
+        }
+        diag
     }
 
     fn emit_specialized_closure_kind_error(
@@ -778,7 +797,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 trait_ref.skip_binder().args.type_at(1).to_opt_closure_kind()
             && !found_kind.extends(expected_kind)
         {
-            if let Some((_, Some(parent))) = obligation.cause.code().parent() {
+            if let Some((_, Some(parent))) = obligation.cause.code().parent_with_predicate() {
                 // If we have a derived obligation, then the parent will be a `AsyncFn*` goal.
                 trait_ref = parent.to_poly_trait_ref();
             } else if let &ObligationCauseCode::FunctionArg { arg_hir_id, .. } =
@@ -926,7 +945,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let Some(typeck) = &self.typeck_results else {
             return false;
         };
-        let Some((ObligationCauseCode::QuestionMark, Some(y))) = obligation.cause.code().parent()
+        let Some((ObligationCauseCode::QuestionMark, Some(y))) =
+            obligation.cause.code().parent_with_predicate()
         else {
             return false;
         };
@@ -1179,7 +1199,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let mut code = obligation.cause.code();
         let mut pred = obligation.predicate.as_trait_clause();
-        while let Some((next_code, next_pred)) = code.parent() {
+        while let Some((next_code, next_pred)) = code.parent_with_predicate() {
             if let Some(pred) = pred {
                 self.enter_forall(pred, |pred| {
                     diag.note(format!(
@@ -2095,7 +2115,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let mut code = obligation.cause.code();
         let mut trait_pred = trait_predicate;
         let mut peeled = false;
-        while let Some((parent_code, parent_trait_pred)) = code.parent() {
+        while let Some((parent_code, parent_trait_pred)) = code.parent_with_predicate() {
             code = parent_code;
             if let Some(parent_trait_pred) = parent_trait_pred {
                 trait_pred = parent_trait_pred;

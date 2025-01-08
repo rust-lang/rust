@@ -213,6 +213,10 @@ borrowck_suggest_create_fresh_reborrow =
 borrowck_suggest_iterate_over_slice =
     consider iterating over a slice of the `{$ty}`'s content to avoid moving into the `for` loop
 
+borrowck_tail_expr_drop_order = relative drop order changing in Rust 2024
+    .label = this temporary value will be dropped at the end of the block
+    .note = consider using a `let` binding to ensure the value will live long enough
+
 borrowck_ty_no_impl_copy =
     {$is_partial_move ->
         [true] partial move

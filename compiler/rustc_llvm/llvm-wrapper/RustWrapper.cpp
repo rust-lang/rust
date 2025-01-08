@@ -54,6 +54,10 @@ using namespace llvm;
 using namespace llvm::sys;
 using namespace llvm::object;
 
+// This opcode is an LLVM detail that could hypothetically change (?), so
+// verify that the hard-coded value in `dwarf_const.rs` still agrees with LLVM.
+static_assert(dwarf::DW_OP_LLVM_fragment == 0x1000);
+
 // LLVMAtomicOrdering is already an enum - don't create another
 // one.
 static AtomicOrdering fromRust(LLVMAtomicOrdering Ordering) {
@@ -1395,18 +1399,6 @@ LLVMRustDILocationCloneWithBaseDiscriminator(LLVMMetadataRef Location,
   DILocation *Loc = unwrapDIPtr<DILocation>(Location);
   auto NewLoc = Loc->cloneWithBaseDiscriminator(BD);
   return wrap(NewLoc.has_value() ? NewLoc.value() : nullptr);
-}
-
-extern "C" uint64_t LLVMRustDIBuilderCreateOpDeref() {
-  return dwarf::DW_OP_deref;
-}
-
-extern "C" uint64_t LLVMRustDIBuilderCreateOpPlusUconst() {
-  return dwarf::DW_OP_plus_uconst;
-}
-
-extern "C" uint64_t LLVMRustDIBuilderCreateOpLLVMFragment() {
-  return dwarf::DW_OP_LLVM_fragment;
 }
 
 extern "C" void LLVMRustWriteTypeToString(LLVMTypeRef Ty, RustStringRef Str) {

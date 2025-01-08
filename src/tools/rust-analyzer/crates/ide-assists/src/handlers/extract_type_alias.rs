@@ -100,7 +100,7 @@ fn collect_used_generics<'gp>(
     fn find_lifetime(text: &str) -> impl Fn(&&ast::GenericParam) -> bool + '_ {
         move |gp: &&ast::GenericParam| match gp {
             ast::GenericParam::LifetimeParam(lp) => {
-                lp.lifetime().map_or(false, |lt| lt.text() == text)
+                lp.lifetime().is_some_and(|lt| lt.text() == text)
             }
             _ => false,
         }
@@ -118,7 +118,7 @@ fn collect_used_generics<'gp>(
                                 ast::GenericParam::TypeParam(tp) => tp.name(),
                                 _ => None,
                             }
-                            .map_or(false, |n| n.text() == name_ref.text())
+                            .is_some_and(|n| n.text() == name_ref.text())
                         }) {
                             generics.push(param);
                         }
@@ -165,7 +165,7 @@ fn collect_used_generics<'gp>(
                         if let Some(name_ref) = path.as_single_name_ref() {
                             if let Some(param) = known_generics.iter().find(|gp| {
                                 if let ast::GenericParam::ConstParam(cp) = gp {
-                                    cp.name().map_or(false, |n| n.text() == name_ref.text())
+                                    cp.name().is_some_and(|n| n.text() == name_ref.text())
                                 } else {
                                     false
                                 }

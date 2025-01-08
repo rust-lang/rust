@@ -1,12 +1,7 @@
 //! This module is responsible for implementing handlers for Language Server
 //! Protocol. This module specifically handles requests.
 
-use std::{
-    fs,
-    io::Write as _,
-    ops::Not,
-    process::{self, Stdio},
-};
+use std::{fs, io::Write as _, ops::Not, process::Stdio};
 
 use anyhow::Context;
 
@@ -32,7 +27,7 @@ use paths::Utf8PathBuf;
 use project_model::{CargoWorkspace, ManifestPath, ProjectWorkspaceKind, TargetKind};
 use serde_json::json;
 use stdx::{format_to, never};
-use syntax::{algo, ast, AstNode, TextRange, TextSize};
+use syntax::{TextRange, TextSize};
 use triomphe::Arc;
 use vfs::{AbsPath, AbsPathBuf, FileId, VfsPath};
 
@@ -933,39 +928,32 @@ pub(crate) fn handle_runnables(
     let offset = params.position.and_then(|it| from_proto::offset(&line_index, it).ok());
     let target_spec = TargetSpec::for_file(&snap, file_id)?;
 
-    let expect_test = match offset {
-        Some(offset) => {
-            let source_file = snap.analysis.parse(file_id)?;
-            algo::find_node_at_offset::<ast::MacroCall>(source_file.syntax(), offset)
-                .and_then(|it| it.path()?.segment()?.name_ref())
-                .map_or(false, |it| it.text() == "expect" || it.text() == "expect_file")
-        }
-        None => false,
-    };
-
     let mut res = Vec::new();
     for runnable in snap.analysis.runnables(file_id)? {
-        if should_skip_for_offset(&runnable, offset) {
+        if should_skip_for_offset(&runnable, offset)
+            || should_skip_target(&runnable, target_spec.as_ref())
+        {
             continue;
         }
-        if should_skip_target(&runnable, target_spec.as_ref()) {
-            continue;
-        }
+
+        let update_test = runnable.update_test;
         if let Some(mut runnable) = to_proto::runnable(&snap, runnable)? {
-            if expect_test {
-                if let lsp_ext::RunnableArgs::Cargo(r) = &mut runnable.args {
-                    runnable.label = format!("{} + expect", runnable.label);
-                    r.environment.insert("UPDATE_EXPECT".to_owned(), "1".to_owned());
-                    if let Some(TargetSpec::Cargo(CargoTargetSpec {
-                        sysroot_root: Some(sysroot_root),
-                        ..
-                    })) = &target_spec
-                    {
-                        r.environment
-                            .insert("RUSTC_TOOLCHAIN".to_owned(), sysroot_root.to_string());
-                    }
-                }
+            if let Some(runnable) =
+                to_proto::make_update_runnable(&runnable, &update_test.label(), &update_test.env())
+            {
+                res.push(runnable);
             }
+
+            if let lsp_ext::RunnableArgs::Cargo(r) = &mut runnable.args {
+                if let Some(TargetSpec::Cargo(CargoTargetSpec {
+                    sysroot_root: Some(sysroot_root),
+                    ..
+                })) = &target_spec
+                {
+                    r.environment.insert("RUSTC_TOOLCHAIN".to_owned(), sysroot_root.to_string());
+                }
+            };
+
             res.push(runnable);
         }
     }
@@ -1831,6 +1819,7 @@ pub(crate) fn handle_call_hierarchy_outgoing(
     let doc = TextDocumentIdentifier::new(item.uri);
     let frange = from_proto::file_range(&snap, &doc, item.selection_range)?;
     let fpos = FilePosition { file_id: frange.file_id, offset: frange.range.start() };
+    let line_index = snap.file_line_index(fpos.file_id)?;
 
     let config = snap.config.call_hierarchy();
     let call_items = match snap.analysis.outgoing_calls(config, fpos)? {
@@ -1841,8 +1830,6 @@ pub(crate) fn handle_call_hierarchy_outgoing(
     let mut res = vec![];
 
     for call_item in call_items.into_iter() {
-        let file_id = call_item.target.file_id;
-        let line_index = snap.file_line_index(file_id)?;
         let item = to_proto::call_hierarchy_item(&snap, call_item.target)?;
         res.push(CallHierarchyOutgoingCall {
             to: item,
@@ -2148,6 +2135,7 @@ fn runnable_action_links(
     }
 
     let title = runnable.title();
+    let update_test = runnable.update_test;
     let r = to_proto::runnable(snap, runnable).ok()??;
 
     let mut group = lsp_ext::CommandLinkGroup::default();
@@ -2159,7 +2147,15 @@ fn runnable_action_links(
 
     if hover_actions_config.debug && client_commands_config.debug_single {
         let dbg_command = to_proto::command::debug_single(&r);
-        group.commands.push(to_command_link(dbg_command, r.label));
+        group.commands.push(to_command_link(dbg_command, r.label.clone()));
+    }
+
+    if hover_actions_config.update_test && client_commands_config.run_single {
+        let label = update_test.label();
+        if let Some(r) = to_proto::make_update_runnable(&r, &label, &update_test.env()) {
+            let update_command = to_proto::command::run_single(&r, label.unwrap().as_str());
+            group.commands.push(to_command_link(update_command, r.label.clone()));
+        }
     }
 
     Some(group)
@@ -2243,10 +2239,31 @@ fn run_rustfmt(
     let line_index = snap.file_line_index(file_id)?;
     let source_root_id = snap.analysis.source_root_id(file_id).ok();
 
+    // try to chdir to the file so we can respect `rustfmt.toml`
+    // FIXME: use `rustfmt --config-path` once
+    // https://github.com/rust-lang/rustfmt/issues/4660 gets fixed
+    let current_dir = match text_document.uri.to_file_path() {
+        Ok(mut path) => {
+            // pop off file name
+            if path.pop() && path.is_dir() {
+                path
+            } else {
+                std::env::current_dir()?
+            }
+        }
+        Err(_) => {
+            tracing::error!(
+                text_document = ?text_document.uri,
+                "Unable to get path, rustfmt.toml might be ignored"
+            );
+            std::env::current_dir()?
+        }
+    };
+
     let mut command = match snap.config.rustfmt(source_root_id) {
         RustfmtConfig::Rustfmt { extra_args, enable_range_formatting } => {
             // FIXME: Set RUSTUP_TOOLCHAIN
-            let mut cmd = process::Command::new(toolchain::Tool::Rustfmt.path());
+            let mut cmd = toolchain::command(toolchain::Tool::Rustfmt.path(), current_dir);
             cmd.envs(snap.config.extra_env(source_root_id));
             cmd.args(extra_args);
 
@@ -2300,9 +2317,9 @@ fn run_rustfmt(
                     } else {
                         cmd
                     };
-                    process::Command::new(cmd_path)
+                    toolchain::command(cmd_path, current_dir)
                 }
-                _ => process::Command::new(cmd),
+                _ => toolchain::command(cmd, current_dir),
             };
 
             cmd.envs(snap.config.extra_env(source_root_id));
@@ -2312,24 +2329,6 @@ fn run_rustfmt(
     };
 
     tracing::debug!(?command, "created format command");
-
-    // try to chdir to the file so we can respect `rustfmt.toml`
-    // FIXME: use `rustfmt --config-path` once
-    // https://github.com/rust-lang/rustfmt/issues/4660 gets fixed
-    match text_document.uri.to_file_path() {
-        Ok(mut path) => {
-            // pop off file name
-            if path.pop() && path.is_dir() {
-                command.current_dir(path);
-            }
-        }
-        Err(_) => {
-            tracing::error!(
-                text_document = ?text_document.uri,
-                "Unable to get path, rustfmt.toml might be ignored"
-            );
-        }
-    }
 
     let mut rustfmt = command
         .stdin(Stdio::piped())

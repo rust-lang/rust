@@ -2216,11 +2216,11 @@ impl ExprCollector<'_> {
         };
         // This needs to match `Flag` in library/core/src/fmt/rt.rs.
         let flags: u32 = ((sign == Some(FormatSign::Plus)) as u32)
-            | ((sign == Some(FormatSign::Minus)) as u32) << 1
-            | (alternate as u32) << 2
-            | (zero_pad as u32) << 3
-            | ((debug_hex == Some(FormatDebugHex::Lower)) as u32) << 4
-            | ((debug_hex == Some(FormatDebugHex::Upper)) as u32) << 5;
+            | (((sign == Some(FormatSign::Minus)) as u32) << 1)
+            | ((alternate as u32) << 2)
+            | ((zero_pad as u32) << 3)
+            | (((debug_hex == Some(FormatDebugHex::Lower)) as u32) << 4)
+            | (((debug_hex == Some(FormatDebugHex::Upper)) as u32) << 5);
         let flags = self.alloc_expr_desugared(Expr::Literal(Literal::Uint(
             flags as u128,
             Some(BuiltinUint::U32),
@@ -2468,7 +2468,7 @@ impl ExprCollector<'_> {
 
 fn comma_follows_token(t: Option<syntax::SyntaxToken>) -> bool {
     (|| syntax::algo::skip_trivia_token(t?.next_token()?, syntax::Direction::Next))()
-        .map_or(false, |it| it.kind() == syntax::T![,])
+        .is_some_and(|it| it.kind() == syntax::T![,])
 }
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]

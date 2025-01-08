@@ -13,7 +13,7 @@ use crate::{Database, DatabaseKeyIndex, Event, EventKind, QueryDb};
 use parking_lot::{RawRwLock, RwLock};
 use std::ops::Deref;
 use std::sync::atomic::{AtomicBool, Ordering};
-use tracing::{debug, info};
+use tracing::trace;
 
 pub(super) struct Slot<Q>
 where
@@ -126,7 +126,7 @@ where
         // doing any `set` invocations while the query function runs.
         let revision_now = runtime.current_revision();
 
-        info!("{:?}: invoked at {:?}", self, revision_now,);
+        trace!("{:?}: invoked at {:?}", self, revision_now,);
 
         // First, do a check with a read-lock.
         loop {
@@ -152,7 +152,7 @@ where
     ) -> StampedValue<Q::Value> {
         let runtime = db.salsa_runtime();
 
-        debug!("{:?}: read_upgrade(revision_now={:?})", self, revision_now,);
+        trace!("{:?}: read_upgrade(revision_now={:?})", self, revision_now,);
 
         // Check with an upgradable read to see if there is a value
         // already. (This permits other readers but prevents anyone
@@ -184,7 +184,7 @@ where
         // inputs and check whether they are out of date.
         if let Some(memo) = &mut old_memo {
             if let Some(value) = memo.verify_value(db.ops_database(), revision_now, &active_query) {
-                info!("{:?}: validated old memoized value", self,);
+                trace!("{:?}: validated old memoized value", self,);
 
                 db.salsa_event(Event {
                     runtime_id: runtime.id(),
@@ -212,7 +212,7 @@ where
         old_memo: Option<Memo<Q::Value>>,
         key: &Q::Key,
     ) -> StampedValue<Q::Value> {
-        tracing::info!("{:?}: executing query", self.database_key_index().debug(db));
+        tracing::trace!("{:?}: executing query", self.database_key_index().debug(db));
 
         db.salsa_event(Event {
             runtime_id: db.salsa_runtime().id(),
@@ -224,7 +224,7 @@ where
         let value = match Cycle::catch(|| Q::execute(db, key.clone())) {
             Ok(v) => v,
             Err(cycle) => {
-                tracing::debug!(
+                tracing::trace!(
                     "{:?}: caught cycle {:?}, have strategy {:?}",
                     self.database_key_index().debug(db),
                     cycle,
@@ -272,9 +272,10 @@ where
             // consumers must be aware of. Becoming *more* durable
             // is not. See the test `constant_to_non_constant`.
             if revisions.durability >= old_memo.revisions.durability && old_memo.value == value {
-                debug!(
+                trace!(
                     "read_upgrade({:?}): value is equal, back-dating to {:?}",
-                    self, old_memo.revisions.changed_at,
+                    self,
+                    old_memo.revisions.changed_at,
                 );
 
                 assert!(old_memo.revisions.changed_at <= revisions.changed_at);
@@ -290,7 +291,7 @@ where
 
         let memo_value = new_value.value.clone();
 
-        debug!("read_upgrade({:?}): result.revisions = {:#?}", self, revisions,);
+        trace!("read_upgrade({:?}): result.revisions = {:#?}", self, revisions,);
 
         panic_guard.proceed(Some(Memo { value: memo_value, verified_at: revision_now, revisions }));
 
@@ -339,9 +340,11 @@ where
             }
 
             QueryState::Memoized(memo) => {
-                debug!(
+                trace!(
                     "{:?}: found memoized value, verified_at={:?}, changed_at={:?}",
-                    self, memo.verified_at, memo.revisions.changed_at,
+                    self,
+                    memo.verified_at,
+                    memo.revisions.changed_at,
                 );
 
                 if memo.verified_at < revision_now {
@@ -355,7 +358,7 @@ where
                     value: value.clone(),
                 };
 
-                info!("{:?}: returning memoized value changed at {:?}", self, value.changed_at);
+                trace!("{:?}: returning memoized value changed at {:?}", self, value.changed_at);
 
                 ProbeState::UpToDate(value)
             }
@@ -387,7 +390,7 @@ where
     }
 
     pub(super) fn invalidate(&self, new_revision: Revision) -> Option<Durability> {
-        tracing::debug!("Slot::invalidate(new_revision = {:?})", new_revision);
+        tracing::trace!("Slot::invalidate(new_revision = {:?})", new_revision);
         match &mut *self.state.write() {
             QueryState::Memoized(memo) => {
                 memo.revisions.untracked = true;
@@ -411,9 +414,11 @@ where
 
         db.unwind_if_cancelled();
 
-        debug!(
+        trace!(
             "maybe_changed_after({:?}) called with revision={:?}, revision_now={:?}",
-            self, revision, revision_now,
+            self,
+            revision,
+            revision_now,
         );
 
         // Do an initial probe with just the read-lock.
@@ -680,9 +685,11 @@ where
         assert!(self.verified_at != revision_now);
         let verified_at = self.verified_at;
 
-        debug!(
+        trace!(
             "verify_revisions: verified_at={:?}, revision_now={:?}, inputs={:#?}",
-            verified_at, revision_now, self.revisions.inputs
+            verified_at,
+            revision_now,
+            self.revisions.inputs
         );
 
         if self.check_durability(db.salsa_runtime()) {
@@ -708,7 +715,7 @@ where
                 let changed_input =
                     inputs.slice.iter().find(|&&input| db.maybe_changed_after(input, verified_at));
                 if let Some(input) = changed_input {
-                    debug!("validate_memoized_value: `{:?}` may have changed", input);
+                    trace!("validate_memoized_value: `{:?}` may have changed", input);
 
                     return false;
                 }
@@ -721,7 +728,7 @@ where
     /// True if this memo is known not to have changed based on its durability.
     fn check_durability(&self, runtime: &Runtime) -> bool {
         let last_changed = runtime.last_changed_revision(self.revisions.durability);
-        debug!(
+        trace!(
             "check_durability(last_changed={:?} <= verified_at={:?}) = {:?}",
             last_changed,
             self.verified_at,

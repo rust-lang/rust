@@ -12,8 +12,8 @@ struct Consumer<'tcx>(&'tcx ());
 
 impl<'tcx> Consumer<'tcx> {
     fn bad_method<'a>(&self, fcx: &FnCtxt<'a, 'tcx>) {
-        let other = self.use_fcx(fcx); //~ ERROR lifetime may not live long enough
-        fcx.use_it(other);
+        let other = self.use_fcx(fcx);
+        fcx.use_it(other); //~ ERROR lifetime may not live long enough
     }
 
     fn use_fcx<'a>(&self, _: &FnCtxt<'a, 'tcx>) -> &'a () {

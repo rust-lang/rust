@@ -23,7 +23,6 @@ syntax-bridge.workspace = true
 paths.workspace = true
 # span = {workspace = true, default-features = false} does not work
 span = { path = "../span", version = "0.0.0", default-features = false}
-proc-macro-api.workspace = true
 intern.workspace = true
 
 ra-ap-rustc_lexer.workspace = true

@@ -37,6 +37,7 @@ pub(crate) struct UnstableCTargetFeature<'a> {
 #[note(codegen_llvm_forbidden_ctarget_feature_issue)]
 pub(crate) struct ForbiddenCTargetFeature<'a> {
     pub feature: &'a str,
+    pub enabled: &'a str,
     pub reason: &'a str,
 }
 
@@ -211,12 +212,6 @@ pub(crate) struct MismatchedDataLayout<'a> {
     pub rustc_layout: &'a str,
     pub llvm_target: &'a str,
     pub llvm_layout: &'a str,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_llvm_invalid_target_feature_prefix)]
-pub(crate) struct InvalidTargetFeaturePrefix<'a> {
-    pub feature: &'a str,
 }
 
 #[derive(Diagnostic)]

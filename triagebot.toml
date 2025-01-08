@@ -172,6 +172,12 @@ issues).
 """
 label = "O-emscripten"
 
+[ping.relnotes-interest-group]
+message = """\
+Hi relnotes-interest-group, this PR adds release notes. Could you review this PR
+if you have time? Thanks <3
+"""
+
 [prioritize]
 label = "I-prioritize"
 
@@ -498,6 +504,11 @@ trigger_files = [
     "src/tools/compiletest"
 ]
 
+[autolabel."A-rustc-dev-guide"]
+trigger_files = [
+    "src/doc/rustc-dev-guide",
+]
+
 [notify-zulip."I-prioritize"]
 zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
 topic = "#{number} {title}"
@@ -819,7 +830,7 @@ cc = ["@rust-lang/rustfmt"]
 
 [mentions."compiler/rustc_middle/src/mir/syntax.rs"]
 message = "This PR changes MIR"
-cc = ["@oli-obk", "@RalfJung", "@JakobDegen", "@davidtwco", "@celinval", "@vakaras"]
+cc = ["@oli-obk", "@RalfJung", "@JakobDegen", "@davidtwco", "@vakaras"]
 
 [mentions."compiler/rustc_error_messages"]
 message = "`rustc_error_messages` was changed"
@@ -990,12 +1001,15 @@ https://github.com/rust-lang/reference/blob/HEAD/src/identifiers.md.
 """
 cc = ["@ehuss"]
 
+[mentions."src/doc/rustc-dev-guide"]
+message = "The rustc-dev-guide subtree was changed. If this PR *only* touches the dev guide consider submitting a PR directly to [rust-lang/rustc-dev-guide](https://github.com/rust-lang/rustc-dev-guide/pulls) otherwise thank you for updating the dev guide with your changes."
+cc = ["@BoxyUwU", "@jieyouxu", "@kobzol"]
+
 [assign]
 warn_non_default_branch.enable = true
 contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
 users_on_vacation = [
     "jyn514",
-    "celinval",
     "nnethercote",
     "spastorino",
     "workingjubilee",
@@ -1208,7 +1222,7 @@ project-exploit-mitigations = [
 "/src/doc/nomicon" =                                     ["@ehuss"]
 "/src/doc/reference" =                                   ["@ehuss"]
 "/src/doc/rust-by-example" =                             ["@ehuss"]
-"/src/doc/rustc-dev-guide" =                             ["@kobzol", "@jieyouxu"]
+"/src/doc/rustc-dev-guide" =                             ["compiler"]
 "/src/doc/rustdoc" =                                     ["rustdoc"]
 "/src/doc/style-guide" =                                 ["style-team"]
 "/src/etc" =                                             ["@Mark-Simulacrum"]

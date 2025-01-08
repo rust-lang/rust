@@ -61,7 +61,6 @@ pub(super) fn hints(
         }
         hint.label.append_str(r);
     });
-    hint.pad_right = was_mut_last;
     let acc_base = acc.len();
     match pat {
         ast::Pat::IdentPat(pat) if pat.ref_token().is_none() && pat.mut_token().is_none() => {
@@ -86,6 +85,7 @@ pub(super) fn hints(
         }
         ast::Pat::OrPat(pat) if !pattern_adjustments.is_empty() && outer_paren_pat.is_none() => {
             hint.label.append_str("(");
+            was_mut_last = false;
             acc.push(InlayHint::closing_paren_after(
                 InlayKind::BindingMode,
                 pat.syntax().text_range(),
@@ -94,6 +94,7 @@ pub(super) fn hints(
         _ => (),
     }
     if !hint.label.parts.is_empty() {
+        hint.pad_right = was_mut_last;
         acc.push(hint);
     }
 

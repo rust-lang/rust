@@ -31,7 +31,7 @@ use crate::{
 };
 
 pub use crate::{
-    config::{CallableSnippets, CompletionConfig},
+    config::{AutoImportExclusionType, CallableSnippets, CompletionConfig},
     item::{
         CompletionItem, CompletionItemKind, CompletionRelevance, CompletionRelevancePostfixMatch,
         CompletionRelevanceReturnType, CompletionRelevanceTypeMatch,
@@ -184,7 +184,7 @@ impl CompletionFieldsToResolve {
 /// analysis.
 pub fn completions(
     db: &RootDatabase,
-    config: &CompletionConfig,
+    config: &CompletionConfig<'_>,
     position: FilePosition,
     trigger_character: Option<char>,
 ) -> Option<Vec<CompletionItem>> {
@@ -269,7 +269,7 @@ pub fn completions(
 /// This is used for import insertion done via completions like flyimport and custom user snippets.
 pub fn resolve_completion_edits(
     db: &RootDatabase,
-    config: &CompletionConfig,
+    config: &CompletionConfig<'_>,
     FilePosition { file_id, offset }: FilePosition,
     imports: impl IntoIterator<Item = (String, String)>,
 ) -> Option<Vec<TextEdit>> {
