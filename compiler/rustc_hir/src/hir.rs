@@ -2869,6 +2869,7 @@ impl<'hir> AssocItemConstraintKind<'hir> {
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
+#[repr(C)]
 pub struct Ty<'hir> {
     pub hir_id: HirId,
     pub kind: TyKind<'hir>,
@@ -3148,6 +3149,7 @@ pub enum InferDelegationKind {
 
 /// The various kinds of types recognized by the compiler.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
+#[repr(u8)]
 pub enum TyKind<'hir> {
     /// Actual type should be inherited from `DefId` signature
     InferDelegation(DefId, InferDelegationKind),
