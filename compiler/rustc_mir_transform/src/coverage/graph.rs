@@ -8,7 +8,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_data_structures::graph::{self, DirectedGraph, StartNode};
 use rustc_index::IndexVec;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::{self, BasicBlock, Terminator, TerminatorKind};
 use tracing::debug;
 
@@ -27,7 +27,7 @@ pub(crate) struct CoverageGraph {
     /// their relative order is consistent but arbitrary.
     dominator_order_rank: IndexVec<BasicCoverageBlock, u32>,
     /// A loop header is a node that dominates one or more of its predecessors.
-    is_loop_header: BitSet<BasicCoverageBlock>,
+    is_loop_header: DenseBitSet<BasicCoverageBlock>,
     /// For each node, the loop header node of its nearest enclosing loop.
     /// This forms a linked list that can be traversed to find all enclosing loops.
     enclosing_loop_header: IndexVec<BasicCoverageBlock, Option<BasicCoverageBlock>>,
@@ -72,7 +72,7 @@ impl CoverageGraph {
             predecessors,
             dominators: None,
             dominator_order_rank: IndexVec::from_elem_n(0, num_nodes),
-            is_loop_header: BitSet::new_empty(num_nodes),
+            is_loop_header: DenseBitSet::new_empty(num_nodes),
             enclosing_loop_header: IndexVec::from_elem_n(None, num_nodes),
         };
         assert_eq!(num_nodes, this.num_nodes());

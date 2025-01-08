@@ -210,6 +210,7 @@ impl f64 {
     /// assert_eq!(one_plus_eps * one_minus_eps + minus_one, 0.0);
     /// ```
     #[rustc_allow_incoherent_impl]
+    #[doc(alias = "fma", alias = "fusedMultiplyAdd")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -360,6 +361,7 @@ impl f64 {
     /// assert!(negative.sqrt().is_nan());
     /// assert!(negative_zero.sqrt() == negative_zero);
     /// ```
+    #[doc(alias = "squareRoot")]
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]

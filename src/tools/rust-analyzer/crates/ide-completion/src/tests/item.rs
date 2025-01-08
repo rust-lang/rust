@@ -241,3 +241,75 @@ impl Copy for S where $0
 "#,
     );
 }
+
+#[test]
+fn test_is_not_considered_macro() {
+    check(
+        r#"
+#[rustc_builtin]
+pub macro test($item:item) {
+    /* compiler built-in */
+}
+
+macro_rules! expand_to_test {
+    ( $i:ident ) => {
+        #[test]
+        fn foo() { $i; }
+    };
+}
+
+fn bar() {
+    let value = 5;
+    expand_to_test!(v$0);
+}
+    "#,
+        expect![[r#"
+            ct CONST                                     Unit
+            en Enum                                      Enum
+            fn bar()                                     fn()
+            fn foo()                                     fn()
+            fn function()                                fn()
+            ma expand_to_test!(…) macro_rules! expand_to_test
+            ma makro!(…)                   macro_rules! makro
+            ma test!(…)                            macro test
+            md module
+            sc STATIC                                    Unit
+            st Record                                  Record
+            st Tuple                                    Tuple
+            st Unit                                      Unit
+            un Union                                    Union
+            ev TupleV(…)                          TupleV(u32)
+            bt u32                                        u32
+            kw async
+            kw const
+            kw crate::
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw let
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+}

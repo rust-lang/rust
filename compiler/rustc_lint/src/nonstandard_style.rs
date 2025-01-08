@@ -234,10 +234,10 @@ declare_lint! {
 declare_lint_pass!(NonSnakeCase => [NON_SNAKE_CASE]);
 
 impl NonSnakeCase {
-    fn to_snake_case(mut str: &str) -> String {
+    fn to_snake_case(mut name: &str) -> String {
         let mut words = vec![];
         // Preserve leading underscores
-        str = str.trim_start_matches(|c: char| {
+        name = name.trim_start_matches(|c: char| {
             if c == '_' {
                 words.push(String::new());
                 true
@@ -245,7 +245,7 @@ impl NonSnakeCase {
                 false
             }
         });
-        for s in str.split('_') {
+        for s in name.split('_') {
             let mut last_upper = false;
             let mut buf = String::new();
             if s.is_empty() {

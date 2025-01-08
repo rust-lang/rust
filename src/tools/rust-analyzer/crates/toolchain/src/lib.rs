@@ -1,6 +1,12 @@
 //! Discovery of `cargo` & `rustc` executables.
 
-use std::{env, iter, path::PathBuf};
+use std::{
+    env,
+    ffi::OsStr,
+    iter,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 use camino::{Utf8Path, Utf8PathBuf};
 
@@ -65,6 +71,14 @@ impl Tool {
     }
 }
 
+pub fn command(cmd: impl AsRef<OsStr>, working_directory: impl AsRef<Path>) -> Command {
+    // we are `toolchain::command``
+    #[allow(clippy::disallowed_methods)]
+    let mut cmd = Command::new(cmd);
+    cmd.current_dir(working_directory);
+    cmd
+}
+
 fn invoke(list: &[fn(&str) -> Option<Utf8PathBuf>], executable: &str) -> Utf8PathBuf {
     list.iter().find_map(|it| it(executable)).unwrap_or_else(|| executable.into())
 }
@@ -102,7 +116,6 @@ fn lookup_in_path(exec: &str) -> Option<Utf8PathBuf> {
     let paths = env::var_os("PATH").unwrap_or_default();
     env::split_paths(&paths)
         .map(|path| path.join(exec))
-        .map(PathBuf::from)
         .map(Utf8PathBuf::try_from)
         .filter_map(Result::ok)
         .find_map(probe_for_binary)

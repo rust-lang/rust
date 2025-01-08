@@ -2,7 +2,7 @@ use std::assert_matches::assert_matches;
 
 use rustc_abi::VariantIdx;
 use rustc_index::Idx;
-use rustc_index::bit_set::{BitSet, MixedBitSet};
+use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
 use rustc_middle::bug;
 use rustc_middle::mir::{self, Body, CallReturnPlaces, Location, TerminatorEdges};
 use rustc_middle::ty::util::Discr;
@@ -207,7 +207,7 @@ pub struct MaybeUninitializedPlaces<'a, 'tcx> {
     move_data: &'a MoveData<'tcx>,
 
     mark_inactive_variants_as_uninit: bool,
-    skip_unreachable_unwind: BitSet<mir::BasicBlock>,
+    skip_unreachable_unwind: DenseBitSet<mir::BasicBlock>,
 }
 
 impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
@@ -217,7 +217,7 @@ impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
             body,
             move_data,
             mark_inactive_variants_as_uninit: false,
-            skip_unreachable_unwind: BitSet::new_empty(body.basic_blocks.len()),
+            skip_unreachable_unwind: DenseBitSet::new_empty(body.basic_blocks.len()),
         }
     }
 
@@ -233,7 +233,7 @@ impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
 
     pub fn skipping_unreachable_unwind(
         mut self,
-        unreachable_unwind: BitSet<mir::BasicBlock>,
+        unreachable_unwind: DenseBitSet<mir::BasicBlock>,
     ) -> Self {
         self.skip_unreachable_unwind = unreachable_unwind;
         self

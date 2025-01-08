@@ -242,7 +242,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemKind::Struct(..) => {
+            ast::ItemKind::Struct(..) | ast::ItemKind::Enum(..) | ast::ItemKind::Union(..) => {
                 for attr in attr::filter_by_name(&i.attrs, sym::repr) {
                     for item in attr.meta_item_list().unwrap_or_else(ThinVec::new) {
                         if item.has_name(sym::simd) {
@@ -692,7 +692,7 @@ fn check_new_solver_banned_features(sess: &Session, features: &Features) {
         .find(|feat| feat.gate_name == sym::generic_const_exprs)
         .map(|feat| feat.attr_sp)
     {
-        #[cfg_attr(not(bootstrap), allow(rustc::symbol_intern_string_literal))]
+        #[allow(rustc::symbol_intern_string_literal)]
         sess.dcx().emit_err(errors::IncompatibleFeatures {
             spans: vec![gce_span],
             f1: Symbol::intern("-Znext-solver=globally"),

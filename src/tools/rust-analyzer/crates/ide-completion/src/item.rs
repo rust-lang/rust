@@ -631,7 +631,7 @@ impl Builder {
         self.set_documentation(Some(docs))
     }
     pub(crate) fn set_documentation(&mut self, docs: Option<Documentation>) -> &mut Builder {
-        self.documentation = docs.map(Into::into);
+        self.documentation = docs;
         self
     }
     pub(crate) fn set_deprecated(&mut self, deprecated: bool) -> &mut Builder {

@@ -227,6 +227,7 @@ impl f128 {
     /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
+    #[doc(alias = "fmaf128", alias = "fusedMultiplyAdd")]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn mul_add(self, a: f128, b: f128) -> f128 {
@@ -384,6 +385,7 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
+    #[doc(alias = "squareRoot")]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]

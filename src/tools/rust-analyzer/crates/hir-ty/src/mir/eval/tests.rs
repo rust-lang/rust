@@ -879,3 +879,32 @@ fn main() {
 "#,
     );
 }
+
+#[test]
+fn long_str_eq_same_prefix() {
+    check_pass_and_stdio(
+        r#"
+//- minicore: slice, index, coerce_unsized
+
+type pthread_key_t = u32;
+type c_void = u8;
+type c_int = i32;
+
+extern "C" {
+    pub fn write(fd: i32, buf: *const u8, count: usize) -> usize;
+}
+
+fn main() {
+    // More than 16 bytes, the size of `i128`.
+    let long_str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab";
+    let output = match long_str {
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" => b"true" as &[u8],
+        _ => b"false",
+    };
+    write(1, &output[0], output.len());
+}
+        "#,
+        "false",
+        "",
+    );
+}

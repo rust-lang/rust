@@ -474,7 +474,9 @@ impl HirDisplay for ProjectionTy {
 
         let trait_ref = self.trait_ref(f.db);
         write!(f, "<")?;
-        fmt_trait_ref(f, &trait_ref, true)?;
+        trait_ref.self_type_parameter(Interner).hir_fmt(f)?;
+        write!(f, " as ")?;
+        trait_ref.hir_fmt(f)?;
         write!(
             f,
             ">::{}",
@@ -1775,32 +1777,14 @@ fn write_bounds_like_dyn_trait(
     Ok(())
 }
 
-fn fmt_trait_ref(
-    f: &mut HirFormatter<'_>,
-    tr: &TraitRef,
-    use_as: bool,
-) -> Result<(), HirDisplayError> {
-    if f.should_truncate() {
-        return write!(f, "{TYPE_HINT_TRUNCATION}");
-    }
-
-    tr.self_type_parameter(Interner).hir_fmt(f)?;
-    if use_as {
-        write!(f, " as ")?;
-    } else {
-        write!(f, ": ")?;
-    }
-    let trait_ = tr.hir_trait_id();
-    f.start_location_link(trait_.into());
-    write!(f, "{}", f.db.trait_data(trait_).name.display(f.db.upcast(), f.edition()))?;
-    f.end_location_link();
-    let substs = tr.substitution.as_slice(Interner);
-    hir_fmt_generics(f, &substs[1..], None, substs[0].ty(Interner))
-}
-
 impl HirDisplay for TraitRef {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
-        fmt_trait_ref(f, self, false)
+        let trait_ = self.hir_trait_id();
+        f.start_location_link(trait_.into());
+        write!(f, "{}", f.db.trait_data(trait_).name.display(f.db.upcast(), f.edition()))?;
+        f.end_location_link();
+        let substs = self.substitution.as_slice(Interner);
+        hir_fmt_generics(f, &substs[1..], None, substs[0].ty(Interner))
     }
 }
 
@@ -1811,10 +1795,17 @@ impl HirDisplay for WhereClause {
         }
 
         match self {
-            WhereClause::Implemented(trait_ref) => trait_ref.hir_fmt(f)?,
+            WhereClause::Implemented(trait_ref) => {
+                trait_ref.self_type_parameter(Interner).hir_fmt(f)?;
+                write!(f, ": ")?;
+                trait_ref.hir_fmt(f)?;
+            }
             WhereClause::AliasEq(AliasEq { alias: AliasTy::Projection(projection_ty), ty }) => {
                 write!(f, "<")?;
-                fmt_trait_ref(f, &projection_ty.trait_ref(f.db), true)?;
+                let trait_ref = &projection_ty.trait_ref(f.db);
+                trait_ref.self_type_parameter(Interner).hir_fmt(f)?;
+                write!(f, " as ")?;
+                trait_ref.hir_fmt(f)?;
                 write!(f, ">::",)?;
                 let type_alias = from_assoc_type_id(projection_ty.associated_ty_id);
                 f.start_location_link(type_alias.into());

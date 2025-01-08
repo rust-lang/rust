@@ -147,8 +147,8 @@ pub(crate) fn external_docs(
     let definition = match_ast! {
         match node {
             ast::NameRef(name_ref) => match NameRefClass::classify(sema, &name_ref)? {
-                NameRefClass::Definition(def) => def,
-                NameRefClass::FieldShorthand { local_ref: _, field_ref } => {
+                NameRefClass::Definition(def, _) => def,
+                NameRefClass::FieldShorthand { local_ref: _, field_ref, adt_subst: _ } => {
                     Definition::Field(field_ref)
                 }
                 NameRefClass::ExternCrateShorthand { decl, .. } => {
@@ -157,7 +157,7 @@ pub(crate) fn external_docs(
             },
             ast::Name(name) => match NameClass::classify(sema, &name)? {
                 NameClass::Definition(it) | NameClass::ConstReference(it) => it,
-                NameClass::PatFieldShorthand { local_def: _, field_ref } => Definition::Field(field_ref),
+                NameClass::PatFieldShorthand { local_def: _, field_ref, adt_subst: _ } => Definition::Field(field_ref),
             },
             _ => return None
         }

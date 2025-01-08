@@ -4,7 +4,7 @@ use std::cmp::Ordering;
 use std::ops::{Deref, DerefMut};
 
 #[cfg(debug_assertions)]
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::{self, BasicBlock, Location};
 
 use super::{Analysis, Direction, Effect, EffectIndex, Results};
@@ -71,7 +71,7 @@ where
     state_needs_reset: bool,
 
     #[cfg(debug_assertions)]
-    reachable_blocks: BitSet<BasicBlock>,
+    reachable_blocks: DenseBitSet<BasicBlock>,
 }
 
 impl<'mir, 'tcx, A> ResultsCursor<'mir, 'tcx, A>

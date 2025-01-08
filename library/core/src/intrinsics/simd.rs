@@ -623,7 +623,6 @@ extern "rust-intrinsic" {
     /// and others do not.
     ///
     /// `T` must be a vector of floats.
-    #[cfg(not(bootstrap))]
     #[rustc_nounwind]
     pub fn simd_relaxed_fma<T>(x: T, y: T, z: T) -> T;
 

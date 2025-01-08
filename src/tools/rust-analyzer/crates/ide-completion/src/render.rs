@@ -86,11 +86,7 @@ impl<'a> RenderContext<'a> {
 
     fn is_immediately_after_macro_bang(&self) -> bool {
         self.completion.token.kind() == SyntaxKind::BANG
-            && self
-                .completion
-                .token
-                .parent()
-                .map_or(false, |it| it.kind() == SyntaxKind::MACRO_CALL)
+            && self.completion.token.parent().is_some_and(|it| it.kind() == SyntaxKind::MACRO_CALL)
     }
 
     fn is_deprecated(&self, def: impl HasAttrs) -> bool {
@@ -636,7 +632,7 @@ fn compute_type_match(
 }
 
 fn compute_exact_name_match(ctx: &CompletionContext<'_>, completion_name: &str) -> bool {
-    ctx.expected_name.as_ref().map_or(false, |name| name.text() == completion_name)
+    ctx.expected_name.as_ref().is_some_and(|name| name.text() == completion_name)
 }
 
 fn compute_ref_match(
@@ -778,7 +774,7 @@ mod tests {
                     relevance.postfix_match == Some(CompletionRelevancePostfixMatch::Exact),
                     "snippet",
                 ),
-                (relevance.trait_.map_or(false, |it| it.is_op_method), "op_method"),
+                (relevance.trait_.is_some_and(|it| it.is_op_method), "op_method"),
                 (relevance.requires_import, "requires_import"),
             ]
             .into_iter()

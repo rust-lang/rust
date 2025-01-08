@@ -37,6 +37,7 @@ const GATED_CFGS: &[GatedCfg] = &[
     (sym::sanitizer_cfi_normalize_integers, sym::cfg_sanitizer_cfi, Features::cfg_sanitizer_cfi),
     // this is consistent with naming of the compiler flag it's for
     (sym::fmt_debug, sym::fmt_debug, Features::fmt_debug),
+    (sym::emscripten_wasm_eh, sym::cfg_emscripten_wasm_eh, Features::cfg_emscripten_wasm_eh),
 ];
 
 /// Find a gated cfg determined by the `pred`icate which is given the cfg's name.
@@ -571,7 +572,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // `#[coroutine]` attribute to be applied to closures to make them coroutines instead
     gated!(
         coroutine, Normal, template!(Word), ErrorFollowing,
-        EncodeCrossCrate::No, coroutines, experimental!(coroutines)
+        EncodeCrossCrate::No, coroutines, experimental!(coroutine)
     ),
 
     // RFC 3543
@@ -1017,6 +1018,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_no_mir_inline, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes,
         "#[rustc_no_mir_inline] prevents the MIR inliner from inlining a function while not affecting codegen"
+    ),
+    rustc_attr!(
+        rustc_force_inline, Normal, template!(Word, NameValueStr: "reason"), WarnFollowing, EncodeCrossCrate::Yes,
+        "#![rustc_force_inline] forces a free function to be inlined"
     ),
 
     // ==========================================================================

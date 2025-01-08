@@ -35,7 +35,7 @@ impl InferenceContext<'_> {
         ellipsis: Option<u32>,
         subs: &[PatId],
     ) -> Ty {
-        let (ty, def) = self.resolve_variant(path, true);
+        let (ty, def) = self.resolve_variant(id.into(), path, true);
         let var_data = def.map(|it| it.variant_data(self.db.upcast()));
         if let Some(variant) = def {
             self.write_variant_resolution(id.into(), variant);
@@ -115,7 +115,7 @@ impl InferenceContext<'_> {
         id: PatId,
         subs: impl ExactSizeIterator<Item = (Name, PatId)>,
     ) -> Ty {
-        let (ty, def) = self.resolve_variant(path, false);
+        let (ty, def) = self.resolve_variant(id.into(), path, false);
         if let Some(variant) = def {
             self.write_variant_resolution(id.into(), variant);
         }

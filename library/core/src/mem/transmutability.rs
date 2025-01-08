@@ -84,9 +84,8 @@ use crate::marker::{ConstParamTy_, UnsizedConstParamTy};
 /// `usize` is stable, but not portable.
 #[unstable(feature = "transmutability", issue = "99571")]
 #[lang = "transmute_trait"]
-#[cfg_attr(bootstrap, rustc_deny_explicit_impl(implement_via_object = false))]
-#[cfg_attr(not(bootstrap), rustc_deny_explicit_impl)]
-#[cfg_attr(not(bootstrap), rustc_do_not_implement_via_object)]
+#[rustc_deny_explicit_impl]
+#[rustc_do_not_implement_via_object]
 #[rustc_coinductive]
 pub unsafe trait TransmuteFrom<Src, const ASSUME: Assume = { Assume::NOTHING }>
 where

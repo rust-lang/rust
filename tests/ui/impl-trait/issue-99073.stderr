@@ -1,11 +1,3 @@
-error[E0792]: expected generic type parameter, found `&F`
-  --> $DIR/issue-99073.rs:6:11
-   |
-LL | fn fix<F: Fn(G), G: Fn()>(f: F) -> impl Fn() {
-   |        - this generic parameter must be used with a generic type parameter
-LL |   move || f(fix(&f))
-   |           ^^^^^^^^^^
-
 error: concrete type differs from previous defining opaque type use
   --> $DIR/issue-99073.rs:6:13
    |
@@ -17,6 +9,14 @@ note: previous use here
    |
 LL | fn fix<F: Fn(G), G: Fn()>(f: F) -> impl Fn() {
    |                                    ^^^^^^^^^
+
+error[E0792]: expected generic type parameter, found `&F`
+  --> $DIR/issue-99073.rs:6:11
+   |
+LL | fn fix<F: Fn(G), G: Fn()>(f: F) -> impl Fn() {
+   |        - this generic parameter must be used with a generic type parameter
+LL |   move || f(fix(&f))
+   |           ^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

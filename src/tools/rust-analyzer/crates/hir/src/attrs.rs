@@ -258,7 +258,7 @@ fn resolve_impl_trait_item(
         &traits_in_scope,
         method_resolution::VisibleFromModule::None,
         Some(name),
-        &mut |assoc_item_id| {
+        &mut |_, assoc_item_id: AssocItemId, _| {
             // If two traits in scope define the same item, Rustdoc links to no specific trait (for
             // instance, given two methods `a`, Rustdoc simply links to `method.a` with no
             // disambiguation) so we just pick the first one we find as well.

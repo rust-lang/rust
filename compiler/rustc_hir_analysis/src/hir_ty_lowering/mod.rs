@@ -35,7 +35,7 @@ use rustc_hir::{self as hir, AnonConst, GenericArg, GenericArgs, HirId};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::middle::stability::AllowUnstable;
-use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
+use rustc_middle::mir::interpret::LitToConstInput;
 use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::print::PrintPolyTraitRefExt as _;
 use rustc_middle::ty::{
@@ -2262,25 +2262,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             _ => None,
         };
 
-        if let Some(lit_input) = lit_input {
-            // If an error occurred, ignore that it's a literal and leave reporting the error up to
-            // mir.
-            match tcx.at(expr.span).lit_to_const(lit_input) {
-                Ok(c) => return Some(c),
-                Err(_) if lit_input.ty.has_aliases() => {
-                    // allow the `ty` to be an alias type, though we cannot handle it here
-                    return None;
-                }
-                Err(e) => {
-                    tcx.dcx().span_delayed_bug(
-                        expr.span,
-                        format!("try_lower_anon_const_lit: couldn't lit_to_const {e:?}"),
-                    );
-                }
-            }
-        }
-
-        None
+        lit_input
+            // Allow the `ty` to be an alias type, though we cannot handle it here, we just go through
+            // the more expensive anon const code path.
+            .filter(|l| !l.ty.has_aliases())
+            .map(|l| tcx.at(expr.span).lit_to_const(l))
     }
 
     fn lower_delegation_ty(&self, idx: hir::InferDelegationKind) -> Ty<'tcx> {
@@ -2449,44 +2435,39 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         Ty::new_error(tcx, err)
                     }
                     hir::PatKind::Range(start, end, include_end) => {
-                        let expr_to_const = |expr: &'tcx hir::Expr<'tcx>| -> ty::Const<'tcx> {
-                            let (expr, neg) = match expr.kind {
-                                hir::ExprKind::Unary(hir::UnOp::Neg, negated) => {
-                                    (negated, Some((expr.hir_id, expr.span)))
-                                }
-                                _ => (expr, None),
-                            };
-                            let (c, c_ty) = match &expr.kind {
-                                hir::ExprKind::Lit(lit) => {
+                        let expr_to_const = |expr: &'tcx hir::PatExpr<'tcx>| -> ty::Const<'tcx> {
+                            let (c, c_ty) = match expr.kind {
+                                hir::PatExprKind::Lit { lit, negated } => {
                                     let lit_input =
-                                        LitToConstInput { lit: &lit.node, ty, neg: neg.is_some() };
-                                    let ct = match tcx.lit_to_const(lit_input) {
-                                        Ok(c) => c,
-                                        Err(LitToConstError::Reported(err)) => {
-                                            ty::Const::new_error(tcx, err)
-                                        }
-                                        Err(LitToConstError::TypeError) => todo!(),
-                                    };
+                                        LitToConstInput { lit: &lit.node, ty, neg: negated };
+                                    let ct = tcx.lit_to_const(lit_input);
                                     (ct, ty)
                                 }
 
-                                hir::ExprKind::Path(hir::QPath::Resolved(
+                                hir::PatExprKind::Path(hir::QPath::Resolved(
                                     _,
                                     path @ &hir::Path {
                                         res: Res::Def(DefKind::ConstParam, def_id),
                                         ..
                                     },
                                 )) => {
-                                    let _ = self.prohibit_generic_args(
+                                    match self.prohibit_generic_args(
                                         path.segments.iter(),
                                         GenericsArgsErrExtend::Param(def_id),
-                                    );
-                                    let ty = tcx
-                                        .type_of(def_id)
-                                        .no_bound_vars()
-                                        .expect("const parameter types cannot be generic");
-                                    let ct = self.lower_const_param(def_id, expr.hir_id);
-                                    (ct, ty)
+                                    ) {
+                                        Ok(()) => {
+                                            let ty = tcx
+                                                .type_of(def_id)
+                                                .no_bound_vars()
+                                                .expect("const parameter types cannot be generic");
+                                            let ct = self.lower_const_param(def_id, expr.hir_id);
+                                            (ct, ty)
+                                        }
+                                        Err(guar) => (
+                                            ty::Const::new_error(tcx, guar),
+                                            Ty::new_error(tcx, guar),
+                                        ),
+                                    }
                                 }
 
                                 _ => {
@@ -2497,9 +2478,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 }
                             };
                             self.record_ty(expr.hir_id, c_ty, expr.span);
-                            if let Some((id, span)) = neg {
-                                self.record_ty(id, c_ty, span);
-                            }
                             c
                         };
 

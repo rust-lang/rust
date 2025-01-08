@@ -706,7 +706,7 @@ fn path_import_candidate(
     Some(match qualifier {
         Some(qualifier) => match sema.resolve_path(&qualifier) {
             Some(PathResolution::Def(ModuleDef::BuiltinType(_))) | None => {
-                if qualifier.first_qualifier().map_or(true, |it| sema.resolve_path(&it).is_none()) {
+                if qualifier.first_qualifier().is_none_or(|it| sema.resolve_path(&it).is_none()) {
                     let qualifier = qualifier
                         .segments()
                         .map(|seg| seg.name_ref().map(|name| SmolStr::new(name.text())))

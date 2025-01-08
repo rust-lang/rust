@@ -2177,9 +2177,6 @@ unsafe extern "C" {
         Location: &'a DILocation,
         BD: c_uint,
     ) -> Option<&'a DILocation>;
-    pub fn LLVMRustDIBuilderCreateOpDeref() -> u64;
-    pub fn LLVMRustDIBuilderCreateOpPlusUconst() -> u64;
-    pub fn LLVMRustDIBuilderCreateOpLLVMFragment() -> u64;
 
     pub fn LLVMRustWriteTypeToString(Type: &Type, s: &RustString);
     pub fn LLVMRustWriteValueToString(value_ref: &Value, s: &RustString);
@@ -2377,7 +2374,7 @@ unsafe extern "C" {
         Data: &ThinLTOData,
         Module: &Module,
         Target: &TargetMachine,
-    ) -> bool;
+    );
     pub fn LLVMRustPrepareThinLTOResolveWeak(Data: &ThinLTOData, Module: &Module) -> bool;
     pub fn LLVMRustPrepareThinLTOInternalize(Data: &ThinLTOData, Module: &Module) -> bool;
     pub fn LLVMRustPrepareThinLTOImport(

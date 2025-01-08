@@ -195,6 +195,7 @@ const EXCEPTIONS_CRANELIFT: ExceptionList = &[
     ("cranelift-module", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-native", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-object", "Apache-2.0 WITH LLVM-exception"),
+    ("foldhash", "Zlib"),
     ("mach2", "BSD-2-Clause OR MIT OR Apache-2.0"),
     ("regalloc2", "Apache-2.0 WITH LLVM-exception"),
     ("target-lexicon", "Apache-2.0 WITH LLVM-exception"),
@@ -502,7 +503,7 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
 
 const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     // tidy-alphabetical-start
-    "ahash",
+    "allocator-api2",
     "anyhow",
     "arbitrary",
     "bitflags",
@@ -524,6 +525,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "crc32fast",
     "equivalent",
     "fallible-iterator",
+    "foldhash",
     "gimli",
     "hashbrown",
     "indexmap",
@@ -533,7 +535,6 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "mach2",
     "memchr",
     "object",
-    "once_cell",
     "proc-macro2",
     "quote",
     "regalloc2",
@@ -541,13 +542,11 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "rustc-hash",
     "serde",
     "serde_derive",
-    "slice-group-by",
     "smallvec",
     "stable_deref_trait",
     "syn",
     "target-lexicon",
     "unicode-ident",
-    "version_check",
     "wasmtime-jit-icache-coherence",
     "windows-sys",
     "windows-targets",
@@ -559,8 +558,6 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "windows_x86_64_gnu",
     "windows_x86_64_gnullvm",
     "windows_x86_64_msvc",
-    "zerocopy",
-    "zerocopy-derive",
     // tidy-alphabetical-end
 ];
 
@@ -622,12 +619,17 @@ fn check_proc_macro_dep_list(root: &Path, cargo: &Path, bless: bool, bad: &mut b
     }
     // Remove the proc-macro crates themselves
     proc_macro_deps.retain(|pkg| !is_proc_macro_pkg(&metadata[pkg]));
-    let proc_macro_deps_iter = proc_macro_deps.into_iter().map(|dep| metadata[dep].name.clone());
 
-    if bless {
-        let mut proc_macro_deps: Vec<_> = proc_macro_deps_iter.collect();
+    let proc_macro_deps: HashSet<_> =
+        proc_macro_deps.into_iter().map(|dep| metadata[dep].name.clone()).collect();
+    let expected = proc_macro_deps::CRATES.iter().map(|s| s.to_string()).collect::<HashSet<_>>();
+
+    let needs_blessing = proc_macro_deps.difference(&expected).next().is_some()
+        || expected.difference(&proc_macro_deps).next().is_some();
+
+    if needs_blessing && bless {
+        let mut proc_macro_deps: Vec<_> = proc_macro_deps.into_iter().collect();
         proc_macro_deps.sort();
-        proc_macro_deps.dedup();
         let mut file = File::create(root.join("src/bootstrap/src/utils/proc_macro_deps.rs"))
             .expect("`proc_macro_deps` should exist");
         writeln!(
@@ -649,10 +651,8 @@ pub static CRATES: &[&str] = &[
         )
         .unwrap();
     } else {
-        let proc_macro_deps: HashSet<_> = proc_macro_deps_iter.collect();
-        let expected =
-            proc_macro_deps::CRATES.iter().map(|s| s.to_string()).collect::<HashSet<_>>();
         let old_bad = *bad;
+
         for missing in proc_macro_deps.difference(&expected) {
             tidy_error!(
                 bad,

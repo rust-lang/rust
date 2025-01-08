@@ -9,7 +9,7 @@ LL |     match InvariantRef::new(&y) {
    |                             ^^ borrowed value does not live long enough
 LL |
 LL |         const { InvariantRef::<'a>::NEW } => (),
-   |         --------------------------------- type annotation requires that `y` is borrowed for `'a`
+   |                 ----------------------- using this value as a constant requires that `y` is borrowed for `'a`
 LL |     }
 LL | }
    | - `y` dropped here while still borrowed

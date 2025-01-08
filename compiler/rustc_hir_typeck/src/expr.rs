@@ -430,6 +430,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | hir::Node::AssocItemConstraint(_)
             | hir::Node::TraitRef(_)
             | hir::Node::PatField(_)
+            | hir::Node::PatExpr(_)
             | hir::Node::LetStmt(_)
             | hir::Node::Synthetic
             | hir::Node::Err(_)
@@ -456,6 +457,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Does not constitute a read.
             hir::PatKind::Wild => false,
 
+            // Might not constitute a read, since the condition might be false.
+            hir::PatKind::Guard(_, _) => true,
+
             // This is unnecessarily restrictive when the pattern that doesn't
             // constitute a read is unreachable.
             //
@@ -481,7 +485,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | hir::PatKind::Box(_)
             | hir::PatKind::Ref(_, _)
             | hir::PatKind::Deref(_)
-            | hir::PatKind::Lit(_)
+            | hir::PatKind::Expr(_)
             | hir::PatKind::Range(_, _, _)
             | hir::PatKind::Slice(_, _, _)
             | hir::PatKind::Err(_) => true,
@@ -834,7 +838,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // We always require that the type provided as the value for
         // a type parameter outlives the moment of instantiation.
         let args = self.typeck_results.borrow().node_args(expr.hir_id);
-        self.add_wf_bounds(args, expr);
+        self.add_wf_bounds(args, expr.span);
 
         ty
     }
@@ -1793,7 +1797,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn check_expr_const_block(
+    pub(super) fn check_expr_const_block(
         &self,
         block: &'tcx hir::ConstBlock,
         expected: Expectation<'tcx>,

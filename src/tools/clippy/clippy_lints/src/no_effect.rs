@@ -144,7 +144,7 @@ impl NoEffect {
                     |diag| {
                         for parent in cx.tcx.hir().parent_iter(stmt.hir_id) {
                             if let Node::Item(item) = parent.1
-                                && let ItemKind::Fn{ .. } = item.kind
+                                && let ItemKind::Fn { .. } = item.kind
                                 && let Node::Block(block) = cx.tcx.parent_hir_node(stmt.hir_id)
                                 && let [.., final_stmt] = block.stmts
                                 && final_stmt.hir_id == stmt.hir_id

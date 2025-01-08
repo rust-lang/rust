@@ -1,0 +1,24 @@
+error: `callee` is incompatible with `#[rustc_force_inline]`
+  --> $DIR/deny-closure.rs:9:1
+   |
+LL | #[rustc_force_inline]
+   | ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | pub fn callee() {
+   | --------------- `callee` defined here
+   |
+   = note: incompatible due to: #[rustc_no_mir_inline]
+
+error: `callee_justified` is incompatible with `#[rustc_force_inline]`
+  --> $DIR/deny-closure.rs:15:1
+   |
+LL | #[rustc_force_inline = "the test requires it"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | pub fn callee_justified() {
+   | ------------------------- `callee_justified` defined here
+   |
+   = note: incompatible due to: #[rustc_no_mir_inline]
+
+error: aborting due to 2 previous errors
+

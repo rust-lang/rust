@@ -251,7 +251,9 @@ trait_selection_no_value_in_rustc_on_unimplemented = this attribute must have a 
 
 trait_selection_nothing = {""}
 
-trait_selection_oc_cant_coerce = cannot coerce intrinsics to function pointers
+trait_selection_oc_cant_coerce_force_inline =
+    cannot coerce functions which must be inlined to function pointers
+trait_selection_oc_cant_coerce_intrinsic = cannot coerce intrinsics to function pointers
 trait_selection_oc_closure_selfref = closure/coroutine type that references itself
 trait_selection_oc_const_compat = const not compatible with trait
 trait_selection_oc_fn_lang_correct_type = {$lang_item_name ->

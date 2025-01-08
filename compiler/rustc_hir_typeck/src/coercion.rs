@@ -38,6 +38,7 @@
 use std::ops::Deref;
 
 use rustc_abi::ExternAbi;
+use rustc_attr_parsing::InlineAttr;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, struct_span_code_err};
 use rustc_hir as hir;
@@ -926,8 +927,13 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                         return Err(TypeError::IntrinsicCast);
                     }
 
-                    // Safe `#[target_feature]` functions are not assignable to safe fn pointers (RFC 2396).
+                    let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
+                    if matches!(fn_attrs.inline, InlineAttr::Force { .. }) {
+                        return Err(TypeError::ForceInlineCast);
+                    }
 
+                    // Safe `#[target_feature]` functions are not assignable to safe fn pointers
+                    // (RFC 2396).
                     if b_hdr.safety.is_safe()
                         && !self.tcx.codegen_fn_attrs(def_id).target_features.is_empty()
                     {
@@ -1195,6 +1201,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // attempted to coerce a closure type to itself via a function pointer.
         if prev_ty == new_ty {
             return Ok(prev_ty);
+        }
+
+        let is_force_inline = |ty: Ty<'tcx>| {
+            if let ty::FnDef(did, _) = ty.kind() {
+                matches!(self.tcx.codegen_fn_attrs(did).inline, InlineAttr::Force { .. })
+            } else {
+                false
+            }
+        };
+        if is_force_inline(prev_ty) || is_force_inline(new_ty) {
+            return Err(TypeError::ForceInlineCast);
         }
 
         // Special-case that coercion alone cannot handle:

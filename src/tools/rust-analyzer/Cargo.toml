@@ -79,6 +79,7 @@ span = { path = "./crates/span", version = "0.0.0" }
 stdx = { path = "./crates/stdx", version = "0.0.0" }
 syntax = { path = "./crates/syntax", version = "0.0.0" }
 syntax-bridge = { path = "./crates/syntax-bridge", version = "0.0.0" }
+test-utils = { path = "./crates/test-utils", version = "0.0.0" }
 toolchain = { path = "./crates/toolchain", version = "0.0.0" }
 tt = { path = "./crates/tt", version = "0.0.0" }
 vfs-notify = { path = "./crates/vfs-notify", version = "0.0.0" }
@@ -93,7 +94,6 @@ ra-ap-rustc_pattern_analysis = { version = "0.87", default-features = false }
 
 # local crates that aren't published to crates.io. These should not have versions.
 test-fixture = { path = "./crates/test-fixture" }
-test-utils = { path = "./crates/test-utils" }
 
 # In-tree crates that are published separately and follow semver. See lib/README.md
 line-index = { version = "0.1.2" }
@@ -203,6 +203,13 @@ new_ret_no_self = "allow"
 useless_asref = "allow"
 # Has false positives
 assigning_clones = "allow"
+# Does not work with macros
+vec_init_then_push = "allow"
+# Our tests have a lot of these
+literal_string_with_formatting_args = "allow"
+# This lint has been empowered but now also triggers on cases where its invalid to do so
+# due to it ignoring move analysis
+unnecessary_map_or = "allow"
 
 ## Following lints should be tackled at some point
 too_many_arguments = "allow"

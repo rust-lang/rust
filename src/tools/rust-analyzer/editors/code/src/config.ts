@@ -13,6 +13,13 @@ export type RunnableEnvCfgItem = {
 };
 export type RunnableEnvCfg = Record<string, string> | RunnableEnvCfgItem[];
 
+type ShowStatusBar =
+    | "always"
+    | "never"
+    | {
+          documentSelector: vscode.DocumentSelector;
+      };
+
 export class Config {
     readonly extensionId = "rust-lang.rust-analyzer";
     configureLang: vscode.Disposable | undefined;
@@ -348,12 +355,19 @@ export class Config {
         return this.get<string>("statusBar.clickAction");
     }
 
-    get statusBarDocumentSelector() {
-        return this.get<vscode.DocumentSelector>("statusBar.documentSelector");
+    get statusBarShowStatusBar() {
+        return this.get<ShowStatusBar>("statusBar.showStatusBar");
     }
 
     get initializeStopped() {
         return this.get<boolean>("initializeStopped");
+    }
+
+    get askBeforeUpdateTest() {
+        return this.get<boolean>("runnables.askBeforeUpdateTest");
+    }
+    async setAskBeforeUpdateTest(value: boolean) {
+        await this.cfg.update("runnables.askBeforeUpdateTest", value, true);
     }
 }
 

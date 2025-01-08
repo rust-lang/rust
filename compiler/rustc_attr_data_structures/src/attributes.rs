@@ -11,6 +11,22 @@ pub enum InlineAttr {
     Hint,
     Always,
     Never,
+    /// `#[rustc_force_inline]` forces inlining to happen in the MIR inliner - it reports an error
+    /// if the inlining cannot happen. It is limited to only free functions so that the calls
+    /// can always be resolved.
+    Force {
+        attr_span: Span,
+        reason: Option<Symbol>,
+    },
+}
+
+impl InlineAttr {
+    pub fn always(&self) -> bool {
+        match self {
+            InlineAttr::Always | InlineAttr::Force { .. } => true,
+            InlineAttr::None | InlineAttr::Hint | InlineAttr::Never => false,
+        }
+    }
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, PartialEq, Eq, HashStable_Generic)]

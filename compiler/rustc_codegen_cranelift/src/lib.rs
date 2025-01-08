@@ -27,6 +27,8 @@ extern crate rustc_metadata;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
+#[macro_use]
+extern crate tracing;
 
 // This prevents duplicating functions and statics that are already part of the host rustc process.
 #[allow(unused_extern_crates)]
@@ -208,6 +210,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         need_metadata_module: bool,
     ) -> Box<dyn Any> {
         tcx.dcx().abort_if_errors();
+        info!("codegen crate {}", tcx.crate_name(LOCAL_CRATE));
         let config = self.config.clone().unwrap_or_else(|| {
             BackendConfig::from_opts(&tcx.sess.opts.cg.llvm_args)
                 .unwrap_or_else(|err| tcx.sess.dcx().fatal(err))

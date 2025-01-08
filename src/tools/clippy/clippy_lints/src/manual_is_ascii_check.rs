@@ -7,9 +7,9 @@ use clippy_utils::{higher, is_in_const_context, path_to_local, peel_ref_operator
 use rustc_ast::LitKind::{Byte, Char};
 use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, Node, Param, PatKind, RangeEnd};
+use rustc_hir::{Expr, ExprKind, Node, Param, PatKind, RangeEnd, PatExpr, PatExprKind, Lit};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
+use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, sym};
 
@@ -114,8 +114,8 @@ impl<'tcx> LateLintPass<'tcx> for ManualIsAsciiCheck {
             && !matches!(cx.typeck_results().expr_ty(arg).peel_refs().kind(), ty::Param(_))
         {
             let arg = peel_ref_operators(cx, arg);
-            let ty_sugg = get_ty_sugg(cx, arg, start);
-            let range = check_range(start, end);
+            let ty_sugg = get_ty_sugg(cx, arg);
+            let range = check_expr_range(start, end);
             check_is_ascii(cx, expr.span, arg, &range, ty_sugg);
         }
     }
@@ -123,19 +123,14 @@ impl<'tcx> LateLintPass<'tcx> for ManualIsAsciiCheck {
     extract_msrv_attr!(LateContext);
 }
 
-fn get_ty_sugg(cx: &LateContext<'_>, arg: &Expr<'_>, bound_expr: &Expr<'_>) -> Option<(Span, &'static str)> {
-    if let ExprKind::Lit(lit) = bound_expr.kind
-        && let local_hid = path_to_local(arg)?
-        && let Node::Param(Param { ty_span, span, .. }) = cx.tcx.parent_hir_node(local_hid)
+fn get_ty_sugg<'tcx>(cx: &LateContext<'tcx>, arg: &Expr<'_>) -> Option<(Span, Ty<'tcx>)> {
+    let local_hid = path_to_local(arg)?;
+    if let Node::Param(Param { ty_span, span, .. }) = cx.tcx.parent_hir_node(local_hid)
         // `ty_span` and `span` are the same for inferred type, thus a type suggestion must be given
         && ty_span == span
     {
-        let ty_str = match lit.node {
-            Char(_) => "char",
-            Byte(_) => "u8",
-            _ => return None,
-        };
-        return Some((*ty_span, ty_str));
+        let arg_type = cx.typeck_results().expr_ty(arg);
+        return Some((*ty_span, arg_type));
     }
     None
 }
@@ -145,7 +140,7 @@ fn check_is_ascii(
     span: Span,
     recv: &Expr<'_>,
     range: &CharRange,
-    ty_sugg: Option<(Span, &'_ str)>,
+    ty_sugg: Option<(Span, Ty<'_>)>,
 ) {
     let sugg = match range {
         CharRange::UpperChar => "is_ascii_uppercase",
@@ -159,8 +154,8 @@ fn check_is_ascii(
     let mut app = Applicability::MachineApplicable;
     let recv = Sugg::hir_with_context(cx, recv, span.ctxt(), default_snip, &mut app).maybe_par();
     let mut suggestion = vec![(span, format!("{recv}.{sugg}()"))];
-    if let Some((ty_span, ty_str)) = ty_sugg {
-        suggestion.push((ty_span, format!("{recv}: {ty_str}")));
+    if let Some((ty_span, ty)) = ty_sugg {
+        suggestion.push((ty_span, format!("{recv}: {ty}")));
     }
 
     span_lint_and_then(
@@ -196,19 +191,33 @@ fn check_pat(pat_kind: &PatKind<'_>) -> CharRange {
     }
 }
 
-fn check_range(start: &Expr<'_>, end: &Expr<'_>) -> CharRange {
+fn check_expr_range(start: &Expr<'_>, end: &Expr<'_>) -> CharRange {
     if let ExprKind::Lit(start_lit) = &start.kind
         && let ExprKind::Lit(end_lit) = &end.kind
     {
-        match (&start_lit.node, &end_lit.node) {
-            (Char('a'), Char('z')) | (Byte(b'a'), Byte(b'z')) => CharRange::LowerChar,
-            (Char('A'), Char('Z')) | (Byte(b'A'), Byte(b'Z')) => CharRange::UpperChar,
-            (Char('a'), Char('f')) | (Byte(b'a'), Byte(b'f')) => CharRange::LowerHexLetter,
-            (Char('A'), Char('F')) | (Byte(b'A'), Byte(b'F')) => CharRange::UpperHexLetter,
-            (Char('0'), Char('9')) | (Byte(b'0'), Byte(b'9')) => CharRange::Digit,
-            _ => CharRange::Otherwise,
-        }
+        check_lit_range(start_lit, end_lit)
     } else {
         CharRange::Otherwise
+    }
+}
+
+fn check_range(start: &PatExpr<'_>, end: &PatExpr<'_>) -> CharRange {
+    if let PatExprKind::Lit{ lit: start_lit, negated: false } = &start.kind
+        && let PatExprKind::Lit{ lit: end_lit, negated: false  } = &end.kind
+    {
+        check_lit_range(start_lit, end_lit)
+    } else {
+        CharRange::Otherwise
+    }
+}
+
+fn check_lit_range(start_lit: &Lit, end_lit: &Lit) -> CharRange {
+    match (&start_lit.node, &end_lit.node) {
+        (Char('a'), Char('z')) | (Byte(b'a'), Byte(b'z')) => CharRange::LowerChar,
+        (Char('A'), Char('Z')) | (Byte(b'A'), Byte(b'Z')) => CharRange::UpperChar,
+        (Char('a'), Char('f')) | (Byte(b'a'), Byte(b'f')) => CharRange::LowerHexLetter,
+        (Char('A'), Char('F')) | (Byte(b'A'), Byte(b'F')) => CharRange::UpperHexLetter,
+        (Char('0'), Char('9')) | (Byte(b'0'), Byte(b'9')) => CharRange::Digit,
+        _ => CharRange::Otherwise,
     }
 }

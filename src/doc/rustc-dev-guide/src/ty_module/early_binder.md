@@ -47,10 +47,10 @@ fn bar(foo: Foo<u32, f32>) {
 
 In the compiler the `instantiate` call for this is done in [`FieldDef::ty`] ([src][field_def_ty_src]), at some point during type checking `bar` we will wind up calling `FieldDef::ty(x, &[u32, f32])` in order to obtain the type of `foo.x`.
 
-**Note on indices:** It is possible for the indices in `Param` to not match with what the `EarlyBinder` binds. For
-example, the index could be out of bounds or it could be the index of a lifetime when we were expecting a type.
-These sorts of errors would be caught earlier in the compiler when translating from a `rustc_hir::Ty` to a `ty::Ty`.
-If they occur later, that is a compiler bug.
+**Note on indices:** It is a bug if the index of a `Param` does not match what the `EarlyBinder` binds. For
+example, if the index is out of bounds or the index index of a lifetime corresponds to a type parameter.
+These sorts of errors are caught earlier in the compiler during name resolution where we disallow references
+to generics parameters introduced by items that should not be nameable by the inner item. 
 
 [`FieldDef::ty`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.FieldDef.html#method.ty
 [field_def_ty_src]: https://github.com/rust-lang/rust/blob/44d679b9021f03a79133021b94e6d23e9b55b3ab/compiler/rustc_middle/src/ty/mod.rs#L1421-L1426

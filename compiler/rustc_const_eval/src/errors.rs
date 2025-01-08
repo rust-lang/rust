@@ -174,16 +174,7 @@ pub(crate) struct NonConstFmtMacroCall {
     #[primary_span]
     pub span: Span,
     pub kind: ConstContext,
-}
-
-#[derive(Diagnostic)]
-#[diag(const_eval_conditionally_const_call)]
-pub(crate) struct ConditionallyConstCall {
-    #[primary_span]
-    pub span: Span,
-    pub def_path_str: String,
-    pub def_descr: &'static str,
-    pub kind: ConstContext,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -194,6 +185,7 @@ pub(crate) struct NonConstFnCall {
     pub def_path_str: String,
     pub def_descr: &'static str,
     pub kind: ConstContext,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -293,68 +285,75 @@ pub struct RawBytesNote {
 // FIXME(fee1-dead) do not use stringly typed `ConstContext`
 
 #[derive(Diagnostic)]
-#[diag(const_eval_match_eq_non_const, code = E0015)]
+#[diag(const_eval_non_const_match_eq, code = E0015)]
 #[note]
 pub struct NonConstMatchEq<'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
     pub kind: ConstContext,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_for_loop_into_iter_non_const, code = E0015)]
+#[diag(const_eval_non_const_for_loop_into_iter, code = E0015)]
 pub struct NonConstForLoopIntoIter<'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
     pub kind: ConstContext,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_question_branch_non_const, code = E0015)]
+#[diag(const_eval_non_const_question_branch, code = E0015)]
 pub struct NonConstQuestionBranch<'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
     pub kind: ConstContext,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_question_from_residual_non_const, code = E0015)]
+#[diag(const_eval_non_const_question_from_residual, code = E0015)]
 pub struct NonConstQuestionFromResidual<'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
     pub kind: ConstContext,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_try_block_from_output_non_const, code = E0015)]
+#[diag(const_eval_non_const_try_block_from_output, code = E0015)]
 pub struct NonConstTryBlockFromOutput<'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
     pub kind: ConstContext,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_await_non_const, code = E0015)]
+#[diag(const_eval_non_const_await, code = E0015)]
 pub struct NonConstAwait<'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
     pub kind: ConstContext,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_closure_non_const, code = E0015)]
+#[diag(const_eval_non_const_closure, code = E0015)]
 pub struct NonConstClosure {
     #[primary_span]
     pub span: Span,
     pub kind: ConstContext,
     #[subdiagnostic]
     pub note: Option<NonConstClosureNote>,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Subdiagnostic)]
@@ -381,17 +380,18 @@ pub struct ConsiderDereferencing {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_operator_non_const, code = E0015)]
+#[diag(const_eval_non_const_operator, code = E0015)]
 pub struct NonConstOperator {
     #[primary_span]
     pub span: Span,
     pub kind: ConstContext,
     #[subdiagnostic]
     pub sugg: Option<ConsiderDereferencing>,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_deref_coercion_non_const, code = E0015)]
+#[diag(const_eval_non_const_deref_coercion, code = E0015)]
 #[note]
 pub struct NonConstDerefCoercion<'tcx> {
     #[primary_span]
@@ -401,6 +401,7 @@ pub struct NonConstDerefCoercion<'tcx> {
     pub target_ty: Ty<'tcx>,
     #[note(const_eval_target_note)]
     pub deref_target: Option<Span>,
+    pub non_or_conditionally: &'static str,
 }
 
 #[derive(Diagnostic)]

@@ -3,7 +3,7 @@ use clippy_utils::source::SpanRangeExt;
 use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, PatKind, RangeEnd, UnOp};
+use rustc_hir::{PatExpr, PatExprKind, PatKind, RangeEnd};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::declare_lint_pass;
@@ -38,14 +38,13 @@ declare_clippy_lint! {
 }
 declare_lint_pass!(ManualRangePatterns => [MANUAL_RANGE_PATTERNS]);
 
-fn expr_as_i128(expr: &Expr<'_>) -> Option<i128> {
-    if let ExprKind::Unary(UnOp::Neg, expr) = expr.kind {
-        expr_as_i128(expr).map(|num| -num)
-    } else if let ExprKind::Lit(lit) = expr.kind
+fn expr_as_i128(expr: &PatExpr<'_>) -> Option<i128> {
+    if let PatExprKind::Lit { lit, negated } = expr.kind
         && let LitKind::Int(num, _) = lit.node
     {
         // Intentionally not handling numbers greater than i128::MAX (for u128 literals) for now.
-        num.get().try_into().ok()
+        let n = i128::try_from(num.get()).ok()?;
+        Some(if negated { -n } else { n })
     } else {
         None
     }
@@ -58,7 +57,7 @@ struct Num {
 }
 
 impl Num {
-    fn new(expr: &Expr<'_>) -> Option<Self> {
+    fn new(expr: &PatExpr<'_>) -> Option<Self> {
         Some(Self {
             val: expr_as_i128(expr)?,
             span: expr.span,
@@ -90,7 +89,7 @@ impl LateLintPass<'_> for ManualRangePatterns {
             let mut ranges_found = Vec::new();
 
             for pat in pats {
-                if let PatKind::Lit(lit) = pat.kind
+                if let PatKind::Expr(lit) = pat.kind
                     && let Some(num) = Num::new(lit)
                 {
                     numbers_found.insert(num.val);

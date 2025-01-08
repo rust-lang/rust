@@ -172,19 +172,18 @@ impl WorkspaceBuildScripts {
         }
         let res = (|| {
             let target_libdir = (|| {
-                let mut cargo_config = sysroot.tool(Tool::Cargo);
+                let mut cargo_config = sysroot.tool(Tool::Cargo, current_dir);
                 cargo_config.envs(extra_env);
                 cargo_config
-                    .current_dir(current_dir)
                     .args(["rustc", "-Z", "unstable-options", "--print", "target-libdir"])
                     .env("RUSTC_BOOTSTRAP", "1");
-                if let Ok(it) = utf8_stdout(cargo_config) {
+                if let Ok(it) = utf8_stdout(&mut cargo_config) {
                     return Ok(it);
                 }
-                let mut cmd = sysroot.tool(Tool::Rustc);
+                let mut cmd = sysroot.tool(Tool::Rustc, current_dir);
                 cmd.envs(extra_env);
                 cmd.args(["--print", "target-libdir"]);
-                utf8_stdout(cmd)
+                utf8_stdout(&mut cmd)
             })()?;
 
             let target_libdir = AbsPathBuf::try_from(Utf8PathBuf::from(target_libdir))
@@ -390,12 +389,12 @@ impl WorkspaceBuildScripts {
     ) -> io::Result<Command> {
         let mut cmd = match config.run_build_script_command.as_deref() {
             Some([program, args @ ..]) => {
-                let mut cmd = Command::new(program);
+                let mut cmd = toolchain::command(program, current_dir);
                 cmd.args(args);
                 cmd
             }
             _ => {
-                let mut cmd = sysroot.tool(Tool::Cargo);
+                let mut cmd = sysroot.tool(Tool::Cargo, current_dir);
 
                 cmd.args(["check", "--quiet", "--workspace", "--message-format=json"]);
                 cmd.args(&config.extra_args);
@@ -448,7 +447,6 @@ impl WorkspaceBuildScripts {
             }
         };
 
-        cmd.current_dir(current_dir);
         cmd.envs(&config.extra_env);
         if config.wrap_rustc_in_build_scripts {
             // Setup RUSTC_WRAPPER to point to `rust-analyzer` binary itself. We use

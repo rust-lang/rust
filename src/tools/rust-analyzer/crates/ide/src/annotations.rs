@@ -316,6 +316,11 @@ fn main() {
                                 },
                                 kind: Bin,
                                 cfg: None,
+                                update_test: UpdateTest {
+                                    expect_test: false,
+                                    insta: false,
+                                    snapbox: false,
+                                },
                             },
                         ),
                     },
@@ -401,6 +406,11 @@ fn main() {
                                 },
                                 kind: Bin,
                                 cfg: None,
+                                update_test: UpdateTest {
+                                    expect_test: false,
+                                    insta: false,
+                                    snapbox: false,
+                                },
                             },
                         ),
                     },
@@ -537,6 +547,11 @@ fn main() {
                                 },
                                 kind: Bin,
                                 cfg: None,
+                                update_test: UpdateTest {
+                                    expect_test: false,
+                                    insta: false,
+                                    snapbox: false,
+                                },
                             },
                         ),
                     },
@@ -597,6 +612,11 @@ fn main() {}
                                 },
                                 kind: Bin,
                                 cfg: None,
+                                update_test: UpdateTest {
+                                    expect_test: false,
+                                    insta: false,
+                                    snapbox: false,
+                                },
                             },
                         ),
                     },
@@ -709,6 +729,11 @@ fn main() {
                                 },
                                 kind: Bin,
                                 cfg: None,
+                                update_test: UpdateTest {
+                                    expect_test: false,
+                                    insta: false,
+                                    snapbox: false,
+                                },
                             },
                         ),
                     },
@@ -746,6 +771,20 @@ mod tests {
                 [
                     Annotation {
                         range: 3..7,
+                        kind: HasReferences {
+                            pos: FilePositionWrapper {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                offset: 3,
+                            },
+                            data: Some(
+                                [],
+                            ),
+                        },
+                    },
+                    Annotation {
+                        range: 3..7,
                         kind: Runnable(
                             Runnable {
                                 use_name_in_title: false,
@@ -760,22 +799,13 @@ mod tests {
                                 },
                                 kind: Bin,
                                 cfg: None,
+                                update_test: UpdateTest {
+                                    expect_test: false,
+                                    insta: false,
+                                    snapbox: false,
+                                },
                             },
                         ),
-                    },
-                    Annotation {
-                        range: 3..7,
-                        kind: HasReferences {
-                            pos: FilePositionWrapper {
-                                file_id: FileId(
-                                    0,
-                                ),
-                                offset: 3,
-                            },
-                            data: Some(
-                                [],
-                            ),
-                        },
                     },
                     Annotation {
                         range: 18..23,
@@ -796,6 +826,11 @@ mod tests {
                                     path: "tests",
                                 },
                                 cfg: None,
+                                update_test: UpdateTest {
+                                    expect_test: false,
+                                    insta: false,
+                                    snapbox: false,
+                                },
                             },
                         ),
                     },
@@ -822,6 +857,11 @@ mod tests {
                                     },
                                 },
                                 cfg: None,
+                                update_test: UpdateTest {
+                                    expect_test: false,
+                                    insta: false,
+                                    snapbox: false,
+                                },
                             },
                         ),
                     },

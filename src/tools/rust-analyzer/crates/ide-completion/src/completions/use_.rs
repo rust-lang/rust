@@ -101,7 +101,7 @@ pub(crate) fn complete_use_path(
                     ScopeDef::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Enum(e))) => {
                         // exclude prelude enum
                         let is_builtin =
-                            res.krate(ctx.db).map_or(false, |krate| krate.is_builtin(ctx.db));
+                            res.krate(ctx.db).is_some_and(|krate| krate.is_builtin(ctx.db));
 
                         if !is_builtin {
                             let item = CompletionItem::new(

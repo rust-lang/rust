@@ -57,7 +57,7 @@ use crate::middle::resolve_bound_vars::{ObjectLifetimeDefault, ResolveBoundVars,
 use crate::middle::stability::{self, DeprecationEntry};
 use crate::mir::interpret::{
     EvalStaticInitializerRawResult, EvalToAllocationRawResult, EvalToConstValueResult,
-    EvalToValTreeResult, GlobalId, LitToConstError, LitToConstInput,
+    EvalToValTreeResult, GlobalId, LitToConstInput,
 };
 use crate::mir::mono::{CodegenUnit, CollectionMode, MonoItem};
 use crate::query::erase::{Erase, erase, restore};
@@ -297,7 +297,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query unsizing_params_for_adt(key: DefId) -> &'tcx rustc_index::bit_set::BitSet<u32>
+    query unsizing_params_for_adt(key: DefId) -> &'tcx rustc_index::bit_set::DenseBitSet<u32>
     {
         arena_cache
         desc { |tcx|
@@ -494,7 +494,7 @@ rustc_queries! {
     }
 
     /// Set of param indexes for type params that are in the type's representation
-    query params_in_repr(key: DefId) -> &'tcx rustc_index::bit_set::BitSet<u32> {
+    query params_in_repr(key: DefId) -> &'tcx rustc_index::bit_set::DenseBitSet<u32> {
         desc { "finding type parameters in the representation" }
         arena_cache
         no_hash
@@ -1268,7 +1268,7 @@ rustc_queries! {
     // FIXME get rid of this with valtrees
     query lit_to_const(
         key: LitToConstInput<'tcx>
-    ) -> Result<ty::Const<'tcx>, LitToConstError> {
+    ) -> ty::Const<'tcx> {
         desc { "converting literal to const" }
     }
 
@@ -2357,7 +2357,7 @@ rustc_queries! {
     }
 
     /// Returns the Rust target features for the current target. These are not always the same as LLVM target features!
-    query rust_target_features(_: CrateNum) -> &'tcx UnordMap<String, rustc_target::target_features::StabilityComputed> {
+    query rust_target_features(_: CrateNum) -> &'tcx UnordMap<String, rustc_target::target_features::Stability> {
         arena_cache
         eval_always
         desc { "looking up Rust target features" }

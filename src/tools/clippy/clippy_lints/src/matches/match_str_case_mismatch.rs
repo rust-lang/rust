@@ -5,7 +5,7 @@ use clippy_utils::ty::is_type_lang_item;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{Visitor, walk_expr};
-use rustc_hir::{Arm, Expr, ExprKind, LangItem, PatKind};
+use rustc_hir::{Arm, Expr, ExprKind, PatExpr, PatExprKind, LangItem, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::Span;
@@ -85,8 +85,8 @@ fn verify_case<'a>(case_method: &'a CaseMethod, arms: &'a [Arm<'_>]) -> Option<(
     };
 
     for arm in arms {
-        if let PatKind::Lit(Expr {
-            kind: ExprKind::Lit(lit),
+        if let PatKind::Expr(PatExpr {
+            kind: PatExprKind::Lit { lit, negated: false },
             ..
         }) = arm.pat.kind
             && let LitKind::Str(symbol, _) = lit.node

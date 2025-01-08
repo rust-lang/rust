@@ -6,7 +6,7 @@
 //! dependent crates can use them.
 
 use rustc_hir::def_id::LocalDefId;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{Body, Location, Operand, Place, RETURN_PLACE, Terminator, TerminatorKind};
 use rustc_middle::ty::{self, DeducedParamAttrs, Ty, TyCtxt};
@@ -18,13 +18,13 @@ struct DeduceReadOnly {
     /// Each bit is indexed by argument number, starting at zero (so 0 corresponds to local decl
     /// 1). The bit is true if the argument may have been mutated or false if we know it hasn't
     /// been up to the point we're at.
-    mutable_args: BitSet<usize>,
+    mutable_args: DenseBitSet<usize>,
 }
 
 impl DeduceReadOnly {
     /// Returns a new DeduceReadOnly instance.
     fn new(arg_count: usize) -> Self {
-        Self { mutable_args: BitSet::new_empty(arg_count) }
+        Self { mutable_args: DenseBitSet::new_empty(arg_count) }
     }
 }
 

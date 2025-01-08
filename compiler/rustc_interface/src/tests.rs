@@ -24,6 +24,7 @@ use rustc_session::{CompilerIO, EarlyDiagCtxt, Session, build_session, filesearc
 use rustc_span::edition::{DEFAULT_EDITION, Edition};
 use rustc_span::source_map::{RealFileLoader, SourceMapInputs};
 use rustc_span::{FileName, SourceFileHashAlgorithm, sym};
+use rustc_target::abi::Align;
 use rustc_target::spec::{
     CodeModel, FramePointer, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy,
     RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TlsModel, WasmCAbi,
@@ -582,6 +583,7 @@ fn test_codegen_options_tracking_hash() {
     untracked!(dlltool, Some(PathBuf::from("custom_dlltool.exe")));
     untracked!(extra_filename, String::from("extra-filename"));
     untracked!(incremental, Some(String::from("abc")));
+    untracked!(inline_threshold, Some(0xf007ba11));
     // `link_arg` is omitted because it just forwards to `link_args`.
     untracked!(link_args, vec![String::from("abc"), String::from("def")]);
     untracked!(link_self_contained, LinkSelfContained::on());
@@ -613,7 +615,6 @@ fn test_codegen_options_tracking_hash() {
     tracked!(embed_bitcode, false);
     tracked!(force_frame_pointers, FramePointer::Always);
     tracked!(force_unwind_tables, Some(true));
-    tracked!(inline_threshold, Some(0xf007ba11));
     tracked!(instrument_coverage, InstrumentCoverage::Yes);
     tracked!(link_dead_code, Some(true));
     tracked!(linker_plugin_lto, LinkerPluginLto::LinkerPluginAuto);
@@ -782,6 +783,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(dwarf_version, Some(5));
     tracked!(embed_source, true);
     tracked!(emit_thin_lto, false);
+    tracked!(emscripten_wasm_eh, true);
     tracked!(export_executable_symbols, true);
     tracked!(fewer_names, Some(true));
     tracked!(fixed_x18, true);
@@ -806,6 +808,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(location_detail, LocationDetail { file: true, line: false, column: false });
     tracked!(maximal_hir_to_mir_coverage, true);
     tracked!(merge_functions, Some(MergeFunctions::Disabled));
+    tracked!(min_function_alignment, Some(Align::EIGHT));
     tracked!(mir_emit_retag, true);
     tracked!(mir_enable_passes, vec![("DestProp".to_string(), false)]);
     tracked!(mir_keep_place_mention, true);

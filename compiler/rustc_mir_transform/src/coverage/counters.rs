@@ -5,7 +5,7 @@ use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::DirectedGraph;
 use rustc_index::IndexVec;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::coverage::{CounterId, CovTerm, Expression, ExpressionId, Op};
 use tracing::{debug, debug_span, instrument};
 
@@ -77,7 +77,7 @@ impl CoverageCounters {
     /// counters or counter expressions for nodes and edges as required.
     pub(super) fn make_bcb_counters(
         graph: &CoverageGraph,
-        bcb_needs_counter: &BitSet<BasicCoverageBlock>,
+        bcb_needs_counter: &DenseBitSet<BasicCoverageBlock>,
     ) -> Self {
         let mut builder = CountersBuilder::new(graph, bcb_needs_counter);
         builder.make_bcb_counters();
@@ -220,13 +220,16 @@ fn sibling_out_edge_targets(
 /// the set of nodes that need counters.
 struct CountersBuilder<'a> {
     graph: &'a CoverageGraph,
-    bcb_needs_counter: &'a BitSet<BasicCoverageBlock>,
+    bcb_needs_counter: &'a DenseBitSet<BasicCoverageBlock>,
 
     site_counters: FxHashMap<Site, SiteCounter>,
 }
 
 impl<'a> CountersBuilder<'a> {
-    fn new(graph: &'a CoverageGraph, bcb_needs_counter: &'a BitSet<BasicCoverageBlock>) -> Self {
+    fn new(
+        graph: &'a CoverageGraph,
+        bcb_needs_counter: &'a DenseBitSet<BasicCoverageBlock>,
+    ) -> Self {
         assert_eq!(graph.num_nodes(), bcb_needs_counter.domain_size());
         Self { graph, bcb_needs_counter, site_counters: FxHashMap::default() }
     }

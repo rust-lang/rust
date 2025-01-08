@@ -48,7 +48,7 @@ pub(crate) fn goto_implementation(
                     }
                     ast::NameLike::NameRef(name_ref) => NameRefClass::classify(&sema, name_ref)
                         .and_then(|class| match class {
-                            NameRefClass::Definition(def) => Some(def),
+                            NameRefClass::Definition(def, _) => Some(def),
                             NameRefClass::FieldShorthand { .. }
                             | NameRefClass::ExternCrateShorthand { .. } => None,
                         }),

@@ -297,8 +297,8 @@ fn parse_iter_usage<'tcx>(
                     {
                         Some(IterUsage {
                             kind: IterUsageKind::NextTuple,
-                            span: e.span,
                             unwrap_kind: None,
+                            span: e.span,
                         })
                     } else {
                         None

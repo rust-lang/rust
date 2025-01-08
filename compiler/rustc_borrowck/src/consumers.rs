@@ -11,8 +11,8 @@ pub use super::dataflow::{BorrowIndex, Borrows, calculate_borrows_out_of_scope_a
 pub use super::place_ext::PlaceExt;
 pub use super::places_conflict::{PlaceConflictBias, places_conflict};
 pub use super::polonius::legacy::{
-    AllFacts as PoloniusInput, LocationTable, PoloniusOutput, PoloniusRegionVid, RichLocation,
-    RustcFacts,
+    PoloniusFacts as PoloniusInput, PoloniusLocationTable, PoloniusOutput, PoloniusRegionVid,
+    RichLocation, RustcFacts,
 };
 pub use super::region_infer::RegionInferenceContext;
 
@@ -33,7 +33,7 @@ pub enum ConsumerOptions {
     /// without significant slowdowns.
     ///
     /// Implies [`RegionInferenceContext`](ConsumerOptions::RegionInferenceContext),
-    /// and additionally retrieve the [`LocationTable`] and [`PoloniusInput`] that
+    /// and additionally retrieve the [`PoloniusLocationTable`] and [`PoloniusInput`] that
     /// would be given to Polonius. Critically, this does not run Polonius, which
     /// one may want to avoid due to performance issues on large bodies.
     PoloniusInputFacts,
@@ -71,7 +71,7 @@ pub struct BodyWithBorrowckFacts<'tcx> {
     /// The table that maps Polonius points to locations in the table.
     /// Populated when using [`ConsumerOptions::PoloniusInputFacts`]
     /// or [`ConsumerOptions::PoloniusOutputFacts`].
-    pub location_table: Option<LocationTable>,
+    pub location_table: Option<PoloniusLocationTable>,
     /// Polonius input facts.
     /// Populated when using [`ConsumerOptions::PoloniusInputFacts`]
     /// or [`ConsumerOptions::PoloniusOutputFacts`].

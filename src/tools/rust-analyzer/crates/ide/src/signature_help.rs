@@ -165,7 +165,7 @@ fn signature_help_for_call(
         if let Some(callable) = ast::CallableExpr::cast(nodes.next()?) {
             let inside_callable = callable
                 .arg_list()
-                .map_or(false, |it| it.syntax().text_range().contains(token.text_range().start()));
+                .is_some_and(|it| it.syntax().text_range().contains(token.text_range().start()));
             if inside_callable {
                 break callable;
             }
@@ -650,7 +650,7 @@ fn signature_help_for_tuple_pat_ish(
 ) -> SignatureHelp {
     let rest_pat = field_pats.find(|it| matches!(it, ast::Pat::RestPat(_)));
     let is_left_of_rest_pat =
-        rest_pat.map_or(true, |it| token.text_range().start() < it.syntax().text_range().end());
+        rest_pat.is_none_or(|it| token.text_range().start() < it.syntax().text_range().end());
 
     let commas = pat
         .children_with_tokens()

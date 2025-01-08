@@ -67,6 +67,7 @@ imported to use an inherent method, they are associated with the type
 itself (note that inherent impls can only be defined in the same
 crate as the type itself).
 
+<!--
 FIXME: Inherent candidates are not always derived from impls.  If you
 have a trait object, such as a value of type `Box<ToString>`, then the
 trait methods (`to_string()`, in this case) are inherently associated
@@ -76,7 +77,8 @@ to change: when DST's "impl Trait for Trait" is complete, trait object
 dispatch could be subsumed into trait matching, and the type parameter
 behavior should be reconsidered in light of where clauses.
 
-TODO: Is this FIXME still accurate?
+Is this still accurate?
+-->
 
 **Extension candidates** are derived from imported traits.  If I have
 the trait `ToString` imported, and I call `to_string()` as a method,

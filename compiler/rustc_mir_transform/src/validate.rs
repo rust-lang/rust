@@ -1,10 +1,11 @@
 //! Validates the MIR to ensure that invariants are upheld.
 
 use rustc_abi::{ExternAbi, FIRST_VARIANT, Size};
+use rustc_attr_parsing::InlineAttr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::LangItem;
 use rustc_index::IndexVec;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::mir::coverage::CoverageKind;
@@ -97,7 +98,7 @@ struct CfgChecker<'a, 'tcx> {
     body: &'a Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     unwind_edge_count: usize,
-    reachable_blocks: BitSet<BasicBlock>,
+    reachable_blocks: DenseBitSet<BasicBlock>,
     value_cache: FxHashSet<u128>,
     // If `false`, then the MIR must not contain `UnwindAction::Continue` or
     // `TerminatorKind::Resume`.
@@ -366,7 +367,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 self.check_edge(location, *target, EdgeKind::Normal);
                 self.check_unwind_edge(location, *unwind);
             }
-            TerminatorKind::Call { args, .. } | TerminatorKind::TailCall { args, .. } => {
+            TerminatorKind::Call { func, args, .. }
+            | TerminatorKind::TailCall { func, args, .. } => {
                 // FIXME(explicit_tail_calls): refactor this & add tail-call specific checks
                 if let TerminatorKind::Call { target, unwind, destination, .. } = terminator.kind {
                     if let Some(target) = target {
@@ -418,6 +420,13 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                             );
                         }
                     }
+                }
+
+                if let ty::FnDef(did, ..) = func.ty(&self.body.local_decls, self.tcx).kind()
+                    && self.body.phase >= MirPhase::Runtime(RuntimePhase::Optimized)
+                    && matches!(self.tcx.codegen_fn_attrs(did).inline, InlineAttr::Force { .. })
+                {
+                    self.fail(location, "`#[rustc_force_inline]`-annotated function not inlined");
                 }
             }
             TerminatorKind::Assert { target, unwind, .. } => {

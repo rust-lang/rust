@@ -1,8 +1,6 @@
 //! This module provides the functionality needed to run `cargo test` in a background
 //! thread and report the result of each test in a channel.
 
-use std::process::Command;
-
 use crossbeam_channel::Sender;
 use paths::AbsPath;
 use serde::Deserialize as _;
@@ -78,7 +76,7 @@ impl CargoTestHandle {
         test_target: TestTarget,
         sender: Sender<CargoTestMessage>,
     ) -> std::io::Result<Self> {
-        let mut cmd = Command::new(Tool::Cargo.path());
+        let mut cmd = toolchain::command(Tool::Cargo.path(), root);
         cmd.env("RUSTC_BOOTSTRAP", "1");
         cmd.arg("test");
 
