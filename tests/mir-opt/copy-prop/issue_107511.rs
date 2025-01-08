@@ -4,8 +4,9 @@
 // EMIT_MIR issue_107511.main.CopyProp.diff
 fn main() {
     // CHECK-LABEL: fn main(
-    // CHECK-NOT: StorageLive(_16);
-    // CHECK-NOT: StorageDead(_16);
+    // CHECK: debug i => [[i:_.*]];
+    // CHECK-NOT: StorageLive([[i]]);
+    // CHECK-NOT: StorageDead([[i]]);
     let mut sum = 0;
     let a = [0, 10, 20, 30];
 
