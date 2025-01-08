@@ -539,8 +539,13 @@ impl FromStr for SplitDwarfKind {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord, HashStable_Generic)]
 #[derive(Encodable, Decodable)]
 pub enum OutputType {
+    /// This is the optimized bitcode, which could be either pre-LTO or non-LTO bitcode,
+    /// depending on the specific request type.
     Bitcode,
+    /// This is the summary or index data part of the ThinLTO bitcode.
     ThinLinkBitcode,
+    /// This is ThinLTO's pre-link bitcode, primarily used for embedding bitcode in object files.
+    /// This can also be used for FatLTO.
     ThinBitcode,
     Assembly,
     LlvmAssembly,
