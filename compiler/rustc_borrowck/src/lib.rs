@@ -60,7 +60,7 @@ use crate::diagnostics::{
 use crate::path_utils::*;
 use crate::place_ext::PlaceExt;
 use crate::places_conflict::{PlaceConflictBias, places_conflict};
-use crate::polonius::legacy::{LocationTable, PoloniusOutput};
+use crate::polonius::legacy::{PoloniusLocationTable, PoloniusOutput};
 use crate::prefixes::PrefixSet;
 use crate::region_infer::RegionInferenceContext;
 use crate::renumber::RegionCtxt;
@@ -179,7 +179,7 @@ fn do_mir_borrowck<'tcx>(
         infcx.register_predefined_opaques_for_next_solver(def);
     }
 
-    let location_table = LocationTable::new(body);
+    let location_table = PoloniusLocationTable::new(body);
 
     let move_data = MoveData::gather_moves(body, tcx, |_| true);
     let promoted_move_data = promoted
@@ -250,7 +250,8 @@ fn do_mir_borrowck<'tcx>(
             infcx: &infcx,
             body: promoted_body,
             move_data: &move_data,
-            location_table: &location_table, // no need to create a real one for the promoted, it is not used
+            // no need to create a real location table for the promoted, it is not used
+            location_table: &location_table,
             movable_coroutine,
             fn_self_span_reported: Default::default(),
             locals_are_invalidated_at_exit,
@@ -516,7 +517,7 @@ struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
 
     /// Map from MIR `Location` to `LocationIndex`; created
     /// when MIR borrowck begins.
-    location_table: &'a LocationTable,
+    location_table: &'a PoloniusLocationTable,
 
     movable_coroutine: bool,
     /// This keeps track of whether local variables are free-ed when the function

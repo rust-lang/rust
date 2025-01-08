@@ -314,9 +314,9 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
         PatKind::Box(p) => return name_from_pat(p),
         PatKind::Deref(p) => format!("deref!({})", name_from_pat(p)),
         PatKind::Ref(p, _) => return name_from_pat(p),
-        PatKind::Lit(..) => {
+        PatKind::Expr(..) => {
             warn!(
-                "tried to get argument name from PatKind::Lit, which is silly in function arguments"
+                "tried to get argument name from PatKind::Expr, which is silly in function arguments"
             );
             return Symbol::intern("()");
         }

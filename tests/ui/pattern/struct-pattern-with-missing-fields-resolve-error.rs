@@ -3,6 +3,10 @@ struct Website {
     title: Option<String>,
 }
 
+enum Foo {
+    Bar { a: i32 },
+}
+
 fn main() {
     let website = Website {
         url: "http://www.example.com".into(),
@@ -17,5 +21,10 @@ fn main() {
     if let Website { url, .. } = website { //~ NOTE this pattern
         println!("[{}]({})", title, url); //~ ERROR cannot find value `title` in this scope
         //~^ NOTE not found in this scope
+    }
+
+    let x = Foo::Bar { a: 1 };
+    if let Foo::Bar { .. } = x { //~ NOTE this pattern
+        println!("{a}"); //~ ERROR cannot find value `a` in this scope
     }
 }

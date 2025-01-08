@@ -8,7 +8,7 @@ use clippy_utils::{
 };
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::OptionNone;
-use rustc_hir::{Arm, BindingMode, ByRef, Expr, ExprKind, ItemKind, Node, Pat, PatKind, Path, QPath};
+use rustc_hir::{Arm, BindingMode, ByRef, Expr, ExprKind, ItemKind, Node, Pat, PatExprKind, PatKind, Path, QPath};
 use rustc_lint::LateContext;
 use rustc_span::sym;
 
@@ -133,7 +133,7 @@ fn expr_ty_matches_p_ty(cx: &LateContext<'_>, expr: &Expr<'_>, p_expr: &Expr<'_>
         },
         // compare match_expr ty with RetTy in `fn foo() -> RetTy`
         Node::Item(item) => {
-            if let ItemKind::Fn{ .. } = item.kind {
+            if let ItemKind::Fn { .. } = item.kind {
                 let output = cx
                     .tcx
                     .fn_sig(item.owner_id)
@@ -189,8 +189,12 @@ fn pat_same_as_expr(pat: &Pat<'_>, expr: &Expr<'_>) -> bool {
             });
         },
         // Example: `5 => 5`
-        (PatKind::Lit(pat_lit_expr), ExprKind::Lit(expr_spanned)) => {
-            if let ExprKind::Lit(pat_spanned) = &pat_lit_expr.kind {
+        (PatKind::Expr(pat_expr_expr), ExprKind::Lit(expr_spanned)) => {
+            if let PatExprKind::Lit {
+                lit: pat_spanned,
+                negated: false,
+            } = &pat_expr_expr.kind
+            {
                 return pat_spanned.node == expr_spanned.node;
             }
         },

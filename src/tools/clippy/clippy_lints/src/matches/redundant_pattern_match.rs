@@ -9,7 +9,7 @@ use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{self, OptionNone, OptionSome, PollPending, PollReady, ResultErr, ResultOk};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Arm, Expr, ExprKind, Node, Pat, PatKind, QPath, UnOp};
+use rustc_hir::{Arm, Expr, ExprKind, Node, Pat, PatExprKind, PatKind, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, GenericArgKind, Ty};
 use rustc_span::{Span, Symbol, sym};
@@ -74,8 +74,8 @@ fn find_match_true<'tcx>(
     span: Span,
     message: &'static str,
 ) {
-    if let PatKind::Lit(lit) = pat.kind
-        && let ExprKind::Lit(lit) = lit.kind
+    if let PatKind::Expr(lit) = pat.kind
+        && let PatExprKind::Lit { lit, negated: false } = lit.kind
         && let LitKind::Bool(pat_is_true) = lit.node
     {
         let mut applicability = Applicability::MachineApplicable;

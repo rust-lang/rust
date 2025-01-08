@@ -704,7 +704,7 @@ fn resolve_local<'tcx>(
             | PatKind::Wild
             | PatKind::Never
             | PatKind::Path(_)
-            | PatKind::Lit(_)
+            | PatKind::Expr(_)
             | PatKind::Range(_, _, _)
             | PatKind::Err(_) => false,
         }

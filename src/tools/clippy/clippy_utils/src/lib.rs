@@ -1777,7 +1777,7 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
                 },
             }
         },
-        PatKind::Lit(..) | PatKind::Range(..) | PatKind::Err(_) | PatKind::Deref(_) | PatKind::Guard(..) => true,
+        PatKind::Expr(..) | PatKind::Range(..) | PatKind::Err(_) | PatKind::Deref(_) | PatKind::Guard(..) => true,
     }
 }
 

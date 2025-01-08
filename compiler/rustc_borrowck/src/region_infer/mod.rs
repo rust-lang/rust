@@ -392,7 +392,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         var_infos: VarInfos,
         constraints: MirTypeckRegionConstraints<'tcx>,
         universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
-        elements: Rc<DenseLocationMap>,
+        location_map: Rc<DenseLocationMap>,
     ) -> Self {
         let universal_regions = &universal_region_relations.universal_regions;
         let MirTypeckRegionConstraints {
@@ -436,7 +436,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
 
         let mut scc_values =
-            RegionValues::new(elements, universal_regions.len(), placeholder_indices);
+            RegionValues::new(location_map, universal_regions.len(), placeholder_indices);
 
         for region in liveness_constraints.regions() {
             let scc = constraint_sccs.scc(region);

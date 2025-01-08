@@ -37,7 +37,7 @@ Libraries
 - [Move `<float>::copysign`, `<float>::abs`, `<float>::signum` to `core`](https://github.com/rust-lang/rust/pull/131304)
 - [Add `LowerExp` and `UpperExp` implementations to `NonZero`](https://github.com/rust-lang/rust/pull/131377)
 - [Implement `FromStr` for `CString` and `TryFrom<CString>` for `String`](https://github.com/rust-lang/rust/pull/130608)
-- [`std::os::darwin` has been made public](https://github.com/rust-lang/rust/pull/130635)
+- [`std::os::darwin` has been made public](https://github.com/rust-lang/rust/pull/123723)
 
 <a id="1.84.0-Stabilized-APIs"></a>
 

@@ -34,13 +34,13 @@ fn all_ranges<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], ty: Ty<'tcx>)
             if let Arm { pat, guard: None, .. } = *arm {
                 if let PatKind::Range(ref lhs, ref rhs, range_end) = pat.kind {
                     let lhs_const = if let Some(lhs) = lhs {
-                        ConstEvalCtxt::new(cx).eval(lhs)?
+                        ConstEvalCtxt::new(cx).eval_pat_expr(lhs)?
                     } else {
                         let min_val_const = ty.numeric_min_val(cx.tcx)?;
                         mir_to_const(cx.tcx, mir::Const::from_ty_const(min_val_const, ty, cx.tcx))?
                     };
                     let rhs_const = if let Some(rhs) = rhs {
-                        ConstEvalCtxt::new(cx).eval(rhs)?
+                        ConstEvalCtxt::new(cx).eval_pat_expr(rhs)?
                     } else {
                         let max_val_const = ty.numeric_max_val(cx.tcx)?;
                         mir_to_const(cx.tcx, mir::Const::from_ty_const(max_val_const, ty, cx.tcx))?
@@ -57,8 +57,10 @@ fn all_ranges<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], ty: Ty<'tcx>)
                     });
                 }
 
-                if let PatKind::Lit(value) = pat.kind {
-                    let value = ConstEvalCtxt::new(cx).eval_full_int(value)?;
+                if let PatKind::Expr(value) = pat.kind {
+                    let value = ConstEvalCtxt::new(cx)
+                        .eval_pat_expr(value)?
+                        .int_value(cx.tcx, cx.typeck_results().node_type(pat.hir_id))?;
                     return Some(SpannedRange {
                         span: pat.span,
                         node: (value, EndBound::Included(value)),
