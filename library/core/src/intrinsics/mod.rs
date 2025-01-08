@@ -1382,19 +1382,7 @@ pub unsafe fn prefetch_write_instruction<T>(_data: *const T, _locality: i32) {
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
-#[cfg(not(bootstrap))]
 pub fn breakpoint() {
-    unreachable!()
-}
-
-/// Executes a breakpoint trap, for inspection by a debugger.
-///
-/// This intrinsic does not have a stable counterpart.
-#[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
-#[rustc_nounwind]
-#[cfg(bootstrap)]
-pub unsafe fn breakpoint() {
     unreachable!()
 }
 
@@ -3323,8 +3311,8 @@ pub const fn mul_with_overflow<T: Copy>(_x: T, _y: T) -> (T, bool) {
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_const_unstable(feature = "const_carrying_mul_add", issue = "85532")]
 #[rustc_nounwind]
-#[cfg_attr(not(bootstrap), rustc_intrinsic)]
-#[cfg_attr(not(bootstrap), miri::intrinsic_fallback_is_spec)]
+#[rustc_intrinsic]
+#[miri::intrinsic_fallback_is_spec]
 pub const fn carrying_mul_add<T: ~const fallback::CarryingMulAdd<Unsigned = U>, U>(
     multiplier: T,
     multiplicand: T,
@@ -3969,21 +3957,6 @@ pub const fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
     false
 }
 
-#[rustc_nounwind]
-#[inline]
-#[rustc_intrinsic]
-#[rustc_intrinsic_const_stable_indirect]
-#[rustc_allow_const_fn_unstable(const_swap_nonoverlapping)] // this is anyway not called since CTFE implements the intrinsic
-#[cfg(bootstrap)]
-pub const unsafe fn typed_swap<T>(x: *mut T, y: *mut T) {
-    // SAFETY: The caller provided single non-overlapping items behind
-    // pointers, so swapping them with `count: 1` is fine.
-    unsafe { ptr::swap_nonoverlapping(x, y, 1) };
-}
-
-#[cfg(bootstrap)]
-pub use typed_swap as typed_swap_nonoverlapping;
-
 /// Non-overlapping *typed* swap of a single value.
 ///
 /// The codegen backends will replace this with a better implementation when
@@ -3999,7 +3972,6 @@ pub use typed_swap as typed_swap_nonoverlapping;
 #[rustc_intrinsic]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_allow_const_fn_unstable(const_swap_nonoverlapping)] // this is anyway not called since CTFE implements the intrinsic
-#[cfg(not(bootstrap))]
 pub const unsafe fn typed_swap_nonoverlapping<T>(x: *mut T, y: *mut T) {
     // SAFETY: The caller provided single non-overlapping items behind
     // pointers, so swapping them with `count: 1` is fine.

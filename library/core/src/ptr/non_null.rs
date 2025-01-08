@@ -1556,7 +1556,6 @@ impl<T: ?Sized, U: ?Sized> DispatchFromDyn<NonNull<U>> for NonNull<T> where T: U
 unsafe impl<T: ?Sized> PinCoerceUnsized for NonNull<T> {}
 
 #[unstable(feature = "pointer_like_trait", issue = "none")]
-#[cfg(not(bootstrap))]
 impl<T> core::marker::PointerLike for NonNull<T> {}
 
 #[stable(feature = "nonnull", since = "1.25.0")]

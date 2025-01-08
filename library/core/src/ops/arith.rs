@@ -73,7 +73,7 @@
     append_const_msg
 )]
 #[doc(alias = "+")]
-#[cfg_attr(not(bootstrap), const_trait)]
+#[const_trait]
 pub trait Add<Rhs = Self> {
     /// The resulting type after applying the `+` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -95,18 +95,6 @@ pub trait Add<Rhs = Self> {
 macro_rules! add_impl {
     ($($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[cfg(bootstrap)]
-        impl Add for $t {
-            type Output = $t;
-
-            #[inline]
-            #[track_caller]
-            #[rustc_inherit_overflow_checks]
-            fn add(self, other: $t) -> $t { self + other }
-        }
-
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[cfg(not(bootstrap))]
         impl const Add for $t {
             type Output = $t;
 

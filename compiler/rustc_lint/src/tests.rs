@@ -1,4 +1,4 @@
-#![cfg_attr(not(bootstrap), allow(rustc::symbol_intern_string_literal))]
+#![allow(rustc::symbol_intern_string_literal)]
 
 use rustc_span::{Symbol, create_default_session_globals_then};
 

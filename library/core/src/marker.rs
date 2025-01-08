@@ -141,9 +141,8 @@ unsafe impl<T: Sync + ?Sized> Send for &T {}
 )]
 #[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable
 #[rustc_specialization_trait]
-#[cfg_attr(bootstrap, rustc_deny_explicit_impl(implement_via_object = false))]
-#[cfg_attr(not(bootstrap), rustc_deny_explicit_impl)]
-#[cfg_attr(not(bootstrap), rustc_do_not_implement_via_object)]
+#[rustc_deny_explicit_impl]
+#[rustc_do_not_implement_via_object]
 #[rustc_coinductive]
 pub trait Sized {
     // Empty.
@@ -183,9 +182,8 @@ pub trait Sized {
 /// [^1]: Formerly known as *object safe*.
 #[unstable(feature = "unsize", issue = "18598")]
 #[lang = "unsize"]
-#[cfg_attr(bootstrap, rustc_deny_explicit_impl(implement_via_object = false))]
-#[cfg_attr(not(bootstrap), rustc_deny_explicit_impl)]
-#[cfg_attr(not(bootstrap), rustc_do_not_implement_via_object)]
+#[rustc_deny_explicit_impl]
+#[rustc_do_not_implement_via_object]
 pub trait Unsize<T: ?Sized> {
     // Empty.
 }
@@ -819,9 +817,8 @@ impl<T: ?Sized> StructuralPartialEq for PhantomData<T> {}
     reason = "this trait is unlikely to ever be stabilized, use `mem::discriminant` instead"
 )]
 #[lang = "discriminant_kind"]
-#[cfg_attr(bootstrap, rustc_deny_explicit_impl(implement_via_object = false))]
-#[cfg_attr(not(bootstrap), rustc_deny_explicit_impl)]
-#[cfg_attr(not(bootstrap), rustc_do_not_implement_via_object)]
+#[rustc_deny_explicit_impl]
+#[rustc_do_not_implement_via_object]
 pub trait DiscriminantKind {
     /// The type of the discriminant, which must satisfy the trait
     /// bounds required by `mem::Discriminant`.
@@ -962,10 +959,9 @@ marker_impls! {
 #[unstable(feature = "const_destruct", issue = "133214")]
 #[lang = "destruct"]
 #[rustc_on_unimplemented(message = "can't drop `{Self}`", append_const_msg)]
-#[cfg_attr(bootstrap, rustc_deny_explicit_impl(implement_via_object = false))]
-#[cfg_attr(not(bootstrap), rustc_deny_explicit_impl)]
-#[cfg_attr(not(bootstrap), rustc_do_not_implement_via_object)]
-#[cfg_attr(not(bootstrap), const_trait)]
+#[rustc_deny_explicit_impl]
+#[rustc_do_not_implement_via_object]
+#[const_trait]
 pub trait Destruct {}
 
 /// A marker for tuple types.
@@ -975,9 +971,8 @@ pub trait Destruct {}
 #[unstable(feature = "tuple_trait", issue = "none")]
 #[lang = "tuple_trait"]
 #[diagnostic::on_unimplemented(message = "`{Self}` is not a tuple")]
-#[cfg_attr(bootstrap, rustc_deny_explicit_impl(implement_via_object = false))]
-#[cfg_attr(not(bootstrap), rustc_deny_explicit_impl)]
-#[cfg_attr(not(bootstrap), rustc_do_not_implement_via_object)]
+#[rustc_deny_explicit_impl]
+#[rustc_do_not_implement_via_object]
 pub trait Tuple {}
 
 /// A marker for pointer-like types.
@@ -996,10 +991,9 @@ pub trait Tuple {}
     message = "`{Self}` needs to have the same ABI as a pointer",
     label = "`{Self}` needs to be a pointer-like type"
 )]
-#[cfg_attr(not(bootstrap), rustc_do_not_implement_via_object)]
+#[rustc_do_not_implement_via_object]
 pub trait PointerLike {}
 
-#[cfg(not(bootstrap))]
 marker_impls! {
     #[unstable(feature = "pointer_like_trait", issue = "none")]
     PointerLike for
@@ -1086,9 +1080,8 @@ marker_impls! {
     reason = "internal trait for implementing various traits for all function pointers"
 )]
 #[lang = "fn_ptr_trait"]
-#[cfg_attr(bootstrap, rustc_deny_explicit_impl(implement_via_object = false))]
-#[cfg_attr(not(bootstrap), rustc_deny_explicit_impl)]
-#[cfg_attr(not(bootstrap), rustc_do_not_implement_via_object)]
+#[rustc_deny_explicit_impl]
+#[rustc_do_not_implement_via_object]
 pub trait FnPtr: Copy + Clone {
     /// Returns the address of the function pointer.
     #[lang = "fn_ptr_addr"]
@@ -1099,7 +1092,6 @@ pub trait FnPtr: Copy + Clone {
 #[rustc_builtin_macro(CoercePointee, attributes(pointee))]
 #[allow_internal_unstable(dispatch_from_dyn, coerce_unsized, unsize)]
 #[unstable(feature = "derive_coerce_pointee", issue = "123430")]
-#[cfg(not(bootstrap))]
 pub macro CoercePointee($item:item) {
     /* compiler built-in */
 }
