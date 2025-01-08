@@ -18,7 +18,7 @@ use rustc_lint_defs::BuiltinLintDiag;
 use rustc_parse::validate_attr;
 use rustc_session::Session;
 use rustc_session::parse::feature_err;
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{STDLIB_STABLE_CRATES, Span, Symbol, sym};
 use thin_vec::ThinVec;
 use tracing::instrument;
 
@@ -107,14 +107,11 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
 
             // If the enabled feature is unstable, record it.
             if UNSTABLE_LANG_FEATURES.iter().find(|f| name == f.name).is_some() {
-                // When the ICE comes from core, alloc or std (approximation of the standard
-                // library), there's a chance that the person hitting the ICE may be using
-                // -Zbuild-std or similar with an untested target. The bug is probably in the
-                // standard library and not the compiler in that case, but that doesn't really
-                // matter - we want a bug report.
-                if features.internal(name)
-                    && ![sym::core, sym::alloc, sym::std].contains(&crate_name)
-                {
+                // When the ICE comes a standard library crate, there's a chance that the person
+                // hitting the ICE may be using -Zbuild-std or similar with an untested target.
+                // The bug is probably in the standard library and not the compiler in that case,
+                // but that doesn't really matter - we want a bug report.
+                if features.internal(name) && !STDLIB_STABLE_CRATES.contains(&crate_name) {
                     sess.using_internal_features.store(true, std::sync::atomic::Ordering::Relaxed);
                 }
 
@@ -133,7 +130,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
 
             // Similar to above, detect internal lib features to suppress
             // the ICE message that asks for a report.
-            if features.internal(name) && ![sym::core, sym::alloc, sym::std].contains(&crate_name) {
+            if features.internal(name) && !STDLIB_STABLE_CRATES.contains(&crate_name) {
                 sess.using_internal_features.store(true, std::sync::atomic::Ordering::Relaxed);
             }
         }
