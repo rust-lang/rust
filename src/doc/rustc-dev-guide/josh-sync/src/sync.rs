@@ -45,6 +45,11 @@ impl GitSync {
         let josh_url =
             format!("http://localhost:{JOSH_PORT}/{UPSTREAM_REPO}.git@{commit}{JOSH_FILTER}.git");
 
+        let previous_base_commit = sh.read_file("rust-version")?.trim().to_string();
+        if previous_base_commit == commit {
+            return Err(anyhow::anyhow!("No changes since last pull"));
+        }
+
         // Update rust-version file. As a separate commit, since making it part of
         // the merge has confused the heck out of josh in the past.
         // We pass `--no-verify` to avoid running git hooks.
