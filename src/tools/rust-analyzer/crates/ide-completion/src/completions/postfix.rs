@@ -401,17 +401,12 @@ fn add_custom_postfix_completions(
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::expect;
 
     use crate::{
-        tests::{check_edit, check_edit_with_config, completion_list, TEST_CONFIG},
+        tests::{check, check_edit, check_edit_with_config, TEST_CONFIG},
         CompletionConfig, Snippet,
     };
-
-    fn check(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list(ra_fixture);
-        expect.assert_eq(&actual)
-    }
 
     #[test]
     fn postfix_completion_works_for_trivial_path_expression() {

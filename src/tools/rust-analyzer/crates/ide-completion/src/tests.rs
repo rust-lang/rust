@@ -253,9 +253,32 @@ pub(crate) fn check_edit_with_config(
     assert_eq_text!(&ra_fixture_after, &actual)
 }
 
-fn check_empty(ra_fixture: &str, expect: Expect) {
+pub(crate) fn check(ra_fixture: &str, expect: Expect) {
     let actual = completion_list(ra_fixture);
     expect.assert_eq(&actual);
+}
+
+pub(crate) fn check_with_base_items(ra_fixture: &str, expect: Expect) {
+    check(&format!("{BASE_ITEMS_FIXTURE}{ra_fixture}"), expect)
+}
+
+pub(crate) fn check_no_kw(ra_fixture: &str, expect: Expect) {
+    let actual = completion_list_no_kw(ra_fixture);
+    expect.assert_eq(&actual)
+}
+
+pub(crate) fn check_with_private_editable(ra_fixture: &str, expect: Expect) {
+    let actual = completion_list_no_kw_with_private_editable(ra_fixture);
+    expect.assert_eq(&actual);
+}
+
+pub(crate) fn check_with_trigger_character(
+    ra_fixture: &str,
+    trigger_character: Option<char>,
+    expect: Expect,
+) {
+    let actual = completion_list_with_trigger_character(ra_fixture, trigger_character);
+    expect.assert_eq(&actual)
 }
 
 pub(crate) fn get_all_items(

@@ -1,16 +1,11 @@
 //! Completion tests for type position.
-use expect_test::{expect, Expect};
+use expect_test::expect;
 
-use crate::tests::{check_empty, completion_list, BASE_ITEMS_FIXTURE};
-
-fn check(ra_fixture: &str, expect: Expect) {
-    let actual = completion_list(&format!("{BASE_ITEMS_FIXTURE}\n{ra_fixture}"));
-    expect.assert_eq(&actual)
-}
+use crate::tests::{check, check_with_base_items};
 
 #[test]
 fn record_field_ty() {
-    check(
+    check_with_base_items(
         r#"
 struct Foo<'lt, T, const C: usize> {
     f: $0
@@ -37,7 +32,7 @@ struct Foo<'lt, T, const C: usize> {
 
 #[test]
 fn tuple_struct_field() {
-    check(
+    check_with_base_items(
         r#"
 struct Foo<'lt, T, const C: usize>(f$0);
 "#,
@@ -65,7 +60,7 @@ struct Foo<'lt, T, const C: usize>(f$0);
 
 #[test]
 fn fn_return_type() {
-    check(
+    check_with_base_items(
         r#"
 fn x<'lt, T, const C: usize>() -> $0
 "#,
@@ -88,7 +83,7 @@ fn x<'lt, T, const C: usize>() -> $0
 
 #[test]
 fn fn_return_type_no_local_items() {
-    check(
+    check_with_base_items(
         r#"
 fn foo() -> B$0 {
     struct Bar;
@@ -118,7 +113,7 @@ fn foo() -> B$0 {
 
 #[test]
 fn inferred_type_const() {
-    check(
+    check_with_base_items(
         r#"
 struct Foo<T>(T);
 const FOO: $0 = Foo(2);
@@ -143,7 +138,7 @@ const FOO: $0 = Foo(2);
 
 #[test]
 fn inferred_type_closure_param() {
-    check(
+    check_with_base_items(
         r#"
 fn f1(f: fn(i32) -> i32) {}
 fn f2() {
@@ -169,7 +164,7 @@ fn f2() {
 
 #[test]
 fn inferred_type_closure_return() {
-    check(
+    check_with_base_items(
         r#"
 fn f1(f: fn(u64) -> u64) {}
 fn f2() {
@@ -197,7 +192,7 @@ fn f2() {
 
 #[test]
 fn inferred_type_fn_return() {
-    check(
+    check_with_base_items(
         r#"
 fn f2(x: u64) -> $0 {
     x + 5
@@ -222,7 +217,7 @@ fn f2(x: u64) -> $0 {
 
 #[test]
 fn inferred_type_fn_param() {
-    check(
+    check_with_base_items(
         r#"
 fn f1(x: i32) {}
 fn f2(x: $0) {
@@ -248,7 +243,7 @@ fn f2(x: $0) {
 
 #[test]
 fn inferred_type_not_in_the_scope() {
-    check(
+    check_with_base_items(
         r#"
 mod a {
     pub struct Foo<T>(T);
@@ -282,7 +277,7 @@ fn foo<'lt, T, const C: usize>() {
 
 #[test]
 fn inferred_type_let() {
-    check(
+    check_with_base_items(
         r#"
 struct Foo<T>(T);
 fn foo<'lt, T, const C: usize>() {
@@ -311,7 +306,7 @@ fn foo<'lt, T, const C: usize>() {
 
 #[test]
 fn body_type_pos() {
-    check(
+    check_with_base_items(
         r#"
 fn foo<'lt, T, const C: usize>() {
     let local = ();
@@ -333,7 +328,7 @@ fn foo<'lt, T, const C: usize>() {
             kw self::
         "#]],
     );
-    check(
+    check_with_base_items(
         r#"
 fn foo<'lt, T, const C: usize>() {
     let local = ();
@@ -356,7 +351,7 @@ fn foo<'lt, T, const C: usize>() {
 #[test]
 fn completes_types_and_const_in_arg_list() {
     cov_mark::check!(complete_assoc_type_in_generics_list);
-    check(
+    check_with_base_items(
         r#"
 trait Trait1 {
     type Super;
@@ -372,7 +367,7 @@ fn foo<'lt, T: Trait2<$0>, const CONST_PARAM: usize>(_: T) {}
             ta Super =  (as Trait1) type Super
         "#]],
     );
-    check(
+    check_with_base_items(
         r#"
 trait Trait1 {
     type Super;
@@ -400,7 +395,7 @@ fn foo<'lt, T: Trait2<$0>, const CONST_PARAM: usize>(_: T) {}
             kw self::
         "#]],
     );
-    check(
+    check_with_base_items(
         r#"
 trait Trait2<T> {
     type Foo;
@@ -424,7 +419,7 @@ fn foo<'lt, T: Trait2<self::$0>, const CONST_PARAM: usize>(_: T) {}
 
 #[test]
 fn no_assoc_completion_outside_type_bounds() {
-    check(
+    check_with_base_items(
         r#"
 struct S;
 trait Tr<T> {
@@ -454,7 +449,7 @@ impl Tr<$0
 
 #[test]
 fn enum_qualified() {
-    check(
+    check_with_base_items(
         r#"
 impl Enum {
     type AssocType = ();
@@ -471,7 +466,7 @@ fn func(_: Enum::$0) {}
 
 #[test]
 fn completes_type_parameter_or_associated_type() {
-    check(
+    check_with_base_items(
         r#"
 trait MyTrait<T, U> {
     type Item1;
@@ -496,7 +491,7 @@ fn f(t: impl MyTrait<u$0
         "#]],
     );
 
-    check(
+    check_with_base_items(
         r#"
 trait MyTrait<T, U> {
     type Item1;
@@ -521,7 +516,7 @@ fn f(t: impl MyTrait<u8, u$0
         "#]],
     );
 
-    check(
+    check_with_base_items(
         r#"
 trait MyTrait<T, U> {
     type Item1;
@@ -539,7 +534,7 @@ fn f(t: impl MyTrait<u8, u8, I$0
 
 #[test]
 fn completes_type_parameter_or_associated_type_with_default_value() {
-    check(
+    check_with_base_items(
         r#"
 trait MyTrait<T, U = u8> {
     type Item1;
@@ -564,7 +559,7 @@ fn f(t: impl MyTrait<u$0
         "#]],
     );
 
-    check(
+    check_with_base_items(
         r#"
 trait MyTrait<T, U = u8> {
     type Item1;
@@ -591,7 +586,7 @@ fn f(t: impl MyTrait<u8, u$0
         "#]],
     );
 
-    check(
+    check_with_base_items(
         r#"
 trait MyTrait<T, U = u8> {
     type Item1;
@@ -609,7 +604,7 @@ fn f(t: impl MyTrait<u8, u8, I$0
 
 #[test]
 fn completes_types_after_associated_type() {
-    check(
+    check_with_base_items(
         r#"
 trait MyTrait {
     type Item1;
@@ -634,7 +629,7 @@ fn f(t: impl MyTrait<Item1 = $0
         "#]],
     );
 
-    check(
+    check_with_base_items(
         r#"
 trait MyTrait {
     type Item1;
@@ -659,7 +654,7 @@ fn f(t: impl MyTrait<Item1 = u8, Item2 = $0
         "#]],
     );
 
-    check(
+    check_with_base_items(
         r#"
 trait MyTrait {
     const C: usize;
@@ -678,7 +673,7 @@ fn f(t: impl MyTrait<C = $0
 
 #[test]
 fn type_pos_no_unstable_type_on_stable() {
-    check_empty(
+    check(
         r#"
 //- /main.rs crate:main deps:std
 use std::*;
@@ -702,7 +697,7 @@ pub struct S;
 
 #[test]
 fn type_pos_unstable_type_on_nightly() {
-    check_empty(
+    check(
         r#"
 //- toolchain:nightly
 //- /main.rs crate:main deps:std
@@ -729,7 +724,7 @@ pub struct S;
 #[test]
 fn completes_const_and_type_generics_separately() {
     // Function generic params
-    check(
+    check_with_base_items(
         r#"
     struct Foo;
     const X: usize = 0;
@@ -756,7 +751,7 @@ fn completes_const_and_type_generics_separately() {
     // FIXME: This should probably also suggest completions for types, at least those that have
     // associated constants usable in this position. For example, a user could be typing
     // `foo::<_, { usize::MAX }>()`, but we currently don't suggest `usize` in constant position.
-    check(
+    check_with_base_items(
         r#"
     struct Foo;
     const X: usize = 0;
@@ -775,7 +770,7 @@ fn completes_const_and_type_generics_separately() {
     );
 
     // Method generic params
-    check(
+    check_with_base_items(
         r#"
     const X: usize = 0;
     struct Foo;
@@ -799,7 +794,7 @@ fn completes_const_and_type_generics_separately() {
             kw self::
         "#]],
     );
-    check(
+    check_with_base_items(
         r#"
     const X: usize = 0;
     struct Foo;
@@ -818,7 +813,7 @@ fn completes_const_and_type_generics_separately() {
     );
 
     // Associated type generic params
-    check(
+    check_with_base_items(
         r#"
     const X: usize = 0;
     struct Foo;
@@ -843,7 +838,7 @@ fn completes_const_and_type_generics_separately() {
             kw self::
         "#]],
     );
-    check(
+    check_with_base_items(
         r#"
     const X: usize = 0;
     struct Foo;
@@ -862,7 +857,7 @@ fn completes_const_and_type_generics_separately() {
     );
 
     // Type generic params
-    check(
+    check_with_base_items(
         r#"
     const X: usize = 0;
     struct Foo<T, const N: usize>(T);
@@ -880,7 +875,7 @@ fn completes_const_and_type_generics_separately() {
     );
 
     // Type alias generic params
-    check(
+    check_with_base_items(
         r#"
     const X: usize = 0;
     struct Foo<T, const N: usize>(T);
@@ -899,7 +894,7 @@ fn completes_const_and_type_generics_separately() {
     );
 
     // Enum variant params
-    check(
+    check_with_base_items(
         r#"
     const X: usize = 0;
     enum Foo<T, const N: usize> { A(T), B }
@@ -917,7 +912,7 @@ fn completes_const_and_type_generics_separately() {
     );
 
     // Trait params
-    check(
+    check_with_base_items(
         r#"
     const X: usize = 0;
     trait Foo<T, const N: usize> {}
@@ -933,7 +928,7 @@ fn completes_const_and_type_generics_separately() {
     );
 
     // Trait alias params
-    check(
+    check_with_base_items(
         r#"
     #![feature(trait_alias)]
     const X: usize = 0;
@@ -951,7 +946,7 @@ fn completes_const_and_type_generics_separately() {
     );
 
     // Omitted lifetime params
-    check(
+    check_with_base_items(
         r#"
 struct S<'a, 'b, const C: usize, T>(core::marker::PhantomData<&'a &'b T>);
 fn foo<'a>() { S::<F$0, _>; }
@@ -964,7 +959,7 @@ fn foo<'a>() { S::<F$0, _>; }
         "#]],
     );
     // Explicit lifetime params
-    check(
+    check_with_base_items(
         r#"
 struct S<'a, 'b, const C: usize, T>(core::marker::PhantomData<&'a &'b T>);
 fn foo<'a>() { S::<'static, 'static, F$0, _>; }
@@ -976,7 +971,7 @@ fn foo<'a>() { S::<'static, 'static, F$0, _>; }
             kw self::
         "#]],
     );
-    check(
+    check_with_base_items(
         r#"
 struct S<'a, 'b, const C: usize, T>(core::marker::PhantomData<&'a &'b T>);
 fn foo<'a>() { S::<'static, F$0, _, _>; }
@@ -992,7 +987,7 @@ fn foo<'a>() { S::<'static, F$0, _, _>; }
 
 #[test]
 fn complete_traits_on_impl_trait_block() {
-    check(
+    check_with_base_items(
         r#"
 trait Foo {}
 
@@ -1012,7 +1007,7 @@ impl $0 for Bar { }
 
 #[test]
 fn complete_traits_with_path_on_impl_trait_block() {
-    check(
+    check_with_base_items(
         r#"
 mod outer {
     pub trait Foo {}

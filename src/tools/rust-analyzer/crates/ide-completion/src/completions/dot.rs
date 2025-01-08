@@ -214,25 +214,13 @@ fn complete_methods(
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::expect;
 
-    use crate::tests::{
-        check_edit, completion_list_no_kw, completion_list_no_kw_with_private_editable,
-    };
-
-    fn check(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list_no_kw(ra_fixture);
-        expect.assert_eq(&actual);
-    }
-
-    fn check_with_private_editable(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list_no_kw_with_private_editable(ra_fixture);
-        expect.assert_eq(&actual);
-    }
+    use crate::tests::{check_edit, check_no_kw, check_with_private_editable};
 
     #[test]
     fn test_struct_field_and_method_completion() {
-        check(
+        check_no_kw(
             r#"
 struct S { foo: u32 }
 impl S {
@@ -249,7 +237,7 @@ fn foo(s: S) { s.$0 }
 
     #[test]
     fn no_unstable_method_on_stable() {
-        check(
+        check_no_kw(
             r#"
 //- /main.rs crate:main deps:std
 fn foo(s: std::S) { s.$0 }
@@ -266,7 +254,7 @@ impl S {
 
     #[test]
     fn unstable_method_on_nightly() {
-        check(
+        check_no_kw(
             r#"
 //- toolchain:nightly
 //- /main.rs crate:main deps:std
@@ -286,7 +274,7 @@ impl S {
 
     #[test]
     fn test_struct_field_completion_self() {
-        check(
+        check_no_kw(
             r#"
 struct S { the_field: (u32,) }
 impl S {
@@ -302,7 +290,7 @@ impl S {
 
     #[test]
     fn test_struct_field_completion_autoderef() {
-        check(
+        check_no_kw(
             r#"
 struct A { the_field: (u32, i32) }
 impl A {
@@ -318,7 +306,7 @@ impl A {
 
     #[test]
     fn test_no_struct_field_completion_for_method_call() {
-        check(
+        check_no_kw(
             r#"
 struct A { the_field: u32 }
 fn foo(a: A) { a.$0() }
@@ -329,7 +317,7 @@ fn foo(a: A) { a.$0() }
 
     #[test]
     fn test_visibility_filtering() {
-        check(
+        check_no_kw(
             r#"
 //- /lib.rs crate:lib new_source_root:local
 pub mod m {
@@ -348,7 +336,7 @@ fn foo(a: lib::m::A) { a.$0 }
             "#]],
         );
 
-        check(
+        check_no_kw(
             r#"
 //- /lib.rs crate:lib new_source_root:library
 pub mod m {
@@ -367,7 +355,7 @@ fn foo(a: lib::m::A) { a.$0 }
             "#]],
         );
 
-        check(
+        check_no_kw(
             r#"
 //- /lib.rs crate:lib new_source_root:library
 pub mod m {
@@ -384,7 +372,7 @@ fn foo(a: lib::m::A) { a.$0 }
             "#]],
         );
 
-        check(
+        check_no_kw(
             r#"
 //- /lib.rs crate:lib new_source_root:local
 pub struct A {}
@@ -402,7 +390,7 @@ fn foo(a: lib::A) { a.$0 }
                 me pub_method() fn(&self)
             "#]],
         );
-        check(
+        check_no_kw(
             r#"
 //- /lib.rs crate:lib new_source_root:library
 pub struct A {}
@@ -524,7 +512,7 @@ fn foo(a: lib::A) { a.$0 }
 
     #[test]
     fn test_local_impls() {
-        check(
+        check_no_kw(
             r#"
 pub struct A {}
 mod m {
@@ -553,7 +541,7 @@ fn foo(a: A) {
 
     #[test]
     fn test_doc_hidden_filtering() {
-        check(
+        check_no_kw(
             r#"
 //- /lib.rs crate:lib deps:dep
 fn foo(a: dep::A) { a.$0 }
@@ -580,7 +568,7 @@ impl A {
 
     #[test]
     fn test_union_field_completion() {
-        check(
+        check_no_kw(
             r#"
 union U { field: u8, other: u16 }
 fn foo(u: U) { u.$0 }
@@ -594,7 +582,7 @@ fn foo(u: U) { u.$0 }
 
     #[test]
     fn test_method_completion_only_fitting_impls() {
-        check(
+        check_no_kw(
             r#"
 struct A<T> {}
 impl A<u32> {
@@ -613,7 +601,7 @@ fn foo(a: A<u32>) { a.$0 }
 
     #[test]
     fn test_trait_method_completion() {
-        check(
+        check_no_kw(
             r#"
 struct A {}
 trait Trait { fn the_method(&self); }
@@ -643,7 +631,7 @@ fn foo(a: A) { a.the_method();$0 }
 
     #[test]
     fn test_trait_method_completion_deduplicated() {
-        check(
+        check_no_kw(
             r"
 struct A {}
 trait Trait { fn the_method(&self); }
@@ -658,7 +646,7 @@ fn foo(a: &A) { a.$0 }
 
     #[test]
     fn completes_trait_method_from_other_module() {
-        check(
+        check_no_kw(
             r"
 struct A {}
 mod m {
@@ -676,7 +664,7 @@ fn foo(a: A) { a.$0 }
 
     #[test]
     fn test_no_non_self_method() {
-        check(
+        check_no_kw(
             r#"
 struct A {}
 impl A {
@@ -692,7 +680,7 @@ fn foo(a: A) {
 
     #[test]
     fn test_tuple_field_completion() {
-        check(
+        check_no_kw(
             r#"
 fn foo() {
    let b = (0, 3.14);
@@ -708,7 +696,7 @@ fn foo() {
 
     #[test]
     fn test_tuple_struct_field_completion() {
-        check(
+        check_no_kw(
             r#"
 struct S(i32, f64);
 fn foo() {
@@ -725,7 +713,7 @@ fn foo() {
 
     #[test]
     fn test_tuple_field_inference() {
-        check(
+        check_no_kw(
             r#"
 pub struct S;
 impl S { pub fn blah(&self) {} }
@@ -747,7 +735,7 @@ impl T {
 
     #[test]
     fn test_field_no_same_name() {
-        check(
+        check_no_kw(
             r#"
 //- minicore: deref
 struct A { field: u8 }
@@ -770,7 +758,7 @@ fn test(a: A) {
 
     #[test]
     fn test_tuple_field_no_same_index() {
-        check(
+        check_no_kw(
             r#"
 //- minicore: deref
 struct A(u8);
@@ -793,7 +781,7 @@ fn test(a: A) {
 
     #[test]
     fn test_tuple_struct_deref_to_tuple_no_same_index() {
-        check(
+        check_no_kw(
             r#"
 //- minicore: deref
 struct A(u8);
@@ -815,7 +803,7 @@ fn test(a: A) {
 
     #[test]
     fn test_completion_works_in_consts() {
-        check(
+        check_no_kw(
             r#"
 struct A { the_field: u32 }
 const X: u32 = {
@@ -830,7 +818,7 @@ const X: u32 = {
 
     #[test]
     fn works_in_simple_macro_1() {
-        check(
+        check_no_kw(
             r#"
 macro_rules! m { ($e:expr) => { $e } }
 struct A { the_field: u32 }
@@ -847,7 +835,7 @@ fn foo(a: A) {
     #[test]
     fn works_in_simple_macro_2() {
         // this doesn't work yet because the macro doesn't expand without the token -- maybe it can be fixed with better recovery
-        check(
+        check_no_kw(
             r#"
 macro_rules! m { ($e:expr) => { $e } }
 struct A { the_field: u32 }
@@ -863,7 +851,7 @@ fn foo(a: A) {
 
     #[test]
     fn works_in_simple_macro_recursive_1() {
-        check(
+        check_no_kw(
             r#"
 macro_rules! m { ($e:expr) => { $e } }
 struct A { the_field: u32 }
@@ -879,7 +867,7 @@ fn foo(a: A) {
 
     #[test]
     fn macro_expansion_resilient() {
-        check(
+        check_no_kw(
             r#"
 macro_rules! d {
     () => {};
@@ -905,7 +893,7 @@ fn foo(a: A) {
 
     #[test]
     fn test_method_completion_issue_3547() {
-        check(
+        check_no_kw(
             r#"
 struct HashSet<T> {}
 impl<T> HashSet<T> {
@@ -924,7 +912,7 @@ fn foo() {
 
     #[test]
     fn completes_method_call_when_receiver_is_a_macro_call() {
-        check(
+        check_no_kw(
             r#"
 struct S;
 impl S { fn foo(&self) {} }
@@ -939,7 +927,7 @@ fn main() { make_s!().f$0; }
 
     #[test]
     fn completes_after_macro_call_in_submodule() {
-        check(
+        check_no_kw(
             r#"
 macro_rules! empty {
     () => {};
@@ -967,7 +955,7 @@ mod foo {
 
     #[test]
     fn issue_8931() {
-        check(
+        check_no_kw(
             r#"
 //- minicore: fn
 struct S;
@@ -994,7 +982,7 @@ impl S {
 
     #[test]
     fn completes_bare_fields_and_methods_in_methods() {
-        check(
+        check_no_kw(
             r#"
 struct Foo { field: i32 }
 
@@ -1008,7 +996,7 @@ impl Foo { fn foo(&self) { $0 } }"#,
                 bt u32              u32
             "#]],
         );
-        check(
+        check_no_kw(
             r#"
 struct Foo(i32);
 
@@ -1026,7 +1014,7 @@ impl Foo { fn foo(&mut self) { $0 } }"#,
 
     #[test]
     fn macro_completion_after_dot() {
-        check(
+        check_no_kw(
             r#"
 macro_rules! m {
     ($e:expr) => { $e };
@@ -1051,7 +1039,7 @@ fn f() {
 
     #[test]
     fn completes_method_call_when_receiver_type_has_errors_issue_10297() {
-        check(
+        check_no_kw(
             r#"
 //- minicore: iterator, sized
 struct Vec<T>;
@@ -1102,7 +1090,7 @@ fn main() {
 
     #[test]
     fn issue_12484() {
-        check(
+        check_no_kw(
             r#"
 //- minicore: sized
 trait SizeUser {
@@ -1124,7 +1112,7 @@ fn test(thing: impl Encrypt) {
 
     #[test]
     fn only_consider_same_type_once() {
-        check(
+        check_no_kw(
             r#"
 //- minicore: deref
 struct A(u8);
@@ -1150,7 +1138,7 @@ fn test(a: A) {
 
     #[test]
     fn no_inference_var_in_completion() {
-        check(
+        check_no_kw(
             r#"
 struct S<T>(T);
 fn test(s: S<Unknown>) {
@@ -1165,7 +1153,7 @@ fn test(s: S<Unknown>) {
 
     #[test]
     fn assoc_impl_1() {
-        check(
+        check_no_kw(
             r#"
 //- minicore: deref
 fn main() {
@@ -1206,7 +1194,7 @@ impl<F: core::ops::Deref<Target = impl Bar>> Foo<F> {
 
     #[test]
     fn assoc_impl_2() {
-        check(
+        check_no_kw(
             r#"
 //- minicore: deref
 fn main() {
@@ -1242,7 +1230,7 @@ impl<B: Bar, F: core::ops::Deref<Target = B>> Foo<F> {
 
     #[test]
     fn test_struct_function_field_completion() {
-        check(
+        check_no_kw(
             r#"
 struct S { va_field: u32, fn_field: fn() }
 fn foo() { S { va_field: 0, fn_field: || {} }.fi$0() }
@@ -1267,7 +1255,7 @@ fn foo() { (S { va_field: 0, fn_field: || {} }.fn_field)() }
 
     #[test]
     fn test_tuple_function_field_completion() {
-        check(
+        check_no_kw(
             r#"
 struct B(u32, fn())
 fn foo() {
@@ -1301,7 +1289,7 @@ fn foo() {
 
     #[test]
     fn test_fn_field_dot_access_method_has_parens_false() {
-        check(
+        check_no_kw(
             r#"
 struct Foo { baz: fn() }
 impl Foo {
