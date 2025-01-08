@@ -19,7 +19,10 @@ fn f(a: Foo) -> bool {
     // CHECK: bb0: {
     // CHECK-NOT: _2 = copy [[a]];
     // CHECK-NOT: _3 = move (_2.0: u8);
-    // CHECK: _3 = copy ([[a]].0: u8);
+    // CHECK: [[c:_.*]] = copy ([[a]].0: u8);
+    // CHECK: _0 = opaque::<Foo>(copy [[a]])
+    // CHECK: bb1: {
+    // CHECK: _0 = opaque::<u8>(move [[c]])
     mir! {
         {
             let b = a;
