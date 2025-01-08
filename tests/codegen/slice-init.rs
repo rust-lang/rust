@@ -2,6 +2,8 @@
 
 #![crate_type = "lib"]
 
+use std::mem::MaybeUninit;
+
 // CHECK-LABEL: @zero_sized_elem
 #[no_mangle]
 pub fn zero_sized_elem() {
@@ -76,16 +78,14 @@ pub fn u16_init_one_bytes() -> [u16; N] {
     [const { u16::from_be_bytes([1, 1]) }; N]
 }
 
-// FIXME: undef bytes can just be initialized with the same value as the
-// defined bytes, if the defines bytes are all the same.
 // CHECK-LABEL: @option_none_init
 #[no_mangle]
 pub fn option_none_init() -> [Option<u8>; N] {
     // CHECK-NOT: select
-    // CHECK: br label %repeat_loop_header{{.*}}
+    // CHECK-NOT: br
     // CHECK-NOT: switch
-    // CHECK: icmp
-    // CHECK-NOT: call void @llvm.memset.p0
+    // CHECK-NOT: icmp
+    // CHECK: call void @llvm.memset.p0
     [const { None }; N]
 }
 
