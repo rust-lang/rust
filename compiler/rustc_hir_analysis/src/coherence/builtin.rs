@@ -260,13 +260,22 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                 .iter()
                 .filter(|field| {
                     // Ignore PhantomData fields
-                    if tcx.type_of(field.did).instantiate_identity().is_phantom_data() {
+                    let unnormalized_ty = tcx.type_of(field.did).instantiate_identity();
+                    if tcx
+                        .try_normalize_erasing_regions(
+                            ty::TypingEnv::non_body_analysis(tcx, def_a.did()),
+                            unnormalized_ty,
+                        )
+                        .unwrap_or(unnormalized_ty)
+                        .is_phantom_data()
+                    {
                         return false;
                     }
 
                     let ty_a = field.ty(tcx, args_a);
                     let ty_b = field.ty(tcx, args_b);
 
+                    // FIXME: We could do normalization here, but is it really worth it?
                     if ty_a == ty_b {
                         // Allow 1-ZSTs that don't mention type params.
                         //
@@ -469,8 +478,16 @@ pub(crate) fn coerce_unsized_info<'tcx>(
                 .filter_map(|(i, f)| {
                     let (a, b) = (f.ty(tcx, args_a), f.ty(tcx, args_b));
 
-                    if tcx.type_of(f.did).instantiate_identity().is_phantom_data() {
-                        // Ignore PhantomData fields
+                    // Ignore PhantomData fields
+                    let unnormalized_ty = tcx.type_of(f.did).instantiate_identity();
+                    if tcx
+                        .try_normalize_erasing_regions(
+                            ty::TypingEnv::non_body_analysis(tcx, def_a.did()),
+                            unnormalized_ty,
+                        )
+                        .unwrap_or(unnormalized_ty)
+                        .is_phantom_data()
+                    {
                         return None;
                     }
 
