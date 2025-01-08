@@ -79,6 +79,7 @@ span = { path = "./crates/span", version = "0.0.0" }
 stdx = { path = "./crates/stdx", version = "0.0.0" }
 syntax = { path = "./crates/syntax", version = "0.0.0" }
 syntax-bridge = { path = "./crates/syntax-bridge", version = "0.0.0" }
+test-fixture = { path = "./crates/test-fixture", version = "0.0.0" }
 test-utils = { path = "./crates/test-utils", version = "0.0.0" }
 toolchain = { path = "./crates/toolchain", version = "0.0.0" }
 tt = { path = "./crates/tt", version = "0.0.0" }
@@ -93,9 +94,8 @@ ra-ap-rustc_abi = { version = "0.87", default-features = false }
 ra-ap-rustc_pattern_analysis = { version = "0.87", default-features = false }
 
 # local crates that aren't published to crates.io. These should not have versions.
-test-fixture = { path = "./crates/test-fixture" }
 
-# In-tree crates that are published separately and follow semver. See lib/README.md
+# in-tree crates that are published separately and follow semver. See lib/README.md
 line-index = { version = "0.1.2" }
 la-arena = { version = "0.3.1" }
 lsp-server = { version = "0.7.6" }
