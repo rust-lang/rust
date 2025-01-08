@@ -1009,7 +1009,7 @@ pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_stable(feature = "const_swap", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_swap", since = "1.85.0")]
 #[rustc_diagnostic_item = "ptr_swap"]
 pub const unsafe fn swap<T>(x: *mut T, y: *mut T) {
     // Give ourselves some scratch space to work with.
@@ -2150,7 +2150,7 @@ pub fn addr_eq<T: ?Sized, U: ?Sized>(p: *const T, q: *const U) -> bool {
 /// ```
 ///
 /// [subtype]: https://doc.rust-lang.org/reference/subtyping.html
-#[stable(feature = "ptr_fn_addr_eq", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "ptr_fn_addr_eq", since = "1.85.0")]
 #[inline(always)]
 #[must_use = "function pointer comparison produces a value"]
 pub fn fn_addr_eq<T: FnPtr, U: FnPtr>(f: T, g: U) -> bool {
