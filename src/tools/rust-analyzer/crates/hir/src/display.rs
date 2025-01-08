@@ -1,7 +1,10 @@
 //! HirDisplay implementations for various hir types.
 use either::Either;
 use hir_def::{
-    data::adt::{StructKind, VariantData},
+    data::{
+        adt::{StructKind, VariantData},
+        TraitFlags,
+    },
     generics::{
         GenericParams, TypeOrConstParamData, TypeParamProvenance, WherePredicate,
         WherePredicateTypeTarget,
@@ -22,7 +25,7 @@ use itertools::Itertools;
 use crate::{
     Adt, AsAssocItem, AssocItem, AssocItemContainer, Const, ConstParam, Enum, ExternCrateDecl,
     Field, Function, GenericParam, HasCrate, HasVisibility, Impl, LifetimeParam, Macro, Module,
-    SelfParam, Static, Struct, Trait, TraitAlias, TupleField, TyBuilder, Type, TypeAlias,
+    SelfParam, Static, Struct, Trait, TraitAlias, TraitRef, TupleField, TyBuilder, Type, TypeAlias,
     TypeOrConstParam, TypeParam, Union, Variant,
 };
 
@@ -743,6 +746,12 @@ impl HirDisplay for Static {
     }
 }
 
+impl HirDisplay for TraitRef {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
+        self.trait_ref.hir_fmt(f)
+    }
+}
+
 impl HirDisplay for Trait {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         write_trait_header(self, f)?;
@@ -785,10 +794,10 @@ impl HirDisplay for Trait {
 fn write_trait_header(trait_: &Trait, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
     write_visibility(trait_.module(f.db).id, trait_.visibility(f.db), f)?;
     let data = f.db.trait_data(trait_.id);
-    if data.is_unsafe {
+    if data.flags.contains(TraitFlags::IS_UNSAFE) {
         f.write_str("unsafe ")?;
     }
-    if data.is_auto {
+    if data.flags.contains(TraitFlags::IS_AUTO) {
         f.write_str("auto ")?;
     }
     write!(f, "trait {}", data.name.display(f.db.upcast(), f.edition()))?;

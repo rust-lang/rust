@@ -34,6 +34,8 @@ fn describe_reason(reason: GenericArgsProhibitedReason) -> String {
             return "you can specify generic arguments on either the enum or the variant, but not both"
                 .to_owned();
         }
+        GenericArgsProhibitedReason::Const => "constants",
+        GenericArgsProhibitedReason::Static => "statics",
     };
     format!("generic arguments are not allowed on {kind}")
 }
@@ -435,6 +437,169 @@ type T = bool<i32>;
 impl Trait for () {
     type Assoc = i32<bool>;
                  // ^^^^^^ 💡 error: generic arguments are not allowed on builtin types
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn in_record_expr() {
+        check_diagnostics(
+            r#"
+mod foo {
+    pub struct Bar { pub field: i32 }
+}
+fn baz() {
+    let _ = foo::<()>::Bar { field: 0 };
+            // ^^^^^^ 💡 error: generic arguments are not allowed on modules
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn in_record_pat() {
+        check_diagnostics(
+            r#"
+mod foo {
+    pub struct Bar { field: i32 }
+}
+fn baz(v: foo::Bar) {
+    let foo::<()>::Bar { .. } = v;
+        // ^^^^^^ 💡 error: generic arguments are not allowed on modules
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn in_tuple_struct_pat() {
+        check_diagnostics(
+            r#"
+mod foo {
+    pub struct Bar(i32);
+}
+fn baz(v: foo::Bar) {
+    let foo::<()>::Bar(..) = v;
+        // ^^^^^^ 💡 error: generic arguments are not allowed on modules
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn in_path_pat() {
+        check_diagnostics(
+            r#"
+mod foo {
+    pub struct Bar;
+}
+fn baz(v: foo::Bar) {
+    let foo::<()>::Bar = v;
+        // ^^^^^^ 💡 error: generic arguments are not allowed on modules
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn in_path_expr() {
+        check_diagnostics(
+            r#"
+mod foo {
+    pub struct Bar;
+}
+fn baz() {
+    let _ = foo::<()>::Bar;
+            // ^^^^^^ 💡 error: generic arguments are not allowed on modules
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn const_and_static() {
+        check_diagnostics(
+            r#"
+const CONST: i32 = 0;
+static STATIC: i32 = 0;
+fn baz() {
+    let _ = CONST::<()>;
+              // ^^^^^^ 💡 error: generic arguments are not allowed on constants
+    let _ = STATIC::<()>;
+               // ^^^^^^ 💡 error: generic arguments are not allowed on statics
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn enum_variant() {
+        check_diagnostics(
+            r#"
+enum Enum<A> {
+    Variant(A),
+}
+mod enum_ {
+    pub(super) use super::Enum::Variant as V;
+}
+fn baz() {
+    let v = Enum::<()>::Variant::<()>(());
+                            // ^^^^^^ 💡 error: you can specify generic arguments on either the enum or the variant, but not both
+    let Enum::<()>::Variant::<()>(..) = v;
+                        // ^^^^^^ 💡 error: you can specify generic arguments on either the enum or the variant, but not both
+    let _ = Enum::<()>::Variant(());
+    let _ = Enum::Variant::<()>(());
+}
+fn foo() {
+    use Enum::Variant;
+    let _ = Variant::<()>(());
+    let _ = enum_::V::<()>(());
+    let _ = enum_::<()>::V::<()>(());
+              // ^^^^^^ 💡 error: generic arguments are not allowed on modules
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn dyn_trait() {
+        check_diagnostics(
+            r#"
+mod foo {
+    pub trait Trait {}
+}
+
+fn bar() {
+    let _: &dyn foo::<()>::Trait;
+                // ^^^^^^ 💡 error: generic arguments are not allowed on modules
+    let _: &foo::<()>::Trait;
+            // ^^^^^^ 💡 error: generic arguments are not allowed on modules
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn regression_18768() {
+        check_diagnostics(
+            r#"
+//- minicore: result
+//- /foo.rs crate:foo edition:2018
+pub mod lib {
+    mod core {
+        pub use core::*;
+    }
+    pub use self::core::result;
+}
+
+pub mod __private {
+    pub use crate::lib::result::Result::{self, Err, Ok};
+}
+
+//- /bar.rs crate:bar deps:foo edition:2018
+fn bar() {
+    _ = foo::__private::Result::<(), ()>::Ok;
 }
         "#,
         );

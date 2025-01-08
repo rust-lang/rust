@@ -856,4 +856,18 @@ fn main() {
 }"#,
         );
     }
+
+    #[test]
+    fn regression_18840() {
+        check(
+            r#"
+//- proc_macros: issue_18840
+#[proc_macros::issue_18840]
+fn foo() {
+    let
+    loop {}
+}
+"#,
+        );
+    }
 }

@@ -3,10 +3,14 @@ use expect_test::{expect, Expect};
 use crate::{
     context::{CompletionAnalysis, NameContext, NameKind, NameRefKind},
     tests::{check_edit, check_edit_with_config, TEST_CONFIG},
+    CompletionConfig,
 };
 
 fn check(ra_fixture: &str, expect: Expect) {
-    let config = TEST_CONFIG;
+    check_with_config(TEST_CONFIG, ra_fixture, expect);
+}
+
+fn check_with_config(config: CompletionConfig<'_>, ra_fixture: &str, expect: Expect) {
     let (db, position) = crate::tests::position(ra_fixture);
     let (ctx, analysis) = crate::context::CompletionContext::new(&db, position, &config).unwrap();
 
@@ -1760,5 +1764,33 @@ fn function() {
 }
 "#,
         expect![""],
+    );
+}
+
+#[test]
+fn excluded_trait_item_included_when_exact_match() {
+    check_with_config(
+        CompletionConfig {
+            exclude_traits: &["test::module2::ExcludedTrait".to_owned()],
+            ..TEST_CONFIG
+        },
+        r#"
+mod module2 {
+    pub trait ExcludedTrait {
+        fn foo(&self) {}
+        fn bar(&self) {}
+        fn baz(&self) {}
+    }
+
+    impl<T> ExcludedTrait for T {}
+}
+
+fn foo() {
+    true.foo$0
+}
+        "#,
+        expect![[r#"
+            me foo() (use module2::ExcludedTrait) fn(&self)
+        "#]],
     );
 }

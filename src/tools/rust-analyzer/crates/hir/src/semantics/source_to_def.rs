@@ -408,7 +408,7 @@ impl SourceToDefCtx<'_, '_> {
     }
 
     pub(super) fn has_derives(&mut self, adt: InFile<&ast::Adt>) -> bool {
-        self.dyn_map(adt).as_ref().map_or(false, |map| !map[keys::DERIVE_MACRO_CALL].is_empty())
+        self.dyn_map(adt).as_ref().is_some_and(|map| !map[keys::DERIVE_MACRO_CALL].is_empty())
     }
 
     fn to_def<Ast: AstNode + 'static, ID: Copy + 'static>(

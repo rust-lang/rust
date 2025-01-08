@@ -282,7 +282,7 @@ impl<'a> InferenceTable<'a> {
         let is_diverging = self
             .type_variable_table
             .get(iv.index() as usize)
-            .map_or(false, |data| data.contains(TypeVariableFlags::DIVERGING));
+            .is_some_and(|data| data.contains(TypeVariableFlags::DIVERGING));
         if is_diverging {
             return TyKind::Never.intern(Interner);
         }

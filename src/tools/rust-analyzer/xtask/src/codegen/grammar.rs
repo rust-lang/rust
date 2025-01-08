@@ -163,6 +163,13 @@ fn generate_nodes(kinds: KindsSrc, grammar: &AstSrc) -> String {
                 quote! {
                     impl AstNode for #name {
                         #[inline]
+                        fn kind() -> SyntaxKind
+                        where
+                            Self: Sized
+                        {
+                            #kind
+                        }
+                        #[inline]
                         fn can_cast(kind: SyntaxKind) -> bool {
                             kind == #kind
                         }
@@ -397,6 +404,7 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
     });
     let punctuation =
         grammar.punct.iter().map(|(_token, name)| format_ident!("{}", name)).collect::<Vec<_>>();
+    let punctuation_texts = grammar.punct.iter().map(|&(text, _name)| text);
 
     let fmt_kw_as_variant = |&name| match name {
         "Self" => format_ident!("SELF_TYPE_KW"),
@@ -422,6 +430,7 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
             quote! { #kw if #ed <= edition }
         })
         .collect::<Vec<_>>();
+    let edition_dependent_keywords = grammar.edition_dependent_keywords.iter().map(|&(it, _)| it);
     let edition_dependent_keywords_variants = grammar
         .edition_dependent_keywords
         .iter()
@@ -495,6 +504,20 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
         use self::SyntaxKind::*;
 
         impl SyntaxKind {
+            #[allow(unreachable_patterns)]
+            pub const fn text(self) -> &'static str {
+                match self {
+                    TOMBSTONE | EOF | __LAST
+                    #( | #literals )*
+                    #( | #nodes )*
+                    #( | #tokens )* => panic!("no text for these `SyntaxKind`s"),
+                    #( #punctuation => #punctuation_texts ,)*
+                    #( #strict_keywords_variants => #strict_keywords ,)*
+                    #( #contextual_keywords_variants => #contextual_keywords ,)*
+                    #( #edition_dependent_keywords_variants => #edition_dependent_keywords ,)*
+                }
+            }
+
             /// Checks whether this syntax kind is a strict keyword for the given edition.
             /// Strict keywords are identifiers that are always considered keywords.
             pub fn is_strict_keyword(self, edition: Edition) -> bool {
@@ -861,7 +884,7 @@ fn lower_separated_list(
     if !matches!(
         repeat.as_slice(),
         [comma, nt_]
-            if trailing_sep.map_or(true, |it| comma == &**it) && match (nt, nt_) {
+            if trailing_sep.is_none_or(|it| comma == &**it) && match (nt, nt_) {
                 (Either::Left(node), Rule::Node(nt_)) => node == nt_,
                 (Either::Right(token), Rule::Token(nt_)) => token == nt_,
                 _ => false,

@@ -346,7 +346,7 @@ fn traverse(
                         macro_highlighter = MacroHighlighter::default();
                     }
                     Some(item)
-                        if attr_or_derive_item.as_ref().map_or(false, |it| *it.item() == item) =>
+                        if attr_or_derive_item.as_ref().is_some_and(|it| *it.item() == item) =>
                     {
                         attr_or_derive_item = None;
                     }

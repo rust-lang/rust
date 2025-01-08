@@ -9,10 +9,10 @@ use serde_derive::{Deserialize, Serialize};
 
 use crate::ProcMacroKind;
 
-pub use crate::msg::flat::{
+pub use self::flat::{
     deserialize_span_data_index_map, serialize_span_data_index_map, FlatTree, SpanDataIndexMap,
-    TokenId,
 };
+pub use span::TokenId;
 
 // The versions of the server protocol
 pub const NO_VERSION_CHECK_VERSION: u32 = 0;
@@ -160,11 +160,14 @@ type ProtocolWrite<W: Write> = for<'o, 'msg> fn(out: &'o mut W, msg: &'msg str) 
 mod tests {
     use intern::{sym, Symbol};
     use span::{ErasedFileAstId, Span, SpanAnchor, SyntaxContextId, TextRange, TextSize};
-    use tt::{Delimiter, DelimiterKind, Ident, Leaf, Literal, Punct, Spacing, Subtree, TokenTree};
+    use tt::{
+        Delimiter, DelimiterKind, Ident, Leaf, Literal, Punct, Spacing, TopSubtree,
+        TopSubtreeBuilder,
+    };
 
     use super::*;
 
-    fn fixture_token_tree() -> Subtree<Span> {
+    fn fixture_token_tree() -> TopSubtree<Span> {
         let anchor = SpanAnchor {
             file_id: span::EditionedFileId::new(
                 span::FileId::from_raw(0xe4e4e),
@@ -173,93 +176,88 @@ mod tests {
             ast_id: ErasedFileAstId::from_raw(0),
         };
 
-        let token_trees = Box::new([
-            TokenTree::Leaf(
-                Ident {
-                    sym: Symbol::intern("struct"),
-                    span: Span {
-                        range: TextRange::at(TextSize::new(0), TextSize::of("struct")),
-                        anchor,
-                        ctx: SyntaxContextId::ROOT,
-                    },
-                    is_raw: tt::IdentIsRaw::No,
-                }
-                .into(),
-            ),
-            TokenTree::Leaf(
-                Ident {
-                    sym: Symbol::intern("Foo"),
-                    span: Span {
-                        range: TextRange::at(TextSize::new(5), TextSize::of("r#Foo")),
-                        anchor,
-                        ctx: SyntaxContextId::ROOT,
-                    },
-                    is_raw: tt::IdentIsRaw::Yes,
-                }
-                .into(),
-            ),
-            TokenTree::Leaf(Leaf::Literal(Literal {
-                symbol: Symbol::intern("Foo"),
-                span: Span {
-                    range: TextRange::at(TextSize::new(10), TextSize::of("\"Foo\"")),
-                    anchor,
-                    ctx: SyntaxContextId::ROOT,
-                },
-                kind: tt::LitKind::Str,
-                suffix: None,
-            })),
-            TokenTree::Leaf(Leaf::Punct(Punct {
-                char: '@',
-                span: Span {
-                    range: TextRange::at(TextSize::new(13), TextSize::of('@')),
-                    anchor,
-                    ctx: SyntaxContextId::ROOT,
-                },
-                spacing: Spacing::Joint,
-            })),
-            TokenTree::Subtree(Subtree {
-                delimiter: Delimiter {
-                    open: Span {
-                        range: TextRange::at(TextSize::new(14), TextSize::of('{')),
-                        anchor,
-                        ctx: SyntaxContextId::ROOT,
-                    },
-                    close: Span {
-                        range: TextRange::at(TextSize::new(19), TextSize::of('}')),
-                        anchor,
-                        ctx: SyntaxContextId::ROOT,
-                    },
-                    kind: DelimiterKind::Brace,
-                },
-                token_trees: Box::new([TokenTree::Leaf(Leaf::Literal(Literal {
-                    symbol: sym::INTEGER_0.clone(),
-                    span: Span {
-                        range: TextRange::at(TextSize::new(15), TextSize::of("0u32")),
-                        anchor,
-                        ctx: SyntaxContextId::ROOT,
-                    },
-                    kind: tt::LitKind::Integer,
-                    suffix: Some(sym::u32.clone()),
-                }))]),
-            }),
-        ]);
-
-        Subtree {
-            delimiter: Delimiter {
-                open: Span {
-                    range: TextRange::empty(TextSize::new(0)),
-                    anchor,
-                    ctx: SyntaxContextId::ROOT,
-                },
-                close: Span {
-                    range: TextRange::empty(TextSize::new(19)),
-                    anchor,
-                    ctx: SyntaxContextId::ROOT,
-                },
-                kind: DelimiterKind::Invisible,
+        let mut builder = TopSubtreeBuilder::new(Delimiter {
+            open: Span {
+                range: TextRange::empty(TextSize::new(0)),
+                anchor,
+                ctx: SyntaxContextId::ROOT,
             },
-            token_trees,
-        }
+            close: Span {
+                range: TextRange::empty(TextSize::new(19)),
+                anchor,
+                ctx: SyntaxContextId::ROOT,
+            },
+            kind: DelimiterKind::Invisible,
+        });
+
+        builder.push(
+            Ident {
+                sym: Symbol::intern("struct"),
+                span: Span {
+                    range: TextRange::at(TextSize::new(0), TextSize::of("struct")),
+                    anchor,
+                    ctx: SyntaxContextId::ROOT,
+                },
+                is_raw: tt::IdentIsRaw::No,
+            }
+            .into(),
+        );
+        builder.push(
+            Ident {
+                sym: Symbol::intern("Foo"),
+                span: Span {
+                    range: TextRange::at(TextSize::new(5), TextSize::of("r#Foo")),
+                    anchor,
+                    ctx: SyntaxContextId::ROOT,
+                },
+                is_raw: tt::IdentIsRaw::Yes,
+            }
+            .into(),
+        );
+        builder.push(Leaf::Literal(Literal {
+            symbol: Symbol::intern("Foo"),
+            span: Span {
+                range: TextRange::at(TextSize::new(10), TextSize::of("\"Foo\"")),
+                anchor,
+                ctx: SyntaxContextId::ROOT,
+            },
+            kind: tt::LitKind::Str,
+            suffix: None,
+        }));
+        builder.push(Leaf::Punct(Punct {
+            char: '@',
+            span: Span {
+                range: TextRange::at(TextSize::new(13), TextSize::of('@')),
+                anchor,
+                ctx: SyntaxContextId::ROOT,
+            },
+            spacing: Spacing::Joint,
+        }));
+        builder.open(
+            DelimiterKind::Brace,
+            Span {
+                range: TextRange::at(TextSize::new(14), TextSize::of('{')),
+                anchor,
+                ctx: SyntaxContextId::ROOT,
+            },
+        );
+        builder.push(Leaf::Literal(Literal {
+            symbol: sym::INTEGER_0.clone(),
+            span: Span {
+                range: TextRange::at(TextSize::new(15), TextSize::of("0u32")),
+                anchor,
+                ctx: SyntaxContextId::ROOT,
+            },
+            kind: tt::LitKind::Integer,
+            suffix: Some(sym::u32.clone()),
+        }));
+        builder.close(Span {
+            range: TextRange::at(TextSize::new(19), TextSize::of('}')),
+            anchor,
+            ctx: SyntaxContextId::ROOT,
+        });
+
+        builder.build()
     }
 
     #[test]
@@ -269,7 +267,7 @@ mod tests {
             let mut span_data_table = Default::default();
             let task = ExpandMacro {
                 data: ExpandMacroData {
-                    macro_body: FlatTree::new(&tt, v, &mut span_data_table),
+                    macro_body: FlatTree::new(tt.view(), v, &mut span_data_table),
                     macro_name: Default::default(),
                     attributes: None,
                     has_global_spans: ExpnGlobals {
@@ -289,9 +287,8 @@ mod tests {
             // println!("{}", json);
             let back: ExpandMacro = serde_json::from_str(&json).unwrap();
 
-            assert_eq!(
-                tt,
-                back.data.macro_body.to_subtree_resolved(v, &span_data_table),
+            assert!(
+                tt == back.data.macro_body.to_subtree_resolved(v, &span_data_table),
                 "version: {v}"
             );
         }

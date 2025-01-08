@@ -21,7 +21,7 @@ use crate::{
     hir::{BindingId, ExprId, LabelId},
     item_scope::{BuiltinShadowMode, ImportId, ImportOrExternCrate, BUILTIN_SCOPE},
     lang_item::LangItemTarget,
-    nameres::{DefMap, MacroSubNs},
+    nameres::{DefMap, MacroSubNs, ResolvePathResultPrefixInfo},
     path::{ModPath, Path, PathKind},
     per_ns::PerNs,
     type_ref::{LifetimeRef, TypesMap},
@@ -263,25 +263,37 @@ impl Resolver {
         &self,
         db: &dyn DefDatabase,
         path: &Path,
-        mut hygiene_id: HygieneId,
+        hygiene_id: HygieneId,
     ) -> Option<ResolveValueResult> {
+        self.resolve_path_in_value_ns_with_prefix_info(db, path, hygiene_id).map(|(it, _)| it)
+    }
+
+    pub fn resolve_path_in_value_ns_with_prefix_info(
+        &self,
+        db: &dyn DefDatabase,
+        path: &Path,
+        mut hygiene_id: HygieneId,
+    ) -> Option<(ResolveValueResult, ResolvePathResultPrefixInfo)> {
         let path = match path {
             Path::BarePath(mod_path) => mod_path,
             Path::Normal(it) => it.mod_path(),
             Path::LangItem(l, None) => {
-                return Some(ResolveValueResult::ValueNs(
-                    match *l {
-                        LangItemTarget::Function(it) => ValueNs::FunctionId(it),
-                        LangItemTarget::Static(it) => ValueNs::StaticId(it),
-                        LangItemTarget::Struct(it) => ValueNs::StructId(it),
-                        LangItemTarget::EnumVariant(it) => ValueNs::EnumVariantId(it),
-                        LangItemTarget::Union(_)
-                        | LangItemTarget::ImplDef(_)
-                        | LangItemTarget::TypeAlias(_)
-                        | LangItemTarget::Trait(_)
-                        | LangItemTarget::EnumId(_) => return None,
-                    },
-                    None,
+                return Some((
+                    ResolveValueResult::ValueNs(
+                        match *l {
+                            LangItemTarget::Function(it) => ValueNs::FunctionId(it),
+                            LangItemTarget::Static(it) => ValueNs::StaticId(it),
+                            LangItemTarget::Struct(it) => ValueNs::StructId(it),
+                            LangItemTarget::EnumVariant(it) => ValueNs::EnumVariantId(it),
+                            LangItemTarget::Union(_)
+                            | LangItemTarget::ImplDef(_)
+                            | LangItemTarget::TypeAlias(_)
+                            | LangItemTarget::Trait(_)
+                            | LangItemTarget::EnumId(_) => return None,
+                        },
+                        None,
+                    ),
+                    ResolvePathResultPrefixInfo::default(),
                 ))
             }
             Path::LangItem(l, Some(_)) => {
@@ -296,7 +308,10 @@ impl Resolver {
                     | LangItemTarget::ImplDef(_)
                     | LangItemTarget::Static(_) => return None,
                 };
-                return Some(ResolveValueResult::Partial(type_ns, 1, None));
+                return Some((
+                    ResolveValueResult::Partial(type_ns, 1, None),
+                    ResolvePathResultPrefixInfo::default(),
+                ));
             }
         };
         let n_segments = path.segments().len();
@@ -326,9 +341,12 @@ impl Resolver {
                             });
 
                         if let Some(e) = entry {
-                            return Some(ResolveValueResult::ValueNs(
-                                ValueNs::LocalBinding(e.binding()),
-                                None,
+                            return Some((
+                                ResolveValueResult::ValueNs(
+                                    ValueNs::LocalBinding(e.binding()),
+                                    None,
+                                ),
+                                ResolvePathResultPrefixInfo::default(),
                             ));
                         }
                     }
@@ -350,14 +368,17 @@ impl Resolver {
                     Scope::GenericParams { params, def } => {
                         if let Some(id) = params.find_const_by_name(first_name, *def) {
                             let val = ValueNs::GenericParam(id);
-                            return Some(ResolveValueResult::ValueNs(val, None));
+                            return Some((
+                                ResolveValueResult::ValueNs(val, None),
+                                ResolvePathResultPrefixInfo::default(),
+                            ));
                         }
                     }
                     &Scope::ImplDefScope(impl_) => {
                         if *first_name == sym::Self_.clone() {
-                            return Some(ResolveValueResult::ValueNs(
-                                ValueNs::ImplSelf(impl_),
-                                None,
+                            return Some((
+                                ResolveValueResult::ValueNs(ValueNs::ImplSelf(impl_), None),
+                                ResolvePathResultPrefixInfo::default(),
                             ));
                         }
                     }
@@ -377,22 +398,27 @@ impl Resolver {
                     Scope::GenericParams { params, def } => {
                         if let Some(id) = params.find_type_by_name(first_name, *def) {
                             let ty = TypeNs::GenericParam(id);
-                            return Some(ResolveValueResult::Partial(ty, 1, None));
+                            return Some((
+                                ResolveValueResult::Partial(ty, 1, None),
+                                ResolvePathResultPrefixInfo::default(),
+                            ));
                         }
                     }
                     &Scope::ImplDefScope(impl_) => {
                         if *first_name == sym::Self_.clone() {
-                            return Some(ResolveValueResult::Partial(
-                                TypeNs::SelfType(impl_),
-                                1,
-                                None,
+                            return Some((
+                                ResolveValueResult::Partial(TypeNs::SelfType(impl_), 1, None),
+                                ResolvePathResultPrefixInfo::default(),
                             ));
                         }
                     }
                     Scope::AdtScope(adt) => {
                         if *first_name == sym::Self_.clone() {
                             let ty = TypeNs::AdtSelfType(*adt);
-                            return Some(ResolveValueResult::Partial(ty, 1, None));
+                            return Some((
+                                ResolveValueResult::Partial(ty, 1, None),
+                                ResolvePathResultPrefixInfo::default(),
+                            ));
                         }
                     }
                     Scope::BlockScope(m) => {
@@ -413,7 +439,10 @@ impl Resolver {
         // `use core::u16;`.
         if path.kind == PathKind::Plain && n_segments > 1 {
             if let Some(builtin) = BuiltinType::by_name(first_name) {
-                return Some(ResolveValueResult::Partial(TypeNs::BuiltinType(builtin), 1, None));
+                return Some((
+                    ResolveValueResult::Partial(TypeNs::BuiltinType(builtin), 1, None),
+                    ResolvePathResultPrefixInfo::default(),
+                ));
             }
         }
 
@@ -924,15 +953,15 @@ impl ModuleItemMap {
         &self,
         db: &dyn DefDatabase,
         path: &ModPath,
-    ) -> Option<ResolveValueResult> {
-        let (module_def, idx) =
+    ) -> Option<(ResolveValueResult, ResolvePathResultPrefixInfo)> {
+        let (module_def, unresolved_idx, prefix_info) =
             self.def_map.resolve_path_locally(db, self.module_id, path, BuiltinShadowMode::Other);
-        match idx {
+        match unresolved_idx {
             None => {
                 let (value, import) = to_value_ns(module_def)?;
-                Some(ResolveValueResult::ValueNs(value, import))
+                Some((ResolveValueResult::ValueNs(value, import), prefix_info))
             }
-            Some(idx) => {
+            Some(unresolved_idx) => {
                 let def = module_def.take_types_full()?;
                 let ty = match def.def {
                     ModuleDefId::AdtId(it) => TypeNs::AdtId(it),
@@ -948,7 +977,7 @@ impl ModuleItemMap {
                     | ModuleDefId::MacroId(_)
                     | ModuleDefId::StaticId(_) => return None,
                 };
-                Some(ResolveValueResult::Partial(ty, idx, def.import))
+                Some((ResolveValueResult::Partial(ty, unresolved_idx, def.import), prefix_info))
             }
         }
     }
@@ -958,7 +987,7 @@ impl ModuleItemMap {
         db: &dyn DefDatabase,
         path: &ModPath,
     ) -> Option<(TypeNs, Option<usize>, Option<ImportOrExternCrate>)> {
-        let (module_def, idx) =
+        let (module_def, idx, _) =
             self.def_map.resolve_path_locally(db, self.module_id, path, BuiltinShadowMode::Other);
         let (res, import) = to_type_ns(module_def)?;
         Some((res, idx, import))

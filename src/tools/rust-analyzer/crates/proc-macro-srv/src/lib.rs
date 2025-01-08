@@ -14,6 +14,7 @@
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 #![feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span)]
 #![allow(unreachable_pub, internal_features, clippy::disallowed_types, clippy::print_stderr)]
+#![deny(deprecated_safe)]
 
 extern crate proc_macro;
 #[cfg(feature = "in-rust-tree")]
@@ -38,62 +39,82 @@ use std::{
 };
 
 use paths::{Utf8Path, Utf8PathBuf};
-use proc_macro_api::{
-    msg::{
-        self, deserialize_span_data_index_map, serialize_span_data_index_map, ExpnGlobals,
-        SpanMode, TokenId, CURRENT_API_VERSION,
-    },
-    ProcMacroKind,
-};
-use span::Span;
+use span::{Span, TokenId};
 
 use crate::server_impl::TokenStream;
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum ProcMacroKind {
+    CustomDerive,
+    Attr,
+    Bang,
+}
 
 pub const RUSTC_VERSION_STRING: &str = env!("RUSTC_VERSION");
 
 pub struct ProcMacroSrv<'env> {
     expanders: HashMap<Utf8PathBuf, dylib::Expander>,
-    span_mode: SpanMode,
     env: &'env EnvSnapshot,
 }
 
 impl<'env> ProcMacroSrv<'env> {
     pub fn new(env: &'env EnvSnapshot) -> Self {
-        Self { expanders: Default::default(), span_mode: Default::default(), env }
+        Self { expanders: Default::default(), env }
     }
 }
 
 const EXPANDER_STACK_SIZE: usize = 8 * 1024 * 1024;
 
 impl ProcMacroSrv<'_> {
-    pub fn set_span_mode(&mut self, span_mode: SpanMode) {
-        self.span_mode = span_mode;
-    }
-
-    pub fn span_mode(&self) -> SpanMode {
-        self.span_mode
-    }
-
-    pub fn expand(
+    pub fn expand<S: ProcMacroSrvSpan>(
         &mut self,
-        msg::ExpandMacro { lib, env, current_dir, data }: msg::ExpandMacro,
-    ) -> Result<(msg::FlatTree, Vec<u32>), msg::PanicMessage> {
-        let span_mode = self.span_mode;
+        lib: impl AsRef<Utf8Path>,
+        env: Vec<(String, String)>,
+        current_dir: Option<impl AsRef<Path>>,
+        macro_name: String,
+        macro_body: tt::TopSubtree<S>,
+        attribute: Option<tt::TopSubtree<S>>,
+        def_site: S,
+        call_site: S,
+        mixed_site: S,
+    ) -> Result<Vec<tt::TokenTree<S>>, String> {
         let snapped_env = self.env;
-        let expander = self
-            .expander(lib.as_ref())
-            .map_err(|err| msg::PanicMessage(format!("failed to load macro: {err}")))?;
+        let expander =
+            self.expander(lib.as_ref()).map_err(|err| format!("failed to load macro: {err}"))?;
 
         let prev_env = EnvChange::apply(snapped_env, env, current_dir.as_ref().map(<_>::as_ref));
 
-        let result = match span_mode {
-            SpanMode::Id => expand_id(data, expander).map(|it| (it, vec![])),
-            SpanMode::RustAnalyzer => expand_ra_span(data, expander),
-        };
+        // Note, we spawn a new thread here so that thread locals allocation don't accumulate (this
+        // includes the proc-macro symbol interner)
+        let result = thread::scope(|s| {
+            let thread = thread::Builder::new()
+                .stack_size(EXPANDER_STACK_SIZE)
+                .name(macro_name.clone())
+                .spawn_scoped(s, move || {
+                    expander
+                        .expand(
+                            &macro_name,
+                            server_impl::TopSubtree(macro_body.0.into_vec()),
+                            attribute.map(|it| server_impl::TopSubtree(it.0.into_vec())),
+                            def_site,
+                            call_site,
+                            mixed_site,
+                        )
+                        .map(|tt| tt.0)
+                });
+            let res = match thread {
+                Ok(handle) => handle.join(),
+                Err(e) => return Err(e.to_string()),
+            };
 
+            match res {
+                Ok(res) => res,
+                Err(e) => std::panic::resume_unwind(e),
+            }
+        });
         prev_env.rollback();
 
-        result.map_err(msg::PanicMessage)
+        result
     }
 
     pub fn list_macros(
@@ -123,7 +144,7 @@ impl ProcMacroSrv<'_> {
     }
 }
 
-trait ProcMacroSrvSpan: Copy {
+pub trait ProcMacroSrvSpan: Copy + Send {
     type Server: proc_macro::bridge::server::Server<TokenStream = TokenStream<Self>>;
     fn make_server(call_site: Self, def_site: Self, mixed_site: Self) -> Self::Server;
 }
@@ -147,93 +168,6 @@ impl ProcMacroSrvSpan for Span {
         }
     }
 }
-
-fn expand_id(
-    msg::ExpandMacroData {
-        macro_body,
-        macro_name,
-        attributes,
-        has_global_spans: ExpnGlobals { serialize: _, def_site, call_site, mixed_site },
-        span_data_table: _,
-    }: msg::ExpandMacroData,
-    expander: &dylib::Expander,
-) -> Result<msg::FlatTree, String> {
-    let def_site = TokenId(def_site as u32);
-    let call_site = TokenId(call_site as u32);
-    let mixed_site = TokenId(mixed_site as u32);
-
-    let macro_body = macro_body.to_subtree_unresolved(CURRENT_API_VERSION);
-    let attributes = attributes.map(|it| it.to_subtree_unresolved(CURRENT_API_VERSION));
-    let result = thread::scope(|s| {
-        let thread = thread::Builder::new()
-            .stack_size(EXPANDER_STACK_SIZE)
-            .name(macro_name.clone())
-            .spawn_scoped(s, || {
-                expander
-                    .expand(&macro_name, macro_body, attributes, def_site, call_site, mixed_site)
-                    .map(|it| msg::FlatTree::new_raw(&it, CURRENT_API_VERSION))
-            });
-        let res = match thread {
-            Ok(handle) => handle.join(),
-            Err(e) => std::panic::resume_unwind(Box::new(e)),
-        };
-
-        match res {
-            Ok(res) => res,
-            Err(e) => std::panic::resume_unwind(e),
-        }
-    });
-    result
-}
-
-fn expand_ra_span(
-    msg::ExpandMacroData {
-        macro_body,
-        macro_name,
-        attributes,
-        has_global_spans: ExpnGlobals { serialize: _, def_site, call_site, mixed_site },
-        span_data_table,
-    }: msg::ExpandMacroData,
-    expander: &dylib::Expander,
-) -> Result<(msg::FlatTree, Vec<u32>), String> {
-    let mut span_data_table = deserialize_span_data_index_map(&span_data_table);
-
-    let def_site = span_data_table[def_site];
-    let call_site = span_data_table[call_site];
-    let mixed_site = span_data_table[mixed_site];
-
-    let macro_body = macro_body.to_subtree_resolved(CURRENT_API_VERSION, &span_data_table);
-    let attributes =
-        attributes.map(|it| it.to_subtree_resolved(CURRENT_API_VERSION, &span_data_table));
-    // Note, we spawn a new thread here so that thread locals allocation don't accumulate (this
-    // includes the proc-macro symbol interner)
-    let result = thread::scope(|s| {
-        let thread = thread::Builder::new()
-            .stack_size(EXPANDER_STACK_SIZE)
-            .name(macro_name.clone())
-            .spawn_scoped(s, || {
-                expander
-                    .expand(&macro_name, macro_body, attributes, def_site, call_site, mixed_site)
-                    .map(|it| {
-                        (
-                            msg::FlatTree::new(&it, CURRENT_API_VERSION, &mut span_data_table),
-                            serialize_span_data_index_map(&span_data_table),
-                        )
-                    })
-            });
-        let res = match thread {
-            Ok(handle) => handle.join(),
-            Err(e) => std::panic::resume_unwind(Box::new(e)),
-        };
-
-        match res {
-            Ok(res) => res,
-            Err(e) => std::panic::resume_unwind(e),
-        }
-    });
-    result
-}
-
 pub struct PanicMessage {
     message: Option<String>,
 }
@@ -254,10 +188,13 @@ impl Default for EnvSnapshot {
     }
 }
 
+static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 struct EnvChange<'snap> {
     changed_vars: Vec<String>,
     prev_working_dir: Option<PathBuf>,
     snap: &'snap EnvSnapshot,
+    _guard: std::sync::MutexGuard<'snap, ()>,
 }
 
 impl<'snap> EnvChange<'snap> {
@@ -266,6 +203,7 @@ impl<'snap> EnvChange<'snap> {
         new_vars: Vec<(String, String)>,
         current_dir: Option<&Path>,
     ) -> EnvChange<'snap> {
+        let guard = ENV_LOCK.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
         let prev_working_dir = match current_dir {
             Some(dir) => {
                 let prev_working_dir = std::env::current_dir().ok();
@@ -284,11 +222,13 @@ impl<'snap> EnvChange<'snap> {
             changed_vars: new_vars
                 .into_iter()
                 .map(|(k, v)| {
-                    env::set_var(&k, v);
+                    // SAFETY: We have acquired the environment lock
+                    unsafe { env::set_var(&k, v) };
                     k
                 })
                 .collect(),
             prev_working_dir,
+            _guard: guard,
         }
     }
 
@@ -298,9 +238,12 @@ impl<'snap> EnvChange<'snap> {
 impl Drop for EnvChange<'_> {
     fn drop(&mut self) {
         for name in self.changed_vars.drain(..) {
-            match self.snap.vars.get::<std::ffi::OsStr>(name.as_ref()) {
-                Some(prev_val) => env::set_var(name, prev_val),
-                None => env::remove_var(name),
+            // SAFETY: We have acquired the environment lock
+            unsafe {
+                match self.snap.vars.get::<std::ffi::OsStr>(name.as_ref()) {
+                    Some(prev_val) => env::set_var(name, prev_val),
+                    None => env::remove_var(name),
+                }
             }
         }
 

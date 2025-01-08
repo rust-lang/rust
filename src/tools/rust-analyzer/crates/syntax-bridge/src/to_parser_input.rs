@@ -6,37 +6,34 @@ use std::fmt;
 use span::Edition;
 use syntax::{SyntaxKind, SyntaxKind::*, T};
 
-use tt::buffer::TokenBuffer;
-
 pub fn to_parser_input<S: Copy + fmt::Debug>(
     edition: Edition,
-    buffer: &TokenBuffer<'_, S>,
+    buffer: tt::TokenTreesView<'_, S>,
 ) -> parser::Input {
     let mut res = parser::Input::default();
 
-    let mut current = buffer.begin();
+    let mut current = buffer.cursor();
 
     while !current.eof() {
-        let cursor = current;
-        let tt = cursor.token_tree();
+        let tt = current.token_tree();
 
         // Check if it is lifetime
-        if let Some(tt::buffer::TokenTreeRef::Leaf(tt::Leaf::Punct(punct), _)) = tt {
+        if let Some(tt::TokenTree::Leaf(tt::Leaf::Punct(punct))) = tt {
             if punct.char == '\'' {
-                let next = cursor.bump();
-                match next.token_tree() {
-                    Some(tt::buffer::TokenTreeRef::Leaf(tt::Leaf::Ident(_ident), _)) => {
+                current.bump();
+                match current.token_tree() {
+                    Some(tt::TokenTree::Leaf(tt::Leaf::Ident(_ident))) => {
                         res.push(LIFETIME_IDENT);
-                        current = next.bump();
+                        current.bump();
                         continue;
                     }
-                    _ => panic!("Next token must be ident : {:#?}", next.token_tree()),
+                    _ => panic!("Next token must be ident"),
                 }
             }
         }
 
-        current = match tt {
-            Some(tt::buffer::TokenTreeRef::Leaf(leaf, _)) => {
+        match tt {
+            Some(tt::TokenTree::Leaf(leaf)) => {
                 match leaf {
                     tt::Leaf::Literal(lit) => {
                         let kind = match lit.kind {
@@ -83,9 +80,9 @@ pub fn to_parser_input<S: Copy + fmt::Debug>(
                         }
                     }
                 }
-                cursor.bump()
+                current.bump();
             }
-            Some(tt::buffer::TokenTreeRef::Subtree(subtree, _)) => {
+            Some(tt::TokenTree::Subtree(subtree)) => {
                 if let Some(kind) = match subtree.delimiter.kind {
                     tt::DelimiterKind::Parenthesis => Some(T!['(']),
                     tt::DelimiterKind::Brace => Some(T!['{']),
@@ -94,22 +91,19 @@ pub fn to_parser_input<S: Copy + fmt::Debug>(
                 } {
                     res.push(kind);
                 }
-                cursor.subtree().unwrap()
+                current.bump();
             }
-            None => match cursor.end() {
-                Some(subtree) => {
-                    if let Some(kind) = match subtree.delimiter.kind {
-                        tt::DelimiterKind::Parenthesis => Some(T![')']),
-                        tt::DelimiterKind::Brace => Some(T!['}']),
-                        tt::DelimiterKind::Bracket => Some(T![']']),
-                        tt::DelimiterKind::Invisible => None,
-                    } {
-                        res.push(kind);
-                    }
-                    cursor.bump()
+            None => {
+                let subtree = current.end();
+                if let Some(kind) = match subtree.delimiter.kind {
+                    tt::DelimiterKind::Parenthesis => Some(T![')']),
+                    tt::DelimiterKind::Brace => Some(T!['}']),
+                    tt::DelimiterKind::Bracket => Some(T![']']),
+                    tt::DelimiterKind::Invisible => None,
+                } {
+                    res.push(kind);
                 }
-                None => continue,
-            },
+            }
         };
     }
 

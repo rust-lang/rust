@@ -11,13 +11,18 @@ use paths::AbsPath;
 use stdx::JodChild;
 
 use crate::{
-    json::{read_json, write_json},
-    msg::{Message, Request, Response, SpanMode, CURRENT_API_VERSION, RUST_ANALYZER_SPAN_SUPPORT},
+    legacy_protocol::{
+        json::{read_json, write_json},
+        msg::{
+            Message, Request, Response, ServerConfig, SpanMode, CURRENT_API_VERSION,
+            RUST_ANALYZER_SPAN_SUPPORT,
+        },
+    },
     ProcMacroKind, ServerError,
 };
 
 #[derive(Debug)]
-pub(crate) struct ProcMacroProcessSrv {
+pub(crate) struct ProcMacroServerProcess {
     /// The state of the proc-macro server process, the protocol is currently strictly sequential
     /// hence the lock on the state.
     state: Mutex<ProcessSrvState>,
@@ -34,24 +39,24 @@ struct ProcessSrvState {
     stdout: BufReader<ChildStdout>,
 }
 
-impl ProcMacroProcessSrv {
+impl ProcMacroServerProcess {
     pub(crate) fn run(
         process_path: &AbsPath,
         env: impl IntoIterator<Item = (impl AsRef<std::ffi::OsStr>, impl AsRef<std::ffi::OsStr>)>
             + Clone,
-    ) -> io::Result<ProcMacroProcessSrv> {
-        let create_srv = |null_stderr| {
-            let mut process = Process::run(process_path, env.clone(), null_stderr)?;
+    ) -> io::Result<ProcMacroServerProcess> {
+        let create_srv = || {
+            let mut process = Process::run(process_path, env.clone())?;
             let (stdin, stdout) = process.stdio().expect("couldn't access child stdio");
 
-            io::Result::Ok(ProcMacroProcessSrv {
+            io::Result::Ok(ProcMacroServerProcess {
                 state: Mutex::new(ProcessSrvState { process, stdin, stdout }),
                 version: 0,
                 mode: SpanMode::Id,
                 exited: OnceLock::new(),
             })
         };
-        let mut srv = create_srv(true)?;
+        let mut srv = create_srv()?;
         tracing::info!("sending proc-macro server version check");
         match srv.version_check() {
             Ok(v) if v > CURRENT_API_VERSION => Err(io::Error::new(
@@ -62,7 +67,6 @@ impl ProcMacroProcessSrv {
             )),
             Ok(v) => {
                 tracing::info!("Proc-macro server version: {v}");
-                srv = create_srv(false)?;
                 srv.version = v;
                 if srv.version >= RUST_ANALYZER_SPAN_SUPPORT {
                     if let Ok(mode) = srv.enable_rust_analyzer_spans() {
@@ -73,8 +77,10 @@ impl ProcMacroProcessSrv {
                 Ok(srv)
             }
             Err(e) => {
-                tracing::info!(%e, "proc-macro version check failed, restarting and assuming version 0");
-                create_srv(false)
+                tracing::info!(%e, "proc-macro version check failed");
+                Err(
+                    io::Error::new(io::ErrorKind::Other, format!("proc-macro server version check failed: {e}")),
+                )
             }
         }
     }
@@ -98,13 +104,11 @@ impl ProcMacroProcessSrv {
     }
 
     fn enable_rust_analyzer_spans(&self) -> Result<SpanMode, ServerError> {
-        let request = Request::SetConfig(crate::msg::ServerConfig {
-            span_mode: crate::msg::SpanMode::RustAnalyzer,
-        });
+        let request = Request::SetConfig(ServerConfig { span_mode: SpanMode::RustAnalyzer });
         let response = self.send_task(request)?;
 
         match response {
-            Response::SetConfig(crate::msg::ServerConfig { span_mode }) => Ok(span_mode),
+            Response::SetConfig(ServerConfig { span_mode }) => Ok(span_mode),
             _ => Err(ServerError { message: "unexpected response".to_owned(), io: None }),
         }
     }
@@ -182,9 +186,8 @@ impl Process {
     fn run(
         path: &AbsPath,
         env: impl IntoIterator<Item = (impl AsRef<std::ffi::OsStr>, impl AsRef<std::ffi::OsStr>)>,
-        null_stderr: bool,
     ) -> io::Result<Process> {
-        let child = JodChild(mk_child(path, env, null_stderr)?);
+        let child = JodChild(mk_child(path, env)?);
         Ok(Process { child })
     }
 
@@ -200,14 +203,14 @@ impl Process {
 fn mk_child(
     path: &AbsPath,
     env: impl IntoIterator<Item = (impl AsRef<std::ffi::OsStr>, impl AsRef<std::ffi::OsStr>)>,
-    null_stderr: bool,
 ) -> io::Result<Child> {
+    #[allow(clippy::disallowed_methods)]
     let mut cmd = Command::new(path);
     cmd.envs(env)
         .env("RUST_ANALYZER_INTERNALS_DO_NOT_USE", "this is unstable")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(if null_stderr { Stdio::null() } else { Stdio::inherit() });
+        .stderr(Stdio::inherit());
     if cfg!(windows) {
         let mut path_var = std::ffi::OsString::new();
         path_var.push(path.parent().unwrap().parent().unwrap());

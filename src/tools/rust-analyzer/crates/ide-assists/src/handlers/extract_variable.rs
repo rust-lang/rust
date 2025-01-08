@@ -99,7 +99,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
 
     let parent = to_extract.syntax().parent().and_then(ast::Expr::cast);
     // Any expression that autoderefs may need adjustment.
-    let mut needs_adjust = parent.as_ref().map_or(false, |it| match it {
+    let mut needs_adjust = parent.as_ref().is_some_and(|it| match it {
         ast::Expr::FieldExpr(_)
         | ast::Expr::MethodCallExpr(_)
         | ast::Expr::CallExpr(_)
@@ -336,10 +336,12 @@ impl ExtractionKind {
             }
         }
 
+        let mut name_generator =
+            suggest_name::NameGenerator::new_from_scope_locals(ctx.sema.scope(to_extract.syntax()));
         let var_name = if let Some(literal_name) = get_literal_name(ctx, to_extract) {
-            literal_name
+            name_generator.suggest_name(&literal_name)
         } else {
-            suggest_name::for_variable(to_extract, &ctx.sema)
+            name_generator.for_variable(to_extract, &ctx.sema)
         };
 
         let var_name = match self {
@@ -352,10 +354,10 @@ impl ExtractionKind {
 }
 
 fn get_literal_name(ctx: &AssistContext<'_>, expr: &ast::Expr) -> Option<String> {
-    let literal = match expr {
-        ast::Expr::Literal(literal) => literal,
-        _ => return None,
+    let ast::Expr::Literal(literal) = expr else {
+        return None;
     };
+
     let inner = match literal.kind() {
         ast::LiteralKind::String(string) => string.value().ok()?.into_owned(),
         ast::LiteralKind::ByteString(byte_string) => {
@@ -2630,6 +2632,35 @@ fn foo() {
 }
 "#,
             "Extract into static",
+        );
+    }
+
+    #[test]
+    fn extract_variable_name_conflicts() {
+        check_assist_by_label(
+            extract_variable,
+            r#"
+struct S { x: i32 };
+
+fn main() {
+    let s = 2;
+    let t = $0S { x: 1 }$0;
+    let t2 = t;
+    let x = s;
+}
+"#,
+            r#"
+struct S { x: i32 };
+
+fn main() {
+    let s = 2;
+    let $0s1 = S { x: 1 };
+    let t = s1;
+    let t2 = t;
+    let x = s;
+}
+"#,
+            "Extract into variable",
         );
     }
 }
