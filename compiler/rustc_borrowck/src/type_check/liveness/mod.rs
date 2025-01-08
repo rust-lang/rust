@@ -32,7 +32,7 @@ mod trace;
 pub(super) fn generate<'a, 'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
     body: &Body<'tcx>,
-    elements: &DenseLocationMap,
+    location_map: &DenseLocationMap,
     flow_inits: ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
 ) {
@@ -49,7 +49,7 @@ pub(super) fn generate<'a, 'tcx>(
     trace::trace(
         typeck,
         body,
-        elements,
+        location_map,
         flow_inits,
         move_data,
         relevant_live_locals,
