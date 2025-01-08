@@ -753,10 +753,7 @@ pub struct BuildHasherDefault<H>(marker::PhantomData<fn() -> H>);
 impl<H> BuildHasherDefault<H> {
     /// Creates a new BuildHasherDefault for Hasher `H`.
     #[stable(feature = "build_hasher_default_const_new", since = "1.85.0")]
-    #[rustc_const_stable(
-        feature = "build_hasher_default_const_new",
-        since = "1.85.0"
-    )]
+    #[rustc_const_stable(feature = "build_hasher_default_const_new", since = "1.85.0")]
     pub const fn new() -> Self {
         BuildHasherDefault(marker::PhantomData)
     }
