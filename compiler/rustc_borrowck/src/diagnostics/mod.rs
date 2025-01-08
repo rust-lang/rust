@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::{Applicability, Diag, MultiSpan};
+use rustc_errors::{Applicability, Diag, EmissionGuarantee, MultiSpan};
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::{self as hir, CoroutineKind, LangItem};
 use rustc_index::IndexSlice;
@@ -626,9 +626,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
     /// Add a note to region errors and borrow explanations when higher-ranked regions in predicates
     /// implicitly introduce an "outlives `'static`" constraint.
-    fn add_placeholder_from_predicate_note(
+    fn add_placeholder_from_predicate_note<G: EmissionGuarantee>(
         &self,
-        err: &mut Diag<'_>,
+        err: &mut Diag<'_, G>,
         path: &[OutlivesConstraint<'tcx>],
     ) {
         let predicate_span = path.iter().find_map(|constraint| {
@@ -651,9 +651,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
     /// Add a label to region errors and borrow explanations when outlives constraints arise from
     /// proving a type implements `Sized` or `Copy`.
-    fn add_sized_or_copy_bound_info(
+    fn add_sized_or_copy_bound_info<G: EmissionGuarantee>(
         &self,
-        err: &mut Diag<'_>,
+        err: &mut Diag<'_, G>,
         blamed_category: ConstraintCategory<'tcx>,
         path: &[OutlivesConstraint<'tcx>],
     ) {
@@ -1042,6 +1042,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 kind,
             };
         }
+
         normal_ret
     }
 
