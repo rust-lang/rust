@@ -32,8 +32,11 @@ fn bar(mut x: u8) {
 fn baz(mut x: i32) -> i32 {
     // CHECK-LABEL: fn baz(
     // CHECK: debug x => [[x:_.*]];
+    // CHECK: [[x2:_.*]] = copy [[x]];
+    // CHECK: [[x]] = move [[x2]];
     // CHECK: _0 = copy [[x]];
-    // self-assignment to a function argument should be eliminated
+    // In the original case for DestProp, the self-assignment to a function argument is eliminated,
+    // but in CopyProp it is not eliminated.
     x = x;
     x
 }
