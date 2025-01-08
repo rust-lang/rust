@@ -1009,6 +1009,7 @@ class RustBuild(object):
             eprint("Building bootstrap")
 
         args = self.build_bootstrap_cmd(env)
+        print("Running", args, "in", self.rust_root)
         # Run this from the source directory so cargo finds .cargo/config
         run(args, env=env, verbose=self.verbose, cwd=self.rust_root)
 
@@ -1018,6 +1019,7 @@ class RustBuild(object):
     def build_bootstrap_cmd(self, env):
         """For tests."""
         build_dir = os.path.join(self.build_dir, "bootstrap")
+        print("Building bootstrap in", build_dir)
         if self.clean and os.path.exists(build_dir):
             shutil.rmtree(build_dir)
         # `CARGO_BUILD_TARGET` breaks bootstrap build.
