@@ -534,7 +534,7 @@ impl<T: ?Sized> Mutex<T> {
     /// # Errors
     ///
     /// If another user of this mutex panicked while holding the mutex, then
-    /// this call will return an error containing the the underlying data
+    /// this call will return an error containing the underlying data
     /// instead.
     ///
     /// # Examples

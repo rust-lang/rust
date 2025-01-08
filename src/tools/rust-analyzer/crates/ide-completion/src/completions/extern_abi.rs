@@ -46,7 +46,7 @@ pub(crate) fn complete_extern_abi(
     ctx: &CompletionContext<'_>,
     expanded: &ast::String,
 ) -> Option<()> {
-    if !expanded.syntax().parent().map_or(false, |it| ast::Abi::can_cast(it.kind())) {
+    if !expanded.syntax().parent().is_some_and(|it| ast::Abi::can_cast(it.kind())) {
         return None;
     }
     let abi_str = expanded;

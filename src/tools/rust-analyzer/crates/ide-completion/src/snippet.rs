@@ -100,9 +100,9 @@
 // }
 // ----
 
+use hir::{ModPath, Name, Symbol};
 use ide_db::imports::import_assets::LocatedImport;
 use itertools::Itertools;
-use syntax::{ast, AstNode, GreenNode, SyntaxNode};
 
 use crate::context::CompletionContext;
 
@@ -123,10 +123,7 @@ pub struct Snippet {
     pub scope: SnippetScope,
     pub description: Option<Box<str>>,
     snippet: String,
-    // These are `ast::Path`'s but due to SyntaxNodes not being Send we store these
-    // and reconstruct them on demand instead. This is cheaper than reparsing them
-    // from strings
-    requires: Box<[GreenNode]>,
+    requires: Box<[ModPath]>,
 }
 
 impl Snippet {
@@ -143,7 +140,6 @@ impl Snippet {
         }
         let (requires, snippet, description) = validate_snippet(snippet, description, requires)?;
         Some(Snippet {
-            // Box::into doesn't work as that has a Copy bound 😒
             postfix_triggers: postfix_triggers.iter().map(String::as_str).map(Into::into).collect(),
             prefix_triggers: prefix_triggers.iter().map(String::as_str).map(Into::into).collect(),
             scope,
@@ -167,15 +163,11 @@ impl Snippet {
     }
 }
 
-fn import_edits(ctx: &CompletionContext<'_>, requires: &[GreenNode]) -> Option<Vec<LocatedImport>> {
+fn import_edits(ctx: &CompletionContext<'_>, requires: &[ModPath]) -> Option<Vec<LocatedImport>> {
     let import_cfg = ctx.config.import_path_config();
 
-    let resolve = |import: &GreenNode| {
-        let path = ast::Path::cast(SyntaxNode::new_root(import.clone()))?;
-        let item = match ctx.scope.speculative_resolve(&path)? {
-            hir::PathResolution::Def(def) => def.into(),
-            _ => return None,
-        };
+    let resolve = |import| {
+        let item = ctx.scope.resolve_mod_path(import).next()?;
         let path = ctx.module.find_use_path(
             ctx.db,
             item,
@@ -198,19 +190,14 @@ fn validate_snippet(
     snippet: &[String],
     description: &str,
     requires: &[String],
-) -> Option<(Box<[GreenNode]>, String, Option<Box<str>>)> {
+) -> Option<(Box<[ModPath]>, String, Option<Box<str>>)> {
     let mut imports = Vec::with_capacity(requires.len());
     for path in requires.iter() {
-        let use_path =
-            ast::SourceFile::parse(&format!("use {path};"), syntax::Edition::CURRENT_FIXME)
-                .syntax_node()
-                .descendants()
-                .find_map(ast::Path::cast)?;
-        if use_path.syntax().text() != path.as_str() {
-            return None;
-        }
-        let green = use_path.syntax().green().into_owned();
-        imports.push(green);
+        let use_path = ModPath::from_segments(
+            hir::PathKind::Plain,
+            path.split("::").map(Symbol::intern).map(Name::new_symbol_root),
+        );
+        imports.push(use_path);
     }
     let snippet = snippet.iter().join("\n");
     let description = (!description.is_empty())

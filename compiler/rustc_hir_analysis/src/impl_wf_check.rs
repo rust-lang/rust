@@ -128,21 +128,7 @@ pub(crate) fn enforce_impl_lifetime_params_are_constrained(
     for param in &impl_generics.own_params {
         match param.kind {
             ty::GenericParamDefKind::Lifetime => {
-                let param_lt = cgp::Parameter::from(param.to_early_bound_region_data());
-                if lifetimes_in_associated_types.contains(&param_lt) // (*)
-                    && !input_parameters.contains(&param_lt)
-                {
-                    let mut diag = tcx.dcx().create_err(UnconstrainedGenericParameter {
-                        span: tcx.def_span(param.def_id),
-                        param_name: param.name,
-                        param_def_kind: tcx.def_descr(param.def_id),
-                        const_param_note: false,
-                        const_param_note2: false,
-                    });
-                    diag.code(E0207);
-                    res = Err(diag.emit());
-                }
-                // (*) This is a horrible concession to reality. I think it'd be
+                // This is a horrible concession to reality. I think it'd be
                 // better to just ban unconstrained lifetimes outright, but in
                 // practice people do non-hygienic macros like:
                 //
@@ -160,6 +146,20 @@ pub(crate) fn enforce_impl_lifetime_params_are_constrained(
                 // permit those, so long as the lifetimes aren't used in
                 // associated types. I believe this is sound, because lifetimes
                 // used elsewhere are not projected back out.
+                let param_lt = cgp::Parameter::from(param.to_early_bound_region_data());
+                if lifetimes_in_associated_types.contains(&param_lt)
+                    && !input_parameters.contains(&param_lt)
+                {
+                    let mut diag = tcx.dcx().create_err(UnconstrainedGenericParameter {
+                        span: tcx.def_span(param.def_id),
+                        param_name: param.name,
+                        param_def_kind: tcx.def_descr(param.def_id),
+                        const_param_note: false,
+                        const_param_note2: false,
+                    });
+                    diag.code(E0207);
+                    res = Err(diag.emit());
+                }
             }
             ty::GenericParamDefKind::Type { .. } | ty::GenericParamDefKind::Const { .. } => {
                 // Enforced in `enforce_impl_non_lifetime_params_are_constrained`.

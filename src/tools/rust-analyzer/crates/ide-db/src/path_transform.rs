@@ -285,7 +285,7 @@ impl Ctx<'_> {
         if path.qualifier().is_some() {
             return None;
         }
-        if path.segment().map_or(false, |s| {
+        if path.segment().is_some_and(|s| {
             s.parenthesized_arg_list().is_some()
                 || (s.self_token().is_some() && path.parent_path().is_none())
         }) {

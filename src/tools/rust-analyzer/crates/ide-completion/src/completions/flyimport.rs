@@ -8,6 +8,7 @@ use itertools::Itertools;
 use syntax::{ast, AstNode, SyntaxNode, ToSmolStr, T};
 
 use crate::{
+    config::AutoImportExclusionType,
     context::{
         CompletionContext, DotAccess, PathCompletionCtx, PathKind, PatternContext, Qualified,
         TypeLocation,
@@ -267,6 +268,19 @@ fn import_on_the_fly(
                 && !ctx.is_item_hidden(original_item)
                 && ctx.check_stability(original_item.attrs(ctx.db).as_deref())
         })
+        .filter(|import| {
+            let def = import.item_to_import.into_module_def();
+            if let Some(&kind) = ctx.exclude_flyimport.get(&def) {
+                if kind == AutoImportExclusionType::Always {
+                    return false;
+                }
+                let method_imported = import.item_to_import != import.original_item;
+                if method_imported {
+                    return false;
+                }
+            }
+            true
+        })
         .sorted_by(|a, b| {
             let key = |import_path| {
                 (
@@ -351,6 +365,24 @@ fn import_on_the_fly_method(
         .filter(|import| {
             !ctx.is_item_hidden(&import.item_to_import)
                 && !ctx.is_item_hidden(&import.original_item)
+        })
+        .filter(|import| {
+            let def = import.item_to_import.into_module_def();
+            if let Some(&kind) = ctx.exclude_flyimport.get(&def) {
+                if kind == AutoImportExclusionType::Always {
+                    return false;
+                }
+                let method_imported = import.item_to_import != import.original_item;
+                if method_imported {
+                    return false;
+                }
+            }
+
+            if let ModuleDef::Trait(_) = import.item_to_import.into_module_def() {
+                !ctx.exclude_flyimport.contains_key(&def)
+            } else {
+                true
+            }
         })
         .sorted_by(|a, b| {
             let key = |import_path| {

@@ -17,7 +17,7 @@ use parking_lot::{
     MappedRwLockReadGuard, Mutex, RwLock, RwLockReadGuard, RwLockUpgradableReadGuard,
     RwLockWriteGuard,
 };
-use proc_macro_api::ProcMacroServer;
+use proc_macro_api::ProcMacroClient;
 use project_model::{ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, WorkspaceBuildScripts};
 use rustc_hash::{FxHashMap, FxHashSet};
 use tracing::{span, trace, Level};
@@ -95,7 +95,7 @@ pub(crate) struct GlobalState {
     pub(crate) last_reported_status: lsp_ext::ServerStatusParams,
 
     // proc macros
-    pub(crate) proc_macro_clients: Arc<[anyhow::Result<ProcMacroServer>]>,
+    pub(crate) proc_macro_clients: Arc<[anyhow::Result<ProcMacroClient>]>,
     pub(crate) build_deps_changed: bool,
 
     // Flycheck
@@ -726,7 +726,6 @@ impl GlobalStateSnapshot {
                     };
 
                     return Some(TargetSpec::ProjectJson(ProjectJsonTargetSpec {
-                        crate_id,
                         label: build.label,
                         target_kind: build.target_kind,
                         shell_runnables: project.runnables().to_owned(),

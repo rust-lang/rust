@@ -1017,9 +1017,9 @@ where
     /// This is allocated in immutable global memory and deduplicated.
     pub fn allocate_str_dedup(
         &mut self,
-        str: &str,
+        s: &str,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
-        let bytes = str.as_bytes();
+        let bytes = s.as_bytes();
         let ptr = self.allocate_bytes_dedup(bytes)?;
 
         // Create length metadata for the string.

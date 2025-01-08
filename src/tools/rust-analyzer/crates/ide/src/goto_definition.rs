@@ -103,7 +103,7 @@ pub(crate) fn goto_definition(
                 IdentClass::classify_node(sema, &parent)?
                     .definitions()
                     .into_iter()
-                    .flat_map(|def| {
+                    .flat_map(|(def, _)| {
                         if let Definition::ExternCrateDecl(crate_def) = def {
                             return crate_def
                                 .resolved_crate(db)

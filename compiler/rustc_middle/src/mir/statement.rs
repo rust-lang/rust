@@ -455,6 +455,8 @@ impl BorrowKind {
         }
     }
 
+    /// Returns whether borrows represented by this kind are allowed to be split into separate
+    /// Reservation and Activation phases.
     pub fn allows_two_phase_borrow(&self) -> bool {
         match *self {
             BorrowKind::Shared

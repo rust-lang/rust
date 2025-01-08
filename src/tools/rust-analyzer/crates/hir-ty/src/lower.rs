@@ -5,6 +5,8 @@
 //!  - Building the type for an item: This happens through the `ty` query.
 //!
 //! This usually involves resolving names, collecting generic arguments etc.
+pub(crate) mod diagnostics;
+
 use std::{
     cell::OnceCell,
     iter, mem,
@@ -21,8 +23,9 @@ use chalk_ir::{
 
 use either::Either;
 use hir_def::{
+    body::HygieneId,
     builtin_type::BuiltinType,
-    data::adt::StructKind,
+    data::{adt::StructKind, TraitFlags},
     expander::Expander,
     generics::{
         GenericParamDataRef, TypeOrConstParamData, TypeParamProvenance, WherePredicate,
@@ -31,7 +34,7 @@ use hir_def::{
     lang_item::LangItem,
     nameres::MacroSubNs,
     path::{GenericArg, GenericArgs, ModPath, Path, PathKind, PathSegment, PathSegments},
-    resolver::{HasResolver, LifetimeNs, Resolver, TypeNs},
+    resolver::{HasResolver, LifetimeNs, ResolveValueResult, Resolver, TypeNs, ValueNs},
     type_ref::{
         ConstRef, LifetimeRef, PathId, TraitBoundModifier, TraitRef as HirTraitRef, TypeBound,
         TypeRef, TypeRefId, TypesMap, TypesSourceMap,
@@ -59,6 +62,7 @@ use crate::{
     db::HirDatabase,
     error_lifetime,
     generics::{generics, trait_self_param_idx, Generics},
+    lower::diagnostics::*,
     make_binders,
     mapping::{from_chalk_trait_id, lt_to_placeholder_idx, ToChalk},
     static_lifetime, to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
@@ -100,31 +104,6 @@ impl ImplTraitLoweringState {
             param_and_variable_counter: counter,
         }
     }
-}
-
-type TypeSource = Either<TypeRefId, hir_def::type_ref::TypeSource>;
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub struct TyLoweringDiagnostic {
-    pub source: TypeSource,
-    pub kind: TyLoweringDiagnosticKind,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub enum TyLoweringDiagnosticKind {
-    GenericArgsProhibited { segment: u32, reason: GenericArgsProhibitedReason },
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum GenericArgsProhibitedReason {
-    Module,
-    TyParam,
-    SelfTy,
-    PrimitiveTy,
-    /// When there is a generic enum, within the expression `Enum::Variant`,
-    /// either `Enum` or `Variant` are allowed to have generic arguments, but not both.
-    // FIXME: This is not used now but it should be.
-    EnumVariant,
 }
 
 #[derive(Debug)]
@@ -536,8 +515,8 @@ impl<'a> TyLoweringContext<'a> {
     /// This is only for `generic_predicates_for_param`, where we can't just
     /// lower the self types of the predicates since that could lead to cycles.
     /// So we just check here if the `type_ref` resolves to a generic param, and which.
-    fn lower_ty_only_param(&self, type_ref: TypeRefId) -> Option<TypeOrConstParamId> {
-        let type_ref = &self.types_map[type_ref];
+    fn lower_ty_only_param(&mut self, type_ref_id: TypeRefId) -> Option<TypeOrConstParamId> {
+        let type_ref = &self.types_map[type_ref_id];
         let path = match type_ref {
             TypeRef::Path(path) => path,
             _ => return None,
@@ -548,8 +527,10 @@ impl<'a> TyLoweringContext<'a> {
         if path.segments().len() > 1 {
             return None;
         }
-        let resolution = match self.resolver.resolve_path_in_type_ns(self.db.upcast(), path) {
-            Some((it, None, _)) => it,
+        let resolution = match self
+            .resolve_path_in_type_ns(path, &mut Self::on_path_diagnostic_callback(type_ref_id))
+        {
+            Some((it, None)) => it,
             _ => return None,
         };
         match resolution {
@@ -584,11 +565,9 @@ impl<'a> TyLoweringContext<'a> {
         resolution: TypeNs,
         resolved_segment: PathSegment<'_>,
         remaining_segments: PathSegments<'_>,
+        _resolved_segment_idx: u32,
         infer_args: bool,
-        on_prohibited_generics_for_resolved_segment: &mut dyn FnMut(
-            &mut Self,
-            GenericArgsProhibitedReason,
-        ),
+        _on_diagnostic: &mut dyn FnMut(&mut Self, PathLoweringDiagnostic),
     ) -> (Ty, Option<TypeNs>) {
         let ty = match resolution {
             TypeNs::TraitId(trait_) => {
@@ -655,44 +634,28 @@ impl<'a> TyLoweringContext<'a> {
                 // FIXME(trait_alias): Implement trait alias.
                 return (TyKind::Error.intern(Interner), None);
             }
-            TypeNs::GenericParam(param_id) => {
-                if resolved_segment.args_and_bindings.is_some() {
-                    on_prohibited_generics_for_resolved_segment(
-                        self,
-                        GenericArgsProhibitedReason::TyParam,
-                    );
+            TypeNs::GenericParam(param_id) => match self.type_param_mode {
+                ParamLoweringMode::Placeholder => {
+                    TyKind::Placeholder(to_placeholder_idx(self.db, param_id.into()))
                 }
+                ParamLoweringMode::Variable => {
+                    let idx = match self
+                        .generics()
+                        .expect("generics in scope")
+                        .type_or_const_param_idx(param_id.into())
+                    {
+                        None => {
+                            never!("no matching generics");
+                            return (TyKind::Error.intern(Interner), None);
+                        }
+                        Some(idx) => idx,
+                    };
 
-                match self.type_param_mode {
-                    ParamLoweringMode::Placeholder => {
-                        TyKind::Placeholder(to_placeholder_idx(self.db, param_id.into()))
-                    }
-                    ParamLoweringMode::Variable => {
-                        let idx = match self
-                            .generics()
-                            .expect("generics in scope")
-                            .type_or_const_param_idx(param_id.into())
-                        {
-                            None => {
-                                never!("no matching generics");
-                                return (TyKind::Error.intern(Interner), None);
-                            }
-                            Some(idx) => idx,
-                        };
-
-                        TyKind::BoundVar(BoundVar::new(self.in_binders, idx))
-                    }
+                    TyKind::BoundVar(BoundVar::new(self.in_binders, idx))
                 }
-                .intern(Interner)
             }
+            .intern(Interner),
             TypeNs::SelfType(impl_id) => {
-                if resolved_segment.args_and_bindings.is_some() {
-                    on_prohibited_generics_for_resolved_segment(
-                        self,
-                        GenericArgsProhibitedReason::SelfTy,
-                    );
-                }
-
                 let generics = self.generics().expect("impl should have generic param scope");
 
                 match self.type_param_mode {
@@ -718,13 +681,6 @@ impl<'a> TyLoweringContext<'a> {
                 }
             }
             TypeNs::AdtSelfType(adt) => {
-                if resolved_segment.args_and_bindings.is_some() {
-                    on_prohibited_generics_for_resolved_segment(
-                        self,
-                        GenericArgsProhibitedReason::SelfTy,
-                    );
-                }
-
                 let generics = generics(self.db.upcast(), adt.into());
                 let substs = match self.type_param_mode {
                     ParamLoweringMode::Placeholder => generics.placeholder_subst(self.db),
@@ -737,12 +693,6 @@ impl<'a> TyLoweringContext<'a> {
 
             TypeNs::AdtId(it) => self.lower_path_inner(resolved_segment, it.into(), infer_args),
             TypeNs::BuiltinType(it) => {
-                if resolved_segment.args_and_bindings.is_some() {
-                    on_prohibited_generics_for_resolved_segment(
-                        self,
-                        GenericArgsProhibitedReason::PrimitiveTy,
-                    );
-                }
                 self.lower_path_inner(resolved_segment, it.into(), infer_args)
             }
             TypeNs::TypeAliasId(it) => {
@@ -754,6 +704,220 @@ impl<'a> TyLoweringContext<'a> {
         self.lower_ty_relative_path(ty, Some(resolution), remaining_segments)
     }
 
+    fn handle_type_ns_resolution(
+        &mut self,
+        resolution: &TypeNs,
+        resolved_segment: PathSegment<'_>,
+        resolved_segment_idx: usize,
+        on_diagnostic: &mut dyn FnMut(&mut Self, PathLoweringDiagnostic),
+    ) {
+        let mut prohibit_generics_on_resolved = |reason| {
+            if resolved_segment.args_and_bindings.is_some() {
+                on_diagnostic(
+                    self,
+                    PathLoweringDiagnostic::GenericArgsProhibited {
+                        segment: resolved_segment_idx as u32,
+                        reason,
+                    },
+                );
+            }
+        };
+
+        match resolution {
+            TypeNs::SelfType(_) => {
+                prohibit_generics_on_resolved(GenericArgsProhibitedReason::SelfTy)
+            }
+            TypeNs::GenericParam(_) => {
+                prohibit_generics_on_resolved(GenericArgsProhibitedReason::TyParam)
+            }
+            TypeNs::AdtSelfType(_) => {
+                prohibit_generics_on_resolved(GenericArgsProhibitedReason::SelfTy)
+            }
+            TypeNs::BuiltinType(_) => {
+                prohibit_generics_on_resolved(GenericArgsProhibitedReason::PrimitiveTy)
+            }
+            TypeNs::AdtId(_)
+            | TypeNs::EnumVariantId(_)
+            | TypeNs::TypeAliasId(_)
+            | TypeNs::TraitId(_)
+            | TypeNs::TraitAliasId(_) => {}
+        }
+    }
+
+    pub(crate) fn resolve_path_in_type_ns_fully(
+        &mut self,
+        path: &Path,
+        on_diagnostic: &mut dyn FnMut(&mut Self, PathLoweringDiagnostic),
+    ) -> Option<TypeNs> {
+        let (res, unresolved) = self.resolve_path_in_type_ns(path, on_diagnostic)?;
+        if unresolved.is_some() {
+            return None;
+        }
+        Some(res)
+    }
+
+    pub(crate) fn resolve_path_in_type_ns(
+        &mut self,
+        path: &Path,
+        on_diagnostic: &mut dyn FnMut(&mut Self, PathLoweringDiagnostic),
+    ) -> Option<(TypeNs, Option<usize>)> {
+        let (resolution, remaining_index, _) =
+            self.resolver.resolve_path_in_type_ns(self.db.upcast(), path)?;
+        let segments = path.segments();
+
+        match path {
+            // `segments.is_empty()` can occur with `self`.
+            Path::Normal(..) if !segments.is_empty() => (),
+            _ => return Some((resolution, remaining_index)),
+        };
+
+        let (module_segments, resolved_segment_idx, resolved_segment) = match remaining_index {
+            None => (
+                segments.strip_last(),
+                segments.len() - 1,
+                segments.last().expect("resolved path has at least one element"),
+            ),
+            Some(i) => (segments.take(i - 1), i - 1, segments.get(i - 1).unwrap()),
+        };
+
+        for (i, mod_segment) in module_segments.iter().enumerate() {
+            if mod_segment.args_and_bindings.is_some() {
+                on_diagnostic(
+                    self,
+                    PathLoweringDiagnostic::GenericArgsProhibited {
+                        segment: i as u32,
+                        reason: GenericArgsProhibitedReason::Module,
+                    },
+                );
+            }
+        }
+
+        self.handle_type_ns_resolution(
+            &resolution,
+            resolved_segment,
+            resolved_segment_idx,
+            on_diagnostic,
+        );
+
+        Some((resolution, remaining_index))
+    }
+
+    pub(crate) fn resolve_path_in_value_ns(
+        &mut self,
+        path: &Path,
+        hygiene_id: HygieneId,
+        on_diagnostic: &mut dyn FnMut(&mut Self, PathLoweringDiagnostic),
+    ) -> Option<ResolveValueResult> {
+        let (res, prefix_info) = self.resolver.resolve_path_in_value_ns_with_prefix_info(
+            self.db.upcast(),
+            path,
+            hygiene_id,
+        )?;
+
+        let segments = path.segments();
+        match path {
+            // `segments.is_empty()` can occur with `self`.
+            Path::Normal(..) if !segments.is_empty() => (),
+            _ => return Some(res),
+        };
+
+        let (mod_segments, enum_segment) = match res {
+            ResolveValueResult::Partial(_, unresolved_segment, _) => {
+                (segments.take(unresolved_segment - 1), None)
+            }
+            ResolveValueResult::ValueNs(ValueNs::EnumVariantId(_), _)
+                if prefix_info.enum_variant =>
+            {
+                (segments.strip_last_two(), segments.len().checked_sub(2))
+            }
+            ResolveValueResult::ValueNs(..) => (segments.strip_last(), None),
+        };
+        for (i, mod_segment) in mod_segments.iter().enumerate() {
+            if mod_segment.args_and_bindings.is_some() {
+                on_diagnostic(
+                    self,
+                    PathLoweringDiagnostic::GenericArgsProhibited {
+                        segment: i as u32,
+                        reason: GenericArgsProhibitedReason::Module,
+                    },
+                );
+            }
+        }
+
+        if let Some(enum_segment) = enum_segment {
+            if segments.get(enum_segment).is_some_and(|it| it.args_and_bindings.is_some())
+                && segments.get(enum_segment + 1).is_some_and(|it| it.args_and_bindings.is_some())
+            {
+                on_diagnostic(
+                    self,
+                    PathLoweringDiagnostic::GenericArgsProhibited {
+                        segment: (enum_segment + 1) as u32,
+                        reason: GenericArgsProhibitedReason::EnumVariant,
+                    },
+                );
+            }
+        }
+
+        match &res {
+            ResolveValueResult::ValueNs(resolution, _) => {
+                let resolved_segment_idx =
+                    segments.len().checked_sub(1).unwrap_or_else(|| panic!("{path:?}"));
+                let resolved_segment = segments.last().unwrap();
+
+                let mut prohibit_generics_on_resolved = |reason| {
+                    if resolved_segment.args_and_bindings.is_some() {
+                        on_diagnostic(
+                            self,
+                            PathLoweringDiagnostic::GenericArgsProhibited {
+                                segment: resolved_segment_idx as u32,
+                                reason,
+                            },
+                        );
+                    }
+                };
+
+                match resolution {
+                    ValueNs::ImplSelf(_) => {
+                        prohibit_generics_on_resolved(GenericArgsProhibitedReason::SelfTy)
+                    }
+                    // FIXME: rustc generates E0107 (incorrect number of generic arguments) and not
+                    // E0109 (generic arguments provided for a type that doesn't accept them) for
+                    // consts and statics, presumably as a defense against future in which consts
+                    // and statics can be generic, or just because it was easier for rustc implementors.
+                    // That means we'll show the wrong error code. Because of us it's easier to do it
+                    // this way :)
+                    ValueNs::GenericParam(_) | ValueNs::ConstId(_) => {
+                        prohibit_generics_on_resolved(GenericArgsProhibitedReason::Const)
+                    }
+                    ValueNs::StaticId(_) => {
+                        prohibit_generics_on_resolved(GenericArgsProhibitedReason::Static)
+                    }
+                    ValueNs::FunctionId(_) | ValueNs::StructId(_) | ValueNs::EnumVariantId(_) => {}
+                    ValueNs::LocalBinding(_) => {}
+                }
+            }
+            ResolveValueResult::Partial(resolution, unresolved_idx, _) => {
+                let resolved_segment_idx = unresolved_idx - 1;
+                let resolved_segment = segments.get(resolved_segment_idx).unwrap();
+                self.handle_type_ns_resolution(
+                    resolution,
+                    resolved_segment,
+                    resolved_segment_idx,
+                    on_diagnostic,
+                );
+            }
+        };
+        Some(res)
+    }
+
+    fn on_path_diagnostic_callback(
+        type_ref: TypeRefId,
+    ) -> impl FnMut(&mut Self, PathLoweringDiagnostic) {
+        move |this, diag| {
+            this.push_diagnostic(type_ref, TyLoweringDiagnosticKind::PathDiagnostic(diag))
+        }
+    }
+
     pub(crate) fn lower_path(&mut self, path: &Path, path_id: PathId) -> (Ty, Option<TypeNs>) {
         // Resolve the path (in type namespace)
         if let Some(type_ref) = path.type_anchor() {
@@ -761,11 +925,13 @@ impl<'a> TyLoweringContext<'a> {
             return self.lower_ty_relative_path(ty, res, path.segments());
         }
 
-        let (resolution, remaining_index, _) =
-            match self.resolver.resolve_path_in_type_ns(self.db.upcast(), path) {
-                Some(it) => it,
-                None => return (TyKind::Error.intern(Interner), None),
-            };
+        let (resolution, remaining_index) = match self.resolve_path_in_type_ns(
+            path,
+            &mut Self::on_path_diagnostic_callback(path_id.type_ref()),
+        ) {
+            Some(it) => it,
+            None => return (TyKind::Error.intern(Interner), None),
+        };
 
         if matches!(resolution, TypeNs::TraitId(_)) && remaining_index.is_none() {
             // trait object type without dyn
@@ -774,38 +940,22 @@ impl<'a> TyLoweringContext<'a> {
             return (ty, None);
         }
 
-        let (module_segments, resolved_segment_idx, resolved_segment, remaining_segments) =
-            match remaining_index {
-                None => (
-                    path.segments().strip_last(),
-                    path.segments().len() - 1,
-                    path.segments().last().expect("resolved path has at least one element"),
-                    PathSegments::EMPTY,
-                ),
-                Some(i) => (
-                    path.segments().take(i - 1),
-                    i - 1,
-                    path.segments().get(i - 1).unwrap(),
-                    path.segments().skip(i),
-                ),
-            };
-
-        self.prohibit_generics(path_id, 0, module_segments, GenericArgsProhibitedReason::Module);
+        let (resolved_segment_idx, resolved_segment, remaining_segments) = match remaining_index {
+            None => (
+                path.segments().len() - 1,
+                path.segments().last().expect("resolved path has at least one element"),
+                PathSegments::EMPTY,
+            ),
+            Some(i) => (i - 1, path.segments().get(i - 1).unwrap(), path.segments().skip(i)),
+        };
 
         self.lower_partly_resolved_path(
             resolution,
             resolved_segment,
             remaining_segments,
+            resolved_segment_idx as u32,
             false,
-            &mut |this, reason| {
-                this.push_diagnostic(
-                    path_id.type_ref(),
-                    TyLoweringDiagnosticKind::GenericArgsProhibited {
-                        segment: resolved_segment_idx as u32,
-                        reason,
-                    },
-                )
-            },
+            &mut Self::on_path_diagnostic_callback(path_id.type_ref()),
         )
     }
 
@@ -1107,7 +1257,9 @@ impl<'a> TyLoweringContext<'a> {
             if segment.args_and_bindings.is_some() {
                 self.push_diagnostic(
                     path_id.type_ref(),
-                    TyLoweringDiagnosticKind::GenericArgsProhibited { segment: idx, reason },
+                    TyLoweringDiagnosticKind::PathDiagnostic(
+                        PathLoweringDiagnostic::GenericArgsProhibited { segment: idx, reason },
+                    ),
                 );
             }
         });
@@ -1119,7 +1271,10 @@ impl<'a> TyLoweringContext<'a> {
         explicit_self_ty: Ty,
     ) -> Option<TraitRef> {
         let path = &self.types_map[path_id];
-        let resolved = match self.resolver.resolve_path_in_type_ns_fully(self.db.upcast(), path)? {
+        let resolved = match self.resolve_path_in_type_ns_fully(
+            path,
+            &mut Self::on_path_diagnostic_callback(path_id.type_ref()),
+        )? {
             // FIXME(trait_alias): We need to handle trait alias here.
             TypeNs::TraitId(tr) => tr,
             _ => return None,
@@ -1412,9 +1567,17 @@ impl<'a> TyLoweringContext<'a> {
                 match (lhs.skip_binders(), rhs.skip_binders()) {
                     (WhereClause::Implemented(lhs), WhereClause::Implemented(rhs)) => {
                         let lhs_id = lhs.trait_id;
-                        let lhs_is_auto = ctx.db.trait_data(from_chalk_trait_id(lhs_id)).is_auto;
+                        let lhs_is_auto = ctx
+                            .db
+                            .trait_data(from_chalk_trait_id(lhs_id))
+                            .flags
+                            .contains(TraitFlags::IS_AUTO);
                         let rhs_id = rhs.trait_id;
-                        let rhs_is_auto = ctx.db.trait_data(from_chalk_trait_id(rhs_id)).is_auto;
+                        let rhs_is_auto = ctx
+                            .db
+                            .trait_data(from_chalk_trait_id(rhs_id))
+                            .flags
+                            .contains(TraitFlags::IS_AUTO);
 
                         if !lhs_is_auto && !rhs_is_auto {
                             multiple_regular_traits = true;
@@ -2588,14 +2751,14 @@ fn fallback_bound_vars<T: TypeFoldable<Interner> + HasInterner<Interner = Intern
     crate::fold_free_vars(
         s,
         |bound, binders| {
-            if bound.index_if_innermost().map_or(true, is_allowed) {
+            if bound.index_if_innermost().is_none_or(is_allowed) {
                 bound.shifted_in_from(binders).to_ty(Interner)
             } else {
                 TyKind::Error.intern(Interner)
             }
         },
         |ty, bound, binders| {
-            if bound.index_if_innermost().map_or(true, is_allowed) {
+            if bound.index_if_innermost().is_none_or(is_allowed) {
                 bound.shifted_in_from(binders).to_const(Interner, ty)
             } else {
                 unknown_const(ty)

@@ -1,6 +1,8 @@
 use rustc_hir as hir;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes};
-use rustc_infer::traits::{ImplSource, Obligation, PredicateObligation};
+use rustc_infer::traits::{
+    ImplDerivedHostCause, ImplSource, Obligation, ObligationCauseCode, PredicateObligation,
+};
 use rustc_middle::span_bug;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{self, TypingMode};
@@ -248,9 +250,22 @@ fn evaluate_host_effect_from_selection_candiate<'tcx>(
                         tcx.const_conditions(impl_.impl_def_id)
                             .instantiate(tcx, impl_.args)
                             .into_iter()
-                            .map(|(trait_ref, _)| {
-                                obligation.with(
+                            .map(|(trait_ref, span)| {
+                                Obligation::new(
                                     tcx,
+                                    obligation.cause.clone().derived_host_cause(
+                                        ty::Binder::dummy(obligation.predicate),
+                                        |derived| {
+                                            ObligationCauseCode::ImplDerivedHost(Box::new(
+                                                ImplDerivedHostCause {
+                                                    derived,
+                                                    impl_def_id: impl_.impl_def_id,
+                                                    span,
+                                                },
+                                            ))
+                                        },
+                                    ),
+                                    obligation.param_env,
                                     trait_ref
                                         .to_host_effect_clause(tcx, obligation.predicate.constness),
                                 )

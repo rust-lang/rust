@@ -1,30 +1,22 @@
 //! proc-macro server backend based on [`proc_macro_api::msg::TokenId`] as the backing span.
 //! This backend is rather inflexible, used by RustRover and older rust-analyzer versions.
-use std::{
-    iter,
-    ops::{Bound, Range},
-};
+use std::ops::{Bound, Range};
 
 use intern::Symbol;
 use proc_macro::bridge::{self, server};
 
-use crate::server_impl::{
-    delim_to_external, delim_to_internal, literal_kind_to_external, literal_kind_to_internal,
-    token_stream::TokenStreamBuilder,
-};
+use crate::server_impl::{literal_kind_to_internal, token_stream::TokenStreamBuilder, TopSubtree};
 mod tt {
-    pub use proc_macro_api::msg::TokenId;
+    pub use span::TokenId;
 
     pub use tt::*;
 
-    pub type Subtree = ::tt::Subtree<TokenId>;
     pub type TokenTree = ::tt::TokenTree<TokenId>;
     pub type Leaf = ::tt::Leaf<TokenId>;
     pub type Literal = ::tt::Literal<TokenId>;
     pub type Punct = ::tt::Punct<TokenId>;
     pub type Ident = ::tt::Ident<TokenId>;
 }
-type Group = tt::Subtree;
 type TokenTree = tt::TokenTree;
 type Punct = tt::Punct;
 type Spacing = tt::Spacing;
@@ -148,15 +140,8 @@ impl server::TokenStream for TokenIdServer {
     ) -> Self::TokenStream {
         match tree {
             bridge::TokenTree::Group(group) => {
-                let group = Group {
-                    delimiter: delim_to_internal(group.delimiter, group.span),
-                    token_trees: match group.stream {
-                        Some(stream) => stream.into_iter().collect(),
-                        None => Box::new([]),
-                    },
-                };
-                let tree = TokenTree::from(group);
-                Self::TokenStream::from_iter(iter::once(tree))
+                let group = TopSubtree::from_bridge(group);
+                TokenStream { token_trees: group.0 }
             }
 
             bridge::TokenTree::Ident(ident) => {
@@ -167,7 +152,7 @@ impl server::TokenStream for TokenIdServer {
                 };
                 let leaf = tt::Leaf::from(ident);
                 let tree = TokenTree::from(leaf);
-                Self::TokenStream::from_iter(iter::once(tree))
+                TokenStream { token_trees: vec![tree] }
             }
 
             bridge::TokenTree::Literal(literal) => {
@@ -180,7 +165,7 @@ impl server::TokenStream for TokenIdServer {
 
                 let leaf = tt::Leaf::from(literal);
                 let tree = TokenTree::from(leaf);
-                Self::TokenStream::from_iter(iter::once(tree))
+                TokenStream { token_trees: vec![tree] }
             }
 
             bridge::TokenTree::Punct(p) => {
@@ -191,7 +176,7 @@ impl server::TokenStream for TokenIdServer {
                 };
                 let leaf = tt::Leaf::from(punct);
                 let tree = TokenTree::from(leaf);
-                Self::TokenStream::from_iter(iter::once(tree))
+                TokenStream { token_trees: vec![tree] }
             }
         }
     }
@@ -234,42 +219,7 @@ impl server::TokenStream for TokenIdServer {
         &mut self,
         stream: Self::TokenStream,
     ) -> Vec<bridge::TokenTree<Self::TokenStream, Self::Span, Self::Symbol>> {
-        stream
-            .into_iter()
-            .map(|tree| match tree {
-                tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
-                    bridge::TokenTree::Ident(bridge::Ident {
-                        sym: ident.sym,
-                        is_raw: ident.is_raw.yes(),
-                        span: ident.span,
-                    })
-                }
-                tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => {
-                    bridge::TokenTree::Literal(bridge::Literal {
-                        span: lit.span,
-                        kind: literal_kind_to_external(lit.kind),
-                        symbol: lit.symbol,
-                        suffix: lit.suffix,
-                    })
-                }
-                tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) => {
-                    bridge::TokenTree::Punct(bridge::Punct {
-                        ch: punct.char as u8,
-                        joint: punct.spacing == Spacing::Joint,
-                        span: punct.span,
-                    })
-                }
-                tt::TokenTree::Subtree(subtree) => bridge::TokenTree::Group(bridge::Group {
-                    delimiter: delim_to_external(subtree.delimiter),
-                    stream: if subtree.token_trees.is_empty() {
-                        None
-                    } else {
-                        Some(TokenStream { token_trees: subtree.token_trees.into_vec() })
-                    },
-                    span: bridge::DelimSpan::from_single(subtree.delimiter.open),
-                }),
-            })
-            .collect()
+        stream.into_bridge()
     }
 }
 
@@ -398,7 +348,7 @@ mod tests {
                         close: tt::TokenId(0),
                         kind: tt::DelimiterKind::Brace,
                     },
-                    token_trees: Box::new([]),
+                    len: 0,
                 }),
             ],
         };
@@ -408,35 +358,38 @@ mod tests {
 
     #[test]
     fn test_ra_server_from_str() {
-        let subtree_paren_a = tt::TokenTree::Subtree(tt::Subtree {
-            delimiter: tt::Delimiter {
-                open: tt::TokenId(0),
-                close: tt::TokenId(0),
-                kind: tt::DelimiterKind::Parenthesis,
-            },
-            token_trees: Box::new([tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
+        let subtree_paren_a = vec![
+            tt::TokenTree::Subtree(tt::Subtree {
+                delimiter: tt::Delimiter {
+                    open: tt::TokenId(0),
+                    close: tt::TokenId(0),
+                    kind: tt::DelimiterKind::Parenthesis,
+                },
+                len: 1,
+            }),
+            tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                 is_raw: tt::IdentIsRaw::No,
                 sym: Symbol::intern("a"),
                 span: tt::TokenId(0),
-            }))]),
-        });
+            })),
+        ];
 
         let t1 = TokenStream::from_str("(a)", tt::TokenId(0)).unwrap();
-        assert_eq!(t1.token_trees.len(), 1);
-        assert_eq!(t1.token_trees[0], subtree_paren_a);
+        assert_eq!(t1.token_trees.len(), 2);
+        assert!(t1.token_trees[0..2] == subtree_paren_a);
 
         let t2 = TokenStream::from_str("(a);", tt::TokenId(0)).unwrap();
-        assert_eq!(t2.token_trees.len(), 2);
-        assert_eq!(t2.token_trees[0], subtree_paren_a);
+        assert_eq!(t2.token_trees.len(), 3);
+        assert!(t2.token_trees[0..2] == subtree_paren_a);
 
         let underscore = TokenStream::from_str("_", tt::TokenId(0)).unwrap();
-        assert_eq!(
-            underscore.token_trees[0],
-            tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
-                sym: Symbol::intern("_"),
-                span: tt::TokenId(0),
-                is_raw: tt::IdentIsRaw::No,
-            }))
+        assert!(
+            underscore.token_trees[0]
+                == tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
+                    sym: Symbol::intern("_"),
+                    span: tt::TokenId(0),
+                    is_raw: tt::IdentIsRaw::No,
+                }))
         );
     }
 }

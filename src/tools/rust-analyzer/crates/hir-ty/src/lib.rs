@@ -24,7 +24,6 @@ extern crate ra_ap_rustc_pattern_analysis as rustc_pattern_analysis;
 mod builder;
 mod chalk_db;
 mod chalk_ext;
-mod generics;
 mod infer;
 mod inhabitedness;
 mod interner;
@@ -39,6 +38,7 @@ pub mod db;
 pub mod diagnostics;
 pub mod display;
 pub mod dyn_compatibility;
+pub mod generics;
 pub mod lang_items;
 pub mod layout;
 pub mod method_resolution;
@@ -50,6 +50,7 @@ pub mod traits;
 mod test_db;
 #[cfg(test)]
 mod tests;
+mod variance;
 
 use std::hash::Hash;
 
@@ -89,9 +90,8 @@ pub use infer::{
 };
 pub use interner::Interner;
 pub use lower::{
-    associated_type_shorthand_candidates, GenericArgsProhibitedReason, ImplTraitLoweringMode,
-    ParamLoweringMode, TyDefId, TyLoweringContext, TyLoweringDiagnostic, TyLoweringDiagnosticKind,
-    ValueTyDefId,
+    associated_type_shorthand_candidates, diagnostics::*, ImplTraitLoweringMode, ParamLoweringMode,
+    TyDefId, TyLoweringContext, ValueTyDefId,
 };
 pub use mapping::{
     from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id, from_placeholder_idx,
@@ -101,6 +101,7 @@ pub use mapping::{
 pub use method_resolution::check_orphan_rules;
 pub use traits::TraitEnvironment;
 pub use utils::{all_super_traits, direct_super_traits, is_fn_unsafe_to_call};
+pub use variance::Variance;
 
 pub use chalk_ir::{
     cast::Cast,

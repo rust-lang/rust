@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::Visitor;
@@ -260,7 +262,7 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
                     }
                     BorrowKind::Mut { .. } => {
                         let wk = WriteKind::MutableBorrow(bk);
-                        if allow_two_phase_borrow(bk) {
+                        if bk.allows_two_phase_borrow() {
                             (Deep, Reservation(wk))
                         } else {
                             (Deep, Write(wk))
@@ -378,8 +380,8 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
                         // Reading from mere reservations of mutable-borrows is OK.
                         if !is_active(this.dominators, borrow, location) {
                             // If the borrow isn't active yet, reads don't invalidate it
-                            assert!(allow_two_phase_borrow(borrow.kind));
-                            return Control::Continue;
+                            assert!(borrow.kind.allows_two_phase_borrow());
+                            return ControlFlow::Continue(());
                         }
 
                         // Unique and mutable borrows are invalidated by reads from any
@@ -395,7 +397,7 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
                         this.emit_loan_invalidated_at(borrow_index, location);
                     }
                 }
-                Control::Continue
+                ControlFlow::Continue(())
             },
         );
     }

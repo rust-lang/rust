@@ -5,6 +5,7 @@ use std::{
 };
 
 use ide::Cancelled;
+use ide_db::base_db::ra_salsa::Cycle;
 use lsp_server::{ExtractError, Response, ResponseError};
 use serde::{de::DeserializeOwned, Serialize};
 use stdx::thread::ThreadIntent;
@@ -307,10 +308,31 @@ impl RequestDispatcher<'_> {
     }
 }
 
+#[derive(Debug)]
+enum HandlerCancelledError {
+    PropagatedPanic,
+    Inner(ide::Cancelled),
+}
+
+impl std::error::Error for HandlerCancelledError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            HandlerCancelledError::PropagatedPanic => None,
+            HandlerCancelledError::Inner(cancelled) => Some(cancelled),
+        }
+    }
+}
+
+impl fmt::Display for HandlerCancelledError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Cancelled")
+    }
+}
+
 fn thread_result_to_response<R>(
     id: lsp_server::RequestId,
     result: thread::Result<anyhow::Result<R::Result>>,
-) -> Result<lsp_server::Response, Cancelled>
+) -> Result<lsp_server::Response, HandlerCancelledError>
 where
     R: lsp_types::request::Request,
     R::Params: DeserializeOwned,
@@ -328,7 +350,13 @@ where
             if let Some(panic_message) = panic_message {
                 message.push_str(": ");
                 message.push_str(panic_message)
-            };
+            } else if let Some(cycle) = panic.downcast_ref::<Cycle>() {
+                tracing::error!("Cycle propagated out of salsa! This is a bug: {cycle:?}");
+                return Err(HandlerCancelledError::PropagatedPanic);
+            } else if let Ok(cancelled) = panic.downcast::<Cancelled>() {
+                tracing::error!("Cancellation propagated out of salsa! This is a bug");
+                return Err(HandlerCancelledError::Inner(*cancelled));
+            }
 
             Ok(lsp_server::Response::new_err(
                 id,
@@ -342,7 +370,7 @@ where
 fn result_to_response<R>(
     id: lsp_server::RequestId,
     result: anyhow::Result<R::Result>,
-) -> Result<lsp_server::Response, Cancelled>
+) -> Result<lsp_server::Response, HandlerCancelledError>
 where
     R: lsp_types::request::Request,
     R::Params: DeserializeOwned,
@@ -353,7 +381,7 @@ where
         Err(e) => match e.downcast::<LspError>() {
             Ok(lsp_error) => lsp_server::Response::new_err(id, lsp_error.code, lsp_error.message),
             Err(e) => match e.downcast::<Cancelled>() {
-                Ok(cancelled) => return Err(cancelled),
+                Ok(cancelled) => return Err(HandlerCancelledError::Inner(cancelled)),
                 Err(e) => lsp_server::Response::new_err(
                     id,
                     lsp_server::ErrorCode::InternalError as i32,

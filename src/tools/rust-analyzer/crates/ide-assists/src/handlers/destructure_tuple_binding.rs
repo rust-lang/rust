@@ -6,7 +6,6 @@ use ide_db::{
     text_edit::TextRange,
 };
 use itertools::Itertools;
-use syntax::SmolStr;
 use syntax::{
     ast::{self, make, AstNode, FieldExpr, HasName, IdentPat},
     ted,
@@ -134,17 +133,8 @@ fn collect_data(ident_pat: IdentPat, ctx: &AssistContext<'_>) -> Option<TupleDat
             .map(|(_, refs)| refs.to_vec())
     });
 
-    let mut name_generator = {
-        let mut names = vec![];
-        if let Some(scope) = ctx.sema.scope(ident_pat.syntax()) {
-            scope.process_all_names(&mut |name, scope| {
-                if let hir::ScopeDef::Local(_) = scope {
-                    names.push(name.as_str().into())
-                }
-            })
-        }
-        suggest_name::NameGenerator::new_with_names(names.iter().map(|s: &SmolStr| s.as_str()))
-    };
+    let mut name_generator =
+        suggest_name::NameGenerator::new_from_scope_locals(ctx.sema.scope(ident_pat.syntax()));
 
     let field_names = field_types
         .into_iter()

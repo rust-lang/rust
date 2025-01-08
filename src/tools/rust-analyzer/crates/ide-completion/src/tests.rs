@@ -61,7 +61,7 @@ fn function() {}
 union Union { field: i32 }
 "#;
 
-pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
+pub(crate) const TEST_CONFIG: CompletionConfig<'_> = CompletionConfig {
     enable_postfix_completions: true,
     enable_imports_on_the_fly: true,
     enable_self_on_the_fly: true,
@@ -85,6 +85,8 @@ pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
     snippets: Vec::new(),
     limit: None,
     fields_to_resolve: CompletionFieldsToResolve::empty(),
+    exclude_flyimport: vec![],
+    exclude_traits: &[],
 };
 
 pub(crate) fn completion_list(ra_fixture: &str) -> String {
@@ -109,7 +111,7 @@ pub(crate) fn completion_list_with_trigger_character(
 }
 
 fn completion_list_with_config_raw(
-    config: CompletionConfig,
+    config: CompletionConfig<'_>,
     ra_fixture: &str,
     include_keywords: bool,
     trigger_character: Option<char>,
@@ -132,7 +134,7 @@ fn completion_list_with_config_raw(
 }
 
 fn completion_list_with_config(
-    config: CompletionConfig,
+    config: CompletionConfig<'_>,
     ra_fixture: &str,
     include_keywords: bool,
     trigger_character: Option<char>,
@@ -161,7 +163,7 @@ pub(crate) fn do_completion(code: &str, kind: CompletionItemKind) -> Vec<Complet
 }
 
 pub(crate) fn do_completion_with_config(
-    config: CompletionConfig,
+    config: CompletionConfig<'_>,
     code: &str,
     kind: CompletionItemKind,
 ) -> Vec<CompletionItem> {
@@ -220,7 +222,7 @@ pub(crate) fn check_edit(what: &str, ra_fixture_before: &str, ra_fixture_after: 
 
 #[track_caller]
 pub(crate) fn check_edit_with_config(
-    config: CompletionConfig,
+    config: CompletionConfig<'_>,
     what: &str,
     ra_fixture_before: &str,
     ra_fixture_after: &str,
@@ -257,7 +259,7 @@ fn check_empty(ra_fixture: &str, expect: Expect) {
 }
 
 pub(crate) fn get_all_items(
-    config: CompletionConfig,
+    config: CompletionConfig<'_>,
     code: &str,
     trigger_character: Option<char>,
 ) -> Vec<CompletionItem> {

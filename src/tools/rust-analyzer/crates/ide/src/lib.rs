@@ -86,7 +86,7 @@ pub use crate::{
     highlight_related::{HighlightRelatedConfig, HighlightedRange},
     hover::{
         HoverAction, HoverConfig, HoverDocFormat, HoverGotoTypeData, HoverResult,
-        MemoryLayoutHoverConfig, MemoryLayoutHoverRenderKind,
+        MemoryLayoutHoverConfig, MemoryLayoutHoverRenderKind, SubstTyLen,
     },
     inlay_hints::{
         AdjustmentHints, AdjustmentHintsMode, ClosureReturnTypeHints, DiscriminantHints,
@@ -96,8 +96,8 @@ pub use crate::{
     join_lines::JoinLinesConfig,
     markup::Markup,
     moniker::{
-        MonikerDescriptorKind, MonikerKind, MonikerResult, PackageInformation,
-        SymbolInformationKind,
+        Moniker, MonikerDescriptorKind, MonikerIdentifier, MonikerKind, MonikerResult,
+        PackageInformation, SymbolInformationKind,
     },
     move_item::Direction,
     navigation_target::{NavigationTarget, TryToNav, UpmappingResult},
@@ -671,19 +671,17 @@ impl Analysis {
     /// Computes completions at the given position.
     pub fn completions(
         &self,
-        config: &CompletionConfig,
+        config: &CompletionConfig<'_>,
         position: FilePosition,
         trigger_character: Option<char>,
     ) -> Cancellable<Option<Vec<CompletionItem>>> {
-        self.with_db(|db| {
-            ide_completion::completions(db, config, position, trigger_character).map(Into::into)
-        })
+        self.with_db(|db| ide_completion::completions(db, config, position, trigger_character))
     }
 
     /// Resolves additional completion data at the position given.
     pub fn resolve_completion_edits(
         &self,
-        config: &CompletionConfig,
+        config: &CompletionConfig<'_>,
         position: FilePosition,
         imports: impl IntoIterator<Item = (String, String)> + std::panic::UnwindSafe,
     ) -> Cancellable<Vec<TextEdit>> {

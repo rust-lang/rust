@@ -60,6 +60,7 @@
     - [loongarch\*-unknown-linux-\*](platform-support/loongarch-linux.md)
     - [loongarch\*-unknown-none\*](platform-support/loongarch-none.md)
     - [m68k-unknown-linux-gnu](platform-support/m68k-unknown-linux-gnu.md)
+    - [m68k-unknown-none-elf](platform-support/m68k-unknown-none-elf.md)
     - [mips64-openwrt-linux-musl](platform-support/mips64-openwrt-linux-musl.md)
     - [mipsel-sony-psx](platform-support/mipsel-sony-psx.md)
     - [mips\*-mti-none-elf](platform-support/mips-mti-none-elf.md)

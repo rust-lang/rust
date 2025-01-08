@@ -239,7 +239,8 @@ macro_rules! options {
         $init:expr,
         $parse:ident,
         [$dep_tracking_marker:ident],
-        $desc:expr)
+        $desc:expr
+        $(, deprecated_do_nothing: $dnn:literal )?)
      ),* ,) =>
 (
     #[derive(Clone)]
@@ -280,7 +281,8 @@ macro_rules! options {
     }
 
     pub const $stat: OptionDescrs<$struct_name> =
-        &[ $( (stringify!($opt), $optmod::$opt, desc::$parse, $desc) ),* ];
+        &[ $( OptionDesc{ name: stringify!($opt), setter: $optmod::$opt,
+            type_desc: desc::$parse, desc: $desc, is_deprecated_and_do_nothing: false $( || $dnn )? } ),* ];
 
     mod $optmod {
     $(
@@ -315,7 +317,27 @@ macro_rules! redirect_field {
 }
 
 type OptionSetter<O> = fn(&mut O, v: Option<&str>) -> bool;
-type OptionDescrs<O> = &'static [(&'static str, OptionSetter<O>, &'static str, &'static str)];
+type OptionDescrs<O> = &'static [OptionDesc<O>];
+
+pub struct OptionDesc<O> {
+    name: &'static str,
+    setter: OptionSetter<O>,
+    // description for return value/type from mod desc
+    type_desc: &'static str,
+    // description for option from options table
+    desc: &'static str,
+    is_deprecated_and_do_nothing: bool,
+}
+
+impl<O> OptionDesc<O> {
+    pub fn name(&self) -> &'static str {
+        self.name
+    }
+
+    pub fn desc(&self) -> &'static str {
+        self.desc
+    }
+}
 
 #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 fn build_options<O: Default>(
@@ -333,8 +355,13 @@ fn build_options<O: Default>(
         };
 
         let option_to_lookup = key.replace('-', "_");
-        match descrs.iter().find(|(name, ..)| *name == option_to_lookup) {
-            Some((_, setter, type_desc, _)) => {
+        match descrs.iter().find(|opt_desc| opt_desc.name == option_to_lookup) {
+            Some(OptionDesc { name: _, setter, type_desc, desc, is_deprecated_and_do_nothing }) => {
+                if *is_deprecated_and_do_nothing {
+                    // deprecation works for prefixed options only
+                    assert!(!prefix.is_empty());
+                    early_dcx.early_warn(format!("`-{prefix} {key}`: {desc}"));
+                }
                 if !setter(&mut op, value) {
                     match value {
                         None => early_dcx.early_fatal(
@@ -1546,7 +1573,8 @@ options! {
     // tidy-alphabetical-start
     #[rustc_lint_opt_deny_field_access("documented to do nothing")]
     ar: String = (String::new(), parse_string, [UNTRACKED],
-        "this option is deprecated and does nothing"),
+        "this option is deprecated and does nothing",
+        deprecated_do_nothing: true),
     #[rustc_lint_opt_deny_field_access("use `Session::code_model` instead of this field")]
     code_model: Option<CodeModel> = (None, parse_code_model, [TRACKED],
         "choose the code model to use (`rustc --print code-models` for details)"),
@@ -1578,9 +1606,10 @@ options! {
     incremental: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "enable incremental compilation"),
     #[rustc_lint_opt_deny_field_access("documented to do nothing")]
-    inline_threshold: Option<u32> = (None, parse_opt_number, [TRACKED],
+    inline_threshold: Option<u32> = (None, parse_opt_number, [UNTRACKED],
         "this option is deprecated and does nothing \
-        (consider using `-Cllvm-args=--inline-threshold=...`)"),
+        (consider using `-Cllvm-args=--inline-threshold=...`)",
+        deprecated_do_nothing: true),
     #[rustc_lint_opt_deny_field_access("use `Session::instrument_coverage` instead of this field")]
     instrument_coverage: InstrumentCoverage = (InstrumentCoverage::No, parse_instrument_coverage, [TRACKED],
         "instrument the generated code to support LLVM source-based code coverage reports \
@@ -1616,7 +1645,8 @@ options! {
         "disable the use of the redzone"),
     #[rustc_lint_opt_deny_field_access("documented to do nothing")]
     no_stack_check: bool = (false, parse_no_value, [UNTRACKED],
-        "this option is deprecated and does nothing"),
+        "this option is deprecated and does nothing",
+        deprecated_do_nothing: true),
     no_vectorize_loops: bool = (false, parse_no_value, [TRACKED],
         "disable loop vectorization optimization passes"),
     no_vectorize_slp: bool = (false, parse_no_value, [TRACKED],
@@ -1771,6 +1801,8 @@ options! {
         "emit a section containing stack size metadata (default: no)"),
     emit_thin_lto: bool = (true, parse_bool, [TRACKED],
         "emit the bc module with thin LTO info (default: yes)"),
+    emscripten_wasm_eh: bool = (false, parse_bool, [TRACKED],
+        "Use WebAssembly error handling for wasm32-unknown-emscripten"),
     enforce_type_length_limit: bool = (false, parse_bool, [TRACKED],
         "enforce the type length limit when monomorphizing instances in codegen"),
     export_executable_symbols: bool = (false, parse_bool, [TRACKED],

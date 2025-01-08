@@ -46,6 +46,7 @@ fn run_rustc_skipping_cargo_checking(
 }
 
 fn run_rustc(rustc_executable: OsString, args: Vec<OsString>) -> io::Result<ExitCode> {
+    #[allow(clippy::disallowed_methods)]
     let mut child = Command::new(rustc_executable)
         .args(args)
         .stdin(Stdio::inherit())

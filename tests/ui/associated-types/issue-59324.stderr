@@ -65,16 +65,17 @@ LL | pub trait ThriftService<Bug: NotFoo + Foo>:
    |                                     +++++
 
 error[E0277]: the trait bound `(): Foo` is not satisfied
-  --> $DIR/issue-59324.rs:23:52
+  --> $DIR/issue-59324.rs:23:29
    |
 LL | fn with_factory<H>(factory: dyn ThriftService<()>) {}
-   |                                                    ^^ the trait `Foo` is not implemented for `()`
+   |                             ^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `()`
    |
 help: this trait has no implementations, consider adding one
   --> $DIR/issue-59324.rs:3:1
    |
 LL | pub trait Foo: NotFoo {
    | ^^^^^^^^^^^^^^^^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: the size for values of type `(dyn ThriftService<(), AssocType = _> + 'static)` cannot be known at compilation time
   --> $DIR/issue-59324.rs:23:29

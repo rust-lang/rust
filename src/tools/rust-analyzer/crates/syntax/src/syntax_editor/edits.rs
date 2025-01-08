@@ -24,7 +24,7 @@ impl SyntaxEditor {
                     if last_param
                         .syntax()
                         .next_sibling_or_token()
-                        .map_or(false, |it| it.kind() == SyntaxKind::COMMA)
+                        .is_some_and(|it| it.kind() == SyntaxKind::COMMA)
                     {
                         self.insert(
                             Position::after(last_param.syntax()),

@@ -435,6 +435,9 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
             hir::PatKind::Or(pats) => PatKind::Or { pats: self.lower_patterns(pats) },
 
+            // FIXME(guard_patterns): implement guard pattern lowering
+            hir::PatKind::Guard(pat, _) => self.lower_pattern(pat).kind,
+
             hir::PatKind::Err(guar) => PatKind::Error(guar),
         };
 

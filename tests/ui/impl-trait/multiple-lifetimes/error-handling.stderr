@@ -6,6 +6,9 @@ LL | fn foo<'a, 'b, 'c>(x: &'static i32, mut y: &'a i32) -> E<'b, 'c> {
    |        |
    |        lifetime `'a` defined here
 ...
+LL |     let u = v;
+   |             - requirement occurs due to copying this value
+...
 LL |         let _: &'b i32 = *u.0;
    |                ^^^^^^^ type annotation requires that `'a` must outlive `'b`
    |
