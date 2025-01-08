@@ -3,6 +3,7 @@
 use std::cell::Cell;
 use std::fmt::{self, Debug};
 
+use derive_where::derive_where;
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
@@ -224,22 +225,29 @@ rustc_data_structures::static_assert_size!(ConstraintCategory<'_>, 16);
 /// See also `rustc_const_eval::borrow_check::constraints`.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 #[derive(TyEncodable, TyDecodable, HashStable, TypeVisitable, TypeFoldable)]
+#[derive_where(PartialOrd, Ord)]
 pub enum ConstraintCategory<'tcx> {
     Return(ReturnConstraint),
     Yield,
     UseAsConst,
     UseAsStatic,
-    TypeAnnotation(AnnotationSource),
+    TypeAnnotation,
     Cast {
         /// Whether this cast is a coercion that was automatically inserted by the compiler.
         is_implicit_coercion: bool,
         /// Whether this is an unsizing coercion and if yes, this contains the target type.
         /// Region variables are erased to ReErased.
+        #[derive_where(skip)]
         unsize_to: Option<Ty<'tcx>>,
     },
 
+    /// A constraint that came from checking the body of a closure.
+    ///
+    /// We try to get the category that the closure used when reporting this.
+    ClosureBounds,
+
     /// Contains the function type if available.
-    CallArgument(Option<Ty<'tcx>>),
+    CallArgument(#[derive_where(skip)] Option<Ty<'tcx>>),
     CopyBound,
     SizedBound,
     Assignment,
@@ -268,20 +276,11 @@ pub enum ConstraintCategory<'tcx> {
     IllegalUniverse,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 #[derive(TyEncodable, TyDecodable, HashStable, TypeVisitable, TypeFoldable)]
 pub enum ReturnConstraint {
     Normal,
     ClosureUpvar(FieldIdx),
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-#[derive(TyEncodable, TyDecodable, HashStable, TypeVisitable, TypeFoldable)]
-pub enum AnnotationSource {
-    Ascription,
-    Declaration,
-    OpaqueCast,
-    GenericArg,
 }
 
 /// The subject of a `ClosureOutlivesRequirement` -- that is, the thing

@@ -6,7 +6,6 @@
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(file_buffered)]
-#![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
@@ -1207,7 +1206,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     borrowed,
                     |diag| {
                         session_diagnostics::TailExprDropOrder { borrowed }.decorate_lint(diag);
-                        explain.add_explanation_to_diagnostic(&this, diag, "", None, None);
+                        explain.add_explanation_to_diagnostic(
+                            this.infcx.tcx,
+                            this.body,
+                            &this.local_names,
+                            diag,
+                            "",
+                            None,
+                            None,
+                        );
                     },
                 );
                 // We may stop at the first case

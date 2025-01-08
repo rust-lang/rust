@@ -8,8 +8,8 @@ where
 
 fn test<'a, 'b>(x: Cell<&'a ()>, y: Cell<&'b ()>) {
     let f = check;
-    f(x, y);
     //~^ ERROR lifetime may not live long enough
+    f(x, y);
 }
 
 fn main() {}
