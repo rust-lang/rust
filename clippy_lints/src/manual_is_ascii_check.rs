@@ -9,7 +9,7 @@ use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Node, Param, PatKind, RangeEnd};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
+use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, sym};
 
@@ -123,15 +123,14 @@ impl<'tcx> LateLintPass<'tcx> for ManualIsAsciiCheck {
     extract_msrv_attr!(LateContext);
 }
 
-fn get_ty_sugg(cx: &LateContext<'_>, arg: &Expr<'_>) -> Option<(Span, String)> {
+fn get_ty_sugg<'tcx>(cx: &LateContext<'tcx>, arg: &Expr<'_>) -> Option<(Span, Ty<'tcx>)> {
     let local_hid = path_to_local(arg)?;
     if let Node::Param(Param { ty_span, span, .. }) = cx.tcx.parent_hir_node(local_hid)
         // `ty_span` and `span` are the same for inferred type, thus a type suggestion must be given
         && ty_span == span
     {
         let arg_type = cx.typeck_results().expr_ty(arg);
-        let ty_str = arg_type.to_string();
-        return Some((*ty_span, ty_str));
+        return Some((*ty_span, arg_type));
     }
     None
 }
@@ -141,7 +140,7 @@ fn check_is_ascii(
     span: Span,
     recv: &Expr<'_>,
     range: &CharRange,
-    ty_sugg: Option<(Span, String)>,
+    ty_sugg: Option<(Span, Ty<'_>)>,
 ) {
     let sugg = match range {
         CharRange::UpperChar => "is_ascii_uppercase",
@@ -155,8 +154,8 @@ fn check_is_ascii(
     let mut app = Applicability::MachineApplicable;
     let recv = Sugg::hir_with_context(cx, recv, span.ctxt(), default_snip, &mut app).maybe_par();
     let mut suggestion = vec![(span, format!("{recv}.{sugg}()"))];
-    if let Some((ty_span, ty_str)) = ty_sugg {
-        suggestion.push((ty_span, format!("{recv}: {ty_str}")));
+    if let Some((ty_span, ty)) = ty_sugg {
+        suggestion.push((ty_span, format!("{recv}: {ty}")));
     }
 
     span_lint_and_then(
