@@ -227,8 +227,7 @@ fn find_definitions(
                 ast::NameLike::Name(name)
                     if name
                         .syntax()
-                        .parent()
-                        .map_or(false, |it| ast::Rename::can_cast(it.kind()))
+                        .parent().is_some_and(|it| ast::Rename::can_cast(it.kind()))
                         // FIXME: uncomment this once we resolve to usages to extern crate declarations
                         // && name
                         //     .syntax()
@@ -242,7 +241,7 @@ fn find_definitions(
                 ast::NameLike::Name(name) => NameClass::classify(sema, name)
                     .map(|class| match class {
                         NameClass::Definition(it) | NameClass::ConstReference(it) => it,
-                        NameClass::PatFieldShorthand { local_def, field_ref: _ } => {
+                        NameClass::PatFieldShorthand { local_def, field_ref: _, adt_subst: _ } => {
                             Definition::Local(local_def)
                         }
                     })
@@ -250,8 +249,8 @@ fn find_definitions(
                 ast::NameLike::NameRef(name_ref) => {
                     NameRefClass::classify(sema, name_ref)
                         .map(|class| match class {
-                            NameRefClass::Definition(def) => def,
-                            NameRefClass::FieldShorthand { local_ref, field_ref: _ } => {
+                            NameRefClass::Definition(def, _) => def,
+                            NameRefClass::FieldShorthand { local_ref, field_ref: _, adt_subst: _ } => {
                                 Definition::Local(local_ref)
                             }
                             NameRefClass::ExternCrateShorthand { decl, .. } => {
@@ -264,8 +263,7 @@ fn find_definitions(
                         .and_then(|def| {
                             // if the name differs from the definitions name it has to be an alias
                             if def
-                                .name(sema.db)
-                                .map_or(false, |it| !it.eq_ident(name_ref.text().as_str()))
+                                .name(sema.db).is_some_and(|it| !it.eq_ident(name_ref.text().as_str()))
                             {
                                 Err(format_err!("Renaming aliases is currently unsupported"))
                             } else {
@@ -276,7 +274,7 @@ fn find_definitions(
                 ast::NameLike::Lifetime(lifetime) => {
                     NameRefClass::classify_lifetime(sema, lifetime)
                         .and_then(|class| match class {
-                            NameRefClass::Definition(def) => Some(def),
+                            NameRefClass::Definition(def, _) => Some(def),
                             _ => None,
                         })
                         .or_else(|| {

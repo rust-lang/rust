@@ -128,7 +128,11 @@ rm tests/ui/abi/large-byval-align.rs # exceeds implementation limit of Cranelift
 # should work when using ./x.py test the way it is intended
 # ============================================================
 rm -r tests/run-make/remap-path-prefix-dwarf # requires llvm-dwarfdump
+rm -r tests/run-make/strip # same
 rm -r tests/run-make/compiler-builtins # Expects lib/rustlib/src/rust to contains the standard library source
+rm -r tests/run-make/missing-unstable-trait-bound # This disables support for unstable features, but running cg_clif needs some unstable features
+rm -r tests/run-make/const-trait-stable-toolchain # same
+rm -r tests/run-make/incr-add-rust-src-component
 
 # genuine bugs
 # ============
@@ -196,5 +200,5 @@ index e7ae773ffa1d3..04bc2d7787da7 100644
 EOF
 
 echo "[TEST] rustc test suite"
-COMPILETEST_FORCE_STAGE0=1 ./x.py test --stage 0 --test-args=--nocapture tests/{codegen-units,run-make,ui,incremental}
+COMPILETEST_FORCE_STAGE0=1 ./x.py test --stage 0 --test-args=--no-capture tests/{codegen-units,run-make,ui,incremental}
 popd

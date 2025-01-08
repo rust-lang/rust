@@ -651,8 +651,8 @@ mod patterns {
         let &mut pat;
     }
 
-    /// PatKind::Lit
-    fn pat_lit() {
+    /// PatKind::Expr
+    fn pat_expr() {
         let 1_000_i8;
         let -"";
     }

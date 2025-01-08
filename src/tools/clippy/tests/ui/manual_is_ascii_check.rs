@@ -82,3 +82,8 @@ fn generics() {
     take_while(|c| (b'A'..=b'Z').contains(&c));
     take_while(|c: char| ('A'..='Z').contains(&c));
 }
+
+fn adds_type_reference() {
+    let digits: Vec<&char> = ['1', 'A'].iter().take_while(|c| ('0'..='9').contains(c)).collect();
+    let digits: Vec<&mut char> = ['1', 'A'].iter_mut().take_while(|c| ('0'..='9').contains(c)).collect();
+}

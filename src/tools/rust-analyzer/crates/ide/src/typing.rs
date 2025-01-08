@@ -174,7 +174,7 @@ fn on_delimited_node_typed(
     kinds: &[fn(SyntaxKind) -> bool],
 ) -> Option<TextEdit> {
     let t = reparsed.syntax().token_at_offset(offset).right_biased()?;
-    if t.prev_token().map_or(false, |t| t.kind().is_any_identifier()) {
+    if t.prev_token().is_some_and(|t| t.kind().is_any_identifier()) {
         return None;
     }
     let (filter, node) = t

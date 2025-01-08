@@ -1036,7 +1036,7 @@ pub(super) fn const_conditions<'tcx>(
 
         icx.lowerer().lower_bounds(
             tcx.types.self_param,
-            supertraits.into_iter(),
+            supertraits,
             &mut bounds,
             ty::List::empty(),
             PredicateFilter::ConstIfConst,

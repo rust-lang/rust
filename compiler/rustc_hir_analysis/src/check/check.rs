@@ -575,7 +575,7 @@ fn sanity_check_found_hidden_type<'tcx>(
     } else {
         let span = tcx.def_span(key.def_id);
         let other = ty::OpaqueHiddenType { ty: hidden_ty, span };
-        Err(ty.build_mismatch_error(&other, key.def_id, tcx)?.emit())
+        Err(ty.build_mismatch_error(&other, tcx)?.emit())
     }
 }
 
@@ -1666,7 +1666,7 @@ fn check_type_alias_type_params_are_used<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalD
             .collect::<FxIndexMap<_, _>>()
     });
 
-    let mut params_used = BitSet::new_empty(generics.own_params.len());
+    let mut params_used = DenseBitSet::new_empty(generics.own_params.len());
     for leaf in ty.walk() {
         if let GenericArgKind::Type(leaf_ty) = leaf.unpack()
             && let ty::Param(param) = leaf_ty.kind()
@@ -1845,13 +1845,18 @@ pub(super) fn check_coroutine_obligations(
 
     debug!(?typeck_results.coroutine_stalled_predicates);
 
+    let mode = if tcx.next_trait_solver_globally() {
+        TypingMode::post_borrowck_analysis(tcx, def_id)
+    } else {
+        TypingMode::analysis_in_body(tcx, def_id)
+    };
+
     let infcx = tcx
         .infer_ctxt()
         // typeck writeback gives us predicates with their regions erased.
         // As borrowck already has checked lifetimes, we do not need to do it again.
         .ignoring_regions()
-        // FIXME(#132279): This should eventually use the already defined hidden types.
-        .build(TypingMode::analysis_in_body(tcx, def_id));
+        .build(mode);
 
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
     for (predicate, cause) in &typeck_results.coroutine_stalled_predicates {
@@ -1864,12 +1869,14 @@ pub(super) fn check_coroutine_obligations(
         return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
     }
 
-    // Check that any hidden types found when checking these stalled coroutine obligations
-    // are valid.
-    for (key, ty) in infcx.take_opaque_types() {
-        let hidden_type = infcx.resolve_vars_if_possible(ty.hidden_type);
-        let key = infcx.resolve_vars_if_possible(key);
-        sanity_check_found_hidden_type(tcx, key, hidden_type)?;
+    if !tcx.next_trait_solver_globally() {
+        // Check that any hidden types found when checking these stalled coroutine obligations
+        // are valid.
+        for (key, ty) in infcx.take_opaque_types() {
+            let hidden_type = infcx.resolve_vars_if_possible(ty.hidden_type);
+            let key = infcx.resolve_vars_if_possible(key);
+            sanity_check_found_hidden_type(tcx, key, hidden_type)?;
+        }
     }
 
     Ok(())

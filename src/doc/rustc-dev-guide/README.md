@@ -70,46 +70,21 @@ $ ENABLE_LINKCHECK=1 mdbook serve
 We use `mdbook-toc` to auto-generate TOCs for long sections. You can invoke the preprocessor by
 including the `<!-- toc -->` marker at the place where you want the TOC.
 
-## How to fix toolstate failures
+## Synchronizing josh subtree with rustc
 
-> [!NOTE]
-> Currently, we do not track the rustc-dev-guide toolstate due to
-> [spurious failures](https://github.com/rust-lang/rust/pull/71731),
-> but we leave these instructions for when we do it again in the future.
+This repository is linked to `rust-lang/rust` as a [josh](https://josh-project.github.io/josh/intro.html) subtree. You can use the following commands to synchronize the subtree in both directions.
 
-1. You will get a ping from the toolstate commit. e.g. https://github.com/rust-lang-nursery/rust-toolstate/commit/8ffa0e4c30ac9ba8546b7046e5c4ccc2b96ebdd4
+### Pull changes from `rust-lang/rust` into this repository
+1) Checkout a new branch that will be used to create a PR into `rust-lang/rustc-dev-guide`
+2) Run the pull command
+    ```
+    $ cargo run --manifest-path josh-sync/Cargo.toml rustc-pull
+    ```
+3) Push the branch to your fork and create a PR into `rustc-dev-guide`
 
-2. The commit contains a link to the PR that caused the breakage. e.g. https://github.com/rust-lang/rust/pull/64321
-
-3. If you go to that PR's thread, there is a post from bors with a link to the CI status: https://github.com/rust-lang/rust/pull/64321#issuecomment-529763807
-
-4. Follow the check-actions link to get to the Actions page for that build
-
-5. There will be approximately 1 billion different jobs for the build. They are for different configurations and platforms. The rustc-dev-guide build only runs on the Linux x86_64-gnu-tools job. So click on that job in the list, which is about 60% down in the list.
-
-6. Click the Run build step in the job to get the console log for the step.
-
-7. Click on the log and Ctrl-f to get a search box in the log
-
-8. Search for rustc-dev-guide. This gets you to the place where the links are checked. It is usually ~11K lines into the log.
-
-9. Look at the links in the log near that point in the log
-
-10. Fix those links in the rustc-dev-guide (by making a PR in the rustc-dev-guide repo)
-
-11. Make a PR on the rust-lang/rust repo to update the rustc-dev-guide git submodule in src/docs/rustc-dev-guide.
-To make a PR, the following steps are useful.
-
-```bash
-# Assuming you already cloned the rust-lang/rust repo and you're in the correct directory
-git submodule update --remote src/doc/rustc-dev-guide
-git add -u
-git commit -m "Update rustc-dev-guide"
-# Note that you can use -i, which is short for --incremental, in the following command
-./x test --incremental src/doc/rustc-dev-guide # This is optional and should succeed anyway
-# Open a PR in rust-lang/rust
-```
-
-12. Wait for PR to merge
-
-Voilà!
+### Push changes from this repository into `rust-lang/rust`
+1) Run the push command to create a branch named `<branch-name>` in a `rustc` fork under the `<gh-username>` account
+    ```
+    $ cargo run --manifest-path josh-sync/Cargo.toml rustc-push <branch-name> <gh-username>
+    ```
+2) Create a PR from `<branch-name>` into `rust-lang/rust`

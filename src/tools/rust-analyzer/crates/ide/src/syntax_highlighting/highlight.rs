@@ -76,7 +76,7 @@ pub(super) fn name_like(
             Some(IdentClass::NameClass(NameClass::Definition(def))) => {
                 highlight_def(sema, krate, def) | HlMod::Definition
             }
-            Some(IdentClass::NameRefClass(NameRefClass::Definition(def))) => {
+            Some(IdentClass::NameRefClass(NameRefClass::Definition(def, _))) => {
                 highlight_def(sema, krate, def)
             }
             // FIXME: Fallback for 'static and '_, as we do not resolve these yet
@@ -155,7 +155,7 @@ fn punctuation(
                 if parent
                     .as_ref()
                     .and_then(SyntaxNode::parent)
-                    .map_or(false, |it| it.kind() == MACRO_RULES) =>
+                    .is_some_and(|it| it.kind() == MACRO_RULES) =>
             {
                 return HlOperator::Other.into()
             }
@@ -193,7 +193,7 @@ fn keyword(
         T![for] if parent_matches::<ast::ForExpr>(&token) => h | HlMod::ControlFlow,
         T![unsafe] => h | HlMod::Unsafe,
         T![const]
-            if token.parent().map_or(false, |it| {
+            if token.parent().is_some_and(|it| {
                 matches!(
                     it.kind(),
                     SyntaxKind::CONST
@@ -253,14 +253,14 @@ fn highlight_name_ref(
             && !sema
                 .hir_file_for(name_ref.syntax())
                 .macro_file()
-                .map_or(false, |it| it.is_derive_attr_pseudo_expansion(sema.db)) =>
+                .is_some_and(|it| it.is_derive_attr_pseudo_expansion(sema.db)) =>
         {
             return HlTag::Symbol(SymbolKind::Attribute).into();
         }
         None => return HlTag::UnresolvedReference.into(),
     };
     let mut h = match name_class {
-        NameRefClass::Definition(def) => {
+        NameRefClass::Definition(def, _) => {
             if let Definition::Local(local) = &def {
                 let name = local.name(db);
                 let shadow_count = bindings_shadow_count.entry(name.clone()).or_default();
@@ -275,7 +275,7 @@ fn highlight_name_ref(
                 }
                 Definition::Trait(trait_) if trait_.is_unsafe(db) => {
                     if ast::Impl::for_trait_name_ref(&name_ref)
-                        .map_or(false, |impl_| impl_.unsafe_token().is_some())
+                        .is_some_and(|impl_| impl_.unsafe_token().is_some())
                     {
                         h |= HlMod::Unsafe;
                     }
@@ -550,7 +550,7 @@ pub(super) fn highlight_def(
 
     let def_crate = def.krate(db);
     let is_from_other_crate = def_crate != Some(krate);
-    let is_from_builtin_crate = def_crate.map_or(false, |def_crate| def_crate.is_builtin(db));
+    let is_from_builtin_crate = def_crate.is_some_and(|def_crate| def_crate.is_builtin(db));
     let is_builtin = matches!(
         def,
         Definition::BuiltinType(_) | Definition::BuiltinLifetime(_) | Definition::BuiltinAttr(_)
@@ -688,7 +688,7 @@ fn highlight_name_ref_by_syntax(
             let h = HlTag::Symbol(SymbolKind::Field);
             let is_union = ast::FieldExpr::cast(parent)
                 .and_then(|field_expr| sema.resolve_field(&field_expr))
-                .map_or(false, |field| match field {
+                .is_some_and(|field| match field {
                     Either::Left(field) => {
                         matches!(field.parent_def(sema.db), hir::VariantDef::Union(_))
                     }
@@ -764,5 +764,5 @@ fn parents_match(mut node: NodeOrToken<SyntaxNode, SyntaxToken>, mut kinds: &[Sy
 }
 
 fn parent_matches<N: AstNode>(token: &SyntaxToken) -> bool {
-    token.parent().map_or(false, |it| N::can_cast(it.kind()))
+    token.parent().is_some_and(|it| N::can_cast(it.kind()))
 }

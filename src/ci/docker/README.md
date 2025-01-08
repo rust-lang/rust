@@ -1,29 +1,30 @@
 # Docker images for CI
 
 This folder contains a bunch of docker images used by the continuous integration
-(CI) of Rust. An script is accompanied (`run.sh`) with these images to actually
-execute them. To test out an image execute:
+(CI) of Rust. A script is accompanied (`run.sh`) with these images to actually
+execute them.
+
+Note that a single Docker image can be used by multiple CI jobs, so the job name
+is the important thing that you should know. You can examine the existing CI jobs in
+the [`jobs.yml`](../github-actions/jobs.yml) file.
+
+To run a specific CI job locally, you can use the following script:
 
 ```
-./src/ci/docker/run.sh $image_name
+python3 ./src/ci/github-actions/ci.py run-local <job-name>
 ```
 
-for example:
+For example, to run the `x86_64-gnu-llvm-18-1` job:
+```
+python3 ./src/ci/github-actions/ci.py run-local x86_64-gnu-llvm-18-1
+```
 
-```
-./src/ci/docker/run.sh x86_64-gnu
-```
-
-Images will output artifacts in an `obj/$image_name` dir at the root of a repository. Note
-that the script will overwrite the contents of this directory.
-
-To match conditions in rusts CI, also set the environment variable `DEPLOY=1`, e.g.:
-```
-DEPLOY=1 ./src/ci/docker/run.sh x86_64-gnu
-```
+The job will output artifacts in an `obj/<image-name>` dir at the root of a repository. Note
+that the script will overwrite the contents of this directory. `<image-name>` is set based on the
+Docker image executed in the given CI job.
 
 **NOTE**: In CI, the script outputs the artifacts to the `obj` directory,
-while locally, to the `obj/$image_name` directory. This is primarily to prevent
+while locally, to the `obj/<image-name>` directory. This is primarily to prevent
 strange linker errors when using multiple Docker images.
 
 For some Linux workflows (for example `x86_64-gnu-llvm-18-N`), the process is more involved. You will need to see which script is executed for the given workflow inside the [`jobs.yml`](../github-actions/jobs.yml) file and pass it through the `DOCKER_SCRIPT` environment variable. For example, to reproduce the `x86_64-gnu-llvm-18-3` workflow, you can run the following script:

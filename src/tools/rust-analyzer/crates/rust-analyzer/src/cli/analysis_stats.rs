@@ -66,10 +66,6 @@ impl flags::AnalysisStats {
                 true => None,
                 false => Some(RustLibSource::Discover),
             },
-            sysroot_query_metadata: match self.no_query_sysroot_metadata {
-                true => project_model::SysrootQueryMetadata::None,
-                false => project_model::SysrootQueryMetadata::CargoMetadata,
-            },
             all_targets: true,
             set_test: !self.no_test,
             cfg_overrides: CfgOverrides {

@@ -342,6 +342,7 @@
 #![feature(lazy_get)]
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_write_slice)]
+#![feature(nonnull_provenance)]
 #![feature(panic_can_unwind)]
 #![feature(panic_internals)]
 #![feature(pin_coerce_unsized_trait)]
@@ -357,6 +358,7 @@
 #![feature(str_internals)]
 #![feature(strict_provenance_atomic_ptr)]
 #![feature(sync_unsafe_cell)]
+#![feature(temporary_niche_types)]
 #![feature(ub_checks)]
 #![feature(used_with_arg)]
 // tidy-alphabetical-end

@@ -944,8 +944,6 @@ impl<'a> Builder<'a> {
                 test::Ui,
                 test::Crashes,
                 test::Coverage,
-                test::CoverageMap,
-                test::CoverageRun,
                 test::MirOpt,
                 test::Codegen,
                 test::CodegenUnits,
@@ -1445,7 +1443,7 @@ impl<'a> Builder<'a> {
             let mut stack = self.stack.borrow_mut();
             for stack_step in stack.iter() {
                 // should skip
-                if stack_step.downcast_ref::<S>().map_or(true, |stack_step| *stack_step != step) {
+                if stack_step.downcast_ref::<S>().is_none_or(|stack_step| *stack_step != step) {
                     continue;
                 }
                 let mut out = String::new();

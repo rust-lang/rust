@@ -383,9 +383,7 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
     /// Borrows a view into the keys stored in the node.
     pub fn keys(&self) -> &[K] {
         let leaf = self.into_leaf();
-        unsafe {
-            MaybeUninit::slice_assume_init_ref(leaf.keys.get_unchecked(..usize::from(leaf.len)))
-        }
+        unsafe { leaf.keys.get_unchecked(..usize::from(leaf.len)).assume_init_ref() }
     }
 }
 

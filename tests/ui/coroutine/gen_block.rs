@@ -18,9 +18,9 @@ fn main() {
     //~^^ ERROR `yield` can only be used in
 
     let _ = #[coroutine] || yield true; //[none]~ ERROR yield syntax is experimental
-    //~^ ERROR `#[coroutines]` attribute is an experimental feature
+    //~^ ERROR `#[coroutine]` attribute is an experimental feature
     //~^^ ERROR yield syntax is experimental
 
     let _ = #[coroutine] || {};
-    //~^ ERROR `#[coroutines]` attribute is an experimental feature
+    //~^ ERROR `#[coroutine]` attribute is an experimental feature
 }

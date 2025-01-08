@@ -3,7 +3,7 @@
 use std::fmt::{self, Debug, Formatter};
 
 use rustc_index::IndexVec;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::Span;
 
@@ -303,8 +303,8 @@ pub struct MCDCDecisionSpan {
 /// Used by the `coverage_ids_info` query.
 #[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable)]
 pub struct CoverageIdsInfo {
-    pub counters_seen: BitSet<CounterId>,
-    pub zero_expressions: BitSet<ExpressionId>,
+    pub counters_seen: DenseBitSet<CounterId>,
+    pub zero_expressions: DenseBitSet<ExpressionId>,
 }
 
 impl CoverageIdsInfo {

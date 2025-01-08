@@ -3,7 +3,7 @@ use std::slice;
 
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey};
+use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan};
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
@@ -577,11 +577,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Registers obligations that all `args` are well-formed.
-    pub(crate) fn add_wf_bounds(&self, args: GenericArgsRef<'tcx>, expr: &hir::Expr<'_>) {
+    pub(crate) fn add_wf_bounds(&self, args: GenericArgsRef<'tcx>, span: Span) {
         for arg in args.iter().filter(|arg| {
             matches!(arg.unpack(), GenericArgKind::Type(..) | GenericArgKind::Const(..))
         }) {
-            self.register_wf_obligation(arg, expr.span, ObligationCauseCode::WellFormed(None));
+            self.register_wf_obligation(arg, span, ObligationCauseCode::WellFormed(None));
         }
     }
 
@@ -806,17 +806,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let item_name = item_segment.ident;
         let result = self
             .resolve_fully_qualified_call(span, item_name, ty.normalized, qself.span, hir_id)
-            .map(|r| {
-                // lint bare trait if the method is found in the trait
-                if span.edition().at_least_rust_2021() {
-                    self.dcx().try_steal_modify_and_emit_err(
-                        qself.span,
-                        StashKey::TraitMissingMethod,
-                        |_err| {},
-                    );
-                }
-                r
-            })
             .or_else(|error| {
                 let guar = self
                     .dcx()
@@ -837,17 +826,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ty.raw.into(),
                         qself.span,
                         ObligationCauseCode::WellFormed(None),
-                    );
-                }
-
-                // Emit the diagnostic for bare traits. (We used to cancel for slightly better
-                // error messages, but cancelling stashed diagnostics is no longer allowed because
-                // it causes problems when tracking whether errors have actually occurred.)
-                if span.edition().at_least_rust_2021() {
-                    self.dcx().try_steal_modify_and_emit_err(
-                        qself.span,
-                        StashKey::TraitMissingMethod,
-                        |_err| {},
                     );
                 }
 
@@ -1039,6 +1017,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 def_id,
                 span,
             ),
+            Res::Err => {
+                return (
+                    Ty::new_error(
+                        tcx,
+                        tcx.dcx().span_delayed_bug(span, "could not resolve path {:?}"),
+                    ),
+                    res,
+                );
+            }
             _ => bug!("instantiate_value_path on {:?}", res),
         };
 

@@ -1,9 +1,11 @@
+use std::iter::FromIterator;
+
 #[cfg(feature = "master")]
 use gccjit::Context;
 use rustc_codegen_ssa::codegen_attrs::check_tied_features;
 use rustc_codegen_ssa::errors::TargetFeatureDisableOrEnable;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::bug;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::unord::UnordSet;
 use rustc_session::Session;
 use rustc_target::target_features::RUSTC_SPECIFIC_FEATURES;
 use smallvec::{SmallVec, smallvec};
@@ -37,82 +39,137 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
     let mut features = vec![];
 
     // Features implied by an implicit or explicit `--target`.
-    features.extend(
-        sess.target
-            .features
-            .split(',')
-            .filter(|v| !v.is_empty() && backend_feature_name(v).is_some())
-            .map(String::from),
-    );
+    features.extend(sess.target.features.split(',').filter(|v| !v.is_empty()).map(String::from));
 
     // -Ctarget-features
     let known_features = sess.target.rust_target_features();
     let mut featsmap = FxHashMap::default();
-    let feats = sess
-        .opts
-        .cg
-        .target_feature
-        .split(',')
-        .filter_map(|s| {
-            let enable_disable = match s.chars().next() {
-                None => return None,
-                Some(c @ ('+' | '-')) => c,
-                Some(_) => {
-                    if diagnostics {
-                        sess.dcx().emit_warn(UnknownCTargetFeaturePrefix { feature: s });
-                    }
-                    return None;
-                }
-            };
 
-            // Get the backend feature name, if any.
-            // This excludes rustc-specific features, that do not get passed down to GCC.
-            let feature = backend_feature_name(s)?;
-            // Warn against use of GCC specific feature names on the CLI.
+    // Ensure that all ABI-required features are enabled, and the ABI-forbidden ones
+    // are disabled.
+    let abi_feature_constraints = sess.target.abi_required_features();
+    let abi_incompatible_set =
+        FxHashSet::from_iter(abi_feature_constraints.incompatible.iter().copied());
+
+    // Compute implied features
+    let mut all_rust_features = vec![];
+    for feature in sess.opts.cg.target_feature.split(',') {
+        if let Some(feature) = feature.strip_prefix('+') {
+            all_rust_features.extend(
+                UnordSet::from(sess.target.implied_target_features(std::iter::once(feature)))
+                    .to_sorted_stable_ord()
+                    .iter()
+                    .map(|&&s| (true, s)),
+            )
+        } else if let Some(feature) = feature.strip_prefix('-') {
+            // FIXME: Why do we not remove implied features on "-" here?
+            // We do the equivalent above in `target_features_cfg`.
+            // See <https://github.com/rust-lang/rust/issues/134792>.
+            all_rust_features.push((false, feature));
+        } else if !feature.is_empty() {
             if diagnostics {
-                let feature_state = known_features.iter().find(|&&(v, _, _)| v == feature);
-                match feature_state {
-                    None => {
-                        let rust_feature =
-                            known_features.iter().find_map(|&(rust_feature, _, _)| {
-                                let gcc_features = to_gcc_features(sess, rust_feature);
-                                if gcc_features.contains(&feature)
-                                    && !gcc_features.contains(&rust_feature)
-                                {
-                                    Some(rust_feature)
-                                } else {
-                                    None
-                                }
-                            });
-                        let unknown_feature = if let Some(rust_feature) = rust_feature {
-                            UnknownCTargetFeature {
-                                feature,
-                                rust_feature: PossibleFeature::Some { rust_feature },
-                            }
-                        } else {
-                            UnknownCTargetFeature { feature, rust_feature: PossibleFeature::None }
-                        };
-                        sess.dcx().emit_warn(unknown_feature);
-                    }
-                    Some((_, stability, _)) => {
-                        if let Err(reason) =
-                            stability.toggle_allowed(&sess.target, enable_disable == '+')
+                sess.dcx().emit_warn(UnknownCTargetFeaturePrefix { feature });
+            }
+        }
+    }
+    // Remove features that are meant for rustc, not codegen.
+    all_rust_features.retain(|(_, feature)| {
+        // Retain if it is not a rustc feature
+        !RUSTC_SPECIFIC_FEATURES.contains(feature)
+    });
+
+    // Check feature validity.
+    if diagnostics {
+        for &(enable, feature) in &all_rust_features {
+            let feature_state = known_features.iter().find(|&&(v, _, _)| v == feature);
+            match feature_state {
+                None => {
+                    let rust_feature = known_features.iter().find_map(|&(rust_feature, _, _)| {
+                        let gcc_features = to_gcc_features(sess, rust_feature);
+                        if gcc_features.contains(&feature) && !gcc_features.contains(&rust_feature)
                         {
-                            sess.dcx().emit_warn(ForbiddenCTargetFeature { feature, reason });
-                        } else if stability.requires_nightly().is_some() {
-                            // An unstable feature. Warn about using it. (It makes little sense
-                            // to hard-error here since we just warn about fully unknown
-                            // features above).
-                            sess.dcx().emit_warn(UnstableCTargetFeature { feature });
+                            Some(rust_feature)
+                        } else {
+                            None
                         }
+                    });
+                    let unknown_feature = if let Some(rust_feature) = rust_feature {
+                        UnknownCTargetFeature {
+                            feature,
+                            rust_feature: PossibleFeature::Some { rust_feature },
+                        }
+                    } else {
+                        UnknownCTargetFeature { feature, rust_feature: PossibleFeature::None }
+                    };
+                    sess.dcx().emit_warn(unknown_feature);
+                }
+                Some((_, stability, _)) => {
+                    if let Err(reason) = stability.toggle_allowed() {
+                        sess.dcx().emit_warn(ForbiddenCTargetFeature {
+                            feature,
+                            enabled: if enable { "enabled" } else { "disabled" },
+                            reason,
+                        });
+                    } else if stability.requires_nightly().is_some() {
+                        // An unstable feature. Warn about using it. (It makes little sense
+                        // to hard-error here since we just warn about fully unknown
+                        // features above).
+                        sess.dcx().emit_warn(UnstableCTargetFeature { feature });
                     }
                 }
-
-                // FIXME(nagisa): figure out how to not allocate a full hashset here.
-                featsmap.insert(feature, enable_disable == '+');
             }
 
-            // ... otherwise though we run through `to_gcc_features` when
+            // Ensure that the features we enable/disable are compatible with the ABI.
+            if enable {
+                if abi_incompatible_set.contains(feature) {
+                    sess.dcx().emit_warn(ForbiddenCTargetFeature {
+                        feature,
+                        enabled: "enabled",
+                        reason: "this feature is incompatible with the target ABI",
+                    });
+                }
+            } else {
+                // FIXME: we have to request implied features here since
+                // negative features do not handle implied features above.
+                for &required in abi_feature_constraints.required.iter() {
+                    let implied = sess.target.implied_target_features(std::iter::once(required));
+                    if implied.contains(feature) {
+                        sess.dcx().emit_warn(ForbiddenCTargetFeature {
+                            feature,
+                            enabled: "disabled",
+                            reason: "this feature is required by the target ABI",
+                        });
+                    }
+                }
+            }
+
+            // FIXME(nagisa): figure out how to not allocate a full hashset here.
+            featsmap.insert(feature, enable);
+        }
+    }
+
+    // To be sure the ABI-relevant features are all in the right state, we explicitly
+    // (un)set them here. This means if the target spec sets those features wrong,
+    // we will silently correct them rather than silently producing wrong code.
+    // (The target sanity check tries to catch this, but we can't know which features are
+    // enabled in GCC by default so we can't be fully sure about that check.)
+    // We add these at the beginning of the list so that `-Ctarget-features` can
+    // still override it... that's unsound, but more compatible with past behavior.
+    all_rust_features.splice(
+        0..0,
+        abi_feature_constraints
+            .required
+            .iter()
+            .map(|&f| (true, f))
+            .chain(abi_feature_constraints.incompatible.iter().map(|&f| (false, f))),
+    );
+
+    // Translate this into GCC features.
+    let feats = all_rust_features
+        .iter()
+        .filter_map(|&(enable, feature)| {
+            let enable_disable = if enable { '+' } else { '-' };
+            // We run through `to_gcc_features` when
             // passing requests down to GCC. This means that all in-language
             // features also work on the command line instead of having two
             // different names when the GCC name and the Rust name differ.
@@ -146,26 +203,12 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
     features
 }
 
-/// Returns a feature name for the given `+feature` or `-feature` string.
-///
-/// Only allows features that are backend specific (i.e. not [`RUSTC_SPECIFIC_FEATURES`].)
-fn backend_feature_name(s: &str) -> Option<&str> {
-    // features must start with a `+` or `-`.
-    let feature = s.strip_prefix(&['+', '-'][..]).unwrap_or_else(|| {
-        bug!("target feature `{}` must begin with a `+` or `-`", s);
-    });
-    // Rustc-specific feature requests like `+crt-static` or `-crt-static`
-    // are not passed down to GCC.
-    if RUSTC_SPECIFIC_FEATURES.contains(&feature) {
-        return None;
-    }
-    Some(feature)
-}
-
 // To find a list of GCC's names, check https://gcc.gnu.org/onlinedocs/gcc/Function-Attributes.html
 pub fn to_gcc_features<'a>(sess: &Session, s: &'a str) -> SmallVec<[&'a str; 2]> {
     let arch = if sess.target.arch == "x86_64" { "x86" } else { &*sess.target.arch };
     match (arch, s) {
+        // FIXME: seems like x87 does not exist?
+        ("x86", "x87") => smallvec![],
         ("x86", "sse4.2") => smallvec!["sse4.2", "crc32"],
         ("x86", "pclmulqdq") => smallvec!["pclmul"],
         ("x86", "rdrand") => smallvec!["rdrnd"],

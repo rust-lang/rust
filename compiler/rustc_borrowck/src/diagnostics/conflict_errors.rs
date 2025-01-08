@@ -1516,15 +1516,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         });
 
         self.explain_why_borrow_contains_point(location, borrow, None)
-            .add_explanation_to_diagnostic(
-                self.infcx.tcx,
-                self.body,
-                &self.local_names,
-                &mut err,
-                "",
-                Some(borrow_span),
-                None,
-            );
+            .add_explanation_to_diagnostic(&self, &mut err, "", Some(borrow_span), None);
         self.suggest_copy_for_type_in_cloned_ref(&mut err, place);
         let typeck_results = self.infcx.tcx.typeck(self.mir_def_id());
         if let Some(expr) = self.find_expr(borrow_span) {
@@ -1591,15 +1583,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         });
 
         self.explain_why_borrow_contains_point(location, borrow, None)
-            .add_explanation_to_diagnostic(
-                self.infcx.tcx,
-                self.body,
-                &self.local_names,
-                &mut err,
-                "",
-                None,
-                None,
-            );
+            .add_explanation_to_diagnostic(&self, &mut err, "", None, None);
         err
     }
 
@@ -1886,9 +1870,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
 
         explanation.add_explanation_to_diagnostic(
-            self.infcx.tcx,
-            self.body,
-            &self.local_names,
+            &self,
             &mut err,
             first_borrow_desc,
             None,
@@ -2698,22 +2680,19 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 return;
             }
 
-            let mut sugg = vec![];
             let sm = self.infcx.tcx.sess.source_map();
-
-            if let Some(span) = finder.closure_arg_span {
-                sugg.push((sm.next_point(span.shrink_to_lo()).shrink_to_hi(), finder.suggest_arg));
-            }
-            for span in finder.closure_change_spans {
-                sugg.push((span, "this".to_string()));
-            }
-
-            for (span, suggest) in finder.closure_call_changes {
-                sugg.push((span, suggest));
-            }
+            let sugg = finder
+                .closure_arg_span
+                .map(|span| (sm.next_point(span.shrink_to_lo()).shrink_to_hi(), finder.suggest_arg))
+                .into_iter()
+                .chain(
+                    finder.closure_change_spans.into_iter().map(|span| (span, "this".to_string())),
+                )
+                .chain(finder.closure_call_changes)
+                .collect();
 
             err.multipart_suggestion_verbose(
-                "try explicitly pass `&Self` into the Closure as an argument",
+                "try explicitly passing `&Self` into the closure as an argument",
                 sugg,
                 Applicability::MachineApplicable,
             );
@@ -3046,15 +3025,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
             if let BorrowExplanation::MustBeValidFor { .. } = explanation {
             } else {
-                explanation.add_explanation_to_diagnostic(
-                    self.infcx.tcx,
-                    self.body,
-                    &self.local_names,
-                    &mut err,
-                    "",
-                    None,
-                    None,
-                );
+                explanation.add_explanation_to_diagnostic(&self, &mut err, "", None, None);
             }
         } else {
             err.span_label(borrow_span, "borrowed value does not live long enough");
@@ -3067,15 +3038,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 }
             });
 
-            explanation.add_explanation_to_diagnostic(
-                self.infcx.tcx,
-                self.body,
-                &self.local_names,
-                &mut err,
-                "",
-                Some(borrow_span),
-                None,
-            );
+            explanation.add_explanation_to_diagnostic(&self, &mut err, "", Some(borrow_span), None);
         }
 
         err
@@ -3128,15 +3091,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             _ => {}
         }
 
-        explanation.add_explanation_to_diagnostic(
-            self.infcx.tcx,
-            self.body,
-            &self.local_names,
-            &mut err,
-            "",
-            None,
-            None,
-        );
+        explanation.add_explanation_to_diagnostic(&self, &mut err, "", None, None);
 
         self.buffer_error(err);
     }
@@ -3309,15 +3264,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
             _ => {}
         }
-        explanation.add_explanation_to_diagnostic(
-            self.infcx.tcx,
-            self.body,
-            &self.local_names,
-            &mut err,
-            "",
-            None,
-            None,
-        );
+        explanation.add_explanation_to_diagnostic(&self, &mut err, "", None, None);
 
         borrow_spans.args_subdiag(&mut err, |args_span| {
             crate::session_diagnostics::CaptureArgLabel::Capture {
@@ -3808,15 +3755,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
         });
 
-        self.explain_why_borrow_contains_point(location, loan, None).add_explanation_to_diagnostic(
-            self.infcx.tcx,
-            self.body,
-            &self.local_names,
-            &mut err,
-            "",
-            None,
-            None,
-        );
+        self.explain_why_borrow_contains_point(location, loan, None)
+            .add_explanation_to_diagnostic(&self, &mut err, "", None, None);
 
         self.explain_deref_coercion(loan, &mut err);
 

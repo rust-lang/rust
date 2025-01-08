@@ -353,7 +353,7 @@ impl DefCollector<'_> {
         let is_cfg_enabled = item_tree
             .top_level_attrs(self.db, self.def_map.krate)
             .cfg()
-            .map_or(true, |cfg| self.cfg_options.check(&cfg) != Some(false));
+            .is_none_or(|cfg| self.cfg_options.check(&cfg) != Some(false));
         if is_cfg_enabled {
             self.inject_prelude();
 
@@ -797,7 +797,7 @@ impl DefCollector<'_> {
             return PartialResolvedImport::Unresolved;
         }
 
-        if res.from_differing_crate {
+        if res.prefix_info.differing_crate {
             return PartialResolvedImport::Resolved(
                 def.filter_visibility(|v| matches!(v, Visibility::Public)),
             );
@@ -1316,6 +1316,7 @@ impl DefCollector<'_> {
                     // being cfg'ed out).
                     // Ideally we will just expand them to nothing here. But we are only collecting macro calls,
                     // not expanding them, so we have no way to do that.
+                    // If you add an ignored attribute here, also add it to `Semantics::might_be_inside_macro_call()`.
                     if matches!(
                         def.kind,
                         MacroDefKind::BuiltInAttr(_, expander)
@@ -1451,13 +1452,7 @@ impl DefCollector<'_> {
         depth: usize,
         container: ItemContainerId,
     ) {
-        let recursion_limit = self.def_map.recursion_limit() as usize;
-        let recursion_limit = Limit::new(if cfg!(test) {
-            // Without this, `body::tests::your_stack_belongs_to_me` stack-overflows in debug
-            std::cmp::min(32, recursion_limit)
-        } else {
-            recursion_limit
-        });
+        let recursion_limit = Limit::new(self.def_map.recursion_limit() as usize);
         if recursion_limit.check(depth).is_err() {
             cov_mark::hit!(macro_expansion_overflow);
             tracing::warn!("macro expansion is too deep");
@@ -2220,8 +2215,8 @@ impl ModCollector<'_, '_> {
 
         let is_export = export_attr.exists();
         let local_inner = if is_export {
-            export_attr.tt_values().flat_map(|it| it.token_trees.iter()).any(|it| match it {
-                tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => ident.sym == sym::local_inner_macros,
+            export_attr.tt_values().flat_map(|it| it.iter()).any(|it| match it {
+                tt::TtElement::Leaf(tt::Leaf::Ident(ident)) => ident.sym == sym::local_inner_macros,
                 _ => false,
             })
         } else {
@@ -2240,7 +2235,7 @@ impl ModCollector<'_, '_> {
                 None => {
                     let explicit_name =
                         attrs.by_key(&sym::rustc_builtin_macro).tt_values().next().and_then(|tt| {
-                            match tt.token_trees.first() {
+                            match tt.token_trees().flat_tokens().first() {
                                 Some(tt::TokenTree::Leaf(tt::Leaf::Ident(name))) => Some(name),
                                 _ => None,
                             }
@@ -2310,9 +2305,7 @@ impl ModCollector<'_, '_> {
                     // NOTE: The item *may* have both `#[rustc_builtin_macro]` and `#[proc_macro_derive]`,
                     // in which case rustc ignores the helper attributes from the latter, but it
                     // "doesn't make sense in practice" (see rust-lang/rust#87027).
-                    if let Some((name, helpers)) =
-                        parse_macro_name_and_helper_attrs(&attr.token_trees)
-                    {
+                    if let Some((name, helpers)) = parse_macro_name_and_helper_attrs(attr) {
                         // NOTE: rustc overrides the name if the macro name if it's different from the
                         // macro name, but we assume it isn't as there's no such case yet. FIXME if
                         // the following assertion fails.

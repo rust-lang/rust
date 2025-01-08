@@ -1130,7 +1130,9 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let None = following_seg else { return };
         for rib in self.ribs[ValueNS].iter().rev() {
             for (def_id, spans) in &rib.patterns_with_skipped_bindings {
-                if let Some(fields) = self.r.field_idents(*def_id) {
+                if let DefKind::Struct | DefKind::Variant = self.r.tcx.def_kind(*def_id)
+                    && let Some(fields) = self.r.field_idents(*def_id)
+                {
                     for field in fields {
                         if field.name == segment.ident.name {
                             if spans.iter().all(|(_, had_error)| had_error.is_err()) {
@@ -3155,7 +3157,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             }
         }
 
-        #[cfg_attr(not(bootstrap), allow(rustc::symbol_intern_string_literal))]
+        #[allow(rustc::symbol_intern_string_literal)]
         let existing_name = match &in_scope_lifetimes[..] {
             [] => Symbol::intern("'a"),
             [(existing, _)] => existing.name,

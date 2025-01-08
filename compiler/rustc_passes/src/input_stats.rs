@@ -304,7 +304,8 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
             Box,
             Deref,
             Ref,
-            Lit,
+            Expr,
+            Guard,
             Range,
             Slice,
             Err
@@ -586,7 +587,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
             Box,
             Deref,
             Ref,
-            Lit,
+            Expr,
             Range,
             Slice,
             Rest,

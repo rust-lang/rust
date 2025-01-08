@@ -37,7 +37,9 @@ fn inline_attr<'ll>(cx: &CodegenCx<'ll, '_>, inline: InlineAttr) -> Option<&'ll 
     }
     match inline {
         InlineAttr::Hint => Some(AttributeKind::InlineHint.create_attr(cx.llcx)),
-        InlineAttr::Always => Some(AttributeKind::AlwaysInline.create_attr(cx.llcx)),
+        InlineAttr::Always | InlineAttr::Force { .. } => {
+            Some(AttributeKind::AlwaysInline.create_attr(cx.llcx))
+        }
         InlineAttr::Never => {
             if cx.sess().target.arch != "amdgpu" {
                 Some(AttributeKind::NoInline.create_attr(cx.llcx))
@@ -472,7 +474,11 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         let allocated_pointer = AttributeKind::AllocatedPointer.create_attr(cx.llcx);
         attributes::apply_to_llfn(llfn, AttributePlace::Argument(0), &[allocated_pointer]);
     }
-    if let Some(align) = codegen_fn_attrs.alignment {
+    // function alignment can be set globally with the `-Zmin-function-alignment=<n>` flag;
+    // the alignment from a `#[repr(align(<n>))]` is used if it specifies a higher alignment.
+    if let Some(align) =
+        Ord::max(cx.tcx.sess.opts.unstable_opts.min_function_alignment, codegen_fn_attrs.alignment)
+    {
         llvm::set_alignment(llfn, align);
     }
     if let Some(backchain) = backchain_attr(cx) {

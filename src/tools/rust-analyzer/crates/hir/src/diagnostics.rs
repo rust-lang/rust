@@ -15,12 +15,12 @@ use hir_expand::{name::Name, HirFileId, InFile};
 use hir_ty::{
     db::HirDatabase,
     diagnostics::{BodyValidationDiagnostic, UnsafetyReason},
-    CastError, InferenceDiagnostic, InferenceTyDiagnosticSource, TyLoweringDiagnostic,
-    TyLoweringDiagnosticKind,
+    CastError, InferenceDiagnostic, InferenceTyDiagnosticSource, PathLoweringDiagnostic,
+    TyLoweringDiagnostic, TyLoweringDiagnosticKind,
 };
 use syntax::{
     ast::{self, HasGenericArgs},
-    AstPtr, SyntaxError, SyntaxNodePtr, TextRange,
+    match_ast, AstNode, AstPtr, SyntaxError, SyntaxNodePtr, TextRange,
 };
 use triomphe::Arc;
 
@@ -674,6 +674,39 @@ impl AnyDiagnostic {
                 };
                 Self::ty_diagnostic(diag, source_map, db)?
             }
+            InferenceDiagnostic::PathDiagnostic { node, diag } => {
+                let source = expr_or_pat_syntax(*node)?;
+                let syntax = source.value.to_node(&db.parse_or_expand(source.file_id));
+                let path = match_ast! {
+                    match (syntax.syntax()) {
+                        ast::RecordExpr(it) => it.path()?,
+                        ast::RecordPat(it) => it.path()?,
+                        ast::TupleStructPat(it) => it.path()?,
+                        ast::PathExpr(it) => it.path()?,
+                        ast::PathPat(it) => it.path()?,
+                        _ => return None,
+                    }
+                };
+                Self::path_diagnostic(diag, source.with_value(path))?
+            }
+        })
+    }
+
+    fn path_diagnostic(
+        diag: &PathLoweringDiagnostic,
+        path: InFile<ast::Path>,
+    ) -> Option<AnyDiagnostic> {
+        Some(match diag {
+            &PathLoweringDiagnostic::GenericArgsProhibited { segment, reason } => {
+                let segment = hir_segment_to_ast_segment(&path.value, segment)?;
+                let args = if let Some(generics) = segment.generic_arg_list() {
+                    AstPtr::new(&generics).wrap_left()
+                } else {
+                    AstPtr::new(&segment.parenthesized_arg_list()?).wrap_right()
+                };
+                let args = path.with_value(args);
+                GenericArgsProhibited { args, reason }.into()
+            }
         })
     }
 
@@ -693,17 +726,10 @@ impl AnyDiagnostic {
             Either::Right(source) => source,
         };
         let syntax = || source.value.to_node(&db.parse_or_expand(source.file_id));
-        Some(match diag.kind {
-            TyLoweringDiagnosticKind::GenericArgsProhibited { segment, reason } => {
+        Some(match &diag.kind {
+            TyLoweringDiagnosticKind::PathDiagnostic(diag) => {
                 let ast::Type::PathType(syntax) = syntax() else { return None };
-                let segment = hir_segment_to_ast_segment(&syntax.path()?, segment)?;
-                let args = if let Some(generics) = segment.generic_arg_list() {
-                    AstPtr::new(&generics).wrap_left()
-                } else {
-                    AstPtr::new(&segment.parenthesized_arg_list()?).wrap_right()
-                };
-                let args = source.with_value(args);
-                GenericArgsProhibited { args, reason }.into()
+                Self::path_diagnostic(diag, source.with_value(syntax.path()?))?
             }
         })
     }

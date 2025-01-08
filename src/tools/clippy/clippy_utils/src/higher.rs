@@ -196,8 +196,8 @@ impl<'hir> IfOrIfLet<'hir> {
             if let ExprKind::DropTemps(new_cond) = cond.kind {
                 return Some(Self {
                     cond: new_cond,
-                    r#else,
                     then,
+                    r#else,
                 });
             }
             if let ExprKind::Let(..) = cond.kind {

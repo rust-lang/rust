@@ -9,7 +9,7 @@ use rustc_abi::{
     HasDataLayout, Layout, LayoutCalculatorError, LayoutData, Niche, ReprOptions, Scalar, Size,
     StructKind, TagEncoding, VariantIdx, Variants, WrappingRange,
 };
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::bug;
 use rustc_middle::mir::{CoroutineLayout, CoroutineSavedLocal};
@@ -347,6 +347,7 @@ fn layout_of_uncached<'tcx>(
                 size,
                 max_repr_align: None,
                 unadjusted_abi_align: element.align.abi,
+                randomization_seed: element.randomization_seed.wrapping_add(count),
             })
         }
         ty::Slice(element) => {
@@ -360,6 +361,8 @@ fn layout_of_uncached<'tcx>(
                 size: Size::ZERO,
                 max_repr_align: None,
                 unadjusted_abi_align: element.align.abi,
+                // adding a randomly chosen value to distinguish slices
+                randomization_seed: element.randomization_seed.wrapping_add(0x2dcba99c39784102),
             })
         }
         ty::Str => tcx.mk_layout(LayoutData {
@@ -371,6 +374,8 @@ fn layout_of_uncached<'tcx>(
             size: Size::ZERO,
             max_repr_align: None,
             unadjusted_abi_align: dl.i8_align.abi,
+            // another random value
+            randomization_seed: 0xc1325f37d127be22,
         }),
 
         // Odd unit types.
@@ -542,6 +547,7 @@ fn layout_of_uncached<'tcx>(
                 align,
                 max_repr_align: None,
                 unadjusted_abi_align: align.abi,
+                randomization_seed: e_ly.randomization_seed.wrapping_add(e_len),
             })
         }
 
@@ -718,7 +724,7 @@ enum SavedLocalEligibility {
 /// Compute the eligibility and assignment of each local.
 fn coroutine_saved_local_eligibility(
     info: &CoroutineLayout<'_>,
-) -> (BitSet<CoroutineSavedLocal>, IndexVec<CoroutineSavedLocal, SavedLocalEligibility>) {
+) -> (DenseBitSet<CoroutineSavedLocal>, IndexVec<CoroutineSavedLocal, SavedLocalEligibility>) {
     use SavedLocalEligibility::*;
 
     let mut assignments: IndexVec<CoroutineSavedLocal, SavedLocalEligibility> =
@@ -726,7 +732,7 @@ fn coroutine_saved_local_eligibility(
 
     // The saved locals not eligible for overlap. These will get
     // "promoted" to the prefix of our coroutine.
-    let mut ineligible_locals = BitSet::new_empty(info.field_tys.len());
+    let mut ineligible_locals = DenseBitSet::new_empty(info.field_tys.len());
 
     // Figure out which of our saved locals are fields in only
     // one variant. The rest are deemed ineligible for overlap.
@@ -786,7 +792,7 @@ fn coroutine_saved_local_eligibility(
     // lay them out with the other locals in the prefix and eliminate
     // unnecessary padding bytes.
     {
-        let mut used_variants = BitSet::new_empty(info.variant_fields.len());
+        let mut used_variants = DenseBitSet::new_empty(info.variant_fields.len());
         for assignment in &assignments {
             if let Assigned(idx) = assignment {
                 used_variants.insert(*idx);
@@ -999,6 +1005,9 @@ fn coroutine_layout<'tcx>(
         BackendRepr::Memory { sized: true }
     };
 
+    // this is similar to how ReprOptions populates its field_shuffle_seed
+    let def_hash = tcx.def_path_hash(def_id).0.to_smaller_hash().as_u64();
+
     let layout = tcx.mk_layout(LayoutData {
         variants: Variants::Multiple {
             tag,
@@ -1019,6 +1028,7 @@ fn coroutine_layout<'tcx>(
         align,
         max_repr_align: None,
         unadjusted_abi_align: align.abi,
+        randomization_seed: def_hash,
     });
     debug!("coroutine layout ({:?}): {:#?}", ty, layout);
     Ok(layout)

@@ -7,6 +7,7 @@ use crate::core::build_steps::tool::SourceType;
 use crate::core::build_steps::{compile, test};
 use crate::core::config::SplitDebuginfo;
 use crate::core::config::flags::Color;
+use crate::utils::build_stamp;
 use crate::utils::helpers::{
     self, LldThreads, add_link_lib_path, check_cfg_arg, linker_args, linker_flags,
 };
@@ -454,7 +455,7 @@ impl Builder<'_> {
         // Codegen backends are not yet tracked by -Zbinary-dep-depinfo,
         // so we need to explicitly clear out if they've been updated.
         for backend in self.codegen_backends(compiler) {
-            self.clear_if_dirty(&out_dir, &backend);
+            build_stamp::clear_if_dirty(self, &out_dir, &backend);
         }
 
         if cmd_kind == Kind::Doc {
@@ -471,7 +472,7 @@ impl Builder<'_> {
                 _ => panic!("doc mode {mode:?} not expected"),
             };
             let rustdoc = self.rustdoc(compiler);
-            self.clear_if_dirty(&my_out, &rustdoc);
+            build_stamp::clear_if_dirty(self, &my_out, &rustdoc);
         }
 
         let profile_var = |name: &str| {
@@ -624,8 +625,6 @@ impl Builder<'_> {
         // get warnings about it being unexpected.
         hostflags.arg("-Zunstable-options");
         hostflags.arg("--check-cfg=cfg(bootstrap)");
-        // #[cfg(bootstrap)] as we are transition `test` to userspace cfg
-        hostflags.arg("--check-cfg=cfg(test)");
 
         // FIXME: It might be better to use the same value for both `RUSTFLAGS` and `RUSTDOCFLAGS`,
         // but this breaks CI. At the very least, stage0 `rustdoc` needs `--cfg bootstrap`. See
@@ -765,7 +764,7 @@ impl Builder<'_> {
         // Only clear out the directory if we're compiling std; otherwise, we
         // should let Cargo take care of things for us (via depdep info)
         if !self.config.dry_run() && mode == Mode::Std && cmd_kind == Kind::Build {
-            self.clear_if_dirty(&out_dir, &self.rustc(compiler));
+            build_stamp::clear_if_dirty(self, &out_dir, &self.rustc(compiler));
         }
 
         let rustdoc_path = match cmd_kind {
@@ -1206,10 +1205,7 @@ impl Builder<'_> {
             // so that it'll be available when downstream consumers of std try to use it.
             rustflags.arg("-Zinline-mir-preserve-debug");
 
-            // FIXME: always pass this after the next `#[cfg(bootstrap)]` update.
-            if compiler.stage != 0 {
-                rustflags.arg("-Zmir_strip_debuginfo=locals-in-tiny-functions");
-            }
+            rustflags.arg("-Zmir_strip_debuginfo=locals-in-tiny-functions");
         }
 
         Cargo {

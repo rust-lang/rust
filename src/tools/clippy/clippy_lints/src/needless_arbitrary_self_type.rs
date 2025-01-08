@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet_with_applicability;
 use rustc_ast::ast::{BindingMode, ByRef, Lifetime, Mutability, Param, PatKind, Path, TyKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -80,7 +81,8 @@ fn check_param_inner(cx: &EarlyContext<'_>, path: &Path, span: Span, binding_mod
                     applicability = Applicability::HasPlaceholders;
                     "&'_ mut self".to_string()
                 } else {
-                    format!("&{} mut self", &lifetime.ident.name)
+                    let lt_name = snippet_with_applicability(cx, lifetime.ident.span, "..", &mut applicability);
+                    format!("&{lt_name} mut self")
                 }
             },
             (Mode::Ref(None), Mutability::Not) => "&self".to_string(),
@@ -89,7 +91,8 @@ fn check_param_inner(cx: &EarlyContext<'_>, path: &Path, span: Span, binding_mod
                     applicability = Applicability::HasPlaceholders;
                     "&'_ self".to_string()
                 } else {
-                    format!("&{} self", &lifetime.ident.name)
+                    let lt_name = snippet_with_applicability(cx, lifetime.ident.span, "..", &mut applicability);
+                    format!("&{lt_name} self")
                 }
             },
             (Mode::Value, Mutability::Mut) => "mut self".to_string(),

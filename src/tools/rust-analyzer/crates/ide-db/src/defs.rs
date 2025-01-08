@@ -13,9 +13,10 @@ use either::Either;
 use hir::{
     Adt, AsAssocItem, AsExternAssocItem, AssocItem, AttributeTemplate, BuiltinAttr, BuiltinType,
     Const, Crate, DefWithBody, DeriveHelper, DocLinkDef, ExternAssocItem, ExternCrateDecl, Field,
-    Function, GenericParam, HasVisibility, HirDisplay, Impl, InlineAsmOperand, Label, Local, Macro,
-    Module, ModuleDef, Name, PathResolution, Semantics, Static, StaticLifetime, Struct, ToolModule,
-    Trait, TraitAlias, TupleField, TypeAlias, Variant, VariantDef, Visibility,
+    Function, GenericDef, GenericParam, GenericSubstitution, HasContainer, HasVisibility,
+    HirDisplay, Impl, InlineAsmOperand, ItemContainer, Label, Local, Macro, Module, ModuleDef,
+    Name, PathResolution, Semantics, Static, StaticLifetime, Struct, ToolModule, Trait, TraitAlias,
+    TupleField, TypeAlias, Variant, VariantDef, Visibility,
 };
 use span::Edition;
 use stdx::{format_to, impl_from};
@@ -96,9 +97,39 @@ impl Definition {
     }
 
     pub fn enclosing_definition(&self, db: &RootDatabase) -> Option<Definition> {
+        fn container_to_definition(container: ItemContainer) -> Option<Definition> {
+            match container {
+                ItemContainer::Trait(it) => Some(it.into()),
+                ItemContainer::Impl(it) => Some(it.into()),
+                ItemContainer::Module(it) => Some(it.into()),
+                ItemContainer::ExternBlock() | ItemContainer::Crate(_) => None,
+            }
+        }
         match self {
+            Definition::Macro(it) => Some(it.module(db).into()),
+            Definition::Module(it) => it.parent(db).map(Definition::Module),
+            Definition::Field(it) => Some(it.parent_def(db).into()),
+            Definition::Function(it) => container_to_definition(it.container(db)),
+            Definition::Adt(it) => Some(it.module(db).into()),
+            Definition::Const(it) => container_to_definition(it.container(db)),
+            Definition::Static(it) => container_to_definition(it.container(db)),
+            Definition::Trait(it) => container_to_definition(it.container(db)),
+            Definition::TraitAlias(it) => container_to_definition(it.container(db)),
+            Definition::TypeAlias(it) => container_to_definition(it.container(db)),
+            Definition::Variant(it) => Some(Adt::Enum(it.parent_enum(db)).into()),
+            Definition::SelfType(it) => Some(it.module(db).into()),
             Definition::Local(it) => it.parent(db).try_into().ok(),
-            _ => None,
+            Definition::GenericParam(it) => Some(it.parent().into()),
+            Definition::Label(it) => it.parent(db).try_into().ok(),
+            Definition::ExternCrateDecl(it) => container_to_definition(it.container(db)),
+            Definition::DeriveHelper(it) => Some(it.derive().module(db).into()),
+            Definition::InlineAsmOperand(it) => it.parent(db).try_into().ok(),
+            Definition::BuiltinAttr(_)
+            | Definition::BuiltinType(_)
+            | Definition::BuiltinLifetime(_)
+            | Definition::TupleField(_)
+            | Definition::ToolModule(_)
+            | Definition::InlineAsmRegOrRegClass(_) => None,
         }
     }
 
@@ -304,7 +335,7 @@ fn find_std_module(
     let std_crate = famous_defs.std()?;
     let std_root_module = std_crate.root_module();
     std_root_module.children(db).find(|module| {
-        module.name(db).map_or(false, |module| module.display(db, edition).to_string() == name)
+        module.name(db).is_some_and(|module| module.display(db, edition).to_string() == name)
     })
 }
 
@@ -359,24 +390,32 @@ impl IdentClass {
             .or_else(|| NameClass::classify_lifetime(sema, lifetime).map(IdentClass::NameClass))
     }
 
-    pub fn definitions(self) -> ArrayVec<Definition, 2> {
+    pub fn definitions(self) -> ArrayVec<(Definition, Option<GenericSubstitution>), 2> {
         let mut res = ArrayVec::new();
         match self {
             IdentClass::NameClass(NameClass::Definition(it) | NameClass::ConstReference(it)) => {
-                res.push(it)
+                res.push((it, None))
             }
-            IdentClass::NameClass(NameClass::PatFieldShorthand { local_def, field_ref }) => {
-                res.push(Definition::Local(local_def));
-                res.push(Definition::Field(field_ref));
+            IdentClass::NameClass(NameClass::PatFieldShorthand {
+                local_def,
+                field_ref,
+                adt_subst,
+            }) => {
+                res.push((Definition::Local(local_def), None));
+                res.push((Definition::Field(field_ref), Some(adt_subst)));
             }
-            IdentClass::NameRefClass(NameRefClass::Definition(it)) => res.push(it),
-            IdentClass::NameRefClass(NameRefClass::FieldShorthand { local_ref, field_ref }) => {
-                res.push(Definition::Local(local_ref));
-                res.push(Definition::Field(field_ref));
+            IdentClass::NameRefClass(NameRefClass::Definition(it, subst)) => res.push((it, subst)),
+            IdentClass::NameRefClass(NameRefClass::FieldShorthand {
+                local_ref,
+                field_ref,
+                adt_subst,
+            }) => {
+                res.push((Definition::Local(local_ref), None));
+                res.push((Definition::Field(field_ref), Some(adt_subst)));
             }
             IdentClass::NameRefClass(NameRefClass::ExternCrateShorthand { decl, krate }) => {
-                res.push(Definition::ExternCrateDecl(decl));
-                res.push(Definition::Module(krate.root_module()));
+                res.push((Definition::ExternCrateDecl(decl), None));
+                res.push((Definition::Module(krate.root_module()), None));
             }
             IdentClass::Operator(
                 OperatorClass::Await(func)
@@ -384,9 +423,9 @@ impl IdentClass {
                 | OperatorClass::Bin(func)
                 | OperatorClass::Index(func)
                 | OperatorClass::Try(func),
-            ) => res.push(Definition::Function(func)),
+            ) => res.push((Definition::Function(func), None)),
             IdentClass::Operator(OperatorClass::Range(struct0)) => {
-                res.push(Definition::Adt(Adt::Struct(struct0)))
+                res.push((Definition::Adt(Adt::Struct(struct0)), None))
             }
         }
         res
@@ -398,12 +437,20 @@ impl IdentClass {
             IdentClass::NameClass(NameClass::Definition(it) | NameClass::ConstReference(it)) => {
                 res.push(it)
             }
-            IdentClass::NameClass(NameClass::PatFieldShorthand { local_def, field_ref }) => {
+            IdentClass::NameClass(NameClass::PatFieldShorthand {
+                local_def,
+                field_ref,
+                adt_subst: _,
+            }) => {
                 res.push(Definition::Local(local_def));
                 res.push(Definition::Field(field_ref));
             }
-            IdentClass::NameRefClass(NameRefClass::Definition(it)) => res.push(it),
-            IdentClass::NameRefClass(NameRefClass::FieldShorthand { local_ref, field_ref }) => {
+            IdentClass::NameRefClass(NameRefClass::Definition(it, _)) => res.push(it),
+            IdentClass::NameRefClass(NameRefClass::FieldShorthand {
+                local_ref,
+                field_ref,
+                adt_subst: _,
+            }) => {
                 res.push(Definition::Local(local_ref));
                 res.push(Definition::Field(field_ref));
             }
@@ -437,6 +484,7 @@ pub enum NameClass {
     PatFieldShorthand {
         local_def: Local,
         field_ref: Field,
+        adt_subst: GenericSubstitution,
     },
 }
 
@@ -446,7 +494,7 @@ impl NameClass {
         let res = match self {
             NameClass::Definition(it) => it,
             NameClass::ConstReference(_) => return None,
-            NameClass::PatFieldShorthand { local_def, field_ref: _ } => {
+            NameClass::PatFieldShorthand { local_def, field_ref: _, adt_subst: _ } => {
                 Definition::Local(local_def)
             }
         };
@@ -517,10 +565,13 @@ impl NameClass {
             let pat_parent = ident_pat.syntax().parent();
             if let Some(record_pat_field) = pat_parent.and_then(ast::RecordPatField::cast) {
                 if record_pat_field.name_ref().is_none() {
-                    if let Some((field, _)) = sema.resolve_record_pat_field(&record_pat_field) {
+                    if let Some((field, _, adt_subst)) =
+                        sema.resolve_record_pat_field_with_subst(&record_pat_field)
+                    {
                         return Some(NameClass::PatFieldShorthand {
                             local_def: local,
                             field_ref: field,
+                            adt_subst,
                         });
                     }
                 }
@@ -629,10 +680,11 @@ impl OperatorClass {
 /// reference to point to two different defs.
 #[derive(Debug)]
 pub enum NameRefClass {
-    Definition(Definition),
+    Definition(Definition, Option<GenericSubstitution>),
     FieldShorthand {
         local_ref: Local,
         field_ref: Field,
+        adt_subst: GenericSubstitution,
     },
     /// The specific situation where we have an extern crate decl without a rename
     /// Here we have both a declaration and a reference.
@@ -657,12 +709,16 @@ impl NameRefClass {
         let parent = name_ref.syntax().parent()?;
 
         if let Some(record_field) = ast::RecordExprField::for_field_name(name_ref) {
-            if let Some((field, local, _)) = sema.resolve_record_field(&record_field) {
+            if let Some((field, local, _, adt_subst)) =
+                sema.resolve_record_field_with_substitution(&record_field)
+            {
                 let res = match local {
-                    None => NameRefClass::Definition(Definition::Field(field)),
-                    Some(local) => {
-                        NameRefClass::FieldShorthand { field_ref: field, local_ref: local }
-                    }
+                    None => NameRefClass::Definition(Definition::Field(field), Some(adt_subst)),
+                    Some(local) => NameRefClass::FieldShorthand {
+                        field_ref: field,
+                        local_ref: local,
+                        adt_subst,
+                    },
                 };
                 return Some(res);
             }
@@ -674,44 +730,43 @@ impl NameRefClass {
                     // Only use this to resolve to macro calls for last segments as qualifiers resolve
                     // to modules below.
                     if let Some(macro_def) = sema.resolve_macro_call(&macro_call) {
-                        return Some(NameRefClass::Definition(Definition::Macro(macro_def)));
+                        return Some(NameRefClass::Definition(Definition::Macro(macro_def), None));
                     }
                 }
             }
-            return sema.resolve_path(&path).map(Into::into).map(NameRefClass::Definition);
+            return sema
+                .resolve_path_with_subst(&path)
+                .map(|(res, subst)| NameRefClass::Definition(res.into(), subst));
         }
 
         match_ast! {
             match parent {
                 ast::MethodCallExpr(method_call) => {
                     sema.resolve_method_call_fallback(&method_call)
-                        .map(|it| {
-                            it.map_left(Definition::Function)
-                                .map_right(Definition::Field)
-                                .either(NameRefClass::Definition, NameRefClass::Definition)
+                        .map(|(def, subst)| {
+                            match def {
+                                Either::Left(def) => NameRefClass::Definition(def.into(), subst),
+                                Either::Right(def) => NameRefClass::Definition(def.into(), subst),
+                            }
                         })
                 },
                 ast::FieldExpr(field_expr) => {
                     sema.resolve_field_fallback(&field_expr)
-                    .map(|it| {
-                        NameRefClass::Definition(match it {
-                            Either::Left(Either::Left(field)) => Definition::Field(field),
-                            Either::Left(Either::Right(field)) => Definition::TupleField(field),
-                            Either::Right(fun) => Definition::Function(fun),
+                        .map(|(def, subst)| {
+                            match def {
+                                Either::Left(Either::Left(def)) => NameRefClass::Definition(def.into(), subst),
+                                Either::Left(Either::Right(def)) => NameRefClass::Definition(Definition::TupleField(def), subst),
+                                Either::Right(def) => NameRefClass::Definition(def.into(), subst),
+                            }
                         })
-                    })
                 },
                 ast::RecordPatField(record_pat_field) => {
-                    sema.resolve_record_pat_field(&record_pat_field)
-                        .map(|(field, ..)|field)
-                        .map(Definition::Field)
-                        .map(NameRefClass::Definition)
+                    sema.resolve_record_pat_field_with_subst(&record_pat_field)
+                        .map(|(field, _, subst)| NameRefClass::Definition(Definition::Field(field), Some(subst)))
                 },
                 ast::RecordExprField(record_expr_field) => {
-                    sema.resolve_record_field(&record_expr_field)
-                        .map(|(field, ..)|field)
-                        .map(Definition::Field)
-                        .map(NameRefClass::Definition)
+                    sema.resolve_record_field_with_substitution(&record_expr_field)
+                        .map(|(field, _, _, subst)| NameRefClass::Definition(Definition::Field(field), Some(subst)))
                 },
                 ast::AssocTypeArg(_) => {
                     // `Trait<Assoc = Ty>`
@@ -728,28 +783,30 @@ impl NameRefClass {
                             })
                             .find(|alias| alias.name(sema.db).eq_ident(name_ref.text().as_str()))
                         {
-                            return Some(NameRefClass::Definition(Definition::TypeAlias(ty)));
+                            // No substitution, this can only occur in type position.
+                            return Some(NameRefClass::Definition(Definition::TypeAlias(ty), None));
                         }
                     }
                     None
                 },
                 ast::UseBoundGenericArgs(_) => {
+                    // No substitution, this can only occur in type position.
                     sema.resolve_use_type_arg(name_ref)
                         .map(GenericParam::TypeParam)
                         .map(Definition::GenericParam)
-                        .map(NameRefClass::Definition)
+                        .map(|it| NameRefClass::Definition(it, None))
                 },
                 ast::ExternCrate(extern_crate_ast) => {
                     let extern_crate = sema.to_def(&extern_crate_ast)?;
                     let krate = extern_crate.resolved_crate(sema.db)?;
                     Some(if extern_crate_ast.rename().is_some() {
-                        NameRefClass::Definition(Definition::Module(krate.root_module()))
+                        NameRefClass::Definition(Definition::Module(krate.root_module()), None)
                     } else {
                         NameRefClass::ExternCrateShorthand { krate, decl: extern_crate }
                     })
                 },
                 ast::AsmRegSpec(_) => {
-                    Some(NameRefClass::Definition(Definition::InlineAsmRegOrRegClass(())))
+                    Some(NameRefClass::Definition(Definition::InlineAsmRegOrRegClass(()), None))
                 },
                 _ => None
             }
@@ -762,13 +819,17 @@ impl NameRefClass {
     ) -> Option<NameRefClass> {
         let _p = tracing::info_span!("NameRefClass::classify_lifetime", ?lifetime).entered();
         if lifetime.text() == "'static" {
-            return Some(NameRefClass::Definition(Definition::BuiltinLifetime(StaticLifetime)));
+            return Some(NameRefClass::Definition(
+                Definition::BuiltinLifetime(StaticLifetime),
+                None,
+            ));
         }
         let parent = lifetime.syntax().parent()?;
         match parent.kind() {
-            SyntaxKind::BREAK_EXPR | SyntaxKind::CONTINUE_EXPR => {
-                sema.resolve_label(lifetime).map(Definition::Label).map(NameRefClass::Definition)
-            }
+            SyntaxKind::BREAK_EXPR | SyntaxKind::CONTINUE_EXPR => sema
+                .resolve_label(lifetime)
+                .map(Definition::Label)
+                .map(|it| NameRefClass::Definition(it, None)),
             SyntaxKind::LIFETIME_ARG
             | SyntaxKind::USE_BOUND_GENERIC_ARGS
             | SyntaxKind::SELF_PARAM
@@ -778,7 +839,7 @@ impl NameRefClass {
                 .resolve_lifetime_param(lifetime)
                 .map(GenericParam::LifetimeParam)
                 .map(Definition::GenericParam)
-                .map(NameRefClass::Definition),
+                .map(|it| NameRefClass::Definition(it, None)),
             _ => None,
         }
     }
@@ -898,6 +959,20 @@ impl TryFrom<DefWithBody> for Definition {
             DefWithBody::Const(it) => Ok(it.into()),
             DefWithBody::Variant(it) => Ok(it.into()),
             DefWithBody::InTypeConst(_) => Err(()),
+        }
+    }
+}
+
+impl From<GenericDef> for Definition {
+    fn from(def: GenericDef) -> Self {
+        match def {
+            GenericDef::Function(it) => it.into(),
+            GenericDef::Adt(it) => it.into(),
+            GenericDef::Trait(it) => it.into(),
+            GenericDef::TraitAlias(it) => it.into(),
+            GenericDef::TypeAlias(it) => it.into(),
+            GenericDef::Impl(it) => it.into(),
+            GenericDef::Const(it) => it.into(),
         }
     }
 }

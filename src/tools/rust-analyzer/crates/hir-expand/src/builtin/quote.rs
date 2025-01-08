@@ -6,7 +6,7 @@ use span::Span;
 use syntax::ToSmolStr;
 use tt::IdentIsRaw;
 
-use crate::name::Name;
+use crate::{name::Name, tt::TopSubtreeBuilder};
 
 pub(crate) fn dollar_crate(span: Span) -> tt::Ident<Span> {
     tt::Ident { sym: sym::dollar_crate.clone(), span, is_raw: tt::IdentIsRaw::No }
@@ -20,119 +20,93 @@ pub(crate) fn dollar_crate(span: Span) -> tt::Ident<Span> {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! quote_impl__ {
-    ($span:ident) => {
-        Vec::<$crate::tt::TokenTree>::new()
-    };
+    ($span:ident $builder:ident) => {};
 
-    ( @SUBTREE($span:ident) $delim:ident $($tt:tt)* ) => {
+    ( @SUBTREE($span:ident $builder:ident) $delim:ident $($tt:tt)* ) => {
         {
-            let children = $crate::builtin::quote::__quote!($span $($tt)*);
-            $crate::tt::Subtree {
-                delimiter: $crate::tt::Delimiter {
-                    kind: $crate::tt::DelimiterKind::$delim,
-                    open: $span,
-                    close: $span,
-                },
-                token_trees: $crate::builtin::quote::IntoTt::to_tokens(children).into_boxed_slice(),
-            }
+            $builder.open($crate::tt::DelimiterKind::$delim, $span);
+            $crate::builtin::quote::__quote!($span $builder  $($tt)*);
+            $builder.close($span);
         }
     };
 
-    ( @PUNCT($span:ident) $first:literal ) => {
-        {
-            vec![
-                $crate::tt::Leaf::Punct($crate::tt::Punct {
-                    char: $first,
-                    spacing: $crate::tt::Spacing::Alone,
-                    span: $span,
-                }).into()
-            ]
-        }
+    ( @PUNCT($span:ident $builder:ident) $first:literal ) => {
+        $builder.push(
+            $crate::tt::Leaf::Punct($crate::tt::Punct {
+                char: $first,
+                spacing: $crate::tt::Spacing::Alone,
+                span: $span,
+            })
+        );
     };
 
-    ( @PUNCT($span:ident) $first:literal, $sec:literal ) => {
-        {
-            vec![
-                $crate::tt::Leaf::Punct($crate::tt::Punct {
-                    char: $first,
-                    spacing: $crate::tt::Spacing::Joint,
-                    span: $span,
-                }).into(),
-                $crate::tt::Leaf::Punct($crate::tt::Punct {
-                    char: $sec,
-                    spacing: $crate::tt::Spacing::Alone,
-                    span: $span,
-                }).into()
-            ]
-        }
+    ( @PUNCT($span:ident $builder:ident) $first:literal, $sec:literal ) => {
+        $builder.extend([
+            $crate::tt::Leaf::Punct($crate::tt::Punct {
+                char: $first,
+                spacing: $crate::tt::Spacing::Joint,
+                span: $span,
+            }),
+            $crate::tt::Leaf::Punct($crate::tt::Punct {
+                char: $sec,
+                spacing: $crate::tt::Spacing::Alone,
+                span: $span,
+            })
+        ]);
     };
 
     // hash variable
-    ($span:ident # $first:ident $($tail:tt)* ) => {
-        {
-            let token = $crate::builtin::quote::ToTokenTree::to_token($first, $span);
-            let mut tokens = vec![token.into()];
-            let mut tail_tokens = $crate::builtin::quote::IntoTt::to_tokens($crate::builtin::quote::__quote!($span $($tail)*));
-            tokens.append(&mut tail_tokens);
-            tokens
-        }
+    ($span:ident $builder:ident # $first:ident $($tail:tt)* ) => {
+        $crate::builtin::quote::ToTokenTree::to_tokens($first, $span, $builder);
+        $crate::builtin::quote::__quote!($span $builder $($tail)*);
     };
 
-    ($span:ident ## $first:ident $($tail:tt)* ) => {
-        {
-            let mut tokens = $first.into_iter().map(|it| $crate::builtin::quote::ToTokenTree::to_token(it, $span)).collect::<Vec<crate::tt::TokenTree>>();
-            let mut tail_tokens = $crate::builtin::quote::IntoTt::to_tokens($crate::builtin::quote::__quote!($span $($tail)*));
-            tokens.append(&mut tail_tokens);
-            tokens
-        }
-    };
+    ($span:ident $builder:ident ## $first:ident $($tail:tt)* ) => {{
+        ::std::iter::IntoIterator::into_iter($first).for_each(|it| $crate::builtin::quote::ToTokenTree::to_tokens(it, $span, $builder));
+        $crate::builtin::quote::__quote!($span $builder $($tail)*);
+    }};
 
     // Brace
-    ($span:ident  { $($tt:tt)* } ) => { $crate::builtin::quote::__quote!(@SUBTREE($span) Brace $($tt)*) };
+    ($span:ident $builder:ident { $($tt:tt)* } ) => { $crate::builtin::quote::__quote!(@SUBTREE($span $builder) Brace $($tt)*) };
     // Bracket
-    ($span:ident  [ $($tt:tt)* ] ) => { $crate::builtin::quote::__quote!(@SUBTREE($span) Bracket $($tt)*) };
+    ($span:ident $builder:ident [ $($tt:tt)* ] ) => { $crate::builtin::quote::__quote!(@SUBTREE($span $builder) Bracket $($tt)*) };
     // Parenthesis
-    ($span:ident  ( $($tt:tt)* ) ) => { $crate::builtin::quote::__quote!(@SUBTREE($span) Parenthesis $($tt)*) };
+    ($span:ident $builder:ident ( $($tt:tt)* ) ) => { $crate::builtin::quote::__quote!(@SUBTREE($span $builder) Parenthesis $($tt)*) };
 
     // Literal
-    ($span:ident $tt:literal ) => { vec![$crate::builtin::quote::ToTokenTree::to_token($tt, $span).into()] };
+    ($span:ident $builder:ident $tt:literal ) => { $crate::builtin::quote::ToTokenTree::to_tokens($tt, $span, $builder) };
     // Ident
-    ($span:ident $tt:ident ) => {
-        vec![ {
+    ($span:ident $builder:ident $tt:ident ) => {
+        $builder.push(
             $crate::tt::Leaf::Ident($crate::tt::Ident {
                 sym: intern::Symbol::intern(stringify!($tt)),
                 span: $span,
                 is_raw: tt::IdentIsRaw::No,
-            }).into()
-        }]
+            })
+        );
     };
 
     // Puncts
     // FIXME: Not all puncts are handled
-    ($span:ident -> ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '-', '>')};
-    ($span:ident => ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '=', '>')};
-    ($span:ident & ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '&')};
-    ($span:ident , ) => {$crate::builtin::quote::__quote!(@PUNCT($span) ',')};
-    ($span:ident : ) => {$crate::builtin::quote::__quote!(@PUNCT($span) ':')};
-    ($span:ident ; ) => {$crate::builtin::quote::__quote!(@PUNCT($span) ';')};
-    ($span:ident :: ) => {$crate::builtin::quote::__quote!(@PUNCT($span) ':', ':')};
-    ($span:ident . ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '.')};
-    ($span:ident < ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '<')};
-    ($span:ident > ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '>')};
-    ($span:ident ! ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '!')};
-    ($span:ident # ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '#')};
-    ($span:ident $ ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '$')};
-    ($span:ident * ) => {$crate::builtin::quote::__quote!(@PUNCT($span) '*')};
+    ($span:ident $builder:ident -> ) => {$crate::builtin::quote::__quote!(@PUNCT($span $builder) '-', '>')};
+    ($span:ident $builder:ident => ) => {$crate::builtin::quote::__quote!(@PUNCT($span $builder) '=', '>')};
+    ($span:ident $builder:ident & ) => {$crate::builtin::quote::__quote!(@PUNCT($span $builder) '&')};
+    ($span:ident $builder:ident , ) => {$crate::builtin::quote::__quote!(@PUNCT($span $builder) ',')};
+    ($span:ident $builder:ident : ) => {$crate::builtin::quote::__quote!(@PUNCT($span $builder) ':')};
+    ($span:ident $builder:ident ; ) => {$crate::builtin::quote::__quote!(@PUNCT($span $builder) ';')};
+    ($span:ident $builder:ident :: ) => {$crate::builtin::quote::__quote!(@PUNCT($span $builder) ':', ':')};
+    ($span:ident $builder:ident . ) => {$crate::builtin::quote::__quote!(@PUNCT($span $builder) '.')};
+    ($span:ident $builder:ident < ) => {$crate::builtin::quote::__quote!(@PUNCT($span $builder) '<')};
+    ($span:ident $builder:ident > ) => {$crate::builtin::quote::__quote!(@PUNCT($span $builder) '>')};
+    ($span:ident $builder:ident ! ) => {$crate::builtin::quote::__quote!(@PUNCT($span $builder) '!')};
+    ($span:ident $builder:ident # ) => {$crate::builtin::quote::__quote!(@PUNCT($span $builder) '#')};
+    ($span:ident $builder:ident $ ) => {$crate::builtin::quote::__quote!(@PUNCT($span $builder) '$')};
+    ($span:ident $builder:ident * ) => {$crate::builtin::quote::__quote!(@PUNCT($span $builder) '*')};
 
-    ($span:ident $first:tt $($tail:tt)+ ) => {
-        {
-            let mut tokens = $crate::builtin::quote::IntoTt::to_tokens($crate::builtin::quote::__quote!($span $first ));
-            let mut tail_tokens = $crate::builtin::quote::IntoTt::to_tokens($crate::builtin::quote::__quote!($span $($tail)*));
-
-            tokens.append(&mut tail_tokens);
-            tokens
-        }
-    };
+    ($span:ident $builder:ident $first:tt $($tail:tt)+ ) => {{
+        $crate::builtin::quote::__quote!($span $builder $first);
+        $crate::builtin::quote::__quote!($span $builder $($tail)*);
+    }};
 }
 pub use quote_impl__ as __quote;
 
@@ -141,52 +115,68 @@ pub use quote_impl__ as __quote;
 #[macro_export]
 macro_rules! quote {
     ($span:ident=> $($tt:tt)* ) => {
-        $crate::builtin::quote::IntoTt::to_subtree($crate::builtin::quote::__quote!($span $($tt)*), $span)
+        {
+            let mut builder = $crate::tt::TopSubtreeBuilder::new($crate::tt::Delimiter {
+                kind: $crate::tt::DelimiterKind::Invisible,
+                open: $span,
+                close: $span,
+            });
+            #[allow(unused)]
+            let builder_ref = &mut builder;
+            $crate::builtin::quote::__quote!($span builder_ref $($tt)*);
+            builder.build_skip_top_subtree()
+        }
     }
 }
 pub(super) use quote;
 
-pub trait IntoTt {
-    fn to_subtree(self, span: Span) -> crate::tt::Subtree;
-    fn to_tokens(self) -> Vec<crate::tt::TokenTree>;
-}
-
-impl IntoTt for Vec<crate::tt::TokenTree> {
-    fn to_subtree(self, span: Span) -> crate::tt::Subtree {
-        crate::tt::Subtree {
-            delimiter: crate::tt::Delimiter::invisible_spanned(span),
-            token_trees: self.into_boxed_slice(),
-        }
-    }
-
-    fn to_tokens(self) -> Vec<crate::tt::TokenTree> {
-        self
-    }
-}
-
-impl IntoTt for crate::tt::Subtree {
-    fn to_subtree(self, _: Span) -> crate::tt::Subtree {
-        self
-    }
-
-    fn to_tokens(self) -> Vec<crate::tt::TokenTree> {
-        vec![crate::tt::TokenTree::Subtree(self)]
-    }
-}
-
 pub trait ToTokenTree {
-    fn to_token(self, span: Span) -> crate::tt::TokenTree;
+    fn to_tokens(self, span: Span, builder: &mut TopSubtreeBuilder);
 }
 
-impl ToTokenTree for crate::tt::TokenTree {
-    fn to_token(self, _: Span) -> crate::tt::TokenTree {
-        self
+/// Wraps `TokenTreesView` with a delimiter (a subtree, but without allocating).
+pub struct WithDelimiter<'a> {
+    pub delimiter: crate::tt::Delimiter,
+    pub token_trees: crate::tt::TokenTreesView<'a>,
+}
+
+impl ToTokenTree for WithDelimiter<'_> {
+    fn to_tokens(self, span: Span, builder: &mut TopSubtreeBuilder) {
+        builder.open(self.delimiter.kind, self.delimiter.open);
+        self.token_trees.to_tokens(span, builder);
+        builder.close(self.delimiter.close);
     }
 }
 
-impl ToTokenTree for crate::tt::Subtree {
-    fn to_token(self, _: Span) -> crate::tt::TokenTree {
-        self.into()
+impl ToTokenTree for crate::tt::TokenTreesView<'_> {
+    fn to_tokens(self, _: Span, builder: &mut TopSubtreeBuilder) {
+        builder.extend_with_tt(self);
+    }
+}
+
+impl ToTokenTree for crate::tt::SubtreeView<'_> {
+    fn to_tokens(self, _: Span, builder: &mut TopSubtreeBuilder) {
+        builder.extend_with_tt(self.as_token_trees());
+    }
+}
+
+impl ToTokenTree for crate::tt::TopSubtree {
+    fn to_tokens(self, _: Span, builder: &mut TopSubtreeBuilder) {
+        builder.extend_tt_dangerous(self.0);
+    }
+}
+
+impl ToTokenTree for crate::tt::TtElement<'_> {
+    fn to_tokens(self, _: Span, builder: &mut TopSubtreeBuilder) {
+        match self {
+            crate::tt::TtElement::Leaf(leaf) => builder.push(leaf.clone()),
+            crate::tt::TtElement::Subtree(subtree, subtree_iter) => {
+                builder.extend_tt_dangerous(
+                    std::iter::once(crate::tt::TokenTree::Subtree(subtree.clone()))
+                        .chain(subtree_iter.remaining().flat_tokens().iter().cloned()),
+                );
+            }
+        }
     }
 }
 
@@ -194,18 +184,17 @@ macro_rules! impl_to_to_tokentrees {
     ($($span:ident: $ty:ty => $this:ident $im:block;)*) => {
         $(
             impl ToTokenTree for $ty {
-                fn to_token($this, $span: Span) -> crate::tt::TokenTree {
+                fn to_tokens($this, $span: Span, builder: &mut TopSubtreeBuilder) {
                     let leaf: crate::tt::Leaf = $im.into();
-                    leaf.into()
+                    builder.push(leaf);
                 }
             }
         )*
     }
 }
-
 impl<T: ToTokenTree + Clone> ToTokenTree for &T {
-    fn to_token(self, span: Span) -> crate::tt::TokenTree {
-        self.clone().to_token(span)
+    fn to_tokens(self, span: Span, builder: &mut TopSubtreeBuilder) {
+        self.clone().to_tokens(span, builder);
     }
 }
 
@@ -316,18 +305,15 @@ mod tests {
         // }
         let struct_name = mk_ident("Foo");
         let fields = [mk_ident("name"), mk_ident("id")];
-        let fields = fields
-            .iter()
-            .flat_map(|it| quote!(DUMMY =>#it: self.#it.clone(), ).token_trees.into_vec());
+        let fields = fields.iter().map(|it| quote!(DUMMY =>#it: self.#it.clone(), ));
 
-        let list = crate::tt::Subtree {
-            delimiter: crate::tt::Delimiter {
-                kind: crate::tt::DelimiterKind::Brace,
-                open: DUMMY,
-                close: DUMMY,
-            },
-            token_trees: fields.collect(),
-        };
+        let mut builder = tt::TopSubtreeBuilder::new(crate::tt::Delimiter {
+            kind: crate::tt::DelimiterKind::Brace,
+            open: DUMMY,
+            close: DUMMY,
+        });
+        fields.for_each(|field| builder.extend_with_tt(field.view().as_token_trees()));
+        let list = builder.build();
 
         let quoted = quote! {DUMMY =>
             impl Clone for #struct_name {

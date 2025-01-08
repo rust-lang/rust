@@ -82,7 +82,7 @@ impl<'a> Iterator for AppearancesIter<'a> {
 impl LocalUseMap {
     pub(crate) fn build(
         live_locals: &[Local],
-        elements: &DenseLocationMap,
+        location_map: &DenseLocationMap,
         body: &Body<'_>,
     ) -> Self {
         let nones = IndexVec::from_elem(None, &body.local_decls);
@@ -101,7 +101,7 @@ impl LocalUseMap {
             IndexVec::from_elem(false, &body.local_decls);
         live_locals.iter().for_each(|&local| locals_with_use_data[local] = true);
 
-        LocalUseMapBuild { local_use_map: &mut local_use_map, elements, locals_with_use_data }
+        LocalUseMapBuild { local_use_map: &mut local_use_map, location_map, locals_with_use_data }
             .visit_body(body);
 
         local_use_map
@@ -125,7 +125,7 @@ impl LocalUseMap {
 
 struct LocalUseMapBuild<'me> {
     local_use_map: &'me mut LocalUseMap,
-    elements: &'me DenseLocationMap,
+    location_map: &'me DenseLocationMap,
 
     // Vector used in `visit_local` to signal which `Local`s do we need
     // def/use/drop information on, constructed from `live_locals` (that
@@ -147,7 +147,7 @@ impl Visitor<'_> for LocalUseMapBuild<'_> {
                 DefUse::Use => &mut self.local_use_map.first_use_at[local],
                 DefUse::Drop => &mut self.local_use_map.first_drop_at[local],
             };
-            let point_index = self.elements.point_from_location(location);
+            let point_index = self.location_map.point_from_location(location);
             let appearance_index = self
                 .local_use_map
                 .appearances

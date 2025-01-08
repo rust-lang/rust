@@ -13,7 +13,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::HirId;
 use rustc_hir::def::DefKind;
 use rustc_index::IndexVec;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -67,7 +67,7 @@ struct ConstPropagator<'mir, 'tcx> {
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     worklist: Vec<BasicBlock>,
-    visited_blocks: BitSet<BasicBlock>,
+    visited_blocks: DenseBitSet<BasicBlock>,
     locals: IndexVec<Local, Value<'tcx>>,
     body: &'mir Body<'tcx>,
     written_only_inside_own_block_locals: FxHashSet<Local>,
@@ -190,7 +190,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             tcx,
             typing_env,
             worklist: vec![START_BLOCK],
-            visited_blocks: BitSet::new_empty(body.basic_blocks.len()),
+            visited_blocks: DenseBitSet::new_empty(body.basic_blocks.len()),
             locals: IndexVec::from_elem_n(Value::Uninit, body.local_decls.len()),
             body,
             can_const_prop,
@@ -852,7 +852,7 @@ enum ConstPropMode {
 struct CanConstProp {
     can_const_prop: IndexVec<Local, ConstPropMode>,
     // False at the beginning. Once set, no more assignments are allowed to that local.
-    found_assignment: BitSet<Local>,
+    found_assignment: DenseBitSet<Local>,
 }
 
 impl CanConstProp {
@@ -864,7 +864,7 @@ impl CanConstProp {
     ) -> IndexVec<Local, ConstPropMode> {
         let mut cpv = CanConstProp {
             can_const_prop: IndexVec::from_elem(ConstPropMode::FullConstProp, &body.local_decls),
-            found_assignment: BitSet::new_empty(body.local_decls.len()),
+            found_assignment: DenseBitSet::new_empty(body.local_decls.len()),
         };
         for (local, val) in cpv.can_const_prop.iter_enumerated_mut() {
             let ty = body.local_decls[local].ty;

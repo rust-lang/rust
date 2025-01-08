@@ -252,6 +252,7 @@ use core::intrinsics::abort;
 use core::iter;
 use core::marker::{PhantomData, Unsize};
 use core::mem::{self, ManuallyDrop, align_of_val_raw};
+use core::num::NonZeroUsize;
 use core::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, LegacyReceiver};
 use core::panic::{RefUnwindSafe, UnwindSafe};
 #[cfg(not(no_global_oom_handling))]
@@ -1789,7 +1790,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// let x: Rc<&str> = Rc::new("Hello, world!");
     /// {
     ///     let s = String::from("Oh, no!");
-    ///     let mut y: Rc<&str> = x.clone().into();
+    ///     let mut y: Rc<&str> = x.clone();
     ///     unsafe {
     ///         // this is Undefined Behavior, because x's inner type
     ///         // is &'long str, not &'short str
@@ -3027,12 +3028,7 @@ impl<T> Weak<T> {
     #[rustc_const_stable(feature = "const_weak_new", since = "1.73.0")]
     #[must_use]
     pub const fn new() -> Weak<T> {
-        Weak {
-            ptr: unsafe {
-                NonNull::new_unchecked(ptr::without_provenance_mut::<RcInner<T>>(usize::MAX))
-            },
-            alloc: Global,
-        }
+        Weak { ptr: NonNull::without_provenance(NonZeroUsize::MAX), alloc: Global }
     }
 }
 
@@ -3054,12 +3050,7 @@ impl<T, A: Allocator> Weak<T, A> {
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn new_in(alloc: A) -> Weak<T, A> {
-        Weak {
-            ptr: unsafe {
-                NonNull::new_unchecked(ptr::without_provenance_mut::<RcInner<T>>(usize::MAX))
-            },
-            alloc,
-        }
+        Weak { ptr: NonNull::without_provenance(NonZeroUsize::MAX), alloc }
     }
 }
 
@@ -3717,7 +3708,11 @@ pub struct UniqueRc<
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 > {
     ptr: NonNull<RcInner<T>>,
-    phantom: PhantomData<RcInner<T>>,
+    // Define the ownership of `RcInner<T>` for drop-check
+    _marker: PhantomData<RcInner<T>>,
+    // Invariance is necessary for soundness: once other `Weak`
+    // references exist, we already have a form of shared mutability!
+    _marker2: PhantomData<*mut T>,
     alloc: A,
 }
 
@@ -4003,7 +3998,7 @@ impl<T, A: Allocator> UniqueRc<T, A> {
             },
             alloc,
         ));
-        Self { ptr: ptr.into(), phantom: PhantomData, alloc }
+        Self { ptr: ptr.into(), _marker: PhantomData, _marker2: PhantomData, alloc }
     }
 }
 

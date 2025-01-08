@@ -567,8 +567,8 @@ mod patterns {
     fn pat_deref() { let deref!(pat); }
     /// PatKind::Ref
     fn pat_ref() { let &pat; let &mut pat; }
-    /// PatKind::Lit
-    fn pat_lit() { let 1_000_i8; let -""; }
+    /// PatKind::Expr
+    fn pat_expr() { let 1_000_i8; let -""; }
     /// PatKind::Range
     fn pat_range() { let ..1; let 0..; let 0..1; let 0..=1; let -2..=-1; }
     /// PatKind::Slice

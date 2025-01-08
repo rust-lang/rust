@@ -1,5 +1,5 @@
 error: unions cannot have zero fields
-  --> $DIR/debug.rs:82:1
+  --> $DIR/debug.rs:83:1
    |
 LL | union EmptyUnion {}
    | ^^^^^^^^^^^^^^^^^^^
@@ -61,6 +61,7 @@ error: layout_of(E) = Layout {
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
+                       randomization_seed: $SEED,
                    },
                    Layout {
                        size: Size(12 bytes),
@@ -87,13 +88,15 @@ error: layout_of(E) = Layout {
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
+                       randomization_seed: $SEED,
                    },
                ],
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/debug.rs:7:1
+  --> $DIR/debug.rs:8:1
    |
 LL | enum E { Foo, Bar(!, i32, i32) }
    | ^^^^^^
@@ -138,8 +141,9 @@ error: layout_of(S) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/debug.rs:10:1
+  --> $DIR/debug.rs:11:1
    |
 LL | struct S { f1: i32, f2: (), f3: i32 }
    | ^^^^^^^^
@@ -162,8 +166,9 @@ error: layout_of(U) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/debug.rs:13:1
+  --> $DIR/debug.rs:14:1
    |
 LL | union U { f1: (i32, i32), f3: i32 }
    | ^^^^^^^
@@ -255,6 +260,7 @@ error: layout_of(Result<i32, i32>) = Layout {
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
+                       randomization_seed: $SEED,
                    },
                    Layout {
                        size: Size(8 bytes),
@@ -292,13 +298,15 @@ error: layout_of(Result<i32, i32>) = Layout {
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
+                       randomization_seed: $SEED,
                    },
                ],
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/debug.rs:16:1
+  --> $DIR/debug.rs:17:1
    |
 LL | type Test = Result<i32, i32>;
    | ^^^^^^^^^
@@ -325,8 +333,9 @@ error: layout_of(i32) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/debug.rs:19:1
+  --> $DIR/debug.rs:20:1
    |
 LL | type T = impl std::fmt::Debug;
    | ^^^^^^
@@ -349,8 +358,9 @@ error: layout_of(V) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(2 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/debug.rs:25:1
+  --> $DIR/debug.rs:26:1
    |
 LL | pub union V {
    | ^^^^^^^^^^^
@@ -373,8 +383,9 @@ error: layout_of(W) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(2 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/debug.rs:31:1
+  --> $DIR/debug.rs:32:1
    |
 LL | pub union W {
    | ^^^^^^^^^^^
@@ -397,8 +408,9 @@ error: layout_of(Y) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(2 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/debug.rs:37:1
+  --> $DIR/debug.rs:38:1
    |
 LL | pub union Y {
    | ^^^^^^^^^^^
@@ -421,8 +433,9 @@ error: layout_of(P1) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/debug.rs:44:1
+  --> $DIR/debug.rs:45:1
    |
 LL | union P1 { x: u32 }
    | ^^^^^^^^
@@ -445,8 +458,9 @@ error: layout_of(P2) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/debug.rs:48:1
+  --> $DIR/debug.rs:49:1
    |
 LL | union P2 { x: (u32, u32) }
    | ^^^^^^^^
@@ -469,8 +483,9 @@ error: layout_of(P3) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/debug.rs:56:1
+  --> $DIR/debug.rs:57:1
    |
 LL | union P3 { x: F32x4 }
    | ^^^^^^^^
@@ -493,8 +508,9 @@ error: layout_of(P4) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/debug.rs:60:1
+  --> $DIR/debug.rs:61:1
    |
 LL | union P4 { x: E }
    | ^^^^^^^^
@@ -522,8 +538,9 @@ error: layout_of(P5) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/debug.rs:64:1
+  --> $DIR/debug.rs:65:1
    |
 LL | union P5 { zst: [u16; 0], byte: u8 }
    | ^^^^^^^^
@@ -551,20 +568,21 @@ error: layout_of(MaybeUninit<u8>) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/debug.rs:67:1
+  --> $DIR/debug.rs:68:1
    |
 LL | type X = std::mem::MaybeUninit<u8>;
    | ^^^^^^
 
 error: `#[rustc_layout]` can only be applied to `struct`/`enum`/`union` declarations and type aliases
-  --> $DIR/debug.rs:70:1
+  --> $DIR/debug.rs:71:1
    |
 LL | const C: () = ();
    | ^^^^^^^^^^^
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/debug.rs:78:19
+  --> $DIR/debug.rs:79:19
    |
 LL | type Impossible = (str, str);
    |                   ^^^^^^^^^^ doesn't have a size known at compile-time
@@ -573,13 +591,13 @@ LL | type Impossible = (str, str);
    = note: only the last element of a tuple may have a dynamically sized type
 
 error: the type `EmptyUnion` has an unknown layout
-  --> $DIR/debug.rs:82:1
+  --> $DIR/debug.rs:83:1
    |
 LL | union EmptyUnion {}
    | ^^^^^^^^^^^^^^^^
 
 error: `#[rustc_layout]` can only be applied to `struct`/`enum`/`union` declarations and type aliases
-  --> $DIR/debug.rs:74:5
+  --> $DIR/debug.rs:75:5
    |
 LL |     const C: () = ();
    |     ^^^^^^^^^^^

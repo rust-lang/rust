@@ -1,6 +1,4 @@
 //! Wrappers over [`make`] constructors
-use itertools::Itertools;
-
 use crate::{
     ast::{self, make, HasGenericParams, HasName, HasTypeBounds, HasVisibility},
     syntax_editor::SyntaxMappingBuilder,
@@ -62,13 +60,12 @@ impl SyntaxFactory {
 
     pub fn block_expr(
         &self,
-        stmts: impl IntoIterator<Item = ast::Stmt>,
+        statements: impl IntoIterator<Item = ast::Stmt>,
         tail_expr: Option<ast::Expr>,
     ) -> ast::BlockExpr {
-        let stmts = stmts.into_iter().collect_vec();
-        let mut input = stmts.iter().map(|it| it.syntax().clone()).collect_vec();
+        let (statements, mut input) = iterator_input(statements);
 
-        let ast = make::block_expr(stmts, tail_expr.clone()).clone_for_update();
+        let ast = make::block_expr(statements, tail_expr.clone()).clone_for_update();
 
         if let Some(mut mapping) = self.mappings() {
             let stmt_list = ast.stmt_list().unwrap();
@@ -257,14 +254,15 @@ impl SyntaxFactory {
 
     pub fn turbofish_generic_arg_list(
         &self,
-        args: impl IntoIterator<Item = ast::GenericArg> + Clone,
+        generic_args: impl IntoIterator<Item = ast::GenericArg>,
     ) -> ast::GenericArgList {
-        let ast = make::turbofish_generic_arg_list(args.clone()).clone_for_update();
+        let (generic_args, input) = iterator_input(generic_args);
+        let ast = make::turbofish_generic_arg_list(generic_args.clone()).clone_for_update();
 
         if let Some(mut mapping) = self.mappings() {
             let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
             builder.map_children(
-                args.into_iter().map(|arg| arg.syntax().clone()),
+                input.into_iter(),
                 ast.generic_args().map(|arg| arg.syntax().clone()),
             );
             builder.finish(&mut mapping);
@@ -277,8 +275,7 @@ impl SyntaxFactory {
         &self,
         fields: impl IntoIterator<Item = ast::RecordField>,
     ) -> ast::RecordFieldList {
-        let fields: Vec<ast::RecordField> = fields.into_iter().collect();
-        let input: Vec<_> = fields.iter().map(|it| it.syntax().clone()).collect();
+        let (fields, input) = iterator_input(fields);
         let ast = make::record_field_list(fields).clone_for_update();
 
         if let Some(mut mapping) = self.mappings() {
@@ -323,8 +320,7 @@ impl SyntaxFactory {
         &self,
         fields: impl IntoIterator<Item = ast::TupleField>,
     ) -> ast::TupleFieldList {
-        let fields: Vec<ast::TupleField> = fields.into_iter().collect();
-        let input: Vec<_> = fields.iter().map(|it| it.syntax().clone()).collect();
+        let (fields, input) = iterator_input(fields);
         let ast = make::tuple_field_list(fields).clone_for_update();
 
         if let Some(mut mapping) = self.mappings() {
@@ -419,8 +415,7 @@ impl SyntaxFactory {
         &self,
         variants: impl IntoIterator<Item = ast::Variant>,
     ) -> ast::VariantList {
-        let variants: Vec<ast::Variant> = variants.into_iter().collect();
-        let input: Vec<_> = variants.iter().map(|it| it.syntax().clone()).collect();
+        let (variants, input) = iterator_input(variants);
         let ast = make::variant_list(variants).clone_for_update();
 
         if let Some(mut mapping) = self.mappings() {
@@ -481,7 +476,7 @@ impl SyntaxFactory {
     pub fn token_tree(
         &self,
         delimiter: SyntaxKind,
-        tt: Vec<NodeOrToken<ast::TokenTree, SyntaxToken>>,
+        tt: impl IntoIterator<Item = NodeOrToken<ast::TokenTree, SyntaxToken>>,
     ) -> ast::TokenTree {
         let tt: Vec<_> = tt.into_iter().collect();
         let input: Vec<_> = tt.iter().cloned().filter_map(only_nodes).collect();
@@ -511,4 +506,21 @@ impl SyntaxFactory {
     pub fn whitespace(&self, text: &str) -> ast::SyntaxToken {
         make::tokens::whitespace(text)
     }
+}
+
+// We need to collect `input` here instead of taking `impl IntoIterator + Clone`,
+// because if we took `impl IntoIterator + Clone`, that could be something like an
+// `Iterator::map` with a closure that also makes use of a `SyntaxFactory` constructor.
+//
+// In that case, the iterator would be evaluated inside of the call to `map_children`,
+// and the inner constructor would try to take a mutable borrow of the mappings `RefCell`,
+// which would panic since it's already being mutably borrowed in the outer constructor.
+fn iterator_input<N: AstNode>(input: impl IntoIterator<Item = N>) -> (Vec<N>, Vec<SyntaxNode>) {
+    input
+        .into_iter()
+        .map(|it| {
+            let syntax = it.syntax().clone();
+            (it, syntax)
+        })
+        .collect()
 }

@@ -37,21 +37,20 @@ mod constraints;
 mod dump;
 pub(crate) mod legacy;
 mod liveness_constraints;
+mod typeck_constraints;
 
 use std::collections::BTreeMap;
 
 use rustc_index::bit_set::SparseBitMatrix;
-use rustc_middle::mir::{Body, Location};
-use rustc_middle::ty::RegionVid;
+use rustc_middle::mir::Body;
+use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_mir_dataflow::points::PointIndex;
 
 pub(crate) use self::constraints::*;
 pub(crate) use self::dump::dump_polonius_mir;
 use self::liveness_constraints::create_liveness_constraints;
+use self::typeck_constraints::convert_typeck_constraints;
 use crate::RegionInferenceContext;
-use crate::constraints::OutlivesConstraint;
-use crate::region_infer::values::LivenessValues;
-use crate::type_check::Locations;
 
 /// This struct holds the data needed to create the Polonius localized constraints.
 pub(crate) struct PoloniusContext {
@@ -88,14 +87,17 @@ impl PoloniusContext {
     /// - encoding liveness constraints
     pub(crate) fn create_localized_constraints<'tcx>(
         &self,
+        tcx: TyCtxt<'tcx>,
         regioncx: &RegionInferenceContext<'tcx>,
         body: &Body<'tcx>,
     ) -> LocalizedOutlivesConstraintSet {
         let mut localized_outlives_constraints = LocalizedOutlivesConstraintSet::default();
         convert_typeck_constraints(
+            tcx,
             body,
             regioncx.liveness_constraints(),
             regioncx.outlives_constraints(),
+            regioncx.universal_regions(),
             &mut localized_outlives_constraints,
         );
 
@@ -115,40 +117,5 @@ impl PoloniusContext {
         // liveness for the next step in the chain, the NLL loan scope and active loans computations.
 
         localized_outlives_constraints
-    }
-}
-
-/// Propagate loans throughout the subset graph at a given point (with some subtleties around the
-/// location where effects start to be visible).
-fn convert_typeck_constraints<'tcx>(
-    body: &Body<'tcx>,
-    liveness: &LivenessValues,
-    outlives_constraints: impl Iterator<Item = OutlivesConstraint<'tcx>>,
-    localized_outlives_constraints: &mut LocalizedOutlivesConstraintSet,
-) {
-    for outlives_constraint in outlives_constraints {
-        match outlives_constraint.locations {
-            Locations::All(_) => {
-                // For now, turn logical constraints holding at all points into physical edges at
-                // every point in the graph.
-                // FIXME: encode this into *traversal* instead.
-                for (block, bb) in body.basic_blocks.iter_enumerated() {
-                    let statement_count = bb.statements.len();
-                    for statement_index in 0..=statement_count {
-                        let current_location = Location { block, statement_index };
-                        let current_point = liveness.point_from_location(current_location);
-
-                        localized_outlives_constraints.push(LocalizedOutlivesConstraint {
-                            source: outlives_constraint.sup,
-                            from: current_point,
-                            target: outlives_constraint.sub,
-                            to: current_point,
-                        });
-                    }
-                }
-            }
-
-            _ => {}
-        }
     }
 }

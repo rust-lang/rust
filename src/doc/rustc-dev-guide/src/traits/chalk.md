@@ -10,7 +10,7 @@ stream and say hello!
 [Types team]: https://github.com/rust-lang/types-team
 [`#t-types`]: https://rust-lang.zulipchat.com/#narrow/stream/144729-t-types
 
-The new-style trait solver is based on the work done in [chalk][chalk]. Chalk
+The new-style trait solver is based on the work done in [chalk]. Chalk
 recasts Rust's trait system explicitly in terms of logic programming. It does
 this by "lowering" Rust code into a kind of logic program we can then execute
 queries against.
@@ -30,7 +30,7 @@ You can read more about chalk itself in the
 ## Ongoing work
 The design of the new-style trait solving happens in two places:
 
-**chalk**. The [chalk][chalk] repository is where we experiment with new ideas
+**chalk**. The [chalk] repository is where we experiment with new ideas
 and designs for the trait system.
 
 **rustc**. Once we are happy with the logical rules, we proceed to

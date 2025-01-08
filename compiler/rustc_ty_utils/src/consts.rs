@@ -4,7 +4,7 @@ use rustc_abi::{FIRST_VARIANT, VariantIdx};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
+use rustc_middle::mir::interpret::LitToConstInput;
 use rustc_middle::query::Providers;
 use rustc_middle::thir::visit;
 use rustc_middle::thir::visit::Visitor;
@@ -118,13 +118,7 @@ fn recurse_build<'tcx>(
         }
         &ExprKind::Literal { lit, neg } => {
             let sp = node.span;
-            match tcx.at(sp).lit_to_const(LitToConstInput { lit: &lit.node, ty: node.ty, neg }) {
-                Ok(c) => c,
-                Err(LitToConstError::Reported(guar)) => ty::Const::new_error(tcx, guar),
-                Err(LitToConstError::TypeError) => {
-                    bug!("encountered type error in lit_to_const")
-                }
-            }
+            tcx.at(sp).lit_to_const(LitToConstInput { lit: &lit.node, ty: node.ty, neg })
         }
         &ExprKind::NonHirLiteral { lit, user_ty: _ } => {
             let val = ty::ValTree::from_scalar_int(lit);

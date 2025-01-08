@@ -1,4 +1,4 @@
-#![cfg_attr(not(bootstrap), allow(rustc::symbol_intern_string_literal))]
+#![allow(rustc::symbol_intern_string_literal)]
 
 use super::*;
 

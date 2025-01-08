@@ -10,10 +10,10 @@ use ide::{AnalysisHost, DiagnosticCode, DiagnosticsConfig};
 use itertools::Either;
 use paths::Utf8PathBuf;
 use profile::StopWatch;
-use project_model::target_data_layout::RustcDataLayoutConfig;
+use project_model::toolchain_info::{target_data_layout, QueryConfig};
 use project_model::{
-    target_data_layout, CargoConfig, ManifestPath, ProjectWorkspace, ProjectWorkspaceKind,
-    RustLibSource, Sysroot, SysrootQueryMetadata,
+    CargoConfig, ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, RustLibSource, Sysroot,
+    SysrootSourceWorkspaceConfig,
 };
 
 use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
@@ -74,13 +74,10 @@ impl Tester {
             ..Default::default()
         };
 
-        let sysroot = Sysroot::discover(
-            tmp_file.parent().unwrap(),
-            &cargo_config.extra_env,
-            SysrootQueryMetadata::CargoMetadata,
-        );
+        let mut sysroot = Sysroot::discover(tmp_file.parent().unwrap(), &cargo_config.extra_env);
+        sysroot.load_workspace(&SysrootSourceWorkspaceConfig::default_cargo());
         let data_layout = target_data_layout::get(
-            RustcDataLayoutConfig::Rustc(&sysroot),
+            QueryConfig::Rustc(&sysroot, tmp_file.parent().unwrap().as_ref()),
             None,
             &cargo_config.extra_env,
         );
@@ -89,7 +86,6 @@ impl Tester {
             kind: ProjectWorkspaceKind::DetachedFile {
                 file: ManifestPath::try_from(tmp_file).unwrap(),
                 cargo: None,
-                cargo_config_extra_env: Default::default(),
                 set_test: true,
             },
             sysroot,
@@ -302,7 +298,7 @@ impl flags::RustcTests {
                     continue;
                 }
             }
-            if p.extension().map_or(true, |x| x != "rs") {
+            if p.extension().is_none_or(|x| x != "rs") {
                 continue;
             }
             if let Err(e) = std::panic::catch_unwind({

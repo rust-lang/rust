@@ -867,7 +867,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         // First up we check for global allocators. Look at the crate graph here
         // and see what's a global allocator, including if we ourselves are a
         // global allocator.
-        #[cfg_attr(not(bootstrap), allow(rustc::symbol_intern_string_literal))]
+        #[allow(rustc::symbol_intern_string_literal)]
         let this_crate = Symbol::intern("this crate");
 
         let mut global_allocator = self.cstore.has_global_allocator.then_some(this_crate);
