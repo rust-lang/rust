@@ -204,7 +204,13 @@ fn get_type_suggestion(t: Ty<'_>, val: u128, negative: bool) -> Option<&'static 
     match t.kind() {
         ty::Uint(ty::UintTy::Usize) | ty::Int(ty::IntTy::Isize) => None,
         ty::Uint(_) => Some(Integer::fit_unsigned(val).uint_ty_str()),
-        ty::Int(_) if negative => Some(Integer::fit_signed(-(val as i128)).int_ty_str()),
+        ty::Int(_) if negative => {
+            if val > i128::MAX as u128 + 1 {
+                None
+            } else {
+                Some(Integer::fit_signed(val.wrapping_neg() as i128).int_ty_str())
+            }
+        }
         ty::Int(int) => {
             let unsigned = Integer::fit_unsigned(val);
             Some(if let Ok(signed) = i128::try_from(val).map(Integer::fit_signed) {
