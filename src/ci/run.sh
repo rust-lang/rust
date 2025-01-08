@@ -26,6 +26,7 @@ if [ "$NO_CHANGE_USER" = "" ]; then
     chown -R user:user .
     mkdir /cargo
     chown -R user:user /cargo
+    chown -R user:user /checkout
 
     # Ensure that runners are able to execute git commands in the worktree,
     # overriding the typical git protections. In our docker container we're running
