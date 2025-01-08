@@ -1,15 +1,11 @@
-use rustc_abi::{BackendRepr, ExternAbi, Float, Primitive};
+use rustc_abi::{BackendRepr, Float, Primitive};
 
 use crate::abi::call::{ArgAbi, FnAbi, Reg};
 use crate::spec::HasTargetSpec;
 
 // Win64 ABI: https://docs.microsoft.com/en-us/cpp/build/parameter-passing
 
-pub(crate) fn compute_abi_info<Ty>(
-    cx: &impl HasTargetSpec,
-    fn_abi: &mut FnAbi<'_, Ty>,
-    abi: ExternAbi,
-) {
+pub(crate) fn compute_abi_info<Ty>(_cx: &impl HasTargetSpec, fn_abi: &mut FnAbi<'_, Ty>) {
     let fixup = |a: &mut ArgAbi<'_, Ty>| {
         match a.layout.backend_repr {
             BackendRepr::Uninhabited | BackendRepr::Memory { sized: false } => {}
@@ -48,16 +44,14 @@ pub(crate) fn compute_abi_info<Ty>(
             // Windows ABIs do not talk about ZST since such types do not exist in MSVC.
             // In that sense we can do whatever we want here, and maybe we should throw an error
             // (but of course that would be a massive breaking change now).
-            // We try to match clang and gcc, so we make windows-gnu and the native
-            // Windows ABIs (i.e., everything except for `extern "C"`) pass ZST via
-            // pointer indirection. windows-msvc `extern "C"` still skips ZST.
-            if (cx.target_spec().os == "windows" && cx.target_spec().env == "gnu")
-                || !matches!(abi, ExternAbi::C { .. })
-            {
-                arg.make_indirect_from_ignore();
-            }
+            // We try to match clang and gcc (which allow ZST is their windows-gnu targets), so we
+            // pass ZST via pointer indirection.
+            arg.make_indirect_from_ignore();
             continue;
         }
         fixup(arg);
     }
+    // FIXME: We should likely also do something about ZST return types, similar to above.
+    // However, that's non-trivial due to `()`.
+    // See <https://github.com/rust-lang/unsafe-code-guidelines/issues/552>.
 }

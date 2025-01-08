@@ -665,11 +665,11 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "x86_64" => match abi {
                 ExternAbi::SysV64 { .. } => x86_64::compute_abi_info(cx, self),
                 ExternAbi::Win64 { .. } | ExternAbi::Vectorcall { .. } => {
-                    x86_win64::compute_abi_info(cx, self, abi)
+                    x86_win64::compute_abi_info(cx, self)
                 }
                 _ => {
                     if cx.target_spec().is_like_windows {
-                        x86_win64::compute_abi_info(cx, self, abi)
+                        x86_win64::compute_abi_info(cx, self)
                     } else {
                         x86_64::compute_abi_info(cx, self)
                     }

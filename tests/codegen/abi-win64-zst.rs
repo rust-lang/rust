@@ -23,16 +23,16 @@ trait Sized {}
 // Make sure the argument is always passed when explicitly requesting a Windows ABI.
 // Our goal here is to match clang: <https://clang.godbolt.org/z/Wr4jMWq3P>.
 
-// CHECK: define win64cc void @pass_zst_win64(ptr {{.*}})
+// CHECK: define win64cc void @pass_zst_win64(ptr {{[^,]*}})
 #[no_mangle]
 extern "win64" fn pass_zst_win64(_: ()) {}
 
-// CHECK: define x86_vectorcallcc void @pass_zst_vectorcall(ptr {{.*}})
+// CHECK: define x86_vectorcallcc void @pass_zst_vectorcall(ptr {{[^,]*}})
 #[no_mangle]
 extern "vectorcall" fn pass_zst_vectorcall(_: ()) {}
 
-// windows-gnu: define void @pass_zst_fastcall(ptr {{.*}})
-// windows-msvc: define void @pass_zst_fastcall(ptr {{.*}})
+// windows-gnu: define void @pass_zst_fastcall(ptr {{[^,]*}})
+// windows-msvc: define void @pass_zst_fastcall(ptr {{[^,]*}})
 #[no_mangle]
 #[cfg(windows)] // "fastcall" is not valid on 64bit Linux
 extern "fastcall" fn pass_zst_fastcall(_: ()) {}
@@ -43,10 +43,10 @@ extern "fastcall" fn pass_zst_fastcall(_: ()) {}
 #[no_mangle]
 extern "sysv64" fn pass_zst_sysv64(_: ()) {}
 
-// For `extern "C"` functions, ZST are ignored on windows-msvc.
+// For `extern "C"` functions, ZST are ignored on Linux put passed on Windows.
 
 // linux: define void @pass_zst_c()
-// windows-msvc: define void @pass_zst_c()
-// windows-gnu: define void @pass_zst_c(ptr {{.*}})
+// windows-msvc: define void @pass_zst_c(ptr {{[^,]*}})
+// windows-gnu: define void @pass_zst_c(ptr {{[^,]*}})
 #[no_mangle]
 extern "C" fn pass_zst_c(_: ()) {}
