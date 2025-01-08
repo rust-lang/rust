@@ -24,7 +24,7 @@ if [ "$NO_CHANGE_USER" = "" ]; then
 
     # Give ownership of necessary directories to the user
     chown -R user:user .
-    mkdir /cargo
+    mkdir -p /cargo
     chown -R user:user /cargo
     chown -R user:user /checkout
 
