@@ -3046,14 +3046,23 @@ impl Macro {
             MacroId::Macro2Id(it) => {
                 matches!(it.lookup(db.upcast()).expander, MacroExpander::BuiltInEager(eager) if eager.is_env_or_option_env())
             }
-            MacroId::MacroRulesId(_) | MacroId::ProcMacroId(_) => false,
+            MacroId::MacroRulesId(it) => {
+                matches!(it.lookup(db.upcast()).expander, MacroExpander::BuiltInEager(eager) if eager.is_env_or_option_env())
+            }
+            MacroId::ProcMacroId(_) => false,
         }
     }
 
     pub fn is_asm_or_global_asm(&self, db: &dyn HirDatabase) -> bool {
-        matches!(self.id, MacroId::Macro2Id(it) if {
-            matches!(it.lookup(db.upcast()).expander, MacroExpander::BuiltIn(m) if m.is_asm())
-        })
+        match self.id {
+            MacroId::Macro2Id(it) => {
+                matches!(it.lookup(db.upcast()).expander, MacroExpander::BuiltIn(m) if m.is_asm())
+            }
+            MacroId::MacroRulesId(it) => {
+                matches!(it.lookup(db.upcast()).expander, MacroExpander::BuiltIn(m) if m.is_asm())
+            }
+            MacroId::ProcMacroId(_) => false,
+        }
     }
 
     pub fn is_attr(&self, db: &dyn HirDatabase) -> bool {
