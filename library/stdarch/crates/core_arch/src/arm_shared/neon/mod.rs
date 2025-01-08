@@ -12,12 +12,12 @@ use crate::{core_arch::simd::*, hint::unreachable_unchecked, intrinsics::simd::*
 use stdarch_test::assert_instr;
 
 pub(crate) trait AsUnsigned {
-    type Unsigned: Sized;
+    type Unsigned;
     fn as_unsigned(self) -> Self::Unsigned;
 }
 
 pub(crate) trait AsSigned {
-    type Signed: Sized;
+    type Signed;
     fn as_signed(self) -> Self::Signed;
 }
 
