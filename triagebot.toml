@@ -172,6 +172,12 @@ issues).
 """
 label = "O-emscripten"
 
+[ping.relnotes-interest-group]
+message = """\
+Hi relnotes-interest-group, this PR adds release notes. Could you review this PR
+if you have time? Thanks <3
+"""
+
 [prioritize]
 label = "I-prioritize"
 
