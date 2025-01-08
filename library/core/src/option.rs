@@ -556,6 +556,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::clone::UseCloned;
 use crate::iter::{self, FusedIterator, TrustedLen};
 use crate::ops::{self, ControlFlow, Deref, DerefMut};
 use crate::panicking::{panic, panic_display};
@@ -2049,6 +2050,9 @@ where
         }
     }
 }
+
+#[unstable(feature = "ergonomic_clones", issue = "132290")]
+impl<T> UseCloned for Option<T> where T: UseCloned {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for Option<T> {

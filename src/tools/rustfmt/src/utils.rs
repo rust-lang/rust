@@ -513,6 +513,7 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::Become(..)
         | ast::ExprKind::Yeet(..)
         | ast::ExprKind::Tup(..)
+        | ast::ExprKind::Use(..)
         | ast::ExprKind::Type(..)
         | ast::ExprKind::Yield(None)
         | ast::ExprKind::Underscore => false,

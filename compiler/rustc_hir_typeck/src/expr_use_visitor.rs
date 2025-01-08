@@ -367,6 +367,10 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 self.consume_exprs(args)?;
             }
 
+            hir::ExprKind::Use(expr, _) => {
+                self.consume_expr(expr)?;
+            }
+
             hir::ExprKind::MethodCall(.., receiver, args, _) => {
                 // callee.m(args)
                 self.consume_expr(receiver)?;
@@ -1068,7 +1072,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     );
 
                     match capture_info.capture_kind {
-                        ty::UpvarCapture::ByValue => {
+                        ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => {
                             self.consume_or_copy(&place_with_id, place_with_id.hir_id);
                         }
                         ty::UpvarCapture::ByRef(upvar_borrow) => {
@@ -1372,6 +1376,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 
             hir::ExprKind::AddrOf(..)
             | hir::ExprKind::Call(..)
+            | hir::ExprKind::Use(..)
             | hir::ExprKind::Assign(..)
             | hir::ExprKind::AssignOp(..)
             | hir::ExprKind::Closure { .. }

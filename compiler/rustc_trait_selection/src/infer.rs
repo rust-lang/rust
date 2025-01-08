@@ -47,6 +47,22 @@ impl<'tcx> InferCtxt<'tcx> {
         traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, copy_def_id)
     }
 
+    fn type_is_use_cloned_modulo_regions(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> bool {
+        let ty = self.resolve_vars_if_possible(ty);
+
+        let use_cloned_def_id = self.tcx.require_lang_item(LangItem::UseCloned, None);
+
+        // This can get called from typeck (by euv), and `moves_by_default`
+        // rightly refuses to work with inference variables, but
+        // moves_by_default has a cache, which we want to use in other
+        // cases.
+        traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, use_cloned_def_id)
+    }
+
     fn type_is_sized_modulo_regions(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
         let lang_item = self.tcx.require_lang_item(LangItem::Sized, None);
         traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, lang_item)

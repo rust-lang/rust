@@ -170,7 +170,7 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
             // this when building the field projection in the MIR body later on.
             let mut parent_capture_ty = parent_capture.place.ty();
             parent_capture_ty = match parent_capture.info.capture_kind {
-                ty::UpvarCapture::ByValue => parent_capture_ty,
+                ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => parent_capture_ty,
                 ty::UpvarCapture::ByRef(kind) => Ty::new_ref(
                     tcx,
                     tcx.lifetimes.re_erased,

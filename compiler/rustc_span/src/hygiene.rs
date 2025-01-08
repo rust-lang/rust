@@ -1159,6 +1159,7 @@ pub enum DesugaringKind {
     OpaqueTy,
     Async,
     Await,
+    Use,
     ForLoop,
     WhileLoop,
     /// `async Fn()` bound modifier
@@ -1175,6 +1176,7 @@ impl DesugaringKind {
             DesugaringKind::CondTemporary => "`if` or `while` condition",
             DesugaringKind::Async => "`async` block or function",
             DesugaringKind::Await => "`await` expression",
+            DesugaringKind::Use => "`use` expression",
             DesugaringKind::QuestionMark => "operator `?`",
             DesugaringKind::TryBlock => "`try` block",
             DesugaringKind::YeetExpr => "`do yeet` expression",
