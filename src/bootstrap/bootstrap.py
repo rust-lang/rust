@@ -1002,6 +1002,9 @@ class RustBuild(object):
         env = os.environ.copy()
         if "GITHUB_ACTIONS" in env:
             print("::group::Building bootstrap")
+            print("Current home directory:", os.path.expanduser("~"))
+            print("Current working directory:", os.getcwd())
+            print("Current HOME:", env["HOME"])
         else:
             eprint("Building bootstrap")
 
