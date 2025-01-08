@@ -49,7 +49,7 @@ use crate::constraints::{OutlivesConstraint, OutlivesConstraintSet};
 use crate::diagnostics::UniverseInfo;
 use crate::member_constraints::MemberConstraintSet;
 use crate::polonius::PoloniusContext;
-use crate::polonius::legacy::{AllFacts, PoloniusLocationTable};
+use crate::polonius::legacy::{PoloniusFacts, PoloniusLocationTable};
 use crate::region_infer::TypeTest;
 use crate::region_infer::values::{LivenessValues, PlaceholderIndex, PlaceholderIndices};
 use crate::renumber::RegionCtxt;
@@ -100,7 +100,7 @@ mod relate_tys;
 /// - `universal_regions` -- the universal regions from `body`s function signature
 /// - `location_table` -- for datalog polonius, the map between `Location`s and `RichLocation`s
 /// - `borrow_set` -- information about borrows occurring in `body`
-/// - `all_facts` -- when using Polonius, this is the generated set of Polonius facts
+/// - `polonius_facts` -- when using Polonius, this is the generated set of Polonius facts
 /// - `flow_inits` -- results of a maybe-init dataflow analysis
 /// - `move_data` -- move-data constructed when performing the maybe-init dataflow analysis
 /// - `location_map` -- map between MIR `Location` and `PointIndex`
@@ -111,7 +111,7 @@ pub(crate) fn type_check<'a, 'tcx>(
     universal_regions: UniversalRegions<'tcx>,
     location_table: &PoloniusLocationTable,
     borrow_set: &BorrowSet<'tcx>,
-    all_facts: &mut Option<AllFacts>,
+    polonius_facts: &mut Option<PoloniusFacts>,
     flow_inits: ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
     location_map: Rc<DenseLocationMap>,
@@ -165,7 +165,7 @@ pub(crate) fn type_check<'a, 'tcx>(
         reported_errors: Default::default(),
         universal_regions: &universal_region_relations.universal_regions,
         location_table,
-        all_facts,
+        polonius_facts,
         borrow_set,
         constraints: &mut constraints,
         polonius_context: &mut polonius_context,
@@ -495,14 +495,14 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         // Use new sets of constraints and closure bounds so that we can
         // modify their locations.
-        let all_facts = &mut None;
+        let polonius_facts = &mut None;
         let mut constraints = Default::default();
         let mut liveness_constraints =
             LivenessValues::without_specific_points(Rc::new(DenseLocationMap::new(promoted_body)));
         // Don't try to add borrow_region facts for the promoted MIR
 
         let mut swap_constraints = |this: &mut Self| {
-            mem::swap(this.typeck.all_facts, all_facts);
+            mem::swap(this.typeck.polonius_facts, polonius_facts);
             mem::swap(&mut this.typeck.constraints.outlives_constraints, &mut constraints);
             mem::swap(&mut this.typeck.constraints.liveness_constraints, &mut liveness_constraints);
         };
@@ -561,7 +561,7 @@ struct TypeChecker<'a, 'tcx> {
     reported_errors: FxIndexSet<(Ty<'tcx>, Span)>,
     universal_regions: &'a UniversalRegions<'tcx>,
     location_table: &'a PoloniusLocationTable,
-    all_facts: &'a mut Option<AllFacts>,
+    polonius_facts: &'a mut Option<PoloniusFacts>,
     borrow_set: &'a BorrowSet<'tcx>,
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
     /// When using `-Zpolonius=next`, the helper data used to create polonius constraints.
@@ -2327,18 +2327,18 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         borrowed_place: &Place<'tcx>,
     ) {
         // These constraints are only meaningful during borrowck:
-        let Self { borrow_set, location_table, all_facts, constraints, .. } = self;
+        let Self { borrow_set, location_table, polonius_facts, constraints, .. } = self;
 
         // In Polonius mode, we also push a `loan_issued_at` fact
         // linking the loan to the region (in some cases, though,
         // there is no loan associated with this borrow expression --
         // that occurs when we are borrowing an unsafe place, for
         // example).
-        if let Some(all_facts) = all_facts {
+        if let Some(polonius_facts) = polonius_facts {
             let _prof_timer = self.infcx.tcx.prof.generic_activity("polonius_fact_generation");
             if let Some(borrow_index) = borrow_set.get_index_of(&location) {
                 let region_vid = borrow_region.as_var();
-                all_facts.loan_issued_at.push((
+                polonius_facts.loan_issued_at.push((
                     region_vid.into(),
                     borrow_index,
                     location_table.mid_index(location),

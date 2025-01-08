@@ -4,7 +4,7 @@ use std::fs::{self, File};
 use std::io::Write;
 use std::path::Path;
 
-use polonius_engine::{AllFacts as PoloniusFacts, Atom, Output};
+use polonius_engine::{AllFacts, Atom, Output};
 use rustc_macros::extension;
 use rustc_middle::mir::Local;
 use rustc_middle::ty::{RegionVid, TyCtxt};
@@ -49,11 +49,11 @@ impl polonius_engine::FactTypes for RustcFacts {
     type Path = MovePathIndex;
 }
 
-pub type AllFacts = PoloniusFacts<RustcFacts>;
+pub type PoloniusFacts = AllFacts<RustcFacts>;
 
-#[extension(pub(crate) trait AllFactsExt)]
-impl AllFacts {
-    /// Returns `true` if there is a need to gather `AllFacts` given the
+#[extension(pub(crate) trait PoloniusFactsExt)]
+impl PoloniusFacts {
+    /// Returns `true` if there is a need to gather `PoloniusFacts` given the
     /// current `-Z` flags.
     fn enabled(tcx: TyCtxt<'_>) -> bool {
         tcx.sess.opts.unstable_opts.nll_facts

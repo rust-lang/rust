@@ -11,7 +11,7 @@ pub use super::dataflow::{BorrowIndex, Borrows, calculate_borrows_out_of_scope_a
 pub use super::place_ext::PlaceExt;
 pub use super::places_conflict::{PlaceConflictBias, places_conflict};
 pub use super::polonius::legacy::{
-    AllFacts as PoloniusInput, PoloniusLocationTable, PoloniusOutput, PoloniusRegionVid,
+    PoloniusFacts as PoloniusInput, PoloniusLocationTable, PoloniusOutput, PoloniusRegionVid,
     RichLocation, RustcFacts,
 };
 pub use super::region_infer::RegionInferenceContext;

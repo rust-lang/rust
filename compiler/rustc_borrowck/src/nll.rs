@@ -28,7 +28,9 @@ use crate::borrow_set::BorrowSet;
 use crate::consumers::ConsumerOptions;
 use crate::diagnostics::{BorrowckDiagnosticsBuffer, RegionErrors};
 use crate::polonius::LocalizedOutlivesConstraintSet;
-use crate::polonius::legacy::{AllFacts, AllFactsExt, PoloniusLocationTable, PoloniusOutput};
+use crate::polonius::legacy::{
+    PoloniusFacts, PoloniusFactsExt, PoloniusLocationTable, PoloniusOutput,
+};
 use crate::region_infer::RegionInferenceContext;
 use crate::type_check::{self, MirTypeckResults};
 use crate::universal_regions::UniversalRegions;
@@ -39,7 +41,7 @@ use crate::{BorrowckInferCtxt, polonius, renumber};
 pub(crate) struct NllOutput<'tcx> {
     pub regioncx: RegionInferenceContext<'tcx>,
     pub opaque_type_values: FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>,
-    pub polonius_input: Option<Box<AllFacts>>,
+    pub polonius_input: Option<Box<PoloniusFacts>>,
     pub polonius_output: Option<Box<PoloniusOutput>>,
     pub opt_closure_req: Option<ClosureRegionRequirements<'tcx>>,
     pub nll_errors: RegionErrors<'tcx>,
@@ -91,8 +93,8 @@ pub(crate) fn compute_regions<'a, 'tcx>(
         || is_polonius_legacy_enabled;
     let polonius_output = consumer_options.map(|c| c.polonius_output()).unwrap_or_default()
         || is_polonius_legacy_enabled;
-    let mut all_facts =
-        (polonius_input || AllFacts::enabled(infcx.tcx)).then_some(AllFacts::default());
+    let mut polonius_facts =
+        (polonius_input || PoloniusFacts::enabled(infcx.tcx)).then_some(PoloniusFacts::default());
 
     let location_map = Rc::new(DenseLocationMap::new(body));
 
@@ -109,7 +111,7 @@ pub(crate) fn compute_regions<'a, 'tcx>(
         universal_regions,
         location_table,
         borrow_set,
-        &mut all_facts,
+        &mut polonius_facts,
         flow_inits,
         move_data,
         Rc::clone(&location_map),
@@ -122,7 +124,7 @@ pub(crate) fn compute_regions<'a, 'tcx>(
 
     // If requested, emit legacy polonius facts.
     polonius::legacy::emit_facts(
-        &mut all_facts,
+        &mut polonius_facts,
         infcx.tcx,
         location_table,
         body,
@@ -147,13 +149,13 @@ pub(crate) fn compute_regions<'a, 'tcx>(
     });
 
     // If requested: dump NLL facts, and run legacy polonius analysis.
-    let polonius_output = all_facts.as_ref().and_then(|all_facts| {
+    let polonius_output = polonius_facts.as_ref().and_then(|polonius_facts| {
         if infcx.tcx.sess.opts.unstable_opts.nll_facts {
             let def_id = body.source.def_id();
             let def_path = infcx.tcx.def_path(def_id);
             let dir_path = PathBuf::from(&infcx.tcx.sess.opts.unstable_opts.nll_facts_dir)
                 .join(def_path.to_filename_friendly_no_crate());
-            all_facts.write_to_dir(dir_path, location_table).unwrap();
+            polonius_facts.write_to_dir(dir_path, location_table).unwrap();
         }
 
         if polonius_output {
@@ -162,7 +164,7 @@ pub(crate) fn compute_regions<'a, 'tcx>(
             let algorithm = Algorithm::from_str(&algorithm).unwrap();
             debug!("compute_regions: using polonius algorithm {:?}", algorithm);
             let _prof_timer = infcx.tcx.prof.generic_activity("polonius_analysis");
-            Some(Box::new(Output::compute(all_facts, algorithm, false)))
+            Some(Box::new(Output::compute(polonius_facts, algorithm, false)))
         } else {
             None
         }
@@ -182,7 +184,7 @@ pub(crate) fn compute_regions<'a, 'tcx>(
     NllOutput {
         regioncx,
         opaque_type_values: remapped_opaque_tys,
-        polonius_input: all_facts.map(Box::new),
+        polonius_input: polonius_facts.map(Box::new),
         polonius_output,
         opt_closure_req: closure_region_requirements,
         nll_errors,

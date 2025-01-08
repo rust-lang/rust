@@ -36,7 +36,7 @@ pub use self::facts::*;
 ///
 /// The rest of the facts are emitted during typeck and liveness.
 pub(crate) fn emit_facts<'tcx>(
-    all_facts: &mut Option<AllFacts>,
+    facts: &mut Option<PoloniusFacts>,
     tcx: TyCtxt<'tcx>,
     location_table: &PoloniusLocationTable,
     body: &Body<'tcx>,
@@ -45,7 +45,7 @@ pub(crate) fn emit_facts<'tcx>(
     universal_region_relations: &UniversalRegionRelations<'tcx>,
     constraints: &MirTypeckRegionConstraints<'tcx>,
 ) {
-    let Some(facts) = all_facts else {
+    let Some(facts) = facts else {
         // We don't do anything if there are no facts to fill.
         return;
     };
@@ -67,7 +67,7 @@ pub(crate) fn emit_facts<'tcx>(
 
 /// Emit facts needed for move/init analysis: moves and assignments.
 fn emit_move_facts(
-    facts: &mut AllFacts,
+    facts: &mut PoloniusFacts,
     body: &Body<'_>,
     location_table: &PoloniusLocationTable,
     move_data: &MoveData<'_>,
@@ -139,7 +139,7 @@ fn emit_move_facts(
 
 /// Emit universal regions facts, and their relations.
 fn emit_universal_region_facts(
-    facts: &mut AllFacts,
+    facts: &mut PoloniusFacts,
     borrow_set: &BorrowSet<'_>,
     universal_region_relations: &UniversalRegionRelations<'_>,
 ) {
@@ -187,10 +187,10 @@ pub(crate) fn emit_drop_facts<'tcx>(
     local: Local,
     kind: &GenericArg<'tcx>,
     universal_regions: &UniversalRegions<'tcx>,
-    all_facts: &mut Option<AllFacts>,
+    facts: &mut Option<PoloniusFacts>,
 ) {
     debug!("emit_drop_facts(local={:?}, kind={:?}", local, kind);
-    let Some(facts) = all_facts.as_mut() else { return };
+    let Some(facts) = facts.as_mut() else { return };
     let _prof_timer = tcx.prof.generic_activity("polonius_fact_generation");
     tcx.for_each_free_region(kind, |drop_live_region| {
         let region_vid = universal_regions.to_region_vid(drop_live_region);
@@ -201,7 +201,7 @@ pub(crate) fn emit_drop_facts<'tcx>(
 /// Emit facts about the outlives constraints: the `subset` base relation, i.e. not a transitive
 /// closure.
 fn emit_outlives_facts<'tcx>(
-    facts: &mut AllFacts,
+    facts: &mut PoloniusFacts,
     location_table: &PoloniusLocationTable,
     constraints: &MirTypeckRegionConstraints<'tcx>,
 ) {

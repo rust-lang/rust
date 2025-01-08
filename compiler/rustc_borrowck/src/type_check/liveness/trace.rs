@@ -213,14 +213,14 @@ impl<'a, 'typeck, 'b, 'tcx> LivenessResults<'a, 'typeck, 'b, 'tcx> {
     fn add_extra_drop_facts(&mut self, relevant_live_locals: &[Local]) {
         // This collect is more necessary than immediately apparent
         // because these facts go into `add_drop_live_facts_for()`,
-        // which also writes to `all_facts`, and so this is genuinely
+        // which also writes to `polonius_facts`, and so this is genuinely
         // a simultaneous overlapping mutable borrow.
         // FIXME for future hackers: investigate whether this is
         // actually necessary; these facts come from Polonius
         // and probably maybe plausibly does not need to go back in.
         // It may be necessary to just pick out the parts of
         // `add_drop_live_facts_for()` that make sense.
-        let Some(facts) = self.cx.typeck.all_facts.as_ref() else { return };
+        let Some(facts) = self.cx.typeck.polonius_facts.as_ref() else { return };
         let facts_to_add: Vec<_> = {
             let relevant_live_locals: FxIndexSet<_> =
                 relevant_live_locals.iter().copied().collect();
@@ -583,7 +583,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
                 dropped_local,
                 &kind,
                 self.typeck.universal_regions,
-                self.typeck.all_facts,
+                self.typeck.polonius_facts,
             );
         }
     }
