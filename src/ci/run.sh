@@ -24,6 +24,7 @@ if [ "$NO_CHANGE_USER" = "" ]; then
 
     # Give ownership of necessary directories to the user
     chown -R user:user .
+    mkdir /cargo
     chown -R user:user /cargo
 
     # Ensure that runners are able to execute git commands in the worktree,
