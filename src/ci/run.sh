@@ -8,7 +8,7 @@ if [ -n "$CI_JOB_NAME" ]; then
   echo "[CI_JOB_NAME=$CI_JOB_NAME]"
 fi
 
-echo "whoami: $(whoami). Home: $HOME"
+echo "whoami: $(whoami). id: $(id -u) Home: $HOME"
 echo "--- current directory ---"
 pwd
 ls -l
@@ -26,9 +26,8 @@ if [ "$NO_CHANGE_USER" = "" ]; then
     chown -R user:user .
     mkdir -p /cargo
     chown -R user:user /cargo
-    if [ -f /.dockerenv ]; then
-      chown -R user:user /checkout
-    fi
+    # TODO: don't do this in PR job
+    chown -R user:user /checkout
 
     # Ensure that runners are able to execute git commands in the worktree,
     # overriding the typical git protections. In our docker container we're running
