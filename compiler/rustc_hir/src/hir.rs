@@ -4637,3 +4637,6 @@ fn debug_fn(f: impl Fn(&mut fmt::Formatter<'_>) -> fmt::Result) -> impl fmt::Deb
     }
     DebugFn(f)
 }
+
+#[cfg(test)]
+mod tests;
