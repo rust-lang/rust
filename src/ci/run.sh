@@ -22,8 +22,9 @@ if [ "$NO_CHANGE_USER" = "" ]; then
     export HOME=/home/user
     unset LOCAL_USER_ID
 
-    # Give ownership of the current directory to the user
+    # Give ownership of necessary directories to the user
     chown -R user:user .
+    chown -R user:user /cargo
 
     # Ensure that runners are able to execute git commands in the worktree,
     # overriding the typical git protections. In our docker container we're running
