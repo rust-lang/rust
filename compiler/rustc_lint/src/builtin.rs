@@ -3146,12 +3146,25 @@ impl<'tcx> LateLintPass<'tcx> for SelfTypeConversion<'tcx> {
             tracing::info!("not into_fn {:?}", cx.tcx.get_diagnostic_item(sym::into_fn));
             return;
         }
-        tracing::info!(?def_id);
         tracing::info!(?expr);
         if expr.span.macro_backtrace().next().is_some() {
             return;
         }
         if cx.tcx.sess.source_map().span_to_embeddable_string(expr.span).contains("symbolize/gimli")
+            || cx
+                .tcx
+                .sess
+                .source_map()
+                .span_to_embeddable_string(expr.span)
+                .contains("crates/crates-io")
+            || cx.tcx.sess.source_map().span_to_embeddable_string(expr.span).contains("cargo/core")
+            || cx
+                .tcx
+                .sess
+                .source_map()
+                .span_to_embeddable_string(expr.span)
+                .contains("cargo/sources")
+            || cx.tcx.sess.source_map().span_to_embeddable_string(expr.span).contains("cargo/util")
         {
             // HACK
             return;
