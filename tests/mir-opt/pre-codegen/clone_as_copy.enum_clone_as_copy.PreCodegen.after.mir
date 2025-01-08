@@ -31,7 +31,7 @@ fn enum_clone_as_copy(_1: &Enum1) -> Enum1 {
         StorageLive(_3);
         StorageLive(_4);
         _2 = discriminant((*_1));
-        switchInt(move _2) -> [0: bb1, 1: bb2, otherwise: bb4];
+        switchInt(move _2) -> [0: bb1, 1: bb2];
     }
 
     bb1: {
@@ -54,9 +54,5 @@ fn enum_clone_as_copy(_1: &Enum1) -> Enum1 {
         StorageDead(_3);
         StorageDead(_2);
         return;
-    }
-
-    bb4: {
-        unreachable;
     }
 }

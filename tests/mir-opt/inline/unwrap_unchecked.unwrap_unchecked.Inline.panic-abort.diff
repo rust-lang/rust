@@ -26,7 +26,7 @@
 +         StorageLive(_3);
 +         StorageLive(_5);
 +         _3 = discriminant(_2);
-+         switchInt(move _3) -> [0: bb2, 1: bb3, otherwise: bb1];
++         switchInt(move _3) -> [0: bb2, 1: bb3];
       }
   
       bb1: {

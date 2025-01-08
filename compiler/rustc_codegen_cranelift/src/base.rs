@@ -135,6 +135,7 @@ pub(crate) fn codegen_fn<'tcx>(
         bcx,
         block_map,
         local_map: IndexVec::with_capacity(mir.local_decls.len()),
+        shared_unreachable: None,
         caller_location: None, // set by `codegen_fn_prelude`
 
         clif_comments,
@@ -441,7 +442,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                     assert_eq!(targets.iter().count(), 1);
                     let (then_value, then_block) = targets.iter().next().unwrap();
                     let then_block = fx.get_block(then_block);
-                    let else_block = fx.get_block(targets.otherwise());
+                    let else_block = fx.get_switch_block(targets.otherwise());
                     let test_zero = match then_value {
                         0 => true,
                         1 => false,
@@ -472,7 +473,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                         let block = fx.get_block(block);
                         switch.set_entry(value, block);
                     }
-                    let otherwise_block = fx.get_block(targets.otherwise());
+                    let otherwise_block = fx.get_switch_block(targets.otherwise());
                     switch.emit(&mut fx.bcx, discr, otherwise_block);
                 }
             }
@@ -560,6 +561,11 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 crate::abi::codegen_drop(fx, source_info, drop_place, *target);
             }
         };
+    }
+
+    if let Some(unreachable) = fx.shared_unreachable {
+        fx.bcx.switch_to_block(unreachable);
+        fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
     }
 }
 

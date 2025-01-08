@@ -14,10 +14,12 @@ impl SwitchTargets {
     ///
     /// The iterator may be empty, in which case the `SwitchInt` instruction is equivalent to
     /// `goto otherwise;`.
-    pub fn new(targets: impl Iterator<Item = (u128, BasicBlock)>, otherwise: BasicBlock) -> Self {
+    pub fn new(targets: impl Iterator<Item = (u128, BasicBlock)>, otherwise: SwitchAction) -> Self {
         let (values, mut targets): (SmallVec<_>, SmallVec<_>) =
             targets.map(|(v, t)| (Pu128(v), t)).unzip();
-        targets.push(otherwise);
+        if let SwitchAction::Goto(otherwise) = otherwise {
+            targets.push(otherwise);
+        }
         Self { values, targets }
     }
 
@@ -39,10 +41,17 @@ impl SwitchTargets {
         }
     }
 
-    /// Returns the fallback target that is jumped to when none of the values match the operand.
+    /// Returns the fallback action when none of the values match the operand.
     #[inline]
-    pub fn otherwise(&self) -> BasicBlock {
-        *self.targets.last().unwrap()
+    pub fn otherwise(&self) -> SwitchAction {
+        debug_assert!(
+            self.targets.len() == self.values.len() || self.targets.len() == self.values.len() + 1
+        );
+        if self.targets.len() > self.values.len() {
+            SwitchAction::Goto(*self.targets.last().unwrap())
+        } else {
+            SwitchAction::Unreachable
+        }
     }
 
     /// Returns an iterator over the switch targets.
@@ -82,8 +91,9 @@ impl SwitchTargets {
     /// specific value. This cannot fail, as it'll return the `otherwise`
     /// branch if there's not a specific match for the value.
     #[inline]
-    pub fn target_for_value(&self, value: u128) -> BasicBlock {
-        self.iter().find_map(|(v, t)| (v == value).then_some(t)).unwrap_or_else(|| self.otherwise())
+    pub fn target_for_value(&self, value: u128) -> SwitchAction {
+        let specific = self.iter().find_map(|(v, t)| (v == value).then_some(t));
+        if let Some(specific) = specific { SwitchAction::Goto(specific) } else { self.otherwise() }
     }
 
     /// Adds a new target to the switch. But You cannot add an already present value.
@@ -93,8 +103,12 @@ impl SwitchTargets {
         if self.values.contains(&value) {
             bug!("target value {:?} already present", value);
         }
+
+        // There may or may not be a fallback in `targets`, so make sure to
+        // insert the new target at the same index as its value.
+        let insert_point = self.values.len();
         self.values.push(value);
-        self.targets.insert(self.targets.len() - 1, bb);
+        self.targets.insert(insert_point, bb);
     }
 
     /// Returns true if all targets (including the fallback target) are distinct.
@@ -431,7 +445,11 @@ mod helper {
         #[inline]
         pub fn successors_for_value(&self, value: u128) -> Successors<'_> {
             let target = self.target_for_value(value);
-            (&[]).into_iter().copied().chain(Some(target))
+            (&[]).into_iter().copied().chain(if let SwitchAction::Goto(otherwise) = target {
+                Some(otherwise)
+            } else {
+                None
+            })
         }
     }
 

@@ -298,6 +298,7 @@ pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
     pub(crate) bcx: FunctionBuilder<'clif>,
     pub(crate) block_map: IndexVec<BasicBlock, Block>,
     pub(crate) local_map: IndexVec<Local, CPlace<'tcx>>,
+    pub(crate) shared_unreachable: Option<Block>,
 
     /// When `#[track_caller]` is used, the implicit caller location is stored in this variable.
     pub(crate) caller_location: Option<CValue<'tcx>>,
@@ -373,6 +374,17 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
 
     pub(crate) fn get_block(&self, bb: BasicBlock) -> Block {
         *self.block_map.get(bb).unwrap()
+    }
+
+    pub(crate) fn get_switch_block(&mut self, sa: SwitchAction) -> Block {
+        match sa {
+            SwitchAction::Goto(bb) => self.get_block(bb),
+            SwitchAction::Unreachable => self.unreachable_block(),
+        }
+    }
+
+    pub(crate) fn unreachable_block(&mut self) -> Block {
+        *self.shared_unreachable.get_or_insert_with(|| self.bcx.create_block())
     }
 
     pub(crate) fn get_local_place(&mut self, local: Local) -> CPlace<'tcx> {

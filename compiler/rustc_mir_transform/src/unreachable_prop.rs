@@ -110,13 +110,20 @@ fn remove_successors_from_switch<'tcx>(
         patch.add_statement(location, StatementKind::Intrinsic(Box::new(assume)));
     };
 
-    let otherwise = targets.otherwise();
-    let otherwise_unreachable = is_unreachable(otherwise);
+    let mut anything_changed = false;
+    let otherwise = match targets.otherwise() {
+        SwitchAction::Goto(bb) if is_unreachable(bb) => {
+            anything_changed = true;
+            SwitchAction::Unreachable
+        }
+        target => target,
+    };
 
     let reachable_iter = targets.iter().filter(|&(value, bb)| {
         let is_unreachable = is_unreachable(bb);
+        anything_changed |= is_unreachable;
         // We remove this target from the switch, so record the inequality using `Assume`.
-        if is_unreachable && !otherwise_unreachable {
+        if is_unreachable && otherwise != SwitchAction::Unreachable {
             add_assumption(BinOp::Ne, value);
         }
         !is_unreachable
@@ -124,26 +131,22 @@ fn remove_successors_from_switch<'tcx>(
 
     let new_targets = SwitchTargets::new(reachable_iter, otherwise);
 
-    let num_targets = new_targets.all_targets().len();
-    let fully_unreachable = num_targets == 1 && otherwise_unreachable;
-
-    let terminator = match (num_targets, otherwise_unreachable) {
-        // If all targets are unreachable, we can be unreachable as well.
-        (1, true) => TerminatorKind::Unreachable,
-        (1, false) => TerminatorKind::Goto { target: otherwise },
-        (2, true) => {
-            // All targets are unreachable except one. Record the equality, and make it a goto.
-            let (value, target) = new_targets.iter().next().unwrap();
-            add_assumption(BinOp::Eq, value);
-            TerminatorKind::Goto { target }
-        }
-        _ if num_targets == targets.all_targets().len() => {
-            // Nothing has changed.
-            return false;
-        }
-        _ => TerminatorKind::SwitchInt { discr: discr.clone(), targets: new_targets },
+    let value_count = new_targets.iter().len();
+    let terminator = if value_count == 0 {
+        // No specific values left
+        otherwise.into_terminator()
+    } else if value_count == 1 && otherwise == SwitchAction::Unreachable {
+        // All targets are unreachable except one. Record the equality, and make it a goto.
+        let (value, target) = new_targets.iter().next().unwrap();
+        add_assumption(BinOp::Eq, value);
+        TerminatorKind::Goto { target }
+    } else if !anything_changed {
+        return false;
+    } else {
+        TerminatorKind::SwitchInt { discr: discr.clone(), targets: new_targets }
     };
 
+    let fully_unreachable = matches!(terminator, TerminatorKind::Unreachable);
     patch.patch_terminator(bb, terminator);
     fully_unreachable
 }

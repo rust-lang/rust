@@ -6,7 +6,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::{
     BasicBlock, BasicBlockData, BasicBlocks, Body, Local, Operand, Rvalue, StatementKind,
-    TerminatorKind,
+    SwitchAction, TerminatorKind,
 };
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{Ty, TyCtxt};
@@ -119,13 +119,17 @@ impl<'tcx> crate::MirPass<'tcx> for UnreachableEnumBranching {
                 bug!()
             };
 
+            let SwitchAction::Goto(otherwise_bb) = targets.otherwise() else {
+                continue;
+            };
+
             for (index, (val, _)) in targets.iter().enumerate() {
                 if !allowed_variants.remove(&val) {
                     unreachable_targets.push(index);
                 }
             }
             let otherwise_is_empty_unreachable =
-                body.basic_blocks[targets.otherwise()].is_empty_unreachable();
+                body.basic_blocks[otherwise_bb].is_empty_unreachable();
             fn check_successors(basic_blocks: &BasicBlocks<'_>, bb: BasicBlock) -> bool {
                 // After resolving https://github.com/llvm/llvm-project/issues/78578,
                 // We can remove this check.
@@ -181,7 +185,7 @@ impl<'tcx> crate::MirPass<'tcx> for UnreachableEnumBranching {
                 // Despite the LLVM issue, we hope that small enum can still be transformed.
                 // This is valuable for both `a <= b` and `if let Some/Ok(v)`.
                 && (targets.all_targets().len() <= 3
-                    || check_successors(&body.basic_blocks, targets.otherwise()));
+                    || check_successors(&body.basic_blocks, otherwise_bb));
             let replace_otherwise_to_unreachable = otherwise_is_last_variant
                 || (!otherwise_is_empty_unreachable && allowed_variants.is_empty());
 
@@ -196,7 +200,7 @@ impl<'tcx> crate::MirPass<'tcx> for UnreachableEnumBranching {
                     // We have checked that `allowed_variants` has only one element.
                     #[allow(rustc::potential_query_instability)]
                     let last_variant = *allowed_variants.iter().next().unwrap();
-                    targets.add_target(last_variant, targets.otherwise());
+                    targets.add_target(last_variant, otherwise_bb);
                 }
                 unreachable_targets.push(targets.iter().count());
             }

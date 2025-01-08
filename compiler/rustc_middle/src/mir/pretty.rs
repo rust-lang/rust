@@ -1015,12 +1015,14 @@ impl<'tcx> TerminatorKind<'tcx> {
             | Unreachable
             | CoroutineDrop => vec![],
             Goto { .. } => vec!["".into()],
-            SwitchInt { ref targets, .. } => targets
-                .values
-                .iter()
-                .map(|&u| Cow::Owned(u.to_string()))
-                .chain(iter::once("otherwise".into()))
-                .collect(),
+            SwitchInt { ref targets, .. } => {
+                let mut labels: Vec<_> =
+                    targets.values.iter().map(|&u| Cow::Owned(u.to_string())).collect();
+                if let SwitchAction::Goto(_) = targets.otherwise() {
+                    labels.push("otherwise".into());
+                }
+                labels
+            }
             Call { target: Some(_), unwind: UnwindAction::Cleanup(_), .. } => {
                 vec!["return".into(), "unwind".into()]
             }

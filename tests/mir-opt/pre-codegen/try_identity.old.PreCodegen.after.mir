@@ -15,7 +15,7 @@ fn old(_1: Result<T, E>) -> Result<T, E> {
 
     bb0: {
         _2 = discriminant(_1);
-        switchInt(move _2) -> [0: bb1, 1: bb2, otherwise: bb4];
+        switchInt(move _2) -> [0: bb1, 1: bb2];
     }
 
     bb1: {
@@ -32,9 +32,5 @@ fn old(_1: Result<T, E>) -> Result<T, E> {
 
     bb3: {
         return;
-    }
-
-    bb4: {
-        unreachable;
     }
 }

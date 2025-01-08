@@ -771,9 +771,10 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
                     && let Some(constant) = value_const.to_bits(value_const.size()).discard_err()
                 {
                     // We managed to evaluate the discriminant, so we know we only need to visit
-                    // one target.
-                    let target = targets.target_for_value(constant);
-                    self.worklist.push(target);
+                    // one target, or none if this value is unreachable.
+                    if let SwitchAction::Goto(target) = targets.target_for_value(constant) {
+                        self.worklist.push(target);
+                    }
                     return;
                 }
                 // We failed to evaluate the discriminant, fallback to visiting all successors.

@@ -650,7 +650,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         let switch = self.block(vec![], TerminatorKind::Unreachable, false);
         let unwind = self.clone_fields(dest, src, switch, unwind, args.upvar_tys());
         let target = self.block(vec![], TerminatorKind::Return, false);
-        let unreachable = self.block(vec![], TerminatorKind::Unreachable, false);
+        let unreachable = SwitchAction::Unreachable;
         let mut cases = Vec::with_capacity(args.state_tys(coroutine_def_id, self.tcx).count());
         for (index, state_tys) in args.state_tys(coroutine_def_id, self.tcx).enumerate() {
             let variant_index = VariantIdx::new(index);

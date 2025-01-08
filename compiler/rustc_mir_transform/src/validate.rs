@@ -344,10 +344,9 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 self.check_edge(location, *target, EdgeKind::Normal);
             }
             TerminatorKind::SwitchInt { targets, discr: _ } => {
-                for (_, target) in targets.iter() {
+                for &target in targets.all_targets() {
                     self.check_edge(location, target, EdgeKind::Normal);
                 }
-                self.check_edge(location, targets.otherwise(), EdgeKind::Normal);
 
                 self.value_cache.clear();
                 self.value_cache.extend(targets.iter().map(|(value, _)| value));

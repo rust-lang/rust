@@ -478,12 +478,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         &ImmTy::from_uint(const_int, discr.layout),
                     )?;
                     if res.to_scalar().to_bool()? {
-                        target_block = target;
+                        target_block = mir::SwitchAction::Goto(target);
                         break;
                     }
                 }
 
-                self.go_to_block(target_block);
+                match target_block {
+                    mir::SwitchAction::Goto(target) => self.go_to_block(target),
+                    mir::SwitchAction::Unreachable => throw_ub!(Unreachable),
+                }
             }
 
             Call {

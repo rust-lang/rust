@@ -9,7 +9,9 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use smallvec::SmallVec;
 
 use crate::mir::traversal::Postorder;
-use crate::mir::{BasicBlock, BasicBlockData, START_BLOCK, Terminator, TerminatorKind};
+use crate::mir::{
+    BasicBlock, BasicBlockData, START_BLOCK, SwitchAction, Terminator, TerminatorKind,
+};
 
 #[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable, TypeVisitable)]
 pub struct BasicBlocks<'tcx> {
@@ -84,7 +86,9 @@ impl<'tcx> BasicBlocks<'tcx> {
                     for (value, target) in targets.iter() {
                         switch_sources.entry((target, bb)).or_default().push(Some(value));
                     }
-                    switch_sources.entry((targets.otherwise(), bb)).or_default().push(None);
+                    if let SwitchAction::Goto(otherwise) = targets.otherwise() {
+                        switch_sources.entry((otherwise, bb)).or_default().push(None);
+                    }
                 }
             }
             switch_sources
@@ -121,6 +125,13 @@ impl<'tcx> BasicBlocks<'tcx> {
     /// themselves, thereby avoiding any risk of accidentally cache invalidation.
     pub fn invalidate_cfg_cache(&mut self) {
         self.cache = Cache::default();
+    }
+
+    pub fn is_empty_unreachable(&self, action: SwitchAction) -> bool {
+        match action {
+            SwitchAction::Goto(bb) => self[bb].is_empty_unreachable(),
+            SwitchAction::Unreachable => true,
+        }
     }
 }
 

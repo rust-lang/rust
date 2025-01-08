@@ -41,7 +41,7 @@
 +         StorageLive(_7);
 +         _6 = copy (_2.0: &mut {coroutine@$DIR/inline_coroutine.rs:20:5: 20:8});
 +         _7 = discriminant((*_6));
-+         switchInt(move _7) -> [0: bb5, 1: bb9, 3: bb10, otherwise: bb11];
++         switchInt(move _7) -> [0: bb5, 1: bb9, 3: bb10];
       }
   
       bb1: {
@@ -115,10 +115,6 @@
 +         _1 = CoroutineState::<i32, bool>::Complete(copy _5);
 +         discriminant((*_6)) = 1;
 +         goto -> bb4;
-+     }
-+ 
-+     bb11: {
-+         unreachable;
       }
   }
   

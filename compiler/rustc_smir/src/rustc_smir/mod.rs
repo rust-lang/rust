@@ -37,6 +37,8 @@ pub struct Tables<'tcx> {
     pub(crate) ty_consts: IndexMap<ty::Const<'tcx>, TyConstId>,
     pub(crate) mir_consts: IndexMap<mir::Const<'tcx>, MirConstId>,
     pub(crate) layouts: IndexMap<rustc_abi::Layout<'tcx>, Layout>,
+    pub(crate) synthetic_unreachable_block: stable_mir::mir::BasicBlockIdx,
+    pub(crate) unreachable_block_span: Option<Span>,
 }
 
 impl<'tcx> Tables<'tcx> {

@@ -283,9 +283,9 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
 pub(super) fn simplify_duplicate_switch_targets(terminator: &mut Terminator<'_>) {
     if let TerminatorKind::SwitchInt { targets, .. } = &mut terminator.kind {
         let otherwise = targets.otherwise();
-        if targets.iter().any(|t| t.1 == otherwise) {
+        if targets.iter().any(|t| SwitchAction::Goto(t.1) == otherwise) {
             *targets = SwitchTargets::new(
-                targets.iter().filter(|t| t.1 != otherwise),
+                targets.iter().filter(|t| SwitchAction::Goto(t.1) != otherwise),
                 targets.otherwise(),
             );
         }

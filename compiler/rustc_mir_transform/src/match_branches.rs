@@ -2,6 +2,7 @@ use std::iter;
 
 use rustc_abi::Integer;
 use rustc_index::IndexSlice;
+use rustc_middle::bug;
 use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
@@ -109,7 +110,7 @@ trait SimplifyMatch<'tcx> {
         tcx: TyCtxt<'tcx>,
         targets: &SwitchTargets,
         typing_env: ty::TypingEnv<'tcx>,
-        bbs: &IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
+        bbs: &BasicBlocks<'tcx>,
         discr_ty: Ty<'tcx>,
     ) -> Option<()>;
 
@@ -166,7 +167,7 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToIf {
         tcx: TyCtxt<'tcx>,
         targets: &SwitchTargets,
         typing_env: ty::TypingEnv<'tcx>,
-        bbs: &IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
+        bbs: &BasicBlocks<'tcx>,
         _discr_ty: Ty<'tcx>,
     ) -> Option<()> {
         let (first, second) = match targets.all_targets() {
@@ -228,10 +229,11 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToIf {
     ) {
         let ((val, first), second) = match (targets.all_targets(), targets.all_values()) {
             (&[first, otherwise], &[val]) => ((val, first), otherwise),
+            (&[first, second], &[val, _]) => ((val, first), second),
             (&[first, second, otherwise], &[val, _]) if bbs[otherwise].is_empty_unreachable() => {
                 ((val, first), second)
             }
-            _ => unreachable!(),
+            pair => bug!("targets and values are {pair:?}"),
         };
 
         // We already checked that first and second are different blocks,
@@ -379,7 +381,7 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToExp {
         tcx: TyCtxt<'tcx>,
         targets: &SwitchTargets,
         typing_env: ty::TypingEnv<'tcx>,
-        bbs: &IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
+        bbs: &BasicBlocks<'tcx>,
         discr_ty: Ty<'tcx>,
     ) -> Option<()> {
         if targets.iter().len() < 2 || targets.iter().len() > 64 {
@@ -389,7 +391,7 @@ impl<'tcx> SimplifyMatch<'tcx> for SimplifyToExp {
         if !targets.is_distinct() {
             return None;
         }
-        if !bbs[targets.otherwise()].is_empty_unreachable() {
+        if !bbs.is_empty_unreachable(targets.otherwise()) {
             return None;
         }
         let mut target_iter = targets.iter();

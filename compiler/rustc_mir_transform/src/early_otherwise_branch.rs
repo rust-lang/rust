@@ -173,7 +173,10 @@ impl<'tcx> crate::MirPass<'tcx> for EarlyOtherwiseBranch {
                 else {
                     unreachable!()
                 };
-                (value, targets.target_for_value(value))
+                let SwitchAction::Goto(target) = targets.target_for_value(value) else {
+                    unreachable!()
+                };
+                (value, target)
             });
             // The otherwise either is the same target branch or an unreachable.
             let eq_targets = SwitchTargets::new(eq_new_targets, parent_targets.otherwise());
@@ -287,7 +290,7 @@ fn evaluate_candidate<'tcx>(
     // When thie BB has exactly one statement, this statement should be discriminant.
     let need_hoist_discriminant = bbs[child].statements.len() == 1;
     let child_place = if need_hoist_discriminant {
-        if !bbs[targets.otherwise()].is_empty_unreachable() {
+        if !bbs.is_empty_unreachable(targets.otherwise()) {
             // Someone could write code like this:
             // ```rust
             // let Q = val;
@@ -350,12 +353,14 @@ fn evaluate_candidate<'tcx>(
         };
         *child_place
     };
-    let destination = if need_hoist_discriminant || bbs[targets.otherwise()].is_empty_unreachable()
-    {
+    let destination = if need_hoist_discriminant || bbs.is_empty_unreachable(targets.otherwise()) {
         child_targets.otherwise()
     } else {
         targets.otherwise()
     };
+
+    // We only care about optimizing things that go somewhere (maybe?)
+    let SwitchAction::Goto(destination) = destination else { return None };
 
     // Verify that the optimization is legal for each branch
     for (value, child) in targets.iter() {
@@ -418,7 +423,7 @@ fn verify_candidate_branch<'tcx>(
         }
     }
     // It must fall through to `destination` if the switch misses.
-    if destination != targets.otherwise() {
+    if SwitchAction::Goto(destination) != targets.otherwise() {
         return false;
     }
     // It must have exactly one branch for value `value` and have no more branches.

@@ -110,7 +110,9 @@ impl<'tcx> MockBlocks<'tcx> {
                 let otherwise = if branch_index == branches.len() {
                     to_block
                 } else {
-                    let old_otherwise = targets.otherwise();
+                    let SwitchAction::Goto(old_otherwise) = targets.otherwise() else {
+                        bug!("these tests always have explicit otherwise blocks");
+                    };
                     if branch_index > branches.len() {
                         branches.push((branches.len() as u128, old_otherwise));
                         while branches.len() < branch_index {
@@ -122,7 +124,7 @@ impl<'tcx> MockBlocks<'tcx> {
                         old_otherwise
                     }
                 };
-                *targets = SwitchTargets::new(branches.into_iter(), otherwise);
+                *targets = SwitchTargets::new(branches.into_iter(), SwitchAction::Goto(otherwise));
             }
             ref invalid => bug!("Invalid BasicBlock kind or no to_block: {:?}", invalid),
         }

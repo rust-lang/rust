@@ -523,9 +523,11 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             FlatSet::Bottom => TerminatorEdges::None,
             FlatSet::Elem(scalar) => {
                 if let Ok(scalar_int) = scalar.try_to_scalar_int() {
-                    TerminatorEdges::Single(
-                        targets.target_for_value(scalar_int.to_bits_unchecked()),
-                    )
+                    let choice = scalar_int.to_bits_unchecked();
+                    match targets.target_for_value(choice) {
+                        SwitchAction::Goto(bb) => TerminatorEdges::Single(bb),
+                        SwitchAction::Unreachable => TerminatorEdges::None,
+                    }
                 } else {
                     TerminatorEdges::SwitchInt { discr, targets }
                 }
