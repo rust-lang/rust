@@ -4,7 +4,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData};
 use tracing::debug;
 
-use super::{AllFacts, LocationIndex, LocationTable};
+use super::{AllFacts, LocationIndex, PoloniusLocationTable};
 use crate::def_use::{self, DefUse};
 use crate::universal_regions::UniversalRegions;
 
@@ -13,7 +13,7 @@ pub(crate) fn emit_access_facts<'tcx>(
     tcx: TyCtxt<'tcx>,
     facts: &mut AllFacts,
     body: &Body<'tcx>,
-    location_table: &LocationTable,
+    location_table: &PoloniusLocationTable,
     move_data: &MoveData<'tcx>,
     universal_regions: &UniversalRegions<'tcx>,
 ) {
@@ -33,7 +33,7 @@ pub(crate) fn emit_access_facts<'tcx>(
 struct AccessFactsExtractor<'a, 'tcx> {
     facts: &'a mut AllFacts,
     move_data: &'a MoveData<'tcx>,
-    location_table: &'a LocationTable,
+    location_table: &'a PoloniusLocationTable,
 }
 
 impl<'tcx> AccessFactsExtractor<'_, 'tcx> {

@@ -38,7 +38,7 @@ pub use self::facts::*;
 pub(crate) fn emit_facts<'tcx>(
     all_facts: &mut Option<AllFacts>,
     tcx: TyCtxt<'tcx>,
-    location_table: &LocationTable,
+    location_table: &PoloniusLocationTable,
     body: &Body<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
     move_data: &MoveData<'tcx>,
@@ -69,7 +69,7 @@ pub(crate) fn emit_facts<'tcx>(
 fn emit_move_facts(
     facts: &mut AllFacts,
     body: &Body<'_>,
-    location_table: &LocationTable,
+    location_table: &PoloniusLocationTable,
     move_data: &MoveData<'_>,
 ) {
     facts.path_is_var.extend(move_data.rev_lookup.iter_locals_enumerated().map(|(l, r)| (r, l)));
@@ -202,7 +202,7 @@ pub(crate) fn emit_drop_facts<'tcx>(
 /// closure.
 fn emit_outlives_facts<'tcx>(
     facts: &mut AllFacts,
-    location_table: &LocationTable,
+    location_table: &PoloniusLocationTable,
     constraints: &MirTypeckRegionConstraints<'tcx>,
 ) {
     facts.subset_base.extend(constraints.outlives_constraints.outlives().iter().flat_map(

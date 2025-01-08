@@ -28,7 +28,7 @@ use crate::borrow_set::BorrowSet;
 use crate::consumers::ConsumerOptions;
 use crate::diagnostics::{BorrowckDiagnosticsBuffer, RegionErrors};
 use crate::polonius::LocalizedOutlivesConstraintSet;
-use crate::polonius::legacy::{AllFacts, AllFactsExt, LocationTable, PoloniusOutput};
+use crate::polonius::legacy::{AllFacts, AllFactsExt, PoloniusLocationTable, PoloniusOutput};
 use crate::region_infer::RegionInferenceContext;
 use crate::type_check::{self, MirTypeckResults};
 use crate::universal_regions::UniversalRegions;
@@ -80,7 +80,7 @@ pub(crate) fn compute_regions<'a, 'tcx>(
     universal_regions: UniversalRegions<'tcx>,
     body: &Body<'tcx>,
     promoted: &IndexSlice<Promoted, Body<'tcx>>,
-    location_table: &LocationTable,
+    location_table: &PoloniusLocationTable,
     flow_inits: ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
     borrow_set: &BorrowSet<'tcx>,

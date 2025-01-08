@@ -6,7 +6,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::TyCtxt;
 use tracing::debug;
 
-use super::{AllFacts, LocationTable};
+use super::{AllFacts, PoloniusLocationTable};
 use crate::borrow_set::BorrowSet;
 use crate::places_conflict;
 
@@ -15,7 +15,7 @@ pub(super) fn emit_loan_kills<'tcx>(
     tcx: TyCtxt<'tcx>,
     facts: &mut AllFacts,
     body: &Body<'tcx>,
-    location_table: &LocationTable,
+    location_table: &PoloniusLocationTable,
     borrow_set: &BorrowSet<'tcx>,
 ) {
     let mut visitor = LoanKillsGenerator { borrow_set, tcx, location_table, facts, body };
@@ -27,7 +27,7 @@ pub(super) fn emit_loan_kills<'tcx>(
 struct LoanKillsGenerator<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     facts: &'a mut AllFacts,
-    location_table: &'a LocationTable,
+    location_table: &'a PoloniusLocationTable,
     borrow_set: &'a BorrowSet<'tcx>,
     body: &'a Body<'tcx>,
 }
