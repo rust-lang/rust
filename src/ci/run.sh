@@ -26,7 +26,7 @@ if [ "$NO_CHANGE_USER" = "" ]; then
     chown -R user:user .
     mkdir -p /cargo
     chown -R user:user /cargo
-    # TODO: don't do this in PR job
+    # FIXME: don't do this in PR job
     chown -R user:user /checkout
 
     # Ensure that runners are able to execute git commands in the worktree,
