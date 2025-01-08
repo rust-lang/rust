@@ -331,6 +331,30 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         Ty::new_projection_from_args(self.tcx(), item_def_id, item_args)
     }
 
+    fn lower_assoc_const(
+        &self,
+        span: Span,
+        item_def_id: DefId,
+        item_segment: &hir::PathSegment<'tcx>,
+        poly_trait_ref: ty::PolyTraitRef<'tcx>,
+    ) -> Const<'tcx> {
+        let trait_ref = self.instantiate_binder_with_fresh_vars(
+            span,
+            // FIXME(min_generic_const_args): this should be assoc const not assoc type
+            infer::BoundRegionConversionTime::AssocTypeProjection(item_def_id),
+            poly_trait_ref,
+        );
+
+        let item_args = self.lowerer().lower_generic_args_of_assoc_item(
+            span,
+            item_def_id,
+            item_segment,
+            trait_ref.args,
+        );
+
+        Const::new_unevaluated(self.tcx(), ty::UnevaluatedConst::new(item_def_id, item_args))
+    }
+
     fn probe_adt(&self, span: Span, ty: Ty<'tcx>) -> Option<ty::AdtDef<'tcx>> {
         match ty.kind() {
             ty::Adt(adt_def, _) => Some(*adt_def),

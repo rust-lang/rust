@@ -150,7 +150,7 @@ pub trait HirTyLowerer<'tcx> {
         assoc_name: Ident,
     ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]>;
 
-    /// Lower an associated type to a projection.
+    /// Lower an associated type (from a trait) to a projection.
     ///
     /// This method has to be defined by the concrete lowering context because
     /// dealing with higher-ranked trait references depends on its capabilities:
@@ -169,6 +169,15 @@ pub trait HirTyLowerer<'tcx> {
         item_segment: &hir::PathSegment<'tcx>,
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Ty<'tcx>;
+
+    /// Lower an associated constant (from a trait) to a [`ty::Const`].
+    fn lower_assoc_const(
+        &self,
+        span: Span,
+        item_def_id: DefId,
+        item_segment: &hir::PathSegment<'tcx>,
+        poly_trait_ref: ty::PolyTraitRef<'tcx>,
+    ) -> Const<'tcx>;
 
     fn lower_fn_sig(
         &self,
@@ -2254,16 +2263,22 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         span,
                         impl_,
                     )
+                    .map(|assoc| (impl_, assoc))
                 })
                 .collect::<Vec<_>>();
             match &candidates[..] {
                 [] => {}
-                [assoc] => {
-                    // FIXME: this is not necessarily correct.
-                    // adapted from other code that also had a fixme about it being temporary.
-                    let parent_args =
-                        ty::GenericArgs::identity_for_item(tcx, tcx.parent(assoc.def_id));
-                    return self.lower_assoc_const(span, assoc.def_id, assoc_segment, parent_args);
+                &[(impl_, assoc)] => {
+                    // FIXME(min_generic_const_args): adapted from temporary inherent assoc ty code that may be incorrect
+                    let parent_args = ty::GenericArgs::identity_for_item(tcx, impl_);
+                    let args = self.lower_generic_args_of_assoc_item(
+                        span,
+                        assoc.def_id,
+                        assoc_segment,
+                        parent_args,
+                    );
+                    let uv = ty::UnevaluatedConst::new(assoc.def_id, args);
+                    return Const::new_unevaluated(tcx, uv);
                 }
                 [..] => {
                     return Const::new_error_with_message(tcx, span, "ambiguous assoc const path");
@@ -2323,23 +2338,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let assoc_const = self
             .probe_assoc_item(assoc_ident, ty::AssocKind::Const, hir_ref_id, span, trait_did)
             .expect("failed to find associated const");
-        // FIXME: don't use no_bound_vars probably
-        let trait_ref_args = bound.no_bound_vars().unwrap().args;
-        self.lower_assoc_const(span, assoc_const.def_id, assoc_segment, trait_ref_args)
-    }
-
-    fn lower_assoc_const(
-        &self,
-        span: Span,
-        item_def_id: DefId,
-        item_segment: &hir::PathSegment<'tcx>,
-        parent_args: GenericArgsRef<'tcx>,
-    ) -> Const<'tcx> {
-        let tcx = self.tcx();
-        let args =
-            self.lower_generic_args_of_assoc_item(span, item_def_id, item_segment, parent_args);
-        let uv = ty::UnevaluatedConst::new(item_def_id, args);
-        Const::new_unevaluated(tcx, uv)
+        self.lower_assoc_const(span, assoc_const.def_id, assoc_segment, bound)
     }
 
     /// Literals are eagerly converted to a constant, everything else becomes `Unevaluated`.

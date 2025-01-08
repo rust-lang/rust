@@ -532,6 +532,95 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         }
     }
 
+    fn lower_assoc_const(
+        &self,
+        span: Span,
+        item_def_id: DefId,
+        item_segment: &hir::PathSegment<'tcx>,
+        poly_trait_ref: ty::PolyTraitRef<'tcx>,
+    ) -> Const<'tcx> {
+        if let Some(trait_ref) = poly_trait_ref.no_bound_vars() {
+            let item_args = self.lowerer().lower_generic_args_of_assoc_item(
+                span,
+                item_def_id,
+                item_segment,
+                trait_ref.args,
+            );
+            let uv = ty::UnevaluatedConst::new(item_def_id, item_args);
+            Const::new_unevaluated(self.tcx(), uv)
+        } else {
+            // There are no late-bound regions; we can just ignore the binder.
+            let (mut mpart_sugg, mut inferred_sugg) = (None, None);
+            let mut bound = String::new();
+
+            match self.node() {
+                hir::Node::Field(_) | hir::Node::Ctor(_) | hir::Node::Variant(_) => {
+                    let item = self
+                        .tcx
+                        .hir()
+                        .expect_item(self.tcx.hir().get_parent_item(self.hir_id()).def_id);
+                    match &item.kind {
+                        hir::ItemKind::Enum(_, generics)
+                        | hir::ItemKind::Struct(_, generics)
+                        | hir::ItemKind::Union(_, generics) => {
+                            let lt_name = get_new_lifetime_name(self.tcx, poly_trait_ref, generics);
+                            let (lt_sp, sugg) = match generics.params {
+                                [] => (generics.span, format!("<{lt_name}>")),
+                                [bound, ..] => (bound.span.shrink_to_lo(), format!("{lt_name}, ")),
+                            };
+                            mpart_sugg = Some(errors::AssociatedItemTraitUninferredGenericParamsMultipartSuggestion {
+                                fspan: lt_sp,
+                                first: sugg,
+                                sspan: span.with_hi(item_segment.ident.span.lo()),
+                                second: format!(
+                                    "{}::",
+                                    // Replace the existing lifetimes with a new named lifetime.
+                                    self.tcx.instantiate_bound_regions_uncached(
+                                        poly_trait_ref,
+                                        |_| {
+                                            ty::Region::new_early_param(self.tcx, ty::EarlyParamRegion {
+                                                index: 0,
+                                                name: Symbol::intern(&lt_name),
+                                            })
+                                        }
+                                    ),
+                                ),
+                            });
+                        }
+                        _ => {}
+                    }
+                }
+                hir::Node::Item(hir::Item {
+                    kind:
+                        hir::ItemKind::Struct(..) | hir::ItemKind::Enum(..) | hir::ItemKind::Union(..),
+                    ..
+                }) => {}
+                hir::Node::Item(_)
+                | hir::Node::ForeignItem(_)
+                | hir::Node::TraitItem(_)
+                | hir::Node::ImplItem(_) => {
+                    inferred_sugg = Some(span.with_hi(item_segment.ident.span.lo()));
+                    bound = format!(
+                        "{}::",
+                        // Erase named lt, we want `<A as B<'_>::C`, not `<A as B<'a>::C`.
+                        self.tcx.anonymize_bound_vars(poly_trait_ref).skip_binder(),
+                    );
+                }
+                _ => {}
+            }
+            Const::new_error(
+                self.tcx(),
+                self.tcx().dcx().emit_err(errors::AssociatedItemTraitUninferredGenericParams {
+                    span,
+                    inferred_sugg,
+                    bound,
+                    mpart_sugg,
+                    what: "const",
+                }),
+            )
+        }
+    }
+
     fn probe_adt(&self, _span: Span, ty: Ty<'tcx>) -> Option<ty::AdtDef<'tcx>> {
         // FIXME(#103640): Should we handle the case where `ty` is a projection?
         ty.ty_adt_def()
