@@ -65,16 +65,14 @@ pub fn nonzero_integer_array() {
 
 const N: usize = 100;
 
-// FIXME: The two bytes of the u16 are the same, so we should
-// just use memset, too.
 // CHECK-LABEL: @u16_init_one_bytes
 #[no_mangle]
 pub fn u16_init_one_bytes() -> [u16; N] {
     // CHECK-NOT: select
-    // CHECK: br
+    // CHECK-NOT: br
     // CHECK-NOT: switch
-    // CHECK: icmp
-    // CHECK-NOT: call void @llvm.memset.p0
+    // CHECK-NOT: icmp
+    // CHECK: call void @llvm.memset.p0
     [const { u16::from_be_bytes([1, 1]) }; N]
 }
 
