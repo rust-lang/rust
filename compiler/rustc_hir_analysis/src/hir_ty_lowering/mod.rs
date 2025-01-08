@@ -2262,18 +2262,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             _ => None,
         };
 
-        if let Some(lit_input) = lit_input {
-            // If an error occurred, ignore that it's a literal and leave reporting the error up to
-            // mir.
-
+        lit_input
             // Allow the `ty` to be an alias type, though we cannot handle it here, we just go through
             // the more expensive anon const code path.
-            if !lit_input.ty.has_aliases() {
-                return Some(tcx.at(expr.span).lit_to_const(lit_input));
-            }
-        }
-
-        None
+            .filter(|l| !l.ty.has_aliases())
+            .map(|l| tcx.at(expr.span).lit_to_const(l))
     }
 
     fn lower_delegation_ty(&self, idx: hir::InferDelegationKind) -> Ty<'tcx> {
