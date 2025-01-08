@@ -791,11 +791,14 @@
                 "properties": {
                     "rust-analyzer.cargo.cfgs": {
                         "markdownDescription": "List of cfg options to enable with the given values.",
-                        "default": {
-                            "miri": null,
-                            "debug_assertions": null
-                        },
-                        "type": "object"
+                        "default": [
+                            "debug_assertion",
+                            "miri"
+                        ],
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
                     }
                 }
             },
