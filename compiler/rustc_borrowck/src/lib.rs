@@ -17,7 +17,7 @@
 
 use std::cell::RefCell;
 use std::marker::PhantomData;
-use std::ops::Deref;
+use std::ops::{ControlFlow, Deref};
 
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -81,7 +81,6 @@ mod session_diagnostics;
 mod type_check;
 mod universal_regions;
 mod used_muts;
-mod util;
 
 /// A public API provided for the Rust compiler consumers.
 pub mod consumers;
@@ -1054,31 +1053,31 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                         rw,
                         (borrow_index, borrow),
                     );
-                    Control::Continue
+                    ControlFlow::Continue(())
                 }
 
                 (Read(_), BorrowKind::Shared | BorrowKind::Fake(_))
                 | (
                     Read(ReadKind::Borrow(BorrowKind::Fake(FakeBorrowKind::Shallow))),
                     BorrowKind::Mut { .. },
-                ) => Control::Continue,
+                ) => ControlFlow::Continue(()),
 
                 (Reservation(_), BorrowKind::Fake(_) | BorrowKind::Shared) => {
                     // This used to be a future compatibility warning (to be
                     // disallowed on NLL). See rust-lang/rust#56254
-                    Control::Continue
+                    ControlFlow::Continue(())
                 }
 
                 (Write(WriteKind::Move), BorrowKind::Fake(FakeBorrowKind::Shallow)) => {
                     // Handled by initialization checks.
-                    Control::Continue
+                    ControlFlow::Continue(())
                 }
 
                 (Read(kind), BorrowKind::Mut { .. }) => {
                     // Reading from mere reservations of mutable-borrows is OK.
                     if !is_active(this.dominators(), borrow, location) {
-                        assert!(allow_two_phase_borrow(borrow.kind));
-                        return Control::Continue;
+                        assert!(borrow.kind.allows_two_phase_borrow());
+                        return ControlFlow::Continue(());
                     }
 
                     error_reported = true;
@@ -1094,7 +1093,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                             this.buffer_error(err);
                         }
                     }
-                    Control::Break
+                    ControlFlow::Break(())
                 }
 
                 (Reservation(kind) | Activation(kind, _) | Write(kind), _) => {
@@ -1141,7 +1140,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                             this.report_illegal_mutation_of_borrowed(location, place_span, borrow)
                         }
                     }
-                    Control::Break
+                    ControlFlow::Break(())
                 }
             },
         );
@@ -1185,7 +1184,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     }
                     BorrowKind::Mut { .. } => {
                         let wk = WriteKind::MutableBorrow(bk);
-                        if allow_two_phase_borrow(bk) {
+                        if bk.allows_two_phase_borrow() {
                             (Deep, Reservation(wk))
                         } else {
                             (Deep, Write(wk))
