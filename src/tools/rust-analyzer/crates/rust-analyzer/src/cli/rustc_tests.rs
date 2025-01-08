@@ -93,6 +93,7 @@ impl Tester {
             toolchain: None,
             target_layout: data_layout.map(Arc::from).map_err(|it| Arc::from(it.to_string())),
             cfg_overrides: Default::default(),
+            extra_includes: vec![],
         };
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: false,
