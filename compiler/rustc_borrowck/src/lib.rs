@@ -6,6 +6,7 @@
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(file_buffered)]
+#![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]

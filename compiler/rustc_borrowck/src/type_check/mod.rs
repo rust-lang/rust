@@ -298,7 +298,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                         context.ambient_variance(),
                         base_ty.ty,
                         location.to_locations(),
-                        ConstraintCategory::TypeAnnotation,
+                        ConstraintCategory::TypeAnnotation(AnnotationSource::OpaqueCast),
                     )
                     .unwrap();
             }
@@ -333,7 +333,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 ty::Invariant,
                 &UserTypeProjection { base: annotation_index, projs: vec![] },
                 locations,
-                ConstraintCategory::Boring,
+                ConstraintCategory::TypeAnnotation(AnnotationSource::GenericArg),
             ) {
                 let annotation = &self.typeck.user_type_annotations[annotation_index];
                 span_mirbug!(
@@ -455,7 +455,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                     ty::Invariant,
                     user_ty,
                     Locations::All(*span),
-                    ConstraintCategory::TypeAnnotation,
+                    ConstraintCategory::TypeAnnotation(AnnotationSource::Declaration),
                 ) {
                     span_mirbug!(
                         self,
@@ -892,6 +892,19 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     Some(l) if !body.local_decls[l].is_user_variable() => {
                         ConstraintCategory::Boring
                     }
+                    Some(_)
+                        if let Some(body_id) = tcx
+                            .hir_node_by_def_id(body.source.def_id().expect_local())
+                            .body_id()
+                            && let params = tcx.hir().body(body_id).params
+                            && params
+                                .iter()
+                                .any(|param| param.span.contains(stmt.source_info.span)) =>
+                    {
+                        // Assignments generated from lowering argument patterns shouldn't be called
+                        // "assignments" in diagnostics and aren't interesting to blame for errors.
+                        ConstraintCategory::Boring
+                    }
                     _ => ConstraintCategory::Assignment,
                 };
                 debug!(
@@ -927,7 +940,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         ty::Invariant,
                         &UserTypeProjection { base: annotation_index, projs: vec![] },
                         location.to_locations(),
-                        ConstraintCategory::Boring,
+                        ConstraintCategory::TypeAnnotation(AnnotationSource::GenericArg),
                     ) {
                         let annotation = &self.user_type_annotations[annotation_index];
                         span_mirbug!(
@@ -962,7 +975,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     *variance,
                     projection,
                     Locations::All(stmt.source_info.span),
-                    ConstraintCategory::TypeAnnotation,
+                    ConstraintCategory::TypeAnnotation(AnnotationSource::Ascription),
                 ) {
                     let annotation = &self.user_type_annotations[projection.base];
                     span_mirbug!(
@@ -1226,6 +1239,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     Some(l) if !body.local_decls[l].is_user_variable() => {
                         ConstraintCategory::Boring
                     }
+                    // The return type of a call is interesting for diagnostics.
                     _ => ConstraintCategory::Assignment,
                 };
 
@@ -2169,7 +2183,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             ty_left,
                             common_ty,
                             location.to_locations(),
-                            ConstraintCategory::Boring,
+                            ConstraintCategory::CallArgument(None),
                         )
                         .unwrap_or_else(|err| {
                             bug!("Could not equate type variable with {:?}: {:?}", ty_left, err)
@@ -2178,7 +2192,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             ty_right,
                             common_ty,
                             location.to_locations(),
-                            ConstraintCategory::Boring,
+                            ConstraintCategory::CallArgument(None),
                         ) {
                             span_mirbug!(
                                 self,

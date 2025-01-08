@@ -25,6 +25,10 @@ LL |         self.enter_scope(|ctx| {
    |                           has type `&mut FooImpl<'2, '_, T>`
 LL |             BarImpl(ctx);
    |                     ^^^ this usage requires that `'1` must outlive `'2`
+   |
+   = note: requirement occurs because of a mutable reference to `FooImpl<'_, '_, T>`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/lifetime-not-long-enough-suggestion-regression-test-124563.rs:22:9

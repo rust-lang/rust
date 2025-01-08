@@ -17,6 +17,8 @@ pub fn remove_package_from_database() {
         lines_to_use.push(installed_id);
         //~^ ERROR borrowed data escapes outside of closure
         //~| NOTE `installed_id` escapes the closure body here
+        //~| NOTE requirement occurs because of a mutable reference to `Vec<&CrateId>`
+        //~| NOTE mutable references are invariant over their type parameter
     };
     list_database(push_id);
 
