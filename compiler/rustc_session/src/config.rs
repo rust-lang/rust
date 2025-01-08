@@ -402,7 +402,8 @@ pub struct LocationDetail {
 }
 
 impl LocationDetail {
-    pub(crate) fn all() -> Self {
+    /// The default value for this option.
+    pub(crate) fn default_value() -> Self {
         Self { file: true, line: true, column: true, cstr: false }
     }
 }

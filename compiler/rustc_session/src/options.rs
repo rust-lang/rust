@@ -1904,7 +1904,7 @@ options! {
         "a list LLVM plugins to enable (space separated)"),
     llvm_time_trace: bool = (false, parse_bool, [UNTRACKED],
         "generate JSON tracing data file from LLVM data (default: no)"),
-    location_detail: LocationDetail = (LocationDetail::all(), parse_location_detail, [TRACKED],
+    location_detail: LocationDetail = (LocationDetail::default_value(), parse_location_detail, [TRACKED],
         "what location details should be tracked when using caller_location, either \
         `none`, or a comma separated list of location details, for which valid \
         options are `file`, `line`, `column`, and `cstr` (default: `file,line,column`)"),
