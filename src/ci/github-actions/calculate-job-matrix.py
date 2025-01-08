@@ -186,12 +186,10 @@ def substitute_github_vars(jobs: list) -> list:
     """Replace GitHub context variables with environment variables in job configs."""
     for job in jobs:
         if "os" in job:
-            job["os"] = job["os"].replace(
-                "${{ github.run_id }}",
-                os.environ["GITHUB_RUN_ID"]
-            ).replace(
-                "${{ github.run_attempt }}",
-                os.environ["GITHUB_RUN_ATTEMPT"]
+            job["os"] = (
+                job["os"]
+                .replace("${{ github.run_id }}", os.environ["GITHUB_RUN_ID"])
+                .replace("${{ github.run_attempt }}", os.environ["GITHUB_RUN_ATTEMPT"])
             )
     return jobs
 
@@ -215,7 +213,6 @@ if __name__ == "__main__":
         jobs = calculate_jobs(run_type, data)
     jobs = skip_jobs(jobs, channel)
     jobs = substitute_github_vars(jobs)
-
 
     if not jobs:
         raise Exception("Scheduled job list is empty, this is an error")
