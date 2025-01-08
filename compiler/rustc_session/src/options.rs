@@ -436,7 +436,7 @@ mod desc {
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `thin`, `fat`, or omitted";
     pub(crate) const parse_linker_plugin_lto: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or the path to the linker plugin";
-    pub(crate) const parse_location_detail: &str = "either `none`, or a comma separated list of location details to track: `file`, `line`, or `column`";
+    pub(crate) const parse_location_detail: &str = "either `none`, or a comma separated list of location details to track: `file`, `line`, `column` or `cstr`";
     pub(crate) const parse_fmt_debug: &str = "either `full`, `shallow`, or `none`";
     pub(crate) const parse_switch_with_opt_path: &str =
         "an optional path to the profiling data output directory";
@@ -647,6 +647,7 @@ pub mod parse {
             ld.line = false;
             ld.file = false;
             ld.column = false;
+            ld.cstr = false;
             if v == "none" {
                 return true;
             }
@@ -655,6 +656,7 @@ pub mod parse {
                     "file" => ld.file = true,
                     "line" => ld.line = true,
                     "column" => ld.column = true,
+                    "cstr" => ld.cstr = true,
                     _ => return false,
                 }
             }
@@ -1904,8 +1906,8 @@ options! {
         "generate JSON tracing data file from LLVM data (default: no)"),
     location_detail: LocationDetail = (LocationDetail::all(), parse_location_detail, [TRACKED],
         "what location details should be tracked when using caller_location, either \
-        `none`, or a comma separated list of location details, for which \
-        valid options are `file`, `line`, and `column` (default: `file,line,column`)"),
+        `none`, or a comma separated list of location details, for which valid \
+        options are `file`, `line`, `column`, and `cstr` (default: `file,line,column`)"),
     ls: Vec<String> = (Vec::new(), parse_list, [UNTRACKED],
         "decode and print various parts of the crate metadata for a library crate \
         (space separated)"),

@@ -16,15 +16,25 @@ fn alloc_caller_location<'tcx>(
     line: u32,
     col: u32,
 ) -> MPlaceTy<'tcx> {
+    // Ensure that the filename itself does not contain nul bytes.
+    // This isn't possible via POSIX or Windows, but we should ensure no one
+    // ever does such a thing.
+    assert!(!filename.as_str().as_bytes().contains(&0));
+
     let loc_details = ecx.tcx.sess.opts.unstable_opts.location_detail;
-    // This can fail if rustc runs out of memory right here. Trying to emit an error would be
-    // pointless, since that would require allocating more memory than these short strings.
-    let file = if loc_details.file {
-        ecx.allocate_str_dedup(filename.as_str()).unwrap()
+
+    let file = if loc_details.file { filename.as_str() } else { "<redacted>" };
+
+    // These allocations can fail if rustc runs out of memory right here. Trying to emit an error
+    // would be pointless, since that would require allocating more memory than these short strings.
+    let file_ptr = if loc_details.cstr {
+        ecx.allocate_bytes_dedup(format!("{file}\0").as_bytes()).unwrap()
     } else {
-        ecx.allocate_str_dedup("<redacted>").unwrap()
+        ecx.allocate_bytes_dedup(file.as_bytes()).unwrap()
     };
-    let file = file.map_provenance(CtfeProvenance::as_immutable);
+    // We don't include the zero-terminator in the length here.
+    let file_wide_ptr = Immediate::new_slice(file_ptr.into(), file.len().try_into().unwrap(), ecx);
+
     let line = if loc_details.line { Scalar::from_u32(line) } else { Scalar::from_u32(0) };
     let col = if loc_details.column { Scalar::from_u32(col) } else { Scalar::from_u32(0) };
 
@@ -37,7 +47,7 @@ fn alloc_caller_location<'tcx>(
     let location = ecx.allocate(loc_layout, MemoryKind::CallerLocation).unwrap();
 
     // Initialize fields.
-    ecx.write_immediate(file.to_ref(ecx), &ecx.project_field(&location, 0).unwrap())
+    ecx.write_immediate(file_wide_ptr, &ecx.project_field(&location, 0).unwrap())
         .expect("writing to memory we just allocated cannot fail");
     ecx.write_scalar(line, &ecx.project_field(&location, 1).unwrap())
         .expect("writing to memory we just allocated cannot fail");
