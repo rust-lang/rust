@@ -10,6 +10,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, BindingMode, ByRef, Node};
 use rustc_middle::bug;
 use rustc_middle::hir::place::PlaceBase;
+use rustc_middle::mir::visit::PlaceContext;
 use rustc_middle::mir::{
     self, BindingForm, Local, LocalDecl, LocalInfo, LocalKind, Location, Mutability, Place,
     PlaceRef, ProjectionElem,
@@ -22,7 +23,6 @@ use rustc_trait_selection::traits;
 use tracing::debug;
 
 use crate::diagnostics::BorrowedContentSource;
-use crate::util::FindAssignments;
 use crate::{MirBorrowckCtxt, session_diagnostics};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -575,7 +575,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         // ---------- place
                         self.err.multipart_suggestions(
                             format!(
-                                "to modify a `{}`, use `.get_mut()`, `.insert()` or the entry API",
+                                "use `.insert()` to insert a value into a `{}`, `.get_mut()` \
+                                to modify it, or the entry API for more flexibility",
                                 self.ty,
                             ),
                             vec![
@@ -592,16 +593,17 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                                     (rv.span.shrink_to_hi(), ")".to_string()),
                                 ],
                                 vec![
-                                    // val.get_mut(index).map(|v| { *v = rv; });
+                                    // if let Some(v) = val.get_mut(index) { *v = rv; }
+                                    (val.span.shrink_to_lo(), "if let Some(val) = ".to_string()),
                                     (
                                         val.span.shrink_to_hi().with_hi(index.span.lo()),
                                         ".get_mut(".to_string(),
                                     ),
                                     (
                                         index.span.shrink_to_hi().with_hi(place.span.hi()),
-                                        ").map(|val| { *val".to_string(),
+                                        ") { *val".to_string(),
                                     ),
-                                    (rv.span.shrink_to_hi(), "; })".to_string()),
+                                    (rv.span.shrink_to_hi(), "; }".to_string()),
                                 ],
                                 vec![
                                     // let x = val.entry(index).or_insert(rv);
@@ -622,21 +624,22 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         self.suggested = true;
                     } else if let hir::ExprKind::MethodCall(_path, receiver, _, sp) = expr.kind
                         && let hir::ExprKind::Index(val, index, _) = receiver.kind
-                        && expr.span == self.assign_span
+                        && receiver.span == self.assign_span
                     {
                         // val[index].path(args..);
                         self.err.multipart_suggestion(
                             format!("to modify a `{}` use `.get_mut()`", self.ty),
                             vec![
+                                (val.span.shrink_to_lo(), "if let Some(val) = ".to_string()),
                                 (
                                     val.span.shrink_to_hi().with_hi(index.span.lo()),
                                     ".get_mut(".to_string(),
                                 ),
                                 (
                                     index.span.shrink_to_hi().with_hi(receiver.span.hi()),
-                                    ").map(|val| val".to_string(),
+                                    ") { val".to_string(),
                                 ),
-                                (sp.shrink_to_hi(), ")".to_string()),
+                                (sp.shrink_to_hi(), "; }".to_string()),
                             ],
                             Applicability::MachineApplicable,
                         );
@@ -978,7 +981,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
             let arg = match hir.get_if_local(callee_def_id) {
                 Some(
-                    hir::Node::Item(hir::Item { ident, kind: hir::ItemKind::Fn(sig, ..), .. })
+                    hir::Node::Item(hir::Item {
+                        ident, kind: hir::ItemKind::Fn { sig, .. }, ..
+                    })
                     | hir::Node::TraitItem(hir::TraitItem {
                         ident,
                         kind: hir::TraitItemKind::Fn(sig, _),
@@ -1017,7 +1022,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             // ...otherwise we are probably in the tail expression of the function, point at the
             // return type.
             match self.infcx.tcx.hir_node_by_def_id(hir.get_parent_item(fn_call_id).def_id) {
-                hir::Node::Item(hir::Item { ident, kind: hir::ItemKind::Fn(sig, ..), .. })
+                hir::Node::Item(hir::Item {
+                    ident, kind: hir::ItemKind::Fn { sig, .. }, ..
+                })
                 | hir::Node::TraitItem(hir::TraitItem {
                     ident,
                     kind: hir::TraitItemKind::Fn(sig, _),
@@ -1081,6 +1088,38 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
     }
 
+    /// Finds all statements that assign directly to local (i.e., X = ...) and returns their
+    /// locations.
+    fn find_assignments(&self, local: Local) -> Vec<Location> {
+        use rustc_middle::mir::visit::Visitor;
+
+        struct FindLocalAssignmentVisitor {
+            needle: Local,
+            locations: Vec<Location>,
+        }
+
+        impl<'tcx> Visitor<'tcx> for FindLocalAssignmentVisitor {
+            fn visit_local(
+                &mut self,
+                local: Local,
+                place_context: PlaceContext,
+                location: Location,
+            ) {
+                if self.needle != local {
+                    return;
+                }
+
+                if place_context.is_place_assignment() {
+                    self.locations.push(location);
+                }
+            }
+        }
+
+        let mut visitor = FindLocalAssignmentVisitor { needle: local, locations: vec![] };
+        visitor.visit_body(self.body);
+        visitor.locations
+    }
+
     fn suggest_make_local_mut(&self, err: &mut Diag<'_>, local: Local, name: Symbol) {
         let local_decl = &self.body.local_decls[local];
 
@@ -1114,7 +1153,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             })) => {
                 // check if the RHS is from desugaring
                 let opt_assignment_rhs_span =
-                    self.body.find_assignments(local).first().map(|&location| {
+                    self.find_assignments(local).first().map(|&location| {
                         if let Some(mir::Statement {
                             source_info: _,
                             kind:

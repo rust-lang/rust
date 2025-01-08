@@ -18,6 +18,7 @@ use smallvec::SmallVec;
 use span::{Edition, MacroFileId};
 use syntax::{ast, AstPtr, SyntaxNodePtr};
 use triomphe::Arc;
+use tt::TextRange;
 
 use crate::{
     db::DefDatabase,
@@ -143,21 +144,27 @@ pub struct BodySourceMap {
 
     pub types: TypesSourceMap,
 
-    // FIXME: Make this a sane struct.
-    template_map: Option<
-        Box<(
-            // format_args!
-            FxHashMap<ExprId, (HygieneId, Vec<(syntax::TextRange, Name)>)>,
-            // asm!
-            FxHashMap<ExprId, Vec<Vec<(syntax::TextRange, usize)>>>,
-        )>,
-    >,
+    template_map: Option<Box<FormatTemplate>>,
 
     expansions: FxHashMap<InFile<AstPtr<ast::MacroCall>>, MacroFileId>,
 
     /// Diagnostics accumulated during body lowering. These contain `AstPtr`s and so are stored in
     /// the source map (since they're just as volatile).
     diagnostics: Vec<BodyDiagnostic>,
+}
+
+#[derive(Default, Debug, Eq, PartialEq)]
+struct FormatTemplate {
+    /// A map from `format_args!()` expressions to their captures.
+    format_args_to_captures: FxHashMap<ExprId, (HygieneId, Vec<(syntax::TextRange, Name)>)>,
+    /// A map from `asm!()` expressions to their captures.
+    asm_to_captures: FxHashMap<ExprId, Vec<Vec<(syntax::TextRange, usize)>>>,
+    /// A map from desugared expressions of implicit captures to their source.
+    ///
+    /// The value stored for each capture is its template literal and offset inside it. The template literal
+    /// is from the `format_args[_nl]!()` macro and so needs to be mapped up once to go to the user-written
+    /// template.
+    implicit_capture_to_source: FxHashMap<ExprId, InFile<(AstPtr<ast::Expr>, TextRange)>>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -798,9 +805,19 @@ impl BodySourceMap {
         node: InFile<&ast::FormatArgsExpr>,
     ) -> Option<(HygieneId, &[(syntax::TextRange, Name)])> {
         let src = node.map(AstPtr::new).map(AstPtr::upcast::<ast::Expr>);
-        let (hygiene, names) =
-            self.template_map.as_ref()?.0.get(&self.expr_map.get(&src)?.as_expr()?)?;
+        let (hygiene, names) = self
+            .template_map
+            .as_ref()?
+            .format_args_to_captures
+            .get(&self.expr_map.get(&src)?.as_expr()?)?;
         Some((*hygiene, &**names))
+    }
+
+    pub fn format_args_implicit_capture(
+        &self,
+        capture_expr: ExprId,
+    ) -> Option<InFile<(AstPtr<ast::Expr>, TextRange)>> {
+        self.template_map.as_ref()?.implicit_capture_to_source.get(&capture_expr).copied()
     }
 
     pub fn asm_template_args(
@@ -809,7 +826,8 @@ impl BodySourceMap {
     ) -> Option<(ExprId, &[Vec<(syntax::TextRange, usize)>])> {
         let src = node.map(AstPtr::new).map(AstPtr::upcast::<ast::Expr>);
         let expr = self.expr_map.get(&src)?.as_expr()?;
-        Some(expr).zip(self.template_map.as_ref()?.1.get(&expr).map(std::ops::Deref::deref))
+        Some(expr)
+            .zip(self.template_map.as_ref()?.asm_to_captures.get(&expr).map(std::ops::Deref::deref))
     }
 
     /// Get a reference to the body source map's diagnostics.
@@ -835,8 +853,14 @@ impl BodySourceMap {
             types,
         } = self;
         if let Some(template_map) = template_map {
-            template_map.0.shrink_to_fit();
-            template_map.1.shrink_to_fit();
+            let FormatTemplate {
+                format_args_to_captures,
+                asm_to_captures,
+                implicit_capture_to_source,
+            } = &mut **template_map;
+            format_args_to_captures.shrink_to_fit();
+            asm_to_captures.shrink_to_fit();
+            implicit_capture_to_source.shrink_to_fit();
         }
         expr_map.shrink_to_fit();
         expr_map_back.shrink_to_fit();

@@ -242,7 +242,7 @@ impl<'a> Renderer<'a> {
             for bench in &self.benches {
                 rows.push((
                     &bench.name,
-                    format!("{:.2?}/iter", bench.median),
+                    format!("{:.2?}ns/iter", bench.median),
                     format!("+/- {:.2?}", bench.deviation),
                 ));
             }

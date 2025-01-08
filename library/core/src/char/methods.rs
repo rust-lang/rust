@@ -394,17 +394,21 @@ impl char {
         );
         // check radix to remove letter handling code when radix is a known constant
         let value = if self > '9' && radix > 10 {
-            // convert ASCII letters to lowercase
-            let lower = self as u32 | 0x20;
-            // convert an ASCII letter to the corresponding value,
-            // non-letters convert to values > 36
-            lower.wrapping_sub('a' as u32) as u64 + 10
+            // mask to convert ASCII letters to uppercase
+            const TO_UPPERCASE_MASK: u32 = !0b0010_0000;
+            // Converts an ASCII letter to its corresponding integer value:
+            // A-Z => 10-35, a-z => 10-35. Other characters produce values >= 36.
+            //
+            // Add Overflow Safety:
+            // By applying the mask after the subtraction, the first addendum is
+            // constrained such that it never exceeds u32::MAX - 0x20.
+            ((self as u32).wrapping_sub('A' as u32) & TO_UPPERCASE_MASK) + 10
         } else {
             // convert digit to value, non-digits wrap to values > 36
-            (self as u32).wrapping_sub('0' as u32) as u64
+            (self as u32).wrapping_sub('0' as u32)
         };
         // FIXME(const-hack): once then_some is const fn, use it here
-        if value < radix as u64 { Some(value as u32) } else { None }
+        if value < radix { Some(value) } else { None }
     }
 
     /// Returns an iterator that yields the hexadecimal Unicode escape of a

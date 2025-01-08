@@ -347,6 +347,8 @@ export class Ctx implements RustAnalyzerExtensionApi {
         }
         log.info("Disposing language client");
         this.updateCommands("disable");
+        // we give the server 100ms to stop gracefully
+        await this.client?.stop(100).catch((_) => {});
         await this.disposeClient();
     }
 
@@ -478,14 +480,19 @@ export class Ctx implements RustAnalyzerExtensionApi {
     }
 
     private updateStatusBarVisibility(editor: vscode.TextEditor | undefined) {
-        const documentSelector = this.config.statusBarDocumentSelector;
-        if (documentSelector != null) {
+        const showStatusBar = this.config.statusBarShowStatusBar;
+        if (showStatusBar == null || showStatusBar === "never") {
+            this.statusBar.hide();
+        } else if (showStatusBar === "always") {
+            this.statusBar.show();
+        } else {
+            const documentSelector = showStatusBar.documentSelector;
             if (editor != null && vscode.languages.match(documentSelector, editor.document) > 0) {
                 this.statusBar.show();
-                return;
+            } else {
+                this.statusBar.hide();
             }
         }
-        this.statusBar.hide();
     }
 
     pushExtCleanup(d: Disposable) {

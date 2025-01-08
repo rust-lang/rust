@@ -1,4 +1,4 @@
-use tracing::debug;
+use tracing::trace;
 use triomphe::ThinArc;
 
 use crate::durability::Durability;
@@ -78,7 +78,7 @@ impl LocalState {
         durability: Durability,
         changed_at: Revision,
     ) {
-        debug!(
+        trace!(
             "report_query_read_and_unwind_if_cycle_resulted(input={:?}, durability={:?}, changed_at={:?})",
             input, durability, changed_at
         );

@@ -15,7 +15,7 @@ pub(crate) fn target() -> Target {
         options: TargetOptions {
             code_model: Some(CodeModel::Medium),
             cpu: "generic".into(),
-            features: "+f,+d".into(),
+            features: "+f,+d,+lsx".into(),
             llvm_abiname: "lp64d".into(),
             max_atomic_width: Some(64),
             supported_sanitizers: SanitizerSet::ADDRESS

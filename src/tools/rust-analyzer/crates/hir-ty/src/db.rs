@@ -271,6 +271,10 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[ra_salsa::invoke(chalk_db::adt_variance_query)]
     fn adt_variance(&self, adt_id: chalk_db::AdtId) -> chalk_db::Variances;
 
+    #[ra_salsa::invoke(crate::variance::variances_of)]
+    #[ra_salsa::cycle(crate::variance::variances_of_cycle)]
+    fn variances_of(&self, def: GenericDefId) -> Option<Arc<[crate::variance::Variance]>>;
+
     #[ra_salsa::invoke(chalk_db::associated_ty_value_query)]
     fn associated_ty_value(
         &self,

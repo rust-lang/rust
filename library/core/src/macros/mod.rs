@@ -1549,7 +1549,7 @@ pub(crate) mod builtin {
     /// NAME is a string that represents a valid function name.
     /// MODE is any of Forward, Reverse, ForwardFirst, ReverseFirst.
     /// INPUT_ACTIVITIES consists of one valid activity for each input parameter.
-    /// OUTPUT_ACTIVITY must not be set if we implicitely return nothing (or explicitely return
+    /// OUTPUT_ACTIVITY must not be set if we implicitly return nothing (or explicitly return
     /// `-> ()`). Otherwise it must be set to one of the allowed activities.
     #[unstable(feature = "autodiff", issue = "124509")]
     #[allow_internal_unstable(rustc_attrs)]
@@ -1673,8 +1673,7 @@ pub(crate) mod builtin {
     ///
     /// [the reference]: ../../../reference/attributes/testing.html#the-test-attribute
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[allow_internal_unstable(test, rustc_attrs)]
-    #[cfg_attr(bootstrap, allow_internal_unstable(coverage_attribute))]
+    #[allow_internal_unstable(test, rustc_attrs, coverage_attribute)]
     #[rustc_builtin_macro]
     pub macro test($item:item) {
         /* compiler built-in */
@@ -1687,8 +1686,7 @@ pub(crate) mod builtin {
         soft,
         reason = "`bench` is a part of custom test frameworks which are unstable"
     )]
-    #[allow_internal_unstable(test, rustc_attrs)]
-    #[cfg_attr(bootstrap, allow_internal_unstable(coverage_attribute))]
+    #[allow_internal_unstable(test, rustc_attrs, coverage_attribute)]
     #[rustc_builtin_macro]
     pub macro bench($item:item) {
         /* compiler built-in */

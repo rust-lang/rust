@@ -574,7 +574,6 @@ impl WriteInfo {
                     | Rvalue::NullaryOp(_, _)
                     | Rvalue::Ref(_, _, _)
                     | Rvalue::RawPtr(_, _)
-                    | Rvalue::Len(_)
                     | Rvalue::Discriminant(_)
                     | Rvalue::CopyForDeref(_) => {}
                 }

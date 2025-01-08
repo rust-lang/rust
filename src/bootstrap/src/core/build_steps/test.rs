@@ -27,7 +27,7 @@ use crate::utils::helpers::{
     linker_args, linker_flags, t, target_supports_cranelift_backend, up_to_date,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
-use crate::{CLang, DocTests, GitRepo, Mode, envify};
+use crate::{CLang, DocTests, GitRepo, Mode, PathSet, envify};
 
 const ADB_TEST_DIR: &str = "/data/local/tmp/work";
 
@@ -409,7 +409,7 @@ impl Step for Rustfmt {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        builder.ensure(tool::Rustfmt { compiler, target: self.host, extra_features: Vec::new() });
+        builder.ensure(tool::Rustfmt { compiler, target: self.host });
 
         let mut cargo = tool::prepare_tool_cargo(
             builder,
@@ -511,17 +511,9 @@ impl Step for Miri {
         let host_compiler = builder.compiler(stage - 1, host);
 
         // Build our tools.
-        let miri = builder.ensure(tool::Miri {
-            compiler: host_compiler,
-            target: host,
-            extra_features: Vec::new(),
-        });
+        let miri = builder.ensure(tool::Miri { compiler: host_compiler, target: host });
         // the ui tests also assume cargo-miri has been built
-        builder.ensure(tool::CargoMiri {
-            compiler: host_compiler,
-            target: host,
-            extra_features: Vec::new(),
-        });
+        builder.ensure(tool::CargoMiri { compiler: host_compiler, target: host });
 
         // We also need sysroots, for Miri and for the host (the latter for build scripts).
         // This is for the tests so everything is done with the target compiler.
@@ -740,7 +732,7 @@ impl Step for Clippy {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        builder.ensure(tool::Clippy { compiler, target: self.host, extra_features: Vec::new() });
+        builder.ensure(tool::Clippy { compiler, target: self.host });
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
@@ -1133,69 +1125,21 @@ fn testdir(builder: &Builder<'_>, host: TargetSelection) -> PathBuf {
     builder.out.join(host).join("test")
 }
 
-macro_rules! default_test {
-    ($name:ident { path: $path:expr, mode: $mode:expr, suite: $suite:expr }) => {
-        test!($name { path: $path, mode: $mode, suite: $suite, default: true, host: false });
-    };
-}
-
-macro_rules! default_test_with_compare_mode {
-    ($name:ident { path: $path:expr, mode: $mode:expr, suite: $suite:expr,
-                   compare_mode: $compare_mode:expr }) => {
-        test_with_compare_mode!($name {
-            path: $path,
-            mode: $mode,
-            suite: $suite,
-            default: true,
-            host: false,
-            compare_mode: $compare_mode
-        });
-    };
-}
-
-macro_rules! host_test {
-    ($name:ident { path: $path:expr, mode: $mode:expr, suite: $suite:expr }) => {
-        test!($name { path: $path, mode: $mode, suite: $suite, default: true, host: true });
-    };
-}
-
+/// Declares a test step that invokes compiletest on a particular test suite.
 macro_rules! test {
-    ($name:ident { path: $path:expr, mode: $mode:expr, suite: $suite:expr, default: $default:expr,
-                   host: $host:expr }) => {
-        test_definitions!($name {
-            path: $path,
-            mode: $mode,
-            suite: $suite,
-            default: $default,
-            host: $host,
-            compare_mode: None
-        });
-    };
-}
-
-macro_rules! test_with_compare_mode {
-    ($name:ident { path: $path:expr, mode: $mode:expr, suite: $suite:expr, default: $default:expr,
-                   host: $host:expr, compare_mode: $compare_mode:expr }) => {
-        test_definitions!($name {
-            path: $path,
-            mode: $mode,
-            suite: $suite,
-            default: $default,
-            host: $host,
-            compare_mode: Some($compare_mode)
-        });
-    };
-}
-
-macro_rules! test_definitions {
-    ($name:ident {
-        path: $path:expr,
-        mode: $mode:expr,
-        suite: $suite:expr,
-        default: $default:expr,
-        host: $host:expr,
-        compare_mode: $compare_mode:expr
-    }) => {
+    (
+        $( #[$attr:meta] )* // allow docstrings and attributes
+        $name:ident {
+            path: $path:expr,
+            mode: $mode:expr,
+            suite: $suite:expr,
+            default: $default:expr
+            $( , only_hosts: $only_hosts:expr )? // default: false
+            $( , compare_mode: $compare_mode:expr )? // default: None
+            $( , )? // optional trailing comma
+        }
+    ) => {
+        $( #[$attr] )*
         #[derive(Debug, Clone, PartialEq, Eq, Hash)]
         pub struct $name {
             pub compiler: Compiler,
@@ -1205,7 +1149,12 @@ macro_rules! test_definitions {
         impl Step for $name {
             type Output = ();
             const DEFAULT: bool = $default;
-            const ONLY_HOSTS: bool = $host;
+            const ONLY_HOSTS: bool = (const {
+                #[allow(unused_assignments, unused_mut)]
+                let mut value = false;
+                $( value = $only_hosts; )?
+                value
+            });
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 run.suite_path($path)
@@ -1224,50 +1173,13 @@ macro_rules! test_definitions {
                     mode: $mode,
                     suite: $suite,
                     path: $path,
-                    compare_mode: $compare_mode,
+                    compare_mode: (const {
+                        #[allow(unused_assignments, unused_mut)]
+                        let mut value = None;
+                        $( value = $compare_mode; )?
+                        value
+                    }),
                 })
-            }
-        }
-    };
-}
-
-/// Declares an alias for running the [`Coverage`] tests in only one mode.
-/// Adapted from [`test_definitions`].
-macro_rules! coverage_test_alias {
-    ($name:ident {
-        alias_and_mode: $alias_and_mode:expr, // &'static str
-        default: $default:expr, // bool
-        only_hosts: $only_hosts:expr $(,)? // bool
-    }) => {
-        #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-        pub struct $name {
-            pub compiler: Compiler,
-            pub target: TargetSelection,
-        }
-
-        impl $name {
-            const MODE: &'static str = $alias_and_mode;
-        }
-
-        impl Step for $name {
-            type Output = ();
-            const DEFAULT: bool = $default;
-            const ONLY_HOSTS: bool = $only_hosts;
-
-            fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                // Register the mode name as a command-line alias.
-                // This allows `x test coverage-map` and `x test coverage-run`.
-                run.alias($alias_and_mode)
-            }
-
-            fn make_run(run: RunConfig<'_>) {
-                let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
-
-                run.builder.ensure($name { compiler, target: run.target });
-            }
-
-            fn run(self, builder: &Builder<'_>) {
-                Coverage::run_coverage_tests(builder, self.compiler, self.target, Self::MODE);
             }
         }
     };
@@ -1410,37 +1322,74 @@ impl Step for CrateBuildHelper {
     }
 }
 
-default_test!(Ui { path: "tests/ui", mode: "ui", suite: "ui" });
+test!(Ui { path: "tests/ui", mode: "ui", suite: "ui", default: true });
 
-default_test!(Crashes { path: "tests/crashes", mode: "crashes", suite: "crashes" });
+test!(Crashes { path: "tests/crashes", mode: "crashes", suite: "crashes", default: true });
 
-default_test!(Codegen { path: "tests/codegen", mode: "codegen", suite: "codegen" });
+test!(Codegen { path: "tests/codegen", mode: "codegen", suite: "codegen", default: true });
 
-default_test!(CodegenUnits {
+test!(CodegenUnits {
     path: "tests/codegen-units",
     mode: "codegen-units",
-    suite: "codegen-units"
+    suite: "codegen-units",
+    default: true,
 });
 
-default_test!(Incremental { path: "tests/incremental", mode: "incremental", suite: "incremental" });
+test!(Incremental {
+    path: "tests/incremental",
+    mode: "incremental",
+    suite: "incremental",
+    default: true,
+});
 
-default_test_with_compare_mode!(Debuginfo {
+test!(Debuginfo {
     path: "tests/debuginfo",
     mode: "debuginfo",
     suite: "debuginfo",
-    compare_mode: "split-dwarf"
+    default: true,
+    compare_mode: Some("split-dwarf"),
 });
 
-host_test!(UiFullDeps { path: "tests/ui-fulldeps", mode: "ui", suite: "ui-fulldeps" });
+test!(UiFullDeps {
+    path: "tests/ui-fulldeps",
+    mode: "ui",
+    suite: "ui-fulldeps",
+    default: true,
+    only_hosts: true,
+});
 
-host_test!(Rustdoc { path: "tests/rustdoc", mode: "rustdoc", suite: "rustdoc" });
-host_test!(RustdocUi { path: "tests/rustdoc-ui", mode: "ui", suite: "rustdoc-ui" });
+test!(Rustdoc {
+    path: "tests/rustdoc",
+    mode: "rustdoc",
+    suite: "rustdoc",
+    default: true,
+    only_hosts: true,
+});
+test!(RustdocUi {
+    path: "tests/rustdoc-ui",
+    mode: "ui",
+    suite: "rustdoc-ui",
+    default: true,
+    only_hosts: true,
+});
 
-host_test!(RustdocJson { path: "tests/rustdoc-json", mode: "rustdoc-json", suite: "rustdoc-json" });
+test!(RustdocJson {
+    path: "tests/rustdoc-json",
+    mode: "rustdoc-json",
+    suite: "rustdoc-json",
+    default: true,
+    only_hosts: true,
+});
 
-host_test!(Pretty { path: "tests/pretty", mode: "pretty", suite: "pretty" });
+test!(Pretty {
+    path: "tests/pretty",
+    mode: "pretty",
+    suite: "pretty",
+    default: true,
+    only_hosts: true,
+});
 
-/// Special-handling is needed for `run-make`, so don't use `default_test` for defining `RunMake`
+/// Special-handling is needed for `run-make`, so don't use `test!` for defining `RunMake`
 /// tests.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct RunMake {
@@ -1475,46 +1424,90 @@ impl Step for RunMake {
     }
 }
 
-default_test!(Assembly { path: "tests/assembly", mode: "assembly", suite: "assembly" });
+test!(Assembly { path: "tests/assembly", mode: "assembly", suite: "assembly", default: true });
 
-/// Coverage tests are a bit more complicated than other test suites, because
-/// we want to run the same set of test files in multiple different modes,
-/// in a way that's convenient and flexible when invoked manually.
-///
-/// This combined step runs the specified tests (or all of `tests/coverage`)
-/// in both "coverage-map" and "coverage-run" modes.
-///
-/// Used by:
-/// - `x test coverage`
-/// - `x test tests/coverage`
-/// - `x test tests/coverage/trivial.rs` (etc)
-///
-/// (Each individual mode also has its own step that will run the tests in
-/// just that mode.)
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+/// Runs the coverage test suite at `tests/coverage` in some or all of the
+/// coverage test modes.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Coverage {
     pub compiler: Compiler,
     pub target: TargetSelection,
+    pub mode: &'static str,
 }
 
 impl Coverage {
     const PATH: &'static str = "tests/coverage";
     const SUITE: &'static str = "coverage";
+    const ALL_MODES: &[&str] = &["coverage-map", "coverage-run"];
+}
 
-    /// Runs the coverage test suite (or a user-specified subset) in one mode.
-    ///
-    /// This same function is used by the multi-mode step ([`Coverage`]) and by
-    /// the single-mode steps ([`CoverageMap`] and [`CoverageRun`]), to help
-    /// ensure that they all behave consistently with each other, regardless of
-    /// how the coverage tests have been invoked.
-    fn run_coverage_tests(
-        builder: &Builder<'_>,
-        compiler: Compiler,
-        target: TargetSelection,
-        mode: &'static str,
-    ) {
-        // Like many other test steps, we delegate to a `Compiletest` step to
-        // actually run the tests. (See `test_definitions!`.)
+impl Step for Coverage {
+    type Output = ();
+    const DEFAULT: bool = true;
+    /// Compiletest will automatically skip the "coverage-run" tests if necessary.
+    const ONLY_HOSTS: bool = false;
+
+    fn should_run(mut run: ShouldRun<'_>) -> ShouldRun<'_> {
+        // Support various invocation styles, including:
+        // - `./x test coverage`
+        // - `./x test tests/coverage/trivial.rs`
+        // - `./x test coverage-map`
+        // - `./x test coverage-run -- tests/coverage/trivial.rs`
+        run = run.suite_path(Self::PATH);
+        for mode in Self::ALL_MODES {
+            run = run.alias(mode);
+        }
+        run
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
+        let target = run.target;
+
+        // List of (coverage) test modes that the coverage test suite will be
+        // run in. It's OK for this to contain duplicates, because the call to
+        // `Builder::ensure` below will take care of deduplication.
+        let mut modes = vec![];
+
+        // From the pathsets that were selected on the command-line (or by default),
+        // determine which modes to run in.
+        for path in &run.paths {
+            match path {
+                PathSet::Set(_) => {
+                    for mode in Self::ALL_MODES {
+                        if path.assert_single_path().path == Path::new(mode) {
+                            modes.push(mode);
+                            break;
+                        }
+                    }
+                }
+                PathSet::Suite(_) => {
+                    modes.extend(Self::ALL_MODES);
+                    break;
+                }
+            }
+        }
+
+        // Skip any modes that were explicitly skipped/excluded on the command-line.
+        // FIXME(Zalathar): Integrate this into central skip handling somehow?
+        modes.retain(|mode| !run.builder.config.skip.iter().any(|skip| skip == Path::new(mode)));
+
+        // FIXME(Zalathar): Make these commands skip all coverage tests, as expected:
+        // - `./x test --skip=tests`
+        // - `./x test --skip=tests/coverage`
+        // - `./x test --skip=coverage`
+        // Skip handling currently doesn't have a way to know that skipping the coverage
+        // suite should also skip the `coverage-map` and `coverage-run` aliases.
+
+        for mode in modes {
+            run.builder.ensure(Coverage { compiler, target, mode });
+        }
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let Self { compiler, target, mode } = self;
+        // Like other compiletest suite test steps, delegate to an internal
+        // compiletest task to actually run the tests.
         builder.ensure(Compiletest {
             compiler,
             target,
@@ -1526,53 +1519,12 @@ impl Coverage {
     }
 }
 
-impl Step for Coverage {
-    type Output = ();
-    /// We rely on the individual CoverageMap/CoverageRun steps to run themselves.
-    const DEFAULT: bool = false;
-    /// When manually invoked, try to run as much as possible.
-    /// Compiletest will automatically skip the "coverage-run" tests if necessary.
-    const ONLY_HOSTS: bool = false;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        // Take responsibility for command-line paths within `tests/coverage`.
-        run.suite_path(Self::PATH)
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
-
-        run.builder.ensure(Coverage { compiler, target: run.target });
-    }
-
-    fn run(self, builder: &Builder<'_>) {
-        // Run the specified coverage tests (possibly all of them) in both modes.
-        Self::run_coverage_tests(builder, self.compiler, self.target, CoverageMap::MODE);
-        Self::run_coverage_tests(builder, self.compiler, self.target, CoverageRun::MODE);
-    }
-}
-
-// Runs `tests/coverage` in "coverage-map" mode only.
-// Used by `x test` and `x test coverage-map`.
-coverage_test_alias!(CoverageMap {
-    alias_and_mode: "coverage-map",
-    default: true,
-    only_hosts: false,
-});
-// Runs `tests/coverage` in "coverage-run" mode only.
-// Used by `x test` and `x test coverage-run`.
-coverage_test_alias!(CoverageRun {
-    alias_and_mode: "coverage-run",
-    default: true,
-    // Compiletest knows how to automatically skip these tests when cross-compiling,
-    // but skipping the whole step here makes it clearer that they haven't run at all.
-    only_hosts: true,
-});
-
-host_test!(CoverageRunRustdoc {
+test!(CoverageRunRustdoc {
     path: "tests/coverage-run-rustdoc",
     mode: "coverage-run",
-    suite: "coverage-run-rustdoc"
+    suite: "coverage-run-rustdoc",
+    default: true,
+    only_hosts: true,
 });
 
 // For the mir-opt suite we do not use macros, as we need custom behavior when blessing.
@@ -1718,7 +1670,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
         // ensure that `libproc_macro` is available on the host.
         if suite == "mir-opt" {
-            builder.ensure(compile::Std::new_for_mir_opt_tests(compiler, compiler.host));
+            builder.ensure(compile::Std::new(compiler, compiler.host).is_for_mir_opt_tests(true));
         } else {
             builder.ensure(compile::Std::new(compiler, compiler.host));
         }
@@ -1731,7 +1683,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         let mut cmd = builder.tool_cmd(Tool::Compiletest);
 
         if suite == "mir-opt" {
-            builder.ensure(compile::Std::new_for_mir_opt_tests(compiler, target));
+            builder.ensure(compile::Std::new(compiler, target).is_for_mir_opt_tests(true));
         } else {
             builder.ensure(compile::Std::new(compiler, target));
         }
@@ -1829,6 +1781,10 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             cmd.arg("--force-rerun");
         }
 
+        if builder.config.cmd.no_capture() {
+            cmd.arg("--no-capture");
+        }
+
         let compare_mode =
             builder.config.cmd.compare_mode().or_else(|| {
                 if builder.config.test_compare_mode { self.compare_mode } else { None }
@@ -1887,7 +1843,6 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
         let mut targetflags = flags;
         targetflags.push(format!("-Lnative={}", builder.test_helpers_out(target).display()));
-        targetflags.extend(linker_flags(builder, compiler.host, LldThreads::No));
         for flag in targetflags {
             cmd.arg("--target-rustcflags").arg(flag);
         }
@@ -2512,35 +2467,6 @@ fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> 
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RustcGuide;
-
-impl Step for RustcGuide {
-    type Output = ();
-    const DEFAULT: bool = false;
-    const ONLY_HOSTS: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/doc/rustc-dev-guide")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(RustcGuide);
-    }
-
-    fn run(self, builder: &Builder<'_>) {
-        let relative_path = "src/doc/rustc-dev-guide";
-        builder.require_submodule(relative_path, None);
-
-        let src = builder.src.join(relative_path);
-        let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook).delay_failure();
-        rustbook_cmd.arg("linkcheck").arg(&src);
-        let toolstate =
-            if rustbook_cmd.run(builder) { ToolState::TestPass } else { ToolState::TestFail };
-        builder.save_toolstate("rustc-dev-guide", toolstate);
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CrateLibrustc {
     compiler: Compiler,
     target: TargetSelection,
@@ -2623,7 +2549,7 @@ fn prepare_cargo_test(
 ) -> BootstrapCommand {
     let mut cargo = cargo.into();
 
-    // Propegate `--bless` if it has not already been set/unset
+    // Propagate `--bless` if it has not already been set/unset
     // Any tools that want to use this should bless if `RUSTC_BLESS` is set to
     // anything other than `0`.
     if builder.config.cmd.bless() && !cargo.get_envs().any(|v| v.0 == "RUSTC_BLESS") {
@@ -2737,7 +2663,7 @@ impl Step for Crate {
 
         // Prepare sysroot
         // See [field@compile::Std::force_recompile].
-        builder.ensure(compile::Std::force_recompile(compiler, compiler.host));
+        builder.ensure(compile::Std::new(compiler, compiler.host).force_recompile(true));
 
         // If we're not doing a full bootstrap but we're testing a stage2
         // version of libstd, then what we're actually testing is the libstd
@@ -2781,7 +2707,7 @@ impl Step for Crate {
         } else {
             // Also prepare a sysroot for the target.
             if builder.config.build != target {
-                builder.ensure(compile::Std::force_recompile(compiler, target));
+                builder.ensure(compile::Std::new(compiler, target).force_recompile(true));
                 builder.ensure(RemoteCopyLibs { compiler, target });
             }
 
@@ -3148,9 +3074,8 @@ impl Step for Bootstrap {
 
         let mut cmd = command(&builder.initial_cargo);
         cmd.arg("test")
-            .args(["--features", "bootstrap-self-test"])
             .current_dir(builder.src.join("src/bootstrap"))
-            .env("RUSTFLAGS", "-Cdebuginfo=2")
+            .env("RUSTFLAGS", "--cfg test -Cdebuginfo=2")
             .env("CARGO_TARGET_DIR", builder.out.join("bootstrap"))
             .env("RUSTC_BOOTSTRAP", "1")
             .env("RUSTDOC", builder.rustdoc(compiler))
@@ -3557,10 +3482,10 @@ impl Step for CodegenGCC {
         let compiler = self.compiler;
         let target = self.target;
 
-        builder.ensure(compile::Std::new_with_extra_rust_args(compiler, target, &[
-            "-Csymbol-mangling-version=v0",
-            "-Cpanic=abort",
-        ]));
+        builder.ensure(
+            compile::Std::new(compiler, target)
+                .extra_rust_args(&["-Csymbol-mangling-version=v0", "-Cpanic=abort"]),
+        );
 
         // If we're not doing a full bootstrap but we're testing a stage2
         // version of libstd, then what we're actually testing is the libstd

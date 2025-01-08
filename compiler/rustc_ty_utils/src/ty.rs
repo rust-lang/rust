@@ -37,6 +37,8 @@ fn sized_constraint_for_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'
         | Never
         | Dynamic(_, _, ty::DynStar) => None,
 
+        UnsafeBinder(_) => todo!(),
+
         // these are never sized
         Str | Slice(..) | Dynamic(_, _, ty::Dyn) | Foreign(..) => Some(ty),
 

@@ -34,6 +34,7 @@ windows_targets::link!("kernel32.dll" "system" fn FreeEnvironmentStringsW(penv :
 windows_targets::link!("kernel32.dll" "system" fn GetActiveProcessorCount(groupnumber : u16) -> u32);
 windows_targets::link!("kernel32.dll" "system" fn GetCommandLineW() -> PCWSTR);
 windows_targets::link!("kernel32.dll" "system" fn GetConsoleMode(hconsolehandle : HANDLE, lpmode : *mut CONSOLE_MODE) -> BOOL);
+windows_targets::link!("kernel32.dll" "system" fn GetConsoleOutputCP() -> u32);
 windows_targets::link!("kernel32.dll" "system" fn GetCurrentDirectoryW(nbufferlength : u32, lpbuffer : PWSTR) -> u32);
 windows_targets::link!("kernel32.dll" "system" fn GetCurrentProcess() -> HANDLE);
 windows_targets::link!("kernel32.dll" "system" fn GetCurrentProcessId() -> u32);
@@ -2472,6 +2473,22 @@ pub const FILE_RANDOM_ACCESS: NTCREATEFILE_CREATE_OPTIONS = 2048u32;
 pub const FILE_READ_ATTRIBUTES: FILE_ACCESS_RIGHTS = 128u32;
 pub const FILE_READ_DATA: FILE_ACCESS_RIGHTS = 1u32;
 pub const FILE_READ_EA: FILE_ACCESS_RIGHTS = 8u32;
+pub const FILE_RENAME_FLAG_POSIX_SEMANTICS: u32 = 2u32;
+pub const FILE_RENAME_FLAG_REPLACE_IF_EXISTS: u32 = 1u32;
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct FILE_RENAME_INFO {
+    pub Anonymous: FILE_RENAME_INFO_0,
+    pub RootDirectory: HANDLE,
+    pub FileNameLength: u32,
+    pub FileName: [u16; 1],
+}
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub union FILE_RENAME_INFO_0 {
+    pub ReplaceIfExists: BOOLEAN,
+    pub Flags: u32,
+}
 pub const FILE_RESERVE_OPFILTER: NTCREATEFILE_CREATE_OPTIONS = 1048576u32;
 pub const FILE_SEQUENTIAL_ONLY: NTCREATEFILE_CREATE_OPTIONS = 4u32;
 pub const FILE_SESSION_AWARE: NTCREATEFILE_CREATE_OPTIONS = 262144u32;
@@ -3317,6 +3334,7 @@ pub struct XSAVE_FORMAT {
     pub XmmRegisters: [M128A; 8],
     pub Reserved4: [u8; 224],
 }
+
 #[cfg(target_arch = "arm")]
 #[repr(C)]
 pub struct WSADATA {

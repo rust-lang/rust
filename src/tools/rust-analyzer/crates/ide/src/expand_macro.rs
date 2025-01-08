@@ -253,6 +253,7 @@ fn _format(
     let &crate_id = db.relevant_crates(file_id).iter().next()?;
     let edition = db.crate_graph()[crate_id].edition;
 
+    #[allow(clippy::disallowed_methods)]
     let mut cmd = std::process::Command::new(toolchain::Tool::Rustfmt.path());
     cmd.arg("--edition");
     cmd.arg(edition.to_string());
@@ -573,7 +574,7 @@ struct Foo {}
 "#,
             expect![[r#"
                 Clone
-                impl < >core::clone::Clone for Foo< >where {
+                impl <>core::clone::Clone for Foo< >where {
                     fn clone(&self) -> Self {
                         match self {
                             Foo{}
@@ -599,7 +600,7 @@ struct Foo {}
 "#,
             expect![[r#"
                 Copy
-                impl < >core::marker::Copy for Foo< >where{}"#]],
+                impl <>core::marker::Copy for Foo< >where{}"#]],
         );
     }
 
@@ -614,7 +615,7 @@ struct Foo {}
 "#,
             expect![[r#"
                 Copy
-                impl < >core::marker::Copy for Foo< >where{}"#]],
+                impl <>core::marker::Copy for Foo< >where{}"#]],
         );
         check(
             r#"
@@ -625,7 +626,7 @@ struct Foo {}
 "#,
             expect![[r#"
                 Clone
-                impl < >core::clone::Clone for Foo< >where {
+                impl <>core::clone::Clone for Foo< >where {
                     fn clone(&self) -> Self {
                         match self {
                             Foo{}

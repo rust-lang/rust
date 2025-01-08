@@ -1,8 +1,8 @@
 use std::ptr;
 
-//@ normalize-stderr-test: "0xf+" -> "0xf..f"
-//@ normalize-stderr-test: "0x7f+" -> "0x7f..f"
-//@ normalize-stderr-test: "\d+ bytes" -> "$$BYTES bytes"
+//@ normalize-stderr: "0xf+" -> "0xf..f"
+//@ normalize-stderr: "0x7f+" -> "0x7f..f"
+//@ normalize-stderr: "\d+ bytes" -> "$$BYTES bytes"
 
 
 pub const BEFORE_START: *const u8 = unsafe { (&0u8 as *const u8).offset(-1) }; //~NOTE

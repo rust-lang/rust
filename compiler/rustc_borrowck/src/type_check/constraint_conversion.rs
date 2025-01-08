@@ -77,17 +77,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     pub(super) fn convert_all(&mut self, query_constraints: &QueryRegionConstraints<'tcx>) {
-        let QueryRegionConstraints { outlives, member_constraints } = query_constraints;
-
-        // Annoying: to invoke `self.to_region_vid`, we need access to
-        // `self.constraints`, but we also want to be mutating
-        // `self.member_constraints`. For now, just swap out the value
-        // we want and replace at the end.
-        let mut tmp = std::mem::take(&mut self.constraints.member_constraints);
-        for member_constraint in member_constraints {
-            tmp.push_constraint(member_constraint, |r| self.to_region_vid(r));
-        }
-        self.constraints.member_constraints = tmp;
+        let QueryRegionConstraints { outlives } = query_constraints;
 
         for &(predicate, constraint_category) in outlives {
             self.convert(predicate, constraint_category);
@@ -295,13 +285,8 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
 
         match result {
             Ok(TypeOpOutput { output: ty, constraints, .. }) => {
-                if let Some(constraints) = constraints {
-                    assert!(
-                        constraints.member_constraints.is_empty(),
-                        "no member constraints expected from normalizing: {:#?}",
-                        constraints.member_constraints
-                    );
-                    next_outlives_predicates.extend(constraints.outlives.iter().copied());
+                if let Some(QueryRegionConstraints { outlives }) = constraints {
+                    next_outlives_predicates.extend(outlives.iter().copied());
                 }
                 ty
             }

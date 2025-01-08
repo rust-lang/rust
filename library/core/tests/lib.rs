@@ -15,9 +15,10 @@
 #![feature(clone_to_uninit)]
 #![feature(const_black_box)]
 #![feature(const_eval_select)]
-#![feature(const_swap)]
+#![feature(const_swap_nonoverlapping)]
 #![feature(const_trait_impl)]
 #![feature(core_intrinsics)]
+#![feature(core_intrinsics_fallbacks)]
 #![feature(core_io_borrowed_buf)]
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
@@ -97,10 +98,13 @@
 
 /// Version of `assert_matches` that ignores fancy runtime printing in const context and uses structural equality.
 macro_rules! assert_eq_const_safe {
+    ($left:expr, $right:expr) => {
+        assert_eq_const_safe!($left, $right, concat!(stringify!($left), " == ", stringify!($right)));
+    };
     ($left:expr, $right:expr$(, $($arg:tt)+)?) => {
         {
             fn runtime() {
-                assert_eq!($left, $right, $($arg)*);
+                assert_eq!($left, $right, $($($arg)*),*);
             }
             const fn compiletime() {
                 assert!(matches!($left, const { $right }));

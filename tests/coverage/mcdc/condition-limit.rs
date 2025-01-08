@@ -1,3 +1,4 @@
+#![feature(coverage_attribute)]
 //@ edition: 2021
 //@ min-llvm-version: 19
 //@ compile-flags: -Zcoverage-options=mcdc

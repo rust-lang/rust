@@ -1,6 +1,5 @@
 // ignore-tidy-linelength
-//@ normalize-stderr-32bit: "values of the type `[^`]+` are too big" -> "values of the type $$REALLY_TOO_BIG are too big"
-//@ normalize-stderr-64bit: "values of the type `[^`]+` are too big" -> "values of the type $$REALLY_TOO_BIG are too big"
+//@ normalize-stderr: "values of the type `[^`]+` are too big" -> "values of the type $$REALLY_TOO_BIG are too big"
 
 
 #![feature(transmute_generic_consts)]

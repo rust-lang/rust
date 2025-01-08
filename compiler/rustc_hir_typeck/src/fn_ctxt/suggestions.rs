@@ -981,14 +981,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let hir::Node::Item(hir::Item {
             kind:
-                hir::ItemKind::Fn(
-                    hir::FnSig {
-                        decl: hir::FnDecl { inputs: fn_parameters, output: fn_return, .. },
-                        ..
-                    },
-                    hir::Generics { params, predicates, .. },
-                    _body_id,
-                ),
+                hir::ItemKind::Fn {
+                    sig:
+                        hir::FnSig {
+                            decl: hir::FnDecl { inputs: fn_parameters, output: fn_return, .. },
+                            ..
+                        },
+                    generics: hir::Generics { params, predicates, .. },
+                    ..
+                },
             ..
         }) = fn_node
         else {

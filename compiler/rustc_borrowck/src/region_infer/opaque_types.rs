@@ -134,12 +134,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // the hidden type becomes the opaque type itself. In this case, this was an opaque
             // usage of the opaque type and we can ignore it. This check is mirrored in typeck's
             // writeback.
-            // FIXME(-Znext-solver): This should be unnecessary with the new solver.
-            if let ty::Alias(ty::Opaque, alias_ty) = ty.kind()
-                && alias_ty.def_id == opaque_type_key.def_id.to_def_id()
-                && alias_ty.args == opaque_type_key.args
-            {
-                continue;
+            if !infcx.next_trait_solver() {
+                if let ty::Alias(ty::Opaque, alias_ty) = ty.kind()
+                    && alias_ty.def_id == opaque_type_key.def_id.to_def_id()
+                    && alias_ty.args == opaque_type_key.args
+                {
+                    continue;
+                }
             }
             // Sometimes two opaque types are the same only after we remap the generic parameters
             // back to the opaque type definition. E.g. we may have `OpaqueType<X, Y>` mapped to

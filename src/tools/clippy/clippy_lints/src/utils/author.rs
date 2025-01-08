@@ -3,8 +3,8 @@ use rustc_ast::LitIntType;
 use rustc_ast::ast::{LitFloatType, LitKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{
-    self as hir, BindingMode, CaptureBy, Closure, ClosureKind, ConstArg, ConstArgKind, CoroutineKind,
-    ExprKind, FnRetTy, HirId, Lit, PatKind, QPath, StmtKind, TyKind, StructTailExpr,
+    self as hir, BindingMode, CaptureBy, Closure, ClosureKind, ConstArg, ConstArgKind, CoroutineKind, ExprKind,
+    FnRetTy, HirId, Lit, PatKind, QPath, StmtKind, StructTailExpr, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::declare_lint_pass;
@@ -625,7 +625,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             },
             ExprKind::UnsafeBinderCast(..) => {
                 unimplemented!("unsafe binders are not implemented yet");
-            }
+            },
         }
     }
 
@@ -712,6 +712,12 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 kind!("Ref({pat}, Mutability::{muta:?})");
                 self.pat(pat);
             },
+            PatKind::Guard(pat, cond) => {
+                bind!(self, pat, cond);
+                kind!("Guard({pat}, {cond})");
+                self.pat(pat);
+                self.expr(cond);
+            }
             PatKind::Lit(lit_expr) => {
                 bind!(self, lit_expr);
                 kind!("Lit({lit_expr})");

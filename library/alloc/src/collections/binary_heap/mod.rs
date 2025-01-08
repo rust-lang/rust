@@ -531,8 +531,7 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
     /// heap.push(1);
     /// heap.push(5);
     /// heap.push(2);
-    /// {
-    ///     let mut val = heap.peek_mut().unwrap();
+    /// if let Some(mut val) = heap.peek_mut() {
     ///     *val = 0;
     /// }
     /// assert_eq!(heap.peek(), Some(&2));

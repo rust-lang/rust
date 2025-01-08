@@ -172,6 +172,9 @@ pub(crate) struct Options {
     /// This is mainly useful for other tools that reads that debuginfo to figure out
     /// how to call the compiler with the same arguments.
     pub(crate) expanded_args: Vec<String>,
+
+    /// Arguments to be used when compiling doctests.
+    pub(crate) doctest_compilation_args: Vec<String>,
 }
 
 impl fmt::Debug for Options {
@@ -774,6 +777,7 @@ impl Options {
         let scrape_examples_options = ScrapeExamplesOptions::new(matches, dcx);
         let with_examples = matches.opt_strs("with-examples");
         let call_locations = crate::scrape_examples::load_call_locations(with_examples, dcx);
+        let doctest_compilation_args = matches.opt_strs("doctest-compilation-args");
 
         let unstable_features =
             rustc_feature::UnstableFeatures::from_environment(crate_name.as_deref());
@@ -819,6 +823,7 @@ impl Options {
             scrape_examples_options,
             unstable_features,
             expanded_args: args,
+            doctest_compilation_args,
         };
         let render_options = RenderOptions {
             output,

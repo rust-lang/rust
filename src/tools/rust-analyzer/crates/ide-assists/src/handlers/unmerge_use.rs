@@ -66,7 +66,7 @@ fn resolve_full_path(tree: &ast::UseTree) -> Option<ast::Path> {
         .filter_map(|t| t.path());
 
     let final_path = paths.reduce(|prev, next| make::path_concat(next, prev))?;
-    if final_path.segment().map_or(false, |it| it.self_token().is_some()) {
+    if final_path.segment().is_some_and(|it| it.self_token().is_some()) {
         final_path.qualifier()
     } else {
         Some(final_path)

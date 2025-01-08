@@ -1,17 +1,18 @@
 //! utils used in proc-macro tests
 
 use expect_test::Expect;
-use proc_macro_api::msg::TokenId;
-use span::{EditionedFileId, ErasedFileAstId, FileId, Span, SpanAnchor, SyntaxContextId};
+use span::{EditionedFileId, ErasedFileAstId, FileId, Span, SpanAnchor, SyntaxContextId, TokenId};
 use tt::TextRange;
 
 use crate::{dylib, proc_macro_test_dylib_path, EnvSnapshot, ProcMacroSrv};
 
 fn parse_string(call_site: TokenId, src: &str) -> crate::server_impl::TokenStream<TokenId> {
-    crate::server_impl::TokenStream::with_subtree(
+    crate::server_impl::TokenStream::with_subtree(crate::server_impl::TopSubtree(
         syntax_bridge::parse_to_token_tree_static_span(span::Edition::CURRENT, call_site, src)
-            .unwrap(),
-    )
+            .unwrap()
+            .0
+            .into_vec(),
+    ))
 }
 
 fn parse_string_spanned(
@@ -19,9 +20,12 @@ fn parse_string_spanned(
     call_site: SyntaxContextId,
     src: &str,
 ) -> crate::server_impl::TokenStream<Span> {
-    crate::server_impl::TokenStream::with_subtree(
-        syntax_bridge::parse_to_token_tree(span::Edition::CURRENT, anchor, call_site, src).unwrap(),
-    )
+    crate::server_impl::TokenStream::with_subtree(crate::server_impl::TopSubtree(
+        syntax_bridge::parse_to_token_tree(span::Edition::CURRENT, anchor, call_site, src)
+            .unwrap()
+            .0
+            .into_vec(),
+    ))
 }
 
 pub fn assert_expand(macro_name: &str, ra_fixture: &str, expect: Expect, expect_s: Expect) {

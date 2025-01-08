@@ -17,7 +17,6 @@ pub use relate::StructurallyRelateAliases;
 pub use relate::combine::PredicateEmittingRelation;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::{Rollback, UndoLogs};
 use rustc_data_structures::unify as ut;
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed};
@@ -685,26 +684,6 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner.borrow_mut().unwrap_region_constraints().make_subregion(origin, a, b);
     }
 
-    /// Require that the region `r` be equal to one of the regions in
-    /// the set `regions`.
-    #[instrument(skip(self), level = "debug")]
-    pub fn add_member_constraint(
-        &self,
-        key: ty::OpaqueTypeKey<'tcx>,
-        definition_span: Span,
-        hidden_ty: Ty<'tcx>,
-        region: ty::Region<'tcx>,
-        in_regions: Lrc<Vec<ty::Region<'tcx>>>,
-    ) {
-        self.inner.borrow_mut().unwrap_region_constraints().add_member_constraint(
-            key,
-            definition_span,
-            hidden_ty,
-            region,
-            in_regions,
-        );
-    }
-
     /// Processes a `Coerce` predicate from the fulfillment context.
     /// This is NOT the preferred way to handle coercion, which is to
     /// invoke `FnCtxt::coerce` or a similar method (see `coercion.rs`).
@@ -966,7 +945,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
     /// Clone the list of variable regions. This is used only during NLL processing
     /// to put the set of region variables into the NLL region context.
-    pub fn get_region_var_origins(&self) -> VarInfos {
+    pub fn get_region_var_infos(&self) -> VarInfos {
         let inner = self.inner.borrow();
         assert!(!UndoLogs::<UndoLog<'_>>::in_snapshot(&inner.undo_log));
         let storage = inner.region_constraint_storage.as_ref().expect("regions already resolved");

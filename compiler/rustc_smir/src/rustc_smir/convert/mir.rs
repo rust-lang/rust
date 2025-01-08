@@ -181,7 +181,6 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
             RawPtr(mutability, place) => {
                 stable_mir::mir::Rvalue::AddressOf(mutability.stable(tables), place.stable(tables))
             }
-            Len(place) => stable_mir::mir::Rvalue::Len(place.stable(tables)),
             Cast(cast_kind, op, ty) => stable_mir::mir::Rvalue::Cast(
                 cast_kind.stable(tables),
                 op.stable(tables),

@@ -206,7 +206,7 @@ impl InferenceContext<'_> {
                     path,
                     self.body.expr_path_hygiene(expr),
                 )
-                .map_or(true, |res| matches!(res, ValueNs::LocalBinding(_) | ValueNs::StaticId(_))),
+                .is_none_or(|res| matches!(res, ValueNs::LocalBinding(_) | ValueNs::StaticId(_))),
             Expr::Underscore => true,
             Expr::UnaryOp { op: UnaryOp::Deref, .. } => true,
             Expr::Field { .. } | Expr::Index { .. } => true,
@@ -499,7 +499,7 @@ impl InferenceContext<'_> {
                 // if the function is unresolved, we use is_varargs=true to
                 // suppress the arg count diagnostic here
                 let is_varargs =
-                    derefed_callee.callable_sig(self.db).map_or(false, |sig| sig.is_varargs)
+                    derefed_callee.callable_sig(self.db).is_some_and(|sig| sig.is_varargs)
                         || res.is_none();
                 let (param_tys, ret_ty) = match res {
                     Some((func, params, ret_ty)) => {
@@ -531,7 +531,7 @@ impl InferenceContext<'_> {
                         (params, ret_ty)
                     }
                     None => {
-                        self.result.diagnostics.push(InferenceDiagnostic::ExpectedFunction {
+                        self.push_diagnostic(InferenceDiagnostic::ExpectedFunction {
                             call_expr: tgt_expr,
                             found: callee_ty.clone(),
                         });
@@ -707,7 +707,7 @@ impl InferenceContext<'_> {
                 self.result.standard_types.never.clone()
             }
             Expr::RecordLit { path, fields, spread, .. } => {
-                let (ty, def_id) = self.resolve_variant(path.as_deref(), false);
+                let (ty, def_id) = self.resolve_variant(tgt_expr.into(), path.as_deref(), false);
 
                 if let Some(t) = expected.only_has_type(&mut self.table) {
                     self.unify(&ty, &t);
@@ -1816,9 +1816,10 @@ impl InferenceContext<'_> {
                 if !is_public {
                     if let Either::Left(field) = field_id {
                         // FIXME: Merge this diagnostic into UnresolvedField?
-                        self.result
-                            .diagnostics
-                            .push(InferenceDiagnostic::PrivateField { expr: tgt_expr, field });
+                        self.push_diagnostic(InferenceDiagnostic::PrivateField {
+                            expr: tgt_expr,
+                            field,
+                        });
                     }
                 }
                 ty
@@ -1835,7 +1836,7 @@ impl InferenceContext<'_> {
                     VisibleFromModule::Filter(self.resolver.module()),
                     name,
                 );
-                self.result.diagnostics.push(InferenceDiagnostic::UnresolvedField {
+                self.push_diagnostic(InferenceDiagnostic::UnresolvedField {
                     expr: tgt_expr,
                     receiver: receiver_ty.clone(),
                     name: name.clone(),
@@ -1927,7 +1928,7 @@ impl InferenceContext<'_> {
                     },
                 );
 
-                self.result.diagnostics.push(InferenceDiagnostic::UnresolvedMethodCall {
+                self.push_diagnostic(InferenceDiagnostic::UnresolvedMethodCall {
                     expr: tgt_expr,
                     receiver: receiver_ty.clone(),
                     name: method_name.clone(),
@@ -2042,7 +2043,7 @@ impl InferenceContext<'_> {
                     continue;
                 }
 
-                while skip_indices.peek().map_or(false, |i| *i < idx as u32) {
+                while skip_indices.peek().is_some_and(|i| *i < idx as u32) {
                     skip_indices.next();
                 }
                 if skip_indices.peek().copied() == Some(idx as u32) {

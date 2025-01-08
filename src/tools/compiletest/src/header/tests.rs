@@ -35,11 +35,14 @@ fn make_test_description<R: Read>(
 
 #[test]
 fn test_parse_normalize_rule() {
-    let good_data = &[(
-        r#"normalize-stderr-32bit: "something (32 bits)" -> "something ($WORD bits)""#,
-        "something (32 bits)",
-        "something ($WORD bits)",
-    )];
+    let good_data = &[
+        (
+            r#""something (32 bits)" -> "something ($WORD bits)""#,
+            "something (32 bits)",
+            "something ($WORD bits)",
+        ),
+        (r#"  " with whitespace"   ->   "    replacement""#, " with whitespace", "    replacement"),
+    ];
 
     for &(input, expected_regex, expected_replacement) in good_data {
         let parsed = parse_normalize_rule(input);
@@ -49,15 +52,15 @@ fn test_parse_normalize_rule() {
     }
 
     let bad_data = &[
-        r#"normalize-stderr-32bit "something (32 bits)" -> "something ($WORD bits)""#,
-        r#"normalize-stderr-16bit: something (16 bits) -> something ($WORD bits)"#,
-        r#"normalize-stderr-32bit: something (32 bits) -> something ($WORD bits)"#,
-        r#"normalize-stderr-32bit: "something (32 bits) -> something ($WORD bits)"#,
-        r#"normalize-stderr-32bit: "something (32 bits)" -> "something ($WORD bits)"#,
-        r#"normalize-stderr-32bit: "something (32 bits)" -> "something ($WORD bits)"."#,
+        r#"something (11 bits) -> something ($WORD bits)"#,
+        r#"something (12 bits) -> something ($WORD bits)"#,
+        r#""something (13 bits) -> something ($WORD bits)"#,
+        r#""something (14 bits)" -> "something ($WORD bits)"#,
+        r#""something (15 bits)" -> "something ($WORD bits)"."#,
     ];
 
     for &input in bad_data {
+        println!("- {input:?}");
         let parsed = parse_normalize_rule(input);
         assert_eq!(parsed, None);
     }
@@ -548,6 +551,59 @@ fn test_extract_version_range() {
 fn test_duplicate_revisions() {
     let config: Config = cfg().build();
     parse_rs(&config, "//@ revisions: rpass1 rpass1");
+}
+
+#[test]
+#[should_panic(
+    expected = "revision name `CHECK` is not permitted in a test suite that uses `FileCheck` annotations"
+)]
+fn test_assembly_mode_forbidden_revisions() {
+    let config = cfg().mode("assembly").build();
+    parse_rs(&config, "//@ revisions: CHECK");
+}
+
+#[test]
+#[should_panic(
+    expected = "revision name `CHECK` is not permitted in a test suite that uses `FileCheck` annotations"
+)]
+fn test_codegen_mode_forbidden_revisions() {
+    let config = cfg().mode("codegen").build();
+    parse_rs(&config, "//@ revisions: CHECK");
+}
+
+#[test]
+#[should_panic(
+    expected = "revision name `CHECK` is not permitted in a test suite that uses `FileCheck` annotations"
+)]
+fn test_miropt_mode_forbidden_revisions() {
+    let config = cfg().mode("mir-opt").build();
+    parse_rs(&config, "//@ revisions: CHECK");
+}
+
+#[test]
+fn test_forbidden_revisions_allowed_in_non_filecheck_dir() {
+    let revisions = ["CHECK", "COM", "NEXT", "SAME", "EMPTY", "NOT", "COUNT", "DAG", "LABEL"];
+    let modes = [
+        "pretty",
+        "debuginfo",
+        "rustdoc",
+        "rustdoc-json",
+        "codegen-units",
+        "incremental",
+        "ui",
+        "js-doc-test",
+        "coverage-map",
+        "coverage-run",
+        "crashes",
+    ];
+
+    for rev in revisions {
+        let content = format!("//@ revisions: {rev}");
+        for mode in modes {
+            let config = cfg().mode(mode).build();
+            parse_rs(&config, &content);
+        }
+    }
 }
 
 #[test]

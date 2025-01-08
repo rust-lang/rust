@@ -361,6 +361,7 @@ define_symbols! {
     partial_ord,
     PartialEq,
     PartialOrd,
+    CoercePointee,
     path,
     Pending,
     phantom_data,

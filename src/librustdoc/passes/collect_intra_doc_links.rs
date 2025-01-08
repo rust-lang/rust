@@ -559,6 +559,7 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
             | ty::Dynamic(..)
+            | ty::UnsafeBinder(_)
             | ty::Param(_)
             | ty::Bound(..)
             | ty::Placeholder(_)
@@ -1976,7 +1977,7 @@ fn resolution_failure(
                         }
 
                         if !path_str.contains("::") {
-                            if disambiguator.map_or(true, |d| d.ns() == MacroNS)
+                            if disambiguator.is_none_or(|d| d.ns() == MacroNS)
                                 && collector
                                     .cx
                                     .tcx

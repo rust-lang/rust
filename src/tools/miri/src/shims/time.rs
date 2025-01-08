@@ -180,6 +180,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if !matches!(&*this.tcx.sess.target.os, "solaris" | "illumos") {
             // tm_zone represents the timezone value in the form of: +0730, +08, -0730 or -08.
             // This may not be consistent with libc::localtime_r's result.
+
             let offset_in_seconds = dt.offset().fix().local_minus_utc();
             let tm_gmtoff = offset_in_seconds;
             let mut tm_zone = String::new();
@@ -195,11 +196,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 write!(tm_zone, "{:02}", offset_min).unwrap();
             }
 
-            // FIXME: String de-duplication is needed so that we only allocate this string only once
-            // even when there are multiple calls to this function.
-            let tm_zone_ptr = this
-                .alloc_os_str_as_c_str(&OsString::from(tm_zone), MiriMemoryKind::Machine.into())?;
+            // Add null terminator for C string compatibility.
+            tm_zone.push('\0');
 
+            // Deduplicate and allocate the string.
+            let tm_zone_ptr = this.allocate_bytes_dedup(tm_zone.as_bytes())?;
+
+            // Write the timezone pointer and offset into the result structure.
             this.write_pointer(tm_zone_ptr, &this.project_field_named(&result, "tm_zone")?)?;
             this.write_int_fields_named(&[("tm_gmtoff", tm_gmtoff.into())], &result)?;
         }

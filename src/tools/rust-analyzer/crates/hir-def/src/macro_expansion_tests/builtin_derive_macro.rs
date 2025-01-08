@@ -2,7 +2,7 @@
 
 use expect_test::expect;
 
-use crate::macro_expansion_tests::check;
+use crate::macro_expansion_tests::{check, check_errors};
 
 #[test]
 fn test_copy_expand_simple() {
@@ -16,7 +16,7 @@ struct Foo;
 #[derive(Copy)]
 struct Foo;
 
-impl < > $crate::marker::Copy for Foo< > where {}"#]],
+impl <> $crate::marker::Copy for Foo< > where {}"#]],
     );
 }
 
@@ -40,7 +40,7 @@ macro Copy {}
 #[derive(Copy)]
 struct Foo;
 
-impl < > $crate::marker::Copy for Foo< > where {}"#]],
+impl <> $crate::marker::Copy for Foo< > where {}"#]],
     );
 }
 
@@ -225,14 +225,14 @@ enum Bar {
     Bar,
 }
 
-impl < > $crate::default::Default for Foo< > where {
+impl <> $crate::default::Default for Foo< > where {
     fn default() -> Self {
         Foo {
             field1: $crate::default::Default::default(), field2: $crate::default::Default::default(),
         }
     }
 }
-impl < > $crate::default::Default for Bar< > where {
+impl <> $crate::default::Default for Bar< > where {
     fn default() -> Self {
         Bar::Bar
     }
@@ -260,7 +260,7 @@ enum Command {
     Jump,
 }
 
-impl < > $crate::cmp::PartialEq for Command< > where {
+impl <> $crate::cmp::PartialEq for Command< > where {
     fn eq(&self , other: &Self ) -> bool {
         match (self , other) {
             (Command::Move {
@@ -273,7 +273,7 @@ impl < > $crate::cmp::PartialEq for Command< > where {
         }
     }
 }
-impl < > $crate::cmp::Eq for Command< > where {}"#]],
+impl <> $crate::cmp::Eq for Command< > where {}"#]],
     );
 }
 
@@ -298,7 +298,7 @@ enum Command {
     Jump,
 }
 
-impl < > $crate::cmp::PartialEq for Command< > where {
+impl <> $crate::cmp::PartialEq for Command< > where {
     fn eq(&self , other: &Self ) -> bool {
         match (self , other) {
             (Command::Move {
@@ -311,7 +311,7 @@ impl < > $crate::cmp::PartialEq for Command< > where {
         }
     }
 }
-impl < > $crate::cmp::Eq for Command< > where {}"#]],
+impl <> $crate::cmp::Eq for Command< > where {}"#]],
     );
 }
 
@@ -335,7 +335,7 @@ enum Command {
     Jump,
 }
 
-impl < > $crate::cmp::PartialOrd for Command< > where {
+impl <> $crate::cmp::PartialOrd for Command< > where {
     fn partial_cmp(&self , other: &Self ) -> $crate::option::Option::Option<$crate::cmp::Ordering> {
         match $crate::intrinsics::discriminant_value(self ).partial_cmp(&$crate::intrinsics::discriminant_value(other)) {
             $crate::option::Option::Some($crate::cmp::Ordering::Equal)=> {
@@ -370,7 +370,7 @@ impl < > $crate::cmp::PartialOrd for Command< > where {
         }
     }
 }
-impl < > $crate::cmp::Ord for Command< > where {
+impl <> $crate::cmp::Ord for Command< > where {
     fn cmp(&self , other: &Self ) -> $crate::cmp::Ordering {
         match $crate::intrinsics::discriminant_value(self ).cmp(&$crate::intrinsics::discriminant_value(other)) {
             $crate::cmp::Ordering::Equal=> {
@@ -432,7 +432,7 @@ struct Foo {
     z: (i32, u64),
 }
 
-impl < > $crate::hash::Hash for Foo< > where {
+impl <> $crate::hash::Hash for Foo< > where {
     fn hash<H: $crate::hash::Hasher>(&self , ra_expand_state: &mut H) {
         match self {
             Foo {
@@ -470,7 +470,7 @@ enum Command {
     Jump,
 }
 
-impl < > $crate::hash::Hash for Command< > where {
+impl <> $crate::hash::Hash for Command< > where {
     fn hash<H: $crate::hash::Hasher>(&self , ra_expand_state: &mut H) {
         $crate::mem::discriminant(self ).hash(ra_expand_state);
         match self {
@@ -516,7 +516,7 @@ enum Command {
     Jump,
 }
 
-impl < > $crate::fmt::Debug for Command< > where {
+impl <> $crate::fmt::Debug for Command< > where {
     fn fmt(&self , f: &mut $crate::fmt::Formatter) -> $crate::fmt::Result {
         match self {
             Command::Move {
@@ -578,7 +578,7 @@ enum HideAndShowEnum {
     }
 }
 
-impl < > $crate::fmt::Debug for HideAndShow< > where {
+impl <> $crate::fmt::Debug for HideAndShow< > where {
     fn fmt(&self , f: &mut $crate::fmt::Formatter) -> $crate::fmt::Result {
         match self {
             HideAndShow {
@@ -588,7 +588,7 @@ impl < > $crate::fmt::Debug for HideAndShow< > where {
         }
     }
 }
-impl < > $crate::fmt::Debug for HideAndShowEnum< > where {
+impl <> $crate::fmt::Debug for HideAndShowEnum< > where {
     fn fmt(&self , f: &mut $crate::fmt::Formatter) -> $crate::fmt::Result {
         match self {
             HideAndShowEnum::AlwaysShow {
@@ -640,17 +640,109 @@ enum Bar {
     Bar,
 }
 
-impl < > $crate::default::Default for Foo< > where {
+impl <> $crate::default::Default for Foo< > where {
     fn default() -> Self {
         Foo {
             field1: $crate::default::Default::default(), field4: $crate::default::Default::default(),
         }
     }
 }
-impl < > $crate::default::Default for Bar< > where {
+impl <> $crate::default::Default for Bar< > where {
     fn default() -> Self {
         Bar::Bar
     }
 }"##]],
+    );
+}
+
+#[test]
+fn coerce_pointee_expansion() {
+    check(
+        r#"
+//- minicore: coerce_pointee
+
+use core::marker::CoercePointee;
+
+pub trait Trait<T: ?Sized> {}
+
+#[derive(CoercePointee)]
+#[repr(transparent)]
+pub struct Foo<'a, T: ?Sized + Trait<U>, #[pointee] U: ?Sized, const N: u32>(T)
+where
+    U: Trait<U> + ToString;"#,
+        expect![[r#"
+
+use core::marker::CoercePointee;
+
+pub trait Trait<T: ?Sized> {}
+
+#[derive(CoercePointee)]
+#[repr(transparent)]
+pub struct Foo<'a, T: ?Sized + Trait<U>, #[pointee] U: ?Sized, const N: u32>(T)
+where
+    U: Trait<U> + ToString;
+impl <T, U, const N: u32, __S> $crate::ops::DispatchFromDyn<Foo<'a, T, __S, N>> for Foo<T, U, N, > where U: Trait<U> +ToString, T: Trait<__S>, __S: ?Sized, __S: Trait<__S> +ToString, U: ::core::marker::Unsize<__S>, T:?Sized+Trait<U>, U:?Sized, {}
+impl <T, U, const N: u32, __S> $crate::ops::CoerceUnsized<Foo<'a, T, __S, N>> for Foo<T, U, N, > where U: Trait<U> +ToString, T: Trait<__S>, __S: ?Sized, __S: Trait<__S> +ToString, U: ::core::marker::Unsize<__S>, T:?Sized+Trait<U>, U:?Sized, {}"#]],
+    );
+}
+
+#[test]
+fn coerce_pointee_errors() {
+    check_errors(
+        r#"
+//- minicore: coerce_pointee
+
+use core::marker::CoercePointee;
+
+#[derive(CoercePointee)]
+enum Enum {}
+
+#[derive(CoercePointee)]
+struct Struct1;
+
+#[derive(CoercePointee)]
+struct Struct2();
+
+#[derive(CoercePointee)]
+struct Struct3 {}
+
+#[derive(CoercePointee)]
+struct Struct4<T: ?Sized>(T);
+
+#[derive(CoercePointee)]
+#[repr(transparent)]
+struct Struct5(i32);
+
+#[derive(CoercePointee)]
+#[repr(transparent)]
+struct Struct6<#[pointee] T: ?Sized, #[pointee] U: ?Sized>(T, U);
+
+#[derive(CoercePointee)]
+#[repr(transparent)]
+struct Struct7<T: ?Sized, U: ?Sized>(T, U);
+
+#[derive(CoercePointee)]
+#[repr(transparent)]
+struct Struct8<#[pointee] T, U: ?Sized>(T);
+
+#[derive(CoercePointee)]
+#[repr(transparent)]
+struct Struct9<T>(T);
+
+#[derive(CoercePointee)]
+#[repr(transparent)]
+struct Struct9<#[pointee] T, U>(T) where T: ?Sized;
+"#,
+        expect![[r#"
+            35..72: `CoercePointee` can only be derived on `struct`s
+            74..114: `CoercePointee` can only be derived on `struct`s with at least one field
+            116..158: `CoercePointee` can only be derived on `struct`s with at least one field
+            160..202: `CoercePointee` can only be derived on `struct`s with at least one field
+            204..258: `CoercePointee` can only be derived on `struct`s with `#[repr(transparent)]`
+            260..326: `CoercePointee` can only be derived on `struct`s that are generic over at least one type
+            328..439: only one type parameter can be marked as `#[pointee]` when deriving `CoercePointee` traits
+            441..530: exactly one generic type parameter must be marked as `#[pointee]` to derive `CoercePointee` traits
+            532..621: `derive(CoercePointee)` requires `T` to be marked `?Sized`
+            623..690: `derive(CoercePointee)` requires `T` to be marked `?Sized`"#]],
     );
 }

@@ -27,14 +27,12 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// // example code where clippy issues a warning
     /// thread_local! {
     ///     static BUF: String = String::new();
     /// }
     /// ```
     /// Use instead:
     /// ```no_run
-    /// // example code which does not raise clippy warning
     /// thread_local! {
     ///     static BUF: String = const { String::new() };
     /// }

@@ -172,6 +172,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // Wildcard pointer, whatever it points to must be already exposed.
                     continue;
                 };
+                // The first time this happens, print a warning.
+                if !this.machine.native_call_mem_warned.replace(true) {
+                    // Newly set, so first time we get here.
+                    this.emit_diagnostic(NonHaltingDiagnostic::NativeCallSharedMem);
+                }
+
                 this.prepare_for_native_call(alloc_id, prov)?;
             }
         }

@@ -18,7 +18,7 @@ export RUSTFLAGS="-D warnings"
 export CARGO_INCREMENTAL=0
 export CARGO_EXTRA_FLAGS="--locked"
 
-# Determine configuration for installed build (used by test-cargo-miri).
+# Determine configuration for installed build (used by test-cargo-miri and `./miri bench`).
 echo "Installing release version of Miri"
 time ./miri install
 
@@ -66,14 +66,14 @@ function run_tests {
     time MIRIFLAGS="${MIRIFLAGS-} -O -Zmir-opt-level=4 -Cdebug-assertions=yes" MIRI_SKIP_UI_CHECKS=1 ./miri test $TARGET_FLAG tests/{pass,panic}
   fi
   if [ -n "${MANY_SEEDS-}" ]; then
-    # Also run some many-seeds tests. (Also tests `./miri run`.)
+    # Run many-seeds tests. (Also tests `./miri run`.)
     time for FILE in tests/many-seeds/*.rs; do
-      ./miri run "--many-seeds=0..$MANY_SEEDS" $TARGET_FLAG "$FILE"
+      ./miri run "-Zmiri-many-seeds=0..$MANY_SEEDS" $TARGET_FLAG "$FILE"
     done
   fi
   if [ -n "${TEST_BENCH-}" ]; then
     # Check that the benchmarks build and run, but only once.
-    time HYPERFINE="hyperfine -w0 -r1" ./miri bench $TARGET_FLAG
+    time HYPERFINE="hyperfine -w0 -r1 --show-output" ./miri bench $TARGET_FLAG --no-install
   fi
   # Smoke-test `./miri run --dep`.
   ./miri run $TARGET_FLAG --dep tests/pass-dep/getrandom.rs

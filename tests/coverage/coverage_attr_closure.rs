@@ -1,4 +1,4 @@
-#![feature(stmt_expr_attributes)]
+#![feature(coverage_attribute, stmt_expr_attributes)]
 #![allow(dead_code)]
 //@ edition: 2021
 

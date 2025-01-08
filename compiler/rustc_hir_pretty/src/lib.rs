@@ -402,8 +402,10 @@ impl<'a> State<'a> {
             }
             hir::TyKind::Path(ref qpath) => self.print_qpath(qpath, false),
             hir::TyKind::TraitObject(bounds, lifetime, syntax) => {
-                if syntax == ast::TraitObjectSyntax::Dyn {
-                    self.word_space("dyn");
+                match syntax {
+                    ast::TraitObjectSyntax::Dyn => self.word_nbsp("dyn"),
+                    ast::TraitObjectSyntax::DynStar => self.word_nbsp("dyn*"),
+                    ast::TraitObjectSyntax::None => {}
                 }
                 let mut first = true;
                 for bound in bounds {
@@ -632,7 +634,7 @@ impl<'a> State<'a> {
                 self.word(";");
                 self.end(); // end the outer cbox
             }
-            hir::ItemKind::Fn(ref sig, generics, body) => {
+            hir::ItemKind::Fn { sig, generics, body, .. } => {
                 self.head("");
                 self.print_fn(
                     sig.decl,
@@ -1996,6 +1998,12 @@ impl<'a> State<'a> {
                 }
                 self.commasep(Inconsistent, after, |s, p| s.print_pat(p));
                 self.word("]");
+            }
+            PatKind::Guard(inner, cond) => {
+                self.print_pat(inner);
+                self.space();
+                self.word_space("if");
+                self.print_expr(cond);
             }
             PatKind::Err(_) => {
                 self.popen();

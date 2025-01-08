@@ -3,7 +3,6 @@
 
 use intern::sym;
 use rustc_hash::{FxHashMap, FxHashSet};
-use smallvec::SmallVec;
 use span::{
     ErasedFileAstId, Span, SpanAnchor, SyntaxContextId, FIXUP_ERASED_FILE_AST_ID_MARKER,
     ROOT_ERASED_FILE_AST_ID,
@@ -19,7 +18,7 @@ use tt::Spacing;
 
 use crate::{
     span_map::SpanMapRef,
-    tt::{Ident, Leaf, Punct, Subtree},
+    tt::{self, Ident, Leaf, Punct, TopSubtree},
 };
 
 /// The result of calculating fixes for a syntax node -- a bunch of changes
@@ -36,7 +35,7 @@ pub(crate) struct SyntaxFixups {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SyntaxFixupUndoInfo {
     // FIXME: ThinArc<[Subtree]>
-    original: Option<Arc<Box<[Subtree]>>>,
+    original: Option<Arc<Box<[TopSubtree]>>>,
 }
 
 impl SyntaxFixupUndoInfo {
@@ -110,7 +109,7 @@ pub(crate) fn fixup_syntax(
                     }
                 },
                 ast::ExprStmt(it) => {
-                    let needs_semi = it.semicolon_token().is_none() && it.expr().map_or(false, |e| e.syntax().kind() != SyntaxKind::BLOCK_EXPR);
+                    let needs_semi = it.semicolon_token().is_none() && it.expr().is_some_and(|e| e.syntax().kind() != SyntaxKind::BLOCK_EXPR);
                     if needs_semi {
                         append.insert(node.clone().into(), vec![
                             Leaf::Punct(Punct {
@@ -369,68 +368,126 @@ fn has_error_to_handle(node: &SyntaxNode) -> bool {
     has_error(node) || node.children().any(|c| !can_handle_error(&c) && has_error_to_handle(&c))
 }
 
-pub(crate) fn reverse_fixups(tt: &mut Subtree, undo_info: &SyntaxFixupUndoInfo) {
+pub(crate) fn reverse_fixups(tt: &mut TopSubtree, undo_info: &SyntaxFixupUndoInfo) {
     let Some(undo_info) = undo_info.original.as_deref() else { return };
     let undo_info = &**undo_info;
+    let delimiter = tt.top_subtree_delimiter_mut();
     #[allow(deprecated)]
     if never!(
-        tt.delimiter.close.anchor.ast_id == FIXUP_DUMMY_AST_ID
-            || tt.delimiter.open.anchor.ast_id == FIXUP_DUMMY_AST_ID
+        delimiter.close.anchor.ast_id == FIXUP_DUMMY_AST_ID
+            || delimiter.open.anchor.ast_id == FIXUP_DUMMY_AST_ID
     ) {
         let span = |file_id| Span {
             range: TextRange::empty(TextSize::new(0)),
             anchor: SpanAnchor { file_id, ast_id: ROOT_ERASED_FILE_AST_ID },
             ctx: SyntaxContextId::ROOT,
         };
-        tt.delimiter.open = span(tt.delimiter.open.anchor.file_id);
-        tt.delimiter.close = span(tt.delimiter.close.anchor.file_id);
+        delimiter.open = span(delimiter.open.anchor.file_id);
+        delimiter.close = span(delimiter.close.anchor.file_id);
     }
     reverse_fixups_(tt, undo_info);
 }
 
-fn reverse_fixups_(tt: &mut Subtree, undo_info: &[Subtree]) {
-    let tts = std::mem::take(&mut tt.token_trees).into_vec();
-    tt.token_trees = tts
-        .into_iter()
-        // delete all fake nodes
-        .filter(|tt| match tt {
-            tt::TokenTree::Leaf(leaf) => {
-                let span = leaf.span();
-                let is_real_leaf = span.anchor.ast_id != FIXUP_DUMMY_AST_ID;
-                let is_replaced_node = span.range.end() == FIXUP_DUMMY_RANGE_END;
-                is_real_leaf || is_replaced_node
+#[derive(Debug)]
+enum TransformTtAction<'a> {
+    Keep,
+    ReplaceWith(tt::TokenTreesView<'a>),
+}
+
+impl TransformTtAction<'_> {
+    fn remove() -> Self {
+        Self::ReplaceWith(tt::TokenTreesView::new(&[]))
+    }
+}
+
+/// This function takes a token tree, and calls `callback` with each token tree in it.
+/// Then it does what the callback says: keeps the tt or replaces it with a (possibly empty)
+/// tts view.
+fn transform_tt<'a, 'b>(
+    tt: &'a mut Vec<tt::TokenTree>,
+    mut callback: impl FnMut(&mut tt::TokenTree) -> TransformTtAction<'b>,
+) {
+    // We need to keep a stack of the currently open subtrees, because we need to update
+    // them if we change the number of items in them.
+    let mut subtrees_stack = Vec::new();
+    let mut i = 0;
+    while i < tt.len() {
+        'pop_finished_subtrees: while let Some(&subtree_idx) = subtrees_stack.last() {
+            let tt::TokenTree::Subtree(subtree) = &tt[subtree_idx] else {
+                unreachable!("non-subtree on subtrees stack");
+            };
+            if i >= subtree_idx + 1 + subtree.usize_len() {
+                subtrees_stack.pop();
+            } else {
+                break 'pop_finished_subtrees;
             }
-            tt::TokenTree::Subtree(_) => true,
-        })
-        .flat_map(|tt| match tt {
-            tt::TokenTree::Subtree(mut tt) => {
-                if tt.delimiter.close.anchor.ast_id == FIXUP_DUMMY_AST_ID
-                    || tt.delimiter.open.anchor.ast_id == FIXUP_DUMMY_AST_ID
-                {
-                    // Even though fixup never creates subtrees with fixup spans, the old proc-macro server
-                    // might copy them if the proc-macro asks for it, so we need to filter those out
-                    // here as well.
-                    return SmallVec::new_const();
+        }
+
+        let action = callback(&mut tt[i]);
+        match action {
+            TransformTtAction::Keep => {
+                // This cannot be shared with the replaced case, because then we may push the same subtree
+                // twice, and will update it twice which will lead to errors.
+                if let tt::TokenTree::Subtree(_) = &tt[i] {
+                    subtrees_stack.push(i);
                 }
-                reverse_fixups_(&mut tt, undo_info);
-                SmallVec::from_const([tt.into()])
+
+                i += 1;
             }
-            tt::TokenTree::Leaf(leaf) => {
-                if leaf.span().anchor.ast_id == FIXUP_DUMMY_AST_ID {
-                    // we have a fake node here, we need to replace it again with the original
-                    let original = undo_info[u32::from(leaf.span().range.start()) as usize].clone();
-                    if original.delimiter.kind == tt::DelimiterKind::Invisible {
-                        SmallVec::from(original.token_trees.into_vec())
-                    } else {
-                        SmallVec::from_const([original.into()])
-                    }
-                } else {
-                    // just a normal leaf
-                    SmallVec::from_const([leaf.into()])
+            TransformTtAction::ReplaceWith(replacement) => {
+                let old_len = 1 + match &tt[i] {
+                    tt::TokenTree::Leaf(_) => 0,
+                    tt::TokenTree::Subtree(subtree) => subtree.usize_len(),
+                };
+                let len_diff = replacement.len() as i64 - old_len as i64;
+                tt.splice(i..i + old_len, replacement.flat_tokens().iter().cloned());
+                // `+1` for the loop.
+                i = i.checked_add_signed(len_diff as isize + 1).unwrap();
+
+                for &subtree_idx in &subtrees_stack {
+                    let tt::TokenTree::Subtree(subtree) = &mut tt[subtree_idx] else {
+                        unreachable!("non-subtree on subtrees stack");
+                    };
+                    subtree.len = (i64::from(subtree.len) + len_diff).try_into().unwrap();
                 }
             }
-        })
-        .collect();
+        }
+    }
+}
+
+fn reverse_fixups_(tt: &mut TopSubtree, undo_info: &[TopSubtree]) {
+    let mut tts = std::mem::take(&mut tt.0).into_vec();
+    transform_tt(&mut tts, |tt| match tt {
+        tt::TokenTree::Leaf(leaf) => {
+            let span = leaf.span();
+            let is_real_leaf = span.anchor.ast_id != FIXUP_DUMMY_AST_ID;
+            let is_replaced_node = span.range.end() == FIXUP_DUMMY_RANGE_END;
+            if !is_real_leaf && !is_replaced_node {
+                return TransformTtAction::remove();
+            }
+
+            if !is_real_leaf {
+                // we have a fake node here, we need to replace it again with the original
+                let original = &undo_info[u32::from(leaf.span().range.start()) as usize];
+                TransformTtAction::ReplaceWith(original.view().strip_invisible())
+            } else {
+                // just a normal leaf
+                TransformTtAction::Keep
+            }
+        }
+        tt::TokenTree::Subtree(tt) => {
+            if tt.delimiter.close.anchor.ast_id == FIXUP_DUMMY_AST_ID
+                || tt.delimiter.open.anchor.ast_id == FIXUP_DUMMY_AST_ID
+            {
+                // Even though fixup never creates subtrees with fixup spans, the old proc-macro server
+                // might copy them if the proc-macro asks for it, so we need to filter those out
+                // here as well.
+                return TransformTtAction::remove();
+            }
+            TransformTtAction::Keep
+        }
+    });
+    tt.0 = tts.into_boxed_slice();
 }
 
 #[cfg(test)]
@@ -458,16 +515,18 @@ mod tests {
         }
     }
 
-    fn check_subtree_eq(a: &tt::Subtree, b: &tt::Subtree) -> bool {
-        a.delimiter.kind == b.delimiter.kind
-            && a.token_trees.len() == b.token_trees.len()
-            && a.token_trees.iter().zip(b.token_trees.iter()).all(|(a, b)| check_tt_eq(a, b))
+    fn check_subtree_eq(a: &tt::TopSubtree, b: &tt::TopSubtree) -> bool {
+        let a = a.view().as_token_trees().flat_tokens();
+        let b = b.view().as_token_trees().flat_tokens();
+        a.len() == b.len() && std::iter::zip(a, b).all(|(a, b)| check_tt_eq(a, b))
     }
 
     fn check_tt_eq(a: &tt::TokenTree, b: &tt::TokenTree) -> bool {
         match (a, b) {
             (tt::TokenTree::Leaf(a), tt::TokenTree::Leaf(b)) => check_leaf_eq(a, b),
-            (tt::TokenTree::Subtree(a), tt::TokenTree::Subtree(b)) => check_subtree_eq(a, b),
+            (tt::TokenTree::Subtree(a), tt::TokenTree::Subtree(b)) => {
+                a.delimiter.kind == b.delimiter.kind
+            }
             _ => false,
         }
     }

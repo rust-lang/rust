@@ -83,6 +83,8 @@ where
             .map(|bty| bty.instantiate(cx, args))
             .collect()),
 
+        ty::UnsafeBinder(bound_ty) => Ok(vec![bound_ty.into()]),
+
         // For `PhantomData<T>`, we pass `T`.
         ty::Adt(def, args) if def.is_phantom_data() => Ok(vec![ty::Binder::dummy(args.type_at(0))]),
 
@@ -143,6 +145,8 @@ where
         | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
             panic!("unexpected type `{ty:?}`")
         }
+
+        ty::UnsafeBinder(bound_ty) => Ok(vec![bound_ty.into()]),
 
         // impl Sized for ()
         // impl Sized for (T1, T2, .., Tn) where Tn: Sized if n >= 1
@@ -238,6 +242,8 @@ where
                 }
             }
         },
+
+        ty::UnsafeBinder(_) => Err(NoSolution),
 
         // impl Copy/Clone for CoroutineWitness where T: Copy/Clone forall T in coroutine_hidden_types
         ty::CoroutineWitness(def_id, args) => Ok(ecx
@@ -374,6 +380,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
         | ty::Never
         | ty::Tuple(_)
         | ty::Pat(_, _)
+        | ty::UnsafeBinder(_)
         | ty::Alias(_, _)
         | ty::Param(_)
         | ty::Placeholder(..)
@@ -544,6 +551,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
         | ty::Coroutine(_, _)
         | ty::CoroutineWitness(..)
         | ty::Never
+        | ty::UnsafeBinder(_)
         | ty::Tuple(_)
         | ty::Alias(_, _)
         | ty::Param(_)
@@ -694,7 +702,8 @@ pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
         | ty::Param(_)
         | ty::Placeholder(..)
         | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
-        | ty::Error(_) => return Err(NoSolution),
+        | ty::Error(_)
+        | ty::UnsafeBinder(_) => return Err(NoSolution),
 
         ty::Bound(..)
         | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
@@ -763,6 +772,10 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
         | ty::CoroutineClosure(_, _)
         | ty::Coroutine(_, _)
         | ty::CoroutineWitness(_, _) => Err(NoSolution),
+
+        // FIXME(unsafe_binders): Unsafe binders could implement `~const Drop`
+        // if their inner type implements it.
+        ty::UnsafeBinder(_) => Err(NoSolution),
 
         ty::Dynamic(..) | ty::Param(_) | ty::Alias(..) | ty::Placeholder(_) | ty::Foreign(_) => {
             Err(NoSolution)

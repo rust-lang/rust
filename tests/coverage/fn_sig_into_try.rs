@@ -1,3 +1,4 @@
+#![feature(coverage_attribute)]
 //@ edition: 2021
 
 // Regression test for inconsistent handling of function signature spans that

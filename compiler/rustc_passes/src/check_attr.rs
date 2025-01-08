@@ -124,7 +124,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 [sym::coverage, ..] => self.check_coverage(attr, span, target),
                 [sym::optimize, ..] => self.check_optimize(hir_id, attr, span, target),
                 [sym::no_sanitize, ..] => self.check_no_sanitize(attr, span, target),
-                [sym::non_exhaustive, ..] => self.check_non_exhaustive(hir_id, attr, span, target),
+                [sym::non_exhaustive, ..] => self.check_non_exhaustive(hir_id, attr, span, target, item),
                 [sym::marker, ..] => self.check_marker(hir_id, attr, span, target),
                 [sym::target_feature, ..] => {
                     self.check_target_feature(hir_id, attr, span, target, attrs)
@@ -186,6 +186,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 [sym::rustc_coinductive, ..]
                 | [sym::rustc_must_implement_one_of, ..]
                 | [sym::rustc_deny_explicit_impl, ..]
+                | [sym::rustc_do_not_implement_via_object, ..]
                 | [sym::const_trait, ..] => self.check_must_be_applied_to_trait(attr, span, target),
                 [sym::collapse_debuginfo, ..] => self.check_collapse_debuginfo(attr, span, target),
                 [sym::must_not_suspend, ..] => self.check_must_not_suspend(attr, span, target),
@@ -431,21 +432,34 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
     /// Checks that `#[coverage(..)]` is applied to a function/closure/method,
     /// or to an impl block or module.
-    fn check_coverage(&self, attr: &Attribute, span: Span, target: Target) {
+    fn check_coverage(&self, attr: &Attribute, target_span: Span, target: Target) {
+        let mut not_fn_impl_mod = None;
+        let mut no_body = None;
+
         match target {
             Target::Fn
             | Target::Closure
             | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent)
             | Target::Impl
-            | Target::Mod => {}
+            | Target::Mod => return,
+
+            // These are "functions", but they aren't allowed because they don't
+            // have a body, so the usual explanation would be confusing.
+            Target::Method(MethodKind::Trait { body: false }) | Target::ForeignFn => {
+                no_body = Some(target_span);
+            }
 
             _ => {
-                self.dcx().emit_err(errors::CoverageNotFnOrClosure {
-                    attr_span: attr.span,
-                    defn_span: span,
-                });
+                not_fn_impl_mod = Some(target_span);
             }
         }
+
+        self.dcx().emit_err(errors::CoverageAttributeNotAllowed {
+            attr_span: attr.span,
+            not_fn_impl_mod,
+            no_body,
+            help: (),
+        });
     }
 
     /// Checks that `#[optimize(..)]` is applied to a function/closure/method,
@@ -684,9 +698,30 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if the `#[non_exhaustive]` attribute on an `item` is valid.
-    fn check_non_exhaustive(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
+    fn check_non_exhaustive(
+        &self,
+        hir_id: HirId,
+        attr: &Attribute,
+        span: Span,
+        target: Target,
+        item: Option<ItemLike<'_>>,
+    ) {
         match target {
-            Target::Struct | Target::Enum | Target::Variant => {}
+            Target::Struct => {
+                if let Some(ItemLike::Item(hir::Item {
+                    kind: hir::ItemKind::Struct(hir::VariantData::Struct { fields, .. }, _),
+                    ..
+                })) = item
+                    && !fields.is_empty()
+                    && fields.iter().any(|f| f.default.is_some())
+                {
+                    self.dcx().emit_err(errors::NonExhaustiveWithDefaultFieldValues {
+                        attr_span: attr.span,
+                        defn_span: span,
+                    });
+                }
+            }
+            Target::Enum | Target::Variant => {}
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
             // `#[non_exhaustive]` attribute with just a lint, because we previously
             // erroneously allowed it and some crates used it accidentally, to be compatible
@@ -1611,7 +1646,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         };
 
         let Some(ItemLike::Item(Item {
-            kind: ItemKind::Fn(FnSig { decl, .. }, generics, _), ..
+            kind: ItemKind::Fn { sig: FnSig { decl, .. }, generics, .. },
+            ..
         })) = item
         else {
             bug!("should be a function item");

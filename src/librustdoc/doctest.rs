@@ -50,6 +50,46 @@ pub(crate) struct GlobalTestOptions {
     pub(crate) args_file: PathBuf,
 }
 
+/// Function used to split command line arguments just like a shell would.
+fn split_args(args: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut iter = args.chars();
+    let mut current = String::new();
+
+    while let Some(c) = iter.next() {
+        if c == '\\' {
+            if let Some(c) = iter.next() {
+                // If it's escaped, even a quote or a whitespace will be ignored.
+                current.push(c);
+            }
+        } else if c == '"' || c == '\'' {
+            while let Some(new_c) = iter.next() {
+                if new_c == c {
+                    break;
+                } else if new_c == '\\' {
+                    if let Some(c) = iter.next() {
+                        // If it's escaped, even a quote will be ignored.
+                        current.push(c);
+                    }
+                } else {
+                    current.push(new_c);
+                }
+            }
+        } else if " \n\t\r".contains(c) {
+            if !current.is_empty() {
+                out.push(current.clone());
+                current.clear();
+            }
+        } else {
+            current.push(c);
+        }
+    }
+    if !current.is_empty() {
+        out.push(current);
+    }
+    out
+}
+
 pub(crate) fn generate_args_file(file_path: &Path, options: &RustdocOptions) -> Result<(), String> {
     let mut file = File::create(file_path)
         .map_err(|error| format!("failed to create args file: {error:?}"))?;
@@ -76,6 +116,10 @@ pub(crate) fn generate_args_file(file_path: &Path, options: &RustdocOptions) -> 
     }
     for unstable_option_str in &options.unstable_opts_strs {
         content.push(format!("-Z{unstable_option_str}"));
+    }
+
+    for compilation_args in &options.doctest_compilation_args {
+        content.extend(split_args(compilation_args));
     }
 
     let content = content.join("\n");
@@ -176,7 +220,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
     } = interface::run_compiler(config, |compiler| {
         let krate = rustc_interface::passes::parse(&compiler.sess);
 
-        let collector = rustc_interface::create_and_enter_global_ctxt(&compiler, krate, |tcx| {
+        let collector = rustc_interface::create_and_enter_global_ctxt(compiler, krate, |tcx| {
             let crate_name = tcx.crate_name(LOCAL_CRATE).to_string();
             let crate_attrs = tcx.hir().attrs(CRATE_HIR_ID);
             let opts = scrape_test_config(crate_name, crate_attrs, args_path);

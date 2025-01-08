@@ -316,43 +316,73 @@ pub(crate) fn does_pat_match_variant(pat: &ast::Pat, var: &ast::Pat) -> bool {
     pat_head == var_head
 }
 
-pub(crate) fn does_nested_pattern(pat: &ast::Pat) -> bool {
-    let depth = calc_depth(pat, 0);
-
-    if 1 < depth {
-        return true;
-    }
-    false
+pub(crate) fn does_pat_variant_nested_or_literal(ctx: &AssistContext<'_>, pat: &ast::Pat) -> bool {
+    check_pat_variant_nested_or_literal_with_depth(ctx, pat, 0)
 }
 
-fn calc_depth(pat: &ast::Pat, depth: usize) -> usize {
-    match pat {
-        ast::Pat::IdentPat(_)
-        | ast::Pat::BoxPat(_)
-        | ast::Pat::RestPat(_)
-        | ast::Pat::LiteralPat(_)
-        | ast::Pat::MacroPat(_)
-        | ast::Pat::OrPat(_)
-        | ast::Pat::ParenPat(_)
-        | ast::Pat::PathPat(_)
-        | ast::Pat::WildcardPat(_)
-        | ast::Pat::RangePat(_)
-        | ast::Pat::RecordPat(_)
-        | ast::Pat::RefPat(_)
-        | ast::Pat::SlicePat(_)
-        | ast::Pat::TuplePat(_)
-        | ast::Pat::ConstBlockPat(_) => depth,
+fn check_pat_variant_from_enum(ctx: &AssistContext<'_>, pat: &ast::Pat) -> bool {
+    ctx.sema.type_of_pat(pat).is_none_or(|ty: hir::TypeInfo| {
+        ty.adjusted().as_adt().is_some_and(|adt| matches!(adt, hir::Adt::Enum(_)))
+    })
+}
 
-        // FIXME: Other patterns may also be nested. Currently it simply supports only `TupleStructPat`
-        ast::Pat::TupleStructPat(pat) => {
-            let mut max_depth = depth;
-            for p in pat.fields() {
-                let d = calc_depth(&p, depth + 1);
-                if d > max_depth {
-                    max_depth = d
-                }
-            }
-            max_depth
+fn check_pat_variant_nested_or_literal_with_depth(
+    ctx: &AssistContext<'_>,
+    pat: &ast::Pat,
+    depth_after_refutable: usize,
+) -> bool {
+    if depth_after_refutable > 1 {
+        return true;
+    }
+
+    match pat {
+        ast::Pat::RestPat(_) | ast::Pat::WildcardPat(_) | ast::Pat::RefPat(_) => false,
+
+        ast::Pat::LiteralPat(_)
+        | ast::Pat::RangePat(_)
+        | ast::Pat::MacroPat(_)
+        | ast::Pat::PathPat(_)
+        | ast::Pat::BoxPat(_)
+        | ast::Pat::ConstBlockPat(_) => true,
+
+        ast::Pat::IdentPat(ident_pat) => ident_pat.pat().is_some_and(|pat| {
+            check_pat_variant_nested_or_literal_with_depth(ctx, &pat, depth_after_refutable)
+        }),
+        ast::Pat::ParenPat(paren_pat) => paren_pat.pat().is_none_or(|pat| {
+            check_pat_variant_nested_or_literal_with_depth(ctx, &pat, depth_after_refutable)
+        }),
+        ast::Pat::TuplePat(tuple_pat) => tuple_pat.fields().any(|pat| {
+            check_pat_variant_nested_or_literal_with_depth(ctx, &pat, depth_after_refutable)
+        }),
+        ast::Pat::RecordPat(record_pat) => {
+            let adjusted_next_depth =
+                depth_after_refutable + if check_pat_variant_from_enum(ctx, pat) { 1 } else { 0 };
+            record_pat.record_pat_field_list().is_none_or(|pat| {
+                pat.fields().any(|pat| {
+                    pat.pat().is_none_or(|pat| {
+                        check_pat_variant_nested_or_literal_with_depth(
+                            ctx,
+                            &pat,
+                            adjusted_next_depth,
+                        )
+                    })
+                })
+            })
+        }
+        ast::Pat::OrPat(or_pat) => or_pat.pats().any(|pat| {
+            check_pat_variant_nested_or_literal_with_depth(ctx, &pat, depth_after_refutable)
+        }),
+        ast::Pat::TupleStructPat(tuple_struct_pat) => {
+            let adjusted_next_depth =
+                depth_after_refutable + if check_pat_variant_from_enum(ctx, pat) { 1 } else { 0 };
+            tuple_struct_pat.fields().any(|pat| {
+                check_pat_variant_nested_or_literal_with_depth(ctx, &pat, adjusted_next_depth)
+            })
+        }
+        ast::Pat::SlicePat(slice_pat) => {
+            let mut pats = slice_pat.pats();
+            pats.next()
+                .is_none_or(|pat| !matches!(pat, ast::Pat::RestPat(_)) || pats.next().is_some())
         }
     }
 }

@@ -420,7 +420,7 @@ impl<A: Allocator> RawVecInner<A> {
         match Self::try_allocate_in(capacity, AllocInit::Uninitialized, alloc, elem_layout) {
             Ok(this) => {
                 unsafe {
-                    // Make it more obvious that a subsquent Vec::reserve(capacity) will not allocate.
+                    // Make it more obvious that a subsequent Vec::reserve(capacity) will not allocate.
                     hint::assert_unchecked(!this.needs_to_grow(0, capacity, elem_layout));
                 }
                 this

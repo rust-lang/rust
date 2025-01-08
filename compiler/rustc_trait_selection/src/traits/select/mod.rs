@@ -1843,7 +1843,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         // a global and a non-global where-clause.
         //
         // Our handling of where-bounds is generally fairly messy but necessary for backwards
-        // compatability, see #50825 for why we need to handle global where-bounds like this.
+        // compatibility, see #50825 for why we need to handle global where-bounds like this.
         let is_global = |c: ty::PolyTraitPredicate<'tcx>| c.is_global() && !c.has_bound_vars();
         let param_candidates = candidates
             .iter()
@@ -2095,6 +2095,9 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 }
             }
 
+            // FIXME(unsafe_binders): This binder needs to be squashed
+            ty::UnsafeBinder(binder_ty) => Where(binder_ty.map_bound(|ty| vec![ty])),
+
             ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) => None,
             ty::Infer(ty::TyVar(_)) => Ambiguous,
 
@@ -2132,6 +2135,10 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 // Implementations provided in libcore
                 None
             }
+
+            // FIXME(unsafe_binder): Should we conditionally
+            // (i.e. universally) implement copy/clone?
+            ty::UnsafeBinder(_) => None,
 
             ty::Dynamic(..)
             | ty::Str
@@ -2284,6 +2291,9 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Never
             | ty::Char => ty::Binder::dummy(Vec::new()),
+
+            // FIXME(unsafe_binders): Squash the double binder for now, I guess.
+            ty::UnsafeBinder(_) => return Err(SelectionError::Unimplemented),
 
             // Treat this like `struct str([u8]);`
             ty::Str => ty::Binder::dummy(vec![Ty::new_slice(self.tcx(), self.tcx().types.u8)]),

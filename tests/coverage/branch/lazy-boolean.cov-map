@@ -1,11 +1,11 @@
 Function name: lazy_boolean::branch_and
-Raw bytes (38): 0x[01, 01, 01, 05, 09, 06, 01, 12, 01, 01, 10, 05, 04, 09, 00, 0a, 05, 00, 0d, 00, 0e, 20, 09, 02, 00, 0d, 00, 0e, 09, 00, 12, 00, 13, 05, 01, 05, 01, 02]
+Raw bytes (38): 0x[01, 01, 01, 05, 09, 06, 01, 13, 01, 01, 10, 05, 04, 09, 00, 0a, 05, 00, 0d, 00, 0e, 20, 09, 02, 00, 0d, 00, 0e, 09, 00, 12, 00, 13, 05, 01, 05, 01, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 1
 - expression 0 operands: lhs = Counter(1), rhs = Counter(2)
 Number of file 0 mappings: 6
-- Code(Counter(0)) at (prev + 18, 1) to (start + 1, 16)
+- Code(Counter(0)) at (prev + 19, 1) to (start + 1, 16)
 - Code(Counter(1)) at (prev + 4, 9) to (start + 0, 10)
 - Code(Counter(1)) at (prev + 0, 13) to (start + 0, 14)
 - Branch { true: Counter(2), false: Expression(0, Sub) } at (prev + 0, 13) to (start + 0, 14)
@@ -16,13 +16,13 @@ Number of file 0 mappings: 6
 Highest counter ID seen: c2
 
 Function name: lazy_boolean::branch_or
-Raw bytes (38): 0x[01, 01, 01, 05, 09, 06, 01, 1a, 01, 01, 10, 05, 04, 09, 00, 0a, 05, 00, 0d, 00, 0e, 20, 09, 02, 00, 0d, 00, 0e, 02, 00, 12, 00, 13, 05, 01, 05, 01, 02]
+Raw bytes (38): 0x[01, 01, 01, 05, 09, 06, 01, 1b, 01, 01, 10, 05, 04, 09, 00, 0a, 05, 00, 0d, 00, 0e, 20, 09, 02, 00, 0d, 00, 0e, 02, 00, 12, 00, 13, 05, 01, 05, 01, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 1
 - expression 0 operands: lhs = Counter(1), rhs = Counter(2)
 Number of file 0 mappings: 6
-- Code(Counter(0)) at (prev + 26, 1) to (start + 1, 16)
+- Code(Counter(0)) at (prev + 27, 1) to (start + 1, 16)
 - Code(Counter(1)) at (prev + 4, 9) to (start + 0, 10)
 - Code(Counter(1)) at (prev + 0, 13) to (start + 0, 14)
 - Branch { true: Counter(2), false: Expression(0, Sub) } at (prev + 0, 13) to (start + 0, 14)
@@ -34,7 +34,7 @@ Number of file 0 mappings: 6
 Highest counter ID seen: c2
 
 Function name: lazy_boolean::chain
-Raw bytes (141): 0x[01, 01, 0f, 05, 09, 09, 0d, 0d, 11, 05, 15, 05, 15, 05, 3b, 15, 19, 05, 3b, 15, 19, 05, 37, 3b, 1d, 15, 19, 05, 37, 3b, 1d, 15, 19, 13, 01, 23, 01, 01, 10, 05, 04, 09, 00, 0a, 05, 00, 0d, 00, 12, 20, 09, 02, 00, 0d, 00, 12, 09, 00, 16, 00, 1b, 20, 0d, 06, 00, 16, 00, 1b, 0d, 00, 1f, 00, 24, 20, 11, 0a, 00, 1f, 00, 24, 11, 00, 28, 00, 2d, 05, 01, 05, 00, 11, 05, 03, 09, 00, 0a, 05, 00, 0d, 00, 12, 20, 15, 12, 00, 0d, 00, 12, 12, 00, 16, 00, 1b, 20, 19, 1e, 00, 16, 00, 1b, 1e, 00, 1f, 00, 24, 20, 1d, 32, 00, 1f, 00, 24, 32, 00, 28, 00, 2d, 05, 01, 05, 01, 02]
+Raw bytes (141): 0x[01, 01, 0f, 05, 09, 09, 0d, 0d, 11, 05, 15, 05, 15, 05, 3b, 15, 19, 05, 3b, 15, 19, 05, 37, 3b, 1d, 15, 19, 05, 37, 3b, 1d, 15, 19, 13, 01, 24, 01, 01, 10, 05, 04, 09, 00, 0a, 05, 00, 0d, 00, 12, 20, 09, 02, 00, 0d, 00, 12, 09, 00, 16, 00, 1b, 20, 0d, 06, 00, 16, 00, 1b, 0d, 00, 1f, 00, 24, 20, 11, 0a, 00, 1f, 00, 24, 11, 00, 28, 00, 2d, 05, 01, 05, 00, 11, 05, 03, 09, 00, 0a, 05, 00, 0d, 00, 12, 20, 15, 12, 00, 0d, 00, 12, 12, 00, 16, 00, 1b, 20, 19, 1e, 00, 16, 00, 1b, 1e, 00, 1f, 00, 24, 20, 1d, 32, 00, 1f, 00, 24, 32, 00, 28, 00, 2d, 05, 01, 05, 01, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 15
@@ -54,7 +54,7 @@ Number of expressions: 15
 - expression 13 operands: lhs = Expression(14, Add), rhs = Counter(7)
 - expression 14 operands: lhs = Counter(5), rhs = Counter(6)
 Number of file 0 mappings: 19
-- Code(Counter(0)) at (prev + 35, 1) to (start + 1, 16)
+- Code(Counter(0)) at (prev + 36, 1) to (start + 1, 16)
 - Code(Counter(1)) at (prev + 4, 9) to (start + 0, 10)
 - Code(Counter(1)) at (prev + 0, 13) to (start + 0, 18)
 - Branch { true: Counter(2), false: Expression(0, Sub) } at (prev + 0, 13) to (start + 0, 18)
@@ -91,7 +91,7 @@ Number of file 0 mappings: 19
 Highest counter ID seen: c7
 
 Function name: lazy_boolean::nested_mixed
-Raw bytes (137): 0x[01, 01, 0d, 05, 09, 05, 1f, 09, 0d, 09, 0d, 1f, 11, 09, 0d, 1f, 11, 09, 0d, 05, 15, 15, 19, 05, 19, 05, 33, 19, 1d, 13, 01, 30, 01, 01, 10, 05, 04, 09, 00, 0a, 05, 00, 0e, 00, 13, 20, 09, 02, 00, 0e, 00, 13, 02, 00, 17, 00, 1d, 20, 0d, 06, 00, 17, 00, 1d, 1f, 00, 23, 00, 28, 20, 11, 1a, 00, 23, 00, 28, 1a, 00, 2c, 00, 33, 05, 01, 05, 00, 11, 05, 03, 09, 00, 0a, 05, 00, 0e, 00, 13, 20, 15, 22, 00, 0e, 00, 13, 15, 00, 17, 00, 1c, 20, 19, 26, 00, 17, 00, 1c, 2a, 00, 22, 00, 28, 20, 1d, 2e, 00, 22, 00, 28, 1d, 00, 2c, 00, 33, 05, 01, 05, 01, 02]
+Raw bytes (137): 0x[01, 01, 0d, 05, 09, 05, 1f, 09, 0d, 09, 0d, 1f, 11, 09, 0d, 1f, 11, 09, 0d, 05, 15, 15, 19, 05, 19, 05, 33, 19, 1d, 13, 01, 31, 01, 01, 10, 05, 04, 09, 00, 0a, 05, 00, 0e, 00, 13, 20, 09, 02, 00, 0e, 00, 13, 02, 00, 17, 00, 1d, 20, 0d, 06, 00, 17, 00, 1d, 1f, 00, 23, 00, 28, 20, 11, 1a, 00, 23, 00, 28, 1a, 00, 2c, 00, 33, 05, 01, 05, 00, 11, 05, 03, 09, 00, 0a, 05, 00, 0e, 00, 13, 20, 15, 22, 00, 0e, 00, 13, 15, 00, 17, 00, 1c, 20, 19, 26, 00, 17, 00, 1c, 2a, 00, 22, 00, 28, 20, 1d, 2e, 00, 22, 00, 28, 1d, 00, 2c, 00, 33, 05, 01, 05, 01, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 13
@@ -109,7 +109,7 @@ Number of expressions: 13
 - expression 11 operands: lhs = Counter(1), rhs = Expression(12, Add)
 - expression 12 operands: lhs = Counter(6), rhs = Counter(7)
 Number of file 0 mappings: 19
-- Code(Counter(0)) at (prev + 48, 1) to (start + 1, 16)
+- Code(Counter(0)) at (prev + 49, 1) to (start + 1, 16)
 - Code(Counter(1)) at (prev + 4, 9) to (start + 0, 10)
 - Code(Counter(1)) at (prev + 0, 14) to (start + 0, 19)
 - Branch { true: Counter(2), false: Expression(0, Sub) } at (prev + 0, 14) to (start + 0, 19)

@@ -60,7 +60,7 @@ list in `config.toml`:
 
 ```toml
 [build]
-target = [ "arm64ec-pc-windows-msvc" ]
+target = ["arm64ec-pc-windows-msvc"]
 ```
 
 ## Building Rust programs

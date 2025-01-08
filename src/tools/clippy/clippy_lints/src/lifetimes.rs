@@ -95,7 +95,13 @@ declare_lint_pass!(Lifetimes => [NEEDLESS_LIFETIMES, EXTRA_UNUSED_LIFETIMES]);
 
 impl<'tcx> LateLintPass<'tcx> for Lifetimes {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if let ItemKind::Fn(ref sig, generics, id) = item.kind {
+        if let ItemKind::Fn {
+            ref sig,
+            generics,
+            body: id,
+            ..
+        } = item.kind
+        {
             check_fn_inner(cx, sig, Some(id), None, generics, item.span, true);
         } else if let ItemKind::Impl(impl_) = item.kind {
             if !item.span.from_expansion() {
@@ -643,8 +649,7 @@ fn report_extra_impl_lifetimes<'tcx>(cx: &LateContext<'tcx>, impl_: &'tcx Impl<'
 
 // An `impl` lifetime is elidable if it satisfies the following conditions:
 // - It is used exactly once.
-// - That single use is not in a bounded type or `GenericArgs` in a `WherePredicate`. (Note that
-//   `GenericArgs` are different from `GenericParam`s.)
+// - That single use is not in a `WherePredicate`.
 fn report_elidable_impl_lifetimes<'tcx>(
     cx: &LateContext<'tcx>,
     impl_: &'tcx Impl<'_>,
@@ -657,12 +662,6 @@ fn report_elidable_impl_lifetimes<'tcx>(
                 Usage {
                     lifetime,
                     in_where_predicate: false,
-                    ..
-                }
-                | Usage {
-                    lifetime,
-                    in_bounded_ty: false,
-                    in_generics_arg: false,
                     ..
                 },
             ] = usages.as_slice()

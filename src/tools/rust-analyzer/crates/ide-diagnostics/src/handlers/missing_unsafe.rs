@@ -237,6 +237,24 @@ fn main() {
     fn no_missing_unsafe_diagnostic_with_safe_intrinsic() {
         check_diagnostics(
             r#"
+#[rustc_intrinsic]
+pub fn bitreverse(x: u32) -> u32; // Safe intrinsic
+#[rustc_intrinsic]
+pub unsafe fn floorf32(x: f32) -> f32; // Unsafe intrinsic
+
+fn main() {
+    let _ = bitreverse(12);
+    let _ = floorf32(12.0);
+          //^^^^^^^^^^^^^^💡 error: call to unsafe function is unsafe and requires an unsafe function or block
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_missing_unsafe_diagnostic_with_legacy_safe_intrinsic() {
+        check_diagnostics(
+            r#"
 extern "rust-intrinsic" {
     #[rustc_safe_intrinsic]
     pub fn bitreverse(x: u32) -> u32; // Safe intrinsic
@@ -776,6 +794,22 @@ fn bar(mut v: Union2) {
 }
 
             "#,
+        )
+    }
+
+    #[test]
+    fn raw_ref_reborrow_is_safe() {
+        check_diagnostics(
+            r#"
+fn main() {
+    let ptr: *mut i32;
+    let _addr = &raw const *ptr;
+
+    let local = 1;
+    let ptr = &local as *const i32;
+    let _addr = &raw const *ptr;
+}
+"#,
         )
     }
 }

@@ -1,3 +1,4 @@
+#![feature(coverage_attribute)]
 //@ edition: 2021
 
 // If the span extractor can't find any relevant spans for a function, the

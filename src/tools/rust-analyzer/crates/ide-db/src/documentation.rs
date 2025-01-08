@@ -226,9 +226,8 @@ impl HasDocs for hir::AssocItem {
 
 impl HasDocs for hir::ExternCrateDecl {
     fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
-        let crate_docs =
-            docs_from_attrs(&self.resolved_crate(db)?.root_module().attrs(db)).map(String::from);
-        let decl_docs = docs_from_attrs(&self.attrs(db)).map(String::from);
+        let crate_docs = docs_from_attrs(&self.resolved_crate(db)?.root_module().attrs(db));
+        let decl_docs = docs_from_attrs(&self.attrs(db));
         match (decl_docs, crate_docs) {
             (None, None) => None,
             (Some(decl_docs), None) => Some(decl_docs),

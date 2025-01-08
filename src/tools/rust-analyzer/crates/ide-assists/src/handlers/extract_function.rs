@@ -800,8 +800,8 @@ impl FunctionBody {
             let local_ref =
                 match name_ref.and_then(|name_ref| NameRefClass::classify(sema, &name_ref)) {
                     Some(
-                        NameRefClass::Definition(Definition::Local(local_ref))
-                        | NameRefClass::FieldShorthand { local_ref, field_ref: _ },
+                        NameRefClass::Definition(Definition::Local(local_ref), _)
+                        | NameRefClass::FieldShorthand { local_ref, field_ref: _, adt_subst: _ },
                     ) => local_ref,
                     _ => return,
                 };
@@ -856,7 +856,7 @@ impl FunctionBody {
         let mut set_parent_loop = |loop_: &dyn ast::HasLoopBody| {
             if loop_
                 .loop_body()
-                .map_or(false, |it| it.syntax().text_range().contains_range(self.text_range()))
+                .is_some_and(|it| it.syntax().text_range().contains_range(self.text_range()))
             {
                 parent_loop.get_or_insert(loop_.syntax().clone());
             }
@@ -1090,7 +1090,7 @@ impl FunctionBody {
                 let defined_outside_parent_loop = container_info
                     .parent_loop
                     .as_ref()
-                    .map_or(true, |it| it.text_range().contains_range(src.syntax().text_range()));
+                    .is_none_or(|it| it.text_range().contains_range(src.syntax().text_range()));
 
                 let is_copy = ty.is_copy(ctx.db());
                 let has_usages = self.has_usages_after_body(&usages);

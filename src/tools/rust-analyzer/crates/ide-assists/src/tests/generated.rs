@@ -2885,7 +2885,7 @@ fn main() {
         r#####"
 fn main() {
     let x = Some(1);
-    if let Some(${0:x}) = x {}
+    if let Some(${0:x1}) = x {}
 }
 "#####,
     )
@@ -3280,7 +3280,7 @@ fn doctest_unnecessary_async() {
     check_doc_test(
         "unnecessary_async",
         r#####"
-pub async f$0n foo() {}
+pub asy$0nc fn foo() {}
 pub async fn bar() { foo().await }
 "#####,
         r#####"

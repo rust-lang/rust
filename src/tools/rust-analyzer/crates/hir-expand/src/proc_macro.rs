@@ -23,14 +23,14 @@ pub trait ProcMacroExpander: fmt::Debug + Send + Sync + RefUnwindSafe {
     /// [`ProcMacroKind::Attr`]), environment variables, and span information.
     fn expand(
         &self,
-        subtree: &tt::Subtree,
-        attrs: Option<&tt::Subtree>,
+        subtree: &tt::TopSubtree,
+        attrs: Option<&tt::TopSubtree>,
         env: &Env,
         def_site: Span,
         call_site: Span,
         mixed_site: Span,
         current_dir: Option<String>,
-    ) -> Result<tt::Subtree, ProcMacroExpansionError>;
+    ) -> Result<tt::TopSubtree, ProcMacroExpansionError>;
 }
 
 #[derive(Debug)]
@@ -201,23 +201,23 @@ impl CustomProcMacroExpander {
         db: &dyn ExpandDatabase,
         def_crate: CrateId,
         calling_crate: CrateId,
-        tt: &tt::Subtree,
-        attr_arg: Option<&tt::Subtree>,
+        tt: &tt::TopSubtree,
+        attr_arg: Option<&tt::TopSubtree>,
         def_site: Span,
         call_site: Span,
         mixed_site: Span,
-    ) -> ExpandResult<tt::Subtree> {
+    ) -> ExpandResult<tt::TopSubtree> {
         match self.proc_macro_id {
             Self::PROC_MACRO_ATTR_DISABLED => ExpandResult::new(
-                tt::Subtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
+                tt::TopSubtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
                 ExpandError::new(call_site, ExpandErrorKind::ProcMacroAttrExpansionDisabled),
             ),
             Self::MISSING_EXPANDER => ExpandResult::new(
-                tt::Subtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
+                tt::TopSubtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
                 ExpandError::new(call_site, ExpandErrorKind::MissingProcMacroExpander(def_crate)),
             ),
             Self::DISABLED_ID => ExpandResult::new(
-                tt::Subtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
+                tt::TopSubtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
                 ExpandError::new(call_site, ExpandErrorKind::MacroDisabled),
             ),
             id => {
@@ -226,7 +226,10 @@ impl CustomProcMacroExpander {
                     Ok(proc_macro) => proc_macro,
                     Err(e) => {
                         return ExpandResult::new(
-                            tt::Subtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
+                            tt::TopSubtree::empty(tt::DelimSpan {
+                                open: call_site,
+                                close: call_site,
+                            }),
                             e,
                         )
                     }
@@ -260,7 +263,10 @@ impl CustomProcMacroExpander {
                         }
                         ProcMacroExpansionError::System(text)
                         | ProcMacroExpansionError::Panic(text) => ExpandResult::new(
-                            tt::Subtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
+                            tt::TopSubtree::empty(tt::DelimSpan {
+                                open: call_site,
+                                close: call_site,
+                            }),
                             ExpandError::new(
                                 call_site,
                                 ExpandErrorKind::ProcMacroPanic(text.into_boxed_str()),

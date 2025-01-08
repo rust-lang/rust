@@ -1,3 +1,4 @@
+#![feature(coverage_attribute)]
 //@ edition: 2018
 
 //@ aux-build: executor.rs

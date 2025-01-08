@@ -4,8 +4,8 @@
 //@ run-pass
 //@ check-run-results
 //@ only-nightly
-//@ normalize-stdout-test: "fake-test-src-base/test-attrs/" -> "$$DIR/"
-//@ normalize-stdout-test: "fake-test-src-base\\test-attrs\\" -> "$$DIR/"
+//@ normalize-stdout: "fake-test-src-base/test-attrs/" -> "$$DIR/"
+//@ normalize-stdout: "fake-test-src-base\\test-attrs\\" -> "$$DIR/"
 
 // Checks the listing of tests with --format json.
 

@@ -1,3 +1,4 @@
+   LL|       |#![feature(coverage_attribute)]
    LL|       |//@ edition: 2018
    LL|       |
    LL|       |//@ aux-build: executor.rs

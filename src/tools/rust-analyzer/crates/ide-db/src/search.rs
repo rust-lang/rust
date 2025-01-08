@@ -1081,7 +1081,7 @@ impl<'a> FindUsages<'a> {
         };
 
         match NameRefClass::classify(self.sema, name_ref) {
-            Some(NameRefClass::Definition(Definition::SelfType(impl_)))
+            Some(NameRefClass::Definition(Definition::SelfType(impl_), _))
                 if ty_eq(impl_.self_ty(self.sema.db)) =>
             {
                 let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
@@ -1102,7 +1102,7 @@ impl<'a> FindUsages<'a> {
         sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
     ) -> bool {
         match NameRefClass::classify(self.sema, name_ref) {
-            Some(NameRefClass::Definition(def @ Definition::Module(_))) if def == self.def => {
+            Some(NameRefClass::Definition(def @ Definition::Module(_), _)) if def == self.def => {
                 let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
                 let category = if is_name_ref_in_import(name_ref) {
                     ReferenceCategory::IMPORT
@@ -1147,7 +1147,7 @@ impl<'a> FindUsages<'a> {
         sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
     ) -> bool {
         match NameRefClass::classify_lifetime(self.sema, lifetime) {
-            Some(NameRefClass::Definition(def)) if def == self.def => {
+            Some(NameRefClass::Definition(def, _)) if def == self.def => {
                 let FileRange { file_id, range } = self.sema.original_range(lifetime.syntax());
                 let reference = FileReference {
                     range,
@@ -1166,7 +1166,7 @@ impl<'a> FindUsages<'a> {
         sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
     ) -> bool {
         match NameRefClass::classify(self.sema, name_ref) {
-            Some(NameRefClass::Definition(def))
+            Some(NameRefClass::Definition(def, _))
                 if self.def == def
                     // is our def a trait assoc item? then we want to find all assoc items from trait impls of our trait
                     || matches!(self.assoc_item_container, Some(hir::AssocItemContainer::Trait(_)))
@@ -1182,7 +1182,7 @@ impl<'a> FindUsages<'a> {
             }
             // FIXME: special case type aliases, we can't filter between impl and trait defs here as we lack the substitutions
             // so we always resolve all assoc type aliases to both their trait def and impl defs
-            Some(NameRefClass::Definition(def))
+            Some(NameRefClass::Definition(def, _))
                 if self.assoc_item_container.is_some()
                     && matches!(self.def, Definition::TypeAlias(_))
                     && convert_to_def_in_trait(self.sema.db, def)
@@ -1196,7 +1196,7 @@ impl<'a> FindUsages<'a> {
                 };
                 sink(file_id, reference)
             }
-            Some(NameRefClass::Definition(def)) if self.include_self_kw_refs.is_some() => {
+            Some(NameRefClass::Definition(def, _)) if self.include_self_kw_refs.is_some() => {
                 if self.include_self_kw_refs == def_to_ty(self.sema, &def) {
                     let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
                     let reference = FileReference {
@@ -1209,7 +1209,11 @@ impl<'a> FindUsages<'a> {
                     false
                 }
             }
-            Some(NameRefClass::FieldShorthand { local_ref: local, field_ref: field }) => {
+            Some(NameRefClass::FieldShorthand {
+                local_ref: local,
+                field_ref: field,
+                adt_subst: _,
+            }) => {
                 let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
 
                 let field = Definition::Field(field);
@@ -1240,7 +1244,7 @@ impl<'a> FindUsages<'a> {
         sink: &mut dyn FnMut(EditionedFileId, FileReference) -> bool,
     ) -> bool {
         match NameClass::classify(self.sema, name) {
-            Some(NameClass::PatFieldShorthand { local_def: _, field_ref })
+            Some(NameClass::PatFieldShorthand { local_def: _, field_ref, adt_subst: _ })
                 if matches!(
                     self.def, Definition::Field(_) if Definition::Field(field_ref) == self.def
                 ) =>
@@ -1352,12 +1356,12 @@ fn is_name_ref_in_import(name_ref: &ast::NameRef) -> bool {
         .parent()
         .and_then(ast::PathSegment::cast)
         .and_then(|it| it.parent_path().top_path().syntax().parent())
-        .map_or(false, |it| it.kind() == SyntaxKind::USE_TREE)
+        .is_some_and(|it| it.kind() == SyntaxKind::USE_TREE)
 }
 
 fn is_name_ref_in_test(sema: &Semantics<'_, RootDatabase>, name_ref: &ast::NameRef) -> bool {
     name_ref.syntax().ancestors().any(|node| match ast::Fn::cast(node) {
-        Some(it) => sema.to_def(&it).map_or(false, |func| func.is_test(sema.db)),
+        Some(it) => sema.to_def(&it).is_some_and(|func| func.is_test(sema.db)),
         None => false,
     })
 }

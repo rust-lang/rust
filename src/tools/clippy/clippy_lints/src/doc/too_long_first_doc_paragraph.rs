@@ -25,7 +25,7 @@ pub(super) fn check(
             // page. So associated items or impl blocks are not part of this list.
             ItemKind::Static(..)
                 | ItemKind::Const(..)
-                | ItemKind::Fn(..)
+                | ItemKind::Fn{ .. }
                 | ItemKind::Macro(..)
                 | ItemKind::Mod(..)
                 | ItemKind::TyAlias(..)

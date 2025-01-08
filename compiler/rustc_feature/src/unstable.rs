@@ -202,6 +202,8 @@ declare_features! (
     (internal, allow_internal_unstable, "1.0.0", None),
     /// Allows using anonymous lifetimes in argument-position impl-trait.
     (unstable, anonymous_lifetime_in_impl_trait, "1.63.0", None),
+    /// Allows access to the emscripten_wasm_eh config, used by panic_unwind and unwind
+    (internal, cfg_emscripten_wasm_eh, "CURRENT_RUSTC_VERSION", None),
     /// Allows identifying the `compiler_builtins` crate.
     (internal, compiler_builtins, "1.13.0", None),
     /// Allows writing custom MIR
@@ -447,6 +449,9 @@ declare_features! (
     (unstable, coroutine_clone, "1.65.0", Some(95360)),
     /// Allows defining coroutines.
     (unstable, coroutines, "1.21.0", Some(43122)),
+    /// Allows function attribute `#[coverage(on/off)]`, to control coverage
+    /// instrumentation of that function.
+    (unstable, coverage_attribute, "1.74.0", Some(84605)),
     /// Allows non-builtin attributes in inner attribute position.
     (unstable, custom_inner_attributes, "1.30.0", Some(54726)),
     /// Allows custom test frameworks with `#![test_runner]` and `#[test_case]`.

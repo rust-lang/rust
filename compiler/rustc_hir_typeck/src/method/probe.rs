@@ -1329,6 +1329,15 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         mutbl: hir::Mutability,
         track_unstable_candidates: bool,
     ) -> Result<(), MethodError<'tcx>> {
+        // The errors emitted by this function are part of
+        // the arbitrary self types work, and should not impact
+        // other users.
+        if !self.tcx.features().arbitrary_self_types()
+            && !self.tcx.features().arbitrary_self_types_pointers()
+        {
+            return Ok(());
+        }
+
         // We don't want to remember any of the diagnostic hints from this
         // shadow search, but we do need to provide Some/None for the
         // unstable_candidates in order to reflect the behavior of the
@@ -1730,8 +1739,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         trait_ref: ty::TraitRef<'tcx>,
     ) -> traits::SelectionResult<'tcx, traits::Selection<'tcx>> {
-        let cause = traits::ObligationCause::misc(self.span, self.body_id);
-        let obligation = traits::Obligation::new(self.tcx, cause, self.param_env, trait_ref);
+        let obligation =
+            traits::Obligation::new(self.tcx, self.misc(self.span), self.param_env, trait_ref);
         traits::SelectionContext::new(self).select(&obligation)
     }
 
@@ -1832,7 +1841,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                                 self.scope_expr_id,
                                 idx,
                             );
-                            ObligationCause::new(self.span, self.body_id, code)
+                            self.cause(self.span, code)
                         },
                         self.param_env,
                         impl_bounds,

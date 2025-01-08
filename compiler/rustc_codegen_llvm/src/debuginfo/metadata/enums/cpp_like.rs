@@ -12,6 +12,7 @@ use rustc_middle::ty::{self, AdtDef, CoroutineArgs, CoroutineArgsExt, Ty};
 use smallvec::smallvec;
 
 use crate::common::{AsCCharPtr, CodegenCx};
+use crate::debuginfo::dwarf_const::DW_TAG_const_type;
 use crate::debuginfo::metadata::enums::DiscrResult;
 use crate::debuginfo::metadata::type_map::{self, Stub, UniqueTypeId};
 use crate::debuginfo::metadata::{
@@ -566,21 +567,38 @@ fn build_variant_struct_wrapper_type_di_node<'ll, 'tcx>(
                 None,
             ));
 
-            let build_assoc_const =
-                |name: &str, type_di_node: &'ll DIType, value: u64, align: Align| unsafe {
-                    llvm::LLVMRustDIBuilderCreateStaticMemberType(
-                        DIB(cx),
-                        wrapper_struct_type_di_node,
-                        name.as_c_char_ptr(),
-                        name.len(),
-                        unknown_file_metadata(cx),
-                        UNKNOWN_LINE_NUMBER,
-                        type_di_node,
-                        DIFlags::FlagZero,
-                        Some(cx.const_u64(value)),
-                        align.bits() as u32,
-                    )
+            let build_assoc_const = |name: &str,
+                                     type_di_node_: &'ll DIType,
+                                     value: u64,
+                                     align: Align| unsafe {
+                // FIXME: Currently we force all DISCR_* values to be u64's as LLDB seems to have
+                // problems inspecting other value types. Since DISCR_* is typically only going to be
+                // directly inspected via the debugger visualizer - which compares it to the `tag` value
+                // (whose type is not modified at all) it shouldn't cause any real problems.
+                let (t_di, align) = if name == ASSOC_CONST_DISCR_NAME {
+                    (type_di_node_, align.bits() as u32)
+                } else {
+                    let ty_u64 = Ty::new_uint(cx.tcx, ty::UintTy::U64);
+                    (type_di_node(cx, ty_u64), Align::EIGHT.bits() as u32)
                 };
+
+                // must wrap type in a `const` modifier for LLDB to be able to inspect the value of the member
+                let field_type =
+                    llvm::LLVMRustDIBuilderCreateQualifiedType(DIB(cx), DW_TAG_const_type, t_di);
+
+                llvm::LLVMRustDIBuilderCreateStaticMemberType(
+                    DIB(cx),
+                    wrapper_struct_type_di_node,
+                    name.as_c_char_ptr(),
+                    name.len(),
+                    unknown_file_metadata(cx),
+                    UNKNOWN_LINE_NUMBER,
+                    field_type,
+                    DIFlags::FlagZero,
+                    Some(cx.const_u64(value)),
+                    align,
+                )
+            };
 
             // We also always have an associated constant for the discriminant value
             // of the variant.

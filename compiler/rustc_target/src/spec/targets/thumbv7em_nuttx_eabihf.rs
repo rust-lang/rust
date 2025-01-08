@@ -8,7 +8,7 @@
 //
 // To opt into double precision hardware support, use the `-C target-feature=+fp64` flag.
 
-use crate::spec::{Target, TargetOptions, base, cvs};
+use crate::spec::{FloatAbi, Target, TargetOptions, base, cvs};
 
 pub(crate) fn target() -> Target {
     Target {
@@ -27,6 +27,7 @@ pub(crate) fn target() -> Target {
             families: cvs!["unix"],
             os: "nuttx".into(),
             abi: "eabihf".into(),
+            llvm_floatabi: Some(FloatAbi::Hard),
             // vfp4 is the lowest common denominator between the Cortex-M4F (vfp4) and the
             // Cortex-M7 (vfp5).
             // Both the Cortex-M4 and the Cortex-M7 only have 16 double-precision registers

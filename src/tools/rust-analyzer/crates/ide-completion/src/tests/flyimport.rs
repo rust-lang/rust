@@ -3,10 +3,14 @@ use expect_test::{expect, Expect};
 use crate::{
     context::{CompletionAnalysis, NameContext, NameKind, NameRefKind},
     tests::{check_edit, check_edit_with_config, TEST_CONFIG},
+    CompletionConfig,
 };
 
 fn check(ra_fixture: &str, expect: Expect) {
-    let config = TEST_CONFIG;
+    check_with_config(TEST_CONFIG, ra_fixture, expect);
+}
+
+fn check_with_config(config: CompletionConfig<'_>, ra_fixture: &str, expect: Expect) {
     let (db, position) = crate::tests::position(ra_fixture);
     let (ctx, analysis) = crate::context::CompletionContext::new(&db, position, &config).unwrap();
 
@@ -139,9 +143,9 @@ fn main() {
 }
 "#,
         expect![[r#"
-            st Rc (use dep::Rc)       Rc
-            st Rcar (use dep::Rcar)   Rcar
-            st Rc (use dep::some_module::Rc) Rc
+            st Rc (use dep::Rc)                    Rc
+            st Rcar (use dep::Rcar)              Rcar
+            st Rc (use dep::some_module::Rc)       Rc
             st Rcar (use dep::some_module::Rcar) Rcar
         "#]],
     );
@@ -165,11 +169,11 @@ fn main() {
 }
 "#,
         expect![[r#"
-            ct RC (use dep::RC)       ()
-            st Rc (use dep::Rc)       Rc
-            st Rcar (use dep::Rcar)   Rcar
-            ct RC (use dep::some_module::RC) ()
-            st Rc (use dep::some_module::Rc) Rc
+            ct RC (use dep::RC)                    ()
+            st Rc (use dep::Rc)                    Rc
+            st Rcar (use dep::Rcar)              Rcar
+            ct RC (use dep::some_module::RC)       ()
+            st Rc (use dep::some_module::Rc)       Rc
             st Rcar (use dep::some_module::Rcar) Rcar
         "#]],
     );
@@ -193,7 +197,7 @@ fn main() {
 }
 "#,
         expect![[r#"
-            ct RC (use dep::RC)       ()
+            ct RC (use dep::RC)              ()
             ct RC (use dep::some_module::RC) ()
         "#]],
     );
@@ -227,7 +231,7 @@ fn main() {
 }
 "#,
         expect![[r#"
-            st ThirdStruct (use dep::some_module::ThirdStruct) ThirdStruct
+            st ThirdStruct (use dep::some_module::ThirdStruct)                ThirdStruct
             st AfterThirdStruct (use dep::some_module::AfterThirdStruct) AfterThirdStruct
             st ThiiiiiirdStruct (use dep::some_module::ThiiiiiirdStruct) ThiiiiiirdStruct
         "#]],
@@ -263,8 +267,8 @@ fn trait_function_fuzzy_completion() {
     check(
         fixture,
         expect![[r#"
-                fn weird_function() (use dep::test_mod::TestTrait) fn()
-            "#]],
+            fn weird_function() (use dep::test_mod::TestTrait) fn()
+        "#]],
     );
 
     check_edit(
@@ -356,8 +360,8 @@ fn trait_method_fuzzy_completion() {
     check(
         fixture,
         expect![[r#"
-                me random_method() (use dep::test_mod::TestTrait) fn(&self)
-            "#]],
+            me random_method() (use dep::test_mod::TestTrait) fn(&self)
+        "#]],
     );
 
     check_edit(
@@ -401,8 +405,8 @@ fn main() {
     check(
         fixture,
         expect![[r#"
-        me some_method() (use foo::TestTrait) fn(&self)
-    "#]],
+            me some_method() (use foo::TestTrait) fn(&self)
+        "#]],
     );
 
     check_edit(
@@ -448,8 +452,8 @@ fn main() {
     check(
         fixture,
         expect![[r#"
-        me some_method() (use foo::TestTrait) fn(&self)
-    "#]],
+            me some_method() (use foo::TestTrait) fn(&self)
+        "#]],
     );
 
     check_edit(
@@ -496,8 +500,8 @@ fn completion<T: Wrapper>(whatever: T) {
     check(
         fixture,
         expect![[r#"
-        me not_in_scope() (use foo::NotInScope) fn(&self)
-    "#]],
+            me not_in_scope() (use foo::NotInScope) fn(&self)
+        "#]],
     );
 
     check_edit(
@@ -539,8 +543,8 @@ fn main() {
     check(
         fixture,
         expect![[r#"
-    me into() (use test_trait::TestInto) fn(self) -> T
-    "#]],
+            me into() (use test_trait::TestInto) fn(self) -> T
+        "#]],
     );
 }
 
@@ -568,8 +572,8 @@ fn main() {
     check(
         fixture,
         expect![[r#"
-                fn random_method() (use dep::test_mod::TestTrait) fn()
-            "#]],
+            fn random_method() (use dep::test_mod::TestTrait) fn()
+        "#]],
     );
 
     check_edit(
@@ -737,8 +741,8 @@ fn main() {
 }
         "#,
         expect![[r#"
-                me random_method() (use dep::test_mod::TestTrait) fn(&self) DEPRECATED
-            "#]],
+            me random_method() (use dep::test_mod::TestTrait) fn(&self) DEPRECATED
+        "#]],
     );
 
     check(
@@ -767,8 +771,8 @@ fn main() {
 }
 "#,
         expect![[r#"
-            ct SPECIAL_CONST (use dep::test_mod::TestTrait) u8 DEPRECATED
-            fn weird_function() (use dep::test_mod::TestTrait) fn() DEPRECATED
+            ct SPECIAL_CONST (use dep::test_mod::TestTrait)           u8 DEPRECATED
+            fn weird_function() (use dep::test_mod::TestTrait)      fn() DEPRECATED
             me random_method(…) (use dep::test_mod::TestTrait) fn(&self) DEPRECATED
         "#]],
     );
@@ -1117,7 +1121,7 @@ fn main() {
     tes$0
 }"#,
         expect![[r#"
-            ct TEST_CONST (use foo::TEST_CONST) usize
+            ct TEST_CONST (use foo::TEST_CONST)               usize
             fn test_function() (use foo::test_function) fn() -> i32
         "#]],
     );
@@ -1175,8 +1179,8 @@ fn main() {
 }
 "#,
         expect![[r#"
-                fn some_fn() (use m::some_fn) fn() -> i32
-            "#]],
+            fn some_fn() (use m::some_fn) fn() -> i32
+        "#]],
     );
 }
 
@@ -1691,7 +1695,7 @@ fn function() {
         expect![[r#"
             st FooStruct (use outer::FooStruct) BarStruct
             md foo (use outer::foo)
-            fn foo_fun() (use outer::foo_fun) fn()
+            fn foo_fun() (use outer::foo_fun)        fn()
         "#]],
     );
 }
@@ -1717,6 +1721,76 @@ fn function() {
         expect![[r#"
             st FooStruct (use outer::FooStruct)
             md foo (use outer::foo)
+        "#]],
+    );
+}
+
+#[test]
+fn intrinsics() {
+    check(
+        r#"
+    //- /core.rs crate:core
+    pub mod intrinsics {
+        extern "rust-intrinsic" {
+            pub fn transmute<Src, Dst>(src: Src) -> Dst;
+        }
+    }
+    pub mod mem {
+        pub use crate::intrinsics::transmute;
+    }
+    //- /main.rs crate:main deps:core
+    fn function() {
+            transmute$0
+    }
+    "#,
+        expect![[r#"
+            fn transmute(…) (use core::mem::transmute) unsafe fn(Src) -> Dst
+        "#]],
+    );
+    check(
+        r#"
+//- /core.rs crate:core
+pub mod intrinsics {
+    extern "rust-intrinsic" {
+        pub fn transmute<Src, Dst>(src: Src) -> Dst;
+    }
+}
+pub mod mem {
+    pub use crate::intrinsics::transmute;
+}
+//- /main.rs crate:main deps:core
+fn function() {
+        mem::transmute$0
+}
+"#,
+        expect![""],
+    );
+}
+
+#[test]
+fn excluded_trait_item_included_when_exact_match() {
+    check_with_config(
+        CompletionConfig {
+            exclude_traits: &["test::module2::ExcludedTrait".to_owned()],
+            ..TEST_CONFIG
+        },
+        r#"
+mod module2 {
+    pub trait ExcludedTrait {
+        fn foo(&self) {}
+        fn bar(&self) {}
+        fn baz(&self) {}
+    }
+
+    impl<T> ExcludedTrait for T {}
+}
+
+fn foo() {
+    true.foo$0
+}
+        "#,
+        expect![[r#"
+            me foo() (use module2::ExcludedTrait) fn(&self)
         "#]],
     );
 }

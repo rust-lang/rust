@@ -4,9 +4,8 @@ use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData};
 use tracing::debug;
 
+use super::{AllFacts, LocationIndex, LocationTable};
 use crate::def_use::{self, DefUse};
-use crate::facts::AllFacts;
-use crate::location::{LocationIndex, LocationTable};
 use crate::universal_regions::UniversalRegions;
 
 /// Emit polonius facts for variable defs, uses, drops, and path accesses.

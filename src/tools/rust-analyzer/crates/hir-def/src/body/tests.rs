@@ -52,6 +52,7 @@ fn your_stack_belongs_to_me() {
     cov_mark::check!(your_stack_belongs_to_me);
     lower(
         r#"
+#![recursion_limit = "32"]
 macro_rules! n_nuple {
     ($e:tt) => ();
     ($($rest:tt)*) => {{
@@ -68,6 +69,7 @@ fn your_stack_belongs_to_me2() {
     cov_mark::check!(overflow_but_not_me);
     lower(
         r#"
+#![recursion_limit = "32"]
 macro_rules! foo {
     () => {{ foo!(); foo!(); }}
 }
@@ -78,8 +80,6 @@ fn main() { foo!(); }
 
 #[test]
 fn recursion_limit() {
-    cov_mark::check!(your_stack_belongs_to_me);
-
     lower(
         r#"
 #![recursion_limit = "2"]
@@ -424,5 +424,23 @@ fn f() {
         body.bindings[BindingId::from_raw(RawIdx::from_u32(0))].name.as_str(),
         "B",
         "should have a binding for `B`",
+    );
+}
+
+#[test]
+fn regression_pretty_print_bind_pat() {
+    let (db, body, owner) = lower(
+        r#"
+fn foo() {
+    let v @ u = 123;
+}
+"#,
+    );
+    let printed = body.pretty_print(&db, owner, Edition::CURRENT);
+    assert_eq!(
+        printed,
+        r#"fn foo() -> () {
+    let v @ u = 123;
+}"#
     );
 }

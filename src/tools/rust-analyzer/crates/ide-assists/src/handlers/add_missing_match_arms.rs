@@ -220,7 +220,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                 .arms()
                 .find(|arm| matches!(arm.pat(), Some(ast::Pat::WildcardPat(_))));
             if let Some(arm) = catch_all_arm {
-                let is_empty_expr = arm.expr().map_or(true, |e| match e {
+                let is_empty_expr = arm.expr().is_none_or(|e| match e {
                     ast::Expr::BlockExpr(b) => {
                         b.statements().next().is_none() && b.tail_expr().is_none()
                     }
@@ -261,7 +261,9 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
             }
 
             if let Some(cap) = ctx.config.snippet_cap {
-                if let Some(it) = first_new_arm.and_then(|arm| arm.syntax().descendants().find_map(ast::WildcardPat::cast)) {
+                if let Some(it) = first_new_arm
+                    .and_then(|arm| arm.syntax().descendants().find_map(ast::WildcardPat::cast))
+                {
                     edit.add_placeholder_snippet(cap, it);
                 }
 
@@ -287,14 +289,10 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                         syntax::SyntaxElement::from(edit.make_syntax_mut(it))
                     }
                     syntax::SyntaxElement::Token(it) => {
-                        // Don't have a way to make tokens mut, so instead make the parent mut
-                        // and find the token again
-                        let parent =
-                            edit.make_syntax_mut(it.parent().expect("Token must have a parent."));
-                        let mut_token =
-                            parent.covering_element(it.text_range()).into_token().expect("Covering element cannot be found. Range may be beyond the current node's range");
-
-                        syntax::SyntaxElement::from(mut_token)
+                        // If a token is found, it is '{' or '}'
+                        // The parent is `{ ... }`
+                        let parent = it.parent().expect("Token must have a parent.");
+                        syntax::SyntaxElement::from(edit.make_syntax_mut(parent))
                     }
                 }
             };

@@ -16,8 +16,8 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, FatalError, PResult, Subdiagnostic,
-    Suggestions, pluralize,
+    Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, PResult, Subdiagnostic, Suggestions,
+    pluralize,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -755,7 +755,7 @@ impl<'a> Parser<'a> {
         // When there are a few keywords in the last ten elements of `self.expected_token_types`
         // and the current token is an identifier, it's probably a misspelled keyword. This handles
         // code like `async Move {}`, misspelled `if` in match guard, misspelled `else` in
-        // `if`-`else` and mispelled `where` in a where clause.
+        // `if`-`else` and misspelled `where` in a where clause.
         if !expected_keywords.is_empty()
             && !curr_ident.is_used_keyword()
             && let Some(misspelled_kw) = find_similar_kw(curr_ident, &expected_keywords)
@@ -1336,7 +1336,7 @@ impl<'a> Parser<'a> {
     ) -> bool {
         if let ExprKind::Binary(op, l1, r1) = &inner_op.kind {
             if let ExprKind::Field(_, ident) = l1.kind
-                && ident.as_str().parse::<i32>().is_err()
+                && !ident.is_numeric()
                 && !matches!(r1.kind, ExprKind::Lit(_))
             {
                 // The parser has encountered `foo.bar<baz`, the likelihood of the turbofish
@@ -3023,17 +3023,10 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn recover_vcs_conflict_marker(&mut self) {
-        if let Err(err) = self.err_vcs_conflict_marker() {
-            err.emit();
-            FatalError.raise();
-        }
-    }
-
-    pub(crate) fn err_vcs_conflict_marker(&mut self) -> PResult<'a, ()> {
         // <<<<<<<
         let Some(start) = self.conflict_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt)
         else {
-            return Ok(());
+            return;
         };
         let mut spans = Vec::with_capacity(3);
         spans.push(start);
@@ -3063,7 +3056,7 @@ impl<'a> Parser<'a> {
             self.bump();
         }
 
-        let mut err = self.dcx().struct_span_err(spans, "encountered diff marker");
+        let mut err = self.dcx().struct_span_fatal(spans, "encountered diff marker");
         match middlediff3 {
             // We're using diff3
             Some(middlediff3) => {
@@ -3106,7 +3099,7 @@ impl<'a> Parser<'a> {
              visit <https://git-scm.com/book/en/v2/Git-Tools-Advanced-Merging#_checking_out_conflicts>",
         );
 
-        Err(err)
+        err.emit();
     }
 
     /// Parse and throw away a parenthesized comma separated

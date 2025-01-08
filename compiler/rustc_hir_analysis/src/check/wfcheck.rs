@@ -293,7 +293,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
             }
             res
         }
-        hir::ItemKind::Fn(ref sig, ..) => {
+        hir::ItemKind::Fn { sig, .. } => {
             check_item_fn(tcx, def_id, item.ident, item.span, sig.decl)
         }
         hir::ItemKind::Static(ty, ..) => {
@@ -2007,7 +2007,10 @@ fn check_variances_for_type_defn<'tcx>(
         }
 
         match hir_param.name {
-            hir::ParamName::Error => {}
+            hir::ParamName::Error(_) => {
+                // Don't report a bivariance error for a lifetime that isn't
+                // even valid to name.
+            }
             _ => {
                 let has_explicit_bounds = explicitly_bounded_params.contains(&parameter);
                 report_bivariance(tcx, hir_param, has_explicit_bounds, item);

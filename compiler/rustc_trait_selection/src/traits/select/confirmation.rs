@@ -896,6 +896,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         sig.tupled_inputs_ty,
                     ])
                 });
+
+                // Note that unlike below, we don't need to check `Future + Sized` for
+                // the output coroutine because they are `Future + Sized` by construction.
+
                 (trait_ref, args.kind_ty())
             }
             ty::FnDef(..) | ty::FnPtr(..) => {
@@ -907,12 +911,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ])
                 });
 
-                // We must additionally check that the return type impls `Future`.
+                // We must additionally check that the return type impls `Future + Sized`.
                 let future_trait_def_id = tcx.require_lang_item(LangItem::Future, None);
                 nested.push(obligation.with(
                     tcx,
                     sig.output().map_bound(|output_ty| {
                         ty::TraitRef::new(tcx, future_trait_def_id, [output_ty])
+                    }),
+                ));
+                let sized_trait_def_id = tcx.require_lang_item(LangItem::Sized, None);
+                nested.push(obligation.with(
+                    tcx,
+                    sig.output().map_bound(|output_ty| {
+                        ty::TraitRef::new(tcx, sized_trait_def_id, [output_ty])
                     }),
                 ));
 
@@ -928,13 +939,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ])
                 });
 
-                // We must additionally check that the return type impls `Future`.
-                // See FIXME in last branch for why we instantiate the binder eagerly.
+                // We must additionally check that the return type impls `Future + Sized`.
                 let future_trait_def_id = tcx.require_lang_item(LangItem::Future, None);
                 let placeholder_output_ty = self.infcx.enter_forall_and_leak_universe(sig.output());
                 nested.push(obligation.with(
                     tcx,
                     ty::TraitRef::new(tcx, future_trait_def_id, [placeholder_output_ty]),
+                ));
+                let sized_trait_def_id = tcx.require_lang_item(LangItem::Sized, None);
+                nested.push(obligation.with(
+                    tcx,
+                    sig.output().map_bound(|output_ty| {
+                        ty::TraitRef::new(tcx, sized_trait_def_id, [output_ty])
+                    }),
                 ));
 
                 (trait_ref, args.kind_ty())

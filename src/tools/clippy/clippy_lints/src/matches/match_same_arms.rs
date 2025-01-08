@@ -74,8 +74,8 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
                         // check if using the same bindings as before
                         HirIdMapEntry::Occupied(entry) => return *entry.get() == b_id,
                     }
-                // the names technically don't have to match; this makes the lint more conservative
-                && cx.tcx.hir().name(a_id) == cx.tcx.hir().name(b_id)
+                    // the names technically don't have to match; this makes the lint more conservative
+                    && cx.tcx.hir().name(a_id) == cx.tcx.hir().name(b_id)
                     && cx.typeck_results().expr_ty(a) == cx.typeck_results().expr_ty(b)
                     && pat_contains_local(lhs.pat, a_id)
                     && pat_contains_local(rhs.pat, b_id)
@@ -149,16 +149,12 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
                     let move_pat_snip = snippet_with_applicability(cx, move_arm.pat.span, "<pat2>", &mut appl);
                     let keep_pat_snip = snippet_with_applicability(cx, keep_arm.pat.span, "<pat1>", &mut appl);
 
-                    diag.span_suggestion(
-                        keep_arm.pat.span,
-                        "or try merging the arm patterns",
-                        format!("{keep_pat_snip} | {move_pat_snip}"),
-                        appl,
-                    )
-                    .span_suggestion(
-                        adjusted_arm_span(cx, move_arm.span),
-                        "and remove this obsolete arm",
-                        "",
+                    diag.multipart_suggestion(
+                        "or try merging the arm patterns and removing the obsolete arm",
+                        vec![
+                            (keep_arm.pat.span, format!("{keep_pat_snip} | {move_pat_snip}")),
+                            (adjusted_arm_span(cx, move_arm.span), String::new()),
+                        ],
                         appl,
                     )
                     .help("try changing either arm body");
@@ -258,9 +254,11 @@ impl<'a> NormalizedPat<'a> {
     fn from_pat(cx: &LateContext<'_>, arena: &'a DroplessArena, pat: &'a Pat<'_>) -> Self {
         match pat.kind {
             PatKind::Wild | PatKind::Binding(.., None) => Self::Wild,
-            PatKind::Binding(.., Some(pat)) | PatKind::Box(pat) | PatKind::Deref(pat) | PatKind::Ref(pat, _) => {
-                Self::from_pat(cx, arena, pat)
-            },
+            PatKind::Binding(.., Some(pat))
+            | PatKind::Box(pat)
+            | PatKind::Deref(pat)
+            | PatKind::Ref(pat, _)
+            | PatKind::Guard(pat, _) => Self::from_pat(cx, arena, pat),
             PatKind::Never => Self::Never,
             PatKind::Struct(ref path, fields, _) => {
                 let fields =

@@ -604,7 +604,14 @@ pub(crate) fn run_pass_manager(
     debug!("running the pass manager");
     let opt_stage = if thin { llvm::OptStage::ThinLTO } else { llvm::OptStage::FatLTO };
     let opt_level = config.opt_level.unwrap_or(config::OptLevel::No);
-    unsafe { write::llvm_optimize(cgcx, dcx, module, config, opt_level, opt_stage) }?;
+
+    // If this rustc version was build with enzyme/autodiff enabled, and if users applied the
+    // `#[autodiff]` macro at least once, then we will later call llvm_optimize a second time.
+    let first_run = true;
+    debug!("running llvm pm opt pipeline");
+    unsafe {
+        write::llvm_optimize(cgcx, dcx, module, config, opt_level, opt_stage, first_run)?;
+    }
     debug!("lto done");
     Ok(())
 }
@@ -730,11 +737,7 @@ pub(crate) unsafe fn optimize_thin_module(
         {
             let _timer =
                 cgcx.prof.generic_activity_with_arg("LLVM_thin_lto_rename", thin_module.name());
-            if unsafe {
-                !llvm::LLVMRustPrepareThinLTORename(thin_module.shared.data.0, llmod, target)
-            } {
-                return Err(write::llvm_err(dcx, LlvmError::PrepareThinLtoModule));
-            }
+            unsafe { llvm::LLVMRustPrepareThinLTORename(thin_module.shared.data.0, llmod, target) };
             save_temp_bitcode(cgcx, &module, "thin-lto-after-rename");
         }
 

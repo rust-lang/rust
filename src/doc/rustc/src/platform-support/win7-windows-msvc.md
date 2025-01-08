@@ -25,7 +25,7 @@ You can build Rust with support for the targets by adding it to the target list 
 ```toml
 [build]
 build-stage = 1
-target = [ "x86_64-win7-windows-msvc" ]
+target = ["x86_64-win7-windows-msvc"]
 ```
 
 ## Building Rust programs

@@ -223,8 +223,6 @@ enum Value<'tcx> {
     Projection(VnIndex, ProjectionElem<VnIndex, Ty<'tcx>>),
     /// Discriminant of the given value.
     Discriminant(VnIndex),
-    /// Length of an array or slice.
-    Len(VnIndex),
 
     // Operations.
     NullaryOp(NullOp<'tcx>, Ty<'tcx>),
@@ -512,13 +510,6 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 let discr_value =
                     self.ecx.discriminant_for_variant(base.layout.ty, variant).discard_err()?;
                 discr_value.into()
-            }
-            Len(slice) => {
-                let slice = self.evaluated[slice].as_ref()?;
-                let usize_layout = self.ecx.layout_of(self.tcx.types.usize).unwrap();
-                let len = slice.len(&self.ecx).discard_err()?;
-                let imm = ImmTy::from_uint(len, usize_layout);
-                imm.into()
             }
             NullaryOp(null_op, ty) => {
                 let layout = self.ecx.layout_of(ty).ok()?;
@@ -863,7 +854,6 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
 
             // Operations.
-            Rvalue::Len(ref mut place) => return self.simplify_len(place, location),
             Rvalue::Cast(ref mut kind, ref mut value, to) => {
                 return self.simplify_cast(kind, value, to, location);
             }
@@ -1431,47 +1421,6 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         }
 
         Some(self.insert(Value::Cast { kind: *kind, value, from, to }))
-    }
-
-    fn simplify_len(&mut self, place: &mut Place<'tcx>, location: Location) -> Option<VnIndex> {
-        // Trivial case: we are fetching a statically known length.
-        let place_ty = place.ty(self.local_decls, self.tcx).ty;
-        if let ty::Array(_, len) = place_ty.kind() {
-            return self.insert_constant(Const::from_ty_const(
-                *len,
-                self.tcx.types.usize,
-                self.tcx,
-            ));
-        }
-
-        let mut inner = self.simplify_place_value(place, location)?;
-
-        // The length information is stored in the wide pointer.
-        // Reborrowing copies length information from one pointer to the other.
-        while let Value::Address { place: borrowed, .. } = self.get(inner)
-            && let [PlaceElem::Deref] = borrowed.projection[..]
-            && let Some(borrowed) = self.locals[borrowed.local]
-        {
-            inner = borrowed;
-        }
-
-        // We have an unsizing cast, which assigns the length to wide pointer metadata.
-        if let Value::Cast { kind, from, to, .. } = self.get(inner)
-            && let CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, _) = kind
-            && let Some(from) = from.builtin_deref(true)
-            && let ty::Array(_, len) = from.kind()
-            && let Some(to) = to.builtin_deref(true)
-            && let ty::Slice(..) = to.kind()
-        {
-            return self.insert_constant(Const::from_ty_const(
-                *len,
-                self.tcx.types.usize,
-                self.tcx,
-            ));
-        }
-
-        // Fallback: a symbolic `Len`.
-        Some(self.insert(Value::Len(inner)))
     }
 
     fn pointers_have_same_metadata(&self, left_ptr_ty: Ty<'tcx>, right_ptr_ty: Ty<'tcx>) -> bool {

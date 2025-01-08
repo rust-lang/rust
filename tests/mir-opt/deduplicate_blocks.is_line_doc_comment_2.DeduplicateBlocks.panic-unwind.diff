@@ -22,14 +22,14 @@
   
       bb1: {
           StorageDead(_3);
-          _4 = Len((*_2));
+          _4 = PtrMetadata(copy _2);
           _5 = const 4_usize;
           _6 = Ge(move _4, move _5);
           switchInt(move _6) -> [0: bb2, otherwise: bb3];
       }
   
       bb2: {
-          _7 = Len((*_2));
+          _7 = PtrMetadata(copy _2);
           _8 = const 3_usize;
           _9 = Ge(move _7, move _8);
 -         switchInt(move _9) -> [0: bb7, otherwise: bb8];

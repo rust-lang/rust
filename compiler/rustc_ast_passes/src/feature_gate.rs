@@ -242,7 +242,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemKind::Struct(..) => {
+            ast::ItemKind::Struct(..) | ast::ItemKind::Enum(..) | ast::ItemKind::Union(..) => {
                 for attr in attr::filter_by_name(&i.attrs, sym::repr) {
                     for item in attr.meta_item_list().unwrap_or_else(ThinVec::new) {
                         if item.has_name(sym::simd) {
@@ -263,7 +263,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         &self,
                         negative_impls,
                         span.to(of_trait.as_ref().map_or(span, |t| t.path.span)),
-                        "negative trait bounds are not yet fully implemented; \
+                        "negative trait bounds are not fully implemented; \
                          use marker types for now"
                     );
                 }

@@ -32,7 +32,7 @@ use {rustc_ast as ast, rustc_hir as hir};
 pub(crate) use self::ItemKind::*;
 pub(crate) use self::Type::{
     Array, BareFunction, BorrowedRef, DynTrait, Generic, ImplTrait, Infer, Primitive, QPath,
-    RawPointer, SelfTy, Slice, Tuple,
+    RawPointer, SelfTy, Slice, Tuple, UnsafeBinder,
 };
 use crate::clean::cfg::Cfg;
 use crate::clean::clean_middle_path;
@@ -400,7 +400,27 @@ impl Item {
     }
 
     pub(crate) fn deprecation(&self, tcx: TyCtxt<'_>) -> Option<Deprecation> {
-        self.def_id().and_then(|did| tcx.lookup_deprecation(did))
+        self.def_id().and_then(|did| tcx.lookup_deprecation(did)).or_else(|| {
+            // `allowed_through_unstable_modules` is a bug-compatibility hack for old rustc
+            // versions; the paths that are exposed through it are "deprecated" because they
+            // were never supposed to work at all.
+            let stab = self.stability(tcx)?;
+            if let rustc_attr_parsing::StabilityLevel::Stable {
+                allowed_through_unstable_modules: true,
+                ..
+            } = stab.level
+            {
+                Some(Deprecation {
+                    // FIXME(#131676, #135003): when a note is added to this stability tag,
+                    // translate it here
+                    since: rustc_attr_parsing::DeprecatedSince::Unspecified,
+                    note: None,
+                    suggestion: None,
+                })
+            } else {
+                None
+            }
+        })
     }
 
     pub(crate) fn inner_docs(&self, tcx: TyCtxt<'_>) -> bool {
@@ -1511,6 +1531,8 @@ pub(crate) enum Type {
 
     /// An `impl Trait`: `impl TraitA + TraitB + ...`
     ImplTrait(Vec<GenericBound>),
+
+    UnsafeBinder(Box<UnsafeBinderTy>),
 }
 
 impl Type {
@@ -1703,7 +1725,7 @@ impl Type {
             Type::Pat(..) => PrimitiveType::Pat,
             RawPointer(..) => PrimitiveType::RawPointer,
             QPath(box QPathData { ref self_type, .. }) => return self_type.def_id(cache),
-            Generic(_) | SelfTy | Infer | ImplTrait(_) => return None,
+            Generic(_) | SelfTy | Infer | ImplTrait(_) | UnsafeBinder(_) => return None,
         };
         Primitive(t).def_id(cache)
     }
@@ -2341,6 +2363,12 @@ pub(crate) struct BareFunctionDecl {
     pub(crate) generic_params: Vec<GenericParamDef>,
     pub(crate) decl: FnDecl,
     pub(crate) abi: ExternAbi,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub(crate) struct UnsafeBinderTy {
+    pub(crate) generic_params: Vec<GenericParamDef>,
+    pub(crate) ty: Type,
 }
 
 #[derive(Clone, Debug)]

@@ -62,10 +62,10 @@ use crate::alloc::Allocator;
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::collections::TryReserveError;
-use crate::str::{self, Chars, Utf8Error, from_utf8_unchecked_mut};
+use crate::str::{self, CharIndices, Chars, Utf8Error, from_utf8_unchecked_mut};
 #[cfg(not(no_global_oom_handling))]
 use crate::str::{FromStr, from_boxed_utf8_unchecked};
-use crate::vec::Vec;
+use crate::vec::{self, Vec};
 
 /// A UTF-8–encoded, growable string.
 ///
@@ -1952,6 +1952,61 @@ impl String {
         Drain { start, end, iter: chars_iter, string: self_ptr }
     }
 
+    /// Converts a `String` into an iterator over the [`char`]s of the string.
+    ///
+    /// As a string consists of valid UTF-8, we can iterate through a string
+    /// by [`char`]. This method returns such an iterator.
+    ///
+    /// It's important to remember that [`char`] represents a Unicode Scalar
+    /// Value, and might not match your idea of what a 'character' is. Iteration
+    /// over grapheme clusters may be what you actually want. That functionality
+    /// is not provided by Rust's standard library, check crates.io instead.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(string_into_chars)]
+    ///
+    /// let word = String::from("goodbye");
+    ///
+    /// let mut chars = word.into_chars();
+    ///
+    /// assert_eq!(Some('g'), chars.next());
+    /// assert_eq!(Some('o'), chars.next());
+    /// assert_eq!(Some('o'), chars.next());
+    /// assert_eq!(Some('d'), chars.next());
+    /// assert_eq!(Some('b'), chars.next());
+    /// assert_eq!(Some('y'), chars.next());
+    /// assert_eq!(Some('e'), chars.next());
+    ///
+    /// assert_eq!(None, chars.next());
+    /// ```
+    ///
+    /// Remember, [`char`]s might not match your intuition about characters:
+    ///
+    /// ```
+    /// #![feature(string_into_chars)]
+    ///
+    /// let y = String::from("y̆");
+    ///
+    /// let mut chars = y.into_chars();
+    ///
+    /// assert_eq!(Some('y'), chars.next()); // not 'y̆'
+    /// assert_eq!(Some('\u{0306}'), chars.next());
+    ///
+    /// assert_eq!(None, chars.next());
+    /// ```
+    ///
+    /// [`char`]: prim@char
+    #[inline]
+    #[must_use = "`self` will be dropped if the result is not used"]
+    #[unstable(feature = "string_into_chars", issue = "133125")]
+    pub fn into_chars(self) -> IntoChars {
+        IntoChars { bytes: self.into_bytes().into_iter() }
+    }
+
     /// Removes the specified range in the string,
     /// and replaces it with the given string.
     /// The given string doesn't need to be the same length as the range.
@@ -3089,6 +3144,134 @@ impl fmt::Write for String {
         Ok(())
     }
 }
+
+/// An iterator over the [`char`]s of a string.
+///
+/// This struct is created by the [`into_chars`] method on [`String`].
+/// See its documentation for more.
+///
+/// [`char`]: prim@char
+/// [`into_chars`]: String::into_chars
+#[cfg_attr(not(no_global_oom_handling), derive(Clone))]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
+#[unstable(feature = "string_into_chars", issue = "133125")]
+pub struct IntoChars {
+    bytes: vec::IntoIter<u8>,
+}
+
+#[unstable(feature = "string_into_chars", issue = "133125")]
+impl fmt::Debug for IntoChars {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("IntoChars").field(&self.as_str()).finish()
+    }
+}
+
+impl IntoChars {
+    /// Views the underlying data as a subslice of the original data.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(string_into_chars)]
+    ///
+    /// let mut chars = String::from("abc").into_chars();
+    ///
+    /// assert_eq!(chars.as_str(), "abc");
+    /// chars.next();
+    /// assert_eq!(chars.as_str(), "bc");
+    /// chars.next();
+    /// chars.next();
+    /// assert_eq!(chars.as_str(), "");
+    /// ```
+    #[unstable(feature = "string_into_chars", issue = "133125")]
+    #[must_use]
+    #[inline]
+    pub fn as_str(&self) -> &str {
+        // SAFETY: `bytes` is a valid UTF-8 string.
+        unsafe { str::from_utf8_unchecked(self.bytes.as_slice()) }
+    }
+
+    /// Consumes the `IntoChars`, returning the remaining string.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(string_into_chars)]
+    ///
+    /// let chars = String::from("abc").into_chars();
+    /// assert_eq!(chars.into_string(), "abc");
+    ///
+    /// let mut chars = String::from("def").into_chars();
+    /// chars.next();
+    /// assert_eq!(chars.into_string(), "ef");
+    /// ```
+    #[cfg(not(no_global_oom_handling))]
+    #[unstable(feature = "string_into_chars", issue = "133125")]
+    #[inline]
+    pub fn into_string(self) -> String {
+        // Safety: `bytes` are kept in UTF-8 form, only removing whole `char`s at a time.
+        unsafe { String::from_utf8_unchecked(self.bytes.collect()) }
+    }
+
+    #[inline]
+    fn iter(&self) -> CharIndices<'_> {
+        self.as_str().char_indices()
+    }
+}
+
+#[unstable(feature = "string_into_chars", issue = "133125")]
+impl Iterator for IntoChars {
+    type Item = char;
+
+    #[inline]
+    fn next(&mut self) -> Option<char> {
+        let mut iter = self.iter();
+        match iter.next() {
+            None => None,
+            Some((_, ch)) => {
+                let offset = iter.offset();
+                // `offset` is a valid index.
+                let _ = self.bytes.advance_by(offset);
+                Some(ch)
+            }
+        }
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.iter().count()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter().size_hint()
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<char> {
+        self.next_back()
+    }
+}
+
+#[unstable(feature = "string_into_chars", issue = "133125")]
+impl DoubleEndedIterator for IntoChars {
+    #[inline]
+    fn next_back(&mut self) -> Option<char> {
+        let len = self.as_str().len();
+        let mut iter = self.iter();
+        match iter.next_back() {
+            None => None,
+            Some((idx, ch)) => {
+                // `idx` is a valid index.
+                let _ = self.bytes.advance_back_by(len - idx);
+                Some(ch)
+            }
+        }
+    }
+}
+
+#[unstable(feature = "string_into_chars", issue = "133125")]
+impl FusedIterator for IntoChars {}
 
 /// A draining iterator for `String`.
 ///

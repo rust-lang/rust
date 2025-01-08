@@ -337,7 +337,7 @@ impl<'tcx> UniversalRegions<'tcx> {
         self.indices.indices.iter().map(|(&r, &v)| (r, v))
     }
 
-    /// See `UniversalRegionIndices::to_region_vid`.
+    /// See [UniversalRegionIndices::to_region_vid].
     pub(crate) fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
         self.indices.to_region_vid(r)
     }
@@ -881,6 +881,10 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
     /// reference those regions from the `ParamEnv`. It is also used
     /// during initialization. Relies on the `indices` map having been
     /// fully initialized.
+    ///
+    /// Panics if `r` is not a registered universal region, most notably
+    /// if it is a placeholder. Handling placeholders requires access to the
+    /// `MirTypeckRegionConstraints`.
     fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
         if let ty::ReVar(..) = *r {
             r.as_var()

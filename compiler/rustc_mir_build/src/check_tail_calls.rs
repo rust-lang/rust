@@ -117,7 +117,7 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
                 self.report_arguments_mismatch(expr.span, caller_sig, callee_sig);
             }
 
-            // FIXME(explicit_tail_calls): this currenly fails for cases where opaques are used.
+            // FIXME(explicit_tail_calls): this currently fails for cases where opaques are used.
             // e.g.
             // ```
             // fn a() -> impl Sized { become b() } // ICE

@@ -1009,14 +1009,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             Rvalue::Ref(..) => {}
-            Rvalue::Len(p) => {
-                let pty = p.ty(&self.body.local_decls, self.tcx).ty;
-                check_kinds!(
-                    pty,
-                    "Cannot compute length of non-array type {:?}",
-                    ty::Array(..) | ty::Slice(..)
-                );
-            }
             Rvalue::BinaryOp(op, vals) => {
                 use BinOp::*;
                 let a = vals.0.ty(&self.body.local_decls, self.tcx);

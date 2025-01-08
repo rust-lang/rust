@@ -21,6 +21,7 @@ use crate::{
     item_tree::{AttrOwner, ItemTree, ItemTreeSourceMaps},
     lang_item::{self, LangItem, LangItemTarget, LangItems},
     nameres::{diagnostics::DefDiagnostics, DefMap},
+    tt,
     type_ref::TypesSourceMap,
     visibility::{self, Visibility},
     AttrDefId, BlockId, BlockLoc, ConstBlockId, ConstBlockLoc, ConstId, ConstLoc, DefWithBodyId,
@@ -294,14 +295,14 @@ fn crate_supports_no_std(db: &dyn DefDatabase, crate_id: CrateId) -> bool {
         // This is a `cfg_attr`; check if it could possibly expand to `no_std`.
         // Syntax is: `#[cfg_attr(condition(cfg, style), attr0, attr1, <...>)]`
         let tt = match attr.token_tree_value() {
-            Some(tt) => &tt.token_trees,
+            Some(tt) => tt.token_trees(),
             None => continue,
         };
 
         let segments =
-            tt.split(|tt| matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Punct(p)) if p.char == ','));
+            tt.split(|tt| matches!(tt, tt::TtElement::Leaf(tt::Leaf::Punct(p)) if p.char == ','));
         for output in segments.skip(1) {
-            match output {
+            match output.flat_tokens() {
                 [tt::TokenTree::Leaf(tt::Leaf::Ident(ident))] if ident.sym == sym::no_std => {
                     return true
                 }
