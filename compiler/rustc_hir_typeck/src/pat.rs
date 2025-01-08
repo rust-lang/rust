@@ -30,6 +30,7 @@ use tracing::{debug, instrument, trace};
 use ty::VariantDef;
 
 use super::report_unexpected_variant_res;
+use crate::expectation::Expectation;
 use crate::gather_locals::DeclOrigin;
 use crate::{FnCtxt, LoweredTy, errors};
 
@@ -270,7 +271,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::Wild | PatKind::Err(_) => expected,
             // We allow any type here; we ensure that the type is uninhabited during match checking.
             PatKind::Never => expected,
-            PatKind::Lit(lt) => self.check_pat_lit(pat.span, lt, expected, ti),
+            PatKind::Expr(lt) => self.check_pat_lit(pat.span, lt, expected, ti),
             PatKind::Range(lhs, rhs, _) => self.check_pat_range(pat.span, lhs, rhs, expected, ti),
             PatKind::Binding(ba, var_id, ident, sub) => {
                 self.check_pat_ident(pat, ba, var_id, ident, sub, expected, pat_info)
@@ -279,7 +280,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_pat_tuple_struct(pat, qpath, subpats, ddpos, expected, pat_info)
             }
             PatKind::Path(ref qpath) => {
-                self.check_pat_path(pat, qpath, path_res.unwrap(), expected, ti)
+                self.check_pat_path(pat.hir_id, pat.span, qpath, path_res.unwrap(), expected, ti)
             }
             PatKind::Struct(ref qpath, fields, has_rest_pat) => {
                 self.check_pat_struct(pat, qpath, fields, has_rest_pat, expected, pat_info)
@@ -398,7 +399,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // As a result, we allow `if let 0 = &&0 {}` but not `if let "foo" = &&"foo" {}`.
             //
             // Call `resolve_vars_if_possible` here for inline const blocks.
-            PatKind::Lit(lt) => match self.resolve_vars_if_possible(self.check_expr(lt)).kind() {
+            PatKind::Expr(lt) => match self.resolve_vars_if_possible(self.check_pat_expr_unadjusted(lt)).kind() {
                 ty::Ref(..) => AdjustMode::Pass,
                 _ => AdjustMode::Peel,
             },
@@ -493,10 +494,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         (expected, def_br, max_ref_mutbl)
     }
 
+    fn check_pat_expr_unadjusted(&self, lt: &'tcx hir::PatExpr<'tcx>) -> Ty<'tcx> {
+        let ty = match &lt.kind {
+            rustc_hir::PatExprKind::Lit { lit, .. } => {
+                self.check_expr_lit(lit, Expectation::NoExpectation)
+            }
+            rustc_hir::PatExprKind::ConstBlock(c) => {
+                self.check_expr_const_block(c, Expectation::NoExpectation)
+            }
+            rustc_hir::PatExprKind::Path(qpath) => {
+                let (res, opt_ty, segments) =
+                    self.resolve_ty_and_res_fully_qualified_call(qpath, lt.hir_id, lt.span);
+                self.instantiate_value_path(segments, opt_ty, res, lt.span, lt.span, lt.hir_id).0
+            }
+        };
+        self.write_ty(lt.hir_id, ty);
+        ty
+    }
+
     fn check_pat_lit(
         &self,
         span: Span,
-        lt: &hir::Expr<'tcx>,
+        lt: &hir::PatExpr<'tcx>,
         expected: Ty<'tcx>,
         ti: &TopInfo<'tcx>,
     ) -> Ty<'tcx> {
@@ -507,7 +526,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Byte string patterns behave the same way as array patterns
         // They can denote both statically and dynamically-sized byte arrays.
         let mut pat_ty = ty;
-        if let hir::ExprKind::Lit(Spanned { node: ast::LitKind::ByteStr(..), .. }) = lt.kind {
+        if let hir::PatExprKind::Lit {
+            lit: Spanned { node: ast::LitKind::ByteStr(..), .. }, ..
+        } = lt.kind
+        {
             let expected = self.structurally_resolve_type(span, expected);
             if let ty::Ref(_, inner_ty, _) = *expected.kind()
                 && self.try_structurally_resolve_type(span, inner_ty).is_slice()
@@ -524,7 +546,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         if self.tcx.features().string_deref_patterns()
-            && let hir::ExprKind::Lit(Spanned { node: ast::LitKind::Str(..), .. }) = lt.kind
+            && let hir::PatExprKind::Lit {
+                lit: Spanned { node: ast::LitKind::Str(..), .. }, ..
+            } = lt.kind
         {
             let tcx = self.tcx;
             let expected = self.resolve_vars_if_possible(expected);
@@ -565,15 +589,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat_range(
         &self,
         span: Span,
-        lhs: Option<&'tcx hir::Expr<'tcx>>,
-        rhs: Option<&'tcx hir::Expr<'tcx>>,
+        lhs: Option<&'tcx hir::PatExpr<'tcx>>,
+        rhs: Option<&'tcx hir::PatExpr<'tcx>>,
         expected: Ty<'tcx>,
         ti: &TopInfo<'tcx>,
     ) -> Ty<'tcx> {
-        let calc_side = |opt_expr: Option<&'tcx hir::Expr<'tcx>>| match opt_expr {
+        let calc_side = |opt_expr: Option<&'tcx hir::PatExpr<'tcx>>| match opt_expr {
             None => None,
             Some(expr) => {
-                let ty = self.check_expr(expr);
+                let ty = self.check_pat_expr_unadjusted(expr);
                 // Check that the end-point is possibly of numeric or char type.
                 // The early check here is not for correctness, but rather better
                 // diagnostics (e.g. when `&str` is being matched, `expected` will
@@ -919,7 +943,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         | PatKind::Box(..)
                         | PatKind::Deref(_)
                         | PatKind::Ref(..)
-                        | PatKind::Lit(..)
+                        | PatKind::Expr(..)
                         | PatKind::Range(..)
                         | PatKind::Err(_) => break 'block None,
                     },
@@ -1053,7 +1077,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_pat_path(
         &self,
-        pat: &Pat<'tcx>,
+        hir_id: HirId,
+        span: Span,
         qpath: &hir::QPath<'_>,
         path_resolution: (Res, Option<LoweredTy<'tcx>>, &'tcx [hir::PathSegment<'tcx>]),
         expected: Ty<'tcx>,
@@ -1072,8 +1097,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             Res::Def(DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::Variant, _) => {
                 let expected = "unit struct, unit variant or constant";
-                let e =
-                    report_unexpected_variant_res(tcx, res, None, qpath, pat.span, E0533, expected);
+                let e = report_unexpected_variant_res(tcx, res, None, qpath, span, E0533, expected);
                 return Ty::new_error(tcx, e);
             }
             Res::SelfCtor(def_id) => {
@@ -1088,7 +1112,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         res,
                         None,
                         qpath,
-                        pat.span,
+                        span,
                         E0533,
                         "unit struct",
                     );
@@ -1107,11 +1131,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Type-check the path.
         let (pat_ty, pat_res) =
-            self.instantiate_value_path(segments, opt_ty, res, pat.span, pat.span, pat.hir_id);
+            self.instantiate_value_path(segments, opt_ty, res, span, span, hir_id);
         if let Err(err) =
-            self.demand_suptype_with_origin(&self.pattern_cause(ti, pat.span), expected, pat_ty)
+            self.demand_suptype_with_origin(&self.pattern_cause(ti, span), expected, pat_ty)
         {
-            self.emit_bad_pat_path(err, pat, res, pat_res, pat_ty, segments);
+            self.emit_bad_pat_path(err, hir_id, span, res, pat_res, pat_ty, segments);
         }
         pat_ty
     }
@@ -1154,13 +1178,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn emit_bad_pat_path(
         &self,
         mut e: Diag<'_>,
-        pat: &hir::Pat<'tcx>,
+        hir_id: HirId,
+        pat_span: Span,
         res: Res,
         pat_res: Res,
         pat_ty: Ty<'tcx>,
         segments: &'tcx [hir::PathSegment<'tcx>],
     ) {
-        let pat_span = pat.span;
         if let Some(span) = self.tcx.hir().res_span(pat_res) {
             e.span_label(span, format!("{} defined here", res.descr()));
             if let [hir::PathSegment { ident, .. }] = &*segments {
@@ -1173,7 +1197,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         res.descr(),
                     ),
                 );
-                match self.tcx.parent_hir_node(pat.hir_id) {
+                match self.tcx.parent_hir_node(hir_id) {
                     hir::Node::PatField(..) => {
                         e.span_suggestion_verbose(
                             ident.span.shrink_to_hi(),
@@ -1813,9 +1837,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 } else if inexistent_fields.len() == 1 {
                     match pat_field.pat.kind {
-                        PatKind::Lit(expr)
+                        PatKind::Expr(_)
                             if !self.may_coerce(
-                                self.typeck_results.borrow().expr_ty(expr),
+                                self.typeck_results.borrow().node_type(pat_field.pat.hir_id),
                                 self.field_ty(field.span, field_def, args),
                             ) => {}
                         _ => {

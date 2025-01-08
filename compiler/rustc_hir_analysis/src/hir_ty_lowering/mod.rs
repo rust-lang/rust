@@ -2449,17 +2449,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         Ty::new_error(tcx, err)
                     }
                     hir::PatKind::Range(start, end, include_end) => {
-                        let expr_to_const = |expr: &'tcx hir::Expr<'tcx>| -> ty::Const<'tcx> {
-                            let (expr, neg) = match expr.kind {
-                                hir::ExprKind::Unary(hir::UnOp::Neg, negated) => {
-                                    (negated, Some((expr.hir_id, expr.span)))
-                                }
-                                _ => (expr, None),
-                            };
-                            let (c, c_ty) = match &expr.kind {
-                                hir::ExprKind::Lit(lit) => {
+                        let expr_to_const = |expr: &'tcx hir::PatExpr<'tcx>| -> ty::Const<'tcx> {
+                            let (c, c_ty) = match expr.kind {
+                                hir::PatExprKind::Lit { lit, negated } => {
                                     let lit_input =
-                                        LitToConstInput { lit: &lit.node, ty, neg: neg.is_some() };
+                                        LitToConstInput { lit: &lit.node, ty, neg: negated };
                                     let ct = match tcx.lit_to_const(lit_input) {
                                         Ok(c) => c,
                                         Err(LitToConstError::Reported(err)) => {
@@ -2470,23 +2464,30 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                     (ct, ty)
                                 }
 
-                                hir::ExprKind::Path(hir::QPath::Resolved(
+                                hir::PatExprKind::Path(hir::QPath::Resolved(
                                     _,
                                     path @ &hir::Path {
                                         res: Res::Def(DefKind::ConstParam, def_id),
                                         ..
                                     },
                                 )) => {
-                                    let _ = self.prohibit_generic_args(
+                                    match self.prohibit_generic_args(
                                         path.segments.iter(),
                                         GenericsArgsErrExtend::Param(def_id),
-                                    );
-                                    let ty = tcx
-                                        .type_of(def_id)
-                                        .no_bound_vars()
-                                        .expect("const parameter types cannot be generic");
-                                    let ct = self.lower_const_param(def_id, expr.hir_id);
-                                    (ct, ty)
+                                    ) {
+                                        Ok(()) => {
+                                            let ty = tcx
+                                                .type_of(def_id)
+                                                .no_bound_vars()
+                                                .expect("const parameter types cannot be generic");
+                                            let ct = self.lower_const_param(def_id, expr.hir_id);
+                                            (ct, ty)
+                                        }
+                                        Err(guar) => (
+                                            ty::Const::new_error(tcx, guar),
+                                            Ty::new_error(tcx, guar),
+                                        ),
+                                    }
                                 }
 
                                 _ => {
@@ -2497,9 +2498,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 }
                             };
                             self.record_ty(expr.hir_id, c_ty, expr.span);
-                            if let Some((id, span)) = neg {
-                                self.record_ty(id, c_ty, span);
-                            }
                             c
                         };
 

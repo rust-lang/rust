@@ -8,8 +8,8 @@ use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::{
     AssocItemKind, BinOpKind, Expr, ExprKind, FnRetTy, GenericArg, GenericBound, ImplItem, ImplItemKind,
-    ImplicitSelfKind, Item, ItemKind, Mutability, Node, OpaqueTyOrigin, PatKind, PathSegment, PrimTy, QPath,
-    TraitItemRef, TyKind,
+    ImplicitSelfKind, Item, ItemKind, Mutability, Node, OpaqueTyOrigin, PatExprKind, PatKind, PathSegment, PrimTy,
+    QPath, TraitItemRef, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, AssocKind, FnSig, Ty};
@@ -163,7 +163,13 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
         if let ExprKind::Let(lt) = expr.kind
             && match lt.pat.kind {
                 PatKind::Slice([], None, []) => true,
-                PatKind::Lit(lit) if is_empty_string(lit) => true,
+                PatKind::Expr(lit) => match lit.kind {
+                    PatExprKind::Lit { lit, .. } => match lit.node {
+                        LitKind::Str(lit, _) => lit.as_str().is_empty(),
+                        _ => false,
+                    },
+                    _ => false,
+                },
                 _ => false,
             }
             && !expr.span.from_expansion()
