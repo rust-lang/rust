@@ -206,12 +206,15 @@ fn get_type_suggestion(t: Ty<'_>, val: u128, negative: bool) -> Option<&'static 
         ty::Uint(_) => Some(Integer::fit_unsigned(val).uint_ty_str()),
         ty::Int(_) if negative => Some(Integer::fit_signed(-(val as i128)).int_ty_str()),
         ty::Int(int) => {
-            let signed = Integer::fit_signed(val as i128);
             let unsigned = Integer::fit_unsigned(val);
-            Some(if Some(unsigned.size().bits()) == int.bit_width() {
-                unsigned.uint_ty_str()
+            Some(if let Ok(signed) = i128::try_from(val).map(Integer::fit_signed) {
+                if Some(unsigned.size().bits()) == int.bit_width() {
+                    unsigned.uint_ty_str()
+                } else {
+                    signed.int_ty_str()
+                }
             } else {
-                signed.int_ty_str()
+                unsigned.uint_ty_str()
             })
         }
         _ => None,
