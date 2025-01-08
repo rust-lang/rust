@@ -10,7 +10,7 @@ use crate::{
         FormatArgsArg, FormatArgsExpr, MacroDef, Static, TokenTree,
     },
     AstToken,
-    SyntaxKind::*,
+    SyntaxKind::{self, *},
     SyntaxNode, SyntaxToken, T,
 };
 
@@ -47,6 +47,27 @@ impl From<ast::BlockExpr> for ElseBranch {
 impl From<ast::IfExpr> for ElseBranch {
     fn from(if_expr: ast::IfExpr) -> Self {
         Self::IfExpr(if_expr)
+    }
+}
+
+impl AstNode for ElseBranch {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        ast::BlockExpr::can_cast(kind) || ast::IfExpr::can_cast(kind)
+    }
+
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if let Some(block_expr) = ast::BlockExpr::cast(syntax.clone()) {
+            Some(Self::Block(block_expr))
+        } else {
+            ast::IfExpr::cast(syntax).map(Self::IfExpr)
+        }
+    }
+
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            ElseBranch::Block(block_expr) => block_expr.syntax(),
+            ElseBranch::IfExpr(if_expr) => if_expr.syntax(),
+        }
     }
 }
 

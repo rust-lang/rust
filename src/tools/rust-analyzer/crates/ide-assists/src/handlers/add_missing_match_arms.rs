@@ -212,8 +212,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                     !hidden
                 })
                 .map(|(pat, _)| {
-                    make::match_arm(iter::once(pat), None, make::ext::expr_todo())
-                        .clone_for_update()
+                    make::match_arm(pat, None, make::ext::expr_todo()).clone_for_update()
                 });
 
             let catch_all_arm = new_match_arm_list
@@ -243,12 +242,9 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
 
             if needs_catch_all_arm && !has_catch_all_arm {
                 cov_mark::hit!(added_wildcard_pattern);
-                let arm = make::match_arm(
-                    iter::once(make::wildcard_pat().into()),
-                    None,
-                    make::ext::expr_todo(),
-                )
-                .clone_for_update();
+                let arm =
+                    make::match_arm(make::wildcard_pat().into(), None, make::ext::expr_todo())
+                        .clone_for_update();
                 todo_placeholders.push(arm.expr().unwrap());
                 added_arms.push(arm);
             }

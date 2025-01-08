@@ -60,7 +60,7 @@ pub(crate) fn convert_while_to_loop(acc: &mut Assists, ctx: &AssistContext<'_>) 
             .indent(while_indent_level);
             let block_expr = if is_pattern_cond(while_cond.clone()) {
                 let if_expr = make::expr_if(while_cond, while_body, Some(break_block.into()));
-                let stmts = iter::once(make::expr_stmt(if_expr).into());
+                let stmts = iter::once(make::expr_stmt(if_expr.into()).into());
                 make::block_expr(stmts, None)
             } else {
                 let if_cond = invert_boolean_expression(while_cond);
