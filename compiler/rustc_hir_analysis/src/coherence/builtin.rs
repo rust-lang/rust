@@ -259,16 +259,25 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
             let coerced_fields = fields
                 .iter()
                 .filter(|field| {
+                    // Ignore PhantomData fields
+                    if tcx.type_of(field.did).instantiate_identity().is_phantom_data() {
+                        return false;
+                    }
+
                     let ty_a = field.ty(tcx, args_a);
                     let ty_b = field.ty(tcx, args_b);
 
+                    // Allow 1-ZSTs that don't mention type params.
+                    //
+                    // Allowing type params here would allow us to possibly transmute
+                    // between ZSTs, which may be used to create library unsoundness.
                     if let Ok(layout) =
                         tcx.layout_of(infcx.typing_env(param_env).as_query_input(ty_a))
+                        && layout.is_1zst()
+                        && !ty_a.has_non_region_param()
                     {
-                        if layout.is_1zst() {
-                            // ignore 1-ZST fields
-                            return false;
-                        }
+                        // ignore 1-ZST fields
+                        return false;
                     }
 
                     if ty_a == ty_b {
