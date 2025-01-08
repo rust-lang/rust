@@ -12,9 +12,6 @@ pub fn noop(v: &mut Vec<u8>) {
     // CHECK-NOT: call
     // CHECK: tail call void @llvm.assume
     // CHECK-NOT: grow_one
-    // llvm-pre-19: call
-    // llvm-pre-19-same: void @llvm.assume
-    // llvm-pre-19-NOT: grow_one
     // CHECK-NOT: call
     // CHECK: {{ret|[}]}}
     if let Some(x) = v.pop() {
