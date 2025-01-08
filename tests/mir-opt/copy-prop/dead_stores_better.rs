@@ -3,7 +3,7 @@
 // that that pass enables this one to do more optimizations.
 
 //@ test-mir-pass: CopyProp
-//@ compile-flags: -Zmir-enable-passes=+DeadStoreElimination
+//@ compile-flags: -Zmir-enable-passes=+DeadStoreElimination-initial
 
 fn id<T>(x: T) -> T {
     x
