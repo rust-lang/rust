@@ -1304,9 +1304,9 @@ impl UnreachablePub {
                 cx.effective_visibilities.effective_vis(def_id).map(|effective_vis| {
                     effective_vis.at_level(rustc_middle::middle::privacy::Level::Reachable)
                 })
-                && let parent_parent = cx.tcx.parent_module_from_def_id(
-                    cx.tcx.parent_module_from_def_id(def_id.into()).into(),
-                )
+                && let parent_parent = cx
+                    .tcx
+                    .parent_module_from_def_id(cx.tcx.parent_module_from_def_id(def_id).into())
                 && *restricted_did == parent_parent.to_local_def_id()
                 && !restricted_did.to_def_id().is_crate_root()
             {
