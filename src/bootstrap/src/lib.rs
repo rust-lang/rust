@@ -19,12 +19,11 @@
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::Display;
-use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::OnceLock;
 use std::time::SystemTime;
-use std::{env, io, str};
+use std::{env, fs, io, str};
 
 use build_helper::ci::gha;
 use build_helper::exit;
@@ -38,9 +37,7 @@ use crate::core::builder;
 use crate::core::builder::{Builder, Kind};
 use crate::core::config::{DryRun, LldMode, LlvmLibunwind, Target, TargetSelection, flags};
 use crate::utils::exec::{BehaviorOnFailure, BootstrapCommand, CommandOutput, OutputMode, command};
-use crate::utils::helpers::{
-    self, dir_is_empty, exe, libdir, mtime, output, set_file_times, symlink_dir,
-};
+use crate::utils::helpers::{self, dir_is_empty, exe, libdir, output, set_file_times, symlink_dir};
 
 mod core;
 mod utils;
@@ -597,24 +594,6 @@ impl Build {
 
         #[cfg(feature = "build-metrics")]
         self.metrics.persist(self);
-    }
-
-    /// Clear out `dir` if `input` is newer.
-    ///
-    /// After this executes, it will also ensure that `dir` exists.
-    fn clear_if_dirty(&self, dir: &Path, input: &Path) -> bool {
-        let stamp = BuildStamp::new(dir);
-        let mut cleared = false;
-        if mtime(stamp.as_ref()) < mtime(input) {
-            self.verbose(|| println!("Dirty - {}", dir.display()));
-            let _ = fs::remove_dir_all(dir);
-            cleared = true;
-        } else if stamp.as_ref().exists() {
-            return cleared;
-        }
-        t!(fs::create_dir_all(dir));
-        t!(File::create(stamp));
-        cleared
     }
 
     fn rust_info(&self) -> &GitInfo {

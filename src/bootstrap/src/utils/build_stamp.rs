@@ -3,7 +3,8 @@ use std::{fs, io};
 
 use crate::core::builder::Builder;
 use crate::core::config::TargetSelection;
-use crate::{Compiler, Mode};
+use crate::utils::helpers::mtime;
+use crate::{Compiler, Mode, t};
 
 #[derive(Clone)]
 pub struct BuildStamp {
@@ -72,6 +73,24 @@ impl BuildStamp {
             }
         }
     }
+}
+
+/// Clear out `dir` if `input` is newer.
+///
+/// After this executes, it will also ensure that `dir` exists.
+pub fn clear_if_dirty(builder: &Builder<'_>, dir: &Path, input: &Path) -> bool {
+    let stamp = BuildStamp::new(dir);
+    let mut cleared = false;
+    if mtime(stamp.as_ref()) < mtime(input) {
+        builder.verbose(|| println!("Dirty - {}", dir.display()));
+        let _ = fs::remove_dir_all(dir);
+        cleared = true;
+    } else if stamp.as_ref().exists() {
+        return cleared;
+    }
+    t!(fs::create_dir_all(dir));
+    t!(fs::File::create(stamp));
+    cleared
 }
 
 /// Cargo's output path for librustc_codegen_llvm in a given stage, compiled by a particular
