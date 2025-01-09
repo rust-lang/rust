@@ -1086,14 +1086,7 @@ fn find_fallback_pattern_typo<'tcx>(
                 let vis = cx.tcx.visibility(item.owner_id);
                 if vis.is_accessible_from(parent, cx.tcx) {
                     accessible.push(item_name);
-                    let path = if item_name == name {
-                        // We know that the const wasn't in scope because it has the exact
-                        // same name, so we suggest the full path.
-                        with_no_trimmed_paths!(cx.tcx.def_path_str(item.owner_id))
-                    } else {
-                        // The const is likely just typoed, and nothing else.
-                        cx.tcx.def_path_str(item.owner_id)
-                    };
+                    let path = with_no_trimmed_paths!(cx.tcx.def_path_str(item.owner_id));
                     accessible_path.push(path);
                 } else if name == item_name {
                     // The const exists somewhere in this crate, but it can't be imported
