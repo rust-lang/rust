@@ -1,3 +1,4 @@
+// Regression test for #135235.
 trait Foo {
     type Assoc;
 

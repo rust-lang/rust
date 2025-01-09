@@ -1,3 +1,4 @@
+   LL|       |// Regression test for #135235.
    LL|       |trait Foo {
    LL|       |    type Assoc;
    LL|       |
