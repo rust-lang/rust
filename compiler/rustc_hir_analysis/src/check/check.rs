@@ -1716,121 +1716,115 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'_>, opaque_def_id: LocalDefId) -> ErrorG
     let span = tcx.def_span(opaque_def_id);
     let mut err = struct_span_code_err!(tcx.dcx(), span, E0720, "cannot resolve opaque type");
 
-    let mut label = false;
-    if let Some((def_id, visitor)) = get_owner_return_paths(tcx, opaque_def_id) {
-        let typeck_results = tcx.typeck(def_id);
-        if visitor
+    let Some((def_id, visitor)) = get_owner_return_paths(tcx, opaque_def_id) else {
+        err.span_label(span, "cannot resolve opaque type");
+        return err.emit();
+    };
+
+    let typeck_results = tcx.typeck(def_id);
+    if visitor
+        .returns
+        .iter()
+        .filter_map(|expr| typeck_results.node_type_opt(expr.hir_id))
+        .all(|ty| matches!(ty.kind(), ty::Never))
+    {
+        let spans = visitor
             .returns
             .iter()
-            .filter_map(|expr| typeck_results.node_type_opt(expr.hir_id))
-            .all(|ty| matches!(ty.kind(), ty::Never))
-        {
-            let spans = visitor
-                .returns
-                .iter()
-                .filter(|expr| typeck_results.node_type_opt(expr.hir_id).is_some())
-                .map(|expr| expr.span)
-                .collect::<Vec<Span>>();
-            let span_len = spans.len();
-            if span_len == 1 {
-                err.span_label(spans[0], "this returned value is of `!` type");
-            } else {
-                let mut multispan: MultiSpan = spans.clone().into();
-                for span in spans {
-                    multispan.push_span_label(span, "this returned value is of `!` type");
-                }
-                err.span_note(multispan, "these returned values have a concrete \"never\" type");
-            }
-            err.help("this error will resolve once the item's body returns a concrete type");
+            .filter(|expr| typeck_results.node_type_opt(expr.hir_id).is_some())
+            .map(|expr| expr.span)
+            .collect::<Vec<Span>>();
+        if let &[span] = &spans[..] {
+            err.span_label(span, "this returned value is of `!` type");
         } else {
-            let mut seen = FxHashSet::default();
-            seen.insert(span);
-            err.span_label(span, "recursive opaque type");
-            label = true;
-            for (sp, ty) in visitor
-                .returns
-                .iter()
-                .filter_map(|e| typeck_results.node_type_opt(e.hir_id).map(|t| (e.span, t)))
-                .filter(|(_, ty)| !matches!(ty.kind(), ty::Never))
+            let mut multispan = MultiSpan::from(spans.clone());
+            for span in spans {
+                multispan.push_span_label(span, "this returned value is of `!` type");
+            }
+            err.span_note(multispan, "these returned values have a concrete \"never\" type");
+        }
+        err.help("this error will resolve once the item's body returns a concrete type");
+        err.span_label(span, "cannot resolve opaque type");
+        return err.emit();
+    }
+
+    let mut seen = FxHashSet::default();
+    seen.insert(span);
+    err.span_label(span, "recursive opaque type");
+    for (sp, ty) in visitor
+        .returns
+        .iter()
+        .filter_map(|e| typeck_results.node_type_opt(e.hir_id).map(|t| (e.span, t)))
+        .filter(|(_, ty)| !matches!(ty.kind(), ty::Never))
+    {
+        #[derive(Default)]
+        struct OpaqueTypeCollector {
+            opaques: Vec<DefId>,
+            closures: Vec<DefId>,
+        }
+        impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector {
+            fn visit_ty(&mut self, t: Ty<'tcx>) {
+                match *t.kind() {
+                    ty::Alias(ty::Opaque, ty::AliasTy { def_id: def, .. }) => {
+                        self.opaques.push(def);
+                    }
+                    ty::Closure(def_id, ..) | ty::Coroutine(def_id, ..) => {
+                        self.closures.push(def_id);
+                        t.super_visit_with(self);
+                    }
+                    _ => t.super_visit_with(self),
+                }
+            }
+        }
+
+        let mut visitor = OpaqueTypeCollector::default();
+        ty.visit_with(&mut visitor);
+        for def_id in visitor.opaques {
+            let ty_span = tcx.def_span(def_id);
+            if !seen.contains(&ty_span) {
+                let descr = if ty.is_impl_trait() { "opaque " } else { "" };
+                err.span_label(ty_span, format!("returning this {descr}type `{ty}`"));
+                seen.insert(ty_span);
+            }
+            err.span_label(sp, format!("returning here with type `{ty}`"));
+        }
+
+        for closure_def_id in visitor.closures {
+            let Some(closure_local_did) = closure_def_id.as_local() else {
+                continue;
+            };
+            let typeck_results = tcx.typeck(closure_local_did);
+
+            let mut label_match = |ty: Ty<'_>, span| {
+                for arg in ty.walk() {
+                    if let ty::GenericArgKind::Type(ty) = arg.unpack()
+                        && let ty::Alias(ty::Opaque, ty::AliasTy { def_id: captured_def_id, .. }) =
+                            *ty.kind()
+                        && captured_def_id == opaque_def_id.to_def_id()
+                    {
+                        err.span_label(
+                            span,
+                            format!("{} captures itself here", tcx.def_descr(closure_def_id)),
+                        );
+                    }
+                }
+            };
+
+            // Label any closure upvars that capture the opaque
+            for capture in typeck_results.closure_min_captures_flattened(closure_local_did) {
+                label_match(capture.place.ty(), capture.get_path_span(tcx));
+            }
+            // Label any coroutine locals that capture the opaque
+            if tcx.is_coroutine(closure_def_id)
+                && let Some(coroutine_layout) = tcx.mir_coroutine_witnesses(closure_def_id)
             {
-                #[derive(Default)]
-                struct OpaqueTypeCollector {
-                    opaques: Vec<DefId>,
-                    closures: Vec<DefId>,
-                }
-                impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector {
-                    fn visit_ty(&mut self, t: Ty<'tcx>) {
-                        match *t.kind() {
-                            ty::Alias(ty::Opaque, ty::AliasTy { def_id: def, .. }) => {
-                                self.opaques.push(def);
-                            }
-                            ty::Closure(def_id, ..) | ty::Coroutine(def_id, ..) => {
-                                self.closures.push(def_id);
-                                t.super_visit_with(self);
-                            }
-                            _ => t.super_visit_with(self),
-                        }
-                    }
-                }
-
-                let mut visitor = OpaqueTypeCollector::default();
-                ty.visit_with(&mut visitor);
-                for def_id in visitor.opaques {
-                    let ty_span = tcx.def_span(def_id);
-                    if !seen.contains(&ty_span) {
-                        let descr = if ty.is_impl_trait() { "opaque " } else { "" };
-                        err.span_label(ty_span, format!("returning this {descr}type `{ty}`"));
-                        seen.insert(ty_span);
-                    }
-                    err.span_label(sp, format!("returning here with type `{ty}`"));
-                }
-
-                for closure_def_id in visitor.closures {
-                    let Some(closure_local_did) = closure_def_id.as_local() else {
-                        continue;
-                    };
-                    let typeck_results = tcx.typeck(closure_local_did);
-
-                    let mut label_match = |ty: Ty<'_>, span| {
-                        for arg in ty.walk() {
-                            if let ty::GenericArgKind::Type(ty) = arg.unpack()
-                                && let ty::Alias(
-                                    ty::Opaque,
-                                    ty::AliasTy { def_id: captured_def_id, .. },
-                                ) = *ty.kind()
-                                && captured_def_id == opaque_def_id.to_def_id()
-                            {
-                                err.span_label(
-                                    span,
-                                    format!(
-                                        "{} captures itself here",
-                                        tcx.def_descr(closure_def_id)
-                                    ),
-                                );
-                            }
-                        }
-                    };
-
-                    // Label any closure upvars that capture the opaque
-                    for capture in typeck_results.closure_min_captures_flattened(closure_local_did)
-                    {
-                        label_match(capture.place.ty(), capture.get_path_span(tcx));
-                    }
-                    // Label any coroutine locals that capture the opaque
-                    if tcx.is_coroutine(closure_def_id)
-                        && let Some(coroutine_layout) = tcx.mir_coroutine_witnesses(closure_def_id)
-                    {
-                        for interior_ty in &coroutine_layout.field_tys {
-                            label_match(interior_ty.ty, interior_ty.source_info.span);
-                        }
-                    }
+                for interior_ty in &coroutine_layout.field_tys {
+                    label_match(interior_ty.ty, interior_ty.source_info.span);
                 }
             }
         }
     }
-    if !label {
-        err.span_label(span, "cannot resolve opaque type");
-    }
+
     err.emit()
 }
 
