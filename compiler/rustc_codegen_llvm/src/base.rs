@@ -87,7 +87,7 @@ pub(crate) fn compile_codegen_unit(
             let mono_items = cx.codegen_unit.items_in_deterministic_order(cx.tcx);
             for &(mono_item, data) in &mono_items {
                 mono_item.predefine::<Builder<'_, '_, '_>>(
-                    &cx,
+                    &mut cx,
                     cgu_name.as_str(),
                     data.linkage,
                     data.visibility,

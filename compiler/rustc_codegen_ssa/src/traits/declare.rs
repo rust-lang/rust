@@ -4,14 +4,14 @@ use rustc_middle::ty::Instance;
 
 pub trait PreDefineCodegenMethods<'tcx> {
     fn predefine_static(
-        &self,
+        &mut self,
         def_id: DefId,
         linkage: Linkage,
         visibility: Visibility,
         symbol_name: &str,
     );
     fn predefine_fn(
-        &self,
+        &mut self,
         instance: Instance<'tcx>,
         linkage: Linkage,
         visibility: Visibility,

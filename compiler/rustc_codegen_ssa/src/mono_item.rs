@@ -16,7 +16,7 @@ pub trait MonoItemExt<'a, 'tcx> {
     );
     fn predefine<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
-        cx: &'a Bx::CodegenCx,
+        cx: &'a mut Bx::CodegenCx,
         cgu_name: &str,
         linkage: Linkage,
         visibility: Visibility,
@@ -59,7 +59,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
 
     fn predefine<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
-        cx: &'a Bx::CodegenCx,
+        cx: &'a mut Bx::CodegenCx,
         cgu_name: &str,
         linkage: Linkage,
         visibility: Visibility,

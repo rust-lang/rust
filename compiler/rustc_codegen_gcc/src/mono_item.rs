@@ -16,7 +16,7 @@ use crate::{attributes, base};
 impl<'gcc, 'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     #[cfg_attr(not(feature = "master"), allow(unused_variables))]
     fn predefine_static(
-        &self,
+        &mut self,
         def_id: DefId,
         _linkage: Linkage,
         visibility: Visibility,
@@ -42,7 +42,7 @@ impl<'gcc, 'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
     #[cfg_attr(not(feature = "master"), allow(unused_variables))]
     fn predefine_fn(
-        &self,
+        &mut self,
         instance: Instance<'tcx>,
         linkage: Linkage,
         visibility: Visibility,
