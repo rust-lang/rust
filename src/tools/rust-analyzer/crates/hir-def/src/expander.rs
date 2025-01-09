@@ -10,7 +10,7 @@ use hir_expand::{
     ExpandResult, HirFileId, InFile, Lookup, MacroCallId,
 };
 use limit::Limit;
-use span::SyntaxContextId;
+use span::{Edition, SyntaxContextId};
 use syntax::{ast, Parse};
 use triomphe::Arc;
 
@@ -60,7 +60,7 @@ impl Expander {
 
     pub fn syntax_context(&self) -> SyntaxContextId {
         // FIXME:
-        SyntaxContextId::ROOT
+        SyntaxContextId::root(Edition::CURRENT)
     }
 
     pub fn enter_expand<T: ast::AstNode>(

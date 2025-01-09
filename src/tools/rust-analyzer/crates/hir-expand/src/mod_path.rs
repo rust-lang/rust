@@ -273,10 +273,9 @@ fn convert_path(
                 res
             }
         }
-        ast::PathSegmentKind::SelfTypeKw => ModPath::from_segments(
-            PathKind::Plain,
-            Some(Name::new_symbol(sym::Self_.clone(), SyntaxContextId::ROOT)),
-        ),
+        ast::PathSegmentKind::SelfTypeKw => {
+            ModPath::from_segments(PathKind::Plain, Some(Name::new_symbol_root(sym::Self_.clone())))
+        }
         ast::PathSegmentKind::CrateKw => ModPath::from_segments(PathKind::Crate, iter::empty()),
         ast::PathSegmentKind::SelfKw => handle_super_kw(0)?,
         ast::PathSegmentKind::SuperKw => handle_super_kw(1)?,

@@ -324,7 +324,7 @@ impl Resolver {
 
         if n_segments <= 1 {
             let mut hygiene_info = if !hygiene_id.is_root() {
-                let ctx = db.lookup_intern_syntax_context(hygiene_id.0);
+                let ctx = hygiene_id.lookup(db);
                 ctx.outer_expn.map(|expansion| {
                     let expansion = db.lookup_intern_macro_call(expansion);
                     (ctx.parent, expansion.def)

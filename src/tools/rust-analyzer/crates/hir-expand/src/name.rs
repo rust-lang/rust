@@ -80,9 +80,18 @@ impl Name {
         Name { symbol: Symbol::intern(text), ctx: () }
     }
 
-    pub fn new(text: &str, ctx: SyntaxContextId) -> Name {
+    pub fn new(text: &str, mut ctx: SyntaxContextId) -> Name {
+        // For comparisons etc. we remove the edition, because sometimes we search for some `Name`
+        // and we don't know which edition it came from.
+        // Can't do that for all `SyntaxContextId`s because it breaks Salsa.
+        ctx.remove_root_edition();
         _ = ctx;
         Self::new_text(text)
+    }
+
+    pub fn new_root(text: &str) -> Name {
+        // The edition doesn't matter for hygiene.
+        Self::new(text, SyntaxContextId::root(Edition::Edition2015))
     }
 
     pub fn new_tuple_field(idx: usize) -> Name {

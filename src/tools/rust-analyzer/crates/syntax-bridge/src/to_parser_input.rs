@@ -2,17 +2,20 @@
 //! format that works for our parser.
 
 use std::fmt;
+use std::hash::Hash;
 
-use span::Edition;
+use rustc_hash::FxHashMap;
+use span::{Edition, SpanData};
 use syntax::{SyntaxKind, SyntaxKind::*, T};
 
-pub fn to_parser_input<S: Copy + fmt::Debug>(
-    edition: Edition,
-    buffer: tt::TokenTreesView<'_, S>,
+pub fn to_parser_input<Ctx: Copy + fmt::Debug + PartialEq + Eq + Hash>(
+    buffer: tt::TokenTreesView<'_, SpanData<Ctx>>,
+    span_to_edition: &mut dyn FnMut(Ctx) -> Edition,
 ) -> parser::Input {
     let mut res = parser::Input::default();
 
     let mut current = buffer.cursor();
+    let mut syntax_context_to_edition_cache = FxHashMap::default();
 
     while !current.eof() {
         let tt = current.token_tree();
@@ -57,20 +60,25 @@ pub fn to_parser_input<S: Copy + fmt::Debug>(
                             res.was_joint();
                         }
                     }
-                    tt::Leaf::Ident(ident) => match ident.sym.as_str() {
-                        "_" => res.push(T![_]),
-                        i if i.starts_with('\'') => res.push(LIFETIME_IDENT),
-                        _ if ident.is_raw.yes() => res.push(IDENT),
-                        text => match SyntaxKind::from_keyword(text, edition) {
-                            Some(kind) => res.push(kind),
-                            None => {
-                                let contextual_keyword =
-                                    SyntaxKind::from_contextual_keyword(text, edition)
-                                        .unwrap_or(SyntaxKind::IDENT);
-                                res.push_ident(contextual_keyword);
-                            }
-                        },
-                    },
+                    tt::Leaf::Ident(ident) => {
+                        let edition = *syntax_context_to_edition_cache
+                            .entry(ident.span.ctx)
+                            .or_insert_with(|| span_to_edition(ident.span.ctx));
+                        match ident.sym.as_str() {
+                            "_" => res.push(T![_]),
+                            i if i.starts_with('\'') => res.push(LIFETIME_IDENT),
+                            _ if ident.is_raw.yes() => res.push(IDENT),
+                            text => match SyntaxKind::from_keyword(text, edition) {
+                                Some(kind) => res.push(kind),
+                                None => {
+                                    let contextual_keyword =
+                                        SyntaxKind::from_contextual_keyword(text, edition)
+                                            .unwrap_or(SyntaxKind::IDENT);
+                                    res.push_ident(contextual_keyword);
+                                }
+                            },
+                        }
+                    }
                     tt::Leaf::Punct(punct) => {
                         let kind = SyntaxKind::from_char(punct.char)
                             .unwrap_or_else(|| panic!("{punct:#?} is not a valid punct"));

@@ -986,7 +986,10 @@ impl<'db> SemanticsImpl<'db> {
                 process_expansion_for_token(&mut stack, include)?;
             }
             None => {
-                stack.push((file_id.into(), smallvec![(token, SyntaxContextId::ROOT)]));
+                stack.push((
+                    file_id.into(),
+                    smallvec![(token, SyntaxContextId::root(file_id.edition()))],
+                ));
             }
         }
 
@@ -1597,7 +1600,7 @@ impl<'db> SemanticsImpl<'db> {
             self.db.upcast(),
             &ModPath::from_segments(
                 hir_def::path::PathKind::Plain,
-                segments.into_iter().map(|it| Name::new(&it, SyntaxContextId::ROOT)),
+                segments.into_iter().map(|it| Name::new_root(&it)),
             ),
         );
         Some(items.iter_items().map(|(item, _)| item.into()))

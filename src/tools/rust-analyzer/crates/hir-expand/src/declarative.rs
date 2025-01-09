@@ -2,7 +2,7 @@
 
 use base_db::CrateId;
 use intern::sym;
-use span::{Edition, MacroCallId, Span, SyntaxContextId};
+use span::{Edition, HirFileIdRepr, MacroCallId, Span, SyntaxContextId};
 use stdx::TupleExt;
 use syntax::{ast, AstNode};
 use syntax_bridge::DocCommentDesugarMode;
@@ -20,6 +20,7 @@ use crate::{
 pub struct DeclarativeMacroExpander {
     pub mac: mbe::DeclarativeMacro,
     pub transparency: Transparency,
+    edition: Edition,
 }
 
 impl DeclarativeMacroExpander {
@@ -40,7 +41,7 @@ impl DeclarativeMacroExpander {
                 .mac
                 .expand(
                     &tt,
-                    |s| s.ctx = apply_mark(db, s.ctx, call_id, self.transparency),
+                    |s| s.ctx = apply_mark(db, s.ctx, call_id, self.transparency, self.edition),
                     span,
                     loc.def.edition,
                 )
@@ -159,6 +160,10 @@ impl DeclarativeMacroExpander {
                 transparency(&macro_def).unwrap_or(Transparency::Opaque),
             ),
         };
-        Arc::new(DeclarativeMacroExpander { mac, transparency })
+        let edition = ctx_edition(match id.file_id.repr() {
+            HirFileIdRepr::MacroFile(macro_file) => macro_file.macro_call_id.lookup(db).ctxt,
+            HirFileIdRepr::FileId(file) => SyntaxContextId::root(file.edition()),
+        });
+        Arc::new(DeclarativeMacroExpander { mac, transparency, edition })
     }
 }

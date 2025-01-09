@@ -358,6 +358,7 @@ impl ProcMacroExpander for IdentityWhenValidProcMacroExpander {
         let (parse, _) = syntax_bridge::token_tree_to_syntax_node(
             subtree,
             syntax_bridge::TopEntryPoint::MacroItems,
+            &mut |_| span::Edition::CURRENT,
             span::Edition::CURRENT,
         );
         if parse.errors().is_empty() {
