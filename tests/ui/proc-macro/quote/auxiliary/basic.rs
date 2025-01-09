@@ -47,6 +47,7 @@ pub fn run_tests(_: TokenStream) -> TokenStream {
 // - quote_spanned:
 //   - fn test_quote_spanned_impl
 //   - fn test_type_inference_for_span
+//   - wrong-type-span.rs
 // - format_ident:
 //   - fn test_format_ident
 //   - fn test_format_ident_strip_raw
