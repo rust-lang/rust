@@ -799,7 +799,7 @@ impl Drop for ThinBuffer {
     }
 }
 
-pub(crate) unsafe fn optimize_thin_module(
+pub(crate) fn optimize_thin_module(
     thin_module: ThinModule<LlvmCodegenBackend>,
     cgcx: &CodegenContext<LlvmCodegenBackend>,
 ) -> Result<ModuleCodegen<ModuleLlvm>, FatalError> {
