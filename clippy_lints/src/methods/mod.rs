@@ -4925,7 +4925,7 @@ impl Methods {
                 ("is_empty", []) => {
                     match method_call(recv) {
                         Some(("as_bytes", prev_recv, [], _, _)) => {
-                            needless_as_bytes::check(cx, "is_empty", recv, prev_recv, expr.span);
+                            needless_as_bytes::check(cx, "is_empty", prev_recv, expr.span);
                         },
                         Some(("as_str", recv, [], as_str_span, _)) => {
                             redundant_as_str::check(cx, expr, recv, as_str_span, span);
@@ -4963,7 +4963,7 @@ impl Methods {
                 },
                 ("len", []) => {
                     if let Some(("as_bytes", prev_recv, [], _, _)) = method_call(recv) {
-                        needless_as_bytes::check(cx, "len", recv, prev_recv, expr.span);
+                        needless_as_bytes::check(cx, "len", prev_recv, expr.span);
                     }
                 },
                 ("lock", []) => {

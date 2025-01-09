@@ -8,11 +8,9 @@ use rustc_span::Span;
 
 use super::NEEDLESS_AS_BYTES;
 
-pub fn check(cx: &LateContext<'_>, method: &str, recv: &Expr<'_>, prev_recv: &Expr<'_>, span: Span) {
-    if cx.typeck_results().expr_ty_adjusted(recv).peel_refs().is_slice()
-        && let ty1 = cx.typeck_results().expr_ty_adjusted(prev_recv).peel_refs()
-        && (is_type_lang_item(cx, ty1, LangItem::String) || ty1.is_str())
-    {
+pub fn check(cx: &LateContext<'_>, method: &str, prev_recv: &Expr<'_>, span: Span) {
+    let ty1 = cx.typeck_results().expr_ty_adjusted(prev_recv).peel_refs();
+    if is_type_lang_item(cx, ty1, LangItem::String) || ty1.is_str() {
         let mut app = Applicability::MachineApplicable;
         let sugg = Sugg::hir_with_context(cx, prev_recv, span.ctxt(), "..", &mut app);
         span_lint_and_sugg(
