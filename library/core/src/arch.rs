@@ -65,7 +65,6 @@ pub macro global_asm("assembly template", $(operands,)* $(options($(option),*))?
 // When stabilizing this, update the comment on `core::intrinsics::breakpoint`.
 #[unstable(feature = "breakpoint", issue = "133724")]
 #[inline(always)]
-#[cfg(not(bootstrap))]
 pub fn breakpoint() {
     core::intrinsics::breakpoint();
 }

@@ -622,7 +622,7 @@ impl Error for JoinPathsError {
 ///
 /// In UWP (Universal Windows Platform) targets this function is unimplemented and always returns `None`.
 ///
-/// Before Rust CURRENT_RUSTC_VERSION, this function used to return the value of the 'HOME' environment variable
+/// Before Rust 1.85.0, this function used to return the value of the 'HOME' environment variable
 /// on Windows, which in Cygwin or Mingw environments could return non-standard paths like `/home/you`
 /// instead of `C:\Users\you`.
 ///
