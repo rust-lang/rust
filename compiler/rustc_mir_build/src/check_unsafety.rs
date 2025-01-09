@@ -747,7 +747,10 @@ impl UnsafeOpKind {
     ) {
         let parent_id = tcx.hir().get_parent_item(hir_id);
         let parent_owner = tcx.hir_owner_node(parent_id);
-        let should_suggest = parent_owner.fn_sig().is_some_and(|sig| sig.header.is_unsafe());
+        let should_suggest = parent_owner.fn_sig().is_some_and(|sig| {
+            // Do not suggest for safe target_feature functions
+            matches!(sig.header.safety, hir::HeaderSafety::Normal(hir::Safety::Unsafe))
+        });
         let unsafe_not_inherited_note = if should_suggest {
             suggest_unsafe_block.then(|| {
                 let body_span = tcx.hir().body(parent_owner.body_id().unwrap()).value.span;
@@ -910,7 +913,7 @@ impl UnsafeOpKind {
             {
                 true
             } else if let Some(sig) = tcx.hir().fn_sig_by_hir_id(*id)
-                && sig.header.is_unsafe()
+                && matches!(sig.header.safety, hir::HeaderSafety::Normal(hir::Safety::Unsafe))
             {
                 true
             } else {
