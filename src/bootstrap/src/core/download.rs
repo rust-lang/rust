@@ -12,7 +12,7 @@ use xz2::bufread::XzDecoder;
 use crate::core::config::BUILDER_CONFIG_FILENAME;
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::exec::{BootstrapCommand, command};
-use crate::utils::helpers::{check_run, exe, hex_encode, move_file, program_out_of_date};
+use crate::utils::helpers::{check_run, exe, hex_encode, move_file};
 use crate::{Config, t};
 
 static SHOULD_FIX_BINS_AND_DYLIBS: OnceLock<bool> = OnceLock::new();
@@ -427,9 +427,10 @@ impl Config {
         let version = &self.stage0_metadata.compiler.version;
         let host = self.build;
 
-        let clippy_stamp = BuildStamp::new(&self.initial_sysroot).with_prefix("clippy");
+        let clippy_stamp =
+            BuildStamp::new(&self.initial_sysroot).with_prefix("clippy").with_stamp(date);
         let cargo_clippy = self.initial_sysroot.join("bin").join(exe("cargo-clippy", host));
-        if cargo_clippy.exists() && !program_out_of_date(&clippy_stamp, date) {
+        if cargo_clippy.exists() && clippy_stamp.is_up_to_date() {
             return cargo_clippy;
         }
 
@@ -440,7 +441,7 @@ impl Config {
             self.fix_bin_or_dylib(&cargo_clippy.with_file_name(exe("clippy-driver", host)));
         }
 
-        self.create(&clippy_stamp, date);
+        t!(clippy_stamp.write());
         cargo_clippy
     }
 
@@ -461,8 +462,8 @@ impl Config {
         let host = self.build;
         let bin_root = self.out.join(host).join("rustfmt");
         let rustfmt_path = bin_root.join("bin").join(exe("rustfmt", host));
-        let rustfmt_stamp = BuildStamp::new(&bin_root).with_prefix("rustfmt");
-        if rustfmt_path.exists() && !program_out_of_date(&rustfmt_stamp, &channel) {
+        let rustfmt_stamp = BuildStamp::new(&bin_root).with_prefix("rustfmt").with_stamp(channel);
+        if rustfmt_path.exists() && rustfmt_stamp.is_up_to_date() {
             return Some(rustfmt_path);
         }
 
@@ -493,7 +494,7 @@ impl Config {
             }
         }
 
-        self.create(&rustfmt_stamp, &channel);
+        t!(rustfmt_stamp.write());
         Some(rustfmt_path)
     }
 
@@ -568,10 +569,10 @@ impl Config {
     ) {
         let host = self.build.triple;
         let bin_root = self.out.join(host).join(sysroot);
-        let rustc_stamp = BuildStamp::new(&bin_root).with_prefix("rustc");
+        let rustc_stamp = BuildStamp::new(&bin_root).with_prefix("rustc").with_stamp(stamp_key);
 
         if !bin_root.join("bin").join(exe("rustc", self.build)).exists()
-            || program_out_of_date(&rustc_stamp, stamp_key)
+            || !rustc_stamp.is_up_to_date()
         {
             if bin_root.exists() {
                 t!(fs::remove_dir_all(&bin_root));
@@ -602,7 +603,7 @@ impl Config {
                 }
             }
 
-            t!(fs::write(rustc_stamp, stamp_key));
+            t!(rustc_stamp.write());
         }
     }
 
@@ -729,10 +730,10 @@ download-rustc = false
         }
 
         let llvm_root = self.ci_llvm_root();
-        let llvm_stamp = BuildStamp::new(&llvm_root).with_prefix("llvm");
         let llvm_sha = detect_llvm_sha(self, self.rust_info.is_managed_git_subrepository());
-        let key = format!("{}{}", llvm_sha, self.llvm_assertions);
-        if program_out_of_date(&llvm_stamp, &key) && !self.dry_run() {
+        let stamp_key = format!("{}{}", llvm_sha, self.llvm_assertions);
+        let llvm_stamp = BuildStamp::new(&llvm_root).with_prefix("llvm").with_stamp(stamp_key);
+        if !llvm_stamp.is_up_to_date() && !self.dry_run() {
             self.download_ci_llvm(&llvm_sha);
 
             if self.should_fix_bins_and_dylibs() {
@@ -765,7 +766,7 @@ download-rustc = false
                 }
             }
 
-            t!(fs::write(llvm_stamp, key));
+            t!(llvm_stamp.write());
         }
 
         if let Some(config_path) = &self.config {

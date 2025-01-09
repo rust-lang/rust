@@ -13,7 +13,7 @@ use ignore::WalkBuilder;
 use crate::core::builder::Builder;
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::exec::command;
-use crate::utils::helpers::{self, program_out_of_date, t};
+use crate::utils::helpers::{self, t};
 
 #[must_use]
 enum RustfmtStatus {
@@ -74,7 +74,7 @@ fn verify_rustfmt_version(build: &Builder<'_>) -> bool {
     let Some((version, stamp_file)) = get_rustfmt_version(build) else {
         return false;
     };
-    !program_out_of_date(&stamp_file, &version)
+    stamp_file.with_stamp(version).is_up_to_date()
 }
 
 /// Updates the last rustfmt version used.

@@ -13,7 +13,6 @@ use std::{env, fs, io, str};
 use build_helper::util::fail;
 use object::read::archive::ArchiveFile;
 
-use super::build_stamp::BuildStamp;
 use crate::LldMode;
 use crate::core::builder::Builder;
 use crate::core::config::{Config, TargetSelection};
@@ -146,14 +145,6 @@ impl Drop for TimeIt {
             println!("\tfinished in {}.{:03} seconds", time.as_secs(), time.subsec_millis());
         }
     }
-}
-
-/// Used for download caching
-pub(crate) fn program_out_of_date(stamp: &BuildStamp, key: &str) -> bool {
-    if !stamp.as_ref().exists() {
-        return true;
-    }
-    t!(fs::read_to_string(stamp)) != key
 }
 
 /// Symlinks two directories, using junctions on Windows and normal symlinks on
