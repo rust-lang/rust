@@ -1417,8 +1417,8 @@ impl Hash for FieldDef {
 impl<'tcx> FieldDef {
     /// Returns the type of this field. The resulting type is not normalized. The `arg` is
     /// typically obtained via the second field of [`TyKind::Adt`].
-    pub fn ty(&self, tcx: TyCtxt<'tcx>, arg: GenericArgsRef<'tcx>) -> Ty<'tcx> {
-        tcx.type_of(self.did).instantiate(tcx, arg)
+    pub fn ty(&self, tcx: TyCtxt<'tcx>, args: GenericArgsRef<'tcx>) -> Ty<'tcx> {
+        tcx.type_of(self.did).instantiate(tcx, args)
     }
 
     /// Computes the `Ident` of this variant by looking up the `Span`
