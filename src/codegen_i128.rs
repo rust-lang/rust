@@ -79,7 +79,6 @@ pub(crate) fn maybe_codegen_checked<'tcx>(
     let is_signed = type_sign(lhs.layout().ty);
 
     match bin_op {
-        BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor => unreachable!(),
         BinOp::Add | BinOp::Sub => None,
         BinOp::Mul => {
             let out_ty = Ty::new_tup(fx.tcx, &[lhs.layout().ty, fx.tcx.types.bool]);
@@ -98,12 +97,6 @@ pub(crate) fn maybe_codegen_checked<'tcx>(
             );
             Some(out_place.to_cvalue(fx))
         }
-        BinOp::AddUnchecked | BinOp::SubUnchecked | BinOp::MulUnchecked => unreachable!(),
-        BinOp::AddWithOverflow | BinOp::SubWithOverflow | BinOp::MulWithOverflow => unreachable!(),
-        BinOp::Offset => unreachable!("offset should only be used on pointers, not 128bit ints"),
-        BinOp::Div | BinOp::Rem => unreachable!(),
-        BinOp::Cmp => unreachable!(),
-        BinOp::Lt | BinOp::Le | BinOp::Eq | BinOp::Ge | BinOp::Gt | BinOp::Ne => unreachable!(),
-        BinOp::Shl | BinOp::ShlUnchecked | BinOp::Shr | BinOp::ShrUnchecked => unreachable!(),
+        _ => bug!("binop {:?} on checked int/uint lhs: {:?} rhs: {:?}", bin_op, lhs, rhs),
     }
 }
