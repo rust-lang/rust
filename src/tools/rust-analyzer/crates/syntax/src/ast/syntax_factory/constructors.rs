@@ -1,6 +1,9 @@
 //! Wrappers over [`make`] constructors
 use crate::{
-    ast::{self, make, HasGenericArgs, HasGenericParams, HasName, HasTypeBounds, HasVisibility},
+    ast::{
+        self, make, HasArgList, HasGenericArgs, HasGenericParams, HasName, HasTypeBounds,
+        HasVisibility,
+    },
     syntax_editor::SyntaxMappingBuilder,
     AstNode, NodeOrToken, SyntaxKind, SyntaxNode, SyntaxToken,
 };
@@ -16,6 +19,10 @@ impl SyntaxFactory {
         make::name_ref(name).clone_for_update()
     }
 
+    pub fn lifetime(&self, text: &str) -> ast::Lifetime {
+        make::lifetime(text).clone_for_update()
+    }
+
     pub fn ty(&self, text: &str) -> ast::Type {
         make::ty(text).clone_for_update()
     }
@@ -24,6 +31,20 @@ impl SyntaxFactory {
         let ast::Type::InferType(ast) = make::ty_placeholder().clone_for_update() else {
             unreachable!()
         };
+
+        ast
+    }
+
+    pub fn ty_path(&self, path: ast::Path) -> ast::PathType {
+        let ast::Type::PathType(ast) = make::ty_path(path.clone()).clone_for_update() else {
+            unreachable!()
+        };
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(path.syntax().clone(), ast.path().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
 
         ast
     }
@@ -190,7 +211,7 @@ impl SyntaxFactory {
     }
 
     pub fn expr_empty_block(&self) -> ast::BlockExpr {
-        ast::BlockExpr { syntax: make::expr_empty_block().syntax().clone_for_update() }
+        make::expr_empty_block().clone_for_update()
     }
 
     pub fn expr_tuple(&self, fields: impl IntoIterator<Item = ast::Expr>) -> ast::TupleExpr {
@@ -247,6 +268,37 @@ impl SyntaxFactory {
         if let Some(mut mapping) = self.mappings() {
             let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
             builder.map_node(expr.syntax().clone(), ast.expr().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn expr_call(&self, expr: ast::Expr, arg_list: ast::ArgList) -> ast::CallExpr {
+        // FIXME: `make::expr_call`` should return a `CallExpr`, not just an `Expr`
+        let ast::Expr::CallExpr(ast) =
+            make::expr_call(expr.clone(), arg_list.clone()).clone_for_update()
+        else {
+            unreachable!()
+        };
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(expr.syntax().clone(), ast.expr().unwrap().syntax().clone());
+            builder.map_node(arg_list.syntax().clone(), ast.arg_list().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn arg_list(&self, args: impl IntoIterator<Item = ast::Expr>) -> ast::ArgList {
+        let (args, input) = iterator_input(args);
+        let ast = make::arg_list(args).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax.clone());
+            builder.map_children(input.into_iter(), ast.args().map(|it| it.syntax().clone()));
             builder.finish(&mut mapping);
         }
 
@@ -428,6 +480,30 @@ impl SyntaxFactory {
         ast
     }
 
+    pub fn type_arg(&self, ty: ast::Type) -> ast::TypeArg {
+        let ast = make::type_arg(ty.clone()).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(ty.syntax().clone(), ast.ty().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn lifetime_arg(&self, lifetime: ast::Lifetime) -> ast::LifetimeArg {
+        let ast = make::lifetime_arg(lifetime.clone()).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(lifetime.syntax().clone(), ast.lifetime().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
     pub fn item_const(
         &self,
         visibility: Option<ast::Visibility>,
@@ -495,12 +571,17 @@ impl SyntaxFactory {
         ast
     }
 
-    pub fn turbofish_generic_arg_list(
+    pub fn generic_arg_list(
         &self,
         generic_args: impl IntoIterator<Item = ast::GenericArg>,
+        is_turbo: bool,
     ) -> ast::GenericArgList {
         let (generic_args, input) = iterator_input(generic_args);
-        let ast = make::turbofish_generic_arg_list(generic_args.clone()).clone_for_update();
+        let ast = if is_turbo {
+            make::turbofish_generic_arg_list(generic_args).clone_for_update()
+        } else {
+            make::generic_arg_list(generic_args).clone_for_update()
+        };
 
         if let Some(mut mapping) = self.mappings() {
             let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
@@ -753,12 +834,31 @@ impl SyntaxFactory {
 
 // `ext` constructors
 impl SyntaxFactory {
+    pub fn ident_path(&self, ident: &str) -> ast::Path {
+        self.path_unqualified(self.path_segment(self.name_ref(ident)))
+    }
+
     pub fn expr_unit(&self) -> ast::Expr {
         self.expr_tuple([]).into()
     }
 
-    pub fn ident_path(&self, ident: &str) -> ast::Path {
-        self.path_unqualified(self.path_segment(self.name_ref(ident)))
+    pub fn ty_option(&self, t: ast::Type) -> ast::PathType {
+        let generic_arg_list = self.generic_arg_list([self.type_arg(t).into()], false);
+        let path = self.path_unqualified(
+            self.path_segment_generics(self.name_ref("Option"), generic_arg_list),
+        );
+
+        self.ty_path(path)
+    }
+
+    pub fn ty_result(&self, t: ast::Type, e: ast::Type) -> ast::PathType {
+        let generic_arg_list =
+            self.generic_arg_list([self.type_arg(t).into(), self.type_arg(e).into()], false);
+        let path = self.path_unqualified(
+            self.path_segment_generics(self.name_ref("Result"), generic_arg_list),
+        );
+
+        self.ty_path(path)
     }
 }
 

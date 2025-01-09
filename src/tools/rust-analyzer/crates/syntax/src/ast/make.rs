@@ -558,8 +558,8 @@ pub fn expr_const_value(text: &str) -> ast::ConstArg {
     ast_from_text(&format!("trait Foo<const N: usize = {text}> {{}}"))
 }
 
-pub fn expr_empty_block() -> ast::Expr {
-    expr_from_text("{}")
+pub fn expr_empty_block() -> ast::BlockExpr {
+    ast_from_text("const C: () = {};")
 }
 pub fn expr_path(path: ast::Path) -> ast::Expr {
     expr_from_text(&path.to_string())

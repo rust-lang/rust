@@ -189,7 +189,7 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
 /// This will create a turbofish generic arg list corresponding to the number of arguments
 fn get_fish_head(make: &SyntaxFactory, number_of_arguments: usize) -> ast::GenericArgList {
     let args = (0..number_of_arguments).map(|_| make::type_arg(make::ty_placeholder()).into());
-    make.turbofish_generic_arg_list(args)
+    make.generic_arg_list(args, true)
 }
 
 #[cfg(test)]
