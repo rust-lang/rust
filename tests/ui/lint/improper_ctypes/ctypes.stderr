@@ -1,5 +1,5 @@
 error: `extern` block uses type `Foo`, which is not FFI-safe
-  --> $DIR/ctypes.rs:60:28
+  --> $DIR/ctypes.rs:66:28
    |
 LL |     pub fn ptr_type1(size: *const Foo);
    |                            ^^^^^^^^^^ not FFI-safe
@@ -19,7 +19,7 @@ LL | #![deny(improper_ctypes)]
    |         ^^^^^^^^^^^^^^^
 
 error: `extern` block uses type `Foo`, which is not FFI-safe
-  --> $DIR/ctypes.rs:61:28
+  --> $DIR/ctypes.rs:67:28
    |
 LL |     pub fn ptr_type2(size: *const Foo);
    |                            ^^^^^^^^^^ not FFI-safe
@@ -34,7 +34,7 @@ LL | pub struct Foo;
    | ^^^^^^^^^^^^^^
 
 error: `extern` block uses type `((),)`, which is not FFI-safe
-  --> $DIR/ctypes.rs:63:25
+  --> $DIR/ctypes.rs:69:25
    |
 LL |     pub fn ptr_tuple(p: *const ((),));
    |                         ^^^^^^^^^^^^ not FFI-safe
@@ -44,7 +44,7 @@ LL |     pub fn ptr_tuple(p: *const ((),));
    = note: tuples have unspecified layout
 
 error: `extern` block uses type `&[u32]`, which is not FFI-safe
-  --> $DIR/ctypes.rs:64:26
+  --> $DIR/ctypes.rs:70:26
    |
 LL |     pub fn slice_type(p: &[u32]);
    |                          ^^^^^^ not FFI-safe
@@ -53,7 +53,7 @@ LL |     pub fn slice_type(p: &[u32]);
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` block uses type `&str`, which is not FFI-safe
-  --> $DIR/ctypes.rs:65:24
+  --> $DIR/ctypes.rs:71:24
    |
 LL |     pub fn str_type(p: &str);
    |                        ^^^^ not FFI-safe
@@ -62,7 +62,7 @@ LL |     pub fn str_type(p: &str);
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` block uses type `char`, which is not FFI-safe
-  --> $DIR/ctypes.rs:68:25
+  --> $DIR/ctypes.rs:74:25
    |
 LL |     pub fn char_type(p: char);
    |                         ^^^^ not FFI-safe
@@ -71,7 +71,7 @@ LL |     pub fn char_type(p: char);
    = note: the `char` type has no C equivalent
 
 error: `extern` block uses type `&dyn Bar`, which is not FFI-safe
-  --> $DIR/ctypes.rs:69:26
+  --> $DIR/ctypes.rs:75:26
    |
 LL |     pub fn trait_type(p: &dyn Bar);
    |                          ^^^^^^^^ not FFI-safe
@@ -79,7 +79,7 @@ LL |     pub fn trait_type(p: &dyn Bar);
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` block uses type `(i32, i32)`, which is not FFI-safe
-  --> $DIR/ctypes.rs:70:26
+  --> $DIR/ctypes.rs:76:26
    |
 LL |     pub fn tuple_type(p: (i32, i32));
    |                          ^^^^^^^^^^ not FFI-safe
@@ -88,7 +88,7 @@ LL |     pub fn tuple_type(p: (i32, i32));
    = note: tuples have unspecified layout
 
 error: `extern` block uses type `(i32, i32)`, which is not FFI-safe
-  --> $DIR/ctypes.rs:71:27
+  --> $DIR/ctypes.rs:77:27
    |
 LL |     pub fn tuple_type2(p: I32Pair);
    |                           ^^^^^^^ not FFI-safe
@@ -97,7 +97,7 @@ LL |     pub fn tuple_type2(p: I32Pair);
    = note: tuples have unspecified layout
 
 error: `extern` block uses type `ZeroSize`, which is not FFI-safe
-  --> $DIR/ctypes.rs:72:25
+  --> $DIR/ctypes.rs:78:25
    |
 LL |     pub fn zero_size(p: ZeroSize);
    |                         ^^^^^^^^ not FFI-safe
@@ -111,20 +111,20 @@ LL | pub struct ZeroSize;
    | ^^^^^^^^^^^^^^^^^^^
 
 error: `extern` block uses type `ZeroSizeWithPhantomData`, which is not FFI-safe
-  --> $DIR/ctypes.rs:73:33
+  --> $DIR/ctypes.rs:79:33
    |
 LL |     pub fn zero_size_phantom(p: ZeroSizeWithPhantomData);
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
    |
    = note: composed only of `PhantomData`
 note: the type is defined here
-  --> $DIR/ctypes.rs:57:1
+  --> $DIR/ctypes.rs:63:1
    |
 LL | pub struct ZeroSizeWithPhantomData(::std::marker::PhantomData<i32>);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `extern` block uses type `PhantomData<bool>`, which is not FFI-safe
-  --> $DIR/ctypes.rs:76:12
+  --> $DIR/ctypes.rs:82:12
    |
 LL |         -> ::std::marker::PhantomData<bool>;
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -132,7 +132,7 @@ LL |         -> ::std::marker::PhantomData<bool>;
    = note: composed only of `PhantomData`
 
 error: `extern` block uses type `fn()`, which is not FFI-safe
-  --> $DIR/ctypes.rs:77:23
+  --> $DIR/ctypes.rs:83:23
    |
 LL |     pub fn fn_type(p: RustFn);
    |                       ^^^^^^ not FFI-safe
@@ -141,7 +141,7 @@ LL |     pub fn fn_type(p: RustFn);
    = note: this function pointer has Rust-specific calling convention
 
 error: `extern` block uses type `fn()`, which is not FFI-safe
-  --> $DIR/ctypes.rs:78:24
+  --> $DIR/ctypes.rs:84:24
    |
 LL |     pub fn fn_type2(p: fn());
    |                        ^^^^ not FFI-safe
@@ -150,7 +150,7 @@ LL |     pub fn fn_type2(p: fn());
    = note: this function pointer has Rust-specific calling convention
 
 error: `extern` block uses type `&str`, which is not FFI-safe
-  --> $DIR/ctypes.rs:80:31
+  --> $DIR/ctypes.rs:86:31
    |
 LL |     pub fn transparent_str(p: TransparentStr);
    |                               ^^^^^^^^^^^^^^ not FFI-safe
@@ -159,7 +159,7 @@ LL |     pub fn transparent_str(p: TransparentStr);
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` block uses type `[u8; 8]`, which is not FFI-safe
-  --> $DIR/ctypes.rs:82:27
+  --> $DIR/ctypes.rs:88:27
    |
 LL |     pub fn raw_array(arr: [u8; 8]);
    |                           ^^^^^^^ not FFI-safe
@@ -167,8 +167,44 @@ LL |     pub fn raw_array(arr: [u8; 8]);
    = help: consider passing a pointer to the array
    = note: passing raw arrays by value is not FFI-safe
 
+error: `extern` block uses type `char`, which is not FFI-safe
+  --> $DIR/ctypes.rs:89:36
+   |
+LL |     pub fn multi_errors_per_arg(f: for<'a> extern "C" fn(a:char, b:&dyn Debug, c: Box<TwoBadTypes<'a>>));
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: the function pointer to `for<'a, 'b> extern "C" fn(char, &'a (dyn Debug + 'a), Box<TwoBadTypes<'b>>)` is FFI-unsafe due to `char`
+   = help: consider using `u32` or `libc::wchar_t` instead
+   = note: the `char` type has no C equivalent
+
+error: `extern` block uses type `&dyn Debug`, which is not FFI-safe
+  --> $DIR/ctypes.rs:89:36
+   |
+LL |     pub fn multi_errors_per_arg(f: for<'a> extern "C" fn(a:char, b:&dyn Debug, c: Box<TwoBadTypes<'a>>));
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: the function pointer to `for<'a, 'b> extern "C" fn(char, &'a (dyn Debug + 'a), Box<TwoBadTypes<'b>>)` is FFI-unsafe due to `&dyn Debug`
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
+
+error: `extern` block uses type `&[u8]`, which is not FFI-safe
+  --> $DIR/ctypes.rs:89:36
+   |
+LL |     pub fn multi_errors_per_arg(f: for<'a> extern "C" fn(a:char, b:&dyn Debug, c: Box<TwoBadTypes<'a>>));
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: the function pointer to `for<'a, 'b> extern "C" fn(char, &'a (dyn Debug + 'a), Box<TwoBadTypes<'b>>)` is FFI-unsafe due to `Box<TwoBadTypes<'_>>`
+   = note: this reference (`Box<TwoBadTypes<'_>>`) is ABI-compatible with a C pointer, but `TwoBadTypes<'_>` itself does not have a C layout
+   = note: this struct/enum/union (`TwoBadTypes<'_>`) is FFI-unsafe due to a `&[u8]` field
+note: the type is defined here
+  --> $DIR/ctypes.rs:57:1
+   |
+LL | pub struct TwoBadTypes<'a> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: consider using a raw pointer to the slice's first element (and a length) instead
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
+
 error: `extern` block uses type `&UnsizedStructBecauseDyn`, which is not FFI-safe
-  --> $DIR/ctypes.rs:85:47
+  --> $DIR/ctypes.rs:96:47
    |
 LL |     pub fn struct_unsized_ptr_has_metadata(p: &UnsizedStructBecauseDyn);
    |                                               ^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -176,7 +212,7 @@ LL |     pub fn struct_unsized_ptr_has_metadata(p: &UnsizedStructBecauseDyn);
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` block uses type `Option<UnsafeCell<extern "C" fn()>>`, which is not FFI-safe
-  --> $DIR/ctypes.rs:87:26
+  --> $DIR/ctypes.rs:98:26
    |
 LL |     pub fn no_niche_a(a: Option<UnsafeCell<extern "C" fn()>>);
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -185,7 +221,7 @@ LL |     pub fn no_niche_a(a: Option<UnsafeCell<extern "C" fn()>>);
    = note: enum has no representation hint
 
 error: `extern` block uses type `Option<UnsafeCell<&i32>>`, which is not FFI-safe
-  --> $DIR/ctypes.rs:89:26
+  --> $DIR/ctypes.rs:100:26
    |
 LL |     pub fn no_niche_b(b: Option<UnsafeCell<&i32>>);
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -193,5 +229,5 @@ LL |     pub fn no_niche_b(b: Option<UnsafeCell<&i32>>);
    = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
    = note: enum has no representation hint
 
-error: aborting due to 19 previous errors
+error: aborting due to 22 previous errors
 
