@@ -29,6 +29,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             }
             global
         } else {
+            // HERE: ExternalLinkage.
             self.declare_global(name, ty, GlobalKind::Exported, is_tls, link_section)
         }
     }
@@ -69,6 +70,9 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         is_tls: bool,
         link_section: Option<Symbol>,
     ) -> LValue<'gcc> {
+        if name.contains("memchr") && name.contains("FN") {
+            println!("{}: {:?}: {:?}", self.codegen_unit.name(), name, global_kind);
+        }
         let global = self.context.new_global(None, global_kind, ty, name);
         if is_tls {
             global.set_tls_model(self.tls_model);

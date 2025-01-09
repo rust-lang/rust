@@ -43,8 +43,8 @@ pub fn symbol_visibility_to_gcc(visibility: SymbolVisibility) -> gccjit::Visibil
 
 pub fn global_linkage_to_gcc(linkage: Linkage) -> GlobalKind {
     match linkage {
-        Linkage::External => GlobalKind::Imported,
-        Linkage::AvailableExternally => GlobalKind::Imported,
+        Linkage::External => GlobalKind::Exported,
+        Linkage::AvailableExternally => GlobalKind::Exported,
         Linkage::LinkOnceAny => unimplemented!(),
         Linkage::LinkOnceODR => unimplemented!(),
         Linkage::WeakAny => unimplemented!(),
@@ -151,8 +151,23 @@ pub fn compile_codegen_unit(
             });
         }
 
-        if tcx.sess.relocation_model() == rustc_target::spec::RelocModel::Static {
-            context.add_command_line_option("-fno-pie");
+        match tcx.sess.relocation_model() {
+            rustc_target::spec::RelocModel::Static => {
+                //println!("*** Static");
+                context.add_command_line_option("-fno-pie");
+                context.add_driver_option("-fno-pie");
+            },
+            rustc_target::spec::RelocModel::Pic => {
+                //println!("*** Pic");
+                context.add_command_line_option("-fPIC");
+                context.add_driver_option("-fPIC");
+            },
+            rustc_target::spec::RelocModel::Pie => {
+                //println!("*** Pie");
+                context.add_command_line_option("-fPIE");
+                context.add_driver_option("-fPIE");
+            },
+            model => eprintln!("Unsupported relocation model: {:?}", model),
         }
 
         let target_cpu = gcc_util::target_cpu(tcx.sess);

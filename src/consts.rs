@@ -97,8 +97,10 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
         // def_id).
         let var_name = format!("{:?}", global);
         if var_name.contains("FN") && var_name.contains("memchr") {
-            println!("Var name: {:?}", var_name);
+            //println!("Var name: {:?}", var_name);
+            println!("INITIALIZE: {:?} = {:?}", var_name, value);
 
+            /*
             let ptr_type = value.get_type().make_pointer();
 
             // TODO: remove \x01
@@ -108,8 +110,9 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
             imp_name.push_str(&var_name);
 
             // FIXME: if I understand correctly the code in cg_llvm, the kind should be Imported.
-            /*let imp_global = self.context.new_global(None, GlobalKind::Exported, ptr_type, &imp_name);
-            imp_global.global_set_initializer_rvalue(global.get_address(None));*/
+            let imp_global = self.context.new_global(None, GlobalKind::Exported, ptr_type, &imp_name);
+            imp_global.global_set_initializer_rvalue(global.get_address(None));
+            */
 
             /*
             /*let context = gccjit::Context::default();
@@ -122,7 +125,6 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
             let my_name = format!("MY_NAME${}", var_name);
             //let global = self.context.new_global(None, GlobalKind::Exported, fn_ptr_type, my_name);
             //global.add_attribute(VarAttribute::Used);
-            println!("{:?} = {:?}", var_name, value);
 
             let my_func_name = format!("MY_FUNC${}", var_name);
             let func = self.context.new_function(None, FunctionType::Exported, void_type, &[], &my_func_name, false);
@@ -166,6 +168,7 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
             //let value = self.context.new_bitcast(None, value, fn_ptr_type); // Also WORKS
             let value = self.context.new_bitcast(None, value, val_llty);*/
             global.global_set_initializer_rvalue(value);
+            println!("=== AFTER INITIALIZE");
         }
         else {
             global.global_set_initializer_rvalue(value);
@@ -326,10 +329,13 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             }
 
             let is_tls = fn_attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
+            if sym.contains("memchr") && sym.contains("FN") {
+                println!("** DECLARE");
+            }
             let global = self.declare_global(
                 sym,
                 gcc_type,
-                GlobalKind::Exported,
+                GlobalKind::Imported,
                 is_tls,
                 fn_attrs.link_section,
             );
