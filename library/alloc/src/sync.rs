@@ -2468,7 +2468,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// let x: Arc<&str> = Arc::new("Hello, world!");
     /// {
     ///     let s = String::from("Oh, no!");
-    ///     let mut y: Arc<&str> = x.clone().into();
+    ///     let mut y: Arc<&str> = x.clone();
     ///     unsafe {
     ///         // this is Undefined Behavior, because x's inner type
     ///         // is &'long str, not &'short str
