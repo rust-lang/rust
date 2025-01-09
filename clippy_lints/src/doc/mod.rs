@@ -639,7 +639,7 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
                     self.check_private_items,
                 );
                 match item.kind {
-                    ItemKind::Fn(sig, _, body_id) => {
+                    ItemKind::Fn { sig, body: body_id, .. } => {
                         if !(is_entrypoint_fn(cx, item.owner_id.to_def_id())
                             || in_external_macro(cx.tcx.sess, item.span))
                         {

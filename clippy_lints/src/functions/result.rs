@@ -36,7 +36,7 @@ fn result_err_ty<'tcx>(
 }
 
 pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &hir::Item<'tcx>, large_err_threshold: u64, msrv: &Msrv) {
-    if let hir::ItemKind::Fn(ref sig, _generics, _) = item.kind
+    if let hir::ItemKind::Fn { ref sig, .. } = item.kind
         && let Some((hir_ty, err_ty)) = result_err_ty(cx, sig.decl, item.owner_id.def_id, item.span)
     {
         if cx.effective_visibilities.is_exported(item.owner_id.def_id) {

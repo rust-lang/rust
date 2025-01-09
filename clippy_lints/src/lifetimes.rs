@@ -95,7 +95,13 @@ declare_lint_pass!(Lifetimes => [NEEDLESS_LIFETIMES, EXTRA_UNUSED_LIFETIMES]);
 
 impl<'tcx> LateLintPass<'tcx> for Lifetimes {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if let ItemKind::Fn(ref sig, generics, id) = item.kind {
+        if let ItemKind::Fn {
+            ref sig,
+            generics,
+            body: id,
+            ..
+        } = item.kind
+        {
             check_fn_inner(cx, sig, Some(id), None, generics, item.span, true);
         } else if let ItemKind::Impl(impl_) = item.kind {
             if !item.span.from_expansion() {
