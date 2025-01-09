@@ -382,8 +382,17 @@ lint_improper_ctypes_char_help = consider using `u32` or `libc::wchar_t` instead
 
 lint_improper_ctypes_char_reason = the `char` type has no C equivalent
 
-lint_improper_ctypes_cstr_help =
-    consider passing a `*const std::ffi::c_char` instead, and use `CStr::as_ptr()`
+lint_improper_ctypes_cstr_help_const =
+    consider passing a `*const std::ffi::c_char` instead, and use `CStr::as_ptr()` or `CString::as_ptr()`
+lint_improper_ctypes_cstr_help_mut =
+    consider passing a `*mut std::ffi::c_char` instead, and use `CString::into_raw()` then `CString::from_raw()` or a dedicated buffer
+lint_improper_ctypes_cstr_help_owned =
+    consider passing a `*const std::ffi::c_char` or `*mut std::ffi::c_char` instead,
+    and use `CString::into_raw()` then `CString::from_raw()` or a dedicated buffer
+    (note that `CString::into_raw()`'s output must not be `libc::free()`'d)
+lint_improper_ctypes_cstr_help_unknown =
+    consider passing a `*const std::ffi::c_char` or `*mut std::ffi::c_char` instead,
+    and use (depending on the use case) `CStr::as_ptr()`, `CString::into_raw()` then `CString::from_raw()`, or a dedicated buffer
 lint_improper_ctypes_cstr_reason = `CStr`/`CString` do not have a guaranteed layout
 
 lint_improper_ctypes_dyn = trait objects have no C equivalent
@@ -410,6 +419,7 @@ lint_improper_ctypes_pat_reason = pattern types have no C equivalent
 lint_improper_ctypes_sized_ptr_to_unsafe_type =
     this reference (`{$ty}`) is ABI-compatible with a C pointer, but `{$inner_ty}` itself does not have a C layout
 
+lint_improper_ctypes_struct_dueto = this struct/enum/union (`{$ty}`) is FFI-unsafe due to a `{$inner_ty}` field
 lint_improper_ctypes_slice_help = consider using a raw pointer to the slice's first element (and a length) instead
 
 lint_improper_ctypes_slice_reason = slices have no C equivalent
