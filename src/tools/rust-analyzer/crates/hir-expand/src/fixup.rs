@@ -441,8 +441,8 @@ fn transform_tt<'a, 'b>(
                 };
                 let len_diff = replacement.len() as i64 - old_len as i64;
                 tt.splice(i..i + old_len, replacement.flat_tokens().iter().cloned());
-                // `+1` for the loop.
-                i = i.checked_add_signed(len_diff as isize + 1).unwrap();
+                // Skip the newly inserted replacement, we don't want to visit it.
+                i += replacement.len();
 
                 for &subtree_idx in &subtrees_stack {
                     let tt::TokenTree::Subtree(subtree) = &mut tt[subtree_idx] else {

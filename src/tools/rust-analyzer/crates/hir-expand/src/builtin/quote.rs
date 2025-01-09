@@ -102,6 +102,7 @@ macro_rules! quote_impl__ {
     ($span:ident $builder:ident # ) => {$crate::builtin::quote::__quote!(@PUNCT($span $builder) '#')};
     ($span:ident $builder:ident $ ) => {$crate::builtin::quote::__quote!(@PUNCT($span $builder) '$')};
     ($span:ident $builder:ident * ) => {$crate::builtin::quote::__quote!(@PUNCT($span $builder) '*')};
+    ($span:ident $builder:ident = ) => {$crate::builtin::quote::__quote!(@PUNCT($span $builder) '=')};
 
     ($span:ident $builder:ident $first:tt $($tail:tt)+ ) => {{
         $crate::builtin::quote::__quote!($span $builder $first);
