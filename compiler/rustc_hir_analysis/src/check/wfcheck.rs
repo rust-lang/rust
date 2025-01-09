@@ -1120,7 +1120,7 @@ fn check_type_defn<'tcx>(
                     } else {
                         // Evaluate the constant proactively, to emit an error if the constant has
                         // an unconditional error. We only do so if the const has no type params.
-                        let _ = tcx.const_eval_poly(def_id.into());
+                        let _ = tcx.const_eval_poly(def_id);
                     }
                 }
                 let field_id = field.did.expect_local();
