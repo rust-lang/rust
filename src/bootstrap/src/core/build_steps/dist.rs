@@ -23,7 +23,7 @@ use crate::core::build_steps::vendor::default_paths_to_vendor;
 use crate::core::build_steps::{compile, llvm};
 use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
-use crate::utils::build_stamp::BuildStamp;
+use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::channel::{self, Info};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{
@@ -674,7 +674,7 @@ impl Step for Std {
         tarball.include_target_in_component_name(true);
 
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
-        let stamp = compile::libstd_stamp(builder, compiler_to_use, target);
+        let stamp = build_stamp::libstd_stamp(builder, compiler_to_use, target);
         verify_uefi_rlib_format(builder, target, &stamp);
         copy_target_libs(builder, target, tarball.image_dir(), &stamp);
 
@@ -724,7 +724,7 @@ impl Step for RustcDev {
         let tarball = Tarball::new(builder, "rustc-dev", &target.triple);
 
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
-        let stamp = compile::librustc_stamp(builder, compiler_to_use, target);
+        let stamp = build_stamp::librustc_stamp(builder, compiler_to_use, target);
         copy_target_libs(builder, target, tarball.image_dir(), &stamp);
 
         let src_files = &["Cargo.lock"];

@@ -24,6 +24,7 @@ use crate::core::builder::{
     Builder, Cargo, Kind, PathSet, RunConfig, ShouldRun, Step, TaskPath, crate_description,
 };
 use crate::core::config::{DebuginfoLevel, LlvmLibunwind, RustcLto, TargetSelection};
+use crate::utils::build_stamp;
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::exec::command;
 use crate::utils::helpers::{
@@ -255,7 +256,7 @@ impl Step for Std {
             builder,
             cargo,
             vec![],
-            &libstd_stamp(builder, compiler, target),
+            &build_stamp::libstd_stamp(builder, compiler, target),
             target_deps,
             self.is_for_mir_opt_tests, // is_check
             false,
@@ -645,7 +646,12 @@ impl Step for StdLink {
             (libdir, hostdir)
         };
 
-        add_to_sysroot(builder, &libdir, &hostdir, &libstd_stamp(builder, compiler, target));
+        add_to_sysroot(
+            builder,
+            &libdir,
+            &hostdir,
+            &build_stamp::libstd_stamp(builder, compiler, target),
+        );
 
         // Special case for stage0, to make `rustup toolchain link` and `x dist --stage 0`
         // work for stage0-sysroot. We only do this if the stage0 compiler comes from beta,
@@ -974,7 +980,7 @@ impl Step for Rustc {
             compiler.host,
             target,
         );
-        let stamp = librustc_stamp(builder, compiler, target);
+        let stamp = build_stamp::librustc_stamp(builder, compiler, target);
         run_cargo(
             builder,
             cargo,
@@ -1330,7 +1336,7 @@ impl Step for RustcLink {
             builder,
             &builder.sysroot_target_libdir(previous_stage_compiler, target),
             &builder.sysroot_target_libdir(previous_stage_compiler, compiler.host),
-            &librustc_stamp(builder, compiler, target),
+            &build_stamp::librustc_stamp(builder, compiler, target),
         );
     }
 }
@@ -1470,7 +1476,7 @@ impl Step for CodegenBackend {
                 f.display()
             );
         }
-        let stamp = codegen_backend_stamp(builder, compiler, target, &backend);
+        let stamp = build_stamp::codegen_backend_stamp(builder, compiler, target, &backend);
         let codegen_backend = codegen_backend.to_str().unwrap();
         t!(fs::write(stamp, codegen_backend));
     }
@@ -1509,7 +1515,7 @@ fn copy_codegen_backends_to_sysroot(
             continue; // Already built as part of rustc
         }
 
-        let stamp = codegen_backend_stamp(builder, compiler, target, backend);
+        let stamp = build_stamp::codegen_backend_stamp(builder, compiler, target, backend);
         let dylib = t!(fs::read_to_string(&stamp));
         let file = Path::new(&dylib);
         let filename = file.file_name().unwrap().to_str().unwrap();
@@ -1522,38 +1528,6 @@ fn copy_codegen_backends_to_sysroot(
         };
         builder.copy_link(file, &dst.join(target_filename));
     }
-}
-
-/// Cargo's output path for the standard library in a given stage, compiled
-/// by a particular compiler for the specified target.
-pub fn libstd_stamp(
-    builder: &Builder<'_>,
-    compiler: Compiler,
-    target: TargetSelection,
-) -> BuildStamp {
-    BuildStamp::new(&builder.cargo_out(compiler, Mode::Std, target)).with_prefix("libstd")
-}
-
-/// Cargo's output path for librustc in a given stage, compiled by a particular
-/// compiler for the specified target.
-pub fn librustc_stamp(
-    builder: &Builder<'_>,
-    compiler: Compiler,
-    target: TargetSelection,
-) -> BuildStamp {
-    BuildStamp::new(&builder.cargo_out(compiler, Mode::Rustc, target)).with_prefix("librustc")
-}
-
-/// Cargo's output path for librustc_codegen_llvm in a given stage, compiled by a particular
-/// compiler for the specified target and backend.
-fn codegen_backend_stamp(
-    builder: &Builder<'_>,
-    compiler: Compiler,
-    target: TargetSelection,
-    backend: &str,
-) -> BuildStamp {
-    BuildStamp::new(&builder.cargo_out(compiler, Mode::Codegen, target))
-        .with_prefix(&format!("librustc_codegen_{backend}"))
 }
 
 pub fn compiler_file(
@@ -1912,7 +1886,7 @@ impl Step for Assemble {
         builder.info(&msg);
 
         // Link in all dylibs to the libdir
-        let stamp = librustc_stamp(builder, build_compiler, target_compiler.host);
+        let stamp = build_stamp::librustc_stamp(builder, build_compiler, target_compiler.host);
         let proc_macros = builder
             .read_stamp_file(&stamp)
             .into_iter()

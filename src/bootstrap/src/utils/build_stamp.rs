@@ -1,6 +1,10 @@
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
+use crate::core::builder::Builder;
+use crate::core::config::TargetSelection;
+use crate::{Compiler, Mode};
+
 #[derive(Clone)]
 pub struct BuildStamp {
     path: PathBuf,
@@ -68,4 +72,36 @@ impl BuildStamp {
             }
         }
     }
+}
+
+/// Cargo's output path for librustc_codegen_llvm in a given stage, compiled by a particular
+/// compiler for the specified target and backend.
+pub fn codegen_backend_stamp(
+    builder: &Builder<'_>,
+    compiler: Compiler,
+    target: TargetSelection,
+    backend: &str,
+) -> BuildStamp {
+    BuildStamp::new(&builder.cargo_out(compiler, Mode::Codegen, target))
+        .with_prefix(&format!("librustc_codegen_{backend}"))
+}
+
+/// Cargo's output path for the standard library in a given stage, compiled
+/// by a particular compiler for the specified target.
+pub fn libstd_stamp(
+    builder: &Builder<'_>,
+    compiler: Compiler,
+    target: TargetSelection,
+) -> BuildStamp {
+    BuildStamp::new(&builder.cargo_out(compiler, Mode::Std, target)).with_prefix("libstd")
+}
+
+/// Cargo's output path for librustc in a given stage, compiled by a particular
+/// compiler for the specified target.
+pub fn librustc_stamp(
+    builder: &Builder<'_>,
+    compiler: Compiler,
+    target: TargetSelection,
+) -> BuildStamp {
+    BuildStamp::new(&builder.cargo_out(compiler, Mode::Rustc, target)).with_prefix("librustc")
 }
