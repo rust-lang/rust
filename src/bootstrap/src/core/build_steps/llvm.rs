@@ -20,9 +20,10 @@ use build_helper::git::get_closest_merge_commit;
 
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::core::config::{Config, TargetSelection};
+use crate::utils::build_stamp::BuildStamp;
 use crate::utils::exec::command;
 use crate::utils::helpers::{
-    self, HashStamp, exe, get_clang_cl_resource_dir, t, unhashed_basename, up_to_date,
+    self, exe, get_clang_cl_resource_dir, t, unhashed_basename, up_to_date,
 };
 use crate::{CLang, GitRepo, Kind, generate_smart_stamp_hash};
 
@@ -36,7 +37,7 @@ pub struct LlvmResult {
 }
 
 pub struct Meta {
-    stamp: HashStamp,
+    stamp: BuildStamp,
     res: LlvmResult,
     out_dir: PathBuf,
     root: String,
@@ -135,18 +136,17 @@ pub fn prebuilt_llvm_config(
         )
     });
 
-    let stamp = out_dir.join("llvm-finished-building");
-    let stamp = HashStamp::new(stamp, Some(smart_stamp_hash));
+    let stamp = BuildStamp::new(&out_dir).with_prefix("llvm").with_stamp(smart_stamp_hash);
 
-    if stamp.is_done() {
-        if stamp.hash.is_none() {
+    if stamp.is_up_to_date() {
+        if stamp.stamp.is_empty() {
             builder.info(
                 "Could not determine the LLVM submodule commit hash. \
                      Assuming that an LLVM rebuild is not necessary.",
             );
             builder.info(&format!(
                 "To force LLVM to rebuild, remove the file `{}`",
-                stamp.path.display()
+                stamp.as_ref().display()
             ));
         }
         return LlvmBuildStatus::AlreadyBuilt(res);
@@ -922,18 +922,17 @@ impl Step for Enzyme {
         });
 
         let out_dir = builder.enzyme_out(target);
-        let stamp = out_dir.join("enzyme-finished-building");
-        let stamp = HashStamp::new(stamp, Some(smart_stamp_hash));
+        let stamp = BuildStamp::new(&out_dir).with_prefix("enzyme").with_prefix(smart_stamp_hash);
 
-        if stamp.is_done() {
-            if stamp.hash.is_none() {
+        if stamp.is_up_to_date() {
+            if stamp.stamp.is_empty() {
                 builder.info(
                     "Could not determine the Enzyme submodule commit hash. \
                      Assuming that an Enzyme rebuild is not necessary.",
                 );
                 builder.info(&format!(
                     "To force Enzyme to rebuild, remove the file `{}`",
-                    stamp.path.display()
+                    stamp.as_ref().display()
                 ));
             }
             return out_dir;
@@ -1131,16 +1130,18 @@ impl Step for Sanitizers {
             return runtimes;
         }
 
-        let stamp = out_dir.join("sanitizers-finished-building");
-        let stamp = HashStamp::new(stamp, builder.in_tree_llvm_info.sha());
+        let stamp = BuildStamp::new(&out_dir)
+            .with_prefix("sanitizers")
+            .with_stamp(builder.in_tree_llvm_info.sha().map(String::from).unwrap_or_default());
 
-        if stamp.is_done() {
-            if stamp.hash.is_none() {
+        if stamp.is_up_to_date() {
+            if stamp.stamp.is_empty() {
                 builder.info(&format!(
                     "Rebuild sanitizers by removing the file `{}`",
-                    stamp.path.display()
+                    stamp.as_ref().display()
                 ));
             }
+
             return runtimes;
         }
 

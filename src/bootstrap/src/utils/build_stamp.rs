@@ -4,7 +4,7 @@ use std::{fs, io};
 #[derive(Clone)]
 pub struct BuildStamp {
     path: PathBuf,
-    stamp: String,
+    pub(crate) stamp: String,
 }
 
 impl From<BuildStamp> for PathBuf {
@@ -24,8 +24,8 @@ impl BuildStamp {
         Self { path: dir.join(".stamp"), stamp: String::new() }
     }
 
-    pub fn with_stamp(mut self, stamp: String) -> Self {
-        self.stamp = stamp;
+    pub fn with_stamp<S: ToString>(mut self, stamp: S) -> Self {
+        self.stamp = stamp.to_string();
         self
     }
 
@@ -42,7 +42,7 @@ impl BuildStamp {
         self
     }
 
-    pub fn remove(self) -> io::Result<()> {
+    pub fn remove(&self) -> io::Result<()> {
         match fs::remove_file(&self.path) {
             Ok(()) => Ok(()),
             Err(e) => {
