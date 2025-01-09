@@ -1,6 +1,6 @@
 use std::{env, fs};
 
-use gccjit::OutputKind;
+use gccjit::{Context, OutputKind};
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::write::{BitcodeSection, CodegenContext, EmitObj, ModuleConfig};
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen};
@@ -176,10 +176,58 @@ pub(crate) unsafe fn codegen(
                     context.add_driver_option("-nostdlib");
 
                     // NOTE: this doesn't actually generate an executable. With the above flags, it combines the .o files together in another .o.
-                    context.compile_to_file(
+                    // FIXME FIXME: this produces an object file with GIMPLE IR, but it should
+                    // produce an object file with machine code.
+                    //println!("LTO-ed object file: {:?}", obj_out);
+                    /*context.compile_to_file(
                         OutputKind::Executable,
                         obj_out.to_str().expect("path to str"),
-                    );
+                    );*/
+
+                    let path = obj_out.to_str().expect("path to str");
+
+                    if fat_lto {
+                        let lto_path = format!("{}.lto", path);
+                        // FIXME(antoyo): The LTO frontend generates the following warning:
+                        // ../build_sysroot/sysroot_src/library/core/src/num/dec2flt/lemire.rs:150:15: warning: type of ‘_ZN4core3num7dec2flt5table17POWER_OF_FIVE_12817ha449a68fb31379e4E’ does not match original declaration [-Wlto-type-mismatch]
+                        // 150 |     let (lo5, hi5) = POWER_OF_FIVE_128[index];
+                        //     |               ^
+                        // lto1: note: ‘_ZN4core3num7dec2flt5table17POWER_OF_FIVE_12817ha449a68fb31379e4E’ was previously declared here
+                        //
+                        // This option is to mute it to make the UI tests pass with LTO enabled.
+                        context.add_driver_option("-Wno-lto-type-mismatch");
+                        // NOTE: this doesn't actually generate an executable. With the above
+                        // flags, it combines the .o files together in another .o.
+                        context.compile_to_file(OutputKind::Executable, &lto_path);
+
+                        let context = Context::default(); // TODO: might need to set some other flags from new_context.
+                        //context.add_driver_option("-v");
+                        //println!("*** Arch: {}", cgcx.target_arch);
+                        if cgcx.target_arch == "x86" || cgcx.target_arch == "x86_64" {
+                            //println!("**** Added -masm=intel");
+                            //context.add_command_line_option("-masm=intel");
+                            // NOTE: it seems we need to use add_driver_option instead of
+                            // add_command_line_option here because we use the LTO frontend via gcc.
+                            context.add_driver_option("-masm=intel");
+                        }
+
+                        // NOTE: these two options are needed to invoke LTO to produce an object file.
+                        // We need to initiate a second compilation because the arguments "-x lto"
+                        // needs to be at the very beginning.
+                        // TODO TODO: check that LTO still does the optimizations across different
+                        // object files with this change.
+                        // TODO: this should probably be in a condition `if fat_lto`.
+                        context.add_driver_option("-x");
+                        context.add_driver_option("lto");
+                        context.add_driver_option("-fPIC"); // TODO TODO: only add this flag when necessary.
+                        context.add_driver_option(lto_path);
+
+                        context.compile_to_file(OutputKind::ObjectFile, path);
+                    } else {
+                        // NOTE: this doesn't actually generate an executable. With the above
+                        // flags, it combines the .o files together in another .o.
+                        context.compile_to_file(OutputKind::Executable, path);
+                    }
                 } else {
                     context.compile_to_file(
                         OutputKind::ObjectFile,
