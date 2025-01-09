@@ -85,6 +85,20 @@ impl<T: ?Sized> !Send for NonNull<T> {}
 impl<T: ?Sized> !Sync for NonNull<T> {}
 
 impl<T: Sized> NonNull<T> {
+    /// Creates a pointer with the given address and no [provenance][crate::ptr#provenance].
+    ///
+    /// For more details, see the equivalent method on a raw pointer, [`ptr::without_provenance_mut`].
+    ///
+    /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
+    #[unstable(feature = "nonnull_provenance", issue = "135243")]
+    pub const fn without_provenance(addr: NonZero<usize>) -> Self {
+        // SAFETY: we know `addr` is non-zero.
+        unsafe {
+            let ptr = crate::ptr::without_provenance_mut(addr.get());
+            NonNull::new_unchecked(ptr)
+        }
+    }
+
     /// Creates a new `NonNull` that is dangling, but well-aligned.
     ///
     /// This is useful for initializing types which lazily allocate, like
@@ -112,6 +126,21 @@ impl<T: Sized> NonNull<T> {
         // SAFETY: ptr::dangling_mut() returns a non-null well-aligned pointer.
         unsafe {
             let ptr = crate::ptr::dangling_mut::<T>();
+            NonNull::new_unchecked(ptr)
+        }
+    }
+
+    /// Converts an address back to a mutable pointer, picking up some previously 'exposed'
+    /// [provenance][crate::ptr#provenance].
+    ///
+    /// For more details, see the equivalent method on a raw pointer, [`ptr::with_exposed_provenance_mut`].
+    ///
+    /// This is an [Exposed Provenance][crate::ptr#exposed-provenance] API.
+    #[unstable(feature = "nonnull_provenance", issue = "135243")]
+    pub fn with_exposed_provenance(addr: NonZero<usize>) -> Self {
+        // SAFETY: we know `addr` is non-zero.
+        unsafe {
+            let ptr = crate::ptr::with_exposed_provenance_mut(addr.get());
             NonNull::new_unchecked(ptr)
         }
     }
@@ -282,7 +311,7 @@ impl<T: ?Sized> NonNull<T> {
 
     /// Gets the "address" portion of the pointer.
     ///
-    /// For more details see the equivalent method on a raw pointer, [`pointer::addr`].
+    /// For more details, see the equivalent method on a raw pointer, [`pointer::addr`].
     ///
     /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
     #[must_use]
@@ -294,10 +323,23 @@ impl<T: ?Sized> NonNull<T> {
         unsafe { NonZero::new_unchecked(self.as_ptr().addr()) }
     }
 
+    /// Exposes the ["provenance"][crate::ptr#provenance] part of the pointer for future use in
+    /// [`with_exposed_provenance`][NonNull::with_exposed_provenance] and returns the "address" portion.
+    ///
+    /// For more details, see the equivalent method on a raw pointer, [`pointer::expose_provenance`].
+    ///
+    /// This is an [Exposed Provenance][crate::ptr#exposed-provenance] API.
+    #[unstable(feature = "nonnull_provenance", issue = "135243")]
+    pub fn expose_provenance(self) -> NonZero<usize> {
+        // SAFETY: The pointer is guaranteed by the type to be non-null,
+        // meaning that the address will be non-zero.
+        unsafe { NonZero::new_unchecked(self.as_ptr().expose_provenance()) }
+    }
+
     /// Creates a new pointer with the given address and the [provenance][crate::ptr#provenance] of
     /// `self`.
     ///
-    /// For more details see the equivalent method on a raw pointer, [`pointer::with_addr`].
+    /// For more details, see the equivalent method on a raw pointer, [`pointer::with_addr`].
     ///
     /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
     #[must_use]
@@ -311,7 +353,7 @@ impl<T: ?Sized> NonNull<T> {
     /// Creates a new pointer by mapping `self`'s address to a new one, preserving the
     /// [provenance][crate::ptr#provenance] of `self`.
     ///
-    /// For more details see the equivalent method on a raw pointer, [`pointer::map_addr`].
+    /// For more details, see the equivalent method on a raw pointer, [`pointer::map_addr`].
     ///
     /// This is a [Strict Provenance][crate::ptr#strict-provenance] API.
     #[must_use]
