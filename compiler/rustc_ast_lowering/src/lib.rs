@@ -2095,7 +2095,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 path,
                 ParamMode::Optional,
                 AllowReturnTypeNotation::No,
-                // FIXME(min_generic_const_args): update for `fn foo() -> Bar<FOO<impl Trait>>` support
+                // FIXME(mgca): update for `fn foo() -> Bar<FOO<impl Trait>>` support
                 ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                 None,
             );
@@ -2170,7 +2170,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 path,
                 ParamMode::Optional,
                 AllowReturnTypeNotation::No,
-                // FIXME(min_generic_const_args): update for `fn foo() -> Bar<FOO<impl Trait>>` support
+                // FIXME(mgca): update for `fn foo() -> Bar<FOO<impl Trait>>` support
                 ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                 None,
             );

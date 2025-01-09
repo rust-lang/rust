@@ -340,7 +340,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
     ) -> Const<'tcx> {
         let trait_ref = self.instantiate_binder_with_fresh_vars(
             span,
-            // FIXME(min_generic_const_args): this should be assoc const not assoc type
+            // FIXME(mgca): this should be assoc const not assoc type
             infer::BoundRegionConversionTime::AssocTypeProjection(item_def_id),
             poly_trait_ref,
         );

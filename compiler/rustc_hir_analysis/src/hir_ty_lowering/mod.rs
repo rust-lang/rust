@@ -2253,7 +2253,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let assoc_ident = assoc_segment.ident;
 
         // Check if we have an enum variant or an inherent associated const.
-        // FIXME(min_generic_const_args): handle assoc fns once we support those
+        // FIXME(mgca): handle assoc fns once we support those
         if let Some(adt_def) = self.probe_adt(span, qself_ty) {
             if adt_def.is_enum() {
                 let variant_def = adt_def
@@ -2271,7 +2271,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
             }
 
-            // FIXME(min_generic_const_args): Support self types other than ADTs.
+            // FIXME(mgca): Support self types other than ADTs.
             let candidates = tcx
                 .inherent_impls(adt_def.did())
                 .iter()
@@ -2289,7 +2289,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             match &candidates[..] {
                 [] => {}
                 &[(impl_, assoc)] => {
-                    // FIXME(min_generic_const_args): adapted from temporary inherent assoc ty code that may be incorrect
+                    // FIXME(mgca): adapted from temporary inherent assoc ty code that may be incorrect
                     let parent_args = ty::GenericArgs::identity_for_item(tcx, impl_);
                     let args = self.lower_generic_args_of_assoc_item(
                         span,
