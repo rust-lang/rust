@@ -33,14 +33,7 @@ pub(crate) fn build_sysroot(
     let cg_clif_dylib_path = match cg_clif_dylib_src {
         CodegenBackend::Local(src_path) => {
             // Copy the backend
-            let cg_clif_dylib_path = if cfg!(windows) {
-                // Windows doesn't have rpath support, so the cg_clif dylib needs to be next to the
-                // binaries.
-                dist_dir.join("bin")
-            } else {
-                dist_dir.join("lib")
-            }
-            .join(src_path.file_name().unwrap());
+            let cg_clif_dylib_path = dist_dir.join("lib").join(src_path.file_name().unwrap());
             try_hard_link(src_path, &cg_clif_dylib_path);
             CodegenBackend::Local(cg_clif_dylib_path)
         }
