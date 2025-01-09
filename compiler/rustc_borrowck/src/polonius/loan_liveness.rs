@@ -29,7 +29,7 @@ pub(super) fn compute_loan_liveness<'tcx>(
     // edges when visualizing the constraint graph anyways.
     let kills = collect_kills(body, tcx, borrow_set);
 
-    let graph = index_constraints(&localized_outlives_constraints);
+    let graph = LocalizedConstraintGraph::new(&localized_outlives_constraints);
     let mut visited = FxHashSet::default();
     let mut stack = Vec::new();
 
@@ -108,7 +108,7 @@ pub(super) fn compute_loan_liveness<'tcx>(
             let is_loan_killed =
                 kills.get(&current_location).is_some_and(|kills| kills.contains(&loan_idx));
 
-            for succ in outgoing_edges(&graph, node) {
+            for succ in graph.outgoing_edges(node) {
                 // If the loan is killed at this point, it is killed _on exit_. But only during
                 // forward traversal.
                 if is_loan_killed {
@@ -125,9 +125,12 @@ pub(super) fn compute_loan_liveness<'tcx>(
     live_loans
 }
 
-/// The localized constraint graph is currently the per-node map of its physical edges. In the
-/// future, we'll add logical edges to model constraints that hold at all points in the CFG.
-type LocalizedConstraintGraph = FxHashMap<LocalizedNode, FxIndexSet<LocalizedNode>>;
+/// The localized constraint graph indexes the physical edges to compute a given node's successors
+/// during traversal.
+struct LocalizedConstraintGraph {
+    /// The actual, physical, edges we have recorded for a given node.
+    edges: FxHashMap<LocalizedNode, FxIndexSet<LocalizedNode>>,
+}
 
 /// A node in the graph to be traversed, one of the two vertices of a localized outlives constraint.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -136,24 +139,23 @@ struct LocalizedNode {
     point: PointIndex,
 }
 
-/// Traverses the constraints and returns the indexable graph of edges per node.
-fn index_constraints(constraints: &LocalizedOutlivesConstraintSet) -> LocalizedConstraintGraph {
-    let mut edges = LocalizedConstraintGraph::default();
-    for constraint in &constraints.outlives {
-        let source = LocalizedNode { region: constraint.source, point: constraint.from };
-        let target = LocalizedNode { region: constraint.target, point: constraint.to };
-        edges.entry(source).or_default().insert(target);
+impl LocalizedConstraintGraph {
+    /// Traverses the constraints and returns the indexed graph of edges per node.
+    fn new(constraints: &LocalizedOutlivesConstraintSet) -> Self {
+        let mut edges: FxHashMap<_, FxIndexSet<_>> = FxHashMap::default();
+        for constraint in &constraints.outlives {
+            let source = LocalizedNode { region: constraint.source, point: constraint.from };
+            let target = LocalizedNode { region: constraint.target, point: constraint.to };
+            edges.entry(source).or_default().insert(target);
+        }
+
+        LocalizedConstraintGraph { edges }
     }
 
-    edges
-}
-
-/// Returns the outgoing edges of a given node, not its transitive closure.
-fn outgoing_edges(
-    graph: &LocalizedConstraintGraph,
-    node: LocalizedNode,
-) -> impl Iterator<Item = LocalizedNode> + use<'_> {
-    graph.get(&node).into_iter().flat_map(|edges| edges.iter().copied())
+    /// Returns the outgoing edges of a given node, not its transitive closure.
+    fn outgoing_edges(&self, node: LocalizedNode) -> impl Iterator<Item = LocalizedNode> + use<'_> {
+        self.edges.get(&node).into_iter().flat_map(|targets| targets.iter().copied())
+    }
 }
 
 /// Traverses the MIR and collects kills.
