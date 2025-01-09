@@ -20,12 +20,12 @@ use build_helper::git::get_closest_merge_commit;
 
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::core::config::{Config, TargetSelection};
-use crate::utils::build_stamp::BuildStamp;
+use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
 use crate::utils::exec::command;
 use crate::utils::helpers::{
     self, exe, get_clang_cl_resource_dir, t, unhashed_basename, up_to_date,
 };
-use crate::{CLang, GitRepo, Kind, generate_smart_stamp_hash};
+use crate::{CLang, GitRepo, Kind};
 
 #[derive(Clone)]
 pub struct LlvmResult {

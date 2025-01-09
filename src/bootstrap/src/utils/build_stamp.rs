@@ -5,10 +5,12 @@
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
+use sha2::digest::Digest;
+
 use crate::core::builder::Builder;
 use crate::core::config::TargetSelection;
-use crate::utils::helpers::mtime;
-use crate::{Compiler, Mode, t};
+use crate::utils::helpers::{hex_encode, mtime};
+use crate::{Compiler, Mode, helpers, t};
 
 #[cfg(test)]
 mod tests;
@@ -138,4 +140,50 @@ pub fn librustc_stamp(
     target: TargetSelection,
 ) -> BuildStamp {
     BuildStamp::new(&builder.cargo_out(compiler, Mode::Rustc, target)).with_prefix("librustc")
+}
+
+/// Computes a hash representing the state of a repository/submodule and additional input.
+///
+/// It uses `git diff` for the actual changes, and `git status` for including the untracked
+/// files in the specified directory. The additional input is also incorporated into the
+/// computation of the hash.
+///
+/// # Parameters
+///
+/// - `dir`: A reference to the directory path of the target repository/submodule.
+/// - `additional_input`: An additional input to be included in the hash.
+///
+/// # Panics
+///
+/// In case of errors during `git` command execution (e.g., in tarball sources), default values
+/// are used to prevent panics.
+pub fn generate_smart_stamp_hash(
+    builder: &Builder<'_>,
+    dir: &Path,
+    additional_input: &str,
+) -> String {
+    let diff = helpers::git(Some(dir))
+        .allow_failure()
+        .arg("diff")
+        .run_capture_stdout(builder)
+        .stdout_if_ok()
+        .unwrap_or_default();
+
+    let status = helpers::git(Some(dir))
+        .allow_failure()
+        .arg("status")
+        .arg("--porcelain")
+        .arg("-z")
+        .arg("--untracked-files=normal")
+        .run_capture_stdout(builder)
+        .stdout_if_ok()
+        .unwrap_or_default();
+
+    let mut hasher = sha2::Sha256::new();
+
+    hasher.update(diff);
+    hasher.update(status);
+    hasher.update(additional_input);
+
+    hex_encode(hasher.finalize().as_slice())
 }
