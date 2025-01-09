@@ -79,7 +79,7 @@ pub fn is_const_evaluatable<'tcx>(
                     Err(
                         EvaluateConstErr::EvaluationFailure(e)
                         | EvaluateConstErr::InvalidConstParamTy(e),
-                    ) => Err(NotConstEvaluatable::Error(e.into())),
+                    ) => Err(NotConstEvaluatable::Error(e)),
                     Ok(_) => Ok(()),
                 }
             }
@@ -140,7 +140,7 @@ pub fn is_const_evaluatable<'tcx>(
             }
             Err(
                 EvaluateConstErr::EvaluationFailure(e) | EvaluateConstErr::InvalidConstParamTy(e),
-            ) => Err(NotConstEvaluatable::Error(e.into())),
+            ) => Err(NotConstEvaluatable::Error(e)),
             Ok(_) => Ok(()),
         }
     }

@@ -502,7 +502,7 @@ impl Builder {
 
         let id = ThreadId::new();
         let my_thread = match name {
-            Some(name) => Thread::new(id, name.into()),
+            Some(name) => Thread::new(id, name),
             None => Thread::new_unnamed(id),
         };
 
