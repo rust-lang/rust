@@ -32,7 +32,7 @@ declare_clippy_lint! {
     ///    a.eq_ignore_ascii_case(b) || a.eq_ignore_ascii_case("abc")
     /// }
     /// ```
-    #[clippy::version = "1.82.0"]
+    #[clippy::version = "1.84.0"]
     pub MANUAL_IGNORE_CASE_CMP,
     perf,
     "manual case-insensitive ASCII comparison"

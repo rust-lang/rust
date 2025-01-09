@@ -1243,9 +1243,9 @@ pub fn can_move_expr_to_closure<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'
 
     let mut v = V {
         cx,
-        allow_closure: true,
         loops: Vec::new(),
         locals: HirIdSet::default(),
+        allow_closure: true,
         captures: HirIdMap::default(),
     };
     v.visit_expr(expr);
@@ -1640,7 +1640,6 @@ pub fn is_integer_const(cx: &LateContext<'_>, e: &Expr<'_>, value: u128) -> bool
 
 /// Checks whether the given expression is a constant literal of the given value.
 pub fn is_integer_literal(expr: &Expr<'_>, value: u128) -> bool {
-    // FIXME: use constant folding
     if let ExprKind::Lit(spanned) = expr.kind {
         if let LitKind::Int(v, _) = spanned.node {
             return v == value;

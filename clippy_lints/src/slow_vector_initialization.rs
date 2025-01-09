@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::matching_root_macro_call;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
@@ -203,14 +203,18 @@ impl SlowVectorInit {
             "len",
         );
 
-        span_lint_and_then(cx, SLOW_VECTOR_INITIALIZATION, slow_fill.span, msg, |diag| {
-            diag.span_suggestion(
-                vec_alloc.allocation_expr.span.source_callsite(),
-                "consider replacing this with",
-                format!("vec![0; {len_expr}]"),
-                Applicability::Unspecified,
-            );
-        });
+        let span_to_replace = slow_fill
+            .span
+            .with_lo(vec_alloc.allocation_expr.span.source_callsite().lo());
+        span_lint_and_sugg(
+            cx,
+            SLOW_VECTOR_INITIALIZATION,
+            span_to_replace,
+            msg,
+            "consider replacing this with",
+            format!("vec![0; {len_expr}]"),
+            Applicability::Unspecified,
+        );
     }
 }
 

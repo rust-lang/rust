@@ -13,5 +13,17 @@ error: borrow as raw pointer
 LL |     let _p_mut = &mut val_mut as *mut i32;
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::addr_of_mut!(val_mut)`
 
-error: aborting due to 2 previous errors
+error: borrow as raw pointer
+  --> tests/ui/borrow_as_ptr.rs:21:16
+   |
+LL |     let _raw = (&mut x[1] as *mut i32).wrapping_offset(-1);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::addr_of_mut!(x[1])`
+
+error: borrow as raw pointer
+  --> tests/ui/borrow_as_ptr.rs:26:17
+   |
+LL |     let _raw = (&mut x[1] as *mut i32).wrapping_offset(-1);
+   |                 ^^^^^^^^^^^^^^^^^^^^^ help: try: `&raw mut x[1]`
+
+error: aborting due to 4 previous errors
 

@@ -23,6 +23,8 @@ jobs:
       uses: actions/checkout@v4
       with:
         ref: ${{ github.ref }}
+        # Unsetting this would make so that any malicious package could get our Github Token
+        persist-credentials: false
 
     # Run
     - name: Check Changelog
@@ -63,6 +65,8 @@ jobs:
     # Setup
     - name: Checkout
       uses: actions/checkout@v4
+      with:
+        persist-credentials: false
 
     - name: Install i686 dependencies
       if: matrix.host == 'i686-unknown-linux-gnu'
@@ -74,7 +78,8 @@ jobs:
     - name: Install toolchain
       run: |
         rustup set default-host ${{ matrix.host }}
-        rustup show active-toolchain
+        # Use a way compatible with Rustup pre-1.28.0 and Rustup 1.28.0
+        rustup show active-toolchain || rustup toolchain install
 
     # Run
     - name: Build
@@ -121,9 +126,13 @@ jobs:
      # Setup
     - name: Checkout
       uses: actions/checkout@v4
+      with:
+        persist-credentials: false
 
     - name: Install toolchain
-      run: rustup show active-toolchain
+      run: |
+        # Use a way compatible with Rustup pre-1.28.0 and Rustup 1.28.0
+        rustup show active-toolchain || rustup toolchain install
 
     - name: Test metadata collection
       run: cargo collect-metadata
@@ -136,9 +145,13 @@ jobs:
     # Setup
     - name: Checkout
       uses: actions/checkout@v4
+      with:
+        persist-credentials: false
 
     - name: Install toolchain
-      run: rustup show active-toolchain
+      run: |
+        # Use a way compatible with Rustup pre-1.28.0 and Rustup 1.28.0
+        rustup show active-toolchain || rustup toolchain install
 
     # Run
     - name: Build Integration Test
@@ -188,9 +201,13 @@ jobs:
     # Setup
     - name: Checkout
       uses: actions/checkout@v4
+      with:
+        persist-credentials: false
 
     - name: Install toolchain
-      run: rustup show active-toolchain
+      run: |
+        # Use a way compatible with Rustup pre-1.28.0 and Rustup 1.28.0
+        rustup show active-toolchain || rustup toolchain install
 
     # Download
     - name: Download target dir
@@ -205,7 +222,7 @@ jobs:
     # Run
     - name: Test ${{ matrix.integration }}
       run: |
-          TOOLCHAIN=$(rustup show active-toolchain | cut -f1 -d' ')
+          TOOLCHAIN=$(rustup show active-toolchain | head -n 1 | cut -f1 -d' ')
           rustup run $TOOLCHAIN $CARGO_TARGET_DIR/debug/integration --show-output
       env:
         INTEGRATION: ${{ matrix.integration }}

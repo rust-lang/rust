@@ -60,7 +60,6 @@
 #![allow(unknown_lints)]
 #![allow(unused_labels)]
 #![allow(ambiguous_wide_pointer_comparisons)]
-#![allow(unpredictable_function_pointer_comparisons)]
 #![allow(clippy::reversed_empty_ranges)]
 #![warn(clippy::almost_complete_letter_range)] //~ ERROR: lint `clippy::almost_complete_letter_range`
 #![warn(clippy::blacklisted_name)] //~ ERROR: lint `clippy::blacklisted_name`

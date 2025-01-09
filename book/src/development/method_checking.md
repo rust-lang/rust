@@ -21,7 +21,7 @@ use clippy_utils::is_trait_method;
 impl<'tcx> LateLintPass<'tcx> for OurFancyMethodLint {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         // Check our expr is calling a method with pattern matching
-        if let hir::ExprKind::MethodCall(path, _, [self_arg, ..]) = &expr.kind
+        if let hir::ExprKind::MethodCall(path, _, [self_arg, ..], _) = &expr.kind
             // Check if the name of this method is `our_fancy_method`
             && path.ident.name.as_str() == "our_fancy_method"
             // We can check the type of the self argument whenever necessary.
