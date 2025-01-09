@@ -2,12 +2,14 @@
 //! as well as errors when attempting to call a non-const function in a const
 //! context.
 
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{LangItem, lang_items};
+use rustc_middle::ty::{AssocItemContainer, GenericArgsRef, Instance, Ty, TyCtxt, TypingEnv};
 use rustc_span::{DesugaringKind, Ident, Span, sym};
 use tracing::debug;
 
-use crate::ty::{AssocItemContainer, GenericArgsRef, Instance, Ty, TyCtxt, TypingEnv};
+use crate::traits::specialization_graph;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum CallDesugaringKind {
@@ -55,7 +57,7 @@ pub enum CallKind<'tcx> {
     DerefCoercion {
         /// The `Span` of the `Target` associated type
         /// in the `Deref` impl we are using.
-        deref_target: Span,
+        deref_target_span: Option<Span>,
         /// The type `T::Deref` we are dereferencing to
         deref_target_ty: Ty<'tcx>,
         self_ty: Ty<'tcx>,
@@ -89,61 +91,65 @@ pub fn call_kind<'tcx>(
         None
     };
 
-    let is_deref = !from_hir_call && tcx.is_diagnostic_item(sym::deref_method, method_did);
-
     // Check for a 'special' use of 'self' -
     // an FnOnce call, an operator (e.g. `<<`), or a
     // deref coercion.
-    let kind = if let Some(trait_id) = fn_call {
-        Some(CallKind::FnCall { fn_trait_id: trait_id, self_ty: method_args.type_at(0) })
+    if let Some(trait_id) = fn_call {
+        return CallKind::FnCall { fn_trait_id: trait_id, self_ty: method_args.type_at(0) };
     } else if let Some(trait_id) = operator {
-        Some(CallKind::Operator { self_arg, trait_id, self_ty: method_args.type_at(0) })
-    } else if is_deref {
-        let deref_target = tcx.get_diagnostic_item(sym::deref_target).and_then(|deref_target| {
-            Instance::try_resolve(tcx, typing_env, deref_target, method_args).transpose()
-        });
-        if let Some(Ok(instance)) = deref_target {
-            let deref_target_ty = instance.ty(tcx, typing_env);
-            Some(CallKind::DerefCoercion {
-                deref_target: tcx.def_span(instance.def_id()),
-                deref_target_ty,
-                self_ty: method_args.type_at(0),
-            })
-        } else {
-            None
-        }
-    } else {
-        None
-    };
-
-    kind.unwrap_or_else(|| {
-        // This isn't a 'special' use of `self`
-        debug!(?method_did, ?fn_call_span);
-        let desugaring = if tcx.is_lang_item(method_did, LangItem::IntoIterIntoIter)
-            && fn_call_span.desugaring_kind() == Some(DesugaringKind::ForLoop)
+        return CallKind::Operator { self_arg, trait_id, self_ty: method_args.type_at(0) };
+    } else if !from_hir_call && tcx.is_diagnostic_item(sym::deref_method, method_did) {
+        let deref_target_def_id =
+            tcx.get_diagnostic_item(sym::deref_target).expect("deref method but no deref target");
+        let deref_target_ty = tcx.normalize_erasing_regions(
+            typing_env,
+            Ty::new_projection(tcx, deref_target_def_id, method_args),
+        );
+        let deref_target_span = if let Ok(Some(instance)) =
+            Instance::try_resolve(tcx, typing_env, method_did, method_args)
+            && let instance_parent_def_id = tcx.parent(instance.def_id())
+            && matches!(tcx.def_kind(instance_parent_def_id), DefKind::Impl { .. })
+            && let Ok(instance) =
+                specialization_graph::assoc_def(tcx, instance_parent_def_id, deref_target_def_id)
+            && instance.is_final()
         {
-            Some((CallDesugaringKind::ForLoopIntoIter, method_args.type_at(0)))
-        } else if tcx.is_lang_item(method_did, LangItem::IteratorNext)
-            && fn_call_span.desugaring_kind() == Some(DesugaringKind::ForLoop)
-        {
-            Some((CallDesugaringKind::ForLoopNext, method_args.type_at(0)))
-        } else if fn_call_span.desugaring_kind() == Some(DesugaringKind::QuestionMark) {
-            if tcx.is_lang_item(method_did, LangItem::TryTraitBranch) {
-                Some((CallDesugaringKind::QuestionBranch, method_args.type_at(0)))
-            } else if tcx.is_lang_item(method_did, LangItem::TryTraitFromResidual) {
-                Some((CallDesugaringKind::QuestionFromResidual, method_args.type_at(0)))
-            } else {
-                None
-            }
-        } else if tcx.is_lang_item(method_did, LangItem::TryTraitFromOutput)
-            && fn_call_span.desugaring_kind() == Some(DesugaringKind::TryBlock)
-        {
-            Some((CallDesugaringKind::TryBlockFromOutput, method_args.type_at(0)))
-        } else if fn_call_span.is_desugaring(DesugaringKind::Await) {
-            Some((CallDesugaringKind::Await, method_args.type_at(0)))
+            Some(tcx.def_span(instance.item.def_id))
         } else {
             None
         };
-        CallKind::Normal { self_arg, desugaring, method_did, method_args }
-    })
+        return CallKind::DerefCoercion {
+            deref_target_ty,
+            deref_target_span,
+            self_ty: method_args.type_at(0),
+        };
+    }
+
+    // This isn't a 'special' use of `self`
+    debug!(?method_did, ?fn_call_span);
+    let desugaring = if tcx.is_lang_item(method_did, LangItem::IntoIterIntoIter)
+        && fn_call_span.desugaring_kind() == Some(DesugaringKind::ForLoop)
+    {
+        Some((CallDesugaringKind::ForLoopIntoIter, method_args.type_at(0)))
+    } else if tcx.is_lang_item(method_did, LangItem::IteratorNext)
+        && fn_call_span.desugaring_kind() == Some(DesugaringKind::ForLoop)
+    {
+        Some((CallDesugaringKind::ForLoopNext, method_args.type_at(0)))
+    } else if fn_call_span.desugaring_kind() == Some(DesugaringKind::QuestionMark) {
+        if tcx.is_lang_item(method_did, LangItem::TryTraitBranch) {
+            Some((CallDesugaringKind::QuestionBranch, method_args.type_at(0)))
+        } else if tcx.is_lang_item(method_did, LangItem::TryTraitFromResidual) {
+            Some((CallDesugaringKind::QuestionFromResidual, method_args.type_at(0)))
+        } else {
+            None
+        }
+    } else if tcx.is_lang_item(method_did, LangItem::TryTraitFromOutput)
+        && fn_call_span.desugaring_kind() == Some(DesugaringKind::TryBlock)
+    {
+        Some((CallDesugaringKind::TryBlockFromOutput, method_args.type_at(0)))
+    } else if fn_call_span.is_desugaring(DesugaringKind::Await) {
+        Some((CallDesugaringKind::Await, method_args.type_at(0)))
+    } else {
+        None
+    };
+    CallKind::Normal { self_arg, desugaring, method_did, method_args }
 }
