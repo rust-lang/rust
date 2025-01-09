@@ -112,8 +112,14 @@ pub fn quote(stream: TokenStream) -> TokenStream {
                 )), &mut ts);)
             }
             TokenTree::Ident(tt) => {
-                minimal_quote!(crate::ToTokens::to_tokens(&crate::TokenTree::Ident(crate::Ident::new(
-                    (@ TokenTree::from(Literal::string(&tt.to_string()))),
+                let literal = tt.to_string();
+                let (literal, ctor) = if let Some(stripped) = literal.strip_prefix("r#") {
+                    (stripped, minimal_quote!(crate::Ident::new_raw))
+                } else {
+                    (literal.as_str(), minimal_quote!(crate::Ident::new))
+                };
+                minimal_quote!(crate::ToTokens::to_tokens(&crate::TokenTree::Ident((@ ctor)(
+                    (@ TokenTree::from(Literal::string(literal))),
                     (@ quote_span(proc_macro_crate.clone(), tt.span())),
                 )), &mut ts);)
             }

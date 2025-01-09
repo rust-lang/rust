@@ -34,7 +34,7 @@ pub fn run_tests(_: TokenStream) -> TokenStream {
     test_inner_block_comment();
     test_outer_attr();
     test_inner_attr();
-    // test_quote_raw_id(); // FIXME: Fix it in a subsequent commit
+    test_quote_raw_id();
 
     TokenStream::new()
 }
