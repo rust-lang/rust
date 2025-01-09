@@ -1320,14 +1320,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let span = expr.span.shrink_to_hi();
                 let subdiag = if self.type_is_copy_modulo_regions(self.param_env, ty) {
                     errors::OptionResultRefMismatch::Copied { span, def_path }
-                } else if let Some(clone_did) = self.tcx.lang_items().clone_trait()
-                    && rustc_trait_selection::traits::type_known_to_meet_bound_modulo_regions(
-                        self,
-                        self.param_env,
-                        ty,
-                        clone_did,
-                    )
-                {
+                } else if self.type_is_clone_modulo_regions(self.param_env, ty) {
                     errors::OptionResultRefMismatch::Cloned { span, def_path }
                 } else {
                     return false;
@@ -2180,6 +2173,87 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             false
         }
+    }
+
+    /// Suggest replacing comma with semicolon in incorrect repeat expressions
+    /// like `["_", 10]` or `vec![String::new(), 10]`.
+    pub(crate) fn suggest_semicolon_in_repeat_expr(
+        &self,
+        err: &mut Diag<'_>,
+        expr: &hir::Expr<'_>,
+        expr_ty: Ty<'tcx>,
+    ) -> bool {
+        // Check if `expr` is contained in array of two elements
+        if let hir::Node::Expr(array_expr) = self.tcx.parent_hir_node(expr.hir_id)
+            && let hir::ExprKind::Array(elements) = array_expr.kind
+            && let [first, second] = &elements[..]
+            && second.hir_id == expr.hir_id
+        {
+            // Span between the two elements of the array
+            let comma_span = first.span.between(second.span);
+
+            // Check if `expr` is a constant value of type `usize`.
+            // This can only detect const variable declarations and
+            // calls to const functions.
+
+            // Checking this here instead of rustc_hir::hir because
+            // this check needs access to `self.tcx` but rustc_hir
+            // has no access to `TyCtxt`.
+            let expr_is_const_usize = expr_ty.is_usize()
+                && match expr.kind {
+                    ExprKind::Path(QPath::Resolved(
+                        None,
+                        Path { res: Res::Def(DefKind::Const, _), .. },
+                    )) => true,
+                    ExprKind::Call(
+                        Expr {
+                            kind:
+                                ExprKind::Path(QPath::Resolved(
+                                    None,
+                                    Path { res: Res::Def(DefKind::Fn, fn_def_id), .. },
+                                )),
+                            ..
+                        },
+                        _,
+                    ) => self.tcx.is_const_fn(*fn_def_id),
+                    _ => false,
+                };
+
+            // Type of the first element is guaranteed to be checked
+            // when execution reaches here because `mismatched types`
+            // error occurs only when type of second element of array
+            // is not the same as type of first element.
+            let first_ty = self.typeck_results.borrow().expr_ty(first);
+
+            // `array_expr` is from a macro `vec!["a", 10]` if
+            // 1. array expression's span is imported from a macro
+            // 2. first element of array implements `Clone` trait
+            // 3. second element is an integer literal or is an expression of `usize` like type
+            if self.tcx.sess.source_map().is_imported(array_expr.span)
+                && self.type_is_clone_modulo_regions(self.param_env, first_ty)
+                && (expr.is_size_lit() || expr_ty.is_usize_like())
+            {
+                err.subdiagnostic(errors::ReplaceCommaWithSemicolon {
+                    comma_span,
+                    descr: "a vector",
+                });
+                return true;
+            }
+
+            // `array_expr` is from an array `["a", 10]` if
+            // 1. first element of array implements `Copy` trait
+            // 2. second element is an integer literal or is a const value of type `usize`
+            if self.type_is_copy_modulo_regions(self.param_env, first_ty)
+                && (expr.is_size_lit() || expr_is_const_usize)
+            {
+                err.subdiagnostic(errors::ReplaceCommaWithSemicolon {
+                    comma_span,
+                    descr: "an array",
+                });
+                return true;
+            }
+        }
+        false
     }
 
     /// If the expected type is an enum (Issue #55250) with any variants whose

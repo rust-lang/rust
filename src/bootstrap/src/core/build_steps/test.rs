@@ -31,6 +31,7 @@ use crate::{CLang, DocTests, GitRepo, Mode, PathSet, envify};
 
 const ADB_TEST_DIR: &str = "/data/local/tmp/work";
 
+/// Runs `cargo test` on various internal tools used by bootstrap.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CrateBootstrap {
     path: PathBuf,
@@ -43,13 +44,21 @@ impl Step for CrateBootstrap {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        // This step is responsible for several different tool paths. By default
+        // it will test all of them, but requesting specific tools on the
+        // command-line (e.g. `./x test suggest-tests`) will test only the
+        // specified tools.
         run.path("src/tools/jsondoclint")
             .path("src/tools/suggest-tests")
             .path("src/tools/replace-version-placeholder")
+            // We want `./x test tidy` to _run_ the tidy tool, not its tests.
+            // So we need a separate alias to test the tidy tool itself.
             .alias("tidyselftest")
     }
 
     fn make_run(run: RunConfig<'_>) {
+        // Create and ensure a separate instance of this step for each path
+        // that was selected on the command-line (or selected by default).
         for path in run.paths {
             let path = path.assert_single_path().path.clone();
             run.builder.ensure(CrateBootstrap { host: run.target, path });
@@ -60,6 +69,8 @@ impl Step for CrateBootstrap {
         let bootstrap_host = builder.config.build;
         let compiler = builder.compiler(0, bootstrap_host);
         let mut path = self.path.to_str().unwrap();
+
+        // Map alias `tidyselftest` back to the actual crate path of tidy.
         if path == "tidyselftest" {
             path = "src/tools/tidy";
         }
@@ -212,6 +223,9 @@ impl Step for HtmlCheck {
     }
 }
 
+/// Builds cargo and then runs the `src/tools/cargotest` tool, which checks out
+/// some representative crate repositories and runs `cargo test` on them, in
+/// order to test cargo.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Cargotest {
     stage: u32,
@@ -257,6 +271,7 @@ impl Step for Cargotest {
     }
 }
 
+/// Runs `cargo test` for cargo itself.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Cargo {
     stage: u32,
@@ -385,6 +400,7 @@ impl Step for RustAnalyzer {
     }
 }
 
+/// Runs `cargo test` for rustfmt.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Rustfmt {
     stage: u32,
@@ -589,6 +605,8 @@ impl Step for Miri {
     }
 }
 
+/// Runs `cargo miri test` to demonstrate that `src/tools/miri/cargo-miri`
+/// works and that libtest works under miri.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CargoMiri {
     target: TargetSelection,
@@ -1020,6 +1038,10 @@ impl Step for RustdocGUI {
     }
 }
 
+/// Runs `src/tools/tidy` and `cargo fmt --check` to detect various style
+/// problems in the repository.
+///
+/// (To run the tidy tool's internal tests, use the alias "tidyselftest" instead.)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Tidy;
 
@@ -1230,6 +1252,8 @@ impl Step for RunMakeSupport {
     }
 }
 
+/// Runs `cargo test` on the `src/tools/run-make-support` crate.
+/// That crate is used by run-make tests.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CrateRunMakeSupport {
     host: TargetSelection,
@@ -2466,6 +2490,10 @@ fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> 
     }
 }
 
+/// Runs `cargo test` for the compiler crates in `compiler/`.
+///
+/// (This step does not test `rustc_codegen_cranelift` or `rustc_codegen_gcc`,
+/// which have their own separate test steps.)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CrateLibrustc {
     compiler: Compiler,
@@ -2494,6 +2522,7 @@ impl Step for CrateLibrustc {
     fn run(self, builder: &Builder<'_>) {
         builder.ensure(compile::Std::new(self.compiler, self.target));
 
+        // To actually run the tests, delegate to a copy of the `Crate` step.
         builder.ensure(Crate {
             compiler: self.compiler,
             target: self.target,
@@ -2619,6 +2648,13 @@ fn prepare_cargo_test(
     cargo
 }
 
+/// Runs `cargo test` for standard library crates.
+///
+/// (Also used internally to run `cargo test` for compiler crates.)
+///
+/// FIXME(Zalathar): Try to split this into two separate steps: a user-visible
+/// step for testing standard library crates, and an internal step used for both
+/// library crates and compiler crates.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Crate {
     pub compiler: Compiler,
@@ -3552,6 +3588,10 @@ impl Step for CodegenGCC {
     }
 }
 
+/// Test step that does two things:
+/// - Runs `cargo test` for the `src/etc/test-float-parse` tool.
+/// - Invokes the `test-float-parse` tool to test the standard library's
+///   float parsing routines.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TestFloatParse {
     path: PathBuf,
@@ -3625,6 +3665,9 @@ impl Step for TestFloatParse {
     }
 }
 
+/// Runs the tool `src/tools/collect-license-metadata` in `ONLY_CHECK=1` mode,
+/// which verifies that `license-metadata.json` is up-to-date and therefore
+/// running the tool normally would not update anything.
 #[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
 pub struct CollectLicenseMetadata;
 
