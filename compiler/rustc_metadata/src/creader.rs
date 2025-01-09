@@ -390,10 +390,12 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         None
     }
 
-    // The `dependency` type is determined by the command line arguments(`--extern`) and
-    // `private_dep`. However, sometimes the directly dependent crate is not specified by
-    // `--extern`, in this case, `private-dep` is none during loading. This is equivalent to the
-    // scenario where the command parameter is set to `public-dependency`
+    /// The `dependency` type is determined by the command line arguments(`--extern`) and
+    /// `private_dep`.
+    ///
+    /// Sometimes the directly dependent crate is not specified by `--extern`, in this case,
+    /// `private-dep` is none during loading. This is equivalent to the scenario where the
+    /// command parameter is set to `public-dependency`
     fn is_private_dep(&self, name: &str, private_dep: Option<bool>) -> bool {
         self.sess.opts.externs.get(name).map_or(private_dep.unwrap_or(false), |e| e.is_private_dep)
             && private_dep.unwrap_or(true)
@@ -402,7 +404,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     fn register_crate(
         &mut self,
         host_lib: Option<Library>,
-        root: Option<&CratePaths>,
+        dep_root: Option<&CratePaths>,
         lib: Library,
         dep_kind: CrateDepKind,
         name: Symbol,
@@ -430,14 +432,14 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         // Maintain a reference to the top most crate.
         // Stash paths for top-most crate locally if necessary.
         let crate_paths;
-        let root = if let Some(root) = root {
-            root
+        let dep_root = if let Some(dep_root) = dep_root {
+            dep_root
         } else {
             crate_paths = CratePaths::new(crate_root.name(), source.clone());
             &crate_paths
         };
 
-        let cnum_map = self.resolve_crate_deps(root, &crate_root, &metadata, cnum, dep_kind)?;
+        let cnum_map = self.resolve_crate_deps(dep_root, &crate_root, &metadata, cnum, dep_kind)?;
 
         let raw_proc_macros = if crate_root.is_proc_macro_crate() {
             let temp_root;
@@ -559,15 +561,15 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         &'b mut self,
         name: Symbol,
         mut dep_kind: CrateDepKind,
-        dep: Option<(&'b CratePaths, &'b CrateDep)>,
+        dep_of: Option<(&'b CratePaths, &'b CrateDep)>,
     ) -> Result<CrateNum, CrateError> {
         info!("resolving crate `{}`", name);
         if !name.as_str().is_ascii() {
             return Err(CrateError::NonAsciiName(name));
         }
-        let (root, hash, host_hash, extra_filename, path_kind, private_dep) = match dep {
-            Some((root, dep)) => (
-                Some(root),
+        let (dep_root, hash, host_hash, extra_filename, path_kind, private_dep) = match dep_of {
+            Some((dep_root, dep)) => (
+                Some(dep_root),
                 Some(dep.hash),
                 dep.host_hash,
                 Some(&dep.extra_filename[..]),
@@ -599,7 +601,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                     dep_kind = CrateDepKind::MacrosOnly;
                     match self.load_proc_macro(&mut locator, path_kind, host_hash)? {
                         Some(res) => res,
-                        None => return Err(locator.into_error(root.cloned())),
+                        None => return Err(locator.into_error(dep_root.cloned())),
                     }
                 }
             }
@@ -623,7 +625,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
             }
             (LoadResult::Loaded(library), host_library) => {
                 info!("register newly loaded library for `{}`", name);
-                self.register_crate(host_library, root, library, dep_kind, name, private_dep)
+                self.register_crate(host_library, dep_root, library, dep_kind, name, private_dep)
             }
             _ => panic!(),
         }
@@ -663,16 +665,20 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         }))
     }
 
-    // Go through the crate metadata and load any crates that it references
+    /// Go through the crate metadata and load any crates that it references.
     fn resolve_crate_deps(
         &mut self,
-        root: &CratePaths,
+        dep_root: &CratePaths,
         crate_root: &CrateRoot,
         metadata: &MetadataBlob,
         krate: CrateNum,
         dep_kind: CrateDepKind,
     ) -> Result<CrateNumMap, CrateError> {
-        debug!("resolving deps of external crate");
+        debug!(
+            "resolving deps of external crate `{}` with dep root `{}`",
+            crate_root.name(),
+            dep_root.name
+        );
         if crate_root.is_proc_macro_crate() {
             return Ok(CrateNumMap::new());
         }
@@ -685,14 +691,17 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         crate_num_map.push(krate);
         for dep in deps {
             info!(
-                "resolving dep crate {} hash: `{}` extra filename: `{}`",
-                dep.name, dep.hash, dep.extra_filename
+                "resolving dep `{}`->`{}` hash: `{}` extra filename: `{}`",
+                crate_root.name(),
+                dep.name,
+                dep.hash,
+                dep.extra_filename
             );
             let dep_kind = match dep_kind {
                 CrateDepKind::MacrosOnly => CrateDepKind::MacrosOnly,
                 _ => dep.kind,
             };
-            let cnum = self.maybe_resolve_crate(dep.name, dep_kind, Some((root, &dep)))?;
+            let cnum = self.maybe_resolve_crate(dep.name, dep_kind, Some((dep_root, &dep)))?;
             crate_num_map.push(cnum);
         }
 
