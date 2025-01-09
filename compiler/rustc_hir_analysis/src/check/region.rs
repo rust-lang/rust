@@ -420,10 +420,10 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
     // properly, we can't miss any types.
 
     match expr.kind {
-        // Manually recurse over closures and inline consts, because they are the only
-        // case of nested bodies that share the parent environment.
-        hir::ExprKind::Closure(&hir::Closure { body, .. })
-        | hir::ExprKind::ConstBlock(hir::ConstBlock { body, .. }) => {
+        // Manually recurse over closures, because they are nested bodies
+        // that share the parent environment. We handle const blocks in
+        // `visit_inline_const`.
+        hir::ExprKind::Closure(&hir::Closure { body, .. }) => {
             let body = visitor.tcx.hir().body(body);
             visitor.visit_body(body);
         }
@@ -905,6 +905,10 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
     }
     fn visit_local(&mut self, l: &'tcx LetStmt<'tcx>) {
         resolve_local(self, Some(l.pat), l.init)
+    }
+    fn visit_inline_const(&mut self, c: &'tcx hir::ConstBlock) {
+        let body = self.tcx.hir().body(c.body);
+        self.visit_body(body);
     }
 }
 
