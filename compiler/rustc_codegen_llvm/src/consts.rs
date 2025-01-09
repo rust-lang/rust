@@ -557,6 +557,17 @@ impl<'ll> CodegenCx<'ll, '_> {
             }
         }
     }
+
+    /// Add a global value to a list to be stored in the `llvm.used` variable, an array of ptr.
+    pub(crate) fn add_used_global(&mut self, global: &'ll Value) {
+        self.used_statics.push(global);
+    }
+
+    /// Add a global value to a list to be stored in the `llvm.compiler.used` variable,
+    /// an array of ptr.
+    pub(crate) fn add_compiler_used_global(&mut self, global: &'ll Value) {
+        self.compiler_used_statics.push(global);
+    }
 }
 
 impl<'ll> StaticCodegenMethods for CodegenCx<'ll, '_> {
@@ -573,16 +584,5 @@ impl<'ll> StaticCodegenMethods for CodegenCx<'ll, '_> {
 
     fn codegen_static(&mut self, def_id: DefId) {
         self.codegen_static_item(def_id)
-    }
-
-    /// Add a global value to a list to be stored in the `llvm.used` variable, an array of ptr.
-    fn add_used_global(&mut self, global: &'ll Value) {
-        self.used_statics.push(global);
-    }
-
-    /// Add a global value to a list to be stored in the `llvm.compiler.used` variable,
-    /// an array of ptr.
-    fn add_compiler_used_global(&mut self, global: &'ll Value) {
-        self.compiler_used_statics.push(global);
     }
 }
