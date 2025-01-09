@@ -846,7 +846,7 @@ impl Target {
             "wasm32" | "wasm64" => WASM_FEATURES,
             "bpf" => BPF_FEATURES,
             "csky" => CSKY_FEATURES,
-            "loongarch64" => LOONGARCH_FEATURES,
+            "loongarch32" | "loongarch64" => LOONGARCH_FEATURES,
             "s390x" => IBMZ_FEATURES,
             "sparc" | "sparc64" => SPARC_FEATURES,
             "m68k" => M68K_FEATURES,
@@ -860,7 +860,7 @@ impl Target {
             "aarch64" | "arm64ec" => AARCH64_FEATURES_FOR_CORRECT_VECTOR_ABI,
             "arm" => ARM_FEATURES_FOR_CORRECT_VECTOR_ABI,
             "powerpc" | "powerpc64" => POWERPC_FEATURES_FOR_CORRECT_VECTOR_ABI,
-            "loongarch64" => LOONGARCH_FEATURES_FOR_CORRECT_VECTOR_ABI,
+            "loongarch32" | "loongarch64" => LOONGARCH_FEATURES_FOR_CORRECT_VECTOR_ABI,
             "riscv32" | "riscv64" => RISCV_FEATURES_FOR_CORRECT_VECTOR_ABI,
             "wasm32" | "wasm64" => WASM_FEATURES_FOR_CORRECT_VECTOR_ABI,
             "s390x" => S390X_FEATURES_FOR_CORRECT_VECTOR_ABI,
@@ -1034,7 +1034,7 @@ impl Target {
                     _ => unreachable!(),
                 }
             }
-            "loongarch64" => {
+            "loongarch32" | "loongarch64" => {
                 // LoongArch handles ABI in a very sane way, being fully explicit via `llvm_abiname`
                 // about what the intended ABI is.
                 match &*self.llvm_abiname {
