@@ -2028,7 +2028,7 @@ pub trait Seek {
 
     /// Returns the length of this stream (in bytes).
     ///
-    /// This method is implemented using up to three seek operations. If this
+    /// The default implementation uses up to three seek operations. If this
     /// method returns successfully, the seek position is unchanged (i.e. the
     /// position before calling this method is the same as afterwards).
     /// However, if this method returns an error, the seek position is
