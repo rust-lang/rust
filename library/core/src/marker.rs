@@ -1095,11 +1095,45 @@ pub trait FnPtr: Copy + Clone {
     fn addr(self) -> *const ();
 }
 
-/// Derive macro generating impls of traits related to smart pointers.
+/// Derive macro generating implementations of traits
+/// in relation to coercion of types to unsized or dynamic-sized types
+/// with dynamic dispatching.
+///
+/// This macro will enable the target structure to equip with capabilities
+/// to weaken a concrete type in its generic parameters to its unsized
+/// variants.
+/// For instance, it admits coercion of a `[T; SIZE]` to `[T]` where `SIZE`
+/// is a constant; and coercion of a concrete type `T` to `dyn Trait` when
+/// `T` implements an object-safe trait `Trait`.
+/// See the [DST coercion RFC][RFC982] and
+/// [the nomicon entry on coercion][nomicon-coerce] on the topics of this coercion.
+///
+/// The macro would choose a generic parameter labelled by a `#[pointee]` attribute first,
+/// and resorts to the first type parameter from the left of
+/// the list of generics as the target parameter that
+/// the weakening is allowed.
+///
+/// # Pre-requisites
+/// Applying this macro demands the following pre-requisites on the target item.
+/// - The target item is a `struct`.
+/// - The `struct` has a transparent data layout via `#[repr(transparent)]`.
+/// - The `struct` has at least one data field.
+/// - The `struct` has at least one generic type parameter.
+/// - The `struct` has at most one generic type parameter
+///   with macro attribute `#[pointee]` attached.
+/// - The only data field of this `struct` has a type that also implements the same
+///   coercion protocol.
+///   For instance, this type can be `Box` or `Rc` in the full standard library, or
+///   another custom type with the [`CoercePointee`] derived.
+///
+/// For more information, please refer to [the feature RFC][RFC3621].
+///
+/// [nomicon-coerce]: ../../nomicon/coercions.html
+/// [RFC982]: <https://github.com/rust-lang/rfcs/blob/master/text/0982-dst-coercion.md>
+/// [RFC3621]: <https://github.com/rust-lang/rfcs/pull/3621>
 #[rustc_builtin_macro(CoercePointee, attributes(pointee))]
 #[allow_internal_unstable(dispatch_from_dyn, coerce_unsized, unsize)]
-#[unstable(feature = "derive_coerce_pointee", issue = "123430")]
-#[cfg(not(bootstrap))]
+#[stable(feature = "derive_coerce_pointee", since = "CURRENT_RUSTC_VERSION")]
 pub macro CoercePointee($item:item) {
     /* compiler built-in */
 }
