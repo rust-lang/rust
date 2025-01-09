@@ -123,10 +123,11 @@ fn expand(
 ) -> Option<ExpansionResult> {
     let _p = tracing::info_span!("CompletionContext::expand").entered();
 
+    // Left biased since there may already be an identifier token there, and we appended to it.
     if !sema.might_be_inside_macro_call(&fake_ident_token)
         && original_file
             .token_at_offset(original_offset + relative_offset)
-            .right_biased()
+            .left_biased()
             .is_some_and(|original_token| !sema.might_be_inside_macro_call(&original_token))
     {
         // Recursion base case.
