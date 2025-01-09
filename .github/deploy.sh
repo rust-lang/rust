@@ -45,6 +45,8 @@ if [[ -n $TAG_NAME ]]; then
   git add "$TAG_NAME"
   # Update the symlink
   git add stable
+  # Update the index.html file
+  git add index.html
   git commit -m "Add documentation for ${TAG_NAME} release: ${SHA}"
 elif [[ $BETA = "true" ]]; then
   if git diff --exit-code --quiet -- beta/; then
