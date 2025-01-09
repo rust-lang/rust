@@ -10,6 +10,9 @@ use crate::core::config::TargetSelection;
 use crate::utils::helpers::mtime;
 use crate::{Compiler, Mode, t};
 
+#[cfg(test)]
+mod tests;
+
 /// Manages a stamp file to track build state. The file is created in the given
 /// directory and can have custom content and name.
 #[derive(Clone)]
