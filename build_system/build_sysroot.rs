@@ -102,19 +102,14 @@ pub(crate) fn build_sysroot(
         .install_into_sysroot(dist_dir);
     }
 
-    let mut target_compiler = {
-        let rustc_clif = dist_dir.join(wrapper_base_name.replace("____", "rustc-clif"));
-        let rustdoc_clif = dist_dir.join(wrapper_base_name.replace("____", "rustdoc-clif"));
-
-        Compiler {
-            cargo: bootstrap_host_compiler.cargo.clone(),
-            rustc: rustc_clif.clone(),
-            rustdoc: rustdoc_clif.clone(),
-            rustflags: vec![],
-            rustdocflags: vec![],
-            triple: target_triple,
-            runner: vec![],
-        }
+    let mut target_compiler = Compiler {
+        cargo: bootstrap_host_compiler.cargo.clone(),
+        rustc: dist_dir.join(wrapper_base_name.replace("____", "rustc-clif")),
+        rustdoc: dist_dir.join(wrapper_base_name.replace("____", "rustdoc-clif")),
+        rustflags: vec![],
+        rustdocflags: vec![],
+        triple: target_triple,
+        runner: vec![],
     };
     if !is_native {
         target_compiler.set_cross_linker_and_runner();
