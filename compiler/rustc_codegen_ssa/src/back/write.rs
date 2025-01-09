@@ -383,7 +383,7 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub coordinator_send: Sender<Box<dyn Any + Send>>,
     /// `true` if the codegen should be run in parallel.
     ///
-    /// Depends on [`CodegenBackend::supports_parallel()`] and `-Zno_parallel_backend`.
+    /// Depends on [`ExtraBackendMethods::supports_parallel()`] and `-Zno_parallel_backend`.
     pub parallel: bool,
 }
 

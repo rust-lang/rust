@@ -97,13 +97,6 @@ pub trait CodegenBackend {
     fn link(&self, sess: &Session, codegen_results: CodegenResults, outputs: &OutputFilenames) {
         link_binary(sess, &ArArchiveBuilderBuilder, codegen_results, outputs);
     }
-
-    /// Returns `true` if this backend can be safely called from multiple threads.
-    ///
-    /// Defaults to `true`.
-    fn supports_parallel(&self) -> bool {
-        true
-    }
 }
 
 pub trait ExtraBackendMethods:
@@ -143,5 +136,12 @@ pub trait ExtraBackendMethods:
         T: Send + 'static,
     {
         std::thread::Builder::new().name(name).spawn(f)
+    }
+
+    /// Returns `true` if this backend can be safely called from multiple threads.
+    ///
+    /// Defaults to `true`.
+    fn supports_parallel(&self) -> bool {
+        true
     }
 }
