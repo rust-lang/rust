@@ -1,12 +1,12 @@
 use std::{env, fs};
 
-use gccjit::{Context, OutputKind};
+use gccjit::OutputKind;
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::write::{BitcodeSection, CodegenContext, EmitObj, ModuleConfig};
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen};
 use rustc_errors::DiagCtxtHandle;
 use rustc_fs_util::link_or_copy;
-use rustc_session::config::{Lto, OutputType};
+use rustc_session::config::OutputType;
 use rustc_span::fatal_error::FatalError;
 use rustc_target::spec::SplitDebuginfo;
 
@@ -34,10 +34,10 @@ pub(crate) unsafe fn codegen(
         // TODO: remove this environment variable.
         let fat_lto = env::var("EMBED_LTO_BITCODE").as_deref() == Ok("1");
 
-        if cgcx.msvc_imps_needed {
+        /*if cgcx.msvc_imps_needed {
             println!("************************************************** Imps needed");
             create_msvc_imps(cgcx, context);
-        }
+        }*/
 
         let bc_out = cgcx.output_filenames.temp_path(OutputType::Bitcode, module_name);
         let obj_out = cgcx.output_filenames.temp_path(OutputType::Object, module_name);
@@ -58,21 +58,25 @@ pub(crate) unsafe fn codegen(
                 }*/
 
                 if config.emit_bc || config.emit_obj == EmitObj::Bitcode {
-                    let _timer = cgcx
-                        .prof
-                        .generic_activity_with_arg("GCC_module_codegen_emit_bitcode", &*module.name);
+                    let _timer = cgcx.prof.generic_activity_with_arg(
+                        "GCC_module_codegen_emit_bitcode",
+                        &*module.name,
+                    );
                     context.add_command_line_option("-flto=auto");
                     context.add_command_line_option("-flto-partition=one");
                     // TODO: remove since we don't want fat objects when it is for Bitcode only.
                     context.add_command_line_option("-ffat-lto-objects");
-                    context
-                        .compile_to_file(OutputKind::ObjectFile, bc_out.to_str().expect("path to str"));
+                    context.compile_to_file(
+                        OutputKind::ObjectFile,
+                        bc_out.to_str().expect("path to str"),
+                    );
                 }
 
                 if config.emit_obj == EmitObj::ObjectCode(BitcodeSection::Full) {
-                    let _timer = cgcx
-                        .prof
-                        .generic_activity_with_arg("GCC_module_codegen_embed_bitcode", &*module.name);
+                    let _timer = cgcx.prof.generic_activity_with_arg(
+                        "GCC_module_codegen_embed_bitcode",
+                        &*module.name,
+                    );
                     // TODO(antoyo): maybe we should call embed_bitcode to have the proper iOS fixes?
                     //embed_bitcode(cgcx, llcx, llmod, &config.bc_cmdline, data);
 
@@ -80,26 +84,30 @@ pub(crate) unsafe fn codegen(
                     context.add_command_line_option("-flto-partition=one");
                     context.add_command_line_option("-ffat-lto-objects");
                     // TODO(antoyo): Send -plugin/usr/lib/gcc/x86_64-pc-linux-gnu/11.1.0/liblto_plugin.so to linker (this should be done when specifying the appropriate rustc cli argument).
-                    context
-                        .compile_to_file(OutputKind::ObjectFile, bc_out.to_str().expect("path to str"));
+                    context.compile_to_file(
+                        OutputKind::ObjectFile,
+                        bc_out.to_str().expect("path to str"),
+                    );
                 }
-            }
-            else {
+            } else {
                 if config.emit_bc || config.emit_obj == EmitObj::Bitcode {
-                    let _timer = cgcx
-                        .prof
-                        .generic_activity_with_arg("GCC_module_codegen_emit_bitcode", &*module.name);
-                    context
-                        .compile_to_file(OutputKind::ObjectFile, bc_out.to_str().expect("path to str"));
+                    let _timer = cgcx.prof.generic_activity_with_arg(
+                        "GCC_module_codegen_emit_bitcode",
+                        &*module.name,
+                    );
+                    context.compile_to_file(
+                        OutputKind::ObjectFile,
+                        bc_out.to_str().expect("path to str"),
+                    );
                 }
 
                 if config.emit_obj == EmitObj::ObjectCode(BitcodeSection::Full) {
                     // TODO: we might want to emit to emit an error here, saying to set the
                     // environment variable EMBED_LTO_BITCODE.
-                    unreachable!();
-                    let _timer = cgcx
-                        .prof
-                        .generic_activity_with_arg("GCC_module_codegen_embed_bitcode", &*module.name);
+                    let _timer = cgcx.prof.generic_activity_with_arg(
+                        "GCC_module_codegen_embed_bitcode",
+                        &*module.name,
+                    );
                     // TODO(antoyo): maybe we should call embed_bitcode to have the proper iOS fixes?
                     //embed_bitcode(cgcx, llcx, llmod, &config.bc_cmdline, data);
 
@@ -107,8 +115,10 @@ pub(crate) unsafe fn codegen(
                     context.add_command_line_option("-flto-partition=one");
                     context.add_command_line_option("-ffat-lto-objects");
                     // TODO(antoyo): Send -plugin/usr/lib/gcc/x86_64-pc-linux-gnu/11.1.0/liblto_plugin.so to linker (this should be done when specifying the appropriate rustc cli argument).
-                    context
-                        .compile_to_file(OutputKind::ObjectFile, bc_out.to_str().expect("path to str"));
+                    context.compile_to_file(
+                        OutputKind::ObjectFile,
+                        bc_out.to_str().expect("path to str"),
+                    );
                 }
             }
         }
@@ -231,18 +241,10 @@ pub(crate) fn save_temp_bitcode(
     }*/
 }
 
-fn create_msvc_imps<'gcc>(
-    cgcx: &CodegenContext<GccCodegenBackend>,
-    context: &Context<'gcc>,
-) {
+/*fn create_msvc_imps<'gcc>(cgcx: &CodegenContext<GccCodegenBackend>, _context: &Context<'gcc>) {
     if !cgcx.msvc_imps_needed {
         return;
     }
-    // The x86 ABI seems to require that leading underscores are added to symbol
-    // names, so we need an extra underscore on x86. There's also a leading
-    // '\x01' here which disables LLVM's symbol mangling (e.g., no extra
-    // underscores added in front).
-    let prefix = if cgcx.target_arch == "x86" { "\x01__imp__" } else { "\x01__imp_" };
 
     /*unsafe {
         let ptr_ty = Type::ptr_llcx(llcx);
@@ -265,4 +267,4 @@ fn create_msvc_imps<'gcc>(
             llvm::set_linkage(imp, llvm::Linkage::ExternalLinkage);
         }
     }*/
-}
+}*/

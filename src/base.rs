@@ -156,17 +156,17 @@ pub fn compile_codegen_unit(
                 //println!("*** Static");
                 context.add_command_line_option("-fno-pie");
                 context.add_driver_option("-fno-pie");
-            },
+            }
             rustc_target::spec::RelocModel::Pic => {
                 //println!("*** Pic");
                 context.add_command_line_option("-fPIC");
                 context.add_driver_option("-fPIC");
-            },
+            }
             rustc_target::spec::RelocModel::Pie => {
                 //println!("*** Pie");
                 context.add_command_line_option("-fPIE");
                 context.add_driver_option("-fPIE");
-            },
+            }
             model => eprintln!("Unsupported relocation model: {:?}", model),
         }
 

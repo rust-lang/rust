@@ -692,11 +692,11 @@ fn test_libcore(env: &Env, args: &TestArg) -> Result<(), String> {
     println!("[TEST] libcore");
     let path = get_sysroot_dir().join("sysroot_src/library/core/tests");
     let _ = remove_dir_all(path.join("target"));
-    let mut env = env.clone();
-    env.insert("RUSTC_LOG".to_string(), "rustc_codegen_ssa::back::link=info".to_string());
-    let rustflags =
-        env.entry("RUSTFLAGS".to_string())
-        .or_default();
+    /*let mut env = env.clone();
+    env.insert("RUSTC_LOG".to_string(), "rustc_codegen_ssa::back::link=info".to_string());*/
+    /*let rustflags =
+    env.entry("RUSTFLAGS".to_string())
+    .or_default();*/
     //rustflags.push_str(" -C link-arg=-Wl,--verbose");
     //rustflags.push_str(" -C link-arg=-Wl,--fatal-warnings");
     //rustflags.push_str(" -C link-arg=-Wl,--warn-unresolved-symbols");
@@ -718,7 +718,7 @@ fn test_libcore(env: &Env, args: &TestArg) -> Result<(), String> {
     //rustflags.push_str(" -C link-arg=-Wl,--trace-symbol=_ZN6memchr4arch6x86_646memchr10memchr_raw2FN17haaf621f7b8ca567eE");
     //rustflags.push_str(" -C link-arg=-Wl,--print-map");
     //rustflags.push_str(" -Clink-arg=-not-an-arg");
-    run_cargo_command(&[&"test"], Some(&path), &env, args)?;
+    run_cargo_command(&[&"test"], Some(&path), env, args)?;
     Ok(())
 }
 

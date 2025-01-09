@@ -1,6 +1,6 @@
 #[cfg(feature = "master")]
 use gccjit::{FnAttribute, VarAttribute, Visibility};
-use gccjit::{Function, FunctionType, GlobalKind, LValue, RValue, ToRValue, Type};
+use gccjit::{Function, GlobalKind, LValue, RValue, ToRValue, Type};
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, ConstCodegenMethods, StaticCodegenMethods,
 };
@@ -92,13 +92,12 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
         }
         set_global_alignment(self, global, alloc.align);
 
-
         // TODO: if I still use this code, find the name of the variable in a better way (using
         // def_id).
         let var_name = format!("{:?}", global);
         if var_name.contains("FN") && var_name.contains("memchr") {
             //println!("Var name: {:?}", var_name);
-            println!("INITIALIZE: {:?} = {:?}", var_name, value);
+            //println!("INITIALIZE: {:?} = {:?}", var_name, value);
 
             /*
             let ptr_type = value.get_type().make_pointer();
@@ -168,9 +167,8 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
             //let value = self.context.new_bitcast(None, value, fn_ptr_type); // Also WORKS
             let value = self.context.new_bitcast(None, value, val_llty);*/
             global.global_set_initializer_rvalue(value);
-            println!("=== AFTER INITIALIZE");
-        }
-        else {
+            //println!("=== AFTER INITIALIZE");
+        } else {
             global.global_set_initializer_rvalue(value);
         }
 
@@ -329,9 +327,9 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             }
 
             let is_tls = fn_attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
-            if sym.contains("memchr") && sym.contains("FN") {
+            /*if sym.contains("memchr") && sym.contains("FN") {
                 println!("** DECLARE");
-            }
+            }*/
             let global = self.declare_global(
                 sym,
                 gcc_type,

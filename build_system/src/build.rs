@@ -130,7 +130,7 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
     if config.no_default_features {
         rustflags.push_str(" -Csymbol-mangling-version=v0");
     }
-    rustflags.push_str(" --print link-args");
+    //rustflags.push_str(" --print link-args");
 
     let mut args: Vec<&dyn AsRef<OsStr>> = vec![&"cargo", &"build", &"--target", &config.target];
     for feature in &config.features {
@@ -178,7 +178,7 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
     //rustflags.push_str(" -Clink-arg=--ld-path=/usr/bin/mold");
     //rustflags.push_str(" -Clink-arg=--ld-path=/usr/bin/ld.bfd");
     //rustflags.push_str(" -Clink-arg=--ld-path=/usr/bin/ld.gold");
-    env.insert("RUSTC_LOG".to_string(), "rustc_codegen_ssa::back::link=info".to_string());
+    //env.insert("RUSTC_LOG".to_string(), "rustc_codegen_ssa::back::link=info".to_string());
     env.insert("RUSTFLAGS".to_string(), rustflags);
     run_command_with_output_and_env(&args, Some(&start_dir), Some(&env))?;
 
