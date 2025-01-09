@@ -2,20 +2,13 @@
 //!
 //! Except for use items which are tested in [super::use_tree] and mod declarations with are tested
 //! in [crate::completions::mod_].
-use expect_test::{expect, Expect};
+use expect_test::expect;
 
-use crate::tests::{completion_list, BASE_ITEMS_FIXTURE};
-
-use super::check_edit;
-
-fn check(ra_fixture: &str, expect: Expect) {
-    let actual = completion_list(&format!("{BASE_ITEMS_FIXTURE}{ra_fixture}"));
-    expect.assert_eq(&actual)
-}
+use crate::tests::{check_edit, check_with_base_items};
 
 #[test]
 fn target_type_or_trait_in_impl_block() {
-    check(
+    check_with_base_items(
         r#"
 impl Tra$0
 "#,
@@ -37,7 +30,7 @@ impl Tra$0
 
 #[test]
 fn target_type_in_trait_impl_block() {
-    check(
+    check_with_base_items(
         r#"
 impl Trait for Str$0
 "#,
@@ -59,7 +52,7 @@ impl Trait for Str$0
 
 #[test]
 fn after_trait_name_in_trait_def() {
-    check(
+    check_with_base_items(
         r"trait A $0",
         expect![[r#"
             kw where
@@ -69,21 +62,21 @@ fn after_trait_name_in_trait_def() {
 
 #[test]
 fn after_target_name_in_impl() {
-    check(
+    check_with_base_items(
         r"impl Trait $0",
         expect![[r#"
             kw for
             kw where
         "#]],
     );
-    check(
+    check_with_base_items(
         r"impl Trait f$0",
         expect![[r#"
             kw for
             kw where
         "#]],
     );
-    check(
+    check_with_base_items(
         r"impl Trait for Type $0",
         expect![[r#"
             kw where
@@ -93,44 +86,44 @@ fn after_target_name_in_impl() {
 
 #[test]
 fn completes_where() {
-    check(
+    check_with_base_items(
         r"struct Struct $0",
         expect![[r#"
         kw where
     "#]],
     );
-    check(
+    check_with_base_items(
         r"struct Struct $0 {}",
         expect![[r#"
         kw where
     "#]],
     );
     // FIXME: This shouldn't be completed here
-    check(
+    check_with_base_items(
         r"struct Struct $0 ()",
         expect![[r#"
         kw where
     "#]],
     );
-    check(
+    check_with_base_items(
         r"fn func() $0",
         expect![[r#"
         kw where
     "#]],
     );
-    check(
+    check_with_base_items(
         r"enum Enum $0",
         expect![[r#"
         kw where
     "#]],
     );
-    check(
+    check_with_base_items(
         r"enum Enum $0 {}",
         expect![[r#"
         kw where
     "#]],
     );
-    check(
+    check_with_base_items(
         r"trait Trait $0 {}",
         expect![[r#"
         kw where
@@ -140,7 +133,7 @@ fn completes_where() {
 
 #[test]
 fn before_record_field() {
-    check(
+    check_with_base_items(
         r#"
 struct Foo {
     $0
@@ -244,7 +237,7 @@ impl Copy for S where $0
 
 #[test]
 fn test_is_not_considered_macro() {
-    check(
+    check_with_base_items(
         r#"
 #[rustc_builtin]
 pub macro test($item:item) {

@@ -5,31 +5,11 @@ use ide_db::SymbolKind;
 
 use crate::{
     tests::{
-        check_edit, completion_list, completion_list_no_kw, completion_list_with_trigger_character,
+        check, check_edit, check_no_kw, check_with_trigger_character, do_completion_with_config,
+        TEST_CONFIG,
     },
     CompletionItemKind,
 };
-
-use super::{do_completion_with_config, TEST_CONFIG};
-
-fn check_no_kw(ra_fixture: &str, expect: Expect) {
-    let actual = completion_list_no_kw(ra_fixture);
-    expect.assert_eq(&actual)
-}
-
-fn check(ra_fixture: &str, expect: Expect) {
-    let actual = completion_list(ra_fixture);
-    expect.assert_eq(&actual)
-}
-
-pub(crate) fn check_with_trigger_character(
-    ra_fixture: &str,
-    trigger_character: Option<char>,
-    expect: Expect,
-) {
-    let actual = completion_list_with_trigger_character(ra_fixture, trigger_character);
-    expect.assert_eq(&actual)
-}
 
 #[test]
 fn completes_if_prefix_is_keyword() {
