@@ -47,7 +47,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
-    #[clippy::version = "1.83.0"]
+    #[clippy::version = "1.84.0"]
     pub UNNECESSARY_LITERAL_BOUND,
     pedantic,
     "detects &str that could be &'static str in function return types"

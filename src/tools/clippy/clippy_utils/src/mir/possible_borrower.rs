@@ -32,8 +32,8 @@ impl<'a, 'b, 'tcx> PossibleBorrowerVisitor<'a, 'b, 'tcx> {
     ) -> Self {
         Self {
             possible_borrower: TransitiveRelation::default(),
-            cx,
             body,
+            cx,
             possible_origin,
         }
     }

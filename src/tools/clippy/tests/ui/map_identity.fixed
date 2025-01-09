@@ -61,3 +61,18 @@ fn issue11764() {
     // no match ergonomics for `(i32, i32)`
     let _ = x.iter().copied();
 }
+
+fn issue13904() {
+    // don't lint: `it.next()` would not be legal as `it` is immutable
+    let it = [1, 2, 3].into_iter();
+    let _ = it.map(|x| x).next();
+
+    // lint
+    #[allow(unused_mut)]
+    let mut it = [1, 2, 3].into_iter();
+    let _ = it.next();
+
+    // lint
+    let it = [1, 2, 3].into_iter();
+    let _ = { it }.next();
+}

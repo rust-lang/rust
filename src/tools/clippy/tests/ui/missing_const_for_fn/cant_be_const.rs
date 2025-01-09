@@ -47,7 +47,34 @@ fn get_y() -> u32 {
     Y
 }
 
-// Don't lint entrypoint functions
+#[cfg(test)]
+mod with_test_fn {
+    #[derive(Clone, Copy)]
+    pub struct Foo {
+        pub n: u32,
+    }
+
+    impl Foo {
+        #[must_use]
+        pub const fn new(n: u32) -> Foo {
+            Foo { n }
+        }
+    }
+
+    #[test]
+    fn foo_is_copy() {
+        let foo = Foo::new(42);
+        let one = foo;
+        let two = foo;
+        _ = one;
+        _ = two;
+    }
+}
+
+// Allowing on this function, because it would lint, which we don't want in this case.
+// if we have `#[start]` and `#[test]` check `is_entrypoint_fn(cx, def_id.to_def_id())` is stopped
+// working
+#[allow(clippy::missing_const_for_fn)]
 #[start]
 fn init(num: isize, something: *const *const u8) -> isize {
     1

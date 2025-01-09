@@ -806,8 +806,8 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         Self {
             cx,
             maybe_typeck_results: cx.maybe_typeck_results(),
-            path_check: PathCheck::default(),
             s: FxHasher::default(),
+            path_check: PathCheck::default(),
         }
     }
 
