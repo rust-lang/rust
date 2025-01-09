@@ -48,6 +48,7 @@ impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
                         ctx.simplify_ref_deref(rvalue);
                         ctx.simplify_ptr_aggregate(rvalue);
                         ctx.simplify_cast(rvalue);
+                        ctx.simplify_repeated_aggregate(rvalue);
                     }
                     _ => {}
                 }
@@ -68,6 +69,35 @@ struct InstSimplifyContext<'a, 'tcx> {
 }
 
 impl<'tcx> InstSimplifyContext<'_, 'tcx> {
+    /// Transform aggregates like [0, 0, 0, 0, 0] into [0; 5].
+    /// GVN can also do this optimization, but GVN is only run at mir-opt-level 2 so having this in
+    /// InstSimplify helps unoptimized builds.
+    fn simplify_repeated_aggregate(&self, rvalue: &mut Rvalue<'tcx>) {
+        let Rvalue::Aggregate(box AggregateKind::Array(_), fields) = rvalue else {
+            return;
+        };
+        if fields.len() < 5 {
+            return;
+        }
+        let first = &fields[rustc_abi::FieldIdx::ZERO];
+        let Operand::Constant(first) = first else {
+            return;
+        };
+        let Ok(first_val) = first.const_.eval(self.tcx, self.typing_env, first.span) else {
+            return;
+        };
+        if fields.iter().all(|field| {
+            let Operand::Constant(field) = field else {
+                return false;
+            };
+            let field = field.const_.eval(self.tcx, self.typing_env, field.span);
+            field == Ok(first_val)
+        }) {
+            let len = ty::Const::from_target_usize(self.tcx, fields.len().try_into().unwrap());
+            *rvalue = Rvalue::Repeat(Operand::Constant(first.clone()), len);
+        }
+    }
+
     /// Transform boolean comparisons into logical operations.
     fn simplify_bool_cmp(&self, rvalue: &mut Rvalue<'tcx>) {
         match rvalue {
