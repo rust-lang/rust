@@ -188,6 +188,8 @@ impl fmt::Display for RenderedExpandError {
 
 impl RenderedExpandError {
     const GENERAL_KIND: &str = "macro-error";
+    const DISABLED: &str = "proc-macro-disabled";
+    const ATTR_EXP_DISABLED: &str = "attribute-expansion-disabled";
 }
 
 impl ExpandErrorKind {
@@ -196,12 +198,12 @@ impl ExpandErrorKind {
             ExpandErrorKind::ProcMacroAttrExpansionDisabled => RenderedExpandError {
                 message: "procedural attribute macro expansion is disabled".to_owned(),
                 error: false,
-                kind: "proc-macros-disabled",
+                kind: RenderedExpandError::ATTR_EXP_DISABLED,
             },
             ExpandErrorKind::MacroDisabled => RenderedExpandError {
                 message: "proc-macro is explicitly disabled".to_owned(),
                 error: false,
-                kind: "proc-macro-disabled",
+                kind: RenderedExpandError::DISABLED,
             },
             &ExpandErrorKind::MissingProcMacroExpander(def_crate) => {
                 match db.proc_macros().get_error_for_crate(def_crate) {
