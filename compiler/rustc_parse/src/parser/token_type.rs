@@ -108,6 +108,8 @@ pub enum TokenType {
     KwRef,
     KwReturn,
     KwReuse,
+    KwRustcContractEnsures,
+    KwRustcContractRequires,
     KwSafe,
     KwSelfUpper,
     KwStatic,
@@ -242,6 +244,8 @@ impl TokenType {
             KwRef,
             KwReturn,
             KwReuse,
+            KwRustcContractEnsures,
+            KwRustcContractRequires,
             KwSafe,
             KwSelfUpper,
             KwStatic,
@@ -314,6 +318,8 @@ impl TokenType {
             TokenType::KwRef => Some(kw::Ref),
             TokenType::KwReturn => Some(kw::Return),
             TokenType::KwReuse => Some(kw::Reuse),
+            TokenType::KwRustcContractEnsures => Some(kw::RustcContractEnsures),
+            TokenType::KwRustcContractRequires => Some(kw::RustcContractRequires),
             TokenType::KwSafe => Some(kw::Safe),
             TokenType::KwSelfUpper => Some(kw::SelfUpper),
             TokenType::KwStatic => Some(kw::Static),
@@ -544,6 +550,8 @@ macro_rules! exp {
     (Ref)            => { exp!(@kw, Ref,        KwRef) };
     (Return)         => { exp!(@kw, Return,     KwReturn) };
     (Reuse)          => { exp!(@kw, Reuse,      KwReuse) };
+    (RustcContractEnsures)  => { exp!(@kw, RustcContractEnsures, KwRustcContractEnsures) };
+    (RustcContractRequires) => { exp!(@kw, RustcContractRequires, KwRustcContractRequires) };
     (Safe)           => { exp!(@kw, Safe,       KwSafe) };
     (SelfUpper)      => { exp!(@kw, SelfUpper,  KwSelfUpper) };
     (Static)         => { exp!(@kw, Static,     KwStatic) };

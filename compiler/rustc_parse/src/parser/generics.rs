@@ -297,6 +297,28 @@ impl<'a> Parser<'a> {
         })
     }
 
+    /// Parses a rustc-internal fn contract
+    /// (`rustc_contract_requires(WWW) rustc_contract_ensures(ZZZ)`)
+    pub(super) fn parse_contract(
+        &mut self,
+    ) -> PResult<'a, Option<rustc_ast::ptr::P<ast::FnContract>>> {
+        let requires = if self.eat_keyword_noexpect(exp!(RustcContractRequires).kw) {
+            Some(self.parse_expr()?)
+        } else {
+            None
+        };
+        let ensures = if self.eat_keyword_noexpect(exp!(RustcContractEnsures).kw) {
+            Some(self.parse_expr()?)
+        } else {
+            None
+        };
+        if requires.is_none() && ensures.is_none() {
+            Ok(None)
+        } else {
+            Ok(Some(rustc_ast::ptr::P(ast::FnContract { requires, ensures })))
+        }
+    }
+
     /// Parses an optional where-clause.
     ///
     /// ```ignore (only-for-syntax-highlight)

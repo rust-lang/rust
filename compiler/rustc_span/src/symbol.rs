@@ -118,6 +118,8 @@ symbols! {
         MacroRules:         "macro_rules",
         Raw:                "raw",
         Reuse:              "reuse",
+        RustcContractEnsures:  "rustc_contract_ensures",
+        RustcContractRequires: "rustc_contract_requires",
         Safe:               "safe",
         Union:              "union",
         Yeet:               "yeet",

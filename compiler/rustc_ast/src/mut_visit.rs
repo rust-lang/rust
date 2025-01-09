@@ -143,6 +143,10 @@ pub trait MutVisitor: Sized {
         walk_flat_map_assoc_item(self, i, ctxt)
     }
 
+    fn visit_contract(&mut self, c: &mut P<FnContract>) {
+        walk_contract(self, c);
+    }
+
     fn visit_fn_decl(&mut self, d: &mut P<FnDecl>) {
         walk_fn_decl(self, d);
     }
@@ -958,13 +962,16 @@ fn walk_fn<T: MutVisitor>(vis: &mut T, kind: FnKind<'_>) {
             _ctxt,
             _ident,
             _vis,
-            Fn { defaultness, generics, body, sig: FnSig { header, decl, span } },
+            Fn { defaultness, generics, contract, body, sig: FnSig { header, decl, span } },
         ) => {
             // Identifier and visibility are visited as a part of the item.
             visit_defaultness(vis, defaultness);
             vis.visit_fn_header(header);
             vis.visit_generics(generics);
             vis.visit_fn_decl(decl);
+            if let Some(contract) = contract {
+                vis.visit_contract(contract);
+            }
             if let Some(body) = body {
                 vis.visit_block(body);
             }
@@ -976,6 +983,16 @@ fn walk_fn<T: MutVisitor>(vis: &mut T, kind: FnKind<'_>) {
             vis.visit_fn_decl(decl);
             vis.visit_expr(body);
         }
+    }
+}
+
+fn walk_contract<T: MutVisitor>(vis: &mut T, contract: &mut P<FnContract>) {
+    let FnContract { requires, ensures } = contract.deref_mut();
+    if let Some(pred) = requires {
+        vis.visit_expr(pred);
+    }
+    if let Some(pred) = ensures {
+        vis.visit_expr(pred);
     }
 }
 

@@ -314,7 +314,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::ExprKind::Continue(self.lower_jump_destination(e.id, *opt_label))
                 }
                 ExprKind::Ret(e) => {
-                    let e = e.as_ref().map(|x| self.lower_expr(x));
+                    let mut e = e.as_ref().map(|x| self.lower_expr(x));
+                    if let Some(Some((span, fresh_ident))) = self
+                        .contract
+                        .as_ref()
+                        .map(|c| c.ensures.as_ref().map(|e| (e.expr.span, e.fresh_ident)))
+                    {
+                        let checker_fn = self.expr_ident(span, fresh_ident.0, fresh_ident.2);
+                        let args = if let Some(e) = e {
+                            std::slice::from_ref(e)
+                        } else {
+                            std::slice::from_ref(self.expr_unit(span))
+                        };
+                        e = Some(self.expr_call(span, checker_fn, args));
+                    }
                     hir::ExprKind::Ret(e)
                 }
                 ExprKind::Yeet(sub_expr) => self.lower_expr_yeet(e.span, sub_expr.as_deref()),

@@ -650,18 +650,37 @@ impl<'a> State<'a> {
         attrs: &[ast::Attribute],
         func: &ast::Fn,
     ) {
-        let ast::Fn { defaultness, generics, sig, body } = func;
+        let ast::Fn { defaultness, generics, sig, contract, body } = func;
         if body.is_some() {
             self.head("");
         }
         self.print_visibility(vis);
         self.print_defaultness(*defaultness);
         self.print_fn(&sig.decl, sig.header, Some(name), generics);
+        if let Some(contract) = &contract {
+            self.nbsp();
+            self.print_contract(contract);
+        }
         if let Some(body) = body {
             self.nbsp();
             self.print_block_with_attrs(body, attrs);
         } else {
             self.word(";");
+        }
+    }
+
+    fn print_contract(&mut self, contract: &ast::FnContract) {
+        if let Some(pred) = &contract.requires {
+            self.word("rustc_requires");
+            self.popen();
+            self.print_expr(pred, FixupContext::default());
+            self.pclose();
+        }
+        if let Some(pred) = &contract.ensures {
+            self.word("rustc_ensures");
+            self.popen();
+            self.print_expr(pred, FixupContext::default());
+            self.pclose();
         }
     }
 
