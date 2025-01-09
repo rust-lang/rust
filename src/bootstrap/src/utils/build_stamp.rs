@@ -1,3 +1,7 @@
+//! Module for managing build stamp files.
+//!
+//! Contains the core implementation of how bootstrap utilizes stamp files on build processes.
+
 use std::path::{Path, PathBuf};
 use std::{fs, io};
 
@@ -6,16 +10,12 @@ use crate::core::config::TargetSelection;
 use crate::utils::helpers::mtime;
 use crate::{Compiler, Mode, t};
 
+/// Manages a stamp file to track build state. The file is created in the given
+/// directory and can have custom content and name.
 #[derive(Clone)]
 pub struct BuildStamp {
     path: PathBuf,
     pub(crate) stamp: String,
-}
-
-impl From<BuildStamp> for PathBuf {
-    fn from(value: BuildStamp) -> Self {
-        value.path
-    }
 }
 
 impl AsRef<Path> for BuildStamp {
@@ -25,15 +25,22 @@ impl AsRef<Path> for BuildStamp {
 }
 
 impl BuildStamp {
+    /// Creates a new `BuildStamp` for a given directory.
+    ///
+    /// By default, stamp will be an empty file named `.stamp` within the specified directory.
     pub fn new(dir: &Path) -> Self {
         Self { path: dir.join(".stamp"), stamp: String::new() }
     }
 
+    /// Sets stamp content to the specified value.
     pub fn with_stamp<S: ToString>(mut self, stamp: S) -> Self {
         self.stamp = stamp.to_string();
         self
     }
 
+    /// Adds a prefix to stamp's name.
+    ///
+    /// Prefix cannot start or end with a dot (`.`).
     pub fn with_prefix(mut self, prefix: &str) -> Self {
         assert!(
             !prefix.starts_with('.') && !prefix.ends_with('.'),
@@ -47,6 +54,7 @@ impl BuildStamp {
         self
     }
 
+    /// Removes the stamp file if it exists.
     pub fn remove(&self) -> io::Result<()> {
         match fs::remove_file(&self.path) {
             Ok(()) => Ok(()),
@@ -60,10 +68,14 @@ impl BuildStamp {
         }
     }
 
+    /// Creates the stamp file.
     pub fn write(&self) -> io::Result<()> {
         fs::write(&self.path, &self.stamp)
     }
 
+    /// Checks if the stamp file is up-to-date.
+    ///
+    /// It is considered up-to-date if file content matches with the stamp string.
     pub fn is_up_to_date(&self) -> bool {
         match fs::read(&self.path) {
             Ok(h) => self.stamp.as_bytes() == h.as_slice(),
