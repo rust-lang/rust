@@ -10,6 +10,7 @@ use build_helper::ci::CiEnv;
 use xz2::bufread::XzDecoder;
 
 use crate::core::config::BUILDER_CONFIG_FILENAME;
+use crate::utils::build_stamp::BuildStamp;
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{check_run, exe, hex_encode, move_file, program_out_of_date};
 use crate::{Config, t};
@@ -46,7 +47,7 @@ impl Config {
         self.verbose > 0
     }
 
-    pub(crate) fn create(&self, path: &Path, s: &str) {
+    pub(crate) fn create<P: AsRef<Path>>(&self, path: P, s: &str) {
         if self.dry_run() {
             return;
         }
@@ -426,7 +427,7 @@ impl Config {
         let version = &self.stage0_metadata.compiler.version;
         let host = self.build;
 
-        let clippy_stamp = self.initial_sysroot.join(".clippy-stamp");
+        let clippy_stamp = BuildStamp::new(&self.initial_sysroot).with_prefix("clippy");
         let cargo_clippy = self.initial_sysroot.join("bin").join(exe("cargo-clippy", host));
         if cargo_clippy.exists() && !program_out_of_date(&clippy_stamp, date) {
             return cargo_clippy;
@@ -460,7 +461,7 @@ impl Config {
         let host = self.build;
         let bin_root = self.out.join(host).join("rustfmt");
         let rustfmt_path = bin_root.join("bin").join(exe("rustfmt", host));
-        let rustfmt_stamp = bin_root.join(".rustfmt-stamp");
+        let rustfmt_stamp = BuildStamp::new(&bin_root).with_prefix("rustfmt");
         if rustfmt_path.exists() && !program_out_of_date(&rustfmt_stamp, &channel) {
             return Some(rustfmt_path);
         }
@@ -567,7 +568,7 @@ impl Config {
     ) {
         let host = self.build.triple;
         let bin_root = self.out.join(host).join(sysroot);
-        let rustc_stamp = bin_root.join(".rustc-stamp");
+        let rustc_stamp = BuildStamp::new(&bin_root).with_prefix("rustc");
 
         if !bin_root.join("bin").join(exe("rustc", self.build)).exists()
             || program_out_of_date(&rustc_stamp, stamp_key)
@@ -728,7 +729,7 @@ download-rustc = false
         }
 
         let llvm_root = self.ci_llvm_root();
-        let llvm_stamp = llvm_root.join(".llvm-stamp");
+        let llvm_stamp = BuildStamp::new(&llvm_root).with_prefix("llvm");
         let llvm_sha = detect_llvm_sha(self, self.rust_info.is_managed_git_subrepository());
         let key = format!("{}{}", llvm_sha, self.llvm_assertions);
         if program_out_of_date(&llvm_stamp, &key) && !self.dry_run() {

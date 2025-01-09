@@ -1,7 +1,5 @@
-use std::{
-    fs, io,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
+use std::{fs, io};
 
 #[derive(Clone)]
 pub struct BuildStamp {

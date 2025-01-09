@@ -23,6 +23,7 @@ use crate::core::build_steps::vendor::default_paths_to_vendor;
 use crate::core::build_steps::{compile, llvm};
 use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
+use crate::utils::build_stamp::BuildStamp;
 use crate::utils::channel::{self, Info};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{
@@ -584,7 +585,7 @@ fn skip_host_target_lib(builder: &Builder<'_>, compiler: Compiler) -> bool {
 /// Check that all objects in rlibs for UEFI targets are COFF. This
 /// ensures that the C compiler isn't producing ELF objects, which would
 /// not link correctly with the COFF objects.
-fn verify_uefi_rlib_format(builder: &Builder<'_>, target: TargetSelection, stamp: &Path) {
+fn verify_uefi_rlib_format(builder: &Builder<'_>, target: TargetSelection, stamp: &BuildStamp) {
     if !target.ends_with("-uefi") {
         return;
     }
@@ -615,7 +616,12 @@ fn verify_uefi_rlib_format(builder: &Builder<'_>, target: TargetSelection, stamp
 }
 
 /// Copy stamped files into an image's `target/lib` directory.
-fn copy_target_libs(builder: &Builder<'_>, target: TargetSelection, image: &Path, stamp: &Path) {
+fn copy_target_libs(
+    builder: &Builder<'_>,
+    target: TargetSelection,
+    image: &Path,
+    stamp: &BuildStamp,
+) {
     let dst = image.join("lib/rustlib").join(target).join("lib");
     let self_contained_dst = dst.join("self-contained");
     t!(fs::create_dir_all(&dst));

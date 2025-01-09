@@ -30,6 +30,7 @@ use build_helper::ci::gha;
 use build_helper::exit;
 use sha2::digest::Digest;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
+use utils::build_stamp::BuildStamp;
 use utils::channel::GitInfo;
 use utils::helpers::hex_encode;
 
@@ -602,13 +603,13 @@ impl Build {
     ///
     /// After this executes, it will also ensure that `dir` exists.
     fn clear_if_dirty(&self, dir: &Path, input: &Path) -> bool {
-        let stamp = dir.join(".stamp");
+        let stamp = BuildStamp::new(dir);
         let mut cleared = false;
-        if mtime(&stamp) < mtime(input) {
+        if mtime(stamp.as_ref()) < mtime(input) {
             self.verbose(|| println!("Dirty - {}", dir.display()));
             let _ = fs::remove_dir_all(dir);
             cleared = true;
-        } else if stamp.exists() {
+        } else if stamp.as_ref().exists() {
             return cleared;
         }
         t!(fs::create_dir_all(dir));
@@ -1622,21 +1623,21 @@ Executed at: {executed_at}"#,
         ret
     }
 
-    fn read_stamp_file(&self, stamp: &Path) -> Vec<(PathBuf, DependencyType)> {
+    fn read_stamp_file(&self, stamp: &BuildStamp) -> Vec<(PathBuf, DependencyType)> {
         if self.config.dry_run() {
             return Vec::new();
         }
 
-        if !stamp.exists() {
+        if !stamp.as_ref().exists() {
             eprintln!(
                 "ERROR: Unable to find the stamp file {}, did you try to keep a nonexistent build stage?",
-                stamp.display()
+                stamp.as_ref().display()
             );
             crate::exit!(1);
         }
 
         let mut paths = Vec::new();
-        let contents = t!(fs::read(stamp), &stamp);
+        let contents = t!(fs::read(stamp.as_ref()), stamp.as_ref());
         // This is the method we use for extracting paths from the stamp file passed to us. See
         // run_cargo for more information (in compile.rs).
         for part in contents.split(|b| *b == 0) {

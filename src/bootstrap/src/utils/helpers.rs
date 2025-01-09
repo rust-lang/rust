@@ -13,9 +13,11 @@ use std::{env, fs, io, str};
 use build_helper::util::fail;
 use object::read::archive::ArchiveFile;
 
+use super::build_stamp::BuildStamp;
 use crate::LldMode;
 use crate::core::builder::Builder;
 use crate::core::config::{Config, TargetSelection};
+use crate::utils::exec::{BootstrapCommand, command};
 pub use crate::utils::shared_helpers::{dylib_path, dylib_path_var};
 
 #[cfg(test)]
@@ -45,10 +47,8 @@ macro_rules! t {
         }
     };
 }
+
 pub use t;
-
-use crate::utils::exec::{BootstrapCommand, command};
-
 pub fn exe(name: &str, target: TargetSelection) -> String {
     crate::utils::shared_helpers::exe(name, &target.triple)
 }
@@ -149,8 +149,8 @@ impl Drop for TimeIt {
 }
 
 /// Used for download caching
-pub(crate) fn program_out_of_date(stamp: &Path, key: &str) -> bool {
-    if !stamp.exists() {
+pub(crate) fn program_out_of_date(stamp: &BuildStamp, key: &str) -> bool {
+    if !stamp.as_ref().exists() {
         return true;
     }
     t!(fs::read_to_string(stamp)) != key

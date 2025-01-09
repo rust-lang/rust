@@ -11,6 +11,7 @@ use build_helper::git::get_git_modified_files;
 use ignore::WalkBuilder;
 
 use crate::core::builder::Builder;
+use crate::utils::build_stamp::BuildStamp;
 use crate::utils::exec::command;
 use crate::utils::helpers::{self, program_out_of_date, t};
 
@@ -55,8 +56,8 @@ fn rustfmt(
     }
 }
 
-fn get_rustfmt_version(build: &Builder<'_>) -> Option<(String, PathBuf)> {
-    let stamp_file = build.out.join("rustfmt.stamp");
+fn get_rustfmt_version(build: &Builder<'_>) -> Option<(String, BuildStamp)> {
+    let stamp_file = BuildStamp::new(&build.out).with_prefix("rustfmt");
 
     let mut cmd = command(build.initial_rustfmt()?);
     cmd.arg("--version");

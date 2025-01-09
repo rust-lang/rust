@@ -21,6 +21,7 @@ use crate::core::builder::{
 };
 use crate::core::config::TargetSelection;
 use crate::core::config::flags::{Subcommand, get_completion};
+use crate::utils::build_stamp::BuildStamp;
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{
     self, LldThreads, add_link_lib_path, add_rustdoc_cargo_linker_args, dylib_path, dylib_path_var,
@@ -2258,10 +2259,8 @@ impl BookTest {
                     &[],
                 );
 
-                let stamp = builder
-                    .cargo_out(compiler, mode, target)
-                    .join(PathBuf::from(dep).file_name().unwrap())
-                    .with_extension("stamp");
+                let stamp = BuildStamp::new(&builder.cargo_out(compiler, mode, target))
+                    .with_prefix(PathBuf::from(dep).file_name().and_then(|v| v.to_str()).unwrap());
 
                 let output_paths = run_cargo(builder, cargo, vec![], &stamp, vec![], false, false);
                 let directories = output_paths

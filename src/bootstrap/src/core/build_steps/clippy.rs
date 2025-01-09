@@ -7,6 +7,7 @@ use crate::builder::{Builder, ShouldRun};
 use crate::core::build_steps::compile::std_crates_for_run_make;
 use crate::core::builder;
 use crate::core::builder::{Alias, Kind, RunConfig, Step, crate_description};
+use crate::utils::build_stamp::BuildStamp;
 use crate::{Mode, Subcommand, TargetSelection};
 
 /// Disable the most spammy clippy lints
@@ -307,9 +308,9 @@ macro_rules! lint_any {
                     &target,
                 );
 
-                let stamp = builder
-                    .cargo_out(compiler, Mode::ToolRustc, target)
-                    .join(format!(".{}-check.stamp", stringify!($name).to_lowercase()));
+                let stringified_name = stringify!($name).to_lowercase();
+                let stamp = BuildStamp::new(&builder.cargo_out(compiler, Mode::ToolRustc, target))
+                    .with_prefix(&format!("{}-check", stringified_name));
 
                 run_cargo(
                     builder,

@@ -1,7 +1,5 @@
 //! Implementation of compiling the compiler and standard library, in "check"-based modes.
 
-use std::path::PathBuf;
-
 use crate::core::build_steps::compile::{
     add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo, std_crates_for_run_make,
 };
@@ -10,6 +8,7 @@ use crate::core::builder::{
     self, Alias, Builder, Kind, RunConfig, ShouldRun, Step, crate_description,
 };
 use crate::core::config::TargetSelection;
+use crate::utils::build_stamp::BuildStamp;
 use crate::{Compiler, Mode, Subcommand};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -393,8 +392,9 @@ impl Step for RustAnalyzer {
 
         /// Cargo's output path in a given stage, compiled by a particular
         /// compiler for the specified target.
-        fn stamp(builder: &Builder<'_>, compiler: Compiler, target: TargetSelection) -> PathBuf {
-            builder.cargo_out(compiler, Mode::ToolRustc, target).join(".rust-analyzer-check.stamp")
+        fn stamp(builder: &Builder<'_>, compiler: Compiler, target: TargetSelection) -> BuildStamp {
+            BuildStamp::new(&builder.cargo_out(compiler, Mode::ToolRustc, target))
+                .with_prefix("rust-analyzer-check")
         }
     }
 }
@@ -469,9 +469,8 @@ fn run_tool_check_step(
         cargo.arg("--all-targets");
     }
 
-    let stamp = builder
-        .cargo_out(compiler, Mode::ToolRustc, target)
-        .join(format!(".{}-check.stamp", step_type_name.to_lowercase()));
+    let stamp = BuildStamp::new(&builder.cargo_out(compiler, Mode::ToolRustc, target))
+        .with_prefix(&format!("{}-check", step_type_name.to_lowercase()));
 
     let _guard = builder.msg_check(format!("{display_name} artifacts"), target);
     run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
@@ -502,8 +501,8 @@ tool_check_step!(Compiletest { path: "src/tools/compiletest", default: false });
 
 /// Cargo's output path for the standard library in a given stage, compiled
 /// by a particular compiler for the specified target.
-fn libstd_stamp(builder: &Builder<'_>, compiler: Compiler, target: TargetSelection) -> PathBuf {
-    builder.cargo_out(compiler, Mode::Std, target).join(".libstd-check.stamp")
+fn libstd_stamp(builder: &Builder<'_>, compiler: Compiler, target: TargetSelection) -> BuildStamp {
+    BuildStamp::new(&builder.cargo_out(compiler, Mode::Std, target)).with_prefix("libstd-check")
 }
 
 /// Cargo's output path for the standard library in a given stage, compiled
@@ -512,14 +511,19 @@ fn libstd_test_stamp(
     builder: &Builder<'_>,
     compiler: Compiler,
     target: TargetSelection,
-) -> PathBuf {
-    builder.cargo_out(compiler, Mode::Std, target).join(".libstd-check-test.stamp")
+) -> BuildStamp {
+    BuildStamp::new(&builder.cargo_out(compiler, Mode::Std, target))
+        .with_prefix("libstd-check-test")
 }
 
 /// Cargo's output path for librustc in a given stage, compiled by a particular
 /// compiler for the specified target.
-fn librustc_stamp(builder: &Builder<'_>, compiler: Compiler, target: TargetSelection) -> PathBuf {
-    builder.cargo_out(compiler, Mode::Rustc, target).join(".librustc-check.stamp")
+fn librustc_stamp(
+    builder: &Builder<'_>,
+    compiler: Compiler,
+    target: TargetSelection,
+) -> BuildStamp {
+    BuildStamp::new(&builder.cargo_out(compiler, Mode::Rustc, target)).with_prefix("librustc-check")
 }
 
 /// Cargo's output path for librustc_codegen_llvm in a given stage, compiled by a particular
@@ -529,8 +533,7 @@ fn codegen_backend_stamp(
     compiler: Compiler,
     target: TargetSelection,
     backend: &str,
-) -> PathBuf {
-    builder
-        .cargo_out(compiler, Mode::Codegen, target)
-        .join(format!(".librustc_codegen_{backend}-check.stamp"))
+) -> BuildStamp {
+    BuildStamp::new(&builder.cargo_out(compiler, Mode::Codegen, target))
+        .with_prefix(&format!("librustc_codegen_{backend}-check"))
 }

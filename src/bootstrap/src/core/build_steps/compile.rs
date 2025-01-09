@@ -24,6 +24,7 @@ use crate::core::builder::{
     Builder, Cargo, Kind, PathSet, RunConfig, ShouldRun, Step, TaskPath, crate_description,
 };
 use crate::core::config::{DebuginfoLevel, LlvmLibunwind, RustcLto, TargetSelection};
+use crate::utils::build_stamp::BuildStamp;
 use crate::utils::exec::command;
 use crate::utils::helpers::{
     exe, get_clang_cl_resource_dir, is_debug_info, is_dylib, symlink_dir, t, up_to_date,
@@ -984,7 +985,7 @@ impl Step for Rustc {
             true, // Only ship rustc_driver.so and .rmeta files, not all intermediate .rlib files.
         );
 
-        let target_root_dir = stamp.parent().unwrap();
+        let target_root_dir = stamp.as_ref().parent().unwrap();
         // When building `librustc_driver.so` (like `libLLVM.so`) on linux, it can contain
         // unexpected debuginfo from dependencies, for example from the C++ standard library used in
         // our LLVM wrapper. Unless we're explicitly requesting `librustc_driver` to be built with
@@ -1447,7 +1448,7 @@ impl Step for CodegenBackend {
             .arg(builder.src.join(format!("compiler/rustc_codegen_{backend}/Cargo.toml")));
         rustc_cargo_env(builder, &mut cargo, target, compiler.stage);
 
-        let tmp_stamp = out_dir.join(".tmp.stamp");
+        let tmp_stamp = BuildStamp::new(&out_dir).with_prefix("tmp");
 
         let _guard = builder.msg_build(compiler, format_args!("codegen backend {backend}"), target);
         let files = run_cargo(builder, cargo, vec![], &tmp_stamp, vec![], false, false);
@@ -1525,8 +1526,12 @@ fn copy_codegen_backends_to_sysroot(
 
 /// Cargo's output path for the standard library in a given stage, compiled
 /// by a particular compiler for the specified target.
-pub fn libstd_stamp(builder: &Builder<'_>, compiler: Compiler, target: TargetSelection) -> PathBuf {
-    builder.cargo_out(compiler, Mode::Std, target).join(".libstd.stamp")
+pub fn libstd_stamp(
+    builder: &Builder<'_>,
+    compiler: Compiler,
+    target: TargetSelection,
+) -> BuildStamp {
+    BuildStamp::new(&builder.cargo_out(compiler, Mode::Std, target)).with_prefix("libstd")
 }
 
 /// Cargo's output path for librustc in a given stage, compiled by a particular
@@ -1535,8 +1540,8 @@ pub fn librustc_stamp(
     builder: &Builder<'_>,
     compiler: Compiler,
     target: TargetSelection,
-) -> PathBuf {
-    builder.cargo_out(compiler, Mode::Rustc, target).join(".librustc.stamp")
+) -> BuildStamp {
+    BuildStamp::new(&builder.cargo_out(compiler, Mode::Rustc, target)).with_prefix("librustc")
 }
 
 /// Cargo's output path for librustc_codegen_llvm in a given stage, compiled by a particular
@@ -1546,10 +1551,9 @@ fn codegen_backend_stamp(
     compiler: Compiler,
     target: TargetSelection,
     backend: &str,
-) -> PathBuf {
-    builder
-        .cargo_out(compiler, Mode::Codegen, target)
-        .join(format!(".librustc_codegen_{backend}.stamp"))
+) -> BuildStamp {
+    BuildStamp::new(&builder.cargo_out(compiler, Mode::Codegen, target))
+        .with_prefix(&format!("librustc_codegen_{backend}"))
 }
 
 pub fn compiler_file(
@@ -2014,7 +2018,7 @@ pub fn add_to_sysroot(
     builder: &Builder<'_>,
     sysroot_dst: &Path,
     sysroot_host_dst: &Path,
-    stamp: &Path,
+    stamp: &BuildStamp,
 ) {
     let self_contained_dst = &sysroot_dst.join("self-contained");
     t!(fs::create_dir_all(sysroot_dst));
@@ -2034,13 +2038,13 @@ pub fn run_cargo(
     builder: &Builder<'_>,
     cargo: Cargo,
     tail_args: Vec<String>,
-    stamp: &Path,
+    stamp: &BuildStamp,
     additional_target_deps: Vec<(PathBuf, DependencyType)>,
     is_check: bool,
     rlib_only_metadata: bool,
 ) -> Vec<PathBuf> {
     // `target_root_dir` looks like $dir/$target/release
-    let target_root_dir = stamp.parent().unwrap();
+    let target_root_dir = stamp.as_ref().parent().unwrap();
     // `target_deps_dir` looks like $dir/$target/release/deps
     let target_deps_dir = target_root_dir.join("deps");
     // `host_root_dir` looks like $dir/release
