@@ -40,7 +40,7 @@ cc = "=1.2.0"
 cmake = "=0.1.48"
 
 build_helper = { path = "../build_helper" }
-clap = { version = "4.4", default-features = false, features = ["std", "usage", "help", "derive", "error-context"] }
+clap = { version = "4.4", default-features = false, features = ["derive", "error-context", "help", "std", "usage"] }
 clap_complete = "4.4"
 fd-lock = "4.0"
 home = "0.5"
@@ -60,6 +60,10 @@ termcolor = "1.4"
 toml = "0.5"
 walkdir = "2.4"
 xz2 = "0.1"
+
+tracing = { version = "0.1.41", features = ["attributes"] }
+tracing-subscriber = { version = "0.3.19", features = ["env-filter", "fmt", "registry", "std"] }
+tracing-tree = "0.4.0"
 
 # Dependencies needed by the build-metrics feature
 sysinfo = { version = "0.33.0", default-features = false, optional = true, features = ["system"] }

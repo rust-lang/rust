@@ -28,6 +28,7 @@ use std::{env, fs, io, str};
 use build_helper::ci::gha;
 use build_helper::exit;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
+use tracing::*;
 use utils::build_stamp::BuildStamp;
 use utils::channel::GitInfo;
 
@@ -277,9 +278,11 @@ impl Build {
     /// line and the filesystem `config`.
     ///
     /// By default all build output will be placed in the current directory.
+    #[instrument(level = "trace", name = "Build::new", skip_all)]
     pub fn new(mut config: Config) -> Build {
         let src = config.src.clone();
         let out = config.out.clone();
+        trace!(?src, ?out);
 
         #[cfg(unix)]
         // keep this consistent with the equivalent check in x.py:
@@ -337,7 +340,8 @@ impl Build {
             bootstrap_out.pop();
         }
         if !bootstrap_out.join(exe("rustc", config.build)).exists() && !cfg!(test) {
-            // this restriction can be lifted whenever https://github.com/rust-lang/rfcs/pull/3028 is implemented
+            // This restriction can be lifted whenever https://github.com/rust-lang/rfcs/pull/3028
+            // is implemented.
             panic!(
                 "`rustc` not found in {}, run `cargo build --bins` before `cargo run`",
                 bootstrap_out.display()
@@ -390,6 +394,8 @@ impl Build {
             #[cfg(feature = "build-metrics")]
             metrics: crate::utils::metrics::BuildMetrics::init(),
         };
+
+        trace!("initial `Build` constructed");
 
         // If local-rust is the same major.minor as the current version, then force a
         // local-rebuild
@@ -464,12 +470,15 @@ impl Build {
     ///
     /// The given `err_hint` will be shown to the user if the submodule is not
     /// checked out and submodule management is disabled.
+    #[instrument(level = "trace", name = "Build::require_submodule", skip_all, fields(?submodule))]
     pub fn require_submodule(&self, submodule: &str, err_hint: Option<&str>) {
         // When testing bootstrap itself, it is much faster to ignore
         // submodules. Almost all Steps work fine without their submodules.
         if cfg!(test) && !self.config.submodules() {
             return;
         }
+
+        trace!(?submodule, "updating submodule");
         self.config.update_submodule(submodule);
         let absolute_path = self.config.src.join(submodule);
         if dir_is_empty(&absolute_path) {
@@ -537,17 +546,23 @@ impl Build {
     }
 
     /// Executes the entire build, as configured by the flags and configuration.
+    #[instrument(level = "trace", name = "Build::build", skip_all)]
     pub fn build(&mut self) {
+        trace!("executing build");
+
         unsafe {
             crate::utils::job::setup(self);
         }
 
         // Download rustfmt early so that it can be used in rust-analyzer configs.
+        trace!("downloading initial rustfmt early");
         let _ = &builder::Builder::new(self).initial_rustfmt();
 
+        trace!(cmd = ?self.config.cmd, "handling hardcoded subcommands (Format, Suggest, Perf)");
         // hardcoded subcommands
         match &self.config.cmd {
             Subcommand::Format { check, all } => {
+                trace!("handling hard");
                 return core::build_steps::format::format(
                     &builder::Builder::new(self),
                     *check,
@@ -564,21 +579,34 @@ impl Build {
             _ => (),
         }
 
+        trace!(cmd = ?self.config.cmd, "command is not hardcoded, continuing");
+
         if !self.config.dry_run() {
-            {
+            trace!("not a dry-run");
+
+            info_span!("[DRY RUN]").in_scope(|| {
+                trace!("executing dry-run sanity-check");
+
                 // We first do a dry-run. This is a sanity-check to ensure that
                 // steps don't do anything expensive in the dry-run.
                 self.config.dry_run = DryRun::SelfCheck;
                 let builder = builder::Builder::new(self);
                 builder.execute_cli();
-            }
-            self.config.dry_run = DryRun::Disabled;
-            let builder = builder::Builder::new(self);
-            builder.execute_cli();
+            });
+
+            info_span!("[REAL RUN]").in_scope(|| {
+                trace!("executing real run");
+
+                self.config.dry_run = DryRun::Disabled;
+                let builder = builder::Builder::new(self);
+                builder.execute_cli();
+            });
         } else {
             let builder = builder::Builder::new(self);
             builder.execute_cli();
         }
+
+        trace!("checking for postponed failures from `test --no-fail-fast`");
 
         // Check for postponed failures from `test --no-fail-fast`.
         let failures = self.delayed_failures.borrow();

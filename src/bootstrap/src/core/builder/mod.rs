@@ -10,6 +10,7 @@ use std::time::{Duration, Instant};
 use std::{env, fs};
 
 use clap::ValueEnum;
+use tracing::*;
 
 pub use self::cargo::Cargo;
 pub use crate::Compiler;
@@ -191,6 +192,7 @@ pub fn crate_description(crates: &[impl AsRef<str>]) -> String {
     descr
 }
 
+#[derive(Debug)]
 struct StepDescription {
     default: bool,
     only_hosts: bool,
@@ -340,7 +342,26 @@ const PATH_REMAP: &[(&str, &[&str])] = &[
     ]),
 ];
 
+#[instrument(level = "trace", name = "remap_paths", skip_all)]
 fn remap_paths(paths: &mut Vec<PathBuf>) {
+    // NOTE: there are three key points here:
+    //
+    // 1. Path remapping here can map a single input path to multiple paths!
+    // 2. `rust-analyzer-proc-macro-srv` -> `src/tools/rust-analyzer/crates/proc-macro-srv-cli`
+    //    seems to be for `config.toml`.
+    // 3. (Important!) apparently, `./x test tests` actually fans out right here to become
+    //    effectively `./x test tests/assembly ... tests/ui-fulldeps` (illustrative description).
+    //
+    // QUESTION: now that the `PathSet` matching is match-all and not first-consume, if the
+    // individual test suite steps each matched on a path prefix (`tests/run-make` would
+    // prefix-match `tests`), is this remapping actually necessary?
+    //
+    // Important context:
+    // - https://github.com/rust-lang/rust/commit/0da0a2196d2d7b37bd5e07ce18b03568e2711f39
+    // - https://github.com/rust-lang/rust/pull/96501
+    // - https://github.com/rust-lang/rust/pull/96501#discussion_r873076120
+    trace!(input_paths = ?paths, "remapping paths");
+
     let mut remove = vec![];
     let mut add = vec![];
     for (i, path) in paths.iter().enumerate().filter_map(|(i, path)| path.to_str().map(|s| (i, s)))
@@ -400,8 +421,16 @@ impl StepDescription {
         }
     }
 
+    #[instrument(
+        level = "trace",
+        name = "StepDescription::maybe_run",
+        skip_all,
+        fields(name = self.name, pathsets = ?pathsets)
+    )]
     fn maybe_run(&self, builder: &Builder<'_>, mut pathsets: Vec<PathSet>) {
+        trace!(initial_pathsets = ?pathsets, "filtering out excluded `PathSet`s");
         pathsets.retain(|set| !self.is_excluded(builder, set));
+        trace!(filtered_pathsets = ?pathsets);
 
         if pathsets.is_empty() {
             return;
@@ -410,10 +439,13 @@ impl StepDescription {
         // Determine the targets participating in this rule.
         let targets = if self.only_hosts { &builder.hosts } else { &builder.targets };
 
-        for target in targets {
-            let run = RunConfig { builder, paths: pathsets.clone(), target: *target };
-            (self.make_run)(run);
-        }
+        let all_targets_span = trace_span!("invoking `Step::make_run` for each target", ?targets);
+        all_targets_span.in_scope(|| {
+            for target in targets {
+                let run = RunConfig { builder, paths: pathsets.clone(), target: *target };
+                (self.make_run)(run);
+            }
+        });
     }
 
     fn is_excluded(&self, builder: &Builder<'_>, pathset: &PathSet) -> bool {
@@ -435,7 +467,11 @@ impl StepDescription {
         false
     }
 
+    #[instrument(level = "trace", name = "StepDescription::run", skip_all)]
     fn run(v: &[StepDescription], builder: &Builder<'_>, paths: &[PathBuf]) {
+        trace!("running step descriptions");
+
+        trace!("collecting `should_run`s");
         let should_runs = v
             .iter()
             .map(|desc| (desc.should_run)(ShouldRun::new(builder, desc.kind)))
@@ -450,6 +486,9 @@ impl StepDescription {
             crate::exit!(1);
         }
 
+        trace!(
+            "performing sanity check on rules to make sure each `Step::should_run` has at least one `PathSet`"
+        );
         // sanity checks on rules
         for (desc, should_run) in v.iter().zip(&should_runs) {
             assert!(
@@ -459,6 +498,10 @@ impl StepDescription {
             );
         }
 
+        // NOTE: `--include-default-paths` was added in https://github.com/rust-lang/rust/pull/77762
+        // to help with release process (related to `build-manifest`) it seems. For normal
+        // contributor workflow purposes this can probably be ignored.
+        trace!("handling empty paths `Step::default`s");
         if paths.is_empty() || builder.config.include_default_paths {
             for (desc, should_run) in v.iter().zip(&should_runs) {
                 if desc.default && should_run.is_really_default() {
@@ -467,11 +510,16 @@ impl StepDescription {
             }
         }
 
+        // NOTE: there is a mix of on-disk paths vs step names (or aliases) here.
+        trace!(
+            "resolving on-disk paths relative to build source directory (make absolute -> strip prefix)"
+        );
         // Attempt to resolve paths to be relative to the builder source directory.
         let mut paths: Vec<PathBuf> = paths
             .iter()
             .map(|p| {
-                // If the path does not exist, it may represent the name of a Step, such as `tidy` in `x test tidy`
+                // If the path does not exist, it may represent the name of a Step, such as `tidy`
+                // in `x test tidy`.
                 if !p.exists() {
                     return p.clone();
                 }
@@ -486,66 +534,147 @@ impl StepDescription {
                 }
             })
             .collect();
+        trace!(?paths, "relativized on-disk paths + step names / aliases");
 
         remap_paths(&mut paths);
+        trace!(?paths, "remapped paths");
 
-        // Handle all test suite paths.
-        // (This is separate from the loop below to avoid having to handle multiple paths in `is_suite_path` somehow.)
-        paths.retain(|path| {
-            for (desc, should_run) in v.iter().zip(&should_runs) {
-                if let Some(suite) = should_run.is_suite_path(path) {
-                    desc.maybe_run(builder, vec![suite.clone()]);
-                    return false;
+        // NOTE: this is related to `Step::suite_path`, which means that compiletest test suites
+        // have **special handling** here compared to crate tests or tool-based tests!
+
+        // Handle all test suite paths. (This is separate from the loop below to avoid having to
+        // handle multiple paths in `is_suite_path` somehow.)
+
+        let suite_path_handling_span = trace_span!("compiletest suite path handling", ?paths);
+        suite_path_handling_span.in_scope(|| {
+            trace!("checking if paths matching compiletest `suite_path`s should be removed");
+            paths.retain(|path| {
+                for (desc, should_run) in v.iter().zip(&should_runs) {
+                    if let Some(suite) = should_run.is_suite_path(path) {
+                        trace!(?path, "removing path because it is a compiletest suite path");
+                        desc.maybe_run(builder, vec![suite.clone()]);
+                        return false;
+                    }
                 }
-            }
-            true
+                true
+            });
         });
+
+        trace!(?paths, "after removing compiletest suite paths");
 
         if paths.is_empty() {
             return;
         }
 
+        // NOTE: so this converts the previous `paths` into a collection of `CLIStepPath`s.
         let mut paths: Vec<CLIStepPath> = paths.into_iter().map(|p| p.into()).collect();
-        let mut path_lookup: Vec<(CLIStepPath, bool)> =
-            paths.clone().into_iter().map(|p| (p, false)).collect();
 
-        // List of `(usize, &StepDescription, Vec<PathSet>)` where `usize` is the closest index of a path
-        // compared to the given CLI paths. So we can respect to the CLI order by using this value to sort
-        // the steps.
-        let mut steps_to_run = vec![];
+        let ordinary_path_handling_span = trace_span!("ordinary path handling", ?paths);
+        ordinary_path_handling_span.in_scope(|| {
+            let mut path_lookup: Vec<(CLIStepPath, bool)> =
+                paths.clone().into_iter().map(|p| (p, false)).collect();
 
-        for (desc, should_run) in v.iter().zip(&should_runs) {
-            let pathsets = should_run.pathset_for_paths_removing_matches(&mut paths, desc.kind);
+            struct StepToRun<'step> {
+                closest_index: usize,
+                step_desc: &'step StepDescription,
+                pathsets: Vec<PathSet>,
+            }
 
-            // This value is used for sorting the step execution order.
-            // By default, `usize::MAX` is used as the index for steps to assign them the lowest priority.
-            //
-            // If we resolve the step's path from the given CLI input, this value will be updated with
-            // the step's actual index.
-            let mut closest_index = usize::MAX;
+            // List of `(usize, &StepDescription, Vec<PathSet>)` where `usize` is the closest index of a
+            // path compared to the given CLI paths. So we can respect to the CLI order by using this
+            // value to sort the steps.
+            let mut steps_to_run: Vec<StepToRun<'_>> = vec![];
 
-            // Find the closest index from the original list of paths given by the CLI input.
-            for (index, (path, is_used)) in path_lookup.iter_mut().enumerate() {
-                if !*is_used && !paths.contains(path) {
-                    closest_index = index;
-                    *is_used = true;
-                    break;
+            let steps_to_run_building_span = trace_span!("building `steps_to_run`");
+            steps_to_run_building_span.in_scope(|| {
+                // NOTE: previously in
+                // https://github.com/rust-lang/rust/commit/0da0a2196d2d7b37bd5e07ce18b03568e2711f39, we
+                // would actually remove paths as they're matched. However,
+                // https://github.com/rust-lang/rust/pull/133492 changed `PathSet` matching to *also* permit
+                // prefixes, which broke stuff like `./x check compiler --stage 0` due to dynamic step
+                // description registration order causing `compiler` path to be consumed by the first
+                // eligible step.
+                //
+                // QUESTION: does the current run-all-match scheme regress
+                // 0da0a2196d2d7b37bd5e07ce18b03568e2711f39's intention, in particular,
+                //
+                // > 5. Remove paths as they're matched
+                // >
+                // > This allows checking at the end that no invalid paths are left over. Note that if two
+                // > steps matched the same path, this will no longer run both; but that's a bug anyway.
+                for (desc, should_run) in v.iter().zip(&should_runs) {
+                    let _inner_span_guard =
+                        trace_span!(target: "STEPS_TO_RUN", "processing description \"{desc}\"", desc = desc.name)
+                            .entered();
+
+                    // NOTE: reproduced doc comment for `pathset_for_paths_removing_matches` here to inline
+                    // the reasoning.
+
+                    // Given a set of requested paths, return the subset which match the Step for this
+                    // `ShouldRun`, removing the matches from `paths`.
+                    //
+                    // NOTE: this returns multiple PathSets to allow for the possibility of multiple units
+                    // of work within the same step. For example, `test::Crate` allows testing multiple
+                    // crates in the same cargo invocation, which are put into separate sets because they
+                    // aren't aliases.
+                    //
+                    // The reason we return PathSet instead of PathBuf is to allow for aliases that mean the
+                    // same thing (for now, just `all_krates` and `paths`, but we may want to add an
+                    // `aliases` function in the future?)
+
+                    trace!(
+                        target: "STEPS_TO_RUN",
+                        ?paths,
+                        "desc.kind" = ?desc.kind,
+                        "before `pathset_for_paths_removing_matches`"
+                    );
+                    let pathsets =
+                        should_run.pathset_for_paths_removing_matches(&mut paths, desc.kind);
+                    trace!(
+                        target: "STEPS_TO_RUN",
+                        ?paths,
+                        "desc.kind" = ?desc.kind,
+                        ?pathsets,
+                        "after `pathset_for_paths_removing_matches`"
+                    );
+
+                    // This value is used for sorting the step execution order. By default, `usize::MAX` is
+                    // used as the index for steps to assign them the lowest priority.
+                    //
+                    // If we resolve the step's path from the given CLI input, this value will be updated
+                    // with the step's actual index.
+                    let mut closest_index = usize::MAX;
+
+                    // Find the closest index from the original list of paths given by the CLI input.
+                    for (index, (path, is_used)) in path_lookup.iter_mut().enumerate() {
+                        if !*is_used && !paths.contains(path) {
+                            closest_index = index;
+                            *is_used = true;
+                            break;
+                        }
+                    }
+
+                    steps_to_run.push(StepToRun { closest_index, step_desc: desc, pathsets });
                 }
-            }
+            });
 
-            steps_to_run.push((closest_index, desc, pathsets));
-        }
+            // Sort the steps before running them to respect the CLI order.
+            steps_to_run.sort_by_key(|s| s.closest_index);
+            trace!("finalized `steps_to_run`");
 
-        // Sort the steps before running them to respect the CLI order.
-        steps_to_run.sort_by_key(|(index, _, _)| *index);
+            // Handle all PathSets.
+            let run_all_span = trace_span!("running all `steps_to_run`");
+            run_all_span.in_scope(|| {
+                for StepToRun { step_desc, pathsets, .. } in steps_to_run {
+                    if !pathsets.is_empty() {
+                        trace!(desc_name = step_desc.name, ?pathsets, "invoking `Step::maybe_run`");
+                        step_desc.maybe_run(builder, pathsets);
+                    }
+                }
+            });
+        });
 
-        // Handle all PathSets.
-        for (_index, desc, pathsets) in steps_to_run {
-            if !pathsets.is_empty() {
-                desc.maybe_run(builder, pathsets);
-            }
-        }
-
+        trace!("performing path handling exhaustiveness check");
         paths.retain(|p| !p.will_be_executed);
 
         if !paths.is_empty() {
@@ -708,8 +837,9 @@ impl<'a> ShouldRun<'a> {
     /// within the same step. For example, `test::Crate` allows testing multiple crates in the same
     /// cargo invocation, which are put into separate sets because they aren't aliases.
     ///
-    /// The reason we return PathSet instead of PathBuf is to allow for aliases that mean the same thing
-    /// (for now, just `all_krates` and `paths`, but we may want to add an `aliases` function in the future?)
+    /// The reason we return PathSet instead of PathBuf is to allow for aliases that mean the same
+    /// thing (for now, just `all_krates` and `paths`, but we may want to add an `aliases` function
+    /// in the future?)
     fn pathset_for_paths_removing_matches(
         &self,
         paths: &mut [CLIStepPath],
@@ -846,7 +976,10 @@ impl Step for Libdir {
 }
 
 impl<'a> Builder<'a> {
+    #[instrument(level = "trace", name = "Builder::get_step_descriptions", skip_all)]
     fn get_step_descriptions(kind: Kind) -> Vec<StepDescription> {
+        trace!("dynamically building step descriptions");
+
         macro_rules! describe {
             ($($rule:ty),+ $(,)?) => {{
                 vec![$(StepDescription::from::<$rule>(kind)),+]
@@ -1134,6 +1267,7 @@ impl<'a> Builder<'a> {
         Some(help)
     }
 
+    #[instrument(level = "trace", name = "Builder::new_internal", skip_all)]
     fn new_internal(build: &Build, kind: Kind, paths: Vec<PathBuf>) -> Builder<'_> {
         Builder {
             build,
@@ -1146,8 +1280,11 @@ impl<'a> Builder<'a> {
         }
     }
 
+    #[instrument(level = "trace", name = "Builder::new", skip_all)]
     pub fn new(build: &Build) -> Builder<'_> {
         let paths = &build.config.paths;
+        trace!(?paths, "constructing new `Builder`");
+
         let (kind, paths) = match build.config.cmd {
             Subcommand::Build => (Kind::Build, &paths[..]),
             Subcommand::Check { .. } => (Kind::Check, &paths[..]),
@@ -1171,9 +1308,12 @@ impl<'a> Builder<'a> {
             Subcommand::Perf { .. } => (Kind::Perf, &paths[..]),
         };
 
+        trace!(?kind, ?paths);
+
         Self::new_internal(build, kind, paths.to_owned())
     }
 
+    #[instrument(level = "trace", name = "Builder::execute_cli", skip_all)]
     pub fn execute_cli(&self) {
         self.run_step_descriptions(&Builder::get_step_descriptions(self.kind), &self.paths);
     }
@@ -1194,6 +1334,7 @@ impl<'a> Builder<'a> {
         format!("https://doc.rust-lang.org/{channel}")
     }
 
+    #[instrument(level = "trace", name = "Builder::run_step_descriptions", skip_all)]
     fn run_step_descriptions(&self, v: &[StepDescription], paths: &[PathBuf]) {
         StepDescription::run(v, self, paths);
     }

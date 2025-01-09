@@ -6,6 +6,7 @@
 use std::path::{Path, PathBuf};
 
 use clap::{CommandFactory, Parser, ValueEnum};
+use tracing::*;
 
 use crate::core::build_steps::setup::Profile;
 use crate::core::builder::{Builder, Kind};
@@ -211,8 +212,11 @@ impl Flags {
         }
     }
 
+    #[instrument(level = "trace", name = "Flags::parse" skip_all)]
     pub fn parse(args: &[String]) -> Self {
-        Flags::parse_from(normalize_args(args))
+        let flags = Flags::parse_from(normalize_args(args));
+        trace!(?flags, "parsed as `Flags`");
+        flags
     }
 }
 

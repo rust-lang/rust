@@ -18,6 +18,7 @@ use build_helper::exit;
 use build_helper::git::{GitConfig, get_closest_merge_commit, output_result};
 use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
+use tracing::*;
 
 use crate::core::build_steps::compile::CODEGEN_BACKEND_PREFIX;
 use crate::core::build_steps::llvm;
@@ -1225,7 +1226,10 @@ define_config! {
 }
 
 impl Config {
+    #[instrument(level = "trace", skip_all)]
     pub fn default_opts() -> Config {
+        trace!("creating `Config` with default opts");
+
         Config {
             bypass_bootstrap_lock: false,
             llvm_optimize: true,
@@ -1309,10 +1313,12 @@ impl Config {
             })
     }
 
+    #[instrument(level = "trace", name = "Config::parse", skip_all)]
     pub fn parse(flags: Flags) -> Config {
         Self::parse_inner(flags, Self::get_toml)
     }
 
+    #[instrument(level = "trace", name = "Config::parse_inner", skip_all)]
     pub(crate) fn parse_inner(
         mut flags: Flags,
         get_toml: impl Fn(&Path) -> Result<TomlConfig, toml::de::Error>,
@@ -1356,16 +1362,18 @@ impl Config {
 
         // Infer the rest of the configuration.
 
-        // Infer the source directory. This is non-trivial because we want to support a downloaded bootstrap binary,
-        // running on a completely different machine from where it was compiled.
+        // Infer the source directory. This is non-trivial because we want to support a downloaded
+        // bootstrap binary, running on a completely different machine from where it was compiled.
         let mut cmd = helpers::git(None);
-        // NOTE: we cannot support running from outside the repository because the only other path we have available
-        // is set at compile time, which can be wrong if bootstrap was downloaded rather than compiled locally.
-        // We still support running outside the repository if we find we aren't in a git directory.
+        // NOTE: we cannot support running from outside the repository because the only other path
+        // we have available is set at compile time, which can be wrong if bootstrap was downloaded
+        // rather than compiled locally. We still support running outside the repository if we find
+        // we aren't in a git directory.
 
-        // NOTE: We get a relative path from git to work around an issue on MSYS/mingw. If we used an absolute path,
-        // and end up using MSYS's git rather than git-for-windows, we would get a unix-y MSYS path. But as bootstrap
-        // has already been (kinda-cross-)compiled to Windows land, we require a normal Windows path.
+        // NOTE: We get a relative path from git to work around an issue on MSYS/mingw. If we used
+        // an absolute path, and end up using MSYS's git rather than git-for-windows, we would get a
+        // unix-y MSYS path. But as bootstrap has already been (kinda-cross-)compiled to Windows
+        // land, we require a normal Windows path.
         cmd.arg("rev-parse").arg("--show-cdup");
         // Discard stderr because we expect this to fail when building from a tarball.
         let output = cmd
@@ -1376,8 +1384,8 @@ impl Config {
             .and_then(|output| if output.status.success() { Some(output) } else { None });
         if let Some(output) = output {
             let git_root_relative = String::from_utf8(output.stdout).unwrap();
-            // We need to canonicalize this path to make sure it uses backslashes instead of forward slashes,
-            // and to resolve any relative components.
+            // We need to canonicalize this path to make sure it uses backslashes instead of forward
+            // slashes, and to resolve any relative components.
             let git_root = env::current_dir()
                 .unwrap()
                 .join(PathBuf::from(git_root_relative.trim()))
@@ -1390,12 +1398,13 @@ impl Config {
                 Some(p) => PathBuf::from(p),
                 None => git_root,
             };
-            // If this doesn't have at least `stage0`, we guessed wrong. This can happen when,
-            // for example, the build directory is inside of another unrelated git directory.
-            // In that case keep the original `CARGO_MANIFEST_DIR` handling.
+            // If this doesn't have at least `stage0`, we guessed wrong. This can happen when, for
+            // example, the build directory is inside of another unrelated git directory. In that
+            // case keep the original `CARGO_MANIFEST_DIR` handling.
             //
-            // NOTE: this implies that downloadable bootstrap isn't supported when the build directory is outside
-            // the source directory. We could fix that by setting a variable from all three of python, ./x, and x.ps1.
+            // NOTE: this implies that downloadable bootstrap isn't supported when the build
+            // directory is outside the source directory. We could fix that by setting a variable
+            // from all three of python, ./x, and x.ps1.
             if git_root.join("src").join("stage0").exists() {
                 config.src = git_root;
             }
@@ -1416,7 +1425,8 @@ impl Config {
 
         config.stage0_metadata = build_helper::stage0_parser::parse_stage0_file();
 
-        // Read from `--config`, then `RUST_BOOTSTRAP_CONFIG`, then `./config.toml`, then `config.toml` in the root directory.
+        // Read from `--config`, then `RUST_BOOTSTRAP_CONFIG`, then `./config.toml`, then
+        // `config.toml` in the root directory.
         let toml_path = flags
             .config
             .clone()
@@ -1430,8 +1440,8 @@ impl Config {
         let file_content = t!(fs::read_to_string(config.src.join("src/ci/channel")));
         let ci_channel = file_content.trim_end();
 
-        // Give a hard error if `--config` or `RUST_BOOTSTRAP_CONFIG` are set to a missing path,
-        // but not if `config.toml` hasn't been created.
+        // Give a hard error if `--config` or `RUST_BOOTSTRAP_CONFIG` are set to a missing path, but
+        // not if `config.toml` hasn't been created.
         let mut toml = if !using_default_path || toml_path.exists() {
             config.config = Some(if cfg!(not(test)) {
                 toml_path.canonicalize().unwrap()

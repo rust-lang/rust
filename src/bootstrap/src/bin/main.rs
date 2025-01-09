@@ -15,24 +15,46 @@ use bootstrap::{
     human_readable_changes, t,
 };
 use build_helper::ci::CiEnv;
+use tracing::*;
+use tracing_subscriber::EnvFilter;
+use tracing_subscriber::prelude::*;
 
+fn setup_logging() {
+    let filter = EnvFilter::from_env("BOOTSTRAP_LOG");
+    let layer = tracing_tree::HierarchicalLayer::default()
+        .with_writer(std::io::stderr)
+        .with_ansi(true)
+        .with_targets(true)
+        .with_bracketed_fields(true)
+        .with_indent_amount(2)
+        .with_indent_lines(true);
+    let subscriber = tracing_subscriber::registry().with(filter).with(layer);
+
+    tracing::subscriber::set_global_default(subscriber).unwrap();
+}
+
+#[instrument(level = "trace", name = "main")]
 fn main() {
+    setup_logging();
     let args = env::args().skip(1).collect::<Vec<_>>();
+    trace!(?args, "main binary invoked");
 
     if Flags::try_parse_verbose_help(&args) {
         return;
     }
 
     let flags = Flags::parse(&args);
+    trace!("parsed `Flags`");
     let config = Config::parse(flags);
+    trace!("parsed `Config`");
 
     let mut build_lock;
     let _build_lock_guard;
 
     if !config.bypass_bootstrap_lock {
-        // Display PID of process holding the lock
-        // PID will be stored in a lock file
+        // Display PID of process holding the lock. PID will be stored in a lock file.
         let lock_path = config.out.join("lock");
+        trace!(lock_path = ?lock_path.display(), "establishing bootstrap lock");
         let pid = fs::read_to_string(&lock_path);
 
         build_lock = fd_lock::RwLock::new(t!(fs::OpenOptions::new()

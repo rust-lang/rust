@@ -16,6 +16,7 @@ use std::process::Stdio;
 use std::{env, fs, str};
 
 use serde_derive::Deserialize;
+use tracing::*;
 
 use crate::core::build_steps::tool::SourceType;
 use crate::core::build_steps::{dist, llvm};
@@ -98,13 +99,16 @@ impl Step for Std {
         run.crate_or_deps("sysroot").path("library").alias("core")
     }
 
+    #[instrument(level = "trace", name = "compile::Std::make_run", skip_all)]
     fn make_run(run: RunConfig<'_>) {
         let crates = std_crates_for_run_make(&run);
+        // NOTE: this is completely unrelated to the `run-make` test suite :3
+        trace!(crates_for_run_make = ?crates);
         let builder = run.builder;
 
-        // Force compilation of the standard library from source if the `library` is modified. This allows
-        // library team to compile the standard library without needing to compile the compiler with
-        // the `rust.download-rustc=true` option.
+        // Force compilation of the standard library from source if the `library` is modified. This
+        // allows library team to compile the standard library without needing to compile the
+        // compiler with the `rust.download-rustc=true` option.
         let force_recompile = builder.rust_info().is_managed_git_subrepository()
             && builder.download_rustc()
             && builder.config.last_modified_commit(&["library"], "download-rustc", true).is_none();
@@ -124,6 +128,17 @@ impl Step for Std {
     /// This will build the standard library for a particular stage of the build
     /// using the `compiler` targeting the `target` architecture. The artifacts
     /// created will also be linked into the sysroot directory.
+    #[instrument(
+        level = "trace",
+        name = "compile::Std::run",
+        skip_all,
+        fields(
+            target = ?self.target,
+            compiler = ?self.compiler,
+            subset_crates = ?self.crates,
+            is_for_mir_opt_tests,
+        ),
+    )]
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
         let compiler = self.compiler;
@@ -868,6 +883,7 @@ impl Step for Rustc {
     const ONLY_HOSTS: bool = true;
     const DEFAULT: bool = false;
 
+    #[instrument(level = "trace", name = "compile::Rustc::should_run", skip_all)]
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let mut crates = run.builder.in_tree_crates("rustc-main", None);
         for (i, krate) in crates.iter().enumerate() {
@@ -881,8 +897,10 @@ impl Step for Rustc {
         run.crates(crates)
     }
 
+    #[instrument(level = "trace", name = "compile::Rustc::make_run", skip_all)]
     fn make_run(run: RunConfig<'_>) {
         let crates = run.cargo_crates_in_set();
+        trace!(?crates);
         run.builder.ensure(Rustc {
             compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
             target: run.target,
@@ -895,6 +913,12 @@ impl Step for Rustc {
     /// This will build the compiler for a particular stage of the build using
     /// the `compiler` targeting the `target` architecture. The artifacts
     /// created will also be linked into the sysroot directory.
+    #[instrument(
+        level = "trace",
+        name = "compile::Rustc::run",
+        skip_all,
+        fields(target = ?self.target, previous_compiler = ?self.compiler, subset_crates = ?self.crates)
+    )]
     fn run(self, builder: &Builder<'_>) -> u32 {
         let compiler = self.compiler;
         let target = self.target;
@@ -1398,29 +1422,47 @@ impl Step for CodegenBackend {
         run.paths(&["compiler/rustc_codegen_cranelift", "compiler/rustc_codegen_gcc"])
     }
 
+    #[instrument(level = "trace", name = "compile::CodegenBackend::make_run", skip_all)]
     fn make_run(run: RunConfig<'_>) {
+        trace!("checking if `codegen-backend` config is needed");
         if needs_codegen_config(&run) {
             return;
         }
 
-        for backend in run.builder.config.codegen_backends(run.target) {
-            if backend == "llvm" {
-                continue; // Already built as part of rustc
-            }
+        let backends = run.builder.config.codegen_backends(run.target);
+        let codegen_backends_span =
+            trace_span!("building each requested codegen backend", ?backends);
+        codegen_backends_span.in_scope(|| {
+            for backend in backends {
+                if backend == "llvm" {
+                    trace!("skipping `llvm` because it's already built as part of rustc");
+                    continue;
+                }
 
-            run.builder.ensure(CodegenBackend {
-                target: run.target,
-                compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
-                backend: backend.clone(),
-            });
-        }
+                let codegen_backend_span = trace_span!("building codegen backend", ?backend);
+                codegen_backend_span.in_scope(|| {
+                    run.builder.ensure(CodegenBackend {
+                        target: run.target,
+                        compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
+                        backend: backend.clone(),
+                    });
+                });
+            }
+        });
     }
 
+    #[instrument(
+        level = "trace",
+        name = "compile::CodegenBackend::run",
+        skip_all,
+        fields(backend = self.backend)
+    )]
     fn run(self, builder: &Builder<'_>) {
         let compiler = self.compiler;
         let target = self.target;
         let backend = self.backend;
 
+        trace!(?compiler, ?target, "building a compiler");
         builder.ensure(Rustc::new(compiler, target));
 
         if builder.config.keep_stage.contains(&compiler.stage) {
@@ -1435,11 +1477,17 @@ impl Step for CodegenBackend {
 
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
         if compiler_to_use != compiler {
+            trace!(
+                ?compiler_to_use,
+                ?compiler,
+                "`compiler_to_use` diverges from available compiler, building codegen backend with `compiler_to_use`"
+            );
             builder.ensure(CodegenBackend { compiler: compiler_to_use, target, backend });
             return;
         }
 
         let out_dir = builder.cargo_out(compiler, Mode::Codegen, target);
+        trace!(?out_dir);
 
         let mut cargo = builder::Cargo::new(
             builder,
@@ -1457,7 +1505,11 @@ impl Step for CodegenBackend {
         let tmp_stamp = BuildStamp::new(&out_dir).with_prefix("tmp");
 
         let _guard = builder.msg_build(compiler, format_args!("codegen backend {backend}"), target);
+
+        trace!("running cargo to build codegen backend");
         let files = run_cargo(builder, cargo, vec![], &tmp_stamp, vec![], false, false);
+        trace!(built_artifacts = ?files, "built codegen backend artifacts");
+
         if builder.config.dry_run() {
             return;
         }
@@ -1478,6 +1530,7 @@ impl Step for CodegenBackend {
         }
         let stamp = build_stamp::codegen_backend_stamp(builder, compiler, target, &backend);
         let codegen_backend = codegen_backend.to_str().unwrap();
+        trace!(stamp_path = ?stamp.path(), ?codegen_backend);
         t!(stamp.add_stamp(codegen_backend).write());
     }
 }
