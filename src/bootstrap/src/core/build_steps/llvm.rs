@@ -922,7 +922,7 @@ impl Step for Enzyme {
         });
 
         let out_dir = builder.enzyme_out(target);
-        let stamp = BuildStamp::new(&out_dir).with_prefix("enzyme").with_prefix(smart_stamp_hash);
+        let stamp = BuildStamp::new(&out_dir).with_prefix("enzyme").with_stamp(smart_stamp_hash);
 
         if stamp.is_up_to_date() {
             if stamp.stamp.is_empty() {
