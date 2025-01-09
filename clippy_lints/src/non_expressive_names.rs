@@ -270,10 +270,10 @@ impl SimilarNamesNameVisitor<'_, '_, '_> {
             return;
         }
         self.0.names.push(ExistingName {
-            exemptions: get_exemptions(interned_name).unwrap_or(&[]),
             interned: ident.name,
             span: ident.span,
             len: count,
+            exemptions: get_exemptions(interned_name).unwrap_or(&[]),
         });
     }
 

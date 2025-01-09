@@ -209,5 +209,11 @@ error: redundant pattern matching, consider using `is_none()`
 LL |     let _ = matches!(x, None);
    |             ^^^^^^^^^^^^^^^^^ help: try: `x.is_none()`
 
-error: aborting due to 30 previous errors
+error: redundant pattern matching, consider using `is_none()`
+  --> tests/ui/redundant_pattern_matching_option.rs:172:17
+   |
+LL |         let _ = matches!(*p, None);
+   |                 ^^^^^^^^^^^^^^^^^^ help: try: `(*p).is_none()`
+
+error: aborting due to 31 previous errors
 

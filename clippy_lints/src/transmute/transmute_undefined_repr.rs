@@ -30,17 +30,14 @@ pub(super) fn check<'tcx>(
             | (ReducedTy::UnorderedFields(from_sub_ty), ReducedTy::OrderedFields(Some(to_sub_ty))) => {
                 from_ty = from_sub_ty;
                 to_ty = to_sub_ty;
-                continue;
             },
             (ReducedTy::OrderedFields(Some(from_sub_ty)), ReducedTy::Other(to_sub_ty)) if reduced_tys.to_fat_ptr => {
                 from_ty = from_sub_ty;
                 to_ty = to_sub_ty;
-                continue;
             },
             (ReducedTy::Other(from_sub_ty), ReducedTy::OrderedFields(Some(to_sub_ty))) if reduced_tys.from_fat_ptr => {
                 from_ty = from_sub_ty;
                 to_ty = to_sub_ty;
-                continue;
             },
 
             // ptr <-> ptr
@@ -50,7 +47,6 @@ pub(super) fn check<'tcx>(
             {
                 from_ty = from_sub_ty;
                 to_ty = to_sub_ty;
-                continue;
             },
 
             // fat ptr <-> (*size, *size)

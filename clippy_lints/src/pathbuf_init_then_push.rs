@@ -143,11 +143,11 @@ impl<'tcx> LateLintPass<'tcx> for PathbufThenPush<'tcx> {
             self.searcher = Some(PathbufPushSearcher {
                 local_id: id,
                 lhs_is_let: true,
-                name: name.name,
                 let_ty_span: local.ty.map(|ty| ty.span),
-                err_span: local.span,
                 init_val: *init_expr,
                 arg: None,
+                name: name.name,
+                err_span: local.span,
             });
         }
     }
@@ -165,10 +165,10 @@ impl<'tcx> LateLintPass<'tcx> for PathbufThenPush<'tcx> {
                 local_id: id,
                 lhs_is_let: false,
                 let_ty_span: None,
-                name: name.ident.name,
-                err_span: expr.span,
                 init_val: *right,
                 arg: None,
+                name: name.ident.name,
+                err_span: expr.span,
             });
         }
     }

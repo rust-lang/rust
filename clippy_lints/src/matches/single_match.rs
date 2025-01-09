@@ -345,7 +345,7 @@ impl<'a> PatState<'a> {
 
             PatKind::Guard(..) => {
                 matches!(self, Self::Wild)
-            }
+            },
 
             // Patterns for things which can only contain a single sub-pattern.
             PatKind::Binding(_, _, _, Some(pat)) | PatKind::Ref(pat, _) | PatKind::Box(pat) | PatKind::Deref(pat) => {
