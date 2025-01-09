@@ -742,11 +742,16 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             // Type-test failed. Report the error.
             let erased_generic_kind = infcx.tcx.erase_regions(type_test.generic_kind);
+            let original_lower_bound = type_test
+                .original
+                .as_ref()
+                .map(|original| original.lower_bound)
+                .unwrap_or(type_test.lower_bound);
 
             // Skip duplicate-ish errors.
             if deduplicate_errors.insert((
                 erased_generic_kind,
-                type_test.lower_bound,
+                original_lower_bound,
                 type_test.span,
             )) {
                 debug!(
