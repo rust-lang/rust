@@ -571,11 +571,8 @@ config_data! {
         /// avoid checking unnecessary things.
         cargo_buildScripts_useRustcWrapper: bool = true,
         /// List of cfg options to enable with the given values.
-        cargo_cfgs: FxHashMap<String, Option<String>> = {
-            let mut m = FxHashMap::default();
-            m.insert("debug_assertions".to_owned(), None);
-            m.insert("miri".to_owned(), None);
-            m
+        cargo_cfgs: Vec<String> = {
+            vec!["debug_assertion".into(), "miri".into()]
         },
         /// Extra arguments that are passed to every cargo invocation.
         cargo_extraArgs: Vec<String> = vec![],
@@ -1944,6 +1941,13 @@ impl Config {
                 global: CfgDiff::new(
                     self.cargo_cfgs(source_root)
                         .iter()
+                        // parse any cfg setting formatted as key=value or just key (without value)
+                        .filter_map(|s| {
+                            let mut sp = s.splitn(2, "=");
+                            let key = sp.next();
+                            let val = sp.next();
+                            key.map(|key| (key, val))
+                        })
                         .map(|(key, val)| match val {
                             Some(val) => CfgAtom::KeyValue {
                                 key: Symbol::intern(key),

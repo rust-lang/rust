@@ -94,10 +94,10 @@ avoid checking unnecessary things.
 --
 Default:
 ----
-{
-  "miri": null,
-  "debug_assertions": null
-}
+[
+  "debug_assertion",
+  "miri"
+]
 ----
 List of cfg options to enable with the given values.
 
