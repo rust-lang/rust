@@ -62,9 +62,8 @@ pub(crate) fn maybe_codegen<'tcx>(
     }
 }
 
-pub(crate) fn maybe_codegen_checked<'tcx>(
+pub(crate) fn maybe_codegen_mul_checked<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
-    bin_op: BinOp,
     lhs: CValue<'tcx>,
     rhs: CValue<'tcx>,
 ) -> Option<CValue<'tcx>> {
@@ -78,25 +77,19 @@ pub(crate) fn maybe_codegen_checked<'tcx>(
 
     let is_signed = type_sign(lhs.layout().ty);
 
-    match bin_op {
-        BinOp::Add | BinOp::Sub => None,
-        BinOp::Mul => {
-            let out_ty = Ty::new_tup(fx.tcx, &[lhs.layout().ty, fx.tcx.types.bool]);
-            let out_place = CPlace::new_stack_slot(fx, fx.layout_of(out_ty));
-            let param_types = vec![
-                AbiParam::special(fx.pointer_type, ArgumentPurpose::StructReturn),
-                AbiParam::new(types::I128),
-                AbiParam::new(types::I128),
-            ];
-            let args = [out_place.to_ptr().get_addr(fx), lhs.load_scalar(fx), rhs.load_scalar(fx)];
-            fx.lib_call(
-                if is_signed { "__rust_i128_mulo" } else { "__rust_u128_mulo" },
-                param_types,
-                vec![],
-                &args,
-            );
-            Some(out_place.to_cvalue(fx))
-        }
-        _ => bug!("binop {:?} on checked int/uint lhs: {:?} rhs: {:?}", bin_op, lhs, rhs),
-    }
+    let out_ty = Ty::new_tup(fx.tcx, &[lhs.layout().ty, fx.tcx.types.bool]);
+    let out_place = CPlace::new_stack_slot(fx, fx.layout_of(out_ty));
+    let param_types = vec![
+        AbiParam::special(fx.pointer_type, ArgumentPurpose::StructReturn),
+        AbiParam::new(types::I128),
+        AbiParam::new(types::I128),
+    ];
+    let args = [out_place.to_ptr().get_addr(fx), lhs.load_scalar(fx), rhs.load_scalar(fx)];
+    fx.lib_call(
+        if is_signed { "__rust_i128_mulo" } else { "__rust_u128_mulo" },
+        param_types,
+        vec![],
+        &args,
+    );
+    Some(out_place.to_cvalue(fx))
 }

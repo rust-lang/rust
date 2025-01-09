@@ -200,10 +200,6 @@ pub(crate) fn codegen_checked_int_binop<'tcx>(
     let lhs = in_lhs.load_scalar(fx);
     let rhs = in_rhs.load_scalar(fx);
 
-    if let Some(res) = crate::codegen_i128::maybe_codegen_checked(fx, bin_op, in_lhs, in_rhs) {
-        return res;
-    }
-
     let signed = type_sign(in_lhs.layout().ty);
 
     let (res, has_overflow) = match bin_op {
@@ -236,6 +232,10 @@ pub(crate) fn codegen_checked_int_binop<'tcx>(
             (val, has_overflow)
         }
         BinOp::Mul => {
+            if let Some(res) = crate::codegen_i128::maybe_codegen_mul_checked(fx, in_lhs, in_rhs) {
+                return res;
+            }
+
             let ty = fx.bcx.func.dfg.value_type(lhs);
             match ty {
                 types::I8 | types::I16 | types::I32 if !signed => {
