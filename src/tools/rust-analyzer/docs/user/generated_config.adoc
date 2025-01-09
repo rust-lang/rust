@@ -1051,6 +1051,13 @@ Show documentation.
 --
 Specify the characters to exclude from triggering typing assists. The default trigger characters are `.`, `=`, `<`, `>`, `{`, and `(`.
 --
+[[rust-analyzer.vfs.extraIncludes]]rust-analyzer.vfs.extraIncludes (default: `[]`)::
++
+--
+Additional paths to include in the VFS. Generally for code that is
+generated or otherwise managed by a build system outside of Cargo,
+though Cargo might be the eventual consumer.
+--
 [[rust-analyzer.workspace.discoverConfig]]rust-analyzer.workspace.discoverConfig (default: `null`)::
 +
 --

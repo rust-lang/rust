@@ -2722,6 +2722,19 @@
                 }
             },
             {
+                "title": "vfs",
+                "properties": {
+                    "rust-analyzer.vfs.extraIncludes": {
+                        "markdownDescription": "Additional paths to include in the VFS. Generally for code that is\ngenerated or otherwise managed by a build system outside of Cargo,\nthough Cargo might be the eventual consumer.",
+                        "default": [],
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            {
                 "title": "workspace",
                 "properties": {
                     "rust-analyzer.workspace.discoverConfig": {

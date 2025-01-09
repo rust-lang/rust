@@ -725,6 +725,10 @@ config_data! {
         /// available on a nightly build.
         rustfmt_rangeFormatting_enable: bool = false,
 
+        /// Additional paths to include in the VFS. Generally for code that is
+        /// generated or otherwise managed by a build system outside of Cargo,
+        /// though Cargo might be the eventual consumer.
+        vfs_extraIncludes: Vec<String> = vec![],
 
         /// Workspace symbol search kind.
         workspace_symbol_search_kind: WorkspaceSymbolSearchKindDef = WorkspaceSymbolSearchKindDef::OnlyTypes,
@@ -1923,6 +1927,13 @@ impl Config {
         });
         let sysroot_src =
             self.cargo_sysrootSrc(source_root).as_ref().map(|sysroot| self.root_path.join(sysroot));
+        let extra_includes = self
+            .vfs_extraIncludes(source_root)
+            .iter()
+            .map(String::as_str)
+            .map(AbsPathBuf::try_from)
+            .filter_map(Result::ok)
+            .collect();
 
         CargoConfig {
             all_targets: *self.cargo_allTargets(source_root),
@@ -1937,6 +1948,7 @@ impl Config {
             sysroot,
             sysroot_src,
             rustc_source,
+            extra_includes,
             cfg_overrides: project_model::CfgOverrides {
                 global: CfgDiff::new(
                     self.cargo_cfgs(source_root)
