@@ -4,13 +4,13 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, Severity};
 //
 // This diagnostic is shown for macro expansion errors.
 
-// Diagnostic: proc-macros-disabled
+// Diagnostic: attribute-expansion-disabled
 //
-// This diagnostic is shown for proc macros where proc macros have been disabled.
+// This diagnostic is shown for attribute proc macros when attribute expansions have been disabled.
 
 // Diagnostic: proc-macro-disabled
 //
-// This diagnostic is shown for proc macros that has been specifically disabled via `rust-analyzer.procMacro.ignored`.
+// This diagnostic is shown for proc macros that have been specifically disabled via `rust-analyzer.procMacro.ignored`.
 pub(crate) fn macro_error(ctx: &DiagnosticsContext<'_>, d: &hir::MacroError) -> Diagnostic {
     // Use more accurate position if available.
     let display_range = ctx.resolve_precise_location(&d.node, d.precise_location);
