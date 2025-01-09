@@ -165,10 +165,14 @@ impl<'tcx> NormalizeAfterErasingRegionsFolder<'tcx> {
         arg: ty::GenericArg<'tcx>,
     ) -> ty::GenericArg<'tcx> {
         let arg = self.typing_env.as_query_input(arg);
-        self.tcx.try_normalize_generic_arg_after_erasing_regions(arg).unwrap_or_else(|_| bug!(
-            "Failed to normalize {:?}, maybe try to call `try_normalize_erasing_regions` instead",
-            arg.value
-        ))
+        self.tcx.try_normalize_generic_arg_after_erasing_regions(arg).unwrap_or_else(|_| {
+            bug!(
+                "Failed to normalize {:?} in typing_env={:?}, \
+                maybe try to call `try_normalize_erasing_regions` instead",
+                arg.value,
+                self.typing_env,
+            )
+        })
     }
 }
 

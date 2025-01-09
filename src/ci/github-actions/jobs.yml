@@ -91,26 +91,26 @@ envs:
 # These jobs automatically inherit envs.pr, to avoid repeating
 # it in each job definition.
 pr:
-  - image: mingw-check
+  - name: mingw-check
     <<: *job-linux-4c
-  - image: mingw-check-tidy
+  - name: mingw-check-tidy
     continue_on_error: true
     <<: *job-linux-4c
-  - image: x86_64-gnu-llvm-18
+  - name: x86_64-gnu-llvm-18
     env:
       ENABLE_GCC_CODEGEN: "1"
       # We are adding (temporarily) a dummy commit on the compiler
       READ_ONLY_SRC: "0"
       DOCKER_SCRIPT: x86_64-gnu-llvm.sh
     <<: *job-linux-16c
-  - image: x86_64-gnu-tools
+  - name: x86_64-gnu-tools
     <<: *job-linux-16c
 
 # Jobs that run when you perform a try build (@bors try)
 # These jobs automatically inherit envs.try, to avoid repeating
 # it in each job definition.
 try:
-  - image: dist-x86_64-linux
+  - name: dist-x86_64-linux
     env:
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-linux-16c
@@ -123,106 +123,106 @@ auto:
   #   Linux/Docker builders   #
   #############################
 
-  - image: aarch64-gnu
+  - name: aarch64-gnu
     <<: *job-aarch64-linux
 
-  - image: aarch64-gnu-debug
+  - name: aarch64-gnu-debug
     <<: *job-aarch64-linux
 
-  - image: arm-android
+  - name: arm-android
     <<: *job-linux-4c
 
-  - image: armhf-gnu
+  - name: armhf-gnu
     <<: *job-linux-4c
 
-  - image: dist-aarch64-linux
+  - name: dist-aarch64-linux
     env:
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-linux-4c
 
-  - image: dist-android
+  - name: dist-android
     <<: *job-linux-4c
 
-  - image: dist-arm-linux
+  - name: dist-arm-linux
     <<: *job-linux-8c
 
-  - image: dist-armhf-linux
+  - name: dist-armhf-linux
     <<: *job-linux-4c
 
-  - image: dist-armv7-linux
+  - name: dist-armv7-linux
     <<: *job-linux-4c
 
-  - image: dist-i586-gnu-i586-i686-musl
+  - name: dist-i586-gnu-i586-i686-musl
     <<: *job-linux-4c
 
-  - image: dist-i686-linux
+  - name: dist-i686-linux
     <<: *job-linux-4c
 
-  - image: dist-loongarch64-linux
+  - name: dist-loongarch64-linux
     <<: *job-linux-4c
 
-  - image: dist-loongarch64-musl
+  - name: dist-loongarch64-musl
     <<: *job-linux-4c
 
-  - image: dist-ohos
+  - name: dist-ohos
     <<: *job-linux-4c
 
-  - image: dist-powerpc-linux
+  - name: dist-powerpc-linux
     <<: *job-linux-4c
 
-  - image: dist-powerpc64-linux
+  - name: dist-powerpc64-linux
     <<: *job-linux-4c
 
-  - image: dist-powerpc64le-linux
+  - name: dist-powerpc64le-linux
     <<: *job-linux-4c-largedisk
 
-  - image: dist-riscv64-linux
+  - name: dist-riscv64-linux
     <<: *job-linux-4c
 
-  - image: dist-s390x-linux
+  - name: dist-s390x-linux
     <<: *job-linux-4c
 
-  - image: dist-various-1
+  - name: dist-various-1
     <<: *job-linux-4c
 
-  - image: dist-various-2
+  - name: dist-various-2
     <<: *job-linux-4c
 
-  - image: dist-x86_64-freebsd
+  - name: dist-x86_64-freebsd
     <<: *job-linux-4c
 
-  - image: dist-x86_64-illumos
+  - name: dist-x86_64-illumos
     <<: *job-linux-4c
 
-  - image: dist-x86_64-linux
+  - name: dist-x86_64-linux
     env:
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-linux-16c
 
-  - image: dist-x86_64-linux-alt
+  - name: dist-x86_64-linux-alt
     env:
       IMAGE: dist-x86_64-linux
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-linux-16c
 
-  - image: dist-x86_64-musl
+  - name: dist-x86_64-musl
     env:
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-linux-4c
 
-  - image: dist-x86_64-netbsd
+  - name: dist-x86_64-netbsd
     <<: *job-linux-4c
 
   # The i686-gnu job is split into multiple jobs to run tests in parallel.
   # i686-gnu-1 skips tests that run in i686-gnu-2.
-  - image: i686-gnu-1
+  - name: i686-gnu-1
     env:
       IMAGE: i686-gnu
       DOCKER_SCRIPT: stage_2_test_set1.sh
     <<: *job-linux-4c
 
   # Skip tests that run in i686-gnu-1
-  - image: i686-gnu-2
+  - name: i686-gnu-2
     env:
       IMAGE: i686-gnu
       DOCKER_SCRIPT: stage_2_test_set2.sh
@@ -230,14 +230,14 @@ auto:
 
   # The i686-gnu-nopt job is split into multiple jobs to run tests in parallel.
   # i686-gnu-nopt-1 skips tests that run in i686-gnu-nopt-2
-  - image: i686-gnu-nopt-1
+  - name: i686-gnu-nopt-1
     env:
       IMAGE: i686-gnu-nopt
       DOCKER_SCRIPT: /scripts/stage_2_test_set1.sh
     <<: *job-linux-4c
 
   # Skip tests that run in i686-gnu-nopt-1
-  - image: i686-gnu-nopt-2
+  - name: i686-gnu-nopt-2
     env:
       IMAGE: i686-gnu-nopt
       DOCKER_SCRIPT: >-
@@ -245,13 +245,13 @@ auto:
         /scripts/stage_2_test_set2.sh
     <<: *job-linux-4c
 
-  - image: mingw-check
+  - name: mingw-check
     <<: *job-linux-4c
 
-  - image: test-various
+  - name: test-various
     <<: *job-linux-4c
 
-  - image: x86_64-fuchsia
+  - name: x86_64-fuchsia
     # Only run this job on the nightly channel. Fuchsia requires
     # nightly features to compile, and this job would fail if
     # executed on beta and stable.
@@ -260,10 +260,10 @@ auto:
 
   # Tests integration with Rust for Linux.
   # Builds stage 1 compiler and tries to compile a few RfL examples with it.
-  - image: x86_64-rust-for-linux
+  - name: x86_64-rust-for-linux
     <<: *job-linux-4c
 
-  - image: x86_64-gnu
+  - name: x86_64-gnu
     <<: *job-linux-4c
 
   # This job ensures commits landing on nightly still pass the full
@@ -271,7 +271,7 @@ auto:
   # depend on the channel being built (for example if they include the
   # channel name on the output), and this builder prevents landing
   # changes that would result in broken builds after a promotion.
-  - image: x86_64-gnu-stable
+  - name: x86_64-gnu-stable
     # Only run this job on the nightly channel. Running this on beta
     # could cause failures when `dev: 1` in `stage0.txt`, and running
     # this on stable is useless.
@@ -281,20 +281,20 @@ auto:
       RUST_CI_OVERRIDE_RELEASE_CHANNEL: stable
     <<: *job-linux-4c
 
-  - image: x86_64-gnu-aux
+  - name: x86_64-gnu-aux
     <<: *job-linux-4c
 
-  - image: x86_64-gnu-debug
+  - name: x86_64-gnu-debug
     # This seems to be needed because a full stage 2 build + run-make tests
     # overwhelms the storage capacity of the standard 4c runner.
     <<: *job-linux-4c-largedisk
 
-  - image: x86_64-gnu-distcheck
+  - name: x86_64-gnu-distcheck
     <<: *job-linux-8c
 
   # The x86_64-gnu-llvm-19 job is split into multiple jobs to run tests in parallel.
   # x86_64-gnu-llvm-19-1 skips tests that run in x86_64-gnu-llvm-19-{2,3}.
-  - image: x86_64-gnu-llvm-19-1
+  - name: x86_64-gnu-llvm-19-1
     env:
       RUST_BACKTRACE: 1
       IMAGE: x86_64-gnu-llvm-19
@@ -302,7 +302,7 @@ auto:
     <<: *job-linux-4c
 
   # Skip tests that run in x86_64-gnu-llvm-19-{1,3}
-  - image: x86_64-gnu-llvm-19-2
+  - name: x86_64-gnu-llvm-19-2
     env:
       RUST_BACKTRACE: 1
       IMAGE: x86_64-gnu-llvm-19
@@ -310,7 +310,7 @@ auto:
     <<: *job-linux-4c
 
   # Skip tests that run in x86_64-gnu-llvm-19-{1,2}
-  - image: x86_64-gnu-llvm-19-3
+  - name: x86_64-gnu-llvm-19-3
     env:
       RUST_BACKTRACE: 1
       IMAGE: x86_64-gnu-llvm-19
@@ -319,7 +319,7 @@ auto:
 
   # The x86_64-gnu-llvm-18 job is split into multiple jobs to run tests in parallel.
   # x86_64-gnu-llvm-18-1 skips tests that run in x86_64-gnu-llvm-18-{2,3}.
-  - image: x86_64-gnu-llvm-18-1
+  - name: x86_64-gnu-llvm-18-1
     env:
       RUST_BACKTRACE: 1
       READ_ONLY_SRC: "0"
@@ -328,7 +328,7 @@ auto:
     <<: *job-linux-4c
 
   # Skip tests that run in x86_64-gnu-llvm-18-{1,3}
-  - image: x86_64-gnu-llvm-18-2
+  - name: x86_64-gnu-llvm-18-2
     env:
       RUST_BACKTRACE: 1
       READ_ONLY_SRC: "0"
@@ -337,7 +337,7 @@ auto:
     <<: *job-linux-4c
 
   # Skip tests that run in x86_64-gnu-llvm-18-{1,2}
-  - image: x86_64-gnu-llvm-18-3
+  - name: x86_64-gnu-llvm-18-3
     env:
       RUST_BACKTRACE: 1
       READ_ONLY_SRC: "0"
@@ -345,10 +345,10 @@ auto:
       DOCKER_SCRIPT: x86_64-gnu-llvm3.sh
     <<: *job-linux-4c
 
-  - image: x86_64-gnu-nopt
+  - name: x86_64-gnu-nopt
     <<: *job-linux-4c
 
-  - image: x86_64-gnu-tools
+  - name: x86_64-gnu-tools
     env:
       DEPLOY_TOOLSTATES_JSON: toolstates-linux.json
     <<: *job-linux-4c
@@ -357,7 +357,7 @@ auto:
   #  macOS Builders  #
   ####################
 
-  - image: dist-x86_64-apple
+  - name: dist-x86_64-apple
     env:
       SCRIPT: ./x.py dist bootstrap --include-default-paths --host=x86_64-apple-darwin --target=x86_64-apple-darwin
       RUST_CONFIGURE_ARGS: --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set rust.lto=thin --set rust.codegen-units=1
@@ -371,7 +371,7 @@ auto:
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-macos-xl
 
-  - image: dist-apple-various
+  - name: dist-apple-various
     env:
       SCRIPT: ./x.py dist bootstrap --include-default-paths --host='' --target=aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim,aarch64-apple-ios-macabi,x86_64-apple-ios-macabi
       # Mac Catalyst cannot currently compile the sanitizer:
@@ -385,19 +385,19 @@ auto:
       NO_OVERFLOW_CHECKS: 1
     <<: *job-macos-xl
 
-  - image: x86_64-apple-1
+  - name: x86_64-apple-1
     env:
       <<: *env-x86_64-apple-tests
     <<: *job-macos-xl
 
-  - image: x86_64-apple-2
+  - name: x86_64-apple-2
     env:
       SCRIPT: ./x.py --stage 2 test tests/ui tests/rustdoc
       <<: *env-x86_64-apple-tests
     <<: *job-macos-xl
 
   # This target only needs to support 11.0 and up as nothing else supports the hardware
-  - image: dist-aarch64-apple
+  - name: dist-aarch64-apple
     env:
       SCRIPT: ./x.py dist bootstrap --include-default-paths --host=aarch64-apple-darwin --target=aarch64-apple-darwin
       RUST_CONFIGURE_ARGS: >-
@@ -421,7 +421,7 @@ auto:
     <<: *job-macos-m1
 
   # This target only needs to support 11.0 and up as nothing else supports the hardware
-  - image: aarch64-apple
+  - name: aarch64-apple
     env:
       SCRIPT: ./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin
       RUST_CONFIGURE_ARGS: >-
@@ -442,20 +442,20 @@ auto:
   #  Windows Builders  #
   ######################
 
-  - image: x86_64-msvc
+  - name: x86_64-msvc
     env:
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
       SCRIPT: make ci-msvc
     <<: *job-windows-8c
 
-  - image: i686-msvc
+  - name: i686-msvc
     env:
       RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
       SCRIPT: make ci-msvc
     <<: *job-windows-8c
 
   # x86_64-msvc-ext is split into multiple jobs to run tests in parallel.
-  - image: x86_64-msvc-ext1
+  - name: x86_64-msvc-ext1
     env:
       SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld
@@ -464,7 +464,7 @@ auto:
   # Temporary builder to workaround CI issues
   # See <https://github.com/rust-lang/rust/issues/127883>
   #FIXME: Remove this, and re-enable the same tests in `checktools.sh`, once CI issues are fixed.
-  - image: x86_64-msvc-ext2
+  - name: x86_64-msvc-ext2
     env:
       SCRIPT: >
         python x.py test --stage 2 src/tools/miri --target aarch64-apple-darwin --test-args pass &&
@@ -476,7 +476,7 @@ auto:
     <<: *job-windows
 
   # Run `checktools.sh` and upload the toolstate file.
-  - image: x86_64-msvc-ext3
+  - name: x86_64-msvc-ext3
     env:
       SCRIPT: src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
       HOST_TARGET: x86_64-pc-windows-msvc
@@ -500,7 +500,7 @@ auto:
   # came from the mingw-w64 SourceForge download site. Unfortunately
   # SourceForge is notoriously flaky, so we mirror it on our own infrastructure.
 
-  - image: i686-mingw
+  - name: i686-mingw
     env:
       RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
       SCRIPT: make ci-mingw
@@ -510,7 +510,7 @@ auto:
     <<: *job-windows-8c
 
   # x86_64-mingw is split into two jobs to run tests in parallel.
-  - image: x86_64-mingw-1
+  - name: x86_64-mingw-1
     env:
       SCRIPT: make ci-mingw-x
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
@@ -519,7 +519,7 @@ auto:
       NO_DOWNLOAD_CI_LLVM: 1
     <<: *job-windows
 
-  - image: x86_64-mingw-2
+  - name: x86_64-mingw-2
     env:
       SCRIPT: make ci-mingw-bootstrap
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
@@ -528,7 +528,7 @@ auto:
       NO_DOWNLOAD_CI_LLVM: 1
     <<: *job-windows
 
-  - image: dist-x86_64-msvc
+  - name: dist-x86_64-msvc
     env:
       RUST_CONFIGURE_ARGS: >-
         --build=x86_64-pc-windows-msvc
@@ -542,7 +542,7 @@ auto:
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-windows-8c
 
-  - image: dist-i686-msvc
+  - name: dist-i686-msvc
     env:
       RUST_CONFIGURE_ARGS: >-
         --build=i686-pc-windows-msvc
@@ -555,7 +555,7 @@ auto:
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-windows
 
-  - image: dist-aarch64-msvc
+  - name: dist-aarch64-msvc
     env:
       RUST_CONFIGURE_ARGS: >-
         --build=x86_64-pc-windows-msvc
@@ -567,7 +567,7 @@ auto:
       DIST_REQUIRE_ALL_TOOLS: 1
     <<: *job-windows
 
-  - image: dist-i686-mingw
+  - name: dist-i686-mingw
     env:
       RUST_CONFIGURE_ARGS: >-
         --build=i686-pc-windows-gnu
@@ -580,7 +580,7 @@ auto:
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-windows
 
-  - image: dist-x86_64-mingw
+  - name: dist-x86_64-mingw
     env:
       SCRIPT: python x.py dist bootstrap --include-default-paths
       RUST_CONFIGURE_ARGS: >-
@@ -593,7 +593,7 @@ auto:
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-windows
 
-  - image: dist-x86_64-msvc-alt
+  - name: dist-x86_64-msvc-alt
     env:
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
       SCRIPT: python x.py dist bootstrap --include-default-paths

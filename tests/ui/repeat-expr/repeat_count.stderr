@@ -16,6 +16,12 @@ LL |     let b = [0; ()];
    |                 ^^ expected `usize`, found `()`
 
 error[E0308]: mismatched types
+  --> $DIR/repeat_count.rs:31:17
+   |
+LL |     let g = [0; G { g: () }];
+   |                 ^^^^^^^^^^^ expected `usize`, found `G`
+
+error[E0308]: mismatched types
   --> $DIR/repeat_count.rs:10:17
    |
 LL |     let c = [0; true];
@@ -32,12 +38,6 @@ error[E0308]: mismatched types
    |
 LL |     let e = [0; "foo"];
    |                 ^^^^^ expected `usize`, found `&str`
-
-error[E0308]: mismatched types
-  --> $DIR/repeat_count.rs:31:17
-   |
-LL |     let g = [0; G { g: () }];
-   |                 ^^^^^^^^^^^ expected `usize`, found `G`
 
 error[E0308]: mismatched types
   --> $DIR/repeat_count.rs:19:17

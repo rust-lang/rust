@@ -13,7 +13,7 @@ use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{self as hir, ByRef, Mutability, RangeEnd};
 use rustc_index::Idx;
 use rustc_lint as lint;
-use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
+use rustc_middle::mir::interpret::LitToConstInput;
 use rustc_middle::thir::{
     Ascription, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
 };
@@ -669,11 +669,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         let ct_ty = self.typeck_results.node_type(expr.hir_id);
         let lit_input = LitToConstInput { lit: &lit.node, ty: ct_ty, neg };
-        match self.tcx.at(expr.span).lit_to_const(lit_input) {
-            Ok(constant) => self.const_to_pat(constant, ct_ty, expr.hir_id, lit.span).kind,
-            Err(LitToConstError::Reported(e)) => PatKind::Error(e),
-            Err(LitToConstError::TypeError) => bug!("lower_lit: had type error"),
-        }
+        let constant = self.tcx.at(expr.span).lit_to_const(lit_input);
+        self.const_to_pat(constant, ct_ty, expr.hir_id, lit.span).kind
     }
 }
 
