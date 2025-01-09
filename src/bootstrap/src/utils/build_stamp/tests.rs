@@ -42,3 +42,19 @@ fn test_is_up_to_date() {
 
     build_stamp.remove().unwrap();
 }
+
+#[test]
+fn test_with_prefix() {
+    let dir = temp_dir();
+
+    let stamp = BuildStamp::new(&dir).with_stamp("v1.0.0");
+    assert_eq!(stamp.path.file_name().unwrap(), ".stamp");
+
+    let stamp = stamp.with_prefix("test");
+    let expected_filename = ".test-stamp";
+    assert_eq!(stamp.path.file_name().unwrap(), expected_filename);
+
+    let stamp = stamp.with_prefix("extra-prefix");
+    let expected_filename = ".extra-prefix-test-stamp";
+    assert_eq!(stamp.path.file_name().unwrap(), expected_filename);
+}
