@@ -138,6 +138,7 @@ impl StaticIndex<'_> {
                     render_colons: true,
                     discriminant_hints: crate::DiscriminantHints::Fieldless,
                     type_hints: true,
+                    sized_bound: false,
                     parameter_hints: true,
                     generic_parameter_hints: crate::GenericParameterHints {
                         type_hints: false,
