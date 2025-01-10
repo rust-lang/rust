@@ -49,6 +49,7 @@ impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
                         ctx.simplify_ptr_aggregate(rvalue);
                         ctx.simplify_cast(rvalue);
                         ctx.simplify_repeated_aggregate(rvalue);
+                        ctx.simplify_repeat_once(rvalue);
                     }
                     _ => {}
                 }
@@ -204,6 +205,18 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
                     return;
                 }
             }
+        }
+    }
+
+    /// Simplify `[x; 1]` to just `[x]`.
+    fn simplify_repeat_once(&self, rvalue: &mut Rvalue<'tcx>) {
+        if let Rvalue::Repeat(operand, count) = rvalue
+            && let Some(1) = count.try_to_target_usize(self.tcx)
+        {
+            *rvalue = Rvalue::Aggregate(
+                Box::new(AggregateKind::Array(operand.ty(self.local_decls, self.tcx))),
+                [operand.clone()].into(),
+            );
         }
     }
 
