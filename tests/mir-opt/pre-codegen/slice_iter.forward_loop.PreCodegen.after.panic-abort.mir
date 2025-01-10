@@ -32,10 +32,12 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
                     scope 7 {
                     }
                     scope 12 (inlined without_provenance::<T>) {
+                        scope 13 (inlined without_provenance_mut::<T>) {
+                        }
                     }
-                    scope 13 (inlined NonNull::<T>::as_ptr) {
+                    scope 14 (inlined NonNull::<T>::as_ptr) {
                     }
-                    scope 14 (inlined std::ptr::mut_ptr::<impl *mut T>::add) {
+                    scope 15 (inlined std::ptr::mut_ptr::<impl *mut T>::add) {
                     }
                 }
                 scope 8 (inlined <NonNull<[T]> as From<&[T]>>::from) {
@@ -51,7 +53,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
             }
         }
     }
-    scope 15 (inlined <std::slice::Iter<'_, T> as IntoIterator>::into_iter) {
+    scope 16 (inlined <std::slice::Iter<'_, T> as IntoIterator>::into_iter) {
     }
 
     bb0: {

@@ -596,12 +596,7 @@ pub const fn null_mut<T: ?Sized + Thin>() -> *mut T {
 #[stable(feature = "strict_provenance", since = "1.84.0")]
 #[rustc_const_stable(feature = "strict_provenance", since = "1.84.0")]
 pub const fn without_provenance<T>(addr: usize) -> *const T {
-    // An int-to-pointer transmute currently has exactly the intended semantics: it creates a
-    // pointer without provenance. Note that this is *not* a stable guarantee about transmute
-    // semantics, it relies on sysroot crates having special status.
-    // SAFETY: every valid integer is also a valid pointer (as long as you don't dereference that
-    // pointer).
-    unsafe { mem::transmute(addr) }
+    without_provenance_mut(addr)
 }
 
 /// Creates a new pointer that is dangling, but non-null and well-aligned.
@@ -618,7 +613,7 @@ pub const fn without_provenance<T>(addr: usize) -> *const T {
 #[stable(feature = "strict_provenance", since = "1.84.0")]
 #[rustc_const_stable(feature = "strict_provenance", since = "1.84.0")]
 pub const fn dangling<T>() -> *const T {
-    without_provenance(mem::align_of::<T>())
+    dangling_mut()
 }
 
 /// Creates a pointer with the given address and no [provenance][crate::ptr#provenance].
@@ -661,7 +656,7 @@ pub const fn without_provenance_mut<T>(addr: usize) -> *mut T {
 #[stable(feature = "strict_provenance", since = "1.84.0")]
 #[rustc_const_stable(feature = "strict_provenance", since = "1.84.0")]
 pub const fn dangling_mut<T>() -> *mut T {
-    without_provenance_mut(mem::align_of::<T>())
+    NonNull::dangling().as_ptr()
 }
 
 /// Converts an address back to a pointer, picking up some previously 'exposed'
