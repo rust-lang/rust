@@ -777,7 +777,7 @@ pub fn with_exposed_provenance_mut<T>(addr: usize) -> *mut T {
 /// # type T = i32;
 /// # fn foo() -> T { 42 }
 /// // The temporary holding the return value of `foo` does *not* have its lifetime extended,
-/// // because the surrounding expression involves no function call.
+/// // because the surrounding expression involves a function call.
 /// let p = ptr::from_ref(&foo());
 /// unsafe { p.read() }; // UB! Reading from a dangling pointer ⚠️
 /// ```
@@ -828,7 +828,7 @@ pub const fn from_ref<T: ?Sized>(r: &T) -> *const T {
 /// # type T = i32;
 /// # fn foo() -> T { 42 }
 /// // The temporary holding the return value of `foo` does *not* have its lifetime extended,
-/// // because the surrounding expression involves no function call.
+/// // because the surrounding expression involves a function call.
 /// let p = ptr::from_mut(&mut foo());
 /// unsafe { p.write(T::default()) }; // UB! Writing to a dangling pointer ⚠️
 /// ```
