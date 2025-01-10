@@ -4700,6 +4700,10 @@ fn hover_lifetime() {
             *'lifetime*
 
             ```rust
+            ra_test_fixture::foo
+            ```
+
+            ```rust
             'lifetime
             ```
         "#]],
@@ -4730,6 +4734,10 @@ impl<T: TraitA + TraitB> Foo<T$0> where T: Sized {}
             *T*
 
             ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
             T: TraitA + TraitB
             ```
         "#]],
@@ -4744,6 +4752,10 @@ impl<T> Foo<T$0> {}
             *T*
 
             ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
             T
             ```
         "#]],
@@ -4756,6 +4768,10 @@ impl<T: 'static> Foo<T$0> {}
 "#,
         expect![[r#"
             *T*
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
 
             ```rust
             T: 'static
@@ -4778,6 +4794,10 @@ impl<T$0: Trait> Foo<T> {}
             *T*
 
             ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
             T: Trait
             ```
         "#]],
@@ -4791,6 +4811,10 @@ impl<T$0: Trait + ?Sized> Foo<T> {}
 "#,
         expect![[r#"
             *T*
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
 
             ```rust
             T: Trait + ?Sized
@@ -4811,6 +4835,10 @@ fn foo<T$0>() {}
 "#,
             expect![[r#"
                 *T*
+
+                ```rust
+                ra_test_fixture::foo
+                ```
 
                 ```rust
                 T
@@ -4834,6 +4862,10 @@ fn foo<T$0: Sized>() {}
                 *T*
 
                 ```rust
+                ra_test_fixture::foo
+                ```
+
+                ```rust
                 T
                 ```
 
@@ -4853,6 +4885,10 @@ fn foo<T$0: ?Sized>() {}
 "#,
             expect![[r#"
                 *T*
+
+                ```rust
+                ra_test_fixture::foo
+                ```
 
                 ```rust
                 T: ?Sized
@@ -4877,6 +4913,10 @@ fn foo<T$0: Trait>() {}
                 *T*
 
                 ```rust
+                ra_test_fixture::foo
+                ```
+
+                ```rust
                 T: Trait
                 ```
 
@@ -4897,6 +4937,10 @@ fn foo<T$0: Trait + Sized>() {}
 "#,
             expect![[r#"
                 *T*
+
+                ```rust
+                ra_test_fixture::foo
+                ```
 
                 ```rust
                 T: Trait
@@ -4921,6 +4965,10 @@ fn foo<T$0: Trait + ?Sized>() {}
                 *T*
 
                 ```rust
+                ra_test_fixture::foo
+                ```
+
+                ```rust
                 T: Trait + ?Sized
                 ```
 
@@ -4940,6 +4988,10 @@ fn foo<T$0: ?Sized + Sized + Sized>() {}
 "#,
             expect![[r#"
                 *T*
+
+                ```rust
+                ra_test_fixture::foo
+                ```
 
                 ```rust
                 T
@@ -4962,6 +5014,10 @@ fn foo<T$0: Sized + ?Sized + Sized + Trait>() {}
 "#,
             expect![[r#"
                 *T*
+
+                ```rust
+                ra_test_fixture::foo
+                ```
 
                 ```rust
                 T: Trait
@@ -5009,6 +5065,10 @@ impl<const LEN: usize> Foo<LEN$0> {}
 "#,
         expect![[r#"
             *LEN*
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
 
             ```rust
             const LEN: usize
@@ -7857,7 +7917,7 @@ fn test() {
             *foo*
 
             ```rust
-            ra_test_fixture::S
+            ra_test_fixture::m::S
             ```
 
             ```rust
@@ -7886,7 +7946,7 @@ fn test() {
             *foo*
 
             ```rust
-            ra_test_fixture::S
+            ra_test_fixture::m::S
             ```
 
             ```rust
@@ -7916,7 +7976,7 @@ mod m {
             *foo*
 
             ```rust
-            ra_test_fixture::S
+            ra_test_fixture::m::inner::S
             ```
 
             ```rust
@@ -7946,7 +8006,7 @@ fn test() {
             *A*
 
             ```rust
-            ra_test_fixture::S
+            ra_test_fixture::m::S
             ```
 
             ```rust
@@ -7975,7 +8035,7 @@ fn test() {
             *A*
 
             ```rust
-            ra_test_fixture::S
+            ra_test_fixture::m::S
             ```
 
             ```rust
@@ -8005,7 +8065,7 @@ mod m {
             *A*
 
             ```rust
-            ra_test_fixture::S
+            ra_test_fixture::m::inner::S
             ```
 
             ```rust
