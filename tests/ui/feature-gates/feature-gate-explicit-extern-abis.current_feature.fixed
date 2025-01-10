@@ -21,7 +21,7 @@
 #![cfg_attr(future_feature, feature(explicit_extern_abis))]
 #![cfg_attr(current_feature, feature(explicit_extern_abis))]
 
-extern fn _foo() {}
+extern "C" fn _foo() {}
 //[current]~^ WARN extern declarations without an explicit ABI are deprecated
 //[current_feature]~^^ WARN extern declarations without an explicit ABI are deprecated
 //[future]~^^^ WARN extern declarations without an explicit ABI are deprecated
