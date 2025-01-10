@@ -22,6 +22,7 @@ error: fn_abi_of(pass_zst) = FnAbi {
                            },
                            max_repr_align: None,
                            unadjusted_abi_align: $SOME_ALIGN,
+                           randomization_seed: 0,
                        },
                    },
                    mode: Indirect {
@@ -60,6 +61,7 @@ error: fn_abi_of(pass_zst) = FnAbi {
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: $SOME_ALIGN,
+                       randomization_seed: 0,
                    },
                },
                mode: Ignore,
