@@ -3172,6 +3172,9 @@ fn check_incompatible_options_for_ci_rustc(
 
             let profiler = &ci_cfg.profiler;
             err!(current_cfg.profiler, profiler, "build");
+
+            let optimized_compiler_builtins = &ci_cfg.optimized_compiler_builtins;
+            err!(current_cfg.optimized_compiler_builtins, optimized_compiler_builtins, "build");
         }
     }
 
