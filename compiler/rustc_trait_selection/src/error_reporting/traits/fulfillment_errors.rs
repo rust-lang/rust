@@ -580,8 +580,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             self.tcx.hir_node_by_def_id(obligation.cause.body_id)
                             && let hir::ItemKind::Impl(impl_) = item.kind
                             && let None = impl_.of_trait
-                            && let hir::TyKind::TraitObject(_, _, syntax) = impl_.self_ty.kind
-                            && let TraitObjectSyntax::None = syntax
+                            && let hir::TyKind::TraitObject(_, tagged_ptr) = impl_.self_ty.kind
+                            && let TraitObjectSyntax::None = tagged_ptr.tag()
                             && impl_.self_ty.span.edition().at_least_rust_2021()
                         {
                             // Silence the dyn-compatibility error in favor of the missing dyn on

@@ -572,16 +572,16 @@ pub struct TraitObjectVisitor<'tcx>(pub Vec<&'tcx hir::Ty<'tcx>>, pub crate::hir
 impl<'v> hir::intravisit::Visitor<'v> for TraitObjectVisitor<'v> {
     fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
         match ty.kind {
-            hir::TyKind::TraitObject(
-                _,
-                hir::Lifetime {
+            hir::TyKind::TraitObject(_, tagged_ptr)
+                if let hir::Lifetime {
                     res:
                         hir::LifetimeName::ImplicitObjectLifetimeDefault | hir::LifetimeName::Static,
                     ..
-                },
-                _,
-            )
-            | hir::TyKind::OpaqueDef(..) => self.0.push(ty),
+                } = tagged_ptr.pointer() =>
+            {
+                self.0.push(ty)
+            }
+            hir::TyKind::OpaqueDef(..) => self.0.push(ty),
             _ => {}
         }
         hir::intravisit::walk_ty(self, ty);

@@ -2311,7 +2311,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     tcx.late_bound_vars(hir_ty.hir_id),
                 ),
             ),
-            hir::TyKind::TraitObject(bounds, lifetime, repr) => {
+            hir::TyKind::TraitObject(bounds, tagged_ptr) => {
+                let lifetime = tagged_ptr.pointer();
+                let repr = tagged_ptr.tag();
+
                 if let Some(guar) = self.prohibit_or_lint_bare_trait_object_ty(hir_ty) {
                     // Don't continue with type analysis if the `dyn` keyword is missing
                     // It generates confusing errors, especially if the user meant to use another

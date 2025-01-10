@@ -1281,7 +1281,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 }
             },
             TyKind::Path(qpath) => self.hash_qpath(qpath),
-            TyKind::TraitObject(_, lifetime, _) => {
+            TyKind::TraitObject(_, lifetime) => {
                 self.hash_lifetime(lifetime);
             },
             TyKind::Typeof(anon_const) => {

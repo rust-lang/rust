@@ -402,7 +402,8 @@ impl<'a> State<'a> {
                 self.print_bounds("impl", bounds);
             }
             hir::TyKind::Path(ref qpath) => self.print_qpath(qpath, false),
-            hir::TyKind::TraitObject(bounds, lifetime, syntax) => {
+            hir::TyKind::TraitObject(bounds, lifetime) => {
+                let syntax = lifetime.tag();
                 match syntax {
                     ast::TraitObjectSyntax::Dyn => self.word_nbsp("dyn"),
                     ast::TraitObjectSyntax::DynStar => self.word_nbsp("dyn*"),
@@ -421,7 +422,7 @@ impl<'a> State<'a> {
                 if !lifetime.is_elided() {
                     self.nbsp();
                     self.word_space("+");
-                    self.print_lifetime(lifetime);
+                    self.print_lifetime(lifetime.pointer());
                 }
             }
             hir::TyKind::Array(ty, ref length) => {

@@ -922,7 +922,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) -> V::Resul
             try_visit!(visitor.visit_ty(ty));
             try_visit!(visitor.visit_const_arg(length));
         }
-        TyKind::TraitObject(bounds, ref lifetime, _syntax) => {
+        TyKind::TraitObject(bounds, ref lifetime) => {
             for bound in bounds {
                 try_visit!(visitor.visit_poly_trait_ref(bound));
             }

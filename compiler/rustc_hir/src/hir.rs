@@ -15,6 +15,7 @@ pub use rustc_ast::{
 };
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
+use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::def_id::LocalDefId;
@@ -764,11 +765,8 @@ impl<'hir> Generics<'hir> {
                     && let [.., segment] = trait_ref.path.segments
                     && let Some(ret_ty) = segment.args().paren_sugar_output()
                     && let ret_ty = ret_ty.peel_refs()
-                    && let TyKind::TraitObject(
-                        _,
-                        _,
-                        TraitObjectSyntax::Dyn | TraitObjectSyntax::DynStar,
-                    ) = ret_ty.kind
+                    && let TyKind::TraitObject(_, tagged_ptr) = ret_ty.kind
+                    && let TraitObjectSyntax::Dyn | TraitObjectSyntax::DynStar = tagged_ptr.tag()
                     && ret_ty.span.can_be_used_for_suggestions()
                 {
                     Some(ret_ty.span)
@@ -3230,7 +3228,10 @@ pub enum TyKind<'hir> {
     TraitAscription(GenericBounds<'hir>),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
-    TraitObject(&'hir [PolyTraitRef<'hir>], &'hir Lifetime, TraitObjectSyntax),
+    ///
+    /// We use pointer tagging to represent a `&'hir Lifetime` and `TraitObjectSyntax` pair
+    /// as otherwise this type being `repr(C)` would result in `TyKind` increasing in size.
+    TraitObject(&'hir [PolyTraitRef<'hir>], TaggedRef<'hir, Lifetime, TraitObjectSyntax>),
     /// Unused for now.
     Typeof(&'hir AnonConst),
     /// `TyKind::Infer` means the type should be inferred instead of it having been
