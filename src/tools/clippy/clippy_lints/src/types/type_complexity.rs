@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint;
-use rustc_hir as hir;
-use rustc_hir::intravisit::{Visitor, walk_inf, walk_ty};
-use rustc_hir::{GenericParamKind, TyKind};
+use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_ty};
+use rustc_hir::{self as hir, AmbigArg, GenericParamKind, TyKind};
 use rustc_lint::LateContext;
+use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
 use super::TYPE_COMPLEXITY;
@@ -10,7 +10,7 @@ use super::TYPE_COMPLEXITY;
 pub(super) fn check(cx: &LateContext<'_>, ty: &hir::Ty<'_>, type_complexity_threshold: u64) -> bool {
     let score = {
         let mut visitor = TypeComplexityVisitor { score: 0, nest: 1 };
-        visitor.visit_ty(ty);
+        visitor.visit_unambig_ty(ty);
         visitor.score
     };
 
@@ -36,15 +36,15 @@ struct TypeComplexityVisitor {
 }
 
 impl<'tcx> Visitor<'tcx> for TypeComplexityVisitor {
-    fn visit_infer(&mut self, inf: &'tcx hir::InferArg) {
+    fn visit_infer(&mut self, inf_id: hir::HirId, _inf_span: Span, _kind: InferKind<'tcx>) -> Self::Result {
         self.score += 1;
-        walk_inf(self, inf);
+        self.visit_id(inf_id);
     }
 
-    fn visit_ty(&mut self, ty: &'tcx hir::Ty<'_>) {
+    fn visit_ty(&mut self, ty: &'tcx hir::Ty<'_, AmbigArg>) {
         let (add_score, sub_nest) = match ty.kind {
-            // _, &x and *x have only small overhead; don't mess with nesting level
-            TyKind::Infer | TyKind::Ptr(..) | TyKind::Ref(..) => (1, 0),
+            // &x and *x have only small overhead; don't mess with nesting level
+            TyKind::Ptr(..) | TyKind::Ref(..) => (1, 0),
 
             // the "normal" components of a type: named types, arrays/tuples
             TyKind::Path(..) | TyKind::Slice(..) | TyKind::Tup(..) | TyKind::Array(..) => (10 * self.nest, 1),
