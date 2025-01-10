@@ -37,7 +37,7 @@ def add_job_properties(jobs: List[Dict], prefix: str) -> List[Job]:
         # Create a copy of the `job` dictionary to avoid modifying `jobs`
         new_job = dict(job)
         new_job["image"] = get_job_image(new_job)
-        new_job["name"] = f"{prefix} - {new_job['name']}"
+        new_job["full_name"] = f"{prefix} - {new_job['name']}"
         modified_jobs.append(new_job)
     return modified_jobs
 
