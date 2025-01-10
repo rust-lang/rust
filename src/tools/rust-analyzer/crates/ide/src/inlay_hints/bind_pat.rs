@@ -185,7 +185,7 @@ mod tests {
     };
 
     #[track_caller]
-    fn check_types(ra_fixture: &str) {
+    fn check_types(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         check_with_config(InlayHintsConfig { type_hints: true, ..DISABLED_CONFIG }, ra_fixture);
     }
 

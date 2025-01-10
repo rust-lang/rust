@@ -1255,11 +1255,15 @@ impl Foo {
         );
     }
 
-    fn check(ra_fixture: &str, expect: Expect) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         check_with_scope(ra_fixture, None, expect)
     }
 
-    fn check_with_scope(ra_fixture: &str, search_scope: Option<SearchScope>, expect: Expect) {
+    fn check_with_scope(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        search_scope: Option<SearchScope>,
+        expect: Expect,
+    ) {
         let (analysis, pos) = fixture::position(ra_fixture);
         let refs = analysis.find_all_refs(pos, search_scope).unwrap().unwrap();
 

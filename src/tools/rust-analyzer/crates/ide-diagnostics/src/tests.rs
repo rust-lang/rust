@@ -191,7 +191,7 @@ pub(crate) fn check_has_single_fix(ra_fixture_before: &str, ra_fixture_after: &s
 }
 
 /// Checks that there's a diagnostic *without* fix at `$0`.
-pub(crate) fn check_no_fix(ra_fixture: &str) {
+pub(crate) fn check_no_fix(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     let (db, file_position) = RootDatabase::with_position(ra_fixture);
     let diagnostic = super::full_diagnostics(
         &db,
@@ -205,21 +205,27 @@ pub(crate) fn check_no_fix(ra_fixture: &str) {
 }
 
 #[track_caller]
-pub(crate) fn check_diagnostics(ra_fixture: &str) {
+pub(crate) fn check_diagnostics(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     let mut config = DiagnosticsConfig::test_sample();
     config.disabled.insert("inactive-code".to_owned());
     check_diagnostics_with_config(config, ra_fixture)
 }
 
 #[track_caller]
-pub(crate) fn check_diagnostics_with_disabled(ra_fixture: &str, disabled: &[&str]) {
+pub(crate) fn check_diagnostics_with_disabled(
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    disabled: &[&str],
+) {
     let mut config = DiagnosticsConfig::test_sample();
     config.disabled.extend(disabled.iter().map(|&s| s.to_owned()));
     check_diagnostics_with_config(config, ra_fixture)
 }
 
 #[track_caller]
-pub(crate) fn check_diagnostics_with_config(config: DiagnosticsConfig, ra_fixture: &str) {
+pub(crate) fn check_diagnostics_with_config(
+    config: DiagnosticsConfig,
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+) {
     let (db, files) = RootDatabase::with_many_files(ra_fixture);
     let mut annotations = files
         .iter()

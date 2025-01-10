@@ -748,7 +748,7 @@ mod tests {
 
     use crate::fixture;
 
-    fn check(ra_fixture: &str, expect: Expect) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
         let result = analysis
             .runnables(position.file_id)
@@ -769,7 +769,7 @@ mod tests {
         expect.assert_debug_eq(&result);
     }
 
-    fn check_tests(ra_fixture: &str, expect: Expect) {
+    fn check_tests(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
         let tests = analysis.related_tests(position, None).unwrap();
         let navigation_targets = tests.into_iter().map(|runnable| runnable.nav).collect::<Vec<_>>();

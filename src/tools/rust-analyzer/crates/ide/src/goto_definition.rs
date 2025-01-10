@@ -424,7 +424,7 @@ mod tests {
     use syntax::SmolStr;
 
     #[track_caller]
-    fn check(ra_fixture: &str) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         let (analysis, position, expected) = fixture::annotations(ra_fixture);
         let navs = analysis.goto_definition(position).unwrap().expect("no definition found").info;
 
@@ -443,14 +443,14 @@ mod tests {
         assert_eq!(expected, navs);
     }
 
-    fn check_unresolved(ra_fixture: &str) {
+    fn check_unresolved(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         let (analysis, position) = fixture::position(ra_fixture);
         let navs = analysis.goto_definition(position).unwrap().expect("no definition found").info;
 
         assert!(navs.is_empty(), "didn't expect this to resolve anywhere: {navs:?}")
     }
 
-    fn check_name(expected_name: &str, ra_fixture: &str) {
+    fn check_name(expected_name: &str, #[rust_analyzer::rust_fixture] ra_fixture: &str) {
         let (analysis, position, _) = fixture::annotations(ra_fixture);
         let navs = analysis.goto_definition(position).unwrap().expect("no definition found").info;
         assert!(navs.len() < 2, "expected single navigation target but encountered {}", navs.len());

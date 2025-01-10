@@ -693,20 +693,28 @@ mod tests {
     };
 
     #[track_caller]
-    fn check(ra_fixture: &str, kind: impl Into<CompletionItemKind>, expect: Expect) {
+    fn check(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        kind: impl Into<CompletionItemKind>,
+        expect: Expect,
+    ) {
         let actual = do_completion(ra_fixture, kind.into());
         expect.assert_debug_eq(&actual);
     }
 
     #[track_caller]
-    fn check_kinds(ra_fixture: &str, kinds: &[CompletionItemKind], expect: Expect) {
+    fn check_kinds(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        kinds: &[CompletionItemKind],
+        expect: Expect,
+    ) {
         let actual: Vec<_> =
             kinds.iter().flat_map(|&kind| do_completion(ra_fixture, kind)).collect();
         expect.assert_debug_eq(&actual);
     }
 
     #[track_caller]
-    fn check_function_relevance(ra_fixture: &str, expect: Expect) {
+    fn check_function_relevance(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         let actual: Vec<_> =
             do_completion(ra_fixture, CompletionItemKind::SymbolKind(SymbolKind::Method))
                 .into_iter()
@@ -717,7 +725,11 @@ mod tests {
     }
 
     #[track_caller]
-    fn check_relevance_for_kinds(ra_fixture: &str, kinds: &[CompletionItemKind], expect: Expect) {
+    fn check_relevance_for_kinds(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        kinds: &[CompletionItemKind],
+        expect: Expect,
+    ) {
         let mut actual = get_all_items(TEST_CONFIG, ra_fixture, None);
         actual.retain(|it| kinds.contains(&it.kind));
         actual.sort_by_key(|it| cmp::Reverse(it.relevance.score()));
@@ -725,7 +737,7 @@ mod tests {
     }
 
     #[track_caller]
-    fn check_relevance(ra_fixture: &str, expect: Expect) {
+    fn check_relevance(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         let mut actual = get_all_items(TEST_CONFIG, ra_fixture, None);
         actual.retain(|it| it.kind != CompletionItemKind::Snippet);
         actual.retain(|it| it.kind != CompletionItemKind::Keyword);

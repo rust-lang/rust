@@ -105,7 +105,7 @@ mod tests {
     };
 
     #[track_caller]
-    fn check_discriminants(ra_fixture: &str) {
+    fn check_discriminants(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         check_with_config(
             InlayHintsConfig { discriminant_hints: DiscriminantHints::Always, ..DISABLED_CONFIG },
             ra_fixture,
@@ -113,7 +113,7 @@ mod tests {
     }
 
     #[track_caller]
-    fn check_discriminants_fieldless(ra_fixture: &str) {
+    fn check_discriminants_fieldless(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         check_with_config(
             InlayHintsConfig {
                 discriminant_hints: DiscriminantHints::Fieldless,

@@ -5,7 +5,7 @@ use test_utils::{extract_annotations, RangeOrOffset};
 use crate::{Analysis, AnalysisHost, FileId, FilePosition, FileRange};
 
 /// Creates analysis for a single file.
-pub(crate) fn file(ra_fixture: &str) -> (Analysis, FileId) {
+pub(crate) fn file(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> (Analysis, FileId) {
     let mut host = AnalysisHost::default();
     let change_fixture = ChangeFixture::parse(ra_fixture);
     host.db.enable_proc_attr_macros();
@@ -14,7 +14,9 @@ pub(crate) fn file(ra_fixture: &str) -> (Analysis, FileId) {
 }
 
 /// Creates analysis from a multi-file fixture, returns positions marked with $0.
-pub(crate) fn position(ra_fixture: &str) -> (Analysis, FilePosition) {
+pub(crate) fn position(
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+) -> (Analysis, FilePosition) {
     let mut host = AnalysisHost::default();
     let change_fixture = ChangeFixture::parse(ra_fixture);
     host.db.enable_proc_attr_macros();
@@ -25,7 +27,7 @@ pub(crate) fn position(ra_fixture: &str) -> (Analysis, FilePosition) {
 }
 
 /// Creates analysis for a single file, returns range marked with a pair of $0.
-pub(crate) fn range(ra_fixture: &str) -> (Analysis, FileRange) {
+pub(crate) fn range(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> (Analysis, FileRange) {
     let mut host = AnalysisHost::default();
     let change_fixture = ChangeFixture::parse(ra_fixture);
     host.db.enable_proc_attr_macros();
@@ -36,7 +38,9 @@ pub(crate) fn range(ra_fixture: &str) -> (Analysis, FileRange) {
 }
 
 /// Creates analysis for a single file, returns range marked with a pair of $0 or a position marked with $0.
-pub(crate) fn range_or_position(ra_fixture: &str) -> (Analysis, FileId, RangeOrOffset) {
+pub(crate) fn range_or_position(
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+) -> (Analysis, FileId, RangeOrOffset) {
     let mut host = AnalysisHost::default();
     let change_fixture = ChangeFixture::parse(ra_fixture);
     host.db.enable_proc_attr_macros();
@@ -46,7 +50,9 @@ pub(crate) fn range_or_position(ra_fixture: &str) -> (Analysis, FileId, RangeOrO
 }
 
 /// Creates analysis from a multi-file fixture, returns positions marked with $0.
-pub(crate) fn annotations(ra_fixture: &str) -> (Analysis, FilePosition, Vec<(FileRange, String)>) {
+pub(crate) fn annotations(
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+) -> (Analysis, FilePosition, Vec<(FileRange, String)>) {
     let mut host = AnalysisHost::default();
     let change_fixture = ChangeFixture::parse(ra_fixture);
     host.db.enable_proc_attr_macros();
@@ -69,7 +75,9 @@ pub(crate) fn annotations(ra_fixture: &str) -> (Analysis, FilePosition, Vec<(Fil
 }
 
 /// Creates analysis from a multi-file fixture with annotations without $0
-pub(crate) fn annotations_without_marker(ra_fixture: &str) -> (Analysis, Vec<(FileRange, String)>) {
+pub(crate) fn annotations_without_marker(
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+) -> (Analysis, Vec<(FileRange, String)>) {
     let mut host = AnalysisHost::default();
     let change_fixture = ChangeFixture::parse(ra_fixture);
     host.db.enable_proc_attr_macros();

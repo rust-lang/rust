@@ -798,12 +798,15 @@ mod tests {
     };
 
     #[track_caller]
-    pub(super) fn check(ra_fixture: &str) {
+    pub(super) fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         check_with_config(TEST_CONFIG, ra_fixture);
     }
 
     #[track_caller]
-    pub(super) fn check_with_config(config: InlayHintsConfig, ra_fixture: &str) {
+    pub(super) fn check_with_config(
+        config: InlayHintsConfig,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    ) {
         let (analysis, file_id) = fixture::file(ra_fixture);
         let mut expected = extract_annotations(&analysis.file_text(file_id).unwrap());
         let inlay_hints = analysis.inlay_hints(&config, file_id, None).unwrap();
@@ -819,7 +822,11 @@ mod tests {
     }
 
     #[track_caller]
-    pub(super) fn check_expect(config: InlayHintsConfig, ra_fixture: &str, expect: Expect) {
+    pub(super) fn check_expect(
+        config: InlayHintsConfig,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        expect: Expect,
+    ) {
         let (analysis, file_id) = fixture::file(ra_fixture);
         let inlay_hints = analysis.inlay_hints(&config, file_id, None).unwrap();
         let filtered =
@@ -830,7 +837,11 @@ mod tests {
     /// Computes inlay hints for the fixture, applies all the provided text edits and then runs
     /// expect test.
     #[track_caller]
-    pub(super) fn check_edit(config: InlayHintsConfig, ra_fixture: &str, expect: Expect) {
+    pub(super) fn check_edit(
+        config: InlayHintsConfig,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        expect: Expect,
+    ) {
         let (analysis, file_id) = fixture::file(ra_fixture);
         let inlay_hints = analysis.inlay_hints(&config, file_id, None).unwrap();
 
@@ -849,7 +860,10 @@ mod tests {
     }
 
     #[track_caller]
-    pub(super) fn check_no_edit(config: InlayHintsConfig, ra_fixture: &str) {
+    pub(super) fn check_no_edit(
+        config: InlayHintsConfig,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    ) {
         let (analysis, file_id) = fixture::file(ra_fixture);
         let inlay_hints = analysis.inlay_hints(&config, file_id, None).unwrap();
 

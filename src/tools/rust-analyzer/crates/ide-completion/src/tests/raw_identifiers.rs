@@ -4,7 +4,7 @@ use itertools::Itertools;
 
 use crate::tests::{completion_list_with_config_raw, position, TEST_CONFIG};
 
-fn check(ra_fixture: &str, expect: Expect) {
+fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let completions = completion_list_with_config_raw(TEST_CONFIG, ra_fixture, true, None);
     let (db, position) = position(ra_fixture);
     let mut actual = db.file_text(position.file_id).to_string();

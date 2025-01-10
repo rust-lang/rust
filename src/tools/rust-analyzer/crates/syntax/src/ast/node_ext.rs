@@ -185,6 +185,14 @@ impl ast::Attr {
         Some((self.simple_name()?, tt))
     }
 
+    pub fn as_simple_path(&self) -> Option<ast::Path> {
+        let meta = self.meta()?;
+        if meta.eq_token().is_some() || meta.token_tree().is_some() {
+            return None;
+        }
+        self.path()
+    }
+
     pub fn simple_name(&self) -> Option<SmolStr> {
         let path = self.meta()?.path()?;
         match (path.segment(), path.qualifier()) {

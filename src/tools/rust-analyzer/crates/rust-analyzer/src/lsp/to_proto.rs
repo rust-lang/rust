@@ -1993,7 +1993,7 @@ fn bar(_: usize) {}
 
     #[track_caller]
     fn check_rendered_snippets_in_source(
-        ra_fixture: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
         edit: TextEdit,
         snippets: SnippetEdit,
         expect: Expect,

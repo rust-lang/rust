@@ -421,7 +421,7 @@ mod tests {
     use super::*;
 
     #[track_caller]
-    fn check(ra_fixture: &str, expected: &str) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expected: &str) {
         let (db, file_id, range_or_offset) = RootDatabase::with_range_or_offset(ra_fixture);
         let frange = FileRange { file_id, range: range_or_offset.into() };
 

@@ -7,7 +7,7 @@ use crate::{test_db::TestDB, ModuleDefId};
 
 use super::*;
 
-fn lower(ra_fixture: &str) -> (TestDB, Arc<Body>, DefWithBodyId) {
+fn lower(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> (TestDB, Arc<Body>, DefWithBodyId) {
     let db = TestDB::with_files(ra_fixture);
 
     let krate = db.fetch_test_crate();
@@ -27,14 +27,14 @@ fn lower(ra_fixture: &str) -> (TestDB, Arc<Body>, DefWithBodyId) {
     (db, body, fn_def)
 }
 
-fn def_map_at(ra_fixture: &str) -> String {
+fn def_map_at(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> String {
     let (db, position) = TestDB::with_position(ra_fixture);
 
     let module = db.module_at_position(position);
     module.def_map(&db).dump(&db)
 }
 
-fn check_block_scopes_at(ra_fixture: &str, expect: Expect) {
+fn check_block_scopes_at(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let (db, position) = TestDB::with_position(ra_fixture);
 
     let module = db.module_at_position(position);
@@ -42,7 +42,7 @@ fn check_block_scopes_at(ra_fixture: &str, expect: Expect) {
     expect.assert_eq(&actual);
 }
 
-fn check_at(ra_fixture: &str, expect: Expect) {
+fn check_at(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let actual = def_map_at(ra_fixture);
     expect.assert_eq(&actual);
 }
