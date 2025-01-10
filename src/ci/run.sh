@@ -6,9 +6,16 @@ change_ownership_if_needed() {
     local path=$1
     local owner="user:user"
     local current_owner=$(stat -f "%Su:%Sg" "$path" 2>/dev/null)
+    local test_file="$path/.write_test"
 
-    if [ "$current_owner" != "$owner" ]; then
-        chown -R $owner "$path"
+    # Test if filesystem is writable by attempting to touch a temporary file
+    if touch "$test_file" 2>/dev/null; then
+        rm "$test_file"
+        if [ "$current_owner" != "$owner" ]; then
+            chown -R $owner "$path"
+        fi
+    else
+        echo "$path is read-only, skipping ownership change"
     fi
 }
 
