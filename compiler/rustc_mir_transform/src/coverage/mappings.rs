@@ -367,9 +367,8 @@ fn calc_test_vectors_index(conditions: &mut Vec<MCDCBranch>) -> usize {
         })
         .collect::<FxIndexMap<_, _>>();
 
-    let mut queue = std::collections::VecDeque::from_iter(
-        next_conditions.swap_remove(&ConditionId::START).into_iter(),
-    );
+    let mut queue =
+        std::collections::VecDeque::from_iter(next_conditions.swap_remove(&ConditionId::START));
     num_paths_stats[ConditionId::START] = 1;
     let mut decision_end_nodes = Vec::new();
     while let Some(branch) = queue.pop_front() {

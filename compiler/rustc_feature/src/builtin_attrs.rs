@@ -572,7 +572,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // `#[coroutine]` attribute to be applied to closures to make them coroutines instead
     gated!(
         coroutine, Normal, template!(Word), ErrorFollowing,
-        EncodeCrossCrate::No, coroutines, experimental!(coroutines)
+        EncodeCrossCrate::No, coroutines, experimental!(coroutine)
     ),
 
     // RFC 3543
