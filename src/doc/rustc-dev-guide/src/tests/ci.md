@@ -410,6 +410,21 @@ To learn more about the dashboard, see the [Datadog CI docs].
 [Datadog CI docs]: https://docs.datadoghq.com/continuous_integration/
 [public dashboard]: https://p.datadoghq.com/sb/3a172e20-e9e1-11ed-80e3-da7ad0900002-b5f7bb7e08b664a06b08527da85f7e30
 
+## Determining the CI configuration
+
+If you want to determine which `config.toml` settings are used in CI for a
+particular job, it is probably easiest to just look at the build log. To do
+this:
+
+1. Go to
+   <https://github.com/rust-lang-ci/rust/actions?query=branch%3Aauto+is%3Asuccess>
+   to find the most recently successful build, and click on it.
+2. Choose the job you are interested in on the left-hand side.
+3. Click on the gear icon and choose "View raw logs"
+4. Search for the string "Configure the build"
+5. All of the build settings are listed below that starting with the
+   `configure:` prefix.
+
 [GitHub Actions]: https://github.com/rust-lang/rust/actions
 [`jobs.yml`]: https://github.com/rust-lang/rust/blob/master/src/ci/github-actions/jobs.yml
 [`.github/workflows/ci.yml`]: https://github.com/rust-lang/rust/blob/master/.github/workflows/ci.yml
