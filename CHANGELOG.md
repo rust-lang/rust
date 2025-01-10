@@ -5594,6 +5594,7 @@ Released 2018-09-13
 [`collection_is_never_read`]: https://rust-lang.github.io/rust-clippy/master/index.html#collection_is_never_read
 [`comparison_chain`]: https://rust-lang.github.io/rust-clippy/master/index.html#comparison_chain
 [`comparison_to_empty`]: https://rust-lang.github.io/rust-clippy/master/index.html#comparison_to_empty
+[`confusing_method_to_numeric_cast`]: https://rust-lang.github.io/rust-clippy/master/index.html#confusing_method_to_numeric_cast
 [`const_is_empty`]: https://rust-lang.github.io/rust-clippy/master/index.html#const_is_empty
 [`const_static_lifetime`]: https://rust-lang.github.io/rust-clippy/master/index.html#const_static_lifetime
 [`copy_iterator`]: https://rust-lang.github.io/rust-clippy/master/index.html#copy_iterator
@@ -6068,7 +6069,6 @@ Released 2018-09-13
 [`possible_missing_comma`]: https://rust-lang.github.io/rust-clippy/master/index.html#possible_missing_comma
 [`precedence`]: https://rust-lang.github.io/rust-clippy/master/index.html#precedence
 [`precedence_bits`]: https://rust-lang.github.io/rust-clippy/master/index.html#precedence_bits
-[`primitive_method_to_numeric_cast`]: https://rust-lang.github.io/rust-clippy/master/index.html#primitive_method_to_numeric_cast
 [`print_in_format_impl`]: https://rust-lang.github.io/rust-clippy/master/index.html#print_in_format_impl
 [`print_literal`]: https://rust-lang.github.io/rust-clippy/master/index.html#print_literal
 [`print_stderr`]: https://rust-lang.github.io/rust-clippy/master/index.html#print_stderr

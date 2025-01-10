@@ -14,11 +14,11 @@ mod cast_sign_loss;
 mod cast_slice_different_sizes;
 mod cast_slice_from_raw_parts;
 mod char_lit_as_u8;
+mod confusing_method_to_numeric_cast;
 mod fn_to_numeric_cast;
 mod fn_to_numeric_cast_any;
 mod fn_to_numeric_cast_with_truncation;
 mod manual_dangling_ptr;
-mod primitive_method_to_numeric_cast;
 mod ptr_as_ptr;
 mod ptr_cast_constness;
 mod ref_as_ptr;
@@ -808,7 +808,7 @@ declare_clippy_lint! {
     /// let _ = u16::MAX as usize;
     /// ```
     #[clippy::version = "1.86.0"]
-    pub PRIMITIVE_METHOD_TO_NUMERIC_CAST,
+    pub CONFUSING_METHOD_TO_NUMERIC_CAST,
     suspicious,
     "casting a primitive method pointer to any integer type"
 }
@@ -850,7 +850,7 @@ impl_lint_pass!(Casts => [
     REF_AS_PTR,
     AS_POINTER_UNDERSCORE,
     MANUAL_DANGLING_PTR,
-    PRIMITIVE_METHOD_TO_NUMERIC_CAST,
+    CONFUSING_METHOD_TO_NUMERIC_CAST,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Casts {
@@ -875,7 +875,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             ptr_cast_constness::check(cx, expr, cast_from_expr, cast_from, cast_to, self.msrv);
             as_ptr_cast_mut::check(cx, expr, cast_from_expr, cast_to);
             fn_to_numeric_cast_any::check(cx, expr, cast_from_expr, cast_from, cast_to);
-            primitive_method_to_numeric_cast::check(cx, expr, cast_from_expr, cast_from, cast_to);
+            confusing_method_to_numeric_cast::check(cx, expr, cast_from_expr, cast_from, cast_to);
             fn_to_numeric_cast::check(cx, expr, cast_from_expr, cast_from, cast_to);
             fn_to_numeric_cast_with_truncation::check(cx, expr, cast_from_expr, cast_from, cast_to);
             zero_ptr::check(cx, expr, cast_from_expr, cast_to_hir);
