@@ -386,6 +386,9 @@ pub(super) fn highlight_def(
         Definition::Field(_) | Definition::TupleField(_) => {
             Highlight::new(HlTag::Symbol(SymbolKind::Field))
         }
+        Definition::Crate(_) => {
+            Highlight::new(HlTag::Symbol(SymbolKind::Module)) | HlMod::CrateRoot
+        }
         Definition::Module(module) => {
             let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Module));
             if module.is_crate_root() {

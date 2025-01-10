@@ -134,6 +134,7 @@ impl Definition {
                     FieldSource::Pos(_) => None,
                 }
             }
+            Definition::Crate(_) => None,
             Definition::Module(module) => {
                 let src = module.declaration_source(sema.db)?;
                 let name = src.value.name()?;

@@ -225,6 +225,7 @@ impl TryToNav for Definition {
             Definition::Local(it) => Some(it.to_nav(db)),
             Definition::Label(it) => it.try_to_nav(db),
             Definition::Module(it) => Some(it.to_nav(db)),
+            Definition::Crate(it) => Some(it.to_nav(db)),
             Definition::Macro(it) => it.try_to_nav(db),
             Definition::Field(it) => it.try_to_nav(db),
             Definition::SelfType(it) => it.try_to_nav(db),
@@ -395,6 +396,12 @@ impl ToNav for hir::Module {
                 )
             },
         )
+    }
+}
+
+impl ToNav for hir::Crate {
+    fn to_nav(&self, db: &RootDatabase) -> UpmappingResult<NavigationTarget> {
+        self.root_module().to_nav(db)
     }
 }
 
