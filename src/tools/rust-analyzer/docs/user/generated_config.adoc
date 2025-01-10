@@ -716,6 +716,11 @@ Whether to show generic type parameter name inlay hints.
 --
 Whether to show implicit drop hints.
 --
+[[rust-analyzer.inlayHints.implicitSizedBoundHints.enable]]rust-analyzer.inlayHints.implicitSizedBoundHints.enable (default: `false`)::
++
+--
+Whether to show inlay hints for the implied type parameter `Sized` bound.
+--
 [[rust-analyzer.inlayHints.lifetimeElisionHints.enable]]rust-analyzer.inlayHints.lifetimeElisionHints.enable (default: `"never"`)::
 +
 --

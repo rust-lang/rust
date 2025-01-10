@@ -2108,6 +2108,16 @@
             {
                 "title": "inlayHints",
                 "properties": {
+                    "rust-analyzer.inlayHints.implicitSizedBoundHints.enable": {
+                        "markdownDescription": "Whether to show inlay hints for the implied type parameter `Sized` bound.",
+                        "default": false,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "inlayHints",
+                "properties": {
                     "rust-analyzer.inlayHints.lifetimeElisionHints.enable": {
                         "markdownDescription": "Whether to show inlay type hints for elided lifetimes in function signatures.",
                         "default": "never",

@@ -24,6 +24,7 @@ use crate::{navigation_target::TryToNav, FileId};
 mod adjustment;
 mod bind_pat;
 mod binding_mode;
+mod bounds;
 mod chaining;
 mod closing_brace;
 mod closure_captures;
@@ -264,6 +265,7 @@ fn hints(
                 ast::Type::PathType(path) => lifetime::fn_path_hints(hints, ctx, famous_defs, config, file_id, path),
                 _ => Some(()),
             },
+            ast::GenericParamList(it) => bounds::hints(hints, famous_defs, config, file_id, it),
             _ => Some(()),
         }
     };
@@ -273,6 +275,7 @@ fn hints(
 pub struct InlayHintsConfig {
     pub render_colons: bool,
     pub type_hints: bool,
+    pub sized_bound: bool,
     pub discriminant_hints: DiscriminantHints,
     pub parameter_hints: bool,
     pub generic_parameter_hints: GenericParameterHints,
@@ -760,6 +763,7 @@ mod tests {
         render_colons: false,
         type_hints: false,
         parameter_hints: false,
+        sized_bound: false,
         generic_parameter_hints: GenericParameterHints {
             type_hints: false,
             lifetime_hints: false,
@@ -812,6 +816,15 @@ mod tests {
         expected.sort_by_key(|(range, _)| range.start());
 
         assert_eq!(expected, actual, "\nExpected:\n{expected:#?}\n\nActual:\n{actual:#?}");
+    }
+
+    #[track_caller]
+    pub(super) fn check_expect(config: InlayHintsConfig, ra_fixture: &str, expect: Expect) {
+        let (analysis, file_id) = fixture::file(ra_fixture);
+        let inlay_hints = analysis.inlay_hints(&config, file_id, None).unwrap();
+        let filtered =
+            inlay_hints.into_iter().map(|hint| (hint.range, hint.label)).collect::<Vec<_>>();
+        expect.assert_debug_eq(&filtered)
     }
 
     /// Computes inlay hints for the fixture, applies all the provided text edits and then runs

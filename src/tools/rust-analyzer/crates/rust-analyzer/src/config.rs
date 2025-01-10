@@ -185,6 +185,8 @@ config_data! {
         inlayHints_genericParameterHints_type_enable: bool = false,
         /// Whether to show implicit drop hints.
         inlayHints_implicitDrops_enable: bool                      = false,
+        /// Whether to show inlay hints for the implied type parameter `Sized` bound.
+        inlayHints_implicitSizedBoundHints_enable: bool            = false,
         /// Whether to show inlay type hints for elided lifetimes in function signatures.
         inlayHints_lifetimeElisionHints_enable: LifetimeElisionDef = LifetimeElisionDef::Never,
         /// Whether to prefer using parameter names as the name for elided lifetime hints if possible.
@@ -1621,6 +1623,7 @@ impl Config {
         InlayHintsConfig {
             render_colons: self.inlayHints_renderColons().to_owned(),
             type_hints: self.inlayHints_typeHints_enable().to_owned(),
+            sized_bound: self.inlayHints_implicitSizedBoundHints_enable().to_owned(),
             parameter_hints: self.inlayHints_parameterHints_enable().to_owned(),
             generic_parameter_hints: GenericParameterHints {
                 type_hints: self.inlayHints_genericParameterHints_type_enable().to_owned(),
