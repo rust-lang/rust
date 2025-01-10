@@ -3,7 +3,7 @@ name: Clippy changelog check
 on:
   merge_group:
   pull_request:
-    types: [opened, reopened, edited]
+    types: [opened, reopened, synchronize, edited]
 
 concurrency:
   # For a given workflow, if we push to the same PR, cancel all previous builds on that PR.
