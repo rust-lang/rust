@@ -40,19 +40,8 @@ impl_is_zero!(char, |x| x == '\0');
 impl_is_zero!(f32, |x: f32| x.to_bits() == 0);
 impl_is_zero!(f64, |x: f64| x.to_bits() == 0);
 
-unsafe impl<T> IsZero for *const T {
-    #[inline]
-    fn is_zero(&self) -> bool {
-        (*self).is_null()
-    }
-}
-
-unsafe impl<T> IsZero for *mut T {
-    #[inline]
-    fn is_zero(&self) -> bool {
-        (*self).is_null()
-    }
-}
+// `IsZero` cannot be soundly implemented for pointers because of provenance
+// (see #135338).
 
 unsafe impl<T: IsZero, const N: usize> IsZero for [T; N] {
     #[inline]
