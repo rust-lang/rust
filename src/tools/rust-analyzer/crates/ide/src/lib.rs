@@ -48,7 +48,6 @@ mod ssr;
 mod static_index;
 mod status;
 mod syntax_highlighting;
-mod syntax_tree;
 mod test_explorer;
 mod typing;
 mod view_crate_graph;
@@ -56,6 +55,7 @@ mod view_hir;
 mod view_item_tree;
 mod view_memory_layout;
 mod view_mir;
+mod view_syntax_tree;
 
 use std::{iter, panic::UnwindSafe};
 
@@ -329,14 +329,8 @@ impl Analysis {
         })
     }
 
-    /// Returns a syntax tree represented as `String`, for debug purposes.
-    // FIXME: use a better name here.
-    pub fn syntax_tree(
-        &self,
-        file_id: FileId,
-        text_range: Option<TextRange>,
-    ) -> Cancellable<String> {
-        self.with_db(|db| syntax_tree::syntax_tree(db, file_id, text_range))
+    pub fn view_syntax_tree(&self, file_id: FileId) -> Cancellable<String> {
+        self.with_db(|db| view_syntax_tree::view_syntax_tree(db, file_id))
     }
 
     pub fn view_hir(&self, position: FilePosition) -> Cancellable<String> {

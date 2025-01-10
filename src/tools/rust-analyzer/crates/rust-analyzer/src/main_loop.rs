@@ -1145,7 +1145,7 @@ impl GlobalState {
             .on::<RETRY, lsp_ext::WorkspaceSymbol>(handlers::handle_workspace_symbol)
             .on::<NO_RETRY, lsp_ext::Ssr>(handlers::handle_ssr)
             .on::<NO_RETRY, lsp_ext::ViewRecursiveMemoryLayout>(handlers::handle_view_recursive_memory_layout)
-            .on::<NO_RETRY, lsp_ext::SyntaxTree>(handlers::handle_syntax_tree)
+            .on::<NO_RETRY, lsp_ext::ViewSyntaxTree>(handlers::handle_view_syntax_tree)
             .on::<NO_RETRY, lsp_ext::ViewHir>(handlers::handle_view_hir)
             .on::<NO_RETRY, lsp_ext::ViewMir>(handlers::handle_view_mir)
             .on::<NO_RETRY, lsp_ext::InterpretFunction>(handlers::handle_interpret_function)

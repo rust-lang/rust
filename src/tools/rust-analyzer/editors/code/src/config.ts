@@ -351,6 +351,10 @@ export class Config {
         return this.get<boolean>("showDependenciesExplorer");
     }
 
+    get showSyntaxTree() {
+        return this.get<boolean>("showSyntaxTree");
+    }
+
     get statusBarClickAction() {
         return this.get<string>("statusBar.clickAction");
     }
