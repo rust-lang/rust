@@ -18,7 +18,10 @@ type synthetic add -l lldb_lookup.synthetic_lookup -x "^(core::([a-z_]+::)+)NonZ
 type synthetic add -l lldb_lookup.synthetic_lookup -x "^core::num::([a-z_]+::)*NonZero.+$" --category Rust
 type synthetic add -l lldb_lookup.synthetic_lookup -x "^(std::([a-z_]+::)+)PathBuf$" --category Rust
 type synthetic add -l lldb_lookup.synthetic_lookup -x "^&(mut )?(std::([a-z_]+::)+)Path$" --category Rust
-type synthetic add -l lldb_lookup.synthetic_lookup -x "^(.*)$" --category Rust
+type synthetic add -l lldb_lookup.MSVCStdSliceSyntheticProvider -x "^ref\$<slice2\$<.+> >" --category Rust
+type synthetic add -l lldb_lookup.MSVCTupleSyntheticProvider -x "^tuple\$<.+>$" --category Rust
+type summary add -F lldb_lookup.TupleSummaryProvider -e -x -h "^tuple\$<.+>$" --category Rust
+type synthetic add -l lldb_lookup.synthetic_lookup -x "^\(.*\)$" --category Rust
 type summary add -F _ -e -x -h "^.*$" --category Rust
 type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(alloc::([a-z_]+::)+)String$" --category Rust
 type summary add -F lldb_lookup.summary_lookup  -e -x -h "^&(mut )?str$" --category Rust
@@ -40,4 +43,5 @@ type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(core::([a-z_]+::)+)N
 type summary add -F lldb_lookup.summary_lookup  -e -x -h "^core::num::([a-z_]+::)*NonZero.+$" --category Rust
 type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(std::([a-z_]+::)+)PathBuf$" --category Rust
 type summary add -F lldb_lookup.summary_lookup  -e -x -h "^&(mut )?(std::([a-z_]+::)+)Path$" --category Rust
+type summary add -F lldb_lookup.TupleSummaryProvider -e -x -h "^tuple\$<.+>$" --category Rust
 type category enable Rust

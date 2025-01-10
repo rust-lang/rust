@@ -205,6 +205,24 @@ def StdPathSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
     return '"%s"' % data
 
 
+def sequence_formatter(output: str, valobj: SBValue, _dict: LLDBOpaque):
+    length: int = valobj.GetNumChildren()
+
+    long: bool = False
+    for i in range(0, length):
+        if len(output) > 32:
+            long = True
+            break
+        child: SBValue = valobj.GetChildAtIndex(i)
+        output += f"{child.value}, "
+    if long:
+        output = f"(len: {length}) " + output + "..."
+    else:
+        output = output[:-2]
+
+    return output
+
+
 class StructSyntheticProvider:
     """Pretty-printer for structs and struct enum variants"""
 
@@ -346,6 +364,41 @@ class TupleSyntheticProvider:
 
     def has_children(self) -> bool:
         return True
+
+
+class MSVCTupleSyntheticProvider:
+    __slots__ = ["valobj"]
+
+    def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
+        self.valobj = valobj
+
+    def num_children(self) -> int:
+        return self.valobj.GetNumChildren()
+
+    def get_child_index(self, name: str) -> int:
+        return self.valobj.GetIndexOfChildWithName(name)
+
+    def get_child_at_index(self, index: int) -> SBValue:
+        child: SBValue = self.valobj.GetChildAtIndex(index)
+        return child.CreateChildAtOffset(str(index), 0, child.GetType())
+
+    def update(self):
+        pass
+
+    def has_children(self) -> bool:
+        return self.valobj.MightHaveChildren()
+
+    def get_type_name(self) -> str:
+        name = self.valobj.GetTypeName()
+        # remove "tuple$<" and ">", str.removeprefix and str.removesuffix require python 3.9+
+        name = name[7:-1]
+        return "(" + name + ")"
+
+
+def TupleSummaryProvider(valobj: SBValue, _dict: LLDBOpaque):
+    output: str = sequence_formatter("(", valobj, dict)
+    output += ")"
+    return output
 
 
 class StdVecSyntheticProvider:
