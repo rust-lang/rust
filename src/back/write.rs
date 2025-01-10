@@ -111,9 +111,12 @@ pub(crate) unsafe fn codegen(
                     // TODO(antoyo): maybe we should call embed_bitcode to have the proper iOS fixes?
                     //embed_bitcode(cgcx, llcx, llmod, &config.bc_cmdline, data);
 
-                    context.add_command_line_option("-flto=auto");
-                    context.add_command_line_option("-flto-partition=one");
-                    context.add_command_line_option("-ffat-lto-objects");
+                    // TODO: check if this condition makes sense.
+                    if fat_lto {
+                        context.add_command_line_option("-flto=auto");
+                        context.add_command_line_option("-flto-partition=one");
+                        context.add_command_line_option("-ffat-lto-objects");
+                    }
                     // TODO(antoyo): Send -plugin/usr/lib/gcc/x86_64-pc-linux-gnu/11.1.0/liblto_plugin.so to linker (this should be done when specifying the appropriate rustc cli argument).
                     context.compile_to_file(
                         OutputKind::ObjectFile,
