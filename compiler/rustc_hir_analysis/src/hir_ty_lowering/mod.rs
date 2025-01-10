@@ -2338,7 +2338,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let assoc_const = self
             .probe_assoc_item(assoc_ident, ty::AssocKind::Const, hir_ref_id, span, trait_did)
             .expect("failed to find associated const");
-        self.lower_assoc_const(span, assoc_const.def_id, assoc_segment, bound)
+        if assoc_const.has_type_const_attr(tcx) {
+            self.lower_assoc_const(span, assoc_const.def_id, assoc_segment, bound)
+        } else {
+            let mut err = tcx
+                .dcx()
+                .struct_span_err(span, "use of trait associated const without `#[type_const]`");
+            err.note("the declaration in the trait must be marked with `#[type_const]`");
+            Const::new_error(tcx, err.emit())
+        }
     }
 
     /// Literals are eagerly converted to a constant, everything else becomes `Unevaluated`.

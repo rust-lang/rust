@@ -3,7 +3,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::DefId;
 use rustc_macros::{Decodable, Encodable, HashStable};
-use rustc_span::{Ident, Symbol};
+use rustc_span::{Ident, Symbol, sym};
 
 use super::{TyCtxt, Visibility};
 use crate::ty;
@@ -107,6 +107,23 @@ impl AssocItem {
 
     pub fn is_impl_trait_in_trait(&self) -> bool {
         self.opt_rpitit_info.is_some()
+    }
+
+    /// Does this associated item have the `#[type_const]` attribute,
+    /// or (if it is in a trait impl), does the item from the original
+    /// trait have this attribute?
+    pub fn has_type_const_attr(&self, tcx: TyCtxt<'_>) -> bool {
+        if self.kind != ty::AssocKind::Const {
+            return false;
+        }
+
+        let def_id = match (self.container, self.trait_item_def_id) {
+            (AssocItemContainer::Trait, _) => self.def_id,
+            (AssocItemContainer::Impl, Some(trait_item_did)) => trait_item_did,
+            // Inherent impl but this attr is only applied to trait assoc items.
+            (AssocItemContainer::Impl, None) => return false,
+        };
+        tcx.has_attr(def_id, sym::type_const)
     }
 }
 
