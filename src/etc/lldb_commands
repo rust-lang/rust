@@ -44,4 +44,6 @@ type summary add -F lldb_lookup.summary_lookup  -e -x -h "^core::num::([a-z_]+::
 type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(std::([a-z_]+::)+)PathBuf$" --category Rust
 type summary add -F lldb_lookup.summary_lookup  -e -x -h "^&(mut )?(std::([a-z_]+::)+)Path$" --category Rust
 type summary add -F lldb_lookup.TupleSummaryProvider -e -x -h "^tuple\$<.+>$" --category Rust
+type summary add -F lldb_lookup.StdSliceSummaryProvider -e -x -h "^ref(_mut)?\$<slice2\$<.+> >" --category Rust
+type synthetic add -l lldb_lookup.MSVCStdSliceSyntheticProvider -x "^ref(_mut)?\$<slice2\$<.+> >" --category Rust
 type category enable Rust

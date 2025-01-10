@@ -456,6 +456,8 @@ class StdVecSyntheticProvider:
 
 
 class StdSliceSyntheticProvider:
+    __slots__ = ["valobj", "length", "ptr", "element_type", "element_size"]
+
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
         self.valobj = valobj
         self.update()
@@ -472,7 +474,7 @@ class StdSliceSyntheticProvider:
 
     def get_child_at_index(self, index: int) -> SBValue:
         start = self.data_ptr.GetValueAsUnsigned()
-        address = start + index * self.element_type_size
+        address = start + index * self.element_size
         element = self.data_ptr.CreateValueFromAddress(
             "[%s]" % index, address, self.element_type
         )
@@ -483,10 +485,31 @@ class StdSliceSyntheticProvider:
         self.data_ptr = self.valobj.GetChildMemberWithName("data_ptr")
 
         self.element_type = self.data_ptr.GetType().GetPointeeType()
-        self.element_type_size = self.element_type.GetByteSize()
+        self.element_size = self.element_type.GetByteSize()
 
     def has_children(self) -> bool:
         return True
+
+
+class MSVCStdSliceSyntheticProvider(StdSliceSyntheticProvider):
+    def get_type_name(self) -> str:
+        name = self.valobj.GetTypeName()
+
+        if name.startswith("ref_mut"):
+            # remove "ref_mut$<slice2$<" and trailing "> >"
+            name = name[17:-3]
+            ref = "&mut "
+        else:
+            # remove "ref$<slice2$<" and trailing "> >"
+            name = name[13:-3]
+            ref = "&"
+
+        return "".join([ref, "[", name, "]"])
+
+def StdSliceSummaryProvider(valobj, dict):
+    output = sequence_formatter("[", valobj, dict)
+    output += "]"
+    return output
 
 
 class StdVecDequeSyntheticProvider:
