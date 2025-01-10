@@ -195,7 +195,7 @@ impl TryToNav for FileSymbol {
                         |it| it.display_no_db(edition).to_smolstr(),
                     ),
                     alias: self.is_alias.then(|| self.name.clone()),
-                    kind: Some(hir::ModuleDefId::from(self.def).into()),
+                    kind: Some(self.def.into()),
                     full_range,
                     focus_range,
                     container_name: self.container_name.clone(),
