@@ -576,5 +576,64 @@ LL -         fn one_input<'a>(x: &'a u8) -> &'a u8 {
 LL +         fn one_input(x: &u8) -> &u8 {
    |
 
-error: aborting due to 48 previous errors
+error: the following explicit lifetimes could be elided: 'py
+  --> tests/ui/needless_lifetimes.rs:605:14
+   |
+LL |     impl<'t, 'py> ContentString<'t> {
+   |              ^^^
+LL |         // `'py` can be elided because of `&self`
+LL |         fn map_content2(&self, f: impl FnOnce(&'t str) -> &'t str) -> Content<'t, 'py> {
+   |                                                                                   ^^^
+   |
+help: elide the lifetimes
+   |
+LL ~     impl<'t> ContentString<'t> {
+LL |         // `'py` can be elided because of `&self`
+LL ~         fn map_content2(&self, f: impl FnOnce(&'t str) -> &'t str) -> Content<'t, '_> {
+   |
+
+error: the following explicit lifetimes could be elided: 'py
+  --> tests/ui/needless_lifetimes.rs:615:14
+   |
+LL |     impl<'t, 'py> ContentString<'t> {
+   |              ^^^
+LL |         // `'py` can be elided because of `&'_ self`
+LL |         fn map_content3(&'_ self, f: impl FnOnce(&'t str) -> &'t str) -> Content<'t, 'py> {
+   |                                                                                      ^^^
+   |
+help: elide the lifetimes
+   |
+LL ~     impl<'t> ContentString<'t> {
+LL |         // `'py` can be elided because of `&'_ self`
+LL ~         fn map_content3(&'_ self, f: impl FnOnce(&'t str) -> &'t str) -> Content<'t, '_> {
+   |
+
+error: the following explicit lifetimes could be elided: 'py
+  --> tests/ui/needless_lifetimes.rs:635:14
+   |
+LL |     impl<'t, 'py> ContentString<'t> {
+   |              ^^^
+...
+LL |         ) -> Content<'t, 'py> {
+   |                          ^^^
+   |
+help: elide the lifetimes
+   |
+LL ~     impl<'t> ContentString<'t> {
+LL |         // `'py` can be elided because of `&Self`
+...
+LL |             o: &'t str,
+LL ~         ) -> Content<'t, '_> {
+   |
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> tests/ui/needless_lifetimes.rs:656:9
+   |
+LL |         &x.b
+   |         ^^^^ help: change this to: `x.b`
+   |
+   = note: `-D clippy::needless-borrow` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_borrow)]`
+
+error: aborting due to 52 previous errors
 
