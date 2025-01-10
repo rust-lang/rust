@@ -2,6 +2,16 @@
 
 set -e
 
+change_ownership_if_needed() {
+    local path=$1
+    local owner="user:user"
+    local current_owner=$(stat -f "%Su:%Sg" "$path" 2>/dev/null)
+
+    if [ "$current_owner" != "$owner" ]; then
+        chown -R $owner "$path"
+    fi
+}
+
 echo "Running inside src/ci/run.sh script"
 
 if [ -n "$CI_JOB_NAME" ]; then
@@ -23,11 +33,10 @@ if [ "$NO_CHANGE_USER" = "" ]; then
     unset LOCAL_USER_ID
 
     # Give ownership of necessary directories to the user
-    chown -R user:user .
+    change_ownership_if_needed .
     mkdir -p /cargo
-    chown -R user:user /cargo
-    # FIXME: don't do this in PR job
-    chown -R user:user /checkout
+    change_ownership_if_needed /cargo
+    change_ownership_if_needed /checkout
 
     # Ensure that runners are able to execute git commands in the worktree,
     # overriding the typical git protections. In our docker container we're running
