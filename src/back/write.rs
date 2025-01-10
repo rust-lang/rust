@@ -167,6 +167,10 @@ pub(crate) unsafe fn codegen(
 
                         // NOTE: without -fuse-linker-plugin, we get the following error:
                         // lto1: internal compiler error: decompressed stream: Destination buffer is too small
+                        // TODO: since we do not do LTO when the linker is invoked anymore, perhaps
+                        // the following flag is not necessary anymore.
+                        // TODO: also, perhaps compiling the gcc driver in the CI is not necessary
+                        // anymore.
                         context.add_driver_option("-fuse-linker-plugin");
                     }
 
