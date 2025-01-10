@@ -92,11 +92,11 @@ impl Definition {
             Definition::ExternCrateDecl(it) => it.module(db),
             Definition::DeriveHelper(it) => it.derive().module(db),
             Definition::InlineAsmOperand(it) => it.parent(db).module(db),
+            Definition::ToolModule(t) => t.krate().root_module(),
             Definition::BuiltinAttr(_)
             | Definition::BuiltinType(_)
             | Definition::BuiltinLifetime(_)
             | Definition::TupleField(_)
-            | Definition::ToolModule(_)
             | Definition::InlineAsmRegOrRegClass(_) => return None,
         };
         Some(module)

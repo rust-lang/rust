@@ -3916,6 +3916,10 @@ impl ToolModule {
             db.crate_def_map(self.krate).registered_tools()[self.idx as usize].clone(),
         )
     }
+
+    pub fn krate(&self) -> Crate {
+        Crate { id: self.krate }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
