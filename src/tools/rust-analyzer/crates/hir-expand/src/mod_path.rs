@@ -414,3 +414,14 @@ macro_rules! __path {
 }
 
 pub use crate::__path as path;
+
+#[macro_export]
+macro_rules! __tool_path {
+    ($start:ident $(:: $seg:ident)*) => ({
+        $crate::mod_path::ModPath::from_segments($crate::mod_path::PathKind::Plain, vec![
+            $crate::name::Name::new_symbol_root(intern::sym::rust_analyzer.clone()), $crate::name::Name::new_symbol_root(intern::sym::$start.clone()), $($crate::name::Name::new_symbol_root(intern::sym::$seg.clone()),)*
+        ])
+    });
+}
+
+pub use crate::__tool_path as tool_path;

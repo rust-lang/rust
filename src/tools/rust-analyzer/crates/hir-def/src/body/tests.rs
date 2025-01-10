@@ -444,3 +444,18 @@ fn foo() {
 }"#
     );
 }
+
+#[test]
+fn skip_skips_body() {
+    let (db, body, owner) = lower(
+        r#"
+#[rust_analyzer::skip]
+async fn foo(a: (), b: i32) -> u32 {
+    0 + 1 + b()
+}
+"#,
+    );
+    let printed = body.pretty_print(&db, owner, Edition::CURRENT);
+    expect!["fn foo(�: (), �: i32) -> impl ::core::future::Future::<Output = u32> �"]
+        .assert_eq(&printed);
+}

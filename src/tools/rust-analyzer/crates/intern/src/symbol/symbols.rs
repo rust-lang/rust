@@ -429,6 +429,7 @@ define_symbols! {
     shr,
     simd,
     sized,
+    skip,
     slice_len_fn,
     Some,
     start,
