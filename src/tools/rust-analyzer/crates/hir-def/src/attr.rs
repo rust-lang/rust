@@ -122,6 +122,11 @@ impl Attrs {
         AttrQuery { attrs: self, key }
     }
 
+    pub fn rust_analyzer_tool(&self) -> impl Iterator<Item = &Attr> {
+        self.iter()
+            .filter(|&attr| attr.path.segments().first().is_some_and(|s| *s == sym::rust_analyzer))
+    }
+
     pub fn cfg(&self) -> Option<CfgExpr> {
         let mut cfgs = self.by_key(&sym::cfg).tt_values().map(CfgExpr::parse);
         let first = cfgs.next()?;

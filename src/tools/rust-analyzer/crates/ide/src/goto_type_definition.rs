@@ -24,9 +24,10 @@ pub(crate) fn goto_type_definition(
     let file: ast::SourceFile = sema.parse_guess_edition(file_id);
     let token: SyntaxToken =
         pick_best_token(file.syntax().token_at_offset(offset), |kind| match kind {
-            IDENT | INT_NUMBER | T![self] => 2,
+            IDENT | INT_NUMBER | T![self] => 3,
             kind if kind.is_trivia() => 0,
-            _ => 1,
+            T![;] => 1,
+            _ => 2,
         })?;
 
     let mut res = Vec::new();
