@@ -207,6 +207,7 @@ def substitute_github_vars(jobs: list) -> list:
             )
     return jobs
 
+
 def get_job_image(job: Job) -> str:
     """
     By default, the Docker image of a job is based on its name.
