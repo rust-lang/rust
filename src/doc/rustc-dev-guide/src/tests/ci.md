@@ -28,7 +28,7 @@ Our CI is primarily executed on [GitHub Actions], with a single workflow defined
 in [`.github/workflows/ci.yml`], which contains a bunch of steps that are
 unified for all CI jobs that we execute. When a commit is pushed to a
 corresponding branch or a PR, the workflow executes the
-[`calculate-job-matrix.py`] script, which dynamically generates the specific CI
+[`src/ci/github-actions/ci.py`] script, which dynamically generates the specific CI
 jobs that should be executed. This script uses the [`jobs.yml`] file as an
 input, which contains a declarative configuration of all our CI jobs.
 
@@ -413,7 +413,7 @@ To learn more about the dashboard, see the [Datadog CI docs].
 [GitHub Actions]: https://github.com/rust-lang/rust/actions
 [`jobs.yml`]: https://github.com/rust-lang/rust/blob/master/src/ci/github-actions/jobs.yml
 [`.github/workflows/ci.yml`]: https://github.com/rust-lang/rust/blob/master/.github/workflows/ci.yml
-[`calculate-job-matrix.py`]: https://github.com/rust-lang/rust/blob/master/src/ci/github-actions/calculate-job-matrix.py
+[`src/ci/github-actions/ci.py`]: https://github.com/rust-lang/rust/blob/master/src/ci/github-actions/ci.py
 [rust-lang-ci]: https://github.com/rust-lang-ci/rust/actions
 [bors]: https://github.com/bors
 [homu]: https://github.com/rust-lang/homu
