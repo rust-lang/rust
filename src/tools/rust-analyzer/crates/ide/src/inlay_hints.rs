@@ -870,4 +870,17 @@ fn foo() {
 "#,
         );
     }
+
+    #[test]
+    fn regression_18898() {
+        check(
+            r#"
+//- proc_macros: issue_18898
+#[proc_macros::issue_18898]
+fn foo() {
+    let
+}
+"#,
+        );
+    }
 }
