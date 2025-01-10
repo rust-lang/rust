@@ -187,19 +187,28 @@ struct OutOfScopePrecomputer<'a, 'tcx> {
     borrows_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
 }
 
-impl<'a, 'tcx> OutOfScopePrecomputer<'a, 'tcx> {
-    fn new(body: &'a Body<'tcx>, regioncx: &'a RegionInferenceContext<'tcx>) -> Self {
-        OutOfScopePrecomputer {
+impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
+    fn compute(
+        body: &Body<'tcx>,
+        regioncx: &RegionInferenceContext<'tcx>,
+        borrow_set: &BorrowSet<'tcx>,
+    ) -> FxIndexMap<Location, Vec<BorrowIndex>> {
+        let mut prec = OutOfScopePrecomputer {
             visited: DenseBitSet::new_empty(body.basic_blocks.len()),
             visit_stack: vec![],
             body,
             regioncx,
             borrows_out_of_scope_at_location: FxIndexMap::default(),
+        };
+        for (borrow_index, borrow_data) in borrow_set.iter_enumerated() {
+            let borrow_region = borrow_data.region;
+            let location = borrow_data.reserve_location;
+            prec.precompute_borrows_out_of_scope(borrow_index, borrow_region, location);
         }
-    }
-}
 
-impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
+        prec.borrows_out_of_scope_at_location
+    }
+
     fn precompute_borrows_out_of_scope(
         &mut self,
         borrow_index: BorrowIndex,
@@ -280,15 +289,7 @@ pub fn calculate_borrows_out_of_scope_at_location<'tcx>(
     regioncx: &RegionInferenceContext<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
 ) -> FxIndexMap<Location, Vec<BorrowIndex>> {
-    let mut prec = OutOfScopePrecomputer::new(body, regioncx);
-    for (borrow_index, borrow_data) in borrow_set.iter_enumerated() {
-        let borrow_region = borrow_data.region;
-        let location = borrow_data.reserve_location;
-
-        prec.precompute_borrows_out_of_scope(borrow_index, borrow_region, location);
-    }
-
-    prec.borrows_out_of_scope_at_location
+    OutOfScopePrecomputer::compute(body, regioncx, borrow_set)
 }
 
 struct PoloniusOutOfScopePrecomputer<'a, 'tcx> {
@@ -300,19 +301,30 @@ struct PoloniusOutOfScopePrecomputer<'a, 'tcx> {
     loans_out_of_scope_at_location: FxIndexMap<Location, Vec<BorrowIndex>>,
 }
 
-impl<'a, 'tcx> PoloniusOutOfScopePrecomputer<'a, 'tcx> {
-    fn new(body: &'a Body<'tcx>, regioncx: &'a RegionInferenceContext<'tcx>) -> Self {
-        Self {
+impl<'tcx> PoloniusOutOfScopePrecomputer<'_, 'tcx> {
+    fn compute(
+        body: &Body<'tcx>,
+        regioncx: &RegionInferenceContext<'tcx>,
+        borrow_set: &BorrowSet<'tcx>,
+    ) -> FxIndexMap<Location, Vec<BorrowIndex>> {
+        // The in-tree polonius analysis computes loans going out of scope using the
+        // set-of-loans model.
+        let mut prec = PoloniusOutOfScopePrecomputer {
             visited: DenseBitSet::new_empty(body.basic_blocks.len()),
             visit_stack: vec![],
             body,
             regioncx,
             loans_out_of_scope_at_location: FxIndexMap::default(),
+        };
+        for (loan_idx, loan_data) in borrow_set.iter_enumerated() {
+            let issuing_region = loan_data.region;
+            let loan_issued_at = loan_data.reserve_location;
+            prec.precompute_loans_out_of_scope(loan_idx, issuing_region, loan_issued_at);
         }
-    }
-}
 
-impl<'tcx> PoloniusOutOfScopePrecomputer<'_, 'tcx> {
+        prec.loans_out_of_scope_at_location
+    }
+
     /// Loans are in scope while they are live: whether they are contained within any live region.
     /// In the location-insensitive analysis, a loan will be contained in a region if the issuing
     /// region can reach it in the subset graph. So this is a reachability problem.
@@ -464,21 +476,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
             if !tcx.sess.opts.unstable_opts.polonius.is_next_enabled() {
                 calculate_borrows_out_of_scope_at_location(body, regioncx, borrow_set)
             } else {
-                // The in-tree polonius analysis computes loans going out of scope using the
-                // set-of-loans model.
-                let mut polonius_prec = PoloniusOutOfScopePrecomputer::new(body, regioncx);
-                for (loan_idx, loan_data) in borrow_set.iter_enumerated() {
-                    let issuing_region = loan_data.region;
-                    let loan_issued_at = loan_data.reserve_location;
-
-                    polonius_prec.precompute_loans_out_of_scope(
-                        loan_idx,
-                        issuing_region,
-                        loan_issued_at,
-                    );
-                }
-
-                polonius_prec.loans_out_of_scope_at_location
+                PoloniusOutOfScopePrecomputer::compute(body, regioncx, borrow_set)
             };
         Borrows { tcx, body, borrow_set, borrows_out_of_scope_at_location }
     }
