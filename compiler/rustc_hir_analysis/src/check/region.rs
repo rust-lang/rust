@@ -31,7 +31,7 @@ struct Context {
     parent: Option<(Scope, ScopeDepth)>,
 }
 
-struct RegionResolutionVisitor<'tcx> {
+struct ScopeResolutionVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 
     // The number of expressions and patterns visited in the current body.
@@ -71,7 +71,7 @@ struct RegionResolutionVisitor<'tcx> {
 }
 
 /// Records the lifetime of a local variable as `cx.var_parent`
-fn record_var_lifetime(visitor: &mut RegionResolutionVisitor<'_>, var_id: hir::ItemLocalId) {
+fn record_var_lifetime(visitor: &mut ScopeResolutionVisitor<'_>, var_id: hir::ItemLocalId) {
     match visitor.cx.var_parent {
         None => {
             // this can happen in extern fn declarations like
@@ -82,7 +82,7 @@ fn record_var_lifetime(visitor: &mut RegionResolutionVisitor<'_>, var_id: hir::I
     }
 }
 
-fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx hir::Block<'tcx>) {
+fn resolve_block<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, blk: &'tcx hir::Block<'tcx>) {
     debug!("resolve_block(blk.hir_id={:?})", blk.hir_id);
 
     let prev_cx = visitor.cx;
@@ -193,7 +193,7 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
     visitor.cx = prev_cx;
 }
 
-fn resolve_arm<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, arm: &'tcx hir::Arm<'tcx>) {
+fn resolve_arm<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, arm: &'tcx hir::Arm<'tcx>) {
     fn has_let_expr(expr: &Expr<'_>) -> bool {
         match &expr.kind {
             hir::ExprKind::Binary(_, lhs, rhs) => has_let_expr(lhs) || has_let_expr(rhs),
@@ -220,7 +220,7 @@ fn resolve_arm<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, arm: &'tcx hir
     visitor.cx = prev_cx;
 }
 
-fn resolve_pat<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, pat: &'tcx hir::Pat<'tcx>) {
+fn resolve_pat<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, pat: &'tcx hir::Pat<'tcx>) {
     visitor.record_child_scope(Scope { local_id: pat.hir_id.local_id, data: ScopeData::Node });
 
     // If this is a binding then record the lifetime of that binding.
@@ -237,7 +237,7 @@ fn resolve_pat<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, pat: &'tcx hir
     debug!("resolve_pat - post-increment {} pat = {:?}", visitor.expr_and_pat_count, pat);
 }
 
-fn resolve_stmt<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, stmt: &'tcx hir::Stmt<'tcx>) {
+fn resolve_stmt<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, stmt: &'tcx hir::Stmt<'tcx>) {
     let stmt_id = stmt.hir_id.local_id;
     debug!("resolve_stmt(stmt.id={:?})", stmt_id);
 
@@ -256,7 +256,7 @@ fn resolve_stmt<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, stmt: &'tcx h
     visitor.cx.parent = prev_parent;
 }
 
-fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
+fn resolve_expr<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
     debug!("resolve_expr - pre-increment {} expr = {:?}", visitor.expr_and_pat_count, expr);
 
     let prev_cx = visitor.cx;
@@ -420,10 +420,10 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
     // properly, we can't miss any types.
 
     match expr.kind {
-        // Manually recurse over closures and inline consts, because they are the only
-        // case of nested bodies that share the parent environment.
-        hir::ExprKind::Closure(&hir::Closure { body, .. })
-        | hir::ExprKind::ConstBlock(hir::ConstBlock { body, .. }) => {
+        // Manually recurse over closures, because they are nested bodies
+        // that share the parent environment. We handle const blocks in
+        // `visit_inline_const`.
+        hir::ExprKind::Closure(&hir::Closure { body, .. }) => {
             let body = visitor.tcx.hir().body(body);
             visitor.visit_body(body);
         }
@@ -554,7 +554,7 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
 }
 
 fn resolve_local<'tcx>(
-    visitor: &mut RegionResolutionVisitor<'tcx>,
+    visitor: &mut ScopeResolutionVisitor<'tcx>,
     pat: Option<&'tcx hir::Pat<'tcx>>,
     init: Option<&'tcx hir::Expr<'tcx>>,
 ) {
@@ -725,7 +725,7 @@ fn resolve_local<'tcx>(
     ///        | ( E& )
     /// ```
     fn record_rvalue_scope_if_borrow_expr<'tcx>(
-        visitor: &mut RegionResolutionVisitor<'tcx>,
+        visitor: &mut ScopeResolutionVisitor<'tcx>,
         expr: &hir::Expr<'_>,
         blk_id: Option<Scope>,
     ) {
@@ -782,7 +782,7 @@ fn resolve_local<'tcx>(
     }
 }
 
-impl<'tcx> RegionResolutionVisitor<'tcx> {
+impl<'tcx> ScopeResolutionVisitor<'tcx> {
     /// Records the current parent (if any) as the parent of `child_scope`.
     /// Returns the depth of `child_scope`.
     fn record_child_scope(&mut self, child_scope: Scope) -> ScopeDepth {
@@ -838,7 +838,7 @@ impl<'tcx> RegionResolutionVisitor<'tcx> {
     }
 }
 
-impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
+impl<'tcx> Visitor<'tcx> for ScopeResolutionVisitor<'tcx> {
     fn visit_block(&mut self, b: &'tcx Block<'tcx>) {
         resolve_block(self, b);
     }
@@ -906,6 +906,10 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
     fn visit_local(&mut self, l: &'tcx LetStmt<'tcx>) {
         resolve_local(self, Some(l.pat), l.init)
     }
+    fn visit_inline_const(&mut self, c: &'tcx hir::ConstBlock) {
+        let body = self.tcx.hir().body(c.body);
+        self.visit_body(body);
+    }
 }
 
 /// Per-body `region::ScopeTree`. The `DefId` should be the owner `DefId` for the body;
@@ -922,7 +926,7 @@ pub(crate) fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
     }
 
     let scope_tree = if let Some(body) = tcx.hir().maybe_body_owned_by(def_id.expect_local()) {
-        let mut visitor = RegionResolutionVisitor {
+        let mut visitor = ScopeResolutionVisitor {
             tcx,
             scope_tree: ScopeTree::default(),
             expr_and_pat_count: 0,
