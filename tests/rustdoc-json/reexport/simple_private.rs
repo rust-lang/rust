@@ -12,3 +12,9 @@ mod inner {
 pub use inner::Public;
 
 //@ ismany "$.index[*][?(@.name=='simple_private')].inner.module.items[*]" $use_id
+
+// Test for https://github.com/rust-lang/rust/issues/135309
+//@ has  "$.paths[*][?(@.kind=='module')].path" '["simple_private"]'
+//@ !has "$.paths[*].path"                      '["simple_private", "inner"]'
+//@ has  "$.paths[*][?(@.kind=='struct')].path" '["simple_private", "inner", "Public"]'
+//@ !has "$.paths[*].path"                      '["simple_private", "Public"]'
