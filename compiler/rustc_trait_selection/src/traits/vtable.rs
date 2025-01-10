@@ -11,11 +11,10 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{
     self, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeVisitableExt, Upcast, VtblEntry,
 };
-use rustc_span::{DUMMY_SP, Span, sym};
+use rustc_span::DUMMY_SP;
 use smallvec::{SmallVec, smallvec};
 use tracing::debug;
 
-use crate::errors::DumpVTableEntries;
 use crate::traits::{ObligationCtxt, impossible_predicates, is_vtable_safe_method};
 
 #[derive(Clone, Debug)]
@@ -192,15 +191,6 @@ fn maybe_iter<I: Iterator>(i: Option<I>) -> impl Iterator<Item = I::Item> {
     i.into_iter().flatten()
 }
 
-fn dump_vtable_entries<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    sp: Span,
-    trait_ref: ty::PolyTraitRef<'tcx>,
-    entries: &[VtblEntry<'tcx>],
-) {
-    tcx.dcx().emit_err(DumpVTableEntries { span: sp, trait_ref, entries: format!("{entries:#?}") });
-}
-
 fn has_own_existential_vtable_entries(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
     own_existential_vtable_entries_iter(tcx, trait_def_id).next().is_some()
 }
@@ -316,11 +306,6 @@ fn vtable_entries<'tcx>(
     };
 
     let _ = prepare_vtable_segments(tcx, trait_ref, vtable_segment_callback);
-
-    if tcx.has_attr(trait_ref.def_id(), sym::rustc_dump_vtable) {
-        let sp = tcx.def_span(trait_ref.def_id());
-        dump_vtable_entries(tcx, sp, trait_ref, &entries);
-    }
 
     tcx.arena.alloc_from_iter(entries)
 }
