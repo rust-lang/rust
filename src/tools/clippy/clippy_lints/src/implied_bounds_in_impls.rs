@@ -243,11 +243,11 @@ fn collect_supertrait_bounds<'tcx>(cx: &LateContext<'tcx>, bounds: GenericBounds
                 && !predicates.is_empty()
             {
                 Some(ImplTraitBound {
+                    span: bound.span(),
                     predicates,
+                    trait_def_id,
                     args: path.args.map_or([].as_slice(), |p| p.args),
                     constraints: path.args.map_or([].as_slice(), |p| p.constraints),
-                    trait_def_id,
-                    span: bound.span(),
                 })
             } else {
                 None

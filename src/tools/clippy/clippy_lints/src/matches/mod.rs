@@ -583,11 +583,6 @@ declare_clippy_lint! {
     /// are the same on purpose, you can factor them
     /// [using `|`](https://doc.rust-lang.org/book/patterns.html#multiple-patterns).
     ///
-    /// ### Known problems
-    /// False positive possible with order dependent `match`
-    /// (see issue
-    /// [#860](https://github.com/rust-lang/rust-clippy/issues/860)).
-    ///
     /// ### Example
     /// ```rust,ignore
     /// match foo {

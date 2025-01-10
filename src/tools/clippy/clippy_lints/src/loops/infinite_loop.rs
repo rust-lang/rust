@@ -38,8 +38,8 @@ pub(super) fn check<'tcx>(
         cx,
         label,
         inner_labels: label.into_iter().collect(),
-        is_finite: false,
         loop_depth: 0,
+        is_finite: false,
     };
     loop_visitor.visit_block(loop_block);
 
