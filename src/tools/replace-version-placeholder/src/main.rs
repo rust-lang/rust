@@ -10,7 +10,12 @@ fn main() {
     let version_str = t!(std::fs::read_to_string(&version_path), version_path);
     let version_str = version_str.trim();
     walk::walk_many(
-        &[&root_path.join("compiler"), &root_path.join("library")],
+        &[
+            &root_path.join("compiler"),
+            &root_path.join("library"),
+            &root_path.join("src/doc/rustc"),
+            &root_path.join("src/doc/rustdoc"),
+        ],
         |path, _is_dir| walk::filter_dirs(path),
         &mut |entry, contents| {
             if !contents.contains(VERSION_PLACEHOLDER) {

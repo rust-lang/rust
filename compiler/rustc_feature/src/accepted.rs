@@ -73,7 +73,7 @@ declare_features! (
     /// Allows free and inherent `async fn`s, `async` blocks, and `<expr>.await` expressions.
     (accepted, async_await, "1.39.0", Some(50547)),
     /// Allows `async || body` closures.
-    (accepted, async_closure, "CURRENT_RUSTC_VERSION", Some(62290)),
+    (accepted, async_closure, "1.85.0", Some(62290)),
     /// Allows async functions to be declared, implemented, and used in traits.
     (accepted, async_fn_in_trait, "1.75.0", Some(91611)),
     /// Allows all literals in attribute lists and values of key-value pairs.
@@ -176,7 +176,7 @@ declare_features! (
     /// Allows using the `#[diagnostic]` attribute tool namespace
     (accepted, diagnostic_namespace, "1.78.0", Some(111996)),
     /// Controls errors in trait implementations.
-    (accepted, do_not_recommend, "CURRENT_RUSTC_VERSION", Some(51992)),
+    (accepted, do_not_recommend, "1.85.0", Some(51992)),
     /// Allows `#[doc(alias = "...")]`.
     (accepted, doc_alias, "1.48.0", Some(50146)),
     /// Allows `..` in tuple (struct) patterns.
@@ -199,7 +199,7 @@ declare_features! (
     (accepted, extended_key_value_attributes, "1.54.0", Some(78835)),
     /// Allows using `efiapi`, `aapcs`, `sysv64` and `win64` as calling
     /// convention for functions with varargs.
-    (accepted, extended_varargs_abi_support, "CURRENT_RUSTC_VERSION", Some(100189)),
+    (accepted, extended_varargs_abi_support, "1.85.0", Some(100189)),
     /// Allows resolving absolute paths as paths from other crates.
     (accepted, extern_absolute_paths, "1.30.0", Some(44660)),
     /// Allows `extern crate foo as bar;`. This puts `bar` into extern prelude.

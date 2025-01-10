@@ -595,7 +595,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                         let place_ty = place.place.ty();
                         needs_to_be_read |= self.is_multivariant_adt(place_ty, pat.span);
                     }
-                    PatKind::Lit(_) | PatKind::Range(..) => {
+                    PatKind::Expr(_) | PatKind::Range(..) => {
                         // If the PatKind is a Lit or a Range then we want
                         // to borrow discr.
                         needs_to_be_read = true;
@@ -1803,7 +1803,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 
             PatKind::Path(_)
             | PatKind::Binding(.., None)
-            | PatKind::Lit(..)
+            | PatKind::Expr(..)
             | PatKind::Range(..)
             | PatKind::Never
             | PatKind::Wild

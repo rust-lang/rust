@@ -11,7 +11,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::TyCtxt;
 use tracing::debug;
 
-use super::{AllFacts, LocationTable};
+use super::{PoloniusFacts, PoloniusLocationTable};
 use crate::borrow_set::BorrowSet;
 use crate::path_utils::*;
 use crate::{
@@ -22,9 +22,9 @@ use crate::{
 /// Emit `loan_invalidated_at` facts.
 pub(super) fn emit_loan_invalidations<'tcx>(
     tcx: TyCtxt<'tcx>,
-    facts: &mut AllFacts,
+    facts: &mut PoloniusFacts,
     body: &Body<'tcx>,
-    location_table: &LocationTable,
+    location_table: &PoloniusLocationTable,
     borrow_set: &BorrowSet<'tcx>,
 ) {
     let dominators = body.basic_blocks.dominators();
@@ -35,9 +35,9 @@ pub(super) fn emit_loan_invalidations<'tcx>(
 
 struct LoanInvalidationsGenerator<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    facts: &'a mut AllFacts,
+    facts: &'a mut PoloniusFacts,
     body: &'a Body<'tcx>,
-    location_table: &'a LocationTable,
+    location_table: &'a PoloniusLocationTable,
     dominators: &'a Dominators<BasicBlock>,
     borrow_set: &'a BorrowSet<'tcx>,
 }

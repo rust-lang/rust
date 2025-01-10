@@ -624,8 +624,6 @@ impl Builder<'_> {
         // get warnings about it being unexpected.
         hostflags.arg("-Zunstable-options");
         hostflags.arg("--check-cfg=cfg(bootstrap)");
-        // #[cfg(bootstrap)] as we are transition `test` to userspace cfg
-        hostflags.arg("--check-cfg=cfg(test)");
 
         // FIXME: It might be better to use the same value for both `RUSTFLAGS` and `RUSTDOCFLAGS`,
         // but this breaks CI. At the very least, stage0 `rustdoc` needs `--cfg bootstrap`. See
@@ -1206,10 +1204,7 @@ impl Builder<'_> {
             // so that it'll be available when downstream consumers of std try to use it.
             rustflags.arg("-Zinline-mir-preserve-debug");
 
-            // FIXME: always pass this after the next `#[cfg(bootstrap)]` update.
-            if compiler.stage != 0 {
-                rustflags.arg("-Zmir_strip_debuginfo=locals-in-tiny-functions");
-            }
+            rustflags.arg("-Zmir_strip_debuginfo=locals-in-tiny-functions");
         }
 
         Cargo {

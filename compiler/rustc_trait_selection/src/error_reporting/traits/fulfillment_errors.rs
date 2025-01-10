@@ -27,7 +27,7 @@ use rustc_middle::ty::{
     self, ToPolyTraitRef, TraitRef, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, Upcast,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::{BytePos, DUMMY_SP, Span, Symbol, sym};
+use rustc_span::{BytePos, DUMMY_SP, STDLIB_STABLE_CRATES, Span, Symbol, sym};
 use tracing::{debug, instrument};
 
 use super::on_unimplemented::{AppendConstMessage, OnUnimplementedNote};
@@ -520,7 +520,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             match obligation.cause.span.ctxt().outer_expn_data().macro_def_id {
                                 Some(macro_def_id) => {
                                     let crate_name = tcx.crate_name(macro_def_id.krate);
-                                    crate_name == sym::std || crate_name == sym::core
+                                    STDLIB_STABLE_CRATES.contains(&crate_name)
                                 }
                                 None => false,
                             };

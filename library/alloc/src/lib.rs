@@ -91,7 +91,6 @@
 //
 // Library features:
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(async_closure))]
 #![cfg_attr(test, feature(str_as_str))]
 #![feature(alloc_layout_extra)]
 #![feature(allocator_api)]

@@ -124,30 +124,30 @@ pub(super) fn check(
         match lit.node {
             ast::LitKind::Bool(false) => {
                 check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::Or, Replacement {
+                    method_name: "any",
                     has_args: true,
                     has_generic_return: false,
-                    method_name: "any",
                 });
             },
             ast::LitKind::Bool(true) => {
                 check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::And, Replacement {
+                    method_name: "all",
                     has_args: true,
                     has_generic_return: false,
-                    method_name: "all",
                 });
             },
             ast::LitKind::Int(Pu128(0), _) => {
                 check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::Add, Replacement {
+                    method_name: "sum",
                     has_args: false,
                     has_generic_return: needs_turbofish(cx, expr),
-                    method_name: "sum",
                 });
             },
             ast::LitKind::Int(Pu128(1), _) => {
                 check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::Mul, Replacement {
+                    method_name: "product",
                     has_args: false,
                     has_generic_return: needs_turbofish(cx, expr),
-                    method_name: "product",
                 });
             },
             _ => (),

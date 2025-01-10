@@ -57,7 +57,7 @@ use crate::middle::resolve_bound_vars::{ObjectLifetimeDefault, ResolveBoundVars,
 use crate::middle::stability::{self, DeprecationEntry};
 use crate::mir::interpret::{
     EvalStaticInitializerRawResult, EvalToAllocationRawResult, EvalToConstValueResult,
-    EvalToValTreeResult, GlobalId, LitToConstError, LitToConstInput,
+    EvalToValTreeResult, GlobalId, LitToConstInput,
 };
 use crate::mir::mono::{CodegenUnit, CollectionMode, MonoItem};
 use crate::query::erase::{Erase, erase, restore};
@@ -1268,7 +1268,7 @@ rustc_queries! {
     // FIXME get rid of this with valtrees
     query lit_to_const(
         key: LitToConstInput<'tcx>
-    ) -> Result<ty::Const<'tcx>, LitToConstError> {
+    ) -> ty::Const<'tcx> {
         desc { "converting literal to const" }
     }
 

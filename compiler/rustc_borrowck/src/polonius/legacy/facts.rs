@@ -4,13 +4,13 @@ use std::fs::{self, File};
 use std::io::Write;
 use std::path::Path;
 
-use polonius_engine::{AllFacts as PoloniusFacts, Atom, Output};
+use polonius_engine::{AllFacts, Atom, Output};
 use rustc_macros::extension;
 use rustc_middle::mir::Local;
 use rustc_middle::ty::{RegionVid, TyCtxt};
 use rustc_mir_dataflow::move_paths::MovePathIndex;
 
-use super::{LocationIndex, LocationTable};
+use super::{LocationIndex, PoloniusLocationTable};
 use crate::BorrowIndex;
 
 #[derive(Copy, Clone, Debug)]
@@ -49,11 +49,11 @@ impl polonius_engine::FactTypes for RustcFacts {
     type Path = MovePathIndex;
 }
 
-pub type AllFacts = PoloniusFacts<RustcFacts>;
+pub type PoloniusFacts = AllFacts<RustcFacts>;
 
-#[extension(pub(crate) trait AllFactsExt)]
-impl AllFacts {
-    /// Returns `true` if there is a need to gather `AllFacts` given the
+#[extension(pub(crate) trait PoloniusFactsExt)]
+impl PoloniusFacts {
+    /// Returns `true` if there is a need to gather `PoloniusFacts` given the
     /// current `-Z` flags.
     fn enabled(tcx: TyCtxt<'_>) -> bool {
         tcx.sess.opts.unstable_opts.nll_facts
@@ -63,7 +63,7 @@ impl AllFacts {
     fn write_to_dir(
         &self,
         dir: impl AsRef<Path>,
-        location_table: &LocationTable,
+        location_table: &PoloniusLocationTable,
     ) -> Result<(), Box<dyn Error>> {
         let dir: &Path = dir.as_ref();
         fs::create_dir_all(dir)?;
@@ -119,7 +119,7 @@ impl Atom for LocationIndex {
 }
 
 struct FactWriter<'w> {
-    location_table: &'w LocationTable,
+    location_table: &'w PoloniusLocationTable,
     dir: &'w Path,
 }
 
@@ -141,7 +141,7 @@ trait FactRow {
     fn write(
         &self,
         out: &mut dyn Write,
-        location_table: &LocationTable,
+        location_table: &PoloniusLocationTable,
     ) -> Result<(), Box<dyn Error>>;
 }
 
@@ -149,7 +149,7 @@ impl FactRow for PoloniusRegionVid {
     fn write(
         &self,
         out: &mut dyn Write,
-        location_table: &LocationTable,
+        location_table: &PoloniusLocationTable,
     ) -> Result<(), Box<dyn Error>> {
         write_row(out, location_table, &[self])
     }
@@ -163,7 +163,7 @@ where
     fn write(
         &self,
         out: &mut dyn Write,
-        location_table: &LocationTable,
+        location_table: &PoloniusLocationTable,
     ) -> Result<(), Box<dyn Error>> {
         write_row(out, location_table, &[&self.0, &self.1])
     }
@@ -178,7 +178,7 @@ where
     fn write(
         &self,
         out: &mut dyn Write,
-        location_table: &LocationTable,
+        location_table: &PoloniusLocationTable,
     ) -> Result<(), Box<dyn Error>> {
         write_row(out, location_table, &[&self.0, &self.1, &self.2])
     }
@@ -194,7 +194,7 @@ where
     fn write(
         &self,
         out: &mut dyn Write,
-        location_table: &LocationTable,
+        location_table: &PoloniusLocationTable,
     ) -> Result<(), Box<dyn Error>> {
         write_row(out, location_table, &[&self.0, &self.1, &self.2, &self.3])
     }
@@ -202,7 +202,7 @@ where
 
 fn write_row(
     out: &mut dyn Write,
-    location_table: &LocationTable,
+    location_table: &PoloniusLocationTable,
     columns: &[&dyn FactCell],
 ) -> Result<(), Box<dyn Error>> {
     for (index, c) in columns.iter().enumerate() {
@@ -213,41 +213,41 @@ fn write_row(
 }
 
 trait FactCell {
-    fn to_string(&self, location_table: &LocationTable) -> String;
+    fn to_string(&self, location_table: &PoloniusLocationTable) -> String;
 }
 
 impl FactCell for BorrowIndex {
-    fn to_string(&self, _location_table: &LocationTable) -> String {
+    fn to_string(&self, _location_table: &PoloniusLocationTable) -> String {
         format!("{self:?}")
     }
 }
 
 impl FactCell for Local {
-    fn to_string(&self, _location_table: &LocationTable) -> String {
+    fn to_string(&self, _location_table: &PoloniusLocationTable) -> String {
         format!("{self:?}")
     }
 }
 
 impl FactCell for MovePathIndex {
-    fn to_string(&self, _location_table: &LocationTable) -> String {
+    fn to_string(&self, _location_table: &PoloniusLocationTable) -> String {
         format!("{self:?}")
     }
 }
 
 impl FactCell for PoloniusRegionVid {
-    fn to_string(&self, _location_table: &LocationTable) -> String {
+    fn to_string(&self, _location_table: &PoloniusLocationTable) -> String {
         format!("{self:?}")
     }
 }
 
 impl FactCell for RegionVid {
-    fn to_string(&self, _location_table: &LocationTable) -> String {
+    fn to_string(&self, _location_table: &PoloniusLocationTable) -> String {
         format!("{self:?}")
     }
 }
 
 impl FactCell for LocationIndex {
-    fn to_string(&self, location_table: &LocationTable) -> String {
+    fn to_string(&self, location_table: &PoloniusLocationTable) -> String {
         format!("{:?}", location_table.to_rich_location(*self))
     }
 }

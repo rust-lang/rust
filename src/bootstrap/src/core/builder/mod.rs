@@ -1,5 +1,3 @@
-mod cargo;
-
 use std::any::{Any, type_name};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
@@ -24,6 +22,8 @@ use crate::utils::cache::Cache;
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{self, LldThreads, add_dylib_path, exe, libdir, linker_args, t};
 use crate::{Build, Crate};
+
+mod cargo;
 
 #[cfg(test)]
 mod tests;
@@ -1443,7 +1443,7 @@ impl<'a> Builder<'a> {
             let mut stack = self.stack.borrow_mut();
             for stack_step in stack.iter() {
                 // should skip
-                if stack_step.downcast_ref::<S>().map_or(true, |stack_step| *stack_step != step) {
+                if stack_step.downcast_ref::<S>().is_none_or(|stack_step| *stack_step != step) {
                     continue;
                 }
                 let mut out = String::new();

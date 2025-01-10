@@ -37,7 +37,7 @@ Libraries
 - [Move `<float>::copysign`, `<float>::abs`, `<float>::signum` to `core`](https://github.com/rust-lang/rust/pull/131304)
 - [Add `LowerExp` and `UpperExp` implementations to `NonZero`](https://github.com/rust-lang/rust/pull/131377)
 - [Implement `FromStr` for `CString` and `TryFrom<CString>` for `String`](https://github.com/rust-lang/rust/pull/130608)
-- [`std::os::darwin` has been made public](https://github.com/rust-lang/rust/pull/130635)
+- [`std::os::darwin` has been made public](https://github.com/rust-lang/rust/pull/123723)
 
 <a id="1.84.0-Stabilized-APIs"></a>
 
@@ -60,6 +60,7 @@ Stabilized APIs
 - [`core::ptr::without_provenance_mut`](https://doc.rust-lang.org/stable/core/ptr/fn.without_provenance_mut.html)
 - [`core::ptr::dangling`](https://doc.rust-lang.org/stable/core/ptr/fn.dangling.html)
 - [`core::ptr::dangling_mut`](https://doc.rust-lang.org/stable/core/ptr/fn.dangling_mut.html)
+- [`Pin::as_deref_mut`](https://doc.rust-lang.org/stable/core/pin/struct.Pin.html#method.as_deref_mut)
 
 These APIs are now stable in const contexts
 

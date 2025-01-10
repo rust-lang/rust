@@ -6,7 +6,7 @@ LL | fn g<'a, 'b>() {
    |      |
    |      lifetime `'a` defined here
 LL |     f::<'a, 'b>(());
-   |     ^^^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
+   |     ^^^^^^^^^^^^^^^ generic argument requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
    = note: requirement occurs because of a function pointer to `f`

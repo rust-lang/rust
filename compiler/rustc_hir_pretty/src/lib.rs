@@ -199,6 +199,7 @@ impl<'a> State<'a> {
             Node::OpaqueTy(o) => self.print_opaque_ty(o),
             Node::Pat(a) => self.print_pat(a),
             Node::PatField(a) => self.print_patfield(a),
+            Node::PatExpr(a) => self.print_pat_expr(a),
             Node::Arm(a) => self.print_arm(a),
             Node::Infer(_) => self.word("_"),
             Node::PreciseCapturingNonLifetimeArg(param) => self.print_ident(param.ident),
@@ -1849,6 +1850,19 @@ impl<'a> State<'a> {
         }
     }
 
+    fn print_pat_expr(&mut self, expr: &hir::PatExpr<'_>) {
+        match &expr.kind {
+            hir::PatExprKind::Lit { lit, negated } => {
+                if *negated {
+                    self.word("-");
+                }
+                self.print_literal(lit);
+            }
+            hir::PatExprKind::ConstBlock(c) => self.print_inline_const(c),
+            hir::PatExprKind::Path(qpath) => self.print_qpath(qpath, true),
+        }
+    }
+
     fn print_pat(&mut self, pat: &hir::Pat<'_>) {
         self.maybe_print_comment(pat.span.lo());
         self.ann.pre(self, AnnNode::Pat(pat));
@@ -1966,17 +1980,17 @@ impl<'a> State<'a> {
                     self.pclose();
                 }
             }
-            PatKind::Lit(e) => self.print_expr(e),
+            PatKind::Expr(e) => self.print_pat_expr(e),
             PatKind::Range(begin, end, end_kind) => {
                 if let Some(expr) = begin {
-                    self.print_expr(expr);
+                    self.print_pat_expr(expr);
                 }
                 match end_kind {
                     RangeEnd::Included => self.word("..."),
                     RangeEnd::Excluded => self.word(".."),
                 }
                 if let Some(expr) = end {
-                    self.print_expr(expr);
+                    self.print_pat_expr(expr);
                 }
             }
             PatKind::Slice(before, slice, after) => {

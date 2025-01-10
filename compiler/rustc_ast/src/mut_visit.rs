@@ -1512,7 +1512,7 @@ pub fn walk_pat<T: MutVisitor>(vis: &mut T, pat: &mut P<Pat>) {
             vis.visit_ident(ident);
             visit_opt(sub, |sub| vis.visit_pat(sub));
         }
-        PatKind::Lit(e) => vis.visit_expr(e),
+        PatKind::Expr(e) => vis.visit_expr(e),
         PatKind::TupleStruct(qself, path, elems) => {
             vis.visit_qself(qself);
             vis.visit_path(path);

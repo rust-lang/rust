@@ -7,7 +7,7 @@ use rustc_ast::token::CommentKind;
 use rustc_ast::util::parser::{AssocOp, ExprPrecedence};
 use rustc_ast::{
     self as ast, AttrId, AttrStyle, DelimArgs, FloatTy, InlineAsmOptions, InlineAsmTemplatePiece,
-    IntTy, Label, LitKind, MetaItemInner, MetaItemLit, TraitObjectSyntax, UintTy,
+    IntTy, Label, LitIntType, LitKind, MetaItemInner, MetaItemLit, TraitObjectSyntax, UintTy,
 };
 pub use rustc_ast::{
     BinOp, BinOpKind, BindingMode, BorrowKind, BoundConstness, BoundPolarity, ByRef, CaptureBy,
@@ -1386,7 +1386,7 @@ impl<'hir> Pat<'hir> {
 
         use PatKind::*;
         match self.kind {
-            Wild | Never | Lit(_) | Range(..) | Binding(.., None) | Path(_) | Err(_) => true,
+            Wild | Never | Expr(_) | Range(..) | Binding(.., None) | Path(_) | Err(_) => true,
             Box(s) | Deref(s) | Ref(s, _) | Binding(.., Some(s)) | Guard(s, _) => s.walk_short_(it),
             Struct(_, fields, _) => fields.iter().all(|field| field.pat.walk_short_(it)),
             TupleStruct(_, s, _) | Tuple(s, _) | Or(s) => s.iter().all(|p| p.walk_short_(it)),
@@ -1413,7 +1413,7 @@ impl<'hir> Pat<'hir> {
 
         use PatKind::*;
         match self.kind {
-            Wild | Never | Lit(_) | Range(..) | Binding(.., None) | Path(_) | Err(_) => {}
+            Wild | Never | Expr(_) | Range(..) | Binding(.., None) | Path(_) | Err(_) => {}
             Box(s) | Deref(s) | Ref(s, _) | Binding(.., Some(s)) | Guard(s, _) => s.walk_(it),
             Struct(_, fields, _) => fields.iter().for_each(|field| field.pat.walk_(it)),
             TupleStruct(_, s, _) | Tuple(s, _) | Or(s) => s.iter().for_each(|p| p.walk_(it)),
@@ -1520,6 +1520,26 @@ impl fmt::Debug for DotDotPos {
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
+pub struct PatExpr<'hir> {
+    pub hir_id: HirId,
+    pub span: Span,
+    pub kind: PatExprKind<'hir>,
+}
+
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
+pub enum PatExprKind<'hir> {
+    Lit {
+        lit: &'hir Lit,
+        // FIXME: move this into `Lit` and handle negated literal expressions
+        // once instead of matching on unop neg expressions everywhere.
+        negated: bool,
+    },
+    ConstBlock(ConstBlock),
+    /// A path pattern for a unit struct/variant or a (maybe-associated) constant.
+    Path(QPath<'hir>),
+}
+
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum PatKind<'hir> {
     /// Represents a wildcard pattern (i.e., `_`).
     Wild,
@@ -1563,14 +1583,14 @@ pub enum PatKind<'hir> {
     /// A reference pattern (e.g., `&mut (a, b)`).
     Ref(&'hir Pat<'hir>, Mutability),
 
-    /// A literal.
-    Lit(&'hir Expr<'hir>),
+    /// A literal, const block or path.
+    Expr(&'hir PatExpr<'hir>),
 
     /// A guard pattern (e.g., `x if guard(x)`).
     Guard(&'hir Pat<'hir>, &'hir Expr<'hir>),
 
     /// A range pattern (e.g., `1..=2` or `1..2`).
-    Range(Option<&'hir Expr<'hir>>, Option<&'hir Expr<'hir>>, RangeEnd),
+    Range(Option<&'hir PatExpr<'hir>>, Option<&'hir PatExpr<'hir>>, RangeEnd),
 
     /// A slice pattern, `[before_0, ..., before_n, (slice, after_0, ..., after_n)?]`.
     ///
@@ -2072,6 +2092,18 @@ impl Expr<'_> {
             | ExprKind::DropTemps(..)
             | ExprKind::Err(_) => false,
         }
+    }
+
+    /// Check if expression is an integer literal that can be used
+    /// where `usize` is expected.
+    pub fn is_size_lit(&self) -> bool {
+        matches!(
+            self.kind,
+            ExprKind::Lit(Lit {
+                node: LitKind::Int(_, LitIntType::Unsuffixed | LitIntType::Unsigned(UintTy::Usize)),
+                ..
+            })
+        )
     }
 
     /// If `Self.kind` is `ExprKind::DropTemps(expr)`, drill down until we get a non-`DropTemps`
@@ -4144,6 +4176,10 @@ pub enum Node<'hir> {
     OpaqueTy(&'hir OpaqueTy<'hir>),
     Pat(&'hir Pat<'hir>),
     PatField(&'hir PatField<'hir>),
+    /// Needed as its own node with its own HirId for tracking
+    /// the unadjusted type of literals within patterns
+    /// (e.g. byte str literals not being of slice type).
+    PatExpr(&'hir PatExpr<'hir>),
     Arm(&'hir Arm<'hir>),
     Block(&'hir Block<'hir>),
     LetStmt(&'hir LetStmt<'hir>),
@@ -4200,6 +4236,7 @@ impl<'hir> Node<'hir> {
             | Node::Block(..)
             | Node::Ctor(..)
             | Node::Pat(..)
+            | Node::PatExpr(..)
             | Node::Arm(..)
             | Node::LetStmt(..)
             | Node::Crate(..)

@@ -656,14 +656,14 @@ impl<'a> Parser<'a> {
             fn visit_pat(&mut self, p: &'a Pat) -> Self::Result {
                 match &p.kind {
                     // Base expression
-                    PatKind::Err(_) | PatKind::Lit(_) => {
+                    PatKind::Err(_) | PatKind::Expr(_) => {
                         self.maybe_add_suggestions_then_emit(p.span, p.span, false)
                     }
 
                     // Sub-patterns
                     // FIXME: this doesn't work with recursive subpats (`&mut &mut <err>`)
                     PatKind::Box(subpat) | PatKind::Ref(subpat, _)
-                        if matches!(subpat.kind, PatKind::Err(_) | PatKind::Lit(_)) =>
+                        if matches!(subpat.kind, PatKind::Err(_) | PatKind::Expr(_)) =>
                     {
                         self.maybe_add_suggestions_then_emit(subpat.span, p.span, false)
                     }
@@ -766,7 +766,7 @@ impl<'a> Parser<'a> {
             if let Some(re) = self.parse_range_end() {
                 self.parse_pat_range_begin_with(const_expr, re)?
             } else {
-                PatKind::Lit(const_expr)
+                PatKind::Expr(const_expr)
             }
         } else if self.is_builtin() {
             self.parse_pat_builtin()?
@@ -833,7 +833,7 @@ impl<'a> Parser<'a> {
                         .struct_span_err(self_.token.span, msg)
                         .with_span_label(self_.token.span, format!("expected {expected}"))
                 });
-            PatKind::Lit(self.mk_expr(lo, ExprKind::Lit(lit)))
+            PatKind::Expr(self.mk_expr(lo, ExprKind::Lit(lit)))
         } else {
             // Try to parse everything else as literal with optional minus
             match self.parse_literal_maybe_minus() {
@@ -845,7 +845,7 @@ impl<'a> Parser<'a> {
 
                     match self.parse_range_end() {
                         Some(form) => self.parse_pat_range_begin_with(begin, form)?,
-                        None => PatKind::Lit(begin),
+                        None => PatKind::Expr(begin),
                     }
                 }
                 Err(err) => return self.fatal_unexpected_non_pat(err, expected),
@@ -989,7 +989,7 @@ impl<'a> Parser<'a> {
 
             match &pat.kind {
                 // recover ranges with parentheses around the `(start)..`
-                PatKind::Lit(begin)
+                PatKind::Expr(begin)
                     if self.may_recover()
                         && let Some(form) = self.parse_range_end() =>
                 {

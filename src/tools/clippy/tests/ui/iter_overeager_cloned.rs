@@ -1,5 +1,10 @@
 #![warn(clippy::iter_overeager_cloned, clippy::redundant_clone, clippy::filter_next)]
-#![allow(dead_code, clippy::let_unit_value, clippy::useless_vec)]
+#![allow(
+    dead_code,
+    clippy::let_unit_value,
+    clippy::useless_vec,
+    clippy::double_ended_iterator_last
+)]
 
 fn main() {
     let vec = vec!["1".to_string(), "2".to_string(), "3".to_string()];

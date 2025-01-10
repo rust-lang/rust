@@ -1701,7 +1701,7 @@ impl<'a> State<'a> {
                     self.print_pat(inner);
                 }
             }
-            PatKind::Lit(e) => self.print_expr(e, FixupContext::default()),
+            PatKind::Expr(e) => self.print_expr(e, FixupContext::default()),
             PatKind::Range(begin, end, Spanned { node: end_kind, .. }) => {
                 if let Some(e) = begin {
                     self.print_expr(e, FixupContext::default());

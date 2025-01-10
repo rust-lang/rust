@@ -173,29 +173,6 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
                     *kind = CastKind::IntToInt;
                     return;
                 }
-
-                // Transmuting a transparent struct/union to a field's type is a projection
-                if let ty::Adt(adt_def, args) = operand_ty.kind()
-                    && adt_def.repr().transparent()
-                    && (adt_def.is_struct() || adt_def.is_union())
-                    && let Some(place) = operand.place()
-                {
-                    let variant = adt_def.non_enum_variant();
-                    for (i, field) in variant.fields.iter_enumerated() {
-                        let field_ty = field.ty(self.tcx, args);
-                        if field_ty == *cast_ty {
-                            let place = place
-                                .project_deeper(&[ProjectionElem::Field(i, *cast_ty)], self.tcx);
-                            let operand = if operand.is_move() {
-                                Operand::Move(place)
-                            } else {
-                                Operand::Copy(place)
-                            };
-                            *rvalue = Rvalue::Use(operand);
-                            return;
-                        }
-                    }
-                }
             }
         }
     }

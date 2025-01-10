@@ -155,90 +155,21 @@ note: `FnMut` can't be used with `~const` because it isn't annotated with `#[con
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0277]: the trait bound `fn() -> i32 {one}: const Destruct` is not satisfied
-  --> $DIR/fn_trait_refs.rs:70:32
+error[E0015]: cannot call non-const operator in constants
+  --> $DIR/fn_trait_refs.rs:71:17
    |
-LL |         let test_one = test_fn(one);
-   |                        ------- ^^^
-   |                        |
-   |                        required by a bound introduced by this call
+LL |         assert!(test_one == (1, 1, 1));
+   |                 ^^^^^^^^^^^^^^^^^^^^^
    |
-note: required by a bound in `test_fn`
-  --> $DIR/fn_trait_refs.rs:35:24
-   |
-LL | const fn test_fn<T>(mut f: T) -> (T::Output, T::Output, T::Output)
-   |          ------- required by a bound in this function
-LL | where
-LL |     T: ~const Fn<()> + ~const Destruct,
-   |                        ^^^^^^ required by this bound in `test_fn`
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
-error[E0277]: the trait bound `fn() -> i32 {two}: const Destruct` is not satisfied
-  --> $DIR/fn_trait_refs.rs:73:36
+error[E0015]: cannot call non-const operator in constants
+  --> $DIR/fn_trait_refs.rs:74:17
    |
-LL |         let test_two = test_fn_mut(two);
-   |                        ----------- ^^^
-   |                        |
-   |                        required by a bound introduced by this call
+LL |         assert!(test_two == (2, 2));
+   |                 ^^^^^^^^^^^^^^^^^^
    |
-note: required by a bound in `test_fn_mut`
-  --> $DIR/fn_trait_refs.rs:49:27
-   |
-LL | const fn test_fn_mut<T>(mut f: T) -> (T::Output, T::Output)
-   |          ----------- required by a bound in this function
-LL | where
-LL |     T: ~const FnMut<()> + ~const Destruct,
-   |                           ^^^^^^ required by this bound in `test_fn_mut`
-
-error[E0277]: the trait bound `&T: ~const Destruct` is not satisfied
-  --> $DIR/fn_trait_refs.rs:39:19
-   |
-LL |         tester_fn(&f),
-   |         --------- ^^
-   |         |
-   |         required by a bound introduced by this call
-   |
-note: required by a bound in `tester_fn`
-  --> $DIR/fn_trait_refs.rs:14:24
-   |
-LL | const fn tester_fn<T>(f: T) -> T::Output
-   |          --------- required by a bound in this function
-LL | where
-LL |     T: ~const Fn<()> + ~const Destruct,
-   |                        ^^^^^^ required by this bound in `tester_fn`
-
-error[E0277]: the trait bound `&T: ~const Destruct` is not satisfied
-  --> $DIR/fn_trait_refs.rs:41:23
-   |
-LL |         tester_fn_mut(&f),
-   |         ------------- ^^
-   |         |
-   |         required by a bound introduced by this call
-   |
-note: required by a bound in `tester_fn_mut`
-  --> $DIR/fn_trait_refs.rs:21:27
-   |
-LL | const fn tester_fn_mut<T>(mut f: T) -> T::Output
-   |          ------------- required by a bound in this function
-LL | where
-LL |     T: ~const FnMut<()> + ~const Destruct,
-   |                           ^^^^^^ required by this bound in `tester_fn_mut`
-
-error[E0277]: the trait bound `&mut T: ~const Destruct` is not satisfied
-  --> $DIR/fn_trait_refs.rs:53:23
-   |
-LL |         tester_fn_mut(&mut f),
-   |         ------------- ^^^^^^
-   |         |
-   |         required by a bound introduced by this call
-   |
-note: required by a bound in `tester_fn_mut`
-  --> $DIR/fn_trait_refs.rs:21:27
-   |
-LL | const fn tester_fn_mut<T>(mut f: T) -> T::Output
-   |          ------------- required by a bound in this function
-LL | where
-LL |     T: ~const FnMut<()> + ~const Destruct,
-   |                           ^^^^^^ required by this bound in `tester_fn_mut`
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
 error[E0015]: cannot call non-const closure in constant functions
   --> $DIR/fn_trait_refs.rs:16:5
@@ -264,7 +195,7 @@ LL |     f()
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
-error: aborting due to 25 previous errors
+error: aborting due to 22 previous errors
 
-Some errors have detailed explanations: E0015, E0277, E0635.
+Some errors have detailed explanations: E0015, E0635.
 For more information about an error, try `rustc --explain E0015`.

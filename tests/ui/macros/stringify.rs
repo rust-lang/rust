@@ -569,7 +569,7 @@ fn test_pat() {
     c1!(pat, [ &pat ], "&pat");
     c1!(pat, [ &mut pat ], "&mut pat");
 
-    // PatKind::Lit
+    // PatKind::Expr
     c1!(pat, [ 1_000_i8 ], "1_000_i8");
 
     // PatKind::Range

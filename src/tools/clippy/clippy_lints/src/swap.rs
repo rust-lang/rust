@@ -384,9 +384,9 @@ impl<'tcx> IndexBinding<'_, 'tcx> {
 
     fn is_used_after_swap(&mut self, idx_ident: Ident) -> bool {
         let mut v = IndexBindingVisitor {
-            found_used: false,
-            suggest_span: self.suggest_span,
             idx: idx_ident,
+            suggest_span: self.suggest_span,
+            found_used: false,
         };
 
         for stmt in self.block.stmts {

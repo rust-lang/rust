@@ -5,10 +5,9 @@
 
 use std::assert_matches::assert_matches;
 
-use rustc_errors::{Applicability, Diag};
+use rustc_errors::{Applicability, Diag, EmissionGuarantee};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
-use rustc_index::IndexSlice;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::mir::{
@@ -18,14 +17,15 @@ use rustc_middle::mir::{
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt};
 use rustc_middle::util::CallKind;
-use rustc_span::{DesugaringKind, Span, Symbol, kw, sym};
+use rustc_span::{DesugaringKind, Span, kw, sym};
 use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
 use tracing::{debug, instrument};
 
 use super::{RegionName, UseSpans, find_use};
 use crate::borrow_set::BorrowData;
+use crate::constraints::OutlivesConstraint;
 use crate::nll::ConstraintDescription;
-use crate::region_infer::{BlameConstraint, Cause, ExtraConstraintInfo};
+use crate::region_infer::{BlameConstraint, Cause};
 use crate::{MirBorrowckCtxt, WriteKind};
 
 #[derive(Debug)]
@@ -43,7 +43,7 @@ pub(crate) enum BorrowExplanation<'tcx> {
         span: Span,
         region_name: RegionName,
         opt_place_desc: Option<String>,
-        extra_info: Vec<ExtraConstraintInfo>,
+        path: Vec<OutlivesConstraint<'tcx>>,
     },
     Unexplained,
 }
@@ -61,16 +61,18 @@ impl<'tcx> BorrowExplanation<'tcx> {
     pub(crate) fn is_explained(&self) -> bool {
         !matches!(self, BorrowExplanation::Unexplained)
     }
-    pub(crate) fn add_explanation_to_diagnostic(
+    pub(crate) fn add_explanation_to_diagnostic<G: EmissionGuarantee>(
         &self,
-        tcx: TyCtxt<'tcx>,
-        body: &Body<'tcx>,
-        local_names: &IndexSlice<Local, Option<Symbol>>,
-        err: &mut Diag<'_>,
+        cx: &MirBorrowckCtxt<'_, '_, 'tcx>,
+        err: &mut Diag<'_, G>,
         borrow_desc: &str,
         borrow_span: Option<Span>,
         multiple_borrow_span: Option<(Span, Span)>,
     ) {
+        let tcx = cx.infcx.tcx;
+        let body = cx.body;
+        let local_names = &cx.local_names;
+
         if let Some(span) = borrow_span {
             let def_id = body.source.def_id();
             if let Some(node) = tcx.hir().get_if_local(def_id)
@@ -306,7 +308,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                 ref region_name,
                 ref opt_place_desc,
                 from_closure: _,
-                ref extra_info,
+                ref path,
             } => {
                 region_name.highlight_region_name(err);
 
@@ -328,13 +330,8 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     );
                 };
 
-                for extra in extra_info {
-                    match extra {
-                        ExtraConstraintInfo::PlaceholderFromPredicate(span) => {
-                            err.span_note(*span, "due to current limitations in the borrow checker, this implies a `'static` lifetime");
-                        }
-                    }
-                }
+                cx.add_placeholder_from_predicate_note(err, &path);
+                cx.add_sized_or_copy_bound_info(err, category, &path);
 
                 if let ConstraintCategory::Cast {
                     is_implicit_coercion: true,
@@ -349,10 +346,10 @@ impl<'tcx> BorrowExplanation<'tcx> {
         }
     }
 
-    fn add_object_lifetime_default_note(
+    fn add_object_lifetime_default_note<G: EmissionGuarantee>(
         &self,
         tcx: TyCtxt<'tcx>,
-        err: &mut Diag<'_>,
+        err: &mut Diag<'_, G>,
         unsize_ty: Ty<'tcx>,
     ) {
         if let ty::Adt(def, args) = unsize_ty.kind() {
@@ -406,9 +403,9 @@ impl<'tcx> BorrowExplanation<'tcx> {
         }
     }
 
-    fn add_lifetime_bound_suggestion_to_diagnostic(
+    fn add_lifetime_bound_suggestion_to_diagnostic<G: EmissionGuarantee>(
         &self,
-        err: &mut Diag<'_>,
+        err: &mut Diag<'_, G>,
         category: &ConstraintCategory<'tcx>,
         span: Span,
         region_name: &RegionName,
@@ -435,14 +432,14 @@ impl<'tcx> BorrowExplanation<'tcx> {
     }
 }
 
-fn suggest_rewrite_if_let(
+fn suggest_rewrite_if_let<G: EmissionGuarantee>(
     tcx: TyCtxt<'_>,
     expr: &hir::Expr<'_>,
     pat: &str,
     init: &hir::Expr<'_>,
     conseq: &hir::Expr<'_>,
     alt: Option<&hir::Expr<'_>>,
-    err: &mut Diag<'_>,
+    err: &mut Diag<'_, G>,
 ) {
     let source_map = tcx.sess.source_map();
     err.span_note(
@@ -487,8 +484,9 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         &self,
         borrow_region: RegionVid,
         outlived_region: RegionVid,
-    ) -> (ConstraintCategory<'tcx>, bool, Span, Option<RegionName>, Vec<ExtraConstraintInfo>) {
-        let (blame_constraint, extra_info) = self.regioncx.best_blame_constraint(
+    ) -> (ConstraintCategory<'tcx>, bool, Span, Option<RegionName>, Vec<OutlivesConstraint<'tcx>>)
+    {
+        let (blame_constraint, path) = self.regioncx.best_blame_constraint(
             borrow_region,
             NllRegionVariableOrigin::FreeRegion,
             |r| self.regioncx.provides_universal_region(r, borrow_region, outlived_region),
@@ -497,7 +495,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
 
         let outlived_fr_name = self.give_region_a_name(outlived_region);
 
-        (category, from_closure, cause.span, outlived_fr_name, extra_info)
+        (category, from_closure, cause.span, outlived_fr_name, path)
     }
 
     /// Returns structured explanation for *why* the borrow contains the
@@ -596,7 +594,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
 
             None => {
                 if let Some(region) = self.to_error_region_vid(borrow_region_vid) {
-                    let (category, from_closure, span, region_name, extra_info) =
+                    let (category, from_closure, span, region_name, path) =
                         self.free_region_constraint_info(borrow_region_vid, region);
                     if let Some(region_name) = region_name {
                         let opt_place_desc = self.describe_place(borrow.borrowed_place.as_ref());
@@ -606,7 +604,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                             span,
                             region_name,
                             opt_place_desc,
-                            extra_info,
+                            path,
                         }
                     } else {
                         debug!("Could not generate a region name");

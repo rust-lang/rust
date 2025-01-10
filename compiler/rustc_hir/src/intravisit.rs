@@ -342,6 +342,9 @@ pub trait Visitor<'v>: Sized {
     fn visit_pat_field(&mut self, f: &'v PatField<'v>) -> Self::Result {
         walk_pat_field(self, f)
     }
+    fn visit_pat_expr(&mut self, expr: &'v PatExpr<'v>) -> Self::Result {
+        walk_pat_expr(self, expr)
+    }
     fn visit_anon_const(&mut self, c: &'v AnonConst) -> Self::Result {
         walk_anon_const(self, c)
     }
@@ -685,10 +688,10 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat<'v>) -> V:
             try_visit!(visitor.visit_ident(ident));
             visit_opt!(visitor, visit_pat, optional_subpattern);
         }
-        PatKind::Lit(ref expression) => try_visit!(visitor.visit_expr(expression)),
+        PatKind::Expr(ref expression) => try_visit!(visitor.visit_pat_expr(expression)),
         PatKind::Range(ref lower_bound, ref upper_bound, _) => {
-            visit_opt!(visitor, visit_expr, lower_bound);
-            visit_opt!(visitor, visit_expr, upper_bound);
+            visit_opt!(visitor, visit_pat_expr, lower_bound);
+            visit_opt!(visitor, visit_pat_expr, upper_bound);
         }
         PatKind::Never | PatKind::Wild | PatKind::Err(_) => (),
         PatKind::Slice(prepatterns, ref slice_pattern, postpatterns) => {
@@ -708,6 +711,15 @@ pub fn walk_pat_field<'v, V: Visitor<'v>>(visitor: &mut V, field: &'v PatField<'
     try_visit!(visitor.visit_id(field.hir_id));
     try_visit!(visitor.visit_ident(field.ident));
     visitor.visit_pat(field.pat)
+}
+
+pub fn walk_pat_expr<'v, V: Visitor<'v>>(visitor: &mut V, expr: &'v PatExpr<'v>) -> V::Result {
+    try_visit!(visitor.visit_id(expr.hir_id));
+    match &expr.kind {
+        PatExprKind::Lit { .. } => V::Result::output(),
+        PatExprKind::ConstBlock(c) => visitor.visit_inline_const(c),
+        PatExprKind::Path(qpath) => visitor.visit_qpath(qpath, expr.hir_id, expr.span),
+    }
 }
 
 pub fn walk_anon_const<'v, V: Visitor<'v>>(visitor: &mut V, constant: &'v AnonConst) -> V::Result {

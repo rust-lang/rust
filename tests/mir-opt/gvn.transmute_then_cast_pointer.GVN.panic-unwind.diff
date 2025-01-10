@@ -1,0 +1,115 @@
+- // MIR for `transmute_then_cast_pointer` before GVN
++ // MIR for `transmute_then_cast_pointer` after GVN
+  
+  fn transmute_then_cast_pointer(_1: usize, _2: *mut [u8]) -> () {
+      debug addr => _1;
+      debug fat => _2;
+      let mut _0: ();
+      let _3: *mut u8;
+      let mut _4: usize;
+      let _5: ();
+      let mut _6: *const u8;
+      let mut _7: *mut u8;
+      let mut _9: &mut [i32];
+      let mut _10: &mut [i32; 3];
+      let mut _11: &mut [i32; 3];
+      let mut _12: [i32; 3];
+      let _13: ();
+      let mut _14: *const i32;
+      let mut _15: *const [i32];
+      let mut _17: *mut [u8];
+      let _18: ();
+      let mut _19: *const u8;
+      let mut _20: *const [u8];
+      scope 1 {
+          debug p => _3;
+          let _8: *const [i32];
+          scope 2 {
+              debug q => _8;
+              let _16: *const [u8];
+              scope 3 {
+                  debug w => _16;
+              }
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_3);
++         nop;
+          StorageLive(_4);
+          _4 = copy _1;
+-         _3 = move _4 as *mut u8 (Transmute);
++         _3 = copy _1 as *mut u8 (Transmute);
+          StorageDead(_4);
+          StorageLive(_5);
+          StorageLive(_6);
+          StorageLive(_7);
+          _7 = copy _3;
+-         _6 = move _7 as *const u8 (PtrToPtr);
++         _6 = copy _1 as *const u8 (Transmute);
+          StorageDead(_7);
+          _5 = takes_const_ptr::<u8>(move _6) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+          StorageDead(_6);
+          StorageDead(_5);
+-         StorageLive(_8);
++         nop;
+          StorageLive(_9);
+          StorageLive(_10);
+          StorageLive(_11);
+          StorageLive(_12);
+          _12 = [const 1_i32, const 2_i32, const 3_i32];
+          _11 = &mut _12;
+          _10 = &mut (*_11);
+          _9 = move _10 as &mut [i32] (PointerCoercion(Unsize, Implicit));
+          StorageDead(_10);
+          _8 = move _9 as *const [i32] (Transmute);
+          StorageDead(_9);
+          StorageDead(_12);
+          StorageDead(_11);
+          StorageLive(_13);
+          StorageLive(_14);
+          StorageLive(_15);
+          _15 = copy _8;
+-         _14 = move _15 as *const i32 (PtrToPtr);
++         _14 = copy _8 as *const i32 (PtrToPtr);
+          StorageDead(_15);
+          _13 = takes_const_ptr::<i32>(move _14) -> [return: bb2, unwind continue];
+      }
+  
+      bb2: {
+          StorageDead(_14);
+          StorageDead(_13);
+-         StorageLive(_16);
++         nop;
+          StorageLive(_17);
+          _17 = copy _2;
+-         _16 = move _17 as *const [u8] (Transmute);
++         _16 = copy _2 as *const [u8] (PtrToPtr);
+          StorageDead(_17);
+          StorageLive(_18);
+          StorageLive(_19);
+          StorageLive(_20);
+          _20 = copy _16;
+-         _19 = move _20 as *const u8 (PtrToPtr);
++         _19 = copy _2 as *const u8 (PtrToPtr);
+          StorageDead(_20);
+          _18 = takes_const_ptr::<u8>(move _19) -> [return: bb3, unwind continue];
+      }
+  
+      bb3: {
+          StorageDead(_19);
+          StorageDead(_18);
+          _0 = const ();
+-         StorageDead(_16);
+-         StorageDead(_8);
+-         StorageDead(_3);
++         nop;
++         nop;
++         nop;
+          return;
+      }
+  }
+  

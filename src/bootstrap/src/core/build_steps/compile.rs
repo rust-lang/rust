@@ -1673,10 +1673,10 @@ impl Step for Sysroot {
             ];
             let ci_rustc_dir = builder.config.ci_rustc_dir();
             builder.cp_link_filtered(&ci_rustc_dir, &sysroot, &|path| {
-                if path.extension().map_or(true, |ext| !filtered_extensions.contains(&ext)) {
+                if path.extension().is_none_or(|ext| !filtered_extensions.contains(&ext)) {
                     return true;
                 }
-                if !path.parent().map_or(true, |p| p.ends_with(&suffix)) {
+                if !path.parent().is_none_or(|p| p.ends_with(&suffix)) {
                     return true;
                 }
                 if !filtered_files.iter().all(|f| f != path.file_name().unwrap()) {

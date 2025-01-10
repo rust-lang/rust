@@ -33,6 +33,8 @@ pub const CHILD: [&str; 3] = ["std", "process", "Child"];
 pub const CHILD_ID: [&str; 4] = ["std", "process", "Child", "id"];
 pub const CHILD_KILL: [&str; 4] = ["std", "process", "Child", "kill"];
 pub const PANIC_ANY: [&str; 3] = ["std", "panic", "panic_any"];
+pub const CHAR_IS_ASCII: [&str; 5] = ["core", "char", "methods", "<impl char>", "is_ascii"];
+pub const STDIN: [&str; 4] = ["std", "io", "stdio", "Stdin"];
 
 // Paths in clippy itself
 pub const MSRV: [&str; 3] = ["clippy_utils", "msrvs", "Msrv"];
