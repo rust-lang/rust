@@ -10,11 +10,11 @@ use super::BackendTypes;
 pub trait MiscCodegenMethods<'tcx>: BackendTypes {
     fn vtables(
         &self,
-    ) -> &RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), Self::Value>>;
+    ) -> &RefCell<FxHashMap<(Ty<'tcx>, Option<ty::ExistentialTraitRef<'tcx>>), Self::Value>>;
     fn apply_vcall_visibility_metadata(
         &self,
         _ty: Ty<'tcx>,
-        _poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+        _poly_trait_ref: Option<ty::ExistentialTraitRef<'tcx>>,
         _vtable: Self::Value,
     ) {
     }

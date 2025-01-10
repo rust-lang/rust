@@ -1,5 +1,5 @@
 use rustc_middle::bug;
-use rustc_middle::ty::{self, GenericArgKind, Ty};
+use rustc_middle::ty::{self, GenericArgKind, Ty, TyCtxt};
 use rustc_session::config::Lto;
 use rustc_symbol_mangling::typeid_for_trait_ref;
 use rustc_target::callconv::FnAbi;
@@ -72,12 +72,17 @@ impl<'a, 'tcx> VirtualIndex {
 
 /// This takes a valid `self` receiver type and extracts the principal trait
 /// ref of the type. Return `None` if there is no principal trait.
-fn dyn_trait_in_self(ty: Ty<'_>) -> Option<ty::PolyExistentialTraitRef<'_>> {
+fn dyn_trait_in_self<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+) -> Option<ty::ExistentialTraitRef<'tcx>> {
     for arg in ty.peel_refs().walk() {
         if let GenericArgKind::Type(ty) = arg.unpack()
             && let ty::Dynamic(data, _, _) = ty.kind()
         {
-            return data.principal();
+            return data
+                .principal()
+                .map(|principal| tcx.instantiate_bound_regions_with_erased(principal));
         }
     }
 
@@ -96,18 +101,14 @@ fn dyn_trait_in_self(ty: Ty<'_>) -> Option<ty::PolyExistentialTraitRef<'_>> {
 pub(crate) fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     cx: &Cx,
     ty: Ty<'tcx>,
-    poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+    trait_ref: Option<ty::ExistentialTraitRef<'tcx>>,
 ) -> Cx::Value {
     let tcx = cx.tcx();
 
     // Check the cache.
-    if let Some(&val) = cx.vtables().borrow().get(&(ty, poly_trait_ref)) {
+    if let Some(&val) = cx.vtables().borrow().get(&(ty, trait_ref)) {
         return val;
     }
-
-    // FIXME(trait_upcasting): Take a non-higher-ranked vtable as arg.
-    let trait_ref =
-        poly_trait_ref.map(|trait_ref| tcx.instantiate_bound_regions_with_erased(trait_ref));
 
     let vtable_alloc_id = tcx.vtable_allocation((ty, trait_ref));
     let vtable_allocation = tcx.global_alloc(vtable_alloc_id).unwrap_memory();
@@ -115,9 +116,9 @@ pub(crate) fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     let align = cx.data_layout().pointer_align.abi;
     let vtable = cx.static_addr_of(vtable_const, align, Some("vtable"));
 
-    cx.apply_vcall_visibility_metadata(ty, poly_trait_ref, vtable);
-    cx.create_vtable_debuginfo(ty, poly_trait_ref, vtable);
-    cx.vtables().borrow_mut().insert((ty, poly_trait_ref), vtable);
+    cx.apply_vcall_visibility_metadata(ty, trait_ref, vtable);
+    cx.create_vtable_debuginfo(ty, trait_ref, vtable);
+    cx.vtables().borrow_mut().insert((ty, trait_ref), vtable);
     vtable
 }
 
@@ -135,7 +136,7 @@ pub(crate) fn load_vtable<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     if bx.cx().sess().opts.unstable_opts.virtual_function_elimination
         && bx.cx().sess().lto() == Lto::Fat
     {
-        if let Some(trait_ref) = dyn_trait_in_self(ty) {
+        if let Some(trait_ref) = dyn_trait_in_self(bx.tcx(), ty) {
             let typeid = bx.typeid_metadata(typeid_for_trait_ref(bx.tcx(), trait_ref)).unwrap();
             let func = bx.type_checked_load(llvtable, vtable_byte_offset, typeid);
             return func;

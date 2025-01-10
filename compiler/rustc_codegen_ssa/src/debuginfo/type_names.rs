@@ -507,7 +507,7 @@ pub enum VTableNameKind {
 pub fn compute_debuginfo_vtable_name<'tcx>(
     tcx: TyCtxt<'tcx>,
     t: Ty<'tcx>,
-    trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+    trait_ref: Option<ty::ExistentialTraitRef<'tcx>>,
     kind: VTableNameKind,
 ) -> String {
     let cpp_like_debuginfo = cpp_like_debuginfo(tcx);
@@ -530,8 +530,8 @@ pub fn compute_debuginfo_vtable_name<'tcx>(
     }
 
     if let Some(trait_ref) = trait_ref {
-        let trait_ref = tcx
-            .normalize_erasing_late_bound_regions(ty::TypingEnv::fully_monomorphized(), trait_ref);
+        let trait_ref =
+            tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), trait_ref);
         push_item_name(tcx, trait_ref.def_id, true, &mut vtable_name);
         visited.clear();
         push_generic_params_internal(tcx, trait_ref.args, &mut vtable_name, &mut visited);
