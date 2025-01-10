@@ -598,8 +598,13 @@ impl<'tcx> Visitor<'tcx> for RustdocVisitor<'_, 'tcx> {
         // Unneeded.
     }
 
-    fn visit_infer(&mut self, _: &hir::InferArg) {
-        // Unneeded.
+    fn visit_infer(
+        &mut self,
+        _inf_id: hir::HirId,
+        _inf_span: Span,
+        _kind: hir::intravisit::InferKind<'tcx>,
+    ) -> Self::Result {
+        // Unneeded
     }
 
     fn visit_lifetime(&mut self, _: &hir::Lifetime) {
