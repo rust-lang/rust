@@ -1,6 +1,6 @@
-#![feature(explicit_extern_abis)]
+//@ run-pass
 
-extern fn foo() {}
-//~^ ERROR extern declarations without an explicit ABI are disallowed
+extern fn _foo() {}
+//~^ WARN extern declarations without an explicit ABI are deprecated
 
 fn main() {}
