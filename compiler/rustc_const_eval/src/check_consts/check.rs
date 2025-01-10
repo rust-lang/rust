@@ -708,7 +708,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                     if trait_is_const {
                         // Trait calls are always conditionally-const.
-                        self.check_op(ops::ConditionallyConstCall { callee, args: fn_args });
+                        self.check_op(ops::ConditionallyConstCall {
+                            callee,
+                            args: fn_args,
+                            span: *fn_span,
+                            call_source,
+                        });
                         // FIXME(const_trait_impl): do a more fine-grained check whether this
                         // particular trait can be const-stably called.
                     } else {
@@ -726,7 +731,12 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 // Even if we know the callee, ensure we can use conditionally-const calls.
                 if has_const_conditions {
-                    self.check_op(ops::ConditionallyConstCall { callee, args: fn_args });
+                    self.check_op(ops::ConditionallyConstCall {
+                        callee,
+                        args: fn_args,
+                        span: *fn_span,
+                        call_source,
+                    });
                 }
 
                 // At this point, we are calling a function, `callee`, whose `DefId` is known...

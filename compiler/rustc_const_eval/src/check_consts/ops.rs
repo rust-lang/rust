@@ -15,6 +15,7 @@ use rustc_middle::ty::{
     suggest_constraining_type_param,
 };
 use rustc_middle::util::{CallDesugaringKind, CallKind, call_kind};
+use rustc_session::parse::add_feature_diagnostics;
 use rustc_span::{BytePos, Pos, Span, Symbol, sym};
 use rustc_trait_selection::traits::SelectionContext;
 use tracing::debug;
@@ -77,6 +78,8 @@ impl<'tcx> NonConstOp<'tcx> for FnCallIndirect {
 pub(crate) struct ConditionallyConstCall<'tcx> {
     pub callee: DefId,
     pub args: GenericArgsRef<'tcx>,
+    pub span: Span,
+    pub call_source: CallSource,
 }
 
 impl<'tcx> NonConstOp<'tcx> for ConditionallyConstCall<'tcx> {
@@ -91,16 +94,22 @@ impl<'tcx> NonConstOp<'tcx> for ConditionallyConstCall<'tcx> {
         }
     }
 
-    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        ccx.tcx.sess.create_feature_err(
-            errors::ConditionallyConstCall {
-                span,
-                def_path_str: ccx.tcx.def_path_str_with_args(self.callee, self.args),
-                def_descr: ccx.tcx.def_descr(self.callee),
-                kind: ccx.const_kind(),
-            },
-            sym::const_trait_impl,
-        )
+    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, _: Span) -> Diag<'tcx> {
+        let mut diag = build_error_for_const_call(
+            ccx,
+            self.callee,
+            self.args,
+            self.span,
+            self.call_source,
+            "conditionally",
+            |_, _, _| {},
+        );
+
+        // Override code and mention feature.
+        diag.code(E0658);
+        add_feature_diagnostics(&mut diag, ccx.tcx.sess, sym::const_trait_impl);
+
+        diag
     }
 }
 
@@ -118,203 +127,59 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
     #[allow(rustc::diagnostic_outside_of_impl)]
     #[allow(rustc::untranslatable_diagnostic)]
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, _: Span) -> Diag<'tcx> {
-        let FnCallNonConst { callee, args, span, call_source } = *self;
-        let ConstCx { tcx, typing_env, .. } = *ccx;
+        let tcx = ccx.tcx;
         let caller = ccx.def_id();
 
-        let diag_trait = |err, self_ty: Ty<'_>, trait_id| {
-            let trait_ref = TraitRef::from_method(tcx, trait_id, args);
+        let mut err = build_error_for_const_call(
+            ccx,
+            self.callee,
+            self.args,
+            self.span,
+            self.call_source,
+            "non",
+            |err, self_ty, trait_id| {
+                // FIXME(const_trait_impl): Do we need any of this on the non-const codepath?
 
-            match self_ty.kind() {
-                Param(param_ty) => {
-                    debug!(?param_ty);
-                    if let Some(generics) = tcx.hir_node_by_def_id(caller).generics() {
-                        let constraint = with_no_trimmed_paths!(format!(
-                            "~const {}",
-                            trait_ref.print_trait_sugared(),
-                        ));
-                        suggest_constraining_type_param(
-                            tcx,
-                            generics,
-                            err,
-                            param_ty.name.as_str(),
-                            &constraint,
-                            Some(trait_ref.def_id),
-                            None,
-                        );
-                    }
-                }
-                ty::Adt(..) => {
-                    let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
-                    let obligation =
-                        Obligation::new(tcx, ObligationCause::dummy(), param_env, trait_ref);
-                    let mut selcx = SelectionContext::new(&infcx);
-                    let implsrc = selcx.select(&obligation);
-                    if let Ok(Some(ImplSource::UserDefined(data))) = implsrc {
-                        // FIXME(const_trait_impl) revisit this
-                        if !tcx.is_const_trait_impl(data.impl_def_id) {
-                            let span = tcx.def_span(data.impl_def_id);
-                            err.subdiagnostic(errors::NonConstImplNote { span });
+                let trait_ref = TraitRef::from_method(tcx, trait_id, self.args);
+
+                match self_ty.kind() {
+                    Param(param_ty) => {
+                        debug!(?param_ty);
+                        if let Some(generics) = tcx.hir_node_by_def_id(caller).generics() {
+                            let constraint = with_no_trimmed_paths!(format!(
+                                "~const {}",
+                                trait_ref.print_trait_sugared(),
+                            ));
+                            suggest_constraining_type_param(
+                                tcx,
+                                generics,
+                                err,
+                                param_ty.name.as_str(),
+                                &constraint,
+                                Some(trait_ref.def_id),
+                                None,
+                            );
                         }
                     }
-                }
-                _ => {}
-            }
-        };
-
-        let call_kind =
-            call_kind(tcx, ccx.typing_env, callee, args, span, call_source.from_hir_call(), None);
-
-        debug!(?call_kind);
-
-        let mut err = match call_kind {
-            CallKind::Normal { desugaring: Some((kind, self_ty)), .. } => {
-                macro_rules! error {
-                    ($err:ident) => {
-                        tcx.dcx().create_err(errors::$err {
-                            span,
-                            ty: self_ty,
-                            kind: ccx.const_kind(),
-                        })
-                    };
-                }
-
-                // Don't point at the trait if this is a desugaring...
-                // FIXME(const_trait_impl): we could perhaps do this for `Iterator`.
-                match kind {
-                    CallDesugaringKind::ForLoopIntoIter | CallDesugaringKind::ForLoopNext => {
-                        error!(NonConstForLoopIntoIter)
-                    }
-                    CallDesugaringKind::QuestionBranch => {
-                        error!(NonConstQuestionBranch)
-                    }
-                    CallDesugaringKind::QuestionFromResidual => {
-                        error!(NonConstQuestionFromResidual)
-                    }
-                    CallDesugaringKind::TryBlockFromOutput => {
-                        error!(NonConstTryBlockFromOutput)
-                    }
-                    CallDesugaringKind::Await => {
-                        error!(NonConstAwait)
-                    }
-                }
-            }
-            CallKind::FnCall { fn_trait_id, self_ty } => {
-                let note = match self_ty.kind() {
-                    FnDef(def_id, ..) => {
-                        let span = tcx.def_span(*def_id);
-                        if ccx.tcx.is_const_fn(*def_id) {
-                            span_bug!(span, "calling const FnDef errored when it shouldn't");
-                        }
-
-                        Some(errors::NonConstClosureNote::FnDef { span })
-                    }
-                    FnPtr(..) => Some(errors::NonConstClosureNote::FnPtr),
-                    Closure(..) => Some(errors::NonConstClosureNote::Closure),
-                    _ => None,
-                };
-
-                let mut err = tcx.dcx().create_err(errors::NonConstClosure {
-                    span,
-                    kind: ccx.const_kind(),
-                    note,
-                });
-
-                diag_trait(&mut err, self_ty, fn_trait_id);
-                err
-            }
-            CallKind::Operator { trait_id, self_ty, .. } => {
-                let mut err = if let CallSource::MatchCmp = call_source {
-                    tcx.dcx().create_err(errors::NonConstMatchEq {
-                        span,
-                        kind: ccx.const_kind(),
-                        ty: self_ty,
-                    })
-                } else {
-                    let mut sugg = None;
-
-                    if ccx.tcx.is_lang_item(trait_id, LangItem::PartialEq) {
-                        match (args[0].unpack(), args[1].unpack()) {
-                            (GenericArgKind::Type(self_ty), GenericArgKind::Type(rhs_ty))
-                                if self_ty == rhs_ty
-                                    && self_ty.is_ref()
-                                    && self_ty.peel_refs().is_primitive() =>
-                            {
-                                let mut num_refs = 0;
-                                let mut tmp_ty = self_ty;
-                                while let rustc_middle::ty::Ref(_, inner_ty, _) = tmp_ty.kind() {
-                                    num_refs += 1;
-                                    tmp_ty = *inner_ty;
-                                }
-                                let deref = "*".repeat(num_refs);
-
-                                if let Ok(call_str) =
-                                    ccx.tcx.sess.source_map().span_to_snippet(span)
-                                {
-                                    if let Some(eq_idx) = call_str.find("==") {
-                                        if let Some(rhs_idx) = call_str[(eq_idx + 2)..]
-                                            .find(|c: char| !c.is_whitespace())
-                                        {
-                                            let rhs_pos = span.lo()
-                                                + BytePos::from_usize(eq_idx + 2 + rhs_idx);
-                                            let rhs_span = span.with_lo(rhs_pos).with_hi(rhs_pos);
-                                            sugg = Some(errors::ConsiderDereferencing {
-                                                deref,
-                                                span: span.shrink_to_lo(),
-                                                rhs_span,
-                                            });
-                                        }
-                                    }
-                                }
+                    ty::Adt(..) => {
+                        let (infcx, param_env) =
+                            tcx.infer_ctxt().build_with_typing_env(ccx.typing_env);
+                        let obligation =
+                            Obligation::new(tcx, ObligationCause::dummy(), param_env, trait_ref);
+                        let mut selcx = SelectionContext::new(&infcx);
+                        let implsrc = selcx.select(&obligation);
+                        if let Ok(Some(ImplSource::UserDefined(data))) = implsrc {
+                            // FIXME(const_trait_impl) revisit this
+                            if !tcx.is_const_trait_impl(data.impl_def_id) {
+                                let span = tcx.def_span(data.impl_def_id);
+                                err.subdiagnostic(errors::NonConstImplNote { span });
                             }
-                            _ => {}
                         }
                     }
-                    tcx.dcx().create_err(errors::NonConstOperator {
-                        span,
-                        kind: ccx.const_kind(),
-                        sugg,
-                    })
-                };
-
-                diag_trait(&mut err, self_ty, trait_id);
-                err
-            }
-            CallKind::DerefCoercion { deref_target, deref_target_ty, self_ty } => {
-                // Check first whether the source is accessible (issue #87060)
-                let target = if tcx.sess.source_map().is_span_accessible(deref_target) {
-                    Some(deref_target)
-                } else {
-                    None
-                };
-
-                let mut err = tcx.dcx().create_err(errors::NonConstDerefCoercion {
-                    span,
-                    ty: self_ty,
-                    kind: ccx.const_kind(),
-                    target_ty: deref_target_ty,
-                    deref_target: target,
-                });
-
-                diag_trait(&mut err, self_ty, tcx.require_lang_item(LangItem::Deref, Some(span)));
-                err
-            }
-            _ if tcx.opt_parent(callee) == tcx.get_diagnostic_item(sym::ArgumentMethods) => {
-                ccx.dcx().create_err(errors::NonConstFmtMacroCall { span, kind: ccx.const_kind() })
-            }
-            _ => ccx.dcx().create_err(errors::NonConstFnCall {
-                span,
-                def_descr: ccx.tcx.def_descr(callee),
-                def_path_str: ccx.tcx.def_path_str_with_args(callee, args),
-                kind: ccx.const_kind(),
-            }),
-        };
-
-        err.note(format!(
-            "calls in {}s are limited to constant functions, \
-             tuple structs and tuple variants",
-            ccx.const_kind(),
-        ));
+                    _ => {}
+                }
+            },
+        );
 
         if let ConstContext::Static(_) = ccx.const_kind() {
             err.note(fluent_generated::const_eval_lazy_lock);
@@ -322,6 +187,190 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
 
         err
     }
+}
+
+/// Build an error message reporting that a function call is not const (or only
+/// conditionally const). In case that this call is desugared (like an operator
+/// or sugar from something like a `for` loop), try to build a better error message
+/// that doesn't call it a method.
+fn build_error_for_const_call<'tcx>(
+    ccx: &ConstCx<'_, 'tcx>,
+    callee: DefId,
+    args: ty::GenericArgsRef<'tcx>,
+    span: Span,
+    call_source: CallSource,
+    non_or_conditionally: &'static str,
+    note_trait_if_possible: impl FnOnce(&mut Diag<'tcx>, Ty<'tcx>, DefId),
+) -> Diag<'tcx> {
+    let tcx = ccx.tcx;
+
+    let call_kind =
+        call_kind(tcx, ccx.typing_env, callee, args, span, call_source.from_hir_call(), None);
+
+    debug!(?call_kind);
+
+    let mut err = match call_kind {
+        CallKind::Normal { desugaring: Some((kind, self_ty)), .. } => {
+            macro_rules! error {
+                ($err:ident) => {
+                    tcx.dcx().create_err(errors::$err {
+                        span,
+                        ty: self_ty,
+                        kind: ccx.const_kind(),
+                        non_or_conditionally,
+                    })
+                };
+            }
+
+            // Don't point at the trait if this is a desugaring...
+            // FIXME(const_trait_impl): we could perhaps do this for `Iterator`.
+            match kind {
+                CallDesugaringKind::ForLoopIntoIter | CallDesugaringKind::ForLoopNext => {
+                    error!(NonConstForLoopIntoIter)
+                }
+                CallDesugaringKind::QuestionBranch => {
+                    error!(NonConstQuestionBranch)
+                }
+                CallDesugaringKind::QuestionFromResidual => {
+                    error!(NonConstQuestionFromResidual)
+                }
+                CallDesugaringKind::TryBlockFromOutput => {
+                    error!(NonConstTryBlockFromOutput)
+                }
+                CallDesugaringKind::Await => {
+                    error!(NonConstAwait)
+                }
+            }
+        }
+        CallKind::FnCall { fn_trait_id, self_ty } => {
+            let note = match self_ty.kind() {
+                FnDef(def_id, ..) => {
+                    let span = tcx.def_span(*def_id);
+                    if ccx.tcx.is_const_fn(*def_id) {
+                        span_bug!(span, "calling const FnDef errored when it shouldn't");
+                    }
+
+                    Some(errors::NonConstClosureNote::FnDef { span })
+                }
+                FnPtr(..) => Some(errors::NonConstClosureNote::FnPtr),
+                Closure(..) => Some(errors::NonConstClosureNote::Closure),
+                _ => None,
+            };
+
+            let mut err = tcx.dcx().create_err(errors::NonConstClosure {
+                span,
+                kind: ccx.const_kind(),
+                note,
+                non_or_conditionally,
+            });
+
+            note_trait_if_possible(&mut err, self_ty, fn_trait_id);
+            err
+        }
+        CallKind::Operator { trait_id, self_ty, .. } => {
+            let mut err = if let CallSource::MatchCmp = call_source {
+                tcx.dcx().create_err(errors::NonConstMatchEq {
+                    span,
+                    kind: ccx.const_kind(),
+                    ty: self_ty,
+                    non_or_conditionally,
+                })
+            } else {
+                let mut sugg = None;
+
+                if ccx.tcx.is_lang_item(trait_id, LangItem::PartialEq) {
+                    match (args[0].unpack(), args[1].unpack()) {
+                        (GenericArgKind::Type(self_ty), GenericArgKind::Type(rhs_ty))
+                            if self_ty == rhs_ty
+                                && self_ty.is_ref()
+                                && self_ty.peel_refs().is_primitive() =>
+                        {
+                            let mut num_refs = 0;
+                            let mut tmp_ty = self_ty;
+                            while let rustc_middle::ty::Ref(_, inner_ty, _) = tmp_ty.kind() {
+                                num_refs += 1;
+                                tmp_ty = *inner_ty;
+                            }
+                            let deref = "*".repeat(num_refs);
+
+                            if let Ok(call_str) = ccx.tcx.sess.source_map().span_to_snippet(span) {
+                                if let Some(eq_idx) = call_str.find("==") {
+                                    if let Some(rhs_idx) =
+                                        call_str[(eq_idx + 2)..].find(|c: char| !c.is_whitespace())
+                                    {
+                                        let rhs_pos =
+                                            span.lo() + BytePos::from_usize(eq_idx + 2 + rhs_idx);
+                                        let rhs_span = span.with_lo(rhs_pos).with_hi(rhs_pos);
+                                        sugg = Some(errors::ConsiderDereferencing {
+                                            deref,
+                                            span: span.shrink_to_lo(),
+                                            rhs_span,
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                tcx.dcx().create_err(errors::NonConstOperator {
+                    span,
+                    kind: ccx.const_kind(),
+                    sugg,
+                    non_or_conditionally,
+                })
+            };
+
+            note_trait_if_possible(&mut err, self_ty, trait_id);
+            err
+        }
+        CallKind::DerefCoercion { deref_target, deref_target_ty, self_ty } => {
+            // Check first whether the source is accessible (issue #87060)
+            let target = if tcx.sess.source_map().is_span_accessible(deref_target) {
+                Some(deref_target)
+            } else {
+                None
+            };
+
+            let mut err = tcx.dcx().create_err(errors::NonConstDerefCoercion {
+                span,
+                ty: self_ty,
+                kind: ccx.const_kind(),
+                target_ty: deref_target_ty,
+                deref_target: target,
+                non_or_conditionally,
+            });
+
+            note_trait_if_possible(
+                &mut err,
+                self_ty,
+                tcx.require_lang_item(LangItem::Deref, Some(span)),
+            );
+            err
+        }
+        _ if tcx.opt_parent(callee) == tcx.get_diagnostic_item(sym::ArgumentMethods) => {
+            ccx.dcx().create_err(errors::NonConstFmtMacroCall {
+                span,
+                kind: ccx.const_kind(),
+                non_or_conditionally,
+            })
+        }
+        _ => ccx.dcx().create_err(errors::NonConstFnCall {
+            span,
+            def_descr: ccx.tcx.def_descr(callee),
+            def_path_str: ccx.tcx.def_path_str_with_args(callee, args),
+            kind: ccx.const_kind(),
+            non_or_conditionally,
+        }),
+    };
+
+    err.note(format!(
+        "calls in {}s are limited to constant functions, \
+             tuple structs and tuple variants",
+        ccx.const_kind(),
+    ));
+
+    err
 }
 
 /// A call to an `#[unstable]` const fn or `#[rustc_const_unstable]` function.
