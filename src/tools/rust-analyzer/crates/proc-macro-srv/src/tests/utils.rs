@@ -28,13 +28,18 @@ fn parse_string_spanned(
     ))
 }
 
-pub fn assert_expand(macro_name: &str, ra_fixture: &str, expect: Expect, expect_s: Expect) {
+pub fn assert_expand(
+    macro_name: &str,
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    expect: Expect,
+    expect_s: Expect,
+) {
     assert_expand_impl(macro_name, ra_fixture, None, expect, expect_s);
 }
 
 pub fn assert_expand_attr(
     macro_name: &str,
-    ra_fixture: &str,
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
     attr_args: &str,
     expect: Expect,
     expect_s: Expect,

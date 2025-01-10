@@ -1330,7 +1330,7 @@ fn check_merge_only_fail(ra_fixture0: &str, ra_fixture1: &str, mb: MergeBehavior
     assert_eq!(result.map(|u| u.to_string()), None);
 }
 
-fn check_guess(ra_fixture: &str, expected: ImportGranularityGuess) {
+fn check_guess(#[rust_analyzer::rust_fixture] ra_fixture: &str, expected: ImportGranularityGuess) {
     let syntax = ast::SourceFile::parse(ra_fixture, span::Edition::CURRENT).tree().syntax().clone();
     let file = ImportScope::from(syntax).unwrap();
     assert_eq!(super::guess_granularity_from_scope(&file), expected);

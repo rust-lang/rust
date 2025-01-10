@@ -86,14 +86,14 @@ mod tests {
     };
 
     #[track_caller]
-    fn check_chains(ra_fixture: &str) {
+    fn check_chains(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         check_with_config(InlayHintsConfig { chaining_hints: true, ..DISABLED_CONFIG }, ra_fixture);
     }
 
     #[track_caller]
     pub(super) fn check_expect_clear_loc(
         config: InlayHintsConfig,
-        ra_fixture: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
         expect: Expect,
     ) {
         let (analysis, file_id) = fixture::file(ra_fixture);

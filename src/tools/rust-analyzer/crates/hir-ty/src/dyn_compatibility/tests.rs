@@ -26,7 +26,7 @@ enum DynCompatibilityViolationKind {
 }
 
 fn check_dyn_compatibility<'a>(
-    ra_fixture: &str,
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
     expected: impl IntoIterator<Item = (&'a str, Vec<DynCompatibilityViolationKind>)>,
 ) {
     let mut expected: FxHashMap<_, _> =

@@ -83,7 +83,7 @@ mod tests {
     use crate::inlay_hints::tests::{check_expect, check_with_config, DISABLED_CONFIG};
 
     #[track_caller]
-    fn check(ra_fixture: &str) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         check_with_config(InlayHintsConfig { sized_bound: true, ..DISABLED_CONFIG }, ra_fixture);
     }
 

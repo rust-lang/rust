@@ -28,7 +28,14 @@ pub(super) fn ra_fixture(
     expanded: &ast::String,
 ) -> Option<()> {
     let active_parameter = ActiveParameter::at_token(sema, expanded.syntax().clone())?;
-    if !active_parameter.ident().is_some_and(|name| name.text().starts_with("ra_fixture")) {
+    let has_rust_fixture_attr = active_parameter.attrs().is_some_and(|attrs| {
+        attrs.filter_map(|attr| attr.as_simple_path()).any(|path| {
+            path.segments()
+                .zip(["rust_analyzer", "rust_fixture"])
+                .all(|(seg, name)| seg.name_ref().map_or(false, |nr| nr.text() == name))
+        })
+    });
+    if !has_rust_fixture_attr {
         return None;
     }
     let value = literal.value().ok()?;

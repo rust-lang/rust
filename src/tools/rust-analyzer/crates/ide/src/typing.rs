@@ -889,7 +889,7 @@ fn main() {
         type_char_noop(
             '{',
             r##"
-fn check_with(ra_fixture: &str, expect: Expect) {
+fn check_with(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let base = r#"
 enum E { T(), R$0, C }
 use self::E::X;
@@ -1191,7 +1191,7 @@ fn f(n: a<>b::<d>::c) {}
         type_char_noop(
             '(',
             r##"
-fn check_with(ra_fixture: &str, expect: Expect) {
+fn check_with(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let base = r#"
 enum E { T(), R$0, C }
 use self::E::X;

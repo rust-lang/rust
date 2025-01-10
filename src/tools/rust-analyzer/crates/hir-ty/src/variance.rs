@@ -968,7 +968,7 @@ struct FixedPoint<T, U, V>(&'static FixedPoint<(), T, U>, V);
     }
 
     #[track_caller]
-    fn check(ra_fixture: &str, expected: Expect) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expected: Expect) {
         // use tracing_subscriber::{layer::SubscriberExt, Layer};
         // let my_layer = tracing_subscriber::fmt::layer();
         // let _g = tracing::subscriber::set_default(tracing_subscriber::registry().with(

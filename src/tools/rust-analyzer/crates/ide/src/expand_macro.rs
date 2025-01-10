@@ -296,7 +296,7 @@ mod tests {
     use crate::fixture;
 
     #[track_caller]
-    fn check(ra_fixture: &str, expect: Expect) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         let (analysis, pos) = fixture::position(ra_fixture);
         let expansion = analysis.expand_macro(pos).unwrap().unwrap();
         let actual = format!("{}\n{}", expansion.name, expansion.expansion);

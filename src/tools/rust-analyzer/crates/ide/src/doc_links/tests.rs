@@ -16,7 +16,7 @@ use crate::{
 };
 
 fn check_external_docs(
-    ra_fixture: &str,
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
     target_dir: Option<&str>,
     expect_web_url: Option<Expect>,
     expect_local_url: Option<Expect>,
@@ -41,7 +41,7 @@ fn check_external_docs(
     }
 }
 
-fn check_rewrite(ra_fixture: &str, expect: Expect) {
+fn check_rewrite(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let (analysis, position) = fixture::position(ra_fixture);
     let sema = &Semantics::new(&*analysis.db);
     let (cursor_def, docs) = def_under_cursor(sema, &position);
@@ -49,7 +49,7 @@ fn check_rewrite(ra_fixture: &str, expect: Expect) {
     expect.assert_eq(&res)
 }
 
-fn check_doc_links(ra_fixture: &str) {
+fn check_doc_links(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     let key_fn = |&(FileRange { file_id, range }, _): &_| (file_id, range.start());
 
     let (analysis, position, mut expected) = fixture::annotations(ra_fixture);

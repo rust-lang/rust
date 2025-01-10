@@ -11,19 +11,19 @@ use triomphe::Arc;
 
 use crate::{db::DefDatabase, nameres::DefMap, test_db::TestDB};
 
-fn compute_crate_def_map(ra_fixture: &str) -> Arc<DefMap> {
+fn compute_crate_def_map(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> Arc<DefMap> {
     let db = TestDB::with_files(ra_fixture);
     let krate = db.fetch_test_crate();
     db.crate_def_map(krate)
 }
 
-fn render_crate_def_map(ra_fixture: &str) -> String {
+fn render_crate_def_map(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> String {
     let db = TestDB::with_files(ra_fixture);
     let krate = db.fetch_test_crate();
     db.crate_def_map(krate).dump(&db)
 }
 
-fn check(ra_fixture: &str, expect: Expect) {
+fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let actual = render_crate_def_map(ra_fixture);
     expect.assert_eq(&actual);
 }

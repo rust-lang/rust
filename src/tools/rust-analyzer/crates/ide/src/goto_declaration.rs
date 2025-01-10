@@ -83,7 +83,7 @@ mod tests {
 
     use crate::fixture;
 
-    fn check(ra_fixture: &str) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         let (analysis, position, expected) = fixture::annotations(ra_fixture);
         let navs = analysis
             .goto_declaration(position)

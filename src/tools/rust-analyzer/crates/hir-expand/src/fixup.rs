@@ -532,7 +532,7 @@ mod tests {
     }
 
     #[track_caller]
-    fn check(ra_fixture: &str, mut expect: Expect) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, mut expect: Expect) {
         let parsed = syntax::SourceFile::parse(ra_fixture, span::Edition::CURRENT);
         let span_map = SpanMap::RealSpanMap(Arc::new(RealSpanMap::absolute(EditionedFileId::new(
             FileId::from_raw(0),

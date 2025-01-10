@@ -180,7 +180,11 @@ mod tests {
 
     use crate::Direction;
 
-    fn check(ra_fixture: &str, expect: Expect, direction: Direction) {
+    fn check(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        expect: Expect,
+        direction: Direction,
+    ) {
         let (analysis, range) = fixture::range(ra_fixture);
         let edit = analysis.move_item(range, direction).unwrap().unwrap_or_default();
         let mut file = analysis.file_text(range.file_id).unwrap().to_string();
