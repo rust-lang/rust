@@ -138,7 +138,7 @@ auto:
   - name: dist-aarch64-linux
     env:
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-linux-4c
+    <<: *job-aarch64-linux
 
   - name: dist-android
     <<: *job-linux-4c
