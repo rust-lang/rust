@@ -18,6 +18,7 @@ mod fn_to_numeric_cast;
 mod fn_to_numeric_cast_any;
 mod fn_to_numeric_cast_with_truncation;
 mod manual_dangling_ptr;
+mod primitive_method_to_numeric_cast;
 mod ptr_as_ptr;
 mod ptr_cast_constness;
 mod ref_as_ptr;
@@ -786,6 +787,32 @@ declare_clippy_lint! {
     "casting small constant literals to pointers to create dangling pointers"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for casts of a primitive method pointer to any integer type.
+    ///
+    /// ### Why restrict this?
+    /// Casting a function pointer to an integer can have surprising results and can occur
+    /// accidentally if parentheses are omitted from a function call. If you aren't doing anything
+    /// low-level with function pointers then you can opt out of casting functions to integers in
+    /// order to avoid mistakes. Alternatively, you can use this lint to audit all uses of function
+    /// pointer casts in your code.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let _ = u16::max as usize;
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// let _ = u16::MAX as usize;
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub PRIMITIVE_METHOD_TO_NUMERIC_CAST,
+    suspicious,
+    "casting a primitive method pointer to any integer type"
+}
+
 pub struct Casts {
     msrv: Msrv,
 }
@@ -823,6 +850,7 @@ impl_lint_pass!(Casts => [
     REF_AS_PTR,
     AS_POINTER_UNDERSCORE,
     MANUAL_DANGLING_PTR,
+    PRIMITIVE_METHOD_TO_NUMERIC_CAST,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Casts {
@@ -847,6 +875,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             ptr_cast_constness::check(cx, expr, cast_from_expr, cast_from, cast_to, self.msrv);
             as_ptr_cast_mut::check(cx, expr, cast_from_expr, cast_to);
             fn_to_numeric_cast_any::check(cx, expr, cast_from_expr, cast_from, cast_to);
+            primitive_method_to_numeric_cast::check(cx, expr, cast_from_expr, cast_from, cast_to);
             fn_to_numeric_cast::check(cx, expr, cast_from_expr, cast_from, cast_to);
             fn_to_numeric_cast_with_truncation::check(cx, expr, cast_from_expr, cast_from, cast_to);
             zero_ptr::check(cx, expr, cast_from_expr, cast_to_hir);

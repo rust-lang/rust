@@ -6068,6 +6068,7 @@ Released 2018-09-13
 [`possible_missing_comma`]: https://rust-lang.github.io/rust-clippy/master/index.html#possible_missing_comma
 [`precedence`]: https://rust-lang.github.io/rust-clippy/master/index.html#precedence
 [`precedence_bits`]: https://rust-lang.github.io/rust-clippy/master/index.html#precedence_bits
+[`primitive_method_to_numeric_cast`]: https://rust-lang.github.io/rust-clippy/master/index.html#primitive_method_to_numeric_cast
 [`print_in_format_impl`]: https://rust-lang.github.io/rust-clippy/master/index.html#print_in_format_impl
 [`print_literal`]: https://rust-lang.github.io/rust-clippy/master/index.html#print_literal
 [`print_stderr`]: https://rust-lang.github.io/rust-clippy/master/index.html#print_stderr
