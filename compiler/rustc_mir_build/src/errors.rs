@@ -1107,3 +1107,15 @@ impl<'a> Subdiagnostic for Rust2024IncompatiblePatSugg<'a> {
         );
     }
 }
+
+#[derive(Diagnostic)]
+#[diag(mir_build_force_inline)]
+#[note]
+pub(crate) struct InvalidForceInline {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label(mir_build_callee)]
+    pub callee_span: Span,
+    pub callee: String,
+    pub reason: &'static str,
+}

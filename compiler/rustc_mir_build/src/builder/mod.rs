@@ -29,6 +29,7 @@ use rustc_span::{Span, Symbol, sym};
 use super::lints;
 use crate::builder::expr::as_place::PlaceBuilder;
 use crate::builder::scope::DropKind;
+use crate::check_inline;
 
 pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -80,6 +81,7 @@ pub(crate) fn mir_build<'tcx>(tcx: TyCtxtAt<'tcx>, def: LocalDefId) -> Body<'tcx
     };
 
     lints::check(tcx, &body);
+    check_inline::check_force_inline(tcx, &body);
 
     // The borrow checker will replace all the regions here with its own
     // inference variables. There's no point having non-erased regions here.

@@ -689,6 +689,24 @@ pub(crate) struct RustcPubTransparent {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_rustc_force_inline)]
+pub(crate) struct RustcForceInline {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_rustc_force_inline_coro)]
+pub(crate) struct RustcForceInlineCoro {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_link_ordinal)]
 pub(crate) struct LinkOrdinal {
     #[primary_span]

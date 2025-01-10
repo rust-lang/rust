@@ -18,6 +18,7 @@ use rustc_session::parse::feature_err;
 use rustc_session::{Session, lint};
 use rustc_span::{Ident, Span, sym};
 use rustc_target::spec::{SanitizerSet, abi};
+use tracing::debug;
 
 use crate::errors;
 use crate::target_features::{check_target_feature_trait_unsafe, from_target_feature_attr};
@@ -525,6 +526,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         if !attr.has_name(sym::inline) {
             return ia;
         }
+
         if attr.is_word() {
             InlineAttr::Hint
         } else if let Some(ref items) = attr.meta_item_list() {
@@ -544,6 +546,20 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 InlineAttr::None
             }
         } else {
+            ia
+        }
+    });
+    codegen_fn_attrs.inline = attrs.iter().fold(codegen_fn_attrs.inline, |ia, attr| {
+        if !attr.has_name(sym::rustc_force_inline) || !tcx.features().rustc_attrs() {
+            return ia;
+        }
+
+        if attr.is_word() {
+            InlineAttr::Force { attr_span: attr.span, reason: None }
+        } else if let Some(val) = attr.value_str() {
+            InlineAttr::Force { attr_span: attr.span, reason: Some(val) }
+        } else {
+            debug!("`rustc_force_inline` not checked by attribute validation");
             ia
         }
     });
@@ -596,7 +612,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     // is probably a poor usage of `#[inline(always)]` and easily avoided by not using the attribute.
     if tcx.features().target_feature_11()
         && tcx.is_closure_like(did.to_def_id())
-        && codegen_fn_attrs.inline != InlineAttr::Always
+        && !codegen_fn_attrs.inline.always()
     {
         let owner_id = tcx.parent(did.to_def_id());
         if tcx.def_kind(owner_id).has_codegen_attrs() {
@@ -606,22 +622,28 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         }
     }
 
-    // If a function uses #[target_feature] it can't be inlined into general
+    // If a function uses `#[target_feature]` it can't be inlined into general
     // purpose functions as they wouldn't have the right target features
-    // enabled. For that reason we also forbid #[inline(always)] as it can't be
+    // enabled. For that reason we also forbid `#[inline(always)]` as it can't be
     // respected.
-    if !codegen_fn_attrs.target_features.is_empty() && codegen_fn_attrs.inline == InlineAttr::Always
+    //
+    // `#[rustc_force_inline]` doesn't need to be prohibited here, only
+    // `#[inline(always)]`, as forced inlining is implemented entirely within
+    // rustc (and so the MIR inliner can do any necessary checks for compatible target
+    // features).
+    //
+    // This sidesteps the LLVM blockers in enabling `target_features` +
+    // `inline(always)` to be used together (see rust-lang/rust#116573 and
+    // llvm/llvm-project#70563).
+    if !codegen_fn_attrs.target_features.is_empty()
+        && matches!(codegen_fn_attrs.inline, InlineAttr::Always)
     {
         if let Some(span) = inline_span {
-            tcx.dcx().span_err(
-                span,
-                "cannot use `#[inline(always)]` with \
-                     `#[target_feature]`",
-            );
+            tcx.dcx().span_err(span, "cannot use `#[inline(always)]` with `#[target_feature]`");
         }
     }
 
-    if !codegen_fn_attrs.no_sanitize.is_empty() && codegen_fn_attrs.inline == InlineAttr::Always {
+    if !codegen_fn_attrs.no_sanitize.is_empty() && codegen_fn_attrs.inline.always() {
         if let (Some(no_sanitize_span), Some(inline_span)) = (no_sanitize_span, inline_span) {
             let hir_id = tcx.local_def_id_to_hir_id(did);
             tcx.node_span_lint(

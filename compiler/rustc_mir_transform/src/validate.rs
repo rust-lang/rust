@@ -1,6 +1,7 @@
 //! Validates the MIR to ensure that invariants are upheld.
 
 use rustc_abi::{ExternAbi, FIRST_VARIANT, Size};
+use rustc_attr_parsing::InlineAttr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::LangItem;
 use rustc_index::IndexVec;
@@ -366,7 +367,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 self.check_edge(location, *target, EdgeKind::Normal);
                 self.check_unwind_edge(location, *unwind);
             }
-            TerminatorKind::Call { args, .. } | TerminatorKind::TailCall { args, .. } => {
+            TerminatorKind::Call { func, args, .. }
+            | TerminatorKind::TailCall { func, args, .. } => {
                 // FIXME(explicit_tail_calls): refactor this & add tail-call specific checks
                 if let TerminatorKind::Call { target, unwind, destination, .. } = terminator.kind {
                     if let Some(target) = target {
@@ -418,6 +420,13 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                             );
                         }
                     }
+                }
+
+                if let ty::FnDef(did, ..) = func.ty(&self.body.local_decls, self.tcx).kind()
+                    && self.body.phase >= MirPhase::Runtime(RuntimePhase::Optimized)
+                    && matches!(self.tcx.codegen_fn_attrs(did).inline, InlineAttr::Force { .. })
+                {
+                    self.fail(location, "`#[rustc_force_inline]`-annotated function not inlined");
                 }
             }
             TerminatorKind::Assert { target, unwind, .. } => {

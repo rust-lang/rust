@@ -141,7 +141,7 @@ declare_passes! {
     mod gvn : GVN;
     // Made public so that `mir_drops_elaborated_and_const_checked` can be overridden
     // by custom rustc drivers, running all the steps by themselves. See #114628.
-    pub mod inline : Inline;
+    pub mod inline : Inline, ForceInline;
     mod instsimplify : InstSimplify { BeforeInline, AfterSimplifyCfg };
     mod jump_threading : JumpThreading;
     mod known_panics_lint : KnownPanicsLint;
@@ -488,7 +488,9 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
     let is_fn_like = tcx.def_kind(def).is_fn_like();
     if is_fn_like {
         // Do not compute the mir call graph without said call graph actually being used.
-        if pm::should_run_pass(tcx, &inline::Inline) {
+        if pm::should_run_pass(tcx, &inline::Inline)
+            || inline::ForceInline::should_run_pass_for_callee(tcx, def.to_def_id())
+        {
             tcx.ensure_with_value().mir_inliner_callees(ty::InstanceKind::Item(def.to_def_id()));
         }
     }
@@ -664,6 +666,8 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             // Perform instsimplify before inline to eliminate some trivial calls (like clone
             // shims).
             &instsimplify::InstSimplify::BeforeInline,
+            // Perform inlining of `#[rustc_force_inline]`-annotated callees.
+            &inline::ForceInline,
             // Perform inlining, which may add a lot of code.
             &inline::Inline,
             // Code from other crates may have storage markers, so this needs to happen after

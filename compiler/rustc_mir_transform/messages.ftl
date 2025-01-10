@@ -19,6 +19,17 @@ mir_transform_ffi_unwind_call = call to {$foreign ->
 mir_transform_fn_item_ref = taking a reference to a function item does not give a function pointer
     .suggestion = cast `{$ident}` to obtain a function pointer
 
+mir_transform_force_inline =
+    `{$callee}` could not be inlined into `{$caller}` but is required to be inlined
+    .call = ...`{$callee}` called here
+    .attr = inlining due to this annotation
+    .caller = within `{$caller}`...
+    .callee = `{$callee}` defined here
+    .note = could not be inlined due to: {$reason}
+
+mir_transform_force_inline_justification =
+    `{$callee}` is required to be inlined to: {$sym}
+
 mir_transform_must_not_suspend = {$pre}`{$def_path}`{$post} held across a suspend point, but should not be
     .label = the value is held across this suspend point
     .note = {$reason}
