@@ -6112,7 +6112,7 @@ use foo::bar::{self$0};
             ```
 
             ```rust
-            mod bar
+            pub mod bar
             ```
 
             ---

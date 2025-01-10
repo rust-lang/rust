@@ -23,10 +23,10 @@ use hir_ty::{
 use itertools::Itertools;
 
 use crate::{
-    Adt, AsAssocItem, AssocItem, AssocItemContainer, Const, ConstParam, Enum, ExternCrateDecl,
-    Field, Function, GenericParam, HasCrate, HasVisibility, Impl, LifetimeParam, Macro, Module,
-    SelfParam, Static, Struct, Trait, TraitAlias, TraitRef, TupleField, TyBuilder, Type, TypeAlias,
-    TypeOrConstParam, TypeParam, Union, Variant,
+    Adt, AsAssocItem, AssocItem, AssocItemContainer, Const, ConstParam, Crate, Enum,
+    ExternCrateDecl, Field, Function, GenericParam, HasCrate, HasVisibility, Impl, LifetimeParam,
+    Macro, Module, SelfParam, Static, Struct, Trait, TraitAlias, TraitRef, TupleField, TyBuilder,
+    Type, TypeAlias, TypeOrConstParam, TypeParam, Union, Variant,
 };
 
 impl HirDisplay for Function {
@@ -846,14 +846,27 @@ impl HirDisplay for TypeAlias {
 
 impl HirDisplay for Module {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
-        // FIXME: Module doesn't have visibility saved in data.
+        match self.parent(f.db) {
+            Some(m) => write_visibility(m.id, self.visibility(f.db), f)?,
+            None => {
+                return match self.krate(f.db).display_name(f.db) {
+                    Some(name) => write!(f, "extern crate {name}"),
+                    None => f.write_str("extern crate {unknown}"),
+                }
+            }
+        }
         match self.name(f.db) {
             Some(name) => write!(f, "mod {}", name.display(f.db.upcast(), f.edition())),
-            None if self.is_crate_root() => match self.krate(f.db).display_name(f.db) {
-                Some(name) => write!(f, "extern crate {name}"),
-                None => f.write_str("extern crate {unknown}"),
-            },
-            None => f.write_str("mod {unnamed}"),
+            None => f.write_str("mod {unknown}"),
+        }
+    }
+}
+
+impl HirDisplay for Crate {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
+        match self.display_name(f.db) {
+            Some(name) => write!(f, "extern crate {name}"),
+            None => f.write_str("extern crate {unknown}"),
         }
     }
 }

@@ -191,7 +191,7 @@ pub(crate) fn def_to_kind(db: &RootDatabase, def: Definition) -> SymbolInformati
             MacroKind::ProcMacro => Macro,
         },
         Definition::Field(..) | Definition::TupleField(..) => Field,
-        Definition::Module(..) => Module,
+        Definition::Module(..) | Definition::Crate(..) => Module,
         Definition::Function(it) => {
             if it.as_assoc_item(db).is_some() {
                 if it.has_self_param(db) {

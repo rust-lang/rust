@@ -89,6 +89,16 @@ impl HasAttrs for AssocItem {
     }
 }
 
+impl HasAttrs for crate::Crate {
+    fn attrs(self, db: &dyn HirDatabase) -> AttrsWithOwner {
+        let def = AttrDefId::ModuleId(self.root_module().id);
+        AttrsWithOwner::new(db.upcast(), def)
+    }
+    fn attr_id(self) -> AttrDefId {
+        AttrDefId::ModuleId(self.root_module().id)
+    }
+}
+
 /// Resolves the item `link` points to in the scope of `def`.
 pub fn resolve_doc_path_on(
     db: &dyn HirDatabase,
