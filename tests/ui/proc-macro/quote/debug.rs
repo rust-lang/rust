@@ -15,5 +15,6 @@ extern crate proc_macro;
 fn main() {
     proc_macro::quote! {
         let hello = "world";
+        let r#raw_ident = r#"raw"literal"#;
     }
 }
