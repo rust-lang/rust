@@ -21,29 +21,38 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         match link_name.as_str() {
             // Threading
-            "pthread_set_name_np" => {
+            "pthread_setname_np" => {
                 let [thread, name] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let max_len = usize::MAX; // FreeBSD does not seem to have a limit.
-                // FreeBSD's pthread_set_name_np does not return anything.
-                this.pthread_setname_np(
+                let res = match this.pthread_setname_np(
                     this.read_scalar(thread)?,
                     this.read_scalar(name)?,
                     max_len,
                     /* truncate */ false,
-                )?;
+                )? {
+                    ThreadNameResult::Ok => Scalar::from_u32(0),
+                    ThreadNameResult::NameTooLong => unreachable!(),
+                    ThreadNameResult::ThreadNotFound => this.eval_libc("ESRCH"),
+                };
+                this.write_scalar(res, dest)?;
             }
-            "pthread_get_name_np" => {
+            "pthread_getname_np" => {
                 let [thread, name, len] = this.check_shim(abi, Conv::C, link_name, args)?;
-                // FreeBSD's pthread_get_name_np does not return anything
-                // and uses strlcpy, which truncates the resulting value,
+                // FreeBSD's pthread_getname_np uses strlcpy, which truncates the resulting value,
                 // but always adds a null terminator (except for zero-sized buffers).
                 // https://github.com/freebsd/freebsd-src/blob/c2d93a803acef634bd0eede6673aeea59e90c277/lib/libthr/thread/thr_info.c#L119-L144
-                this.pthread_getname_np(
+                let res = match this.pthread_getname_np(
                     this.read_scalar(thread)?,
                     this.read_scalar(name)?,
                     this.read_scalar(len)?,
                     /* truncate */ true,
-                )?;
+                )? {
+                    ThreadNameResult::Ok => Scalar::from_u32(0),
+                    // `NameTooLong` is possible when the buffer is zero sized,
+                    ThreadNameResult::NameTooLong => Scalar::from_u32(0),
+                    ThreadNameResult::ThreadNotFound => this.eval_libc("ESRCH"),
+                };
+                this.write_scalar(res, dest)?;
             }
 
             // File related shims
