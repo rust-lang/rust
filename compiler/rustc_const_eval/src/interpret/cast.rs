@@ -419,7 +419,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         self.tcx.supertrait_vtable_slot((src_pointee_ty, dest_pointee_ty));
                     let vtable_entries = self.vtable_entries(data_a.principal(), ty);
                     if let Some(entry_idx) = vptr_entry_idx {
-                        let Some(&ty::VtblEntry::TraitVPtr(_)) = vtable_entries.get(entry_idx)
+                        let Some(&ty::VtblEntry::TraitVPtr(upcast_trait_ref)) =
+                            vtable_entries.get(entry_idx)
                         else {
                             span_bug!(
                                 self.cur_span(),
@@ -428,6 +429,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                                 dest_pointee_ty
                             );
                         };
+                        let erased_trait_ref =
+                            ty::ExistentialTraitRef::erase_self_ty(*self.tcx, upcast_trait_ref);
+                        assert!(data_b.principal().is_some_and(|b| self.eq_in_param_env(
+                            erased_trait_ref,
+                            self.tcx.instantiate_bound_regions_with_erased(b)
+                        )));
                     } else {
                         // In this case codegen would keep using the old vtable. We don't want to do
                         // that as it has the wrong trait. The reason codegen can do this is that

@@ -3,7 +3,6 @@ use std::ops::ControlFlow;
 
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::infer::at::ToTrace;
 use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::util::PredicateSet;
 use rustc_middle::bug;
@@ -127,16 +126,15 @@ fn prepare_vtable_segments_inner<'tcx, T>(
                 .explicit_super_predicates_of(inner_most_trait_ref.def_id)
                 .iter_identity_copied()
                 .filter_map(move |(pred, _)| {
-                    Some(
-                        tcx.instantiate_bound_regions_with_erased(
-                            pred.instantiate_supertrait(
-                                tcx,
-                                ty::Binder::dummy(inner_most_trait_ref),
-                            )
-                            .as_trait_clause()?,
-                        )
-                        .trait_ref,
+                    pred.instantiate_supertrait(tcx, ty::Binder::dummy(inner_most_trait_ref))
+                        .as_trait_clause()
+                })
+                .map(move |pred| {
+                    tcx.normalize_erasing_late_bound_regions(
+                        ty::TypingEnv::fully_monomorphized(),
+                        pred,
                     )
+                    .trait_ref
                 });
 
             // Find an unvisited supertrait
@@ -229,6 +227,8 @@ fn vtable_entries<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
 ) -> &'tcx [VtblEntry<'tcx>] {
+    debug_assert!(!trait_ref.has_non_region_infer() && !trait_ref.has_non_region_param());
+
     debug!("vtable_entries({:?})", trait_ref);
 
     let mut entries = vec![];
@@ -422,17 +422,8 @@ fn trait_refs_are_compatible<'tcx>(
     let ocx = ObligationCtxt::new(&infcx);
     let source_principal = ocx.normalize(&ObligationCause::dummy(), param_env, vtable_principal);
     let target_principal = ocx.normalize(&ObligationCause::dummy(), param_env, target_principal);
-    let Ok(()) = ocx.eq_trace(
-        &ObligationCause::dummy(),
-        param_env,
-        ToTrace::to_trace(
-            &ObligationCause::dummy(),
-            ty::Binder::dummy(target_principal),
-            ty::Binder::dummy(source_principal),
-        ),
-        target_principal,
-        source_principal,
-    ) else {
+    let Ok(()) = ocx.eq(&ObligationCause::dummy(), param_env, target_principal, source_principal)
+    else {
         return false;
     };
     ocx.select_all_or_error().is_empty()

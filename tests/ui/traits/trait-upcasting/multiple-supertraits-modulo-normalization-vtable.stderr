@@ -3,8 +3,6 @@ error: vtable entries: [
            MetadataSize,
            MetadataAlign,
            Method(<() as Supertrait<()>>::_print_numbers),
-           Method(<() as Supertrait<()>>::_print_numbers),
-           TraitVPtr(<() as Supertrait<<() as Identity>::Selff>>),
            Method(<() as Middle<()>>::say_hello),
        ]
   --> $DIR/multiple-supertraits-modulo-normalization-vtable.rs:29:1
