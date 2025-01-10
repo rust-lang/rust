@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::{is_normalizable, is_type_diagnostic_item};
-use rustc_hir::{self as hir, HirId, ItemKind, Node};
+use rustc_hir::{self as hir, AmbigArg, HirId, ItemKind, Node};
 use rustc_hir_analysis::lower_ty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::layout::LayoutOf as _;
@@ -44,10 +44,11 @@ declare_clippy_lint! {
 declare_lint_pass!(ZeroSizedMapValues => [ZERO_SIZED_MAP_VALUES]);
 
 impl LateLintPass<'_> for ZeroSizedMapValues {
-    fn check_ty<'tcx>(&mut self, cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>) {
+    fn check_ty<'tcx>(&mut self, cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx, AmbigArg>) {
         if !hir_ty.span.from_expansion()
             && !in_trait_impl(cx, hir_ty.hir_id)
-            && let ty = ty_from_hir_ty(cx, hir_ty)
+            // We don't care about infer vars
+            && let ty = ty_from_hir_ty(cx, hir_ty.as_unambig_ty())
             && (is_type_diagnostic_item(cx, ty, sym::HashMap) || is_type_diagnostic_item(cx, ty, sym::BTreeMap))
             && let ty::Adt(_, args) = ty.kind()
             && let ty = args.type_at(1)

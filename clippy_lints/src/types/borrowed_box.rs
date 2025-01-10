@@ -25,7 +25,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, lt: &Lifetime, m
                     _ => None,
                 })
             {
-                if is_any_trait(cx, inner) {
+                if is_any_trait(cx, inner.as_unambig_ty()) {
                     // Ignore `Box<Any>` types; see issue #1884 for details.
                     return false;
                 }
