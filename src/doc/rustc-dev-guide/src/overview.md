@@ -38,7 +38,7 @@ Unicode character encoding.
 
 The token stream passes through a higher-level lexer located in
 [`rustc_parse`] to prepare for the next stage of the compile process. The
-[`StringReader`] `struct` is used at this stage to perform a set of validations
+[`Lexer`] `struct` is used at this stage to perform a set of validations
 and turn strings into interned symbols (_interning_ is discussed later).
 [String interning] is a way of storing only one immutable
 copy of each distinct string value.
@@ -153,7 +153,7 @@ the final binary.
 [`rustc_parse::parser::Parser`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html
 [`rustc_parse`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/index.html
 [`simplify_try`]: https://github.com/rust-lang/rust/pull/66282
-[`StringReader`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/lexer/struct.StringReader.html
+[`Lexer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/lexer/struct.Lexer.html
 [`Ty<'tcx>`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html
 [borrow checking]: borrow_check.md
 [codegen]: backend/codegen.md
@@ -342,7 +342,7 @@ Compiler performance is a problem that we would like to improve on
 (and are always working on). One aspect of that is parallelizing
 `rustc` itself.
 
-Currently, there is only one part of rustc that is parallel by default: 
+Currently, there is only one part of rustc that is parallel by default:
 [code generation](./parallel-rustc.md#Codegen).
 
 However, the rest of the compiler is still not yet parallel. There have been
