@@ -27,7 +27,7 @@
 // Some "regular" crates we want to share with rustc
 extern crate object;
 extern crate smallvec;
-// FIXME: clippy bug: remove the #[allow] when it's fixed.
+// FIXME(antoyo): clippy bug: remove the #[allow] when it's fixed.
 #[allow(unused_extern_crates)]
 extern crate tempfile;
 #[macro_use]
@@ -269,7 +269,6 @@ impl CodegenBackend for GccCodegenBackend {
 
 fn new_context<'gcc, 'tcx>(tcx: TyCtxt<'tcx>) -> Context<'gcc> {
     let context = Context::default();
-    //context.add_driver_option("-pie");
     if tcx.sess.target.arch == "x86" || tcx.sess.target.arch == "x86_64" {
         context.add_command_line_option("-masm=intel");
     }

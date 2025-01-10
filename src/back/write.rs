@@ -31,13 +31,8 @@ pub(crate) unsafe fn codegen(
 
         // NOTE: Only generate object files with GIMPLE when this environment variable is set for
         // now because this requires a particular setup (same gcc/lto1/lto-wrapper commit as libgccjit).
-        // TODO: remove this environment variable.
+        // TODO(antoyo): remove this environment variable.
         let fat_lto = env::var("EMBED_LTO_BITCODE").as_deref() == Ok("1");
-
-        /*if cgcx.msvc_imps_needed {
-            println!("************************************************** Imps needed");
-            create_msvc_imps(cgcx, context);
-        }*/
 
         let bc_out = cgcx.output_filenames.temp_path(OutputType::Bitcode, module_name);
         let obj_out = cgcx.output_filenames.temp_path(OutputType::Object, module_name);
@@ -64,7 +59,7 @@ pub(crate) unsafe fn codegen(
                     );
                     context.add_command_line_option("-flto=auto");
                     context.add_command_line_option("-flto-partition=one");
-                    // TODO: remove since we don't want fat objects when it is for Bitcode only.
+                    // TODO(antoyo): remove since we don't want fat objects when it is for Bitcode only.
                     context.add_command_line_option("-ffat-lto-objects");
                     context.compile_to_file(
                         OutputKind::ObjectFile,
@@ -102,7 +97,7 @@ pub(crate) unsafe fn codegen(
                 }
 
                 if config.emit_obj == EmitObj::ObjectCode(BitcodeSection::Full) {
-                    // TODO: we might want to emit to emit an error here, saying to set the
+                    // TODO(antoyo): we might want to emit to emit an error here, saying to set the
                     // environment variable EMBED_LTO_BITCODE.
                     let _timer = cgcx.prof.generic_activity_with_arg(
                         "GCC_module_codegen_embed_bitcode",
@@ -111,12 +106,6 @@ pub(crate) unsafe fn codegen(
                     // TODO(antoyo): maybe we should call embed_bitcode to have the proper iOS fixes?
                     //embed_bitcode(cgcx, llcx, llmod, &config.bc_cmdline, data);
 
-                    // TODO: check if this condition makes sense.
-                    if fat_lto {
-                        context.add_command_line_option("-flto=auto");
-                        context.add_command_line_option("-flto-partition=one");
-                        context.add_command_line_option("-ffat-lto-objects");
-                    }
                     // TODO(antoyo): Send -plugin/usr/lib/gcc/x86_64-pc-linux-gnu/11.1.0/liblto_plugin.so to linker (this should be done when specifying the appropriate rustc cli argument).
                     context.compile_to_file(
                         OutputKind::ObjectFile,
@@ -172,8 +161,6 @@ pub(crate) unsafe fn codegen(
                         // lto1: internal compiler error: decompressed stream: Destination buffer is too small
                         // TODO: since we do not do LTO when the linker is invoked anymore, perhaps
                         // the following flag is not necessary anymore.
-                        // TODO: also, perhaps compiling the gcc driver in the CI is not necessary
-                        // anymore.
                         context.add_driver_option("-fuse-linker-plugin");
                     }
 
@@ -181,15 +168,6 @@ pub(crate) unsafe fn codegen(
                     // NOTE: we need -nostdlib, otherwise, we get the following error:
                     // /usr/bin/ld: cannot find -lgcc_s: No such file or directory
                     context.add_driver_option("-nostdlib");
-
-                    // NOTE: this doesn't actually generate an executable. With the above flags, it combines the .o files together in another .o.
-                    // FIXME FIXME: this produces an object file with GIMPLE IR, but it should
-                    // produce an object file with machine code.
-                    //println!("LTO-ed object file: {:?}", obj_out);
-                    /*context.compile_to_file(
-                        OutputKind::Executable,
-                        obj_out.to_str().expect("path to str"),
-                    );*/
 
                     let path = obj_out.to_str().expect("path to str");
 
@@ -208,11 +186,7 @@ pub(crate) unsafe fn codegen(
                         context.compile_to_file(OutputKind::Executable, &lto_path);
 
                         let context = Context::default(); // TODO: might need to set some other flags from new_context.
-                        //context.add_driver_option("-v");
-                        //println!("*** Arch: {}", cgcx.target_arch);
                         if cgcx.target_arch == "x86" || cgcx.target_arch == "x86_64" {
-                            //println!("**** Added -masm=intel");
-                            //context.add_command_line_option("-masm=intel");
                             // NOTE: it seems we need to use add_driver_option instead of
                             // add_command_line_option here because we use the LTO frontend via gcc.
                             context.add_driver_option("-masm=intel");
@@ -295,31 +269,3 @@ pub(crate) fn save_temp_bitcode(
         llvm::LLVMWriteBitcodeToFile(llmod, cstr.as_ptr());
     }*/
 }
-
-/*fn create_msvc_imps<'gcc>(cgcx: &CodegenContext<GccCodegenBackend>, _context: &Context<'gcc>) {
-    if !cgcx.msvc_imps_needed {
-        return;
-    }
-
-    /*unsafe {
-        let ptr_ty = Type::ptr_llcx(llcx);
-        let globals = base::iter_globals(llmod)
-            .filter(|&val| {
-                llvm::get_linkage(val) == llvm::Linkage::ExternalLinkage
-                    && llvm::LLVMIsDeclaration(val) == 0
-            })
-            .map(move |(val, name)| {
-                let mut imp_name = prefix.as_bytes().to_vec();
-                imp_name.extend(name);
-                let imp_name = CString::new(imp_name).unwrap();
-                (imp_name, val)
-            })
-            .collect::<Vec<_>>();
-
-        for (imp_name, val) in globals {
-            let imp = llvm::LLVMAddGlobal(llmod, ptr_ty, imp_name.as_ptr());
-            llvm::LLVMSetInitializer(imp, val);
-            llvm::set_linkage(imp, llvm::Linkage::ExternalLinkage);
-        }
-    }*/
-}*/

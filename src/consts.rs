@@ -92,85 +92,7 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
         }
         set_global_alignment(self, global, alloc.align);
 
-        // TODO: if I still use this code, find the name of the variable in a better way (using
-        // def_id).
-        let var_name = format!("{:?}", global);
-        if var_name.contains("FN") && var_name.contains("memchr") {
-            //println!("Var name: {:?}", var_name);
-            //println!("INITIALIZE: {:?} = {:?}", var_name, value);
-
-            /*
-            let ptr_type = value.get_type().make_pointer();
-
-            // TODO: remove \x01
-            //let prefix = if self.cgcx.target_arch == "x86" { "\x01__imp__" } else { "\x01__imp_" };
-            let prefix = "__imp__";
-            let mut imp_name = prefix.to_string();
-            imp_name.push_str(&var_name);
-
-            // FIXME: if I understand correctly the code in cg_llvm, the kind should be Imported.
-            let imp_global = self.context.new_global(None, GlobalKind::Exported, ptr_type, &imp_name);
-            imp_global.global_set_initializer_rvalue(global.get_address(None));
-            */
-
-            /*
-            /*let context = gccjit::Context::default();
-            let global = context.new_global(None, GlobalKind::Exported, val_llty, &var_name);
-            global.global_set_initializer_rvalue(value);
-            context.compile_to_file(gccjit::OutputKind::ObjectFile, format!("{}.o", var_name));*/
-
-            let void_type = self.context.new_type::<()>();
-            let fn_ptr_type = self.context.new_function_pointer_type(None, void_type, &[], false);
-            let my_name = format!("MY_NAME${}", var_name);
-            //let global = self.context.new_global(None, GlobalKind::Exported, fn_ptr_type, my_name);
-            //global.add_attribute(VarAttribute::Used);
-
-            let my_func_name = format!("MY_FUNC${}", var_name);
-            let func = self.context.new_function(None, FunctionType::Exported, void_type, &[], &my_func_name, false);
-            func.add_attribute(FnAttribute::Used);
-            let block = func.new_block("start");
-            block.end_with_void_return(None);
-
-            //let func = self.context.new_function(None, FunctionType::Extern, void_type, &[], "puts", false);
-            let value = func.get_address(None);
-            //let global = self.context.new_global(None, GlobalKind::Exported, value.get_type(), my_name);
-            //let value = self.context.new_bitcast(None, func.get_address(None), fn_ptr_type);
-            /*
-             * TODO: Check if the hard-coded function has the correct name.
-             * ===> It seems so.
-             * TODO: try with a function we know exists.
-             * ===> It doesn't seem to help.
-             * TODO: check if the .o contains the value (before linking into the .so).
-             * ===> It seems the object file doesn't contain the value either.
-             * ======> This is because there are relocations.
-             * TODO: check if fold in GCC erases the value.
-             * ===> It doesn't seem so.
-             *
-             * TODO TODO: try again this code with using the used attribute.
-             */
-
-            /*let var_type = global.to_rvalue().get_type();
-            let struct_type = var_type.is_struct().unwrap();
-            /*let field1_type = struct_type.get_field(0).get_type();
-            let field2_type = struct_type.get_field(1).get_type();*/
-
-            let field1 = value;
-            let field2 = self.context.new_rvalue_zero(self.int_type);
-
-            let struct_val = self.context.new_struct_constructor(None, var_type, None, &[field1, field2]);
-            let value = struct_val;*/
-
-            //let value = self.context.new_bitcast(None, func.get_address(None), val_llty);
-
-            //let value = self.context.new_rvalue_from_int(self.usize_type, 10293);
-            //let value = self.context.new_cast(None, value, fn_ptr_type); // WORKS
-            //let value = self.context.new_bitcast(None, value, fn_ptr_type); // Also WORKS
-            let value = self.context.new_bitcast(None, value, val_llty);*/
-            global.global_set_initializer_rvalue(value);
-            //println!("=== AFTER INITIALIZE");
-        } else {
-            global.global_set_initializer_rvalue(value);
-        }
+        global.global_set_initializer_rvalue(value);
 
         // As an optimization, all shared statics which do not have interior
         // mutability are placed into read-only memory.
@@ -327,9 +249,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             }
 
             let is_tls = fn_attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
-            /*if sym.contains("memchr") && sym.contains("FN") {
-                println!("** DECLARE");
-            }*/
             let global = self.declare_global(
                 sym,
                 gcc_type,
