@@ -651,8 +651,15 @@ fn opts() -> Vec<RustcOptGroup> {
             "",
             "add arguments to be used when compiling doctests",
         ),
+        opt(
+            Unstable,
+            FlagMulti,
+            "",
+            "disable-minification",
+            "diable the minification of CSS/JS files",
+            "",
+        ),
         // deprecated / removed options
-        opt(Unstable, FlagMulti, "", "disable-minification", "removed", ""),
         opt(
             Stable,
             Multi,
