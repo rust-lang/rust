@@ -3,8 +3,6 @@ error: vtable entries: [
            MetadataSize,
            MetadataAlign,
            Method(<dyn for<'a> Trait<&(), &'a ()> as Supertrait<&()>>::_print_numbers - shim(reify)),
-           Method(<dyn for<'a> Trait<&(), &'a ()> as Supertrait<&()>>::_print_numbers - shim(reify)),
-           TraitVPtr(for<'a> <dyn for<'a> Trait<&(), &'a ()> as Supertrait<&'a ()>>),
            Method(<dyn for<'a> Trait<&(), &'a ()> as Trait<&(), &()>>::say_hello - shim(reify)),
        ]
   --> $DIR/multiple-supertraits-modulo-binder-vtable.rs:18:1

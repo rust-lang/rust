@@ -1437,9 +1437,9 @@ rustc_queries! {
         desc { |tcx| "finding all existential vtable entries for trait `{}`", tcx.def_path_str(key) }
     }
 
-    query vtable_entries(key: ty::PolyTraitRef<'tcx>)
+    query vtable_entries(key: ty::TraitRef<'tcx>)
                         -> &'tcx [ty::VtblEntry<'tcx>] {
-        desc { |tcx| "finding all vtable entries for trait `{}`", tcx.def_path_str(key.def_id()) }
+        desc { |tcx| "finding all vtable entries for trait `{}`", tcx.def_path_str(key.def_id) }
     }
 
     query first_method_vtable_slot(key: ty::TraitRef<'tcx>) -> usize {
@@ -1451,7 +1451,7 @@ rustc_queries! {
             key.1, key.0 }
     }
 
-    query vtable_allocation(key: (Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>)) -> mir::interpret::AllocId {
+    query vtable_allocation(key: (Ty<'tcx>, Option<ty::ExistentialTraitRef<'tcx>>)) -> mir::interpret::AllocId {
         desc { |tcx| "vtable const allocation for <{} as {}>",
             key.0,
             key.1.map(|trait_ref| format!("{trait_ref}")).unwrap_or("_".to_owned())

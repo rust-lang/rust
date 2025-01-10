@@ -95,7 +95,7 @@ impl<'tcx> Key for mir::interpret::GlobalId<'tcx> {
     }
 }
 
-impl<'tcx> Key for (Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>) {
+impl<'tcx> Key for (Ty<'tcx>, Option<ty::ExistentialTraitRef<'tcx>>) {
     type Cache<V> = DefaultCache<Self, V>;
 
     fn default_span(&self, _: TyCtxt<'_>) -> Span {

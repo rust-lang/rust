@@ -245,7 +245,10 @@ pub(crate) fn data_id_for_vtable<'tcx>(
     ty: Ty<'tcx>,
     trait_ref: Option<Binder<'tcx, ExistentialTraitRef<'tcx>>>,
 ) -> DataId {
-    let alloc_id = tcx.vtable_allocation((ty, trait_ref));
+    let alloc_id = tcx.vtable_allocation((
+        ty,
+        trait_ref.map(|principal| tcx.instantiate_bound_regions_with_erased(principal)),
+    ));
     data_id_for_alloc_id(cx, module, alloc_id, Mutability::Not)
 }
 

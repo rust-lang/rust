@@ -1406,7 +1406,7 @@ fn build_vtable_type_di_node<'ll, 'tcx>(
 
     let vtable_entries = if let Some(poly_trait_ref) = poly_trait_ref {
         let trait_ref = poly_trait_ref.with_self_ty(tcx, ty);
-        let trait_ref = tcx.erase_regions(trait_ref);
+        let trait_ref = tcx.erase_regions(tcx.instantiate_bound_regions_with_erased(trait_ref));
 
         tcx.vtable_entries(trait_ref)
     } else {

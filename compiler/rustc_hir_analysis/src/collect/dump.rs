@@ -123,7 +123,7 @@ pub(crate) fn vtables<'tcx>(tcx: TyCtxt<'tcx>) {
                     );
                     continue;
                 };
-                tcx.vtable_entries(ty::Binder::dummy(trait_ref))
+                tcx.vtable_entries(trait_ref)
             }
             hir::ItemKind::TyAlias(_, _) => {
                 let ty = tcx.type_of(def_id).instantiate_identity();
@@ -149,7 +149,7 @@ pub(crate) fn vtables<'tcx>(tcx: TyCtxt<'tcx>) {
                 };
                 if let Some(principal) = data.principal() {
                     tcx.vtable_entries(
-                        principal.map_bound(|principal| principal.with_self_ty(tcx, ty)),
+                        tcx.instantiate_bound_regions_with_erased(principal).with_self_ty(tcx, ty),
                     )
                 } else {
                     TyCtxt::COMMON_VTABLE_ENTRIES
