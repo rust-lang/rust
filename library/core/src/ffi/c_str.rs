@@ -127,10 +127,10 @@ pub struct CStr {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[stable(feature = "core_c_str", since = "1.64.0")]
 pub enum FromBytesWithNulError {
-    /// Data provided contains an interior nul byte at byte `pos`.
+    /// Data provided contains an interior nul byte at byte `position`.
     InteriorNul {
         /// The position of the interior nul byte.
-        pos: usize,
+        position: usize,
     },
     /// Data provided is not nul terminated.
     NotNulTerminated,
@@ -187,8 +187,8 @@ impl fmt::Display for FromBytesWithNulError {
     #[allow(deprecated, deprecated_in_future)]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.description())?;
-        if let Self::InteriorNul { pos } = self {
-            write!(f, " at byte pos {pos}")?;
+        if let Self::InteriorNul { position } = self {
+            write!(f, " at byte pos {position}")?;
         }
         Ok(())
     }
@@ -355,7 +355,7 @@ impl CStr {
     /// use std::ffi::{CStr, FromBytesWithNulError};
     ///
     /// let cstr = CStr::from_bytes_with_nul(b"he\0llo\0");
-    /// assert_eq!(cstr, Err(FromBytesWithNulError::InteriorNul { pos: 2 }));
+    /// assert_eq!(cstr, Err(FromBytesWithNulError::InteriorNul { position: 2 }));
     /// ```
     #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
     #[rustc_const_stable(feature = "const_cstr_methods", since = "1.72.0")]
@@ -367,7 +367,7 @@ impl CStr {
                 // of the byte slice.
                 Ok(unsafe { Self::from_bytes_with_nul_unchecked(bytes) })
             }
-            Some(pos) => Err(FromBytesWithNulError::InteriorNul { pos }),
+            Some(position) => Err(FromBytesWithNulError::InteriorNul { position }),
             None => Err(FromBytesWithNulError::NotNulTerminated),
         }
     }
