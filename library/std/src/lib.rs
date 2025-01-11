@@ -357,6 +357,7 @@
 #![feature(str_internals)]
 #![feature(strict_provenance_atomic_ptr)]
 #![feature(sync_unsafe_cell)]
+#![feature(temporary_niche_types)]
 #![feature(ub_checks)]
 #![feature(used_with_arg)]
 // tidy-alphabetical-end
