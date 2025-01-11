@@ -190,24 +190,19 @@ pub trait Unsize<T: ?Sized> {
 
 /// Required trait for constants used in pattern matches.
 ///
-/// Any type that derives `PartialEq` automatically implements this trait,
-/// *regardless* of whether its type-parameters implement `PartialEq`.
+/// Constants are only allowed as patterns if (a) their type implements
+/// `PartialEq`, and (b) interpreting the value of the constant as a pattern
+/// is equialent to calling `PartialEq`. This ensures that constants used as
+/// patterns cannot expose implementation details in an unexpected way or
+/// cause semver hazards.
 ///
-/// If a `const` item contains some type that does not implement this trait,
-/// then that type either (1.) does not implement `PartialEq` (which means the
-/// constant will not provide that comparison method, which code generation
-/// assumes is available), or (2.) it implements *its own* version of
-/// `PartialEq` (which we assume does not conform to a structural-equality
-/// comparison).
+/// This trait ensures point (b).
+/// Any type that derives `PartialEq` automatically implements this trait.
 ///
-/// In either of the two scenarios above, we reject usage of such a constant in
-/// a pattern match.
-///
-/// See also the [structural match RFC][RFC1445], and [issue 63438] which
-/// motivated migrating from an attribute-based design to this trait.
-///
-/// [RFC1445]: https://github.com/rust-lang/rfcs/blob/master/text/1445-restrict-constants-in-patterns.md
-/// [issue 63438]: https://github.com/rust-lang/rust/issues/63438
+/// Implementing this trait (which is unstable) is a way for type authors to explicitly allow
+/// comparing const values of this type; that operation will recursively compare all fields
+/// (including private fields), even if that behavior differs from `PartialEq`. This can make it
+/// semver-breaking to add further private fields to a type.
 #[unstable(feature = "structural_match", issue = "31434")]
 #[diagnostic::on_unimplemented(message = "the type `{Self}` does not `#[derive(PartialEq)]`")]
 #[lang = "structural_peq"]
