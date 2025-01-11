@@ -10,6 +10,7 @@ use rustc_session::config::OutputType;
 use rustc_span::fatal_error::FatalError;
 use rustc_target::spec::SplitDebuginfo;
 
+use crate::base::add_pic_option;
 use crate::errors::CopyBitcode;
 use crate::{GccCodegenBackend, GccContext};
 
@@ -159,7 +160,7 @@ pub(crate) unsafe fn codegen(
 
                         // NOTE: without -fuse-linker-plugin, we get the following error:
                         // lto1: internal compiler error: decompressed stream: Destination buffer is too small
-                        // TODO: since we do not do LTO when the linker is invoked anymore, perhaps
+                        // TODO(antoyo): since we do not do LTO when the linker is invoked anymore, perhaps
                         // the following flag is not necessary anymore.
                         context.add_driver_option("-fuse-linker-plugin");
                     }
@@ -185,7 +186,7 @@ pub(crate) unsafe fn codegen(
                         // flags, it combines the .o files together in another .o.
                         context.compile_to_file(OutputKind::Executable, &lto_path);
 
-                        let context = Context::default(); // TODO: might need to set some other flags from new_context.
+                        let context = Context::default();
                         if cgcx.target_arch == "x86" || cgcx.target_arch == "x86_64" {
                             // NOTE: it seems we need to use add_driver_option instead of
                             // add_command_line_option here because we use the LTO frontend via gcc.
@@ -195,12 +196,9 @@ pub(crate) unsafe fn codegen(
                         // NOTE: these two options are needed to invoke LTO to produce an object file.
                         // We need to initiate a second compilation because the arguments "-x lto"
                         // needs to be at the very beginning.
-                        // TODO TODO: check that LTO still does the optimizations across different
-                        // object files with this change.
-                        // TODO: this should probably be in a condition `if fat_lto`.
                         context.add_driver_option("-x");
                         context.add_driver_option("lto");
-                        context.add_driver_option("-fPIC"); // TODO TODO: only add this flag when necessary.
+                        add_pic_option(&context, module.module_llvm.relocation_model);
                         context.add_driver_option(lto_path);
 
                         context.compile_to_file(OutputKind::ObjectFile, path);

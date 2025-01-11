@@ -3,7 +3,7 @@ use std::env;
 use std::sync::Arc;
 use std::time::Instant;
 
-use gccjit::{CType, FunctionType, GlobalKind};
+use gccjit::{CType, Context, FunctionType, GlobalKind};
 use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
 use rustc_codegen_ssa::mono_item::MonoItemExt;
 use rustc_codegen_ssa::traits::DebugInfoCodegenMethods;
@@ -15,9 +15,9 @@ use rustc_middle::mir::mono::Visibility;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::DebugInfo;
 use rustc_span::Symbol;
-use rustc_target::spec::PanicStrategy;
 #[cfg(feature = "master")]
 use rustc_target::spec::SymbolVisibility;
+use rustc_target::spec::{PanicStrategy, RelocModel};
 
 use crate::builder::Builder;
 use crate::context::CodegenCx;
@@ -151,18 +151,7 @@ pub fn compile_codegen_unit(
             });
         }
 
-        match tcx.sess.relocation_model() {
-            rustc_target::spec::RelocModel::Static => {
-                context.add_command_line_option("-fno-pie");
-            }
-            rustc_target::spec::RelocModel::Pic => {
-                context.add_command_line_option("-fPIC");
-            }
-            rustc_target::spec::RelocModel::Pie => {
-                context.add_command_line_option("-fPIE");
-            }
-            model => eprintln!("Unsupported relocation model: {:?}", model),
-        }
+        add_pic_option(&context, tcx.sess.relocation_model());
 
         let target_cpu = gcc_util::target_cpu(tcx.sess);
         if target_cpu != "generic" {
@@ -256,6 +245,7 @@ pub fn compile_codegen_unit(
             name: cgu_name.to_string(),
             module_llvm: GccContext {
                 context: Arc::new(SyncContext::new(context)),
+                relocation_model: tcx.sess.relocation_model(),
                 should_combine_object_files: false,
                 temp_dir: None,
             },
@@ -264,4 +254,25 @@ pub fn compile_codegen_unit(
     }
 
     (module, cost)
+}
+
+pub fn add_pic_option<'gcc>(context: &Context<'gcc>, relocation_model: RelocModel) {
+    match relocation_model {
+        rustc_target::spec::RelocModel::Static => {
+            context.add_command_line_option("-fno-pie");
+            context.add_driver_option("-fno-pie");
+        }
+        rustc_target::spec::RelocModel::Pic => {
+            context.add_command_line_option("-fPIC");
+            // NOTE: we use both add_command_line_option and add_driver_option because the usage in
+            // this module (compile_codegen_unit) requires add_command_line_option while the usage
+            // in the back::write module (codegen) requires add_driver_option.
+            context.add_driver_option("-fPIC");
+        }
+        rustc_target::spec::RelocModel::Pie => {
+            context.add_command_line_option("-fPIE");
+            context.add_driver_option("-fPIE");
+        }
+        model => eprintln!("Unsupported relocation model: {:?}", model),
+    }
 }

@@ -113,6 +113,7 @@ use rustc_session::Session;
 use rustc_session::config::{Lto, OptLevel, OutputFilenames};
 use rustc_span::Symbol;
 use rustc_span::fatal_error::FatalError;
+use rustc_target::spec::RelocModel;
 use tempfile::TempDir;
 
 use crate::back::lto::ModuleBuffer;
@@ -298,6 +299,7 @@ impl ExtraBackendMethods for GccCodegenBackend {
     ) -> Self::Module {
         let mut mods = GccContext {
             context: Arc::new(SyncContext::new(new_context(tcx))),
+            relocation_model: tcx.sess.relocation_model(),
             should_combine_object_files: false,
             temp_dir: None,
         };
@@ -329,6 +331,9 @@ impl ExtraBackendMethods for GccCodegenBackend {
 
 pub struct GccContext {
     context: Arc<SyncContext>,
+    /// This field is needed in order to be able to set the flag -fPIC when necessary when doing
+    /// LTO.
+    relocation_model: RelocModel,
     should_combine_object_files: bool,
     // Temporary directory used by LTO. We keep it here so that it's not removed before linking.
     temp_dir: Option<TempDir>,

@@ -35,6 +35,7 @@ use rustc_middle::bug;
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
 use rustc_session::config::{CrateType, Lto};
+use rustc_target::spec::RelocModel;
 use tempfile::{TempDir, tempdir};
 
 use crate::back::write::save_temp_bitcode;
@@ -632,7 +633,13 @@ pub unsafe fn optimize_thin_module(
         }
     };
     let module = ModuleCodegen {
-        module_llvm: GccContext { context, should_combine_object_files, temp_dir: None },
+        module_llvm: GccContext {
+            context,
+            should_combine_object_files,
+            // TODO(antoyo): use the correct relocation model here.
+            relocation_model: RelocModel::Pic,
+            temp_dir: None,
+        },
         name: thin_module.name().to_string(),
         kind: ModuleKind::Regular,
     };
