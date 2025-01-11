@@ -130,6 +130,23 @@ class EmptySyntheticProvider:
     def has_children(self) -> bool:
         return False
 
+def get_template_args(type_name: str) -> List[str]:
+    params = []
+    level = 0
+    start = 0
+    for i, c in enumerate(type_name):
+        if c == "<":
+            level += 1
+            if level == 1:
+                start = i + 1
+        elif c == ">":
+            level -= 1
+            if level == 0:
+                params.append(type_name[start:i].strip())
+        elif c == "," and level == 1:
+            params.append(type_name[start:i].strip())
+            start = i + 1
+    return params
 
 def SizeSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
     return "size=" + str(valobj.GetNumChildren())
@@ -1050,7 +1067,16 @@ class StdHashMapSyntheticProvider:
         ctrl = inner_table.GetChildMemberWithName("ctrl").GetChildAtIndex(0)
 
         self.size = inner_table.GetChildMemberWithName("items").GetValueAsUnsigned()
-        self.pair_type = table.type.template_args[0]
+
+        template_args = table.type.template_args
+
+        if template_args is None:
+            type_name = table.GetTypeName()
+            args = get_template_args(type_name)
+            self.pair_type = self.valobj.target.FindFirstType(args[0])
+        else:
+            self.pair_type = template_args[0]
+
         if self.pair_type.IsTypedefType():
             self.pair_type = self.pair_type.GetTypedefedType()
         self.pair_type_size = self.pair_type.GetByteSize()
