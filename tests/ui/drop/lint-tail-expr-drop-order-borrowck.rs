@@ -10,7 +10,7 @@ fn should_lint_with_potential_borrowck_err() {
     //~^ ERROR: relative drop order changing
     //~| WARN: this changes meaning in Rust 2024
     //~| NOTE: this temporary value will be dropped at the end of the block
-    //~| borrow later used by call
+    //~| borrow later used here
     //~| NOTE: for more information, see
 }
 
@@ -20,7 +20,7 @@ fn should_lint_with_unsafe_block() {
     //~^ ERROR: relative drop order changing
     //~| WARN: this changes meaning in Rust 2024
     //~| NOTE: this temporary value will be dropped at the end of the block
-    //~| borrow later used by call
+    //~| borrow later used here
     //~| NOTE: for more information, see
 }
 

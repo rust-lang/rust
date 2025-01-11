@@ -2,9 +2,10 @@ error: relative drop order changing in Rust 2024
   --> $DIR/lint-tail-expr-drop-order-borrowck.rs:9:15
    |
 LL |     let _ = { String::new().as_str() }.len();
-   |               ^^^^^^^^^^^^^            --- borrow later used by call
+   |               ^^^^^^^^^^^^^---------
    |               |
    |               this temporary value will be dropped at the end of the block
+   |               borrow later used here
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-tail-expr-scope.html>
@@ -18,9 +19,10 @@ error: relative drop order changing in Rust 2024
   --> $DIR/lint-tail-expr-drop-order-borrowck.rs:19:16
    |
 LL |     f(unsafe { String::new().as_str() }.len());
-   |                ^^^^^^^^^^^^^            --- borrow later used by call
+   |                ^^^^^^^^^^^^^---------
    |                |
    |                this temporary value will be dropped at the end of the block
+   |                borrow later used here
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-tail-expr-scope.html>
