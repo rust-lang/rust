@@ -13,6 +13,7 @@
 #![cfg_attr(test, allow(unused_imports, dead_code))]
 
 use core::borrow::{Borrow, BorrowMut};
+use core::clone::TrivialClone;
 #[cfg(not(no_global_oom_handling))]
 use core::cmp::Ordering::{self, Less};
 #[cfg(not(no_global_oom_handling))]
@@ -88,6 +89,7 @@ use crate::vec::Vec;
 #[allow(unreachable_pub)] // cfg(test) pub above
 pub(crate) mod hack {
     use core::alloc::Allocator;
+    use core::clone::TrivialClone;
 
     use crate::boxed::Box;
     use crate::vec::Vec;
@@ -156,7 +158,7 @@ pub(crate) mod hack {
     }
 
     #[cfg(not(no_global_oom_handling))]
-    impl<T: Copy> ConvertVec for T {
+    impl<T: TrivialClone> ConvertVec for T {
         #[inline]
         fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {
             let mut v = Vec::with_capacity_in(s.len(), alloc);
@@ -872,7 +874,7 @@ impl<T: Clone, A: Allocator> SpecCloneIntoVec<T, A> for [T] {
 }
 
 #[cfg(not(no_global_oom_handling))]
-impl<T: Copy, A: Allocator> SpecCloneIntoVec<T, A> for [T] {
+impl<T: TrivialClone, A: Allocator> SpecCloneIntoVec<T, A> for [T] {
     fn clone_into(&self, target: &mut Vec<T, A>) {
         target.clear();
         target.extend_from_slice(self);
