@@ -1,4 +1,4 @@
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 
@@ -21,12 +21,12 @@ impl MaybeBorrowedLocals {
 }
 
 impl<'tcx> Analysis<'tcx> for MaybeBorrowedLocals {
-    type Domain = BitSet<Local>;
+    type Domain = DenseBitSet<Local>;
     const NAME: &'static str = "maybe_borrowed_locals";
 
     fn bottom_value(&self, body: &Body<'tcx>) -> Self::Domain {
         // bottom = unborrowed
-        BitSet::new_empty(body.local_decls().len())
+        DenseBitSet::new_empty(body.local_decls().len())
     }
 
     fn initialize_start_block(&self, _: &Body<'tcx>, _: &mut Self::Domain) {
@@ -137,8 +137,8 @@ where
 }
 
 /// The set of locals that are borrowed at some point in the MIR body.
-pub fn borrowed_locals(body: &Body<'_>) -> BitSet<Local> {
-    struct Borrowed(BitSet<Local>);
+pub fn borrowed_locals(body: &Body<'_>) -> DenseBitSet<Local> {
+    struct Borrowed(DenseBitSet<Local>);
 
     impl GenKill<Local> for Borrowed {
         #[inline]
@@ -151,7 +151,7 @@ pub fn borrowed_locals(body: &Body<'_>) -> BitSet<Local> {
         }
     }
 
-    let mut borrowed = Borrowed(BitSet::new_empty(body.local_decls.len()));
+    let mut borrowed = Borrowed(DenseBitSet::new_empty(body.local_decls.len()));
     TransferFunction { trans: &mut borrowed }.visit_body(body);
     borrowed.0
 }

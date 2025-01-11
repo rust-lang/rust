@@ -132,9 +132,13 @@ fn prefix_and_suffix<'tcx>(
 
     let attrs = tcx.codegen_fn_attrs(instance.def_id());
     let link_section = attrs.link_section.map(|symbol| symbol.as_str().to_string());
-    let align = attrs.alignment.map(|a| a.bytes()).unwrap_or(4);
 
-    // See https://sourceware.org/binutils/docs/as/ARM-Directives.html for info on these directives.
+    // function alignment can be set globally with the `-Zmin-function-alignment=<n>` flag;
+    // the alignment from a `#[repr(align(<n>))]` is used if it specifies a higher alignment.
+    // if no alignment is specified, an alignment of 4 bytes is used.
+    let min_function_alignment = tcx.sess.opts.unstable_opts.min_function_alignment;
+    let align = Ord::max(min_function_alignment, attrs.alignment).map(|a| a.bytes()).unwrap_or(4);
+
     // In particular, `.arm` can also be written `.code 32` and `.thumb` as `.code 16`.
     let (arch_prefix, arch_suffix) = if is_arm {
         (
