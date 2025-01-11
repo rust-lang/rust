@@ -582,17 +582,17 @@ impl Analysis {
         self.with_db(|db| parent_module::parent_module(db, position))
     }
 
-    /// Returns crates this file belongs too.
+    /// Returns crates that this file belongs to.
     pub fn crates_for(&self, file_id: FileId) -> Cancellable<Vec<CrateId>> {
         self.with_db(|db| parent_module::crates_for(db, file_id))
     }
 
-    /// Returns crates this file belongs too.
+    /// Returns crates that this file belongs to.
     pub fn transitive_rev_deps(&self, crate_id: CrateId) -> Cancellable<Vec<CrateId>> {
         self.with_db(|db| db.crate_graph().transitive_rev_deps(crate_id).collect())
     }
 
-    /// Returns crates this file *might* belong too.
+    /// Returns crates that this file *might* belong to.
     pub fn relevant_crates_for(&self, file_id: FileId) -> Cancellable<Vec<CrateId>> {
         self.with_db(|db| db.relevant_crates(file_id).iter().copied().collect())
     }
