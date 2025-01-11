@@ -51,6 +51,10 @@ mod overflow_panic;
 mod saturating;
 mod wrapping;
 
+/// 100% perma-unstable
+#[doc(hidden)]
+pub mod niche_types;
+
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg(not(no_fp_fmt_parse))]
 pub use dec2flt::ParseFloatError;

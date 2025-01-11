@@ -114,6 +114,9 @@ fn print_paths(verb: &str, adjective: Option<&str>, paths: &[String]) {
     } else {
         println!("fmt: {verb} {len} {adjective}files");
     }
+    if len > 1000 && !CiEnv::is_ci() {
+        println!("hint: if this number seems too high, try running `git fetch origin master");
+    }
 }
 
 pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
