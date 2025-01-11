@@ -130,6 +130,7 @@ class EmptySyntheticProvider:
     def has_children(self) -> bool:
         return False
 
+
 def get_template_args(type_name: str) -> List[str]:
     params = []
     level = 0
@@ -147,6 +148,7 @@ def get_template_args(type_name: str) -> List[str]:
             params.append(type_name[start:i].strip())
             start = i + 1
     return params
+
 
 def SizeSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
     return "size=" + str(valobj.GetNumChildren())
