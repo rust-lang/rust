@@ -2,6 +2,7 @@
 #![no_std]
 #![cfg_attr(intrinsics_enabled, allow(internal_features))]
 #![cfg_attr(intrinsics_enabled, feature(core_intrinsics))]
+#![cfg_attr(all(intrinsics_enabled, target_family = "wasm"), feature(wasm_numeric_instr))]
 #![cfg_attr(f128_enabled, feature(f128))]
 #![cfg_attr(f16_enabled, feature(f16))]
 #![allow(clippy::assign_op_pattern)]
