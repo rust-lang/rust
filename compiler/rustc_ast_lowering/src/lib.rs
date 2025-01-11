@@ -1111,15 +1111,17 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                                 let ct =
                                     self.lower_const_path_to_const_arg(path, res, ty.id, ty.span);
-                                return GenericArg::Const(ct);
+                                return GenericArg::Const(ct.try_as_ambig_ct().unwrap());
                             }
                         }
                     }
                     _ => {}
                 }
-                GenericArg::Type(self.lower_ty(ty, itctx))
+                GenericArg::Type(self.lower_ty(ty, itctx).try_as_ambig_ty().unwrap())
             }
-            ast::GenericArg::Const(ct) => GenericArg::Const(self.lower_anon_const_to_const_arg(ct)),
+            ast::GenericArg::Const(ct) => {
+                GenericArg::Const(self.lower_anon_const_to_const_arg(ct).try_as_ambig_ct().unwrap())
+            }
         }
     }
 
@@ -1189,7 +1191,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn lower_ty_direct(&mut self, t: &Ty, itctx: ImplTraitContext) -> hir::Ty<'hir> {
         let kind = match &t.kind {
-            TyKind::Infer => hir::TyKind::Infer,
+            TyKind::Infer => hir::TyKind::Infer(()),
             TyKind::Err(guar) => hir::TyKind::Err(*guar),
             TyKind::Slice(ty) => hir::TyKind::Slice(self.lower_ty(ty, itctx)),
             TyKind::Ptr(mt) => hir::TyKind::Ptr(self.lower_mt(mt, itctx)),
@@ -2045,7 +2047,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     )
                     .stash(c.value.span, StashKey::UnderscoreForArrayLengths);
                 }
-                let ct_kind = hir::ConstArgKind::Infer(self.lower_span(c.value.span));
+                let ct_kind = hir::ConstArgKind::Infer(self.lower_span(c.value.span), ());
                 self.arena.alloc(hir::ConstArg { hir_id: self.lower_node_id(c.id), kind: ct_kind })
             }
             _ => self.lower_anon_const_to_const_arg(c),

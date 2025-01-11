@@ -5,8 +5,7 @@
 use rustc_ast::visit::BoundKind;
 use rustc_ast::{self as ast, NodeId, visit as ast_visit};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir as hir;
-use rustc_hir::{HirId, intravisit as hir_visit};
+use rustc_hir::{self as hir, AmbigArg, HirId, intravisit as hir_visit};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::common::to_readable_str;
@@ -363,7 +362,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_expr_field(self, f)
     }
 
-    fn visit_ty(&mut self, t: &'v hir::Ty<'v>) {
+    fn visit_ty(&mut self, t: &'v hir::Ty<'v, AmbigArg>) {
         record_variants!((self, t, t.kind, Some(t.hir_id), hir, Ty, TyKind), [
             InferDelegation,
             Slice,
@@ -476,7 +475,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
             hir::GenericArg::Lifetime(lt) => self.visit_lifetime(lt),
             hir::GenericArg::Type(ty) => self.visit_ty(ty),
             hir::GenericArg::Const(ct) => self.visit_const_arg(ct),
-            hir::GenericArg::Infer(inf) => self.visit_infer(inf),
+            hir::GenericArg::Infer(inf) => self.visit_id(inf.hir_id),
         }
     }
 

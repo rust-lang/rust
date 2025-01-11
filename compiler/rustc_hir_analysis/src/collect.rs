@@ -28,7 +28,7 @@ use rustc_errors::{
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::{self, Visitor, walk_generics};
+use rustc_hir::intravisit::{self, InferKind, Visitor, VisitorExt, walk_generics};
 use rustc_hir::{self as hir, GenericParamKind, HirId, Node};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
@@ -583,7 +583,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
             .iter()
             .enumerate()
             .map(|(i, a)| {
-                if let hir::TyKind::Infer = a.kind {
+                if let hir::TyKind::Infer(()) = a.kind {
                     if let Some(suggested_ty) =
                         self.lowerer().suggest_trait_fn_ty_for_impl_fn_infer(hir_id, Some(i))
                     {
@@ -593,21 +593,21 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
                 }
 
                 // Only visit the type looking for `_` if we didn't fix the type above
-                visitor.visit_ty(a);
+                visitor.visit_unambig_ty(a);
                 self.lowerer().lower_arg_ty(a, None)
             })
             .collect();
 
         let output_ty = match decl.output {
             hir::FnRetTy::Return(output) => {
-                if let hir::TyKind::Infer = output.kind
+                if let hir::TyKind::Infer(()) = output.kind
                     && let Some(suggested_ty) =
                         self.lowerer().suggest_trait_fn_ty_for_impl_fn_infer(hir_id, None)
                 {
                     infer_replacements.push((output.span, suggested_ty.to_string()));
                     Ty::new_error_with_message(tcx, output.span, suggested_ty.to_string())
                 } else {
-                    visitor.visit_ty(output);
+                    visitor.visit_unambig_ty(output);
                     self.lower_ty(output)
                 }
             }
@@ -1453,7 +1453,7 @@ fn recover_infer_ret_ty<'tcx>(
     });
 
     let mut visitor = HirPlaceholderCollector::default();
-    visitor.visit_ty(infer_ret_ty);
+    visitor.visit_unambig_ty(infer_ret_ty);
 
     let mut diag = bad_placeholder(icx.lowerer(), visitor.spans, "return type");
     let ret_ty = fn_sig.output();

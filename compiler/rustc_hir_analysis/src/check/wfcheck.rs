@@ -6,10 +6,10 @@ use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_err};
-use rustc_hir::ItemKind;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::{AmbigArg, ItemKind};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_macros::LintDiagnostic;
@@ -2196,7 +2196,7 @@ impl<'tcx> Visitor<'tcx> for CollectUsageSpans<'_> {
         // Skip the generics. We only care about fields, not where clause/param bounds.
     }
 
-    fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) -> Self::Result {
+    fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx, AmbigArg>) -> Self::Result {
         if let hir::TyKind::Path(hir::QPath::Resolved(None, qpath)) = t.kind {
             if let Res::Def(DefKind::TyParam, def_id) = qpath.res
                 && def_id == self.param_def_id

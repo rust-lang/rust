@@ -8,7 +8,7 @@ use rustc_hir::QPath::Resolved;
 use rustc_hir::WherePredicateKind::BoundPredicate;
 use rustc_hir::def::Res::Def;
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::Visitor;
+use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::{PolyTraitRef, TyKind, WhereBoundPredicate};
 use rustc_infer::infer::{NllRegionVariableOrigin, RelateParamBound};
 use rustc_middle::bug;
@@ -987,7 +987,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         for found_did in found_dids {
             let mut traits = vec![];
             let mut hir_v = HirTraitObjectVisitor(&mut traits, *found_did);
-            hir_v.visit_ty(self_ty);
+            hir_v.visit_unambig_ty(self_ty);
             debug!("trait spans found: {:?}", traits);
             for span in &traits {
                 let mut multi_span: MultiSpan = vec![*span].into();

@@ -14,11 +14,11 @@ use rustc_ast::visit::walk_list;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::intravisit::{self, InferKind, Visitor, VisitorExt};
 use rustc_hir::{
-    GenericArg, GenericParam, GenericParamKind, HirId, ItemLocalMap, LifetimeName, Node,
+    self as hir, AmbigArg, GenericArg, GenericParam, GenericParamKind, HirId, ItemLocalMap,
+    LifetimeName, Node,
 };
 use rustc_macros::extension;
 use rustc_middle::hir::nested_filter;
@@ -749,7 +749,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
+    fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
         match ty.kind {
             hir::TyKind::BareFn(c) => {
                 let (mut bound_vars, binders): (FxIndexMap<LocalDefId, ResolvedArg>, Vec<_>) = c
@@ -851,7 +851,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     lifetime: self.map.defs.get(&lifetime_ref.hir_id.local_id).cloned(),
                     s: self.scope,
                 };
-                self.with(scope, |this| this.visit_ty(mt.ty));
+                self.with(scope, |this| this.visit_unambig_ty(mt.ty));
             }
             hir::TyKind::TraitAscription(bounds) => {
                 let scope = Scope::TraitRefBoundary { s: self.scope };
@@ -893,7 +893,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                         this.visit_param_bound(bound);
                     }
                     if let Some(ty) = ty {
-                        this.visit_ty(ty);
+                        this.visit_unambig_ty(ty);
                     }
                 })
             }
@@ -912,7 +912,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             }),
             Type(ty) => self.visit_early(impl_item.hir_id(), impl_item.generics, |this| {
                 this.visit_generics(impl_item.generics);
-                this.visit_ty(ty);
+                this.visit_unambig_ty(ty);
             }),
             Const(_, _) => self.visit_early(impl_item.hir_id(), impl_item.generics, |this| {
                 intravisit::walk_impl_item(this, impl_item)
@@ -1021,7 +1021,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 };
                 self.with(scope, |this| {
                     walk_list!(this, visit_generic_param, bound_generic_params);
-                    this.visit_ty(bounded_ty);
+                    this.visit_unambig_ty(bounded_ty);
                     walk_list!(this, visit_param_bound, bounds);
                 })
             }
@@ -1036,8 +1036,8 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             &hir::WherePredicateKind::EqPredicate(hir::WhereEqPredicate {
                 lhs_ty, rhs_ty, ..
             }) => {
-                self.visit_ty(lhs_ty);
-                self.visit_ty(rhs_ty);
+                self.visit_unambig_ty(lhs_ty);
+                self.visit_unambig_ty(rhs_ty);
             }
         }
     }
@@ -1070,13 +1070,13 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             GenericParamKind::Lifetime { .. } => {}
             GenericParamKind::Type { default, .. } => {
                 if let Some(ty) = default {
-                    self.visit_ty(ty);
+                    self.visit_unambig_ty(ty);
                 }
             }
             GenericParamKind::Const { ty, default, .. } => {
-                self.visit_ty(ty);
+                self.visit_unambig_ty(ty);
                 if let Some(default) = default {
-                    self.visit_const_arg(default);
+                    self.visit_unambig_const_arg(default);
                 }
             }
         }
@@ -1985,15 +1985,15 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             },
             |this| {
                 for input in inputs {
-                    this.visit_ty(input);
+                    this.visit_unambig_ty(input);
                 }
                 if !in_closure && let Some(output) = output {
-                    this.visit_ty(output);
+                    this.visit_unambig_ty(output);
                 }
             },
         );
         if in_closure && let Some(output) = output {
-            self.visit_ty(output);
+            self.visit_unambig_ty(output);
         }
     }
 
@@ -2311,7 +2311,7 @@ fn is_late_bound_map(
 
     let mut constrained_by_input = ConstrainedCollector { regions: Default::default(), tcx };
     for arg_ty in sig.decl.inputs {
-        constrained_by_input.visit_ty(arg_ty);
+        constrained_by_input.visit_unambig_ty(arg_ty);
     }
 
     let mut appears_in_output =
@@ -2419,7 +2419,7 @@ fn is_late_bound_map(
     }
 
     impl<'v> Visitor<'v> for ConstrainedCollector<'_> {
-        fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
+        fn visit_ty(&mut self, ty: &'v hir::Ty<'v, AmbigArg>) {
             match ty.kind {
                 hir::TyKind::Path(
                     hir::QPath::Resolved(Some(_), _) | hir::QPath::TypeRelative(..),

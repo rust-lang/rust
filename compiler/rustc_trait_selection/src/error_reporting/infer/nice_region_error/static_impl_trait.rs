@@ -3,9 +3,9 @@
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, Subdiagnostic};
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{Visitor, walk_ty};
+use rustc_hir::intravisit::{Visitor, VisitorExt, walk_ty};
 use rustc_hir::{
-    self as hir, GenericBound, GenericParam, GenericParamKind, Item, ItemKind, Lifetime,
+    self as hir, AmbigArg, GenericBound, GenericParam, GenericParamKind, Item, ItemKind, Lifetime,
     LifetimeName, LifetimeParamKind, MissingLifetimeKind, Node, TyKind,
 };
 use rustc_middle::ty::{
@@ -153,7 +153,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     let mut add_label = true;
                     if let hir::FnRetTy::Return(ty) = fn_decl.output {
                         let mut v = StaticLifetimeVisitor(vec![], tcx.hir());
-                        v.visit_ty(ty);
+                        v.visit_unambig_ty(ty);
                         if !v.0.is_empty() {
                             span = v.0.clone().into();
                             spans = v.0;
@@ -500,7 +500,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                             // In that case, only the first one will get suggestions.
                             let mut traits = vec![];
                             let mut hir_v = HirTraitObjectVisitor(&mut traits, *did);
-                            hir_v.visit_ty(self_ty);
+                            hir_v.visit_unambig_ty(self_ty);
                             !traits.is_empty()
                         })
                     {
@@ -560,7 +560,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         for found_did in found_dids {
             let mut traits = vec![];
             let mut hir_v = HirTraitObjectVisitor(&mut traits, *found_did);
-            hir_v.visit_ty(self_ty);
+            hir_v.visit_unambig_ty(self_ty);
             for &span in &traits {
                 let subdiag = DynTraitConstraintSuggestion { span, ident };
                 subdiag.add_to_diag(err);
@@ -591,7 +591,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for TraitObjectVisitor {
 pub struct HirTraitObjectVisitor<'a>(pub &'a mut Vec<Span>, pub DefId);
 
 impl<'a, 'tcx> Visitor<'tcx> for HirTraitObjectVisitor<'a> {
-    fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) {
+    fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx, AmbigArg>) {
         if let TyKind::TraitObject(poly_trait_refs, lifetime_ptr) = t.kind
             && let Lifetime { res: LifetimeName::ImplicitObjectLifetimeDefault, .. } =
                 lifetime_ptr.pointer()

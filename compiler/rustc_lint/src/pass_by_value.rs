@@ -1,6 +1,5 @@
-use rustc_hir as hir;
 use rustc_hir::def::Res;
-use rustc_hir::{GenericArg, PathSegment, QPath, TyKind};
+use rustc_hir::{self as hir, AmbigArg, GenericArg, PathSegment, QPath, TyKind};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
@@ -22,7 +21,7 @@ declare_tool_lint! {
 declare_lint_pass!(PassByValue => [PASS_BY_VALUE]);
 
 impl<'tcx> LateLintPass<'tcx> for PassByValue {
-    fn check_ty(&mut self, cx: &LateContext<'_>, ty: &'tcx hir::Ty<'tcx>) {
+    fn check_ty(&mut self, cx: &LateContext<'_>, ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
         match &ty.kind {
             TyKind::Ref(_, hir::MutTy { ty: inner_ty, mutbl: hir::Mutability::Not }) => {
                 if let Some(impl_did) = cx.tcx.impl_of_method(ty.hir_id.owner.to_def_id()) {
@@ -78,7 +77,7 @@ fn gen_args(cx: &LateContext<'_>, segment: &PathSegment<'_>) -> String {
                     .tcx
                     .sess
                     .source_map()
-                    .span_to_snippet(c.span())
+                    .span_to_snippet(c.as_unambig_ct().span())
                     .unwrap_or_else(|_| "_".into()),
                 GenericArg::Infer(_) => String::from("_"),
             })
