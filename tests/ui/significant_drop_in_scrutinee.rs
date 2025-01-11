@@ -832,4 +832,22 @@ fn should_trigger_lint_in_while_let() {
     }
 }
 
+async fn foo_async(mutex: &Mutex<i32>) -> Option<MutexGuard<'_, i32>> {
+    Some(mutex.lock().unwrap())
+}
+
+async fn should_trigger_lint_for_async(mutex: Mutex<i32>) -> i32 {
+    match *foo_async(&mutex).await.unwrap() {
+        n if n < 10 => n,
+        _ => 10,
+    }
+}
+
+async fn should_not_trigger_lint_in_async_expansion(mutex: Mutex<i32>) -> i32 {
+    match foo_async(&mutex).await {
+        Some(guard) => *guard,
+        _ => 0,
+    }
+}
+
 fn main() {}

@@ -441,8 +441,9 @@ impl<'tcx> Visitor<'tcx> for SigDropHelper<'_, 'tcx> {
         let parent_expr_before = self.parent_expr.replace(ex);
 
         match ex.kind {
-            // Skip blocks because values in blocks will be dropped as usual.
-            ExprKind::Block(..) => (),
+            // Skip blocks because values in blocks will be dropped as usual, and await
+            // desugaring because temporary insides the future will have been dropped.
+            ExprKind::Block(..) | ExprKind::Match(_, _, MatchSource::AwaitDesugar) => (),
             _ => walk_expr(self, ex),
         }
 
