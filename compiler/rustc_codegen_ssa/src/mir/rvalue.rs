@@ -93,23 +93,37 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     return;
                 }
 
-                if let OperandValue::Immediate(v) = cg_elem.val {
+                let try_init_all_same = |bx: &mut Bx, v| {
                     let start = dest.val.llval;
                     let size = bx.const_usize(dest.layout.size.bytes());
 
-                    // Use llvm.memset.p0i8.* to initialize all zero arrays
-                    if bx.cx().const_to_opt_u128(v, false) == Some(0) {
-                        let fill = bx.cx().const_u8(0);
-                        bx.memset(start, fill, size, dest.val.align, MemFlags::empty());
-                        return;
+                    // Use llvm.memset.p0i8.* to initialize all same byte arrays
+                    if let Some(int) = bx.cx().const_to_opt_u128(v, false) {
+                        let bytes = &int.to_le_bytes()[..cg_elem.layout.size.bytes_usize()];
+                        let first = bytes[0];
+                        if bytes[1..].iter().all(|&b| b == first) {
+                            let fill = bx.cx().const_u8(first);
+                            bx.memset(start, fill, size, dest.val.align, MemFlags::empty());
+                            return true;
+                        }
                     }
 
                     // Use llvm.memset.p0i8.* to initialize byte arrays
                     let v = bx.from_immediate(v);
                     if bx.cx().val_ty(v) == bx.cx().type_i8() {
                         bx.memset(start, v, size, dest.val.align, MemFlags::empty());
-                        return;
+                        return true;
                     }
+                    false
+                };
+
+                match cg_elem.val {
+                    OperandValue::Immediate(v) => {
+                        if try_init_all_same(bx, v) {
+                            return;
+                        }
+                    }
+                    _ => (),
                 }
 
                 let count = self
