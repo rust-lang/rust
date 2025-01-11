@@ -343,17 +343,29 @@ impl_h_int!(
 /// Trait to express (possibly lossy) casting of integers
 #[allow(unused)]
 pub trait CastInto<T: Copy>: Copy {
+    /// By default, casts should be exact.
     fn cast(self) -> T;
+
+    /// Call for casts that are expected to truncate.
+    fn cast_lossy(self) -> T;
 }
 
 #[allow(unused)]
 pub trait CastFrom<T: Copy>: Copy {
+    /// By default, casts should be exact.
     fn cast_from(value: T) -> Self;
+
+    /// Call for casts that are expected to truncate.
+    fn cast_from_lossy(value: T) -> Self;
 }
 
 impl<T: Copy, U: CastInto<T> + Copy> CastFrom<U> for T {
     fn cast_from(value: U) -> Self {
         value.cast()
+    }
+
+    fn cast_from_lossy(value: U) -> Self {
+        value.cast_lossy()
     }
 }
 
@@ -364,6 +376,13 @@ macro_rules! cast_into {
     ($ty:ty; $($into:ty),*) => {$(
         impl CastInto<$into> for $ty {
             fn cast(self) -> $into {
+                // All we can really do to enforce casting rules is check the rules when in
+                // debug mode.
+                debug_assert!(<$into>::try_from(self).is_ok(), "failed cast from {self}");
+                self as $into
+            }
+
+            fn cast_lossy(self) -> $into {
                 self as $into
             }
         }
