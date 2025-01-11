@@ -2,8 +2,6 @@ use std::fmt::Debug;
 use std::ops::ControlFlow;
 
 use rustc_hir::def_id::DefId;
-use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::util::PredicateSet;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
@@ -14,7 +12,7 @@ use rustc_span::DUMMY_SP;
 use smallvec::{SmallVec, smallvec};
 use tracing::debug;
 
-use crate::traits::{ObligationCtxt, impossible_predicates, is_vtable_safe_method};
+use crate::traits::{impossible_predicates, is_vtable_safe_method};
 
 #[derive(Clone, Debug)]
 pub enum VtblSegment<'tcx> {
@@ -228,6 +226,11 @@ fn vtable_entries<'tcx>(
     trait_ref: ty::TraitRef<'tcx>,
 ) -> &'tcx [VtblEntry<'tcx>] {
     debug_assert!(!trait_ref.has_non_region_infer() && !trait_ref.has_non_region_param());
+    debug_assert_eq!(
+        tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), trait_ref),
+        trait_ref,
+        "vtable trait ref should be normalized"
+    );
 
     debug!("vtable_entries({:?})", trait_ref);
 
@@ -305,6 +308,11 @@ fn vtable_entries<'tcx>(
 // for `Supertrait`'s methods in the vtable of `Subtrait`.
 pub(crate) fn first_method_vtable_slot<'tcx>(tcx: TyCtxt<'tcx>, key: ty::TraitRef<'tcx>) -> usize {
     debug_assert!(!key.has_non_region_infer() && !key.has_non_region_param());
+    debug_assert_eq!(
+        tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), key),
+        key,
+        "vtable trait ref should be normalized"
+    );
 
     let ty::Dynamic(source, _, _) = *key.self_ty().kind() else {
         bug!();
@@ -323,11 +331,9 @@ pub(crate) fn first_method_vtable_slot<'tcx>(tcx: TyCtxt<'tcx>, key: ty::TraitRe
                     vptr_offset += TyCtxt::COMMON_VTABLE_ENTRIES.len();
                 }
                 VtblSegment::TraitOwnEntries { trait_ref: vtable_principal, emit_vptr } => {
-                    if trait_refs_are_compatible(
-                        tcx,
-                        ty::ExistentialTraitRef::erase_self_ty(tcx, vtable_principal),
-                        target_principal,
-                    ) {
+                    if ty::ExistentialTraitRef::erase_self_ty(tcx, vtable_principal)
+                        == target_principal
+                    {
                         return ControlFlow::Break(vptr_offset);
                     }
 
@@ -358,6 +364,12 @@ pub(crate) fn supertrait_vtable_slot<'tcx>(
     ),
 ) -> Option<usize> {
     debug_assert!(!key.has_non_region_infer() && !key.has_non_region_param());
+    debug_assert_eq!(
+        tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), key),
+        key,
+        "upcasting trait refs should be normalized"
+    );
+
     let (source, target) = key;
 
     // If the target principal is `None`, we can just return `None`.
@@ -384,11 +396,9 @@ pub(crate) fn supertrait_vtable_slot<'tcx>(
                 VtblSegment::TraitOwnEntries { trait_ref: vtable_principal, emit_vptr } => {
                     vptr_offset +=
                         tcx.own_existential_vtable_entries(vtable_principal.def_id).len();
-                    if trait_refs_are_compatible(
-                        tcx,
-                        ty::ExistentialTraitRef::erase_self_ty(tcx, vtable_principal),
-                        target_principal,
-                    ) {
+                    if ty::ExistentialTraitRef::erase_self_ty(tcx, vtable_principal)
+                        == target_principal
+                    {
                         if emit_vptr {
                             return ControlFlow::Break(Some(vptr_offset));
                         } else {
@@ -406,27 +416,6 @@ pub(crate) fn supertrait_vtable_slot<'tcx>(
     };
 
     prepare_vtable_segments(tcx, source_principal, vtable_segment_callback).unwrap()
-}
-
-fn trait_refs_are_compatible<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    vtable_principal: ty::ExistentialTraitRef<'tcx>,
-    target_principal: ty::ExistentialTraitRef<'tcx>,
-) -> bool {
-    if vtable_principal.def_id != target_principal.def_id {
-        return false;
-    }
-
-    let (infcx, param_env) =
-        tcx.infer_ctxt().build_with_typing_env(ty::TypingEnv::fully_monomorphized());
-    let ocx = ObligationCtxt::new(&infcx);
-    let source_principal = ocx.normalize(&ObligationCause::dummy(), param_env, vtable_principal);
-    let target_principal = ocx.normalize(&ObligationCause::dummy(), param_env, target_principal);
-    let Ok(()) = ocx.eq(&ObligationCause::dummy(), param_env, target_principal, source_principal)
-    else {
-        return false;
-    };
-    ocx.select_all_or_error().is_empty()
 }
 
 pub(super) fn provide(providers: &mut Providers) {

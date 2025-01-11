@@ -5,6 +5,7 @@ use std::borrow::Cow;
 
 use either::{Left, Right};
 use rustc_abi::{self as abi, ExternAbi, FieldIdx, Integer, VariantIdx};
+use rustc_hir::def_id::DefId;
 use rustc_middle::ty::layout::{FnAbiOf, IntegerExt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, AdtDef, Instance, Ty, VariantDef};
 use rustc_middle::{bug, mir, span_bug};
@@ -693,25 +694,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 trace!("Virtual call dispatches to {fn_inst:#?}");
                 // We can also do the lookup based on `def_id` and `dyn_ty`, and check that that
                 // produces the same result.
-                if cfg!(debug_assertions) {
-                    let tcx = *self.tcx;
-
-                    let trait_def_id = tcx.trait_of_item(def_id).unwrap();
-                    let virtual_trait_ref =
-                        ty::TraitRef::from_method(tcx, trait_def_id, instance.args);
-                    let existential_trait_ref =
-                        ty::ExistentialTraitRef::erase_self_ty(tcx, virtual_trait_ref);
-                    let concrete_trait_ref = existential_trait_ref.with_self_ty(tcx, dyn_ty);
-
-                    let concrete_method = Instance::expect_resolve_for_vtable(
-                        tcx,
-                        self.typing_env,
-                        def_id,
-                        instance.args.rebase_onto(tcx, trait_def_id, concrete_trait_ref.args),
-                        self.cur_span(),
-                    );
-                    assert_eq!(fn_inst, concrete_method);
-                }
+                self.assert_virtual_instance_matches_concrete(dyn_ty, def_id, instance, fn_inst);
 
                 // Adjust receiver argument. Layout can be any (thin) ptr.
                 let receiver_ty = Ty::new_mut_ptr(self.tcx.tcx, dyn_ty);
@@ -742,6 +725,30 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 )
             }
         }
+    }
+
+    fn assert_virtual_instance_matches_concrete(
+        &self,
+        dyn_ty: Ty<'tcx>,
+        def_id: DefId,
+        virtual_instance: ty::Instance<'tcx>,
+        concrete_instance: ty::Instance<'tcx>,
+    ) {
+        let tcx = *self.tcx;
+
+        let trait_def_id = tcx.trait_of_item(def_id).unwrap();
+        let virtual_trait_ref = ty::TraitRef::from_method(tcx, trait_def_id, virtual_instance.args);
+        let existential_trait_ref = ty::ExistentialTraitRef::erase_self_ty(tcx, virtual_trait_ref);
+        let concrete_trait_ref = existential_trait_ref.with_self_ty(tcx, dyn_ty);
+
+        let concrete_method = Instance::expect_resolve_for_vtable(
+            tcx,
+            self.typing_env,
+            def_id,
+            virtual_instance.args.rebase_onto(tcx, trait_def_id, concrete_trait_ref.args),
+            self.cur_span(),
+        );
+        assert_eq!(concrete_instance, concrete_method);
     }
 
     /// Initiate a tail call to this function -- popping the current stack frame, pushing the new

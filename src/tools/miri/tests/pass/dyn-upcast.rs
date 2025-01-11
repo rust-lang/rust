@@ -10,6 +10,8 @@ fn main() {
     replace_vptr();
     vtable_nop_cast();
     drop_principal();
+    modulo_binder();
+    modulo_assoc();
 }
 
 fn vtable_nop_cast() {
@@ -481,4 +483,54 @@ fn drop_principal() {
     assert_eq!(x_layout, y_layout);
     println!("before");
     drop(y);
+}
+
+// Test for <https://github.com/rust-lang/rust/issues/135316>.
+fn modulo_binder() {
+    trait Supertrait<T> {
+        fn _print_numbers(&self, mem: &[usize; 100]) {
+            println!("{mem:?}");
+        }
+    }
+    impl<T> Supertrait<T> for () {}
+
+    trait Trait<T, U>: Supertrait<T> + Supertrait<U> {
+        fn say_hello(&self, _: &usize) {
+            println!("Hello!");
+        }
+    }
+    impl<T, U> Trait<T, U> for () {}
+
+    (&() as &'static dyn for<'a> Trait<&'static (), &'a ()>
+        as &'static dyn Trait<&'static (), &'static ()>)
+        .say_hello(&0);
+}
+
+// Test for <https://github.com/rust-lang/rust/issues/135315>.
+fn modulo_assoc() {
+    trait Supertrait<T> {
+        fn _print_numbers(&self, mem: &[usize; 100]) {
+            println!("{mem:?}");
+        }
+    }
+    impl<T> Supertrait<T> for () {}
+
+    trait Identity {
+        type Selff;
+    }
+    impl<Selff> Identity for Selff {
+        type Selff = Selff;
+    }
+
+    trait Middle<T>: Supertrait<()> + Supertrait<T> {
+        fn say_hello(&self, _: &usize) {
+            println!("Hello!");
+        }
+    }
+    impl<T> Middle<T> for () {}
+
+    trait Trait: Middle<<() as Identity>::Selff> {}
+    impl Trait for () {}
+
+    (&() as &dyn Trait as &dyn Middle<()>).say_hello(&0);
 }

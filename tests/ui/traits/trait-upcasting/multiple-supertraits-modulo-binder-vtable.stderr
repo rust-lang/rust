@@ -5,7 +5,7 @@ error: vtable entries: [
            Method(<dyn for<'a> Trait<&(), &'a ()> as Supertrait<&()>>::_print_numbers - shim(reify)),
            Method(<dyn for<'a> Trait<&(), &'a ()> as Trait<&(), &()>>::say_hello - shim(reify)),
        ]
-  --> $DIR/multiple-supertraits-modulo-binder-vtable.rs:18:1
+  --> $DIR/multiple-supertraits-modulo-binder-vtable.rs:20:1
    |
 LL | type First = dyn for<'a> Trait<&'static (), &'a ()>;
    | ^^^^^^^^^^
@@ -17,7 +17,7 @@ error: vtable entries: [
            Method(<dyn Trait<&(), &()> as Supertrait<&()>>::_print_numbers - shim(reify)),
            Method(<dyn Trait<&(), &()> as Trait<&(), &()>>::say_hello - shim(reify)),
        ]
-  --> $DIR/multiple-supertraits-modulo-binder-vtable.rs:22:1
+  --> $DIR/multiple-supertraits-modulo-binder-vtable.rs:24:1
    |
 LL | type Second = dyn Trait<&'static (), &'static ()>;
    | ^^^^^^^^^^^

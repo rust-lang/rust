@@ -80,6 +80,8 @@ fn dyn_trait_in_self<'tcx>(
         if let GenericArgKind::Type(ty) = arg.unpack()
             && let ty::Dynamic(data, _, _) = ty.kind()
         {
+            // FIXME(arbitrary_self_types): This is likely broken for receivers which
+            // have a "non-self" trait objects as a generic argument.
             return data
                 .principal()
                 .map(|principal| tcx.instantiate_bound_regions_with_erased(principal));

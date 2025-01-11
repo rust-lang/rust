@@ -1,5 +1,7 @@
 #![feature(rustc_attrs)]
 
+// Test for <https://github.com/rust-lang/rust/issues/135316>.
+
 trait Supertrait<T> {
     fn _print_numbers(&self, mem: &[usize; 100]) {
     }
