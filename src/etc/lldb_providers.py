@@ -238,8 +238,15 @@ def sequence_formatter(output: str, valobj: SBValue, _dict: LLDBOpaque):
         if len(output) > 32:
             long = True
             break
+
         child: SBValue = valobj.GetChildAtIndex(i)
-        output += f"{child.value}, "
+
+        summary = child.summary
+        if summary is None:
+            summary = child.value
+            if summary is None:
+                summary = "{...}"
+        output += f"{summary}, "
     if long:
         output = f"(len: {length}) " + output + "..."
     else:
