@@ -3,6 +3,8 @@ import sys
 from lldb import (
     SBData,
     SBError,
+    SBType,
+    SBTypeStaticField,
     SBValue,
     eBasicTypeLong,
     eBasicTypeUnsignedLong,
@@ -324,6 +326,179 @@ class ClangEncodedEnumProvider:
             else:
                 default_index = i
         return default_index
+
+class MSVCEnumSyntheticProvider:
+    """
+    Synthetic provider for sum-type enums on MSVC. For a detailed explanation of the internals,
+    see:
+
+    https://github.com/rust-lang/rust/blob/master/compiler/rustc_codegen_llvm/src/debuginfo/metadata/enums/cpp_like.rs
+    """
+
+    __slots__ = ["valobj", "variant", "value"]
+    def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
+        self.valobj = valobj
+        self.variant: SBValue
+        self.value: SBValue
+        self.update()
+
+    def update(self):
+        tag: SBValue = self.valobj.GetChildMemberWithName("tag")
+
+        if tag.IsValid():
+            tag: int = tag.GetValueAsUnsigned()
+            for child in self.valobj.GetNonSyntheticValue().children:
+                if not child.name.startswith("variant"):
+                    continue
+
+                variant_type: SBType = child.GetType()
+                exact: SBTypeStaticField = variant_type.GetStaticFieldWithName(
+                    "DISCR_EXACT"
+                )
+
+                if exact.IsValid():
+                    discr: int = exact.GetConstantValue(
+                        self.valobj.target
+                    ).GetValueAsUnsigned()
+                    if tag == discr:
+                        self.variant = child
+                        self.value = child.GetChildMemberWithName("value").GetSyntheticValue()
+                        return
+                else:  # if invalid, DISCR must be a range
+                    begin: int = variant_type.GetStaticFieldWithName(
+                        "DISCR_BEGIN"
+                    ).GetConstantValue(self.valobj.target).GetValueAsUnsigned()
+                    end: int = variant_type.GetStaticFieldWithName(
+                        "DISCR_END"
+                    ).GetConstantValue(self.valobj.target).GetValueAsUnsigned()
+
+                    # begin isn't necessarily smaller than end, so we must test for both cases
+                    if begin < end:
+                        if begin <= tag <= end:
+                            self.variant = child
+                            self.value = child.GetChildMemberWithName("value").GetSyntheticValue()
+                            return
+                    else:
+                        if tag >= begin or tag <= end:
+                            self.variant = child
+                            self.value = child.GetChildMemberWithName("value").GetSyntheticValue()
+                            return
+        else:  # if invalid, tag is a 128 bit value
+            tag_lo: int = self.valobj.GetChildMemberWithName("tag128_lo").GetValueAsUnsigned()
+            tag_hi: int = self.valobj.GetChildMemberWithName("tag128_hi").GetValueAsUnsigned()
+
+            tag: int = (tag_hi << 64) | tag_lo
+
+            for child in self.valobj.GetNonSyntheticValue().children:
+                if not child.name.startswith("variant"):
+                    continue
+
+                variant_type: SBType = child.GetType()
+                exact_lo: SBTypeStaticField = variant_type.GetStaticFieldWithName(
+                    "DISCR128_EXACT_LO"
+                )
+
+                if exact_lo.IsValid():
+                    exact_lo: int = exact_lo.GetConstantValue(self.valobj.target).GetValueAsUnsigned()
+                    exact_hi: int = variant_type.GetStaticFieldWithName(
+                    "DISCR128_EXACT_HI"
+                    ).GetConstantValue(self.valobj.target).GetValueAsUnsigned()
+
+                    discr: int = (exact_hi << 64) | exact_lo
+                    if tag == discr:
+                        self.variant = child
+                        self.value = child.GetChildMemberWithName("value").GetSyntheticValue()
+                        return
+                else:  # if invalid, DISCR must be a range
+                    begin_lo: int = variant_type.GetStaticFieldWithName(
+                    "DISCR128_BEGIN_LO"
+                    ).GetConstantValue(self.valobj.target).GetValueAsUnsigned()
+                    begin_hi: int = variant_type.GetStaticFieldWithName(
+                    "DISCR128_BEGIN_HI"
+                    ).GetConstantValue(self.valobj.target).GetValueAsUnsigned()
+
+                    end_lo: int = variant_type.GetStaticFieldWithName(
+                    "DISCR128_END_LO"
+                    ).GetConstantValue(self.valobj.target).GetValueAsUnsigned()
+                    end_hi: int = variant_type.GetStaticFieldWithName(
+                    "DISCR128_END_HI"
+                    ).GetConstantValue(self.valobj.target).GetValueAsUnsigned()
+
+                    begin = (begin_hi << 64) | begin_lo
+                    end = (end_hi << 64) | end_lo
+
+                    # begin isn't necessarily smaller than end, so we must test for both cases
+                    if begin < end:
+                        if begin <= tag <= end:
+                            self.variant = child
+                            self.value = child.GetChildMemberWithName("value").GetSyntheticValue()
+                            return
+                    else:
+                        if tag >= begin or tag <= end:
+                            self.variant = child
+                            self.value = child.GetChildMemberWithName("value").GetSyntheticValue()
+                            return
+
+    def num_children(self) -> int:
+        return self.value.GetNumChildren()
+
+    def get_child_index(self, name: str) -> int:
+        return self.value.GetIndexOfChildWithName(name)
+
+    def get_child_at_index(self, index: int) -> SBValue:
+        return self.value.GetChildAtIndex(index)
+
+    def has_children(self) -> bool:
+        return self.value.MightHaveChildren()
+
+    def get_type_name(self) -> str:
+        name = self.valobj.GetTypeName()
+        # remove "enum2$<", str.removeprefix() is python 3.9+
+        name = name[7:]
+
+        # MSVC misinterprets ">>" as a shift operator, so spaces are inserted by rust to
+        # avoid that
+        if name.endswith(" >"):
+            name = name[:-2]
+        elif name.endswith(">"):
+            name = name[:-1]
+
+        return name
+
+
+def MSVCEnumSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
+    enum_synth = MSVCEnumSyntheticProvider(valobj.GetNonSyntheticValue(), _dict)
+    variant_names: SBType = valobj.target.FindFirstType(
+        f"{enum_synth.valobj.GetTypeName()}::VariantNames"
+    )
+    name_idx = (
+        enum_synth.variant.GetType()
+        .GetStaticFieldWithName("NAME")
+        .GetConstantValue(valobj.target)
+        .GetValueAsUnsigned()
+    )
+
+    name: str = variant_names.enum_members[name_idx].name
+
+    if enum_synth.num_children() == 0:
+        return name
+
+    child_name: str = enum_synth.value.GetChildAtIndex(0).name
+    if child_name == "0" or child_name == "__0":
+        # enum variant is a tuple struct
+        return name + TupleSummaryProvider(enum_synth.value, _dict)
+    else:
+        # enum variant is a regular struct
+        var_list = (
+            str(enum_synth.value.GetNonSyntheticValue()).split("= ", 1)[1].splitlines()
+        )
+        vars = [x.strip() for x in var_list if x not in ("{", "}")]
+        if vars[0][0] == "(":
+            vars[0] = vars[0][1:]
+        if vars[-1][-1] == ")":
+            vars[-1] = vars[-1][:-1]
+
+        return f'{name}{{{", ".join(vars)}}}'
 
 
 class TupleSyntheticProvider:
