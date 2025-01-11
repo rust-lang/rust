@@ -1,4 +1,5 @@
 import sys
+from typing import List
 
 from lldb import (
     SBData,
@@ -710,9 +711,18 @@ class MSVCTupleSyntheticProvider:
 
 
 def TupleSummaryProvider(valobj: SBValue, _dict: LLDBOpaque):
-    output: str = sequence_formatter("(", valobj, dict)
-    output += ")"
-    return output
+    output: List[str] = []
+
+    for i in range(0, valobj.GetNumChildren()):
+        child: SBValue = valobj.GetChildAtIndex(i)
+        summary = child.summary
+        if summary is None:
+            summary = child.value
+            if summary is None:
+                summary = "{...}"
+        output.append(summary)
+
+    return "(" + ", ".join(output) + ")"
 
 
 class StdVecSyntheticProvider:
