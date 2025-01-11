@@ -75,16 +75,14 @@ if [ "${BUILD_ONLY:-}" = "1" ]; then
 else
     cmd="cargo test --all --target $target $extra_flags"
 
-    # Test without intrinsics
+    # Test once without intrinsics, once with intrinsics enabled
     $cmd
-    $cmd --release
-
-    # Test with intrinsic use
     $cmd --features unstable-intrinsics
+    $cmd --features unstable-intrinsics --benches
+    
+    # Test the same in release mode, which also increases coverage.
+    $cmd --release
     $cmd --release --features unstable-intrinsics
-
-    # Make sure benchmarks have correct results
-    $cmd --benches
-    $cmd --benches --release
+    $cmd --release --features unstable-intrinsics --benches
 fi
 
