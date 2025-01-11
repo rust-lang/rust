@@ -181,10 +181,7 @@ pub fn symlink_dir(config: &Config, original: &Path, link: &Path) -> io::Result<
 /// copy and remove the file otherwise
 pub fn move_file<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> {
     match fs::rename(&from, &to) {
-        // FIXME: Once `ErrorKind::CrossesDevices` is stabilized use
-        // if e.kind() == io::ErrorKind::CrossesDevices {
-        #[cfg(unix)]
-        Err(e) if e.raw_os_error() == Some(libc::EXDEV) => {
+        Err(e) if e.kind() == io::ErrorKind::CrossesDevices => {
             std::fs::copy(&from, &to)?;
             std::fs::remove_file(&from)
         }
