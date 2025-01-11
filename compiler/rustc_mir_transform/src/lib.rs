@@ -34,8 +34,7 @@ use rustc_middle::util::Providers;
 use rustc_middle::{bug, query, span_bug};
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, sym};
-use rustc_trait_selection::traits;
-use tracing::{debug, trace};
+use tracing::debug;
 
 #[macro_use]
 mod pass_manager;
@@ -142,6 +141,7 @@ declare_passes! {
     // Made public so that `mir_drops_elaborated_and_const_checked` can be overridden
     // by custom rustc drivers, running all the steps by themselves. See #114628.
     pub mod inline : Inline, ForceInline;
+    mod impossible_predicates : ImpossiblePredicates;
     mod instsimplify : InstSimplify { BeforeInline, AfterSimplifyCfg };
     mod jump_threading : JumpThreading;
     mod known_panics_lint : KnownPanicsLint;
@@ -502,50 +502,6 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
         body.tainted_by_errors = Some(error_reported);
     }
 
-    // Check if it's even possible to satisfy the 'where' clauses
-    // for this item.
-    //
-    // This branch will never be taken for any normal function.
-    // However, it's possible to `#!feature(trivial_bounds)]` to write
-    // a function with impossible to satisfy clauses, e.g.:
-    // `fn foo() where String: Copy {}`
-    //
-    // We don't usually need to worry about this kind of case,
-    // since we would get a compilation error if the user tried
-    // to call it. However, since we optimize even without any
-    // calls to the function, we need to make sure that it even
-    // makes sense to try to evaluate the body.
-    //
-    // If there are unsatisfiable where clauses, then all bets are
-    // off, and we just give up.
-    //
-    // We manually filter the predicates, skipping anything that's not
-    // "global". We are in a potentially generic context
-    // (e.g. we are evaluating a function without instantiating generic
-    // parameters, so this filtering serves two purposes:
-    //
-    // 1. We skip evaluating any predicates that we would
-    // never be able prove are unsatisfiable (e.g. `<T as Foo>`
-    // 2. We avoid trying to normalize predicates involving generic
-    // parameters (e.g. `<T as Foo>::MyItem`). This can confuse
-    // the normalization code (leading to cycle errors), since
-    // it's usually never invoked in this way.
-    let predicates = tcx
-        .predicates_of(body.source.def_id())
-        .predicates
-        .iter()
-        .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
-    if traits::impossible_predicates(tcx, traits::elaborate(tcx, predicates).collect()) {
-        trace!("found unsatisfiable predicates for {:?}", body.source);
-        // Clear the body to only contain a single `unreachable` statement.
-        let bbs = body.basic_blocks.as_mut();
-        bbs.raw.truncate(1);
-        bbs[START_BLOCK].statements.clear();
-        bbs[START_BLOCK].terminator_mut().kind = TerminatorKind::Unreachable;
-        body.var_debug_info.clear();
-        body.local_decls.raw.truncate(body.arg_count + 1);
-    }
-
     run_analysis_to_runtime_passes(tcx, &mut body);
 
     // Now that drop elaboration has been performed, we can check for
@@ -593,6 +549,7 @@ pub fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
 /// After this series of passes, no lifetime analysis based on borrowing can be done.
 fn run_analysis_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let passes: &[&dyn MirPass<'tcx>] = &[
+        &impossible_predicates::ImpossiblePredicates,
         &cleanup_post_borrowck::CleanupPostBorrowck,
         &remove_noop_landing_pads::RemoveNoopLandingPads,
         &simplify::SimplifyCfg::PostAnalysis,
