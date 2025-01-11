@@ -3703,6 +3703,7 @@ impl<T> [T] {
     /// [`clone_from_slice`]: slice::clone_from_slice
     /// [`split_at_mut`]: slice::split_at_mut
     #[doc(alias = "memcpy")]
+    #[inline]
     #[stable(feature = "copy_from_slice", since = "1.9.0")]
     #[rustc_const_unstable(feature = "const_copy_from_slice", issue = "131415")]
     #[track_caller]
