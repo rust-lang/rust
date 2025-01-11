@@ -5,12 +5,12 @@
 // explicit_iter_loop
 fn main() {
     const A: &[for<'a> fn(&'a ())] = &[];
-    for v in A.iter() {}
+    for v in A {}
 }
 
 // needless_collect
 trait Helper<'a>: Iterator<Item = fn()> {}
 
 fn x(w: &mut dyn for<'a> Helper<'a>) {
-    w.collect::<Vec<_>>().is_empty();
+    w.next().is_none();
 }
