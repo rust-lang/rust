@@ -205,7 +205,7 @@ fn get_type_suggestion(t: Ty<'_>, val: u128, negative: bool) -> Option<&'static 
         ty::Uint(ty::UintTy::Usize) | ty::Int(ty::IntTy::Isize) => None,
         ty::Uint(_) => Some(Integer::fit_unsigned(val).uint_ty_str()),
         ty::Int(int) => {
-            let signed = literal_to_i128(val, negative).map(|v| Integer::fit_signed(v));
+            let signed = literal_to_i128(val, negative).map(Integer::fit_signed);
             if negative {
                 signed.map(Integer::int_ty_str)
             } else {
