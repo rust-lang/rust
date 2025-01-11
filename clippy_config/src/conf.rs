@@ -636,6 +636,7 @@ define_Conf! {
         ptr_as_ptr,
         redundant_field_names,
         redundant_static_lifetimes,
+        same_item_push,
         seek_from_current,
         seek_rewind,
         transmute_ptr_to_ref,
