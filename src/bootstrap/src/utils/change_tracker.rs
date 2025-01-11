@@ -325,4 +325,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "Removed `rust.parallel-compiler` as it was deprecated in #132282 long time ago.",
     },
+    ChangeInfo {
+        change_id: 135326,
+        severity: ChangeSeverity::Warning,
+        summary: "It is now possible to configure `optimized-compiler-builtins` for per target.",
+    },
 ];
