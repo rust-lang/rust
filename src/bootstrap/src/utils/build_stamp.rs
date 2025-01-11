@@ -34,6 +34,9 @@ impl BuildStamp {
     ///
     /// By default, stamp will be an empty file named `.stamp` within the specified directory.
     pub fn new(dir: &Path) -> Self {
+        // Avoid using `is_dir()` as the directory may not exist yet.
+        // It is more appropriate to assert that the path is not a file.
+        assert!(!dir.is_file(), "can't be a file path");
         Self { path: dir.join(".stamp"), stamp: String::new() }
     }
 
@@ -52,7 +55,7 @@ impl BuildStamp {
             "prefix can not start or end with '.'"
         );
 
-        let stamp_filename = self.path.components().last().unwrap().as_os_str().to_str().unwrap();
+        let stamp_filename = self.path.file_name().unwrap().to_str().unwrap();
         let stamp_filename = stamp_filename.strip_prefix('.').unwrap_or(stamp_filename);
         self.path.set_file_name(format!(".{prefix}-{stamp_filename}"));
 
