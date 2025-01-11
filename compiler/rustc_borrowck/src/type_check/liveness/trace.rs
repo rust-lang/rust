@@ -1,5 +1,5 @@
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::for_liveness;
@@ -129,7 +129,7 @@ struct LivenessResults<'a, 'typeck, 'b, 'tcx> {
     cx: LivenessContext<'a, 'typeck, 'b, 'tcx>,
 
     /// Set of points that define the current local.
-    defs: BitSet<PointIndex>,
+    defs: DenseBitSet<PointIndex>,
 
     /// Points where the current variable is "use live" -- meaning
     /// that there is a future "full use" that may use its value.
@@ -152,7 +152,7 @@ impl<'a, 'typeck, 'b, 'tcx> LivenessResults<'a, 'typeck, 'b, 'tcx> {
         let num_points = cx.location_map.num_points();
         LivenessResults {
             cx,
-            defs: BitSet::new_empty(num_points),
+            defs: DenseBitSet::new_empty(num_points),
             use_live_at: IntervalSet::new(num_points),
             drop_live_at: IntervalSet::new(num_points),
             drop_locations: vec![],

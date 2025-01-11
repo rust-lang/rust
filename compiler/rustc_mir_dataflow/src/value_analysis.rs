@@ -6,7 +6,7 @@ use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet, StdEntry};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_index::IndexVec;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -399,7 +399,7 @@ impl<'tcx> Map<'tcx> {
         &mut self,
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
-        exclude: BitSet<Local>,
+        exclude: DenseBitSet<Local>,
         value_limit: Option<usize>,
     ) {
         // Start by constructing the places for each bare local.
@@ -912,9 +912,9 @@ pub fn iter_fields<'tcx>(
 }
 
 /// Returns all locals with projections that have their reference or address taken.
-pub fn excluded_locals(body: &Body<'_>) -> BitSet<Local> {
+pub fn excluded_locals(body: &Body<'_>) -> DenseBitSet<Local> {
     struct Collector {
-        result: BitSet<Local>,
+        result: DenseBitSet<Local>,
     }
 
     impl<'tcx> Visitor<'tcx> for Collector {
@@ -932,7 +932,7 @@ pub fn excluded_locals(body: &Body<'_>) -> BitSet<Local> {
         }
     }
 
-    let mut collector = Collector { result: BitSet::new_empty(body.local_decls.len()) };
+    let mut collector = Collector { result: DenseBitSet::new_empty(body.local_decls.len()) };
     collector.visit_body(body);
     collector.result
 }

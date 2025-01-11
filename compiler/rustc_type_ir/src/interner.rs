@@ -3,7 +3,7 @@ use std::hash::Hash;
 use std::ops::Deref;
 
 use rustc_ast_ir::Movability;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use smallvec::SmallVec;
 
 use crate::fold::TypeFoldable;
@@ -282,7 +282,7 @@ pub trait Interner:
     fn coroutine_is_gen(self, coroutine_def_id: Self::DefId) -> bool;
     fn coroutine_is_async_gen(self, coroutine_def_id: Self::DefId) -> bool;
 
-    type UnsizingParams: Deref<Target = BitSet<u32>>;
+    type UnsizingParams: Deref<Target = DenseBitSet<u32>>;
     fn unsizing_params_for_adt(self, adt_def_id: Self::DefId) -> Self::UnsizingParams;
 
     fn find_const_ty_from_env(

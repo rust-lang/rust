@@ -712,7 +712,7 @@ use std::fmt;
 #[cfg(feature = "rustc")]
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hash::{FxHashMap, FxHashSet};
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
@@ -1129,7 +1129,7 @@ struct MatrixRow<'p, Cx: PatCx> {
     /// ```
     /// Here the `(true, true)` case is irrelevant. Since we skip it, we will not detect that row 0
     /// intersects rows 1 and 2.
-    intersects_at_least: BitSet<usize>,
+    intersects_at_least: DenseBitSet<usize>,
     /// Whether the head pattern is a branch (see definition of "branch pattern" at
     /// [`BranchPatUsefulness`])
     head_is_branch: bool,
@@ -1142,7 +1142,7 @@ impl<'p, Cx: PatCx> MatrixRow<'p, Cx> {
             parent_row: arm_id,
             is_under_guard: arm.has_guard,
             useful: false,
-            intersects_at_least: BitSet::new_empty(0), // Initialized in `Matrix::push`.
+            intersects_at_least: DenseBitSet::new_empty(0), // Initialized in `Matrix::push`.
             // This pattern is a branch because it comes from a match arm.
             head_is_branch: true,
         }
@@ -1171,7 +1171,7 @@ impl<'p, Cx: PatCx> MatrixRow<'p, Cx> {
             parent_row,
             is_under_guard: self.is_under_guard,
             useful: false,
-            intersects_at_least: BitSet::new_empty(0), // Initialized in `Matrix::push`.
+            intersects_at_least: DenseBitSet::new_empty(0), // Initialized in `Matrix::push`.
             head_is_branch: is_or_pat,
         })
     }
@@ -1191,7 +1191,7 @@ impl<'p, Cx: PatCx> MatrixRow<'p, Cx> {
             parent_row,
             is_under_guard: self.is_under_guard,
             useful: false,
-            intersects_at_least: BitSet::new_empty(0), // Initialized in `Matrix::push`.
+            intersects_at_least: DenseBitSet::new_empty(0), // Initialized in `Matrix::push`.
             head_is_branch: false,
         })
     }
@@ -1230,7 +1230,7 @@ struct Matrix<'p, Cx: PatCx> {
 impl<'p, Cx: PatCx> Matrix<'p, Cx> {
     /// Pushes a new row to the matrix. Internal method, prefer [`Matrix::new`].
     fn push(&mut self, mut row: MatrixRow<'p, Cx>) {
-        row.intersects_at_least = BitSet::new_empty(self.rows.len());
+        row.intersects_at_least = DenseBitSet::new_empty(self.rows.len());
         self.rows.push(row);
     }
 
@@ -1824,7 +1824,7 @@ pub struct UsefulnessReport<'p, Cx: PatCx> {
     pub non_exhaustiveness_witnesses: Vec<WitnessPat<Cx>>,
     /// For each arm, a set of indices of arms above it that have non-empty intersection, i.e. there
     /// is a value matched by both arms. This may miss real intersections.
-    pub arm_intersections: Vec<BitSet<usize>>,
+    pub arm_intersections: Vec<DenseBitSet<usize>>,
 }
 
 /// Computes whether a match is exhaustive and which of its arms are useful.

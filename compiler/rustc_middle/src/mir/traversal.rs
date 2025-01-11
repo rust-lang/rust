@@ -21,7 +21,7 @@ use super::*;
 #[derive(Clone)]
 pub struct Preorder<'a, 'tcx> {
     body: &'a Body<'tcx>,
-    visited: BitSet<BasicBlock>,
+    visited: DenseBitSet<BasicBlock>,
     worklist: Vec<BasicBlock>,
     root_is_start_block: bool,
 }
@@ -32,7 +32,7 @@ impl<'a, 'tcx> Preorder<'a, 'tcx> {
 
         Preorder {
             body,
-            visited: BitSet::new_empty(body.basic_blocks.len()),
+            visited: DenseBitSet::new_empty(body.basic_blocks.len()),
             worklist,
             root_is_start_block: root == START_BLOCK,
         }
@@ -106,7 +106,7 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
 /// A Postorder traversal of this graph is `D B C A` or `D C B A`
 pub struct Postorder<'a, 'tcx, C> {
     basic_blocks: &'a IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
-    visited: BitSet<BasicBlock>,
+    visited: DenseBitSet<BasicBlock>,
     visit_stack: Vec<(BasicBlock, Successors<'a>)>,
     root_is_start_block: bool,
     extra: C,
@@ -123,7 +123,7 @@ where
     ) -> Postorder<'a, 'tcx, C> {
         let mut po = Postorder {
             basic_blocks,
-            visited: BitSet::new_empty(basic_blocks.len()),
+            visited: DenseBitSet::new_empty(basic_blocks.len()),
             visit_stack: Vec::new(),
             root_is_start_block: root == START_BLOCK,
             extra,
@@ -285,8 +285,8 @@ pub fn reachable<'a, 'tcx>(
     preorder(body)
 }
 
-/// Returns a `BitSet` containing all basic blocks reachable from the `START_BLOCK`.
-pub fn reachable_as_bitset(body: &Body<'_>) -> BitSet<BasicBlock> {
+/// Returns a `DenseBitSet` containing all basic blocks reachable from the `START_BLOCK`.
+pub fn reachable_as_bitset(body: &Body<'_>) -> DenseBitSet<BasicBlock> {
     let mut iter = preorder(body);
     while let Some(_) = iter.next() {}
     iter.visited
@@ -340,13 +340,13 @@ pub fn mono_reachable<'a, 'tcx>(
     MonoReachable::new(body, tcx, instance)
 }
 
-/// [`MonoReachable`] internally accumulates a [`BitSet`] of visited blocks. This is just a
+/// [`MonoReachable`] internally accumulates a [`DenseBitSet`] of visited blocks. This is just a
 /// convenience function to run that traversal then extract its set of reached blocks.
 pub fn mono_reachable_as_bitset<'a, 'tcx>(
     body: &'a Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
-) -> BitSet<BasicBlock> {
+) -> DenseBitSet<BasicBlock> {
     let mut iter = mono_reachable(body, tcx, instance);
     while let Some(_) = iter.next() {}
     iter.visited
@@ -356,11 +356,11 @@ pub struct MonoReachable<'a, 'tcx> {
     body: &'a Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
-    visited: BitSet<BasicBlock>,
+    visited: DenseBitSet<BasicBlock>,
     // Other traversers track their worklist in a Vec. But we don't care about order, so we can
-    // store ours in a BitSet and thus save allocations because BitSet has a small size
+    // store ours in a DenseBitSet and thus save allocations because DenseBitSet has a small size
     // optimization.
-    worklist: BitSet<BasicBlock>,
+    worklist: DenseBitSet<BasicBlock>,
 }
 
 impl<'a, 'tcx> MonoReachable<'a, 'tcx> {
@@ -369,13 +369,13 @@ impl<'a, 'tcx> MonoReachable<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         instance: Instance<'tcx>,
     ) -> MonoReachable<'a, 'tcx> {
-        let mut worklist = BitSet::new_empty(body.basic_blocks.len());
+        let mut worklist = DenseBitSet::new_empty(body.basic_blocks.len());
         worklist.insert(START_BLOCK);
         MonoReachable {
             body,
             tcx,
             instance,
-            visited: BitSet::new_empty(body.basic_blocks.len()),
+            visited: DenseBitSet::new_empty(body.basic_blocks.len()),
             worklist,
         }
     }
