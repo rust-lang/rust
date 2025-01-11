@@ -67,7 +67,7 @@ macro_rules! rtunwrap {
     };
 }
 
-fn handle_rt_panic(e: Box<dyn Any + Send>) {
+fn handle_rt_panic<T>(e: Box<dyn Any + Send>) -> T {
     mem::forget(e);
     rtabort!("initialization or cleanup bug");
 }
@@ -168,19 +168,27 @@ fn lang_start_internal(
     // panic is a std implementation bug. A quite likely one too, as there isn't any way to
     // prevent std from accidentally introducing a panic to these functions. Another is from
     // user code from `main` or, more nefariously, as described in e.g. issue #86030.
-    // SAFETY: Only called once during runtime initialization.
-    panic::catch_unwind(move || unsafe { init(argc, argv, sigpipe) })
-        .unwrap_or_else(handle_rt_panic);
-    let ret_code = panic::catch_unwind(move || panic::catch_unwind(main).unwrap_or(101) as isize)
-        .map_err(move |e| {
-            mem::forget(e);
-            rtabort!("drop of the panic payload panicked");
-        });
-    panic::catch_unwind(cleanup).unwrap_or_else(handle_rt_panic);
-    // Guard against multiple threads calling `libc::exit` concurrently.
-    // See the documentation for `unique_thread_exit` for more information.
-    panic::catch_unwind(crate::sys::exit_guard::unique_thread_exit).unwrap_or_else(handle_rt_panic);
-    ret_code
+    //
+    // We use `catch_unwind` with `handle_rt_panic` instead of `abort_unwind` to make the error in
+    // case of a panic a bit nicer.
+    panic::catch_unwind(move || {
+        // SAFETY: Only called once during runtime initialization.
+        unsafe { init(argc, argv, sigpipe) };
+        let ret_code =
+            panic::catch_unwind(move || panic::catch_unwind(main).unwrap_or(101) as isize).map_err(
+                move |e| {
+                    // Print a specific error when we abort due to a panicing payload destructor.
+                    mem::forget(e);
+                    rtabort!("drop of the panic payload panicked");
+                },
+            );
+        cleanup();
+        // Guard against multiple threads calling `libc::exit` concurrently.
+        // See the documentation for `unique_thread_exit` for more information.
+        crate::sys::exit_guard::unique_thread_exit();
+        ret_code
+    })
+    .unwrap_or_else(handle_rt_panic)
 }
 
 #[cfg(not(any(test, doctest)))]
