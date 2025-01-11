@@ -9,6 +9,7 @@ from lldb import (
     eBasicTypeLong,
     eBasicTypeUnsignedLong,
     eBasicTypeUnsignedChar,
+    eFormatChar,
 )
 
 # from lldb.formatters import Logger
@@ -143,11 +144,32 @@ def vec_to_string(vec: SBValue) -> str:
     )
 
 
-def StdStringSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
-    # logger = Logger.Logger()
-    # logger >> "[StdStringSummaryProvider] for " + str(valobj.GetName())
-    vec = valobj.GetChildAtIndex(0)
-    return '"%s"' % vec_to_string(vec)
+def StdStringSummaryProvider(valobj, dict):
+    inner_vec = (
+        valobj.GetNonSyntheticValue()
+        .GetChildMemberWithName("vec")
+        .GetNonSyntheticValue()
+    )
+
+    pointer = (
+        inner_vec.GetChildMemberWithName("buf")
+        .GetChildMemberWithName("inner")
+        .GetChildMemberWithName("ptr")
+        .GetChildMemberWithName("pointer")
+        .GetChildMemberWithName("pointer")
+    )
+
+    length = inner_vec.GetChildMemberWithName("len").GetValueAsUnsigned()
+
+    if length <= 0:
+        return ""
+    error = SBError()
+    process = pointer.GetProcess()
+    data = process.ReadMemory(pointer.GetValueAsUnsigned(), length, error)
+    if error.Success():
+        return '"' + data.decode("utf8", "replace") + '"'
+    else:
+        raise Exception("ReadMemory error: %s", error.GetCString())
 
 
 def StdOsStringSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
@@ -264,6 +286,48 @@ class StructSyntheticProvider:
 
     def has_children(self) -> bool:
         return True
+
+
+class StdStringSyntheticProvider:
+    def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
+        self.valobj = valobj
+        self.update()
+
+    def update(self):
+        inner_vec = self.valobj.GetChildMemberWithName("vec").GetNonSyntheticValue()
+        self.data_ptr = (
+            inner_vec.GetChildMemberWithName("buf")
+            .GetChildMemberWithName("inner")
+            .GetChildMemberWithName("ptr")
+            .GetChildMemberWithName("pointer")
+            .GetChildMemberWithName("pointer")
+        )
+        self.length = inner_vec.GetChildMemberWithName("len").GetValueAsUnsigned()
+        self.element_type = self.data_ptr.GetType().GetPointeeType()
+
+    def has_children(self) -> bool:
+        return True
+
+    def num_children(self) -> int:
+        return self.length
+
+    def get_child_index(self, name: str) -> int:
+        index = name.lstrip("[").rstrip("]")
+        if index.isdigit():
+            return int(index)
+
+        return -1
+
+    def get_child_at_index(self, index: int) -> SBValue:
+        if not 0 <= index < self.length:
+            return None
+        start = self.data_ptr.GetValueAsUnsigned()
+        address = start + index
+        element = self.data_ptr.CreateValueFromAddress(
+            f"[{index}]", address, self.element_type
+        )
+        element.SetFormat(eFormatChar)
+        return element
 
 
 class MSVCStrSyntheticProvider:
@@ -699,6 +763,21 @@ class StdVecSyntheticProvider:
         )
 
         self.element_type = self.valobj.GetType().GetTemplateArgumentType(0)
+
+        if not self.element_type.IsValid():
+            # annoyingly, vec's constituent type isn't guaranteed to be contained anywhere useful.
+            # Some functions have it, but those functions only exist in binary when they're used.
+            # that means it's time for string-based garbage.
+
+            # acquire the first generic parameter via its type name
+            _, _, end = self.valobj.GetTypeName().partition("<")
+            element_name, _, _ = end.partition(",")
+
+            # this works even for built-in rust types like `u32` because internally it's just a
+            # `typedef` i really REALLY wish there was a better way to do this, but at the moment
+            # LLDB flat out ignores template parameters due to piggybacking off of TypeSystemClang.
+            self.element_type = self.valobj.target.FindFirstType(element_name)
+
         self.element_type_size = self.element_type.GetByteSize()
 
     def has_children(self) -> bool:
