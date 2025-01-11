@@ -337,7 +337,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         } else {
             let path = self.lower_qpath(
                 delegation.id,
-                &delegation.qself,
+                delegation.qself.as_ref(),
                 &delegation.path,
                 ParamMode::Optional,
                 AllowReturnTypeNotation::No,

@@ -100,12 +100,12 @@ impl QueryJobId {
     pub(super) fn find_cycle_in_stack(
         &self,
         query_map: QueryMap,
-        current_job: &Option<QueryJobId>,
+        current_job: Option<&QueryJobId>,
         span: Span,
     ) -> CycleError {
         // Find the waitee amongst `current_job` parents
         let mut cycle = Vec::new();
-        let mut current_job = Option::clone(current_job);
+        let mut current_job = current_job.cloned();
 
         while let Some(job) = current_job {
             let info = query_map.get(&job).unwrap();

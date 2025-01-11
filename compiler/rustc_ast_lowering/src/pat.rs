@@ -44,7 +44,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     PatKind::TupleStruct(qself, path, pats) => {
                         let qpath = self.lower_qpath(
                             pattern.id,
-                            qself,
+                            qself.as_ref(),
                             path,
                             ParamMode::Optional,
                             AllowReturnTypeNotation::No,
@@ -62,7 +62,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     PatKind::Path(qself, path) => {
                         let qpath = self.lower_qpath(
                             pattern.id,
-                            qself,
+                            qself.as_ref(),
                             path,
                             ParamMode::Optional,
                             AllowReturnTypeNotation::No,
@@ -74,7 +74,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     PatKind::Struct(qself, path, fields, etc) => {
                         let qpath = self.lower_qpath(
                             pattern.id,
-                            qself,
+                            qself.as_ref(),
                             path,
                             ParamMode::Optional,
                             AllowReturnTypeNotation::No,

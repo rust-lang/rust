@@ -43,7 +43,7 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
     gcc_func: FunctionPtrType<'gcc>,
     mut args: Cow<'b, [RValue<'gcc>]>,
     func_name: &str,
-    original_function_name: Option<&String>,
+    original_function_name: Option<&str>,
 ) -> Cow<'b, [RValue<'gcc>]> {
     // TODO: this might not be a good way to workaround the missing tile builtins.
     if func_name == "__builtin_trap" {
@@ -546,7 +546,7 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
             | "__builtin_ia32_vfmaddsubps256"
             | "__builtin_ia32_vfmaddsubpd" => {
                 if let Some(original_function_name) = original_function_name {
-                    match &**original_function_name {
+                    match original_function_name {
                         "llvm.x86.fma.vfmsubadd.pd.256"
                         | "llvm.x86.fma.vfmsubadd.ps"
                         | "llvm.x86.fma.vfmsubadd.ps.256"
