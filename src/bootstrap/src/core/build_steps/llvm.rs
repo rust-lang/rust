@@ -8,12 +8,11 @@
 //! LLVM and compiler-rt are essentially just wired up to everything else to
 //! ensure that they're always in place if needed.
 
-use std::env;
 use std::env::consts::EXE_EXTENSION;
 use std::ffi::{OsStr, OsString};
-use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
+use std::{env, fs};
 
 use build_helper::ci::CiEnv;
 use build_helper::git::get_closest_merge_commit;
@@ -1015,8 +1014,9 @@ impl Step for Lld {
         }
 
         let out_dir = builder.lld_out(target);
-        let done_stamp = out_dir.join("lld-finished-building");
-        if done_stamp.exists() {
+
+        let done_stamp = BuildStamp::new(&out_dir).with_prefix("lld");
+        if done_stamp.as_ref().exists() {
             return out_dir;
         }
 
@@ -1091,7 +1091,7 @@ impl Step for Lld {
 
         cfg.build();
 
-        t!(File::create(&done_stamp));
+        t!(done_stamp.write());
         out_dir
     }
 }
