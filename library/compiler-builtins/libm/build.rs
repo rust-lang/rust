@@ -13,8 +13,12 @@ fn main() {
     #[allow(unexpected_cfgs)]
     if !cfg!(feature = "checked") {
         let lvl = env::var("OPT_LEVEL").unwrap();
-        if lvl != "0" {
+        if lvl != "0" && !cfg!(debug_assertions) {
             println!("cargo:rustc-cfg=assert_no_panic");
+        } else if env::var("ENSURE_NO_PANIC").is_ok() {
+            // Give us a defensive way of ensureing that no-panic is checked  when we
+            // expect it to be.
+            panic!("`assert_no_panic `was not enabled");
         }
     }
 

@@ -238,7 +238,8 @@ jobs:
 
           LIBM_EXTENSIVE_TESTS="$CHANGED" cargo t \
             --features test-multiprecision,unstable \
-            --release -- extensive
+            --profile release-checked \
+            -- extensive
       - name: Print test logs if available
         run: if [ -f "target/test-log.txt" ]; then cat target/test-log.txt; fi
         shell: bash

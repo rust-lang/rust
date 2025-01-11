@@ -81,8 +81,10 @@ else
     $cmd --features unstable-intrinsics --benches
     
     # Test the same in release mode, which also increases coverage.
-    $cmd --release
-    $cmd --release --features unstable-intrinsics
-    $cmd --release --features unstable-intrinsics --benches
+    $cmd --profile release-checked 
+    $cmd --profile release-checked --features unstable-intrinsics
+    $cmd --profile release-checked --features unstable-intrinsics --benches
+
+    ENSURE_NO_PANIC=1 cargo build --target "$target" --release
 fi
 

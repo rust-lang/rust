@@ -61,3 +61,10 @@ no-panic = "0.1.30"
 # This is needed for no-panic to correctly detect the lack of panics
 [profile.release]
 lto = "fat"
+
+# Release mode with debug assertions
+[profile.release-checked]
+inherits = "release"
+debug-assertions = true
+lto = "fat"
+overflow-checks = true
