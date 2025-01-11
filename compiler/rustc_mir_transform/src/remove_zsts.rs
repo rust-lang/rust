@@ -46,15 +46,17 @@ fn trivially_zst<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<bool> {
         ty::FnDef(..) | ty::Never => Some(true),
         ty::Tuple(fields) if fields.is_empty() => Some(true),
         ty::Array(_ty, len) if let Some(0) = len.try_to_target_usize(tcx) => Some(true),
-        // maybe ZST (could be more precise)
-        ty::Adt(..)
-        | ty::Array(..)
-        | ty::Closure(..)
-        | ty::CoroutineClosure(..)
-        | ty::Tuple(..)
-        | ty::Alias(ty::Opaque, ..) => None,
-        // unreachable or can't be ZST
-        _ => Some(false),
+        // clearly not ZST
+        ty::Bool
+        | ty::Char
+        | ty::Int(..)
+        | ty::Uint(..)
+        | ty::Float(..)
+        | ty::RawPtr(..)
+        | ty::Ref(..)
+        | ty::FnPtr(..) => Some(false),
+        // check `layout_of` to see (including unreachable things we won't actually see)
+        _ => None,
     }
 }
 
