@@ -96,7 +96,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 s1.append(s2);
                 sugg.cancel();
             }
-            diag.stash(self_ty.span, StashKey::TraitMissingMethod)
+            Some(diag.emit())
         } else {
             tcx.node_span_lint(BARE_TRAIT_OBJECTS, self_ty.hir_id, self_ty.span, |lint| {
                 lint.primary_message("trait objects without an explicit `dyn` are deprecated");
