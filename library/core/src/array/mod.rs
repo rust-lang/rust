@@ -5,10 +5,10 @@
 #![stable(feature = "core_array", since = "1.35.0")]
 
 use crate::borrow::{Borrow, BorrowMut};
+use crate::clone::TrivialClone;
 use crate::cmp::Ordering;
 use crate::convert::Infallible;
 use crate::error::Error;
-use crate::fmt;
 use crate::hash::{self, Hash};
 use crate::intrinsics::transmute_unchecked;
 use crate::iter::{UncheckedIterator, repeat_n};
@@ -18,6 +18,7 @@ use crate::ops::{
 };
 use crate::ptr::{null, null_mut};
 use crate::slice::{Iter, IterMut};
+use crate::{fmt, ptr};
 
 mod ascii;
 mod drain;
@@ -438,10 +439,12 @@ impl<T: Clone> SpecArrayClone for T {
     }
 }
 
-impl<T: Copy> SpecArrayClone for T {
+impl<T: TrivialClone> SpecArrayClone for T {
     #[inline]
     fn clone<const N: usize>(array: &[T; N]) -> [T; N] {
-        *array
+        // SAFETY: `TrivialClone` implies that this is equivalent to calling
+        // `Clone` on every element.
+        unsafe { ptr::read(array) }
     }
 }
 
