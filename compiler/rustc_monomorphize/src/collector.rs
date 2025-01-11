@@ -1377,6 +1377,10 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionStrategy) -> Vec<MonoI
             collector.process_impl_item(id);
         }
 
+        for id in crate_items.nested_bodies() {
+            collector.process_nested_body(id);
+        }
+
         collector.push_extra_entry_roots();
     }
 
@@ -1456,6 +1460,33 @@ impl<'v> RootCollector<'_, 'v> {
     fn process_impl_item(&mut self, id: hir::ImplItemId) {
         if matches!(self.tcx.def_kind(id.owner_id), DefKind::AssocFn) {
             self.push_if_root(id.owner_id.def_id);
+        }
+    }
+
+    fn process_nested_body(&mut self, def_id: LocalDefId) {
+        match self.tcx.def_kind(def_id) {
+            DefKind::Closure => {
+                if self.strategy == MonoItemCollectionStrategy::Eager
+                    && !self
+                        .tcx
+                        .generics_of(self.tcx.typeck_root_def_id(def_id.to_def_id()))
+                        .requires_monomorphization(self.tcx)
+                {
+                    let instance = match *self.tcx.type_of(def_id).instantiate_identity().kind() {
+                        ty::Closure(def_id, args)
+                        | ty::Coroutine(def_id, args)
+                        | ty::CoroutineClosure(def_id, args) => {
+                            Instance::new(def_id, self.tcx.erase_regions(args))
+                        }
+                        _ => unreachable!(),
+                    };
+                    let mono_item = create_fn_mono_item(self.tcx, instance, DUMMY_SP);
+                    if mono_item.node.is_instantiable(self.tcx) {
+                        self.output.push(mono_item);
+                    }
+                }
+            }
+            _ => {}
         }
     }
 
