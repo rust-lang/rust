@@ -32,9 +32,15 @@ macro_rules! define_valid_range_type {
         };
 
         impl $name {
+            /// Constructs an instance of this type from the underlying integer
+            /// primitive without checking whether its zero.
+            ///
+            /// # Safety
+            /// Immediate language UB if `val == 0`, as it violates the validity
+            /// invariant of this type.
             #[inline]
             pub const unsafe fn new_unchecked(val: $int) -> Self {
-                // SAFETY: same precondition
+                // SAFETY: Caller promised that `val` is non-zero.
                 unsafe { $name(val) }
             }
 
