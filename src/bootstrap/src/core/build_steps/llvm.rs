@@ -1121,18 +1121,24 @@ impl Step for Sanitizers {
 
         let out_dir = builder.native_dir(self.target).join("sanitizers");
         let runtimes = supported_sanitizers(&out_dir, self.target, &builder.config.channel);
-        if runtimes.is_empty() {
+
+        if builder.config.dry_run() || runtimes.is_empty() {
             return runtimes;
         }
 
         let LlvmResult { llvm_config, .. } = builder.ensure(Llvm { target: builder.config.build });
-        if builder.config.dry_run() {
-            return runtimes;
-        }
 
-        let stamp = BuildStamp::new(&out_dir)
-            .with_prefix("sanitizers")
-            .with_stamp(builder.in_tree_llvm_info.sha().map(String::from).unwrap_or_default());
+        static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
+        let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
+            generate_smart_stamp_hash(
+                builder,
+                &builder.config.src.join("src/llvm-project/compiler-rt"),
+                builder.in_tree_llvm_info.sha().unwrap_or_default(),
+            )
+        });
+
+        let stamp =
+            BuildStamp::new(&out_dir).with_prefix("sanitizers").with_stamp(smart_stamp_hash);
 
         if stamp.is_up_to_date() {
             if stamp.stamp.is_empty() {
