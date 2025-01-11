@@ -564,6 +564,10 @@ impl Command {
         if bless {
             e.sh.set_var("RUSTC_BLESS", "Gesundheit");
         }
+        if e.sh.var("MIRI_TEST_TARGET").is_ok() {
+            // Avoid trouble due to an incorrectly set env var.
+            bail!("MIRI_TEST_TARGET must not be set when invoking `./miri test`");
+        }
         if let Some(target) = target {
             // Tell the harness which target to test.
             e.sh.set_var("MIRI_TEST_TARGET", target);
