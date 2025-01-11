@@ -1,15 +1,20 @@
+# Forces test-compliant formatting to all other types
+type summary add -F _ -e -x -h "^.*$" --category Rust
 # Std String
 type synthetic add -l lldb_lookup.synthetic_lookup -x "^(alloc::([a-z_]+::)+)String$" --category Rust
 type summary add -F lldb_lookup.summary_lookup  -e -x -h "^(alloc::([a-z_]+::)+)String$" --category Rust
 # Std str
 type synthetic add -l lldb_lookup.synthetic_lookup -x "^&(mut )?str$" --category Rust
 type summary add -F lldb_lookup.summary_lookup  -e -x -h "^&(mut )?str$" --category Rust
+## MSVC
+type synthetic add -l lldb_lookup.MSVCStrSyntheticProvider -x "^ref(_mut)?\$<str\$>$" --category Rust
+type summary add -F lldb_lookup.StdStrSummaryProvider -e -h -x "^ref(_mut)?\$<str\$>$" --category Rust
 # Array
 type synthetic add -l lldb_lookup.synthetic_lookup -x "^&(mut )?\\[.+\\]$" --category Rust
 type summary add -F lldb_lookup.summary_lookup  -e -x -h "^&(mut )?\\[.+\\]$" --category Rust
 # Slice
 ## MSVC
-type synthetic add -l lldb_lookup.MSVCStdSliceSyntheticProvider -x "^ref\$<slice2\$<.+> >" --category Rust
+type synthetic add -l lldb_lookup.MSVCStdSliceSyntheticProvider -x "^ref(_mut)?\$<slice2\$<.+> >" --category Rust
 type summary add -F lldb_lookup.StdSliceSummaryProvider -e -x -h "^ref(_mut)?\$<slice2\$<.+> >" --category Rust
 # OsString
 type synthetic add -l lldb_lookup.synthetic_lookup -x "^(std::ffi::([a-z_]+::)+)OsString$" --category Rust
@@ -71,6 +76,4 @@ type synthetic add -l lldb_lookup.synthetic_lookup -x "^\(.*\)$" --category Rust
 ## MSVC
 type synthetic add -l lldb_lookup.MSVCTupleSyntheticProvider -x "^tuple\$<.+>$" --category Rust
 type summary add -F lldb_lookup.TupleSummaryProvider -e -x -h "^tuple\$<.+>$" --category Rust
-# Forces test-compliant formatting to all other types
-type summary add -F _ -e -x -h "^.*$" --category Rust
 type category enable Rust
