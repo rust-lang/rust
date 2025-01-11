@@ -55,6 +55,8 @@ pub trait Int:
     + ops::BitAnd<Output = Self>
     + cmp::Ord
     + CastInto<usize>
+    + CastInto<i32>
+    + CastFrom<i32>
     + CastFrom<u8>
 {
     fn signed(self) -> OtherSign<Self::Unsigned>;

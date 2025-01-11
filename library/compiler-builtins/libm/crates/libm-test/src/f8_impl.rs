@@ -20,7 +20,6 @@ pub struct f8(u8);
 impl Float for f8 {
     type Int = u8;
     type SignedInt = i8;
-    type ExpInt = i8;
 
     const ZERO: Self = Self(0b0_0000_000);
     const NEG_ZERO: Self = Self(0b1_0000_000);
@@ -60,10 +59,6 @@ impl Float for f8 {
 
     fn is_sign_negative(self) -> bool {
         self.0 & Self::SIGN_MASK != 0
-    }
-
-    fn exp(self) -> Self::ExpInt {
-        unimplemented!()
     }
 
     fn from_bits(a: Self::Int) -> Self {

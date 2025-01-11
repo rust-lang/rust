@@ -1,6 +1,6 @@
 use core::{fmt, mem, ops};
 
-use super::int_traits::{Int, MinInt};
+use super::int_traits::{CastInto, Int, MinInt};
 
 /// Trait for some basic operations on floats
 #[allow(dead_code)]
@@ -24,9 +24,6 @@ pub trait Float:
 
     /// A int of the same width as the float
     type SignedInt: Int + MinInt<OtherSign = Self::Int, Unsigned = Self::Int>;
-
-    /// An int capable of containing the exponent bits plus a sign bit. This is signed.
-    type ExpInt: Int;
 
     const ZERO: Self;
     const NEG_ZERO: Self;
@@ -98,7 +95,9 @@ pub trait Float:
     }
 
     /// Returns the exponent, not adjusting for bias.
-    fn exp(self) -> Self::ExpInt;
+    fn exp(self) -> i32 {
+        ((self.to_bits() & Self::EXP_MASK) >> Self::SIG_BITS).cast()
+    }
 
     /// Returns the significand with no implicit bit (or the "fractional" part)
     fn frac(self) -> Self::Int {
@@ -146,7 +145,6 @@ macro_rules! float_impl {
         $ty:ident,
         $ity:ident,
         $sity:ident,
-        $expty:ident,
         $bits:expr,
         $significand_bits:expr,
         $from_bits:path
@@ -154,7 +152,6 @@ macro_rules! float_impl {
         impl Float for $ty {
             type Int = $ity;
             type SignedInt = $sity;
-            type ExpInt = $expty;
 
             const ZERO: Self = 0.0;
             const NEG_ZERO: Self = -0.0;
@@ -191,9 +188,6 @@ macro_rules! float_impl {
             fn is_sign_negative(self) -> bool {
                 self.is_sign_negative()
             }
-            fn exp(self) -> Self::ExpInt {
-                ((self.to_bits() & Self::EXP_MASK) >> Self::SIG_BITS) as Self::ExpInt
-            }
             fn from_bits(a: Self::Int) -> Self {
                 Self::from_bits(a)
             }
@@ -226,11 +220,11 @@ macro_rules! float_impl {
 }
 
 #[cfg(f16_enabled)]
-float_impl!(f16, u16, i16, i8, 16, 10, f16::from_bits);
-float_impl!(f32, u32, i32, i16, 32, 23, f32_from_bits);
-float_impl!(f64, u64, i64, i16, 64, 52, f64_from_bits);
+float_impl!(f16, u16, i16, 16, 10, f16::from_bits);
+float_impl!(f32, u32, i32, 32, 23, f32_from_bits);
+float_impl!(f64, u64, i64, 64, 52, f64_from_bits);
 #[cfg(f128_enabled)]
-float_impl!(f128, u128, i128, i16, 128, 112, f128::from_bits);
+float_impl!(f128, u128, i128, 128, 112, f128::from_bits);
 
 /* FIXME(msrv): vendor some things that are not const stable at our MSRV */
 
