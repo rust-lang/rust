@@ -1001,6 +1001,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 kind,
             };
         }
+
         normal_ret
     }
 
