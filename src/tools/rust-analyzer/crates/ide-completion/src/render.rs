@@ -28,7 +28,8 @@ use crate::{
         literal::render_variant_lit,
         macro_::{render_macro, render_macro_pat},
     },
-    CompletionContext, CompletionItem, CompletionItemKind, CompletionRelevance,
+    CompletionContext, CompletionItem, CompletionItemKind, CompletionItemRefMode,
+    CompletionRelevance,
 };
 /// Interface for data and methods required for items rendering.
 #[derive(Debug, Clone)]
@@ -192,8 +193,8 @@ pub(crate) fn render_field(
     }
     if let Some(receiver) = &dot_access.receiver {
         if let Some(original) = ctx.completion.sema.original_ast_node(receiver.clone()) {
-            if let Some(ref_match) = compute_ref_match(ctx.completion, ty) {
-                item.ref_match(ref_match, original.syntax().text_range().start());
+            if let Some(ref_mode) = compute_ref_match(ctx.completion, ty) {
+                item.ref_match(ref_mode, original.syntax().text_range().start());
             }
         }
     }
@@ -638,20 +639,34 @@ fn compute_exact_name_match(ctx: &CompletionContext<'_>, completion_name: &str) 
 fn compute_ref_match(
     ctx: &CompletionContext<'_>,
     completion_ty: &hir::Type,
-) -> Option<hir::Mutability> {
+) -> Option<CompletionItemRefMode> {
     let expected_type = ctx.expected_type.as_ref()?;
-    if completion_ty != expected_type {
-        let expected_type_without_ref = expected_type.remove_ref()?;
-        if completion_ty.autoderef(ctx.db).any(|deref_ty| deref_ty == expected_type_without_ref) {
+    let expected_without_ref = expected_type.remove_ref();
+    let completion_without_ref = completion_ty.remove_ref();
+
+    if completion_ty == expected_type {
+        return None;
+    }
+
+    if let Some(expected_without_ref) = &expected_without_ref {
+        if completion_ty.autoderef(ctx.db).any(|ty| ty == *expected_without_ref) {
             cov_mark::hit!(suggest_ref);
             let mutability = if expected_type.is_mutable_reference() {
                 hir::Mutability::Mut
             } else {
                 hir::Mutability::Shared
             };
-            return Some(mutability);
-        };
+            return Some(CompletionItemRefMode::Reference(mutability));
+        }
     }
+
+    if let Some(completion_without_ref) = completion_without_ref {
+        if completion_without_ref == *expected_type && completion_without_ref.is_copy(ctx.db) {
+            cov_mark::hit!(suggest_deref);
+            return Some(CompletionItemRefMode::Dereference);
+        }
+    }
+
     None
 }
 
@@ -664,16 +679,16 @@ fn path_ref_match(
     if let Some(original_path) = &path_ctx.original_path {
         // At least one char was typed by the user already, in that case look for the original path
         if let Some(original_path) = completion.sema.original_ast_node(original_path.clone()) {
-            if let Some(ref_match) = compute_ref_match(completion, ty) {
-                item.ref_match(ref_match, original_path.syntax().text_range().start());
+            if let Some(ref_mode) = compute_ref_match(completion, ty) {
+                item.ref_match(ref_mode, original_path.syntax().text_range().start());
             }
         }
     } else {
         // completion requested on an empty identifier, there is no path here yet.
         // FIXME: This might create inconsistent completions where we show a ref match in macro inputs
         // as long as nothing was typed yet
-        if let Some(ref_match) = compute_ref_match(completion, ty) {
-            item.ref_match(ref_match, completion.position.offset);
+        if let Some(ref_mode) = compute_ref_match(completion, ty) {
+            item.ref_match(ref_mode, completion.position.offset);
         }
     }
 }
@@ -2065,7 +2080,42 @@ fn main() {
     }
 
     #[test]
-    fn suggest_deref() {
+    fn suggest_deref_copy() {
+        cov_mark::check!(suggest_deref);
+        check_relevance(
+            r#"
+//- minicore: copy
+struct Foo;
+
+impl Copy for Foo {}
+impl Clone for Foo {
+    fn clone(&self) -> Self { *self }
+}
+
+fn bar(x: Foo) {}
+
+fn main() {
+    let foo = &Foo;
+    bar($0);
+}
+"#,
+            expect![[r#"
+                st Foo Foo [type]
+                st Foo Foo [type]
+                ex Foo  [type]
+                lc foo &Foo [local]
+                lc *foo [type+local]
+                fn bar(…) fn(Foo) []
+                fn main() fn() []
+                md core  []
+                tt Clone  []
+                tt Copy  []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn suggest_deref_trait() {
         check_relevance(
             r#"
 //- minicore: deref
