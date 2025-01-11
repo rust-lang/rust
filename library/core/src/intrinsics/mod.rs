@@ -2056,6 +2056,8 @@ pub unsafe fn volatile_copy_memory<T>(_dst: *mut T, _src: *const T, _count: usiz
 ///
 /// Note that even if `T` has size `0`, the pointer must be properly aligned.
 ///
+/// [valid]: crate::ptr#safety
+///
 /// This intrinsic does not have a stable counterpart.
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
@@ -3988,6 +3990,7 @@ pub const fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
 /// * The region of memory beginning at `x` must *not* overlap with the region of memory
 ///   beginning at `y`.
 ///
+/// [valid]: crate::ptr#safety
 #[rustc_nounwind]
 #[inline]
 #[rustc_intrinsic]
