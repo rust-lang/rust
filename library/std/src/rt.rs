@@ -157,7 +157,7 @@ fn lang_start_internal(
     argc: isize,
     argv: *const *const u8,
     sigpipe: u8,
-) -> Result<isize, !> {
+) -> isize {
     // Guard against the code called by this function from unwinding outside of the Rust-controlled
     // code, which is UB. This is a requirement imposed by a combination of how the
     // `#[lang="start"]` attribute is implemented as well as by the implementation of the panicking
@@ -174,18 +174,24 @@ fn lang_start_internal(
     panic::catch_unwind(move || {
         // SAFETY: Only called once during runtime initialization.
         unsafe { init(argc, argv, sigpipe) };
-        let ret_code =
-            panic::catch_unwind(move || panic::catch_unwind(main).unwrap_or(101) as isize).map_err(
-                move |e| {
-                    // Print a specific error when we abort due to a panicing payload destructor.
-                    mem::forget(e);
-                    rtabort!("drop of the panic payload panicked");
-                },
-            );
+
+        let ret_code = panic::catch_unwind(main).unwrap_or_else(move |payload| {
+            // Carefully dispose of the panic payload.
+            let payload = panic::AssertUnwindSafe(payload);
+            panic::catch_unwind(move || drop({ payload }.0)).unwrap_or_else(move |e| {
+                mem::forget(e); // do *not* drop the 2nd payload
+                rtabort!("drop of the panic payload panicked");
+            });
+            // Return error code for panicking programs.
+            101
+        });
+        let ret_code = ret_code as isize;
+
         cleanup();
         // Guard against multiple threads calling `libc::exit` concurrently.
         // See the documentation for `unique_thread_exit` for more information.
         crate::sys::exit_guard::unique_thread_exit();
+
         ret_code
     })
     .unwrap_or_else(handle_rt_panic)
@@ -199,11 +205,10 @@ fn lang_start<T: crate::process::Termination + 'static>(
     argv: *const *const u8,
     sigpipe: u8,
 ) -> isize {
-    let Ok(v) = lang_start_internal(
+    lang_start_internal(
         &move || crate::sys::backtrace::__rust_begin_short_backtrace(main).report().to_i32(),
         argc,
         argv,
         sigpipe,
-    );
-    v
+    )
 }

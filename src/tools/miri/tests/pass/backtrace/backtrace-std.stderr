@@ -22,7 +22,7 @@
  at RUSTLIB/std/src/panicking.rs:LL:CC
   11: std::panic::catch_unwind
  at RUSTLIB/std/src/panic.rs:LL:CC
-  12: std::rt::lang_start_internal::{closure#0}::{closure#0}
+  12: std::rt::lang_start_internal::{closure#0}
  at RUSTLIB/std/src/rt.rs:LL:CC
   13: std::panicking::r#try::do_call
  at RUSTLIB/std/src/panicking.rs:LL:CC
@@ -30,15 +30,7 @@
  at RUSTLIB/std/src/panicking.rs:LL:CC
   15: std::panic::catch_unwind
  at RUSTLIB/std/src/panic.rs:LL:CC
-  16: std::rt::lang_start_internal::{closure#0}
+  16: std::rt::lang_start_internal
  at RUSTLIB/std/src/rt.rs:LL:CC
-  17: std::panicking::r#try::do_call
- at RUSTLIB/std/src/panicking.rs:LL:CC
-  18: std::panicking::r#try
- at RUSTLIB/std/src/panicking.rs:LL:CC
-  19: std::panic::catch_unwind
- at RUSTLIB/std/src/panic.rs:LL:CC
-  20: std::rt::lang_start_internal
- at RUSTLIB/std/src/rt.rs:LL:CC
-  21: std::rt::lang_start
+  17: std::rt::lang_start
  at RUSTLIB/std/src/rt.rs:LL:CC
