@@ -168,6 +168,7 @@ pub fn generate_smart_stamp_hash(
     let diff = helpers::git(Some(dir))
         .allow_failure()
         .arg("diff")
+        .arg(".")
         .run_capture_stdout(builder)
         .stdout_if_ok()
         .unwrap_or_default();
@@ -175,6 +176,7 @@ pub fn generate_smart_stamp_hash(
     let status = helpers::git(Some(dir))
         .allow_failure()
         .arg("status")
+        .arg(".")
         .arg("--porcelain")
         .arg("-z")
         .arg("--untracked-files=normal")
