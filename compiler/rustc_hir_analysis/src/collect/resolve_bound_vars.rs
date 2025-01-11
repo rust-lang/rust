@@ -489,15 +489,17 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     struct FindInferInClosureWithBinder;
                     impl<'v> Visitor<'v> for FindInferInClosureWithBinder {
                         type Result = ControlFlow<Span>;
-                        fn visit_ty(&mut self, t: &'v hir::Ty<'v>) -> Self::Result {
-                            if matches!(t.kind, hir::TyKind::Infer) {
-                                ControlFlow::Break(t.span)
-                            } else {
-                                intravisit::walk_ty(self, t)
-                            }
+
+                        fn visit_infer(
+                            &mut self,
+                            _inf_id: HirId,
+                            inf_span: Span,
+                            _kind: InferKind<'v>,
+                        ) -> Self::Result {
+                            ControlFlow::Break(inf_span)
                         }
                     }
-                    FindInferInClosureWithBinder.visit_ty(ty).break_value()
+                    FindInferInClosureWithBinder.visit_unambig_ty(ty).break_value()
                 }
 
                 let infer_in_rt_sp = match fn_decl.output {

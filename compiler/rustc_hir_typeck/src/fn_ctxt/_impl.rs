@@ -1272,17 +1272,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .lower_lifetime(lt, RegionInferReason::Param(param))
                         .into(),
                     (GenericParamDefKind::Type { .. }, GenericArg::Type(ty)) => {
-                        // We handle the ambig portions of `Ty` in match arms below
+                        // We handle the ambig portions of `Ty` in match arm below
                         self.fcx.lower_ty(ty.as_unambig_ty()).raw.into()
+                    }
+                    (GenericParamDefKind::Type { .. }, GenericArg::Infer(inf)) => {
+                        self.fcx.lower_ty(&inf.to_ty()).raw.into()
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => self
                         .fcx
                         // Ambiguous parts of `ConstArg` are handled in the match arms below
                         .lower_const_arg(ct.as_unambig_ct(), FeedConstTy::Param(param.def_id))
                         .into(),
-                    (GenericParamDefKind::Type { .. }, GenericArg::Infer(inf)) => {
-                        self.fcx.ty_infer(Some(param), inf.span).into()
-                    }
                     (&GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
                         self.fcx.ct_infer(Some(param), inf.span).into()
                     }

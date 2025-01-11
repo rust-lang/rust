@@ -139,29 +139,12 @@ pub(crate) struct HirPlaceholderCollector {
 }
 
 impl<'v> Visitor<'v> for HirPlaceholderCollector {
-    fn visit_ty(&mut self, t: &'v hir::Ty<'v>) {
-        if let hir::TyKind::Infer = t.kind {
-            self.spans.push(t.span);
-        }
-        intravisit::walk_ty(self, t)
-    }
-    fn visit_generic_arg(&mut self, generic_arg: &'v hir::GenericArg<'v>) {
-        match generic_arg {
-            hir::GenericArg::Infer(inf) => {
-                self.spans.push(inf.span);
-                self.may_contain_const_infer = true;
-                intravisit::walk_inf(self, inf);
-            }
-            hir::GenericArg::Type(t) => self.visit_ty(t),
-            _ => {}
-        }
-    }
-    fn visit_const_arg(&mut self, const_arg: &'v hir::ConstArg<'v>) {
-        if let hir::ConstArgKind::Infer(span) = const_arg.kind {
+    fn visit_infer(&mut self, _inf_id: HirId, inf_span: Span, kind: InferKind<'v>) -> Self::Result {
+        self.spans.push(inf_span);
+
+        if let InferKind::Const(_) | InferKind::Ambig(_) = kind {
             self.may_contain_const_infer = true;
-            self.spans.push(span);
         }
-        intravisit::walk_const_arg(self, const_arg)
     }
 }
 

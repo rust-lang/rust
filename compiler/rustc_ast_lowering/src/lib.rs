@@ -1085,7 +1085,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             ast::GenericArg::Lifetime(lt) => GenericArg::Lifetime(self.lower_lifetime(lt)),
             ast::GenericArg::Type(ty) => {
                 match &ty.kind {
-                    TyKind::Infer if self.tcx.features().generic_arg_infer() => {
+                    TyKind::Infer => {
                         return GenericArg::Infer(hir::InferArg {
                             hir_id: self.lower_node_id(ty.id),
                             span: self.lower_span(ty.span),

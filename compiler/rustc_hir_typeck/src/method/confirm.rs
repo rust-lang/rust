@@ -428,14 +428,14 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                         // We handle the ambig portions of `Ty` in the match arms below
                         self.cfcx.lower_ty(ty.as_unambig_ty()).raw.into()
                     }
+                    (GenericParamDefKind::Type { .. }, GenericArg::Infer(inf)) => {
+                        self.cfcx.lower_ty(&inf.to_ty()).raw.into()
+                    }
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => self
                         .cfcx
                         // We handle the ambig portions of `ConstArg` in the match arms below
                         .lower_const_arg(ct.as_unambig_ct(), FeedConstTy::Param(param.def_id))
                         .into(),
-                    (GenericParamDefKind::Type { .. }, GenericArg::Infer(inf)) => {
-                        self.cfcx.ty_infer(Some(param), inf.span).into()
-                    }
                     (GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
                         self.cfcx.ct_infer(Some(param), inf.span).into()
                     }

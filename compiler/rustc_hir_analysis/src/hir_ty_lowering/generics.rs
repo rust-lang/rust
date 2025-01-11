@@ -40,17 +40,6 @@ fn generic_arg_mismatch_err(
         param.kind.descr(),
     );
 
-    if let GenericParamDefKind::Const { .. } = param.kind {
-        if matches!(arg, GenericArg::Type(hir::Ty { kind: hir::TyKind::Infer, .. })) {
-            err.help("const arguments cannot yet be inferred with `_`");
-            tcx.disabled_nightly_features(
-                &mut err,
-                param.def_id.as_local().map(|local| tcx.local_def_id_to_hir_id(local)),
-                [(String::new(), sym::generic_arg_infer)],
-            );
-        }
-    }
-
     let add_braces_suggestion = |arg: &GenericArg<'_>, err: &mut Diag<'_>| {
         let suggestions = vec![
             (arg.span().shrink_to_lo(), String::from("{ ")),
@@ -269,6 +258,21 @@ pub fn lower_generic_args<'tcx: 'a, 'a>(
                             GenericParamDefKind::Const { .. },
                             _,
                         ) => {
+                            if let GenericParamDefKind::Const { .. } = param.kind
+                                && let GenericArg::Infer(inf) = arg
+                                && !tcx.features().generic_arg_infer()
+                            {
+                                rustc_session::parse::feature_err(
+                                    tcx.sess,
+                                    sym::generic_arg_infer,
+                                    inf.span,
+                                    "const arguments cannot yet be inferred with `_`",
+                                )
+                                .emit();
+                            }
+
+                            // We lower to an infer even when the feature gate is not enabled
+                            // as it is useful for diagnostics to be able to see a `ConstKind::Infer`
                             args.push(ctx.provided_kind(&args, param, arg));
                             args_iter.next();
                             params.next();
