@@ -2,15 +2,15 @@
 #![deny(unused_assignments, unused_variables)]
 struct Object;
 
-fn change_object(mut object: &Object) { //~ HELP you might have meant to mutate
+fn change_object(object: &mut Object) { //~ HELP you might have meant to mutate
     let object2 = Object;
-    object = object2; //~ ERROR mismatched types
+    *object = object2; //~ ERROR mismatched types
 }
 
-fn change_object2(mut object: &Object) { //~ ERROR variable `object` is assigned to, but never used
+fn change_object2(object: &mut Object) { //~ ERROR variable `object` is assigned to, but never used
     //~^ HELP you might have meant to mutate
     let object2 = Object;
-    object = &object2;
+    *object = object2;
     //~^ ERROR `object2` does not live long enough
     //~| ERROR value assigned to `object` is never read
 }

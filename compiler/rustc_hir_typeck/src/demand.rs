@@ -822,82 +822,72 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'_>,
         error: Option<TypeError<'tcx>>,
     ) -> bool {
-        let Some(TypeError::Sorts(ExpectedFound { expected, found })) = error else { return false };
-        let ty::Ref(_, inner, hir::Mutability::Not) = expected.kind() else { return false };
-        if !self.can_eq(self.param_env, *inner, found) {
-            // The difference between the expected and found values isn't one level of borrowing.
-            return false;
-        }
-        // We have an `ident = expr;` assignment.
-        let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Assign(lhs, rhs, _), .. }) =
-            self.tcx.parent_hir_node(expr.hir_id)
-        else {
-            return false;
-        };
-        if rhs.hir_id != expr.hir_id || expected.is_closure() {
-            return false;
-        }
-        // We are assigning to some binding.
-        let hir::ExprKind::Path(hir::QPath::Resolved(
-            None,
-            hir::Path { res: hir::def::Res::Local(hir_id), .. },
-        )) = lhs.kind
-        else {
-            return false;
-        };
-        let hir::Node::Pat(pat) = self.tcx.hir_node(*hir_id) else { return false };
-        // The pattern we have is an fn argument.
-        let hir::Node::Param(hir::Param { ty_span, .. }) = self.tcx.parent_hir_node(pat.hir_id)
-        else {
-            return false;
-        };
-        let item = self.tcx.hir().get_parent_item(pat.hir_id);
-        let item = self.tcx.hir_owner_node(item);
-        let Some(fn_decl) = item.fn_decl() else { return false };
+        if let Some(TypeError::Sorts(ExpectedFound { expected, found })) = error
+            && let ty::Ref(_, inner, hir::Mutability::Not) = expected.kind()
 
-        // We have a mutable binding in the argument.
-        let hir::PatKind::Binding(hir::BindingMode::MUT, _hir_id, ident, _) = pat.kind else {
-            return false;
-        };
+            // The difference between the expected and found values is one level of borrowing.
+            && self.can_eq(self.param_env, *inner, found)
 
-        // Look for the type corresponding to the argument pattern we have in the argument list.
-        let Some(ty_sugg) = fn_decl
-            .inputs
-            .iter()
-            .filter_map(|ty| {
-                if ty.span == *ty_span
-                    && let hir::TyKind::Ref(lt, mut_ty) = ty.kind
-                {
-                    // `&'name Ty` -> `&'name mut Ty` or `&Ty` -> `&mut Ty`
-                    Some((
-                        mut_ty.ty.span.shrink_to_lo(),
-                        format!(
-                            "{}mut ",
-                            if lt.ident.span.lo() == lt.ident.span.hi() { "" } else { " " }
-                        ),
-                    ))
-                } else {
-                    None
-                }
-            })
-            .next()
-        else {
-            return false;
-        };
-        let sugg = vec![
-            ty_sugg,
-            (pat.span.until(ident.span), String::new()),
-            (lhs.span.shrink_to_lo(), "*".to_string()),
-        ];
-        // We suggest changing the argument from `mut ident: &Ty` to `ident: &'_ mut Ty` and the
-        // assignment from `ident = val;` to `*ident = val;`.
-        err.multipart_suggestion_verbose(
-            "you might have meant to mutate the pointed at value being passed in, instead of \
-             changing the reference in the local binding",
-            sugg,
-            Applicability::MaybeIncorrect,
-        );
-        return true;
+            // We have an `ident = expr;` assignment.
+            && let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Assign(lhs, rhs, _), .. }) =
+                self.tcx.parent_hir_node(expr.hir_id)
+            && rhs.hir_id == expr.hir_id
+
+            // We are assigning to some binding.
+            && let hir::ExprKind::Path(hir::QPath::Resolved(
+                None,
+                hir::Path { res: hir::def::Res::Local(hir_id), .. },
+            )) = lhs.kind
+            && let hir::Node::Pat(pat) = self.tcx.hir_node(*hir_id)
+
+            // The pattern we have is an fn argument.
+            && let hir::Node::Param(hir::Param { ty_span, .. }) =
+                self.tcx.parent_hir_node(pat.hir_id)
+            && let item = self.tcx.hir().get_parent_item(pat.hir_id)
+            && let item = self.tcx.hir_owner_node(item)
+            && let Some(fn_decl) = item.fn_decl()
+
+            // We have a mutable binding in the argument.
+            && let hir::PatKind::Binding(hir::BindingMode::MUT, _hir_id, ident, _) = pat.kind
+
+            // Look for the type corresponding to the argument pattern we have in the argument list.
+            && let Some(ty_sugg) = fn_decl
+                .inputs
+                .iter()
+                .filter_map(|ty| {
+                    if ty.span == *ty_span
+                        && let hir::TyKind::Ref(lt, x) = ty.kind
+                    {
+                        // `&'name Ty` -> `&'name mut Ty` or `&Ty` -> `&mut Ty`
+                        Some((
+                            x.ty.span.shrink_to_lo(),
+                            format!(
+                                "{}mut ",
+                                if lt.ident.span.lo() == lt.ident.span.hi() { "" } else { " " }
+                            ),
+                        ))
+                    } else {
+                        None
+                    }
+                })
+                .next()
+        {
+            let sugg = vec![
+                ty_sugg,
+                (pat.span.until(ident.span), String::new()),
+                (lhs.span.shrink_to_lo(), "*".to_string()),
+            ];
+            // We suggest changing the argument from `mut ident: &Ty` to `ident: &'_ mut Ty` and the
+            // assignment from `ident = val;` to `*ident = val;`.
+            err.multipart_suggestion_verbose(
+                "you might have meant to mutate the pointed at value being passed in, instead of \
+                changing the reference in the local binding",
+                sugg,
+                Applicability::MaybeIncorrect,
+            );
+            return true;
+        }
+        false
     }
 
     fn annotate_alternative_method_deref(
