@@ -2695,7 +2695,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
 
             err.multipart_suggestion_verbose(
-                "try explicitly pass `&Self` into the Closure as an argument",
+                "try explicitly passing `&Self` into the closure as an argument",
                 sugg,
                 Applicability::MachineApplicable,
             );
