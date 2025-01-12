@@ -28,7 +28,7 @@ fn main() {
     //~^ WARNING literal out of range for `i32`
     //~| HELP consider using the type `u128` instead
 
-    let fail = -0x8000_0000_0000_0000_0000_0000_0000_0000;
+    let fail = -0x8000_0000_0000_0000_0000_0000_0000_0000; // issue #131849
     //~^ WARNING literal out of range for `i32`
     //~| HELP consider using the type `i128` instead
 
