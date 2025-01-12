@@ -63,7 +63,7 @@ string_enum! {
         Incremental => "incremental",
         RunMake => "run-make",
         Ui => "ui",
-        JsDocTest => "js-doc-test",
+        RustdocJs => "rustdoc-js",
         MirOpt => "mir-opt",
         Assembly => "assembly",
         CoverageMap => "coverage-map",
