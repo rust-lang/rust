@@ -2460,16 +2460,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             spans.push_span_label(
                                 param.span,
                                 format!(
-                                    "{} {} to match the {} type of this parameter",
+                                    "{} need{} to match the {} type of this parameter",
                                     display_list_with_comma_and(&other_param_matched_names),
-                                    format!(
-                                        "need{}",
-                                        pluralize!(if other_param_matched_names.len() == 1 {
-                                            0
-                                        } else {
-                                            1
-                                        })
-                                    ),
+                                    pluralize!(if other_param_matched_names.len() == 1 {
+                                        0
+                                    } else {
+                                        1
+                                    }),
                                     matched_ty,
                                 ),
                             );
