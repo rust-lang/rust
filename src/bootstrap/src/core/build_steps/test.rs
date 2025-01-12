@@ -30,7 +30,6 @@ use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
 use crate::{CLang, DocTests, GitRepo, Mode, PathSet, envify};
 
 const ADB_TEST_DIR: &str = "/data/local/tmp/work";
-const RUSTDOC_JS: &str = "rustdoc-js";
 
 /// Runs `cargo test` on various internal tools used by bootstrap.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -915,8 +914,8 @@ impl Step for RustdocJSNotStd {
         builder.ensure(Compiletest {
             compiler: self.compiler,
             target: self.target,
-            mode: RUSTDOC_JS,
-            suite: RUSTDOC_JS,
+            mode: "rustdoc-js",
+            suite: "rustdoc-js",
             path: "tests/rustdoc-js",
             compare_mode: None,
         });
@@ -1727,7 +1726,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         cmd.arg("--minicore-path")
             .arg(builder.src.join("tests").join("auxiliary").join("minicore.rs"));
 
-        let is_rustdoc = suite == "rustdoc-ui" || suite == RUSTDOC_JS;
+        let is_rustdoc = suite == "rustdoc-ui" || suite == "rustdoc-js";
 
         if mode == "run-make" {
             let cargo_path = if builder.top_stage == 0 {
@@ -1755,7 +1754,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         if mode == "rustdoc"
             || mode == "run-make"
             || (mode == "ui" && is_rustdoc)
-            || mode == RUSTDOC_JS
+            || mode == "rustdoc-js"
             || mode == "rustdoc-json"
             || suite == "coverage-run-rustdoc"
         {
@@ -1827,7 +1826,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 
         if let Some(ref nodejs) = builder.config.nodejs {
             cmd.arg("--nodejs").arg(nodejs);
-        } else if mode == RUSTDOC_JS {
+        } else if mode == "rustdoc-js" {
             panic!("need nodejs to run rustdoc-js suite");
         }
         if let Some(ref npm) = builder.config.npm {
