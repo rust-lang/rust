@@ -1,3 +1,4 @@
+//@aux-build:proc_macros.rs
 #![allow(dead_code)]
 #![warn(clippy::redundant_pub_crate)]
 
@@ -111,6 +112,12 @@ mod issue_8732 {
 
     #[allow(unused_imports)]
     pub(crate) use some_macro; // ok: macro exports are exempt
+}
+
+proc_macros::external! {
+    mod priv_mod {
+        pub(crate) fn dummy() {}
+    }
 }
 
 fn main() {}
