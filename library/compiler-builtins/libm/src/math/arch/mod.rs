@@ -17,6 +17,13 @@ cfg_if! {
     } else if #[cfg(target_feature = "sse2")] {
         mod i686;
         pub use i686::{sqrt, sqrtf};
+    } else if #[cfg(all(
+        target_arch = "aarch64", // TODO: also arm64ec?
+        target_feature = "neon",
+        target_endian = "little", // see https://github.com/rust-lang/stdarch/issues/1484
+    ))] {
+        mod aarch64;
+        pub use aarch64::{rint, rintf};
     }
 }
 

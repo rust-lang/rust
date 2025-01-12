@@ -604,6 +604,7 @@
     "rint": {
         "sources": [
             "src/libm_helper.rs",
+            "src/math/arch/aarch64.rs",
             "src/math/arch/wasm32.rs",
             "src/math/rint.rs"
         ],
@@ -611,6 +612,7 @@
     },
     "rintf": {
         "sources": [
+            "src/math/arch/aarch64.rs",
             "src/math/arch/wasm32.rs",
             "src/math/rintf.rs"
         ],
