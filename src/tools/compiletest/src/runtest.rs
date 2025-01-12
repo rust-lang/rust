@@ -17,8 +17,8 @@ use tracing::*;
 
 use crate::common::{
     Assembly, Codegen, CodegenUnits, CompareMode, Config, CoverageMap, CoverageRun, Crashes,
-    DebugInfo, Debugger, FailMode, Incremental, RustdocJs, MirOpt, PassMode, Pretty, RunMake,
-    Rustdoc, RustdocJson, TestPaths, UI_EXTENSIONS, UI_FIXED, UI_RUN_STDERR, UI_RUN_STDOUT,
+    DebugInfo, Debugger, FailMode, Incremental, MirOpt, PassMode, Pretty, RunMake, Rustdoc,
+    RustdocJs, RustdocJson, TestPaths, UI_EXTENSIONS, UI_FIXED, UI_RUN_STDERR, UI_RUN_STDOUT,
     UI_STDERR, UI_STDOUT, UI_SVG, UI_WINDOWS_SVG, Ui, expected_output_path, incremental_dir,
     output_base_dir, output_base_name, output_testname_unique,
 };
@@ -269,7 +269,7 @@ impl<'test> TestCx<'test> {
             Ui => self.run_ui_test(),
             MirOpt => self.run_mir_opt_test(),
             Assembly => self.run_assembly_test(),
-            RustdocJs => self.run_js_doc_test(),
+            RustdocJs => self.run_rustdoc_js_test(),
             CoverageMap => self.run_coverage_map_test(), // see self::coverage
             CoverageRun => self.run_coverage_run_test(), // see self::coverage
             Crashes => self.run_crash_test(),
