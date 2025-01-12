@@ -604,12 +604,14 @@
     "rint": {
         "sources": [
             "src/libm_helper.rs",
+            "src/math/arch/wasm32.rs",
             "src/math/rint.rs"
         ],
         "type": "f64"
     },
     "rintf": {
         "sources": [
+            "src/math/arch/wasm32.rs",
             "src/math/rintf.rs"
         ],
         "type": "f32"

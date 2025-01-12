@@ -1,5 +1,11 @@
 #[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn rintf(x: f32) -> f32 {
+    select_implementation! {
+        name: rintf,
+        use_arch: all(target_arch = "wasm32", intrinsics_enabled),
+        args: x,
+    }
+
     let one_over_e = 1.0 / f32::EPSILON;
     let as_u32: u32 = x.to_bits();
     let exponent: u32 = (as_u32 >> 23) & 0xff;

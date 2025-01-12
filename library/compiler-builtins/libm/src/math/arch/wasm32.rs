@@ -25,6 +25,14 @@ pub fn floorf(x: f32) -> f32 {
     core::arch::wasm32::f32_floor(x)
 }
 
+pub fn rint(x: f64) -> f64 {
+    core::arch::wasm32::f64_nearest(x)
+}
+
+pub fn rintf(x: f32) -> f32 {
+    core::arch::wasm32::f32_nearest(x)
+}
+
 pub fn sqrt(x: f64) -> f64 {
     core::arch::wasm32::f64_sqrt(x)
 }
