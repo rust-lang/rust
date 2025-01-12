@@ -106,7 +106,7 @@ pub(super) fn hints(
                     InlayHintPosition::Before => h.range.start(),
                     InlayHintPosition::After => h.range.end(),
                 },
-                h.label.parts.iter().map(|p| &*p.text).collect(),
+                h.label.parts.iter().map(|p| &*p.text).chain(h.pad_right.then_some(" ")).collect(),
             );
         }
         let edit = edit.finish();
@@ -118,8 +118,10 @@ pub(super) fn hints(
 
 #[cfg(test)]
 mod tests {
+    use expect_test::expect;
+
     use crate::{
-        inlay_hints::tests::{check_with_config, DISABLED_CONFIG},
+        inlay_hints::tests::{check_edit, check_with_config, DISABLED_CONFIG},
         InlayHintsConfig,
     };
 
@@ -192,6 +194,29 @@ fn foo(s @ Struct { field, .. }: &Struct) {}
          //^^^^^^^^^^^^^^^^^^^^&
                   //^^^^^ref
 "#,
+        );
+    }
+
+    #[test]
+    fn edits() {
+        check_edit(
+            InlayHintsConfig { binding_mode_hints: true, ..DISABLED_CONFIG },
+            r#"
+fn main() {
+    match &(0,) {
+        (x,) | (x,) => (),
+        ((x,) | (x,)) => (),
+    }
+}
+"#,
+            expect![[r#"
+                fn main() {
+                    match &(0,) {
+                        &(&((ref x,) | (ref x,))) => (),
+                        &((ref x,) | (ref x,)) => (),
+                    }
+                }
+            "#]],
         );
     }
 }
