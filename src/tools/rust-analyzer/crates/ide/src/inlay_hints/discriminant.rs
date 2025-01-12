@@ -90,7 +90,7 @@ fn variant_hints(
         kind: InlayKind::Discriminant,
         label,
         text_edit: d.ok().map(|val| {
-            config.lazy_text_edit(|| TextEdit::insert(range.start(), format!("{eq_} {val}")))
+            config.lazy_text_edit(|| TextEdit::insert(range.end(), format!("{eq_} {val}")))
         }),
         position: InlayHintPosition::After,
         pad_left: false,
@@ -102,8 +102,10 @@ fn variant_hints(
 }
 #[cfg(test)]
 mod tests {
+    use expect_test::expect;
+
     use crate::inlay_hints::{
-        tests::{check_with_config, DISABLED_CONFIG},
+        tests::{check_edit, check_with_config, DISABLED_CONFIG},
         DiscriminantHints, InlayHintsConfig,
     };
 
@@ -208,6 +210,35 @@ enum Enum {
     Variant6,
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn edit() {
+        check_edit(
+            InlayHintsConfig { discriminant_hints: DiscriminantHints::Always, ..DISABLED_CONFIG },
+            r#"
+#[repr(u8)]
+enum Enum {
+    Variant(),
+    Variant1,
+    Variant2 {},
+    Variant3,
+    Variant5,
+    Variant6,
+}
+"#,
+            expect![[r#"
+                #[repr(u8)]
+                enum Enum {
+                    Variant() = 0,
+                    Variant1 = 1,
+                    Variant2 {} = 2,
+                    Variant3 = 3,
+                    Variant5 = 4,
+                    Variant6 = 5,
+                }
+            "#]],
         );
     }
 }
