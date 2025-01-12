@@ -43,21 +43,6 @@ use crate::vec::Vec;
 ///
 /// The `Debug` and `Display` implementations for `ByteString` are the same as those for `ByteStr`,
 /// showing invalid UTF-8 as hex escapes or the Unicode replacement character, respectively.
-///
-/// # Examples
-///
-/// You can create a new `ByteString` from a `Vec<u8>` directly, or via a `From` impl from various
-/// string types:
-///
-/// ```
-/// # #![feature(bstr)]
-/// # use std::bstr::ByteString;
-/// let s1 = ByteString(vec![b'H', b'e', b'l', b'l', b'o']);
-/// let s2 = ByteString::from("Hello");
-/// let s3 = ByteString::from(b"Hello");
-/// assert_eq!(s1, s2);
-/// assert_eq!(s2, s3);
-/// ```
 #[unstable(feature = "bstr", issue = "134915")]
 #[repr(transparent)]
 #[derive(Clone)]
@@ -193,40 +178,42 @@ impl Default for ByteString {
     }
 }
 
-#[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
-#[unstable(feature = "bstr", issue = "134915")]
-impl<'a, const N: usize> From<&'a [u8; N]> for ByteString {
-    #[inline]
-    fn from(s: &'a [u8; N]) -> Self {
-        ByteString(s.as_slice().to_vec())
-    }
-}
-
-#[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
-#[unstable(feature = "bstr", issue = "134915")]
-impl<const N: usize> From<[u8; N]> for ByteString {
-    #[inline]
-    fn from(s: [u8; N]) -> Self {
-        ByteString(s.as_slice().to_vec())
-    }
-}
-
-#[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
-#[unstable(feature = "bstr", issue = "134915")]
-impl<'a> From<&'a [u8]> for ByteString {
-    #[inline]
-    fn from(s: &'a [u8]) -> Self {
-        ByteString(s.to_vec())
-    }
-}
-
-#[unstable(feature = "bstr", issue = "134915")]
-impl From<Vec<u8>> for ByteString {
-    #[inline]
-    fn from(s: Vec<u8>) -> Self {
-        ByteString(s)
-    }
-}
+// Omitted due to inference failures
+//
+// #[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
+// #[unstable(feature = "bstr", issue = "134915")]
+// impl<'a, const N: usize> From<&'a [u8; N]> for ByteString {
+//     #[inline]
+//     fn from(s: &'a [u8; N]) -> Self {
+//         ByteString(s.as_slice().to_vec())
+//     }
+// }
+//
+// #[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
+// #[unstable(feature = "bstr", issue = "134915")]
+// impl<const N: usize> From<[u8; N]> for ByteString {
+//     #[inline]
+//     fn from(s: [u8; N]) -> Self {
+//         ByteString(s.as_slice().to_vec())
+//     }
+// }
+//
+// #[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
+// #[unstable(feature = "bstr", issue = "134915")]
+// impl<'a> From<&'a [u8]> for ByteString {
+//     #[inline]
+//     fn from(s: &'a [u8]) -> Self {
+//         ByteString(s.to_vec())
+//     }
+// }
+//
+// #[unstable(feature = "bstr", issue = "134915")]
+// impl From<Vec<u8>> for ByteString {
+//     #[inline]
+//     fn from(s: Vec<u8>) -> Self {
+//         ByteString(s)
+//     }
+// }
 
 #[unstable(feature = "bstr", issue = "134915")]
 impl From<ByteString> for Vec<u8> {
@@ -236,22 +223,24 @@ impl From<ByteString> for Vec<u8> {
     }
 }
 
-#[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
-#[unstable(feature = "bstr", issue = "134915")]
-impl<'a> From<&'a str> for ByteString {
-    #[inline]
-    fn from(s: &'a str) -> Self {
-        ByteString(s.as_bytes().to_vec())
-    }
-}
-
-#[unstable(feature = "bstr", issue = "134915")]
-impl From<String> for ByteString {
-    #[inline]
-    fn from(s: String) -> Self {
-        ByteString(s.into_bytes())
-    }
-}
+// Omitted due to inference failures
+//
+// #[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
+// #[unstable(feature = "bstr", issue = "134915")]
+// impl<'a> From<&'a str> for ByteString {
+//     #[inline]
+//     fn from(s: &'a str) -> Self {
+//         ByteString(s.as_bytes().to_vec())
+//     }
+// }
+//
+// #[unstable(feature = "bstr", issue = "134915")]
+// impl From<String> for ByteString {
+//     #[inline]
+//     fn from(s: String) -> Self {
+//         ByteString(s.into_bytes())
+//     }
+// }
 
 #[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
 #[unstable(feature = "bstr", issue = "134915")]

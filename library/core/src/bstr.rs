@@ -246,21 +246,23 @@ impl<'a> Default for &'a mut ByteStr {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
-impl<'a, const N: usize> From<&'a [u8; N]> for &'a ByteStr {
-    #[inline]
-    fn from(s: &'a [u8; N]) -> Self {
-        ByteStr::from_bytes(s)
-    }
-}
-
-#[unstable(feature = "bstr", issue = "134915")]
-impl<'a> From<&'a [u8]> for &'a ByteStr {
-    #[inline]
-    fn from(s: &'a [u8]) -> Self {
-        ByteStr::from_bytes(s)
-    }
-}
+// Omitted due to inference failures
+//
+// #[unstable(feature = "bstr", issue = "134915")]
+// impl<'a, const N: usize> From<&'a [u8; N]> for &'a ByteStr {
+//     #[inline]
+//     fn from(s: &'a [u8; N]) -> Self {
+//         ByteStr::from_bytes(s)
+//     }
+// }
+//
+// #[unstable(feature = "bstr", issue = "134915")]
+// impl<'a> From<&'a [u8]> for &'a ByteStr {
+//     #[inline]
+//     fn from(s: &'a [u8]) -> Self {
+//         ByteStr::from_bytes(s)
+//     }
+// }
 
 // Omitted due to slice-from-array-issue-113238:
 //
@@ -280,13 +282,15 @@ impl<'a> From<&'a [u8]> for &'a ByteStr {
 //     }
 // }
 
-#[unstable(feature = "bstr", issue = "134915")]
-impl<'a> From<&'a str> for &'a ByteStr {
-    #[inline]
-    fn from(s: &'a str) -> Self {
-        ByteStr::from_bytes(s.as_bytes())
-    }
-}
+// Omitted due to inference failures
+//
+// #[unstable(feature = "bstr", issue = "134915")]
+// impl<'a> From<&'a str> for &'a ByteStr {
+//     #[inline]
+//     fn from(s: &'a str) -> Self {
+//         ByteStr::from_bytes(s.as_bytes())
+//     }
+// }
 
 #[unstable(feature = "bstr", issue = "134915")]
 impl hash::Hash for ByteStr {
