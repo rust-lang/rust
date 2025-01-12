@@ -385,7 +385,10 @@ impl Step for CI {
         let library_clippy_cfg = LintConfig {
             allow: vec!["clippy::all".into()],
             warn: vec![],
-            deny: vec!["clippy::correctness".into()],
+            deny: vec![
+                "clippy::correctness".into(),
+                "clippy::char_lit_as_u8".into(),
+            ],
             forbid: vec![],
         };
         let compiler_clippy_cfg = LintConfig {
@@ -393,6 +396,7 @@ impl Step for CI {
             warn: vec![],
             deny: vec![
                 "clippy::correctness".into(),
+                "clippy::char_lit_as_u8".into(),
                 "clippy::clone_on_ref_ptr".into(),
                 "clippy::format_in_format_args".into(),
                 "clippy::four_forward_slashes".into(),
