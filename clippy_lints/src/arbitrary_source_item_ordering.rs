@@ -445,8 +445,8 @@ fn convert_assoc_item_kind(value: AssocItemKind) -> SourceItemOrderingTraitAssoc
     #[allow(clippy::enum_glob_use)] // Very local glob use for legibility.
     use SourceItemOrderingTraitAssocItemKind::*;
     match value {
-        AssocItemKind::Const { .. } => Const,
-        AssocItemKind::Type { .. } => Type,
+        AssocItemKind::Const => Const,
+        AssocItemKind::Type => Type,
         AssocItemKind::Fn { .. } => Fn,
     }
 }
