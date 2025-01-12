@@ -51,6 +51,10 @@ macro_rules! string_enum {
     }
 }
 
+// Make the macro visible outside of this module, for tests.
+#[cfg(test)]
+pub(crate) use string_enum;
+
 string_enum! {
     #[derive(Clone, Copy, PartialEq, Debug)]
     pub enum Mode {
