@@ -1015,8 +1015,8 @@ impl Step for Lld {
 
         let out_dir = builder.lld_out(target);
 
-        let done_stamp = BuildStamp::new(&out_dir).with_prefix("lld");
-        if done_stamp.path().exists() {
+        let lld_stamp = BuildStamp::new(&out_dir).with_prefix("lld");
+        if lld_stamp.path().exists() {
             return out_dir;
         }
 
@@ -1091,7 +1091,7 @@ impl Step for Lld {
 
         cfg.build();
 
-        t!(done_stamp.write());
+        t!(lld_stamp.write());
         out_dir
     }
 }
