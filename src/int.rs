@@ -4,10 +4,10 @@
 
 use gccjit::{BinaryOp, ComparisonOp, FunctionType, Location, RValue, ToRValue, Type, UnaryOp};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
-use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeMethods, BuilderMethods, OverflowOp};
-use rustc_middle::ty::{ParamEnv, Ty};
-use rustc_target::abi::call::{ArgAbi, ArgAttributes, Conv, FnAbi, PassMode};
+use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeCodegenMethods, BuilderMethods, OverflowOp};
+use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::Endian;
+use rustc_target::abi::call::{ArgAbi, ArgAttributes, Conv, FnAbi, PassMode};
 use rustc_target::spec;
 
 use crate::builder::{Builder, ToGccComp};
@@ -380,7 +380,10 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let overflow_field = self.context.new_field(self.location, self.bool_type, "overflow");
 
         let ret_ty = Ty::new_tup(self.tcx, &[self.tcx.types.i128, self.tcx.types.bool]);
-        let layout = self.tcx.layout_of(ParamEnv::reveal_all().and(ret_ty)).unwrap();
+        let layout = self
+            .tcx
+            .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ret_ty))
+            .unwrap();
 
         let arg_abi = ArgAbi { layout, mode: PassMode::Direct(ArgAttributes::new()) };
         let mut fn_abi = FnAbi {
@@ -395,11 +398,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
         let indirect = matches!(fn_abi.ret.mode, PassMode::Indirect { .. });
 
-        let return_type = self.context.new_struct_type(
-            self.location,
-            "result_overflow",
-            &[result_field, overflow_field],
-        );
+        let return_type = self
+            .context
+            .new_struct_type(self.location, "result_overflow", &[result_field, overflow_field]);
         let result = if indirect {
             let return_value =
                 self.current_func().new_local(self.location, return_type.as_type(), "return_value");
@@ -416,11 +417,11 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             );
             self.llbb().add_eval(
                 self.location,
-                self.context.new_call(
-                    self.location,
-                    func,
-                    &[return_value.get_address(self.location), lhs, rhs],
-                ),
+                self.context.new_call(self.location, func, &[
+                    return_value.get_address(self.location),
+                    lhs,
+                    rhs,
+                ]),
             );
             return_value.to_rvalue()
         } else {

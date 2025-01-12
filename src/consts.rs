@@ -1,11 +1,13 @@
 #[cfg(feature = "master")]
 use gccjit::{FnAttribute, VarAttribute, Visibility};
 use gccjit::{Function, GlobalKind, LValue, RValue, ToRValue, Type};
-use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods, StaticMethods};
+use rustc_codegen_ssa::traits::{
+    BaseTypeCodegenMethods, ConstCodegenMethods, StaticCodegenMethods,
+};
 use rustc_hir::def::DefKind;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::interpret::{
-    self, read_target_uint, ConstAllocation, ErrorHandled, Scalar as InterpScalar,
+    self, ConstAllocation, ErrorHandled, Scalar as InterpScalar, read_target_uint,
 };
 use rustc_middle::mir::mono::Linkage;
 use rustc_middle::ty::layout::LayoutOf;
@@ -38,7 +40,7 @@ fn set_global_alignment<'gcc, 'tcx>(
     gv.set_alignment(align.bytes() as i32);
 }
 
-impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
+impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
     fn static_addr_of(&self, cv: RValue<'gcc>, align: Align, kind: Option<&str>) -> RValue<'gcc> {
         // TODO(antoyo): implement a proper rvalue comparison in libgccjit instead of doing the
         // following:
@@ -144,7 +146,7 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
 
         // Wasm statics with custom link sections get special treatment as they
         // go into custom sections of the wasm executable.
-        if self.tcx.sess.opts.target_triple.triple().starts_with("wasm32") {
+        if self.tcx.sess.target.is_like_wasm {
             if let Some(_section) = attrs.link_section {
                 unimplemented!();
             }
@@ -213,7 +215,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let gcc_type = if nested {
             self.type_i8()
         } else {
-            let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
+            let ty = instance.ty(self.tcx, ty::TypingEnv::fully_monomorphized());
             self.layout_of(ty).gcc_type(self)
         };
 
@@ -250,7 +252,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             let global = self.declare_global(
                 sym,
                 gcc_type,
-                GlobalKind::Exported,
+                GlobalKind::Imported,
                 is_tls,
                 fn_attrs.link_section,
             );

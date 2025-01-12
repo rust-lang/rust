@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::ffi::OsStr;
-use std::fs::{remove_dir_all, File};
+use std::fs::{File, remove_dir_all};
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -93,6 +93,7 @@ struct TestArg {
     sysroot_panic_abort: bool,
     config_info: ConfigInfo,
     sysroot_features: Vec<String>,
+    keep_lto_tests: bool,
 }
 
 impl TestArg {
@@ -127,6 +128,9 @@ impl TestArg {
                 }
                 "--sysroot-panic-abort" => {
                     test_arg.sysroot_panic_abort = true;
+                }
+                "--keep-lto-tests" => {
+                    test_arg.keep_lto_tests = true;
                 }
                 "--sysroot-features" => match args.next() {
                     Some(feature) if !feature.is_empty() => {
@@ -194,7 +198,7 @@ fn build_if_no_backend(env: &Env, args: &TestArg) -> Result<(), String> {
 }
 
 fn clean(_env: &Env, args: &TestArg) -> Result<(), String> {
-    let _ = std::fs::remove_dir_all(&args.config_info.cargo_target_dir);
+    let _ = remove_dir_all(&args.config_info.cargo_target_dir);
     let path = Path::new(&args.config_info.cargo_target_dir).join("gccjit");
     create_dir(&path)
 }
@@ -563,7 +567,7 @@ fn asm_tests(env: &Env, args: &TestArg) -> Result<(), String> {
             &"--stage",
             &"0",
             &"tests/assembly/asm",
-            &"--rustc-args",
+            &"--compiletest-rustc-args",
             &rustc_args,
         ],
         Some(&rust_dir),
@@ -835,8 +839,7 @@ fn valid_ui_error_pattern_test(file: &str) -> bool {
     .any(|to_ignore| file.ends_with(to_ignore))
 }
 
-#[rustfmt::skip]
-fn contains_ui_error_patterns(file_path: &Path) -> Result<bool, String> {
+fn contains_ui_error_patterns(file_path: &Path, keep_lto_tests: bool) -> Result<bool, String> {
     // Tests generating errors.
     let file = File::open(file_path)
         .map_err(|error| format!("Failed to read `{}`: {:?}", file_path.display(), error))?;
@@ -845,19 +848,22 @@ fn contains_ui_error_patterns(file_path: &Path) -> Result<bool, String> {
         if line.is_empty() {
             continue;
         }
-        if [
-            "//@ error-pattern:",
-            "//@ build-fail",
-            "//@ run-fail",
-            "-Cllvm-args",
-            "//~",
-            "thread",
-        ]
+        if ["//@ error-pattern:", "//@ build-fail", "//@ run-fail", "-Cllvm-args", "//~", "thread"]
             .iter()
             .any(|check| line.contains(check))
         {
             return Ok(true);
         }
+
+        if !keep_lto_tests
+            && (line.contains("-Clto")
+                || line.contains("-C lto")
+                || line.contains("compile-flags: -Clinker-plugin-lto"))
+            && !line.contains("-Clto=thin")
+        {
+            return Ok(true);
+        }
+
         if line.contains("//[") && line.contains("]~") {
             return Ok(true);
         }
@@ -903,7 +909,7 @@ where
                 rust_path.join("tests/ui"),
                 &mut |_dir| Ok(()),
                 &mut |file_path| {
-                    if contains_ui_error_patterns(file_path)? {
+                    if contains_ui_error_patterns(file_path, args.keep_lto_tests)? {
                         Ok(())
                     } else {
                         remove_file(file_path).map_err(|e| e.to_string())
@@ -928,7 +934,7 @@ where
                     .iter()
                     .any(|name| *name == dir_name)
                     {
-                        std::fs::remove_dir_all(dir).map_err(|error| {
+                        remove_dir_all(dir).map_err(|error| {
                             format!("Failed to remove folder `{}`: {:?}", dir.display(), error)
                         })?;
                     }
@@ -940,27 +946,42 @@ where
 
             // These two functions are used to remove files that are known to not be working currently
             // with the GCC backend to reduce noise.
-            fn dir_handling(dir: &Path) -> Result<(), String> {
-                if dir.file_name().map(|name| name == "auxiliary").unwrap_or(true) {
-                    return Ok(());
-                }
+            fn dir_handling(keep_lto_tests: bool) -> impl Fn(&Path) -> Result<(), String> {
+                move |dir| {
+                    if dir.file_name().map(|name| name == "auxiliary").unwrap_or(true) {
+                        return Ok(());
+                    }
 
-                walk_dir(dir, &mut dir_handling, &mut file_handling, false)
-            }
-            fn file_handling(file_path: &Path) -> Result<(), String> {
-                if !file_path.extension().map(|extension| extension == "rs").unwrap_or(false) {
-                    return Ok(());
+                    walk_dir(
+                        dir,
+                        &mut dir_handling(keep_lto_tests),
+                        &mut file_handling(keep_lto_tests),
+                        false,
+                    )
                 }
-                let path_str = file_path.display().to_string().replace("\\", "/");
-                if valid_ui_error_pattern_test(&path_str) {
-                    return Ok(());
-                } else if contains_ui_error_patterns(file_path)? {
-                    return remove_file(&file_path);
-                }
-                Ok(())
             }
 
-            walk_dir(rust_path.join("tests/ui"), &mut dir_handling, &mut file_handling, false)?;
+            fn file_handling(keep_lto_tests: bool) -> impl Fn(&Path) -> Result<(), String> {
+                move |file_path| {
+                    if !file_path.extension().map(|extension| extension == "rs").unwrap_or(false) {
+                        return Ok(());
+                    }
+                    let path_str = file_path.display().to_string().replace("\\", "/");
+                    if valid_ui_error_pattern_test(&path_str) {
+                        return Ok(());
+                    } else if contains_ui_error_patterns(file_path, keep_lto_tests)? {
+                        return remove_file(&file_path);
+                    }
+                    Ok(())
+                }
+            }
+
+            walk_dir(
+                rust_path.join("tests/ui"),
+                &mut dir_handling(args.keep_lto_tests),
+                &mut file_handling(args.keep_lto_tests),
+                false,
+            )?;
         }
         let nb_parts = args.nb_parts.unwrap_or(0);
         if nb_parts > 0 {
@@ -1032,7 +1053,7 @@ where
             &"--stage",
             &"0",
             &format!("tests/{}", test_type),
-            &"--rustc-args",
+            &"--compiletest-rustc-args",
             &rustc_args,
         ],
         Some(&rust_path),
@@ -1173,7 +1194,7 @@ fn remove_files_callback<'a>(
                     files.split('\n').map(|line| line.trim()).filter(|line| !line.is_empty())
                 {
                     let path = rust_path.join(file);
-                    if let Err(e) = std::fs::remove_dir_all(&path) {
+                    if let Err(e) = remove_dir_all(&path) {
                         println!("Failed to remove directory `{}`: {}", path.display(), e);
                     }
                 }

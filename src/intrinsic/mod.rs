@@ -7,28 +7,28 @@ use std::iter;
 #[cfg(feature = "master")]
 use gccjit::FunctionType;
 use gccjit::{ComparisonOp, Function, RValue, ToRValue, Type, UnaryOp};
+use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::common::IntPredicate;
 use rustc_codegen_ssa::errors::InvalidMonomorphization;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::{
-    ArgAbiMethods, BuilderMethods, ConstMethods, IntrinsicCallMethods,
+    ArgAbiBuilderMethods, BuilderMethods, ConstCodegenMethods, IntrinsicCallBuilderMethods,
 };
 #[cfg(feature = "master")]
-use rustc_codegen_ssa::traits::{BaseTypeMethods, MiscMethods};
-use rustc_codegen_ssa::MemFlags;
+use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, MiscCodegenMethods};
 use rustc_middle::bug;
-use rustc_middle::ty::layout::LayoutOf;
 #[cfg(feature = "master")]
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
+use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance, Ty};
-use rustc_span::{sym, Span, Symbol};
-use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
+use rustc_span::{Span, Symbol, sym};
 use rustc_target::abi::HasDataLayout;
+use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
+use rustc_target::spec::PanicStrategy;
 #[cfg(feature = "master")]
 use rustc_target::spec::abi::Abi;
-use rustc_target::spec::PanicStrategy;
 
 #[cfg(feature = "master")]
 use crate::abi::FnAbiGccExt;
@@ -66,6 +66,9 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
         sym::log2f64 => "log2",
         sym::fmaf32 => "fmaf",
         sym::fmaf64 => "fma",
+        // FIXME: calling `fma` from libc without FMA target feature uses expensive sofware emulation
+        sym::fmuladdf32 => "fmaf", // TODO: use gcc intrinsic analogous to llvm.fmuladd.f32
+        sym::fmuladdf64 => "fma",  // TODO: use gcc intrinsic analogous to llvm.fmuladd.f64
         sym::fabsf32 => "fabsf",
         sym::fabsf64 => "fabs",
         sym::minnumf32 => "fminf",
@@ -94,7 +97,7 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
     Some(cx.context.get_builtin_function(gcc_name))
 }
 
-impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
+impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn codegen_intrinsic_call(
         &mut self,
         instance: Instance<'tcx>,
@@ -104,7 +107,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         span: Span,
     ) -> Result<(), Instance<'tcx>> {
         let tcx = self.tcx;
-        let callee_ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
+        let callee_ty = instance.ty(tcx, self.typing_env());
 
         let (def_id, fn_args) = match *callee_ty.kind() {
             ty::FnDef(def_id, fn_args) => (def_id, fn_args),
@@ -112,7 +115,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         };
 
         let sig = callee_ty.fn_sig(tcx);
-        let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), sig);
+        let sig = tcx.normalize_erasing_late_bound_regions(self.typing_env(), sig);
         let arg_tys = sig.inputs();
         let ret_ty = sig.output();
         let name = tcx.item_name(def_id);
@@ -136,8 +139,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
                 )
             }
-            sym::likely => self.expect(args[0].immediate(), true),
-            sym::unlikely => self.expect(args[0].immediate(), false),
             sym::is_val_statically_known => {
                 let a = args[0].immediate();
                 let builtin = self.context.get_builtin_function("__builtin_constant_p");
@@ -291,13 +292,13 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
             }
 
             sym::raw_eq => {
-                use rustc_target::abi::Abi::*;
+                use rustc_abi::BackendRepr::*;
                 let tp_ty = fn_args.type_at(0);
                 let layout = self.layout_of(tp_ty).layout;
-                let _use_integer_compare = match layout.abi() {
+                let _use_integer_compare = match layout.backend_repr() {
                     Scalar(_) | ScalarPair(_, _) => true,
                     Uninhabited | Vector { .. } => false,
-                    Aggregate { .. } => {
+                    Memory { .. } => {
                         // For rusty ABIs, small aggregates are actually passed
                         // as `RegKind::Integer` (see `FnAbi::adjust_for_abi`),
                         // so we re-use that same threshold here.
@@ -441,7 +442,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 }
 
-impl<'a, 'gcc, 'tcx> ArgAbiMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
+impl<'a, 'gcc, 'tcx> ArgAbiBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn store_fn_arg(
         &mut self,
         arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,

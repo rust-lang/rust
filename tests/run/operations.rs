@@ -38,8 +38,8 @@ pub trait Deref {
     fn deref(&self) -> &Self::Target;
 }
 
-#[lang = "receiver"]
-trait Receiver {
+#[lang = "legacy_receiver"]
+trait LegacyReceiver {
 }
 
 #[lang = "freeze"]
@@ -64,9 +64,11 @@ mod libc {
 }
 
 mod intrinsics {
-    extern "rust-intrinsic" {
-        #[rustc_safe_intrinsic]
-        pub fn abort() -> !;
+    #[rustc_nounwind]
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    pub fn abort() -> ! {
+        loop {}
     }
 }
 

@@ -7,32 +7,32 @@ use gccjit::{
     BinaryOp, Block, ComparisonOp, Context, Function, LValue, Location, RValue, ToRValue, Type,
     UnaryOp,
 };
-use rustc_apfloat::{ieee, Float, Round, Status};
+use rustc_abi as abi;
+use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout, WrappingRange};
+use rustc_apfloat::{Float, Round, Status, ieee};
+use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::common::{
     AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope, TypeKind,
 };
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{
-    BackendTypes, BaseTypeMethods, BuilderMethods, ConstMethods, HasCodegen, LayoutTypeMethods,
-    OverflowOp, StaticBuilderMethods,
+    BackendTypes, BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods,
+    LayoutTypeCodegenMethods, OverflowOp, StaticBuilderMethods,
 };
-use rustc_codegen_ssa::MemFlags;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{
-    FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, HasTyCtxt, LayoutError, LayoutOfHelpers,
-    TyAndLayout,
+    FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTyCtxt, HasTypingEnv, LayoutError, LayoutOfHelpers,
 };
-use rustc_middle::ty::{Instance, ParamEnv, Ty, TyCtxt};
-use rustc_span::def_id::DefId;
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_span::Span;
+use rustc_span::def_id::DefId;
 use rustc_target::abi::call::FnAbi;
-use rustc_target::abi::{self, Align, HasDataLayout, Size, TargetDataLayout, WrappingRange};
-use rustc_target::spec::{HasTargetSpec, HasWasmCAbiOpt, Target, WasmCAbi};
+use rustc_target::spec::{HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, Target, WasmCAbi, X86Abi};
 
-use crate::common::{type_is_pointer, SignType, TypeReflection};
+use crate::common::{SignType, TypeReflection, type_is_pointer};
 use crate::context::CodegenCx;
 use crate::intrinsic::llvm;
 use crate::type_of::LayoutGccExt;
@@ -155,11 +155,14 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         // NOTE: not sure why, but we have the wrong type here.
         let int_type = compare_exchange.get_param(2).to_rvalue().get_type();
         let src = self.context.new_bitcast(self.location, src, int_type);
-        self.context.new_call(
-            self.location,
-            compare_exchange,
-            &[dst, expected, src, weak, order, failure_order],
-        )
+        self.context.new_call(self.location, compare_exchange, &[
+            dst,
+            expected,
+            src,
+            weak,
+            order,
+            failure_order,
+        ])
     }
 
     pub fn assign(&self, lvalue: LValue<'gcc>, value: RValue<'gcc>) {
@@ -454,10 +457,6 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     }
 }
 
-impl<'gcc, 'tcx> HasCodegen<'tcx> for Builder<'_, 'gcc, 'tcx> {
-    type CodegenCx = CodegenCx<'gcc, 'tcx>;
-}
-
 impl<'tcx> HasTyCtxt<'tcx> for Builder<'_, '_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.cx.tcx()
@@ -471,8 +470,6 @@ impl HasDataLayout for Builder<'_, '_, '_> {
 }
 
 impl<'tcx> LayoutOfHelpers<'tcx> for Builder<'_, '_, 'tcx> {
-    type LayoutOfResult = TyAndLayout<'tcx>;
-
     #[inline]
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
         self.cx.handle_layout_err(err, span, ty)
@@ -480,8 +477,6 @@ impl<'tcx> LayoutOfHelpers<'tcx> for Builder<'_, '_, 'tcx> {
 }
 
 impl<'tcx> FnAbiOfHelpers<'tcx> for Builder<'_, '_, 'tcx> {
-    type FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>;
-
     #[inline]
     fn handle_fn_abi_err(
         &self,
@@ -503,6 +498,7 @@ impl<'a, 'gcc, 'tcx> Deref for Builder<'a, 'gcc, 'tcx> {
 
 impl<'gcc, 'tcx> BackendTypes for Builder<'_, 'gcc, 'tcx> {
     type Value = <CodegenCx<'gcc, 'tcx> as BackendTypes>::Value;
+    type Metadata = <CodegenCx<'gcc, 'tcx> as BackendTypes>::Metadata;
     type Function = <CodegenCx<'gcc, 'tcx> as BackendTypes>::Function;
     type BasicBlock = <CodegenCx<'gcc, 'tcx> as BackendTypes>::BasicBlock;
     type Type = <CodegenCx<'gcc, 'tcx> as BackendTypes>::Type;
@@ -525,6 +521,8 @@ fn set_rvalue_location<'a, 'gcc, 'tcx>(
 }
 
 impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
+    type CodegenCx = CodegenCx<'gcc, 'tcx>;
+
     fn build(cx: &'a CodegenCx<'gcc, 'tcx>, block: Block<'gcc>) -> Builder<'a, 'gcc, 'tcx> {
         Builder::with_cx(cx, block)
     }
@@ -1001,12 +999,12 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         ) {
             let vr = scalar.valid_range(bx);
             match scalar.primitive() {
-                abi::Int(..) => {
+                abi::Primitive::Int(..) => {
                     if !scalar.is_always_valid(bx) {
                         bx.range_metadata(load, vr);
                     }
                 }
-                abi::Pointer(_) if vr.start < vr.end && !vr.contains(0) => {
+                abi::Primitive::Pointer(_) if vr.start < vr.end && !vr.contains(0) => {
                     bx.nonnull_metadata(load);
                 }
                 _ => {}
@@ -1018,11 +1016,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             OperandValue::Ref(place.val)
         } else if place.layout.is_gcc_immediate() {
             let load = self.load(place.layout.gcc_type(self), place.val.llval, place.val.align);
-            if let abi::Abi::Scalar(ref scalar) = place.layout.abi {
+            if let abi::BackendRepr::Scalar(ref scalar) = place.layout.backend_repr {
                 scalar_load_metadata(self, load, scalar);
             }
             OperandValue::Immediate(self.to_immediate(load, place.layout))
-        } else if let abi::Abi::ScalarPair(ref a, ref b) = place.layout.abi {
+        } else if let abi::BackendRepr::ScalarPair(ref a, ref b) = place.layout.backend_repr {
             let b_offset = a.size(self).align_to(b.align(self).abi);
 
             let mut load = |i, scalar: &abi::Scalar, align| {
@@ -1078,11 +1076,9 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let align = dest.val.align.restrict_for_offset(dest.layout.field(self.cx(), 0).size);
         cg_elem.val.store(self, PlaceRef::new_sized_aligned(current_val, cg_elem.layout, align));
 
-        let next = self.inbounds_gep(
-            self.backend_type(cg_elem.layout),
-            current.to_rvalue(),
-            &[self.const_usize(1)],
-        );
+        let next = self.inbounds_gep(self.backend_type(cg_elem.layout), current.to_rvalue(), &[
+            self.const_usize(1),
+        ]);
         self.llbb().add_assignment(self.location, current, next);
         self.br(header_bb);
 
@@ -1125,6 +1121,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.llbb().add_assignment(self.location, modified_destination, val);
         // TODO(antoyo): handle `MemFlags::NONTEMPORAL`.
         // NOTE: dummy value here since it's never used. FIXME(antoyo): API should not return a value here?
+        // When adding support for NONTEMPORAL, make sure to not just emit MOVNT on x86; see the
+        // LLVM backend for details.
         self.cx.context.new_rvalue_zero(self.type_i32())
     }
 
@@ -1733,16 +1731,6 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn fptosi_sat(&mut self, val: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
         self.fptoint_sat(true, val, dest_ty)
     }
-
-    fn instrprof_increment(
-        &mut self,
-        _fn_name: RValue<'gcc>,
-        _hash: RValue<'gcc>,
-        _num_counters: RValue<'gcc>,
-        _index: RValue<'gcc>,
-    ) {
-        unimplemented!();
-    }
 }
 
 impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
@@ -1919,15 +1907,20 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         v2: RValue<'gcc>,
         mask: RValue<'gcc>,
     ) -> RValue<'gcc> {
-        let struct_type = mask.get_type().is_struct().expect("mask should be of struct type");
+        // NOTE: if the `mask` is a constant value, the following code will copy it in many places,
+        // which will make GCC create a lot (+4000) local variables in some cases.
+        // So we assign it to an explicit local variable once to avoid this.
+        let func = self.current_func();
+        let mask_var = func.new_local(self.location, mask.get_type(), "mask");
+        let block = self.block;
+        block.add_assignment(self.location, mask_var, mask);
+        let mask = mask_var.to_rvalue();
 
         // TODO(antoyo): use a recursive unqualified() here.
         let vector_type = v1.get_type().unqualified().dyncast_vector().expect("vector type");
         let element_type = vector_type.get_element_type();
         let vec_num_units = vector_type.get_num_units();
 
-        let mask_num_units = struct_type.get_field_count();
-        let mut vector_elements = vec![];
         let mask_element_type = if element_type.is_integral() {
             element_type
         } else {
@@ -1938,19 +1931,41 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             #[cfg(not(feature = "master"))]
             self.int_type
         };
-        for i in 0..mask_num_units {
-            let field = struct_type.get_field(i as i32);
-            vector_elements.push(self.context.new_cast(
-                self.location,
-                mask.access_field(self.location, field).to_rvalue(),
-                mask_element_type,
-            ));
-        }
+
+        // NOTE: this condition is needed because we call shuffle_vector in the implementation of
+        // simd_gather.
+        let mut mask_elements = if let Some(vector_type) = mask.get_type().dyncast_vector() {
+            let mask_num_units = vector_type.get_num_units();
+            let mut mask_elements = vec![];
+            for i in 0..mask_num_units {
+                let index = self.context.new_rvalue_from_long(self.cx.type_u32(), i as _);
+                mask_elements.push(self.context.new_cast(
+                    self.location,
+                    self.extract_element(mask, index).to_rvalue(),
+                    mask_element_type,
+                ));
+            }
+            mask_elements
+        } else {
+            let struct_type = mask.get_type().is_struct().expect("mask should be of struct type");
+            let mask_num_units = struct_type.get_field_count();
+            let mut mask_elements = vec![];
+            for i in 0..mask_num_units {
+                let field = struct_type.get_field(i as i32);
+                mask_elements.push(self.context.new_cast(
+                    self.location,
+                    mask.access_field(self.location, field).to_rvalue(),
+                    mask_element_type,
+                ));
+            }
+            mask_elements
+        };
+        let mask_num_units = mask_elements.len();
 
         // NOTE: the mask needs to be the same length as the input vectors, so add the missing
         // elements in the mask if needed.
         for _ in mask_num_units..vec_num_units {
-            vector_elements.push(self.context.new_rvalue_zero(mask_element_type));
+            mask_elements.push(self.context.new_rvalue_zero(mask_element_type));
         }
 
         let result_type = self.context.new_vector_type(element_type, mask_num_units as u64);
@@ -1994,7 +2009,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
         let new_mask_num_units = std::cmp::max(mask_num_units, vec_num_units);
         let mask_type = self.context.new_vector_type(mask_element_type, new_mask_num_units as u64);
-        let mask = self.context.new_rvalue_from_vector(self.location, mask_type, &vector_elements);
+        let mask = self.context.new_rvalue_from_vector(self.location, mask_type, &mask_elements);
         let result = self.context.new_rvalue_vector_perm(self.location, v1, v2, mask);
 
         if vec_num_units != mask_num_units {
@@ -2336,9 +2351,9 @@ impl<'a, 'gcc, 'tcx> StaticBuilderMethods for Builder<'a, 'gcc, 'tcx> {
     }
 }
 
-impl<'tcx> HasParamEnv<'tcx> for Builder<'_, '_, 'tcx> {
-    fn param_env(&self) -> ParamEnv<'tcx> {
-        self.cx.param_env()
+impl<'tcx> HasTypingEnv<'tcx> for Builder<'_, '_, 'tcx> {
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        self.cx.typing_env()
     }
 }
 
@@ -2351,6 +2366,12 @@ impl<'tcx> HasTargetSpec for Builder<'_, '_, 'tcx> {
 impl<'tcx> HasWasmCAbiOpt for Builder<'_, '_, 'tcx> {
     fn wasm_c_abi_opt(&self) -> WasmCAbi {
         self.cx.wasm_c_abi_opt()
+    }
+}
+
+impl<'tcx> HasX86AbiOpt for Builder<'_, '_, 'tcx> {
+    fn x86_abi_opt(&self) -> X86Abi {
+        self.cx.x86_abi_opt()
     }
 }
 

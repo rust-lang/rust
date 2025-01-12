@@ -24,6 +24,17 @@
 #![deny(clippy::pattern_type_mismatch)]
 #![allow(clippy::needless_lifetimes)]
 
+// Some "regular" crates we want to share with rustc
+extern crate object;
+extern crate smallvec;
+// FIXME(antoyo): clippy bug: remove the #[allow] when it's fixed.
+#[allow(unused_extern_crates)]
+extern crate tempfile;
+#[macro_use]
+extern crate tracing;
+
+// The rustc crates we need
+extern crate rustc_abi;
 extern crate rustc_apfloat;
 extern crate rustc_ast;
 extern crate rustc_attr;
@@ -42,8 +53,6 @@ extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
-#[macro_use]
-extern crate tracing;
 
 // This prevents duplicating functions and statics that are already part of the host rustc process.
 #[allow(unused_extern_crates)]
@@ -51,7 +60,6 @@ extern crate rustc_driver;
 
 mod abi;
 mod allocator;
-mod archive;
 mod asm;
 mod attributes;
 mod back;
@@ -82,7 +90,6 @@ use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 
 use back::lto::{ThinBuffer, ThinData};
-use errors::LTONotSupported;
 use gccjit::{CType, Context, OptimizationLevel};
 #[cfg(feature = "master")]
 use gccjit::{TargetInfo, Version};
@@ -96,15 +103,16 @@ use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, WriteBacken
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::IntoDynSyncSend;
-use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed};
+use rustc_errors::DiagCtxtHandle;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
-use rustc_session::config::{Lto, OptLevel, OutputFilenames};
 use rustc_session::Session;
-use rustc_span::fatal_error::FatalError;
+use rustc_session::config::{OptLevel, OutputFilenames};
 use rustc_span::Symbol;
+use rustc_span::fatal_error::FatalError;
+use rustc_target::spec::RelocModel;
 use tempfile::TempDir;
 
 use crate::back::lto::ModuleBuffer;
@@ -195,10 +203,6 @@ impl CodegenBackend for GccCodegenBackend {
         #[cfg(feature = "master")]
         gccjit::set_global_personality_function_name(b"rust_eh_personality\0");
 
-        if sess.lto() == Lto::Thin {
-            sess.dcx().emit_warn(LTONotSupported {});
-        }
-
         #[cfg(not(feature = "master"))]
         {
             let temp_dir = TempDir::new().expect("cannot create temporary directory");
@@ -254,17 +258,6 @@ impl CodegenBackend for GccCodegenBackend {
             .join(sess)
     }
 
-    fn link(
-        &self,
-        sess: &Session,
-        codegen_results: CodegenResults,
-        outputs: &OutputFilenames,
-    ) -> Result<(), ErrorGuaranteed> {
-        use rustc_codegen_ssa::back::link::link_binary;
-
-        link_binary(sess, &crate::archive::ArArchiveBuilderBuilder, &codegen_results, outputs)
-    }
-
     fn target_features(&self, sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
         target_features(sess, allow_unstable, &self.target_info)
     }
@@ -301,6 +294,7 @@ impl ExtraBackendMethods for GccCodegenBackend {
     ) -> Self::Module {
         let mut mods = GccContext {
             context: Arc::new(SyncContext::new(new_context(tcx))),
+            relocation_model: tcx.sess.relocation_model(),
             should_combine_object_files: false,
             temp_dir: None,
         };
@@ -332,6 +326,9 @@ impl ExtraBackendMethods for GccCodegenBackend {
 
 pub struct GccContext {
     context: Arc<SyncContext>,
+    /// This field is needed in order to be able to set the flag -fPIC when necessary when doing
+    /// LTO.
+    relocation_model: RelocModel,
     should_combine_object_files: bool,
     // Temporary directory used by LTO. We keep it here so that it's not removed before linking.
     temp_dir: Option<TempDir>,
@@ -484,8 +481,9 @@ pub fn target_features(
 ) -> Vec<Symbol> {
     // TODO(antoyo): use global_gcc_features.
     sess.target
-        .supported_target_features()
+        .rust_target_features()
         .iter()
+        .filter(|&&(_, gate, _)| gate.is_supported())
         .filter_map(|&(feature, gate, _)| {
             if sess.is_nightly_build() || allow_unstable || gate.is_stable() {
                 Some(feature)

@@ -35,8 +35,8 @@ impl Copy for u8 {}
 impl Copy for i8 {}
 impl<T: ?Sized> Copy for *mut T {}
 
-#[lang = "receiver"]
-trait Receiver {
+#[lang = "legacy_receiver"]
+trait LegacyReceiver {
 }
 
 #[lang = "freeze"]
@@ -98,9 +98,11 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
 }
 
 mod intrinsics {
-    extern "rust-intrinsic" {
-        #[rustc_safe_intrinsic]
-        pub fn abort() -> !;
+    #[rustc_nounwind]
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    pub fn abort() -> ! {
+        loop {}
     }
 }
 
