@@ -765,7 +765,13 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "erfcf" => f_host.erfc(),
                     _ => bug!(),
                 };
-                let res = res.to_soft();
+                // Apply a relative error of 16ULP to introduce some non-determinism
+                // simulating imprecise implementations and optimizations.
+                let res = math::apply_random_float_error_ulp(
+                    this,
+                    res.to_soft(),
+                    4
+                );
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
@@ -788,6 +794,13 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "fdimf" => f1.to_host().abs_sub(f2.to_host()).to_soft(),
                     _ => bug!(),
                 };
+                // Apply a relative error of 16ULP to introduce some non-determinism
+                // simulating imprecise implementations and optimizations.
+                let res = math::apply_random_float_error_ulp(
+                    this,
+                    res,
+                    4
+                );
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
             }
@@ -826,7 +839,13 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "erfc" => f_host.erfc(),
                     _ => bug!(),
                 };
-                let res = res.to_soft();
+                // Apply a relative error of 16ULP to introduce some non-determinism
+                // simulating imprecise implementations and optimizations.
+                let res = math::apply_random_float_error_ulp(
+                    this,
+                    res.to_soft(),
+                    4
+                );
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
@@ -849,6 +868,13 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "fdim" => f1.to_host().abs_sub(f2.to_host()).to_soft(),
                     _ => bug!(),
                 };
+                // Apply a relative error of 16ULP to introduce some non-determinism
+                // simulating imprecise implementations and optimizations.
+                let res = math::apply_random_float_error_ulp(
+                    this,
+                    res,
+                    4
+                );
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
             }
@@ -874,7 +900,10 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let (res, sign) = x.to_host().ln_gamma();
                 this.write_int(sign, &signp)?;
-                let res = this.adjust_nan(res.to_soft(), &[x]);
+                // Apply a relative error of 16ULP to introduce some non-determinism
+                // simulating imprecise implementations and optimizations.
+                let res = math::apply_random_float_error_ulp(this, res.to_soft(), 4);
+                let res = this.adjust_nan(res, &[x]);
                 this.write_scalar(res, dest)?;
             }
             "lgamma_r" => {
@@ -885,7 +914,10 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let (res, sign) = x.to_host().ln_gamma();
                 this.write_int(sign, &signp)?;
-                let res = this.adjust_nan(res.to_soft(), &[x]);
+                // Apply a relative error of 16ULP to introduce some non-determinism
+                // simulating imprecise implementations and optimizations.
+                let res = math::apply_random_float_error_ulp(this, res.to_soft(), 4);
+                let res = this.adjust_nan(res, &[x]);
                 this.write_scalar(res, dest)?;
             }
 
