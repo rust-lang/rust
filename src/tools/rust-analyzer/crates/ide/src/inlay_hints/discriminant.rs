@@ -36,13 +36,14 @@ pub(super) fn enum_hints(
         return None;
     }
     for variant in enum_.variant_list()?.variants() {
-        variant_hints(acc, sema, &enum_, &variant);
+        variant_hints(acc, config, sema, &enum_, &variant);
     }
     Some(())
 }
 
 fn variant_hints(
     acc: &mut Vec<InlayHint>,
+    config: &InlayHintsConfig,
     sema: &Semantics<'_, RootDatabase>,
     enum_: &ast::Enum,
     variant: &ast::Variant,
@@ -88,7 +89,9 @@ fn variant_hints(
         },
         kind: InlayKind::Discriminant,
         label,
-        text_edit: d.ok().map(|val| TextEdit::insert(range.start(), format!("{eq_} {val}"))),
+        text_edit: d.ok().map(|val| {
+            config.lazy_text_edit(|| TextEdit::insert(range.start(), format!("{eq_} {val}")))
+        }),
         position: InlayHintPosition::After,
         pad_left: false,
         pad_right: false,

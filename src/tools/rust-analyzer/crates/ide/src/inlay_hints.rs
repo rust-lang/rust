@@ -1,6 +1,6 @@
 use std::{
     fmt::{self, Write},
-    mem::take,
+    mem::{self, take},
 };
 
 use either::Either;
@@ -297,6 +297,17 @@ pub struct InlayHintsConfig {
     pub closing_brace_hints_min_lines: Option<usize>,
     pub fields_to_resolve: InlayFieldsToResolve,
 }
+impl InlayHintsConfig {
+    fn lazy_text_edit(&self, finish: impl FnOnce() -> TextEdit) -> Lazy<TextEdit> {
+        if self.fields_to_resolve.resolve_text_edits {
+            Lazy::Lazy
+        } else {
+            let edit = finish();
+            never!(edit.is_empty(), "inlay hint produced an empty text edit");
+            Lazy::Computed(edit)
+        }
+    }
+}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct InlayFieldsToResolve {
@@ -408,10 +419,30 @@ pub struct InlayHint {
     /// The actual label to show in the inlay hint.
     pub label: InlayHintLabel,
     /// Text edit to apply when "accepting" this inlay hint.
-    pub text_edit: Option<TextEdit>,
+    pub text_edit: Option<Lazy<TextEdit>>,
     /// Range to recompute inlay hints when trying to resolve for this hint. If this is none, the
     /// hint does not support resolving.
     pub resolve_parent: Option<TextRange>,
+}
+
+/// A type signaling that a value is either computed, or is available for computation.
+#[derive(Clone, Debug)]
+pub enum Lazy<T> {
+    Computed(T),
+    Lazy,
+}
+
+impl<T> Lazy<T> {
+    pub fn computed(self) -> Option<T> {
+        match self {
+            Lazy::Computed(it) => Some(it),
+            _ => None,
+        }
+    }
+
+    pub fn is_lazy(&self) -> bool {
+        matches!(self, Self::Lazy)
+    }
 }
 
 impl std::hash::Hash for InlayHint {
@@ -422,7 +453,7 @@ impl std::hash::Hash for InlayHint {
         self.pad_right.hash(state);
         self.kind.hash(state);
         self.label.hash(state);
-        self.text_edit.is_some().hash(state);
+        mem::discriminant(&self.text_edit).hash(state);
     }
 }
 
@@ -438,10 +469,6 @@ impl InlayHint {
             pad_right: false,
             resolve_parent: None,
         }
-    }
-
-    pub fn needs_resolve(&self) -> Option<TextRange> {
-        self.resolve_parent.filter(|_| self.text_edit.is_some() || self.label.needs_resolve())
     }
 }
 
@@ -502,10 +529,6 @@ impl InlayHintLabel {
             }
         }
         self.parts.push(part);
-    }
-
-    pub fn needs_resolve(&self) -> bool {
-        self.parts.iter().any(|part| part.linked_location.is_some() || part.tooltip.is_some())
     }
 }
 
@@ -725,19 +748,22 @@ fn hint_iterator(
 
 fn ty_to_text_edit(
     sema: &Semantics<'_, RootDatabase>,
+    config: &InlayHintsConfig,
     node_for_hint: &SyntaxNode,
     ty: &hir::Type,
     offset_to_insert: TextSize,
-    prefix: String,
-) -> Option<TextEdit> {
-    let scope = sema.scope(node_for_hint)?;
+    prefix: impl Into<String>,
+) -> Option<Lazy<TextEdit>> {
     // FIXME: Limit the length and bail out on excess somehow?
-    let rendered = ty.display_source_code(scope.db, scope.module().into(), false).ok()?;
-
-    let mut builder = TextEdit::builder();
-    builder.insert(offset_to_insert, prefix);
-    builder.insert(offset_to_insert, rendered);
-    Some(builder.finish())
+    let rendered = sema
+        .scope(node_for_hint)
+        .and_then(|scope| ty.display_source_code(scope.db, scope.module().into(), false).ok())?;
+    Some(config.lazy_text_edit(|| {
+        let mut builder = TextEdit::builder();
+        builder.insert(offset_to_insert, prefix.into());
+        builder.insert(offset_to_insert, rendered);
+        builder.finish()
+    }))
 }
 
 fn closure_has_block_body(closure: &ast::ClosureExpr) -> bool {
@@ -847,7 +873,7 @@ mod tests {
 
         let edits = inlay_hints
             .into_iter()
-            .filter_map(|hint| hint.text_edit)
+            .filter_map(|hint| hint.text_edit?.computed())
             .reduce(|mut acc, next| {
                 acc.union(next).expect("merging text edits failed");
                 acc
@@ -867,7 +893,8 @@ mod tests {
         let (analysis, file_id) = fixture::file(ra_fixture);
         let inlay_hints = analysis.inlay_hints(&config, file_id, None).unwrap();
 
-        let edits: Vec<_> = inlay_hints.into_iter().filter_map(|hint| hint.text_edit).collect();
+        let edits: Vec<_> =
+            inlay_hints.into_iter().filter_map(|hint| hint.text_edit?.computed()).collect();
 
         assert!(edits.is_empty(), "unexpected edits: {edits:?}");
     }
