@@ -140,6 +140,7 @@ deny-warnings = true
 download-rustc=false
 
 [build]
+exclude = ["src/test/debuginfo"]
 gdb = "foo"
 tools = []
 
