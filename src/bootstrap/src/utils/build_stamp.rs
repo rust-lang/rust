@@ -48,7 +48,9 @@ impl BuildStamp {
         &self.stamp
     }
 
-    /// Sets stamp content to the specified value.
+    /// Adds specified stamp content to the current value.
+    ///
+    /// This method can be used incrementally e.g., `add_stamp("x").add_stamp("y").add_stamp("z")`.
     pub fn add_stamp<S: ToString>(mut self, stamp: S) -> Self {
         self.stamp.push_str(&stamp.to_string());
         self
