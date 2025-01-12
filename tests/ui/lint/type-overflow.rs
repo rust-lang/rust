@@ -40,7 +40,7 @@ fn main() {
     //~| HELP consider using the type `u128` instead
 
     let fail = 0x8FFF_FFFF_FFFF_FFFE; //~WARNING literal out of range for `i32`
-    //~| HELP consider using the type `i128` instead
+    //~| HELP consider using the type `u64` instead
     //~| HELP
 
     let fail = -0b1111_1111i8; //~WARNING literal out of range for `i8`
