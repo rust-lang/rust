@@ -78,6 +78,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
 
+            // Sockets and pipes
+            "__xnet_socketpair" => {
+                let [domain, type_, protocol, sv] =
+                    this.check_shim(abi, Conv::C, link_name, args)?;
+                let result = this.socketpair(domain, type_, protocol, sv)?;
+                this.write_scalar(result, dest)?;
+            }
+
             // Miscellaneous
             "___errno" => {
                 let [] = this.check_shim(abi, Conv::C, link_name, args)?;
