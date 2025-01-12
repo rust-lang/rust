@@ -1164,4 +1164,45 @@ fn main() {
 }"#,
         );
     }
+
+    #[test]
+    fn collapses_nested_impl_projections() {
+        check_types(
+            r#"
+//- minicore: sized
+trait T {
+    type Assoc;
+    fn f(self) -> Self::Assoc;
+}
+
+trait T2 {}
+trait T3<T> {}
+
+fn f(it: impl T<Assoc: T2>) {
+    let l = it.f();
+     // ^ impl T2
+}
+
+fn f2<G: T<Assoc: T2 + 'static>>(it: G) {
+    let l = it.f();
+      //^ impl T2 + 'static
+}
+
+fn f3<G: T>(it: G) where <G as T>::Assoc: T2 {
+    let l = it.f();
+      //^ impl T2
+}
+
+fn f4<G: T<Assoc: T2 + T3<()>>>(it: G) {
+    let l = it.f();
+      //^ impl T2 + T3<()>
+}
+
+fn f5<G: T<Assoc = ()>>(it: G) {
+    let l = it.f();
+      //^ ()
+}
+"#,
+        );
+    }
 }
