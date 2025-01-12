@@ -147,7 +147,7 @@ fn clean_default(build: &Build) {
     rm_rf(&build.out.join("dist"));
     rm_rf(&build.out.join("bootstrap").join(".last-warned-change-id"));
     rm_rf(&build.out.join("bootstrap-shims-dump"));
-    rm_rf(BuildStamp::new(&build.out).with_prefix("rustfmt").as_ref());
+    rm_rf(BuildStamp::new(&build.out).with_prefix("rustfmt").path());
 
     let mut hosts: Vec<_> = build.hosts.iter().map(|t| build.out.join(t)).collect();
     // After cross-compilation, artifacts of the host architecture (which may differ from build.host)

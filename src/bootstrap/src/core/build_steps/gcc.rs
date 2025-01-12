@@ -58,14 +58,14 @@ pub fn prebuilt_gcc_config(builder: &Builder<'_>, target: TargetSelection) -> Gc
     let stamp = BuildStamp::new(&out_dir).with_prefix("gcc").add_stamp(smart_stamp_hash);
 
     if stamp.is_up_to_date() {
-        if stamp.stamp.is_empty() {
+        if stamp.stamp().is_empty() {
             builder.info(
                 "Could not determine the GCC submodule commit hash. \
                      Assuming that an GCC rebuild is not necessary.",
             );
             builder.info(&format!(
                 "To force GCC to rebuild, remove the file `{}`",
-                stamp.as_ref().display()
+                stamp.path().display()
             ));
         }
         return GccBuildStatus::AlreadyBuilt;

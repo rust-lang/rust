@@ -138,14 +138,14 @@ pub fn prebuilt_llvm_config(
     let stamp = BuildStamp::new(&out_dir).with_prefix("llvm").add_stamp(smart_stamp_hash);
 
     if stamp.is_up_to_date() {
-        if stamp.stamp.is_empty() {
+        if stamp.stamp().is_empty() {
             builder.info(
                 "Could not determine the LLVM submodule commit hash. \
                      Assuming that an LLVM rebuild is not necessary.",
             );
             builder.info(&format!(
                 "To force LLVM to rebuild, remove the file `{}`",
-                stamp.as_ref().display()
+                stamp.path().display()
             ));
         }
         return LlvmBuildStatus::AlreadyBuilt(res);
@@ -924,14 +924,14 @@ impl Step for Enzyme {
         let stamp = BuildStamp::new(&out_dir).with_prefix("enzyme").add_stamp(smart_stamp_hash);
 
         if stamp.is_up_to_date() {
-            if stamp.stamp.is_empty() {
+            if stamp.stamp().is_empty() {
                 builder.info(
                     "Could not determine the Enzyme submodule commit hash. \
                      Assuming that an Enzyme rebuild is not necessary.",
                 );
                 builder.info(&format!(
                     "To force Enzyme to rebuild, remove the file `{}`",
-                    stamp.as_ref().display()
+                    stamp.path().display()
                 ));
             }
             return out_dir;
@@ -1016,7 +1016,7 @@ impl Step for Lld {
         let out_dir = builder.lld_out(target);
 
         let done_stamp = BuildStamp::new(&out_dir).with_prefix("lld");
-        if done_stamp.as_ref().exists() {
+        if done_stamp.path().exists() {
             return out_dir;
         }
 
@@ -1140,10 +1140,10 @@ impl Step for Sanitizers {
         let stamp = BuildStamp::new(&out_dir).with_prefix("sanitizers").add_stamp(smart_stamp_hash);
 
         if stamp.is_up_to_date() {
-            if stamp.stamp.is_empty() {
+            if stamp.stamp().is_empty() {
                 builder.info(&format!(
                     "Rebuild sanitizers by removing the file `{}`",
-                    stamp.as_ref().display()
+                    stamp.path().display()
                 ));
             }
 

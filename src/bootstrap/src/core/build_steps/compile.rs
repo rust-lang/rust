@@ -991,7 +991,7 @@ impl Step for Rustc {
             true, // Only ship rustc_driver.so and .rmeta files, not all intermediate .rlib files.
         );
 
-        let target_root_dir = stamp.as_ref().parent().unwrap();
+        let target_root_dir = stamp.path().parent().unwrap();
         // When building `librustc_driver.so` (like `libLLVM.so`) on linux, it can contain
         // unexpected debuginfo from dependencies, for example from the C++ standard library used in
         // our LLVM wrapper. Unless we're explicitly requesting `librustc_driver` to be built with
@@ -1478,7 +1478,7 @@ impl Step for CodegenBackend {
         }
         let stamp = build_stamp::codegen_backend_stamp(builder, compiler, target, &backend);
         let codegen_backend = codegen_backend.to_str().unwrap();
-        t!(fs::write(stamp, codegen_backend));
+        t!(stamp.add_stamp(codegen_backend).write());
     }
 }
 
@@ -1516,7 +1516,7 @@ fn copy_codegen_backends_to_sysroot(
         }
 
         let stamp = build_stamp::codegen_backend_stamp(builder, compiler, target, backend);
-        let dylib = t!(fs::read_to_string(&stamp));
+        let dylib = t!(fs::read_to_string(stamp.path()));
         let file = Path::new(&dylib);
         let filename = file.file_name().unwrap().to_str().unwrap();
         // change `librustc_codegen_cranelift-xxxxxx.so` to
@@ -2018,7 +2018,7 @@ pub fn run_cargo(
     rlib_only_metadata: bool,
 ) -> Vec<PathBuf> {
     // `target_root_dir` looks like $dir/$target/release
-    let target_root_dir = stamp.as_ref().parent().unwrap();
+    let target_root_dir = stamp.path().parent().unwrap();
     // `target_deps_dir` looks like $dir/$target/release/deps
     let target_deps_dir = target_root_dir.join("deps");
     // `host_root_dir` looks like $dir/release
@@ -2171,7 +2171,7 @@ pub fn run_cargo(
         new_contents.extend(dep.to_str().unwrap().as_bytes());
         new_contents.extend(b"\0");
     }
-    t!(fs::write(stamp, &new_contents));
+    t!(fs::write(stamp.path(), &new_contents));
     deps.into_iter().map(|(d, _)| d).collect()
 }
 

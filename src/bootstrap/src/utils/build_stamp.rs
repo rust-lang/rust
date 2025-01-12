@@ -20,13 +20,7 @@ mod tests;
 #[derive(Clone)]
 pub struct BuildStamp {
     path: PathBuf,
-    pub(crate) stamp: String,
-}
-
-impl AsRef<Path> for BuildStamp {
-    fn as_ref(&self) -> &Path {
-        &self.path
-    }
+    stamp: String,
 }
 
 impl BuildStamp {
@@ -38,6 +32,20 @@ impl BuildStamp {
         // It is more appropriate to assert that the path is not a file.
         assert!(!dir.is_file(), "can't be a file path");
         Self { path: dir.join(".stamp"), stamp: String::new() }
+    }
+
+    /// Returns path of the stamp file.
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
+    /// Returns the value of the stamp.
+    ///
+    /// Note that this is empty by default and is populated using `BuildStamp::add_stamp`.
+    /// It is not read from an actual file, but rather it holds the value that will be used
+    /// when `BuildStamp::write` is called.
+    pub fn stamp(&self) -> &str {
+        &self.stamp
     }
 
     /// Sets stamp content to the specified value.
@@ -101,15 +109,15 @@ impl BuildStamp {
 pub fn clear_if_dirty(builder: &Builder<'_>, dir: &Path, input: &Path) -> bool {
     let stamp = BuildStamp::new(dir);
     let mut cleared = false;
-    if mtime(stamp.as_ref()) < mtime(input) {
+    if mtime(stamp.path()) < mtime(input) {
         builder.verbose(|| println!("Dirty - {}", dir.display()));
         let _ = fs::remove_dir_all(dir);
         cleared = true;
-    } else if stamp.as_ref().exists() {
+    } else if stamp.path().exists() {
         return cleared;
     }
     t!(fs::create_dir_all(dir));
-    t!(fs::File::create(stamp));
+    t!(fs::File::create(stamp.path()));
     cleared
 }
 

@@ -1605,16 +1605,16 @@ Executed at: {executed_at}"#,
             return Vec::new();
         }
 
-        if !stamp.as_ref().exists() {
+        if !stamp.path().exists() {
             eprintln!(
                 "ERROR: Unable to find the stamp file {}, did you try to keep a nonexistent build stage?",
-                stamp.as_ref().display()
+                stamp.path().display()
             );
             crate::exit!(1);
         }
 
         let mut paths = Vec::new();
-        let contents = t!(fs::read(stamp.as_ref()), stamp.as_ref());
+        let contents = t!(fs::read(stamp.path()), stamp.path());
         // This is the method we use for extracting paths from the stamp file passed to us. See
         // run_cargo for more information (in compile.rs).
         for part in contents.split(|b| *b == 0) {

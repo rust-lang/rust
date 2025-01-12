@@ -82,7 +82,7 @@ fn update_rustfmt_version(build: &Builder<'_>) {
     let Some((version, stamp_file)) = get_rustfmt_version(build) else {
         return;
     };
-    t!(std::fs::write(stamp_file, version))
+    t!(std::fs::write(stamp_file.path(), version))
 }
 
 /// Returns the Rust files modified between the `merge-base` of HEAD and
