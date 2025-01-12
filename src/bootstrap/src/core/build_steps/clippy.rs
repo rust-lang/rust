@@ -394,6 +394,7 @@ impl Step for CI {
                 "clippy::print_literal".into(),
                 "clippy::same_item_push".into(),
                 "clippy::single_char_add_str".into(),
+                "clippy::to_string_in_format_args".into(),
             ],
             forbid: vec![],
         };
@@ -412,6 +413,7 @@ impl Step for CI {
                 "clippy::print_literal".into(),
                 "clippy::same_item_push".into(),
                 "clippy::single_char_add_str".into(),
+                "clippy::to_string_in_format_args".into(),
             ],
             forbid: vec![],
         };
