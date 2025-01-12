@@ -90,7 +90,6 @@ use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 
 use back::lto::{ThinBuffer, ThinData};
-use errors::LTONotSupported;
 use gccjit::{CType, Context, OptimizationLevel};
 #[cfg(feature = "master")]
 use gccjit::{TargetInfo, Version};
@@ -110,7 +109,7 @@ use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::Session;
-use rustc_session::config::{Lto, OptLevel, OutputFilenames};
+use rustc_session::config::{OptLevel, OutputFilenames};
 use rustc_span::Symbol;
 use rustc_span::fatal_error::FatalError;
 use rustc_target::spec::RelocModel;
@@ -203,10 +202,6 @@ impl CodegenBackend for GccCodegenBackend {
 
         #[cfg(feature = "master")]
         gccjit::set_global_personality_function_name(b"rust_eh_personality\0");
-
-        if sess.lto() == Lto::Thin {
-            sess.dcx().emit_warn(LTONotSupported {});
-        }
 
         #[cfg(not(feature = "master"))]
         {
