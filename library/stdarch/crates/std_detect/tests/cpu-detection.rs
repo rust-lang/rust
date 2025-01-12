@@ -4,6 +4,7 @@
 #![cfg_attr(target_arch = "aarch64", feature(stdarch_aarch64_feature_detection))]
 #![cfg_attr(target_arch = "powerpc", feature(stdarch_powerpc_feature_detection))]
 #![cfg_attr(target_arch = "powerpc64", feature(stdarch_powerpc_feature_detection))]
+#![cfg_attr(target_arch = "s390x", feature(stdarch_s390x_feature_detection))]
 #![cfg_attr(
     any(target_arch = "x86", target_arch = "x86_64"),
     feature(sha512_sm_x86, x86_amx_intrinsics, xop_target_feature)
@@ -18,7 +19,8 @@
         target_arch = "x86",
         target_arch = "x86_64",
         target_arch = "powerpc",
-        target_arch = "powerpc64"
+        target_arch = "powerpc64",
+        target_arch = "s390x",
     ),
     macro_use
 )]
@@ -238,6 +240,12 @@ fn powerpc64_linux_or_freebsd() {
     println!("altivec: {}", is_powerpc64_feature_detected!("altivec"));
     println!("vsx: {}", is_powerpc64_feature_detected!("vsx"));
     println!("power8: {}", is_powerpc64_feature_detected!("power8"));
+}
+
+#[test]
+#[cfg(all(target_arch = "s390x", target_os = "linux",))]
+fn s390x_linux() {
+    println!("vector: {}", is_s390x_feature_detected!("vector"));
 }
 
 #[test]

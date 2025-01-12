@@ -10,7 +10,8 @@ pub(crate) const AT_HWCAP: usize = 16;
     target_arch = "aarch64",
     target_arch = "arm",
     target_arch = "powerpc",
-    target_arch = "powerpc64"
+    target_arch = "powerpc64",
+    target_arch = "s390x",
 ))]
 pub(crate) const AT_HWCAP2: usize = 26;
 
@@ -26,7 +27,8 @@ pub(crate) struct AuxVec {
         target_arch = "aarch64",
         target_arch = "arm",
         target_arch = "powerpc",
-        target_arch = "powerpc64"
+        target_arch = "powerpc64",
+        target_arch = "s390x",
     ))]
     pub hwcap2: usize,
 }
@@ -98,7 +100,8 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
                 target_arch = "aarch64",
                 target_arch = "arm",
                 target_arch = "powerpc",
-                target_arch = "powerpc64"
+                target_arch = "powerpc64",
+                target_arch = "s390x",
             ))]
             {
                 if let Ok(hwcap2) = getauxval(AT_HWCAP2) {
@@ -146,7 +149,8 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
             target_arch = "aarch64",
             target_arch = "arm",
             target_arch = "powerpc",
-            target_arch = "powerpc64"
+            target_arch = "powerpc64",
+            target_arch = "s390x",
         ))]
         {
             let hwcap = unsafe { libc::getauxval(AT_HWCAP as libc::c_ulong) as usize };
@@ -242,7 +246,8 @@ fn auxv_from_buf(buf: &[usize]) -> Result<AuxVec, ()> {
         target_arch = "aarch64",
         target_arch = "arm",
         target_arch = "powerpc",
-        target_arch = "powerpc64"
+        target_arch = "powerpc64",
+        target_arch = "s390x",
     ))]
     {
         let mut hwcap = None;
@@ -275,7 +280,8 @@ mod tests {
     #[cfg(any(
         target_arch = "arm",
         target_arch = "powerpc",
-        target_arch = "powerpc64"
+        target_arch = "powerpc64",
+        target_arch = "s390x",
     ))]
     #[test]
     fn auxv_crate() {
@@ -290,7 +296,8 @@ mod tests {
             target_arch = "aarch64",
             target_arch = "arm",
             target_arch = "powerpc",
-            target_arch = "powerpc64"
+            target_arch = "powerpc64",
+            target_arch = "s390x",
         ))]
         {
             if let Ok(hwcap2) = getauxval(AT_HWCAP2) {
@@ -365,7 +372,8 @@ mod tests {
         target_arch = "aarch64",
         target_arch = "arm",
         target_arch = "powerpc",
-        target_arch = "powerpc64"
+        target_arch = "powerpc64",
+        target_arch = "s390x",
     ))]
     #[test]
     #[cfg(feature = "std_detect_file_io")]

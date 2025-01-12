@@ -5,7 +5,7 @@ The private `std::detect` module implements run-time feature detection in Rust's
 standard library. This allows detecting whether the CPU the binary runs on
 supports certain features, like SIMD instructions.
 
-# Usage 
+# Usage
 
 `std::detect` APIs are available as part of `libstd`. Prefer using it via the
 standard library than through this crate. Unstable features of `std::detect` are
@@ -19,7 +19,7 @@ from the platform.
 You can then manually include `std_detect` as a dependency to get similar
 run-time feature detection support than the one offered by Rust's standard
 library. We intend to make `std_detect` more flexible and configurable in this
-regard to better serve the needs of `#[no_std]` targets. 
+regard to better serve the needs of `#[no_std]` targets.
 
 # Features
 
@@ -53,8 +53,8 @@ crate from working on applications in which `std` is not available.
   [`cupid`](https://crates.io/crates/cupid) crate.
 
 * Linux/Android:
-  * `arm{32, 64}`, `mips{32,64}{,el}`, `powerpc{32,64}{,le}`, `riscv{32,64}`, `loongarch64`: `std_detect`
-    supports these on Linux by querying ELF auxiliary vectors (using `getauxval`
+  * `arm{32, 64}`, `mips{32,64}{,el}`, `powerpc{32,64}{,le}`, `riscv{32,64}`, `loongarch64`, `s390x`:
+    `std_detect` supports these on Linux by querying ELF auxiliary vectors (using `getauxval`
     when available), and if that fails, by querying `/proc/cpuinfo`.
   * `arm64`: partial support for doing run-time feature detection by directly
     querying `mrs` is implemented for Linux >= 4.11, but not enabled by default.

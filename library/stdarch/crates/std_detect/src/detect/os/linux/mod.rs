@@ -57,6 +57,9 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_arch = "loongarch64")] {
         mod loongarch;
         pub(crate) use self::loongarch::detect_features;
+    } else if #[cfg(target_arch = "s390x")] {
+        mod s390x;
+        pub(crate) use self::s390x::detect_features;
     } else {
         use crate::detect::cache;
         /// Performs run-time feature detection.

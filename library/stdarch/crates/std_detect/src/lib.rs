@@ -12,6 +12,7 @@
 //! * `powerpc`: [`is_powerpc_feature_detected`]
 //! * `powerpc64`: [`is_powerpc64_feature_detected`]
 //! * `loongarch`: [`is_loongarch_feature_detected`]
+//! * `s390x`: [`is_s390x_feature_detected`]
 
 #![unstable(feature = "stdarch_internal", issue = "none")]
 #![feature(staged_api, doc_cfg, allow_internal_unstable)]

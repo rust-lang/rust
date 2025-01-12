@@ -21,6 +21,8 @@ mod mips;
 mod mips64;
 #[macro_use]
 mod loongarch;
+#[macro_use]
+mod s390x;
 
 cfg_if! {
     if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
@@ -50,6 +52,9 @@ cfg_if! {
     } else if #[cfg(target_arch = "loongarch64")] {
         #[unstable(feature = "stdarch_loongarch_feature_detection", issue = "117425")]
         pub use loongarch::*;
+    } else if #[cfg(target_arch = "s390x")] {
+        #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")]
+        pub use s390x::*;
     } else {
         // Unimplemented architecture:
         #[doc(hidden)]
