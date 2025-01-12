@@ -468,9 +468,11 @@ pub fn spin_loop() {
 /// // No assumptions can be made about either operand, so the multiplication is not optimized out.
 /// let y = black_box(5) * black_box(10);
 /// ```
+///
+/// During constant evaluation, `black_box` is treated as a no-op.
 #[inline]
 #[stable(feature = "bench_black_box", since = "1.66.0")]
-#[rustc_const_unstable(feature = "const_black_box", issue = "none")]
+#[rustc_const_stable(feature = "const_black_box", since = "CURRENT_RUSTC_VERSION")]
 pub const fn black_box<T>(dummy: T) -> T {
     crate::intrinsics::black_box(dummy)
 }
