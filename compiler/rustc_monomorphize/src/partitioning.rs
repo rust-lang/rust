@@ -165,7 +165,8 @@ where
     // estimates.
     {
         let _prof_timer = tcx.prof.generic_activity("cgu_partitioning_merge_cgus");
-        merge_codegen_units(cx, &mut codegen_units);
+        let cgu_contents = merge_codegen_units(cx, &mut codegen_units);
+        rename_codegen_units(cx, &mut codegen_units, cgu_contents);
         debug_dump(tcx, "MERGE", &codegen_units);
     }
 
@@ -200,7 +201,6 @@ where
     I: Iterator<Item = MonoItem<'tcx>>,
 {
     let mut codegen_units = UnordMap::default();
-    let is_incremental_build = cx.tcx.sess.opts.incremental.is_some();
     let mut internalization_candidates = UnordSet::default();
 
     // Determine if monomorphizations instantiated in this crate will be made
@@ -227,20 +227,8 @@ where
             }
         }
 
-        let characteristic_def_id = characteristic_def_id_of_mono_item(cx.tcx, mono_item);
-        let is_volatile = is_incremental_build && mono_item.is_generic_fn();
-
-        let cgu_name = match characteristic_def_id {
-            Some(def_id) => compute_codegen_unit_name(
-                cx.tcx,
-                cgu_name_builder,
-                def_id,
-                is_volatile,
-                cgu_name_cache,
-            ),
-            None => fallback_cgu_name(cgu_name_builder),
-        };
-
+        let cgu_name =
+            compute_codegen_unit_name(cx.tcx, cgu_name_builder, mono_item, cgu_name_cache);
         let cgu = codegen_units.entry(cgu_name).or_insert_with(|| CodegenUnit::new(cgu_name));
 
         let mut can_be_internalized = true;
@@ -321,7 +309,7 @@ where
 fn merge_codegen_units<'tcx>(
     cx: &PartitioningCx<'_, 'tcx>,
     codegen_units: &mut Vec<CodegenUnit<'tcx>>,
-) {
+) -> UnordMap<Symbol, Vec<Symbol>> {
     assert!(cx.tcx.sess.codegen_units().as_usize() >= 1);
 
     // A sorted order here ensures merging is deterministic.
@@ -421,6 +409,14 @@ fn merge_codegen_units<'tcx>(
         // Don't update `cgu_contents`, that's only for incremental builds.
     }
 
+    cgu_contents
+}
+
+fn rename_codegen_units<'tcx>(
+    cx: &PartitioningCx<'_, 'tcx>,
+    codegen_units: &mut Vec<CodegenUnit<'tcx>>,
+    cgu_contents: UnordMap<Symbol, Vec<Symbol>>,
+) {
     let cgu_name_builder = &mut CodegenUnitNameBuilder::new(cx.tcx);
 
     // Rename the newly merged CGUs.
@@ -678,13 +674,16 @@ fn characteristic_def_id_of_mono_item<'tcx>(
     }
 }
 
-fn compute_codegen_unit_name(
-    tcx: TyCtxt<'_>,
+fn compute_codegen_unit_name<'tcx>(
+    tcx: TyCtxt<'tcx>,
     name_builder: &mut CodegenUnitNameBuilder<'_>,
-    def_id: DefId,
-    volatile: bool,
+    mono_item: MonoItem<'tcx>,
     cache: &mut CguNameCache,
 ) -> Symbol {
+    let Some(def_id) = characteristic_def_id_of_mono_item(tcx, mono_item) else {
+        return fallback_cgu_name(name_builder);
+    };
+
     // Find the innermost module that is not nested within a function.
     let mut current_def_id = def_id;
     let mut cgu_def_id = None;
@@ -711,6 +710,9 @@ fn compute_codegen_unit_name(
     }
 
     let cgu_def_id = cgu_def_id.unwrap();
+
+    let is_incremental_build = tcx.sess.opts.incremental.is_some();
+    let volatile = is_incremental_build && mono_item.is_generic_fn();
 
     *cache.entry((cgu_def_id, volatile)).or_insert_with(|| {
         let def_path = tcx.def_path(cgu_def_id);
