@@ -1,5 +1,4 @@
-//@ignore-target: windows # only very limited libc on Windows
-//@ignore-target: apple # `sched_setaffinity` is not supported on macOS
+//@only-target: linux # these are Linux-specific APIs
 //@compile-flags: -Zmiri-disable-isolation -Zmiri-num-cpus=4
 
 fn main() {
