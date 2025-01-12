@@ -391,7 +391,11 @@ impl Step for CI {
         let compiler_clippy_cfg = LintConfig {
             allow: vec!["clippy::all".into()],
             warn: vec![],
-            deny: vec!["clippy::correctness".into(), "clippy::clone_on_ref_ptr".into()],
+            deny: vec![
+                "clippy::correctness".into(),
+                "clippy::clone_on_ref_ptr".into(),
+                "clippy::format_in_format_args".into(),
+            ],
             forbid: vec![],
         };
 
