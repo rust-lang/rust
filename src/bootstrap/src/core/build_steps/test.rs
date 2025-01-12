@@ -1637,7 +1637,10 @@ impl Step for Compiletest {
             return;
         }
 
-        if builder.top_stage == 0 && env::var("COMPILETEST_FORCE_STAGE0").is_err() {
+        if builder.top_stage == 0
+            && env::var("COMPILETEST_FORCE_STAGE0").is_err()
+            && self.mode != "js-doc-test"
+        {
             eprintln!("\
 ERROR: `--stage 0` runs compiletest on the beta compiler, not your local changes, and will almost always cause tests to fail
 HELP: to test the compiler, use `--stage 1` instead
