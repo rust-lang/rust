@@ -3708,7 +3708,11 @@ pub struct UniqueRc<
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 > {
     ptr: NonNull<RcInner<T>>,
-    phantom: PhantomData<RcInner<T>>,
+    // Define the ownership of `RcInner<T>` for drop-check
+    _marker: PhantomData<RcInner<T>>,
+    // Invariance is necessary for soundness: once other `Weak`
+    // references exist, we already have a form of shared mutability!
+    _marker2: PhantomData<*mut T>,
     alloc: A,
 }
 
@@ -3994,7 +3998,7 @@ impl<T, A: Allocator> UniqueRc<T, A> {
             },
             alloc,
         ));
-        Self { ptr: ptr.into(), phantom: PhantomData, alloc }
+        Self { ptr: ptr.into(), _marker: PhantomData, _marker2: PhantomData, alloc }
     }
 }
 
