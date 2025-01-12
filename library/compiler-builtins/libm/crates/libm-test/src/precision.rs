@@ -211,6 +211,15 @@ impl MaybeOverride<(f32,)> for SpecialCase {
             return XFAIL;
         }
 
+        if cfg!(x86_no_sse)
+            && ctx.base_name == BaseName::Exp2
+            && !expected.is_infinite()
+            && actual.is_infinite()
+        {
+            // We return infinity when there is a representable value. Test input: 127.97238
+            return XFAIL;
+        }
+
         maybe_check_nan_bits(actual, expected, ctx)
     }
 
