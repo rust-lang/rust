@@ -388,6 +388,7 @@ impl Step for CI {
             deny: vec![
                 "clippy::correctness".into(),
                 "clippy::char_lit_as_u8".into(),
+                "clippy::non_minimal_cfg".into(),
             ],
             forbid: vec![],
         };
@@ -400,6 +401,7 @@ impl Step for CI {
                 "clippy::clone_on_ref_ptr".into(),
                 "clippy::format_in_format_args".into(),
                 "clippy::four_forward_slashes".into(),
+                "clippy::non_minimal_cfg".into(),
             ],
             forbid: vec![],
         };
