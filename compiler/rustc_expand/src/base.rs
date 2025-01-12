@@ -1006,6 +1006,7 @@ pub trait ResolverExpand {
         &mut self,
         call_site: Span,
         pass: AstPass,
+        edition: Option<Edition>,
         features: &[Symbol],
         parent_module_id: Option<NodeId>,
     ) -> LocalExpnId;

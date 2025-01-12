@@ -1054,6 +1054,9 @@ impl<'a> CrateMetadataRef<'a> {
             ProcMacro::Bang { name, client } => {
                 (name, SyntaxExtensionKind::Bang(Box::new(BangProcMacro { client })), Vec::new())
             }
+            ProcMacro::Warning { .. } => {
+                bug!("load_proc_macro called without checking that DefKind is Macro");
+            }
         };
 
         let sess = tcx.sess;

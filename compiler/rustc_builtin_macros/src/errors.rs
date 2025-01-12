@@ -994,6 +994,22 @@ pub(crate) struct AttributeOnlyBeUsedOnBareFunctions<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag(builtin_macros_proc_macro_attribute_only_be_used_on_statics)]
+pub(crate) struct AttributeOnlyBeUsedOnStatics<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub path: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_proc_macro_lint_id_is_filled_in_by_attribute)]
+pub(crate) struct LintIdIsFilledInByAttribute {
+    #[primary_span]
+    #[suggestion(code = "", applicability = "machine-applicable")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(builtin_macros_proc_macro_attribute_only_usable_with_crate_type)]
 pub(crate) struct AttributeOnlyUsableWithCrateType<'a> {
     #[primary_span]

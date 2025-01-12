@@ -170,6 +170,7 @@ fixed_size_enum! {
         ( Macro(MacroKind::Bang)                   )
         ( Macro(MacroKind::Attr)                   )
         ( Macro(MacroKind::Derive)                 )
+        ( LintId                                   )
         ( SyntheticCoroutineBody                   )
     }
 }

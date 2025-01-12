@@ -2053,6 +2053,7 @@ impl<'tcx> TyCtxt<'tcx> {
             | DefKind::Static { .. }
             | DefKind::AssocConst
             | DefKind::Macro(_)
+            | DefKind::LintId
             | DefKind::ExternCrate
             | DefKind::Use
             | DefKind::ForeignMod

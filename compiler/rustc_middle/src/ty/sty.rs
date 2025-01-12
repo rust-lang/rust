@@ -632,6 +632,7 @@ impl<'tcx> Ty<'tcx> {
                 | DefKind::AssocFn
                 | DefKind::AssocConst
                 | DefKind::Macro(..)
+                | DefKind::LintId
                 | DefKind::ExternCrate
                 | DefKind::Use
                 | DefKind::ForeignMod
