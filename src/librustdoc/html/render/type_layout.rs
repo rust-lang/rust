@@ -9,7 +9,6 @@ use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::{self};
 use rustc_span::symbol::Symbol;
 
-use crate::html::format::display_fn;
 use crate::html::render::Context;
 
 #[derive(Template)]
@@ -31,7 +30,7 @@ pub(crate) fn document_type_layout<'a, 'cx: 'a>(
     cx: &'a Context<'cx>,
     ty_def_id: DefId,
 ) -> impl fmt::Display + 'a + Captures<'cx> {
-    display_fn(move |f| {
+    fmt::from_fn(move |f| {
         if !cx.shared.show_type_layout {
             return Ok(());
         }

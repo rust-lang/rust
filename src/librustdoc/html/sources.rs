@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::ffi::OsStr;
 use std::ops::RangeInclusive;
 use std::path::{Component, Path, PathBuf};
@@ -17,7 +17,7 @@ use crate::clean::utils::has_doc_flag;
 use crate::docfs::PathError;
 use crate::error::Error;
 use crate::html::render::Context;
-use crate::html::{format, highlight, layout};
+use crate::html::{highlight, layout};
 use crate::visit::DocVisitor;
 
 pub(crate) fn render(cx: &mut Context<'_>, krate: &clean::Crate) -> Result<(), Error> {
@@ -331,15 +331,16 @@ pub(crate) fn print_src(
     decoration_info: highlight::DecorationInfo,
     source_context: SourceContext<'_>,
 ) {
-    let current_href = context
-        .href_from_span(clean::Span::new(file_span), false)
-        .expect("only local crates should have sources emitted");
-    let code = format::display_fn(move |fmt| {
+    let decoration_info = Cell::new(Some(decoration_info));
+    let code = fmt::from_fn(move |fmt| {
+        let current_href = context
+            .href_from_span(clean::Span::new(file_span), false)
+            .expect("only local crates should have sources emitted");
         highlight::write_code(
             fmt,
             s,
             Some(highlight::HrefContext { context, file_span, root_path, current_href }),
-            Some(decoration_info),
+            Some(decoration_info.take().unwrap()),
         );
         Ok(())
     });

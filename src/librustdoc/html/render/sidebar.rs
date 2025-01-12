@@ -100,18 +100,17 @@ impl<'a> Link<'a> {
 }
 
 pub(crate) mod filters {
-    use std::fmt::Display;
+    use std::fmt::{self, Display};
 
     use rinja::filters::Safe;
 
     use crate::html::escape::EscapeBodyTextWithWbr;
-    use crate::html::render::display_fn;
     pub(crate) fn wrapped<T>(v: T) -> rinja::Result<Safe<impl Display>>
     where
         T: Display,
     {
         let string = v.to_string();
-        Ok(Safe(display_fn(move |f| EscapeBodyTextWithWbr(&string).fmt(f))))
+        Ok(Safe(fmt::from_fn(move |f| EscapeBodyTextWithWbr(&string).fmt(f))))
     }
 }
 
