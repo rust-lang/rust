@@ -7,7 +7,6 @@ use std::{io, iter, mem};
 pub(super) use cstore_impl::provide;
 use proc_macro::bridge::client::ProcMacro;
 use rustc_ast as ast;
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::owned_slice::OwnedSlice;
@@ -958,7 +957,7 @@ impl CrateRoot {
     pub(crate) fn decode_crate_deps<'a>(
         &self,
         metadata: &'a MetadataBlob,
-    ) -> impl ExactSizeIterator<Item = CrateDep> + Captures<'a> {
+    ) -> impl ExactSizeIterator<Item = CrateDep> + 'a {
         self.crate_deps.decode(metadata)
     }
 }

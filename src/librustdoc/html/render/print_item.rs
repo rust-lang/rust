@@ -4,7 +4,6 @@ use std::fmt;
 use itertools::Itertools;
 use rinja::Template;
 use rustc_abi::VariantIdx;
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
@@ -91,7 +90,7 @@ macro_rules! item_template {
 macro_rules! item_template_methods {
     () => {};
     (document $($rest:tt)*) => {
-        fn document<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+        fn document<'b>(&'b self) -> impl fmt::Display + use<'a, 'cx, 'b> {
             display_fn(move |f| {
                 let (item, cx) = self.item_and_cx();
                 let v = document(cx, item, None, HeadingOffset::H2);
@@ -101,7 +100,7 @@ macro_rules! item_template_methods {
         item_template_methods!($($rest)*);
     };
     (document_type_layout $($rest:tt)*) => {
-        fn document_type_layout<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+        fn document_type_layout<'b>(&'b self) -> impl fmt::Display + use<'a, 'cx, 'b> {
             display_fn(move |f| {
                 let (item, cx) = self.item_and_cx();
                 let def_id = item.item_id.expect_def_id();
@@ -112,7 +111,7 @@ macro_rules! item_template_methods {
         item_template_methods!($($rest)*);
     };
     (render_attributes_in_pre $($rest:tt)*) => {
-        fn render_attributes_in_pre<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+        fn render_attributes_in_pre<'b>(&'b self) -> impl fmt::Display + use<'a, 'cx, 'b> {
             display_fn(move |f| {
                 let (item, cx) = self.item_and_cx();
                 let v = render_attributes_in_pre(item, "", cx);
@@ -122,7 +121,7 @@ macro_rules! item_template_methods {
         item_template_methods!($($rest)*);
     };
     (render_assoc_items $($rest:tt)*) => {
-        fn render_assoc_items<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+        fn render_assoc_items<'b>(&'b self) -> impl fmt::Display + use<'a, 'cx, 'b> {
             display_fn(move |f| {
                 let (item, cx) = self.item_and_cx();
                 let def_id = item.item_id.expect_def_id();
@@ -538,7 +537,7 @@ fn extra_info_tags<'a, 'tcx: 'a>(
     item: &'a clean::Item,
     parent: &'a clean::Item,
     import_def_id: Option<DefId>,
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+) -> impl fmt::Display + use<'a, 'tcx> {
     display_fn(move |f| {
         fn tag_html<'a>(
             class: &'a str,
@@ -1394,7 +1393,7 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
     );
 
     impl<'a, 'cx: 'a> ItemUnion<'a, 'cx> {
-        fn render_union<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+        fn render_union<'b>(&'b self) -> impl fmt::Display + use<'a, 'cx, 'b> {
             display_fn(move |f| {
                 let v = render_union(self.it, Some(&self.s.generics), &self.s.fields, self.cx);
                 write!(f, "{v}")
@@ -1404,7 +1403,7 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
         fn document_field<'b>(
             &'b self,
             field: &'a clean::Item,
-        ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+        ) -> impl fmt::Display + use<'a, 'cx, 'b> {
             display_fn(move |f| {
                 let v = document(self.cx, field, Some(self.it), HeadingOffset::H3);
                 write!(f, "{v}")
@@ -1415,10 +1414,7 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
             field.stability_class(self.cx.tcx())
         }
 
-        fn print_ty<'b>(
-            &'b self,
-            ty: &'a clean::Type,
-        ) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
+        fn print_ty<'b>(&'b self, ty: &'a clean::Type) -> impl fmt::Display + use<'a, 'cx, 'b> {
             display_fn(move |f| {
                 let v = ty.print(self.cx);
                 write!(f, "{v}")
@@ -1445,7 +1441,7 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
 fn print_tuple_struct_fields<'a, 'cx: 'a>(
     cx: &'a Context<'cx>,
     s: &'a [clean::Item],
-) -> impl fmt::Display + 'a + Captures<'cx> {
+) -> impl fmt::Display + use<'a, 'cx> {
     display_fn(|f| {
         if !s.is_empty()
             && s.iter().all(|field| {
@@ -2170,7 +2166,7 @@ fn render_union<'a, 'cx: 'a>(
     g: Option<&'a clean::Generics>,
     fields: &'a [clean::Item],
     cx: &'a Context<'cx>,
-) -> impl fmt::Display + 'a + Captures<'cx> {
+) -> impl fmt::Display + use<'a, 'cx> {
     display_fn(move |mut f| {
         write!(f, "{}union {}", visibility_print_with_space(it, cx), it.name.unwrap(),)?;
 

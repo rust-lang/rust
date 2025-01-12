@@ -1,6 +1,5 @@
 use std::fmt::Write;
 
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_hir::HirId;
@@ -415,7 +414,7 @@ pub fn analyze_coroutine_closure_captures<'a, 'tcx: 'a, T>(
     parent_captures: impl IntoIterator<Item = &'a CapturedPlace<'tcx>>,
     child_captures: impl IntoIterator<Item = &'a CapturedPlace<'tcx>>,
     mut for_each: impl FnMut((usize, &'a CapturedPlace<'tcx>), (usize, &'a CapturedPlace<'tcx>)) -> T,
-) -> impl Iterator<Item = T> + Captures<'a> + Captures<'tcx> {
+) -> impl Iterator<Item = T> {
     std::iter::from_coroutine(
         #[coroutine]
         move || {

@@ -47,7 +47,6 @@ use rinja::Template;
 use rustc_attr_parsing::{
     ConstStability, DeprecatedSince, Deprecation, RustcVersion, StabilityLevel, StableSince,
 };
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::Mutability;
 use rustc_hir::def_id::{DefId, DefIdSet};
@@ -508,7 +507,7 @@ fn document<'a, 'cx: 'a>(
     item: &'a clean::Item,
     parent: Option<&'a clean::Item>,
     heading_offset: HeadingOffset,
-) -> impl fmt::Display + 'a + Captures<'cx> {
+) -> impl fmt::Display + use<'a, 'cx> {
     if let Some(ref name) = item.name {
         info!("Documenting {name}");
     }
@@ -529,7 +528,7 @@ fn render_markdown<'a, 'cx: 'a>(
     md_text: &'a str,
     links: Vec<RenderedLink>,
     heading_offset: HeadingOffset,
-) -> impl fmt::Display + 'a + Captures<'cx> {
+) -> impl fmt::Display + use<'a, 'cx> {
     display_fn(move |f| {
         write!(
             f,
@@ -556,7 +555,7 @@ fn document_short<'a, 'cx: 'a>(
     link: AssocItemLink<'a>,
     parent: &'a clean::Item,
     show_def_docs: bool,
-) -> impl fmt::Display + 'a + Captures<'cx> {
+) -> impl fmt::Display + use<'a, 'cx> {
     display_fn(move |f| {
         document_item_info(cx, item, Some(parent)).render_into(f).unwrap();
         if !show_def_docs {
@@ -587,7 +586,7 @@ fn document_full_collapsible<'a, 'cx: 'a>(
     item: &'a clean::Item,
     cx: &'a Context<'cx>,
     heading_offset: HeadingOffset,
-) -> impl fmt::Display + 'a + Captures<'cx> {
+) -> impl fmt::Display + use<'a, 'cx> {
     document_full_inner(item, cx, true, heading_offset)
 }
 
@@ -595,7 +594,7 @@ fn document_full<'a, 'cx: 'a>(
     item: &'a clean::Item,
     cx: &'a Context<'cx>,
     heading_offset: HeadingOffset,
-) -> impl fmt::Display + 'a + Captures<'cx> {
+) -> impl fmt::Display + use<'a, 'cx> {
     document_full_inner(item, cx, false, heading_offset)
 }
 
@@ -604,7 +603,7 @@ fn document_full_inner<'a, 'cx: 'a>(
     cx: &'a Context<'cx>,
     is_collapsible: bool,
     heading_offset: HeadingOffset,
-) -> impl fmt::Display + 'a + Captures<'cx> {
+) -> impl fmt::Display + use<'a, 'cx> {
     display_fn(move |f| {
         if let Some(s) = item.opt_doc_value() {
             debug!("Doc block: =====\n{s}\n=====");
@@ -1158,7 +1157,7 @@ fn render_attributes_in_pre<'a, 'tcx: 'a>(
     it: &'a clean::Item,
     prefix: &'a str,
     cx: &'a Context<'tcx>,
-) -> impl fmt::Display + Captures<'a> + Captures<'tcx> {
+) -> impl fmt::Display + use<'a, 'tcx> {
     crate::html::format::display_fn(move |f| {
         for a in it.attributes(cx.tcx(), cx.cache(), false) {
             writeln!(f, "{prefix}{a}")?;
@@ -1255,7 +1254,7 @@ fn render_assoc_items<'a, 'cx: 'a>(
     containing_item: &'a clean::Item,
     it: DefId,
     what: AssocItemRender<'a>,
-) -> impl fmt::Display + 'a + Captures<'cx> {
+) -> impl fmt::Display + use<'a, 'cx> {
     let mut derefs = DefIdSet::default();
     derefs.insert(it);
     display_fn(move |f| {

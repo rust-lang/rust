@@ -48,7 +48,6 @@ pub use rustc_index::static_assert_size;
 pub mod aligned;
 pub mod base_n;
 pub mod binary_search_util;
-pub mod captures;
 pub mod fingerprint;
 pub mod flat_map_in_place;
 pub mod flock;

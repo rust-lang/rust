@@ -175,8 +175,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         &self,
         ty: RevealedTy<'tcx>,
         variant: &'tcx VariantDef,
-    ) -> impl Iterator<Item = (&'tcx FieldDef, RevealedTy<'tcx>)> + Captures<'p> + Captures<'_>
-    {
+    ) -> impl Iterator<Item = (&'tcx FieldDef, RevealedTy<'tcx>)> + use<'p, 'tcx, '_> {
         let ty::Adt(_, args) = ty.kind() else { bug!() };
         variant.fields.iter().map(move |field| {
             let ty = field.ty(self.tcx, args);
@@ -209,7 +208,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         ty: RevealedTy<'tcx>,
     ) -> impl Iterator<Item = (RevealedTy<'tcx>, PrivateUninhabitedField)>
     + ExactSizeIterator
-    + Captures<'a> {
+    + use<'tcx, 'a> {
         fn reveal_and_alloc<'a, 'tcx>(
             cx: &'a RustcPatCtxt<'_, 'tcx>,
             iter: impl Iterator<Item = Ty<'tcx>>,

@@ -1,4 +1,3 @@
-use rustc_data_structures::captures::Captures;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::{
@@ -134,7 +133,7 @@ fn coverage_ids_info<'tcx>(
 
 fn all_coverage_in_mir_body<'a, 'tcx>(
     body: &'a Body<'tcx>,
-) -> impl Iterator<Item = &'a CoverageKind> + Captures<'tcx> {
+) -> impl Iterator<Item = &'a CoverageKind> + use<'a, 'tcx> {
     body.basic_blocks.iter().flat_map(|bb_data| &bb_data.statements).filter_map(|statement| {
         match statement.kind {
             StatementKind::Coverage(ref kind) if !is_inlined(body, statement) => Some(kind),

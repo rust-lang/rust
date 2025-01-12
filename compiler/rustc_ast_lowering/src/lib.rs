@@ -43,7 +43,6 @@
 
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{self as ast, *};
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -1803,7 +1802,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &'s mut self,
         params: &'s [GenericParam],
         source: hir::GenericParamSource,
-    ) -> impl Iterator<Item = hir::GenericParam<'hir>> + Captures<'a> + Captures<'s> {
+    ) -> impl Iterator<Item = hir::GenericParam<'hir>> + use<'a, 'hir, 's> {
         params.iter().map(move |param| self.lower_generic_param(param, source))
     }
 
@@ -1968,7 +1967,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &'s mut self,
         bounds: &'s [GenericBound],
         itctx: ImplTraitContext,
-    ) -> impl Iterator<Item = hir::GenericBound<'hir>> + Captures<'s> + Captures<'a> {
+    ) -> impl Iterator<Item = hir::GenericBound<'hir>> + use<'a, 'hir, 's> {
         bounds.iter().map(move |bound| self.lower_param_bound(bound, itctx))
     }
 

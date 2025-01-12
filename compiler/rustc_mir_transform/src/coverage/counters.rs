@@ -1,7 +1,6 @@
 use std::cmp::Ordering;
 use std::fmt::{self, Debug};
 
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::DirectedGraph;
 use rustc_index::IndexVec;
@@ -144,9 +143,7 @@ impl CoverageCounters {
     /// Returns an iterator over all the nodes/edges in the coverage graph that
     /// should have a counter-increment statement injected into MIR, along with
     /// each site's corresponding counter ID.
-    pub(super) fn counter_increment_sites(
-        &self,
-    ) -> impl Iterator<Item = (CounterId, Site)> + Captures<'_> {
+    pub(super) fn counter_increment_sites(&self) -> impl Iterator<Item = (CounterId, Site)> + '_ {
         self.counter_increment_sites.iter_enumerated().map(|(id, &site)| (id, site))
     }
 
@@ -154,7 +151,7 @@ impl CoverageCounters {
     /// with a counter *expression*, along with the ID of that expression.
     pub(super) fn bcb_nodes_with_coverage_expressions(
         &self,
-    ) -> impl Iterator<Item = (BasicCoverageBlock, ExpressionId)> + Captures<'_> {
+    ) -> impl Iterator<Item = (BasicCoverageBlock, ExpressionId)> + '_ {
         self.node_counters.iter_enumerated().filter_map(|(bcb, &counter)| match counter {
             // Yield the BCB along with its associated expression ID.
             Some(BcbCounter::Expression { id }) => Some((bcb, id)),
@@ -212,7 +209,7 @@ fn sibling_out_edge_targets(
     graph: &CoverageGraph,
     from_bcb: BasicCoverageBlock,
     to_bcb: BasicCoverageBlock,
-) -> impl Iterator<Item = BasicCoverageBlock> + Captures<'_> {
+) -> impl Iterator<Item = BasicCoverageBlock> + '_ {
     graph.successors[from_bcb].iter().copied().filter(move |&t| t != to_bcb)
 }
 

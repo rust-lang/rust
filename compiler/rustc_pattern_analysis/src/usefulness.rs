@@ -719,7 +719,7 @@ use tracing::{debug, instrument};
 use self::PlaceValidity::*;
 use crate::constructor::{Constructor, ConstructorSet, IntRange};
 use crate::pat::{DeconstructedPat, PatId, PatOrWild, WitnessPat};
-use crate::{Captures, MatchArm, PatCx, PrivateUninhabitedField};
+use crate::{MatchArm, PatCx, PrivateUninhabitedField};
 #[cfg(not(feature = "rustc"))]
 pub fn ensure_sufficient_stack<R>(f: impl FnOnce() -> R) -> R {
     f()
@@ -905,7 +905,7 @@ impl<Cx: PatCx> PlaceInfo<Cx> {
         &'a self,
         cx: &'a Cx,
         ctor: &'a Constructor<Cx>,
-    ) -> impl Iterator<Item = Self> + ExactSizeIterator + Captures<'a> {
+    ) -> impl Iterator<Item = Self> + ExactSizeIterator + use<'a, Cx> {
         let ctor_sub_tys = cx.ctor_sub_tys(ctor, &self.ty);
         let ctor_sub_validity = self.validity.specialize(ctor);
         ctor_sub_tys.map(move |(ty, PrivateUninhabitedField(private_uninhabited))| PlaceInfo {
@@ -1045,13 +1045,13 @@ impl<'p, Cx: PatCx> PatStack<'p, Cx> {
         self.pats[0]
     }
 
-    fn iter(&self) -> impl Iterator<Item = PatOrWild<'p, Cx>> + Captures<'_> {
+    fn iter(&self) -> impl Iterator<Item = PatOrWild<'p, Cx>> + use<'p, '_, Cx> {
         self.pats.iter().copied()
     }
 
     // Expand the first or-pattern into its subpatterns. Only useful if the pattern is an
     // or-pattern. Panics if `self` is empty.
-    fn expand_or_pat(&self) -> impl Iterator<Item = PatStack<'p, Cx>> + Captures<'_> {
+    fn expand_or_pat(&self) -> impl Iterator<Item = PatStack<'p, Cx>> + use<'p, '_, Cx> {
         self.head().expand_or_pat().into_iter().map(move |pat| {
             let mut new = self.clone();
             new.pats[0] = pat;
@@ -1156,7 +1156,7 @@ impl<'p, Cx: PatCx> MatrixRow<'p, Cx> {
         self.pats.head()
     }
 
-    fn iter(&self) -> impl Iterator<Item = PatOrWild<'p, Cx>> + Captures<'_> {
+    fn iter(&self) -> impl Iterator<Item = PatOrWild<'p, Cx>> + use<'p, '_, Cx> {
         self.pats.iter()
     }
 
@@ -1164,7 +1164,7 @@ impl<'p, Cx: PatCx> MatrixRow<'p, Cx> {
     fn expand_or_pat(
         &self,
         parent_row: usize,
-    ) -> impl Iterator<Item = MatrixRow<'p, Cx>> + Captures<'_> {
+    ) -> impl Iterator<Item = MatrixRow<'p, Cx>> + use<'p, '_, Cx> {
         let is_or_pat = self.pats.head().is_or_pat();
         self.pats.expand_or_pat().map(move |patstack| MatrixRow {
             pats: patstack,
@@ -1274,7 +1274,7 @@ impl<'p, Cx: PatCx> Matrix<'p, Cx> {
     }
 
     /// Iterate over the first pattern of each row.
-    fn heads(&self) -> impl Iterator<Item = PatOrWild<'p, Cx>> + Clone + Captures<'_> {
+    fn heads(&self) -> impl Iterator<Item = PatOrWild<'p, Cx>> + Clone + use<'p, '_, Cx> {
         self.rows().map(|r| r.head())
     }
 

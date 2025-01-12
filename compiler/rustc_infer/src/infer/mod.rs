@@ -15,7 +15,6 @@ use region_constraints::{
 };
 pub use relate::StructurallyRelateAliases;
 pub use relate::combine::PredicateEmittingRelation;
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::undo_log::{Rollback, UndoLogs};
 use rustc_data_structures::unify as ut;
@@ -1297,7 +1296,7 @@ impl<'tcx> InferCtxt<'tcx> {
     #[inline]
     pub fn is_ty_infer_var_definitely_unchanged<'a>(
         &'a self,
-    ) -> (impl Fn(TyOrConstInferVar) -> bool + Captures<'tcx> + 'a) {
+    ) -> (impl Fn(TyOrConstInferVar) -> bool + use<'tcx, 'a>) {
         // This hoists the borrow/release out of the loop body.
         let inner = self.inner.try_borrow();
 

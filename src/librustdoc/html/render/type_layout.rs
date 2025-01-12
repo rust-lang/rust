@@ -2,7 +2,6 @@ use std::fmt;
 
 use rinja::Template;
 use rustc_abi::{Primitive, TagEncoding, Variants};
-use rustc_data_structures::captures::Captures;
 use rustc_hir::def_id::DefId;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::LayoutError;
@@ -30,7 +29,7 @@ struct TypeLayoutSize {
 pub(crate) fn document_type_layout<'a, 'cx: 'a>(
     cx: &'a Context<'cx>,
     ty_def_id: DefId,
-) -> impl fmt::Display + 'a + Captures<'cx> {
+) -> impl fmt::Display + use<'a, 'cx> {
     display_fn(move |f| {
         if !cx.shared.show_type_layout {
             return Ok(());

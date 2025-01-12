@@ -3,7 +3,6 @@ use std::collections::VecDeque;
 use std::ops::{Index, IndexMut};
 use std::{iter, mem, slice};
 
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_data_structures::graph::{self, DirectedGraph, StartNode};
@@ -246,7 +245,7 @@ impl CoverageGraph {
     pub(crate) fn loop_headers_containing(
         &self,
         bcb: BasicCoverageBlock,
-    ) -> impl Iterator<Item = BasicCoverageBlock> + Captures<'_> {
+    ) -> impl Iterator<Item = BasicCoverageBlock> + '_ {
         let self_if_loop_header = self.is_loop_header.contains(bcb).then_some(bcb).into_iter();
 
         let mut curr = Some(bcb);
@@ -266,7 +265,7 @@ impl CoverageGraph {
     pub(crate) fn reloop_predecessors(
         &self,
         to_bcb: BasicCoverageBlock,
-    ) -> impl Iterator<Item = BasicCoverageBlock> + Captures<'_> {
+    ) -> impl Iterator<Item = BasicCoverageBlock> + '_ {
         self.predecessors[to_bcb].iter().copied().filter(move |&pred| self.dominates(to_bcb, pred))
     }
 }
