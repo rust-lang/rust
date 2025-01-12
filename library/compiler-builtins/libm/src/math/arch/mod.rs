@@ -11,10 +11,19 @@
 cfg_if! {
     if #[cfg(all(target_arch = "wasm32", intrinsics_enabled))] {
         mod wasm32;
-        pub use wasm32::{ceil, ceilf, fabs, fabsf, floor, floorf, sqrt, sqrtf, trunc, truncf};
+        pub use wasm32::{
+            ceil, ceilf, fabs, fabsf, floor, floorf, rint, rintf, sqrt, sqrtf, trunc, truncf,
+        };
     } else if #[cfg(target_feature = "sse2")] {
         mod i686;
         pub use i686::{sqrt, sqrtf};
+    } else if #[cfg(all(
+        target_arch = "aarch64", // TODO: also arm64ec?
+        target_feature = "neon",
+        target_endian = "little", // see https://github.com/rust-lang/stdarch/issues/1484
+    ))] {
+        mod aarch64;
+        pub use aarch64::{rint, rintf};
     }
 }
 
