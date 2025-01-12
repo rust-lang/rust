@@ -593,9 +593,11 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
     }
 
     fn check_missing_const_stability(&self, def_id: LocalDefId, span: Span) {
-        let is_const = self.tcx.is_const_fn(def_id.to_def_id());
+        let is_const = self.tcx.is_const_fn(def_id.to_def_id())
+            || (self.tcx.def_kind(def_id.to_def_id()) == DefKind::Trait
+                && self.tcx.is_const_trait(def_id.to_def_id()));
 
-        // Reachable const fn must have a stability attribute.
+        // Reachable const fn/trait must have a stability attribute.
         if is_const
             && self.effective_visibilities.is_reachable(def_id)
             && self.tcx.lookup_const_stability(def_id).is_none()
@@ -772,7 +774,13 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
             // For implementations of traits, check the stability of each item
             // individually as it's possible to have a stable trait with unstable
             // items.
-            hir::ItemKind::Impl(hir::Impl { of_trait: Some(ref t), self_ty, items, .. }) => {
+            hir::ItemKind::Impl(hir::Impl {
+                of_trait: Some(ref t),
+                self_ty,
+                items,
+                constness,
+                ..
+            }) => {
                 let features = self.tcx.features();
                 if features.staged_api() {
                     let attrs = self.tcx.hir().attrs(item.hir_id());
@@ -814,6 +822,16 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     }
                 }
 
+                match constness {
+                    rustc_hir::Constness::Const => {
+                        if let Some(def_id) = t.trait_def_id() {
+                            // FIXME(const_trait_impl): Improve the span here.
+                            self.tcx.check_const_stability(def_id, t.path.span, t.path.span);
+                        }
+                    }
+                    rustc_hir::Constness::NotConst => {}
+                }
+
                 for impl_item_ref in *items {
                     let impl_item = self.tcx.associated_item(impl_item_ref.id.owner_id);
 
@@ -827,6 +845,18 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
             _ => (/* pass */),
         }
         intravisit::walk_item(self, item);
+    }
+
+    fn visit_poly_trait_ref(&mut self, t: &'tcx hir::PolyTraitRef<'tcx>) {
+        match t.modifiers.constness {
+            hir::BoundConstness::Always(span) | hir::BoundConstness::Maybe(span) => {
+                if let Some(def_id) = t.trait_ref.trait_def_id() {
+                    self.tcx.check_const_stability(def_id, t.trait_ref.path.span, span);
+                }
+            }
+            hir::BoundConstness::Never => {}
+        }
+        intravisit::walk_poly_trait_ref(self, t);
     }
 
     fn visit_path(&mut self, path: &hir::Path<'tcx>, id: hir::HirId) {
