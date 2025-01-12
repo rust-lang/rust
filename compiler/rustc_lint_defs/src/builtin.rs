@@ -4035,7 +4035,8 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #![feature(test_unstable_lint)]
+    /// // This lint is intentionally used to test the compiler's behavior
+    /// // when an unstable lint is enabled without the corresponding feature gate.
     /// #![allow(test_unstable_lint)]
     /// ```
     ///
