@@ -6,15 +6,21 @@ edition = "2021"
 publish = false
 
 [lib]
+crate-type = ["staticlib"]
 test = false
 bench = false
+
+[features]
+default = ["arch", "unstable-float"]
+
+# Copied from `libm`'s root `Cargo.toml`'
+unstable-float = []
+arch = []
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = [
   "cfg(arch_enabled)",
   "cfg(assert_no_panic)",
-  "cfg(f128_enabled)",
-  "cfg(f16_enabled)",
   "cfg(intrinsics_enabled)",
   'cfg(feature, values("checked"))',
   'cfg(feature, values("force-soft-floats"))',
@@ -22,3 +28,11 @@ unexpected_cfgs = { level = "warn", check-cfg = [
   'cfg(feature, values("unstable-intrinsics"))',
   'cfg(feature, values("unstable-public-internals"))',
 ] }
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = "fat"

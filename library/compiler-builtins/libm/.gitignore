@@ -2,8 +2,7 @@
 .#*
 /bin
 /math/src
-/math/target
-/target
+target
 Cargo.lock
 musl/
 **.tar.gz
