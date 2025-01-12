@@ -112,6 +112,9 @@ pub(crate) fn inlay_hints(
         }
         hints(event);
     }
+    if let Some(range_limit) = range_limit {
+        acc.retain(|hint| range_limit.contains_range(hint.range));
+    }
     acc
 }
 
