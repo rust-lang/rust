@@ -55,10 +55,12 @@ pub trait Int:
     + ops::BitAnd<Output = Self>
     + cmp::Ord
     + CastFrom<i32>
+    + CastFrom<u16>
     + CastFrom<u32>
     + CastFrom<u8>
     + CastFrom<usize>
     + CastInto<i32>
+    + CastInto<u16>
     + CastInto<u32>
     + CastInto<u8>
     + CastInto<usize>

@@ -110,19 +110,21 @@ macro_rules! hf64 {
 /// Assert `F::biteq` with better messages.
 #[cfg(test)]
 macro_rules! assert_biteq {
-    ($left:expr, $right:expr, $($arg:tt)*) => {{
-        let bits = ($left.to_bits() * 0).leading_zeros(); // hack to get the width from the value
+    ($left:expr, $right:expr, $($tt:tt)*) => {{
+        let l = $left;
+        let r = $right;
+        let bits = (l.to_bits() - l.to_bits()).leading_zeros(); // hack to get the width from the value
         assert!(
-            $left.biteq($right),
-            "\nl: {l:?} ({lb:#0width$x})\nr: {r:?} ({rb:#0width$x})",
-            l = $left,
-            lb = $left.to_bits(),
-            r = $right,
-            rb = $right.to_bits(),
-            width = ((bits / 4) + 2) as usize
+            l.biteq(r),
+            "{}\nl: {l:?} ({lb:#0width$x})\nr: {r:?} ({rb:#0width$x})",
+            format_args!($($tt)*),
+            lb = l.to_bits(),
+            rb = r.to_bits(),
+            width = ((bits / 4) + 2) as usize,
+
         );
     }};
     ($left:expr, $right:expr $(,)?) => {
-        assert_biteq!($left, $right,)
+        assert_biteq!($left, $right, "")
     };
 }
