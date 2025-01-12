@@ -1940,6 +1940,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// in match tree lowering.
     fn merge_trivial_subcandidates(&mut self, candidate: &mut Candidate<'_, 'tcx>) {
         assert!(!candidate.subcandidates.is_empty());
+        if candidate.false_edge_start_block.is_none() {
+            candidate.false_edge_start_block = candidate.subcandidates[0].false_edge_start_block;
+        }
+
         if candidate.has_guard {
             // FIXME(or_patterns; matthewjasper) Don't give up if we have a guard.
             return;
@@ -1958,10 +1962,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // This candidate is about to become a leaf, so unset `or_span`.
         let or_span = candidate.or_span.take().unwrap();
         let source_info = self.source_info(or_span);
-        
-        if candidate.false_edge_start_block.is_none() {
-            candidate.false_edge_start_block = candidate.subcandidates[0].false_edge_start_block;
-        }
 
         // Remove the (known-trivial) subcandidates from the candidate tree,
         // so that they aren't visible after match tree lowering, and wire them
