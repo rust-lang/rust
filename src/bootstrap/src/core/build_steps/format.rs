@@ -11,8 +11,9 @@ use build_helper::git::get_git_modified_files;
 use ignore::WalkBuilder;
 
 use crate::core::builder::Builder;
+use crate::utils::build_stamp::BuildStamp;
 use crate::utils::exec::command;
-use crate::utils::helpers::{self, program_out_of_date, t};
+use crate::utils::helpers::{self, t};
 
 #[must_use]
 enum RustfmtStatus {
@@ -55,8 +56,8 @@ fn rustfmt(
     }
 }
 
-fn get_rustfmt_version(build: &Builder<'_>) -> Option<(String, PathBuf)> {
-    let stamp_file = build.out.join("rustfmt.stamp");
+fn get_rustfmt_version(build: &Builder<'_>) -> Option<(String, BuildStamp)> {
+    let stamp_file = BuildStamp::new(&build.out).with_prefix("rustfmt");
 
     let mut cmd = command(build.initial_rustfmt()?);
     cmd.arg("--version");
@@ -73,7 +74,7 @@ fn verify_rustfmt_version(build: &Builder<'_>) -> bool {
     let Some((version, stamp_file)) = get_rustfmt_version(build) else {
         return false;
     };
-    !program_out_of_date(&stamp_file, &version)
+    stamp_file.add_stamp(version).is_up_to_date()
 }
 
 /// Updates the last rustfmt version used.
@@ -81,7 +82,7 @@ fn update_rustfmt_version(build: &Builder<'_>) {
     let Some((version, stamp_file)) = get_rustfmt_version(build) else {
         return;
     };
-    t!(std::fs::write(stamp_file, version))
+    t!(std::fs::write(stamp_file.path(), version))
 }
 
 /// Returns the Rust files modified between the `merge-base` of HEAD and

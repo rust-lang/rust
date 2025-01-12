@@ -1,7 +1,5 @@
 //! Implementation of compiling the compiler and standard library, in "check"-based modes.
 
-use std::path::PathBuf;
-
 use crate::core::build_steps::compile::{
     add_to_sysroot, run_cargo, rustc_cargo, rustc_cargo_env, std_cargo, std_crates_for_run_make,
 };
@@ -10,7 +8,8 @@ use crate::core::builder::{
     self, Alias, Builder, Kind, RunConfig, ShouldRun, Step, crate_description,
 };
 use crate::core::config::TargetSelection;
-use crate::{Compiler, Mode, Subcommand};
+use crate::utils::build_stamp::{self, BuildStamp};
+use crate::{Mode, Subcommand};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Std {
@@ -83,22 +82,16 @@ impl Step for Std {
             format_args!("library artifacts{}", crate_description(&self.crates)),
             target,
         );
-        run_cargo(
-            builder,
-            cargo,
-            builder.config.free_args.clone(),
-            &libstd_stamp(builder, compiler, target),
-            vec![],
-            true,
-            false,
-        );
+
+        let stamp = build_stamp::libstd_stamp(builder, compiler, target).with_prefix("check");
+        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
 
         // We skip populating the sysroot in non-zero stage because that'll lead
         // to rlib/rmeta conflicts if std gets built during this session.
         if compiler.stage == 0 {
             let libdir = builder.sysroot_target_libdir(compiler, target);
             let hostdir = builder.sysroot_target_libdir(compiler, compiler.host);
-            add_to_sysroot(builder, &libdir, &hostdir, &libstd_stamp(builder, compiler, target));
+            add_to_sysroot(builder, &libdir, &hostdir, &stamp);
         }
         drop(_guard);
 
@@ -139,16 +132,9 @@ impl Step for Std {
             cargo.arg("-p").arg(krate);
         }
 
+        let stamp = build_stamp::libstd_stamp(builder, compiler, target).with_prefix("check-test");
         let _guard = builder.msg_check("library test/bench/example targets", target);
-        run_cargo(
-            builder,
-            cargo,
-            builder.config.free_args.clone(),
-            &libstd_test_stamp(builder, compiler, target),
-            vec![],
-            true,
-            false,
-        );
+        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
     }
 }
 
@@ -249,19 +235,14 @@ impl Step for Rustc {
             format_args!("compiler artifacts{}", crate_description(&self.crates)),
             target,
         );
-        run_cargo(
-            builder,
-            cargo,
-            builder.config.free_args.clone(),
-            &librustc_stamp(builder, compiler, target),
-            vec![],
-            true,
-            false,
-        );
+
+        let stamp = build_stamp::librustc_stamp(builder, compiler, target).with_prefix("check");
+
+        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
 
         let libdir = builder.sysroot_target_libdir(compiler, target);
         let hostdir = builder.sysroot_target_libdir(compiler, compiler.host);
-        add_to_sysroot(builder, &libdir, &hostdir, &librustc_stamp(builder, compiler, target));
+        add_to_sysroot(builder, &libdir, &hostdir, &stamp);
     }
 }
 
@@ -315,15 +296,10 @@ impl Step for CodegenBackend {
 
         let _guard = builder.msg_check(backend, target);
 
-        run_cargo(
-            builder,
-            cargo,
-            builder.config.free_args.clone(),
-            &codegen_backend_stamp(builder, compiler, target, backend),
-            vec![],
-            true,
-            false,
-        );
+        let stamp = build_stamp::codegen_backend_stamp(builder, compiler, target, backend)
+            .with_prefix("check");
+
+        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
     }
 }
 
@@ -380,22 +356,13 @@ impl Step for RustAnalyzer {
             cargo.arg("--benches");
         }
 
-        let _guard = builder.msg_check("rust-analyzer artifacts", target);
-        run_cargo(
-            builder,
-            cargo,
-            builder.config.free_args.clone(),
-            &stamp(builder, compiler, target),
-            vec![],
-            true,
-            false,
-        );
+        // Cargo's output path in a given stage, compiled by a particular
+        // compiler for the specified target.
+        let stamp = BuildStamp::new(&builder.cargo_out(compiler, Mode::ToolRustc, target))
+            .with_prefix("rust-analyzer-check");
 
-        /// Cargo's output path in a given stage, compiled by a particular
-        /// compiler for the specified target.
-        fn stamp(builder: &Builder<'_>, compiler: Compiler, target: TargetSelection) -> PathBuf {
-            builder.cargo_out(compiler, Mode::ToolRustc, target).join(".rust-analyzer-check.stamp")
-        }
+        let _guard = builder.msg_check("rust-analyzer artifacts", target);
+        run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
     }
 }
 
@@ -469,9 +436,8 @@ fn run_tool_check_step(
         cargo.arg("--all-targets");
     }
 
-    let stamp = builder
-        .cargo_out(compiler, Mode::ToolRustc, target)
-        .join(format!(".{}-check.stamp", step_type_name.to_lowercase()));
+    let stamp = BuildStamp::new(&builder.cargo_out(compiler, Mode::ToolRustc, target))
+        .with_prefix(&format!("{}-check", step_type_name.to_lowercase()));
 
     let _guard = builder.msg_check(format!("{display_name} artifacts"), target);
     run_cargo(builder, cargo, builder.config.free_args.clone(), &stamp, vec![], true, false);
@@ -499,38 +465,3 @@ tool_check_step!(RunMakeSupport { path: "src/tools/run-make-support", default: f
 // Compiletest is implicitly "checked" when it gets built in order to run tests,
 // so this is mainly for people working on compiletest to run locally.
 tool_check_step!(Compiletest { path: "src/tools/compiletest", default: false });
-
-/// Cargo's output path for the standard library in a given stage, compiled
-/// by a particular compiler for the specified target.
-fn libstd_stamp(builder: &Builder<'_>, compiler: Compiler, target: TargetSelection) -> PathBuf {
-    builder.cargo_out(compiler, Mode::Std, target).join(".libstd-check.stamp")
-}
-
-/// Cargo's output path for the standard library in a given stage, compiled
-/// by a particular compiler for the specified target.
-fn libstd_test_stamp(
-    builder: &Builder<'_>,
-    compiler: Compiler,
-    target: TargetSelection,
-) -> PathBuf {
-    builder.cargo_out(compiler, Mode::Std, target).join(".libstd-check-test.stamp")
-}
-
-/// Cargo's output path for librustc in a given stage, compiled by a particular
-/// compiler for the specified target.
-fn librustc_stamp(builder: &Builder<'_>, compiler: Compiler, target: TargetSelection) -> PathBuf {
-    builder.cargo_out(compiler, Mode::Rustc, target).join(".librustc-check.stamp")
-}
-
-/// Cargo's output path for librustc_codegen_llvm in a given stage, compiled by a particular
-/// compiler for the specified target and backend.
-fn codegen_backend_stamp(
-    builder: &Builder<'_>,
-    compiler: Compiler,
-    target: TargetSelection,
-    backend: &str,
-) -> PathBuf {
-    builder
-        .cargo_out(compiler, Mode::Codegen, target)
-        .join(format!(".librustc_codegen_{backend}-check.stamp"))
-}

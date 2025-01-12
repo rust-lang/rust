@@ -391,6 +391,11 @@ trigger_files = [
     "x.ps1"
 ]
 
+[autolabel."A-bootstrap-stamp"]
+trigger_files = [
+    "src/bootstrap/src/utils/build_stamp.rs",
+]
+
 [autolabel."T-infra"]
 trigger_files = [
     "src/ci",

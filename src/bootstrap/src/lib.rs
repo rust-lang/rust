@@ -19,27 +19,23 @@
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::Display;
-use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::OnceLock;
 use std::time::SystemTime;
-use std::{env, io, str};
+use std::{env, fs, io, str};
 
 use build_helper::ci::gha;
 use build_helper::exit;
-use sha2::digest::Digest;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
+use utils::build_stamp::BuildStamp;
 use utils::channel::GitInfo;
-use utils::helpers::hex_encode;
 
 use crate::core::builder;
-use crate::core::builder::{Builder, Kind};
+use crate::core::builder::Kind;
 use crate::core::config::{DryRun, LldMode, LlvmLibunwind, Target, TargetSelection, flags};
 use crate::utils::exec::{BehaviorOnFailure, BootstrapCommand, CommandOutput, OutputMode, command};
-use crate::utils::helpers::{
-    self, dir_is_empty, exe, libdir, mtime, output, set_file_times, symlink_dir,
-};
+use crate::utils::helpers::{self, dir_is_empty, exe, libdir, output, set_file_times, symlink_dir};
 
 mod core;
 mod utils;
@@ -596,24 +592,6 @@ impl Build {
 
         #[cfg(feature = "build-metrics")]
         self.metrics.persist(self);
-    }
-
-    /// Clear out `dir` if `input` is newer.
-    ///
-    /// After this executes, it will also ensure that `dir` exists.
-    fn clear_if_dirty(&self, dir: &Path, input: &Path) -> bool {
-        let stamp = dir.join(".stamp");
-        let mut cleared = false;
-        if mtime(&stamp) < mtime(input) {
-            self.verbose(|| println!("Dirty - {}", dir.display()));
-            let _ = fs::remove_dir_all(dir);
-            cleared = true;
-        } else if stamp.exists() {
-            return cleared;
-        }
-        t!(fs::create_dir_all(dir));
-        t!(File::create(stamp));
-        cleared
     }
 
     fn rust_info(&self) -> &GitInfo {
@@ -1622,21 +1600,21 @@ Executed at: {executed_at}"#,
         ret
     }
 
-    fn read_stamp_file(&self, stamp: &Path) -> Vec<(PathBuf, DependencyType)> {
+    fn read_stamp_file(&self, stamp: &BuildStamp) -> Vec<(PathBuf, DependencyType)> {
         if self.config.dry_run() {
             return Vec::new();
         }
 
-        if !stamp.exists() {
+        if !stamp.path().exists() {
             eprintln!(
                 "ERROR: Unable to find the stamp file {}, did you try to keep a nonexistent build stage?",
-                stamp.display()
+                stamp.path().display()
             );
             crate::exit!(1);
         }
 
         let mut paths = Vec::new();
-        let contents = t!(fs::read(stamp), &stamp);
+        let contents = t!(fs::read(stamp.path()), stamp.path());
         // This is the method we use for extracting paths from the stamp file passed to us. See
         // run_cargo for more information (in compile.rs).
         for part in contents.split(|b| *b == 0) {
@@ -1920,52 +1898,6 @@ fn envify(s: &str) -> String {
         })
         .flat_map(|c| c.to_uppercase())
         .collect()
-}
-
-/// Computes a hash representing the state of a repository/submodule and additional input.
-///
-/// It uses `git diff` for the actual changes, and `git status` for including the untracked
-/// files in the specified directory. The additional input is also incorporated into the
-/// computation of the hash.
-///
-/// # Parameters
-///
-/// - `dir`: A reference to the directory path of the target repository/submodule.
-/// - `additional_input`: An additional input to be included in the hash.
-///
-/// # Panics
-///
-/// In case of errors during `git` command execution (e.g., in tarball sources), default values
-/// are used to prevent panics.
-pub fn generate_smart_stamp_hash(
-    builder: &Builder<'_>,
-    dir: &Path,
-    additional_input: &str,
-) -> String {
-    let diff = helpers::git(Some(dir))
-        .allow_failure()
-        .arg("diff")
-        .run_capture_stdout(builder)
-        .stdout_if_ok()
-        .unwrap_or_default();
-
-    let status = helpers::git(Some(dir))
-        .allow_failure()
-        .arg("status")
-        .arg("--porcelain")
-        .arg("-z")
-        .arg("--untracked-files=normal")
-        .run_capture_stdout(builder)
-        .stdout_if_ok()
-        .unwrap_or_default();
-
-    let mut hasher = sha2::Sha256::new();
-
-    hasher.update(diff);
-    hasher.update(status);
-    hasher.update(additional_input);
-
-    hex_encode(hasher.finalize().as_slice())
 }
 
 /// Ensures that the behavior dump directory is properly initialized.

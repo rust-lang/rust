@@ -16,6 +16,7 @@ use object::read::archive::ArchiveFile;
 use crate::LldMode;
 use crate::core::builder::Builder;
 use crate::core::config::{Config, TargetSelection};
+use crate::utils::exec::{BootstrapCommand, command};
 pub use crate::utils::shared_helpers::{dylib_path, dylib_path_var};
 
 #[cfg(test)]
@@ -45,10 +46,8 @@ macro_rules! t {
         }
     };
 }
+
 pub use t;
-
-use crate::utils::exec::{BootstrapCommand, command};
-
 pub fn exe(name: &str, target: TargetSelection) -> String {
     crate::utils::shared_helpers::exe(name, &target.triple)
 }
@@ -146,14 +145,6 @@ impl Drop for TimeIt {
             println!("\tfinished in {}.{:03} seconds", time.as_secs(), time.subsec_millis());
         }
     }
-}
-
-/// Used for download caching
-pub(crate) fn program_out_of_date(stamp: &Path, key: &str) -> bool {
-    if !stamp.exists() {
-        return true;
-    }
-    t!(fs::read_to_string(stamp)) != key
 }
 
 /// Symlinks two directories, using junctions on Windows and normal symlinks on
@@ -597,42 +588,4 @@ pub fn set_file_times<P: AsRef<Path>>(path: P, times: fs::FileTimes) -> io::Resu
         fs::File::open(path)?
     };
     f.set_times(times)
-}
-
-pub struct HashStamp {
-    pub path: PathBuf,
-    pub hash: Option<Vec<u8>>,
-}
-
-impl HashStamp {
-    pub fn new(path: PathBuf, hash: Option<&str>) -> Self {
-        HashStamp { path, hash: hash.map(|s| s.as_bytes().to_owned()) }
-    }
-
-    pub fn is_done(&self) -> bool {
-        match fs::read(&self.path) {
-            Ok(h) => self.hash.as_deref().unwrap_or(b"") == h.as_slice(),
-            Err(e) if e.kind() == io::ErrorKind::NotFound => false,
-            Err(e) => {
-                panic!("failed to read stamp file `{}`: {}", self.path.display(), e);
-            }
-        }
-    }
-
-    pub fn remove(&self) -> io::Result<()> {
-        match fs::remove_file(&self.path) {
-            Ok(()) => Ok(()),
-            Err(e) => {
-                if e.kind() == io::ErrorKind::NotFound {
-                    Ok(())
-                } else {
-                    Err(e)
-                }
-            }
-        }
-    }
-
-    pub fn write(&self) -> io::Result<()> {
-        fs::write(&self.path, self.hash.as_deref().unwrap_or(b""))
-    }
 }

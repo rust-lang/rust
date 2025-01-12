@@ -1,12 +1,13 @@
 //! Implementation of running clippy on the compiler, standard library and various tools.
 
-use super::compile::{librustc_stamp, libstd_stamp, run_cargo, rustc_cargo, std_cargo};
+use super::compile::{run_cargo, rustc_cargo, std_cargo};
 use super::tool::{SourceType, prepare_tool_cargo};
 use super::{check, compile};
 use crate::builder::{Builder, ShouldRun};
 use crate::core::build_steps::compile::std_crates_for_run_make;
 use crate::core::builder;
 use crate::core::builder::{Alias, Kind, RunConfig, Step, crate_description};
+use crate::utils::build_stamp::{self, BuildStamp};
 use crate::{Mode, Subcommand, TargetSelection};
 
 /// Disable the most spammy clippy lints
@@ -167,7 +168,7 @@ impl Step for Std {
             builder,
             cargo,
             lint_args(builder, &self.config, IGNORED_RULES_FOR_STD_AND_RUSTC),
-            &libstd_stamp(builder, compiler, target),
+            &build_stamp::libstd_stamp(builder, compiler, target),
             vec![],
             true,
             false,
@@ -243,7 +244,7 @@ impl Step for Rustc {
             builder,
             cargo,
             lint_args(builder, &self.config, IGNORED_RULES_FOR_STD_AND_RUSTC),
-            &librustc_stamp(builder, compiler, target),
+            &build_stamp::librustc_stamp(builder, compiler, target),
             vec![],
             true,
             false,
@@ -307,9 +308,9 @@ macro_rules! lint_any {
                     &target,
                 );
 
-                let stamp = builder
-                    .cargo_out(compiler, Mode::ToolRustc, target)
-                    .join(format!(".{}-check.stamp", stringify!($name).to_lowercase()));
+                let stringified_name = stringify!($name).to_lowercase();
+                let stamp = BuildStamp::new(&builder.cargo_out(compiler, Mode::ToolRustc, target))
+                    .with_prefix(&format!("{}-check", stringified_name));
 
                 run_cargo(
                     builder,
