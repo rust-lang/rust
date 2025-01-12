@@ -131,7 +131,18 @@ class EmptySyntheticProvider:
         return False
 
 
-def get_template_args(type_name: str) -> List[str]:
+def get_template_args(type_name: str) -> list[str]:
+    """
+    Takes a type name `T<A, tuple$<B, C>, D>` and returns a list of its generic args
+    `["A", "tuple$<B, C>", "D"]`.
+
+    String-based replacement for LLDB's `SBType.template_args`, as LLDB is currently unable to
+    populate this field for targets with PDB debug info. Also useful for manually altering the type
+    name of generics (e.g. `Vec<ref$<str$>` -> `Vec<&str>`).
+
+    Each element of the returned list can be looked up for its `SBType` value via
+    `SBTarget.FindFirstType()`
+    """
     params = []
     level = 0
     start = 0
@@ -801,17 +812,7 @@ class StdVecSyntheticProvider:
         self.element_type = self.valobj.GetType().GetTemplateArgumentType(0)
 
         if not self.element_type.IsValid():
-            # annoyingly, vec's constituent type isn't guaranteed to be contained anywhere useful.
-            # Some functions have it, but those functions only exist in binary when they're used.
-            # that means it's time for string-based garbage.
-
-            # acquire the first generic parameter via its type name
-            _, _, end = self.valobj.GetTypeName().partition("<")
-            element_name, _, _ = end.partition(",")
-
-            # this works even for built-in rust types like `u32` because internally it's just a
-            # `typedef` i really REALLY wish there was a better way to do this, but at the moment
-            # LLDB flat out ignores template parameters due to piggybacking off of TypeSystemClang.
+            element_name = get_template_args(self.valobj.GetTypeName())[0]
             self.element_type = self.valobj.target.FindFirstType(element_name)
 
         self.element_type_size = self.element_type.GetByteSize()
