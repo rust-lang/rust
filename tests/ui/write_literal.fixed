@@ -62,3 +62,19 @@ fn main() {
     writeln!(v, "hello {0} {1}, world {2}", 2, 3, 4);
     //~^ ERROR: literal with an empty format string
 }
+
+fn issue_13959() {
+    let mut v = Vec::new();
+    writeln!(v, "\"");
+    writeln!(
+        v,
+        "
+        foo
+        \\
+        \\\\
+        \"
+        \\\"
+        bar
+"
+    );
+}

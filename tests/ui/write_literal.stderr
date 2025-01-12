@@ -144,5 +144,41 @@ LL -     writeln!(v, "{0} {1} {2}, {3} {4}", "hello", 2, 3, "world", 4);
 LL +     writeln!(v, "hello {0} {1}, world {2}", 2, 3, 4);
    |
 
-error: aborting due to 12 previous errors
+error: literal with an empty format string
+  --> tests/ui/write_literal.rs:68:23
+   |
+LL |     writeln!(v, "{}", r#"""#);
+   |                       ^^^^^^
+   |
+help: try
+   |
+LL -     writeln!(v, "{}", r#"""#);
+LL +     writeln!(v, "\"");
+   |
+
+error: literal with an empty format string
+  --> tests/ui/write_literal.rs:72:9
+   |
+LL | /         r#"
+LL | |         foo
+LL | |         \
+LL | |         \\
+...  |
+LL | |         bar
+LL | | "#
+   | |__^
+   |
+help: try
+   |
+LL ~         "
+LL +         foo
+LL +         \\
+LL +         \\\\
+LL +         \"
+LL +         \\\"
+LL +         bar
+LL ~ "
+   |
+
+error: aborting due to 14 previous errors
 
