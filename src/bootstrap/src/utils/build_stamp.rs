@@ -41,8 +41,8 @@ impl BuildStamp {
     }
 
     /// Sets stamp content to the specified value.
-    pub fn with_stamp<S: ToString>(mut self, stamp: S) -> Self {
-        self.stamp = stamp.to_string();
+    pub fn add_stamp<S: ToString>(mut self, stamp: S) -> Self {
+        self.stamp.push_str(&stamp.to_string());
         self
     }
 

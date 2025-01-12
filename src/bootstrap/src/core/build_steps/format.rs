@@ -74,7 +74,7 @@ fn verify_rustfmt_version(build: &Builder<'_>) -> bool {
     let Some((version, stamp_file)) = get_rustfmt_version(build) else {
         return false;
     };
-    stamp_file.with_stamp(version).is_up_to_date()
+    stamp_file.add_stamp(version).is_up_to_date()
 }
 
 /// Updates the last rustfmt version used.

@@ -55,7 +55,7 @@ pub fn prebuilt_gcc_config(builder: &Builder<'_>, target: TargetSelection) -> Gc
         )
     });
 
-    let stamp = BuildStamp::new(&out_dir).with_prefix("gcc").with_stamp(smart_stamp_hash);
+    let stamp = BuildStamp::new(&out_dir).with_prefix("gcc").add_stamp(smart_stamp_hash);
 
     if stamp.is_up_to_date() {
         if stamp.stamp.is_empty() {

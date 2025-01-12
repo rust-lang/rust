@@ -26,7 +26,7 @@ fn test_with_invalid_prefix2() {
 fn test_is_up_to_date() {
     let dir = temp_dir();
 
-    let mut build_stamp = BuildStamp::new(&dir).with_stamp("v1.0.0");
+    let mut build_stamp = BuildStamp::new(&dir).add_stamp("v1.0.0");
     build_stamp.write().unwrap();
 
     assert!(
@@ -47,7 +47,7 @@ fn test_is_up_to_date() {
 fn test_with_prefix() {
     let dir = temp_dir();
 
-    let stamp = BuildStamp::new(&dir).with_stamp("v1.0.0");
+    let stamp = BuildStamp::new(&dir).add_stamp("v1.0.0");
     assert_eq!(stamp.path.file_name().unwrap(), ".stamp");
 
     let stamp = stamp.with_prefix("test");

@@ -428,7 +428,7 @@ impl Config {
         let host = self.build;
 
         let clippy_stamp =
-            BuildStamp::new(&self.initial_sysroot).with_prefix("clippy").with_stamp(date);
+            BuildStamp::new(&self.initial_sysroot).with_prefix("clippy").add_stamp(date);
         let cargo_clippy = self.initial_sysroot.join("bin").join(exe("cargo-clippy", host));
         if cargo_clippy.exists() && clippy_stamp.is_up_to_date() {
             return cargo_clippy;
@@ -462,7 +462,7 @@ impl Config {
         let host = self.build;
         let bin_root = self.out.join(host).join("rustfmt");
         let rustfmt_path = bin_root.join("bin").join(exe("rustfmt", host));
-        let rustfmt_stamp = BuildStamp::new(&bin_root).with_prefix("rustfmt").with_stamp(channel);
+        let rustfmt_stamp = BuildStamp::new(&bin_root).with_prefix("rustfmt").add_stamp(channel);
         if rustfmt_path.exists() && rustfmt_stamp.is_up_to_date() {
             return Some(rustfmt_path);
         }
@@ -569,7 +569,7 @@ impl Config {
     ) {
         let host = self.build.triple;
         let bin_root = self.out.join(host).join(sysroot);
-        let rustc_stamp = BuildStamp::new(&bin_root).with_prefix("rustc").with_stamp(stamp_key);
+        let rustc_stamp = BuildStamp::new(&bin_root).with_prefix("rustc").add_stamp(stamp_key);
 
         if !bin_root.join("bin").join(exe("rustc", self.build)).exists()
             || !rustc_stamp.is_up_to_date()
@@ -732,7 +732,7 @@ download-rustc = false
         let llvm_root = self.ci_llvm_root();
         let llvm_sha = detect_llvm_sha(self, self.rust_info.is_managed_git_subrepository());
         let stamp_key = format!("{}{}", llvm_sha, self.llvm_assertions);
-        let llvm_stamp = BuildStamp::new(&llvm_root).with_prefix("llvm").with_stamp(stamp_key);
+        let llvm_stamp = BuildStamp::new(&llvm_root).with_prefix("llvm").add_stamp(stamp_key);
         if !llvm_stamp.is_up_to_date() && !self.dry_run() {
             self.download_ci_llvm(&llvm_sha);
 
