@@ -54,10 +54,14 @@ pub trait Int:
     + ops::BitXor<Output = Self>
     + ops::BitAnd<Output = Self>
     + cmp::Ord
-    + CastInto<usize>
-    + CastInto<i32>
     + CastFrom<i32>
+    + CastFrom<u32>
     + CastFrom<u8>
+    + CastFrom<usize>
+    + CastInto<i32>
+    + CastInto<u32>
+    + CastInto<u8>
+    + CastInto<usize>
 {
     fn signed(self) -> OtherSign<Self::Unsigned>;
     fn unsigned(self) -> Self::Unsigned;

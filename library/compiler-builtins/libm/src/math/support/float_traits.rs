@@ -1,6 +1,6 @@
 use core::{fmt, mem, ops};
 
-use super::int_traits::{CastInto, Int, MinInt};
+use super::int_traits::{CastFrom, CastInto, Int, MinInt};
 
 /// Trait for some basic operations on floats
 #[allow(dead_code)]
@@ -73,11 +73,18 @@ pub trait Float:
         self.to_bits().signed()
     }
 
+    /// Check bitwise equality.
+    fn biteq(self, rhs: Self) -> bool {
+        self.to_bits() == rhs.to_bits()
+    }
+
     /// Checks if two floats have the same bit representation. *Except* for NaNs! NaN can be
-    /// represented in multiple different ways. This method returns `true` if two NaNs are
-    /// compared.
+    /// represented in multiple different ways.
+    ///
+    /// This method returns `true` if two NaNs are compared. Use [`biteq`](Self::biteq) instead
+    /// if `NaN` should not be treated separately.
     fn eq_repr(self, rhs: Self) -> bool {
-        if self.is_nan() && rhs.is_nan() { true } else { self.to_bits() == rhs.to_bits() }
+        if self.is_nan() && rhs.is_nan() { true } else { self.biteq(rhs) }
     }
 
     /// Returns true if the value is NaN.
@@ -94,9 +101,14 @@ pub trait Float:
         (self.to_bits() & Self::EXP_MASK) == Self::Int::ZERO
     }
 
-    /// Returns the exponent, not adjusting for bias.
+    /// Returns the exponent, not adjusting for bias, not accounting for subnormals or zero.
     fn exp(self) -> i32 {
         ((self.to_bits() & Self::EXP_MASK) >> Self::SIG_BITS).cast()
+    }
+
+    /// Extract the exponent and adjust it for bias, not accounting for subnormals or zero.
+    fn exp_unbiased(self) -> i32 {
+        self.exp() - (Self::EXP_BIAS as i32)
     }
 
     /// Returns the significand with no implicit bit (or the "fractional" part)
@@ -104,7 +116,7 @@ pub trait Float:
         self.to_bits() & Self::SIG_MASK
     }
 
-    /// Returns the significand with implicit bit
+    /// Returns the significand with implicit bit.
     fn imp_frac(self) -> Self::Int {
         self.frac() | Self::IMPLICIT_BIT
     }
@@ -113,11 +125,11 @@ pub trait Float:
     fn from_bits(a: Self::Int) -> Self;
 
     /// Constructs a `Self` from its parts. Inputs are treated as bits and shifted into position.
-    fn from_parts(negative: bool, exponent: Self::Int, significand: Self::Int) -> Self {
+    fn from_parts(negative: bool, exponent: i32, significand: Self::Int) -> Self {
         let sign = if negative { Self::Int::ONE } else { Self::Int::ZERO };
         Self::from_bits(
             (sign << (Self::BITS - 1))
-                | ((exponent << Self::SIG_BITS) & Self::EXP_MASK)
+                | (Self::Int::cast_from(exponent as u32 & Self::EXP_MAX) << Self::SIG_BITS)
                 | (significand & Self::SIG_MASK),
         )
     }
@@ -238,4 +250,101 @@ pub const fn f32_from_bits(bits: u32) -> f32 {
 pub const fn f64_from_bits(bits: u64) -> f64 {
     // SAFETY: POD cast with no preconditions
     unsafe { mem::transmute::<u64, f64>(bits) }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[cfg(f16_enabled)]
+    fn check_f16() {
+        // Constants
+        assert_eq!(f16::EXP_MAX, 0b11111);
+        assert_eq!(f16::EXP_BIAS, 15);
+
+        // `exp_unbiased`
+        assert_eq!(f16::FRAC_PI_2.exp_unbiased(), 0);
+        assert_eq!((1.0f16 / 2.0).exp_unbiased(), -1);
+        assert_eq!(f16::MAX.exp_unbiased(), 15);
+        assert_eq!(f16::MIN.exp_unbiased(), 15);
+        assert_eq!(f16::MIN_POSITIVE.exp_unbiased(), -14);
+        // This is a convenience method and not ldexp, `exp_unbiased` does not return correct
+        // results for zero and subnormals.
+        assert_eq!(f16::ZERO.exp_unbiased(), -15);
+        assert_eq!(f16::from_bits(0x1).exp_unbiased(), -15);
+
+        // `from_parts`
+        assert_biteq!(f16::from_parts(true, f16::EXP_BIAS as i32, 0), -1.0f16);
+        assert_biteq!(f16::from_parts(false, 0, 1), f16::from_bits(0x1));
+    }
+
+    #[test]
+    fn check_f32() {
+        // Constants
+        assert_eq!(f32::EXP_MAX, 0b11111111);
+        assert_eq!(f32::EXP_BIAS, 127);
+
+        // `exp_unbiased`
+        assert_eq!(f32::FRAC_PI_2.exp_unbiased(), 0);
+        assert_eq!((1.0f32 / 2.0).exp_unbiased(), -1);
+        assert_eq!(f32::MAX.exp_unbiased(), 127);
+        assert_eq!(f32::MIN.exp_unbiased(), 127);
+        assert_eq!(f32::MIN_POSITIVE.exp_unbiased(), -126);
+        // This is a convenience method and not ldexp, `exp_unbiased` does not return correct
+        // results for zero and subnormals.
+        assert_eq!(f32::ZERO.exp_unbiased(), -127);
+        assert_eq!(f32::from_bits(0x1).exp_unbiased(), -127);
+
+        // `from_parts`
+        assert_biteq!(f32::from_parts(true, f32::EXP_BIAS as i32, 0), -1.0f32);
+        assert_biteq!(f32::from_parts(false, 10 + f32::EXP_BIAS as i32, 0), hf32!("0x1p10"));
+        assert_biteq!(f32::from_parts(false, 0, 1), f32::from_bits(0x1));
+    }
+
+    #[test]
+    fn check_f64() {
+        // Constants
+        assert_eq!(f64::EXP_MAX, 0b11111111111);
+        assert_eq!(f64::EXP_BIAS, 1023);
+
+        // `exp_unbiased`
+        assert_eq!(f64::FRAC_PI_2.exp_unbiased(), 0);
+        assert_eq!((1.0f64 / 2.0).exp_unbiased(), -1);
+        assert_eq!(f64::MAX.exp_unbiased(), 1023);
+        assert_eq!(f64::MIN.exp_unbiased(), 1023);
+        assert_eq!(f64::MIN_POSITIVE.exp_unbiased(), -1022);
+        // This is a convenience method and not ldexp, `exp_unbiased` does not return correct
+        // results for zero and subnormals.
+        assert_eq!(f64::ZERO.exp_unbiased(), -1023);
+        assert_eq!(f64::from_bits(0x1).exp_unbiased(), -1023);
+
+        // `from_parts`
+        assert_biteq!(f64::from_parts(true, f64::EXP_BIAS as i32, 0), -1.0f64);
+        assert_biteq!(f64::from_parts(false, 10 + f64::EXP_BIAS as i32, 0), hf64!("0x1p10"));
+        assert_biteq!(f64::from_parts(false, 0, 1), f64::from_bits(0x1));
+    }
+
+    #[test]
+    #[cfg(f128_enabled)]
+    fn check_f128() {
+        // Constants
+        assert_eq!(f128::EXP_MAX, 0b111111111111111);
+        assert_eq!(f128::EXP_BIAS, 16383);
+
+        // `exp_unbiased`
+        assert_eq!(f128::FRAC_PI_2.exp_unbiased(), 0);
+        assert_eq!((1.0f128 / 2.0).exp_unbiased(), -1);
+        assert_eq!(f128::MAX.exp_unbiased(), 16383);
+        assert_eq!(f128::MIN.exp_unbiased(), 16383);
+        assert_eq!(f128::MIN_POSITIVE.exp_unbiased(), -16382);
+        // This is a convenience method and not ldexp, `exp_unbiased` does not return correct
+        // results for zero and subnormals.
+        assert_eq!(f128::ZERO.exp_unbiased(), -16383);
+        assert_eq!(f128::from_bits(0x1).exp_unbiased(), -16383);
+
+        // `from_parts`
+        assert_biteq!(f128::from_parts(true, f128::EXP_BIAS as i32, 0), -1.0f128);
+        assert_biteq!(f128::from_parts(false, 0, 1), f128::from_bits(0x1));
+    }
 }
