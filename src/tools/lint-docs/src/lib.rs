@@ -476,7 +476,13 @@ impl<'a> LintExtractor<'a> {
         // First try to find the messages with the `code` field set to our lint.
         let matches: Vec<_> = msgs
             .iter()
-            .filter(|msg| matches!(&msg["code"]["code"], serde_json::Value::String(s) if s==name))
+            .filter(|msg| {
+                if let Some(rendered) = msg["rendered"].as_str() {
+                    rendered.split_whitespace().any(|word| word == name)
+                } else {
+                    false
+                }
+            })
             .map(|msg| msg["rendered"].as_str().expect("rendered field should exist").to_string())
             .collect();
         if matches.is_empty() {
