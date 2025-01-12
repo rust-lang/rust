@@ -395,6 +395,7 @@ impl Step for CI {
                 "clippy::correctness".into(),
                 "clippy::clone_on_ref_ptr".into(),
                 "clippy::format_in_format_args".into(),
+                "clippy::four_forward_slashes".into(),
             ],
             forbid: vec![],
         };
