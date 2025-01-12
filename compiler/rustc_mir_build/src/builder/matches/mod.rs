@@ -1958,7 +1958,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // This candidate is about to become a leaf, so unset `or_span`.
         let or_span = candidate.or_span.take().unwrap();
         let source_info = self.source_info(or_span);
-
+        
         if candidate.false_edge_start_block.is_none() {
             candidate.false_edge_start_block = candidate.subcandidates[0].false_edge_start_block;
         }
@@ -2000,8 +2000,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         });
         if candidate.subcandidates.is_empty() {
-            // If `candidate` has become a leaf candidate, ensure it has a `pre_binding_block`.
-            candidate.pre_binding_block = Some(self.cfg.start_new_block());
+            // If `candidate` has become a leaf candidate, ensure it has a `pre_binding_block` and `otherwise_block`.
+            let next_block = self.cfg.start_new_block();
+            candidate.pre_binding_block = Some(next_block);
+            candidate.otherwise_block = Some(next_block);
         }
     }
 
