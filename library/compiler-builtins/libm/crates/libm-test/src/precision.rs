@@ -114,7 +114,6 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
             Id::Exp10 | Id::Exp10f => ulp = 1_000_000,
             Id::Exp2 | Id::Exp2f => ulp = 10_000_000,
             Id::Log1p | Id::Log1pf => ulp = 2,
-            Id::Rint => ulp = 100_000,
             Id::Round => ulp = 1,
             Id::Tan => ulp = 2,
             _ => (),
@@ -259,6 +258,15 @@ impl MaybeOverride<(f64,)> for SpecialCase {
                 // musl returns -0.0, we return +0.0
                 return XFAIL;
             }
+        }
+
+        if cfg!(x86_no_sse)
+            && ctx.base_name == BaseName::Rint
+            && (expected - actual).abs() <= F::ONE
+            && (expected - actual).abs() > F::ZERO
+        {
+            // Our rounding mode is incorrect.
+            return XFAIL;
         }
 
         if ctx.base_name == BaseName::Acosh && input.0 < 1.0 {
