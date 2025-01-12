@@ -343,9 +343,11 @@ cfg_if! {
     if #[cfg(f16_enabled)] {
         mod copysignf16;
         mod fabsf16;
+        mod truncf16;
 
         pub use self::copysignf16::copysignf16;
         pub use self::fabsf16::fabsf16;
+        pub use self::truncf16::truncf16;
     }
 }
 
@@ -353,9 +355,11 @@ cfg_if! {
     if #[cfg(f128_enabled)] {
         mod copysignf128;
         mod fabsf128;
+        mod truncf128;
 
         pub use self::copysignf128::copysignf128;
         pub use self::fabsf128::fabsf128;
+        pub use self::truncf128::truncf128;
     }
 }
 

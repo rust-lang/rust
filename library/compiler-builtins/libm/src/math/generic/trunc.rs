@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: MIT
+ * origin: musl src/math/trunc.c */
+
 use super::super::{Float, Int, IntTy, MinInt};
 
 pub fn trunc<F: Float>(x: F) -> F {

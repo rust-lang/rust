@@ -157,6 +157,8 @@ no_mangle! {
     tgammaf(x: f32) -> f32;
     trunc(x: f64) -> f64;
     truncf(x: f32) -> f32;
+    truncf128(x: f128) -> f128;
+    truncf16(x: f16) -> f16;
     y0(x: f64) -> f64;
     y0f(x: f32) -> f32;
     y1(x: f64) -> f64;

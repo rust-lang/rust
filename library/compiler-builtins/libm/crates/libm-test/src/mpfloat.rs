@@ -141,6 +141,7 @@ libm_macros::for_each_function! {
         lgamma_r, lgammaf_r, modf, modff, nextafter, nextafterf, pow,powf,
         remquo, remquof, scalbn, scalbnf, sincos, sincosf, yn, ynf,
         copysignf16, copysignf128, fabsf16, fabsf128,
+        truncf16, truncf128,
     ],
     fn_extra: match MACRO_FN_NAME {
         // Remap function names that are different between mpfr and libm
@@ -202,11 +203,13 @@ impl_no_round! {
 #[cfg(f16_enabled)]
 impl_no_round! {
     fabsf16 => abs_mut;
+    truncf16 => trunc_mut;
 }
 
 #[cfg(f128_enabled)]
 impl_no_round! {
     fabsf128 => abs_mut;
+    truncf128 => trunc_mut;
 }
 
 /// Some functions are difficult to do in a generic way. Implement them here.

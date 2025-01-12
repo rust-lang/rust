@@ -111,6 +111,8 @@ tgamma
 tgammaf
 trunc
 truncf
+truncf128
+truncf16
 y0
 y0f
 y1
