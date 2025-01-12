@@ -2671,6 +2671,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
+    /// #![feature(strict_provenance_lints)]
     /// #![warn(fuzzy_provenance_casts)]
     ///
     /// fn main() {
@@ -2714,6 +2715,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
+    /// #![feature(strict_provenance_lints)]
     /// #![warn(lossy_provenance_casts)]
     ///
     /// fn main() {
@@ -4033,6 +4035,8 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
+    /// // This lint is intentionally used to test the compiler's behavior
+    /// // when an unstable lint is enabled without the corresponding feature gate.
     /// #![allow(test_unstable_lint)]
     /// ```
     ///
