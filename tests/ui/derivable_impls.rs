@@ -181,6 +181,55 @@ impl Default for SpecializedImpl2<String> {
     }
 }
 
+pub struct DirectDefaultDefaultCall {
+    v: Vec<i32>,
+}
+
+impl Default for DirectDefaultDefaultCall {
+    fn default() -> Self {
+        // When calling `Default::default()` in all fields, we know it is the same as deriving.
+        Self { v: Default::default() }
+    }
+}
+
+pub struct EquivalentToDefaultDefaultCallVec {
+    v: Vec<i32>,
+}
+
+impl Default for EquivalentToDefaultDefaultCallVec {
+    fn default() -> Self {
+        // The body of `<Vec as Default>::default()` is `Vec::new()`, so they are equivalent.
+        Self { v: Vec::new() }
+    }
+}
+
+pub struct S {
+    x: i32,
+}
+
+impl S {
+    fn new() -> S {
+        S { x: 42 }
+    }
+}
+
+impl Default for S {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+pub struct EquivalentToDefaultDefaultCallLocal {
+    v: S,
+}
+
+impl Default for EquivalentToDefaultDefaultCallLocal {
+    fn default() -> Self {
+        // The body of `<S as Default>::default()` is `S::new()`, so they are equivalent.
+        Self { v: S::new() }
+    }
+}
+
 // https://github.com/rust-lang/rust-clippy/issues/7654
 
 pub struct Color {

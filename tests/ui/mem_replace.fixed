@@ -18,8 +18,10 @@ fn replace_option_with_none() {
 fn replace_with_default() {
     let mut s = String::from("foo");
     let _ = std::mem::take(&mut s);
+    let _ = std::mem::take(&mut s);
 
     let s = &mut String::from("foo");
+    let _ = std::mem::take(s);
     let _ = std::mem::take(s);
     let _ = std::mem::take(s);
 

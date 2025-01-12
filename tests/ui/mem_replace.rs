@@ -18,9 +18,11 @@ fn replace_option_with_none() {
 fn replace_with_default() {
     let mut s = String::from("foo");
     let _ = std::mem::replace(&mut s, String::default());
+    let _ = std::mem::replace(&mut s, String::new());
 
     let s = &mut String::from("foo");
     let _ = std::mem::replace(s, String::default());
+    let _ = std::mem::replace(s, String::new());
     let _ = std::mem::replace(s, Default::default());
 
     let mut v = vec![123];
