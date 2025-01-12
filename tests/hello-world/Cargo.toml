@@ -7,3 +7,6 @@ mylib = { path = "mylib" }
 
 [profile.dev]
 lto = "thin"
+
+[profile.release]
+lto = "fat"
