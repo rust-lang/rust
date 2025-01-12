@@ -162,11 +162,13 @@ pub(super) fn hints(
         let label = InlayHintLabelPart {
             text: if postfix { format!(".{}", text.trim_end()) } else { text.to_owned() },
             linked_location: None,
-            tooltip: Some(InlayTooltip::Markdown(format!(
-                "`{}` → `{}` ({coercion} coercion)",
-                source.display(sema.db, file_id.edition()),
-                target.display(sema.db, file_id.edition()),
-            ))),
+            tooltip: Some(config.lazy_tooltip(|| {
+                InlayTooltip::Markdown(format!(
+                    "`{}` → `{}` ({coercion} coercion)",
+                    source.display(sema.db, file_id.edition()),
+                    target.display(sema.db, file_id.edition()),
+                ))
+            })),
         };
         if postfix { &mut post } else { &mut pre }.label.append_part(label);
     }

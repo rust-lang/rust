@@ -641,7 +641,7 @@ fn inlay_hint_label(
                 *something_to_resolve |= tooltip.is_some();
                 None
             } else {
-                match tooltip {
+                match tooltip.and_then(|it| it.computed()) {
                     Some(ide::InlayTooltip::String(s)) => {
                         Some(lsp_types::InlayHintTooltip::String(s))
                     }
@@ -665,7 +665,7 @@ fn inlay_hint_label(
                         *something_to_resolve |= part.tooltip.is_some();
                         None
                     } else {
-                        match part.tooltip {
+                        match part.tooltip.and_then(|it| it.computed()) {
                             Some(ide::InlayTooltip::String(s)) => {
                                 Some(lsp_types::InlayHintLabelPartTooltip::String(s))
                             }

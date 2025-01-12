@@ -108,7 +108,7 @@ pub(super) fn hints(
             }
             let mut label = InlayHintLabel::simple(
                 name,
-                Some(crate::InlayTooltip::String("moz".into())),
+                Some(config.lazy_tooltip(|| crate::InlayTooltip::String("moz".into()))),
                 binding_source,
             );
             label.prepend_str("drop(");
