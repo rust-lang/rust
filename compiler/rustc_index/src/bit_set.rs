@@ -281,6 +281,24 @@ impl<T: Idx> DenseBitSet<T> {
     }
 
     bit_relations_inherent_impls! {}
+
+    /// Sets `self = self | !other`.
+    ///
+    /// FIXME: Incorporate this into [`BitRelations`] and fill out
+    /// implementations for other bitset types, if needed.
+    pub fn union_not(&mut self, other: &DenseBitSet<T>) {
+        assert_eq!(self.domain_size, other.domain_size);
+
+        // FIXME(Zalathar): If we were to forcibly _set_ all excess bits before
+        // the bitwise update, and then clear them again afterwards, we could
+        // quickly and accurately detect whether the update changed anything.
+        // But that's only worth doing if there's an actual use-case.
+
+        bitwise(&mut self.words, &other.words, |a, b| a | !b);
+        // The bitwise update `a | !b` can result in the last word containing
+        // out-of-domain bits, so we need to clear them.
+        self.clear_excess_bits();
+    }
 }
 
 // dense REL dense
@@ -1087,6 +1105,18 @@ impl<T: Idx> fmt::Debug for ChunkedBitSet<T> {
     }
 }
 
+/// Sets `out_vec[i] = op(out_vec[i], in_vec[i])` for each index `i` in both
+/// slices. The slices must have the same length.
+///
+/// Returns true if at least one bit in `out_vec` was changed.
+///
+/// ## Warning
+/// Some bitwise operations (e.g. union-not, xor) can set output bits that were
+/// unset in in both inputs. If this happens in the last word/chunk of a bitset,
+/// it can cause the bitset to contain out-of-domain values, which need to
+/// be cleared with `clear_excess_bits_in_final_word`. This also makes the
+/// "changed" return value unreliable, because the change might have only
+/// affected excess bits.
 #[inline]
 fn bitwise<Op>(out_vec: &mut [Word], in_vec: &[Word], op: Op) -> bool
 where
