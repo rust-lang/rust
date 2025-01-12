@@ -2671,6 +2671,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
+    /// #![feature(strict_provenance_lints)]
     /// #![warn(fuzzy_provenance_casts)]
     ///
     /// fn main() {
@@ -2714,6 +2715,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
+    /// #![feature(strict_provenance_lints)]
     /// #![warn(lossy_provenance_casts)]
     ///
     /// fn main() {
@@ -4033,6 +4035,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
+    /// #![feature(test_unstable_lint)]
     /// #![allow(test_unstable_lint)]
     /// ```
     ///
