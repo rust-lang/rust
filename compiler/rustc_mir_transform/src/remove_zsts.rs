@@ -36,31 +36,39 @@ struct Replacer<'a, 'tcx> {
 }
 
 /// A cheap, approximate check to avoid unnecessary `layout_of` calls.
-fn maybe_zst(ty: Ty<'_>) -> bool {
+///
+/// `Some(true)` is definitely ZST; `Some(false)` is definitely *not* ZST.
+///
+/// `None` may or may not be, and must check `layout_of` to be sure.
+fn trivially_zst<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Option<bool> {
     match ty.kind() {
-        // maybe ZST (could be more precise)
-        ty::Adt(..)
-        | ty::Array(..)
-        | ty::Closure(..)
-        | ty::CoroutineClosure(..)
-        | ty::Tuple(..)
-        | ty::Alias(ty::Opaque, ..) => true,
         // definitely ZST
-        ty::FnDef(..) | ty::Never => true,
-        // unreachable or can't be ZST
-        _ => false,
+        ty::FnDef(..) | ty::Never => Some(true),
+        ty::Tuple(fields) if fields.is_empty() => Some(true),
+        ty::Array(_ty, len) if let Some(0) = len.try_to_target_usize(tcx) => Some(true),
+        // clearly not ZST
+        ty::Bool
+        | ty::Char
+        | ty::Int(..)
+        | ty::Uint(..)
+        | ty::Float(..)
+        | ty::RawPtr(..)
+        | ty::Ref(..)
+        | ty::FnPtr(..) => Some(false),
+        // check `layout_of` to see (including unreachable things we won't actually see)
+        _ => None,
     }
 }
 
 impl<'tcx> Replacer<'_, 'tcx> {
     fn known_to_be_zst(&self, ty: Ty<'tcx>) -> bool {
-        if !maybe_zst(ty) {
-            return false;
+        if let Some(is_zst) = trivially_zst(ty, self.tcx) {
+            is_zst
+        } else {
+            self.tcx
+                .layout_of(self.typing_env.as_query_input(ty))
+                .is_ok_and(|layout| layout.is_zst())
         }
-        let Ok(layout) = self.tcx.layout_of(self.typing_env.as_query_input(ty)) else {
-            return false;
-        };
-        layout.is_zst()
     }
 
     fn make_zst(&self, ty: Ty<'tcx>) -> ConstOperand<'tcx> {
