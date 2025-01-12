@@ -78,13 +78,14 @@ pub(super) fn hints(
     let text_edit = if let Some(colon_token) = &type_ascriptable {
         ty_to_text_edit(
             sema,
+            config,
             desc_pat.syntax(),
             &ty,
             colon_token
                 .as_ref()
                 .map_or_else(|| pat.syntax().text_range(), |t| t.text_range())
                 .end(),
-            if colon_token.is_some() { String::new() } else { String::from(": ") },
+            if colon_token.is_some() { "" } else { ": " },
         )
     } else {
         None

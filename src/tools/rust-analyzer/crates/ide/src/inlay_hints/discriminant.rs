@@ -36,13 +36,14 @@ pub(super) fn enum_hints(
         return None;
     }
     for variant in enum_.variant_list()?.variants() {
-        variant_hints(acc, sema, &enum_, &variant);
+        variant_hints(acc, config, sema, &enum_, &variant);
     }
     Some(())
 }
 
 fn variant_hints(
     acc: &mut Vec<InlayHint>,
+    config: &InlayHintsConfig,
     sema: &Semantics<'_, RootDatabase>,
     enum_: &ast::Enum,
     variant: &ast::Variant,
@@ -88,7 +89,9 @@ fn variant_hints(
         },
         kind: InlayKind::Discriminant,
         label,
-        text_edit: d.ok().map(|val| TextEdit::insert(range.start(), format!("{eq_} {val}"))),
+        text_edit: d.ok().map(|val| {
+            config.lazy_text_edit(|| TextEdit::insert(range.end(), format!("{eq_} {val}")))
+        }),
         position: InlayHintPosition::After,
         pad_left: false,
         pad_right: false,
@@ -99,8 +102,10 @@ fn variant_hints(
 }
 #[cfg(test)]
 mod tests {
+    use expect_test::expect;
+
     use crate::inlay_hints::{
-        tests::{check_with_config, DISABLED_CONFIG},
+        tests::{check_edit, check_with_config, DISABLED_CONFIG},
         DiscriminantHints, InlayHintsConfig,
     };
 
@@ -205,6 +210,35 @@ enum Enum {
     Variant6,
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn edit() {
+        check_edit(
+            InlayHintsConfig { discriminant_hints: DiscriminantHints::Always, ..DISABLED_CONFIG },
+            r#"
+#[repr(u8)]
+enum Enum {
+    Variant(),
+    Variant1,
+    Variant2 {},
+    Variant3,
+    Variant5,
+    Variant6,
+}
+"#,
+            expect![[r#"
+                #[repr(u8)]
+                enum Enum {
+                    Variant() = 0,
+                    Variant1 = 1,
+                    Variant2 {} = 2,
+                    Variant3 = 3,
+                    Variant5 = 4,
+                    Variant6 = 5,
+                }
+            "#]],
         );
     }
 }
