@@ -134,6 +134,7 @@ pub(crate) fn new_item_kind(kind: DefKind) -> ItemKind {
         | DefKind::TyParam
         | DefKind::ConstParam
         | DefKind::Macro(_)
+        | DefKind::LintId
         | DefKind::ExternCrate
         | DefKind::Use
         | DefKind::ForeignMod

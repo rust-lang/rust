@@ -20,6 +20,7 @@ use std::mem;
 use std::ops::{Deref, DerefMut};
 
 use itertools::{Either, Itertools};
+use rustc_ast::attr::ProcMacroAttr;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, walk_list};
 use rustc_ast::*;
@@ -813,7 +814,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_item(&mut self, item: &'a Item) {
-        if item.attrs.iter().any(|attr| attr.is_proc_macro_attr()) {
+        if item.attrs.iter().any(|attr| attr.proc_macro_attr().is_some()) {
             self.has_proc_macro_decls = true;
         }
 
@@ -1080,7 +1081,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.dcx().emit_err(errors::UnsafeStatic { span: item.span });
                 }
 
-                if expr.is_none() {
+                if expr.is_none()
+                    && !item
+                        .attrs
+                        .iter()
+                        .any(|attr| attr.proc_macro_attr() == Some(ProcMacroAttr::Lint))
+                {
                     self.dcx().emit_err(errors::StaticWithoutBody {
                         span: item.span,
                         replace_span: self.ending_semi_or_hi(item.span),

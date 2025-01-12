@@ -104,16 +104,17 @@ impl ProcMacros {
     pub(crate) fn list_macros(&self) -> Vec<(String, ProcMacroKind)> {
         self.0
             .iter()
-            .map(|proc_macro| match proc_macro {
+            .filter_map(|proc_macro| match proc_macro {
                 bridge::client::ProcMacro::CustomDerive { trait_name, .. } => {
-                    (trait_name.to_string(), ProcMacroKind::CustomDerive)
+                    Some((trait_name.to_string(), ProcMacroKind::CustomDerive))
                 }
                 bridge::client::ProcMacro::Bang { name, .. } => {
-                    (name.to_string(), ProcMacroKind::Bang)
+                    Some((name.to_string(), ProcMacroKind::Bang))
                 }
                 bridge::client::ProcMacro::Attr { name, .. } => {
-                    (name.to_string(), ProcMacroKind::Attr)
+                    Some((name.to_string(), ProcMacroKind::Attr))
                 }
+                bridge::client::ProcMacro::Lint { .. } => None,
             })
             .collect()
     }

@@ -101,7 +101,10 @@ pub enum DefKind {
     AssocConst,
 
     // Macro namespace
+    /// `#[proc_macro]` or `#[proc_macro_attribute]` or `#[proc_macro_derive]`
     Macro(MacroKind),
+    /// `#[proc_macro_lint]`
+    LintId,
 
     // Not namespaced (or they are, but we don't treat them so)
     ExternCrate,
@@ -178,6 +181,7 @@ impl DefKind {
             DefKind::TyParam => "type parameter",
             DefKind::ConstParam => "const parameter",
             DefKind::Macro(macro_kind) => macro_kind.descr(),
+            DefKind::LintId => "lint id",
             DefKind::LifetimeParam => "lifetime parameter",
             DefKind::Use => "import",
             DefKind::ForeignMod => "foreign module",
@@ -235,7 +239,7 @@ impl DefKind {
             | DefKind::AssocFn
             | DefKind::AssocConst => Some(Namespace::ValueNS),
 
-            DefKind::Macro(..) => Some(Namespace::MacroNS),
+            DefKind::Macro(..) | DefKind::LintId => Some(Namespace::MacroNS),
 
             // Not namespaced.
             DefKind::AnonConst
@@ -277,7 +281,7 @@ impl DefKind {
             | DefKind::AssocFn
             | DefKind::AssocConst
             | DefKind::Field => DefPathData::ValueNs(name),
-            DefKind::Macro(..) => DefPathData::MacroNs(name),
+            DefKind::Macro(..) | DefKind::LintId => DefPathData::MacroNs(name),
             DefKind::LifetimeParam => DefPathData::LifetimeNs(name),
             DefKind::Ctor(..) => DefPathData::Ctor,
             DefKind::Use => DefPathData::Use,
@@ -322,6 +326,7 @@ impl DefKind {
             | DefKind::Const
             | DefKind::AssocConst
             | DefKind::Macro(..)
+            | DefKind::LintId
             | DefKind::Use
             | DefKind::ForeignMod
             | DefKind::OpaqueTy

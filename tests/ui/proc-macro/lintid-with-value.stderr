@@ -1,0 +1,15 @@
+error: a unique LintId value is automatically filled in by `#[proc_macro_lint]`
+  --> $DIR/lintid-with-value.rs:12:35
+   |
+LL | pub static ambiguous_thing: LintId = "...";
+   |                                   ^^^^^^^^ help: remove this value
+
+error[E0308]: mismatched types
+  --> $DIR/lintid-with-value.rs:12:38
+   |
+LL | pub static ambiguous_thing: LintId = "...";
+   |                                      ^^^^^ expected `LintId`, found `&str`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

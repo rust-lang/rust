@@ -2,7 +2,7 @@ use std::fmt;
 
 use rustc_abi::ExternAbi;
 // ignore-tidy-filelength
-use rustc_ast::attr::AttributeExt;
+use rustc_ast::attr::{AttributeExt, ProcMacroAttr};
 use rustc_ast::token::CommentKind;
 use rustc_ast::util::parser::{AssocOp, ExprPrecedence};
 use rustc_ast::{
@@ -1206,8 +1206,8 @@ impl Attribute {
         AttributeExt::doc_str(self)
     }
 
-    pub fn is_proc_macro_attr(&self) -> bool {
-        AttributeExt::is_proc_macro_attr(self)
+    pub fn proc_macro_attr(&self) -> Option<ProcMacroAttr> {
+        AttributeExt::proc_macro_attr(self)
     }
 
     pub fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {

@@ -1,0 +1,9 @@
+error[E0423]: expected value, found lint id `lint_id::ambiguous_thing`
+  --> $DIR/lintid-not-in-value-namespace.rs:6:23
+   |
+LL |     eprintln!("{:?}", lint_id::ambiguous_thing);
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^ not a value
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0423`.

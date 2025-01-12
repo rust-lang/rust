@@ -24,7 +24,7 @@ use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, TyCtxt, TypingMode};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypingMode};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
 use rustc_session::lint::builtin::{
@@ -70,7 +70,7 @@ enum ItemLike<'tcx> {
     ForeignItem,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub(crate) enum ProcMacroKind {
     FunctionLike,
     Derive,
@@ -231,14 +231,17 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
                 [sym::rustc_object_lifetime_default, ..] => self.check_object_lifetime_default(hir_id),
                 [sym::proc_macro, ..] => {
-                    self.check_proc_macro(hir_id, target, ProcMacroKind::FunctionLike)
+                    self.check_proc_macro_fn(hir_id, target, ProcMacroKind::FunctionLike)
                 }
                 [sym::proc_macro_attribute, ..] => {
-                    self.check_proc_macro(hir_id, target, ProcMacroKind::Attribute);
+                    self.check_proc_macro_fn(hir_id, target, ProcMacroKind::Attribute);
                 }
                 [sym::proc_macro_derive, ..] => {
                     self.check_generic_attr(hir_id, attr, target, Target::Fn);
-                    self.check_proc_macro(hir_id, target, ProcMacroKind::Derive)
+                    self.check_proc_macro_fn(hir_id, target, ProcMacroKind::Derive)
+                }
+                [sym::proc_macro_lint, ..] => {
+                    self.check_proc_macro_lint(hir_id, target, attr.span);
                 }
                 [sym::autodiff, ..] => {
                     self.check_autodiff(hir_id, attr, span, target)
@@ -2134,7 +2137,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         match target {
             Target::Fn => {
                 for attr in attrs {
-                    if attr.is_proc_macro_attr() {
+                    if attr.proc_macro_attr().is_some() {
                         debug!("Is proc macro attr");
                         return;
                     }
@@ -2412,7 +2415,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     /// A best effort attempt to create an error for a mismatching proc macro signature.
     ///
     /// If this best effort goes wrong, it will just emit a worse error later (see #102923)
-    fn check_proc_macro(&self, hir_id: HirId, target: Target, kind: ProcMacroKind) {
+    fn check_proc_macro_fn(&self, hir_id: HirId, target: Target, kind: ProcMacroKind) {
         if target != Target::Fn {
             return;
         }
@@ -2501,6 +2504,60 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Some(param_env.and(ValuePairs::PolySigs(ExpectedFound {
                     expected: ty::Binder::dummy(expected_sig),
                     found: ty::Binder::dummy(sig),
+                }))),
+                terr,
+                false,
+                None,
+            );
+            diag.emit();
+            self.abort.set(true);
+        }
+
+        let errors = ocx.select_all_or_error();
+        if !errors.is_empty() {
+            infcx.err_ctxt().report_fulfillment_errors(errors);
+            self.abort.set(true);
+        }
+    }
+
+    fn check_proc_macro_lint(&self, hir_id: HirId, target: Target, attr_span: Span) {
+        if target != Target::Static {
+            return;
+        }
+
+        let def_id = hir_id.expect_owner().def_id;
+        let hir_ty: &hir::Ty<'_> = self.tcx.hir().expect_item(def_id).expect_static().0;
+        let actual: Ty<'_> = self.tcx.type_of(def_id).instantiate_identity();
+
+        let infcx = self.tcx.infer_ctxt().build(TypingMode::non_body_analysis());
+        let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
+        let cause = ObligationCause::misc(attr_span, def_id);
+        let param_env = ty::ParamEnv::empty();
+        let actual = ocx.normalize(&cause, param_env, actual);
+
+        let errors = ocx.select_where_possible();
+        if !errors.is_empty() {
+            return;
+        }
+
+        let Some(expected) = self
+            .tcx
+            .get_diagnostic_item(sym::LintId)
+            .and_then(|lint_id| self.tcx.type_of(lint_id).no_bound_vars())
+        else {
+            return;
+        };
+
+        if let Err(terr) = ocx.eq(&cause, param_env, expected, actual) {
+            let mut diag =
+                self.tcx.dcx().create_err(errors::ProcMacroLintWrongType { span: hir_ty.span });
+            infcx.err_ctxt().note_type_err(
+                &mut diag,
+                &cause,
+                None,
+                Some(param_env.and(ValuePairs::Terms(ExpectedFound {
+                    expected: ty::Term::from(expected),
+                    found: ty::Term::from(actual),
                 }))),
                 terr,
                 false,

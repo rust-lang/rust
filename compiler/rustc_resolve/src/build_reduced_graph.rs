@@ -247,7 +247,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 | DefKind::Ctor(..),
                 _,
             ) => self.define(parent, ident, ValueNS, (res, vis, span, expansion)),
-            Res::Def(DefKind::Macro(..), _) | Res::NonMacroAttr(..) => {
+            Res::Def(DefKind::Macro(..) | DefKind::LintId, _) | Res::NonMacroAttr(..) => {
                 self.define(parent, ident, MacroNS, (res, vis, span, expansion))
             }
             Res::Def(
@@ -792,10 +792,10 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             }
 
             // These items live in the value namespace.
-            ItemKind::Const(..) | ItemKind::Delegation(..) | ItemKind::Static(..) => {
+            ItemKind::Const(..) | ItemKind::Delegation(..) => {
                 self.r.define(parent, ident, ValueNS, (res, vis, sp, expansion));
             }
-            ItemKind::Fn(..) => {
+            ItemKind::Fn(..) | ItemKind::Static(..) => {
                 self.r.define(parent, ident, ValueNS, (res, vis, sp, expansion));
 
                 // Functions introducing procedural macros reserve a slot
@@ -1177,17 +1177,19 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         self.r.arenas.alloc_macro_rules_scope(MacroRulesScope::Invocation(invoc_id))
     }
 
-    fn proc_macro_stub(&self, item: &ast::Item) -> Option<(MacroKind, Ident, Span)> {
+    fn proc_macro_stub(&self, item: &ast::Item) -> Option<(DefKind, Ident, Span)> {
         if ast::attr::contains_name(&item.attrs, sym::proc_macro) {
-            return Some((MacroKind::Bang, item.ident, item.span));
+            return Some((DefKind::Macro(MacroKind::Bang), item.ident, item.span));
         } else if ast::attr::contains_name(&item.attrs, sym::proc_macro_attribute) {
-            return Some((MacroKind::Attr, item.ident, item.span));
+            return Some((DefKind::Macro(MacroKind::Attr), item.ident, item.span));
         } else if let Some(attr) = ast::attr::find_by_name(&item.attrs, sym::proc_macro_derive)
             && let Some(meta_item_inner) =
                 attr.meta_item_list().and_then(|list| list.get(0).cloned())
             && let Some(ident) = meta_item_inner.ident()
         {
-            return Some((MacroKind::Derive, ident, ident.span));
+            return Some((DefKind::Macro(MacroKind::Derive), ident, ident.span));
+        } else if ast::attr::contains_name(&item.attrs, sym::proc_macro_lint) {
+            return Some((DefKind::LintId, item.ident, item.span));
         }
         None
     }
@@ -1215,12 +1217,14 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         let def_id = feed.key();
         let (res, ident, span, macro_rules) = match &item.kind {
             ItemKind::MacroDef(def) => (self.res(def_id), item.ident, item.span, def.macro_rules),
-            ItemKind::Fn(..) => match self.proc_macro_stub(item) {
-                Some((macro_kind, ident, span)) => {
-                    let res = Res::Def(DefKind::Macro(macro_kind), def_id.to_def_id());
-                    let macro_data = MacroData::new(self.r.dummy_ext(macro_kind));
-                    self.r.macro_map.insert(def_id.to_def_id(), macro_data);
-                    self.r.proc_macro_stubs.insert(def_id);
+            ItemKind::Fn(..) | ItemKind::Static(..) => match self.proc_macro_stub(item) {
+                Some((def_kind, ident, span)) => {
+                    let res = Res::Def(def_kind, def_id.to_def_id());
+                    if let DefKind::Macro(macro_kind) = def_kind {
+                        let macro_data = MacroData::new(self.r.dummy_ext(macro_kind));
+                        self.r.macro_map.insert(def_id.to_def_id(), macro_data);
+                        self.r.proc_macro_stubs.insert(def_id);
+                    }
                     (res, ident, span, false)
                 }
                 None => return parent_scope.macro_rules,
@@ -1278,12 +1282,12 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             let vis = match item.kind {
                 // Visibilities must not be resolved non-speculatively twice
                 // and we already resolved this one as a `fn` item visibility.
-                ItemKind::Fn(..) => {
+                ItemKind::Fn(..) | ItemKind::Static(..) => {
                     self.try_resolve_visibility(&item.vis, false).unwrap_or(ty::Visibility::Public)
                 }
                 _ => self.resolve_visibility(&item.vis),
             };
-            if !vis.is_public() {
+            if !vis.is_public() && matches!(res, Res::Def(DefKind::Macro(_), ..)) {
                 self.insert_unused_macro(ident, def_id, item.id);
             }
             self.r.define(module, ident, MacroNS, (res, vis, span, expansion));

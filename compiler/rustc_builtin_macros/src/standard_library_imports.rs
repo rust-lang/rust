@@ -34,6 +34,7 @@ pub fn inject(
     let expn_id = resolver.expansion_for_ast_pass(
         DUMMY_SP,
         AstPass::StdImports,
+        None,
         &[sym::prelude_import],
         None,
     );

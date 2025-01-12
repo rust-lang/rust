@@ -1502,6 +1502,40 @@ impl fmt::Debug for Literal {
     }
 }
 
+/// The name that downstream code can use in `allow`/`warn`/`deny` attributes
+/// for locally changing the lint level of a macro-generated warning diagnostic.
+///
+/// Zero or more `LintId` may be created using the `#[proc_macro_lint]`
+/// attribute in the crate root of a procedural macro crate.
+///
+/// ```ignore (illustrative)
+/// use proc_macro::LintId;
+///
+/// #[proc_macro_lint]
+/// pub static ambiguous_thing: LintId;
+/// ```
+#[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
+#[derive(Copy, Clone)]
+#[rustc_diagnostic_item = "LintId"]
+pub struct LintId {
+    name: &'static str,
+}
+
+impl LintId {
+    #[doc(hidden)]
+    #[unstable(feature = "proc_macro_internals", issue = "27812")]
+    pub const fn new(name: &'static str) -> Self {
+        LintId { name }
+    }
+}
+
+#[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
+impl fmt::Debug for LintId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("LintId").field(&self.name).finish()
+    }
+}
+
 /// Tracked access to environment variables.
 #[unstable(feature = "proc_macro_tracked_env", issue = "99515")]
 pub mod tracked_env {

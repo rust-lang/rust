@@ -104,6 +104,7 @@ impl TestHarnessGenerator<'_> {
             let expn_id = self.cx.ext_cx.resolver.expansion_for_ast_pass(
                 span,
                 AstPass::TestHarness,
+                None,
                 &[],
                 Some(node_id),
             );
@@ -241,6 +242,7 @@ fn generate_test_harness(
     let expn_id = ext_cx.resolver.expansion_for_ast_pass(
         DUMMY_SP,
         AstPass::TestHarness,
+        None,
         &[sym::test, sym::rustc_attrs, sym::coverage_attribute],
         None,
     );
