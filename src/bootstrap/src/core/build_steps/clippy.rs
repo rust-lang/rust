@@ -393,6 +393,7 @@ impl Step for CI {
                 "clippy::non_minimal_cfg".into(),
                 "clippy::print_literal".into(),
                 "clippy::same_item_push".into(),
+                "clippy::single_char_add_str".into(),
             ],
             forbid: vec![],
         };
@@ -410,6 +411,7 @@ impl Step for CI {
                 "clippy::non_minimal_cfg".into(),
                 "clippy::print_literal".into(),
                 "clippy::same_item_push".into(),
+                "clippy::single_char_add_str".into(),
             ],
             forbid: vec![],
         };
