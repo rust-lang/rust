@@ -391,6 +391,7 @@ impl Step for CI {
                 "clippy::needless_bool".into(),
                 "clippy::needless_bool_assign".into(),
                 "clippy::non_minimal_cfg".into(),
+                "clippy::print_literal".into(),
             ],
             forbid: vec![],
         };
@@ -406,6 +407,7 @@ impl Step for CI {
                 "clippy::needless_bool".into(),
                 "clippy::needless_bool_assign".into(),
                 "clippy::non_minimal_cfg".into(),
+                "clippy::print_literal".into(),
             ],
             forbid: vec![],
         };
