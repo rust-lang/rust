@@ -272,7 +272,7 @@ where
                 unreachable!();
             } else {
                 // Safety: First `k` values are initialized.
-                let slice: &[u16] = MaybeUninit::slice_assume_init_ref(&buf[..k]);
+                let slice: &[u16] = buf[..k].assume_init_ref();
                 return Ok(f2(slice));
             }
         }
