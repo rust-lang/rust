@@ -91,5 +91,5 @@ fn string_enums() {
 
     // Invalid conversions
     let animal = "nya".parse::<Animal>();
-    assert!(matches!(animal, Err(())));
+    assert_eq!("unknown `Animal` variant: `nya`", animal.unwrap_err());
 }
