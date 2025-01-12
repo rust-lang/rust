@@ -319,6 +319,13 @@ fn merge_codegen_units<'tcx>(
     let mut cgu_contents: UnordMap<Symbol, Vec<Symbol>> =
         codegen_units.iter().map(|cgu| (cgu.name(), vec![cgu.name()])).collect();
 
+    // When compiling compiler_builtins, we do not want to put multiple intrinsics in a CGU.
+    // There may be mergeable CGUs under this constraint, but just skipping over merging is much
+    // simpler.
+    if cx.tcx.is_compiler_builtins(LOCAL_CRATE) {
+        return cgu_contents;
+    }
+
     // If N is the maximum number of CGUs, and the CGUs are sorted from largest
     // to smallest, we repeatedly find which CGU in codegen_units[N..] has the
     // greatest overlap of inlined items with codegen_units[N-1], merge that
@@ -680,6 +687,16 @@ fn compute_codegen_unit_name<'tcx>(
     mono_item: MonoItem<'tcx>,
     cache: &mut CguNameCache,
 ) -> Symbol {
+    // When compiling compiler_builtins, we do not want to put multiple intrinsics in a CGU.
+    // Using the symbol name as the CGU name puts every GloballyShared item in its own CGU, but in
+    // an optimized build we actually want every item in the crate that isn't an intrinsic to get
+    // LocalCopy so that it is easy to inline away. In an unoptimized build, this CGU naming
+    // strategy probably generates more CGUs than we strictly need. But it is simple.
+    if tcx.is_compiler_builtins(LOCAL_CRATE) {
+        let name = mono_item.symbol_name(tcx);
+        return Symbol::intern(name.name);
+    }
+
     let Some(def_id) = characteristic_def_id_of_mono_item(tcx, mono_item) else {
         return fallback_cgu_name(name_builder);
     };
