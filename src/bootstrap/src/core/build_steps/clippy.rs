@@ -388,6 +388,7 @@ impl Step for CI {
             deny: vec![
                 "clippy::correctness".into(),
                 "clippy::char_lit_as_u8".into(),
+                "clippy::four_forward_slashes".into(),
                 "clippy::needless_bool".into(),
                 "clippy::needless_bool_assign".into(),
                 "clippy::non_minimal_cfg".into(),
