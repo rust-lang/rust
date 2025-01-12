@@ -76,9 +76,11 @@ fn variant_hints(
             }
             Err(_) => format!("{eq_} ?"),
         },
-        Some(InlayTooltip::String(match &d {
-            Ok(_) => "enum variant discriminant".into(),
-            Err(e) => format!("{e:?}"),
+        Some(config.lazy_tooltip(|| {
+            InlayTooltip::String(match &d {
+                Ok(_) => "enum variant discriminant".into(),
+                Err(e) => format!("{e:?}"),
+            })
         })),
         None,
     );

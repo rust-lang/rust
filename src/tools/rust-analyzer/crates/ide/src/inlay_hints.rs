@@ -307,6 +307,25 @@ impl InlayHintsConfig {
             Lazy::Computed(edit)
         }
     }
+
+    fn lazy_tooltip(&self, finish: impl FnOnce() -> InlayTooltip) -> Lazy<InlayTooltip> {
+        if self.fields_to_resolve.resolve_hint_tooltip
+            && self.fields_to_resolve.resolve_label_tooltip
+        {
+            Lazy::Lazy
+        } else {
+            let tooltip = finish();
+            never!(
+                match &tooltip {
+                    InlayTooltip::String(s) => s,
+                    InlayTooltip::Markdown(s) => s,
+                }
+                .is_empty(),
+                "inlay hint produced an empty tooltip"
+            );
+            Lazy::Computed(tooltip)
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -486,7 +505,7 @@ pub struct InlayHintLabel {
 impl InlayHintLabel {
     pub fn simple(
         s: impl Into<String>,
-        tooltip: Option<InlayTooltip>,
+        tooltip: Option<Lazy<InlayTooltip>>,
         linked_location: Option<FileRange>,
     ) -> InlayHintLabel {
         InlayHintLabel {
@@ -564,7 +583,6 @@ impl fmt::Debug for InlayHintLabel {
     }
 }
 
-#[derive(Hash)]
 pub struct InlayHintLabelPart {
     pub text: String,
     /// Source location represented by this label part. The client will use this to fetch the part's
@@ -575,13 +593,21 @@ pub struct InlayHintLabelPart {
     pub linked_location: Option<FileRange>,
     /// The tooltip to show when hovering over the inlay hint, this may invoke other actions like
     /// hover requests to show.
-    pub tooltip: Option<InlayTooltip>,
+    pub tooltip: Option<Lazy<InlayTooltip>>,
+}
+
+impl std::hash::Hash for InlayHintLabelPart {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.text.hash(state);
+        self.linked_location.hash(state);
+        self.tooltip.is_some().hash(state);
+    }
 }
 
 impl fmt::Debug for InlayHintLabelPart {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self { text, linked_location: None, tooltip: None } => text.fmt(f),
+            Self { text, linked_location: None, tooltip: None | Some(Lazy::Lazy) } => text.fmt(f),
             Self { text, linked_location, tooltip } => f
                 .debug_struct("InlayHintLabelPart")
                 .field("text", text)
@@ -589,7 +615,8 @@ impl fmt::Debug for InlayHintLabelPart {
                 .field(
                     "tooltip",
                     &tooltip.as_ref().map_or("", |it| match it {
-                        InlayTooltip::String(it) | InlayTooltip::Markdown(it) => it,
+                        Lazy::Computed(InlayTooltip::String(it) | InlayTooltip::Markdown(it)) => it,
+                        Lazy::Lazy => "",
                     }),
                 )
                 .finish(),
