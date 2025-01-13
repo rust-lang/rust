@@ -591,7 +591,7 @@ fn test_forbidden_revisions_allowed_in_non_filecheck_dir() {
         "codegen-units",
         "incremental",
         "ui",
-        "js-doc-test",
+        "rustdoc-js",
         "coverage-map",
         "coverage-run",
         "crashes",
