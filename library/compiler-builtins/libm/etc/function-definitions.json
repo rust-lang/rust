@@ -336,14 +336,16 @@
             "src/libm_helper.rs",
             "src/math/arch/i586.rs",
             "src/math/arch/wasm32.rs",
-            "src/math/floor.rs"
+            "src/math/floor.rs",
+            "src/math/generic/floor.rs"
         ],
         "type": "f64"
     },
     "floorf": {
         "sources": [
             "src/math/arch/wasm32.rs",
-            "src/math/floorf.rs"
+            "src/math/floorf.rs",
+            "src/math/generic/floor.rs"
         ],
         "type": "f32"
     },
