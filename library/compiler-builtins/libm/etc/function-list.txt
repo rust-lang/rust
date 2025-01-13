@@ -17,6 +17,8 @@ cbrt
 cbrtf
 ceil
 ceilf
+ceilf128
+ceilf16
 copysign
 copysignf
 copysignf128

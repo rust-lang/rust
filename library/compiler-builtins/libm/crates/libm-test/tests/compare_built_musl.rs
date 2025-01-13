@@ -79,6 +79,8 @@ libm_macros::for_each_function! {
         ynf,
 
         // Not provided by musl
+        ceilf128,
+        ceilf16,
         copysignf128,
         copysignf16,
         fabsf128,

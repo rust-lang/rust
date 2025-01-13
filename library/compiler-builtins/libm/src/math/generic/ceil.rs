@@ -63,6 +63,14 @@ mod tests {
         }
     }
 
+    /* Skipping f16 / f128 "sanity_check"s due to rejected literal lexing at MSRV */
+
+    #[test]
+    #[cfg(f16_enabled)]
+    fn spec_tests_f16() {
+        spec_test::<f16>();
+    }
+
     #[test]
     fn sanity_check_f32() {
         assert_eq!(ceil(1.1f32), 2.0);
@@ -83,5 +91,11 @@ mod tests {
     #[test]
     fn spec_tests_f64() {
         spec_test::<f64>();
+    }
+
+    #[test]
+    #[cfg(f128_enabled)]
+    fn spec_tests_f128() {
+        spec_test::<f128>();
     }
 }

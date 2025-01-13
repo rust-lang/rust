@@ -69,6 +69,8 @@ main!(
     icount_bench_cbrt_group,
     icount_bench_cbrtf_group,
     icount_bench_ceil_group,
+    icount_bench_ceilf128_group,
+    icount_bench_ceilf16_group,
     icount_bench_ceilf_group,
     icount_bench_copysign_group,
     icount_bench_copysignf128_group,
