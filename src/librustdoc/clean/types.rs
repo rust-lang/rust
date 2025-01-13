@@ -980,16 +980,22 @@ pub(crate) struct Module {
 }
 
 pub(crate) trait AttributesExt {
-    type AttributeIterator<'a>: Iterator<Item = ast::MetaItemInner>
-    where
-        Self: 'a;
     type Attributes<'a>: Iterator<Item = &'a hir::Attribute>
     where
         Self: 'a;
 
-    fn lists(&self, name: Symbol) -> Self::AttributeIterator<'_>;
-
     fn iter(&self) -> Self::Attributes<'_>;
+}
+
+pub fn hir_attr_lists<A: AttributesExt + ?Sized>(
+    attrs: &A,
+    name: Symbol,
+) -> impl Iterator<Item = ast::MetaItemInner> + use<'_, A> {
+    attrs
+        .iter()
+        .filter(move |attr| attr.has_name(name))
+        .filter_map(ast::attr::AttributeExt::meta_item_list)
+        .flatten()
 }
 
 pub fn extract_cfg_from_attrs<A: AttributesExt + ?Sized>(
@@ -1066,7 +1072,7 @@ pub fn extract_cfg_from_attrs<A: AttributesExt + ?Sized>(
 
     // treat #[target_feature(enable = "feat")] attributes as if they were
     // #[doc(cfg(target_feature = "feat"))] attributes as well
-    for attr in attrs.lists(sym::target_feature) {
+    for attr in hir_attr_lists(attrs, sym::target_feature) {
         if attr.has_name(sym::enable) {
             if attr.value_str().is_some() {
                 // Clone `enable = "feat"`, change to `target_feature = "feat"`.
@@ -1085,15 +1091,7 @@ pub fn extract_cfg_from_attrs<A: AttributesExt + ?Sized>(
 }
 
 impl AttributesExt for [hir::Attribute] {
-    type AttributeIterator<'a> = impl Iterator<Item = ast::MetaItemInner> + 'a;
     type Attributes<'a> = impl Iterator<Item = &'a hir::Attribute> + 'a;
-
-    fn lists(&self, name: Symbol) -> Self::AttributeIterator<'_> {
-        self.iter()
-            .filter(move |attr| attr.has_name(name))
-            .filter_map(ast::attr::AttributeExt::meta_item_list)
-            .flatten()
-    }
 
     fn iter(&self) -> Self::Attributes<'_> {
         self.iter()
@@ -1101,21 +1099,10 @@ impl AttributesExt for [hir::Attribute] {
 }
 
 impl AttributesExt for [(Cow<'_, hir::Attribute>, Option<DefId>)] {
-    type AttributeIterator<'a>
-        = impl Iterator<Item = ast::MetaItemInner> + 'a
-    where
-        Self: 'a;
     type Attributes<'a>
         = impl Iterator<Item = &'a hir::Attribute> + 'a
     where
         Self: 'a;
-
-    fn lists(&self, name: Symbol) -> Self::AttributeIterator<'_> {
-        AttributesExt::iter(self)
-            .filter(move |attr| attr.has_name(name))
-            .filter_map(hir::Attribute::meta_item_list)
-            .flatten()
-    }
 
     fn iter(&self) -> Self::Attributes<'_> {
         self.iter().map(move |(attr, _)| match attr {
@@ -1188,7 +1175,7 @@ pub(crate) struct Attributes {
 
 impl Attributes {
     pub(crate) fn lists(&self, name: Symbol) -> impl Iterator<Item = ast::MetaItemInner> + '_ {
-        self.other_attrs.lists(name)
+        hir_attr_lists(&self.other_attrs[..], name)
     }
 
     pub(crate) fn has_doc_flag(&self, flag: Symbol) -> bool {
@@ -1255,7 +1242,9 @@ impl Attributes {
     pub(crate) fn get_doc_aliases(&self) -> Box<[Symbol]> {
         let mut aliases = FxIndexSet::default();
 
-        for attr in self.other_attrs.lists(sym::doc).filter(|a| a.has_name(sym::alias)) {
+        for attr in
+            hir_attr_lists(&self.other_attrs[..], sym::doc).filter(|a| a.has_name(sym::alias))
+        {
             if let Some(values) = attr.meta_item_list() {
                 for l in values {
                     if let Some(lit) = l.lit()
