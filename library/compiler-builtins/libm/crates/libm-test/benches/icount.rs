@@ -101,6 +101,8 @@ main!(
     icount_bench_fdimf16_group,
     icount_bench_fdimf_group,
     icount_bench_floor_group,
+    icount_bench_floorf128_group,
+    icount_bench_floorf16_group,
     icount_bench_floorf_group,
     icount_bench_fma_group,
     icount_bench_fmaf_group,

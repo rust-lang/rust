@@ -49,6 +49,8 @@ fdimf128
 fdimf16
 floor
 floorf
+floorf128
+floorf16
 fma
 fmaf
 fmax

@@ -349,6 +349,20 @@
         ],
         "type": "f32"
     },
+    "floorf128": {
+        "sources": [
+            "src/math/floorf128.rs",
+            "src/math/generic/floor.rs"
+        ],
+        "type": "f128"
+    },
+    "floorf16": {
+        "sources": [
+            "src/math/floorf16.rs",
+            "src/math/generic/floor.rs"
+        ],
+        "type": "f16"
+    },
     "fma": {
         "sources": [
             "src/libm_helper.rs",
