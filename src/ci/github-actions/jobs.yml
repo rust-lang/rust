@@ -51,6 +51,11 @@ runners:
     os: codebuild-ubuntu-22-8c-${{ github.run_id }}-${{ github.run_attempt }}
     <<: *base-job
 
+  - &job-linux-36c-codebuild
+    free_disk: true
+    os: codebuild-ubuntu-22-36c-${{ github.run_id }}-${{ github.run_attempt }}
+    <<: *base-job
+
 envs:
   env-x86_64-apple-tests: &env-x86_64-apple-tests
     SCRIPT: ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc -- --exact
@@ -261,7 +266,7 @@ auto:
     # nightly features to compile, and this job would fail if
     # executed on beta and stable.
     only_on_channel: nightly
-    <<: *job-linux-8c-codebuild
+    <<: *job-linux-36c-codebuild
 
   # Tests integration with Rust for Linux.
   # Builds stage 1 compiler and tries to compile a few RfL examples with it.
