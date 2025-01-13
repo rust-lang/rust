@@ -12,7 +12,7 @@ unstable-float = ["libm/unstable-float", "rug?/nightly-float"]
 
 # Generate tests which are random inputs and the outputs are calculated with
 # musl libc.
-test-multiprecision = ["dep:az", "dep:rug", "dep:gmp-mpfr-sys"]
+build-mpfr = ["dep:az", "dep:rug", "dep:gmp-mpfr-sys"]
 
 # Build our own musl for testing and benchmarks
 build-musl = ["dep:musl-math-sys"]

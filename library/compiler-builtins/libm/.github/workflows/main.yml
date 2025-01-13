@@ -133,7 +133,7 @@ jobs:
       run: ./ci/download-musl.sh
     - run: |
         cargo clippy --all \
-          --features libm-test/build-musl,libm-test/test-multiprecision \
+          --features libm-test/build-musl,libm-test/build-mpfr \
           --all-targets
 
   builtins:
@@ -241,7 +241,7 @@ jobs:
           fi
 
           LIBM_EXTENSIVE_TESTS="$CHANGED" cargo t \
-            --features test-multiprecision,unstable \
+            --features build-mpfr,unstable \
             --profile release-checked \
             -- extensive
       - name: Print test logs if available

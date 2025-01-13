@@ -69,7 +69,7 @@ If you'd like to run tests with randomized inputs that get compared against
 infinite-precision results, run:
 
 ```sh
-cargo test --features libm-test/test-multiprecision,libm-test/build-musl --release
+cargo test --features libm-test/build-mpfr,libm-test/build-musl --release
 ```
 
 The multiprecision tests use the [`rug`] crate for bindings to MPFR. MPFR can

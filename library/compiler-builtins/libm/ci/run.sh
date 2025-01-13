@@ -44,11 +44,11 @@ case "$target" in
     # Targets that aren't cross compiled work fine
     # FIXME(ci): we should be able to enable aarch64 Linux here once GHA
     # support rolls out.
-    x86_64*) extra_flags="$extra_flags --features libm-test/test-multiprecision" ;;
-    i686*) extra_flags="$extra_flags --features libm-test/test-multiprecision" ;;
-    i586*) extra_flags="$extra_flags --features libm-test/test-multiprecision --features gmp-mpfr-sys/force-cross" ;;
+    x86_64*) extra_flags="$extra_flags --features libm-test/build-mpfr" ;;
+    i686*) extra_flags="$extra_flags --features libm-test/build-mpfr" ;;
+    i586*) extra_flags="$extra_flags --features libm-test/build-mpfr --features gmp-mpfr-sys/force-cross" ;;
     # Apple aarch64 is native
-    aarch64*apple*) extra_flags="$extra_flags --features libm-test/test-multiprecision" ;;
+    aarch64*apple*) extra_flags="$extra_flags --features libm-test/build-mpfr" ;;
 esac
 
 # FIXME: `STATUS_DLL_NOT_FOUND` testing macros on CI.
