@@ -2,11 +2,13 @@
 
 **Tier: 3**
 
-[QNX®][BlackBerry] Neutrino (nto) Real-time operating system.
-The support has been implemented jointly by [Elektrobit Automotive GmbH][Elektrobit]
-and [Blackberry QNX][BlackBerry].
+The [QNX®][qnx.com] Neutrino (nto) Real-time operating system. Known as QNX OS
+from version 8 onwards.
 
-[BlackBerry]: https://blackberry.qnx.com
+This support has been implemented jointly by [Elektrobit Automotive GmbH][Elektrobit]
+and [QNX][qnx.com].
+
+[qnx.com]: https://blackberry.qnx.com
 [Elektrobit]: https://www.elektrobit.com
 
 ## Target maintainers
@@ -18,30 +20,29 @@ and [Blackberry QNX][BlackBerry].
 
 ## Requirements
 
-Currently, the following QNX Neutrino versions and compilation targets are supported:
+Currently, the following QNX versions and compilation targets are supported:
 
-| QNX Neutrino Version | Target Architecture | Full support | `no_std` support |
-|----------------------|---------------------|:------------:|:----------------:|
-| 8.0              | AArch64  | ? | ✓ |
-| 8.0              | x86      | ? | ✓ |
-| 7.1 with io-pkt  | AArch64  | ✓ | ✓ |
-| 7.1 with io-sock | AArch64  | ? | ✓ |
-| 7.1 with io-pkt  | x86_64   | ✓ | ✓ |
-| 7.1 with io-sock | x86_64   | ? | ✓ |
-| 7.0              | AArch64  | ? | ✓ |
-| 7.0              | x86      |   | ✓ |
+| Target Tuple                        | QNX Version                   | Target Architecture | Full support | `no_std` support |
+| ----------------------------------- | ----------------------------- | ------------------- | :----------: | :--------------: |
+| `aarch64-unknown-nto-qnx800`        | QNX OS 8.0                    | AArch64             |      ?       |        ✓         |
+| `x86_64-pc-nto-qnx800`              | QNX OS 8.0                    | x86_64              |      ?       |        ✓         |
+| `aarch64-unknown-nto-qnx710`        | QNX Neutrino 7.1 with io-pkt  | AArch64             |      ✓       |        ✓         |
+| `x86_64-pc-nto-qnx710`              | QNX Neutrino 7.1 with io-pkt  | x86_64              |      ✓       |        ✓         |
+| `aarch64-unknown-nto-qnx710_iosock` | QNX Neutrino 7.1 with io-sock | AArch64             |      ?       |        ✓         |
+| `x86_64-pc-nto-qnx710_iosock`       | QNX Neutrino 7.1 with io-sock | x86_64              |      ?       |        ✓         |
+| `aarch64-unknown-nto-qnx700`        | QNX Neutrino 7.0              | AArch64             |      ?       |        ✓         |
+| `i586-pc-nto-qnx700`                | QNX Neutrino 7.0              | x86                 |              |        ✓         |
 
-On QNX 7.0 and 7.1, `io-pkt` is used as network stack by default. QNX 7.1 includes
-the optional network stack `io-sock`.
-QNX 8.0 always uses `io-sock`. QNX 8.0 support is currently in development
-and not tested.
+On QNX Neutrino 7.0 and 7.1, `io-pkt` is used as network stack by default.
+QNX Neutrino 7.1 includes the optional network stack `io-sock`.
+QNX OS 8.0 always uses `io-sock`. QNX OS 8.0 support is currently work in progress.
 
-Adding other architectures that are supported by QNX Neutrino is possible.
+Adding other architectures that are supported by QNX is possible.
 
-In the table above, 'full support' indicates support for building Rust applications with the full standard library.
-'`no_std` support' indicates that only `core` and `alloc` are available.
+In the table above, 'full support' indicates support for building Rust applications with the full standard library. A '?' means that support is in-progress.
+'`no_std` support' is for building `#![no_std]` applications where only `core` and `alloc` are available.
 
-For building or using the Rust toolchain for QNX Neutrino, the
+For building or using the Rust toolchain for QNX, the
 [QNX Software Development Platform (SDP)](https://blackberry.qnx.com/en/products/foundation-software/qnx-software-development-platform)
 must be installed and initialized.
 Initialization is usually done by sourcing `qnxsdp-env.sh` (this will be installed as part of the SDP, see also installation instruction provided with the SDP).
@@ -107,19 +108,19 @@ fn panic(_panic: &PanicInfo<'_>) -> ! {
 pub extern "C" fn rust_eh_personality() {}
 ```
 
-The QNX Neutrino support of Rust has been tested with QNX Neutrino 7.0 and 7.1.
+The QNX support in Rust has been tested with QNX Neutrino 7.0 and 7.1. Support for QNX OS 8.0 is a work in progress.
 
 There are no further known requirements.
 
 ## Conditional compilation
 
-For conditional compilation, following QNX Neutrino specific attributes are defined:
+For conditional compilation, following QNX specific attributes are defined:
 
 - `target_os` = `"nto"`
 - `target_env` = `"nto71"` (for QNX Neutrino 7.1 with "classic" network stack "io_pkt")
 - `target_env` = `"nto71_iosock"` (for QNX Neutrino 7.1 with network stack "io_sock")
 - `target_env` = `"nto70"` (for QNX Neutrino 7.0)
-- `target_env` = `"nto80"` (for QNX Neutrino 8.0)
+- `target_env` = `"nto80"` (for QNX OS 8.0)
 
 ## Building the target
 
@@ -137,7 +138,7 @@ For conditional compilation, following QNX Neutrino specific attributes are defi
     Compiling the Rust toolchain requires the same environment variables used for compiling C binaries.
     Refer to the [QNX developer manual](https://www.qnx.com/developers/docs/7.1/#com.qnx.doc.neutrino.prog/topic/devel_OS_version.html).
 
-    To compile for QNX Neutrino, environment variables must be set to use the correct tools and compiler switches:
+    To compile for QNX, environment variables must be set to use the correct tools and compiler switches:
 
     - `CC_<target>=qcc`
     - `CFLAGS_<target>=<nto_cflag>`
@@ -183,7 +184,7 @@ addition of the TEST_DEVICE_ADDR environment variable.
 The TEST_DEVICE_ADDR variable controls the remote runner and should point to the target, despite localhost being shown in the following example.
 Note that some tests are failing which is why they are currently excluded by the target maintainers which can be seen in the following example.
 
-To run all tests on a x86_64 QNX Neutrino target:
+To run all tests on a x86_64 QNX Neutrino 7.1 target:
 
 ```bash
 export TEST_DEVICE_ADDR="localhost:12345" # must address the test target, can be a SSH tunnel
@@ -217,7 +218,7 @@ or build your own copy of `core` by using `build-std` or similar.
 
 ## Testing
 
-Compiled executables can run directly on QNX Neutrino.
+Compiled executables can run directly on QNX.
 
 ### Rust std library test suite
 
