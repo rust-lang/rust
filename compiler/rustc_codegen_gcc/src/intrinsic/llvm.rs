@@ -421,7 +421,7 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
             | "__builtin_ia32_xsaveopt64" => {
                 let new_args = args.to_vec();
                 let thirty_two = builder.context.new_rvalue_from_int(new_args[1].get_type(), 32);
-                let arg2 = new_args[1] << thirty_two | new_args[2];
+                let arg2 = (new_args[1] << thirty_two) | new_args[2];
                 let arg2_type = gcc_func.get_param_type(1);
                 let arg2 = builder.context.new_cast(None, arg2, arg2_type);
                 args = vec![new_args[0], arg2].into();

@@ -41,10 +41,6 @@ pub(crate) enum PossibleFeature<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_gcc_lto_not_supported)]
-pub(crate) struct LTONotSupported;
-
-#[derive(Diagnostic)]
 #[diag(codegen_gcc_unwinding_inline_asm)]
 pub(crate) struct UnwindingInlineAsm {
     #[primary_span]
