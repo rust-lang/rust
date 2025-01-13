@@ -3,8 +3,6 @@
 set -eux
 
 export RUST_BACKTRACE="${RUST_BACKTRACE:-full}"
-# Needed for no-panic to correct detect a lack of panics
-export RUSTFLAGS="${RUSTFLAGS:-} -Ccodegen-units=1"
 
 target="${1:-}"
 
@@ -69,33 +67,36 @@ esac
 cargo check -p libm --no-default-features
 
 if [ "${BUILD_ONLY:-}" = "1" ]; then
+    # If we are on targets that can't run tests, verify that we can build.
     cmd="cargo build --target $target --package libm"
     $cmd
     $cmd --features unstable-intrinsics
 
     echo "can't run tests on $target; skipping"
-else
-    cmd="cargo test --all --target $target $extra_flags"
-
-    # Test once without intrinsics
-    $cmd
-
-    # Exclude the macros and utile crates from the rest of the tests to save CI
-    # runtime, they shouldn't have anything feature- or opt-level-dependent.
-    cmd="$cmd --exclude util --exclude libm-macros"
-
-    # Test once with intrinsics enabled
-    $cmd --features unstable-intrinsics
-    $cmd --features unstable-intrinsics --benches
-    
-    # Test the same in release mode, which also increases coverage. Also ensure
-    # the soft float routines are checked.
-    $cmd --profile release-checked 
-    $cmd --profile release-checked --features force-soft-floats
-    $cmd --profile release-checked --features unstable-intrinsics
-    $cmd --profile release-checked --features unstable-intrinsics --benches
-
-    # Ensure that the routines do not panic.
-    ENSURE_NO_PANIC=1 cargo build -p libm --target "$target" --no-default-features --release
+    exit
 fi
 
+# Otherwise, run the test suite.
+
+cmd="cargo test --all --target $target $extra_flags"
+
+# Test once without intrinsics
+$cmd
+
+# Exclude the macros and utile crates from the rest of the tests to save CI
+# runtime, they shouldn't have anything feature- or opt-level-dependent.
+cmd="$cmd --exclude util --exclude libm-macros"
+
+# Test once with intrinsics enabled
+$cmd --features unstable-intrinsics
+$cmd --features unstable-intrinsics --benches
+
+# Test the same in release mode, which also increases coverage. Also ensure
+# the soft float routines are checked.
+$cmd --profile release-checked 
+$cmd --profile release-checked --features force-soft-floats
+$cmd --profile release-checked --features unstable-intrinsics
+$cmd --profile release-checked --features unstable-intrinsics --benches
+
+# Ensure that the routines do not panic.
+ENSURE_NO_PANIC=1 cargo build -p libm --target "$target" --no-default-features --release
