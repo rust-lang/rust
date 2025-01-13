@@ -66,16 +66,14 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
             // We do the equivalent above in `target_features_cfg`.
             // See <https://github.com/rust-lang/rust/issues/134792>.
             all_rust_features.push((false, feature));
-        } else if !feature.is_empty() {
-            if diagnostics {
-                sess.dcx().emit_warn(UnknownCTargetFeaturePrefix { feature });
-            }
+        } else if !feature.is_empty() && diagnostics {
+            sess.dcx().emit_warn(UnknownCTargetFeaturePrefix { feature });
         }
     }
     // Remove features that are meant for rustc, not codegen.
-    all_rust_features.retain(|(_, feature)| {
+    all_rust_features.retain(|&(_, feature)| {
         // Retain if it is not a rustc feature
-        !RUSTC_SPECIFIC_FEATURES.contains(feature)
+        !RUSTC_SPECIFIC_FEATURES.contains(&feature)
     });
 
     // Check feature validity.
@@ -103,7 +101,7 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
                     };
                     sess.dcx().emit_warn(unknown_feature);
                 }
-                Some((_, stability, _)) => {
+                Some(&(_, stability, _)) => {
                     if let Err(reason) = stability.toggle_allowed() {
                         sess.dcx().emit_warn(ForbiddenCTargetFeature {
                             feature,
@@ -165,29 +163,25 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
     );
 
     // Translate this into GCC features.
-    let feats = all_rust_features
-        .iter()
-        .filter_map(|&(enable, feature)| {
+    let feats =
+        all_rust_features.iter().flat_map(|&(enable, feature)| {
             let enable_disable = if enable { '+' } else { '-' };
             // We run through `to_gcc_features` when
             // passing requests down to GCC. This means that all in-language
             // features also work on the command line instead of having two
             // different names when the GCC name and the Rust name differ.
-            Some(
-                to_gcc_features(sess, feature)
-                    .iter()
-                    .flat_map(|feat| to_gcc_features(sess, feat).into_iter())
-                    .map(|feature| {
-                        if enable_disable == '-' {
-                            format!("-{}", feature)
-                        } else {
-                            feature.to_string()
-                        }
-                    })
-                    .collect::<Vec<_>>(),
-            )
-        })
-        .flatten();
+            to_gcc_features(sess, feature)
+                .iter()
+                .flat_map(|feat| to_gcc_features(sess, feat).into_iter())
+                .map(|feature| {
+                    if enable_disable == '-' {
+                        format!("-{}", feature)
+                    } else {
+                        feature.to_string()
+                    }
+                })
+                .collect::<Vec<_>>()
+        });
     features.extend(feats);
 
     if diagnostics {
