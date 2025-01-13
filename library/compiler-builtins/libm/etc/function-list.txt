@@ -43,6 +43,8 @@ fabsf128
 fabsf16
 fdim
 fdimf
+fdimf128
+fdimf16
 floor
 floorf
 fma

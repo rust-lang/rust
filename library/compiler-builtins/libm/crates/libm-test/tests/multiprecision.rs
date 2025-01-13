@@ -120,6 +120,8 @@ libm_macros::for_each_function! {
         copysignf128,
         fdim,
         fdimf,
+        fdimf16,
+        fdimf128,
         fma,
         fmaf,
         fmax,

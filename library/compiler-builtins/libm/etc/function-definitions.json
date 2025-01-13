@@ -301,6 +301,20 @@
         ],
         "type": "f32"
     },
+    "fdimf128": {
+        "sources": [
+            "src/math/fdimf128.rs",
+            "src/math/generic/fdim.rs"
+        ],
+        "type": "f128"
+    },
+    "fdimf16": {
+        "sources": [
+            "src/math/fdimf16.rs",
+            "src/math/generic/fdim.rs"
+        ],
+        "type": "f16"
+    },
     "floor": {
         "sources": [
             "src/libm_helper.rs",
