@@ -63,6 +63,8 @@ const TY_PRIMITIVE = itemTypes.indexOf("primitive");
 const TY_GENERIC = itemTypes.indexOf("generic");
 const TY_IMPORT = itemTypes.indexOf("import");
 const TY_TRAIT = itemTypes.indexOf("trait");
+const TY_FN = itemTypes.indexOf("fn");
+const TY_METHOD = itemTypes.indexOf("method");
 const ROOT_PATH = typeof window !== "undefined" ? window.rootPath : "../";
 
 // Hard limit on how deep to recurse into generics when doing type-driven search.
@@ -2747,6 +2749,15 @@ class DocSearch {
                 b = (bbb.index < 0);
                 if (a !== b) {
                     return a - b;
+                }
+
+                // in type based search, put functions first
+                if (parsedQuery.hasReturnArrow) {
+                    a = (aaa.item.ty !== TY_FN && aaa.item.ty !== TY_METHOD);
+                    b = (bbb.item.ty !== TY_FN && bbb.item.ty !== TY_METHOD);
+                    if (a !== b) {
+                        return a - b;
+                    }
                 }
 
                 // Sort by distance in the path part, if specified
