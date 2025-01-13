@@ -1,36 +1,17 @@
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:10:17
+  --> $DIR/pattern-errors.rs:23:17
    |
-LL |     if let Some(&mut x) = &mut Some(&0) {
-   |                 ^^^^^^    ------------- this expression has type `&mut Option<&{integer}>`
-   |                 |
-   |                 types differ in mutability
+LL |     if let Some(&mut Some(&_)) = &Some(&Some(0)) {
+   |                 ^^^^^
    |
-   = note:      expected reference `&{integer}`
-           found mutable reference `&mut _`
-note: to declare a mutable binding use: `mut x`
-  --> $DIR/pattern-errors.rs:10:17
+   = note: cannot match inherited `&` with `&mut` pattern
+help: replace this `&mut` pattern with `&`
    |
-LL |     if let Some(&mut x) = &mut Some(&0) {
-   |                 ^^^^^^
-help: consider removing `&mut` from the pattern
-   |
-LL |     if let Some(x) = &mut Some(&0) {
+LL |     if let Some(&Some(&_)) = &Some(&Some(0)) {
    |                 ~
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:28:17
-   |
-LL |     if let Some(&mut Some(&_)) = &Some(&Some(0)) {
-   |                 ^^^^^^^^^^^^^    --------------- this expression has type `&Option<&Option<{integer}>>`
-   |                 |
-   |                 types differ in mutability
-   |
-   = note:      expected reference `&Option<{integer}>`
-           found mutable reference `&mut _`
-
-error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:31:23
+  --> $DIR/pattern-errors.rs:26:23
    |
 LL |     if let Some(&Some(&mut _)) = &Some(&mut Some(0)) {
    |                       ^^^^^
@@ -42,7 +23,7 @@ LL |     if let Some(&Some(&_)) = &Some(&mut Some(0)) {
    |                       ~
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:34:23
+  --> $DIR/pattern-errors.rs:29:23
    |
 LL |     if let Some(&Some(&mut _)) = &mut Some(&Some(0)) {
    |                       ^^^^^
@@ -54,7 +35,7 @@ LL |     if let Some(&Some(&_)) = &mut Some(&Some(0)) {
    |                       ~
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:37:29
+  --> $DIR/pattern-errors.rs:32:29
    |
 LL |     if let Some(&Some(Some((&mut _)))) = &Some(Some(&mut Some(0))) {
    |                             ^^^^^
@@ -66,7 +47,7 @@ LL |     if let Some(&Some(Some((&_)))) = &Some(Some(&mut Some(0))) {
    |                             ~
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:40:17
+  --> $DIR/pattern-errors.rs:35:17
    |
 LL |     if let Some(&mut Some(x)) = &Some(Some(0)) {
    |                 ^^^^^
@@ -78,7 +59,7 @@ LL |     if let Some(&Some(x)) = &Some(Some(0)) {
    |                 ~
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:43:17
+  --> $DIR/pattern-errors.rs:38:17
    |
 LL |     if let Some(&mut Some(x)) = &Some(Some(0)) {
    |                 ^^^^^
@@ -90,7 +71,7 @@ LL |     if let Some(&Some(x)) = &Some(Some(0)) {
    |                 ~
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:49:11
+  --> $DIR/pattern-errors.rs:44:11
    |
 LL |     let &[&mut x] = &&mut [0];
    |           ^^^^^
@@ -102,7 +83,7 @@ LL |     let &[&x] = &&mut [0];
    |           ~
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:54:11
+  --> $DIR/pattern-errors.rs:49:11
    |
 LL |     let &[&mut x] = &mut &mut [0];
    |           ^^^^^
@@ -114,7 +95,7 @@ LL |     let &[&x] = &mut &mut [0];
    |           ~
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:59:11
+  --> $DIR/pattern-errors.rs:54:11
    |
 LL |     let &[&mut ref x] = &&mut [0];
    |           ^^^^^
@@ -126,7 +107,7 @@ LL |     let &[&ref x] = &&mut [0];
    |           ~
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:64:11
+  --> $DIR/pattern-errors.rs:59:11
    |
 LL |     let &[&mut ref x] = &mut &mut [0];
    |           ^^^^^
@@ -138,7 +119,7 @@ LL |     let &[&ref x] = &mut &mut [0];
    |           ~
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:69:11
+  --> $DIR/pattern-errors.rs:64:11
    |
 LL |     let &[&mut mut x] = &&mut [0];
    |           ^^^^^
@@ -150,7 +131,7 @@ LL |     let &[&mut x] = &&mut [0];
    |           ~
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:74:11
+  --> $DIR/pattern-errors.rs:69:11
    |
 LL |     let &[&mut mut x] = &mut &mut [0];
    |           ^^^^^
@@ -162,7 +143,7 @@ LL |     let &[&mut x] = &mut &mut [0];
    |           ~
 
 error[E0658]: binding cannot be both mutable and by-reference
-  --> $DIR/pattern-errors.rs:81:12
+  --> $DIR/pattern-errors.rs:76:12
    |
 LL |     let [&(mut x)] = &[&0];
    |            ^^^^
@@ -172,7 +153,7 @@ LL |     let [&(mut x)] = &[&0];
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: binding cannot be both mutable and by-reference
-  --> $DIR/pattern-errors.rs:85:12
+  --> $DIR/pattern-errors.rs:80:12
    |
 LL |     let [&(mut x)] = &mut [&0];
    |            ^^^^
@@ -182,7 +163,7 @@ LL |     let [&(mut x)] = &mut [&0];
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:91:11
+  --> $DIR/pattern-errors.rs:86:11
    |
 LL |     let [&&mut x] = &[&mut 0];
    |           ^^^^^
@@ -194,7 +175,7 @@ LL |     let [&&x] = &[&mut 0];
    |           ~
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:96:11
+  --> $DIR/pattern-errors.rs:91:11
    |
 LL |     let [&&mut x] = &mut [&mut 0];
    |           ^^^^^
@@ -206,7 +187,7 @@ LL |     let [&&x] = &mut [&mut 0];
    |           ~
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:101:11
+  --> $DIR/pattern-errors.rs:96:11
    |
 LL |     let [&&mut ref x] = &[&mut 0];
    |           ^^^^^
@@ -218,7 +199,7 @@ LL |     let [&&ref x] = &[&mut 0];
    |           ~
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:106:11
+  --> $DIR/pattern-errors.rs:101:11
    |
 LL |     let [&&mut ref x] = &mut [&mut 0];
    |           ^^^^^
@@ -230,7 +211,7 @@ LL |     let [&&ref x] = &mut [&mut 0];
    |           ~
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:111:11
+  --> $DIR/pattern-errors.rs:106:11
    |
 LL |     let [&&mut mut x] = &[&mut 0];
    |           ^^^^^
@@ -242,7 +223,7 @@ LL |     let [&&mut x] = &[&mut 0];
    |           ~
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-errors.rs:116:11
+  --> $DIR/pattern-errors.rs:111:11
    |
 LL |     let [&&mut mut x] = &mut [&mut 0];
    |           ^^^^^
@@ -253,7 +234,7 @@ help: replace this `&mut` pattern with `&`
 LL |     let [&&mut x] = &mut [&mut 0];
    |           ~
 
-error: aborting due to 21 previous errors
+error: aborting due to 20 previous errors
 
 Some errors have detailed explanations: E0308, E0658.
 For more information about an error, try `rustc --explain E0308`.

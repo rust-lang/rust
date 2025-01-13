@@ -7,11 +7,6 @@
 #![cfg_attr(structural, feature(ref_pat_eat_one_layer_2024_structural))]
 
 pub fn main() {
-    if let Some(&mut x) = &mut Some(&0) {
-        //[structural]~^ ERROR: mismatched types
-        let _: &u32 = x;
-    }
-
     if let Some(&mut x) = &Some(&mut 0) {
         //[classic]~^ ERROR: mismatched types
         let _: &u32 = x;

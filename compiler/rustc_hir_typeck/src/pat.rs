@@ -2327,8 +2327,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return expected;
                 }
                 InheritedRefMatchRule::EatInner => {
-                    if let ty::Ref(_, _, r_mutbl) = *expected.kind() {
+                    if let ty::Ref(_, _, r_mutbl) = *expected.kind()
+                        && pat_mutbl <= r_mutbl
+                    {
                         // Match against the reference type; don't consume the inherited ref.
+                        // NB: The check for compatible pattern and ref type mutability assumes that
+                        // `&` patterns can match against mutable references (RFC 3627, Rule 5). If
+                        // we implement a pattern typing ruleset with Rule 4 (including the fallback
+                        // to matching the inherited ref when the inner ref can't match) but not
+                        // Rule 5, we'll need to check that here.
+                        debug_assert!(ref_pat_matches_mut_ref);
                         // NB: For RFC 3627's Rule 3, we limit the default binding mode's ref
                         // mutability to `pat_info.max_ref_mutbl`. If we implement a pattern typing
                         // ruleset with Rule 4 but not Rule 3, we'll need to check that here.
@@ -2336,7 +2344,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let mutbl_cap = cmp::min(r_mutbl, pat_info.max_ref_mutbl.as_mutbl());
                         pat_info.binding_mode = pat_info.binding_mode.cap_ref_mutability(mutbl_cap);
                     } else {
-                        // The expected type isn't a reference, so match against the inherited ref.
+                        // The reference pattern can't match against the expected type, so try
+                        // matching against the inherited ref instead.
                         if pat_mutbl > inh_mut {
                             // We can't match an inherited shared reference with `&mut`.
                             // NB: This assumes that `&` patterns can match against mutable
