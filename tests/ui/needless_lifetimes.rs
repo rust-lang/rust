@@ -6,6 +6,7 @@
     clippy::boxed_local,
     clippy::extra_unused_type_parameters,
     clippy::needless_pass_by_value,
+    clippy::redundant_allocation,
     clippy::unnecessary_wraps,
     dyn_drop,
     clippy::get_first
@@ -443,11 +444,20 @@ mod issue7296 {
         fn implicit_mut<'a>(&'a mut self) -> &'a () {
             &()
         }
-
+        #[clippy::msrv = "1.81"]
         fn explicit<'a>(self: &'a Arc<Self>) -> &'a () {
             &()
         }
+        #[clippy::msrv = "1.81"]
         fn explicit_mut<'a>(self: &'a mut Rc<Self>) -> &'a () {
+            &()
+        }
+        #[clippy::msrv = "1.80"]
+        fn explicit_older<'a>(self: &'a Arc<Self>) -> &'a () {
+            &()
+        }
+        #[clippy::msrv = "1.80"]
+        fn explicit_mut_older<'a>(self: &'a mut Rc<Self>) -> &'a () {
             &()
         }
 
@@ -462,8 +472,16 @@ mod issue7296 {
             &()
         }
 
+        #[clippy::msrv = "1.81"]
         fn explicit<'a>(self: &'a Arc<Self>) -> &'a ();
+        #[clippy::msrv = "1.81"]
         fn explicit_provided<'a>(self: &'a Arc<Self>) -> &'a () {
+            &()
+        }
+        #[clippy::msrv = "1.80"]
+        fn explicit_older<'a>(self: &'a Arc<Self>) -> &'a ();
+        #[clippy::msrv = "1.80"]
+        fn explicit_provided_older<'a>(self: &'a Arc<Self>) -> &'a () {
             &()
         }
 
