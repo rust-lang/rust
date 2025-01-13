@@ -5,11 +5,14 @@ use rustc_infer::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelega
 use rustc_infer::infer::region_constraints::{GenericKind, VerifyBound};
 use rustc_infer::infer::{self, InferCtxt, SubregionOrigin};
 use rustc_middle::bug;
-use rustc_middle::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, ConstraintCategory};
+use rustc_middle::mir::{ClosureRequirements, ConstraintCategory};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::fold::fold_regions;
-use rustc_middle::ty::{self, GenericArgKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
+use rustc_middle::ty::{
+    self, GenericArgKind, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable,
+    TypeVisitableExt,
+};
 use rustc_span::Span;
 use rustc_trait_selection::traits::ScrubbedTraitError;
 use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
@@ -90,17 +93,24 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     pub(crate) fn apply_closure_requirements(
         &mut self,
-        closure_requirements: &ClosureRegionRequirements<'tcx>,
+        closure_requirements: &ClosureRequirements<'tcx>,
         closure_def_id: DefId,
         closure_args: ty::GenericArgsRef<'tcx>,
-    ) {
+    ) -> Vec<(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)> {
+        let ClosureRequirements {
+            num_external_vids,
+            num_existential_external_regions,
+            outlives_requirements,
+            opaque_types,
+        } = closure_requirements;
         // Extract the values of the free regions in `closure_args`
         // into a vector. These are the regions that we will be
         // relating to one another.
         let closure_mapping = &UniversalRegions::closure_mapping(
-            self.tcx,
+            self.infcx,
             closure_args,
-            closure_requirements.num_external_vids,
+            *num_external_vids,
+            *num_existential_external_regions,
             closure_def_id.expect_local(),
         );
         debug!(?closure_mapping);
@@ -108,23 +118,26 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         // Create the predicates.
         let backup = (self.category, self.span, self.from_closure);
         self.from_closure = true;
-        for outlives_requirement in &closure_requirements.outlives_requirements {
-            let outlived_region = closure_mapping[outlives_requirement.outlived_free_region];
-            let subject = match outlives_requirement.subject {
-                ClosureOutlivesSubject::Region(re) => closure_mapping[re].into(),
-                ClosureOutlivesSubject::Ty(subject_ty) => {
-                    subject_ty.instantiate(self.tcx, |vid| closure_mapping[vid]).into()
-                }
-            };
-
+        for outlives_requirement in outlives_requirements {
+            let outlived_region = outlives_requirement
+                .outlived_free_region
+                .instantiate(self.tcx, |vid| closure_mapping[vid]);
+            let subject =
+                outlives_requirement.subject.instantiate(self.tcx, |vid| closure_mapping[vid]);
             self.category = outlives_requirement.category;
             self.span = outlives_requirement.blame_span;
             self.convert(ty::OutlivesPredicate(subject, outlived_region), self.category);
         }
         (self.category, self.span, self.from_closure) = backup;
+
+        let mut instantiated_opaque_types = Vec::new();
+        for data in opaque_types {
+            instantiated_opaque_types.push(data.instantiate(self.tcx, |vid| closure_mapping[vid]));
+        }
+        instantiated_opaque_types
     }
 
-    fn convert(
+    pub(super) fn convert(
         &mut self,
         predicate: ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>,
         constraint_category: ConstraintCategory<'tcx>,

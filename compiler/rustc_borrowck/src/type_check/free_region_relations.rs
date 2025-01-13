@@ -4,7 +4,7 @@ use rustc_hir::def::DefKind;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::region_constraints::GenericKind;
-use rustc_infer::infer::{InferCtxt, outlives};
+use rustc_infer::infer::{outlives, InferCtxt, NllRegionVariableOrigin};
 use rustc_infer::traits::ScrubbedTraitError;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::ObligationCause;
@@ -22,7 +22,7 @@ use crate::universal_regions::UniversalRegions;
 
 #[derive(Debug)]
 pub(crate) struct UniversalRegionRelations<'tcx> {
-    pub(crate) universal_regions: UniversalRegions<'tcx>,
+    pub(crate) universal_regions: Frozen<UniversalRegions<'tcx>>,
 
     /// Stores the outlives relations that are known to hold from the
     /// implied bounds, in-scope where-clauses, and that sort of
@@ -36,6 +36,57 @@ pub(crate) struct UniversalRegionRelations<'tcx> {
     inverse_outlives: TransitiveRelation<RegionVid>,
 }
 
+pub(crate) struct UniversalRegionRelationsBuilder<'tcx> {
+    pub(crate) universal_regions: UniversalRegions<'tcx>,
+    outlives: TransitiveRelationBuilder<RegionVid>,
+    inverse_outlives: TransitiveRelationBuilder<RegionVid>,
+}
+
+impl<'tcx> UniversalRegionRelationsBuilder<'tcx> {
+    /// Records in the `outlives_relation` (and
+    /// `inverse_outlives_relation`) that `fr_a: fr_b`.
+    fn relate_universal_regions(&mut self, fr_a: RegionVid, fr_b: RegionVid) {
+        debug!("relate_universal_regions: fr_a={:?} outlives fr_b={:?}", fr_a, fr_b);
+        self.outlives.add(fr_a, fr_b);
+        self.inverse_outlives.add(fr_b, fr_a);
+    }
+
+    pub(crate) fn add_existential_external_region(
+        &mut self,
+        infcx: &InferCtxt<'tcx>,
+    ) -> ty::Region<'tcx> {
+        let external = infcx.next_nll_region_var_in_universe(
+            NllRegionVariableOrigin::FreeRegion,
+            ty::UniverseIndex::ROOT,
+        );
+        let external_vid = self.universal_regions.to_region_vid(external);
+        self.universal_regions.existential_external_regions.insert(external_vid);
+        external
+    }
+
+    pub(crate) fn freeze(mut self) -> Frozen<UniversalRegionRelations<'tcx>> {
+        // - outlives is reflexive, so `'r: 'r` for every region `'r`
+        // - `'static: 'r` for every region `'r`
+        // - `'r: 'fn_body` for every (other) universally quantified
+        //   region `'r`, all of which are provided by our caller
+        let fr_static = self.universal_regions.fr_static;
+        let fr_fn_body = self.universal_regions.fr_fn_body;
+        // TODO
+        for fr in self.universal_regions.universal_regions_iter().collect::<Vec<_>>() {
+            debug!("build: relating free region {:?} to itself and to 'static", fr);
+            self.relate_universal_regions(fr, fr);
+            self.relate_universal_regions(fr_static, fr);
+            self.relate_universal_regions(fr, fr_fn_body);
+        }
+
+        Frozen::freeze(UniversalRegionRelations {
+            universal_regions: Frozen::freeze(self.universal_regions),
+            outlives: self.outlives.freeze(),
+            inverse_outlives: self.inverse_outlives.freeze(),
+        })
+    }
+}
+
 /// As part of computing the free region relations, we also have to
 /// normalize the input-output types, which we then need later. So we
 /// return those. This vector consists of first the input types and
@@ -43,7 +94,7 @@ pub(crate) struct UniversalRegionRelations<'tcx> {
 type NormalizedInputsAndOutput<'tcx> = Vec<Ty<'tcx>>;
 
 pub(crate) struct CreateResult<'tcx> {
-    pub(crate) universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
+    pub(crate) universal_region_relations: UniversalRegionRelationsBuilder<'tcx>,
     pub(crate) region_bound_pairs: RegionBoundPairs<'tcx>,
     pub(crate) known_type_outlives_obligations: Vec<ty::PolyTypeOutlivesPredicate<'tcx>>,
     pub(crate) normalized_inputs_and_output: NormalizedInputsAndOutput<'tcx>,
@@ -56,15 +107,17 @@ pub(crate) fn create<'tcx>(
     universal_regions: UniversalRegions<'tcx>,
     constraints: &mut MirTypeckRegionConstraints<'tcx>,
 ) -> CreateResult<'tcx> {
-    UniversalRegionRelationsBuilder {
+    FreeRegionRelationsBuilder {
         infcx,
         param_env,
         implicit_region_bound,
         constraints,
-        universal_regions,
+        universal_region_relations: UniversalRegionRelationsBuilder {
+            universal_regions,
+            outlives: Default::default(),
+            inverse_outlives: Default::default(),
+        },
         region_bound_pairs: Default::default(),
-        outlives: Default::default(),
-        inverse_outlives: Default::default(),
     }
     .create()
 }
@@ -180,51 +233,29 @@ impl UniversalRegionRelations<'_> {
     }
 }
 
-struct UniversalRegionRelationsBuilder<'a, 'tcx> {
+struct FreeRegionRelationsBuilder<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    universal_regions: UniversalRegions<'tcx>,
     implicit_region_bound: ty::Region<'tcx>,
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
 
     // outputs:
-    outlives: TransitiveRelationBuilder<RegionVid>,
-    inverse_outlives: TransitiveRelationBuilder<RegionVid>,
+    universal_region_relations: UniversalRegionRelationsBuilder<'tcx>,
     region_bound_pairs: RegionBoundPairs<'tcx>,
 }
 
-impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
-    /// Records in the `outlives_relation` (and
-    /// `inverse_outlives_relation`) that `fr_a: fr_b`.
-    fn relate_universal_regions(&mut self, fr_a: RegionVid, fr_b: RegionVid) {
-        debug!("relate_universal_regions: fr_a={:?} outlives fr_b={:?}", fr_a, fr_b);
-        self.outlives.add(fr_a, fr_b);
-        self.inverse_outlives.add(fr_b, fr_a);
-    }
-
+impl<'tcx> FreeRegionRelationsBuilder<'_, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn create(mut self) -> CreateResult<'tcx> {
         let tcx = self.infcx.tcx;
-        let defining_ty_def_id = self.universal_regions.defining_ty.def_id().expect_local();
+        let defining_ty_def_id =
+            self.universal_region_relations.universal_regions.defining_ty.def_id().expect_local();
         let span = tcx.def_span(defining_ty_def_id);
 
         // Insert the `'a: 'b` we know from the predicates.
         // This does not consider the type-outlives.
         let param_env = self.param_env;
         self.add_outlives_bounds(outlives::explicit_outlives_bounds(param_env));
-
-        // - outlives is reflexive, so `'r: 'r` for every region `'r`
-        // - `'static: 'r` for every region `'r`
-        // - `'r: 'fn_body` for every (other) universally quantified
-        //   region `'r`, all of which are provided by our caller
-        let fr_static = self.universal_regions.fr_static;
-        let fr_fn_body = self.universal_regions.fr_fn_body;
-        for fr in self.universal_regions.universal_regions_iter() {
-            debug!("build: relating free region {:?} to itself and to 'static", fr);
-            self.relate_universal_regions(fr, fr);
-            self.relate_universal_regions(fr_static, fr);
-            self.relate_universal_regions(fr, fr_fn_body);
-        }
 
         // Normalize the assumptions we use to borrowck the program.
         let mut constraints = vec![];
@@ -241,11 +272,12 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         }
 
         let unnormalized_input_output_tys = self
+            .universal_region_relations
             .universal_regions
             .unnormalized_input_tys
             .iter()
             .cloned()
-            .chain(Some(self.universal_regions.unnormalized_output_ty));
+            .chain(Some(self.universal_region_relations.universal_regions.unnormalized_output_ty));
 
         // For each of the input/output types:
         // - Normalize the type. This will create some region
@@ -255,8 +287,9 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         //   the `region_bound_pairs` and so forth.
         // - After this is done, we'll process the constraints, once
         //   the `relations` is built.
-        let mut normalized_inputs_and_output =
-            Vec::with_capacity(self.universal_regions.unnormalized_input_tys.len() + 1);
+        let mut normalized_inputs_and_output = Vec::with_capacity(
+            self.universal_region_relations.universal_regions.unnormalized_input_tys.len() + 1,
+        );
         for ty in unnormalized_input_output_tys {
             debug!("build: input_or_output={:?}", ty);
             // We add implied bounds from both the unnormalized and normalized ty.
@@ -322,7 +355,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         for c in constraints {
             constraint_conversion::ConstraintConversion::new(
                 self.infcx,
-                &self.universal_regions,
+                &self.universal_region_relations.universal_regions,
                 &self.region_bound_pairs,
                 self.implicit_region_bound,
                 param_env,
@@ -336,11 +369,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         }
 
         CreateResult {
-            universal_region_relations: Frozen::freeze(UniversalRegionRelations {
-                universal_regions: self.universal_regions,
-                outlives: self.outlives.freeze(),
-                inverse_outlives: self.inverse_outlives.freeze(),
-            }),
+            universal_region_relations: self.universal_region_relations,
             known_type_outlives_obligations,
             region_bound_pairs: self.region_bound_pairs,
             normalized_inputs_and_output,
@@ -422,9 +451,9 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             match outlives_bound {
                 OutlivesBound::RegionSubRegion(r1, r2) => {
                     // The bound says that `r1 <= r2`; we store `r2: r1`.
-                    let r1 = self.universal_regions.to_region_vid(r1);
-                    let r2 = self.universal_regions.to_region_vid(r2);
-                    self.relate_universal_regions(r2, r1);
+                    let r1 = self.universal_region_relations.universal_regions.to_region_vid(r1);
+                    let r2 = self.universal_region_relations.universal_regions.to_region_vid(r2);
+                    self.universal_region_relations.relate_universal_regions(r2, r1);
                 }
 
                 OutlivesBound::RegionSubParam(r_a, param_b) => {

@@ -13,9 +13,8 @@ use rustc_infer::infer::region_constraints::{GenericKind, VarInfos, VerifyBound,
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin};
 use rustc_middle::bug;
 use rustc_middle::mir::{
-    AnnotationSource, BasicBlock, Body, ClosureOutlivesRequirement, ClosureOutlivesSubject,
-    ClosureRegionRequirements, ConstraintCategory, InClosureRequirement, Local, Location,
-    ReturnConstraint, TerminatorKind,
+    AnnotationSource, BasicBlock, Body, ClosureOutlivesRequirement, ConstraintCategory,
+    InClosureRequirement, Local, Location, ReturnConstraint, TerminatorKind,
 };
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::fold::fold_regions;
@@ -60,33 +59,36 @@ pub struct RegionTracker {
     min_reachable_universe: UniverseIndex,
 
     /// The representative Region Variable Id for this SCC. We prefer
-    /// placeholders over existentially quantified variables, otherwise
-    ///  it's the one with the smallest Region Variable ID.
+    /// free regions over placeholders over existentially quantified variables,
+    /// otherwise it's the one with the smallest Region Variable ID.
     pub(crate) representative: RegionVid,
 
-    /// Is the current representative a placeholder?
-    representative_is_placeholder: bool,
-
-    /// Is the current representative existentially quantified?
-    representative_is_existential: bool,
+    /// Whether the representative is a placeholder, free region, or existential.
+    representative_origin: NllRegionVariableOrigin,
 }
 
 impl scc::Annotation for RegionTracker {
     fn merge_scc(mut self, mut other: Self) -> Self {
-        // Prefer any placeholder over any existential
-        if other.representative_is_placeholder && self.representative_is_existential {
+        use NllRegionVariableOrigin as VarOrigin;
+        let choose_self = match (self.representative_origin, other.representative_origin) {
+            (VarOrigin::FreeRegion, VarOrigin::FreeRegion)
+            | (VarOrigin::Placeholder(_), VarOrigin::Placeholder(_))
+            | (VarOrigin::Existential { .. }, VarOrigin::Existential { .. }) => {
+                self.representative <= other.representative
+            }
+            (VarOrigin::FreeRegion, VarOrigin::Placeholder(_) | VarOrigin::Existential { .. })
+            | (VarOrigin::Placeholder(_), VarOrigin::Existential { .. }) => true,
+            (VarOrigin::Placeholder(_) | VarOrigin::Existential { .. }, VarOrigin::FreeRegion)
+            | (VarOrigin::Existential { .. }, VarOrigin::Placeholder(_)) => false,
+        };
+
+        if choose_self {
+            self.merge_min_max_seen(&other);
+            self
+        } else {
             other.merge_min_max_seen(&self);
             return other;
         }
-
-        if self.representative_is_placeholder && other.representative_is_existential
-            || (self.representative <= other.representative)
-        {
-            self.merge_min_max_seen(&other);
-            return self;
-        }
-        other.merge_min_max_seen(&self);
-        other
     }
 
     fn merge_reached(mut self, other: Self) -> Self {
@@ -98,22 +100,18 @@ impl scc::Annotation for RegionTracker {
 
 impl RegionTracker {
     pub(crate) fn new(rvid: RegionVid, definition: &RegionDefinition<'_>) -> Self {
-        let (representative_is_placeholder, representative_is_existential) = match definition.origin
-        {
-            NllRegionVariableOrigin::FreeRegion => (false, false),
-            NllRegionVariableOrigin::Placeholder(_) => (true, false),
-            NllRegionVariableOrigin::Existential { .. } => (false, true),
-        };
-
         let placeholder_universe =
-            if representative_is_placeholder { definition.universe } else { UniverseIndex::ROOT };
+            if let NllRegionVariableOrigin::Placeholder(_) = definition.origin {
+                definition.universe
+            } else {
+                UniverseIndex::ROOT
+            };
 
         Self {
             max_placeholder_universe_reached: placeholder_universe,
             min_reachable_universe: definition.universe,
             representative: rvid,
-            representative_is_placeholder,
-            representative_is_existential,
+            representative_origin: definition.origin,
         }
     }
 
@@ -436,8 +434,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             sccs_info(infcx, &constraint_sccs);
         }
 
-        let mut scc_values =
-            RegionValues::new(location_map, universal_regions.len(), placeholder_indices);
+        let mut scc_values = RegionValues::new(
+            location_map,
+            universal_regions.len(),
+            &universal_regions.existential_external_regions,
+            placeholder_indices,
+        );
 
         for region in liveness_constraints.regions() {
             let scc = constraint_sccs.scc(region);
@@ -650,7 +652,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         infcx: &InferCtxt<'tcx>,
         body: &Body<'tcx>,
         polonius_output: Option<Box<PoloniusOutput>>,
-    ) -> (Option<ClosureRegionRequirements<'tcx>>, RegionErrors<'tcx>) {
+    ) -> (Option<Vec<ClosureOutlivesRequirement<'tcx>>>, RegionErrors<'tcx>) {
         let mir_def_id = body.source.def_id();
         self.propagate_constraints();
 
@@ -673,6 +675,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // constraints were too strong, and if so, emit or propagate those errors.
         if infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled() {
             self.check_polonius_subset_errors(
+                infcx,
                 outlives_requirements.as_mut(),
                 &mut errors_buffer,
                 polonius_output
@@ -680,7 +683,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     .expect("Polonius output is unavailable despite `-Z polonius`"),
             );
         } else {
-            self.check_universal_regions(outlives_requirements.as_mut(), &mut errors_buffer);
+            self.check_universal_regions(infcx, outlives_requirements.as_mut(), &mut errors_buffer);
         }
 
         debug!(?errors_buffer);
@@ -691,17 +694,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         debug!(?errors_buffer);
 
-        let outlives_requirements = outlives_requirements.unwrap_or_default();
-
-        if outlives_requirements.is_empty() {
-            (None, errors_buffer)
-        } else {
-            let num_external_vids = self.universal_regions().num_global_and_external_regions();
-            (
-                Some(ClosureRegionRequirements { num_external_vids, outlives_requirements }),
-                errors_buffer,
-            )
-        }
+        (outlives_requirements, errors_buffer)
     }
 
     /// Propagate the region constraints: this will grow the values
@@ -1000,7 +993,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             let static_r = self.universal_regions().fr_static;
             propagated_outlives_requirements.push(ClosureOutlivesRequirement {
                 subject,
-                outlived_free_region: static_r,
+                outlived_free_region: InClosureRequirement::bind(
+                    infcx.tcx,
+                    self.universal_regions().num_global_and_external_regions(),
+                    &self.universal_regions().existential_external_regions,
+                    ty::Region::new_var(infcx.tcx, static_r),
+                ),
                 blame_span,
                 category: ConstraintCategory::Boring,
             });
@@ -1030,7 +1028,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
                 let requirement = ClosureOutlivesRequirement {
                     subject,
-                    outlived_free_region: upper_bound,
+                    outlived_free_region: InClosureRequirement::bind(
+                        infcx.tcx,
+                        self.universal_regions().num_global_and_external_regions(),
+                        &self.universal_regions().existential_external_regions,
+                        ty::Region::new_var(infcx.tcx, upper_bound),
+                    ),
                     blame_span,
                     category: ConstraintCategory::Boring,
                 };
@@ -1055,7 +1058,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         infcx: &InferCtxt<'tcx>,
         ty: Ty<'tcx>,
-    ) -> Option<ClosureOutlivesSubject<'tcx>> {
+    ) -> Option<InClosureRequirement<ty::GenericArg<'tcx>>> {
         let tcx = infcx.tcx;
         let mut failed = false;
         let ty = fold_regions(tcx, ty, |r, _depth| {
@@ -1087,7 +1090,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             return None;
         }
 
-        Some(ClosureOutlivesSubject::Ty(InClosureRequirement::bind(tcx, ty)))
+        Some(InClosureRequirement::bind(
+            tcx,
+            self.universal_regions().num_global_and_external_regions(),
+            &self.universal_regions().existential_external_regions,
+            ty.into(),
+        ))
     }
 
     /// Like `universal_upper_bound`, but returns an approximation more suitable
@@ -1330,6 +1338,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// report them as errors.
     fn check_universal_regions(
         &self,
+        infcx: &InferCtxt<'tcx>,
         mut propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
         errors_buffer: &mut RegionErrors<'tcx>,
     ) {
@@ -1341,6 +1350,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     // they did not grow too large, accumulating any requirements
                     // for our caller into the `outlives_requirements` vector.
                     self.check_universal_region(
+                        infcx,
                         fr,
                         &mut propagated_outlives_requirements,
                         errors_buffer,
@@ -1381,6 +1391,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// report them as errors.
     fn check_polonius_subset_errors(
         &self,
+        infcx: &InferCtxt<'tcx>,
         mut propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
         errors_buffer: &mut RegionErrors<'tcx>,
         polonius_output: &PoloniusOutput,
@@ -1427,6 +1438,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             );
 
             let propagated = self.try_propagate_universal_region_error(
+                infcx,
                 longer_fr.into(),
                 shorter_fr.into(),
                 &mut propagated_outlives_requirements,
@@ -1474,13 +1486,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///
     /// Things that are to be propagated are accumulated into the
     /// `outlives_requirements` vector.
-    #[instrument(skip(self, propagated_outlives_requirements, errors_buffer), level = "debug")]
+    #[instrument(
+        skip(self, infcx, propagated_outlives_requirements, errors_buffer),
+        level = "debug"
+    )]
     fn check_universal_region(
         &self,
+        infcx: &InferCtxt<'tcx>,
         longer_fr: RegionVid,
         propagated_outlives_requirements: &mut Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
         errors_buffer: &mut RegionErrors<'tcx>,
     ) {
+        assert!(self.universal_regions().is_universal_region(longer_fr));
         let longer_fr_scc = self.constraint_sccs.scc(longer_fr);
 
         // Because this free region must be in the ROOT universe, we
@@ -1494,8 +1511,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // Note that the representative will be a universal region if there is
         // one in this SCC, so we will always check the representative here.
         let representative = self.scc_representative(longer_fr_scc);
+        assert!(self.universal_regions().is_universal_region(representative));
         if representative != longer_fr {
             if let RegionRelationCheckResult::Error = self.check_universal_region_relation(
+                infcx,
                 longer_fr,
                 representative,
                 propagated_outlives_requirements,
@@ -1514,7 +1533,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // (because `fr` includes `end(o)`).
         let mut error_reported = false;
         for shorter_fr in self.scc_values.universal_regions_outlived_by(longer_fr_scc) {
+            assert!(self.universal_regions().is_universal_region(shorter_fr));
             if let RegionRelationCheckResult::Error = self.check_universal_region_relation(
+                infcx,
                 longer_fr,
                 shorter_fr,
                 propagated_outlives_requirements,
@@ -1537,8 +1558,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Checks that we can prove that `longer_fr: shorter_fr`. If we can't we attempt to propagate
     /// the constraint outward (e.g. to a closure environment), but if that fails, there is an
     /// error.
+    #[instrument(level = "debug", skip(self, infcx, propagated_outlives_requirements), ret)]
     fn check_universal_region_relation(
         &self,
+        infcx: &InferCtxt<'tcx>,
         longer_fr: RegionVid,
         shorter_fr: RegionVid,
         propagated_outlives_requirements: &mut Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
@@ -1554,6 +1577,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // Note: in this case, we use the unapproximated regions to report the
             // error. This gives better error messages in some cases.
             self.try_propagate_universal_region_error(
+                infcx,
                 longer_fr,
                 shorter_fr,
                 propagated_outlives_requirements,
@@ -1565,6 +1589,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// creator. If we cannot, then the caller should report an error to the user.
     fn try_propagate_universal_region_error(
         &self,
+        infcx: &InferCtxt<'tcx>,
         longer_fr: RegionVid,
         shorter_fr: RegionVid,
         propagated_outlives_requirements: &mut Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
@@ -1595,8 +1620,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 for fr in shorter_fr_plus {
                     // Push the constraint `fr-: shorter_fr+`
                     propagated_outlives_requirements.push(ClosureOutlivesRequirement {
-                        subject: ClosureOutlivesSubject::Region(fr_minus),
-                        outlived_free_region: fr,
+                        subject: InClosureRequirement::bind(
+                            infcx.tcx,
+                            self.universal_regions().num_global_and_external_regions(),
+                            &self.universal_regions().existential_external_regions,
+                            ty::Region::new_var(infcx.tcx, fr_minus).into(),
+                        ),
+                        outlived_free_region: InClosureRequirement::bind(
+                            infcx.tcx,
+                            self.universal_regions().num_global_and_external_regions(),
+                            &self.universal_regions().existential_external_regions,
+                            ty::Region::new_var(infcx.tcx, fr),
+                        ),
                         blame_span: blame_span_category.1.span,
                         category: blame_span_category.0,
                     });
@@ -1702,11 +1737,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         fr2: RegionVid,
     ) -> bool {
         debug!("provides_universal_region(r={:?}, fr1={:?}, fr2={:?})", r, fr1, fr2);
-        let result = {
-            r == fr2 || {
-                fr2 == self.universal_regions().fr_static && self.cannot_name_placeholder(fr1, r)
-            }
-        };
+        let result = r == fr2
+            || (fr2 == self.universal_regions().fr_static && self.cannot_name_placeholder(fr1, r));
         debug!("provides_universal_region: result = {:?}", result);
         result
     }
@@ -1778,6 +1810,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // Check if we reached the region we were looking for. If so,
             // we can reconstruct the path that led to it and return it.
             if target_test(r) {
+                debug!("found target");
                 let mut result = vec![];
                 let mut p = r;
                 loop {

@@ -4,7 +4,7 @@ use std::cell::Cell;
 use std::fmt::{self, Debug};
 
 use rustc_abi::{FieldIdx, VariantIdx};
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::BitMatrix;
@@ -16,7 +16,7 @@ use smallvec::SmallVec;
 
 use super::{ConstValue, SourceInfo};
 use crate::ty::fold::fold_regions;
-use crate::ty::{self, CoroutineArgsExt, OpaqueHiddenType, Ty, TyCtxt};
+use crate::ty::{self, CoroutineArgsExt, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt};
 
 rustc_index::newtype_index! {
     #[derive(HashStable)]
@@ -123,7 +123,7 @@ pub struct BorrowCheckResult<'tcx> {
     /// by this function. Unlike the value in `TypeckResults`, this has
     /// unerased regions.
     pub concrete_opaque_types: FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>,
-    pub closure_requirements: Option<ClosureRegionRequirements<'tcx>>,
+    pub closure_requirements: Option<ClosureRequirements<'tcx>>,
     pub used_mut_upvars: SmallVec<[FieldIdx; 8]>,
     pub tainted_by_errors: Option<ErrorGuaranteed>,
 }
@@ -184,7 +184,7 @@ pub struct ConstQualifs {
 /// can be extracted from its type and constrained to have the given
 /// outlives relationship.
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
-pub struct ClosureRegionRequirements<'tcx> {
+pub struct ClosureRequirements<'tcx> {
     /// The number of external regions defined on the closure. In our
     /// example above, it would be 3 -- one for `'static`, then `'1`
     /// and `'2`. This is just used for a sanity check later on, to
@@ -192,9 +192,13 @@ pub struct ClosureRegionRequirements<'tcx> {
     /// matches.
     pub num_external_vids: usize,
 
+    pub num_existential_external_regions: usize,
+
     /// Requirements between the various free regions defined in
     /// indices.
     pub outlives_requirements: Vec<ClosureOutlivesRequirement<'tcx>>,
+
+    pub opaque_types: Vec<InClosureRequirement<(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)>>,
 }
 
 /// Indicates an outlives-constraint between a type or between two
@@ -202,10 +206,10 @@ pub struct ClosureRegionRequirements<'tcx> {
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub struct ClosureOutlivesRequirement<'tcx> {
     // This region or type ...
-    pub subject: ClosureOutlivesSubject<'tcx>,
+    pub subject: InClosureRequirement<ty::GenericArg<'tcx>>,
 
     // ... must outlive this one.
-    pub outlived_free_region: ty::RegionVid,
+    pub outlived_free_region: InClosureRequirement<ty::Region<'tcx>>,
 
     // If not, report an error here ...
     pub blame_span: Span,
@@ -313,15 +317,26 @@ pub struct InClosureRequirement<T> {
 impl<'tcx, T: TypeFoldable<TyCtxt<'tcx>>> InClosureRequirement<T> {
     /// All regions of `ty` must be of kind `ReVar` and must represent
     /// universal regions *external* to the closure.
-    pub fn bind(tcx: TyCtxt<'tcx>, value: T) -> Self {
+    pub fn bind(
+        tcx: TyCtxt<'tcx>,
+        num_external_regions: usize,
+        existential_mapping: &FxIndexSet<ty::RegionVid>,
+        value: T,
+    ) -> Self {
         let inner = fold_regions(tcx, value, |r, depth| match r.kind() {
             ty::ReVar(vid) => {
+                let index = if vid.index() < num_external_regions {
+                    vid.index()
+                } else {
+                    num_external_regions + existential_mapping.get_index_of(&vid).unwrap()
+                };
                 let br = ty::BoundRegion {
-                    var: ty::BoundVar::new(vid.index()),
+                    var: ty::BoundVar::new(index),
                     kind: ty::BoundRegionKind::Anon,
                 };
                 ty::Region::new_bound(tcx, depth, br)
             }
+            ty::ReError(_) => r,
             _ => bug!("unexpected region in closure requirement: {r:?}"),
         });
 
@@ -338,6 +353,7 @@ impl<'tcx, T: TypeFoldable<TyCtxt<'tcx>>> InClosureRequirement<T> {
                 debug_assert_eq!(debruijn, depth);
                 map(ty::RegionVid::new(br.var.index()))
             }
+            ty::ReError(_) => r,
             _ => bug!("unexpected region {r:?}"),
         })
     }

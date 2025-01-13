@@ -286,8 +286,8 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
         sub: ty::Region<'tcx>,
         info: ty::VarianceDiagInfo<TyCtxt<'tcx>>,
     ) {
-        let sub = self.type_checker.universal_regions.to_region_vid(sub);
-        let sup = self.type_checker.universal_regions.to_region_vid(sup);
+        let sub = self.type_checker.universal_region_relations.universal_regions.to_region_vid(sub);
+        let sup = self.type_checker.universal_region_relations.universal_regions.to_region_vid(sup);
         self.type_checker.constraints.outlives_constraints.push(OutlivesConstraint {
             sup,
             sub,

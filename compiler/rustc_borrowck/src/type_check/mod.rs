@@ -3,6 +3,7 @@
 use std::rc::Rc;
 use std::{fmt, iter, mem};
 
+use free_region_relations::UniversalRegionRelationsBuilder;
 use rustc_abi::FieldIdx;
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -18,7 +19,7 @@ use rustc_infer::infer::region_constraints::RegionConstraintData;
 use rustc_infer::infer::{
     BoundRegion, BoundRegionConversionTime, InferCtxt, NllRegionVariableOrigin,
 };
-use rustc_infer::traits::PredicateObligations;
+use rustc_infer::traits::{Obligation, ObligationCause, PredicateObligations};
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -40,7 +41,9 @@ use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span, sym};
-use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
+use rustc_trait_selection::traits::query::type_op::custom::{
+    CustomTypeOp, scrape_region_constraints,
+};
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
 use tracing::{debug, instrument, trace};
 
@@ -128,7 +131,7 @@ pub(crate) fn type_check<'a, 'tcx>(
     };
 
     let CreateResult {
-        universal_region_relations,
+        mut universal_region_relations,
         region_bound_pairs,
         normalized_inputs_and_output,
         known_type_outlives_obligations,
@@ -163,7 +166,7 @@ pub(crate) fn type_check<'a, 'tcx>(
         known_type_outlives_obligations,
         implicit_region_bound,
         reported_errors: Default::default(),
-        universal_regions: &universal_region_relations.universal_regions,
+        universal_region_relations: &mut universal_region_relations,
         location_table,
         polonius_facts,
         borrow_set,
@@ -182,8 +185,18 @@ pub(crate) fn type_check<'a, 'tcx>(
 
     liveness::generate(&mut typeck, body, &location_map, flow_inits, move_data);
 
-    let opaque_type_values =
-        opaque_types::take_opaques_and_register_member_constraints(&mut typeck);
+    let opaque_type_values = opaque_types::take_opaque_types(&mut typeck);
+    // Add member constraints in case we're in the typeck root. See
+    // the comment of `register_member_constraints` for more details.
+    //
+    // We don't do so for typeck children, e.g. closures, as we propagate
+    // the opaque type value to its parent instead and then prove their
+    // member constraints there.
+    if !infcx.tcx.is_typeck_child(body.source.def_id()) {
+        opaque_types::register_member_constraints(&mut typeck, &opaque_type_values);
+    } else {
+        opaque_types::force_regions_to_existential_externals(&mut typeck, &opaque_type_values);
+    }
 
     if let Some(polonius_context) = typeck.polonius_context.as_mut() {
         let num_regions = infcx.num_region_vars();
@@ -193,7 +206,7 @@ pub(crate) fn type_check<'a, 'tcx>(
 
     MirTypeckResults {
         constraints,
-        universal_region_relations,
+        universal_region_relations: universal_region_relations.freeze(),
         opaque_type_values,
         polonius_context,
     }
@@ -315,7 +328,8 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
         let ty = constant.const_.ty();
 
         self.typeck.infcx.tcx.for_each_free_region(&ty, |live_region| {
-            let live_region_vid = self.typeck.universal_regions.to_region_vid(live_region);
+            let live_region_vid =
+                self.typeck.universal_region_relations.universal_regions.to_region_vid(live_region);
             self.typeck.constraints.liveness_constraints.add_location(live_region_vid, location);
         });
 
@@ -559,7 +573,7 @@ struct TypeChecker<'a, 'tcx> {
     known_type_outlives_obligations: Vec<ty::PolyTypeOutlivesPredicate<'tcx>>,
     implicit_region_bound: ty::Region<'tcx>,
     reported_errors: FxIndexSet<(Ty<'tcx>, Span)>,
-    universal_regions: &'a UniversalRegions<'tcx>,
+    universal_region_relations: &'a mut UniversalRegionRelationsBuilder<'tcx>,
     location_table: &'a PoloniusLocationTable,
     polonius_facts: &'a mut Option<PoloniusFacts>,
     borrow_set: &'a BorrowSet<'tcx>,
@@ -708,7 +722,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         if let ty::RePlaceholder(placeholder) = r.kind() {
             self.constraints.placeholder_region(self.infcx, placeholder).as_var()
         } else {
-            self.universal_regions.to_region_vid(r)
+            self.universal_region_relations.universal_regions.to_region_vid(r)
         }
     }
 
@@ -747,7 +761,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
         constraint_conversion::ConstraintConversion::new(
             self.infcx,
-            self.universal_regions,
+            &self.universal_region_relations.universal_regions,
             &self.region_bound_pairs,
             self.implicit_region_bound,
             self.infcx.param_env,
@@ -849,7 +863,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             );
         }
         let args = self.infcx.resolve_vars_if_possible(args.args);
-        let predicates = self.prove_closure_bounds(tcx, def_id, args, Locations::All(span));
+        let predicates = self.prove_closure_bounds(def_id, args, Locations::All(span));
         self.normalize_and_prove_instantiated_predicates(
             def_id.to_def_id(),
             predicates,
@@ -873,7 +887,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // though.
                 let category = match place.as_local() {
                     Some(RETURN_PLACE) => {
-                        let defining_ty = &self.universal_regions.defining_ty;
+                        let defining_ty =
+                            &self.universal_region_relations.universal_regions.defining_ty;
                         if defining_ty.is_const() {
                             if tcx.is_static(defining_ty.def_id()) {
                                 ConstraintCategory::UseAsStatic
@@ -1122,7 +1137,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // output) types in the signature must be live, since
                 // all the inputs that fed into it were live.
                 for &late_bound_region in map.values() {
-                    let region_vid = self.universal_regions.to_region_vid(late_bound_region);
+                    let region_vid = self
+                        .universal_region_relations
+                        .universal_regions
+                        .to_region_vid(late_bound_region);
                     self.constraints.liveness_constraints.add_location(region_vid, term_location);
                 }
 
@@ -1212,7 +1230,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 let category = match destination.as_local() {
                     Some(RETURN_PLACE) => {
                         if let DefiningTy::Const(def_id, _) | DefiningTy::InlineConst(def_id, _) =
-                            self.universal_regions.defining_ty
+                            self.universal_region_relations.universal_regions.defining_ty
                         {
                             if tcx.is_static(def_id) {
                                 ConstraintCategory::UseAsStatic
@@ -1546,16 +1564,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
             if let Some(uv) = maybe_uneval {
                 if uv.promoted.is_none() {
-                    let tcx = self.tcx();
                     let def_id = uv.def;
-                    if tcx.def_kind(def_id) == DefKind::InlineConst {
+                    if self.tcx().def_kind(def_id) == DefKind::InlineConst {
                         let def_id = def_id.expect_local();
-                        let predicates = self.prove_closure_bounds(
-                            tcx,
-                            def_id,
-                            uv.args,
-                            location.to_locations(),
-                        );
+                        let predicates =
+                            self.prove_closure_bounds(def_id, uv.args, location.to_locations());
                         self.normalize_and_prove_instantiated_predicates(
                             def_id.to_def_id(),
                             predicates,
@@ -2498,12 +2511,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | AggregateKind::CoroutineClosure(def_id, args)
             | AggregateKind::Coroutine(def_id, args) => (
                 def_id,
-                self.prove_closure_bounds(
-                    tcx,
-                    def_id.expect_local(),
-                    args,
-                    location.to_locations(),
-                ),
+                self.prove_closure_bounds(def_id.expect_local(), args, location.to_locations()),
             ),
 
             AggregateKind::Array(_) | AggregateKind::Tuple | AggregateKind::RawPtr(..) => {
@@ -2520,15 +2528,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
     fn prove_closure_bounds(
         &mut self,
-        tcx: TyCtxt<'tcx>,
         def_id: LocalDefId,
         args: GenericArgsRef<'tcx>,
         locations: Locations,
     ) -> ty::InstantiatedPredicates<'tcx> {
+        let tcx = self.infcx.tcx;
         if let Some(closure_requirements) = &tcx.mir_borrowck(def_id).closure_requirements {
-            constraint_conversion::ConstraintConversion::new(
+            let opaque_types = constraint_conversion::ConstraintConversion::new(
                 self.infcx,
-                self.universal_regions,
+                &self.universal_region_relations.universal_regions,
                 &self.region_bound_pairs,
                 self.implicit_region_bound,
                 self.infcx.param_env,
@@ -2539,6 +2547,36 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.constraints,
             )
             .apply_closure_requirements(closure_requirements, def_id.to_def_id(), args);
+
+            for (opaque_type_key, hidden_ty) in opaque_types {
+                let _: Result<_, ErrorGuaranteed> = self.fully_perform_op(
+                    Locations::All(hidden_ty.span),
+                    ConstraintCategory::OpaqueType,
+                    CustomTypeOp::new(
+                        |ocx| {
+                            let mut goals = Vec::new();
+                            ocx.infcx.insert_hidden_type(
+                                opaque_type_key,
+                                hidden_ty.span,
+                                self.infcx.param_env,
+                                hidden_ty.ty,
+                                &mut goals,
+                            )?;
+
+                            ocx.register_obligations(goals.into_iter().map(|goal| {
+                                Obligation::new(
+                                    tcx,
+                                    ObligationCause::dummy_with_span(hidden_ty.span),
+                                    goal.param_env,
+                                    goal.predicate,
+                                )
+                            }));
+                            Ok(())
+                        },
+                        "opaque_type_map",
+                    ),
+                );
+            }
         }
 
         // Now equate closure args to regions inherited from `typeck_root_def_id`. Fixes #98589.
