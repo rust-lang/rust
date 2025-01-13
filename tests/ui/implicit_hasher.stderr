@@ -98,7 +98,7 @@ error: impl for `HashMap` should be generalized over different hashers
 LL |         impl<K: Hash + Eq, V> Foo<u8> for HashMap<K, V> {
    |                                           ^^^^^^^^^^^^^
    |
-   = note: this error originates in the macro `__inline_mac_mod_gen` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `__inline_mac_mod_gen_` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: add a type parameter for `BuildHasher`
    |
 LL ~         impl<K: Hash + Eq, V, S: ::std::hash::BuildHasher + Default> Foo<u8> for HashMap<K, V, S> {
