@@ -1148,7 +1148,9 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         // If returned by `struct_tail` this is the empty tuple.
                         | ty::Tuple(..)
                         // Integers and floats are always Sized, and so have unit type metadata.
-                        | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..)) => true,
+                        | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..))
+                        // This happens if we reach the recursion limit when finding the struct tail.
+                        | ty::Error(..) => true,
 
                         // We normalize from `Wrapper<Tail>::Metadata` to `Tail::Metadata` if able.
                         // Otherwise, type parameters, opaques, and unnormalized projections have
@@ -1179,8 +1181,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::Alias(..)
                         | ty::Bound(..)
                         | ty::Placeholder(..)
-                        | ty::Infer(..)
-                        | ty::Error(_) => {
+                        | ty::Infer(..) => {
                             if tail.has_infer_types() {
                                 candidate_set.mark_ambiguous();
                             }
