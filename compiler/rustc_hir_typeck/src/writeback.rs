@@ -5,7 +5,7 @@
 use std::mem;
 
 use rustc_data_structures::unord::ExtendUnord;
-use rustc_errors::{ErrorGuaranteed, StashKey};
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -582,15 +582,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 && last_opaque_ty.ty != hidden_type.ty
             {
                 assert!(!self.fcx.next_trait_solver());
-                if let Ok(d) = hidden_type.build_mismatch_error(
-                    &last_opaque_ty,
-                    opaque_type_key.def_id,
-                    self.tcx(),
-                ) {
-                    d.stash(
-                        self.tcx().def_span(opaque_type_key.def_id),
-                        StashKey::OpaqueHiddenTypeMismatch,
-                    );
+                if let Ok(d) = hidden_type.build_mismatch_error(&last_opaque_ty, self.tcx()) {
+                    d.emit();
                 }
             }
         }

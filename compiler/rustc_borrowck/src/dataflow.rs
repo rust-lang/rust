@@ -2,7 +2,7 @@ use std::fmt;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::graph;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::{
     self, BasicBlock, Body, CallReturnPlaces, Location, Place, TerminatorEdges,
 };
@@ -180,7 +180,7 @@ pub struct Borrows<'a, 'tcx> {
 }
 
 struct OutOfScopePrecomputer<'a, 'tcx> {
-    visited: BitSet<mir::BasicBlock>,
+    visited: DenseBitSet<mir::BasicBlock>,
     visit_stack: Vec<mir::BasicBlock>,
     body: &'a Body<'tcx>,
     regioncx: &'a RegionInferenceContext<'tcx>,
@@ -190,7 +190,7 @@ struct OutOfScopePrecomputer<'a, 'tcx> {
 impl<'a, 'tcx> OutOfScopePrecomputer<'a, 'tcx> {
     fn new(body: &'a Body<'tcx>, regioncx: &'a RegionInferenceContext<'tcx>) -> Self {
         OutOfScopePrecomputer {
-            visited: BitSet::new_empty(body.basic_blocks.len()),
+            visited: DenseBitSet::new_empty(body.basic_blocks.len()),
             visit_stack: vec![],
             body,
             regioncx,
@@ -292,7 +292,7 @@ pub fn calculate_borrows_out_of_scope_at_location<'tcx>(
 }
 
 struct PoloniusOutOfScopePrecomputer<'a, 'tcx> {
-    visited: BitSet<mir::BasicBlock>,
+    visited: DenseBitSet<mir::BasicBlock>,
     visit_stack: Vec<mir::BasicBlock>,
     body: &'a Body<'tcx>,
     regioncx: &'a RegionInferenceContext<'tcx>,
@@ -303,7 +303,7 @@ struct PoloniusOutOfScopePrecomputer<'a, 'tcx> {
 impl<'a, 'tcx> PoloniusOutOfScopePrecomputer<'a, 'tcx> {
     fn new(body: &'a Body<'tcx>, regioncx: &'a RegionInferenceContext<'tcx>) -> Self {
         Self {
-            visited: BitSet::new_empty(body.basic_blocks.len()),
+            visited: DenseBitSet::new_empty(body.basic_blocks.len()),
             visit_stack: vec![],
             body,
             regioncx,
@@ -559,7 +559,7 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
     }
 }
 
-type BorrowsDomain = BitSet<BorrowIndex>;
+type BorrowsDomain = DenseBitSet<BorrowIndex>;
 
 /// Forward dataflow computation of the set of borrows that are in scope at a particular location.
 /// - we gen the introduced loans
@@ -575,7 +575,7 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
 
     fn bottom_value(&self, _: &mir::Body<'tcx>) -> Self::Domain {
         // bottom = nothing is reserved or activated yet;
-        BitSet::new_empty(self.borrow_set.len())
+        DenseBitSet::new_empty(self.borrow_set.len())
     }
 
     fn initialize_start_block(&self, _: &mir::Body<'tcx>, _: &mut Self::Domain) {

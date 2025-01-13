@@ -37,41 +37,12 @@ pub unsafe trait ZeroablePrimitive: Sized + Copy + private::Sealed {
 macro_rules! impl_zeroable_primitive {
     ($($NonZeroInner:ident ( $primitive:ty )),+ $(,)?) => {
         mod private {
-            use super::*;
-
             #[unstable(
                 feature = "nonzero_internals",
                 reason = "implementation detail which may disappear or be replaced at any time",
                 issue = "none"
             )]
             pub trait Sealed {}
-
-            $(
-                // This inner type is never shown directly, so intentionally does not have Debug
-                #[expect(missing_debug_implementations)]
-                // Since this struct is non-generic and derives Copy,
-                // the derived Clone is `*self` and thus doesn't field-project.
-                #[derive(Clone, Copy)]
-                #[repr(transparent)]
-                #[rustc_layout_scalar_valid_range_start(1)]
-                #[rustc_nonnull_optimization_guaranteed]
-                #[unstable(
-                    feature = "nonzero_internals",
-                    reason = "implementation detail which may disappear or be replaced at any time",
-                    issue = "none"
-                )]
-                pub struct $NonZeroInner($primitive);
-
-                // This is required to allow matching a constant.  We don't get it from a derive
-                // because the derived `PartialEq` would do a field projection, which is banned
-                // by <https://github.com/rust-lang/compiler-team/issues/807>.
-                #[unstable(
-                    feature = "nonzero_internals",
-                    reason = "implementation detail which may disappear or be replaced at any time",
-                    issue = "none"
-                )]
-                impl StructuralPartialEq for $NonZeroInner {}
-            )+
         }
 
         $(
@@ -88,7 +59,7 @@ macro_rules! impl_zeroable_primitive {
                 issue = "none"
             )]
             unsafe impl ZeroablePrimitive for $primitive {
-                type NonZeroInner = private::$NonZeroInner;
+                type NonZeroInner = super::niche_types::$NonZeroInner;
             }
         )+
     };

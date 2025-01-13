@@ -892,19 +892,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     Some(l) if !body.local_decls[l].is_user_variable() => {
                         ConstraintCategory::Boring
                     }
-                    Some(_)
-                        if let Some(body_id) = tcx
-                            .hir_node_by_def_id(body.source.def_id().expect_local())
-                            .body_id()
-                            && let params = tcx.hir().body(body_id).params
-                            && params
-                                .iter()
-                                .any(|param| param.span.contains(stmt.source_info.span)) =>
-                    {
-                        // Assignments generated from lowering argument patterns shouldn't be called
-                        // "assignments" in diagnostics and aren't interesting to blame for errors.
-                        ConstraintCategory::Boring
-                    }
                     _ => ConstraintCategory::Assignment,
                 };
                 debug!(

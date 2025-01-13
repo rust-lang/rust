@@ -4,6 +4,7 @@ use std::num::{IntErrorKind, NonZero};
 use std::path::PathBuf;
 use std::str;
 
+use rustc_abi::Align;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_data_structures::stable_hasher::Hash64;
@@ -482,6 +483,7 @@ mod desc {
     pub(crate) const parse_wasm_c_abi: &str = "`legacy` or `spec`";
     pub(crate) const parse_mir_include_spans: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or `nll` (default: `nll`)";
+    pub(crate) const parse_align: &str = "a number that is a power of 2 between 1 and 2^29";
 }
 
 pub mod parse {
@@ -1561,6 +1563,21 @@ pub mod parse {
 
         true
     }
+
+    pub(crate) fn parse_align(slot: &mut Option<Align>, v: Option<&str>) -> bool {
+        let mut bytes = 0u64;
+        if !parse_number(&mut bytes, v) {
+            return false;
+        }
+
+        let Ok(align) = Align::from_bytes(bytes) else {
+            return false;
+        };
+
+        *slot = Some(align);
+
+        true
+    }
 }
 
 options! {
@@ -1921,6 +1938,8 @@ options! {
         "gather metadata statistics (default: no)"),
     metrics_dir: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
         "the directory metrics emitted by rustc are dumped into (implicitly enables default set of metrics)"),
+    min_function_alignment: Option<Align> = (None, parse_align, [TRACKED],
+        "align all functions to at least this many bytes. Must be a power of 2"),
     mir_emit_retag: bool = (false, parse_bool, [TRACKED],
         "emit Retagging MIR statements, interpreted e.g., by miri; implies -Zmir-opt-level=0 \
         (default: no)"),

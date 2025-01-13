@@ -207,7 +207,7 @@ fn write_valid_utf8_to_console(handle: c::HANDLE, utf8: &str) -> io::Result<usiz
         assert!(result != 0, "Unexpected error in MultiByteToWideChar");
 
         // Safety: MultiByteToWideChar initializes `result` values.
-        MaybeUninit::slice_assume_init_ref(&utf16[..result as usize])
+        utf16[..result as usize].assume_init_ref()
     };
 
     let mut written = write_u16s(handle, utf16)?;
@@ -283,7 +283,7 @@ impl io::Read for Stdin {
             let read = read_u16s_fixup_surrogates(handle, &mut utf16_buf, 1, &mut self.surrogate)?;
             // Read bytes, using the (now-empty) self.incomplete_utf8 as extra space.
             let read_bytes = utf16_to_utf8(
-                unsafe { MaybeUninit::slice_assume_init_ref(&utf16_buf[..read]) },
+                unsafe { utf16_buf[..read].assume_init_ref() },
                 &mut self.incomplete_utf8.bytes,
             )?;
 
@@ -303,7 +303,7 @@ impl io::Read for Stdin {
                 read_u16s_fixup_surrogates(handle, &mut utf16_buf, amount, &mut self.surrogate)?;
             // Safety `read_u16s_fixup_surrogates` returns the number of items
             // initialized.
-            let utf16s = unsafe { MaybeUninit::slice_assume_init_ref(&utf16_buf[..read]) };
+            let utf16s = unsafe { utf16_buf[..read].assume_init_ref() };
             match utf16_to_utf8(utf16s, buf) {
                 Ok(value) => return Ok(bytes_copied + value),
                 Err(e) => return Err(e),

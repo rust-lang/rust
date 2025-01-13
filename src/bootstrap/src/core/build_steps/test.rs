@@ -21,6 +21,7 @@ use crate::core::builder::{
 };
 use crate::core::config::TargetSelection;
 use crate::core::config::flags::{Subcommand, get_completion};
+use crate::utils::build_stamp::{self, BuildStamp};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{
     self, LldThreads, add_link_lib_path, add_rustdoc_cargo_linker_args, dylib_path, dylib_path_var,
@@ -544,7 +545,7 @@ impl Step for Miri {
             // The mtime of `miri_sysroot` changes when the sysroot gets rebuilt (also see
             // <https://github.com/RalfJung/rustc-build-sysroot/commit/10ebcf60b80fe2c3dc765af0ff19fdc0da4b7466>).
             // We can hence use that directly as a signal to clear the ui test dir.
-            builder.clear_if_dirty(&ui_test_dep_dir, &miri_sysroot);
+            build_stamp::clear_if_dirty(builder, &ui_test_dep_dir, &miri_sysroot);
         }
 
         // Run `cargo test`.
@@ -981,7 +982,7 @@ impl Step for RustdocGUI {
         let mut cmd = builder.tool_cmd(Tool::RustdocGUITest);
 
         let out_dir = builder.test_out(self.target).join("rustdoc-gui");
-        builder.clear_if_dirty(&out_dir, &builder.rustdoc(self.compiler));
+        build_stamp::clear_if_dirty(builder, &out_dir, &builder.rustdoc(self.compiler));
 
         if let Some(src) = builder.config.src.to_str() {
             cmd.arg("--rust-src").arg(src);
@@ -1637,7 +1638,10 @@ impl Step for Compiletest {
             return;
         }
 
-        if builder.top_stage == 0 && env::var("COMPILETEST_FORCE_STAGE0").is_err() {
+        if builder.top_stage == 0
+            && env::var("COMPILETEST_FORCE_STAGE0").is_err()
+            && self.mode != "js-doc-test"
+        {
             eprintln!("\
 ERROR: `--stage 0` runs compiletest on the beta compiler, not your local changes, and will almost always cause tests to fail
 HELP: to test the compiler, use `--stage 1` instead
@@ -2258,10 +2262,8 @@ impl BookTest {
                     &[],
                 );
 
-                let stamp = builder
-                    .cargo_out(compiler, mode, target)
-                    .join(PathBuf::from(dep).file_name().unwrap())
-                    .with_extension("stamp");
+                let stamp = BuildStamp::new(&builder.cargo_out(compiler, mode, target))
+                    .with_prefix(PathBuf::from(dep).file_name().and_then(|v| v.to_str()).unwrap());
 
                 let output_paths = run_cargo(builder, cargo, vec![], &stamp, vec![], false, false);
                 let directories = output_paths

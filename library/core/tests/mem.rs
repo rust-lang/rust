@@ -200,60 +200,60 @@ fn uninit_array_assume_init() {
 }
 
 #[test]
-fn uninit_write_slice() {
+fn uninit_write_copy_of_slice() {
     let mut dst = [MaybeUninit::new(255); 64];
     let src = [0; 64];
 
-    assert_eq!(MaybeUninit::copy_from_slice(&mut dst, &src), &src);
+    assert_eq!(dst.write_copy_of_slice(&src), &src);
 }
 
 #[test]
 #[should_panic(expected = "source slice length (32) does not match destination slice length (64)")]
-fn uninit_write_slice_panic_lt() {
+fn uninit_write_copy_of_slice_panic_lt() {
     let mut dst = [MaybeUninit::uninit(); 64];
     let src = [0; 32];
 
-    MaybeUninit::copy_from_slice(&mut dst, &src);
+    dst.write_copy_of_slice(&src);
 }
 
 #[test]
 #[should_panic(expected = "source slice length (128) does not match destination slice length (64)")]
-fn uninit_write_slice_panic_gt() {
+fn uninit_write_copy_of_slice_panic_gt() {
     let mut dst = [MaybeUninit::uninit(); 64];
     let src = [0; 128];
 
-    MaybeUninit::copy_from_slice(&mut dst, &src);
+    dst.write_copy_of_slice(&src);
 }
 
 #[test]
-fn uninit_clone_from_slice() {
+fn uninit_write_clone_of_slice() {
     let mut dst = [MaybeUninit::new(255); 64];
     let src = [0; 64];
 
-    assert_eq!(MaybeUninit::clone_from_slice(&mut dst, &src), &src);
+    assert_eq!(dst.write_clone_of_slice(&src), &src);
 }
 
 #[test]
 #[should_panic(expected = "destination and source slices have different lengths")]
-fn uninit_write_slice_cloned_panic_lt() {
+fn uninit_write_clone_of_slice_panic_lt() {
     let mut dst = [MaybeUninit::uninit(); 64];
     let src = [0; 32];
 
-    MaybeUninit::clone_from_slice(&mut dst, &src);
+    dst.write_clone_of_slice(&src);
 }
 
 #[test]
 #[should_panic(expected = "destination and source slices have different lengths")]
-fn uninit_write_slice_cloned_panic_gt() {
+fn uninit_write_clone_of_slice_panic_gt() {
     let mut dst = [MaybeUninit::uninit(); 64];
     let src = [0; 128];
 
-    MaybeUninit::clone_from_slice(&mut dst, &src);
+    dst.write_clone_of_slice(&src);
 }
 
 #[test]
 #[cfg(panic = "unwind")]
-fn uninit_write_slice_cloned_mid_panic() {
+fn uninit_write_clone_of_slice_mid_panic() {
     use std::panic;
 
     enum IncrementOrPanic {
@@ -289,7 +289,7 @@ fn uninit_write_slice_cloned_mid_panic() {
     ];
 
     let err = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-        MaybeUninit::clone_from_slice(&mut dst, &src);
+        dst.write_clone_of_slice(&src);
     }));
 
     drop(src);
@@ -317,11 +317,11 @@ impl Drop for Bomb {
 }
 
 #[test]
-fn uninit_write_slice_cloned_no_drop() {
+fn uninit_write_clone_of_slice_no_drop() {
     let mut dst = [MaybeUninit::uninit()];
     let src = [Bomb];
 
-    MaybeUninit::clone_from_slice(&mut dst, &src);
+    dst.write_clone_of_slice(&src);
 
     forget(src);
 }

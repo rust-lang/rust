@@ -31,18 +31,31 @@ use crate::utils::{format_mutability, mk_sp, mk_sp_lo_plus_one, rewrite_ident};
 ///     - `[small, ntp]`
 ///     - unary tuple constructor `([small, ntp])`
 ///     - `&[small]`
-pub(crate) fn is_short_pattern(pat: &ast::Pat, pat_str: &str) -> bool {
+pub(crate) fn is_short_pattern(
+    context: &RewriteContext<'_>,
+    pat: &ast::Pat,
+    pat_str: &str,
+) -> bool {
     // We also require that the pattern is reasonably 'small' with its literal width.
-    pat_str.len() <= 20 && !pat_str.contains('\n') && is_short_pattern_inner(pat)
+    pat_str.len() <= 20 && !pat_str.contains('\n') && is_short_pattern_inner(context, pat)
 }
 
-fn is_short_pattern_inner(pat: &ast::Pat) -> bool {
-    match pat.kind {
-        ast::PatKind::Rest
-        | ast::PatKind::Never
-        | ast::PatKind::Wild
-        | ast::PatKind::Err(_)
-        | ast::PatKind::Expr(_) => true,
+fn is_short_pattern_inner(context: &RewriteContext<'_>, pat: &ast::Pat) -> bool {
+    match &pat.kind {
+        ast::PatKind::Rest | ast::PatKind::Never | ast::PatKind::Wild | ast::PatKind::Err(_) => {
+            true
+        }
+        ast::PatKind::Expr(expr) => match &expr.kind {
+            ast::ExprKind::Lit(_) => true,
+            ast::ExprKind::Unary(ast::UnOp::Neg, expr) => match &expr.kind {
+                ast::ExprKind::Lit(_) => true,
+                _ => unreachable!(),
+            },
+            ast::ExprKind::ConstBlock(_) | ast::ExprKind::Path(..) => {
+                context.config.style_edition() <= StyleEdition::Edition2024
+            }
+            _ => unreachable!(),
+        },
         ast::PatKind::Ident(_, _, ref pat) => pat.is_none(),
         ast::PatKind::Struct(..)
         | ast::PatKind::MacCall(..)
@@ -57,8 +70,8 @@ fn is_short_pattern_inner(pat: &ast::Pat) -> bool {
         ast::PatKind::Box(ref p)
         | PatKind::Deref(ref p)
         | ast::PatKind::Ref(ref p, _)
-        | ast::PatKind::Paren(ref p) => is_short_pattern_inner(&*p),
-        PatKind::Or(ref pats) => pats.iter().all(|p| is_short_pattern_inner(p)),
+        | ast::PatKind::Paren(ref p) => is_short_pattern_inner(context, &*p),
+        PatKind::Or(ref pats) => pats.iter().all(|p| is_short_pattern_inner(context, p)),
     }
 }
 
@@ -96,7 +109,7 @@ impl Rewrite for Pat {
                 let use_mixed_layout = pats
                     .iter()
                     .zip(pat_strs.iter())
-                    .all(|(pat, pat_str)| is_short_pattern(pat, pat_str));
+                    .all(|(pat, pat_str)| is_short_pattern(context, pat, pat_str));
                 let items: Vec<_> = pat_strs.into_iter().map(ListItem::from_str).collect();
                 let tactic = if use_mixed_layout {
                     DefinitiveListTactic::Mixed

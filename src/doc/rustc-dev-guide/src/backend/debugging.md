@@ -56,7 +56,7 @@ These tools include:
 
 By default, the Rust build system does not check for changes to the LLVM source code or
 its build configuration settings. So, if you need to rebuild the LLVM that is linked
-into `rustc`, first delete the file `llvm-finished-building`, which should be located
+into `rustc`, first delete the file `.llvm-stamp`, which should be located
 in `build/<host-triple>/llvm/`.
 
 The default rustc compilation pipeline has multiple codegen units, which is

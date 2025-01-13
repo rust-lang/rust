@@ -8,7 +8,7 @@ use test::Bencher;
 #[test]
 fn test_new_filled() {
     for i in 0..128 {
-        let idx_buf = BitSet::new_filled(i);
+        let idx_buf = DenseBitSet::new_filled(i);
         let elems: Vec<usize> = idx_buf.iter().collect();
         let expected: Vec<usize> = (0..i).collect();
         assert_eq!(elems, expected);
@@ -17,7 +17,7 @@ fn test_new_filled() {
 
 #[test]
 fn bitset_iter_works() {
-    let mut bitset: BitSet<usize> = BitSet::new_empty(100);
+    let mut bitset: DenseBitSet<usize> = DenseBitSet::new_empty(100);
     bitset.insert(1);
     bitset.insert(10);
     bitset.insert(19);
@@ -32,7 +32,7 @@ fn bitset_iter_works() {
 
 #[test]
 fn bitset_iter_works_2() {
-    let mut bitset: BitSet<usize> = BitSet::new_empty(320);
+    let mut bitset: DenseBitSet<usize> = DenseBitSet::new_empty(320);
     bitset.insert(0);
     bitset.insert(127);
     bitset.insert(191);
@@ -43,25 +43,25 @@ fn bitset_iter_works_2() {
 
 #[test]
 fn bitset_clone_from() {
-    let mut a: BitSet<usize> = BitSet::new_empty(10);
+    let mut a: DenseBitSet<usize> = DenseBitSet::new_empty(10);
     a.insert(4);
     a.insert(7);
     a.insert(9);
 
-    let mut b = BitSet::new_empty(2);
+    let mut b = DenseBitSet::new_empty(2);
     b.clone_from(&a);
     assert_eq!(b.domain_size(), 10);
     assert_eq!(b.iter().collect::<Vec<_>>(), [4, 7, 9]);
 
-    b.clone_from(&BitSet::new_empty(40));
+    b.clone_from(&DenseBitSet::new_empty(40));
     assert_eq!(b.domain_size(), 40);
     assert_eq!(b.iter().collect::<Vec<_>>(), []);
 }
 
 #[test]
 fn union_two_sets() {
-    let mut set1: BitSet<usize> = BitSet::new_empty(65);
-    let mut set2: BitSet<usize> = BitSet::new_empty(65);
+    let mut set1: DenseBitSet<usize> = DenseBitSet::new_empty(65);
+    let mut set2: DenseBitSet<usize> = DenseBitSet::new_empty(65);
     assert!(set1.insert(3));
     assert!(!set1.insert(3));
     assert!(set2.insert(5));
@@ -268,8 +268,8 @@ fn with_elements_chunked(elements: &[usize], domain_size: usize) -> ChunkedBitSe
     s
 }
 
-fn with_elements_standard(elements: &[usize], domain_size: usize) -> BitSet<usize> {
-    let mut s = BitSet::new_empty(domain_size);
+fn with_elements_standard(elements: &[usize], domain_size: usize) -> DenseBitSet<usize> {
+    let mut s = DenseBitSet::new_empty(domain_size);
     for &e in elements {
         assert!(s.insert(e));
     }
@@ -503,15 +503,15 @@ fn sparse_matrix_operations() {
     matrix.insert(2, 99);
     matrix.insert(4, 0);
 
-    let mut disjoint: BitSet<usize> = BitSet::new_empty(100);
+    let mut disjoint: DenseBitSet<usize> = DenseBitSet::new_empty(100);
     disjoint.insert(33);
 
-    let mut superset = BitSet::new_empty(100);
+    let mut superset = DenseBitSet::new_empty(100);
     superset.insert(22);
     superset.insert(75);
     superset.insert(33);
 
-    let mut subset = BitSet::new_empty(100);
+    let mut subset = DenseBitSet::new_empty(100);
     subset.insert(22);
 
     // SparseBitMatrix::remove
@@ -568,7 +568,7 @@ fn dense_insert_range() {
     where
         R: RangeBounds<usize> + Clone + IntoIterator<Item = usize> + std::fmt::Debug,
     {
-        let mut set = BitSet::new_empty(domain);
+        let mut set = DenseBitSet::new_empty(domain);
         set.insert_range(range.clone());
         for i in set.iter() {
             assert!(range.contains(&i));
@@ -609,7 +609,7 @@ fn dense_insert_range() {
 
 #[test]
 fn dense_last_set_before() {
-    fn easy(set: &BitSet<usize>, needle: impl RangeBounds<usize>) -> Option<usize> {
+    fn easy(set: &DenseBitSet<usize>, needle: impl RangeBounds<usize>) -> Option<usize> {
         let mut last_leq = None;
         for e in set.iter() {
             if needle.contains(&e) {
@@ -620,7 +620,7 @@ fn dense_last_set_before() {
     }
 
     #[track_caller]
-    fn cmp(set: &BitSet<usize>, needle: impl RangeBounds<usize> + Clone + std::fmt::Debug) {
+    fn cmp(set: &DenseBitSet<usize>, needle: impl RangeBounds<usize> + Clone + std::fmt::Debug) {
         assert_eq!(
             set.last_set_in(needle.clone()),
             easy(set, needle.clone()),
@@ -629,7 +629,7 @@ fn dense_last_set_before() {
             set
         );
     }
-    let mut set = BitSet::new_empty(300);
+    let mut set = DenseBitSet::new_empty(300);
     cmp(&set, 50..=50);
     set.insert(WORD_BITS);
     cmp(&set, WORD_BITS..=WORD_BITS);
@@ -645,7 +645,7 @@ fn dense_last_set_before() {
     for i in 0..=WORD_BITS * 2 {
         for j in i..=WORD_BITS * 2 {
             for k in 0..WORD_BITS * 2 {
-                let mut set = BitSet::new_empty(300);
+                let mut set = DenseBitSet::new_empty(300);
                 cmp(&set, i..j);
                 cmp(&set, i..=j);
                 set.insert(k);
@@ -658,7 +658,7 @@ fn dense_last_set_before() {
 
 #[bench]
 fn bench_insert(b: &mut Bencher) {
-    let mut bs = BitSet::new_filled(99999usize);
+    let mut bs = DenseBitSet::new_filled(99999usize);
     b.iter(|| {
         black_box(bs.insert(black_box(100u32)));
     });
@@ -666,7 +666,7 @@ fn bench_insert(b: &mut Bencher) {
 
 #[bench]
 fn bench_remove(b: &mut Bencher) {
-    let mut bs = BitSet::new_filled(99999usize);
+    let mut bs = DenseBitSet::new_filled(99999usize);
     b.iter(|| {
         black_box(bs.remove(black_box(100u32)));
     });
@@ -674,7 +674,7 @@ fn bench_remove(b: &mut Bencher) {
 
 #[bench]
 fn bench_iter(b: &mut Bencher) {
-    let bs = BitSet::new_filled(99999usize);
+    let bs = DenseBitSet::new_filled(99999usize);
     b.iter(|| {
         bs.iter().map(|b: usize| black_box(b)).for_each(drop);
     });
@@ -682,8 +682,8 @@ fn bench_iter(b: &mut Bencher) {
 
 #[bench]
 fn bench_intersect(b: &mut Bencher) {
-    let mut ba: BitSet<u32> = BitSet::new_filled(99999usize);
-    let bb = BitSet::new_filled(99999usize);
+    let mut ba: DenseBitSet<u32> = DenseBitSet::new_filled(99999usize);
+    let bb = DenseBitSet::new_filled(99999usize);
     b.iter(|| {
         ba.intersect(black_box(&bb));
     });

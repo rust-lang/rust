@@ -36,7 +36,26 @@ impl DocFolder for StabilityPropagator<'_, '_> {
 
         let stability = match item.item_id {
             ItemId::DefId(def_id) => {
-                let own_stability = self.cx.tcx.lookup_stability(def_id);
+                let item_stability = self.cx.tcx.lookup_stability(def_id);
+                let inline_stability =
+                    item.inline_stmt_id.and_then(|did| self.cx.tcx.lookup_stability(did));
+                let own_stability = if let Some(item_stab) = item_stability
+                    && let StabilityLevel::Stable { since: _, allowed_through_unstable_modules } =
+                        item_stab.level
+                    && let Some(mut inline_stab) = inline_stability
+                    && let StabilityLevel::Stable {
+                        since: inline_since,
+                        allowed_through_unstable_modules: _,
+                    } = inline_stab.level
+                {
+                    inline_stab.level = StabilityLevel::Stable {
+                        since: inline_since,
+                        allowed_through_unstable_modules,
+                    };
+                    Some(inline_stab)
+                } else {
+                    item_stability
+                };
 
                 let (ItemKind::StrippedItem(box kind) | kind) = &item.kind;
                 match kind {

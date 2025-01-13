@@ -15,6 +15,7 @@
 // "Go to file" feature to silently ignore all files in the module, probably
 // because it assumes that "build" is a build-output directory. See #134365.
 mod builder;
+pub mod check_inline;
 mod check_tail_calls;
 mod check_unsafety;
 mod errors;

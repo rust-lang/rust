@@ -94,7 +94,7 @@ use rustc_const_eval::interpret::{
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_hir::def::DefKind;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{IndexVec, newtype_index};
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::GlobalAlloc;
@@ -256,7 +256,7 @@ struct VnState<'body, 'tcx> {
     feature_unsized_locals: bool,
     ssa: &'body SsaLocals,
     dominators: Dominators<BasicBlock>,
-    reused_locals: BitSet<Local>,
+    reused_locals: DenseBitSet<Local>,
 }
 
 impl<'body, 'tcx> VnState<'body, 'tcx> {
@@ -287,7 +287,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             feature_unsized_locals: tcx.features().unsized_locals(),
             ssa,
             dominators,
-            reused_locals: BitSet::new_empty(local_decls.len()),
+            reused_locals: DenseBitSet::new_empty(local_decls.len()),
         }
     }
 
@@ -1714,7 +1714,7 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
 
 struct StorageRemover<'tcx> {
     tcx: TyCtxt<'tcx>,
-    reused_locals: BitSet<Local>,
+    reused_locals: DenseBitSet<Local>,
 }
 
 impl<'tcx> MutVisitor<'tcx> for StorageRemover<'tcx> {
